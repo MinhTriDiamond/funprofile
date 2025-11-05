@@ -19,9 +19,10 @@ interface Comment {
 
 interface CommentSectionProps {
   postId: string;
+  onCommentAdded?: () => void;
 }
 
-export const CommentSection = ({ postId }: CommentSectionProps) => {
+export const CommentSection = ({ postId, onCommentAdded }: CommentSectionProps) => {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [loading, setLoading] = useState(false);
@@ -77,6 +78,7 @@ export const CommentSection = ({ postId }: CommentSectionProps) => {
     } else {
       setNewComment('');
       fetchComments();
+      onCommentAdded?.();
       toast.success('Comment posted!');
     }
     setLoading(false);

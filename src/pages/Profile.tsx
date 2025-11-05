@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Navbar } from '@/components/layout/Navbar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EditProfile } from '@/components/profile/EditProfile';
@@ -11,10 +11,12 @@ import { PostCard } from '@/components/feed/PostCard';
 
 const Profile = () => {
   const navigate = useNavigate();
+  const { userId } = useParams();
   const [profile, setProfile] = useState<any>(null);
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string>('');
+  const [isOwnProfile, setIsOwnProfile] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -23,7 +25,12 @@ const Profile = () => {
         navigate('/auth');
         return;
       }
-      fetchProfile(session.user.id);
+      setCurrentUserId(session.user.id);
+      
+      // If userId param exists, view that profile, otherwise view own profile
+      const profileId = userId || session.user.id;
+      setIsOwnProfile(profileId === session.user.id);
+      fetchProfile(profileId);
     };
 
     checkAuth();
@@ -35,16 +42,15 @@ const Profile = () => {
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, [navigate, userId]);
 
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = async (profileId: string) => {
     try {
-      setCurrentUserId(userId);
       
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', userId)
+        .eq('id', profileId)
         .single();
 
       if (error) throw error;
@@ -59,7 +65,7 @@ const Profile = () => {
           reactions (id, user_id),
           comments (id)
         `)
-        .eq('user_id', userId)
+        .eq('user_id', profileId)
         .order('created_at', { ascending: false });
 
       setPosts(postsData || []);
@@ -71,8 +77,9 @@ const Profile = () => {
   };
 
   const handlePostDeleted = () => {
-    if (currentUserId) {
-      fetchProfile(currentUserId);
+    const profileId = userId || currentUserId;
+    if (profileId) {
+      fetchProfile(profileId);
     }
   };
 
@@ -95,6 +102,7 @@ const Profile = () => {
           <Card>
             <CardHeader className="text-center">
               <Avatar className="w-24 h-24 mx-auto mb-4">
+                {profile?.avatar_url && <AvatarImage src={profile.avatar_url} />}
                 <AvatarFallback className="text-3xl">
                   {profile?.username?.[0]?.toUpperCase() || 'U'}
                 </AvatarFallback>
@@ -109,9 +117,9 @@ const Profile = () => {
         </div>
 
         <Tabs defaultValue="posts" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="posts">My Posts</TabsTrigger>
-            <TabsTrigger value="edit">Edit Profile</TabsTrigger>
+          <TabsList className={`grid w-full ${isOwnProfile ? 'grid-cols-2' : 'grid-cols-1'}`}>
+            <TabsTrigger value="posts">{isOwnProfile ? 'My Posts' : 'Posts'}</TabsTrigger>
+            {isOwnProfile && <TabsTrigger value="edit">Edit Profile</TabsTrigger>}
           </TabsList>
           <TabsContent value="posts" className="space-y-4 mt-6">
             {posts.length === 0 ? (
@@ -131,9 +139,11 @@ const Profile = () => {
               ))
             )}
           </TabsContent>
-          <TabsContent value="edit" className="mt-6">
-            <EditProfile />
-          </TabsContent>
+          {isOwnProfile && (
+            <TabsContent value="edit" className="mt-6">
+              <EditProfile />
+            </TabsContent>
+          )}
         </Tabs>
       </main>
     </div>

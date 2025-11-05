@@ -28,6 +28,7 @@ const App = () => (
               <Route path="/auth" element={<Auth />} />
               <Route path="/" element={<Feed />} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/profile/:userId" element={<Profile />} />
               <Route path="/wallet" element={<Wallet />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
