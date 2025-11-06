@@ -74,7 +74,7 @@ export const EditProfile = () => {
       if (!userId) throw new Error('No user found');
 
       const fileExt = 'jpg';
-      const filePath = `${userId}/${Math.random()}.${fileExt}`;
+      const filePath = `${userId}/${crypto.randomUUID()}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')

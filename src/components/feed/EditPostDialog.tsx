@@ -74,8 +74,11 @@ export const EditPostDialog = ({ post, isOpen, onClose, onPostUpdated }: EditPos
 
       // Upload new image if selected
       if (imageFile) {
-        const fileExt = imageFile.name.split('.').pop();
-        const fileName = `${Math.random()}.${fileExt}`;
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Not authenticated');
+        
+        const fileExt = imageFile.name.split('.').pop()?.toLowerCase();
+        const fileName = `${user.id}/${crypto.randomUUID()}.${fileExt}`;
         const { error: uploadError, data } = await supabase.storage
           .from('posts')
           .upload(fileName, imageFile);
@@ -87,8 +90,11 @@ export const EditPostDialog = ({ post, isOpen, onClose, onPostUpdated }: EditPos
 
       // Upload new video if selected
       if (videoFile) {
-        const fileExt = videoFile.name.split('.').pop();
-        const fileName = `${Math.random()}.${fileExt}`;
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Not authenticated');
+        
+        const fileExt = videoFile.name.split('.').pop()?.toLowerCase();
+        const fileName = `${user.id}/${crypto.randomUUID()}.${fileExt}`;
         const { error: uploadError } = await supabase.storage
           .from('videos')
           .upload(fileName, videoFile);

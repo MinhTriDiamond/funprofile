@@ -71,8 +71,8 @@ export const CreatePost = ({ onPostCreated }: CreatePostProps) => {
 
       // Upload image if present
       if (image) {
-        const fileExt = image.name.split('.').pop();
-        const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+        const fileExt = image.name.split('.').pop()?.toLowerCase();
+        const fileName = `${user.id}/${crypto.randomUUID()}.${fileExt}`;
         
         const { error: uploadError } = await supabase.storage
           .from('posts')
@@ -89,8 +89,8 @@ export const CreatePost = ({ onPostCreated }: CreatePostProps) => {
 
       // Upload video if present
       if (video) {
-        const fileExt = video.name.split('.').pop();
-        const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+        const fileExt = video.name.split('.').pop()?.toLowerCase();
+        const fileName = `${user.id}/${crypto.randomUUID()}.${fileExt}`;
         
         const { error: uploadError } = await supabase.storage
           .from('videos')
