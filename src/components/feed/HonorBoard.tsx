@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useNavigate } from 'react-router-dom';
-import { Trophy, FileText, MessageCircle, ThumbsUp, Users, Coins } from 'lucide-react';
+import { ArrowUp, MessageCircle, Star, Users, BadgeDollarSign } from 'lucide-react';
 
 interface LeaderboardUser {
   id: string;
@@ -150,133 +149,109 @@ export const HonorBoard = () => {
     );
   }
 
-  const renderTopUser = (user: LeaderboardUser | undefined, icon: any, label: string, count: number) => {
-    if (!user) {
-      return (
-        <div 
-          className="flex items-center justify-between p-3 bg-white/10 rounded-lg backdrop-blur-sm"
-        >
-          <div className="flex items-center gap-3 flex-1">
-            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white/20">
-              {icon}
-            </div>
-            <div>
-              <p className="text-sm font-medium">{label}</p>
-              <p className="text-xs text-white/70">Chưa có dữ liệu</p>
-            </div>
+  const StatRow = ({ icon, label, value, user }: { icon: React.ReactNode; label: string; value: number; user?: LeaderboardUser }) => (
+    <div 
+      onClick={() => user && handleUserClick(user.id)}
+      className="relative border-2 border-yellow-500 rounded-xl p-4 bg-gradient-to-r from-green-800/50 to-green-700/50 backdrop-blur-sm hover:from-green-700/60 hover:to-green-600/60 transition-all cursor-pointer group"
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="text-yellow-400">
+            {icon}
           </div>
-          <div className="text-right">
-            <p className="text-lg font-bold">0</p>
-          </div>
+          <span className="text-yellow-400 font-bold text-lg uppercase tracking-wide">{label}</span>
         </div>
-      );
-    }
-
-    return (
-      <div 
-        onClick={() => handleUserClick(user.id)}
-        className="flex items-center justify-between p-3 bg-white/10 rounded-lg backdrop-blur-sm hover:bg-white/20 transition-colors cursor-pointer"
-      >
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          <Avatar className="w-10 h-10 border-2 border-white/30">
+        <span className="text-white font-bold text-2xl">{value.toLocaleString()}</span>
+      </div>
+      {user && (
+        <div className="flex items-center gap-2 mt-2 pt-2 border-t border-yellow-500/30">
+          <Avatar className="w-6 h-6 border-2 border-yellow-400/50">
             <AvatarImage src={user.avatar_url} />
-            <AvatarFallback className="text-xs bg-primary text-primary-foreground">
+            <AvatarFallback className="text-xs bg-yellow-500 text-black">
               {user.username?.[0]?.toUpperCase()}
             </AvatarFallback>
           </Avatar>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">{user.username}</p>
-            <p className="text-xs text-white/70">{label}</p>
-          </div>
+          <span className="text-yellow-200 text-sm font-medium">{user.username}</span>
         </div>
-        <div className="text-right ml-2">
-          <p className="text-lg font-bold">{count}</p>
-          <p className="text-xs text-white/70">TOP 1</p>
-        </div>
-      </div>
-    );
-  };
+      )}
+    </div>
+  );
 
   return (
-    <div className="space-y-4">
-      {/* Honor Board */}
-      <Card className="bg-gradient-to-br from-green-600 to-green-700 text-white border-0 shadow-lg">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-center text-lg font-bold flex items-center justify-center gap-2">
-            <Trophy className="w-5 h-5" />
-            HONOR BOARD
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3 pb-4">
-          {renderTopUser(
-            topPosts[0],
-            <FileText className="w-5 h-5" />,
-            "Posts",
-            topPosts[0]?.posts_count || 0
-          )}
-          {renderTopUser(
-            topComments[0],
-            <MessageCircle className="w-5 h-5" />,
-            "Comments",
-            topComments[0]?.comments_count || 0
-          )}
-          {renderTopUser(
-            topReactions[0],
-            <ThumbsUp className="w-5 h-5" />,
-            "Reacts",
-            topReactions[0]?.reactions_count || 0
-          )}
-          {renderTopUser(
-            topFriends[0],
-            <Users className="w-5 h-5" />,
-            "Friends",
-            topFriends[0]?.friends_count || 0
-          )}
-          {renderTopUser(
-            topRewards[0],
-            <Coins className="w-5 h-5" />,
-            "Reward",
-            topRewards[0]?.total_reward || 0
-          )}
-        </CardContent>
-      </Card>
+    <div className="relative rounded-3xl overflow-hidden border-4 border-yellow-500 bg-gradient-to-br from-green-600 via-green-700 to-green-800 shadow-2xl">
+      {/* Sparkle effects */}
+      <div className="absolute inset-0 opacity-30">
+        <div className="absolute top-4 left-4 w-2 h-2 bg-white rounded-full animate-pulse"></div>
+        <div className="absolute top-8 right-8 w-1 h-1 bg-white rounded-full animate-pulse" style={{ animationDelay: '0.5s' }}></div>
+        <div className="absolute bottom-12 left-12 w-1.5 h-1.5 bg-white rounded-full animate-pulse" style={{ animationDelay: '1s' }}></div>
+        <div className="absolute bottom-8 right-16 w-2 h-2 bg-white rounded-full animate-pulse" style={{ animationDelay: '1.5s' }}></div>
+      </div>
 
-      {/* Top Ranking */}
-      <Card className="bg-gradient-to-br from-green-600 to-green-700 text-white border-0 shadow-lg">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-center text-lg font-bold">TOP RANKING</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 pb-4">
-          {topPosts.slice(0, 10).map((user, index) => (
-            <div
-              key={user.id}
-              onClick={() => handleUserClick(user.id)}
-              className="flex items-center justify-between p-2 bg-white/10 rounded-lg backdrop-blur-sm hover:bg-white/20 transition-colors cursor-pointer"
-            >
-              <div className="flex items-center gap-3 flex-1 min-w-0">
-                <div className="flex items-center gap-2 min-w-[60px]">
-                  <Trophy className={`w-4 h-4 ${index === 0 ? 'text-yellow-300' : index === 1 ? 'text-gray-300' : index === 2 ? 'text-orange-300' : 'text-white'}`} />
-                  <span className="text-sm font-bold">#{index + 1}</span>
-                </div>
-                <Avatar className="w-8 h-8 border-2 border-white/30">
-                  <AvatarImage src={user.avatar_url} />
-                  <AvatarFallback className="text-xs bg-primary text-primary-foreground">
-                    {user.username?.[0]?.toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{user.username}</p>
-                  <p className="text-xs text-white/70">Việt Nam</p>
-                </div>
-              </div>
-              <div className="text-right ml-2">
-                <p className="text-sm font-bold">{user.posts_count}</p>
-                <p className="text-xs text-white/70">C</p>
-              </div>
+      <div className="relative p-6 space-y-4">
+        {/* Header with logo */}
+        <div className="text-center space-y-2">
+          <div className="inline-block">
+            <div className="relative">
+              <img 
+                src="/fun-profile-logo.jpg" 
+                alt="Fun Profile Web3"
+                className="w-20 h-20 mx-auto rounded-full border-2 border-yellow-400 shadow-lg"
+              />
             </div>
-          ))}
-        </CardContent>
-      </Card>
+          </div>
+          
+          {/* User info (only show on profile page) */}
+          {topPosts[0] && (
+            <div className="flex items-center justify-center gap-3">
+              <h2 className="text-white text-2xl font-bold tracking-wide">{topPosts[0].username.toUpperCase()}</h2>
+              <Avatar className="w-12 h-12 border-3 border-yellow-400">
+                <AvatarImage src={topPosts[0].avatar_url} />
+                <AvatarFallback className="bg-yellow-500 text-black font-bold">
+                  {topPosts[0].username?.[0]?.toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+            </div>
+          )}
+          
+          <h1 className="text-yellow-400 text-4xl font-black tracking-wider drop-shadow-lg">
+            HONOR BOARD
+          </h1>
+        </div>
+
+        {/* Stats */}
+        <div className="space-y-3">
+          <StatRow 
+            icon={<ArrowUp className="w-6 h-6" />}
+            label="POSTS"
+            value={topPosts[0]?.posts_count || 0}
+            user={topPosts[0]}
+          />
+          <StatRow 
+            icon={<MessageCircle className="w-6 h-6" />}
+            label="COMMENTS"
+            value={topComments[0]?.comments_count || 0}
+            user={topComments[0]}
+          />
+          <StatRow 
+            icon={<Star className="w-6 h-6" />}
+            label="REACTIONS"
+            value={topReactions[0]?.reactions_count || 0}
+            user={topReactions[0]}
+          />
+          <StatRow 
+            icon={<Users className="w-6 h-6" />}
+            label="FRIENDS"
+            value={topFriends[0]?.friends_count || 0}
+            user={topFriends[0]}
+          />
+          <StatRow 
+            icon={<BadgeDollarSign className="w-6 h-6" />}
+            label="TOTAL REWARD"
+            value={topRewards[0]?.total_reward || 0}
+            user={topRewards[0]}
+          />
+        </div>
+      </div>
     </div>
   );
 };
