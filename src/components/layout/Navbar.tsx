@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
-import { Home, User, Wallet, LogOut, LogIn, Moon, Sun } from 'lucide-react';
+import { Home, Users, User, Wallet, LogOut, LogIn, Moon, Sun } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { NotificationDropdown } from './NotificationDropdown';
 import { SearchDialog } from './SearchDialog';
@@ -51,6 +51,10 @@ export const Navbar = () => {
               <Home className="w-4 h-4 mr-2 text-gold animate-pulse drop-shadow-[0_0_8px_hsl(var(--gold-glow))]" />
               Feed
             </Button>
+            <Button variant="ghost" size="sm" onClick={() => navigate('/friends')} className="text-primary-dark font-semibold hover:text-primary">
+              <Users className="w-4 h-4 mr-2 text-gold animate-pulse drop-shadow-[0_0_8px_hsl(var(--gold-glow))]" />
+              Friends
+            </Button>
             <Button variant="ghost" size="sm" onClick={() => navigate('/profile')} className="text-primary-dark font-semibold hover:text-primary">
               <User className="w-4 h-4 mr-2 text-gold animate-pulse drop-shadow-[0_0_8px_hsl(var(--gold-glow))]" />
               Profile
@@ -65,6 +69,9 @@ export const Navbar = () => {
           <div className="md:hidden flex items-center gap-1">
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate('/')}>
               <Home className="w-4 h-4 text-gold drop-shadow-[0_0_6px_hsl(var(--gold-glow))]" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate('/friends')}>
+              <Users className="w-4 h-4 text-gold drop-shadow-[0_0_6px_hsl(var(--gold-glow))]" />
             </Button>
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate('/profile')}>
               <User className="w-4 h-4 text-gold drop-shadow-[0_0_6px_hsl(var(--gold-glow))]" />

@@ -18,6 +18,39 @@ export const FriendRequestButton = ({ userId, currentUserId }: FriendRequestButt
 
   useEffect(() => {
     checkFriendshipStatus();
+    
+    // Set up realtime subscription for friendships
+    const channel = supabase
+      .channel('friendship-status-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'friendships',
+          filter: `user_id=eq.${currentUserId},friend_id=eq.${userId}`
+        },
+        () => {
+          checkFriendshipStatus();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'friendships',
+          filter: `user_id=eq.${userId},friend_id=eq.${currentUserId}`
+        },
+        () => {
+          checkFriendshipStatus();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [userId, currentUserId]);
 
   const checkFriendshipStatus = async () => {

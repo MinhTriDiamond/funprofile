@@ -32,6 +32,29 @@ export const FriendsList = ({ userId }: FriendsListProps) => {
     fetchFriends();
     fetchPendingRequests();
     fetchSentRequests();
+    
+    // Set up realtime subscription for friendships
+    const channel = supabase
+      .channel('friendships-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'friendships'
+        },
+        () => {
+          // Refetch all data when friendships change
+          fetchFriends();
+          fetchPendingRequests();
+          fetchSentRequests();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [userId]);
 
   const fetchFriends = async () => {

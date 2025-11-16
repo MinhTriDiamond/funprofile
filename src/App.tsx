@@ -14,6 +14,7 @@ import '@solana/wallet-adapter-react-ui/styles.css';
 
 import Auth from "./pages/Auth";
 import Feed from "./pages/Feed";
+import Friends from "./pages/Friends";
 import Profile from "./pages/Profile";
 import Wallet from "./pages/Wallet";
 import NotFound from "./pages/NotFound";
@@ -34,6 +35,7 @@ const App = () => (
                   <Routes>
                     <Route path="/auth" element={<Auth />} />
                     <Route path="/" element={<Feed />} />
+                    <Route path="/friends" element={<Friends />} />
                     <Route path="/profile" element={<Profile />} />
                     <Route path="/profile/:userId" element={<Profile />} />
                     <Route path="/wallet" element={<Wallet />} />
