@@ -45,7 +45,7 @@ export const HistoryTab = () => {
           }
         }
       } catch (error) {
-        console.error('Error loading transactions:', error);
+        // Error loading transactions - silent fail
       } finally {
         setLoading(false);
       }

@@ -42,7 +42,7 @@ const Post = () => {
         .single();
 
       if (error) {
-        console.error('Error fetching post:', error);
+        // Error fetching post - silent fail
       } else {
         setPost(data);
       }

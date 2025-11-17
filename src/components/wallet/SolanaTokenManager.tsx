@@ -53,7 +53,6 @@ export const SolanaTokenManager = () => {
       setNewTokenMint('');
       toast.success('Token added successfully!');
     } catch (error) {
-      console.error('Error adding token:', error);
       toast.error('Error adding token');
     }
   };
@@ -100,7 +99,6 @@ export const SolanaTokenManager = () => {
       setSendAddress('');
       setSendAmount('');
     } catch (error) {
-      console.error('Error sending token:', error);
       toast.error('Error sending token');
     }
   };

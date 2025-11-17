@@ -119,7 +119,7 @@ export const HonorBoard = () => {
       setTopReactions([]);
       setTopFriends([]);
     } catch (error) {
-      console.error('Error fetching leaderboards:', error);
+      // Error fetching leaderboards - silent fail
     } finally {
       setLoading(false);
     }

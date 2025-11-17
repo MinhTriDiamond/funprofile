@@ -104,7 +104,7 @@ export const ProfileHonorBoard = ({ userId, username, avatarUrl }: ProfileHonorB
         total_reward: totalReward,
       });
     } catch (error) {
-      console.error('Error fetching user stats:', error);
+      // Error fetching stats - silent fail
     } finally {
       setLoading(false);
     }

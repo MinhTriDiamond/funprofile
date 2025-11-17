@@ -107,7 +107,7 @@ const Profile = () => {
 
       setSharedPosts(sharedPostsData || []);
     } catch (error) {
-      console.error('Error fetching profile:', error);
+      // Error fetching profile - silent fail
     } finally {
       setLoading(false);
     }
