@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Heart, Trash2, Share2, MessageCircle, Pencil } from 'lucide-react';
+import { Heart, Trash2, Share, MessageCircle, Pencil } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -198,7 +198,7 @@ export const PostCard = ({ post, currentUserId, onPostDeleted }: PostCardProps) 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="text-xs sm:text-sm gap-1">
-                  <Share2 className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <Share className="w-4 h-4 sm:w-5 sm:h-5" />
                   {shareCount > 0 && <span>{shareCount}</span>}
                 </Button>
               </DropdownMenuTrigger>
