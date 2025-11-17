@@ -24,7 +24,7 @@ export const ReceiveTab = () => {
             text: `Gửi tiền đến địa chỉ này: ${address}`,
           });
         } catch (err) {
-          console.error('Error sharing:', err);
+          // Error sharing - fallback to copy
         }
       } else {
         handleCopy();

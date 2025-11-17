@@ -68,7 +68,7 @@ export const FriendsList = ({ userId }: FriendsListProps) => {
       .or(`user_id.eq.${userId},friend_id.eq.${userId}`);
 
     if (error) {
-      console.error("Error fetching friends:", error);
+      // Error fetching friends - silent fail
       setLoading(false);
       return;
     }
@@ -91,7 +91,7 @@ export const FriendsList = ({ userId }: FriendsListProps) => {
       .in("id", userIds);
 
     if (profilesError) {
-      console.error("Error fetching profiles:", profilesError);
+      // Error fetching profiles - silent fail
       setLoading(false);
       return;
     }
@@ -122,7 +122,7 @@ export const FriendsList = ({ userId }: FriendsListProps) => {
       .eq("friend_id", userId);
 
     if (error) {
-      console.error("Error fetching pending requests:", error);
+      // Error fetching pending requests - silent fail
       return;
     }
 
@@ -139,7 +139,7 @@ export const FriendsList = ({ userId }: FriendsListProps) => {
       .in("id", userIds);
 
     if (profilesError) {
-      console.error("Error fetching profiles:", profilesError);
+      // Error fetching profiles - silent fail
       return;
     }
 
@@ -165,7 +165,7 @@ export const FriendsList = ({ userId }: FriendsListProps) => {
       .eq("user_id", userId);
 
     if (error) {
-      console.error("Error fetching sent requests:", error);
+      // Error fetching sent requests - silent fail
       return;
     }
 
@@ -182,7 +182,7 @@ export const FriendsList = ({ userId }: FriendsListProps) => {
       .in("id", friendIds);
 
     if (profilesError) {
-      console.error("Error fetching profiles:", profilesError);
+      // Error fetching profiles - silent fail
       return;
     }
 
@@ -208,7 +208,6 @@ export const FriendsList = ({ userId }: FriendsListProps) => {
 
     if (error) {
       toast.error("Failed to remove friend");
-      console.error(error);
     } else {
       toast.success("Friend removed");
       fetchFriends();
@@ -223,7 +222,6 @@ export const FriendsList = ({ userId }: FriendsListProps) => {
 
     if (error) {
       toast.error("Failed to accept friend request");
-      console.error(error);
     } else {
       toast.success("Friend request accepted!");
       fetchFriends();
@@ -239,7 +237,6 @@ export const FriendsList = ({ userId }: FriendsListProps) => {
 
     if (error) {
       toast.error("Failed to reject friend request");
-      console.error(error);
     } else {
       toast.success("Friend request rejected");
       fetchPendingRequests();
@@ -254,7 +251,6 @@ export const FriendsList = ({ userId }: FriendsListProps) => {
 
     if (error) {
       toast.error("Failed to cancel request");
-      console.error(error);
     } else {
       toast.success("Friend request cancelled");
       fetchSentRequests();
@@ -282,7 +278,7 @@ export const FriendsList = ({ userId }: FriendsListProps) => {
       .limit(10);
 
     if (error) {
-      console.error("Error fetching suggestions:", error);
+      // Error fetching suggestions - silent fail
       return;
     }
 
@@ -308,7 +304,6 @@ export const FriendsList = ({ userId }: FriendsListProps) => {
 
     if (error) {
       toast.error("Failed to send friend request");
-      console.error(error);
     } else {
       toast.success("Friend request sent!");
       fetchSuggestions();

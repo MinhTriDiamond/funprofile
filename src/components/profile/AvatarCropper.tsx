@@ -73,7 +73,7 @@ export const AvatarCropper = ({ image, onCropComplete, onCancel }: AvatarCropper
       const croppedImage = await getCroppedImg(image, croppedAreaPixels);
       onCropComplete(croppedImage);
     } catch (e) {
-      console.error(e);
+      // Error creating cropped image - silent fail
     }
   };
 

@@ -61,7 +61,7 @@ export const FriendRequestButton = ({ userId, currentUserId }: FriendRequestButt
       .maybeSingle();
 
     if (error) {
-      console.error("Error checking friendship:", error);
+      // Error checking friendship - silent fail
       return;
     }
 
@@ -92,7 +92,6 @@ export const FriendRequestButton = ({ userId, currentUserId }: FriendRequestButt
 
     if (error) {
       toast.error("Failed to send friend request");
-      console.error(error);
     } else {
       toast.success("Friend request sent!");
       checkFriendshipStatus();
@@ -110,7 +109,6 @@ export const FriendRequestButton = ({ userId, currentUserId }: FriendRequestButt
 
     if (error) {
       toast.error("Failed to accept friend request");
-      console.error(error);
     } else {
       toast.success("Friend request accepted!");
       checkFriendshipStatus();
@@ -128,7 +126,6 @@ export const FriendRequestButton = ({ userId, currentUserId }: FriendRequestButt
 
     if (error) {
       toast.error("Failed to remove friend");
-      console.error(error);
     } else {
       toast.success("Friend removed");
       checkFriendshipStatus();

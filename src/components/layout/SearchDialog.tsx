@@ -89,9 +89,7 @@ export const SearchDialog = () => {
         setProfiles(profileData || []);
         setPosts(postData as any || []);
       } catch (error: any) {
-        if (error.message?.includes('Rate limit exceeded')) {
-          console.error('Search rate limit exceeded');
-        }
+        // Silent fail for security - rate limit already handled by backend
         setProfiles([]);
         setPosts([]);
       } finally {

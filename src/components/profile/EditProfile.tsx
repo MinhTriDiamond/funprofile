@@ -63,7 +63,7 @@ export const EditProfile = () => {
       setAvatarUrl(data.avatar_url || '');
       setCoverUrl(data.cover_url || '');
     } catch (error) {
-      console.error('Error fetching profile:', error);
+      // Error fetching profile - silent fail for security
     }
   };
 
@@ -88,7 +88,6 @@ export const EditProfile = () => {
       };
       reader.readAsDataURL(file);
     } catch (error) {
-      console.error('Error loading image:', error);
       toast.error('Error loading image');
     }
   };
@@ -123,7 +122,6 @@ export const EditProfile = () => {
       setAvatarUrl(publicUrl);
       toast.success('Avatar updated successfully!');
     } catch (error) {
-      console.error('Error uploading avatar:', error);
       toast.error('Error uploading avatar');
     } finally {
       setUploading(false);
@@ -172,7 +170,6 @@ export const EditProfile = () => {
       setCoverUrl(publicUrl);
       toast.success('Ảnh bìa đã được cập nhật!');
     } catch (error) {
-      console.error('Error uploading cover:', error);
       toast.error('Lỗi khi tải ảnh bìa');
     } finally {
       setUploadingCover(false);
@@ -211,7 +208,6 @@ export const EditProfile = () => {
 
       toast.success('Profile updated successfully!');
     } catch (error) {
-      console.error('Error updating profile:', error);
       toast.error('Error updating profile');
     } finally {
       setLoading(false);

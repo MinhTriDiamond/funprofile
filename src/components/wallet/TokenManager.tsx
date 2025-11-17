@@ -98,7 +98,6 @@ export const TokenManager = () => {
       setNewTokenAddress('');
       toast.success('Token added successfully!');
     } catch (error) {
-      console.error('Error adding token:', error);
       toast.error('Error adding token');
     }
   };
@@ -132,7 +131,6 @@ export const TokenManager = () => {
       setSendAddress('');
       setSendAmount('');
     } catch (error) {
-      console.error('Error sending token:', error);
       toast.error('Error sending token');
     }
   };
