@@ -58,6 +58,12 @@ export const SearchDialog = () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         
+        // Sanitize search query to prevent SQL injection
+        const sanitizePattern = (input: string) => {
+          return input.replace(/[%_\\]/g, '\\$&');
+        };
+        const safeQuery = sanitizePattern(debouncedQuery);
+        
         // Log search for rate limiting
         if (user) {
           await supabase.from('search_logs').insert({
@@ -70,7 +76,7 @@ export const SearchDialog = () => {
         const { data: profileData } = await supabase
           .from('profiles')
           .select('id, username, full_name, avatar_url')
-          .or(`username.ilike.%${debouncedQuery}%,full_name.ilike.%${debouncedQuery}%`)
+          .or(`username.ilike.%${safeQuery}%,full_name.ilike.%${safeQuery}%`)
           .limit(10);
 
         // Search posts
@@ -82,7 +88,7 @@ export const SearchDialog = () => {
             created_at,
             profiles (username, avatar_url)
           `)
-          .ilike('content', `%${debouncedQuery}%`)
+          .ilike('content', `%${safeQuery}%`)
           .order('created_at', { ascending: false })
           .limit(10);
 
