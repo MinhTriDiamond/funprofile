@@ -19,6 +19,7 @@ import Profile from "./pages/Profile";
 import Wallet from "./pages/Wallet";
 import Post from "./pages/Post";
 import About from "./pages/About";
+import Leaderboard from "./pages/Leaderboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -43,6 +44,7 @@ const App = () => (
                     <Route path="/wallet" element={<Wallet />} />
                     <Route path="/post/:postId" element={<Post />} />
                     <Route path="/about" element={<About />} />
+                    <Route path="/leaderboard" element={<Leaderboard />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </BrowserRouter>

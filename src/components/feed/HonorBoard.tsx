@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
-import { ArrowUp, MessageCircle, Star, Users, BadgeDollarSign } from 'lucide-react';
+import { ArrowUp, MessageCircle, Star, Users, BadgeDollarSign, ChevronRight } from 'lucide-react';
 
 interface LeaderboardUser {
   id: string;
@@ -198,6 +199,15 @@ export const HonorBoard = () => {
             </div>
           )}
         </div>
+
+        {/* View All Button */}
+        <Button
+          onClick={() => navigate('/leaderboard')}
+          className="w-full mt-3 bg-yellow-500 hover:bg-yellow-400 text-green-900 font-bold shadow-lg transition-all group"
+        >
+          Xem bảng xếp hạng đầy đủ
+          <ChevronRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+        </Button>
       </div>
     </div>
   );
