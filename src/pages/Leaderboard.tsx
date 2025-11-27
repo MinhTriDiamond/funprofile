@@ -36,38 +36,68 @@ const Leaderboard = () => {
 
       const usersWithRewards = await Promise.all(
         profiles.map(async (profile) => {
-          const [postsData, commentsData, reactionsData, friendsData] = await Promise.all([
-            supabase.from('posts').select('id', { count: 'exact' }).eq('user_id', profile.id),
-            supabase.from('comments').select('id', { count: 'exact' }).eq('user_id', profile.id),
-            supabase.from('reactions').select('id', { count: 'exact' }).eq('user_id', profile.id),
-            supabase.from('friendships').select('id', { count: 'exact' }).eq('user_id', profile.id).eq('status', 'accepted')
-          ]);
+          // Fetch posts
+          const { data: posts } = await supabase
+            .from('posts')
+            .select('id')
+            .eq('user_id', profile.id);
 
-          const posts_count = postsData.count || 0;
-          const comments_count = commentsData.count || 0;
-          const reactions_count = reactionsData.count || 0;
-          const friends_count = friendsData.count || 0;
+          // Fetch comments count
+          const { count: commentsCount } = await supabase
+            .from('comments')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', profile.id);
 
-          // Calculate rewards
-          let total_reward = 50000; // New user signup bonus
-          total_reward += posts_count * 10000; // 1 post = 10,000 coins
-          total_reward += comments_count * 5000; // 1 comment = 5,000 coins
-          
-          // Reactions on posts: 3+ reactions = 30,000 + 1,000 per additional
-          if (reactions_count >= 3) {
-            total_reward += 30000 + ((reactions_count - 3) * 1000);
+          // Fetch reactions count (for display only, not used in calculation)
+          const { count: reactionsCount } = await supabase
+            .from('reactions')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', profile.id);
+
+          // Fetch friends count
+          const { count: friendsCount } = await supabase
+            .from('friendships')
+            .select('*', { count: 'exact', head: true })
+            .or(`user_id.eq.${profile.id},friend_id.eq.${profile.id}`)
+            .eq('status', 'accepted');
+
+          // Fetch shared posts count
+          const { count: sharedCount } = await supabase
+            .from('shared_posts')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', profile.id);
+
+          // Calculate total reward
+          let total_reward = 50000; // New user bonus
+          const posts_count = posts?.length || 0;
+          total_reward += posts_count * 10000; // Posts reward
+          total_reward += (commentsCount || 0) * 5000; // Comments reward
+          total_reward += (friendsCount || 0) * 50000; // Friends reward
+          total_reward += (sharedCount || 0) * 20000; // Shared posts reward
+
+          // Reactions on posts reward
+          if (posts && posts.length > 0) {
+            for (const post of posts) {
+              const { count: postReactionsCount } = await supabase
+                .from('reactions')
+                .select('*', { count: 'exact', head: true })
+                .eq('post_id', post.id);
+
+              const reactionsOnPost = postReactionsCount || 0;
+              if (reactionsOnPost >= 3) {
+                total_reward += 30000 + (reactionsOnPost - 3) * 1000;
+              }
+            }
           }
-          
-          total_reward += friends_count * 50000; // 1 friend = 50,000 coins
 
           return {
             id: profile.id,
             username: profile.username,
             avatar_url: profile.avatar_url,
             posts_count,
-            comments_count,
-            reactions_count,
-            friends_count,
+            comments_count: commentsCount || 0,
+            reactions_count: reactionsCount || 0,
+            friends_count: friendsCount || 0,
             total_reward
           };
         })
