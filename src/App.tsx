@@ -21,6 +21,7 @@ import Wallet from "./pages/Wallet";
 import Post from "./pages/Post";
 import About from "./pages/About";
 import Leaderboard from "./pages/Leaderboard";
+import AdminMigration from "./pages/AdminMigration";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -47,6 +48,7 @@ function App() {
                       <Route path="/post/:postId" element={<Post />} />
                       <Route path="/about" element={<About />} />
                       <Route path="/leaderboard" element={<Leaderboard />} />
+                      <Route path="/admin/migration" element={<AdminMigration />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>
                   </BrowserRouter>
