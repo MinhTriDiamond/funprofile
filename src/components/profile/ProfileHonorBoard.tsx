@@ -34,66 +34,78 @@ export const ProfileHonorBoard = ({ userId, username, avatarUrl }: ProfileHonorB
 
   const fetchUserStats = async () => {
     try {
-      // Fetch posts with their reactions count
-      const { data: posts } = await supabase
-        .from('posts')
-        .select('id')
-        .eq('user_id', userId);
+      // Fetch all stats in parallel using Promise.all for better performance
+      const [
+        { data: posts },
+        { count: commentsCount },
+        { count: reactionsCount },
+        { count: friendsCount },
+        { count: sharedCount },
+        { data: postReactions }
+      ] = await Promise.all([
+        // Fetch posts
+        supabase
+          .from('posts')
+          .select('id')
+          .eq('user_id', userId),
+        
+        // Fetch comments count
+        supabase
+          .from('comments')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', userId),
+        
+        // Fetch reactions count (reactions this user made)
+        supabase
+          .from('reactions')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', userId),
+        
+        // Fetch friends count (accepted friendships)
+        supabase
+          .from('friendships')
+          .select('*', { count: 'exact', head: true })
+          .or(`user_id.eq.${userId},friend_id.eq.${userId}`)
+          .eq('status', 'accepted'),
+        
+        // Fetch shared posts count
+        supabase
+          .from('shared_posts')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', userId),
+        
+        // Fetch ALL reactions for user's posts in ONE query (optimized!)
+        supabase
+          .from('reactions')
+          .select('post_id, posts!inner(user_id)')
+          .eq('posts.user_id', userId)
+      ]);
 
-      // Fetch comments count
-      const { count: commentsCount } = await supabase
-        .from('comments')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', userId);
-
-      // Fetch reactions count (reactions this user made)
-      const { count: reactionsCount } = await supabase
-        .from('reactions')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', userId);
-
-      // Fetch friends count (accepted friendships)
-      const { count: friendsCount } = await supabase
-        .from('friendships')
-        .select('*', { count: 'exact', head: true })
-        .or(`user_id.eq.${userId},friend_id.eq.${userId}`)
-        .eq('status', 'accepted');
-
-      // Fetch shared posts count (posts that were shared by others)
-      const { count: sharedCount } = await supabase
-        .from('shared_posts')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', userId);
+      // Calculate posts count
+      const postsCount = posts?.length || 0;
 
       // Calculate rewards
       let totalReward = 50000; // New user bonus
+      totalReward += postsCount * 10000; // Posts reward: 10,000 per post
+      totalReward += (commentsCount || 0) * 5000; // Comments reward: 5,000 per comment
+      totalReward += (friendsCount || 0) * 50000; // Friends reward: 50,000 per friend
+      totalReward += (sharedCount || 0) * 20000; // Shared posts reward: 20,000 per share
 
-      // Posts reward: 10,000 per post
-      const postsCount = posts?.length || 0;
-      totalReward += postsCount * 10000;
+      // Reactions on posts reward - optimized calculation
+      if (postReactions && postReactions.length > 0 && posts && posts.length > 0) {
+        // Group reactions by post_id and count them
+        const reactionsByPost = postReactions.reduce((acc, reaction) => {
+          acc[reaction.post_id] = (acc[reaction.post_id] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>);
 
-      // Comments reward: 5,000 per comment
-      totalReward += (commentsCount || 0) * 5000;
-
-      // Friends reward: 50,000 per friend
-      totalReward += (friendsCount || 0) * 50000;
-
-      // Shared posts reward: 20,000 per share
-      totalReward += (sharedCount || 0) * 20000;
-
-      // Reactions on posts reward
-      if (posts && posts.length > 0) {
-        for (const post of posts) {
-          const { count: postReactionsCount } = await supabase
-            .from('reactions')
-            .select('*', { count: 'exact', head: true })
-            .eq('post_id', post.id);
-
-          const reactionsOnPost = postReactionsCount || 0;
+        // Calculate reward for each post based on reactions
+        posts.forEach(post => {
+          const reactionsOnPost = reactionsByPost[post.id] || 0;
           if (reactionsOnPost >= 3) {
             totalReward += 30000 + (reactionsOnPost - 3) * 1000;
           }
-        }
+        });
       }
 
       setStats({
@@ -104,7 +116,7 @@ export const ProfileHonorBoard = ({ userId, username, avatarUrl }: ProfileHonorB
         total_reward: totalReward,
       });
     } catch (error) {
-      // Error fetching stats - silent fail
+      console.error('Error fetching user stats:', error);
     } finally {
       setLoading(false);
     }
