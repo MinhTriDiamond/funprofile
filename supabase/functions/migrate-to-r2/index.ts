@@ -135,19 +135,29 @@ Deno.serve(async (req) => {
         }
         
         if (!dryRun) {
-          // Upload to Cloudflare R2
+          // Convert file to base64
+          const arrayBuffer = await fileData.arrayBuffer();
+          const bytes = new Uint8Array(arrayBuffer);
+          const base64 = btoa(String.fromCharCode(...bytes));
+          
+          // Get content type
+          const contentType = fileData.type || 'application/octet-stream';
+          
+          // Upload to R2 via upload-to-r2 function
           const r2Key = `${bucketName}/${filePath}`;
-          await uploadToR2(
-            fileData,
-            r2Key,
-            'image/jpeg', // Default content type
-            CLOUDFLARE_ACCOUNT_ID,
-            CLOUDFLARE_ACCESS_KEY_ID,
-            CLOUDFLARE_SECRET_ACCESS_KEY,
-            CLOUDFLARE_R2_BUCKET_NAME
-          );
+          const { data: uploadData, error: uploadError } = await supabaseAdmin.functions.invoke('upload-to-r2', {
+            body: {
+              file: base64,
+              key: r2Key,
+              contentType: contentType,
+            },
+          });
 
-          const newUrl = `${CLOUDFLARE_R2_PUBLIC_URL}/${r2Key}`;
+          if (uploadError) {
+            throw new Error(`R2 upload failed: ${uploadError.message}`);
+          }
+
+          const newUrl = uploadData.url;
 
           // Update database URLs
           if (updateDatabase) {
@@ -218,32 +228,6 @@ Deno.serve(async (req) => {
   }
 });
 
-async function uploadToR2(
-  file: Blob,
-  key: string,
-  contentType: string,
-  accountId: string,
-  accessKeyId: string,
-  secretAccessKey: string,
-  bucketName: string
-): Promise<void> {
-  const endpoint = `https://${accountId}.r2.cloudflarestorage.com/${bucketName}/${key}`;
-  
-  const fileBuffer = await file.arrayBuffer();
-  
-  const response = await fetch(endpoint, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': contentType,
-      'Authorization': `Bearer ${accessKeyId}:${secretAccessKey}`,
-    },
-    body: fileBuffer,
-  });
-
-  if (!response.ok) {
-    throw new Error(`R2 upload failed: ${response.statusText}`);
-  }
-}
 
 async function updateDatabaseUrls(
   supabase: any,
