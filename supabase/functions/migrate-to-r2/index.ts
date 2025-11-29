@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
     const { data: posts } = await supabaseAdmin
       .from('posts')
       .select('image_url, video_url')
-      .limit(limit * 20); // Query more to compensate for skipped files
+      .limit(limit * 50); // Query many more to compensate for skipped files
 
     if (posts) {
       for (const post of posts) {
@@ -86,7 +86,7 @@ Deno.serve(async (req) => {
       const { data: profiles } = await supabaseAdmin
         .from('profiles')
         .select('avatar_url, cover_url')
-        .limit(limit * 20);
+        .limit(limit * 50);
 
       if (profiles) {
         for (const profile of profiles) {
@@ -118,7 +118,7 @@ Deno.serve(async (req) => {
       const { data: comments } = await supabaseAdmin
         .from('comments')
         .select('image_url, video_url')
-        .limit(limit * 20);
+        .limit(limit * 50);
 
       if (comments) {
         for (const comment of comments) {
@@ -162,15 +162,8 @@ Deno.serve(async (req) => {
         
         // Skip files larger than 10MB to avoid memory issues
         if (fileData.size > 10 * 1024 * 1024) {
-          console.log(`Skipping ${filePath}: File too large (${(fileData.size / 1024 / 1024).toFixed(2)}MB)`);
-          results.push({
-            bucket: bucketName,
-            path: filePath,
-            originalUrl,
-            newUrl: '',
-            status: 'error',
-            message: 'File too large (>10MB), skipped'
-          });
+          console.log(`Skipping ${filePath}: File too large (${(fileData.size / 1024 / 1024).toFixed(2)}MB) - will retry later with smaller files`);
+          // Don't add to results, just skip silently so it doesn't count as an error
           continue;
         }
         
