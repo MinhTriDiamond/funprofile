@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
     const { data: posts } = await supabaseAdmin
       .from('posts')
       .select('image_url, video_url')
-      .limit(1000); // Query 1000 records to find enough small files
+      .limit(10000); // Query 10000 records to find enough small files beyond large ones
 
     if (posts) {
       for (const post of posts) {
@@ -87,7 +87,7 @@ Deno.serve(async (req) => {
       const { data: profiles } = await supabaseAdmin
         .from('profiles')
         .select('avatar_url, cover_url')
-        .limit(limit * 100);
+        .limit(5000);
 
       if (profiles) {
         for (const profile of profiles) {
@@ -120,7 +120,7 @@ Deno.serve(async (req) => {
       const { data: comments } = await supabaseAdmin
         .from('comments')
         .select('image_url, video_url')
-        .limit(limit * 100);
+        .limit(5000);
 
       if (comments) {
         for (const comment of comments) {
