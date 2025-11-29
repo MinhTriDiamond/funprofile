@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
     
     // Create canonical request
     const method = 'PUT';
-    const canonicalUri = `/${CLOUDFLARE_R2_BUCKET_NAME}/${key}`;
+    const canonicalUri = `/${key}`; // Key only, bucket is in host
     const canonicalQueryString = '';
     const canonicalHeaders = `content-type:${contentType}\nhost:${CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com\nx-amz-content-sha256:UNSIGNED-PAYLOAD\nx-amz-date:${amzDate}\n`;
     const signedHeaders = 'content-type;host;x-amz-content-sha256;x-amz-date';
