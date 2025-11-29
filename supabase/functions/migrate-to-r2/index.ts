@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
       throw new Error('Missing Cloudflare R2 configuration');
     }
 
-    const { bucket, limit = 10, dryRun = false, updateDatabase = true } = await req.json();
+    const { bucket, limit = 5, dryRun = false, updateDatabase = true } = await req.json();
     
     const results: MigrationResult[] = [];
 
@@ -160,8 +160,8 @@ Deno.serve(async (req) => {
           continue;
         }
         
-        // Skip files larger than 50MB to avoid memory issues
-        if (fileData.size > 50 * 1024 * 1024) {
+        // Skip files larger than 10MB to avoid memory issues
+        if (fileData.size > 10 * 1024 * 1024) {
           console.log(`Skipping ${filePath}: File too large (${(fileData.size / 1024 / 1024).toFixed(2)}MB)`);
           results.push({
             bucket: bucketName,
@@ -169,7 +169,7 @@ Deno.serve(async (req) => {
             originalUrl,
             newUrl: '',
             status: 'error',
-            message: 'File too large (>50MB), skipped'
+            message: 'File too large (>10MB), skipped'
           });
           continue;
         }

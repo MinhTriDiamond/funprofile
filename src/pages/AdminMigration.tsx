@@ -60,7 +60,7 @@ const AdminMigration = () => {
       const { data, error } = await supabase.functions.invoke('migrate-to-r2', {
         body: {
           dryRun,
-          limit: 10,
+          limit: 5,
           updateDatabase: !dryRun
         }
       });
@@ -116,7 +116,7 @@ const AdminMigration = () => {
                 Test Migration (Dry Run)
               </CardTitle>
               <CardDescription>
-                Chạy thử migration với 10 files đầu tiên. Không thay đổi database.
+                Chạy thử migration với 5 files đầu tiên. Không thay đổi database.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -149,13 +149,13 @@ const AdminMigration = () => {
                 Full Migration (Batch Mode)
               </CardTitle>
               <CardDescription>
-                Migrate 10 files mỗi lần để tránh timeout. Chạy nhiều lần cho đến khi hết files.
+                Migrate 5 files mỗi lần để tránh timeout. Files &gt;10MB sẽ bị skip. Chạy nhiều lần cho đến khi hết files.
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Alert className="mb-4">
                 <AlertDescription>
-                  ⚠️ Migration chạy từng batch 10 files. Bạn cần chạy nhiều lần cho đến khi không còn files nào được migrate.
+                  ⚠️ Migration chạy từng batch 5 files. Files &gt;10MB sẽ tự động skip. Chạy nhiều lần cho đến khi không còn files nào được migrate.
                 </AlertDescription>
               </Alert>
               <div className="space-y-3">
@@ -172,7 +172,7 @@ const AdminMigration = () => {
                   ) : (
                     <>
                       <Database className="w-4 h-4 mr-2" />
-                      Chạy Migration Batch (10 files)
+                      Chạy Migration Batch (5 files)
                     </>
                   )}
                 </Button>
