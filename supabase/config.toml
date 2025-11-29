@@ -1,1 +1,13 @@
 project_id = "bhtsnervqiwchluwuxki"
+
+[functions.optimize-storage]
+verify_jwt = false
+
+[functions.migrate-to-r2]
+verify_jwt = false
+
+[functions.upload-to-r2]
+verify_jwt = true
+
+[functions.delete-from-r2]
+verify_jwt = true

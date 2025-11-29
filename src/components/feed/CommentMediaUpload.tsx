@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { uploadToR2 } from '@/utils/r2Upload';
 import { Button } from '@/components/ui/button';
 import { Image, Video, X } from 'lucide-react';
 import { toast } from 'sonner';
@@ -70,21 +71,10 @@ export const CommentMediaUpload = ({
         }
       }
 
-      const fileExt = type === 'image' ? 'jpg' : file.name.split('.').pop();
-      const fileName = `${user.id}/${Math.random()}.${fileExt}`;
-      
-      const { data, error } = await supabase.storage
-        .from('comment-media')
-        .upload(fileName, fileToUpload);
+      const result = await uploadToR2(fileToUpload, 'comment-media');
 
-      if (error) throw error;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('comment-media')
-        .getPublicUrl(data.path);
-
-      setPreview({ url: publicUrl, type });
-      onMediaUploaded(publicUrl, type);
+      setPreview({ url: result.url, type });
+      onMediaUploaded(result.url, type);
       toast.success('Media uploaded!');
     } catch (error) {
       console.error('Upload error:', error);

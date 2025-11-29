@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { uploadToR2, deleteFromR2 } from '@/utils/r2Upload';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -116,34 +117,34 @@ export const EditPostDialog = ({ post, isOpen, onClose, onPostUpdated }: EditPos
 
       // Upload new image if selected
       if (imageFile) {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('Not authenticated');
+        const result = await uploadToR2(imageFile, 'posts');
+        imageUrl = result.url;
         
-        const fileExt = 'jpg'; // Always use jpg after compression
-        const fileName = `${user.id}/${crypto.randomUUID()}.${fileExt}`;
-        const { error: uploadError, data } = await supabase.storage
-          .from('posts')
-          .upload(fileName, imageFile);
-
-        if (uploadError) throw uploadError;
-        const { data: { publicUrl } } = supabase.storage.from('posts').getPublicUrl(fileName);
-        imageUrl = publicUrl;
+        // Delete old image from R2 if exists and it's different
+        if (post.image_url && post.image_url !== result.url) {
+          try {
+            const oldKey = post.image_url.split('/').slice(-2).join('/');
+            await deleteFromR2(oldKey);
+          } catch (error) {
+            console.error('Error deleting old image:', error);
+          }
+        }
       }
 
       // Upload new video if selected
       if (videoFile) {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('Not authenticated');
+        const result = await uploadToR2(videoFile, 'videos');
+        videoUrl = result.url;
         
-        const fileExt = videoFile.name.split('.').pop()?.toLowerCase();
-        const fileName = `${user.id}/${crypto.randomUUID()}.${fileExt}`;
-        const { error: uploadError } = await supabase.storage
-          .from('videos')
-          .upload(fileName, videoFile);
-
-        if (uploadError) throw uploadError;
-        const { data: { publicUrl } } = supabase.storage.from('videos').getPublicUrl(fileName);
-        videoUrl = publicUrl;
+        // Delete old video from R2 if exists and it's different
+        if (post.video_url && post.video_url !== result.url) {
+          try {
+            const oldKey = post.video_url.split('/').slice(-2).join('/');
+            await deleteFromR2(oldKey);
+          } catch (error) {
+            console.error('Error deleting old video:', error);
+          }
+        }
       }
 
       // Update post

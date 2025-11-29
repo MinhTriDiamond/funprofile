@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { uploadToR2, deleteFromR2 } from '@/utils/r2Upload';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -100,27 +101,27 @@ export const EditProfile = () => {
 
       if (!userId) throw new Error('No user found');
 
-      const fileExt = 'jpg';
-      const filePath = `${userId}/${crypto.randomUUID()}.${fileExt}`;
+      const file = new File([croppedImageBlob], 'avatar.jpg', { type: 'image/jpeg' });
+      const result = await uploadToR2(file, 'avatars', `${userId}/avatar-${Date.now()}.jpg`);
 
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, croppedImageBlob);
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(filePath);
+      // Delete old avatar from R2 if exists
+      if (avatarUrl) {
+        try {
+          const oldKey = avatarUrl.split('/').slice(-2).join('/');
+          await deleteFromR2(oldKey);
+        } catch (error) {
+          console.error('Error deleting old avatar:', error);
+        }
+      }
 
       const { error: updateError } = await supabase
         .from('profiles')
-        .update({ avatar_url: publicUrl })
+        .update({ avatar_url: result.url })
         .eq('id', userId);
 
       if (updateError) throw updateError;
 
-      setAvatarUrl(publicUrl);
+      setAvatarUrl(result.url);
       toast.success('Avatar updated successfully!');
     } catch (error) {
       toast.error('Error uploading avatar');
@@ -155,26 +156,27 @@ export const EditProfile = () => {
       });
       toast.dismiss();
 
-      const filePath = `${userId}/${crypto.randomUUID()}.jpg`;
+      const coverFile = new File([compressed], 'cover.jpg', { type: 'image/jpeg' });
+      const result = await uploadToR2(coverFile, 'avatars', `${userId}/cover-${Date.now()}.jpg`);
 
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, compressed);
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(filePath);
+      // Delete old cover from R2 if exists
+      if (coverUrl) {
+        try {
+          const oldKey = coverUrl.split('/').slice(-2).join('/');
+          await deleteFromR2(oldKey);
+        } catch (error) {
+          console.error('Error deleting old cover:', error);
+        }
+      }
 
       const { error: updateError } = await supabase
         .from('profiles')
-        .update({ cover_url: publicUrl })
+        .update({ cover_url: result.url })
         .eq('id', userId);
 
       if (updateError) throw updateError;
 
-      setCoverUrl(publicUrl);
+      setCoverUrl(result.url);
       toast.success('Ảnh bìa đã được cập nhật!');
     } catch (error) {
       toast.error('Lỗi khi tải ảnh bìa');

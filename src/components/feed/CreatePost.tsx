@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { uploadToR2 } from '@/utils/r2Upload';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -109,38 +110,14 @@ export const CreatePost = ({ onPostCreated }: CreatePostProps) => {
 
       // Upload image if present
       if (image) {
-        const fileExt = 'jpg'; // Always use jpg after compression
-        const fileName = `${user.id}/${crypto.randomUUID()}.${fileExt}`;
-        
-        const { error: uploadError } = await supabase.storage
-          .from('posts')
-          .upload(fileName, image);
-
-        if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('posts')
-          .getPublicUrl(fileName);
-        
-        imageUrl = publicUrl;
+        const result = await uploadToR2(image, 'posts');
+        imageUrl = result.url;
       }
 
       // Upload video if present
       if (video) {
-        const fileExt = video.name.split('.').pop()?.toLowerCase();
-        const fileName = `${user.id}/${crypto.randomUUID()}.${fileExt}`;
-        
-        const { error: uploadError } = await supabase.storage
-          .from('videos')
-          .upload(fileName, video);
-
-        if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('videos')
-          .getPublicUrl(fileName);
-        
-        videoUrl = publicUrl;
+        const result = await uploadToR2(video, 'videos');
+        videoUrl = result.url;
       }
 
       const { error } = await supabase.from('posts').insert({
