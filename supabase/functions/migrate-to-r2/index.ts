@@ -50,71 +50,97 @@ Deno.serve(async (req) => {
     // Get all active URLs from database
     const urlsToMigrate: { url: string; bucket: string; path: string }[] = [];
 
-    // Get posts images and videos
+    // Get posts images and videos - skip already migrated or too large files
     const { data: posts } = await supabaseAdmin
       .from('posts')
       .select('image_url, video_url')
-      .limit(limit);
+      .limit(limit * 5); // Query more to compensate for skipped files
 
     if (posts) {
       for (const post of posts) {
-        if (post.image_url && post.image_url.includes('supabase.co/storage')) {
+        // Skip if already migrated to R2
+        if (post.image_url && 
+            post.image_url.includes('supabase.co/storage') && 
+            !post.image_url.includes(CLOUDFLARE_R2_PUBLIC_URL)) {
           const match = post.image_url.match(/\/posts\/(.+)$/);
           if (match) {
             urlsToMigrate.push({ url: post.image_url, bucket: 'posts', path: match[1] });
+            if (urlsToMigrate.length >= limit) break;
           }
         }
-        if (post.video_url && post.video_url.includes('supabase.co/storage')) {
+        if (post.video_url && 
+            post.video_url.includes('supabase.co/storage') && 
+            !post.video_url.includes(CLOUDFLARE_R2_PUBLIC_URL)) {
           const match = post.video_url.match(/\/videos\/(.+)$/);
           if (match) {
             urlsToMigrate.push({ url: post.video_url, bucket: 'videos', path: match[1] });
+            if (urlsToMigrate.length >= limit) break;
           }
+        }
+        if (urlsToMigrate.length >= limit) break;
+      }
+    }
+
+    // Get avatars and covers - skip already migrated
+    if (urlsToMigrate.length < limit) {
+      const { data: profiles } = await supabaseAdmin
+        .from('profiles')
+        .select('avatar_url, cover_url')
+        .limit(limit * 5);
+
+      if (profiles) {
+        for (const profile of profiles) {
+          if (profile.avatar_url && 
+              profile.avatar_url.includes('supabase.co/storage') && 
+              !profile.avatar_url.includes(CLOUDFLARE_R2_PUBLIC_URL)) {
+            const match = profile.avatar_url.match(/\/avatars\/(.+)$/);
+            if (match) {
+              urlsToMigrate.push({ url: profile.avatar_url, bucket: 'avatars', path: match[1] });
+              if (urlsToMigrate.length >= limit) break;
+            }
+          }
+          if (profile.cover_url && 
+              profile.cover_url.includes('supabase.co/storage') && 
+              !profile.cover_url.includes(CLOUDFLARE_R2_PUBLIC_URL)) {
+            const match = profile.cover_url.match(/\/avatars\/(.+)$/);
+            if (match) {
+              urlsToMigrate.push({ url: profile.cover_url, bucket: 'avatars', path: match[1] });
+              if (urlsToMigrate.length >= limit) break;
+            }
+          }
+          if (urlsToMigrate.length >= limit) break;
         }
       }
     }
 
-    // Get avatars and covers
-    const { data: profiles } = await supabaseAdmin
-      .from('profiles')
-      .select('avatar_url, cover_url')
-      .limit(limit);
+    // Get comment media - skip already migrated
+    if (urlsToMigrate.length < limit) {
+      const { data: comments } = await supabaseAdmin
+        .from('comments')
+        .select('image_url, video_url')
+        .limit(limit * 5);
 
-    if (profiles) {
-      for (const profile of profiles) {
-        if (profile.avatar_url && profile.avatar_url.includes('supabase.co/storage')) {
-          const match = profile.avatar_url.match(/\/avatars\/(.+)$/);
-          if (match) {
-            urlsToMigrate.push({ url: profile.avatar_url, bucket: 'avatars', path: match[1] });
+      if (comments) {
+        for (const comment of comments) {
+          if (comment.image_url && 
+              comment.image_url.includes('supabase.co/storage') && 
+              !comment.image_url.includes(CLOUDFLARE_R2_PUBLIC_URL)) {
+            const match = comment.image_url.match(/\/comment-media\/(.+)$/);
+            if (match) {
+              urlsToMigrate.push({ url: comment.image_url, bucket: 'comment-media', path: match[1] });
+              if (urlsToMigrate.length >= limit) break;
+            }
           }
-        }
-        if (profile.cover_url && profile.cover_url.includes('supabase.co/storage')) {
-          const match = profile.cover_url.match(/\/avatars\/(.+)$/);
-          if (match) {
-            urlsToMigrate.push({ url: profile.cover_url, bucket: 'avatars', path: match[1] });
+          if (comment.video_url && 
+              comment.video_url.includes('supabase.co/storage') && 
+              !comment.video_url.includes(CLOUDFLARE_R2_PUBLIC_URL)) {
+            const match = comment.video_url.match(/\/comment-media\/(.+)$/);
+            if (match) {
+              urlsToMigrate.push({ url: comment.video_url, bucket: 'comment-media', path: match[1] });
+              if (urlsToMigrate.length >= limit) break;
+            }
           }
-        }
-      }
-    }
-
-    // Get comment media
-    const { data: comments } = await supabaseAdmin
-      .from('comments')
-      .select('image_url, video_url')
-      .limit(limit);
-
-    if (comments) {
-      for (const comment of comments) {
-        if (comment.image_url && comment.image_url.includes('supabase.co/storage')) {
-          const match = comment.image_url.match(/\/comment-media\/(.+)$/);
-          if (match) {
-            urlsToMigrate.push({ url: comment.image_url, bucket: 'comment-media', path: match[1] });
-          }
-        }
-        if (comment.video_url && comment.video_url.includes('supabase.co/storage')) {
-          const match = comment.video_url.match(/\/comment-media\/(.+)$/);
-          if (match) {
-            urlsToMigrate.push({ url: comment.video_url, bucket: 'comment-media', path: match[1] });
-          }
+          if (urlsToMigrate.length >= limit) break;
         }
       }
     }
