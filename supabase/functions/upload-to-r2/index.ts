@@ -1,3 +1,5 @@
+import { AwsClient } from 'npm:aws4fetch@1.0.20';
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -28,58 +30,27 @@ Deno.serve(async (req) => {
       bytes[i] = binaryString.charCodeAt(i);
     }
 
-    // AWS Signature V4
-    const now = new Date();
-    const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, '');
-    const dateStamp = amzDate.slice(0, 8);
-    const host = `${CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com`;
-    const endpoint = `https://${host}/${CLOUDFLARE_R2_BUCKET_NAME}/${key}`;
-    
-    // Calculate payload hash
-    const payloadHashBuffer = await crypto.subtle.digest('SHA-256', bytes);
-    const payloadHash = Array.from(new Uint8Array(payloadHashBuffer))
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('');
-    
-    // Create canonical request
-    const method = 'PUT';
-    const canonicalUri = `/${CLOUDFLARE_R2_BUCKET_NAME}/${key}`;
-    const canonicalQueryString = '';
-    const canonicalHeaders = `content-type:${contentType}\nhost:${host}\nx-amz-content-sha256:${payloadHash}\nx-amz-date:${amzDate}\n`;
-    const signedHeaders = 'content-type;host;x-amz-content-sha256;x-amz-date';
-    
-    const canonicalRequest = `${method}\n${canonicalUri}\n${canonicalQueryString}\n${canonicalHeaders}\n${signedHeaders}\n${payloadHash}`;
-    
-    // Create string to sign
-    const algorithm = 'AWS4-HMAC-SHA256';
-    const credentialScope = `${dateStamp}/auto/s3/aws4_request`;
-    const canonicalRequestHashBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(canonicalRequest));
-    const canonicalRequestHash = Array.from(new Uint8Array(canonicalRequestHashBuffer))
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('');
-    const stringToSign = `${algorithm}\n${amzDate}\n${credentialScope}\n${canonicalRequestHash}`;
-    
-    // Calculate signature
-    const signingKey = await getSignatureKey(CLOUDFLARE_SECRET_ACCESS_KEY, dateStamp, 'auto', 's3');
-    const signatureBuffer = await hmacSha256(signingKey, stringToSign);
-    const signature = Array.from(new Uint8Array(signatureBuffer))
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('');
-    
-    // Create authorization header
-    const authorizationHeader = `${algorithm} Credential=${CLOUDFLARE_ACCESS_KEY_ID}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
-    
-    const response = await fetch(endpoint, {
+    // Create AWS client with R2 credentials
+    const aws = new AwsClient({
+      accessKeyId: CLOUDFLARE_ACCESS_KEY_ID,
+      secretAccessKey: CLOUDFLARE_SECRET_ACCESS_KEY,
+      service: 's3',
+      region: 'auto',
+    });
+
+    // Construct R2 endpoint URL
+    const endpoint = `https://${CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com/${CLOUDFLARE_R2_BUCKET_NAME}/${key}`;
+
+    // Sign and send the request using aws4fetch
+    const signedRequest = await aws.sign(endpoint, {
       method: 'PUT',
       headers: {
         'Content-Type': contentType,
-        'Host': host,
-        'x-amz-content-sha256': payloadHash,
-        'x-amz-date': amzDate,
-        'Authorization': authorizationHeader,
       },
       body: bytes,
     });
+
+    const response = await fetch(signedRequest);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -110,29 +81,3 @@ Deno.serve(async (req) => {
     );
   }
 });
-
-async function hmacSha256(key: ArrayBuffer, message: string): Promise<ArrayBuffer> {
-  const encoder = new TextEncoder();
-  const cryptoKey = await crypto.subtle.importKey(
-    'raw',
-    key,
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign']
-  );
-  return await crypto.subtle.sign('HMAC', cryptoKey, encoder.encode(message));
-}
-
-async function getSignatureKey(
-  key: string,
-  dateStamp: string,
-  regionName: string,
-  serviceName: string
-): Promise<ArrayBuffer> {
-  const encoder = new TextEncoder();
-  const kDate = await hmacSha256(encoder.encode('AWS4' + key).buffer, dateStamp);
-  const kRegion = await hmacSha256(kDate, regionName);
-  const kService = await hmacSha256(kRegion, serviceName);
-  const kSigning = await hmacSha256(kService, 'aws4_request');
-  return kSigning;
-}
