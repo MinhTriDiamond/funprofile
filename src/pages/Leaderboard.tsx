@@ -131,13 +131,27 @@ const Leaderboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Video Background */}
+      <div className="fixed inset-0 -z-10">
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="w-full h-full object-cover"
+        >
+          <source src="/space-background.mp4" type="video/mp4" />
+        </video>
+      </div>
+
       <Navbar />
       <div className="container max-w-4xl mx-auto py-4 sm:py-8 px-4 sm:px-6">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-foreground mb-2">🏆 Bảng Xếp Hạng Tổng Thưởng</h1>
-          <p className="text-muted-foreground">Danh sách người dùng có tổng Camly Coin cao nhất</p>
-        </div>
+        <div className="glass-card-light p-6 rounded-2xl">
+          <div className="mb-6">
+            <h1 className="text-3xl font-bold text-foreground mb-2">🏆 Bảng Xếp Hạng Tổng Thưởng</h1>
+            <p className="text-muted-foreground">Danh sách người dùng có tổng Camly Coin cao nhất</p>
+          </div>
 
         {loading ? (
           <div className="space-y-4">
@@ -157,7 +171,7 @@ const Leaderboard = () => {
                 <div
                   key={user.id}
                   onClick={() => handleUserClick(user.id)}
-                  className="flex items-center gap-4 p-4 bg-card border border-border rounded-lg hover:bg-accent/50 transition-colors cursor-pointer"
+                  className="flex items-center gap-4 p-4 bg-white border-2 border-gold rounded-lg hover:bg-primary/5 transition-colors cursor-pointer"
                 >
                   <div className={`flex items-center justify-center w-12 h-12 rounded-full font-bold text-lg ${getRankBadge(rank)}`}>
                     {rank <= 3 ? getRankIcon(rank) : rank}
@@ -188,6 +202,7 @@ const Leaderboard = () => {
             })}
           </div>
         )}
+        </div>
       </div>
     </div>
   );

@@ -8,7 +8,20 @@ const About = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Video Background */}
+      <div className="fixed inset-0 -z-10">
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="w-full h-full object-cover"
+        >
+          <source src="/space-background.mp4" type="video/mp4" />
+        </video>
+      </div>
+
       <Navbar />
       <div className="max-w-4xl mx-auto px-4 py-8">
         <Button

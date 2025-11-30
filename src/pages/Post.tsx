@@ -54,22 +54,48 @@ const Post = () => {
 
   if (loading) {
     return (
-      <>
+      <div className="min-h-screen relative overflow-hidden">
+        {/* Video Background */}
+        <div className="fixed inset-0 -z-10">
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="w-full h-full object-cover"
+          >
+            <source src="/space-background.mp4" type="video/mp4" />
+          </video>
+        </div>
+
         <Navbar />
-        <div className="min-h-screen bg-background pt-20 px-4">
+        <div className="pt-20 px-4">
           <div className="max-w-2xl mx-auto">
             <Skeleton className="h-64 w-full" />
           </div>
         </div>
-      </>
+      </div>
     );
   }
 
   if (!post) {
     return (
-      <>
+      <div className="min-h-screen relative overflow-hidden">
+        {/* Video Background */}
+        <div className="fixed inset-0 -z-10">
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="w-full h-full object-cover"
+          >
+            <source src="/space-background.mp4" type="video/mp4" />
+          </video>
+        </div>
+
         <Navbar />
-        <div className="min-h-screen bg-background pt-20 px-4">
+        <div className="pt-20 px-4">
           <div className="max-w-2xl mx-auto text-center">
             <h2 className="text-2xl font-bold mb-4">Post không tồn tại</h2>
             <Button onClick={() => navigate('/')}>
@@ -78,14 +104,27 @@ const Post = () => {
             </Button>
           </div>
         </div>
-      </>
+      </div>
     );
   }
 
   return (
-    <>
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Video Background */}
+      <div className="fixed inset-0 -z-10">
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="w-full h-full object-cover"
+        >
+          <source src="/space-background.mp4" type="video/mp4" />
+        </video>
+      </div>
+
       <Navbar />
-      <div className="min-h-screen bg-background pt-20 px-4">
+      <div className="pt-20 px-4">
         <div className="max-w-2xl mx-auto">
           <Button 
             variant="ghost" 
@@ -102,7 +141,7 @@ const Post = () => {
           />
         </div>
       </div>
-    </>
+    </div>
   );
 };
 

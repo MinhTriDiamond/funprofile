@@ -10,13 +10,13 @@ All colors MUST be HSL.
   :root {
     /* Futuristic Prosperous Cosmos Theme - Light Mode */
     --background: 0 0% 100%;
-    --foreground: 0 0% 0%;
+    --foreground: 145 100% 25%;
 
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 0%;
+    --card-foreground: 145 100% 25%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 0%;
+    --popover-foreground: 145 100% 25%;
 
     /* Neon Emerald Green - Primary */
     --primary: 145 100% 50%;
@@ -120,11 +120,7 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground font-body;
-  }
-
-  h1, h2, h3, h4, h5, h6 {
-    @apply font-display;
+    @apply bg-background text-foreground;
   }
 }
 

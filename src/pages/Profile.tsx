@@ -122,7 +122,20 @@ const Profile = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen relative overflow-hidden">
+        {/* Video Background */}
+        <div className="fixed inset-0 -z-10">
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="w-full h-full object-cover"
+          >
+            <source src="/space-background.mp4" type="video/mp4" />
+          </video>
+        </div>
+
         <Navbar />
         <main className="container max-w-2xl py-8">
           <Skeleton className="h-64 w-full" />
@@ -132,14 +145,27 @@ const Profile = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Video Background */}
+      <div className="fixed inset-0 -z-10">
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="w-full h-full object-cover"
+        >
+          <source src="/space-background.mp4" type="video/mp4" />
+        </video>
+      </div>
+
       <Navbar />
       <main className="container max-w-7xl py-4 sm:py-8 px-4 sm:px-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Main Content - Left Side */}
           <div className="lg:col-span-8">
             <div className="mb-6 sm:mb-8">
-              <Card className="overflow-hidden">
+              <Card className="overflow-hidden glass-card-light border-2 border-gold">
             {profile?.cover_url && (
               <div className="w-full h-32 sm:h-48 bg-gradient-to-r from-primary/20 to-primary-glow/20">
                 <img 

@@ -39,7 +39,20 @@ const Friends = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen relative overflow-hidden">
+        {/* Video Background */}
+        <div className="fixed inset-0 -z-10">
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="w-full h-full object-cover"
+          >
+            <source src="/space-background.mp4" type="video/mp4" />
+          </video>
+        </div>
+
         <Navbar />
         <main className="container max-w-4xl py-8">
           <Skeleton className="h-96 w-full" />
@@ -49,11 +62,26 @@ const Friends = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Video Background */}
+      <div className="fixed inset-0 -z-10">
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="w-full h-full object-cover"
+        >
+          <source src="/space-background.mp4" type="video/mp4" />
+        </video>
+      </div>
+
       <Navbar />
       <main className="container max-w-4xl py-4 sm:py-8 px-4 sm:px-6">
-        <h1 className="text-2xl sm:text-3xl font-bold mb-6 text-foreground">Friends</h1>
-        <FriendsList userId={currentUserId} />
+        <div className="glass-card-light p-6 rounded-2xl">
+          <h1 className="text-2xl sm:text-3xl font-bold mb-6 text-foreground">Friends</h1>
+          <FriendsList userId={currentUserId} />
+        </div>
       </main>
     </div>
   );
