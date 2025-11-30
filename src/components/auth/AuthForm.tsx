@@ -94,26 +94,60 @@ export const AuthForm = () => {
   };
 
   return (
-    <Card className="w-full max-w-md relative overflow-visible border-0 shadow-none bg-transparent">
-      {/* Sci-Fi Shield Frame with Gold Border */}
-      <div className="absolute inset-0 bg-gradient-to-br from-yellow-500 via-yellow-600 to-amber-600 rounded-lg" 
+    <div className="w-full max-w-md relative">
+      {/* Outer Gold Metallic Frame - Sci-Fi Shield Shape */}
+      <div className="relative p-2 rounded-lg"
            style={{
-             clipPath: 'polygon(20px 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%, 0 20px)',
-             padding: '6px'
+             background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 25%, #d97706 50%, #f59e0b 75%, #fbbf24 100%)',
+             clipPath: 'polygon(24px 0, calc(100% - 24px) 0, 100% 24px, 100% calc(100% - 24px), calc(100% - 24px) 100%, 24px 100%, 0 calc(100% - 24px), 0 24px)',
+             boxShadow: '0 0 60px rgba(251, 191, 36, 0.6), 0 0 100px rgba(234, 179, 8, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.5), inset 0 -2px 4px rgba(0, 0, 0, 0.3)'
            }}>
-        {/* Inner white pearl background with circuit pattern */}
-        <div className="w-full h-full bg-gradient-to-br from-slate-50 via-white to-slate-100 rounded-lg relative overflow-hidden"
-             style={{
-               clipPath: 'polygon(20px 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%, 0 20px)',
-             }}>
-          {/* Circuit board pattern overlay */}
-          <div className="absolute inset-0 opacity-5" 
+        
+        {/* Mechanical Details - Corner Accents */}
+        <div className="absolute top-0 left-0 w-8 h-8" 
+             style={{ 
+               background: 'linear-gradient(135deg, #fcd34d 0%, #fbbf24 100%)',
+               clipPath: 'polygon(0 0, 100% 0, 0 100%)',
+               boxShadow: 'inset 1px 1px 2px rgba(255, 255, 255, 0.5)'
+             }} />
+        <div className="absolute top-0 right-0 w-8 h-8" 
+             style={{ 
+               background: 'linear-gradient(225deg, #fcd34d 0%, #fbbf24 100%)',
+               clipPath: 'polygon(100% 0, 100% 100%, 0 0)',
+               boxShadow: 'inset -1px 1px 2px rgba(255, 255, 255, 0.5)'
+             }} />
+        <div className="absolute bottom-0 left-0 w-8 h-8" 
+             style={{ 
+               background: 'linear-gradient(45deg, #fcd34d 0%, #fbbf24 100%)',
+               clipPath: 'polygon(0 0, 100% 100%, 0 100%)',
+               boxShadow: 'inset 1px -1px 2px rgba(255, 255, 255, 0.5)'
+             }} />
+        <div className="absolute bottom-0 right-0 w-8 h-8" 
+             style={{ 
+               background: 'linear-gradient(315deg, #fcd34d 0%, #fbbf24 100%)',
+               clipPath: 'polygon(100% 0, 100% 100%, 0 100%)',
+               boxShadow: 'inset -1px -1px 2px rgba(255, 255, 255, 0.5)'
+             }} />
+
+        {/* Inner Pearl White Background */}
+        <Card className="relative border-0 overflow-hidden"
+              style={{
+                background: 'linear-gradient(135deg, #f8fafc 0%, #ffffff 50%, #f1f5f9 100%)',
+                clipPath: 'polygon(20px 0, calc(100% - 20px) 0, 100% 20px, 100% calc(100% - 20px), calc(100% - 20px) 100%, 20px 100%, 0 calc(100% - 20px), 0 20px)',
+                boxShadow: 'inset 0 2px 8px rgba(0, 0, 0, 0.1)'
+              }}>
+          
+          {/* Circuit Board Pattern */}
+          <div className="absolute inset-0 opacity-[0.03]" 
                style={{
                  backgroundImage: `
                    linear-gradient(90deg, #10b981 1px, transparent 1px),
-                   linear-gradient(0deg, #10b981 1px, transparent 1px)
+                   linear-gradient(0deg, #10b981 1px, transparent 1px),
+                   radial-gradient(circle at 20% 30%, #10b981 2px, transparent 2px),
+                   radial-gradient(circle at 80% 70%, #10b981 2px, transparent 2px)
                  `,
-                 backgroundSize: '20px 20px'
+                 backgroundSize: '30px 30px, 30px 30px, 60px 60px, 60px 60px',
+                 backgroundPosition: '0 0, 0 0, 0 0, 30px 30px'
                }} />
           
           <CardHeader className="relative z-10">
@@ -129,90 +163,140 @@ export const AuthForm = () => {
             <form onSubmit={handleSubmit} className="space-y-5">
               {!isLogin && (
                 <div className="space-y-2">
-                  <Label htmlFor="username" className="text-slate-700 font-semibold">Username</Label>
-                  <div className="relative">
+                  <Label htmlFor="username" className="text-slate-700 font-semibold text-sm uppercase tracking-wide">Username</Label>
+                  <div className="relative group">
+                    {/* Energy Slot Border */}
+                    <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-slate-400 via-slate-300 to-slate-400 p-[2px]">
+                      <div className="w-full h-full bg-white rounded-lg" />
+                    </div>
                     <Input
                       id="username"
                       type="text"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       required={!isLogin}
-                      className="border-2 border-slate-400 bg-white/80 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-400/50 shadow-inner transition-all"
+                      className="relative z-10 border-2 border-slate-300 bg-gradient-to-br from-white to-slate-50 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/30 transition-all duration-300"
                       style={{
-                        boxShadow: 'inset 0 2px 8px rgba(16, 185, 129, 0.1)'
+                        boxShadow: 'inset 0 2px 6px rgba(100, 116, 139, 0.15), 0 0 0 rgba(16, 185, 129, 0)',
                       }}
                     />
+                    {/* Inner Green Glow on Focus */}
+                    <div className="absolute inset-0 rounded-lg pointer-events-none opacity-0 group-focus-within:opacity-100 transition-opacity duration-300"
+                         style={{
+                           boxShadow: 'inset 0 0 20px rgba(16, 185, 129, 0.4), 0 0 30px rgba(16, 185, 129, 0.3)'
+                         }} />
                   </div>
                 </div>
               )}
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-slate-700 font-semibold">Email</Label>
-                <div className="relative">
+                <Label htmlFor="email" className="text-slate-700 font-semibold text-sm uppercase tracking-wide">Email</Label>
+                <div className="relative group">
+                  {/* Metallic Silver/Grey Border */}
+                  <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-slate-400 via-slate-300 to-slate-400 p-[2px]">
+                    <div className="w-full h-full bg-white rounded-lg" />
+                  </div>
                   <Input
                     id="email"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    className="border-2 border-slate-400 bg-white/80 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-400/50 shadow-inner transition-all"
+                    className="relative z-10 border-2 border-slate-300 bg-gradient-to-br from-white to-slate-50 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/30 transition-all duration-300"
                     style={{
-                      boxShadow: 'inset 0 2px 8px rgba(16, 185, 129, 0.1)'
+                      boxShadow: 'inset 0 2px 6px rgba(100, 116, 139, 0.15), 0 0 0 rgba(16, 185, 129, 0)',
                     }}
                   />
-                  {/* Energy glow effect */}
-                  <div className="absolute inset-0 rounded-md pointer-events-none opacity-0 hover:opacity-100 transition-opacity"
+                  {/* Inner Green Glow on Focus */}
+                  <div className="absolute inset-0 rounded-lg pointer-events-none opacity-0 group-focus-within:opacity-100 transition-opacity duration-300"
                        style={{
-                         boxShadow: '0 0 20px rgba(16, 185, 129, 0.3)'
+                         boxShadow: 'inset 0 0 20px rgba(16, 185, 129, 0.4), 0 0 30px rgba(16, 185, 129, 0.3)'
                        }} />
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-slate-700 font-semibold">Password</Label>
-                <div className="relative">
+                <Label htmlFor="password" className="text-slate-700 font-semibold text-sm uppercase tracking-wide">Password</Label>
+                <div className="relative group">
+                  {/* Metallic Silver/Grey Border */}
+                  <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-slate-400 via-slate-300 to-slate-400 p-[2px]">
+                    <div className="w-full h-full bg-white rounded-lg" />
+                  </div>
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    className="pr-10 border-2 border-slate-400 bg-white/80 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-400/50 shadow-inner transition-all"
+                    className="relative z-10 pr-10 border-2 border-slate-300 bg-gradient-to-br from-white to-slate-50 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/30 transition-all duration-300"
                     style={{
-                      boxShadow: 'inset 0 2px 8px rgba(16, 185, 129, 0.1)'
+                      boxShadow: 'inset 0 2px 6px rgba(100, 116, 139, 0.15), 0 0 0 rgba(16, 185, 129, 0)',
                     }}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-emerald-600 transition-colors z-10"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-emerald-500 transition-colors z-20"
                   >
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
-                  {/* Energy glow effect */}
-                  <div className="absolute inset-0 rounded-md pointer-events-none opacity-0 hover:opacity-100 transition-opacity"
+                  {/* Inner Green Glow on Focus */}
+                  <div className="absolute inset-0 rounded-lg pointer-events-none opacity-0 group-focus-within:opacity-100 transition-opacity duration-300"
                        style={{
-                         boxShadow: '0 0 20px rgba(16, 185, 129, 0.3)'
+                         boxShadow: 'inset 0 0 20px rgba(16, 185, 129, 0.4), 0 0 30px rgba(16, 185, 129, 0.3)'
                        }} />
                 </div>
               </div>
               
-              {/* Power Switch Button */}
+              {/* Ignition Power Switch Button */}
               <Button 
                 type="submit" 
-                className="w-full relative overflow-hidden border-0 h-12 text-base font-bold text-white shadow-lg hover:shadow-2xl transition-all duration-300 group" 
+                className="w-full relative overflow-hidden border-0 h-14 text-lg font-bold text-white transition-all duration-300 group mt-6" 
                 disabled={loading}
                 style={{
-                  background: 'linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%)',
-                  boxShadow: '0 0 20px rgba(16, 185, 129, 0.5), inset 0 1px 0 rgba(255,255,255,0.3)'
+                  background: 'linear-gradient(135deg, #10b981 0%, #059669 30%, #10b981 50%, #059669 70%, #047857 100%)',
+                  boxShadow: `
+                    0 0 40px rgba(16, 185, 129, 0.7),
+                    0 0 80px rgba(16, 185, 129, 0.4),
+                    0 4px 20px rgba(0, 0, 0, 0.3),
+                    inset 0 1px 2px rgba(255, 255, 255, 0.4),
+                    inset 0 -2px 4px rgba(0, 0, 0, 0.2)
+                  `,
+                  borderRadius: '0.75rem'
                 }}
               >
-                {/* Glowing effect on hover */}
-                <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 via-green-400 to-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm" />
-                <span className="relative z-10 flex items-center justify-center gap-2">
-                  {loading ? 'Loading...' : isLogin ? 'Sign In' : 'Sign Up'}
-                  {!loading && (
-                    <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="currentColor" viewBox="0 0 20 20">
-                      <circle cx="10" cy="10" r="3" className="animate-pulse" />
-                    </svg>
+                {/* Animated Glow Layer */}
+                <div className="absolute inset-0 bg-gradient-to-r from-emerald-300 via-green-400 to-emerald-300 opacity-0 group-hover:opacity-100 transition-opacity duration-500 animate-pulse"
+                     style={{ filter: 'blur(8px)' }} />
+                
+                {/* Energy Pulse Animation */}
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+                       style={{ 
+                         animation: 'shimmer 2s infinite',
+                         backgroundSize: '200% 100%'
+                       }} />
+                </div>
+
+                <span className="relative z-10 flex items-center justify-center gap-3 tracking-wider uppercase">
+                  {loading ? (
+                    <>
+                      <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      Initializing...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-6 h-6 group-hover:scale-110 transition-transform" viewBox="0 0 24 24" fill="currentColor">
+                        <circle cx="12" cy="12" r="4" className="animate-pulse" />
+                        <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" strokeWidth="2" opacity="0.5" />
+                        <path d="M12 2 L12 6 M12 18 L12 22 M2 12 L6 12 M18 12 L22 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" opacity="0.7" />
+                      </svg>
+                      {isLogin ? 'Activate Sign In' : 'Initialize Sign Up'}
+                      <svg className="w-5 h-5 group-hover:translate-x-2 transition-transform" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M10 3 L16 10 L10 17 M16 10 L4 10" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </>
                   )}
                 </span>
               </Button>
@@ -277,8 +361,16 @@ export const AuthForm = () => {
               </Button>
             </div>
           </CardContent>
-        </div>
+        </Card>
       </div>
-    </Card>
+      
+      {/* CSS Animation for shimmer effect */}
+      <style>{`
+        @keyframes shimmer {
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
+        }
+      `}</style>
+    </div>
   );
 };

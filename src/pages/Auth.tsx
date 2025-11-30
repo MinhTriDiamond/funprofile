@@ -42,16 +42,30 @@ const Auth = () => {
       <div className="absolute inset-0 bg-black/30" />
       
       <div className="w-full max-w-md relative z-10">
-        {/* Logo with Halo Effect */}
-        <div className="text-center mb-12 relative">
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-40 h-40 rounded-full bg-gradient-to-br from-emerald-500/40 via-yellow-500/30 to-emerald-500/40 blur-3xl animate-pulse" />
+        {/* Logo with Strong Halo Effect */}
+        <div className="text-center mb-16 relative">
+          {/* Outer glow ring */}
+          <div className="absolute inset-0 flex items-center justify-center -top-8">
+            <div className="w-56 h-56 rounded-full bg-gradient-to-br from-yellow-400/60 via-emerald-400/50 to-yellow-500/60 blur-3xl animate-pulse" 
+                 style={{ animation: 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite' }} />
           </div>
-          <img 
-            src="/fun-profile-logo.jpg" 
-            alt="FUN Profile WEB3" 
-            className="w-32 h-32 mx-auto rounded-full relative z-10 drop-shadow-[0_0_30px_rgba(16,185,129,0.8)]"
-          />
+          {/* Inner glow ring */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-40 h-40 rounded-full bg-gradient-to-br from-emerald-300/70 via-yellow-400/60 to-emerald-300/70 blur-2xl" />
+          </div>
+          {/* Logo */}
+          <div className="relative z-10">
+            <div className="w-36 h-36 mx-auto rounded-full bg-gradient-to-br from-yellow-400/20 to-emerald-400/20 p-2 backdrop-blur-sm">
+              <img 
+                src="/fun-profile-logo.jpg" 
+                alt="FUN Profile WEB3" 
+                className="w-full h-full rounded-full ring-4 ring-yellow-400/50 shadow-2xl"
+                style={{ 
+                  filter: 'drop-shadow(0 0 40px rgba(234, 179, 8, 0.8)) drop-shadow(0 0 20px rgba(16, 185, 129, 0.8))'
+                }}
+              />
+            </div>
+          </div>
         </div>
         <AuthForm />
       </div>
