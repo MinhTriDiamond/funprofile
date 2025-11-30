@@ -148,26 +148,26 @@ export const PostCard = ({ post, currentUserId, onPostDeleted }: PostCardProps) 
 
   return (
     <>
-      <div className="glass-card rounded-2xl mb-4 hover:shadow-[0_0_30px_hsl(var(--primary-glow)/0.3)] transition-all border border-primary/30">
-        <div className="flex flex-row items-center gap-2 sm:gap-4 px-4 sm:px-6 py-4 sm:py-6 border-b border-primary/20">
-          <Avatar className="cursor-pointer w-8 h-8 sm:w-10 sm:h-10 ring-2 ring-primary/30" onClick={handleProfileClick}>
+      <div className="glass-card rounded-2xl mb-4 hover:shadow-xl transition-all">
+        <div className="flex flex-row items-center gap-2 sm:gap-4 px-4 sm:px-6 py-4 sm:py-6 border-b-2 border-gold">
+          <Avatar className="cursor-pointer w-8 h-8 sm:w-10 sm:h-10 ring-2 ring-gold" onClick={handleProfileClick}>
             {post.profiles.avatar_url && <AvatarImage src={post.profiles.avatar_url} />}
-            <AvatarFallback className="bg-primary/20 text-white font-display">{post.profiles.username?.[0]?.toUpperCase() || 'U'}</AvatarFallback>
+            <AvatarFallback className="bg-gold/20 text-primary font-display">{post.profiles.username?.[0]?.toUpperCase() || 'U'}</AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
             <h3 
-              className="font-semibold cursor-pointer hover:text-primary transition-colors text-sm sm:text-base truncate text-white" 
+              className="font-semibold cursor-pointer hover:text-primary-glow transition-colors text-sm sm:text-base truncate text-primary" 
               onClick={handleProfileClick}
             >
               {post.profiles.username}
             </h3>
-            <p className="text-xs sm:text-sm text-white/60">
+            <p className="text-xs sm:text-sm text-muted-foreground">
               {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
             </p>
           </div>
         </div>
         <div className="space-y-4 px-4 sm:px-6 py-4">
-          {post.content && <p className="whitespace-pre-wrap text-sm sm:text-base break-words text-white">{post.content}</p>}
+          {post.content && <p className="whitespace-pre-wrap text-sm sm:text-base break-words text-foreground">{post.content}</p>}
           
           {post.image_url && (
             <>
@@ -175,7 +175,7 @@ export const PostCard = ({ post, currentUserId, onPostDeleted }: PostCardProps) 
                 src={post.image_url}
                 alt="Post"
                 loading="lazy"
-                className="w-full max-w-[1920px] max-h-[1920px] rounded-lg cursor-pointer hover:opacity-90 transition-opacity object-contain mx-auto border border-primary/20"
+                className="w-full max-w-[1920px] max-h-[1920px] rounded-lg cursor-pointer hover:opacity-90 transition-opacity object-contain mx-auto border-2 border-gold"
                 onClick={() => setShowImageViewer(true)}
               />
               <ImageViewer
@@ -190,20 +190,20 @@ export const PostCard = ({ post, currentUserId, onPostDeleted }: PostCardProps) 
             <video
               controls
               preload="metadata"
-              className="w-full max-w-[1920px] rounded-lg mx-auto border border-primary/20"
+              className="w-full max-w-[1920px] rounded-lg mx-auto border-2 border-gold"
               src={post.video_url}
             >
               Your browser does not support video playback.
             </video>
           )}
         </div>
-        <div className="flex flex-col gap-4 px-4 sm:px-6 py-3 sm:py-4 border-t border-primary/20">
+        <div className="flex flex-col gap-4 px-4 sm:px-6 py-3 sm:py-4 border-t-2 border-gold">
           <div className="flex items-center gap-2 sm:gap-4 w-full flex-wrap">
             <Button
               variant="ghost"
               size="sm"
               onClick={handleLike}
-              className={`${liked ? 'text-destructive' : 'text-white'} text-xs sm:text-sm hover:text-primary hover:bg-primary/10`}
+              className={`${liked ? 'text-destructive' : 'text-primary'} text-xs sm:text-sm hover:text-primary-glow hover:bg-primary/10`}
             >
               <Heart className={`w-4 h-4 mr-1 sm:mr-2 ${liked ? 'fill-current' : ''}`} />
               <span className="hidden sm:inline">{likeCount}</span>
@@ -213,7 +213,7 @@ export const PostCard = ({ post, currentUserId, onPostDeleted }: PostCardProps) 
               variant="ghost"
               size="sm"
               onClick={() => setShowComments(!showComments)}
-              className="text-xs sm:text-sm text-white hover:text-primary hover:bg-primary/10"
+              className="text-xs sm:text-sm text-primary hover:text-primary-glow hover:bg-primary/10"
             >
               <MessageCircle className="w-4 h-4 mr-1 sm:mr-2" />
               <span className="hidden sm:inline">{commentCount}</span>
@@ -222,26 +222,26 @@ export const PostCard = ({ post, currentUserId, onPostDeleted }: PostCardProps) 
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="text-xs sm:text-sm gap-1 text-white hover:text-primary hover:bg-primary/10">
+                <Button variant="ghost" size="sm" className="text-xs sm:text-sm gap-1 text-primary hover:text-primary-glow hover:bg-primary/10">
                   <Redo className="w-4 h-4 sm:w-5 sm:h-5" />
                   {shareCount > 0 && <span>{shareCount}</span>}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="glass-card border-primary/30">
-                <DropdownMenuItem onClick={handleCopyLink} className="text-white hover:text-primary">
+              <DropdownMenuContent align="start" className="glass-card">
+                <DropdownMenuItem onClick={handleCopyLink} className="text-foreground hover:text-primary">
                   Sao chép link
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleShareToProfile} className="text-white hover:text-primary">
+                <DropdownMenuItem onClick={handleShareToProfile} className="text-foreground hover:text-primary">
                   Share về profile
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
             {post.user_id === currentUserId && (
               <>
-                <Button variant="ghost" size="sm" onClick={() => setShowEditDialog(true)} className="text-xs sm:text-sm text-white hover:text-primary hover:bg-primary/10">
+                <Button variant="ghost" size="sm" onClick={() => setShowEditDialog(true)} className="text-xs sm:text-sm text-primary hover:text-primary-glow hover:bg-primary/10">
                   <Pencil className="w-4 h-4" />
                 </Button>
-                <Button variant="ghost" size="sm" onClick={handleDelete} className="text-xs sm:text-sm ml-auto text-white hover:text-destructive hover:bg-destructive/10">
+                <Button variant="ghost" size="sm" onClick={handleDelete} className="text-xs sm:text-sm ml-auto text-primary hover:text-destructive hover:bg-destructive/10">
                   <Trash2 className="w-4 h-4" />
                 </Button>
               </>

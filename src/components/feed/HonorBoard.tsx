@@ -141,32 +141,32 @@ export const HonorBoard = () => {
   const UserRow = ({ user, rank }: { user: LeaderboardUser; rank: number }) => (
     <div 
       onClick={() => handleUserClick(user.id)}
-      className="relative border border-yellow-500 rounded-lg p-2 bg-gradient-to-r from-green-800/50 to-green-700/50 backdrop-blur-sm hover:from-green-700/60 hover:to-green-600/60 transition-all cursor-pointer"
+      className="relative border-2 border-gold rounded-lg p-2 bg-white/90 hover:bg-white transition-all cursor-pointer"
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-yellow-400 font-bold text-lg w-6">{rank}</span>
-          <Avatar className="w-6 h-6 border border-yellow-400">
+          <span className="text-gold font-bold text-lg w-6">{rank}</span>
+          <Avatar className="w-6 h-6 border-2 border-gold">
             <AvatarImage src={user.avatar_url} />
-            <AvatarFallback className="text-xs bg-yellow-500 text-black">
+            <AvatarFallback className="text-xs bg-gold/20 text-primary">
               {user.username?.[0]?.toUpperCase()}
             </AvatarFallback>
           </Avatar>
-          <span className="text-white text-sm font-medium">{user.username}</span>
+          <span className="text-primary text-sm font-medium">{user.username}</span>
         </div>
-        <span className="text-yellow-400 font-bold text-sm">{user.total_reward.toLocaleString()}</span>
+        <span className="text-gold font-bold text-sm">{user.total_reward.toLocaleString()}</span>
       </div>
     </div>
   );
 
   return (
-    <div className="sticky top-20 rounded-2xl overflow-hidden border-2 border-yellow-500 bg-gradient-to-br from-green-600 via-green-700 to-green-800 shadow-xl">
+    <div className="sticky top-20 rounded-2xl overflow-hidden border-2 border-gold bg-white shadow-gold-glow animate-gold-pulse">
       {/* Sparkle effects */}
-      <div className="absolute inset-0 opacity-20 pointer-events-none">
-        <div className="absolute top-2 left-2 w-1 h-1 bg-white rounded-full animate-pulse"></div>
-        <div className="absolute top-4 right-4 w-1 h-1 bg-white rounded-full animate-pulse" style={{ animationDelay: '0.5s' }}></div>
-        <div className="absolute bottom-6 left-6 w-1 h-1 bg-white rounded-full animate-pulse" style={{ animationDelay: '1s' }}></div>
-        <div className="absolute bottom-4 right-8 w-1 h-1 bg-white rounded-full animate-pulse" style={{ animationDelay: '1.5s' }}></div>
+      <div className="absolute inset-0 opacity-10 pointer-events-none">
+        <div className="absolute top-2 left-2 w-1 h-1 bg-gold rounded-full animate-pulse"></div>
+        <div className="absolute top-4 right-4 w-1 h-1 bg-gold rounded-full animate-pulse" style={{ animationDelay: '0.5s' }}></div>
+        <div className="absolute bottom-6 left-6 w-1 h-1 bg-gold rounded-full animate-pulse" style={{ animationDelay: '1s' }}></div>
+        <div className="absolute bottom-4 right-8 w-1 h-1 bg-gold rounded-full animate-pulse" style={{ animationDelay: '1.5s' }}></div>
       </div>
 
       <div className="relative p-3 space-y-2">
@@ -182,10 +182,10 @@ export const HonorBoard = () => {
             </div>
           </div>
           
-          <h1 className="text-yellow-400 text-xl font-black tracking-wider drop-shadow-lg">
+          <h1 className="text-gold text-xl font-black tracking-wider drop-shadow-lg">
             HONOR BOARD
           </h1>
-          <p className="text-yellow-200 text-xs font-medium">TOP 5 TOTAL REWARD</p>
+          <p className="text-gold text-xs font-medium">TOP 5 TOTAL REWARD</p>
         </div>
 
         {/* Top 5 Users */}
@@ -194,7 +194,7 @@ export const HonorBoard = () => {
             <UserRow key={user.id} user={user} rank={index + 1} />
           ))}
           {topRewards.length === 0 && (
-            <div className="text-center py-4 text-yellow-200 text-sm">
+            <div className="text-center py-4 text-muted-foreground text-sm">
               No data available yet
             </div>
           )}
@@ -203,7 +203,7 @@ export const HonorBoard = () => {
         {/* View All Button */}
         <Button
           onClick={() => navigate('/leaderboard')}
-          className="w-full mt-3 bg-yellow-500 hover:bg-yellow-400 text-green-900 font-bold shadow-lg transition-all group"
+          className="w-full mt-3 bg-gold hover:bg-gold-glow text-white font-bold shadow-lg transition-all group"
         >
           Xem bảng xếp hạng đầy đủ
           <ChevronRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
