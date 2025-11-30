@@ -96,45 +96,39 @@ export const AuthForm = () => {
   return (
     <div className="w-full max-w-md relative">
       {/* Outer Gold Metallic Frame - Sci-Fi Shield Shape */}
-      <div className="relative p-2 rounded-lg"
+      <div className="relative p-2 rounded-3xl"
            style={{
-             background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 25%, #d97706 50%, #f59e0b 75%, #fbbf24 100%)',
-             clipPath: 'polygon(24px 0, calc(100% - 24px) 0, 100% 24px, 100% calc(100% - 24px), calc(100% - 24px) 100%, 24px 100%, 0 calc(100% - 24px), 0 24px)',
+             background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 20%, #fcd34d 40%, #d97706 60%, #f59e0b 80%, #fbbf24 100%)',
              boxShadow: '0 0 60px rgba(251, 191, 36, 0.6), 0 0 100px rgba(234, 179, 8, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.5), inset 0 -2px 4px rgba(0, 0, 0, 0.3)'
            }}>
         
-        {/* Mechanical Details - Corner Accents */}
-        <div className="absolute top-0 left-0 w-8 h-8" 
+        {/* Decorative Corner Glow Effects */}
+        <div className="absolute top-2 left-2 w-6 h-6 rounded-full" 
              style={{ 
-               background: 'linear-gradient(135deg, #fcd34d 0%, #fbbf24 100%)',
-               clipPath: 'polygon(0 0, 100% 0, 0 100%)',
-               boxShadow: 'inset 1px 1px 2px rgba(255, 255, 255, 0.5)'
+               background: 'radial-gradient(circle, #fcd34d 0%, transparent 70%)',
+               opacity: 0.6
              }} />
-        <div className="absolute top-0 right-0 w-8 h-8" 
+        <div className="absolute top-2 right-2 w-6 h-6 rounded-full" 
              style={{ 
-               background: 'linear-gradient(225deg, #fcd34d 0%, #fbbf24 100%)',
-               clipPath: 'polygon(100% 0, 100% 100%, 0 0)',
-               boxShadow: 'inset -1px 1px 2px rgba(255, 255, 255, 0.5)'
+               background: 'radial-gradient(circle, #fcd34d 0%, transparent 70%)',
+               opacity: 0.6
              }} />
-        <div className="absolute bottom-0 left-0 w-8 h-8" 
+        <div className="absolute bottom-2 left-2 w-6 h-6 rounded-full" 
              style={{ 
-               background: 'linear-gradient(45deg, #fcd34d 0%, #fbbf24 100%)',
-               clipPath: 'polygon(0 0, 100% 100%, 0 100%)',
-               boxShadow: 'inset 1px -1px 2px rgba(255, 255, 255, 0.5)'
+               background: 'radial-gradient(circle, #fcd34d 0%, transparent 70%)',
+               opacity: 0.6
              }} />
-        <div className="absolute bottom-0 right-0 w-8 h-8" 
+        <div className="absolute bottom-2 right-2 w-6 h-6 rounded-full" 
              style={{ 
-               background: 'linear-gradient(315deg, #fcd34d 0%, #fbbf24 100%)',
-               clipPath: 'polygon(100% 0, 100% 100%, 0 100%)',
-               boxShadow: 'inset -1px -1px 2px rgba(255, 255, 255, 0.5)'
+               background: 'radial-gradient(circle, #fcd34d 0%, transparent 70%)',
+               opacity: 0.6
              }} />
 
         {/* Inner Pearl White Background */}
-        <Card className="relative border-0 overflow-hidden"
+        <Card className="relative border-0 overflow-hidden rounded-2xl"
               style={{
-                background: 'linear-gradient(135deg, #f8fafc 0%, #ffffff 50%, #f1f5f9 100%)',
-                clipPath: 'polygon(20px 0, calc(100% - 20px) 0, 100% 20px, 100% calc(100% - 20px), calc(100% - 20px) 100%, 20px 100%, 0 calc(100% - 20px), 0 20px)',
-                boxShadow: 'inset 0 2px 8px rgba(0, 0, 0, 0.1)'
+                background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 25%, #ffffff 50%, #f1f5f9 75%, #ffffff 100%)',
+                boxShadow: 'inset 0 2px 8px rgba(0, 0, 0, 0.1), inset 0 0 40px rgba(251, 191, 36, 0.05)'
               }}>
           
           {/* Circuit Board Pattern */}
@@ -166,8 +160,8 @@ export const AuthForm = () => {
                   <Label htmlFor="username" className="text-slate-700 font-semibold text-sm uppercase tracking-wide">Username</Label>
                   <div className="relative group">
                     {/* Energy Slot Border */}
-                    <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-slate-400 via-slate-300 to-slate-400 p-[2px]">
-                      <div className="w-full h-full bg-white rounded-lg" />
+                    <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-slate-400 via-slate-300 to-slate-400 p-[2px]">
+                      <div className="w-full h-full bg-white rounded-xl" />
                     </div>
                     <Input
                       id="username"
@@ -175,13 +169,13 @@ export const AuthForm = () => {
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       required={!isLogin}
-                      className="relative z-10 border-2 border-slate-300 bg-gradient-to-br from-white to-slate-50 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/30 transition-all duration-300"
+                      className="relative z-10 rounded-xl border-2 border-slate-300 bg-gradient-to-br from-white to-slate-50 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/30 transition-all duration-300"
                       style={{
                         boxShadow: 'inset 0 2px 6px rgba(100, 116, 139, 0.15), 0 0 0 rgba(16, 185, 129, 0)',
                       }}
                     />
                     {/* Inner Green Glow on Focus */}
-                    <div className="absolute inset-0 rounded-lg pointer-events-none opacity-0 group-focus-within:opacity-100 transition-opacity duration-300"
+                    <div className="absolute inset-0 rounded-xl pointer-events-none opacity-0 group-focus-within:opacity-100 transition-opacity duration-300"
                          style={{
                            boxShadow: 'inset 0 0 20px rgba(16, 185, 129, 0.4), 0 0 30px rgba(16, 185, 129, 0.3)'
                          }} />
@@ -192,8 +186,8 @@ export const AuthForm = () => {
                 <Label htmlFor="email" className="text-slate-700 font-semibold text-sm uppercase tracking-wide">Email</Label>
                 <div className="relative group">
                   {/* Metallic Silver/Grey Border */}
-                  <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-slate-400 via-slate-300 to-slate-400 p-[2px]">
-                    <div className="w-full h-full bg-white rounded-lg" />
+                  <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-slate-400 via-slate-300 to-slate-400 p-[2px]">
+                    <div className="w-full h-full bg-white rounded-xl" />
                   </div>
                   <Input
                     id="email"
@@ -201,13 +195,13 @@ export const AuthForm = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    className="relative z-10 border-2 border-slate-300 bg-gradient-to-br from-white to-slate-50 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/30 transition-all duration-300"
+                    className="relative z-10 rounded-xl border-2 border-slate-300 bg-gradient-to-br from-white to-slate-50 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/30 transition-all duration-300"
                     style={{
                       boxShadow: 'inset 0 2px 6px rgba(100, 116, 139, 0.15), 0 0 0 rgba(16, 185, 129, 0)',
                     }}
                   />
                   {/* Inner Green Glow on Focus */}
-                  <div className="absolute inset-0 rounded-lg pointer-events-none opacity-0 group-focus-within:opacity-100 transition-opacity duration-300"
+                  <div className="absolute inset-0 rounded-xl pointer-events-none opacity-0 group-focus-within:opacity-100 transition-opacity duration-300"
                        style={{
                          boxShadow: 'inset 0 0 20px rgba(16, 185, 129, 0.4), 0 0 30px rgba(16, 185, 129, 0.3)'
                        }} />
@@ -217,8 +211,8 @@ export const AuthForm = () => {
                 <Label htmlFor="password" className="text-slate-700 font-semibold text-sm uppercase tracking-wide">Password</Label>
                 <div className="relative group">
                   {/* Metallic Silver/Grey Border */}
-                  <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-slate-400 via-slate-300 to-slate-400 p-[2px]">
-                    <div className="w-full h-full bg-white rounded-lg" />
+                  <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-slate-400 via-slate-300 to-slate-400 p-[2px]">
+                    <div className="w-full h-full bg-white rounded-xl" />
                   </div>
                   <Input
                     id="password"
@@ -226,7 +220,7 @@ export const AuthForm = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    className="relative z-10 pr-10 border-2 border-slate-300 bg-gradient-to-br from-white to-slate-50 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/30 transition-all duration-300"
+                    className="relative z-10 rounded-xl pr-10 border-2 border-slate-300 bg-gradient-to-br from-white to-slate-50 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/30 transition-all duration-300"
                     style={{
                       boxShadow: 'inset 0 2px 6px rgba(100, 116, 139, 0.15), 0 0 0 rgba(16, 185, 129, 0)',
                     }}
@@ -239,7 +233,7 @@ export const AuthForm = () => {
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                   {/* Inner Green Glow on Focus */}
-                  <div className="absolute inset-0 rounded-lg pointer-events-none opacity-0 group-focus-within:opacity-100 transition-opacity duration-300"
+                  <div className="absolute inset-0 rounded-xl pointer-events-none opacity-0 group-focus-within:opacity-100 transition-opacity duration-300"
                        style={{
                          boxShadow: 'inset 0 0 20px rgba(16, 185, 129, 0.4), 0 0 30px rgba(16, 185, 129, 0.3)'
                        }} />
@@ -249,18 +243,17 @@ export const AuthForm = () => {
               {/* Ignition Power Switch Button */}
               <Button 
                 type="submit" 
-                className="w-full relative overflow-hidden border-0 h-14 text-lg font-bold text-white transition-all duration-300 group mt-6" 
+                className="w-full relative overflow-hidden border-0 h-14 text-lg font-bold text-white transition-all duration-300 group mt-6 rounded-2xl" 
                 disabled={loading}
                 style={{
-                  background: 'linear-gradient(135deg, #10b981 0%, #059669 30%, #10b981 50%, #059669 70%, #047857 100%)',
+                  background: 'linear-gradient(135deg, #10b981 0%, #059669 20%, #34d399 40%, #10b981 60%, #059669 80%, #047857 100%)',
                   boxShadow: `
                     0 0 40px rgba(16, 185, 129, 0.7),
                     0 0 80px rgba(16, 185, 129, 0.4),
                     0 4px 20px rgba(0, 0, 0, 0.3),
                     inset 0 1px 2px rgba(255, 255, 255, 0.4),
                     inset 0 -2px 4px rgba(0, 0, 0, 0.2)
-                  `,
-                  borderRadius: '0.75rem'
+                  `
                 }}
               >
                 {/* Animated Glow Layer */}
