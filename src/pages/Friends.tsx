@@ -39,51 +39,25 @@ const Friends = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen relative overflow-hidden">
-        {/* Video Background */}
-        <div className="fixed inset-0 -z-10">
-          <video
-            autoPlay
-            loop
-            muted
-            playsInline
-            className="w-full h-full object-cover"
-          >
-            <source src="/space-background.mp4" type="video/mp4" />
-          </video>
-        </div>
-
+      <div className="min-h-screen bg-secondary">
         <Navbar />
-        <main className="container max-w-4xl py-8">
-          <Skeleton className="h-96 w-full" />
+        <main className="pt-24 pb-8">
+          <div className="container max-w-4xl mx-auto px-4">
+            <Skeleton className="h-96 w-full rounded-xl" />
+          </div>
         </main>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen relative overflow-hidden">
-      {/* Video Background */}
-      <div className="fixed inset-0 -z-10">
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="w-full h-full object-cover"
-        >
-          <source src="/space-background.mp4" type="video/mp4" />
-        </video>
-      </div>
-
+    <div className="min-h-screen bg-secondary">
       <Navbar />
-      <main className="fixed top-28 left-0 right-0 bottom-0 overflow-hidden">
-        <div className="container mx-auto px-4 h-full max-w-4xl">
-          <div className="scroll-container h-full pb-6">
-            <div className="glass-card-light p-6 rounded-2xl">
-              <h1 className="text-2xl sm:text-3xl font-bold mb-6 text-foreground">Friends</h1>
-              <FriendsList userId={currentUserId} />
-            </div>
+      <main className="pt-24 pb-8">
+        <div className="container mx-auto px-4 max-w-4xl">
+          <div className="bg-card p-6 rounded-xl shadow-sm border">
+            <h1 className="text-2xl sm:text-3xl font-bold mb-6 text-foreground">Friends</h1>
+            <FriendsList userId={currentUserId} />
           </div>
         </div>
       </main>

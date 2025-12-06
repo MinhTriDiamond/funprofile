@@ -33,83 +33,68 @@ const Wallet = () => {
   }, [navigate]);
 
   return (
-    <div className="min-h-screen relative overflow-hidden">
-      {/* Video Background */}
-      <div className="fixed inset-0 -z-10">
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="w-full h-full object-cover"
-        >
-          <source src="/space-background.mp4" type="video/mp4" />
-        </video>
-      </div>
-
+    <div className="min-h-screen bg-secondary">
       <Navbar />
-      <main className="fixed top-28 left-0 right-0 bottom-0 overflow-hidden">
-        <div className="container mx-auto px-4 h-full max-w-md">
-          <div className="scroll-container h-full pb-6">
-            <div className="flex items-center justify-between mb-6">
-              <h1 className="text-xl font-bold flex items-center gap-2">
-                <img 
-                  src="https://raw.githubusercontent.com/MetaMask/brand-resources/master/SVG/metamask-fox.svg" 
-                  alt="MetaMask" 
-                  className="w-8 h-8"
-                />
-                Web3 Wallet
-              </h1>
-            </div>
+      <main className="pt-24 pb-8">
+        <div className="container mx-auto px-4 max-w-md">
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-xl font-bold flex items-center gap-2">
+              <img 
+                src="https://raw.githubusercontent.com/MetaMask/brand-resources/master/SVG/metamask-fox.svg" 
+                alt="MetaMask" 
+                className="w-8 h-8"
+              />
+              Web3 Wallet
+            </h1>
+          </div>
+          
+          <div className="space-y-4">
+            <div className="bg-card p-6 rounded-xl shadow-sm border">
+              <MetamaskHeader 
+                onSendClick={() => setActiveTab('send')}
+              />
             
-            <div className="space-y-4">
-              <div className="glass-card-light p-6 rounded-2xl">
-                <MetamaskHeader 
-                  onSendClick={() => setActiveTab('send')}
-                />
-              
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full mt-4">
-                  <TabsContent value="assets">
-                    <MetamaskAssetsTab />
-                  </TabsContent>
-                  
-                  <TabsContent value="receive">
-                    <ReceiveTab />
-                  </TabsContent>
-                  
-                  <TabsContent value="send">
-                    <SendTab />
-                  </TabsContent>
-                  
-                  <TabsContent value="history">
-                    <HistoryTab />
-                  </TabsContent>
-                </Tabs>
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full mt-4">
+                <TabsContent value="assets">
+                  <MetamaskAssetsTab />
+                </TabsContent>
+                
+                <TabsContent value="receive">
+                  <ReceiveTab />
+                </TabsContent>
+                
+                <TabsContent value="send">
+                  <SendTab />
+                </TabsContent>
+                
+                <TabsContent value="history">
+                  <HistoryTab />
+                </TabsContent>
+              </Tabs>
 
-                {/* Quick Actions */}
-                <div className="grid grid-cols-3 gap-2 pt-4">
-                  <button 
-                    onClick={() => setActiveTab('receive')}
-                    className="p-3 rounded-lg border bg-white border-gold hover:bg-primary/5 transition-colors text-center"
-                  >
-                    <div className="text-2xl mb-1">📥</div>
-                    <p className="text-xs font-medium">Nhận</p>
-                  </button>
-                  <button 
-                    onClick={() => setActiveTab('send')}
-                    className="p-3 rounded-lg border bg-white border-gold hover:bg-primary/5 transition-colors text-center"
-                  >
-                    <div className="text-2xl mb-1">📤</div>
-                    <p className="text-xs font-medium">Gửi</p>
-                  </button>
-                  <button 
-                    onClick={() => setActiveTab('history')}
-                    className="p-3 rounded-lg border bg-white border-gold hover:bg-primary/5 transition-colors text-center"
-                  >
-                    <div className="text-2xl mb-1">📜</div>
-                    <p className="text-xs font-medium">Lịch sử</p>
-                  </button>
-                </div>
+              {/* Quick Actions */}
+              <div className="grid grid-cols-3 gap-2 pt-4">
+                <button 
+                  onClick={() => setActiveTab('receive')}
+                  className="p-3 rounded-lg border bg-background hover:bg-muted/50 transition-colors text-center"
+                >
+                  <div className="text-2xl mb-1">📥</div>
+                  <p className="text-xs font-medium">Nhận</p>
+                </button>
+                <button 
+                  onClick={() => setActiveTab('send')}
+                  className="p-3 rounded-lg border bg-background hover:bg-muted/50 transition-colors text-center"
+                >
+                  <div className="text-2xl mb-1">📤</div>
+                  <p className="text-xs font-medium">Gửi</p>
+                </button>
+                <button 
+                  onClick={() => setActiveTab('history')}
+                  className="p-3 rounded-lg border bg-background hover:bg-muted/50 transition-colors text-center"
+                >
+                  <div className="text-2xl mb-1">📜</div>
+                  <p className="text-xs font-medium">Lịch sử</p>
+                </button>
               </div>
             </div>
           </div>

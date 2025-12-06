@@ -36,46 +36,39 @@ const Leaderboard = () => {
 
       const usersWithRewards = await Promise.all(
         profiles.map(async (profile) => {
-          // Fetch posts
           const { data: posts } = await supabase
             .from('posts')
             .select('id')
             .eq('user_id', profile.id);
 
-          // Fetch comments count
           const { count: commentsCount } = await supabase
             .from('comments')
             .select('*', { count: 'exact', head: true })
             .eq('user_id', profile.id);
 
-          // Fetch reactions count (for display only, not used in calculation)
           const { count: reactionsCount } = await supabase
             .from('reactions')
             .select('*', { count: 'exact', head: true })
             .eq('user_id', profile.id);
 
-          // Fetch friends count
           const { count: friendsCount } = await supabase
             .from('friendships')
             .select('*', { count: 'exact', head: true })
             .or(`user_id.eq.${profile.id},friend_id.eq.${profile.id}`)
             .eq('status', 'accepted');
 
-          // Fetch shared posts count
           const { count: sharedCount } = await supabase
             .from('shared_posts')
             .select('*', { count: 'exact', head: true })
             .eq('user_id', profile.id);
 
-          // Calculate total reward
-          let total_reward = 50000; // New user bonus
+          let total_reward = 50000;
           const posts_count = posts?.length || 0;
-          total_reward += posts_count * 10000; // Posts reward
-          total_reward += (commentsCount || 0) * 5000; // Comments reward
-          total_reward += (friendsCount || 0) * 50000; // Friends reward
-          total_reward += (sharedCount || 0) * 20000; // Shared posts reward
+          total_reward += posts_count * 10000;
+          total_reward += (commentsCount || 0) * 5000;
+          total_reward += (friendsCount || 0) * 50000;
+          total_reward += (sharedCount || 0) * 20000;
 
-          // Reactions on posts reward
           if (posts && posts.length > 0) {
             for (const post of posts) {
               const { count: postReactionsCount } = await supabase
@@ -131,80 +124,65 @@ const Leaderboard = () => {
   };
 
   return (
-    <div className="min-h-screen relative overflow-hidden">
-      {/* Video Background */}
-      <div className="fixed inset-0 -z-10">
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="w-full h-full object-cover"
-        >
-          <source src="/space-background.mp4" type="video/mp4" />
-        </video>
-      </div>
-
+    <div className="min-h-screen bg-secondary">
       <Navbar />
-      <main className="fixed top-28 left-0 right-0 bottom-0 overflow-hidden">
-        <div className="container mx-auto px-4 h-full max-w-4xl">
-          <div className="scroll-container h-full pb-6">
-            <div className="glass-card-light p-6 rounded-2xl">
-              <div className="mb-6">
-                <h1 className="text-3xl font-bold text-foreground mb-2">🏆 Bảng Xếp Hạng Tổng Thưởng</h1>
-                <p className="text-muted-foreground">Danh sách người dùng có tổng Camly Coin cao nhất</p>
-              </div>
+      <main className="pt-24 pb-8">
+        <div className="container mx-auto px-4 max-w-4xl">
+          <div className="bg-card p-6 rounded-xl shadow-sm border">
+            <div className="mb-6">
+              <h1 className="text-3xl font-bold text-foreground mb-2">🏆 Bảng Xếp Hạng Tổng Thưởng</h1>
+              <p className="text-muted-foreground">Danh sách người dùng có tổng Camly Coin cao nhất</p>
+            </div>
 
             {loading ? (
-          <div className="space-y-4">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <Skeleton key={i} className="h-20 w-full" />
-            ))}
-          </div>
-        ) : users.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">Chưa có dữ liệu xếp hạng</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {users.map((user, index) => {
-              const rank = index + 1;
-              return (
-                <div
-                  key={user.id}
-                  onClick={() => handleUserClick(user.id)}
-                  className="flex items-center gap-4 p-4 bg-white border-2 border-gold rounded-lg hover:bg-primary/5 transition-colors cursor-pointer"
-                >
-                  <div className={`flex items-center justify-center w-12 h-12 rounded-full font-bold text-lg ${getRankBadge(rank)}`}>
-                    {rank <= 3 ? getRankIcon(rank) : rank}
-                  </div>
-                  
-                  <Avatar className="w-12 h-12">
-                    <AvatarImage src={user.avatar_url || ''} />
-                    <AvatarFallback>{user.username[0]?.toUpperCase()}</AvatarFallback>
-                  </Avatar>
-                  
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-foreground truncate">{user.username}</p>
-                    <div className="flex gap-4 text-xs text-muted-foreground mt-1">
-                      <span>{user.posts_count} bài viết</span>
-                      <span>{user.comments_count} bình luận</span>
-                      <span>{user.friends_count} bạn bè</span>
+              <div className="space-y-4">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <Skeleton key={i} className="h-20 w-full rounded-lg" />
+                ))}
+              </div>
+            ) : users.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground">Chưa có dữ liệu xếp hạng</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {users.map((user, index) => {
+                  const rank = index + 1;
+                  return (
+                    <div
+                      key={user.id}
+                      onClick={() => handleUserClick(user.id)}
+                      className="flex items-center gap-4 p-4 bg-background border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+                    >
+                      <div className={`flex items-center justify-center w-12 h-12 rounded-full font-bold text-lg ${getRankBadge(rank)}`}>
+                        {rank <= 3 ? getRankIcon(rank) : rank}
+                      </div>
+                      
+                      <Avatar className="w-12 h-12">
+                        <AvatarImage src={user.avatar_url || ''} />
+                        <AvatarFallback>{user.username[0]?.toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                      
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-foreground truncate">{user.username}</p>
+                        <div className="flex gap-4 text-xs text-muted-foreground mt-1">
+                          <span>{user.posts_count} bài viết</span>
+                          <span>{user.comments_count} bình luận</span>
+                          <span>{user.friends_count} bạn bè</span>
+                        </div>
+                      </div>
+                      
+                      <div className="text-right">
+                        <p className="font-bold text-lg text-primary">
+                          {user.total_reward.toLocaleString()}
+                        </p>
+                        <p className="text-xs text-muted-foreground">Camly Coin</p>
+                      </div>
                     </div>
-                  </div>
-                  
-                  <div className="text-right">
-                    <p className="font-bold text-lg text-primary">
-                      {user.total_reward.toLocaleString()}
-                    </p>
-                    <p className="text-xs text-muted-foreground">Camly Coin</p>
-                  </div>
-                </div>
-              );
-            })}
-            </div>
-          )}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       </main>
