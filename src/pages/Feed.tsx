@@ -59,38 +59,27 @@ const Feed = () => {
   };
 
   return (
-    <div className="min-h-screen relative">
-      {/* Video Background */}
-      <div className="fixed inset-0 -z-10">
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="w-full h-full object-cover"
-        >
-          <source src="/space-background.mp4" type="video/mp4" />
-        </video>
-      </div>
-
+    <div className="min-h-screen bg-secondary">
       <Navbar />
       
-      <main className="fixed top-28 left-0 right-0 bottom-0 overflow-hidden">
-        <div className="container mx-auto px-4 h-full max-w-7xl">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full">
+      <main className="pt-24 pb-8">
+        <div className="container mx-auto px-4 max-w-7xl">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Left Sidebar - Hidden on mobile */}
-            <aside className="hidden lg:block lg:col-span-3 scroll-container pb-6">
-              <LeftSidebar />
+            <aside className="hidden lg:block lg:col-span-3">
+              <div className="sticky top-24 max-h-[calc(100vh-120px)] overflow-y-auto scrollbar-thin scrollbar-thumb-primary/20 scrollbar-track-transparent hover:scrollbar-thumb-primary/40">
+                <LeftSidebar />
+              </div>
             </aside>
 
             {/* Main Feed */}
-            <div className="lg:col-span-6 scroll-container pb-6">
-              <div className="space-y-6">
+            <div className="lg:col-span-6">
+              <div className="space-y-4">
                 {currentUserId && <CreatePost onPostCreated={fetchPosts} />}
                 
                 {!currentUserId && (
-                  <div className="p-4 bg-white rounded-2xl text-center border-2 border-gold">
-                    <p className="text-sm text-primary font-medium">
+                  <div className="p-4 bg-card rounded-xl text-center shadow-sm border">
+                    <p className="text-sm text-muted-foreground">
                       Đăng nhập để tạo bài viết và tương tác
                     </p>
                   </div>
@@ -99,12 +88,12 @@ const Feed = () => {
                 {loading ? (
                   <div className="space-y-4">
                     {[1, 2, 3].map((i) => (
-                      <Skeleton key={i} className="h-48 w-full bg-white/5" />
+                      <Skeleton key={i} className="h-48 w-full rounded-xl" />
                     ))}
                   </div>
                 ) : posts.length === 0 ? (
-                  <div className="text-center py-12 bg-white rounded-2xl border-2 border-gold">
-                    <p className="text-primary font-medium">Chưa có bài viết nào. Hãy là người đầu tiên chia sẻ!</p>
+                  <div className="text-center py-12 bg-card rounded-xl shadow-sm border">
+                    <p className="text-muted-foreground">Chưa có bài viết nào. Hãy là người đầu tiên chia sẻ!</p>
                   </div>
                 ) : (
                   posts.map((post) => (
@@ -120,8 +109,10 @@ const Feed = () => {
             </div>
 
             {/* Right Sidebar - Hidden on mobile */}
-            <aside className="hidden lg:block lg:col-span-3 scroll-container pb-6">
-              <HonorBoard />
+            <aside className="hidden lg:block lg:col-span-3">
+              <div className="sticky top-24 max-h-[calc(100vh-120px)] overflow-y-auto scrollbar-thin scrollbar-thumb-primary/20 scrollbar-track-transparent hover:scrollbar-thumb-primary/40">
+                <HonorBoard />
+              </div>
             </aside>
           </div>
         </div>

@@ -54,51 +54,23 @@ const Post = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen relative overflow-hidden">
-        {/* Video Background */}
-        <div className="fixed inset-0 -z-10">
-          <video
-            autoPlay
-            loop
-            muted
-            playsInline
-            className="w-full h-full object-cover"
-          >
-            <source src="/space-background.mp4" type="video/mp4" />
-          </video>
-        </div>
-
-      <Navbar />
-      <main className="fixed top-28 left-0 right-0 bottom-0 overflow-hidden">
-        <div className="container mx-auto px-4 h-full max-w-4xl">
-          <div className="scroll-container h-full pb-6">
-            <Skeleton className="h-64 w-full" />
+      <div className="min-h-screen bg-secondary">
+        <Navbar />
+        <main className="pt-24 pb-8">
+          <div className="container mx-auto px-4 max-w-2xl">
+            <Skeleton className="h-64 w-full rounded-xl" />
           </div>
-        </div>
-      </main>
-    </div>
-  );
+        </main>
+      </div>
+    );
   }
 
   if (!post) {
     return (
-      <div className="min-h-screen relative overflow-hidden">
-        {/* Video Background */}
-        <div className="fixed inset-0 -z-10">
-          <video
-            autoPlay
-            loop
-            muted
-            playsInline
-            className="w-full h-full object-cover"
-          >
-            <source src="/space-background.mp4" type="video/mp4" />
-          </video>
-        </div>
-
+      <div className="min-h-screen bg-secondary">
         <Navbar />
-        <main className="fixed top-28 left-0 right-0 bottom-0 overflow-hidden">
-          <div className="container mx-auto px-4 h-full flex items-center justify-center">
+        <main className="pt-24 pb-8">
+          <div className="container mx-auto px-4 flex items-center justify-center min-h-[50vh]">
             <div className="text-center">
               <h2 className="text-2xl font-bold mb-4 text-foreground">Post không tồn tại</h2>
               <Button onClick={() => navigate('/')}>
@@ -113,38 +85,23 @@ const Post = () => {
   }
 
   return (
-    <div className="min-h-screen relative overflow-hidden">
-      {/* Video Background */}
-      <div className="fixed inset-0 -z-10">
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="w-full h-full object-cover"
-        >
-          <source src="/space-background.mp4" type="video/mp4" />
-        </video>
-      </div>
-
+    <div className="min-h-screen bg-secondary">
       <Navbar />
-      <main className="fixed top-28 left-0 right-0 bottom-0 overflow-hidden">
-        <div className="container mx-auto px-4 h-full max-w-2xl">
-          <div className="scroll-container h-full pb-6">
-            <Button 
-              variant="ghost" 
-              onClick={() => navigate('/')}
-              className="mb-4"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Quay lại
-            </Button>
-            <PostCard
-              post={post}
-              currentUserId={currentUserId}
-              onPostDeleted={() => navigate('/')}
-            />
-          </div>
+      <main className="pt-24 pb-8">
+        <div className="container mx-auto px-4 max-w-2xl">
+          <Button 
+            variant="ghost" 
+            onClick={() => navigate('/')}
+            className="mb-4"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Quay lại
+          </Button>
+          <PostCard
+            post={post}
+            currentUserId={currentUserId}
+            onPostDeleted={() => navigate('/')}
+          />
         </div>
       </main>
     </div>
