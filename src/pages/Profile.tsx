@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Navbar } from '@/components/layout/Navbar';
+import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -116,9 +116,9 @@ const Profile = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-secondary">
-        <Navbar />
-        <main className="pt-24 pb-8">
+      <div className="min-h-screen bg-background">
+        <FacebookNavbar />
+        <main className="pt-14 pb-8">
           <div className="container max-w-7xl mx-auto px-4">
             <Skeleton className="h-64 w-full rounded-xl" />
           </div>
@@ -127,10 +127,23 @@ const Profile = () => {
     );
   }
 
+  if (!profile) {
+    return (
+      <div className="min-h-screen bg-background">
+        <FacebookNavbar />
+        <main className="pt-14 pb-8">
+          <div className="container max-w-7xl mx-auto px-4 text-center py-12">
+            <p className="text-muted-foreground">Không tìm thấy trang cá nhân</p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-secondary">
-      <Navbar />
-      <main className="pt-24 pb-8">
+    <div className="min-h-screen bg-background">
+      <FacebookNavbar />
+      <main className="pt-14 pb-8">
         <div className="container mx-auto px-4 max-w-7xl">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Main Content - Left Side */}
