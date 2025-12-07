@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Navbar } from '@/components/layout/Navbar';
-import { CreatePost } from '@/components/feed/CreatePost';
-import { PostCard } from '@/components/feed/PostCard';
+import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
+import { FacebookCreatePost } from '@/components/feed/FacebookCreatePost';
+import { FacebookPostCard } from '@/components/feed/FacebookPostCard';
+import { FacebookLeftSidebar } from '@/components/feed/FacebookLeftSidebar';
+import { FacebookRightSidebar } from '@/components/feed/FacebookRightSidebar';
+import { StoriesBar } from '@/components/feed/StoriesBar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { HonorBoard } from '@/components/feed/HonorBoard';
-import { LeftSidebar } from '@/components/feed/LeftSidebar';
 
 const Feed = () => {
   const navigate = useNavigate();
@@ -59,59 +60,75 @@ const Feed = () => {
   };
 
   return (
-    <div className="min-h-screen bg-secondary">
-      <Navbar />
+    <div className="min-h-screen bg-background">
+      <FacebookNavbar />
       
-      <main className="pt-24 pb-8">
-        <div className="container mx-auto px-4 max-w-7xl">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Left Sidebar - Hidden on mobile */}
-            <aside className="hidden lg:block lg:col-span-3">
-              <div className="sticky top-24 max-h-[calc(100vh-120px)] overflow-y-auto scrollbar-thin scrollbar-thumb-primary/20 scrollbar-track-transparent hover:scrollbar-thumb-primary/40">
-                <LeftSidebar />
+      <main className="pt-14">
+        <div className="max-w-screen-2xl mx-auto px-4">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 py-4">
+            {/* Left Sidebar */}
+            <aside className="hidden lg:block lg:col-span-3 xl:col-span-3">
+              <div className="sticky top-[72px] max-h-[calc(100vh-88px)] overflow-y-auto pr-2">
+                <FacebookLeftSidebar />
               </div>
             </aside>
 
             {/* Main Feed */}
-            <div className="lg:col-span-6">
-              <div className="space-y-4">
-                {currentUserId && <CreatePost onPostCreated={fetchPosts} />}
-                
-                {!currentUserId && (
-                  <div className="p-4 bg-card rounded-xl text-center shadow-sm border">
-                    <p className="text-sm text-muted-foreground">
-                      Đăng nhập để tạo bài viết và tương tác
-                    </p>
-                  </div>
-                )}
-                
-                {loading ? (
-                  <div className="space-y-4">
-                    {[1, 2, 3].map((i) => (
-                      <Skeleton key={i} className="h-48 w-full rounded-xl" />
-                    ))}
-                  </div>
-                ) : posts.length === 0 ? (
-                  <div className="text-center py-12 bg-card rounded-xl shadow-sm border">
-                    <p className="text-muted-foreground">Chưa có bài viết nào. Hãy là người đầu tiên chia sẻ!</p>
-                  </div>
-                ) : (
-                  posts.map((post) => (
-                    <PostCard
-                      key={post.id}
-                      post={post}
-                      currentUserId={currentUserId}
-                      onPostDeleted={fetchPosts}
-                    />
-                  ))
-                )}
-              </div>
+            <div className="lg:col-span-6 xl:col-span-6">
+              {/* Stories */}
+              <StoriesBar />
+
+              {/* Create Post */}
+              {currentUserId && <FacebookCreatePost onPostCreated={fetchPosts} />}
+
+              {!currentUserId && (
+                <div className="fb-card p-4 mb-4 text-center">
+                  <p className="text-muted-foreground">
+                    Đăng nhập để tạo bài viết và tương tác
+                  </p>
+                </div>
+              )}
+
+              {/* Posts */}
+              {loading ? (
+                <div className="space-y-4">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="fb-card p-4">
+                      <div className="flex items-center gap-3 mb-4">
+                        <Skeleton className="w-10 h-10 rounded-full" />
+                        <div className="space-y-2">
+                          <Skeleton className="h-4 w-32" />
+                          <Skeleton className="h-3 w-24" />
+                        </div>
+                      </div>
+                      <Skeleton className="h-4 w-full mb-2" />
+                      <Skeleton className="h-4 w-3/4 mb-4" />
+                      <Skeleton className="h-64 w-full rounded-lg" />
+                    </div>
+                  ))}
+                </div>
+              ) : posts.length === 0 ? (
+                <div className="fb-card p-8 text-center">
+                  <p className="text-muted-foreground">
+                    Chưa có bài viết nào. Hãy là người đầu tiên chia sẻ!
+                  </p>
+                </div>
+              ) : (
+                posts.map((post) => (
+                  <FacebookPostCard
+                    key={post.id}
+                    post={post}
+                    currentUserId={currentUserId}
+                    onPostDeleted={fetchPosts}
+                  />
+                ))
+              )}
             </div>
 
-            {/* Right Sidebar - Hidden on mobile */}
-            <aside className="hidden lg:block lg:col-span-3">
-              <div className="sticky top-24 max-h-[calc(100vh-120px)] overflow-y-auto scrollbar-thin scrollbar-thumb-primary/20 scrollbar-track-transparent hover:scrollbar-thumb-primary/40">
-                <HonorBoard />
+            {/* Right Sidebar */}
+            <aside className="hidden lg:block lg:col-span-3 xl:col-span-3">
+              <div className="sticky top-[72px] max-h-[calc(100vh-88px)] overflow-y-auto pl-2">
+                <FacebookRightSidebar />
               </div>
             </aside>
           </div>
