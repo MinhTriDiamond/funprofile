@@ -9,6 +9,7 @@ import { ArrowDown, ArrowUp, RefreshCw, ShoppingCart, Copy, Check, Gift, ArrowUp
 import { toast } from 'sonner';
 import { ReceiveTab } from './ReceiveTab';
 import { SendTab } from './SendTab';
+import camlyCoinLogo from '@/assets/camly-coin-logo.png';
 
 interface Profile {
   username: string;
@@ -48,7 +49,7 @@ const WalletCenterContainer = () => {
     { symbol: 'BNB', name: 'BNB', icon: 'https://cryptologos.cc/logos/bnb-bnb-logo.png', price: 320.50, balance: 0, usdValue: 0, change24h: 2.5 },
     { symbol: 'USDT', name: 'Tether USD', icon: 'https://cryptologos.cc/logos/tether-usdt-logo.png', price: 1.00, balance: 0, usdValue: 0, change24h: 0.01 },
     { symbol: 'BTCB', name: 'Bitcoin BEP20', icon: 'https://cryptologos.cc/logos/bitcoin-btc-logo.png', price: 42000.00, balance: 0, usdValue: 0, change24h: 1.8 },
-    { symbol: 'CAMLY', name: 'Camly Coin', icon: 'https://cryptologos.cc/logos/cosmos-atom-logo.png', price: 0.066, balance: 0, usdValue: 0, change24h: 5.2 },
+    { symbol: 'CAMLY', name: 'Camly Coin', icon: camlyCoinLogo, price: 0.066, balance: 0, usdValue: 0, change24h: 5.2 },
   ]);
 
   useEffect(() => {
