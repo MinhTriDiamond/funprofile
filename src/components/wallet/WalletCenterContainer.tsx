@@ -52,6 +52,9 @@ const WalletCenterContainer = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [showReceive, setShowReceive] = useState(false);
   const [showSend, setShowSend] = useState(false);
+  const [manuallyDisconnected, setManuallyDisconnected] = useState(() => {
+    return localStorage.getItem(WALLET_CONNECTED_KEY) !== 'true';
+  });
   const [tokens, setTokens] = useState<TokenData[]>([
     { symbol: 'BNB', name: 'BNB', icon: 'https://cryptologos.cc/logos/bnb-bnb-logo.png', price: 320.50, balance: 0, usdValue: 0, change24h: 2.5 },
     { symbol: 'USDT', name: 'Tether USD', icon: 'https://cryptologos.cc/logos/tether-usdt-logo.png', price: 1.00, balance: 0, usdValue: 0, change24h: 0.01 },
@@ -59,10 +62,14 @@ const WalletCenterContainer = () => {
     { symbol: 'CAMLY', name: 'Camly Coin', icon: camlyCoinLogo, price: 0.066, balance: 0, usdValue: 0, change24h: 5.2 },
   ]);
 
-  // Save wallet connection state to localStorage
+  // Save wallet connection state to localStorage and reset manuallyDisconnected when connected
   useEffect(() => {
-    if (isConnected) {
+    if (isConnected && !manuallyDisconnected) {
       localStorage.setItem(WALLET_CONNECTED_KEY, 'true');
+    }
+    // Reset manuallyDisconnected when wallet connects successfully
+    if (isConnected) {
+      setManuallyDisconnected(false);
     }
   }, [isConnected]);
 
@@ -203,8 +210,16 @@ const WalletCenterContainer = () => {
   };
 
   const handleDisconnect = () => {
-    disconnect();
+    // Set local state immediately for instant UI update
+    setManuallyDisconnected(true);
+    // Clear localStorage
     localStorage.removeItem(WALLET_CONNECTED_KEY);
+    // Clear all wallet data
+    setTokens(prev => prev.map(token => ({ ...token, balance: 0, usdValue: 0 })));
+    setTransactions([]);
+    setClaimableReward(0);
+    // Disconnect from wagmi
+    disconnect();
     toast.success('Đã ngắt kết nối ví');
   };
 
@@ -258,7 +273,8 @@ const WalletCenterContainer = () => {
   };
 
   // Not connected state - Show Connect Wallet button
-  if (!isConnected) {
+  // Show Connect Wallet UI when not connected OR manually disconnected
+  if (!isConnected || manuallyDisconnected) {
     return (
       <div className="space-y-6">
         {/* Header */}
