@@ -333,33 +333,15 @@ const WalletCenterContainer = () => {
                 <div key={token.symbol} className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
                   <div className="flex items-center gap-3">
                     <img src={token.icon} alt={token.symbol} className="w-10 h-10 rounded-full" />
-                    <span className="font-semibold">{token.symbol}</span>
-                  </div>
-                  
-                  {/* Sparkline Chart Placeholder */}
-                  <div className="flex-1 mx-4 h-10">
-                    <svg viewBox="0 0 100 30" className="w-full h-full">
-                      <path
-                        d={token.change24h >= 0 
-                          ? "M0,25 Q25,20 50,15 T100,10" 
-                          : "M0,10 Q25,15 50,20 T100,25"}
-                        fill="none"
-                        stroke={token.change24h >= 0 ? '#22c55e' : '#ef4444'}
-                        strokeWidth="2"
-                      />
-                    </svg>
+                    <div>
+                      <p className="font-semibold">{token.symbol}</p>
+                      <p className="text-xs text-muted-foreground">{token.name}</p>
+                    </div>
                   </div>
                   
                   <div className="text-right">
-                    <p className="font-medium">${formatNumber(token.price)}</p>
-                    <p className={`text-xs ${token.change24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                      {token.change24h >= 0 ? '+' : ''}{token.change24h}%
-                    </p>
-                  </div>
-                  
-                  <div className="text-right ml-6 min-w-[120px]">
                     <p className="font-semibold">{token.balance.toFixed(token.symbol === 'BTCB' ? 4 : 2)} {token.symbol}</p>
-                    <p className="text-sm text-muted-foreground">(~${formatNumber(token.usdValue)})</p>
+                    <p className="text-sm text-muted-foreground">(~${formatNumber(token.usdValue)} USD)</p>
                   </div>
                 </div>
               ))}
