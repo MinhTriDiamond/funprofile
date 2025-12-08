@@ -1,0 +1,78 @@
+interface ReactionCount {
+  type: string;
+  count: number;
+}
+
+interface ReactionSummaryProps {
+  reactions: ReactionCount[];
+  totalCount: number;
+  commentCount: number;
+  shareCount: number;
+  onCommentClick: () => void;
+}
+
+const REACTION_ICONS: Record<string, { icon: string; bgColor: string }> = {
+  like: { icon: '👍', bgColor: 'bg-blue-500' },
+  love: { icon: '❤️', bgColor: 'bg-red-500' },
+  haha: { icon: '😆', bgColor: 'bg-yellow-500' },
+  wow: { icon: '😮', bgColor: 'bg-yellow-500' },
+  sad: { icon: '😢', bgColor: 'bg-yellow-500' },
+  angry: { icon: '😠', bgColor: 'bg-orange-500' },
+};
+
+export const ReactionSummary = ({
+  reactions,
+  totalCount,
+  commentCount,
+  shareCount,
+  onCommentClick,
+}: ReactionSummaryProps) => {
+  if (totalCount === 0 && commentCount === 0 && shareCount === 0) {
+    return null;
+  }
+
+  // Get top 3 reactions by count
+  const sortedReactions = [...reactions]
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 3)
+    .filter((r) => r.count > 0);
+
+  return (
+    <div className="flex items-center justify-between px-4 py-2 text-sm text-muted-foreground">
+      <div className="flex items-center gap-1">
+        {totalCount > 0 && (
+          <>
+            <div className="flex -space-x-1">
+              {sortedReactions.map((reaction, index) => {
+                const reactionInfo = REACTION_ICONS[reaction.type];
+                if (!reactionInfo) return null;
+                return (
+                  <span
+                    key={reaction.type}
+                    className={`w-5 h-5 rounded-full ${reactionInfo.bgColor} flex items-center justify-center text-xs border-2 border-card`}
+                    style={{ zIndex: 3 - index }}
+                  >
+                    {reactionInfo.icon}
+                  </span>
+                );
+              })}
+            </div>
+            <span className="ml-1 hover:underline cursor-pointer">{totalCount}</span>
+          </>
+        )}
+      </div>
+      <div className="flex items-center gap-3">
+        {commentCount > 0 && (
+          <button onClick={onCommentClick} className="hover:underline">
+            {commentCount} bình luận
+          </button>
+        )}
+        {shareCount > 0 && (
+          <span className="hover:underline cursor-pointer">
+            {shareCount} lượt chia sẻ
+          </span>
+        )}
+      </div>
+    </div>
+  );
+};

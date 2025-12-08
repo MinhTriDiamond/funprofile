@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { uploadToR2 } from '@/utils/r2Upload';
@@ -12,13 +12,32 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
-import { ImagePlus, Video, Smile, MapPin, UserPlus, MoreHorizontal, X, Loader2 } from 'lucide-react';
+import { ImagePlus, Video, MapPin, UserPlus, MoreHorizontal, X, Loader2, Globe, Users, Lock, ChevronDown } from 'lucide-react';
 import { compressImage, FILE_LIMITS, getVideoDuration } from '@/utils/imageCompression';
+import { EmojiPicker } from './EmojiPicker';
 
 interface FacebookCreatePostProps {
   onPostCreated: () => void;
 }
+
+interface MediaItem {
+  file: File;
+  preview: string;
+  type: 'image' | 'video';
+}
+
+const PRIVACY_OPTIONS = [
+  { value: 'public', label: 'Công khai', icon: Globe, description: 'Tất cả mọi người' },
+  { value: 'friends', label: 'Bạn bè', icon: Users, description: 'Bạn bè của bạn' },
+  { value: 'private', label: 'Chỉ mình tôi', icon: Lock, description: 'Chỉ bạn' },
+];
 
 export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) => {
   const navigate = useNavigate();
@@ -26,10 +45,10 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(false);
-  const [image, setImage] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [video, setVideo] = useState<File | null>(null);
-  const [videoPreview, setVideoPreview] = useState<string | null>(null);
+  const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
+  const [privacy, setPrivacy] = useState('public');
+  const [isDragging, setIsDragging] = useState(false);
+  const [showMediaUpload, setShowMediaUpload] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -46,66 +65,99 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
     fetchProfile();
   }, []);
 
-  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > FILE_LIMITS.IMAGE_MAX_SIZE) {
-        toast.error('Ảnh phải nhỏ hơn 5MB');
-        return;
-      }
-      
-      try {
-        const compressed = await compressImage(file, {
-          maxWidth: FILE_LIMITS.POST_IMAGE_MAX_WIDTH,
-          maxHeight: FILE_LIMITS.POST_IMAGE_MAX_HEIGHT,
-          quality: 0.85,
-        });
-        
-        setImage(compressed);
-        setImagePreview(URL.createObjectURL(compressed));
-        setVideo(null);
-        setVideoPreview(null);
-      } catch (error) {
-        toast.error('Không thể xử lý ảnh');
-      }
-    }
-  };
+  const handleFileSelect = async (files: FileList | null) => {
+    if (!files) return;
 
-  const handleVideoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > FILE_LIMITS.VIDEO_MAX_SIZE) {
-        toast.error('Video phải nhỏ hơn 20MB');
-        return;
+    const newMediaItems: MediaItem[] = [];
+
+    for (const file of Array.from(files)) {
+      if (mediaItems.length + newMediaItems.length >= 10) {
+        toast.error('Tối đa 10 file mỗi bài viết');
+        break;
+      }
+
+      const isImage = file.type.startsWith('image/');
+      const isVideo = file.type.startsWith('video/');
+
+      if (!isImage && !isVideo) {
+        toast.error(`File "${file.name}" không được hỗ trợ`);
+        continue;
+      }
+
+      if (isImage && file.size > FILE_LIMITS.IMAGE_MAX_SIZE) {
+        toast.error(`Ảnh "${file.name}" phải nhỏ hơn 5MB`);
+        continue;
+      }
+
+      if (isVideo && file.size > FILE_LIMITS.VIDEO_MAX_SIZE) {
+        toast.error(`Video "${file.name}" phải nhỏ hơn 20MB`);
+        continue;
       }
 
       try {
-        const duration = await getVideoDuration(file);
-        if (duration > FILE_LIMITS.VIDEO_MAX_DURATION) {
-          toast.error('Video phải ngắn hơn 3 phút');
-          return;
+        if (isVideo) {
+          const duration = await getVideoDuration(file);
+          if (duration > FILE_LIMITS.VIDEO_MAX_DURATION) {
+            toast.error(`Video "${file.name}" phải ngắn hơn 3 phút`);
+            continue;
+          }
         }
-      } catch (err) {
-        console.error('Error checking video duration:', err);
-      }
 
-      setVideo(file);
-      setVideoPreview(URL.createObjectURL(file));
-      setImage(null);
-      setImagePreview(null);
+        let processedFile = file;
+        if (isImage) {
+          processedFile = await compressImage(file, {
+            maxWidth: FILE_LIMITS.POST_IMAGE_MAX_WIDTH,
+            maxHeight: FILE_LIMITS.POST_IMAGE_MAX_HEIGHT,
+            quality: 0.85,
+          });
+        }
+
+        newMediaItems.push({
+          file: processedFile,
+          preview: URL.createObjectURL(processedFile),
+          type: isImage ? 'image' : 'video',
+        });
+      } catch (error) {
+        toast.error(`Không thể xử lý file "${file.name}"`);
+      }
     }
+
+    setMediaItems((prev) => [...prev, ...newMediaItems]);
+    setShowMediaUpload(true);
   };
 
-  const removeMedia = () => {
-    setImage(null);
-    setImagePreview(null);
-    setVideo(null);
-    setVideoPreview(null);
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    handleFileSelect(e.dataTransfer.files);
+  }, [mediaItems.length]);
+
+  const removeMedia = (index: number) => {
+    setMediaItems((prev) => {
+      const newItems = [...prev];
+      URL.revokeObjectURL(newItems[index].preview);
+      newItems.splice(index, 1);
+      return newItems;
+    });
+  };
+
+  const handleEmojiSelect = (emoji: string) => {
+    setContent((prev) => prev + emoji);
   };
 
   const handleSubmit = async () => {
-    if (!content.trim() && !image && !video) {
-      toast.error('Vui lòng thêm nội dung, ảnh hoặc video');
+    if (!content.trim() && mediaItems.length === 0) {
+      toast.error('Vui lòng thêm nội dung hoặc media');
       return;
     }
 
@@ -117,13 +169,17 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
       let imageUrl = null;
       let videoUrl = null;
 
-      if (image) {
-        const result = await uploadToR2(image, 'posts');
+      // Upload first image and first video only (DB supports single of each)
+      const firstImage = mediaItems.find((m) => m.type === 'image');
+      const firstVideo = mediaItems.find((m) => m.type === 'video');
+
+      if (firstImage) {
+        const result = await uploadToR2(firstImage.file, 'posts');
         imageUrl = result.url;
       }
 
-      if (video) {
-        const result = await uploadToR2(video, 'videos');
+      if (firstVideo) {
+        const result = await uploadToR2(firstVideo.file, 'videos');
         videoUrl = result.url;
       }
 
@@ -135,10 +191,13 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
       });
 
       if (error) throw error;
-      
+
+      // Cleanup
+      mediaItems.forEach((item) => URL.revokeObjectURL(item.preview));
       setContent('');
-      removeMedia();
+      setMediaItems([]);
       setIsDialogOpen(false);
+      setShowMediaUpload(false);
       toast.success('Đã đăng bài viết!');
       onPostCreated();
     } catch (error: any) {
@@ -148,6 +207,9 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
     }
   };
 
+  const selectedPrivacy = PRIVACY_OPTIONS.find((p) => p.value === privacy)!;
+  const PrivacyIcon = selectedPrivacy.icon;
+
   if (!profile) return null;
 
   return (
@@ -155,8 +217,8 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
       {/* Create Post Card */}
       <div className="fb-card p-4 mb-4">
         <div className="flex items-center gap-3">
-          <Avatar 
-            className="w-10 h-10 cursor-pointer"
+          <Avatar
+            className="w-10 h-10 cursor-pointer ring-2 ring-primary/20"
             onClick={() => navigate(`/profile/${profile.id}`)}
           >
             <AvatarImage src={profile.avatar_url || ''} />
@@ -182,7 +244,10 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
               <span className="font-semibold text-muted-foreground text-sm hidden sm:inline">Video trực tiếp</span>
             </button>
             <button
-              onClick={() => setIsDialogOpen(true)}
+              onClick={() => {
+                setIsDialogOpen(true);
+                setShowMediaUpload(true);
+              }}
               className="flex-1 flex items-center justify-center gap-2 py-2 hover:bg-secondary rounded-lg transition-colors"
             >
               <ImagePlus className="w-6 h-6 text-primary" />
@@ -192,7 +257,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
               onClick={() => setIsDialogOpen(true)}
               className="flex-1 flex items-center justify-center gap-2 py-2 hover:bg-secondary rounded-lg transition-colors"
             >
-              <Smile className="w-6 h-6 text-gold" />
+              <span className="text-2xl">😊</span>
               <span className="font-semibold text-muted-foreground text-sm hidden sm:inline">Cảm xúc/hoạt động</span>
             </button>
           </div>
@@ -201,15 +266,15 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
 
       {/* Create Post Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[500px] p-0">
-          <DialogHeader className="p-4 border-b border-border">
+        <DialogContent className="sm:max-w-[500px] p-0 max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader className="p-4 border-b border-border shrink-0">
             <DialogTitle className="text-center text-xl font-bold">Tạo bài viết</DialogTitle>
           </DialogHeader>
 
-          <div className="p-4">
-            {/* User Info */}
+          <div className="p-4 flex-1 overflow-y-auto">
+            {/* User Info & Privacy */}
             <div className="flex items-center gap-3 mb-4">
-              <Avatar className="w-10 h-10">
+              <Avatar className="w-10 h-10 ring-2 ring-primary/20">
                 <AvatarImage src={profile.avatar_url || ''} />
                 <AvatarFallback className="bg-primary text-primary-foreground">
                   {profile.username?.[0]?.toUpperCase()}
@@ -217,104 +282,188 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
               </Avatar>
               <div>
                 <p className="font-semibold">{profile.full_name || profile.username}</p>
-                <Button variant="secondary" size="sm" className="h-6 text-xs mt-1">
-                  🌍 Công khai
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="secondary" size="sm" className="h-6 text-xs mt-1 gap-1">
+                      <PrivacyIcon className="w-3 h-3" />
+                      {selectedPrivacy.label}
+                      <ChevronDown className="w-3 h-3" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    {PRIVACY_OPTIONS.map((option) => (
+                      <DropdownMenuItem
+                        key={option.value}
+                        onClick={() => setPrivacy(option.value)}
+                        className="gap-3"
+                      >
+                        <option.icon className="w-5 h-5" />
+                        <div>
+                          <p className="font-medium">{option.label}</p>
+                          <p className="text-xs text-muted-foreground">{option.description}</p>
+                        </div>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
 
-            {/* Content Input */}
-            <Textarea
-              placeholder={`${profile.full_name || profile.username} ơi, bạn đang nghĩ gì thế?`}
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              className="min-h-[120px] resize-none border-0 focus-visible:ring-0 text-xl placeholder:text-muted-foreground"
-              disabled={loading}
-            />
-
-            {/* Media Preview */}
-            {imagePreview && (
-              <div className="relative mt-4 rounded-lg overflow-hidden border border-border">
-                <img src={imagePreview} alt="Preview" className="w-full max-h-80 object-contain" />
-                <button
-                  onClick={removeMedia}
-                  className="absolute top-2 right-2 w-8 h-8 bg-black/60 hover:bg-black/80 rounded-full flex items-center justify-center"
-                  disabled={loading}
-                >
-                  <X className="w-5 h-5 text-white" />
-                </button>
+            {/* Content Input with Emoji */}
+            <div className="relative">
+              <Textarea
+                placeholder={`${profile.full_name || profile.username} ơi, bạn đang nghĩ gì thế?`}
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                className="min-h-[100px] resize-none border-0 focus-visible:ring-0 text-lg placeholder:text-muted-foreground pr-10"
+                disabled={loading}
+              />
+              <div className="absolute bottom-2 right-2">
+                <EmojiPicker onEmojiSelect={handleEmojiSelect} />
               </div>
-            )}
+            </div>
 
-            {videoPreview && (
-              <div className="relative mt-4 rounded-lg overflow-hidden border border-border">
-                <video src={videoPreview} controls className="w-full max-h-80" />
-                <button
-                  onClick={removeMedia}
-                  className="absolute top-2 right-2 w-8 h-8 bg-black/60 hover:bg-black/80 rounded-full flex items-center justify-center"
-                  disabled={loading}
-                >
-                  <X className="w-5 h-5 text-white" />
-                </button>
+            {/* Media Upload Area */}
+            {showMediaUpload && (
+              <div
+                className={`mt-4 border-2 border-dashed rounded-lg p-4 transition-colors ${
+                  isDragging ? 'border-primary bg-primary/5' : 'border-border'
+                }`}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+              >
+                {mediaItems.length === 0 ? (
+                  <div className="text-center py-8">
+                    <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-secondary flex items-center justify-center">
+                      <ImagePlus className="w-8 h-8 text-muted-foreground" />
+                    </div>
+                    <p className="font-medium mb-1">Thêm ảnh/video</p>
+                    <p className="text-sm text-muted-foreground mb-4">hoặc kéo và thả</p>
+                    <Input
+                      id="media-upload"
+                      type="file"
+                      accept="image/*,video/*"
+                      multiple
+                      onChange={(e) => handleFileSelect(e.target.files)}
+                      className="hidden"
+                      disabled={loading}
+                    />
+                    <Button
+                      variant="secondary"
+                      onClick={() => document.getElementById('media-upload')?.click()}
+                      disabled={loading}
+                    >
+                      Chọn từ thiết bị
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {/* Media Preview Grid */}
+                    <div className={`grid gap-2 ${mediaItems.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                      {mediaItems.map((item, index) => (
+                        <div
+                          key={index}
+                          className={`relative rounded-lg overflow-hidden ${
+                            mediaItems.length === 1 ? 'max-h-80' : 'aspect-square'
+                          }`}
+                        >
+                          {item.type === 'video' ? (
+                            <video
+                              src={item.preview}
+                              className="w-full h-full object-cover"
+                              controls
+                            />
+                          ) : (
+                            <img
+                              src={item.preview}
+                              alt={`Preview ${index + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+                          )}
+                          <button
+                            onClick={() => removeMedia(index)}
+                            className="absolute top-2 right-2 w-7 h-7 bg-black/60 hover:bg-black/80 rounded-full flex items-center justify-center"
+                            disabled={loading}
+                          >
+                            <X className="w-4 h-4 text-white" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Add More Button */}
+                    {mediaItems.length < 10 && (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          id="add-more-media"
+                          type="file"
+                          accept="image/*,video/*"
+                          multiple
+                          onChange={(e) => handleFileSelect(e.target.files)}
+                          className="hidden"
+                          disabled={loading}
+                        />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => document.getElementById('add-more-media')?.click()}
+                          disabled={loading}
+                        >
+                          <ImagePlus className="w-4 h-4 mr-2" />
+                          Thêm ảnh/video
+                        </Button>
+                        <span className="text-sm text-muted-foreground">
+                          {mediaItems.length}/10
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Close Upload Area */}
+                {mediaItems.length === 0 && (
+                  <button
+                    onClick={() => setShowMediaUpload(false)}
+                    className="absolute top-2 right-2 w-7 h-7 bg-secondary hover:bg-muted rounded-full flex items-center justify-center"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             )}
 
             {/* Add to Post */}
             <div className="mt-4 border border-border rounded-lg p-3 flex items-center justify-between">
               <span className="font-semibold text-sm">Thêm vào bài viết của bạn</span>
-              <div className="flex items-center gap-2">
-                <Input
-                  id="create-image"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  className="hidden"
-                  disabled={loading}
-                />
+              <div className="flex items-center gap-1">
                 <button
-                  onClick={() => document.getElementById('create-image')?.click()}
-                  className="w-9 h-9 rounded-full hover:bg-secondary flex items-center justify-center"
+                  onClick={() => setShowMediaUpload(true)}
+                  className="w-9 h-9 rounded-full hover:bg-secondary flex items-center justify-center transition-colors"
                   disabled={loading}
                 >
                   <ImagePlus className="w-6 h-6 text-primary" />
                 </button>
-                
-                <Input
-                  id="create-video"
-                  type="file"
-                  accept="video/*"
-                  onChange={handleVideoChange}
-                  className="hidden"
-                  disabled={loading}
-                />
-                <button
-                  onClick={() => document.getElementById('create-video')?.click()}
-                  className="w-9 h-9 rounded-full hover:bg-secondary flex items-center justify-center"
-                  disabled={loading}
-                >
-                  <Video className="w-6 h-6 text-red-500" />
-                </button>
-                
-                <button className="w-9 h-9 rounded-full hover:bg-secondary flex items-center justify-center">
+                <button className="w-9 h-9 rounded-full hover:bg-secondary flex items-center justify-center transition-colors">
                   <UserPlus className="w-6 h-6 text-blue-500" />
                 </button>
-                <button className="w-9 h-9 rounded-full hover:bg-secondary flex items-center justify-center">
-                  <Smile className="w-6 h-6 text-gold" />
-                </button>
-                <button className="w-9 h-9 rounded-full hover:bg-secondary flex items-center justify-center">
+                <EmojiPicker onEmojiSelect={handleEmojiSelect} />
+                <button className="w-9 h-9 rounded-full hover:bg-secondary flex items-center justify-center transition-colors">
                   <MapPin className="w-6 h-6 text-red-400" />
                 </button>
-                <button className="w-9 h-9 rounded-full hover:bg-secondary flex items-center justify-center">
+                <button className="w-9 h-9 rounded-full hover:bg-secondary flex items-center justify-center transition-colors">
                   <MoreHorizontal className="w-6 h-6 text-muted-foreground" />
                 </button>
               </div>
             </div>
+          </div>
 
-            {/* Submit Button */}
+          {/* Submit Button */}
+          <div className="p-4 border-t border-border shrink-0">
             <Button
               onClick={handleSubmit}
-              disabled={loading || (!content.trim() && !image && !video)}
-              className="w-full mt-4 bg-primary hover:bg-primary-hover text-primary-foreground font-semibold"
+              disabled={loading || (!content.trim() && mediaItems.length === 0)}
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
             >
               {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               {loading ? 'Đang đăng...' : 'Đăng'}

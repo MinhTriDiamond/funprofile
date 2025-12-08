@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,12 +14,10 @@ import { vi } from 'date-fns/locale';
 import { CommentSection } from './CommentSection';
 import { ImageViewer } from './ImageViewer';
 import { EditPostDialog } from './EditPostDialog';
+import { ReactionButton } from './ReactionButton';
+import { ReactionSummary } from './ReactionSummary';
+import { MediaGrid } from './MediaGrid';
 import {
-  ThumbsUp,
-  Heart,
-  Laugh,
-  Frown,
-  Angry,
   MessageCircle,
   Share2,
   MoreHorizontal,
@@ -48,77 +45,94 @@ interface FacebookPostCardProps {
   onPostDeleted: () => void;
 }
 
+interface ReactionCount {
+  type: string;
+  count: number;
+}
+
 export const FacebookPostCard = ({ post, currentUserId, onPostDeleted }: FacebookPostCardProps) => {
   const navigate = useNavigate();
-  const [liked, setLiked] = useState(false);
-  const [likeCount, setLikeCount] = useState(0);
   const [showImageViewer, setShowImageViewer] = useState(false);
   const [commentCount, setCommentCount] = useState(0);
   const [showComments, setShowComments] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [shareCount, setShareCount] = useState(0);
-  const [showReactions, setShowReactions] = useState(false);
+  const [likeCount, setLikeCount] = useState(0);
+  const [currentReaction, setCurrentReaction] = useState<string | null>(null);
+  const [reactionCounts, setReactionCounts] = useState<ReactionCount[]>([]);
 
   useEffect(() => {
     const fetchPostData = async () => {
+      // Fetch reactions with types
       const { data: reactions } = await supabase
         .from('reactions')
-        .select('id, user_id')
+        .select('id, user_id, type')
         .eq('post_id', post.id)
         .is('comment_id', null);
-      
+
       if (reactions) {
         setLikeCount(reactions.length);
-        setLiked(reactions.some((r) => r.user_id === currentUserId));
+        
+        // Get current user's reaction
+        const userReaction = reactions.find((r) => r.user_id === currentUserId);
+        setCurrentReaction(userReaction?.type || null);
+
+        // Count reactions by type
+        const counts: Record<string, number> = {};
+        reactions.forEach((r) => {
+          counts[r.type] = (counts[r.type] || 0) + 1;
+        });
+        setReactionCounts(
+          Object.entries(counts).map(([type, count]) => ({ type, count }))
+        );
       }
 
+      // Fetch comment count
       const { count: commentsCount } = await supabase
         .from('comments')
         .select('*', { count: 'exact', head: true })
         .eq('post_id', post.id);
-      
       setCommentCount(commentsCount || 0);
 
+      // Fetch share count
       const { count: sharesCount } = await supabase
         .from('shared_posts')
         .select('*', { count: 'exact', head: true })
         .eq('original_post_id', post.id);
-      
       setShareCount(sharesCount || 0);
     };
 
     fetchPostData();
+
+    // Subscribe to realtime updates
+    const channel = supabase
+      .channel(`post-${post.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'reactions',
+          filter: `post_id=eq.${post.id}`,
+        },
+        () => fetchPostData()
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'comments',
+          filter: `post_id=eq.${post.id}`,
+        },
+        () => fetchPostData()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [post.id, currentUserId]);
-
-  const handleLike = async () => {
-    if (!currentUserId) {
-      toast.error('Vui lòng đăng nhập để thích bài viết');
-      return;
-    }
-
-    try {
-      if (liked) {
-        await supabase
-          .from('reactions')
-          .delete()
-          .eq('post_id', post.id)
-          .eq('user_id', currentUserId)
-          .is('comment_id', null);
-        
-        setLiked(false);
-        setLikeCount((prev) => prev - 1);
-      } else {
-        await supabase.from('reactions').insert({
-          post_id: post.id,
-          user_id: currentUserId,
-        });
-        setLiked(true);
-        setLikeCount((prev) => prev + 1);
-      }
-    } catch (error: any) {
-      toast.error('Không thể cập nhật reaction');
-    }
-  };
 
   const handleDelete = async () => {
     try {
@@ -150,35 +164,40 @@ export const FacebookPostCard = ({ post, currentUserId, onPostDeleted }: Faceboo
       });
 
       if (error) throw error;
-      setShareCount(prev => prev + 1);
+      setShareCount((prev) => prev + 1);
       toast.success('Đã chia sẻ bài viết!');
     } catch (error: any) {
       toast.error('Không thể chia sẻ');
     }
   };
 
-  const reactions = [
-    { icon: '👍', label: 'Thích', color: 'text-blue-500' },
-    { icon: '❤️', label: 'Yêu thích', color: 'text-red-500' },
-    { icon: '😆', label: 'Haha', color: 'text-yellow-500' },
-    { icon: '😮', label: 'Wow', color: 'text-yellow-500' },
-    { icon: '😢', label: 'Buồn', color: 'text-yellow-500' },
-    { icon: '😠', label: 'Phẫn nộ', color: 'text-orange-500' },
-  ];
+  const handleReactionChange = (newCount: number, newReaction: string | null) => {
+    setLikeCount(newCount);
+    setCurrentReaction(newReaction);
+  };
+
+  // Prepare media items for MediaGrid
+  const mediaItems = [];
+  if (post.image_url) {
+    mediaItems.push({ url: post.image_url, type: 'image' as const });
+  }
+  if (post.video_url) {
+    mediaItems.push({ url: post.video_url, type: 'video' as const });
+  }
 
   return (
     <>
-      <div className="fb-card mb-4">
+      <div className="fb-card mb-4 overflow-hidden">
         {/* Post Header */}
         <div className="flex items-start justify-between p-4">
           <div className="flex items-center gap-3">
             <Avatar
-              className="w-10 h-10 cursor-pointer"
+              className="w-10 h-10 cursor-pointer ring-2 ring-primary/20"
               onClick={() => navigate(`/profile/${post.user_id}`)}
             >
-              <AvatarImage src={post.profiles.avatar_url || ''} />
+              <AvatarImage src={post.profiles?.avatar_url || ''} />
               <AvatarFallback className="bg-primary text-primary-foreground">
-                {post.profiles.username?.[0]?.toUpperCase()}
+                {post.profiles?.username?.[0]?.toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <div>
@@ -186,13 +205,13 @@ export const FacebookPostCard = ({ post, currentUserId, onPostDeleted }: Faceboo
                 className="font-semibold cursor-pointer hover:underline"
                 onClick={() => navigate(`/profile/${post.user_id}`)}
               >
-                {post.profiles.username}
+                {post.profiles?.username}
               </h3>
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
                 <span>
-                  {formatDistanceToNow(new Date(post.created_at), { 
+                  {formatDistanceToNow(new Date(post.created_at), {
                     addSuffix: true,
-                    locale: vi 
+                    locale: vi,
                   })}
                 </span>
                 <span>·</span>
@@ -203,27 +222,33 @@ export const FacebookPostCard = ({ post, currentUserId, onPostDeleted }: Faceboo
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="w-8 h-8 rounded-full hover:bg-secondary flex items-center justify-center">
+              <button className="w-8 h-8 rounded-full hover:bg-secondary flex items-center justify-center transition-colors">
                 <MoreHorizontal className="w-5 h-5" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-72">
-              <DropdownMenuItem className="cursor-pointer">
-                <Bookmark className="w-5 h-5 mr-3" />
+              <DropdownMenuItem className="cursor-pointer gap-3">
+                <Bookmark className="w-5 h-5" />
                 Lưu bài viết
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleCopyLink} className="cursor-pointer">
-                <Link2 className="w-5 h-5 mr-3" />
+              <DropdownMenuItem onClick={handleCopyLink} className="cursor-pointer gap-3">
+                <Link2 className="w-5 h-5" />
                 Sao chép liên kết
               </DropdownMenuItem>
               {post.user_id === currentUserId && (
                 <>
-                  <DropdownMenuItem onClick={() => setShowEditDialog(true)} className="cursor-pointer">
-                    <Pencil className="w-5 h-5 mr-3" />
+                  <DropdownMenuItem
+                    onClick={() => setShowEditDialog(true)}
+                    className="cursor-pointer gap-3"
+                  >
+                    <Pencil className="w-5 h-5" />
                     Chỉnh sửa bài viết
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleDelete} className="cursor-pointer text-destructive">
-                    <Trash2 className="w-5 h-5 mr-3" />
+                  <DropdownMenuItem
+                    onClick={handleDelete}
+                    className="cursor-pointer text-destructive gap-3"
+                  >
+                    <Trash2 className="w-5 h-5" />
                     Xóa bài viết
                   </DropdownMenuItem>
                 </>
@@ -235,92 +260,34 @@ export const FacebookPostCard = ({ post, currentUserId, onPostDeleted }: Faceboo
         {/* Post Content */}
         {post.content && (
           <div className="px-4 pb-3">
-            <p className="whitespace-pre-wrap break-words">{post.content}</p>
+            <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed">
+              {post.content}
+            </p>
           </div>
         )}
 
         {/* Post Media */}
-        {post.image_url && (
-          <div className="cursor-pointer" onClick={() => setShowImageViewer(true)}>
-            <img
-              src={post.image_url}
-              alt="Post"
-              loading="lazy"
-              className="w-full max-h-[600px] object-contain bg-black"
-            />
-          </div>
-        )}
-
-        {post.video_url && (
-          <video
-            controls
-            preload="metadata"
-            className="w-full max-h-[600px]"
-            src={post.video_url}
-          />
-        )}
+        <MediaGrid media={mediaItems} />
 
         {/* Reactions Summary */}
-        {(likeCount > 0 || commentCount > 0 || shareCount > 0) && (
-          <div className="flex items-center justify-between px-4 py-2 text-sm text-muted-foreground">
-            <div className="flex items-center gap-1">
-              {likeCount > 0 && (
-                <>
-                  <div className="flex -space-x-1">
-                    <span className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center text-xs">👍</span>
-                    <span className="w-5 h-5 rounded-full bg-red-500 flex items-center justify-center text-xs">❤️</span>
-                  </div>
-                  <span className="ml-1">{likeCount}</span>
-                </>
-              )}
-            </div>
-            <div className="flex items-center gap-3">
-              {commentCount > 0 && (
-                <button
-                  onClick={() => setShowComments(!showComments)}
-                  className="hover:underline"
-                >
-                  {commentCount} bình luận
-                </button>
-              )}
-              {shareCount > 0 && <span>{shareCount} lượt chia sẻ</span>}
-            </div>
-          </div>
-        )}
+        <ReactionSummary
+          reactions={reactionCounts}
+          totalCount={likeCount}
+          commentCount={commentCount}
+          shareCount={shareCount}
+          onCommentClick={() => setShowComments(!showComments)}
+        />
 
         {/* Action Buttons */}
         <div className="border-t border-border mx-4">
           <div className="flex items-center py-1">
-            <div
-              className="relative flex-1"
-              onMouseEnter={() => setShowReactions(true)}
-              onMouseLeave={() => setShowReactions(false)}
-            >
-              <button
-                onClick={handleLike}
-                className={`w-full flex items-center justify-center gap-2 py-2 rounded-lg transition-colors hover:bg-secondary ${
-                  liked ? 'text-blue-500' : 'text-muted-foreground'
-                }`}
-              >
-                <ThumbsUp className={`w-5 h-5 ${liked ? 'fill-current' : ''}`} />
-                <span className="font-semibold text-sm">Thích</span>
-              </button>
-
-              {/* Reactions Popup */}
-              {showReactions && (
-                <div className="absolute bottom-full left-0 mb-2 bg-card rounded-full shadow-lg border border-border p-1 flex gap-1 reaction-pop">
-                  {reactions.map((reaction, index) => (
-                    <button
-                      key={index}
-                      className="w-10 h-10 flex items-center justify-center text-2xl hover:scale-125 transition-transform"
-                      onClick={handleLike}
-                    >
-                      {reaction.icon}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            <ReactionButton
+              postId={post.id}
+              currentUserId={currentUserId}
+              initialReaction={currentReaction}
+              likeCount={likeCount}
+              onReactionChange={handleReactionChange}
+            />
 
             <button
               onClick={() => setShowComments(!showComments)}
@@ -354,7 +321,7 @@ export const FacebookPostCard = ({ post, currentUserId, onPostDeleted }: Faceboo
           <div className="border-t border-border px-4 py-3">
             <CommentSection
               postId={post.id}
-              onCommentAdded={() => setCommentCount(prev => prev + 1)}
+              onCommentAdded={() => setCommentCount((prev) => prev + 1)}
             />
           </div>
         )}

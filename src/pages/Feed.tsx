@@ -34,7 +34,20 @@ const Feed = () => {
       }
     });
 
-    return () => subscription.unsubscribe();
+    // Realtime subscription for new posts
+    const postsChannel = supabase
+      .channel('feed-posts')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'posts' },
+        () => fetchPosts()
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+      supabase.removeChannel(postsChannel);
+    };
   }, [navigate]);
 
   const fetchPosts = async () => {
