@@ -1,6 +1,7 @@
 /**
  * Image compression utility for optimizing uploads
  * Resizes and compresses images to reduce storage and improve loading times
+ * Uses WebP format for better compression (30-50% smaller than JPEG)
  */
 
 export interface CompressionOptions {
@@ -8,23 +9,41 @@ export interface CompressionOptions {
   maxHeight?: number;
   quality?: number; // 0 to 1
   outputFormat?: 'image/jpeg' | 'image/webp' | 'image/png';
+  targetSizeKB?: number; // Target file size in KB
 }
 
 const DEFAULT_OPTIONS: CompressionOptions = {
   maxWidth: 1920,
   maxHeight: 1920,
-  quality: 0.85,
-  outputFormat: 'image/jpeg',
+  quality: 0.80, // Reduced for better compression
+  outputFormat: 'image/webp', // WebP for better compression
+  targetSizeKB: 150, // Target <150KB
 };
 
 /**
- * Compress and resize an image file
+ * Check if browser supports WebP
+ */
+const supportsWebP = (): boolean => {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1;
+  canvas.height = 1;
+  return canvas.toDataURL('image/webp').indexOf('data:image/webp') === 0;
+};
+
+/**
+ * Compress and resize an image file with WebP support
  */
 export const compressImage = async (
   file: File,
   options: CompressionOptions = {}
 ): Promise<File> => {
-  const opts = { ...DEFAULT_OPTIONS, ...options };
+  // Check WebP support, fallback to JPEG if not supported
+  const webpSupported = supportsWebP();
+  const opts = { 
+    ...DEFAULT_OPTIONS, 
+    ...options,
+    outputFormat: webpSupported ? (options.outputFormat || 'image/webp') : 'image/jpeg'
+  };
 
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -32,7 +51,7 @@ export const compressImage = async (
     reader.onload = (e) => {
       const img = new Image();
       
-      img.onload = () => {
+      img.onload = async () => {
         // Calculate new dimensions while maintaining aspect ratio
         let { width, height } = img;
         
@@ -58,26 +77,44 @@ export const compressImage = async (
         ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(img, 0, 0, width, height);
 
-        // Convert to blob
-        canvas.toBlob(
-          (blob) => {
-            if (!blob) {
-              reject(new Error('Failed to compress image'));
-              return;
-            }
+        // Iterative compression to reach target size
+        let quality = opts.quality!;
+        let blob: Blob | null = null;
+        const targetBytes = (opts.targetSizeKB || 150) * 1024;
+        
+        // Try up to 5 iterations to reach target size
+        for (let i = 0; i < 5; i++) {
+          blob = await new Promise<Blob | null>((res) => {
+            canvas.toBlob(res, opts.outputFormat, quality);
+          });
+          
+          if (!blob) break;
+          
+          // If under target size, we're done
+          if (blob.size <= targetBytes) break;
+          
+          // Reduce quality for next iteration
+          quality = Math.max(0.3, quality - 0.15);
+        }
 
-            // Create new file from blob
-            const compressedFile = new File(
-              [blob],
-              file.name.replace(/\.[^/.]+$/, '') + '.jpg',
-              { type: opts.outputFormat }
-            );
+        if (!blob) {
+          reject(new Error('Failed to compress image'));
+          return;
+        }
 
-            resolve(compressedFile);
-          },
-          opts.outputFormat,
-          opts.quality
+        // Determine file extension based on format
+        const ext = opts.outputFormat === 'image/webp' ? 'webp' : 
+                    opts.outputFormat === 'image/png' ? 'png' : 'jpg';
+
+        // Create new file from blob
+        const compressedFile = new File(
+          [blob],
+          file.name.replace(/\.[^/.]+$/, '') + '.' + ext,
+          { type: opts.outputFormat }
         );
+
+        console.log(`Image compressed: ${(file.size / 1024).toFixed(1)}KB → ${(compressedFile.size / 1024).toFixed(1)}KB (${ext.toUpperCase()})`);
+        resolve(compressedFile);
       };
 
       img.onerror = () => reject(new Error('Failed to load image'));
@@ -86,6 +123,30 @@ export const compressImage = async (
 
     reader.onerror = () => reject(new Error('Failed to read file'));
     reader.readAsDataURL(file);
+  });
+};
+
+/**
+ * Compress image for avatar (smaller size, more aggressive compression)
+ */
+export const compressAvatar = async (file: File): Promise<File> => {
+  return compressImage(file, {
+    maxWidth: 256,
+    maxHeight: 256,
+    quality: 0.75,
+    targetSizeKB: 50, // Avatars should be very small
+  });
+};
+
+/**
+ * Compress image for post (balanced quality and size)
+ */
+export const compressPostImage = async (file: File): Promise<File> => {
+  return compressImage(file, {
+    maxWidth: 1200, // Reduced from 1920 for faster loading
+    maxHeight: 1200,
+    quality: 0.80,
+    targetSizeKB: 150,
   });
 };
 
@@ -111,13 +172,13 @@ export const getVideoDuration = (file: File): Promise<number> => {
  * Validate and get optimized file size limits
  */
 export const FILE_LIMITS = {
-  IMAGE_MAX_SIZE: 5 * 1024 * 1024, // 5MB before compression
-  VIDEO_MAX_SIZE: 20 * 1024 * 1024, // 20MB (reduced from 50MB)
+  IMAGE_MAX_SIZE: 10 * 1024 * 1024, // 10MB before compression
+  VIDEO_MAX_SIZE: 50 * 1024 * 1024, // 50MB
   VIDEO_MAX_DURATION: 180, // 3 minutes
-  AVATAR_MAX_WIDTH: 512,
-  AVATAR_MAX_HEIGHT: 512,
-  COVER_MAX_WIDTH: 1920,
-  COVER_MAX_HEIGHT: 600,
-  POST_IMAGE_MAX_WIDTH: 1920,
-  POST_IMAGE_MAX_HEIGHT: 1920,
+  AVATAR_MAX_WIDTH: 256,
+  AVATAR_MAX_HEIGHT: 256,
+  COVER_MAX_WIDTH: 1200,
+  COVER_MAX_HEIGHT: 400,
+  POST_IMAGE_MAX_WIDTH: 1200,
+  POST_IMAGE_MAX_HEIGHT: 1200,
 };
