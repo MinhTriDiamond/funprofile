@@ -286,8 +286,38 @@ const WalletCenterContainer = () => {
 
   const shortenedAddress = address ? `${address.slice(0, 6)}...${address.slice(-4)}` : '0x0000...0000';
 
-  const formatNumber = (num: number) => {
-    return new Intl.NumberFormat('vi-VN').format(Math.floor(num));
+  // Format number with dot as thousands separator, comma for decimal (Vietnamese/European style like MetaMask)
+  const formatNumber = (num: number, decimals: number = 0) => {
+    const fixed = num.toFixed(decimals);
+    const [integerPart, decimalPart] = fixed.split('.');
+    // Add thousand separators (dots)
+    const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    if (decimals > 0 && decimalPart) {
+      return `${formattedInteger},${decimalPart}`;
+    }
+    return formattedInteger;
+  };
+
+  // Format USD value (always 2 decimals)
+  const formatUsd = (num: number) => {
+    return `$${formatNumber(num, 2)}`;
+  };
+
+  // Format token balance (remove trailing zeros, max 6 decimals)
+  const formatTokenBalance = (num: number, symbol: string) => {
+    // For very small numbers, show more decimals
+    if (num > 0 && num < 0.000001) {
+      return formatNumber(num, 8);
+    }
+    if (num > 0 && num < 0.01) {
+      return formatNumber(num, 6);
+    }
+    // For whole numbers, no decimals
+    if (Number.isInteger(num) || Math.abs(num - Math.round(num)) < 0.0001) {
+      return formatNumber(Math.round(num), 0);
+    }
+    // For regular numbers, up to 4 decimals
+    return formatNumber(num, 4);
   };
 
   const getTransactionIcon = (type: string) => {
@@ -450,28 +480,12 @@ const WalletCenterContainer = () => {
 
         {/* Total Assets */}
         <div className="bg-gradient-to-br from-emerald-800 via-emerald-600 to-green-400 p-6">
-          <div className="flex items-center justify-between mb-1">
-            <p className="text-white/80 text-sm">Total Assets on BNB Chain:</p>
-            {!isTokensLoading && prices.BNB && (
-              <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-                prices.BNB.usd_24h_change >= 0 
-                  ? 'bg-green-400/30 text-green-100' 
-                  : 'bg-red-400/30 text-red-100'
-              }`}>
-                {prices.BNB.usd_24h_change >= 0 ? (
-                  <TrendingUp className="w-3 h-3" />
-                ) : (
-                  <TrendingDown className="w-3 h-3" />
-                )}
-                <span>24h: {prices.BNB.usd_24h_change >= 0 ? '+' : ''}{prices.BNB.usd_24h_change.toFixed(2)}%</span>
-              </div>
-            )}
-          </div>
+          <p className="text-white/80 text-sm mb-1">Total Assets</p>
           {isTokensLoading ? (
             <div className="animate-pulse bg-white/20 rounded h-12 w-64 mb-6" />
           ) : (
             <p className="text-4xl md:text-5xl font-bold text-white mb-6" style={{ textShadow: '2px 2px 8px rgba(0,0,0,0.2)' }}>
-              ~${formatNumber(totalUsdValue)}.00 USD
+              {formatUsd(totalUsdValue)}
             </p>
           )}
           
@@ -522,7 +536,7 @@ const WalletCenterContainer = () => {
         <div className="flex items-center gap-3">
           <Gift className="w-6 h-6 text-yellow-900" />
           <span className="font-semibold text-yellow-900">
-            Reward Ready to Claim: {formatNumber(claimableReward)} CAMLY (~${formatNumber(claimableReward * 0.066)})
+            Reward Ready to Claim: {formatNumber(claimableReward, 0)} CAMLY (~{formatUsd(claimableReward * 0.000003)})
           </span>
         </div>
         <Button 
@@ -568,6 +582,7 @@ const WalletCenterContainer = () => {
             <div className="divide-y">
               {tokens.map((token) => (
                 <div key={token.symbol} className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
+                  {/* Left: Token icon + name + 24h change */}
                   <div className="flex items-center gap-3">
                     <img 
                       src={token.symbol === 'CAMLY' ? camlyCoinLogo : token.icon} 
@@ -575,49 +590,30 @@ const WalletCenterContainer = () => {
                       className="w-10 h-10 rounded-full" 
                     />
                     <div>
-                      <p className="font-semibold">{token.symbol}</p>
-                      <p className="text-xs text-muted-foreground">{token.name}</p>
+                      <p className="font-semibold">{token.name}</p>
+                      <div className={`flex items-center text-xs ${token.change24h >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        <span>{token.change24h >= 0 ? '+' : ''}{token.change24h.toFixed(2)}%</span>
+                      </div>
                     </div>
                   </div>
                   
-                  {/* Price info */}
-                  <div className="text-center hidden sm:block">
-                    <p className="text-sm font-medium">
-                      ${token.price < 0.01 ? token.price.toFixed(6) : token.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </p>
-                    <div className={`flex items-center justify-center text-xs ${token.change24h >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {token.change24h >= 0 ? (
-                        <TrendingUp className="w-3 h-3 mr-0.5" />
-                      ) : (
-                        <TrendingDown className="w-3 h-3 mr-0.5" />
-                      )}
-                      <span>{token.change24h >= 0 ? '+' : ''}{token.change24h.toFixed(2)}%</span>
-                    </div>
-                  </div>
-                  
-                  {/* Balance & USD value */}
+                  {/* Right: USD value (bold, larger) + token balance (smaller, gray) */}
                   <div className="text-right">
-                    <p className="font-semibold">
-                      {token.isLoading ? (
-                        <span className="animate-pulse bg-gray-200 rounded w-16 h-4 inline-block" />
-                      ) : (
-                        <>
-                          {token.symbol === 'BTCB' 
-                            ? token.balance.toFixed(6) 
-                            : token.symbol === 'CAMLY'
-                              ? formatNumber(token.balance)
-                              : token.balance.toFixed(4)
-                          } {token.symbol}
-                        </>
-                      )}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {token.isLoading ? (
-                        <span className="animate-pulse bg-gray-200 rounded w-12 h-3 inline-block" />
-                      ) : (
-                        `~$${formatNumber(token.usdValue)} USD`
-                      )}
-                    </p>
+                    {token.isLoading ? (
+                      <>
+                        <span className="animate-pulse bg-gray-200 rounded w-16 h-5 inline-block mb-1" />
+                        <span className="animate-pulse bg-gray-200 rounded w-20 h-4 inline-block" />
+                      </>
+                    ) : (
+                      <>
+                        <p className="font-bold text-base">
+                          {formatUsd(token.usdValue)}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {formatTokenBalance(token.balance, token.symbol)} {token.symbol}
+                        </p>
+                      </>
+                    )}
                   </div>
                 </div>
               ))}
