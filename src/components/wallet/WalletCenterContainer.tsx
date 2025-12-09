@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { ReceiveTab } from './ReceiveTab';
 import { SendTab } from './SendTab';
 import camlyCoinLogo from '@/assets/camly-coin-logo.png';
+import metamaskLogo from '@/assets/metamask-logo.png';
 
 interface Profile {
   username: string;
@@ -316,7 +317,7 @@ const WalletCenterContainer = () => {
             ) : (
               <>
                 <img 
-                  src="https://raw.githubusercontent.com/MetaMask/brand-resources/master/SVG/metamask-fox.svg" 
+                  src={metamaskLogo} 
                   alt="MetaMask" 
                   className="w-6 h-6 mr-2"
                 />
