@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useAccount, useConnect, useDisconnect, useSwitchChain } from 'wagmi';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useAccount, useConnect, useDisconnect, useSwitchChain, useReconnect } from 'wagmi';
 import { bsc } from 'wagmi/chains';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -30,12 +30,14 @@ interface Transaction {
 }
 
 const WALLET_CONNECTED_KEY = 'fun_profile_wallet_connected';
+const CONNECTION_TIMEOUT = 10000; // 10 seconds timeout
 
 const WalletCenterContainer = () => {
-  const { address, isConnected, chainId } = useAccount();
-  const { connect, connectors, isPending: isConnecting } = useConnect();
+  const { address, isConnected, isConnecting: accountConnecting, chainId } = useAccount();
+  const { connect, connectors, isPending, status: connectStatus } = useConnect();
   const { disconnect } = useDisconnect();
   const { switchChain } = useSwitchChain();
+  const { reconnect } = useReconnect();
   
   // Use real token balances hook
   const { tokens, totalUsdValue, isLoading: isTokensLoading, refetch: refetchTokens, prices } = useTokenBalances();
@@ -46,30 +48,54 @@ const WalletCenterContainer = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [showReceive, setShowReceive] = useState(false);
   const [showSend, setShowSend] = useState(false);
+  const [isConnectingWithTimeout, setIsConnectingWithTimeout] = useState(false);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
+  const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [manuallyDisconnected, setManuallyDisconnected] = useState(() => {
     return localStorage.getItem(WALLET_CONNECTED_KEY) !== 'true';
   });
 
-  // Save wallet connection state to localStorage and reset manuallyDisconnected when connected
+  // Auto-reconnect on page load if previously connected
   useEffect(() => {
-    if (isConnected && !manuallyDisconnected) {
-      localStorage.setItem(WALLET_CONNECTED_KEY, 'true');
+    const wasConnected = localStorage.getItem(WALLET_CONNECTED_KEY) === 'true';
+    if (wasConnected && !isConnected && !manuallyDisconnected) {
+      reconnect();
     }
-    // Reset manuallyDisconnected when wallet connects successfully
+  }, []);
+
+  // Clear timeout and update state when connection succeeds
+  useEffect(() => {
     if (isConnected) {
+      // Clear any pending timeout
+      if (connectionTimeoutRef.current) {
+        clearTimeout(connectionTimeoutRef.current);
+        connectionTimeoutRef.current = null;
+      }
+      // Update states
+      setIsConnectingWithTimeout(false);
+      setConnectionError(null);
       setManuallyDisconnected(false);
+      localStorage.setItem(WALLET_CONNECTED_KEY, 'true');
     }
   }, [isConnected]);
 
   // Check and switch to BNB Chain if wrong network
   useEffect(() => {
     if (isConnected && chainId && chainId !== bsc.id) {
-      toast.error('Vui lòng chuyển sang BNB Smart Chain', {
-        action: {
-          label: 'Switch Network',
-          onClick: () => handleSwitchNetwork(),
-        },
-      });
+      switchChain(
+        { chainId: bsc.id },
+        {
+          onSuccess: () => toast.success('Đã chuyển sang BNB Smart Chain'),
+          onError: () => {
+            toast.error('Vui lòng chuyển sang BNB Smart Chain', {
+              action: {
+                label: 'Switch Network',
+                onClick: () => handleSwitchNetwork(),
+              },
+            });
+          },
+        }
+      );
     }
   }, [isConnected, chainId]);
 
@@ -163,34 +189,75 @@ const WalletCenterContainer = () => {
     }
   };
 
-  const handleConnect = async () => {
-    const metamaskConnector = connectors.find(c => c.name === 'MetaMask');
-    if (metamaskConnector) {
-      try {
-        connect(
-          { connector: metamaskConnector, chainId: bsc.id },
-          {
-            onSuccess: () => {
-              toast.success('Kết nối ví thành công!');
-              localStorage.setItem(WALLET_CONNECTED_KEY, 'true');
-            },
-            onError: (error) => {
-              if (error.message.includes('User rejected')) {
-                toast.error('Bạn đã từ chối kết nối ví');
-              } else {
-                toast.error('Không thể kết nối ví. Vui lòng thử lại.');
-              }
-            },
-          }
-        );
-      } catch (error) {
-        toast.error('Không thể kết nối ví');
-      }
-    } else {
+  const handleConnect = useCallback(async () => {
+    // Clear previous error
+    setConnectionError(null);
+    
+    // Find MetaMask connector or any injected connector
+    const metamaskConnector = connectors.find(c => c.name === 'MetaMask') || connectors.find(c => c.id === 'injected');
+    
+    if (!metamaskConnector) {
       toast.error('Vui lòng cài đặt MetaMask để tiếp tục');
       window.open('https://metamask.io/download/', '_blank');
+      return;
     }
-  };
+
+    // Start connecting with timeout
+    setIsConnectingWithTimeout(true);
+    
+    // Set timeout for connection
+    connectionTimeoutRef.current = setTimeout(() => {
+      setIsConnectingWithTimeout(false);
+      setConnectionError('Kết nối quá thời gian. Vui lòng thử lại.');
+      toast.error('Kết nối quá thời gian (10 giây). Vui lòng thử lại.');
+    }, CONNECTION_TIMEOUT);
+
+    try {
+      connect(
+        { connector: metamaskConnector, chainId: bsc.id },
+        {
+          onSuccess: () => {
+            // Clear timeout
+            if (connectionTimeoutRef.current) {
+              clearTimeout(connectionTimeoutRef.current);
+              connectionTimeoutRef.current = null;
+            }
+            setIsConnectingWithTimeout(false);
+            toast.success('Kết nối ví thành công!');
+            localStorage.setItem(WALLET_CONNECTED_KEY, 'true');
+          },
+          onError: (error) => {
+            // Clear timeout
+            if (connectionTimeoutRef.current) {
+              clearTimeout(connectionTimeoutRef.current);
+              connectionTimeoutRef.current = null;
+            }
+            setIsConnectingWithTimeout(false);
+            
+            if (error.message.includes('User rejected') || error.message.includes('rejected')) {
+              setConnectionError('Bạn đã từ chối kết nối ví');
+              toast.error('Bạn đã từ chối kết nối ví');
+            } else if (error.message.includes('already pending')) {
+              setConnectionError('Đang có yêu cầu kết nối. Vui lòng kiểm tra MetaMask.');
+              toast.error('Vui lòng mở MetaMask và xác nhận kết nối');
+            } else {
+              setConnectionError('Không thể kết nối ví. Vui lòng thử lại.');
+              toast.error('Không thể kết nối ví. Vui lòng thử lại.');
+            }
+          },
+        }
+      );
+    } catch (error) {
+      // Clear timeout
+      if (connectionTimeoutRef.current) {
+        clearTimeout(connectionTimeoutRef.current);
+        connectionTimeoutRef.current = null;
+      }
+      setIsConnectingWithTimeout(false);
+      setConnectionError('Không thể kết nối ví');
+      toast.error('Không thể kết nối ví');
+    }
+  }, [connectors, connect]);
 
   const handleDisconnect = () => {
     // Set local state immediately for instant UI update
@@ -253,6 +320,18 @@ const WalletCenterContainer = () => {
     return `${days} ngày trước`;
   };
 
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (connectionTimeoutRef.current) {
+        clearTimeout(connectionTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Determine if currently connecting (either wagmi pending OR our timeout-based state)
+  const isCurrentlyConnecting = isPending || accountConnecting || isConnectingWithTimeout;
+
   // Not connected state - Show Connect Wallet button
   // Show Connect Wallet UI when not connected OR manually disconnected
   if (!isConnected || manuallyDisconnected) {
@@ -283,16 +362,23 @@ const WalletCenterContainer = () => {
             Vui lòng kết nối MetaMask để xem tài sản và thực hiện giao dịch trên BNB Smart Chain
           </p>
           
+          {/* Error message */}
+          {connectionError && (
+            <div className="mb-6 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-600 text-sm">{connectionError}</p>
+            </div>
+          )}
+          
           <Button
             onClick={handleConnect}
-            disabled={isConnecting}
-            className="bg-gradient-to-r from-emerald-600 to-green-500 hover:from-emerald-700 hover:to-green-600 text-yellow-300 font-bold text-lg px-10 py-6 rounded-xl shadow-lg hover:shadow-green-500/40 transition-all duration-300 hover:scale-105"
+            disabled={isCurrentlyConnecting}
+            className="bg-gradient-to-r from-emerald-600 to-green-500 hover:from-emerald-700 hover:to-green-600 text-yellow-300 font-bold text-lg px-10 py-6 rounded-xl shadow-lg hover:shadow-green-500/40 transition-all duration-300 hover:scale-105 disabled:opacity-70"
             style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.2)' }}
           >
-            {isConnecting ? (
+            {isCurrentlyConnecting ? (
               <>
                 <RefreshCw className="w-6 h-6 mr-2 animate-spin" />
-                Đang kết nối...
+                Đang kết nối BNB Chain...
               </>
             ) : (
               <>
@@ -305,6 +391,13 @@ const WalletCenterContainer = () => {
               </>
             )}
           </Button>
+
+          {/* Connecting status message */}
+          {isCurrentlyConnecting && (
+            <p className="text-sm text-muted-foreground mt-4">
+              Vui lòng mở MetaMask và xác nhận kết nối...
+            </p>
+          )}
 
           <p className="text-xs text-muted-foreground mt-6">
             Chưa có MetaMask?{' '}
