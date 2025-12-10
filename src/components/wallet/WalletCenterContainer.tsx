@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { useAccount, useConnect, useDisconnect, useSwitchChain, useReconnect } from 'wagmi';
+import { useState, useEffect, useCallback } from 'react';
+import { useAccount, useConnect, useDisconnect, useSwitchChain } from 'wagmi';
 import { bsc } from 'wagmi/chains';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -29,15 +29,14 @@ interface Transaction {
   created_at: string;
 }
 
-const WALLET_CONNECTED_KEY = 'fun_profile_wallet_connected';
-const CONNECTION_TIMEOUT = 30000; // 30 seconds timeout for user to respond in MetaMask
+// Key to track if user explicitly disconnected
+const WALLET_DISCONNECTED_KEY = 'fun_profile_wallet_disconnected';
 
 const WalletCenterContainer = () => {
-  const { address, isConnected, isConnecting: accountConnecting, chainId } = useAccount();
-  const { connect, connectors, isPending, status: connectStatus } = useConnect();
+  const { address, isConnected, chainId } = useAccount();
+  const { connect, connectors, isPending } = useConnect();
   const { disconnect } = useDisconnect();
   const { switchChain } = useSwitchChain();
-  const { reconnect } = useReconnect();
   
   // Use real token balances hook
   const { tokens, totalUsdValue, isLoading: isTokensLoading, refetch: refetchTokens, prices } = useTokenBalances();
@@ -48,36 +47,24 @@ const WalletCenterContainer = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [showReceive, setShowReceive] = useState(false);
   const [showSend, setShowSend] = useState(false);
-  const [isConnectingWithTimeout, setIsConnectingWithTimeout] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
-  const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const [manuallyDisconnected, setManuallyDisconnected] = useState(() => {
-    return localStorage.getItem(WALLET_CONNECTED_KEY) !== 'true';
+  
+  // Track if user explicitly disconnected - this prevents auto-reconnect
+  const [userDisconnected, setUserDisconnected] = useState(() => {
+    return localStorage.getItem(WALLET_DISCONNECTED_KEY) === 'true';
   });
 
-  // Auto-reconnect on page load if previously connected
+  // When wallet connects successfully, clear the disconnected flag
   useEffect(() => {
-    const wasConnected = localStorage.getItem(WALLET_CONNECTED_KEY) === 'true';
-    if (wasConnected && !isConnected && !manuallyDisconnected) {
-      reconnect();
+    if (isConnected && userDisconnected) {
+      // Small delay to ensure wagmi has fully connected
+      const timer = setTimeout(() => {
+        setUserDisconnected(false);
+        localStorage.removeItem(WALLET_DISCONNECTED_KEY);
+      }, 300);
+      return () => clearTimeout(timer);
     }
-  }, []);
-
-  // Clear timeout and update state when connection succeeds
-  useEffect(() => {
-    if (isConnected) {
-      // Clear any pending timeout
-      if (connectionTimeoutRef.current) {
-        clearTimeout(connectionTimeoutRef.current);
-        connectionTimeoutRef.current = null;
-      }
-      // Update states
-      setIsConnectingWithTimeout(false);
-      setConnectionError(null);
-      setManuallyDisconnected(false);
-      localStorage.setItem(WALLET_CONNECTED_KEY, 'true');
-    }
-  }, [isConnected]);
+  }, [isConnected, userDisconnected]);
 
   // Check and switch to BNB Chain if wrong network
   useEffect(() => {
@@ -189,12 +176,13 @@ const WalletCenterContainer = () => {
     }
   };
 
-  const handleConnect = useCallback(async () => {
-    // Clear previous error
+  const handleConnect = useCallback(() => {
+    // Clear previous state
     setConnectionError(null);
-    setManuallyDisconnected(false);
+    setUserDisconnected(false);
+    localStorage.removeItem(WALLET_DISCONNECTED_KEY);
     
-    // Find MetaMask connector or any injected connector
+    // Find MetaMask connector
     const metamaskConnector = connectors.find(c => c.name === 'MetaMask') || connectors.find(c => c.id === 'injected');
     
     if (!metamaskConnector) {
@@ -210,37 +198,15 @@ const WalletCenterContainer = () => {
       return;
     }
 
-    // Start connecting
-    setIsConnectingWithTimeout(true);
-    
-    // Set timeout for connection
-    connectionTimeoutRef.current = setTimeout(() => {
-      setIsConnectingWithTimeout(false);
-      setConnectionError('Kết nối quá thời gian. Vui lòng thử lại.');
-      toast.error('Kết nối quá thời gian. Vui lòng thử lại.');
-    }, CONNECTION_TIMEOUT);
-
-    // Use wagmi connect with callbacks
+    // Use wagmi connect - it handles pending states automatically
     connect(
       { connector: metamaskConnector, chainId: bsc.id },
       {
         onSuccess: () => {
-          if (connectionTimeoutRef.current) {
-            clearTimeout(connectionTimeoutRef.current);
-            connectionTimeoutRef.current = null;
-          }
-          setIsConnectingWithTimeout(false);
           setConnectionError(null);
           toast.success('Kết nối ví thành công!');
-          localStorage.setItem(WALLET_CONNECTED_KEY, 'true');
         },
         onError: (error: Error) => {
-          if (connectionTimeoutRef.current) {
-            clearTimeout(connectionTimeoutRef.current);
-            connectionTimeoutRef.current = null;
-          }
-          setIsConnectingWithTimeout(false);
-          
           const errorMsg = error?.message || '';
           if (errorMsg.includes('User rejected') || errorMsg.includes('rejected')) {
             setConnectionError('Bạn đã từ chối kết nối ví');
@@ -283,10 +249,9 @@ const WalletCenterContainer = () => {
   }, [refetchTokens]);
 
   const handleDisconnect = () => {
-    // Set local state immediately for instant UI update
-    setManuallyDisconnected(true);
-    // Clear localStorage
-    localStorage.removeItem(WALLET_CONNECTED_KEY);
+    // Set disconnected flag immediately for instant UI update
+    setUserDisconnected(true);
+    localStorage.setItem(WALLET_DISCONNECTED_KEY, 'true');
     // Clear all wallet data
     setTransactions([]);
     setClaimableReward(0);
@@ -373,21 +338,9 @@ const WalletCenterContainer = () => {
     return `${days} ngày trước`;
   };
 
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (connectionTimeoutRef.current) {
-        clearTimeout(connectionTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  // Determine if currently connecting (either wagmi pending OR our timeout-based state)
-  const isCurrentlyConnecting = isPending || accountConnecting || isConnectingWithTimeout;
-
   // Not connected state - Show Connect Wallet button
-  // Show Connect Wallet UI when not connected OR manually disconnected
-  if (!isConnected || manuallyDisconnected) {
+  // Show Connect Wallet UI when not connected OR user explicitly disconnected
+  if (!isConnected || userDisconnected) {
     return (
       <div className="space-y-6">
         {/* Header */}
@@ -424,11 +377,11 @@ const WalletCenterContainer = () => {
           
           <Button
             onClick={handleConnect}
-            disabled={isCurrentlyConnecting}
+            disabled={isPending}
             className="bg-gradient-to-r from-emerald-600 to-green-500 hover:from-emerald-700 hover:to-green-600 text-yellow-300 font-bold text-lg px-10 py-6 rounded-xl shadow-lg hover:shadow-green-500/40 transition-all duration-300 hover:scale-105 disabled:opacity-70"
             style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.2)' }}
           >
-            {isCurrentlyConnecting ? (
+            {isPending ? (
               <>
                 <RefreshCw className="w-6 h-6 mr-2 animate-spin" />
                 Đang kết nối BNB Chain...
@@ -446,7 +399,7 @@ const WalletCenterContainer = () => {
           </Button>
 
           {/* Connecting status message */}
-          {isCurrentlyConnecting && (
+          {isPending && (
             <p className="text-sm text-muted-foreground mt-4">
               Vui lòng mở MetaMask và xác nhận kết nối...
             </p>

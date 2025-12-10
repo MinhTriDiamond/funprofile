@@ -4,8 +4,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
 import { RainbowKitProvider } from "@rainbow-me/rainbowkit";
 import { WagmiProvider } from "wagmi";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { config } from "@/config/web3";
 import "@rainbow-me/rainbowkit/styles.css";
+
+// Create a client for React Query (required for wagmi v2)
+const queryClient = new QueryClient();
 
 // Lazy load the wallet container - only loaded when user visits Wallet page
 const WalletCenterContainer = lazy(() => import('@/components/wallet/WalletCenterContainer'));
@@ -51,11 +55,13 @@ const Wallet = () => {
           <div className="max-w-3xl lg:max-w-4xl mx-auto">
             {/* Web3 providers only loaded here, not globally */}
             <WagmiProvider config={config}>
-              <RainbowKitProvider>
-                <Suspense fallback={<WalletLoader />}>
-                  <WalletCenterContainer />
-                </Suspense>
-              </RainbowKitProvider>
+              <QueryClientProvider client={queryClient}>
+                <RainbowKitProvider>
+                  <Suspense fallback={<WalletLoader />}>
+                    <WalletCenterContainer />
+                  </Suspense>
+                </RainbowKitProvider>
+              </QueryClientProvider>
             </WagmiProvider>
           </div>
         </div>
