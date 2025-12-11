@@ -2,19 +2,12 @@ import { lazy, Suspense, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
-import { RainbowKitProvider } from "@rainbow-me/rainbowkit";
-import { WagmiProvider } from "wagmi";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { config } from "@/config/web3";
-import "@rainbow-me/rainbowkit/styles.css";
 
-// Create a client for React Query (required for wagmi v2)
-const queryClient = new QueryClient();
+// Lazy load ALL Web3 dependencies via wrapper - this ensures wagmi/rainbowkit/viem
+// are only downloaded when user actually visits the Wallet page
+const WalletProviders = lazy(() => import('@/components/wallet/WalletProviders'));
 
-// Lazy load the wallet container - only loaded when user visits Wallet page
-const WalletCenterContainer = lazy(() => import('@/components/wallet/WalletCenterContainer'));
-
-// Loading fallback for wallet content
+// Loading fallback
 const WalletLoader = () => (
   <div className="flex items-center justify-center py-20">
     <div className="flex flex-col items-center gap-4">
@@ -53,16 +46,10 @@ const Wallet = () => {
         {/* Full width center container */}
         <div className="w-full px-4 py-6">
           <div className="max-w-3xl lg:max-w-4xl mx-auto">
-            {/* Web3 providers only loaded here, not globally */}
-            <WagmiProvider config={config}>
-              <QueryClientProvider client={queryClient}>
-                <RainbowKitProvider>
-                  <Suspense fallback={<WalletLoader />}>
-                    <WalletCenterContainer />
-                  </Suspense>
-                </RainbowKitProvider>
-              </QueryClientProvider>
-            </WagmiProvider>
+            {/* Web3 providers lazy-loaded to prevent loading on non-wallet pages */}
+            <Suspense fallback={<WalletLoader />}>
+              <WalletProviders />
+            </Suspense>
           </div>
         </div>
       </main>
