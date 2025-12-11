@@ -48,6 +48,7 @@ const WalletCenterContainer = () => {
   const [showReceive, setShowReceive] = useState(false);
   const [showSend, setShowSend] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [isConnecting, setIsConnecting] = useState(false);
   
   // Track if user explicitly disconnected - this prevents auto-reconnect
   const [userDisconnected, setUserDisconnected] = useState(() => {
@@ -176,51 +177,70 @@ const WalletCenterContainer = () => {
     }
   };
 
-  const handleConnect = useCallback(() => {
+  const handleConnect = useCallback(async () => {
     // Clear previous state
     setConnectionError(null);
     setUserDisconnected(false);
+    setIsConnecting(true);
     localStorage.removeItem(WALLET_DISCONNECTED_KEY);
-    
-    // Find MetaMask connector
-    const metamaskConnector = connectors.find(c => c.name === 'MetaMask') || connectors.find(c => c.id === 'injected');
-    
-    if (!metamaskConnector) {
-      toast.error('Vui lòng cài đặt MetaMask để tiếp tục');
-      window.open('https://metamask.io/download/', '_blank');
-      return;
-    }
 
     // Check if MetaMask is installed
-    if (typeof window !== 'undefined' && !window.ethereum) {
+    if (typeof window === 'undefined' || !window.ethereum) {
+      setIsConnecting(false);
       toast.error('Vui lòng cài đặt MetaMask để tiếp tục');
       window.open('https://metamask.io/download/', '_blank');
       return;
     }
 
-    // Use wagmi connect - it handles pending states automatically
-    connect(
-      { connector: metamaskConnector, chainId: bsc.id },
-      {
-        onSuccess: () => {
-          setConnectionError(null);
-          toast.success('Kết nối ví thành công!');
-        },
-        onError: (error: Error) => {
-          const errorMsg = error?.message || '';
-          if (errorMsg.includes('User rejected') || errorMsg.includes('rejected')) {
-            setConnectionError('Bạn đã từ chối kết nối ví');
-            toast.error('Bạn đã từ chối kết nối ví');
-          } else if (errorMsg.includes('already pending')) {
-            setConnectionError('Đang có yêu cầu kết nối. Vui lòng mở MetaMask.');
-            toast.error('Vui lòng mở MetaMask và xác nhận kết nối');
-          } else {
-            setConnectionError('Không thể kết nối ví. Vui lòng thử lại.');
-            toast.error('Không thể kết nối ví');
+    try {
+      // CRITICAL: Call eth_requestAccounts directly to trigger MetaMask popup
+      // This is necessary because wagmi's connect() doesn't always trigger popup in iframe
+      await window.ethereum.request({ method: 'eth_requestAccounts' });
+      
+      // Find MetaMask connector
+      const metamaskConnector = connectors.find(c => c.name === 'MetaMask') || connectors.find(c => c.id === 'injected');
+      
+      if (metamaskConnector) {
+        // Now sync wagmi state
+        connect(
+          { connector: metamaskConnector, chainId: bsc.id },
+          {
+            onSuccess: () => {
+              setIsConnecting(false);
+              setConnectionError(null);
+              toast.success('Kết nối ví thành công!');
+            },
+            onError: () => {
+              // Even if wagmi connect fails, we're connected via eth_requestAccounts
+              // Just refresh the page to sync state
+              setIsConnecting(false);
+              window.location.reload();
+            },
           }
-        },
+        );
+      } else {
+        setIsConnecting(false);
+        toast.success('Kết nối ví thành công!');
+        // Reload to ensure wagmi picks up the connection
+        setTimeout(() => window.location.reload(), 500);
       }
-    );
+    } catch (error: any) {
+      setIsConnecting(false);
+      const errorMsg = error?.message || '';
+      const errorCode = error?.code;
+      
+      if (errorCode === 4001 || errorMsg.includes('User rejected') || errorMsg.includes('rejected')) {
+        setConnectionError('Bạn đã từ chối kết nối ví');
+        toast.error('Bạn đã từ chối kết nối ví');
+      } else if (errorCode === -32002 || errorMsg.includes('already pending')) {
+        setConnectionError('Đang có yêu cầu kết nối. Vui lòng mở MetaMask và xác nhận.');
+        toast.info('Vui lòng mở MetaMask và xác nhận kết nối', { duration: 5000 });
+      } else {
+        setConnectionError('Không thể kết nối ví. Vui lòng thử lại.');
+        toast.error('Không thể kết nối ví');
+        console.error('Connect error:', error);
+      }
+    }
   }, [connectors, connect]);
 
   // Switch account - requests MetaMask to show account picker
@@ -377,14 +397,14 @@ const WalletCenterContainer = () => {
           
           <Button
             onClick={handleConnect}
-            disabled={isPending}
+            disabled={isConnecting}
             className="bg-gradient-to-r from-emerald-600 to-green-500 hover:from-emerald-700 hover:to-green-600 text-yellow-300 font-bold text-lg px-10 py-6 rounded-xl shadow-lg hover:shadow-green-500/40 transition-all duration-300 hover:scale-105 disabled:opacity-70"
             style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.2)' }}
           >
-            {isPending ? (
+            {isConnecting ? (
               <>
                 <RefreshCw className="w-6 h-6 mr-2 animate-spin" />
-                Đang kết nối BNB Chain...
+                Đang kết nối...
               </>
             ) : (
               <>
@@ -399,9 +419,9 @@ const WalletCenterContainer = () => {
           </Button>
 
           {/* Connecting status message */}
-          {isPending && (
-            <p className="text-sm text-muted-foreground mt-4">
-              Vui lòng mở MetaMask và xác nhận kết nối...
+          {isConnecting && (
+            <p className="text-sm text-muted-foreground mt-4 animate-pulse">
+              MetaMask popup sẽ hiện lên, vui lòng xác nhận kết nối...
             </p>
           )}
 
