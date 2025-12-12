@@ -61,12 +61,21 @@ const Feed = () => {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error fetching posts:', error);
-        throw error;
+        // Silently handle transient errors to avoid console noise
+        if (error.code !== 'PGRST301' && error.message) {
+          console.warn('Posts fetch warning:', error.message);
+        }
+        setPosts([]);
+        return;
       }
       setPosts(data || []);
-    } catch (error) {
-      console.error('Failed to fetch posts:', error);
+    } catch (err) {
+      // Handle network errors gracefully without logging [object Object]
+      const errorMessage = err instanceof Error ? err.message : 'Network error';
+      if (errorMessage !== 'Network error') {
+        console.warn('Posts fetch warning:', errorMessage);
+      }
+      setPosts([]);
     } finally {
       setLoading(false);
     }
