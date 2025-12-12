@@ -1,10 +1,10 @@
 project_id = "bhtsnervqiwchluwuxki"
 
 [functions.optimize-storage]
-verify_jwt = false
+verify_jwt = true
 
 [functions.migrate-to-r2]
-verify_jwt = false
+verify_jwt = true
 
 [functions.upload-to-r2]
 verify_jwt = true
