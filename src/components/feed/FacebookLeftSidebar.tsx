@@ -84,6 +84,36 @@ export const FacebookLeftSidebar = () => {
 
   return (
     <div className="space-y-1">
+      {/* FUN ECOSYSTEM - At the top! */}
+      <div className="group mb-4">
+        <h3 className="px-2 font-bold text-lg mb-2 text-yellow-500 drop-shadow-[0_0_8px_rgba(250,204,21,0.6)] group-hover:drop-shadow-[0_0_15px_rgba(250,204,21,0.9)] transition-all duration-300">
+          FUN ECOSYSTEM
+        </h3>
+        {shortcuts.map((shortcut) => (
+          <button
+            key={shortcut.name}
+            onClick={() => {
+              if (shortcut.isExternal) {
+                window.open(shortcut.path, '_blank', 'noopener,noreferrer');
+              } else {
+                navigate(shortcut.path);
+              }
+            }}
+            className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-secondary hover:shadow-[0_0_15px_rgba(250,204,21,0.4)] transition-all duration-300 group/item"
+          >
+            <img
+              src={shortcut.avatar}
+              alt={shortcut.name}
+              className="w-9 h-9 rounded-lg object-cover group-hover/item:shadow-[0_0_10px_rgba(250,204,21,0.5)] transition-shadow duration-300"
+            />
+            <span className="font-medium text-sm group-hover/item:text-primary transition-colors duration-300">{shortcut.name}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Divider */}
+      <div className="border-t border-border my-3" />
+
       {/* User Profile */}
       {profile && (
         <button
@@ -138,32 +168,6 @@ export const FacebookLeftSidebar = () => {
         </div>
         <span className="font-medium text-sm">{showMore ? 'Ẩn bớt' : 'Xem thêm'}</span>
       </button>
-
-      {/* Divider */}
-      <div className="border-t border-border my-3" />
-
-      {/* Shortcuts */}
-      <h3 className="px-2 text-muted-foreground font-semibold text-sm mb-2">FUN ECOSYSTEM</h3>
-      {shortcuts.map((shortcut) => (
-        <button
-          key={shortcut.name}
-          onClick={() => {
-            if (shortcut.isExternal) {
-              window.open(shortcut.path, '_blank', 'noopener,noreferrer');
-            } else {
-              navigate(shortcut.path);
-            }
-          }}
-          className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-secondary hover:shadow-[0_0_15px_rgba(250,204,21,0.4)] transition-all duration-300 group"
-        >
-          <img
-            src={shortcut.avatar}
-            alt={shortcut.name}
-            className="w-9 h-9 rounded-lg object-cover group-hover:shadow-[0_0_10px_rgba(250,204,21,0.5)] transition-shadow duration-300"
-          />
-          <span className="font-medium text-sm group-hover:text-primary transition-colors duration-300">{shortcut.name}</span>
-        </button>
-      ))}
 
       {/* Footer */}
       <div className="pt-4 px-2 text-xs text-muted-foreground">
