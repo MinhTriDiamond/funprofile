@@ -107,7 +107,7 @@ export const StoriesBar = () => {
             {/* User Avatar */}
             <div className="absolute top-3 left-3">
               <Avatar className="w-10 h-10 ring-4 ring-primary">
-                <AvatarImage src={story.avatar_url || ''} />
+                <AvatarImage src={story.avatar_url || ''} alt={`Ảnh đại diện của ${story.username}`} />
                 <AvatarFallback className="bg-primary text-primary-foreground text-sm">
                   {story.username?.[0]?.toUpperCase()}
                 </AvatarFallback>
