@@ -105,7 +105,7 @@ export const NotificationDropdown = () => {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-10 sm:w-10 relative hover:bg-primary [&:hover_svg]:text-white">
+        <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-10 sm:w-10 relative hover:bg-primary [&:hover_svg]:text-white" aria-label="Thông báo">
           <Bell className="w-4 h-4 text-gold drop-shadow-[0_0_6px_hsl(var(--gold-glow))]" />
           {unreadCount > 0 && (
             <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-xs rounded-full w-5 h-5 flex items-center justify-center">

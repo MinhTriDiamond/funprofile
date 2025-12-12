@@ -113,6 +113,7 @@ export const FacebookNavbar = () => {
             <button
               key={item.path}
               onClick={() => navigate(item.path)}
+              aria-label={item.label}
               className={`flex-1 h-full flex items-center justify-center relative transition-colors ${
                 isActive(item.path)
                   ? 'text-primary'
@@ -130,12 +131,12 @@ export const FacebookNavbar = () => {
         {/* Right Section - Actions */}
         <div className="flex items-center gap-2 w-[280px] justify-end">
           {/* Menu button for mobile */}
-          <button className="fb-icon-btn md:hidden">
+          <button className="fb-icon-btn md:hidden" aria-label="Menu">
             <Menu className="w-5 h-5" />
           </button>
 
           {/* Messenger */}
-          <button className="fb-icon-btn hidden md:flex">
+          <button className="fb-icon-btn hidden md:flex" aria-label="Tin nhắn">
             <MessageCircle className="w-5 h-5" />
           </button>
 
@@ -146,6 +147,7 @@ export const FacebookNavbar = () => {
           <button
             onClick={() => navigate('/wallet')}
             className="fb-icon-btn hidden md:flex"
+            aria-label="Ví của tôi"
           >
             <Wallet className="w-5 h-5 text-gold" />
           </button>
@@ -154,9 +156,9 @@ export const FacebookNavbar = () => {
           {isLoggedIn && profile ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="focus:outline-none">
+                <button className="focus:outline-none" aria-label="Tài khoản của tôi">
                   <Avatar className="w-10 h-10 cursor-pointer ring-2 ring-transparent hover:ring-primary/20 transition-all">
-                    <AvatarImage src={profile.avatar_url || ''} />
+                    <AvatarImage src={profile.avatar_url || ''} alt={profile.username} />
                     <AvatarFallback className="bg-primary text-primary-foreground">
                       {profile.username?.[0]?.toUpperCase() || 'U'}
                     </AvatarFallback>

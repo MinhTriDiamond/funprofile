@@ -121,7 +121,7 @@ export const SearchDialog = () => {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-10 sm:w-10 hover:bg-primary [&:hover_svg]:text-white">
+        <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-10 sm:w-10 hover:bg-primary [&:hover_svg]:text-white" aria-label="Tìm kiếm">
           <Search className="w-4 h-4 text-gold drop-shadow-[0_0_6px_hsl(var(--gold-glow))]" />
         </Button>
       </DialogTrigger>
