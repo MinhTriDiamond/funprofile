@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 import { uploadToR2 } from '@/utils/r2Upload';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -38,6 +39,10 @@ const PRIVACY_OPTIONS = [
   { value: 'friends', label: 'Bạn bè', icon: Users, description: 'Bạn bè của bạn' },
   { value: 'private', label: 'Chỉ mình tôi', icon: Lock, description: 'Chỉ bạn' },
 ];
+
+const postSchema = z.object({
+  content: z.string().max(5000, 'Bài viết phải ít hơn 5000 ký tự'),
+});
 
 export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) => {
   const navigate = useNavigate();
@@ -158,6 +163,13 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
   const handleSubmit = async () => {
     if (!content.trim() && mediaItems.length === 0) {
       toast.error('Vui lòng thêm nội dung hoặc media');
+      return;
+    }
+
+    // Validate content length
+    const validation = postSchema.safeParse({ content: content.trim() });
+    if (!validation.success) {
+      toast.error(validation.error.errors[0].message);
       return;
     }
 
