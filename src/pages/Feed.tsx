@@ -1,85 +1,101 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState, lazy, Suspense, memo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
-import { FacebookCreatePost } from '@/components/feed/FacebookCreatePost';
-import { FacebookPostCard } from '@/components/feed/FacebookPostCard';
-import { FacebookLeftSidebar } from '@/components/feed/FacebookLeftSidebar';
-import { FacebookRightSidebar } from '@/components/feed/FacebookRightSidebar';
-import { StoriesBar } from '@/components/feed/StoriesBar';
 import { Skeleton } from '@/components/ui/skeleton';
 
+// Lazy load heavy components
+const FacebookCreatePost = lazy(() => import('@/components/feed/FacebookCreatePost').then(m => ({ default: m.FacebookCreatePost })));
+const FacebookPostCard = lazy(() => import('@/components/feed/FacebookPostCard').then(m => ({ default: m.FacebookPostCard })));
+const FacebookLeftSidebar = lazy(() => import('@/components/feed/FacebookLeftSidebar').then(m => ({ default: m.FacebookLeftSidebar })));
+const FacebookRightSidebar = lazy(() => import('@/components/feed/FacebookRightSidebar').then(m => ({ default: m.FacebookRightSidebar })));
+const StoriesBar = lazy(() => import('@/components/feed/StoriesBar').then(m => ({ default: m.StoriesBar })));
+
+// Lightweight skeleton components
+const SidebarSkeleton = memo(() => (
+  <div className="space-y-3">
+    <div className="fb-card p-4">
+      <Skeleton className="h-6 w-32 mb-4" />
+      <div className="space-y-2">
+        {[1, 2, 3].map(i => <Skeleton key={i} className="h-10 w-full" />)}
+      </div>
+    </div>
+  </div>
+));
+SidebarSkeleton.displayName = 'SidebarSkeleton';
+
+const StoriesSkeleton = memo(() => (
+  <div className="fb-card p-4 mb-4">
+    <div className="flex gap-2 overflow-hidden">
+      {[1, 2, 3, 4].map(i => <Skeleton key={i} className="w-24 h-40 rounded-lg flex-shrink-0" />)}
+    </div>
+  </div>
+));
+StoriesSkeleton.displayName = 'StoriesSkeleton';
+
+const PostSkeleton = memo(() => (
+  <div className="fb-card p-4">
+    <div className="flex items-center gap-3 mb-4">
+      <Skeleton className="w-10 h-10 rounded-full" />
+      <div className="space-y-2">
+        <Skeleton className="h-4 w-32" />
+        <Skeleton className="h-3 w-24" />
+      </div>
+    </div>
+    <Skeleton className="h-4 w-full mb-2" />
+    <Skeleton className="h-4 w-3/4 mb-4" />
+    <Skeleton className="h-48 w-full rounded-lg" />
+  </div>
+));
+PostSkeleton.displayName = 'PostSkeleton';
+
 const Feed = () => {
-  const navigate = useNavigate();
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState('');
 
+  const fetchPosts = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('posts')
+        .select(`*, profiles!posts_user_id_fkey (username, avatar_url)`)
+        .order('created_at', { ascending: false })
+        .limit(20); // Limit initial load
+
+      if (error) {
+        setPosts([]);
+        return;
+      }
+      setPosts(data || []);
+    } catch {
+      setPosts([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        setCurrentUserId(session.user.id);
-      }
+      if (session) setCurrentUserId(session.user.id);
       fetchPosts();
     };
 
     checkAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session) {
-        setCurrentUserId(session.user.id);
-      } else {
-        setCurrentUserId('');
-      }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+      setCurrentUserId(session?.user?.id || '');
     });
 
-    // Realtime subscription for new posts
     const postsChannel = supabase
       .channel('feed-posts')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'posts' },
-        () => fetchPosts()
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, fetchPosts)
       .subscribe();
 
     return () => {
       subscription.unsubscribe();
       supabase.removeChannel(postsChannel);
     };
-  }, [navigate]);
-
-  const fetchPosts = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('posts')
-        .select(`
-          *,
-          profiles!posts_user_id_fkey (username, avatar_url)
-        `)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        // Silently handle transient errors to avoid console noise
-        if (error.code !== 'PGRST301' && error.message) {
-          console.warn('Posts fetch warning:', error.message);
-        }
-        setPosts([]);
-        return;
-      }
-      setPosts(data || []);
-    } catch (err) {
-      // Handle network errors gracefully without logging [object Object]
-      const errorMessage = err instanceof Error ? err.message : 'Network error';
-      if (errorMessage !== 'Network error') {
-        console.warn('Posts fetch warning:', errorMessage);
-      }
-      setPosts([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [fetchPosts]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -88,69 +104,66 @@ const Feed = () => {
       <main className="pt-14">
         <div className="max-w-screen-2xl mx-auto px-4">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 py-4">
-            {/* Left Sidebar */}
-            <aside className="hidden lg:block lg:col-span-3 xl:col-span-3">
+            {/* Left Sidebar - Deferred */}
+            <aside className="hidden lg:block lg:col-span-3">
               <div className="sticky top-[72px] max-h-[calc(100vh-88px)] overflow-y-auto pr-2">
-                <FacebookLeftSidebar />
+                <Suspense fallback={<SidebarSkeleton />}>
+                  <FacebookLeftSidebar />
+                </Suspense>
               </div>
             </aside>
 
             {/* Main Feed */}
-            <div className="lg:col-span-6 xl:col-span-6">
-              {/* Stories */}
-              <StoriesBar />
+            <div className="lg:col-span-6">
+              {/* Stories - Deferred */}
+              <Suspense fallback={<StoriesSkeleton />}>
+                <StoriesBar />
+              </Suspense>
 
               {/* Create Post */}
-              {currentUserId && <FacebookCreatePost onPostCreated={fetchPosts} />}
+              {currentUserId && (
+                <Suspense fallback={<Skeleton className="h-24 w-full mb-4 rounded-lg" />}>
+                  <FacebookCreatePost onPostCreated={fetchPosts} />
+                </Suspense>
+              )}
 
               {!currentUserId && (
                 <div className="fb-card p-4 mb-4 text-center">
-                  <p className="text-muted-foreground">
-                    Đăng nhập để tạo bài viết và tương tác
-                  </p>
+                  <p className="text-muted-foreground">Đăng nhập để tạo bài viết</p>
                 </div>
               )}
 
               {/* Posts */}
               {loading ? (
                 <div className="space-y-4">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="fb-card p-4">
-                      <div className="flex items-center gap-3 mb-4">
-                        <Skeleton className="w-10 h-10 rounded-full" />
-                        <div className="space-y-2">
-                          <Skeleton className="h-4 w-32" />
-                          <Skeleton className="h-3 w-24" />
-                        </div>
-                      </div>
-                      <Skeleton className="h-4 w-full mb-2" />
-                      <Skeleton className="h-4 w-3/4 mb-4" />
-                      <Skeleton className="h-64 w-full rounded-lg" />
-                    </div>
-                  ))}
+                  {[1, 2, 3].map(i => <PostSkeleton key={i} />)}
                 </div>
               ) : posts.length === 0 ? (
                 <div className="fb-card p-8 text-center">
-                  <p className="text-muted-foreground">
-                    Chưa có bài viết nào. Hãy là người đầu tiên chia sẻ!
-                  </p>
+                  <p className="text-muted-foreground">Chưa có bài viết nào</p>
                 </div>
               ) : (
-                posts.map((post) => (
-                  <FacebookPostCard
-                    key={post.id}
-                    post={post}
-                    currentUserId={currentUserId}
-                    onPostDeleted={fetchPosts}
-                  />
-                ))
+                <Suspense fallback={<div className="space-y-4">{[1, 2].map(i => <PostSkeleton key={i} />)}</div>}>
+                  <div className="space-y-4">
+                    {posts.map(post => (
+                      <FacebookPostCard
+                        key={post.id}
+                        post={post}
+                        currentUserId={currentUserId}
+                        onPostDeleted={fetchPosts}
+                      />
+                    ))}
+                  </div>
+                </Suspense>
               )}
             </div>
 
-            {/* Right Sidebar */}
-            <aside className="hidden lg:block lg:col-span-3 xl:col-span-3">
+            {/* Right Sidebar - Deferred */}
+            <aside className="hidden lg:block lg:col-span-3">
               <div className="sticky top-[72px] max-h-[calc(100vh-88px)] overflow-y-auto pl-2">
-                <FacebookRightSidebar />
+                <Suspense fallback={<SidebarSkeleton />}>
+                  <FacebookRightSidebar />
+                </Suspense>
               </div>
             </aside>
           </div>
