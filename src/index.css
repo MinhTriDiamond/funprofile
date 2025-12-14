@@ -68,9 +68,12 @@
   }
 }
 
-/* Facebook-style Card */
+/* Facebook-style Card - with CSS containment for performance */
 .fb-card {
   @apply bg-card rounded-lg shadow-sm border border-border;
+  contain: layout style paint;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 300px;
 }
 
 /* Facebook-style Hover */
