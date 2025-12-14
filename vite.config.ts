@@ -16,26 +16,72 @@ export default defineConfig(({ mode }) => ({
     },
   },
   build: {
-    sourcemap: true,
+    sourcemap: mode === 'development',
     rollupOptions: {
       output: {
         manualChunks: {
-          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          // Core React - load first
+          'vendor-react': ['react', 'react-dom'],
+          'vendor-router': ['react-router-dom'],
+          
+          // Data layer - separate chunk
           'vendor-query': ['@tanstack/react-query'],
-          'vendor-ui': ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-popover', '@radix-ui/react-tooltip'],
+          'vendor-supabase': ['@supabase/supabase-js'],
+          
+          // UI libraries - separate chunk
+          'vendor-ui-core': [
+            '@radix-ui/react-dialog',
+            '@radix-ui/react-dropdown-menu',
+            '@radix-ui/react-popover',
+            '@radix-ui/react-tooltip',
+            '@radix-ui/react-avatar',
+          ],
+          'vendor-ui-forms': [
+            '@radix-ui/react-checkbox',
+            '@radix-ui/react-label',
+            '@radix-ui/react-select',
+            '@radix-ui/react-tabs',
+          ],
+          
+          // Heavy libraries - lazy load
           'vendor-web3': ['wagmi', 'viem', '@rainbow-me/rainbowkit'],
+          'vendor-charts': ['recharts'],
+          'vendor-utils': ['date-fns', 'clsx', 'tailwind-merge'],
         },
       },
     },
     target: 'esnext',
     minify: 'esbuild',
     cssMinify: true,
-    chunkSizeWarningLimit: 500,
+    cssCodeSplit: true,
+    chunkSizeWarningLimit: 300,
+    // Aggressive tree shaking
+    treeshake: {
+      moduleSideEffects: false,
+    },
   },
   optimizeDeps: {
-    include: ['react', 'react-dom', 'react-router-dom', '@tanstack/react-query', 'wagmi', 'viem', '@rainbow-me/rainbowkit'],
+    include: [
+      'react', 
+      'react-dom', 
+      'react-router-dom', 
+      '@tanstack/react-query',
+      '@supabase/supabase-js',
+    ],
+    exclude: [
+      // Exclude heavy libs from pre-bundling - load on demand
+      'wagmi',
+      'viem', 
+      '@rainbow-me/rainbowkit',
+      'recharts',
+    ],
     esbuildOptions: {
       target: 'esnext',
     },
+  },
+  // Performance hints
+  esbuild: {
+    drop: mode === 'production' ? ['console', 'debugger'] : [],
+    legalComments: 'none',
   },
 }));

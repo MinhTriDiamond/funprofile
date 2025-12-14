@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { LazyImage } from '@/components/ui/LazyImage';
 import { Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -12,7 +13,12 @@ interface Story {
   image_url?: string;
 }
 
-export const StoriesBar = () => {
+/**
+ * Optimized StoriesBar with lazy loading
+ * - Lazy loads story images
+ * - Memoized for performance
+ */
+export const StoriesBar = memo(() => {
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [stories, setStories] = useState<Story[]>([]);
@@ -74,10 +80,11 @@ export const StoriesBar = () => {
           <div className="flex-shrink-0 w-28 h-48 rounded-xl overflow-hidden relative cursor-pointer group">
             <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/60">
               {currentUser.avatar_url ? (
-                <img
+                <LazyImage
                   src={currentUser.avatar_url}
                   alt=""
-                  className="w-full h-full object-cover"
+                  className="w-full h-full"
+                  priority
                 />
               ) : (
                 <div className="w-full h-full bg-secondary" />
@@ -132,4 +139,6 @@ export const StoriesBar = () => {
       </div>
     </div>
   );
-};
+});
+
+StoriesBar.displayName = 'StoriesBar';

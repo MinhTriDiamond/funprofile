@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, memo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
@@ -11,6 +11,7 @@ import { FriendRequestButton } from '@/components/friends/FriendRequestButton';
 import { FriendsList } from '@/components/friends/FriendsList';
 import { ProfileHonorBoard } from '@/components/profile/ProfileHonorBoard';
 import { Button } from '@/components/ui/button';
+import { LazyImage } from '@/components/ui/LazyImage';
 import { Camera, Plus, PenSquare, MoreHorizontal, MapPin, Briefcase, GraduationCap, Heart, Clock } from 'lucide-react';
 
 const Profile = () => {
@@ -158,10 +159,11 @@ const Profile = () => {
           <div className="max-w-5xl mx-auto">
             <div className="h-[200px] sm:h-[300px] md:h-[350px] relative rounded-b-lg overflow-hidden">
               {profile?.cover_url ? (
-                <img 
+                <LazyImage 
                   src={profile.cover_url} 
                   alt="Cover" 
-                  className="w-full h-full object-cover"
+                  className="w-full h-full"
+                  priority
                 />
               ) : (
                 <div className="w-full h-full bg-gradient-to-r from-primary/40 to-gold/40" />
@@ -320,11 +322,11 @@ const Profile = () => {
                           </div>
                           <div className="grid grid-cols-3 gap-1 rounded-lg overflow-hidden">
                             {posts.filter(p => p.image_url).slice(0, 9).map((post, i) => (
-                              <img 
+                              <LazyImage 
                                 key={i}
                                 src={post.image_url}
                                 alt=""
-                                className="w-full aspect-square object-cover"
+                                className="w-full aspect-square"
                               />
                             ))}
                           </div>
