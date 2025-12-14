@@ -195,8 +195,10 @@ export const FacebookRightSidebar = () => {
           <img
             src="/fun-profile-logo-thumb-optimized.webp"
             alt="Ad"
+            width={128}
+            height={128}
+            loading="lazy"
             className="w-32 h-32 rounded-lg object-cover"
-            fetchPriority="high"
           />
           <div>
             <p className="font-semibold text-sm">FUN Profile - Mạng xã hội Web3</p>

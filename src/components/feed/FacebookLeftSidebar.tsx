@@ -105,6 +105,9 @@ export const FacebookLeftSidebar = () => {
               <img
                 src={shortcut.avatar}
                 alt={shortcut.name}
+                width={36}
+                height={36}
+                loading="lazy"
                 className="w-9 h-9 rounded-lg object-cover group-hover:shadow-[0_0_10px_rgba(250,204,21,0.5)] transition-shadow duration-300"
               />
               <span className="font-medium text-sm group-hover:text-primary transition-colors duration-300">{shortcut.name}</span>

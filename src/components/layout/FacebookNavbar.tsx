@@ -101,6 +101,8 @@ export const FacebookNavbar = () => {
           <img
             src="/fun-profile-logo-small.webp"
             alt="FUN Profile"
+            width={40}
+            height={40}
             className="w-10 h-10 rounded-full cursor-pointer"
             onClick={() => navigate('/')}
           />
