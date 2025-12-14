@@ -32,8 +32,10 @@ const Auth = () => {
         <div className="text-center md:text-left">
           <div className="flex items-center justify-center md:justify-start gap-3 mb-4">
             <img 
-              src="/fun-profile-logo-small.webp" 
+              src="/fun-profile-logo-40.webp" 
               alt="FUN Profile" 
+              width={64}
+              height={64}
               className="w-16 h-16 rounded-full shadow-lg"
             />
           </div>

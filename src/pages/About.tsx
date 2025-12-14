@@ -54,8 +54,10 @@ const About = () => {
           <div className="max-w-5xl mx-auto px-4 text-center text-white">
             <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-white/20 backdrop-blur flex items-center justify-center">
               <img 
-                src="/fun-profile-logo-small.webp" 
+                src="/fun-profile-logo-40.webp" 
                 alt="FUN Profile" 
+                width={80}
+                height={80}
                 className="w-20 h-20 rounded-full"
               />
             </div>
