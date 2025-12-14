@@ -1,4 +1,4 @@
-import { useEffect, useState, memo, useCallback, useMemo } from 'react';
+import { useEffect, useState, memo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
 import { FacebookCreatePost } from '@/components/feed/FacebookCreatePost';
@@ -7,6 +7,7 @@ import { FacebookLeftSidebar } from '@/components/feed/FacebookLeftSidebar';
 import { FacebookRightSidebar } from '@/components/feed/FacebookRightSidebar';
 import { StoriesBar } from '@/components/feed/StoriesBar';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useFeedPosts } from '@/hooks/useFeedPosts';
 
 // Lightweight skeleton components
 const SidebarSkeleton = memo(() => (
@@ -37,91 +38,14 @@ const PostSkeleton = memo(() => (
 ));
 PostSkeleton.displayName = 'PostSkeleton';
 
-// Types for batched data
-interface PostStats {
-  reactions: { id: string; user_id: string; type: string }[];
-  commentCount: number;
-  shareCount: number;
-}
-
 const Feed = () => {
-  const [posts, setPosts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState('');
-  const [postStats, setPostStats] = useState<Record<string, PostStats>>({});
-
-  // Batch fetch all post stats in 1-2 queries instead of N+1
-  const fetchPostStats = useCallback(async (postIds: string[]) => {
-    if (postIds.length === 0) return;
-
-    // Batch fetch all reactions for all posts in ONE query
-    const { data: allReactions } = await supabase
-      .from('reactions')
-      .select('id, user_id, type, post_id')
-      .in('post_id', postIds)
-      .is('comment_id', null);
-
-    // Batch fetch comment counts using group query
-    const { data: commentCounts } = await supabase
-      .from('comments')
-      .select('post_id')
-      .in('post_id', postIds);
-
-    // Batch fetch share counts
-    const { data: shareCounts } = await supabase
-      .from('shared_posts')
-      .select('original_post_id')
-      .in('original_post_id', postIds);
-
-    // Aggregate data by post_id
-    const stats: Record<string, PostStats> = {};
-    
-    postIds.forEach(postId => {
-      const postReactions = allReactions?.filter(r => r.post_id === postId) || [];
-      const postComments = commentCounts?.filter(c => c.post_id === postId) || [];
-      const postShares = shareCounts?.filter(s => s.original_post_id === postId) || [];
-      
-      stats[postId] = {
-        reactions: postReactions.map(r => ({ id: r.id, user_id: r.user_id, type: r.type })),
-        commentCount: postComments.length,
-        shareCount: postShares.length,
-      };
-    });
-
-    setPostStats(stats);
-  }, []);
-
-  const fetchPosts = useCallback(async () => {
-    try {
-      const { data, error } = await supabase
-        .from('posts')
-        .select(`*, profiles!posts_user_id_fkey (username, avatar_url)`)
-        .order('created_at', { ascending: false })
-        .limit(20);
-
-      if (error) {
-        setPosts([]);
-        return;
-      }
-      
-      const postsData = data || [];
-      setPosts(postsData);
-      
-      // Batch fetch stats for all posts
-      const postIds = postsData.map(p => p.id);
-      await fetchPostStats(postIds);
-    } catch {
-      setPosts([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [fetchPostStats]);
+  const { posts, postStats, isLoading, refetch } = useFeedPosts();
 
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) setCurrentUserId(session.user.id);
-      fetchPosts();
     };
 
     checkAuth();
@@ -130,16 +54,10 @@ const Feed = () => {
       setCurrentUserId(session?.user?.id || '');
     });
 
-    const postsChannel = supabase
-      .channel('feed-posts')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, fetchPosts)
-      .subscribe();
-
     return () => {
       subscription.unsubscribe();
-      supabase.removeChannel(postsChannel);
     };
-  }, [fetchPosts]);
+  }, []);
 
   return (
     <div className="min-h-screen bg-background">
@@ -159,7 +77,7 @@ const Feed = () => {
             <div className="lg:col-span-6">
               <StoriesBar />
 
-              {currentUserId && <FacebookCreatePost onPostCreated={fetchPosts} />}
+              {currentUserId && <FacebookCreatePost onPostCreated={refetch} />}
 
               {!currentUserId && (
                 <div className="fb-card p-4 mb-4 text-center">
@@ -167,7 +85,7 @@ const Feed = () => {
                 </div>
               )}
 
-              {loading ? (
+              {isLoading ? (
                 <div className="space-y-4">
                   {[1, 2, 3].map(i => <PostSkeleton key={i} />)}
                 </div>
@@ -182,7 +100,7 @@ const Feed = () => {
                       key={post.id}
                       post={post}
                       currentUserId={currentUserId}
-                      onPostDeleted={fetchPosts}
+                      onPostDeleted={refetch}
                       initialStats={postStats[post.id]}
                     />
                   ))}
