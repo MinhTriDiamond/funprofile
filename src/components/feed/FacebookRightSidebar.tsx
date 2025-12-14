@@ -24,53 +24,53 @@ export const FacebookRightSidebar = () => {
     
     const fetchTopUsers = async () => {
       try {
-        // Fetch profiles with counts in optimized queries
-        const { data: profiles, error: profileError } = await supabase
-          .from('profiles')
-          .select('id, username, avatar_url')
-          .limit(50);
+        // Fetch ALL data in parallel - NO loops, NO N+1 queries
+        const [profilesResult, postsResult, friendshipsResult] = await Promise.all([
+          supabase.from('profiles').select('id, username, avatar_url').limit(50),
+          supabase.from('posts').select('user_id'),
+          supabase.from('friendships').select('user_id, friend_id').eq('status', 'accepted'),
+        ]);
 
-        if (profileError || !profiles || !mounted) {
-          if (mounted) setLoading(false);
+        if (!mounted) return;
+        
+        if (profilesResult.error || !profilesResult.data) {
+          setLoading(false);
           return;
         }
 
-        // Calculate rewards based on simple counts (optimized)
-        const usersWithRewards: TopUser[] = [];
+        // Count posts per user using Map - O(n) complexity
+        const postsCounts = new Map<string, number>();
+        (postsResult.data || []).forEach(p => {
+          postsCounts.set(p.user_id, (postsCounts.get(p.user_id) || 0) + 1);
+        });
 
-        for (const profile of profiles.slice(0, 20)) {
-          // Get post count
-          const { count: postsCount } = await supabase
-            .from('posts')
-            .select('*', { count: 'exact', head: true })
-            .eq('user_id', profile.id);
+        // Count friends per user - O(n) complexity
+        const friendsCounts = new Map<string, number>();
+        (friendshipsResult.data || []).forEach(f => {
+          friendsCounts.set(f.user_id, (friendsCounts.get(f.user_id) || 0) + 1);
+          friendsCounts.set(f.friend_id, (friendsCounts.get(f.friend_id) || 0) + 1);
+        });
 
-          // Get friends count
-          const { count: friendsCount } = await supabase
-            .from('friendships')
-            .select('*', { count: 'exact', head: true })
-            .or(`user_id.eq.${profile.id},friend_id.eq.${profile.id}`)
-            .eq('status', 'accepted');
+        // Calculate rewards - NO additional queries, just Map lookups
+        const usersWithRewards: TopUser[] = profilesResult.data.map(profile => {
+          const postsCount = postsCounts.get(profile.id) || 0;
+          const friendsCount = friendsCounts.get(profile.id) || 0;
+          const totalReward = 50000 + (postsCount * 10000) + (friendsCount * 50000);
 
-          // Simple reward calculation
-          let totalReward = 50000; // Base reward
-          totalReward += (postsCount || 0) * 10000;
-          totalReward += (friendsCount || 0) * 50000;
-
-          usersWithRewards.push({
+          return {
             id: profile.id,
             username: profile.username,
             avatar_url: profile.avatar_url,
             total_reward: totalReward,
-          });
-        }
+          };
+        });
 
-        if (mounted) {
-          const sorted = usersWithRewards
-            .sort((a, b) => b.total_reward - a.total_reward)
-            .slice(0, 10);
-          setTopUsers(sorted);
-        }
+        // Sort and get top 10
+        const sorted = usersWithRewards
+          .sort((a, b) => b.total_reward - a.total_reward)
+          .slice(0, 10);
+
+        if (mounted) setTopUsers(sorted);
       } catch (err) {
         console.error('Error fetching top users:', err);
         if (mounted) setError(true);
@@ -80,7 +80,6 @@ export const FacebookRightSidebar = () => {
     };
 
     fetchTopUsers();
-    
     return () => { mounted = false; };
   }, []);
 
@@ -90,7 +89,7 @@ export const FacebookRightSidebar = () => {
       <div className="fb-card p-4" style={{ minHeight: '320px', contain: 'layout style' }}>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <Trophy className="w-5 h-5 text-gold" />
+            <Trophy className="w-5 h-5 text-yellow-500" />
             <h3 className="font-bold text-lg">Honor Board</h3>
           </div>
           <button
@@ -124,7 +123,7 @@ export const FacebookRightSidebar = () => {
                 className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-secondary transition-colors"
               >
                 <span className={`w-6 text-center font-bold ${
-                  index === 0 ? 'text-gold' :
+                  index === 0 ? 'text-yellow-500' :
                   index === 1 ? 'text-gray-400' :
                   index === 2 ? 'text-amber-600' :
                   'text-muted-foreground'
@@ -140,7 +139,7 @@ export const FacebookRightSidebar = () => {
                 <div className="flex-1 text-left">
                   <p className="font-medium text-sm truncate">{user.username}</p>
                 </div>
-                <span className="text-gold font-semibold text-sm">
+                <span className="text-yellow-500 font-semibold text-sm">
                   {user.total_reward.toLocaleString('vi-VN')}
                 </span>
               </button>
