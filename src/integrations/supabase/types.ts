@@ -397,6 +397,21 @@ export type Database = {
         Args: { bucket_name: string; object_path: string }
         Returns: undefined
       }
+      get_user_rewards: {
+        Args: { limit_count?: number }
+        Returns: {
+          avatar_url: string
+          comments_count: number
+          friends_count: number
+          id: string
+          posts_count: number
+          reactions_count: number
+          reactions_on_posts: number
+          shares_count: number
+          total_reward: number
+          username: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
