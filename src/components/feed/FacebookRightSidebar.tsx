@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Search, MoreHorizontal, Video, Pencil, Trophy, ChevronRight } from 'lucide-react';
+import { Trophy, ChevronRight } from 'lucide-react';
 
 interface TopUser {
   id: string;
@@ -17,115 +17,77 @@ export const FacebookRightSidebar = () => {
   const navigate = useNavigate();
   const [topUsers, setTopUsers] = useState<TopUser[]>([]);
   const [loading, setLoading] = useState(true);
-  const [onlineContacts, setOnlineContacts] = useState<any[]>([]);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
-    fetchTopUsers();
-    fetchContacts();
-  }, []);
+    let mounted = true;
+    
+    const fetchTopUsers = async () => {
+      try {
+        // Fetch profiles with counts in optimized queries
+        const { data: profiles, error: profileError } = await supabase
+          .from('profiles')
+          .select('id, username, avatar_url')
+          .limit(50);
 
-  const fetchTopUsers = async () => {
-    try {
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, username, avatar_url');
+        if (profileError || !profiles || !mounted) {
+          if (mounted) setLoading(false);
+          return;
+        }
 
-      if (!profiles) return;
+        // Calculate rewards based on simple counts (optimized)
+        const usersWithRewards: TopUser[] = [];
 
-      const usersWithRewards = await Promise.all(
-        profiles.map(async (profile) => {
-          const { data: posts } = await supabase
+        for (const profile of profiles.slice(0, 20)) {
+          // Get post count
+          const { count: postsCount } = await supabase
             .from('posts')
-            .select('id')
-            .eq('user_id', profile.id);
-
-          const { count: commentsCount } = await supabase
-            .from('comments')
             .select('*', { count: 'exact', head: true })
             .eq('user_id', profile.id);
 
+          // Get friends count
           const { count: friendsCount } = await supabase
             .from('friendships')
             .select('*', { count: 'exact', head: true })
             .or(`user_id.eq.${profile.id},friend_id.eq.${profile.id}`)
             .eq('status', 'accepted');
 
-          const { count: sharedCount } = await supabase
-            .from('shared_posts')
-            .select('*', { count: 'exact', head: true })
-            .eq('user_id', profile.id);
-
-          let totalReward = 50000;
-          const postsCount = posts?.length || 0;
-          totalReward += postsCount * 10000;
-          totalReward += (commentsCount || 0) * 5000;
+          // Simple reward calculation
+          let totalReward = 50000; // Base reward
+          totalReward += (postsCount || 0) * 10000;
           totalReward += (friendsCount || 0) * 50000;
-          totalReward += (sharedCount || 0) * 20000;
 
-          if (posts && posts.length > 0) {
-            for (const post of posts) {
-              const { count: postReactionsCount } = await supabase
-                .from('reactions')
-                .select('*', { count: 'exact', head: true })
-                .eq('post_id', post.id);
-
-              const reactionsOnPost = postReactionsCount || 0;
-              if (reactionsOnPost >= 3) {
-                totalReward += 30000 + (reactionsOnPost - 3) * 1000;
-              }
-            }
-          }
-
-          return {
+          usersWithRewards.push({
             id: profile.id,
             username: profile.username,
             avatar_url: profile.avatar_url,
             total_reward: totalReward,
-          };
-        })
-      );
+          });
+        }
 
-      const sorted = usersWithRewards
-        .sort((a, b) => b.total_reward - a.total_reward)
-        .slice(0, 10);
+        if (mounted) {
+          const sorted = usersWithRewards
+            .sort((a, b) => b.total_reward - a.total_reward)
+            .slice(0, 10);
+          setTopUsers(sorted);
+        }
+      } catch (err) {
+        console.error('Error fetching top users:', err);
+        if (mounted) setError(true);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
 
-      setTopUsers(sorted);
-    } catch (error) {
-      console.error('Error fetching top users:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchContacts = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return;
-
-    const { data: friendships } = await supabase
-      .from('friendships')
-      .select('user_id, friend_id')
-      .or(`user_id.eq.${session.user.id},friend_id.eq.${session.user.id}`)
-      .eq('status', 'accepted')
-      .limit(10);
-
-    if (friendships) {
-      const friendIds = friendships.map(f => 
-        f.user_id === session.user.id ? f.friend_id : f.user_id
-      );
-
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, username, avatar_url')
-        .in('id', friendIds);
-
-      setOnlineContacts(profiles || []);
-    }
-  };
+    fetchTopUsers();
+    
+    return () => { mounted = false; };
+  }, []);
 
   return (
     <div className="space-y-4" style={{ contain: 'layout style' }}>
-      {/* Honor Board - fixed dimensions to prevent CLS */}
-      <div className="fb-card p-4" style={{ minHeight: '380px', contain: 'layout style' }}>
+      {/* Honor Board */}
+      <div className="fb-card p-4" style={{ minHeight: '320px', contain: 'layout style' }}>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Trophy className="w-5 h-5 text-gold" />
@@ -140,13 +102,21 @@ export const FacebookRightSidebar = () => {
         </div>
 
         {loading ? (
-          <div className="space-y-3" style={{ minHeight: '280px' }}>
+          <div className="space-y-3">
             {[1, 2, 3, 4, 5].map((i) => (
               <Skeleton key={i} className="h-12 w-full" />
             ))}
           </div>
+        ) : error ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <p>Không thể tải bảng xếp hạng</p>
+          </div>
+        ) : topUsers.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <p>Chưa có dữ liệu</p>
+          </div>
         ) : (
-          <div className="space-y-2" style={{ minHeight: '200px' }}>
+          <div className="space-y-2">
             {topUsers.map((user, index) => (
               <button
                 key={user.id}
@@ -188,7 +158,7 @@ export const FacebookRightSidebar = () => {
         </Button>
       </div>
 
-      {/* Sponsored - optimized with fixed dimensions */}
+      {/* Sponsored */}
       <div className="fb-card p-4" style={{ contain: 'layout style' }}>
         <h3 className="font-semibold text-muted-foreground mb-3">Được tài trợ</h3>
         <div className="flex gap-3 cursor-pointer hover:bg-secondary rounded-lg p-2 -m-2 transition-colors">
@@ -207,47 +177,6 @@ export const FacebookRightSidebar = () => {
           </div>
         </div>
       </div>
-
-      {/* Contacts */}
-      {onlineContacts.length > 0 && (
-        <div>
-          <div className="flex items-center justify-between mb-2 px-2">
-            <h3 className="font-semibold text-muted-foreground">Người liên hệ</h3>
-            <div className="flex gap-2">
-              <button className="w-8 h-8 rounded-full hover:bg-secondary flex items-center justify-center">
-                <Video className="w-4 h-4" />
-              </button>
-              <button className="w-8 h-8 rounded-full hover:bg-secondary flex items-center justify-center">
-                <Search className="w-4 h-4" />
-              </button>
-              <button className="w-8 h-8 rounded-full hover:bg-secondary flex items-center justify-center">
-                <MoreHorizontal className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            {onlineContacts.map((contact) => (
-              <button
-                key={contact.id}
-                onClick={() => navigate(`/profile/${contact.id}`)}
-                className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-secondary transition-colors"
-              >
-                <div className="relative">
-                  <Avatar className="w-9 h-9">
-                    <AvatarImage src={contact.avatar_url || ''} />
-                    <AvatarFallback className="bg-primary text-primary-foreground">
-                      {contact.username?.[0]?.toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-card" />
-                </div>
-                <span className="font-medium text-sm">{contact.username}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Birthdays */}
       <div className="fb-card p-4">

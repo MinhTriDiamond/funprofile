@@ -44,6 +44,7 @@ const Feed = () => {
 
   const fetchPosts = useCallback(async () => {
     try {
+      setLoading(true);
       const { data, error } = await supabase
         .from('posts')
         .select(`*, profiles!posts_user_id_fkey (username, avatar_url)`)
@@ -51,11 +52,13 @@ const Feed = () => {
         .limit(20);
 
       if (error) {
+        console.error('Error fetching posts:', error);
         setPosts([]);
         return;
       }
       setPosts(data || []);
-    } catch {
+    } catch (err) {
+      console.error('Error fetching posts:', err);
       setPosts([]);
     } finally {
       setLoading(false);
