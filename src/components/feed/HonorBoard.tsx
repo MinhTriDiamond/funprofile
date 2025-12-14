@@ -1,28 +1,20 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, memo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
-import { ArrowUp, MessageCircle, Star, Users, BadgeDollarSign, ChevronRight } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 
 interface LeaderboardUser {
   id: string;
   username: string;
   avatar_url: string;
-  posts_count: number;
-  comments_count: number;
-  reactions_count: number;
-  friends_count: number;
   total_reward: number;
 }
 
-export const HonorBoard = () => {
+export const HonorBoard = memo(() => {
   const navigate = useNavigate();
-  const [topPosts, setTopPosts] = useState<LeaderboardUser[]>([]);
-  const [topComments, setTopComments] = useState<LeaderboardUser[]>([]);
-  const [topReactions, setTopReactions] = useState<LeaderboardUser[]>([]);
-  const [topFriends, setTopFriends] = useState<LeaderboardUser[]>([]);
   const [topRewards, setTopRewards] = useState<LeaderboardUser[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -30,97 +22,23 @@ export const HonorBoard = () => {
     fetchLeaderboards();
   }, []);
 
+  // Optimized: Single RPC call instead of N+1 queries
   const fetchLeaderboards = async () => {
     try {
-      // Fetch all users with their data
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, username, avatar_url');
+      const { data, error } = await supabase.rpc('get_user_rewards', { limit_count: 5 });
+      
+      if (error) throw error;
 
-      if (!profiles) return;
-
-      // Calculate rewards for each user
-      const usersWithRewards = await Promise.all(
-        profiles.map(async (profile) => {
-          // Fetch posts
-          const { data: posts } = await supabase
-            .from('posts')
-            .select('id')
-            .eq('user_id', profile.id);
-
-          // Fetch comments count
-          const { count: commentsCount } = await supabase
-            .from('comments')
-            .select('*', { count: 'exact', head: true })
-            .eq('user_id', profile.id);
-
-          // Fetch reactions count
-          const { count: reactionsCount } = await supabase
-            .from('reactions')
-            .select('*', { count: 'exact', head: true })
-            .eq('user_id', profile.id);
-
-          // Fetch friends count
-          const { count: friendsCount } = await supabase
-            .from('friendships')
-            .select('*', { count: 'exact', head: true })
-            .or(`user_id.eq.${profile.id},friend_id.eq.${profile.id}`)
-            .eq('status', 'accepted');
-
-          // Fetch shared posts count
-          const { count: sharedCount } = await supabase
-            .from('shared_posts')
-            .select('*', { count: 'exact', head: true })
-            .eq('user_id', profile.id);
-
-          // Calculate total reward
-          let totalReward = 50000; // New user bonus
-          const postsCount = posts?.length || 0;
-          totalReward += postsCount * 10000; // Posts reward
-          totalReward += (commentsCount || 0) * 5000; // Comments reward
-          totalReward += (friendsCount || 0) * 50000; // Friends reward
-          totalReward += (sharedCount || 0) * 20000; // Shared posts reward
-
-          // Reactions on posts reward
-          if (posts && posts.length > 0) {
-            for (const post of posts) {
-              const { count: postReactionsCount } = await supabase
-                .from('reactions')
-                .select('*', { count: 'exact', head: true })
-                .eq('post_id', post.id);
-
-              const reactionsOnPost = postReactionsCount || 0;
-              if (reactionsOnPost >= 3) {
-                totalReward += 30000 + (reactionsOnPost - 3) * 1000;
-              }
-            }
-          }
-
-          return {
-            id: profile.id,
-            username: profile.username,
-            avatar_url: profile.avatar_url,
-            posts_count: postsCount,
-            comments_count: commentsCount || 0,
-            reactions_count: reactionsCount || 0,
-            friends_count: friendsCount || 0,
-            total_reward: totalReward,
-          };
-        })
-      );
-
-      // Sort by total reward and get top 5
-      const topRewardsUsers = usersWithRewards
-        .sort((a, b) => b.total_reward - a.total_reward)
-        .slice(0, 5);
-
-      setTopRewards(topRewardsUsers);
-      setTopPosts([]);
-      setTopComments([]);
-      setTopReactions([]);
-      setTopFriends([]);
+      if (data) {
+        setTopRewards(data.map((user: any) => ({
+          id: user.id,
+          username: user.username,
+          avatar_url: user.avatar_url,
+          total_reward: Number(user.total_reward),
+        })));
+      }
     } catch (error) {
-      // Error fetching leaderboards - silent fail
+      console.error('Error fetching leaderboards:', error);
     } finally {
       setLoading(false);
     }
@@ -154,7 +72,7 @@ export const HonorBoard = () => {
           </Avatar>
           <span className="text-primary text-sm font-medium">{user.username}</span>
         </div>
-        <span className="text-gold font-bold text-sm">{user.total_reward.toLocaleString()}</span>
+        <span className="text-gold font-bold text-sm">{user.total_reward.toLocaleString('vi-VN')}</span>
       </div>
     </div>
   );
@@ -213,4 +131,6 @@ export const HonorBoard = () => {
       </div>
     </div>
   );
-};
+});
+
+HonorBoard.displayName = 'HonorBoard';

@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Search, MoreHorizontal, Video, Pencil, Trophy, ChevronRight } from 'lucide-react';
+import { Video, Search, MoreHorizontal, Trophy, ChevronRight } from 'lucide-react';
 
 interface TopUser {
   id: string;
@@ -13,7 +13,7 @@ interface TopUser {
   total_reward: number;
 }
 
-export const FacebookRightSidebar = () => {
+export const FacebookRightSidebar = memo(() => {
   const navigate = useNavigate();
   const [topUsers, setTopUsers] = useState<TopUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -24,72 +24,21 @@ export const FacebookRightSidebar = () => {
     fetchContacts();
   }, []);
 
+  // Optimized: Single RPC call instead of N+1 queries
   const fetchTopUsers = async () => {
     try {
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, username, avatar_url');
-
-      if (!profiles) return;
-
-      const usersWithRewards = await Promise.all(
-        profiles.map(async (profile) => {
-          const { data: posts } = await supabase
-            .from('posts')
-            .select('id')
-            .eq('user_id', profile.id);
-
-          const { count: commentsCount } = await supabase
-            .from('comments')
-            .select('*', { count: 'exact', head: true })
-            .eq('user_id', profile.id);
-
-          const { count: friendsCount } = await supabase
-            .from('friendships')
-            .select('*', { count: 'exact', head: true })
-            .or(`user_id.eq.${profile.id},friend_id.eq.${profile.id}`)
-            .eq('status', 'accepted');
-
-          const { count: sharedCount } = await supabase
-            .from('shared_posts')
-            .select('*', { count: 'exact', head: true })
-            .eq('user_id', profile.id);
-
-          let totalReward = 50000;
-          const postsCount = posts?.length || 0;
-          totalReward += postsCount * 10000;
-          totalReward += (commentsCount || 0) * 5000;
-          totalReward += (friendsCount || 0) * 50000;
-          totalReward += (sharedCount || 0) * 20000;
-
-          if (posts && posts.length > 0) {
-            for (const post of posts) {
-              const { count: postReactionsCount } = await supabase
-                .from('reactions')
-                .select('*', { count: 'exact', head: true })
-                .eq('post_id', post.id);
-
-              const reactionsOnPost = postReactionsCount || 0;
-              if (reactionsOnPost >= 3) {
-                totalReward += 30000 + (reactionsOnPost - 3) * 1000;
-              }
-            }
-          }
-
-          return {
-            id: profile.id,
-            username: profile.username,
-            avatar_url: profile.avatar_url,
-            total_reward: totalReward,
-          };
-        })
-      );
-
-      const sorted = usersWithRewards
-        .sort((a, b) => b.total_reward - a.total_reward)
-        .slice(0, 10);
-
-      setTopUsers(sorted);
+      const { data, error } = await supabase.rpc('get_user_rewards', { limit_count: 10 });
+      
+      if (error) throw error;
+      
+      if (data) {
+        setTopUsers(data.map((user: any) => ({
+          id: user.id,
+          username: user.username,
+          avatar_url: user.avatar_url,
+          total_reward: Number(user.total_reward),
+        })));
+      }
     } catch (error) {
       console.error('Error fetching top users:', error);
     } finally {
@@ -108,7 +57,7 @@ export const FacebookRightSidebar = () => {
       .eq('status', 'accepted')
       .limit(10);
 
-    if (friendships) {
+    if (friendships && friendships.length > 0) {
       const friendIds = friendships.map(f => 
         f.user_id === session.user.id ? f.friend_id : f.user_id
       );
@@ -213,13 +162,13 @@ export const FacebookRightSidebar = () => {
           <div className="flex items-center justify-between mb-2 px-2">
             <h3 className="font-semibold text-muted-foreground">Người liên hệ</h3>
             <div className="flex gap-2">
-              <button className="w-8 h-8 rounded-full hover:bg-secondary flex items-center justify-center">
+              <button className="w-8 h-8 rounded-full hover:bg-secondary flex items-center justify-center" aria-label="Video call">
                 <Video className="w-4 h-4" />
               </button>
-              <button className="w-8 h-8 rounded-full hover:bg-secondary flex items-center justify-center">
+              <button className="w-8 h-8 rounded-full hover:bg-secondary flex items-center justify-center" aria-label="Search contacts">
                 <Search className="w-4 h-4" />
               </button>
-              <button className="w-8 h-8 rounded-full hover:bg-secondary flex items-center justify-center">
+              <button className="w-8 h-8 rounded-full hover:bg-secondary flex items-center justify-center" aria-label="More options">
                 <MoreHorizontal className="w-4 h-4" />
               </button>
             </div>
@@ -262,4 +211,6 @@ export const FacebookRightSidebar = () => {
       </div>
     </div>
   );
-};
+});
+
+FacebookRightSidebar.displayName = 'FacebookRightSidebar';
