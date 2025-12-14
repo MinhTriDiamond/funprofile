@@ -64,19 +64,19 @@ export const FacebookLeftSidebar = () => {
   const shortcuts = [
     { 
       name: 'About FUN Profile', 
-      avatar: '/fun-profile-logo-small.webp',
+      avatar: '/fun-profile-logo-40.webp',
       path: '/about',
       isExternal: false
     },
     { 
       name: 'FUN Play', 
-      avatar: '/fun-play-logo.png',
+      avatar: '/fun-play-logo-36.webp',
       path: 'https://play.fun.rich',
       isExternal: true
     },
     { 
       name: 'FUN Planet', 
-      avatar: '/fun-planet-logo.png',
+      avatar: '/fun-planet-logo-36.webp',
       path: 'https://planet.fun.rich',
       isExternal: true
     },

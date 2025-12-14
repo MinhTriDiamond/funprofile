@@ -193,12 +193,12 @@ export const FacebookRightSidebar = () => {
         <h3 className="font-semibold text-muted-foreground mb-3">Được tài trợ</h3>
         <div className="flex gap-3 cursor-pointer hover:bg-secondary rounded-lg p-2 -m-2 transition-colors">
           <img
-            src="/fun-profile-logo-thumb-optimized.webp"
+            src="/fun-profile-logo-128.webp"
             alt="Ad"
             width={128}
             height={128}
-            loading="lazy"
             className="w-32 h-32 rounded-lg object-cover"
+            fetchPriority="high"
           />
           <div>
             <p className="font-semibold text-sm">FUN Profile - Mạng xã hội Web3</p>

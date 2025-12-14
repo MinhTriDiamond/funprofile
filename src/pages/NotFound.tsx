@@ -11,8 +11,10 @@ const NotFound = () => {
       <header className="bg-white shadow-sm py-4 px-6">
         <div className="max-w-5xl mx-auto flex items-center gap-3">
           <img 
-            src="/fun-profile-logo-small.webp" 
+            src="/fun-profile-logo-40.webp" 
             alt="FUN Profile" 
+            width={40}
+            height={40}
             className="w-10 h-10 rounded-full cursor-pointer"
             onClick={() => navigate('/')}
           />
