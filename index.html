@@ -1,20 +1,43 @@
 <!doctype html>
-<html lang="en">
+<html lang="vi">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="FUN Profile - Mạng xã hội Web3 kết hợp AI. Kết nối bạn bè, chia sẻ nội dung, kiếm phần thưởng Camly Coin. Biến mọi hoạt động thành tài sản số." />
+    <meta name="description" content="FUN Profile - Mạng xã hội Web3 kết hợp AI. Kết nối bạn bè, chia sẻ nội dung, kiếm phần thưởng Camly Coin." />
     <title>FUN.RICH - Connect, Share, Earn</title>
-    <!-- Preconnect to external origins for faster API calls -->
+    
+    <!-- Preconnect for faster connections -->
     <link rel="preconnect" href="https://bhtsnervqiwchluwuxki.supabase.co" crossorigin />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="dns-prefetch" href="https://bhtsnervqiwchluwuxki.supabase.co" />
-    <!-- Preload LCP image for faster discovery -->
-    <link rel="preload" as="image" href="/fun-profile-logo-thumb-optimized.webp" fetchpriority="high" />
-    <link rel="preload" as="image" href="/fun-profile-logo-small.webp" />
+    
+    <!-- Preload critical assets -->
+    <link rel="preload" as="image" href="/logo.jpg" fetchpriority="high" />
+    
+    <!-- Preload critical font -->
+    <link rel="preload" as="font" type="font/woff2" href="https://fonts.gstatic.com/s/inter/v13/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfAZ9hjp-Ek-_EeA.woff2" crossorigin />
+    
+    <!-- Critical CSS inline for faster FCP -->
+    <style>
+      /* Critical above-the-fold styles */
+      *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+      html{-webkit-text-size-adjust:100%;font-family:system-ui,-apple-system,sans-serif}
+      body{min-height:100vh;background:#f0f2f5}
+      #root{min-height:100vh}
+      .initial-loader{display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f0f2f5}
+      .spinner{width:40px;height:40px;border:3px solid #e5e7eb;border-top-color:#22c55e;border-radius:50%;animation:spin .8s linear infinite}
+      @keyframes spin{to{transform:rotate(360deg)}}
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Initial loader shown before React hydrates -->
+      <div class="initial-loader">
+        <div class="spinner"></div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
