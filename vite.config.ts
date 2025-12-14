@@ -1,4 +1,4 @@
-import { defineConfig, splitVendorChunkPlugin } from "vite";
+import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
@@ -11,7 +11,6 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react(), 
-    splitVendorChunkPlugin(),
     mode === "development" && componentTagger()
   ].filter(Boolean),
   resolve: {
@@ -23,35 +22,47 @@ export default defineConfig(({ mode }) => ({
     sourcemap: mode === 'development',
     rollupOptions: {
       output: {
-        manualChunks: {
+        manualChunks: (id) => {
+          // Web3 libs - separate chunk, only loaded on Wallet page
+          if (id.includes('wagmi') || id.includes('viem') || id.includes('rainbowkit') || id.includes('@walletconnect')) {
+            return 'vendor-web3';
+          }
           // Core React - load first
-          'vendor-react': ['react', 'react-dom'],
-          'vendor-router': ['react-router-dom'],
-          
-          // Data layer - separate chunk
-          'vendor-query': ['@tanstack/react-query'],
-          'vendor-supabase': ['@supabase/supabase-js'],
-          
-          // UI libraries - separate chunk
-          'vendor-ui-core': [
-            '@radix-ui/react-dialog',
-            '@radix-ui/react-dropdown-menu',
-            '@radix-ui/react-popover',
-            '@radix-ui/react-tooltip',
-            '@radix-ui/react-avatar',
-          ],
-          'vendor-ui-forms': [
-            '@radix-ui/react-checkbox',
-            '@radix-ui/react-label',
-            '@radix-ui/react-select',
-            '@radix-ui/react-tabs',
-          ],
-          
-          // Charts and utils - loaded when needed
-          'vendor-charts': ['recharts'],
-          'vendor-utils': ['date-fns', 'clsx', 'tailwind-merge'],
-          // Note: wagmi, viem, rainbowkit are NOT in manualChunks
-          // They will be bundled with the lazy-loaded Wallet page chunk
+          if (id.includes('react-dom') || (id.includes('node_modules/react') && !id.includes('react-'))) {
+            return 'vendor-react';
+          }
+          if (id.includes('react-router-dom')) {
+            return 'vendor-router';
+          }
+          // Data layer
+          if (id.includes('@tanstack/react-query')) {
+            return 'vendor-query';
+          }
+          if (id.includes('@supabase')) {
+            return 'vendor-supabase';
+          }
+          // UI libraries
+          if (id.includes('@radix-ui/react-dialog') || 
+              id.includes('@radix-ui/react-dropdown-menu') ||
+              id.includes('@radix-ui/react-popover') ||
+              id.includes('@radix-ui/react-tooltip') ||
+              id.includes('@radix-ui/react-avatar')) {
+            return 'vendor-ui-core';
+          }
+          if (id.includes('@radix-ui/react-checkbox') ||
+              id.includes('@radix-ui/react-label') ||
+              id.includes('@radix-ui/react-select') ||
+              id.includes('@radix-ui/react-tabs')) {
+            return 'vendor-ui-forms';
+          }
+          // Charts - loaded when needed
+          if (id.includes('recharts')) {
+            return 'vendor-charts';
+          }
+          // Utils
+          if (id.includes('date-fns') || id.includes('clsx') || id.includes('tailwind-merge')) {
+            return 'vendor-utils';
+          }
         },
       },
     },
@@ -60,10 +71,6 @@ export default defineConfig(({ mode }) => ({
     cssMinify: true,
     cssCodeSplit: true,
     chunkSizeWarningLimit: 300,
-    // Aggressive tree shaking
-    treeshake: {
-      moduleSideEffects: false,
-    },
   },
   optimizeDeps: {
     include: [
