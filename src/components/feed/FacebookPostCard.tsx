@@ -40,6 +40,7 @@ interface FacebookPostCardProps {
     content: string;
     image_url: string | null;
     video_url?: string | null;
+    media_urls?: Array<{ url: string; type: 'image' | 'video' }> | null;
     created_at: string;
     user_id: string;
     profiles: {
@@ -199,13 +200,20 @@ export const FacebookPostCard = ({ post, currentUserId, onPostDeleted, initialSt
     setCurrentReaction(newReaction);
   };
 
-  // Prepare media items for MediaGrid
-  const mediaItems = [];
-  if (post.image_url) {
-    mediaItems.push({ url: post.image_url, type: 'image' as const });
-  }
-  if (post.video_url) {
-    mediaItems.push({ url: post.video_url, type: 'video' as const });
+  // Prepare media items for MediaGrid - prioritize media_urls, fallback to legacy fields
+  let mediaItems: Array<{ url: string; type: 'image' | 'video' }> = [];
+  
+  if (post.media_urls && Array.isArray(post.media_urls) && post.media_urls.length > 0) {
+    // Use new media_urls array
+    mediaItems = post.media_urls;
+  } else {
+    // Fallback to legacy single image/video fields
+    if (post.image_url) {
+      mediaItems.push({ url: post.image_url, type: 'image' as const });
+    }
+    if (post.video_url) {
+      mediaItems.push({ url: post.video_url, type: 'video' as const });
+    }
   }
 
   return (

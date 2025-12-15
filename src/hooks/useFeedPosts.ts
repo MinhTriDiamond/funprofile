@@ -13,6 +13,7 @@ export interface FeedPost {
   content: string;
   image_url: string | null;
   video_url: string | null;
+  media_urls: Array<{ url: string; type: 'image' | 'video' }> | null;
   created_at: string;
   user_id: string;
   profiles: {
@@ -73,7 +74,12 @@ const fetchFeedData = async (): Promise<FeedData> => {
 
   if (error) throw error;
 
-  const postsData = posts || [];
+  // Cast media_urls from Json to proper type
+  const postsData: FeedPost[] = (posts || []).map(post => ({
+    ...post,
+    media_urls: (post.media_urls as Array<{ url: string; type: 'image' | 'video' }>) || null,
+  }));
+  
   const postIds = postsData.map(p => p.id);
   const postStats = await fetchPostStats(postIds);
 
