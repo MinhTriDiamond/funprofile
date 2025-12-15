@@ -76,8 +76,8 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
     const newMediaItems: MediaItem[] = [];
 
     for (const file of Array.from(files)) {
-      if (mediaItems.length + newMediaItems.length >= 10) {
-        toast.error('Tối đa 10 file mỗi bài viết');
+      if (mediaItems.length + newMediaItems.length >= 80) {
+        toast.error('Tối đa 80 file mỗi bài viết');
         break;
       }
 
@@ -178,28 +178,28 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Chưa đăng nhập');
 
-      let imageUrl = null;
-      let videoUrl = null;
-
-      // Upload first image and first video only (DB supports single of each)
-      const firstImage = mediaItems.find((m) => m.type === 'image');
-      const firstVideo = mediaItems.find((m) => m.type === 'video');
-
-      if (firstImage) {
-        const result = await uploadToR2(firstImage.file, 'posts');
-        imageUrl = result.url;
+      // Upload all media items to R2
+      const mediaUrls: Array<{ url: string; type: 'image' | 'video' }> = [];
+      
+      for (const item of mediaItems) {
+        const bucket = item.type === 'video' ? 'videos' : 'posts';
+        const result = await uploadToR2(item.file, bucket);
+        mediaUrls.push({
+          url: result.url,
+          type: item.type,
+        });
       }
 
-      if (firstVideo) {
-        const result = await uploadToR2(firstVideo.file, 'videos');
-        videoUrl = result.url;
-      }
+      // For backward compatibility, also set first image/video in legacy fields
+      const firstImage = mediaUrls.find((m) => m.type === 'image');
+      const firstVideo = mediaUrls.find((m) => m.type === 'video');
 
       const { error } = await supabase.from('posts').insert({
         user_id: user.id,
         content: content.trim() || '',
-        image_url: imageUrl,
-        video_url: videoUrl,
+        image_url: firstImage?.url || null,
+        video_url: firstVideo?.url || null,
+        media_urls: mediaUrls,
       });
 
       if (error) throw error;
@@ -405,7 +405,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
                     </div>
 
                     {/* Add More Button */}
-                    {mediaItems.length < 10 && (
+                    {mediaItems.length < 80 && (
                       <div className="flex items-center gap-2">
                         <Input
                           id="add-more-media"
@@ -426,7 +426,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
                           Thêm ảnh/video
                         </Button>
                         <span className="text-sm text-muted-foreground">
-                          {mediaItems.length}/10
+                          {mediaItems.length}/80
                         </span>
                       </div>
                     )}
