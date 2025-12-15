@@ -1,7 +1,25 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Allowed content types for uploads
+const ALLOWED_CONTENT_TYPES = [
+  // Images
+  'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp',
+  'image/tiff', 'image/svg+xml', 'image/heic', 'image/heif', 'image/avif',
+  'image/x-icon', 'image/vnd.microsoft.icon',
+  // Videos
+  'video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo',
+  'video/x-ms-wmv', 'video/x-flv', 'video/mpeg', 'video/3gpp',
+  'video/ogg', 'video/x-matroska', 'video/x-m4v',
+];
+
+// Max file size: 50MB for images, 200MB for videos
+const MAX_IMAGE_SIZE = 50 * 1024 * 1024;
+const MAX_VIDEO_SIZE = 200 * 1024 * 1024;
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -9,7 +27,56 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // ✅ AUTHENTICATION CHECK
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.error('Missing authorization header');
+      return new Response(
+        JSON.stringify({ error: 'Missing authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Create Supabase client with user's JWT to verify authentication
+    const supabaseUser = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      {
+        global: { headers: { Authorization: authHeader } },
+        auth: { autoRefreshToken: false, persistSession: false }
+      }
+    );
+
+    const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
+    if (userError || !user) {
+      console.error('Unauthorized access attempt:', userError?.message);
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log(`Authenticated user: ${user.id}`);
+
     const { file, key, contentType } = await req.json();
+
+    // ✅ VALIDATE CONTENT TYPE
+    if (!ALLOWED_CONTENT_TYPES.includes(contentType)) {
+      console.error(`Invalid content type: ${contentType}`);
+      return new Response(
+        JSON.stringify({ error: 'File type not allowed. Only images and videos are permitted.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // ✅ VALIDATE KEY FORMAT (prevent path traversal)
+    if (key.includes('..') || key.startsWith('/')) {
+      console.error(`Invalid key format: ${key}`);
+      return new Response(
+        JSON.stringify({ error: 'Invalid file path' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     const CLOUDFLARE_ACCOUNT_ID = Deno.env.get('CLOUDFLARE_ACCOUNT_ID');
     const CLOUDFLARE_ACCESS_KEY_ID = Deno.env.get('CLOUDFLARE_ACCESS_KEY_ID');
@@ -26,6 +93,18 @@ Deno.serve(async (req) => {
     const bytes = new Uint8Array(binaryString.length);
     for (let i = 0; i < binaryString.length; i++) {
       bytes[i] = binaryString.charCodeAt(i);
+    }
+
+    // ✅ VALIDATE FILE SIZE
+    const isVideo = contentType.startsWith('video/');
+    const maxSize = isVideo ? MAX_VIDEO_SIZE : MAX_IMAGE_SIZE;
+    if (bytes.length > maxSize) {
+      const maxSizeMB = maxSize / (1024 * 1024);
+      console.error(`File too large: ${bytes.length} bytes (max: ${maxSize})`);
+      return new Response(
+        JSON.stringify({ error: `File too large. Maximum size is ${maxSizeMB}MB for ${isVideo ? 'videos' : 'images'}.` }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // AWS Signature V4 for R2
@@ -123,7 +202,7 @@ Deno.serve(async (req) => {
 
     const url = `${CLOUDFLARE_R2_PUBLIC_URL}/${key}`;
 
-    console.log(`Successfully uploaded to R2: ${key}`);
+    console.log(`Successfully uploaded to R2: ${key} by user ${user.id}`);
 
     return new Response(
       JSON.stringify({ url, key }),
