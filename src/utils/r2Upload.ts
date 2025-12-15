@@ -21,10 +21,18 @@ export async function uploadToR2(
     const filename = customPath || `${timestamp}-${randomString}.${extension}`;
     const key = `${bucket}/${filename}`;
 
-    // Convert file to base64 for edge function
+    // Convert file to base64 in chunks to avoid stack overflow
     const arrayBuffer = await file.arrayBuffer();
     const bytes = new Uint8Array(arrayBuffer);
-    const base64 = btoa(String.fromCharCode(...bytes));
+    
+    // Process in 8KB chunks to avoid Maximum call stack size exceeded
+    let binary = '';
+    const chunkSize = 8192;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      const chunk = bytes.slice(i, i + chunkSize);
+      binary += String.fromCharCode.apply(null, Array.from(chunk));
+    }
+    const base64 = btoa(binary);
 
     // Call edge function to upload to R2
     const { data, error } = await supabase.functions.invoke('upload-to-r2', {
