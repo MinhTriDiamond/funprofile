@@ -59,14 +59,19 @@ const WalletCenterContainer = () => {
   // This prevents wagmi's auto-reconnect from ignoring user's disconnect action
   useEffect(() => {
     const wasDisconnected = localStorage.getItem(WALLET_DISCONNECTED_KEY) === 'true';
-    if (wasDisconnected && isConnected) {
+    if (wasDisconnected && showDisconnectedUI && isConnected) {
       // User had disconnected but wagmi auto-reconnected - disconnect again
       disconnect();
     }
-  }, []); // Run only on mount
+  }, [isConnected, disconnect, showDisconnectedUI]);
 
-  // When user explicitly connects (not auto-reconnect), clear the flag
-  // This is handled in handleConnect, not here
+  // Whenever wallet becomes connected, ensure we don't keep the "explicitly disconnected" flag
+  useEffect(() => {
+    if (isConnected) {
+      localStorage.removeItem(WALLET_DISCONNECTED_KEY);
+      setShowDisconnectedUI(false);
+    }
+  }, [isConnected]);
 
   // Check and switch to BNB Chain if wrong network
   useEffect(() => {
@@ -182,7 +187,9 @@ const WalletCenterContainer = () => {
     // Clear previous state
     setConnectionError(null);
     setIsConnecting(true);
-    setShowDisconnectedUI(false); // Clear disconnected UI flag
+
+    // Clear disconnected UI flag immediately
+    setShowDisconnectedUI(false);
     localStorage.removeItem(WALLET_DISCONNECTED_KEY);
 
     // Check if MetaMask is installed
@@ -194,42 +201,58 @@ const WalletCenterContainer = () => {
     }
 
     try {
-      // CRITICAL: Call eth_requestAccounts directly to trigger MetaMask popup
-      // This is necessary because wagmi's connect() doesn't always trigger popup in iframe
+      // Trigger MetaMask popup (important in iframe)
       await window.ethereum.request({ method: 'eth_requestAccounts' });
-      
-      // Find MetaMask connector
-      const metamaskConnector = connectors.find(c => c.name === 'MetaMask') || connectors.find(c => c.id === 'injected');
-      
-      if (metamaskConnector) {
-        // Now sync wagmi state
-        connect(
-          { connector: metamaskConnector, chainId: bsc.id },
-          {
-            onSuccess: () => {
-              setIsConnecting(false);
-              setConnectionError(null);
-              toast.success('Kết nối ví thành công!');
-            },
-            onError: () => {
-              // Even if wagmi connect fails, we're connected via eth_requestAccounts
-              // Just refresh the page to sync state
-              setIsConnecting(false);
-              window.location.reload();
-            },
-          }
-        );
-      } else {
+
+      // Prefer MetaMask connector; fallback to injected/first connector
+      const metamaskConnector =
+        connectors.find((c) => c.name === 'MetaMask') ||
+        connectors.find((c) => c.id === 'metaMask') ||
+        connectors.find((c) => c.id === 'injected') ||
+        connectors[0];
+
+      if (!metamaskConnector) {
         setIsConnecting(false);
-        toast.success('Kết nối ví thành công!');
-        // Reload to ensure wagmi picks up the connection
-        setTimeout(() => window.location.reload(), 500);
+        setConnectionError('Không tìm thấy ví để kết nối');
+        toast.error('Không tìm thấy ví để kết nối');
+        return;
       }
+
+      // Sync wagmi state (do NOT force chainId here; we switch network after connect)
+      connect(
+        { connector: metamaskConnector },
+        {
+          onSuccess: () => {
+            setIsConnecting(false);
+            setConnectionError(null);
+            toast.success('Kết nối ví thành công!');
+          },
+          onError: async (err) => {
+            // Sometimes MetaMask is already authorized but wagmi sync can fail; don't hard-reload.
+            try {
+              const accounts = await window.ethereum?.request?.({ method: 'eth_accounts' });
+              if (Array.isArray(accounts) && accounts.length > 0) {
+                setIsConnecting(false);
+                setConnectionError(null);
+                toast.success('Kết nối ví thành công!');
+                return;
+              }
+            } catch {
+              // ignore
+            }
+
+            setIsConnecting(false);
+            setConnectionError('Không thể đồng bộ kết nối ví. Vui lòng thử lại.');
+            toast.error('Không thể kết nối ví');
+            console.error('Wagmi connect error:', err);
+          },
+        }
+      );
     } catch (error: any) {
       setIsConnecting(false);
       const errorMsg = error?.message || '';
       const errorCode = error?.code;
-      
+
       if (errorCode === 4001 || errorMsg.includes('User rejected') || errorMsg.includes('rejected')) {
         setConnectionError('Bạn đã từ chối kết nối ví');
         toast.error('Bạn đã từ chối kết nối ví');
