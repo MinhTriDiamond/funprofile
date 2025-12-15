@@ -16,6 +16,8 @@ import {
   Flag,
   Wallet,
 } from 'lucide-react';
+import funEcosystemLogo from '@/assets/fun-ecosystem-logo.webp';
+import funFarmLogo from '@/assets/fun-farm-logo.webp';
 
 interface Profile {
   id: string;
@@ -80,15 +82,28 @@ export const FacebookLeftSidebar = () => {
       path: 'https://planet.fun.rich',
       isExternal: true
     },
+    { 
+      name: 'FUN Farm', 
+      avatar: funFarmLogo,
+      path: 'https://farm.fun.rich',
+      isExternal: true
+    },
   ];
 
   return (
     <div className="space-y-3">
       {/* Card 1: FUN ECOSYSTEM */}
       <div className="bg-card rounded-xl border-2 border-yellow-400/50 p-4 hover:border-yellow-400 hover:shadow-[0_0_20px_rgba(250,204,21,0.3)] transition-all duration-300">
-        <h3 className="font-bold text-lg mb-3 text-yellow-500 drop-shadow-[0_0_8px_rgba(250,204,21,0.6)]">
-          FUN ECOSYSTEM
-        </h3>
+        <div className="flex items-center gap-2 mb-3">
+          <img 
+            src={funEcosystemLogo} 
+            alt="FUN Ecosystem" 
+            className="w-8 h-8 rounded-lg object-cover"
+          />
+          <h3 className="font-bold text-lg text-yellow-500 drop-shadow-[0_0_8px_rgba(250,204,21,0.6)]">
+            FUN ECOSYSTEM
+          </h3>
+        </div>
         <div className="space-y-1">
           {shortcuts.map((shortcut) => (
             <button
