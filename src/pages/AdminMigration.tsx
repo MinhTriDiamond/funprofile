@@ -85,33 +85,62 @@ const AdminMigration = () => {
     presignedUrl: string, 
     fileBlob: Blob, 
     contentType: string,
-    onProgress?: (percent: number) => void
+    onProgress?: (percent: number) => void,
+    maxRetries = 3
   ): Promise<boolean> => {
-    return new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      
-      xhr.upload.addEventListener('progress', (e) => {
-        if (e.lengthComputable && onProgress) {
-          const percent = Math.round((e.loaded / e.total) * 100);
-          onProgress(percent);
+    let lastError: Error | null = null;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        await new Promise<boolean>((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          
+          // Timeout: 5 minutes for large files
+          xhr.timeout = 300000;
+          
+          xhr.upload.addEventListener('progress', (e) => {
+            if (e.lengthComputable && onProgress) {
+              const percent = Math.round((e.loaded / e.total) * 100);
+              onProgress(percent);
+            }
+          });
+
+          xhr.addEventListener('load', () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              resolve(true);
+            } else {
+              reject(new Error(`Upload failed with status ${xhr.status}: ${xhr.responseText}`));
+            }
+          });
+
+          xhr.addEventListener('error', () => {
+            reject(new Error(`Network error (attempt ${attempt}/${maxRetries})`));
+          });
+          xhr.addEventListener('timeout', () => {
+            reject(new Error(`Upload timeout (attempt ${attempt}/${maxRetries})`));
+          });
+          xhr.addEventListener('abort', () => reject(new Error('Upload aborted')));
+
+          xhr.open('PUT', presignedUrl);
+          xhr.setRequestHeader('Content-Type', contentType);
+          xhr.send(fileBlob);
+        });
+        
+        return true; // Success!
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error('Unknown error');
+        console.warn(`Upload attempt ${attempt}/${maxRetries} failed:`, lastError.message);
+        
+        if (attempt < maxRetries) {
+          // Exponential backoff: 1s, 2s, 4s
+          const delay = Math.pow(2, attempt - 1) * 1000;
+          console.log(`Retrying in ${delay / 1000}s...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
         }
-      });
-
-      xhr.addEventListener('load', () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          resolve(true);
-        } else {
-          reject(new Error(`Upload failed with status ${xhr.status}`));
-        }
-      });
-
-      xhr.addEventListener('error', () => reject(new Error('Network error during upload')));
-      xhr.addEventListener('abort', () => reject(new Error('Upload aborted')));
-
-      xhr.open('PUT', presignedUrl);
-      xhr.setRequestHeader('Content-Type', contentType);
-      xhr.send(fileBlob);
-    });
+      }
+    }
+    
+    throw lastError || new Error('Upload failed after all retries');
   };
 
   const downloadFile = async (url: string): Promise<{ blob: Blob; contentType: string }> => {
@@ -347,14 +376,23 @@ const AdminMigration = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="bg-muted/50 rounded-lg p-4 space-y-2">
-                <h4 className="font-medium">✨ Tính năng mới:</h4>
+                <h4 className="font-medium">✨ Tính năng:</h4>
                 <ul className="text-sm text-muted-foreground space-y-1">
                   <li>✅ <strong>Không giới hạn file size</strong> (hỗ trợ file &gt;10MB)</li>
                   <li>✅ Upload trực tiếp lên R2 với presigned URLs</li>
                   <li>✅ Progress tracking cho files lớn</li>
-                  <li>✅ Tự động cập nhật database URLs</li>
+                  <li>✅ Tự động retry 3 lần nếu thất bại</li>
+                  <li>✅ Timeout 5 phút cho mỗi file</li>
                 </ul>
               </div>
+
+              <Alert className="bg-yellow-50 border-yellow-200">
+                <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                <AlertDescription className="text-yellow-700">
+                  <strong>⚠️ Quan trọng:</strong> Đảm bảo R2 bucket đã cấu hình CORS. Nếu gặp lỗi "Network error", 
+                  vào Cloudflare Dashboard → R2 → Bucket Settings → CORS và thêm rule cho domain của bạn.
+                </AlertDescription>
+              </Alert>
 
               <Alert>
                 <AlertTriangle className="h-4 w-4" />
