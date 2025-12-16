@@ -51,7 +51,6 @@ export async function uploadToR2(
       key: key,
     };
   } catch (error) {
-    console.error('Error uploading to R2:', error);
     throw error;
   }
 }
@@ -67,7 +66,6 @@ export async function deleteFromR2(key: string): Promise<void> {
 
     if (error) throw error;
   } catch (error) {
-    console.error('Error deleting from R2:', error);
     throw error;
   }
 }

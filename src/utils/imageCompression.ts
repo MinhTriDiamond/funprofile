@@ -113,7 +113,6 @@ export const compressImage = async (
           { type: opts.outputFormat }
         );
 
-        console.log(`Image compressed: ${(file.size / 1024).toFixed(1)}KB → ${(compressedFile.size / 1024).toFixed(1)}KB (${ext.toUpperCase()})`);
         resolve(compressedFile);
       };
 
