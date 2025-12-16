@@ -228,7 +228,7 @@ export const translations = {
     notifications: 'Thông báo',
     
     // Left Sidebar
-    funEcosystem: 'HỆ SINH THÁI FUN',
+    funEcosystem: 'FUN ECOSYSTEM',
     aboutFunProfile: 'Về FUN Profile',
     yourShortcuts: 'Lối tắt của bạn',
     groups: 'Nhóm',
