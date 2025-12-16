@@ -43,7 +43,7 @@ export const translations = {
     homeFeed: 'Home Feed',
     
     // Right Sidebar
-    honorBoard: 'Honor Board',
+    honorBoard: 'TOP RANKING',
     walletStatus: 'Wallet Status',
     sponsored: 'Sponsored',
     contacts: 'Contacts',
@@ -242,7 +242,7 @@ export const translations = {
     homeFeed: 'Trang chính',
     
     // Right Sidebar
-    honorBoard: 'Bảng Vinh Danh',
+    honorBoard: 'TOP RANKING',
     walletStatus: 'Tình Trạng Ví',
     sponsored: 'Được tài trợ',
     contacts: 'Liên hệ',
