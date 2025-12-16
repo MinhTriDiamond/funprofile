@@ -143,14 +143,67 @@ const AdminMigration = () => {
     throw lastError || new Error('Upload failed after all retries');
   };
 
-  const downloadFile = async (url: string): Promise<{ blob: Blob; contentType: string }> => {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`Failed to download: ${response.status}`);
-    
-    const contentType = response.headers.get('content-type') || 'application/octet-stream';
-    const blob = await response.blob();
-    
-    return { blob, contentType };
+  const downloadFile = async (
+    url: string,
+    onProgress?: (percent: number) => void,
+    maxRetries = 3
+  ): Promise<{ blob: Blob; contentType: string }> => {
+    let lastError: Error | null = null;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const result = await new Promise<{ blob: Blob; contentType: string }>((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+
+          // Timeout: 5 minutes (large videos)
+          xhr.timeout = 300000;
+
+          xhr.addEventListener('progress', (e) => {
+            if (e.lengthComputable && onProgress) {
+              const percent = Math.round((e.loaded / e.total) * 100);
+              onProgress(percent);
+            }
+          });
+
+          xhr.addEventListener('load', () => {
+            const status = xhr.status;
+            if (status >= 200 && status < 300) {
+              const contentType = xhr.getResponseHeader('content-type') || 'application/octet-stream';
+              const blob = xhr.response as Blob;
+              resolve({ blob, contentType });
+              return;
+            }
+
+            if (status === 404) {
+              reject(new Error('File not found (404)'));
+              return;
+            }
+
+            reject(new Error(`Download failed with status ${status}`));
+          });
+
+          xhr.addEventListener('error', () => reject(new Error('Network error during download')));
+          xhr.addEventListener('timeout', () => reject(new Error('Download timeout')));
+          xhr.addEventListener('abort', () => reject(new Error('Download aborted')));
+
+          xhr.open('GET', url, true);
+          xhr.responseType = 'blob';
+          xhr.send();
+        });
+
+        return result;
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error('Unknown error');
+        console.warn(`Download attempt ${attempt}/${maxRetries} failed:`, lastError.message, url);
+
+        if (attempt < maxRetries) {
+          const delay = Math.pow(2, attempt - 1) * 1000;
+          await new Promise((r) => setTimeout(r, delay));
+        }
+      }
+    }
+
+    throw lastError || new Error('Download failed after all retries');
   };
 
   const getFileExtension = (url: string, contentType: string): string => {
