@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ThumbsUp } from 'lucide-react';
@@ -30,6 +30,21 @@ export const ReactionButton = ({
   const [showReactions, setShowReactions] = useState(false);
   const [currentReaction, setCurrentReaction] = useState<string | null>(initialReaction);
   const [isAnimating, setIsAnimating] = useState(false);
+  const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleMouseEnter = () => {
+    if (hideTimeoutRef.current) {
+      clearTimeout(hideTimeoutRef.current);
+      hideTimeoutRef.current = null;
+    }
+    setShowReactions(true);
+  };
+
+  const handleMouseLeave = () => {
+    hideTimeoutRef.current = setTimeout(() => {
+      setShowReactions(false);
+    }, 300); // 300ms delay before hiding
+  };
 
   const handleReaction = async (reactionType: string) => {
     if (!currentUserId) {
@@ -85,8 +100,8 @@ export const ReactionButton = ({
   return (
     <div
       className="relative flex-1"
-      onMouseEnter={() => setShowReactions(true)}
-      onMouseLeave={() => setShowReactions(false)}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       <button
         onClick={() => handleReaction(currentReaction || 'like')}
@@ -111,18 +126,22 @@ export const ReactionButton = ({
 
       {/* Reactions Popup */}
       {showReactions && (
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-card rounded-full shadow-xl border border-border p-1.5 flex gap-0.5 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200">
-          {REACTIONS.map((reaction) => (
-            <button
-              key={reaction.type}
-              className="w-10 h-10 flex items-center justify-center text-2xl hover:scale-150 transition-transform duration-200 hover:-translate-y-1"
-              onClick={() => handleReaction(reaction.type)}
-              title={reaction.label}
-            >
-              {reaction.icon}
-            </button>
-          ))}
-        </div>
+        <>
+          {/* Invisible bridge to connect button to popup */}
+          <div className="absolute bottom-full left-0 right-0 h-3" />
+          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-card rounded-full shadow-xl border border-border p-1.5 flex gap-0.5 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200">
+            {REACTIONS.map((reaction) => (
+              <button
+                key={reaction.type}
+                className="w-10 h-10 flex items-center justify-center text-2xl hover:scale-150 transition-transform duration-200 hover:-translate-y-1"
+                onClick={() => handleReaction(reaction.type)}
+                title={reaction.label}
+              >
+                {reaction.icon}
+              </button>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
