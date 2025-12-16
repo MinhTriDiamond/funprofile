@@ -27,6 +27,7 @@ export const translations = {
     settings: 'Settings',
     search: 'Search',
     notifications: 'Notifications',
+    menu: 'Menu',
     
     // Left Sidebar
     funEcosystem: 'FUN ECOSYSTEM',
@@ -226,6 +227,7 @@ export const translations = {
     settings: 'Cài đặt',
     search: 'Tìm kiếm',
     notifications: 'Thông báo',
+    menu: 'Menu',
     
     // Left Sidebar
     funEcosystem: 'FUN ECOSYSTEM',

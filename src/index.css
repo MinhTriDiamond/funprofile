@@ -138,3 +138,20 @@
 .reaction-pop {
   animation: reaction-pop 0.3s ease-out;
 }
+
+/* Safe area for iOS devices */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Mobile touch target optimization */
+@media (max-width: 1023px) {
+  .fb-card {
+    @apply rounded-none sm:rounded-lg;
+  }
+  
+  /* Ensure adequate touch targets */
+  button, a {
+    min-height: 44px;
+  }
+}

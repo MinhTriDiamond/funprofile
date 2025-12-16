@@ -8,7 +8,7 @@ import { FacebookRightSidebar } from '@/components/feed/FacebookRightSidebar';
 import { StoriesBar } from '@/components/feed/StoriesBar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFeedPosts } from '@/hooks/useFeedPosts';
-
+import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 // Lightweight skeleton components
 const SidebarSkeleton = memo(() => (
   <div className="space-y-3">
@@ -63,18 +63,18 @@ const Feed = () => {
     <div className="min-h-screen bg-background">
       <FacebookNavbar />
       
-      <main className="pt-14">
-        <div className="max-w-screen-2xl mx-auto px-4">
+      <main className="pt-14 pb-20 lg:pb-4">
+        <div className="max-w-screen-2xl mx-auto px-2 sm:px-4">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 py-4">
-            {/* Left Sidebar */}
+            {/* Left Sidebar - Hidden on mobile */}
             <aside className="hidden lg:block lg:col-span-3">
               <div className="sticky top-[72px] max-h-[calc(100vh-88px)] overflow-y-auto pr-2">
                 <FacebookLeftSidebar />
               </div>
             </aside>
 
-            {/* Main Feed */}
-            <div className="lg:col-span-6">
+            {/* Main Feed - Full width on mobile */}
+            <div className="col-span-1 lg:col-span-6 w-full">
               <StoriesBar />
 
               {currentUserId && <FacebookCreatePost onPostCreated={refetch} />}
@@ -108,7 +108,7 @@ const Feed = () => {
               )}
             </div>
 
-            {/* Right Sidebar */}
+            {/* Right Sidebar - Hidden on mobile */}
             <aside className="hidden lg:block lg:col-span-3">
               <div className="sticky top-[72px] max-h-[calc(100vh-88px)] overflow-y-auto pl-2">
                 <FacebookRightSidebar />
@@ -117,6 +117,9 @@ const Feed = () => {
           </div>
         </div>
       </main>
+
+      {/* Mobile Bottom Navigation */}
+      <MobileBottomNav />
     </div>
   );
 };
