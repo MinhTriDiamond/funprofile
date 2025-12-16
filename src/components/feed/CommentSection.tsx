@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { MessageCircle, Send } from 'lucide-react';
+import { MessageCircle, Send, Image, Video, Smile } from 'lucide-react';
 import { z } from 'zod';
 import { CommentItem } from './CommentItem';
 import { CommentMediaUpload } from './CommentMediaUpload';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { EmojiPicker } from './EmojiPicker';
 
 const commentSchema = z.object({
-  content: z.string().max(1000, 'Comment must be less than 1000 characters'),
+  content: z.string().max(1000, 'Comment không được quá 1000 ký tự'),
 });
 
 interface Comment {
@@ -39,12 +40,18 @@ export const CommentSection = ({ postId, onCommentAdded }: CommentSectionProps) 
   const [mediaType, setMediaType] = useState<'image' | 'video' | null>(null);
   const [loading, setLoading] = useState(false);
   const [showComments, setShowComments] = useState(false);
+  const [currentUser, setCurrentUser] = useState<{ avatar_url: string | null; username: string } | null>(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [visibleComments, setVisibleComments] = useState(5);
+
+  useEffect(() => {
+    fetchCurrentUser();
+  }, []);
 
   useEffect(() => {
     if (showComments) {
       fetchComments();
       
-      // Set up realtime subscription for new comments
       const channel = supabase
         .channel(`comments-${postId}`)
         .on(
@@ -67,6 +74,21 @@ export const CommentSection = ({ postId, onCommentAdded }: CommentSectionProps) 
     }
   }, [postId, showComments]);
 
+  const fetchCurrentUser = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('avatar_url, username')
+        .eq('id', user.id)
+        .single();
+      
+      if (profile) {
+        setCurrentUser(profile);
+      }
+    }
+  };
+
   const fetchComments = async () => {
     const { data, error } = await supabase
       .from('comments')
@@ -76,14 +98,13 @@ export const CommentSection = ({ postId, onCommentAdded }: CommentSectionProps) 
       `)
       .eq('post_id', postId)
       .is('parent_comment_id', null)
-      .order('created_at', { ascending: true });
+      .order('created_at', { ascending: false });
 
     if (error) {
-      toast.error('Failed to load comments');
+      toast.error('Không thể tải comments');
       return;
     }
 
-    // Fetch replies for each comment
     const commentsWithReplies = await Promise.all(
       (data || []).map(async (comment) => {
         const { data: replies } = await supabase
@@ -119,7 +140,7 @@ export const CommentSection = ({ postId, onCommentAdded }: CommentSectionProps) 
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) {
-      toast.error('Please sign in to comment');
+      toast.error('Vui lòng đăng nhập để bình luận');
       setLoading(false);
       return;
     }
@@ -143,16 +164,25 @@ export const CommentSection = ({ postId, onCommentAdded }: CommentSectionProps) 
       .insert(insertData);
 
     if (error) {
-      toast.error('Failed to post comment');
+      toast.error('Không thể đăng comment');
     } else {
       setNewComment('');
       setMediaUrl(null);
       setMediaType(null);
       fetchComments();
       onCommentAdded?.();
-      toast.success('Comment posted!');
+      toast.success('Đã đăng comment!');
     }
     setLoading(false);
+  };
+
+  const handleEmojiSelect = (emoji: string) => {
+    setNewComment(prev => prev + emoji);
+    setShowEmojiPicker(false);
+  };
+
+  const loadMoreComments = () => {
+    setVisibleComments(prev => prev + 10);
   };
 
   return (
@@ -161,56 +191,138 @@ export const CommentSection = ({ postId, onCommentAdded }: CommentSectionProps) 
         variant="ghost"
         size="sm"
         onClick={() => setShowComments(!showComments)}
-        className="text-muted-foreground hover:text-foreground transition-colors"
+        className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all duration-300"
       >
         <MessageCircle className="w-4 h-4 mr-2" />
-        {comments.length} {comments.length === 1 ? 'Comment' : 'Comments'}
+        {comments.length} {comments.length === 1 ? 'Bình luận' : 'Bình luận'}
       </Button>
 
       {showComments && (
-        <div className="space-y-4 pl-4 border-l-2 border-border">
-          {comments.map((comment) => (
-            <CommentItem
-              key={comment.id}
-              comment={comment}
-              postId={postId}
-              onReplyAdded={fetchComments}
-              onCommentDeleted={fetchComments}
-            />
-          ))}
-
-          <form onSubmit={handleSubmit} className="space-y-2 animate-fade-in">
-            <Textarea
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              placeholder="Write a comment..."
-              className="min-h-[80px]"
-              disabled={loading}
-            />
-            
-            <div className="flex items-center justify-between">
-              <CommentMediaUpload
-                onMediaUploaded={(url, type) => {
-                  setMediaUrl(url);
-                  setMediaType(type);
-                }}
-                onMediaRemoved={() => {
-                  setMediaUrl(null);
-                  setMediaType(null);
-                }}
-              />
+        <div className="space-y-4 animate-fade-in">
+          {/* Comment Input Box - Facebook Style */}
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <div className="flex gap-3 items-start">
+              <Avatar className="w-10 h-10 ring-2 ring-primary/30 shrink-0">
+                {currentUser?.avatar_url ? (
+                  <img src={currentUser.avatar_url} alt="Avatar" className="w-full h-full object-cover rounded-full" />
+                ) : (
+                  <AvatarFallback className="bg-gradient-to-br from-primary/30 to-primary/10 text-primary font-semibold">
+                    {currentUser?.username?.[0]?.toUpperCase() || 'U'}
+                  </AvatarFallback>
+                )}
+              </Avatar>
               
-              <Button 
-                type="submit" 
-                size="sm" 
-                disabled={loading || (!newComment.trim() && !mediaUrl)}
-                className="gap-2"
-              >
-                <Send className="w-4 h-4" />
-                Post
-              </Button>
+              <div className="flex-1 space-y-2">
+                <div className="relative">
+                  <textarea
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    placeholder="Viết bình luận của bạn..."
+                    className="w-full min-h-[60px] max-h-[200px] px-4 py-3 bg-white border-2 border-primary/30 rounded-2xl resize-none focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-300 text-sm placeholder:text-muted-foreground/60"
+                    disabled={loading}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSubmit(e);
+                      }
+                    }}
+                  />
+                </div>
+
+                {/* Media Preview */}
+                {mediaUrl && (
+                  <div className="relative inline-block">
+                    {mediaType === 'image' ? (
+                      <img src={mediaUrl} alt="Preview" className="max-h-32 rounded-xl border-2 border-primary/20" />
+                    ) : (
+                      <video src={mediaUrl} className="max-h-32 rounded-xl border-2 border-primary/20" />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => { setMediaUrl(null); setMediaType(null); }}
+                      className="absolute -top-2 -right-2 w-6 h-6 bg-destructive text-white rounded-full flex items-center justify-center text-xs hover:bg-destructive/80"
+                    >
+                      ×
+                    </button>
+                  </div>
+                )}
+
+                {/* Action Bar */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1">
+                    <CommentMediaUpload
+                      onMediaUploaded={(url, type) => {
+                        setMediaUrl(url);
+                        setMediaType(type);
+                      }}
+                      onMediaRemoved={() => {
+                        setMediaUrl(null);
+                        setMediaType(null);
+                      }}
+                    />
+                    
+                    <div className="relative">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                        className="text-yellow-500 hover:text-yellow-600 hover:bg-yellow-500/10"
+                      >
+                        <Smile className="w-5 h-5" />
+                      </Button>
+                      {showEmojiPicker && (
+                        <div className="absolute bottom-full left-0 mb-2 z-50">
+                          <EmojiPicker onEmojiSelect={handleEmojiSelect} />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <Button 
+                    type="submit" 
+                    size="sm" 
+                    disabled={loading || (!newComment.trim() && !mediaUrl)}
+                    className="bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-white font-semibold px-6 rounded-full shadow-lg shadow-yellow-400/30 hover:shadow-yellow-500/40 transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
+                  >
+                    <Send className="w-4 h-4 mr-2" />
+                    Đăng
+                  </Button>
+                </div>
+              </div>
             </div>
           </form>
+
+          {/* Comments List */}
+          <div className="space-y-3 pl-2">
+            {comments.slice(0, visibleComments).map((comment) => (
+              <CommentItem
+                key={comment.id}
+                comment={comment}
+                postId={postId}
+                onReplyAdded={fetchComments}
+                onCommentDeleted={fetchComments}
+              />
+            ))}
+            
+            {/* Load More Button */}
+            {comments.length > visibleComments && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={loadMoreComments}
+                className="w-full text-primary hover:text-primary hover:bg-primary/10 font-medium"
+              >
+                Xem thêm {comments.length - visibleComments} bình luận...
+              </Button>
+            )}
+            
+            {comments.length === 0 && (
+              <p className="text-center text-muted-foreground text-sm py-4">
+                Chưa có bình luận nào. Hãy là người đầu tiên! ✨
+              </p>
+            )}
+          </div>
         </div>
       )}
     </div>

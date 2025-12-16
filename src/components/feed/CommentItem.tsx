@@ -1,12 +1,19 @@
 import { useState, useEffect } from 'react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { MessageCircle, Trash2 } from 'lucide-react';
-import { CommentLikeButton } from './CommentLikeButton';
+import { MessageCircle, Trash2, Share2, Flag, MoreHorizontal } from 'lucide-react';
+import { CommentReactionButton } from './CommentReactionButton';
 import { CommentReplyForm } from './CommentReplyForm';
 import { CommentMediaViewer } from './CommentMediaViewer';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { Link } from 'react-router-dom';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface Comment {
   id: string;
@@ -42,6 +49,7 @@ export const CommentItem = ({
   const [showMediaViewer, setShowMediaViewer] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [showAllReplies, setShowAllReplies] = useState(false);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -55,11 +63,11 @@ export const CommentItem = ({
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user || user.id !== comment.user_id) {
-      toast.error('You can only delete your own comments');
+      toast.error('Bạn chỉ có thể xóa comment của mình');
       return;
     }
 
-    if (!confirm('Delete this comment?')) return;
+    if (!confirm('Xóa comment này?')) return;
 
     setDeleting(true);
     const { error } = await supabase
@@ -68,51 +76,77 @@ export const CommentItem = ({
       .eq('id', comment.id);
 
     if (error) {
-      toast.error('Failed to delete comment');
+      toast.error('Không thể xóa comment');
     } else {
-      toast.success('Comment deleted');
+      toast.success('Đã xóa comment');
       onCommentDeleted();
     }
     setDeleting(false);
   };
 
+  const handleShare = () => {
+    const url = `${window.location.origin}/post/${postId}#comment-${comment.id}`;
+    navigator.clipboard.writeText(url);
+    toast.success('Đã copy link comment!');
+  };
+
+  const handleReport = () => {
+    toast.info('Đã gửi báo cáo. Cảm ơn bạn!');
+  };
+
   const mediaUrl = comment.image_url || comment.video_url;
   const mediaType = comment.image_url ? 'image' : 'video';
 
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Vừa xong';
+    if (diffMins < 60) return `${diffMins} phút`;
+    if (diffHours < 24) return `${diffHours} giờ`;
+    if (diffDays < 7) return `${diffDays} ngày`;
+    return date.toLocaleDateString('vi-VN');
+  };
+
+  const visibleReplies = showAllReplies 
+    ? comment.replies 
+    : comment.replies?.slice(0, 2);
+  const hiddenRepliesCount = (comment.replies?.length || 0) - 2;
+
   return (
-    <div className={`space-y-2 ${level > 0 ? 'ml-8 pl-4 border-l-2 border-border' : ''}`}>
+    <div 
+      id={`comment-${comment.id}`}
+      className={`space-y-2 ${level > 0 ? 'ml-10 pl-3 border-l-2 border-yellow-400/30 hover:border-yellow-400/60 transition-colors duration-300' : ''}`}
+    >
       <div className="flex gap-3 group animate-fade-in">
-        <Avatar className="w-8 h-8 ring-2 ring-primary/10 transition-all duration-300 group-hover:ring-primary/30">
-          <AvatarFallback className="text-xs bg-gradient-to-br from-primary/20 to-primary/5">
-            {comment.profiles?.username?.[0]?.toUpperCase() || 'U'}
-          </AvatarFallback>
-        </Avatar>
+        <Link to={`/profile/${comment.user_id}`}>
+          <Avatar className="w-9 h-9 ring-2 ring-primary/20 transition-all duration-300 group-hover:ring-primary/40 shrink-0 cursor-pointer hover:scale-105">
+            {comment.profiles?.avatar_url ? (
+              <img src={comment.profiles.avatar_url} alt="Avatar" className="w-full h-full object-cover rounded-full" />
+            ) : (
+              <AvatarFallback className="text-xs bg-gradient-to-br from-primary/30 to-primary/10 text-primary font-semibold">
+                {comment.profiles?.username?.[0]?.toUpperCase() || 'U'}
+              </AvatarFallback>
+            )}
+          </Avatar>
+        </Link>
         
-        <div className="flex-1 space-y-2">
-          <div className="bg-muted/50 rounded-lg p-3 transition-all duration-300 hover:bg-muted/70">
-            <div className="flex items-center justify-between gap-2 mb-1">
-              <span className="font-semibold text-sm text-primary">
-                {comment.profiles?.username || 'Anonymous'}
-              </span>
-              <div className="flex items-center gap-1">
-                <span className="text-xs text-muted-foreground">
-                  {new Date(comment.created_at).toLocaleDateString()}
-                </span>
-                {currentUserId === comment.user_id && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="w-6 h-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={handleDelete}
-                    disabled={deleting}
-                  >
-                    <Trash2 className="w-3 h-3 text-destructive" />
-                  </Button>
-                )}
-              </div>
+        <div className="flex-1 space-y-1">
+          <div className="bg-muted/60 rounded-2xl px-4 py-2.5 transition-all duration-300 hover:bg-muted/80 group-hover:shadow-sm inline-block max-w-full">
+            <div className="flex items-center gap-2 mb-0.5">
+              <Link 
+                to={`/profile/${comment.user_id}`}
+                className="font-semibold text-sm text-primary hover:underline cursor-pointer"
+              >
+                {comment.profiles?.username || 'Ẩn danh'}
+              </Link>
             </div>
             
-            <p className="text-sm break-words">{comment.content}</p>
+            <p className="text-sm break-words whitespace-pre-wrap">{comment.content}</p>
             
             {mediaUrl && (
               <div className="mt-2">
@@ -120,24 +154,25 @@ export const CommentItem = ({
                   <img
                     src={mediaUrl}
                     alt="Comment media"
-                    className="max-w-xs rounded-lg border border-border cursor-pointer hover:opacity-90 transition-opacity"
+                    className="max-w-[280px] rounded-xl border border-border cursor-pointer hover:opacity-90 transition-all duration-300 hover:shadow-md"
                     onClick={() => setShowMediaViewer(true)}
                   />
                 ) : (
                   <video
                     src={mediaUrl}
-                    className="max-w-xs rounded-lg border border-border cursor-pointer"
-                    onClick={() => setShowMediaViewer(true)}
+                    controls
+                    className="max-w-[280px] rounded-xl border border-border"
                   />
                 )}
               </div>
             )}
           </div>
 
-          <div className="flex items-center gap-1">
-            <CommentLikeButton 
+          {/* Action buttons */}
+          <div className="flex items-center gap-2 px-2 text-xs">
+            <CommentReactionButton 
               commentId={comment.id} 
-              onLikeChange={onReplyAdded}
+              onReactionChange={onReplyAdded}
             />
             
             {level < 3 && (
@@ -145,16 +180,58 @@ export const CommentItem = ({
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowReplyForm(!showReplyForm)}
-                className="text-xs text-muted-foreground hover:text-foreground gap-1.5"
+                className="text-xs text-muted-foreground hover:text-primary hover:bg-primary/10 gap-1 h-7 px-2"
               >
-                <MessageCircle className="w-3.5 h-3.5" />
-                Reply
+                Trả lời
               </Button>
             )}
+            
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleShare}
+              className="text-xs text-muted-foreground hover:text-primary hover:bg-primary/10 gap-1 h-7 px-2"
+            >
+              Chia sẻ
+            </Button>
+            
+            <span className="text-muted-foreground/60">
+              {formatTime(comment.created_at)}
+            </span>
+
+            {/* More options */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-7 h-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40">
+                {currentUserId === comment.user_id && (
+                  <DropdownMenuItem 
+                    onClick={handleDelete}
+                    disabled={deleting}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Xóa
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onClick={handleReport}>
+                  <Flag className="w-4 h-4 mr-2" />
+                  Báo cáo
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
+          {/* Reply Form */}
           {showReplyForm && (
-            <div className="animate-fade-in">
+            <div className="animate-fade-in mt-2">
               <CommentReplyForm
                 postId={postId}
                 parentCommentId={comment.id}
@@ -167,9 +244,22 @@ export const CommentItem = ({
             </div>
           )}
 
+          {/* Replies */}
           {comment.replies && comment.replies.length > 0 && (
-            <div className="space-y-2 animate-fade-in">
-              {comment.replies.map((reply) => (
+            <div className="space-y-2 mt-2 animate-fade-in">
+              {!showAllReplies && hiddenRepliesCount > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowAllReplies(true)}
+                  className="text-xs text-primary hover:text-primary hover:bg-primary/10 font-medium h-7"
+                >
+                  <MessageCircle className="w-3.5 h-3.5 mr-1.5" />
+                  Xem thêm {hiddenRepliesCount} trả lời...
+                </Button>
+              )}
+              
+              {visibleReplies?.map((reply) => (
                 <CommentItem
                   key={reply.id}
                   comment={reply}
@@ -179,6 +269,17 @@ export const CommentItem = ({
                   level={level + 1}
                 />
               ))}
+              
+              {showAllReplies && hiddenRepliesCount > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowAllReplies(false)}
+                  className="text-xs text-muted-foreground hover:text-primary hover:bg-primary/10 h-7"
+                >
+                  Ẩn bớt trả lời
+                </Button>
+              )}
             </div>
           )}
         </div>
