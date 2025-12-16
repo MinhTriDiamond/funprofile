@@ -20,9 +20,10 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
-import { ImagePlus, Video, MapPin, UserPlus, MoreHorizontal, X, Loader2, Globe, Users, Lock, ChevronDown } from 'lucide-react';
+import { ImagePlus, Video, X, Loader2, Globe, Users, Lock, ChevronDown, UserPlus, MapPin, MoreHorizontal } from 'lucide-react';
 import { compressImage, FILE_LIMITS, getVideoDuration } from '@/utils/imageCompression';
 import { EmojiPicker } from './EmojiPicker';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 interface FacebookCreatePostProps {
   onPostCreated: () => void;
@@ -34,18 +35,13 @@ interface MediaItem {
   type: 'image' | 'video';
 }
 
-const PRIVACY_OPTIONS = [
-  { value: 'public', label: 'Công khai', icon: Globe, description: 'Tất cả mọi người' },
-  { value: 'friends', label: 'Bạn bè', icon: Users, description: 'Bạn bè của bạn' },
-  { value: 'private', label: 'Chỉ mình tôi', icon: Lock, description: 'Chỉ bạn' },
-];
-
 const postSchema = z.object({
-  content: z.string().max(5000, 'Bài viết phải ít hơn 5000 ký tự'),
+  content: z.string().max(5000, 'Content must be less than 5000 characters'),
 });
 
 export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) => {
   const navigate = useNavigate();
+  const { t, language } = useLanguage();
   const [profile, setProfile] = useState<any>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [content, setContent] = useState('');
@@ -54,6 +50,12 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
   const [privacy, setPrivacy] = useState('public');
   const [isDragging, setIsDragging] = useState(false);
   const [showMediaUpload, setShowMediaUpload] = useState(false);
+
+  const PRIVACY_OPTIONS = [
+    { value: 'public', label: language === 'vi' ? 'Công khai' : 'Public', icon: Globe, description: language === 'vi' ? 'Tất cả mọi người' : 'Everyone' },
+    { value: 'friends', label: t('friends'), icon: Users, description: language === 'vi' ? 'Bạn bè của bạn' : 'Your friends' },
+    { value: 'private', label: language === 'vi' ? 'Chỉ mình tôi' : 'Only me', icon: Lock, description: language === 'vi' ? 'Chỉ bạn' : 'Only you' },
+  ];
 
   useEffect(() => {
     const fetchProfile = async () => {
