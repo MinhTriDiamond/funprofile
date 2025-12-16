@@ -348,17 +348,33 @@ const AdminMigration = () => {
           });
 
           // Update database with new R2 URL
-          const { error: updateError } = await supabase
+          console.log(`📝 Updating DB: ${item.table}.${item.field} = ${publicUrl}`);
+          
+          const { error: updateError, data: updateData } = await supabase
             .from(item.table as 'posts' | 'profiles' | 'comments')
             .update({ [item.field]: publicUrl })
-            .eq('id', item.id);
+            .eq('id', item.id)
+            .select(item.field);
 
           if (updateError) {
+            console.error(`❌ DB update error:`, updateError);
             throw new Error(`DB update failed: ${updateError.message}`);
           }
 
+          // Verify the update was successful
+          if (!updateData || updateData.length === 0) {
+            console.error(`❌ DB update returned no data - row may not exist`);
+            throw new Error(`DB update failed: Row ${item.id} not found in ${item.table}`);
+          }
+
+          const updatedUrl = updateData[0][item.field];
+          if (!updatedUrl?.includes('r2.dev')) {
+            console.error(`❌ DB update verification failed. Expected R2 URL, got: ${updatedUrl}`);
+            throw new Error(`DB update verification failed: URL not updated to R2`);
+          }
+
           migrationResult.migrated++;
-          console.log(`✅ Migrated: ${fileName} -> ${publicUrl}`);
+          console.log(`✅ Migrated & verified: ${fileName} -> ${publicUrl}`);
 
           // Small delay to avoid rate limits
           await new Promise(resolve => setTimeout(resolve, 100));
