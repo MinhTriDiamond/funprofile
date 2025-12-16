@@ -2,15 +2,16 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { MessageCircle, Send, Image, Video, Smile } from 'lucide-react';
+import { MessageCircle, Send, Smile } from 'lucide-react';
 import { z } from 'zod';
 import { CommentItem } from './CommentItem';
 import { CommentMediaUpload } from './CommentMediaUpload';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { EmojiPicker } from './EmojiPicker';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 const commentSchema = z.object({
-  content: z.string().max(1000, 'Comment không được quá 1000 ký tự'),
+  content: z.string().max(1000, 'Comment cannot exceed 1000 characters'),
 });
 
 interface Comment {
@@ -34,6 +35,7 @@ interface CommentSectionProps {
 }
 
 export const CommentSection = ({ postId, onCommentAdded }: CommentSectionProps) => {
+  const { t } = useLanguage();
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
@@ -194,12 +196,12 @@ export const CommentSection = ({ postId, onCommentAdded }: CommentSectionProps) 
         className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all duration-300"
       >
         <MessageCircle className="w-4 h-4 mr-2" />
-        {comments.length} {comments.length === 1 ? 'Bình luận' : 'Bình luận'}
+        {comments.length} {t('comments')}
       </Button>
 
       {showComments && (
         <div className="space-y-4 animate-fade-in">
-          {/* Comment Input Box - Facebook Style */}
+          {/* Comment Input Box */}
           <form onSubmit={handleSubmit} className="space-y-3">
             <div className="flex gap-3 items-start">
               <Avatar className="w-10 h-10 ring-2 ring-primary/30 shrink-0">
@@ -217,7 +219,7 @@ export const CommentSection = ({ postId, onCommentAdded }: CommentSectionProps) 
                   <textarea
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
-                    placeholder="Viết bình luận của bạn..."
+                    placeholder={t('writeComment')}
                     className="w-full min-h-[60px] max-h-[200px] px-4 py-3 bg-white border-2 border-primary/30 rounded-2xl resize-none focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-300 text-sm placeholder:text-muted-foreground/60"
                     disabled={loading}
                     onKeyDown={(e) => {
@@ -286,7 +288,7 @@ export const CommentSection = ({ postId, onCommentAdded }: CommentSectionProps) 
                     className="bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-white font-semibold px-6 rounded-full shadow-lg shadow-yellow-400/30 hover:shadow-yellow-500/40 transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
                   >
                     <Send className="w-4 h-4 mr-2" />
-                    Đăng
+                    {t('post')}
                   </Button>
                 </div>
               </div>
@@ -313,13 +315,13 @@ export const CommentSection = ({ postId, onCommentAdded }: CommentSectionProps) 
                 onClick={loadMoreComments}
                 className="w-full text-primary hover:text-primary hover:bg-primary/10 font-medium"
               >
-                Xem thêm {comments.length - visibleComments} bình luận...
+                {t('loadMoreComments')} ({comments.length - visibleComments})
               </Button>
             )}
             
             {comments.length === 0 && (
               <p className="text-center text-muted-foreground text-sm py-4">
-                Chưa có bình luận nào. Hãy là người đầu tiên! ✨
+                {t('noComments')} ✨
               </p>
             )}
           </div>

@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -13,20 +12,18 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { NotificationDropdown } from './NotificationDropdown';
 import { SearchDialog } from './SearchDialog';
+import LanguageSwitcher from './LanguageSwitcher';
+import { useLanguage } from '@/i18n/LanguageContext';
 import {
   Home,
   Users,
   PlaySquare,
   Store,
   Gamepad2,
-  UsersRound,
   MessageCircle,
-  Bell,
   Menu,
-  Search,
   LogOut,
   Settings,
-  User,
   Wallet,
 } from 'lucide-react';
 
@@ -39,6 +36,7 @@ interface Profile {
 export const FacebookNavbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useLanguage();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
@@ -86,8 +84,8 @@ export const FacebookNavbar = () => {
   const isActive = (path: string) => location.pathname === path;
 
   const navItems = [
-    { icon: Home, path: '/', label: 'Trang chủ' },
-    { icon: Users, path: '/friends', label: 'Bạn bè' },
+    { icon: Home, path: '/', label: t('home') },
+    { icon: Users, path: '/friends', label: t('friends') },
     { icon: PlaySquare, path: '/watch', label: 'Watch' },
     { icon: Store, path: '/marketplace', label: 'Marketplace' },
     { icon: Gamepad2, path: '/gaming', label: 'Gaming' },
@@ -133,13 +131,16 @@ export const FacebookNavbar = () => {
 
         {/* Right Section - Actions */}
         <div className="flex items-center gap-2 w-[280px] justify-end">
+          {/* Language Switcher */}
+          <LanguageSwitcher className="hidden md:flex" />
+
           {/* Menu button for mobile */}
           <button className="fb-icon-btn md:hidden" aria-label="Menu">
             <Menu className="w-5 h-5" />
           </button>
 
           {/* Messenger */}
-          <button className="fb-icon-btn hidden md:flex" aria-label="Tin nhắn">
+          <button className="fb-icon-btn hidden md:flex" aria-label={t('notifications')}>
             <MessageCircle className="w-5 h-5" />
           </button>
 
@@ -150,7 +151,7 @@ export const FacebookNavbar = () => {
           <button
             onClick={() => navigate('/wallet')}
             className="fb-icon-btn hidden md:flex"
-            aria-label="Ví của tôi"
+            aria-label={t('wallet')}
           >
             <Wallet className="w-5 h-5 text-gold" />
           </button>
@@ -159,7 +160,7 @@ export const FacebookNavbar = () => {
           {isLoggedIn && profile ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="focus:outline-none" aria-label="Tài khoản của tôi">
+                <button className="focus:outline-none" aria-label={t('profile')}>
                   <Avatar className="w-10 h-10 cursor-pointer ring-2 ring-transparent hover:ring-primary/20 transition-all">
                     <AvatarImage src={profile.avatar_url || ''} alt={profile.username} />
                     <AvatarFallback className="bg-primary text-primary-foreground">
@@ -182,7 +183,7 @@ export const FacebookNavbar = () => {
                     </Avatar>
                     <div>
                       <p className="font-semibold">{profile.full_name || profile.username}</p>
-                      <p className="text-sm text-muted-foreground">Xem trang cá nhân của bạn</p>
+                      <p className="text-sm text-muted-foreground">{t('profile')}</p>
                     </div>
                   </div>
                 </DropdownMenuItem>
@@ -192,11 +193,11 @@ export const FacebookNavbar = () => {
                   className="p-3 cursor-pointer"
                 >
                   <Wallet className="w-5 h-5 mr-3 text-gold" />
-                  <span>Ví của tôi</span>
+                  <span>{t('wallet')}</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem className="p-3 cursor-pointer">
                   <Settings className="w-5 h-5 mr-3" />
-                  <span>Cài đặt & quyền riêng tư</span>
+                  <span>{t('settings')}</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
@@ -204,7 +205,7 @@ export const FacebookNavbar = () => {
                   className="p-3 cursor-pointer text-destructive"
                 >
                   <LogOut className="w-5 h-5 mr-3" />
-                  <span>Đăng xuất</span>
+                  <span>{t('signOut')}</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -213,7 +214,7 @@ export const FacebookNavbar = () => {
               onClick={() => navigate('/auth')}
               className="bg-primary text-primary-foreground hover:bg-primary-hover"
             >
-              Đăng nhập
+              {t('signIn')}
             </Button>
           )}
         </div>

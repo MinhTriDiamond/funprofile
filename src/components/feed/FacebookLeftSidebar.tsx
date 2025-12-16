@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useLanguage } from '@/i18n/LanguageContext';
 import {
   Users,
   UsersRound,
@@ -28,6 +29,7 @@ interface Profile {
 
 export const FacebookLeftSidebar = () => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [showMore, setShowMore] = useState(false);
 
@@ -47,20 +49,20 @@ export const FacebookLeftSidebar = () => {
   }, []);
 
   const menuItems = [
-    { icon: Users, label: 'Bạn bè', path: '/friends', color: 'text-blue-500' },
-    { icon: UsersRound, label: 'Nhóm', path: '/groups', color: 'text-blue-500' },
+    { icon: Users, label: t('friends'), path: '/friends', color: 'text-blue-500' },
+    { icon: UsersRound, label: t('groups'), path: '/groups', color: 'text-blue-500' },
     { icon: Store, label: 'Marketplace', path: '/marketplace', color: 'text-blue-500' },
     { icon: PlaySquare, label: 'Watch', path: '/watch', color: 'text-blue-500' },
-    { icon: Clock, label: 'Kỷ niệm', path: '/memories', color: 'text-blue-500' },
-    { icon: Bookmark, label: 'Đã lưu', path: '/saved', color: 'text-purple-500' },
+    { icon: Clock, label: t('memories'), path: '/memories', color: 'text-blue-500' },
+    { icon: Bookmark, label: t('saved'), path: '/saved', color: 'text-purple-500' },
   ];
 
   const moreItems = [
-    { icon: CalendarDays, label: 'Sự kiện', path: '/events', color: 'text-red-500' },
-    { icon: Gamepad2, label: 'Chơi game', path: '/gaming', color: 'text-blue-500' },
-    { icon: Heart, label: 'Quyên góp', path: '/fundraisers', color: 'text-pink-500' },
-    { icon: Flag, label: 'Trang', path: '/pages', color: 'text-orange-500' },
-    { icon: Wallet, label: 'Ví Crypto', path: '/wallet', color: 'text-gold' },
+    { icon: CalendarDays, label: t('events'), path: '/events', color: 'text-red-500' },
+    { icon: Gamepad2, label: 'Gaming', path: '/gaming', color: 'text-blue-500' },
+    { icon: Heart, label: 'Fundraisers', path: '/fundraisers', color: 'text-pink-500' },
+    { icon: Flag, label: 'Pages', path: '/pages', color: 'text-orange-500' },
+    { icon: Wallet, label: t('wallet'), path: '/wallet', color: 'text-gold' },
   ];
 
   const shortcuts = [
@@ -101,7 +103,7 @@ export const FacebookLeftSidebar = () => {
             className="w-8 h-8 rounded-lg object-cover"
           />
           <h3 className="font-bold text-lg text-yellow-500 drop-shadow-[0_0_8px_rgba(250,204,21,0.6)]">
-            FUN ECOSYSTEM
+            {t('funEcosystem')}
           </h3>
         </div>
         <div className="space-y-1">
@@ -131,10 +133,10 @@ export const FacebookLeftSidebar = () => {
         </div>
       </div>
 
-      {/* Card 2: Lối tắt của bạn */}
+      {/* Card 2: Your Shortcuts */}
       <div className="bg-card rounded-xl border-2 border-yellow-400/50 p-4 hover:border-yellow-400 hover:shadow-[0_0_20px_rgba(250,204,21,0.3)] transition-all duration-300">
         <h3 className="font-bold text-sm mb-3 text-muted-foreground">
-          Lối tắt của bạn
+          {t('yourShortcuts')}
         </h3>
         <div className="space-y-1">
           {/* User Profile */}
@@ -189,13 +191,13 @@ export const FacebookLeftSidebar = () => {
             <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center">
               <ChevronDown className={`w-5 h-5 transition-transform ${showMore ? 'rotate-180' : ''}`} />
             </div>
-            <span className="font-medium text-sm">{showMore ? 'Ẩn bớt' : 'Xem thêm'}</span>
+            <span className="font-medium text-sm">{showMore ? t('seeLess') : t('seeMore')}</span>
           </button>
         </div>
 
         {/* Footer */}
         <div className="pt-4 text-xs text-muted-foreground border-t border-border mt-3">
-          <p>Privacy · Terms · Advertising · Ad Choices · Cookies</p>
+          <p>{t('privacyPolicy')} · {t('termsOfService')}</p>
           <p className="mt-1">FUN Profile © 2025</p>
         </div>
       </div>
