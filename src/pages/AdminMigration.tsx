@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 interface MigrationResult {
   total: number;
   migrated: number;
+  alreadyOnR2: number;
   errors: Array<{ url: string; error: string }>;
 }
 
@@ -20,6 +21,7 @@ const AdminMigration = () => {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [migrating, setMigrating] = useState(false);
+  const [repairing, setRepairing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [currentFile, setCurrentFile] = useState('');
   const [result, setResult] = useState<MigrationResult | null>(null);
@@ -226,6 +228,254 @@ const AdminMigration = () => {
     return typeMap[contentType] || 'bin';
   };
 
+  // Check if file exists on R2 using HEAD request
+  const checkFileExistsOnR2 = async (r2PublicUrl: string, supabaseUrl: string): Promise<string | null> => {
+    try {
+      // Extract filename from Supabase URL
+      const urlPath = new URL(supabaseUrl).pathname;
+      const fileName = urlPath.split('/').pop();
+      if (!fileName) return null;
+
+      // Try to find the file on R2 with various possible paths
+      const possiblePaths = [
+        `migration/posts/${fileName}`,
+        `migration/profiles/${fileName}`,
+        `migration/comments/${fileName}`,
+        `posts/${fileName}`,
+        `avatars/${fileName}`,
+        `videos/${fileName}`,
+        `comment-media/${fileName}`,
+      ];
+
+      for (const path of possiblePaths) {
+        const r2Url = `${r2PublicUrl}/${path}`;
+        try {
+          const response = await fetch(r2Url, { method: 'HEAD' });
+          if (response.ok) {
+            console.log(`✅ Found existing file on R2: ${r2Url}`);
+            return r2Url;
+          }
+        } catch {
+          // Continue checking other paths
+        }
+      }
+
+      // Also try searching by partial filename match (timestamp might differ)
+      // Check if any URL in the database already points to R2 for this filename pattern
+      return null;
+    } catch (error) {
+      console.error('Error checking R2:', error);
+      return null;
+    }
+  };
+
+  // Repair Database - Check R2 first, only upload if not exists
+  const runRepairDatabase = async () => {
+    setRepairing(true);
+    setProgress(0);
+    setResult(null);
+    setCurrentFile('');
+
+    const repairResult: MigrationResult = {
+      total: 0,
+      migrated: 0,
+      alreadyOnR2: 0,
+      errors: [],
+    };
+
+    try {
+      toast.info('🔧 Đang quét database và kiểm tra R2...');
+
+      const r2PublicUrl = import.meta.env.VITE_CLOUDFLARE_R2_PUBLIC_URL || '';
+      
+      // Get all URLs that still point to Supabase
+      const { data: posts } = await supabase
+        .from('posts')
+        .select('id, image_url, video_url')
+        .or('image_url.not.is.null,video_url.not.is.null');
+
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, avatar_url, cover_url')
+        .or('avatar_url.not.is.null,cover_url.not.is.null');
+
+      const { data: comments } = await supabase
+        .from('comments')
+        .select('id, image_url, video_url')
+        .or('image_url.not.is.null,video_url.not.is.null');
+
+      const urlsToProcess: Array<{
+        table: string;
+        id: string;
+        field: string;
+        url: string;
+      }> = [];
+
+      const isSupabaseUrl = (url: string | null) => {
+        if (!url) return false;
+        if (r2PublicUrl && url.includes(r2PublicUrl)) return false;
+        if (url.includes('r2.dev')) return false;
+        return (
+          url.includes('.supabase.co/storage') ||
+          url.includes('.supabase.in/storage') ||
+          url.includes('supabase.co/storage') ||
+          url.includes('supabase.in/storage')
+        );
+      };
+
+      posts?.forEach(post => {
+        if (isSupabaseUrl(post.image_url)) {
+          urlsToProcess.push({ table: 'posts', id: post.id, field: 'image_url', url: post.image_url! });
+        }
+        if (isSupabaseUrl(post.video_url)) {
+          urlsToProcess.push({ table: 'posts', id: post.id, field: 'video_url', url: post.video_url! });
+        }
+      });
+
+      profiles?.forEach(profile => {
+        if (isSupabaseUrl(profile.avatar_url)) {
+          urlsToProcess.push({ table: 'profiles', id: profile.id, field: 'avatar_url', url: profile.avatar_url! });
+        }
+        if (isSupabaseUrl(profile.cover_url)) {
+          urlsToProcess.push({ table: 'profiles', id: profile.id, field: 'cover_url', url: profile.cover_url! });
+        }
+      });
+
+      comments?.forEach(comment => {
+        if (isSupabaseUrl(comment.image_url)) {
+          urlsToProcess.push({ table: 'comments', id: comment.id, field: 'image_url', url: comment.image_url! });
+        }
+        if (isSupabaseUrl(comment.video_url)) {
+          urlsToProcess.push({ table: 'comments', id: comment.id, field: 'video_url', url: comment.video_url! });
+        }
+      });
+
+      repairResult.total = urlsToProcess.length;
+
+      if (urlsToProcess.length === 0) {
+        toast.success('✅ Không còn files nào cần xử lý!');
+        setResult(repairResult);
+        setRepairing(false);
+        return;
+      }
+
+      toast.info(`📊 Tìm thấy ${urlsToProcess.length} URLs cần kiểm tra`);
+
+      // Process each URL
+      for (let i = 0; i < urlsToProcess.length; i++) {
+        const item = urlsToProcess[i];
+        const fileName = item.url.split('/').pop() || `file_${Date.now()}`;
+        setCurrentFile(`${i + 1}/${urlsToProcess.length}: Kiểm tra ${fileName}`);
+        setProgress(Math.round((i / urlsToProcess.length) * 100));
+
+        try {
+          // Step 1: Check if file already exists on R2
+          const existingR2Url = await checkFileExistsOnR2(r2PublicUrl, item.url);
+
+          if (existingR2Url) {
+            // File exists on R2 - just update DB
+            setCurrentFile(`${i + 1}/${urlsToProcess.length}: 📝 Update DB cho ${fileName}`);
+            
+            const { error: updateError, data: updateData } = await supabase
+              .from(item.table as 'posts' | 'profiles' | 'comments')
+              .update({ [item.field]: existingR2Url })
+              .eq('id', item.id)
+              .select(item.field);
+
+            if (updateError) {
+              throw new Error(`DB update failed: ${updateError.message}`);
+            }
+
+            if (!updateData || updateData.length === 0) {
+              throw new Error(`DB update failed: Row ${item.id} not found`);
+            }
+
+            repairResult.alreadyOnR2++;
+            console.log(`✅ DB updated (file already on R2): ${fileName} -> ${existingR2Url}`);
+          } else {
+            // File not on R2 - need to download and upload
+            setCurrentFile(`${i + 1}/${urlsToProcess.length}: 📥 Download ${fileName}`);
+            
+            const { blob, contentType } = await downloadFile(item.url);
+            const fileSize = blob.size;
+
+            console.log(`📥 Downloading: ${fileName}, size: ${(fileSize / 1024 / 1024).toFixed(2)}MB`);
+
+            // Generate unique key for R2
+            const ext = getFileExtension(item.url, contentType);
+            const timestamp = Date.now();
+            const randomStr = Math.random().toString(36).substring(2, 8);
+            const key = `migration/${item.table}/${timestamp}_${randomStr}.${ext}`;
+
+            setCurrentFile(`${i + 1}/${urlsToProcess.length}: 📤 Upload ${fileName}`);
+
+            // Get presigned URL
+            const { uploadUrl, publicUrl } = await getPresignedUrl(key, contentType, fileSize);
+
+            // Upload to R2
+            await uploadWithPresignedUrl(uploadUrl, blob, contentType, (percent) => {
+              const baseProgress = (i / urlsToProcess.length) * 100;
+              const fileProgress = (percent / urlsToProcess.length);
+              setProgress(Math.round(baseProgress + fileProgress));
+            });
+
+            // Update database
+            const { error: updateError, data: updateData } = await supabase
+              .from(item.table as 'posts' | 'profiles' | 'comments')
+              .update({ [item.field]: publicUrl })
+              .eq('id', item.id)
+              .select(item.field);
+
+            if (updateError) {
+              throw new Error(`DB update failed: ${updateError.message}`);
+            }
+
+            if (!updateData || updateData.length === 0) {
+              throw new Error(`DB update failed: Row ${item.id} not found`);
+            }
+
+            const updatedUrl = updateData[0][item.field];
+            if (!updatedUrl?.includes('r2.dev')) {
+              throw new Error(`DB update verification failed`);
+            }
+
+            repairResult.migrated++;
+            console.log(`✅ Uploaded & DB updated: ${fileName} -> ${publicUrl}`);
+          }
+
+          // Small delay
+          await new Promise(resolve => setTimeout(resolve, 100));
+
+        } catch (error: unknown) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          console.error(`❌ Error processing ${item.url}:`, error);
+          repairResult.errors.push({
+            url: item.url,
+            error: errorMessage,
+          });
+        }
+      }
+
+      setProgress(100);
+      setCurrentFile('');
+      setResult(repairResult);
+
+      const total = repairResult.alreadyOnR2 + repairResult.migrated;
+      if (repairResult.errors.length === 0) {
+        toast.success(`🎉 Hoàn thành! ${repairResult.alreadyOnR2} đã có trên R2, ${repairResult.migrated} uploaded mới!`);
+      } else {
+        toast.warning(`⚠️ Xử lý ${total} files với ${repairResult.errors.length} lỗi`);
+      }
+
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Repair error:', error);
+      toast.error(`❌ Lỗi: ${errorMessage}`);
+    } finally {
+      setRepairing(false);
+    }
+  };
+
   const runMigration = async () => {
     setMigrating(true);
     setProgress(0);
@@ -235,6 +485,7 @@ const AdminMigration = () => {
     const migrationResult: MigrationResult = {
       total: 0,
       migrated: 0,
+      alreadyOnR2: 0,
       errors: [],
     };
 
@@ -433,47 +684,91 @@ const AdminMigration = () => {
         </div>
 
         <div className="grid gap-6">
-          <Card>
+          {/* Repair Database Card - Recommended */}
+          <Card className="border-2 border-primary">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Database className="w-5 h-5 text-primary" />
-                Presigned URL Migration
+                🔧 Repair Database (Khuyến nghị)
               </CardTitle>
               <CardDescription>
-                Migration với presigned URLs - hỗ trợ mọi kích thước file, upload trực tiếp lên R2
+                Kiểm tra R2 trước khi upload - không bị trùng file
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="bg-muted/50 rounded-lg p-4 space-y-2">
-                <h4 className="font-medium">✨ Tính năng:</h4>
-                <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>✅ <strong>Không giới hạn file size</strong> (hỗ trợ file &gt;10MB)</li>
-                  <li>✅ Upload trực tiếp lên R2 với presigned URLs</li>
-                  <li>✅ Progress tracking cho files lớn</li>
-                  <li>✅ Tự động retry 3 lần nếu thất bại</li>
-                  <li>✅ Timeout 5 phút cho mỗi file</li>
+              <div className="bg-green-50 rounded-lg p-4 space-y-2">
+                <h4 className="font-medium text-green-700">✨ Tính năng thông minh:</h4>
+                <ul className="text-sm text-green-600 space-y-1">
+                  <li>✅ <strong>Kiểm tra file trên R2 trước</strong> - tránh upload trùng</li>
+                  <li>✅ File đã có trên R2 → chỉ update DB (nhanh)</li>
+                  <li>✅ File chưa có → download & upload mới</li>
+                  <li>✅ Tiết kiệm băng thông và dung lượng R2</li>
                 </ul>
               </div>
 
-              <Alert className="bg-yellow-50 border-yellow-200">
-                <AlertTriangle className="h-4 w-4 text-yellow-600" />
-                <AlertDescription className="text-yellow-700">
-                  <strong>⚠️ Quan trọng:</strong> Đảm bảo R2 bucket đã cấu hình CORS. Nếu gặp lỗi "Network error", 
-                  vào Cloudflare Dashboard → R2 → Bucket Settings → CORS và thêm rule cho domain của bạn.
+              <Alert className="bg-blue-50 border-blue-200">
+                <Database className="h-4 w-4 text-blue-600" />
+                <AlertDescription className="text-blue-700">
+                  <strong>💡 Phù hợp khi:</strong> Đã migrate trước đó nhưng DB chưa update đúng (168+ files đã có trên R2 nhưng URL chưa đổi)
                 </AlertDescription>
               </Alert>
 
-              <Alert>
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>
-                  ⚠️ Migration sẽ xử lý từng file một. <strong>Không đóng tab này khi đang chạy!</strong>
+              <Button 
+                onClick={runRepairDatabase}
+                disabled={repairing || migrating}
+                className="w-full bg-primary hover:bg-primary/90"
+                size="lg"
+              >
+                {repairing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Đang xử lý... {progress}%
+                  </>
+                ) : (
+                  <>
+                    <Database className="w-4 h-4 mr-2" />
+                    🔧 Repair Database (Check R2 First)
+                  </>
+                )}
+              </Button>
+
+              {repairing && (
+                <div className="space-y-2">
+                  <Progress value={progress} className="h-2" />
+                  {currentFile && (
+                    <p className="text-sm text-muted-foreground text-center">
+                      📁 {currentFile}
+                    </p>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Standard Migration Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Database className="w-5 h-5 text-muted-foreground" />
+                🚀 Standard Migration
+              </CardTitle>
+              <CardDescription>
+                Migration thông thường - upload tất cả files (có thể tạo file trùng)
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Alert className="bg-yellow-50 border-yellow-200">
+                <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                <AlertDescription className="text-yellow-700">
+                  <strong>⚠️ Lưu ý:</strong> Sẽ upload lại tất cả files, có thể tạo file trùng trên R2 nếu đã migrate trước đó.
                 </AlertDescription>
               </Alert>
 
               <Button 
                 onClick={runMigration}
-                disabled={migrating}
+                disabled={migrating || repairing}
                 className="w-full"
+                variant="outline"
                 size="lg"
               >
                 {migrating ? (
@@ -484,7 +779,7 @@ const AdminMigration = () => {
                 ) : (
                   <>
                     <Database className="w-4 h-4 mr-2" />
-                    🚀 Bắt đầu Migration
+                    🚀 Standard Migration (Upload All)
                   </>
                 )}
               </Button>
@@ -502,6 +797,7 @@ const AdminMigration = () => {
             </CardContent>
           </Card>
 
+          {/* Results Card */}
           {result && (
             <Card>
               <CardHeader>
@@ -511,21 +807,25 @@ const AdminMigration = () => {
                   ) : (
                     <AlertTriangle className="w-5 h-5 text-yellow-500" />
                   )}
-                  Kết Quả Migration
+                  Kết Quả
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg text-center">
                     <div className="text-2xl font-bold text-blue-600">{result.total}</div>
                     <div className="text-sm text-muted-foreground">Tổng files</div>
+                  </div>
+                  <div className="p-4 bg-purple-500/10 border border-purple-500/20 rounded-lg text-center">
+                    <div className="text-2xl font-bold text-purple-600">{result.alreadyOnR2}</div>
+                    <div className="text-sm text-muted-foreground">Đã có trên R2</div>
                   </div>
                   <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-lg text-center">
                     <div className="text-2xl font-bold text-green-600 flex items-center justify-center gap-1">
                       <CheckCircle className="w-5 h-5" />
                       {result.migrated}
                     </div>
-                    <div className="text-sm text-muted-foreground">Thành công</div>
+                    <div className="text-sm text-muted-foreground">Upload mới</div>
                   </div>
                   <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-center">
                     <div className="text-2xl font-bold text-red-600 flex items-center justify-center gap-1">
@@ -540,7 +840,16 @@ const AdminMigration = () => {
                   <Alert className="bg-green-500/10 border-green-500/20">
                     <CheckCircle className="h-4 w-4 text-green-600" />
                     <AlertDescription className="text-green-700">
-                      ✅ Không còn files nào cần migrate! Tất cả đã được chuyển sang R2.
+                      ✅ Không còn files nào cần xử lý! Tất cả đã được chuyển sang R2.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {result.alreadyOnR2 > 0 && (
+                  <Alert className="bg-purple-500/10 border-purple-500/20">
+                    <Database className="h-4 w-4 text-purple-600" />
+                    <AlertDescription className="text-purple-700">
+                      📝 {result.alreadyOnR2} files đã có trên R2 - chỉ cập nhật URL trong database (không upload lại)
                     </AlertDescription>
                   </Alert>
                 )}
