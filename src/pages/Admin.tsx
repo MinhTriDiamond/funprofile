@@ -31,7 +31,9 @@ import {
   Settings,
   UserCheck,
   UserX,
-  ShieldOff
+  ShieldOff,
+  ArrowUpDown,
+  Info
 } from "lucide-react";
 
 interface AdminUser {
@@ -47,11 +49,14 @@ interface UserProfile {
   avatar_url: string | null;
   is_banned: boolean;
   is_restricted: boolean;
+  reward_status?: string;
+  admin_notes?: string | null;
+  created_at?: string;
 }
 
 interface UserWithReward extends UserProfile {
   claimable: number;
-  status?: 'pending' | 'approved' | 'on_hold' | 'rejected';
+  status: 'pending' | 'approved' | 'on_hold' | 'rejected';
 }
 
 interface AuditLog {
@@ -90,12 +95,20 @@ const Admin = () => {
   const [usersWithRewards, setUsersWithRewards] = useState<UserWithReward[]>([]);
   const [userSubTab, setUserSubTab] = useState<"all" | "active" | "banned" | "restricted">("all");
   
+  // Reward sorting
+  const [rewardSortBy, setRewardSortBy] = useState<"claimable_desc" | "claimable_asc" | "created_desc" | "created_asc">("claimable_desc");
+  
   // Action dialog states
   const [actionDialogOpen, setActionDialogOpen] = useState(false);
   const [actionType, setActionType] = useState<"add" | "deduct" | "refund">("add");
   const [selectedUser, setSelectedUser] = useState<UserWithReward | null>(null);
   const [adjustmentAmount, setAdjustmentAmount] = useState("");
   const [adjustmentReason, setAdjustmentReason] = useState("");
+  
+  // Hold/Reject reason dialog
+  const [reasonDialogOpen, setReasonDialogOpen] = useState(false);
+  const [pendingStatusChange, setPendingStatusChange] = useState<{ user: UserWithReward; status: 'on_hold' | 'rejected' } | null>(null);
+  const [statusReason, setStatusReason] = useState("");
 
   // Stats
   const activeUsers = allUsers.filter(u => !u.is_banned && !u.is_restricted);
@@ -146,7 +159,7 @@ const Admin = () => {
     try {
       const { data: profiles, error } = await supabase
         .from('profiles')
-        .select('id, username, full_name, avatar_url, is_banned, is_restricted')
+        .select('id, username, full_name, avatar_url, is_banned, is_restricted, reward_status, admin_notes, created_at')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -160,11 +173,11 @@ const Admin = () => {
   };
 
   const loadUsersWithRewards = async (profiles: UserProfile[]) => {
-    // Initialize with 0 claimable - will calculate on demand
+    // Initialize with reward_status from database
     const usersData: UserWithReward[] = profiles.slice(0, 50).map(profile => ({
       ...profile,
       claimable: 0,
-      status: 'pending' as const
+      status: (profile.reward_status as 'pending' | 'approved' | 'on_hold' | 'rejected') || 'pending'
     }));
     setUsersWithRewards(usersData);
     
@@ -477,21 +490,58 @@ const Admin = () => {
     }
   };
 
-  const handleRewardStatusChange = async (user: UserWithReward, newStatus: 'approved' | 'on_hold' | 'rejected') => {
-    const actionMap = {
-      approved: 'APPROVE_REWARD',
-      on_hold: 'HOLD_REWARD',
-      rejected: 'REJECT_REWARD'
-    };
+  const handleRewardStatusChange = async (user: UserWithReward, newStatus: 'approved' | 'on_hold' | 'rejected', reason?: string) => {
+    // For on_hold and rejected, require reason
+    if ((newStatus === 'on_hold' || newStatus === 'rejected') && !reason) {
+      setPendingStatusChange({ user, status: newStatus });
+      setStatusReason("");
+      setReasonDialogOpen(true);
+      return;
+    }
 
-    await logAction(actionMap[newStatus], user.id, { claimable: user.claimable }, `Changed reward status to ${newStatus}`);
-    
-    setUsersWithRewards(prev => prev.map(u => 
-      u.id === user.id ? { ...u, status: newStatus } : u
-    ));
+    try {
+      // Update database
+      const { error } = await supabase
+        .from('profiles')
+        .update({ 
+          reward_status: newStatus,
+          admin_notes: reason || null
+        })
+        .eq('id', user.id);
 
-    toast.success(`Đã ${newStatus === 'approved' ? 'duyệt' : newStatus === 'on_hold' ? 'treo' : 'từ chối'} thưởng của ${user.username}`);
-    loadAuditLogs();
+      if (error) throw error;
+
+      const actionMap = {
+        approved: 'APPROVE_REWARD',
+        on_hold: 'HOLD_REWARD',
+        rejected: 'REJECT_REWARD'
+      };
+
+      await logAction(actionMap[newStatus], user.id, { claimable: user.claimable, reason }, reason || `Changed reward status to ${newStatus}`);
+      
+      // Update local state
+      setUsersWithRewards(prev => prev.map(u => 
+        u.id === user.id ? { ...u, status: newStatus, admin_notes: reason } : u
+      ));
+
+      toast.success(`Đã ${newStatus === 'approved' ? 'duyệt' : newStatus === 'on_hold' ? 'treo' : 'từ chối'} thưởng của ${user.username}`);
+      loadAuditLogs();
+    } catch (error) {
+      console.error("Error updating reward status:", error);
+      toast.error("Lỗi khi cập nhật trạng thái thưởng");
+    }
+  };
+
+  const confirmStatusChange = async () => {
+    if (!pendingStatusChange || !statusReason.trim()) {
+      toast.error("Vui lòng nhập lý do");
+      return;
+    }
+
+    await handleRewardStatusChange(pendingStatusChange.user, pendingStatusChange.status, statusReason);
+    setReasonDialogOpen(false);
+    setPendingStatusChange(null);
+    setStatusReason("");
   };
 
   const openAdjustDialog = (user: UserWithReward, type: "add" | "deduct" | "refund") => {
@@ -500,6 +550,23 @@ const Admin = () => {
     setAdjustmentAmount("");
     setAdjustmentReason("");
     setActionDialogOpen(true);
+  };
+
+  // Sort rewards
+  const getSortedUsersWithRewards = () => {
+    const sorted = [...usersWithRewards];
+    switch (rewardSortBy) {
+      case "claimable_desc":
+        return sorted.sort((a, b) => b.claimable - a.claimable);
+      case "claimable_asc":
+        return sorted.sort((a, b) => a.claimable - b.claimable);
+      case "created_desc":
+        return sorted.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+      case "created_asc":
+        return sorted.sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
+      default:
+        return sorted;
+    }
   };
 
   const formatNumber = (num: number) => {
@@ -788,15 +855,38 @@ const Admin = () => {
           {/* Rewards Tab */}
           <TabsContent value="rewards" className="space-y-4">
             <Card>
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
                   <Coins className="w-5 h-5" />
                   Quản lý Phần thưởng
                 </CardTitle>
+                {/* Sorting Dropdown */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2">
+                      <ArrowUpDown className="w-4 h-4" />
+                      Sắp xếp
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="bg-background border">
+                    <DropdownMenuItem onClick={() => setRewardSortBy("claimable_desc")} className={rewardSortBy === "claimable_desc" ? "bg-primary/10" : ""}>
+                      Claimable: Cao → Thấp
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setRewardSortBy("claimable_asc")} className={rewardSortBy === "claimable_asc" ? "bg-primary/10" : ""}>
+                      Claimable: Thấp → Cao
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setRewardSortBy("created_desc")} className={rewardSortBy === "created_desc" ? "bg-primary/10" : ""}>
+                      Ngày tạo: Mới nhất trước
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setRewardSortBy("created_asc")} className={rewardSortBy === "created_asc" ? "bg-primary/10" : ""}>
+                      Ngày tạo: Cũ nhất trước
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </CardHeader>
               <CardContent>
                 <div className="max-h-[600px] overflow-y-auto space-y-2">
-                  {usersWithRewards.map((user) => (
+                  {getSortedUsersWithRewards().map((user) => (
                     <div key={user.id} className="flex items-center gap-3 p-4 bg-background border rounded-lg hover:shadow-sm transition-shadow">
                       <Avatar className="w-10 h-10">
                         <AvatarImage src={user.avatar_url || ""} />
@@ -804,6 +894,7 @@ const Admin = () => {
                       </Avatar>
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold truncate">{user.username}</p>
+                        <p className="text-xs text-muted-foreground font-mono truncate">UID: {user.id}</p>
                         <p className="text-sm text-primary font-medium">
                           Claimable: {formatNumber(user.claimable)} CAMLY
                         </p>
@@ -952,8 +1043,13 @@ const Admin = () => {
                         </div>
                         <p className="text-sm">
                           <span className="font-medium">{log.admin_username}</span>
+                          <span className="text-xs text-muted-foreground ml-1">(UID: {log.admin_id.slice(0, 8)}...)</span>
                           {log.target_username && (
-                            <span> → <span className="font-medium">{log.target_username}</span></span>
+                            <>
+                              <span> → </span>
+                              <span className="font-medium">{log.target_username}</span>
+                              <span className="text-xs text-muted-foreground ml-1">(UID: {log.target_user_id?.slice(0, 8)}...)</span>
+                            </>
                           )}
                         </p>
                         {log.reason && (
@@ -1007,6 +1103,42 @@ const Admin = () => {
                 actionType === "deduct" ? "bg-red-500 hover:bg-red-600" : 
                 "bg-blue-500 hover:bg-blue-600"
               }
+            >
+              Xác nhận
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Hold/Reject Reason Dialog */}
+      <Dialog open={reasonDialogOpen} onOpenChange={setReasonDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {pendingStatusChange?.status === 'on_hold' ? 'Treo phần thưởng' : 'Từ chối phần thưởng'}
+              {pendingStatusChange && ` của ${pendingStatusChange.user.username}`}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <label className="text-sm font-medium">Lý do (bắt buộc) *</label>
+              <Textarea
+                placeholder={`Nhập lý do ${pendingStatusChange?.status === 'on_hold' ? 'treo' : 'từ chối'} phần thưởng...`}
+                value={statusReason}
+                onChange={(e) => setStatusReason(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setReasonDialogOpen(false);
+              setPendingStatusChange(null);
+              setStatusReason("");
+            }}>Hủy</Button>
+            <Button 
+              onClick={confirmStatusChange}
+              className={pendingStatusChange?.status === 'on_hold' ? "bg-yellow-500 hover:bg-yellow-600" : "bg-red-500 hover:bg-red-600"}
             >
               Xác nhận
             </Button>
