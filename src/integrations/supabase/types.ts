@@ -207,6 +207,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          admin_notes: string | null
           avatar_url: string | null
           bio: string | null
           cover_url: string | null
@@ -215,10 +216,12 @@ export type Database = {
           id: string
           is_banned: boolean
           is_restricted: boolean
+          reward_status: string
           updated_at: string
           username: string
         }
         Insert: {
+          admin_notes?: string | null
           avatar_url?: string | null
           bio?: string | null
           cover_url?: string | null
@@ -227,10 +230,12 @@ export type Database = {
           id: string
           is_banned?: boolean
           is_restricted?: boolean
+          reward_status?: string
           updated_at?: string
           username: string
         }
         Update: {
+          admin_notes?: string | null
           avatar_url?: string | null
           bio?: string | null
           cover_url?: string | null
@@ -239,6 +244,7 @@ export type Database = {
           id?: string
           is_banned?: boolean
           is_restricted?: boolean
+          reward_status?: string
           updated_at?: string
           username?: string
         }

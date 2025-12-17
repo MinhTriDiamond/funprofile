@@ -6,7 +6,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ArrowDown, ArrowUp, RefreshCw, ShoppingCart, Copy, Check, Gift, ArrowUpRight, ArrowDownLeft, Repeat, Wallet, LogOut, TrendingUp, TrendingDown, UserRoundCog } from 'lucide-react';
+import { ArrowDown, ArrowUp, RefreshCw, ShoppingCart, Copy, Check, Gift, ArrowUpRight, ArrowDownLeft, Repeat, Wallet, LogOut, TrendingUp, TrendingDown, UserRoundCog, Info, AlertTriangle } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { ReceiveTab } from './ReceiveTab';
 import { SendTab } from './SendTab';
@@ -18,6 +19,8 @@ interface Profile {
   username: string;
   avatar_url: string | null;
   full_name: string | null;
+  reward_status?: string;
+  admin_notes?: string | null;
 }
 
 interface Transaction {
@@ -120,7 +123,7 @@ const WalletCenterContainer = () => {
     if (session?.user) {
       const { data } = await supabase
         .from('profiles')
-        .select('username, avatar_url, full_name')
+        .select('username, avatar_url, full_name, reward_status, admin_notes')
         .eq('id', session.user.id)
         .single();
       if (data) setProfile(data);
@@ -621,21 +624,106 @@ const WalletCenterContainer = () => {
         </div>
       </div>
 
-      {/* Reward Ready to Claim */}
-      <div className="bg-gradient-to-r from-yellow-400 via-yellow-500 to-amber-500 rounded-xl p-4 flex items-center justify-between shadow-lg">
-        <div className="flex items-center gap-3">
-          <Gift className="w-6 h-6 text-yellow-900" />
-          <span className="font-semibold text-yellow-900">
-            Reward Ready to Claim: {formatNumber(claimableReward, 0)} CAMLY (~{formatUsd(claimableReward * 0.000003)})
-          </span>
-        </div>
-        <Button 
-          className="bg-white text-yellow-700 hover:bg-yellow-50 font-semibold px-6 shadow-md hover:shadow-lg transition-all border-2 border-yellow-600"
-          onClick={() => toast.info('Tính năng claim reward đang phát triển')}
-        >
-          Claim to Wallet
-        </Button>
-      </div>
+      {/* Reward Ready to Claim - Dynamic Status */}
+      {(() => {
+        const rewardStatus = profile?.reward_status || 'pending';
+        const adminNotes = profile?.admin_notes;
+        
+        // Status-based styling
+        const statusConfig = {
+          pending: {
+            bg: 'bg-gradient-to-r from-gray-400 via-gray-500 to-gray-600',
+            label: 'Đang chờ duyệt',
+            labelColor: 'text-gray-900',
+            disabled: true
+          },
+          approved: {
+            bg: 'bg-gradient-to-r from-yellow-400 via-yellow-500 to-amber-500',
+            label: 'Sẵn sàng Claim',
+            labelColor: 'text-yellow-900',
+            disabled: false
+          },
+          on_hold: {
+            bg: 'bg-gradient-to-r from-yellow-600 via-orange-500 to-amber-600',
+            label: 'Đang treo',
+            labelColor: 'text-yellow-100',
+            disabled: true
+          },
+          rejected: {
+            bg: 'bg-gradient-to-r from-red-500 via-red-600 to-red-700',
+            label: 'Đã từ chối',
+            labelColor: 'text-white',
+            disabled: true
+          }
+        };
+        
+        const config = statusConfig[rewardStatus as keyof typeof statusConfig] || statusConfig.pending;
+        
+        return (
+          <div className={`${config.bg} rounded-xl p-4 flex items-center justify-between shadow-lg`}>
+            <div className="flex items-center gap-3">
+              <Gift className={`w-6 h-6 ${config.labelColor}`} />
+              <div className="flex flex-col">
+                <span className={`font-semibold ${config.labelColor}`}>
+                  Claimable: {formatNumber(claimableReward, 0)} CAMLY (~{formatUsd(claimableReward * 0.000003)})
+                </span>
+                <span className={`text-xs ${config.labelColor} opacity-80`}>
+                  Trạng thái: {config.label}
+                </span>
+              </div>
+              {/* Info icon for on_hold or rejected */}
+              {(rewardStatus === 'on_hold' || rewardStatus === 'rejected') && adminNotes && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button className={`p-1 rounded-full ${rewardStatus === 'rejected' ? 'bg-white/20' : 'bg-yellow-900/20'}`}>
+                        <Info className={`w-4 h-4 ${config.labelColor}`} />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="max-w-xs">
+                      <p className="text-sm font-medium mb-1">Ghi chú từ Admin:</p>
+                      <p className="text-sm">{adminNotes}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+            </div>
+            <Button 
+              className={`font-semibold px-6 shadow-md transition-all ${
+                config.disabled 
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                  : 'bg-white text-yellow-700 hover:bg-yellow-50 hover:shadow-lg border-2 border-yellow-600'
+              }`}
+              onClick={() => {
+                if (config.disabled) {
+                  if (rewardStatus === 'pending') {
+                    toast.info('Phần thưởng đang chờ Admin duyệt');
+                  } else if (rewardStatus === 'on_hold') {
+                    toast.warning('Phần thưởng đang bị treo. Vui lòng liên hệ Admin.');
+                  } else if (rewardStatus === 'rejected') {
+                    toast.error('Phần thưởng đã bị từ chối. Vui lòng liên hệ Admin.');
+                  }
+                } else {
+                  toast.info('Tính năng claim reward đang phát triển');
+                }
+              }}
+              disabled={config.disabled}
+            >
+              {config.disabled ? (
+                rewardStatus === 'on_hold' ? (
+                  <><AlertTriangle className="w-4 h-4 mr-1" /> Đang treo</>
+                ) : rewardStatus === 'rejected' ? (
+                  'Đã từ chối'
+                ) : (
+                  'Chờ duyệt'
+                )
+              ) : (
+                'Claim to Wallet'
+              )}
+            </Button>
+          </div>
+        );
+      })()}
 
       {/* Tokens / NFTs Tabs */}
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
