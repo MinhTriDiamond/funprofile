@@ -133,22 +133,74 @@ const WalletCenterContainer = () => {
 
     const userId = session.user.id;
     
-    const [postsRes, commentsRes, reactionsRes, friendsRes, sharesRes] = await Promise.all([
-      supabase.from('posts').select('id', { count: 'exact' }).eq('user_id', userId),
-      supabase.from('comments').select('id', { count: 'exact' }).eq('user_id', userId),
-      supabase.from('reactions').select('id', { count: 'exact' }).eq('user_id', userId),
-      supabase.from('friendships').select('id', { count: 'exact' }).eq('friend_id', userId).eq('status', 'accepted'),
-      supabase.from('shared_posts').select('original_post_id').eq('user_id', userId),
-    ]);
+    // Fetch user's posts
+    const { data: postsData } = await supabase
+      .from('posts')
+      .select('id')
+      .eq('user_id', userId);
+    
+    const postsCount = postsData?.length || 0;
+    const postIds = postsData?.map(p => p.id) || [];
+    
+    // Fetch reactions ON user's posts
+    let reactionsOnPosts = 0;
+    if (postIds.length > 0) {
+      const { count } = await supabase
+        .from('reactions')
+        .select('id', { count: 'exact', head: true })
+        .in('post_id', postIds);
+      reactionsOnPosts = count || 0;
+    }
+    
+    // Fetch comments ON user's posts
+    let commentsOnPosts = 0;
+    if (postIds.length > 0) {
+      const { count } = await supabase
+        .from('comments')
+        .select('id', { count: 'exact', head: true })
+        .in('post_id', postIds);
+      commentsOnPosts = count || 0;
+    }
+    
+    // Fetch shares of user's posts
+    let sharesCount = 0;
+    if (postIds.length > 0) {
+      const { count } = await supabase
+        .from('shared_posts')
+        .select('id', { count: 'exact', head: true })
+        .in('original_post_id', postIds);
+      sharesCount = count || 0;
+    }
+    
+    // Fetch friends count
+    const { count: friendsCount } = await supabase
+      .from('friendships')
+      .select('id', { count: 'exact', head: true })
+      .or(`user_id.eq.${userId},friend_id.eq.${userId}`)
+      .eq('status', 'accepted');
+    
+    // Calculate total reward using SAME formula as CoverHonorBoard
+    // Posts: 1 post = 20,000 CAMLY
+    const postsReward = postsCount * 20000;
+    
+    // Reactions on posts: 3+ reactions = 30,000, then +1,000 per additional
+    let reactionsReward = 0;
+    if (reactionsOnPosts >= 3) {
+      reactionsReward = 30000 + (reactionsOnPosts - 3) * 1000;
+    }
+    
+    // Comments on posts: 1 comment = 5,000 CAMLY
+    const commentsReward = commentsOnPosts * 5000;
+    
+    // Shares: 1 share = 5,000 CAMLY
+    const sharesReward = sharesCount * 5000;
+    
+    // Friends: 1 friend = 10,000 CAMLY + new user bonus 10,000
+    const friendsReward = (friendsCount || 0) * 10000 + 10000;
+    
+    const totalReward = postsReward + reactionsReward + commentsReward + sharesReward + friendsReward;
 
-    const postCount = postsRes.count || 0;
-    const commentCount = commentsRes.count || 0;
-    const reactionCount = reactionsRes.count || 0;
-    const friendCount = friendsRes.count || 0;
-    const shareCount = sharesRes.data?.length || 0;
-
-    const totalReward = (postCount * 10000) + (commentCount * 5000) + (reactionCount * 1000) + (friendCount * 50000) + (shareCount * 20000) + 50000;
-
+    // Fetch claimed amount
     const { data: claims } = await supabase
       .from('reward_claims')
       .select('amount')
