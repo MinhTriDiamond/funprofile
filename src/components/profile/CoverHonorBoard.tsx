@@ -117,13 +117,19 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
         const sharesCount = Number(rewardData.shares_count) || 0;
         const friendsCount = Number(rewardData.friends_count) || 0;
         
-        const totalReward = calculateTotalReward(
+        const calculatedReward = calculateTotalReward(
           postsCount,
           reactionsOnPosts,
           commentsOnPosts,
           sharesCount,
           friendsCount
         );
+        
+        // CRITICAL FIX: Total Reward must ALWAYS = Claimable + Claimed
+        // If claimed > calculated, Total Reward = Claimed (and Claimable = 0)
+        const claimable = Math.max(0, calculatedReward - claimedAmount);
+        const totalReward = claimable + claimedAmount; // Formula 1: Total Reward = Claimable + Claimed
+        const totalMoney = totalReward + receivedAmount; // Formula 2: Total Money = Total Reward + Received from others
         
         setStats({
           posts_count: postsCount,
@@ -132,10 +138,10 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
           shares_count: sharesCount,
           friends_count: friendsCount,
           nfts_count: 0, // NFTs not implemented yet
-          claimable: Math.max(0, totalReward - claimedAmount),
+          claimable: claimable,
           claimed: claimedAmount,
           total_reward: totalReward,
-          total_money: totalReward + receivedAmount,
+          total_money: totalMoney,
         });
       }
     } catch (error) {
@@ -151,41 +157,41 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
 
   if (loading) {
     return (
-      <div className="absolute right-2 sm:right-3 top-2 sm:top-3 bottom-2 sm:bottom-3 w-[50%] max-w-[500px]">
+      <div className="absolute right-3 sm:right-4 top-3 sm:top-4 bottom-3 sm:bottom-4 w-[50%] max-w-[500px]">
         <Skeleton className="h-full w-full rounded-2xl" />
       </div>
     );
   }
 
   const StatRow = ({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) => (
-    <div className="flex items-center justify-between py-0.5 px-2 rounded-md border border-yellow-500/40 bg-green-800/90 backdrop-blur-sm">
-      <div className="flex items-center gap-1">
+    <div className="flex items-center justify-between py-1 px-2.5 rounded-lg border border-yellow-500/40 bg-green-800/90 backdrop-blur-sm">
+      <div className="flex items-center gap-1.5">
         <div className="text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.6)]">
           {icon}
         </div>
-        <span className="text-yellow-400 font-bold text-[9px] sm:text-[11px] uppercase tracking-wide drop-shadow-[0_0_8px_rgba(250,204,21,0.5)]">
+        <span className="text-yellow-400 font-bold text-[10px] sm:text-xs uppercase tracking-wide drop-shadow-[0_0_8px_rgba(250,204,21,0.5)]">
           {label}
         </span>
       </div>
-      <span className="text-white font-bold text-[11px] sm:text-sm drop-shadow-[0_0_6px_rgba(255,255,255,0.4)]">
+      <span className="text-white font-bold text-xs sm:text-sm drop-shadow-[0_0_6px_rgba(255,255,255,0.4)]">
         {formatNumber(value)}
       </span>
     </div>
   );
 
   return (
-    <div className="absolute right-2 sm:right-3 top-2 sm:top-3 w-[50%] max-w-[500px] min-w-[300px]">
-      {/* Main Container - Fully transparent with gold border, fit content height */}
-      <div className="rounded-2xl overflow-hidden border-2 border-yellow-400">
-        <div className="relative flex flex-col p-2 sm:p-2.5">
+    <div className="absolute right-3 sm:right-4 top-3 sm:top-4 bottom-3 sm:bottom-4 w-[50%] max-w-[500px] min-w-[300px]">
+      {/* Main Container - Fill height to match cover photo bounds */}
+      <div className="h-full rounded-2xl overflow-hidden border-2 border-yellow-400 flex flex-col">
+        <div className="relative flex-1 flex flex-col p-3 sm:p-4">
           {/* Header - Logo and Title on same line */}
-          <div className="text-center mb-1">
-            <div className="flex items-center justify-center gap-1.5 mb-0.5">
+          <div className="text-center mb-3">
+            <div className="flex items-center justify-center gap-2 mb-1">
               {/* Logo */}
               <img 
                 src="/fun-profile-logo-40.webp" 
                 alt="Fun Profile Web3"
-                className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-green-400/50 shadow-[0_0_20px_rgba(34,197,94,0.6)]"
+                className="w-9 h-9 sm:w-11 sm:h-11 rounded-full border-2 border-green-400/50 shadow-[0_0_20px_rgba(34,197,94,0.6)]"
               />
               {/* Title - HONOR BOARD - same height as logo */}
               <h1 
@@ -206,9 +212,9 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
             
             {/* User info - Avatar on left, Name on right */}
             <div className="flex items-center justify-center gap-2">
-              <Avatar className="w-7 h-7 border-2 border-yellow-400/70 shadow-[0_0_10px_rgba(250,204,21,0.4)]">
+              <Avatar className="w-8 h-8 border-2 border-yellow-400/70 shadow-[0_0_10px_rgba(250,204,21,0.4)]">
                 <AvatarImage src={avatarUrl} />
-                <AvatarFallback className="bg-gradient-to-br from-yellow-500 to-yellow-600 text-black font-bold text-xs">
+                <AvatarFallback className="bg-gradient-to-br from-yellow-500 to-yellow-600 text-black font-bold text-sm">
                   {username?.[0]?.toUpperCase() || 'U'}
                 </AvatarFallback>
               </Avatar>
@@ -220,66 +226,66 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
             </div>
           </div>
 
-          {/* Two Column Layout - Reduced spacing */}
-          <div className="grid grid-cols-2 gap-1">
+          {/* Two Column Layout - Even vertical spacing */}
+          <div className="flex-1 grid grid-cols-2 gap-2">
             {/* Left Column - Posts, Reactions, Comments, Shares */}
-            <div className="space-y-1">
+            <div className="flex flex-col justify-between space-y-2">
               <StatRow 
-                icon={<ArrowUp className="w-3 h-3 sm:w-3.5 sm:h-3.5" />}
+                icon={<ArrowUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
                 label="Posts"
                 value={stats.posts_count}
               />
               <StatRow 
-                icon={<Star className="w-3 h-3 sm:w-3.5 sm:h-3.5" />}
+                icon={<Star className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
                 label="Reactions"
                 value={stats.reactions_on_posts}
               />
               <StatRow 
-                icon={<MessageCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5" />}
+                icon={<MessageCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
                 label="Comments"
                 value={stats.comments_count}
               />
               <StatRow 
-                icon={<Share2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />}
+                icon={<Share2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
                 label="Shares"
                 value={stats.shares_count}
               />
             </div>
 
             {/* Right Column - Friends, NFTs, Claimable, Claimed */}
-            <div className="space-y-1">
+            <div className="flex flex-col justify-between space-y-2">
               <StatRow 
-                icon={<Users className="w-3 h-3 sm:w-3.5 sm:h-3.5" />}
+                icon={<Users className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
                 label="Friends"
                 value={stats.friends_count}
               />
               <StatRow 
-                icon={<Image className="w-3 h-3 sm:w-3.5 sm:h-3.5" />}
+                icon={<Image className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
                 label="NFTs"
                 value={stats.nfts_count}
               />
               <StatRow 
-                icon={<Gift className="w-3 h-3 sm:w-3.5 sm:h-3.5" />}
+                icon={<Gift className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
                 label="Claimable"
                 value={stats.claimable}
               />
               <StatRow 
-                icon={<Coins className="w-3 h-3 sm:w-3.5 sm:h-3.5" />}
+                icon={<Coins className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
                 label="Claimed"
                 value={stats.claimed}
               />
             </div>
           </div>
 
-          {/* Full Width Total Rows - Same spacing as columns */}
-          <div className="mt-1 space-y-1">
+          {/* Full Width Total Rows - Even spacing with columns */}
+          <div className="mt-3 space-y-2">
             <StatRow 
-              icon={<BadgeDollarSign className="w-3 h-3 sm:w-3.5 sm:h-3.5" />}
+              icon={<BadgeDollarSign className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
               label="Total Reward"
               value={stats.total_reward}
             />
             <StatRow 
-              icon={<Wallet className="w-3 h-3 sm:w-3.5 sm:h-3.5" />}
+              icon={<Wallet className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
               label="Total Money"
               value={stats.total_money}
             />
