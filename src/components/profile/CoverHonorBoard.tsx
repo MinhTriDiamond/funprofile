@@ -195,6 +195,7 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
                   background: 'linear-gradient(135deg, #fcd34d 0%, #f59e0b 50%, #fcd34d 100%)',
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
+                  WebkitTextStroke: '1px white',
                   textShadow: '0 0 30px rgba(250,204,21,0.8), 0 0 60px rgba(250,204,21,0.4)',
                   filter: 'drop-shadow(0 0 10px rgba(250,204,21,0.6))',
                 }}
@@ -272,7 +273,7 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
           </div>
 
           {/* Full Width Total Rows */}
-          <div className="mt-2 space-y-2">
+          <div className="space-y-2">
             <StatRow 
               icon={<BadgeDollarSign className="w-3 h-3 sm:w-3.5 sm:h-3.5" />}
               label="Total Reward"
