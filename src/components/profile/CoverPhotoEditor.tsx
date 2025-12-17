@@ -220,16 +220,16 @@ export function CoverPhotoEditor({ userId, currentCoverUrl, onCoverUpdated }: Co
 
       {/* Template Library Modal */}
       <Dialog open={isTemplateLibraryOpen} onOpenChange={setIsTemplateLibraryOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
-          <DialogHeader>
+        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle className="text-xl font-bold flex items-center gap-2">
               <ImageIcon className="w-6 h-6 text-primary" />
               Kho Ảnh Bìa Mẫu
             </DialogTitle>
           </DialogHeader>
 
-          <div className="overflow-y-auto max-h-[60vh] pr-2">
-            <p className="text-muted-foreground mb-4">
+          <div className="flex-1 overflow-y-auto pr-2 space-y-4">
+            <p className="text-muted-foreground">
               Chọn một ảnh bìa từ bộ sưu tập thiên nhiên và sự thịnh vượng
             </p>
             
@@ -265,41 +265,41 @@ export function CoverPhotoEditor({ userId, currentCoverUrl, onCoverUpdated }: Co
                 </button>
               ))}
             </div>
-          </div>
 
-          {/* Preview and Apply */}
-          {selectedTemplate && (
-            <div className="border-t pt-4 mt-4">
-              <p className="text-sm text-muted-foreground mb-2">Xem trước:</p>
-              <div className="relative aspect-[3/1] rounded-lg overflow-hidden mb-4">
-                <img
-                  src={selectedTemplate}
-                  alt="Preview"
-                  className="w-full h-full object-cover"
-                />
-                {/* Gradient Edge Effect Preview */}
-                <div className="absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-white via-white/50 to-transparent" />
-                <div className="absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-white via-white/50 to-transparent" />
+            {/* Preview and Apply - inside scrollable area */}
+            {selectedTemplate && (
+              <div className="border-t pt-4">
+                <p className="text-sm text-muted-foreground mb-2">Xem trước:</p>
+                <div className="relative aspect-[3/1] rounded-lg overflow-hidden mb-4">
+                  <img
+                    src={selectedTemplate}
+                    alt="Preview"
+                    className="w-full h-full object-cover"
+                  />
+                  {/* Gradient Edge Effect Preview */}
+                  <div className="absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-white via-white/50 to-transparent" />
+                  <div className="absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-white via-white/50 to-transparent" />
+                </div>
+                <div className="flex gap-2 justify-end sticky bottom-0 bg-background py-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setSelectedTemplate(null)}
+                  >
+                    <X className="w-4 h-4 mr-2" />
+                    Hủy
+                  </Button>
+                  <Button 
+                    onClick={handleApplyTemplate}
+                    disabled={isUploading}
+                    className="bg-primary hover:bg-primary/90"
+                  >
+                    <Check className="w-4 h-4 mr-2" />
+                    {isUploading ? 'Đang áp dụng...' : 'Áp dụng ảnh bìa'}
+                  </Button>
+                </div>
               </div>
-              <div className="flex gap-2 justify-end">
-                <Button 
-                  variant="outline" 
-                  onClick={() => setSelectedTemplate(null)}
-                >
-                  <X className="w-4 h-4 mr-2" />
-                  Hủy
-                </Button>
-                <Button 
-                  onClick={handleApplyTemplate}
-                  disabled={isUploading}
-                  className="bg-primary hover:bg-primary/90"
-                >
-                  <Check className="w-4 h-4 mr-2" />
-                  {isUploading ? 'Đang áp dụng...' : 'Áp dụng ảnh bìa'}
-                </Button>
-              </div>
-            </div>
-          )}
+            )}
+          </div>
         </DialogContent>
       </Dialog>
 
