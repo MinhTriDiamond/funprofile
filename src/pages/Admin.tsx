@@ -160,19 +160,24 @@ const Admin = () => {
   };
 
   const loadUsersWithRewards = async (profiles: UserProfile[]) => {
+    // Initialize with 0 claimable - will calculate on demand
+    const usersData: UserWithReward[] = profiles.slice(0, 50).map(profile => ({
+      ...profile,
+      claimable: 0,
+      status: 'pending' as const
+    }));
+    setUsersWithRewards(usersData);
+    
+    // Calculate rewards in background (batch)
     try {
-      const usersData: UserWithReward[] = [];
-      
-      for (const profile of profiles.slice(0, 50)) { // Limit to 50 users for performance
-        const claimable = await calculateUserClaimable(profile.id);
-        usersData.push({
-          ...profile,
-          claimable,
-          status: 'pending'
-        });
+      const { data: rewardsData } = await supabase.rpc('get_user_rewards', { limit_count: 50 });
+      if (rewardsData) {
+        const rewardsMap = new Map(rewardsData.map((r: { id: string; total_reward: number }) => [r.id, r.total_reward]));
+        setUsersWithRewards(prev => prev.map(user => ({
+          ...user,
+          claimable: (rewardsMap.get(user.id) as number) || 0
+        })));
       }
-      
-      setUsersWithRewards(usersData);
     } catch (error) {
       console.error("Error loading rewards:", error);
     }
