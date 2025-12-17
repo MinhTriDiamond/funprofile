@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_logs: {
+        Row: {
+          action: string
+          admin_id: string
+          created_at: string
+          details: Json | null
+          id: string
+          reason: string | null
+          target_user_id: string | null
+        }
+        Insert: {
+          action: string
+          admin_id: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          reason?: string | null
+          target_user_id?: string | null
+        }
+        Update: {
+          action?: string
+          admin_id?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          reason?: string | null
+          target_user_id?: string | null
+        }
+        Relationships: []
+      }
       comments: {
         Row: {
           content: string
@@ -183,6 +213,8 @@ export type Database = {
           created_at: string
           full_name: string | null
           id: string
+          is_banned: boolean
+          is_restricted: boolean
           updated_at: string
           username: string
         }
@@ -193,6 +225,8 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id: string
+          is_banned?: boolean
+          is_restricted?: boolean
           updated_at?: string
           username: string
         }
@@ -203,6 +237,8 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
+          is_banned?: boolean
+          is_restricted?: boolean
           updated_at?: string
           username?: string
         }
@@ -256,6 +292,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      reward_adjustments: {
+        Row: {
+          admin_id: string
+          amount: number
+          created_at: string
+          id: string
+          reason: string
+          user_id: string
+        }
+        Insert: {
+          admin_id: string
+          amount: number
+          created_at?: string
+          id?: string
+          reason: string
+          user_id: string
+        }
+        Update: {
+          admin_id?: string
+          amount?: number
+          created_at?: string
+          id?: string
+          reason?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       reward_claims: {
         Row: {
