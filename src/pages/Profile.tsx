@@ -155,47 +155,38 @@ const Profile = () => {
     <div className="min-h-screen bg-[#f0f2f5]">
       <FacebookNavbar />
       <main className="pt-14">
-        {/* Cover Photo Section with Gradient Edge Fade Effect */}
+        {/* Cover Photo Section - Full Width */}
         <div className="relative">
-          {/* Left Gradient Fade Effect */}
-          <div className="absolute left-0 top-0 bottom-0 w-32 md:w-48 z-10 pointer-events-none bg-gradient-to-r from-[#f0f2f5] via-[#f0f2f5]/60 to-transparent" />
-          {/* Right Gradient Fade Effect */}
-          <div className="absolute right-0 top-0 bottom-0 w-32 md:w-48 z-10 pointer-events-none bg-gradient-to-l from-[#f0f2f5] via-[#f0f2f5]/60 to-transparent" />
-          
-          <div className="bg-gradient-to-b from-gray-800 to-gray-600 relative">
-            <div className="max-w-5xl mx-auto">
-              {/* Cover Photo Container with Neon Border */}
-              <div className="h-[200px] sm:h-[300px] md:h-[350px] relative rounded-b-lg overflow-hidden border-b-4 border-x-4 border-primary/50 shadow-[0_0_30px_rgba(34,197,94,0.3),0_0_60px_rgba(250,204,21,0.2)]">
-                {profile?.cover_url ? (
-                  <LazyImage 
-                    src={profile.cover_url} 
-                    alt="Cover" 
-                    className="w-full h-full"
-                    priority
-                  />
-                ) : (
-                  <div className="w-full h-full bg-gradient-to-r from-primary/40 via-gold/30 to-primary/40" />
-                )}
-                
-                {/* Inner Gradient Overlay for Soft Edges */}
-                <div className="absolute inset-0 pointer-events-none">
-                  <div className="absolute inset-y-0 left-0 w-20 bg-gradient-to-r from-white/30 to-transparent" />
-                  <div className="absolute inset-y-0 right-0 w-20 bg-gradient-to-l from-white/30 to-transparent" />
-                </div>
-                
-                {/* Edit Cover Button */}
-                {isOwnProfile && (
-                  <div className="absolute bottom-4 right-4 z-20">
-                    <CoverPhotoEditor 
-                      userId={currentUserId}
-                      currentCoverUrl={profile?.cover_url}
-                      onCoverUpdated={(newUrl) => setProfile({ ...profile, cover_url: newUrl })}
-                    />
-                  </div>
-                )}
-              </div>
+          {/* Cover Photo Container */}
+          <div className="h-[200px] sm:h-[300px] md:h-[350px] relative">
+            {profile?.cover_url ? (
+              <LazyImage 
+                src={profile.cover_url} 
+                alt="Cover" 
+                className="w-full h-full"
+                priority
+              />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-r from-primary/40 via-gold/30 to-primary/40" />
+            )}
+            
+            {/* Inner Gradient Overlay for Soft Edges */}
+            <div className="absolute inset-0 pointer-events-none">
+              <div className="absolute inset-y-0 left-0 w-32 md:w-48 bg-gradient-to-r from-[#f0f2f5] via-[#f0f2f5]/60 to-transparent" />
+              <div className="absolute inset-y-0 right-0 w-32 md:w-48 bg-gradient-to-l from-[#f0f2f5] via-[#f0f2f5]/60 to-transparent" />
             </div>
           </div>
+          
+          {/* Edit Cover Button - Outside overflow container for proper z-index */}
+          {isOwnProfile && (
+            <div className="absolute bottom-4 right-4 z-[100]">
+              <CoverPhotoEditor 
+                userId={currentUserId}
+                currentCoverUrl={profile?.cover_url}
+                onCoverUpdated={(newUrl) => setProfile({ ...profile, cover_url: newUrl })}
+              />
+            </div>
+          )}
         </div>
 
         {/* Profile Info Section */}
