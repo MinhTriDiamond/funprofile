@@ -9,7 +9,7 @@ import { EditProfile } from '@/components/profile/EditProfile';
 import { FacebookPostCard } from '@/components/feed/FacebookPostCard';
 import { FriendRequestButton } from '@/components/friends/FriendRequestButton';
 import { FriendsList } from '@/components/friends/FriendsList';
-import { ProfileHonorBoard } from '@/components/profile/ProfileHonorBoard';
+import { CoverHonorBoard } from '@/components/profile/CoverHonorBoard';
 import { Button } from '@/components/ui/button';
 import { LazyImage } from '@/components/ui/LazyImage';
 import { CoverPhotoEditor } from '@/components/profile/CoverPhotoEditor';
@@ -159,7 +159,7 @@ const Profile = () => {
         {/* Cover Photo Section - Full Width */}
         <div className="relative">
           {/* Cover Photo Container */}
-          <div className="h-[200px] sm:h-[300px] md:h-[350px] relative">
+          <div className="h-[250px] sm:h-[320px] md:h-[380px] relative overflow-hidden">
             {profile?.cover_url ? (
               <LazyImage 
                 src={profile.cover_url} 
@@ -174,13 +174,19 @@ const Profile = () => {
             {/* Inner Gradient Overlay for Soft Edges */}
             <div className="absolute inset-0 pointer-events-none">
               <div className="absolute inset-y-0 left-0 w-32 md:w-48 bg-gradient-to-r from-[#f0f2f5] via-[#f0f2f5]/60 to-transparent" />
-              <div className="absolute inset-y-0 right-0 w-32 md:w-48 bg-gradient-to-l from-[#f0f2f5] via-[#f0f2f5]/60 to-transparent" />
             </div>
+
+            {/* Honor Board on Cover Photo */}
+            <CoverHonorBoard 
+              userId={profile.id}
+              username={profile?.full_name || profile?.username}
+              avatarUrl={profile?.avatar_url}
+            />
           </div>
           
           {/* Edit Cover Button - Outside overflow container for proper z-index */}
           {isOwnProfile && (
-            <div className="absolute bottom-4 right-4 z-[100]">
+            <div className="absolute bottom-4 left-4 z-[100]">
               <CoverPhotoEditor 
                 userId={currentUserId}
                 currentCoverUrl={profile?.cover_url}
