@@ -158,28 +158,28 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
   }
 
   const StatRow = ({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) => (
-    <div className="flex items-center justify-between py-0.5 px-1.5 rounded-md border border-yellow-500/40 bg-green-800/90 backdrop-blur-sm">
+    <div className="flex items-center justify-between py-0.5 px-2 rounded-md border border-yellow-500/40 bg-green-800/90 backdrop-blur-sm">
       <div className="flex items-center gap-1">
         <div className="text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.6)]">
           {icon}
         </div>
-        <span className="text-yellow-400 font-bold text-[9px] sm:text-[10px] uppercase tracking-wide drop-shadow-[0_0_8px_rgba(250,204,21,0.5)]">
+        <span className="text-yellow-400 font-bold text-[9px] sm:text-[11px] uppercase tracking-wide drop-shadow-[0_0_8px_rgba(250,204,21,0.5)]">
           {label}
         </span>
       </div>
-      <span className="text-white font-bold text-[10px] sm:text-xs drop-shadow-[0_0_6px_rgba(255,255,255,0.4)]">
+      <span className="text-white font-bold text-[11px] sm:text-sm drop-shadow-[0_0_6px_rgba(255,255,255,0.4)]">
         {formatNumber(value)}
       </span>
     </div>
   );
 
   return (
-    <div className="absolute right-2 sm:right-3 top-2 sm:top-3 bottom-2 sm:bottom-3 w-[50%] max-w-[500px] min-w-[300px]">
-      {/* Main Container - Fully transparent with gold border */}
-      <div className="h-full rounded-2xl overflow-hidden border-2 border-yellow-400">
-        <div className="relative h-full flex flex-col p-1.5 sm:p-2">
+    <div className="absolute right-2 sm:right-3 top-2 sm:top-3 w-[50%] max-w-[500px] min-w-[300px]">
+      {/* Main Container - Fully transparent with gold border, fit content height */}
+      <div className="rounded-2xl overflow-hidden border-2 border-yellow-400">
+        <div className="relative flex flex-col p-2 sm:p-2.5">
           {/* Header - Logo and Title on same line */}
-          <div className="text-center mb-1.5">
+          <div className="text-center mb-1">
             <div className="flex items-center justify-center gap-1.5 mb-0.5">
               {/* Logo */}
               <img 
@@ -206,25 +206,24 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
             
             {/* User info - Avatar on left, Name on right */}
             <div className="flex items-center justify-center gap-2">
-              <Avatar className="w-8 h-8 border-2 border-yellow-400/70 shadow-[0_0_10px_rgba(250,204,21,0.4)]">
+              <Avatar className="w-7 h-7 border-2 border-yellow-400/70 shadow-[0_0_10px_rgba(250,204,21,0.4)]">
                 <AvatarImage src={avatarUrl} />
-                <AvatarFallback className="bg-gradient-to-br from-yellow-500 to-yellow-600 text-black font-bold text-sm">
+                <AvatarFallback className="bg-gradient-to-br from-yellow-500 to-yellow-600 text-black font-bold text-xs">
                   {username?.[0]?.toUpperCase() || 'U'}
                 </AvatarFallback>
               </Avatar>
               <span 
-                className="text-white font-bold truncate max-w-[150px] drop-shadow-[0_0_4px_rgba(0,0,0,0.8)]"
-                style={{ fontSize: '1.5rem', lineHeight: '2rem' }}
+                className="text-white font-bold truncate max-w-[150px] drop-shadow-[0_0_4px_rgba(0,0,0,0.8)] text-lg sm:text-xl"
               >
                 {username?.toUpperCase() || 'USER'}
               </span>
             </div>
           </div>
 
-          {/* Two Column Layout */}
-          <div className="grid grid-cols-2 gap-1.5">
+          {/* Two Column Layout - Reduced spacing */}
+          <div className="grid grid-cols-2 gap-1">
             {/* Left Column - Posts, Reactions, Comments, Shares */}
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               <StatRow 
                 icon={<ArrowUp className="w-3 h-3 sm:w-3.5 sm:h-3.5" />}
                 label="Posts"
@@ -248,7 +247,7 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
             </div>
 
             {/* Right Column - Friends, NFTs, Claimable, Claimed */}
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               <StatRow 
                 icon={<Users className="w-3 h-3 sm:w-3.5 sm:h-3.5" />}
                 label="Friends"
@@ -272,8 +271,8 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
             </div>
           </div>
 
-          {/* Full Width Total Rows */}
-          <div className="mt-1.5 space-y-1.5">
+          {/* Full Width Total Rows - Same spacing as columns */}
+          <div className="mt-1 space-y-1">
             <StatRow 
               icon={<BadgeDollarSign className="w-3 h-3 sm:w-3.5 sm:h-3.5" />}
               label="Total Reward"
