@@ -156,38 +156,49 @@ const Profile = () => {
     <div className="min-h-screen bg-[#f0f2f5]">
       <FacebookNavbar />
       <main className="pt-14">
-        {/* Cover Photo Section - Full Width */}
-        <div className="relative">
-          {/* Cover Photo Container */}
-          <div className="h-[200px] sm:h-[300px] md:h-[350px] relative">
-            {profile?.cover_url ? (
-              <LazyImage 
-                src={profile.cover_url} 
-                alt="Cover" 
-                className="w-full h-full"
-                priority
+        {/* Cover Photo Section with Honor Board */}
+        <div className="max-w-6xl mx-auto px-4">
+          <div className="flex gap-4 mt-4">
+            {/* Cover Photo Container */}
+            <div className="flex-1 relative h-[200px] sm:h-[300px] md:h-[350px] rounded-xl overflow-hidden">
+              {profile?.cover_url ? (
+                <LazyImage 
+                  src={profile.cover_url} 
+                  alt="Cover" 
+                  className="w-full h-full"
+                  priority
+                />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-r from-primary/40 via-gold/30 to-primary/40" />
+              )}
+              
+              {/* Inner Gradient Overlay for Soft Edges */}
+              <div className="absolute inset-0 pointer-events-none">
+                <div className="absolute inset-y-0 left-0 w-16 md:w-24 bg-gradient-to-r from-[#f0f2f5] via-[#f0f2f5]/60 to-transparent" />
+                <div className="absolute inset-y-0 right-0 w-16 md:w-24 bg-gradient-to-l from-[#f0f2f5] via-[#f0f2f5]/60 to-transparent" />
+              </div>
+              
+              {/* Edit Cover Button */}
+              {isOwnProfile && (
+                <div className="absolute bottom-4 right-4 z-[100]">
+                  <CoverPhotoEditor 
+                    userId={currentUserId}
+                    currentCoverUrl={profile?.cover_url}
+                    onCoverUpdated={(newUrl) => setProfile({ ...profile, cover_url: newUrl })}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Profile Honor Board - Right of Cover */}
+            <div className="hidden lg:block w-[280px] h-[350px]">
+              <ProfileHonorBoard 
+                userId={profile.id}
+                username={profile?.username || ''}
+                avatarUrl={profile?.avatar_url}
               />
-            ) : (
-              <div className="w-full h-full bg-gradient-to-r from-primary/40 via-gold/30 to-primary/40" />
-            )}
-            
-            {/* Inner Gradient Overlay for Soft Edges */}
-            <div className="absolute inset-0 pointer-events-none">
-              <div className="absolute inset-y-0 left-0 w-32 md:w-48 bg-gradient-to-r from-[#f0f2f5] via-[#f0f2f5]/60 to-transparent" />
-              <div className="absolute inset-y-0 right-0 w-32 md:w-48 bg-gradient-to-l from-[#f0f2f5] via-[#f0f2f5]/60 to-transparent" />
             </div>
           </div>
-          
-          {/* Edit Cover Button - Outside overflow container for proper z-index */}
-          {isOwnProfile && (
-            <div className="absolute bottom-4 right-4 z-[100]">
-              <CoverPhotoEditor 
-                userId={currentUserId}
-                currentCoverUrl={profile?.cover_url}
-                onCoverUpdated={(newUrl) => setProfile({ ...profile, cover_url: newUrl })}
-              />
-            </div>
-          )}
         </div>
 
         {/* Profile Info Section */}

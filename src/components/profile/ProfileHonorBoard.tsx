@@ -127,87 +127,86 @@ export const ProfileHonorBoard = ({ userId, username, avatarUrl }: ProfileHonorB
   }
 
   const StatRow = ({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) => (
-    <div className="relative border border-yellow-500 rounded-lg p-2 bg-gradient-to-r from-green-800/50 to-green-700/50 backdrop-blur-sm">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+    <div className="relative border border-yellow-400/50 rounded-md p-1.5 bg-gradient-to-r from-green-700/80 to-green-600/80 backdrop-blur-sm">
+      <div className="flex items-center justify-between gap-1">
+        <div className="flex items-center gap-1">
           <div className="text-yellow-400">
             {icon}
           </div>
-          <span className="text-yellow-400 font-bold text-sm uppercase tracking-wide">{label}</span>
+          <span className="text-yellow-400 font-bold text-[10px] uppercase tracking-wide">{label}</span>
         </div>
-        <span className="text-white font-bold text-lg">{value.toLocaleString()}</span>
+        <span className="text-white font-bold text-xs">{value.toLocaleString()}</span>
       </div>
     </div>
   );
 
-return (
-    <div className="sticky top-20 rounded-2xl overflow-hidden border-2 border-yellow-500 bg-gradient-to-br from-green-600 via-green-700 to-green-800 shadow-xl">
+  return (
+    <div className="h-full rounded-xl overflow-hidden border-2 border-yellow-500 bg-gradient-to-br from-green-600 via-green-700 to-green-800 shadow-xl">
       {/* Sparkle effects */}
       <div className="absolute inset-0 opacity-20 pointer-events-none">
         <div className="absolute top-2 left-2 w-1 h-1 bg-white rounded-full animate-pulse"></div>
         <div className="absolute top-4 right-4 w-1 h-1 bg-white rounded-full animate-pulse" style={{ animationDelay: '0.5s' }}></div>
         <div className="absolute bottom-6 left-6 w-1 h-1 bg-white rounded-full animate-pulse" style={{ animationDelay: '1s' }}></div>
-        <div className="absolute bottom-4 right-8 w-1 h-1 bg-white rounded-full animate-pulse" style={{ animationDelay: '1.5s' }}></div>
       </div>
 
-      <div className="relative p-3 space-y-2">
+      <div className="relative p-2 h-full flex flex-col">
         {/* Header with logo */}
-        <div className="text-center space-y-1">
+        <div className="text-center space-y-0.5 mb-1">
           <div className="inline-block">
-            <div className="relative">
-              <img 
-                src="/fun-profile-logo-40.webp" 
-                alt="Fun Profile Web3"
-                width={48}
-                height={48}
-                className="w-12 h-12 mx-auto rounded-full border border-yellow-400 shadow-lg"
-              />
-            </div>
+            <img 
+              src="/fun-profile-logo-40.webp" 
+              alt="Fun Profile Web3"
+              width={36}
+              height={36}
+              className="w-9 h-9 mx-auto rounded-full border border-yellow-400 shadow-lg"
+            />
           </div>
           
           {/* User info */}
-          <div className="flex items-center justify-center gap-2">
-            <h2 className="text-white text-sm font-bold tracking-wide">{username?.toUpperCase() || 'USER'}</h2>
-            <Avatar className="w-8 h-8 border-2 border-yellow-400">
+          <div className="flex items-center justify-center gap-1.5">
+            <h2 className="text-white text-[10px] font-bold tracking-wide">{username?.toUpperCase() || 'USER'}</h2>
+            <Avatar className="w-6 h-6 border border-yellow-400">
               <AvatarImage src={avatarUrl} />
-              <AvatarFallback className="bg-yellow-500 text-black font-bold text-xs">
+              <AvatarFallback className="bg-yellow-500 text-black font-bold text-[8px]">
                 {username?.[0]?.toUpperCase() || 'U'}
               </AvatarFallback>
             </Avatar>
           </div>
           
-          <h1 className="text-yellow-400 text-xl font-black tracking-wider drop-shadow-lg">
+          <h1 className="text-yellow-400 text-sm font-black tracking-wider drop-shadow-lg">
             HONOR BOARD
           </h1>
         </div>
 
-        {/* Stats */}
-        <div className="space-y-2">
+        {/* Stats - 2 columns layout */}
+        <div className="grid grid-cols-2 gap-1 flex-1">
           <StatRow 
-            icon={<ArrowUp className="w-4 h-4" />}
+            icon={<ArrowUp className="w-3 h-3" />}
             label="POSTS"
             value={stats.posts_count}
           />
           <StatRow 
-            icon={<MessageCircle className="w-4 h-4" />}
+            icon={<MessageCircle className="w-3 h-3" />}
             label="COMMENTS"
             value={stats.comments_count}
           />
           <StatRow 
-            icon={<Star className="w-4 h-4" />}
+            icon={<Star className="w-3 h-3" />}
             label="REACTIONS"
             value={stats.reactions_count}
           />
           <StatRow 
-            icon={<Users className="w-4 h-4" />}
+            icon={<Users className="w-3 h-3" />}
             label="FRIENDS"
             value={stats.friends_count}
           />
-          <StatRow 
-            icon={<BadgeDollarSign className="w-4 h-4" />}
-            label="TOTAL REWARD"
-            value={stats.total_reward}
-          />
+          <div className="col-span-2">
+            <StatRow 
+              icon={<BadgeDollarSign className="w-3 h-3" />}
+              label="TOTAL REWARD"
+              value={stats.total_reward}
+            />
+          </div>
         </div>
       </div>
     </div>
