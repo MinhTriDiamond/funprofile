@@ -203,20 +203,20 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
               </h1>
             </div>
             
-            {/* User info - Name on left, Avatar on right */}
+            {/* User info - Avatar on left, Name on right */}
             <div className="flex items-center justify-center gap-2">
-              <span 
-                className="text-white font-bold truncate max-w-[150px] drop-shadow-[0_0_4px_rgba(0,0,0,0.8)]"
-                style={{ fontSize: '1.5rem', lineHeight: '2rem' }}
-              >
-                {username?.toUpperCase() || 'USER'}
-              </span>
               <Avatar className="w-8 h-8 border-2 border-yellow-400/70 shadow-[0_0_10px_rgba(250,204,21,0.4)]">
                 <AvatarImage src={avatarUrl} />
                 <AvatarFallback className="bg-gradient-to-br from-yellow-500 to-yellow-600 text-black font-bold text-sm">
                   {username?.[0]?.toUpperCase() || 'U'}
                 </AvatarFallback>
               </Avatar>
+              <span 
+                className="text-white font-bold truncate max-w-[150px] drop-shadow-[0_0_4px_rgba(0,0,0,0.8)]"
+                style={{ fontSize: '1.5rem', lineHeight: '2rem' }}
+              >
+                {username?.toUpperCase() || 'USER'}
+              </span>
             </div>
           </div>
 
