@@ -179,7 +179,7 @@ export function CoverPhotoEditor({ userId, currentCoverUrl, onCoverUpdated }: Co
 
         {/* Dropdown Menu */}
         {isMenuOpen && (
-          <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-50">
+          <div className="absolute right-0 bottom-full mb-2 w-56 bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-[200]">
             <button
               onClick={() => {
                 fileInputRef.current?.click();
@@ -199,7 +199,7 @@ export function CoverPhotoEditor({ userId, currentCoverUrl, onCoverUpdated }: Co
               }}
               className="w-full px-4 py-3 text-left hover:bg-gray-100 flex items-center gap-3 transition-colors"
             >
-              <ImageIcon className="w-5 h-5 text-gold-500" />
+              <ImageIcon className="w-5 h-5 text-yellow-500" />
               <div>
                 <p className="font-medium text-gray-800">Chọn từ Kho Mẫu</p>
                 <p className="text-xs text-muted-foreground">Ảnh bìa thiên nhiên đẹp</p>
@@ -306,7 +306,7 @@ export function CoverPhotoEditor({ userId, currentCoverUrl, onCoverUpdated }: Co
       {/* Click outside to close menu */}
       {isMenuOpen && (
         <div 
-          className="fixed inset-0 z-40" 
+          className="fixed inset-0 z-[150]" 
           onClick={() => setIsMenuOpen(false)}
         />
       )}
