@@ -16,6 +16,7 @@ const Post = lazy(() => import("./pages/Post"));
 const About = lazy(() => import("./pages/About"));
 const Leaderboard = lazy(() => import("./pages/Leaderboard"));
 const AdminMigration = lazy(() => import("./pages/AdminMigration"));
+const Admin = lazy(() => import("./pages/Admin"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 // Optimized QueryClient with caching
@@ -60,6 +61,7 @@ function App() {
                 <Route path="/about" element={<About />} />
                 <Route path="/leaderboard" element={<Leaderboard />} />
                 <Route path="/admin/migration" element={<AdminMigration />} />
+                <Route path="/admin" element={<Admin />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
