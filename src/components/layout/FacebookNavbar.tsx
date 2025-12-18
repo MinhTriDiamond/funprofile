@@ -26,6 +26,7 @@ import {
   Settings,
   Wallet,
   Shield,
+  Globe,
 } from 'lucide-react';
 
 interface Profile {
@@ -141,9 +142,6 @@ export const FacebookNavbar = () => {
 
         {/* Right Section - Actions */}
         <div className="flex items-center gap-2 w-[280px] justify-end">
-          {/* Language Switcher */}
-          <LanguageSwitcher className="hidden md:flex" />
-
           {/* Menu button for mobile */}
           <button className="fb-icon-btn md:hidden" aria-label="Menu">
             <Menu className="w-5 h-5" />
@@ -217,6 +215,9 @@ export const FacebookNavbar = () => {
                 <DropdownMenuItem className="p-3 cursor-pointer">
                   <Settings className="w-5 h-5 mr-3" />
                   <span>{t('settings')}</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem className="p-3 cursor-pointer" onSelect={(e) => e.preventDefault()}>
+                  <LanguageSwitcher variant="full" />
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
