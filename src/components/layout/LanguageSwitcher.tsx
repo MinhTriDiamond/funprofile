@@ -40,29 +40,45 @@ const LanguageSwitcher = memo(({ className, variant = 'pill' }: LanguageSwitcher
   if (variant === 'full') {
     return (
       <div className={cn("flex items-center gap-2", className)}>
-        <Globe className="w-4 h-4 text-muted-foreground" />
-        <button
-          onClick={() => setLanguage('en')}
-          className={cn(
-            "px-3 py-1 rounded-lg text-sm font-medium transition-all duration-300",
-            language === 'en' 
-              ? "bg-primary text-primary-foreground shadow-[0_0_10px_rgba(34,197,94,0.5)]" 
-              : "bg-muted text-muted-foreground hover:bg-muted/80"
-          )}
-        >
-          EN
-        </button>
-        <button
-          onClick={() => setLanguage('vi')}
-          className={cn(
-            "px-3 py-1 rounded-lg text-sm font-medium transition-all duration-300",
-            language === 'vi' 
-              ? "bg-primary text-primary-foreground shadow-[0_0_10px_rgba(34,197,94,0.5)]" 
-              : "bg-muted text-muted-foreground hover:bg-muted/80"
-          )}
-        >
-          VI
-        </button>
+        <Globe className={cn(
+          "w-4 h-4 transition-all duration-500",
+          language === 'en' ? "text-primary rotate-0" : "text-primary rotate-180"
+        )} />
+        <div className="relative flex items-center bg-muted rounded-lg p-1">
+          {/* Sliding background indicator */}
+          <div 
+            className={cn(
+              "absolute h-[calc(100%-8px)] w-[calc(50%-4px)] bg-primary rounded-md",
+              "transition-all duration-300 ease-out",
+              "shadow-[0_0_12px_rgba(34,197,94,0.6)]",
+              language === 'en' ? "left-1" : "left-[calc(50%+2px)]"
+            )}
+          />
+          <button
+            onClick={() => setLanguage('en')}
+            className={cn(
+              "relative z-10 px-3 py-1 rounded-md text-sm font-medium",
+              "transition-all duration-300 ease-out",
+              language === 'en' 
+                ? "text-primary-foreground scale-105" 
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            EN
+          </button>
+          <button
+            onClick={() => setLanguage('vi')}
+            className={cn(
+              "relative z-10 px-3 py-1 rounded-md text-sm font-medium",
+              "transition-all duration-300 ease-out",
+              language === 'vi' 
+                ? "text-primary-foreground scale-105" 
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            VI
+          </button>
+        </div>
       </div>
     );
   }
