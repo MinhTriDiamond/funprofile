@@ -638,7 +638,7 @@ const Admin = () => {
               <p className="text-muted-foreground">FUN Profile Management</p>
             </div>
           </div>
-          <Button variant="outline" onClick={() => navigate("/")} className="gap-2">
+          <Button variant="outline" onClick={() => navigate("/")} className="gap-2 bg-white text-primary border-primary hover:bg-primary/10">
             <LogOut className="w-4 h-4" />
             Thoát
           </Button>
@@ -863,7 +863,7 @@ const Admin = () => {
                 {/* Sorting Dropdown */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-2">
+                    <Button variant="outline" size="sm" className="gap-2 bg-white text-primary border-primary hover:bg-primary/10">
                       <ArrowUpDown className="w-4 h-4" />
                       Sắp xếp
                     </Button>
