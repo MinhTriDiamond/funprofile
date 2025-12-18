@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
-interface UserRewardStats {
+export interface UserRewardStats {
   postsCount: number;
   reactionsOnPosts: number;
   commentsOnPosts: number;
@@ -42,88 +42,96 @@ export const calculateReward = (
 };
 
 /**
- * Hook to calculate user reward stats
- * Optimized with batched queries
+ * Fetch reward stats for a user - optimized with batched queries
+ */
+const fetchRewardStats = async (userId: string): Promise<UserRewardStats> => {
+  // Fetch user's posts
+  const { data: postsData } = await supabase
+    .from('posts')
+    .select('id')
+    .eq('user_id', userId);
+  
+  const postsCount = postsData?.length || 0;
+  const postIds = postsData?.map(p => p.id) || [];
+  
+  // Batch queries for reactions, comments, shares on user's posts
+  let reactionsOnPosts = 0;
+  let commentsOnPosts = 0;
+  let sharesCount = 0;
+  
+  if (postIds.length > 0) {
+    const [reactionsRes, commentsRes, sharesRes] = await Promise.all([
+      supabase.from('reactions').select('id', { count: 'exact', head: true }).in('post_id', postIds),
+      supabase.from('comments').select('id', { count: 'exact', head: true }).in('post_id', postIds),
+      supabase.from('shared_posts').select('id', { count: 'exact', head: true }).in('original_post_id', postIds)
+    ]);
+    
+    reactionsOnPosts = reactionsRes.count || 0;
+    commentsOnPosts = commentsRes.count || 0;
+    sharesCount = sharesRes.count || 0;
+  }
+  
+  // Fetch friends and claims in parallel
+  const [friendsRes, claimsRes] = await Promise.all([
+    supabase
+      .from('friendships')
+      .select('id', { count: 'exact', head: true })
+      .or(`user_id.eq.${userId},friend_id.eq.${userId}`)
+      .eq('status', 'accepted'),
+    supabase
+      .from('reward_claims')
+      .select('amount')
+      .eq('user_id', userId)
+  ]);
+  
+  const friendsCount = friendsRes.count || 0;
+  const claimedAmount = claimsRes.data?.reduce((sum, c) => sum + Number(c.amount), 0) || 0;
+  
+  const totalReward = calculateReward(postsCount, reactionsOnPosts, commentsOnPosts, sharesCount, friendsCount);
+  const claimableAmount = Math.max(0, totalReward - claimedAmount);
+  
+  return {
+    postsCount,
+    reactionsOnPosts,
+    commentsOnPosts,
+    sharesCount,
+    friendsCount,
+    totalReward,
+    claimedAmount,
+    claimableAmount
+  };
+};
+
+/**
+ * Hook to calculate user reward stats with React Query caching
+ * - Caches data for 5 minutes (staleTime)
+ * - Keeps data in cache for 10 minutes (gcTime)
+ * - Auto-refetches when userId changes
  */
 export const useRewardCalculation = (userId: string | null) => {
-  const [stats, setStats] = useState<UserRewardStats | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
+  const queryClient = useQueryClient();
 
-  const fetchStats = useCallback(async () => {
-    if (!userId) return;
-    
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      // Fetch user's posts
-      const { data: postsData } = await supabase
-        .from('posts')
-        .select('id')
-        .eq('user_id', userId);
-      
-      const postsCount = postsData?.length || 0;
-      const postIds = postsData?.map(p => p.id) || [];
-      
-      // Batch queries for reactions, comments, shares on user's posts
-      let reactionsOnPosts = 0;
-      let commentsOnPosts = 0;
-      let sharesCount = 0;
-      
-      if (postIds.length > 0) {
-        const [reactionsRes, commentsRes, sharesRes] = await Promise.all([
-          supabase.from('reactions').select('id', { count: 'exact', head: true }).in('post_id', postIds),
-          supabase.from('comments').select('id', { count: 'exact', head: true }).in('post_id', postIds),
-          supabase.from('shared_posts').select('id', { count: 'exact', head: true }).in('original_post_id', postIds)
-        ]);
-        
-        reactionsOnPosts = reactionsRes.count || 0;
-        commentsOnPosts = commentsRes.count || 0;
-        sharesCount = sharesRes.count || 0;
-      }
-      
-      // Fetch friends and claims in parallel
-      const [friendsRes, claimsRes] = await Promise.all([
-        supabase
-          .from('friendships')
-          .select('id', { count: 'exact', head: true })
-          .or(`user_id.eq.${userId},friend_id.eq.${userId}`)
-          .eq('status', 'accepted'),
-        supabase
-          .from('reward_claims')
-          .select('amount')
-          .eq('user_id', userId)
-      ]);
-      
-      const friendsCount = friendsRes.count || 0;
-      const claimedAmount = claimsRes.data?.reduce((sum, c) => sum + Number(c.amount), 0) || 0;
-      
-      const totalReward = calculateReward(postsCount, reactionsOnPosts, commentsOnPosts, sharesCount, friendsCount);
-      const claimableAmount = Math.max(0, totalReward - claimedAmount);
-      
-      setStats({
-        postsCount,
-        reactionsOnPosts,
-        commentsOnPosts,
-        sharesCount,
-        friendsCount,
-        totalReward,
-        claimedAmount,
-        claimableAmount
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to fetch reward stats'));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [userId]);
+  const { data: stats, isLoading, error, refetch } = useQuery({
+    queryKey: ['reward-stats', userId],
+    queryFn: () => fetchRewardStats(userId!),
+    enabled: !!userId,
+    staleTime: 5 * 60 * 1000, // 5 minutes - data considered fresh
+    gcTime: 10 * 60 * 1000, // 10 minutes - keep in cache
+    refetchOnWindowFocus: false,
+  });
 
-  useEffect(() => {
-    fetchStats();
-  }, [fetchStats]);
+  // Invalidate cache when needed (e.g., after claiming rewards)
+  const invalidateCache = () => {
+    queryClient.invalidateQueries({ queryKey: ['reward-stats', userId] });
+  };
 
-  return { stats, isLoading, error, refetch: fetchStats };
+  return { 
+    stats: stats || null, 
+    isLoading, 
+    error: error as Error | null, 
+    refetch,
+    invalidateCache 
+  };
 };
 
 export default useRewardCalculation;
