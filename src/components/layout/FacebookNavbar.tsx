@@ -25,6 +25,7 @@ import {
   LogOut,
   Settings,
   Wallet,
+  Shield,
 } from 'lucide-react';
 
 interface Profile {
@@ -40,6 +41,7 @@ export const FacebookNavbar = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -48,6 +50,7 @@ export const FacebookNavbar = () => {
         setIsLoggedIn(true);
         setUserId(session.user.id);
         fetchProfile(session.user.id);
+        checkAdminRole(session.user.id);
       }
     };
 
@@ -58,9 +61,11 @@ export const FacebookNavbar = () => {
       if (session) {
         setUserId(session.user.id);
         fetchProfile(session.user.id);
+        checkAdminRole(session.user.id);
       } else {
         setProfile(null);
         setUserId(null);
+        setIsAdmin(false);
       }
     });
 
@@ -74,6 +79,11 @@ export const FacebookNavbar = () => {
       .eq('id', id)
       .single();
     if (data) setProfile(data);
+  };
+
+  const checkAdminRole = async (id: string) => {
+    const { data } = await supabase.rpc('has_role', { _user_id: id, _role: 'admin' });
+    setIsAdmin(data === true);
   };
 
   const handleLogout = async () => {
@@ -188,6 +198,15 @@ export const FacebookNavbar = () => {
                   </div>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
+                {isAdmin && (
+                  <DropdownMenuItem
+                    onClick={() => navigate('/admin')}
+                    className="p-3 cursor-pointer text-primary"
+                  >
+                    <Shield className="w-5 h-5 mr-3" />
+                    <span>Admin Dashboard</span>
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem
                   onClick={() => navigate('/wallet')}
                   className="p-3 cursor-pointer"
