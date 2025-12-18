@@ -1,21 +1,10 @@
 import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowUp, MessageCircle, Star, Share2, BadgeDollarSign, Coins, Gift, Wallet, Users, Image } from 'lucide-react';
-
-interface UserStats {
-  posts_count: number;
-  comments_count: number;
-  reactions_on_posts: number;
-  shares_count: number;
-  friends_count: number;
-  nfts_count: number;
-  claimable: number;
-  claimed: number;
-  total_reward: number;
-  total_money: number;
-}
+import { useRewardCalculation } from '@/hooks/useRewardCalculation';
 
 interface CoverHonorBoardProps {
   userId: string;
@@ -24,131 +13,42 @@ interface CoverHonorBoardProps {
 }
 
 export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoardProps) => {
-  const [stats, setStats] = useState<UserStats>({
-    posts_count: 0,
-    comments_count: 0,
-    reactions_on_posts: 0,
-    shares_count: 0,
-    friends_count: 0,
-    nfts_count: 0,
-    claimable: 0,
-    claimed: 0,
-    total_reward: 0,
-    total_money: 0,
-  });
-  const [loading, setLoading] = useState(true);
+  // Use the centralized reward calculation hook with React Query caching
+  const { stats: rewardStats, isLoading: rewardLoading } = useRewardCalculation(userId);
 
-  useEffect(() => {
-    fetchUserStats();
-  }, [userId]);
-
-  // New reward calculation formula
-  const calculateTotalReward = (
-    postsCount: number,
-    reactionsOnPosts: number,
-    commentsOnPosts: number,
-    sharesCount: number,
-    friendsCount: number
-  ): number => {
-    // Posts: 1 post = 20,000 CAMLY
-    const postsReward = postsCount * 20000;
-    
-    // Reactions on posts: 3+ reactions = 30,000, then +1,000 per additional
-    let reactionsReward = 0;
-    if (reactionsOnPosts >= 3) {
-      reactionsReward = 30000 + (reactionsOnPosts - 3) * 1000;
-    }
-    
-    // Comments on posts: 1 comment = 5,000 CAMLY
-    const commentsReward = commentsOnPosts * 5000;
-    
-    // Shares: 1 share = 5,000 CAMLY
-    const sharesReward = sharesCount * 5000;
-    
-    // Friends: 1 friend = 10,000 CAMLY + new user bonus 10,000
-    const friendsReward = friendsCount * 10000 + 10000;
-    
-    return postsReward + reactionsReward + commentsReward + sharesReward + friendsReward;
-  };
-
-  const fetchUserStats = async () => {
-    try {
-      // Use the optimized database function get_user_rewards
-      const { data: rewardData } = await supabase
-        .rpc('get_user_rewards', { limit_count: 1000 })
-        .eq('id', userId)
-        .maybeSingle();
-
-      // Fetch claimed amount separately
-      const { data: claimsData } = await supabase
-        .from('reward_claims')
-        .select('amount')
-        .eq('user_id', userId);
-
-      // Fetch total received (transactions to this user's wallet)
+  // Fetch additional data (transactions for total_money) with React Query caching
+  const { data: additionalData, isLoading: additionalLoading } = useQuery({
+    queryKey: ['profile-additional-stats', userId],
+    queryFn: async () => {
       const { data: transactionsData } = await supabase
         .from('transactions')
         .select('amount')
         .eq('user_id', userId)
         .eq('status', 'success');
 
-      // Fetch comments on user's posts
-      const { data: postsData } = await supabase
-        .from('posts')
-        .select('id')
-        .eq('user_id', userId);
-      
-      let commentsOnPosts = 0;
-      if (postsData && postsData.length > 0) {
-        const postIds = postsData.map(p => p.id);
-        const { count } = await supabase
-          .from('comments')
-          .select('id', { count: 'exact', head: true })
-          .in('post_id', postIds);
-        commentsOnPosts = count || 0;
-      }
-
-      const claimedAmount = claimsData?.reduce((sum, claim) => sum + Number(claim.amount), 0) || 0;
       const receivedAmount = transactionsData?.reduce((sum, tx) => sum + parseFloat(tx.amount || '0'), 0) || 0;
+      return { receivedAmount };
+    },
+    enabled: !!userId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+    refetchOnWindowFocus: false,
+  });
 
-      if (rewardData) {
-        const postsCount = Number(rewardData.posts_count) || 0;
-        const reactionsOnPosts = Number(rewardData.reactions_on_posts) || 0;
-        const sharesCount = Number(rewardData.shares_count) || 0;
-        const friendsCount = Number(rewardData.friends_count) || 0;
-        
-        const calculatedReward = calculateTotalReward(
-          postsCount,
-          reactionsOnPosts,
-          commentsOnPosts,
-          sharesCount,
-          friendsCount
-        );
-        
-        // CRITICAL FIX: Total Reward must ALWAYS = Claimable + Claimed
-        // If claimed > calculated, Total Reward = Claimed (and Claimable = 0)
-        const claimable = Math.max(0, calculatedReward - claimedAmount);
-        const totalReward = claimable + claimedAmount; // Formula 1: Total Reward = Claimable + Claimed
-        const totalMoney = totalReward + receivedAmount; // Formula 2: Total Money = Total Reward + Received from others
-        
-        setStats({
-          posts_count: postsCount,
-          comments_count: commentsOnPosts,
-          reactions_on_posts: reactionsOnPosts,
-          shares_count: sharesCount,
-          friends_count: friendsCount,
-          nfts_count: 0, // NFTs not implemented yet
-          claimable: claimable,
-          claimed: claimedAmount,
-          total_reward: totalReward,
-          total_money: totalMoney,
-        });
-      }
-    } catch (error) {
-      console.error('Error fetching user stats:', error);
-    } finally {
-      setLoading(false);
-    }
+  const loading = rewardLoading || additionalLoading;
+
+  // Calculate derived values
+  const stats = {
+    posts_count: rewardStats?.postsCount || 0,
+    comments_count: rewardStats?.commentsOnPosts || 0,
+    reactions_on_posts: rewardStats?.reactionsOnPosts || 0,
+    shares_count: rewardStats?.sharesCount || 0,
+    friends_count: rewardStats?.friendsCount || 0,
+    nfts_count: 0, // NFTs not implemented yet
+    claimable: rewardStats?.claimableAmount || 0,
+    claimed: rewardStats?.claimedAmount || 0,
+    total_reward: rewardStats?.totalReward || 0,
+    total_money: (rewardStats?.totalReward || 0) + (additionalData?.receivedAmount || 0),
   };
 
   const formatNumber = (num: number): string => {
