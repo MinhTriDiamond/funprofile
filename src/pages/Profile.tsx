@@ -20,8 +20,8 @@ const Profile = () => {
   const navigate = useNavigate();
   const { userId } = useParams();
   const [profile, setProfile] = useState<any>(null);
-  const [posts, setPosts] = useState<any[]>([]);
-  const [sharedPosts, setSharedPosts] = useState<any[]>([]);
+  const [allPosts, setAllPosts] = useState<any[]>([]); // Combined and sorted posts
+  const [originalPosts, setOriginalPosts] = useState<any[]>([]); // For photos grid
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string>('');
   const [isOwnProfile, setIsOwnProfile] = useState(false);
@@ -77,6 +77,7 @@ const Profile = () => {
       if (error) throw error;
       setProfile(data);
 
+      // Fetch user's own posts
       const { data: postsData } = await supabase
         .from('posts')
         .select(`
@@ -88,8 +89,9 @@ const Profile = () => {
         .eq('user_id', profileId)
         .order('created_at', { ascending: false });
 
-      setPosts(postsData || []);
+      setOriginalPosts(postsData || []); // Keep for photos grid
 
+      // Fetch shared posts
       const { data: sharedPostsData } = await supabase
         .from('shared_posts')
         .select(`
@@ -104,7 +106,33 @@ const Profile = () => {
         .eq('user_id', profileId)
         .order('created_at', { ascending: false });
 
-      setSharedPosts(sharedPostsData || []);
+      // Combine and sort all posts by created_at (shared posts use their share time)
+      const combinedPosts: any[] = [];
+      
+      // Add original posts with type marker
+      (postsData || []).forEach(post => {
+        combinedPosts.push({
+          ...post,
+          _type: 'original',
+          _sortTime: new Date(post.created_at).getTime()
+        });
+      });
+      
+      // Add shared posts with type marker (using share time for sorting)
+      (sharedPostsData || []).forEach(sharedPost => {
+        if (sharedPost.posts) {
+          combinedPosts.push({
+            ...sharedPost,
+            _type: 'shared',
+            _sortTime: new Date(sharedPost.created_at).getTime() // Use share time, not original post time
+          });
+        }
+      });
+      
+      // Sort by time descending (newest first)
+      combinedPosts.sort((a, b) => b._sortTime - a._sortTime);
+      
+      setAllPosts(combinedPosts);
 
       // Fetch friends count
       const { count } = await supabase
@@ -339,7 +367,7 @@ const Profile = () => {
                             <button className="text-primary hover:underline text-sm">Xem tất cả ảnh</button>
                           </div>
                           <div className="grid grid-cols-3 gap-1 rounded-lg overflow-hidden">
-                            {posts.filter(p => p.image_url).slice(0, 9).map((post, i) => (
+                            {originalPosts.filter(p => p.image_url).slice(0, 9).map((post, i) => (
                               <LazyImage 
                                 key={i}
                                 src={post.image_url}
@@ -366,35 +394,32 @@ const Profile = () => {
                     {/* Right Content - Posts */}
                     <div className="lg:col-span-3 space-y-4">
                       <TabsContent value="posts" className="mt-0 space-y-4">
-                        {posts.length === 0 && sharedPosts.length === 0 ? (
+                        {allPosts.length === 0 ? (
                           <div className="bg-white rounded-lg shadow p-8 text-center text-muted-foreground">
                             Chưa có bài viết nào
                           </div>
                         ) : (
-                          <>
-                            {sharedPosts.map((sharedPost) => (
-                              sharedPost.posts && (
-                                <div key={sharedPost.id} className="space-y-2">
-                                  <div className="flex items-center gap-2 text-sm text-muted-foreground px-2">
-                                    <span className="font-semibold text-primary">Đã share</span>
-                                  </div>
-                                  <FacebookPostCard 
-                                    post={sharedPost.posts} 
-                                    currentUserId={currentUserId}
-                                    onPostDeleted={handlePostDeleted}
-                                  />
+                          allPosts.map((item) => (
+                            item._type === 'shared' ? (
+                              <div key={`shared-${item.id}`} className="space-y-2">
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground px-2">
+                                  <span className="font-semibold text-primary">Đã share</span>
                                 </div>
-                              )
-                            ))}
-                            {posts.map((post) => (
+                                <FacebookPostCard 
+                                  post={item.posts} 
+                                  currentUserId={currentUserId}
+                                  onPostDeleted={handlePostDeleted}
+                                />
+                              </div>
+                            ) : (
                               <FacebookPostCard 
-                                key={post.id} 
-                                post={post} 
+                                key={item.id} 
+                                post={item} 
                                 currentUserId={currentUserId}
                                 onPostDeleted={handlePostDeleted}
                               />
-                            ))}
-                          </>
+                            )
+                          ))
                         )}
                       </TabsContent>
 
@@ -433,7 +458,7 @@ const Profile = () => {
                         <div className="bg-white rounded-lg shadow p-6">
                           <h3 className="font-bold text-xl mb-4">Ảnh</h3>
                           <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                            {posts.filter(p => p.image_url).map((post, i) => (
+                            {originalPosts.filter(p => p.image_url).map((post, i) => (
                               <img 
                                 key={i}
                                 src={post.image_url}
@@ -442,7 +467,7 @@ const Profile = () => {
                               />
                             ))}
                           </div>
-                          {posts.filter(p => p.image_url).length === 0 && (
+                          {originalPosts.filter(p => p.image_url).length === 0 && (
                             <p className="text-center text-muted-foreground py-8">Chưa có ảnh nào</p>
                           )}
                         </div>
@@ -452,7 +477,7 @@ const Profile = () => {
                         <div className="bg-white rounded-lg shadow p-6">
                           <h3 className="font-bold text-xl mb-4">Video</h3>
                           <div className="grid grid-cols-2 gap-4">
-                            {posts.filter(p => p.video_url).map((post, i) => (
+                            {originalPosts.filter(p => p.video_url).map((post, i) => (
                               <video 
                                 key={i}
                                 src={post.video_url}
@@ -461,7 +486,7 @@ const Profile = () => {
                               />
                             ))}
                           </div>
-                          {posts.filter(p => p.video_url).length === 0 && (
+                          {originalPosts.filter(p => p.video_url).length === 0 && (
                             <p className="text-center text-muted-foreground py-8">Chưa có video nào</p>
                           )}
                         </div>
