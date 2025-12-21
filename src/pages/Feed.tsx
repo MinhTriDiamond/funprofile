@@ -63,18 +63,18 @@ const Feed = () => {
     <div className="min-h-screen bg-background">
       <FacebookNavbar />
       
-      <main className="pt-14 pb-20 lg:pb-4">
-        <div className="max-w-screen-2xl mx-auto px-2 sm:px-4">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 py-4">
-            {/* Left Sidebar - Hidden on mobile */}
+      <main className="pt-12 md:pt-14 pb-20 lg:pb-4">
+        <div className="max-w-screen-2xl mx-auto px-0 sm:px-2 md:px-4">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 sm:gap-2 md:gap-4 py-2 md:py-4">
+            {/* Left Sidebar - Hidden on mobile/tablet */}
             <aside className="hidden lg:block lg:col-span-3">
-              <div className="sticky top-[72px] max-h-[calc(100vh-88px)] overflow-y-auto pr-2">
+              <div className="sticky top-[72px] max-h-[calc(100vh-88px)] overflow-y-auto pr-2 scrollbar-thin">
                 <FacebookLeftSidebar />
               </div>
             </aside>
 
             {/* Main Feed - Full width on mobile */}
-            <div className="col-span-1 lg:col-span-6 w-full">
+            <div className="col-span-1 lg:col-span-6 w-full px-2 sm:px-0">
               <StoriesBar />
 
               {currentUserId && <FacebookCreatePost onPostCreated={refetch} />}
@@ -108,9 +108,9 @@ const Feed = () => {
               )}
             </div>
 
-            {/* Right Sidebar - Hidden on mobile */}
+            {/* Right Sidebar - Hidden on mobile/tablet */}
             <aside className="hidden lg:block lg:col-span-3">
-              <div className="sticky top-[72px] max-h-[calc(100vh-88px)] overflow-y-auto pl-2">
+              <div className="sticky top-[72px] max-h-[calc(100vh-88px)] overflow-y-auto pl-2 scrollbar-thin">
                 <FacebookRightSidebar />
               </div>
             </aside>

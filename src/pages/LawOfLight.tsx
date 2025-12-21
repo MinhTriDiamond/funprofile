@@ -88,18 +88,18 @@ const LawOfLight = () => {
         }}
       />
       
-      {/* Divine Light Rays from Top - White & Gold */}
+      {/* Divine Light Rays from Top - White & Gold (reduced on mobile) */}
       <div 
-        className="fixed top-0 left-1/2 -translate-x-1/2 w-[200%] h-[70vh] z-0 pointer-events-none"
+        className="fixed top-0 left-1/2 -translate-x-1/2 w-[200%] h-[50vh] md:h-[70vh] z-0 pointer-events-none"
         style={{
           background: 'conic-gradient(from 180deg at 50% 0%, transparent 25%, rgba(212,175,55,0.15) 30%, rgba(255,255,255,0.4) 35%, rgba(212,175,55,0.15) 40%, transparent 45%, transparent 55%, rgba(212,175,55,0.12) 60%, rgba(255,255,255,0.35) 65%, rgba(212,175,55,0.12) 70%, transparent 75%)',
           filter: 'blur(3px)'
         }}
       />
 
-      {/* Central Halo Effect */}
+      {/* Central Halo Effect (smaller on mobile) */}
       <div 
-        className="fixed top-0 left-1/2 -translate-x-1/2 w-[500px] h-[500px] z-0 pointer-events-none"
+        className="fixed top-0 left-1/2 -translate-x-1/2 w-[300px] md:w-[500px] h-[300px] md:h-[500px] z-0 pointer-events-none"
         style={{
           background: 'radial-gradient(circle, rgba(212,175,55,0.25) 0%, rgba(255,215,0,0.15) 40%, transparent 70%)',
           filter: 'blur(50px)',
@@ -107,15 +107,15 @@ const LawOfLight = () => {
         }}
       />
 
-      {/* Floating Golden Particles */}
-      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-        {[...Array(30)].map((_, i) => (
+      {/* Floating Golden Particles (reduced count on mobile for performance) */}
+      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden hidden md:block">
+        {[...Array(20)].map((_, i) => (
           <div
             key={i}
             className="absolute rounded-full"
             style={{
-              width: Math.random() * 8 + 4 + 'px',
-              height: Math.random() * 8 + 4 + 'px',
+              width: Math.random() * 6 + 3 + 'px',
+              height: Math.random() * 6 + 3 + 'px',
               left: Math.random() * 100 + '%',
               background: i % 3 === 0 
                 ? 'radial-gradient(circle, rgba(212,175,55,0.9), rgba(212,175,55,0.3))' 
@@ -145,23 +145,23 @@ const LawOfLight = () => {
       />
 
       {/* Main Content */}
-      <div className="relative z-10 min-h-screen py-12 px-4">
+      <div className="relative z-10 min-h-screen py-6 md:py-12 px-3 md:px-4">
         <div className="max-w-4xl mx-auto">
           {/* Header with Dove Icon */}
-          <div className="text-center mb-12">
-            <div className="inline-flex items-center justify-center w-28 h-28 rounded-full mb-6"
+          <div className="text-center mb-8 md:mb-12">
+            <div className="inline-flex items-center justify-center w-20 h-20 md:w-28 md:h-28 rounded-full mb-4 md:mb-6"
                  style={{
                    background: 'radial-gradient(circle, rgba(212,175,55,0.2) 0%, rgba(255,255,255,0.8) 50%, transparent 70%)',
                    boxShadow: '0 0 80px rgba(212,175,55,0.4), 0 0 120px rgba(255,255,255,0.6)'
                  }}>
-              <Bird className="w-14 h-14" 
+              <Bird className="w-10 h-10 md:w-14 md:h-14" 
                     style={{ 
                       color: '#D4AF37',
                       filter: 'drop-shadow(0 0 15px rgba(212,175,55,0.8))' 
                     }} />
             </div>
             
-            <h1 className="text-5xl md:text-6xl font-bold mb-4"
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-3 md:mb-4 law-of-light-title"
                 style={{
                   fontFamily: 'Space Grotesk, Inter, sans-serif',
                   background: 'linear-gradient(135deg, #D4AF37 0%, #FFD700 30%, #D4AF37 50%, #B8860B 70%, #D4AF37 100%)',
@@ -171,7 +171,7 @@ const LawOfLight = () => {
                 }}>
               LUẬT ÁNH SÁNG
             </h1>
-            <p className="text-xl font-medium tracking-widest mb-2"
+            <p className="text-base md:text-xl font-medium tracking-widest mb-2"
                style={{ 
                  fontFamily: 'Space Grotesk, Inter, sans-serif',
                  color: '#B8860B'
@@ -180,7 +180,7 @@ const LawOfLight = () => {
             </p>
             
             {/* Golden Divider */}
-            <div className="w-48 h-1 mx-auto mt-6 rounded-full"
+            <div className="w-32 md:w-48 h-1 mx-auto mt-4 md:mt-6 rounded-full"
                  style={{
                    background: 'linear-gradient(90deg, transparent, #D4AF37, #FFD700, #D4AF37, transparent)',
                    boxShadow: '0 0 10px rgba(212,175,55,0.5)'
@@ -188,23 +188,23 @@ const LawOfLight = () => {
           </div>
 
           {/* Main Content Card */}
-          <div className="relative rounded-3xl p-8 md:p-12 mb-8"
+          <div className="relative rounded-2xl md:rounded-3xl p-4 sm:p-6 md:p-8 lg:p-12 mb-6 md:mb-8 law-of-light-card"
                style={{
                  background: 'linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(255,250,240,0.9) 100%)',
-                 border: '3px solid rgba(212,175,55,0.5)',
+                 border: '2px md:border-[3px] solid rgba(212,175,55,0.5)',
                  boxShadow: '0 10px 60px rgba(212,175,55,0.15), 0 0 0 1px rgba(255,255,255,0.8), inset 0 0 60px rgba(255,255,255,0.5)'
                }}>
             
             {/* Section: 🌟 USERS CỦA FUN ECOSYSTEM */}
-            <div className="mb-10">
-              <h2 className="text-2xl font-bold text-center mb-6"
+            <div className="mb-8 md:mb-10">
+              <h2 className="text-xl md:text-2xl font-bold text-center mb-4 md:mb-6"
                   style={{
                     color: '#B8860B',
                     textShadow: '0 2px 4px rgba(212,175,55,0.2)'
                   }}>
                 🌟 USERS CỦA FUN ECOSYSTEM
               </h2>
-              <p className="text-center text-lg font-semibold mb-6"
+              <p className="text-center text-sm md:text-lg font-semibold mb-4 md:mb-6"
                  style={{ color: '#8B7355', fontFamily: 'Space Grotesk, Inter, sans-serif' }}>
                 MẠNG XÃ HỘI THỜI ĐẠI HOÀNG KIM – NỀN KINH TẾ ÁNH SÁNG 5D
               </p>

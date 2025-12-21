@@ -134,20 +134,22 @@ export const FacebookNavbar = () => {
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 fb-header h-14">
-      <div className="h-full max-w-screen-2xl mx-auto px-4 flex items-center justify-between">
+    <header className="fixed top-0 left-0 right-0 z-50 fb-header h-12 md:h-14 safe-area-top">
+      <div className="h-full max-w-screen-2xl mx-auto px-2 sm:px-4 flex items-center justify-between">
         {/* Left Section - Logo & Search */}
-        <div className="flex items-center gap-2 w-[280px]">
+        <div className="flex items-center gap-2 flex-shrink-0 md:w-[280px]">
           <img
             src="/fun-profile-logo-40.webp"
             alt="FUN Profile"
-            width={40}
-            height={40}
-            className="w-10 h-10 rounded-full cursor-pointer"
+            width={36}
+            height={36}
+            className="w-9 h-9 md:w-10 md:h-10 rounded-full cursor-pointer flex-shrink-0"
             onClick={() => navigate('/')}
-            fetchPriority="high"
+            loading="eager"
           />
-          <SearchDialog />
+          <div className="hidden sm:block">
+            <SearchDialog />
+          </div>
         </div>
 
         {/* Center Section - Navigation */}
@@ -205,11 +207,11 @@ export const FacebookNavbar = () => {
         </nav>
 
         {/* Right Section - Actions */}
-        <div className="flex items-center gap-2 w-[280px] justify-end">
-          {/* Menu button for mobile */}
-          <button className="fb-icon-btn md:hidden" aria-label="Menu">
-            <Menu className="w-5 h-5" />
-          </button>
+        <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0 md:w-[280px] justify-end">
+          {/* Search button for mobile */}
+          <div className="sm:hidden">
+            <SearchDialog />
+          </div>
 
           {/* Messenger */}
           <button className="fb-icon-btn hidden md:flex" aria-label={t('notifications')}>

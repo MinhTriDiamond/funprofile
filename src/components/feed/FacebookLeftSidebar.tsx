@@ -28,7 +28,11 @@ interface Profile {
   full_name: string | null;
 }
 
-export const FacebookLeftSidebar = () => {
+interface FacebookLeftSidebarProps {
+  onItemClick?: () => void;
+}
+
+export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) => {
   const navigate = useNavigate();
   const { t } = useLanguage();
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -128,6 +132,7 @@ export const FacebookLeftSidebar = () => {
                 } else {
                   navigate(shortcut.path);
                 }
+                onItemClick?.();
               }}
               className={`w-full flex items-center gap-3 p-2 rounded-xl transition-all duration-300 group ${
                 shortcut.isSpecial 
@@ -174,7 +179,7 @@ export const FacebookLeftSidebar = () => {
           {/* User Profile */}
           {profile && (
             <button
-              onClick={() => navigate(`/profile/${profile.id}`)}
+              onClick={() => { navigate(`/profile/${profile.id}`); onItemClick?.(); }}
               className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-secondary transition-colors"
             >
               <Avatar className="w-9 h-9">
@@ -191,7 +196,7 @@ export const FacebookLeftSidebar = () => {
           {menuItems.map((item) => (
             <button
               key={item.label}
-              onClick={() => navigate(item.path)}
+              onClick={() => { navigate(item.path); onItemClick?.(); }}
               className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-secondary transition-colors"
             >
               <div className={`w-9 h-9 rounded-full bg-secondary flex items-center justify-center ${item.color}`}>
@@ -205,7 +210,7 @@ export const FacebookLeftSidebar = () => {
           {showMore && moreItems.map((item) => (
             <button
               key={item.label}
-              onClick={() => navigate(item.path)}
+              onClick={() => { navigate(item.path); onItemClick?.(); }}
               className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-secondary transition-colors"
             >
               <div className={`w-9 h-9 rounded-full bg-secondary flex items-center justify-center ${item.color}`}>
