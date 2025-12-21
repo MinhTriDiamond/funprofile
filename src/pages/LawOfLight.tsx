@@ -234,9 +234,9 @@ const LawOfLight = () => {
               </ul>
               <div className="mt-6 p-4 rounded-xl" style={{ background: 'rgba(212,175,55,0.08)' }}>
                 <p className="italic text-gray-600" style={{ fontFamily: 'Space Grotesk, Inter, sans-serif' }}>
-                  Họ có thể chưa hoàn hảo,<br/>
-                  nhưng trái tim họ hướng thiện.<br/>
-                  Họ muốn sống thật – sống đúng – sống sáng.
+                  Bạn có thể chưa hoàn hảo,<br/>
+                  nhưng bạn có trái tim hướng thiện.<br/>
+                  Bạn muốn sống thật – sống đúng – sống sáng.
                 </p>
               </div>
               <p className="mt-4 font-semibold" style={{ color: '#B8860B' }}>
