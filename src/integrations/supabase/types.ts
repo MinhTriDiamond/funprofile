@@ -44,6 +44,36 @@ export type Database = {
         }
         Relationships: []
       }
+      blacklisted_wallets: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_permanent: boolean
+          reason: string
+          user_id: string | null
+          wallet_address: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_permanent?: boolean
+          reason?: string
+          user_id?: string | null
+          wallet_address: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_permanent?: boolean
+          reason?: string
+          user_id?: string | null
+          wallet_address?: string
+        }
+        Relationships: []
+      }
       comments: {
         Row: {
           content: string
@@ -208,7 +238,10 @@ export type Database = {
       profiles: {
         Row: {
           admin_notes: string | null
+          approved_reward: number
           avatar_url: string | null
+          ban_reason: string | null
+          banned_at: string | null
           bio: string | null
           cover_url: string | null
           created_at: string
@@ -218,13 +251,18 @@ export type Database = {
           is_restricted: boolean
           law_of_light_accepted: boolean
           law_of_light_accepted_at: string | null
+          pending_reward: number
           reward_status: string
           updated_at: string
           username: string
+          wallet_address: string | null
         }
         Insert: {
           admin_notes?: string | null
+          approved_reward?: number
           avatar_url?: string | null
+          ban_reason?: string | null
+          banned_at?: string | null
           bio?: string | null
           cover_url?: string | null
           created_at?: string
@@ -234,13 +272,18 @@ export type Database = {
           is_restricted?: boolean
           law_of_light_accepted?: boolean
           law_of_light_accepted_at?: string | null
+          pending_reward?: number
           reward_status?: string
           updated_at?: string
           username: string
+          wallet_address?: string | null
         }
         Update: {
           admin_notes?: string | null
+          approved_reward?: number
           avatar_url?: string | null
+          ban_reason?: string | null
+          banned_at?: string | null
           bio?: string | null
           cover_url?: string | null
           created_at?: string
@@ -250,9 +293,11 @@ export type Database = {
           is_restricted?: boolean
           law_of_light_accepted?: boolean
           law_of_light_accepted_at?: string | null
+          pending_reward?: number
           reward_status?: string
           updated_at?: string
           username?: string
+          wallet_address?: string | null
         }
         Relationships: []
       }
@@ -328,6 +373,39 @@ export type Database = {
           created_at?: string
           id?: string
           reason?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      reward_approvals: {
+        Row: {
+          admin_id: string
+          admin_note: string | null
+          amount: number
+          created_at: string
+          id: string
+          reviewed_at: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          admin_id: string
+          admin_note?: string | null
+          amount?: number
+          created_at?: string
+          id?: string
+          reviewed_at?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          admin_id?: string
+          admin_note?: string | null
+          amount?: number
+          created_at?: string
+          id?: string
+          reviewed_at?: string | null
+          status?: string
           user_id?: string
         }
         Relationships: []
@@ -471,6 +549,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      approve_user_reward: {
+        Args: { p_admin_id: string; p_note?: string; p_user_id: string }
+        Returns: number
+      }
+      ban_user_permanently: {
+        Args: { p_admin_id: string; p_reason?: string; p_user_id: string }
+        Returns: boolean
+      }
       delete_storage_object: {
         Args: { bucket_name: string; object_path: string }
         Returns: undefined
@@ -496,6 +582,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      reject_user_reward: {
+        Args: { p_admin_id: string; p_note?: string; p_user_id: string }
+        Returns: number
       }
     }
     Enums: {

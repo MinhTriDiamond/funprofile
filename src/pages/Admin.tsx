@@ -1,119 +1,40 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import type { Json } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
-import { 
-  Shield, 
-  UserPlus, 
-  Search, 
-  Plus, 
-  Minus, 
-  RotateCcw, 
-  Ban, 
-  AlertTriangle,
-  ClipboardList,
-  Users,
-  Coins,
-  LogOut,
-  CheckCircle,
-  Clock,
-  XCircle,
-  Settings,
-  UserCheck,
-  UserX,
-  ShieldOff,
-  ArrowUpDown,
-  Info
-} from "lucide-react";
+import { Shield, BarChart3, Gift, Users, Wallet, Trash2, Link2, LogOut } from "lucide-react";
 
-interface AdminUser {
-  user_id: string;
-  username: string;
-  avatar_url: string | null;
-}
+import OverviewTab from "@/components/admin/OverviewTab";
+import RewardApprovalTab from "@/components/admin/RewardApprovalTab";
+import UserReviewTab from "@/components/admin/UserReviewTab";
+import WalletAbuseTab from "@/components/admin/WalletAbuseTab";
+import QuickDeleteTab from "@/components/admin/QuickDeleteTab";
+import BlockchainTab from "@/components/admin/BlockchainTab";
 
-interface UserProfile {
+interface UserData {
   id: string;
   username: string;
   full_name: string | null;
   avatar_url: string | null;
   is_banned: boolean;
-  is_restricted: boolean;
-  reward_status?: string;
-  admin_notes?: string | null;
-  created_at?: string;
-}
-
-interface UserWithReward extends UserProfile {
-  claimable: number;
-  status: 'pending' | 'approved' | 'on_hold' | 'rejected';
-}
-
-interface AuditLog {
-  id: string;
-  admin_id: string;
-  action: string;
-  target_user_id: string | null;
-  details: unknown;
-  reason: string | null;
+  pending_reward: number;
+  approved_reward: number;
+  wallet_address: string | null;
+  reward_status: string;
   created_at: string;
-  admin_username?: string;
-  target_username?: string;
-}
-
-interface RewardAdjustment {
-  id: string;
-  user_id: string;
-  admin_id: string;
-  amount: number;
-  reason: string;
-  created_at: string;
+  posts_count?: number;
+  comments_count?: number;
+  reactions_count?: number;
 }
 
 const Admin = () => {
   const navigate = useNavigate();
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [adminList, setAdminList] = useState<AdminUser[]>([]);
-  const [newAdminId, setNewAdminId] = useState("");
-  const [searchUserId, setSearchUserId] = useState("");
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
-  
-  // User list states
-  const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
-  const [usersWithRewards, setUsersWithRewards] = useState<UserWithReward[]>([]);
-  const [userSubTab, setUserSubTab] = useState<"all" | "active" | "banned" | "restricted">("all");
-  
-  // Reward sorting
-  const [rewardSortBy, setRewardSortBy] = useState<"claimable_desc" | "claimable_asc" | "created_desc" | "created_asc">("claimable_desc");
-  
-  // Action dialog states
-  const [actionDialogOpen, setActionDialogOpen] = useState(false);
-  const [actionType, setActionType] = useState<"add" | "deduct" | "refund">("add");
-  const [selectedUser, setSelectedUser] = useState<UserWithReward | null>(null);
-  const [adjustmentAmount, setAdjustmentAmount] = useState("");
-  const [adjustmentReason, setAdjustmentReason] = useState("");
-  
-  // Hold/Reject reason dialog
-  const [reasonDialogOpen, setReasonDialogOpen] = useState(false);
-  const [pendingStatusChange, setPendingStatusChange] = useState<{ user: UserWithReward; status: 'on_hold' | 'rejected' } | null>(null);
-  const [statusReason, setStatusReason] = useState("");
-
-  // Stats
-  const activeUsers = allUsers.filter(u => !u.is_banned && !u.is_restricted);
-  const bannedUsers = allUsers.filter(u => u.is_banned);
-  const restrictedUsers = allUsers.filter(u => u.is_restricted && !u.is_banned);
+  const [users, setUsers] = useState<UserData[]>([]);
 
   useEffect(() => {
     checkAdminStatus();
@@ -124,7 +45,7 @@ const Admin = () => {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
-        navigate("/");
+        navigate("/feed");
         return;
       }
 
@@ -137,19 +58,15 @@ const Admin = () => {
 
       if (error || !hasRole) {
         toast.error("Bạn không có quyền truy cập trang này");
-        navigate("/");
+        navigate("/feed");
         return;
       }
 
       setIsAdmin(true);
-      await Promise.all([
-        loadAdminList(),
-        loadAuditLogs(),
-        loadAllUsers()
-      ]);
+      await loadAllUsers();
     } catch (error) {
       console.error("Error checking admin status:", error);
-      navigate("/");
+      navigate("/feed");
     } finally {
       setLoading(false);
     }
@@ -159,454 +76,44 @@ const Admin = () => {
     try {
       const { data: profiles, error } = await supabase
         .from('profiles')
-        .select('id, username, full_name, avatar_url, is_banned, is_restricted, reward_status, admin_notes, created_at')
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
+      
       if (profiles) {
-        setAllUsers(profiles);
-        await loadUsersWithRewards(profiles);
+        // Get posts count for each user
+        const { data: rewardsData } = await supabase.rpc('get_user_rewards', { limit_count: 500 });
+        const rewardsMap = new Map(rewardsData?.map((r: any) => [r.id, r]) || []);
+
+        const enrichedUsers = profiles.map(profile => {
+          const rewardInfo = rewardsMap.get(profile.id) as any;
+          return {
+            ...profile,
+            pending_reward: profile.pending_reward || 0,
+            approved_reward: profile.approved_reward || 0,
+            wallet_address: profile.wallet_address || null,
+            reward_status: profile.reward_status || 'pending',
+            posts_count: rewardInfo?.posts_count || 0,
+            comments_count: rewardInfo?.comments_count || 0,
+            reactions_count: rewardInfo?.reactions_count || 0,
+          };
+        });
+        
+        setUsers(enrichedUsers);
       }
     } catch (error) {
       console.error("Error loading users:", error);
     }
   };
 
-  const loadUsersWithRewards = async (profiles: UserProfile[]) => {
-    // Initialize with reward_status from database
-    const usersData: UserWithReward[] = profiles.slice(0, 50).map(profile => ({
-      ...profile,
-      claimable: 0,
-      status: (profile.reward_status as 'pending' | 'approved' | 'on_hold' | 'rejected') || 'pending'
-    }));
-    setUsersWithRewards(usersData);
-    
-    // Calculate rewards in background (batch)
-    try {
-      const { data: rewardsData } = await supabase.rpc('get_user_rewards', { limit_count: 50 });
-      if (rewardsData) {
-        const rewardsMap = new Map(rewardsData.map((r: { id: string; total_reward: number }) => [r.id, r.total_reward]));
-        setUsersWithRewards(prev => prev.map(user => ({
-          ...user,
-          claimable: (rewardsMap.get(user.id) as number) || 0
-        })));
-      }
-    } catch (error) {
-      console.error("Error loading rewards:", error);
-    }
-  };
-
-  const calculateUserClaimable = async (userId: string): Promise<number> => {
-    try {
-      const { data: postsData } = await supabase
-        .from('posts')
-        .select('id')
-        .eq('user_id', userId);
-      
-      const postsCount = postsData?.length || 0;
-      const postIds = postsData?.map(p => p.id) || [];
-      
-      let reactionsOnPosts = 0;
-      let commentsOnPosts = 0;
-      let sharesCount = 0;
-      
-      if (postIds.length > 0) {
-        const [reactionsRes, commentsRes, sharesRes] = await Promise.all([
-          supabase.from('reactions').select('id', { count: 'exact', head: true }).in('post_id', postIds),
-          supabase.from('comments').select('id', { count: 'exact', head: true }).in('post_id', postIds),
-          supabase.from('shared_posts').select('id', { count: 'exact', head: true }).in('original_post_id', postIds)
-        ]);
-        reactionsOnPosts = reactionsRes.count || 0;
-        commentsOnPosts = commentsRes.count || 0;
-        sharesCount = sharesRes.count || 0;
-      }
-      
-      const { count: friendsCount } = await supabase
-        .from('friendships')
-        .select('id', { count: 'exact', head: true })
-        .or(`user_id.eq.${userId},friend_id.eq.${userId}`)
-        .eq('status', 'accepted');
-
-      const postsReward = postsCount * 20000;
-      let reactionsReward = 0;
-      if (reactionsOnPosts >= 3) {
-        reactionsReward = 30000 + (reactionsOnPosts - 3) * 1000;
-      }
-      const commentsReward = commentsOnPosts * 5000;
-      const sharesReward = sharesCount * 5000;
-      const friendsReward = (friendsCount || 0) * 10000 + 10000;
-
-      const totalReward = postsReward + reactionsReward + commentsReward + sharesReward + friendsReward;
-
-      const { data: claims } = await supabase
-        .from('reward_claims')
-        .select('amount')
-        .eq('user_id', userId);
-      
-      const claimedAmount = claims?.reduce((sum, c) => sum + Number(c.amount), 0) || 0;
-
-      const { data: adjustments } = await supabase
-        .from('reward_adjustments')
-        .select('amount')
-        .eq('user_id', userId);
-      
-      const adjustmentTotal = adjustments?.reduce((sum, a) => sum + Number(a.amount), 0) || 0;
-
-      return Math.max(0, totalReward - claimedAmount + adjustmentTotal);
-    } catch (error) {
-      console.error("Error calculating claimable:", error);
-      return 0;
-    }
-  };
-
-  const loadAdminList = async () => {
-    try {
-      const { data: roles, error } = await supabase
-        .from('user_roles')
-        .select('user_id')
-        .eq('role', 'admin');
-
-      if (error) throw error;
-
-      if (roles && roles.length > 0) {
-        const userIds = roles.map(r => r.user_id);
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('id, username, avatar_url')
-          .in('id', userIds);
-
-        if (profiles) {
-          setAdminList(profiles.map(p => ({
-            user_id: p.id,
-            username: p.username,
-            avatar_url: p.avatar_url
-          })));
-        }
-      }
-    } catch (error) {
-      console.error("Error loading admin list:", error);
-    }
-  };
-
-  const loadAuditLogs = async () => {
-    try {
-      const { data: logs, error } = await supabase
-        .from('audit_logs')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(100);
-
-      if (error) throw error;
-
-      if (logs) {
-        const adminIds = [...new Set(logs.map(l => l.admin_id))];
-        const targetIds = [...new Set(logs.filter(l => l.target_user_id).map(l => l.target_user_id))];
-        const allIds = [...new Set([...adminIds, ...targetIds])];
-
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('id, username')
-          .in('id', allIds);
-
-        const profileMap = new Map(profiles?.map(p => [p.id, p.username]) || []);
-
-        setAuditLogs(logs.map(log => ({
-          ...log,
-          admin_username: profileMap.get(log.admin_id) || 'Unknown',
-          target_username: log.target_user_id ? profileMap.get(log.target_user_id) || 'Unknown' : undefined
-        })));
-      }
-    } catch (error) {
-      console.error("Error loading audit logs:", error);
-    }
-  };
-
-  const addAdmin = async () => {
-    if (!newAdminId.trim()) {
-      toast.error("Vui lòng nhập User ID");
-      return;
-    }
-
-    try {
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('id, username')
-        .eq('id', newAdminId.trim())
-        .single();
-
-      if (profileError || !profile) {
-        toast.error("Không tìm thấy user với ID này");
-        return;
-      }
-
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .insert({ user_id: newAdminId.trim(), role: 'admin' });
-
-      if (roleError) {
-        if (roleError.code === '23505') {
-          toast.error("User này đã là Admin");
-        } else {
-          throw roleError;
-        }
-        return;
-      }
-
-      await logAction('ADD_ADMIN', newAdminId.trim(), null, `Added admin role to ${profile.username}`);
-
-      toast.success(`Đã thêm ${profile.username} làm Admin`);
-      setNewAdminId("");
-      loadAdminList();
-      loadAuditLogs();
-    } catch (error) {
-      console.error("Error adding admin:", error);
-      toast.error("Lỗi khi thêm Admin");
-    }
-  };
-
-  const removeAdmin = async (userId: string, username: string) => {
-    if (userId === currentUserId) {
-      toast.error("Không thể xóa quyền Admin của chính mình");
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from('user_roles')
-        .delete()
-        .eq('user_id', userId)
-        .eq('role', 'admin');
-
-      if (error) throw error;
-
-      await logAction('REMOVE_ADMIN', userId, null, `Removed admin role from ${username}`);
-
-      toast.success(`Đã xóa quyền Admin của ${username}`);
-      loadAdminList();
-      loadAuditLogs();
-    } catch (error) {
-      console.error("Error removing admin:", error);
-      toast.error("Lỗi khi xóa Admin");
-    }
-  };
-
-  const logAction = async (action: string, targetUserId: string | null, details: Record<string, unknown> | null, reason: string | null) => {
-    if (!currentUserId) return;
-    
-    try {
-      await supabase.from('audit_logs').insert([{
-        admin_id: currentUserId,
-        action,
-        target_user_id: targetUserId || undefined,
-        details: details ? (details as Json) : undefined,
-        reason: reason || undefined
-      }]);
-    } catch (error) {
-      console.error("Error logging action:", error);
-    }
-  };
-
-  const handleBanUser = async (user: UserProfile, ban: boolean) => {
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ is_banned: ban, is_restricted: ban ? false : user.is_restricted })
-        .eq('id', user.id);
-
-      if (error) throw error;
-
-      await logAction(ban ? 'BAN_USER' : 'UNBAN_USER', user.id, null, ban ? 'User banned by admin' : 'User unbanned by admin');
-
-      toast.success(ban ? `Đã cấm ${user.username}` : `Đã bỏ cấm ${user.username}`);
-      await loadAllUsers();
-      loadAuditLogs();
-    } catch (error) {
-      console.error("Error banning user:", error);
-      toast.error("Lỗi khi thay đổi trạng thái user");
-    }
-  };
-
-  const handleRestrictUser = async (user: UserProfile, restrict: boolean) => {
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ is_restricted: restrict })
-        .eq('id', user.id);
-
-      if (error) throw error;
-
-      await logAction(restrict ? 'RESTRICT_USER' : 'UNRESTRICT_USER', user.id, null, restrict ? 'User restricted by admin' : 'User unrestricted by admin');
-
-      toast.success(restrict ? `Đã hạn chế ${user.username}` : `Đã bỏ hạn chế ${user.username}`);
-      await loadAllUsers();
-      loadAuditLogs();
-    } catch (error) {
-      console.error("Error restricting user:", error);
-      toast.error("Lỗi khi thay đổi trạng thái user");
-    }
-  };
-
-  const handleRewardAction = async () => {
-    if (!selectedUser || !adjustmentAmount || !adjustmentReason.trim()) {
-      toast.error("Vui lòng điền đầy đủ thông tin");
-      return;
-    }
-
-    const amount = parseInt(adjustmentAmount);
-    if (isNaN(amount) || amount <= 0) {
-      toast.error("Số tiền không hợp lệ");
-      return;
-    }
-
-    try {
-      const finalAmount = actionType === "deduct" ? -amount : amount;
-      
-      const { error: adjustError } = await supabase
-        .from('reward_adjustments')
-        .insert({
-          user_id: selectedUser.id,
-          admin_id: currentUserId,
-          amount: finalAmount,
-          reason: adjustmentReason
-        });
-
-      if (adjustError) throw adjustError;
-
-      const actionName = actionType === "add" ? "ADD_REWARD" : actionType === "deduct" ? "DEDUCT_REWARD" : "REFUND_REWARD";
-      await logAction(actionName, selectedUser.id, { amount: finalAmount }, adjustmentReason);
-
-      toast.success(`Đã ${actionType === "add" ? "thêm" : actionType === "deduct" ? "trừ" : "hoàn"} ${amount.toLocaleString()} CAMLY`);
-      
-      setAdjustmentAmount("");
-      setAdjustmentReason("");
-      setActionDialogOpen(false);
-      setSelectedUser(null);
-      
-      await loadAllUsers();
-      loadAuditLogs();
-    } catch (error) {
-      console.error("Error adjusting reward:", error);
-      toast.error("Lỗi khi điều chỉnh thưởng");
-    }
-  };
-
-  const handleRewardStatusChange = async (user: UserWithReward, newStatus: 'approved' | 'on_hold' | 'rejected', reason?: string) => {
-    // For on_hold and rejected, require reason
-    if ((newStatus === 'on_hold' || newStatus === 'rejected') && !reason) {
-      setPendingStatusChange({ user, status: newStatus });
-      setStatusReason("");
-      setReasonDialogOpen(true);
-      return;
-    }
-
-    try {
-      // Update database
-      const { error } = await supabase
-        .from('profiles')
-        .update({ 
-          reward_status: newStatus,
-          admin_notes: reason || null
-        })
-        .eq('id', user.id);
-
-      if (error) throw error;
-
-      const actionMap = {
-        approved: 'APPROVE_REWARD',
-        on_hold: 'HOLD_REWARD',
-        rejected: 'REJECT_REWARD'
-      };
-
-      await logAction(actionMap[newStatus], user.id, { claimable: user.claimable, reason }, reason || `Changed reward status to ${newStatus}`);
-      
-      // Update local state
-      setUsersWithRewards(prev => prev.map(u => 
-        u.id === user.id ? { ...u, status: newStatus, admin_notes: reason } : u
-      ));
-
-      toast.success(`Đã ${newStatus === 'approved' ? 'duyệt' : newStatus === 'on_hold' ? 'treo' : 'từ chối'} thưởng của ${user.username}`);
-      loadAuditLogs();
-    } catch (error) {
-      console.error("Error updating reward status:", error);
-      toast.error("Lỗi khi cập nhật trạng thái thưởng");
-    }
-  };
-
-  const confirmStatusChange = async () => {
-    if (!pendingStatusChange || !statusReason.trim()) {
-      toast.error("Vui lòng nhập lý do");
-      return;
-    }
-
-    await handleRewardStatusChange(pendingStatusChange.user, pendingStatusChange.status, statusReason);
-    setReasonDialogOpen(false);
-    setPendingStatusChange(null);
-    setStatusReason("");
-  };
-
-  const openAdjustDialog = (user: UserWithReward, type: "add" | "deduct" | "refund") => {
-    setSelectedUser(user);
-    setActionType(type);
-    setAdjustmentAmount("");
-    setAdjustmentReason("");
-    setActionDialogOpen(true);
-  };
-
-  // Sort rewards
-  const getSortedUsersWithRewards = () => {
-    const sorted = [...usersWithRewards];
-    switch (rewardSortBy) {
-      case "claimable_desc":
-        return sorted.sort((a, b) => b.claimable - a.claimable);
-      case "claimable_asc":
-        return sorted.sort((a, b) => a.claimable - b.claimable);
-      case "created_desc":
-        return sorted.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
-      case "created_asc":
-        return sorted.sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
-      default:
-        return sorted;
-    }
-  };
-
-  const formatNumber = (num: number) => {
-    return num.toLocaleString('vi-VN');
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString('vi-VN');
-  };
-
-  const getStatusBadge = (status?: string) => {
-    switch (status) {
-      case 'approved':
-        return <Badge className="bg-green-500">Đã duyệt</Badge>;
-      case 'on_hold':
-        return <Badge className="bg-yellow-500">Đang treo</Badge>;
-      case 'rejected':
-        return <Badge className="bg-red-500">Từ chối</Badge>;
-      default:
-        return <Badge variant="outline">Chờ duyệt</Badge>;
-    }
-  };
-
-  const getUserStatusBadge = (user: UserProfile) => {
-    if (user.is_banned) return <Badge className="bg-red-500 text-white">Đã cấm</Badge>;
-    if (user.is_restricted) return <Badge className="bg-yellow-500 text-white">Hạn chế</Badge>;
-    return <Badge className="bg-green-500 text-white">Hoạt động</Badge>;
-  };
-
-  const getFilteredUsers = () => {
-    switch (userSubTab) {
-      case "active":
-        return activeUsers;
-      case "banned":
-        return bannedUsers;
-      case "restricted":
-        return restrictedUsers;
-      default:
-        return allUsers;
-    }
+  const stats = {
+    totalUsers: users.length,
+    pendingRewards: users.filter(u => u.pending_reward > 0).length,
+    approvedRewards: users.filter(u => u.approved_reward > 0).length,
+    onChainClaims: 0, // Will be loaded from reward_claims
+    bannedUsers: users.filter(u => u.is_banned).length,
+    suspiciousUsers: users.filter(u => !u.is_banned && (!u.avatar_url || !u.full_name)).length
   };
 
   if (loading) {
@@ -620,9 +127,7 @@ const Admin = () => {
     );
   }
 
-  if (!isAdmin) {
-    return null;
-  }
+  if (!isAdmin) return null;
 
   return (
     <div className="min-h-screen bg-[#f0f2f5] p-4 md:p-6">
@@ -630,521 +135,90 @@ const Admin = () => {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-primary/10 rounded-xl">
-              <Shield className="w-8 h-8 text-primary" />
+            <div className="p-3 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-xl shadow-lg">
+              <Shield className="w-8 h-8 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-foreground">Admin Dashboard</h1>
-              <p className="text-muted-foreground">FUN Profile Management</p>
+              <h1 className="text-2xl font-bold text-foreground">Ultimate Admin Dashboard</h1>
+              <p className="text-muted-foreground">FUN Profile - Trái tim điều hành</p>
             </div>
           </div>
-          <Button variant="outline" onClick={() => navigate("/")} className="gap-2 bg-white text-primary border-primary hover:bg-primary/10">
+          <Button variant="outline" onClick={() => navigate("/")} className="gap-2">
             <LogOut className="w-4 h-4" />
             Thoát
           </Button>
         </div>
 
-        <Tabs defaultValue="users" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
-            <TabsTrigger value="users" className="gap-2">
+        {/* Main Tabs */}
+        <Tabs defaultValue="overview" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6 h-auto">
+            <TabsTrigger value="overview" className="gap-2 py-3">
+              <BarChart3 className="w-4 h-4" />
+              <span className="hidden sm:inline">📊 Tổng quan</span>
+            </TabsTrigger>
+            <TabsTrigger value="rewards" className="gap-2 py-3">
+              <Gift className="w-4 h-4" />
+              <span className="hidden sm:inline">🎁 Duyệt thưởng</span>
+            </TabsTrigger>
+            <TabsTrigger value="review" className="gap-2 py-3">
               <Users className="w-4 h-4" />
-              <span className="hidden sm:inline">Quản lý User</span>
+              <span className="hidden sm:inline">🛡️ Rà soát</span>
             </TabsTrigger>
-            <TabsTrigger value="rewards" className="gap-2">
-              <Coins className="w-4 h-4" />
-              <span className="hidden sm:inline">Phần thưởng</span>
+            <TabsTrigger value="abuse" className="gap-2 py-3">
+              <Wallet className="w-4 h-4" />
+              <span className="hidden sm:inline">💳 Lạm dụng</span>
             </TabsTrigger>
-            <TabsTrigger value="admins" className="gap-2">
-              <Shield className="w-4 h-4" />
-              <span className="hidden sm:inline">Quản trị viên</span>
+            <TabsTrigger value="delete" className="gap-2 py-3">
+              <Trash2 className="w-4 h-4" />
+              <span className="hidden sm:inline">🗑️ Xóa nhanh</span>
             </TabsTrigger>
-            <TabsTrigger value="logs" className="gap-2">
-              <ClipboardList className="w-4 h-4" />
-              <span className="hidden sm:inline">Audit Log</span>
+            <TabsTrigger value="blockchain" className="gap-2 py-3">
+              <Link2 className="w-4 h-4" />
+              <span className="hidden sm:inline">⛓️ Blockchain</span>
             </TabsTrigger>
           </TabsList>
 
-          {/* User Management Tab */}
-          <TabsContent value="users" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Search className="w-5 h-5" />
-                  Tìm kiếm User
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex gap-2 mb-4">
-                  <Input
-                    placeholder="Nhập User ID..."
-                    value={searchUserId}
-                    onChange={(e) => setSearchUserId(e.target.value)}
-                    className="flex-1"
-                  />
-                  <Button onClick={() => {
-                    const found = allUsers.find(u => u.id === searchUserId.trim());
-                    if (found) {
-                      setUserSubTab("all");
-                      toast.success(`Đã tìm thấy: ${found.username}`);
-                    } else {
-                      toast.error("Không tìm thấy user");
-                    }
-                  }} className="gap-2">
-                    <Search className="w-4 h-4" />
-                    Tìm
-                  </Button>
-                </div>
-
-                {/* User Sub-Tabs */}
-                <Tabs value={userSubTab} onValueChange={(v) => setUserSubTab(v as typeof userSubTab)} className="w-full">
-                  <TabsList className="grid w-full grid-cols-4 mb-4">
-                    <TabsTrigger value="all" className="text-xs sm:text-sm">
-                      Tổng ({allUsers.length})
-                    </TabsTrigger>
-                    <TabsTrigger value="active" className="text-xs sm:text-sm text-green-600">
-                      Hoạt động ({activeUsers.length})
-                    </TabsTrigger>
-                    <TabsTrigger value="banned" className="text-xs sm:text-sm text-red-600">
-                      Đã cấm ({bannedUsers.length})
-                    </TabsTrigger>
-                    <TabsTrigger value="restricted" className="text-xs sm:text-sm text-yellow-600">
-                      Hạn chế ({restrictedUsers.length})
-                    </TabsTrigger>
-                  </TabsList>
-
-                  <div className="max-h-[500px] overflow-y-auto space-y-2">
-                    {getFilteredUsers().map((user) => (
-                      <div key={user.id} className="flex items-center gap-3 p-3 bg-background border rounded-lg hover:shadow-sm transition-shadow">
-                        <Avatar className="w-10 h-10">
-                          <AvatarImage src={user.avatar_url || ""} />
-                          <AvatarFallback>{user.username[0]?.toUpperCase()}</AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold truncate">{user.username}</p>
-                          <p className="text-xs text-muted-foreground font-mono truncate">{user.id}</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {getUserStatusBadge(user)}
-                          
-                          {/* Contextual Actions */}
-                          {userSubTab === "active" && (
-                            <>
-                              <Button 
-                                size="sm" 
-                                className="bg-red-500 hover:bg-red-600 text-white"
-                                onClick={() => handleBanUser(user, true)}
-                              >
-                                <Ban className="w-3 h-3 mr-1" />
-                                Cấm
-                              </Button>
-                              <Button 
-                                size="sm" 
-                                className="bg-yellow-500 hover:bg-yellow-600 text-white"
-                                onClick={() => handleRestrictUser(user, true)}
-                              >
-                                <AlertTriangle className="w-3 h-3 mr-1" />
-                                Hạn chế
-                              </Button>
-                            </>
-                          )}
-                          
-                          {userSubTab === "restricted" && (
-                            <>
-                              <Button 
-                                size="sm" 
-                                className="bg-green-500 hover:bg-green-600 text-white"
-                                onClick={() => handleRestrictUser(user, false)}
-                              >
-                                <UserCheck className="w-3 h-3 mr-1" />
-                                Bỏ hạn chế
-                              </Button>
-                              <Button 
-                                size="sm" 
-                                className="bg-red-500 hover:bg-red-600 text-white"
-                                onClick={() => handleBanUser(user, true)}
-                              >
-                                <Ban className="w-3 h-3 mr-1" />
-                                Cấm
-                              </Button>
-                            </>
-                          )}
-                          
-                          {userSubTab === "banned" && (
-                            <>
-                              <Button 
-                                size="sm" 
-                                className="bg-green-500 hover:bg-green-600 text-white"
-                                onClick={() => handleBanUser(user, false)}
-                              >
-                                <UserCheck className="w-3 h-3 mr-1" />
-                                Bỏ cấm
-                              </Button>
-                              <Button 
-                                size="sm" 
-                                className="bg-yellow-500 hover:bg-yellow-600 text-white"
-                                onClick={async () => {
-                                  await handleBanUser(user, false);
-                                  await handleRestrictUser(user, true);
-                                }}
-                              >
-                                <AlertTriangle className="w-3 h-3 mr-1" />
-                                Chuyển hạn chế
-                              </Button>
-                            </>
-                          )}
-
-                          {userSubTab === "all" && (
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button size="sm" variant="outline">
-                                  <Settings className="w-3 h-3" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="bg-background border">
-                                {!user.is_banned && !user.is_restricted && (
-                                  <>
-                                    <DropdownMenuItem onClick={() => handleBanUser(user, true)} className="text-red-600">
-                                      <Ban className="w-4 h-4 mr-2" />
-                                      Cấm user
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => handleRestrictUser(user, true)} className="text-yellow-600">
-                                      <AlertTriangle className="w-4 h-4 mr-2" />
-                                      Hạn chế user
-                                    </DropdownMenuItem>
-                                  </>
-                                )}
-                                {user.is_banned && (
-                                  <>
-                                    <DropdownMenuItem onClick={() => handleBanUser(user, false)} className="text-green-600">
-                                      <UserCheck className="w-4 h-4 mr-2" />
-                                      Bỏ cấm
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={async () => {
-                                      await handleBanUser(user, false);
-                                      await handleRestrictUser(user, true);
-                                    }} className="text-yellow-600">
-                                      <AlertTriangle className="w-4 h-4 mr-2" />
-                                      Chuyển thành hạn chế
-                                    </DropdownMenuItem>
-                                  </>
-                                )}
-                                {user.is_restricted && !user.is_banned && (
-                                  <>
-                                    <DropdownMenuItem onClick={() => handleRestrictUser(user, false)} className="text-green-600">
-                                      <UserCheck className="w-4 h-4 mr-2" />
-                                      Bỏ hạn chế
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => handleBanUser(user, true)} className="text-red-600">
-                                      <Ban className="w-4 h-4 mr-2" />
-                                      Cấm user
-                                    </DropdownMenuItem>
-                                  </>
-                                )}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </Tabs>
-              </CardContent>
-            </Card>
+          <TabsContent value="overview">
+            <OverviewTab stats={stats} />
           </TabsContent>
 
-          {/* Rewards Tab */}
-          <TabsContent value="rewards" className="space-y-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <Coins className="w-5 h-5" />
-                  Quản lý Phần thưởng
-                </CardTitle>
-                {/* Sorting Dropdown */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-2 bg-white text-primary border-primary hover:bg-primary/10">
-                      <ArrowUpDown className="w-4 h-4" />
-                      Sắp xếp
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="bg-background border">
-                    <DropdownMenuItem onClick={() => setRewardSortBy("claimable_desc")} className={rewardSortBy === "claimable_desc" ? "bg-primary/10" : ""}>
-                      Claimable: Cao → Thấp
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setRewardSortBy("claimable_asc")} className={rewardSortBy === "claimable_asc" ? "bg-primary/10" : ""}>
-                      Claimable: Thấp → Cao
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setRewardSortBy("created_desc")} className={rewardSortBy === "created_desc" ? "bg-primary/10" : ""}>
-                      Ngày tạo: Mới nhất trước
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setRewardSortBy("created_asc")} className={rewardSortBy === "created_asc" ? "bg-primary/10" : ""}>
-                      Ngày tạo: Cũ nhất trước
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </CardHeader>
-              <CardContent>
-                <div className="max-h-[600px] overflow-y-auto space-y-2">
-                  {getSortedUsersWithRewards().map((user) => (
-                    <div key={user.id} className="flex items-center gap-3 p-4 bg-background border rounded-lg hover:shadow-sm transition-shadow">
-                      <Avatar className="w-10 h-10">
-                        <AvatarImage src={user.avatar_url || ""} />
-                        <AvatarFallback>{user.username[0]?.toUpperCase()}</AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold truncate">{user.username}</p>
-                        <p className="text-xs text-muted-foreground font-mono truncate">UID: {user.id}</p>
-                        <p className="text-sm text-primary font-medium">
-                          Claimable: {formatNumber(user.claimable)} CAMLY
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2 flex-wrap justify-end">
-                        {getStatusBadge(user.status)}
-                        
-                        {/* Action Buttons */}
-                        <Button 
-                          size="sm" 
-                          className="bg-green-500 hover:bg-green-600 text-white"
-                          onClick={() => handleRewardStatusChange(user, 'approved')}
-                        >
-                          <CheckCircle className="w-3 h-3 mr-1" />
-                          Duyệt
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          className="bg-yellow-500 hover:bg-yellow-600 text-white"
-                          onClick={() => handleRewardStatusChange(user, 'on_hold')}
-                        >
-                          <Clock className="w-3 h-3 mr-1" />
-                          Treo
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          className="bg-red-500 hover:bg-red-600 text-white"
-                          onClick={() => handleRewardStatusChange(user, 'rejected')}
-                        >
-                          <XCircle className="w-3 h-3 mr-1" />
-                          Từ chối
-                        </Button>
-                        
-                        {/* Adjust Menu */}
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button size="sm" className="bg-orange-500 hover:bg-orange-600 text-white">
-                              <Settings className="w-3 h-3 mr-1" />
-                              Điều chỉnh
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="bg-background border">
-                            <DropdownMenuItem onClick={() => openAdjustDialog(user, "add")} className="text-green-600">
-                              <Plus className="w-4 h-4 mr-2" />
-                              Thêm thưởng
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => openAdjustDialog(user, "deduct")} className="text-red-600">
-                              <Minus className="w-4 h-4 mr-2" />
-                              Trừ thưởng
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => openAdjustDialog(user, "refund")} className="text-blue-600">
-                              <RotateCcw className="w-4 h-4 mr-2" />
-                              Hoàn tiền
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+          <TabsContent value="rewards">
+            <RewardApprovalTab 
+              users={users} 
+              adminId={currentUserId!} 
+              onRefresh={loadAllUsers} 
+            />
           </TabsContent>
 
-          {/* Admin Management Tab */}
-          <TabsContent value="admins" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <UserPlus className="w-5 h-5" />
-                  Thêm Quản trị viên
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Nhập User ID..."
-                    value={newAdminId}
-                    onChange={(e) => setNewAdminId(e.target.value)}
-                    className="flex-1"
-                  />
-                  <Button onClick={addAdmin} className="gap-2 bg-green-500 hover:bg-green-600">
-                    <UserPlus className="w-4 h-4" />
-                    Thêm Admin
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Shield className="w-5 h-5" />
-                  Danh sách Quản trị viên ({adminList.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {adminList.map((admin) => (
-                    <div key={admin.user_id} className="flex items-center gap-3 p-3 bg-muted rounded-lg">
-                      <Avatar>
-                        <AvatarImage src={admin.avatar_url || ""} />
-                        <AvatarFallback>{admin.username[0]?.toUpperCase()}</AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                        <p className="font-semibold">{admin.username}</p>
-                        <p className="text-xs text-muted-foreground font-mono">{admin.user_id}</p>
-                      </div>
-                      <Badge className="bg-primary">Admin</Badge>
-                      {admin.user_id !== currentUserId && (
-                        <Button 
-                          size="sm" 
-                          variant="destructive"
-                          onClick={() => removeAdmin(admin.user_id, admin.username)}
-                        >
-                          <ShieldOff className="w-3 h-3 mr-1" />
-                          Xóa
-                        </Button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+          <TabsContent value="review">
+            <UserReviewTab 
+              users={users} 
+              adminId={currentUserId!} 
+              onRefresh={loadAllUsers} 
+            />
           </TabsContent>
 
-          {/* Audit Log Tab */}
-          <TabsContent value="logs" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <ClipboardList className="w-5 h-5" />
-                  Nhật ký Kiểm toán
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2 max-h-[600px] overflow-y-auto">
-                  {auditLogs.length === 0 ? (
-                    <p className="text-center py-8 text-muted-foreground">Chưa có nhật ký nào</p>
-                  ) : (
-                    auditLogs.map((log) => (
-                      <div key={log.id} className="p-3 border rounded-lg space-y-1">
-                        <div className="flex items-center justify-between">
-                          <Badge variant="outline">{log.action}</Badge>
-                          <span className="text-xs text-muted-foreground">{formatDate(log.created_at)}</span>
-                        </div>
-                        <p className="text-sm">
-                          <span className="font-medium">{log.admin_username}</span>
-                          <span className="text-xs text-muted-foreground ml-1">(UID: {log.admin_id.slice(0, 8)}...)</span>
-                          {log.target_username && (
-                            <>
-                              <span> → </span>
-                              <span className="font-medium">{log.target_username}</span>
-                              <span className="text-xs text-muted-foreground ml-1">(UID: {log.target_user_id?.slice(0, 8)}...)</span>
-                            </>
-                          )}
-                        </p>
-                        {log.reason && (
-                          <p className="text-sm text-muted-foreground">{log.reason}</p>
-                        )}
-                      </div>
-                    ))
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+          <TabsContent value="abuse">
+            <WalletAbuseTab 
+              users={users} 
+              adminId={currentUserId!} 
+              onRefresh={loadAllUsers} 
+            />
+          </TabsContent>
+
+          <TabsContent value="delete">
+            <QuickDeleteTab 
+              users={users} 
+              adminId={currentUserId!} 
+              onRefresh={loadAllUsers} 
+            />
+          </TabsContent>
+
+          <TabsContent value="blockchain">
+            <BlockchainTab adminId={currentUserId!} />
           </TabsContent>
         </Tabs>
       </div>
-
-      {/* Adjustment Dialog */}
-      <Dialog open={actionDialogOpen} onOpenChange={setActionDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {actionType === "add" ? "Thêm thưởng" : actionType === "deduct" ? "Trừ thưởng" : "Hoàn tiền"} 
-              {selectedUser && ` cho ${selectedUser.username}`}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div>
-              <label className="text-sm font-medium">Số CAMLY</label>
-              <Input
-                type="number"
-                placeholder="Nhập số tiền..."
-                value={adjustmentAmount}
-                onChange={(e) => setAdjustmentAmount(e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Lý do (bắt buộc) *</label>
-              <Textarea
-                placeholder={`Nhập lý do ${actionType === "add" ? "thêm" : actionType === "deduct" ? "trừ" : "hoàn"} thưởng...`}
-                value={adjustmentReason}
-                onChange={(e) => setAdjustmentReason(e.target.value)}
-                className="mt-1"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setActionDialogOpen(false)}>Hủy</Button>
-            <Button 
-              onClick={handleRewardAction}
-              className={
-                actionType === "add" ? "bg-green-500 hover:bg-green-600" : 
-                actionType === "deduct" ? "bg-red-500 hover:bg-red-600" : 
-                "bg-blue-500 hover:bg-blue-600"
-              }
-            >
-              Xác nhận
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Hold/Reject Reason Dialog */}
-      <Dialog open={reasonDialogOpen} onOpenChange={setReasonDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {pendingStatusChange?.status === 'on_hold' ? 'Treo phần thưởng' : 'Từ chối phần thưởng'}
-              {pendingStatusChange && ` của ${pendingStatusChange.user.username}`}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div>
-              <label className="text-sm font-medium">Lý do (bắt buộc) *</label>
-              <Textarea
-                placeholder={`Nhập lý do ${pendingStatusChange?.status === 'on_hold' ? 'treo' : 'từ chối'} phần thưởng...`}
-                value={statusReason}
-                onChange={(e) => setStatusReason(e.target.value)}
-                className="mt-1"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => {
-              setReasonDialogOpen(false);
-              setPendingStatusChange(null);
-              setStatusReason("");
-            }}>Hủy</Button>
-            <Button 
-              onClick={confirmStatusChange}
-              className={pendingStatusChange?.status === 'on_hold' ? "bg-yellow-500 hover:bg-yellow-600" : "bg-red-500 hover:bg-red-600"}
-            >
-              Xác nhận
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
