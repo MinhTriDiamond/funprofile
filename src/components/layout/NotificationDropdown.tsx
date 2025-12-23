@@ -1,13 +1,14 @@
-import { Bell } from 'lucide-react';
+import { Bell, Heart, MessageCircle, Share2, Gift, Shield, ThumbsUp, Smile, Angry, Frown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 
 interface Notification {
   id: string;
@@ -16,44 +17,34 @@ interface Notification {
   created_at: string;
   post_id: string | null;
   actor: {
+    id: string;
     username: string;
     avatar_url: string | null;
   };
 }
 
+const REACTION_ICONS: Record<string, { icon: string; color: string }> = {
+  like: { icon: '👍', color: 'text-blue-500' },
+  love: { icon: '❤️', color: 'text-red-500' },
+  haha: { icon: '😂', color: 'text-yellow-500' },
+  wow: { icon: '😮', color: 'text-yellow-500' },
+  sad: { icon: '😢', color: 'text-yellow-500' },
+  angry: { icon: '😠', color: 'text-orange-500' },
+};
+
 export const NotificationDropdown = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [open, setOpen] = useState(false);
+  const [hasNewNotification, setHasNewNotification] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    fetchNotifications();
-
-    // Subscribe to real-time notifications
-    const channel = supabase
-      .channel('notifications')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notifications'
-        },
-        () => {
-          fetchNotifications();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
-
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
+
+    setCurrentUserId(user.id);
 
     const { data } = await supabase
       .from('notifications')
@@ -64,19 +55,73 @@ export const NotificationDropdown = () => {
         created_at,
         post_id,
         actor:actor_id (
+          id,
           username,
           avatar_url
         )
       `)
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
-      .limit(10);
+      .limit(30);
 
     if (data) {
       setNotifications(data as any);
-      setUnreadCount(data.filter(n => !n.read).length);
+      const newUnreadCount = data.filter(n => !n.read).length;
+      
+      // Trigger golden glow animation when new notifications arrive
+      if (newUnreadCount > unreadCount) {
+        setHasNewNotification(true);
+        setTimeout(() => setHasNewNotification(false), 3000);
+      }
+      
+      setUnreadCount(newUnreadCount);
     }
-  };
+  }, [unreadCount]);
+
+  useEffect(() => {
+    fetchNotifications();
+
+    // Get current user for real-time filter
+    const setupRealtime = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Subscribe to real-time notifications for this user
+      const channel = supabase
+        .channel(`notifications-${user.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${user.id}`
+          },
+          () => {
+            fetchNotifications();
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${user.id}`
+          },
+          () => {
+            fetchNotifications();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    };
+
+    setupRealtime();
+  }, [fetchNotifications]);
 
   const markAsRead = async (notificationId: string) => {
     await supabase
@@ -87,67 +132,186 @@ export const NotificationDropdown = () => {
     fetchNotifications();
   };
 
+  const markAllAsRead = async () => {
+    if (!currentUserId) return;
+    
+    await supabase
+      .from('notifications')
+      .update({ read: true })
+      .eq('user_id', currentUserId)
+      .eq('read', false);
+    
+    fetchNotifications();
+  };
+
   const handleNotificationClick = async (notification: Notification) => {
     await markAsRead(notification.id);
     setOpen(false);
     
     if (notification.post_id) {
-      navigate('/');
+      navigate(`/post/${notification.post_id}`);
+    } else if (notification.type === 'friend_request' || notification.type === 'friend_accepted') {
+      navigate(`/profile/${notification.actor?.id}`);
+    } else if (notification.type === 'reward_approved' || notification.type === 'reward_rejected') {
+      navigate('/wallet');
+    }
+  };
+
+  const getNotificationIcon = (type: string) => {
+    switch (type) {
+      case 'like':
+        return <span className="text-lg">{REACTION_ICONS.like.icon}</span>;
+      case 'love':
+        return <span className="text-lg">{REACTION_ICONS.love.icon}</span>;
+      case 'haha':
+        return <span className="text-lg">{REACTION_ICONS.haha.icon}</span>;
+      case 'wow':
+        return <span className="text-lg">{REACTION_ICONS.wow.icon}</span>;
+      case 'sad':
+        return <span className="text-lg">{REACTION_ICONS.sad.icon}</span>;
+      case 'angry':
+        return <span className="text-lg">{REACTION_ICONS.angry.icon}</span>;
+      case 'comment':
+      case 'comment_like':
+        return <MessageCircle className="w-4 h-4 text-primary" />;
+      case 'share':
+        return <Share2 className="w-4 h-4 text-green-500" />;
+      case 'reward_approved':
+      case 'reward_rejected':
+        return <Gift className="w-4 h-4 text-gold" />;
+      case 'account_banned':
+        return <Shield className="w-4 h-4 text-destructive" />;
+      case 'friend_request':
+      case 'friend_accepted':
+        return <Heart className="w-4 h-4 text-pink-500" />;
+      default:
+        return <Bell className="w-4 h-4 text-muted-foreground" />;
     }
   };
 
   const getNotificationText = (type: string, username: string) => {
-    if (type === 'like') return `${username} đã thích bài viết của bạn`;
-    if (type === 'comment') return `${username} đã bình luận bài viết của bạn`;
-    return `${username} đã tương tác với bạn`;
+    switch (type) {
+      case 'like':
+        return <><strong>{username}</strong> đã thích bài viết của bạn</>;
+      case 'love':
+        return <><strong>{username}</strong> đã yêu thích bài viết của bạn</>;
+      case 'haha':
+        return <><strong>{username}</strong> đã cười với bài viết của bạn</>;
+      case 'wow':
+        return <><strong>{username}</strong> đã ngạc nhiên với bài viết của bạn</>;
+      case 'sad':
+        return <><strong>{username}</strong> đã buồn với bài viết của bạn</>;
+      case 'angry':
+        return <><strong>{username}</strong> đã tức giận với bài viết của bạn</>;
+      case 'comment':
+        return <><strong>{username}</strong> đã bình luận bài viết của bạn</>;
+      case 'comment_like':
+        return <><strong>{username}</strong> đã thích bình luận của bạn</>;
+      case 'share':
+        return <><strong>{username}</strong> đã chia sẻ bài viết của bạn</>;
+      case 'reward_approved':
+        return <>🎉 <strong>Chúc mừng!</strong> Phần thưởng của bạn đã được duyệt</>;
+      case 'reward_rejected':
+        return <>📋 Yêu cầu nhận thưởng cần được xem xét lại</>;
+      case 'account_banned':
+        return <>⚠️ Tài khoản của bạn đã bị hạn chế</>;
+      case 'friend_request':
+        return <><strong>{username}</strong> đã gửi lời mời kết bạn</>;
+      case 'friend_accepted':
+        return <><strong>{username}</strong> đã chấp nhận lời mời kết bạn</>;
+      default:
+        return <><strong>{username}</strong> đã tương tác với bạn</>;
+    }
   };
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-10 sm:w-10 relative hover:bg-primary [&:hover_svg]:text-white" aria-label="Thông báo">
-          <Bell className="w-4 h-4 text-gold drop-shadow-[0_0_6px_hsl(var(--gold-glow))]" />
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className={cn(
+            "h-8 w-8 sm:h-10 sm:w-10 relative hover:bg-primary [&:hover_svg]:text-white transition-all duration-300",
+            hasNewNotification && "animate-pulse"
+          )} 
+          aria-label="Thông báo"
+        >
+          <Bell className={cn(
+            "w-4 h-4 text-gold transition-all duration-300",
+            hasNewNotification 
+              ? "drop-shadow-[0_0_12px_hsl(var(--gold-glow))] animate-bounce" 
+              : "drop-shadow-[0_0_6px_hsl(var(--gold-glow))]"
+          )} />
           {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-xs rounded-full w-5 h-5 flex items-center justify-center">
-              {unreadCount > 9 ? '9+' : unreadCount}
+            <span className={cn(
+              "absolute -top-1 -right-1 text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold transition-all duration-300",
+              hasNewNotification 
+                ? "bg-gold text-black shadow-[0_0_15px_hsl(var(--gold-glow))] animate-pulse scale-110" 
+                : "bg-green-500 text-white"
+            )}>
+              {unreadCount > 99 ? '99+' : unreadCount}
             </span>
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-0" align="end">
-        <div className="flex items-center justify-between p-4 border-b">
-          <h3 className="font-semibold">Thông báo</h3>
+      <PopoverContent className="w-80 sm:w-96 p-0 border-gold/20 shadow-[0_0_20px_hsl(var(--gold-glow)/0.2)]" align="end">
+        <div className="flex items-center justify-between p-4 border-b border-border/50 bg-gradient-to-r from-gold/5 to-transparent">
+          <h3 className="font-semibold text-foreground flex items-center gap-2">
+            <Bell className="w-4 h-4 text-gold" />
+            Thông báo
+          </h3>
           {unreadCount > 0 && (
-            <span className="text-xs text-muted-foreground">{unreadCount} mới</span>
+            <button 
+              onClick={markAllAsRead}
+              className="text-xs text-gold hover:text-gold/80 hover:underline transition-colors"
+            >
+              Đánh dấu đã đọc ({unreadCount})
+            </button>
           )}
         </div>
-        <ScrollArea className="h-[400px]">
+        <ScrollArea className="h-[400px] sm:h-[500px]">
           {notifications.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground">
-              Chưa có thông báo nào
+              <Bell className="w-12 h-12 mx-auto mb-3 opacity-30" />
+              <p>Chưa có thông báo nào</p>
             </div>
           ) : (
             notifications.map((notification) => (
               <button
                 key={notification.id}
                 onClick={() => handleNotificationClick(notification)}
-                className={`w-full p-4 flex items-start gap-3 hover:bg-muted/50 transition-colors border-b ${
-                  !notification.read ? 'bg-muted/30' : ''
-                }`}
+                className={cn(
+                  "w-full p-3 sm:p-4 flex items-start gap-3 hover:bg-muted/50 transition-all duration-200 border-b border-border/30 text-left",
+                  !notification.read && "bg-gradient-to-r from-gold/10 via-gold/5 to-transparent shadow-[inset_0_0_20px_hsl(var(--gold-glow)/0.1)]"
+                )}
               >
-                <Avatar className="w-10 h-10 flex-shrink-0">
-                  {notification.actor?.avatar_url && (
-                    <AvatarImage src={notification.actor.avatar_url} />
-                  )}
-                  <AvatarFallback>
-                    {notification.actor?.username?.[0]?.toUpperCase() || 'U'}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 text-left min-w-0">
-                  <p className="text-sm">
+                <div className="relative flex-shrink-0">
+                  <Avatar className={cn(
+                    "w-10 h-10 sm:w-12 sm:h-12 border-2 transition-all",
+                    !notification.read ? "border-gold/50 shadow-[0_0_10px_hsl(var(--gold-glow)/0.3)]" : "border-transparent"
+                  )}>
+                    {notification.actor?.avatar_url && (
+                      <AvatarImage src={notification.actor.avatar_url} />
+                    )}
+                    <AvatarFallback className="bg-primary/20 text-primary">
+                      {notification.actor?.username?.[0]?.toUpperCase() || 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="absolute -bottom-1 -right-1 w-5 h-5 sm:w-6 sm:h-6 bg-card rounded-full flex items-center justify-center border border-border shadow-sm">
+                    {getNotificationIcon(notification.type)}
+                  </div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className={cn(
+                    "text-sm leading-relaxed",
+                    !notification.read ? "text-foreground" : "text-muted-foreground"
+                  )}>
                     {getNotificationText(notification.type, notification.actor?.username || 'Người dùng')}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className={cn(
+                    "text-xs mt-1",
+                    !notification.read ? "text-gold" : "text-muted-foreground"
+                  )}>
                     {formatDistanceToNow(new Date(notification.created_at), {
                       addSuffix: true,
                       locale: vi
@@ -155,7 +319,7 @@ export const NotificationDropdown = () => {
                   </p>
                 </div>
                 {!notification.read && (
-                  <div className="w-2 h-2 bg-primary rounded-full flex-shrink-0 mt-2" />
+                  <div className="w-2.5 h-2.5 bg-gold rounded-full flex-shrink-0 mt-2 shadow-[0_0_8px_hsl(var(--gold-glow))] animate-pulse" />
                 )}
               </button>
             ))
