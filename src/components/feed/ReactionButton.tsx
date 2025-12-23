@@ -31,15 +31,39 @@ export const ReactionButton = ({
   const [currentReaction, setCurrentReaction] = useState<string | null>(initialReaction);
   const [isAnimating, setIsAnimating] = useState(false);
   const [hoveredReaction, setHoveredReaction] = useState<string | null>(null);
+  const [swipeSelectedReaction, setSwipeSelectedReaction] = useState<string | null>(null);
   const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const longPressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const isLongPressRef = useRef(false);
+  const reactionMenuRef = useRef<HTMLDivElement>(null);
+  const reactionButtonRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+  const lastHoveredRef = useRef<string | null>(null);
 
   // Sync với initialReaction khi data được load từ database
   useEffect(() => {
     setCurrentReaction(initialReaction);
   }, [initialReaction]);
+
+  // Lock scroll when reaction menu is open
+  useEffect(() => {
+    if (showReactions) {
+      // Prevent body scroll
+      const scrollY = window.scrollY;
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
+      document.body.style.overflowY = 'scroll';
+      
+      return () => {
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.width = '';
+        document.body.style.overflowY = '';
+        window.scrollTo(0, scrollY);
+      };
+    }
+  }, [showReactions]);
 
   const clearTimeouts = useCallback(() => {
     if (hideTimeoutRef.current) {
@@ -61,24 +85,48 @@ export const ReactionButton = ({
     hideTimeoutRef.current = setTimeout(() => {
       setShowReactions(false);
       setHoveredReaction(null);
+      setSwipeSelectedReaction(null);
     }, 300);
   };
+
+  // Haptic feedback helper
+  const triggerHaptic = useCallback((duration: number = 10) => {
+    if (navigator.vibrate) {
+      navigator.vibrate(duration);
+    }
+  }, []);
+
+  // Get reaction at touch position (hit testing)
+  const getReactionAtPosition = useCallback((clientX: number, clientY: number): string | null => {
+    for (const [type, button] of reactionButtonRefs.current.entries()) {
+      const rect = button.getBoundingClientRect();
+      // Expand hit area slightly for better touch targeting
+      const padding = 5;
+      if (
+        clientX >= rect.left - padding &&
+        clientX <= rect.right + padding &&
+        clientY >= rect.top - padding &&
+        clientY <= rect.bottom + padding
+      ) {
+        return type;
+      }
+    }
+    return null;
+  }, []);
 
   // Touch handlers for long-press on mobile
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     const touch = e.touches[0];
     touchStartRef.current = { x: touch.clientX, y: touch.clientY };
     isLongPressRef.current = false;
+    setSwipeSelectedReaction(null);
     
     longPressTimeoutRef.current = setTimeout(() => {
       isLongPressRef.current = true;
       setShowReactions(true);
-      // Haptic feedback if available
-      if (navigator.vibrate) {
-        navigator.vibrate(50);
-      }
-    }, 500); // 500ms long press
-  }, []);
+      triggerHaptic(50);
+    }, 400); // 400ms long press
+  }, [triggerHaptic]);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     if (!touchStartRef.current) return;
@@ -87,27 +135,56 @@ export const ReactionButton = ({
     const deltaX = Math.abs(touch.clientX - touchStartRef.current.x);
     const deltaY = Math.abs(touch.clientY - touchStartRef.current.y);
     
-    // Cancel long press if finger moves too much
-    if (deltaX > 10 || deltaY > 10) {
-      clearTimeouts();
+    // If long press is active and menu is shown, allow swipe selection
+    if (isLongPressRef.current && showReactions) {
+      e.preventDefault(); // Prevent scroll while swiping on reactions
+      
+      const reactionType = getReactionAtPosition(touch.clientX, touch.clientY);
+      
+      if (reactionType !== lastHoveredRef.current) {
+        lastHoveredRef.current = reactionType;
+        setHoveredReaction(reactionType);
+        setSwipeSelectedReaction(reactionType);
+        
+        // Haptic feedback when hovering over new reaction
+        if (reactionType) {
+          triggerHaptic(10);
+        }
+      }
+    } else {
+      // Cancel long press if finger moves too much before menu opens
+      if (deltaX > 10 || deltaY > 10) {
+        clearTimeouts();
+      }
     }
-  }, [clearTimeouts]);
+  }, [clearTimeouts, showReactions, getReactionAtPosition, triggerHaptic]);
 
-  const handleTouchEnd = useCallback(() => {
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
     clearTimeouts();
-    touchStartRef.current = null;
     
-    // If it wasn't a long press, handle as normal tap
-    if (!isLongPressRef.current && !showReactions) {
+    // If we were swiping and have a selected reaction, use it
+    if (isLongPressRef.current && swipeSelectedReaction) {
+      e.preventDefault();
+      triggerHaptic(20);
+      handleReaction(swipeSelectedReaction);
+      setShowReactions(false);
+      setHoveredReaction(null);
+      setSwipeSelectedReaction(null);
+    } else if (isLongPressRef.current && showReactions) {
+      // Long press ended but no reaction selected - keep menu open briefly
+      hideTimeoutRef.current = setTimeout(() => {
+        setShowReactions(false);
+        setHoveredReaction(null);
+      }, 2000);
+    } else if (!isLongPressRef.current) {
+      // Quick tap - toggle like
       handleReaction(currentReaction || 'like');
     }
     
-    // Hide reactions after a delay
-    hideTimeoutRef.current = setTimeout(() => {
-      setShowReactions(false);
-      setHoveredReaction(null);
-    }, 3000);
-  }, [clearTimeouts, showReactions, currentReaction]);
+    touchStartRef.current = null;
+    lastHoveredRef.current = null;
+    isLongPressRef.current = false;
+  }, [clearTimeouts, showReactions, currentReaction, swipeSelectedReaction, triggerHaptic]);
 
   const handleReaction = async (reactionType: string) => {
     if (!currentUserId) {
@@ -161,6 +238,8 @@ export const ReactionButton = ({
   const handleReactionSelect = (reactionType: string) => {
     setShowReactions(false);
     setHoveredReaction(null);
+    setSwipeSelectedReaction(null);
+    triggerHaptic(15);
     handleReaction(reactionType);
   };
 
@@ -181,7 +260,11 @@ export const ReactionButton = ({
         className={`w-full flex items-center justify-center gap-1.5 sm:gap-2 py-3 min-h-[48px] rounded-lg transition-all hover:bg-secondary active:bg-secondary/80 select-none ${
           currentReaction ? 'text-blue-500' : 'text-muted-foreground'
         } ${isAnimating ? 'scale-110' : ''}`}
-        style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none' }}
+        style={{ 
+          WebkitTouchCallout: 'none', 
+          WebkitUserSelect: 'none',
+          touchAction: showReactions ? 'none' : 'auto'
+        }}
       >
         {activeReaction ? (
           <>
@@ -198,14 +281,19 @@ export const ReactionButton = ({
         )}
       </button>
 
-      {/* Reactions Popup - Enhanced for mobile with long-press */}
+      {/* Reactions Popup - Enhanced with swipe-to-select */}
       {showReactions && (
         <>
           {/* Invisible bridge to connect button to popup */}
           <div className="absolute bottom-full left-0 right-0 h-3" />
           <div 
+            ref={reactionMenuRef}
             className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-card rounded-full shadow-2xl border border-border p-2 flex gap-1 z-50 select-none"
-            style={{ WebkitTouchCallout: 'none' }}
+            style={{ 
+              WebkitTouchCallout: 'none',
+              touchAction: 'none' // Prevent scroll on reaction menu
+            }}
+            onTouchMove={(e) => e.preventDefault()} // Extra prevention
           >
             {/* Golden glow effect */}
             <div className="absolute inset-0 rounded-full bg-gradient-to-r from-yellow-400/20 via-amber-300/30 to-yellow-400/20 blur-md -z-10 animate-pulse" />
@@ -213,13 +301,19 @@ export const ReactionButton = ({
             {REACTIONS.map((reaction, index) => (
               <button
                 key={reaction.type}
-                className={`relative w-12 h-12 sm:w-11 sm:h-11 flex items-center justify-center text-2xl sm:text-2xl transition-all duration-200 rounded-full select-none
-                  ${hoveredReaction === reaction.type ? 'scale-150 -translate-y-3 z-10' : 'scale-100'}
-                  hover:scale-150 hover:-translate-y-3 active:scale-125
+                ref={(el) => {
+                  if (el) reactionButtonRefs.current.set(reaction.type, el);
+                }}
+                className={`relative w-12 h-12 sm:w-11 sm:h-11 flex items-center justify-center text-2xl sm:text-2xl transition-all duration-150 rounded-full select-none
+                  ${(hoveredReaction === reaction.type || swipeSelectedReaction === reaction.type) 
+                    ? 'scale-150 -translate-y-4 z-10' 
+                    : 'scale-100'}
+                  hover:scale-150 hover:-translate-y-4 active:scale-125
                 `}
                 style={{
                   WebkitTouchCallout: 'none',
                   WebkitUserSelect: 'none',
+                  touchAction: 'none',
                   animationDelay: `${index * 50}ms`,
                   animation: 'reaction-pop-in 0.3s ease-out forwards',
                   opacity: 0,
@@ -228,18 +322,17 @@ export const ReactionButton = ({
                 onClick={() => handleReactionSelect(reaction.type)}
                 onMouseEnter={() => setHoveredReaction(reaction.type)}
                 onMouseLeave={() => setHoveredReaction(null)}
-                onTouchStart={() => setHoveredReaction(reaction.type)}
                 title={reaction.label}
               >
-                {/* Golden sparkle effect on hover */}
-                {hoveredReaction === reaction.type && (
-                  <div className="absolute inset-0 rounded-full bg-gradient-to-t from-yellow-400/40 to-transparent animate-pulse" />
+                {/* Golden sparkle effect on hover/swipe */}
+                {(hoveredReaction === reaction.type || swipeSelectedReaction === reaction.type) && (
+                  <div className="absolute inset-0 rounded-full bg-gradient-to-t from-yellow-400/50 to-transparent animate-pulse" />
                 )}
                 <span className="relative z-10">{reaction.icon}</span>
                 
-                {/* Label tooltip on hover */}
-                {hoveredReaction === reaction.type && (
-                  <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-foreground text-background text-xs px-2 py-1 rounded-full whitespace-nowrap font-medium shadow-lg">
+                {/* Label tooltip on hover/swipe */}
+                {(hoveredReaction === reaction.type || swipeSelectedReaction === reaction.type) && (
+                  <span className="absolute -top-9 left-1/2 -translate-x-1/2 bg-foreground text-background text-xs px-2.5 py-1.5 rounded-full whitespace-nowrap font-medium shadow-lg">
                     {reaction.label}
                   </span>
                 )}
