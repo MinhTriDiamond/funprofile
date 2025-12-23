@@ -20,6 +20,7 @@ const AdminMigration = lazy(() => import("./pages/AdminMigration"));
 const Admin = lazy(() => import("./pages/Admin"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const LawOfLight = lazy(() => import("./pages/LawOfLight"));
+const Notifications = lazy(() => import("./pages/Notifications"));
 
 // Optimized QueryClient with caching
 const queryClient = new QueryClient({
@@ -66,6 +67,7 @@ function App() {
                   <Route path="/leaderboard" element={<Leaderboard />} />
                   <Route path="/admin/migration" element={<AdminMigration />} />
                   <Route path="/admin" element={<Admin />} />
+                  <Route path="/notifications" element={<Notifications />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </LawOfLightGuard>

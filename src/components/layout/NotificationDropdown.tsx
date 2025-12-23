@@ -1,4 +1,4 @@
-import { Bell, Heart, MessageCircle, Share2, Gift, Shield, ThumbsUp, Smile, Angry, Frown } from 'lucide-react';
+import { Bell, Heart, MessageCircle, Share2, Gift, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { useIsMobileOrTablet } from '@/hooks/use-mobile';
 
 interface Notification {
   id: string;
@@ -39,6 +40,7 @@ export const NotificationDropdown = () => {
   const [hasNewNotification, setHasNewNotification] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const navigate = useNavigate();
+  const isMobileOrTablet = useIsMobileOrTablet();
 
   const fetchNotifications = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -224,6 +226,47 @@ export const NotificationDropdown = () => {
     }
   };
 
+  // Mobile/Tablet: Navigate directly to notifications page
+  const handleBellClick = () => {
+    if (isMobileOrTablet) {
+      navigate('/notifications');
+    }
+  };
+
+  // On mobile/tablet, render a simple button that navigates to notifications page
+  if (isMobileOrTablet) {
+    return (
+      <Button 
+        variant="ghost" 
+        size="icon" 
+        onClick={handleBellClick}
+        className={cn(
+          "h-8 w-8 sm:h-10 sm:w-10 relative hover:bg-primary [&:hover_svg]:text-white transition-all duration-300",
+          hasNewNotification && "animate-pulse"
+        )} 
+        aria-label="Thông báo"
+      >
+        <Bell className={cn(
+          "w-4 h-4 text-gold transition-all duration-300",
+          hasNewNotification 
+            ? "drop-shadow-[0_0_12px_hsl(var(--gold-glow))] animate-bounce" 
+            : "drop-shadow-[0_0_6px_hsl(var(--gold-glow))]"
+        )} />
+        {unreadCount > 0 && (
+          <span className={cn(
+            "absolute -top-1 -right-1 text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold transition-all duration-300",
+            hasNewNotification 
+              ? "bg-gold text-black shadow-[0_0_15px_hsl(var(--gold-glow))] animate-pulse scale-110" 
+              : "bg-green-500 text-white"
+          )}>
+            {unreadCount > 99 ? '99+' : unreadCount}
+          </span>
+        )}
+      </Button>
+    );
+  }
+
+  // Desktop: Show popover dropdown
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
