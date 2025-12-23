@@ -302,6 +302,7 @@ export const FacebookPostCard = ({ post, currentUserId, onPostDeleted, initialSt
 
         {/* Reactions Summary */}
         <ReactionSummary
+          postId={post.id}
           reactions={reactionCounts}
           totalCount={likeCount}
           commentCount={commentCount}
