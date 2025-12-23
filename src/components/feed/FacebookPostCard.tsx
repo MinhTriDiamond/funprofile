@@ -17,6 +17,7 @@ import { EditPostDialog } from './EditPostDialog';
 import { ReactionButton } from './ReactionButton';
 import { ReactionSummary } from './ReactionSummary';
 import { MediaGrid } from './MediaGrid';
+import { ExpandableContent } from './ExpandableContent';
 import {
   MessageCircle,
   Share2,
@@ -291,9 +292,7 @@ export const FacebookPostCard = ({ post, currentUserId, onPostDeleted, initialSt
         {/* Post Content */}
         {post.content && (
           <div className="px-4 pb-3">
-            <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed">
-              {post.content}
-            </p>
+            <ExpandableContent content={post.content} maxLength={300} maxLines={5} />
           </div>
         )}
 
