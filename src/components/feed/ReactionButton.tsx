@@ -12,6 +12,8 @@ const REACTIONS = [
   { type: 'pray', icon: '🙏', label: 'Biết ơn', color: '#a855f7' },
 ];
 
+const VIEWPORT_PADDING = 12; // Safe padding from screen edges
+
 interface ReactionButtonProps {
   postId: string;
   currentUserId: string;
@@ -32,11 +34,13 @@ export const ReactionButton = ({
   const [isAnimating, setIsAnimating] = useState(false);
   const [hoveredReaction, setHoveredReaction] = useState<string | null>(null);
   const [swipeSelectedReaction, setSwipeSelectedReaction] = useState<string | null>(null);
+  const [menuOffset, setMenuOffset] = useState(0); // Smart offset for viewport alignment
   const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const longPressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const isLongPressRef = useRef(false);
   const reactionMenuRef = useRef<HTMLDivElement>(null);
+  const buttonContainerRef = useRef<HTMLDivElement>(null);
   const reactionButtonRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
   const lastHoveredRef = useRef<string | null>(null);
 
@@ -44,6 +48,30 @@ export const ReactionButton = ({
   useEffect(() => {
     setCurrentReaction(initialReaction);
   }, [initialReaction]);
+
+  // Smart viewport alignment - calculate offset when menu shows
+  useEffect(() => {
+    if (showReactions && reactionMenuRef.current && buttonContainerRef.current) {
+      const menuRect = reactionMenuRef.current.getBoundingClientRect();
+      const buttonRect = buttonContainerRef.current.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      
+      let offset = 0;
+      
+      // Check if menu overflows left edge
+      if (menuRect.left < VIEWPORT_PADDING) {
+        offset = VIEWPORT_PADDING - menuRect.left;
+      }
+      // Check if menu overflows right edge
+      else if (menuRect.right > viewportWidth - VIEWPORT_PADDING) {
+        offset = (viewportWidth - VIEWPORT_PADDING) - menuRect.right;
+      }
+      
+      setMenuOffset(offset);
+    } else {
+      setMenuOffset(0);
+    }
+  }, [showReactions]);
 
   // Lock scroll when reaction menu is open
   useEffect(() => {
@@ -247,6 +275,7 @@ export const ReactionButton = ({
 
   return (
     <div
+      ref={buttonContainerRef}
       className="relative flex-1 select-none"
       style={{ WebkitTouchCallout: 'none' }}
       onMouseEnter={handleMouseEnter}
@@ -288,12 +317,14 @@ export const ReactionButton = ({
           <div className="absolute bottom-full left-0 right-0 h-3" />
           <div 
             ref={reactionMenuRef}
-            className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-card rounded-full shadow-2xl border border-border p-2 flex gap-1 z-50 select-none"
+            className="absolute bottom-full left-1/2 mb-2 bg-card rounded-full shadow-2xl border border-border p-2 flex gap-1 z-[9999] select-none"
             style={{ 
               WebkitTouchCallout: 'none',
-              touchAction: 'none' // Prevent scroll on reaction menu
+              touchAction: 'none',
+              transform: `translateX(calc(-50% + ${menuOffset}px))`,
+              transition: 'transform 0.15s ease-out'
             }}
-            onTouchMove={(e) => e.preventDefault()} // Extra prevention
+            onTouchMove={(e) => e.preventDefault()}
           >
             {/* Golden glow effect */}
             <div className="absolute inset-0 rounded-full bg-gradient-to-r from-yellow-400/20 via-amber-300/30 to-yellow-400/20 blur-md -z-10 animate-pulse" />
