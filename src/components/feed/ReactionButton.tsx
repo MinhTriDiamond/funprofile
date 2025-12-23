@@ -163,7 +163,8 @@ export const ReactionButton = ({
 
   return (
     <div
-      className="relative flex-1"
+      className="relative flex-1 select-none"
+      style={{ WebkitTouchCallout: 'none' }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
@@ -172,21 +173,22 @@ export const ReactionButton = ({
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        className={`w-full flex items-center justify-center gap-1.5 sm:gap-2 py-3 min-h-[48px] rounded-lg transition-all hover:bg-secondary active:bg-secondary/80 ${
+        className={`w-full flex items-center justify-center gap-1.5 sm:gap-2 py-3 min-h-[48px] rounded-lg transition-all hover:bg-secondary active:bg-secondary/80 select-none ${
           currentReaction ? 'text-blue-500' : 'text-muted-foreground'
         } ${isAnimating ? 'scale-110' : ''}`}
+        style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none' }}
       >
         {activeReaction ? (
           <>
-            <span className="text-lg sm:text-xl transition-transform duration-200">{activeReaction.icon}</span>
-            <span className="font-semibold text-xs sm:text-sm" style={{ color: activeReaction.color }}>
+            <span className="text-lg sm:text-xl transition-transform duration-200 pointer-events-none">{activeReaction.icon}</span>
+            <span className="font-semibold text-xs sm:text-sm pointer-events-none" style={{ color: activeReaction.color }}>
               {activeReaction.label}
             </span>
           </>
         ) : (
           <>
-            <ThumbsUp className="w-5 h-5" />
-            <span className="font-semibold text-xs sm:text-sm">Thích</span>
+            <ThumbsUp className="w-5 h-5 pointer-events-none" />
+            <span className="font-semibold text-xs sm:text-sm pointer-events-none">Thích</span>
           </>
         )}
       </button>
@@ -196,18 +198,23 @@ export const ReactionButton = ({
         <>
           {/* Invisible bridge to connect button to popup */}
           <div className="absolute bottom-full left-0 right-0 h-3" />
-          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-card rounded-full shadow-2xl border border-border p-2 flex gap-1 z-50">
+          <div 
+            className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-card rounded-full shadow-2xl border border-border p-2 flex gap-1 z-50 select-none"
+            style={{ WebkitTouchCallout: 'none' }}
+          >
             {/* Golden glow effect */}
             <div className="absolute inset-0 rounded-full bg-gradient-to-r from-yellow-400/20 via-amber-300/30 to-yellow-400/20 blur-md -z-10 animate-pulse" />
             
             {REACTIONS.map((reaction, index) => (
               <button
                 key={reaction.type}
-                className={`relative w-12 h-12 sm:w-11 sm:h-11 flex items-center justify-center text-2xl sm:text-2xl transition-all duration-200 rounded-full
+                className={`relative w-12 h-12 sm:w-11 sm:h-11 flex items-center justify-center text-2xl sm:text-2xl transition-all duration-200 rounded-full select-none
                   ${hoveredReaction === reaction.type ? 'scale-150 -translate-y-3 z-10' : 'scale-100'}
                   hover:scale-150 hover:-translate-y-3 active:scale-125
                 `}
                 style={{
+                  WebkitTouchCallout: 'none',
+                  WebkitUserSelect: 'none',
                   animationDelay: `${index * 50}ms`,
                   animation: 'reaction-pop-in 0.3s ease-out forwards',
                   opacity: 0,
