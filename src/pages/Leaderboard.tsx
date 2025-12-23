@@ -4,7 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Trophy, Medal, Award, TrendingUp, Users, MessageCircle, Heart, Share2 } from 'lucide-react';
+import { Trophy, Medal, Award, TrendingUp, Users, MessageCircle, Heart, ArrowLeft } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface LeaderboardUser {
   id: string;
@@ -106,7 +107,17 @@ const Leaderboard = () => {
       <main className="pt-14">
         <div className="max-w-5xl mx-auto px-4 py-6">
           {/* Header */}
-          <div className="bg-gradient-to-r from-primary to-gold rounded-2xl p-8 mb-6 text-white text-center">
+          <div className="bg-gradient-to-r from-primary to-gold rounded-2xl p-8 mb-6 text-white text-center relative">
+            {/* Back Button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate(-1)}
+              className="absolute top-4 left-4 text-white hover:bg-white/20 rounded-full"
+            >
+              <ArrowLeft className="w-6 h-6" />
+            </Button>
+            
             <Trophy className="w-16 h-16 mx-auto mb-4" />
             <h1 className="text-3xl font-bold mb-2">Bảng Xếp Hạng</h1>
             <p className="text-white/80">Những thành viên xuất sắc nhất FUN Profile</p>
