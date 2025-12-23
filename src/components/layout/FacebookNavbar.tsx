@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { NotificationDropdown } from './NotificationDropdown';
-import { SearchDialog } from './SearchDialog';
+import { InlineSearch } from './InlineSearch';
 import LanguageSwitcher from './LanguageSwitcher';
 import { useLanguage } from '@/i18n/LanguageContext';
 import {
@@ -148,7 +148,7 @@ export const FacebookNavbar = () => {
             loading="eager"
           />
           <div className="hidden sm:block">
-            <SearchDialog />
+            <InlineSearch />
           </div>
         </div>
 
@@ -210,7 +210,7 @@ export const FacebookNavbar = () => {
         <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0 md:w-[280px] justify-end">
           {/* Search button for mobile */}
           <div className="sm:hidden">
-            <SearchDialog />
+            <InlineSearch />
           </div>
 
           {/* Messenger */}
