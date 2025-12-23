@@ -15,6 +15,7 @@ import { LazyImage } from '@/components/ui/LazyImage';
 import { CoverPhotoEditor } from '@/components/profile/CoverPhotoEditor';
 import { AvatarEditor } from '@/components/profile/AvatarEditor';
 import { Plus, PenSquare, MoreHorizontal, MapPin, Briefcase, GraduationCap, Heart, Clock } from 'lucide-react';
+import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -509,6 +510,9 @@ const Profile = () => {
           </div>
         </div>
       </main>
+      
+      {/* Mobile Bottom Navigation with Honor Board */}
+      <MobileBottomNav />
     </div>
   );
 };
