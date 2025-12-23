@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ThumbsUp } from 'lucide-react';
@@ -35,6 +35,11 @@ export const ReactionButton = ({
   const longPressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const isLongPressRef = useRef(false);
+
+  // Sync với initialReaction khi data được load từ database
+  useEffect(() => {
+    setCurrentReaction(initialReaction);
+  }, [initialReaction]);
 
   const clearTimeouts = useCallback(() => {
     if (hideTimeoutRef.current) {
