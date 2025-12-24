@@ -11,7 +11,6 @@ import {
   Users,
   MessageCircle,
   Menu,
-  Wallet,
 } from 'lucide-react';
 import funFarmLogo from '@/assets/fun-farm-logo.webp';
 import {
@@ -186,22 +185,13 @@ export const FacebookNavbar = () => {
             <InlineSearch />
           </div>
 
-          {/* Messenger - Hidden for now */}
-          <button className="fb-icon-btn hidden" aria-label={t('notifications')}>
+          {/* Chat/Messenger */}
+          <button className="fb-icon-btn" aria-label="Messenger">
             <MessageCircle className="w-5 h-5" />
           </button>
 
-          {/* Notifications - Replacing Leaderboard position */}
+          {/* Notifications */}
           <NotificationDropdown />
-
-          {/* Wallet - Moved to right side */}
-          <button
-            onClick={() => navigate('/wallet')}
-            className="fb-icon-btn"
-            aria-label={t('wallet')}
-          >
-            <Wallet className="w-5 h-5 text-gold" />
-          </button>
 
           {/* Sign In Button - Only show when not logged in */}
           {!isLoggedIn && (
