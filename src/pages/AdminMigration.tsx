@@ -87,6 +87,34 @@ const AdminMigration = () => {
     return response.json();
   };
 
+  // Update media URL via edge function (bypasses RLS)
+  const updateMediaUrlViaEdgeFunction = async (
+    table: string,
+    id: string,
+    field: string,
+    newUrl: string
+  ): Promise<void> => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error('Not authenticated');
+
+    const response = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-update-media-url`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ table, id, field, newUrl }),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to update media URL');
+    }
+  };
+
   const uploadWithPresignedUrl = async (
     presignedUrl: string, 
     fileBlob: Blob, 
@@ -420,22 +448,10 @@ const AdminMigration = () => {
           }
 
           if (existingR2Url) {
-            // File exists on R2 - just update DB
+            // File exists on R2 - just update DB via edge function
             setCurrentFile(`${i + 1}/${urlsToProcess.length}: 📝 Update DB cho ${fileName}`);
             
-            const { error: updateError, data: updateData } = await supabase
-              .from(item.table as 'posts' | 'profiles' | 'comments')
-              .update({ [item.field]: existingR2Url })
-              .eq('id', item.id)
-              .select(item.field);
-
-            if (updateError) {
-              throw new Error(`DB update failed: ${updateError.message}`);
-            }
-
-            if (!updateData || updateData.length === 0) {
-              throw new Error(`DB update failed: Row ${item.id} not found`);
-            }
+            await updateMediaUrlViaEdgeFunction(item.table, item.id, item.field, existingR2Url);
 
             repairResult.alreadyOnR2++;
             console.log(`✅ DB updated (file already on R2): ${fileName} -> ${existingR2Url}`);
@@ -477,25 +493,8 @@ const AdminMigration = () => {
               setProgress(Math.round(baseProgress + fileProgress));
             });
 
-            // Update database
-            const { error: updateError, data: updateData } = await supabase
-              .from(item.table as 'posts' | 'profiles' | 'comments')
-              .update({ [item.field]: publicUrl })
-              .eq('id', item.id)
-              .select(item.field);
-
-            if (updateError) {
-              throw new Error(`DB update failed: ${updateError.message}`);
-            }
-
-            if (!updateData || updateData.length === 0) {
-              throw new Error(`DB update failed: Row ${item.id} not found`);
-            }
-
-            const updatedUrl = updateData[0][item.field];
-            if (!updatedUrl?.includes('r2.dev')) {
-              throw new Error(`DB update verification failed`);
-            }
+            // Update database via edge function (bypasses RLS)
+            await updateMediaUrlViaEdgeFunction(item.table, item.id, item.field, publicUrl);
 
             repairResult.migrated++;
             console.log(`✅ Uploaded & DB updated: ${fileName} -> ${publicUrl}`);
@@ -678,31 +677,10 @@ const AdminMigration = () => {
             setProgress(Math.round(baseProgress + fileProgress));
           });
 
-          // Update database with new R2 URL
+          // Update database with new R2 URL via edge function (bypasses RLS)
           console.log(`📝 Updating DB: ${item.table}.${item.field} = ${publicUrl}`);
           
-          const { error: updateError, data: updateData } = await supabase
-            .from(item.table as 'posts' | 'profiles' | 'comments')
-            .update({ [item.field]: publicUrl })
-            .eq('id', item.id)
-            .select(item.field);
-
-          if (updateError) {
-            console.error(`❌ DB update error:`, updateError);
-            throw new Error(`DB update failed: ${updateError.message}`);
-          }
-
-          // Verify the update was successful
-          if (!updateData || updateData.length === 0) {
-            console.error(`❌ DB update returned no data - row may not exist`);
-            throw new Error(`DB update failed: Row ${item.id} not found in ${item.table}`);
-          }
-
-          const updatedUrl = updateData[0][item.field];
-          if (!updatedUrl?.includes('r2.dev')) {
-            console.error(`❌ DB update verification failed. Expected R2 URL, got: ${updatedUrl}`);
-            throw new Error(`DB update verification failed: URL not updated to R2`);
-          }
+          await updateMediaUrlViaEdgeFunction(item.table, item.id, item.field, publicUrl);
 
           migrationResult.migrated++;
           console.log(`✅ Migrated & verified: ${fileName} -> ${publicUrl}`);
