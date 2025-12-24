@@ -227,39 +227,56 @@ export const ReactionButton = ({
     try {
       if (currentReaction === reactionType) {
         // Remove reaction
-        await supabase
+        const { error } = await supabase
           .from('reactions')
           .delete()
           .eq('post_id', postId)
           .eq('user_id', currentUserId)
           .is('comment_id', null);
 
+        if (error) throw error;
+
         setCurrentReaction(null);
         onReactionChange(likeCount - 1, null);
       } else if (currentReaction) {
         // Update existing reaction
-        await supabase
+        const { error } = await supabase
           .from('reactions')
           .update({ type: reactionType })
           .eq('post_id', postId)
           .eq('user_id', currentUserId)
           .is('comment_id', null);
 
+        if (error) throw error;
+
         setCurrentReaction(reactionType);
         onReactionChange(likeCount, reactionType);
       } else {
         // Add new reaction
-        await supabase.from('reactions').insert({
+        const { error } = await supabase.from('reactions').insert({
           post_id: postId,
           user_id: currentUserId,
           type: reactionType,
         });
 
+        if (error) throw error;
+
         setCurrentReaction(reactionType);
         onReactionChange(likeCount + 1, reactionType);
       }
-    } catch (error) {
-      toast.error('Không thể cập nhật cảm xúc');
+    } catch (error: any) {
+      console.error('Reaction error:', error);
+      // Check if it's a credit/pause related error
+      if (error?.message?.includes('permission') || error?.message?.includes('denied') || error?.code === '42501') {
+        toast.error('Hệ thống tạm dừng. Vui lòng thử lại sau!', {
+          description: 'Dữ liệu của bạn vẫn an toàn.',
+          duration: 5000,
+        });
+      } else {
+        toast.error('Không thể cập nhật cảm xúc', {
+          description: 'Vui lòng thử lại sau.',
+        });
+      }
     }
   };
 

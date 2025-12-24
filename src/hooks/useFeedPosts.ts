@@ -31,37 +31,51 @@ interface FeedData {
 const fetchPostStats = async (postIds: string[]): Promise<Record<string, PostStats>> => {
   if (postIds.length === 0) return {};
 
-  const [reactionsRes, commentsRes, sharesRes] = await Promise.all([
-    supabase
-      .from('reactions')
-      .select('id, user_id, type, post_id')
-      .in('post_id', postIds)
-      .is('comment_id', null),
-    supabase
-      .from('comments')
-      .select('post_id')
-      .in('post_id', postIds),
-    supabase
-      .from('shared_posts')
-      .select('original_post_id')
-      .in('original_post_id', postIds),
-  ]);
+  try {
+    const [reactionsRes, commentsRes, sharesRes] = await Promise.all([
+      supabase
+        .from('reactions')
+        .select('id, user_id, type, post_id')
+        .in('post_id', postIds)
+        .is('comment_id', null),
+      supabase
+        .from('comments')
+        .select('post_id')
+        .in('post_id', postIds),
+      supabase
+        .from('shared_posts')
+        .select('original_post_id')
+        .in('original_post_id', postIds),
+    ]);
 
-  const stats: Record<string, PostStats> = {};
+    // Log errors but don't throw - gracefully handle partial data
+    if (reactionsRes.error) console.error('Reactions fetch error:', reactionsRes.error);
+    if (commentsRes.error) console.error('Comments fetch error:', commentsRes.error);
+    if (sharesRes.error) console.error('Shares fetch error:', sharesRes.error);
 
-  postIds.forEach(postId => {
-    const postReactions = reactionsRes.data?.filter(r => r.post_id === postId) || [];
-    const postComments = commentsRes.data?.filter(c => c.post_id === postId) || [];
-    const postShares = sharesRes.data?.filter(s => s.original_post_id === postId) || [];
+    const stats: Record<string, PostStats> = {};
 
-    stats[postId] = {
-      reactions: postReactions.map(r => ({ id: r.id, user_id: r.user_id, type: r.type })),
-      commentCount: postComments.length,
-      shareCount: postShares.length,
-    };
-  });
+    postIds.forEach(postId => {
+      const postReactions = reactionsRes.data?.filter(r => r.post_id === postId) || [];
+      const postComments = commentsRes.data?.filter(c => c.post_id === postId) || [];
+      const postShares = sharesRes.data?.filter(s => s.original_post_id === postId) || [];
 
-  return stats;
+      stats[postId] = {
+        reactions: postReactions.map(r => ({ id: r.id, user_id: r.user_id, type: r.type })),
+        commentCount: postComments.length,
+        shareCount: postShares.length,
+      };
+    });
+
+    return stats;
+  } catch (error) {
+    console.error('Error fetching post stats:', error);
+    // Return empty stats for all posts on error
+    return postIds.reduce((acc, id) => {
+      acc[id] = { reactions: [], commentCount: 0, shareCount: 0 };
+      return acc;
+    }, {} as Record<string, PostStats>);
+  }
 };
 
 // Main fetch function
@@ -92,8 +106,10 @@ export const useFeedPosts = () => {
   const query = useQuery({
     queryKey: ['feed-posts'],
     queryFn: fetchFeedData,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
+    staleTime: 30 * 1000, // 30 seconds - more responsive to changes
+    gcTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: true, // Refetch when user returns to tab
+    retry: 2, // Retry failed requests
   });
 
   const refetch = useCallback(() => {

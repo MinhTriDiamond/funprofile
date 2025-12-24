@@ -69,29 +69,66 @@ export const FacebookPostCard = ({ post, currentUserId, onPostDeleted, initialSt
   const [likeCount, setLikeCount] = useState(initialStats?.reactions?.length || 0);
   const [currentReaction, setCurrentReaction] = useState<string | null>(null);
   const [reactionCounts, setReactionCounts] = useState<ReactionCount[]>([]);
+  const [isStatsLoaded, setIsStatsLoaded] = useState(!!initialStats);
 
-  // Initialize from pre-fetched stats (no individual queries needed!)
+  // Helper function to process reactions data
+  const processReactions = (reactions: { id: string; user_id: string; type: string }[]) => {
+    setLikeCount(reactions.length);
+    
+    // Get current user's reaction
+    const userReaction = reactions.find((r) => r.user_id === currentUserId);
+    setCurrentReaction(userReaction?.type || null);
+
+    // Count reactions by type
+    const counts: Record<string, number> = {};
+    reactions.forEach((r) => {
+      counts[r.type] = (counts[r.type] || 0) + 1;
+    });
+    setReactionCounts(
+      Object.entries(counts).map(([type, count]) => ({ type, count }))
+    );
+  };
+
+  // Initialize from pre-fetched stats OR fetch individually if not available
   useEffect(() => {
     if (initialStats) {
-      const reactions = initialStats.reactions;
-      setLikeCount(reactions.length);
+      processReactions(initialStats.reactions);
       setCommentCount(initialStats.commentCount);
       setShareCount(initialStats.shareCount);
-      
-      // Get current user's reaction
-      const userReaction = reactions.find((r) => r.user_id === currentUserId);
-      setCurrentReaction(userReaction?.type || null);
+      setIsStatsLoaded(true);
+    } else if (!isStatsLoaded) {
+      // Fallback: fetch this post's stats individually
+      const fetchStats = async () => {
+        try {
+          const [reactionsRes, commentsRes, sharesRes] = await Promise.all([
+            supabase
+              .from('reactions')
+              .select('id, user_id, type')
+              .eq('post_id', post.id)
+              .is('comment_id', null),
+            supabase
+              .from('comments')
+              .select('*', { count: 'exact', head: true })
+              .eq('post_id', post.id),
+            supabase
+              .from('shared_posts')
+              .select('*', { count: 'exact', head: true })
+              .eq('original_post_id', post.id),
+          ]);
 
-      // Count reactions by type
-      const counts: Record<string, number> = {};
-      reactions.forEach((r) => {
-        counts[r.type] = (counts[r.type] || 0) + 1;
-      });
-      setReactionCounts(
-        Object.entries(counts).map(([type, count]) => ({ type, count }))
-      );
+          if (reactionsRes.data) {
+            processReactions(reactionsRes.data);
+          }
+          setCommentCount(commentsRes.count || 0);
+          setShareCount(sharesRes.count || 0);
+          setIsStatsLoaded(true);
+        } catch (error) {
+          console.error('Error fetching post stats:', error);
+        }
+      };
+      fetchStats();
     }
-  }, [initialStats, currentUserId]);
+  }, [initialStats, currentUserId, post.id, isStatsLoaded]);
 
   // Only subscribe to realtime for updates (not initial fetch)
   useEffect(() => {
