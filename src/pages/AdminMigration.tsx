@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
-import { Loader2, Database, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+import { Loader2, Database, CheckCircle, XCircle, AlertTriangle, SkipForward, StopCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface MigrationResult {
@@ -25,6 +25,10 @@ const AdminMigration = () => {
   const [progress, setProgress] = useState(0);
   const [currentFile, setCurrentFile] = useState('');
   const [result, setResult] = useState<MigrationResult | null>(null);
+  
+  // Skip/Stop controls
+  const skipCurrentRef = useRef(false);
+  const stopProcessRef = useRef(false);
 
   useEffect(() => {
     checkAdminAccess();
@@ -228,7 +232,7 @@ const AdminMigration = () => {
     return typeMap[contentType] || 'bin';
   };
 
-  // Check if file exists on R2 using HEAD request
+  // Check if file exists on R2 using HEAD request with timeout
   const checkFileExistsOnR2 = async (r2PublicUrl: string, supabaseUrl: string): Promise<string | null> => {
     try {
       // Extract filename from Supabase URL
@@ -247,11 +251,35 @@ const AdminMigration = () => {
         `comment-media/${fileName}`,
       ];
 
+      // Helper function to fetch with timeout
+      const fetchWithTimeout = async (url: string, timeoutMs: number = 5000): Promise<Response | null> => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+        
+        try {
+          const response = await fetch(url, { 
+            method: 'HEAD',
+            signal: controller.signal 
+          });
+          clearTimeout(timeoutId);
+          return response;
+        } catch {
+          clearTimeout(timeoutId);
+          return null;
+        }
+      };
+
       for (const path of possiblePaths) {
+        // Check if skip was requested
+        if (skipCurrentRef.current) {
+          console.log('⏭️ Skip requested during R2 check');
+          return null;
+        }
+        
         const r2Url = `${r2PublicUrl}/${path}`;
         try {
-          const response = await fetch(r2Url, { method: 'HEAD' });
-          if (response.ok) {
+          const response = await fetchWithTimeout(r2Url, 5000);
+          if (response?.ok) {
             console.log(`✅ Found existing file on R2: ${r2Url}`);
             return r2Url;
           }
@@ -260,8 +288,6 @@ const AdminMigration = () => {
         }
       }
 
-      // Also try searching by partial filename match (timestamp might differ)
-      // Check if any URL in the database already points to R2 for this filename pattern
       return null;
     } catch (error) {
       console.error('Error checking R2:', error);
@@ -275,6 +301,8 @@ const AdminMigration = () => {
     setProgress(0);
     setResult(null);
     setCurrentFile('');
+    skipCurrentRef.current = false;
+    stopProcessRef.current = false;
 
     const repairResult: MigrationResult = {
       total: 0,
@@ -363,6 +391,15 @@ const AdminMigration = () => {
 
       // Process each URL
       for (let i = 0; i < urlsToProcess.length; i++) {
+        // Check if stop was requested
+        if (stopProcessRef.current) {
+          toast.info('⏹️ Đã dừng quá trình');
+          break;
+        }
+        
+        // Reset skip flag for new file
+        skipCurrentRef.current = false;
+        
         const item = urlsToProcess[i];
         const fileName = item.url.split('/').pop() || `file_${Date.now()}`;
         setCurrentFile(`${i + 1}/${urlsToProcess.length}: Kiểm tra ${fileName}`);
@@ -371,6 +408,16 @@ const AdminMigration = () => {
         try {
           // Step 1: Check if file already exists on R2
           const existingR2Url = await checkFileExistsOnR2(r2PublicUrl, item.url);
+
+          // Check if skip was requested during R2 check
+          if (skipCurrentRef.current) {
+            console.log(`⏭️ Skipped: ${fileName}`);
+            repairResult.errors.push({
+              url: item.url,
+              error: 'Skipped by user',
+            });
+            continue;
+          }
 
           if (existingR2Url) {
             // File exists on R2 - just update DB
@@ -397,9 +444,20 @@ const AdminMigration = () => {
             setCurrentFile(`${i + 1}/${urlsToProcess.length}: 📥 Download ${fileName}`);
             
             const { blob, contentType } = await downloadFile(item.url);
+            
+            // Check if skip was requested during download
+            if (skipCurrentRef.current) {
+              console.log(`⏭️ Skipped after download: ${fileName}`);
+              repairResult.errors.push({
+                url: item.url,
+                error: 'Skipped by user',
+              });
+              continue;
+            }
+            
             const fileSize = blob.size;
 
-            console.log(`📥 Downloading: ${fileName}, size: ${(fileSize / 1024 / 1024).toFixed(2)}MB`);
+            console.log(`📥 Downloaded: ${fileName}, size: ${(fileSize / 1024 / 1024).toFixed(2)}MB`);
 
             // Generate unique key for R2
             const ext = getFileExtension(item.url, contentType);
@@ -481,6 +539,8 @@ const AdminMigration = () => {
     setProgress(0);
     setResult(null);
     setCurrentFile('');
+    skipCurrentRef.current = false;
+    stopProcessRef.current = false;
 
     const migrationResult: MigrationResult = {
       total: 0,
@@ -570,6 +630,15 @@ const AdminMigration = () => {
 
       // Process each file with presigned URLs
       for (let i = 0; i < urlsToMigrate.length; i++) {
+        // Check if stop was requested
+        if (stopProcessRef.current) {
+          toast.info('⏹️ Đã dừng quá trình');
+          break;
+        }
+        
+        // Reset skip flag for new file
+        skipCurrentRef.current = false;
+        
         const item = urlsToMigrate[i];
         const fileName = item.url.split('/').pop() || `file_${Date.now()}`;
         setCurrentFile(`${i + 1}/${urlsToMigrate.length}: ${fileName}`);
@@ -578,6 +647,17 @@ const AdminMigration = () => {
         try {
           // Download file from Supabase
           const { blob, contentType } = await downloadFile(item.url);
+          
+          // Check if skip was requested during download
+          if (skipCurrentRef.current) {
+            console.log(`⏭️ Skipped: ${fileName}`);
+            migrationResult.errors.push({
+              url: item.url,
+              error: 'Skipped by user',
+            });
+            continue;
+          }
+          
           const fileSize = blob.size;
 
           console.log(`📥 Migrating: ${fileName}, size: ${(fileSize / 1024 / 1024).toFixed(2)}MB`);
@@ -733,13 +813,41 @@ const AdminMigration = () => {
               </Button>
 
               {repairing && (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Progress value={progress} className="h-2" />
                   {currentFile && (
                     <p className="text-sm text-muted-foreground text-center">
                       📁 {currentFile}
                     </p>
                   )}
+                  
+                  {/* Skip and Stop buttons */}
+                  <div className="flex gap-2 justify-center">
+                    <Button
+                      onClick={() => {
+                        skipCurrentRef.current = true;
+                        toast.info('⏭️ Đang bỏ qua file hiện tại...');
+                      }}
+                      variant="outline"
+                      size="sm"
+                      className="border-yellow-500 text-yellow-600 hover:bg-yellow-50"
+                    >
+                      <SkipForward className="w-4 h-4 mr-1" />
+                      Bỏ qua file này
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        stopProcessRef.current = true;
+                        toast.info('⏹️ Đang dừng quá trình...');
+                      }}
+                      variant="outline"
+                      size="sm"
+                      className="border-red-500 text-red-600 hover:bg-red-50"
+                    >
+                      <StopCircle className="w-4 h-4 mr-1" />
+                      Dừng lại
+                    </Button>
+                  </div>
                 </div>
               )}
             </CardContent>
@@ -785,13 +893,41 @@ const AdminMigration = () => {
               </Button>
 
               {migrating && (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Progress value={progress} className="h-2" />
                   {currentFile && (
                     <p className="text-sm text-muted-foreground text-center">
                       📁 {currentFile}
                     </p>
                   )}
+                  
+                  {/* Skip and Stop buttons */}
+                  <div className="flex gap-2 justify-center">
+                    <Button
+                      onClick={() => {
+                        skipCurrentRef.current = true;
+                        toast.info('⏭️ Đang bỏ qua file hiện tại...');
+                      }}
+                      variant="outline"
+                      size="sm"
+                      className="border-yellow-500 text-yellow-600 hover:bg-yellow-50"
+                    >
+                      <SkipForward className="w-4 h-4 mr-1" />
+                      Bỏ qua file này
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        stopProcessRef.current = true;
+                        toast.info('⏹️ Đang dừng quá trình...');
+                      }}
+                      variant="outline"
+                      size="sm"
+                      className="border-red-500 text-red-600 hover:bg-red-50"
+                    >
+                      <StopCircle className="w-4 h-4 mr-1" />
+                      Dừng lại
+                    </Button>
+                  </div>
                 </div>
               )}
             </CardContent>
