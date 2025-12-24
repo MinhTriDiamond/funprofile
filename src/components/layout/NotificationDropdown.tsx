@@ -280,7 +280,7 @@ export const NotificationDropdown = () => {
           aria-label="Thông báo"
         >
           <Bell className={cn(
-            "w-6 h-6 text-gold transition-all duration-300",
+            "w-12 h-12 text-gold transition-all duration-300",
             hasNewNotification 
               ? "drop-shadow-[0_0_12px_hsl(var(--gold-glow))] animate-bounce" 
               : "drop-shadow-[0_0_6px_hsl(var(--gold-glow))]"
