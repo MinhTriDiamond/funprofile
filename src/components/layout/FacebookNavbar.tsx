@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { InlineSearch } from './InlineSearch';
+import { NotificationDropdown } from './NotificationDropdown';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useIsMobileOrTablet } from '@/hooks/use-mobile';
 import {
@@ -10,8 +11,10 @@ import {
   Users,
   MessageCircle,
   Menu,
+  Wallet,
 } from 'lucide-react';
 import funFarmLogo from '@/assets/fun-farm-logo.webp';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Tooltip,
   TooltipContent,
@@ -32,19 +35,41 @@ export const FacebookNavbar = () => {
   const isMobileOrTablet = useIsMobileOrTablet();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [profile, setProfile] = useState<{ avatar_url: string | null; username: string } | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         setIsLoggedIn(true);
+        setCurrentUserId(session.user.id);
+        // Fetch profile
+        const { data } = await supabase
+          .from('profiles')
+          .select('avatar_url, username')
+          .eq('id', session.user.id)
+          .single();
+        if (data) setProfile(data);
       }
     };
 
     checkAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setIsLoggedIn(!!session);
+      if (session) {
+        setCurrentUserId(session.user.id);
+        const { data } = await supabase
+          .from('profiles')
+          .select('avatar_url, username')
+          .eq('id', session.user.id)
+          .single();
+        if (data) setProfile(data);
+      } else {
+        setProfile(null);
+        setCurrentUserId(null);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -93,20 +118,22 @@ export const FacebookNavbar = () => {
       <div className="h-full max-w-screen-2xl mx-auto px-2 sm:px-4 flex items-center justify-between">
         {/* Left Section - Menu Button & Logo & Search */}
         <div className="flex items-center gap-2 flex-shrink-0 md:w-[280px]">
-          {/* Menu Button - Left of Logo */}
-          <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
-            <SheetTrigger asChild>
-              <button 
-                className="fb-icon-btn flex-shrink-0"
-                aria-label="Menu"
-              >
-                <Menu className="w-5 h-5" />
-              </button>
-            </SheetTrigger>
-            <SheetContent side="left" className="w-[300px] p-4 overflow-y-auto">
-              <FacebookLeftSidebar onItemClick={() => setIsSidebarOpen(false)} />
-            </SheetContent>
-          </Sheet>
+          {/* Menu Button - Left of Logo (Mobile/Tablet only) */}
+          {isMobileOrTablet && (
+            <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
+              <SheetTrigger asChild>
+                <button 
+                  className="fb-icon-btn flex-shrink-0"
+                  aria-label="Menu"
+                >
+                  <Menu className="w-5 h-5" />
+                </button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-[300px] p-4 overflow-y-auto">
+                <FacebookLeftSidebar onItemClick={() => setIsSidebarOpen(false)} />
+              </SheetContent>
+            </Sheet>
+          )}
 
           {/* Logo */}
           <img
@@ -188,6 +215,37 @@ export const FacebookNavbar = () => {
           <button className="fb-icon-btn" aria-label="Messenger">
             <MessageCircle className="w-5 h-5" />
           </button>
+
+          {/* Desktop only: Notification, Wallet, Avatar */}
+          {!isMobileOrTablet && isLoggedIn && (
+            <>
+              {/* Notification */}
+              <NotificationDropdown />
+
+              {/* Wallet */}
+              <button 
+                className="fb-icon-btn" 
+                aria-label="Wallet"
+                onClick={() => navigate('/wallet')}
+              >
+                <Wallet className="w-5 h-5 text-gold drop-shadow-[0_0_6px_hsl(var(--gold-glow))]" />
+              </button>
+
+              {/* Avatar */}
+              <button
+                onClick={() => navigate(`/profile/${currentUserId}`)}
+                className="flex-shrink-0"
+                aria-label="Profile"
+              >
+                <Avatar className="w-9 h-9 border-2 border-gold/30 hover:border-gold transition-colors cursor-pointer">
+                  <AvatarImage src={profile?.avatar_url || ''} />
+                  <AvatarFallback className="bg-primary/20 text-primary text-sm">
+                    {profile?.username?.[0]?.toUpperCase() || 'U'}
+                  </AvatarFallback>
+                </Avatar>
+              </button>
+            </>
+          )}
 
           {/* Sign In Button - Only show when not logged in */}
           {!isLoggedIn && (
