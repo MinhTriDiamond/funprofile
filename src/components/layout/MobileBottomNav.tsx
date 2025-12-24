@@ -1,6 +1,6 @@
 import { useState, memo, useCallback } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
-import { Home, Menu, Users, Award, Star } from 'lucide-react';
+import { Home, Users, Award, Bell, Wallet } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { FacebookLeftSidebar } from '@/components/feed/FacebookLeftSidebar';
@@ -60,8 +60,8 @@ export const MobileBottomNav = memo(() => {
     { icon: Home, label: t('feed'), path: '/', action: () => handleNavigate('/') },
     { icon: Users, label: t('friends'), path: '/friends', action: () => handleNavigate('/friends') },
     { icon: Award, label: t('honorBoard'), isCenter: true, action: () => setHonorBoardOpen(true) },
-    { icon: Star, label: t('leaderboard'), path: '/leaderboard', action: () => handleNavigate('/leaderboard') },
-    { icon: Menu, label: t('menu'), action: () => setLeftSheetOpen(true) },
+    { icon: Bell, label: t('notifications'), path: '/notifications', action: () => handleNavigate('/notifications') },
+    { icon: Wallet, label: t('wallet'), action: () => handleNavigate('/wallet') },
   ];
 
   return (
