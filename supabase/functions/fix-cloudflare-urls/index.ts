@@ -67,10 +67,13 @@ serve(async (req) => {
     // Find all URLs containing dash.cloudflare.com
     const urlsToFix: UrlToFix[] = [];
 
-    // Check posts
+    // Check posts - filter directly in SQL to avoid 1000 row limit
     const { data: posts } = await supabaseAdmin
       .from('posts')
-      .select('id, image_url, video_url');
+      .select('id, image_url, video_url')
+      .or('image_url.ilike.%dash.cloudflare.com%,video_url.ilike.%dash.cloudflare.com%');
+
+    console.log(`Found ${posts?.length || 0} posts with dash.cloudflare.com URLs`);
 
     posts?.forEach(post => {
       if (post.image_url?.includes('dash.cloudflare.com')) {
@@ -99,10 +102,13 @@ serve(async (req) => {
       }
     });
 
-    // Check profiles
+    // Check profiles - filter directly in SQL to avoid 1000 row limit
     const { data: profiles } = await supabaseAdmin
       .from('profiles')
-      .select('id, avatar_url, cover_url');
+      .select('id, avatar_url, cover_url')
+      .or('avatar_url.ilike.%dash.cloudflare.com%,cover_url.ilike.%dash.cloudflare.com%');
+
+    console.log(`Found ${profiles?.length || 0} profiles with dash.cloudflare.com URLs`);
 
     profiles?.forEach(profile => {
       if (profile.avatar_url?.includes('dash.cloudflare.com')) {
@@ -131,10 +137,13 @@ serve(async (req) => {
       }
     });
 
-    // Check comments
+    // Check comments - filter directly in SQL to avoid 1000 row limit
     const { data: comments } = await supabaseAdmin
       .from('comments')
-      .select('id, image_url, video_url');
+      .select('id, image_url, video_url')
+      .or('image_url.ilike.%dash.cloudflare.com%,video_url.ilike.%dash.cloudflare.com%');
+
+    console.log(`Found ${comments?.length || 0} comments with dash.cloudflare.com URLs`);
 
     comments?.forEach(comment => {
       if (comment.image_url?.includes('dash.cloudflare.com')) {
