@@ -8,6 +8,8 @@ interface LazyImageProps extends ImgHTMLAttributes<HTMLImageElement> {
   fallback?: string;
   placeholderColor?: string;
   priority?: boolean;
+  onLoadError?: () => void;
+  hideOnError?: boolean;
 }
 
 /**
@@ -17,6 +19,7 @@ interface LazyImageProps extends ImgHTMLAttributes<HTMLImageElement> {
  * - WebP/AVIF support detection
  * - Slow connection handling
  * - Memory efficient
+ * - Option to hide completely on error
  */
 export const LazyImage = memo(({ 
   src, 
@@ -25,6 +28,8 @@ export const LazyImage = memo(({
   fallback = '/placeholder.svg',
   placeholderColor = 'bg-muted',
   priority = false,
+  onLoadError,
+  hideOnError = false,
   ...props 
 }: LazyImageProps) => {
   const [isLoaded, setIsLoaded] = useState(false);
@@ -62,7 +67,13 @@ export const LazyImage = memo(({
   const handleError = () => {
     setHasError(true);
     setIsLoaded(true);
+    onLoadError?.();
   };
+
+  // Hide completely if error and hideOnError is true
+  if (hasError && hideOnError) {
+    return null;
+  }
 
   const imageSrc = hasError ? fallback : src;
 

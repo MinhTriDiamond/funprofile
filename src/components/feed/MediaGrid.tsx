@@ -1,4 +1,4 @@
-import { useState, memo } from 'react';
+import { useState, memo, useCallback } from 'react';
 import { ImageViewer } from './ImageViewer';
 import { LazyImage } from '@/components/ui/LazyImage';
 import { LazyVideo } from '@/components/ui/LazyVideo';
@@ -18,10 +18,19 @@ interface MediaGridProps {
  * Optimized MediaGrid component with lazy loading
  * - Supports up to 80 media items
  * - Gallery viewer for browsing all media
+ * - Automatically filters out broken media
  */
-export const MediaGrid = memo(({ media }: MediaGridProps) => {
+export const MediaGrid = memo(({ media: initialMedia }: MediaGridProps) => {
   const [showViewer, setShowViewer] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [brokenUrls, setBrokenUrls] = useState<Set<string>>(new Set());
+
+  // Filter out broken media
+  const media = initialMedia.filter(item => !brokenUrls.has(item.url));
+
+  const handleMediaError = useCallback((url: string) => {
+    setBrokenUrls(prev => new Set(prev).add(url));
+  }, []);
 
   if (media.length === 0) return null;
 
@@ -51,6 +60,7 @@ export const MediaGrid = memo(({ media }: MediaGridProps) => {
             className="w-full max-h-[600px] bg-black"
             showControls
             muted
+            onError={() => handleMediaError(item.url)}
           />
         ) : (
           <div 
@@ -61,6 +71,8 @@ export const MediaGrid = memo(({ media }: MediaGridProps) => {
               src={item.url}
               alt="Post media"
               className="w-full max-h-[600px] bg-black"
+              hideOnError
+              onLoadError={() => handleMediaError(item.url)}
             />
           </div>
         )}
@@ -83,7 +95,7 @@ export const MediaGrid = memo(({ media }: MediaGridProps) => {
       <>
         <div className="grid grid-cols-2 gap-1">
           {media.map((item, index) => (
-            <div key={index} className="aspect-square overflow-hidden">
+            <div key={item.url} className="aspect-square overflow-hidden">
               {item.type === 'video' ? (
                 <div onClick={() => handleClick(index)} className="cursor-pointer h-full">
                   <LazyVideo
@@ -91,6 +103,7 @@ export const MediaGrid = memo(({ media }: MediaGridProps) => {
                     className="w-full h-full object-cover"
                     showControls
                     muted
+                    onError={() => handleMediaError(item.url)}
                   />
                 </div>
               ) : (
@@ -99,6 +112,8 @@ export const MediaGrid = memo(({ media }: MediaGridProps) => {
                     src={item.url}
                     alt={`Media ${index + 1}`}
                     className="w-full h-full hover:opacity-95 transition-opacity"
+                    hideOnError
+                    onLoadError={() => handleMediaError(item.url)}
                   />
                 </div>
               )}
@@ -131,6 +146,7 @@ export const MediaGrid = memo(({ media }: MediaGridProps) => {
                   className="w-full h-full object-cover"
                   showControls
                   muted
+                  onError={() => handleMediaError(media[0].url)}
                 />
               </div>
             ) : (
@@ -139,12 +155,14 @@ export const MediaGrid = memo(({ media }: MediaGridProps) => {
                   src={media[0].url}
                   alt="Media 1"
                   className="w-full h-full hover:opacity-95"
+                  hideOnError
+                  onLoadError={() => handleMediaError(media[0].url)}
                 />
               </div>
             )}
           </div>
           {media.slice(1).map((item, index) => (
-            <div key={index} className="aspect-square overflow-hidden">
+            <div key={item.url} className="aspect-square overflow-hidden">
               {item.type === 'video' ? (
                 <div onClick={() => handleClick(index + 1)} className="cursor-pointer h-full">
                   <LazyVideo
@@ -152,6 +170,7 @@ export const MediaGrid = memo(({ media }: MediaGridProps) => {
                     className="w-full h-full object-cover"
                     showControls
                     muted
+                    onError={() => handleMediaError(item.url)}
                   />
                 </div>
               ) : (
@@ -160,6 +179,8 @@ export const MediaGrid = memo(({ media }: MediaGridProps) => {
                     src={item.url}
                     alt={`Media ${index + 2}`}
                     className="w-full h-full hover:opacity-95"
+                    hideOnError
+                    onLoadError={() => handleMediaError(item.url)}
                   />
                 </div>
               )}
@@ -185,7 +206,7 @@ export const MediaGrid = memo(({ media }: MediaGridProps) => {
       <div className="grid grid-cols-2 gap-1">
         {media.slice(0, 4).map((item, index) => (
           <div 
-            key={index} 
+            key={item.url} 
             className="aspect-square overflow-hidden relative"
           >
             {item.type === 'video' ? (
@@ -195,6 +216,7 @@ export const MediaGrid = memo(({ media }: MediaGridProps) => {
                   className="w-full h-full object-cover"
                   showControls={false}
                   muted
+                  onError={() => handleMediaError(item.url)}
                 />
               </div>
             ) : (
@@ -203,6 +225,8 @@ export const MediaGrid = memo(({ media }: MediaGridProps) => {
                   src={item.url}
                   alt={`Media ${index + 1}`}
                   className="w-full h-full hover:opacity-95"
+                  hideOnError
+                  onLoadError={() => handleMediaError(item.url)}
                 />
               </div>
             )}

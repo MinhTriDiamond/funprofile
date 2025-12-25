@@ -6,6 +6,7 @@ interface LazyVideoProps extends VideoHTMLAttributes<HTMLVideoElement> {
   src: string;
   poster?: string;
   showControls?: boolean;
+  hideOnError?: boolean;
 }
 
 /**
@@ -14,6 +15,7 @@ interface LazyVideoProps extends VideoHTMLAttributes<HTMLVideoElement> {
  * - Preload="none" to save bandwidth
  * - Respects reduced motion preference
  * - Slow connection handling
+ * - Option to hide completely on error
  */
 export const LazyVideo = memo(({
   src,
@@ -23,11 +25,14 @@ export const LazyVideo = memo(({
   autoPlay = false,
   muted = true,
   loop = false,
+  hideOnError = false,
+  onError,
   ...props
 }: LazyVideoProps) => {
   const [isInView, setIsInView] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const [showPlaceholder, setShowPlaceholder] = useState(true);
+  const [hasError, setHasError] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -69,6 +74,22 @@ export const LazyVideo = memo(({
     }
   };
 
+  const handleError = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
+    setHasError(true);
+    setShowPlaceholder(false);
+    onError?.(e);
+  };
+
+  // Hide completely if error and hideOnError is true
+  if (hasError && hideOnError) {
+    return null;
+  }
+
+  // Show nothing if there's an error (hide the broken video)
+  if (hasError) {
+    return null;
+  }
+
   return (
     <div 
       ref={containerRef}
@@ -101,6 +122,7 @@ export const LazyVideo = memo(({
           preload="none"
           onLoadedData={handleLoadedData}
           onCanPlay={handleCanPlay}
+          onError={handleError}
           className={cn(
             'w-full h-full object-cover transition-opacity duration-300',
             isLoaded ? 'opacity-100' : 'opacity-0'
