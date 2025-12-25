@@ -360,11 +360,146 @@ serve(async (req) => {
         );
       }
 
+      case 'update-urls': {
+        // Update database URLs with new Cloudflare URLs
+        const body = await req.json();
+        const mappings = body.mappings as { oldUrl: string; newUrl: string; type: 'image' | 'video' }[];
+
+        if (!mappings || !Array.isArray(mappings)) {
+          return new Response(
+            JSON.stringify({ error: 'mappings array required: [{oldUrl, newUrl, type}]' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        console.log(`Updating ${mappings.length} URLs in database...`);
+
+        const updateResults: { url: string; updated: boolean; tables: string[]; error?: string }[] = [];
+
+        for (const mapping of mappings) {
+          const { oldUrl, newUrl, type } = mapping;
+          const tablesUpdated: string[] = [];
+          
+          try {
+            // Update posts
+            if (type === 'image') {
+              const { data: postsImg } = await supabase
+                .from('posts')
+                .update({ image_url: newUrl })
+                .eq('image_url', oldUrl)
+                .select('id');
+              if (postsImg?.length) tablesUpdated.push(`posts.image_url (${postsImg.length})`);
+            } else {
+              const { data: postsVid } = await supabase
+                .from('posts')
+                .update({ video_url: newUrl })
+                .eq('video_url', oldUrl)
+                .select('id');
+              if (postsVid?.length) tablesUpdated.push(`posts.video_url (${postsVid.length})`);
+            }
+
+            // Update profiles (images only)
+            if (type === 'image') {
+              const { data: avatars } = await supabase
+                .from('profiles')
+                .update({ avatar_url: newUrl })
+                .eq('avatar_url', oldUrl)
+                .select('id');
+              if (avatars?.length) tablesUpdated.push(`profiles.avatar_url (${avatars.length})`);
+
+              const { data: covers } = await supabase
+                .from('profiles')
+                .update({ cover_url: newUrl })
+                .eq('cover_url', oldUrl)
+                .select('id');
+              if (covers?.length) tablesUpdated.push(`profiles.cover_url (${covers.length})`);
+            }
+
+            // Update comments
+            if (type === 'image') {
+              const { data: commentImgs } = await supabase
+                .from('comments')
+                .update({ image_url: newUrl })
+                .eq('image_url', oldUrl)
+                .select('id');
+              if (commentImgs?.length) tablesUpdated.push(`comments.image_url (${commentImgs.length})`);
+            } else {
+              const { data: commentVids } = await supabase
+                .from('comments')
+                .update({ video_url: newUrl })
+                .eq('video_url', oldUrl)
+                .select('id');
+              if (commentVids?.length) tablesUpdated.push(`comments.video_url (${commentVids.length})`);
+            }
+
+            // Update media_urls in posts (JSON array)
+            const { data: postsWithMedia } = await supabase
+              .from('posts')
+              .select('id, media_urls')
+              .not('media_urls', 'is', null);
+
+            if (postsWithMedia) {
+              for (const post of postsWithMedia) {
+                const mediaUrls = post.media_urls as any[];
+                if (!Array.isArray(mediaUrls)) continue;
+                
+                let updated = false;
+                const newMediaUrls = mediaUrls.map(m => {
+                  if (m.url === oldUrl) {
+                    updated = true;
+                    return { ...m, url: newUrl };
+                  }
+                  return m;
+                });
+
+                if (updated) {
+                  await supabase
+                    .from('posts')
+                    .update({ media_urls: newMediaUrls })
+                    .eq('id', post.id);
+                  tablesUpdated.push(`posts.media_urls (${post.id})`);
+                }
+              }
+            }
+
+            updateResults.push({
+              url: oldUrl,
+              updated: tablesUpdated.length > 0,
+              tables: tablesUpdated,
+            });
+
+          } catch (error: any) {
+            updateResults.push({
+              url: oldUrl,
+              updated: false,
+              tables: [],
+              error: error.message,
+            });
+          }
+        }
+
+        const successCount = updateResults.filter(r => r.updated).length;
+        console.log(`Updated ${successCount}/${mappings.length} URLs`);
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            stats: {
+              total: mappings.length,
+              updated: successCount,
+              failed: mappings.length - successCount,
+            },
+            results: updateResults,
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       default:
         return new Response(
           JSON.stringify({ 
             error: 'Invalid action',
-            availableActions: ['list-media', 'migrate-images', 'migrate-videos'],
+            availableActions: ['list-media', 'migrate-images', 'migrate-videos', 'update-urls'],
           }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );

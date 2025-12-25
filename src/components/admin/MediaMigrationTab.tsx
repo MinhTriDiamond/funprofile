@@ -49,6 +49,7 @@ const MediaMigrationTab = () => {
   const [isScanning, setIsScanning] = useState(false);
   const [isMigratingImages, setIsMigratingImages] = useState(false);
   const [isMigratingVideos, setIsMigratingVideos] = useState(false);
+  const [isUpdatingUrls, setIsUpdatingUrls] = useState(false);
   const [imageProgress, setImageProgress] = useState<MigrationProgress | null>(null);
   const [videoProgress, setVideoProgress] = useState<MigrationProgress | null>(null);
   const [imageResults, setImageResults] = useState<MigrationResult[]>([]);
@@ -63,8 +64,8 @@ const MediaMigrationTab = () => {
         return;
       }
 
-      const response = await supabase.functions.invoke('migrate-to-r2', {
-        body: {},
+      const response = await supabase.functions.invoke('cloudflare-migrate', {
+        body: { action: 'list-media' },
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
 
@@ -108,8 +109,8 @@ const MediaMigrationTab = () => {
       for (let i = 0; i < imageUrls.length; i += batchSize) {
         const batch = imageUrls.slice(i, i + batchSize);
         
-        const response = await supabase.functions.invoke('migrate-to-r2', {
-          body: { urls: batch, batchSize: 5 },
+        const response = await supabase.functions.invoke('cloudflare-migrate', {
+          body: { action: 'migrate-images', urls: batch, batchSize: 5 },
           headers: { Authorization: `Bearer ${session.access_token}` },
         });
 
@@ -156,8 +157,8 @@ const MediaMigrationTab = () => {
       for (let i = 0; i < videoUrls.length; i++) {
         const batch = [videoUrls[i]];
         
-        const response = await supabase.functions.invoke('migrate-to-r2', {
-          body: { urls: batch, batchSize: 1 },
+        const response = await supabase.functions.invoke('cloudflare-migrate', {
+          body: { action: 'migrate-videos', urls: batch, batchSize: 1 },
           headers: { Authorization: `Bearer ${session.access_token}` },
         });
 
@@ -181,6 +182,46 @@ const MediaMigrationTab = () => {
       toast.error('Lỗi khi migrate video');
     } finally {
       setIsMigratingVideos(false);
+    }
+  };
+
+  const updateDatabaseUrls = async () => {
+    const successfulResults = [...imageResults, ...videoResults].filter(r => r.status === 'success' && r.newUrl);
+    
+    if (successfulResults.length === 0) {
+      toast.info('Không có URL nào cần cập nhật');
+      return;
+    }
+
+    setIsUpdatingUrls(true);
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const mappings = successfulResults.map(r => ({
+        oldUrl: r.url,
+        newUrl: r.newUrl!,
+        type: r.type,
+      }));
+
+      const response = await supabase.functions.invoke('cloudflare-migrate', {
+        body: { action: 'update-urls', mappings },
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+
+      const result = response.data;
+      
+      if (result?.success) {
+        toast.success(`Đã cập nhật ${result.stats.updated} URLs trong database`);
+      } else {
+        toast.error(result?.error || 'Lỗi khi cập nhật database');
+      }
+    } catch (error: any) {
+      console.error('Update URLs error:', error);
+      toast.error('Lỗi khi cập nhật database URLs');
+    } finally {
+      setIsUpdatingUrls(false);
     }
   };
 
@@ -415,6 +456,66 @@ const MediaMigrationTab = () => {
                 ))}
               </div>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Update Database URLs */}
+      {(imageResults.filter(r => r.status === 'success').length > 0 || 
+        videoResults.filter(r => r.status === 'success').length > 0) && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Database className="w-5 h-5 text-green-600" />
+              Cập nhật Database URLs
+            </CardTitle>
+            <CardDescription>
+              Thay thế các URL R2 cũ bằng URL Cloudflare mới trong database
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-sm mb-4">
+              <Check className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-medium text-blue-800 dark:text-blue-200">
+                  Sẵn sàng cập nhật {imageResults.filter(r => r.status === 'success').length + videoResults.filter(r => r.status === 'success').length} URLs
+                </p>
+                <p className="text-blue-700 dark:text-blue-300">
+                  Hệ thống sẽ tự động thay thế các URL cũ trong posts, profiles, comments.
+                </p>
+              </div>
+            </div>
+
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button 
+                  disabled={isUpdatingUrls}
+                  className="gap-2 bg-green-600 hover:bg-green-700"
+                >
+                  {isUpdatingUrls ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Database className="w-4 h-4" />
+                  )}
+                  Cập nhật Database
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Xác nhận cập nhật Database</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Bạn sắp thay thế {imageResults.filter(r => r.status === 'success').length + videoResults.filter(r => r.status === 'success').length} URLs cũ bằng URLs Cloudflare mới.
+                    Hành động này không thể hoàn tác.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Hủy</AlertDialogCancel>
+                  <AlertDialogAction onClick={updateDatabaseUrls} className="bg-green-600 hover:bg-green-700">
+                    Cập nhật ngay
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </CardContent>
         </Card>
       )}

@@ -152,7 +152,7 @@ const Admin = () => {
 
         {/* Main Tabs */}
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6 h-auto">
+          <TabsList className="grid w-full grid-cols-4 lg:grid-cols-7 h-auto">
             <TabsTrigger value="overview" className="gap-2 py-3">
               <BarChart3 className="w-4 h-4" />
               <span className="hidden sm:inline">📊 Tổng quan</span>
@@ -176,6 +176,10 @@ const Admin = () => {
             <TabsTrigger value="blockchain" className="gap-2 py-3">
               <Link2 className="w-4 h-4" />
               <span className="hidden sm:inline">⛓️ Blockchain</span>
+            </TabsTrigger>
+            <TabsTrigger value="migration" className="gap-2 py-3">
+              <CloudUpload className="w-4 h-4" />
+              <span className="hidden sm:inline">☁️ Migration</span>
             </TabsTrigger>
           </TabsList>
 
@@ -217,6 +221,10 @@ const Admin = () => {
 
           <TabsContent value="blockchain">
             <BlockchainTab adminId={currentUserId!} />
+          </TabsContent>
+
+          <TabsContent value="migration">
+            <MediaMigrationTab />
           </TabsContent>
         </Tabs>
       </div>
