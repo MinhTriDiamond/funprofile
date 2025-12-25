@@ -611,12 +611,15 @@ const AdminMigration = () => {
     }
   };
 
-  const runCleanupStorage = async (dryRun: boolean) => {
+  const runCleanupStorage = async (dryRun: boolean, specificBucket?: string) => {
     setCleaningStorage(true);
-    setCleanupResult(null);
+    if (!specificBucket) {
+      setCleanupResult(null);
+    }
 
     try {
-      toast.info(dryRun ? '🔍 Đang kiểm tra files trên Supabase Storage...' : '🗑️ Đang xóa files trên Supabase Storage...');
+      const bucketLabel = specificBucket || 'tất cả buckets';
+      toast.info(dryRun ? `🔍 Đang kiểm tra ${bucketLabel}...` : `🗑️ Đang xóa ${bucketLabel}...`);
 
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -632,7 +635,11 @@ const AdminMigration = () => {
             'Authorization': `Bearer ${session.access_token}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ dryRun }),
+          body: JSON.stringify({ 
+            dryRun,
+            bucket: specificBucket || null,
+            batchSize: 50
+          }),
         }
       );
 
@@ -652,7 +659,7 @@ const AdminMigration = () => {
       if (dryRun) {
         toast.info(`📊 Tìm thấy ${data.totalFiles} files có thể xóa`);
       } else {
-        toast.success(`🎉 Đã xóa ${data.totalDeleted} files thành công!`);
+        toast.success(`🎉 Đã xóa ${data.totalDeleted} files từ ${bucketLabel}!`);
       }
 
     } catch (error: unknown) {
@@ -1083,14 +1090,27 @@ const AdminMigration = () => {
                 </AlertDescription>
               </Alert>
 
-              <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-                <h4 className="font-medium text-gray-700">📋 Buckets sẽ được xóa:</h4>
-                <ul className="text-sm text-gray-600 space-y-1">
-                  <li>• <code className="bg-gray-200 px-1 rounded">posts</code> - Ảnh/video bài viết</li>
-                  <li>• <code className="bg-gray-200 px-1 rounded">videos</code> - Video riêng</li>
-                  <li>• <code className="bg-gray-200 px-1 rounded">avatars</code> - Avatar và cover</li>
-                  <li>• <code className="bg-gray-200 px-1 rounded">comment-media</code> - Media trong comments</li>
-                </ul>
+              <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                <h4 className="font-medium text-gray-700">📋 Xóa từng bucket riêng (tránh timeout):</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  {['posts', 'videos', 'avatars', 'comment-media'].map((bucket) => (
+                    <Button
+                      key={bucket}
+                      onClick={() => {
+                        if (window.confirm(`⚠️ Xóa tất cả files trong bucket "${bucket}"?\n\nHành động này KHÔNG THỂ HOÀN TÁC!`)) {
+                          runCleanupStorage(false, bucket);
+                        }
+                      }}
+                      disabled={cleaningStorage || migrating || repairing}
+                      variant="destructive"
+                      size="sm"
+                      className="text-xs"
+                    >
+                      <Trash2 className="w-3 h-3 mr-1" />
+                      {bucket}
+                    </Button>
+                  ))}
+                </div>
               </div>
 
               <div className="flex gap-3">
@@ -1104,7 +1124,7 @@ const AdminMigration = () => {
                   {cleaningStorage ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Đang kiểm tra...
+                      Đang xử lý...
                     </>
                   ) : (
                     <>
@@ -1116,7 +1136,7 @@ const AdminMigration = () => {
 
                 <Button 
                   onClick={() => {
-                    if (window.confirm('⚠️ BẠN CÓ CHẮC CHẮN MUỐN XÓA TẤT CẢ FILES TRÊN SUPABASE STORAGE?\n\nHành động này KHÔNG THỂ HOÀN TÁC!')) {
+                    if (window.confirm('⚠️ BẠN CÓ CHẮC CHẮN MUỐN XÓA TẤT CẢ FILES?\n\nKHUYẾN NGHỊ: Dùng nút xóa từng bucket ở trên để tránh timeout!\n\nNhấn OK để tiếp tục.')) {
                       runCleanupStorage(false);
                     }
                   }}
@@ -1144,8 +1164,15 @@ const AdminMigration = () => {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     {cleanupResult.buckets.map((bucket, idx) => (
                       <div key={idx} className="p-3 bg-gray-50 border rounded-lg text-center">
-                        <div className="text-lg font-bold text-gray-700">{bucket.totalFiles}</div>
+                        <div className="text-lg font-bold text-gray-700">
+                          {cleanupResult.dryRun ? bucket.totalFiles : bucket.deleted}
+                        </div>
                         <div className="text-xs text-muted-foreground font-mono">{bucket.bucket}</div>
+                        {!cleanupResult.dryRun && bucket.totalFiles > 0 && (
+                          <div className="text-xs text-green-600 mt-1">
+                            {bucket.deleted}/{bucket.totalFiles} đã xóa
+                          </div>
+                        )}
                         {bucket.errors.length > 0 && (
                           <div className="text-xs text-red-500 mt-1">{bucket.errors.length} lỗi</div>
                         )}

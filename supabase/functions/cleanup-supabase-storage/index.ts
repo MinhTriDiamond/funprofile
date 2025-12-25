@@ -63,53 +63,45 @@ serve(async (req) => {
     console.log(`Admin ${user.id} running cleanup-supabase-storage`);
 
     // Parse request body for options
-    let dryRun = true; // Default to dry run for safety
+    let dryRun = true;
+    let bucketName: string | null = null;
+    let batchSize = 50; // Smaller batch for reliability
+    
     try {
       const body = await req.json();
-      dryRun = body.dryRun !== false; // Only execute if explicitly set to false
+      dryRun = body.dryRun !== false;
+      bucketName = body.bucket || null; // Optional: clean specific bucket only
+      batchSize = body.batchSize || 50;
     } catch {
       // If no body, default to dry run
     }
 
-    console.log(`Mode: ${dryRun ? 'DRY RUN (preview only)' : 'EXECUTE (will delete files)'}`);
+    console.log(`Mode: ${dryRun ? 'DRY RUN' : 'EXECUTE'}, Bucket: ${bucketName || 'ALL'}, BatchSize: ${batchSize}`);
 
-    const buckets = ['posts', 'videos', 'avatars', 'comment-media'];
+    const buckets = bucketName ? [bucketName] : ['posts', 'videos', 'avatars', 'comment-media'];
     const results: CleanupResult[] = [];
     let totalFilesDeleted = 0;
 
-    for (const bucketName of buckets) {
+    for (const bucket of buckets) {
       const bucketResult: CleanupResult = {
-        bucket: bucketName,
+        bucket,
         totalFiles: 0,
         deleted: 0,
         errors: [],
       };
 
       try {
-        // List all files in the bucket
-        const { data: files, error: listError } = await supabaseAdmin
-          .storage
-          .from(bucketName)
-          .list('', { limit: 10000, offset: 0 });
-
-        if (listError) {
-          console.error(`Error listing bucket ${bucketName}:`, listError);
-          bucketResult.errors.push({ file: bucketName, error: listError.message });
-          results.push(bucketResult);
-          continue;
-        }
-
-        // Get all files recursively (including subfolders)
+        // Get all files recursively
         const allFiles: string[] = [];
         
         const listRecursive = async (path: string) => {
           const { data: items, error } = await supabaseAdmin
             .storage
-            .from(bucketName)
-            .list(path, { limit: 10000 });
+            .from(bucket)
+            .list(path, { limit: 1000 });
 
           if (error) {
-            console.error(`Error listing ${bucketName}/${path}:`, error);
+            console.error(`Error listing ${bucket}/${path}:`, error);
             return;
           }
 
@@ -117,10 +109,8 @@ serve(async (req) => {
             const fullPath = path ? `${path}/${item.name}` : item.name;
             
             if (item.id) {
-              // It's a file
               allFiles.push(fullPath);
             } else {
-              // It's a folder, recurse
               await listRecursive(fullPath);
             }
           }
@@ -129,7 +119,7 @@ serve(async (req) => {
         await listRecursive('');
         bucketResult.totalFiles = allFiles.length;
 
-        console.log(`Bucket ${bucketName}: ${allFiles.length} files found`);
+        console.log(`Bucket ${bucket}: ${allFiles.length} files found`);
 
         if (allFiles.length === 0) {
           results.push(bucketResult);
@@ -137,33 +127,33 @@ serve(async (req) => {
         }
 
         if (dryRun) {
-          // In dry run mode, just count files
-          bucketResult.deleted = allFiles.length; // Would delete this many
-          console.log(`[DRY RUN] Would delete ${allFiles.length} files from ${bucketName}`);
+          bucketResult.deleted = allFiles.length;
+          console.log(`[DRY RUN] Would delete ${allFiles.length} files from ${bucket}`);
         } else {
-          // Actually delete files in batches
-          const batchSize = 100;
+          // Delete in small batches
           for (let i = 0; i < allFiles.length; i += batchSize) {
             const batch = allFiles.slice(i, i + batchSize);
             
+            console.log(`Deleting batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(allFiles.length / batchSize)} from ${bucket} (${batch.length} files)`);
+            
             const { error: deleteError } = await supabaseAdmin
               .storage
-              .from(bucketName)
+              .from(bucket)
               .remove(batch);
 
             if (deleteError) {
-              console.error(`Error deleting batch from ${bucketName}:`, deleteError);
+              console.error(`Error deleting batch from ${bucket}:`, deleteError);
               bucketResult.errors.push({ 
                 file: `batch ${Math.floor(i / batchSize) + 1}`, 
                 error: deleteError.message 
               });
             } else {
               bucketResult.deleted += batch.length;
-              console.log(`Deleted ${batch.length} files from ${bucketName} (${bucketResult.deleted}/${allFiles.length})`);
+              console.log(`Deleted ${bucketResult.deleted}/${allFiles.length} from ${bucket}`);
             }
 
-            // Small delay between batches
-            await new Promise(resolve => setTimeout(resolve, 100));
+            // Small delay between batches to avoid rate limiting
+            await new Promise(resolve => setTimeout(resolve, 200));
           }
         }
 
@@ -171,8 +161,8 @@ serve(async (req) => {
 
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        console.error(`Error processing bucket ${bucketName}:`, error);
-        bucketResult.errors.push({ file: bucketName, error: errorMessage });
+        console.error(`Error processing bucket ${bucket}:`, error);
+        bucketResult.errors.push({ file: bucket, error: errorMessage });
       }
 
       results.push(bucketResult);
