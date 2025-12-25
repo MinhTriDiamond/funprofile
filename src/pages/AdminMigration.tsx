@@ -617,9 +617,13 @@ const AdminMigration = () => {
       setCleanupResult(null);
     }
 
+    // Create AbortController with 3-minute timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 minutes
+
     try {
       const bucketLabel = specificBucket || 'tất cả buckets';
-      toast.info(dryRun ? `🔍 Đang kiểm tra ${bucketLabel}...` : `🗑️ Đang xóa ${bucketLabel}...`);
+      toast.info(dryRun ? `🔍 Đang kiểm tra ${bucketLabel}...` : `🗑️ Đang xóa ${bucketLabel}... (tối đa 3 phút)`);
 
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -638,10 +642,13 @@ const AdminMigration = () => {
           body: JSON.stringify({ 
             dryRun,
             bucket: specificBucket || null,
-            batchSize: 50
+            batchSize: 30 // Smaller batch for faster response
           }),
+          signal: controller.signal,
         }
       );
+
+      clearTimeout(timeoutId);
 
       const data = await response.json();
 
@@ -663,9 +670,14 @@ const AdminMigration = () => {
       }
 
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.error('Cleanup error:', error);
-      toast.error(`❌ Lỗi: ${errorMessage}`);
+      clearTimeout(timeoutId);
+      if (error instanceof Error && error.name === 'AbortError') {
+        toast.error('⏱️ Timeout! Thử xóa từng bucket riêng để tránh timeout.');
+      } else {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        console.error('Cleanup error:', error);
+        toast.error(`❌ Lỗi: ${errorMessage}`);
+      }
     } finally {
       setCleaningStorage(false);
     }
