@@ -51,7 +51,6 @@ const fetchPostStats = async (postIds: string[]): Promise<Record<string, PostSta
         .in('original_post_id', postIds),
     ]);
 
-    // Log errors but don't throw - gracefully handle partial data
     if (reactionsRes.error) console.error('Reactions fetch error:', reactionsRes.error);
     if (commentsRes.error) console.error('Comments fetch error:', commentsRes.error);
     if (sharesRes.error) console.error('Shares fetch error:', sharesRes.error);
@@ -73,7 +72,6 @@ const fetchPostStats = async (postIds: string[]): Promise<Record<string, PostSta
     return stats;
   } catch (error) {
     console.error('Error fetching post stats:', error);
-    // Return empty stats for all posts on error
     return postIds.reduce((acc, id) => {
       acc[id] = { reactions: [], commentCount: 0, shareCount: 0 };
       return acc;
@@ -82,27 +80,24 @@ const fetchPostStats = async (postIds: string[]): Promise<Record<string, PostSta
 };
 
 // Fetch a page of posts with cursor-based pagination
-const fetchFeedPage = async ({ pageParam }: { pageParam: string | null }): Promise<FeedPage> => {
+const fetchFeedPage = async (cursor: string | null): Promise<FeedPage> => {
   let query = supabase
     .from('posts')
     .select(`*, profiles!posts_user_id_fkey (username, avatar_url)`)
     .order('created_at', { ascending: false })
-    .limit(POSTS_PER_PAGE + 1); // Fetch one extra to check if there are more
+    .limit(POSTS_PER_PAGE + 1);
 
-  // If we have a cursor, fetch posts older than the cursor
-  if (pageParam) {
-    query = query.lt('created_at', pageParam);
+  if (cursor) {
+    query = query.lt('created_at', cursor);
   }
 
   const { data: posts, error } = await query;
 
   if (error) throw error;
 
-  // Check if there are more posts
   const hasMore = (posts?.length || 0) > POSTS_PER_PAGE;
   const postsToReturn = hasMore ? posts?.slice(0, POSTS_PER_PAGE) : posts;
 
-  // Cast media_urls from Json to proper type
   const postsData: FeedPost[] = (postsToReturn || []).map(post => ({
     ...post,
     media_urls: (post.media_urls as Array<{ url: string; type: 'image' | 'video' }>) || null,
@@ -111,7 +106,6 @@ const fetchFeedPage = async ({ pageParam }: { pageParam: string | null }): Promi
   const postIds = postsData.map(p => p.id);
   const postStats = await fetchPostStats(postIds);
 
-  // Next cursor is the created_at of the last post
   const nextCursor = hasMore && postsData.length > 0 
     ? postsData[postsData.length - 1].created_at 
     : null;
@@ -122,14 +116,14 @@ const fetchFeedPage = async ({ pageParam }: { pageParam: string | null }): Promi
 export const useFeedPosts = () => {
   const queryClient = useQueryClient();
 
-  const query = useInfiniteQuery({
+  const query = useInfiniteQuery<FeedPage, Error>({
     queryKey: ['feed-posts'],
-    queryFn: fetchFeedPage,
+    queryFn: ({ pageParam }) => fetchFeedPage(pageParam as string | null),
     initialPageParam: null as string | null,
-    getNextPageParam: (lastPage) => lastPage.nextCursor,
-    staleTime: 30 * 1000, // 30 seconds
-    gcTime: 5 * 60 * 1000, // 5 minutes
-    refetchOnWindowFocus: false, // Avoid refetching all pages on focus
+    getNextPageParam: (lastPage: FeedPage) => lastPage.nextCursor ?? undefined,
+    staleTime: 30 * 1000,
+    gcTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
     retry: 2,
   });
 
@@ -137,7 +131,6 @@ export const useFeedPosts = () => {
     queryClient.invalidateQueries({ queryKey: ['feed-posts'] });
   }, [queryClient]);
 
-  // Subscribe to realtime updates for posts
   useEffect(() => {
     const channel = supabase
       .channel('feed-posts-realtime')
@@ -145,7 +138,6 @@ export const useFeedPosts = () => {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'posts' },
         () => {
-          // Only invalidate on new posts
           queryClient.invalidateQueries({ queryKey: ['feed-posts'] });
         }
       )
@@ -163,9 +155,8 @@ export const useFeedPosts = () => {
     };
   }, [queryClient]);
 
-  // Flatten all pages into a single array of posts and merge stats
-  const allPosts = query.data?.pages.flatMap(page => page.posts) || [];
-  const allPostStats = query.data?.pages.reduce((acc, page) => {
+  const allPosts = query.data?.pages?.flatMap(page => page.posts) || [];
+  const allPostStats = query.data?.pages?.reduce((acc, page) => {
     return { ...acc, ...page.postStats };
   }, {} as Record<string, PostStats>) || {};
 
@@ -174,7 +165,7 @@ export const useFeedPosts = () => {
     postStats: allPostStats,
     isLoading: query.isLoading,
     isFetchingNextPage: query.isFetchingNextPage,
-    hasNextPage: query.hasNextPage,
+    hasNextPage: query.hasNextPage ?? false,
     fetchNextPage: query.fetchNextPage,
     refetch,
   };
