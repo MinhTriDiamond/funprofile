@@ -9,6 +9,7 @@ import { StoriesBar } from '@/components/feed/StoriesBar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFeedPosts } from '@/hooks/useFeedPosts';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
+import ScrollToTopButton from '@/components/common/ScrollToTopButton';
 import { Loader2 } from 'lucide-react';
 
 // Lightweight skeleton components
@@ -169,6 +170,9 @@ const Feed = () => {
 
       {/* Mobile Bottom Navigation */}
       <MobileBottomNav />
+
+      {/* Scroll to top button */}
+      <ScrollToTopButton />
     </div>
   );
 };
