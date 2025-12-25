@@ -133,12 +133,13 @@ export const MediaGrid = memo(({ media: initialMedia }: MediaGridProps) => {
     );
   }
 
-  // Three media
+  // Three media - Image 1 on top left, Image 2 on top right, Image 3 on bottom left
   if (media.length === 3) {
     return (
       <>
-        <div className="grid grid-cols-2 gap-1">
-          <div className="row-span-2 aspect-square overflow-hidden">
+        <div className="grid grid-cols-2 grid-rows-2 gap-1">
+          {/* Image 1 - Top left */}
+          <div className="aspect-square overflow-hidden">
             {media[0].type === 'video' ? (
               <div onClick={() => handleClick(0)} className="cursor-pointer h-full">
                 <LazyVideo
@@ -161,31 +162,54 @@ export const MediaGrid = memo(({ media: initialMedia }: MediaGridProps) => {
               </div>
             )}
           </div>
-          {media.slice(1).map((item, index) => (
-            <div key={item.url} className="aspect-square overflow-hidden">
-              {item.type === 'video' ? (
-                <div onClick={() => handleClick(index + 1)} className="cursor-pointer h-full">
-                  <LazyVideo
-                    src={item.url}
-                    className="w-full h-full object-cover"
-                    showControls
-                    muted
-                    onError={() => handleMediaError(item.url)}
-                  />
-                </div>
-              ) : (
-                <div onClick={() => handleClick(index + 1)} className="cursor-pointer h-full">
-                  <LazyImage
-                    src={item.url}
-                    alt={`Media ${index + 2}`}
-                    className="w-full h-full hover:opacity-95"
-                    hideOnError
-                    onLoadError={() => handleMediaError(item.url)}
-                  />
-                </div>
-              )}
-            </div>
-          ))}
+          {/* Image 2 - Top right, spans 2 rows */}
+          <div className="row-span-2 aspect-auto overflow-hidden">
+            {media[1].type === 'video' ? (
+              <div onClick={() => handleClick(1)} className="cursor-pointer h-full">
+                <LazyVideo
+                  src={media[1].url}
+                  className="w-full h-full object-cover"
+                  showControls
+                  muted
+                  onError={() => handleMediaError(media[1].url)}
+                />
+              </div>
+            ) : (
+              <div onClick={() => handleClick(1)} className="cursor-pointer h-full">
+                <LazyImage
+                  src={media[1].url}
+                  alt="Media 2"
+                  className="w-full h-full hover:opacity-95"
+                  hideOnError
+                  onLoadError={() => handleMediaError(media[1].url)}
+                />
+              </div>
+            )}
+          </div>
+          {/* Image 3 - Bottom left */}
+          <div className="aspect-square overflow-hidden">
+            {media[2].type === 'video' ? (
+              <div onClick={() => handleClick(2)} className="cursor-pointer h-full">
+                <LazyVideo
+                  src={media[2].url}
+                  className="w-full h-full object-cover"
+                  showControls
+                  muted
+                  onError={() => handleMediaError(media[2].url)}
+                />
+              </div>
+            ) : (
+              <div onClick={() => handleClick(2)} className="cursor-pointer h-full">
+                <LazyImage
+                  src={media[2].url}
+                  alt="Media 3"
+                  className="w-full h-full hover:opacity-95"
+                  hideOnError
+                  onLoadError={() => handleMediaError(media[2].url)}
+                />
+              </div>
+            )}
+          </div>
         </div>
         <MediaGalleryViewer
           media={media}
