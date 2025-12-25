@@ -29,3 +29,6 @@ verify_jwt = true
 
 [functions.cleanup-supabase-storage]
 verify_jwt = true
+
+[functions.image-transform]
+verify_jwt = false
