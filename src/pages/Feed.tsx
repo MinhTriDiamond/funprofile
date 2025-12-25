@@ -1,4 +1,4 @@
-import { useEffect, useState, memo } from 'react';
+import { useEffect, useState, memo, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
 import { FacebookCreatePost } from '@/components/feed/FacebookCreatePost';
@@ -9,6 +9,8 @@ import { StoriesBar } from '@/components/feed/StoriesBar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFeedPosts } from '@/hooks/useFeedPosts';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
+import { Loader2 } from 'lucide-react';
+
 // Lightweight skeleton components
 const SidebarSkeleton = memo(() => (
   <div className="space-y-3">
@@ -40,7 +42,39 @@ PostSkeleton.displayName = 'PostSkeleton';
 
 const Feed = () => {
   const [currentUserId, setCurrentUserId] = useState('');
-  const { posts, postStats, isLoading, refetch } = useFeedPosts();
+  const { 
+    posts, 
+    postStats, 
+    isLoading, 
+    isFetchingNextPage, 
+    hasNextPage, 
+    fetchNextPage, 
+    refetch 
+  } = useFeedPosts();
+
+  // Intersection observer for infinite scroll
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  const handleObserver = useCallback((entries: IntersectionObserverEntry[]) => {
+    const [entry] = entries;
+    if (entry.isIntersecting && hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(handleObserver, {
+      root: null,
+      rootMargin: '200px', // Start loading before reaching the end
+      threshold: 0,
+    });
+
+    if (loadMoreRef.current) {
+      observer.observe(loadMoreRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [handleObserver]);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -104,6 +138,21 @@ const Feed = () => {
                       initialStats={postStats[post.id]}
                     />
                   ))}
+
+                  {/* Infinite scroll trigger */}
+                  <div ref={loadMoreRef} className="py-4">
+                    {isFetchingNextPage && (
+                      <div className="flex justify-center items-center gap-2 text-muted-foreground">
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <span>Đang tải thêm bài viết...</span>
+                      </div>
+                    )}
+                    {!hasNextPage && posts.length > 0 && (
+                      <div className="text-center text-muted-foreground text-sm py-2">
+                        Bạn đã xem hết tất cả bài viết 🎉
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>

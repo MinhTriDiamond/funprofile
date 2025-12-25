@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -22,10 +22,13 @@ export interface FeedPost {
   };
 }
 
-interface FeedData {
+interface FeedPage {
   posts: FeedPost[];
   postStats: Record<string, PostStats>;
+  nextCursor: string | null;
 }
+
+const POSTS_PER_PAGE = 10;
 
 // Batch fetch all post stats in parallel
 const fetchPostStats = async (postIds: string[]): Promise<Record<string, PostStats>> => {
@@ -78,18 +81,29 @@ const fetchPostStats = async (postIds: string[]): Promise<Record<string, PostSta
   }
 };
 
-// Main fetch function
-const fetchFeedData = async (): Promise<FeedData> => {
-  const { data: posts, error } = await supabase
+// Fetch a page of posts with cursor-based pagination
+const fetchFeedPage = async ({ pageParam }: { pageParam: string | null }): Promise<FeedPage> => {
+  let query = supabase
     .from('posts')
     .select(`*, profiles!posts_user_id_fkey (username, avatar_url)`)
     .order('created_at', { ascending: false })
-    .limit(20);
+    .limit(POSTS_PER_PAGE + 1); // Fetch one extra to check if there are more
+
+  // If we have a cursor, fetch posts older than the cursor
+  if (pageParam) {
+    query = query.lt('created_at', pageParam);
+  }
+
+  const { data: posts, error } = await query;
 
   if (error) throw error;
 
+  // Check if there are more posts
+  const hasMore = (posts?.length || 0) > POSTS_PER_PAGE;
+  const postsToReturn = hasMore ? posts?.slice(0, POSTS_PER_PAGE) : posts;
+
   // Cast media_urls from Json to proper type
-  const postsData: FeedPost[] = (posts || []).map(post => ({
+  const postsData: FeedPost[] = (postsToReturn || []).map(post => ({
     ...post,
     media_urls: (post.media_urls as Array<{ url: string; type: 'image' | 'video' }>) || null,
   }));
@@ -97,19 +111,26 @@ const fetchFeedData = async (): Promise<FeedData> => {
   const postIds = postsData.map(p => p.id);
   const postStats = await fetchPostStats(postIds);
 
-  return { posts: postsData, postStats };
+  // Next cursor is the created_at of the last post
+  const nextCursor = hasMore && postsData.length > 0 
+    ? postsData[postsData.length - 1].created_at 
+    : null;
+
+  return { posts: postsData, postStats, nextCursor };
 };
 
 export const useFeedPosts = () => {
   const queryClient = useQueryClient();
 
-  const query = useQuery({
+  const query = useInfiniteQuery({
     queryKey: ['feed-posts'],
-    queryFn: fetchFeedData,
-    staleTime: 30 * 1000, // 30 seconds - more responsive to changes
+    queryFn: fetchFeedPage,
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    staleTime: 30 * 1000, // 30 seconds
     gcTime: 5 * 60 * 1000, // 5 minutes
-    refetchOnWindowFocus: true, // Refetch when user returns to tab
-    retry: 2, // Retry failed requests
+    refetchOnWindowFocus: false, // Avoid refetching all pages on focus
+    retry: 2,
   });
 
   const refetch = useCallback(() => {
@@ -122,9 +143,16 @@ export const useFeedPosts = () => {
       .channel('feed-posts-realtime')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'posts' },
+        { event: 'INSERT', schema: 'public', table: 'posts' },
         () => {
-          // Invalidate cache on post changes
+          // Only invalidate on new posts
+          queryClient.invalidateQueries({ queryKey: ['feed-posts'] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'posts' },
+        () => {
           queryClient.invalidateQueries({ queryKey: ['feed-posts'] });
         }
       )
@@ -135,10 +163,19 @@ export const useFeedPosts = () => {
     };
   }, [queryClient]);
 
+  // Flatten all pages into a single array of posts and merge stats
+  const allPosts = query.data?.pages.flatMap(page => page.posts) || [];
+  const allPostStats = query.data?.pages.reduce((acc, page) => {
+    return { ...acc, ...page.postStats };
+  }, {} as Record<string, PostStats>) || {};
+
   return {
-    posts: query.data?.posts || [],
-    postStats: query.data?.postStats || {},
+    posts: allPosts,
+    postStats: allPostStats,
     isLoading: query.isLoading,
+    isFetchingNextPage: query.isFetchingNextPage,
+    hasNextPage: query.hasNextPage,
+    fetchNextPage: query.fetchNextPage,
     refetch,
   };
 };
