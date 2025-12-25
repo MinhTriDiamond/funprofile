@@ -67,9 +67,9 @@ function App() {
                   <Route path="/about" element={<About />} />
                   <Route path="/leaderboard" element={<Leaderboard />} />
                   <Route path="/admin/migration" element={<AdminMigration />} />
+                  <Route path="/admin/media-test" element={<MediaTestSandbox />} />
                   <Route path="/admin" element={<Admin />} />
                   <Route path="/notifications" element={<Notifications />} />
-                  <Route path="/admin/media-test" element={<MediaTestSandbox />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </LawOfLightGuard>
