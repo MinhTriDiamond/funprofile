@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
-import { Loader2, Database, CheckCircle, XCircle, AlertTriangle, SkipForward, StopCircle } from 'lucide-react';
+import { Loader2, Database, CheckCircle, XCircle, AlertTriangle, SkipForward, StopCircle, Wrench } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface MigrationResult {
@@ -16,15 +16,24 @@ interface MigrationResult {
   errors: Array<{ url: string; error: string }>;
 }
 
+interface FixUrlResult {
+  total: number;
+  fixed: number;
+  errors: Array<{ url: string; error: string }>;
+  details?: Array<{ table: string; field: string; oldUrl: string; newUrl: string }>;
+}
+
 const AdminMigration = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [migrating, setMigrating] = useState(false);
   const [repairing, setRepairing] = useState(false);
+  const [fixingUrls, setFixingUrls] = useState(false);
   const [progress, setProgress] = useState(0);
   const [currentFile, setCurrentFile] = useState('');
   const [result, setResult] = useState<MigrationResult | null>(null);
+  const [fixUrlResult, setFixUrlResult] = useState<FixUrlResult | null>(null);
   
   // Skip/Stop controls
   const skipCurrentRef = useRef(false);
@@ -533,6 +542,61 @@ const AdminMigration = () => {
     }
   };
 
+  // Fix Cloudflare Dashboard URLs
+  const runFixCloudflareUrls = async () => {
+    setFixingUrls(true);
+    setFixUrlResult(null);
+
+    try {
+      toast.info('🔧 Đang sửa URLs dash.cloudflare.com...');
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('Vui lòng đăng nhập lại');
+        return;
+      }
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fix-cloudflare-urls`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fix URLs');
+      }
+
+      setFixUrlResult({
+        total: data.total,
+        fixed: data.fixed,
+        errors: data.errors || [],
+        details: data.details,
+      });
+
+      if (data.total === 0) {
+        toast.success('✅ Không có URLs nào cần sửa!');
+      } else if (data.errors?.length === 0) {
+        toast.success(`🎉 Đã sửa ${data.fixed} URLs thành công!`);
+      } else {
+        toast.warning(`⚠️ Đã sửa ${data.fixed}/${data.total} URLs với ${data.errors.length} lỗi`);
+      }
+
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Fix URLs error:', error);
+      toast.error(`❌ Lỗi: ${errorMessage}`);
+    } finally {
+      setFixingUrls(false);
+    }
+  };
+
   const runMigration = async () => {
     setMigrating(true);
     setProgress(0);
@@ -826,6 +890,108 @@ const AdminMigration = () => {
                       Dừng lại
                     </Button>
                   </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Fix Cloudflare Dashboard URLs Card */}
+          <Card className="border-2 border-orange-500">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Wrench className="w-5 h-5 text-orange-500" />
+                🔧 Fix Cloudflare Dashboard URLs
+              </CardTitle>
+              <CardDescription>
+                Sửa các URLs đang trỏ về dash.cloudflare.com thay vì R2 public URL
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="bg-orange-50 rounded-lg p-4 space-y-2">
+                <h4 className="font-medium text-orange-700">🔍 Vấn đề:</h4>
+                <p className="text-sm text-orange-600">
+                  Có {71} URLs đang trỏ về <code className="bg-orange-100 px-1 rounded">dash.cloudflare.com</code> thay vì R2 public URL đúng.
+                </p>
+                <h4 className="font-medium text-orange-700 mt-2">✨ Giải pháp:</h4>
+                <ul className="text-sm text-orange-600 space-y-1">
+                  <li>✅ Tự động trích xuất path từ URL sai</li>
+                  <li>✅ Tạo URL đúng với R2 public domain</li>
+                  <li>✅ Cập nhật database</li>
+                </ul>
+              </div>
+
+              <div className="bg-muted/50 rounded-lg p-3 text-xs font-mono">
+                <div className="text-red-600 truncate">❌ https://dash.cloudflare.com/.../buckets/fun-rich-media/posts/...</div>
+                <div className="text-green-600 truncate mt-1">✅ https://pub-xxx.r2.dev/posts/...</div>
+              </div>
+
+              <Button 
+                onClick={runFixCloudflareUrls}
+                disabled={fixingUrls || migrating || repairing}
+                className="w-full bg-orange-500 hover:bg-orange-600"
+                size="lg"
+              >
+                {fixingUrls ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Đang sửa URLs...
+                  </>
+                ) : (
+                  <>
+                    <Wrench className="w-4 h-4 mr-2" />
+                    🔧 Fix Cloudflare Dashboard URLs
+                  </>
+                )}
+              </Button>
+
+              {fixUrlResult && (
+                <div className="space-y-3 mt-4">
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg text-center">
+                      <div className="text-xl font-bold text-blue-600">{fixUrlResult.total}</div>
+                      <div className="text-xs text-muted-foreground">Tổng URLs</div>
+                    </div>
+                    <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg text-center">
+                      <div className="text-xl font-bold text-green-600 flex items-center justify-center gap-1">
+                        <CheckCircle className="w-4 h-4" />
+                        {fixUrlResult.fixed}
+                      </div>
+                      <div className="text-xs text-muted-foreground">Đã sửa</div>
+                    </div>
+                    <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-center">
+                      <div className="text-xl font-bold text-red-600 flex items-center justify-center gap-1">
+                        <XCircle className="w-4 h-4" />
+                        {fixUrlResult.errors.length}
+                      </div>
+                      <div className="text-xs text-muted-foreground">Lỗi</div>
+                    </div>
+                  </div>
+
+                  {fixUrlResult.total === 0 && (
+                    <Alert className="bg-green-500/10 border-green-500/20">
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                      <AlertDescription className="text-green-700">
+                        ✅ Không có URLs nào cần sửa!
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {fixUrlResult.errors.length > 0 && (
+                    <div className="space-y-2">
+                      <h4 className="font-medium text-red-600 flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4" />
+                        URLs gặp lỗi:
+                      </h4>
+                      <div className="max-h-32 overflow-y-auto space-y-2">
+                        {fixUrlResult.errors.map((err, idx) => (
+                          <div key={idx} className="text-xs bg-red-50 p-2 rounded border border-red-200">
+                            <div className="font-mono truncate text-red-800">{err.url}</div>
+                            <div className="text-red-600">{err.error}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>
