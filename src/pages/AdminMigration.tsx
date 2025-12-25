@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
-import { Loader2, Database, CheckCircle, XCircle, AlertTriangle, SkipForward, StopCircle, Wrench } from 'lucide-react';
+import { Loader2, Database, CheckCircle, XCircle, AlertTriangle, SkipForward, StopCircle, Wrench, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface MigrationResult {
@@ -23,6 +23,18 @@ interface FixUrlResult {
   details?: Array<{ table: string; field: string; oldUrl: string; newUrl: string }>;
 }
 
+interface CleanupResult {
+  dryRun: boolean;
+  totalFiles: number;
+  totalDeleted: number;
+  buckets: Array<{
+    bucket: string;
+    totalFiles: number;
+    deleted: number;
+    errors: Array<{ file: string; error: string }>;
+  }>;
+}
+
 const AdminMigration = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -30,10 +42,12 @@ const AdminMigration = () => {
   const [migrating, setMigrating] = useState(false);
   const [repairing, setRepairing] = useState(false);
   const [fixingUrls, setFixingUrls] = useState(false);
+  const [cleaningStorage, setCleaningStorage] = useState(false);
   const [progress, setProgress] = useState(0);
   const [currentFile, setCurrentFile] = useState('');
   const [result, setResult] = useState<MigrationResult | null>(null);
   const [fixUrlResult, setFixUrlResult] = useState<FixUrlResult | null>(null);
+  const [cleanupResult, setCleanupResult] = useState<CleanupResult | null>(null);
   
   // Skip/Stop controls
   const skipCurrentRef = useRef(false);
@@ -597,6 +611,59 @@ const AdminMigration = () => {
     }
   };
 
+  const runCleanupStorage = async (dryRun: boolean) => {
+    setCleaningStorage(true);
+    setCleanupResult(null);
+
+    try {
+      toast.info(dryRun ? '🔍 Đang kiểm tra files trên Supabase Storage...' : '🗑️ Đang xóa files trên Supabase Storage...');
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('Vui lòng đăng nhập lại');
+        return;
+      }
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/cleanup-supabase-storage`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ dryRun }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to cleanup storage');
+      }
+
+      setCleanupResult({
+        dryRun: data.dryRun,
+        totalFiles: data.totalFiles,
+        totalDeleted: data.totalDeleted,
+        buckets: data.buckets || [],
+      });
+
+      if (dryRun) {
+        toast.info(`📊 Tìm thấy ${data.totalFiles} files có thể xóa`);
+      } else {
+        toast.success(`🎉 Đã xóa ${data.totalDeleted} files thành công!`);
+      }
+
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Cleanup error:', error);
+      toast.error(`❌ Lỗi: ${errorMessage}`);
+    } finally {
+      setCleaningStorage(false);
+    }
+  };
+
   const runMigration = async () => {
     setMigrating(true);
     setProgress(0);
@@ -992,6 +1059,99 @@ const AdminMigration = () => {
                       </div>
                     </div>
                   )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Cleanup Supabase Storage Card */}
+          <Card className="border-2 border-red-500">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Trash2 className="w-5 h-5 text-red-500" />
+                🗑️ Xóa Supabase Storage
+              </CardTitle>
+              <CardDescription>
+                Xóa tất cả files cũ trên Supabase Storage sau khi migration hoàn tất
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Alert className="bg-red-50 border-red-200">
+                <AlertTriangle className="h-4 w-4 text-red-600" />
+                <AlertDescription className="text-red-700">
+                  <strong>⚠️ CẢNH BÁO:</strong> Hành động này không thể hoàn tác! Chỉ thực hiện sau khi đã xác nhận tất cả files đã được migrate sang R2.
+                </AlertDescription>
+              </Alert>
+
+              <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                <h4 className="font-medium text-gray-700">📋 Buckets sẽ được xóa:</h4>
+                <ul className="text-sm text-gray-600 space-y-1">
+                  <li>• <code className="bg-gray-200 px-1 rounded">posts</code> - Ảnh/video bài viết</li>
+                  <li>• <code className="bg-gray-200 px-1 rounded">videos</code> - Video riêng</li>
+                  <li>• <code className="bg-gray-200 px-1 rounded">avatars</code> - Avatar và cover</li>
+                  <li>• <code className="bg-gray-200 px-1 rounded">comment-media</code> - Media trong comments</li>
+                </ul>
+              </div>
+
+              <div className="flex gap-3">
+                <Button 
+                  onClick={() => runCleanupStorage(true)}
+                  disabled={cleaningStorage || migrating || repairing}
+                  className="flex-1"
+                  variant="outline"
+                  size="lg"
+                >
+                  {cleaningStorage ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Đang kiểm tra...
+                    </>
+                  ) : (
+                    <>
+                      <Database className="w-4 h-4 mr-2" />
+                      🔍 Kiểm tra trước (Preview)
+                    </>
+                  )}
+                </Button>
+
+                <Button 
+                  onClick={() => {
+                    if (window.confirm('⚠️ BẠN CÓ CHẮC CHẮN MUỐN XÓA TẤT CẢ FILES TRÊN SUPABASE STORAGE?\n\nHành động này KHÔNG THỂ HOÀN TÁC!')) {
+                      runCleanupStorage(false);
+                    }
+                  }}
+                  disabled={cleaningStorage || migrating || repairing}
+                  className="flex-1 bg-red-600 hover:bg-red-700"
+                  size="lg"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  🗑️ Xóa tất cả
+                </Button>
+              </div>
+
+              {cleanupResult && (
+                <div className="space-y-3 mt-4">
+                  <Alert className={cleanupResult.dryRun ? "bg-blue-50 border-blue-200" : "bg-green-50 border-green-200"}>
+                    <Database className={`h-4 w-4 ${cleanupResult.dryRun ? 'text-blue-600' : 'text-green-600'}`} />
+                    <AlertDescription className={cleanupResult.dryRun ? 'text-blue-700' : 'text-green-700'}>
+                      {cleanupResult.dryRun 
+                        ? `🔍 Preview: Tìm thấy ${cleanupResult.totalFiles} files có thể xóa`
+                        : `✅ Đã xóa ${cleanupResult.totalDeleted} files thành công!`
+                      }
+                    </AlertDescription>
+                  </Alert>
+
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {cleanupResult.buckets.map((bucket, idx) => (
+                      <div key={idx} className="p-3 bg-gray-50 border rounded-lg text-center">
+                        <div className="text-lg font-bold text-gray-700">{bucket.totalFiles}</div>
+                        <div className="text-xs text-muted-foreground font-mono">{bucket.bucket}</div>
+                        {bucket.errors.length > 0 && (
+                          <div className="text-xs text-red-500 mt-1">{bucket.errors.length} lỗi</div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </CardContent>
