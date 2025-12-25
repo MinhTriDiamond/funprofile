@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect, VideoHTMLAttributes, memo } from 'react';
 import { cn } from '@/lib/utils';
 import { isSlowConnection, prefersReducedMotion } from '@/utils/performanceOptimizer';
+import { isStreamUrl } from '@/utils/streamUpload';
+import { StreamPlayer } from './StreamPlayer';
 
 interface LazyVideoProps extends VideoHTMLAttributes<HTMLVideoElement> {
   src: string;
@@ -12,6 +14,7 @@ interface LazyVideoProps extends VideoHTMLAttributes<HTMLVideoElement> {
 /**
  * High-performance lazy video component
  * - Lazy loads video only when in viewport
+ * - Auto-detects Cloudflare Stream URLs and uses HLS player
  * - Preload="none" to save bandwidth
  * - Respects reduced motion preference
  * - Slow connection handling
@@ -35,6 +38,9 @@ export const LazyVideo = memo(({
   const [hasError, setHasError] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Check if this is a Cloudflare Stream video
+  const isStream = isStreamUrl(src);
 
   // Detect slow connection or reduced motion
   const slowConnection = isSlowConnection();
@@ -80,6 +86,16 @@ export const LazyVideo = memo(({
     onError?.(e);
   };
 
+  const handleStreamError = () => {
+    setHasError(true);
+    setShowPlaceholder(false);
+  };
+
+  const handleStreamReady = () => {
+    setIsLoaded(true);
+    setShowPlaceholder(false);
+  };
+
   // Hide completely if error and hideOnError is true
   if (hasError && hideOnError) {
     return null;
@@ -111,24 +127,41 @@ export const LazyVideo = memo(({
 
       {/* Video element */}
       {isInView && (
-        <video
-          ref={videoRef}
-          src={src}
-          poster={poster}
-          controls={showControls}
-          muted={muted}
-          loop={loop}
-          playsInline
-          preload="none"
-          onLoadedData={handleLoadedData}
-          onCanPlay={handleCanPlay}
-          onError={handleError}
-          className={cn(
-            'w-full h-full object-cover transition-opacity duration-300',
-            isLoaded ? 'opacity-100' : 'opacity-0'
-          )}
-          {...props}
-        />
+        isStream ? (
+          <StreamPlayer
+            src={src}
+            poster={poster}
+            className={cn(
+              'w-full h-full transition-opacity duration-300',
+              isLoaded ? 'opacity-100' : 'opacity-0'
+            )}
+            autoPlay={autoPlay && !reducedMotion}
+            muted={muted}
+            loop={loop}
+            controls={showControls}
+            onError={handleStreamError}
+            onReady={handleStreamReady}
+          />
+        ) : (
+          <video
+            ref={videoRef}
+            src={src}
+            poster={poster}
+            controls={showControls}
+            muted={muted}
+            loop={loop}
+            playsInline
+            preload="none"
+            onLoadedData={handleLoadedData}
+            onCanPlay={handleCanPlay}
+            onError={handleError}
+            className={cn(
+              'w-full h-full object-cover transition-opacity duration-300',
+              isLoaded ? 'opacity-100' : 'opacity-0'
+            )}
+            {...props}
+          />
+        )
       )}
     </div>
   );

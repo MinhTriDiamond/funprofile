@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 import { uploadToR2 } from '@/utils/r2Upload';
+import { uploadToStream, StreamUploadProgress } from '@/utils/streamUpload';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -23,6 +24,7 @@ import { toast } from 'sonner';
 import { ImagePlus, Video, X, Loader2, Globe, Users, Lock, ChevronDown, UserPlus, MapPin, MoreHorizontal } from 'lucide-react';
 import { compressImage, FILE_LIMITS, getVideoDuration } from '@/utils/imageCompression';
 import { EmojiPicker } from './EmojiPicker';
+import { VideoUploadProgress, VideoUploadState } from './VideoUploadProgress';
 import { useLanguage } from '@/i18n/LanguageContext';
 
 interface FacebookCreatePostProps {
@@ -50,6 +52,9 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
   const [privacy, setPrivacy] = useState('public');
   const [isDragging, setIsDragging] = useState(false);
   const [showMediaUpload, setShowMediaUpload] = useState(false);
+  const [videoUploadState, setVideoUploadState] = useState<VideoUploadState>('idle');
+  const [videoUploadProgress, setVideoUploadProgress] = useState(0);
+  const [currentVideoName, setCurrentVideoName] = useState('');
 
   const PRIVACY_OPTIONS = [
     { value: 'public', label: language === 'vi' ? 'Công khai' : 'Public', icon: Globe, description: language === 'vi' ? 'Tất cả mọi người' : 'Everyone' },
@@ -180,17 +185,61 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Chưa đăng nhập');
 
-      // Upload all media items to R2
+      // Upload all media items
       const mediaUrls: Array<{ url: string; type: 'image' | 'video' }> = [];
       
       for (const item of mediaItems) {
-        const bucket = item.type === 'video' ? 'videos' : 'posts';
-        const result = await uploadToR2(item.file, bucket);
-        mediaUrls.push({
-          url: result.url,
-          type: item.type,
-        });
+        if (item.type === 'video') {
+          // Use Cloudflare Stream for videos
+          setCurrentVideoName(item.file.name);
+          setVideoUploadState('uploading');
+          setVideoUploadProgress(0);
+
+          try {
+            const result = await uploadToStream(
+              item.file,
+              (progress) => {
+                setVideoUploadProgress(progress.percentage);
+              },
+              (error) => {
+                console.error('Stream upload error:', error);
+              }
+            );
+
+            setVideoUploadState('processing');
+            
+            // Use the Stream playback URL
+            const streamUrl = `https://customer-bhtsnervqiwchluwuxki.cloudflarestream.com/${result.uid}/manifest/video.m3u8`;
+            mediaUrls.push({
+              url: streamUrl,
+              type: 'video',
+            });
+
+            setVideoUploadState('ready');
+          } catch (error) {
+            console.error('Stream upload failed, falling back to R2:', error);
+            setVideoUploadState('error');
+            
+            // Fallback to R2 upload
+            const r2Result = await uploadToR2(item.file, 'videos');
+            mediaUrls.push({
+              url: r2Result.url,
+              type: 'video',
+            });
+          }
+        } else {
+          // Use R2 for images
+          const result = await uploadToR2(item.file, 'posts');
+          mediaUrls.push({
+            url: result.url,
+            type: 'image',
+          });
+        }
       }
+
+      // Reset video upload state
+      setVideoUploadState('idle');
+      setVideoUploadProgress(0);
 
       // For backward compatibility, also set first image/video in legacy fields
       const firstImage = mediaUrls.find((m) => m.type === 'image');
@@ -215,6 +264,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
       toast.success('Đã đăng bài viết!');
       onPostCreated();
     } catch (error: any) {
+      setVideoUploadState('idle');
       toast.error(error.message || 'Không thể đăng bài');
     } finally {
       setLoading(false);
@@ -431,6 +481,15 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
                           {mediaItems.length}/80
                         </span>
                       </div>
+                    )}
+
+                    {/* Video Upload Progress */}
+                    {videoUploadState !== 'idle' && (
+                      <VideoUploadProgress
+                        state={videoUploadState}
+                        progress={videoUploadProgress}
+                        fileName={currentVideoName}
+                      />
                     )}
                   </div>
                 )}

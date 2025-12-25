@@ -1,0 +1,253 @@
+import { useEffect, useRef, useState, memo } from 'react';
+import Hls from 'hls.js';
+import { cn } from '@/lib/utils';
+import { Play, Pause, Volume2, VolumeX, Maximize, Loader2 } from 'lucide-react';
+
+interface StreamPlayerProps {
+  src: string; // HLS manifest URL or Stream UID
+  poster?: string;
+  className?: string;
+  autoPlay?: boolean;
+  muted?: boolean;
+  loop?: boolean;
+  controls?: boolean;
+  onError?: (error: Error) => void;
+  onReady?: () => void;
+}
+
+/**
+ * HLS Video Player for Cloudflare Stream
+ * - Adaptive bitrate streaming
+ * - Fallback to native HLS for Safari
+ * - Custom controls
+ */
+export const StreamPlayer = memo(({
+  src,
+  poster,
+  className,
+  autoPlay = false,
+  muted = true,
+  loop = false,
+  controls = true,
+  onError,
+  onReady,
+}: StreamPlayerProps) => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const hlsRef = useRef<Hls | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isMuted, setIsMuted] = useState(muted);
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
+  const [showControls, setShowControls] = useState(false);
+
+  // Convert Stream UID to HLS URL if needed
+  const hlsUrl = src.includes('http') 
+    ? src 
+    : `https://customer-${src}.cloudflarestream.com/${src}/manifest/video.m3u8`;
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !src) return;
+
+    setIsLoading(true);
+    setHasError(false);
+
+    // Check if HLS.js is supported
+    if (Hls.isSupported()) {
+      const hls = new Hls({
+        enableWorker: true,
+        lowLatencyMode: false,
+        backBufferLength: 30,
+        maxBufferLength: 30,
+        maxMaxBufferLength: 60,
+      });
+
+      hlsRef.current = hls;
+
+      hls.loadSource(hlsUrl);
+      hls.attachMedia(video);
+
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        setIsLoading(false);
+        onReady?.();
+        if (autoPlay) {
+          video.play().catch(() => {
+            // Autoplay blocked
+          });
+        }
+      });
+
+      hls.on(Hls.Events.ERROR, (_, data) => {
+        if (data.fatal) {
+          console.error('[StreamPlayer] Fatal error:', data);
+          setHasError(true);
+          onError?.(new Error(data.details));
+          
+          if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+            // Try to recover from network errors
+            hls.startLoad();
+          } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+            hls.recoverMediaError();
+          }
+        }
+      });
+
+      return () => {
+        hls.destroy();
+        hlsRef.current = null;
+      };
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      // Safari native HLS support
+      video.src = hlsUrl;
+      
+      video.addEventListener('loadedmetadata', () => {
+        setIsLoading(false);
+        onReady?.();
+        if (autoPlay) {
+          video.play().catch(() => {});
+        }
+      });
+
+      video.addEventListener('error', () => {
+        setHasError(true);
+        onError?.(new Error('Video playback error'));
+      });
+    } else {
+      setHasError(true);
+      onError?.(new Error('HLS not supported'));
+    }
+  }, [src, hlsUrl, autoPlay, onError, onReady]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const handlePlay = () => setIsPlaying(true);
+    const handlePause = () => setIsPlaying(false);
+
+    video.addEventListener('play', handlePlay);
+    video.addEventListener('pause', handlePause);
+
+    return () => {
+      video.removeEventListener('play', handlePlay);
+      video.removeEventListener('pause', handlePause);
+    };
+  }, []);
+
+  const togglePlay = () => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    if (isPlaying) {
+      video.pause();
+    } else {
+      video.play().catch(() => {});
+    }
+  };
+
+  const toggleMute = () => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    video.muted = !video.muted;
+    setIsMuted(video.muted);
+  };
+
+  const toggleFullscreen = () => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      video.requestFullscreen?.();
+    }
+  };
+
+  if (hasError) {
+    return null;
+  }
+
+  return (
+    <div 
+      className={cn('relative bg-black group', className)}
+      onMouseEnter={() => setShowControls(true)}
+      onMouseLeave={() => setShowControls(false)}
+    >
+      <video
+        ref={videoRef}
+        poster={poster}
+        muted={muted}
+        loop={loop}
+        playsInline
+        className="w-full h-full object-contain"
+      />
+
+      {/* Loading overlay */}
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+          <Loader2 className="w-8 h-8 text-white animate-spin" />
+        </div>
+      )}
+
+      {/* Custom controls */}
+      {controls && !isLoading && (
+        <div 
+          className={cn(
+            'absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 to-transparent transition-opacity',
+            showControls || !isPlaying ? 'opacity-100' : 'opacity-0'
+          )}
+        >
+          <div className="flex items-center gap-3">
+            <button
+              onClick={togglePlay}
+              className="w-8 h-8 flex items-center justify-center text-white hover:text-primary transition-colors"
+            >
+              {isPlaying ? (
+                <Pause className="w-5 h-5" />
+              ) : (
+                <Play className="w-5 h-5" />
+              )}
+            </button>
+
+            <button
+              onClick={toggleMute}
+              className="w-8 h-8 flex items-center justify-center text-white hover:text-primary transition-colors"
+            >
+              {isMuted ? (
+                <VolumeX className="w-5 h-5" />
+              ) : (
+                <Volume2 className="w-5 h-5" />
+              )}
+            </button>
+
+            <div className="flex-1" />
+
+            <button
+              onClick={toggleFullscreen}
+              className="w-8 h-8 flex items-center justify-center text-white hover:text-primary transition-colors"
+            >
+              <Maximize className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Big play button */}
+      {!isPlaying && !isLoading && (
+        <button
+          onClick={togglePlay}
+          className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity"
+        >
+          <div className="w-16 h-16 rounded-full bg-white/90 flex items-center justify-center">
+            <Play className="w-8 h-8 text-black ml-1" />
+          </div>
+        </button>
+      )}
+    </div>
+  );
+});
+
+StreamPlayer.displayName = 'StreamPlayer';
+
+export default StreamPlayer;
