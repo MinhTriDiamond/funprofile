@@ -10,10 +10,14 @@
  */
 
 // Cloudflare zone domain with Image Resizing enabled
-const CF_ZONE_DOMAIN = 'https://fun.rich';
+// Use the same-zone R2 custom domain to avoid remote-origin allowlist 403s.
+const CF_ZONE_DOMAIN = 'https://media.fun.rich';
 
-// R2 public bucket URL
+// R2 public bucket URL (legacy dev URL)
 const R2_PUBLIC_URL = 'https://pub-e83e74b0726742fbb6a60bc08f95624b.r2.dev';
+
+// R2 production custom domain (recommended)
+const R2_CUSTOM_DOMAIN = 'https://media.fun.rich';
 
 export interface ImageTransformOptions {
   width?: number;
@@ -115,12 +119,12 @@ export function getTransformedImageUrl(
   options: ImageTransformOptions = {}
 ): string {
   if (!originalUrl) return '/placeholder.svg';
-  
+
   // Skip transformation for placeholder or data URLs
   if (originalUrl.startsWith('data:') || originalUrl === '/placeholder.svg') {
     return originalUrl;
   }
-  
+
   // Skip local assets
   if (originalUrl.startsWith('/') && !originalUrl.startsWith('//')) {
     return originalUrl;
@@ -132,16 +136,16 @@ export function getTransformedImageUrl(
     // Format: https://imagedelivery.net/{account_hash}/{image_id}/{variant}
     // We can change the variant based on preset
     const variantMap: Record<string, string> = {
-      'avatar': 'avatar',
+      avatar: 'avatar',
       'avatar-sm': 'avatar-sm',
       'avatar-lg': 'avatar-lg',
-      'cover': 'cover',
-      'thumbnail': 'thumbnail',
-      'post': 'public',
+      cover: 'cover',
+      thumbnail: 'thumbnail',
+      post: 'public',
       'post-grid': 'thumbnail',
-      'gallery': 'public',
+      gallery: 'public',
     };
-    
+
     if (options.preset && variantMap[options.preset]) {
       // Replace the variant in the URL
       const parts = originalUrl.split('/');
@@ -155,13 +159,31 @@ export function getTransformedImageUrl(
 
   // Build Cloudflare options string
   const cfOptions = buildCfOptions(options);
-  
+
   // If no options, return original
   if (!cfOptions) return originalUrl;
 
-  // Direct Cloudflare Image Resizing URL
-  // Format: https://fun.rich/cdn-cgi/image/{options}/{original_url}
-  return `${CF_ZONE_DOMAIN}/cdn-cgi/image/${cfOptions}/${originalUrl}`;
+  // Normalize R2 dev URL -> R2 custom domain (same zone) to avoid 403 from origin allowlist
+  let normalizedUrl = originalUrl;
+  try {
+    const u = new URL(originalUrl);
+    if (u.origin === R2_PUBLIC_URL || u.hostname.endsWith('r2.dev')) {
+      normalizedUrl = `${R2_CUSTOM_DOMAIN}${u.pathname}`;
+    }
+  } catch {
+    // ignore parse errors
+  }
+
+  // If the source is already on our R2 custom domain, use same-origin path mode:
+  // https://media.fun.rich/cdn-cgi/image/{options}/posts/...
+  if (normalizedUrl.startsWith(R2_CUSTOM_DOMAIN)) {
+    const u = new URL(normalizedUrl);
+    return `${CF_ZONE_DOMAIN}/cdn-cgi/image/${cfOptions}${u.pathname}`;
+  }
+
+  // Remote mode:
+  // https://media.fun.rich/cdn-cgi/image/{options}/https://external.com/img.jpg
+  return `${CF_ZONE_DOMAIN}/cdn-cgi/image/${cfOptions}/${normalizedUrl}`;
 }
 
 /**
