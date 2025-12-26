@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
+import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { FriendsList } from '@/components/friends/FriendsList';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -354,6 +355,9 @@ const Friends = () => {
           </div>
         </div>
       </main>
+      
+      {/* Mobile Bottom Navigation */}
+      <MobileBottomNav />
     </div>
   );
 };

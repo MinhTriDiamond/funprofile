@@ -11,6 +11,7 @@ import { formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/i18n/LanguageContext";
+import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 
 type NotificationFilter = "all" | "reactions" | "comments" | "shares" | "friends" | "system";
 
@@ -231,7 +232,7 @@ const Notifications = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-20 lg:pb-0">
       {/* Header */}
       <div className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border">
         <div className="flex items-center justify-between px-4 py-3">
@@ -366,6 +367,9 @@ const Notifications = () => {
           ))
         )}
       </div>
+      
+      {/* Mobile Bottom Navigation */}
+      <MobileBottomNav />
     </div>
   );
 };
