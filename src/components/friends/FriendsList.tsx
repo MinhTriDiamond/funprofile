@@ -2,12 +2,17 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { UserMinus, UserCheck, X, UserPlus } from "lucide-react";
+import { UserMinus, UserCheck, X, UserPlus, MoreHorizontal, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { LazyImage } from "@/components/ui/LazyImage";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface Friend {
   id: string;
@@ -35,7 +40,6 @@ export const FriendsList = ({ userId }: FriendsListProps) => {
     fetchSentRequests();
     fetchSuggestions();
     
-    // Set up realtime subscription for friendships
     const channel = supabase
       .channel('friendships-changes')
       .on(
@@ -46,7 +50,6 @@ export const FriendsList = ({ userId }: FriendsListProps) => {
           table: 'friendships'
         },
         () => {
-          // Refetch all data when friendships change
           fetchFriends();
           fetchPendingRequests();
           fetchSentRequests();
@@ -67,36 +70,21 @@ export const FriendsList = ({ userId }: FriendsListProps) => {
       .eq("status", "accepted")
       .or(`user_id.eq.${userId},friend_id.eq.${userId}`);
 
-    if (error) {
-      // Error fetching friends - silent fail
-      setLoading(false);
-      return;
-    }
-
-    if (!data) {
+    if (error || !data) {
       setFriends([]);
       setLoading(false);
       return;
     }
 
-    // Get all unique user IDs (excluding current user)
     const userIds = data.map(f => 
       f.user_id === userId ? f.friend_id : f.user_id
     );
 
-    // Fetch all profiles in one query
-    const { data: profilesData, error: profilesError } = await supabase
+    const { data: profilesData } = await supabase
       .from("profiles")
       .select("id, username, full_name, avatar_url")
       .in("id", userIds);
 
-    if (profilesError) {
-      // Error fetching profiles - silent fail
-      setLoading(false);
-      return;
-    }
-
-    // Map profiles to friends with friendship_id
     const friendsList: Friend[] = data.map(friendship => {
       const friendId = friendship.user_id === userId ? friendship.friend_id : friendship.user_id;
       const profile = profilesData?.find(p => p.id === friendId);
@@ -121,27 +109,16 @@ export const FriendsList = ({ userId }: FriendsListProps) => {
       .eq("status", "pending")
       .eq("friend_id", userId);
 
-    if (error) {
-      // Error fetching pending requests - silent fail
-      return;
-    }
-
-    if (!data || data.length === 0) {
+    if (error || !data?.length) {
       setPendingRequests([]);
       return;
     }
 
-    // Get sender profiles
     const userIds = data.map(f => f.user_id);
-    const { data: profilesData, error: profilesError } = await supabase
+    const { data: profilesData } = await supabase
       .from("profiles")
       .select("id, username, full_name, avatar_url")
       .in("id", userIds);
-
-    if (profilesError) {
-      // Error fetching profiles - silent fail
-      return;
-    }
 
     const requests: Friend[] = data.map(friendship => {
       const profile = profilesData?.find(p => p.id === friendship.user_id);
@@ -164,27 +141,16 @@ export const FriendsList = ({ userId }: FriendsListProps) => {
       .eq("status", "pending")
       .eq("user_id", userId);
 
-    if (error) {
-      // Error fetching sent requests - silent fail
-      return;
-    }
-
-    if (!data || data.length === 0) {
+    if (error || !data?.length) {
       setSentRequests([]);
       return;
     }
 
-    // Get recipient profiles
     const friendIds = data.map(f => f.friend_id);
-    const { data: profilesData, error: profilesError } = await supabase
+    const { data: profilesData } = await supabase
       .from("profiles")
       .select("id, username, full_name, avatar_url")
       .in("id", friendIds);
-
-    if (profilesError) {
-      // Error fetching profiles - silent fail
-      return;
-    }
 
     const requests: Friend[] = data.map(friendship => {
       const profile = profilesData?.find(p => p.id === friendship.friend_id);
@@ -200,65 +166,7 @@ export const FriendsList = ({ userId }: FriendsListProps) => {
     setSentRequests(requests);
   };
 
-  const handleUnfriend = async (friendshipId: string) => {
-    const { error } = await supabase
-      .from("friendships")
-      .delete()
-      .eq("id", friendshipId);
-
-    if (error) {
-      toast.error("Failed to remove friend");
-    } else {
-      toast.success("Friend removed");
-      fetchFriends();
-    }
-  };
-
-  const handleAccept = async (friendshipId: string) => {
-    const { error } = await supabase
-      .from("friendships")
-      .update({ status: "accepted" })
-      .eq("id", friendshipId);
-
-    if (error) {
-      toast.error("Failed to accept friend request");
-    } else {
-      toast.success("Friend request accepted!");
-      fetchFriends();
-      fetchPendingRequests();
-    }
-  };
-
-  const handleReject = async (friendshipId: string) => {
-    const { error } = await supabase
-      .from("friendships")
-      .delete()
-      .eq("id", friendshipId);
-
-    if (error) {
-      toast.error("Failed to reject friend request");
-    } else {
-      toast.success("Friend request rejected");
-      fetchPendingRequests();
-    }
-  };
-
-  const handleCancelRequest = async (friendshipId: string) => {
-    const { error } = await supabase
-      .from("friendships")
-      .delete()
-      .eq("id", friendshipId);
-
-    if (error) {
-      toast.error("Failed to cancel request");
-    } else {
-      toast.success("Friend request cancelled");
-      fetchSentRequests();
-    }
-  };
-
   const fetchSuggestions = async () => {
-    // Get all user IDs that have any friendship relation with current user
     const { data: existingRelations } = await supabase
       .from("friendships")
       .select("user_id, friend_id")
@@ -270,17 +178,11 @@ export const FriendsList = ({ userId }: FriendsListProps) => {
       excludedUserIds.add(rel.friend_id);
     });
 
-    // Fetch users who are not friends or have no pending requests
-    const { data: profilesData, error } = await supabase
+    const { data: profilesData } = await supabase
       .from("profiles")
       .select("id, username, full_name, avatar_url")
       .not("id", "in", `(${Array.from(excludedUserIds).join(',')})`)
       .limit(10);
-
-    if (error) {
-      // Error fetching suggestions - silent fail
-      return;
-    }
 
     const suggestionsList: Friend[] = (profilesData || []).map(profile => ({
       id: profile.id,
@@ -293,6 +195,63 @@ export const FriendsList = ({ userId }: FriendsListProps) => {
     setSuggestions(suggestionsList);
   };
 
+  const handleUnfriend = async (friendshipId: string) => {
+    const { error } = await supabase
+      .from("friendships")
+      .delete()
+      .eq("id", friendshipId);
+
+    if (error) {
+      toast.error("Không thể hủy kết bạn");
+    } else {
+      toast.success("Đã hủy kết bạn");
+      fetchFriends();
+    }
+  };
+
+  const handleAccept = async (friendshipId: string) => {
+    const { error } = await supabase
+      .from("friendships")
+      .update({ status: "accepted" })
+      .eq("id", friendshipId);
+
+    if (error) {
+      toast.error("Không thể chấp nhận lời mời");
+    } else {
+      toast.success("Đã chấp nhận lời mời kết bạn!");
+      fetchFriends();
+      fetchPendingRequests();
+    }
+  };
+
+  const handleReject = async (friendshipId: string) => {
+    const { error } = await supabase
+      .from("friendships")
+      .delete()
+      .eq("id", friendshipId);
+
+    if (error) {
+      toast.error("Không thể từ chối lời mời");
+    } else {
+      toast.success("Đã từ chối lời mời");
+      fetchPendingRequests();
+    }
+  };
+
+  const handleCancelRequest = async (friendshipId: string) => {
+    const { error } = await supabase
+      .from("friendships")
+      .delete()
+      .eq("id", friendshipId);
+
+    if (error) {
+      toast.error("Không thể hủy lời mời");
+    } else {
+      toast.success("Đã hủy lời mời kết bạn");
+      fetchSentRequests();
+    }
+  };
+
   const handleSendRequest = async (targetUserId: string) => {
     const { error } = await supabase
       .from("friendships")
@@ -303,183 +262,220 @@ export const FriendsList = ({ userId }: FriendsListProps) => {
       });
 
     if (error) {
-      toast.error("Failed to send friend request");
+      toast.error("Không thể gửi lời mời kết bạn");
     } else {
-      toast.success("Friend request sent!");
+      toast.success("Đã gửi lời mời kết bạn!");
       fetchSuggestions();
       fetchSentRequests();
     }
   };
 
+  // Mobile-first Friend Item Component
+  const FriendItem = ({ 
+    friend, 
+    actions 
+  }: { 
+    friend: Friend; 
+    actions: React.ReactNode;
+  }) => (
+    <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
+      {/* Avatar - shrink-0 prevents squishing */}
+      <Avatar 
+        className="w-12 h-12 shrink-0 cursor-pointer"
+        onClick={() => navigate(`/profile/${friend.id}`)}
+      >
+        {friend.avatar_url ? (
+          <AvatarImage src={friend.avatar_url} className="object-cover" />
+        ) : null}
+        <AvatarFallback className="bg-muted text-lg">
+          {friend.username?.[0]?.toUpperCase()}
+        </AvatarFallback>
+      </Avatar>
+      
+      {/* Info - min-w-0 + truncate prevents overflow */}
+      <div 
+        className="flex-1 min-w-0 cursor-pointer"
+        onClick={() => navigate(`/profile/${friend.id}`)}
+      >
+        <p className="font-medium text-base truncate">
+          {friend.full_name || friend.username}
+        </p>
+        <p className="text-xs text-muted-foreground truncate">
+          @{friend.username}
+        </p>
+      </div>
+      
+      {/* Actions - shrink-0 keeps buttons visible */}
+      <div className="shrink-0 flex items-center gap-1">
+        {actions}
+      </div>
+    </div>
+  );
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Friends</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Tabs defaultValue="friends">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="friends">Friends ({friends.length})</TabsTrigger>
-            <TabsTrigger value="requests">
-              Requests ({pendingRequests.length})
-            </TabsTrigger>
-            <TabsTrigger value="sent">Sent ({sentRequests.length})</TabsTrigger>
-            <TabsTrigger value="suggestions">Suggestions</TabsTrigger>
-          </TabsList>
+    <div className="p-2 sm:p-4">
+      <Tabs defaultValue="friends" className="w-full">
+        {/* Scrollable tabs on mobile */}
+        <TabsList className="w-full h-auto flex-wrap gap-1 bg-transparent p-0 mb-4">
+          <TabsTrigger 
+            value="friends" 
+            className="flex-1 min-w-[80px] text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-full px-3 py-2"
+          >
+            Bạn bè ({friends.length})
+          </TabsTrigger>
+          <TabsTrigger 
+            value="requests"
+            className="flex-1 min-w-[80px] text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-full px-3 py-2"
+          >
+            Lời mời ({pendingRequests.length})
+          </TabsTrigger>
+          <TabsTrigger 
+            value="sent"
+            className="flex-1 min-w-[80px] text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-full px-3 py-2"
+          >
+            Đã gửi ({sentRequests.length})
+          </TabsTrigger>
+          <TabsTrigger 
+            value="suggestions"
+            className="flex-1 min-w-[80px] text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-full px-3 py-2"
+          >
+            Gợi ý
+          </TabsTrigger>
+        </TabsList>
 
-          <TabsContent value="friends">
-            <ScrollArea className="h-[400px]">
-              {friends.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">No friends yet</p>
-              ) : (
-                <div className="space-y-4">
-                  {friends.map((friend) => (
-                    <div key={friend.id} className="flex items-center justify-between">
-                      <div 
-                        className="flex items-center gap-3 cursor-pointer flex-1"
-                        onClick={() => navigate(`/profile?userId=${friend.id}`)}
-                      >
-                        <Avatar>
-                          <AvatarImage src={friend.avatar_url} />
-                          <AvatarFallback>{friend.username?.[0]?.toUpperCase()}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium">{friend.username}</p>
-                          <p className="text-sm text-muted-foreground">{friend.full_name}</p>
-                        </div>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleUnfriend(friend.friendship_id)}
-                        className="text-primary hover:bg-primary hover:text-white group"
-                      >
-                        <UserMinus className="w-4 h-4 text-gold group-hover:text-white" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </ScrollArea>
-          </TabsContent>
+        {/* Friends Tab */}
+        <TabsContent value="friends" className="mt-0">
+          <div className="max-h-[60vh] overflow-y-auto">
+            {friends.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">Chưa có bạn bè</p>
+            ) : (
+              <div className="divide-y divide-border/50">
+                {friends.map((friend) => (
+                  <FriendItem 
+                    key={friend.id} 
+                    friend={friend}
+                    actions={
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-9 w-9">
+                            <MoreHorizontal className="w-5 h-5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => navigate(`/profile/${friend.id}`)}>
+                            <MessageCircle className="w-4 h-4 mr-2" />
+                            Nhắn tin
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => handleUnfriend(friend.friendship_id)}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <UserMinus className="w-4 h-4 mr-2" />
+                            Hủy kết bạn
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    }
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </TabsContent>
 
-          <TabsContent value="requests">
-            <ScrollArea className="h-[400px]">
-              {pendingRequests.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">No pending requests</p>
-              ) : (
-                <div className="space-y-4">
-                  {pendingRequests.map((request) => (
-                    <div key={request.id} className="flex items-center justify-between">
-                      <div 
-                        className="flex items-center gap-3 cursor-pointer flex-1"
-                        onClick={() => navigate(`/profile?userId=${request.id}`)}
-                      >
-                        <Avatar>
-                          <AvatarImage src={request.avatar_url} />
-                          <AvatarFallback>{request.username?.[0]?.toUpperCase()}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium">{request.username}</p>
-                          <p className="text-sm text-muted-foreground">{request.full_name}</p>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
+        {/* Pending Requests Tab */}
+        <TabsContent value="requests" className="mt-0">
+          <div className="max-h-[60vh] overflow-y-auto">
+            {pendingRequests.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">Không có lời mời nào</p>
+            ) : (
+              <div className="divide-y divide-border/50">
+                {pendingRequests.map((request) => (
+                  <FriendItem 
+                    key={request.id} 
+                    friend={request}
+                    actions={
+                      <div className="flex gap-1">
                         <Button
                           size="sm"
                           onClick={() => handleAccept(request.friendship_id)}
-                          className="text-primary hover:bg-primary hover:text-white group bg-background border border-input"
+                          className="h-8 px-3"
                         >
-                          <UserCheck className="w-4 h-4 text-gold group-hover:text-white" />
+                          <UserCheck className="w-4 h-4" />
                         </Button>
                         <Button
-                          variant="ghost"
+                          variant="secondary"
                           size="sm"
                           onClick={() => handleReject(request.friendship_id)}
-                          className="text-primary hover:bg-primary hover:text-white group"
+                          className="h-8 px-3"
                         >
-                          <X className="w-4 h-4 text-gold group-hover:text-white" />
+                          <X className="w-4 h-4" />
                         </Button>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </ScrollArea>
-          </TabsContent>
+                    }
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </TabsContent>
 
-          <TabsContent value="sent">
-            <ScrollArea className="h-[400px]">
-              {sentRequests.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">No sent requests</p>
-              ) : (
-                <div className="space-y-4">
-                  {sentRequests.map((request) => (
-                    <div key={request.id} className="flex items-center justify-between">
-                      <div 
-                        className="flex items-center gap-3 cursor-pointer flex-1"
-                        onClick={() => navigate(`/profile?userId=${request.id}`)}
-                      >
-                        <Avatar>
-                          <AvatarImage src={request.avatar_url} />
-                          <AvatarFallback>{request.username?.[0]?.toUpperCase()}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium">{request.username}</p>
-                          <p className="text-sm text-muted-foreground">{request.full_name}</p>
-                        </div>
-                      </div>
+        {/* Sent Requests Tab */}
+        <TabsContent value="sent" className="mt-0">
+          <div className="max-h-[60vh] overflow-y-auto">
+            {sentRequests.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">Không có lời mời đã gửi</p>
+            ) : (
+              <div className="divide-y divide-border/50">
+                {sentRequests.map((request) => (
+                  <FriendItem 
+                    key={request.id} 
+                    friend={request}
+                    actions={
                       <Button
-                        variant="ghost"
+                        variant="secondary"
                         size="sm"
                         onClick={() => handleCancelRequest(request.friendship_id)}
-                        className="text-primary hover:bg-primary hover:text-white group"
+                        className="h-8 px-3"
                       >
-                        <X className="w-4 h-4 text-gold group-hover:text-white" />
+                        Hủy
                       </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </ScrollArea>
-          </TabsContent>
+                    }
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </TabsContent>
 
-          <TabsContent value="suggestions">
-            <ScrollArea className="h-[400px]">
-              {suggestions.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">No suggestions available</p>
-              ) : (
-                <div className="space-y-4">
-                  {suggestions.map((suggestion) => (
-                    <div key={suggestion.id} className="flex items-center justify-between">
-                      <div 
-                        className="flex items-center gap-3 cursor-pointer flex-1"
-                        onClick={() => navigate(`/profile?userId=${suggestion.id}`)}
-                      >
-                        <Avatar>
-                          <AvatarImage src={suggestion.avatar_url} />
-                          <AvatarFallback>{suggestion.username?.[0]?.toUpperCase()}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium">{suggestion.username}</p>
-                          <p className="text-sm text-muted-foreground">{suggestion.full_name}</p>
-                        </div>
-                      </div>
+        {/* Suggestions Tab */}
+        <TabsContent value="suggestions" className="mt-0">
+          <div className="max-h-[60vh] overflow-y-auto">
+            {suggestions.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">Không có gợi ý</p>
+            ) : (
+              <div className="divide-y divide-border/50">
+                {suggestions.map((suggestion) => (
+                  <FriendItem 
+                    key={suggestion.id} 
+                    friend={suggestion}
+                    actions={
                       <Button
                         size="sm"
                         onClick={() => handleSendRequest(suggestion.id)}
-                        className="text-primary hover:bg-primary hover:text-white group bg-background border border-input"
+                        className="h-8 px-3"
                       >
-                        <UserPlus className="w-4 h-4 text-gold group-hover:text-white" />
+                        <UserPlus className="w-4 h-4 mr-1" />
+                        <span className="hidden sm:inline">Kết bạn</span>
                       </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </ScrollArea>
-          </TabsContent>
-        </Tabs>
-      </CardContent>
-    </Card>
+                    }
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 };
