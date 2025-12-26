@@ -1,10 +1,14 @@
 import * as tus from 'tus-js-client';
 import { supabase } from '@/integrations/supabase/client';
+import { FILE_LIMITS } from './imageCompression';
 
 export interface StreamUploadProgress {
   bytesUploaded: number;
   bytesTotal: number;
   percentage: number;
+  // Enhanced progress info
+  uploadSpeed?: number; // bytes per second
+  eta?: number; // estimated seconds remaining
 }
 
 export interface StreamUploadResult {
@@ -31,6 +35,9 @@ export interface StreamVideoStatus {
   preview?: string;
 }
 
+// Max duration in seconds (15 minutes)
+const MAX_DURATION_SECONDS = 900;
+
 /**
  * Get a direct upload URL from Cloudflare Stream
  */
@@ -40,14 +47,6 @@ async function getDirectUploadUrl(): Promise<{ uploadUrl: string; uid: string }>
     throw new Error('Not authenticated');
   }
 
-  const response = await supabase.functions.invoke('stream-video', {
-    body: { maxDurationSeconds: 300 },
-    headers: {
-      Authorization: `Bearer ${sessionData.session.access_token}`,
-    },
-  });
-
-  // Check for the query param in URL
   const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stream-video?action=direct-upload`;
   
   const directResponse = await fetch(functionUrl, {
@@ -56,7 +55,7 @@ async function getDirectUploadUrl(): Promise<{ uploadUrl: string; uid: string }>
       'Authorization': `Bearer ${sessionData.session.access_token}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ maxDurationSeconds: 300 }),
+    body: JSON.stringify({ maxDurationSeconds: MAX_DURATION_SECONDS }),
   });
 
   if (!directResponse.ok) {
@@ -68,33 +67,93 @@ async function getDirectUploadUrl(): Promise<{ uploadUrl: string; uid: string }>
 }
 
 /**
- * Upload a video to Cloudflare Stream using TUS protocol
- * Supports resumable uploads with progress tracking
+ * Get TUS upload URL for resumable uploads
+ */
+async function getTusUploadUrl(): Promise<{ uploadUrl: string; uid: string }> {
+  const { data: sessionData } = await supabase.auth.getSession();
+  if (!sessionData.session) {
+    throw new Error('Not authenticated');
+  }
+
+  const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stream-video?action=get-upload-url`;
+  
+  const response = await fetch(functionUrl, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${sessionData.session.access_token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ maxDurationSeconds: MAX_DURATION_SECONDS }),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to get upload URL');
+  }
+
+  return response.json();
+}
+
+/**
+ * Upload a video to Cloudflare Stream
+ * Automatically uses TUS for large files (>100MB) for resumable upload
  */
 export async function uploadToStream(
   file: File,
   onProgress?: (progress: StreamUploadProgress) => void,
   onError?: (error: Error) => void
 ): Promise<StreamUploadResult> {
+  // Use TUS for files larger than threshold (100MB)
+  const useTus = file.size > (FILE_LIMITS.TUS_THRESHOLD || 100 * 1024 * 1024);
+  
+  if (useTus) {
+    console.log('[streamUpload] Using TUS for large file:', formatBytes(file.size));
+    return uploadToStreamTus(file, onProgress, onError);
+  }
+
+  return uploadDirect(file, onProgress, onError);
+}
+
+/**
+ * Direct upload using XHR (for files < 100MB)
+ */
+async function uploadDirect(
+  file: File,
+  onProgress?: (progress: StreamUploadProgress) => void,
+  onError?: (error: Error) => void
+): Promise<StreamUploadResult> {
   return new Promise(async (resolve, reject) => {
     try {
-      // Get upload URL from our edge function
       const { uploadUrl, uid } = await getDirectUploadUrl();
 
-      console.log('[streamUpload] Starting upload:', { uid, size: file.size });
+      console.log('[streamUpload] Starting direct upload:', { uid, size: formatBytes(file.size) });
 
-      // Upload directly to the provided URL
       const formData = new FormData();
       formData.append('file', file);
 
       const xhr = new XMLHttpRequest();
+      let lastLoaded = 0;
+      let lastTime = Date.now();
       
       xhr.upload.addEventListener('progress', (event) => {
         if (event.lengthComputable && onProgress) {
+          const now = Date.now();
+          const timeDelta = (now - lastTime) / 1000; // seconds
+          const bytesDelta = event.loaded - lastLoaded;
+          
+          // Calculate speed (bytes/sec) with smoothing
+          const speed = timeDelta > 0 ? bytesDelta / timeDelta : 0;
+          const remaining = event.total - event.loaded;
+          const eta = speed > 0 ? remaining / speed : 0;
+          
+          lastLoaded = event.loaded;
+          lastTime = now;
+          
           onProgress({
             bytesUploaded: event.loaded,
             bytesTotal: event.total,
             percentage: Math.round((event.loaded / event.total) * 100),
+            uploadSpeed: speed,
+            eta: Math.round(eta),
           });
         }
       });
@@ -104,7 +163,6 @@ export async function uploadToStream(
           console.log('[streamUpload] Upload complete:', uid);
           resolve({
             uid,
-            // Return iframe embed URL for maximum compatibility
             playbackUrl: `https://iframe.videodelivery.net/${uid}`,
           });
         } else {
@@ -115,7 +173,7 @@ export async function uploadToStream(
       });
 
       xhr.addEventListener('error', () => {
-        const error = new Error('Upload failed');
+        const error = new Error('Upload failed - network error');
         onError?.(error);
         reject(error);
       });
@@ -132,7 +190,7 @@ export async function uploadToStream(
 }
 
 /**
- * Upload using TUS protocol for resumable uploads
+ * Upload using TUS protocol for resumable uploads (for files >= 100MB)
  */
 export async function uploadToStreamTus(
   file: File,
@@ -141,40 +199,22 @@ export async function uploadToStreamTus(
 ): Promise<StreamUploadResult> {
   return new Promise(async (resolve, reject) => {
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData.session) {
-        throw new Error('Not authenticated');
-      }
-
-      // Get TUS upload URL
-      const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stream-video?action=get-upload-url`;
-      
-      const response = await fetch(functionUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${sessionData.session.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ maxDurationSeconds: 300 }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to get upload URL');
-      }
-
-      const { uploadUrl, uid } = await response.json();
+      const { uploadUrl, uid } = await getTusUploadUrl();
 
       if (!uploadUrl) {
-        // Fallback to direct upload
-        return resolve(await uploadToStream(file, onProgress, onError));
+        console.log('[streamUpload] TUS URL not available, falling back to direct upload');
+        return resolve(await uploadDirect(file, onProgress, onError));
       }
 
-      console.log('[streamUpload] Starting TUS upload:', { uid, size: file.size });
+      console.log('[streamUpload] Starting TUS upload:', { uid, size: formatBytes(file.size) });
+
+      let lastLoaded = 0;
+      let lastTime = Date.now();
 
       const upload = new tus.Upload(file, {
         endpoint: uploadUrl,
-        retryDelays: [0, 1000, 3000, 5000],
-        chunkSize: 5 * 1024 * 1024, // 5MB chunks
+        retryDelays: [0, 1000, 3000, 5000, 10000], // More retries for large files
+        chunkSize: 10 * 1024 * 1024, // 10MB chunks for better reliability
         metadata: {
           filename: file.name,
           filetype: file.type,
@@ -185,17 +225,29 @@ export async function uploadToStreamTus(
           reject(error);
         },
         onProgress: (bytesUploaded, bytesTotal) => {
+          const now = Date.now();
+          const timeDelta = (now - lastTime) / 1000;
+          const bytesDelta = bytesUploaded - lastLoaded;
+          
+          const speed = timeDelta > 0 ? bytesDelta / timeDelta : 0;
+          const remaining = bytesTotal - bytesUploaded;
+          const eta = speed > 0 ? remaining / speed : 0;
+          
+          lastLoaded = bytesUploaded;
+          lastTime = now;
+          
           onProgress?.({
             bytesUploaded,
             bytesTotal,
             percentage: Math.round((bytesUploaded / bytesTotal) * 100),
+            uploadSpeed: speed,
+            eta: Math.round(eta),
           });
         },
         onSuccess: () => {
           console.log('[streamUpload] TUS upload complete:', uid);
           resolve({
             uid,
-            // Return iframe embed URL for maximum compatibility
             playbackUrl: `https://iframe.videodelivery.net/${uid}`,
           });
         },
@@ -204,6 +256,7 @@ export async function uploadToStreamTus(
       // Check for previous uploads and resume
       upload.findPreviousUploads().then((previousUploads) => {
         if (previousUploads.length > 0) {
+          console.log('[streamUpload] Resuming previous upload');
           upload.resumeFromPreviousUpload(previousUploads[0]);
         }
         upload.start();
@@ -316,11 +369,10 @@ export function isStreamUrl(url: string): boolean {
  * Extract stream UID from URL
  */
 export function extractStreamUid(url: string): string | null {
-  // Match patterns like: https://customer-xxx.cloudflarestream.com/{uid}/...
-  // Or: https://videodelivery.net/{uid}/...
   const patterns = [
     /cloudflarestream\.com\/([a-f0-9]+)/i,
     /videodelivery\.net\/([a-f0-9]+)/i,
+    /iframe\.videodelivery\.net\/([a-f0-9]+)/i,
   ];
 
   for (const pattern of patterns) {
@@ -331,4 +383,28 @@ export function extractStreamUid(url: string): string | null {
   }
 
   return null;
+}
+
+/**
+ * Format bytes to human readable string
+ */
+export function formatBytes(bytes: number): string {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
+}
+
+/**
+ * Format seconds to human readable duration
+ */
+export function formatDuration(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  if (minutes < 60) return `${minutes}m ${remainingSeconds}s`;
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  return `${hours}h ${remainingMinutes}m`;
 }

@@ -55,7 +55,27 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
   const [videoUploadState, setVideoUploadState] = useState<VideoUploadState>('idle');
   const [videoUploadProgress, setVideoUploadProgress] = useState(0);
   const [currentVideoName, setCurrentVideoName] = useState('');
+  // Enhanced upload progress state
+  const [uploadDetails, setUploadDetails] = useState({
+    bytesUploaded: 0,
+    bytesTotal: 0,
+    uploadSpeed: 0,
+    eta: 0,
+  });
 
+  // Prevent accidental tab close during upload
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (videoUploadState === 'uploading' || videoUploadState === 'processing') {
+        e.preventDefault();
+        e.returnValue = 'Video đang được tải lên. Bạn có chắc muốn rời đi?';
+        return e.returnValue;
+      }
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [videoUploadState]);
   const PRIVACY_OPTIONS = [
     { value: 'public', label: language === 'vi' ? 'Công khai' : 'Public', icon: Globe, description: language === 'vi' ? 'Tất cả mọi người' : 'Everyone' },
     { value: 'friends', label: t('friends'), icon: Users, description: language === 'vi' ? 'Bạn bè của bạn' : 'Your friends' },
@@ -97,12 +117,12 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
       }
 
       if (isImage && file.size > FILE_LIMITS.IMAGE_MAX_SIZE) {
-        toast.error(`Ảnh "${file.name}" phải nhỏ hơn 5MB`);
+        toast.error(`Ảnh "${file.name}" phải nhỏ hơn 20MB`);
         continue;
       }
 
       if (isVideo && file.size > FILE_LIMITS.VIDEO_MAX_SIZE) {
-        toast.error(`Video "${file.name}" phải nhỏ hơn 20MB`);
+        toast.error(`Video "${file.name}" phải nhỏ hơn 1GB`);
         continue;
       }
 
@@ -110,7 +130,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
         if (isVideo) {
           const duration = await getVideoDuration(file);
           if (duration > FILE_LIMITS.VIDEO_MAX_DURATION) {
-            toast.error(`Video "${file.name}" phải ngắn hơn 3 phút`);
+            toast.error(`Video "${file.name}" phải ngắn hơn 15 phút`);
             continue;
           }
         }
@@ -200,6 +220,12 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
               item.file,
               (progress) => {
                 setVideoUploadProgress(progress.percentage);
+                setUploadDetails({
+                  bytesUploaded: progress.bytesUploaded,
+                  bytesTotal: progress.bytesTotal,
+                  uploadSpeed: progress.uploadSpeed || 0,
+                  eta: progress.eta || 0,
+                });
               },
               (error) => {
                 console.error('Stream upload error:', error);
@@ -492,6 +518,10 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
                         state={videoUploadState}
                         progress={videoUploadProgress}
                         fileName={currentVideoName}
+                        bytesUploaded={uploadDetails.bytesUploaded}
+                        bytesTotal={uploadDetails.bytesTotal}
+                        uploadSpeed={uploadDetails.uploadSpeed}
+                        eta={uploadDetails.eta}
                       />
                     )}
                   </div>
