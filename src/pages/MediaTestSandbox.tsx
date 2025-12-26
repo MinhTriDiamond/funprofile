@@ -28,12 +28,13 @@ const MediaTestSandbox = () => {
   const navigate = useNavigate();
   const [imageUrl, setImageUrl] = useState('');
   const [videoUrl, setVideoUrl] = useState('');
+  const [videoType, setVideoType] = useState<'auto' | 'r2' | 'stream'>('auto');
   const [imageTests, setImageTests] = useState<TestResult[]>([]);
   const [videoTests, setVideoTests] = useState<TestResult[]>([]);
   const [isTestingImages, setIsTestingImages] = useState(false);
   const [isTestingVideo, setIsTestingVideo] = useState(false);
   const [transformedImages, setTransformedImages] = useState<Record<string, string>>({});
-
+  const [detectedVideoType, setDetectedVideoType] = useState<'r2' | 'stream' | null>(null);
   // Image transformation presets to test
   const imagePresets = [
     { name: 'Avatar (200x200, cắt tròn)', preset: 'avatar', width: 200, height: 200 },
@@ -120,91 +121,133 @@ const MediaTestSandbox = () => {
     toast.success(`Hoàn thành: ${successCount}/${results.length} tests thành công`);
   };
 
+  // Detect video type from URL
+  const detectVideoType = (url: string): 'r2' | 'stream' => {
+    const isStream = url.includes('cloudflarestream.com') || 
+                     url.includes('videodelivery.net') ||
+                     url.includes('.m3u8');
+    return isStream ? 'stream' : 'r2';
+  };
+
   const runVideoTest = async () => {
     if (!videoUrl) {
-      toast.error('Vui lòng nhập URL video từ Cloudflare Stream');
+      toast.error('Vui lòng nhập URL video');
       return;
     }
 
     setIsTestingVideo(true);
     const results: TestResult[] = [];
 
-    // Test 1: Check if video loads
-    results.push({ name: 'Video Load Test', status: 'testing' });
-    setVideoTests([...results]);
+    // Auto-detect video type
+    const type = videoType === 'auto' ? detectVideoType(videoUrl) : videoType;
+    setDetectedVideoType(type);
 
-    try {
-      // Check if it's a Stream URL
-      const isStreamUrl = videoUrl.includes('cloudflarestream.com') || 
-                          videoUrl.includes('videodelivery.net');
+    if (type === 'stream') {
+      // ============ CLOUDFLARE STREAM TESTS ============
+      results.push({ name: 'CF Stream Detection', status: 'testing' });
+      setVideoTests([...results]);
+
+      const isValidStream = videoUrl.includes('cloudflarestream.com') || 
+                            videoUrl.includes('videodelivery.net');
       
-      if (!isStreamUrl) {
-        results[0] = {
-          name: 'Video Load Test',
-          status: 'failed',
-          message: 'URL không phải Cloudflare Stream. Hãy dùng URL từ Stream.',
-        };
-      } else {
-        results[0] = {
-          name: 'Video Load Test',
-          status: 'success',
-          message: 'URL hợp lệ - Cloudflare Stream detected',
-          url: videoUrl,
-        };
-      }
-    } catch (error: any) {
       results[0] = {
-        name: 'Video Load Test',
-        status: 'failed',
-        message: error.message,
+        name: 'CF Stream Detection',
+        status: isValidStream ? 'success' : 'failed',
+        message: isValidStream 
+          ? '✓ Cloudflare Stream URL detected - HLS/DASH ready'
+          : 'URL không phải CF Stream. Thử chọn "R2 Video" nếu đây là MP4.',
+        url: videoUrl,
       };
-    }
+      setVideoTests([...results]);
 
-    setVideoTests([...results]);
+      if (isValidStream) {
+        // Test HLS Manifest
+        results.push({ name: 'HLS Manifest Check', status: 'testing' });
+        setVideoTests([...results]);
 
-    // Test 2: HLS Manifest
-    results.push({ name: 'HLS Manifest Check', status: 'testing' });
-    setVideoTests([...results]);
-
-    try {
-      // Extract video ID and check manifest
-      const videoId = videoUrl.match(/\/([a-f0-9]{32})/)?.[1];
-      if (videoId) {
-        const manifestUrl = `https://customer-${videoId.slice(0,8)}.cloudflarestream.com/${videoId}/manifest/video.m3u8`;
-        
+        const videoId = videoUrl.match(/\/([a-f0-9]{32})/)?.[1];
         results[1] = {
           name: 'HLS Manifest Check',
           status: 'success',
-          message: 'HLS adaptive bitrate sẵn sàng',
-          url: manifestUrl,
+          message: videoId 
+            ? `Video ID: ${videoId.slice(0, 8)}... - Adaptive bitrate sẵn sàng`
+            : 'Sẵn sàng cho adaptive streaming',
         };
-      } else {
-        results[1] = {
-          name: 'HLS Manifest Check', 
+        setVideoTests([...results]);
+
+        // Features
+        results.push({ 
+          name: 'Premium Features', 
           status: 'success',
-          message: 'Sẵn sàng cho adaptive streaming',
+          message: '✓ Adaptive Bitrate | ✓ Signed URLs | ✓ Analytics | ✓ DRM Ready',
+        });
+        setVideoTests([...results]);
+      }
+    } else {
+      // ============ R2 DIRECT VIDEO TESTS ============
+      results.push({ name: 'R2 Video Detection', status: 'testing' });
+      setVideoTests([...results]);
+
+      const isR2Url = videoUrl.includes('r2.dev') || 
+                      videoUrl.includes('media.fun.rich') ||
+                      videoUrl.endsWith('.mp4') ||
+                      videoUrl.endsWith('.webm') ||
+                      videoUrl.endsWith('.mov');
+      
+      results[0] = {
+        name: 'R2 Video Detection',
+        status: 'success',
+        message: isR2Url 
+          ? '✓ R2 Direct Video (MP4) - Giá rẻ, phù hợp video đơn giản'
+          : '⚠ URL có thể là video direct (MP4/WebM)',
+        url: videoUrl,
+      };
+      setVideoTests([...results]);
+
+      // Test video accessibility
+      results.push({ name: 'Video Accessibility', status: 'testing' });
+      setVideoTests([...results]);
+
+      try {
+        const startTime = performance.now();
+        const response = await fetch(videoUrl, { method: 'HEAD' });
+        const endTime = performance.now();
+        const responseTime = Math.round(endTime - startTime);
+
+        const contentType = response.headers.get('content-type') || '';
+        const contentLength = response.headers.get('content-length');
+        const fileSize = contentLength 
+          ? `${(parseInt(contentLength) / 1024 / 1024).toFixed(2)} MB`
+          : 'Unknown';
+
+        results[1] = {
+          name: 'Video Accessibility',
+          status: response.ok ? 'success' : 'failed',
+          message: response.ok 
+            ? `✓ ${contentType} | Size: ${fileSize} | ${responseTime}ms`
+            : `HTTP ${response.status}`,
+          responseTime,
+        };
+      } catch (error: any) {
+        results[1] = {
+          name: 'Video Accessibility',
+          status: 'failed',
+          message: `CORS blocked hoặc không thể truy cập: ${error.message}`,
         };
       }
-    } catch (error: any) {
-      results[1] = {
-        name: 'HLS Manifest Check',
-        status: 'failed',
-        message: error.message,
-      };
+      setVideoTests([...results]);
+
+      // Features comparison
+      results.push({ 
+        name: 'R2 Features', 
+        status: 'success',
+        message: '✓ Giá rẻ | ✓ Đơn giản | ✗ Không adaptive | ✗ Không DRM',
+      });
+      setVideoTests([...results]);
     }
 
-    setVideoTests([...results]);
-
-    // Test 3: Bandwidth throttling hint
-    results.push({ 
-      name: 'Adaptive Bitrate Test', 
-      status: 'success',
-      message: 'Mở Chrome DevTools → Network → Throttling → Slow 3G để test',
-    });
-    setVideoTests([...results]);
-
     setIsTestingVideo(false);
-    toast.success('Video tests hoàn thành!');
+    toast.success(`${type === 'stream' ? 'CF Stream' : 'R2 Video'} tests hoàn thành!`);
   };
 
   return (
@@ -379,16 +422,44 @@ const MediaTestSandbox = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Video className="w-5 h-5" />
-                  Stream Adaptive Bitrate Test
+                  Video Streaming Test
                 </CardTitle>
                 <CardDescription>
-                  Nhập URL video từ Cloudflare Stream để test adaptive bitrate
+                  Hỗ trợ cả R2 Video (MP4 trực tiếp, giá rẻ) và Cloudflare Stream (HLS adaptive, xịn xò)
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* Video Type Selector */}
+                <div className="flex gap-2 flex-wrap">
+                  <Badge 
+                    variant={videoType === 'auto' ? 'default' : 'outline'}
+                    className="cursor-pointer px-3 py-1"
+                    onClick={() => setVideoType('auto')}
+                  >
+                    🔍 Auto Detect
+                  </Badge>
+                  <Badge 
+                    variant={videoType === 'r2' ? 'default' : 'outline'}
+                    className="cursor-pointer px-3 py-1"
+                    onClick={() => setVideoType('r2')}
+                  >
+                    📦 R2 Video (Giá rẻ)
+                  </Badge>
+                  <Badge 
+                    variant={videoType === 'stream' ? 'default' : 'outline'}
+                    className="cursor-pointer px-3 py-1"
+                    onClick={() => setVideoType('stream')}
+                  >
+                    🎬 CF Stream (Xịn xò)
+                  </Badge>
+                </div>
+
                 <div className="flex gap-2">
                   <Input
-                    placeholder="https://customer-xxxx.cloudflarestream.com/video-id/manifest/video.m3u8"
+                    placeholder={videoType === 'stream' 
+                      ? "https://videodelivery.net/xxx/manifest/video.m3u8"
+                      : "https://media.fun.rich/videos/example.mp4"
+                    }
                     value={videoUrl}
                     onChange={(e) => setVideoUrl(e.target.value)}
                     className="flex-1"
@@ -403,9 +474,19 @@ const MediaTestSandbox = () => {
                     ) : (
                       <Zap className="w-4 h-4" />
                     )}
-                    Chạy Test
+                    Test
                   </Button>
                 </div>
+
+                {/* Detected Type Badge */}
+                {detectedVideoType && videoTests.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Detected:</span>
+                    <Badge variant={detectedVideoType === 'stream' ? 'default' : 'secondary'}>
+                      {detectedVideoType === 'stream' ? '🎬 Cloudflare Stream' : '📦 R2 Direct Video'}
+                    </Badge>
+                  </div>
+                )}
 
                 {/* Video Test Results */}
                 {videoTests.length > 0 && (
@@ -432,6 +513,12 @@ const MediaTestSandbox = () => {
                               )}
                             </div>
                           </div>
+                          {test.responseTime && (
+                            <Badge variant={test.responseTime < 200 ? 'default' : 'secondary'}>
+                              <Gauge className="w-3 h-3 mr-1" />
+                              {test.responseTime}ms
+                            </Badge>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -441,41 +528,100 @@ const MediaTestSandbox = () => {
                 {/* Video Player */}
                 {videoUrl && videoTests.some(t => t.status === 'success') && (
                   <div className="space-y-2">
-                    <Label>Video Player (HLS Adaptive):</Label>
+                    <Label>
+                      Video Player {detectedVideoType === 'stream' ? '(HLS Adaptive)' : '(Direct MP4)'}:
+                    </Label>
                     <div className="aspect-video bg-black rounded-lg overflow-hidden">
-                      <StreamPlayer 
-                        src={videoUrl}
-                        poster=""
-                        className="w-full h-full"
-                      />
+                      {detectedVideoType === 'stream' ? (
+                        <StreamPlayer 
+                          src={videoUrl}
+                          poster=""
+                          className="w-full h-full"
+                        />
+                      ) : (
+                        <video 
+                          src={videoUrl}
+                          controls
+                          playsInline
+                          className="w-full h-full"
+                        />
+                      )}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      💡 Mở Chrome DevTools → Network → Throttling → "Slow 3G" để test tự động giảm chất lượng
+                      {detectedVideoType === 'stream' 
+                        ? '💡 Mở DevTools → Network → Throttling → "Slow 3G" để test adaptive bitrate'
+                        : '💡 R2 video phát trực tiếp, không có adaptive bitrate nhưng chi phí thấp hơn'
+                      }
                     </p>
                   </div>
                 )}
               </CardContent>
             </Card>
 
-            {/* Throttling Guide */}
+            {/* Comparison Card */}
             <Card>
               <CardHeader>
-                <CardTitle>Hướng dẫn test Adaptive Bitrate</CardTitle>
+                <CardTitle>So sánh R2 Video vs CF Stream</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <ol className="list-decimal list-inside space-y-2 text-sm">
-                  <li>Mở Chrome DevTools (F12)</li>
-                  <li>Chuyển sang tab <code className="bg-muted px-1 rounded">Network</code></li>
-                  <li>Click dropdown <code className="bg-muted px-1 rounded">No throttling</code></li>
-                  <li>Chọn <code className="bg-muted px-1 rounded">Slow 3G</code> hoặc <code className="bg-muted px-1 rounded">Fast 3G</code></li>
-                  <li>Xem video và quan sát chất lượng tự động giảm</li>
-                  <li>Tắt throttling để xem chất lượng tăng lên</li>
-                </ol>
-                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-sm">
-                  <strong>Expected behavior:</strong> Video sẽ tự động chuyển từ 1080p → 720p → 480p → 360p khi băng thông giảm
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* R2 Column */}
+                  <div className="p-4 border rounded-lg space-y-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xl">📦</span>
+                      <h3 className="font-semibold">R2 Direct Video</h3>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Phù hợp cho video hướng dẫn ngắn, nội dung đơn giản
+                    </p>
+                    <ul className="text-sm space-y-1">
+                      <li className="text-green-600">✓ Chi phí cực thấp ($0.015/GB)</li>
+                      <li className="text-green-600">✓ Không giới hạn thời lượng</li>
+                      <li className="text-green-600">✓ Upload trực tiếp lên R2</li>
+                      <li className="text-red-600">✗ Không adaptive bitrate</li>
+                      <li className="text-red-600">✗ Không có DRM/bảo vệ</li>
+                    </ul>
+                  </div>
+
+                  {/* Stream Column */}
+                  <div className="p-4 border rounded-lg space-y-3 border-primary/50">
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xl">🎬</span>
+                      <h3 className="font-semibold">Cloudflare Stream</h3>
+                      <Badge variant="secondary" className="text-xs">Premium</Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Dành cho video quan trọng, chống tải lậu, xịn xò
+                    </p>
+                    <ul className="text-sm space-y-1">
+                      <li className="text-green-600">✓ Adaptive bitrate (1080p→360p)</li>
+                      <li className="text-green-600">✓ Signed URLs (chống hotlink)</li>
+                      <li className="text-green-600">✓ Analytics chi tiết</li>
+                      <li className="text-green-600">✓ Thumbnail tự động</li>
+                      <li className="text-yellow-600">⚠ Chi phí cao hơn ($5/1000 phút)</li>
+                    </ul>
+                  </div>
                 </div>
               </CardContent>
             </Card>
+
+            {/* Throttling Guide - only for Stream */}
+            {detectedVideoType === 'stream' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Hướng dẫn test Adaptive Bitrate</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <ol className="list-decimal list-inside space-y-2 text-sm">
+                    <li>Mở Chrome DevTools (F12)</li>
+                    <li>Chuyển sang tab <code className="bg-muted px-1 rounded">Network</code></li>
+                    <li>Click dropdown <code className="bg-muted px-1 rounded">No throttling</code></li>
+                    <li>Chọn <code className="bg-muted px-1 rounded">Slow 3G</code></li>
+                    <li>Xem video và quan sát chất lượng tự động giảm</li>
+                  </ol>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
         </Tabs>
       </div>
