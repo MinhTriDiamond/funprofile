@@ -208,17 +208,20 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
 
             setVideoUploadState('processing');
             
-            // Use the Stream playback URL
-            const streamUrl = `https://customer-bhtsnervqiwchluwuxki.cloudflarestream.com/${result.uid}/manifest/video.m3u8`;
+            // Use Cloudflare Stream iframe embed URL (more reliable than HLS manifest)
+            // Format: https://iframe.videodelivery.net/{uid}
+            const streamUrl = `https://iframe.videodelivery.net/${result.uid}`;
             mediaUrls.push({
               url: streamUrl,
               type: 'video',
             });
 
             setVideoUploadState('ready');
+            toast.success('Video đã tải lên thành công!');
           } catch (error) {
             console.error('Stream upload failed, falling back to R2:', error);
             setVideoUploadState('error');
+            toast.error('Không thể tải video lên Stream, đang dùng phương thức dự phòng...');
             
             // Fallback to R2 upload
             const r2Result = await uploadToR2(item.file, 'videos');

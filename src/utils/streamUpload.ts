@@ -104,7 +104,8 @@ export async function uploadToStream(
           console.log('[streamUpload] Upload complete:', uid);
           resolve({
             uid,
-            playbackUrl: `https://customer-${uid}.cloudflarestream.com/${uid}/manifest/video.m3u8`,
+            // Return iframe embed URL for maximum compatibility
+            playbackUrl: `https://iframe.videodelivery.net/${uid}`,
           });
         } else {
           const error = new Error(`Upload failed: ${xhr.status}`);
@@ -194,7 +195,8 @@ export async function uploadToStreamTus(
           console.log('[streamUpload] TUS upload complete:', uid);
           resolve({
             uid,
-            playbackUrl: `https://customer-${uid}.cloudflarestream.com/${uid}/manifest/video.m3u8`,
+            // Return iframe embed URL for maximum compatibility
+            playbackUrl: `https://iframe.videodelivery.net/${uid}`,
           });
         },
       });
