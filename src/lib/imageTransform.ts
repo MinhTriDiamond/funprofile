@@ -2,8 +2,18 @@
  * Image Transformation Utility
  * 
  * Generates optimized image URLs with on-the-fly transformations
- * Uses Cloudflare Images for real-time processing
+ * Uses Direct Cloudflare Image Resizing (No Proxy) for <50ms latency
+ * 
+ * Strategy:
+ * - R2/External images: Use fun.rich/cdn-cgi/image/ (Direct Cloudflare)
+ * - CF Images (imagedelivery.net): Use variant system
  */
+
+// Cloudflare zone domain with Image Resizing enabled
+const CF_ZONE_DOMAIN = 'https://fun.rich';
+
+// R2 public bucket URL
+const R2_PUBLIC_URL = 'https://pub-e83e74b0726742fbb6a60bc08f95624b.r2.dev';
 
 export interface ImageTransformOptions {
   width?: number;
@@ -23,32 +33,82 @@ export interface ImageTransformOptions {
 
 // Preset configurations for common use cases
 export const IMAGE_PRESETS: Record<string, ImageTransformOptions> = {
-  'avatar': { width: 128, height: 128, fit: 'cover', gravity: 'auto', format: 'webp', quality: 85 },
-  'avatar-sm': { width: 40, height: 40, fit: 'cover', gravity: 'auto', format: 'webp', quality: 80 },
-  'avatar-lg': { width: 256, height: 256, fit: 'cover', gravity: 'auto', format: 'webp', quality: 90 },
-  'cover': { width: 1200, height: 400, fit: 'cover', gravity: 'auto', format: 'webp', quality: 85 },
-  'thumbnail': { width: 300, height: 300, fit: 'cover', gravity: 'auto', format: 'webp', quality: 75 },
-  'post': { width: 800, fit: 'scale-down', format: 'webp', quality: 85 },
-  'post-grid': { width: 400, height: 400, fit: 'cover', gravity: 'auto', format: 'webp', quality: 80 },
-  'gallery': { width: 1200, fit: 'scale-down', format: 'webp', quality: 90 },
+  'avatar': { width: 128, height: 128, fit: 'cover', gravity: 'auto', format: 'auto', quality: 85 },
+  'avatar-sm': { width: 40, height: 40, fit: 'cover', gravity: 'auto', format: 'auto', quality: 80 },
+  'avatar-lg': { width: 256, height: 256, fit: 'cover', gravity: 'auto', format: 'auto', quality: 90 },
+  'cover': { width: 1200, height: 400, fit: 'cover', gravity: 'auto', format: 'auto', quality: 85 },
+  'thumbnail': { width: 300, height: 300, fit: 'cover', gravity: 'auto', format: 'auto', quality: 75 },
+  'post': { width: 800, fit: 'scale-down', format: 'auto', quality: 85 },
+  'post-grid': { width: 400, height: 400, fit: 'cover', gravity: 'auto', format: 'auto', quality: 80 },
+  'gallery': { width: 1200, fit: 'scale-down', format: 'auto', quality: 90 },
 };
 
 /**
- * Generate a transformed image URL
+ * Build Cloudflare Image Resizing options string
+ * Format: width=200,height=200,fit=cover,format=auto
+ */
+function buildCfOptions(options: ImageTransformOptions): string {
+  const parts: string[] = [];
+  
+  // Merge preset with custom options
+  const presetConfig = options.preset ? IMAGE_PRESETS[options.preset] : {};
+  const merged = { ...presetConfig, ...options };
+  
+  if (merged.width) parts.push(`width=${merged.width}`);
+  if (merged.height) parts.push(`height=${merged.height}`);
+  if (merged.fit) parts.push(`fit=${merged.fit}`);
+  if (merged.gravity) parts.push(`gravity=${merged.gravity}`);
+  if (merged.quality) parts.push(`quality=${merged.quality}`);
+  if (merged.format) parts.push(`format=${merged.format}`);
+  if (merged.blur) parts.push(`blur=${merged.blur}`);
+  if (merged.brightness !== undefined) parts.push(`brightness=${merged.brightness}`);
+  if (merged.contrast !== undefined) parts.push(`contrast=${merged.contrast}`);
+  if (merged.sharpen) parts.push(`sharpen=${merged.sharpen}`);
+  if (merged.rotate) parts.push(`rotate=${merged.rotate}`);
+  
+  // Handle filter presets
+  if (merged.filter) {
+    switch (merged.filter) {
+      case 'grayscale':
+        parts.push('saturation=0');
+        break;
+      case 'blur-light':
+        parts.push('blur=5');
+        break;
+      case 'blur-heavy':
+        parts.push('blur=20');
+        break;
+      case 'bright':
+        parts.push('brightness=1.2');
+        break;
+      case 'dark':
+        parts.push('brightness=0.8');
+        break;
+      case 'high-contrast':
+        parts.push('contrast=1.3');
+        break;
+      case 'sharp':
+        parts.push('sharpen=2');
+        break;
+    }
+  }
+  
+  return parts.join(',');
+}
+
+/**
+ * Generate a transformed image URL using Direct Cloudflare Image Resizing
+ * 
+ * NO PROXY - Direct to Cloudflare Edge for <50ms latency
  * 
  * @param originalUrl - The original image URL (must be publicly accessible)
  * @param options - Transformation options
- * @returns Transformed image URL
+ * @returns Transformed image URL via Cloudflare
  * 
  * @example
  * // Using preset
- * getTransformedImageUrl('https://example.com/image.jpg', { preset: 'avatar' })
- * 
- * // Custom options
- * getTransformedImageUrl('https://example.com/image.jpg', { width: 300, format: 'webp' })
- * 
- * // With filter
- * getTransformedImageUrl('https://example.com/image.jpg', { preset: 'post', filter: 'bright' })
+ * getTransformedImageUrl('https://r2.dev/image.jpg', { preset: 'avatar' })
+ * // => https://fun.rich/cdn-cgi/image/width=128,height=128,fit=cover,format=auto/https://r2.dev/image.jpg
  */
 export function getTransformedImageUrl(
   originalUrl: string | null | undefined,
@@ -60,34 +120,48 @@ export function getTransformedImageUrl(
   if (originalUrl.startsWith('data:') || originalUrl === '/placeholder.svg') {
     return originalUrl;
   }
-
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  if (!supabaseUrl) return originalUrl;
-
-  // Build query params
-  const params = new URLSearchParams();
-  params.set('url', originalUrl);
-
-  // Apply preset if specified
-  if (options.preset) {
-    params.set('preset', options.preset);
+  
+  // Skip local assets
+  if (originalUrl.startsWith('/') && !originalUrl.startsWith('//')) {
+    return originalUrl;
   }
 
-  // Apply individual options (these override preset values)
-  if (options.width) params.set('w', options.width.toString());
-  if (options.height) params.set('h', options.height.toString());
-  if (options.fit) params.set('fit', options.fit);
-  if (options.gravity) params.set('gravity', options.gravity);
-  if (options.quality) params.set('q', options.quality.toString());
-  if (options.format) params.set('f', options.format);
-  if (options.blur) params.set('blur', options.blur.toString());
-  if (options.brightness !== undefined) params.set('brightness', options.brightness.toString());
-  if (options.contrast !== undefined) params.set('contrast', options.contrast.toString());
-  if (options.sharpen) params.set('sharpen', options.sharpen.toString());
-  if (options.rotate) params.set('rotate', options.rotate.toString());
-  if (options.filter) params.set('filter', options.filter);
+  // Handle Cloudflare Images URLs (imagedelivery.net)
+  // These already have variants, but we can modify the variant
+  if (originalUrl.includes('imagedelivery.net')) {
+    // Format: https://imagedelivery.net/{account_hash}/{image_id}/{variant}
+    // We can change the variant based on preset
+    const variantMap: Record<string, string> = {
+      'avatar': 'avatar',
+      'avatar-sm': 'avatar-sm',
+      'avatar-lg': 'avatar-lg',
+      'cover': 'cover',
+      'thumbnail': 'thumbnail',
+      'post': 'public',
+      'post-grid': 'thumbnail',
+      'gallery': 'public',
+    };
+    
+    if (options.preset && variantMap[options.preset]) {
+      // Replace the variant in the URL
+      const parts = originalUrl.split('/');
+      if (parts.length >= 5) {
+        parts[parts.length - 1] = variantMap[options.preset];
+        return parts.join('/');
+      }
+    }
+    return originalUrl;
+  }
 
-  return `${supabaseUrl}/functions/v1/image-transform?${params.toString()}`;
+  // Build Cloudflare options string
+  const cfOptions = buildCfOptions(options);
+  
+  // If no options, return original
+  if (!cfOptions) return originalUrl;
+
+  // Direct Cloudflare Image Resizing URL
+  // Format: https://fun.rich/cdn-cgi/image/{options}/{original_url}
+  return `${CF_ZONE_DOMAIN}/cdn-cgi/image/${cfOptions}/${originalUrl}`;
 }
 
 /**
@@ -127,7 +201,7 @@ export function getGalleryUrl(url: string | null | undefined): string {
 }
 
 /**
- * Generate srcset for responsive images
+ * Generate srcset for responsive images using Direct Cloudflare
  */
 export function getResponsiveSrcSet(
   originalUrl: string | null | undefined,
@@ -136,7 +210,7 @@ export function getResponsiveSrcSet(
   if (!originalUrl) return '';
   
   return widths
-    .map(w => `${getTransformedImageUrl(originalUrl, { width: w, format: 'webp' })} ${w}w`)
+    .map(w => `${getTransformedImageUrl(originalUrl, { width: w, format: 'auto' })} ${w}w`)
     .join(', ');
 }
 
@@ -149,6 +223,17 @@ export function isTransformableUrl(url: string | null | undefined): boolean {
   // Skip data URLs and placeholders
   if (url.startsWith('data:') || url === '/placeholder.svg') return false;
   
+  // Skip local assets
+  if (url.startsWith('/') && !url.startsWith('//')) return false;
+  
   // Allow R2 URLs and any public HTTPS URL
   return url.startsWith('https://');
+}
+
+/**
+ * Get raw R2 URL without transformation (for downloads, etc.)
+ */
+export function getRawUrl(url: string | null | undefined): string {
+  if (!url) return '/placeholder.svg';
+  return url;
 }
