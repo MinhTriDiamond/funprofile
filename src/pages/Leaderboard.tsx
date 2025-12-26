@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
+import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Trophy, Medal, Award, TrendingUp, Users, MessageCircle, Heart, ArrowLeft } from 'lucide-react';
@@ -102,7 +103,7 @@ const Leaderboard = () => {
   });
 
   return (
-    <div className="min-h-screen bg-[#f0f2f5]">
+    <div className="min-h-screen bg-[#f0f2f5] pb-20 lg:pb-0">
       <FacebookNavbar />
       <main className="pt-14">
         <div className="max-w-5xl mx-auto px-4 py-6">
@@ -267,6 +268,9 @@ const Leaderboard = () => {
           </div>
         </div>
       </main>
+      
+      {/* Mobile Bottom Navigation */}
+      <MobileBottomNav />
     </div>
   );
 };

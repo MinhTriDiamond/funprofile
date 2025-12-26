@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
+import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { FacebookPostCard } from '@/components/feed/FacebookPostCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -54,20 +55,21 @@ const Post = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#f0f2f5]">
+      <div className="min-h-screen bg-[#f0f2f5] pb-20 lg:pb-0">
         <FacebookNavbar />
         <main className="pt-14">
           <div className="max-w-2xl mx-auto px-4 py-6">
             <Skeleton className="h-[400px] w-full rounded-xl" />
           </div>
         </main>
+        <MobileBottomNav />
       </div>
     );
   }
 
   if (!post) {
     return (
-      <div className="min-h-screen bg-[#f0f2f5]">
+      <div className="min-h-screen bg-[#f0f2f5] pb-20 lg:pb-0">
         <FacebookNavbar />
         <main className="pt-14">
           <div className="max-w-2xl mx-auto px-4 py-20">
@@ -86,12 +88,13 @@ const Post = () => {
             </div>
           </div>
         </main>
+        <MobileBottomNav />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#f0f2f5]">
+    <div className="min-h-screen bg-[#f0f2f5] pb-20 lg:pb-0">
       <FacebookNavbar />
       <main className="pt-14">
         <div className="max-w-2xl mx-auto px-4 py-6">
@@ -121,6 +124,9 @@ const Post = () => {
           </div>
         </div>
       </main>
+      
+      {/* Mobile Bottom Navigation */}
+      <MobileBottomNav />
     </div>
   );
 };

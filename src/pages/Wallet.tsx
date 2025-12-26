@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
+import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 
 // Lazy load ALL Web3 dependencies via wrapper - this ensures wagmi/rainbowkit/viem
 // are only downloaded when user actually visits the Wallet page
@@ -40,7 +41,7 @@ const Wallet = () => {
   }, [navigate]);
 
   return (
-    <div className="min-h-screen bg-[#f0f2f5]">
+    <div className="min-h-screen bg-[#f0f2f5] pb-20 lg:pb-0">
       <FacebookNavbar />
       <main className="pt-14">
         {/* Full width center container */}
@@ -53,6 +54,9 @@ const Wallet = () => {
           </div>
         </div>
       </main>
+      
+      {/* Mobile Bottom Navigation */}
+      <MobileBottomNav />
     </div>
   );
 };

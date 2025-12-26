@@ -1,4 +1,5 @@
 import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
+import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Sparkles, Shield, Users, Coins, Palette, Globe, Rocket } from 'lucide-react';
@@ -46,7 +47,7 @@ const About = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-[#f0f2f5]">
+    <div className="min-h-screen bg-[#f0f2f5] pb-20 lg:pb-0">
       <FacebookNavbar />
       <main className="pt-14">
         {/* Hero Section */}
@@ -126,6 +127,9 @@ const About = () => {
           </div>
         </div>
       </main>
+      
+      {/* Mobile Bottom Navigation */}
+      <MobileBottomNav />
     </div>
   );
 };
