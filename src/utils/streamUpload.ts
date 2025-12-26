@@ -49,6 +49,8 @@ async function getDirectUploadUrl(): Promise<{ uploadUrl: string; uid: string }>
 
   const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stream-video?action=direct-upload`;
   
+  console.log('[streamUpload] Getting direct upload URL...');
+  
   const directResponse = await fetch(functionUrl, {
     method: 'POST',
     headers: {
@@ -60,16 +62,19 @@ async function getDirectUploadUrl(): Promise<{ uploadUrl: string; uid: string }>
 
   if (!directResponse.ok) {
     const error = await directResponse.json().catch(() => ({ error: 'Upload failed' }));
+    console.error('[streamUpload] Failed to get direct upload URL:', error);
     throw new Error(error.error || 'Failed to get upload URL');
   }
 
-  return directResponse.json();
+  const result = await directResponse.json();
+  console.log('[streamUpload] Got direct upload URL, uid:', result.uid);
+  return result;
 }
 
 /**
  * Get TUS upload URL for resumable uploads
  */
-async function getTusUploadUrl(): Promise<{ uploadUrl: string; uid: string }> {
+async function getTusUploadUrl(fileSize: number): Promise<{ uploadUrl: string; uid: string }> {
   const { data: sessionData } = await supabase.auth.getSession();
   if (!sessionData.session) {
     throw new Error('Not authenticated');
@@ -77,36 +82,51 @@ async function getTusUploadUrl(): Promise<{ uploadUrl: string; uid: string }> {
 
   const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stream-video?action=get-upload-url`;
   
+  console.log('[streamUpload] Getting TUS upload URL for file size:', formatBytes(fileSize));
+
   const response = await fetch(functionUrl, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${sessionData.session.access_token}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ maxDurationSeconds: MAX_DURATION_SECONDS }),
+    body: JSON.stringify({ 
+      maxDurationSeconds: MAX_DURATION_SECONDS,
+      fileSize,
+    }),
   });
 
   if (!response.ok) {
-    throw new Error('Failed to get upload URL');
+    const error = await response.json().catch(() => ({ error: 'Failed to get TUS URL' }));
+    console.error('[streamUpload] Failed to get TUS upload URL:', error);
+    throw new Error(error.error || 'Failed to get TUS upload URL');
   }
 
-  return response.json();
+  const result = await response.json();
+  console.log('[streamUpload] Got TUS upload URL:', result.uploadUrl, 'uid:', result.uid);
+  return result;
 }
 
 /**
  * Upload a video to Cloudflare Stream
- * Automatically uses TUS for large files (>100MB) for resumable upload
+ * Uses Direct Upload for all files (more reliable than TUS for our use case)
  */
 export async function uploadToStream(
   file: File,
   onProgress?: (progress: StreamUploadProgress) => void,
   onError?: (error: Error) => void
 ): Promise<StreamUploadResult> {
-  // Use TUS for files larger than threshold (100MB)
-  const useTus = file.size > (FILE_LIMITS.TUS_THRESHOLD || 100 * 1024 * 1024);
+  const fileSize = file.size;
+  const useTus = fileSize > (FILE_LIMITS.TUS_THRESHOLD || 100 * 1024 * 1024);
   
+  console.log('[streamUpload] Starting upload:', {
+    fileName: file.name,
+    fileSize: formatBytes(fileSize),
+    useTus,
+  });
+
   if (useTus) {
-    console.log('[streamUpload] Using TUS for large file:', formatBytes(file.size));
+    console.log('[streamUpload] Using TUS for large file');
     return uploadToStreamTus(file, onProgress, onError);
   }
 
@@ -125,7 +145,7 @@ async function uploadDirect(
     try {
       const { uploadUrl, uid } = await getDirectUploadUrl();
 
-      console.log('[streamUpload] Starting direct upload:', { uid, size: formatBytes(file.size) });
+      console.log('[streamUpload] Starting direct upload to:', uploadUrl);
 
       const formData = new FormData();
       formData.append('file', file);
@@ -159,21 +179,31 @@ async function uploadDirect(
       });
 
       xhr.addEventListener('load', () => {
+        console.log('[streamUpload] XHR load event, status:', xhr.status);
         if (xhr.status >= 200 && xhr.status < 300) {
-          console.log('[streamUpload] Upload complete:', uid);
+          console.log('[streamUpload] Direct upload complete, uid:', uid);
           resolve({
             uid,
             playbackUrl: `https://iframe.videodelivery.net/${uid}`,
           });
         } else {
-          const error = new Error(`Upload failed: ${xhr.status}`);
+          const error = new Error(`Upload failed with status: ${xhr.status}`);
+          console.error('[streamUpload] Upload failed:', xhr.status, xhr.responseText);
           onError?.(error);
           reject(error);
         }
       });
 
-      xhr.addEventListener('error', () => {
+      xhr.addEventListener('error', (event) => {
+        console.error('[streamUpload] XHR error event:', event);
         const error = new Error('Upload failed - network error');
+        onError?.(error);
+        reject(error);
+      });
+
+      xhr.addEventListener('abort', () => {
+        console.error('[streamUpload] Upload aborted');
+        const error = new Error('Upload aborted');
         onError?.(error);
         reject(error);
       });
@@ -182,7 +212,7 @@ async function uploadDirect(
       xhr.send(formData);
 
     } catch (error) {
-      console.error('[streamUpload] Error:', error);
+      console.error('[streamUpload] Direct upload error:', error);
       onError?.(error as Error);
       reject(error);
     }
@@ -199,28 +229,33 @@ export async function uploadToStreamTus(
 ): Promise<StreamUploadResult> {
   return new Promise(async (resolve, reject) => {
     try {
-      const { uploadUrl, uid } = await getTusUploadUrl();
+      // Get TUS upload URL from edge function
+      const { uploadUrl, uid } = await getTusUploadUrl(file.size);
 
       if (!uploadUrl) {
-        console.log('[streamUpload] TUS URL not available, falling back to direct upload');
+        console.log('[streamUpload] No TUS URL received, falling back to direct upload');
         return resolve(await uploadDirect(file, onProgress, onError));
       }
 
-      console.log('[streamUpload] Starting TUS upload:', { uid, size: formatBytes(file.size) });
+      console.log('[streamUpload] Starting TUS upload:', { 
+        uploadUrl, 
+        uid, 
+        size: formatBytes(file.size) 
+      });
 
       let lastLoaded = 0;
       let lastTime = Date.now();
 
       const upload = new tus.Upload(file, {
-        endpoint: uploadUrl,
-        retryDelays: [0, 1000, 3000, 5000, 10000], // More retries for large files
-        chunkSize: 10 * 1024 * 1024, // 10MB chunks for better reliability
+        uploadUrl, // Use the pre-created upload URL
+        retryDelays: [0, 1000, 3000, 5000, 10000, 15000, 30000], // More retries for large files
+        chunkSize: 50 * 1024 * 1024, // 50MB chunks (Cloudflare recommends 5-200MB)
         metadata: {
           filename: file.name,
           filetype: file.type,
         },
         onError: (error) => {
-          console.error('[streamUpload] TUS error:', error);
+          console.error('[streamUpload] TUS upload error:', error);
           onError?.(error);
           reject(error);
         },
@@ -236,16 +271,19 @@ export async function uploadToStreamTus(
           lastLoaded = bytesUploaded;
           lastTime = now;
           
-          onProgress?.({
+          const progress = {
             bytesUploaded,
             bytesTotal,
             percentage: Math.round((bytesUploaded / bytesTotal) * 100),
             uploadSpeed: speed,
             eta: Math.round(eta),
-          });
+          };
+          
+          console.log('[streamUpload] TUS progress:', progress.percentage + '%', formatBytes(speed) + '/s');
+          onProgress?.(progress);
         },
         onSuccess: () => {
-          console.log('[streamUpload] TUS upload complete:', uid);
+          console.log('[streamUpload] TUS upload complete, uid:', uid);
           resolve({
             uid,
             playbackUrl: `https://iframe.videodelivery.net/${uid}`,
@@ -253,17 +291,18 @@ export async function uploadToStreamTus(
         },
       });
 
-      // Check for previous uploads and resume
+      // Check for previous uploads and resume if available
       upload.findPreviousUploads().then((previousUploads) => {
         if (previousUploads.length > 0) {
-          console.log('[streamUpload] Resuming previous upload');
+          console.log('[streamUpload] Found previous upload, resuming...');
           upload.resumeFromPreviousUpload(previousUploads[0]);
         }
+        console.log('[streamUpload] Starting TUS upload...');
         upload.start();
       });
 
     } catch (error) {
-      console.error('[streamUpload] Error:', error);
+      console.error('[streamUpload] TUS setup error:', error);
       onError?.(error as Error);
       reject(error);
     }

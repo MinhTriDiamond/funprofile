@@ -18,6 +18,10 @@ serve(async (req) => {
   try {
     // Validate environment
     if (!CLOUDFLARE_ACCOUNT_ID || !CLOUDFLARE_STREAM_API_TOKEN) {
+      console.error('[stream-video] Missing environment variables:', {
+        hasAccountId: !!CLOUDFLARE_ACCOUNT_ID,
+        hasApiToken: !!CLOUDFLARE_STREAM_API_TOKEN,
+      });
       throw new Error('Missing Cloudflare Stream configuration');
     }
 
@@ -45,11 +49,29 @@ serve(async (req) => {
     console.log(`[stream-video] Action: ${action}, User: ${user.id}`);
 
     switch (action) {
+      case 'get-tus-endpoint': {
+        // Return TUS endpoint for resumable uploads
+        // The TUS endpoint for Cloudflare Stream
+        const tusEndpoint = `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream`;
+        
+        console.log('[stream-video] Returning TUS endpoint');
+
+        return new Response(JSON.stringify({
+          tusEndpoint,
+          apiToken: CLOUDFLARE_STREAM_API_TOKEN, // Client needs this for TUS auth
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
       case 'get-upload-url': {
-        // Create TUS upload URL for resumable uploads
+        // Create TUS upload URL for resumable uploads (One-time upload URL)
         const body = await req.json().catch(() => ({}));
         const maxDurationSeconds = body.maxDurationSeconds || 900; // 15 minutes max
 
+        console.log('[stream-video] Creating TUS upload URL, maxDuration:', maxDurationSeconds);
+
+        // Use the Direct Creator Upload endpoint which returns a one-time TUS URL
         const response = await fetch(
           `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream?direct_user=true`,
           {
@@ -57,32 +79,50 @@ serve(async (req) => {
             headers: {
               'Authorization': `Bearer ${CLOUDFLARE_STREAM_API_TOKEN}`,
               'Tus-Resumable': '1.0.0',
-              'Upload-Length': '0', // Will be set by client
+              'Upload-Length': body.fileSize?.toString() || '0',
               'Upload-Metadata': `maxDurationSeconds ${btoa(maxDurationSeconds.toString())}, requiresignedurls ${btoa('false')}`,
             },
           }
         );
 
+        console.log('[stream-video] TUS response status:', response.status);
+        console.log('[stream-video] TUS response headers:', Object.fromEntries(response.headers.entries()));
+
         if (!response.ok) {
           const errorText = await response.text();
-          console.error('[stream-video] Cloudflare error:', errorText);
-          throw new Error(`Failed to create upload URL: ${response.status}`);
+          console.error('[stream-video] Cloudflare TUS error:', errorText);
+          throw new Error(`Failed to create TUS upload URL: ${response.status} - ${errorText}`);
         }
 
-        // Get the upload URL from the response headers
-        const uploadUrl = response.headers.get('Location') || response.headers.get('stream-media-id');
+        // The upload URL is in the Location header for TUS
+        const uploadUrl = response.headers.get('Location');
         const streamMediaId = response.headers.get('stream-media-id');
 
-        // Also try to get from response body
-        const responseData = await response.json().catch(() => null);
-        
+        if (!uploadUrl) {
+          // Fallback: try to get from response body
+          const responseData = await response.json().catch(() => null);
+          console.log('[stream-video] Response body:', responseData);
+          
+          if (responseData?.result?.uploadURL) {
+            return new Response(JSON.stringify({
+              uploadUrl: responseData.result.uploadURL,
+              uid: responseData.result.uid,
+              expiresAt: new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString(),
+            }), {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+          
+          throw new Error('No upload URL returned from Cloudflare');
+        }
+
         const result = {
-          uploadUrl: uploadUrl || responseData?.result?.uploadURL,
-          uid: streamMediaId || responseData?.result?.uid,
+          uploadUrl,
+          uid: streamMediaId,
           expiresAt: new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString(), // 6 hours
         };
 
-        console.log('[stream-video] Upload URL created:', result.uid);
+        console.log('[stream-video] TUS Upload URL created:', result);
 
         return new Response(JSON.stringify(result), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -90,9 +130,11 @@ serve(async (req) => {
       }
 
       case 'direct-upload': {
-        // Alternative: Direct Creator Upload for simpler flow
+        // Direct Creator Upload for simpler flow (non-TUS, for smaller files)
         const body = await req.json().catch(() => ({}));
         const maxDurationSeconds = body.maxDurationSeconds || 900;
+
+        console.log('[stream-video] Creating direct upload URL, maxDuration:', maxDurationSeconds);
 
         const response = await fetch(
           `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream/direct_upload`,
@@ -117,10 +159,11 @@ serve(async (req) => {
         if (!response.ok) {
           const errorText = await response.text();
           console.error('[stream-video] Direct upload error:', errorText);
-          throw new Error(`Failed to create direct upload: ${response.status}`);
+          throw new Error(`Failed to create direct upload: ${response.status} - ${errorText}`);
         }
 
         const data = await response.json();
+        console.log('[stream-video] Direct upload created:', data.result?.uid);
         
         return new Response(JSON.stringify({
           uploadUrl: data.result.uploadURL,
@@ -139,6 +182,8 @@ serve(async (req) => {
           throw new Error('Missing video UID');
         }
 
+        console.log('[stream-video] Checking status for:', uid);
+
         const response = await fetch(
           `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream/${uid}`,
           {
@@ -149,11 +194,15 @@ serve(async (req) => {
         );
 
         if (!response.ok) {
+          const errorText = await response.text();
+          console.error('[stream-video] Check status error:', errorText);
           throw new Error(`Failed to check status: ${response.status}`);
         }
 
         const data = await response.json();
         const video = data.result;
+
+        console.log('[stream-video] Video status:', video?.status?.state, 'readyToStream:', video?.readyToStream);
 
         return new Response(JSON.stringify({
           uid: video.uid,

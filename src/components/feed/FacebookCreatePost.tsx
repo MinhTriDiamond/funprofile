@@ -244,12 +244,18 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
 
             setVideoUploadState('ready');
             toast.success('Video đã tải lên thành công!');
-          } catch (error) {
-            console.error('Stream upload failed, falling back to R2:', error);
+          } catch (error: any) {
+            console.error('Stream upload failed:', error);
             setVideoUploadState('error');
-            toast.error('Không thể tải video lên Stream, đang dùng phương thức dự phòng...');
             
-            // Fallback to R2 upload
+            // For large files (>50MB), don't fallback to R2 as it doesn't support large uploads
+            if (item.file.size > 50 * 1024 * 1024) {
+              toast.error(`Không thể tải video lên: ${error.message || 'Vui lòng thử lại'}`);
+              throw error; // Rethrow to stop the post creation
+            }
+            
+            // Only fallback to R2 for smaller videos
+            toast.error('Không thể tải video lên Stream, đang dùng phương thức dự phòng...');
             const r2Result = await uploadToR2(item.file, 'videos');
             mediaUrls.push({
               url: r2Result.url,
