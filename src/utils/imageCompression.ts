@@ -171,13 +171,15 @@ export const getVideoDuration = (file: File): Promise<number> => {
  * Validate and get optimized file size limits
  */
 export const FILE_LIMITS = {
-  IMAGE_MAX_SIZE: 10 * 1024 * 1024, // 10MB before compression
-  VIDEO_MAX_SIZE: 50 * 1024 * 1024, // 50MB
-  VIDEO_MAX_DURATION: 180, // 3 minutes
+  IMAGE_MAX_SIZE: 20 * 1024 * 1024, // 20MB - cho ảnh chất lượng cao
+  VIDEO_MAX_SIZE: 1024 * 1024 * 1024, // 1GB - cho video Full HD/4K
+  VIDEO_MAX_DURATION: 900, // 15 phút
   AVATAR_MAX_WIDTH: 256,
   AVATAR_MAX_HEIGHT: 256,
   COVER_MAX_WIDTH: 1200,
   COVER_MAX_HEIGHT: 400,
   POST_IMAGE_MAX_WIDTH: 1200,
   POST_IMAGE_MAX_HEIGHT: 1200,
+  // Threshold for using TUS resumable upload
+  TUS_THRESHOLD: 100 * 1024 * 1024, // 100MB
 };

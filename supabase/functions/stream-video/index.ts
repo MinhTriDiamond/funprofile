@@ -48,7 +48,7 @@ serve(async (req) => {
       case 'get-upload-url': {
         // Create TUS upload URL for resumable uploads
         const body = await req.json().catch(() => ({}));
-        const maxDurationSeconds = body.maxDurationSeconds || 300; // 5 minutes max
+        const maxDurationSeconds = body.maxDurationSeconds || 900; // 15 minutes max
 
         const response = await fetch(
           `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream?direct_user=true`,
@@ -92,7 +92,7 @@ serve(async (req) => {
       case 'direct-upload': {
         // Alternative: Direct Creator Upload for simpler flow
         const body = await req.json().catch(() => ({}));
-        const maxDurationSeconds = body.maxDurationSeconds || 300;
+        const maxDurationSeconds = body.maxDurationSeconds || 900;
 
         const response = await fetch(
           `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream/direct_upload`,
