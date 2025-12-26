@@ -11,13 +11,12 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 const CHAKRA_REACTIONS = [
-  { type: 'love', emoji: '❤️', label: 'Love', color: 'text-red-500' },
+  { type: 'like', emoji: '👍', label: 'Thích', color: 'text-blue-500' },
+  { type: 'love', emoji: '❤️', label: 'Yêu thương', color: 'text-red-500' },
+  { type: 'care', emoji: '🥰', label: 'Thương thương', color: 'text-orange-500' },
+  { type: 'wow', emoji: '😮', label: 'Ngạc nhiên', color: 'text-yellow-600' },
   { type: 'haha', emoji: '😂', label: 'Haha', color: 'text-yellow-500' },
-  { type: 'wow', emoji: '😮', label: 'Wow', color: 'text-yellow-600' },
-  { type: 'sad', emoji: '😢', label: 'Sad', color: 'text-blue-500' },
-  { type: 'angry', emoji: '😡', label: 'Angry', color: 'text-orange-500' },
-  { type: 'gratitude', emoji: '🙏', label: 'Gratitude', color: 'text-purple-500' },
-  { type: 'cosmic', emoji: '✨', label: 'Cosmic Light', color: 'text-indigo-500' },
+  { type: 'pray', emoji: '🙏', label: 'Biết ơn', color: 'text-purple-500' },
 ];
 
 interface CommentReactionButtonProps {

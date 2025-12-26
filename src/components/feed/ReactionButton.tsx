@@ -238,31 +238,25 @@ export const ReactionButton = ({
 
         setCurrentReaction(null);
         onReactionChange(likeCount - 1, null);
-      } else if (currentReaction) {
-        // Update existing reaction
+      } else {
+        // Upsert reaction (insert or update) - prevents duplicate key errors
         const { error } = await supabase
           .from('reactions')
-          .update({ type: reactionType })
-          .eq('post_id', postId)
-          .eq('user_id', currentUserId)
-          .is('comment_id', null);
+          .upsert({
+            post_id: postId,
+            user_id: currentUserId,
+            type: reactionType,
+            comment_id: null,
+          }, { 
+            onConflict: 'post_id,user_id',
+            ignoreDuplicates: false 
+          });
 
         if (error) throw error;
 
+        const wasNew = !currentReaction;
         setCurrentReaction(reactionType);
-        onReactionChange(likeCount, reactionType);
-      } else {
-        // Add new reaction
-        const { error } = await supabase.from('reactions').insert({
-          post_id: postId,
-          user_id: currentUserId,
-          type: reactionType,
-        });
-
-        if (error) throw error;
-
-        setCurrentReaction(reactionType);
-        onReactionChange(likeCount + 1, reactionType);
+        onReactionChange(wasNew ? likeCount + 1 : likeCount, reactionType);
       }
     } catch (error: any) {
       console.error('Reaction error:', error);
