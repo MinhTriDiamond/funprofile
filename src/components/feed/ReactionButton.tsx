@@ -344,12 +344,12 @@ export const ReactionButton = ({
           <div className="absolute bottom-full left-0 right-0 h-3" />
           <div 
             ref={reactionMenuRef}
-            className="absolute bottom-full left-1/2 mb-2 bg-card rounded-full shadow-2xl border border-border p-2 flex gap-1 z-[9999] select-none"
+            className="absolute bottom-full left-0 sm:left-1/2 sm:-translate-x-1/2 mb-2 bg-card rounded-full shadow-2xl border border-border p-2 flex gap-1 z-[9999] select-none"
             style={{ 
               WebkitTouchCallout: 'none',
               touchAction: 'none',
-              transform: `translateX(calc(-50% + ${menuOffset}px))`,
-              transition: 'transform 0.15s ease-out'
+              marginLeft: menuOffset > 0 ? `${menuOffset}px` : undefined,
+              transition: 'margin-left 0.15s ease-out'
             }}
             onTouchMove={(e) => e.preventDefault()}
           >
