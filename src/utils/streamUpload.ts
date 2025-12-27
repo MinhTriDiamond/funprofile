@@ -213,6 +213,11 @@ async function uploadDirect(
       const { uploadUrl, uid } = await getDirectUploadUrl();
 
       console.log('[streamUpload] Starting direct upload to:', uploadUrl);
+      console.log('[streamUpload] File info:', {
+        name: file.name,
+        size: formatBytes(file.size),
+        type: file.type,
+      });
 
       const formData = new FormData();
       formData.append('file', file);
@@ -220,6 +225,18 @@ async function uploadDirect(
       const xhr = new XMLHttpRequest();
       let lastLoaded = 0;
       let lastTime = Date.now();
+      let uploadComplete = false;
+      
+      // Timeout protection - 30 minutes max for large files
+      const uploadTimeout = setTimeout(() => {
+        if (!uploadComplete) {
+          console.error('[streamUpload] Upload timeout - aborting');
+          xhr.abort();
+          const error = new Error('Upload timeout - please try with a smaller file or better connection');
+          onError?.(error);
+          reject(error);
+        }
+      }, 30 * 60 * 1000);
       
       xhr.upload.addEventListener('progress', (event) => {
         if (event.lengthComputable && onProgress) {
@@ -235,6 +252,8 @@ async function uploadDirect(
           lastLoaded = event.loaded;
           lastTime = now;
           
+          console.log('[streamUpload] Upload progress:', Math.round((event.loaded / event.total) * 100) + '%');
+          
           onProgress({
             bytesUploaded: event.loaded,
             bytesTotal: event.total,
@@ -246,7 +265,11 @@ async function uploadDirect(
       });
 
       xhr.addEventListener('load', () => {
-        console.log('[streamUpload] XHR load event, status:', xhr.status);
+        uploadComplete = true;
+        clearTimeout(uploadTimeout);
+        
+        console.log('[streamUpload] XHR load event, status:', xhr.status, 'response:', xhr.responseText.substring(0, 200));
+        
         if (xhr.status >= 200 && xhr.status < 300) {
           console.log('[streamUpload] Direct upload complete, uid:', uid);
           
@@ -270,7 +293,7 @@ async function uploadDirect(
             thumbnailUrl: `https://videodelivery.net/${uid}/thumbnails/thumbnail.jpg?time=1s`,
           });
         } else {
-          const error = new Error(`Upload failed with status: ${xhr.status}`);
+          const error = new Error(`Upload failed with status: ${xhr.status} - ${xhr.responseText}`);
           console.error('[streamUpload] Upload failed:', xhr.status, xhr.responseText);
           onError?.(error);
           reject(error);
@@ -278,20 +301,47 @@ async function uploadDirect(
       });
 
       xhr.addEventListener('error', (event) => {
+        uploadComplete = true;
+        clearTimeout(uploadTimeout);
         console.error('[streamUpload] XHR error event:', event);
-        const error = new Error('Upload failed - network error');
+        const error = new Error('Upload failed - network error. Please check your connection.');
         onError?.(error);
         reject(error);
       });
 
       xhr.addEventListener('abort', () => {
+        uploadComplete = true;
+        clearTimeout(uploadTimeout);
         console.error('[streamUpload] Upload aborted');
         const error = new Error('Upload aborted');
         onError?.(error);
         reject(error);
       });
+      
+      // Add loadstart event for debugging
+      xhr.addEventListener('loadstart', () => {
+        console.log('[streamUpload] XHR loadstart - upload beginning');
+      });
+      
+      // Add loadend event for debugging
+      xhr.addEventListener('loadend', () => {
+        console.log('[streamUpload] XHR loadend - request complete');
+      });
 
       xhr.open('POST', uploadUrl);
+      
+      // Add timeout to XHR itself
+      xhr.timeout = 30 * 60 * 1000; // 30 minutes
+      xhr.ontimeout = () => {
+        uploadComplete = true;
+        clearTimeout(uploadTimeout);
+        console.error('[streamUpload] XHR timeout');
+        const error = new Error('Upload timeout - please try again');
+        onError?.(error);
+        reject(error);
+      };
+      
+      console.log('[streamUpload] Sending file to Cloudflare...');
       xhr.send(formData);
 
     } catch (error) {
@@ -331,26 +381,47 @@ export async function uploadToStreamTus(
 
       const upload = new tus.Upload(file, {
         uploadUrl, // Use the pre-created upload URL
-        headers: {}, // Direct Creator URL has auth built-in, no extra headers needed
+        headers: {
+          // Cloudflare Stream TUS needs Tus-Resumable header
+          'Tus-Resumable': '1.0.0',
+        },
         retryDelays: [0, 1000, 3000, 5000, 10000, 15000, 30000], // More retries for large files
-        chunkSize: 50 * 1024 * 1024, // 50MB chunks (Cloudflare recommends 5-200MB)
+        chunkSize: 10 * 1024 * 1024, // 10MB chunks (smaller for reliability)
         metadata: {
           filename: file.name,
           filetype: file.type,
         },
+        // CRITICAL: Don't remove fingerprint on success to allow resume
+        removeFingerprintOnSuccess: false,
         // Debug callbacks
         onBeforeRequest: (req) => {
-          console.log('[TUS] Sending request to:', req.getURL());
+          const url = req.getURL();
+          const method = req.getMethod();
+          console.log('[TUS] Before request:', method, url);
+          // Log headers for debugging
+          const headers = req.getHeader('Upload-Offset');
+          if (headers) {
+            console.log('[TUS] Upload-Offset:', headers);
+          }
         },
         onAfterResponse: (req, res) => {
-          console.log('[TUS] Response status:', res.getStatus());
+          const status = res.getStatus();
+          const body = res.getBody();
+          console.log('[TUS] Response:', status, body ? body.substring(0, 200) : '(empty)');
+          
+          // Check for errors
+          if (status >= 400) {
+            console.error('[TUS] Error response:', status, body);
+          }
         },
         onShouldRetry: (err, retryAttempt, options) => {
-          console.warn('[TUS] Retry attempt', retryAttempt, '- Error:', err);
+          console.warn('[TUS] Retry attempt', retryAttempt, '- Error:', err?.message || err);
+          // Retry on network errors or 5xx
           return retryAttempt < options.retryDelays.length;
         },
         onError: (error) => {
-          console.error('[streamUpload] TUS upload error:', error);
+          console.error('[streamUpload] TUS upload error:', error?.message || error);
+          console.error('[streamUpload] TUS error details:', error);
           onError?.(error);
           reject(error);
         },
