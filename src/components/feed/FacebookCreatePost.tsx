@@ -55,6 +55,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
   const [videoUploadState, setVideoUploadState] = useState<VideoUploadState>('idle');
   const [videoUploadProgress, setVideoUploadProgress] = useState(0);
   const [currentVideoName, setCurrentVideoName] = useState('');
+  const [currentVideoId, setCurrentVideoId] = useState<string | undefined>(undefined);
   // Enhanced upload progress state
   const [uploadDetails, setUploadDetails] = useState({
     bytesUploaded: 0,
@@ -247,6 +248,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
             );
 
             setVideoUploadState('processing');
+            setCurrentVideoId(result.uid); // Store video ID for thumbnail preview
             
             // Use Cloudflare Stream iframe embed URL (more reliable than HLS manifest)
             // Format: https://iframe.videodelivery.net/{uid}
@@ -277,6 +279,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
       // Reset video upload state
       setVideoUploadState('idle');
       setVideoUploadProgress(0);
+      setCurrentVideoId(undefined);
 
       // For backward compatibility, also set first image/video in legacy fields
       const firstImage = mediaUrls.find((m) => m.type === 'image');
@@ -532,6 +535,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
                         eta={uploadDetails.eta}
                         processingState={uploadDetails.processingState}
                         processingProgress={uploadDetails.processingProgress}
+                        videoId={currentVideoId}
                       />
                     )}
                   </div>

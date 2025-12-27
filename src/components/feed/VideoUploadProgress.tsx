@@ -1,6 +1,6 @@
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import { Progress } from '@/components/ui/progress';
-import { Loader2, CheckCircle2, XCircle, Upload, Clock, Zap } from 'lucide-react';
+import { Loader2, CheckCircle2, XCircle, Upload, Clock, Zap, Film } from 'lucide-react';
 import { formatBytes, formatDuration } from '@/utils/streamUpload';
 
 export type VideoUploadState = 
@@ -23,6 +23,8 @@ interface VideoUploadProgressProps {
   // Processing state info
   processingState?: string;
   processingProgress?: number;
+  // Video ID for thumbnail preview
+  videoId?: string;
 }
 
 /**
@@ -40,7 +42,15 @@ export const VideoUploadProgress = memo(({
   eta = 0,
   processingState,
   processingProgress,
+  videoId,
 }: VideoUploadProgressProps) => {
+  const [thumbnailError, setThumbnailError] = useState(false);
+  
+  // Cloudflare Stream thumbnail URL
+  const thumbnailUrl = videoId 
+    ? `https://videodelivery.net/${videoId}/thumbnails/thumbnail.jpg?time=1s`
+    : null;
+
   if (state === 'idle') return null;
 
   return (
@@ -113,16 +123,48 @@ export const VideoUploadProgress = memo(({
             </div>
           )}
 
-          {/* Processing message with progress */}
+          {/* Processing message with thumbnail preview */}
           {state === 'processing' && (
-            <div className="space-y-1">
+            <div className="space-y-2">
+              {/* Thumbnail preview */}
+              {thumbnailUrl && !thumbnailError && (
+                <div className="relative rounded-lg overflow-hidden">
+                  <img
+                    src={thumbnailUrl}
+                    alt="Video thumbnail"
+                    className="w-full h-32 object-cover animate-pulse"
+                    onError={() => setThumbnailError(true)}
+                  />
+                  <div className="absolute inset-0 bg-black/30 backdrop-blur-[1px] flex items-center justify-center">
+                    <div className="flex items-center gap-2 text-white text-sm font-medium">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Đang mã hóa video...</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Fallback when no thumbnail */}
+              {(!thumbnailUrl || thumbnailError) && (
+                <div className="relative rounded-lg overflow-hidden bg-muted/50 h-32 flex items-center justify-center">
+                  <Film className="w-12 h-12 text-muted-foreground/50 animate-pulse" />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="flex items-center gap-2 text-muted-foreground text-sm font-medium">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Đang mã hóa video...</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Progress bar */}
               {processingProgress !== undefined && processingProgress > 0 && (
                 <Progress value={processingProgress} className="h-1.5" />
               )}
               <p className="text-xs text-muted-foreground">
                 {processingState === 'queued' && '⏳ Đang chờ xử lý...'}
-                {processingState === 'inprogress' && `🔄 Đang mã hóa video... ${processingProgress || 0}%`}
-                {(!processingState || processingState === 'processing') && '🔄 Cloudflare đang xử lý video...'}
+                {processingState === 'inprogress' && `🔄 Tiến trình: ${processingProgress || 0}%`}
+                {(!processingState || processingState === 'processing') && '🔄 Cloudflare đang xử lý...'}
               </p>
             </div>
           )}
