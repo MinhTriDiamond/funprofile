@@ -245,25 +245,18 @@ async function uploadDirect(
         }
       });
 
-      xhr.addEventListener('load', async () => {
+      xhr.addEventListener('load', () => {
         console.log('[streamUpload] XHR load event, status:', xhr.status);
         if (xhr.status >= 200 && xhr.status < 300) {
-          console.log('[streamUpload] Direct upload complete, waiting for processing, uid:', uid);
+          console.log('[streamUpload] Direct upload complete, uid:', uid);
           
-          // Poll for readyToStream status before declaring success
-          try {
-            const status = await pollForVideoReady(uid, onProgress);
-            console.log('[streamUpload] Video ready to stream:', uid);
-            resolve({
-              uid,
-              playbackUrl: `https://iframe.videodelivery.net/${uid}`,
-              thumbnailUrl: status.thumbnail,
-            });
-          } catch (pollError) {
-            console.error('[streamUpload] Video processing failed:', pollError);
-            onError?.(pollError as Error);
-            reject(pollError);
-          }
+          // ✅ NON-BLOCKING: Return immediately without waiting for processing
+          // Video will process in background on Cloudflare
+          resolve({
+            uid,
+            playbackUrl: `https://iframe.videodelivery.net/${uid}`,
+            thumbnailUrl: `https://videodelivery.net/${uid}/thumbnails/thumbnail.jpg?time=1s`,
+          });
         } else {
           const error = new Error(`Upload failed with status: ${xhr.status}`);
           console.error('[streamUpload] Upload failed:', xhr.status, xhr.responseText);
@@ -326,11 +319,23 @@ export async function uploadToStreamTus(
 
       const upload = new tus.Upload(file, {
         uploadUrl, // Use the pre-created upload URL
+        headers: {}, // Direct Creator URL has auth built-in, no extra headers needed
         retryDelays: [0, 1000, 3000, 5000, 10000, 15000, 30000], // More retries for large files
         chunkSize: 50 * 1024 * 1024, // 50MB chunks (Cloudflare recommends 5-200MB)
         metadata: {
           filename: file.name,
           filetype: file.type,
+        },
+        // Debug callbacks
+        onBeforeRequest: (req) => {
+          console.log('[TUS] Sending request to:', req.getURL());
+        },
+        onAfterResponse: (req, res) => {
+          console.log('[TUS] Response status:', res.getStatus());
+        },
+        onShouldRetry: (err, retryAttempt, options) => {
+          console.warn('[TUS] Retry attempt', retryAttempt, '- Error:', err);
+          return retryAttempt < options.retryDelays.length;
         },
         onError: (error) => {
           console.error('[streamUpload] TUS upload error:', error);
@@ -360,23 +365,16 @@ export async function uploadToStreamTus(
           console.log('[streamUpload] TUS progress:', progress.percentage + '%', formatBytes(speed) + '/s');
           onProgress?.(progress);
         },
-        onSuccess: async () => {
-          console.log('[streamUpload] TUS upload complete, waiting for processing, uid:', uid);
+        onSuccess: () => {
+          console.log('[streamUpload] TUS upload complete, uid:', uid);
           
-          // Poll for readyToStream status before declaring success
-          try {
-            const status = await pollForVideoReady(uid, onProgress);
-            console.log('[streamUpload] Video ready to stream:', uid);
-            resolve({
-              uid,
-              playbackUrl: `https://iframe.videodelivery.net/${uid}`,
-              thumbnailUrl: status.thumbnail,
-            });
-          } catch (pollError) {
-            console.error('[streamUpload] Video processing failed:', pollError);
-            onError?.(pollError as Error);
-            reject(pollError);
-          }
+          // ✅ NON-BLOCKING: Return immediately without waiting for processing
+          // Video will process in background on Cloudflare
+          resolve({
+            uid,
+            playbackUrl: `https://iframe.videodelivery.net/${uid}`,
+            thumbnailUrl: `https://videodelivery.net/${uid}/thumbnails/thumbnail.jpg?time=1s`,
+          });
         },
       });
 
