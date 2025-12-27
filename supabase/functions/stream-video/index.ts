@@ -279,7 +279,6 @@ serve(async (req) => {
         // Delete a video
         const { uid } = body;
 
-
         if (!uid) {
           throw new Error('Missing video UID');
         }
@@ -301,6 +300,50 @@ serve(async (req) => {
         console.log('[stream-video] Video deleted:', uid);
 
         return new Response(JSON.stringify({ success: true }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      case 'update-video-settings': {
+        // Update video settings to disable signed URLs and set allowed origins
+        const { uid, requireSignedURLs = false, allowedOrigins = ['*'] } = body;
+
+        if (!uid) {
+          throw new Error('Missing video UID');
+        }
+
+        console.log('[stream-video] Updating video settings for:', uid, { requireSignedURLs, allowedOrigins });
+
+        const response = await fetch(
+          `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream/${uid}`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${CLOUDFLARE_STREAM_API_TOKEN}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              requireSignedURLs,
+              allowedOrigins,
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('[stream-video] Update settings error:', errorText);
+          throw new Error(`Failed to update video settings: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('[stream-video] Video settings updated:', data.result?.uid);
+
+        return new Response(JSON.stringify({
+          success: true,
+          uid,
+          requireSignedURLs: data.result?.requireSignedURLs,
+          allowedOrigins: data.result?.allowedOrigins,
+        }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }

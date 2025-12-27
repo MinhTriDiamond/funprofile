@@ -250,8 +250,20 @@ async function uploadDirect(
         if (xhr.status >= 200 && xhr.status < 300) {
           console.log('[streamUpload] Direct upload complete, uid:', uid);
           
-          // ✅ NON-BLOCKING: Return immediately without waiting for processing
-          // Video will process in background on Cloudflare
+          // ✅ NON-BLOCKING: Update video settings to disable signed URLs
+          supabase.functions.invoke('stream-video', {
+            body: { 
+              action: 'update-video-settings',
+              uid,
+              requireSignedURLs: false,
+              allowedOrigins: ['*'],
+            }
+          }).then(() => {
+            console.log('[streamUpload] Video settings updated - public access enabled');
+          }).catch((err) => {
+            console.warn('[streamUpload] Failed to update video settings:', err);
+          });
+          
           resolve({
             uid,
             playbackUrl: `https://iframe.videodelivery.net/${uid}`,
@@ -368,8 +380,20 @@ export async function uploadToStreamTus(
         onSuccess: () => {
           console.log('[streamUpload] TUS upload complete, uid:', uid);
           
-          // ✅ NON-BLOCKING: Return immediately without waiting for processing
-          // Video will process in background on Cloudflare
+          // ✅ NON-BLOCKING: Update video settings to disable signed URLs
+          supabase.functions.invoke('stream-video', {
+            body: { 
+              action: 'update-video-settings',
+              uid,
+              requireSignedURLs: false,
+              allowedOrigins: ['*'],
+            }
+          }).then(() => {
+            console.log('[streamUpload] Video settings updated - public access enabled');
+          }).catch((err) => {
+            console.warn('[streamUpload] Failed to update video settings:', err);
+          });
+          
           resolve({
             uid,
             playbackUrl: `https://iframe.videodelivery.net/${uid}`,
