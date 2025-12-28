@@ -32,6 +32,15 @@ serve(async (req) => {
     const url = new URL(req.url);
     const action = url.searchParams.get('action');
 
+    console.log('[stream-video] Incoming:', {
+      method: req.method,
+      path: url.pathname,
+      hasAction: !!action,
+      hasAuthHeader: !!req.headers.get('Authorization') || !!req.headers.get('authorization'),
+      tusResumable: req.headers.get('Tus-Resumable') || req.headers.get('tus-resumable') || undefined,
+      uploadLength: req.headers.get('Upload-Length') || req.headers.get('upload-length') || undefined,
+    });
+
     // TUS Protocol: Initial POST request from Uppy
     // This DOES NOT require user authentication - only Cloudflare API token
     // Client → Edge Function → Cloudflare (with CF API token)

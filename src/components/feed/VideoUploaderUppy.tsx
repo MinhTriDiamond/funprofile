@@ -132,6 +132,8 @@ export const VideoUploaderUppy = ({
           // These headers are sent with the initial POST to our backend function
           headers: {
             apikey: SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${accessToken}`,
+            // keep lowercase too for compatibility with some proxies
             authorization: `Bearer ${accessToken}`,
           },
           // Make sure TUS-required header is sent on all requests
@@ -141,6 +143,7 @@ export const VideoUploaderUppy = ({
             const url = req.getURL();
             if (url.includes('/functions/v1/stream-video')) {
               req.setHeader('apikey', SUPABASE_ANON_KEY);
+              req.setHeader('Authorization', `Bearer ${accessToken}`);
               req.setHeader('authorization', `Bearer ${accessToken}`);
             }
 
