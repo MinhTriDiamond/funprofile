@@ -7,9 +7,7 @@ import { Progress } from '@/components/ui/progress';
 import { Video, X, Loader2, CheckCircle, AlertCircle, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 
-// Import Uppy styles
-import '@uppy/core/dist/style.min.css';
-import '@uppy/progress-bar/dist/style.min.css';
+// Note: We use custom Progress component instead of Uppy's built-in CSS
 
 interface VideoUploaderUppyProps {
   onUploadComplete: (result: { uid: string; url: string }) => void;
