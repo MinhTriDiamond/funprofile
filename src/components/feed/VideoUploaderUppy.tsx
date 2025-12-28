@@ -7,7 +7,7 @@ import { Video, X, Loader2, CheckCircle, AlertCircle, Clock } from 'lucide-react
 import { toast } from 'sonner';
 
 interface VideoUploaderUppyProps {
-  onUploadComplete: (result: { uid: string; url: string }) => void;
+  onUploadComplete: (result: { uid: string; url: string; thumbnailUrl: string }) => void;
   onUploadError?: (error: Error) => void;
   onUploadStart?: () => void;
   onRemove?: () => void;
@@ -186,6 +186,7 @@ export const VideoUploaderUppy = ({
 
             // Success!
             const streamUrl = `https://iframe.videodelivery.net/${uid}`;
+            const thumbnailUrl = `https://videodelivery.net/${uid}/thumbnails/thumbnail.jpg?time=1s`;
             
             setUploadState(prev => ({
               ...prev,
@@ -194,7 +195,7 @@ export const VideoUploaderUppy = ({
 
             isUploadingRef.current = false;
             toast.success('Video đã tải lên thành công!');
-            onUploadComplete({ uid, url: streamUrl });
+            onUploadComplete({ uid, url: streamUrl, thumbnailUrl });
           },
           onError: (error) => {
             console.error('[VideoUploader] TUS upload error:', error);
@@ -341,12 +342,22 @@ export const VideoUploaderUppy = ({
         </div>
       )}
 
-      {/* Processing state */}
-      {uploadState.status === 'processing' && (
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="w-4 h-4 animate-spin" />
-            <span>Đang xử lý video...</span>
+      {/* Processing state with thumbnail preview */}
+      {uploadState.status === 'processing' && uploadState.videoUid && (
+        <div className="space-y-3">
+          <div className="relative rounded-lg overflow-hidden">
+            <img 
+              src={`https://videodelivery.net/${uploadState.videoUid}/thumbnails/thumbnail.jpg?time=1s`}
+              alt="Video thumbnail"
+              className="w-full h-32 object-cover bg-muted"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
+            />
+            <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+              <Loader2 className="w-6 h-6 text-white animate-spin" />
+              <span className="text-white text-sm ml-2">Đang xử lý...</span>
+            </div>
           </div>
           <div className="p-2 bg-blue-500/10 border border-blue-500/20 rounded text-xs text-blue-600 dark:text-blue-400">
             🎬 Bé chờ một chút để có thể xem video nhé!
@@ -354,11 +365,23 @@ export const VideoUploaderUppy = ({
         </div>
       )}
 
-      {/* Success state */}
-      {uploadState.status === 'ready' && (
-        <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
-          <CheckCircle className="w-4 h-4" />
-          <span>Video đã sẵn sàng! 🎉</span>
+      {/* Success state with thumbnail preview */}
+      {uploadState.status === 'ready' && uploadState.videoUid && (
+        <div className="space-y-2">
+          <div className="relative rounded-lg overflow-hidden">
+            <img 
+              src={`https://videodelivery.net/${uploadState.videoUid}/thumbnails/thumbnail.jpg?time=1s`}
+              alt="Video thumbnail"
+              className="w-full h-32 object-cover bg-muted"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
+            />
+            <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-black/60 rounded px-2 py-1">
+              <CheckCircle className="w-4 h-4 text-green-400" />
+              <span className="text-white text-xs">Sẵn sàng</span>
+            </div>
+          </div>
         </div>
       )}
 

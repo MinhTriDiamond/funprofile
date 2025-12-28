@@ -20,7 +20,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
-import { ImagePlus, Video, X, Loader2, Globe, Users, Lock, ChevronDown, UserPlus, MapPin, MoreHorizontal } from 'lucide-react';
+import { ImagePlus, Video, X, Loader2, Globe, Users, Lock, ChevronDown, UserPlus, MapPin, MoreHorizontal, CheckCircle } from 'lucide-react';
 import { compressImage, FILE_LIMITS, getVideoDuration } from '@/utils/imageCompression';
 import { EmojiPicker } from './EmojiPicker';
 import { VideoUploadProgress, VideoUploadState } from './VideoUploadProgress';
@@ -59,7 +59,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
   
   // Uppy video upload state
   const [pendingVideoFile, setPendingVideoFile] = useState<File | null>(null);
-  const [uppyVideoResult, setUppyVideoResult] = useState<{ uid: string; url: string } | null>(null);
+  const [uppyVideoResult, setUppyVideoResult] = useState<{ uid: string; url: string; thumbnailUrl: string } | null>(null);
   const [isVideoUploading, setIsVideoUploading] = useState(false);
   
   // Enhanced upload progress state
@@ -441,23 +441,34 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
                   </div>
                 )}
 
-                {/* Show uploaded video result */}
+                {/* Show uploaded video result with thumbnail */}
                 {uppyVideoResult && !pendingVideoFile && (
-                  <div className="mb-3 rounded-lg border border-green-500/50 bg-green-50 dark:bg-green-950/20 p-3 flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
-                      <Video className="w-5 h-5" />
-                      <span>Video đã upload thành công!</span>
-                    </div>
+                  <div className="mb-3 relative rounded-lg overflow-hidden border border-green-500/50">
+                    <img 
+                      src={uppyVideoResult.thumbnailUrl}
+                      alt="Video preview"
+                      className="w-full h-48 object-cover bg-muted"
+                      onError={(e) => {
+                        // Fallback to placeholder if thumbnail not ready
+                        e.currentTarget.src = '';
+                        e.currentTarget.className = 'w-full h-48 bg-muted flex items-center justify-center';
+                      }}
+                    />
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => {
-                        setUppyVideoResult(null);
-                      }}
-                      className="h-7 w-7"
+                      onClick={() => setUppyVideoResult(null)}
+                      className="absolute top-2 right-2 h-8 w-8 bg-black/50 hover:bg-black/70 text-white"
                     >
                       <X className="w-4 h-4" />
                     </Button>
+                    <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-black/60 rounded px-2 py-1">
+                      <CheckCircle className="w-4 h-4 text-green-400" />
+                      <span className="text-white text-xs">Sẵn sàng</span>
+                    </div>
+                    <div className="absolute bottom-2 right-2 flex items-center gap-1 bg-black/60 rounded px-2 py-1">
+                      <Video className="w-4 h-4 text-white" />
+                    </div>
                   </div>
                 )}
 
