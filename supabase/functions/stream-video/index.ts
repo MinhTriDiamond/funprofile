@@ -14,7 +14,7 @@ const CLOUDFLARE_ACCOUNT_ID = Deno.env.get('CLOUDFLARE_ACCOUNT_ID');
 const CLOUDFLARE_STREAM_API_TOKEN = Deno.env.get('CLOUDFLARE_STREAM_API_TOKEN');
 
 serve(async (req) => {
-  // Handle CORS preflight - return all TUS-required headers
+  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { 
       status: 204,
@@ -25,103 +25,14 @@ serve(async (req) => {
   try {
     // Validate environment
     if (!CLOUDFLARE_ACCOUNT_ID || !CLOUDFLARE_STREAM_API_TOKEN) {
-      console.error('[stream-video] Missing environment variables:', {
-        hasAccountId: !!CLOUDFLARE_ACCOUNT_ID,
-        hasApiToken: !!CLOUDFLARE_STREAM_API_TOKEN,
-      });
+      console.error('[stream-video] Missing environment variables');
       throw new Error('Missing Cloudflare Stream configuration');
     }
 
-    // Parse request
     const url = new URL(req.url);
     const action = url.searchParams.get('action');
 
-    // TUS-PROXY: Special handling for direct TUS proxy requests (no JSON body parsing)
-    if (action === 'tus-proxy') {
-      console.log('[stream-video] TUS Proxy request received');
-      
-      // Auth check
-      const authHeader = req.headers.get('Authorization');
-      if (!authHeader) {
-        throw new Error('Missing authorization header');
-      }
-
-      const supabaseClient = createClient(
-        Deno.env.get('SUPABASE_URL') ?? '',
-        Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-        { global: { headers: { Authorization: authHeader } } }
-      );
-
-      const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
-      if (authError || !user) {
-        throw new Error('Unauthorized');
-      }
-
-      // Get TUS headers from client request
-      const uploadLength = req.headers.get('Upload-Length');
-      const uploadMetadata = req.headers.get('Upload-Metadata');
-      const tusResumable = req.headers.get('Tus-Resumable') || '1.0.0';
-
-      console.log('[stream-video] TUS Proxy headers:', {
-        uploadLength,
-        uploadMetadata,
-        tusResumable,
-        userId: user.id,
-      });
-
-      // Forward request to Cloudflare Stream with direct_user=true
-      const cfResponse = await fetch(
-        `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream?direct_user=true`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${CLOUDFLARE_STREAM_API_TOKEN}`,
-            'Tus-Resumable': tusResumable,
-            'Upload-Length': uploadLength || '0',
-            'Upload-Metadata': uploadMetadata || '',
-          },
-        }
-      );
-
-      console.log('[stream-video] Cloudflare response status:', cfResponse.status);
-      
-      // Get the Location header (this is the actual TUS upload endpoint)
-      const location = cfResponse.headers.get('Location');
-      const streamMediaId = cfResponse.headers.get('stream-media-id');
-      
-      console.log('[stream-video] TUS Proxy response:', {
-        location,
-        streamMediaId,
-        cfStatus: cfResponse.status,
-      });
-
-      if (!location) {
-        const errorBody = await cfResponse.text();
-        console.error('[stream-video] No Location header from CF:', errorBody);
-        throw new Error('Cloudflare did not return upload URL');
-      }
-
-      // Return response with Location header - this is critical for TUS client
-      return new Response(null, {
-        status: cfResponse.status,
-        headers: {
-          ...corsHeaders,
-          'Location': location,
-          'stream-media-id': streamMediaId || '',
-          'Tus-Resumable': '1.0.0',
-        },
-      });
-    }
-
-    // For other actions, parse body
-    const body = await req.json().catch(() => ({}));
-    const bodyAction = body?.action as string | null;
-    const finalAction = action || bodyAction;
-
-    if (!finalAction) {
-      throw new Error('Missing action');
-    }
-
+    // Auth check for all requests
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       throw new Error('Missing authorization header');
@@ -138,37 +49,102 @@ serve(async (req) => {
       throw new Error('Unauthorized');
     }
 
+    // TUS Protocol: Initial POST request from Uppy
+    // According to Cloudflare docs, we act as the TUS endpoint
+    // and forward the request to Cloudflare, returning the Location header
+    if (req.method === 'POST' && !action) {
+      console.log('[stream-video] TUS POST - Creating upload URL');
+      
+      // Get TUS headers from client
+      const uploadLength = req.headers.get('Upload-Length') || '0';
+      const uploadMetadata = req.headers.get('Upload-Metadata') || '';
+      const tusResumable = req.headers.get('Tus-Resumable') || '1.0.0';
+
+      console.log('[stream-video] TUS headers:', {
+        uploadLength,
+        uploadMetadata: uploadMetadata.substring(0, 100),
+        tusResumable,
+        userId: user.id,
+      });
+
+      // Build metadata - add our defaults
+      let metadata = uploadMetadata;
+      if (!metadata.includes('maxDurationSeconds')) {
+        metadata = metadata ? `${metadata},maxDurationSeconds ${btoa('1800')}` : `maxDurationSeconds ${btoa('1800')}`;
+      }
+      if (!metadata.includes('requiresignedurls')) {
+        metadata = `${metadata},requiresignedurls ${btoa('false')}`;
+      }
+
+      // Forward to Cloudflare Stream with direct_user=true
+      const cfResponse = await fetch(
+        `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream?direct_user=true`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${CLOUDFLARE_STREAM_API_TOKEN}`,
+            'Tus-Resumable': tusResumable,
+            'Upload-Length': uploadLength,
+            'Upload-Metadata': metadata,
+          },
+        }
+      );
+
+      console.log('[stream-video] Cloudflare response:', cfResponse.status);
+
+      // Get Location header - this is the direct Cloudflare upload URL
+      const location = cfResponse.headers.get('Location');
+      const streamMediaId = cfResponse.headers.get('stream-media-id');
+
+      console.log('[stream-video] TUS response:', {
+        location: location?.substring(0, 80),
+        streamMediaId,
+        status: cfResponse.status,
+      });
+
+      if (!location) {
+        const errorBody = await cfResponse.text();
+        console.error('[stream-video] No Location header:', errorBody);
+        throw new Error('Cloudflare did not return upload URL');
+      }
+
+      // Return 201 Created with Location header
+      // The TUS client will use this Location for subsequent PATCH requests
+      return new Response(null, {
+        status: 201,
+        headers: {
+          ...corsHeaders,
+          'Location': location,
+          'stream-media-id': streamMediaId || '',
+          'Tus-Resumable': '1.0.0',
+        },
+      });
+    }
+
+    // Handle action-based requests (JSON body)
+    const body = await req.json().catch(() => ({}));
+    const finalAction = action || body?.action;
+
+    if (!finalAction) {
+      // If no action, treat as TUS request but method wasn't POST
+      throw new Error('Invalid request: expected POST for TUS or action parameter');
+    }
+
     console.log(`[stream-video] Action: ${finalAction}, User: ${user.id}`);
 
     switch (finalAction) {
-      case 'get-tus-endpoint': {
-        // Return TUS endpoint for resumable uploads
-        const tusEndpoint = `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream`;
-        
-        console.log('[stream-video] Returning TUS endpoint');
-
-        return new Response(JSON.stringify({
-          tusEndpoint,
-          apiToken: CLOUDFLARE_STREAM_API_TOKEN,
-        }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-
       case 'get-upload-url': {
-        // Create TUS upload URL for resumable uploads (One-time upload URL)
-        const maxDurationSeconds = body.maxDurationSeconds || 900;
+        // Create TUS upload URL for resumable uploads
+        const maxDurationSeconds = body.maxDurationSeconds || 1800;
+        const fileSize = body.fileSize || 0;
 
-        console.log('[stream-video] Creating TUS upload URL, maxDuration:', maxDurationSeconds);
+        console.log('[stream-video] Creating TUS upload URL');
 
-        // Use the Direct Creator Upload endpoint which returns a one-time TUS URL
         const uploadMetadata = [
           `maxDurationSeconds ${btoa(maxDurationSeconds.toString())}`,
           `requiresignedurls ${btoa('false')}`,
           `name ${btoa(`upload_${user.id}_${Date.now()}`)}`,
         ].join(',');
-
-        console.log('[stream-video] TUS metadata:', uploadMetadata);
 
         const response = await fetch(
           `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream?direct_user=true`,
@@ -177,58 +153,41 @@ serve(async (req) => {
             headers: {
               'Authorization': `Bearer ${CLOUDFLARE_STREAM_API_TOKEN}`,
               'Tus-Resumable': '1.0.0',
-              'Upload-Length': body.fileSize?.toString() || '0',
+              'Upload-Length': fileSize.toString(),
               'Upload-Metadata': uploadMetadata,
             },
           }
         );
 
-        console.log('[stream-video] TUS response status:', response.status);
-        console.log('[stream-video] TUS response headers:', Object.fromEntries(response.headers.entries()));
-
         if (!response.ok) {
           const errorText = await response.text();
-          console.error('[stream-video] Cloudflare TUS error:', errorText);
-          throw new Error(`Failed to create TUS upload URL: ${response.status} - ${errorText}`);
+          console.error('[stream-video] TUS URL error:', errorText);
+          throw new Error(`Failed to create upload URL: ${response.status}`);
         }
 
         const uploadUrl = response.headers.get('Location');
         const streamMediaId = response.headers.get('stream-media-id');
 
         if (!uploadUrl) {
-          const responseData = await response.json().catch(() => null);
-          console.log('[stream-video] Response body:', responseData);
-          
-          if (responseData?.result?.uploadURL) {
-            return new Response(JSON.stringify({
-              uploadUrl: responseData.result.uploadURL,
-              uid: responseData.result.uid,
-              expiresAt: new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString(),
-            }), {
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            });
-          }
-          
-          throw new Error('No upload URL returned from Cloudflare');
+          throw new Error('No upload URL returned');
         }
 
-        const result = {
+        console.log('[stream-video] Created upload URL:', { uploadUrl: uploadUrl.substring(0, 50), uid: streamMediaId });
+
+        return new Response(JSON.stringify({
           uploadUrl,
           uid: streamMediaId,
           expiresAt: new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString(),
-        };
-
-        console.log('[stream-video] TUS Upload URL created:', result);
-
-        return new Response(JSON.stringify(result), {
+        }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
       case 'direct-upload': {
+        // Basic upload for files under 200MB
         const maxDurationSeconds = body.maxDurationSeconds || 900;
 
-        console.log('[stream-video] Creating direct upload URL, maxDuration:', maxDurationSeconds);
+        console.log('[stream-video] Creating direct upload URL');
 
         const response = await fetch(
           `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream/direct_upload`,
@@ -253,7 +212,7 @@ serve(async (req) => {
         if (!response.ok) {
           const errorText = await response.text();
           console.error('[stream-video] Direct upload error:', errorText);
-          throw new Error(`Failed to create direct upload: ${response.status} - ${errorText}`);
+          throw new Error(`Failed to create direct upload: ${response.status}`);
         }
 
         const data = await response.json();
@@ -269,12 +228,7 @@ serve(async (req) => {
 
       case 'check-status': {
         const { uid } = body;
-
-        if (!uid) {
-          throw new Error('Missing video UID');
-        }
-
-        console.log('[stream-video] Checking status for:', uid);
+        if (!uid) throw new Error('Missing video UID');
 
         const response = await fetch(
           `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream/${uid}`,
@@ -286,15 +240,11 @@ serve(async (req) => {
         );
 
         if (!response.ok) {
-          const errorText = await response.text();
-          console.error('[stream-video] Check status error:', errorText);
           throw new Error(`Failed to check status: ${response.status}`);
         }
 
         const data = await response.json();
         const video = data.result;
-
-        console.log('[stream-video] Video status:', video?.status?.state, 'readyToStream:', video?.readyToStream);
 
         return new Response(JSON.stringify({
           uid: video.uid,
@@ -304,7 +254,6 @@ serve(async (req) => {
           thumbnail: video.thumbnail,
           playback: video.playback,
           preview: video.preview,
-          meta: video.meta,
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -312,10 +261,7 @@ serve(async (req) => {
 
       case 'get-playback-url': {
         const { uid } = body;
-
-        if (!uid) {
-          throw new Error('Missing video UID');
-        }
+        if (!uid) throw new Error('Missing video UID');
 
         const response = await fetch(
           `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream/${uid}`,
@@ -350,10 +296,7 @@ serve(async (req) => {
 
       case 'delete': {
         const { uid } = body;
-
-        if (!uid) {
-          throw new Error('Missing video UID');
-        }
+        if (!uid) throw new Error('Missing video UID');
 
         const response = await fetch(
           `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream/${uid}`,
@@ -378,12 +321,9 @@ serve(async (req) => {
 
       case 'update-video-settings': {
         const { uid, requireSignedURLs = false, allowedOrigins = ['*'] } = body;
+        if (!uid) throw new Error('Missing video UID');
 
-        if (!uid) {
-          throw new Error('Missing video UID');
-        }
-
-        console.log('[stream-video] Updating video settings for:', uid, { requireSignedURLs, allowedOrigins });
+        console.log('[stream-video] Updating settings for:', uid);
 
         const response = await fetch(
           `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream/${uid}`,
@@ -403,11 +343,10 @@ serve(async (req) => {
         if (!response.ok) {
           const errorText = await response.text();
           console.error('[stream-video] Update settings error:', errorText);
-          throw new Error(`Failed to update video settings: ${response.status}`);
+          throw new Error(`Failed to update settings: ${response.status}`);
         }
 
         const data = await response.json();
-        console.log('[stream-video] Video settings updated:', data.result?.uid);
 
         return new Response(JSON.stringify({
           success: true,
