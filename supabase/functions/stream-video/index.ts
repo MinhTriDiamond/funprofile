@@ -32,28 +32,11 @@ serve(async (req) => {
     const url = new URL(req.url);
     const action = url.searchParams.get('action');
 
-    // Auth check for all requests
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      throw new Error('Missing authorization header');
-    }
-
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: authHeader } } }
-    );
-
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
-    if (authError || !user) {
-      throw new Error('Unauthorized');
-    }
-
     // TUS Protocol: Initial POST request from Uppy
-    // According to Cloudflare docs, we act as the TUS endpoint
-    // and forward the request to Cloudflare, returning the Location header
+    // This DOES NOT require user authentication - only Cloudflare API token
+    // Client → Edge Function → Cloudflare (with CF API token)
     if (req.method === 'POST' && !action) {
-      console.log('[stream-video] TUS POST - Creating upload URL');
+      console.log('[stream-video] TUS POST - Creating upload URL (no user auth required)');
       
       // Get TUS headers from client
       const uploadLength = req.headers.get('Upload-Length') || '0';
@@ -64,7 +47,6 @@ serve(async (req) => {
         uploadLength,
         uploadMetadata: uploadMetadata.substring(0, 100),
         tusResumable,
-        userId: user.id,
       });
 
       // Build metadata - add our defaults
@@ -77,6 +59,7 @@ serve(async (req) => {
       }
 
       // Forward to Cloudflare Stream with direct_user=true
+      // Use OUR Cloudflare API token (not user token)
       const cfResponse = await fetch(
         `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/stream?direct_user=true`,
         {
@@ -121,12 +104,29 @@ serve(async (req) => {
       });
     }
 
+    // For all other requests (action-based), require user authentication
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      throw new Error('Missing authorization header');
+    }
+
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
+    if (authError || !user) {
+      throw new Error('Unauthorized');
+    }
+
     // Handle action-based requests (JSON body)
     const body = await req.json().catch(() => ({}));
     const finalAction = action || body?.action;
 
     if (!finalAction) {
-      // If no action, treat as TUS request but method wasn't POST
+      // If no action and not a TUS POST, invalid request
       throw new Error('Invalid request: expected POST for TUS or action parameter');
     }
 
