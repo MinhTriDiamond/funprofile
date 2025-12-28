@@ -416,7 +416,52 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
               >
-                {mediaItems.length === 0 ? (
+                {/* Uppy Video Uploader - Always show when there's a pending video */}
+                {pendingVideoFile && (
+                  <div className="mb-3">
+                    <VideoUploaderUppy
+                      selectedFile={pendingVideoFile}
+                      onUploadComplete={(result) => {
+                        setUppyVideoResult(result);
+                        setIsVideoUploading(false);
+                        setPendingVideoFile(null);
+                      }}
+                      onUploadError={() => {
+                        setIsVideoUploading(false);
+                        setPendingVideoFile(null);
+                      }}
+                      onUploadStart={() => setIsVideoUploading(true)}
+                      onRemove={() => {
+                        setPendingVideoFile(null);
+                        setUppyVideoResult(null);
+                        setIsVideoUploading(false);
+                      }}
+                      disabled={loading}
+                    />
+                  </div>
+                )}
+
+                {/* Show uploaded video result */}
+                {uppyVideoResult && !pendingVideoFile && (
+                  <div className="mb-3 rounded-lg border border-green-500/50 bg-green-50 dark:bg-green-950/20 p-3 flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
+                      <Video className="w-5 h-5" />
+                      <span>Video đã upload thành công!</span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        setUppyVideoResult(null);
+                      }}
+                      className="h-7 w-7"
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                )}
+
+                {mediaItems.length === 0 && !pendingVideoFile && !uppyVideoResult ? (
                   <div className="text-center py-8">
                     <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-secondary flex items-center justify-center">
                       <ImagePlus className="w-8 h-8 text-muted-foreground" />
@@ -440,7 +485,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
                       Chọn từ thiết bị
                     </Button>
                   </div>
-                ) : (
+                ) : mediaItems.length > 0 ? (
                   <div className="space-y-3">
                     {/* Media Preview Grid */}
                     <div className={`grid gap-2 ${mediaItems.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
@@ -502,30 +547,8 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
                       </div>
                     )}
 
-                    {/* Uppy Video Uploader */}
-                    {pendingVideoFile && (
-                      <VideoUploaderUppy
-                        selectedFile={pendingVideoFile}
-                        onUploadComplete={(result) => {
-                          setUppyVideoResult(result);
-                          setIsVideoUploading(false);
-                          setPendingVideoFile(null);
-                        }}
-                        onUploadError={() => {
-                          setIsVideoUploading(false);
-                          setPendingVideoFile(null);
-                        }}
-                        onUploadStart={() => setIsVideoUploading(true)}
-                        onRemove={() => {
-                          setPendingVideoFile(null);
-                          setUppyVideoResult(null);
-                          setIsVideoUploading(false);
-                        }}
-                        disabled={loading}
-                      />
-                    )}
                   </div>
-                )}
+                ) : null}
 
                 {/* Close Upload Area */}
                 {mediaItems.length === 0 && (
@@ -568,11 +591,11 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
           <div className="p-4 border-t border-border shrink-0">
             <Button
               onClick={handleSubmit}
-              disabled={loading || (!content.trim() && mediaItems.length === 0)}
+              disabled={loading || isVideoUploading || (!content.trim() && mediaItems.length === 0 && !uppyVideoResult)}
               className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
             >
               {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              {loading ? 'Đang đăng...' : 'Đăng'}
+              {isVideoUploading ? 'Đang upload video...' : loading ? 'Đang đăng...' : 'Đăng'}
             </Button>
           </div>
         </DialogContent>
