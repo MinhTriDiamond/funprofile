@@ -377,11 +377,16 @@ export const FacebookPostCard = ({ post, currentUserId, onPostDeleted, initialSt
                     Chỉnh sửa bài viết
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onClick={handleDelete}
+                    onSelect={(e) => {
+                      // Radix DropdownMenu fires reliably via onSelect (onClick can be flaky)
+                      e.preventDefault();
+                      handleDelete();
+                    }}
+                    disabled={isDeleting}
                     className="cursor-pointer text-destructive gap-3"
                   >
                     <Trash2 className="w-5 h-5" />
-                    Xóa bài viết
+                    {isDeleting ? 'Đang xóa...' : 'Xóa bài viết'}
                   </DropdownMenuItem>
                 </>
               )}
