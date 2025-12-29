@@ -30,20 +30,30 @@ import {
   Bookmark,
 } from 'lucide-react';
 
-// Helper to delete Cloudflare Stream video
-const deleteStreamVideo = async (videoUrl: string): Promise<void> => {
+// Helper to delete Cloudflare Stream video - returns true if successful
+const deleteStreamVideo = async (videoUrl: string): Promise<boolean> => {
   const uid = extractStreamUid(videoUrl);
-  if (!uid) return;
+  if (!uid) {
+    console.warn('[FacebookPostCard] Could not extract UID from URL:', videoUrl);
+    return false;
+  }
   
   try {
     console.log('[FacebookPostCard] Deleting Stream video:', uid);
-    await supabase.functions.invoke('stream-video', {
+    const { data, error } = await supabase.functions.invoke('stream-video', {
       body: { action: 'delete', uid },
     });
-    console.log('[FacebookPostCard] Stream video deleted:', uid);
+    
+    if (error) {
+      console.error('[FacebookPostCard] Stream video delete error:', error);
+      return false;
+    }
+    
+    console.log('[FacebookPostCard] Stream video deleted successfully:', uid, data);
+    return true;
   } catch (error) {
     console.error('[FacebookPostCard] Failed to delete Stream video:', error);
-    // Don't throw - post deletion should still proceed
+    return false;
   }
 };
 
@@ -88,6 +98,7 @@ export const FacebookPostCard = ({ post, currentUserId, onPostDeleted, initialSt
   const [currentReaction, setCurrentReaction] = useState<string | null>(null);
   const [reactionCounts, setReactionCounts] = useState<ReactionCount[]>([]);
   const [isStatsLoaded, setIsStatsLoaded] = useState(!!initialStats);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Helper function to process reactions data
   const processReactions = (reactions: { id: string; user_id: string; type: string }[]) => {
@@ -215,8 +226,12 @@ export const FacebookPostCard = ({ post, currentUserId, onPostDeleted, initialSt
   }, [post.id, currentUserId]);
 
   const handleDelete = async () => {
+    // Prevent multiple clicks
+    if (isDeleting) return;
+    setIsDeleting(true);
+    
     try {
-      // Delete videos from Cloudflare Stream first
+      // Collect all video URLs from this post
       const videoUrls: string[] = [];
       
       // Check legacy video_url
@@ -233,20 +248,25 @@ export const FacebookPostCard = ({ post, currentUserId, onPostDeleted, initialSt
         });
       }
       
-      // Delete all videos from CF Stream (in parallel)
+      // Delete all videos from CF Stream first (in parallel)
       if (videoUrls.length > 0) {
         console.log('[FacebookPostCard] Deleting', videoUrls.length, 'videos from CF Stream');
-        await Promise.all(videoUrls.map(deleteStreamVideo));
+        const results = await Promise.all(videoUrls.map(deleteStreamVideo));
+        const successCount = results.filter(Boolean).length;
+        console.log('[FacebookPostCard] Deleted', successCount, 'of', videoUrls.length, 'videos');
       }
       
       // Now delete the post from database
       const { error } = await supabase.from('posts').delete().eq('id', post.id);
       if (error) throw error;
+      
       toast.success('Đã xóa bài viết');
       onPostDeleted();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[FacebookPostCard] Delete error:', error);
       toast.error('Không thể xóa bài viết');
+    } finally {
+      setIsDeleting(false);
     }
   };
 

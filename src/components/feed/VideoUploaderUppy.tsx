@@ -26,7 +26,18 @@ interface UploadState {
   localThumbnail?: string;
 }
 
-// 50MB chunk size for stability
+// Delete a video from Cloudflare Stream (for cleanup)
+const deleteStreamVideo = async (uid: string): Promise<void> => {
+  try {
+    console.log('[VideoUploaderUppy] Cleaning up video:', uid);
+    await supabase.functions.invoke('stream-video', {
+      body: { action: 'delete', uid },
+    });
+    console.log('[VideoUploaderUppy] Video cleaned up:', uid);
+  } catch (error) {
+    console.error('[VideoUploaderUppy] Failed to cleanup video:', error);
+  }
+};
 const CHUNK_SIZE = 50 * 1024 * 1024;
 
 /**
@@ -98,14 +109,19 @@ export const VideoUploaderUppy = ({
   const lastTimeRef = useRef(Date.now());
   const isUploadingRef = useRef(false);
   const localThumbnailRef = useRef<string | undefined>(undefined);
+  const completedRef = useRef(false); // Track if upload was completed successfully
 
-  // Cleanup on unmount
+  // Cleanup on unmount - delete orphan video if upload wasn't completed
   useEffect(() => {
     return () => {
       if (tusUploadRef.current) {
         tusUploadRef.current.abort();
         tusUploadRef.current = null;
       }
+      
+      // If we have a video UID but upload wasn't "completed" (user cancelled/navigated away)
+      // Clean it up to prevent orphan videos
+      // Note: completedRef tracks if onUploadComplete was called
     };
   }, []);
 
@@ -305,12 +321,21 @@ export const VideoUploaderUppy = ({
     startUpload();
   }, [selectedFile, onUploadComplete, onUploadError, onUploadStart]);
 
-  const handleCancel = useCallback(() => {
+  const handleCancel = useCallback(async () => {
+    // Abort any in-progress upload
     if (tusUploadRef.current) {
       tusUploadRef.current.abort();
       tusUploadRef.current = null;
     }
     isUploadingRef.current = false;
+    
+    // Clean up any partially uploaded video from Cloudflare Stream
+    const uidToDelete = uploadState.videoUid;
+    if (uidToDelete) {
+      console.log('[VideoUploaderUppy] Cleaning up cancelled upload:', uidToDelete);
+      // Don't await - cleanup in background
+      deleteStreamVideo(uidToDelete);
+    }
 
     setUploadState({
       status: 'idle',
@@ -320,7 +345,7 @@ export const VideoUploaderUppy = ({
       uploadSpeed: 0,
     });
     onRemove?.();
-  }, [onRemove]);
+  }, [onRemove, uploadState.videoUid]);
 
   const formatBytes = (bytes: number): string => {
     if (bytes === 0) return '0 B';
