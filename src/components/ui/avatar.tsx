@@ -2,6 +2,7 @@ import * as React from "react";
 import * as AvatarPrimitive from "@radix-ui/react-avatar";
 
 import { cn } from "@/lib/utils";
+import { getAvatarUrl } from "@/lib/imageTransform";
 
 const Avatar = React.forwardRef<
   React.ElementRef<typeof AvatarPrimitive.Root>,
@@ -15,12 +16,32 @@ const Avatar = React.forwardRef<
 ));
 Avatar.displayName = AvatarPrimitive.Root.displayName;
 
+interface AvatarImageProps extends React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Image> {
+  /** Size hint for optimization: 'sm' (40px), 'md' (128px), 'lg' (256px) */
+  sizeHint?: 'sm' | 'md' | 'lg';
+  /** Skip Cloudflare Image transformation */
+  skipTransform?: boolean;
+}
+
 const AvatarImage = React.forwardRef<
   React.ElementRef<typeof AvatarPrimitive.Image>,
-  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Image>
->(({ className, ...props }, ref) => (
-  <AvatarPrimitive.Image ref={ref} className={cn("aspect-square h-full w-full", className)} {...props} />
-));
+  AvatarImageProps
+>(({ className, src, sizeHint = 'sm', skipTransform = false, ...props }, ref) => {
+  // Transform URL via Cloudflare Image Resizing for optimization
+  const optimizedSrc = React.useMemo(() => {
+    if (!src || skipTransform) return src;
+    return getAvatarUrl(src, sizeHint);
+  }, [src, sizeHint, skipTransform]);
+
+  return (
+    <AvatarPrimitive.Image 
+      ref={ref} 
+      src={optimizedSrc}
+      className={cn("aspect-square h-full w-full", className)} 
+      {...props} 
+    />
+  );
+});
 AvatarImage.displayName = AvatarPrimitive.Image.displayName;
 
 const AvatarFallback = React.forwardRef<

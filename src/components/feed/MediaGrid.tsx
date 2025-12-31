@@ -73,6 +73,7 @@ export const MediaGrid = memo(({ media: initialMedia }: MediaGridProps) => {
               className="w-full max-h-[600px] bg-black"
               hideOnError
               onLoadError={() => handleMediaError(item.url)}
+              transformPreset="post"
             />
           </div>
         )}
@@ -114,6 +115,7 @@ export const MediaGrid = memo(({ media: initialMedia }: MediaGridProps) => {
                     className="w-full h-full hover:opacity-95 transition-opacity"
                     hideOnError
                     onLoadError={() => handleMediaError(item.url)}
+                    transformPreset="post-grid"
                   />
                 </div>
               )}
@@ -158,6 +160,7 @@ export const MediaGrid = memo(({ media: initialMedia }: MediaGridProps) => {
                   className="w-full h-full hover:opacity-95"
                   hideOnError
                   onLoadError={() => handleMediaError(media[0].url)}
+                  transformPreset="post-grid"
                 />
               </div>
             )}
@@ -182,6 +185,7 @@ export const MediaGrid = memo(({ media: initialMedia }: MediaGridProps) => {
                   className="w-full h-full hover:opacity-95"
                   hideOnError
                   onLoadError={() => handleMediaError(media[1].url)}
+                  transformPreset="post-grid"
                 />
               </div>
             )}
@@ -206,6 +210,7 @@ export const MediaGrid = memo(({ media: initialMedia }: MediaGridProps) => {
                   className="w-full h-full hover:opacity-95"
                   hideOnError
                   onLoadError={() => handleMediaError(media[2].url)}
+                  transformPreset="post-grid"
                 />
               </div>
             )}
@@ -251,6 +256,7 @@ export const MediaGrid = memo(({ media: initialMedia }: MediaGridProps) => {
                   className="w-full h-full hover:opacity-95"
                   hideOnError
                   onLoadError={() => handleMediaError(item.url)}
+                  transformPreset="post-grid"
                 />
               </div>
             )}

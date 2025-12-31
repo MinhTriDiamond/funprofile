@@ -1,6 +1,7 @@
-import { useState, useRef, useEffect, ImgHTMLAttributes, memo, useCallback } from 'react';
+import { useState, useRef, useEffect, useMemo, ImgHTMLAttributes, memo, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { isSlowConnection } from '@/utils/performanceOptimizer';
+import { getTransformedImageUrl, ImageTransformOptions } from '@/lib/imageTransform';
 
 interface LazyImageProps extends ImgHTMLAttributes<HTMLImageElement> {
   src: string;
@@ -12,6 +13,12 @@ interface LazyImageProps extends ImgHTMLAttributes<HTMLImageElement> {
   hideOnError?: boolean;
   /** Unload image when scrolled out of viewport to free RAM (for long lists) */
   unloadOnExit?: boolean;
+  /** Image transformation preset (avatar, cover, post, thumbnail, etc.) */
+  transformPreset?: ImageTransformOptions['preset'];
+  /** Custom transformation options (overrides preset) */
+  transformOptions?: ImageTransformOptions;
+  /** Skip transformation and use raw URL */
+  skipTransform?: boolean;
 }
 
 /**
@@ -33,6 +40,9 @@ export const LazyImage = memo(({
   onLoadError,
   hideOnError = false,
   unloadOnExit = false,
+  transformPreset,
+  transformOptions,
+  skipTransform = false,
   ...props 
 }: LazyImageProps) => {
   const [isLoaded, setIsLoaded] = useState(false);
@@ -41,6 +51,26 @@ export const LazyImage = memo(({
   const [shouldRender, setShouldRender] = useState(priority);
   const imgRef = useRef<HTMLDivElement>(null);
   const hasLoadedOnce = useRef(false);
+
+  // Generate optimized URL via Cloudflare Image Resizing
+  const optimizedSrc = useMemo(() => {
+    if (skipTransform || !src) return src;
+    
+    // Build transform options from preset and custom options
+    const options: ImageTransformOptions = {
+      ...(transformPreset ? { preset: transformPreset } : {}),
+      ...transformOptions,
+    };
+    
+    // If no preset or options specified, use a default optimization
+    if (!transformPreset && !transformOptions) {
+      // Default: auto format + quality 85 for bandwidth saving
+      options.format = 'auto';
+      options.quality = 85;
+    }
+    
+    return getTransformedImageUrl(src, options);
+  }, [src, transformPreset, transformOptions, skipTransform]);
 
   // Memoize handlers
   const handleLoad = useCallback(() => {
@@ -109,7 +139,7 @@ export const LazyImage = memo(({
     return null;
   }
 
-  const imageSrc = hasError ? fallback : src;
+  const imageSrc = hasError ? fallback : optimizedSrc;
   const showPlaceholder = !isLoaded || !shouldRender;
 
   return (

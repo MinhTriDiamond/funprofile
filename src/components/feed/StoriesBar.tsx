@@ -85,6 +85,7 @@ export const StoriesBar = memo(() => {
                   alt=""
                   className="w-full h-full"
                   priority
+                  transformPreset="thumbnail"
                 />
               ) : (
                 <div className="w-full h-full bg-secondary" />
