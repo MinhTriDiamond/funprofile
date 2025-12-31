@@ -699,6 +699,10 @@ const AdminMigration = () => {
     setCleaningOrphanVideos(true);
     setOrphanVideoResult(null);
 
+    const controller = new AbortController();
+    const timeoutMs = 180_000; // 3 minutes
+    const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -712,32 +716,40 @@ const AdminMigration = () => {
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/cleanup-orphan-videos`,
         {
           method: 'POST',
+          signal: controller.signal,
           headers: {
             'Authorization': `Bearer ${session.access_token}`,
             'Content-Type': 'application/json',
+            'Accept': 'application/json',
           },
-          body: JSON.stringify({ dryRun, maxDelete: 100 }),
+          body: JSON.stringify({ dryRun: dryRun === true ? true : false, maxDelete: 50 }),
         }
       );
 
+      const data = await response.json().catch(() => ({} as OrphanVideoResult));
+
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to cleanup orphan videos');
+        throw new Error((data as any)?.error || 'Failed to cleanup orphan videos');
       }
 
-      const data: OrphanVideoResult = await response.json();
-      setOrphanVideoResult(data);
+      setOrphanVideoResult(data as OrphanVideoResult);
 
-      if (dryRun) {
-        toast.info(`🔍 Tìm thấy ${data.orphanVideosFound} video orphan trên ${data.totalVideosOnStream} video`);
+      if ((data as OrphanVideoResult).dryRun) {
+        toast.info(`🔍 Tìm thấy ${(data as OrphanVideoResult).orphanVideosFound} video orphan trên ${(data as OrphanVideoResult).totalVideosOnStream} video`);
       } else {
-        toast.success(`✅ Đã xóa ${data.orphanVideosDeleted} video orphan!`);
+        toast.success(`✅ Đã xóa ${(data as OrphanVideoResult).orphanVideosDeleted} video orphan!`);
       }
     } catch (error: unknown) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        toast.error('⏱️ Timeout khi dọn dẹp video. Vui lòng chạy lại (mỗi lần xóa tối đa 50 video).');
+        return;
+      }
+
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error('Orphan video cleanup error:', error);
       toast.error(`❌ Lỗi: ${errorMessage}`);
     } finally {
+      window.clearTimeout(timeoutId);
       setCleaningOrphanVideos(false);
     }
   };
