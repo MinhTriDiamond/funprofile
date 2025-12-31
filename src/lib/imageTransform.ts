@@ -163,6 +163,26 @@ export function getTransformedImageUrl(
   // If no options, return original
   if (!cfOptions) return originalUrl;
 
+  // Only transform images we fully control (R2 custom domain / R2 dev / same zone),
+  // to avoid Cloudflare remote-origin 403s (e.g. Unsplash template covers).
+  const canTransformRemotely = (() => {
+    try {
+      const u = new URL(originalUrl);
+      const host = u.hostname;
+      return (
+        u.origin === R2_CUSTOM_DOMAIN ||
+        u.origin === R2_PUBLIC_URL ||
+        host.endsWith('r2.dev')
+      );
+    } catch {
+      return false;
+    }
+  })();
+
+  if (!canTransformRemotely) {
+    return originalUrl;
+  }
+
   // Normalize R2 dev URL -> R2 custom domain (same zone) to avoid 403 from origin allowlist
   let normalizedUrl = originalUrl;
   try {
@@ -174,16 +194,15 @@ export function getTransformedImageUrl(
     // ignore parse errors
   }
 
-  // If the source is already on our R2 custom domain, use same-origin path mode:
+  // Same-origin path mode:
   // https://media.fun.rich/cdn-cgi/image/{options}/posts/...
   if (normalizedUrl.startsWith(R2_CUSTOM_DOMAIN)) {
     const u = new URL(normalizedUrl);
     return `${CF_ZONE_DOMAIN}/cdn-cgi/image/${cfOptions}${u.pathname}`;
   }
 
-  // Remote mode:
-  // https://media.fun.rich/cdn-cgi/image/{options}/https://external.com/img.jpg
-  return `${CF_ZONE_DOMAIN}/cdn-cgi/image/${cfOptions}/${normalizedUrl}`;
+  // Fallback (should be rare due to canTransformRemotely guard)
+  return originalUrl;
 }
 
 /**

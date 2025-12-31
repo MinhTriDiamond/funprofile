@@ -26,7 +26,7 @@ interface AvatarImageProps extends React.ComponentPropsWithoutRef<typeof AvatarP
 const AvatarImage = React.forwardRef<
   React.ElementRef<typeof AvatarPrimitive.Image>,
   AvatarImageProps
->(({ className, src, sizeHint = 'sm', skipTransform = false, ...props }, ref) => {
+>(({ className, src, sizeHint = 'md', skipTransform = false, ...props }, ref) => {
   // Transform URL via Cloudflare Image Resizing for optimization
   const optimizedSrc = React.useMemo(() => {
     if (!src || skipTransform) return src;

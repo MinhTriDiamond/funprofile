@@ -194,6 +194,7 @@ const Profile = () => {
                 src={profile.cover_url} 
                 alt="Cover" 
                 className="w-full h-full"
+                transformPreset="cover"
                 priority
               />
             ) : (
@@ -240,7 +241,7 @@ const Profile = () => {
                 />
               ) : (
                 <Avatar className="w-24 h-24 sm:w-32 sm:h-32 md:w-44 md:h-44 border-4 border-white shadow-lg">
-                  {profile?.avatar_url && <AvatarImage src={profile.avatar_url} />}
+                  {profile?.avatar_url && <AvatarImage src={profile.avatar_url} sizeHint="lg" />}
                   <AvatarFallback className="text-3xl sm:text-4xl md:text-5xl bg-primary text-white">
                     {profile?.username?.[0]?.toUpperCase() || 'U'}
                   </AvatarFallback>
