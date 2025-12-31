@@ -36,6 +36,9 @@ export interface ImageTransformOptions {
 }
 
 // Preset configurations for common use cases
+// DPR-aware sizes: base size × devicePixelRatio (capped at 2x for bandwidth)
+const getDpr = () => typeof window !== 'undefined' ? Math.min(window.devicePixelRatio || 1, 2) : 1;
+
 export const IMAGE_PRESETS: Record<string, ImageTransformOptions> = {
   'avatar': { width: 128, height: 128, fit: 'cover', gravity: 'auto', format: 'auto', quality: 85 },
   'avatar-sm': { width: 40, height: 40, fit: 'cover', gravity: 'auto', format: 'auto', quality: 80 },
@@ -46,6 +49,19 @@ export const IMAGE_PRESETS: Record<string, ImageTransformOptions> = {
   'post-grid': { width: 400, height: 400, fit: 'cover', gravity: 'auto', format: 'auto', quality: 80 },
   'gallery': { width: 1200, fit: 'scale-down', format: 'auto', quality: 90 },
 };
+
+// DPR-aware presets for retina displays
+export function getDprAwarePreset(preset: keyof typeof IMAGE_PRESETS): ImageTransformOptions {
+  const base = IMAGE_PRESETS[preset];
+  if (!base) return {};
+  
+  const dpr = getDpr();
+  return {
+    ...base,
+    width: base.width ? Math.round(base.width * dpr) : undefined,
+    height: base.height ? Math.round(base.height * dpr) : undefined,
+  };
+}
 
 /**
  * Build Cloudflare Image Resizing options string
@@ -210,7 +226,10 @@ export function getTransformedImageUrl(
  */
 export function getAvatarUrl(url: string | null | undefined, size: 'sm' | 'md' | 'lg' = 'md'): string {
   const presetMap = { sm: 'avatar-sm', md: 'avatar', lg: 'avatar-lg' } as const;
-  return getTransformedImageUrl(url, { preset: presetMap[size] });
+  const presetKey = presetMap[size];
+  // Use DPR-aware sizing for crisp avatars on retina displays
+  const dprPreset = getDprAwarePreset(presetKey);
+  return getTransformedImageUrl(url, dprPreset);
 }
 
 /**

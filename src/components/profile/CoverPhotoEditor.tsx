@@ -34,8 +34,8 @@ const coverTemplates = [
     id: 'clear-stream',
     name: 'Clear Stream',
     nameVi: 'Dòng suối trong vắt',
-    url: 'https://images.unsplash.com/photo-1432405972618-c60b0225b8f9?w=1920&h=1080&fit=crop',
-    thumbnail: 'https://images.unsplash.com/photo-1432405972618-c60b0225b8f9?w=400&h=225&fit=crop'
+    url: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=1920&h=1080&fit=crop',
+    thumbnail: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=400&h=225&fit=crop'
   },
   {
     id: 'golden-sunset',
@@ -55,8 +55,8 @@ const coverTemplates = [
     id: 'lotus-pond',
     name: 'Lotus Pond',
     nameVi: 'Ao sen bình yên',
-    url: 'https://images.unsplash.com/photo-1606567595334-d39972c85dfd?w=1920&h=1080&fit=crop',
-    thumbnail: 'https://images.unsplash.com/photo-1606567595334-d39972c85dfd?w=400&h=225&fit=crop'
+    url: 'https://images.unsplash.com/photo-1474557157379-8aa74a6ef541?w=1920&h=1080&fit=crop',
+    thumbnail: 'https://images.unsplash.com/photo-1474557157379-8aa74a6ef541?w=400&h=225&fit=crop'
   },
   {
     id: 'aurora-sky',
@@ -64,6 +64,62 @@ const coverTemplates = [
     nameVi: 'Bầu trời cực quang',
     url: 'https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=1920&h=1080&fit=crop',
     thumbnail: 'https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=400&h=225&fit=crop'
+  },
+  {
+    id: 'sakura-blossom',
+    name: 'Sakura Blossom',
+    nameVi: 'Hoa anh đào',
+    url: 'https://images.unsplash.com/photo-1522383225653-ed111181a951?w=1920&h=1080&fit=crop',
+    thumbnail: 'https://images.unsplash.com/photo-1522383225653-ed111181a951?w=400&h=225&fit=crop'
+  },
+  {
+    id: 'lavender-field',
+    name: 'Lavender Field',
+    nameVi: 'Cánh đồng oải hương',
+    url: 'https://images.unsplash.com/photo-1499002238440-d264edd596ec?w=1920&h=1080&fit=crop',
+    thumbnail: 'https://images.unsplash.com/photo-1499002238440-d264edd596ec?w=400&h=225&fit=crop'
+  },
+  {
+    id: 'ocean-wave',
+    name: 'Ocean Wave',
+    nameVi: 'Sóng biển xanh',
+    url: 'https://images.unsplash.com/photo-1505118380757-91f5f5632de0?w=1920&h=1080&fit=crop',
+    thumbnail: 'https://images.unsplash.com/photo-1505118380757-91f5f5632de0?w=400&h=225&fit=crop'
+  },
+  {
+    id: 'starry-night',
+    name: 'Starry Night',
+    nameVi: 'Đêm đầy sao',
+    url: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=1920&h=1080&fit=crop',
+    thumbnail: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=400&h=225&fit=crop'
+  },
+  {
+    id: 'waterfall',
+    name: 'Waterfall',
+    nameVi: 'Thác nước hùng vĩ',
+    url: 'https://images.unsplash.com/photo-1433086966358-54859d0ed716?w=1920&h=1080&fit=crop',
+    thumbnail: 'https://images.unsplash.com/photo-1433086966358-54859d0ed716?w=400&h=225&fit=crop'
+  },
+  {
+    id: 'autumn-forest',
+    name: 'Autumn Forest',
+    nameVi: 'Rừng mùa thu',
+    url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=1920&h=1080&fit=crop',
+    thumbnail: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=225&fit=crop'
+  },
+  {
+    id: 'rice-terrace',
+    name: 'Rice Terrace',
+    nameVi: 'Ruộng bậc thang',
+    url: 'https://images.unsplash.com/photo-1528127269322-539801943592?w=1920&h=1080&fit=crop',
+    thumbnail: 'https://images.unsplash.com/photo-1528127269322-539801943592?w=400&h=225&fit=crop'
+  },
+  {
+    id: 'coral-reef',
+    name: 'Coral Reef',
+    nameVi: 'Rạn san hô',
+    url: 'https://images.unsplash.com/photo-1546026423-cc4642628d2b?w=1920&h=1080&fit=crop',
+    thumbnail: 'https://images.unsplash.com/photo-1546026423-cc4642628d2b?w=400&h=225&fit=crop'
   }
 ];
 
