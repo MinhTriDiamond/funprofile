@@ -6,7 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { Video, Search, MoreHorizontal } from 'lucide-react';
 import { AppHonorBoard } from './AppHonorBoard';
-import { HonorBoard } from './HonorBoard';
+import { TopRanking } from './TopRanking';
 
 export const FacebookRightSidebar = memo(() => {
   const navigate = useNavigate();
@@ -47,8 +47,8 @@ export const FacebookRightSidebar = memo(() => {
       {/* App-wide Honor Board (Statistics) */}
       <AppHonorBoard />
 
-      {/* Honor Board - Top 6 Users (Single column layout) */}
-      <HonorBoard />
+      {/* Top Ranking - Top 6 Users */}
+      <TopRanking />
 
       {/* Sponsored */}
       <div className="fb-card p-4">

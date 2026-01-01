@@ -13,7 +13,7 @@ interface LeaderboardUser {
   total_reward: number;
 }
 
-export const HonorBoard = memo(() => {
+export const TopRanking = memo(() => {
   const navigate = useNavigate();
   const [topRewards, setTopRewards] = useState<LeaderboardUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -113,7 +113,7 @@ export const HonorBoard = memo(() => {
             </div>
           </div>
 
-          <h1 className="text-gold text-xl font-black tracking-wider drop-shadow-lg">HONOR BOARD</h1>
+          <h1 className="text-gold text-xl font-black tracking-wider drop-shadow-lg">TOP RANKING</h1>
         </div>
 
         {/* Top 6 Users - Single column layout */}
@@ -139,4 +139,4 @@ export const HonorBoard = memo(() => {
   );
 });
 
-HonorBoard.displayName = "HonorBoard";
+TopRanking.displayName = "TopRanking";
