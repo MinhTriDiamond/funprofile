@@ -157,7 +157,7 @@ export const AppHonorBoard = memo(() => {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 gap-2">
           {statItems.map((item, index) => <div key={index} className="flex items-center gap-2 py-2 px-2.5 rounded-lg border border-yellow-500/40 bg-green-800/90 backdrop-blur-sm">
               <div className={`p-1.5 rounded-md ${item.bgColor}`}>
                 <item.icon className={`w-4 h-4 ${item.color}`} />
