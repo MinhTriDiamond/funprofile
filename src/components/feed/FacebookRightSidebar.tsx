@@ -2,52 +2,20 @@ import { useEffect, useState, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useLanguage } from '@/i18n/LanguageContext';
-import { Video, Search, MoreHorizontal, Trophy, ChevronRight } from 'lucide-react';
+import { Video, Search, MoreHorizontal } from 'lucide-react';
 import { AppHonorBoard } from './AppHonorBoard';
-
-interface TopUser {
-  id: string;
-  username: string;
-  avatar_url: string | null;
-  total_reward: number;
-}
+import { HonorBoard } from './HonorBoard';
 
 export const FacebookRightSidebar = memo(() => {
   const navigate = useNavigate();
   const { t } = useLanguage();
-  const [topUsers, setTopUsers] = useState<TopUser[]>([]);
-  const [loading, setLoading] = useState(true);
   const [onlineContacts, setOnlineContacts] = useState<any[]>([]);
 
   useEffect(() => {
-    fetchTopUsers();
     fetchContacts();
   }, []);
-
-  const fetchTopUsers = async () => {
-    try {
-      // Limit to Top 5 users only
-      const { data, error } = await supabase.rpc('get_user_rewards', { limit_count: 5 });
-      
-      if (error) throw error;
-      
-      if (data) {
-        setTopUsers(data.map((user: any) => ({
-          id: user.id,
-          username: user.username,
-          avatar_url: user.avatar_url,
-          total_reward: Number(user.total_reward),
-        })));
-      }
-    } catch (error) {
-      // Silent error handling
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const fetchContacts = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -79,69 +47,8 @@ export const FacebookRightSidebar = memo(() => {
       {/* App-wide Honor Board (Statistics) */}
       <AppHonorBoard />
 
-      {/* Top Ranking - Top 5 Users */}
-      <div className="fb-card p-4">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Trophy className="w-5 h-5 text-gold" />
-            <h3 className="font-bold text-lg">{t('topRanking')}</h3>
-          </div>
-          <button
-            onClick={() => navigate('/leaderboard')}
-            className="text-primary hover:underline text-sm font-semibold"
-          >
-            {t('viewAll')}
-          </button>
-        </div>
-
-        {loading ? (
-          <div className="space-y-3">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <Skeleton key={i} className="h-12 w-full" />
-            ))}
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {topUsers.map((user, index) => (
-              <button
-                key={user.id}
-                onClick={() => navigate(`/profile/${user.id}`)}
-                className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-secondary transition-colors"
-              >
-                <span className={`w-6 text-center font-bold ${
-                  index === 0 ? 'text-gold' :
-                  index === 1 ? 'text-gray-400' :
-                  index === 2 ? 'text-amber-600' :
-                  'text-muted-foreground'
-                }`}>
-                  {index + 1}
-                </span>
-                <Avatar className="w-8 h-8">
-                  <AvatarImage src={user.avatar_url || ''} />
-                  <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                    {user.username?.[0]?.toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 text-left">
-                  <p className="font-medium text-sm truncate">{user.username}</p>
-                </div>
-                <span className="text-gold font-semibold text-sm">
-                  {user.total_reward.toLocaleString('vi-VN')}
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
-
-        <Button
-          onClick={() => navigate('/leaderboard')}
-          variant="secondary"
-          className="w-full mt-4"
-        >
-          {t('viewAll')} {t('leaderboard')}
-          <ChevronRight className="w-4 h-4 ml-2" />
-        </Button>
-      </div>
+      {/* Honor Board - Top 6 Users (Single column layout) */}
+      <HonorBoard />
 
       {/* Sponsored */}
       <div className="fb-card p-4">
