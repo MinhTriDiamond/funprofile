@@ -24,47 +24,116 @@ export const AppHonorBoard = memo(() => {
     queryKey: ['app-honor-board-stats'],
     queryFn: async (): Promise<AppStats> => {
       // Fetch all stats in parallel
-      const [usersResult, postsResult, profilesResult, transactionsResult] = await Promise.all([
-      // Total users
-      supabase.from('profiles').select('id', {
-        count: 'exact',
-        head: true
-      }),
-      // Posts with media counts
-      supabase.from('posts').select('id, image_url, video_url, media_urls'),
-      // Sum of pending + approved rewards from all profiles
-      supabase.from('profiles').select('pending_reward, approved_reward'),
-      // Sum of claimed transactions
-      supabase.from('reward_claims').select('amount')]);
+      const [
+        usersResult, 
+        postsResult, 
+        rewardClaimsResult, 
+        transactionsResult,
+        reactionsResult,
+        commentsResult,
+        friendshipsResult,
+        sharesResult
+      ] = await Promise.all([
+        // Total users
+        supabase.from('profiles').select('id', { count: 'exact', head: true }),
+        // Posts with media counts
+        supabase.from('posts').select('id, user_id, image_url, video_url, media_urls'),
+        // All claimed rewards
+        supabase.from('reward_claims').select('amount'),
+        // All transactions (sent money)
+        supabase.from('transactions').select('amount'),
+        // All reactions for calculating claimable rewards
+        supabase.from('reactions').select('post_id'),
+        // All comments for calculating claimable rewards  
+        supabase.from('comments').select('post_id'),
+        // All friendships for calculating claimable rewards
+        supabase.from('friendships').select('user_id, friend_id, status'),
+        // All shares for calculating claimable rewards
+        supabase.from('shared_posts').select('original_post_id')
+      ]);
+
       const totalUsers = usersResult.count || 0;
+      const posts = postsResult.data || [];
 
       // Count photos and videos from posts
       let totalPhotos = 0;
       let totalVideos = 0;
-      const posts = postsResult.data || [];
       posts.forEach(post => {
-        // Count legacy image_url
         if (post.image_url) totalPhotos++;
-        // Count legacy video_url
         if (post.video_url) totalVideos++;
-
-        // Count media_urls array
         if (post.media_urls && Array.isArray(post.media_urls)) {
           post.media_urls.forEach((media: any) => {
-            if (media.type === 'image') totalPhotos++;else if (media.type === 'video') totalVideos++;
+            if (media.type === 'image') totalPhotos++;
+            else if (media.type === 'video') totalVideos++;
           });
         }
       });
 
-      // Total rewards = sum of (pending_reward + approved_reward) for all users
-      const profiles = profilesResult.data || [];
-      const totalRewards = profiles.reduce((sum, p) => {
-        return sum + (Number(p.pending_reward) || 0) + (Number(p.approved_reward) || 0);
-      }, 0);
+      // Calculate total rewards using the same formula as useRewardCalculation
+      // For each user: postsReward + reactionsReward + commentsReward + sharesReward + friendsReward + newUserBonus
+      const reactions = reactionsResult.data || [];
+      const comments = commentsResult.data || [];
+      const friendships = friendshipsResult.data || [];
+      const shares = sharesResult.data || [];
+      const claims = rewardClaimsResult.data || [];
 
-      // Total money = sum of all claimed amounts
-      const claims = transactionsResult.data || [];
-      const totalMoney = claims.reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
+      // Group data by user for calculation
+      const userPostIds = new Map<string, string[]>();
+      posts.forEach(post => {
+        const existing = userPostIds.get(post.user_id) || [];
+        existing.push(post.id);
+        userPostIds.set(post.user_id, existing);
+      });
+
+      let totalRewards = 0;
+      
+      // For each user, calculate their total reward
+      const uniqueUserIds = new Set<string>();
+      posts.forEach(p => uniqueUserIds.add(p.user_id));
+      friendships.forEach(f => {
+        if (f.status === 'accepted') {
+          uniqueUserIds.add(f.user_id);
+          uniqueUserIds.add(f.friend_id);
+        }
+      });
+
+      uniqueUserIds.forEach(userId => {
+        const userPostIdList = userPostIds.get(userId) || [];
+        const postsCount = userPostIdList.length;
+        
+        // Count reactions on user's posts
+        const reactionsOnPosts = reactions.filter(r => userPostIdList.includes(r.post_id)).length;
+        
+        // Count comments on user's posts
+        const commentsOnPosts = comments.filter(c => userPostIdList.includes(c.post_id)).length;
+        
+        // Count shares of user's posts
+        const sharesCount = shares.filter(s => userPostIdList.includes(s.original_post_id)).length;
+        
+        // Count friends
+        const friendsCount = friendships.filter(
+          f => f.status === 'accepted' && (f.user_id === userId || f.friend_id === userId)
+        ).length;
+
+        // Calculate reward using the same formula
+        const postsReward = postsCount * 20000;
+        let reactionsReward = 0;
+        if (reactionsOnPosts >= 3) {
+          reactionsReward = 30000 + (reactionsOnPosts - 3) * 1000;
+        }
+        const commentsReward = commentsOnPosts * 5000;
+        const sharesReward = sharesCount * 5000;
+        const friendsReward = friendsCount * 10000 + 10000; // +10k new user bonus
+
+        totalRewards += postsReward + reactionsReward + commentsReward + sharesReward + friendsReward;
+      });
+
+      // Total money = claimed rewards + sent transactions (money actually circulated)
+      const claimedAmount = claims.reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
+      const transactions = transactionsResult.data || [];
+      const sentAmount = transactions.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+      const totalMoney = claimedAmount + sentAmount;
+
       return {
         totalUsers,
         totalPosts: posts.length,
