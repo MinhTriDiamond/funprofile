@@ -5,19 +5,16 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
-
 interface LeaderboardUser {
   id: string;
   username: string;
   avatar_url: string;
   total_reward: number;
 }
-
 export const HonorBoard = memo(() => {
   const navigate = useNavigate();
   const [topRewards, setTopRewards] = useState<LeaderboardUser[]>([]);
   const [loading, setLoading] = useState(true);
-
   useEffect(() => {
     fetchLeaderboards();
   }, []);
@@ -25,16 +22,19 @@ export const HonorBoard = memo(() => {
   // Optimized: Single RPC call instead of N+1 queries
   const fetchLeaderboards = async () => {
     try {
-      const { data, error } = await supabase.rpc('get_user_rewards', { limit_count: 6 });
-      
+      const {
+        data,
+        error
+      } = await supabase.rpc('get_user_rewards', {
+        limit_count: 6
+      });
       if (error) throw error;
-
       if (data) {
         setTopRewards(data.map((user: any) => ({
           id: user.id,
           username: user.username,
           avatar_url: user.avatar_url,
-          total_reward: Number(user.total_reward),
+          total_reward: Number(user.total_reward)
         })));
       }
     } catch (error) {
@@ -43,24 +43,21 @@ export const HonorBoard = memo(() => {
       setLoading(false);
     }
   };
-
   const handleUserClick = (userId: string) => {
     navigate(`/profile/${userId}`);
   };
-
   if (loading) {
-    return (
-      <div className="space-y-2">
+    return <div className="space-y-2">
         <Skeleton className="h-[400px] w-full" />
-      </div>
-    );
+      </div>;
   }
-
-  const UserRow = ({ user, rank }: { user: LeaderboardUser; rank: number }) => (
-    <div 
-      onClick={() => handleUserClick(user.id)}
-      className="relative border-b border-gold/30 last:border-b-0 py-2 first:pt-0 last:pb-0 bg-white/90 hover:bg-gold/5 transition-all cursor-pointer"
-    >
+  const UserRow = ({
+    user,
+    rank
+  }: {
+    user: LeaderboardUser;
+    rank: number;
+  }) => <div onClick={() => handleUserClick(user.id)} className="relative border-b border-gold/30 last:border-b-0 py-2 first:pt-0 last:pb-0 bg-white/90 hover:bg-gold/5 transition-all cursor-pointer">
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-3">
           <span className="text-gold font-bold text-lg w-5 text-center">{rank}</span>
@@ -74,17 +71,20 @@ export const HonorBoard = memo(() => {
         </div>
         <span className="text-gold font-bold text-sm">{user.total_reward.toLocaleString('vi-VN')}</span>
       </div>
-    </div>
-  );
-
-  return (
-    <div className="sticky top-20 rounded-2xl overflow-hidden border-2 border-gold bg-white shadow-gold-glow animate-gold-pulse">
+    </div>;
+  return <div className="sticky top-20 rounded-2xl overflow-hidden border-2 border-gold bg-white shadow-gold-glow animate-gold-pulse">
       {/* Sparkle effects */}
       <div className="absolute inset-0 opacity-10 pointer-events-none">
         <div className="absolute top-2 left-2 w-1 h-1 bg-gold rounded-full animate-pulse"></div>
-        <div className="absolute top-4 right-4 w-1 h-1 bg-gold rounded-full animate-pulse" style={{ animationDelay: '0.5s' }}></div>
-        <div className="absolute bottom-6 left-6 w-1 h-1 bg-gold rounded-full animate-pulse" style={{ animationDelay: '1s' }}></div>
-        <div className="absolute bottom-4 right-8 w-1 h-1 bg-gold rounded-full animate-pulse" style={{ animationDelay: '1.5s' }}></div>
+        <div className="absolute top-4 right-4 w-1 h-1 bg-gold rounded-full animate-pulse" style={{
+        animationDelay: '0.5s'
+      }}></div>
+        <div className="absolute bottom-6 left-6 w-1 h-1 bg-gold rounded-full animate-pulse" style={{
+        animationDelay: '1s'
+      }}></div>
+        <div className="absolute bottom-4 right-8 w-1 h-1 bg-gold rounded-full animate-pulse" style={{
+        animationDelay: '1.5s'
+      }}></div>
       </div>
 
       <div className="relative p-3 space-y-2">
@@ -92,45 +92,30 @@ export const HonorBoard = memo(() => {
         <div className="text-center space-y-1">
           <div className="inline-block">
             <div className="relative">
-              <img 
-                src="/fun-profile-logo-40.webp" 
-                alt="Fun Profile Web3"
-                width={48}
-                height={48}
-                className="w-12 h-12 mx-auto rounded-full border border-yellow-400 shadow-lg"
-              />
+              <img src="/fun-profile-logo-40.webp" alt="Fun Profile Web3" width={48} height={48} className="w-12 h-12 mx-auto rounded-full border border-yellow-400 shadow-lg" />
             </div>
           </div>
           
           <h1 className="text-gold text-xl font-black tracking-wider drop-shadow-lg">
-            TOP RANKING
+            HONOR BOARD
           </h1>
-          <p className="text-gold text-xs font-medium">TOP 6 TOTAL REWARD</p>
+          
         </div>
 
         {/* Top 6 Users - Single column layout */}
         <div className="grid grid-cols-1 gap-0 rounded-lg border border-gold/20 overflow-hidden">
-          {topRewards.map((user, index) => (
-            <UserRow key={user.id} user={user} rank={index + 1} />
-          ))}
-          {topRewards.length === 0 && (
-            <div className="text-center py-4 text-muted-foreground text-sm">
+          {topRewards.map((user, index) => <UserRow key={user.id} user={user} rank={index + 1} />)}
+          {topRewards.length === 0 && <div className="text-center py-4 text-muted-foreground text-sm">
               No data available yet
-            </div>
-          )}
+            </div>}
         </div>
 
         {/* View All Button */}
-        <Button
-          onClick={() => navigate('/leaderboard')}
-          className="w-full mt-3 bg-gold hover:bg-gold-glow text-white font-bold shadow-lg transition-all group"
-        >
+        <Button onClick={() => navigate('/leaderboard')} className="w-full mt-3 bg-gold hover:bg-gold-glow text-white font-bold shadow-lg transition-all group">
           Xem bảng xếp hạng đầy đủ
           <ChevronRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
         </Button>
       </div>
-    </div>
-  );
+    </div>;
 });
-
 HonorBoard.displayName = 'HonorBoard';
