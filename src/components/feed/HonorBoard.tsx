@@ -113,8 +113,7 @@ export const HonorBoard = memo(() => {
             </div>
           </div>
 
-          <h1 className="text-gold text-xl font-black tracking-wider drop-shadow-lg">TOP RANKING</h1>
-          <p className="text-gold text-xs font-medium">TOP 6 TOTAL REWARD</p>
+          <h1 className="text-gold text-xl font-black tracking-wider drop-shadow-lg">HONOR BOARD</h1>
         </div>
 
         {/* Top 6 Users - Single column layout */}
