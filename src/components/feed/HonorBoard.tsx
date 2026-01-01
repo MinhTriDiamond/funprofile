@@ -103,7 +103,7 @@ export const HonorBoard = memo(() => {
           </div>
           
           <h1 className="text-gold text-xl font-black tracking-wider drop-shadow-lg">
-            HONOR BOARD
+            TOP RANKING
           </h1>
           <p className="text-gold text-xs font-medium">TOP 6 TOTAL REWARD</p>
         </div>
