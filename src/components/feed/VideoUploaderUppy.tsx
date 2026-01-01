@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Video, X, Loader2, CheckCircle, AlertCircle, Clock } from 'lucide-react';
 import { toast } from 'sonner';
+import { deleteStreamVideoByUid } from '@/utils/streamHelpers';
 
 interface VideoUploaderUppyProps {
   onUploadComplete: (result: { uid: string; url: string; thumbnailUrl: string; localThumbnail?: string }) => void;
@@ -26,18 +27,6 @@ interface UploadState {
   localThumbnail?: string;
 }
 
-// Delete a video from Cloudflare Stream (for cleanup)
-const deleteStreamVideo = async (uid: string): Promise<void> => {
-  try {
-    console.log('[VideoUploaderUppy] Cleaning up video:', uid);
-    await supabase.functions.invoke('stream-video', {
-      body: { action: 'delete', uid },
-    });
-    console.log('[VideoUploaderUppy] Video cleaned up:', uid);
-  } catch (error) {
-    console.error('[VideoUploaderUppy] Failed to cleanup video:', error);
-  }
-};
 const CHUNK_SIZE = 50 * 1024 * 1024;
 
 /**
@@ -371,7 +360,7 @@ export const VideoUploaderUppy = ({
     if (uidToDelete) {
       console.log('[VideoUploaderUppy] Cleaning up cancelled upload:', uidToDelete);
       // Don't await - cleanup in background
-      deleteStreamVideo(uidToDelete);
+      deleteStreamVideoByUid(uidToDelete);
     }
 
     setUploadState({

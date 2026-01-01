@@ -53,6 +53,7 @@ export const formatDate = (dateString: string): string => {
 
 /**
  * Format relative time (e.g., "5 phút trước")
+ * Used for comments, posts, notifications display
  */
 export const formatRelativeTime = (dateString: string): string => {
   const date = new Date(dateString);
@@ -63,10 +64,26 @@ export const formatRelativeTime = (dateString: string): string => {
   const days = Math.floor(diff / 86400000);
 
   if (minutes < 1) return 'Vừa xong';
-  if (minutes < 60) return `${minutes} phút trước`;
-  if (hours < 24) return `${hours} giờ trước`;
-  if (days < 7) return `${days} ngày trước`;
-  return formatDate(dateString);
+  if (minutes < 60) return `${minutes} phút`;
+  if (hours < 24) return `${hours} giờ`;
+  if (days < 7) return `${days} ngày`;
+  return date.toLocaleDateString('vi-VN');
+};
+
+/**
+ * Format duration in seconds to MM:SS or HH:MM:SS
+ * Used for video upload progress, media durations
+ */
+export const formatDurationTime = (seconds: number): string => {
+  if (!isFinite(seconds) || seconds <= 0) return '--:--';
+  const hrs = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+  
+  if (hrs > 0) {
+    return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  }
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
 };
 
 /**

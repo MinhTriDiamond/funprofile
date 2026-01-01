@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 import { uploadToR2 } from '@/utils/r2Upload';
-import { extractStreamUid } from '@/utils/streamUpload';
+import { deleteStreamVideoByUid } from '@/utils/streamHelpers';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -27,19 +27,6 @@ import { EmojiPicker } from './EmojiPicker';
 import { VideoUploadProgress, VideoUploadState } from './VideoUploadProgress';
 import { VideoUploaderUppy } from './VideoUploaderUppy';
 import { useLanguage } from '@/i18n/LanguageContext';
-
-// Helper to delete video from Cloudflare Stream
-const deleteStreamVideo = async (uid: string): Promise<void> => {
-  try {
-    console.log('[FacebookCreatePost] Deleting orphan video:', uid);
-    await supabase.functions.invoke('stream-video', {
-      body: { action: 'delete', uid },
-    });
-    console.log('[FacebookCreatePost] Orphan video deleted:', uid);
-  } catch (error) {
-    console.error('[FacebookCreatePost] Failed to delete orphan video:', error);
-  }
-};
 
 interface FacebookCreatePostProps {
   onPostCreated: () => void;
@@ -476,7 +463,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
                       onClick={() => {
                         // Delete the video from Cloudflare Stream to prevent orphans
                         if (uppyVideoResult?.uid) {
-                          deleteStreamVideo(uppyVideoResult.uid);
+                          deleteStreamVideoByUid(uppyVideoResult.uid);
                         }
                         setUppyVideoResult(null);
                       }}

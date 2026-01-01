@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -18,7 +18,7 @@ import { ReactionButton } from './ReactionButton';
 import { ReactionSummary } from './ReactionSummary';
 import { MediaGrid } from './MediaGrid';
 import { ExpandableContent } from './ExpandableContent';
-import { extractStreamUid, isStreamUrl } from '@/utils/streamUpload';
+import { extractPostStreamVideos, deleteStreamVideos } from '@/utils/streamHelpers';
 import {
   MessageCircle,
   Share2,
@@ -29,33 +29,6 @@ import {
   Link2,
   Bookmark,
 } from 'lucide-react';
-
-// Helper to delete Cloudflare Stream video - returns true if successful
-const deleteStreamVideo = async (videoUrl: string): Promise<boolean> => {
-  const uid = extractStreamUid(videoUrl);
-  if (!uid) {
-    console.warn('[FacebookPostCard] Could not extract UID from URL:', videoUrl);
-    return false;
-  }
-  
-  try {
-    console.log('[FacebookPostCard] Deleting Stream video:', uid);
-    const { data, error } = await supabase.functions.invoke('stream-video', {
-      body: { action: 'delete', uid },
-    });
-    
-    if (error) {
-      console.error('[FacebookPostCard] Stream video delete error:', error);
-      return false;
-    }
-    
-    console.log('[FacebookPostCard] Stream video deleted successfully:', uid, data);
-    return true;
-  } catch (error) {
-    console.error('[FacebookPostCard] Failed to delete Stream video:', error);
-    return false;
-  }
-};
 
 interface PostStats {
   reactions: { id: string; user_id: string; type: string }[];
@@ -231,34 +204,16 @@ export const FacebookPostCard = ({ post, currentUserId, onPostDeleted, initialSt
     setIsDeleting(true);
     
     try {
-      // Collect all video URLs from this post
-      const videoUrls: string[] = [];
+      // Extract and delete all Stream videos from this post
+      const videoUrls = extractPostStreamVideos(post);
       
-      // Check legacy video_url
-      if (post.video_url && isStreamUrl(post.video_url)) {
-        videoUrls.push(post.video_url);
-      }
-      
-      // Check media_urls for videos
-      if (post.media_urls && Array.isArray(post.media_urls)) {
-        post.media_urls.forEach((media) => {
-          if (media.type === 'video' && isStreamUrl(media.url)) {
-            videoUrls.push(media.url);
-          }
-        });
-      }
-      
-      // Delete all videos from CF Stream first (in parallel)
       if (videoUrls.length > 0) {
-        console.log('[FacebookPostCard] Deleting', videoUrls.length, 'videos from CF Stream');
-        const results = await Promise.all(videoUrls.map(deleteStreamVideo));
-        const successCount = results.filter(Boolean).length;
-        console.log('[FacebookPostCard] Deleted', successCount, 'of', videoUrls.length, 'videos');
+        await deleteStreamVideos(videoUrls);
       }
       
       // Now delete the post from database
-      const { error } = await supabase.from('posts').delete().eq('id', post.id);
-      if (error) throw error;
+      const { error: deleteError } = await supabase.from('posts').delete().eq('id', post.id);
+      if (deleteError) throw deleteError;
       
       toast.success('Đã xóa bài viết');
       onPostDeleted();

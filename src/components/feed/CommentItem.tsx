@@ -8,29 +8,14 @@ import { CommentMediaViewer } from './CommentMediaViewer';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
-import { extractStreamUid, isStreamUrl } from '@/utils/streamUpload';
+import { formatRelativeTime } from '@/lib/formatters';
+import { deleteStreamVideoByUrl, isStreamUrl } from '@/utils/streamHelpers';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-
-// Helper to delete Cloudflare Stream video
-const deleteStreamVideo = async (videoUrl: string): Promise<void> => {
-  const uid = extractStreamUid(videoUrl);
-  if (!uid) return;
-  
-  try {
-    console.log('[CommentItem] Deleting Stream video:', uid);
-    await supabase.functions.invoke('stream-video', {
-      body: { action: 'delete', uid },
-    });
-    console.log('[CommentItem] Stream video deleted:', uid);
-  } catch (error) {
-    console.error('[CommentItem] Failed to delete Stream video:', error);
-  }
-};
 
 interface Comment {
   id: string;
@@ -90,7 +75,7 @@ export const CommentItem = ({
     
     // Delete video from Cloudflare Stream first if exists
     if (comment.video_url && isStreamUrl(comment.video_url)) {
-      await deleteStreamVideo(comment.video_url);
+      await deleteStreamVideoByUrl(comment.video_url);
     }
     
     const { error } = await supabase
@@ -119,21 +104,6 @@ export const CommentItem = ({
 
   const mediaUrl = comment.image_url || comment.video_url;
   const mediaType = comment.image_url ? 'image' : 'video';
-
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 1) return 'Vừa xong';
-    if (diffMins < 60) return `${diffMins} phút`;
-    if (diffHours < 24) return `${diffHours} giờ`;
-    if (diffDays < 7) return `${diffDays} ngày`;
-    return date.toLocaleDateString('vi-VN');
-  };
 
   const visibleReplies = showAllReplies 
     ? comment.replies 
@@ -219,7 +189,7 @@ export const CommentItem = ({
             </Button>
             
             <span className="text-muted-foreground/60">
-              {formatTime(comment.created_at)}
+              {formatRelativeTime(comment.created_at)}
             </span>
 
             {/* More options */}

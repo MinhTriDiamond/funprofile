@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { ReceiveTab } from './ReceiveTab';
 import { SendTab } from './SendTab';
 import { useTokenBalances } from '@/hooks/useTokenBalances';
+import { formatRelativeTime } from '@/lib/formatters';
 import camlyCoinLogo from '@/assets/camly-coin-logo.png';
 import metamaskLogo from '@/assets/metamask-logo.png';
 
@@ -424,18 +425,6 @@ const WalletCenterContainer = () => {
     }
   };
 
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-    const days = Math.floor(diff / 86400000);
-
-    if (minutes < 60) return `${minutes} phút trước`;
-    if (hours < 24) return `${hours} giờ trước`;
-    return `${days} ngày trước`;
-  };
 
   // Not connected state - Show Connect Wallet button
   // Check both: wagmi isConnected AND our showDisconnectedUI flag
@@ -819,7 +808,7 @@ const WalletCenterContainer = () => {
                 </div>
                 <div className="flex-1">
                   <p className="font-medium text-sm">{tx.description}</p>
-                  <p className="text-xs text-muted-foreground">{formatTime(tx.created_at)}</p>
+                  <p className="text-xs text-muted-foreground">{formatRelativeTime(tx.created_at)}</p>
                 </div>
               </div>
             ))}
