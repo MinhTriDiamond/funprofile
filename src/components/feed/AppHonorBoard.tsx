@@ -287,7 +287,7 @@ export const AppHonorBoard = memo(() => {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-white font-bold text-sm truncate">
-                  {item.isUsd ? `$ ${formatNumber(item.value)}` : formatNumber(item.value)}
+                  {item.isUsd ? `$ ${formatNumber(item.value, 2)}` : formatNumber(item.value)}
                 </p>
                 <p className="text-yellow-400/80 text-[9px] uppercase truncate">
                   {item.label}
