@@ -22,6 +22,7 @@ export const translations = {
     authUseWithoutAccount: 'Use without account',
     authSendResetEmail: 'Send Reset Email',
     authInitializing: 'Initializing...',
+    authSignInWithGoogle: 'Sign in with Google',
     
     // Auth page branding
     authBrandTitle: 'FUN Profile',
@@ -274,6 +275,7 @@ export const translations = {
     authUseWithoutAccount: 'Dùng không cần tài khoản',
     authSendResetEmail: 'Gửi Email Đặt Lại',
     authInitializing: 'Đang khởi tạo...',
+    authSignInWithGoogle: 'Đăng nhập bằng Google',
     
     // Auth page branding
     authBrandTitle: 'FUN Profile',
