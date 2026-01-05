@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useLocation, Navigate } from "react-router-dom";
 
 import EcosystemDocs from "@/pages/EcosystemDocs";
-import AppDocumentation from "@/pages/AppDocumentation";
+import PlatformDocs from "@/pages/PlatformDocs";
 
 const setCanonical = (href: string) => {
   let link = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
@@ -34,7 +34,7 @@ export default function DocsRouter() {
   useEffect(() => {
     const origin = window.location.origin;
 
-  if (first === "platform") {
+    if (first === "platform") {
       document.title = "FUN Ecosystem Platform Documentation";
       ensureMetaDescription(
         "FUN Ecosystem platform documentation: kiến trúc, auth, wallet, feed, rewards, media, admin và bảo mật."
@@ -59,7 +59,7 @@ export default function DocsRouter() {
     setCanonical(`${origin}/docs`);
   }, [first]);
 
-  if (first === "platform") return <AppDocumentation />;
+  if (first === "platform") return <PlatformDocs />;
   if (first === "ecosystem") return <EcosystemDocs />;
 
   return <Navigate to="/docs/ecosystem" replace />;

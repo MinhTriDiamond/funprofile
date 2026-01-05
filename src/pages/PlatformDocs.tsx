@@ -38,7 +38,7 @@ const tocItems = [
   { id: 'secrets', title: '16. Secrets & Environment' },
 ];
 
-const AppDocumentation: React.FC = () => {
+const PlatformDocs: React.FC = () => {
   const [activeId, setActiveId] = useState('overview');
 
   useEffect(() => {
@@ -697,4 +697,4 @@ VITE_SUPABASE_PROJECT_ID=[project-id]`}
   );
 };
 
-export default AppDocumentation;
+export default PlatformDocs;
