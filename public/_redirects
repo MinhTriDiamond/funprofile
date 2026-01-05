@@ -11,4 +11,5 @@
 /notifications /index.html 200
 /law-of-light /index.html 200
 /docs/*     /index.html   200
+/docs/app   /index.html   200
 /*          /index.html   200
