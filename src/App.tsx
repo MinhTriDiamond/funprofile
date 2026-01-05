@@ -19,6 +19,7 @@ const About = lazy(() => import("./pages/About"));
 const Leaderboard = lazy(() => import("./pages/Leaderboard"));
 const AdminMigration = lazy(() => import("./pages/AdminMigration"));
 const Admin = lazy(() => import("./pages/Admin"));
+const AdminEdgeFunctionTest = lazy(() => import("./pages/AdminEdgeFunctionTest"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const LawOfLight = lazy(() => import("./pages/LawOfLight"));
 const Notifications = lazy(() => import("./pages/Notifications"));
@@ -71,6 +72,7 @@ function App() {
                   <Route path="/leaderboard" element={<Leaderboard />} />
                   <Route path="/admin/migration" element={<AdminMigration />} />
                   <Route path="/admin/media-test" element={<MediaTestSandbox />} />
+                  <Route path="/admin/edge-test" element={<AdminEdgeFunctionTest />} />
                   <Route path="/admin" element={<Admin />} />
                   <Route path="/notifications" element={<Notifications />} />
                   <Route path="/docs/ecosystem" element={<EcosystemDocs />} />
