@@ -107,27 +107,20 @@ export const UnifiedAuthForm = () => {
     handleAuthSuccess(userId, isNewUser, false); // No external wallet
   };
 
-  // Show setup progress overlay
+  // Show setup progress overlay - simplified for performance
   if (isSettingUp) {
     return (
       <div className="w-full max-w-md relative">
-        <div className="relative p-2 rounded-3xl"
-             style={{
-               background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 20%, #fcd34d 40%, #d97706 60%, #f59e0b 80%, #fbbf24 100%)',
-               boxShadow: '0 0 60px rgba(251, 191, 36, 0.6), 0 0 100px rgba(234, 179, 8, 0.4)',
-             }}>
-          <Card className="relative border-0 overflow-hidden rounded-2xl bg-white">
+        <div className="relative p-2 rounded-3xl bg-gradient-to-br from-amber-400 via-yellow-500 to-amber-500 shadow-lg">
+          <Card className="relative border-0 overflow-hidden rounded-2xl bg-card">
             <CardContent className="p-8">
               <div className="text-center space-y-6 py-8">
-                <div className="relative inline-flex">
-                  <div className="w-24 h-24 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center animate-pulse">
-                    <Sparkles className="text-white" size={40} />
-                  </div>
-                  <div className="absolute inset-0 rounded-full animate-ping opacity-30 bg-emerald-400" />
+                <div className="w-24 h-24 mx-auto rounded-full bg-gradient-to-br from-primary to-emerald-600 flex items-center justify-center">
+                  <Sparkles className="text-primary-foreground" size={40} />
                 </div>
 
                 <div className="space-y-2">
-                  <h3 className="text-xl font-bold text-slate-800">
+                  <h3 className="text-xl font-bold text-foreground">
                     {t('welcomeNewUser')}
                   </h3>
                   
@@ -154,88 +147,47 @@ export const UnifiedAuthForm = () => {
 
   return (
     <div className="w-full max-w-md relative">
-      {/* Outer Gold Metallic Frame - "Áo choàng Ánh sáng" */}
-      <div className="relative p-2 rounded-3xl"
-           style={{
-             background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 20%, #fcd34d 40%, #d97706 60%, #f59e0b 80%, #fbbf24 100%)',
-             boxShadow: '0 0 60px rgba(251, 191, 36, 0.6), 0 0 100px rgba(234, 179, 8, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.5), inset 0 -2px 4px rgba(0, 0, 0, 0.3)'
-           }}>
+      {/* Outer Gold Frame - simplified gradient, no heavy shadows */}
+      <div className="relative p-2 rounded-3xl bg-gradient-to-br from-amber-400 via-yellow-500 to-amber-500 shadow-lg">
         
-        {/* Decorative Corner Glow Effects */}
-        <div className="absolute top-2 left-2 w-8 h-8 rounded-full" 
-             style={{ background: 'radial-gradient(circle, #fcd34d 0%, transparent 70%)', opacity: 0.7 }} />
-        <div className="absolute top-2 right-2 w-8 h-8 rounded-full" 
-             style={{ background: 'radial-gradient(circle, #fcd34d 0%, transparent 70%)', opacity: 0.7 }} />
-        <div className="absolute bottom-2 left-2 w-8 h-8 rounded-full" 
-             style={{ background: 'radial-gradient(circle, #fcd34d 0%, transparent 70%)', opacity: 0.7 }} />
-        <div className="absolute bottom-2 right-2 w-8 h-8 rounded-full" 
-             style={{ background: 'radial-gradient(circle, #fcd34d 0%, transparent 70%)', opacity: 0.7 }} />
-
-        {/* Animated Light Rays */}
-        <div className="absolute inset-0 overflow-hidden rounded-3xl pointer-events-none">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-full opacity-20"
-               style={{
-                 background: 'linear-gradient(180deg, rgba(255,255,255,0.8) 0%, transparent 50%)',
-                 animation: 'lightRay 3s ease-in-out infinite',
-               }} />
-        </div>
-
-        {/* Inner Pearl White Background */}
-        <Card className="relative border-0 overflow-hidden rounded-2xl"
-              style={{
-                background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 25%, #ffffff 50%, #f1f5f9 75%, #ffffff 100%)',
-                boxShadow: 'inset 0 2px 8px rgba(0, 0, 0, 0.1), inset 0 0 40px rgba(251, 191, 36, 0.05)'
-              }}>
-          
-          {/* Circuit Board Pattern */}
-          <div className="absolute inset-0 opacity-[0.02]" 
-               style={{
-                 backgroundImage: `
-                   linear-gradient(90deg, #10b981 1px, transparent 1px),
-                   linear-gradient(0deg, #10b981 1px, transparent 1px),
-                   radial-gradient(circle at 20% 30%, #10b981 2px, transparent 2px),
-                   radial-gradient(circle at 80% 70%, #10b981 2px, transparent 2px)
-                 `,
-                 backgroundSize: '30px 30px, 30px 30px, 60px 60px, 60px 60px',
-                 backgroundPosition: '0 0, 0 0, 0 0, 30px 30px'
-               }} />
-          
-          <CardHeader className="relative z-10 pb-4">
-            <CardTitle className="text-2xl font-bold text-center bg-gradient-to-r from-emerald-600 via-emerald-500 to-emerald-600 bg-clip-text text-transparent">
+        {/* Inner Card - clean white background */}
+        <Card className="relative border-0 overflow-hidden rounded-2xl bg-card shadow-inner">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-2xl font-bold text-center bg-gradient-to-r from-primary via-emerald-500 to-primary bg-clip-text text-transparent">
               {t('lightCloakWelcome')}
             </CardTitle>
-            <CardDescription className="text-center text-slate-600">
+            <CardDescription className="text-center text-muted-foreground">
               {t('lightCloakDescription')}
             </CardDescription>
           </CardHeader>
           
-          <CardContent className="relative z-10 pt-0">
+          <CardContent className="pt-0">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-4 mb-6 bg-slate-100/80 p-1 rounded-xl">
+              <TabsList className="grid w-full grid-cols-4 mb-6 bg-muted/80 p-1 rounded-xl">
                 <TabsTrigger 
                   value="email" 
-                  className="flex items-center gap-1 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-emerald-600 transition-all text-xs sm:text-sm"
+                  className="flex items-center gap-1 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-md data-[state=active]:text-primary transition-colors text-xs sm:text-sm"
                 >
                   <Mail size={14} />
                   <span className="hidden sm:inline">OTP</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="wallet"
-                  className="flex items-center gap-1 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-amber-600 transition-all text-xs sm:text-sm"
+                  className="flex items-center gap-1 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-md data-[state=active]:text-amber-600 transition-colors text-xs sm:text-sm"
                 >
                   <Wallet size={14} />
                   <span className="hidden sm:inline">{t('authMethodWallet')}</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="social"
-                  className="flex items-center gap-1 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-blue-600 transition-all text-xs sm:text-sm"
+                  className="flex items-center gap-1 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-md data-[state=active]:text-blue-600 transition-colors text-xs sm:text-sm"
                 >
                   <Users size={14} />
                   <span className="hidden sm:inline">Social</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="classic"
-                  className="flex items-center gap-1 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-slate-600 transition-all text-xs sm:text-sm"
+                  className="flex items-center gap-1 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-md data-[state=active]:text-foreground transition-colors text-xs sm:text-sm"
                 >
                   <KeyRound size={14} />
                   <span className="hidden sm:inline">{t('classicLogin')}</span>
@@ -261,18 +213,11 @@ export const UnifiedAuthForm = () => {
           </CardContent>
         </Card>
       </div>
-
-      <style>{`
-        @keyframes lightRay {
-          0%, 100% { opacity: 0.1; transform: translateX(-50%) rotate(-5deg); }
-          50% { opacity: 0.3; transform: translateX(-50%) rotate(5deg); }
-        }
-      `}</style>
     </div>
   );
 };
 
-// Helper component for setup progress
+// Helper component for setup progress - simplified styles
 const SetupStepIndicator = ({ 
   step, 
   currentStep, 
@@ -290,19 +235,19 @@ const SetupStepIndicator = ({
   const isComplete = currentIndex > stepIndex;
 
   return (
-    <div className={`flex items-center gap-3 p-3 rounded-xl transition-all ${
-      isActive ? 'bg-emerald-50 border border-emerald-200' : 
-      isComplete ? 'bg-emerald-50/50' : 'bg-slate-50'
+    <div className={`flex items-center gap-3 p-3 rounded-xl ${
+      isActive ? 'bg-primary/10 border border-primary/20' : 
+      isComplete ? 'bg-primary/5' : 'bg-muted'
     }`}>
       <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-        isComplete ? 'bg-emerald-500 text-white' :
-        isActive ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-200 text-slate-400'
+        isComplete ? 'bg-primary text-primary-foreground' :
+        isActive ? 'bg-primary/20 text-primary' : 'bg-muted-foreground/20 text-muted-foreground'
       }`}>
         {isComplete ? '✓' : isActive ? <Loader2 className="animate-spin" size={16} /> : '○'}
       </div>
       <span className={`text-sm ${
-        isActive ? 'text-emerald-700 font-medium' : 
-        isComplete ? 'text-emerald-600' : 'text-slate-400'
+        isActive ? 'text-primary font-medium' : 
+        isComplete ? 'text-primary' : 'text-muted-foreground'
       }`}>
         {label}
       </span>
