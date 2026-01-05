@@ -96,21 +96,29 @@ serve(async (req) => {
       ? identifier.toLowerCase() 
       : `${identifier.replace(/[^0-9]/g, '')}@phone.local`;
 
-    // Check if user exists by searching users with email filter
-    const { data: listData } = await supabase.auth.admin.listUsers({
-      page: 1,
-      perPage: 1,
-    });
-    
-    // Find user with matching email
-    let user = listData?.users?.find(u => u.email?.toLowerCase() === userEmail.toLowerCase());
-    
-    // If not found in first page, search more specifically
-    if (!user) {
-      const { data: allUsers } = await supabase.auth.admin.listUsers();
-      user = allUsers?.users?.find(u => u.email?.toLowerCase() === userEmail.toLowerCase());
-    }
-    
+    // Helper: find user by email via pagination (Auth admin API has no direct lookup)
+    const findUserByEmail = async (email: string) => {
+      const target = email.toLowerCase();
+      const perPage = 1000;
+      const maxPages = 10;
+
+      for (let page = 1; page <= maxPages; page++) {
+        const { data, error } = await supabase.auth.admin.listUsers({ page, perPage });
+        if (error) throw error;
+
+        const found = data?.users?.find((u) => u.email?.toLowerCase() === target);
+        if (found) return found;
+
+        // Stop early if we reached the end.
+        if (!data?.users || data.users.length < perPage) break;
+      }
+
+      return null;
+    };
+
+    // Check if user exists
+    let user = await findUserByEmail(userEmail);
+
     let isNewUser = false;
 
     if (!user) {
@@ -134,12 +142,15 @@ serve(async (req) => {
       });
 
       if (createError) {
-        // If email exists error, user was created between our check - try to find them
-        if (createError.message?.includes('already been registered') || (createError as any).code === 'email_exists') {
+        // If email exists error, user was created between our check - fetch it reliably
+        if (
+          createError.message?.includes('already been registered') ||
+          (createError as any).code === 'email_exists'
+        ) {
           console.log('[OTP-VERIFY] User already exists (race condition), fetching user...');
-          const { data: retryUsers } = await supabase.auth.admin.listUsers();
-          user = retryUsers?.users?.find(u => u.email?.toLowerCase() === userEmail.toLowerCase());
+          user = await findUserByEmail(userEmail);
           if (!user) {
+            console.error('[OTP-VERIFY] User exists but could not be retrieved');
             return new Response(
               JSON.stringify({ success: false, error: 'User exists but could not be retrieved' }),
               { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
