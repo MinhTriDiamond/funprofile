@@ -136,6 +136,60 @@ export type Database = {
           },
         ]
       }
+      custodial_wallets: {
+        Row: {
+          chain_id: number
+          created_at: string
+          encrypted_private_key: string
+          encryption_version: number
+          id: string
+          is_active: boolean
+          last_activity_at: string | null
+          updated_at: string
+          user_id: string
+          wallet_address: string
+        }
+        Insert: {
+          chain_id?: number
+          created_at?: string
+          encrypted_private_key: string
+          encryption_version?: number
+          id?: string
+          is_active?: boolean
+          last_activity_at?: string | null
+          updated_at?: string
+          user_id: string
+          wallet_address: string
+        }
+        Update: {
+          chain_id?: number
+          created_at?: string
+          encrypted_private_key?: string
+          encryption_version?: number
+          id?: string
+          is_active?: boolean
+          last_activity_at?: string | null
+          updated_at?: string
+          user_id?: string
+          wallet_address?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "custodial_wallets_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "custodial_wallets_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       friendships: {
         Row: {
           created_at: string
@@ -201,6 +255,78 @@ export type Database = {
           },
         ]
       }
+      oauth_clients: {
+        Row: {
+          allowed_scopes: string[]
+          client_id: string
+          client_name: string
+          client_secret: string
+          created_at: string
+          id: string
+          is_active: boolean
+          redirect_uris: string[]
+          updated_at: string
+        }
+        Insert: {
+          allowed_scopes?: string[]
+          client_id: string
+          client_name: string
+          client_secret: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          redirect_uris?: string[]
+          updated_at?: string
+        }
+        Update: {
+          allowed_scopes?: string[]
+          client_id?: string
+          client_name?: string
+          client_secret?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          redirect_uris?: string[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      otp_codes: {
+        Row: {
+          attempts: number
+          code: string
+          created_at: string
+          expires_at: string
+          id: string
+          identifier: string
+          is_used: boolean
+          max_attempts: number
+          type: string
+        }
+        Insert: {
+          attempts?: number
+          code: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          identifier: string
+          is_used?: boolean
+          max_attempts?: number
+          type?: string
+        }
+        Update: {
+          attempts?: number
+          code?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          identifier?: string
+          is_used?: boolean
+          max_attempts?: number
+          type?: string
+        }
+        Relationships: []
+      }
       posts: {
         Row: {
           content: string
@@ -259,14 +385,21 @@ export type Database = {
           bio: string | null
           cover_url: string | null
           created_at: string
+          cross_platform_data: Json | null
           full_name: string | null
+          fun_id: string | null
           id: string
           is_banned: boolean
           is_restricted: boolean
+          last_login_platform: string | null
           law_of_light_accepted: boolean
           law_of_light_accepted_at: string | null
+          oauth_provider: string | null
           pending_reward: number
+          registered_from: string | null
           reward_status: string
+          soul_level: number
+          total_rewards: number
           updated_at: string
           username: string
           wallet_address: string | null
@@ -280,14 +413,21 @@ export type Database = {
           bio?: string | null
           cover_url?: string | null
           created_at?: string
+          cross_platform_data?: Json | null
           full_name?: string | null
+          fun_id?: string | null
           id: string
           is_banned?: boolean
           is_restricted?: boolean
+          last_login_platform?: string | null
           law_of_light_accepted?: boolean
           law_of_light_accepted_at?: string | null
+          oauth_provider?: string | null
           pending_reward?: number
+          registered_from?: string | null
           reward_status?: string
+          soul_level?: number
+          total_rewards?: number
           updated_at?: string
           username: string
           wallet_address?: string | null
@@ -301,14 +441,21 @@ export type Database = {
           bio?: string | null
           cover_url?: string | null
           created_at?: string
+          cross_platform_data?: Json | null
           full_name?: string | null
+          fun_id?: string | null
           id?: string
           is_banned?: boolean
           is_restricted?: boolean
+          last_login_platform?: string | null
           law_of_light_accepted?: boolean
           law_of_light_accepted_at?: string | null
+          oauth_provider?: string | null
           pending_reward?: number
+          registered_from?: string | null
           reward_status?: string
+          soul_level?: number
+          total_rewards?: number
           updated_at?: string
           username?: string
           wallet_address?: string | null
@@ -501,6 +648,72 @@ export type Database = {
             columns: ["original_post_id"]
             isOneToOne: false
             referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      soul_nfts: {
+        Row: {
+          chain_id: number
+          contract_address: string | null
+          created_at: string
+          experience_points: number
+          id: string
+          is_minted: boolean
+          metadata_uri: string | null
+          minted_at: string | null
+          soul_element: string | null
+          soul_level: number
+          soul_name: string | null
+          token_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          chain_id?: number
+          contract_address?: string | null
+          created_at?: string
+          experience_points?: number
+          id?: string
+          is_minted?: boolean
+          metadata_uri?: string | null
+          minted_at?: string | null
+          soul_element?: string | null
+          soul_level?: number
+          soul_name?: string | null
+          token_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          chain_id?: number
+          contract_address?: string | null
+          created_at?: string
+          experience_points?: number
+          id?: string
+          is_minted?: boolean
+          metadata_uri?: string | null
+          minted_at?: string | null
+          soul_element?: string | null
+          soul_level?: number
+          soul_name?: string | null
+          token_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "soul_nfts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "soul_nfts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "public_profiles"
             referencedColumns: ["id"]
           },
         ]
