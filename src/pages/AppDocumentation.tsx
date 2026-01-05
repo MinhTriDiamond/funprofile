@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Printer, FileText, ExternalLink } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { TableOfContents } from '@/components/docs/TableOfContents';
@@ -39,7 +39,6 @@ const tocItems = [
 ];
 
 const AppDocumentation: React.FC = () => {
-  const navigate = useNavigate();
   const [activeId, setActiveId] = useState('overview');
 
   useEffect(() => {
@@ -72,9 +71,11 @@ const AppDocumentation: React.FC = () => {
       <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b border-border">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
+            <Link to="/">
+              <Button variant="ghost" size="icon">
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+            </Link>
             <div>
               <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
                 <FileText className="h-5 w-5 text-primary" />
@@ -84,10 +85,12 @@ const AppDocumentation: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => navigate('/docs/ecosystem')}>
-              <ExternalLink className="h-4 w-4 mr-2" />
-              SSO Docs
-            </Button>
+            <Link to="/docs/ecosystem">
+              <Button variant="outline" size="sm">
+                <ExternalLink className="h-4 w-4 mr-2" />
+                SSO Docs
+              </Button>
+            </Link>
             <Button variant="outline" size="sm" onClick={handlePrint}>
               <Printer className="h-4 w-4 mr-2" />
               In PDF
