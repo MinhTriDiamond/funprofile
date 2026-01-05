@@ -6,14 +6,25 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Soul elements with descriptions
-const SOUL_ELEMENTS = {
-  'Kim': { color: '#FFD700', trait: 'Quyết đoán, mạnh mẽ' },
-  'Mộc': { color: '#228B22', trait: 'Sáng tạo, phát triển' },
-  'Thủy': { color: '#1E90FF', trait: 'Linh hoạt, thông minh' },
-  'Hỏa': { color: '#FF4500', trait: 'Nhiệt huyết, đam mê' },
-  'Thổ': { color: '#8B4513', trait: 'Ổn định, đáng tin cậy' }
+// Soul elements with descriptions (ASCII-safe for btoa)
+const SOUL_ELEMENTS: Record<string, { color: string; trait: string }> = {
+  'Kim': { color: '#FFD700', trait: 'Decisive & Strong' },
+  'Moc': { color: '#228B22', trait: 'Creative & Growth' },
+  'Thuy': { color: '#1E90FF', trait: 'Flexible & Wise' },
+  'Hoa': { color: '#FF4500', trait: 'Passionate & Energetic' },
+  'Tho': { color: '#8B4513', trait: 'Stable & Reliable' }
 };
+
+// Safe base64 encode for Unicode strings
+function safeBase64Encode(str: string): string {
+  // Encode to UTF-8 bytes, then to base64
+  const bytes = new TextEncoder().encode(str);
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
 
 serve(async (req) => {
   // Handle CORS preflight
@@ -103,30 +114,37 @@ serve(async (req) => {
     const tokenId = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
     
     // Determine soul name (use provided or generate from FUN-ID)
-    const finalSoulName = soul_name || profile.fun_id || profile.username;
+    // Convert Vietnamese to ASCII-safe version for metadata
+    const finalSoulName = soul_name || profile.fun_id || profile.username || 'Anonymous';
     
     // Get soul element (should already be set by trigger, but fallback)
-    const soulElement = soulNft?.soul_element || Object.keys(SOUL_ELEMENTS)[Math.floor(Math.random() * 5)];
-    const elementData = SOUL_ELEMENTS[soulElement as keyof typeof SOUL_ELEMENTS];
+    // Normalize Vietnamese element names to ASCII
+    const rawElement = soulNft?.soul_element || Object.keys(SOUL_ELEMENTS)[Math.floor(Math.random() * 5)];
+    const elementMap: Record<string, string> = {
+      'Kim': 'Kim', 'Mộc': 'Moc', 'Thủy': 'Thuy', 'Hỏa': 'Hoa', 'Thổ': 'Tho'
+    };
+    const soulElement = elementMap[rawElement] || rawElement;
+    const elementData = SOUL_ELEMENTS[soulElement] || SOUL_ELEMENTS['Kim'];
 
     // Generate metadata URI (in production, upload to IPFS)
+    // Use ASCII-safe strings for base64 encoding
     const metadata = {
       name: `Soul of ${finalSoulName}`,
-      description: `FUN Identity Soul NFT - ${soulElement}: ${elementData.trait}`,
-      image: `https://fun.rich/soul/${profile.fun_id}.png`, // Placeholder
+      description: `FUN Identity Soul NFT - Element: ${soulElement} - ${elementData.trait}`,
+      image: `https://api.dicebear.com/7.x/identicon/svg?seed=${user_id}`,
       attributes: [
-        { trait_type: 'FUN-ID', value: profile.fun_id },
+        { trait_type: 'FUN-ID', value: profile.fun_id || 'N/A' },
         { trait_type: 'Element', value: soulElement },
         { trait_type: 'Element Color', value: elementData.color },
         { trait_type: 'Element Trait', value: elementData.trait },
         { trait_type: 'Soul Level', value: soulNft?.soul_level || 1 },
         { trait_type: 'Experience Points', value: soulNft?.experience_points || 0 }
       ],
-      external_url: `https://fun.rich/${profile.fun_id}`
+      external_url: `https://fun.rich/${profile.fun_id || user_id}`
     };
 
-    // In production, upload metadata to IPFS here
-    const metadataUri = `data:application/json;base64,${btoa(JSON.stringify(metadata))}`;
+    // Use safe base64 encoding
+    const metadataUri = `data:application/json;base64,${safeBase64Encode(JSON.stringify(metadata))}`;
 
     // For now, simulate minting (in production, interact with smart contract)
     const contractAddress = '0x0000000000000000000000000000000000000000'; // Placeholder
@@ -140,6 +158,7 @@ serve(async (req) => {
         .update({
           token_id: tokenId,
           soul_name: finalSoulName,
+          soul_element: soulElement,
           contract_address: contractAddress,
           metadata_uri: metadataUri,
           is_minted: true,
@@ -196,15 +215,16 @@ serve(async (req) => {
           element_color: elementData.color
         },
         is_new: true,
-        profile_url: `https://fun.rich/${profile.fun_id}`
+        profile_url: `https://fun.rich/${profile.fun_id || user_id}`
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
     console.error('[MINT-SOUL-NFT] Error:', error);
+    const errMsg = error instanceof Error ? error.message : 'Internal server error';
     return new Response(
-      JSON.stringify({ success: false, error: 'Internal server error' }),
+      JSON.stringify({ success: false, error: errMsg }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

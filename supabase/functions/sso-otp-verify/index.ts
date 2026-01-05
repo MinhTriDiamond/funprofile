@@ -91,19 +91,31 @@ serve(async (req) => {
       .update({ is_used: true })
       .eq('id', otpRecord.id);
 
-    // Check if user exists, if not create one
-    const { data: existingUser } = await supabase.auth.admin.listUsers();
-    const userEmail = otpRecord.type === 'email' ? identifier.toLowerCase() : `${identifier}@phone.local`;
-    
-    let user = existingUser?.users?.find(u => u.email === userEmail);
-    
+    // Determine user email
+    const userEmail = otpRecord.type === 'email' 
+      ? identifier.toLowerCase() 
+      : `${identifier.replace(/[^0-9]/g, '')}@phone.local`;
+
+    // Check if user exists by searching all users
+    const { data: existingUsers } = await supabase.auth.admin.listUsers();
+    let user = existingUsers?.users?.find(u => u.email?.toLowerCase() === userEmail.toLowerCase());
+    let isNewUser = false;
+
     if (!user) {
       console.log('[OTP-VERIFY] Creating new user for:', userEmail);
+      isNewUser = true;
+      
+      // Generate unique username from identifier
+      const baseUsername = identifier.split('@')[0].replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+      const uniqueSuffix = Date.now().toString(36).slice(-4);
+      const username = `${baseUsername}${uniqueSuffix}`;
+
       // Create new user
       const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
         email: userEmail,
         email_confirm: true,
         user_metadata: {
+          username: username,
           registered_from: 'otp',
           identifier: identifier.toLowerCase()
         }
@@ -117,6 +129,16 @@ serve(async (req) => {
         );
       }
       user = newUser.user;
+    } else {
+      console.log('[OTP-VERIFY] Found existing user:', user.id);
+    }
+
+    // Update last login platform
+    if (user) {
+      await supabase
+        .from('profiles')
+        .update({ last_login_platform: 'otp_email' })
+        .eq('id', user.id);
     }
 
     // Generate session for user
@@ -140,6 +162,7 @@ serve(async (req) => {
         success: true,
         message: 'OTP verified successfully',
         user_id: user?.id,
+        is_new_user: isNewUser,
         magic_link: sessionData?.properties?.action_link
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -147,8 +170,9 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('[OTP-VERIFY] Error:', error);
+    const errMsg = error instanceof Error ? error.message : 'Internal server error';
     return new Response(
-      JSON.stringify({ success: false, error: 'Internal server error' }),
+      JSON.stringify({ success: false, error: errMsg }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

@@ -12,7 +12,7 @@ function verifyMessage(message: string, signature: string, expectedAddress: stri
   // For now, we'll do basic validation and trust the client
   // The signature format check ensures it's a valid hex signature
   const sigRegex = /^0x[a-fA-F0-9]{130}$/;
-  const addressRegex = /^0x[a-fA-F0-9]{40}$/;
+  const addressRegex = /^0x[a-fA-F0-9]{40}$/i;
   
   if (!sigRegex.test(signature)) {
     console.error('[WEB3-AUTH] Invalid signature format');
@@ -89,22 +89,31 @@ serve(async (req) => {
 
     let userId: string;
     let isNewUser = false;
+    let userEmail: string;
 
     if (existingProfile) {
       console.log('[WEB3-AUTH] Existing user found:', existingProfile.id);
       userId = existingProfile.id;
+      
+      // Get user email
+      const { data: userData } = await supabase.auth.admin.getUserById(userId);
+      userEmail = userData?.user?.email || '';
     } else {
       console.log('[WEB3-AUTH] Creating new user for wallet');
       isNewUser = true;
 
-      // Generate a unique email for this wallet user
-      const walletEmail = `${normalizedAddress}@wallet.fun.rich`;
+      // Generate unique email and username for this wallet user
+      const shortAddr = normalizedAddress.slice(2, 10);
+      const timestamp = Date.now().toString(36).slice(-4);
+      userEmail = `${shortAddr}${timestamp}@wallet.fun.rich`;
+      const username = `wallet_${shortAddr}${timestamp}`;
 
       // Create new user via Supabase Auth
       const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
-        email: walletEmail,
+        email: userEmail,
         email_confirm: true,
         user_metadata: {
+          username: username,
           wallet_address: normalizedAddress,
           registered_from: 'web3',
           oauth_provider: 'metamask'
@@ -139,21 +148,23 @@ serve(async (req) => {
       .update({ last_login_platform: 'web3' })
       .eq('id', userId);
 
-    // Generate magic link for session
-    const { data: existingUsers } = await supabase.auth.admin.listUsers();
-    const user = existingUsers?.users?.find(u => u.id === userId);
-    
-    if (!user) {
-      console.error('[WEB3-AUTH] User not found after creation');
+    // If we don't have userEmail, fetch it
+    if (!userEmail) {
+      const { data: userData } = await supabase.auth.admin.getUserById(userId);
+      userEmail = userData?.user?.email || '';
+    }
+
+    if (!userEmail) {
+      console.error('[WEB3-AUTH] User email not found');
       return new Response(
-        JSON.stringify({ success: false, error: 'User not found' }),
+        JSON.stringify({ success: false, error: 'User email not found' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     const { data: sessionData, error: sessionError } = await supabase.auth.admin.generateLink({
       type: 'magiclink',
-      email: user.email!,
+      email: userEmail,
     });
 
     if (sessionError) {
@@ -179,8 +190,9 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('[WEB3-AUTH] Error:', error);
+    const errMsg = error instanceof Error ? error.message : 'Internal server error';
     return new Response(
-      JSON.stringify({ success: false, error: 'Internal server error' }),
+      JSON.stringify({ success: false, error: errMsg }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
