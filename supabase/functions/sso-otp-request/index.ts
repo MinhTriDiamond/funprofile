@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { Resend } from "https://esm.sh/resend@2.0.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -109,13 +110,73 @@ serve(async (req) => {
       );
     }
 
-    // TODO: Integrate with email service (Resend, SendGrid) to send OTP
-    console.log(`[OTP-REQUEST] OTP stored successfully for ${identifier}`);
+    // Send OTP via Resend
+    const resendApiKey = Deno.env.get("RESEND_API_KEY");
+    let emailSent = false;
+    
+    if (resendApiKey) {
+      try {
+        const resend = new Resend(resendApiKey);
+        const { error: emailError } = await resend.emails.send({
+          from: "FunPlanet <onboarding@resend.dev>",
+          to: [identifier],
+          subject: "🔐 Mã xác thực OTP của bạn - FunPlanet",
+          html: `
+            <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border-radius: 16px; overflow: hidden;">
+              <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 32px; text-align: center;">
+                <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 700;">🌟 FunPlanet</h1>
+                <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 14px;">Light Cloak Authentication</p>
+              </div>
+              
+              <div style="padding: 40px 32px;">
+                <h2 style="color: #f1f5f9; margin: 0 0 16px 0; font-size: 22px;">Xin chào! 👋</h2>
+                <p style="color: #94a3b8; margin: 0 0 24px 0; font-size: 16px; line-height: 1.6;">
+                  Đây là mã OTP để xác thực tài khoản của bạn. Mã này sẽ hết hạn sau <strong style="color: #10b981;">5 phút</strong>.
+                </p>
+                
+                <div style="background: rgba(16, 185, 129, 0.1); border: 2px solid #10b981; border-radius: 12px; padding: 24px; text-align: center; margin: 24px 0;">
+                  <span style="font-size: 36px; font-weight: 800; letter-spacing: 12px; color: #10b981; font-family: 'Courier New', monospace;">
+                    ${otp}
+                  </span>
+                </div>
+                
+                <div style="background: rgba(239, 68, 68, 0.1); border-left: 4px solid #ef4444; padding: 16px; border-radius: 0 8px 8px 0; margin: 24px 0;">
+                  <p style="color: #fca5a5; margin: 0; font-size: 14px;">
+                    ⚠️ <strong>Bảo mật:</strong> Không chia sẻ mã này với bất kỳ ai. Nhân viên FunPlanet sẽ không bao giờ yêu cầu mã OTP của bạn.
+                  </p>
+                </div>
+              </div>
+              
+              <div style="background: rgba(0,0,0,0.3); padding: 24px 32px; text-align: center;">
+                <p style="color: #64748b; margin: 0; font-size: 12px;">
+                  Nếu bạn không yêu cầu mã này, vui lòng bỏ qua email này.
+                </p>
+                <p style="color: #475569; margin: 12px 0 0 0; font-size: 11px;">
+                  © 2024 FunPlanet. All rights reserved.
+                </p>
+              </div>
+            </div>
+          `,
+        });
+
+        if (emailError) {
+          console.error('[OTP-REQUEST] Resend email error:', emailError);
+        } else {
+          emailSent = true;
+          console.log(`[OTP-REQUEST] OTP email sent successfully to ${identifier}`);
+        }
+      } catch (emailErr) {
+        console.error('[OTP-REQUEST] Failed to send email via Resend:', emailErr);
+      }
+    } else {
+      console.warn('[OTP-REQUEST] RESEND_API_KEY not configured, OTP stored but not sent');
+    }
     
     return new Response(
       JSON.stringify({
         success: true,
-        message: `OTP sent to ${identifier}`,
+        message: emailSent ? `OTP sent to ${identifier}` : 'OTP generated (email delivery pending)',
+        email_sent: emailSent,
         expires_in_seconds: 300
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
