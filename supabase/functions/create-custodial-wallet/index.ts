@@ -67,17 +67,47 @@ serve(async (req) => {
   }
 
   try {
-    const { user_id, chain_id = 56 } = await req.json();
-
-    console.log(`[CREATE-WALLET] Request for user: ${user_id}, chain: ${chain_id}`);
-
-    if (!user_id) {
-      console.error('[CREATE-WALLET] Missing user_id');
+    // 1. Verify JWT token - SECURITY FIX
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.error('[CREATE-WALLET] Missing authorization header');
       return new Response(
-        JSON.stringify({ success: false, error: 'user_id is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: false, error: 'Missing authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // 2. Create client with anon key to verify user
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+    
+    const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
+    if (userError || !user) {
+      console.error('[CREATE-WALLET] Unauthorized:', userError?.message);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // 3. Use authenticated user's ID (not from request body) - SECURITY FIX
+    const user_id = user.id;
+    
+    // Parse optional chain_id from request
+    let chain_id = 56;
+    try {
+      const body = await req.json();
+      if (body.chain_id) {
+        chain_id = body.chain_id;
+      }
+    } catch {
+      // No body or invalid JSON, use defaults
+    }
+
+    console.log(`[CREATE-WALLET] Authenticated request for user: ${user_id}, chain: ${chain_id}`);
 
     // Get encryption key from environment
     const encryptionKey = Deno.env.get('WALLET_ENCRYPTION_KEY');
@@ -89,8 +119,7 @@ serve(async (req) => {
       );
     }
 
-    // Create Supabase client with service role
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    // Create Supabase client with service role for privileged operations
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
