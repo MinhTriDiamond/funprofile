@@ -8,10 +8,12 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
-import { Upload } from 'lucide-react';
+import { Upload, AlertTriangle } from 'lucide-react';
 import { AvatarCropper } from './AvatarCropper';
+import { DeleteAccountDialog } from './DeleteAccountDialog';
 import { z } from 'zod';
 import { compressImage, FILE_LIMITS } from '@/utils/imageCompression';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 const profileSchema = z.object({
   username: z.string()
@@ -39,6 +41,7 @@ export const EditProfile = () => {
   const [coverUrl, setCoverUrl] = useState('');
   const [cropImage, setCropImage] = useState<string | null>(null);
   const [userId, setUserId] = useState<string>('');
+  const { t } = useLanguage();
 
   useEffect(() => {
     fetchProfile();
@@ -330,6 +333,28 @@ export const EditProfile = () => {
               {loading ? 'Đang cập nhật...' : 'Cập nhật hồ sơ'}
             </Button>
           </form>
+        </CardContent>
+      </Card>
+
+      {/* Danger Zone */}
+      <Card className="border-destructive/50 bg-destructive/5 mt-6">
+        <CardHeader>
+          <CardTitle className="text-destructive flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5" />
+            {t('dangerZone')}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            {t('deleteAccountWarning')}
+          </p>
+          <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+            <li>{t('deleteAccountItem1')}</li>
+            <li>{t('deleteAccountItem2')}</li>
+            <li>{t('deleteAccountItem3')}</li>
+            <li>{t('deleteAccountItem4')}</li>
+          </ul>
+          <DeleteAccountDialog username={username} />
         </CardContent>
       </Card>
     </>

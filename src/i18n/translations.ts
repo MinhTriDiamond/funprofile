@@ -280,6 +280,22 @@ export const translations = {
     accountSetupComplete: 'Account setup complete',
     lightCloakWelcome: 'Step into the Light',
     lightCloakDescription: 'Your journey to Web3 begins here',
+    
+    // Delete Account
+    deleteAccount: 'Delete Account',
+    deleteAccountConfirm: 'Confirm Account Deletion',
+    deleteAccountWarning: 'This action cannot be undone. All your data will be permanently deleted.',
+    deleteAccountItem1: 'All posts and comments',
+    deleteAccountItem2: 'Friend list',
+    deleteAccountItem3: 'Rewards and tokens',
+    deleteAccountItem4: 'Soul NFT and custodial wallet',
+    typeUsernameToConfirm: 'Type your username to confirm:',
+    deleteAccountCheckbox: 'I understand that this action cannot be undone',
+    deleteAccountButton: 'Delete Permanently',
+    accountDeleted: 'Account Deleted',
+    accountDeletedDesc: 'Your account has been deleted successfully',
+    dangerZone: 'Danger Zone',
+    deleting: 'Deleting...',
   },
   
   vi: {
@@ -563,6 +579,22 @@ export const translations = {
     accountSetupComplete: 'Thiết lập tài khoản hoàn tất',
     lightCloakWelcome: 'Bước Vào Ánh Sáng',
     lightCloakDescription: 'Hành trình Web3 của bạn bắt đầu từ đây',
+    
+    // Delete Account
+    deleteAccount: 'Xóa tài khoản',
+    deleteAccountConfirm: 'Xác nhận xóa tài khoản',
+    deleteAccountWarning: 'Hành động này không thể hoàn tác. Tất cả dữ liệu của bạn sẽ bị xóa vĩnh viễn.',
+    deleteAccountItem1: 'Tất cả bài viết và bình luận',
+    deleteAccountItem2: 'Danh sách bạn bè',
+    deleteAccountItem3: 'Phần thưởng và token',
+    deleteAccountItem4: 'Soul NFT và ví custodial',
+    typeUsernameToConfirm: 'Nhập username của bạn để xác nhận:',
+    deleteAccountCheckbox: 'Tôi hiểu rằng hành động này không thể hoàn tác',
+    deleteAccountButton: 'Xóa vĩnh viễn',
+    accountDeleted: 'Tài khoản đã được xóa',
+    accountDeletedDesc: 'Tài khoản của bạn đã được xóa thành công',
+    dangerZone: 'Vùng nguy hiểm',
+    deleting: 'Đang xóa...',
   },
 } as const;
 
