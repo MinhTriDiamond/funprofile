@@ -79,14 +79,14 @@ export default defineConfig(({ mode }) => ({
       'react-router-dom', 
       '@tanstack/react-query',
       '@supabase/supabase-js',
-      // Include web3 libs for stable lazy-loading (prevents dynamic import failures)
+    ],
+    exclude: [
+      // Exclude large libs - load on demand only when needed
+      'recharts',
       'wagmi',
       'viem', 
       '@rainbow-me/rainbowkit',
-    ],
-    exclude: [
-      // Exclude large charts lib - load on demand
-      'recharts',
+      '@walletconnect/ethereum-provider',
     ],
     esbuildOptions: {
       target: 'esnext',
