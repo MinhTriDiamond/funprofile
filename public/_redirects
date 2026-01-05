@@ -1,16 +1,1 @@
-/admin/*    /index.html   200
-/profile/*  /index.html   200
-/post/*     /index.html   200
-/@*         /index.html   200
-/friends    /index.html   200
-/wallet     /index.html   200
-/about      /index.html   200
-/auth       /index.html   200
-/feed       /index.html   200
-/leaderboard /index.html  200
-/notifications /index.html 200
-/law-of-light /index.html 200
-/docs/*     /index.html   200
-/docs/app   /index.html   200
-/app-documentation /index.html 200
-/*          /index.html   200
+/* /index.html 200
