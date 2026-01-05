@@ -33,20 +33,47 @@ serve(async (req) => {
   }
 
   try {
-    const { user_id, soul_name } = await req.json();
-
-    console.log(`[MINT-SOUL-NFT] Request for user: ${user_id}`);
-
-    if (!user_id) {
-      console.error('[MINT-SOUL-NFT] Missing user_id');
+    // 1. Verify JWT token - SECURITY FIX
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.error('[MINT-SOUL-NFT] Missing authorization header');
       return new Response(
-        JSON.stringify({ success: false, error: 'user_id is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: false, error: 'Missing authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Create Supabase client with service role
+    // 2. Create client with anon key to verify user
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+    
+    const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
+    if (userError || !user) {
+      console.error('[MINT-SOUL-NFT] Unauthorized:', userError?.message);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // 3. Use authenticated user's ID (not from request body) - SECURITY FIX
+    const user_id = user.id;
+    
+    // Parse optional soul_name from request
+    let soul_name: string | undefined;
+    try {
+      const body = await req.json();
+      soul_name = body.soul_name;
+    } catch {
+      // No body or invalid JSON, use defaults
+    }
+
+    console.log(`[MINT-SOUL-NFT] Authenticated request for user: ${user_id}`);
+
+    // Create Supabase client with service role for privileged operations
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
