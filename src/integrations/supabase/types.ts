@@ -846,6 +846,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      normalize_username: { Args: { input_text: string }; Returns: string }
       reject_user_reward: {
         Args: { p_admin_id: string; p_note?: string; p_user_id: string }
         Returns: number
