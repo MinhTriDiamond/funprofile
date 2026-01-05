@@ -90,6 +90,12 @@ export const WalletLogin = ({ onSuccess }: WalletLoginProps) => {
             access_token: accessToken,
             refresh_token: refreshToken,
           });
+
+          // Update last_login_platform to 'FUN Profile'
+          await supabase
+            .from('profiles')
+            .update({ last_login_platform: 'FUN Profile' })
+            .eq('id', data.user_id);
         }
 
         toast.success(data.is_new_user ? t('welcomeNewUser') : t('welcomeBack'));

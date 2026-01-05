@@ -280,6 +280,8 @@ export const translations = {
     accountSetupComplete: 'Account setup complete',
     lightCloakWelcome: 'Step into the Light',
     lightCloakDescription: 'Your journey to Web3 begins here',
+    classicLogin: 'Classic',
+    walletCreationFailed: 'Failed to create wallet, please try again later',
     
     // Delete Account
     deleteAccount: 'Delete Account',
@@ -579,6 +581,8 @@ export const translations = {
     accountSetupComplete: 'Thiết lập tài khoản hoàn tất',
     lightCloakWelcome: 'Bước Vào Ánh Sáng',
     lightCloakDescription: 'Hành trình Web3 của bạn bắt đầu từ đây',
+    classicLogin: 'Classic',
+    walletCreationFailed: 'Không thể tạo ví, vui lòng thử lại sau',
     
     // Delete Account
     deleteAccount: 'Xóa tài khoản',

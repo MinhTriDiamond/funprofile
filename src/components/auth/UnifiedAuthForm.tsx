@@ -8,7 +8,8 @@ import { toast } from 'sonner';
 import { EmailOtpLogin } from './EmailOtpLogin';
 import { WalletLogin } from './WalletLogin';
 import { SocialLogin } from './SocialLogin';
-import { Mail, Wallet, Users, Loader2, Sparkles } from 'lucide-react';
+import { ClassicEmailLogin } from './ClassicEmailLogin';
+import { Mail, Wallet, Users, Loader2, Sparkles, KeyRound } from 'lucide-react';
 
 export const UnifiedAuthForm = () => {
   const navigate = useNavigate();
@@ -17,34 +18,41 @@ export const UnifiedAuthForm = () => {
   const [isSettingUp, setIsSettingUp] = useState(false);
   const [setupStep, setSetupStep] = useState<'wallet' | 'nft' | 'complete' | null>(null);
 
-  const handleNewUserSetup = async (userId: string) => {
+  const handleNewUserSetup = async (userId: string, hasExternalWallet: boolean) => {
     setIsSettingUp(true);
 
     try {
-      // Step 1: Create custodial wallet
-      setSetupStep('wallet');
-      const { data: walletData, error: walletError } = await supabase.functions.invoke('create-custodial-wallet', {
-        body: { user_id: userId },
-      });
+      // Step 1: Create custodial wallet (only if NOT using external wallet)
+      if (!hasExternalWallet) {
+        setSetupStep('wallet');
+        console.log('[Setup] Creating custodial wallet for user:', userId);
+        
+        const { data: walletData, error: walletError } = await supabase.functions.invoke('create-custodial-wallet', {
+          body: { user_id: userId },
+        });
 
-      if (walletError) {
-        console.error('Wallet creation error:', walletError);
-        // Non-blocking - continue even if wallet creation fails
+        if (walletError) {
+          console.error('[Setup] Wallet creation error:', walletError);
+          toast.error(t('walletCreationFailed') || 'Failed to create wallet');
+        } else {
+          console.log('[Setup] Custodial wallet created:', walletData);
+        }
       } else {
-        console.log('Custodial wallet created:', walletData);
+        console.log('[Setup] Skipping wallet creation - user has external wallet');
       }
 
-      // Step 2: Mint Soul NFT
+      // Step 2: Mint Soul NFT (requires wallet to exist)
       setSetupStep('nft');
+      console.log('[Setup] Minting Soul NFT for user:', userId);
+      
       const { data: nftData, error: nftError } = await supabase.functions.invoke('mint-soul-nft', {
         body: { user_id: userId },
       });
 
       if (nftError) {
-        console.error('Soul NFT mint error:', nftError);
-        // Non-blocking - continue even if NFT minting fails
+        console.error('[Setup] Soul NFT mint error:', nftError);
       } else {
-        console.log('Soul NFT minted:', nftData);
+        console.log('[Setup] Soul NFT minted:', nftData);
       }
 
       setSetupStep('complete');
@@ -54,7 +62,7 @@ export const UnifiedAuthForm = () => {
       await new Promise(resolve => setTimeout(resolve, 1000));
       navigate('/');
     } catch (error) {
-      console.error('Setup error:', error);
+      console.error('[Setup] Setup error:', error);
       // Still navigate even if setup fails
       navigate('/');
     } finally {
@@ -62,7 +70,7 @@ export const UnifiedAuthForm = () => {
     }
   };
 
-  const handleAuthSuccess = async (userId: string, isNewUser: boolean) => {
+  const handleAuthSuccess = async (userId: string, isNewUser: boolean, hasExternalWallet = false) => {
     // Verify session is properly set before proceeding
     const { data: { session } } = await supabase.auth.getSession();
     
@@ -72,14 +80,31 @@ export const UnifiedAuthForm = () => {
       return;
     }
 
-    console.log('[Auth] Session verified for user:', userId);
+    console.log('[Auth] Session verified for user:', userId, 'isNewUser:', isNewUser, 'hasExternalWallet:', hasExternalWallet);
 
     if (isNewUser) {
-      await handleNewUserSetup(userId);
+      await handleNewUserSetup(userId, hasExternalWallet);
     } else {
       toast.success(t('welcomeBack'));
       navigate('/');
     }
+  };
+
+  // Callback handlers for each auth method
+  const handleOtpSuccess = (userId: string, isNewUser: boolean) => {
+    handleAuthSuccess(userId, isNewUser, false); // No external wallet
+  };
+
+  const handleWalletSuccess = (userId: string, isNewUser: boolean) => {
+    handleAuthSuccess(userId, isNewUser, true); // Has external wallet
+  };
+
+  const handleSocialSuccess = (userId: string, isNewUser: boolean) => {
+    handleAuthSuccess(userId, isNewUser, false); // No external wallet
+  };
+
+  const handleClassicSuccess = (userId: string, isNewUser: boolean) => {
+    handleAuthSuccess(userId, isNewUser, false); // No external wallet
   };
 
   // Show setup progress overlay
@@ -186,40 +211,51 @@ export const UnifiedAuthForm = () => {
           
           <CardContent className="relative z-10 pt-0">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-3 mb-6 bg-slate-100/80 p-1 rounded-xl">
+              <TabsList className="grid w-full grid-cols-4 mb-6 bg-slate-100/80 p-1 rounded-xl">
                 <TabsTrigger 
                   value="email" 
-                  className="flex items-center gap-2 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-emerald-600 transition-all"
+                  className="flex items-center gap-1 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-emerald-600 transition-all text-xs sm:text-sm"
                 >
-                  <Mail size={16} />
-                  <span className="hidden sm:inline">{t('authMethodEmail')}</span>
+                  <Mail size={14} />
+                  <span className="hidden sm:inline">OTP</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="wallet"
-                  className="flex items-center gap-2 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-amber-600 transition-all"
+                  className="flex items-center gap-1 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-amber-600 transition-all text-xs sm:text-sm"
                 >
-                  <Wallet size={16} />
+                  <Wallet size={14} />
                   <span className="hidden sm:inline">{t('authMethodWallet')}</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="social"
-                  className="flex items-center gap-2 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-blue-600 transition-all"
+                  className="flex items-center gap-1 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-blue-600 transition-all text-xs sm:text-sm"
                 >
-                  <Users size={16} />
-                  <span className="hidden sm:inline">{t('authMethodSocial')}</span>
+                  <Users size={14} />
+                  <span className="hidden sm:inline">Social</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="classic"
+                  className="flex items-center gap-1 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-slate-600 transition-all text-xs sm:text-sm"
+                >
+                  <KeyRound size={14} />
+                  <span className="hidden sm:inline">{t('classicLogin')}</span>
                 </TabsTrigger>
               </TabsList>
 
               <TabsContent value="email" className="mt-0">
-                <EmailOtpLogin onSuccess={handleAuthSuccess} />
+                <EmailOtpLogin onSuccess={handleOtpSuccess} />
               </TabsContent>
 
               <TabsContent value="wallet" className="mt-0">
-                <WalletLogin onSuccess={handleAuthSuccess} />
+                <WalletLogin onSuccess={handleWalletSuccess} />
               </TabsContent>
 
               <TabsContent value="social" className="mt-0">
-                <SocialLogin />
+                <SocialLogin onSuccess={handleSocialSuccess} />
+              </TabsContent>
+
+              <TabsContent value="classic" className="mt-0">
+                <ClassicEmailLogin onSuccess={handleClassicSuccess} />
               </TabsContent>
             </Tabs>
           </CardContent>
@@ -252,7 +288,6 @@ const SetupStepIndicator = ({
   
   const isActive = currentStep === step;
   const isComplete = currentIndex > stepIndex;
-  const isPending = currentIndex < stepIndex;
 
   return (
     <div className={`flex items-center gap-3 p-3 rounded-xl transition-all ${
