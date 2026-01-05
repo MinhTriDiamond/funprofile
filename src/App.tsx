@@ -78,6 +78,7 @@ function App() {
                   <Route path="/notifications" element={<Notifications />} />
                   <Route path="/docs/ecosystem" element={<EcosystemDocs />} />
                   <Route path="/docs/app" element={<AppDocumentation />} />
+                  <Route path="/app-documentation" element={<AppDocumentation />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </LawOfLightGuard>
