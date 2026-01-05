@@ -34,12 +34,12 @@ export default function DocsRouter() {
   useEffect(() => {
     const origin = window.location.origin;
 
-    if (first === "app") {
-      document.title = "FUN Ecosystem App Documentation";
+  if (first === "platform") {
+      document.title = "FUN Ecosystem Platform Documentation";
       ensureMetaDescription(
-        "FUN Ecosystem app documentation: kiến trúc, auth, wallet, feed, rewards, media, admin và bảo mật."
+        "FUN Ecosystem platform documentation: kiến trúc, auth, wallet, feed, rewards, media, admin và bảo mật."
       );
-      setCanonical(`${origin}/docs/app`);
+      setCanonical(`${origin}/docs/platform`);
       return;
     }
 
@@ -59,7 +59,7 @@ export default function DocsRouter() {
     setCanonical(`${origin}/docs`);
   }, [first]);
 
-  if (first === "app") return <AppDocumentation />;
+  if (first === "platform") return <AppDocumentation />;
   if (first === "ecosystem") return <EcosystemDocs />;
 
   return <Navigate to="/docs/ecosystem" replace />;

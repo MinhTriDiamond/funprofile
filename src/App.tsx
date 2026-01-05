@@ -75,7 +75,7 @@ function App() {
                   <Route path="/admin" element={<Admin />} />
                   <Route path="/notifications" element={<Notifications />} />
                   <Route path="/docs/*" element={<DocsRouter />} />
-                  <Route path="/app-documentation" element={<Navigate to="/docs/app" replace />} />
+                  <Route path="/app-documentation" element={<Navigate to="/docs/platform" replace />} />
                   {/* Dynamic username route - must be AFTER static routes */}
                   <Route path="/:username" element={<Profile />} />
                   <Route path="*" element={<NotFound />} />
