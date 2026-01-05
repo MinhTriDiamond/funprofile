@@ -118,13 +118,13 @@ serve(async (req) => {
       try {
         const resend = new Resend(resendApiKey);
         const { error: emailError } = await resend.emails.send({
-          from: "FunPlanet <onboarding@resend.dev>",
+          from: "FUN Ecosystem <noreply@fun.rich>",
           to: [identifier],
-          subject: "🔐 Mã xác thực OTP của bạn - FunPlanet",
+          subject: "🔐 Mã xác thực OTP của bạn - FUN Ecosystem",
           html: `
             <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border-radius: 16px; overflow: hidden;">
               <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 32px; text-align: center;">
-                <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 700;">🌟 FunPlanet</h1>
+                <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 700;">🌟 FUN Ecosystem</h1>
                 <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 14px;">Light Cloak Authentication</p>
               </div>
               
@@ -142,7 +142,7 @@ serve(async (req) => {
                 
                 <div style="background: rgba(239, 68, 68, 0.1); border-left: 4px solid #ef4444; padding: 16px; border-radius: 0 8px 8px 0; margin: 24px 0;">
                   <p style="color: #fca5a5; margin: 0; font-size: 14px;">
-                    ⚠️ <strong>Bảo mật:</strong> Không chia sẻ mã này với bất kỳ ai. Nhân viên FunPlanet sẽ không bao giờ yêu cầu mã OTP của bạn.
+                    ⚠️ <strong>Bảo mật:</strong> Không chia sẻ mã này với bất kỳ ai. Nhân viên FUN Ecosystem sẽ không bao giờ yêu cầu mã OTP của bạn.
                   </p>
                 </div>
               </div>
@@ -152,7 +152,7 @@ serve(async (req) => {
                   Nếu bạn không yêu cầu mã này, vui lòng bỏ qua email này.
                 </p>
                 <p style="color: #475569; margin: 12px 0 0 0; font-size: 11px;">
-                  © 2024 FunPlanet. All rights reserved.
+                  © 2026 FUN Ecosystem. All rights reserved.
                 </p>
               </div>
             </div>
