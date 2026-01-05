@@ -50,3 +50,18 @@ verify_jwt = true
 
 [functions.cleanup-stream-videos]
 verify_jwt = true
+
+[functions.sso-otp-request]
+verify_jwt = false
+
+[functions.sso-otp-verify]
+verify_jwt = false
+
+[functions.sso-web3-auth]
+verify_jwt = false
+
+[functions.create-custodial-wallet]
+verify_jwt = true
+
+[functions.mint-soul-nft]
+verify_jwt = true
