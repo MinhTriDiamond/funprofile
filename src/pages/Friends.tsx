@@ -69,9 +69,10 @@ const Friends = () => {
   };
 
   const fetchSuggestions = async (userId: string) => {
+    // Use public_profiles view to avoid exposing sensitive fields
     const { data } = await supabase
-      .from('profiles')
-      .select('*')
+      .from('public_profiles')
+      .select('id, username, avatar_url, full_name, bio')
       .neq('id', userId)
       .limit(10);
     

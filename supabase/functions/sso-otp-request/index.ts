@@ -51,7 +51,8 @@ serve(async (req) => {
     const otp = generateOTP();
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
 
-    console.log(`[OTP-REQUEST] Generated OTP: ${otp} for ${identifier}`);
+    // Note: Do not log OTP values in production for security
+    console.log(`[OTP-REQUEST] Generated OTP for ${identifier}`);
 
     // Delete any existing unused OTP for this identifier
     await supabase
@@ -81,18 +82,18 @@ serve(async (req) => {
       );
     }
 
-    // In production, integrate with email/SMS service here
-    // For now, we'll return success (OTP is logged for testing)
-    console.log(`[OTP-REQUEST] OTP stored successfully. In production, send via email/SMS.`);
-    console.log(`[OTP-REQUEST] TEST MODE - OTP for ${identifier}: ${otp}`);
-
+    // TODO: Integrate with email service (Resend, SendGrid) to send OTP
+    // Example: const resend = new Resend(Deno.env.get('RESEND_API_KEY'));
+    // await resend.emails.send({ from: 'noreply@app.com', to: identifier, subject: 'Your OTP', html: `Your code: ${otp}` });
+    console.log(`[OTP-REQUEST] OTP stored successfully for ${identifier}`);
+    
     return new Response(
       JSON.stringify({
         success: true,
         message: `OTP sent to ${identifier}`,
-        // Remove this in production - only for testing
-        debug_otp: otp,
         expires_in_seconds: 300
+        // OTP is stored in database and should be sent via email service
+        // Never expose OTP in response for security
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

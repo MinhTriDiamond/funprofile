@@ -1,32 +1,46 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { verifyMessage as ethersVerifyMessage } from "https://esm.sh/ethers@6.13.4";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Simple signature verification for Ethereum
-function verifyMessage(message: string, signature: string, expectedAddress: string): boolean {
-  // In production, use a proper library like ethers.js or viem
-  // For now, we'll do basic validation and trust the client
-  // The signature format check ensures it's a valid hex signature
-  const sigRegex = /^0x[a-fA-F0-9]{130}$/;
-  const addressRegex = /^0x[a-fA-F0-9]{40}$/i;
-  
-  if (!sigRegex.test(signature)) {
-    console.error('[WEB3-AUTH] Invalid signature format');
+// Cryptographic signature verification using ethers.js
+function verifySignature(message: string, signature: string, expectedAddress: string): boolean {
+  try {
+    // Validate signature format (0x + 130 hex chars = 65 bytes)
+    const sigRegex = /^0x[a-fA-F0-9]{130}$/;
+    if (!sigRegex.test(signature)) {
+      console.error('[WEB3-AUTH] Invalid signature format');
+      return false;
+    }
+
+    // Validate address format
+    const addressRegex = /^0x[a-fA-F0-9]{40}$/i;
+    if (!addressRegex.test(expectedAddress)) {
+      console.error('[WEB3-AUTH] Invalid address format');
+      return false;
+    }
+
+    // Use ethers.js to recover the address from signature
+    const recoveredAddress = ethersVerifyMessage(message, signature);
+    
+    // Compare addresses (case-insensitive)
+    const isValid = recoveredAddress.toLowerCase() === expectedAddress.toLowerCase();
+    
+    if (!isValid) {
+      console.error('[WEB3-AUTH] Signature verification failed: address mismatch');
+      console.log('[WEB3-AUTH] Expected:', expectedAddress.toLowerCase());
+      console.log('[WEB3-AUTH] Recovered:', recoveredAddress.toLowerCase());
+    }
+    
+    return isValid;
+  } catch (error) {
+    console.error('[WEB3-AUTH] Signature verification error:', error);
     return false;
   }
-  
-  if (!addressRegex.test(expectedAddress)) {
-    console.error('[WEB3-AUTH] Invalid address format');
-    return false;
-  }
-  
-  // Note: Full verification requires crypto library
-  // This is a simplified version - in production use proper verification
-  return true;
 }
 
 serve(async (req) => {
@@ -51,14 +65,16 @@ serve(async (req) => {
 
     const normalizedAddress = wallet_address.toLowerCase();
 
-    // Verify signature (simplified - use proper verification in production)
-    if (!verifyMessage(message, signature, normalizedAddress)) {
-      console.error('[WEB3-AUTH] Signature verification failed');
+    // Verify signature cryptographically using ethers.js
+    if (!verifySignature(message, signature, normalizedAddress)) {
+      console.error('[WEB3-AUTH] Cryptographic signature verification failed');
       return new Response(
         JSON.stringify({ success: false, error: 'Invalid signature' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    console.log('[WEB3-AUTH] Signature verified successfully');
 
     // Create Supabase client with service role
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;

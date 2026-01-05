@@ -97,9 +97,14 @@ const Profile = () => {
 
   const fetchProfile = async (profileId: string) => {
     try {
+      // For own profile, fetch all fields; for others, use limited fields
+      const isViewingOwnProfile = profileId === currentUserId;
+      
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select(isViewingOwnProfile 
+          ? '*' 
+          : 'id, username, avatar_url, full_name, bio, cover_url, created_at, soul_level, total_rewards')
         .eq('id', profileId)
         .single();
 
