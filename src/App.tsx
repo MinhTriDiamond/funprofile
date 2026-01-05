@@ -3,14 +3,13 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { LanguageProvider } from "@/i18n/LanguageContext";
 import { LawOfLightGuard } from "@/components/auth/LawOfLightGuard";
 
 // Lazy load pages for code splitting
 const Auth = lazy(() => import("./pages/Auth"));
 const Feed = lazy(() => import("./pages/Feed"));
-const EcosystemDocs = lazy(() => import("./pages/EcosystemDocs"));
 const Friends = lazy(() => import("./pages/Friends"));
 const Profile = lazy(() => import("./pages/Profile"));
 const Wallet = lazy(() => import("./pages/Wallet"));
@@ -24,7 +23,7 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const LawOfLight = lazy(() => import("./pages/LawOfLight"));
 const Notifications = lazy(() => import("./pages/Notifications"));
 const MediaTestSandbox = lazy(() => import("./pages/MediaTestSandbox"));
-const AppDocumentation = lazy(() => import("./pages/AppDocumentation"));
+const DocsRouter = lazy(() => import("./pages/DocsRouter"));
 
 // Optimized QueryClient with caching
 const queryClient = new QueryClient({
@@ -76,9 +75,8 @@ function App() {
                   <Route path="/admin/edge-test" element={<AdminEdgeFunctionTest />} />
                   <Route path="/admin" element={<Admin />} />
                   <Route path="/notifications" element={<Notifications />} />
-                  <Route path="/docs/ecosystem" element={<EcosystemDocs />} />
-                  <Route path="/docs/app" element={<AppDocumentation />} />
-                  <Route path="/app-documentation" element={<AppDocumentation />} />
+                  <Route path="/docs/*" element={<DocsRouter />} />
+                  <Route path="/app-documentation" element={<Navigate to="/docs/app" replace />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </LawOfLightGuard>

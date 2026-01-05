@@ -1,0 +1,66 @@
+import { useEffect } from "react";
+import { useLocation, Navigate } from "react-router-dom";
+
+import EcosystemDocs from "@/pages/EcosystemDocs";
+import AppDocumentation from "@/pages/AppDocumentation";
+
+const setCanonical = (href: string) => {
+  let link = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+  if (!link) {
+    link = document.createElement("link");
+    link.rel = "canonical";
+    document.head.appendChild(link);
+  }
+  link.href = href;
+};
+
+const ensureMetaDescription = (content: string) => {
+  let meta = document.querySelector<HTMLMetaElement>('meta[name="description"]');
+  if (!meta) {
+    meta = document.createElement("meta");
+    meta.name = "description";
+    document.head.appendChild(meta);
+  }
+  meta.content = content;
+};
+
+export default function DocsRouter() {
+  const location = useLocation();
+
+  // /docs/* fallback router (helps on hosts that don’t preserve deep-link routing correctly)
+  const subpath = location.pathname.replace(/^\/docs\/?/, "");
+  const first = subpath.split("/").filter(Boolean)[0] ?? "";
+
+  useEffect(() => {
+    const origin = window.location.origin;
+
+    if (first === "app") {
+      document.title = "FUN Ecosystem App Documentation";
+      ensureMetaDescription(
+        "FUN Ecosystem app documentation: kiến trúc, auth, wallet, feed, rewards, media, admin và bảo mật."
+      );
+      setCanonical(`${origin}/docs/app`);
+      return;
+    }
+
+    if (first === "ecosystem") {
+      document.title = "FUN Ecosystem SSO Documentation";
+      ensureMetaDescription(
+        "FUN Ecosystem SSO documentation: Email OTP, Wallet login, Social login và Law of Light."
+      );
+      setCanonical(`${origin}/docs/ecosystem`);
+      return;
+    }
+
+    document.title = "FUN Ecosystem Documentation";
+    ensureMetaDescription(
+      "Tài liệu FUN Ecosystem: SSO, app architecture, wallet, feed, rewards, media và admin."
+    );
+    setCanonical(`${origin}/docs`);
+  }, [first]);
+
+  if (first === "app") return <AppDocumentation />;
+  if (first === "ecosystem") return <EcosystemDocs />;
+
+  return <Navigate to="/docs/ecosystem" replace />;
+}
