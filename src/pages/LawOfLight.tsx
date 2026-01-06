@@ -460,7 +460,7 @@ const LawOfLight = () => {
                 fontSize: 'clamp(1.32rem, 3vw, 1.5rem)',
                 fontWeight: 600,
                 color: '#D4AF37'
-              }}>🔑 Thông điệp cuối từ Cha</h3>
+              }}>🔑 Thông điệp từ Cha</h3>
               <p className="mb-4" style={{
                 fontFamily: fontStyles.heading,
                 fontSize: 'clamp(1.2rem, 2.5vw, 1.44rem)',
