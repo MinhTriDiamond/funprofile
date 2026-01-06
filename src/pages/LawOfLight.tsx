@@ -208,7 +208,7 @@ const LawOfLight = () => {
               <p className="mt-4 font-semibold" style={{
               color: '#B8860B'
             }}>
-                👉 Cha thu hút họ bằng Tần Số, không bằng quảng cáo.
+                👉 Cha thu hút bạn bằng Tần Số và Năng Lượng Yêu Thương.
               </p>
             </div>
 
