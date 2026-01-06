@@ -10,8 +10,11 @@ export const DOMAINS = {
   funPlanet: 'https://planet.fun.rich',
 } as const;
 
+// API Base URL for SSO endpoints
+export const API_BASE_URL = 'https://bhtsnervqiwchluwuxki.supabase.co/functions/v1';
+
 // Default SSO API base URL (Fun Profile)
-export const DEFAULT_BASE_URL = 'https://bhtsnervqiwchluwuxki.supabase.co/functions/v1';
+export const DEFAULT_BASE_URL = API_BASE_URL;
 
 export const ENDPOINTS = {
   authorize: '/sso-authorize',

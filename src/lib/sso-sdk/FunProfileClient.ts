@@ -1,18 +1,44 @@
 /**
  * Fun Profile SSO SDK - Core Client
  * 
- * @example
+ * @example Fun Farm Integration
  * ```typescript
+ * import { DOMAINS } from './constants';
+ * 
  * const client = new FunProfileClient({
- *   clientId: 'fun_farm_client',
+ *   clientId: 'fun_farm_production',
  *   clientSecret: 'your_secret',
- *   redirectUri: 'https://funfarm.fun/callback',
+ *   redirectUri: `${DOMAINS.funFarm}/auth/callback`, // https://farm.fun.rich/auth/callback
  *   scopes: ['profile', 'email', 'wallet']
  * });
  * 
  * // Start OAuth flow
  * const loginUrl = await client.startAuth();
  * window.location.href = loginUrl;
+ * ```
+ * 
+ * @example Fun Play Integration
+ * ```typescript
+ * import { DOMAINS } from './constants';
+ * 
+ * const client = new FunProfileClient({
+ *   clientId: 'fun_play_production',
+ *   clientSecret: 'your_secret',
+ *   redirectUri: `${DOMAINS.funPlay}/auth/callback`, // https://play.fun.rich/auth/callback
+ *   scopes: ['profile', 'wallet', 'rewards', 'soul_nft']
+ * });
+ * ```
+ * 
+ * @example Fun Planet Integration
+ * ```typescript
+ * import { DOMAINS } from './constants';
+ * 
+ * const client = new FunProfileClient({
+ *   clientId: 'fun_planet_production',
+ *   clientSecret: 'your_secret',
+ *   redirectUri: `${DOMAINS.funPlanet}/auth/callback`, // https://planet.fun.rich/auth/callback
+ *   scopes: ['profile', 'wallet', 'rewards']
+ * });
  * ```
  */
 

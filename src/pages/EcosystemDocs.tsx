@@ -890,11 +890,14 @@ CREATE POLICY "Admins can manage oauth_clients"
                       title="src/config/sso.ts"
                       language="typescript"
                       code={`// Fun Farm SSO Configuration
+// Domain: https://farm.fun.rich
+
 export const SSO_CONFIG = {
   // Fun Profile Auth Hub URL
-  AUTH_URL: 'https://funprofile.app',
+  AUTH_URL: 'https://fun.rich',
   
-  // OAuth endpoints
+  // OAuth endpoints (API)
+  API_BASE_URL: 'https://bhtsnervqiwchluwuxki.supabase.co/functions/v1',
   AUTHORIZE_URL: 'https://bhtsnervqiwchluwuxki.supabase.co/functions/v1/sso-authorize',
   TOKEN_URL: 'https://bhtsnervqiwchluwuxki.supabase.co/functions/v1/sso-token',
   REGISTER_URL: 'https://bhtsnervqiwchluwuxki.supabase.co/functions/v1/sso-register',
@@ -908,12 +911,18 @@ export const SSO_CONFIG = {
   
   // Client credentials
   CLIENT_ID: 'fun_farm_production',
-  REDIRECT_URI: typeof window !== 'undefined' 
-    ? \`\${window.location.origin}/auth/callback\` 
-    : '',
+  REDIRECT_URI: 'https://farm.fun.rich/auth/callback',
   
   // Scopes to request
   SCOPES: ['profile', 'wallet', 'rewards', 'soul_nft'],
+};
+
+// Fun Ecosystem Domains
+export const DOMAINS = {
+  funProfile: 'https://fun.rich',
+  funFarm: 'https://farm.fun.rich',
+  funPlay: 'https://play.fun.rich',
+  funPlanet: 'https://planet.fun.rich',
 };`}
                     />
                   </DocSubSection>
@@ -1011,7 +1020,7 @@ function App() {
               <DocList items={[
                 "1. Nhận client_id: fun_play_production và client_secret từ Admin",
                 "2. Copy các files từ hướng dẫn Fun Farm và thay đổi config",
-                "3. Set redirect_uri: https://funplay.app/auth/callback",
+                "3. Set redirect_uri: https://play.fun.rich/auth/callback",
                 "4. Thêm Secrets: FUN_PROFILE_CLIENT_ID, FUN_PROFILE_CLIENT_SECRET",
                 "5. Gửi game scores và achievements về Fun Profile qua activity-receiver API"
               ]} />
@@ -1019,17 +1028,19 @@ function App() {
               <CodeBlock 
                 title="src/config/sso.ts (Fun Play version)"
                 language="typescript"
-                code={`export const SSO_CONFIG = {
-  AUTH_URL: 'https://funprofile.app',
+                code={`// Fun Play SSO Configuration
+// Domain: https://play.fun.rich
+
+export const SSO_CONFIG = {
+  AUTH_URL: 'https://fun.rich',
+  API_BASE_URL: 'https://bhtsnervqiwchluwuxki.supabase.co/functions/v1',
   AUTHORIZE_URL: 'https://bhtsnervqiwchluwuxki.supabase.co/functions/v1/sso-authorize',
   TOKEN_URL: 'https://bhtsnervqiwchluwuxki.supabase.co/functions/v1/sso-token',
   REGISTER_URL: 'https://bhtsnervqiwchluwuxki.supabase.co/functions/v1/sso-register',
   WEB3_AUTH_URL: 'https://bhtsnervqiwchluwuxki.supabase.co/functions/v1/sso-web3-auth',
   
-  CLIENT_ID: 'fun_play_production', // ← Thay đổi
-  REDIRECT_URI: typeof window !== 'undefined' 
-    ? \`\${window.location.origin}/auth/callback\` 
-    : '',
+  CLIENT_ID: 'fun_play_production',
+  REDIRECT_URI: 'https://play.fun.rich/auth/callback',
   SCOPES: ['profile', 'wallet', 'rewards', 'soul_nft'],
 };`}
               />
@@ -1047,9 +1058,30 @@ function App() {
 
               <DocList items={[
                 "client_id: fun_planet_production",
-                "redirect_uri: https://funplanet.app/auth/callback",
+                "redirect_uri: https://planet.fun.rich/auth/callback",
                 "Gửi planet activities (build, explore, trade) về Fun Profile"
-              ]} />
+              ]}
+              />
+
+              <CodeBlock 
+                title="src/config/sso.ts (Fun Planet version)"
+                language="typescript"
+                code={`// Fun Planet SSO Configuration
+// Domain: https://planet.fun.rich
+
+export const SSO_CONFIG = {
+  AUTH_URL: 'https://fun.rich',
+  API_BASE_URL: 'https://bhtsnervqiwchluwuxki.supabase.co/functions/v1',
+  AUTHORIZE_URL: 'https://bhtsnervqiwchluwuxki.supabase.co/functions/v1/sso-authorize',
+  TOKEN_URL: 'https://bhtsnervqiwchluwuxki.supabase.co/functions/v1/sso-token',
+  REGISTER_URL: 'https://bhtsnervqiwchluwuxki.supabase.co/functions/v1/sso-register',
+  WEB3_AUTH_URL: 'https://bhtsnervqiwchluwuxki.supabase.co/functions/v1/sso-web3-auth',
+  
+  CLIENT_ID: 'fun_planet_production',
+  REDIRECT_URI: 'https://planet.fun.rich/auth/callback',
+  SCOPES: ['profile', 'wallet', 'rewards', 'soul_nft'],
+};`}
+              />
             </DocSection>
 
             {/* Section 11: API Reference */}
