@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import funProfileLogo from '@/assets/fun-profile-logo.png';
 import { useAccount, useSignMessage, useDisconnect } from 'wagmi';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { Button } from '@/components/ui/button';
@@ -121,13 +122,11 @@ export const WalletLoginContent = ({ onSuccess }: WalletLoginContentProps) => {
     <div className="space-y-6">
       {/* Logo */}
       <div className="flex justify-center">
-        <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center shadow-lg">
-          <img
-            src="/fun-profile-logo-40.webp"
-            alt="Wallet"
-            className="w-12 h-12"
-          />
-        </div>
+        <img
+          src={funProfileLogo}
+          alt="FUN Profile"
+          className="w-20 h-20 rounded-full shadow-lg"
+        />
       </div>
 
       {step === 'connect' && (
