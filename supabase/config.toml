@@ -65,3 +65,24 @@ verify_jwt = true
 
 [functions.mint-soul-nft]
 verify_jwt = true
+
+[functions.sso-authorize]
+verify_jwt = false
+
+[functions.sso-token]
+verify_jwt = false
+
+[functions.sso-verify]
+verify_jwt = false
+
+[functions.sso-refresh]
+verify_jwt = false
+
+[functions.sso-revoke]
+verify_jwt = false
+
+[functions.sso-register]
+verify_jwt = false
+
+[functions.sso-sync-data]
+verify_jwt = false
