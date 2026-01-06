@@ -1,8 +1,8 @@
 # Kế hoạch: Tuỳ chỉnh danh sách ví trong RainbowKit
 
 ## Mục tiêu
-- **Bỏ**: Safe, Rainbow, Base Account, WalletConnect
-- **Giữ**: MetaMask, Coinbase
+- **Bỏ**: Safe, Rainbow, Base Account, WalletConnect, Coinbase
+- **Giữ**: MetaMask
 - **Thêm**: Trust Wallet, Bitget Wallet
 
 ## Thay đổi cần thực hiện
@@ -22,12 +22,11 @@ export const config = getDefaultConfig({
 });
 ```
 
-**Sau khi sửa** (custom wallet list):
+**Sau khi sửa** (custom wallet list với 3 ví):
 ```typescript
 import { connectorsForWallets } from '@rainbow-me/rainbowkit';
 import {
   metaMaskWallet,
-  coinbaseWallet,
   trustWallet,
   bitgetWallet,
 } from '@rainbow-me/rainbowkit/wallets';
@@ -42,7 +41,6 @@ const connectors = connectorsForWallets(
       groupName: 'Popular',
       wallets: [
         metaMaskWallet,
-        coinbaseWallet,
         trustWallet,
         bitgetWallet,
       ],
@@ -68,7 +66,6 @@ export const config = createConfig({
 
 1. **Import các wallet cụ thể** từ `@rainbow-me/rainbowkit/wallets`:
    - `metaMaskWallet` - MetaMask
-   - `coinbaseWallet` - Coinbase Wallet  
    - `trustWallet` - Trust Wallet
    - `bitgetWallet` - Bitget Wallet
 
@@ -80,13 +77,12 @@ export const config = createConfig({
 
 ## Kết quả mong đợi
 
-RainbowKit modal sẽ chỉ hiển thị 4 ví:
+RainbowKit modal sẽ chỉ hiển thị 3 ví:
 - MetaMask
-- Coinbase Wallet
 - Trust Wallet
 - Bitget Wallet
 
-Không còn hiển thị: Safe, Rainbow, Base Account, WalletConnect
+Không còn hiển thị: Safe, Rainbow, Base Account, WalletConnect, Coinbase
 
 ## Critical Files for Implementation
 
