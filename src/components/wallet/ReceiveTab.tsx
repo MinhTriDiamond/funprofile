@@ -5,8 +5,15 @@ import { Copy, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { QRCodeSVG } from 'qrcode.react';
 
-export const ReceiveTab = () => {
-  const { address } = useAccount();
+interface ReceiveTabProps {
+  walletAddress?: string;
+}
+
+export const ReceiveTab = ({ walletAddress }: ReceiveTabProps) => {
+  const { address: connectedAddress } = useAccount();
+  
+  // Use provided wallet address or fall back to connected address
+  const address = walletAddress || connectedAddress;
 
   const handleCopy = () => {
     if (address) {

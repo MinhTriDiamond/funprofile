@@ -49,11 +49,18 @@ interface PriceData {
   };
 }
 
-export const useTokenBalances = () => {
-  const { address, isConnected } = useAccount();
+interface UseTokenBalancesOptions {
+  customAddress?: `0x${string}` | null;
+}
+
+export const useTokenBalances = (options?: UseTokenBalancesOptions) => {
+  const { address: connectedAddress, isConnected } = useAccount();
   const [prices, setPrices] = useState<PriceData>({});
   const [isPriceLoading, setIsPriceLoading] = useState(true);
   const [lastPrices, setLastPrices] = useState<PriceData>({});
+
+  // Use custom address if provided, otherwise use connected wallet address
+  const address = options?.customAddress || connectedAddress;
 
   // Native BNB balance
   const { data: bnbBalance, refetch: refetchBnb, isLoading: isBnbLoading } = useBalance({

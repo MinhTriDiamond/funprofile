@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAccount, useConnect, useDisconnect, useSwitchChain } from 'wagmi';
 import { bsc } from 'wagmi/chains';
 import { supabase } from '@/integrations/supabase/client';
@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ArrowDown, ArrowUp, RefreshCw, ShoppingCart, Copy, Check, Gift, ArrowUpRight, ArrowDownLeft, Repeat, Wallet, LogOut, TrendingUp, TrendingDown, UserRoundCog, Info, AlertTriangle } from 'lucide-react';
+import { ArrowDown, ArrowUp, RefreshCw, ShoppingCart, Copy, Check, Gift, ArrowUpRight, ArrowDownLeft, Repeat, Wallet, LogOut, UserRoundCog, Info, AlertTriangle, Shield } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { ReceiveTab } from './ReceiveTab';
@@ -22,6 +22,12 @@ interface Profile {
   full_name: string | null;
   reward_status?: string;
   admin_notes?: string | null;
+}
+
+interface WalletProfile {
+  external_wallet_address: string | null;
+  custodial_wallet_address: string | null;
+  default_wallet_type: 'custodial' | 'external' | null;
 }
 
 interface Transaction {
@@ -42,10 +48,9 @@ const WalletCenterContainer = () => {
   const { disconnect } = useDisconnect();
   const { switchChain } = useSwitchChain();
   
-  // Use real token balances hook
-  const { tokens, totalUsdValue, isLoading: isTokensLoading, refetch: refetchTokens, prices } = useTokenBalances();
-  
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [walletProfile, setWalletProfile] = useState<WalletProfile | null>(null);
+  const [activeWalletType, setActiveWalletType] = useState<'external' | 'custodial'>('custodial');
   const [copied, setCopied] = useState(false);
   const [claimableReward, setClaimableReward] = useState(0);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -59,12 +64,34 @@ const WalletCenterContainer = () => {
     return localStorage.getItem(WALLET_DISCONNECTED_KEY) === 'true';
   });
 
+  // Compute the active wallet address based on wallet type
+  const activeWalletAddress = useMemo(() => {
+    if (activeWalletType === 'external') {
+      // For external wallet, prioritize connected MetaMask address
+      return address || (walletProfile?.external_wallet_address as `0x${string}` | null);
+    }
+    return walletProfile?.custodial_wallet_address as `0x${string}` | null;
+  }, [activeWalletType, address, walletProfile]);
+
+  // Check if user has both wallet types
+  const hasBothWallets = useMemo(() => {
+    return !!(walletProfile?.external_wallet_address && walletProfile?.custodial_wallet_address);
+  }, [walletProfile]);
+
+  // Check if user has any wallet
+  const hasAnyWallet = useMemo(() => {
+    return !!(walletProfile?.external_wallet_address || walletProfile?.custodial_wallet_address || isConnected);
+  }, [walletProfile, isConnected]);
+
+  // Use token balances with the active wallet address
+  const { tokens, totalUsdValue, isLoading: isTokensLoading, refetch: refetchTokens } = useTokenBalances({
+    customAddress: activeWalletAddress as `0x${string}` | undefined,
+  });
+
   // CRITICAL: On mount, if user explicitly disconnected before, disconnect wagmi too
-  // This prevents wagmi's auto-reconnect from ignoring user's disconnect action
   useEffect(() => {
     const wasDisconnected = localStorage.getItem(WALLET_DISCONNECTED_KEY) === 'true';
     if (wasDisconnected && showDisconnectedUI && isConnected) {
-      // User had disconnected but wagmi auto-reconnected - disconnect again
       disconnect();
     }
   }, [isConnected, disconnect, showDisconnectedUI]);
@@ -99,21 +126,23 @@ const WalletCenterContainer = () => {
 
   useEffect(() => {
     fetchProfile();
+    fetchWalletProfile();
     fetchClaimableReward();
     fetchTransactions();
   }, []);
 
-  // Refetch tokens when connected
+  // Refetch tokens when active wallet address changes
   useEffect(() => {
-    if (isConnected) {
+    if (activeWalletAddress) {
       refetchTokens();
     }
-  }, [isConnected, refetchTokens]);
+  }, [activeWalletAddress, refetchTokens]);
 
   // Refetch data when wallet connects
   useEffect(() => {
     if (isConnected) {
       fetchProfile();
+      fetchWalletProfile();
       fetchClaimableReward();
       fetchTransactions();
     }
@@ -128,6 +157,29 @@ const WalletCenterContainer = () => {
         .eq('id', session.user.id)
         .single();
       if (data) setProfile(data);
+    }
+  };
+
+  const fetchWalletProfile = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      const { data } = await supabase
+        .from('profiles')
+        .select('external_wallet_address, custodial_wallet_address, default_wallet_type')
+        .eq('id', session.user.id)
+        .single();
+      
+      if (data) {
+        setWalletProfile(data as WalletProfile);
+        // Set active wallet type based on default or available wallets
+        if (data.default_wallet_type) {
+          setActiveWalletType(data.default_wallet_type as 'external' | 'custodial');
+        } else if (data.custodial_wallet_address) {
+          setActiveWalletType('custodial');
+        } else if (data.external_wallet_address) {
+          setActiveWalletType('external');
+        }
+      }
     }
   };
 
@@ -183,23 +235,14 @@ const WalletCenterContainer = () => {
       .or(`user_id.eq.${userId},friend_id.eq.${userId}`)
       .eq('status', 'accepted');
     
-    // Calculate total reward using SAME formula as CoverHonorBoard
-    // Posts: 1 post = 20,000 CAMLY
+    // Calculate total reward
     const postsReward = postsCount * 20000;
-    
-    // Reactions on posts: 3+ reactions = 30,000, then +1,000 per additional
     let reactionsReward = 0;
     if (reactionsOnPosts >= 3) {
       reactionsReward = 30000 + (reactionsOnPosts - 3) * 1000;
     }
-    
-    // Comments on posts: 1 comment = 5,000 CAMLY
     const commentsReward = commentsOnPosts * 5000;
-    
-    // Shares: 1 share = 5,000 CAMLY
     const sharesReward = sharesCount * 5000;
-    
-    // Friends: 1 friend = 10,000 CAMLY + new user bonus 10,000
     const friendsReward = (friendsCount || 0) * 10000 + 10000;
     
     const totalReward = postsReward + reactionsReward + commentsReward + sharesReward + friendsReward;
@@ -226,10 +269,11 @@ const WalletCenterContainer = () => {
       .limit(5);
 
     if (data) {
+      const currentAddress = activeWalletAddress?.toLowerCase();
       setTransactions(data.map(tx => ({
         id: tx.id,
-        type: tx.from_address.toLowerCase() === address?.toLowerCase() ? 'sent' : 'received',
-        description: tx.from_address.toLowerCase() === address?.toLowerCase() 
+        type: tx.from_address.toLowerCase() === currentAddress ? 'sent' : 'received',
+        description: tx.from_address.toLowerCase() === currentAddress 
           ? `Sent ${tx.amount} ${tx.token_symbol} to ${tx.to_address.slice(0, 6)}...${tx.to_address.slice(-4)}`
           : `Received ${tx.amount} ${tx.token_symbol}`,
         amount: tx.amount,
@@ -240,15 +284,11 @@ const WalletCenterContainer = () => {
   };
 
   const handleConnect = useCallback(async () => {
-    // Clear previous state
     setConnectionError(null);
     setIsConnecting(true);
-
-    // Clear disconnected UI flag immediately
     setShowDisconnectedUI(false);
     localStorage.removeItem(WALLET_DISCONNECTED_KEY);
 
-    // Check if MetaMask is installed
     if (typeof window === 'undefined' || !window.ethereum) {
       setIsConnecting(false);
       toast.error('Vui lòng cài đặt MetaMask để tiếp tục');
@@ -257,10 +297,8 @@ const WalletCenterContainer = () => {
     }
 
     try {
-      // Trigger MetaMask popup (important in iframe)
       await window.ethereum.request({ method: 'eth_requestAccounts' });
 
-      // Prefer MetaMask connector; fallback to injected/first connector
       const metamaskConnector =
         connectors.find((c) => c.name === 'MetaMask') ||
         connectors.find((c) => c.id === 'metaMask') ||
@@ -274,22 +312,22 @@ const WalletCenterContainer = () => {
         return;
       }
 
-      // Sync wagmi state (do NOT force chainId here; we switch network after connect)
       connect(
         { connector: metamaskConnector },
         {
           onSuccess: () => {
             setIsConnecting(false);
             setConnectionError(null);
+            setActiveWalletType('external');
             toast.success('Kết nối ví thành công!');
           },
           onError: async (err) => {
-            // Sometimes MetaMask is already authorized but wagmi sync can fail; don't hard-reload.
             try {
               const accounts = await window.ethereum?.request?.({ method: 'eth_accounts' });
               if (Array.isArray(accounts) && accounts.length > 0) {
                 setIsConnecting(false);
                 setConnectionError(null);
+                setActiveWalletType('external');
                 toast.success('Kết nối ví thành công!');
                 return;
               }
@@ -323,17 +361,14 @@ const WalletCenterContainer = () => {
     }
   }, [connectors, connect]);
 
-  // Switch account - requests MetaMask to show account picker
   const handleSwitchAccount = useCallback(async () => {
     try {
       if (typeof window !== 'undefined' && window.ethereum) {
-        // Request MetaMask to open account picker
         await window.ethereum.request({
           method: 'wallet_requestPermissions',
           params: [{ eth_accounts: {} }],
         });
         toast.success('Đã chuyển tài khoản thành công!');
-        // Refetch data after account switch
         refetchTokens();
         fetchTransactions();
       } else {
@@ -349,14 +384,15 @@ const WalletCenterContainer = () => {
   }, [refetchTokens]);
 
   const handleDisconnect = () => {
-    // Set flag to prevent auto-reconnect on page reload
     localStorage.setItem(WALLET_DISCONNECTED_KEY, 'true');
-    setShowDisconnectedUI(true); // Immediately show disconnected UI
-    // Clear all wallet data
+    setShowDisconnectedUI(true);
     setTransactions([]);
     setClaimableReward(0);
-    // Disconnect from wagmi - this will set isConnected to false
     disconnect();
+    // Switch to custodial if available
+    if (walletProfile?.custodial_wallet_address) {
+      setActiveWalletType('custodial');
+    }
     toast.success('Đã ngắt kết nối ví');
   };
 
@@ -371,21 +407,19 @@ const WalletCenterContainer = () => {
   };
 
   const copyAddress = () => {
-    if (address) {
-      navigator.clipboard.writeText(address);
+    if (activeWalletAddress) {
+      navigator.clipboard.writeText(activeWalletAddress);
       setCopied(true);
       toast.success('Đã copy địa chỉ ví');
       setTimeout(() => setCopied(false), 2000);
     }
   };
 
-  const shortenedAddress = address ? `${address.slice(0, 6)}...${address.slice(-4)}` : '0x0000...0000';
+  const shortenedAddress = activeWalletAddress ? `${activeWalletAddress.slice(0, 6)}...${activeWalletAddress.slice(-4)}` : '0x0000...0000';
 
-  // Format number with dot as thousands separator, comma for decimal (Vietnamese/European style like MetaMask)
   const formatNumber = (num: number, decimals: number = 0) => {
     const fixed = num.toFixed(decimals);
     const [integerPart, decimalPart] = fixed.split('.');
-    // Add thousand separators (dots)
     const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
     if (decimals > 0 && decimalPart) {
       return `${formattedInteger},${decimalPart}`;
@@ -393,25 +427,20 @@ const WalletCenterContainer = () => {
     return formattedInteger;
   };
 
-  // Format USD value (always 2 decimals)
   const formatUsd = (num: number) => {
     return `$${formatNumber(num, 2)}`;
   };
 
-  // Format token balance (remove trailing zeros, max 6 decimals)
   const formatTokenBalance = (num: number, symbol: string) => {
-    // For very small numbers, show more decimals
     if (num > 0 && num < 0.000001) {
       return formatNumber(num, 8);
     }
     if (num > 0 && num < 0.01) {
       return formatNumber(num, 6);
     }
-    // For whole numbers, no decimals
     if (Number.isInteger(num) || Math.abs(num - Math.round(num)) < 0.0001) {
       return formatNumber(Math.round(num), 0);
     }
-    // For regular numbers, up to 4 decimals
     return formatNumber(num, 4);
   };
 
@@ -425,11 +454,44 @@ const WalletCenterContainer = () => {
     }
   };
 
+  // Wallet Type Switcher Component
+  const WalletTypeSwitcher = () => {
+    if (!hasBothWallets) return null;
 
-  // Not connected state - Show Connect Wallet button
-  // Check both: wagmi isConnected AND our showDisconnectedUI flag
-  // showDisconnectedUI handles the case where wagmi hasn't updated yet or auto-reconnected
-  if (!isConnected || showDisconnectedUI) {
+    return (
+      <div className="flex items-center gap-1 bg-gray-100 rounded-full p-1">
+        <Button
+          variant={activeWalletType === 'external' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => setActiveWalletType('external')}
+          className={`rounded-full text-xs px-3 ${
+            activeWalletType === 'external' 
+              ? 'bg-primary text-primary-foreground' 
+              : 'hover:bg-gray-200'
+          }`}
+        >
+          <img src={metamaskLogo} alt="MetaMask" className="w-4 h-4 mr-1" />
+          MetaMask
+        </Button>
+        <Button
+          variant={activeWalletType === 'custodial' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => setActiveWalletType('custodial')}
+          className={`rounded-full text-xs px-3 ${
+            activeWalletType === 'custodial' 
+              ? 'bg-primary text-primary-foreground' 
+              : 'hover:bg-gray-200'
+          }`}
+        >
+          <Shield className="w-4 h-4 mr-1" />
+          F.U. Wallet
+        </Button>
+      </div>
+    );
+  };
+
+  // No wallet state - Show Connect/Create Wallet options
+  if (!hasAnyWallet && !isConnected && showDisconnectedUI) {
     return (
       <div className="space-y-6">
         {/* Header */}
@@ -457,7 +519,6 @@ const WalletCenterContainer = () => {
             Vui lòng kết nối MetaMask để xem tài sản và thực hiện giao dịch trên BNB Smart Chain
           </p>
           
-          {/* Error message */}
           {connectionError && (
             <div className="mb-6 p-3 bg-red-50 border border-red-200 rounded-lg">
               <p className="text-red-600 text-sm">{connectionError}</p>
@@ -477,17 +538,12 @@ const WalletCenterContainer = () => {
               </>
             ) : (
               <>
-                <img 
-                  src={metamaskLogo} 
-                  alt="MetaMask" 
-                  className="w-6 h-6 mr-2"
-                />
+                <img src={metamaskLogo} alt="MetaMask" className="w-6 h-6 mr-2" />
                 Connect Wallet
               </>
             )}
           </Button>
 
-          {/* Connecting status message */}
           {isConnecting && (
             <p className="text-sm text-muted-foreground mt-4 animate-pulse">
               MetaMask popup sẽ hiện lên, vui lòng xác nhận kết nối...
@@ -510,13 +566,17 @@ const WalletCenterContainer = () => {
     );
   }
 
+  // Show wallet UI if user has any wallet (custodial or external)
   return (
     <div className="space-y-4">
       {/* Header Card */}
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-        <div className="p-4 flex items-center justify-between border-b">
+        <div className="p-4 flex items-center justify-between border-b flex-wrap gap-3">
           <h1 className="text-xl font-bold text-gray-900">My Wallet</h1>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* Wallet Type Switcher */}
+            <WalletTypeSwitcher />
+            
             <div className="flex items-center gap-2 bg-yellow-100 px-3 py-1.5 rounded-full border border-yellow-300">
               <img src="https://cryptologos.cc/logos/bnb-bnb-logo.png" alt="BNB" className="w-5 h-5" />
               <span className="text-sm font-medium text-yellow-700">BNB Smart Chain</span>
@@ -537,27 +597,61 @@ const WalletCenterContainer = () => {
                 {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
               </button>
             </div>
-            {/* Switch Account Button */}
-            <Button
-              onClick={handleSwitchAccount}
-              variant="ghost"
-              size="sm"
-              className="bg-blue-50 text-blue-600 hover:bg-blue-500 hover:text-white transition-all duration-200"
-            >
-              <UserRoundCog className="w-4 h-4 mr-1" />
-              Switch
-            </Button>
-            {/* Disconnect Button */}
-            <Button
-              onClick={handleDisconnect}
-              variant="ghost"
-              size="sm"
-              className="bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition-all duration-200"
-            >
-              <LogOut className="w-4 h-4 mr-1" />
-              Disconnect
-            </Button>
+            
+            {/* Wallet-type specific actions */}
+            {activeWalletType === 'external' && isConnected && (
+              <>
+                <Button
+                  onClick={handleSwitchAccount}
+                  variant="ghost"
+                  size="sm"
+                  className="bg-blue-50 text-blue-600 hover:bg-blue-500 hover:text-white transition-all duration-200"
+                >
+                  <UserRoundCog className="w-4 h-4 mr-1" />
+                  Switch
+                </Button>
+                <Button
+                  onClick={handleDisconnect}
+                  variant="ghost"
+                  size="sm"
+                  className="bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition-all duration-200"
+                >
+                  <LogOut className="w-4 h-4 mr-1" />
+                  Disconnect
+                </Button>
+              </>
+            )}
+            
+            {/* Show connect MetaMask button if viewing custodial but MetaMask not connected */}
+            {activeWalletType === 'custodial' && !isConnected && (
+              <Button
+                onClick={handleConnect}
+                variant="ghost"
+                size="sm"
+                className="bg-orange-50 text-orange-600 hover:bg-orange-500 hover:text-white transition-all duration-200"
+              >
+                <img src={metamaskLogo} alt="MetaMask" className="w-4 h-4 mr-1" />
+                Connect MetaMask
+              </Button>
+            )}
           </div>
+        </div>
+
+        {/* Wallet Type Badge */}
+        <div className="px-4 py-2 bg-gray-50 border-b flex items-center gap-2">
+          {activeWalletType === 'custodial' ? (
+            <>
+              <Shield className="w-4 h-4 text-emerald-600" />
+              <span className="text-sm text-emerald-700 font-medium">F.U. Wallet (Custodial)</span>
+              <span className="text-xs text-muted-foreground">• Không cần MetaMask</span>
+            </>
+          ) : (
+            <>
+              <img src={metamaskLogo} alt="MetaMask" className="w-4 h-4" />
+              <span className="text-sm text-orange-700 font-medium">MetaMask (External)</span>
+              {isConnected && <span className="text-xs text-green-600">• Connected</span>}
+            </>
+          )}
         </div>
 
         {/* Total Assets */}
@@ -583,7 +677,13 @@ const WalletCenterContainer = () => {
               <span className="text-white text-sm font-medium">Receive</span>
             </button>
             <button 
-              onClick={() => setShowSend(true)}
+              onClick={() => {
+                if (activeWalletType === 'custodial') {
+                  toast.info('Tính năng Send cho F.U. Wallet đang phát triển');
+                } else {
+                  setShowSend(true);
+                }
+              }}
               className="flex flex-col items-center gap-2 group"
             >
               <div className="w-14 h-14 bg-yellow-400 rounded-full flex items-center justify-center shadow-lg group-hover:shadow-yellow-400/50 group-hover:scale-110 transition-all">
@@ -618,7 +718,6 @@ const WalletCenterContainer = () => {
         const rewardStatus = profile?.reward_status || 'pending';
         const adminNotes = profile?.admin_notes;
         
-        // Status-based styling
         const statusConfig = {
           pending: {
             bg: 'bg-gradient-to-r from-gray-400 via-gray-500 to-gray-600',
@@ -660,7 +759,6 @@ const WalletCenterContainer = () => {
                   Trạng thái: {config.label}
                 </span>
               </div>
-              {/* Info icon for on_hold or rejected */}
               {(rewardStatus === 'on_hold' || rewardStatus === 'rejected') && adminNotes && (
                 <TooltipProvider>
                   <Tooltip>
@@ -733,7 +831,6 @@ const WalletCenterContainer = () => {
           </TabsList>
           
           <TabsContent value="tokens" className="m-0">
-            {/* Refresh button */}
             <div className="flex justify-end p-2 border-b">
               <Button
                 variant="ghost"
@@ -749,7 +846,6 @@ const WalletCenterContainer = () => {
             <div className="divide-y">
               {tokens.map((token) => (
                 <div key={token.symbol} className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
-                  {/* Left: Token icon + name + 24h change */}
                   <div className="flex items-center gap-3">
                     <img 
                       src={token.symbol === 'CAMLY' ? camlyCoinLogo : token.icon} 
@@ -764,7 +860,6 @@ const WalletCenterContainer = () => {
                     </div>
                   </div>
                   
-                  {/* Right: USD value (bold, larger) + token balance (smaller, gray) */}
                   <div className="text-right">
                     {token.isLoading ? (
                       <>
@@ -826,7 +921,7 @@ const WalletCenterContainer = () => {
           <DialogHeader>
             <DialogTitle>Nhận tiền</DialogTitle>
           </DialogHeader>
-          <ReceiveTab />
+          <ReceiveTab walletAddress={activeWalletAddress || undefined} />
         </DialogContent>
       </Dialog>
 
