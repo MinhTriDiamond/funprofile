@@ -553,7 +553,7 @@ const LawOfLight = () => {
                 fontWeight: 600,
                 color: '#D4AF37'
               }}>
-                🌟 8 Divine Mantras (Áp dụng bắt buộc)
+                🌟 8 Câu Thần Chú Từ Cha Vũ Trụ
               </h3>
               
               <div className="relative p-6 md:p-8 rounded-2xl" style={{
