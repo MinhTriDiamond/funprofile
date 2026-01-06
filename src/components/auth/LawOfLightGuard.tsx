@@ -14,8 +14,8 @@ export const LawOfLightGuard = ({ children }: LawOfLightGuardProps) => {
 
   useEffect(() => {
     const checkLawOfLightAcceptance = async () => {
-      // Skip check for public pages
-      const publicPaths = ['/auth', '/law-of-light', '/begin', '/docs'];
+      // Skip check for public pages (removed /begin)
+      const publicPaths = ['/auth', '/law-of-light', '/docs'];
       const isPublicPath = publicPaths.some(path => location.pathname.startsWith(path));
       
       if (isPublicPath) {
@@ -35,8 +35,8 @@ export const LawOfLightGuard = ({ children }: LawOfLightGuardProps) => {
           setIsChecking(false);
           return;
         }
-        // For other protected routes, redirect to begin
-        navigate('/begin', { replace: true });
+        // For other protected routes, redirect to law-of-light
+        navigate('/law-of-light', { replace: true });
         return;
       }
 
