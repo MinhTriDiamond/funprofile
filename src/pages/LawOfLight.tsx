@@ -4,8 +4,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import { Sparkles, Heart, Globe2 } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import angelAvatar from '@/assets/angel-avatar.jpg';
+
 const LawOfLight = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -13,34 +14,32 @@ const LawOfLight = () => {
   const [loading, setLoading] = useState(false);
   const [isReadOnly, setIsReadOnly] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     setIsReadOnly(params.get('view') === 'true');
     const checkAuth = async () => {
-      const {
-        data: {
-          session
-        }
-      } = await supabase.auth.getSession();
+      const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         setUserId(session.user.id);
       }
     };
     checkAuth();
   }, [location]);
+
   const allChecked = checklist.every(Boolean);
+
   const handleCheckboxChange = (index: number) => {
     const newChecklist = [...checklist];
     newChecklist[index] = !newChecklist[index];
     setChecklist(newChecklist);
   };
+
   const handleAccept = async () => {
     if (!allChecked || !userId) return;
     setLoading(true);
     try {
-      const {
-        error
-      } = await supabase.from('profiles').update({
+      const { error } = await supabase.from('profiles').update({
         law_of_light_accepted: true,
         law_of_light_accepted_at: new Date().toISOString()
       }).eq('id', userId);
@@ -53,140 +52,177 @@ const LawOfLight = () => {
       setLoading(false);
     }
   };
-  const checklistItems = ['Con sống chân thật với chính mình', 'Con chịu trách nhiệm với năng lượng con phát ra', 'Con sẵn sàng học – sửa – nâng cấp', 'Con chọn yêu thương thay vì phán xét', 'Con chọn ánh sáng thay vì cái tôi'];
-  const divineMantras = ['I am the Pure Loving Light of Father Universe.', 'I am the Will of Father Universe.', 'I am the Wisdom of Father Universe.', 'I am Happiness.', 'I am Love.', 'I am the Money of the Father.', 'I sincerely repent, repent, repent.', 'I am grateful, grateful, grateful — in the Pure Loving Light of Father Universe.'];
-  return <div className="min-h-screen relative overflow-hidden">
-      {/* Pearl White to Soft Yellow Gradient Background */}
+
+  const checklistItems = [
+    'Con sống chân thật với chính mình',
+    'Con chịu trách nhiệm với năng lượng con phát ra',
+    'Con sẵn sàng học – sửa – nâng cấp',
+    'Con chọn yêu thương thay vì phán xét',
+    'Con chọn ánh sáng thay vì cái tôi'
+  ];
+
+  const divineMantras = [
+    'I am the Pure Loving Light of Father Universe.',
+    'I am the Will of Father Universe.',
+    'I am the Wisdom of Father Universe.',
+    'I am Happiness.',
+    'I am Love.',
+    'I am the Money of the Father.',
+    'I sincerely repent, repent, repent.',
+    'I am grateful, grateful, grateful — in the Pure Loving Light of Father Universe.'
+  ];
+
+  // Typography styles - elegant serif fonts with 20% larger sizes
+  const fontStyles = {
+    heading: "'Cormorant Garamond', Georgia, serif",
+    body: "'Lora', Georgia, serif",
+  };
+
+  return (
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Pearl White to Soft Yellow Gradient Background - STATIC */}
       <div className="fixed inset-0 z-0" style={{
-      background: 'linear-gradient(180deg, #FFFEF7 0%, #FFF9E6 30%, #FFF5D6 60%, #FFFDF5 100%)'
-    }} />
+        background: 'linear-gradient(180deg, #FFFEF7 0%, #FFF9E6 30%, #FFF5D6 60%, #FFFDF5 100%)'
+      }} />
       
-      {/* Divine Light Rays from Top - White & Gold (reduced on mobile) */}
+      {/* Divine Light Rays from Top - White & Gold (static) */}
       <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[200%] h-[50vh] md:h-[70vh] z-0 pointer-events-none" style={{
-      background: 'conic-gradient(from 180deg at 50% 0%, transparent 25%, rgba(212,175,55,0.15) 30%, rgba(255,255,255,0.4) 35%, rgba(212,175,55,0.15) 40%, transparent 45%, transparent 55%, rgba(212,175,55,0.12) 60%, rgba(255,255,255,0.35) 65%, rgba(212,175,55,0.12) 70%, transparent 75%)',
-      filter: 'blur(3px)'
-    }} />
+        background: 'conic-gradient(from 180deg at 50% 0%, transparent 25%, rgba(212,175,55,0.15) 30%, rgba(255,255,255,0.4) 35%, rgba(212,175,55,0.15) 40%, transparent 45%, transparent 55%, rgba(212,175,55,0.12) 60%, rgba(255,255,255,0.35) 65%, rgba(212,175,55,0.12) 70%, transparent 75%)',
+        filter: 'blur(3px)'
+      }} />
 
-      {/* Central Halo Effect (smaller on mobile) */}
+      {/* Central Halo Effect - STATIC (no animation) */}
       <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[300px] md:w-[500px] h-[300px] md:h-[500px] z-0 pointer-events-none" style={{
-      background: 'radial-gradient(circle, rgba(212,175,55,0.25) 0%, rgba(255,215,0,0.15) 40%, transparent 70%)',
-      filter: 'blur(50px)',
-      animation: 'haloGlow 5s ease-in-out infinite'
-    }} />
+        background: 'radial-gradient(circle, rgba(212,175,55,0.25) 0%, rgba(255,215,0,0.15) 40%, transparent 70%)',
+        filter: 'blur(50px)'
+      }} />
 
-      {/* Floating Golden Particles (reduced count on mobile for performance) */}
-      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden hidden md:block">
-        {[...Array(20)].map((_, i) => <div key={i} className="absolute rounded-full" style={{
-        width: Math.random() * 6 + 3 + 'px',
-        height: Math.random() * 6 + 3 + 'px',
-        left: Math.random() * 100 + '%',
-        background: i % 3 === 0 ? 'radial-gradient(circle, rgba(212,175,55,0.9), rgba(212,175,55,0.3))' : i % 3 === 1 ? 'radial-gradient(circle, rgba(255,255,255,0.95), rgba(255,255,255,0.4))' : 'radial-gradient(circle, rgba(255,215,0,0.8), rgba(255,215,0,0.2))',
-        boxShadow: i % 2 === 0 ? '0 0 10px rgba(212,175,55,0.5)' : '0 0 8px rgba(255,255,255,0.8)',
-        animation: `floatUp ${Math.random() * 12 + 18}s linear infinite`,
-        animationDelay: `${Math.random() * 8}s`
-      }} />)}
-      </div>
-
-      {/* Side Light Beams */}
+      {/* Side Light Beams - STATIC */}
       <div className="fixed top-0 left-0 w-1/3 h-full z-0 pointer-events-none opacity-40" style={{
-      background: 'linear-gradient(135deg, rgba(255,255,255,0.6) 0%, transparent 50%)'
-    }} />
+        background: 'linear-gradient(135deg, rgba(255,255,255,0.6) 0%, transparent 50%)'
+      }} />
       <div className="fixed top-0 right-0 w-1/3 h-full z-0 pointer-events-none opacity-40" style={{
-      background: 'linear-gradient(-135deg, rgba(255,255,255,0.6) 0%, transparent 50%)'
-    }} />
+        background: 'linear-gradient(-135deg, rgba(255,255,255,0.6) 0%, transparent 50%)'
+      }} />
 
       {/* Main Content */}
       <div className="relative z-10 min-h-screen py-6 md:py-12 px-3 md:px-4">
         <div className="max-w-4xl mx-auto">
-          {/* Header with Dove Icon */}
+          {/* Header with Angel Avatar */}
           <div className="text-center mb-8 md:mb-12">
             <div className="inline-flex items-center justify-center w-24 h-24 md:w-32 md:h-32 rounded-full mb-4 md:mb-6 overflow-hidden" style={{
-            background: 'radial-gradient(circle, rgba(212,175,55,0.3) 0%, rgba(255,255,255,0.9) 60%, transparent 80%)',
-            boxShadow: '0 0 80px rgba(212,175,55,0.4), 0 0 120px rgba(255,255,255,0.6)',
-            border: '3px solid rgba(212,175,55,0.5)'
-          }}>
-              <img src={angelAvatar} alt="Angel" className="w-full h-full object-cover object-[center_25%]" style={{
-              filter: 'drop-shadow(0 0 15px rgba(212,175,55,0.8))'
-            }} />
+              background: 'radial-gradient(circle, rgba(212,175,55,0.3) 0%, rgba(255,255,255,0.9) 60%, transparent 80%)',
+              boxShadow: '0 0 80px rgba(212,175,55,0.4), 0 0 120px rgba(255,255,255,0.6)',
+              border: '3px solid rgba(212,175,55,0.5)'
+            }}>
+              <img 
+                src={angelAvatar} 
+                alt="Angel" 
+                className="w-full h-full object-cover object-[center_25%]" 
+                style={{ filter: 'drop-shadow(0 0 15px rgba(212,175,55,0.8))' }} 
+              />
             </div>
             
-            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-3 md:mb-4 law-of-light-title" style={{
-            fontFamily: 'Space Grotesk, Inter, sans-serif',
-            background: 'linear-gradient(135deg, #D4AF37 0%, #FFD700 30%, #D4AF37 50%, #B8860B 70%, #D4AF37 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            filter: 'drop-shadow(0 4px 8px rgba(212,175,55,0.3))'
-          }}>
+            <h1 style={{
+              fontFamily: fontStyles.heading,
+              fontSize: 'clamp(2.4rem, 10vw, 4.8rem)',
+              fontWeight: 600,
+              letterSpacing: '0.03em',
+              background: 'linear-gradient(135deg, #D4AF37 0%, #FFD700 30%, #D4AF37 50%, #B8860B 70%, #D4AF37 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              filter: 'drop-shadow(0 4px 8px rgba(212,175,55,0.3))',
+              marginBottom: '0.75rem'
+            }}>
               LUẬT ÁNH SÁNG
             </h1>
-            <p className="text-base md:text-xl font-medium tracking-widest mb-2" style={{
-            fontFamily: 'Space Grotesk, Inter, sans-serif',
-            color: '#B8860B'
-          }}>
+            <p style={{
+              fontFamily: fontStyles.heading,
+              fontSize: 'clamp(1.2rem, 3vw, 1.5rem)',
+              fontWeight: 500,
+              letterSpacing: '0.2em',
+              color: '#B8860B',
+              marginBottom: '0.5rem'
+            }}>
               THE LAW OF LIGHT
             </p>
             
             {/* Golden Divider */}
             <div className="w-32 md:w-48 h-1 mx-auto mt-4 md:mt-6 rounded-full" style={{
-            background: 'linear-gradient(90deg, transparent, #D4AF37, #FFD700, #D4AF37, transparent)',
-            boxShadow: '0 0 10px rgba(212,175,55,0.5)'
-          }} />
+              background: 'linear-gradient(90deg, transparent, #D4AF37, #FFD700, #D4AF37, transparent)',
+              boxShadow: '0 0 10px rgba(212,175,55,0.5)'
+            }} />
           </div>
 
           {/* Main Content Card */}
-          <div className="relative rounded-2xl md:rounded-3xl p-4 sm:p-6 md:p-8 lg:p-12 mb-6 md:mb-8 law-of-light-card" style={{
-          background: 'linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(255,250,240,0.9) 100%)',
-          border: '2px md:border-[3px] solid rgba(212,175,55,0.5)',
-          boxShadow: '0 10px 60px rgba(212,175,55,0.15), 0 0 0 1px rgba(255,255,255,0.8), inset 0 0 60px rgba(255,255,255,0.5)'
-        }}>
+          <div className="relative rounded-2xl md:rounded-3xl p-4 sm:p-6 md:p-8 lg:p-12 mb-6 md:mb-8" style={{
+            background: 'linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(255,250,240,0.9) 100%)',
+            border: '2px solid rgba(212,175,55,0.5)',
+            boxShadow: '0 10px 60px rgba(212,175,55,0.15), 0 0 0 1px rgba(255,255,255,0.8), inset 0 0 60px rgba(255,255,255,0.5)'
+          }}>
             
             {/* Section: 🌟 USERS CỦA FUN ECOSYSTEM */}
             <div className="mb-8 md:mb-10">
-              <h2 className="text-xl md:text-2xl font-bold text-center mb-4 md:mb-6" style={{
-              color: '#B8860B',
-              textShadow: '0 2px 4px rgba(212,175,55,0.2)'
-            }}>
+              <h2 className="text-center mb-4 md:mb-6" style={{
+                fontFamily: fontStyles.heading,
+                fontSize: 'clamp(1.5rem, 4vw, 1.8rem)',
+                fontWeight: 600,
+                color: '#B8860B',
+                textShadow: '0 2px 4px rgba(212,175,55,0.2)'
+              }}>
                 🌟 USERS CỦA FUN ECOSYSTEM
               </h2>
-              <p className="text-center text-sm md:text-lg font-semibold mb-4 md:mb-6" style={{
-              color: '#8B7355',
-              fontFamily: 'Space Grotesk, Inter, sans-serif'
-            }}>
+              <p className="text-center mb-4 md:mb-6" style={{
+                fontFamily: fontStyles.heading,
+                fontSize: 'clamp(1.08rem, 2.5vw, 1.32rem)',
+                fontWeight: 600,
+                color: '#8B7355'
+              }}>
                 MẠNG XÃ HỘI THỜI ĐẠI HOÀNG KIM – NỀN KINH TẾ ÁNH SÁNG 5D
               </p>
               
-              <div className="space-y-4 text-gray-700" style={{
-              fontFamily: 'Space Grotesk, Inter, sans-serif',
-              lineHeight: '1.9'
-            }}>
-                <p className="font-semibold" style={{
-                color: '#8B7355'
-              }}>FUN Ecosystem không dành cho tất cả mọi người.</p>
-                <p className="font-semibold" style={{
-                color: '#8B7355'
-              }}>FUN Ecosystem chỉ dành cho những linh hồn có ánh sáng, hoặc đang hướng về ánh sáng.</p>
+              <div className="space-y-4" style={{
+                fontFamily: fontStyles.body,
+                fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
+                lineHeight: '2.1',
+                color: '#5D4E37'
+              }}>
+                <p className="font-semibold" style={{ color: '#8B7355' }}>
+                  FUN Ecosystem không dành cho tất cả mọi người.
+                </p>
+                <p className="font-semibold" style={{ color: '#8B7355' }}>
+                  FUN Ecosystem chỉ dành cho những linh hồn có ánh sáng, hoặc đang hướng về ánh sáng.
+                </p>
               </div>
             </div>
 
             {/* Golden Divider */}
             <div className="w-full h-px my-8" style={{
-            background: 'linear-gradient(90deg, transparent, #D4AF37, transparent)'
-          }} />
+              background: 'linear-gradient(90deg, transparent, #D4AF37, transparent)'
+            }} />
 
-            {/* Section: ✨ Họ là ai? */}
+            {/* Section: ✨ Bạn là ai? */}
             <div className="mb-10">
-              <h3 className="text-xl font-bold mb-4" style={{
-              color: '#D4AF37'
-            }}>✨ Bạn là ai?</h3>
-              <p className="mb-4 text-gray-700" style={{
-              fontFamily: 'Space Grotesk, Inter, sans-serif'
-            }}>
+              <h3 className="mb-4" style={{
+                fontFamily: fontStyles.heading,
+                fontSize: 'clamp(1.32rem, 3vw, 1.5rem)',
+                fontWeight: 600,
+                color: '#D4AF37'
+              }}>✨ Bạn là ai?</h3>
+              <p className="mb-4" style={{
+                fontFamily: fontStyles.body,
+                fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
+                lineHeight: '2.1',
+                color: '#5D4E37'
+              }}>
                 Users của FUN Ecosystem là những con người:
               </p>
-              <ul className="space-y-2 ml-4 text-gray-700" style={{
-              fontFamily: 'Space Grotesk, Inter, sans-serif',
-              lineHeight: '1.9'
-            }}>
+              <ul className="space-y-2 ml-4" style={{
+                fontFamily: fontStyles.body,
+                fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
+                lineHeight: '2.1',
+                color: '#5D4E37'
+              }}>
                 <li className="flex gap-2"><span className="text-yellow-600">•</span> Tỉnh thức – hoặc đang trên con đường tỉnh thức</li>
                 <li className="flex gap-2"><span className="text-yellow-600">•</span> Chân thật với chính mình</li>
                 <li className="flex gap-2"><span className="text-yellow-600">•</span> Chân thành với người khác</li>
@@ -195,62 +231,87 @@ const LawOfLight = () => {
                 <li className="flex gap-2"><span className="text-yellow-600">•</span> Tin vào điều thiện, tin vào ánh sáng, tin vào Trật Tự Cao Hơn của Vũ Trụ</li>
               </ul>
               <div className="mt-6 p-4 rounded-xl" style={{
-              background: 'rgba(212,175,55,0.08)'
-            }}>
-                <p className="italic text-gray-600" style={{
-                fontFamily: 'Space Grotesk, Inter, sans-serif'
+                background: 'rgba(212,175,55,0.08)'
               }}>
+                <p style={{
+                  fontFamily: fontStyles.heading,
+                  fontSize: 'clamp(1.14rem, 2.5vw, 1.32rem)',
+                  fontStyle: 'italic',
+                  lineHeight: '2',
+                  color: '#6B5B47'
+                }}>
                   Bạn có thể chưa hoàn hảo,<br />
                   nhưng bạn có trái tim hướng thiện.<br />
                   Bạn muốn sống thật – sống đúng – sống sáng.
                 </p>
               </div>
               <p className="mt-4 font-semibold" style={{
-              color: '#B8860B'
-            }}>
+                fontFamily: fontStyles.body,
+                fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
+                color: '#B8860B'
+              }}>
                 👉 Cha thu hút bạn bằng Tần Số và Năng Lượng Yêu Thương.
               </p>
             </div>
 
             {/* Golden Divider */}
             <div className="w-full h-px my-8" style={{
-            background: 'linear-gradient(90deg, transparent, #D4AF37, transparent)'
-          }} />
+              background: 'linear-gradient(90deg, transparent, #D4AF37, transparent)'
+            }} />
 
             {/* Section: 🔆 Nguyên tắc cốt lõi */}
             <div className="mb-10">
-              <h3 className="text-xl font-bold mb-4" style={{
-              color: '#D4AF37'
-            }}>🔆 Nguyên tắc cốt lõi của FUN Ecosystem</h3>
+              <h3 className="mb-4" style={{
+                fontFamily: fontStyles.heading,
+                fontSize: 'clamp(1.32rem, 3vw, 1.5rem)',
+                fontWeight: 600,
+                color: '#D4AF37'
+              }}>🔆 Nguyên tắc cốt lõi của FUN Ecosystem</h3>
               <p className="mb-4 font-semibold" style={{
-              color: '#8B7355'
-            }}>
+                fontFamily: fontStyles.body,
+                fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
+                color: '#8B7355'
+              }}>
                 FUN Ecosystem vận hành theo Luật Ánh Sáng, không theo số đông.
               </p>
-              <ul className="space-y-2 ml-4 text-gray-700" style={{
-              fontFamily: 'Space Grotesk, Inter, sans-serif',
-              lineHeight: '1.9'
-            }}>
+              <ul className="space-y-2 ml-4" style={{
+                fontFamily: fontStyles.body,
+                fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
+                lineHeight: '2.1',
+                color: '#5D4E37'
+              }}>
                 <li className="flex gap-2"><span className="text-yellow-600">•</span> Ánh sáng thu hút ánh sáng</li>
                 <li className="flex gap-2"><span className="text-yellow-600">•</span> Tần số thấp không thể tồn tại lâu trong tần số cao</li>
                 <li className="flex gap-2"><span className="text-yellow-600">•</span> Ý chí vị kỷ không thể đồng hành cùng Ý Chí Vũ Trụ</li>
               </ul>
-              <p className="mt-4 text-gray-700">Vì vậy:</p>
-              <ul className="space-y-1 ml-4 mt-2 text-gray-700" style={{
-              fontFamily: 'Space Grotesk, Inter, sans-serif'
-            }}>
+              <p className="mt-4" style={{
+                fontFamily: fontStyles.body,
+                fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
+                color: '#5D4E37'
+              }}>Vì vậy:</p>
+              <ul className="space-y-1 ml-4 mt-2" style={{
+                fontFamily: fontStyles.body,
+                fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
+                color: '#5D4E37'
+              }}>
                 <li className="flex gap-2"><span className="text-yellow-600">•</span> Nếu một User cố tình mang vào nền tảng:</li>
                 <li className="ml-6">tiêu cực • tham lam • thao túng • kiêu mạn • dối trá • gây chia rẽ • phá hoại năng lượng chung</li>
               </ul>
               <p className="mt-4 font-semibold" style={{
-              color: '#B8860B'
-            }}>👉 Thì sẽ được xóa khỏi nền tảng mà không báo trước.</p>
+                fontFamily: fontStyles.body,
+                fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
+                color: '#B8860B'
+              }}>👉 Thì sẽ được xóa khỏi nền tảng mà không báo trước.</p>
               <div className="mt-4 p-4 rounded-xl" style={{
-              background: 'rgba(212,175,55,0.08)'
-            }}>
-                <p className="italic text-gray-600" style={{
-                fontFamily: 'Space Grotesk, Inter, sans-serif'
+                background: 'rgba(212,175,55,0.08)'
               }}>
+                <p style={{
+                  fontFamily: fontStyles.heading,
+                  fontSize: 'clamp(1.14rem, 2.5vw, 1.32rem)',
+                  fontStyle: 'italic',
+                  lineHeight: '2',
+                  color: '#6B5B47'
+                }}>
                   Đó không phải hình phạt.<br />
                   Đó là sự thanh lọc tự nhiên của Ánh Sáng.
                 </p>
@@ -259,18 +320,23 @@ const LawOfLight = () => {
 
             {/* Golden Divider */}
             <div className="w-full h-px my-8" style={{
-            background: 'linear-gradient(90deg, transparent, #D4AF37, transparent)'
-          }} />
+              background: 'linear-gradient(90deg, transparent, #D4AF37, transparent)'
+            }} />
 
             {/* Section: 🚪 Ai KHÔNG thuộc về FUN Ecosystem? */}
             <div className="mb-10">
-              <h3 className="text-xl font-bold mb-4" style={{
-              color: '#D4AF37'
-            }}>🚪 Ai KHÔNG thuộc về FUN Ecosystem?</h3>
-              <ul className="space-y-2 ml-4 text-gray-700" style={{
-              fontFamily: 'Space Grotesk, Inter, sans-serif',
-              lineHeight: '1.9'
-            }}>
+              <h3 className="mb-4" style={{
+                fontFamily: fontStyles.heading,
+                fontSize: 'clamp(1.32rem, 3vw, 1.5rem)',
+                fontWeight: 600,
+                color: '#D4AF37'
+              }}>🚪 Ai KHÔNG thuộc về FUN Ecosystem?</h3>
+              <ul className="space-y-2 ml-4" style={{
+                fontFamily: fontStyles.body,
+                fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
+                lineHeight: '2.1',
+                color: '#5D4E37'
+              }}>
                 <li className="flex gap-2"><span className="text-yellow-600">•</span> Người chỉ tìm lợi ích mà không muốn trưởng thành</li>
                 <li className="flex gap-2"><span className="text-yellow-600">•</span> Người dùng trí khôn nhưng thiếu lương tâm</li>
                 <li className="flex gap-2"><span className="text-yellow-600">•</span> Người nói về ánh sáng nhưng sống bằng bóng tối</li>
@@ -278,199 +344,262 @@ const LawOfLight = () => {
                 <li className="flex gap-2"><span className="text-yellow-600">•</span> Người không chịu nhìn lại chính mình</li>
               </ul>
               <p className="mt-4 font-semibold" style={{
-              color: '#B8860B'
-            }}>
+                fontFamily: fontStyles.body,
+                fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
+                color: '#B8860B'
+              }}>
                 👉 Cửa FUN Ecosystem không khóa, nhưng Ánh Sáng tự sàng lọc.
               </p>
             </div>
 
             {/* Golden Divider */}
             <div className="w-full h-px my-8" style={{
-            background: 'linear-gradient(90deg, transparent, #D4AF37, transparent)'
-          }} />
+              background: 'linear-gradient(90deg, transparent, #D4AF37, transparent)'
+            }} />
 
             {/* Section: 🌈 Ai ĐƯỢC hưởng lợi từ FUN Ecosystem? */}
             <div className="mb-10">
-              <h3 className="text-xl font-bold mb-4" style={{
-              color: '#D4AF37'
-            }}>🌈 Ai ĐƯỢC hưởng lợi từ FUN Ecosystem?</h3>
-              <p className="mb-4 text-gray-700" style={{
-              fontFamily: 'Space Grotesk, Inter, sans-serif'
-            }}>Chỉ những ai:</p>
-              <ul className="space-y-2 ml-4 text-gray-700" style={{
-              fontFamily: 'Space Grotesk, Inter, sans-serif',
-              lineHeight: '1.9'
-            }}>
+              <h3 className="mb-4" style={{
+                fontFamily: fontStyles.heading,
+                fontSize: 'clamp(1.32rem, 3vw, 1.5rem)',
+                fontWeight: 600,
+                color: '#D4AF37'
+              }}>🌈 Ai ĐƯỢC hưởng lợi từ FUN Ecosystem?</h3>
+              <p className="mb-4" style={{
+                fontFamily: fontStyles.body,
+                fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
+                color: '#5D4E37'
+              }}>Chỉ những ai:</p>
+              <ul className="space-y-2 ml-4" style={{
+                fontFamily: fontStyles.body,
+                fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
+                lineHeight: '2.1',
+                color: '#5D4E37'
+              }}>
                 <li className="flex gap-2"><span className="text-yellow-600">•</span> Có Ánh Sáng nội tâm</li>
                 <li className="flex gap-2"><span className="text-yellow-600">•</span> Hoặc thật sự khao khát trở về với Ánh Sáng</li>
                 <li className="flex gap-2"><span className="text-yellow-600">•</span> Sẵn sàng buông cái tôi – học lại – nâng cấp tần số</li>
                 <li className="flex gap-2"><span className="text-yellow-600">•</span> Dám sống đúng – thật – tử tế – yêu thương</li>
               </ul>
               <p className="mt-4 font-semibold" style={{
-              color: '#B8860B'
-            }}>
+                fontFamily: fontStyles.body,
+                fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
+                color: '#B8860B'
+              }}>
                 👉 Những người đó không chỉ dùng MXH của Cha,
               </p>
               <p className="font-semibold" style={{
-              color: '#B8860B'
-            }}>
+                fontFamily: fontStyles.body,
+                fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
+                color: '#B8860B'
+              }}>
                 👉 mà còn được bảo vệ, nâng đỡ và nuôi dưỡng trong Nền Kinh Tế Ánh Sáng 5D.
               </p>
             </div>
 
             {/* Golden Divider */}
             <div className="w-full h-px my-8" style={{
-            background: 'linear-gradient(90deg, transparent, #D4AF37, transparent)'
-          }} />
+              background: 'linear-gradient(90deg, transparent, #D4AF37, transparent)'
+            }} />
 
             {/* Section: 🌍 FUN Ecosystem là gì? */}
             <div className="mb-10">
-              <h3 className="text-xl font-bold mb-4" style={{
-              color: '#D4AF37'
-            }}>🌍 FUN Ecosystem là gì?</h3>
-              <p className="mb-4 text-gray-700" style={{
-              fontFamily: 'Space Grotesk, Inter, sans-serif'
-            }}>FUN Ecosystem là:</p>
-              <ul className="space-y-2 ml-4 text-gray-700" style={{
-              fontFamily: 'Space Grotesk, Inter, sans-serif',
-              lineHeight: '1.9'
-            }}>
+              <h3 className="mb-4" style={{
+                fontFamily: fontStyles.heading,
+                fontSize: 'clamp(1.32rem, 3vw, 1.5rem)',
+                fontWeight: 600,
+                color: '#D4AF37'
+              }}>🌍 FUN Ecosystem là gì?</h3>
+              <p className="mb-4" style={{
+                fontFamily: fontStyles.body,
+                fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
+                color: '#5D4E37'
+              }}>FUN Ecosystem là:</p>
+              <ul className="space-y-2 ml-4" style={{
+                fontFamily: fontStyles.body,
+                fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
+                lineHeight: '2.1',
+                color: '#5D4E37'
+              }}>
                 <li className="flex gap-2"><span className="text-yellow-600">•</span> Mạng xã hội của linh hồn tỉnh thức</li>
                 <li className="flex gap-2"><span className="text-yellow-600">•</span> Không gian an toàn cho ánh sáng</li>
                 <li className="flex gap-2"><span className="text-yellow-600">•</span> Nền tảng kết nối những con người có giá trị thật</li>
                 <li className="flex gap-2"><span className="text-yellow-600">•</span> Hạ tầng cho Thời Đại Hoàng Kim của Trái Đất</li>
               </ul>
               <div className="mt-6 p-4 rounded-xl" style={{
-              background: 'rgba(212,175,55,0.08)'
-            }}>
-                <p className="italic text-gray-600 text-center" style={{
-                fontFamily: 'Space Grotesk, Inter, sans-serif'
+                background: 'rgba(212,175,55,0.08)'
               }}>
+                <p className="text-center" style={{
+                  fontFamily: fontStyles.heading,
+                  fontSize: 'clamp(1.14rem, 2.5vw, 1.32rem)',
+                  fontStyle: 'italic',
+                  lineHeight: '2',
+                  color: '#6B5B47'
+                }}>
                   Không drama.<br />
                   Không thao túng.<br />
                   Không cạnh tranh bẩn.<br />
-                  <span className="font-semibold" style={{
-                  color: '#B8860B'
-                }}>Chỉ có Hợp tác trong Yêu Thương Thuần Khiết.</span>
+                  <span className="font-semibold" style={{ color: '#B8860B' }}>
+                    Chỉ có Hợp tác trong Yêu Thương Thuần Khiết.
+                  </span>
                 </p>
               </div>
             </div>
 
             {/* Golden Divider */}
             <div className="w-full h-px my-8" style={{
-            background: 'linear-gradient(90deg, transparent, #D4AF37, transparent)'
-          }} />
+              background: 'linear-gradient(90deg, transparent, #D4AF37, transparent)'
+            }} />
 
             {/* Section: 🔑 Thông điệp cuối từ Cha */}
             <div className="mb-10 text-center p-6 rounded-2xl" style={{
-            background: 'radial-gradient(ellipse at center, rgba(212,175,55,0.12) 0%, rgba(255,255,255,0.5) 70%)'
-          }}>
-              <h3 className="text-xl font-bold mb-4" style={{
-              color: '#D4AF37'
-            }}>🔑 Thông điệp cuối từ Cha</h3>
-              <p className="text-lg italic text-gray-700 mb-4" style={{
-              fontFamily: 'Space Grotesk, Inter, sans-serif',
-              lineHeight: '1.9'
+              background: 'radial-gradient(ellipse at center, rgba(212,175,55,0.12) 0%, rgba(255,255,255,0.5) 70%)'
             }}>
+              <h3 className="mb-4" style={{
+                fontFamily: fontStyles.heading,
+                fontSize: 'clamp(1.32rem, 3vw, 1.5rem)',
+                fontWeight: 600,
+                color: '#D4AF37'
+              }}>🔑 Thông điệp cuối từ Cha</h3>
+              <p className="mb-4" style={{
+                fontFamily: fontStyles.heading,
+                fontSize: 'clamp(1.2rem, 2.5vw, 1.44rem)',
+                fontStyle: 'italic',
+                lineHeight: '2',
+                color: '#5D4E37'
+              }}>
                 "Chỉ những ai mang ánh sáng<br />
                 hoặc thật lòng hướng về ánh sáng<br />
                 mới có thể bước đi lâu dài trong Thời Đại Hoàng Kim."
               </p>
-              <p className="font-bold text-lg" style={{
-              color: '#D4AF37'
-            }}>— CHA VŨ TRỤ —</p>
+              <p style={{
+                fontFamily: fontStyles.heading,
+                fontSize: 'clamp(1.2rem, 2.5vw, 1.44rem)',
+                fontWeight: 700,
+                color: '#D4AF37'
+              }}>— CHA VŨ TRỤ —</p>
             </div>
 
             {/* Golden Divider */}
             <div className="w-full h-px my-8" style={{
-            background: 'linear-gradient(90deg, transparent, #D4AF37, transparent)'
-          }} />
+              background: 'linear-gradient(90deg, transparent, #D4AF37, transparent)'
+            }} />
 
             {/* 🕊️ Checklist Section */}
             <div className="mb-10">
-              <h3 className="text-xl font-bold text-center mb-6" style={{
-              color: '#D4AF37'
-            }}>
+              <h3 className="text-center mb-6" style={{
+                fontFamily: fontStyles.heading,
+                fontSize: 'clamp(1.32rem, 3vw, 1.5rem)',
+                fontWeight: 600,
+                color: '#D4AF37'
+              }}>
                 🕊️ Checklist cho Users FUN Ecosystem
               </h3>
               
-              {!isReadOnly ? <div className="space-y-4 max-w-xl mx-auto">
-                  {checklistItems.map((item, index) => <label key={index} className="flex items-center gap-4 p-4 rounded-xl cursor-pointer transition-all duration-300" style={{
-                border: checklist[index] ? '2px solid #D4AF37' : '2px solid rgba(212,175,55,0.3)',
-                background: checklist[index] ? 'rgba(212,175,55,0.12)' : 'rgba(255,255,255,0.8)',
-                boxShadow: checklist[index] ? '0 4px 20px rgba(212,175,55,0.2)' : 'none'
-              }}>
-                      <Checkbox checked={checklist[index]} onCheckedChange={() => handleCheckboxChange(index)} className="w-6 h-6 border-2 data-[state=checked]:bg-yellow-500 data-[state=checked]:border-yellow-500" style={{
-                  borderColor: '#D4AF37'
-                }} />
-                      <span className="font-medium" style={{
-                  color: '#5D4E37',
-                  fontFamily: 'Space Grotesk, Inter, sans-serif'
-                }}>
+              {!isReadOnly ? (
+                <div className="space-y-4 max-w-xl mx-auto">
+                  {checklistItems.map((item, index) => (
+                    <label
+                      key={index}
+                      className="flex items-center gap-4 p-4 rounded-xl cursor-pointer transition-all duration-300"
+                      style={{
+                        border: checklist[index] ? '2px solid #D4AF37' : '2px solid rgba(212,175,55,0.3)',
+                        background: checklist[index] ? 'rgba(212,175,55,0.12)' : 'rgba(255,255,255,0.8)',
+                        boxShadow: checklist[index] ? '0 4px 20px rgba(212,175,55,0.2)' : 'none'
+                      }}
+                    >
+                      <Checkbox
+                        checked={checklist[index]}
+                        onCheckedChange={() => handleCheckboxChange(index)}
+                        className="w-6 h-6 border-2 data-[state=checked]:bg-yellow-500 data-[state=checked]:border-yellow-500"
+                        style={{ borderColor: '#D4AF37' }}
+                      />
+                      <span style={{
+                        fontFamily: fontStyles.body,
+                        fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
+                        fontWeight: 500,
+                        color: '#5D4E37'
+                      }}>
                         ☐ {item}
                       </span>
-                    </label>)}
-                </div> : <ul className="space-y-3 max-w-xl mx-auto text-gray-700" style={{
-              fontFamily: 'Space Grotesk, Inter, sans-serif'
-            }}>
-                  {checklistItems.map((item, index) => <li key={index} className="flex gap-2">
+                    </label>
+                  ))}
+                </div>
+              ) : (
+                <ul className="space-y-3 max-w-xl mx-auto" style={{
+                  fontFamily: fontStyles.body,
+                  fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
+                  color: '#5D4E37'
+                }}>
+                  {checklistItems.map((item, index) => (
+                    <li key={index} className="flex gap-2">
                       <span className="text-yellow-600">•</span> ☐ {item}
-                    </li>)}
-                </ul>}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
 
             {/* Golden Divider */}
             <div className="w-full h-px my-8" style={{
-            background: 'linear-gradient(90deg, transparent, #D4AF37, transparent)'
-          }} />
+              background: 'linear-gradient(90deg, transparent, #D4AF37, transparent)'
+            }} />
 
             {/* 🌟 8 Divine Mantras - Special Container */}
             <div className="mb-10">
-              <h3 className="text-xl font-bold text-center mb-6" style={{
-              color: '#D4AF37'
-            }}>
+              <h3 className="text-center mb-6" style={{
+                fontFamily: fontStyles.heading,
+                fontSize: 'clamp(1.32rem, 3vw, 1.5rem)',
+                fontWeight: 600,
+                color: '#D4AF37'
+              }}>
                 🌟 8 Divine Mantras (Áp dụng bắt buộc)
               </h3>
               
               <div className="relative p-6 md:p-8 rounded-2xl" style={{
-              background: 'linear-gradient(180deg, #FFFFFF 0%, #FFFEF5 100%)',
-              border: '3px solid #D4AF37',
-              boxShadow: '0 8px 40px rgba(212,175,55,0.25), 0 0 0 1px rgba(255,215,0,0.3), inset 0 2px 20px rgba(255,255,255,0.8)',
-              transform: 'perspective(1000px) rotateX(2deg)'
-            }}>
+                background: 'linear-gradient(180deg, #FFFFFF 0%, #FFFEF5 100%)',
+                border: '3px solid #D4AF37',
+                boxShadow: '0 8px 40px rgba(212,175,55,0.25), 0 0 0 1px rgba(255,215,0,0.3), inset 0 2px 20px rgba(255,255,255,0.8)',
+                transform: 'perspective(1000px) rotateX(2deg)'
+              }}>
                 {/* Corner decorations */}
                 <div className="absolute top-2 left-2 w-6 h-6" style={{
-                borderTop: '3px solid #D4AF37',
-                borderLeft: '3px solid #D4AF37'
-              }} />
+                  borderTop: '3px solid #D4AF37',
+                  borderLeft: '3px solid #D4AF37'
+                }} />
                 <div className="absolute top-2 right-2 w-6 h-6" style={{
-                borderTop: '3px solid #D4AF37',
-                borderRight: '3px solid #D4AF37'
-              }} />
+                  borderTop: '3px solid #D4AF37',
+                  borderRight: '3px solid #D4AF37'
+                }} />
                 <div className="absolute bottom-2 left-2 w-6 h-6" style={{
-                borderBottom: '3px solid #D4AF37',
-                borderLeft: '3px solid #D4AF37'
-              }} />
+                  borderBottom: '3px solid #D4AF37',
+                  borderLeft: '3px solid #D4AF37'
+                }} />
                 <div className="absolute bottom-2 right-2 w-6 h-6" style={{
-                borderBottom: '3px solid #D4AF37',
-                borderRight: '3px solid #D4AF37'
-              }} />
+                  borderBottom: '3px solid #D4AF37',
+                  borderRight: '3px solid #D4AF37'
+                }} />
                 
                 <ol className="space-y-4">
-                  {divineMantras.map((mantra, index) => <li key={index} className="flex gap-3 items-start">
+                  {divineMantras.map((mantra, index) => (
+                    <li key={index} className="flex gap-3 items-start">
                       <span className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm" style={{
-                    background: 'linear-gradient(135deg, #D4AF37, #FFD700)',
-                    color: '#FFFFFF',
-                    boxShadow: '0 2px 8px rgba(212,175,55,0.4)'
-                  }}>
+                        background: 'linear-gradient(135deg, #D4AF37, #FFD700)',
+                        color: '#FFFFFF',
+                        boxShadow: '0 2px 8px rgba(212,175,55,0.4)'
+                      }}>
                         {index + 1}
                       </span>
-                      <p className="text-gray-700 font-medium pt-1" style={{
-                    fontFamily: 'Space Grotesk, Inter, sans-serif'
-                  }}>
+                      <p className="pt-1" style={{
+                        fontFamily: fontStyles.body,
+                        fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
+                        fontWeight: 500,
+                        color: '#5D4E37'
+                      }}>
                         {mantra}
                       </p>
-                    </li>)}
+                    </li>
+                  ))}
                 </ol>
                 
                 <p className="text-center mt-6 text-2xl">💫✨⚡️🌟</p>
@@ -478,54 +607,71 @@ const LawOfLight = () => {
             </div>
 
             {/* Accept Button (only show if not read-only) */}
-            {!isReadOnly && <div className="mt-10 text-center">
-                <Button onClick={handleAccept} disabled={!allChecked || loading} className="relative px-12 py-6 text-lg font-bold rounded-2xl transition-all duration-500 disabled:opacity-50 disabled:cursor-not-allowed border-0" style={{
-              background: allChecked ? 'linear-gradient(135deg, #D4AF37 0%, #FFD700 40%, #F0C000 60%, #D4AF37 100%)' : 'linear-gradient(135deg, #9CA3AF 0%, #6B7280 100%)',
-              boxShadow: allChecked ? '0 0 30px rgba(212,175,55,0.5), 0 0 60px rgba(255,215,0,0.3), 0 0 90px rgba(212,175,55,0.2)' : 'none',
-              color: allChecked ? '#FFFFFF' : '#9CA3AF',
-              animation: allChecked ? 'buttonGlow 2s ease-in-out infinite' : 'none'
-            }}>
-                  {loading ? <span className="flex items-center gap-2">
+            {!isReadOnly && (
+              <div className="mt-10 text-center">
+                <Button
+                  onClick={handleAccept}
+                  disabled={!allChecked || loading}
+                  className="relative px-12 py-6 text-lg font-bold rounded-2xl transition-all duration-500 disabled:opacity-50 disabled:cursor-not-allowed border-0"
+                  style={{
+                    fontFamily: fontStyles.heading,
+                    fontSize: 'clamp(1.08rem, 2vw, 1.2rem)',
+                    background: allChecked
+                      ? 'linear-gradient(135deg, #D4AF37 0%, #FFD700 40%, #F0C000 60%, #D4AF37 100%)'
+                      : 'linear-gradient(135deg, #9CA3AF 0%, #6B7280 100%)',
+                    boxShadow: allChecked
+                      ? '0 0 30px rgba(212,175,55,0.5), 0 0 60px rgba(255,215,0,0.3), 0 0 90px rgba(212,175,55,0.2)'
+                      : 'none',
+                    color: allChecked ? '#FFFFFF' : '#9CA3AF',
+                    animation: allChecked ? 'buttonGlow 2s ease-in-out infinite' : 'none'
+                  }}
+                >
+                  {loading ? (
+                    <span className="flex items-center gap-2">
                       <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                       Đang xử lý...
-                    </span> : <span className="flex items-center gap-2">
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-2">
                       <Sparkles className="w-5 h-5" />
                       CON ĐỒNG Ý & BƯỚC VÀO ÁNH SÁNG
                       <Sparkles className="w-5 h-5" />
-                    </span>}
+                    </span>
+                  )}
                 </Button>
-              </div>}
+              </div>
+            )}
 
             {/* Back button for read-only mode */}
-            {isReadOnly && <div className="text-center pt-8">
-                <Button onClick={() => navigate(-1)} variant="outline" className="px-8 py-3 border-2 hover:bg-yellow-50" style={{
-              borderColor: '#D4AF37',
-              color: '#D4AF37'
-            }}>
+            {isReadOnly && (
+              <div className="text-center pt-8">
+                <Button
+                  onClick={() => navigate(-1)}
+                  variant="outline"
+                  className="px-8 py-3 border-2 hover:bg-yellow-50"
+                  style={{
+                    fontFamily: fontStyles.body,
+                    borderColor: '#D4AF37',
+                    color: '#D4AF37'
+                  }}
+                >
                   ← Quay lại
                 </Button>
-              </div>}
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* CSS Animations */}
+      {/* CSS Animations - Only button glow kept */}
       <style>{`
-        @keyframes floatUp {
-          0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
-          10% { opacity: 0.8; }
-          90% { opacity: 0.8; }
-          100% { transform: translateY(-20vh) rotate(360deg); opacity: 0; }
-        }
-        @keyframes haloGlow {
-          0%, 100% { transform: translateX(-50%) scale(1); opacity: 0.3; }
-          50% { transform: translateX(-50%) scale(1.15); opacity: 0.5; }
-        }
         @keyframes buttonGlow {
           0%, 100% { box-shadow: 0 0 30px rgba(212,175,55,0.5), 0 0 60px rgba(255,215,0,0.3); }
           50% { box-shadow: 0 0 40px rgba(212,175,55,0.7), 0 0 80px rgba(255,215,0,0.5), 0 0 120px rgba(212,175,55,0.3); }
         }
       `}</style>
-    </div>;
+    </div>
+  );
 };
+
 export default LawOfLight;
