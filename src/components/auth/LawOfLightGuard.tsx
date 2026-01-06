@@ -14,8 +14,11 @@ export const LawOfLightGuard = ({ children }: LawOfLightGuardProps) => {
 
   useEffect(() => {
     const checkLawOfLightAcceptance = async () => {
-      // Skip check for auth page and law-of-light page itself
-      if (location.pathname === '/auth' || location.pathname === '/law-of-light') {
+      // Skip check for public pages
+      const publicPaths = ['/auth', '/law-of-light', '/begin', '/docs'];
+      const isPublicPath = publicPaths.some(path => location.pathname.startsWith(path));
+      
+      if (isPublicPath) {
         setIsAllowed(true);
         setIsChecking(false);
         return;
@@ -23,10 +26,17 @@ export const LawOfLightGuard = ({ children }: LawOfLightGuardProps) => {
 
       const { data: { session } } = await supabase.auth.getSession();
       
-      // If not logged in, allow access (will be handled by other auth guards if needed)
+      // Guest mode: Allow unauthenticated users to view feed
+      // They can browse but not interact (handled in components)
       if (!session) {
-        setIsAllowed(true);
-        setIsChecking(false);
+        // For root/feed path, allow guest access
+        if (location.pathname === '/' || location.pathname === '/feed') {
+          setIsAllowed(true);
+          setIsChecking(false);
+          return;
+        }
+        // For other protected routes, redirect to begin
+        navigate('/begin', { replace: true });
         return;
       }
 

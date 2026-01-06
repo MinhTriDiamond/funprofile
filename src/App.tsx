@@ -3,12 +3,13 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { LanguageProvider } from "@/i18n/LanguageContext";
 import { LawOfLightGuard } from "@/components/auth/LawOfLightGuard";
 
 // Lazy load pages for code splitting
 const Auth = lazy(() => import("./pages/Auth"));
+const Begin = lazy(() => import("./pages/Begin"));
 const Feed = lazy(() => import("./pages/Feed"));
 const Friends = lazy(() => import("./pages/Friends"));
 const Profile = lazy(() => import("./pages/Profile"));
@@ -58,6 +59,7 @@ function App() {
             <Suspense fallback={<PageLoader />}>
               <LawOfLightGuard>
                 <Routes>
+                  <Route path="/begin" element={<Begin />} />
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/law-of-light" element={<LawOfLight />} />
                   <Route path="/" element={<Feed />} />

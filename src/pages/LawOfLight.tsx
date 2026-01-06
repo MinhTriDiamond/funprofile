@@ -4,28 +4,40 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, Eye } from 'lucide-react';
 import angelAvatar from '@/assets/angel-avatar.jpg';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 const LawOfLight = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useLanguage();
   const [checklist, setChecklist] = useState([false, false, false, false, false]);
   const [loading, setLoading] = useState(false);
   const [isReadOnly, setIsReadOnly] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     setIsReadOnly(params.get('view') === 'true');
+    
+    // Check if user is already logged in and has accepted
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        setUserId(session.user.id);
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('law_of_light_accepted')
+          .eq('id', session.user.id)
+          .single();
+        
+        // If user is logged in and already accepted, redirect to feed
+        if (profile?.law_of_light_accepted) {
+          navigate('/');
+        }
       }
     };
     checkAuth();
-  }, [location]);
+  }, [location, navigate]);
 
   const allChecked = checklist.every(Boolean);
 
@@ -35,22 +47,19 @@ const LawOfLight = () => {
     setChecklist(newChecklist);
   };
 
-  const handleAccept = async () => {
-    if (!allChecked || !userId) return;
+  const handleAccept = () => {
+    if (!allChecked) return;
     setLoading(true);
-    try {
-      const { error } = await supabase.from('profiles').update({
-        law_of_light_accepted: true,
-        law_of_light_accepted_at: new Date().toISOString()
-      }).eq('id', userId);
-      if (error) throw error;
-      toast.success('🌟 Chào mừng Con bước vào Ánh Sáng!');
-      navigate('/');
-    } catch (error: any) {
-      toast.error('Có lỗi xảy ra. Vui lòng thử lại.');
-    } finally {
-      setLoading(false);
-    }
+    
+    // Save to localStorage - will be processed after registration
+    localStorage.setItem('law_of_light_accepted_pending', 'true');
+    
+    toast.success('🌟 Con đã sẵn sàng bước vào Ánh Sáng!');
+    navigate('/auth');
+  };
+
+  const handleSkip = () => {
+    navigate('/');
   };
 
   const checklistItems = [
@@ -616,7 +625,7 @@ const LawOfLight = () => {
 
             {/* Accept Button (only show if not read-only) */}
             {!isReadOnly && (
-              <div className="mt-10 text-center">
+              <div className="mt-10 text-center space-y-4">
                 <Button
                   onClick={handleAccept}
                   disabled={!allChecked || loading}
@@ -647,6 +656,23 @@ const LawOfLight = () => {
                     </span>
                   )}
                 </Button>
+
+                {/* Skip Button - Guest Mode */}
+                <div>
+                  <Button
+                    onClick={handleSkip}
+                    variant="ghost"
+                    className="px-6 py-3 rounded-xl hover:bg-yellow-50/50"
+                    style={{
+                      fontFamily: fontStyles.body,
+                      color: '#8B7355',
+                      fontSize: 'clamp(0.95rem, 2vw, 1.05rem)'
+                    }}
+                  >
+                    <Eye className="w-4 h-4 mr-2" />
+                    {t('lawSkip')}
+                  </Button>
+                </div>
               </div>
             )}
 
