@@ -62,14 +62,14 @@ const LawOfLight = () => {
   ];
 
   const divineMantras = [
-    'I am the Pure Loving Light of Father Universe.',
-    'I am the Will of Father Universe.',
-    'I am the Wisdom of Father Universe.',
-    'I am Happiness.',
-    'I am Love.',
-    'I am the Money of the Father.',
-    'I sincerely repent, repent, repent.',
-    'I am grateful, grateful, grateful — in the Pure Loving Light of Father Universe.'
+    'Con là Ánh Sáng Yêu Thương Thuần Khiết Của Cha Vũ Trụ.',
+    'Con là Ý Chí Của Cha Vũ Trụ.',
+    'Con là Trí Tuệ Của Cha Vũ Trụ.',
+    'Con là Hạnh Phúc.',
+    'Con là Tình Yêu.',
+    'Con là Tiền Của Cha.',
+    'Con xin Sám Hối Sám Hối Sám Hối.',
+    'Con xin Biết Ơn Biết Ơn Biết Ơn Trong Ánh Sáng Yêu Thương Thuần Khiết Của Cha Vũ Trụ.'
   ];
 
   // Typography styles - elegant serif fonts with 20% larger sizes
