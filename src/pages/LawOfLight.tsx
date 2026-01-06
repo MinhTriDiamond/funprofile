@@ -524,6 +524,14 @@ const LawOfLight = () => {
                       </span>
                     </label>
                   ))}
+                  <p className="text-center mt-4" style={{
+                    fontFamily: fontStyles.body,
+                    fontSize: 'clamp(0.95rem, 2vw, 1.1rem)',
+                    fontWeight: 700,
+                    color: '#5D4E37'
+                  }}>
+                    (Click vào 5 check list trên để được Đăng ký)
+                  </p>
                 </div>
               ) : (
                 <ul className="space-y-3 max-w-xl mx-auto" style={{
