@@ -298,6 +298,16 @@ export const translations = {
     accountDeletedDesc: 'Your account has been deleted successfully',
     dangerZone: 'Danger Zone',
     deleting: 'Deleting...',
+
+    // Begin Page
+    beginTitle: 'Welcome to FUN Ecosystem',
+    beginSubtitle: 'The Social Network of the Golden Age – 5D Light Economy',
+    beginRegister: 'I want to become a FUN Ecosystem User',
+    beginGuest: 'Browse without an account',
+    beginFooter: 'FUN Ecosystem – Where Light attracts Light',
+
+    // Law of Light
+    lawSkip: 'Browse without registering',
   },
   
   vi: {
@@ -599,6 +609,16 @@ export const translations = {
     accountDeletedDesc: 'Tài khoản của bạn đã được xóa thành công',
     dangerZone: 'Vùng nguy hiểm',
     deleting: 'Đang xóa...',
+
+    // Begin Page
+    beginTitle: 'Chào mừng đến FUN Ecosystem',
+    beginSubtitle: 'Mạng Xã Hội Thời Đại Hoàng Kim – Nền Kinh Tế Ánh Sáng 5D',
+    beginRegister: 'Tôi muốn trở thành User của FUN Ecosystem',
+    beginGuest: 'Vào xem mà không cần tài khoản',
+    beginFooter: 'FUN Ecosystem – Nơi Ánh Sáng thu hút Ánh Sáng',
+
+    // Law of Light
+    lawSkip: 'Vào xem mà không đăng ký',
   },
 } as const;
 

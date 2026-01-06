@@ -16,13 +16,24 @@ export const UnifiedAuthForm = () => {
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState('email');
   const [isSettingUp, setIsSettingUp] = useState(false);
-  const [setupStep, setSetupStep] = useState<'wallet' | 'nft' | 'complete' | null>(null);
+  const [setupStep, setSetupStep] = useState<'wallet' | 'complete' | null>(null);
 
   const handleNewUserSetup = async (userId: string, hasExternalWallet: boolean) => {
     setIsSettingUp(true);
 
     try {
-      // Step 1: Create custodial wallet (only if NOT using external wallet)
+      // Step 1: Update law_of_light_accepted if pending
+      const lawOfLightPending = localStorage.getItem('law_of_light_accepted_pending');
+      if (lawOfLightPending === 'true') {
+        console.log('[Setup] Updating law_of_light_accepted for user:', userId);
+        await supabase.from('profiles').update({
+          law_of_light_accepted: true,
+          law_of_light_accepted_at: new Date().toISOString()
+        }).eq('id', userId);
+        localStorage.removeItem('law_of_light_accepted_pending');
+      }
+
+      // Step 2: Create custodial wallet (only if NOT using external wallet)
       if (!hasExternalWallet) {
         setSetupStep('wallet');
         console.log('[Setup] Creating custodial wallet for user:', userId);
@@ -41,25 +52,13 @@ export const UnifiedAuthForm = () => {
         console.log('[Setup] Skipping wallet creation - user has external wallet');
       }
 
-      // Step 2: Mint Soul NFT (requires wallet to exist)
-      setSetupStep('nft');
-      console.log('[Setup] Minting Soul NFT for user:', userId);
-      
-      const { data: nftData, error: nftError } = await supabase.functions.invoke('mint-soul-nft', {
-        body: { user_id: userId },
-      });
-
-      if (nftError) {
-        console.error('[Setup] Soul NFT mint error:', nftError);
-      } else {
-        console.log('[Setup] Soul NFT minted:', nftData);
-      }
+      // Note: Soul NFT minting will be done later when user meets conditions
 
       setSetupStep('complete');
       toast.success(t('accountSetupComplete'));
       
       // Small delay to show completion state
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 800));
       navigate('/');
     } catch (error) {
       console.error('[Setup] Setup error:', error);
@@ -129,11 +128,6 @@ export const UnifiedAuthForm = () => {
                       step="wallet"
                       currentStep={setupStep}
                       label={t('creatingWallet')}
-                    />
-                    <SetupStepIndicator
-                      step="nft"
-                      currentStep={setupStep}
-                      label={t('mintingSoulNft')}
                     />
                   </div>
                 </div>
@@ -223,11 +217,11 @@ const SetupStepIndicator = ({
   currentStep, 
   label 
 }: { 
-  step: 'wallet' | 'nft'; 
-  currentStep: 'wallet' | 'nft' | 'complete' | null; 
+  step: 'wallet'; 
+  currentStep: 'wallet' | 'complete' | null; 
   label: string;
 }) => {
-  const stepOrder = ['wallet', 'nft', 'complete'];
+  const stepOrder = ['wallet', 'complete'];
   const currentIndex = currentStep ? stepOrder.indexOf(currentStep) : -1;
   const stepIndex = stepOrder.indexOf(step);
   

@@ -299,3 +299,83 @@ html {
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
+
+/* ================================ */
+/* FUN Profile Gradient Theme      */
+/* Green → Gold → White            */
+/* ================================ */
+
+.fun-gradient-bg {
+  background: linear-gradient(
+    135deg, 
+    hsl(142 76% 36%) 0%,
+    hsl(142 76% 42%) 20%,
+    hsl(48 96% 53%) 50%,
+    hsl(48 96% 70%) 75%,
+    hsl(0 0% 100%) 100%
+  );
+}
+
+.fun-gradient-bg-reverse {
+  background: linear-gradient(
+    -45deg, 
+    hsl(142 76% 36%) 0%,
+    hsl(48 96% 53%) 50%,
+    hsl(0 0% 100%) 100%
+  );
+}
+
+.fun-gradient-text {
+  background: linear-gradient(
+    90deg, 
+    hsl(142 76% 36%) 0%, 
+    hsl(142 76% 42%) 30%,
+    hsl(48 96% 53%) 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.fun-gradient-gold-text {
+  background: linear-gradient(
+    135deg, 
+    #D4AF37 0%, 
+    #FFD700 30%, 
+    #D4AF37 50%, 
+    #B8860B 70%, 
+    #D4AF37 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.fun-card {
+  background: linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(255,250,240,0.95) 100%);
+  border: 2px solid hsl(48 96% 53% / 0.3);
+  box-shadow: 0 10px 60px hsl(48 96% 53% / 0.1), 0 0 0 1px hsl(0 0% 100% / 0.8);
+}
+
+.fun-button-primary {
+  background: linear-gradient(135deg, hsl(142 76% 36%) 0%, hsl(142 76% 42%) 50%, hsl(48 96% 53%) 100%);
+  color: white;
+  transition: all 0.3s ease;
+}
+
+.fun-button-primary:hover {
+  box-shadow: 0 0 30px hsl(142 76% 36% / 0.4), 0 0 60px hsl(48 96% 53% / 0.2);
+  transform: translateY(-2px);
+}
+
+.fun-button-secondary {
+  background: transparent;
+  border: 2px solid hsl(142 76% 36% / 0.5);
+  color: hsl(142 76% 29%);
+  transition: all 0.3s ease;
+}
+
+.fun-button-secondary:hover {
+  background: hsl(142 76% 36% / 0.1);
+  border-color: hsl(142 76% 36%);
+}
