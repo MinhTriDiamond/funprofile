@@ -520,7 +520,7 @@ const LawOfLight = () => {
                         fontWeight: 500,
                         color: '#5D4E37'
                       }}>
-                        ☐ {item}
+                        {item}
                       </span>
                     </label>
                   ))}
@@ -533,7 +533,7 @@ const LawOfLight = () => {
                 }}>
                   {checklistItems.map((item, index) => (
                     <li key={index} className="flex gap-2">
-                      <span className="text-yellow-600">•</span> ☐ {item}
+                      <span className="text-yellow-600">•</span> {item}
                     </li>
                   ))}
                 </ul>
