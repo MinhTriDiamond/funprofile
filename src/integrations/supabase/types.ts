@@ -386,6 +386,9 @@ export type Database = {
           cover_url: string | null
           created_at: string
           cross_platform_data: Json | null
+          custodial_wallet_address: string | null
+          default_wallet_type: string | null
+          external_wallet_address: string | null
           full_name: string | null
           fun_id: string | null
           id: string
@@ -414,6 +417,9 @@ export type Database = {
           cover_url?: string | null
           created_at?: string
           cross_platform_data?: Json | null
+          custodial_wallet_address?: string | null
+          default_wallet_type?: string | null
+          external_wallet_address?: string | null
           full_name?: string | null
           fun_id?: string | null
           id: string
@@ -442,6 +448,9 @@ export type Database = {
           cover_url?: string | null
           created_at?: string
           cross_platform_data?: Json | null
+          custodial_wallet_address?: string | null
+          default_wallet_type?: string | null
+          external_wallet_address?: string | null
           full_name?: string | null
           fun_id?: string | null
           id?: string

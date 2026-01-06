@@ -172,10 +172,24 @@ serve(async (req) => {
       );
     }
 
-    // Also update the user's profile with the wallet address
+    // Get current profile to check if user has external wallet
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('external_wallet_address, default_wallet_type')
+      .eq('id', user_id)
+      .single();
+
+    // Update profile with custodial wallet address
+    // Only set as default if user has no external wallet
     await supabase
       .from('profiles')
-      .update({ wallet_address: wallet.address })
+      .update({ 
+        custodial_wallet_address: wallet.address,
+        wallet_address: wallet.address, // backward compatible
+        ...(profile?.external_wallet_address ? {} : { 
+          default_wallet_type: 'custodial' 
+        })
+      })
       .eq('id', user_id);
 
     console.log('[CREATE-WALLET] Wallet created successfully:', wallet.address);

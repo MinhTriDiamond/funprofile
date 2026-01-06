@@ -47,15 +47,34 @@ const LawOfLight = () => {
     setChecklist(newChecklist);
   };
 
-  const handleAccept = () => {
+  const handleAccept = async () => {
     if (!allChecked) return;
     setLoading(true);
     
-    // Save to localStorage - will be processed after registration
-    localStorage.setItem('law_of_light_accepted_pending', 'true');
-    
-    toast.success('🌟 Con đã sẵn sàng bước vào Ánh Sáng!');
-    navigate('/auth');
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session) {
+        // User already logged in - update profile directly
+        await supabase.from('profiles').update({
+          law_of_light_accepted: true,
+          law_of_light_accepted_at: new Date().toISOString()
+        }).eq('id', session.user.id);
+        
+        toast.success('🌟 Con đã sẵn sàng bước vào Ánh Sáng!');
+        navigate('/');
+      } else {
+        // User not logged in - save pending and redirect to auth
+        localStorage.setItem('law_of_light_accepted_pending', 'true');
+        toast.success('🌟 Con đã sẵn sàng bước vào Ánh Sáng!');
+        navigate('/auth');
+      }
+    } catch (error) {
+      console.error('Error accepting law of light:', error);
+      toast.error('Có lỗi xảy ra, vui lòng thử lại');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSkip = () => {

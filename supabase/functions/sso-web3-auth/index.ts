@@ -115,12 +115,39 @@ serve(async (req) => {
       );
     }
 
-    // Check if user exists with this wallet
-    const { data: existingProfile } = await supabase
+    // Check if user exists with this wallet (check both new and legacy fields)
+    let existingProfile = null;
+    
+    // First check external_wallet_address (new field)
+    const { data: profileByExternal } = await supabase
       .from('profiles')
-      .select('id, username, wallet_address')
-      .eq('wallet_address', normalizedAddress)
+      .select('id, username, external_wallet_address, custodial_wallet_address')
+      .eq('external_wallet_address', normalizedAddress)
       .maybeSingle();
+    
+    if (profileByExternal) {
+      existingProfile = profileByExternal;
+    } else {
+      // Fallback: check legacy wallet_address field
+      const { data: profileByLegacy } = await supabase
+        .from('profiles')
+        .select('id, username, wallet_address, external_wallet_address, custodial_wallet_address')
+        .eq('wallet_address', normalizedAddress)
+        .maybeSingle();
+      
+      if (profileByLegacy) {
+        existingProfile = profileByLegacy;
+        // Migrate legacy wallet_address to external_wallet_address
+        await supabase
+          .from('profiles')
+          .update({ 
+            external_wallet_address: normalizedAddress,
+            default_wallet_type: 'external'
+          })
+          .eq('id', profileByLegacy.id);
+        console.log('[WEB3-AUTH] Migrated legacy wallet to external_wallet_address');
+      }
+    }
 
     let userId: string;
     let isNewUser = false;
@@ -165,11 +192,13 @@ serve(async (req) => {
 
       userId = newUser.user.id;
 
-      // Update profile with wallet address
+      // Update profile with external wallet address
       await supabase
         .from('profiles')
         .update({
-          wallet_address: normalizedAddress,
+          external_wallet_address: normalizedAddress,
+          wallet_address: normalizedAddress, // backward compatible
+          default_wallet_type: 'external',
           registered_from: 'web3',
           oauth_provider: 'metamask',
           last_login_platform: 'web3'
