@@ -79,14 +79,11 @@ export default defineConfig(({ mode }) => ({
       'react-router-dom', 
       '@tanstack/react-query',
       '@supabase/supabase-js',
+      'eventemitter3',
     ],
     exclude: [
       // Exclude large libs - load on demand only when needed
       'recharts',
-      'wagmi',
-      'viem', 
-      '@rainbow-me/rainbowkit',
-      '@walletconnect/ethereum-provider',
     ],
     esbuildOptions: {
       target: 'esnext',
