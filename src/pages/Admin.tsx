@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Shield, BarChart3, Gift, Users, Wallet, Trash2, Link2, LogOut, CloudUpload, TestTube } from "lucide-react";
+import { Shield, BarChart3, Gift, Users, Wallet, Trash2, Link2, LogOut, CloudUpload, GitMerge } from "lucide-react";
 
 import OverviewTab from "@/components/admin/OverviewTab";
 import RewardApprovalTab from "@/components/admin/RewardApprovalTab";
@@ -13,6 +13,7 @@ import WalletAbuseTab from "@/components/admin/WalletAbuseTab";
 import QuickDeleteTab from "@/components/admin/QuickDeleteTab";
 import BlockchainTab from "@/components/admin/BlockchainTab";
 import MediaMigrationTab from "@/components/admin/MediaMigrationTab";
+import { MergeRequestsTab } from "@/components/admin/MergeRequestsTab";
 
 interface UserData {
   id: string;
@@ -152,7 +153,7 @@ const Admin = () => {
 
         {/* Main Tabs */}
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 lg:grid-cols-7 h-auto">
+          <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8 h-auto">
             <TabsTrigger value="overview" className="gap-2 py-3">
               <BarChart3 className="w-4 h-4" />
               <span className="hidden sm:inline">📊 Tổng quan</span>
@@ -180,6 +181,10 @@ const Admin = () => {
             <TabsTrigger value="migration" className="gap-2 py-3">
               <CloudUpload className="w-4 h-4" />
               <span className="hidden sm:inline">☁️ Migration</span>
+            </TabsTrigger>
+            <TabsTrigger value="merge" className="gap-2 py-3">
+              <GitMerge className="w-4 h-4" />
+              <span className="hidden sm:inline">🔗 Merge User</span>
             </TabsTrigger>
           </TabsList>
 
@@ -225,6 +230,10 @@ const Admin = () => {
 
           <TabsContent value="migration">
             <MediaMigrationTab />
+          </TabsContent>
+
+          <TabsContent value="merge">
+            <MergeRequestsTab />
           </TabsContent>
         </Tabs>
       </div>

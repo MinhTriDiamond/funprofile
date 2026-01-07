@@ -14,6 +14,66 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_merge_requests: {
+        Row: {
+          admin_note: string | null
+          created_at: string
+          email: string
+          id: string
+          merge_type: string
+          platform_data: Json | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          source_platform: string
+          source_user_id: string | null
+          source_username: string | null
+          status: string
+          target_platform: string
+          target_user_id: string | null
+          updated_at: string
+          webhook_sent: boolean | null
+          webhook_sent_at: string | null
+        }
+        Insert: {
+          admin_note?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          merge_type: string
+          platform_data?: Json | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          source_platform: string
+          source_user_id?: string | null
+          source_username?: string | null
+          status?: string
+          target_platform?: string
+          target_user_id?: string | null
+          updated_at?: string
+          webhook_sent?: boolean | null
+          webhook_sent_at?: string | null
+        }
+        Update: {
+          admin_note?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          merge_type?: string
+          platform_data?: Json | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          source_platform?: string
+          source_user_id?: string | null
+          source_username?: string | null
+          status?: string
+          target_platform?: string
+          target_user_id?: string | null
+          updated_at?: string
+          webhook_sent?: boolean | null
+          webhook_sent_at?: string | null
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string
@@ -336,6 +396,7 @@ export type Database = {
           platform_name: string | null
           redirect_uris: string[]
           updated_at: string
+          webhook_url: string | null
           website_url: string | null
         }
         Insert: {
@@ -351,6 +412,7 @@ export type Database = {
           platform_name?: string | null
           redirect_uris?: string[]
           updated_at?: string
+          webhook_url?: string | null
           website_url?: string | null
         }
         Update: {
@@ -366,6 +428,7 @@ export type Database = {
           platform_name?: string | null
           redirect_uris?: string[]
           updated_at?: string
+          webhook_url?: string | null
           website_url?: string | null
         }
         Relationships: []

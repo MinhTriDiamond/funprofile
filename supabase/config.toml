@@ -86,3 +86,9 @@ verify_jwt = false
 
 [functions.sso-sync-data]
 verify_jwt = false
+
+[functions.sso-merge-request]
+verify_jwt = false
+
+[functions.sso-merge-approve]
+verify_jwt = true
