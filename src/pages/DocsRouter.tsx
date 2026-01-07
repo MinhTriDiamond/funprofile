@@ -4,6 +4,7 @@ import { useLocation, Navigate } from "react-router-dom";
 import EcosystemDocs from "@/pages/EcosystemDocs";
 import PlatformDocs from "@/pages/PlatformDocs";
 import IntegrationDocs from "@/pages/IntegrationDocs";
+import SdkRepositoryDocs from "@/pages/SdkRepositoryDocs";
 
 const setCanonical = (href: string) => {
   let link = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
@@ -62,6 +63,15 @@ export default function DocsRouter() {
       return;
     }
 
+    if (first === "sdk-repository") {
+      document.title = "SDK Repository Setup | @fun-ecosystem/sso-sdk";
+      ensureMetaDescription(
+        "Hướng dẫn tạo GitHub Repository cho @fun-ecosystem/sso-sdk - npm package chính thức."
+      );
+      setCanonical(`${origin}/docs/sdk-repository`);
+      return;
+    }
+
     document.title = "FUN Ecosystem Documentation";
     ensureMetaDescription(
       "Tài liệu FUN Ecosystem: SSO, app architecture, wallet, feed, rewards, media và admin."
@@ -72,6 +82,7 @@ export default function DocsRouter() {
   if (first === "platform") return <PlatformDocs />;
   if (first === "ecosystem") return <EcosystemDocs />;
   if (first === "integration") return <IntegrationDocs />;
+  if (first === "sdk-repository") return <SdkRepositoryDocs />;
 
   return <Navigate to="/docs/ecosystem" replace />;
 }
