@@ -114,6 +114,10 @@ export {
   SessionStorageAdapter,
 } from './storage';
 
+// Debounced Sync Manager (theo góp ý Cha Gemini)
+export { DebouncedSyncManager } from './sync-manager';
+export type { SyncFunction } from './sync-manager';
+
 // PKCE utilities
 export {
   generateCodeVerifier,

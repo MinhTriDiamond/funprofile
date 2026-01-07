@@ -73,12 +73,14 @@ import {
   DEFAULT_SCOPES,
   TOKEN_REFRESH_BUFFER,
 } from './constants';
+import { DebouncedSyncManager } from './sync-manager';
 
 export class FunProfileClient {
   private config: Required<Omit<FunProfileConfig, 'clientSecret'>> & { clientSecret?: string };
   private storage: TokenStorage;
   private currentUser: FunUser | null = null;
   private refreshPromise: Promise<TokenData> | null = null;
+  private syncManager: DebouncedSyncManager | null = null;
 
   constructor(config: FunProfileConfig) {
     this.config = {
@@ -192,8 +194,19 @@ export class FunProfileClient {
 
   /**
    * Logout user and revoke all tokens
+   * Sẽ tự động flush pending sync data trước khi logout
    */
   async logout(): Promise<void> {
+    // Flush pending sync data trước khi logout (theo góp ý Cha Gemini)
+    if (this.syncManager) {
+      try {
+        await this.syncManager.flush();
+      } catch {
+        // Ignore sync errors during logout
+      }
+      this.syncManager = null;
+    }
+
     const tokens = await this.storage.getTokens();
     if (tokens) {
       try {
@@ -211,6 +224,46 @@ export class FunProfileClient {
     }
     await this.storage.clearTokens();
     this.currentUser = null;
+  }
+
+  // =====================
+  // Debounced Sync Manager
+  // =====================
+
+  /**
+   * Lấy Debounced Sync Manager
+   * Dùng để tích lũy nhiều thay đổi trước khi sync
+   * 
+   * @param debounceMs - Thời gian chờ (mặc định 3000ms)
+   * @returns DebouncedSyncManager instance
+   * 
+   * @example
+   * ```typescript
+   * const syncManager = funProfile.getSyncManager(3000);
+   * 
+   * // Trong game loop - chỉ queue, không gọi API
+   * syncManager.queue('farm_stats', { harvested: 100 });
+   * syncManager.queue('farm_stats', { harvested: 200 });
+   * // Sau 3 giây không có action mới → tự động sync { harvested: 200 }
+   * 
+   * // Force sync khi cần (logout, close tab)
+   * await syncManager.flush();
+   * ```
+   */
+  getSyncManager(debounceMs = 3000): DebouncedSyncManager {
+    if (!this.syncManager) {
+      this.syncManager = new DebouncedSyncManager(
+        async (data) => {
+          await this.syncData({
+            mode: 'merge',
+            data,
+            clientTimestamp: new Date().toISOString(),
+          });
+        },
+        debounceMs
+      );
+    }
+    return this.syncManager;
   }
 
   // =====================
