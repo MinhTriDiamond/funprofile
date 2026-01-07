@@ -329,10 +329,14 @@ export type Database = {
           client_name: string
           client_secret: string
           created_at: string
+          description: string | null
           id: string
           is_active: boolean
+          logo_url: string | null
+          platform_name: string | null
           redirect_uris: string[]
           updated_at: string
+          website_url: string | null
         }
         Insert: {
           allowed_scopes?: string[]
@@ -340,10 +344,14 @@ export type Database = {
           client_name: string
           client_secret: string
           created_at?: string
+          description?: string | null
           id?: string
           is_active?: boolean
+          logo_url?: string | null
+          platform_name?: string | null
           redirect_uris?: string[]
           updated_at?: string
+          website_url?: string | null
         }
         Update: {
           allowed_scopes?: string[]
@@ -351,10 +359,14 @@ export type Database = {
           client_name?: string
           client_secret?: string
           created_at?: string
+          description?: string | null
           id?: string
           is_active?: boolean
+          logo_url?: string | null
+          platform_name?: string | null
           redirect_uris?: string[]
           updated_at?: string
+          website_url?: string | null
         }
         Relationships: []
       }
@@ -455,6 +467,45 @@ export type Database = {
           is_used?: boolean
           max_attempts?: number
           type?: string
+        }
+        Relationships: []
+      }
+      platform_user_data: {
+        Row: {
+          client_id: string
+          client_timestamp: string | null
+          created_at: string
+          data: Json
+          id: string
+          last_sync_mode: string | null
+          sync_count: number
+          synced_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          client_id: string
+          client_timestamp?: string | null
+          created_at?: string
+          data?: Json
+          id?: string
+          last_sync_mode?: string | null
+          sync_count?: number
+          synced_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          client_id?: string
+          client_timestamp?: string | null
+          created_at?: string
+          data?: Json
+          id?: string
+          last_sync_mode?: string | null
+          sync_count?: number
+          synced_at?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }

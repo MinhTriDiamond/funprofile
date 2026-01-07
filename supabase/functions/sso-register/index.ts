@@ -158,7 +158,7 @@ serve(async (req) => {
       userId = newUser.user.id;
       isNewUser = true;
 
-      // Update profile with additional data
+      // Update profile with additional data (không lưu platform_data vào đây nữa)
       const updateData: Record<string, unknown> = {
         registered_from: client.platform_name || client_id,
         law_of_light_accepted: true, // SSO users accept via platform
@@ -169,19 +169,24 @@ serve(async (req) => {
         updateData.phone = phone;
       }
 
-      if (platform_data) {
-        updateData.cross_platform_data = {
-          [client_id]: {
-            data: platform_data,
-            synced_at: new Date().toISOString()
-          }
-        };
-      }
-
       await supabase
         .from('profiles')
         .update(updateData)
         .eq('id', userId);
+
+      // Lưu platform_data vào bảng platform_user_data riêng (tách biệt hoàn toàn)
+      if (platform_data) {
+        await supabase
+          .from('platform_user_data')
+          .insert({
+            user_id: userId,
+            client_id: client_id,
+            data: platform_data,
+            sync_count: 1,
+            last_sync_mode: 'initial',
+            synced_at: new Date().toISOString()
+          });
+      }
 
       // Create custodial wallet for new user
       try {

@@ -74,6 +74,7 @@ serve(async (req) => {
 
     const profile = tokenData.profiles;
     const scopes = tokenData.scope || [];
+    const clientId = tokenData.client_id;
 
     // Build response based on scopes
     const userInfo: Record<string, unknown> = {
@@ -131,9 +132,31 @@ serve(async (req) => {
       }
     }
 
+    // Platform data scope - CHỈ trả về data của platform đang call (tách biệt hoàn toàn)
+    if (scopes.includes('platform_data')) {
+      const { data: platformData } = await supabase
+        .from('platform_user_data')
+        .select('data, synced_at, sync_count, last_sync_mode, client_timestamp')
+        .eq('user_id', profile.id)
+        .eq('client_id', clientId) // Chỉ lấy data của platform này, không thể đọc data platform khác
+        .single();
+      
+      if (platformData) {
+        userInfo.platform_data = {
+          data: platformData.data,
+          synced_at: platformData.synced_at,
+          sync_count: platformData.sync_count,
+          last_sync_mode: platformData.last_sync_mode,
+          client_timestamp: platformData.client_timestamp
+        };
+      } else {
+        userInfo.platform_data = null;
+      }
+    }
+
     // Token metadata
     userInfo.token_info = {
-      client_id: tokenData.client_id,
+      client_id: clientId,
       scope: scopes,
       expires_at: tokenData.access_token_expires_at
     };

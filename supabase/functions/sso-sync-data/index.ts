@@ -46,29 +46,30 @@ function checkRateLimit(key: string, map: Map<string, { count: number; resetAt: 
 }
 
 // Get object depth
-function getObjectDepth(obj: any, currentDepth = 0): number {
+function getObjectDepth(obj: unknown, currentDepth = 0): number {
   if (typeof obj !== 'object' || obj === null || Array.isArray(obj)) {
     return currentDepth;
   }
   
   let maxDepth = currentDepth;
-  for (const key in obj) {
-    const depth = getObjectDepth(obj[key], currentDepth + 1);
+  for (const key in obj as Record<string, unknown>) {
+    const depth = getObjectDepth((obj as Record<string, unknown>)[key], currentDepth + 1);
     if (depth > maxDepth) maxDepth = depth;
   }
   return maxDepth;
 }
 
 // Check for reserved keys
-function hasReservedKeys(obj: any, reservedKeys: string[]): string | null {
+function hasReservedKeys(obj: unknown, reservedKeys: string[]): string | null {
   if (typeof obj !== 'object' || obj === null) return null;
   
-  for (const key in obj) {
+  for (const key in obj as Record<string, unknown>) {
     if (reservedKeys.includes(key.toLowerCase())) {
       return key;
     }
-    if (typeof obj[key] === 'object' && !Array.isArray(obj[key])) {
-      const found = hasReservedKeys(obj[key], reservedKeys);
+    const value = (obj as Record<string, unknown>)[key];
+    if (typeof value === 'object' && !Array.isArray(value)) {
+      const found = hasReservedKeys(value, reservedKeys);
       if (found) return found;
     }
   }
@@ -76,7 +77,7 @@ function hasReservedKeys(obj: any, reservedKeys: string[]): string | null {
 }
 
 // Deep merge function
-function deepMerge(target: any, source: any, mode: string): any {
+function deepMerge(target: Record<string, unknown>, source: Record<string, unknown>, mode: string): Record<string, unknown> {
   if (mode === 'replace') {
     return source;
   }
@@ -88,7 +89,7 @@ function deepMerge(target: any, source: any, mode: string): any {
         result[key] = source[key];
       } else if (Array.isArray(source[key]) && Array.isArray(result[key])) {
         // Append unique items to arrays
-        result[key] = [...new Set([...result[key], ...source[key]])];
+        result[key] = [...new Set([...(result[key] as unknown[]), ...(source[key] as unknown[])])];
       }
       // Skip existing non-array keys in append mode
     }
@@ -99,11 +100,11 @@ function deepMerge(target: any, source: any, mode: string): any {
   const result = { ...target };
   for (const key in source) {
     if (typeof source[key] === 'object' && source[key] !== null && !Array.isArray(source[key])) {
-      result[key] = deepMerge(result[key] || {}, source[key], mode);
+      result[key] = deepMerge((result[key] as Record<string, unknown>) || {}, source[key] as Record<string, unknown>, mode);
     } else if (Array.isArray(source[key])) {
       // Merge arrays, keep unique values
-      const existing = Array.isArray(result[key]) ? result[key] : [];
-      result[key] = [...new Set([...existing, ...source[key]])];
+      const existing = Array.isArray(result[key]) ? (result[key] as unknown[]) : [];
+      result[key] = [...new Set([...existing, ...(source[key] as unknown[])])];
     } else {
       result[key] = source[key];
     }
@@ -156,8 +157,7 @@ serve(async (req) => {
         profiles:user_id (
           id,
           username,
-          fun_id,
-          cross_platform_data
+          fun_id
         )
       `)
       .eq('access_token', accessToken)
@@ -293,36 +293,42 @@ serve(async (req) => {
       });
     }
 
-    // Get existing cross_platform_data
-    const existingData = profile?.cross_platform_data || {};
-    const existingClientData = existingData[clientId]?.data || {};
+    // Get existing platform data from platform_user_data table
+    const { data: existingPlatformData } = await supabase
+      .from('platform_user_data')
+      .select('data, sync_count')
+      .eq('user_id', userId)
+      .eq('client_id', clientId)
+      .single();
+
+    const existingData = (existingPlatformData?.data as Record<string, unknown>) || {};
+    const previousSyncCount = existingPlatformData?.sync_count || 0;
 
     // Apply merge logic
-    const mergedData = deepMerge(existingClientData, data, sync_mode);
+    const mergedData = deepMerge(existingData, data as Record<string, unknown>, sync_mode);
 
-    // Build updated cross_platform_data
+    // Build sync metadata
     const syncedAt = new Date().toISOString();
-    const syncCount = (existingData[clientId]?.sync_count || 0) + 1;
-    
-    const updatedCrossPlatformData = {
-      ...existingData,
-      [clientId]: {
+    const syncCount = previousSyncCount + 1;
+
+    // Upsert into platform_user_data table (instead of profiles.cross_platform_data)
+    const { error: upsertError } = await supabase
+      .from('platform_user_data')
+      .upsert({
+        user_id: userId,
+        client_id: clientId,
         data: mergedData,
-        synced_at: syncedAt,
         sync_count: syncCount,
         last_sync_mode: sync_mode,
-        client_timestamp: client_timestamp || null
-      }
-    };
+        client_timestamp: client_timestamp || null,
+        synced_at: syncedAt,
+        updated_at: syncedAt
+      }, {
+        onConflict: 'user_id,client_id'
+      });
 
-    // Update database
-    const { error: updateError } = await supabase
-      .from('profiles')
-      .update({ cross_platform_data: updatedCrossPlatformData })
-      .eq('id', userId);
-
-    if (updateError) {
-      console.error('Database update error:', updateError);
+    if (upsertError) {
+      console.error('Database upsert error:', upsertError);
       return new Response(JSON.stringify({
         error: 'server_error',
         error_description: 'Failed to sync data'
@@ -341,7 +347,7 @@ serve(async (req) => {
     // Determine categories updated
     const categoriesUpdated = categories || Object.keys(data);
 
-    console.log(`[sso-sync-data] Synced data for user ${userId} from ${clientId}. Mode: ${sync_mode}, Size: ${dataSize} bytes`);
+    console.log(`[sso-sync-data] Synced data for user ${userId} from ${clientId}. Mode: ${sync_mode}, Size: ${dataSize} bytes, Count: ${syncCount}`);
 
     return new Response(JSON.stringify({
       success: true,
@@ -370,4 +376,3 @@ serve(async (req) => {
     });
   }
 });
-
