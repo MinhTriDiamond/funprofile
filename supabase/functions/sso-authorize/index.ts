@@ -105,11 +105,16 @@ serve(async (req) => {
     // Get user from Authorization header (user must be logged in)
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      // Redirect to login page with return URL
-      const loginUrl = `${client.redirect_uris[0].split('/callback')[0]}/login?return_to=${encodeURIComponent(req.url)}`;
+      // Redirect to FUN PROFILE login page (not client's login page!)
+      // After login, user will be redirected back to complete the authorize flow
+      const funProfileOrigin = Deno.env.get("FUN_PROFILE_ORIGIN") || "https://fun-profile.lovable.app";
+      const loginUrl = new URL('/auth', funProfileOrigin);
+      loginUrl.searchParams.set('return_to', req.url);
+      loginUrl.searchParams.set('sso_flow', 'true');
+      
       return new Response(null, {
         status: 302,
-        headers: { ...corsHeaders, "Location": loginUrl }
+        headers: { ...corsHeaders, "Location": loginUrl.toString() }
       });
     }
 

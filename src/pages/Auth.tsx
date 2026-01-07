@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { UnifiedAuthForm } from '@/components/auth/UnifiedAuthForm';
 import { useLanguage } from '@/i18n/LanguageContext';
@@ -7,7 +7,12 @@ import LanguageSwitcher from '@/components/layout/LanguageSwitcher';
 
 const Auth = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { t } = useLanguage();
+  
+  // SSO flow parameters
+  const returnTo = searchParams.get('return_to');
+  const ssoFlow = searchParams.get('sso_flow') === 'true';
 
   useEffect(() => {
     // Check if Law of Light was accepted before allowing access to auth
@@ -20,20 +25,64 @@ const Auth = () => {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        navigate('/');
+        // If SSO flow, redirect back to authorize endpoint with token
+        if (ssoFlow && returnTo) {
+          handleSSORedirect(session.access_token);
+        } else {
+          navigate('/');
+        }
       }
     };
     checkUser();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      // Don't auto-redirect here - let UnifiedAuthForm handle new user setup
       if (event === 'SIGNED_IN' && session) {
-        // Handled by UnifiedAuthForm callbacks
+        // If SSO flow, redirect back to authorize endpoint with token
+        if (ssoFlow && returnTo) {
+          handleSSORedirect(session.access_token);
+        }
+        // Otherwise handled by UnifiedAuthForm callbacks
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, [navigate, ssoFlow, returnTo]);
+
+  // Handle SSO redirect back to authorize endpoint
+  const handleSSORedirect = (accessToken: string) => {
+    if (!returnTo) return;
+    
+    try {
+      // Parse the return_to URL and add authorization
+      const authorizeUrl = new URL(returnTo);
+      
+      // Redirect to authorize endpoint - browser will make the request
+      // We need to make a fetch call with the token, then redirect
+      fetch(returnTo, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Accept': 'application/json'
+        }
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.redirect_uri) {
+            window.location.href = data.redirect_uri;
+          } else if (data.error) {
+            console.error('SSO authorize error:', data);
+            navigate('/');
+          }
+        })
+        .catch(err => {
+          console.error('SSO redirect error:', err);
+          navigate('/');
+        });
+    } catch (err) {
+      console.error('Invalid return_to URL:', err);
+      navigate('/');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50/30 to-amber-50/20 flex items-center justify-center p-4 relative overflow-hidden">
