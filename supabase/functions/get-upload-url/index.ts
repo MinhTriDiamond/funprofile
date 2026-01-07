@@ -7,7 +7,7 @@
  * - Cache-Control headers cho cache vĩnh viễn (vì filename có hash)
  */
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
