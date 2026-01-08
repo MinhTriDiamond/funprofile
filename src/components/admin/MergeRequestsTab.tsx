@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { Loader2, Check, X, RefreshCw, Users, ArrowRight } from 'lucide-react';
+import { Loader2, Check, X, RefreshCw, Users, ArrowRight, Send } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -49,6 +49,7 @@ export function MergeRequestsTab() {
   const [actionType, setActionType] = useState<'approve' | 'reject' | null>(null);
   const [adminNote, setAdminNote] = useState('');
   const [processing, setProcessing] = useState(false);
+  const [resending, setResending] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed' | 'rejected'>('pending');
 
   const fetchRequests = async () => {
@@ -126,6 +127,38 @@ export function MergeRequestsTab() {
     }
   };
 
+  const handleResendWebhook = async (requestId: string) => {
+    setResending(requestId);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('Vui lòng đăng nhập lại');
+        return;
+      }
+
+      const response = await supabase.functions.invoke('sso-resend-webhook', {
+        body: { request_id: requestId }
+      });
+
+      if (response.error) throw response.error;
+
+      const result = response.data;
+      if (result.webhook_sent || result.email_sent) {
+        toast.success(
+          `Đã gửi lại thành công! Webhook: ${result.webhook_sent ? '✓' : '✗'}, Email: ${result.email_sent ? '✓' : '✗'}`
+        );
+        fetchRequests();
+      } else {
+        toast.warning('Không gửi được webhook hoặc email');
+      }
+    } catch (error) {
+      console.error('Error resending webhook:', error);
+      toast.error('Không thể gửi lại webhook');
+    } finally {
+      setResending(null);
+    }
+  };
+
   const getMergeTypeBadge = (type: string) => {
     switch (type) {
       case 'both_exist':
@@ -151,6 +184,16 @@ export function MergeRequestsTab() {
         return <Badge className="bg-blue-500">Đã duyệt</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
+  const getWebhookBadge = (request: MergeRequest) => {
+    if (request.status !== 'completed') return null;
+    
+    if (request.webhook_sent) {
+      return <Badge variant="outline" className="text-green-600 border-green-600">✓ Đã gửi webhook</Badge>;
+    } else {
+      return <Badge variant="outline" className="text-amber-600 border-amber-600">⚠ Chưa gửi webhook</Badge>;
     }
   };
 
@@ -248,7 +291,12 @@ export function MergeRequestsTab() {
                     </div>
                   </TableCell>
                   <TableCell>{getMergeTypeBadge(request.merge_type)}</TableCell>
-                  <TableCell>{getStatusBadge(request.status)}</TableCell>
+                  <TableCell>
+                    <div className="flex flex-col gap-1">
+                      {getStatusBadge(request.status)}
+                      {getWebhookBadge(request)}
+                    </div>
+                  </TableCell>
                   <TableCell className="text-sm">
                     {new Date(request.created_at).toLocaleDateString('vi-VN', {
                       year: 'numeric',
@@ -284,16 +332,35 @@ export function MergeRequestsTab() {
                         </Button>
                       </div>
                     ) : (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          setSelectedRequest(request);
-                          setActionType(null);
-                        }}
-                      >
-                        Chi tiết
-                      </Button>
+                      <div className="flex gap-2">
+                        {request.status === 'completed' && !request.webhook_sent && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleResendWebhook(request.id)}
+                            disabled={resending === request.id}
+                          >
+                            {resending === request.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <>
+                                <Send className="h-4 w-4 mr-1" />
+                                Gửi lại
+                              </>
+                            )}
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setSelectedRequest(request);
+                            setActionType(null);
+                          }}
+                        >
+                          Chi tiết
+                        </Button>
+                      </div>
                     )}
                   </TableCell>
                 </TableRow>
