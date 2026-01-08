@@ -247,98 +247,164 @@ Deno.serve(async (req) => {
       
       if (resendApiKey) {
         const resend = new Resend(resendApiKey);
+        const displayName = mergeRequest.source_username || 'bạn';
         
         if (mergeRequest.merge_type === 'farm_only' && temporaryPassword) {
-          // Email cho farm_only user - vui vẻ, dễ thương với password
+          // Email cho farm_only user - chuyên nghiệp, tránh spam filters
+          const plainText = `Xin chào ${displayName}!
+
+Tài khoản FUN ID của bạn đã được tạo thành công.
+
+Email đăng nhập: ${mergeRequest.email}
+Mật khẩu tạm thời: ${temporaryPassword}
+
+Vui lòng đổi mật khẩu ngay để bảo vệ tài khoản của bạn tại: ${funProfileOrigin}/set-password
+
+Trân trọng,
+FUN Profile Team
+
+---
+FUN Profile - Một sản phẩm của FUN Ecosystem
+Email này được gửi tự động, vui lòng không trả lời.`;
+
           await resend.emails.send({
             from: 'FUN Profile <noreply@fun.rich>',
             to: [mergeRequest.email],
-            subject: '🎉 Chào mừng bạn đến với FUN Profile!',
+            subject: 'Tài khoản FUN ID của bạn đã sẵn sàng',
+            text: plainText,
+            headers: {
+              'X-Entity-Ref-ID': request_id
+            },
+            tags: [
+              { name: 'category', value: 'transactional' },
+              { name: 'type', value: 'welcome' }
+            ],
             html: `
-              <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 20px;">
-                <div style="background: white; border-radius: 16px; padding: 40px; text-align: center;">
-                  <div style="font-size: 60px; margin-bottom: 20px;">🥳✨</div>
-                  
-                  <h1 style="color: #333; font-size: 28px; margin-bottom: 10px;">
-                    Wowww! Xin chào ${mergeRequest.source_username || 'bạn'}!
-                  </h1>
-                  
-                  <p style="font-size: 18px; color: #666; line-height: 1.6; margin-bottom: 30px;">
-                    Bạn vừa được cấp tài khoản <strong style="color: #764ba2;">FUN ID</strong> rồi đó! 🎊
-                  </p>
-                  
-                  <div style="background: #f8f9ff; border-radius: 12px; padding: 25px; margin-bottom: 30px; text-align: left;">
-                    <p style="margin: 0 0 15px 0; font-size: 16px;">
-                      📧 <strong>Email đăng nhập:</strong><br/>
-                      <span style="color: #764ba2; font-size: 18px;">${mergeRequest.email}</span>
-                    </p>
-                    <p style="margin: 0 0 15px 0; font-size: 16px;">
-                      🔑 <strong>Mật khẩu tạm thời:</strong><br/>
-                      <span style="background: #764ba2; color: white; padding: 8px 16px; border-radius: 8px; font-family: monospace; font-size: 20px; letter-spacing: 2px;">${temporaryPassword}</span>
-                    </p>
-                    <p style="margin: 0; font-size: 14px; color: #e74c3c;">
-                      ⚠️ Đừng quên đổi mật khẩu ngay để bảo vệ tài khoản nhé!
-                    </p>
-                  </div>
-                  
-                  <a href="${funProfileOrigin}/set-password" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; padding: 16px 40px; border-radius: 30px; font-size: 18px; font-weight: bold; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);">
-                    🔐 Đổi Mật Khẩu Ngay
-                  </a>
-                  
-                  <p style="font-size: 16px; color: #888; margin-top: 30px; line-height: 1.6;">
-                    Chúc bạn có những trải nghiệm tuyệt vời! 🌈💖
-                  </p>
-                  
-                  <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;" />
-                  
-                  <p style="color: #aaa; font-size: 14px; margin: 0;">
-                    Với tất cả yêu thương,<br/>
-                    <strong style="color: #764ba2;">FUN Profile Team</strong> 💖
-                  </p>
-                </div>
-              </div>
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
+  <span style="display: none; max-height: 0; overflow: hidden;">Đăng nhập ngay để khám phá FUN Profile</span>
+  
+  <div style="background: white; border-radius: 12px; padding: 40px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+    <div style="text-align: center; padding-bottom: 24px; border-bottom: 1px solid #eee;">
+      <h1 style="color: #4F46E5; margin: 0; font-size: 24px; font-weight: 600;">FUN Profile</h1>
+    </div>
+    
+    <div style="padding: 32px 0;">
+      <h2 style="color: #333; margin: 0 0 16px 0; font-size: 20px;">Chào mừng ${displayName}!</h2>
+      
+      <p style="margin: 0 0 24px 0; color: #555;">Tài khoản FUN ID của bạn đã được tạo thành công.</p>
+      
+      <div style="background: #f8f9fa; border-radius: 8px; padding: 20px; margin: 0 0 24px 0;">
+        <p style="margin: 0 0 12px 0; font-size: 14px; color: #666;"><strong>Email đăng nhập:</strong></p>
+        <p style="margin: 0 0 16px 0; font-size: 16px; color: #4F46E5;">${mergeRequest.email}</p>
+        <p style="margin: 0 0 8px 0; font-size: 14px; color: #666;"><strong>Mật khẩu tạm thời:</strong></p>
+        <p style="margin: 0; background: #e5e7eb; padding: 8px 12px; border-radius: 6px; font-family: monospace; font-size: 18px; letter-spacing: 1px; display: inline-block;">${temporaryPassword}</p>
+      </div>
+      
+      <p style="margin: 0 0 8px 0; color: #dc2626; font-size: 14px; font-weight: 500;">
+        Vui lòng đổi mật khẩu ngay để bảo vệ tài khoản của bạn.
+      </p>
+      
+      <div style="text-align: center; margin: 32px 0;">
+        <a href="${funProfileOrigin}/set-password" 
+           style="background: #4F46E5; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 500; font-size: 16px;">
+          Đổi mật khẩu
+        </a>
+      </div>
+      
+      <p style="margin: 0; color: #888; font-size: 14px;">
+        Nếu bạn không yêu cầu tạo tài khoản này, vui lòng bỏ qua email này.
+      </p>
+    </div>
+    
+    <div style="border-top: 1px solid #eee; padding-top: 24px; text-align: center;">
+      <p style="margin: 0 0 8px 0; color: #888; font-size: 12px;">FUN Profile - Một sản phẩm của FUN Ecosystem</p>
+      <p style="margin: 0; color: #aaa; font-size: 12px;">Email này được gửi tự động, vui lòng không trả lời.</p>
+    </div>
+  </div>
+</body>
+</html>
             `
           });
         } else {
           // Email cho both_exist user
+          const plainText = `Xin chào ${displayName}!
+
+Tài khoản ${mergeRequest.source_platform} của bạn đã được liên kết thành công với FUN Profile.
+
+Bạn có thể đăng nhập vào FUN Profile bằng email: ${mergeRequest.email}
+
+Truy cập FUN Profile tại: ${funProfileOrigin}
+${admin_note ? `\nGhi chú từ Admin: ${admin_note}` : ''}
+
+Trân trọng,
+FUN Profile Team
+
+---
+FUN Profile - Một sản phẩm của FUN Ecosystem
+Email này được gửi tự động, vui lòng không trả lời.`;
+
           await resend.emails.send({
             from: 'FUN Profile <noreply@fun.rich>',
             to: [mergeRequest.email],
-            subject: '✅ Tài khoản đã được liên kết thành công với FUN Profile!',
+            subject: 'Tài khoản của bạn đã được liên kết thành công',
+            text: plainText,
+            headers: {
+              'X-Entity-Ref-ID': request_id
+            },
+            tags: [
+              { name: 'category', value: 'transactional' },
+              { name: 'type', value: 'account_linked' }
+            ],
             html: `
-              <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); border-radius: 20px;">
-                <div style="background: white; border-radius: 16px; padding: 40px; text-align: center;">
-                  <div style="font-size: 60px; margin-bottom: 20px;">🎉✨</div>
-                  
-                  <h1 style="color: #333; font-size: 28px; margin-bottom: 10px;">
-                    Xin chào ${mergeRequest.source_username || 'bạn'}!
-                  </h1>
-                  
-                  <p style="font-size: 18px; color: #666; line-height: 1.6; margin-bottom: 30px;">
-                    Tài khoản <strong style="color: #11998e;">${mergeRequest.source_platform}</strong> của bạn đã được liên kết thành công với FUN Profile!
-                  </p>
-                  
-                  <div style="background: #f0fff4; border-radius: 12px; padding: 25px; margin-bottom: 30px;">
-                    <p style="margin: 0; font-size: 16px; color: #333;">
-                      📧 Bạn có thể đăng nhập vào FUN Profile bằng email:<br/>
-                      <strong style="color: #11998e; font-size: 18px;">${mergeRequest.email}</strong>
-                    </p>
-                  </div>
-                  
-                  <a href="${funProfileOrigin}" style="display: inline-block; background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white; text-decoration: none; padding: 16px 40px; border-radius: 30px; font-size: 18px; font-weight: bold; box-shadow: 0 4px 15px rgba(17, 153, 142, 0.4);">
-                    🚀 Truy cập FUN Profile
-                  </a>
-                  
-                  ${admin_note ? `<p style="font-size: 14px; color: #888; margin-top: 20px;"><em>💬 Ghi chú từ Admin: ${admin_note}</em></p>` : ''}
-                  
-                  <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;" />
-                  
-                  <p style="color: #aaa; font-size: 14px; margin: 0;">
-                    Trân trọng,<br/>
-                    <strong style="color: #11998e;">FUN Profile Team</strong> 💚
-                  </p>
-                </div>
-              </div>
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
+  <span style="display: none; max-height: 0; overflow: hidden;">Tài khoản của bạn đã được liên kết với FUN Profile</span>
+  
+  <div style="background: white; border-radius: 12px; padding: 40px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+    <div style="text-align: center; padding-bottom: 24px; border-bottom: 1px solid #eee;">
+      <h1 style="color: #10B981; margin: 0; font-size: 24px; font-weight: 600;">FUN Profile</h1>
+    </div>
+    
+    <div style="padding: 32px 0;">
+      <h2 style="color: #333; margin: 0 0 16px 0; font-size: 20px;">Chào mừng ${displayName}!</h2>
+      
+      <p style="margin: 0 0 24px 0; color: #555;">
+        Tài khoản <strong>${mergeRequest.source_platform}</strong> của bạn đã được liên kết thành công với FUN Profile.
+      </p>
+      
+      <div style="background: #f0fdf4; border-radius: 8px; padding: 20px; margin: 0 0 24px 0;">
+        <p style="margin: 0 0 8px 0; font-size: 14px; color: #666;"><strong>Email đăng nhập:</strong></p>
+        <p style="margin: 0; font-size: 16px; color: #10B981;">${mergeRequest.email}</p>
+      </div>
+      
+      ${admin_note ? `<p style="margin: 0 0 24px 0; color: #666; font-size: 14px; font-style: italic;">Ghi chú từ Admin: ${admin_note}</p>` : ''}
+      
+      <div style="text-align: center; margin: 32px 0;">
+        <a href="${funProfileOrigin}" 
+           style="background: #10B981; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 500; font-size: 16px;">
+          Truy cập FUN Profile
+        </a>
+      </div>
+    </div>
+    
+    <div style="border-top: 1px solid #eee; padding-top: 24px; text-align: center;">
+      <p style="margin: 0 0 8px 0; color: #888; font-size: 12px;">FUN Profile - Một sản phẩm của FUN Ecosystem</p>
+      <p style="margin: 0; color: #aaa; font-size: 12px;">Email này được gửi tự động, vui lòng không trả lời.</p>
+    </div>
+  </div>
+</body>
+</html>
             `
           });
         }
