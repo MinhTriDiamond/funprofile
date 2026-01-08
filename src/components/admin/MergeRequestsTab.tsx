@@ -54,19 +54,27 @@ export function MergeRequestsTab() {
   const fetchRequests = async () => {
     setLoading(true);
     try {
-      let query = supabase
-        .from('account_merge_requests')
-        .select('*')
-        .order('created_at', { ascending: false });
+      // Use edge function to bypass RLS and ensure admin access
+      const { data: response, error } = await supabase.functions.invoke('admin-list-merge-requests', {
+        body: { status: filter }
+      });
 
-      if (filter !== 'all') {
-        query = query.eq('status', filter);
+      if (error) {
+        console.error('Edge function error:', error);
+        throw error;
       }
 
-      const { data, error } = await query;
+      if (response?.error) {
+        console.error('API error:', response.error);
+        if (response.error === 'Forbidden - Admin access required') {
+          toast.error('Bạn không có quyền admin');
+        } else {
+          toast.error('Không thể tải danh sách yêu cầu merge');
+        }
+        return;
+      }
 
-      if (error) throw error;
-      setRequests(data || []);
+      setRequests(response?.data || []);
     } catch (error) {
       console.error('Error fetching merge requests:', error);
       toast.error('Không thể tải danh sách yêu cầu merge');

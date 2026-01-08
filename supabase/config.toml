@@ -93,5 +93,8 @@ verify_jwt = false
 [functions.sso-merge-approve]
 verify_jwt = true
 
+[functions.admin-list-merge-requests]
+verify_jwt = false
+
 [functions.sso-set-password]
 verify_jwt = false
