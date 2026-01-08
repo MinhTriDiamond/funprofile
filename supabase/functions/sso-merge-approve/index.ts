@@ -136,16 +136,22 @@ Deno.serve(async (req) => {
     let newUserCreated = false;
 
     // Case: farm_only - Create new user in Fun Profile
+    let temporaryPassword = '';
     if (mergeRequest.merge_type === 'farm_only') {
       console.log('[sso-merge-approve] Creating new user for farm_only merge');
 
-      // Generate a random password (user will use SSO, not password)
-      const randomPassword = crypto.randomUUID() + crypto.randomUUID();
+      // Generate a simple 6-character password (excluding confusing chars like O, 0, I, l, 1)
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+      const randomValues = new Uint8Array(6);
+      crypto.getRandomValues(randomValues);
+      temporaryPassword = Array.from(randomValues)
+        .map(v => chars[v % chars.length])
+        .join('');
 
       // Create user in Supabase Auth
       const { data: newUser, error: createUserError } = await supabase.auth.admin.createUser({
         email: mergeRequest.email,
-        password: randomPassword,
+        password: temporaryPassword,
         email_confirm: true,
         user_metadata: {
           username: mergeRequest.source_username || mergeRequest.email.split('@')[0],
@@ -237,27 +243,105 @@ Deno.serve(async (req) => {
     // Send notification email to user
     try {
       const resendApiKey = Deno.env.get('RESEND_API_KEY');
+      const funProfileOrigin = Deno.env.get('FUN_PROFILE_ORIGIN') || 'https://fun-profile.lovable.app';
+      
       if (resendApiKey) {
         const resend = new Resend(resendApiKey);
-        await resend.emails.send({
-          from: 'FUN Profile <noreply@fun.rich>',
-          to: [mergeRequest.email],
-          subject: 'Tài khoản đã được liên kết thành công với FUN Profile!',
-          html: `
-            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-              <h1 style="color: #333;">Xin chào ${mergeRequest.source_username || 'bạn'}!</h1>
-              <p style="font-size: 16px; line-height: 1.5;">
-                Tài khoản <strong>${mergeRequest.source_platform}</strong> của bạn đã được liên kết thành công với FUN Profile.
-              </p>
-              <p style="font-size: 16px; line-height: 1.5;">
-                Bạn có thể đăng nhập vào FUN Profile bằng email: <strong>${mergeRequest.email}</strong>
-              </p>
-              ${admin_note ? `<p style="font-size: 14px; color: #666;"><em>Ghi chú từ Admin: ${admin_note}</em></p>` : ''}
-              <hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;" />
-              <p style="color: #666; font-size: 14px;">Trân trọng,<br/>FUN Profile Team</p>
-            </div>
-          `
-        });
+        
+        if (mergeRequest.merge_type === 'farm_only' && temporaryPassword) {
+          // Email cho farm_only user - vui vẻ, dễ thương với password
+          await resend.emails.send({
+            from: 'FUN Profile <noreply@fun.rich>',
+            to: [mergeRequest.email],
+            subject: '🎉 Chào mừng bạn đến với FUN Profile!',
+            html: `
+              <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 20px;">
+                <div style="background: white; border-radius: 16px; padding: 40px; text-align: center;">
+                  <div style="font-size: 60px; margin-bottom: 20px;">🥳✨</div>
+                  
+                  <h1 style="color: #333; font-size: 28px; margin-bottom: 10px;">
+                    Wowww! Xin chào ${mergeRequest.source_username || 'bạn'}!
+                  </h1>
+                  
+                  <p style="font-size: 18px; color: #666; line-height: 1.6; margin-bottom: 30px;">
+                    Bạn vừa được cấp tài khoản <strong style="color: #764ba2;">FUN ID</strong> rồi đó! 🎊
+                  </p>
+                  
+                  <div style="background: #f8f9ff; border-radius: 12px; padding: 25px; margin-bottom: 30px; text-align: left;">
+                    <p style="margin: 0 0 15px 0; font-size: 16px;">
+                      📧 <strong>Email đăng nhập:</strong><br/>
+                      <span style="color: #764ba2; font-size: 18px;">${mergeRequest.email}</span>
+                    </p>
+                    <p style="margin: 0 0 15px 0; font-size: 16px;">
+                      🔑 <strong>Mật khẩu tạm thời:</strong><br/>
+                      <span style="background: #764ba2; color: white; padding: 8px 16px; border-radius: 8px; font-family: monospace; font-size: 20px; letter-spacing: 2px;">${temporaryPassword}</span>
+                    </p>
+                    <p style="margin: 0; font-size: 14px; color: #e74c3c;">
+                      ⚠️ Đừng quên đổi mật khẩu ngay để bảo vệ tài khoản nhé!
+                    </p>
+                  </div>
+                  
+                  <a href="${funProfileOrigin}/set-password" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; padding: 16px 40px; border-radius: 30px; font-size: 18px; font-weight: bold; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);">
+                    🔐 Đổi Mật Khẩu Ngay
+                  </a>
+                  
+                  <p style="font-size: 16px; color: #888; margin-top: 30px; line-height: 1.6;">
+                    Chúc bạn có những trải nghiệm tuyệt vời! 🌈💖
+                  </p>
+                  
+                  <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;" />
+                  
+                  <p style="color: #aaa; font-size: 14px; margin: 0;">
+                    Với tất cả yêu thương,<br/>
+                    <strong style="color: #764ba2;">FUN Profile Team</strong> 💖
+                  </p>
+                </div>
+              </div>
+            `
+          });
+        } else {
+          // Email cho both_exist user
+          await resend.emails.send({
+            from: 'FUN Profile <noreply@fun.rich>',
+            to: [mergeRequest.email],
+            subject: '✅ Tài khoản đã được liên kết thành công với FUN Profile!',
+            html: `
+              <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); border-radius: 20px;">
+                <div style="background: white; border-radius: 16px; padding: 40px; text-align: center;">
+                  <div style="font-size: 60px; margin-bottom: 20px;">🎉✨</div>
+                  
+                  <h1 style="color: #333; font-size: 28px; margin-bottom: 10px;">
+                    Xin chào ${mergeRequest.source_username || 'bạn'}!
+                  </h1>
+                  
+                  <p style="font-size: 18px; color: #666; line-height: 1.6; margin-bottom: 30px;">
+                    Tài khoản <strong style="color: #11998e;">${mergeRequest.source_platform}</strong> của bạn đã được liên kết thành công với FUN Profile!
+                  </p>
+                  
+                  <div style="background: #f0fff4; border-radius: 12px; padding: 25px; margin-bottom: 30px;">
+                    <p style="margin: 0; font-size: 16px; color: #333;">
+                      📧 Bạn có thể đăng nhập vào FUN Profile bằng email:<br/>
+                      <strong style="color: #11998e; font-size: 18px;">${mergeRequest.email}</strong>
+                    </p>
+                  </div>
+                  
+                  <a href="${funProfileOrigin}" style="display: inline-block; background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white; text-decoration: none; padding: 16px 40px; border-radius: 30px; font-size: 18px; font-weight: bold; box-shadow: 0 4px 15px rgba(17, 153, 142, 0.4);">
+                    🚀 Truy cập FUN Profile
+                  </a>
+                  
+                  ${admin_note ? `<p style="font-size: 14px; color: #888; margin-top: 20px;"><em>💬 Ghi chú từ Admin: ${admin_note}</em></p>` : ''}
+                  
+                  <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;" />
+                  
+                  <p style="color: #aaa; font-size: 14px; margin: 0;">
+                    Trân trọng,<br/>
+                    <strong style="color: #11998e;">FUN Profile Team</strong> 💚
+                  </p>
+                </div>
+              </div>
+            `
+          });
+        }
         console.log('[sso-merge-approve] Notification email sent to:', mergeRequest.email);
       }
     } catch (emailError) {
