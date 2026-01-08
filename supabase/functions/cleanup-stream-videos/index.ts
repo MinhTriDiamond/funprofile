@@ -25,7 +25,7 @@ interface StreamVideo {
   meta?: { userId?: string };
 }
 
-serve(async (req) => {
+Deno.serve(async (req: Request) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { 

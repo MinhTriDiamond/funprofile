@@ -15,7 +15,7 @@ const corsHeaders = {
  * 
  * Returns imagedelivery.net URL for the uploaded image
  */
-serve(async (req) => {
+Deno.serve(async (req: Request) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });

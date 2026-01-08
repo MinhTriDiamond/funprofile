@@ -17,7 +17,7 @@ function generateToken(length = 64): string {
   return result;
 }
 
-serve(async (req) => {
+Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -30,7 +30,7 @@ serve(async (req) => {
     if (contentType.includes('application/x-www-form-urlencoded')) {
       const formData = await req.formData();
       body = {};
-      formData.forEach((value, key) => {
+      formData.forEach((value: FormDataEntryValue, key: string) => {
         if (typeof value === 'string') {
           body[key] = value;
         }

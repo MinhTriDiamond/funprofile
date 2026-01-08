@@ -1,5 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { verifyMessage } from "https://esm.sh/ethers@6.13.4";
+import { verifyMessage } from "https://cdn.jsdelivr.net/npm/ethers@6.13.4/+esm";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -54,8 +54,8 @@ Deno.serve(async (req) => {
 
     // 4. Verify signature using ethers.js
     try {
-      const recoveredAddress = verifyMessage(message, signature);
-      if (recoveredAddress.toLowerCase() !== normalizedAddress) {
+      const recoveredAddress = verifyMessage(message, signature) as string;
+      if (!recoveredAddress || recoveredAddress.toLowerCase() !== normalizedAddress) {
         console.warn('[CONNECT-WALLET] Signature verification failed');
         return new Response(
           JSON.stringify({ success: false, error: 'Invalid signature' }),

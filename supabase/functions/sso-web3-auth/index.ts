@@ -1,5 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { verifyMessage as ethersVerifyMessage } from "https://esm.sh/ethers@6.13.4";
+import { verifyMessage as ethersVerifyMessage } from "https://cdn.jsdelivr.net/npm/ethers@6.13.4/+esm";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -44,16 +44,17 @@ function verifySignature(message: string, signature: string, expectedAddress: st
     }
 
     // Use ethers.js to recover the address from signature
-    const recoveredAddress = ethersVerifyMessage(message, signature);
+    const recoveredAddress = ethersVerifyMessage(message, signature) as string | undefined;
     
     // Compare addresses (case-insensitive)
+    if (!recoveredAddress) return false;
     return recoveredAddress.toLowerCase() === expectedAddress.toLowerCase();
   } catch {
     return false;
   }
 }
 
-serve(async (req) => {
+Deno.serve(async (req: Request) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });

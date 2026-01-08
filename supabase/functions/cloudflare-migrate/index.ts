@@ -29,7 +29,7 @@ interface MigrationStats {
  * - migrate-images: Migrate images from R2 to Cloudflare Images
  * - migrate-videos: Migrate videos from R2 to Cloudflare Stream
  */
-serve(async (req) => {
+Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }

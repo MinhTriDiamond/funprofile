@@ -25,7 +25,7 @@ function safeBase64Encode(str: string): string {
   return btoa(binary);
 }
 
-serve(async (req) => {
+Deno.serve(async (req: Request) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });

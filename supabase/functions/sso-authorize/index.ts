@@ -29,7 +29,7 @@ function verifyCodeChallenge(verifier: string, challenge: string, method: string
   return true; // Will be properly validated in sso-token
 }
 
-serve(async (req) => {
+Deno.serve(async (req: Request) => {
   // Handle CORS
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
