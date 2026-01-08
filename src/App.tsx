@@ -25,6 +25,7 @@ const Notifications = lazy(() => import("./pages/Notifications"));
 const MediaTestSandbox = lazy(() => import("./pages/MediaTestSandbox"));
 const DocsRouter = lazy(() => import("./pages/DocsRouter"));
 const ConnectedApps = lazy(() => import("./pages/ConnectedApps"));
+const SetPassword = lazy(() => import("./pages/SetPassword"));
 
 // Optimized QueryClient with caching
 const queryClient = new QueryClient({
@@ -61,6 +62,7 @@ function App() {
                 <Routes>
                   <Route path="/begin" element={<Navigate to="/law-of-light" replace />} />
                   <Route path="/auth" element={<Auth />} />
+                  <Route path="/set-password" element={<SetPassword />} />
                   <Route path="/law-of-light" element={<LawOfLight />} />
                   <Route path="/" element={<Feed />} />
                   <Route path="/friends" element={<Friends />} />

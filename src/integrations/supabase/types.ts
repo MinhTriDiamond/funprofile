@@ -17,11 +17,13 @@ export type Database = {
       account_merge_requests: {
         Row: {
           admin_note: string | null
+          auto_provisioned: boolean | null
           created_at: string
           email: string
           id: string
           merge_type: string
           platform_data: Json | null
+          provision_status: string | null
           reviewed_at: string | null
           reviewed_by: string | null
           source_platform: string
@@ -36,11 +38,13 @@ export type Database = {
         }
         Insert: {
           admin_note?: string | null
+          auto_provisioned?: boolean | null
           created_at?: string
           email: string
           id?: string
           merge_type: string
           platform_data?: Json | null
+          provision_status?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           source_platform: string
@@ -55,11 +59,13 @@ export type Database = {
         }
         Update: {
           admin_note?: string | null
+          auto_provisioned?: boolean | null
           created_at?: string
           email?: string
           id?: string
           merge_type?: string
           platform_data?: Json | null
+          provision_status?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           source_platform?: string
@@ -532,6 +538,59 @@ export type Database = {
           type?: string
         }
         Relationships: []
+      }
+      pending_provisions: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          email: string
+          fun_profile_id: string | null
+          id: string
+          merge_request_id: string | null
+          password_token_hash: string
+          platform_data: Json | null
+          platform_id: string
+          platform_user_id: string | null
+          status: string | null
+          token_expires_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          email: string
+          fun_profile_id?: string | null
+          id?: string
+          merge_request_id?: string | null
+          password_token_hash: string
+          platform_data?: Json | null
+          platform_id: string
+          platform_user_id?: string | null
+          status?: string | null
+          token_expires_at: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          email?: string
+          fun_profile_id?: string | null
+          id?: string
+          merge_request_id?: string | null
+          password_token_hash?: string
+          platform_data?: Json | null
+          platform_id?: string
+          platform_user_id?: string | null
+          status?: string | null
+          token_expires_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pending_provisions_merge_request_id_fkey"
+            columns: ["merge_request_id"]
+            isOneToOne: false
+            referencedRelation: "account_merge_requests"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       platform_user_data: {
         Row: {
