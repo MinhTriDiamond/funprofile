@@ -177,8 +177,8 @@ Deno.serve(async (req: Request) => {
         user_metadata: {
           username: username,
           wallet_address: normalizedAddress,
-          registered_from: 'web3',
-          oauth_provider: 'metamask'
+          registered_from: 'FUN Profile',
+          oauth_provider: 'Wallet'
         }
       });
 
@@ -199,9 +199,9 @@ Deno.serve(async (req: Request) => {
           external_wallet_address: normalizedAddress,
           wallet_address: normalizedAddress, // backward compatible
           default_wallet_type: 'external',
-          registered_from: 'web3',
-          oauth_provider: 'metamask',
-          last_login_platform: 'web3'
+          registered_from: 'FUN Profile',
+          oauth_provider: 'Wallet',
+          last_login_platform: 'FUN Profile'
         })
         .eq('id', userId);
     }
@@ -209,7 +209,7 @@ Deno.serve(async (req: Request) => {
     // Update last login
     await supabase
       .from('profiles')
-      .update({ last_login_platform: 'web3' })
+      .update({ last_login_platform: 'FUN Profile' })
       .eq('id', userId);
 
     // If we don't have userEmail, fetch it

@@ -208,6 +208,53 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Update cross_platform_data in profiles
+    console.log('[sso-merge-approve] Updating cross_platform_data');
+    
+    // Get current cross_platform_data
+    const { data: currentProfile } = await supabase
+      .from('profiles')
+      .select('cross_platform_data')
+      .eq('id', funProfileUserId)
+      .single();
+
+    const currentCrossData = (currentProfile?.cross_platform_data as Record<string, unknown>) || { connected_platforms: [] };
+    const connectedPlatforms = Array.isArray(currentCrossData.connected_platforms) 
+      ? currentCrossData.connected_platforms 
+      : [];
+
+    // Add new platform connection
+    const newPlatformConnection = {
+      platform: mergeRequest.source_platform,
+      connected_at: new Date().toISOString(),
+      source_user_id: mergeRequest.source_user_id,
+      source_username: mergeRequest.source_username,
+      merge_type: mergeRequest.merge_type
+    };
+
+    // Check if platform already exists
+    const existingIndex = connectedPlatforms.findIndex(
+      (p: { platform: string }) => p.platform === mergeRequest.source_platform
+    );
+    
+    if (existingIndex >= 0) {
+      connectedPlatforms[existingIndex] = newPlatformConnection;
+    } else {
+      connectedPlatforms.push(newPlatformConnection);
+    }
+
+    const updatedCrossData = {
+      ...currentCrossData,
+      connected_platforms: connectedPlatforms,
+      last_sync: new Date().toISOString(),
+      total_platforms: connectedPlatforms.length + 1 // +1 for FUN Profile itself
+    };
+
+    await supabase
+      .from('profiles')
+      .update({ cross_platform_data: updatedCrossData })
+      .eq('id', funProfileUserId);
+
     // Update merge request status
     const { error: updateError } = await supabase
       .from('account_merge_requests')
@@ -234,7 +281,8 @@ Deno.serve(async (req) => {
         request_id,
         merge_type: mergeRequest.merge_type,
         source_platform: mergeRequest.source_platform,
-        new_user_created: newUserCreated
+        new_user_created: newUserCreated,
+        cross_platform_data_updated: true
       }
     });
 

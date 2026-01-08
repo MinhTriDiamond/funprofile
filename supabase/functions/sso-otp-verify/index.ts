@@ -144,7 +144,8 @@ Deno.serve(async (req: Request) => {
         email_confirm: true,
         user_metadata: {
           username: username,
-          registered_from: 'otp',
+          registered_from: 'FUN Profile',
+          oauth_provider: 'Email OTP',
           identifier: identifier.toLowerCase()
         }
       });
@@ -175,11 +176,16 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Update last login platform
+    // Update last login platform and oauth_provider for new users
     if (user) {
+      const updateData: Record<string, string> = { last_login_platform: 'FUN Profile' };
+      if (isNewUser) {
+        updateData.oauth_provider = 'Email OTP';
+        updateData.registered_from = 'FUN Profile';
+      }
       await supabase
         .from('profiles')
-        .update({ last_login_platform: 'otp_email' })
+        .update(updateData)
         .eq('id', user.id);
     }
 
