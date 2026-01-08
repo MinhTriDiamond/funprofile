@@ -234,21 +234,46 @@ Deno.serve(async (req) => {
 
     console.log('[sso-merge-request] Client verified:', oauthClient.client_name);
 
-    // Check if email exists in Fun Profile (auth.users)
-    const { data: existingUsers, error: userCheckError } = await supabase.auth.admin.listUsers();
-    
-    if (userCheckError) {
-      console.error('[sso-merge-request] Error checking users:', userCheckError);
-      return new Response(
-        JSON.stringify({ error: 'Failed to check existing users' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     const emailLower = email.toLowerCase();
-    const existingUser = existingUsers.users.find(
-      (u) => u.email?.toLowerCase() === emailLower
-    );
+
+    // Check if email exists by querying profiles table joined with auth
+    // First, try to find user in auth.users by listing and filtering
+    let existingUser = null;
+    let page = 1;
+    const perPage = 1000;
+    let foundUser = false;
+
+    // Paginate through all users to find the email
+    while (!foundUser) {
+      const { data: userListData, error: userListError } = await supabase.auth.admin.listUsers({
+        page: page,
+        perPage: perPage,
+      });
+
+      if (userListError) {
+        console.error('[sso-merge-request] Error checking users:', userListError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to check existing users' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Search for the email in current page
+      const foundInPage = userListData.users.find(
+        (u) => u.email?.toLowerCase() === emailLower
+      );
+
+      if (foundInPage) {
+        existingUser = foundInPage;
+        foundUser = true;
+        console.log('[sso-merge-request] Found existing user:', existingUser.id);
+      } else if (userListData.users.length < perPage) {
+        // No more users to check
+        break;
+      } else {
+        page++;
+      }
+    }
 
     // Check for existing pending request
     const { data: existingRequest } = await supabase
