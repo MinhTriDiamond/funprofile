@@ -1,21 +1,10 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { generateAccessToken, generateRefreshToken } from "../_shared/jwt.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
-
-// Generate secure random token
-function generateToken(length = 64): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let result = '';
-  const array = new Uint8Array(length);
-  crypto.getRandomValues(array);
-  for (let i = 0; i < length; i++) {
-    result += chars[array[i] % chars.length];
-  }
-  return result;
-}
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -111,9 +100,31 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Generate new tokens (token rotation for security)
-    const new_access_token = generateToken(64);
-    const new_refresh_token = generateToken(96);
+    // Get user profile for JWT claims
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('id, username, fun_id, custodial_wallet_address')
+      .eq('id', tokenData.user_id)
+      .single();
+
+    if (!profile) {
+      return new Response(
+        JSON.stringify({ error: 'invalid_grant', error_description: 'User profile not found' }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Generate new JWT access token with fresh claims
+    const new_access_token = await generateAccessToken({
+      sub: tokenData.user_id,
+      fun_id: profile.fun_id || '',
+      username: profile.username || '',
+      custodial_wallet: profile.custodial_wallet_address || null,
+      scope: tokenData.scope
+    });
+
+    // Generate new opaque refresh token (token rotation for security)
+    const new_refresh_token = generateRefreshToken(96);
     const access_token_expires_in = 3600; // 1 hour
     const refresh_token_expires_in = 30 * 24 * 3600; // 30 days
 
