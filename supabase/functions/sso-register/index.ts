@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { generateAccessToken, generateRefreshToken } from "../_shared/jwt.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -25,18 +26,6 @@ function checkRateLimit(key: string): boolean {
   
   record.count++;
   return true;
-}
-
-// Generate secure random token
-function generateToken(length = 64): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let result = '';
-  const array = new Uint8Array(length);
-  crypto.getRandomValues(array);
-  for (let i = 0; i < length; i++) {
-    result += chars[array[i] % chars.length];
-  }
-  return result;
 }
 
 // Generate unique username
@@ -157,10 +146,10 @@ Deno.serve(async (req: Request) => {
       userId = newUser.user.id;
       isNewUser = true;
 
-      // Update profile with additional data (không lưu platform_data vào đây nữa)
+      // Update profile with additional data
       const updateData: Record<string, unknown> = {
         registered_from: client.platform_name || client_id,
-        law_of_light_accepted: true, // SSO users accept via platform
+        law_of_light_accepted: true,
         law_of_light_accepted_at: new Date().toISOString()
       };
 
@@ -173,7 +162,7 @@ Deno.serve(async (req: Request) => {
         .update(updateData)
         .eq('id', userId);
 
-      // Lưu platform_data vào bảng platform_user_data riêng (tách biệt hoàn toàn)
+      // Store platform_data in separate table
       if (platform_data) {
         await supabase
           .from('platform_user_data')
@@ -209,9 +198,24 @@ Deno.serve(async (req: Request) => {
     // Parse scopes
     const scopes = scope.split(' ').filter((s: string) => s.length > 0);
 
-    // Generate tokens
-    const access_token = generateToken(64);
-    const refresh_token = generateToken(96);
+    // Get user profile for JWT claims
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('id, username, full_name, avatar_url, fun_id, custodial_wallet_address, wallet_address')
+      .eq('id', userId)
+      .single();
+
+    // Generate JWT access token
+    const access_token = await generateAccessToken({
+      sub: userId,
+      fun_id: profile?.fun_id || '',
+      username: profile?.username || '',
+      custodial_wallet: profile?.custodial_wallet_address || null,
+      scope: scopes
+    });
+
+    // Generate opaque refresh token
+    const refresh_token = generateRefreshToken(96);
     const access_token_expires_in = 3600; // 1 hour
     const refresh_token_expires_in = 30 * 24 * 3600; // 30 days
 
@@ -240,13 +244,6 @@ Deno.serve(async (req: Request) => {
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
-    // Get user profile
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('id, username, full_name, avatar_url, fun_id, wallet_address')
-      .eq('id', userId)
-      .single();
 
     // Get Soul NFT
     const { data: soulNft } = await supabase

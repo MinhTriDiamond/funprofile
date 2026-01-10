@@ -1,21 +1,10 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { generateAccessToken, generateRefreshToken } from "../_shared/jwt.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
-
-// Generate secure random token
-function generateToken(length = 64): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let result = '';
-  const array = new Uint8Array(length);
-  crypto.getRandomValues(array);
-  for (let i = 0; i < length; i++) {
-    result += chars[array[i] % chars.length];
-  }
-  return result;
-}
 
 // Verify PKCE code challenge
 async function verifyPKCE(verifier: string, challenge: string, method: string): Promise<boolean> {
@@ -176,9 +165,24 @@ Deno.serve(async (req: Request) => {
       .update({ is_used: true })
       .eq('id', authCode.id);
 
-    // Generate tokens
-    const access_token = generateToken(64);
-    const refresh_token = generateToken(96);
+    // Get user profile with wallet info for JWT claims
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('id, username, full_name, avatar_url, fun_id, custodial_wallet_address')
+      .eq('id', authCode.user_id)
+      .single();
+
+    // Generate JWT access token with claims
+    const access_token = await generateAccessToken({
+      sub: authCode.user_id,
+      fun_id: profile?.fun_id || '',
+      username: profile?.username || '',
+      custodial_wallet: profile?.custodial_wallet_address || null,
+      scope: authCode.scope
+    });
+
+    // Generate opaque refresh token (stored in DB for security)
+    const refresh_token = generateRefreshToken(96);
     const access_token_expires_in = 3600; // 1 hour
     const refresh_token_expires_in = 30 * 24 * 3600; // 30 days
 
@@ -188,7 +192,7 @@ Deno.serve(async (req: Request) => {
       .upsert({
         user_id: authCode.user_id,
         client_id,
-        access_token,
+        access_token, // Store JWT for reference/revocation
         refresh_token,
         scope: authCode.scope,
         access_token_expires_at: new Date(Date.now() + access_token_expires_in * 1000).toISOString(),
@@ -207,20 +211,13 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Get user profile for response
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('id, username, full_name, avatar_url, fun_id')
-      .eq('id', authCode.user_id)
-      .single();
-
     // Update last login platform
     await supabase
       .from('profiles')
       .update({ last_login_platform: client.platform_name || client_id })
       .eq('id', authCode.user_id);
 
-    // Return OAuth 2.0 token response
+    // Return OAuth 2.0 token response with JWT
     return new Response(
       JSON.stringify({
         access_token,

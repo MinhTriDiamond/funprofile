@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { verifyAccessToken } from "../_shared/jwt.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -22,7 +23,143 @@ Deno.serve(async (req: Request) => {
 
     const accessToken = authHeader.replace('Bearer ', '');
 
-    // Initialize Supabase client
+    // First, try to verify as JWT (fast local verification)
+    const jwtPayload = await verifyAccessToken(accessToken);
+    
+    if (jwtPayload) {
+      // JWT is valid - build response from claims
+      console.log('[SSO-VERIFY] JWT verified locally for user:', jwtPayload.sub);
+      
+      const scopes = jwtPayload.scope || [];
+      
+      // Build basic response from JWT claims (no DB needed for basic info)
+      const userInfo: Record<string, unknown> = {
+        sub: jwtPayload.sub,
+        fun_id: jwtPayload.fun_id,
+        username: jwtPayload.username,
+        custodial_wallet: jwtPayload.custodial_wallet,
+        active: true,
+        token_type: 'jwt'
+      };
+
+      // If scopes require additional data, query DB
+      const needsDbQuery = scopes.some(s => 
+        ['profile', 'email', 'wallet', 'soul', 'rewards', 'platform_data'].includes(s)
+      );
+
+      if (needsDbQuery) {
+        // Initialize Supabase client for additional data
+        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+        const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+        // Get full profile and token info
+        const { data: tokenData } = await supabase
+          .from('cross_platform_tokens')
+          .select('client_id, last_used_at, access_token_expires_at')
+          .eq('user_id', jwtPayload.sub)
+          .eq('is_revoked', false)
+          .order('last_used_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        const clientId = tokenData?.client_id;
+
+        // Update last_used_at if token found in DB
+        if (tokenData) {
+          await supabase
+            .from('cross_platform_tokens')
+            .update({ last_used_at: new Date().toISOString() })
+            .eq('user_id', jwtPayload.sub)
+            .eq('client_id', clientId);
+        }
+
+        // Get profile data based on scopes
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select(`
+            id, username, full_name, avatar_url, fun_id, bio, created_at,
+            wallet_address, external_wallet_address, custodial_wallet_address
+          `)
+          .eq('id', jwtPayload.sub)
+          .single();
+
+        if (profile) {
+          // Profile scope - extended user info
+          if (scopes.includes('profile')) {
+            userInfo.full_name = profile.full_name;
+            userInfo.avatar_url = profile.avatar_url;
+            userInfo.bio = profile.bio;
+            userInfo.created_at = profile.created_at;
+          }
+
+          // Wallet scope
+          if (scopes.includes('wallet')) {
+            userInfo.wallet_address = profile.wallet_address;
+            userInfo.external_wallet_address = profile.external_wallet_address;
+            userInfo.custodial_wallet_address = profile.custodial_wallet_address;
+          }
+
+          // Soul scope - NFT/spiritual data
+          if (scopes.includes('soul')) {
+            const { data: soulNft } = await supabase
+              .from('soul_nfts')
+              .select('soul_element, soul_level, token_id, minted_at, is_minted')
+              .eq('user_id', profile.id)
+              .single();
+            
+            if (soulNft) {
+              userInfo.soul_nft = soulNft;
+            }
+          }
+
+          // Rewards scope
+          if (scopes.includes('rewards')) {
+            const { data: rewardData } = await supabase
+              .from('profiles')
+              .select('pending_reward, approved_reward, reward_status, total_rewards')
+              .eq('id', profile.id)
+              .single();
+            
+            if (rewardData) {
+              userInfo.rewards = rewardData;
+            }
+          }
+
+          // Platform data scope - only return data for the calling platform
+          if (scopes.includes('platform_data') && clientId) {
+            const { data: platformData } = await supabase
+              .from('platform_user_data')
+              .select('data, synced_at, sync_count, last_sync_mode, client_timestamp')
+              .eq('user_id', profile.id)
+              .eq('client_id', clientId)
+              .single();
+            
+            if (platformData) {
+              userInfo.platform_data = platformData;
+            } else {
+              userInfo.platform_data = null;
+            }
+          }
+        }
+
+        // Token metadata
+        userInfo.token_info = {
+          client_id: clientId,
+          scope: scopes,
+          expires_at: tokenData?.access_token_expires_at
+        };
+      }
+
+      return new Response(
+        JSON.stringify(userInfo),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Fallback: Check if it's an old opaque token in DB (backward compatibility)
+    console.log('[SSO-VERIFY] JWT verification failed, trying DB lookup for opaque token');
+    
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -38,11 +175,10 @@ Deno.serve(async (req: Request) => {
           full_name,
           avatar_url,
           fun_id,
-          email,
+          bio,
           wallet_address,
           external_wallet_address,
-          bio,
-          soul_element,
+          custodial_wallet_address,
           created_at
         )
       `)
@@ -75,14 +211,14 @@ Deno.serve(async (req: Request) => {
     const scopes = tokenData.scope || [];
     const clientId = tokenData.client_id;
 
-    // Build response based on scopes
+    // Build response based on scopes (same logic as above)
     const userInfo: Record<string, unknown> = {
-      sub: profile.id, // Standard OIDC claim
+      sub: profile.id,
       fun_id: profile.fun_id,
-      active: true
+      active: true,
+      token_type: 'opaque'
     };
 
-    // Profile scope - basic user info
     if (scopes.includes('profile')) {
       userInfo.username = profile.username;
       userInfo.full_name = profile.full_name;
@@ -91,25 +227,16 @@ Deno.serve(async (req: Request) => {
       userInfo.created_at = profile.created_at;
     }
 
-    // Email scope
-    if (scopes.includes('email')) {
-      userInfo.email = profile.email;
-    }
-
-    // Wallet scope
     if (scopes.includes('wallet')) {
       userInfo.wallet_address = profile.wallet_address;
       userInfo.external_wallet_address = profile.external_wallet_address;
+      userInfo.custodial_wallet_address = profile.custodial_wallet_address;
     }
 
-    // Soul scope - NFT/spiritual data
     if (scopes.includes('soul')) {
-      userInfo.soul_element = profile.soul_element;
-      
-      // Get Soul NFT details
       const { data: soulNft } = await supabase
         .from('soul_nfts')
-        .select('soul_element, soul_level, nft_token_id, minted_at')
+        .select('soul_element, soul_level, token_id, minted_at, is_minted')
         .eq('user_id', profile.id)
         .single();
       
@@ -118,11 +245,10 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Rewards scope
     if (scopes.includes('rewards')) {
       const { data: rewardData } = await supabase
         .from('profiles')
-        .select('pending_reward, approved_reward, claimed_reward, reward_status')
+        .select('pending_reward, approved_reward, reward_status, total_rewards')
         .eq('id', profile.id)
         .single();
       
@@ -131,29 +257,21 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Platform data scope - CHỈ trả về data của platform đang call (tách biệt hoàn toàn)
     if (scopes.includes('platform_data')) {
       const { data: platformData } = await supabase
         .from('platform_user_data')
         .select('data, synced_at, sync_count, last_sync_mode, client_timestamp')
         .eq('user_id', profile.id)
-        .eq('client_id', clientId) // Chỉ lấy data của platform này, không thể đọc data platform khác
+        .eq('client_id', clientId)
         .single();
       
       if (platformData) {
-        userInfo.platform_data = {
-          data: platformData.data,
-          synced_at: platformData.synced_at,
-          sync_count: platformData.sync_count,
-          last_sync_mode: platformData.last_sync_mode,
-          client_timestamp: platformData.client_timestamp
-        };
+        userInfo.platform_data = platformData;
       } else {
         userInfo.platform_data = null;
       }
     }
 
-    // Token metadata
     userInfo.token_info = {
       client_id: clientId,
       scope: scopes,
