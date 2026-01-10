@@ -323,6 +323,42 @@ export type Database = {
           },
         ]
       }
+      financial_transactions: {
+        Row: {
+          action: string
+          amount: number
+          client_id: string
+          created_at: string
+          currency: string
+          id: string
+          metadata: Json | null
+          transaction_id: string
+          user_id: string
+        }
+        Insert: {
+          action: string
+          amount: number
+          client_id: string
+          created_at?: string
+          currency?: string
+          id?: string
+          metadata?: Json | null
+          transaction_id: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          amount?: number
+          client_id?: string
+          created_at?: string
+          currency?: string
+          id?: string
+          metadata?: Json | null
+          transaction_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       friendships: {
         Row: {
           created_at: string
@@ -903,6 +939,45 @@ export type Database = {
           },
         ]
       }
+      reconciliation_logs: {
+        Row: {
+          auto_adjusted: boolean | null
+          discrepancies: Json | null
+          id: string
+          level: number
+          notes: string | null
+          run_at: string
+          run_by: string | null
+          status: string
+          total_checked: number | null
+          total_mismatched: number | null
+        }
+        Insert: {
+          auto_adjusted?: boolean | null
+          discrepancies?: Json | null
+          id?: string
+          level?: number
+          notes?: string | null
+          run_at?: string
+          run_by?: string | null
+          status?: string
+          total_checked?: number | null
+          total_mismatched?: number | null
+        }
+        Update: {
+          auto_adjusted?: boolean | null
+          discrepancies?: Json | null
+          id?: string
+          level?: number
+          notes?: string | null
+          run_at?: string
+          run_by?: string | null
+          status?: string
+          total_checked?: number | null
+          total_mismatched?: number | null
+        }
+        Relationships: []
+      }
       reward_adjustments: {
         Row: {
           admin_id: string
@@ -1234,9 +1309,17 @@ export type Database = {
         Returns: boolean
       }
       normalize_username: { Args: { input_text: string }; Returns: string }
+      recalculate_user_financial: {
+        Args: { p_client_id?: string; p_user_id: string }
+        Returns: Json
+      }
       reject_user_reward: {
         Args: { p_admin_id: string; p_note?: string; p_user_id: string }
         Returns: number
+      }
+      run_financial_reconciliation: {
+        Args: { p_admin_id?: string }
+        Returns: Json
       }
     }
     Enums: {

@@ -15,6 +15,23 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { 
   DollarSign, 
   TrendingUp, 
   TrendingDown, 
@@ -24,9 +41,17 @@ import {
   Users,
   BarChart3,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  History,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
+  Play,
+  Download,
+  Calculator
 } from "lucide-react";
 import { toast } from "sonner";
+import { format } from "date-fns";
 
 interface GrandTotals {
   totalDeposit: number;
@@ -74,6 +99,40 @@ interface OAuthClient {
   logo_url: string | null;
 }
 
+interface FinancialTransaction {
+  id: string;
+  user_id: string;
+  client_id: string;
+  action: string;
+  amount: number;
+  currency: string;
+  transaction_id: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  username?: string;
+  avatar_url?: string | null;
+}
+
+interface ReconciliationLog {
+  id: string;
+  run_at: string;
+  status: string;
+  level: number;
+  discrepancies: Array<{
+    user_id: string;
+    client_id: string;
+    stored: number;
+    calculated: number;
+    diff: number;
+    diff_percent: number;
+    level: number;
+  }>;
+  total_checked: number;
+  total_mismatched: number;
+  auto_adjusted: boolean;
+  notes: string | null;
+}
+
 const formatNumber = (value: number): string => {
   if (value >= 1_000_000_000) {
     return (value / 1_000_000_000).toFixed(2) + 'B';
@@ -89,19 +148,74 @@ const formatFullNumber = (value: number): string => {
   return value.toLocaleString('vi-VN');
 };
 
+const getActionColor = (action: string): string => {
+  switch (action) {
+    case 'DEPOSIT':
+    case 'RECEIVE_MONEY':
+    case 'WIN':
+    case 'CLAIM_REWARD':
+    case 'ADJUSTMENT_ADD':
+      return 'text-green-600';
+    case 'WITHDRAW':
+    case 'SEND_MONEY':
+    case 'LOSS':
+    case 'ADJUSTMENT_SUB':
+      return 'text-red-600';
+    case 'BET':
+      return 'text-purple-600';
+    default:
+      return 'text-muted-foreground';
+  }
+};
+
+const getLevelBadge = (level: number) => {
+  switch (level) {
+    case 1:
+      return <Badge variant="secondary" className="bg-green-100 text-green-700">Level 1 - Auto</Badge>;
+    case 2:
+      return <Badge variant="secondary" className="bg-yellow-100 text-yellow-700">Level 2 - Review</Badge>;
+    case 3:
+      return <Badge variant="destructive">Level 3 - Critical</Badge>;
+    default:
+      return <Badge variant="outline">Unknown</Badge>;
+  }
+};
+
+const getStatusIcon = (status: string) => {
+  switch (status) {
+    case 'ok':
+      return <CheckCircle className="w-4 h-4 text-green-600" />;
+    case 'minor_adjustment':
+      return <CheckCircle className="w-4 h-4 text-blue-600" />;
+    case 'mismatch':
+      return <AlertTriangle className="w-4 h-4 text-yellow-600" />;
+    case 'critical':
+      return <XCircle className="w-4 h-4 text-red-600" />;
+    default:
+      return null;
+  }
+};
+
 const FinancialTab = () => {
   const [loading, setLoading] = useState(true);
   const [grandTotals, setGrandTotals] = useState<GrandTotals | null>(null);
   const [userFinancials, setUserFinancials] = useState<UserFinancial[]>([]);
   const [platformData, setPlatformData] = useState<PlatformData[]>([]);
   const [oauthClients, setOauthClients] = useState<OAuthClient[]>([]);
+  const [transactions, setTransactions] = useState<FinancialTransaction[]>([]);
+  const [reconciliationLogs, setReconciliationLogs] = useState<ReconciliationLog[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedClient, setSelectedClient] = useState<string>("all");
+  const [selectedAction, setSelectedAction] = useState<string>("all");
   const [sortConfig, setSortConfig] = useState<{key: string, direction: 'asc' | 'desc'}>({
     key: 'grand_total_bet',
     direction: 'desc'
   });
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
+  const [expandedRecon, setExpandedRecon] = useState<string | null>(null);
+  const [runningReconciliation, setRunningReconciliation] = useState(false);
+  const [recalculateDialogOpen, setRecalculateDialogOpen] = useState(false);
+  const [selectedUserForRecalc, setSelectedUserForRecalc] = useState<{userId: string, clientId: string, username: string} | null>(null);
 
   useEffect(() => {
     loadData();
@@ -114,7 +228,9 @@ const FinancialTab = () => {
         loadGrandTotals(),
         loadUserFinancials(),
         loadPlatformData(),
-        loadOAuthClients()
+        loadOAuthClients(),
+        loadTransactions(),
+        loadReconciliationLogs()
       ]);
     } catch (error) {
       console.error("Error loading financial data:", error);
@@ -172,7 +288,6 @@ const FinancialTab = () => {
 
     if (error) throw error;
 
-    // Enrich with user info
     if (data && data.length > 0) {
       const userIds = [...new Set(data.map(d => d.user_id))];
       const { data: profiles } = await supabase
@@ -204,6 +319,59 @@ const FinancialTab = () => {
     setOauthClients(data || []);
   };
 
+  const loadTransactions = async () => {
+    const { data, error } = await supabase
+      .from('financial_transactions')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(500);
+
+    if (error) {
+      console.error("Error loading transactions:", error);
+      return;
+    }
+
+    if (data && data.length > 0) {
+      const userIds = [...new Set(data.map(d => d.user_id))];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, username, avatar_url')
+        .in('id', userIds);
+
+      const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
+      
+      const enrichedData = data.map(d => ({
+        ...d,
+        username: profileMap.get(d.user_id)?.username || 'Unknown',
+        avatar_url: profileMap.get(d.user_id)?.avatar_url,
+        metadata: (d.metadata || {}) as Record<string, unknown>
+      }));
+
+      setTransactions(enrichedData);
+    } else {
+      setTransactions([]);
+    }
+  };
+
+  const loadReconciliationLogs = async () => {
+    const { data, error } = await supabase
+      .from('reconciliation_logs')
+      .select('*')
+      .order('run_at', { ascending: false })
+      .limit(50);
+
+    if (error) {
+      console.error("Error loading reconciliation logs:", error);
+      return;
+    }
+
+    const logs = (data || []).map(d => ({
+      ...d,
+      discrepancies: (d.discrepancies || []) as ReconciliationLog['discrepancies']
+    }));
+    setReconciliationLogs(logs);
+  };
+
   const handleSort = (key: string) => {
     setSortConfig(prev => ({
       key,
@@ -223,6 +391,11 @@ const FinancialTab = () => {
     .filter(d => selectedClient === 'all' || d.client_id === selectedClient)
     .filter(d => d.username?.toLowerCase().includes(searchTerm.toLowerCase()));
 
+  const filteredTransactions = transactions
+    .filter(t => selectedClient === 'all' || t.client_id === selectedClient)
+    .filter(t => selectedAction === 'all' || t.action === selectedAction)
+    .filter(t => t.username?.toLowerCase().includes(searchTerm.toLowerCase()) || t.transaction_id.includes(searchTerm));
+
   const getClientName = (clientId: string) => {
     const client = oauthClients.find(c => c.client_id === clientId);
     return client?.platform_name || client?.client_name || clientId;
@@ -230,6 +403,68 @@ const FinancialTab = () => {
 
   const getUserPlatformBreakdown = (userId: string) => {
     return platformData.filter(d => d.user_id === userId);
+  };
+
+  const runReconciliation = async () => {
+    setRunningReconciliation(true);
+    try {
+      const { data, error } = await supabase.rpc('run_financial_reconciliation');
+      
+      if (error) throw error;
+      
+      toast.success("Đối soát hoàn tất!");
+      await loadReconciliationLogs();
+      await loadData();
+    } catch (error) {
+      console.error("Error running reconciliation:", error);
+      toast.error("Lỗi khi chạy đối soát");
+    } finally {
+      setRunningReconciliation(false);
+    }
+  };
+
+  const recalculateUserBalance = async () => {
+    if (!selectedUserForRecalc) return;
+    
+    try {
+      const { data, error } = await supabase.rpc('recalculate_user_financial', {
+        p_user_id: selectedUserForRecalc.userId,
+        p_client_id: selectedUserForRecalc.clientId === 'all' ? null : selectedUserForRecalc.clientId
+      });
+      
+      if (error) throw error;
+      
+      toast.success(`Đã tính lại số dư cho ${selectedUserForRecalc.username}`);
+      await loadData();
+    } catch (error) {
+      console.error("Error recalculating balance:", error);
+      toast.error("Lỗi khi tính lại số dư");
+    } finally {
+      setRecalculateDialogOpen(false);
+      setSelectedUserForRecalc(null);
+    }
+  };
+
+  const exportTransactionsCSV = () => {
+    const headers = ['Time', 'User', 'Platform', 'Action', 'Amount', 'Currency', 'Transaction ID'];
+    const rows = filteredTransactions.map(t => [
+      t.created_at,
+      t.username || '',
+      getClientName(t.client_id),
+      t.action,
+      t.amount.toString(),
+      t.currency,
+      t.transaction_id
+    ]);
+    
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `financial-transactions-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   if (loading) {
@@ -353,6 +588,14 @@ const FinancialTab = () => {
               <BarChart3 className="w-4 h-4" />
               Per Platform
             </TabsTrigger>
+            <TabsTrigger value="transactions" className="gap-2">
+              <History className="w-4 h-4" />
+              Transactions
+            </TabsTrigger>
+            <TabsTrigger value="reconciliation" className="gap-2">
+              <Calculator className="w-4 h-4" />
+              Reconciliation
+            </TabsTrigger>
           </TabsList>
 
           <div className="flex items-center gap-2">
@@ -416,7 +659,7 @@ const FinancialTab = () => {
                       >
                         Profit {sortConfig.key === 'grand_total_profit' && (sortConfig.direction === 'desc' ? '↓' : '↑')}
                       </TableHead>
-                      <TableHead>Details</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -458,17 +701,30 @@ const FinancialTab = () => {
                               {user.grand_total_profit >= 0 ? '+' : ''}{formatNumber(user.grand_total_profit)}
                             </TableCell>
                             <TableCell>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setExpandedUser(expandedUser === user.id ? null : user.id)}
-                              >
-                                {expandedUser === user.id ? (
-                                  <ChevronUp className="w-4 h-4" />
-                                ) : (
-                                  <ChevronDown className="w-4 h-4" />
-                                )}
-                              </Button>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setExpandedUser(expandedUser === user.id ? null : user.id)}
+                                >
+                                  {expandedUser === user.id ? (
+                                    <ChevronUp className="w-4 h-4" />
+                                  ) : (
+                                    <ChevronDown className="w-4 h-4" />
+                                  )}
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  title="Recalculate from transactions"
+                                  onClick={() => {
+                                    setSelectedUserForRecalc({ userId: user.id, clientId: 'all', username: user.username });
+                                    setRecalculateDialogOpen(true);
+                                  }}
+                                >
+                                  <Calculator className="w-4 h-4" />
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
                           {expandedUser === user.id && (
@@ -482,11 +738,25 @@ const FinancialTab = () => {
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                                       {getUserPlatformBreakdown(user.id).map((pd) => (
                                         <Card key={pd.id} className="p-3">
-                                          <div className="flex items-center gap-2 mb-2">
-                                            <Badge variant="secondary">{getClientName(pd.client_id)}</Badge>
-                                            <span className="text-xs text-muted-foreground">
-                                              {pd.sync_count} syncs
-                                            </span>
+                                          <div className="flex items-center justify-between mb-2">
+                                            <div className="flex items-center gap-2">
+                                              <Badge variant="secondary">{getClientName(pd.client_id)}</Badge>
+                                              <span className="text-xs text-muted-foreground">
+                                                {pd.sync_count} syncs
+                                              </span>
+                                            </div>
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="h-6 w-6 p-0"
+                                              title="Recalculate this platform"
+                                              onClick={() => {
+                                                setSelectedUserForRecalc({ userId: user.id, clientId: pd.client_id, username: user.username });
+                                                setRecalculateDialogOpen(true);
+                                              }}
+                                            >
+                                              <Calculator className="w-3 h-3" />
+                                            </Button>
                                           </div>
                                           <div className="grid grid-cols-3 gap-2 text-xs">
                                             <div>
@@ -655,7 +925,282 @@ const FinancialTab = () => {
             </Card>
           </div>
         </TabsContent>
+
+        {/* Transactions Tab */}
+        <TabsContent value="transactions">
+          <div className="space-y-4">
+            {/* Filters */}
+            <div className="flex flex-wrap items-center gap-3">
+              <Select value={selectedClient} onValueChange={setSelectedClient}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Platform" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Platforms</SelectItem>
+                  {oauthClients.map((client) => (
+                    <SelectItem key={client.client_id} value={client.client_id}>
+                      {client.platform_name || client.client_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={selectedAction} onValueChange={setSelectedAction}>
+                <SelectTrigger className="w-[150px]">
+                  <SelectValue placeholder="Action" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Actions</SelectItem>
+                  <SelectItem value="DEPOSIT">Deposit</SelectItem>
+                  <SelectItem value="WITHDRAW">Withdraw</SelectItem>
+                  <SelectItem value="BET">Bet</SelectItem>
+                  <SelectItem value="WIN">Win</SelectItem>
+                  <SelectItem value="LOSS">Loss</SelectItem>
+                  <SelectItem value="CLAIM_REWARD">Claim Reward</SelectItem>
+                  <SelectItem value="SEND_MONEY">Send Money</SelectItem>
+                  <SelectItem value="RECEIVE_MONEY">Receive Money</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Button variant="outline" size="sm" onClick={exportTransactionsCSV}>
+                <Download className="w-4 h-4 mr-2" />
+                Export CSV
+              </Button>
+
+              <Badge variant="secondary" className="ml-auto">
+                {filteredTransactions.length} transactions
+              </Badge>
+            </div>
+
+            <Card>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[150px]">Time</TableHead>
+                        <TableHead className="w-[150px]">User</TableHead>
+                        <TableHead>Platform</TableHead>
+                        <TableHead>Action</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                        <TableHead>Currency</TableHead>
+                        <TableHead className="w-[200px]">Transaction ID</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredTransactions.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                            Chưa có giao dịch
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        filteredTransactions.map((tx) => (
+                          <TableRow key={tx.id} className="hover:bg-muted/50">
+                            <TableCell className="text-sm text-muted-foreground">
+                              {format(new Date(tx.created_at), 'dd/MM HH:mm:ss')}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <Avatar className="w-6 h-6">
+                                  <AvatarImage src={tx.avatar_url || undefined} />
+                                  <AvatarFallback className="text-xs">{tx.username?.[0]?.toUpperCase()}</AvatarFallback>
+                                </Avatar>
+                                <span className="text-sm">{tx.username}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="text-xs">{getClientName(tx.client_id)}</Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="secondary" className={getActionColor(tx.action)}>
+                                {tx.action}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className={`text-right font-medium ${getActionColor(tx.action)}`}>
+                              {formatNumber(tx.amount)}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">{tx.currency}</TableCell>
+                            <TableCell className="font-mono text-xs text-muted-foreground truncate max-w-[200px]" title={tx.transaction_id}>
+                              {tx.transaction_id}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* Reconciliation Tab */}
+        <TabsContent value="reconciliation">
+          <div className="space-y-4">
+            {/* Actions */}
+            <div className="flex items-center gap-3">
+              <Button 
+                onClick={runReconciliation} 
+                disabled={runningReconciliation}
+              >
+                {runningReconciliation ? (
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Play className="w-4 h-4 mr-2" />
+                )}
+                Run Reconciliation Now
+              </Button>
+              
+              {reconciliationLogs.length > 0 && reconciliationLogs[0].status === 'critical' && (
+                <div className="flex items-center gap-2 text-red-600 bg-red-50 px-3 py-2 rounded-md">
+                  <AlertTriangle className="w-4 h-4" />
+                  <span className="text-sm font-medium">Critical discrepancies detected!</span>
+                </div>
+              )}
+            </div>
+
+            {/* Recent Reconciliation Logs */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Reconciliation History</CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[180px]">Run Time</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Level</TableHead>
+                        <TableHead>Checked</TableHead>
+                        <TableHead>Mismatched</TableHead>
+                        <TableHead>Auto-adjusted</TableHead>
+                        <TableHead>Details</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {reconciliationLogs.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                            Chưa có lịch sử đối soát
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        reconciliationLogs.map((log) => (
+                          <>
+                            <TableRow key={log.id} className="hover:bg-muted/50">
+                              <TableCell className="text-sm">
+                                {format(new Date(log.run_at), 'dd/MM/yyyy HH:mm')}
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  {getStatusIcon(log.status)}
+                                  <span className="capitalize">{log.status.replace('_', ' ')}</span>
+                                </div>
+                              </TableCell>
+                              <TableCell>{getLevelBadge(log.level)}</TableCell>
+                              <TableCell>{log.total_checked}</TableCell>
+                              <TableCell className={log.total_mismatched > 0 ? 'text-yellow-600 font-medium' : ''}>
+                                {log.total_mismatched}
+                              </TableCell>
+                              <TableCell>
+                                {log.auto_adjusted ? (
+                                  <Badge variant="secondary" className="bg-blue-100 text-blue-700">Yes</Badge>
+                                ) : (
+                                  <span className="text-muted-foreground">-</span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {log.discrepancies && log.discrepancies.length > 0 && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setExpandedRecon(expandedRecon === log.id ? null : log.id)}
+                                  >
+                                    {expandedRecon === log.id ? (
+                                      <ChevronUp className="w-4 h-4" />
+                                    ) : (
+                                      <ChevronDown className="w-4 h-4" />
+                                    )}
+                                  </Button>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                            {expandedRecon === log.id && log.discrepancies && log.discrepancies.length > 0 && (
+                              <TableRow>
+                                <TableCell colSpan={7} className="bg-muted/30 p-4">
+                                  <div className="space-y-2">
+                                    <h4 className="font-semibold text-sm">Discrepancies</h4>
+                                    <div className="overflow-x-auto">
+                                      <Table>
+                                        <TableHeader>
+                                          <TableRow>
+                                            <TableHead>User ID</TableHead>
+                                            <TableHead>Platform</TableHead>
+                                            <TableHead className="text-right">Stored</TableHead>
+                                            <TableHead className="text-right">Calculated</TableHead>
+                                            <TableHead className="text-right">Diff</TableHead>
+                                            <TableHead className="text-right">Diff %</TableHead>
+                                            <TableHead>Level</TableHead>
+                                          </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                          {log.discrepancies.map((d, i) => (
+                                            <TableRow key={i}>
+                                              <TableCell className="font-mono text-xs">{d.user_id.slice(0, 8)}...</TableCell>
+                                              <TableCell>{getClientName(d.client_id)}</TableCell>
+                                              <TableCell className="text-right">{formatNumber(d.stored)}</TableCell>
+                                              <TableCell className="text-right">{formatNumber(d.calculated)}</TableCell>
+                                              <TableCell className={`text-right font-medium ${d.diff > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                                {d.diff > 0 ? '+' : ''}{formatNumber(d.diff)}
+                                              </TableCell>
+                                              <TableCell className="text-right">{d.diff_percent.toFixed(4)}%</TableCell>
+                                              <TableCell>{getLevelBadge(d.level)}</TableCell>
+                                            </TableRow>
+                                          ))}
+                                        </TableBody>
+                                      </Table>
+                                    </div>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            )}
+                          </>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
       </Tabs>
+
+      {/* Recalculate Confirmation Dialog */}
+      <AlertDialog open={recalculateDialogOpen} onOpenChange={setRecalculateDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Recalculate Balance from Transactions?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will recalculate the financial balance for <strong>{selectedUserForRecalc?.username}</strong>
+              {selectedUserForRecalc?.clientId !== 'all' && (
+                <> on platform <strong>{getClientName(selectedUserForRecalc?.clientId || '')}</strong></>
+              )}
+              {selectedUserForRecalc?.clientId === 'all' && <> across all platforms</>}.
+              <br /><br />
+              The balance will be computed from the transaction log (Source of Truth).
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={recalculateUserBalance}>
+              Recalculate
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

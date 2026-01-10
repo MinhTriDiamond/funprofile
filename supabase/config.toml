@@ -101,3 +101,6 @@ verify_jwt = false
 
 [functions.sso-resend-webhook]
 verify_jwt = false
+
+[functions.sso-sync-financial]
+verify_jwt = false
