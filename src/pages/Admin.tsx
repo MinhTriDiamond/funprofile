@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Shield, BarChart3, Gift, Users, Wallet, Trash2, Link2, LogOut, CloudUpload, GitMerge } from "lucide-react";
+import { Shield, BarChart3, Gift, Users, Wallet, Trash2, Link2, LogOut, CloudUpload, GitMerge, DollarSign } from "lucide-react";
 
 import OverviewTab from "@/components/admin/OverviewTab";
 import RewardApprovalTab from "@/components/admin/RewardApprovalTab";
@@ -14,6 +14,7 @@ import QuickDeleteTab from "@/components/admin/QuickDeleteTab";
 import BlockchainTab from "@/components/admin/BlockchainTab";
 import MediaMigrationTab from "@/components/admin/MediaMigrationTab";
 import { MergeRequestsTab } from "@/components/admin/MergeRequestsTab";
+import FinancialTab from "@/components/admin/FinancialTab";
 
 interface UserData {
   id: string;
@@ -153,10 +154,14 @@ const Admin = () => {
 
         {/* Main Tabs */}
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8 h-auto">
+          <TabsList className="grid w-full grid-cols-5 lg:grid-cols-9 h-auto">
             <TabsTrigger value="overview" className="gap-2 py-3">
               <BarChart3 className="w-4 h-4" />
               <span className="hidden sm:inline">📊 Tổng quan</span>
+            </TabsTrigger>
+            <TabsTrigger value="financial" className="gap-2 py-3">
+              <DollarSign className="w-4 h-4" />
+              <span className="hidden sm:inline">💰 Financial</span>
             </TabsTrigger>
             <TabsTrigger value="rewards" className="gap-2 py-3">
               <Gift className="w-4 h-4" />
@@ -190,6 +195,10 @@ const Admin = () => {
 
           <TabsContent value="overview">
             <OverviewTab stats={stats} />
+          </TabsContent>
+
+          <TabsContent value="financial">
+            <FinancialTab />
           </TabsContent>
 
           <TabsContent value="rewards">
