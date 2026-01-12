@@ -26,6 +26,7 @@ const MediaTestSandbox = lazy(() => import("./pages/MediaTestSandbox"));
 const DocsRouter = lazy(() => import("./pages/DocsRouter"));
 const ConnectedApps = lazy(() => import("./pages/ConnectedApps"));
 const SetPassword = lazy(() => import("./pages/SetPassword"));
+const Chat = lazy(() => import("./pages/Chat"));
 
 // Optimized QueryClient with caching
 const queryClient = new QueryClient({
@@ -79,6 +80,8 @@ function App() {
                   <Route path="/admin/edge-test" element={<AdminEdgeFunctionTest />} />
                   <Route path="/admin" element={<Admin />} />
                   <Route path="/notifications" element={<Notifications />} />
+                  <Route path="/chat" element={<Chat />} />
+                  <Route path="/chat/:conversationId" element={<Chat />} />
                   <Route path="/docs/*" element={<DocsRouter />} />
                   {/* Dynamic username route - must be AFTER static routes */}
                   <Route path="/:username" element={<Profile />} />
