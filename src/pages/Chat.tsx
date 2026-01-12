@@ -2,14 +2,24 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useConversations } from '@/hooks/useConversations';
+import { useGroupConversations } from '@/hooks/useGroupConversations';
+import { useChatNotifications } from '@/hooks/useChatNotifications';
 import { ConversationList } from '@/components/chat/ConversationList';
 import { MessageThread } from '@/components/chat/MessageThread';
 import { NewConversationDialog } from '@/components/chat/NewConversationDialog';
+import { CreateGroupDialog } from '@/components/chat/CreateGroupDialog';
+import { ChatSettingsDialog } from '@/components/chat/ChatSettingsDialog';
 import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { ArrowLeft, MessageSquarePlus } from 'lucide-react';
+import { ArrowLeft, MessageSquarePlus, Users, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 export default function Chat() {
   const { conversationId } = useParams<{ conversationId?: string }>();
@@ -18,6 +28,8 @@ export default function Chat() {
   const [userId, setUserId] = useState<string | null>(null);
   const [username, setUsername] = useState<string | null>(null);
   const [showNewConversation, setShowNewConversation] = useState(false);
+  const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -41,6 +53,10 @@ export default function Chat() {
   }, [navigate]);
 
   const { conversations, isLoading, createDirectConversation } = useConversations(userId);
+  const { createGroupConversation } = useGroupConversations(userId);
+
+  // Enable chat notifications
+  useChatNotifications(userId, conversationId || null);
 
   const handleSelectConversation = (id: string) => {
     navigate(`/chat/${id}`);
@@ -56,6 +72,14 @@ export default function Chat() {
       navigate(`/chat/${result.id}`);
     }
     setShowNewConversation(false);
+  };
+
+  const handleCreateGroup = async (name: string, memberIds: string[]) => {
+    const result = await createGroupConversation.mutateAsync({ name, memberIds });
+    if (result) {
+      navigate(`/chat/${result.id}`);
+    }
+    setShowCreateGroup(false);
   };
 
   // Mobile: Show only list or thread
@@ -83,13 +107,32 @@ export default function Chat() {
             <div className="h-full">
               <div className="flex items-center justify-between p-4 border-b">
                 <h1 className="text-xl font-bold">Tin nhắn</h1>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setShowNewConversation(true)}
-                >
-                  <MessageSquarePlus className="h-5 w-5" />
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setShowSettings(true)}
+                  >
+                    <Settings className="h-5 w-5" />
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <MessageSquarePlus className="h-5 w-5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => setShowNewConversation(true)}>
+                        <MessageSquarePlus className="h-4 w-4 mr-2" />
+                        Tin nhắn mới
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setShowCreateGroup(true)}>
+                        <Users className="h-4 w-4 mr-2" />
+                        Tạo nhóm
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
               <ConversationList
                 conversations={conversations}
@@ -110,6 +153,20 @@ export default function Chat() {
           currentUserId={userId}
           onSelectUser={handleNewConversation}
         />
+
+        <CreateGroupDialog
+          open={showCreateGroup}
+          onOpenChange={setShowCreateGroup}
+          currentUserId={userId}
+          onCreateGroup={handleCreateGroup}
+          isCreating={createGroupConversation.isPending}
+        />
+
+        <ChatSettingsDialog
+          open={showSettings}
+          onOpenChange={setShowSettings}
+          userId={userId}
+        />
       </div>
     );
   }
@@ -124,13 +181,32 @@ export default function Chat() {
         <div className="w-80 border-r bg-card flex flex-col h-[calc(100vh-3.5rem)]">
           <div className="flex items-center justify-between p-4 border-b">
             <h1 className="text-xl font-bold">Tin nhắn</h1>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setShowNewConversation(true)}
-            >
-              <MessageSquarePlus className="h-5 w-5" />
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowSettings(true)}
+              >
+                <Settings className="h-5 w-5" />
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <MessageSquarePlus className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setShowNewConversation(true)}>
+                    <MessageSquarePlus className="h-4 w-4 mr-2" />
+                    Tin nhắn mới
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setShowCreateGroup(true)}>
+                    <Users className="h-4 w-4 mr-2" />
+                    Tạo nhóm
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
           <ConversationList
             conversations={conversations}
@@ -165,6 +241,20 @@ export default function Chat() {
         onOpenChange={setShowNewConversation}
         currentUserId={userId}
         onSelectUser={handleNewConversation}
+      />
+
+      <CreateGroupDialog
+        open={showCreateGroup}
+        onOpenChange={setShowCreateGroup}
+        currentUserId={userId}
+        onCreateGroup={handleCreateGroup}
+        isCreating={createGroupConversation.isPending}
+      />
+
+      <ChatSettingsDialog
+        open={showSettings}
+        onOpenChange={setShowSettings}
+        userId={userId}
       />
     </div>
   );

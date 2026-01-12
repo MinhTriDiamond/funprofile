@@ -1,14 +1,20 @@
 import { useRef, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useMessages, Message } from '@/hooks/useMessages';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { useConversation } from '@/hooks/useConversations';
 import { MessageBubble } from './MessageBubble';
 import { ChatInput } from './ChatInput';
 import { TypingIndicator } from './TypingIndicator';
+import { MessageSearch } from './MessageSearch';
+import { GroupSettingsDialog } from './GroupSettingsDialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import { ConversationParticipant } from '@/hooks/useConversations';
+import { Search, Settings, Users } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface MessageThreadProps {
   conversationId: string;
@@ -18,9 +24,13 @@ interface MessageThreadProps {
 
 export function MessageThread({ conversationId, userId, username }: MessageThreadProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [replyTo, setReplyTo] = useState<Message | null>(null);
+  const [showSearch, setShowSearch] = useState(false);
+  const [showGroupSettings, setShowGroupSettings] = useState(false);
 
-  const { data: conversation } = useConversation(conversationId);
+  const { data: conversation, refetch: refetchConversation } = useConversation(conversationId);
   const {
     messages,
     isLoading,
@@ -37,10 +47,13 @@ export function MessageThread({ conversationId, userId, username }: MessageThrea
     (p: ConversationParticipant) => p.user_id !== userId && !p.left_at
   );
   const headerProfile = otherParticipant?.profile;
-  const headerName = conversation?.type === 'group'
+  const isGroup = conversation?.type === 'group';
+  const participantCount = conversation?.participants?.filter((p: ConversationParticipant) => !p.left_at).length || 0;
+  
+  const headerName = isGroup
     ? conversation?.name
     : headerProfile?.full_name || headerProfile?.username || 'Người dùng';
-  const headerAvatar = conversation?.type === 'group'
+  const headerAvatar = isGroup
     ? conversation?.avatar_url
     : headerProfile?.avatar_url;
 
@@ -81,6 +94,15 @@ export function MessageThread({ conversationId, userId, username }: MessageThrea
     }
   };
 
+  const handleGroupUpdate = () => {
+    refetchConversation();
+    queryClient.invalidateQueries({ queryKey: ['conversations', userId] });
+  };
+
+  const handleLeaveGroup = () => {
+    navigate('/chat');
+  };
+
   if (isLoading) {
     return (
       <div className="flex-1 flex flex-col">
@@ -99,18 +121,51 @@ export function MessageThread({ conversationId, userId, username }: MessageThrea
     );
   }
 
+  if (showSearch) {
+    return (
+      <div className="flex-1 flex flex-col">
+        <MessageSearch
+          conversationId={conversationId}
+          onClose={() => setShowSearch(false)}
+          onSelectMessage={(messageId) => {
+            // TODO: Scroll to message
+            setShowSearch(false);
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="flex-1 flex flex-col">
       {/* Header */}
-      <div className="p-4 border-b flex items-center gap-3 bg-card">
-        <Avatar className="h-10 w-10">
-          <AvatarImage src={headerAvatar || undefined} alt={headerName || ''} />
-          <AvatarFallback>{(headerName || 'U')[0].toUpperCase()}</AvatarFallback>
-        </Avatar>
-        <div>
-          <p className="font-medium">{headerName}</p>
-          {typingUsers.length > 0 && (
-            <p className="text-xs text-muted-foreground">Đang nhập...</p>
+      <div className="p-4 border-b flex items-center justify-between bg-card">
+        <div className="flex items-center gap-3">
+          <Avatar className="h-10 w-10">
+            <AvatarImage src={headerAvatar || undefined} alt={headerName || ''} />
+            <AvatarFallback>{(headerName || 'U')[0].toUpperCase()}</AvatarFallback>
+          </Avatar>
+          <div>
+            <p className="font-medium">{headerName}</p>
+            {isGroup ? (
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <Users className="h-3 w-3" />
+                {participantCount} thành viên
+              </p>
+            ) : typingUsers.length > 0 ? (
+              <p className="text-xs text-muted-foreground">Đang nhập...</p>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" onClick={() => setShowSearch(true)}>
+            <Search className="h-5 w-5" />
+          </Button>
+          {isGroup && (
+            <Button variant="ghost" size="icon" onClick={() => setShowGroupSettings(true)}>
+              <Settings className="h-5 w-5" />
+            </Button>
           )}
         </div>
       </div>
@@ -151,6 +206,18 @@ export function MessageThread({ conversationId, userId, username }: MessageThrea
         onCancelReply={() => setReplyTo(null)}
         isSending={sendMessage.isPending}
       />
+
+      {/* Group Settings Dialog */}
+      {isGroup && conversation && (
+        <GroupSettingsDialog
+          open={showGroupSettings}
+          onOpenChange={setShowGroupSettings}
+          conversation={conversation}
+          currentUserId={userId}
+          onUpdate={handleGroupUpdate}
+          onLeave={handleLeaveGroup}
+        />
+      )}
     </div>
   );
 }
