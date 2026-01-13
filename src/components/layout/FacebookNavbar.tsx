@@ -212,7 +212,11 @@ export const FacebookNavbar = () => {
           </div>
 
           {/* Chat/Messenger */}
-          <button className="fb-icon-btn" aria-label="Messenger">
+          <button 
+            className="fb-icon-btn" 
+            aria-label="Messenger"
+            onClick={() => navigate('/chat')}
+          >
             <MessageCircle className="w-5 h-5" />
           </button>
 

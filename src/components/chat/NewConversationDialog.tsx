@@ -85,11 +85,12 @@ export function NewConversationDialog({
     return friends || [];
   }, [debouncedSearch, friends, searchResults]);
 
-  const isLoading = friendsLoading || searchLoading;
+  const isLoading = friendsLoading || (debouncedSearch.length >= 2 && searchLoading);
 
   const handleSelect = (userId: string) => {
     onSelectUser(userId);
     setSearch('');
+    onOpenChange(false);
   };
 
   return (

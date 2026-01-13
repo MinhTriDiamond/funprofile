@@ -14,8 +14,9 @@ import { Button } from '@/components/ui/button';
 import { LazyImage } from '@/components/ui/LazyImage';
 import { CoverPhotoEditor } from '@/components/profile/CoverPhotoEditor';
 import { AvatarEditor } from '@/components/profile/AvatarEditor';
-import { Plus, PenSquare, MoreHorizontal, MapPin, Briefcase, GraduationCap, Heart, Clock } from 'lucide-react';
+import { Plus, PenSquare, MoreHorizontal, MapPin, Briefcase, GraduationCap, Heart, Clock, MessageCircle } from 'lucide-react';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
+import { useConversations } from '@/hooks/useConversations';
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -27,6 +28,20 @@ const Profile = () => {
   const [currentUserId, setCurrentUserId] = useState<string>('');
   const [isOwnProfile, setIsOwnProfile] = useState(false);
   const [friendsCount, setFriendsCount] = useState(0);
+  
+  const { createDirectConversation } = useConversations(currentUserId);
+  
+  const handleStartChat = async () => {
+    if (!currentUserId || !profile?.id) return;
+    try {
+      const result = await createDirectConversation.mutateAsync(profile.id);
+      if (result) {
+        navigate(`/chat/${result.id}`);
+      }
+    } catch (error) {
+      console.error('Error starting chat:', error);
+    }
+  };
 
   // Reserved paths that should NOT be treated as usernames
   const reservedPaths = ['auth', 'feed', 'friends', 'wallet', 'about', 'leaderboard', 'admin', 'notifications', 'docs', 'post', 'law-of-light', 'profile'];
@@ -313,6 +328,16 @@ const Profile = () => {
                 ) : (
                   <>
                     <FriendRequestButton userId={profile.id} currentUserId={currentUserId} />
+                    <Button 
+                      size="sm" 
+                      variant="secondary" 
+                      className="min-h-[44px] px-3 sm:px-4"
+                      onClick={handleStartChat}
+                      disabled={createDirectConversation.isPending}
+                    >
+                      <MessageCircle className="w-4 h-4 mr-1 sm:mr-2" />
+                      <span className="hidden sm:inline">Nhắn tin</span>
+                    </Button>
                     <Button size="sm" variant="secondary" className="min-h-[44px] min-w-[44px]">
                       <MoreHorizontal className="w-4 h-4" />
                     </Button>
