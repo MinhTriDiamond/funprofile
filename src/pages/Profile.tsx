@@ -323,7 +323,7 @@ const Profile = () => {
           </div>
           
           {/* Edit Cover Button - Outside overflow container for proper z-index */}
-          {isOwnProfile && (
+          {showPrivateElements && (
             <div className="absolute bottom-2 left-2 sm:bottom-4 sm:left-4 z-[100]">
               <CoverPhotoEditor 
                 userId={currentUserId}
@@ -339,7 +339,7 @@ const Profile = () => {
           <div className="max-w-5xl mx-auto px-2 sm:px-4">
             <div className="flex flex-col md:flex-row items-center md:items-end gap-3 md:gap-4 pb-3 md:pb-4 -mt-12 sm:-mt-8 md:-mt-16 relative">
               {/* Avatar */}
-              {isOwnProfile ? (
+              {showPrivateElements ? (
                 <AvatarEditor
                   userId={currentUserId}
                   currentAvatarUrl={profile?.avatar_url}
