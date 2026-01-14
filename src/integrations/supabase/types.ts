@@ -1022,6 +1022,7 @@ export type Database = {
           law_of_light_accepted_at: string | null
           oauth_provider: string | null
           pending_reward: number
+          pinned_post_id: string | null
           registered_from: string | null
           reward_status: string
           soul_level: number
@@ -1060,6 +1061,7 @@ export type Database = {
           law_of_light_accepted_at?: string | null
           oauth_provider?: string | null
           pending_reward?: number
+          pinned_post_id?: string | null
           registered_from?: string | null
           reward_status?: string
           soul_level?: number
@@ -1098,6 +1100,7 @@ export type Database = {
           law_of_light_accepted_at?: string | null
           oauth_provider?: string | null
           pending_reward?: number
+          pinned_post_id?: string | null
           registered_from?: string | null
           reward_status?: string
           soul_level?: number
@@ -1106,7 +1109,15 @@ export type Database = {
           username?: string
           wallet_address?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_pinned_post_id_fkey"
+            columns: ["pinned_post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       reactions: {
         Row: {

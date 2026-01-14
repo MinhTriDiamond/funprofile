@@ -28,6 +28,8 @@ import {
   Pencil,
   Link2,
   Bookmark,
+  Pin,
+  PinOff,
 } from 'lucide-react';
 
 interface PostStats {
@@ -53,6 +55,11 @@ interface FacebookPostCardProps {
   currentUserId: string;
   onPostDeleted: () => void;
   initialStats?: PostStats;
+  isPinned?: boolean;
+  onPinPost?: (postId: string) => void;
+  onUnpinPost?: () => void;
+  isOwnProfile?: boolean;
+  viewAsPublic?: boolean;
 }
 
 interface ReactionCount {
@@ -60,8 +67,21 @@ interface ReactionCount {
   count: number;
 }
 
-const FacebookPostCardComponent = ({ post, currentUserId, onPostDeleted, initialStats }: FacebookPostCardProps) => {
+const FacebookPostCardComponent = ({ 
+  post, 
+  currentUserId, 
+  onPostDeleted, 
+  initialStats,
+  isPinned = false,
+  onPinPost,
+  onUnpinPost,
+  isOwnProfile = false,
+  viewAsPublic = false,
+}: FacebookPostCardProps) => {
   const navigate = useNavigate();
+  
+  // Show pin options only on own profile, when not in View As mode, and for user's own posts
+  const canShowPinOption = isOwnProfile && !viewAsPublic && post.user_id === currentUserId;
   const [showImageViewer, setShowImageViewer] = useState(false);
   const [commentCount, setCommentCount] = useState(initialStats?.commentCount || 0);
   const [showComments, setShowComments] = useState(false);
@@ -339,6 +359,26 @@ const FacebookPostCardComponent = ({ post, currentUserId, onPostDeleted, initial
                 <Link2 className="w-5 h-5" />
                 Sao chép liên kết
               </DropdownMenuItem>
+              {/* Pin/Unpin options - only on own profile */}
+              {canShowPinOption && (
+                isPinned ? (
+                  <DropdownMenuItem
+                    onClick={onUnpinPost}
+                    className="cursor-pointer gap-3"
+                  >
+                    <PinOff className="w-5 h-5" />
+                    Bỏ ghim bài viết
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem
+                    onClick={() => onPinPost?.(post.id)}
+                    className="cursor-pointer gap-3"
+                  >
+                    <Pin className="w-5 h-5" />
+                    Ghim bài viết
+                  </DropdownMenuItem>
+                )
+              )}
               {post.user_id === currentUserId && (
                 <>
                   <DropdownMenuItem
@@ -460,6 +500,9 @@ export const FacebookPostCard = memo(FacebookPostCardComponent, (prevProps, next
     prevProps.currentUserId === nextProps.currentUserId &&
     prevProps.initialStats?.commentCount === nextProps.initialStats?.commentCount &&
     prevProps.initialStats?.shareCount === nextProps.initialStats?.shareCount &&
-    prevProps.initialStats?.reactions?.length === nextProps.initialStats?.reactions?.length
+    prevProps.initialStats?.reactions?.length === nextProps.initialStats?.reactions?.length &&
+    prevProps.isPinned === nextProps.isPinned &&
+    prevProps.isOwnProfile === nextProps.isOwnProfile &&
+    prevProps.viewAsPublic === nextProps.viewAsPublic
   );
 });

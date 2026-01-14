@@ -1,4 +1,4 @@
-import { useEffect, useState, memo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
@@ -15,8 +15,9 @@ import { Button } from '@/components/ui/button';
 import { LazyImage } from '@/components/ui/LazyImage';
 import { CoverPhotoEditor } from '@/components/profile/CoverPhotoEditor';
 import { AvatarEditor } from '@/components/profile/AvatarEditor';
-import { Plus, PenSquare, MoreHorizontal, MapPin, Briefcase, GraduationCap, Heart, Clock } from 'lucide-react';
+import { Plus, PenSquare, MoreHorizontal, MapPin, Briefcase, GraduationCap, Heart, Clock, Eye, X, Pin } from 'lucide-react';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
+import { toast } from 'sonner';
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -28,6 +29,10 @@ const Profile = () => {
   const [currentUserId, setCurrentUserId] = useState<string>('');
   const [isOwnProfile, setIsOwnProfile] = useState(false);
   const [friendsCount, setFriendsCount] = useState(0);
+  const [viewAsPublic, setViewAsPublic] = useState(false);
+
+  // Determine if we should show private elements (own profile AND not in View As mode)
+  const showPrivateElements = isOwnProfile && !viewAsPublic;
 
   // Reserved paths that should NOT be treated as usernames
   const reservedPaths = ['auth', 'feed', 'friends', 'wallet', 'about', 'leaderboard', 'admin', 'notifications', 'docs', 'post', 'law-of-light', 'profile'];
@@ -191,6 +196,56 @@ const Profile = () => {
     }
   };
 
+  // Handle pin/unpin post
+  const handlePinPost = async (postId: string) => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ pinned_post_id: postId })
+        .eq('id', currentUserId);
+      
+      if (error) throw error;
+      
+      setProfile((prev: any) => ({ ...prev, pinned_post_id: postId }));
+      toast.success('Đã ghim bài viết');
+    } catch (error) {
+      toast.error('Không thể ghim bài viết');
+    }
+  };
+
+  const handleUnpinPost = async () => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ pinned_post_id: null })
+        .eq('id', currentUserId);
+      
+      if (error) throw error;
+      
+      setProfile((prev: any) => ({ ...prev, pinned_post_id: null }));
+      toast.success('Đã bỏ ghim bài viết');
+    } catch (error) {
+      toast.error('Không thể bỏ ghim bài viết');
+    }
+  };
+
+  // Sort posts with pinned post first
+  const sortedPosts = useMemo(() => {
+    if (!profile?.pinned_post_id) return allPosts;
+    
+    const pinnedPost = allPosts.find(
+      (item) => item._type === 'original' && item.id === profile.pinned_post_id
+    );
+    
+    if (!pinnedPost) return allPosts;
+    
+    const otherPosts = allPosts.filter(
+      (item) => !(item._type === 'original' && item.id === profile.pinned_post_id)
+    );
+    
+    return [pinnedPost, ...otherPosts];
+  }, [allPosts, profile?.pinned_post_id]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#f0f2f5]">
@@ -218,7 +273,25 @@ const Profile = () => {
   return (
     <div className="min-h-screen bg-[#f0f2f5]">
       <FacebookNavbar />
-      <main className="pt-14 pb-20 lg:pb-4">
+      
+      {/* View As Banner */}
+      {viewAsPublic && (
+        <div className="fixed top-14 left-0 right-0 z-50 bg-primary text-primary-foreground py-3 px-4 flex items-center justify-center gap-4 shadow-lg">
+          <Eye className="w-5 h-5" />
+          <span className="font-medium">Bạn đang xem trang cá nhân với tư cách người khác</span>
+          <Button 
+            size="sm" 
+            variant="secondary" 
+            onClick={() => setViewAsPublic(false)}
+            className="ml-2"
+          >
+            <X className="w-4 h-4 mr-1" />
+            Thoát chế độ xem
+          </Button>
+        </div>
+      )}
+      
+      <main className={`pb-20 lg:pb-4 ${viewAsPublic ? 'pt-28' : 'pt-14'}`}>
         {/* Cover Photo Section - Full Width */}
         <div className="relative">
           {/* Cover Photo Container - Smaller on mobile to make room for honor board */}
@@ -298,7 +371,7 @@ const Profile = () => {
 
               {/* Action Buttons - Stack on mobile */}
               <div className="flex flex-wrap justify-center gap-2 pb-2 md:pb-4 w-full md:w-auto">
-                {isOwnProfile ? (
+                {showPrivateElements ? (
                   <>
                     <Button size="sm" className="bg-primary hover:bg-primary/90 text-xs sm:text-sm min-h-[44px] px-3 sm:px-4">
                       <Plus className="w-4 h-4 mr-1 sm:mr-2" />
@@ -310,8 +383,18 @@ const Profile = () => {
                       <span className="hidden sm:inline">Chỉnh sửa trang cá nhân</span>
                       <span className="sm:hidden">Sửa hồ sơ</span>
                     </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="text-xs sm:text-sm min-h-[44px] px-3 sm:px-4"
+                      onClick={() => setViewAsPublic(true)}
+                    >
+                      <Eye className="w-4 h-4 mr-1 sm:mr-2" />
+                      <span className="hidden sm:inline">Xem với tư cách khách</span>
+                      <span className="sm:hidden">Xem như khách</span>
+                    </Button>
                   </>
-                ) : (
+                ) : isOwnProfile && viewAsPublic ? null : (
                   <>
                     <FriendRequestButton userId={profile.id} currentUserId={currentUserId} />
                     <Button size="sm" variant="secondary" className="min-h-[44px] min-w-[44px]">
@@ -356,7 +439,7 @@ const Profile = () => {
                   >
                     Video
                   </TabsTrigger>
-                  {isOwnProfile && (
+                  {showPrivateElements && (
                     <TabsTrigger 
                       value="edit" 
                       className="px-3 sm:px-4 py-3 sm:py-4 rounded-none border-b-4 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary font-semibold text-sm sm:text-base whitespace-nowrap flex-shrink-0"
@@ -377,7 +460,7 @@ const Profile = () => {
                           <p className="text-center text-muted-foreground mb-4">
                             {profile?.bio || 'Chưa có tiểu sử'}
                           </p>
-                          {isOwnProfile && (
+                          {showPrivateElements && (
                             <Button variant="secondary" className="w-full">
                               Thêm tiểu sử
                             </Button>
@@ -432,8 +515,8 @@ const Profile = () => {
                     {/* Right Content - Posts */}
                     <div className="lg:col-span-3 space-y-4">
                       <TabsContent value="posts" className="mt-0 space-y-4">
-                        {/* Create Post - Only show on own profile */}
-                        {isOwnProfile && currentUserId && (
+                        {/* Create Post - Only show on own profile and not in View As mode */}
+                        {showPrivateElements && currentUserId && (
                           <FacebookCreatePost 
                             onPostCreated={() => {
                               const profileId = userId || currentUserId;
@@ -444,13 +527,15 @@ const Profile = () => {
                           />
                         )}
                         
-                        {allPosts.length === 0 ? (
+                        {sortedPosts.length === 0 ? (
                           <div className="bg-white rounded-lg shadow p-8 text-center text-muted-foreground">
                             Chưa có bài viết nào
                           </div>
                         ) : (
-                          allPosts.map((item) => (
-                            item._type === 'shared' ? (
+                          sortedPosts.map((item) => {
+                            const isPinned = item._type === 'original' && item.id === profile?.pinned_post_id;
+                            
+                            return item._type === 'shared' ? (
                               <div key={`shared-${item.id}`} className="space-y-2">
                                 <div className="flex items-center gap-2 text-sm text-muted-foreground px-2">
                                   <span className="font-semibold text-primary">Đã share</span>
@@ -462,14 +547,27 @@ const Profile = () => {
                                 />
                               </div>
                             ) : (
-                              <FacebookPostCard 
-                                key={item.id} 
-                                post={item} 
-                                currentUserId={currentUserId}
-                                onPostDeleted={handlePostDeleted}
-                              />
-                            )
-                          ))
+                              <div key={item.id} className="space-y-0">
+                                {/* Pinned Post Badge */}
+                                {isPinned && (
+                                  <div className="flex items-center gap-2 text-sm text-muted-foreground px-4 py-2 bg-secondary/50 rounded-t-lg border-b">
+                                    <Pin className="w-4 h-4 text-primary" />
+                                    <span className="font-medium">Bài viết được ghim</span>
+                                  </div>
+                                )}
+                                <FacebookPostCard 
+                                  post={item} 
+                                  currentUserId={currentUserId}
+                                  onPostDeleted={handlePostDeleted}
+                                  isPinned={isPinned}
+                                  onPinPost={showPrivateElements ? handlePinPost : undefined}
+                                  onUnpinPost={showPrivateElements ? handleUnpinPost : undefined}
+                                  isOwnProfile={isOwnProfile}
+                                  viewAsPublic={viewAsPublic}
+                                />
+                              </div>
+                            );
+                          })
                         )}
                       </TabsContent>
 
@@ -542,7 +640,7 @@ const Profile = () => {
                         </div>
                       </TabsContent>
 
-                      {isOwnProfile && (
+                      {showPrivateElements && (
                         <TabsContent value="edit" className="mt-0">
                           <div className="bg-white rounded-lg shadow p-6">
                             <EditProfile />
