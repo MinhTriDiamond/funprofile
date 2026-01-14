@@ -91,37 +91,113 @@ const generateVideoThumbnail = (file: File): Promise<string> => {
 };
 
 /**
- * Invoke supabase function with timeout
+ * Call edge function using native fetch with proper AbortController support
+ * This fixes the timeout issue where supabase.functions.invoke doesn't properly abort
  */
-async function invokeWithTimeout<T>(
+async function callEdgeFunctionWithTimeout<T>(
   functionName: string,
   body: Record<string, unknown>,
-  timeoutMs: number = BACKEND_TIMEOUT_MS
-): Promise<{ data: T | null; error: Error | null }> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  timeoutMs: number = BACKEND_TIMEOUT_MS,
+  externalAbortController?: AbortController | null
+): Promise<{ data: T | null; error: Error | null; statusCode?: number; responseText?: string }> {
+  const controller = externalAbortController || new AbortController();
+  const timeoutId = setTimeout(() => {
+    console.log(`[callEdgeFunctionWithTimeout] Timeout reached (${timeoutMs}ms), aborting...`);
+    controller.abort();
+  }, timeoutMs);
 
   try {
-    const { data, error } = await supabase.functions.invoke(functionName, {
-      body,
-      // @ts-ignore - AbortSignal is supported but types may not reflect it
+    // Get session for auth token
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData?.session?.access_token;
+
+    // Build URL to edge function
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+    const functionUrl = `${supabaseUrl}/functions/v1/${functionName}`;
+
+    console.log(`[callEdgeFunctionWithTimeout] Calling ${functionName}...`);
+
+    const response = await fetch(functionUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': anonKey,
+        ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {}),
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
     });
 
     clearTimeout(timeoutId);
 
-    if (error) {
-      return { data: null, error: new Error(error.message || 'Backend error') };
+    const responseText = await response.text();
+    
+    console.log(`[callEdgeFunctionWithTimeout] Response status: ${response.status}`);
+
+    if (!response.ok) {
+      // Try to parse error from JSON
+      let errorMessage = `HTTP ${response.status}`;
+      try {
+        const errJson = JSON.parse(responseText);
+        errorMessage = errJson.error || errJson.message || errorMessage;
+        if (errJson.details) {
+          errorMessage += `: ${errJson.details}`;
+        }
+      } catch {
+        errorMessage = responseText.slice(0, 200) || errorMessage;
+      }
+      
+      return { 
+        data: null, 
+        error: new Error(errorMessage), 
+        statusCode: response.status,
+        responseText: responseText.slice(0, 500),
+      };
     }
 
-    return { data: data as T, error: null };
+    // Parse successful response
+    let data: T;
+    try {
+      data = JSON.parse(responseText);
+    } catch {
+      return { 
+        data: null, 
+        error: new Error('Invalid JSON response from backend'),
+        statusCode: response.status,
+        responseText: responseText.slice(0, 500),
+      };
+    }
+
+    return { data, error: null, statusCode: response.status };
   } catch (err) {
     clearTimeout(timeoutId);
     
-    if (err instanceof Error && err.name === 'AbortError') {
-      return { data: null, error: new Error(`Backend timeout (${timeoutMs / 1000}s) - vui lòng thử lại`) };
+    if (err instanceof Error) {
+      if (err.name === 'AbortError') {
+        console.log('[callEdgeFunctionWithTimeout] Request aborted');
+        return { 
+          data: null, 
+          error: new Error(`Backend timeout (${timeoutMs / 1000}s) - vui lòng thử lại`),
+          statusCode: 0,
+        };
+      }
+      
+      // Network errors (CORS, blocked, offline)
+      if (err.message === 'Failed to fetch' || err.message.includes('NetworkError')) {
+        return { 
+          data: null, 
+          error: new Error('Không kết nối được tới server. Có thể bị chặn bởi AdBlock/Firewall hoặc mạng không ổn định.'),
+          statusCode: 0,
+        };
+      }
     }
     
-    return { data: null, error: err instanceof Error ? err : new Error('Unknown error') };
+    return { 
+      data: null, 
+      error: err instanceof Error ? err : new Error('Unknown error'),
+      statusCode: 0,
+    };
   }
 }
 
@@ -173,12 +249,73 @@ export const VideoUploaderUppy = ({
     return () => clearInterval(interval);
   }, [uploadState.status]);
 
-  // Show debug panel automatically if stuck for 5+ seconds
+  // Track if we've done auto health check
+  const autoHealthCheckDoneRef = useRef(false);
+
+  // Test backend health - define before useEffect that uses it
+  const testBackendHealth = useCallback(async () => {
+    setBackendHealthy(null);
+    console.log('[VideoUploader] Testing backend health...');
+    
+    const startTime = Date.now();
+    const { data, error, statusCode } = await callEdgeFunctionWithTimeout<{ 
+      ok: boolean; 
+      userId?: string; 
+      ts?: string;
+      authenticated?: boolean;
+      cloudflareConfigured?: boolean;
+    }>(
+      'stream-video',
+      { action: 'health' },
+      10000 // 10s timeout for health check
+    );
+
+    const elapsed = Date.now() - startTime;
+    
+    if (error) {
+      console.error('[VideoUploader] Backend health check failed:', error.message, 'status:', statusCode);
+      setBackendHealthy(false);
+      toast.error(`Backend không phản hồi: ${error.message}`);
+      
+      setDebugTimeline(prev => ({
+        ...prev,
+        lastStep: `health check failed: ${error.message} (${statusCode || 'no status'})`,
+      }));
+    } else if (data?.ok) {
+      console.log('[VideoUploader] Backend healthy:', data, `(${elapsed}ms)`);
+      setBackendHealthy(true);
+      const authInfo = data.authenticated ? `✓ Auth (${data.userId?.slice(0, 8)}...)` : '✗ No auth';
+      toast.success(`Backend OK (${elapsed}ms) - ${authInfo}`);
+      
+      setDebugTimeline(prev => ({
+        ...prev,
+        lastStep: `health OK: ${elapsed}ms, auth=${data.authenticated}`,
+      }));
+    } else {
+      console.warn('[VideoUploader] Backend returned unexpected response:', data);
+      setBackendHealthy(false);
+      toast.error('Backend trả về dữ liệu không hợp lệ');
+    }
+  }, []);
+
+  // Show debug panel automatically if stuck for 5+ seconds, and run auto health check
   useEffect(() => {
     if (uploadState.status === 'preparing' && elapsedSeconds >= 5) {
       setShowDebug(true);
+      
+      // Auto health check once when stuck for 8+ seconds
+      if (elapsedSeconds >= 8 && !autoHealthCheckDoneRef.current && backendHealthy === null) {
+        autoHealthCheckDoneRef.current = true;
+        console.log('[VideoUploader] Auto health check triggered (stuck 8s+)');
+        testBackendHealth();
+      }
     }
-  }, [uploadState.status, elapsedSeconds]);
+    
+    // Reset auto health check flag when status changes
+    if (uploadState.status !== 'preparing') {
+      autoHealthCheckDoneRef.current = false;
+    }
+  }, [uploadState.status, elapsedSeconds, backendHealthy, testBackendHealth]);
 
   // Cleanup on unmount - delete orphan video if upload wasn't completed
   useEffect(() => {
@@ -210,35 +347,6 @@ export const VideoUploaderUppy = ({
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, []);
-
-  // Test backend health
-  const testBackendHealth = useCallback(async () => {
-    setBackendHealthy(null);
-    console.log('[VideoUploader] Testing backend health...');
-    
-    const startTime = Date.now();
-    const { data, error } = await invokeWithTimeout<{ ok: boolean; userId?: string; ts?: string }>(
-      'stream-video',
-      { action: 'health' },
-      10000
-    );
-
-    const elapsed = Date.now() - startTime;
-    
-    if (error) {
-      console.error('[VideoUploader] Backend health check failed:', error.message);
-      setBackendHealthy(false);
-      toast.error(`Backend không phản hồi: ${error.message}`);
-    } else if (data?.ok) {
-      console.log('[VideoUploader] Backend healthy:', data, `(${elapsed}ms)`);
-      setBackendHealthy(true);
-      toast.success(`Backend OK (${elapsed}ms)`);
-    } else {
-      console.warn('[VideoUploader] Backend returned unexpected response:', data);
-      setBackendHealthy(false);
-      toast.error('Backend trả về dữ liệu không hợp lệ');
-    }
   }, []);
 
   // Retry upload
@@ -342,7 +450,7 @@ export const VideoUploaderUppy = ({
           lastStep: 'calling backend',
         }));
 
-        const { data, error } = await invokeWithTimeout<{ uploadUrl: string; uid: string }>(
+        const { data, error, statusCode, responseText } = await callEdgeFunctionWithTimeout<{ uploadUrl: string; uid: string }>(
           'stream-video',
           {
             action: 'get-tus-upload-url',
@@ -351,18 +459,28 @@ export const VideoUploaderUppy = ({
             fileType: selectedFile.type,
             fileId, // Send file identifier for deduplication tracking
           },
-          BACKEND_TIMEOUT_MS
+          BACKEND_TIMEOUT_MS,
+          abortControllerRef.current // Pass abort controller for cancel support
         );
 
+        const invokeTime = Date.now();
+        const invokeElapsed = invokeTime - (debugTimeline.invokeStarted || invokeTime);
+        
         setDebugTimeline(prev => ({
           ...prev,
-          invokeFinished: Date.now(),
+          invokeFinished: invokeTime,
           invokeError: error?.message,
-          lastStep: error ? `backend error: ${error.message}` : 'got upload URL',
+          lastStep: error 
+            ? `backend error (${statusCode || 'timeout'}): ${error.message.slice(0, 100)}` 
+            : `got upload URL (${invokeElapsed}ms)`,
         }));
 
         if (error) {
-          console.error('[VideoUploader] Failed to get upload URL:', error);
+          console.error('[VideoUploader] Failed to get upload URL:', {
+            error: error.message,
+            statusCode,
+            responseText: responseText?.slice(0, 200),
+          });
           throw error;
         }
 
