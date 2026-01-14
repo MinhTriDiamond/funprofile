@@ -62,7 +62,7 @@ const Profile = () => {
         
         if (profileData) {
           setIsOwnProfile(session ? profileData.id === session.user.id : false);
-          fetchProfile(profileData.id);
+          fetchProfile(profileData.id, session?.user.id);
         } else {
           setLoading(false);
           setProfile(null);
@@ -81,7 +81,7 @@ const Profile = () => {
       }
       
       setIsOwnProfile(session ? profileId === session.user.id : false);
-      fetchProfile(profileId);
+      fetchProfile(profileId, session?.user.id);
     };
 
     checkAuth();
@@ -101,16 +101,17 @@ const Profile = () => {
     return () => subscription.unsubscribe();
   }, [navigate, userId, username]);
 
-  const fetchProfile = async (profileId: string) => {
+  const fetchProfile = async (profileId: string, authUserId?: string) => {
     try {
       // For own profile, fetch all fields; for others, use limited fields
-      const isViewingOwnProfile = profileId === currentUserId;
+      // Use authUserId passed directly to avoid stale state issues
+      const isViewingOwnProfile = authUserId ? profileId === authUserId : profileId === currentUserId;
       
       const { data, error } = await supabase
         .from('profiles')
         .select(isViewingOwnProfile 
           ? '*' 
-          : 'id, username, avatar_url, full_name, bio, cover_url, created_at, soul_level, total_rewards')
+          : 'id, username, avatar_url, full_name, bio, cover_url, created_at, soul_level, total_rewards, pinned_post_id')
         .eq('id', profileId)
         .single();
 
