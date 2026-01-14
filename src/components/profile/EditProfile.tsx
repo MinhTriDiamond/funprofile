@@ -80,10 +80,10 @@ export const EditProfile = () => {
 
       const file = event.target.files[0];
 
-      // Validate file size (max 5MB)
-      const MAX_SIZE = 5 * 1024 * 1024;
+      // Validate file size (max 100MB)
+      const MAX_SIZE = 100 * 1024 * 1024;
       if (file.size > MAX_SIZE) {
-        toast.error('File quá lớn! Vui lòng chọn file dưới 5MB');
+        toast.error('File quá lớn! Vui lòng chọn file dưới 100MB');
         return;
       }
 
@@ -142,7 +142,7 @@ export const EditProfile = () => {
       const file = event.target.files[0];
 
       if (file.size > FILE_LIMITS.IMAGE_MAX_SIZE) {
-        toast.error('File quá lớn! Vui lòng chọn file dưới 5MB');
+        toast.error('File quá lớn! Vui lòng chọn file dưới 100MB');
         return;
       }
 

@@ -37,7 +37,7 @@ export const EditPostDialog = ({ post, isOpen, onClose, onPostUpdated }: EditPos
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > FILE_LIMITS.IMAGE_MAX_SIZE) {
-        toast.error('Image must be less than 5MB');
+        toast.error('Image must be less than 100MB');
         return;
       }
 
@@ -65,14 +65,14 @@ export const EditPostDialog = ({ post, isOpen, onClose, onPostUpdated }: EditPos
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > FILE_LIMITS.VIDEO_MAX_SIZE) {
-        toast.error('Video must be less than 20MB');
+        toast.error('Video must be less than 2GB');
         return;
       }
 
       try {
         const duration = await getVideoDuration(file);
         if (duration > FILE_LIMITS.VIDEO_MAX_DURATION) {
-          toast.error('Video must be less than 3 minutes');
+          toast.error('Video must be less than 120 minutes');
           return;
         }
       } catch (err) {

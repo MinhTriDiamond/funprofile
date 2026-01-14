@@ -127,12 +127,12 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
       }
 
       if (isImage && file.size > FILE_LIMITS.IMAGE_MAX_SIZE) {
-        toast.error(`Ảnh "${file.name}" phải nhỏ hơn 20MB`);
+        toast.error(`Ảnh "${file.name}" phải nhỏ hơn 100MB`);
         continue;
       }
 
       if (isVideo && file.size > FILE_LIMITS.VIDEO_MAX_SIZE) {
-        toast.error(`Video "${file.name}" phải nhỏ hơn 1GB`);
+        toast.error(`Video "${file.name}" phải nhỏ hơn 2GB`);
         continue;
       }
 
@@ -140,7 +140,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
         if (isVideo) {
           const duration = await getVideoDuration(file);
           if (duration > FILE_LIMITS.VIDEO_MAX_DURATION) {
-            toast.error(`Video "${file.name}" phải ngắn hơn 15 phút`);
+            toast.error(`Video "${file.name}" phải ngắn hơn 120 phút`);
             continue;
           }
           // Use Uppy for video uploads - set pending file and start upload

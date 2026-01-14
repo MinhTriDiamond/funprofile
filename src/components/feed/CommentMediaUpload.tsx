@@ -37,7 +37,7 @@ export const CommentMediaUpload = ({
       if (type === 'image') {
         // Validate original size
         if (file.size > FILE_LIMITS.IMAGE_MAX_SIZE) {
-          toast.error('Image must be less than 5MB');
+          toast.error('Image must be less than 100MB');
           setUploading(false);
           return;
         }
@@ -53,7 +53,7 @@ export const CommentMediaUpload = ({
       } else {
         // Video validation
         if (file.size > FILE_LIMITS.VIDEO_MAX_SIZE) {
-          toast.error('Video must be less than 20MB');
+          toast.error('Video must be less than 2GB');
           setUploading(false);
           return;
         }
@@ -62,7 +62,7 @@ export const CommentMediaUpload = ({
         try {
           const duration = await getVideoDuration(file);
           if (duration > FILE_LIMITS.VIDEO_MAX_DURATION) {
-            toast.error('Video must be less than 3 minutes');
+            toast.error('Video must be less than 120 minutes');
             setUploading(false);
             return;
           }
