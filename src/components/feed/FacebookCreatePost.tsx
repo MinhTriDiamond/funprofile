@@ -254,13 +254,6 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
         }
       }
 
-      // Reset video upload state
-      setVideoUploadState('idle');
-      setVideoUploadProgress(0);
-      setCurrentVideoId(undefined);
-      setPendingVideoFile(null);
-      setUppyVideoResult(null);
-
       // For backward compatibility, also set first image/video in legacy fields
       const firstImage = mediaUrls.find((m) => m.type === 'image');
       const firstVideo = mediaUrls.find((m) => m.type === 'video');
@@ -274,6 +267,13 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
       });
 
       if (error) throw error;
+
+      // Reset video upload state AFTER successful insert
+      setVideoUploadState('idle');
+      setVideoUploadProgress(0);
+      setCurrentVideoId(undefined);
+      setPendingVideoFile(null);
+      setUppyVideoResult(null);
 
       // Cleanup
       mediaItems.forEach((item) => URL.revokeObjectURL(item.preview));

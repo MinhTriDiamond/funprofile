@@ -6,53 +6,117 @@ export interface R2UploadResult {
 }
 
 /**
- * Upload file directly to Cloudflare R2 via edge function
+ * Get presigned URL from edge function with timeout
+ */
+async function getPresignedUrl(
+  key: string,
+  contentType: string,
+  fileSize: number,
+  timeoutMs: number = 30000
+): Promise<{ uploadUrl: string; publicUrl: string }> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      throw new Error('Chưa đăng nhập');
+    }
+
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+    const response = await fetch(`${supabaseUrl}/functions/v1/get-upload-url`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+        'apikey': supabaseKey,
+      },
+      body: JSON.stringify({ key, contentType, fileSize }),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    if (!data.uploadUrl || !data.publicUrl) {
+      throw new Error('Invalid response from server');
+    }
+
+    return { uploadUrl: data.uploadUrl, publicUrl: data.publicUrl };
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+/**
+ * Upload file directly to R2 using presigned URL
+ */
+async function uploadWithPresignedUrl(
+  file: File,
+  uploadUrl: string,
+  timeoutMs: number = 60000
+): Promise<void> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(uploadUrl, {
+      method: 'PUT',
+      body: file,
+      headers: {
+        'Content-Type': file.type,
+      },
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Upload failed: HTTP ${response.status}`);
+    }
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+/**
+ * Upload file directly to Cloudflare R2 via presigned URL
+ * Much more efficient than base64 - supports large files
  */
 export async function uploadToR2(
   file: File,
   bucket: 'posts' | 'avatars' | 'videos' | 'comment-media',
   customPath?: string
 ): Promise<R2UploadResult> {
-  try {
-    // Generate unique filename
-    const timestamp = Date.now();
-    const randomString = Math.random().toString(36).substring(2, 15);
-    const extension = file.name.split('.').pop();
-    const filename = customPath || `${timestamp}-${randomString}.${extension}`;
-    const key = `${bucket}/${filename}`;
+  // Generate unique filename
+  const timestamp = Date.now();
+  const randomString = Math.random().toString(36).substring(2, 15);
+  const extension = file.name.split('.').pop();
+  const filename = customPath || `${timestamp}-${randomString}.${extension}`;
+  const key = `${bucket}/${filename}`;
 
-    // Convert file to base64 in chunks to avoid stack overflow
-    const arrayBuffer = await file.arrayBuffer();
-    const bytes = new Uint8Array(arrayBuffer);
-    
-    // Process in 8KB chunks to avoid Maximum call stack size exceeded
-    let binary = '';
-    const chunkSize = 8192;
-    for (let i = 0; i < bytes.length; i += chunkSize) {
-      const chunk = bytes.slice(i, i + chunkSize);
-      binary += String.fromCharCode.apply(null, Array.from(chunk));
-    }
-    const base64 = btoa(binary);
+  // Step 1: Get presigned URL from edge function
+  const { uploadUrl, publicUrl } = await getPresignedUrl(
+    key,
+    file.type,
+    file.size,
+    30000 // 30s timeout for getting URL
+  );
 
-    // Call edge function to upload to R2
-    const { data, error } = await supabase.functions.invoke('upload-to-r2', {
-      body: {
-        file: base64,
-        key: key,
-        contentType: file.type,
-      },
-    });
+  // Step 2: Upload directly to R2 using presigned URL
+  await uploadWithPresignedUrl(
+    file,
+    uploadUrl,
+    120000 // 2 min timeout for upload (large files)
+  );
 
-    if (error) throw error;
-    if (!data?.url) throw new Error('No URL returned from R2 upload');
-
-    return {
-      url: data.url,
-      key: key,
-    };
-  } catch (error) {
-    throw error;
-  }
+  return {
+    url: publicUrl,
+    key: key,
+  };
 }
 
 /**
