@@ -10,7 +10,7 @@ import { z } from 'zod';
 import { compressImage, FILE_LIMITS, getVideoDuration } from '@/utils/imageCompression';
 
 const postSchema = z.object({
-  content: z.string().max(10000, 'Post must be less than 10000 characters'),
+  content: z.string().max(20000, 'Post must be less than 20000 characters'),
 });
 
 interface EditPostDialogProps {

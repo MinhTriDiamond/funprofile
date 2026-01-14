@@ -39,7 +39,7 @@ interface MediaItem {
 }
 
 const postSchema = z.object({
-  content: z.string().max(10000, 'Content must be less than 10000 characters'),
+  content: z.string().max(20000, 'Content must be less than 20000 characters'),
 });
 
 export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) => {
