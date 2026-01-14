@@ -10,6 +10,19 @@ const corsHeaders = {
 const CLOUDFLARE_ACCOUNT_ID = Deno.env.get('CLOUDFLARE_ACCOUNT_ID');
 const CLOUDFLARE_STREAM_API_TOKEN = Deno.env.get('CLOUDFLARE_STREAM_API_TOKEN');
 
+// UTF-8 safe Base64 encoder (btoa only supports Latin1 characters)
+function base64EncodeUtf8(str: string): string {
+  const encoder = new TextEncoder();
+  const bytes = encoder.encode(str);
+  let binary = '';
+  const chunkSize = 0x8000; // Process in chunks to avoid stack overflow
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, i + chunkSize);
+    binary += String.fromCharCode(...chunk);
+  }
+  return btoa(binary);
+}
+
 Deno.serve(async (req: Request) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -78,10 +91,12 @@ Deno.serve(async (req: Request) => {
         });
 
         // Build upload metadata with user ID and file ID for tracking
+        // Use base64EncodeUtf8 for UTF-8 safe encoding (supports Vietnamese/Unicode filenames)
+        const safeName = (fileName || `video_${Date.now()}`).trim().slice(0, 200);
         const metadata = [
-          `maxDurationSeconds ${btoa('7200')}`,
-          `requiresignedurls ${btoa('false')}`,
-          `name ${btoa(fileName || `video_${Date.now()}`)}`,
+          `maxDurationSeconds ${base64EncodeUtf8('7200')}`,
+          `requiresignedurls ${base64EncodeUtf8('false')}`,
+          `name ${base64EncodeUtf8(safeName)}`,
         ].join(',');
 
         // Call Cloudflare Stream API with direct_user=true
