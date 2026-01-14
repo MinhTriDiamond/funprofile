@@ -79,7 +79,7 @@ Deno.serve(async (req: Request) => {
 
         // Build upload metadata with user ID and file ID for tracking
         const metadata = [
-          `maxDurationSeconds ${btoa('1800')}`,
+          `maxDurationSeconds ${btoa('7200')}`,
           `requiresignedurls ${btoa('false')}`,
           `name ${btoa(fileName || `video_${Date.now()}`)}`,
         ].join(',');
@@ -134,7 +134,7 @@ Deno.serve(async (req: Request) => {
       // DIRECT UPLOAD URL (for smaller files < 200MB)
       // ============================================
       case 'direct-upload': {
-        const maxDurationSeconds = body.maxDurationSeconds || 1800;
+        const maxDurationSeconds = body.maxDurationSeconds || 7200;
 
         console.log('[stream-video] Creating direct upload URL');
 

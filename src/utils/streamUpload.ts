@@ -65,7 +65,7 @@ async function getDirectUploadUrl(): Promise<{ uploadUrl: string; uid: string }>
   console.log('[streamUpload] Getting direct upload URL...');
   const result = await callStreamVideo<{ maxDurationSeconds: number }, { uploadUrl: string; uid: string }>(
     'direct-upload',
-    { maxDurationSeconds: 1800 }
+    { maxDurationSeconds: 7200 }
   );
 
   if (!result?.uploadUrl || !result?.uid) {
