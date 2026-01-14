@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EditProfile } from '@/components/profile/EditProfile';
 import { FacebookPostCard } from '@/components/feed/FacebookPostCard';
+import { FacebookCreatePost } from '@/components/feed/FacebookCreatePost';
 import { FriendRequestButton } from '@/components/friends/FriendRequestButton';
 import { FriendsList } from '@/components/friends/FriendsList';
 import { CoverHonorBoard } from '@/components/profile/CoverHonorBoard';
@@ -431,6 +432,18 @@ const Profile = () => {
                     {/* Right Content - Posts */}
                     <div className="lg:col-span-3 space-y-4">
                       <TabsContent value="posts" className="mt-0 space-y-4">
+                        {/* Create Post - Only show on own profile */}
+                        {isOwnProfile && currentUserId && (
+                          <FacebookCreatePost 
+                            onPostCreated={() => {
+                              const profileId = userId || currentUserId;
+                              if (profileId) {
+                                fetchProfile(profileId);
+                              }
+                            }}
+                          />
+                        )}
+                        
                         {allPosts.length === 0 ? (
                           <div className="bg-white rounded-lg shadow p-8 text-center text-muted-foreground">
                             Chưa có bài viết nào
