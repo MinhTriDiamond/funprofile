@@ -86,7 +86,7 @@ export const SearchDialog = () => {
             id,
             content,
             created_at,
-            profiles (username, avatar_url)
+            profiles!posts_user_id_fkey (username, avatar_url)
           `)
           .ilike('content', `%${safeQuery}%`)
           .order('created_at', { ascending: false })

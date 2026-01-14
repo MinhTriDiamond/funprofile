@@ -206,6 +206,8 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
   };
 
   const handleSubmit = async () => {
+    console.log('[CreatePost] Submit started');
+    
     if (!content.trim() && mediaItems.length === 0 && !uppyVideoResult) {
       toast.error('Vui lòng thêm nội dung hoặc media');
       return;
@@ -229,6 +231,8 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Chưa đăng nhập');
 
+      console.log('[CreatePost] Uploading media...');
+      
       // Upload all media items (images only - videos handled by Uppy)
       const mediaUrls: Array<{ url: string; type: 'image' | 'video' }> = [];
       
@@ -238,6 +242,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
           url: uppyVideoResult.url,
           type: 'video',
         });
+        console.log('[CreatePost] Added video URL:', uppyVideoResult.url);
       }
       
       for (const item of mediaItems) {
@@ -254,19 +259,35 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
         }
       }
 
+      console.log('[CreatePost] Media URLs prepared:', mediaUrls.length);
+
       // For backward compatibility, also set first image/video in legacy fields
       const firstImage = mediaUrls.find((m) => m.type === 'image');
       const firstVideo = mediaUrls.find((m) => m.type === 'video');
 
-      const { error } = await supabase.from('posts').insert({
+      console.log('[CreatePost] Inserting post to database...');
+      
+      // Insert with timeout to prevent infinite hang
+      const insertPromise = supabase.from('posts').insert({
         user_id: user.id,
         content: content.trim() || '',
         image_url: firstImage?.url || null,
         video_url: firstVideo?.url || null,
         media_urls: mediaUrls,
       });
+      
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Lưu bài viết bị timeout (60s)')), 60000)
+      );
+      
+      const { error } = await Promise.race([insertPromise, timeoutPromise]) as any;
 
-      if (error) throw error;
+      if (error) {
+        console.error('[CreatePost] Insert error:', error);
+        throw error;
+      }
+
+      console.log('[CreatePost] Insert success!');
 
       // Reset video upload state AFTER successful insert
       setVideoUploadState('idle');
@@ -284,6 +305,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
       toast.success('Đã đăng bài viết!');
       onPostCreated();
     } catch (error: any) {
+      console.error('[CreatePost] Error:', error.message, error);
       setVideoUploadState('idle');
       toast.error(error.message || 'Không thể đăng bài');
     } finally {
