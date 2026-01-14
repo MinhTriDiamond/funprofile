@@ -38,8 +38,10 @@ interface MediaItem {
   type: 'image' | 'video';
 }
 
+const MAX_CONTENT_LENGTH = 20000;
+
 const postSchema = z.object({
-  content: z.string().max(20000, 'Content must be less than 20000 characters'),
+  content: z.string().max(MAX_CONTENT_LENGTH, `Nội dung tối đa ${MAX_CONTENT_LENGTH.toLocaleString()} ký tự`),
 });
 
 export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) => {
@@ -229,7 +231,12 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
   };
 
   const handleSubmit = async () => {
-    console.log('[CreatePost] Submit started');
+    console.log('[CreatePost] === SUBMIT START ===', {
+      contentLength: content.length,
+      mediaCount: mediaItems.length,
+      hasUppyVideo: !!uppyVideoResult,
+      isVideoUploading,
+    });
     
     if (!content.trim() && mediaItems.length === 0 && !uppyVideoResult) {
       toast.error('Vui lòng thêm nội dung hoặc media');
@@ -239,6 +246,12 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
     // Check if video is still uploading
     if (isVideoUploading) {
       toast.error('Vui lòng đợi video upload xong');
+      return;
+    }
+
+    // Check content length before validation
+    if (content.length > MAX_CONTENT_LENGTH) {
+      toast.error(`Nội dung quá dài (${content.length.toLocaleString()}/${MAX_CONTENT_LENGTH.toLocaleString()} ký tự)`);
       return;
     }
 
@@ -264,16 +277,48 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
 
     setLoading(true);
     setSubmitStep('auth');
+    console.log('[CreatePost] Step: auth - Getting session...');
     
     try {
       // Check if aborted
       if (abortController.signal.aborted) throw new Error('Đã huỷ');
       
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Chưa đăng nhập');
+      // Get session with 5 second timeout
+      const authStartTime = Date.now();
+      let session;
+      try {
+        const sessionResult = await Promise.race([
+          supabase.auth.getSession(),
+          new Promise<never>((_, reject) => 
+            setTimeout(() => reject(new Error('getSession timeout (5s)')), 5000)
+          )
+        ]);
+        session = sessionResult.data.session;
+        console.log('[CreatePost] getSession completed in', Date.now() - authStartTime, 'ms');
+      } catch (authError: any) {
+        console.error('[CreatePost] getSession error:', authError.message);
+        // Try refresh session as fallback
+        console.log('[CreatePost] Trying refreshSession...');
+        const { data: refreshData } = await supabase.auth.refreshSession();
+        if (!refreshData.session) {
+          throw new Error('Phiên đăng nhập hết hạn, vui lòng đăng nhập lại');
+        }
+        session = refreshData.session;
+        console.log('[CreatePost] refreshSession succeeded');
+      }
+      
+      if (!session) {
+        console.log('[CreatePost] No session found, trying refresh...');
+        const { data: refreshData } = await supabase.auth.refreshSession();
+        if (!refreshData.session) {
+          throw new Error('Chưa đăng nhập');
+        }
+        session = refreshData.session;
+      }
 
-      console.log('[CreatePost] Auth OK, preparing media...');
+      console.log('[CreatePost] Auth OK, user:', session.user.id.substring(0, 8) + '...');
       setSubmitStep('prepare_media');
+      console.log('[CreatePost] Step: prepare_media');
       
       if (abortController.signal.aborted) throw new Error('Đã huỷ');
       
@@ -311,7 +356,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
       const firstImage = mediaUrls.find((m) => m.type === 'image');
       const firstVideo = mediaUrls.find((m) => m.type === 'video');
 
-      console.log('[CreatePost] Calling create-post edge function...');
+      console.log('[CreatePost] Step: saving - Calling edge function...');
       setSubmitStep('saving');
 
       // Call edge function with timeout
@@ -331,7 +376,21 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
         signal: abortController.signal,
       });
 
-      const result = await response.json();
+      console.log('[CreatePost] Edge function response status:', response.status);
+
+      let result;
+      try {
+        result = await response.json();
+      } catch (jsonError) {
+        console.error('[CreatePost] Failed to parse response JSON:', jsonError);
+        // If status OK but can't parse JSON, assume success
+        if (response.ok) {
+          console.log('[CreatePost] Assuming success despite JSON parse error');
+          result = { ok: true };
+        } else {
+          throw new Error('Lỗi kết nối với server');
+        }
+      }
       
       if (!response.ok) {
         console.error('[CreatePost] Edge function error:', result);
@@ -486,6 +545,14 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
               />
               <div className="absolute bottom-2 right-2">
                 <EmojiPicker onEmojiSelect={handleEmojiSelect} />
+              </div>
+              {/* Character Counter */}
+              <div className={`text-xs text-right mt-1 pr-1 ${
+                content.length > MAX_CONTENT_LENGTH ? 'text-destructive font-semibold' :
+                content.length > MAX_CONTENT_LENGTH * 0.9 ? 'text-yellow-500' :
+                content.length > MAX_CONTENT_LENGTH * 0.8 ? 'text-yellow-600/70' : 'text-muted-foreground'
+              }`}>
+                {content.length.toLocaleString()}/{MAX_CONTENT_LENGTH.toLocaleString()}
               </div>
             </div>
 
@@ -704,7 +771,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
               )}
               <Button
                 onClick={handleSubmit}
-                disabled={loading || isVideoUploading || (!content.trim() && mediaItems.length === 0 && !uppyVideoResult)}
+                disabled={loading || isVideoUploading || content.length > MAX_CONTENT_LENGTH || (!content.trim() && mediaItems.length === 0 && !uppyVideoResult)}
                 className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
               >
                 {(loading || isVideoUploading) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}

@@ -5,6 +5,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const MAX_CONTENT_LENGTH = 20000;
+
 interface MediaUrl {
   url: string;
   type: "image" | "video";
@@ -74,6 +76,18 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Validate content length
+    if (body.content && body.content.length > MAX_CONTENT_LENGTH) {
+      console.log("[create-post] Content too long:", body.content.length);
+      return new Response(
+        JSON.stringify({ 
+          error: `Nội dung quá dài (${body.content.length.toLocaleString()}/${MAX_CONTENT_LENGTH.toLocaleString()} ký tự)`,
+          code: "CONTENT_TOO_LONG"
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Insert post
     console.log("[create-post] Inserting post...");
     const insertStart = Date.now();
@@ -94,9 +108,16 @@ Deno.serve(async (req) => {
     
     if (insertError) {
       console.error("[create-post] Insert error:", insertError.message, insertError.code);
+      
+      // Parse constraint errors to friendly messages
+      let errorMessage = insertError.message || "Không thể lưu bài viết";
+      if (insertError.message?.includes("content_length")) {
+        errorMessage = "Nội dung bài viết quá dài. Vui lòng rút gọn nội dung.";
+      }
+      
       return new Response(
         JSON.stringify({ 
-          error: insertError.message || "Không thể lưu bài viết",
+          error: errorMessage,
           code: insertError.code,
         }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
