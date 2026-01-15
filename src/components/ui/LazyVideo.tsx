@@ -132,7 +132,8 @@ export const LazyVideo = memo(({
               src={effectivePoster}
               alt="Video thumbnail"
               className="w-full h-full object-cover"
-              loading="lazy"
+              fetchPriority="high"
+              decoding="async"
               onError={(e) => {
                 // Hide broken poster
                 (e.target as HTMLImageElement).style.display = 'none';

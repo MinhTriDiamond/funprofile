@@ -95,6 +95,8 @@ export const StreamPlayer = memo(({
               src={thumbnailUrl} 
               alt="Video thumbnail"
               className="w-full h-full object-cover"
+              fetchPriority="high"
+              decoding="async"
               onError={(e) => {
                 // Hide broken thumbnail
                 (e.target as HTMLImageElement).style.display = 'none';
@@ -117,7 +119,6 @@ export const StreamPlayer = memo(({
           className="w-full h-full"
           allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
           allowFullScreen
-          loading="lazy"
           onLoad={() => {
             setIsLoading(false);
             setIsProcessing(false);
@@ -309,6 +310,8 @@ export const StreamPlayer = memo(({
             src={thumbnailUrl} 
             alt="Video thumbnail"
             className="w-full h-full object-cover"
+            fetchPriority="high"
+            decoding="async"
             onError={(e) => {
               (e.target as HTMLImageElement).style.display = 'none';
             }}
