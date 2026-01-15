@@ -14,6 +14,7 @@ export interface UserRewardStats {
 
 /**
  * Centralized reward calculation formula (Updated 2025-01-15)
+ * NEW USER BONUS: 50,000 CAMLY
  * Posts: 1 post = 10,000 CAMLY
  * Reactions received: 1 reaction = 1,000 CAMLY
  * Comments received: 1 comment = 2,000 CAMLY
@@ -27,13 +28,14 @@ export const calculateReward = (
   sharesCount: number,
   friendsCount: number
 ): number => {
+  const newUserBonus = 50000;
   const postsReward = postsCount * 10000;
   const reactionsReward = reactionsOnPosts * 1000;
   const commentsReward = commentsOnPosts * 2000;
   const sharesReward = sharesCount * 10000;
   const friendsReward = friendsCount * 10000;
   
-  return postsReward + reactionsReward + commentsReward + sharesReward + friendsReward;
+  return newUserBonus + postsReward + reactionsReward + commentsReward + sharesReward + friendsReward;
 };
 
 /**
