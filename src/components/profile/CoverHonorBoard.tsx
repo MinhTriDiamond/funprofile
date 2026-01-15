@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowUp, MessageCircle, Star, Share2, BadgeDollarSign, Coins, Gift, Wallet, Users, Image } from 'lucide-react';
 import { useRewardCalculation } from '@/hooks/useRewardCalculation';
+import { getNavbarLogoUrl } from '@/lib/staticImageOptimizer';
 
 interface CoverHonorBoardProps {
   userId: string;
@@ -93,9 +94,9 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
             {/* Header - Logo and Title on same line */}
             <div className="text-center mb-3">
               <div className="flex items-center justify-center gap-2 mb-1">
-                {/* Logo */}
+                {/* Logo - optimized for display size */}
                 <img 
-                  src="/fun-profile-logo-40.webp" 
+                  src={getNavbarLogoUrl('/fun-profile-logo-40.webp')} 
                   alt="Fun Profile Web3"
                   className="w-9 h-9 sm:w-11 sm:h-11 rounded-full border-2 border-green-400/50 shadow-[0_0_20px_rgba(34,197,94,0.6)]"
                 />

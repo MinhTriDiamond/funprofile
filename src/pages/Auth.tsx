@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { UnifiedAuthForm } from '@/components/auth/UnifiedAuthForm';
 import { useLanguage } from '@/i18n/LanguageContext';
 import LanguageSwitcher from '@/components/layout/LanguageSwitcher';
+import { getAuthLogoUrl, getSponsoredLogoUrl } from '@/lib/staticImageOptimizer';
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -101,23 +102,17 @@ const Auth = () => {
         {/* Left Side - Branding */}
         <div className="text-center md:text-left">
           <div className="flex items-center justify-center md:justify-start gap-3 mb-4">
-            {/* LCP Image - fixed dimensions, eager loading, high priority */}
-            <picture>
-              <source 
-                srcSet="/fun-profile-logo-40.webp 1x, /fun-profile-logo-128.webp 2x"
-                type="image/webp"
-              />
-              <img 
-                src="/fun-profile-logo-40.webp" 
-                alt="FUN Profile" 
-                width={64} 
-                height={64}
-                loading="eager"
-                fetchPriority="high"
-                decoding="sync"
-                className="w-16 h-16 rounded-full shadow-lg" 
-              />
-            </picture>
+            {/* LCP Image - optimized for display size, eager loading, high priority */}
+            <img 
+              src={getAuthLogoUrl('/fun-profile-logo-40.webp')} 
+              alt="FUN Profile" 
+              width={64} 
+              height={64}
+              loading="eager"
+              fetchPriority="high"
+              decoding="sync"
+              className="w-16 h-16 rounded-full shadow-lg" 
+            />
           </div>
           <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-emerald-600 via-emerald-500 to-amber-500 bg-clip-text text-transparent mb-4">
             {t('authBrandTitle')}
