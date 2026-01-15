@@ -1,10 +1,11 @@
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { Users, FileText, Image, Video, BadgeDollarSign, DollarSign } from 'lucide-react';
 import { formatNumber } from '@/lib/formatters';
+import { getNavbarLogoUrl } from '@/lib/staticImageOptimizer';
 
 // Token prices from CoinGecko + fixed CAMLY price
 const COINGECKO_IDS = {
@@ -200,7 +201,7 @@ export const AppHonorBoard = memo(() => {
         {/* Header */}
         <div className="text-center">
           <div className="flex items-center justify-center gap-2 mb-1">
-            <img src="/fun-profile-logo-40.webp" alt="Fun Profile Web3" width={40} height={40} className="w-10 h-10 rounded-full border border-yellow-400 shadow-lg" />
+            <img src={getNavbarLogoUrl('/fun-profile-logo-40.webp')} alt="Fun Profile Web3" width={40} height={40} className="w-10 h-10 rounded-full border border-yellow-400 shadow-lg" />
             <h1 className="text-xl font-black tracking-wider uppercase" style={{
             fontFamily: "'Orbitron', 'Rajdhani', sans-serif",
             background: 'linear-gradient(135deg, #fcd34d 0%, #f59e0b 50%, #fcd34d 100%)',

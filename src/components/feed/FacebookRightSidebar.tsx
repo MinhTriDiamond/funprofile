@@ -1,4 +1,4 @@
-import { useEffect, useState, memo } from 'react';
+import { useEffect, useState, memo, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -7,6 +7,7 @@ import { useLanguage } from '@/i18n/LanguageContext';
 import { Video, Search, MoreHorizontal } from 'lucide-react';
 import { AppHonorBoard } from './AppHonorBoard';
 import { TopRanking } from './TopRanking';
+import { getSponsoredLogoUrl } from '@/lib/staticImageOptimizer';
 
 export const FacebookRightSidebar = memo(() => {
   const navigate = useNavigate();
@@ -42,6 +43,9 @@ export const FacebookRightSidebar = memo(() => {
     }
   };
 
+  // Memoize optimized logo URL
+  const sponsoredLogoUrl = useMemo(() => getSponsoredLogoUrl('/fun-profile-logo-128.webp'), []);
+
   return (
     <div className="space-y-4">
       {/* App-wide Honor Board (Statistics) */}
@@ -55,12 +59,12 @@ export const FacebookRightSidebar = memo(() => {
         <h3 className="font-semibold text-muted-foreground mb-3">{t('sponsored')}</h3>
         <div className="flex gap-3 cursor-pointer hover:bg-secondary rounded-lg p-2 -m-2 transition-colors">
           <img
-            src="/fun-profile-logo-128.webp"
+            src={sponsoredLogoUrl}
             alt="Ad"
             width={128}
             height={128}
             className="w-32 h-32 rounded-lg object-cover"
-            fetchPriority="high"
+            loading="lazy"
           />
           <div>
             <p className="font-semibold text-sm">FUN Profile - Web3 Social Network</p>

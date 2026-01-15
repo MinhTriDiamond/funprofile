@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import funEcosystemLogo from '@/assets/fun-ecosystem-logo.webp';
 import funFarmLogo from '@/assets/fun-farm-logo.webp';
+import { getNavbarLogoUrl, getSidebarIconUrl } from '@/lib/staticImageOptimizer';
 
 interface Profile {
   id: string;
@@ -72,32 +73,32 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
     { icon: BookOpen, label: 'SSO Docs', path: '/docs/ecosystem', color: 'text-green-500' },
   ];
 
-  // FUN Ecosystem shortcuts
-  const ecosystemShortcuts = [
+  // FUN Ecosystem shortcuts - use optimized URLs for static logos
+  const ecosystemShortcuts = useMemo(() => [
     { 
       name: 'Law of Light', 
-      avatar: '/fun-profile-logo-40.webp',
+      avatar: getNavbarLogoUrl('/fun-profile-logo-40.webp'),
       path: '/law-of-light?view=true',
       isExternal: false,
       isSpecial: true
     },
     { 
       name: 'About FUN Profile', 
-      avatar: '/fun-profile-logo-40.webp',
+      avatar: getNavbarLogoUrl('/fun-profile-logo-40.webp'),
       path: '/about',
       isExternal: false,
       isSpecial: false
     },
     { 
       name: 'FUN Play', 
-      avatar: '/fun-play-logo-36.webp',
+      avatar: getNavbarLogoUrl('/fun-play-logo-36.webp'),
       path: 'https://play.fun.rich',
       isExternal: true,
       isSpecial: false
     },
     { 
       name: 'FUN Planet', 
-      avatar: '/fun-planet-logo-36.webp',
+      avatar: getNavbarLogoUrl('/fun-planet-logo-36.webp'),
       path: 'https://planet.fun.rich',
       isExternal: true,
       isSpecial: false
@@ -109,7 +110,7 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
       isExternal: true,
       isSpecial: false
     },
-  ];
+  ], []);
 
   return (
     <div className="space-y-3">

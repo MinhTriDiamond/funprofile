@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -27,6 +27,7 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { FacebookLeftSidebar } from '@/components/feed/FacebookLeftSidebar';
+import { getNavbarLogoUrl } from '@/lib/staticImageOptimizer';
 
 export const FacebookNavbar = () => {
   const navigate = useNavigate();
@@ -84,9 +85,10 @@ export const FacebookNavbar = () => {
   ];
 
   // Logo navigation items for FUN Play, FUN Farm, FUN Planet
-  const logoNavItems = [
+  // Use optimized URLs for static logos to reduce bandwidth
+  const logoNavItems = useMemo(() => [
     { 
-      logo: '/fun-play-logo-36.webp', 
+      logo: getNavbarLogoUrl('/fun-play-logo-36.webp'), 
       label: 'FUN Play', 
       path: 'https://play.fun.rich',
       isExternal: true 
@@ -98,12 +100,12 @@ export const FacebookNavbar = () => {
       isExternal: true 
     },
     { 
-      logo: '/fun-planet-logo-36.webp', 
+      logo: getNavbarLogoUrl('/fun-planet-logo-36.webp'), 
       label: 'FUN Planet', 
       path: 'https://planet.fun.rich',
       isExternal: true 
     },
-  ];
+  ], []);
 
   const handleLogoClick = (item: typeof logoNavItems[0]) => {
     if (item.isExternal) {
@@ -135,9 +137,9 @@ export const FacebookNavbar = () => {
             </Sheet>
           )}
 
-          {/* Logo */}
+          {/* Logo - optimized for display size */}
           <img
-            src="/fun-profile-logo-40.webp"
+            src={getNavbarLogoUrl('/fun-profile-logo-40.webp')}
             alt="FUN Profile"
             width={36}
             height={36}

@@ -1,10 +1,11 @@
-import { useEffect, useState, memo } from "react";
+import { useEffect, useState, memo, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
+import { getNavbarLogoUrl } from "@/lib/staticImageOptimizer";
 
 interface LeaderboardUser {
   id: string;
@@ -104,7 +105,7 @@ export const TopRanking = memo(() => {
           <div className="inline-block">
             <div className="relative">
               <img
-                src="/fun-profile-logo-40.webp"
+                src={getNavbarLogoUrl('/fun-profile-logo-40.webp')}
                 alt="Fun Profile Web3"
                 width={48}
                 height={48}
