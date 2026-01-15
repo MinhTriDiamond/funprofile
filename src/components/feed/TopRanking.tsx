@@ -12,6 +12,7 @@ interface LeaderboardUser {
   username: string;
   avatar_url: string;
   total_reward: number;
+  today_reward: number;
 }
 
 export const TopRanking = memo(() => {
@@ -23,10 +24,10 @@ export const TopRanking = memo(() => {
     fetchLeaderboards();
   }, []);
 
-  // Optimized: Single RPC call instead of N+1 queries
+  // Optimized: Single RPC call with daily limits (V2)
   const fetchLeaderboards = async () => {
     try {
-      const { data, error } = await supabase.rpc("get_user_rewards", { limit_count: 6 });
+      const { data, error } = await supabase.rpc("get_user_rewards_v2", { limit_count: 6 });
 
       if (error) throw error;
 
@@ -37,6 +38,7 @@ export const TopRanking = memo(() => {
             username: user.username,
             avatar_url: user.avatar_url,
             total_reward: Number(user.total_reward),
+            today_reward: Number(user.today_reward) || 0,
           })),
         );
       }

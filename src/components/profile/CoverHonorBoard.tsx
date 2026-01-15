@@ -1,10 +1,9 @@
-import { useEffect, useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowUp, MessageCircle, Star, Share2, BadgeDollarSign, Coins, Gift, Wallet, Users, Image } from 'lucide-react';
-import { useRewardCalculation } from '@/hooks/useRewardCalculation';
+import { ArrowUp, MessageCircle, Star, Share2, BadgeDollarSign, Coins, Gift, Wallet, Users, Image, Video, Calendar } from 'lucide-react';
+import { useRewardCalculation, REWARD_CONFIG } from '@/hooks/useRewardCalculation';
 import { getNavbarLogoUrl } from '@/lib/staticImageOptimizer';
 
 interface CoverHonorBoardProps {
@@ -45,9 +44,11 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
     reactions_on_posts: rewardStats?.reactionsOnPosts || 0,
     shares_count: rewardStats?.sharesCount || 0,
     friends_count: rewardStats?.friendsCount || 0,
+    livestreams_count: rewardStats?.livestreamsCount || 0,
     nfts_count: 0, // NFTs not implemented yet
     claimable: rewardStats?.claimableAmount || 0,
     claimed: rewardStats?.claimedAmount || 0,
+    today_reward: rewardStats?.todayReward || 0,
     total_reward: rewardStats?.totalReward || 0,
     total_money: (rewardStats?.totalReward || 0) + (additionalData?.receivedAmount || 0),
   };
@@ -159,7 +160,7 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
                 />
               </div>
 
-              {/* Right Column - Friends, NFTs, Claimable, Claimed */}
+              {/* Right Column - Friends, Livestreams, Claimable, Claimed */}
               <div className="flex flex-col justify-between space-y-2">
                 <StatRow 
                   icon={<Users className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
@@ -167,9 +168,9 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
                   value={stats.friends_count}
                 />
                 <StatRow 
-                  icon={<Image className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
-                  label="NFTs"
-                  value={stats.nfts_count}
+                  icon={<Video className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
+                  label="Livestream"
+                  value={stats.livestreams_count}
                 />
                 <StatRow 
                   icon={<Gift className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
@@ -187,14 +188,14 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
             {/* Full Width Total Rows - Even spacing with columns */}
             <div className="mt-3 space-y-2">
               <StatRow 
+                icon={<Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
+                label="Today"
+                value={stats.today_reward}
+              />
+              <StatRow 
                 icon={<BadgeDollarSign className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
                 label="Total Reward"
                 value={stats.total_reward}
-              />
-              <StatRow 
-                icon={<Wallet className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
-                label="Total Money"
-                value={stats.total_money}
               />
             </div>
           </div>
@@ -240,9 +241,10 @@ export const MobileStats = ({ userId, username, avatarUrl }: MobileStatsProps) =
     reactions_on_posts: rewardStats?.reactionsOnPosts || 0,
     shares_count: rewardStats?.sharesCount || 0,
     friends_count: rewardStats?.friendsCount || 0,
-    nfts_count: 0,
+    livestreams_count: rewardStats?.livestreamsCount || 0,
     claimable: rewardStats?.claimableAmount || 0,
     claimed: rewardStats?.claimedAmount || 0,
+    today_reward: rewardStats?.todayReward || 0,
     total_reward: rewardStats?.totalReward || 0,
     total_money: (rewardStats?.totalReward || 0) + (additionalData?.receivedAmount || 0),
   };
@@ -298,7 +300,7 @@ export const MobileStats = ({ userId, username, avatarUrl }: MobileStatsProps) =
             </div>
           </div>
           
-          {/* Second row: Shares, NFTs, Claimable, Claimed */}
+          {/* Second row: Shares, Livestreams, Claimable, Claimed */}
           <div className="grid grid-cols-4 gap-1.5 text-center mb-2">
             <div className="bg-green-800/70 rounded-lg py-1.5 px-1 border border-yellow-500/30">
               <Share2 className="w-3.5 h-3.5 mx-auto text-yellow-400 mb-0.5" />
@@ -306,9 +308,9 @@ export const MobileStats = ({ userId, username, avatarUrl }: MobileStatsProps) =
               <div className="text-yellow-400/80 text-[8px] uppercase">Shares</div>
             </div>
             <div className="bg-green-800/70 rounded-lg py-1.5 px-1 border border-yellow-500/30">
-              <Image className="w-3.5 h-3.5 mx-auto text-yellow-400 mb-0.5" />
-              <div className="text-white font-bold text-xs">{formatNumber(stats.nfts_count)}</div>
-              <div className="text-yellow-400/80 text-[8px] uppercase">NFTs</div>
+              <Video className="w-3.5 h-3.5 mx-auto text-yellow-400 mb-0.5" />
+              <div className="text-white font-bold text-xs">{formatNumber(stats.livestreams_count)}</div>
+              <div className="text-yellow-400/80 text-[8px] uppercase">Live</div>
             </div>
             <div className="bg-green-800/70 rounded-lg py-1.5 px-1 border border-yellow-500/30">
               <Gift className="w-3.5 h-3.5 mx-auto text-yellow-400 mb-0.5" />
@@ -326,17 +328,17 @@ export const MobileStats = ({ userId, username, avatarUrl }: MobileStatsProps) =
           <div className="grid grid-cols-2 gap-1.5">
             <div className="bg-yellow-500/20 rounded-lg py-1.5 px-2 border border-yellow-400/50 flex items-center justify-between">
               <div className="flex items-center gap-1">
-                <BadgeDollarSign className="w-3.5 h-3.5 text-yellow-400" />
-                <span className="text-yellow-400 font-bold text-[9px] uppercase">Reward</span>
+                <Calendar className="w-3.5 h-3.5 text-yellow-400" />
+                <span className="text-yellow-400 font-bold text-[9px] uppercase">Today</span>
               </div>
-              <span className="text-white font-bold text-xs">{formatNumber(stats.total_reward)}</span>
+              <span className="text-white font-bold text-xs">{formatNumber(stats.today_reward)}</span>
             </div>
             <div className="bg-yellow-500/20 rounded-lg py-1.5 px-2 border border-yellow-400/50 flex items-center justify-between">
               <div className="flex items-center gap-1">
-                <Wallet className="w-3.5 h-3.5 text-yellow-400" />
-                <span className="text-yellow-400 font-bold text-[9px] uppercase">Money</span>
+                <BadgeDollarSign className="w-3.5 h-3.5 text-yellow-400" />
+                <span className="text-yellow-400 font-bold text-[9px] uppercase">Total</span>
               </div>
-              <span className="text-white font-bold text-xs">{formatNumber(stats.total_money)}</span>
+              <span className="text-white font-bold text-xs">{formatNumber(stats.total_reward)}</span>
             </div>
           </div>
         </div>

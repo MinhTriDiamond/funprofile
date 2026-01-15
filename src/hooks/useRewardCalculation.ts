@@ -7,44 +7,69 @@ export interface UserRewardStats {
   commentsOnPosts: number;
   sharesCount: number;
   friendsCount: number;
+  livestreamsCount: number;
   totalReward: number;
+  todayReward: number;
   claimedAmount: number;
   claimableAmount: number;
 }
 
 /**
  * Centralized reward calculation formula (Updated 2025-01-15)
- * NEW USER BONUS: 50,000 CAMLY
- * Posts: 1 post = 10,000 CAMLY
- * Reactions received: 1 reaction = 1,000 CAMLY
- * Comments received: 1 comment = 2,000 CAMLY
- * Shares received: 1 share = 10,000 CAMLY
- * Friends: 1 friend = 10,000 CAMLY
+ * CUTOFF DATE: 2025-01-15 (data trước đó không giới hạn)
+ * 
+ * NEW USER BONUS: 50,000 CAMLY (1 lần duy nhất)
+ * 
+ * DAILY LIMITS (từ 2025-01-15):
+ * Posts: 10,000 CAMLY/post, max 10 posts/day = 100,000/day
+ * Reactions received: 1,000 CAMLY/reaction, max 50/day = 50,000/day
+ * Comments received (>20 chars): 2,000 CAMLY/comment, max 50/day = 100,000/day
+ * Shares received: 10,000 CAMLY/share, max 5/day = 50,000/day
+ * Friends: 10,000 CAMLY/friend, max 10/day = 100,000/day
+ * Livestream (10-120 min): 20,000 CAMLY, max 5/day = 100,000/day
+ * 
+ * MAX DAILY REWARD: 500,000 CAMLY
  */
+export const REWARD_CONFIG = {
+  NEW_USER_BONUS: 50000,
+  CUTOFF_DATE: '2025-01-15',
+  DAILY_LIMITS: {
+    posts: { reward: 10000, maxPerDay: 10, maxDaily: 100000 },
+    reactions: { reward: 1000, maxPerDay: 50, maxDaily: 50000 },
+    comments: { reward: 2000, maxPerDay: 50, maxDaily: 100000, minLength: 20 },
+    shares: { reward: 10000, maxPerDay: 5, maxDaily: 50000 },
+    friends: { reward: 10000, maxPerDay: 10, maxDaily: 100000 },
+    livestreams: { reward: 20000, maxPerDay: 5, maxDaily: 100000, minMinutes: 10, maxMinutes: 120 },
+  },
+  MAX_DAILY_REWARD: 500000,
+};
+
 export const calculateReward = (
   postsCount: number,
   reactionsOnPosts: number,
   commentsOnPosts: number,
   sharesCount: number,
-  friendsCount: number
+  friendsCount: number,
+  livestreamsCount: number = 0
 ): number => {
-  const newUserBonus = 50000;
-  const postsReward = postsCount * 10000;
-  const reactionsReward = reactionsOnPosts * 1000;
-  const commentsReward = commentsOnPosts * 2000;
-  const sharesReward = sharesCount * 10000;
-  const friendsReward = friendsCount * 10000;
+  const newUserBonus = REWARD_CONFIG.NEW_USER_BONUS;
+  const postsReward = postsCount * REWARD_CONFIG.DAILY_LIMITS.posts.reward;
+  const reactionsReward = reactionsOnPosts * REWARD_CONFIG.DAILY_LIMITS.reactions.reward;
+  const commentsReward = commentsOnPosts * REWARD_CONFIG.DAILY_LIMITS.comments.reward;
+  const sharesReward = sharesCount * REWARD_CONFIG.DAILY_LIMITS.shares.reward;
+  const friendsReward = friendsCount * REWARD_CONFIG.DAILY_LIMITS.friends.reward;
+  const livestreamsReward = livestreamsCount * REWARD_CONFIG.DAILY_LIMITS.livestreams.reward;
   
-  return newUserBonus + postsReward + reactionsReward + commentsReward + sharesReward + friendsReward;
+  return newUserBonus + postsReward + reactionsReward + commentsReward + sharesReward + friendsReward + livestreamsReward;
 };
 
 /**
- * Fetch reward stats for a user - uses RPC function for consistency with Leaderboard
+ * Fetch reward stats for a user - uses RPC function V2 with daily limits
  */
 const fetchRewardStats = async (userId: string): Promise<UserRewardStats> => {
-  // Use RPC function to get consistent reward calculation with Leaderboard
+  // Use RPC function V2 with daily limits
   const [userRewardsRes, claimsRes] = await Promise.all([
-    supabase.rpc('get_user_rewards', { limit_count: 10000 }),
+    supabase.rpc('get_user_rewards_v2', { limit_count: 10000 }),
     supabase
       .from('reward_claims')
       .select('amount')
@@ -59,7 +84,9 @@ const fetchRewardStats = async (userId: string): Promise<UserRewardStats> => {
   const commentsOnPosts = Number(userData?.comments_count) || 0;
   const sharesCount = Number(userData?.shares_count) || 0;
   const friendsCount = Number(userData?.friends_count) || 0;
+  const livestreamsCount = Number(userData?.livestreams_count) || 0;
   const totalReward = Number(userData?.total_reward) || 0;
+  const todayReward = Number(userData?.today_reward) || 0;
   
   const claimedAmount = claimsRes.data?.reduce((sum, c) => sum + Number(c.amount), 0) || 0;
   const claimableAmount = Math.max(0, totalReward - claimedAmount);
@@ -70,7 +97,9 @@ const fetchRewardStats = async (userId: string): Promise<UserRewardStats> => {
     commentsOnPosts,
     sharesCount,
     friendsCount,
+    livestreamsCount,
     totalReward,
+    todayReward,
     claimedAmount,
     claimableAmount
   };

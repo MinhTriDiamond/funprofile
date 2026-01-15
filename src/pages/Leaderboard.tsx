@@ -5,7 +5,7 @@ import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Trophy, Medal, Award, TrendingUp, Users, MessageCircle, Heart, ArrowLeft } from 'lucide-react';
+import { Trophy, Medal, Award, TrendingUp, Users, MessageCircle, Heart, ArrowLeft, Video, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface LeaderboardUser {
@@ -17,6 +17,8 @@ interface LeaderboardUser {
   comments_count: number;
   reactions_on_posts: number;
   friends_count: number;
+  livestreams_count: number;
+  today_reward: number;
   total_reward: number;
 }
 
@@ -32,8 +34,8 @@ const Leaderboard = () => {
 
   const fetchLeaderboard = async () => {
     try {
-      // Use optimized RPC function that calculates all rewards in a single query
-      const { data, error } = await supabase.rpc('get_user_rewards', { limit_count: 100 });
+      // Use optimized RPC function V2 with daily limits
+      const { data, error } = await supabase.rpc('get_user_rewards_v2', { limit_count: 100 });
 
       if (error) throw error;
 
@@ -45,6 +47,8 @@ const Leaderboard = () => {
         comments_count: number;
         reactions_on_posts: number;
         friends_count: number;
+        livestreams_count: number;
+        today_reward: number;
         total_reward: number;
       }) => ({
         id: user.id,
@@ -55,6 +59,8 @@ const Leaderboard = () => {
         comments_count: user.comments_count || 0,
         reactions_on_posts: user.reactions_on_posts || 0,
         friends_count: user.friends_count || 0,
+        livestreams_count: user.livestreams_count || 0,
+        today_reward: user.today_reward || 0,
         total_reward: user.total_reward || 0
       }));
 
@@ -86,10 +92,12 @@ const Leaderboard = () => {
 
   const categories = [
     { value: 'reward', label: 'Tổng thưởng', icon: Trophy },
+    { value: 'today', label: 'Hôm nay', icon: Calendar },
     { value: 'posts', label: 'Bài viết', icon: TrendingUp },
     { value: 'friends', label: 'Bạn bè', icon: Users },
     { value: 'comments', label: 'Bình luận', icon: MessageCircle },
-    { value: 'reactions_on_posts', label: 'Lượt thích nhận được', icon: Heart },
+    { value: 'reactions_on_posts', label: 'Lượt thích', icon: Heart },
+    { value: 'livestreams', label: 'Livestream', icon: Video },
   ];
 
   const sortedByCategory = [...users].sort((a, b) => {
@@ -98,6 +106,8 @@ const Leaderboard = () => {
       case 'friends': return b.friends_count - a.friends_count;
       case 'comments': return b.comments_count - a.comments_count;
       case 'reactions_on_posts': return b.reactions_on_posts - a.reactions_on_posts;
+      case 'livestreams': return b.livestreams_count - a.livestreams_count;
+      case 'today': return b.today_reward - a.today_reward;
       default: return b.total_reward - a.total_reward;
     }
   });
@@ -246,6 +256,7 @@ const Leaderboard = () => {
                         <div className="flex gap-4 text-xs text-muted-foreground">
                           <span>{user.posts_count} bài viết</span>
                           <span>{user.friends_count} bạn bè</span>
+                          {user.livestreams_count > 0 && <span>{user.livestreams_count} livestream</span>}
                         </div>
                       </div>
                       
@@ -253,11 +264,13 @@ const Leaderboard = () => {
                         <p className="font-bold text-lg text-primary">
                           {activeCategory === 'reward' 
                             ? user.total_reward.toLocaleString('vi-VN')
+                            : activeCategory === 'today'
+                            ? user.today_reward.toLocaleString('vi-VN')
                             : (user[`${activeCategory}_count` as keyof LeaderboardUser] as number)?.toLocaleString('vi-VN')
                           }
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {activeCategory === 'reward' ? 'Camly Coin' : categories.find(c => c.value === activeCategory)?.label}
+                          {activeCategory === 'reward' ? 'Camly Coin' : activeCategory === 'today' ? 'Hôm nay' : categories.find(c => c.value === activeCategory)?.label}
                         </p>
                       </div>
                     </div>

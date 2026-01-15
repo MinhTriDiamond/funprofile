@@ -496,6 +496,57 @@ export type Database = {
         }
         Relationships: []
       }
+      livestreams: {
+        Row: {
+          created_at: string | null
+          duration_minutes: number | null
+          ended_at: string | null
+          id: string
+          is_eligible: boolean | null
+          started_at: string
+          stream_id: string | null
+          title: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          duration_minutes?: number | null
+          ended_at?: string | null
+          id?: string
+          is_eligible?: boolean | null
+          started_at?: string
+          stream_id?: string | null
+          title?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          duration_minutes?: number | null
+          ended_at?: string | null
+          id?: string
+          is_eligible?: boolean | null
+          started_at?: string
+          stream_id?: string | null
+          title?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "livestreams_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "livestreams_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       message_reactions: {
         Row: {
           created_at: string | null
@@ -1521,6 +1572,7 @@ export type Database = {
         Args: { bucket_name: string; object_path: string }
         Returns: undefined
       }
+      end_livestream: { Args: { p_livestream_id: string }; Returns: boolean }
       generate_secure_token: { Args: { length?: number }; Returns: string }
       get_user_rewards: {
         Args: { limit_count?: number }
@@ -1533,6 +1585,23 @@ export type Database = {
           reactions_count: number
           reactions_on_posts: number
           shares_count: number
+          total_reward: number
+          username: string
+        }[]
+      }
+      get_user_rewards_v2: {
+        Args: { limit_count?: number }
+        Returns: {
+          avatar_url: string
+          comments_count: number
+          friends_count: number
+          id: string
+          livestreams_count: number
+          posts_count: number
+          reactions_count: number
+          reactions_on_posts: number
+          shares_count: number
+          today_reward: number
           total_reward: number
           username: string
         }[]
