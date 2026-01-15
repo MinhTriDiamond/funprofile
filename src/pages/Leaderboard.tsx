@@ -15,7 +15,7 @@ interface LeaderboardUser {
   full_name: string | null;
   posts_count: number;
   comments_count: number;
-  reactions_count: number;
+  reactions_on_posts: number;
   friends_count: number;
   total_reward: number;
 }
@@ -43,7 +43,7 @@ const Leaderboard = () => {
         avatar_url: string | null;
         posts_count: number;
         comments_count: number;
-        reactions_count: number;
+        reactions_on_posts: number;
         friends_count: number;
         total_reward: number;
       }) => ({
@@ -53,7 +53,7 @@ const Leaderboard = () => {
         full_name: null,
         posts_count: user.posts_count || 0,
         comments_count: user.comments_count || 0,
-        reactions_count: user.reactions_count || 0,
+        reactions_on_posts: user.reactions_on_posts || 0,
         friends_count: user.friends_count || 0,
         total_reward: user.total_reward || 0
       }));
@@ -89,7 +89,7 @@ const Leaderboard = () => {
     { value: 'posts', label: 'Bài viết', icon: TrendingUp },
     { value: 'friends', label: 'Bạn bè', icon: Users },
     { value: 'comments', label: 'Bình luận', icon: MessageCircle },
-    { value: 'reactions', label: 'Lượt thích', icon: Heart },
+    { value: 'reactions_on_posts', label: 'Lượt thích nhận được', icon: Heart },
   ];
 
   const sortedByCategory = [...users].sort((a, b) => {
@@ -97,7 +97,7 @@ const Leaderboard = () => {
       case 'posts': return b.posts_count - a.posts_count;
       case 'friends': return b.friends_count - a.friends_count;
       case 'comments': return b.comments_count - a.comments_count;
-      case 'reactions': return b.reactions_count - a.reactions_count;
+      case 'reactions_on_posts': return b.reactions_on_posts - a.reactions_on_posts;
       default: return b.total_reward - a.total_reward;
     }
   });
