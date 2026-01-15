@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -8,7 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { getTransformedImageUrl } from '@/lib/imageTransform';
-import { StreamPlayer } from '@/components/ui/StreamPlayer';
+// Lazy load StreamPlayer since this is an admin page
+const StreamPlayer = lazy(() => import('@/components/ui/StreamPlayer').then(mod => ({ default: mod.StreamPlayer })));
 import { 
   Image, Video, Zap, Download, RefreshCw, Check, X, 
   ArrowLeft, TestTube, Gauge, FileImage, Film 
@@ -533,11 +534,13 @@ const MediaTestSandbox = () => {
                     </Label>
                     <div className="aspect-video bg-black rounded-lg overflow-hidden">
                       {detectedVideoType === 'stream' ? (
-                        <StreamPlayer 
-                          src={videoUrl}
-                          poster=""
-                          className="w-full h-full"
-                        />
+                        <Suspense fallback={<div className="w-full h-full bg-muted animate-pulse" />}>
+                          <StreamPlayer 
+                            src={videoUrl}
+                            poster=""
+                            className="w-full h-full"
+                          />
+                        </Suspense>
                       ) : (
                         <video 
                           src={videoUrl}
