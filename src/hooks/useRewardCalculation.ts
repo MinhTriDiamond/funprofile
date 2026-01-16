@@ -15,18 +15,22 @@ export interface UserRewardStats {
 }
 
 /**
- * Centralized reward calculation formula (Updated 2025-01-15)
- * CUTOFF DATE: 2025-01-15 (data trước đó không giới hạn)
+ * Centralized reward calculation formula (Updated 2026-01-15)
+ * CUTOFF DATE: 2026-01-15 (data trước đó không giới hạn)
+ * 
+ * ⚠️ QUAN TRỌNG: Chỉ GIỚI HẠN SỐ TIỀN THƯỞNG, KHÔNG giới hạn hành động của user!
+ * User có thể đăng bài, comment, reaction... bao nhiêu tùy thích.
+ * Chỉ có số tiền thưởng được tính tối đa theo giới hạn bên dưới.
  * 
  * NEW USER BONUS: 50,000 CAMLY (1 lần duy nhất)
  * 
- * DAILY LIMITS (từ 2025-01-15):
- * Posts: 10,000 CAMLY/post, max 10 posts/day = 100,000/day
- * Reactions received: 1,000 CAMLY/reaction, max 50/day = 50,000/day
- * Comments received (>20 chars): 2,000 CAMLY/comment, max 50/day = 100,000/day
- * Shares received: 10,000 CAMLY/share, max 5/day = 50,000/day
- * Friends: 10,000 CAMLY/friend, max 10/day = 100,000/day
- * Livestream (10-120 min): 20,000 CAMLY, max 5/day = 100,000/day
+ * DAILY REWARD LIMITS (từ 2026-01-15) - Chỉ giới hạn thưởng, không giới hạn hành động:
+ * - Posts: 10,000 CAMLY/post, THƯỞNG TỐI ĐA 10 bài/ngày = 100,000/day
+ * - Reactions received: 1,000 CAMLY/reaction, THƯỞNG TỐI ĐA 50/ngày = 50,000/day
+ * - Comments received (>20 chars): 2,000 CAMLY/comment, THƯỞNG TỐI ĐA 50/ngày = 100,000/day
+ * - Shares received: 10,000 CAMLY/share, THƯỞNG TỐI ĐA 5/ngày = 50,000/day
+ * - Friends: 10,000 CAMLY/friend, THƯỞNG TỐI ĐA 10/ngày = 100,000/day
+ * - Livestream (10-120 min): 20,000 CAMLY, THƯỞNG TỐI ĐA 5/ngày = 100,000/day
  * 
  * MAX DAILY REWARD: 500,000 CAMLY
  */
