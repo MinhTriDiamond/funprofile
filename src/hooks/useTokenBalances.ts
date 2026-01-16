@@ -4,6 +4,12 @@ import { formatUnits } from 'viem';
 import { bsc } from 'wagmi/chains';
 import { useReadContract } from 'wagmi';
 
+// Token logos
+import bnbLogo from '@/assets/tokens/bnb-logo.webp';
+import usdtLogo from '@/assets/tokens/usdt-logo.webp';
+import btcbLogo from '@/assets/tokens/btcb-logo.webp';
+import camlyLogo from '@/assets/tokens/camly-logo.webp';
+
 // Token contract addresses on BSC
 export const TOKEN_CONTRACTS = {
   USDT: '0x55d398326f99059fF775485246999027B3197955' as `0x${string}`,
@@ -164,7 +170,7 @@ export const useTokenBalances = (options?: UseTokenBalancesOptions) => {
     {
       symbol: 'BNB',
       name: 'BNB',
-      icon: 'https://cryptologos.cc/logos/bnb-bnb-logo.png',
+      icon: bnbLogo,
       balance: bnbAmount,
       price: prices.BNB?.usd || 700,
       usdValue: bnbAmount * (prices.BNB?.usd || 700),
@@ -175,7 +181,7 @@ export const useTokenBalances = (options?: UseTokenBalancesOptions) => {
     {
       symbol: 'USDT',
       name: 'Tether USD',
-      icon: 'https://cryptologos.cc/logos/tether-usdt-logo.png',
+      icon: usdtLogo,
       balance: usdtAmount,
       price: prices.USDT?.usd || 1,
       usdValue: usdtAmount * (prices.USDT?.usd || 1),
@@ -187,7 +193,7 @@ export const useTokenBalances = (options?: UseTokenBalancesOptions) => {
     {
       symbol: 'BTCB',
       name: 'Bitcoin BEP20',
-      icon: 'https://cryptologos.cc/logos/bitcoin-btc-logo.png',
+      icon: btcbLogo,
       balance: btcbAmount,
       price: prices.BTCB?.usd || 100000,
       usdValue: btcbAmount * (prices.BTCB?.usd || 100000),
@@ -199,7 +205,7 @@ export const useTokenBalances = (options?: UseTokenBalancesOptions) => {
     {
       symbol: 'CAMLY',
       name: 'Camly Coin',
-      icon: '/src/assets/camly-coin-logo.png',
+      icon: camlyLogo,
       balance: camlyAmount,
       price: prices.CAMLY?.usd || 0.000004,
       usdValue: camlyAmount * (prices.CAMLY?.usd || 0.000004),

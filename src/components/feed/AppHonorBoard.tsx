@@ -97,8 +97,8 @@ export const AppHonorBoard = memo(() => {
         });
       }
 
-      // Then other tokens in order: BNB, USDT, BTCB
-      ['BNB', 'USDT', 'BTCB'].forEach(symbol => {
+      // Then other tokens in order: USDT, BTCB (BNB excluded per request)
+      ['USDT', 'BTCB'].forEach(symbol => {
         if (transactionsByToken[symbol] > 0) {
           tokenBalances.push({
             symbol,

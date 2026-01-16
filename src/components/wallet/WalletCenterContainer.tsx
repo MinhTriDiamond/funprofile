@@ -13,8 +13,8 @@ import { ReceiveTab } from './ReceiveTab';
 import { SendTab } from './SendTab';
 import { useTokenBalances } from '@/hooks/useTokenBalances';
 import { formatRelativeTime } from '@/lib/formatters';
-import camlyCoinLogo from '@/assets/camly-coin-logo.png';
 import metamaskLogo from '@/assets/metamask-logo.png';
+import bnbLogo from '@/assets/tokens/bnb-logo.webp';
 
 interface Profile {
   username: string;
@@ -502,7 +502,7 @@ const WalletCenterContainer = () => {
                 My Wallet
               </h1>
               <div className="flex items-center gap-2 bg-yellow-400/20 backdrop-blur-sm px-3 py-1.5 rounded-full border border-yellow-400/30">
-                <img src="https://cryptologos.cc/logos/bnb-bnb-logo.png" alt="BNB" className="w-5 h-5" />
+                <img src={bnbLogo} alt="BNB" className="w-5 h-5" />
                 <span className="text-sm font-medium text-white">BNB Smart Chain</span>
               </div>
             </div>
@@ -578,7 +578,7 @@ const WalletCenterContainer = () => {
             <WalletTypeSwitcher />
             
             <div className="flex items-center gap-2 bg-yellow-100 px-3 py-1.5 rounded-full border border-yellow-300">
-              <img src="https://cryptologos.cc/logos/bnb-bnb-logo.png" alt="BNB" className="w-5 h-5" />
+              <img src={bnbLogo} alt="BNB" className="w-5 h-5" />
               <span className="text-sm font-medium text-yellow-700">BNB Smart Chain</span>
             </div>
             <div className="flex items-center gap-2">
@@ -848,7 +848,7 @@ const WalletCenterContainer = () => {
                 <div key={token.symbol} className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
                   <div className="flex items-center gap-3">
                     <img 
-                      src={token.symbol === 'CAMLY' ? camlyCoinLogo : token.icon} 
+                      src={token.icon} 
                       alt={token.symbol} 
                       className="w-10 h-10 rounded-full" 
                     />
