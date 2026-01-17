@@ -15,11 +15,9 @@ import { Button } from '@/components/ui/button';
 import { LazyImage } from '@/components/ui/LazyImage';
 import { CoverPhotoEditor } from '@/components/profile/CoverPhotoEditor';
 import { AvatarEditor } from '@/components/profile/AvatarEditor';
-import { Plus, PenSquare, MoreHorizontal, MapPin, Briefcase, GraduationCap, Heart, Clock, MessageCircle } from 'lucide-react';
+import { Plus, PenSquare, MoreHorizontal, MapPin, Briefcase, GraduationCap, Heart, Clock, MessageCircle, Eye, X, Pin } from 'lucide-react';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { useConversations } from '@/hooks/useConversations';
-import { Plus, PenSquare, MoreHorizontal, MapPin, Briefcase, GraduationCap, Heart, Clock, Eye, X, Pin } from 'lucide-react';
-import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { toast } from 'sonner';
 
 const Profile = () => {

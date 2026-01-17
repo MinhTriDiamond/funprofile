@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import funEcosystemLogo from '@/assets/fun-ecosystem-logo.webp';
 import funFarmLogo from '@/assets/fun-farm-logo.webp';
+import funWalletLogo from '@/assets/fun-wallet-logo.png';
 import { getNavbarLogoUrl, getSidebarIconUrl } from '@/lib/staticImageOptimizer';
 
 interface Profile {
@@ -97,6 +98,13 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
       isSpecial: false
     },
     { 
+      name: 'FUN Farm', 
+      avatar: funFarmLogo,
+      path: 'https://farm.fun.rich',
+      isExternal: true,
+      isSpecial: false
+    },
+    { 
       name: 'FUN Planet', 
       avatar: getNavbarLogoUrl('/fun-planet-logo-36.webp'),
       path: 'https://planet.fun.rich',
@@ -104,9 +112,9 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
       isSpecial: false
     },
     { 
-      name: 'FUN Farm', 
-      avatar: funFarmLogo,
-      path: 'https://farm.fun.rich',
+      name: 'FUN Wallet', 
+      avatar: funWalletLogo,
+      path: 'https://wallet.fun.rich',
       isExternal: true,
       isSpecial: false
     },
