@@ -1,4 +1,5 @@
 import { lazy, Suspense } from "react";
+import Feed from "./pages/Feed";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -9,7 +10,6 @@ import { LawOfLightGuard } from "@/components/auth/LawOfLightGuard";
 
 // Lazy load pages for code splitting
 const Auth = lazy(() => import("./pages/Auth"));
-const Feed = lazy(() => import("./pages/Feed"));
 const Friends = lazy(() => import("./pages/Friends"));
 const Profile = lazy(() => import("./pages/Profile"));
 const Wallet = lazy(() => import("./pages/Wallet"));
