@@ -27,6 +27,7 @@ const DocsRouter = lazy(() => import("./pages/DocsRouter"));
 const ConnectedApps = lazy(() => import("./pages/ConnectedApps"));
 const SetPassword = lazy(() => import("./pages/SetPassword"));
 const Chat = lazy(() => import("./pages/Chat"));
+const Install = lazy(() => import("./pages/Install"));
 
 // Optimized QueryClient with caching
 const queryClient = new QueryClient({
@@ -83,6 +84,7 @@ function App() {
                   <Route path="/chat" element={<Chat />} />
                   <Route path="/chat/:conversationId" element={<Chat />} />
                   <Route path="/docs/*" element={<DocsRouter />} />
+                  <Route path="/install" element={<Install />} />
                   {/* Dynamic username route - must be AFTER static routes */}
                   <Route path="/:username" element={<Profile />} />
                   <Route path="*" element={<NotFound />} />
