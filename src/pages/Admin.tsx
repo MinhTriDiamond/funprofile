@@ -203,7 +203,6 @@ const Admin = () => {
 
           <TabsContent value="rewards">
             <RewardApprovalTab 
-              users={users} 
               adminId={currentUserId!} 
               onRefresh={loadAllUsers} 
             />
