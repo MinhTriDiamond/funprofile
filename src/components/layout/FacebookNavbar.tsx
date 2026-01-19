@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -13,14 +13,7 @@ import {
   Menu,
   Wallet,
 } from 'lucide-react';
-import funFarmLogo from '@/assets/fun-farm-logo.webp';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import {
   Sheet,
   SheetContent,
@@ -84,37 +77,6 @@ export const FacebookNavbar = () => {
     { icon: Users, path: '/friends', label: t('friends') },
   ];
 
-  // Logo navigation items for FUN Play, FUN Farm, FUN Planet
-  // Use optimized URLs for static logos to reduce bandwidth
-  const logoNavItems = useMemo(() => [
-    { 
-      logo: getNavbarLogoUrl('/fun-play-logo-36.webp'), 
-      label: 'FUN Play', 
-      path: 'https://play.fun.rich',
-      isExternal: true 
-    },
-    { 
-      logo: funFarmLogo, 
-      label: 'FUN Farm', 
-      path: 'https://farm.fun.rich',
-      isExternal: true 
-    },
-    { 
-      logo: getNavbarLogoUrl('/fun-planet-logo-36.webp'), 
-      label: 'FUN Planet', 
-      path: 'https://planet.fun.rich',
-      isExternal: true 
-    },
-  ], []);
-
-  const handleLogoClick = (item: typeof logoNavItems[0]) => {
-    if (item.isExternal) {
-      window.open(item.path, '_blank', 'noopener,noreferrer');
-    } else {
-      navigate(item.path);
-    }
-  };
-
   return (
     <header className="fixed top-0 left-0 right-0 z-50 fb-header h-12 md:h-14 safe-area-top">
       <div className="h-full max-w-screen-2xl mx-auto px-2 sm:px-4 flex items-center justify-between">
@@ -152,62 +114,30 @@ export const FacebookNavbar = () => {
           </div>
         </div>
 
-        {/* Center Section - Navigation */}
-        <nav className="hidden md:flex items-center justify-center flex-1 max-w-[600px] h-full gap-2">
-          <TooltipProvider delayDuration={100}>
-            {/* Icon Navigation Items (Home, Friends) */}
-            {iconNavItems.map((item) => (
-              <button
-                key={item.path}
-                onClick={() => navigate(item.path)}
-                aria-label={item.label}
-                className={`flex-1 h-full max-w-[80px] flex items-center justify-center relative transition-all duration-300 rounded-lg group ${
-                  isActive(item.path)
-                    ? 'text-gold'
-                    : 'text-muted-foreground hover:text-primary hover:bg-primary/10'
-                }`}
-              >
-                <item.icon className={`w-6 h-6 transition-all duration-300 ${
-                  isActive(item.path) 
-                    ? 'drop-shadow-[0_0_8px_hsl(48_96%_53%/0.6)]' 
-                    : 'group-hover:drop-shadow-[0_0_6px_hsl(142_76%_36%/0.5)]'
-                }`} />
-                {isActive(item.path) && (
-                  <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-gradient-to-r from-primary via-gold to-primary rounded-t-full" />
-                )}
-              </button>
-            ))}
-
-            {/* Logo Navigation Items (FUN Play, FUN Farm, FUN Planet) */}
-            {logoNavItems.map((item) => (
-              <Tooltip key={item.label}>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => handleLogoClick(item)}
-                    aria-label={item.label}
-                    className="flex-1 h-full max-w-[80px] flex items-center justify-center relative group"
-                  >
-                    <img
-                      src={item.logo}
-                      alt={item.label}
-                      width={36}
-                      height={36}
-                      className="w-9 h-9 rounded-lg object-cover transition-all duration-300 
-                        group-hover:shadow-[0_0_20px_rgba(34,197,94,0.7),0_0_30px_rgba(250,204,21,0.5)] 
-                        group-hover:scale-110
-                        group-hover:brightness-110"
-                    />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent 
-                  side="bottom" 
-                  className="bg-white border-2 border-yellow-500 text-primary font-medium px-3 py-1.5 text-sm shadow-lg"
-                >
-                  {item.label}
-                </TooltipContent>
-              </Tooltip>
-            ))}
-          </TooltipProvider>
+        {/* Center Section - Navigation (Desktop only, hidden on tablet) */}
+        <nav className="hidden lg:flex items-center justify-center flex-1 max-w-[400px] h-full gap-2">
+          {/* Icon Navigation Items (Home, Friends) */}
+          {iconNavItems.map((item) => (
+            <button
+              key={item.path}
+              onClick={() => navigate(item.path)}
+              aria-label={item.label}
+              className={`flex-1 h-full max-w-[100px] flex items-center justify-center relative transition-all duration-300 rounded-lg group ${
+                isActive(item.path)
+                  ? 'text-primary-foreground bg-primary'
+                  : 'text-foreground hover:text-primary hover:bg-primary/10'
+              }`}
+            >
+              <item.icon className={`w-6 h-6 transition-all duration-300 ${
+                isActive(item.path) 
+                  ? '' 
+                  : 'group-hover:drop-shadow-[0_0_6px_hsl(142_76%_36%/0.5)]'
+              }`} />
+              {isActive(item.path) && (
+                <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-gradient-to-r from-primary via-gold to-primary rounded-t-full" />
+              )}
+            </button>
+          ))}
         </nav>
 
         {/* Right Section - Actions */}
@@ -217,14 +147,24 @@ export const FacebookNavbar = () => {
             <InlineSearch />
           </div>
 
-          {/* Chat/Messenger */}
-          <button 
-            className="fun-icon-btn group" 
-            aria-label="Messenger"
-            onClick={() => navigate('/chat')}
-          >
-            <MessageCircle className="w-5 h-5 text-muted-foreground group-hover:text-white transition-all duration-300" />
-          </button>
+          {/* Mobile/Tablet: Wallet icon | Desktop: Chat icon */}
+          {isMobileOrTablet ? (
+            <button 
+              className="fun-icon-btn-gold group" 
+              aria-label="Wallet"
+              onClick={() => navigate('/wallet')}
+            >
+              <Wallet className="w-5 h-5 text-gold drop-shadow-[0_0_6px_hsl(48_96%_53%/0.5)] group-hover:drop-shadow-[0_0_12px_hsl(48_96%_53%/0.8)] transition-all duration-300" />
+            </button>
+          ) : (
+            <button 
+              className="fun-icon-btn group" 
+              aria-label="Messenger"
+              onClick={() => navigate('/chat')}
+            >
+              <MessageCircle className="w-5 h-5 text-muted-foreground group-hover:text-white transition-all duration-300" />
+            </button>
+          )}
 
           {/* Desktop only: Notification, Wallet, Avatar */}
           {!isMobileOrTablet && isLoggedIn && (

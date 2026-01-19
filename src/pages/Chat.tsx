@@ -11,7 +11,7 @@ import { CreateGroupDialog } from '@/components/chat/CreateGroupDialog';
 import { ChatSettingsDialog } from '@/components/chat/ChatSettingsDialog';
 import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { useIsMobile, useIsMobileOrTablet } from '@/hooks/use-mobile';
 import { ArrowLeft, MessageSquarePlus, Users, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -25,6 +25,7 @@ export default function Chat() {
   const { conversationId } = useParams<{ conversationId?: string }>();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const isMobileOrTablet = useIsMobileOrTablet();
   const [userId, setUserId] = useState<string | null>(null);
   const [username, setUsername] = useState<string | null>(null);
   const [showNewConversation, setShowNewConversation] = useState(false);
@@ -82,8 +83,8 @@ export default function Chat() {
     setShowCreateGroup(false);
   };
 
-  // Mobile: Show only list or thread
-  if (isMobile) {
+  // Mobile/Tablet: Show only list or thread
+  if (isMobileOrTablet) {
     return (
       <div className="min-h-screen bg-background flex flex-col">
         <FacebookNavbar />
