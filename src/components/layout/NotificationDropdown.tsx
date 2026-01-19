@@ -305,7 +305,11 @@ export const NotificationDropdown = ({ centerNavStyle = false, isActiveRoute = f
             )}
           </button>
         </PopoverTrigger>
-        <PopoverContent className="w-80 sm:w-96 p-0 border-gold/20 shadow-[0_0_20px_hsl(var(--gold-glow)/0.2)]" align="center">
+        <PopoverContent 
+          className="w-80 sm:w-96 lg:w-[450px] p-0 border-gold/20 shadow-[0_0_20px_hsl(var(--gold-glow)/0.2)]" 
+          align="end"
+          sideOffset={8}
+        >
           <div className="flex items-center justify-between p-4 border-b border-border/50 bg-gradient-to-r from-gold/5 to-transparent">
             <h3 className="font-semibold text-foreground flex items-center gap-2">
               <Bell className="w-4 h-4 text-gold" />
