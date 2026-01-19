@@ -392,14 +392,14 @@ export const NotificationDropdown = ({ centerNavStyle = false, isActiveRoute = f
           variant="ghost" 
           size="icon" 
           className={cn(
-            "h-10 w-10 relative transition-all duration-300 group",
+            "h-12 w-12 relative transition-all duration-300 group",
             "text-foreground hover:text-primary hover:bg-primary/10",
             hasNewNotification && "animate-pulse"
           )} 
           aria-label="Thông báo"
         >
           <Bell className={cn(
-            "w-5 h-5 transition-all duration-300",
+            "w-6 h-6 transition-all duration-300",
             "group-hover:drop-shadow-[0_0_6px_hsl(142_76%_36%/0.5)]",
             hasNewNotification && "animate-bounce"
           )} />
