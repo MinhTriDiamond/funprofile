@@ -392,30 +392,30 @@ export const NotificationDropdown = ({ centerNavStyle = false, isActiveRoute = f
           variant="ghost" 
           size="icon" 
           className={cn(
-            "h-10 w-10 relative hover:bg-gold/20 transition-all duration-300 group",
+            "h-10 w-10 relative transition-all duration-300 group",
+            "text-foreground hover:text-primary hover:bg-primary/10",
             hasNewNotification && "animate-pulse"
           )} 
           aria-label="Thông báo"
         >
           <Bell className={cn(
-            "w-5 h-5 text-gold transition-all duration-300 group-hover:drop-shadow-[0_0_12px_hsl(48_96%_53%/0.7)]",
-            hasNewNotification 
-              ? "drop-shadow-[0_0_12px_hsl(48_96%_53%/0.6)] animate-bounce" 
-              : "drop-shadow-[0_0_6px_hsl(48_96%_53%/0.5)]"
+            "w-5 h-5 transition-all duration-300",
+            "group-hover:drop-shadow-[0_0_6px_hsl(142_76%_36%/0.5)]",
+            hasNewNotification && "animate-bounce"
           )} />
           {unreadCount > 0 && (
             <span className={cn(
               "absolute -top-1 -right-1 text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold transition-all duration-300",
               hasNewNotification 
-                ? "bg-gold text-black shadow-[0_0_15px_hsl(var(--gold-glow))] animate-pulse scale-110" 
-                : "bg-green-500 text-white"
+                ? "bg-primary text-primary-foreground shadow-[0_0_15px_hsl(142_76%_36%/0.5)] animate-pulse scale-110" 
+                : "bg-primary text-primary-foreground"
             )}>
               {unreadCount > 99 ? '99+' : unreadCount}
             </span>
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 sm:w-96 p-0 border-gold/20 shadow-[0_0_20px_hsl(var(--gold-glow)/0.2)]" align="end">
+      <PopoverContent className="w-80 sm:w-96 lg:w-[450px] p-0 border-border/20 shadow-lg" align="end" sideOffset={8}>
         <div className="flex items-center justify-between p-4 border-b border-border/50 bg-gradient-to-r from-gold/5 to-transparent">
           <h3 className="font-semibold text-foreground flex items-center gap-2">
             <Bell className="w-4 h-4 text-gold" />
