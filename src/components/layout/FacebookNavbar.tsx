@@ -141,9 +141,6 @@ export const FacebookNavbar = () => {
               )}
             </button>
           ))}
-          
-          {/* Notification button with same styling - integrated NotificationDropdown */}
-          <NotificationDropdown centerNavStyle isActiveRoute={isActive('/notifications')} />
         </nav>
 
         {/* Right Section - Actions */}
@@ -167,20 +164,23 @@ export const FacebookNavbar = () => {
           {/* Notification for mobile/tablet */}
           {isMobileOrTablet && <NotificationDropdown />}
 
-          {/* Desktop only: Avatar */}
+          {/* Desktop only: Notification Bell + Avatar */}
           {!isMobileOrTablet && isLoggedIn && (
-            <button
-              onClick={() => navigate(`/profile/${currentUserId}`)}
-              className="flex-shrink-0"
-              aria-label="Profile"
-            >
-              <Avatar className="w-9 h-9 border-2 border-gold/30 hover:border-gold transition-colors cursor-pointer">
-                <AvatarImage src={profile?.avatar_url || ''} />
-                <AvatarFallback className="bg-primary/20 text-primary text-sm">
-                  {profile?.username?.[0]?.toUpperCase() || 'U'}
-                </AvatarFallback>
-              </Avatar>
-            </button>
+            <div className="flex items-center gap-3">
+              <NotificationDropdown />
+              <button
+                onClick={() => navigate(`/profile/${currentUserId}`)}
+                className="flex-shrink-0"
+                aria-label="Profile"
+              >
+                <Avatar className="w-9 h-9 border-2 border-gold/30 hover:border-gold transition-colors cursor-pointer">
+                  <AvatarImage src={profile?.avatar_url || ''} />
+                  <AvatarFallback className="bg-primary/20 text-primary text-sm">
+                    {profile?.username?.[0]?.toUpperCase() || 'U'}
+                  </AvatarFallback>
+                </Avatar>
+              </button>
+            </div>
           )}
 
           {/* Sign In Button - Only show when not logged in */}
