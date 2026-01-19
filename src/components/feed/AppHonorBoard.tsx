@@ -200,14 +200,14 @@ export const AppHonorBoard = memo(() => {
               className="w-10 h-10 rounded-full border border-yellow-400 shadow-lg" 
             />
             <h1 
-              className="text-xl font-black tracking-wider uppercase" 
+              className="text-2xl font-black tracking-wider uppercase" 
               style={{
                 fontFamily: "'Orbitron', 'Rajdhani', sans-serif",
-                background: 'linear-gradient(135deg, #fcd34d 0%, #f59e0b 50%, #fcd34d 100%)',
+                background: 'linear-gradient(135deg, #fff7c2 0%, #ffd700 25%, #ffb800 50%, #ffd700 75%, #fff7c2 100%)',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
-                textShadow: '0 0 20px rgba(250,204,21,0.6)',
-                filter: 'drop-shadow(0 0 8px rgba(250,204,21,0.5))'
+                textShadow: '0 0 25px rgba(255,215,0,0.8), 0 0 10px rgba(255,215,0,0.5)',
+                filter: 'drop-shadow(0 0 10px rgba(255,215,0,0.6))'
               }}
             >
               {t('honorBoard')}
