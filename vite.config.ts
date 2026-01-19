@@ -21,7 +21,7 @@ export default defineConfig(({ mode }) => ({
         short_name: 'FUN Profile',
         description: 'Mạng xã hội Web3 kết hợp AI. Kết nối bạn bè, chia sẻ nội dung, kiếm phần thưởng Camly Coin.',
         theme_color: '#22c55e',
-        background_color: '#f0f2f5',
+        background_color: '#ffffff',
         display: 'standalone',
         orientation: 'portrait',
         scope: '/',
