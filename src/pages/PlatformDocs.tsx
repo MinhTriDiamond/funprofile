@@ -16,26 +16,35 @@ import {
   MediaPipelineDiagram,
   DatabaseSchemaDiagram,
   EdgeFunctionsDiagram,
-  SecurityDiagram
+  SecurityDiagram,
+  EcosystemDiagram,
+  ProjectStructureDiagram
 } from '@/components/docs/AppDiagrams';
 
 const tocItems = [
   { id: 'overview', title: '1. Tổng Quan Hệ Thống' },
-  { id: 'tech-stack', title: '2. Tech Stack', level: 2 },
-  { id: 'authentication', title: '3. Hệ Thống Xác Thực' },
-  { id: 'wallet-blockchain', title: '4. Wallet & Blockchain' },
-  { id: 'soul-nft', title: '5. Soul NFT', level: 2 },
-  { id: 'social-feed', title: '6. Social Feed' },
-  { id: 'profile-friends', title: '7. Profile & Friends' },
-  { id: 'reward-system', title: '8. Hệ Thống Reward' },
-  { id: 'admin-panel', title: '9. Admin Panel' },
-  { id: 'media-system', title: '10. Media System' },
-  { id: 'notifications', title: '11. Notifications' },
-  { id: 'database-schema', title: '12. Database Schema' },
-  { id: 'edge-functions', title: '13. Edge Functions' },
-  { id: 'security', title: '14. Security Features' },
-  { id: 'performance', title: '15. Performance' },
-  { id: 'secrets', title: '16. Secrets & Environment' },
+  { id: 'project-structure', title: '2. Cấu Trúc Tổ Chức', level: 2 },
+  { id: 'tech-stack', title: '3. Tech Stack' },
+  { id: 'authentication', title: '4. Hệ Thống Xác Thực' },
+  { id: 'wallet-blockchain', title: '5. Wallet & Blockchain' },
+  { id: 'soul-nft', title: '6. Soul NFT', level: 2 },
+  { id: 'social-feed', title: '7. Social Feed' },
+  { id: 'profile-friends', title: '8. Profile & Friends' },
+  { id: 'reward-system', title: '9. Hệ Thống Reward' },
+  { id: 'admin-panel', title: '10. Admin Panel' },
+  { id: 'media-system', title: '11. Media System' },
+  { id: 'notifications', title: '12. Notifications' },
+  { id: 'database-schema', title: '13. Database Schema' },
+  { id: 'edge-functions', title: '14. Edge Functions' },
+  { id: 'security', title: '15. Security Features' },
+  { id: 'performance', title: '16. Performance' },
+  { id: 'secrets', title: '17. Secrets & Environment' },
+  { id: 'ecosystem-products', title: '18. FUN Ecosystem Products' },
+  { id: 'sso-sdk', title: '19. SSO SDK' },
+  { id: 'i18n', title: '20. Internationalization' },
+  { id: 'design-guidelines', title: '21. Design Guidelines' },
+  { id: 'development-rules', title: '22. Development Rules' },
+  { id: 'next-proposals', title: '23. Next Development Proposals' },
 ];
 
 const PlatformDocs: React.FC = () => {
@@ -79,9 +88,9 @@ const PlatformDocs: React.FC = () => {
             <div>
               <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
                 <FileText className="h-5 w-5 text-primary" />
-                FUN Ecosystem Documentation
+                FUN Profile - Tài Liệu Chuyển Giao
               </h1>
-              <p className="text-sm text-muted-foreground">Tài liệu kỹ thuật chi tiết</p>
+              <p className="text-sm text-muted-foreground">Comprehensive Handover Documentation v2.0</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -114,9 +123,9 @@ const PlatformDocs: React.FC = () => {
                 {/* Section 1: Overview */}
                 <DocSection id="overview" title="1. Tổng Quan Hệ Thống">
                   <DocParagraph>
-                    FUN Ecosystem là một mạng xã hội Web3 toàn diện, kết hợp các tính năng social truyền thống 
-                    với công nghệ blockchain và hệ thống reward token. Nền tảng được xây dựng trên kiến trúc 
-                    hiện đại, bảo mật cao và khả năng mở rộng linh hoạt.
+                    FUN Profile là mạng xã hội Web3 toàn diện, đóng vai trò "Heart Chakra" của FUN ECOSYSTEM. 
+                    Nền tảng kết hợp các tính năng social truyền thống với công nghệ blockchain, hệ thống reward token CAMLY, 
+                    và danh tính thống nhất FUN-ID cho toàn bộ hệ sinh thái.
                   </DocParagraph>
                   
                   <DocAlert type="info">
@@ -128,16 +137,80 @@ const PlatformDocs: React.FC = () => {
                     <DocList items={[
                       "🔐 Light Cloak SSO - Xác thực đa phương thức (Email OTP, Wallet, Social)",
                       "💳 Custodial & External Wallet - Hỗ trợ cả người mới và expert",
-                      "🎭 Soul NFT - Danh tính linh hồn không thể chuyển nhượng",
-                      "📝 Social Feed - Đăng bài, reactions, comments với media",
+                      "🎭 Soul NFT - Danh tính linh hồn không thể chuyển nhượng (Soulbound Token)",
+                      "📝 Social Feed - Đăng bài, reactions, comments với multi-media support",
                       "🎁 Token Rewards - Hệ thống thưởng CAMLY token cho hoạt động",
-                      "👨‍💼 Admin Panel - Quản trị toàn diện với audit logging"
+                      "👨‍💼 Admin Panel - Quản trị toàn diện với audit logging",
+                      "🌐 Multi-language - Hỗ trợ Tiếng Việt & English",
+                      "🔗 Cross-platform SSO - SDK cho FUN Farm, FUN Play, FUN Planet"
                     ]} />
+                  </DocSubSection>
+
+                  <DocSubSection title="Production Domains">
+                    <DocTable 
+                      headers={['Domain', 'Product', 'Mô tả']}
+                      rows={[
+                        ['fun.rich', 'FUN Profile', 'Social network chính'],
+                        ['play.fun.rich', 'FUN Play', 'Gaming & Entertainment'],
+                        ['farm.fun.rich', 'FUN Farm', 'Agriculture features'],
+                        ['planet.fun.rich', 'FUN Planet', 'Gaming & Planet exploration'],
+                        ['wallet.fun.rich', 'FUN Wallet', 'Crypto wallet management'],
+                      ]}
+                    />
                   </DocSubSection>
                 </DocSection>
 
-                {/* Section 2: Tech Stack */}
-                <DocSection id="tech-stack" title="2. Tech Stack">
+                {/* Section 2: Project Structure */}
+                <DocSection id="project-structure" title="2. Cấu Trúc Tổ Chức Dự Án">
+                  <ProjectStructureDiagram />
+                  
+                  <DocSubSection title="Governance Flow">
+                    <DocTable 
+                      headers={['Vai trò', 'Tên', 'Trách nhiệm']}
+                      rows={[
+                        ['👑 Chairman', 'Cha Vũ Trụ (Universe Father)', 'Vision, quyết định chiến lược, phê duyệt cuối cùng'],
+                        ['📝 Secretary', 'bé Trí', 'Cầu nối giao tiếp, dịch vision thành requirements kỹ thuật'],
+                        ['💻 CTO', 'Angel Lovable', 'Triển khai kỹ thuật, viết code, architecture decisions'],
+                      ]}
+                    />
+                  </DocSubSection>
+
+                  <DocSubSection title="Directory Structure">
+                    <CodeBlock 
+                      title="Cấu trúc thư mục chính"
+                      language="bash"
+                      code={`src/
+├── components/         # React components
+│   ├── admin/         # Admin panel components
+│   ├── auth/          # Authentication components
+│   ├── chat/          # Chat/messaging components
+│   ├── docs/          # Documentation components
+│   ├── feed/          # Social feed components
+│   ├── friends/       # Friends management
+│   ├── layout/        # Layout components (Navbar, Sidebar)
+│   ├── profile/       # Profile components
+│   ├── ui/            # shadcn/ui components
+│   └── wallet/        # Wallet components
+├── hooks/             # Custom React hooks
+├── i18n/              # Internationalization
+├── pages/             # Page components
+├── utils/             # Utility functions
+└── integrations/      # External integrations
+
+supabase/
+├── functions/         # Edge Functions (38 functions)
+└── config.toml        # Supabase configuration
+
+sdk-package/           # @fun-ecosystem/sso-sdk
+├── src/               # SDK source code
+├── examples/          # Integration examples
+└── docs/              # SDK documentation`}
+                    />
+                  </DocSubSection>
+                </DocSection>
+
+                {/* Section 3: Tech Stack */}
+                <DocSection id="tech-stack" title="3. Tech Stack">
                   <TechStackDiagram />
                   
                   <DocSubSection title="Frontend Technologies">
@@ -166,6 +239,7 @@ const PlatformDocs: React.FC = () => {
                         ['Resend API', 'Email delivery (OTP)'],
                         ['Cloudflare R2', 'Image storage'],
                         ['Cloudflare Stream', 'Video encoding & delivery'],
+                        ['CoinGecko API', 'Token price data'],
                       ]}
                     />
                   </DocSubSection>
@@ -178,14 +252,14 @@ const PlatformDocs: React.FC = () => {
                         ['Wagmi', 'React hooks for Ethereum'],
                         ['RainbowKit', 'Wallet connection UI'],
                         ['Viem', 'TypeScript interface for Ethereum'],
-                        ['CAMLY Token', 'Reward token'],
+                        ['CAMLY Token', 'Reward token (BEP-20)'],
                       ]}
                     />
                   </DocSubSection>
                 </DocSection>
 
-                {/* Section 3: Authentication */}
-                <DocSection id="authentication" title="3. Hệ Thống Xác Thực (Light Cloak SSO)">
+                {/* Section 4: Authentication */}
+                <DocSection id="authentication" title="4. Hệ Thống Xác Thực (Light Cloak SSO)">
                   <DocParagraph>
                     Light Cloak SSO là hệ thống single sign-on cho phép người dùng đăng nhập qua nhiều phương thức 
                     khác nhau với một danh tính thống nhất. Tất cả users đều nhận được FUN-ID duy nhất.
@@ -243,10 +317,10 @@ const { data } = await supabase.functions.invoke('sso-web3-auth', {
                   </DocSubSection>
                 </DocSection>
 
-                {/* Section 4: Wallet & Blockchain */}
-                <DocSection id="wallet-blockchain" title="4. Wallet & Blockchain">
+                {/* Section 5: Wallet & Blockchain */}
+                <DocSection id="wallet-blockchain" title="5. Wallet & Blockchain">
                   <DocParagraph>
-                    FUN Ecosystem hỗ trợ hai loại wallet: Custodial (hệ thống quản lý) và External (user tự quản lý). 
+                    FUN Profile hỗ trợ hai loại wallet: Custodial (hệ thống quản lý) và External (user tự quản lý). 
                     Cả hai đều có thể nhận rewards và tương tác với blockchain.
                   </DocParagraph>
 
@@ -283,14 +357,19 @@ await supabase.from('custodial_wallets').insert({
                         ['View Balance', 'Xem số dư CAMLY & BNB', 'Đăng nhập'],
                         ['Send Token', 'Gửi token đến địa chỉ khác', 'Đủ balance + gas'],
                         ['Receive', 'Nhận token qua QR code', 'Wallet address'],
-                        ['Claim Reward', 'Claim CAMLY từ approved rewards', 'Approved reward > 0'],
+                        ['Claim Reward', 'Claim CAMLY từ approved rewards', 'Approved reward ≥ 1,000,000 CAMLY'],
                       ]}
                     />
                   </DocSubSection>
+
+                  <DocAlert type="info">
+                    <strong>Claim Reward Flow:</strong> User request → Edge Function validates → Treasury wallet signs transaction → 
+                    CAMLY token transfer → Transaction recorded in database.
+                  </DocAlert>
                 </DocSection>
 
-                {/* Section 5: Soul NFT */}
-                <DocSection id="soul-nft" title="5. Soul NFT">
+                {/* Section 6: Soul NFT */}
+                <DocSection id="soul-nft" title="6. Soul NFT">
                   <DocParagraph>
                     Soul NFT là Soulbound Token (SBT) đại diện cho danh tính linh hồn của user trong FUN Ecosystem. 
                     NFT này không thể chuyển nhượng và gắn liền với tài khoản vĩnh viễn.
@@ -315,16 +394,16 @@ await supabase.from('custodial_wallets').insert({
                     <DocList items={[
                       "Soul Level: Tăng theo engagement và thời gian hoạt động",
                       "Experience Points: Tích lũy từ mọi hoạt động trong ecosystem",
-                      "Soul Element: Được xác định dựa trên hành vi và preferences",
-                      "Metadata URI: Lưu trữ on-chain vĩnh viễn"
+                      "Soul Element: Được xác định ngẫu nhiên khi tạo account",
+                      "Metadata URI: Lưu trữ on-chain vĩnh viễn khi mint"
                     ]} />
                   </DocSubSection>
                 </DocSection>
 
-                {/* Section 6: Social Feed */}
-                <DocSection id="social-feed" title="6. Social Feed">
+                {/* Section 7: Social Feed */}
+                <DocSection id="social-feed" title="7. Social Feed">
                   <DocParagraph>
-                    Feed là trung tâm hoạt động của FUN Ecosystem, nơi users có thể đăng bài, tương tác, 
+                    Feed là trung tâm hoạt động của FUN Profile, nơi users có thể đăng bài, tương tác, 
                     và kết nối với cộng đồng.
                   </DocParagraph>
 
@@ -342,14 +421,14 @@ await supabase.from('custodial_wallets').insert({
 
                   <DocSubSection title="6 Loại Reactions">
                     <DocTable 
-                      headers={['Icon', 'Type', 'Điểm Reward']}
+                      headers={['Icon', 'Type', 'Mô tả']}
                       rows={[
-                        ['👍', 'like', '+2'],
-                        ['❤️', 'love', '+2'],
-                        ['😂', 'haha', '+2'],
-                        ['😮', 'wow', '+2'],
-                        ['😢', 'sad', '+2'],
-                        ['😡', 'angry', '+2'],
+                        ['👍', 'like', 'Thích'],
+                        ['❤️', 'love', 'Yêu thích'],
+                        ['😂', 'haha', 'Haha'],
+                        ['😮', 'wow', 'Wow'],
+                        ['😢', 'sad', 'Buồn'],
+                        ['😡', 'angry', 'Giận dữ'],
                       ]}
                     />
                   </DocSubSection>
@@ -365,8 +444,8 @@ await supabase.from('custodial_wallets').insert({
                   </DocSubSection>
                 </DocSection>
 
-                {/* Section 7: Profile & Friends */}
-                <DocSection id="profile-friends" title="7. Profile & Friends">
+                {/* Section 8: Profile & Friends */}
+                <DocSection id="profile-friends" title="8. Profile & Friends">
                   <DocSubSection title="Profile Routes">
                     <DocTable 
                       headers={['Route', 'Mô tả', 'Ví dụ']}
@@ -386,7 +465,7 @@ await supabase.from('custodial_wallets').insert({
                       "Bio và thông tin cá nhân",
                       "FUN-ID display",
                       "Soul NFT badge",
-                      "Reward statistics"
+                      "Reward statistics (Honor Board)"
                     ]} />
                   </DocSubSection>
 
@@ -403,28 +482,43 @@ await supabase.from('custodial_wallets').insert({
                   </DocSubSection>
                 </DocSection>
 
-                {/* Section 8: Reward System */}
-                <DocSection id="reward-system" title="8. Hệ Thống Reward">
+                {/* Section 9: Reward System */}
+                <DocSection id="reward-system" title="9. Hệ Thống Reward (CAMLY Token)">
                   <DocParagraph>
                     Hệ thống reward CAMLY token khuyến khích hoạt động và đóng góp tích cực trong cộng đồng. 
-                    Rewards được tính toán tự động và cần admin approval trước khi claim.
+                    Rewards được tính toán tự động qua database function và cần admin approval trước khi claim.
                   </DocParagraph>
 
                   <RewardFlowDiagram />
 
-                  <DocSubSection title="Công Thức Tính Reward">
+                  <DocSubSection title="Công Thức Tính Reward (CHÍNH XÁC)">
+                    <DocAlert type="success">
+                      <strong>Unified Formula</strong> - Công thức này được áp dụng thống nhất trên toàn bộ hệ thống: 
+                      Honor Board, Leaderboard, Wallet, Admin Dashboard.
+                    </DocAlert>
                     <CodeBlock 
-                      title="Reward Calculation"
+                      title="Reward Calculation (get_user_rewards_v2)"
                       language="typescript"
-                      code={`// Công thức tính reward
-const calculateReward = (stats: UserStats): number => {
-  return (
-    (stats.postsCount * 50) +      // 50 điểm / post
-    (stats.commentsCount * 10) +   // 10 điểm / comment
-    (stats.reactionsCount * 2) +   // 2 điểm / reaction
-    (stats.friendsCount * 25) +    // 25 điểm / friend
-    (stats.sharesCount * 15)       // 15 điểm / share
-  );
+                      code={`// CÔNG THỨC CHÍNH THỨC - Đơn vị: CAMLY
+const REWARD_FORMULA = {
+  post: 20_000,              // 20,000 CAMLY per post
+  comment: 5_000,            // 5,000 CAMLY per comment on user's posts
+  friend: 10_000,            // 10,000 CAMLY per friend
+  share: 5_000,              // 5,000 CAMLY per share of user's posts
+  reactions_base: 30_000,    // 30,000 CAMLY for 3+ reactions on post
+  reactions_extra: 1_000,    // +1,000 CAMLY per additional reaction
+  signup_bonus: 10_000,      // 10,000 CAMLY new user bonus
+  livestream: 20_000,        // 20,000 CAMLY per eligible livestream
+};
+
+// Daily Caps (từ 2026-01-15 00:00:00 UTC)
+const DAILY_CAPS = {
+  posts: 10,           // Max 10 posts/day
+  reactions: 50,       // Max 50 reactions/day
+  comments: 50,        // Max 50 comments/day (>20 chars)
+  shares: 5,           // Max 5 shares/day
+  friends: 10,         // Max 10 new friends/day
+  livestreams: 5,      // Max 5 livestreams/day
 };`}
                     />
                   </DocSubSection>
@@ -432,18 +526,18 @@ const calculateReward = (stats: UserStats): number => {
                   <DocSubSection title="Reward Flow">
                     <DocList ordered items={[
                       "User thực hiện hoạt động (post, comment, react...)",
-                      "Hệ thống tự động tính pending_reward",
+                      "Hệ thống tự động tính total_reward qua get_user_rewards_v2 RPC",
                       "Admin review và approve/reject reward",
-                      "User có thể claim approved_reward về wallet"
+                      "User có thể claim approved_reward về wallet (minimum 1,000,000 CAMLY)"
                     ]} />
                   </DocSubSection>
                 </DocSection>
 
-                {/* Section 9: Admin Panel */}
-                <DocSection id="admin-panel" title="9. Admin Panel">
+                {/* Section 10: Admin Panel */}
+                <DocSection id="admin-panel" title="10. Admin Panel">
                   <DocParagraph>
                     Admin Panel cung cấp công cụ quản trị toàn diện cho administrators, bao gồm 
-                    user management, reward approval, và content moderation.
+                    user management, reward approval, merge requests, và content moderation.
                   </DocParagraph>
 
                   <DocSubSection title="Admin Tabs">
@@ -454,6 +548,8 @@ const calculateReward = (stats: UserStats): number => {
                         ['Reward Approval', 'Duyệt/Từ chối rewards', 'admin'],
                         ['User Review', 'Xem xét và ban users', 'admin'],
                         ['Wallet Abuse', 'Phát hiện wallet spam/abuse', 'admin'],
+                        ['Merge Requests', 'Quản lý account merge requests từ SSO', 'admin'],
+                        ['Financial', 'Thống kê tài chính cross-platform', 'admin'],
                         ['Quick Delete', 'Xóa nhanh posts/comments', 'admin'],
                         ['Blockchain', 'Các operations trên chain', 'admin'],
                         ['Media Migration', 'Di chuyển media sang Cloudflare', 'admin'],
@@ -466,22 +562,28 @@ const calculateReward = (stats: UserStats): number => {
                       title="Admin Database Functions"
                       language="sql"
                       code={`-- Approve user reward
-SELECT approve_user_reward(p_admin_id, p_user_id, p_note);
+SELECT approve_user_reward(p_user_id, p_admin_id, p_note);
 
 -- Reject user reward  
-SELECT reject_user_reward(p_admin_id, p_user_id, p_note);
+SELECT reject_user_reward(p_user_id, p_admin_id, p_note);
 
 -- Ban user permanently
 SELECT ban_user_permanently(p_admin_id, p_user_id, p_reason);
 
 -- Check admin role
-SELECT has_role('admin', user_id);`}
+SELECT has_role(user_id, 'admin');
+
+-- Get app statistics
+SELECT * FROM get_app_stats();
+
+-- Get user rewards with V2 formula
+SELECT * FROM get_user_rewards_v2(100);`}
                     />
                   </DocSubSection>
                 </DocSection>
 
-                {/* Section 10: Media System */}
-                <DocSection id="media-system" title="10. Media System">
+                {/* Section 11: Media System */}
+                <DocSection id="media-system" title="11. Media System">
                   <DocParagraph>
                     Hệ thống media sử dụng Cloudflare R2 cho images và Cloudflare Stream cho videos, 
                     đảm bảo delivery nhanh và tiết kiệm bandwidth.
@@ -506,10 +608,15 @@ SELECT has_role('admin', user_id);`}
                       "Lazy loading với thumbnail preview"
                     ]} />
                   </DocSubSection>
+
+                  <DocAlert type="warning">
+                    <strong>Logo Standards:</strong> Tất cả static logos phải sử dụng path trực tiếp từ <code>public/</code>, 
+                    KHÔNG dùng Cloudflare Image Resizing. Ví dụ: <code>src="/fun-profile-logo-128.webp"</code>
+                  </DocAlert>
                 </DocSection>
 
-                {/* Section 11: Notifications */}
-                <DocSection id="notifications" title="11. Notifications">
+                {/* Section 12: Notifications */}
+                <DocSection id="notifications" title="12. Notifications">
                   <DocSubSection title="Notification Types">
                     <DocTable 
                       headers={['Type', 'Trigger', 'Message']}
@@ -526,66 +633,174 @@ SELECT has_role('admin', user_id);`}
                   </DocSubSection>
                 </DocSection>
 
-                {/* Section 12: Database Schema */}
-                <DocSection id="database-schema" title="12. Database Schema">
+                {/* Section 13: Database Schema */}
+                <DocSection id="database-schema" title="13. Database Schema (35 Tables)">
                   <DatabaseSchemaDiagram />
 
                   <DocSubSection title="Core Tables">
                     <DocTable 
                       headers={['Table', 'Mô tả', 'RLS']}
                       rows={[
-                        ['profiles', 'Thông tin user (avatar, bio, rewards...)', 'Yes'],
-                        ['posts', 'Bài viết với content và media', 'Yes'],
-                        ['comments', 'Comments và replies', 'Yes'],
+                        ['profiles', 'Thông tin user (avatar, bio, rewards, wallet addresses)', 'Yes'],
+                        ['posts', 'Bài viết với content và media_urls', 'Yes'],
+                        ['comments', 'Comments và nested replies', 'Yes'],
                         ['reactions', 'Reactions trên posts/comments', 'Yes'],
-                        ['friendships', 'Quan hệ bạn bè', 'Yes'],
+                        ['friendships', 'Quan hệ bạn bè (pending/accepted)', 'Yes'],
                         ['notifications', 'Thông báo cho users', 'Yes'],
-                        ['custodial_wallets', 'Wallet được quản lý bởi hệ thống', 'Yes'],
-                        ['soul_nfts', 'Thông tin Soul NFT', 'Yes'],
-                        ['transactions', 'Lịch sử giao dịch', 'Yes'],
+                        ['shared_posts', 'Lịch sử share posts', 'Yes'],
+                      ]}
+                    />
+                  </DocSubSection>
+
+                  <DocSubSection title="Wallet & NFT Tables">
+                    <DocTable 
+                      headers={['Table', 'Mô tả', 'RLS']}
+                      rows={[
+                        ['custodial_wallets', 'Wallet được quản lý bởi hệ thống (encrypted private key)', 'Yes'],
+                        ['soul_nfts', 'Thông tin Soul NFT (element, level, XP)', 'Yes'],
+                        ['transactions', 'Lịch sử giao dịch blockchain', 'Yes'],
+                        ['blacklisted_wallets', 'Danh sách wallet bị cấm', 'Admin only'],
+                      ]}
+                    />
+                  </DocSubSection>
+
+                  <DocSubSection title="SSO & Auth Tables">
+                    <DocTable 
+                      headers={['Table', 'Mô tả', 'RLS']}
+                      rows={[
+                        ['oauth_clients', 'Đăng ký OAuth clients (FUN Farm, Play, Planet)', 'Admin only'],
+                        ['oauth_codes', 'Authorization codes tạm thời', 'System only'],
+                        ['cross_platform_tokens', 'Access/Refresh tokens cho SSO', 'Yes'],
+                        ['account_merge_requests', 'Yêu cầu merge accounts cross-platform', 'Yes'],
+                        ['pending_provisions', 'Pending account provisions từ platforms', 'System only'],
+                        ['otp_codes', 'Mã OTP tạm thời', 'System only'],
+                      ]}
+                    />
+                  </DocSubSection>
+
+                  <DocSubSection title="Chat Tables">
+                    <DocTable 
+                      headers={['Table', 'Mô tả', 'RLS']}
+                      rows={[
+                        ['conversations', 'Cuộc trò chuyện (direct, group)', 'Yes'],
+                        ['messages', 'Tin nhắn trong conversations', 'Yes'],
+                        ['conversation_participants', 'Thành viên của conversations', 'Yes'],
+                        ['message_reactions', 'Reactions trên messages', 'Yes'],
+                        ['message_reads', 'Trạng thái đã đọc', 'Yes'],
+                        ['chat_settings', 'Cài đặt chat của user', 'Yes'],
+                      ]}
+                    />
+                  </DocSubSection>
+
+                  <DocSubSection title="Financial & Reward Tables">
+                    <DocTable 
+                      headers={['Table', 'Mô tả', 'RLS']}
+                      rows={[
+                        ['reward_claims', 'Lịch sử claim rewards', 'Yes'],
+                        ['reward_approvals', 'Lịch sử admin approve/reject', 'Admin only'],
+                        ['reward_adjustments', 'Điều chỉnh rewards thủ công', 'Admin only'],
+                        ['platform_financial_data', 'Dữ liệu tài chính từ các platforms', 'Yes'],
+                        ['financial_transactions', 'Giao dịch tài chính chi tiết', 'Yes'],
+                        ['reconciliation_logs', 'Logs đối soát tài chính', 'Admin only'],
+                      ]}
+                    />
+                  </DocSubSection>
+
+                  <DocSubSection title="System Tables">
+                    <DocTable 
+                      headers={['Table', 'Mô tả', 'RLS']}
+                      rows={[
                         ['user_roles', 'Phân quyền (admin/user)', 'Yes'],
                         ['audit_logs', 'Lịch sử admin actions', 'Admin only'],
-                        ['otp_codes', 'Mã OTP tạm thời', 'System only'],
+                        ['search_logs', 'Lịch sử tìm kiếm', 'Yes'],
+                        ['livestreams', 'Lịch sử livestreams', 'Yes'],
                       ]}
                     />
                   </DocSubSection>
                 </DocSection>
 
-                {/* Section 13: Edge Functions */}
-                <DocSection id="edge-functions" title="13. Edge Functions">
+                {/* Section 14: Edge Functions */}
+                <DocSection id="edge-functions" title="14. Edge Functions (38 Functions)">
                   <EdgeFunctionsDiagram />
 
-                  <DocSubSection title="Authentication Functions">
+                  <DocSubSection title="SSO System (14 functions)">
                     <DocTable 
                       headers={['Function', 'Method', 'Mô tả']}
                       rows={[
+                        ['sso-authorize', 'GET', 'Khởi tạo OAuth flow, redirect to consent'],
+                        ['sso-token', 'POST', 'Exchange code for access/refresh tokens'],
+                        ['sso-verify', 'POST', 'Verify access token validity'],
+                        ['sso-refresh', 'POST', 'Refresh expired access token'],
+                        ['sso-revoke', 'POST', 'Revoke tokens (logout)'],
                         ['sso-otp-request', 'POST', 'Gửi OTP qua email'],
                         ['sso-otp-verify', 'POST', 'Xác thực OTP và tạo session'],
                         ['sso-web3-auth', 'POST', 'Xác thực qua wallet signature'],
+                        ['sso-register', 'POST', 'Register new user from platform'],
+                        ['sso-set-password', 'POST', 'Set password for provision'],
+                        ['sso-sync-data', 'POST', 'Sync game/platform data'],
+                        ['sso-sync-financial', 'POST', 'Sync financial data'],
+                        ['sso-merge-request', 'POST', 'Request account merge'],
+                        ['sso-merge-approve', 'POST', 'Admin approve merge'],
                       ]}
                     />
                   </DocSubSection>
 
-                  <DocSubSection title="Media Functions">
+                  <DocSubSection title="Wallet & Blockchain (3 functions)">
+                    <DocTable 
+                      headers={['Function', 'Mô tả']}
+                      rows={[
+                        ['create-custodial-wallet', 'Tạo wallet mới với encrypted private key'],
+                        ['connect-external-wallet', 'Kết nối MetaMask/external wallet'],
+                        ['mint-soul-nft', 'Mint Soul NFT on BSC'],
+                      ]}
+                    />
+                  </DocSubSection>
+
+                  <DocSubSection title="Media Management (9 functions)">
                     <DocTable 
                       headers={['Function', 'Mô tả']}
                       rows={[
                         ['upload-to-r2', 'Upload ảnh lên Cloudflare R2'],
                         ['upload-to-cf-images', 'Upload ảnh lên Cloudflare Images'],
-                        ['stream-video', 'Khởi tạo video upload'],
-                        ['get-upload-url', 'Lấy presigned URL'],
-                        ['image-transform', 'Transform ảnh (resize, crop)'],
+                        ['delete-from-r2', 'Xóa file từ R2'],
                         ['generate-presigned-url', 'Tạo presigned URL cho R2'],
+                        ['get-upload-url', 'Lấy upload URL cho client'],
+                        ['image-transform', 'Transform ảnh (resize, crop)'],
+                        ['stream-video', 'Khởi tạo video upload to Stream'],
+                        ['migrate-to-r2', 'Migrate media từ Supabase Storage'],
+                        ['fix-cloudflare-urls', 'Fix broken Cloudflare URLs'],
+                      ]}
+                    />
+                  </DocSubSection>
+
+                  <DocSubSection title="Admin & Maintenance (12 functions)">
+                    <DocTable 
+                      headers={['Function', 'Mô tả']}
+                      rows={[
+                        ['admin-list-merge-requests', 'List all merge requests for admin'],
+                        ['admin-update-media-url', 'Update media URLs in database'],
+                        ['cleanup-orphan-videos', 'Cleanup orphan videos from Stream'],
+                        ['cleanup-stream-videos', 'Cleanup expired Stream videos'],
+                        ['cleanup-supabase-storage', 'Cleanup old Supabase storage'],
+                        ['cloudflare-migrate', 'Migrate assets to Cloudflare'],
+                        ['optimize-storage', 'Optimize storage usage'],
+                        ['scheduled-reconciliation', 'Run financial reconciliation'],
+                        ['sso-resend-webhook', 'Resend webhook to platforms'],
+                        ['create-post', 'Create post with validation'],
+                        ['delete-user-account', 'Delete user account completely'],
                       ]}
                     />
                   </DocSubSection>
                 </DocSection>
 
-                {/* Section 14: Security */}
-                <DocSection id="security" title="14. Security Features">
+                {/* Section 15: Security */}
+                <DocSection id="security" title="15. Security Features">
                   <SecurityDiagram />
 
                   <DocSubSection title="Row Level Security (RLS)">
+                    <DocAlert type="info">
+                      <strong>102 RLS Policies</strong> được triển khai để bảo vệ data. Mọi table đều có RLS enabled.
+                    </DocAlert>
                     <CodeBlock 
                       title="Example RLS Policy"
                       language="sql"
@@ -610,21 +825,21 @@ USING (true);`}
                     <DocTable 
                       headers={['Action', 'Limit', 'Window']}
                       rows={[
-                        ['Create Post', '10 posts', '1 phút'],
-                        ['Create Comment', '30 comments', '1 phút'],
-                        ['Search', '60 requests', '1 phút'],
+                        ['Create Post', '10 posts', '1 giờ'],
+                        ['Create Comment', '50 comments', '1 giờ'],
+                        ['Search', '20 requests', '1 phút'],
                         ['OTP Request', '3 requests', '5 phút'],
                       ]}
                     />
                   </DocSubSection>
                 </DocSection>
 
-                {/* Section 15: Performance */}
-                <DocSection id="performance" title="15. Performance Optimization">
+                {/* Section 16: Performance */}
+                <DocSection id="performance" title="16. Performance Optimization">
                   <DocSubSection title="Frontend Optimizations">
                     <DocList items={[
                       "Lazy loading pages với React.lazy()",
-                      "React Query caching với staleTime/cacheTime",
+                      "React Query caching với staleTime 5 phút",
                       "Image lazy loading với Intersection Observer",
                       "Infinite scroll thay vì pagination",
                       "Memoization với useMemo và useCallback",
@@ -643,34 +858,40 @@ USING (true);`}
                   </DocSubSection>
                 </DocSection>
 
-                {/* Section 16: Secrets */}
-                <DocSection id="secrets" title="16. Secrets & Environment">
+                {/* Section 17: Secrets */}
+                <DocSection id="secrets" title="17. Secrets & Environment">
                   <DocAlert type="warning">
                     <strong>Bảo mật:</strong> Không bao giờ commit secrets vào git. Tất cả secrets được 
                     quản lý qua Lovable Cloud secrets management.
                   </DocAlert>
 
-                  <DocSubSection title="Configured Secrets">
+                  <DocSubSection title="Configured Secrets (16 secrets)">
                     <DocTable 
                       headers={['Secret', 'Mục đích', 'Used By']}
                       rows={[
                         ['WALLET_ENCRYPTION_KEY', 'Mã hóa custodial wallet private keys', 'create-custodial-wallet'],
+                        ['TREASURY_WALLET_ADDRESS', 'Địa chỉ ví treasury cho rewards', 'claim-reward'],
+                        ['TREASURY_PRIVATE_KEY', 'Private key treasury wallet', 'claim-reward'],
                         ['RESEND_API_KEY', 'Gửi email OTP', 'sso-otp-request'],
                         ['CLOUDFLARE_ACCOUNT_ID', 'Cloudflare account', 'R2, Stream, Images'],
-                        ['CLOUDFLARE_R2_ACCESS_KEY', 'R2 access', 'upload-to-r2'],
-                        ['CLOUDFLARE_R2_SECRET_KEY', 'R2 secret', 'upload-to-r2'],
-                        ['CLOUDFLARE_R2_BUCKET', 'R2 bucket name', 'upload-to-r2'],
-                        ['CLOUDFLARE_STREAM_TOKEN', 'Stream API token', 'stream-video'],
-                        ['CLOUDFLARE_IMAGES_TOKEN', 'Images API token', 'upload-to-cf-images'],
-                        ['TREASURY_PRIVATE_KEY', 'Treasury wallet key', 'Token distribution'],
+                        ['CLOUDFLARE_ACCESS_KEY_ID', 'R2 access key', 'upload-to-r2'],
+                        ['CLOUDFLARE_SECRET_ACCESS_KEY', 'R2 secret key', 'upload-to-r2'],
+                        ['CLOUDFLARE_R2_BUCKET_NAME', 'R2 bucket name', 'upload-to-r2'],
+                        ['CLOUDFLARE_R2_PUBLIC_URL', 'R2 public URL', 'media display'],
+                        ['CLOUDFLARE_API_TOKEN', 'Cloudflare API token', 'Images, Stream'],
+                        ['CLOUDFLARE_STREAM_API_TOKEN', 'Stream API token', 'stream-video'],
+                        ['FUN_PROFILE_ORIGIN', 'Origin URL cho CORS', 'All edge functions'],
                         ['LOVABLE_API_KEY', 'Lovable AI integration', 'AI features'],
+                        ['SUPABASE_URL', 'Database URL', 'All functions'],
+                        ['SUPABASE_ANON_KEY', 'Anon key', 'Client-side'],
+                        ['SUPABASE_SERVICE_ROLE_KEY', 'Service role key', 'Admin functions'],
                       ]}
                     />
                   </DocSubSection>
 
                   <DocSubSection title="Environment Variables">
                     <CodeBlock 
-                      title=".env (Auto-generated)"
+                      title=".env (Auto-generated - DO NOT EDIT)"
                       language="bash"
                       code={`# These are automatically provided by Lovable Cloud
 VITE_SUPABASE_URL=https://[project-id].supabase.co
@@ -680,11 +901,273 @@ VITE_SUPABASE_PROJECT_ID=[project-id]`}
                   </DocSubSection>
                 </DocSection>
 
+                {/* Section 18: FUN Ecosystem Products */}
+                <DocSection id="ecosystem-products" title="18. FUN Ecosystem Products">
+                  <EcosystemDiagram />
+
+                  <DocSubSection title="Product Overview">
+                    <DocTable 
+                      headers={['Product', 'Domain', 'Mô tả', 'Status']}
+                      rows={[
+                        ['FUN Profile', 'fun.rich', 'Social network chính, identity hub', 'Production'],
+                        ['FUN Play', 'play.fun.rich', 'Gaming & Music Entertainment', 'Development'],
+                        ['FUN Farm', 'farm.fun.rich', 'Agriculture & Farming features', 'Development'],
+                        ['FUN Planet', 'planet.fun.rich', 'Gaming & Planet exploration', 'Development'],
+                        ['FUN Wallet', 'wallet.fun.rich', 'Crypto wallet management', 'Development'],
+                      ]}
+                    />
+                  </DocSubSection>
+
+                  <DocSubSection title="Cross-Platform Integration">
+                    <DocList items={[
+                      "Tất cả products sử dụng chung FUN-ID từ FUN Profile",
+                      "Light Cloak SSO cho single sign-on",
+                      "Shared wallet address và rewards",
+                      "Financial data sync cross-platform",
+                      "Unified leaderboard và rankings"
+                    ]} />
+                  </DocSubSection>
+                </DocSection>
+
+                {/* Section 19: SSO SDK */}
+                <DocSection id="sso-sdk" title="19. SSO SDK (@fun-ecosystem/sso-sdk)">
+                  <DocParagraph>
+                    SDK JavaScript/TypeScript cho phép các platform trong FUN Ecosystem tích hợp xác thực 
+                    Light Cloak SSO một cách dễ dàng và bảo mật.
+                  </DocParagraph>
+
+                  <DocSubSection title="Registered OAuth Clients">
+                    <DocTable 
+                      headers={['Client ID', 'Platform', 'Allowed Scopes']}
+                      rows={[
+                        ['fun_farm_client', 'FUN Farm', 'profile, wallet, rewards'],
+                        ['fun_play_client', 'FUN Play', 'profile, wallet, rewards'],
+                        ['fun_planet_client', 'FUN Planet', 'profile, wallet, rewards'],
+                      ]}
+                    />
+                  </DocSubSection>
+
+                  <DocSubSection title="SDK Features">
+                    <DocList items={[
+                      "OAuth 2.0 với PKCE flow (bảo mật cao)",
+                      "Automatic token refresh",
+                      "Data sync (game data, platform data)",
+                      "Financial sync (deposits, withdraws, bets)",
+                      "Account merge requests",
+                      "React & Next.js examples included"
+                    ]} />
+                  </DocSubSection>
+
+                  <DocSubSection title="Quick Start">
+                    <CodeBlock 
+                      title="SDK Installation & Usage"
+                      language="typescript"
+                      code={`// Install
+npm install @fun-ecosystem/sso-sdk
+
+// Initialize
+import { FunProfileClient } from '@fun-ecosystem/sso-sdk';
+
+const client = new FunProfileClient({
+  clientId: 'fun_farm_client',
+  redirectUri: 'https://farm.fun.rich/auth/callback',
+  scope: ['profile', 'wallet', 'rewards']
+});
+
+// Login
+await client.login();
+
+// Get user data
+const profile = await client.getProfile();
+
+// Sync game data
+await client.syncData({
+  level: 50,
+  coins: 10000,
+  achievements: ['first_harvest', 'master_farmer']
+});`}
+                    />
+                  </DocSubSection>
+                </DocSection>
+
+                {/* Section 20: Internationalization */}
+                <DocSection id="i18n" title="20. Internationalization (i18n)">
+                  <DocParagraph>
+                    FUN Profile hỗ trợ đa ngôn ngữ với Vietnamese (vi) và English (en). 
+                    Language preference được lưu local và tự động detect từ browser.
+                  </DocParagraph>
+
+                  <DocSubSection title="Implementation">
+                    <DocTable 
+                      headers={['Component', 'Location', 'Mô tả']}
+                      rows={[
+                        ['LanguageContext', 'src/i18n/LanguageContext.tsx', 'Context provider cho language state'],
+                        ['translations', 'src/i18n/translations.ts', '150+ translation keys'],
+                        ['LanguageSwitcher', 'src/components/layout/LanguageSwitcher.tsx', 'UI component để switch language'],
+                      ]}
+                    />
+                  </DocSubSection>
+
+                  <DocSubSection title="Usage">
+                    <CodeBlock 
+                      title="Using translations in components"
+                      language="typescript"
+                      code={`import { useLanguage } from '@/i18n/LanguageContext';
+
+const MyComponent = () => {
+  const { t, language, setLanguage } = useLanguage();
+  
+  return (
+    <div>
+      <h1>{t('welcome')}</h1>
+      <p>{t('description')}</p>
+      <button onClick={() => setLanguage(language === 'en' ? 'vi' : 'en')}>
+        {language === 'en' ? 'Tiếng Việt' : 'English'}
+      </button>
+    </div>
+  );
+};`}
+                    />
+                  </DocSubSection>
+                </DocSection>
+
+                {/* Section 21: Design Guidelines */}
+                <DocSection id="design-guidelines" title="21. Design Guidelines">
+                  <DocSubSection title="Color Scheme">
+                    <DocTable 
+                      headers={['Color', 'HSL Value', 'Usage']}
+                      rows={[
+                        ['Primary Green', 'hsl(142, 76%, 36%)', 'Primary buttons, links, accents'],
+                        ['Primary Foreground', 'hsl(355, 78%, 95%)', 'Text on primary background'],
+                        ['Golden Yellow', 'hsl(48, 96%, 53%)', 'Rewards, highlights, special elements'],
+                        ['Background', 'hsl(0, 0%, 94%)', 'Page background (light mode)'],
+                        ['Card', 'hsl(0, 0%, 100%)', 'Card backgrounds'],
+                        ['Muted', 'hsl(0, 0%, 92%)', 'Secondary backgrounds'],
+                      ]}
+                    />
+                  </DocSubSection>
+
+                  <DocSubSection title="Logo Standards">
+                    <DocAlert type="warning">
+                      <strong>QUAN TRỌNG:</strong> Tất cả logos phải tuân thủ các quy tắc sau:
+                    </DocAlert>
+                    <DocList items={[
+                      "Shape: Tất cả logos phải có shape rounded-full (tròn)",
+                      "Source: Sử dụng path trực tiếp từ public/ folder",
+                      "DO NOT use Cloudflare Image Resizing cho static logos",
+                      "Files: fun-profile-logo-40.webp (navbar), fun-profile-logo-128.webp (auth, large)",
+                      "Ecosystem logos: fun-farm-logo-36.webp, fun-play-logo-36.webp, fun-planet-logo-36.webp"
+                    ]} />
+                    <CodeBlock 
+                      title="Correct logo usage"
+                      language="tsx"
+                      code={`// ✅ CORRECT - Direct path from public/
+<img 
+  src="/fun-profile-logo-40.webp" 
+  alt="FUN Profile" 
+  className="h-9 w-9 rounded-full"
+/>
+
+// ❌ WRONG - Using Cloudflare Image Resizing
+<img src={getNavbarLogoUrl()} alt="..." />`}
+                    />
+                  </DocSubSection>
+                </DocSection>
+
+                {/* Section 22: Development Rules */}
+                <DocSection id="development-rules" title="22. Development Rules">
+                  <DocAlert type="warning">
+                    <strong>CRITICAL:</strong> Các files sau KHÔNG ĐƯỢC phép sửa trực tiếp:
+                  </DocAlert>
+
+                  <DocSubSection title="Read-Only Files">
+                    <DocList items={[
+                      "supabase/config.toml - Supabase configuration (auto-generated)",
+                      "src/integrations/supabase/client.ts - Supabase client (auto-generated)",
+                      "src/integrations/supabase/types.ts - Database types (auto-generated from schema)",
+                      ".env - Environment variables (auto-generated by Lovable Cloud)",
+                      "package.json - Use lov-add-dependency/lov-remove-dependency tools",
+                    ]} />
+                  </DocSubSection>
+
+                  <DocSubSection title="Mandatory Compliance">
+                    <DocTable 
+                      headers={['Rule', 'Mô tả']}
+                      rows={[
+                        ['Bilingual i18n', 'Tất cả text hiển thị phải có cả Vietnamese và English'],
+                        ['Direct Logo Paths', 'Static logos từ public/, không dùng Cloudflare transform'],
+                        ['RLS Policies', 'Mọi table mới phải có Row Level Security'],
+                        ['Performance', 'Sử dụng React Query, lazy loading, memoization'],
+                        ['Semantic Tokens', 'Dùng design tokens từ index.css, không hardcode colors'],
+                        ['Type Safety', 'TypeScript strict mode, no any types'],
+                      ]}
+                    />
+                  </DocSubSection>
+
+                  <DocSubSection title="Governance Flow">
+                    <CodeBlock 
+                      title="Decision Making Process"
+                      language="text"
+                      code={`Cha Vũ Trụ (Vision & Strategy)
+        ↓
+    bé Trí (Requirements Translation)
+        ↓
+  Angel Lovable (Technical Implementation)
+        ↓
+    Code Review & Deployment`}
+                    />
+                  </DocSubSection>
+                </DocSection>
+
+                {/* Section 23: Next Development Proposals */}
+                <DocSection id="next-proposals" title="23. Next Development Proposals">
+                  <DocParagraph>
+                    Danh sách các tính năng được đề xuất phát triển tiếp theo, sắp xếp theo độ ưu tiên.
+                  </DocParagraph>
+
+                  <DocSubSection title="Priority 1: Core Features">
+                    <DocTable 
+                      headers={['Feature', 'Mô tả', 'Complexity']}
+                      rows={[
+                        ['Claim Reward UI', 'UI cho users claim CAMLY từ treasury wallet', 'Medium'],
+                        ['Real-time Chat', 'Typing indicators, online status, read receipts', 'High'],
+                        ['Push Notifications', 'Browser push notifications cho events', 'Medium'],
+                      ]}
+                    />
+                  </DocSubSection>
+
+                  <DocSubSection title="Priority 2: Engagement Features">
+                    <DocTable 
+                      headers={['Feature', 'Mô tả', 'Complexity']}
+                      rows={[
+                        ['Stories', 'Story feature như Instagram (24h expiry)', 'High'],
+                        ['Live Streaming', 'Tích hợp livestream với rewards', 'High'],
+                        ['Video Calling', 'Voice/Video calls trong chat', 'Very High'],
+                      ]}
+                    />
+                  </DocSubSection>
+
+                  <DocSubSection title="Priority 3: Advanced Features">
+                    <DocTable 
+                      headers={['Feature', 'Mô tả', 'Complexity']}
+                      rows={[
+                        ['Marketplace', 'NFT marketplace cho Soul NFTs', 'Very High'],
+                        ['AI Content', 'AI-powered content creation tools', 'High'],
+                        ['Mobile App', 'React Native mobile application', 'Very High'],
+                        ['Referral System', 'Invite friends & earn rewards', 'Medium'],
+                      ]}
+                    />
+                  </DocSubSection>
+                </DocSection>
+
                 {/* Footer */}
                 <div className="mt-12 pt-8 border-t border-border text-center text-muted-foreground text-sm">
-                  <p>© 2026 FUN Ecosystem. All rights reserved.</p>
+                  <p>© 2026 FUN Profile - Part of FUN Ecosystem. All rights reserved.</p>
                   <p className="mt-2">
-                    Documentation version 1.0 | Last updated: January 2026
+                    Handover Documentation v2.0 | Last updated: January 2026
+                  </p>
+                  <p className="mt-1">
+                    Prepared by: Angel Lovable (CTO) for project handover
                   </p>
                 </div>
 
