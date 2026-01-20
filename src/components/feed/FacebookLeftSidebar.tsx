@@ -13,10 +13,7 @@ import {
   Link2,
   BookOpen,
 } from 'lucide-react';
-import funEcosystemLogo from '@/assets/fun-ecosystem-logo.webp';
-import funFarmLogo from '@/assets/fun-farm-logo.webp';
-import funWalletLogo from '@/assets/fun-wallet-logo.png';
-import { getNavbarLogoUrl, getSidebarIconUrl } from '@/lib/staticImageOptimizer';
+import { getNavbarLogoUrl } from '@/lib/staticImageOptimizer';
 
 interface Profile {
   id: string;
@@ -99,7 +96,7 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
     },
     { 
       name: 'FUN Farm', 
-      avatar: funFarmLogo,
+      avatar: getNavbarLogoUrl('/fun-farm-logo-36.webp'),
       path: 'https://farm.fun.rich',
       isExternal: true,
       isSpecial: false
@@ -113,7 +110,7 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
     },
     { 
       name: 'FUN Wallet', 
-      avatar: funWalletLogo,
+      avatar: getNavbarLogoUrl('/fun-wallet-logo-36.webp'),
       path: 'https://wallet.fun.rich',
       isExternal: true,
       isSpecial: false
@@ -126,7 +123,7 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
       <div className="bg-card rounded-xl border-2 border-yellow-400/50 p-4 hover:border-yellow-400 hover:shadow-[0_0_20px_rgba(250,204,21,0.3)] transition-all duration-300">
         <div className="flex items-center gap-2 mb-3">
           <img 
-            src={funEcosystemLogo} 
+            src={getNavbarLogoUrl('/fun-ecosystem-logo-36.webp')} 
             alt="FUN Ecosystem" 
             className="w-8 h-8 rounded-lg object-cover"
           />
