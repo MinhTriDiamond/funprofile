@@ -78,7 +78,7 @@ export const MobileBottomNav = memo(() => {
                 item.isCenter
                   ? 'relative -mt-8'
                   : item.path && isActive(item.path)
-                  ? 'text-gold bg-gold/10'
+                  ? 'text-destructive-foreground bg-destructive'
                   : 'text-muted-foreground hover:text-primary hover:bg-primary/10 active:text-gold active:bg-gold/10'
               }`}
             >

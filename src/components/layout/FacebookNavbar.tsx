@@ -127,7 +127,7 @@ export const FacebookNavbar = () => {
               aria-label={item.label}
               className={`flex-1 h-full max-w-[100px] flex items-center justify-center relative transition-all duration-300 rounded-lg group ${
                 isActive(item.path)
-                  ? 'text-primary-foreground bg-primary'
+                  ? 'text-destructive-foreground bg-destructive'
                   : 'text-foreground hover:text-primary hover:bg-primary/10'
               }`}
             >
