@@ -13,7 +13,8 @@ import {
   Link2,
   BookOpen,
 } from 'lucide-react';
-import { getNavbarLogoUrl } from '@/lib/staticImageOptimizer';
+// Use direct paths for logos to ensure consistency across all environments
+// Cloudflare Image Resizing only works on fun.rich domain
 
 interface Profile {
   id: string;
@@ -71,46 +72,46 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
     { icon: BookOpen, label: 'SSO Docs', path: '/docs/ecosystem', color: 'text-green-500' },
   ];
 
-  // FUN Ecosystem shortcuts - use optimized URLs for static logos
+  // FUN Ecosystem shortcuts - use direct paths for consistency across all environments
   const ecosystemShortcuts = useMemo(() => [
     { 
       name: 'Law of Light', 
-      avatar: getNavbarLogoUrl('/fun-profile-logo-40.webp'),
+      avatar: '/fun-profile-logo-40.webp',
       path: '/law-of-light?view=true',
       isExternal: false,
       isSpecial: true
     },
     { 
       name: 'About FUN Profile', 
-      avatar: getNavbarLogoUrl('/fun-profile-logo-40.webp'),
+      avatar: '/fun-profile-logo-40.webp',
       path: '/about',
       isExternal: false,
       isSpecial: false
     },
     { 
       name: 'FUN Play', 
-      avatar: getNavbarLogoUrl('/fun-play-logo-36.webp'),
+      avatar: '/fun-play-logo-36.webp',
       path: 'https://play.fun.rich',
       isExternal: true,
       isSpecial: false
     },
     { 
       name: 'FUN Farm', 
-      avatar: getNavbarLogoUrl('/fun-farm-logo-36.webp'),
+      avatar: '/fun-farm-logo-36.webp',
       path: 'https://farm.fun.rich',
       isExternal: true,
       isSpecial: false
     },
     { 
       name: 'FUN Planet', 
-      avatar: getNavbarLogoUrl('/fun-planet-logo-36.webp'),
+      avatar: '/fun-planet-logo-36.webp',
       path: 'https://planet.fun.rich',
       isExternal: true,
       isSpecial: false
     },
     { 
       name: 'FUN Wallet', 
-      avatar: getNavbarLogoUrl('/fun-wallet-logo-36.webp'),
+      avatar: '/fun-wallet-logo-36.webp',
       path: 'https://wallet.fun.rich',
       isExternal: true,
       isSpecial: false
@@ -123,7 +124,7 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
       <div className="bg-card rounded-xl border-2 border-yellow-400/50 p-4 hover:border-yellow-400 hover:shadow-[0_0_20px_rgba(250,204,21,0.3)] transition-all duration-300">
         <div className="flex items-center gap-2 mb-3">
           <img 
-            src={getNavbarLogoUrl('/fun-ecosystem-logo-36.webp')} 
+            src="/fun-ecosystem-logo-36.webp" 
             alt="FUN Ecosystem" 
             className="w-8 h-8 rounded-lg object-cover"
           />
