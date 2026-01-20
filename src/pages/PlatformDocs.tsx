@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Printer, FileText, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Printer, FileText, ExternalLink, Menu } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { TableOfContents } from '@/components/docs/TableOfContents';
 import { DocSection, DocSubSection, DocParagraph, DocList, DocTable, DocAlert } from '@/components/docs/DocSection';
 import { CodeBlock } from '@/components/docs/CodeBlock';
@@ -20,6 +21,7 @@ import {
   EcosystemDiagram,
   ProjectStructureDiagram
 } from '@/components/docs/AppDiagrams';
+import { cn } from '@/lib/utils';
 
 const tocItems = [
   { id: 'overview', title: '1. Tổng Quan Hệ Thống' },
@@ -49,6 +51,7 @@ const tocItems = [
 
 const PlatformDocs: React.FC = () => {
   const [activeId, setActiveId] = useState('overview');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -74,51 +77,100 @@ const PlatformDocs: React.FC = () => {
     window.print();
   };
 
+  const scrollToSection = (id: string) => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+      setMobileMenuOpen(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
+      {/* Header - Responsive */}
       <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link to="/">
-              <Button variant="ghost" size="icon">
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-            </Link>
-            <div>
-              <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
-                <FileText className="h-5 w-5 text-primary" />
-                FUN Profile - Tài Liệu Chuyển Giao
-              </h1>
-              <p className="text-sm text-muted-foreground">Comprehensive Handover Documentation v2.0</p>
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 py-3 sm:py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            {/* Left section */}
+            <div className="flex items-center gap-2 sm:gap-4">
+              {/* Mobile TOC Menu */}
+              <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon" className="lg:hidden">
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-72 p-0">
+                  <div className="p-4 border-b border-border">
+                    <h4 className="font-semibold text-foreground">Mục Lục</h4>
+                  </div>
+                  <ScrollArea className="h-[calc(100vh-80px)]">
+                    <div className="p-2">
+                      {tocItems.map((item) => (
+                        <button
+                          key={item.id}
+                          onClick={() => scrollToSection(item.id)}
+                          className={cn(
+                            "block w-full text-left px-3 py-2 text-sm rounded-md transition-colors",
+                            item.level === 2 && "pl-6",
+                            activeId === item.id 
+                              ? "bg-primary/10 text-primary font-medium" 
+                              : "text-muted-foreground hover:bg-muted"
+                          )}
+                        >
+                          {item.title}
+                        </button>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </SheetContent>
+              </Sheet>
+
+              <Link to="/">
+                <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-10 sm:w-10">
+                  <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
+                </Button>
+              </Link>
+              <div className="min-w-0">
+                <h1 className="text-sm sm:text-base md:text-xl font-bold text-foreground flex items-center gap-2 truncate">
+                  <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-primary flex-shrink-0" />
+                  <span className="hidden sm:inline truncate">FUN Profile - Tài Liệu Chuyển Giao</span>
+                  <span className="sm:hidden">Tài Liệu</span>
+                </h1>
+                <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
+                  Comprehensive Handover Documentation v2.0
+                </p>
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Link to="/docs/ecosystem">
-              <Button variant="outline" size="sm">
-                <ExternalLink className="h-4 w-4 mr-2" />
-                SSO Docs
+            
+            {/* Right buttons - Icons only on mobile */}
+            <div className="flex items-center gap-2 self-end sm:self-auto">
+              <Link to="/docs/ecosystem">
+                <Button variant="outline" size="sm" className="h-8 px-2 sm:px-3">
+                  <ExternalLink className="h-4 w-4" />
+                  <span className="hidden sm:inline ml-2">SSO Docs</span>
+                </Button>
+              </Link>
+              <Button variant="outline" size="sm" onClick={handlePrint} className="h-8 px-2 sm:px-3">
+                <Printer className="h-4 w-4" />
+                <span className="hidden sm:inline ml-2">In PDF</span>
               </Button>
-            </Link>
-            <Button variant="outline" size="sm" onClick={handlePrint}>
-              <Printer className="h-4 w-4 mr-2" />
-              In PDF
-            </Button>
+            </div>
           </div>
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="flex gap-8">
-          {/* Sidebar - Table of Contents */}
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
+        <div className="flex gap-4 lg:gap-8">
+          {/* Sidebar - Table of Contents (Desktop only) */}
           <aside className="hidden lg:block w-64 flex-shrink-0">
             <TableOfContents items={tocItems} activeId={activeId} />
           </aside>
 
           {/* Main Content */}
           <main className="flex-1 min-w-0">
-            <ScrollArea className="h-[calc(100vh-140px)]">
-              <div className="pr-4">
+            <ScrollArea className="h-[calc(100vh-120px)] sm:h-[calc(100vh-140px)]">
+              <div className="pr-0 sm:pr-4">
                 
                 {/* Section 1: Overview */}
                 <DocSection id="overview" title="1. Tổng Quan Hệ Thống">

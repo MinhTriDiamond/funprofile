@@ -64,12 +64,12 @@ interface DocTableProps {
 
 export const DocTable: React.FC<DocTableProps> = ({ headers, rows }) => {
   return (
-    <div className="overflow-x-auto my-4">
-      <table className="w-full border-collapse border border-border rounded-lg">
+    <div className="my-4 -mx-2 px-2 overflow-x-auto">
+      <table className="w-full min-w-[400px] border-collapse text-sm">
         <thead>
-          <tr className="bg-muted">
+          <tr className="border-b-2 border-border bg-muted/50">
             {headers.map((header, index) => (
-              <th key={index} className="border border-border px-4 py-2 text-left font-semibold text-foreground">
+              <th key={index} className="px-2 sm:px-4 py-2 text-left font-semibold text-foreground whitespace-nowrap">
                 {header}
               </th>
             ))}
@@ -77,9 +77,9 @@ export const DocTable: React.FC<DocTableProps> = ({ headers, rows }) => {
         </thead>
         <tbody>
           {rows.map((row, rowIndex) => (
-            <tr key={rowIndex} className="hover:bg-muted/50">
+            <tr key={rowIndex} className="border-b border-border/50 hover:bg-muted/30">
               {row.map((cell, cellIndex) => (
-                <td key={cellIndex} className="border border-border px-4 py-2 text-muted-foreground">
+                <td key={cellIndex} className="px-2 sm:px-4 py-2 text-muted-foreground">
                   {cell}
                 </td>
               ))}
