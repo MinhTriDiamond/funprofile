@@ -27,7 +27,7 @@ export const TopRanking = memo(() => {
   // Optimized: Single RPC call with daily limits (V2)
   const fetchLeaderboards = async () => {
     try {
-      const { data, error } = await supabase.rpc("get_user_rewards_v2", { limit_count: 6 });
+      const { data, error } = await supabase.rpc("get_user_rewards_v2", { limit_count: 5 });
 
       if (error) throw error;
 
@@ -119,7 +119,7 @@ export const TopRanking = memo(() => {
           <h1 className="text-gold text-xl font-black tracking-wider drop-shadow-lg">TOP RANKING</h1>
         </div>
 
-        {/* Top 6 Users - Single column layout */}
+        {/* Top 5 Users - Single column layout */}
         <div className="grid grid-cols-1 gap-0 rounded-lg border border-gold/20 overflow-hidden">
           {topRewards.map((user, index) => (
             <UserRow key={user.id} user={user} rank={index + 1} />

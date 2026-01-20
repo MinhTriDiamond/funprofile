@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { UserPlus, UserMinus, UserCheck, Clock } from "lucide-react";
@@ -12,6 +13,7 @@ interface FriendRequestButtonProps {
 type FriendshipStatus = "none" | "pending_sent" | "pending_received" | "accepted";
 
 export const FriendRequestButton = ({ userId, currentUserId }: FriendRequestButtonProps) => {
+  const navigate = useNavigate();
   const [status, setStatus] = useState<FriendshipStatus>("none");
   const [loading, setLoading] = useState(false);
   const [friendshipId, setFriendshipId] = useState<string | null>(null);
@@ -81,6 +83,14 @@ export const FriendRequestButton = ({ userId, currentUserId }: FriendRequestButt
   };
 
   const sendFriendRequest = async () => {
+    // Guest check - show login prompt
+    if (!currentUserId) {
+      toast.error('Vui lòng đăng nhập để kết bạn', {
+        action: { label: 'Đăng nhập', onClick: () => navigate('/auth') }
+      });
+      return;
+    }
+    
     setLoading(true);
     const { error } = await supabase
       .from("friendships")

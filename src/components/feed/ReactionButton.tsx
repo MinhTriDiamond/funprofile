@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ThumbsUp } from 'lucide-react';
@@ -29,6 +30,7 @@ export const ReactionButton = ({
   likeCount,
   onReactionChange,
 }: ReactionButtonProps) => {
+  const navigate = useNavigate();
   const [showReactions, setShowReactions] = useState(false);
   const [currentReaction, setCurrentReaction] = useState<string | null>(initialReaction);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -216,7 +218,9 @@ export const ReactionButton = ({
 
   const handleReaction = async (reactionType: string) => {
     if (!currentUserId) {
-      toast.error('Vui lòng đăng nhập để bày tỏ cảm xúc');
+      toast.error('Vui lòng đăng nhập để bày tỏ cảm xúc', {
+        action: { label: 'Đăng nhập', onClick: () => navigate('/auth') }
+      });
       return;
     }
 

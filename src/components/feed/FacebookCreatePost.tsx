@@ -21,7 +21,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
-import { ImagePlus, Video, X, Loader2, Globe, Users, Lock, ChevronDown, UserPlus, MapPin, MoreHorizontal, CheckCircle } from 'lucide-react';
+import { ImagePlus, Video, X, Loader2, Globe, Users, Lock, ChevronDown, UserPlus, MapPin, MoreHorizontal, CheckCircle, Smile } from 'lucide-react';
 import { compressImage, FILE_LIMITS, getVideoDuration } from '@/utils/imageCompression';
 import { EmojiPicker } from './EmojiPicker';
 import { VideoUploadProgress, VideoUploadState } from './VideoUploadProgress';
@@ -435,7 +435,66 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
   const selectedPrivacy = PRIVACY_OPTIONS.find((p) => p.value === privacy)!;
   const PrivacyIcon = selectedPrivacy.icon;
 
-  if (!profile) return null;
+  // Guest mode: Show placeholder card with login prompt
+  if (!profile) {
+    return (
+      <div className="fb-card p-4 mb-4">
+        <div className="flex items-center gap-3">
+          <Avatar className="w-10 h-10 ring-2 ring-primary/20">
+            <AvatarFallback className="bg-muted text-muted-foreground">G</AvatarFallback>
+          </Avatar>
+          <button
+            onClick={() => {
+              toast.error('Vui lòng đăng nhập để đăng bài', {
+                action: { label: 'Đăng nhập', onClick: () => navigate('/auth') }
+              });
+            }}
+            className="flex-1 text-left px-4 py-2.5 bg-secondary hover:bg-muted rounded-full text-muted-foreground transition-colors"
+          >
+            Bạn đang nghĩ gì thế?
+          </button>
+        </div>
+
+        <div className="border-t border-border mt-3 pt-3">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => {
+                toast.error('Vui lòng đăng nhập để đăng bài', {
+                  action: { label: 'Đăng nhập', onClick: () => navigate('/auth') }
+                });
+              }}
+              className="flex-1 flex items-center justify-center gap-2 py-2 hover:bg-secondary rounded-lg transition-colors"
+            >
+              <Video className="w-6 h-6 text-red-500" />
+              <span className="font-semibold text-muted-foreground text-sm hidden sm:inline">Video trực tiếp</span>
+            </button>
+            <button
+              onClick={() => {
+                toast.error('Vui lòng đăng nhập để đăng bài', {
+                  action: { label: 'Đăng nhập', onClick: () => navigate('/auth') }
+                });
+              }}
+              className="flex-1 flex items-center justify-center gap-2 py-2 hover:bg-secondary rounded-lg transition-colors"
+            >
+              <ImagePlus className="w-6 h-6 text-primary" />
+              <span className="font-semibold text-muted-foreground text-sm hidden sm:inline">Ảnh/video</span>
+            </button>
+            <button
+              onClick={() => {
+                toast.error('Vui lòng đăng nhập để đăng bài', {
+                  action: { label: 'Đăng nhập', onClick: () => navigate('/auth') }
+                });
+              }}
+              className="flex-1 flex items-center justify-center gap-2 py-2 hover:bg-secondary rounded-lg transition-colors"
+            >
+              <Smile className="w-6 h-6 text-yellow-500" />
+              <span className="font-semibold text-muted-foreground text-sm hidden sm:inline">Cảm xúc</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>

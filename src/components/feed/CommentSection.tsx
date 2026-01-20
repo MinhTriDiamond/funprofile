@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -35,6 +36,7 @@ interface CommentSectionProps {
 }
 
 export const CommentSection = ({ postId, onCommentAdded }: CommentSectionProps) => {
+  const navigate = useNavigate();
   const { t } = useLanguage();
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
@@ -140,7 +142,9 @@ export const CommentSection = ({ postId, onCommentAdded }: CommentSectionProps) 
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) {
-      toast.error('Vui lòng đăng nhập để bình luận');
+      toast.error('Vui lòng đăng nhập để bình luận', {
+        action: { label: 'Đăng nhập', onClick: () => navigate('/auth') }
+      });
       setLoading(false);
       return;
     }
