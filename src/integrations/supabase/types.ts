@@ -994,12 +994,42 @@ export type Database = {
         }
         Relationships: []
       }
+      post_tags: {
+        Row: {
+          created_at: string
+          id: string
+          post_id: string
+          tagged_user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          post_id: string
+          tagged_user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          post_id?: string
+          tagged_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_tags_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       posts: {
         Row: {
           content: string
           created_at: string
           id: string
           image_url: string | null
+          location: string | null
           media_urls: Json | null
           updated_at: string
           user_id: string
@@ -1010,6 +1040,7 @@ export type Database = {
           created_at?: string
           id?: string
           image_url?: string | null
+          location?: string | null
           media_urls?: Json | null
           updated_at?: string
           user_id: string
@@ -1020,6 +1051,7 @@ export type Database = {
           created_at?: string
           id?: string
           image_url?: string | null
+          location?: string | null
           media_urls?: Json | null
           updated_at?: string
           user_id?: string

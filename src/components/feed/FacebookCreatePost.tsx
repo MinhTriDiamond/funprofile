@@ -21,11 +21,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
-import { ImagePlus, Video, X, Loader2, Globe, Users, Lock, ChevronDown, UserPlus, MapPin, MoreHorizontal, CheckCircle, Smile } from 'lucide-react';
+import { ImagePlus, Video, X, Loader2, Globe, Users, Lock, ChevronDown, UserPlus, MapPin, MoreHorizontal, CheckCircle, Smile, Clapperboard } from 'lucide-react';
 import { compressImage, FILE_LIMITS, getVideoDuration } from '@/utils/imageCompression';
 import { EmojiPicker } from './EmojiPicker';
 import { VideoUploadProgress, VideoUploadState } from './VideoUploadProgress';
 import { VideoUploaderUppy } from './VideoUploaderUppy';
+import { FriendTagDialog, TaggedFriend } from './FriendTagDialog';
+import { LocationCheckin } from './LocationCheckin';
 import { useLanguage } from '@/i18n/LanguageContext';
 
 interface FacebookCreatePostProps {
@@ -59,6 +61,14 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
   const [videoUploadProgress, setVideoUploadProgress] = useState(0);
   const [currentVideoName, setCurrentVideoName] = useState('');
   const [currentVideoId, setCurrentVideoId] = useState<string | undefined>(undefined);
+  
+  // Friend tagging state
+  const [showFriendTagDialog, setShowFriendTagDialog] = useState(false);
+  const [taggedFriends, setTaggedFriends] = useState<TaggedFriend[]>([]);
+  
+  // Location check-in state
+  const [showLocationDialog, setShowLocationDialog] = useState(false);
+  const [location, setLocation] = useState<string | null>(null);
   
   // Uppy video upload state
   const [pendingVideoFile, setPendingVideoFile] = useState<File | null>(null);
@@ -372,6 +382,8 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
           media_urls: mediaUrls,
           image_url: firstImage?.url || null,
           video_url: firstVideo?.url || null,
+          location: location,
+          tagged_user_ids: taggedFriends.map(f => f.id),
         }),
         signal: abortController.signal,
       });
@@ -411,6 +423,8 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
       mediaItems.forEach((item) => URL.revokeObjectURL(item.preview));
       setContent('');
       setMediaItems([]);
+      setTaggedFriends([]);
+      setLocation(null);
       setIsDialogOpen(false);
       setShowMediaUpload(false);
       toast.success('Đã đăng bài viết!');
@@ -564,8 +578,35 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
                   {profile.username?.[0]?.toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <div>
-                <p className="font-semibold">{profile.full_name || profile.username}</p>
+              <div className="flex-1">
+                <div className="flex items-center gap-1 flex-wrap">
+                  <span className="font-semibold">{profile.full_name || profile.username}</span>
+                  {taggedFriends.length > 0 && (
+                    <span className="text-muted-foreground text-sm">
+                      {' '}cùng với{' '}
+                      <button
+                        onClick={() => setShowFriendTagDialog(true)}
+                        className="text-foreground font-semibold hover:underline"
+                      >
+                        {taggedFriends.length === 1 
+                          ? (taggedFriends[0].full_name || taggedFriends[0].username)
+                          : `${taggedFriends[0].full_name || taggedFriends[0].username} và ${taggedFriends.length - 1} người khác`
+                        }
+                      </button>
+                    </span>
+                  )}
+                  {location && (
+                    <span className="text-muted-foreground text-sm">
+                      {' '}tại{' '}
+                      <button
+                        onClick={() => setShowLocationDialog(true)}
+                        className="text-foreground font-semibold hover:underline"
+                      >
+                        {location}
+                      </button>
+                    </span>
+                  )}
+                </div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="secondary" size="sm" className="h-6 text-xs mt-1 gap-1">
@@ -791,27 +832,66 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
               </div>
             )}
 
-            {/* Add to Post */}
-            <div className="mt-4 border border-border rounded-lg p-3 flex items-center justify-between">
-              <span className="font-semibold text-sm">Thêm vào bài viết của bạn</span>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setShowMediaUpload(true)}
-                  className="w-9 h-9 rounded-full hover:bg-secondary flex items-center justify-center transition-colors"
-                  disabled={loading}
-                >
-                  <ImagePlus className="w-6 h-6 text-primary" />
-                </button>
-                <button className="w-9 h-9 rounded-full hover:bg-secondary flex items-center justify-center transition-colors">
-                  <UserPlus className="w-6 h-6 text-blue-500" />
-                </button>
-                <EmojiPicker onEmojiSelect={handleEmojiSelect} />
-                <button className="w-9 h-9 rounded-full hover:bg-secondary flex items-center justify-center transition-colors">
-                  <MapPin className="w-6 h-6 text-red-400" />
-                </button>
-                <button className="w-9 h-9 rounded-full hover:bg-secondary flex items-center justify-center transition-colors">
-                  <MoreHorizontal className="w-6 h-6 text-muted-foreground" />
-                </button>
+            {/* Add to Post - Facebook style colored icons */}
+            <div className="mt-4 border border-border rounded-lg p-3">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-sm">Thêm vào bài viết của bạn</span>
+                <div className="flex items-center gap-0.5 overflow-x-auto scrollbar-hide">
+                  {/* Media - Green */}
+                  <button
+                    onClick={() => setShowMediaUpload(true)}
+                    className="w-9 h-9 min-w-[36px] rounded-full hover:bg-secondary flex items-center justify-center transition-colors"
+                    disabled={loading}
+                    title="Ảnh/Video"
+                  >
+                    <ImagePlus className="w-6 h-6" style={{ color: '#45BD62' }} />
+                  </button>
+                  
+                  {/* Tag Friends - Blue */}
+                  <button 
+                    onClick={() => setShowFriendTagDialog(true)}
+                    className={`w-9 h-9 min-w-[36px] rounded-full hover:bg-secondary flex items-center justify-center transition-colors ${
+                      taggedFriends.length > 0 ? 'bg-blue-100 dark:bg-blue-900/30' : ''
+                    }`}
+                    disabled={loading}
+                    title="Gắn thẻ bạn bè"
+                  >
+                    <UserPlus className="w-6 h-6" style={{ color: '#1877F2' }} />
+                  </button>
+                  
+                  {/* Emoji - Yellow */}
+                  <EmojiPicker onEmojiSelect={handleEmojiSelect} />
+                  
+                  {/* Check-in - Red */}
+                  <button 
+                    onClick={() => setShowLocationDialog(true)}
+                    className={`w-9 h-9 min-w-[36px] rounded-full hover:bg-secondary flex items-center justify-center transition-colors ${
+                      location ? 'bg-red-100 dark:bg-red-900/30' : ''
+                    }`}
+                    disabled={loading}
+                    title="Check in"
+                  >
+                    <MapPin className="w-6 h-6" style={{ color: '#E74852' }} />
+                  </button>
+                  
+                  {/* GIF - Teal */}
+                  <button 
+                    className="w-9 h-9 min-w-[36px] rounded-full hover:bg-secondary flex items-center justify-center transition-colors opacity-50 cursor-not-allowed"
+                    disabled
+                    title="GIF (Sắp có)"
+                  >
+                    <Clapperboard className="w-6 h-6" style={{ color: '#3BC7BD' }} />
+                  </button>
+                  
+                  {/* More Options */}
+                  <button 
+                    className="w-9 h-9 min-w-[36px] rounded-full hover:bg-secondary flex items-center justify-center transition-colors"
+                    disabled={loading}
+                    title="Thêm"
+                  >
+                    <MoreHorizontal className="w-6 h-6 text-muted-foreground" />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -840,6 +920,23 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Friend Tag Dialog */}
+      <FriendTagDialog
+        isOpen={showFriendTagDialog}
+        onClose={() => setShowFriendTagDialog(false)}
+        currentUserId={profile?.id || ''}
+        selectedFriends={taggedFriends}
+        onTagFriends={setTaggedFriends}
+      />
+
+      {/* Location Check-in Dialog */}
+      <LocationCheckin
+        isOpen={showLocationDialog}
+        onClose={() => setShowLocationDialog(false)}
+        currentLocation={location}
+        onSelectLocation={setLocation}
+      />
     </>
   );
 };

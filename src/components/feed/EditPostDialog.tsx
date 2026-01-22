@@ -6,10 +6,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { Image, Video, X, Loader2 } from 'lucide-react';
+import { Image, Video, X, Loader2, UserPlus, MapPin, MoreHorizontal, Clapperboard } from 'lucide-react';
 import { z } from 'zod';
 import { compressImage, FILE_LIMITS, getVideoDuration } from '@/utils/imageCompression';
 import { VideoUploaderUppy } from './VideoUploaderUppy';
+import { EmojiPicker } from './EmojiPicker';
+import { FriendTagDialog, TaggedFriend } from './FriendTagDialog';
+import { LocationCheckin } from './LocationCheckin';
 
 const MAX_CONTENT_LENGTH = 20000;
 
@@ -23,18 +26,28 @@ interface EditPostDialogProps {
     content: string;
     image_url: string | null;
     video_url?: string | null;
+    location?: string | null;
   };
   isOpen: boolean;
   onClose: () => void;
   onPostUpdated: () => void;
+  currentUserId?: string;
 }
 
-export const EditPostDialog = ({ post, isOpen, onClose, onPostUpdated }: EditPostDialogProps) => {
+export const EditPostDialog = ({ post, isOpen, onClose, onPostUpdated, currentUserId }: EditPostDialogProps) => {
   const [content, setContent] = useState(post.content);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(post.image_url);
   const [videoPreview, setVideoPreview] = useState<string | null>(post.video_url || null);
   const [loading, setLoading] = useState(false);
+  
+  // Location state
+  const [location, setLocation] = useState<string | null>(post.location || null);
+  const [showLocationDialog, setShowLocationDialog] = useState(false);
+  
+  // Friend tagging state
+  const [taggedFriends, setTaggedFriends] = useState<TaggedFriend[]>([]);
+  const [showFriendTagDialog, setShowFriendTagDialog] = useState(false);
   
   // Uppy video upload state
   const [pendingVideoFile, setPendingVideoFile] = useState<File | null>(null);
@@ -47,10 +60,16 @@ export const EditPostDialog = ({ post, isOpen, onClose, onPostUpdated }: EditPos
     setImageFile(null);
     setImagePreview(post.image_url);
     setVideoPreview(post.video_url || null);
+    setLocation(post.location || null);
     setPendingVideoFile(null);
     setUppyVideoResult(null);
     setIsVideoUploading(false);
-  }, [post.id, post.content, post.image_url, post.video_url]);
+    setTaggedFriends([]);
+  }, [post.id, post.content, post.image_url, post.video_url, post.location]);
+
+  const handleEmojiSelect = (emoji: string) => {
+    setContent((prev) => prev + emoji);
+  };
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -198,6 +217,7 @@ export const EditPostDialog = ({ post, isOpen, onClose, onPostUpdated }: EditPos
           content,
           image_url: imageUrl,
           video_url: videoUrl,
+          location: location,
         })
         .eq('id', post.id);
 
@@ -217,151 +237,243 @@ export const EditPostDialog = ({ post, isOpen, onClose, onPostUpdated }: EditPos
   const isOverLimit = content.length > MAX_CONTENT_LENGTH;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Edit Post</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <Textarea
-              placeholder="What's on your mind?"
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              className="min-h-[120px] resize-none"
-              disabled={loading}
-            />
-            {/* Character Counter */}
-            <div className={`text-xs text-right mt-1 ${
-              isOverLimit ? 'text-destructive font-semibold' :
-              content.length > MAX_CONTENT_LENGTH * 0.9 ? 'text-yellow-500' :
-              content.length > MAX_CONTENT_LENGTH * 0.8 ? 'text-yellow-600/70' : 'text-muted-foreground'
-            }`}>
-              {content.length.toLocaleString()}/{MAX_CONTENT_LENGTH.toLocaleString()}
-            </div>
-          </div>
+    <>
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-hidden flex flex-col p-0">
+          <DialogHeader className="p-4 border-b border-border shrink-0">
+            <DialogTitle className="text-center text-xl font-bold">Chỉnh sửa bài viết</DialogTitle>
+          </DialogHeader>
+          
+          <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+            <div className="p-4 flex-1 overflow-y-auto space-y-4">
+              {/* Location display */}
+              {location && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <MapPin className="w-4 h-4" style={{ color: '#E74852' }} />
+                  <span>Tại </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowLocationDialog(true)}
+                    className="text-foreground font-semibold hover:underline"
+                  >
+                    {location}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLocation(null)}
+                    className="text-muted-foreground hover:text-destructive ml-auto"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
 
-          {/* Uppy Video Uploader */}
-          {pendingVideoFile && (
-            <div className="mb-3">
-              <VideoUploaderUppy
-                selectedFile={pendingVideoFile}
-                onUploadComplete={(result) => {
-                  setUppyVideoResult(result);
-                  setIsVideoUploading(false);
-                  setPendingVideoFile(null);
-                  setVideoPreview(result.url);
-                }}
-                onUploadError={() => {
-                  setIsVideoUploading(false);
-                  setPendingVideoFile(null);
-                  toast.error('Video upload failed');
-                }}
-                onUploadStart={() => setIsVideoUploading(true)}
-                onRemove={() => {
-                  setPendingVideoFile(null);
-                  setUppyVideoResult(null);
-                  setIsVideoUploading(false);
-                }}
-                disabled={loading}
-              />
-            </div>
-          )}
-
-          {/* Show uploaded video preview */}
-          {(videoPreview || uppyVideoResult) && !pendingVideoFile && (
-            <div className="relative">
-              <video 
-                src={uppyVideoResult?.url || videoPreview || ''} 
-                controls 
-                className="w-full rounded-lg" 
-              />
-              <Button
-                type="button"
-                variant="destructive"
-                size="icon"
-                className="absolute top-2 right-2"
-                onClick={removeVideo}
-                disabled={loading}
-              >
-                <X className="w-4 h-4" />
-              </Button>
-            </div>
-          )}
-
-          {imagePreview && !videoPreview && !uppyVideoResult && !pendingVideoFile && (
-            <div className="relative">
-              <img src={imagePreview} alt="Preview" className="w-full rounded-lg" />
-              <Button
-                type="button"
-                variant="destructive"
-                size="icon"
-                className="absolute top-2 right-2"
-                onClick={removeImage}
-                disabled={loading}
-              >
-                <X className="w-4 h-4" />
-              </Button>
-            </div>
-          )}
-
-          <div className="flex gap-2">
-            <Button 
-              type="button" 
-              variant="outline" 
-              size="sm" 
-              className="flex-1" 
-              asChild
-              disabled={loading || isVideoUploading}
-            >
-              <label>
-                <Image className="w-4 h-4 mr-2" />
-                {imagePreview ? 'Change Image' : 'Add Image'}
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  className="hidden"
-                  disabled={loading || isVideoUploading}
+              {/* Content Input with Emoji */}
+              <div className="relative">
+                <Textarea
+                  placeholder="Bạn đang nghĩ gì thế?"
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  className="min-h-[120px] resize-none border-0 focus-visible:ring-0 text-lg placeholder:text-muted-foreground pr-10"
+                  disabled={loading}
                 />
-              </label>
-            </Button>
-            <Button 
-              type="button" 
-              variant="outline" 
-              size="sm" 
-              className="flex-1" 
-              asChild
-              disabled={loading || isVideoUploading}
-            >
-              <label>
-                <Video className="w-4 h-4 mr-2" />
-                {videoPreview || uppyVideoResult ? 'Change Video' : 'Add Video'}
-                <input
-                  type="file"
-                  accept="video/*"
-                  onChange={handleVideoChange}
-                  className="hidden"
-                  disabled={loading || isVideoUploading}
-                />
-              </label>
-            </Button>
-          </div>
+                <div className="absolute bottom-2 right-2">
+                  <EmojiPicker onEmojiSelect={handleEmojiSelect} />
+                </div>
+                {/* Character Counter */}
+                <div className={`text-xs text-right mt-1 pr-1 ${
+                  isOverLimit ? 'text-destructive font-semibold' :
+                  content.length > MAX_CONTENT_LENGTH * 0.9 ? 'text-yellow-500' :
+                  content.length > MAX_CONTENT_LENGTH * 0.8 ? 'text-yellow-600/70' : 'text-muted-foreground'
+                }`}>
+                  {content.length.toLocaleString()}/{MAX_CONTENT_LENGTH.toLocaleString()}
+                </div>
+              </div>
 
-          <div className="flex gap-2 justify-end">
-            <Button type="button" variant="outline" onClick={onClose} disabled={loading || isVideoUploading}>
-              Cancel
-            </Button>
-            <Button 
-              type="submit" 
-              disabled={loading || isVideoUploading || isOverLimit}
-            >
-              {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              {isVideoUploading ? 'Uploading video...' : loading ? 'Updating...' : 'Update Post'}
-            </Button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
+              {/* Uppy Video Uploader */}
+              {pendingVideoFile && (
+                <div className="mb-3">
+                  <VideoUploaderUppy
+                    selectedFile={pendingVideoFile}
+                    onUploadComplete={(result) => {
+                      setUppyVideoResult(result);
+                      setIsVideoUploading(false);
+                      setPendingVideoFile(null);
+                      setVideoPreview(result.url);
+                    }}
+                    onUploadError={() => {
+                      setIsVideoUploading(false);
+                      setPendingVideoFile(null);
+                      toast.error('Video upload failed');
+                    }}
+                    onUploadStart={() => setIsVideoUploading(true)}
+                    onRemove={() => {
+                      setPendingVideoFile(null);
+                      setUppyVideoResult(null);
+                      setIsVideoUploading(false);
+                    }}
+                    disabled={loading}
+                  />
+                </div>
+              )}
+
+              {/* Show uploaded video preview */}
+              {(videoPreview || uppyVideoResult) && !pendingVideoFile && (
+                <div className="relative">
+                  <video 
+                    src={uppyVideoResult?.url || videoPreview || ''} 
+                    controls 
+                    className="w-full rounded-lg" 
+                  />
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    className="absolute top-2 right-2"
+                    onClick={removeVideo}
+                    disabled={loading}
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              )}
+
+              {imagePreview && !videoPreview && !uppyVideoResult && !pendingVideoFile && (
+                <div className="relative">
+                  <img src={imagePreview} alt="Preview" className="w-full rounded-lg" />
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    className="absolute top-2 right-2"
+                    onClick={removeImage}
+                    disabled={loading}
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              )}
+
+              {/* Add to Post - Facebook style colored icons */}
+              <div className="border border-border rounded-lg p-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-sm">Thêm vào bài viết của bạn</span>
+                  <div className="flex items-center gap-0.5 overflow-x-auto scrollbar-hide">
+                    {/* Media - Green */}
+                    <label className="w-9 h-9 min-w-[36px] rounded-full hover:bg-secondary flex items-center justify-center transition-colors cursor-pointer">
+                      <Image className="w-6 h-6" style={{ color: '#45BD62' }} />
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageChange}
+                        className="hidden"
+                        disabled={loading || isVideoUploading}
+                      />
+                    </label>
+                    
+                    {/* Video - Green */}
+                    <label className="w-9 h-9 min-w-[36px] rounded-full hover:bg-secondary flex items-center justify-center transition-colors cursor-pointer">
+                      <Video className="w-6 h-6" style={{ color: '#45BD62' }} />
+                      <input
+                        type="file"
+                        accept="video/*"
+                        onChange={handleVideoChange}
+                        className="hidden"
+                        disabled={loading || isVideoUploading}
+                      />
+                    </label>
+                    
+                    {/* Tag Friends - Blue */}
+                    <button 
+                      type="button"
+                      onClick={() => setShowFriendTagDialog(true)}
+                      className={`w-9 h-9 min-w-[36px] rounded-full hover:bg-secondary flex items-center justify-center transition-colors ${
+                        taggedFriends.length > 0 ? 'bg-blue-100 dark:bg-blue-900/30' : ''
+                      }`}
+                      disabled={loading}
+                      title="Gắn thẻ bạn bè"
+                    >
+                      <UserPlus className="w-6 h-6" style={{ color: '#1877F2' }} />
+                    </button>
+                    
+                    {/* Emoji - Yellow */}
+                    <EmojiPicker onEmojiSelect={handleEmojiSelect} />
+                    
+                    {/* Check-in - Red */}
+                    <button 
+                      type="button"
+                      onClick={() => setShowLocationDialog(true)}
+                      className={`w-9 h-9 min-w-[36px] rounded-full hover:bg-secondary flex items-center justify-center transition-colors ${
+                        location ? 'bg-red-100 dark:bg-red-900/30' : ''
+                      }`}
+                      disabled={loading}
+                      title="Check in"
+                    >
+                      <MapPin className="w-6 h-6" style={{ color: '#E74852' }} />
+                    </button>
+                    
+                    {/* GIF - Teal (disabled for now) */}
+                    <button 
+                      type="button"
+                      className="w-9 h-9 min-w-[36px] rounded-full hover:bg-secondary flex items-center justify-center transition-colors opacity-50 cursor-not-allowed"
+                      disabled
+                      title="GIF (Sắp có)"
+                    >
+                      <Clapperboard className="w-6 h-6" style={{ color: '#3BC7BD' }} />
+                    </button>
+                    
+                    {/* More Options */}
+                    <button 
+                      type="button"
+                      className="w-9 h-9 min-w-[36px] rounded-full hover:bg-secondary flex items-center justify-center transition-colors"
+                      disabled={loading}
+                      title="Thêm"
+                    >
+                      <MoreHorizontal className="w-6 h-6 text-muted-foreground" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <div className="p-4 border-t border-border shrink-0">
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" onClick={onClose} disabled={loading || isVideoUploading}>
+                  Huỷ
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={loading || isVideoUploading || isOverLimit}
+                  className="flex-1"
+                >
+                  {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  {isVideoUploading ? 'Đang tải video...' : loading ? 'Đang cập nhật...' : 'Lưu thay đổi'}
+                </Button>
+              </div>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Friend Tag Dialog */}
+      {currentUserId && (
+        <FriendTagDialog
+          isOpen={showFriendTagDialog}
+          onClose={() => setShowFriendTagDialog(false)}
+          currentUserId={currentUserId}
+          selectedFriends={taggedFriends}
+          onTagFriends={setTaggedFriends}
+        />
+      )}
+
+      {/* Location Check-in Dialog */}
+      <LocationCheckin
+        isOpen={showLocationDialog}
+        onClose={() => setShowLocationDialog(false)}
+        currentLocation={location}
+        onSelectLocation={setLocation}
+      />
+    </>
   );
 };
