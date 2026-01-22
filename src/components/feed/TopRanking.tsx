@@ -117,14 +117,16 @@ export const TopRanking = memo(() => {
           </div>
 
           <h1 
-            className="text-xl font-black tracking-wider uppercase"
+            className="text-xl font-black tracking-wider uppercase animate-shimmer"
             style={{
               fontFamily: "'Orbitron', 'Rajdhani', sans-serif",
-              background: 'linear-gradient(135deg, #FFD700 0%, #FFC125 25%, #DAA520 50%, #FFC125 75%, #FFD700 100%)',
+              background: 'linear-gradient(90deg, #FFD700 0%, #FFEC8B 15%, #FFF8DC 30%, #FFD700 45%, #DAA520 60%, #FFD700 75%, #FFEC8B 90%, #FFD700 100%)',
+              backgroundSize: '200% 100%',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
-              textShadow: '0 0 20px rgba(255,215,0,0.6)',
-              filter: 'drop-shadow(0 0 8px rgba(255,215,0,0.5))'
+              textShadow: '0 2px 4px rgba(0,0,0,0.3), 0 0 30px rgba(255,215,0,0.8), 0 0 60px rgba(255,215,0,0.4)',
+              filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.4)) drop-shadow(0 0 15px rgba(255,215,0,0.7))',
+              letterSpacing: '0.1em'
             }}
           >
             TOP RANKING
