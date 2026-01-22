@@ -112,21 +112,6 @@ export default {
           "0%, 100%": { boxShadow: "0 0 20px hsl(var(--primary-glow)/0.6), inset 0 1px 0 rgba(255,255,255,0.3)" },
           "50%": { boxShadow: "0 0 35px hsl(var(--primary-glow)/0.8), 0 0 50px hsl(var(--gold)/0.4), inset 0 1px 0 rgba(255,255,255,0.5)" },
         },
-        "shimmer-border": {
-          "0%": { borderColor: "rgba(255,215,0,0.6)" },
-          "25%": { borderColor: "rgba(255,235,100,1)" },
-          "50%": { borderColor: "rgba(255,193,37,1)" },
-          "75%": { borderColor: "rgba(255,235,100,1)" },
-          "100%": { borderColor: "rgba(255,215,0,0.6)" },
-        },
-        "golden-glow": {
-          "0%, 100%": { 
-            boxShadow: "0 0 4px rgba(255,215,0,0.4), inset 0 0 2px rgba(255,215,0,0.2)" 
-          },
-          "50%": { 
-            boxShadow: "0 0 12px rgba(255,215,0,0.8), 0 0 20px rgba(255,215,0,0.4), inset 0 0 4px rgba(255,215,0,0.3)" 
-          },
-        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -136,8 +121,6 @@ export default {
         "fade-in": "fade-in 0.3s ease-out",
         "shimmer": "shimmer 3s ease-in-out infinite",
         "glow-pulse": "glow-pulse 2s ease-in-out infinite",
-        "shimmer-border": "shimmer-border 2s ease-in-out infinite",
-        "golden-glow": "golden-glow 2.5s ease-in-out infinite",
       },
     },
   },
