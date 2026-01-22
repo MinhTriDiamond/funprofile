@@ -220,7 +220,7 @@ export const AppHonorBoard = memo(() => {
           {statItems.map((item, index) => (
             <div 
               key={index} 
-              className="flex items-center gap-2 py-2 px-2.5 rounded-lg border border-yellow-500/40 bg-green-800/90 backdrop-blur-sm transition-all duration-200 hover:scale-105 hover:brightness-110 hover:border-yellow-400/60 cursor-pointer"
+              className="flex items-center gap-2 py-2 px-3 rounded-full relative overflow-hidden backdrop-blur-sm transition-all duration-200 hover:scale-105 hover:brightness-110 cursor-pointer bg-green-800/95 border-[3px] border-transparent shadow-[0_0_6px_rgba(255,215,0,0.3),0_0_12px_rgba(255,200,0,0.15),inset_0_1px_2px_rgba(255,255,255,0.2)] hover:shadow-[0_0_10px_rgba(255,215,0,0.5),0_0_20px_rgba(255,200,0,0.3)] before:absolute before:inset-0 before:rounded-full before:p-[3px] before:bg-[linear-gradient(135deg,#FFF8DC_0%,#FFD700_15%,#FFC125_30%,#FFE55C_50%,#DAA520_70%,#FFD700_85%,#FFFACD_100%)] before:-z-10"
             >
               <div className={`p-1.5 rounded-md ${item.bgColor}`}>
                 <item.icon className={`w-4 h-4 ${item.color}`} />
@@ -248,7 +248,7 @@ export const AppHonorBoard = memo(() => {
             stats.tokenBalances.map((token, index) => (
               <div 
                 key={token.symbol} 
-                className="flex items-center gap-2 py-2 px-2.5 rounded-lg border border-yellow-500/40 bg-green-800/90 backdrop-blur-sm transition-all duration-200 hover:scale-105 hover:brightness-110 hover:border-yellow-400/60 cursor-pointer"
+                className="flex items-center gap-2 py-2 px-3 rounded-full relative overflow-hidden backdrop-blur-sm transition-all duration-200 hover:scale-105 hover:brightness-110 cursor-pointer bg-green-800/95 border-[3px] border-transparent shadow-[0_0_6px_rgba(255,215,0,0.3),0_0_12px_rgba(255,200,0,0.15),inset_0_1px_2px_rgba(255,255,255,0.2)] hover:shadow-[0_0_10px_rgba(255,215,0,0.5),0_0_20px_rgba(255,200,0,0.3)] before:absolute before:inset-0 before:rounded-full before:p-[3px] before:bg-[linear-gradient(135deg,#FFF8DC_0%,#FFD700_15%,#FFC125_30%,#FFE55C_50%,#DAA520_70%,#FFD700_85%,#FFFACD_100%)] before:-z-10"
               >
                 <div className="p-1.5 rounded-md bg-emerald-500/10">
                   <Coins className="w-4 h-4 text-emerald-500" />
