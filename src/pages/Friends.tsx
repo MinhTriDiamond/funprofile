@@ -4,18 +4,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { FriendsList } from '@/components/friends/FriendsList';
+import { FriendCarousel } from '@/components/friends/FriendCarousel';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, UserPlus, Users, UserCheck, Gift, Settings, ChevronLeft, MoreHorizontal } from 'lucide-react';
-import { LazyImage } from '@/components/ui/LazyImage';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Search, UserPlus, Users, UserCheck, Gift, Settings, ChevronLeft } from 'lucide-react';
+import { toast } from 'sonner';
 
 const Friends = () => {
   const navigate = useNavigate();
@@ -23,6 +16,7 @@ const Friends = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
   const [friendRequests, setFriendRequests] = useState<any[]>([]);
+  const [sentRequests, setSentRequests] = useState<any[]>([]);
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [showSidebar, setShowSidebar] = useState(false);
 
@@ -37,6 +31,7 @@ const Friends = () => {
       
       setCurrentUserId(session.user.id);
       fetchFriendRequests(session.user.id);
+      fetchSentRequests(session.user.id);
       fetchSuggestions(session.user.id);
       setLoading(false);
     };
@@ -58,25 +53,144 @@ const Friends = () => {
   const fetchFriendRequests = async (userId: string) => {
     const { data } = await supabase
       .from('friendships')
-      .select(`
-        *,
-        profiles:user_id (id, username, avatar_url, full_name)
-      `)
+      .select('*')
       .eq('friend_id', userId)
       .eq('status', 'pending');
     
-    setFriendRequests(data || []);
+    if (!data?.length) {
+      setFriendRequests([]);
+      return;
+    }
+
+    const userIds = data.map(f => f.user_id);
+    const { data: profilesData } = await supabase
+      .from('profiles')
+      .select('id, username, full_name, avatar_url')
+      .in('id', userIds);
+    
+    const formatted = data.map(item => {
+      const profile = profilesData?.find(p => p.id === item.user_id);
+      return {
+        id: profile?.id || item.user_id,
+        username: profile?.username || 'Unknown',
+        full_name: profile?.full_name,
+        avatar_url: profile?.avatar_url,
+        friendship_id: item.id,
+        created_at: item.created_at,
+      };
+    });
+    
+    setFriendRequests(formatted);
+  };
+
+  const fetchSentRequests = async (userId: string) => {
+    const { data } = await supabase
+      .from('friendships')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('status', 'pending');
+    
+    if (!data?.length) {
+      setSentRequests([]);
+      return;
+    }
+
+    const friendIds = data.map(f => f.friend_id);
+    const { data: profilesData } = await supabase
+      .from('profiles')
+      .select('id, username, full_name, avatar_url')
+      .in('id', friendIds);
+    
+    const formatted = data.map(item => {
+      const profile = profilesData?.find(p => p.id === item.friend_id);
+      return {
+        id: profile?.id || item.friend_id,
+        username: profile?.username || 'Unknown',
+        full_name: profile?.full_name,
+        avatar_url: profile?.avatar_url,
+        friendship_id: item.id,
+        created_at: item.created_at,
+      };
+    });
+    
+    setSentRequests(formatted);
   };
 
   const fetchSuggestions = async (userId: string) => {
-    // Use public_profiles view to avoid exposing sensitive fields
+    const { data: existingRelations } = await supabase
+      .from('friendships')
+      .select('user_id, friend_id')
+      .or(`user_id.eq.${userId},friend_id.eq.${userId}`);
+
+    const excludedUserIds = new Set([userId]);
+    existingRelations?.forEach(rel => {
+      excludedUserIds.add(rel.user_id);
+      excludedUserIds.add(rel.friend_id);
+    });
+
     const { data } = await supabase
       .from('public_profiles')
-      .select('id, username, avatar_url, full_name, bio')
-      .neq('id', userId)
-      .limit(10);
+      .select('id, username, avatar_url, full_name')
+      .limit(20);
     
-    setSuggestions(data || []);
+    const filtered = (data || []).filter(p => !excludedUserIds.has(p.id!));
+    setSuggestions(filtered);
+  };
+
+  const handleRequestAction = async (id: string, action: string) => {
+    if (action === 'accept') {
+      const { error } = await supabase
+        .from('friendships')
+        .update({ status: 'accepted' })
+        .eq('id', id);
+      if (!error) {
+        toast.success('Đã chấp nhận lời mời kết bạn!');
+        fetchFriendRequests(currentUserId);
+      }
+    } else if (action === 'reject') {
+      const { error } = await supabase
+        .from('friendships')
+        .delete()
+        .eq('id', id);
+      if (!error) {
+        toast.success('Đã từ chối lời mời');
+        fetchFriendRequests(currentUserId);
+      }
+    }
+  };
+
+  const handleSentAction = async (id: string, action: string) => {
+    if (action === 'cancel') {
+      const { error } = await supabase
+        .from('friendships')
+        .delete()
+        .eq('id', id);
+      if (!error) {
+        toast.success('Đã hủy lời mời kết bạn');
+        fetchSentRequests(currentUserId);
+      }
+    }
+  };
+
+  const handleSuggestionAction = async (id: string, action: string) => {
+    if (action === 'add') {
+      const { error } = await supabase
+        .from('friendships')
+        .insert({
+          user_id: currentUserId,
+          friend_id: id,
+          status: 'pending'
+        });
+      if (!error) {
+        toast.success('Đã gửi lời mời kết bạn!');
+        fetchSuggestions(currentUserId);
+        fetchSentRequests(currentUserId);
+      }
+    }
+  };
+
+  const handleDismissSuggestion = (id: string) => {
+    setSuggestions(prev => prev.filter(s => s.id !== id));
   };
 
   const menuItems = [
@@ -87,60 +201,6 @@ const Friends = () => {
     { icon: Gift, label: 'Sinh nhật', value: 'birthdays' },
   ];
 
-  // Reusable Friend Card Component for mobile-first design
-  const FriendCard = ({ user, type }: { user: any; type: 'request' | 'suggestion' }) => (
-    <div className="bg-card rounded-xl shadow-sm overflow-hidden border border-border/50">
-      {/* Square avatar on top */}
-      <div className="aspect-square bg-muted relative">
-        {user.avatar_url || user.profiles?.avatar_url ? (
-          <LazyImage
-            src={user.avatar_url || user.profiles?.avatar_url}
-            alt={user.username || user.profiles?.username}
-            className="w-full h-full object-cover"
-            unloadOnExit
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-muted text-4xl font-semibold text-muted-foreground">
-            {(user.username || user.profiles?.username)?.[0]?.toUpperCase()}
-          </div>
-        )}
-      </div>
-      
-      {/* Info & Actions */}
-      <div className="p-3">
-        <h3 
-          className="font-semibold text-base truncate cursor-pointer hover:underline"
-          onClick={() => navigate(`/profile/${user.id || user.profiles?.id}`)}
-        >
-          {user.full_name || user.profiles?.full_name || user.username || user.profiles?.username}
-        </h3>
-        <p className="text-xs text-muted-foreground mb-3 truncate">
-          {type === 'request' ? '5 bạn chung' : '3 bạn chung'}
-        </p>
-        <div className="space-y-2">
-          <Button 
-            className="w-full h-9 text-sm"
-            size="sm"
-          >
-            {type === 'request' ? 'Xác nhận' : (
-              <>
-                <UserPlus className="w-4 h-4 mr-1.5" />
-                Thêm bạn
-              </>
-            )}
-          </Button>
-          <Button 
-            variant="secondary" 
-            className="w-full h-9 text-sm"
-            size="sm"
-          >
-            Xóa
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
@@ -148,9 +208,9 @@ const Friends = () => {
         <main className="pt-14 px-4">
           <div className="max-w-7xl mx-auto py-4">
             <Skeleton className="h-10 w-48 mb-4" />
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            <div className="flex gap-3 overflow-hidden">
               {[1, 2, 3, 4].map(i => (
-                <Skeleton key={i} className="aspect-[3/4] rounded-xl" />
+                <Skeleton key={i} className="w-[160px] h-[240px] rounded-xl flex-shrink-0" />
               ))}
             </div>
           </div>
@@ -248,41 +308,74 @@ const Friends = () => {
               </div>
             </div>
 
-            <div className="p-4 lg:p-6">
+            <div className="py-4">
+              {/* Home/All Tab */}
+              {activeTab === 'all' && (
+                <div className="space-y-6">
+                  {/* Sent Requests Carousel */}
+                  {sentRequests.length > 0 && (
+                    <FriendCarousel
+                      title="Lời mời đã gửi"
+                      subtitle={`${sentRequests.length} đang chờ`}
+                      items={sentRequests}
+                      type="sent"
+                      onAction={handleSentAction}
+                    />
+                  )}
+
+                  {/* Friend Requests Carousel */}
+                  {friendRequests.length > 0 && (
+                    <FriendCarousel
+                      title="Lời mời kết bạn"
+                      subtitle={`${friendRequests.length} lời mời`}
+                      items={friendRequests}
+                      type="request"
+                      onAction={handleRequestAction}
+                    />
+                  )}
+
+                  {/* Suggestions Carousel */}
+                  <FriendCarousel
+                    title="Những người bạn có thể biết"
+                    items={suggestions}
+                    type="suggestion"
+                    onAction={handleSuggestionAction}
+                    onDismiss={handleDismissSuggestion}
+                    showMoreOptions
+                  />
+                </div>
+              )}
+
               {/* Friend Requests Tab */}
               {activeTab === 'requests' && (
-                <div>
+                <div className="px-4">
                   <h2 className="text-xl font-bold mb-4 hidden lg:block">Lời mời kết bạn</h2>
-                  {friendRequests.length === 0 ? (
-                    <div className="bg-card rounded-xl shadow-sm p-8 text-center">
-                      <UserPlus className="w-16 h-16 mx-auto text-muted-foreground/30 mb-4" />
-                      <p className="text-muted-foreground">Không có lời mời kết bạn nào</p>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-                      {friendRequests.map((request) => (
-                        <FriendCard key={request.id} user={request} type="request" />
-                      ))}
-                    </div>
-                  )}
+                  <FriendCarousel
+                    title=""
+                    items={friendRequests}
+                    type="request"
+                    onAction={handleRequestAction}
+                  />
                 </div>
               )}
 
               {/* Suggestions Tab */}
               {activeTab === 'suggestions' && (
-                <div>
+                <div className="px-4">
                   <h2 className="text-xl font-bold mb-4 hidden lg:block">Những người bạn có thể biết</h2>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-                    {suggestions.map((user) => (
-                      <FriendCard key={user.id} user={user} type="suggestion" />
-                    ))}
-                  </div>
+                  <FriendCarousel
+                    title=""
+                    items={suggestions}
+                    type="suggestion"
+                    onAction={handleSuggestionAction}
+                    onDismiss={handleDismissSuggestion}
+                  />
                 </div>
               )}
 
               {/* All Friends Tab */}
               {activeTab === 'friends' && (
-                <div>
+                <div className="px-4 lg:px-6">
                   <div className="flex items-center gap-3 mb-4">
                     <h2 className="text-xl font-bold hidden lg:block">Tất cả bạn bè</h2>
                     <div className="relative flex-1 lg:max-w-xs lg:ml-auto">
@@ -299,52 +392,9 @@ const Friends = () => {
                 </div>
               )}
 
-              {/* Home/All Tab */}
-              {activeTab === 'all' && (
-                <div className="space-y-8">
-                  {/* Friend Requests Section */}
-                  {friendRequests.length > 0 && (
-                    <section>
-                      <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-lg lg:text-xl font-bold">Lời mời kết bạn</h2>
-                        <button 
-                          onClick={() => setActiveTab('requests')}
-                          className="text-primary text-sm font-medium hover:underline"
-                        >
-                          Xem tất cả
-                        </button>
-                      </div>
-                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-                        {friendRequests.slice(0, 4).map((request) => (
-                          <FriendCard key={request.id} user={request} type="request" />
-                        ))}
-                      </div>
-                    </section>
-                  )}
-
-                  {/* Suggestions Section */}
-                  <section>
-                    <div className="flex items-center justify-between mb-4">
-                      <h2 className="text-lg lg:text-xl font-bold">Những người bạn có thể biết</h2>
-                      <button 
-                        onClick={() => setActiveTab('suggestions')}
-                        className="text-primary text-sm font-medium hover:underline"
-                      >
-                        Xem tất cả
-                      </button>
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-                      {suggestions.slice(0, 6).map((user) => (
-                        <FriendCard key={user.id} user={user} type="suggestion" />
-                      ))}
-                    </div>
-                  </section>
-                </div>
-              )}
-
               {/* Birthdays Tab */}
               {activeTab === 'birthdays' && (
-                <div>
+                <div className="px-4">
                   <h2 className="text-xl font-bold mb-4 hidden lg:block">Sinh nhật</h2>
                   <div className="bg-card rounded-xl shadow-sm p-8 text-center">
                     <Gift className="w-16 h-16 mx-auto text-muted-foreground/30 mb-4" />
