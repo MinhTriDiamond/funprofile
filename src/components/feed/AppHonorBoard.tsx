@@ -145,47 +145,47 @@ export const AppHonorBoard = memo(() => {
       icon: Users,
       label: t('totalUsers'),
       value: stats?.totalUsers || 0,
-      color: 'text-blue-500',
-      bgColor: 'bg-blue-500/10',
+      color: 'text-[#C9A84C]',
+      bgColor: 'bg-[#C9A84C]/15',
     },
     {
       icon: FileText,
       label: t('totalPosts'),
       value: stats?.totalPosts || 0,
-      color: 'text-green-500',
-      bgColor: 'bg-green-500/10',
+      color: 'text-[#C9A84C]',
+      bgColor: 'bg-[#C9A84C]/15',
     },
     {
       icon: Image,
       label: t('totalPhotos'),
       value: stats?.totalPhotos || 0,
-      color: 'text-purple-500',
-      bgColor: 'bg-purple-500/10',
+      color: 'text-[#C9A84C]',
+      bgColor: 'bg-[#C9A84C]/15',
     },
     {
       icon: Video,
       label: t('totalVideos'),
       value: stats?.totalVideos || 0,
-      color: 'text-red-500',
-      bgColor: 'bg-red-500/10',
+      color: 'text-[#C9A84C]',
+      bgColor: 'bg-[#C9A84C]/15',
     },
     {
       icon: BadgeDollarSign,
       label: t('totalRewards'),
       value: stats?.totalRewards || 0,
-      color: 'text-gold',
-      bgColor: 'bg-gold/10',
+      color: 'text-[#C9A84C]',
+      bgColor: 'bg-[#C9A84C]/15',
       showCamlyLogo: true,
     },
   ];
 
   return (
-    <div className="rounded-2xl overflow-hidden border-2 border-gold bg-transparent shadow-gold-glow">
+    <div className="rounded-2xl overflow-hidden border border-[#C9A84C]/60 bg-gradient-to-br from-[#166534] via-[#14532d] to-[#0f3d22] shadow-[0_4px_20px_rgba(201,168,76,0.15)]">
       {/* Sparkle effects */}
       <div className="absolute inset-0 opacity-10 pointer-events-none">
-        <div className="absolute top-2 left-2 w-1 h-1 bg-gold rounded-full animate-pulse" />
-        <div className="absolute top-4 right-4 w-1 h-1 bg-gold rounded-full animate-pulse" style={{ animationDelay: '0.5s' }} />
-        <div className="absolute bottom-6 left-6 w-1 h-1 bg-gold rounded-full animate-pulse" style={{ animationDelay: '1s' }} />
+        <div className="absolute top-2 left-2 w-1 h-1 bg-[#C9A84C] rounded-full animate-pulse" />
+        <div className="absolute top-4 right-4 w-1 h-1 bg-[#C9A84C] rounded-full animate-pulse" style={{ animationDelay: '0.5s' }} />
+        <div className="absolute bottom-6 left-6 w-1 h-1 bg-[#C9A84C] rounded-full animate-pulse" style={{ animationDelay: '1s' }} />
       </div>
 
       <div className="relative p-3 space-y-3">
@@ -220,13 +220,13 @@ export const AppHonorBoard = memo(() => {
           {statItems.map((item, index) => (
             <div 
               key={index} 
-              className="flex items-center gap-3 py-2.5 px-4 rounded-full bg-gradient-to-r from-primary via-green-400 to-primary backdrop-blur-sm transition-all duration-300 hover:scale-105 cursor-pointer relative before:absolute before:inset-0 before:rounded-full before:p-[3px] before:bg-gradient-to-b before:from-[#FFD700] before:via-[#FFC125] before:to-[#DAA520] before:-z-10 before:content-[''] after:absolute after:inset-[3px] after:rounded-full after:bg-gradient-to-r after:from-primary after:via-green-400 after:to-primary after:-z-[5] after:content-[''] shadow-[0_0_4px_rgba(255,215,0,0.3),0_0_8px_rgba(255,215,0,0.15),inset_0_1px_1px_rgba(255,255,255,0.3)] hover:shadow-[0_0_6px_rgba(255,215,0,0.4),0_0_12px_rgba(255,215,0,0.25),inset_0_1px_2px_rgba(255,255,255,0.4)]"
+              className="flex items-center gap-3 py-2.5 px-4 rounded-full bg-gradient-to-r from-[#166534] via-[#1a7340] to-[#166534] backdrop-blur-sm transition-all duration-300 hover:scale-[1.02] cursor-pointer border border-[#C9A84C]/50 shadow-[0_2px_8px_rgba(201,168,76,0.15)] hover:border-[#C9A84C]/80 hover:shadow-[0_4px_12px_rgba(201,168,76,0.25)]"
             >
               <div className={`p-1.5 rounded-full ${item.bgColor} shrink-0`}>
                 <item.icon className={`w-4 h-4 ${item.color}`} />
               </div>
               <div className="flex-1 flex items-center justify-between gap-2 relative z-10 min-w-0">
-                <p className="text-yellow-100 text-xs uppercase font-semibold whitespace-nowrap">
+                <p className="text-[#C9A84C] text-xs uppercase font-semibold whitespace-nowrap">
                   {item.label}
                 </p>
                 <p className="text-white font-bold text-sm flex items-center gap-1 shrink-0">
@@ -248,13 +248,13 @@ export const AppHonorBoard = memo(() => {
             stats.tokenBalances.map((token, index) => (
               <div 
                 key={token.symbol} 
-                className="flex items-center gap-3 py-2.5 px-4 rounded-full bg-gradient-to-r from-primary via-green-400 to-primary backdrop-blur-sm transition-all duration-300 hover:scale-105 cursor-pointer relative before:absolute before:inset-0 before:rounded-full before:p-[3px] before:bg-gradient-to-b before:from-[#FFD700] before:via-[#FFC125] before:to-[#DAA520] before:-z-10 before:content-[''] after:absolute after:inset-[3px] after:rounded-full after:bg-gradient-to-r after:from-primary after:via-green-400 after:to-primary after:-z-[5] after:content-[''] shadow-[0_0_4px_rgba(255,215,0,0.3),0_0_8px_rgba(255,215,0,0.15),inset_0_1px_1px_rgba(255,255,255,0.3)] hover:shadow-[0_0_6px_rgba(255,215,0,0.4),0_0_12px_rgba(255,215,0,0.25),inset_0_1px_2px_rgba(255,255,255,0.4)]"
+                className="flex items-center gap-3 py-2.5 px-4 rounded-full bg-gradient-to-r from-[#166534] via-[#1a7340] to-[#166534] backdrop-blur-sm transition-all duration-300 hover:scale-[1.02] cursor-pointer border border-[#C9A84C]/50 shadow-[0_2px_8px_rgba(201,168,76,0.15)] hover:border-[#C9A84C]/80 hover:shadow-[0_4px_12px_rgba(201,168,76,0.25)]"
               >
-                <div className="p-1.5 rounded-full bg-emerald-500/10 shrink-0">
-                  <Coins className="w-4 h-4 text-emerald-500" />
+                <div className="p-1.5 rounded-full bg-[#C9A84C]/15 shrink-0">
+                  <Coins className="w-4 h-4 text-[#C9A84C]" />
                 </div>
                 <div className="flex-1 flex items-center justify-between gap-2 relative z-10 min-w-0">
-                  <p className="text-yellow-100 text-xs uppercase font-semibold whitespace-nowrap">
+                  <p className="text-[#C9A84C] text-xs uppercase font-semibold whitespace-nowrap">
                     {index === 0 ? t('totalMoney') : `Circulating ${token.symbol}`}
                   </p>
                   <p className="text-white font-bold text-sm flex items-center gap-1 shrink-0">
