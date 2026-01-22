@@ -54,7 +54,7 @@ export const UserListItem = memo(({ user, viewMode, onBan, onRestrict }: UserLis
           <>
             <Button 
               size="sm" 
-              className="bg-red-500 hover:bg-red-600 text-white"
+              variant="destructive"
               onClick={() => onBan(user, true)}
             >
               <Ban className="w-3 h-3 mr-1" />
@@ -62,7 +62,7 @@ export const UserListItem = memo(({ user, viewMode, onBan, onRestrict }: UserLis
             </Button>
             <Button 
               size="sm" 
-              className="bg-yellow-500 hover:bg-yellow-600 text-white"
+              className="bg-gradient-to-r from-yellow-500 via-yellow-400 to-yellow-500 text-white rounded-full border-2 border-white/30 shadow-[0_0_15px_rgba(234,179,8,0.5)] hover:shadow-[0_0_25px_rgba(234,179,8,0.7)] hover:scale-105"
               onClick={() => onRestrict(user, true)}
             >
               <AlertTriangle className="w-3 h-3 mr-1" />
@@ -75,7 +75,7 @@ export const UserListItem = memo(({ user, viewMode, onBan, onRestrict }: UserLis
           <>
             <Button 
               size="sm" 
-              className="bg-green-500 hover:bg-green-600 text-white"
+              variant="default"
               onClick={() => onRestrict(user, false)}
             >
               <UserCheck className="w-3 h-3 mr-1" />
@@ -83,7 +83,7 @@ export const UserListItem = memo(({ user, viewMode, onBan, onRestrict }: UserLis
             </Button>
             <Button 
               size="sm" 
-              className="bg-red-500 hover:bg-red-600 text-white"
+              variant="destructive"
               onClick={() => onBan(user, true)}
             >
               <Ban className="w-3 h-3 mr-1" />
@@ -96,7 +96,7 @@ export const UserListItem = memo(({ user, viewMode, onBan, onRestrict }: UserLis
           <>
             <Button 
               size="sm" 
-              className="bg-green-500 hover:bg-green-600 text-white"
+              variant="default"
               onClick={() => onBan(user, false)}
             >
               <UserCheck className="w-3 h-3 mr-1" />
@@ -104,7 +104,7 @@ export const UserListItem = memo(({ user, viewMode, onBan, onRestrict }: UserLis
             </Button>
             <Button 
               size="sm" 
-              className="bg-yellow-500 hover:bg-yellow-600 text-white"
+              className="bg-gradient-to-r from-yellow-500 via-yellow-400 to-yellow-500 text-white rounded-full border-2 border-white/30 shadow-[0_0_15px_rgba(234,179,8,0.5)] hover:shadow-[0_0_25px_rgba(234,179,8,0.7)] hover:scale-105"
               onClick={async () => {
                 await onBan(user, false);
                 await onRestrict(user, true);
