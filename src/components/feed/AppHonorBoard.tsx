@@ -220,16 +220,32 @@ export const AppHonorBoard = memo(() => {
           {statItems.map((item, index) => (
             <div 
               key={index} 
-              className="flex items-center gap-3 py-2.5 px-4 rounded-full bg-gradient-to-r from-primary via-green-400 to-primary backdrop-blur-sm transition-all duration-300 hover:scale-105 cursor-pointer relative before:absolute before:inset-0 before:rounded-full before:p-[3px] before:bg-gradient-to-b before:from-[#FFD700] before:via-[#FFC125] before:to-[#DAA520] before:-z-10 before:content-[''] after:absolute after:inset-[3px] after:rounded-full after:bg-gradient-to-r after:from-primary after:via-green-400 after:to-primary after:-z-[5] after:content-[''] shadow-[0_0_4px_rgba(255,215,0,0.3),0_0_8px_rgba(255,215,0,0.15),inset_0_1px_1px_rgba(255,255,255,0.3)] hover:shadow-[0_0_6px_rgba(255,215,0,0.4),0_0_12px_rgba(255,215,0,0.25),inset_0_1px_2px_rgba(255,255,255,0.4)]"
+              className="flex items-center gap-3 py-2.5 px-4 rounded-full bg-gradient-to-r from-[#15803d] to-[#14532d] backdrop-blur-sm transition-all duration-300 hover:scale-105 cursor-pointer relative border border-[#FFD700]/80 shadow-[0_2px_8px_rgba(0,0,0,0.3),0_0_4px_rgba(255,215,0,0.2),inset_0_1px_0_rgba(255,255,255,0.15)] hover:shadow-[0_3px_12px_rgba(0,0,0,0.4),0_0_8px_rgba(255,215,0,0.3),inset_0_1px_0_rgba(255,255,255,0.2)]"
             >
-              <div className={`p-1.5 rounded-full ${item.bgColor} shrink-0`}>
-                <item.icon className={`w-4 h-4 ${item.color}`} />
-              </div>
+              <item.icon 
+                className="w-5 h-5 shrink-0" 
+                style={{ 
+                  color: '#FFD700',
+                  filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.4))'
+                }}
+              />
               <div className="flex-1 flex items-center justify-between gap-2 relative z-10 min-w-0">
-                <p className="text-yellow-100 text-xs uppercase font-semibold whitespace-nowrap">
+                <p 
+                  className="text-sm uppercase font-bold whitespace-nowrap tracking-wide"
+                  style={{ 
+                    color: '#FFD700',
+                    textShadow: '0 1px 2px rgba(0,0,0,0.5), 0 0 8px rgba(255,215,0,0.3)'
+                  }}
+                >
                   {item.label}
                 </p>
-                <p className="text-white font-bold text-sm flex items-center gap-1 shrink-0">
+                <p 
+                  className="font-bold text-base flex items-center gap-1 shrink-0"
+                  style={{ 
+                    color: '#FFD700',
+                    textShadow: '0 1px 2px rgba(0,0,0,0.5), 0 0 8px rgba(255,215,0,0.3)'
+                  }}
+                >
                   {formatNumber(item.value)}
                   {item.showCamlyLogo && (
                     <img 
@@ -248,16 +264,32 @@ export const AppHonorBoard = memo(() => {
             stats.tokenBalances.map((token, index) => (
               <div 
                 key={token.symbol} 
-                className="flex items-center gap-3 py-2.5 px-4 rounded-full bg-gradient-to-r from-primary via-green-400 to-primary backdrop-blur-sm transition-all duration-300 hover:scale-105 cursor-pointer relative before:absolute before:inset-0 before:rounded-full before:p-[3px] before:bg-gradient-to-b before:from-[#FFD700] before:via-[#FFC125] before:to-[#DAA520] before:-z-10 before:content-[''] after:absolute after:inset-[3px] after:rounded-full after:bg-gradient-to-r after:from-primary after:via-green-400 after:to-primary after:-z-[5] after:content-[''] shadow-[0_0_4px_rgba(255,215,0,0.3),0_0_8px_rgba(255,215,0,0.15),inset_0_1px_1px_rgba(255,255,255,0.3)] hover:shadow-[0_0_6px_rgba(255,215,0,0.4),0_0_12px_rgba(255,215,0,0.25),inset_0_1px_2px_rgba(255,255,255,0.4)]"
+                className="flex items-center gap-3 py-2.5 px-4 rounded-full bg-gradient-to-r from-[#15803d] to-[#14532d] backdrop-blur-sm transition-all duration-300 hover:scale-105 cursor-pointer relative border border-[#FFD700]/80 shadow-[0_2px_8px_rgba(0,0,0,0.3),0_0_4px_rgba(255,215,0,0.2),inset_0_1px_0_rgba(255,255,255,0.15)] hover:shadow-[0_3px_12px_rgba(0,0,0,0.4),0_0_8px_rgba(255,215,0,0.3),inset_0_1px_0_rgba(255,255,255,0.2)]"
               >
-                <div className="p-1.5 rounded-full bg-emerald-500/10 shrink-0">
-                  <Coins className="w-4 h-4 text-emerald-500" />
-                </div>
+                <Coins 
+                  className="w-5 h-5 shrink-0" 
+                  style={{ 
+                    color: '#FFD700',
+                    filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.4))'
+                  }}
+                />
                 <div className="flex-1 flex items-center justify-between gap-2 relative z-10 min-w-0">
-                  <p className="text-yellow-100 text-xs uppercase font-semibold whitespace-nowrap">
+                  <p 
+                    className="text-sm uppercase font-bold whitespace-nowrap tracking-wide"
+                    style={{ 
+                      color: '#FFD700',
+                      textShadow: '0 1px 2px rgba(0,0,0,0.5), 0 0 8px rgba(255,215,0,0.3)'
+                    }}
+                  >
                     {index === 0 ? t('totalMoney') : `Circulating ${token.symbol}`}
                   </p>
-                  <p className="text-white font-bold text-sm flex items-center gap-1 shrink-0">
+                  <p 
+                    className="font-bold text-base flex items-center gap-1 shrink-0"
+                    style={{ 
+                      color: '#FFD700',
+                      textShadow: '0 1px 2px rgba(0,0,0,0.5), 0 0 8px rgba(255,215,0,0.3)'
+                    }}
+                  >
                     {formatNumber(token.amount, token.symbol === 'CAMLY' ? 0 : 6)}
                     <img 
                       src={token.logoPath} 
