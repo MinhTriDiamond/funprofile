@@ -226,10 +226,10 @@ export const AppHonorBoard = memo(() => {
               }}
             >
               <div className="shrink-0">
-                <item.icon className="w-5 h-5 text-[#DAA520]" />
+                <item.icon className="w-5 h-5 text-[#FFD700]" />
               </div>
               <div className="flex-1 flex items-center justify-between gap-2 min-w-0">
-                <p className="text-white text-xs uppercase font-bold tracking-wide whitespace-nowrap">
+                <p className="text-[#FFD700] text-xs uppercase font-bold tracking-wide whitespace-nowrap">
                   {item.label}
                 </p>
                 <p className="text-[#FFD700] font-bold text-sm flex items-center gap-1 shrink-0">
@@ -257,10 +257,10 @@ export const AppHonorBoard = memo(() => {
               }}
               >
                 <div className="shrink-0">
-                  <Coins className="w-5 h-5 text-[#DAA520]" />
+                  <Coins className="w-5 h-5 text-[#FFD700]" />
                 </div>
                 <div className="flex-1 flex items-center justify-between gap-2 min-w-0">
-                  <p className="text-white text-xs uppercase font-bold tracking-wide whitespace-nowrap">
+                  <p className="text-[#FFD700] text-xs uppercase font-bold tracking-wide whitespace-nowrap">
                     {index === 0 ? t('totalMoney') : `Circulating ${token.symbol}`}
                   </p>
                   <p className="text-[#FFD700] font-bold text-sm flex items-center gap-1 shrink-0">
