@@ -839,7 +839,12 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
                 <div className="flex items-center gap-0.5 overflow-x-auto scrollbar-hide">
                   {/* Media - Green */}
                   <button
-                    onClick={() => setShowMediaUpload(true)}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      setShowMediaUpload(true);
+                    }}
                     className="w-9 h-9 min-w-[36px] rounded-full hover:bg-secondary flex items-center justify-center transition-colors"
                     disabled={loading}
                     title="Ảnh/Video"
@@ -849,7 +854,12 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
                   
                   {/* Tag Friends - Blue */}
                   <button 
-                    onClick={() => setShowFriendTagDialog(true)}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      setShowFriendTagDialog(true);
+                    }}
                     className={`w-9 h-9 min-w-[36px] rounded-full hover:bg-secondary flex items-center justify-center transition-colors ${
                       taggedFriends.length > 0 ? 'bg-blue-100 dark:bg-blue-900/30' : ''
                     }`}
@@ -864,7 +874,12 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
                   
                   {/* Check-in - Red */}
                   <button 
-                    onClick={() => setShowLocationDialog(true)}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      setShowLocationDialog(true);
+                    }}
                     className={`w-9 h-9 min-w-[36px] rounded-full hover:bg-secondary flex items-center justify-center transition-colors ${
                       location ? 'bg-red-100 dark:bg-red-900/30' : ''
                     }`}

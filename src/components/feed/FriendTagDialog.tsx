@@ -119,8 +119,8 @@ export const FriendTagDialog = ({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px] p-0 max-h-[80vh] flex flex-col">
+    <Dialog open={isOpen} onOpenChange={onClose} modal={true}>
+      <DialogContent className="sm:max-w-[425px] p-0 max-h-[80vh] flex flex-col z-[200]">
         <DialogHeader className="p-4 border-b border-border">
           <DialogTitle className="text-center">Gắn thẻ bạn bè</DialogTitle>
         </DialogHeader>
