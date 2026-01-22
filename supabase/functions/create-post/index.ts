@@ -17,6 +17,8 @@ interface CreatePostRequest {
   media_urls: MediaUrl[];
   image_url?: string | null;
   video_url?: string | null;
+  location?: string | null;
+  tagged_user_ids?: string[];
 }
 
 Deno.serve(async (req) => {
@@ -100,6 +102,7 @@ Deno.serve(async (req) => {
         image_url: body.image_url || null,
         video_url: body.video_url || null,
         media_urls: body.media_urls || [],
+        location: body.location || null,
       })
       .select("id")
       .single();
@@ -122,6 +125,24 @@ Deno.serve(async (req) => {
         }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // Insert tagged users if any
+    if (post?.id && body.tagged_user_ids && body.tagged_user_ids.length > 0) {
+      const tagsToInsert = body.tagged_user_ids.map(taggedUserId => ({
+        post_id: post.id,
+        tagged_user_id: taggedUserId,
+      }));
+      
+      const { error: tagError } = await supabase
+        .from("post_tags")
+        .insert(tagsToInsert);
+      
+      if (tagError) {
+        console.warn("[create-post] Tag insert error (non-fatal):", tagError.message);
+      } else {
+        console.log("[create-post] Tagged", tagsToInsert.length, "users");
+      }
     }
 
     const totalDuration = Date.now() - startTime;
