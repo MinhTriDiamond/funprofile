@@ -483,3 +483,43 @@ html {
 .fun-icon-btn-gold:active {
   @apply bg-gold/30 scale-95;
 }
+
+/* Premium Gradient Border Button - Futuristic Green to Gold */
+.fun-gradient-border {
+  position: relative;
+  border-radius: 9999px; /* pill shape */
+  background-clip: padding-box;
+  border: 3px solid transparent;
+  z-index: 1;
+}
+
+.fun-gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, #16a34a 0%, #22c55e 30%, #facc15 70%, #FFD700 100%);
+  z-index: -1;
+  transition: all 0.3s ease;
+}
+
+.fun-gradient-border::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, #16a34a 0%, #22c55e 30%, #facc15 70%, #FFD700 100%);
+  z-index: -2;
+  filter: blur(8px);
+  opacity: 0.6;
+  transition: all 0.3s ease;
+}
+
+.fun-gradient-border:hover::after {
+  filter: blur(12px);
+  opacity: 0.8;
+}
+
+.fun-gradient-border:hover::before {
+  background: linear-gradient(135deg, #22c55e 0%, #4ade80 30%, #FFEA00 70%, #FFD700 100%);
+}
