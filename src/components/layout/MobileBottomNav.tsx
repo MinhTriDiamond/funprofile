@@ -67,7 +67,7 @@ export const MobileBottomNav = memo(() => {
   return (
     <>
       {/* Bottom Navigation Bar - Fixed with larger touch targets */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-card/98 backdrop-blur-lg border-t border-border/50 safe-area-bottom">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-transparent border-t border-border/30 safe-area-bottom">
         <div className="flex items-center justify-around h-[72px] px-1 max-w-lg mx-auto">
           {navItems.map((item, index) => (
             <button
@@ -78,8 +78,8 @@ export const MobileBottomNav = memo(() => {
                 item.isCenter
                   ? 'relative -mt-8'
                   : item.path && isActive(item.path)
-                  ? 'text-gold bg-gold/10'
-                  : 'text-muted-foreground hover:text-primary hover:bg-primary/10 active:text-gold active:bg-gold/10'
+                  ? 'text-white bg-primary rounded-xl'
+                  : 'text-foreground hover:text-primary hover:bg-primary/10 active:text-white active:bg-primary'
               }`}
             >
               {item.isCenter ? (
