@@ -128,7 +128,17 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
             alt="FUN Ecosystem" 
             className="w-8 h-8 rounded-full object-cover"
           />
-          <h3 className="font-bold text-lg text-yellow-500 drop-shadow-[0_0_8px_rgba(250,204,21,0.6)]">
+          <h3 
+            className="font-black text-xl tracking-wider uppercase"
+            style={{
+              fontFamily: "'Orbitron', 'Rajdhani', sans-serif",
+              background: 'linear-gradient(135deg, #FFD700 0%, #FFC125 25%, #DAA520 50%, #FFC125 75%, #FFD700 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              textShadow: '0 0 20px rgba(255,215,0,0.6)',
+              filter: 'drop-shadow(0 0 8px rgba(255,215,0,0.5))'
+            }}
+          >
             {t('funEcosystem')}
           </h3>
         </div>
