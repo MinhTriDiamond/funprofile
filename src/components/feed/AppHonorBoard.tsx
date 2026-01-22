@@ -220,13 +220,13 @@ export const AppHonorBoard = memo(() => {
           {statItems.map((item, index) => (
             <div 
               key={index} 
-              className="flex items-center gap-2 py-2 px-3 rounded-full relative overflow-hidden backdrop-blur-sm transition-all duration-200 hover:scale-105 hover:brightness-110 cursor-pointer bg-gradient-to-r from-yellow-300 via-yellow-400 to-amber-400 border-[3px] border-transparent shadow-[0_0_6px_rgba(34,197,94,0.3),0_0_12px_rgba(34,197,94,0.15),inset_0_1px_2px_rgba(255,255,255,0.4)] hover:shadow-[0_0_10px_rgba(34,197,94,0.5),0_0_20px_rgba(34,197,94,0.3)] before:absolute before:inset-0 before:rounded-full before:p-[3px] before:bg-[linear-gradient(135deg,#86efac_0%,#22c55e_15%,#16a34a_30%,#4ade80_50%,#15803d_70%,#22c55e_85%,#86efac_100%)] before:-z-10"
+              className="flex items-center gap-2 py-2 px-2.5 rounded-lg border border-yellow-500/40 bg-green-800/90 backdrop-blur-sm transition-all duration-200 hover:scale-105 hover:brightness-110 hover:border-yellow-400/60 cursor-pointer"
             >
-              <div className={`p-1.5 rounded-md bg-green-600/20`}>
-                <item.icon className="w-4 h-4 text-green-700" />
+              <div className={`p-1.5 rounded-md ${item.bgColor}`}>
+                <item.icon className={`w-4 h-4 ${item.color}`} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-green-800 font-bold text-sm truncate flex items-center gap-1">
+                <p className="text-white font-bold text-sm truncate flex items-center gap-1">
                   {formatNumber(item.value)}
                   {item.showCamlyLogo && (
                     <img 
@@ -236,7 +236,7 @@ export const AppHonorBoard = memo(() => {
                     />
                   )}
                 </p>
-                <p className="text-green-700/80 text-[9px] uppercase truncate">
+                <p className="text-yellow-400/80 text-[9px] uppercase truncate">
                   {item.label}
                 </p>
               </div>
@@ -248,13 +248,13 @@ export const AppHonorBoard = memo(() => {
             stats.tokenBalances.map((token, index) => (
               <div 
                 key={token.symbol} 
-                className="flex items-center gap-2 py-2 px-3 rounded-full relative overflow-hidden backdrop-blur-sm transition-all duration-200 hover:scale-105 hover:brightness-110 cursor-pointer bg-gradient-to-r from-yellow-300 via-yellow-400 to-amber-400 border-[3px] border-transparent shadow-[0_0_6px_rgba(34,197,94,0.3),0_0_12px_rgba(34,197,94,0.15),inset_0_1px_2px_rgba(255,255,255,0.4)] hover:shadow-[0_0_10px_rgba(34,197,94,0.5),0_0_20px_rgba(34,197,94,0.3)] before:absolute before:inset-0 before:rounded-full before:p-[3px] before:bg-[linear-gradient(135deg,#86efac_0%,#22c55e_15%,#16a34a_30%,#4ade80_50%,#15803d_70%,#22c55e_85%,#86efac_100%)] before:-z-10"
+                className="flex items-center gap-2 py-2 px-2.5 rounded-lg border border-yellow-500/40 bg-green-800/90 backdrop-blur-sm transition-all duration-200 hover:scale-105 hover:brightness-110 hover:border-yellow-400/60 cursor-pointer"
               >
-                <div className="p-1.5 rounded-md bg-green-600/20">
-                  <Coins className="w-4 h-4 text-green-700" />
+                <div className="p-1.5 rounded-md bg-emerald-500/10">
+                  <Coins className="w-4 h-4 text-emerald-500" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-green-800 font-bold text-sm truncate flex items-center gap-1">
+                  <p className="text-white font-bold text-sm truncate flex items-center gap-1">
                     {formatNumber(token.amount, token.symbol === 'CAMLY' ? 0 : 6)}
                     <img 
                       src={token.logoPath} 
@@ -262,7 +262,7 @@ export const AppHonorBoard = memo(() => {
                       className="w-4 h-4 inline-block" 
                     />
                   </p>
-                  <p className="text-green-700/80 text-[9px] uppercase truncate">
+                  <p className="text-yellow-400/80 text-[9px] uppercase truncate">
                     {index === 0 ? t('totalMoney') : `Circulating ${token.symbol}`}
                   </p>
                 </div>
