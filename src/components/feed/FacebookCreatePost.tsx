@@ -14,20 +14,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
-import { ImagePlus, Video, X, Loader2, Globe, Users, Lock, ChevronDown, UserPlus, MapPin, MoreHorizontal, CheckCircle, Smile, Clapperboard } from 'lucide-react';
+import { ImagePlus, Video, X, Loader2, UserPlus, MapPin, MoreHorizontal, Smile, Clapperboard, CheckCircle } from 'lucide-react';
 import { compressImage, FILE_LIMITS, getVideoDuration } from '@/utils/imageCompression';
 import { EmojiPicker } from './EmojiPicker';
 import { VideoUploadProgress, VideoUploadState } from './VideoUploadProgress';
 import { VideoUploaderUppy } from './VideoUploaderUppy';
 import { FriendTagDialog, TaggedFriend } from './FriendTagDialog';
 import { LocationCheckin } from './LocationCheckin';
+import { PrivacySelector } from './PrivacySelector';
 import { useLanguage } from '@/i18n/LanguageContext';
 
 interface FacebookCreatePostProps {
@@ -98,11 +93,6 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [videoUploadState]);
-  const PRIVACY_OPTIONS = [
-    { value: 'public', label: language === 'vi' ? 'Công khai' : 'Public', icon: Globe, description: language === 'vi' ? 'Tất cả mọi người' : 'Everyone' },
-    { value: 'friends', label: t('friends'), icon: Users, description: language === 'vi' ? 'Bạn bè của bạn' : 'Your friends' },
-    { value: 'private', label: language === 'vi' ? 'Chỉ mình tôi' : 'Only me', icon: Lock, description: language === 'vi' ? 'Chỉ bạn' : 'Only you' },
-  ];
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -446,8 +436,6 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
     }
   };
 
-  const selectedPrivacy = PRIVACY_OPTIONS.find((p) => p.value === privacy)!;
-  const PrivacyIcon = selectedPrivacy.icon;
 
   // Guest mode: Show placeholder card with login prompt
   if (!profile) {
@@ -607,30 +595,11 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
                     </span>
                   )}
                 </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="secondary" size="sm" className="h-6 text-xs mt-1 gap-1">
-                      <PrivacyIcon className="w-3 h-3" />
-                      {selectedPrivacy.label}
-                      <ChevronDown className="w-3 h-3" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start">
-                    {PRIVACY_OPTIONS.map((option) => (
-                      <DropdownMenuItem
-                        key={option.value}
-                        onClick={() => setPrivacy(option.value)}
-                        className="gap-3"
-                      >
-                        <option.icon className="w-5 h-5" />
-                        <div>
-                          <p className="font-medium">{option.label}</p>
-                          <p className="text-xs text-muted-foreground">{option.description}</p>
-                        </div>
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <PrivacySelector 
+                  value={privacy} 
+                  onChange={setPrivacy} 
+                  disabled={loading}
+                />
               </div>
             </div>
 
