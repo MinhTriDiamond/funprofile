@@ -70,16 +70,22 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
   }
 
   const StatRow = ({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) => (
-    <div className="flex items-center justify-between py-1 px-2 sm:px-2.5 rounded-lg border border-yellow-500/40 bg-green-800/90 backdrop-blur-sm">
+    <div className="flex items-center justify-between py-1 px-2 sm:px-2.5 rounded-full border border-[#FFD700]/80 bg-gradient-to-r from-[#15803d] to-[#14532d] backdrop-blur-sm shadow-[0_2px_6px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.1)]">
       <div className="flex items-center gap-1 sm:gap-1.5">
-        <div className="text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.6)]">
+        <div style={{ color: '#FFD700', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.4))' }}>
           {icon}
         </div>
-        <span className="text-yellow-400 font-bold text-[9px] sm:text-[10px] md:text-xs uppercase tracking-wide drop-shadow-[0_0_8px_rgba(250,204,21,0.5)]">
+        <span 
+          className="font-bold text-[9px] sm:text-[10px] md:text-xs uppercase tracking-wide"
+          style={{ color: '#FFD700', textShadow: '0 1px 2px rgba(0,0,0,0.5), 0 0 6px rgba(255,215,0,0.3)' }}
+        >
           {label}
         </span>
       </div>
-      <span className="text-white font-bold text-[11px] sm:text-xs md:text-sm drop-shadow-[0_0_6px_rgba(255,255,255,0.4)]">
+      <span 
+        className="font-bold text-[11px] sm:text-xs md:text-sm"
+        style={{ color: '#FFD700', textShadow: '0 1px 2px rgba(0,0,0,0.5), 0 0 6px rgba(255,215,0,0.3)' }}
+      >
         {formatNumber(value)}
       </span>
     </div>
@@ -278,67 +284,67 @@ export const MobileStats = ({ userId, username, avatarUrl }: MobileStatsProps) =
           
           {/* Compact 4x2 Grid */}
           <div className="grid grid-cols-4 gap-1.5 text-center mb-2">
-            <div className="bg-green-800/70 rounded-lg py-1.5 px-1 border border-yellow-500/30">
-              <ArrowUp className="w-3.5 h-3.5 mx-auto text-yellow-400 mb-0.5" />
-              <div className="text-white font-bold text-xs">{formatNumber(stats.posts_count)}</div>
-              <div className="text-yellow-400/80 text-[8px] uppercase">Posts</div>
+            <div className="bg-gradient-to-b from-[#15803d] to-[#14532d] rounded-lg py-1.5 px-1 border border-[#FFD700]/70 shadow-[0_2px_4px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.1)]">
+              <ArrowUp className="w-3.5 h-3.5 mx-auto mb-0.5" style={{ color: '#FFD700', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.4))' }} />
+              <div className="font-bold text-xs" style={{ color: '#FFD700', textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>{formatNumber(stats.posts_count)}</div>
+              <div className="text-[8px] uppercase font-semibold" style={{ color: '#FFD700', opacity: 0.9 }}>Posts</div>
             </div>
-            <div className="bg-green-800/70 rounded-lg py-1.5 px-1 border border-yellow-500/30">
-              <Star className="w-3.5 h-3.5 mx-auto text-yellow-400 mb-0.5" />
-              <div className="text-white font-bold text-xs">{formatNumber(stats.reactions_on_posts)}</div>
-              <div className="text-yellow-400/80 text-[8px] uppercase">Reactions</div>
+            <div className="bg-gradient-to-b from-[#15803d] to-[#14532d] rounded-lg py-1.5 px-1 border border-[#FFD700]/70 shadow-[0_2px_4px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.1)]">
+              <Star className="w-3.5 h-3.5 mx-auto mb-0.5" style={{ color: '#FFD700', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.4))' }} />
+              <div className="font-bold text-xs" style={{ color: '#FFD700', textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>{formatNumber(stats.reactions_on_posts)}</div>
+              <div className="text-[8px] uppercase font-semibold" style={{ color: '#FFD700', opacity: 0.9 }}>Reactions</div>
             </div>
-            <div className="bg-green-800/70 rounded-lg py-1.5 px-1 border border-yellow-500/30">
-              <MessageCircle className="w-3.5 h-3.5 mx-auto text-yellow-400 mb-0.5" />
-              <div className="text-white font-bold text-xs">{formatNumber(stats.comments_count)}</div>
-              <div className="text-yellow-400/80 text-[8px] uppercase">Comments</div>
+            <div className="bg-gradient-to-b from-[#15803d] to-[#14532d] rounded-lg py-1.5 px-1 border border-[#FFD700]/70 shadow-[0_2px_4px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.1)]">
+              <MessageCircle className="w-3.5 h-3.5 mx-auto mb-0.5" style={{ color: '#FFD700', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.4))' }} />
+              <div className="font-bold text-xs" style={{ color: '#FFD700', textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>{formatNumber(stats.comments_count)}</div>
+              <div className="text-[8px] uppercase font-semibold" style={{ color: '#FFD700', opacity: 0.9 }}>Comments</div>
             </div>
-            <div className="bg-green-800/70 rounded-lg py-1.5 px-1 border border-yellow-500/30">
-              <Users className="w-3.5 h-3.5 mx-auto text-yellow-400 mb-0.5" />
-              <div className="text-white font-bold text-xs">{formatNumber(stats.friends_count)}</div>
-              <div className="text-yellow-400/80 text-[8px] uppercase">Friends</div>
+            <div className="bg-gradient-to-b from-[#15803d] to-[#14532d] rounded-lg py-1.5 px-1 border border-[#FFD700]/70 shadow-[0_2px_4px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.1)]">
+              <Users className="w-3.5 h-3.5 mx-auto mb-0.5" style={{ color: '#FFD700', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.4))' }} />
+              <div className="font-bold text-xs" style={{ color: '#FFD700', textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>{formatNumber(stats.friends_count)}</div>
+              <div className="text-[8px] uppercase font-semibold" style={{ color: '#FFD700', opacity: 0.9 }}>Friends</div>
             </div>
           </div>
           
           {/* Second row: Shares, Livestreams, Claimable, Claimed */}
           <div className="grid grid-cols-4 gap-1.5 text-center mb-2">
-            <div className="bg-green-800/70 rounded-lg py-1.5 px-1 border border-yellow-500/30">
-              <Share2 className="w-3.5 h-3.5 mx-auto text-yellow-400 mb-0.5" />
-              <div className="text-white font-bold text-xs">{formatNumber(stats.shares_count)}</div>
-              <div className="text-yellow-400/80 text-[8px] uppercase">Shares</div>
+            <div className="bg-gradient-to-b from-[#15803d] to-[#14532d] rounded-lg py-1.5 px-1 border border-[#FFD700]/70 shadow-[0_2px_4px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.1)]">
+              <Share2 className="w-3.5 h-3.5 mx-auto mb-0.5" style={{ color: '#FFD700', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.4))' }} />
+              <div className="font-bold text-xs" style={{ color: '#FFD700', textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>{formatNumber(stats.shares_count)}</div>
+              <div className="text-[8px] uppercase font-semibold" style={{ color: '#FFD700', opacity: 0.9 }}>Shares</div>
             </div>
-            <div className="bg-green-800/70 rounded-lg py-1.5 px-1 border border-yellow-500/30">
-              <Video className="w-3.5 h-3.5 mx-auto text-yellow-400 mb-0.5" />
-              <div className="text-white font-bold text-xs">{formatNumber(stats.livestreams_count)}</div>
-              <div className="text-yellow-400/80 text-[8px] uppercase">Live</div>
+            <div className="bg-gradient-to-b from-[#15803d] to-[#14532d] rounded-lg py-1.5 px-1 border border-[#FFD700]/70 shadow-[0_2px_4px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.1)]">
+              <Video className="w-3.5 h-3.5 mx-auto mb-0.5" style={{ color: '#FFD700', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.4))' }} />
+              <div className="font-bold text-xs" style={{ color: '#FFD700', textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>{formatNumber(stats.livestreams_count)}</div>
+              <div className="text-[8px] uppercase font-semibold" style={{ color: '#FFD700', opacity: 0.9 }}>Live</div>
             </div>
-            <div className="bg-green-800/70 rounded-lg py-1.5 px-1 border border-yellow-500/30">
-              <Gift className="w-3.5 h-3.5 mx-auto text-yellow-400 mb-0.5" />
-              <div className="text-white font-bold text-xs">{formatNumber(stats.claimable)}</div>
-              <div className="text-yellow-400/80 text-[8px] uppercase">Claimable</div>
+            <div className="bg-gradient-to-b from-[#15803d] to-[#14532d] rounded-lg py-1.5 px-1 border border-[#FFD700]/70 shadow-[0_2px_4px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.1)]">
+              <Gift className="w-3.5 h-3.5 mx-auto mb-0.5" style={{ color: '#FFD700', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.4))' }} />
+              <div className="font-bold text-xs" style={{ color: '#FFD700', textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>{formatNumber(stats.claimable)}</div>
+              <div className="text-[8px] uppercase font-semibold" style={{ color: '#FFD700', opacity: 0.9 }}>Claimable</div>
             </div>
-            <div className="bg-green-800/70 rounded-lg py-1.5 px-1 border border-yellow-500/30">
-              <Coins className="w-3.5 h-3.5 mx-auto text-yellow-400 mb-0.5" />
-              <div className="text-white font-bold text-xs">{formatNumber(stats.claimed)}</div>
-              <div className="text-yellow-400/80 text-[8px] uppercase">Claimed</div>
+            <div className="bg-gradient-to-b from-[#15803d] to-[#14532d] rounded-lg py-1.5 px-1 border border-[#FFD700]/70 shadow-[0_2px_4px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.1)]">
+              <Coins className="w-3.5 h-3.5 mx-auto mb-0.5" style={{ color: '#FFD700', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.4))' }} />
+              <div className="font-bold text-xs" style={{ color: '#FFD700', textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>{formatNumber(stats.claimed)}</div>
+              <div className="text-[8px] uppercase font-semibold" style={{ color: '#FFD700', opacity: 0.9 }}>Claimed</div>
             </div>
           </div>
           
           {/* Total rows */}
           <div className="grid grid-cols-2 gap-1.5">
-            <div className="bg-yellow-500/20 rounded-lg py-1.5 px-2 border border-yellow-400/50 flex items-center justify-between">
+            <div className="bg-gradient-to-b from-[#15803d] to-[#14532d] rounded-full py-1.5 px-3 border border-[#FFD700]/80 flex items-center justify-between shadow-[0_2px_4px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.1)]">
               <div className="flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5 text-yellow-400" />
-                <span className="text-yellow-400 font-bold text-[9px] uppercase">Today</span>
+                <Calendar className="w-3.5 h-3.5" style={{ color: '#FFD700', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.4))' }} />
+                <span className="font-bold text-[9px] uppercase" style={{ color: '#FFD700', textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>Today</span>
               </div>
-              <span className="text-white font-bold text-xs">{formatNumber(stats.today_reward)}</span>
+              <span className="font-bold text-xs" style={{ color: '#FFD700', textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>{formatNumber(stats.today_reward)}</span>
             </div>
-            <div className="bg-yellow-500/20 rounded-lg py-1.5 px-2 border border-yellow-400/50 flex items-center justify-between">
+            <div className="bg-gradient-to-b from-[#15803d] to-[#14532d] rounded-full py-1.5 px-3 border border-[#FFD700]/80 flex items-center justify-between shadow-[0_2px_4px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.1)]">
               <div className="flex items-center gap-1">
-                <BadgeDollarSign className="w-3.5 h-3.5 text-yellow-400" />
-                <span className="text-yellow-400 font-bold text-[9px] uppercase">Total</span>
+                <BadgeDollarSign className="w-3.5 h-3.5" style={{ color: '#FFD700', filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.4))' }} />
+                <span className="font-bold text-[9px] uppercase" style={{ color: '#FFD700', textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>Total</span>
               </div>
-              <span className="text-white font-bold text-xs">{formatNumber(stats.total_reward)}</span>
+              <span className="font-bold text-xs" style={{ color: '#FFD700', textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>{formatNumber(stats.total_reward)}</span>
             </div>
           </div>
         </div>
