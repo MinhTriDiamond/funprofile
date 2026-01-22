@@ -84,7 +84,8 @@ export const RewardListItem = memo(({ user, onApprove, onHold, onReject, onAdjus
         {/* Action Buttons */}
         <Button 
           size="sm" 
-          className="bg-green-500 hover:bg-green-600 text-white h-8"
+          variant="default"
+          className="h-8"
           onClick={() => onApprove(user)}
           disabled={user.status === 'approved'}
         >
@@ -93,7 +94,7 @@ export const RewardListItem = memo(({ user, onApprove, onHold, onReject, onAdjus
         </Button>
         <Button 
           size="sm" 
-          className="bg-yellow-500 hover:bg-yellow-600 text-white h-8"
+          className="bg-gradient-to-r from-yellow-500 via-yellow-400 to-yellow-500 text-white rounded-full border-2 border-white/30 shadow-[0_0_15px_rgba(234,179,8,0.5)] hover:shadow-[0_0_25px_rgba(234,179,8,0.7)] hover:scale-105 h-8"
           onClick={() => onHold(user)}
           disabled={user.status === 'on_hold'}
         >
@@ -102,7 +103,8 @@ export const RewardListItem = memo(({ user, onApprove, onHold, onReject, onAdjus
         </Button>
         <Button 
           size="sm" 
-          className="bg-red-500 hover:bg-red-600 text-white h-8"
+          variant="destructive"
+          className="h-8"
           onClick={() => onReject(user)}
           disabled={user.status === 'rejected'}
         >
