@@ -199,8 +199,8 @@ export const AppHonorBoard = memo(() => {
               height={40} 
               className="w-10 h-10 rounded-full border border-yellow-400 shadow-lg" 
             />
-            <h1 
-              className="text-xl font-black tracking-wider uppercase" 
+            <h3 
+              className="font-black text-xl tracking-wider uppercase"
               style={{
                 fontFamily: "'Orbitron', 'Rajdhani', sans-serif",
                 background: 'linear-gradient(135deg, #FFD700 0%, #FFC125 25%, #DAA520 50%, #FFC125 75%, #FFD700 100%)',
@@ -211,7 +211,7 @@ export const AppHonorBoard = memo(() => {
               }}
             >
               {t('honorBoard')}
-            </h1>
+            </h3>
           </div>
         </div>
 
