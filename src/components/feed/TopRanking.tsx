@@ -116,19 +116,7 @@ export const TopRanking = memo(() => {
             </div>
           </div>
 
-          <h1 
-            className="text-xl font-black tracking-wider uppercase"
-            style={{
-              fontFamily: "'Orbitron', 'Rajdhani', sans-serif",
-              background: 'linear-gradient(135deg, #FFD700 0%, #FFC125 25%, #DAA520 50%, #FFC125 75%, #FFD700 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              textShadow: '0 0 20px rgba(255,215,0,0.6)',
-              filter: 'drop-shadow(0 0 8px rgba(255,215,0,0.5))'
-            }}
-          >
-            TOP RANKING
-          </h1>
+          <h1 className="text-gold text-xl font-black tracking-wider drop-shadow-lg">TOP RANKING</h1>
         </div>
 
         {/* Top 5 Users - Single column layout */}
