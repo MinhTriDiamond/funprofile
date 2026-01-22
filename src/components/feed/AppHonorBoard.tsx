@@ -220,13 +220,13 @@ export const AppHonorBoard = memo(() => {
           {statItems.map((item, index) => (
             <div 
               key={index} 
-              className="flex items-center gap-3 py-3 px-4 rounded-full transition-all duration-300 hover:scale-[1.02] cursor-pointer border border-[#C9A84C] shadow-[0_2px_8px_rgba(0,0,0,0.15)]"
+              className="flex items-center gap-3 py-3 px-4 rounded-full transition-all duration-300 hover:scale-[1.02] cursor-pointer border border-[#FFD700] shadow-[0_2px_8px_rgba(0,0,0,0.15)]"
               style={{
-                background: 'linear-gradient(180deg, #166534 0%, #14532d 50%, #0f3d22 100%)',
+                background: 'linear-gradient(180deg, #15803d 0%, #166534 50%, #14532d 100%)',
               }}
             >
-              <div className="p-1.5 rounded-full bg-white/10 shrink-0">
-                <item.icon className="w-4 h-4 text-[#C9A84C]" />
+              <div className="shrink-0">
+                <item.icon className="w-5 h-5 text-[#FFD700]" />
               </div>
               <div className="flex-1 flex items-center justify-between gap-2 min-w-0">
                 <p className="text-white text-xs uppercase font-bold tracking-wide whitespace-nowrap">
@@ -251,13 +251,13 @@ export const AppHonorBoard = memo(() => {
             stats.tokenBalances.map((token, index) => (
               <div 
                 key={token.symbol} 
-                className="flex items-center gap-3 py-3 px-4 rounded-full transition-all duration-300 hover:scale-[1.02] cursor-pointer border border-[#C9A84C] shadow-[0_2px_8px_rgba(0,0,0,0.15)]"
+                className="flex items-center gap-3 py-3 px-4 rounded-full transition-all duration-300 hover:scale-[1.02] cursor-pointer border border-[#FFD700] shadow-[0_2px_8px_rgba(0,0,0,0.15)]"
                 style={{
-                  background: 'linear-gradient(180deg, #166534 0%, #14532d 50%, #0f3d22 100%)',
+                  background: 'linear-gradient(180deg, #15803d 0%, #166534 50%, #14532d 100%)',
                 }}
               >
-                <div className="p-1.5 rounded-full bg-white/10 shrink-0">
-                  <Coins className="w-4 h-4 text-[#C9A84C]" />
+                <div className="shrink-0">
+                  <Coins className="w-5 h-5 text-[#FFD700]" />
                 </div>
                 <div className="flex-1 flex items-center justify-between gap-2 min-w-0">
                   <p className="text-white text-xs uppercase font-bold tracking-wide whitespace-nowrap">
