@@ -220,13 +220,14 @@ export const AppHonorBoard = memo(() => {
           {statItems.map((item, index) => (
             <div 
               key={index} 
-              className="flex items-center gap-3 py-2.5 px-4 rounded-full bg-gradient-to-r from-[#15803d] to-[#14532d] backdrop-blur-sm transition-all duration-300 hover:scale-105 cursor-pointer relative border border-[#FFD700]/80 shadow-[0_2px_8px_rgba(0,0,0,0.3),0_0_4px_rgba(255,215,0,0.2),inset_0_1px_0_rgba(255,255,255,0.15)] hover:shadow-[0_3px_12px_rgba(0,0,0,0.4),0_0_8px_rgba(255,215,0,0.3),inset_0_1px_0_rgba(255,255,255,0.2)]"
+              className="flex items-center gap-3 py-2.5 px-4 rounded-full bg-gradient-to-r from-[#15803d] to-[#14532d] backdrop-blur-sm transition-all duration-300 hover:scale-105 cursor-pointer relative border-2 border-[#FFD700] animate-shimmer-border animate-golden-glow shadow-[0_2px_8px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.15)]"
+              style={{ animationDelay: `${index * 0.2}s` }}
             >
               <item.icon 
                 className="w-5 h-5 shrink-0" 
                 style={{ 
                   color: '#FFD700',
-                  filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.4))'
+                  filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.4)) drop-shadow(0 0 4px rgba(255,215,0,0.5))'
                 }}
               />
               <div className="flex-1 flex items-center justify-between gap-2 relative z-10 min-w-0">
@@ -234,7 +235,7 @@ export const AppHonorBoard = memo(() => {
                   className="text-sm uppercase font-bold whitespace-nowrap tracking-wide"
                   style={{ 
                     color: '#FFD700',
-                    textShadow: '0 1px 2px rgba(0,0,0,0.5), 0 0 8px rgba(255,215,0,0.3)'
+                    textShadow: '0 1px 2px rgba(0,0,0,0.5), 0 0 8px rgba(255,215,0,0.4)'
                   }}
                 >
                   {item.label}
@@ -243,7 +244,7 @@ export const AppHonorBoard = memo(() => {
                   className="font-bold text-base flex items-center gap-1 shrink-0"
                   style={{ 
                     color: '#FFD700',
-                    textShadow: '0 1px 2px rgba(0,0,0,0.5), 0 0 8px rgba(255,215,0,0.3)'
+                    textShadow: '0 1px 2px rgba(0,0,0,0.5), 0 0 8px rgba(255,215,0,0.4)'
                   }}
                 >
                   {formatNumber(item.value)}
@@ -264,13 +265,14 @@ export const AppHonorBoard = memo(() => {
             stats.tokenBalances.map((token, index) => (
               <div 
                 key={token.symbol} 
-                className="flex items-center gap-3 py-2.5 px-4 rounded-full bg-gradient-to-r from-[#15803d] to-[#14532d] backdrop-blur-sm transition-all duration-300 hover:scale-105 cursor-pointer relative border border-[#FFD700]/80 shadow-[0_2px_8px_rgba(0,0,0,0.3),0_0_4px_rgba(255,215,0,0.2),inset_0_1px_0_rgba(255,255,255,0.15)] hover:shadow-[0_3px_12px_rgba(0,0,0,0.4),0_0_8px_rgba(255,215,0,0.3),inset_0_1px_0_rgba(255,255,255,0.2)]"
+                className="flex items-center gap-3 py-2.5 px-4 rounded-full bg-gradient-to-r from-[#15803d] to-[#14532d] backdrop-blur-sm transition-all duration-300 hover:scale-105 cursor-pointer relative border-2 border-[#FFD700] animate-shimmer-border animate-golden-glow shadow-[0_2px_8px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.15)]"
+                style={{ animationDelay: `${(statItems.length + index) * 0.2}s` }}
               >
                 <Coins 
                   className="w-5 h-5 shrink-0" 
                   style={{ 
                     color: '#FFD700',
-                    filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.4))'
+                    filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.4)) drop-shadow(0 0 4px rgba(255,215,0,0.5))'
                   }}
                 />
                 <div className="flex-1 flex items-center justify-between gap-2 relative z-10 min-w-0">
@@ -278,7 +280,7 @@ export const AppHonorBoard = memo(() => {
                     className="text-sm uppercase font-bold whitespace-nowrap tracking-wide"
                     style={{ 
                       color: '#FFD700',
-                      textShadow: '0 1px 2px rgba(0,0,0,0.5), 0 0 8px rgba(255,215,0,0.3)'
+                      textShadow: '0 1px 2px rgba(0,0,0,0.5), 0 0 8px rgba(255,215,0,0.4)'
                     }}
                   >
                     {index === 0 ? t('totalMoney') : `Circulating ${token.symbol}`}
@@ -287,7 +289,7 @@ export const AppHonorBoard = memo(() => {
                     className="font-bold text-base flex items-center gap-1 shrink-0"
                     style={{ 
                       color: '#FFD700',
-                      textShadow: '0 1px 2px rgba(0,0,0,0.5), 0 0 8px rgba(255,215,0,0.3)'
+                      textShadow: '0 1px 2px rgba(0,0,0,0.5), 0 0 8px rgba(255,215,0,0.4)'
                     }}
                   >
                     {formatNumber(token.amount, token.symbol === 'CAMLY' ? 0 : 6)}
