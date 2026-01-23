@@ -125,7 +125,7 @@ export const FacebookNavbar = () => {
               key={item.path}
               onClick={() => navigate(item.path)}
               aria-label={item.label}
-              className={`flex-1 h-full max-w-[100px] flex items-center justify-center relative transition-all duration-300 rounded-full border group ${
+              className={`flex-1 h-full max-w-[100px] flex items-center justify-center relative transition-all duration-300 rounded-full border-[0.5px] group ${
                 isActive(item.path)
                   ? 'text-primary-foreground bg-primary border-[#C9A84C]'
                   : 'text-foreground hover:text-primary hover:bg-primary/10 border-transparent hover:border-[#C9A84C]/50'

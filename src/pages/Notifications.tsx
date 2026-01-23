@@ -281,7 +281,7 @@ const Notifications = () => {
                   key={option.value}
                   value={option.value}
                   className={cn(
-                    "px-3 py-1.5 text-xs rounded-full whitespace-nowrap border transition-all duration-300",
+                    "px-3 py-1.5 text-xs rounded-full whitespace-nowrap border-[0.5px] transition-all duration-300",
                     "border-transparent hover:border-[#C9A84C]/40",
                     "data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-[#C9A84C]"
                   )}
