@@ -9,38 +9,51 @@ const corsHeaders = {
 // Rate limiting configuration
 const SYNC_RATE_LIMIT = 60; // 60 requests per minute per client
 const USER_RATE_LIMIT = 120; // 120 total syncs per minute per user
-const RATE_WINDOW = 60 * 1000; // 1 minute
+const RATE_WINDOW_MS = 60 * 1000; // 1 minute
 
-// Rate limit maps
-const clientRateLimitMap = new Map<string, { count: number; resetAt: number }>();
-const userRateLimitMap = new Map<string, { count: number; resetAt: number }>();
-
-// Validation configuration
+// Validation configuration - enhanced with per-field limits
 const validationRules = {
-  maxDataSize: 50 * 1024, // 50KB
+  maxDataSize: 50 * 1024, // 50KB total
   maxDepth: 5,
+  maxStringLength: 1000, // 1000 chars per string
+  maxArrayLength: 100, // 100 items per array
+  maxNumberValue: 1e15, // Safe number range
+  minNumberValue: -1e15,
   reservedKeys: ['user_id', 'fun_id', 'wallet_address', 'soul_nft', 'id', 'created_at', 'updated_at']
 };
 
 // Financial data fields that support delta updates
 const FINANCIAL_FIELDS = ['total_deposit', 'total_withdraw', 'total_bet', 'total_win', 'total_loss', 'total_profit'];
 
-// Check rate limit
-function checkRateLimit(key: string, map: Map<string, { count: number; resetAt: number }>, limit: number): boolean {
-  const now = Date.now();
-  const record = map.get(key);
-  
-  if (!record || now > record.resetAt) {
-    map.set(key, { count: 1, resetAt: now + RATE_WINDOW });
-    return true;
+// Database-backed rate limiting (persistent across cold starts)
+async function checkRateLimitDB(
+  supabase: any,
+  key: string,
+  limit: number,
+  windowMs: number = RATE_WINDOW_MS
+): Promise<{ allowed: boolean; current: number; remaining: number }> {
+  try {
+    const { data, error } = await supabase.rpc('check_rate_limit', {
+      p_key: key,
+      p_limit: limit,
+      p_window_ms: windowMs
+    }) as { data: { allowed: boolean; current: number; remaining: number } | null; error: any };
+
+    if (error) {
+      console.error('Rate limit check error:', error);
+      // Fail open but log - don't block legitimate requests due to DB issues
+      return { allowed: true, current: 0, remaining: limit };
+    }
+
+    return {
+      allowed: data?.allowed ?? true,
+      current: data?.current ?? 0,
+      remaining: data?.remaining ?? limit
+    };
+  } catch (err) {
+    console.error('Rate limit exception:', err);
+    return { allowed: true, current: 0, remaining: limit };
   }
-  
-  if (record.count >= limit) {
-    return false;
-  }
-  
-  record.count++;
-  return true;
 }
 
 // Get object depth
@@ -72,6 +85,53 @@ function hasReservedKeys(obj: unknown, reservedKeys: string[]): string | null {
     }
   }
   return null;
+}
+
+// Validate field-level constraints (string length, array size, number range)
+function validateFieldConstraints(obj: unknown, path = ''): string[] {
+  const errors: string[] = [];
+  
+  if (obj === null || obj === undefined) return errors;
+  
+  // String length validation
+  if (typeof obj === 'string') {
+    if (obj.length > validationRules.maxStringLength) {
+      errors.push(`${path || 'value'}: String too long (max ${validationRules.maxStringLength} chars, got ${obj.length})`);
+    }
+    return errors;
+  }
+  
+  // Number range validation
+  if (typeof obj === 'number') {
+    if (!Number.isFinite(obj)) {
+      errors.push(`${path || 'value'}: Invalid number (Infinity/NaN not allowed)`);
+    } else if (obj < validationRules.minNumberValue || obj > validationRules.maxNumberValue) {
+      errors.push(`${path || 'value'}: Number out of safe range`);
+    }
+    return errors;
+  }
+  
+  // Array size validation
+  if (Array.isArray(obj)) {
+    if (obj.length > validationRules.maxArrayLength) {
+      errors.push(`${path || 'array'}: Array too large (max ${validationRules.maxArrayLength} items, got ${obj.length})`);
+    }
+    // Validate each item
+    obj.forEach((item, index) => {
+      errors.push(...validateFieldConstraints(item, `${path}[${index}]`));
+    });
+    return errors;
+  }
+  
+  // Object - recurse into properties
+  if (typeof obj === 'object') {
+    for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
+      const fullPath = path ? `${path}.${key}` : key;
+      errors.push(...validateFieldConstraints(value, fullPath));
+    }
+  }
+  
+  return errors;
 }
 
 // Deep merge function
@@ -237,8 +297,15 @@ Deno.serve(async (req: Request) => {
       profile = tokenData.profiles;
     }
 
-    // Check client rate limit
-    if (!checkRateLimit(clientId, clientRateLimitMap, SYNC_RATE_LIMIT)) {
+    // Check client rate limit (database-backed)
+    const clientRateResult = await checkRateLimitDB(
+      supabase,
+      `sync:client:${clientId}`,
+      SYNC_RATE_LIMIT,
+      RATE_WINDOW_MS
+    );
+    
+    if (!clientRateResult.allowed) {
       return new Response(JSON.stringify({
         error: 'rate_limit_exceeded',
         error_description: 'Client rate limit exceeded. Maximum 60 syncs per minute.',
@@ -249,8 +316,15 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Check user rate limit
-    if (!checkRateLimit(userId, userRateLimitMap, USER_RATE_LIMIT)) {
+    // Check user rate limit (database-backed)
+    const userRateResult = await checkRateLimitDB(
+      supabase,
+      `sync:user:${userId}`,
+      USER_RATE_LIMIT,
+      RATE_WINDOW_MS
+    );
+    
+    if (!userRateResult.allowed) {
       return new Response(JSON.stringify({
         error: 'rate_limit_exceeded',
         error_description: 'User rate limit exceeded. Maximum 120 syncs per minute across all platforms.',
@@ -304,6 +378,21 @@ Deno.serve(async (req: Request) => {
 
     // ==================== FINANCIAL DATA SYNC ====================
     if (financial_data || financial_delta) {
+      // Validate financial data fields
+      const finDataToValidate = financial_data || financial_delta;
+      const finFieldErrors = validateFieldConstraints(finDataToValidate, 'financial');
+      if (finFieldErrors.length > 0) {
+        console.warn(`[sso-sync-data] Financial validation errors for user ${userId}:`, finFieldErrors);
+        return new Response(JSON.stringify({
+          error: 'validation_failed',
+          error_description: 'Financial data validation failed',
+          details: finFieldErrors.slice(0, 10) // Limit error details
+        }), {
+          status: 422,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
       // Get existing financial data for this platform
       const { data: existingFinancial } = await supabase
         .from('platform_financial_data')
@@ -388,7 +477,7 @@ Deno.serve(async (req: Request) => {
 
     // ==================== GAME/PLATFORM DATA SYNC ====================
     if (data && typeof data === 'object') {
-      // Validate data
+      // Validate total data size
       dataSize = new TextEncoder().encode(JSON.stringify(data)).length;
       if (dataSize > validationRules.maxDataSize) {
         return new Response(JSON.stringify({
@@ -421,6 +510,20 @@ Deno.serve(async (req: Request) => {
           error: 'validation_failed',
           error_description: `Reserved key "${reservedKey}" cannot be synced`,
           details: { reserved_keys: validationRules.reservedKeys }
+        }), {
+          status: 422,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Validate field-level constraints (string length, array size, number range)
+      const fieldErrors = validateFieldConstraints(data);
+      if (fieldErrors.length > 0) {
+        console.warn(`[sso-sync-data] Field validation errors for user ${userId}:`, fieldErrors);
+        return new Response(JSON.stringify({
+          error: 'validation_failed',
+          error_description: 'Data field validation failed',
+          details: fieldErrors.slice(0, 10) // Limit to first 10 errors
         }), {
           status: 422,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
