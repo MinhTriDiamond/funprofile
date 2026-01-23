@@ -9,15 +9,15 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        // Facebook-style green button - Nền xanh đậm, chữ trắng, viền xanh đậm
-        default: "bg-[#16a34a] text-white font-semibold rounded-full border-2 border-[#15803d] shadow-sm hover:bg-[#15803d] hover:border-[#166534] active:bg-[#166534] duration-200",
-        destructive: "bg-destructive text-destructive-foreground font-semibold rounded-full border-2 border-red-700 shadow-sm hover:bg-destructive/90 duration-200",
-        outline: "bg-transparent text-[#16a34a] font-semibold rounded-full border-2 border-[#16a34a] hover:bg-[#16a34a]/10 duration-200",
-        secondary: "bg-secondary text-secondary-foreground font-semibold rounded-full border-2 border-gray-300 shadow-sm hover:bg-secondary/80 duration-200",
-        ghost: "text-[#16a34a] font-semibold rounded-full hover:bg-[#16a34a]/10 duration-200",
-        link: "text-[#16a34a] font-semibold underline-offset-4 hover:underline",
-        premium: "bg-gradient-to-b from-[#22c55e] to-[#16a34a] text-white font-bold rounded-full border-2 border-[#15803d] shadow-md hover:from-[#16a34a] hover:to-[#15803d] hover:scale-[1.02] duration-200",
-        light: "bg-[#22c55e] text-white font-semibold rounded-full border-2 border-[#16a34a] shadow-sm hover:bg-[#16a34a] duration-200",
+        // Royal Premium - Chữ vàng kim loại nhạt, viền vàng kim loại sáng bóng
+        default: "bg-[#16a34a] text-[#E8D5A3] font-semibold rounded-full border-[2.5px] border-[#FFD700] shadow-[0_0_8px_rgba(255,215,0,0.4)] hover:bg-[#15803d] hover:shadow-[0_0_12px_rgba(255,215,0,0.5)] duration-200",
+        destructive: "bg-destructive text-[#E8D5A3] font-semibold rounded-full border-[2.5px] border-[#FFD700]/80 shadow-[0_0_6px_rgba(255,215,0,0.3)] hover:bg-destructive/90 duration-200",
+        outline: "bg-transparent text-[#E8D5A3] font-semibold rounded-full border-[2.5px] border-[#FFD700] shadow-[0_0_8px_rgba(255,215,0,0.4)] hover:bg-[#16a34a]/10 duration-200",
+        secondary: "bg-secondary text-[#16a34a] font-semibold rounded-full border-[2.5px] border-[#FFD700] shadow-[0_0_6px_rgba(255,215,0,0.3)] hover:bg-secondary/80 duration-200",
+        ghost: "text-[#E8D5A3] font-semibold rounded-full hover:bg-[#16a34a]/10 border-2 border-transparent hover:border-[#FFD700]/60 duration-200",
+        link: "text-[#E8D5A3] font-semibold underline-offset-4 hover:underline hover:text-[#FFD700]",
+        premium: "bg-gradient-to-b from-[#22c55e] to-[#16a34a] text-[#E8D5A3] font-bold rounded-full border-[3px] border-[#FFD700] shadow-[0_0_12px_rgba(255,215,0,0.5)] hover:shadow-[0_0_16px_rgba(255,215,0,0.6)] hover:scale-[1.02] duration-200",
+        light: "bg-[#22c55e] text-[#E8D5A3] font-semibold rounded-full border-[2.5px] border-[#FFD700] shadow-[0_0_8px_rgba(255,215,0,0.4)] hover:bg-[#16a34a] duration-200",
       },
       size: {
         default: "h-10 px-5 py-2",
