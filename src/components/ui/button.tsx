@@ -9,15 +9,15 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        // Royal Green + Thin Golden Border - Clean & Elegant
-        default: "bg-gradient-to-b from-[#166534] to-[#14532d] text-white font-semibold rounded-full border border-[#C9A84C]/60 shadow-sm hover:from-[#14532d] hover:to-[#0f3d22] hover:shadow-md hover:border-[#C9A84C] duration-300",
-        destructive: "bg-gradient-to-b from-red-600 to-red-700 text-white font-semibold rounded-full border border-[#C9A84C]/40 shadow-sm hover:from-red-700 hover:to-red-800 hover:border-[#C9A84C]/60 duration-300",
-        outline: "bg-transparent text-[#166534] font-semibold rounded-full border border-[#C9A84C]/50 hover:bg-[#166534]/5 hover:border-[#C9A84C] duration-300",
-        secondary: "bg-gradient-to-b from-[#f8f6f0] to-[#f0ede4] text-[#166534] font-semibold rounded-full border border-[#C9A84C]/40 shadow-sm hover:border-[#C9A84C]/70 duration-300",
-        ghost: "hover:bg-[#166534]/10 hover:text-[#166534] text-[#166534] rounded-full border border-transparent hover:border-[#C9A84C]/40",
+        // Royal Green + Ultra-Thin Golden Border (0.5px) - Clean & Elegant
+        default: "bg-gradient-to-b from-[#166534] to-[#14532d] text-white font-semibold rounded-full border-[0.5px] border-[#C9A84C]/60 shadow-sm hover:from-[#14532d] hover:to-[#0f3d22] hover:shadow-md hover:border-[#C9A84C] duration-300",
+        destructive: "bg-gradient-to-b from-red-600 to-red-700 text-white font-semibold rounded-full border-[0.5px] border-[#C9A84C]/40 shadow-sm hover:from-red-700 hover:to-red-800 hover:border-[#C9A84C]/60 duration-300",
+        outline: "bg-transparent text-[#166534] font-semibold rounded-full border-[0.5px] border-[#C9A84C]/50 hover:bg-[#166534]/5 hover:border-[#C9A84C] duration-300",
+        secondary: "bg-gradient-to-b from-[#f8f6f0] to-[#f0ede4] text-[#166534] font-semibold rounded-full border-[0.5px] border-[#C9A84C]/40 shadow-sm hover:border-[#C9A84C]/70 duration-300",
+        ghost: "hover:bg-[#166534]/10 hover:text-[#166534] text-[#166534] rounded-full border-[0.5px] border-transparent hover:border-[#C9A84C]/40",
         link: "text-[#166534] underline-offset-4 hover:underline rounded-full",
-        premium: "bg-gradient-to-b from-[#166534] via-[#1a7340] to-[#14532d] text-white font-bold rounded-full border border-[#C9A84C] shadow-[0_2px_8px_rgba(201,168,76,0.25)] hover:shadow-[0_4px_12px_rgba(201,168,76,0.35)] hover:scale-[1.02] duration-300",
-        light: "bg-gradient-to-b from-[#166534] to-[#14532d] text-white font-semibold rounded-full border border-[#C9A84C]/50 shadow-sm hover:border-[#C9A84C] duration-300",
+        premium: "bg-gradient-to-b from-[#166534] via-[#1a7340] to-[#14532d] text-white font-bold rounded-full border-[0.5px] border-[#C9A84C] shadow-[0_2px_8px_rgba(201,168,76,0.25)] hover:shadow-[0_4px_12px_rgba(201,168,76,0.35)] hover:scale-[1.02] duration-300",
+        light: "bg-gradient-to-b from-[#166534] to-[#14532d] text-white font-semibold rounded-full border-[0.5px] border-[#C9A84C]/50 shadow-sm hover:border-[#C9A84C] duration-300",
       },
       size: {
         default: "h-10 px-5 py-2",

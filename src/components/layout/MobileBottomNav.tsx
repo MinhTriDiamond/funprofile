@@ -74,7 +74,7 @@ export const MobileBottomNav = memo(() => {
               key={index}
               onClick={item.action}
               aria-label={item.label}
-              className={`flex flex-col items-center justify-center min-w-[56px] min-h-[52px] rounded-full transition-all duration-300 touch-manipulation group border ${
+              className={`flex flex-col items-center justify-center min-w-[56px] min-h-[52px] rounded-full transition-all duration-300 touch-manipulation group border-[0.5px] ${
                 item.isCenter
                   ? 'relative -mt-8 border-transparent'
                   : item.path && isActive(item.path)
