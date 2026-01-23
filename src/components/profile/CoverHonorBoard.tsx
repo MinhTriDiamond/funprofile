@@ -70,16 +70,16 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
   }
 
   const StatRow = ({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) => (
-    <div className="flex items-center justify-between py-1 px-2 sm:px-2.5 rounded-lg border border-yellow-500/40 bg-green-800/90 backdrop-blur-sm">
+    <div className="flex items-center justify-between py-1 px-2 sm:px-2.5 rounded-lg bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_0_6px_rgba(218,165,32,0.3)]">
       <div className="flex items-center gap-1 sm:gap-1.5">
-        <div className="text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.6)]">
+        <div className="text-[#E8D5A3] drop-shadow-[0_0_4px_rgba(218,165,32,0.5)]">
           {icon}
         </div>
-        <span className="text-yellow-400 font-bold text-[9px] sm:text-[10px] md:text-xs uppercase tracking-wide drop-shadow-[0_0_8px_rgba(250,204,21,0.5)]">
+        <span className="text-[#E8D5A3] font-bold text-[9px] sm:text-[10px] md:text-xs uppercase tracking-wide">
           {label}
         </span>
       </div>
-      <span className="text-white font-bold text-[11px] sm:text-xs md:text-sm drop-shadow-[0_0_6px_rgba(255,255,255,0.4)]">
+      <span className="text-[#FFD700] font-bold text-[11px] sm:text-xs md:text-sm drop-shadow-[0_0_4px_rgba(255,215,0,0.4)]">
         {formatNumber(value)}
       </span>
     </div>
@@ -278,67 +278,67 @@ export const MobileStats = ({ userId, username, avatarUrl }: MobileStatsProps) =
           
           {/* Compact 4x2 Grid */}
           <div className="grid grid-cols-4 gap-1.5 text-center mb-2">
-            <div className="bg-green-800/70 rounded-lg py-1.5 px-1 border border-yellow-500/30">
-              <ArrowUp className="w-3.5 h-3.5 mx-auto text-yellow-400 mb-0.5" />
-              <div className="text-white font-bold text-xs">{formatNumber(stats.posts_count)}</div>
-              <div className="text-yellow-400/80 text-[8px] uppercase">Posts</div>
+            <div className="bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] rounded-lg py-1.5 px-1 border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_0_4px_rgba(218,165,32,0.3)]">
+              <ArrowUp className="w-3.5 h-3.5 mx-auto text-[#E8D5A3] mb-0.5" />
+              <div className="text-[#FFD700] font-bold text-xs">{formatNumber(stats.posts_count)}</div>
+              <div className="text-[#E8D5A3]/80 text-[8px] uppercase">Posts</div>
             </div>
-            <div className="bg-green-800/70 rounded-lg py-1.5 px-1 border border-yellow-500/30">
-              <Star className="w-3.5 h-3.5 mx-auto text-yellow-400 mb-0.5" />
-              <div className="text-white font-bold text-xs">{formatNumber(stats.reactions_on_posts)}</div>
-              <div className="text-yellow-400/80 text-[8px] uppercase">Reactions</div>
+            <div className="bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] rounded-lg py-1.5 px-1 border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_0_4px_rgba(218,165,32,0.3)]">
+              <Star className="w-3.5 h-3.5 mx-auto text-[#E8D5A3] mb-0.5" />
+              <div className="text-[#FFD700] font-bold text-xs">{formatNumber(stats.reactions_on_posts)}</div>
+              <div className="text-[#E8D5A3]/80 text-[8px] uppercase">Reactions</div>
             </div>
-            <div className="bg-green-800/70 rounded-lg py-1.5 px-1 border border-yellow-500/30">
-              <MessageCircle className="w-3.5 h-3.5 mx-auto text-yellow-400 mb-0.5" />
-              <div className="text-white font-bold text-xs">{formatNumber(stats.comments_count)}</div>
-              <div className="text-yellow-400/80 text-[8px] uppercase">Comments</div>
+            <div className="bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] rounded-lg py-1.5 px-1 border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_0_4px_rgba(218,165,32,0.3)]">
+              <MessageCircle className="w-3.5 h-3.5 mx-auto text-[#E8D5A3] mb-0.5" />
+              <div className="text-[#FFD700] font-bold text-xs">{formatNumber(stats.comments_count)}</div>
+              <div className="text-[#E8D5A3]/80 text-[8px] uppercase">Comments</div>
             </div>
-            <div className="bg-green-800/70 rounded-lg py-1.5 px-1 border border-yellow-500/30">
-              <Users className="w-3.5 h-3.5 mx-auto text-yellow-400 mb-0.5" />
-              <div className="text-white font-bold text-xs">{formatNumber(stats.friends_count)}</div>
-              <div className="text-yellow-400/80 text-[8px] uppercase">Friends</div>
+            <div className="bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] rounded-lg py-1.5 px-1 border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_0_4px_rgba(218,165,32,0.3)]">
+              <Users className="w-3.5 h-3.5 mx-auto text-[#E8D5A3] mb-0.5" />
+              <div className="text-[#FFD700] font-bold text-xs">{formatNumber(stats.friends_count)}</div>
+              <div className="text-[#E8D5A3]/80 text-[8px] uppercase">Friends</div>
             </div>
           </div>
           
           {/* Second row: Shares, Livestreams, Claimable, Claimed */}
           <div className="grid grid-cols-4 gap-1.5 text-center mb-2">
-            <div className="bg-green-800/70 rounded-lg py-1.5 px-1 border border-yellow-500/30">
-              <Share2 className="w-3.5 h-3.5 mx-auto text-yellow-400 mb-0.5" />
-              <div className="text-white font-bold text-xs">{formatNumber(stats.shares_count)}</div>
-              <div className="text-yellow-400/80 text-[8px] uppercase">Shares</div>
+            <div className="bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] rounded-lg py-1.5 px-1 border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_0_4px_rgba(218,165,32,0.3)]">
+              <Share2 className="w-3.5 h-3.5 mx-auto text-[#E8D5A3] mb-0.5" />
+              <div className="text-[#FFD700] font-bold text-xs">{formatNumber(stats.shares_count)}</div>
+              <div className="text-[#E8D5A3]/80 text-[8px] uppercase">Shares</div>
             </div>
-            <div className="bg-green-800/70 rounded-lg py-1.5 px-1 border border-yellow-500/30">
-              <Video className="w-3.5 h-3.5 mx-auto text-yellow-400 mb-0.5" />
-              <div className="text-white font-bold text-xs">{formatNumber(stats.livestreams_count)}</div>
-              <div className="text-yellow-400/80 text-[8px] uppercase">Live</div>
+            <div className="bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] rounded-lg py-1.5 px-1 border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_0_4px_rgba(218,165,32,0.3)]">
+              <Video className="w-3.5 h-3.5 mx-auto text-[#E8D5A3] mb-0.5" />
+              <div className="text-[#FFD700] font-bold text-xs">{formatNumber(stats.livestreams_count)}</div>
+              <div className="text-[#E8D5A3]/80 text-[8px] uppercase">Live</div>
             </div>
-            <div className="bg-green-800/70 rounded-lg py-1.5 px-1 border border-yellow-500/30">
-              <Gift className="w-3.5 h-3.5 mx-auto text-yellow-400 mb-0.5" />
-              <div className="text-white font-bold text-xs">{formatNumber(stats.claimable)}</div>
-              <div className="text-yellow-400/80 text-[8px] uppercase">Claimable</div>
+            <div className="bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] rounded-lg py-1.5 px-1 border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_0_4px_rgba(218,165,32,0.3)]">
+              <Gift className="w-3.5 h-3.5 mx-auto text-[#E8D5A3] mb-0.5" />
+              <div className="text-[#FFD700] font-bold text-xs">{formatNumber(stats.claimable)}</div>
+              <div className="text-[#E8D5A3]/80 text-[8px] uppercase">Claimable</div>
             </div>
-            <div className="bg-green-800/70 rounded-lg py-1.5 px-1 border border-yellow-500/30">
-              <Coins className="w-3.5 h-3.5 mx-auto text-yellow-400 mb-0.5" />
-              <div className="text-white font-bold text-xs">{formatNumber(stats.claimed)}</div>
-              <div className="text-yellow-400/80 text-[8px] uppercase">Claimed</div>
+            <div className="bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] rounded-lg py-1.5 px-1 border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_0_4px_rgba(218,165,32,0.3)]">
+              <Coins className="w-3.5 h-3.5 mx-auto text-[#E8D5A3] mb-0.5" />
+              <div className="text-[#FFD700] font-bold text-xs">{formatNumber(stats.claimed)}</div>
+              <div className="text-[#E8D5A3]/80 text-[8px] uppercase">Claimed</div>
             </div>
           </div>
           
           {/* Total rows */}
           <div className="grid grid-cols-2 gap-1.5">
-            <div className="bg-yellow-500/20 rounded-lg py-1.5 px-2 border border-yellow-400/50 flex items-center justify-between">
+            <div className="bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] rounded-lg py-1.5 px-2 border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_0_6px_rgba(218,165,32,0.4)] flex items-center justify-between">
               <div className="flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5 text-yellow-400" />
-                <span className="text-yellow-400 font-bold text-[9px] uppercase">Today</span>
+                <Calendar className="w-3.5 h-3.5 text-[#E8D5A3]" />
+                <span className="text-[#E8D5A3] font-bold text-[9px] uppercase">Today</span>
               </div>
-              <span className="text-white font-bold text-xs">{formatNumber(stats.today_reward)}</span>
+              <span className="text-[#FFD700] font-bold text-xs drop-shadow-[0_0_4px_rgba(255,215,0,0.4)]">{formatNumber(stats.today_reward)}</span>
             </div>
-            <div className="bg-yellow-500/20 rounded-lg py-1.5 px-2 border border-yellow-400/50 flex items-center justify-between">
+            <div className="bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] rounded-lg py-1.5 px-2 border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_0_6px_rgba(218,165,32,0.4)] flex items-center justify-between">
               <div className="flex items-center gap-1">
-                <BadgeDollarSign className="w-3.5 h-3.5 text-yellow-400" />
-                <span className="text-yellow-400 font-bold text-[9px] uppercase">Total</span>
+                <BadgeDollarSign className="w-3.5 h-3.5 text-[#E8D5A3]" />
+                <span className="text-[#E8D5A3] font-bold text-[9px] uppercase">Total</span>
               </div>
-              <span className="text-white font-bold text-xs">{formatNumber(stats.total_reward)}</span>
+              <span className="text-[#FFD700] font-bold text-xs drop-shadow-[0_0_4px_rgba(255,215,0,0.4)]">{formatNumber(stats.total_reward)}</span>
             </div>
           </div>
         </div>
