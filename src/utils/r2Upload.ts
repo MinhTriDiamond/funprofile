@@ -12,15 +12,21 @@ async function getPresignedUrl(
   key: string,
   contentType: string,
   fileSize: number,
+  accessToken?: string,
   timeoutMs: number = 30000
 ): Promise<{ uploadUrl: string; publicUrl: string }> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      throw new Error('Chưa đăng nhập');
+    // Use provided token or get fresh one
+    let token = accessToken;
+    if (!token) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Chưa đăng nhập');
+      }
+      token = session.access_token;
     }
 
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -30,7 +36,7 @@ async function getPresignedUrl(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.access_token}`,
+        'Authorization': `Bearer ${token}`,
         'apikey': supabaseKey,
       },
       body: JSON.stringify({ key, contentType, fileSize }),
@@ -59,7 +65,7 @@ async function getPresignedUrl(
 async function uploadWithPresignedUrl(
   file: File,
   uploadUrl: string,
-  timeoutMs: number = 60000
+  timeoutMs: number = 120000
 ): Promise<void> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
@@ -85,11 +91,13 @@ async function uploadWithPresignedUrl(
 /**
  * Upload file directly to Cloudflare R2 via presigned URL
  * Much more efficient than base64 - supports large files
+ * @param accessToken Optional access token to avoid multiple getSession calls
  */
 export async function uploadToR2(
   file: File,
   bucket: 'posts' | 'avatars' | 'videos' | 'comment-media',
-  customPath?: string
+  customPath?: string,
+  accessToken?: string
 ): Promise<R2UploadResult> {
   // Generate unique filename
   const timestamp = Date.now();
@@ -103,14 +111,15 @@ export async function uploadToR2(
     key,
     file.type,
     file.size,
-    30000 // 30s timeout for getting URL
+    accessToken,
+    45000 // 45s timeout for getting URL (increased)
   );
 
   // Step 2: Upload directly to R2 using presigned URL
   await uploadWithPresignedUrl(
     file,
     uploadUrl,
-    120000 // 2 min timeout for upload (large files)
+    180000 // 3 min timeout for upload (large files)
   );
 
   return {
