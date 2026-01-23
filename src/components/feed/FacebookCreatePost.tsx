@@ -23,6 +23,7 @@ import { VideoUploaderUppy } from './VideoUploaderUppy';
 import { FriendTagDialog, TaggedFriend } from './FriendTagDialog';
 import { LocationCheckin } from './LocationCheckin';
 import { PrivacySelector } from './PrivacySelector';
+import { FeelingActivityDialog, FeelingActivity } from './FeelingActivityDialog';
 import { useLanguage } from '@/i18n/LanguageContext';
 
 interface FacebookCreatePostProps {
@@ -64,6 +65,10 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
   // Location check-in state
   const [showLocationDialog, setShowLocationDialog] = useState(false);
   const [location, setLocation] = useState<string | null>(null);
+  
+  // Feeling/Activity state
+  const [showFeelingDialog, setShowFeelingDialog] = useState(false);
+  const [feeling, setFeeling] = useState<FeelingActivity | null>(null);
   
   // Uppy video upload state
   const [pendingVideoFile, setPendingVideoFile] = useState<File | null>(null);
@@ -498,10 +503,17 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
     );
   }
 
+  // Handler for feeling selection
+  const handleFeelingSelect = (selectedFeeling: FeelingActivity) => {
+    setFeeling(selectedFeeling);
+    setIsDialogOpen(true); // Open post dialog after selecting feeling
+  };
+
   return (
     <>
-      {/* Create Post Card - Facebook Style Inline */}
+      {/* Create Post Card - Facebook Style Layout */}
       <div className="fb-card p-3 mb-4">
+        {/* Row 1: Avatar + Input */}
         <div className="flex items-center gap-3">
           <Avatar
             className="w-10 h-10 cursor-pointer ring-2 ring-primary/20 shrink-0"
@@ -513,42 +525,51 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
             </AvatarFallback>
           </Avatar>
           
-          {/* Input area with inline icons */}
-          <div className="flex-1 flex items-center gap-1 bg-secondary hover:bg-muted rounded-full transition-colors pr-2">
+          {/* Pure text input button */}
+          <button
+            onClick={() => setIsDialogOpen(true)}
+            className="flex-1 text-left px-4 py-2.5 bg-secondary hover:bg-muted rounded-full text-muted-foreground text-sm transition-colors"
+          >
+            {profile.full_name || profile.username} ơi, bạn đang nghĩ gì thế?
+          </button>
+        </div>
+
+        {/* Row 2: Action buttons with border-top */}
+        <div className="border-t border-border mt-3 pt-3">
+          <div className="flex items-center justify-around">
+            {/* Video trực tiếp */}
             <button
-              onClick={() => setIsDialogOpen(true)}
-              className="flex-1 text-left px-4 py-2.5 text-muted-foreground text-sm"
+              onClick={() => {
+                setIsDialogOpen(true);
+                setShowMediaUpload(true);
+              }}
+              className="flex-1 flex items-center justify-center gap-2 py-2 hover:bg-secondary rounded-lg transition-colors"
             >
-              {profile.full_name || profile.username} ơi, bạn đang nghĩ gì thế?
+              <Video className="w-6 h-6 text-destructive" />
+              <span className="font-semibold text-muted-foreground text-sm hidden sm:inline">Video trực tiếp</span>
             </button>
             
-            {/* Inline action buttons */}
+            {/* Ảnh/video */}
             <button
               onClick={() => {
                 setIsDialogOpen(true);
                 setShowMediaUpload(true);
               }}
-              className="p-2 hover:bg-background/50 rounded-full transition-colors shrink-0"
-              title="Video trực tiếp"
+              className="flex-1 flex items-center justify-center gap-2 py-2 hover:bg-secondary rounded-lg transition-colors"
             >
-              <Video className="w-5 h-5 text-red-500" />
+              <ImagePlus className="w-6 h-6 text-primary" />
+              <span className="font-semibold text-muted-foreground text-sm hidden sm:inline">Ảnh/video</span>
             </button>
+            
+            {/* Cảm xúc/hoạt động */}
             <button
-              onClick={() => {
-                setIsDialogOpen(true);
-                setShowMediaUpload(true);
-              }}
-              className="p-2 hover:bg-background/50 rounded-full transition-colors shrink-0"
-              title="Ảnh/video"
+              onClick={() => setShowFeelingDialog(true)}
+              className="flex-1 flex items-center justify-center gap-2 py-2 hover:bg-secondary rounded-lg transition-colors"
             >
-              <ImagePlus className="w-5 h-5 text-primary" />
-            </button>
-            <button
-              onClick={() => setIsDialogOpen(true)}
-              className="p-2 hover:bg-background/50 rounded-full transition-colors shrink-0"
-              title="Cảm xúc"
-            >
-              <Smile className="w-5 h-5 text-yellow-500" />
+              <span className="text-2xl">{feeling ? feeling.emoji : '😊'}</span>
+              <span className="font-semibold text-muted-foreground text-sm hidden sm:inline">
+                {feeling ? feeling.label : 'Cảm xúc/hoạt động'}
+              </span>
             </button>
           </div>
         </div>
@@ -573,6 +594,17 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
               <div className="flex-1">
                 <div className="flex items-center gap-1 flex-wrap">
                   <span className="font-semibold">{profile.full_name || profile.username}</span>
+                  {feeling && (
+                    <span className="text-muted-foreground text-sm">
+                      {' '}đang cảm thấy{' '}
+                      <button
+                        onClick={() => setShowFeelingDialog(true)}
+                        className="text-foreground font-semibold hover:underline inline-flex items-center gap-1"
+                      >
+                        {feeling.emoji} {feeling.label}
+                      </button>
+                    </span>
+                  )}
                   {taggedFriends.length > 0 && (
                     <span className="text-muted-foreground text-sm">
                       {' '}cùng với{' '}
@@ -924,6 +956,13 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
         onClose={() => setShowLocationDialog(false)}
         currentLocation={location}
         onSelectLocation={setLocation}
+      />
+
+      {/* Feeling/Activity Dialog */}
+      <FeelingActivityDialog
+        isOpen={showFeelingDialog}
+        onClose={() => setShowFeelingDialog(false)}
+        onSelect={handleFeelingSelect}
       />
     </>
   );
