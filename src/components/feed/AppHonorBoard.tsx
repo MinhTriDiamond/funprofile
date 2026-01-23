@@ -226,10 +226,10 @@ export const AppHonorBoard = memo(() => {
                 <item.icon className={`w-4 h-4 ${item.color}`} />
               </div>
               <div className="flex-1 flex items-center justify-between gap-2 relative z-10 min-w-0">
-                <p className="text-yellow-100 text-xs uppercase font-semibold whitespace-nowrap">
+                <p className="text-xs uppercase font-semibold whitespace-nowrap text-transparent bg-clip-text bg-gradient-to-r from-[#FFD700] via-[#FFC125] to-[#DAA520]" style={{ textShadow: '0 0 8px rgba(255,215,0,0.4)' }}>
                   {item.label}
                 </p>
-                <p className="text-white font-bold text-sm flex items-center gap-1 shrink-0">
+                <p className="font-bold text-sm flex items-center gap-1 shrink-0 text-transparent bg-clip-text bg-gradient-to-r from-[#FFD700] via-[#FFC125] to-[#DAA520]" style={{ textShadow: '0 0 8px rgba(255,215,0,0.4)' }}>
                   {formatNumber(item.value)}
                   {item.showCamlyLogo && (
                     <img 
@@ -254,10 +254,10 @@ export const AppHonorBoard = memo(() => {
                   <Coins className="w-4 h-4 text-emerald-500" />
                 </div>
                 <div className="flex-1 flex items-center justify-between gap-2 relative z-10 min-w-0">
-                  <p className="text-yellow-100 text-xs uppercase font-semibold whitespace-nowrap">
+                  <p className="text-xs uppercase font-semibold whitespace-nowrap text-transparent bg-clip-text bg-gradient-to-r from-[#FFD700] via-[#FFC125] to-[#DAA520]" style={{ textShadow: '0 0 8px rgba(255,215,0,0.4)' }}>
                     {index === 0 ? t('totalMoney') : `Circulating ${token.symbol}`}
                   </p>
-                  <p className="text-white font-bold text-sm flex items-center gap-1 shrink-0">
+                  <p className="font-bold text-sm flex items-center gap-1 shrink-0 text-transparent bg-clip-text bg-gradient-to-r from-[#FFD700] via-[#FFC125] to-[#DAA520]" style={{ textShadow: '0 0 8px rgba(255,215,0,0.4)' }}>
                     {formatNumber(token.amount, token.symbol === 'CAMLY' ? 0 : 6)}
                     <img 
                       src={token.logoPath} 
