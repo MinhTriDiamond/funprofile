@@ -220,16 +220,16 @@ export const AppHonorBoard = memo(() => {
           {statItems.map((item, index) => (
             <div 
               key={index} 
-              className="flex items-center gap-3 py-2.5 px-4 rounded-full bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.2),inset_0_-1px_0_rgba(0,0,0,0.15),0_0_8px_rgba(218,165,32,0.4)] transition-all duration-300 hover:scale-[1.02] cursor-pointer"
+              className="flex items-center gap-3 py-2.5 px-4 rounded-full bg-gradient-to-b from-[#22c55e] via-[#16a34a] to-[#15803d] border-[2px] border-[#DAA520] shadow-[inset_0_2px_4px_rgba(255,255,255,0.35),inset_0_-2px_4px_rgba(0,0,0,0.1),0_0_10px_rgba(218,165,32,0.4)] transition-all duration-300 hover:scale-[1.02] cursor-pointer"
             >
-              <div className="p-1.5 rounded-full bg-white/10 shrink-0">
-                <item.icon className="w-4 h-4 text-[#E8D5A3]" />
+              <div className="p-1.5 rounded-full bg-white/15 shrink-0">
+                <item.icon className="w-4 h-4 text-[#FFF8DC] drop-shadow-[0_0_3px_rgba(255,248,220,0.5)]" />
               </div>
               <div className="flex-1 flex items-center justify-between gap-2 min-w-0">
-                <p className="text-[#E8D5A3] text-xs uppercase font-semibold whitespace-nowrap">
+                <p className="text-[#FFF8DC] text-xs uppercase font-semibold whitespace-nowrap drop-shadow-[0_0_4px_rgba(255,248,220,0.4)]">
                   {item.label}
                 </p>
-                <p className="text-[#FFD700] font-bold text-sm flex items-center gap-1 shrink-0 drop-shadow-[0_0_4px_rgba(255,215,0,0.4)]">
+                <p className="text-[#FFD700] font-bold text-sm flex items-center gap-1 shrink-0 drop-shadow-[0_0_6px_rgba(255,215,0,0.6)]">
                   {formatNumber(item.value)}
                   {item.showCamlyLogo && (
                     <img 
@@ -248,16 +248,16 @@ export const AppHonorBoard = memo(() => {
             stats.tokenBalances.map((token, index) => (
               <div 
                 key={token.symbol} 
-                className="flex items-center gap-3 py-2.5 px-4 rounded-full bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.2),inset_0_-1px_0_rgba(0,0,0,0.15),0_0_8px_rgba(218,165,32,0.4)] transition-all duration-300 hover:scale-[1.02] cursor-pointer"
+                className="flex items-center gap-3 py-2.5 px-4 rounded-full bg-gradient-to-b from-[#22c55e] via-[#16a34a] to-[#15803d] border-[2px] border-[#DAA520] shadow-[inset_0_2px_4px_rgba(255,255,255,0.35),inset_0_-2px_4px_rgba(0,0,0,0.1),0_0_10px_rgba(218,165,32,0.4)] transition-all duration-300 hover:scale-[1.02] cursor-pointer"
               >
-                <div className="p-1.5 rounded-full bg-white/10 shrink-0">
-                  <Coins className="w-4 h-4 text-[#E8D5A3]" />
+                <div className="p-1.5 rounded-full bg-white/15 shrink-0">
+                  <Coins className="w-4 h-4 text-[#FFF8DC] drop-shadow-[0_0_3px_rgba(255,248,220,0.5)]" />
                 </div>
                 <div className="flex-1 flex items-center justify-between gap-2 min-w-0">
-                  <p className="text-[#E8D5A3] text-xs uppercase font-semibold whitespace-nowrap">
+                  <p className="text-[#FFF8DC] text-xs uppercase font-semibold whitespace-nowrap drop-shadow-[0_0_4px_rgba(255,248,220,0.4)]">
                     {index === 0 ? t('totalMoney') : `Circulating ${token.symbol}`}
                   </p>
-                  <p className="text-[#FFD700] font-bold text-sm flex items-center gap-1 shrink-0 drop-shadow-[0_0_4px_rgba(255,215,0,0.4)]">
+                  <p className="text-[#FFD700] font-bold text-sm flex items-center gap-1 shrink-0 drop-shadow-[0_0_6px_rgba(255,215,0,0.6)]">
                     {formatNumber(token.amount, token.symbol === 'CAMLY' ? 0 : 6)}
                     <img 
                       src={token.logoPath} 
