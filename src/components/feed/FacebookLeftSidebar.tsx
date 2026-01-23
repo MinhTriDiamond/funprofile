@@ -116,6 +116,34 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
       isExternal: true,
       isSpecial: false
     },
+    { 
+      name: 'FUN Charity', 
+      avatar: '/fun-charity-logo-36.webp',
+      path: 'https://charity.fun.rich',
+      isExternal: true,
+      isSpecial: false
+    },
+    { 
+      name: 'FUN Academy', 
+      avatar: '/fun-academy-logo-36.webp',
+      path: 'https://academy.fun.rich',
+      isExternal: true,
+      isSpecial: false
+    },
+    { 
+      name: 'FUN Treasury', 
+      avatar: '/fun-treasury-logo-36.webp',
+      path: 'https://treasury.fun.rich',
+      isExternal: true,
+      isSpecial: false
+    },
+    { 
+      name: 'Green Earth', 
+      avatar: '/green-earth-logo-36.webp',
+      path: 'https://greenearth-fun.lovable.app',
+      isExternal: true,
+      isSpecial: false
+    },
   ], []);
 
   return (
