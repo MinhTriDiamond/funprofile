@@ -1202,6 +1202,27 @@ export type Database = {
           },
         ]
       }
+      rate_limit_state: {
+        Row: {
+          count: number
+          expires_at: string
+          key: string
+          window_start: string
+        }
+        Insert: {
+          count?: number
+          expires_at: string
+          key: string
+          window_start?: string
+        }
+        Update: {
+          count?: number
+          expires_at?: string
+          key?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
       reactions: {
         Row: {
           comment_id: string | null
@@ -1598,6 +1619,10 @@ export type Database = {
       ban_user_permanently: {
         Args: { p_admin_id: string; p_reason?: string; p_user_id: string }
         Returns: boolean
+      }
+      check_rate_limit: {
+        Args: { p_key: string; p_limit: number; p_window_ms?: number }
+        Returns: Json
       }
       cleanup_expired_oauth_data: { Args: never; Returns: undefined }
       delete_storage_object: {
