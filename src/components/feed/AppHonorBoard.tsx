@@ -226,10 +226,24 @@ export const AppHonorBoard = memo(() => {
                 <item.icon className={`w-4 h-4 ${item.color}`} />
               </div>
               <div className="flex-1 flex items-center justify-between gap-2 relative z-10 min-w-0">
-                <p className="text-yellow-100 text-xs uppercase font-semibold whitespace-nowrap">
+                <p 
+                  className="text-xs uppercase font-semibold whitespace-nowrap"
+                  style={{
+                    background: 'linear-gradient(135deg, #FFD700 0%, #FFC125 50%, #DAA520 100%)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                  }}
+                >
                   {item.label}
                 </p>
-                <p className="text-yellow-100 font-bold text-sm flex items-center gap-1 shrink-0">
+                <p 
+                  className="font-bold text-sm flex items-center gap-1 shrink-0"
+                  style={{
+                    background: 'linear-gradient(135deg, #FFD700 0%, #FFC125 50%, #DAA520 100%)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                  }}
+                >
                   {formatNumber(item.value)}
                   {item.showCamlyLogo && (
                     <img 
@@ -254,10 +268,24 @@ export const AppHonorBoard = memo(() => {
                   <Coins className="w-4 h-4 text-emerald-500" />
                 </div>
                 <div className="flex-1 flex items-center justify-between gap-2 relative z-10 min-w-0">
-                  <p className="text-yellow-100 text-xs uppercase font-semibold whitespace-nowrap">
+                  <p 
+                    className="text-xs uppercase font-semibold whitespace-nowrap"
+                    style={{
+                      background: 'linear-gradient(135deg, #FFD700 0%, #FFC125 50%, #DAA520 100%)',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                    }}
+                  >
                     {index === 0 ? t('totalMoney') : `Circulating ${token.symbol}`}
                   </p>
-                  <p className="text-yellow-100 font-bold text-sm flex items-center gap-1 shrink-0">
+                  <p 
+                    className="font-bold text-sm flex items-center gap-1 shrink-0"
+                    style={{
+                      background: 'linear-gradient(135deg, #FFD700 0%, #FFC125 50%, #DAA520 100%)',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                    }}
+                  >
                     {formatNumber(token.amount, token.symbol === 'CAMLY' ? 0 : 6)}
                     <img 
                       src={token.logoPath} 
