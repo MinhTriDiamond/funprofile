@@ -85,6 +85,10 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
     processingProgress: undefined as number | undefined,
   });
 
+  // Refs for hidden file inputs (direct trigger on click) - must be before any returns
+  const photoVideoInputRef = useRef<HTMLInputElement>(null);
+  const liveVideoInputRef = useRef<HTMLInputElement>(null);
+
   // Prevent accidental tab close during upload
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -441,11 +445,38 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
     }
   };
 
+  // Handler for feeling selection - MUST be before any returns
+  const handleFeelingSelect = (selectedFeeling: FeelingActivity) => {
+    setFeeling(selectedFeeling);
+    setIsDialogOpen(true); // Open post dialog after selecting feeling
+  };
+
+  // Direct file picker for Photo/Video button (Facebook behavior)
+  const handlePhotoVideoClick = () => {
+    photoVideoInputRef.current?.click();
+  };
+
+  // Direct file picker for Live Video button
+  const handleLiveVideoClick = () => {
+    liveVideoInputRef.current?.click();
+  };
+
+  // Handle direct file select from main card buttons
+  const handleDirectFileSelect = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    
+    // Open dialog and show media area
+    setIsDialogOpen(true);
+    setShowMediaUpload(true);
+    
+    // Process files
+    await handleFileSelect(files);
+  };
 
   // Guest mode: Show placeholder card with login prompt
   if (!profile) {
     return (
-      <div className="fb-card p-4 mb-4">
+      <div className="bg-card rounded-lg shadow-sm border border-border p-3 sm:p-4 mb-4">
         <div className="flex items-center gap-3">
           <Avatar className="w-10 h-10 ring-2 ring-primary/20">
             <AvatarFallback className="bg-muted text-muted-foreground">G</AvatarFallback>
@@ -456,24 +487,24 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
                 action: { label: 'Đăng nhập', onClick: () => navigate('/auth') }
               });
             }}
-            className="flex-1 text-left px-4 py-2.5 bg-secondary hover:bg-muted rounded-full text-muted-foreground transition-colors"
+            className="flex-1 text-left px-4 py-2.5 bg-muted hover:bg-muted/80 rounded-full text-muted-foreground text-[15px] transition-colors"
           >
             Bạn đang nghĩ gì thế?
           </button>
         </div>
 
-        <div className="border-t border-border mt-3 pt-3">
-          <div className="flex items-center justify-between">
+        <div className="border-t border-border mt-3 pt-2">
+          <div className="flex items-center">
             <button
               onClick={() => {
                 toast.error('Vui lòng đăng nhập để đăng bài', {
                   action: { label: 'Đăng nhập', onClick: () => navigate('/auth') }
                 });
               }}
-              className="flex-1 flex items-center justify-center gap-2 py-2 hover:bg-secondary rounded-lg transition-colors"
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 hover:bg-muted rounded-lg transition-colors group"
             >
-              <Video className="w-6 h-6 text-red-500" />
-              <span className="font-semibold text-muted-foreground text-sm hidden sm:inline">Video trực tiếp</span>
+              <Video className="w-6 h-6 text-destructive" />
+              <span className="font-medium text-muted-foreground text-sm hidden sm:inline">Video trực tiếp</span>
             </button>
             <button
               onClick={() => {
@@ -481,10 +512,10 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
                   action: { label: 'Đăng nhập', onClick: () => navigate('/auth') }
                 });
               }}
-              className="flex-1 flex items-center justify-center gap-2 py-2 hover:bg-secondary rounded-lg transition-colors"
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 hover:bg-muted rounded-lg transition-colors group"
             >
-              <ImagePlus className="w-6 h-6 text-primary" />
-              <span className="font-semibold text-muted-foreground text-sm hidden sm:inline">Ảnh/video</span>
+              <ImagePlus className="w-6 h-6 text-[#45BD62]" />
+              <span className="font-medium text-muted-foreground text-sm hidden sm:inline">Ảnh/video</span>
             </button>
             <button
               onClick={() => {
@@ -492,10 +523,10 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
                   action: { label: 'Đăng nhập', onClick: () => navigate('/auth') }
                 });
               }}
-              className="flex-1 flex items-center justify-center gap-2 py-2 hover:bg-secondary rounded-lg transition-colors"
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 hover:bg-muted rounded-lg transition-colors group"
             >
-              <Smile className="w-6 h-6 text-yellow-500" />
-              <span className="font-semibold text-muted-foreground text-sm hidden sm:inline">Cảm xúc</span>
+              <span className="text-xl sm:text-2xl">😊</span>
+              <span className="font-medium text-muted-foreground text-sm hidden sm:inline">Cảm xúc</span>
             </button>
           </div>
         </div>
@@ -503,16 +534,28 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
     );
   }
 
-  // Handler for feeling selection
-  const handleFeelingSelect = (selectedFeeling: FeelingActivity) => {
-    setFeeling(selectedFeeling);
-    setIsDialogOpen(true); // Open post dialog after selecting feeling
-  };
-
   return (
     <>
+      {/* Hidden file inputs for direct trigger */}
+      <input
+        ref={photoVideoInputRef}
+        type="file"
+        accept="image/*,video/*"
+        multiple
+        onChange={(e) => handleDirectFileSelect(e.target.files)}
+        className="hidden"
+      />
+      <input
+        ref={liveVideoInputRef}
+        type="file"
+        accept="video/*"
+        capture="environment"
+        onChange={(e) => handleDirectFileSelect(e.target.files)}
+        className="hidden"
+      />
+
       {/* Create Post Card - Facebook Style Layout */}
-      <div className="fb-card p-3 mb-4">
+      <div className="bg-card rounded-lg shadow-sm border border-border p-3 sm:p-4 mb-4">
         {/* Row 1: Avatar + Input */}
         <div className="flex items-center gap-3">
           <Avatar
@@ -525,49 +568,48 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
             </AvatarFallback>
           </Avatar>
           
-          {/* Pure text input button */}
+          {/* Pure text input button - Facebook style */}
           <button
             onClick={() => setIsDialogOpen(true)}
-            className="flex-1 text-left px-4 py-2.5 bg-secondary hover:bg-muted rounded-full text-muted-foreground text-sm transition-colors"
+            className="flex-1 text-left px-4 py-2.5 bg-muted hover:bg-muted/80 rounded-full text-muted-foreground text-[15px] transition-colors"
           >
-            {profile.full_name || profile.username} ơi, bạn đang nghĩ gì thế?
+            {language === 'vi' 
+              ? `${profile.full_name || profile.username} ơi, bạn đang nghĩ gì thế?`
+              : `What's on your mind, ${profile.full_name || profile.username}?`
+            }
           </button>
         </div>
 
-        {/* Row 2: Action buttons with border-top */}
-        <div className="border-t border-border mt-3 pt-3">
-          <div className="flex items-center justify-around">
-            {/* Video trực tiếp */}
+        {/* Row 2: Action buttons with border-top - Facebook style */}
+        <div className="border-t border-border mt-3 pt-2">
+          <div className="flex items-center">
+            {/* Video trực tiếp - Opens camera/video capture directly */}
             <button
-              onClick={() => {
-                setIsDialogOpen(true);
-                setShowMediaUpload(true);
-              }}
-              className="flex-1 flex items-center justify-center gap-2 py-2 hover:bg-secondary rounded-lg transition-colors"
+              onClick={handleLiveVideoClick}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 hover:bg-muted rounded-lg transition-colors group"
             >
-              <Video className="w-6 h-6 text-destructive" />
-              <span className="font-semibold text-muted-foreground text-sm hidden sm:inline">Video trực tiếp</span>
+              <Video className="w-6 h-6 text-red-500 group-hover:scale-110 transition-transform" />
+              <span className="font-medium text-muted-foreground text-sm hidden sm:inline">Video trực tiếp</span>
             </button>
             
-            {/* Ảnh/video */}
+            {/* Ảnh/video - Opens file picker DIRECTLY (Facebook behavior) */}
             <button
-              onClick={() => {
-                setIsDialogOpen(true);
-                setShowMediaUpload(true);
-              }}
-              className="flex-1 flex items-center justify-center gap-2 py-2 hover:bg-secondary rounded-lg transition-colors"
+              onClick={handlePhotoVideoClick}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 hover:bg-muted rounded-lg transition-colors group"
             >
-              <ImagePlus className="w-6 h-6 text-primary" />
-              <span className="font-semibold text-muted-foreground text-sm hidden sm:inline">Ảnh/video</span>
+              <ImagePlus className="w-6 h-6 text-[#45BD62] group-hover:scale-110 transition-transform" />
+              <span className="font-medium text-muted-foreground text-sm hidden sm:inline">Ảnh/video</span>
             </button>
             
-            {/* Cảm xúc/hoạt động */}
+            {/* Cảm xúc/hoạt động - Opens Feeling Dialog */}
             <button
               onClick={() => setShowFeelingDialog(true)}
-              className="flex-1 flex items-center justify-center gap-2 py-2 hover:bg-secondary rounded-lg transition-colors"
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 hover:bg-muted rounded-lg transition-colors group"
             >
-              <span className="text-2xl">{feeling ? feeling.emoji : '😊'}</span>
-              <span className="font-semibold text-muted-foreground text-sm hidden sm:inline">
+              <span className="text-xl sm:text-2xl group-hover:scale-110 transition-transform">
+                {feeling ? feeling.emoji : '😊'}
+              </span>
+              <span className="font-medium text-muted-foreground text-sm hidden sm:inline">
                 {feeling ? feeling.label : 'Cảm xúc/hoạt động'}
               </span>
             </button>
