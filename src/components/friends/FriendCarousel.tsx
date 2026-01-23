@@ -89,7 +89,7 @@ export const FriendCarousel = ({
           <div className="space-y-2">
             <Button
               size="sm"
-              className="w-full rounded-lg text-sm h-9"
+              className="w-full text-sm h-9"
               onClick={() => onAction?.(item.friendship_id || item.id, 'accept')}
             >
               Xác nhận
@@ -97,7 +97,7 @@ export const FriendCarousel = ({
             <Button
               variant="secondary"
               size="sm"
-              className="w-full rounded-lg text-sm h-9"
+              className="w-full text-sm h-9"
               onClick={() => onAction?.(item.friendship_id || item.id, 'reject')}
             >
               Xóa
@@ -108,7 +108,7 @@ export const FriendCarousel = ({
         return (
           <Button
             size="sm"
-            className="w-full rounded-lg text-sm h-9"
+            className="w-full text-sm h-9"
             onClick={() => onAction?.(item.id, 'add')}
           >
             <UserPlus className="w-4 h-4 mr-1.5" />

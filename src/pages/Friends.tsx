@@ -255,10 +255,10 @@ const Friends = () => {
                       setActiveTab(item.value);
                       setShowSidebar(false);
                     }}
-                    className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors ${
+                    className={`w-full flex items-center gap-3 p-3 rounded-full border transition-all duration-300 ${
                       activeTab === item.value 
-                        ? 'bg-primary/10 text-primary' 
-                        : 'hover:bg-muted'
+                        ? 'bg-primary/10 text-primary border-[#C9A84C]/60' 
+                        : 'hover:bg-white hover:shadow-[0_0_12px_rgba(34,197,94,0.5)] border-transparent hover:border-[#C9A84C]/40'
                     }`}
                   >
                     <div className={`w-9 h-9 shrink-0 rounded-full flex items-center justify-center ${

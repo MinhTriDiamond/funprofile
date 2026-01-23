@@ -149,9 +149,9 @@ export const FriendRequestButton = ({ userId, currentUserId }: FriendRequestButt
         onClick={sendFriendRequest} 
         disabled={loading} 
         size="sm"
-        className="text-primary hover:bg-primary hover:text-white group bg-background border border-input"
+        variant="secondary"
       >
-        <UserPlus className="w-4 h-4 mr-2 text-gold group-hover:text-white" />
+        <UserPlus className="w-4 h-4 mr-2 text-gold" />
         Add Friend
       </Button>
     );
@@ -164,9 +164,8 @@ export const FriendRequestButton = ({ userId, currentUserId }: FriendRequestButt
         disabled={loading} 
         variant="outline" 
         size="sm"
-        className="text-primary hover:bg-primary hover:text-white group"
       >
-        <Clock className="w-4 h-4 mr-2 text-gold group-hover:text-white" />
+        <Clock className="w-4 h-4 mr-2 text-gold" />
         Cancel Request
       </Button>
     );
@@ -179,9 +178,8 @@ export const FriendRequestButton = ({ userId, currentUserId }: FriendRequestButt
           onClick={acceptFriendRequest} 
           disabled={loading} 
           size="sm"
-          className="text-primary hover:bg-primary hover:text-white group bg-background border border-input"
         >
-          <UserCheck className="w-4 h-4 mr-2 text-gold group-hover:text-white" />
+          <UserCheck className="w-4 h-4 mr-2" />
           Accept
         </Button>
         <Button 
@@ -189,7 +187,6 @@ export const FriendRequestButton = ({ userId, currentUserId }: FriendRequestButt
           disabled={loading} 
           variant="outline" 
           size="sm"
-          className="text-primary hover:bg-primary hover:text-white group"
         >
           Reject
         </Button>
@@ -204,9 +201,8 @@ export const FriendRequestButton = ({ userId, currentUserId }: FriendRequestButt
         disabled={loading} 
         variant="outline" 
         size="sm"
-        className="text-primary hover:bg-primary hover:text-white group"
       >
-        <UserMinus className="w-4 h-4 mr-2 text-gold group-hover:text-white" />
+        <UserMinus className="w-4 h-4 mr-2 text-gold" />
         Unfriend
       </Button>
     );
