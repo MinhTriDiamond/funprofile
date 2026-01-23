@@ -20,6 +20,12 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { FacebookLeftSidebar } from '@/components/feed/FacebookLeftSidebar';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 // Use direct paths for logos to ensure consistency across all environments
 
 export const FacebookNavbar = () => {
@@ -120,27 +126,35 @@ export const FacebookNavbar = () => {
         {/* Center Section - Navigation (Desktop only, hidden on tablet) */}
         <nav className="hidden lg:flex items-center justify-center flex-1 max-w-[600px] h-full gap-1">
           {/* Icon Navigation Items (Home, Friends, Chat, Wallet) */}
-          {iconNavItems.map((item) => (
-            <button
-              key={item.path}
-              onClick={() => navigate(item.path)}
-              aria-label={item.label}
-              className={`flex-1 h-full max-w-[100px] flex items-center justify-center relative transition-all duration-300 rounded-full border-[0.5px] group ${
-                isActive(item.path)
-                  ? 'text-primary-foreground bg-primary border-[#C9A84C]'
-                  : 'text-foreground hover:text-primary hover:bg-primary/10 border-transparent hover:border-[#C9A84C]/50'
-              }`}
-            >
-              <item.icon className={`w-6 h-6 transition-all duration-300 ${
-                isActive(item.path) 
-                  ? '' 
-                  : 'group-hover:drop-shadow-[0_0_6px_hsl(142_76%_36%/0.5)]'
-              }`} />
-              {isActive(item.path) && (
-                <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-gradient-to-r from-primary via-gold to-primary rounded-t-full" />
-              )}
-            </button>
-          ))}
+          <TooltipProvider delayDuration={200}>
+            {iconNavItems.map((item) => (
+              <Tooltip key={item.path}>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => navigate(item.path)}
+                    aria-label={item.label}
+                    className={`flex-1 h-full max-w-[100px] flex items-center justify-center relative transition-all duration-300 rounded-full border-[0.5px] group ${
+                      isActive(item.path)
+                        ? 'text-primary-foreground bg-primary border-[#C9A84C]'
+                        : 'text-foreground hover:text-primary hover:bg-primary/10 border-transparent hover:border-[#C9A84C]/50'
+                    }`}
+                  >
+                    <item.icon className={`w-6 h-6 transition-all duration-300 ${
+                      isActive(item.path) 
+                        ? '' 
+                        : 'group-hover:drop-shadow-[0_0_6px_hsl(142_76%_36%/0.5)]'
+                    }`} />
+                    {isActive(item.path) && (
+                      <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-gradient-to-r from-primary via-gold to-primary rounded-t-full" />
+                    )}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="bg-card text-card-foreground border border-border">
+                  <p>{item.label}</p>
+                </TooltipContent>
+              </Tooltip>
+            ))}
+          </TooltipProvider>
         </nav>
 
         {/* Right Section - Actions */}
