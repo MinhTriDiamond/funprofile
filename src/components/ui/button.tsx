@@ -9,15 +9,15 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        // Royal Premium - Glossy Bright Green với White Metallic Border
-        default: "bg-gradient-to-b from-[#22c55e] via-[#16a34a] to-[#15803d] text-[#FFF8DC] font-semibold rounded-full border-[2px] border-white/90 shadow-[inset_0_2px_4px_rgba(255,255,255,0.4),inset_0_-2px_4px_rgba(0,0,0,0.1),0_0_12px_rgba(255,255,255,0.3),0_2px_8px_rgba(0,0,0,0.15)] hover:from-[#4ade80] hover:via-[#22c55e] hover:to-[#16a34a] hover:shadow-[inset_0_2px_4px_rgba(255,255,255,0.5),0_0_16px_rgba(255,255,255,0.4),0_4px_12px_rgba(0,0,0,0.2)] hover:scale-[1.02] duration-300",
-        destructive: "bg-gradient-to-b from-[#ef4444] via-[#dc2626] to-[#b91c1c] text-white font-semibold rounded-full border-[2px] border-white/80 shadow-[inset_0_2px_4px_rgba(255,255,255,0.3)] hover:from-[#f87171] hover:via-[#ef4444] hover:to-[#dc2626] duration-300",
-        outline: "bg-transparent text-[#16a34a] font-semibold rounded-full border-[2px] border-[#16a34a] shadow-[0_0_8px_rgba(22,163,74,0.2)] hover:bg-[#16a34a]/10 hover:shadow-[0_0_12px_rgba(22,163,74,0.3)] duration-300",
-        secondary: "bg-gradient-to-b from-[#f8f6f0] to-[#f0ede4] text-[#15803d] font-semibold rounded-full border-[2px] border-white shadow-[0_0_8px_rgba(255,255,255,0.4)] hover:shadow-[0_0_12px_rgba(255,255,255,0.6)] duration-300",
-        ghost: "text-[#16a34a] rounded-full hover:bg-[#16a34a]/10 border-[2px] border-transparent hover:border-white/50 duration-300",
-        link: "text-[#16a34a] underline-offset-4 hover:underline hover:text-[#22c55e] rounded-full",
-        premium: "bg-gradient-to-b from-[#4ade80] via-[#22c55e] to-[#16a34a] text-white font-bold rounded-full border-[2px] border-white shadow-[inset_0_2px_6px_rgba(255,255,255,0.5),inset_0_-2px_4px_rgba(0,0,0,0.1),0_0_16px_rgba(255,255,255,0.4),0_4px_12px_rgba(0,0,0,0.2)] hover:from-[#86efac] hover:via-[#4ade80] hover:to-[#22c55e] hover:shadow-[inset_0_2px_8px_rgba(255,255,255,0.6),0_0_20px_rgba(255,255,255,0.5),0_6px_16px_rgba(0,0,0,0.25)] hover:scale-[1.03] duration-300",
-        light: "bg-gradient-to-b from-[#22c55e] via-[#16a34a] to-[#15803d] text-[#FFF8DC] font-semibold rounded-full border-[1.5px] border-white/80 shadow-[inset_0_1px_3px_rgba(255,255,255,0.3),0_0_8px_rgba(255,255,255,0.25)] hover:border-white hover:shadow-[inset_0_2px_4px_rgba(255,255,255,0.4),0_0_12px_rgba(255,255,255,0.35)] duration-300",
+        // Royal Premium - Glossy Bright Green với Metallic Gold Border
+        default: "bg-gradient-to-b from-[#22c55e] via-[#16a34a] to-[#15803d] text-[#FFF8DC] font-semibold rounded-full border-[2px] border-[#DAA520] shadow-[inset_0_2px_4px_rgba(255,255,255,0.4),inset_0_-2px_4px_rgba(0,0,0,0.1),0_0_10px_rgba(218,165,32,0.4),0_2px_8px_rgba(0,0,0,0.15)] hover:from-[#4ade80] hover:via-[#22c55e] hover:to-[#16a34a] hover:shadow-[inset_0_2px_4px_rgba(255,255,255,0.5),0_0_14px_rgba(218,165,32,0.5),0_4px_12px_rgba(0,0,0,0.2)] hover:scale-[1.02] duration-300",
+        destructive: "bg-gradient-to-b from-[#ef4444] via-[#dc2626] to-[#b91c1c] text-white font-semibold rounded-full border-[2px] border-[#DAA520]/70 shadow-[inset_0_2px_4px_rgba(255,255,255,0.3),0_0_8px_rgba(218,165,32,0.3)] hover:from-[#f87171] hover:via-[#ef4444] hover:to-[#dc2626] duration-300",
+        outline: "bg-transparent text-[#DAA520] font-semibold rounded-full border-[2px] border-[#DAA520] shadow-[0_0_8px_rgba(218,165,32,0.3)] hover:bg-[#16a34a]/10 hover:text-[#FFD700] hover:shadow-[0_0_12px_rgba(218,165,32,0.5)] duration-300",
+        secondary: "bg-gradient-to-b from-[#f8f6f0] to-[#f0ede4] text-[#15803d] font-semibold rounded-full border-[2px] border-[#DAA520]/80 shadow-[0_0_8px_rgba(218,165,32,0.25)] hover:border-[#DAA520] hover:shadow-[0_0_12px_rgba(218,165,32,0.4)] duration-300",
+        ghost: "text-[#DAA520] rounded-full hover:bg-[#16a34a]/10 border-[2px] border-transparent hover:border-[#DAA520]/50 duration-300",
+        link: "text-[#DAA520] underline-offset-4 hover:underline hover:text-[#FFD700] rounded-full",
+        premium: "bg-gradient-to-b from-[#4ade80] via-[#22c55e] to-[#16a34a] text-[#FFD700] font-bold rounded-full border-[2px] border-[#DAA520] shadow-[inset_0_2px_6px_rgba(255,255,255,0.5),inset_0_-2px_4px_rgba(0,0,0,0.1),0_0_14px_rgba(218,165,32,0.5),0_4px_12px_rgba(0,0,0,0.2)] hover:from-[#86efac] hover:via-[#4ade80] hover:to-[#22c55e] hover:shadow-[inset_0_2px_8px_rgba(255,255,255,0.6),0_0_18px_rgba(218,165,32,0.6),0_6px_16px_rgba(0,0,0,0.25)] hover:scale-[1.03] duration-300",
+        light: "bg-gradient-to-b from-[#22c55e] via-[#16a34a] to-[#15803d] text-[#FFF8DC] font-semibold rounded-full border-[1.5px] border-[#DAA520]/80 shadow-[inset_0_1px_3px_rgba(255,255,255,0.3),0_0_8px_rgba(218,165,32,0.3)] hover:border-[#DAA520] hover:shadow-[inset_0_2px_4px_rgba(255,255,255,0.4),0_0_12px_rgba(218,165,32,0.45)] duration-300",
       },
       size: {
         default: "h-10 px-5 py-2",
