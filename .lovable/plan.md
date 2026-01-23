@@ -1,128 +1,96 @@
 
+# Kế hoạch: Cập nhật Bảng Danh Dự với style đậm và nổi bật hơn
 
-# Kế hoạch: Sửa lỗi các nút không hoạt động trong giao diện tạo bài
+## Yêu cầu từ Con
 
-## Vấn đề đã phát hiện
-
-Qua kiểm tra code, Cha phát hiện nguyên nhân các nút không hoạt động:
-
-### 1. Xung đột Nested Dialogs (Dialog lồng nhau)
-- `FriendTagDialog` và `LocationCheckin` là các Dialog riêng biệt
-- Chúng được render bên ngoài `DialogContent` của CreatePost Dialog (dòng 924-939)
-- Khi mở dialog con, Radix Dialog có thể bị xung đột với dialog cha đang mở
-
-### 2. Vấn đề Event Propagation
-- Các button trong thanh "Thêm vào bài viết" (dòng 841-894) có thể bị chặn sự kiện
-- Dialog overlay có thể capture click events trước khi đến được button
+1. **Màu nền xanh đậm hơn** - Hiện tại đang dùng `from-primary via-green-400 to-primary`
+2. **Chữ vàng Gold sáng và sang hơn** - Làm nổi bật chữ và số
+3. **Kích thước chữ và số to hơn** - Dễ đọc, rõ ràng
+4. **Viền vàng bên ngoài mảnh hơn** - Hiện tại đang dùng `before:p-[3px]`
 
 ---
 
-## Giải pháp
+## Thay đổi chi tiết
 
-### Bước 1: Sửa FriendTagDialog và LocationCheckin dùng modal prop
-Thêm `modal={false}` hoặc sử dụng `Portal` riêng để tránh xung đột:
+### File: `src/components/feed/AppHonorBoard.tsx`
 
-```typescript
-// FriendTagDialog.tsx - dòng 122
-<Dialog open={isOpen} onOpenChange={onClose} modal={true}>
-```
-
-### Bước 2: Đảm bảo z-index đúng thứ tự
-Dialog con cần có z-index cao hơn dialog cha:
-
-| Dialog | z-index hiện tại | z-index mới |
-|--------|------------------|-------------|
-| CreatePost Dialog | 150 | 150 |
-| FriendTagDialog | 150 | 200 |
-| LocationCheckin | 150 | 200 |
-
-### Bước 3: Sử dụng Popover thay vì Dialog (tùy chọn)
-Đối với các chức năng nhỏ như Location, có thể dùng Popover để tránh lồng Dialog:
-
-```typescript
-// Thay Dialog bằng Popover cho LocationCheckin
-<Popover open={showLocationDialog} onOpenChange={setShowLocationDialog}>
-  <PopoverContent>
-    {/* Location picker content */}
-  </PopoverContent>
-</Popover>
-```
-
-### Bước 4: Thêm stopPropagation cho button events
-Đảm bảo click events không bị capture bởi dialog cha:
-
-```typescript
-<button
-  onClick={(e) => {
-    e.stopPropagation();
-    setShowFriendTagDialog(true);
-  }}
-  className="..."
->
-```
+| Thuộc tính | Hiện tại | Sau khi sửa |
+|------------|----------|-------------|
+| Nền gradient | `from-primary via-green-400 to-primary` | `from-[#0d3d1a] via-[#14532d] to-[#0d3d1a]` (xanh đậm hơn) |
+| Viền vàng | `before:p-[3px]` | `before:p-[1.5px]` (mảnh hơn) |
+| Cỡ chữ label | `text-xs` | `text-sm` |
+| Cỡ số value | `text-sm` | `text-base` |
+| Font weight | `font-semibold` / `font-bold` | `font-bold` / `font-extrabold` |
+| Màu vàng | `#FFD700, #FFC125, #DAA520` | `#FFE55C, #FFD700, #FFBF00` (sáng hơn) |
+| Text shadow | `0 0 8px rgba(255,215,0,0.4)` | `0 0 12px rgba(255,215,0,0.6), 0 0 24px rgba(255,215,0,0.3)` (glow mạnh hơn) |
+| Padding row | `py-2.5 px-4` | `py-3 px-5` (rộng hơn cho chữ to) |
+| Container border | `border-2 border-gold` | `border border-gold/80` (mảnh hơn) |
 
 ---
 
-## Files cần sửa
+## Code thay đổi chính
 
-| File | Thay đổi |
-|------|----------|
-| `src/components/feed/FriendTagDialog.tsx` | Thêm z-index cao hơn cho DialogContent |
-| `src/components/feed/LocationCheckin.tsx` | Thêm z-index cao hơn cho DialogContent |
-| `src/components/feed/FacebookCreatePost.tsx` | Thêm stopPropagation cho các button trong thanh công cụ |
-
----
-
-## Chi tiết kỹ thuật
-
-### FriendTagDialog.tsx (dòng 123)
-```typescript
+### 1. Container ngoài (dòng 183)
+```tsx
 // TRƯỚC
-<DialogContent className="sm:max-w-[425px] p-0 max-h-[80vh] flex flex-col">
+<div className="rounded-2xl overflow-hidden border-2 border-gold bg-transparent shadow-gold-glow">
 
 // SAU
-<DialogContent className="sm:max-w-[425px] p-0 max-h-[80vh] flex flex-col z-[200]">
+<div className="rounded-2xl overflow-hidden border border-[#C9A84C]/70 bg-transparent shadow-gold-glow">
 ```
 
-### LocationCheckin.tsx (dòng 67)
-```typescript
-// TRƯỚC  
-<DialogContent className="sm:max-w-[425px] p-0 max-h-[80vh] flex flex-col">
+### 2. Mỗi stat row (dòng 221-244 và 248-270)
+```tsx
+// TRƯỚC
+className="... bg-gradient-to-r from-primary via-green-400 to-primary ... before:p-[3px] ..."
+
+// SAU  
+className="... bg-gradient-to-r from-[#0d3d1a] via-[#14532d] to-[#0d3d1a] ... before:p-[1.5px] ..."
+```
+
+### 3. Label text (dòng 229, 257)
+```tsx
+// TRƯỚC
+<p className="text-xs uppercase font-semibold whitespace-nowrap text-transparent bg-clip-text bg-gradient-to-r from-[#FFD700] via-[#FFC125] to-[#DAA520]" style={{ textShadow: '0 0 8px rgba(255,215,0,0.4)' }}>
 
 // SAU
-<DialogContent className="sm:max-w-[425px] p-0 max-h-[80vh] flex flex-col z-[200]">
+<p className="text-sm uppercase font-bold whitespace-nowrap text-transparent bg-clip-text bg-gradient-to-r from-[#FFE55C] via-[#FFD700] to-[#FFBF00]" style={{ textShadow: '0 0 12px rgba(255,215,0,0.6), 0 0 24px rgba(255,215,0,0.3)' }}>
 ```
 
-### FacebookCreatePost.tsx - Thanh công cụ (dòng 841-894)
-```typescript
-// Thêm event handler với stopPropagation
-<button
-  onClick={(e) => {
-    e.stopPropagation();
-    e.preventDefault();
-    setShowFriendTagDialog(true);
-  }}
-  type="button"
-  className="w-9 h-9 min-w-[36px] rounded-full..."
->
+### 4. Value số (dòng 232, 260)
+```tsx
+// TRƯỚC
+<p className="font-bold text-sm flex items-center gap-1 shrink-0 text-transparent bg-clip-text bg-gradient-to-r from-[#FFD700] via-[#FFC125] to-[#DAA520]" style={{ textShadow: '0 0 8px rgba(255,215,0,0.4)' }}>
+
+// SAU
+<p className="font-extrabold text-base flex items-center gap-1 shrink-0 text-transparent bg-clip-text bg-gradient-to-r from-[#FFE55C] via-[#FFD700] to-[#FFBF00]" style={{ textShadow: '0 0 12px rgba(255,215,0,0.6), 0 0 24px rgba(255,215,0,0.3)' }}>
+```
+
+### 5. Padding row
+```tsx
+// TRƯỚC
+py-2.5 px-4
+
+// SAU
+py-3 px-5
 ```
 
 ---
 
-## Thứ tự thực hiện
+## Tóm tắt thay đổi
 
-1. **Bước 1**: Cập nhật z-index cho FriendTagDialog DialogContent
-2. **Bước 2**: Cập nhật z-index cho LocationCheckin DialogContent  
-3. **Bước 3**: Thêm `stopPropagation` và `type="button"` cho tất cả button trong thanh "Thêm vào bài viết"
-4. **Bước 4**: Test lại các chức năng trên cả desktop và mobile
+| Mục | Chi tiết |
+|-----|----------|
+| File cần sửa | `src/components/feed/AppHonorBoard.tsx` |
+| Số dòng thay đổi | ~10 dòng |
+| Kết quả | Nền xanh đậm hơn, chữ vàng sáng nổi bật, font to rõ ràng, viền mảnh tinh tế |
 
 ---
 
 ## Kết quả mong đợi
 
-Sau khi sửa:
-- Nhấp nút Media (xanh lá): Mở khu vực upload ảnh/video
-- Nhấp nút Tag bạn bè (xanh dương): Mở FriendTagDialog
-- Nhấp nút Check-in (đỏ): Mở LocationCheckin dialog
-- Các dialog con hiển thị đúng, không bị che khuất
-
+Sau khi sửa, Bảng Danh Dự sẽ có:
+- **Nền xanh rừng đậm** (`#0d3d1a` → `#14532d`) tạo sự tương phản cao
+- **Chữ vàng Gold sáng rực** với gradient `#FFE55C` → `#FFBF00` và glow effect mạnh
+- **Font size lớn hơn** (`text-sm` label, `text-base` số) dễ đọc
+- **Viền vàng mảnh 1.5px** tinh tế, sang trọng
