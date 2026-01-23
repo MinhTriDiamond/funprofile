@@ -70,32 +70,32 @@ export const PrivacySelector = ({ value, onChange, disabled }: PrivacySelectorPr
       </Button>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen} modal={true}>
-        <DialogContent className="sm:max-w-[400px] p-0 z-[200]">
-          <DialogHeader className="p-4 border-b border-border">
+        <DialogContent className="sm:max-w-[400px] p-0 z-[200] border-2 border-[#C9A84C] bg-gradient-to-b from-[#1a5a2e] via-[#166534] to-[#14532d] shadow-[0_0_20px_rgba(201,168,76,0.3)]">
+          <DialogHeader className="p-4 border-b border-[#C9A84C]/40">
             <div className="flex items-center">
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
-                className="absolute left-4 w-8 h-8 rounded-full hover:bg-secondary flex items-center justify-center transition-colors"
+                className="absolute left-4 w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center transition-colors"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 text-[#FFD700]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
               </button>
-              <DialogTitle className="text-center flex-1 text-lg font-bold">
+              <DialogTitle className="text-center flex-1 text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#FFD700] via-[#FFC000] to-[#DAA520]" style={{ textShadow: '0 0 10px rgba(255,215,0,0.5)' }}>
                 {language === 'vi' ? 'Đối tượng của bài viết' : 'Post audience'}
               </DialogTitle>
             </div>
           </DialogHeader>
 
           <div className="p-4">
-            <p className="text-sm text-muted-foreground mb-4">
+            <p className="text-sm text-[#C9A84C]/80 mb-4">
               {language === 'vi' 
                 ? 'Ai có thể xem bài viết của bạn?' 
                 : 'Who can see your post?'}
             </p>
 
-            <div className="space-y-1">
+            <div className="space-y-2">
               {PRIVACY_OPTIONS.map((option) => {
                 const OptionIcon = option.icon;
                 const isSelected = value === option.value;
@@ -105,25 +105,29 @@ export const PrivacySelector = ({ value, onChange, disabled }: PrivacySelectorPr
                     key={option.value}
                     type="button"
                     onClick={() => handleSelect(option.value)}
-                    className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors text-left ${
-                      isSelected ? 'bg-primary/5' : 'hover:bg-secondary'
+                    className={`w-full flex items-center gap-3 p-3 rounded-full transition-all text-left border ${
+                      isSelected 
+                        ? 'bg-gradient-to-r from-[#166534] to-[#14532d] border-[#FFD700] shadow-[0_0_8px_rgba(255,215,0,0.4)]' 
+                        : 'bg-[#1a5a2e]/60 border-[#C9A84C]/40 hover:border-[#C9A84C]/70 hover:bg-[#1a5a2e]/80'
                     }`}
                   >
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                      isSelected ? 'bg-primary/10' : 'bg-secondary'
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center border ${
+                      isSelected 
+                        ? 'bg-[#FFD700]/20 border-[#FFD700]' 
+                        : 'bg-[#1a5a2e] border-[#C9A84C]/40'
                     }`}>
-                      <OptionIcon className={`w-6 h-6 ${isSelected ? 'text-primary' : 'text-muted-foreground'}`} />
+                      <OptionIcon className={`w-5 h-5 ${isSelected ? 'text-[#FFD700]' : 'text-[#C9A84C]'}`} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold">{option.label}</p>
-                      <p className="text-sm text-muted-foreground truncate">{option.description}</p>
+                      <p className={`font-semibold ${isSelected ? 'text-[#FFD700]' : 'text-[#C9A84C]'}`}>{option.label}</p>
+                      <p className="text-xs text-[#C9A84C]/70 truncate">{option.description}</p>
                     </div>
                     <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
                       isSelected 
-                        ? 'border-primary bg-primary' 
-                        : 'border-muted-foreground/30'
+                        ? 'border-[#FFD700] bg-[#FFD700]' 
+                        : 'border-[#C9A84C]/50'
                     }`}>
-                      {isSelected && <Check className="w-3 h-3 text-primary-foreground" />}
+                      {isSelected && <Check className="w-3 h-3 text-[#14532d]" />}
                     </div>
                   </button>
                 );
