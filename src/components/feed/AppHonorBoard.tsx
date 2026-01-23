@@ -229,7 +229,7 @@ export const AppHonorBoard = memo(() => {
                 <p 
                   className="text-xs uppercase font-semibold whitespace-nowrap"
                   style={{
-                    background: 'linear-gradient(135deg, #FFD700 0%, #FFC125 50%, #DAA520 100%)',
+                    background: 'linear-gradient(135deg, #FFF9C4 0%, #FFE082 50%, #FFD54F 100%)',
                     WebkitBackgroundClip: 'text',
                     WebkitTextFillColor: 'transparent',
                   }}
@@ -239,7 +239,7 @@ export const AppHonorBoard = memo(() => {
                 <p 
                   className="font-bold text-sm flex items-center gap-1 shrink-0"
                   style={{
-                    background: 'linear-gradient(135deg, #FFD700 0%, #FFC125 50%, #DAA520 100%)',
+                    background: 'linear-gradient(135deg, #FFF9C4 0%, #FFE082 50%, #FFD54F 100%)',
                     WebkitBackgroundClip: 'text',
                     WebkitTextFillColor: 'transparent',
                   }}
@@ -271,7 +271,7 @@ export const AppHonorBoard = memo(() => {
                   <p 
                     className="text-xs uppercase font-semibold whitespace-nowrap"
                     style={{
-                      background: 'linear-gradient(135deg, #FFD700 0%, #FFC125 50%, #DAA520 100%)',
+                      background: 'linear-gradient(135deg, #FFF9C4 0%, #FFE082 50%, #FFD54F 100%)',
                       WebkitBackgroundClip: 'text',
                       WebkitTextFillColor: 'transparent',
                     }}
@@ -281,7 +281,7 @@ export const AppHonorBoard = memo(() => {
                   <p 
                     className="font-bold text-sm flex items-center gap-1 shrink-0"
                     style={{
-                      background: 'linear-gradient(135deg, #FFD700 0%, #FFC125 50%, #DAA520 100%)',
+                      background: 'linear-gradient(135deg, #FFF9C4 0%, #FFE082 50%, #FFD54F 100%)',
                       WebkitBackgroundClip: 'text',
                       WebkitTextFillColor: 'transparent',
                     }}
