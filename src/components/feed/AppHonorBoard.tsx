@@ -220,16 +220,16 @@ export const AppHonorBoard = memo(() => {
           {statItems.map((item, index) => (
             <div 
               key={index} 
-className="flex items-center gap-3 py-2.5 px-4 rounded-full bg-gradient-to-r from-primary via-green-600 to-primary backdrop-blur-sm transition-all duration-300 hover:scale-105 cursor-pointer relative before:absolute before:inset-0 before:rounded-full before:p-[2px] before:bg-gradient-to-b before:from-[#FFD700] before:via-[#FFC125] before:to-[#DAA520] before:-z-10 before:content-[''] after:absolute after:inset-[2px] after:rounded-full after:bg-gradient-to-r after:from-primary after:via-green-600 after:to-primary after:-z-[5] after:content-[''] shadow-[0_0_4px_rgba(255,215,0,0.3),0_0_8px_rgba(255,215,0,0.15),inset_0_1px_1px_rgba(255,255,255,0.3)] hover:shadow-[0_0_6px_rgba(255,215,0,0.4),0_0_12px_rgba(255,215,0,0.25),inset_0_1px_2px_rgba(255,255,255,0.4)]"
+              className="flex items-center gap-3 py-2.5 px-4 rounded-full bg-[#166534] border-[2px] border-[#C9A84C] transition-all duration-300 hover:scale-[1.02] cursor-pointer shadow-sm"
             >
-              <div className={`p-1.5 rounded-full ${item.bgColor} shrink-0`}>
-                <item.icon className={`w-4 h-4 ${item.color}`} />
+              <div className="p-1.5 rounded-full bg-white/10 shrink-0">
+                <item.icon className="w-4 h-4 text-white" />
               </div>
-              <div className="flex-1 flex items-center justify-between gap-2 relative z-10 min-w-0">
-                <p className="text-yellow-100 text-xs uppercase font-semibold whitespace-nowrap">
+              <div className="flex-1 flex items-center justify-between gap-2 min-w-0">
+                <p className="text-white text-xs uppercase font-semibold whitespace-nowrap">
                   {item.label}
                 </p>
-                <p className="text-white font-bold text-sm flex items-center gap-1 shrink-0">
+                <p className="text-[#FFD700] font-bold text-sm flex items-center gap-1 shrink-0">
                   {formatNumber(item.value)}
                   {item.showCamlyLogo && (
                     <img 
@@ -248,16 +248,16 @@ className="flex items-center gap-3 py-2.5 px-4 rounded-full bg-gradient-to-r fro
             stats.tokenBalances.map((token, index) => (
               <div 
                 key={token.symbol} 
-                className="flex items-center gap-3 py-2.5 px-4 rounded-full bg-gradient-to-r from-primary via-green-600 to-primary backdrop-blur-sm transition-all duration-300 hover:scale-105 cursor-pointer relative before:absolute before:inset-0 before:rounded-full before:p-[2px] before:bg-gradient-to-b before:from-[#FFD700] before:via-[#FFC125] before:to-[#DAA520] before:-z-10 before:content-[''] after:absolute after:inset-[2px] after:rounded-full after:bg-gradient-to-r after:from-primary after:via-green-600 after:to-primary after:-z-[5] after:content-[''] shadow-[0_0_4px_rgba(255,215,0,0.3),0_0_8px_rgba(255,215,0,0.15),inset_0_1px_1px_rgba(255,255,255,0.3)] hover:shadow-[0_0_6px_rgba(255,215,0,0.4),0_0_12px_rgba(255,215,0,0.25),inset_0_1px_2px_rgba(255,255,255,0.4)]"
+                className="flex items-center gap-3 py-2.5 px-4 rounded-full bg-[#166534] border-[2px] border-[#C9A84C] transition-all duration-300 hover:scale-[1.02] cursor-pointer shadow-sm"
               >
-                <div className="p-1.5 rounded-full bg-emerald-500/10 shrink-0">
-                  <Coins className="w-4 h-4 text-emerald-500" />
+                <div className="p-1.5 rounded-full bg-white/10 shrink-0">
+                  <Coins className="w-4 h-4 text-white" />
                 </div>
-                <div className="flex-1 flex items-center justify-between gap-2 relative z-10 min-w-0">
-                  <p className="text-yellow-100 text-xs uppercase font-semibold whitespace-nowrap">
+                <div className="flex-1 flex items-center justify-between gap-2 min-w-0">
+                  <p className="text-white text-xs uppercase font-semibold whitespace-nowrap">
                     {index === 0 ? t('totalMoney') : `Circulating ${token.symbol}`}
                   </p>
-                  <p className="text-white font-bold text-sm flex items-center gap-1 shrink-0">
+                  <p className="text-[#FFD700] font-bold text-sm flex items-center gap-1 shrink-0">
                     {formatNumber(token.amount, token.symbol === 'CAMLY' ? 0 : 6)}
                     <img 
                       src={token.logoPath} 
