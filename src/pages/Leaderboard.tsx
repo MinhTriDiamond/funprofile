@@ -140,10 +140,10 @@ const Leaderboard = () => {
               <button
                 key={cat.value}
                 onClick={() => setActiveCategory(cat.value)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-colors ${
+                className={`flex items-center gap-2 px-4 py-2 rounded-full font-medium whitespace-nowrap transition-all duration-300 border ${
                   activeCategory === cat.value 
-                    ? 'bg-primary text-white' 
-                    : 'hover:bg-gray-100'
+                    ? 'bg-primary text-white border-[#C9A84C]' 
+                    : 'hover:bg-gray-100 border-transparent hover:border-[#C9A84C]/40'
                 }`}
               >
                 <cat.icon className="w-4 h-4" />

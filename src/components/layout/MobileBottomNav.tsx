@@ -74,12 +74,12 @@ export const MobileBottomNav = memo(() => {
               key={index}
               onClick={item.action}
               aria-label={item.label}
-              className={`flex flex-col items-center justify-center min-w-[56px] min-h-[52px] rounded-2xl transition-all duration-300 touch-manipulation group ${
+              className={`flex flex-col items-center justify-center min-w-[56px] min-h-[52px] rounded-full transition-all duration-300 touch-manipulation group border ${
                 item.isCenter
-                  ? 'relative -mt-8'
+                  ? 'relative -mt-8 border-transparent'
                   : item.path && isActive(item.path)
-                  ? 'text-white bg-primary rounded-xl'
-                  : 'text-foreground hover:text-primary hover:bg-primary/10 active:text-white active:bg-primary'
+                  ? 'text-white bg-primary border-[#C9A84C]'
+                  : 'text-foreground hover:text-primary hover:bg-primary/10 border-transparent hover:border-[#C9A84C]/40 active:text-white active:bg-primary'
               }`}
             >
               {item.isCenter ? (
