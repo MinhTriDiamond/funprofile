@@ -156,8 +156,8 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
               }}
               className={`w-full flex items-center gap-3 p-2 rounded-xl transition-all duration-300 group ${
                 shortcut.isSpecial 
-                  ? 'bg-gradient-to-r from-yellow-400/10 to-amber-400/10 hover:from-yellow-400/20 hover:to-amber-400/20 hover:shadow-[0_0_20px_rgba(250,204,21,0.5)] border border-yellow-400/30' 
-                  : 'hover:bg-secondary hover:shadow-[0_0_15px_rgba(250,204,21,0.4)]'
+                  ? 'bg-gradient-to-r from-yellow-400/10 to-amber-400/10 hover:bg-white hover:shadow-[0_0_12px_rgba(34,197,94,0.5)] border border-yellow-400/30 hover:border-primary' 
+                  : 'hover:bg-white hover:shadow-[0_0_12px_rgba(34,197,94,0.5)]'
               }`}
             >
               {shortcut.isSpecial ? (
@@ -200,7 +200,7 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
           {profile && (
             <button
               onClick={() => { navigate(`/profile/${profile.id}`); onItemClick?.(); }}
-              className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-secondary transition-colors"
+              className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-white hover:shadow-[0_0_12px_rgba(34,197,94,0.5)] transition-all duration-300"
             >
               <Avatar className="w-9 h-9 ring-2 ring-yellow-400/50">
                 <AvatarImage src={profile.avatar_url || ''} />
@@ -217,7 +217,7 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
             <button
               key={item.label}
               onClick={() => { navigate(item.path); onItemClick?.(); }}
-              className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-secondary transition-colors"
+              className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-white hover:shadow-[0_0_12px_rgba(34,197,94,0.5)] transition-all duration-300"
             >
               <div className={`w-9 h-9 rounded-full bg-secondary flex items-center justify-center ${item.color}`}>
                 <item.icon className="w-5 h-5" />
@@ -235,7 +235,7 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
         </h3>
         <div className="space-y-1">
           {/* Language Switcher */}
-          <div className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-secondary transition-colors">
+          <div className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-white hover:shadow-[0_0_12px_rgba(34,197,94,0.5)] transition-all duration-300">
             <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center text-blue-500">
               <Globe className="w-5 h-5" />
             </div>
@@ -248,7 +248,7 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
           {isLoggedIn && (
             <button
               onClick={handleLogout}
-              className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-destructive/10 transition-colors text-destructive"
+              className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-white hover:shadow-[0_0_12px_rgba(239,68,68,0.5)] transition-all duration-300 text-destructive"
             >
               <div className="w-9 h-9 rounded-full bg-destructive/10 flex items-center justify-center">
                 <LogOut className="w-5 h-5" />
