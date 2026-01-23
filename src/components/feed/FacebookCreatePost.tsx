@@ -349,7 +349,8 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
         if (item.type === 'video') {
           continue;
         } else {
-          const result = await uploadToR2(item.file, 'posts');
+          // Pass access token to avoid multiple getSession calls
+          const result = await uploadToR2(item.file, 'posts', undefined, session.access_token);
           mediaUrls.push({
             url: result.url,
             type: 'image',

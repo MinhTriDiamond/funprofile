@@ -86,7 +86,7 @@ export const FeelingActivityDialog = ({ isOpen, onClose, onSelect }: FeelingActi
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[400px] p-0 max-h-[80vh] flex flex-col">
+      <DialogContent className="sm:max-w-[400px] p-0 max-h-[80vh] flex flex-col z-[200]">
         <DialogHeader className="p-4 border-b shrink-0">
           <div className="flex items-center gap-3">
             <button 
