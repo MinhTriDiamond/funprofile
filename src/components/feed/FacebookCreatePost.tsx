@@ -500,11 +500,11 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
 
   return (
     <>
-      {/* Create Post Card */}
-      <div className="fb-card p-4 mb-4">
+      {/* Create Post Card - Facebook Style Inline */}
+      <div className="fb-card p-3 mb-4">
         <div className="flex items-center gap-3">
           <Avatar
-            className="w-10 h-10 cursor-pointer ring-2 ring-primary/20"
+            className="w-10 h-10 cursor-pointer ring-2 ring-primary/20 shrink-0"
             onClick={() => navigate(`/profile/${profile.id}`)}
           >
             <AvatarImage src={profile.avatar_url || ''} />
@@ -512,39 +512,43 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
               {profile.username?.[0]?.toUpperCase()}
             </AvatarFallback>
           </Avatar>
-          <button
-            onClick={() => setIsDialogOpen(true)}
-            className="flex-1 text-left px-4 py-2.5 bg-secondary hover:bg-muted rounded-full text-muted-foreground transition-colors"
-          >
-            {profile.full_name || profile.username} ơi, bạn đang nghĩ gì thế?
-          </button>
-        </div>
-
-        <div className="border-t border-border mt-3 pt-3">
-          <div className="flex items-center justify-between">
+          
+          {/* Input area with inline icons */}
+          <div className="flex-1 flex items-center gap-1 bg-secondary hover:bg-muted rounded-full transition-colors pr-2">
             <button
               onClick={() => setIsDialogOpen(true)}
-              className="flex-1 flex items-center justify-center gap-2 py-2 hover:bg-secondary rounded-lg transition-colors"
+              className="flex-1 text-left px-4 py-2.5 text-muted-foreground text-sm"
             >
-              <Video className="w-6 h-6 text-red-500" />
-              <span className="font-semibold text-muted-foreground text-sm hidden sm:inline">Video trực tiếp</span>
+              {profile.full_name || profile.username} ơi, bạn đang nghĩ gì thế?
+            </button>
+            
+            {/* Inline action buttons */}
+            <button
+              onClick={() => {
+                setIsDialogOpen(true);
+                setShowMediaUpload(true);
+              }}
+              className="p-2 hover:bg-background/50 rounded-full transition-colors shrink-0"
+              title="Video trực tiếp"
+            >
+              <Video className="w-5 h-5 text-red-500" />
             </button>
             <button
               onClick={() => {
                 setIsDialogOpen(true);
                 setShowMediaUpload(true);
               }}
-              className="flex-1 flex items-center justify-center gap-2 py-2 hover:bg-secondary rounded-lg transition-colors"
+              className="p-2 hover:bg-background/50 rounded-full transition-colors shrink-0"
+              title="Ảnh/video"
             >
-              <ImagePlus className="w-6 h-6 text-primary" />
-              <span className="font-semibold text-muted-foreground text-sm hidden sm:inline">Ảnh/video</span>
+              <ImagePlus className="w-5 h-5 text-primary" />
             </button>
             <button
               onClick={() => setIsDialogOpen(true)}
-              className="flex-1 flex items-center justify-center gap-2 py-2 hover:bg-secondary rounded-lg transition-colors"
+              className="p-2 hover:bg-background/50 rounded-full transition-colors shrink-0"
+              title="Cảm xúc"
             >
-              <span className="text-2xl">😊</span>
-              <span className="font-semibold text-muted-foreground text-sm hidden sm:inline">Cảm xúc/hoạt động</span>
+              <Smile className="w-5 h-5 text-yellow-500" />
             </button>
           </div>
         </div>
