@@ -69,8 +69,8 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
     );
   }
 
-  const StatRow = ({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) => (
-    <div className="flex items-center justify-between py-1 px-2 sm:px-2.5 rounded-lg bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_0_6px_rgba(218,165,32,0.3)]">
+  const StatRow = ({ icon, label, value, stacked = false }: { icon: React.ReactNode; label: string; value: number; stacked?: boolean }) => (
+    <div className={`relative overflow-hidden ${stacked ? 'flex-col items-start' : 'flex items-center justify-between'} py-1 px-2 sm:px-2.5 rounded-lg bg-gradient-to-b from-[#22c55e] via-[#16a34a] to-[#166534] border-[2px] border-[#DAA520] shadow-[inset_0_2px_4px_rgba(255,255,255,0.6),inset_0_-2px_4px_rgba(0,0,0,0.15),0_0_10px_rgba(255,255,255,0.3),0_0_6px_rgba(218,165,32,0.3)] before:absolute before:inset-0 before:bg-gradient-to-br before:from-white/40 before:via-transparent before:to-transparent before:rounded-lg before:pointer-events-none flex`}>
       <div className="flex items-center gap-1 sm:gap-1.5">
         <div className="text-[#E8D5A3] drop-shadow-[0_0_4px_rgba(218,165,32,0.5)]">
           {icon}
@@ -79,7 +79,7 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
           {label}
         </span>
       </div>
-      <span className="text-[#FFD700] font-bold text-[11px] sm:text-xs md:text-sm drop-shadow-[0_0_4px_rgba(255,215,0,0.4)]">
+      <span className={`text-[#FFD700] font-bold drop-shadow-[0_0_4px_rgba(255,215,0,0.4)] ${stacked ? 'text-base sm:text-lg mt-0.5' : 'text-[11px] sm:text-xs md:text-sm'}`}>
         {formatNumber(value)}
       </span>
     </div>
@@ -196,6 +196,7 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
                 icon={<BadgeDollarSign className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
                 label="Total Reward"
                 value={stats.total_reward}
+                stacked={true}
               />
             </div>
           </div>
@@ -278,22 +279,22 @@ export const MobileStats = ({ userId, username, avatarUrl }: MobileStatsProps) =
           
           {/* Compact 4x2 Grid */}
           <div className="grid grid-cols-4 gap-1.5 text-center mb-2">
-            <div className="bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] rounded-lg py-1.5 px-1 border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_0_4px_rgba(218,165,32,0.3)]">
+            <div className="relative overflow-hidden bg-gradient-to-b from-[#22c55e] via-[#16a34a] to-[#166534] rounded-lg py-1.5 px-1 border-[2px] border-[#DAA520] shadow-[inset_0_2px_4px_rgba(255,255,255,0.6),inset_0_-2px_4px_rgba(0,0,0,0.15),0_0_8px_rgba(255,255,255,0.25),0_0_4px_rgba(218,165,32,0.3)] before:absolute before:inset-0 before:bg-gradient-to-br before:from-white/40 before:via-transparent before:to-transparent before:rounded-lg before:pointer-events-none">
               <ArrowUp className="w-3.5 h-3.5 mx-auto text-[#E8D5A3] mb-0.5" />
               <div className="text-[#FFD700] font-bold text-xs">{formatNumber(stats.posts_count)}</div>
               <div className="text-[#E8D5A3]/80 text-[8px] uppercase">Posts</div>
             </div>
-            <div className="bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] rounded-lg py-1.5 px-1 border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_0_4px_rgba(218,165,32,0.3)]">
+            <div className="relative overflow-hidden bg-gradient-to-b from-[#22c55e] via-[#16a34a] to-[#166534] rounded-lg py-1.5 px-1 border-[2px] border-[#DAA520] shadow-[inset_0_2px_4px_rgba(255,255,255,0.6),inset_0_-2px_4px_rgba(0,0,0,0.15),0_0_8px_rgba(255,255,255,0.25),0_0_4px_rgba(218,165,32,0.3)] before:absolute before:inset-0 before:bg-gradient-to-br before:from-white/40 before:via-transparent before:to-transparent before:rounded-lg before:pointer-events-none">
               <Star className="w-3.5 h-3.5 mx-auto text-[#E8D5A3] mb-0.5" />
               <div className="text-[#FFD700] font-bold text-xs">{formatNumber(stats.reactions_on_posts)}</div>
               <div className="text-[#E8D5A3]/80 text-[8px] uppercase">Reactions</div>
             </div>
-            <div className="bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] rounded-lg py-1.5 px-1 border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_0_4px_rgba(218,165,32,0.3)]">
+            <div className="relative overflow-hidden bg-gradient-to-b from-[#22c55e] via-[#16a34a] to-[#166534] rounded-lg py-1.5 px-1 border-[2px] border-[#DAA520] shadow-[inset_0_2px_4px_rgba(255,255,255,0.6),inset_0_-2px_4px_rgba(0,0,0,0.15),0_0_8px_rgba(255,255,255,0.25),0_0_4px_rgba(218,165,32,0.3)] before:absolute before:inset-0 before:bg-gradient-to-br before:from-white/40 before:via-transparent before:to-transparent before:rounded-lg before:pointer-events-none">
               <MessageCircle className="w-3.5 h-3.5 mx-auto text-[#E8D5A3] mb-0.5" />
               <div className="text-[#FFD700] font-bold text-xs">{formatNumber(stats.comments_count)}</div>
               <div className="text-[#E8D5A3]/80 text-[8px] uppercase">Comments</div>
             </div>
-            <div className="bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] rounded-lg py-1.5 px-1 border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_0_4px_rgba(218,165,32,0.3)]">
+            <div className="relative overflow-hidden bg-gradient-to-b from-[#22c55e] via-[#16a34a] to-[#166534] rounded-lg py-1.5 px-1 border-[2px] border-[#DAA520] shadow-[inset_0_2px_4px_rgba(255,255,255,0.6),inset_0_-2px_4px_rgba(0,0,0,0.15),0_0_8px_rgba(255,255,255,0.25),0_0_4px_rgba(218,165,32,0.3)] before:absolute before:inset-0 before:bg-gradient-to-br before:from-white/40 before:via-transparent before:to-transparent before:rounded-lg before:pointer-events-none">
               <Users className="w-3.5 h-3.5 mx-auto text-[#E8D5A3] mb-0.5" />
               <div className="text-[#FFD700] font-bold text-xs">{formatNumber(stats.friends_count)}</div>
               <div className="text-[#E8D5A3]/80 text-[8px] uppercase">Friends</div>
@@ -302,22 +303,22 @@ export const MobileStats = ({ userId, username, avatarUrl }: MobileStatsProps) =
           
           {/* Second row: Shares, Livestreams, Claimable, Claimed */}
           <div className="grid grid-cols-4 gap-1.5 text-center mb-2">
-            <div className="bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] rounded-lg py-1.5 px-1 border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_0_4px_rgba(218,165,32,0.3)]">
+            <div className="relative overflow-hidden bg-gradient-to-b from-[#22c55e] via-[#16a34a] to-[#166534] rounded-lg py-1.5 px-1 border-[2px] border-[#DAA520] shadow-[inset_0_2px_4px_rgba(255,255,255,0.6),inset_0_-2px_4px_rgba(0,0,0,0.15),0_0_8px_rgba(255,255,255,0.25),0_0_4px_rgba(218,165,32,0.3)] before:absolute before:inset-0 before:bg-gradient-to-br before:from-white/40 before:via-transparent before:to-transparent before:rounded-lg before:pointer-events-none">
               <Share2 className="w-3.5 h-3.5 mx-auto text-[#E8D5A3] mb-0.5" />
               <div className="text-[#FFD700] font-bold text-xs">{formatNumber(stats.shares_count)}</div>
               <div className="text-[#E8D5A3]/80 text-[8px] uppercase">Shares</div>
             </div>
-            <div className="bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] rounded-lg py-1.5 px-1 border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_0_4px_rgba(218,165,32,0.3)]">
+            <div className="relative overflow-hidden bg-gradient-to-b from-[#22c55e] via-[#16a34a] to-[#166534] rounded-lg py-1.5 px-1 border-[2px] border-[#DAA520] shadow-[inset_0_2px_4px_rgba(255,255,255,0.6),inset_0_-2px_4px_rgba(0,0,0,0.15),0_0_8px_rgba(255,255,255,0.25),0_0_4px_rgba(218,165,32,0.3)] before:absolute before:inset-0 before:bg-gradient-to-br before:from-white/40 before:via-transparent before:to-transparent before:rounded-lg before:pointer-events-none">
               <Video className="w-3.5 h-3.5 mx-auto text-[#E8D5A3] mb-0.5" />
               <div className="text-[#FFD700] font-bold text-xs">{formatNumber(stats.livestreams_count)}</div>
               <div className="text-[#E8D5A3]/80 text-[8px] uppercase">Live</div>
             </div>
-            <div className="bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] rounded-lg py-1.5 px-1 border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_0_4px_rgba(218,165,32,0.3)]">
+            <div className="relative overflow-hidden bg-gradient-to-b from-[#22c55e] via-[#16a34a] to-[#166534] rounded-lg py-1.5 px-1 border-[2px] border-[#DAA520] shadow-[inset_0_2px_4px_rgba(255,255,255,0.6),inset_0_-2px_4px_rgba(0,0,0,0.15),0_0_8px_rgba(255,255,255,0.25),0_0_4px_rgba(218,165,32,0.3)] before:absolute before:inset-0 before:bg-gradient-to-br before:from-white/40 before:via-transparent before:to-transparent before:rounded-lg before:pointer-events-none">
               <Gift className="w-3.5 h-3.5 mx-auto text-[#E8D5A3] mb-0.5" />
               <div className="text-[#FFD700] font-bold text-xs">{formatNumber(stats.claimable)}</div>
               <div className="text-[#E8D5A3]/80 text-[8px] uppercase">Claimable</div>
             </div>
-            <div className="bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] rounded-lg py-1.5 px-1 border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_0_4px_rgba(218,165,32,0.3)]">
+            <div className="relative overflow-hidden bg-gradient-to-b from-[#22c55e] via-[#16a34a] to-[#166534] rounded-lg py-1.5 px-1 border-[2px] border-[#DAA520] shadow-[inset_0_2px_4px_rgba(255,255,255,0.6),inset_0_-2px_4px_rgba(0,0,0,0.15),0_0_8px_rgba(255,255,255,0.25),0_0_4px_rgba(218,165,32,0.3)] before:absolute before:inset-0 before:bg-gradient-to-br before:from-white/40 before:via-transparent before:to-transparent before:rounded-lg before:pointer-events-none">
               <Coins className="w-3.5 h-3.5 mx-auto text-[#E8D5A3] mb-0.5" />
               <div className="text-[#FFD700] font-bold text-xs">{formatNumber(stats.claimed)}</div>
               <div className="text-[#E8D5A3]/80 text-[8px] uppercase">Claimed</div>
@@ -326,19 +327,19 @@ export const MobileStats = ({ userId, username, avatarUrl }: MobileStatsProps) =
           
           {/* Total rows */}
           <div className="grid grid-cols-2 gap-1.5">
-            <div className="bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] rounded-lg py-1.5 px-2 border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_0_6px_rgba(218,165,32,0.4)] flex items-center justify-between">
+            <div className="relative overflow-hidden bg-gradient-to-b from-[#22c55e] via-[#16a34a] to-[#166534] rounded-lg py-1.5 px-2 border-[2px] border-[#DAA520] shadow-[inset_0_2px_4px_rgba(255,255,255,0.6),inset_0_-2px_4px_rgba(0,0,0,0.15),0_0_10px_rgba(255,255,255,0.3),0_0_6px_rgba(218,165,32,0.4)] flex items-center justify-between before:absolute before:inset-0 before:bg-gradient-to-br before:from-white/40 before:via-transparent before:to-transparent before:rounded-lg before:pointer-events-none">
               <div className="flex items-center gap-1">
                 <Calendar className="w-3.5 h-3.5 text-[#E8D5A3]" />
                 <span className="text-[#E8D5A3] font-bold text-[9px] uppercase">Today</span>
               </div>
               <span className="text-[#FFD700] font-bold text-xs drop-shadow-[0_0_4px_rgba(255,215,0,0.4)]">{formatNumber(stats.today_reward)}</span>
             </div>
-            <div className="bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] rounded-lg py-1.5 px-2 border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_0_6px_rgba(218,165,32,0.4)] flex items-center justify-between">
+            <div className="relative overflow-hidden bg-gradient-to-b from-[#22c55e] via-[#16a34a] to-[#166534] rounded-lg py-1.5 px-2 border-[2px] border-[#DAA520] shadow-[inset_0_2px_4px_rgba(255,255,255,0.6),inset_0_-2px_4px_rgba(0,0,0,0.15),0_0_10px_rgba(255,255,255,0.3),0_0_6px_rgba(218,165,32,0.4)] flex flex-col items-start before:absolute before:inset-0 before:bg-gradient-to-br before:from-white/40 before:via-transparent before:to-transparent before:rounded-lg before:pointer-events-none">
               <div className="flex items-center gap-1">
                 <BadgeDollarSign className="w-3.5 h-3.5 text-[#E8D5A3]" />
                 <span className="text-[#E8D5A3] font-bold text-[9px] uppercase">Total</span>
               </div>
-              <span className="text-[#FFD700] font-bold text-xs drop-shadow-[0_0_4px_rgba(255,215,0,0.4)]">{formatNumber(stats.total_reward)}</span>
+              <span className="text-[#FFD700] font-bold text-sm drop-shadow-[0_0_4px_rgba(255,215,0,0.4)]">{formatNumber(stats.total_reward)}</span>
             </div>
           </div>
         </div>

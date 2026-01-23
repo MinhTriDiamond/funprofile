@@ -220,7 +220,7 @@ export const AppHonorBoard = memo(() => {
           {statItems.map((item, index) => (
             <div 
               key={index} 
-              className="flex items-center gap-3 py-2.5 px-4 rounded-full bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.2),inset_0_-1px_0_rgba(0,0,0,0.15),0_0_8px_rgba(218,165,32,0.4)] transition-all duration-300 hover:scale-[1.02] cursor-pointer"
+              className="relative overflow-hidden flex items-center gap-3 py-2.5 px-4 rounded-full bg-gradient-to-b from-[#22c55e] via-[#16a34a] to-[#166534] border-[2px] border-[#DAA520] shadow-[inset_0_2px_4px_rgba(255,255,255,0.6),inset_0_-2px_4px_rgba(0,0,0,0.15),0_0_12px_rgba(255,255,255,0.3),0_0_8px_rgba(218,165,32,0.4)] transition-all duration-300 hover:scale-[1.02] hover:shadow-[inset_0_3px_6px_rgba(255,255,255,0.7),0_0_20px_rgba(255,255,255,0.5),0_0_12px_rgba(218,165,32,0.5)] cursor-pointer before:absolute before:inset-0 before:bg-gradient-to-br before:from-white/40 before:via-transparent before:to-transparent before:rounded-full before:pointer-events-none"
             >
               <div className="p-1.5 rounded-full bg-white/10 shrink-0">
                 <item.icon className="w-4 h-4 text-[#E8D5A3]" />
@@ -243,21 +243,21 @@ export const AppHonorBoard = memo(() => {
             </div>
           ))}
 
-          {/* Dynamic Token Balances - Total Money Section */}
+          {/* Dynamic Token Balances - Total Money Section with stacked layout */}
           {stats?.tokenBalances && stats.tokenBalances.length > 0 && (
             stats.tokenBalances.map((token, index) => (
               <div 
                 key={token.symbol} 
-                className="flex items-center gap-3 py-2.5 px-4 rounded-full bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.2),inset_0_-1px_0_rgba(0,0,0,0.15),0_0_8px_rgba(218,165,32,0.4)] transition-all duration-300 hover:scale-[1.02] cursor-pointer"
+                className="relative overflow-hidden flex items-center gap-3 py-2.5 px-4 rounded-full bg-gradient-to-b from-[#22c55e] via-[#16a34a] to-[#166534] border-[2px] border-[#DAA520] shadow-[inset_0_2px_4px_rgba(255,255,255,0.6),inset_0_-2px_4px_rgba(0,0,0,0.15),0_0_12px_rgba(255,255,255,0.3),0_0_8px_rgba(218,165,32,0.4)] transition-all duration-300 hover:scale-[1.02] hover:shadow-[inset_0_3px_6px_rgba(255,255,255,0.7),0_0_20px_rgba(255,255,255,0.5),0_0_12px_rgba(218,165,32,0.5)] cursor-pointer before:absolute before:inset-0 before:bg-gradient-to-br before:from-white/40 before:via-transparent before:to-transparent before:rounded-full before:pointer-events-none"
               >
                 <div className="p-1.5 rounded-full bg-white/10 shrink-0">
                   <Coins className="w-4 h-4 text-[#E8D5A3]" />
                 </div>
-                <div className="flex-1 flex items-center justify-between gap-2 min-w-0">
+                <div className="flex-1 flex flex-col gap-0.5 min-w-0">
                   <p className="text-[#E8D5A3] text-xs uppercase font-semibold whitespace-nowrap">
                     {index === 0 ? t('totalMoney') : `Circulating ${token.symbol}`}
                   </p>
-                  <p className="text-[#FFD700] font-bold text-sm flex items-center gap-1 shrink-0 drop-shadow-[0_0_4px_rgba(255,215,0,0.4)]">
+                  <p className="text-[#FFD700] font-bold text-base flex items-center gap-1 drop-shadow-[0_0_4px_rgba(255,215,0,0.4)]">
                     {formatNumber(token.amount, token.symbol === 'CAMLY' ? 0 : 6)}
                     <img 
                       src={token.logoPath} 
