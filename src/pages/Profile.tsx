@@ -19,6 +19,7 @@ import { MoreHorizontal, MapPin, Briefcase, GraduationCap, Heart, Clock, Message
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { useConversations } from '@/hooks/useConversations';
 import { toast } from 'sonner';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 interface FriendPreview {
   id: string;
@@ -30,6 +31,7 @@ interface FriendPreview {
 const Profile = () => {
   const navigate = useNavigate();
   const { userId, username } = useParams();
+  const { t, language } = useLanguage();
   const [profile, setProfile] = useState<any>(null);
   const [allPosts, setAllPosts] = useState<any[]>([]); // Combined and sorted posts
   const [originalPosts, setOriginalPosts] = useState<any[]>([]); // For photos grid
@@ -264,9 +266,9 @@ const Profile = () => {
       if (error) throw error;
       
       setProfile((prev: any) => ({ ...prev, pinned_post_id: postId }));
-      toast.success('Đã ghim bài viết');
+      toast.success(t('postPinned'));
     } catch (error) {
-      toast.error('Không thể ghim bài viết');
+      toast.error(t('cannotPinPost'));
     }
   };
 
@@ -280,9 +282,9 @@ const Profile = () => {
       if (error) throw error;
       
       setProfile((prev: any) => ({ ...prev, pinned_post_id: null }));
-      toast.success('Đã bỏ ghim bài viết');
+      toast.success(t('postUnpinned'));
     } catch (error) {
-      toast.error('Không thể bỏ ghim bài viết');
+      toast.error(t('cannotUnpinPost'));
     }
   };
 
@@ -320,7 +322,7 @@ const Profile = () => {
         <FacebookNavbar />
         <main className="pt-14">
           <div className="max-w-5xl mx-auto px-4 text-center py-12">
-            <p className="text-muted-foreground">Không tìm thấy trang cá nhân</p>
+            <p className="text-muted-foreground">{t('profileNotFound')}</p>
           </div>
         </main>
       </div>
@@ -335,7 +337,7 @@ const Profile = () => {
       {viewAsPublic && (
         <div className="fixed top-14 left-0 right-0 z-50 bg-primary text-primary-foreground py-3 px-4 flex items-center justify-center gap-4 shadow-lg">
           <Eye className="w-5 h-5" />
-          <span className="font-medium">Bạn đang xem trang cá nhân với tư cách người khác</span>
+          <span className="font-medium">{t('viewingAsOther')}</span>
           <Button 
             size="sm" 
             variant="secondary" 
@@ -343,7 +345,7 @@ const Profile = () => {
             className="ml-2"
           >
             <X className="w-4 h-4 mr-1" />
-            Thoát chế độ xem
+            {t('exitViewMode')}
           </Button>
         </div>
       )}
@@ -417,7 +419,7 @@ const Profile = () => {
                     {profile?.full_name || profile?.username}
                   </h1>
                   <p className="text-base sm:text-lg text-muted-foreground font-medium">
-                    {friendsCount.toLocaleString('vi-VN')} người bạn
+                    {friendsCount.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')} {t('friendsSuffix')}
                   </p>
                   
                   {/* Bio text - full display with wrap */}
@@ -469,7 +471,7 @@ const Profile = () => {
                       disabled={createDirectConversation.isPending}
                     >
                       <MessageCircle className="w-4 h-4 mr-2" />
-                      Nhắn tin
+                      {t('sendMessage')}
                     </Button>
                     <Button variant="secondary" size="icon" className="h-10 w-10">
                       <MoreHorizontal className="w-4 h-4" />
@@ -486,38 +488,38 @@ const Profile = () => {
                     value="posts" 
                     className="px-4 py-4 rounded-t-lg border-b-[3px] border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary hover:bg-muted/50 font-semibold text-base whitespace-nowrap transition-colors"
                   >
-                    Tất cả
+                    {t('allPosts')}
                   </TabsTrigger>
                   <TabsTrigger 
                     value="about" 
                     className="px-4 py-4 rounded-t-lg border-b-[3px] border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary hover:bg-muted/50 font-semibold text-base whitespace-nowrap transition-colors"
                   >
-                    Giới thiệu
+                    {t('about')}
                   </TabsTrigger>
                   <TabsTrigger 
                     value="friends" 
                     className="px-4 py-4 rounded-t-lg border-b-[3px] border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary hover:bg-muted/50 font-semibold text-base whitespace-nowrap transition-colors"
                   >
-                    Bạn bè
+                    {t('friends')}
                   </TabsTrigger>
                   <TabsTrigger 
                     value="photos" 
                     className="px-4 py-4 rounded-t-lg border-b-[3px] border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary hover:bg-muted/50 font-semibold text-base whitespace-nowrap transition-colors"
                   >
-                    Ảnh
+                    {t('photos')}
                   </TabsTrigger>
                   <TabsTrigger 
                     value="videos" 
                     className="px-4 py-4 rounded-t-lg border-b-[3px] border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary hover:bg-muted/50 font-semibold text-base whitespace-nowrap transition-colors"
                   >
-                    Reels
+                    {t('reels')}
                   </TabsTrigger>
                   {showPrivateElements && (
                     <TabsTrigger 
                       value="edit" 
                       className="px-4 py-4 rounded-t-lg border-b-[3px] border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary hover:bg-muted/50 font-semibold text-base whitespace-nowrap transition-colors"
                     >
-                      Xem thêm ▼
+                      {t('moreOptions')} ▼
                     </TabsTrigger>
                   )}
                   <div className="flex-1" />
@@ -534,7 +536,7 @@ const Profile = () => {
                         {/* Intro Card - Facebook style */}
                         <div className="bg-card rounded-xl shadow-sm border border-border p-4">
                         <div className="flex items-center justify-between mb-3">
-                            <h3 className="font-bold text-lg text-foreground">Thông tin cá nhân</h3>
+                            <h3 className="font-bold text-lg text-foreground">{t('personalInfo')}</h3>
                             {showPrivateElements && (
                               <Button 
                                 variant="ghost" 
@@ -550,23 +552,23 @@ const Profile = () => {
                           <div className="space-y-3">
                             <div className="flex items-center gap-3 text-foreground">
                               <MapPin className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-                              <span>Sống ở <strong>Việt Nam</strong></span>
+                              <span>{t('livesIn')} <strong>Việt Nam</strong></span>
                             </div>
                             <div className="flex items-center gap-3 text-foreground">
                               <Briefcase className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-                              <span>Làm việc tại <strong>FUN Ecosystem</strong></span>
+                              <span>{t('worksAt')} <strong>FUN Ecosystem</strong></span>
                             </div>
                             <div className="flex items-center gap-3 text-foreground">
                               <GraduationCap className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-                              <span>Học tại <strong>Đại học Vũ Trụ</strong></span>
+                              <span>{t('studiesAt')} <strong>Cosmic University</strong></span>
                             </div>
                             <div className="flex items-center gap-3 text-foreground">
                               <Heart className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-                              <span>Độc thân</span>
+                              <span>{t('single')}</span>
                             </div>
                             <div className="flex items-center gap-3 text-foreground">
                               <Clock className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-                              <span>Tham gia từ {new Date(profile?.created_at).toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })}</span>
+                              <span>{t('joinedSince')} {new Date(profile?.created_at).toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US', { month: 'long', year: 'numeric' })}</span>
                             </div>
                           </div>
                           
@@ -576,7 +578,7 @@ const Profile = () => {
                               className="w-full mt-4"
                               onClick={() => navigateToTab('edit')}
                             >
-                              Chỉnh sửa chi tiết
+                              {t('editDetails')}
                             </Button>
                           )}
                         </div>
@@ -584,12 +586,12 @@ const Profile = () => {
                         {/* Photos Card - Facebook style */}
                         <div className="bg-card rounded-xl shadow-sm border border-border p-4">
                           <div className="flex justify-between items-center mb-3">
-                            <h3 className="font-bold text-lg text-foreground">Ảnh</h3>
+                            <h3 className="font-bold text-lg text-foreground">{t('photos')}</h3>
                             <button 
                               className="text-primary hover:underline text-sm font-medium"
                               onClick={() => navigateToTab('photos')}
                             >
-                              Xem tất cả ảnh
+                              {t('viewAllPhotos')}
                             </button>
                           </div>
                           <div className="grid grid-cols-3 gap-1 rounded-lg overflow-hidden">
@@ -604,7 +606,7 @@ const Profile = () => {
                             ))}
                             {originalPosts.filter(p => p.image_url).length === 0 && (
                               <div className="col-span-3 py-8 text-center text-muted-foreground text-sm">
-                                Chưa có ảnh nào
+                                {t('noPhotosYet')}
                               </div>
                             )}
                           </div>
@@ -614,14 +616,14 @@ const Profile = () => {
                         <div className="bg-card rounded-xl shadow-sm border border-border p-4">
                           <div className="flex justify-between items-center mb-3">
                             <div>
-                              <h3 className="font-bold text-lg text-foreground">Bạn bè</h3>
-                              <p className="text-sm text-muted-foreground">{friendsCount} người bạn</p>
+                              <h3 className="font-bold text-lg text-foreground">{t('friends')}</h3>
+                              <p className="text-sm text-muted-foreground">{friendsCount} {t('friendsSuffix')}</p>
                             </div>
                             <button 
                               className="text-primary hover:underline text-sm font-medium"
                               onClick={() => navigateToTab('friends')}
                             >
-                              Xem tất cả bạn bè
+                              {t('viewAllFriends')}
                             </button>
                           </div>
                           <div className="grid grid-cols-3 gap-2">
@@ -645,7 +647,7 @@ const Profile = () => {
                               ))
                             ) : (
                               <div className="col-span-3 py-8 text-center text-muted-foreground text-sm">
-                                Chưa có bạn bè
+                                {t('noFriendsYet')}
                               </div>
                             )}
                           </div>
@@ -670,7 +672,7 @@ const Profile = () => {
                         
                         {sortedPosts.length === 0 ? (
                           <div className="bg-card rounded-xl shadow-sm border border-border p-8 text-center text-muted-foreground">
-                            Chưa có bài viết nào
+                            {t('noPostsYet')}
                           </div>
                         ) : (
                           sortedPosts.map((item) => {
@@ -679,7 +681,7 @@ const Profile = () => {
                             return item._type === 'shared' ? (
                               <div key={`shared-${item.id}`} className="space-y-2">
                                 <div className="flex items-center gap-2 text-sm text-muted-foreground px-2">
-                                  <span className="font-semibold text-primary">Đã share</span>
+                                  <span className="font-semibold text-primary">{t('sharedLabel')}</span>
                                 </div>
                                 <FacebookPostCard 
                                   post={item.posts} 
@@ -693,7 +695,7 @@ const Profile = () => {
                                 {isPinned && (
                                   <div className="flex items-center gap-2 text-sm text-muted-foreground px-4 py-2 bg-secondary/50 rounded-t-xl border-b border-border">
                                     <Pin className="w-4 h-4 text-primary" />
-                                    <span className="font-medium">Bài viết được ghim</span>
+                                    <span className="font-medium">{t('pinnedPost')}</span>
                                   </div>
                                 )}
                                 <FacebookPostCard 
@@ -714,23 +716,23 @@ const Profile = () => {
 
                       <TabsContent value="about" className="mt-0">
                         <div className="bg-card rounded-xl shadow-sm border border-border p-6">
-                          <h3 className="font-bold text-xl mb-4 text-foreground">Giới thiệu</h3>
+                          <h3 className="font-bold text-xl mb-4 text-foreground">{t('about')}</h3>
                           <div className="space-y-4">
                             <div className="flex items-center gap-3 text-foreground">
                               <Briefcase className="w-6 h-6 text-muted-foreground" />
-                              <span>Làm việc tại <strong>FUN Ecosystem</strong></span>
+                              <span>{t('worksAt')} <strong>FUN Ecosystem</strong></span>
                             </div>
                             <div className="flex items-center gap-3 text-foreground">
                               <GraduationCap className="w-6 h-6 text-muted-foreground" />
-                              <span>Học tại <strong>Đại học Vũ Trụ</strong></span>
+                              <span>{t('studiesAt')} <strong>Cosmic University</strong></span>
                             </div>
                             <div className="flex items-center gap-3 text-foreground">
                               <MapPin className="w-6 h-6 text-muted-foreground" />
-                              <span>Sống tại <strong>Việt Nam</strong></span>
+                              <span>{t('livesIn')} <strong>Việt Nam</strong></span>
                             </div>
                             <div className="flex items-center gap-3 text-foreground">
                               <Heart className="w-6 h-6 text-muted-foreground" />
-                              <span>Độc thân</span>
+                              <span>{t('single')}</span>
                             </div>
                           </div>
                         </div>
@@ -738,14 +740,14 @@ const Profile = () => {
 
                       <TabsContent value="friends" className="mt-0">
                         <div className="bg-card rounded-xl shadow-sm border border-border p-6">
-                          <h3 className="font-bold text-xl mb-4 text-foreground">Bạn bè</h3>
+                          <h3 className="font-bold text-xl mb-4 text-foreground">{t('friends')}</h3>
                           <FriendsList userId={profile.id} />
                         </div>
                       </TabsContent>
 
                       <TabsContent value="photos" className="mt-0">
                         <div className="bg-card rounded-xl shadow-sm border border-border p-6">
-                          <h3 className="font-bold text-xl mb-4 text-foreground">Ảnh</h3>
+                          <h3 className="font-bold text-xl mb-4 text-foreground">{t('photos')}</h3>
                           <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                             {originalPosts.filter(p => p.image_url).map((post, i) => (
                               <img 
@@ -757,14 +759,14 @@ const Profile = () => {
                             ))}
                           </div>
                           {originalPosts.filter(p => p.image_url).length === 0 && (
-                            <p className="text-center text-muted-foreground py-8">Chưa có ảnh nào</p>
+                            <p className="text-center text-muted-foreground py-8">{t('noPhotosYet')}</p>
                           )}
                         </div>
                       </TabsContent>
 
                       <TabsContent value="videos" className="mt-0">
                         <div className="bg-card rounded-xl shadow-sm border border-border p-6">
-                          <h3 className="font-bold text-xl mb-4 text-foreground">Reels</h3>
+                          <h3 className="font-bold text-xl mb-4 text-foreground">{t('reels')}</h3>
                           <div className="grid grid-cols-2 gap-4">
                             {originalPosts.filter(p => p.video_url).map((post, i) => (
                               <video 
@@ -776,7 +778,7 @@ const Profile = () => {
                             ))}
                           </div>
                           {originalPosts.filter(p => p.video_url).length === 0 && (
-                            <p className="text-center text-muted-foreground py-8">Chưa có reels nào</p>
+                            <p className="text-center text-muted-foreground py-8">{t('noReelsYet')}</p>
                           )}
                         </div>
                       </TabsContent>
