@@ -355,12 +355,12 @@ const Profile = () => {
         <div className="max-w-[1100px] mx-auto px-0 md:px-4">
           <div className="relative">
             {/* Cover Photo Container with rounded corners */}
-            <div className="h-[200px] sm:h-[300px] md:h-[400px] relative overflow-visible md:rounded-b-xl">
+            <div className="h-[200px] sm:h-[300px] md:h-[400px] relative overflow-hidden rounded-2xl mx-2 md:mx-0">
               {profile?.cover_url ? (
                 <LazyImage 
                   src={profile.cover_url} 
                   alt="Cover" 
-                  className="w-full h-full"
+                  className="w-full h-full object-cover"
                   transformPreset="cover"
                   priority
                 />
@@ -631,16 +631,20 @@ const Profile = () => {
                               friendsPreview.map((friend) => (
                                 <div 
                                   key={friend.id} 
-                                  className="text-center cursor-pointer"
+                                  className="text-center cursor-pointer hover:opacity-80 transition-opacity"
                                   onClick={() => navigate(`/@${friend.username}`)}
                                 >
-                                  <Avatar className="w-full aspect-square rounded-lg mb-1">
-                                    {friend.avatar_url && <AvatarImage src={friend.avatar_url} />}
-                                    <AvatarFallback className="rounded-lg text-lg bg-muted">
+                                  <Avatar className="w-full aspect-square rounded-lg mb-1 border-2 border-border overflow-hidden">
+                                    <AvatarImage 
+                                      src={friend.avatar_url || undefined} 
+                                      sizeHint="md"
+                                      className="object-cover"
+                                    />
+                                    <AvatarFallback className="rounded-lg text-lg bg-gradient-to-br from-primary/20 to-gold/20 text-foreground">
                                       {(friend.full_name || friend.username)?.[0]?.toUpperCase() || 'U'}
                                     </AvatarFallback>
                                   </Avatar>
-                                  <p className="text-xs text-foreground truncate">
+                                  <p className="text-xs text-foreground truncate font-medium">
                                     {friend.full_name || friend.username}
                                   </p>
                                 </div>
