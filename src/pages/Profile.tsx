@@ -351,110 +351,88 @@ const Profile = () => {
           {/* Profile Info Section - Facebook 2025 Layout */}
           <div className="bg-card border-b border-border shadow-sm md:rounded-b-xl">
             <div className="px-4 md:px-8 pb-4">
-              {/* Avatar + Info Row */}
-              <div className="flex flex-col md:flex-row md:items-end gap-4">
-                {/* Avatar - Overlapping cover photo */}
-                <div className="-mt-16 sm:-mt-20 md:-mt-24 relative z-10 flex justify-center md:justify-start">
-                  {showPrivateElements ? (
-                    <div className="ring-4 ring-card rounded-full">
-                      <AvatarEditor
-                        userId={currentUserId}
-                        currentAvatarUrl={profile?.avatar_url}
-                        username={profile?.username}
-                        onAvatarUpdated={(newUrl) => setProfile({ ...profile, avatar_url: newUrl })}
-                        size="large"
-                      />
-                    </div>
-                  ) : (
-                    <Avatar className="w-32 h-32 sm:w-36 sm:h-36 md:w-44 md:h-44 ring-4 ring-card shadow-lg">
-                      {profile?.avatar_url && <AvatarImage src={profile.avatar_url} sizeHint="lg" />}
-                      <AvatarFallback className="text-4xl md:text-5xl bg-primary text-primary-foreground">
-                        {profile?.username?.[0]?.toUpperCase() || 'U'}
-                      </AvatarFallback>
-                    </Avatar>
-                  )}
-                </div>
+            {/* Avatar + Info Row - Aligned horizontally */}
+            <div className="flex flex-col md:flex-row md:items-center gap-4">
+              {/* Avatar - Overlapping cover photo with luxurious green border */}
+              <div className="-mt-16 sm:-mt-20 md:-mt-24 relative z-10 flex justify-center md:justify-start">
+                {showPrivateElements ? (
+                  <div className="ring-4 ring-primary rounded-full shadow-[0_0_20px_rgba(34,197,94,0.5)]">
+                    <AvatarEditor
+                      userId={currentUserId}
+                      currentAvatarUrl={profile?.avatar_url}
+                      username={profile?.username}
+                      onAvatarUpdated={(newUrl) => setProfile({ ...profile, avatar_url: newUrl })}
+                      size="large"
+                    />
+                  </div>
+                ) : (
+                  <Avatar className="w-32 h-32 sm:w-36 sm:h-36 md:w-44 md:h-44 ring-4 ring-primary shadow-lg shadow-primary/30">
+                    {profile?.avatar_url && <AvatarImage src={profile.avatar_url} sizeHint="lg" />}
+                    <AvatarFallback className="text-4xl md:text-5xl bg-primary text-primary-foreground">
+                      {profile?.username?.[0]?.toUpperCase() || 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                )}
+              </div>
 
-                {/* Name, Friends, Bio, Info - Facebook style inline */}
-                <div className="flex-1 text-center md:text-left pb-2 md:pb-4 md:ml-4">
-                  <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground">
-                    {profile?.full_name || profile?.username}
-                  </h1>
-                  <p className="text-sm sm:text-base text-muted-foreground font-medium">
-                    {friendsCount.toLocaleString('vi-VN')} người bạn
+              {/* Name, Friends, Bio, Info - Facebook style inline, aligned with avatar center */}
+              <div className="flex-1 text-center md:text-left md:ml-4">
+                <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground">
+                  {profile?.full_name || profile?.username}
+                </h1>
+                <p className="text-sm sm:text-base text-muted-foreground font-medium">
+                  {friendsCount.toLocaleString('vi-VN')} người bạn
+                </p>
+                
+                {/* Bio text */}
+                {profile?.bio && (
+                  <p className="text-sm text-muted-foreground mt-1 max-w-lg">
+                    {profile.bio}
                   </p>
-                  
-                  {/* Bio text */}
-                  {profile?.bio && (
-                    <p className="text-sm text-muted-foreground mt-1 max-w-lg">
-                      {profile.bio}
-                    </p>
-                  )}
-                  
-                  {/* Info badges inline - Facebook style */}
-                  <div className="flex flex-wrap justify-center md:justify-start gap-x-4 gap-y-1 mt-2 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <MapPin className="w-4 h-4" />
-                      <span>Việt Nam</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Briefcase className="w-4 h-4" />
-                      <span>FUN Ecosystem</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Clock className="w-4 h-4" />
-                      <span>Tham gia {new Date(profile?.created_at).toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })}</span>
-                    </div>
+                )}
+                
+                {/* Info badges inline - Facebook style */}
+                <div className="flex flex-wrap justify-center md:justify-start gap-x-4 gap-y-1 mt-2 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-1">
+                    <MapPin className="w-4 h-4" />
+                    <span>Việt Nam</span>
                   </div>
-                  
-                  {/* Friend Avatars Stack */}
-                  <div className="hidden md:flex -space-x-2 mt-3">
-                    {[1, 2, 3, 4, 5, 6].map((i) => (
-                      <div key={i} className="w-8 h-8 rounded-full bg-muted border-2 border-card" />
-                    ))}
+                  <div className="flex items-center gap-1">
+                    <Briefcase className="w-4 h-4" />
+                    <span>FUN Ecosystem</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Clock className="w-4 h-4" />
+                    <span>Tham gia {new Date(profile?.created_at).toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })}</span>
                   </div>
                 </div>
+                
+                {/* Friend Avatars Stack */}
+                <div className="hidden md:flex -space-x-2 mt-3">
+                  {[1, 2, 3, 4, 5, 6].map((i) => (
+                    <div key={i} className="w-8 h-8 rounded-full bg-muted border-2 border-card" />
+                  ))}
+                </div>
+              </div>
 
-                {/* Action Buttons - Facebook style right aligned */}
-                <div className="flex flex-wrap justify-center md:justify-end gap-2 pb-2 md:pb-4">
-                  {showPrivateElements ? (
-                    <>
-                      <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-4 h-10">
-                        <Plus className="w-4 h-4 mr-2" />
-                        Thêm vào tin
-                      </Button>
-                      <Button variant="secondary" className="font-semibold px-4 h-10">
-                        <PenSquare className="w-4 h-4 mr-2" />
-                        <span className="hidden sm:inline">Chỉnh sửa trang cá nhân</span>
-                        <span className="sm:hidden">Sửa</span>
-                      </Button>
-                      <Button 
-                        variant="secondary" 
-                        size="icon"
-                        className="h-10 w-10"
-                        onClick={() => setViewAsPublic(true)}
-                      >
-                        <Eye className="w-4 h-4" />
-                      </Button>
-                    </>
-                  ) : isOwnProfile && viewAsPublic ? null : (
-                    <>
-                      <FriendRequestButton userId={profile.id} currentUserId={currentUserId} />
-                      <Button 
-                        variant="secondary" 
-                        className="font-semibold px-4 h-10"
-                        onClick={handleStartChat}
-                        disabled={createDirectConversation.isPending}
-                      >
-                        <MessageCircle className="w-4 h-4 mr-2" />
-                        Nhắn tin
-                      </Button>
-                      <Button variant="secondary" size="icon" className="h-10 w-10">
-                        <MoreHorizontal className="w-4 h-4" />
-                      </Button>
-                    </>
-                  )}
-                </div>
+                {/* Action Buttons - Only show for other users */}
+                {!showPrivateElements && !viewAsPublic && (
+                  <div className="flex flex-wrap justify-center md:justify-end gap-2">
+                    <FriendRequestButton userId={profile.id} currentUserId={currentUserId} />
+                    <Button 
+                      variant="secondary" 
+                      className="font-semibold px-4 h-10"
+                      onClick={handleStartChat}
+                      disabled={createDirectConversation.isPending}
+                    >
+                      <MessageCircle className="w-4 h-4 mr-2" />
+                      Nhắn tin
+                    </Button>
+                    <Button variant="secondary" size="icon" className="h-10 w-10">
+                      <MoreHorizontal className="w-4 h-4" />
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
 
