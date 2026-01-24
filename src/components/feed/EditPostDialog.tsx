@@ -174,12 +174,20 @@ export const EditPostDialog = ({ post, isOpen, onClose, onPostUpdated, currentUs
 
     setLoading(true);
     try {
+      // Get session for access token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('Vui lòng đăng nhập để cập nhật bài viết');
+        setLoading(false);
+        return;
+      }
+
       let imageUrl = imagePreview;
       let videoUrl = videoPreview;
 
       // Upload new image if selected
       if (imageFile) {
-        const result = await uploadToR2(imageFile, 'posts');
+        const result = await uploadToR2(imageFile, 'posts', undefined, session.access_token);
         imageUrl = result.url;
         
         // Delete old image from R2 if exists and it's different

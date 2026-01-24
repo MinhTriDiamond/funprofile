@@ -59,8 +59,16 @@ export function AvatarEditor({
     setCropImage(null);
 
     try {
+      // Get session for access token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('Vui lòng đăng nhập để tải ảnh lên');
+        setIsUploading(false);
+        return;
+      }
+
       const file = new File([croppedImageBlob], 'avatar.jpg', { type: 'image/jpeg' });
-      const result = await uploadToR2(file, 'avatars', `${userId}/avatar-${Date.now()}.jpg`);
+      const result = await uploadToR2(file, 'avatars', `${userId}/avatar-${Date.now()}.jpg`, session.access_token);
 
       // Update profile in database
       const { error } = await supabase
