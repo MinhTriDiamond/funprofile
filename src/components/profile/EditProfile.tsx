@@ -352,27 +352,6 @@ export const EditProfile = () => {
         </CardContent>
       </Card>
 
-      {/* Danger Zone */}
-      <Card className="border-destructive/50 bg-destructive/5 mt-6">
-        <CardHeader>
-          <CardTitle className="text-destructive flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5" />
-            {t('dangerZone')}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            {t('deleteAccountWarning')}
-          </p>
-          <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
-            <li>{t('deleteAccountItem1')}</li>
-            <li>{t('deleteAccountItem2')}</li>
-            <li>{t('deleteAccountItem3')}</li>
-            <li>{t('deleteAccountItem4')}</li>
-          </ul>
-          <DeleteAccountDialog username={username} />
-        </CardContent>
-      </Card>
     </>
   );
 };
