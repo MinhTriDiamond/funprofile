@@ -11,6 +11,7 @@ import { useFeedPosts } from '@/hooks/useFeedPosts';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import ScrollToTopButton from '@/components/common/ScrollToTopButton';
 import { Loader2 } from 'lucide-react';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 // Lightweight skeleton components
 const SidebarSkeleton = memo(() => (
@@ -43,6 +44,7 @@ PostSkeleton.displayName = 'PostSkeleton';
 
 const Feed = () => {
   const [currentUserId, setCurrentUserId] = useState('');
+  const { t } = useLanguage();
   const { 
     posts, 
     postStats, 
@@ -116,7 +118,7 @@ const Feed = () => {
 
               {!currentUserId && (
                 <div className="fb-card p-4 mb-4 text-center">
-                  <p className="text-muted-foreground">Đăng nhập để tạo bài viết</p>
+                  <p className="text-muted-foreground">{t('loginToPost')}</p>
                 </div>
               )}
 
@@ -140,17 +142,16 @@ const Feed = () => {
                     />
                   ))}
 
-                  {/* Infinite scroll trigger */}
                   <div ref={loadMoreRef} className="py-4">
                     {isFetchingNextPage && (
                       <div className="flex justify-center items-center gap-2 text-muted-foreground">
                         <Loader2 className="w-5 h-5 animate-spin" />
-                        <span>Đang tải thêm bài viết...</span>
+                        <span>{t('loadingMorePosts')}</span>
                       </div>
                     )}
                     {!hasNextPage && posts.length > 0 && (
                       <div className="text-center text-muted-foreground text-sm py-2">
-                        Bạn đã xem hết tất cả bài viết 🎉
+                        {t('noMorePostsMessage')} 🎉
                       </div>
                     )}
                   </div>
