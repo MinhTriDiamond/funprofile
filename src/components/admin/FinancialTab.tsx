@@ -221,8 +221,17 @@ const FinancialTab = () => {
   const [selectedUserForRecalc, setSelectedUserForRecalc] = useState<{userId: string, clientId: string, username: string} | null>(null);
   const [activeTab, setActiveTab] = useState("users");
   const [transactionDialogUser, setTransactionDialogUser] = useState<string | null>(null);
+  const [currentAdminId, setCurrentAdminId] = useState<string | null>(null);
 
   useEffect(() => {
+    // Get current admin ID
+    const fetchAdminId = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setCurrentAdminId(user.id);
+      }
+    };
+    fetchAdminId();
     loadData();
   }, []);
 
@@ -233,10 +242,16 @@ const FinancialTab = () => {
 
   // Recalculate from discrepancy row
   const handleRecalculateFromDiscrepancy = async (userId: string, clientId: string) => {
+    if (!currentAdminId) {
+      toast.error("Admin ID not found");
+      return;
+    }
+    
     try {
       const { error } = await supabase.rpc('recalculate_user_financial', {
         p_user_id: userId,
-        p_client_id: clientId
+        p_client_id: clientId,
+        p_admin_id: currentAdminId
       });
       
       if (error) throw error;
@@ -441,9 +456,16 @@ const FinancialTab = () => {
   };
 
   const runReconciliation = async () => {
+    if (!currentAdminId) {
+      toast.error("Admin ID not found");
+      return;
+    }
+    
     setRunningReconciliation(true);
     try {
-      const { data, error } = await supabase.rpc('run_financial_reconciliation');
+      const { data, error } = await supabase.rpc('run_financial_reconciliation', {
+        p_admin_id: currentAdminId
+      });
       
       if (error) throw error;
       
@@ -461,10 +483,16 @@ const FinancialTab = () => {
   const recalculateUserBalance = async () => {
     if (!selectedUserForRecalc) return;
     
+    if (!currentAdminId) {
+      toast.error("Admin ID not found");
+      return;
+    }
+    
     try {
       const { data, error } = await supabase.rpc('recalculate_user_financial', {
         p_user_id: selectedUserForRecalc.userId,
-        p_client_id: selectedUserForRecalc.clientId === 'all' ? null : selectedUserForRecalc.clientId
+        p_client_id: selectedUserForRecalc.clientId === 'all' ? null : selectedUserForRecalc.clientId,
+        p_admin_id: currentAdminId
       });
       
       if (error) throw error;
