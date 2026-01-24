@@ -11,6 +11,7 @@ import {
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
+import { useLanguage } from '@/i18n/LanguageContext';
 import { CommentSection } from './CommentSection';
 import { ImageViewer } from './ImageViewer';
 import { EditPostDialog } from './EditPostDialog';
@@ -79,6 +80,7 @@ const FacebookPostCardComponent = ({
   viewAsPublic = false,
 }: FacebookPostCardProps) => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   
   // Show pin options only on own profile, when not in View As mode, and for user's own posts
   const canShowPinOption = isOwnProfile && !viewAsPublic && post.user_id === currentUserId;
