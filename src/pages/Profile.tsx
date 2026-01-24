@@ -347,9 +347,9 @@ const Profile = () => {
           <div className="bg-card border-b border-border shadow-sm md:rounded-b-xl">
             <div className="px-4 md:px-8 pb-4">
               {/* Avatar + Info Row */}
-              <div className="flex flex-col md:flex-row md:items-end gap-4">
+              <div className="flex flex-col md:flex-row md:items-start gap-4">
                 {/* Avatar - Overlapping cover photo */}
-                <div className="-mt-16 sm:-mt-20 md:-mt-24 relative z-10 flex justify-center md:justify-start">
+                <div className="-mt-16 sm:-mt-20 md:-mt-24 relative z-10 flex justify-center md:justify-start flex-shrink-0">
                   {showPrivateElements ? (
                     <div className="ring-4 ring-emerald-500 rounded-full shadow-[0_0_20px_rgba(16,185,129,0.5)]">
                       <AvatarEditor
@@ -370,8 +370,8 @@ const Profile = () => {
                   )}
                 </div>
 
-                {/* Name, Friends, Bio, Info - Facebook style inline */}
-                <div className="flex-1 text-center md:text-left pb-2 md:pb-4 md:ml-4">
+                {/* Name, Friends, Bio, Info - Facebook style inline - aligned to top */}
+                <div className="flex-1 text-center md:text-left pt-2 md:pt-4 md:ml-4">
                   <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground">
                     {profile?.full_name || profile?.username}
                   </h1>
@@ -406,8 +406,8 @@ const Profile = () => {
                   </div>
                 </div>
 
-                {/* Honor Board - right aligned, parallel to avatar */}
-                <div className="hidden md:flex justify-end pb-2 md:pb-4">
+                {/* Honor Board - right aligned, moved down with top margin */}
+                <div className="hidden md:flex justify-end mt-4 md:mt-6">
                   <div className="w-full max-w-[600px]">
                     <CoverHonorBoard 
                       userId={profile.id}
