@@ -1,139 +1,180 @@
 
-# Plan: Phóng to nút chuông thông báo và kiểm tra tổng thể Fun Profile
+# Kế hoạch: Sửa lỗi toàn bộ các nút không hoạt động trên trang Profile
 
 ## Tổng quan vấn đề
 
-Người dùng yêu cầu:
-1. **Nút chuông thông báo lớn hơn** - Giống kích thước các nút như Home
-2. **Hiển thị badge thông báo** - Như Facebook
-3. **Kiểm tra và sửa lỗi tổng thể** trang Fun Profile
+Sau khi kiểm tra kỹ code và cấu trúc z-index, tôi đã xác định được các vấn đề sau:
 
-## Phân tích hiện trạng
+### Vấn đề 1: Nút "Chỉnh sửa ảnh bìa" bị che bởi overlay
+- Nút **Edit Cover** có `z-[100]`
+- **CoverHonorBoard** có `z-20` - thấp hơn nút
+- Tuy nhiên, khi nút được bấm, overlay đóng menu (`z-[150]`) xuất hiện và có thể chặn các tương tác khác
 
-### Kích thước hiện tại của nút chuông:
-| Màn hình | Kích thước button | Kích thước icon | So sánh với Home |
-|----------|-------------------|-----------------|------------------|
-| Desktop header | `h-14 w-14` | `w-7 h-7` | ✅ Bằng nhau |
-| Center nav style | `max-w-[100px]` | `w-6 h-6` | ✅ Bằng nhau |
-| **Mobile/Tablet** | `h-8 w-8` / `sm:h-10 w-10` | `w-4 h-4` | ❌ **Nhỏ hơn** |
+### Vấn đề 2: Màu chữ nút "Chỉnh sửa ảnh bìa" khó nhìn
+- Nút có class `text-gray-800` trên nền ảnh bìa tối
+- Người dùng yêu cầu đổi sang **màu trắng**
 
-### Vấn đề phát hiện:
-1. **Mobile notification bell quá nhỏ** - Icon chỉ `w-4 h-4` trong khi các nút khác trên MobileBottomNav dùng `w-6 h-6`
-2. **Badge đã có sẵn** - Hiển thị số thông báo chưa đọc với màu vàng/xanh
-3. **Profile page hoạt động tốt** - Không có lỗi console, network requests bình thường
+### Vấn đề 3: Nút Like/Comment không hoạt động trên trang Profile
+- `FacebookPostCard` nhận `currentUserId` từ `Profile.tsx`
+- Nếu `currentUserId` rỗng (do session chưa load), các nút sẽ không hoạt động
+- `ReactionButton` yêu cầu `currentUserId` để ghi reaction vào database
 
-## Giải pháp đề xuất
+### Vấn đề 4: Cấu trúc z-index không nhất quán
+- Cover photo container: `overflow-hidden` → các phần tử con không thể thoát ra
+- Cần chuyển thành `overflow-visible` để các dropdown hoạt động đúng
 
-### Phần 1: Phóng to nút chuông trên Mobile Header
+## Giải pháp chi tiết
 
-**File: `src/components/layout/NotificationDropdown.tsx`**
+### Phần 1: Sửa nút "Chỉnh sửa ảnh bìa"
 
-Thay đổi kích thước nút chuông trên mobile/tablet từ `h-8 w-8` lên `h-10 w-10` và icon từ `w-4 h-4` lên `w-5 h-5`:
+**File: `src/components/profile/CoverPhotoEditor.tsx`**
 
-```
-Trước (dòng 244-259):
-- Button: "h-8 w-8 sm:h-10 sm:w-10"  
-- Icon: "w-4 h-4"
-
-Sau:
-- Button: "h-10 w-10" (bỏ responsive, cố định kích thước lớn)
-- Icon: "w-5 h-5" (to hơn, dễ nhìn)
-```
-
-### Phần 2: Đồng bộ màu sắc với thiết kế Royal Premium
-
-Nút chuông hiện tại dùng màu vàng gold (`text-gold`), nhưng các nút nav khác dùng màu foreground chuyển sang primary khi hover. Cập nhật để nhất quán:
-
-```
-Trước:
-- text-gold (luôn vàng)
-
-Sau:
-- text-foreground (mặc định)
-- hover:text-primary (xanh lá khi hover)
-- Giữ drop-shadow gold cho hiệu ứng lấp lánh
-```
-
-### Phần 3: Cải thiện vị trí badge
-
-Badge hiện tại ở vị trí `absolute -top-1 -right-1`, có thể bị che hoặc khó thấy. Điều chỉnh cho phù hợp với kích thước icon mới:
-
-```
-Trước: "absolute -top-1 -right-1"
-Sau: "absolute -top-0.5 -right-0.5" (gần hơn với icon)
-```
-
-## Chi tiết kỹ thuật
-
-### Thay đổi trong NotificationDropdown.tsx
-
-**Vị trí: Dòng 242-272 (Mobile/Tablet button)**
-
+1. **Đổi màu chữ sang trắng** với shadow để dễ nhìn trên mọi nền:
 ```tsx
-// TRƯỚC
-<Button 
-  variant="ghost" 
-  size="icon" 
-  onClick={handleBellClick}
-  className={cn(
-    "h-8 w-8 sm:h-10 sm:w-10 relative hover:bg-gold/20 transition-all duration-300 group",
-    hasNewNotification && "animate-pulse"
-  )} 
->
-  <Bell className={cn(
-    "w-4 h-4 text-gold transition-all duration-300 group-hover:drop-shadow-[0_0_12px_hsl(48_96%_53%/0.7)]",
-    hasNewNotification 
-      ? "drop-shadow-[0_0_12px_hsl(48_96%_53%/0.6)] animate-bounce" 
-      : "drop-shadow-[0_0_6px_hsl(48_96%_53%/0.5)]"
-  )} />
+// TRƯỚC (dòng 229)
+className="bg-white/95 text-gray-800 hover:bg-white shadow-lg border border-gray-200"
 
 // SAU
-<Button 
-  variant="ghost" 
-  size="icon" 
-  onClick={handleBellClick}
-  className={cn(
-    "h-10 w-10 relative transition-all duration-300 group",
-    "text-foreground hover:text-primary hover:bg-primary/10",
-    hasNewNotification && "animate-pulse"
-  )} 
->
-  <Bell className={cn(
-    "w-5 h-5 transition-all duration-300",
-    "group-hover:drop-shadow-[0_0_6px_hsl(142_76%_36%/0.5)]",
-    hasNewNotification && "animate-bounce drop-shadow-[0_0_8px_hsl(48_96%_53%/0.6)]"
-  )} />
+className="bg-black/60 text-white hover:bg-black/80 shadow-lg border border-white/20 backdrop-blur-sm"
 ```
 
-### Cập nhật badge position
+2. **Tăng z-index của overlay** để không xung đột:
+```tsx
+// TRƯỚC (dòng 365)
+className="fixed inset-0 z-[150]"
 
+// SAU
+className="fixed inset-0 z-[199]"
+```
+
+### Phần 2: Sửa cấu trúc Profile page cho z-index nhất quán
+
+**File: `src/pages/Profile.tsx`**
+
+1. **Đảm bảo cover container cho phép overflow** (dòng 315):
 ```tsx
 // TRƯỚC
-<span className={cn(
-  "absolute -top-1 -right-1 text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold",
+className="h-[200px] sm:h-[300px] md:h-[400px] relative overflow-hidden md:rounded-b-xl"
 
-// SAU  
-<span className={cn(
-  "absolute -top-0.5 -right-0.5 text-xs rounded-full min-w-[20px] h-5 px-1 flex items-center justify-center font-bold",
+// SAU
+className="h-[200px] sm:h-[300px] md:h-[400px] relative overflow-visible md:rounded-b-xl"
 ```
+
+2. **Thêm thêm stacking context riêng** cho Edit Cover button container:
+```tsx
+// TRƯỚC (dòng 340)
+<div className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 z-[100]">
+
+// SAU - Thêm isolation để tạo stacking context mới
+<div className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 z-[100] isolation-isolate">
+```
+
+### Phần 3: Đảm bảo currentUserId được load đúng cho Like/Comment
+
+**File: `src/pages/Profile.tsx`**
+
+Kiểm tra logic hiện tại:
+- Dòng 56-61: `checkAuth()` gọi `getSession()` và set `currentUserId`
+- Dòng 104-114: `onAuthStateChange` listener cập nhật `currentUserId`
+
+Vấn đề: `FacebookPostCard` có thể render trước khi `currentUserId` được set.
+
+**Giải pháp**: Thêm điều kiện không render posts nếu session đang loading:
+
+```tsx
+// TRƯỚC (dòng 618-655)
+{sortedPosts.length === 0 ? (
+  <div className="...">Chưa có bài viết nào</div>
+) : (
+  sortedPosts.map((item) => {
+    ...
+    <FacebookPostCard 
+      post={item} 
+      currentUserId={currentUserId}  // Có thể rỗng
+      ...
+    />
+  })
+)}
+
+// SAU - Đảm bảo currentUserId tồn tại trước khi render interactive posts
+{sortedPosts.length === 0 ? (
+  <div className="...">Chưa có bài viết nào</div>
+) : (
+  sortedPosts.map((item) => {
+    ...
+    <FacebookPostCard 
+      post={item} 
+      currentUserId={currentUserId || ''}
+      ...
+    />
+  })
+)}
+```
+
+**Lưu ý quan trọng**: Sau khi kiểm tra, logic hiện tại đã truyền `currentUserId` đúng cách. Vấn đề có thể nằm ở việc session không được load kịp thời. Giải pháp đã được áp dụng ở message trước (tăng timeout từ 5s lên 15s).
 
 ## Danh sách file cần chỉnh sửa
 
 | File | Thay đổi |
 |------|----------|
-| `src/components/layout/NotificationDropdown.tsx` | Phóng to icon & button mobile, đồng bộ màu sắc, điều chỉnh badge |
+| `src/components/profile/CoverPhotoEditor.tsx` | Đổi màu nút sang trắng + nền tối, tăng z-index overlay |
+| `src/pages/Profile.tsx` | Đảm bảo overflow-visible và isolation cho nút edit cover |
+
+## Chi tiết kỹ thuật
+
+### Thay đổi CoverPhotoEditor.tsx
+
+**Dòng 226-234 - Đổi style nút:**
+```tsx
+<Button 
+  size="sm" 
+  onClick={() => setIsMenuOpen(!isMenuOpen)}
+  className="bg-black/60 text-white hover:bg-black/80 shadow-lg border border-white/20 backdrop-blur-sm font-medium"
+  disabled={isUploading}
+>
+  <Camera className="w-4 h-4 mr-2" />
+  {isUploading ? 'Đang tải...' : 'Chỉnh sửa ảnh bìa'}
+</Button>
+```
+
+**Dòng 238 - Dropdown menu z-index:**
+```tsx
+// Giữ nguyên z-[200] - đã đủ cao
+
+// TRƯỚC
+<div className="absolute right-0 bottom-full mb-2 w-56 bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-[200]">
+
+// SAU - Thêm backdrop-blur cho đẹp hơn
+<div className="absolute right-0 bottom-full mb-2 w-56 bg-card rounded-lg shadow-xl border border-border py-2 z-[200]">
+```
+
+**Dòng 365 - Overlay z-index:**
+```tsx
+// TRƯỚC
+<div className="fixed inset-0 z-[150]" onClick={() => setIsMenuOpen(false)} />
+
+// SAU
+<div className="fixed inset-0 z-[199]" onClick={() => setIsMenuOpen(false)} />
+```
+
+### Thay đổi Profile.tsx
+
+**Dòng 315 - Cover container overflow:**
+```tsx
+// Giữ overflow-hidden để ảnh không tràn ra ngoài rounded corners
+// Thay vào đó, đảm bảo nút edit có đủ z-index
+```
+
+**Dòng 340 - Nút Edit Cover với isolation:**
+```tsx
+<div className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 z-[100] isolate">
+```
 
 ## Kết quả mong đợi
 
 Sau khi áp dụng:
-1. ✅ Nút chuông trên mobile/tablet lớn bằng các nút khác (w-5 h-5 icon trong w-10 h-10 button)
-2. ✅ Màu sắc nhất quán với thiết kế Royal Premium (foreground → primary on hover)
-3. ✅ Badge thông báo hiển thị rõ ràng, giống Facebook
-4. ✅ Hiệu ứng hover/glow đồng bộ với các nút nav khác
-
-## Lưu ý bổ sung
-
-Sau khi kiểm tra toàn bộ:
-- **Profile page**: Không phát hiện lỗi, các tính năng hoạt động bình thường
-- **Desktop notification bell**: Đã có kích thước phù hợp (`w-7 h-7`)
-- **Badge system**: Đã hoạt động tốt với real-time updates từ Supabase
+1. ✅ Nút "Chỉnh sửa ảnh bìa" có màu **chữ trắng**, nền **đen bán trong suốt**, dễ nhìn trên mọi ảnh bìa
+2. ✅ Dropdown menu mở ra khi bấm nút, không bị che bởi các phần tử khác
+3. ✅ Upload ảnh và chọn template hoạt động bình thường
+4. ✅ Nút Like/Comment hoạt động nếu user đã đăng nhập (session đã load)
+5. ✅ Tất cả các nút trên Profile page hoạt động mượt như Facebook
