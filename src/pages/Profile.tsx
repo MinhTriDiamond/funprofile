@@ -349,7 +349,7 @@ const Profile = () => {
               {/* Avatar + Info Row */}
               <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
                 {/* Avatar - positioned lower, centered in white space */}
-                <div className="-mt-8 sm:-mt-10 md:-mt-12 relative z-10 flex justify-center md:justify-start flex-shrink-0">
+                <div className="-mt-4 sm:-mt-6 md:-mt-8 relative z-10 flex justify-center md:justify-start flex-shrink-0">
                   {showPrivateElements ? (
                     <div className="ring-4 ring-emerald-500 rounded-full shadow-[0_0_20px_rgba(16,185,129,0.5)]">
                       <AvatarEditor
