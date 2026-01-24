@@ -59,12 +59,9 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
 
   if (loading) {
     return (
-      <>
-        {/* Desktop: positioned at top right corner of cover photo */}
-        <div className="hidden md:block absolute right-4 top-4 w-[40%] max-w-[360px] min-w-[240px] z-20">
-          <Skeleton className="h-[260px] w-full rounded-2xl" />
-        </div>
-      </>
+      <div className="w-full">
+        <Skeleton className="h-[200px] w-full rounded-2xl" />
+      </div>
     );
   }
 
@@ -95,10 +92,10 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
 
   return (
     <>
-      {/* Desktop: Positioned at top right corner of cover photo */}
-      <div className="hidden md:block absolute right-4 top-4 w-[40%] max-w-[360px] min-w-[240px] z-20">
+      {/* Desktop: Inline block for profile info section */}
+      <div className="w-full">
         {/* Main Container */}
-        <div className="rounded-2xl overflow-hidden border-2 border-yellow-400 bg-gradient-to-br from-green-900/95 via-green-800/95 to-emerald-900/95 backdrop-blur-sm shadow-2xl">
+        <div className="rounded-2xl overflow-hidden border-2 border-yellow-400 bg-gradient-to-br from-green-900/95 via-green-800/95 to-emerald-900/95 shadow-2xl">
           <div className="p-2.5">
             {/* Header - Logo and Title */}
             <div className="text-center mb-2">
