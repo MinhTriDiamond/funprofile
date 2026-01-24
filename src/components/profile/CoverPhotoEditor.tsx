@@ -156,14 +156,6 @@ export function CoverPhotoEditor({ userId, currentCoverUrl, onCoverUpdated }: Co
     setIsMenuOpen(false);
 
     try {
-      // Get current session for access token
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        toast.error('Vui lòng đăng nhập lại');
-        setIsUploading(false);
-        return;
-      }
-
       // Compress image for cover (1920px wide, high quality)
       const compressedFile = await compressImage(file, {
         maxWidth: 1920,
@@ -172,8 +164,8 @@ export function CoverPhotoEditor({ userId, currentCoverUrl, onCoverUpdated }: Co
         targetSizeKB: 500
       });
       
-      // Upload to R2 using 'avatars' bucket with access token
-      const result = await uploadToR2(compressedFile, 'avatars', undefined, session.access_token);
+      // Upload to R2 using 'avatars' bucket (general profile media)
+      const result = await uploadToR2(compressedFile, 'avatars');
       const uploadedUrl = result.url;
       
       // Update profile in database
