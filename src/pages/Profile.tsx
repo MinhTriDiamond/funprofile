@@ -312,41 +312,39 @@ const Profile = () => {
         <div className="max-w-[1100px] mx-auto px-0 md:px-4">
           <div className="relative">
             {/* Cover Photo Container with rounded corners */}
-            <div className="h-[200px] sm:h-[300px] md:h-[400px] relative overflow-visible md:rounded-b-xl">
-              <div className="absolute inset-0 overflow-hidden md:rounded-b-xl">
-                {profile?.cover_url ? (
-                  <LazyImage 
-                    src={profile.cover_url} 
-                    alt="Cover" 
-                    className="w-full h-full"
-                    transformPreset="cover"
-                    priority
-                  />
-                ) : (
-                  <div className="w-full h-full bg-gradient-to-r from-primary/40 via-gold/30 to-primary/40" />
-                )}
-                
-                {/* Gradient overlay at bottom for better text readability */}
-                <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/30 to-transparent" />
-
-                {/* Edit Cover Button - Facebook style bottom left */}
-                {showPrivateElements && (
-                  <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4 z-[100]">
-                    <CoverPhotoEditor 
-                      userId={currentUserId}
-                      currentCoverUrl={profile?.cover_url}
-                      onCoverUpdated={(newUrl) => setProfile({ ...profile, cover_url: newUrl })}
-                    />
-                  </div>
-                )}
-              </div>
+            <div className="h-[200px] sm:h-[300px] md:h-[400px] relative overflow-hidden md:rounded-b-xl">
+              {profile?.cover_url ? (
+                <LazyImage 
+                  src={profile.cover_url} 
+                  alt="Cover" 
+                  className="w-full h-full"
+                  transformPreset="cover"
+                  priority
+                />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-r from-primary/40 via-gold/30 to-primary/40" />
+              )}
               
-              {/* Honor Board - positioned at bottom right, overlapping into profile section */}
+              {/* Gradient overlay at bottom for better text readability */}
+              <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/30 to-transparent" />
+
+              {/* Honor Board - positioned at top right corner */}
               <CoverHonorBoard 
                 userId={profile.id}
                 username={profile?.full_name || profile?.username}
                 avatarUrl={profile?.avatar_url}
               />
+
+              {/* Edit Cover Button - bottom right, below Honor Board */}
+              {showPrivateElements && (
+                <div className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 z-[100]">
+                  <CoverPhotoEditor 
+                    userId={currentUserId}
+                    currentCoverUrl={profile?.cover_url}
+                    onCoverUpdated={(newUrl) => setProfile({ ...profile, cover_url: newUrl })}
+                  />
+                </div>
+              )}
             </div>
           </div>
 
