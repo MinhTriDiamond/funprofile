@@ -563,7 +563,11 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
             className="w-10 h-10 cursor-pointer ring-2 ring-primary/20 shrink-0"
             onClick={() => navigate(`/profile/${profile.id}`)}
           >
-            <AvatarImage src={profile.avatar_url || ''} />
+            <AvatarImage 
+              src={profile.avatar_url} 
+              sizeHint="sm"
+              alt={profile.username || 'User avatar'}
+            />
             <AvatarFallback className="bg-primary text-primary-foreground">
               {profile.username?.[0]?.toUpperCase()}
             </AvatarFallback>
@@ -629,7 +633,11 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
             {/* User Info & Privacy */}
             <div className="flex items-center gap-3 mb-4">
               <Avatar className="w-10 h-10 ring-2 ring-primary/20">
-                <AvatarImage src={profile.avatar_url || ''} />
+                <AvatarImage 
+                  src={profile.avatar_url} 
+                  sizeHint="sm"
+                  alt={profile.username || 'User avatar'}
+                />
                 <AvatarFallback className="bg-primary text-primary-foreground">
                   {profile.username?.[0]?.toUpperCase()}
                 </AvatarFallback>
