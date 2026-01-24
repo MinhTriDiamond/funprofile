@@ -104,8 +104,16 @@ export const EditProfile = () => {
 
       if (!userId) throw new Error('No user found');
 
+      // Get session for access token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('Vui lòng đăng nhập để tải ảnh lên');
+        setUploading(false);
+        return;
+      }
+
       const file = new File([croppedImageBlob], 'avatar.jpg', { type: 'image/jpeg' });
-      const result = await uploadToR2(file, 'avatars', `${userId}/avatar-${Date.now()}.jpg`);
+      const result = await uploadToR2(file, 'avatars', `${userId}/avatar-${Date.now()}.jpg`, session.access_token);
 
       // Delete old avatar from R2 if exists
       if (avatarUrl) {
@@ -150,6 +158,14 @@ export const EditProfile = () => {
 
       if (!userId) throw new Error('No user found');
 
+      // Get session for access token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('Vui lòng đăng nhập để tải ảnh lên');
+        setUploadingCover(false);
+        return;
+      }
+
       // Compress cover image
       toast.loading('Đang nén ảnh...');
       const compressed = await compressImage(file, {
@@ -160,7 +176,7 @@ export const EditProfile = () => {
       toast.dismiss();
 
       const coverFile = new File([compressed], 'cover.jpg', { type: 'image/jpeg' });
-      const result = await uploadToR2(coverFile, 'avatars', `${userId}/cover-${Date.now()}.jpg`);
+      const result = await uploadToR2(coverFile, 'avatars', `${userId}/cover-${Date.now()}.jpg`, session.access_token);
 
       // Delete old cover from R2 if exists
       if (coverUrl) {

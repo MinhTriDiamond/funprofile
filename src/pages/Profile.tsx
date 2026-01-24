@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
@@ -20,6 +20,13 @@ import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { useConversations } from '@/hooks/useConversations';
 import { toast } from 'sonner';
 
+interface FriendPreview {
+  id: string;
+  username: string;
+  full_name: string | null;
+  avatar_url: string | null;
+}
+
 const Profile = () => {
   const navigate = useNavigate();
   const { userId, username } = useParams();
@@ -30,6 +37,8 @@ const Profile = () => {
   const [currentUserId, setCurrentUserId] = useState<string>('');
   const [isOwnProfile, setIsOwnProfile] = useState(false);
   const [friendsCount, setFriendsCount] = useState(0);
+  const [friendsPreview, setFriendsPreview] = useState<FriendPreview[]>([]);
+  const [activeTab, setActiveTab] = useState('posts'); // Controlled tabs state
   
   const { createDirectConversation } = useConversations(currentUserId);
   
@@ -190,20 +199,52 @@ const Profile = () => {
       
       setAllPosts(combinedPosts);
 
-      // Fetch friends count
-      const { count } = await supabase
+      // Fetch friends count and preview
+      const { data: friendsData, count } = await supabase
         .from('friendships')
-        .select('*', { count: 'exact', head: true })
+        .select('user_id, friend_id', { count: 'exact' })
         .or(`user_id.eq.${profileId},friend_id.eq.${profileId}`)
-        .eq('status', 'accepted');
+        .eq('status', 'accepted')
+        .limit(6);
 
       setFriendsCount(count || 0);
+
+      // Fetch friends preview (up to 6 friends with their profiles)
+      if (friendsData && friendsData.length > 0) {
+        // Get the friend IDs (the "other" person in each friendship)
+        const friendIds = friendsData.map(f => 
+          f.user_id === profileId ? f.friend_id : f.user_id
+        );
+        
+        const { data: friendProfiles } = await supabase
+          .from('profiles')
+          .select('id, username, full_name, avatar_url')
+          .in('id', friendIds)
+          .limit(6);
+        
+        setFriendsPreview(friendProfiles || []);
+      } else {
+        setFriendsPreview([]);
+      }
     } catch (error) {
       // Error fetching profile - silent fail
     } finally {
       setLoading(false);
     }
   };
+
+  // Helper function to scroll to tabs section
+  const scrollToTabs = useCallback(() => {
+    setTimeout(() => {
+      document.getElementById('profile-tabs')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+  }, []);
+
+  // Navigation helper functions for controlled tabs
+  const navigateToTab = useCallback((tab: string) => {
+    setActiveTab(tab);
+    scrollToTabs();
+  }, [scrollToTabs]);
 
   const handlePostDeleted = () => {
     const profileId = userId || currentUserId;
@@ -438,9 +479,8 @@ const Profile = () => {
               </div>
             </div>
 
-            {/* Navigation Tabs - Facebook 2025 style with underline */}
             <div className="border-t border-border px-4 md:px-8">
-              <Tabs defaultValue="posts" className="w-full" id="profile-tabs">
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full" id="profile-tabs">
                 <TabsList className="h-auto bg-transparent p-0 border-0 justify-start gap-1 flex overflow-x-auto scrollbar-hide -mb-px">
                   <TabsTrigger 
                     value="posts" 
@@ -500,15 +540,7 @@ const Profile = () => {
                                 variant="ghost" 
                                 size="icon" 
                                 className="h-8 w-8"
-                                onClick={() => {
-                                  const tabsElement = document.querySelector('[data-state="active"][value="edit"]') as HTMLElement;
-                                  if (tabsElement) {
-                                    tabsElement.click();
-                                  } else {
-                                    const editTab = document.querySelector('[value="edit"]') as HTMLElement;
-                                    if (editTab) editTab.click();
-                                  }
-                                }}
+                                onClick={() => navigateToTab('edit')}
                               >
                                 <PenSquare className="w-4 h-4" />
                               </Button>
@@ -542,10 +574,7 @@ const Profile = () => {
                             <Button 
                               variant="secondary" 
                               className="w-full mt-4"
-                              onClick={() => {
-                                const editTab = document.querySelector('[value="edit"]') as HTMLElement;
-                                if (editTab) editTab.click();
-                              }}
+                              onClick={() => navigateToTab('edit')}
                             >
                               Chỉnh sửa chi tiết
                             </Button>
@@ -558,10 +587,7 @@ const Profile = () => {
                             <h3 className="font-bold text-lg text-foreground">Ảnh</h3>
                             <button 
                               className="text-primary hover:underline text-sm font-medium"
-                              onClick={() => {
-                                const photosTab = document.querySelector('[value="photos"]') as HTMLElement;
-                                if (photosTab) photosTab.click();
-                              }}
+                              onClick={() => navigateToTab('photos')}
                             >
                               Xem tất cả ảnh
                             </button>
@@ -572,12 +598,8 @@ const Profile = () => {
                                 key={i}
                                 src={post.image_url}
                                 alt=""
-                                className="w-full aspect-square"
-                                onClick={() => {
-                                  const photosTab = document.querySelector('[value="photos"]') as HTMLElement;
-                                  if (photosTab) photosTab.click();
-                                }}
-                                style={{ cursor: 'pointer' }}
+                                className="w-full aspect-square cursor-pointer"
+                                onClick={() => navigateToTab('photos')}
                               />
                             ))}
                             {originalPosts.filter(p => p.image_url).length === 0 && (
@@ -588,7 +610,7 @@ const Profile = () => {
                           </div>
                         </div>
 
-                        {/* Friends Card - Facebook style */}
+                        {/* Friends Card - Facebook style with real data */}
                         <div className="bg-card rounded-xl shadow-sm border border-border p-4">
                           <div className="flex justify-between items-center mb-3">
                             <div>
@@ -597,21 +619,35 @@ const Profile = () => {
                             </div>
                             <button 
                               className="text-primary hover:underline text-sm font-medium"
-                              onClick={() => {
-                                const friendsTab = document.querySelector('[value="friends"]') as HTMLElement;
-                                if (friendsTab) friendsTab.click();
-                              }}
+                              onClick={() => navigateToTab('friends')}
                             >
                               Xem tất cả bạn bè
                             </button>
                           </div>
                           <div className="grid grid-cols-3 gap-2">
-                            {[1, 2, 3, 4, 5, 6].map((i) => (
-                              <div key={i} className="text-center">
-                                <div className="aspect-square bg-muted rounded-lg mb-1" />
-                                <p className="text-xs text-foreground truncate">Bạn bè {i}</p>
+                            {friendsPreview.length > 0 ? (
+                              friendsPreview.map((friend) => (
+                                <div 
+                                  key={friend.id} 
+                                  className="text-center cursor-pointer"
+                                  onClick={() => navigate(`/@${friend.username}`)}
+                                >
+                                  <Avatar className="w-full aspect-square rounded-lg mb-1">
+                                    {friend.avatar_url && <AvatarImage src={friend.avatar_url} />}
+                                    <AvatarFallback className="rounded-lg text-lg bg-muted">
+                                      {(friend.full_name || friend.username)?.[0]?.toUpperCase() || 'U'}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <p className="text-xs text-foreground truncate">
+                                    {friend.full_name || friend.username}
+                                  </p>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="col-span-3 py-8 text-center text-muted-foreground text-sm">
+                                Chưa có bạn bè
                               </div>
-                            ))}
+                            )}
                           </div>
                         </div>
                       </TabsContent>

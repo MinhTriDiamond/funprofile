@@ -23,9 +23,10 @@ export const CommentMediaUpload = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      toast.error('Please sign in to upload media');
+    // Get session for access token
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      toast.error('Vui lòng đăng nhập để tải media lên');
       return;
     }
 
@@ -71,7 +72,7 @@ export const CommentMediaUpload = ({
         }
       }
 
-      const result = await uploadToR2(fileToUpload, 'comment-media');
+      const result = await uploadToR2(fileToUpload, 'comment-media', undefined, session.access_token);
 
       setPreview({ url: result.url, type });
       onMediaUploaded(result.url, type);
