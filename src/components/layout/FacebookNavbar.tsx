@@ -97,6 +97,11 @@ export const FacebookNavbar = () => {
     { code: 'th' as const, name: 'ไทย', flagUrl: 'https://flagcdn.com/w40/th.png' },
     { code: 'id' as const, name: 'Indonesia', flagUrl: 'https://flagcdn.com/w40/id.png' },
     { code: 'fr' as const, name: 'Français', flagUrl: 'https://flagcdn.com/w40/fr.png' },
+    { code: 'es' as const, name: 'Español', flagUrl: 'https://flagcdn.com/w40/es.png' },
+    { code: 'de' as const, name: 'Deutsch', flagUrl: 'https://flagcdn.com/w40/de.png' },
+    { code: 'pt' as const, name: 'Português', flagUrl: 'https://flagcdn.com/w40/br.png' },
+    { code: 'ru' as const, name: 'Русский', flagUrl: 'https://flagcdn.com/w40/ru.png' },
+    { code: 'ar' as const, name: 'العربية', flagUrl: 'https://flagcdn.com/w40/sa.png' },
   ];
 
   // Navigation items for center nav (Desktop only)
