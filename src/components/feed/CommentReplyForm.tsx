@@ -5,7 +5,7 @@ import { Send, X, Smile } from 'lucide-react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { CommentMediaUpload } from './CommentMediaUpload';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { EmojiPicker } from './EmojiPicker';
 import { useLanguage } from '@/i18n/LanguageContext';
 
@@ -111,13 +111,14 @@ export const CommentReplyForm = ({
   return (
     <form onSubmit={handleSubmit} className="flex gap-2 items-start animate-scale-in">
       <Avatar className="w-8 h-8 ring-2 ring-primary/20 shrink-0">
-        {currentUser?.avatar_url ? (
-          <img src={currentUser.avatar_url} alt="Avatar" className="w-full h-full object-cover rounded-full" />
-        ) : (
-          <AvatarFallback className="text-xs bg-gradient-to-br from-primary/30 to-primary/10 text-primary font-semibold">
-            {currentUser?.username?.[0]?.toUpperCase() || 'U'}
-          </AvatarFallback>
-        )}
+        <AvatarImage 
+          src={currentUser?.avatar_url} 
+          alt={currentUser?.username || 'User'} 
+          sizeHint="sm" 
+        />
+        <AvatarFallback className="text-xs bg-gradient-to-br from-primary/30 to-primary/10 text-primary font-semibold">
+          {currentUser?.username?.[0]?.toUpperCase() || 'U'}
+        </AvatarFallback>
       </Avatar>
       
       <div className="flex-1 space-y-2">

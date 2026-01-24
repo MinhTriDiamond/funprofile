@@ -299,7 +299,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
         const sessionResult = await Promise.race([
           supabase.auth.getSession(),
           new Promise<never>((_, reject) => 
-            setTimeout(() => reject(new Error('getSession timeout (5s)')), 5000)
+            setTimeout(() => reject(new Error('getSession timeout (15s)')), 15000)
           )
         ]);
         session = sessionResult.data.session;
