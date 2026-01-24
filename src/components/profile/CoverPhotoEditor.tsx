@@ -223,28 +223,28 @@ export function CoverPhotoEditor({ userId, currentCoverUrl, onCoverUpdated }: Co
     <>
       {/* Edit Cover Button */}
       <div className="relative">
-        <Button 
-          size="sm" 
-          onClick={() => setIsMenuOpen(!isMenuOpen)}
-          className="bg-white/95 text-gray-800 hover:bg-white shadow-lg border border-gray-200"
-          disabled={isUploading}
-        >
-          <Camera className="w-4 h-4 mr-2" />
-          {isUploading ? 'Đang tải...' : 'Chỉnh sửa ảnh bìa'}
-        </Button>
+      <Button 
+        size="sm" 
+        onClick={() => setIsMenuOpen(!isMenuOpen)}
+        className="bg-black/60 text-white hover:bg-black/80 shadow-lg border border-white/20 backdrop-blur-sm font-medium"
+        disabled={isUploading}
+      >
+        <Camera className="w-4 h-4 mr-2" />
+        {isUploading ? 'Đang tải...' : 'Chỉnh sửa ảnh bìa'}
+      </Button>
 
         {/* Dropdown Menu */}
         {isMenuOpen && (
-          <div className="absolute right-0 bottom-full mb-2 w-56 bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-[200]">
+          <div className="absolute right-0 bottom-full mb-2 w-56 bg-card rounded-lg shadow-xl border border-border py-2 z-[200] backdrop-blur-sm">
             <button
               onClick={() => {
                 fileInputRef.current?.click();
               }}
-              className="w-full px-4 py-3 text-left hover:bg-gray-100 flex items-center gap-3 transition-colors"
+              className="w-full px-4 py-3 text-left hover:bg-accent flex items-center gap-3 transition-colors"
             >
               <Upload className="w-5 h-5 text-primary" />
               <div>
-                <p className="font-medium text-gray-800">Tải ảnh lên</p>
+                <p className="font-medium text-foreground">Tải ảnh lên</p>
                 <p className="text-xs text-muted-foreground">Chọn ảnh từ thiết bị</p>
               </div>
             </button>
@@ -253,11 +253,11 @@ export function CoverPhotoEditor({ userId, currentCoverUrl, onCoverUpdated }: Co
                 setIsMenuOpen(false);
                 setIsTemplateLibraryOpen(true);
               }}
-              className="w-full px-4 py-3 text-left hover:bg-gray-100 flex items-center gap-3 transition-colors"
+              className="w-full px-4 py-3 text-left hover:bg-accent flex items-center gap-3 transition-colors"
             >
-              <ImageIcon className="w-5 h-5 text-yellow-500" />
+              <ImageIcon className="w-5 h-5 text-gold" />
               <div>
-                <p className="font-medium text-gray-800">Chọn từ Kho Mẫu</p>
+                <p className="font-medium text-foreground">Chọn từ Kho Mẫu</p>
                 <p className="text-xs text-muted-foreground">Ảnh bìa thiên nhiên đẹp</p>
               </div>
             </button>
@@ -362,7 +362,7 @@ export function CoverPhotoEditor({ userId, currentCoverUrl, onCoverUpdated }: Co
       {/* Click outside to close menu */}
       {isMenuOpen && (
         <div 
-          className="fixed inset-0 z-[150]" 
+          className="fixed inset-0 z-[199]" 
           onClick={() => setIsMenuOpen(false)}
         />
       )}
