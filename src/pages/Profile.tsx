@@ -348,8 +348,8 @@ const Profile = () => {
             <div className="px-4 md:px-8 py-4 md:py-6">
               {/* Avatar + Info Row */}
               <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
-                {/* Avatar - positioned at bottom left, centered in white space */}
-                <div className="-mt-12 sm:-mt-14 md:-mt-16 relative z-10 flex justify-center md:justify-start flex-shrink-0">
+                {/* Avatar - positioned lower, centered in white space */}
+                <div className="-mt-8 sm:-mt-10 md:-mt-12 relative z-10 flex justify-center md:justify-start flex-shrink-0">
                   {showPrivateElements ? (
                     <div className="ring-4 ring-emerald-500 rounded-full shadow-[0_0_20px_rgba(16,185,129,0.5)]">
                       <AvatarEditor
@@ -375,25 +375,25 @@ const Profile = () => {
                   <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground">
                     {profile?.full_name || profile?.username}
                   </h1>
-                  <p className="text-sm sm:text-base text-muted-foreground font-medium">
+                  <p className="text-base sm:text-lg text-muted-foreground font-medium">
                     {friendsCount.toLocaleString('vi-VN')} người bạn
                   </p>
                   
                   {/* Bio text - inline */}
                   {profile?.bio && (
-                    <p className="text-sm text-muted-foreground mt-1 line-clamp-1">
+                    <p className="text-base sm:text-lg text-muted-foreground mt-1 line-clamp-1">
                       {profile.bio}
                     </p>
                   )}
                   
                   {/* Info badges - all in one horizontal row */}
-                  <div className="flex flex-nowrap items-center justify-center md:justify-start gap-x-4 mt-2 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1 whitespace-nowrap">
-                      <MapPin className="w-4 h-4 flex-shrink-0" />
+                  <div className="flex flex-nowrap items-center justify-center md:justify-start gap-x-4 mt-2 text-base sm:text-lg text-muted-foreground">
+                    <div className="flex items-center gap-1.5 whitespace-nowrap">
+                      <MapPin className="w-5 h-5 flex-shrink-0" />
                       <span>Việt Nam</span>
                     </div>
-                    <div className="flex items-center gap-1 whitespace-nowrap">
-                      <Briefcase className="w-4 h-4 flex-shrink-0" />
+                    <div className="flex items-center gap-1.5 whitespace-nowrap">
+                      <Briefcase className="w-5 h-5 flex-shrink-0" />
                       <span>FUN Ecosystem</span>
                     </div>
                   </div>
