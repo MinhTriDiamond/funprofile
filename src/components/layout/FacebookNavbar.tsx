@@ -87,6 +87,18 @@ export const FacebookNavbar = () => {
 
   const isActive = (path: string) => location.pathname === path;
 
+  // Language options with flags
+  const languageOptions = [
+    { code: 'vi' as const, name: 'Tiếng Việt', flag: '🇻🇳' },
+    { code: 'en' as const, name: 'English', flag: '🇺🇸' },
+    { code: 'zh' as const, name: '中文', flag: '🇨🇳' },
+    { code: 'ja' as const, name: '日本語', flag: '🇯🇵' },
+    { code: 'ko' as const, name: '한국어', flag: '🇰🇷' },
+    { code: 'th' as const, name: 'ไทย', flag: '🇹🇭' },
+    { code: 'id' as const, name: 'Indonesia', flag: '🇮🇩' },
+    { code: 'fr' as const, name: 'Français', flag: '🇫🇷' },
+  ];
+
   // Navigation items for center nav (Desktop only)
   const iconNavItems = [
     { icon: Home, path: '/', label: t('home') },
@@ -215,25 +227,34 @@ export const FacebookNavbar = () => {
                         {profile?.username?.[0]?.toUpperCase() || 'U'}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="flex flex-col">
-                      <span className="font-semibold text-foreground">{profile?.username || 'User'}</span>
-                      <span className="text-xs text-muted-foreground">{t('myProfile')}</span>
-                    </div>
+                    <span className="font-semibold text-foreground">{profile?.username || 'User'}</span>
                   </DropdownMenuItem>
                   
                   <DropdownMenuSeparator />
                   
-                  {/* Language Switcher */}
-                  <DropdownMenuItem 
-                    onClick={() => setLanguage(language === 'vi' ? 'en' : 'vi')}
-                    className="cursor-pointer gap-2"
-                  >
-                    <Globe className="w-4 h-4" />
-                    <span className="flex-1">{t('language')}</span>
-                    <span className="text-xs font-medium px-2 py-0.5 rounded bg-primary/10 text-primary">
-                      {language === 'vi' ? 'VI' : 'EN'}
-                    </span>
-                  </DropdownMenuItem>
+                  {/* Language Switcher with flags */}
+                  <div className="px-2 py-1.5">
+                    <div className="flex items-center gap-2 px-2 py-1 text-sm text-muted-foreground mb-1">
+                      <Globe className="w-4 h-4" />
+                      <span>{t('language')}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-1">
+                      {languageOptions.map((lang) => (
+                        <button
+                          key={lang.code}
+                          onClick={() => setLanguage(lang.code)}
+                          className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors ${
+                            language === lang.code
+                              ? 'bg-primary/10 text-primary font-medium'
+                              : 'hover:bg-accent text-foreground'
+                          }`}
+                        >
+                          <span className="text-base">{lang.flag}</span>
+                          <span>{lang.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                   
                   <DropdownMenuSeparator />
                   

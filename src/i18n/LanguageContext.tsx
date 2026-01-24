@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import { translations, Language, TranslationKey } from './translations';
+import { translations, Language, TranslationKey, SUPPORTED_LANGUAGES } from './translations';
 
 interface LanguageContextType {
   language: Language;
@@ -16,7 +16,10 @@ const detectBrowserLanguage = (): Language => {
   if (typeof navigator === 'undefined') return 'en';
   
   const browserLang = navigator.language.toLowerCase();
-  if (browserLang.startsWith('vi')) return 'vi';
+  // Check for supported languages
+  for (const lang of SUPPORTED_LANGUAGES) {
+    if (browserLang.startsWith(lang)) return lang;
+  }
   return 'en'; // Default to English
 };
 
@@ -24,7 +27,7 @@ const detectBrowserLanguage = (): Language => {
 const getInitialLanguage = (): Language => {
   if (typeof localStorage !== 'undefined') {
     const saved = localStorage.getItem(STORAGE_KEY) as Language | null;
-    if (saved && (saved === 'en' || saved === 'vi')) {
+    if (saved && SUPPORTED_LANGUAGES.includes(saved)) {
       return saved;
     }
   }
