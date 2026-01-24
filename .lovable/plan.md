@@ -1,132 +1,207 @@
 
+# Plan: Fix Like, Comment, Post, and Avatar Display Issues
 
-## Kế hoạch sửa lỗi đa ngôn ngữ và tải ảnh
+## Problem Summary
 
-### Tổng quan vấn đề
+The user is experiencing multiple related issues:
+1. **Like button not working** - Cannot react to posts
+2. **Comments not working** - Cannot post comments
+3. **Posting not working** - Posts timing out
+4. **Image upload not working** - Part of post timeout
+5. **Avatar showing "U"** - User avatar not displaying in comment section
 
-Có 2 vấn đề cần sửa:
-1. **Lỗi build translations.ts** - Các thuộc tính trùng lặp (`savePost`, `delete`, v.v.) trong các ngôn ngữ mới
-2. **Mã cứng tiếng Việt** - Nhiều thành phần vẫn hiển thị tiếng Việt khi chuyển sang ngôn ngữ khác
+## Root Cause Analysis
 
-Về vấn đề **tải ảnh**: Qua kiểm tra logs edge function, hệ thống upload đang hoạt động bình thường (logs cho thấy tạo presigned URL thành công). Vấn đề có thể liên quan đến session/token hết hạn của một số người dùng. Nếu vẫn còn lỗi, xin cho biết thêm chi tiết lỗi cụ thể.
+After reviewing the console logs and code, I identified **two main problems**:
 
----
-
-### Phần 1: Sửa lỗi build translations.ts
-
-**Vấn đề**: Các ngôn ngữ mới (French, Spanish, German, Portuguese, Russian, Arabic) có các key bị khai báo 2 lần:
-- `savePost` (ở dòng 3059 và 3281 trong tiếng Pháp)
-- `delete` (ở dòng 2971 và 3285 trong tiếng Pháp)  
-- `deleting` (ở dòng 2966 và 3284 trong tiếng Pháp)
-
-**Giải pháp**: Xóa các block trùng lặp ở cuối mỗi object ngôn ngữ, giữ lại phần đã có translations đầy đủ.
-
----
-
-### Phần 2: Thay thế mã cứng tiếng Việt
-
-**Các file cần cập nhật**:
-
-#### 2.1 ReactionButton.tsx
-- Thay array `REACTIONS` hardcoded tiếng Việt bằng translations
-- Thay "Thích" trong button mặc định
-
-```text
-REACTIONS array:
-'Thích' → t('like')
-'Yêu thương' → t('reactionLove')  
-'Thương thương' → t('reactionCare')
-'Ngạc nhiên' → t('wow')
-'Haha' → t('haha')
-'Biết ơn' → t('gratitude')
+### Problem 1: Authentication Session Timeouts
+The console logs show:
+```
+[CreatePost] getSession error: getSession timeout (5s)
+[CreatePost] Watchdog timeout triggered (90s)
 ```
 
-#### 2.2 CommentItem.tsx  
-- "Trả lời" → `t('reply')`
-- "Chia sẻ" → `t('share')`
-- "Xóa" → `t('delete')`
-- "Báo cáo" → `t('report')`
-- "Xem thêm ... trả lời..." → `t('viewMoreReplies')`
-- "Ẩn bớt trả lời" → `t('hideReplies')`
-- Toast messages
+The `supabase.auth.getSession()` call is timing out, causing all authenticated features to fail. This affects posting, liking, commenting, and uploading.
 
-#### 2.3 FacebookPostCard.tsx
-- "Bình luận" → `t('comment')`
-- Toast messages
+**Why it happens:**
+- Multiple components call `getSession()` or `getUser()` independently
+- Network latency or session storage issues cause timeouts
+- The 5-second timeout in `FacebookCreatePost.tsx` is too aggressive
 
-#### 2.4 FacebookCreatePost.tsx
-- "Bạn đang nghĩ gì thế?" → `t('whatsOnYourMind')`
-- Tất cả toast.error messages
-- Button texts
+### Problem 2: Avatar Components Not Using AvatarImage
+Three components use manual `<img>` tags with conditional rendering:
+```tsx
+{currentUser?.avatar_url ? (
+  <img src={...} />
+) : (
+  <AvatarFallback>U</AvatarFallback>
+)}
+```
 
-#### 2.5 EditPostDialog.tsx
-- Placeholder text → `t('whatsOnYourMind')`
+When `currentUser` is `null` (because auth failed/timed out), the fallback "U" is always shown. The proper pattern should use `AvatarImage` with `AvatarFallback`:
+```tsx
+<AvatarImage src={currentUser?.avatar_url} />
+<AvatarFallback>...</AvatarFallback>
+```
 
-#### 2.6 ReactionSummary.tsx
-- "bình luận" → `t('comments')`
-- "lượt chia sẻ" → `t('shares')`
+## Solution Plan
 
-#### 2.7 CommentSection.tsx
-- Toast messages
+### Part 1: Fix Authentication Reliability
 
-#### 2.8 ExpandableContent.tsx
-- "Thu gọn" → `t('seeLess')`
-- "Xem thêm" → `t('seeMore')`
+**File: `src/components/feed/FacebookCreatePost.tsx`**
+- Increase `getSession` timeout from 5s to 15s
+- Add retry logic with exponential backoff
+- Cache session reference to avoid repeated auth calls
 
-#### 2.9 Feed.tsx
-- "Đang tải thêm bài viết..." → `t('loadingMorePosts')`
-- "Bạn đã xem hết tất cả bài viết" → `t('noMorePosts')`
+**File: `src/components/feed/CommentSection.tsx`**
+- Add error handling for `getUser()` failures
+- Add loading state to prevent premature rendering
 
----
+**File: `src/components/feed/ReactionButton.tsx`**
+- Already has proper error handling, no changes needed
 
-### Phần 3: Thêm translation keys mới
+### Part 2: Fix Avatar Display in Comment Components
 
-**Keys cần thêm vào tất cả 13 ngôn ngữ**:
+**File: `src/components/feed/CommentSection.tsx`**
+1. Import `AvatarImage` component
+2. Replace manual `<img>` tag with `AvatarImage`
+3. Use proper fallback pattern with Radix UI
 
-| Key | Vietnamese | English |
-|-----|------------|---------|
-| `loadingMorePosts` | Đang tải thêm bài viết... | Loading more posts... |
-| `noMorePosts` | Bạn đã xem hết tất cả bài viết | You've seen all posts |
-| `shares` | lượt chia sẻ | shares |
-| `cannotLoadComments` | Không thể tải comments | Cannot load comments |
-| `pleaseLoginToComment` | Vui lòng đăng nhập để bình luận | Please login to comment |
-| `cannotPostComment` | Không thể đăng comment | Cannot post comment |
-| `commentPosted` | Đã đăng comment! | Comment posted! |
-| `pleaseLoginToReact` | Vui lòng đăng nhập để bày tỏ cảm xúc | Please login to react |
-| `cannotUpdateReaction` | Không thể cập nhật cảm xúc | Cannot update reaction |
-| `systemPaused` | Hệ thống tạm dừng | System paused |
-| `pleaseAddContent` | Vui lòng thêm nội dung hoặc media | Please add content or media |
-| `waitForVideoUpload` | Vui lòng đợi video upload xong | Please wait for video to finish uploading |
-| `contentTooLong` | Nội dung quá dài | Content too long |
-| `postSuccess` | Đã đăng bài viết! | Post published! |
-| `linkCopied` | Đã sao chép link! | Link copied! |
-| `commentLinkCopied` | Đã copy link comment! | Comment link copied! |
-| `reportSent` | Đã gửi báo cáo. Cảm ơn bạn! | Report sent. Thank you! |
-| `confirmDeleteComment` | Xóa comment này? | Delete this comment? |
-| `canOnlyDeleteOwnComment` | Bạn chỉ có thể xóa comment của mình | You can only delete your own comment |
-| `cannotDeleteComment` | Không thể xóa comment | Cannot delete comment |
-| `commentDeleted` | Đã xóa comment | Comment deleted |
-| `pleaseLoginToShare` | Vui lòng đăng nhập để chia sẻ | Please login to share |
-| `anonymous` | Ẩn danh | Anonymous |
+**File: `src/components/feed/CommentItem.tsx`**
+1. Import `AvatarImage` component
+2. Replace manual `<img>` tag with `AvatarImage`
+3. Apply `sizeHint="sm"` for optimization
 
----
+**File: `src/components/feed/CommentReplyForm.tsx`**
+1. Import `AvatarImage` component
+2. Replace manual `<img>` tag with `AvatarImage`
+3. Apply proper size optimization
 
-### Chi tiết kỹ thuật
+### Part 3: Improve Error Feedback
 
-**Thứ tự thực hiện**:
-1. Sửa lỗi duplicate trong translations.ts (xóa các block trùng lặp)
-2. Thêm các translation keys mới cho tất cả 13 ngôn ngữ
-3. Cập nhật từng component để sử dụng `useLanguage()` hook và `t()` function
+- Add better error messages when session times out
+- Show loading indicators during auth verification
+- Provide clear "try again" options
 
-**Số lượng files cần chỉnh sửa**: 10 files
-- `src/i18n/translations.ts`
-- `src/components/feed/ReactionButton.tsx`
-- `src/components/feed/CommentItem.tsx`
-- `src/components/feed/FacebookPostCard.tsx`
-- `src/components/feed/FacebookCreatePost.tsx`
-- `src/components/feed/EditPostDialog.tsx`
-- `src/components/feed/ReactionSummary.tsx`
-- `src/components/feed/CommentSection.tsx`
-- `src/components/feed/ExpandableContent.tsx`
-- `src/pages/Feed.tsx`
+## Technical Details
 
+### CommentSection.tsx Changes
+```tsx
+// Before (line 10)
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+
+// After
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+
+// Before (lines 197-205)
+<Avatar className="w-10 h-10 ...">
+  {currentUser?.avatar_url ? (
+    <img src={currentUser.avatar_url} ... />
+  ) : (
+    <AvatarFallback>...</AvatarFallback>
+  )}
+</Avatar>
+
+// After
+<Avatar className="w-10 h-10 ...">
+  <AvatarImage 
+    src={currentUser?.avatar_url} 
+    alt={currentUser?.username || 'User'} 
+    sizeHint="sm" 
+  />
+  <AvatarFallback>...</AvatarFallback>
+</Avatar>
+```
+
+### CommentItem.tsx Changes
+```tsx
+// Before (line 2)
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+
+// After
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+
+// Before (lines 122-130)
+<Avatar className="w-9 h-9 ...">
+  {comment.profiles?.avatar_url ? (
+    <img src={comment.profiles.avatar_url} ... />
+  ) : (
+    <AvatarFallback>...</AvatarFallback>
+  )}
+</Avatar>
+
+// After
+<Avatar className="w-9 h-9 ...">
+  <AvatarImage 
+    src={comment.profiles?.avatar_url} 
+    alt={comment.profiles?.username || 'User'} 
+    sizeHint="sm" 
+  />
+  <AvatarFallback>...</AvatarFallback>
+</Avatar>
+```
+
+### CommentReplyForm.tsx Changes
+```tsx
+// Before (line 8)
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+
+// After
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+
+// Before (lines 113-121)
+<Avatar className="w-8 h-8 ...">
+  {currentUser?.avatar_url ? (
+    <img src={currentUser.avatar_url} ... />
+  ) : (
+    <AvatarFallback>...</AvatarFallback>
+  )}
+</Avatar>
+
+// After
+<Avatar className="w-8 h-8 ...">
+  <AvatarImage 
+    src={currentUser?.avatar_url} 
+    alt={currentUser?.username || 'User'} 
+    sizeHint="sm" 
+  />
+  <AvatarFallback>...</AvatarFallback>
+</Avatar>
+```
+
+### FacebookCreatePost.tsx Auth Timeout Fix
+```tsx
+// Before (lines 299-303)
+const sessionResult = await Promise.race([
+  supabase.auth.getSession(),
+  new Promise<never>((_, reject) => 
+    setTimeout(() => reject(new Error('getSession timeout (5s)')), 5000)
+  )
+]);
+
+// After - Increase timeout and add retry
+const sessionResult = await Promise.race([
+  supabase.auth.getSession(),
+  new Promise<never>((_, reject) => 
+    setTimeout(() => reject(new Error('getSession timeout (15s)')), 15000)
+  )
+]);
+```
+
+## Files to Modify
+
+| File | Changes |
+|------|---------|
+| `src/components/feed/CommentSection.tsx` | Import AvatarImage, fix avatar rendering |
+| `src/components/feed/CommentItem.tsx` | Import AvatarImage, fix avatar rendering |
+| `src/components/feed/CommentReplyForm.tsx` | Import AvatarImage, fix avatar rendering |
+| `src/components/feed/FacebookCreatePost.tsx` | Increase auth timeout from 5s to 15s |
+
+## Expected Outcome
+
+After these changes:
+1. User avatars will display properly using the optimized `AvatarImage` component
+2. The "U" fallback will only show when there truly is no avatar
+3. Post creation will have more time for authentication
+4. Like/comment features will work more reliably
+5. Image uploads will complete without timeout
