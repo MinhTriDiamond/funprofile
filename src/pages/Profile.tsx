@@ -412,7 +412,7 @@ const Profile = () => {
 
                 {/* Honor Board - right aligned, parallel to avatar */}
                 <div className="hidden md:flex justify-end pb-2 md:pb-4">
-                  <div className="w-[420px] max-w-[50%]">
+                  <div className="w-[840px] max-w-[65%]">
                     <CoverHonorBoard 
                       userId={profile.id}
                       username={profile?.full_name || profile?.username}
