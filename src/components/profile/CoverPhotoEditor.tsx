@@ -140,9 +140,9 @@ export function CoverPhotoEditor({ userId, currentCoverUrl, onCoverUpdated }: Co
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file size (5MB max)
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Ảnh phải nhỏ hơn 5MB');
+    // Validate file size (10MB max for cover photos)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Ảnh phải nhỏ hơn 10MB');
       return;
     }
 
@@ -156,16 +156,24 @@ export function CoverPhotoEditor({ userId, currentCoverUrl, onCoverUpdated }: Co
     setIsMenuOpen(false);
 
     try {
+      // Get fresh access token BEFORE starting upload to avoid race conditions
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('Vui lòng đăng nhập lại');
+        return;
+      }
+      const accessToken = session.access_token;
+
       // Compress image for cover (1920px wide, high quality)
       const compressedFile = await compressImage(file, {
         maxWidth: 1920,
         maxHeight: 1080,
         quality: 0.85,
-        targetSizeKB: 500
+        targetSizeKB: 800
       });
       
-      // Upload to R2 using 'avatars' bucket (general profile media)
-      const result = await uploadToR2(compressedFile, 'avatars');
+      // Upload to R2 with explicit access token
+      const result = await uploadToR2(compressedFile, 'avatars', undefined, accessToken);
       const uploadedUrl = result.url;
       
       // Update profile in database
@@ -180,7 +188,7 @@ export function CoverPhotoEditor({ userId, currentCoverUrl, onCoverUpdated }: Co
       toast.success('Đã cập nhật ảnh bìa');
     } catch (error) {
       console.error('Error uploading cover:', error);
-      toast.error('Không thể tải lên ảnh bìa');
+      toast.error('Không thể tải lên ảnh bìa. Vui lòng thử lại.');
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) {

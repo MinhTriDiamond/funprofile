@@ -60,9 +60,9 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
   if (loading) {
     return (
       <>
-        {/* Desktop: positioned at top right corner of cover photo */}
-        <div className="hidden md:block absolute right-4 top-4 w-[40%] max-w-[360px] min-w-[240px] z-20">
-          <Skeleton className="h-[260px] w-full rounded-2xl" />
+        {/* Desktop: positioned at bottom right corner of cover photo */}
+        <div className="hidden md:block absolute right-4 bottom-16 w-[22%] max-w-[280px] min-w-[200px] z-20">
+          <Skeleton className="h-[200px] w-full rounded-2xl" />
         </div>
       </>
     );
@@ -95,28 +95,27 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
 
   return (
     <>
-      {/* Desktop: Positioned at top right corner of cover photo */}
-      <div className="hidden md:block absolute right-4 top-4 w-[40%] max-w-[360px] min-w-[240px] z-20">
-        {/* Main Container */}
-        <div className="rounded-2xl overflow-hidden border-2 border-yellow-400 bg-gradient-to-br from-green-900/95 via-green-800/95 to-emerald-900/95 backdrop-blur-sm shadow-2xl">
-          <div className="p-2.5">
-            {/* Header - Logo and Title */}
-            <div className="text-center mb-2">
-              <div className="flex items-center justify-center gap-2">
+      {/* Desktop: Positioned at bottom right corner of cover photo, balanced with cover */}
+      <div className="hidden md:block absolute right-4 bottom-16 w-[22%] max-w-[280px] min-w-[200px] z-20">
+        {/* Main Container - Golden glass aesthetic */}
+        <div className="rounded-xl overflow-hidden border-2 border-[#DAA520] bg-yellow-500/20 backdrop-blur-md shadow-2xl">
+          <div className="p-2">
+            {/* Header - Compact */}
+            <div className="text-center mb-1.5">
+              <div className="flex items-center justify-center gap-1.5">
                 <img 
                   src="/fun-profile-logo-40.webp" 
                   alt="Fun Profile Web3"
-                  className="w-7 h-7 rounded-full border-2 border-green-400/50 shadow-[0_0_15px_rgba(34,197,94,0.6)]"
+                  className="w-5 h-5 rounded-full border border-green-400/50 shadow-[0_0_10px_rgba(34,197,94,0.5)]"
                 />
                 <h1 
-                  className="text-lg font-black tracking-wider uppercase leading-none"
+                  className="text-sm font-black tracking-wider uppercase leading-none"
                   style={{
                     fontFamily: "'Orbitron', 'Rajdhani', sans-serif",
-                    background: 'linear-gradient(135deg, #fcd34d 0%, #f59e0b 50%, #fcd34d 100%)',
+                    background: 'linear-gradient(135deg, #FFD700 0%, #DAA520 50%, #FFD700 100%)',
                     WebkitBackgroundClip: 'text',
                     WebkitTextFillColor: 'transparent',
-                    textShadow: '0 0 20px rgba(250,204,21,0.8)',
-                    filter: 'drop-shadow(0 0 8px rgba(250,204,21,0.6))',
+                    filter: 'drop-shadow(0 0 6px rgba(250,204,21,0.6))',
                   }}
                 >
                   HONOR BOARD
@@ -124,29 +123,29 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
               </div>
             </div>
 
-            {/* Two Column Layout - Compact */}
-            <div className="grid grid-cols-2 gap-1">
+            {/* Two Column Layout - Pill-shaped capsules */}
+            <div className="grid grid-cols-2 gap-0.5">
               {/* Left Column */}
-              <div className="space-y-1">
-                <StatRow icon={<ArrowUp className="w-3 h-3" />} label="Posts" value={stats.posts_count} />
-                <StatRow icon={<Star className="w-3 h-3" />} label="Reactions" value={stats.reactions_on_posts} />
-                <StatRow icon={<MessageCircle className="w-3 h-3" />} label="Comments" value={stats.comments_count} />
-                <StatRow icon={<Share2 className="w-3 h-3" />} label="Shares" value={stats.shares_count} />
+              <div className="space-y-0.5">
+                <StatRow icon={<ArrowUp className="w-2.5 h-2.5" />} label="Posts" value={stats.posts_count} />
+                <StatRow icon={<Star className="w-2.5 h-2.5" />} label="Reactions" value={stats.reactions_on_posts} />
+                <StatRow icon={<MessageCircle className="w-2.5 h-2.5" />} label="Comments" value={stats.comments_count} />
+                <StatRow icon={<Share2 className="w-2.5 h-2.5" />} label="Shares" value={stats.shares_count} />
               </div>
 
               {/* Right Column */}
-              <div className="space-y-1">
-                <StatRow icon={<Users className="w-3 h-3" />} label="Friends" value={stats.friends_count} />
-                <StatRow icon={<Video className="w-3 h-3" />} label="Livestream" value={stats.livestreams_count} />
-                <StatRow icon={<Gift className="w-3 h-3" />} label="Claimable" value={stats.claimable} />
-                <StatRow icon={<Coins className="w-3 h-3" />} label="Claimed" value={stats.claimed} />
+              <div className="space-y-0.5">
+                <StatRow icon={<Users className="w-2.5 h-2.5" />} label="Friends" value={stats.friends_count} />
+                <StatRow icon={<Video className="w-2.5 h-2.5" />} label="Live" value={stats.livestreams_count} />
+                <StatRow icon={<Gift className="w-2.5 h-2.5" />} label="Claim" value={stats.claimable} />
+                <StatRow icon={<Coins className="w-2.5 h-2.5" />} label="Claimed" value={stats.claimed} />
               </div>
             </div>
 
             {/* Total Rows */}
-            <div className="mt-1 grid grid-cols-2 gap-1">
-              <StatRow icon={<Calendar className="w-3 h-3" />} label="Today" value={stats.today_reward} />
-              <StatRow icon={<BadgeDollarSign className="w-3 h-3" />} label="Total" value={stats.total_reward} />
+            <div className="mt-0.5 grid grid-cols-2 gap-0.5">
+              <StatRow icon={<Calendar className="w-2.5 h-2.5" />} label="Today" value={stats.today_reward} />
+              <StatRow icon={<BadgeDollarSign className="w-2.5 h-2.5" />} label="Total" value={stats.total_reward} />
             </div>
           </div>
         </div>
