@@ -203,14 +203,22 @@ export const FacebookNavbar = () => {
                     </Avatar>
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 bg-card border border-border">
-                  {/* Go to Profile */}
+                <DropdownMenuContent align="end" className="w-64 bg-card border border-border shadow-lg z-50">
+                  {/* Go to Profile - with user avatar and name */}
                   <DropdownMenuItem 
                     onClick={() => navigate(`/profile/${currentUserId}`)}
-                    className="cursor-pointer gap-2"
+                    className="cursor-pointer gap-3 p-3"
                   >
-                    <User className="w-4 h-4" />
-                    <span>{t('myProfile')}</span>
+                    <Avatar className="w-10 h-10 border-2 border-gold/30">
+                      <AvatarImage src={profile?.avatar_url || ''} />
+                      <AvatarFallback className="bg-primary/20 text-primary text-sm">
+                        {profile?.username?.[0]?.toUpperCase() || 'U'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex flex-col">
+                      <span className="font-semibold text-foreground">{profile?.username || 'User'}</span>
+                      <span className="text-xs text-muted-foreground">{t('myProfile')}</span>
+                    </div>
                   </DropdownMenuItem>
                   
                   <DropdownMenuSeparator />
