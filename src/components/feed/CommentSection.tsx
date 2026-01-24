@@ -7,7 +7,7 @@ import { MessageCircle, Send, Smile } from 'lucide-react';
 import { z } from 'zod';
 import { CommentItem } from './CommentItem';
 import { CommentMediaUpload } from './CommentMediaUpload';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { EmojiPicker } from './EmojiPicker';
 import { useLanguage } from '@/i18n/LanguageContext';
 
@@ -195,13 +195,14 @@ export const CommentSection = ({ postId, onCommentAdded }: CommentSectionProps) 
       <form onSubmit={handleSubmit} className="space-y-3">
         <div className="flex gap-3 items-start">
           <Avatar className="w-10 h-10 ring-2 ring-primary/30 shrink-0">
-            {currentUser?.avatar_url ? (
-              <img src={currentUser.avatar_url} alt="Avatar" className="w-full h-full object-cover rounded-full" />
-            ) : (
-              <AvatarFallback className="bg-gradient-to-br from-primary/30 to-primary/10 text-primary font-semibold">
-                {currentUser?.username?.[0]?.toUpperCase() || 'U'}
-              </AvatarFallback>
-            )}
+            <AvatarImage 
+              src={currentUser?.avatar_url} 
+              alt={currentUser?.username || 'User'} 
+              sizeHint="sm" 
+            />
+            <AvatarFallback className="bg-gradient-to-br from-primary/30 to-primary/10 text-primary font-semibold">
+              {currentUser?.username?.[0]?.toUpperCase() || 'U'}
+            </AvatarFallback>
           </Avatar>
           
           <div className="flex-1 space-y-2">

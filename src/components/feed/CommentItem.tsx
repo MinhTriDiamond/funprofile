@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { MessageCircle, Trash2, Share2, Flag, MoreHorizontal } from 'lucide-react';
 import { CommentReactionButton } from './CommentReactionButton';
@@ -120,13 +120,14 @@ export const CommentItem = ({
       <div className="flex gap-3 group animate-fade-in">
         <Link to={`/profile/${comment.user_id}`}>
           <Avatar className="w-9 h-9 ring-2 ring-primary/20 transition-all duration-300 group-hover:ring-primary/40 shrink-0 cursor-pointer hover:scale-105">
-            {comment.profiles?.avatar_url ? (
-              <img src={comment.profiles.avatar_url} alt="Avatar" className="w-full h-full object-cover rounded-full" />
-            ) : (
-              <AvatarFallback className="text-xs bg-gradient-to-br from-primary/30 to-primary/10 text-primary font-semibold">
-                {comment.profiles?.username?.[0]?.toUpperCase() || 'U'}
-              </AvatarFallback>
-            )}
+            <AvatarImage 
+              src={comment.profiles?.avatar_url} 
+              alt={comment.profiles?.username || 'User'} 
+              sizeHint="sm" 
+            />
+            <AvatarFallback className="text-xs bg-gradient-to-br from-primary/30 to-primary/10 text-primary font-semibold">
+              {comment.profiles?.username?.[0]?.toUpperCase() || 'U'}
+            </AvatarFallback>
           </Avatar>
         </Link>
         
