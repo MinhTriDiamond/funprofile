@@ -1,180 +1,83 @@
 
-# Kế hoạch: Sửa lỗi toàn bộ các nút không hoạt động trên trang Profile
+# Kế Hoạch Chỉnh Sửa Profile Page
 
-## Tổng quan vấn đề
+## Tổng Quan
+Điều chỉnh giao diện Profile theo 5 yêu cầu:
+1. Tăng kích thước ảnh đại diện
+2. Mở rộng bảng Honor Board sát góc phải như ảnh bìa
+3. Tăng kích thước tổng thể của Honor Board
+4. Chỉnh các ô stat thành hình viên thuốc (pill shape)
+5. Nền bảng Honor Board bóng kính trong suốt (glassmorphism)
+6. Bỏ ô "Shares" và "Livestream"
 
-Sau khi kiểm tra kỹ code và cấu trúc z-index, tôi đã xác định được các vấn đề sau:
+---
 
-### Vấn đề 1: Nút "Chỉnh sửa ảnh bìa" bị che bởi overlay
-- Nút **Edit Cover** có `z-[100]`
-- **CoverHonorBoard** có `z-20` - thấp hơn nút
-- Tuy nhiên, khi nút được bấm, overlay đóng menu (`z-[150]`) xuất hiện và có thể chặn các tương tác khác
+## Chi Tiết Thay Đổi
 
-### Vấn đề 2: Màu chữ nút "Chỉnh sửa ảnh bìa" khó nhìn
-- Nút có class `text-gray-800` trên nền ảnh bìa tối
-- Người dùng yêu cầu đổi sang **màu trắng**
-
-### Vấn đề 3: Nút Like/Comment không hoạt động trên trang Profile
-- `FacebookPostCard` nhận `currentUserId` từ `Profile.tsx`
-- Nếu `currentUserId` rỗng (do session chưa load), các nút sẽ không hoạt động
-- `ReactionButton` yêu cầu `currentUserId` để ghi reaction vào database
-
-### Vấn đề 4: Cấu trúc z-index không nhất quán
-- Cover photo container: `overflow-hidden` → các phần tử con không thể thoát ra
-- Cần chuyển thành `overflow-visible` để các dropdown hoạt động đúng
-
-## Giải pháp chi tiết
-
-### Phần 1: Sửa nút "Chỉnh sửa ảnh bìa"
-
-**File: `src/components/profile/CoverPhotoEditor.tsx`**
-
-1. **Đổi màu chữ sang trắng** với shadow để dễ nhìn trên mọi nền:
-```tsx
-// TRƯỚC (dòng 229)
-className="bg-white/95 text-gray-800 hover:bg-white shadow-lg border border-gray-200"
-
-// SAU
-className="bg-black/60 text-white hover:bg-black/80 shadow-lg border border-white/20 backdrop-blur-sm"
-```
-
-2. **Tăng z-index của overlay** để không xung đột:
-```tsx
-// TRƯỚC (dòng 365)
-className="fixed inset-0 z-[150]"
-
-// SAU
-className="fixed inset-0 z-[199]"
-```
-
-### Phần 2: Sửa cấu trúc Profile page cho z-index nhất quán
+### 1. Tăng Kích Thước Ảnh Đại Diện
 
 **File: `src/pages/Profile.tsx`**
+- Avatar cho người xem: `w-32 h-32 sm:w-36 sm:h-36 md:w-44 md:h-44` -> `w-36 h-36 sm:w-44 sm:h-44 md:w-52 md:h-52`
 
-1. **Đảm bảo cover container cho phép overflow** (dòng 315):
-```tsx
-// TRƯỚC
-className="h-[200px] sm:h-[300px] md:h-[400px] relative overflow-hidden md:rounded-b-xl"
+**File: `src/components/profile/AvatarEditor.tsx`**
+- Thêm size "xl" mới với kích thước `w-36 h-36 sm:w-44 sm:h-44 md:w-52 md:h-52`
+- Cập nhật button camera position phù hợp
 
-// SAU
-className="h-[200px] sm:h-[300px] md:h-[400px] relative overflow-visible md:rounded-b-xl"
-```
+---
 
-2. **Thêm thêm stacking context riêng** cho Edit Cover button container:
-```tsx
-// TRƯỚC (dòng 340)
-<div className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 z-[100]">
-
-// SAU - Thêm isolation để tạo stacking context mới
-<div className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 z-[100] isolation-isolate">
-```
-
-### Phần 3: Đảm bảo currentUserId được load đúng cho Like/Comment
+### 2. Mở Rộng Honor Board Sát Góc Phải
 
 **File: `src/pages/Profile.tsx`**
+- Container Honor Board: `max-w-[480px]` -> `max-w-[600px]` với `w-full`
+- Đảm bảo board căn sát phải và cùng vị trí với edge của cover photo
 
-Kiểm tra logic hiện tại:
-- Dòng 56-61: `checkAuth()` gọi `getSession()` và set `currentUserId`
-- Dòng 104-114: `onAuthStateChange` listener cập nhật `currentUserId`
+---
 
-Vấn đề: `FacebookPostCard` có thể render trước khi `currentUserId` được set.
+### 3. Nền Bóng Kính Trong Suốt (Glassmorphism)
 
-**Giải pháp**: Thêm điều kiện không render posts nếu session đang loading:
+**File: `src/components/profile/CoverHonorBoard.tsx`**
+- Container chính thay đổi:
+  - Xóa: `bg-gradient-to-br from-green-900/95 via-green-800/95 to-emerald-900/95`
+  - Thêm: `bg-white/10 backdrop-blur-xl border border-white/20 shadow-[0_8px_32px_rgba(0,0,0,0.3)]`
+- Tạo hiệu ứng glass effect với inner glow nhẹ
 
-```tsx
-// TRƯỚC (dòng 618-655)
-{sortedPosts.length === 0 ? (
-  <div className="...">Chưa có bài viết nào</div>
-) : (
-  sortedPosts.map((item) => {
-    ...
-    <FacebookPostCard 
-      post={item} 
-      currentUserId={currentUserId}  // Có thể rỗng
-      ...
-    />
-  })
-)}
+---
 
-// SAU - Đảm bảo currentUserId tồn tại trước khi render interactive posts
-{sortedPosts.length === 0 ? (
-  <div className="...">Chưa có bài viết nào</div>
-) : (
-  sortedPosts.map((item) => {
-    ...
-    <FacebookPostCard 
-      post={item} 
-      currentUserId={currentUserId || ''}
-      ...
-    />
-  })
-)}
-```
+### 4. Chỉnh Stat Items Thành Hình Viên Thuốc (Pill Shape)
 
-**Lưu ý quan trọng**: Sau khi kiểm tra, logic hiện tại đã truyền `currentUserId` đúng cách. Vấn đề có thể nằm ở việc session không được load kịp thời. Giải pháp đã được áp dụng ở message trước (tăng timeout từ 5s lên 15s).
+**File: `src/components/profile/CoverHonorBoard.tsx`**
+- StatRow component:
+  - Thay `rounded-lg` thành `rounded-full`
+  - Tăng padding ngang: `px-2 sm:px-2.5` -> `px-3 sm:px-4`
+  - Nền semi-transparent: `bg-gradient-to-b from-[#1a7d45]/80 via-[#166534]/80 to-[#0d4a2a]/80 backdrop-blur-sm`
+  - Giữ border vàng và shadow glow
 
-## Danh sách file cần chỉnh sửa
+---
 
-| File | Thay đổi |
-|------|----------|
-| `src/components/profile/CoverPhotoEditor.tsx` | Đổi màu nút sang trắng + nền tối, tăng z-index overlay |
-| `src/pages/Profile.tsx` | Đảm bảo overflow-visible và isolation cho nút edit cover |
+### 5. Bỏ Ô Shares và Livestream
 
-## Chi tiết kỹ thuật
+**File: `src/components/profile/CoverHonorBoard.tsx`**
+- **Left Column**: Giữ Posts, Reactions, Comments (bỏ Shares)
+- **Right Column**: Giữ Friends, Claimable, Claimed (bỏ Livestream)
+- Layout giảm từ 8 ô -> 6 ô (3 mỗi cột)
 
-### Thay đổi CoverPhotoEditor.tsx
+---
 
-**Dòng 226-234 - Đổi style nút:**
-```tsx
-<Button 
-  size="sm" 
-  onClick={() => setIsMenuOpen(!isMenuOpen)}
-  className="bg-black/60 text-white hover:bg-black/80 shadow-lg border border-white/20 backdrop-blur-sm font-medium"
-  disabled={isUploading}
->
-  <Camera className="w-4 h-4 mr-2" />
-  {isUploading ? 'Đang tải...' : 'Chỉnh sửa ảnh bìa'}
-</Button>
-```
+## Kết Quả Mong Đợi
 
-**Dòng 238 - Dropdown menu z-index:**
-```tsx
-// Giữ nguyên z-[200] - đã đủ cao
+| Thành phần | Trước | Sau |
+|------------|-------|-----|
+| Avatar size | 176px (md) | 208px (md) |
+| Honor Board width | max 480px | max 600px |
+| Stat shape | Rounded corners | Pill (rounded-full) |
+| Background | Solid green gradient | Glass blur transparent |
+| Stat items | 8 items | 6 items (bỏ Shares, Livestream) |
 
-// TRƯỚC
-<div className="absolute right-0 bottom-full mb-2 w-56 bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-[200]">
+---
 
-// SAU - Thêm backdrop-blur cho đẹp hơn
-<div className="absolute right-0 bottom-full mb-2 w-56 bg-card rounded-lg shadow-xl border border-border py-2 z-[200]">
-```
+## Các File Cần Chỉnh Sửa
 
-**Dòng 365 - Overlay z-index:**
-```tsx
-// TRƯỚC
-<div className="fixed inset-0 z-[150]" onClick={() => setIsMenuOpen(false)} />
+1. `src/pages/Profile.tsx` - Avatar size, Honor Board container width
+2. `src/components/profile/AvatarEditor.tsx` - Thêm size "xl"
+3. `src/components/profile/CoverHonorBoard.tsx` - Glassmorphism, pill shape, bỏ 2 ô
 
-// SAU
-<div className="fixed inset-0 z-[199]" onClick={() => setIsMenuOpen(false)} />
-```
-
-### Thay đổi Profile.tsx
-
-**Dòng 315 - Cover container overflow:**
-```tsx
-// Giữ overflow-hidden để ảnh không tràn ra ngoài rounded corners
-// Thay vào đó, đảm bảo nút edit có đủ z-index
-```
-
-**Dòng 340 - Nút Edit Cover với isolation:**
-```tsx
-<div className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 z-[100] isolate">
-```
-
-## Kết quả mong đợi
-
-Sau khi áp dụng:
-1. ✅ Nút "Chỉnh sửa ảnh bìa" có màu **chữ trắng**, nền **đen bán trong suốt**, dễ nhìn trên mọi ảnh bìa
-2. ✅ Dropdown menu mở ra khi bấm nút, không bị che bởi các phần tử khác
-3. ✅ Upload ảnh và chọn template hoạt động bình thường
-4. ✅ Nút Like/Comment hoạt động nếu user đã đăng nhập (session đã load)
-5. ✅ Tất cả các nút trên Profile page hoạt động mượt như Facebook
