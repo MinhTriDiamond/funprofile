@@ -60,9 +60,9 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
   if (loading) {
     return (
       <>
-        {/* Desktop: on cover photo */}
-        <div className="hidden md:block absolute right-3 sm:right-4 top-3 sm:top-4 bottom-3 sm:bottom-4 w-[50%] max-w-[500px]">
-          <Skeleton className="h-full w-full rounded-2xl" />
+        {/* Desktop: positioned at bottom right, above action buttons */}
+        <div className="hidden md:block absolute right-4 bottom-0 translate-y-1/2 w-[45%] max-w-[420px] min-w-[280px] z-20">
+          <Skeleton className="h-[200px] w-full rounded-2xl" />
         </div>
         {/* Mobile: placeholder below cover - rendered in parent */}
       </>
@@ -96,29 +96,29 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
 
   return (
     <>
-      {/* Desktop: Overlay on cover photo */}
-      <div className="hidden md:block absolute right-3 sm:right-4 top-3 sm:top-4 bottom-3 sm:bottom-4 w-[50%] max-w-[500px] min-w-[300px]">
-        {/* Main Container - Fill height to match cover photo bounds */}
-        <div className="h-full rounded-2xl overflow-hidden border-2 border-yellow-400 flex flex-col bg-gradient-to-br from-green-900 via-green-800 to-emerald-900">
-          <div className="relative flex-1 flex flex-col p-3 sm:p-4">
+      {/* Desktop: Positioned at bottom right of cover, overlapping into profile section - parallel with avatar */}
+      <div className="hidden md:block absolute right-4 bottom-0 translate-y-1/2 w-[45%] max-w-[420px] min-w-[280px] z-20">
+        {/* Main Container */}
+        <div className="rounded-2xl overflow-hidden border-2 border-yellow-400 flex flex-col bg-gradient-to-br from-green-900 via-green-800 to-emerald-900 shadow-xl">
+          <div className="relative p-3">
             {/* Header - Logo and Title on same line */}
-            <div className="text-center mb-3">
-              <div className="flex items-center justify-center gap-2 mb-1">
-                {/* Logo - use direct path for consistency across all environments */}
+            <div className="text-center mb-2">
+              <div className="flex items-center justify-center gap-2">
+                {/* Logo */}
                 <img 
                   src="/fun-profile-logo-40.webp" 
                   alt="Fun Profile Web3"
-                  className="w-9 h-9 sm:w-11 sm:h-11 rounded-full border-2 border-green-400/50 shadow-[0_0_20px_rgba(34,197,94,0.6)]"
+                  className="w-8 h-8 rounded-full border-2 border-green-400/50 shadow-[0_0_20px_rgba(34,197,94,0.6)]"
                 />
-                {/* Title - HONOR BOARD - same height as logo */}
+                {/* Title */}
                 <h1 
-                  className="text-2xl sm:text-3xl font-black tracking-wider uppercase leading-none"
+                  className="text-xl font-black tracking-wider uppercase leading-none"
                   style={{
                     fontFamily: "'Orbitron', 'Rajdhani', sans-serif",
                     background: 'linear-gradient(135deg, #fcd34d 0%, #f59e0b 50%, #fcd34d 100%)',
                     WebkitBackgroundClip: 'text',
                     WebkitTextFillColor: 'transparent',
-                    WebkitTextStroke: '2px white',
+                    WebkitTextStroke: '1px white',
                     textShadow: '0 0 30px rgba(250,204,21,0.8), 0 0 60px rgba(250,204,21,0.4)',
                     filter: 'drop-shadow(0 0 10px rgba(250,204,21,0.6))',
                   }}
@@ -126,84 +126,69 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
                   HONOR BOARD
                 </h1>
               </div>
-              
-              {/* User info - Avatar on left, Name on right */}
-              <div className="flex items-center justify-center gap-2">
-                <Avatar className="w-8 h-8 border-2 border-yellow-400/70 shadow-[0_0_10px_rgba(250,204,21,0.4)]">
-                  <AvatarImage src={avatarUrl} />
-                  <AvatarFallback className="bg-gradient-to-br from-yellow-500 to-yellow-600 text-black font-bold text-sm">
-                    {username?.[0]?.toUpperCase() || 'U'}
-                  </AvatarFallback>
-                </Avatar>
-                <span 
-                  className="text-white font-bold truncate max-w-[150px] drop-shadow-[0_0_4px_rgba(0,0,0,0.8)] text-lg sm:text-xl"
-                >
-                  {username?.toUpperCase() || 'USER'}
-                </span>
-              </div>
             </div>
 
-            {/* Two Column Layout - Even vertical spacing */}
-            <div className="flex-1 grid grid-cols-2 gap-2">
-              {/* Left Column - Posts, Reactions, Comments, Shares */}
-              <div className="flex flex-col justify-between space-y-2">
+            {/* Compact Two Column Layout */}
+            <div className="grid grid-cols-2 gap-1.5">
+              {/* Left Column */}
+              <div className="space-y-1.5">
                 <StatRow 
-                  icon={<ArrowUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
+                  icon={<ArrowUp className="w-3 h-3" />}
                   label="Posts"
                   value={stats.posts_count}
                 />
                 <StatRow 
-                  icon={<Star className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
+                  icon={<Star className="w-3 h-3" />}
                   label="Reactions"
                   value={stats.reactions_on_posts}
                 />
                 <StatRow 
-                  icon={<MessageCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
+                  icon={<MessageCircle className="w-3 h-3" />}
                   label="Comments"
                   value={stats.comments_count}
                 />
                 <StatRow 
-                  icon={<Share2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
+                  icon={<Share2 className="w-3 h-3" />}
                   label="Shares"
                   value={stats.shares_count}
                 />
               </div>
 
-              {/* Right Column - Friends, Livestreams, Claimable, Claimed */}
-              <div className="flex flex-col justify-between space-y-2">
+              {/* Right Column */}
+              <div className="space-y-1.5">
                 <StatRow 
-                  icon={<Users className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
+                  icon={<Users className="w-3 h-3" />}
                   label="Friends"
                   value={stats.friends_count}
                 />
                 <StatRow 
-                  icon={<Video className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
+                  icon={<Video className="w-3 h-3" />}
                   label="Livestream"
                   value={stats.livestreams_count}
                 />
                 <StatRow 
-                  icon={<Gift className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
+                  icon={<Gift className="w-3 h-3" />}
                   label="Claimable"
                   value={stats.claimable}
                 />
                 <StatRow 
-                  icon={<Coins className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
+                  icon={<Coins className="w-3 h-3" />}
                   label="Claimed"
                   value={stats.claimed}
                 />
               </div>
             </div>
 
-            {/* Full Width Total Rows - Even spacing with columns */}
-            <div className="mt-3 space-y-2">
+            {/* Total Rows */}
+            <div className="mt-1.5 grid grid-cols-2 gap-1.5">
               <StatRow 
-                icon={<Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
+                icon={<Calendar className="w-3 h-3" />}
                 label="Today"
                 value={stats.today_reward}
               />
               <StatRow 
-                icon={<BadgeDollarSign className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
-                label="Total Reward"
+                icon={<BadgeDollarSign className="w-3 h-3" />}
+                label="Total"
                 value={stats.total_reward}
               />
             </div>
