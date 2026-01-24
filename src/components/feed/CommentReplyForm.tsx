@@ -7,10 +7,7 @@ import { z } from 'zod';
 import { CommentMediaUpload } from './CommentMediaUpload';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { EmojiPicker } from './EmojiPicker';
-
-const replySchema = z.object({
-  content: z.string().max(1000, 'Trả lời không được quá 1000 ký tự'),
-});
+import { useLanguage } from '@/i18n/LanguageContext';
 
 interface CommentReplyFormProps {
   postId: string;
@@ -25,12 +22,17 @@ export const CommentReplyForm = ({
   onReplyAdded, 
   onCancel 
 }: CommentReplyFormProps) => {
+  const { t } = useLanguage();
   const [content, setContent] = useState('');
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
   const [mediaType, setMediaType] = useState<'image' | 'video' | null>(null);
   const [loading, setLoading] = useState(false);
   const [currentUser, setCurrentUser] = useState<{ avatar_url: string | null; username: string } | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+
+  const replySchema = z.object({
+    content: z.string().max(1000, t('replyTooLong')),
+  });
 
   useEffect(() => {
     fetchCurrentUser();
@@ -65,7 +67,7 @@ export const CommentReplyForm = ({
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) {
-      toast.error('Vui lòng đăng nhập để trả lời');
+      toast.error(t('pleaseLoginToReply'));
       setLoading(false);
       return;
     }
@@ -90,13 +92,13 @@ export const CommentReplyForm = ({
       .insert(insertData);
 
     if (error) {
-      toast.error('Không thể đăng trả lời');
+      toast.error(t('cannotPostReply'));
     } else {
       setContent('');
       setMediaUrl(null);
       setMediaType(null);
       onReplyAdded();
-      toast.success('Đã đăng trả lời!');
+      toast.success(t('replyPosted'));
     }
     setLoading(false);
   };
@@ -123,7 +125,7 @@ export const CommentReplyForm = ({
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            placeholder="Viết trả lời..."
+            placeholder={t('writeReply')}
             className="w-full min-h-[50px] max-h-[120px] px-3 py-2 bg-white border-2 border-primary/30 rounded-xl resize-none focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all duration-300 text-sm placeholder:text-muted-foreground/60"
             disabled={loading}
             onKeyDown={(e) => {
@@ -202,7 +204,7 @@ export const CommentReplyForm = ({
               className="bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-white font-semibold px-4 rounded-full shadow-md shadow-yellow-400/20 hover:shadow-yellow-500/30 transition-all duration-300 h-8"
             >
               <Send className="w-3.5 h-3.5 mr-1" />
-              Gửi
+              {t('send')}
             </Button>
           </div>
         </div>

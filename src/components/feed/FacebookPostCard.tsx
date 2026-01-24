@@ -234,24 +234,24 @@ const FacebookPostCardComponent = ({
       const { error: deleteError } = await supabase.from('posts').delete().eq('id', post.id);
       if (deleteError) throw deleteError;
       
-      toast.success('Đã xóa bài viết');
+      toast.success(t('postDeleted'));
       onPostDeleted();
     } catch (error: unknown) {
-      toast.error('Không thể xóa bài viết');
+      toast.error(t('cannotDeletePost'));
     } finally {
       setIsDeleting(false);
     }
-  }, [isDeleting, post, onPostDeleted]);
+  }, [isDeleting, post, onPostDeleted, t]);
 
   const handleCopyLink = useCallback(() => {
     const url = `${window.location.origin}/post/${post.id}`;
     navigator.clipboard.writeText(url);
-    toast.success('Đã sao chép link!');
-  }, [post.id]);
+    toast.success(t('linkCopied'));
+  }, [post.id, t]);
 
   const handleShareToProfile = useCallback(async () => {
     if (!currentUserId) {
-      toast.error('Vui lòng đăng nhập để chia sẻ');
+      toast.error(t('pleaseLoginToShare'));
       return;
     }
 
@@ -263,11 +263,11 @@ const FacebookPostCardComponent = ({
 
       if (error) throw error;
       setShareCount((prev) => prev + 1);
-      toast.success('Đã chia sẻ bài viết!');
+      toast.success(t('sharedPost'));
     } catch {
-      toast.error('Không thể chia sẻ');
+      toast.error(t('cannotShare'));
     }
-  }, [currentUserId, post.id]);
+  }, [currentUserId, post.id, t]);
 
   const handleReactionChange = useCallback((newCount: number, newReaction: string | null) => {
     setLikeCount(newCount);
@@ -355,11 +355,11 @@ const FacebookPostCardComponent = ({
             <DropdownMenuContent align="end" className="w-72">
               <DropdownMenuItem className="cursor-pointer gap-3">
                 <Bookmark className="w-5 h-5" />
-                Lưu bài viết
+                {t('savePost')}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleCopyLink} className="cursor-pointer gap-3">
                 <Link2 className="w-5 h-5" />
-                Sao chép liên kết
+                {t('copyLink')}
               </DropdownMenuItem>
               {/* Pin/Unpin options - only on own profile */}
               {canShowPinOption && (
@@ -369,7 +369,7 @@ const FacebookPostCardComponent = ({
                     className="cursor-pointer gap-3"
                   >
                     <PinOff className="w-5 h-5" />
-                    Bỏ ghim bài viết
+                    {t('unpinPost')}
                   </DropdownMenuItem>
                 ) : (
                   <DropdownMenuItem
@@ -377,7 +377,7 @@ const FacebookPostCardComponent = ({
                     className="cursor-pointer gap-3"
                   >
                     <Pin className="w-5 h-5" />
-                    Ghim bài viết
+                    {t('pinPost')}
                   </DropdownMenuItem>
                 )
               )}
@@ -388,7 +388,7 @@ const FacebookPostCardComponent = ({
                     className="cursor-pointer gap-3"
                   >
                     <Pencil className="w-5 h-5" />
-                    Chỉnh sửa bài viết
+                    {t('editPost')}
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onSelect={(e) => {
@@ -399,7 +399,7 @@ const FacebookPostCardComponent = ({
                     className="cursor-pointer text-destructive gap-3"
                   >
                     <Trash2 className="w-5 h-5" />
-                    {isDeleting ? 'Đang xóa...' : 'Xóa bài viết'}
+                    {isDeleting ? t('deleting') : t('deletePost')}
                   </DropdownMenuItem>
                 </>
               )}
@@ -443,22 +443,22 @@ const FacebookPostCardComponent = ({
               className="flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-3 min-h-[48px] rounded-lg transition-colors hover:bg-secondary text-muted-foreground active:bg-secondary/80"
             >
               <MessageCircle className="w-5 h-5 sm:w-5 sm:h-5" />
-              <span className="font-semibold text-xs sm:text-sm">Bình luận</span>
+              <span className="font-semibold text-xs sm:text-sm">{t('comment')}</span>
             </button>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-3 min-h-[48px] rounded-lg transition-colors hover:bg-secondary text-muted-foreground active:bg-secondary/80">
                   <Share2 className="w-5 h-5 sm:w-5 sm:h-5" />
-                  <span className="font-semibold text-xs sm:text-sm">Chia sẻ</span>
+                  <span className="font-semibold text-xs sm:text-sm">{t('share')}</span>
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="center">
                 <DropdownMenuItem onClick={handleShareToProfile} className="cursor-pointer min-h-[44px]">
-                  Chia sẻ lên trang cá nhân
+                  {t('shareToProfile')}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleCopyLink} className="cursor-pointer min-h-[44px]">
-                  Sao chép liên kết
+                  {t('copyLink')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

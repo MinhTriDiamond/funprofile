@@ -103,7 +103,7 @@ export const CommentSection = ({ postId, onCommentAdded }: CommentSectionProps) 
       .order('created_at', { ascending: false });
 
     if (error) {
-      toast.error('Không thể tải comments');
+      toast.error(t('cannotLoadComments'));
       return;
     }
 
@@ -142,8 +142,8 @@ export const CommentSection = ({ postId, onCommentAdded }: CommentSectionProps) 
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) {
-      toast.error('Vui lòng đăng nhập để bình luận', {
-        action: { label: 'Đăng nhập', onClick: () => navigate('/auth') }
+      toast.error(t('pleaseLoginToComment'), {
+        action: { label: t('login'), onClick: () => navigate('/auth') }
       });
       setLoading(false);
       return;
@@ -168,14 +168,14 @@ export const CommentSection = ({ postId, onCommentAdded }: CommentSectionProps) 
       .insert(insertData);
 
     if (error) {
-      toast.error('Không thể đăng comment');
+      toast.error(t('cannotPostComment'));
     } else {
       setNewComment('');
       setMediaUrl(null);
       setMediaType(null);
       fetchComments();
       onCommentAdded?.();
-      toast.success('Đã đăng comment!');
+      toast.success(t('commentPosted'));
     }
     setLoading(false);
   };

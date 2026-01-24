@@ -131,14 +131,47 @@ export const translations = {
     
     // Comments
     writeComment: 'Write a comment...',
+    writeReply: 'Write a reply...',
     reply: 'Reply',
     viewReplies: 'View replies',
     hideReplies: 'Hide replies',
+    viewMoreReplies: 'View {count} more replies...',
     loadMoreComments: 'Load more comments',
     comments: 'Comments',
     noComments: 'No comments yet. Be the first to comment!',
     report: 'Report',
     mintNft: 'Mint NFT',
+    anonymous: 'Anonymous',
+    
+    // Comment actions
+    cannotLoadComments: 'Cannot load comments',
+    pleaseLoginToComment: 'Please login to comment',
+    cannotPostComment: 'Cannot post comment',
+    commentPosted: 'Comment posted!',
+    commentLinkCopied: 'Comment link copied!',
+    confirmDeleteComment: 'Delete this comment?',
+    canOnlyDeleteOwnComment: 'You can only delete your own comment',
+    cannotDeleteComment: 'Cannot delete comment',
+    commentDeleted: 'Comment deleted',
+    reportSent: 'Report sent. Thank you!',
+    
+    // Reply actions  
+    pleaseLoginToReply: 'Please login to reply',
+    cannotPostReply: 'Cannot post reply',
+    replyPosted: 'Reply posted!',
+    replyTooLong: 'Reply cannot exceed 1000 characters',
+    
+    // Post actions
+    postDeleted: 'Post deleted',
+    cannotDeletePost: 'Cannot delete post',
+    linkCopied: 'Link copied!',
+    pleaseLoginToShare: 'Please login to share',
+    sharedPost: 'Post shared!',
+    cannotShare: 'Cannot share',
+    savePost: 'Save Post',
+    pinPost: 'Pin Post',
+    unpinPost: 'Unpin Post',
+    deleting: 'Deleting...',
     
     // Wallet
     totalAssets: 'Total Assets',
@@ -299,7 +332,6 @@ export const translations = {
     accountDeleted: 'Account Deleted',
     accountDeletedDesc: 'Your account has been deleted successfully',
     dangerZone: 'Danger Zone',
-    deleting: 'Deleting...',
 
     // Begin Page
     beginTitle: 'Welcome to FUN Ecosystem',
@@ -314,13 +346,10 @@ export const translations = {
     // Guest mode
     orContinueAs: 'Or continue as',
     viewAsGuest: 'View as a Guest',
+    
     // New i18n keys for feed components
     loadingMorePosts: 'Loading more posts...',
     noMorePostsMessage: 'You\'ve seen all posts',
-    cannotLoadComments: 'Cannot load comments',
-    pleaseLoginToComment: 'Please login to comment',
-    cannotPostComment: 'Cannot post comment',
-    commentPosted: 'Comment posted!',
     pleaseLoginToReact: 'Please login to react',
     cannotUpdateReaction: 'Cannot update reaction',
     systemPaused: 'System paused',
@@ -328,15 +357,6 @@ export const translations = {
     waitForVideoUpload: 'Please wait for video to finish uploading',
     contentTooLong: 'Content too long',
     postPublished: 'Post published!',
-    linkCopiedToast: 'Link copied!',
-    commentLinkCopied: 'Comment link copied!',
-    reportSent: 'Report sent. Thank you!',
-    confirmDeleteComment: 'Delete this comment?',
-    canOnlyDeleteOwnComment: 'You can only delete your own comments',
-    cannotDeleteComment: 'Cannot delete comment',
-    commentDeleted: 'Comment deleted',
-    pleaseLoginToShare: 'Please login to share',
-    anonymous: 'Anonymous',
     loginToPost: 'Login to post',
     reactionLove: 'Love',
     reactionCare: 'Care',
@@ -476,14 +496,47 @@ export const translations = {
     
     // Comments
     writeComment: 'Viết bình luận...',
+    writeReply: 'Viết trả lời...',
     reply: 'Trả lời',
     viewReplies: 'Xem trả lời',
     hideReplies: 'Ẩn trả lời',
+    viewMoreReplies: 'Xem thêm {count} trả lời...',
     loadMoreComments: 'Xem thêm bình luận',
     comments: 'Bình luận',
     noComments: 'Chưa có bình luận. Hãy là người đầu tiên bình luận!',
     report: 'Báo cáo',
     mintNft: 'Mint NFT',
+    anonymous: 'Ẩn danh',
+    
+    // Comment actions
+    cannotLoadComments: 'Không thể tải bình luận',
+    pleaseLoginToComment: 'Vui lòng đăng nhập để bình luận',
+    cannotPostComment: 'Không thể đăng bình luận',
+    commentPosted: 'Đã đăng bình luận!',
+    commentLinkCopied: 'Đã sao chép link bình luận!',
+    confirmDeleteComment: 'Xóa bình luận này?',
+    canOnlyDeleteOwnComment: 'Bạn chỉ có thể xóa bình luận của mình',
+    cannotDeleteComment: 'Không thể xóa bình luận',
+    commentDeleted: 'Đã xóa bình luận',
+    reportSent: 'Đã gửi báo cáo. Cảm ơn bạn!',
+    
+    // Reply actions
+    pleaseLoginToReply: 'Vui lòng đăng nhập để trả lời',
+    cannotPostReply: 'Không thể đăng trả lời',
+    replyPosted: 'Đã đăng trả lời!',
+    replyTooLong: 'Trả lời không được quá 1000 ký tự',
+    
+    // Post actions
+    postDeleted: 'Đã xóa bài viết',
+    cannotDeletePost: 'Không thể xóa bài viết',
+    linkCopied: 'Đã sao chép link!',
+    pleaseLoginToShare: 'Vui lòng đăng nhập để chia sẻ',
+    sharedPost: 'Đã chia sẻ bài viết!',
+    cannotShare: 'Không thể chia sẻ',
+    savePost: 'Lưu bài viết',
+    pinPost: 'Ghim bài viết',
+    unpinPost: 'Bỏ ghim bài viết',
+    deleting: 'Đang xóa...',
     
     // Wallet
     totalAssets: 'Tổng Tài Sản',
@@ -644,7 +697,6 @@ export const translations = {
     accountDeleted: 'Tài khoản đã được xóa',
     accountDeletedDesc: 'Tài khoản của bạn đã được xóa thành công',
     dangerZone: 'Vùng nguy hiểm',
-    deleting: 'Đang xóa...',
 
     // Begin Page
     beginTitle: 'Chào mừng đến FUN Ecosystem',
@@ -659,13 +711,10 @@ export const translations = {
     // Guest mode
     orContinueAs: 'Hoặc tiếp tục với',
     viewAsGuest: 'Xem với tư cách Khách',
+    
     // New i18n keys for feed components  
     loadingMorePosts: 'Đang tải thêm bài viết...',
     noMorePostsMessage: 'Bạn đã xem hết tất cả bài viết',
-    cannotLoadComments: 'Không thể tải bình luận',
-    pleaseLoginToComment: 'Vui lòng đăng nhập để bình luận',
-    cannotPostComment: 'Không thể đăng bình luận',
-    commentPosted: 'Đã đăng bình luận!',
     pleaseLoginToReact: 'Vui lòng đăng nhập để bày tỏ cảm xúc',
     cannotUpdateReaction: 'Không thể cập nhật cảm xúc',
     systemPaused: 'Hệ thống tạm dừng',
@@ -673,15 +722,6 @@ export const translations = {
     waitForVideoUpload: 'Vui lòng đợi video upload xong',
     contentTooLong: 'Nội dung quá dài',
     postPublished: 'Đã đăng bài viết!',
-    linkCopiedToast: 'Đã sao chép link!',
-    commentLinkCopied: 'Đã copy link bình luận!',
-    reportSent: 'Đã gửi báo cáo. Cảm ơn bạn!',
-    confirmDeleteComment: 'Xóa bình luận này?',
-    canOnlyDeleteOwnComment: 'Bạn chỉ có thể xóa bình luận của mình',
-    cannotDeleteComment: 'Không thể xóa bình luận',
-    commentDeleted: 'Đã xóa bình luận',
-    pleaseLoginToShare: 'Vui lòng đăng nhập để chia sẻ',
-    anonymous: 'Ẩn danh',
     loginToPost: 'Đăng nhập để đăng bài',
     reactionLove: 'Yêu thương',
     reactionCare: 'Thương thương',
