@@ -99,15 +99,15 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
         {/* Main Container - Glassmorphism */}
         <div className="rounded-2xl overflow-hidden border-2 border-white/30 bg-white/10 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.2)] w-full max-w-[420px]">
           <div className="p-3 sm:p-4">
-            {/* Header - Avatar and Title */}
+            {/* Header - Logo, Title, Avatar */}
             <div className="text-center mb-3">
               <div className="flex items-center justify-center gap-2">
-                <Avatar className="w-8 h-8 border-2 border-[#DAA520] shadow-[0_0_12px_rgba(218,165,32,0.6)]">
-                  <AvatarImage src={avatarUrl} sizeHint="sm" />
-                  <AvatarFallback className="bg-gradient-to-br from-green-600 to-green-800 text-white font-bold text-sm">
-                    {username?.[0]?.toUpperCase() || 'U'}
-                  </AvatarFallback>
-                </Avatar>
+                {/* FUN Profile Logo */}
+                <img 
+                  src="/fun-profile-logo-40.webp" 
+                  alt="FUN Profile" 
+                  className="w-8 h-8 rounded-full border-2 border-[#DAA520] shadow-[0_0_12px_rgba(218,165,32,0.6)]"
+                />
                 <h1 
                   className="text-lg font-black tracking-wider uppercase leading-none"
                   style={{
@@ -121,6 +121,13 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
                 >
                   {t('honorBoard').toUpperCase()}
                 </h1>
+                {/* User Avatar */}
+                <Avatar className="w-8 h-8 border-2 border-[#DAA520] shadow-[0_0_12px_rgba(218,165,32,0.6)]">
+                  <AvatarImage src={avatarUrl} sizeHint="sm" />
+                  <AvatarFallback className="bg-gradient-to-br from-green-600 to-green-800 text-white font-bold text-sm">
+                    {username?.[0]?.toUpperCase() || 'U'}
+                  </AvatarFallback>
+                </Avatar>
               </div>
             </div>
 
