@@ -225,20 +225,20 @@ export const AppHonorBoard = memo(() => {
               <div className="p-1.5 rounded-full bg-white/10 shrink-0">
                 <item.icon className="w-4 h-4 text-[#E8D5A3]" />
               </div>
-              <div className="flex-1 flex items-center justify-between gap-2 min-w-0">
-                <p className="text-[#E8D5A3] text-xs uppercase font-semibold whitespace-nowrap">
+              <div className="flex-1 flex items-center justify-between gap-2 min-w-0 overflow-hidden">
+                <span className="text-[#E8D5A3] text-[10px] sm:text-xs uppercase font-semibold truncate flex-shrink min-w-0">
                   {item.label}
-                </p>
-                <p className="text-[#FFD700] font-bold text-sm flex items-center gap-1 shrink-0 drop-shadow-[0_0_4px_rgba(255,215,0,0.4)]">
-                  {formatNumber(item.value)}
+                </span>
+                <span className="text-[#FFD700] font-bold text-[11px] sm:text-sm flex items-center gap-1 flex-shrink-0 drop-shadow-[0_0_4px_rgba(255,215,0,0.4)]">
+                  <span className="tabular-nums">{formatNumber(item.value)}</span>
                   {item.showCamlyLogo && (
                     <img 
                       src={camlyLogo} 
                       alt="CAMLY" 
-                      className="w-4 h-4 inline-block" 
+                      className="w-4 h-4 inline-block flex-shrink-0" 
                     />
                   )}
-                </p>
+                </span>
               </div>
             </div>
           ))}
@@ -253,18 +253,18 @@ export const AppHonorBoard = memo(() => {
                 <div className="p-1.5 rounded-full bg-white/10 shrink-0">
                   <Coins className="w-4 h-4 text-[#E8D5A3]" />
                 </div>
-                <div className="flex-1 flex items-center justify-between gap-2 min-w-0">
-                  <p className="text-[#E8D5A3] text-xs uppercase font-semibold whitespace-nowrap">
+                <div className="flex-1 flex items-center justify-between gap-2 min-w-0 overflow-hidden">
+                  <span className="text-[#E8D5A3] text-[10px] sm:text-xs uppercase font-semibold truncate flex-shrink min-w-0">
                     {index === 0 ? t('totalMoney') : `Circulating ${token.symbol}`}
-                  </p>
-                  <p className="text-[#FFD700] font-bold text-sm flex items-center gap-1 shrink-0 drop-shadow-[0_0_4px_rgba(255,215,0,0.4)]">
-                    {formatNumber(token.amount, token.symbol === 'CAMLY' ? 0 : 6)}
+                  </span>
+                  <span className="text-[#FFD700] font-bold text-[11px] sm:text-sm flex items-center gap-1 flex-shrink-0 drop-shadow-[0_0_4px_rgba(255,215,0,0.4)]">
+                    <span className="tabular-nums">{formatNumber(token.amount, token.symbol === 'CAMLY' ? 0 : 6)}</span>
                     <img 
                       src={token.logoPath} 
                       alt={token.symbol} 
-                      className="w-4 h-4 inline-block" 
+                      className="w-4 h-4 inline-block flex-shrink-0" 
                     />
-                  </p>
+                  </span>
                 </div>
               </div>
             ))

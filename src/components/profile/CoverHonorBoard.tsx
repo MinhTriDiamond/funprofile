@@ -69,17 +69,26 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
     );
   }
 
+  // Helper to get font size based on number of digits
+  const getValueFontSize = (value: number): string => {
+    const digits = formatNumber(value).length;
+    if (digits <= 4) return 'text-[11px] sm:text-xs md:text-sm';
+    if (digits <= 6) return 'text-[10px] sm:text-[11px] md:text-xs';
+    if (digits <= 8) return 'text-[9px] sm:text-[10px] md:text-[11px]';
+    return 'text-[8px] sm:text-[9px] md:text-[10px]';
+  };
+
   const StatRow = ({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) => (
-    <div className="flex items-center justify-between py-1 px-2 sm:px-2.5 rounded-lg bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_0_6px_rgba(218,165,32,0.3)]">
-      <div className="flex items-center gap-1 sm:gap-1.5">
-        <div className="text-[#E8D5A3] drop-shadow-[0_0_4px_rgba(218,165,32,0.5)]">
+    <div className="flex items-center justify-between py-1 px-2 sm:px-2.5 rounded-lg bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_0_6px_rgba(218,165,32,0.3)] overflow-hidden">
+      <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink min-w-0 overflow-hidden">
+        <div className="text-[#E8D5A3] drop-shadow-[0_0_4px_rgba(218,165,32,0.5)] flex-shrink-0">
           {icon}
         </div>
-        <span className="text-[#E8D5A3] font-bold text-[9px] sm:text-[10px] md:text-xs uppercase tracking-wide">
+        <span className="text-[#E8D5A3] font-bold text-[9px] sm:text-[10px] md:text-xs uppercase tracking-wide truncate">
           {label}
         </span>
       </div>
-      <span className="text-[#FFD700] font-bold text-[11px] sm:text-xs md:text-sm drop-shadow-[0_0_4px_rgba(255,215,0,0.4)]">
+      <span className={`text-[#FFD700] font-bold ${getValueFontSize(value)} drop-shadow-[0_0_4px_rgba(255,215,0,0.4)] tabular-nums flex-shrink-0 ml-1`}>
         {formatNumber(value)}
       </span>
     </div>
@@ -250,6 +259,35 @@ export const MobileStats = ({ userId, username, avatarUrl }: MobileStatsProps) =
   };
 
   const formatNumber = (num: number): string => num.toLocaleString('vi-VN');
+  
+  // Helper to get font size based on number of digits for mobile
+  const getValueFontSize = (value: number): string => {
+    const digits = formatNumber(value).length;
+    if (digits <= 4) return 'text-xs';
+    if (digits <= 6) return 'text-[11px]';
+    if (digits <= 8) return 'text-[10px]';
+    return 'text-[9px]';
+  };
+
+  // Mobile stat cell with auto-scaling font
+  const MobileStatCell = ({ icon, value, label }: { icon: React.ReactNode; value: number; label: string }) => (
+    <div className="bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] rounded-lg py-1.5 px-1 border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_0_4px_rgba(218,165,32,0.3)] overflow-hidden">
+      <div className="mx-auto text-[#E8D5A3] mb-0.5 flex justify-center">{icon}</div>
+      <div className={`text-[#FFD700] font-bold ${getValueFontSize(value)} tabular-nums truncate`}>{formatNumber(value)}</div>
+      <div className="text-[#E8D5A3]/80 text-[8px] uppercase truncate">{label}</div>
+    </div>
+  );
+
+  // Mobile total row with auto-scaling font
+  const MobileTotalRow = ({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) => (
+    <div className="bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] rounded-lg py-1.5 px-2 border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_0_6px_rgba(218,165,32,0.4)] flex items-center justify-between overflow-hidden">
+      <div className="flex items-center gap-1 flex-shrink min-w-0">
+        <div className="text-[#E8D5A3] flex-shrink-0">{icon}</div>
+        <span className="text-[#E8D5A3] font-bold text-[9px] uppercase truncate">{label}</span>
+      </div>
+      <span className={`text-[#FFD700] font-bold ${getValueFontSize(value)} drop-shadow-[0_0_4px_rgba(255,215,0,0.4)] tabular-nums flex-shrink-0 ml-1`}>{formatNumber(value)}</span>
+    </div>
+  );
 
   if (loading) {
     return (
@@ -278,68 +316,24 @@ export const MobileStats = ({ userId, username, avatarUrl }: MobileStatsProps) =
           
           {/* Compact 4x2 Grid */}
           <div className="grid grid-cols-4 gap-1.5 text-center mb-2">
-            <div className="bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] rounded-lg py-1.5 px-1 border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_0_4px_rgba(218,165,32,0.3)]">
-              <ArrowUp className="w-3.5 h-3.5 mx-auto text-[#E8D5A3] mb-0.5" />
-              <div className="text-[#FFD700] font-bold text-xs">{formatNumber(stats.posts_count)}</div>
-              <div className="text-[#E8D5A3]/80 text-[8px] uppercase">Posts</div>
-            </div>
-            <div className="bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] rounded-lg py-1.5 px-1 border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_0_4px_rgba(218,165,32,0.3)]">
-              <Star className="w-3.5 h-3.5 mx-auto text-[#E8D5A3] mb-0.5" />
-              <div className="text-[#FFD700] font-bold text-xs">{formatNumber(stats.reactions_on_posts)}</div>
-              <div className="text-[#E8D5A3]/80 text-[8px] uppercase">Reactions</div>
-            </div>
-            <div className="bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] rounded-lg py-1.5 px-1 border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_0_4px_rgba(218,165,32,0.3)]">
-              <MessageCircle className="w-3.5 h-3.5 mx-auto text-[#E8D5A3] mb-0.5" />
-              <div className="text-[#FFD700] font-bold text-xs">{formatNumber(stats.comments_count)}</div>
-              <div className="text-[#E8D5A3]/80 text-[8px] uppercase">Comments</div>
-            </div>
-            <div className="bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] rounded-lg py-1.5 px-1 border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_0_4px_rgba(218,165,32,0.3)]">
-              <Users className="w-3.5 h-3.5 mx-auto text-[#E8D5A3] mb-0.5" />
-              <div className="text-[#FFD700] font-bold text-xs">{formatNumber(stats.friends_count)}</div>
-              <div className="text-[#E8D5A3]/80 text-[8px] uppercase">Friends</div>
-            </div>
+            <MobileStatCell icon={<ArrowUp className="w-3.5 h-3.5" />} value={stats.posts_count} label="Posts" />
+            <MobileStatCell icon={<Star className="w-3.5 h-3.5" />} value={stats.reactions_on_posts} label="Reactions" />
+            <MobileStatCell icon={<MessageCircle className="w-3.5 h-3.5" />} value={stats.comments_count} label="Comments" />
+            <MobileStatCell icon={<Users className="w-3.5 h-3.5" />} value={stats.friends_count} label="Friends" />
           </div>
           
           {/* Second row: Shares, Livestreams, Claimable, Claimed */}
           <div className="grid grid-cols-4 gap-1.5 text-center mb-2">
-            <div className="bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] rounded-lg py-1.5 px-1 border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_0_4px_rgba(218,165,32,0.3)]">
-              <Share2 className="w-3.5 h-3.5 mx-auto text-[#E8D5A3] mb-0.5" />
-              <div className="text-[#FFD700] font-bold text-xs">{formatNumber(stats.shares_count)}</div>
-              <div className="text-[#E8D5A3]/80 text-[8px] uppercase">Shares</div>
-            </div>
-            <div className="bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] rounded-lg py-1.5 px-1 border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_0_4px_rgba(218,165,32,0.3)]">
-              <Video className="w-3.5 h-3.5 mx-auto text-[#E8D5A3] mb-0.5" />
-              <div className="text-[#FFD700] font-bold text-xs">{formatNumber(stats.livestreams_count)}</div>
-              <div className="text-[#E8D5A3]/80 text-[8px] uppercase">Live</div>
-            </div>
-            <div className="bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] rounded-lg py-1.5 px-1 border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_0_4px_rgba(218,165,32,0.3)]">
-              <Gift className="w-3.5 h-3.5 mx-auto text-[#E8D5A3] mb-0.5" />
-              <div className="text-[#FFD700] font-bold text-xs">{formatNumber(stats.claimable)}</div>
-              <div className="text-[#E8D5A3]/80 text-[8px] uppercase">Claimable</div>
-            </div>
-            <div className="bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] rounded-lg py-1.5 px-1 border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_0_4px_rgba(218,165,32,0.3)]">
-              <Coins className="w-3.5 h-3.5 mx-auto text-[#E8D5A3] mb-0.5" />
-              <div className="text-[#FFD700] font-bold text-xs">{formatNumber(stats.claimed)}</div>
-              <div className="text-[#E8D5A3]/80 text-[8px] uppercase">Claimed</div>
-            </div>
+            <MobileStatCell icon={<Share2 className="w-3.5 h-3.5" />} value={stats.shares_count} label="Shares" />
+            <MobileStatCell icon={<Video className="w-3.5 h-3.5" />} value={stats.livestreams_count} label="Live" />
+            <MobileStatCell icon={<Gift className="w-3.5 h-3.5" />} value={stats.claimable} label="Claimable" />
+            <MobileStatCell icon={<Coins className="w-3.5 h-3.5" />} value={stats.claimed} label="Claimed" />
           </div>
           
           {/* Total rows */}
           <div className="grid grid-cols-2 gap-1.5">
-            <div className="bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] rounded-lg py-1.5 px-2 border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_0_6px_rgba(218,165,32,0.4)] flex items-center justify-between">
-              <div className="flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5 text-[#E8D5A3]" />
-                <span className="text-[#E8D5A3] font-bold text-[9px] uppercase">Today</span>
-              </div>
-              <span className="text-[#FFD700] font-bold text-xs drop-shadow-[0_0_4px_rgba(255,215,0,0.4)]">{formatNumber(stats.today_reward)}</span>
-            </div>
-            <div className="bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] rounded-lg py-1.5 px-2 border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_0_6px_rgba(218,165,32,0.4)] flex items-center justify-between">
-              <div className="flex items-center gap-1">
-                <BadgeDollarSign className="w-3.5 h-3.5 text-[#E8D5A3]" />
-                <span className="text-[#E8D5A3] font-bold text-[9px] uppercase">Total</span>
-              </div>
-              <span className="text-[#FFD700] font-bold text-xs drop-shadow-[0_0_4px_rgba(255,215,0,0.4)]">{formatNumber(stats.total_reward)}</span>
-            </div>
+            <MobileTotalRow icon={<Calendar className="w-3.5 h-3.5" />} label="Today" value={stats.today_reward} />
+            <MobileTotalRow icon={<BadgeDollarSign className="w-3.5 h-3.5" />} label="Total" value={stats.total_reward} />
           </div>
         </div>
       </div>
