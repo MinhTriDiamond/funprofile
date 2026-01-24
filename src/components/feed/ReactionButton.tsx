@@ -3,14 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ThumbsUp } from 'lucide-react';
+import { useLanguage } from '@/i18n/LanguageContext';
 
-const REACTIONS = [
-  { type: 'like', icon: '👍', label: 'Thích', color: '#3b82f6' },
-  { type: 'love', icon: '❤️', label: 'Yêu thương', color: '#ef4444' },
-  { type: 'care', icon: '🥰', label: 'Thương thương', color: '#f97316' },
-  { type: 'wow', icon: '😮', label: 'Ngạc nhiên', color: '#eab308' },
-  { type: 'haha', icon: '😂', label: 'Haha', color: '#eab308' },
-  { type: 'pray', icon: '🙏', label: 'Biết ơn', color: '#a855f7' },
+const REACTION_TYPES = [
+  { type: 'like', icon: '👍', labelKey: 'like' as const, color: '#3b82f6' },
+  { type: 'love', icon: '❤️', labelKey: 'reactionLove' as const, color: '#ef4444' },
+  { type: 'care', icon: '🥰', labelKey: 'reactionCare' as const, color: '#f97316' },
+  { type: 'wow', icon: '😮', labelKey: 'reactionWow' as const, color: '#eab308' },
+  { type: 'haha', icon: '😂', labelKey: 'haha' as const, color: '#eab308' },
+  { type: 'pray', icon: '🙏', labelKey: 'reactionGratitude' as const, color: '#a855f7' },
 ];
 
 const VIEWPORT_PADDING = 12; // Safe padding from screen edges
@@ -31,6 +32,8 @@ export const ReactionButton = ({
   onReactionChange,
 }: ReactionButtonProps) => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
+  const REACTIONS = REACTION_TYPES.map(r => ({ ...r, label: t(r.labelKey) }));
   const [showReactions, setShowReactions] = useState(false);
   const [currentReaction, setCurrentReaction] = useState<string | null>(initialReaction);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -218,8 +221,8 @@ export const ReactionButton = ({
 
   const handleReaction = async (reactionType: string) => {
     if (!currentUserId) {
-      toast.error('Vui lòng đăng nhập để bày tỏ cảm xúc', {
-        action: { label: 'Đăng nhập', onClick: () => navigate('/auth') }
+      toast.error(t('pleaseLoginToReact'), {
+        action: { label: t('signIn'), onClick: () => navigate('/auth') }
       });
       return;
     }
@@ -280,15 +283,14 @@ export const ReactionButton = ({
       }
     } catch (error: any) {
       console.error('Reaction error:', error);
-      // Check if it's a credit/pause related error
       if (error?.message?.includes('permission') || error?.message?.includes('denied') || error?.code === '42501') {
-        toast.error('Hệ thống tạm dừng. Vui lòng thử lại sau!', {
-          description: 'Dữ liệu của bạn vẫn an toàn.',
+        toast.error(t('systemPaused'), {
+          description: t('tryAgain'),
           duration: 5000,
         });
       } else {
-        toast.error('Không thể cập nhật cảm xúc', {
-          description: 'Vui lòng thử lại sau.',
+        toast.error(t('cannotUpdateReaction'), {
+          description: t('tryAgain'),
         });
       }
     }
@@ -336,7 +338,7 @@ export const ReactionButton = ({
         ) : (
           <>
             <ThumbsUp className="w-5 h-5 pointer-events-none" />
-            <span className="font-semibold text-xs sm:text-sm pointer-events-none">Thích</span>
+            <span className="font-semibold text-xs sm:text-sm pointer-events-none">{t('like')}</span>
           </>
         )}
       </button>

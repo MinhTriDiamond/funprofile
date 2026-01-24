@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 interface ExpandableContentProps {
   content: string;
@@ -15,7 +16,7 @@ export const ExpandableContent = ({
   className 
 }: ExpandableContentProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
-
+  const { t } = useLanguage();
   // Check if content exceeds limits
   const lineCount = content.split('\n').length;
   const isLongContent = content.length > maxLength || lineCount > maxLines;
@@ -77,7 +78,7 @@ export const ExpandableContent = ({
           WebkitTapHighlightColor: 'transparent',
         }}
       >
-        {isExpanded ? 'Thu gọn' : 'Xem thêm'}
+        {isExpanded ? t('seeLess') : t('seeMore')}
       </button>
     </div>
   );

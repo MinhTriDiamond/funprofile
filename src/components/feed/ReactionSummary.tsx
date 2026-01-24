@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ReactionViewerDialog } from './ReactionViewerDialog';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 interface ReactionCount {
   type: string;
@@ -35,7 +36,7 @@ export const ReactionSummary = ({
   onCommentClick,
 }: ReactionSummaryProps) => {
   const [showViewerDialog, setShowViewerDialog] = useState(false);
-
+  const { t } = useLanguage();
   if (totalCount === 0 && commentCount === 0 && shareCount === 0) {
     return null;
   }
@@ -77,12 +78,12 @@ export const ReactionSummary = ({
         <div className="flex items-center gap-3">
           {commentCount > 0 && (
             <button onClick={onCommentClick} className="hover:underline">
-              {commentCount} bình luận
+              {commentCount} {t('comments')}
             </button>
           )}
           {shareCount > 0 && (
             <span className="hover:underline cursor-pointer">
-              {shareCount} lượt chia sẻ
+              {shareCount} {t('shares')}
             </span>
           )}
         </div>
