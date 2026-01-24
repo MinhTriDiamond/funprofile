@@ -6,26 +6,35 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Simple in-memory rate limiting (resets on function cold start)
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
-const RATE_LIMIT = 5; // max requests
-const RATE_WINDOW = 60 * 1000; // 1 minute in ms
+// Database-backed rate limiting for OTP requests
+// SECURITY FIX: Uses persistent rate limiting instead of in-memory (which resets on cold start)
+const OTP_RATE_LIMIT = 3; // max 3 OTP requests per hour per identifier
+const OTP_RATE_WINDOW_MS = 60 * 60 * 1000; // 1 hour window
 
-function checkRateLimit(key: string): boolean {
-  const now = Date.now();
-  const entry = rateLimitMap.get(key);
+async function checkDatabaseRateLimit(supabase: any, identifier: string): Promise<{ allowed: boolean; remaining: number }> {
+  const rateLimitKey = `otp_request:${identifier.toLowerCase()}`;
   
-  if (!entry || now > entry.resetAt) {
-    rateLimitMap.set(key, { count: 1, resetAt: now + RATE_WINDOW });
-    return true;
+  try {
+    const { data, error } = await supabase.rpc('check_rate_limit', {
+      p_key: rateLimitKey,
+      p_limit: OTP_RATE_LIMIT,
+      p_window_ms: OTP_RATE_WINDOW_MS
+    });
+    
+    if (error) {
+      console.error('[OTP-REQUEST] Rate limit check failed:', error);
+      // Fail open but log - don't block legitimate users due to DB issues
+      return { allowed: true, remaining: OTP_RATE_LIMIT };
+    }
+    
+    return { 
+      allowed: data?.allowed ?? true, 
+      remaining: data?.remaining ?? OTP_RATE_LIMIT 
+    };
+  } catch (err) {
+    console.error('[OTP-REQUEST] Rate limit exception:', err);
+    return { allowed: true, remaining: OTP_RATE_LIMIT };
   }
-  
-  if (entry.count >= RATE_LIMIT) {
-    return false;
-  }
-  
-  entry.count++;
-  return true;
 }
 
 // Generate 6-digit OTP
@@ -42,14 +51,25 @@ Deno.serve(async (req: Request) => {
   try {
     const { identifier, type = 'email' } = await req.json();
 
-    // Rate limiting by identifier
-    const rateLimitKey = `otp:${identifier?.toLowerCase() || 'unknown'}`;
-    if (!checkRateLimit(rateLimitKey)) {
-      console.warn(`[OTP-REQUEST] Rate limit exceeded for: ${identifier}`);
-      return new Response(
-        JSON.stringify({ success: false, error: 'Too many requests. Please wait a minute before trying again.' }),
-        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // Create Supabase client with service role (needed for rate limiting)
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Database-backed rate limiting - SECURITY FIX
+    if (identifier) {
+      const rateLimit = await checkDatabaseRateLimit(supabase, identifier);
+      if (!rateLimit.allowed) {
+        console.warn(`[OTP-REQUEST] Rate limit exceeded for: ${identifier}`);
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'Too many OTP requests. Please wait before trying again (max 3 per hour).',
+            retry_after_seconds: 3600
+          }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     console.log(`[OTP-REQUEST] Processing request for: ${identifier}, type: ${type}`);
@@ -72,10 +92,7 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Create Supabase client with service role
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    // Supabase client already created above for rate limiting
 
     // Generate OTP and expiry (5 minutes)
     const otp = generateOTP();

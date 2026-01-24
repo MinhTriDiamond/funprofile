@@ -5,14 +5,18 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Simple AES-256 encryption using Web Crypto API
-async function encryptPrivateKey(privateKey: string, encryptionKey: string): Promise<string> {
+// Enhanced AES-256 encryption using Web Crypto API with per-user key derivation
+// SECURITY FIX: Use per-user derived keys to limit blast radius if master key is compromised
+async function encryptPrivateKey(privateKey: string, masterKey: string, userId: string): Promise<string> {
   const encoder = new TextEncoder();
   
-  // Derive a key from the encryption key string
+  // Derive a per-user key from master key + user_id
+  // This limits the blast radius: compromised master key alone cannot decrypt without knowing user_id
+  const combinedSecret = `${masterKey}:${userId}`;
+  
   const keyMaterial = await crypto.subtle.importKey(
     'raw',
-    encoder.encode(encryptionKey.padEnd(32, '0').slice(0, 32)),
+    encoder.encode(combinedSecret.slice(0, 64)),
     { name: 'PBKDF2' },
     false,
     ['deriveKey']
@@ -21,8 +25,9 @@ async function encryptPrivateKey(privateKey: string, encryptionKey: string): Pro
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const iv = crypto.getRandomValues(new Uint8Array(12));
 
+  // Use higher iteration count for better security
   const key = await crypto.subtle.deriveKey(
-    { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+    { name: 'PBKDF2', salt, iterations: 150000, hash: 'SHA-256' },
     keyMaterial,
     { name: 'AES-GCM', length: 256 },
     false,
@@ -147,9 +152,9 @@ Deno.serve(async (req: Request) => {
     console.log('[CREATE-WALLET] Generating new wallet...');
     const wallet = generateWallet();
 
-    // Encrypt private key
-    console.log('[CREATE-WALLET] Encrypting private key...');
-    const encryptedPrivateKey = await encryptPrivateKey(wallet.privateKey, encryptionKey);
+    // Encrypt private key with per-user derived key
+    console.log('[CREATE-WALLET] Encrypting private key with per-user derived key...');
+    const encryptedPrivateKey = await encryptPrivateKey(wallet.privateKey, encryptionKey, user_id);
 
     // Store in database
     const { error: insertError } = await supabase
