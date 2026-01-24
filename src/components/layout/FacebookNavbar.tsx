@@ -12,6 +12,9 @@ import {
   MessageCircle,
   Menu,
   Wallet,
+  User,
+  LogOut,
+  Globe,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -19,6 +22,13 @@ import {
   SheetContent,
   SheetTrigger,
 } from '@/components/ui/sheet';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { FacebookLeftSidebar } from '@/components/feed/FacebookLeftSidebar';
 import {
   Tooltip,
@@ -31,7 +41,7 @@ import {
 export const FacebookNavbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { t } = useLanguage();
+  const { t, language, setLanguage } = useLanguage();
   const isMobileOrTablet = useIsMobileOrTablet();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -178,22 +188,60 @@ export const FacebookNavbar = () => {
           {/* Notification for mobile/tablet */}
           {isMobileOrTablet && <NotificationDropdown />}
 
-          {/* Desktop only: Notification Bell + Avatar */}
+          {/* Desktop only: Notification Bell + Avatar with Dropdown */}
           {!isMobileOrTablet && isLoggedIn && (
             <div className="flex items-center gap-3">
               <NotificationDropdown />
-              <button
-                onClick={() => navigate(`/profile/${currentUserId}`)}
-                className="flex-shrink-0"
-                aria-label="Profile"
-              >
-                <Avatar className="w-9 h-9 border-2 border-gold/30 hover:border-gold transition-colors cursor-pointer">
-                  <AvatarImage src={profile?.avatar_url || ''} />
-                  <AvatarFallback className="bg-primary/20 text-primary text-sm">
-                    {profile?.username?.[0]?.toUpperCase() || 'U'}
-                  </AvatarFallback>
-                </Avatar>
-              </button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="flex-shrink-0" aria-label="Profile Menu">
+                    <Avatar className="w-9 h-9 border-2 border-gold/30 hover:border-gold transition-colors cursor-pointer">
+                      <AvatarImage src={profile?.avatar_url || ''} />
+                      <AvatarFallback className="bg-primary/20 text-primary text-sm">
+                        {profile?.username?.[0]?.toUpperCase() || 'U'}
+                      </AvatarFallback>
+                    </Avatar>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 bg-card border border-border">
+                  {/* Go to Profile */}
+                  <DropdownMenuItem 
+                    onClick={() => navigate(`/profile/${currentUserId}`)}
+                    className="cursor-pointer gap-2"
+                  >
+                    <User className="w-4 h-4" />
+                    <span>{t('myProfile')}</span>
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuSeparator />
+                  
+                  {/* Language Switcher */}
+                  <DropdownMenuItem 
+                    onClick={() => setLanguage(language === 'vi' ? 'en' : 'vi')}
+                    className="cursor-pointer gap-2"
+                  >
+                    <Globe className="w-4 h-4" />
+                    <span className="flex-1">{t('language')}</span>
+                    <span className="text-xs font-medium px-2 py-0.5 rounded bg-primary/10 text-primary">
+                      {language === 'vi' ? 'VI' : 'EN'}
+                    </span>
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuSeparator />
+                  
+                  {/* Logout */}
+                  <DropdownMenuItem 
+                    onClick={async () => {
+                      await supabase.auth.signOut();
+                      navigate('/auth');
+                    }}
+                    className="cursor-pointer gap-2 text-destructive focus:text-destructive"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span>{t('signOut')}</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           )}
 

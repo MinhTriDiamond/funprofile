@@ -72,6 +72,8 @@ export const translations = {
     search: 'Search',
     notifications: 'Notifications',
     menu: 'Menu',
+    myProfile: 'My Profile',
+    language: 'Language',
     
     // Left Sidebar
     funEcosystem: 'FUN ECOSYSTEM',
@@ -387,6 +389,8 @@ export const translations = {
     search: 'Tìm kiếm',
     notifications: 'Thông báo',
     menu: 'Menu',
+    myProfile: 'Trang cá nhân',
+    language: 'Ngôn ngữ',
     
     // Left Sidebar
     funEcosystem: 'FUN ECOSYSTEM',
