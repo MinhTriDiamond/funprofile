@@ -277,6 +277,7 @@ export const translations = {
     reward: 'Reward',
     
     // Time
+    today: 'Today',
     justNow: 'Just now',
     minutesAgo: 'minutes ago',
     hoursAgo: 'hours ago',
@@ -670,6 +671,7 @@ export const translations = {
     reward: 'Thưởng',
     
     // Time
+    today: 'Hôm nay',
     justNow: 'Vừa xong',
     minutesAgo: 'phút trước',
     hoursAgo: 'giờ trước',
@@ -3798,6 +3800,7 @@ export const translations = {
     experience: 'Experiencia',
     achievements: 'Logros',
     noAchievements: 'Sin logros aún',
+    today: 'Hoy',
     justNow: 'Ahora mismo',
     minutesAgo: 'hace {count} minutos',
     hoursAgo: 'hace {count} horas',
@@ -4132,6 +4135,7 @@ export const translations = {
     experience: 'Erfahrung',
     achievements: 'Erfolge',
     noAchievements: 'Noch keine Erfolge',
+    today: 'Heute',
     justNow: 'Gerade eben',
     minutesAgo: 'vor {count} Minuten',
     hoursAgo: 'vor {count} Stunden',
@@ -4466,6 +4470,7 @@ export const translations = {
     experience: 'Experiência',
     achievements: 'Conquistas',
     noAchievements: 'Sem conquistas ainda',
+    today: 'Hoje',
     justNow: 'Agora mesmo',
     minutesAgo: 'há {count} minutos',
     hoursAgo: 'há {count} horas',
@@ -4800,6 +4805,7 @@ export const translations = {
     experience: 'Опыт',
     achievements: 'Достижения',
     noAchievements: 'Пока нет достижений',
+    today: 'Сегодня',
     justNow: 'Только что',
     minutesAgo: '{count} мин. назад',
     hoursAgo: '{count} ч. назад',
@@ -5139,6 +5145,7 @@ export const translations = {
     experience: 'الخبرة',
     achievements: 'الإنجازات',
     noAchievements: 'لا إنجازات بعد',
+    today: 'اليوم',
     justNow: 'الآن',
     minutesAgo: 'منذ {count} دقيقة',
     hoursAgo: 'منذ {count} ساعة',

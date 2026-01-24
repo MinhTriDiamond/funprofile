@@ -4,7 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowUp, MessageCircle, Star, Share2, BadgeDollarSign, Coins, Gift, Wallet, Users, Image, Video, Calendar } from 'lucide-react';
 import { useRewardCalculation, REWARD_CONFIG } from '@/hooks/useRewardCalculation';
-// Use direct paths for logos to ensure consistency across all environments
+import { useLanguage } from '@/i18n/LanguageContext';
 
 interface CoverHonorBoardProps {
   userId: string;
@@ -13,6 +13,8 @@ interface CoverHonorBoardProps {
 }
 
 export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoardProps) => {
+  const { t, language } = useLanguage();
+  
   // Use the centralized reward calculation hook with React Query caching
   const { stats: rewardStats, isLoading: rewardLoading } = useRewardCalculation(userId);
 
@@ -54,7 +56,7 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
   };
 
   const formatNumber = (num: number): string => {
-    return num.toLocaleString('vi-VN');
+    return num.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US');
   };
 
   if (loading) {
@@ -92,19 +94,20 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
 
   return (
     <>
-      {/* Desktop: Inline block for profile info section */}
-      <div className="w-full">
-      {/* Main Container - Glassmorphism */}
-        <div className="rounded-2xl overflow-hidden border-2 border-white/30 bg-white/10 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.2)]">
+      {/* Desktop: Inline block for profile info section - aligned to right */}
+      <div className="w-full flex justify-end">
+        {/* Main Container - Glassmorphism */}
+        <div className="rounded-2xl overflow-hidden border-2 border-white/30 bg-white/10 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.2)] w-full max-w-[420px]">
           <div className="p-3 sm:p-4">
-            {/* Header - Logo and Title */}
+            {/* Header - Avatar and Title */}
             <div className="text-center mb-3">
               <div className="flex items-center justify-center gap-2">
-                <img 
-                  src="/fun-profile-logo-40.webp" 
-                  alt="Fun Profile Web3"
-                  className="w-7 h-7 rounded-full border-2 border-green-400/50 shadow-[0_0_15px_rgba(34,197,94,0.6)]"
-                />
+                <Avatar className="w-8 h-8 border-2 border-[#DAA520] shadow-[0_0_12px_rgba(218,165,32,0.6)]">
+                  <AvatarImage src={avatarUrl} sizeHint="sm" />
+                  <AvatarFallback className="bg-gradient-to-br from-green-600 to-green-800 text-white font-bold text-sm">
+                    {username?.[0]?.toUpperCase() || 'U'}
+                  </AvatarFallback>
+                </Avatar>
                 <h1 
                   className="text-lg font-black tracking-wider uppercase leading-none"
                   style={{
@@ -116,7 +119,7 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
                     filter: 'drop-shadow(0 0 8px rgba(250,204,21,0.6))',
                   }}
                 >
-                  HONOR BOARD
+                  {t('honorBoard').toUpperCase()}
                 </h1>
               </div>
             </div>
@@ -125,23 +128,23 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
             <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
               {/* Left Column */}
               <div className="space-y-1.5 sm:space-y-2">
-                <StatRow icon={<ArrowUp className="w-3.5 h-3.5" />} label="Posts" value={stats.posts_count} />
-                <StatRow icon={<Star className="w-3.5 h-3.5" />} label="Reactions" value={stats.reactions_on_posts} />
-                <StatRow icon={<MessageCircle className="w-3.5 h-3.5" />} label="Comments" value={stats.comments_count} />
+                <StatRow icon={<ArrowUp className="w-3.5 h-3.5" />} label={t('posts')} value={stats.posts_count} />
+                <StatRow icon={<Star className="w-3.5 h-3.5" />} label={t('reactions')} value={stats.reactions_on_posts} />
+                <StatRow icon={<MessageCircle className="w-3.5 h-3.5" />} label={t('comments')} value={stats.comments_count} />
               </div>
 
               {/* Right Column */}
               <div className="space-y-1.5 sm:space-y-2">
-                <StatRow icon={<Users className="w-3.5 h-3.5" />} label="Friends" value={stats.friends_count} />
-                <StatRow icon={<Gift className="w-3.5 h-3.5" />} label="Claimable" value={stats.claimable} />
-                <StatRow icon={<Coins className="w-3.5 h-3.5" />} label="Claimed" value={stats.claimed} />
+                <StatRow icon={<Users className="w-3.5 h-3.5" />} label={t('friends')} value={stats.friends_count} />
+                <StatRow icon={<Gift className="w-3.5 h-3.5" />} label={t('claimableReward')} value={stats.claimable} />
+                <StatRow icon={<Coins className="w-3.5 h-3.5" />} label={t('claimedReward')} value={stats.claimed} />
               </div>
             </div>
 
             {/* Total Rows */}
             <div className="mt-2 sm:mt-3 grid grid-cols-2 gap-1.5 sm:gap-2">
-              <StatRow icon={<Calendar className="w-3.5 h-3.5" />} label="Today" value={stats.today_reward} />
-              <StatRow icon={<BadgeDollarSign className="w-3.5 h-3.5" />} label="Total" value={stats.total_reward} />
+              <StatRow icon={<Calendar className="w-3.5 h-3.5" />} label={t('today')} value={stats.today_reward} />
+              <StatRow icon={<BadgeDollarSign className="w-3.5 h-3.5" />} label={t('totalReward')} value={stats.total_reward} />
             </div>
           </div>
         </div>
@@ -158,6 +161,7 @@ interface MobileStatsProps {
 }
 
 export const MobileStats = ({ userId, username, avatarUrl }: MobileStatsProps) => {
+  const { t, language } = useLanguage();
   const { stats: rewardStats, isLoading: rewardLoading } = useRewardCalculation(userId);
 
   const { data: additionalData, isLoading: additionalLoading } = useQuery({
@@ -194,7 +198,7 @@ export const MobileStats = ({ userId, username, avatarUrl }: MobileStatsProps) =
     total_money: (rewardStats?.totalReward || 0) + (additionalData?.receivedAmount || 0),
   };
 
-  const formatNumber = (num: number): string => num.toLocaleString('vi-VN');
+  const formatNumber = (num: number): string => num.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US');
   
   // Helper to get font size based on number of digits for mobile
   const getValueFontSize = (value: number): string => {
@@ -240,7 +244,7 @@ export const MobileStats = ({ userId, username, avatarUrl }: MobileStatsProps) =
           {/* Header with user info */}
           <div className="flex items-center justify-center gap-2 mb-3">
             <Avatar className="w-8 h-8 border-2 border-yellow-400/70">
-              <AvatarImage src={avatarUrl} />
+              <AvatarImage src={avatarUrl} sizeHint="sm" />
               <AvatarFallback className="bg-gradient-to-br from-yellow-500 to-yellow-600 text-black font-bold text-sm">
                 {username?.[0]?.toUpperCase() || 'U'}
               </AvatarFallback>
@@ -252,24 +256,24 @@ export const MobileStats = ({ userId, username, avatarUrl }: MobileStatsProps) =
           
           {/* Compact 4x2 Grid */}
           <div className="grid grid-cols-4 gap-1.5 text-center mb-2">
-            <MobileStatCell icon={<ArrowUp className="w-3.5 h-3.5" />} value={stats.posts_count} label="Posts" />
-            <MobileStatCell icon={<Star className="w-3.5 h-3.5" />} value={stats.reactions_on_posts} label="Reactions" />
-            <MobileStatCell icon={<MessageCircle className="w-3.5 h-3.5" />} value={stats.comments_count} label="Comments" />
-            <MobileStatCell icon={<Users className="w-3.5 h-3.5" />} value={stats.friends_count} label="Friends" />
+            <MobileStatCell icon={<ArrowUp className="w-3.5 h-3.5" />} value={stats.posts_count} label={t('posts')} />
+            <MobileStatCell icon={<Star className="w-3.5 h-3.5" />} value={stats.reactions_on_posts} label={t('reactions')} />
+            <MobileStatCell icon={<MessageCircle className="w-3.5 h-3.5" />} value={stats.comments_count} label={t('comments')} />
+            <MobileStatCell icon={<Users className="w-3.5 h-3.5" />} value={stats.friends_count} label={t('friends')} />
           </div>
           
           {/* Second row: Shares, Livestreams, Claimable, Claimed */}
           <div className="grid grid-cols-4 gap-1.5 text-center mb-2">
-            <MobileStatCell icon={<Share2 className="w-3.5 h-3.5" />} value={stats.shares_count} label="Shares" />
-            <MobileStatCell icon={<Video className="w-3.5 h-3.5" />} value={stats.livestreams_count} label="Live" />
-            <MobileStatCell icon={<Gift className="w-3.5 h-3.5" />} value={stats.claimable} label="Claimable" />
-            <MobileStatCell icon={<Coins className="w-3.5 h-3.5" />} value={stats.claimed} label="Claimed" />
+            <MobileStatCell icon={<Share2 className="w-3.5 h-3.5" />} value={stats.shares_count} label={t('shares')} />
+            <MobileStatCell icon={<Video className="w-3.5 h-3.5" />} value={stats.livestreams_count} label={t('liveVideo')} />
+            <MobileStatCell icon={<Gift className="w-3.5 h-3.5" />} value={stats.claimable} label={t('claimableReward')} />
+            <MobileStatCell icon={<Coins className="w-3.5 h-3.5" />} value={stats.claimed} label={t('claimedReward')} />
           </div>
           
           {/* Total rows */}
           <div className="grid grid-cols-2 gap-1.5">
-            <MobileTotalRow icon={<Calendar className="w-3.5 h-3.5" />} label="Today" value={stats.today_reward} />
-            <MobileTotalRow icon={<BadgeDollarSign className="w-3.5 h-3.5" />} label="Total" value={stats.total_reward} />
+            <MobileTotalRow icon={<Calendar className="w-3.5 h-3.5" />} label={t('today')} value={stats.today_reward} />
+            <MobileTotalRow icon={<BadgeDollarSign className="w-3.5 h-3.5" />} label={t('totalReward')} value={stats.total_reward} />
           </div>
         </div>
       </div>
