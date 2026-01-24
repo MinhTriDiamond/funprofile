@@ -2,9 +2,8 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowUp, MessageCircle, Star, Share2, BadgeDollarSign, Coins, Gift, Wallet, Users, Image, Video, Calendar } from 'lucide-react';
-import { useRewardCalculation, REWARD_CONFIG } from '@/hooks/useRewardCalculation';
-// Use direct paths for logos to ensure consistency across all environments
+import { ArrowUp, MessageCircle, Star, Share2, BadgeDollarSign, Coins, Gift, Video, Users, Calendar } from 'lucide-react';
+import { useRewardCalculation } from '@/hooks/useRewardCalculation';
 
 interface CoverHonorBoardProps {
   userId: string;
@@ -13,10 +12,8 @@ interface CoverHonorBoardProps {
 }
 
 export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoardProps) => {
-  // Use the centralized reward calculation hook with React Query caching
   const { stats: rewardStats, isLoading: rewardLoading } = useRewardCalculation(userId);
 
-  // Fetch additional data (transactions for total_money) with React Query caching
   const { data: additionalData, isLoading: additionalLoading } = useQuery({
     queryKey: ['profile-additional-stats', userId],
     queryFn: async () => {
@@ -30,14 +27,13 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
       return { receivedAmount };
     },
     enabled: !!userId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
 
   const loading = rewardLoading || additionalLoading;
 
-  // Calculate derived values
   const stats = {
     posts_count: rewardStats?.postsCount || 0,
     comments_count: rewardStats?.commentsOnPosts || 0,
@@ -45,12 +41,10 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
     shares_count: rewardStats?.sharesCount || 0,
     friends_count: rewardStats?.friendsCount || 0,
     livestreams_count: rewardStats?.livestreamsCount || 0,
-    nfts_count: 0, // NFTs not implemented yet
     claimable: rewardStats?.claimableAmount || 0,
     claimed: rewardStats?.claimedAmount || 0,
     today_reward: rewardStats?.todayReward || 0,
     total_reward: rewardStats?.totalReward || 0,
-    total_money: (rewardStats?.totalReward || 0) + (additionalData?.receivedAmount || 0),
   };
 
   const formatNumber = (num: number): string => {
@@ -59,57 +53,62 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
 
   if (loading) {
     return (
-      <>
-        {/* Desktop: positioned at top right corner of cover photo */}
-        <div className="hidden md:block absolute right-4 top-4 w-[40%] max-w-[360px] min-w-[240px] z-20">
-          <Skeleton className="h-[260px] w-full rounded-2xl" />
-        </div>
-      </>
+      <div className="hidden md:block absolute right-4 top-1/2 -translate-y-1/2 w-[22%] max-w-[280px] min-w-[200px] z-20">
+        <Skeleton className="h-[320px] w-full rounded-2xl" />
+      </div>
     );
   }
 
   // Helper to get font size based on number of digits
   const getValueFontSize = (value: number): string => {
     const digits = formatNumber(value).length;
-    if (digits <= 4) return 'text-[11px] sm:text-xs md:text-sm';
-    if (digits <= 6) return 'text-[10px] sm:text-[11px] md:text-xs';
-    if (digits <= 8) return 'text-[9px] sm:text-[10px] md:text-[11px]';
-    return 'text-[8px] sm:text-[9px] md:text-[10px]';
+    if (digits <= 4) return 'text-xs';
+    if (digits <= 6) return 'text-[11px]';
+    if (digits <= 8) return 'text-[10px]';
+    return 'text-[9px]';
   };
 
+  // Pill-shaped stat row like AppHonorBoard
   const StatRow = ({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) => (
-    <div className="flex items-center justify-between py-1 px-2 sm:px-2.5 rounded-lg bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_0_6px_rgba(218,165,32,0.3)] overflow-hidden">
-      <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink min-w-0 overflow-hidden">
-        <div className="text-[#E8D5A3] drop-shadow-[0_0_4px_rgba(218,165,32,0.5)] flex-shrink-0">
-          {icon}
-        </div>
-        <span className="text-[#E8D5A3] font-bold text-[9px] sm:text-[10px] md:text-xs uppercase tracking-wide truncate">
+    <div className="flex items-center gap-2 py-2 px-3 rounded-full bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.2),inset_0_-1px_0_rgba(0,0,0,0.15),0_0_6px_rgba(218,165,32,0.4)] transition-all duration-300 hover:scale-[1.02]">
+      <div className="p-1 rounded-full bg-white/10 shrink-0">
+        {icon}
+      </div>
+      <div className="flex-1 flex items-center justify-between gap-1 min-w-0 overflow-hidden">
+        <span className="text-[#E8D5A3] font-semibold text-[9px] uppercase tracking-wide truncate">
           {label}
         </span>
+        <span className={`text-[#FFD700] font-bold ${getValueFontSize(value)} drop-shadow-[0_0_4px_rgba(255,215,0,0.4)] tabular-nums flex-shrink-0`}>
+          {formatNumber(value)}
+        </span>
       </div>
-      <span className={`text-[#FFD700] font-bold ${getValueFontSize(value)} drop-shadow-[0_0_4px_rgba(255,215,0,0.4)] tabular-nums flex-shrink-0 ml-1`}>
-        {formatNumber(value)}
-      </span>
     </div>
   );
 
   return (
     <>
-      {/* Desktop: Positioned at top right corner of cover photo */}
-      <div className="hidden md:block absolute right-4 top-4 w-[40%] max-w-[360px] min-w-[240px] z-20">
-        {/* Main Container */}
-        <div className="rounded-2xl overflow-hidden border-2 border-yellow-400 bg-gradient-to-br from-green-900/95 via-green-800/95 to-emerald-900/95 backdrop-blur-sm shadow-2xl">
-          <div className="p-2.5">
+      {/* Desktop: Positioned center-right of cover photo with golden glass background */}
+      <div className="hidden md:block absolute right-4 top-1/2 -translate-y-1/2 w-[22%] max-w-[280px] min-w-[200px] z-20">
+        {/* Main Container with golden glass effect */}
+        <div className="rounded-2xl overflow-hidden border-2 border-gold bg-yellow-500/20 backdrop-blur-md shadow-[0_0_20px_rgba(218,165,32,0.3)]">
+          {/* Sparkle effects */}
+          <div className="absolute inset-0 opacity-20 pointer-events-none">
+            <div className="absolute top-2 left-2 w-1 h-1 bg-gold rounded-full animate-pulse" />
+            <div className="absolute top-4 right-4 w-1 h-1 bg-gold rounded-full animate-pulse" style={{ animationDelay: '0.5s' }} />
+            <div className="absolute bottom-6 left-6 w-1 h-1 bg-gold rounded-full animate-pulse" style={{ animationDelay: '1s' }} />
+          </div>
+
+          <div className="relative p-3 space-y-2">
             {/* Header - Logo and Title */}
             <div className="text-center mb-2">
               <div className="flex items-center justify-center gap-2">
                 <img 
                   src="/fun-profile-logo-40.webp" 
                   alt="Fun Profile Web3"
-                  className="w-7 h-7 rounded-full border-2 border-green-400/50 shadow-[0_0_15px_rgba(34,197,94,0.6)]"
+                  className="w-7 h-7 rounded-full border-2 border-gold shadow-[0_0_15px_rgba(34,197,94,0.6)]"
                 />
                 <h1 
-                  className="text-lg font-black tracking-wider uppercase leading-none"
+                  className="text-base font-black tracking-wider uppercase leading-none"
                   style={{
                     fontFamily: "'Orbitron', 'Rajdhani', sans-serif",
                     background: 'linear-gradient(135deg, #fcd34d 0%, #f59e0b 50%, #fcd34d 100%)',
@@ -124,29 +123,18 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
               </div>
             </div>
 
-            {/* Two Column Layout - Compact */}
-            <div className="grid grid-cols-2 gap-1">
-              {/* Left Column */}
-              <div className="space-y-1">
-                <StatRow icon={<ArrowUp className="w-3 h-3" />} label="Posts" value={stats.posts_count} />
-                <StatRow icon={<Star className="w-3 h-3" />} label="Reactions" value={stats.reactions_on_posts} />
-                <StatRow icon={<MessageCircle className="w-3 h-3" />} label="Comments" value={stats.comments_count} />
-                <StatRow icon={<Share2 className="w-3 h-3" />} label="Shares" value={stats.shares_count} />
-              </div>
-
-              {/* Right Column */}
-              <div className="space-y-1">
-                <StatRow icon={<Users className="w-3 h-3" />} label="Friends" value={stats.friends_count} />
-                <StatRow icon={<Video className="w-3 h-3" />} label="Livestream" value={stats.livestreams_count} />
-                <StatRow icon={<Gift className="w-3 h-3" />} label="Claimable" value={stats.claimable} />
-                <StatRow icon={<Coins className="w-3 h-3" />} label="Claimed" value={stats.claimed} />
-              </div>
-            </div>
-
-            {/* Total Rows */}
-            <div className="mt-1 grid grid-cols-2 gap-1">
-              <StatRow icon={<Calendar className="w-3 h-3" />} label="Today" value={stats.today_reward} />
-              <StatRow icon={<BadgeDollarSign className="w-3 h-3" />} label="Total" value={stats.total_reward} />
+            {/* Stats - Single Column Pills */}
+            <div className="space-y-1.5">
+              <StatRow icon={<ArrowUp className="w-3 h-3 text-[#E8D5A3]" />} label="Posts" value={stats.posts_count} />
+              <StatRow icon={<Star className="w-3 h-3 text-[#E8D5A3]" />} label="Reactions" value={stats.reactions_on_posts} />
+              <StatRow icon={<MessageCircle className="w-3 h-3 text-[#E8D5A3]" />} label="Comments" value={stats.comments_count} />
+              <StatRow icon={<Share2 className="w-3 h-3 text-[#E8D5A3]" />} label="Shares" value={stats.shares_count} />
+              <StatRow icon={<Users className="w-3 h-3 text-[#E8D5A3]" />} label="Friends" value={stats.friends_count} />
+              <StatRow icon={<Video className="w-3 h-3 text-[#E8D5A3]" />} label="Livestream" value={stats.livestreams_count} />
+              <StatRow icon={<Gift className="w-3 h-3 text-[#E8D5A3]" />} label="Claimable" value={stats.claimable} />
+              <StatRow icon={<Coins className="w-3 h-3 text-[#E8D5A3]" />} label="Claimed" value={stats.claimed} />
+              <StatRow icon={<Calendar className="w-3 h-3 text-[#E8D5A3]" />} label="Today" value={stats.today_reward} />
+              <StatRow icon={<BadgeDollarSign className="w-3 h-3 text-[#E8D5A3]" />} label="Total" value={stats.total_reward} />
             </div>
           </div>
         </div>
@@ -196,12 +184,10 @@ export const MobileStats = ({ userId, username, avatarUrl }: MobileStatsProps) =
     claimed: rewardStats?.claimedAmount || 0,
     today_reward: rewardStats?.todayReward || 0,
     total_reward: rewardStats?.totalReward || 0,
-    total_money: (rewardStats?.totalReward || 0) + (additionalData?.receivedAmount || 0),
   };
 
   const formatNumber = (num: number): string => num.toLocaleString('vi-VN');
   
-  // Helper to get font size based on number of digits for mobile
   const getValueFontSize = (value: number): string => {
     const digits = formatNumber(value).length;
     if (digits <= 4) return 'text-xs';
@@ -210,23 +196,25 @@ export const MobileStats = ({ userId, username, avatarUrl }: MobileStatsProps) =
     return 'text-[9px]';
   };
 
-  // Mobile stat cell with auto-scaling font
+  // Mobile pill stat cell
   const MobileStatCell = ({ icon, value, label }: { icon: React.ReactNode; value: number; label: string }) => (
-    <div className="bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] rounded-lg py-1.5 px-1 border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_0_4px_rgba(218,165,32,0.3)] overflow-hidden">
-      <div className="mx-auto text-[#E8D5A3] mb-0.5 flex justify-center">{icon}</div>
-      <div className={`text-[#FFD700] font-bold ${getValueFontSize(value)} tabular-nums truncate`}>{formatNumber(value)}</div>
-      <div className="text-[#E8D5A3]/80 text-[8px] uppercase truncate">{label}</div>
+    <div className="bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] rounded-full py-1.5 px-2 border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_0_4px_rgba(218,165,32,0.3)] flex items-center gap-1.5">
+      <div className="p-1 rounded-full bg-white/10 shrink-0">{icon}</div>
+      <div className="flex flex-col min-w-0">
+        <span className={`text-[#FFD700] font-bold ${getValueFontSize(value)} tabular-nums truncate`}>{formatNumber(value)}</span>
+        <span className="text-[#E8D5A3]/80 text-[7px] uppercase truncate">{label}</span>
+      </div>
     </div>
   );
 
-  // Mobile total row with auto-scaling font
+  // Mobile total row pill
   const MobileTotalRow = ({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) => (
-    <div className="bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] rounded-lg py-1.5 px-2 border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_0_6px_rgba(218,165,32,0.4)] flex items-center justify-between overflow-hidden">
-      <div className="flex items-center gap-1 flex-shrink min-w-0">
-        <div className="text-[#E8D5A3] flex-shrink-0">{icon}</div>
-        <span className="text-[#E8D5A3] font-bold text-[9px] uppercase truncate">{label}</span>
+    <div className="bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] rounded-full py-1.5 px-3 border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_0_6px_rgba(218,165,32,0.4)] flex items-center justify-between">
+      <div className="flex items-center gap-1.5">
+        <div className="p-1 rounded-full bg-white/10 shrink-0">{icon}</div>
+        <span className="text-[#E8D5A3] font-bold text-[9px] uppercase">{label}</span>
       </div>
-      <span className={`text-[#FFD700] font-bold ${getValueFontSize(value)} drop-shadow-[0_0_4px_rgba(255,215,0,0.4)] tabular-nums flex-shrink-0 ml-1`}>{formatNumber(value)}</span>
+      <span className={`text-[#FFD700] font-bold ${getValueFontSize(value)} drop-shadow-[0_0_4px_rgba(255,215,0,0.4)] tabular-nums`}>{formatNumber(value)}</span>
     </div>
   );
 
@@ -240,11 +228,11 @@ export const MobileStats = ({ userId, username, avatarUrl }: MobileStatsProps) =
 
   return (
     <div className="w-full">
-      <div className="rounded-xl overflow-hidden border-2 border-yellow-400 bg-gradient-to-br from-green-900 via-green-800 to-emerald-900">
+      <div className="rounded-xl overflow-hidden border-2 border-gold bg-yellow-500/20 backdrop-blur-md shadow-[0_0_20px_rgba(218,165,32,0.3)]">
         <div className="p-3">
           {/* Header with user info */}
           <div className="flex items-center justify-center gap-2 mb-3">
-            <Avatar className="w-8 h-8 border-2 border-yellow-400/70">
+            <Avatar className="w-8 h-8 border-2 border-gold">
               <AvatarImage src={avatarUrl} />
               <AvatarFallback className="bg-gradient-to-br from-yellow-500 to-yellow-600 text-black font-bold text-sm">
                 {username?.[0]?.toUpperCase() || 'U'}
@@ -255,26 +243,26 @@ export const MobileStats = ({ userId, username, avatarUrl }: MobileStatsProps) =
             </span>
           </div>
           
-          {/* Compact 4x2 Grid */}
-          <div className="grid grid-cols-4 gap-1.5 text-center mb-2">
-            <MobileStatCell icon={<ArrowUp className="w-3.5 h-3.5" />} value={stats.posts_count} label="Posts" />
-            <MobileStatCell icon={<Star className="w-3.5 h-3.5" />} value={stats.reactions_on_posts} label="Reactions" />
-            <MobileStatCell icon={<MessageCircle className="w-3.5 h-3.5" />} value={stats.comments_count} label="Comments" />
-            <MobileStatCell icon={<Users className="w-3.5 h-3.5" />} value={stats.friends_count} label="Friends" />
+          {/* Compact 4x2 Grid with pills */}
+          <div className="grid grid-cols-4 gap-1.5 mb-2">
+            <MobileStatCell icon={<ArrowUp className="w-3 h-3 text-[#E8D5A3]" />} value={stats.posts_count} label="Posts" />
+            <MobileStatCell icon={<Star className="w-3 h-3 text-[#E8D5A3]" />} value={stats.reactions_on_posts} label="Reactions" />
+            <MobileStatCell icon={<MessageCircle className="w-3 h-3 text-[#E8D5A3]" />} value={stats.comments_count} label="Comments" />
+            <MobileStatCell icon={<Users className="w-3 h-3 text-[#E8D5A3]" />} value={stats.friends_count} label="Friends" />
           </div>
           
-          {/* Second row: Shares, Livestreams, Claimable, Claimed */}
-          <div className="grid grid-cols-4 gap-1.5 text-center mb-2">
-            <MobileStatCell icon={<Share2 className="w-3.5 h-3.5" />} value={stats.shares_count} label="Shares" />
-            <MobileStatCell icon={<Video className="w-3.5 h-3.5" />} value={stats.livestreams_count} label="Live" />
-            <MobileStatCell icon={<Gift className="w-3.5 h-3.5" />} value={stats.claimable} label="Claimable" />
-            <MobileStatCell icon={<Coins className="w-3.5 h-3.5" />} value={stats.claimed} label="Claimed" />
+          {/* Second row pills */}
+          <div className="grid grid-cols-4 gap-1.5 mb-2">
+            <MobileStatCell icon={<Share2 className="w-3 h-3 text-[#E8D5A3]" />} value={stats.shares_count} label="Shares" />
+            <MobileStatCell icon={<Video className="w-3 h-3 text-[#E8D5A3]" />} value={stats.livestreams_count} label="Live" />
+            <MobileStatCell icon={<Gift className="w-3 h-3 text-[#E8D5A3]" />} value={stats.claimable} label="Claimable" />
+            <MobileStatCell icon={<Coins className="w-3 h-3 text-[#E8D5A3]" />} value={stats.claimed} label="Claimed" />
           </div>
           
-          {/* Total rows */}
+          {/* Total rows pills */}
           <div className="grid grid-cols-2 gap-1.5">
-            <MobileTotalRow icon={<Calendar className="w-3.5 h-3.5" />} label="Today" value={stats.today_reward} />
-            <MobileTotalRow icon={<BadgeDollarSign className="w-3.5 h-3.5" />} label="Total" value={stats.total_reward} />
+            <MobileTotalRow icon={<Calendar className="w-3 h-3 text-[#E8D5A3]" />} label="Today" value={stats.today_reward} />
+            <MobileTotalRow icon={<BadgeDollarSign className="w-3 h-3 text-[#E8D5A3]" />} label="Total" value={stats.total_reward} />
           </div>
         </div>
       </div>
