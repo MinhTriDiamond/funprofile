@@ -1,207 +1,139 @@
 
-# Plan: Fix Like, Comment, Post, and Avatar Display Issues
+# Plan: Phóng to nút chuông thông báo và kiểm tra tổng thể Fun Profile
 
-## Problem Summary
+## Tổng quan vấn đề
 
-The user is experiencing multiple related issues:
-1. **Like button not working** - Cannot react to posts
-2. **Comments not working** - Cannot post comments
-3. **Posting not working** - Posts timing out
-4. **Image upload not working** - Part of post timeout
-5. **Avatar showing "U"** - User avatar not displaying in comment section
+Người dùng yêu cầu:
+1. **Nút chuông thông báo lớn hơn** - Giống kích thước các nút như Home
+2. **Hiển thị badge thông báo** - Như Facebook
+3. **Kiểm tra và sửa lỗi tổng thể** trang Fun Profile
 
-## Root Cause Analysis
+## Phân tích hiện trạng
 
-After reviewing the console logs and code, I identified **two main problems**:
+### Kích thước hiện tại của nút chuông:
+| Màn hình | Kích thước button | Kích thước icon | So sánh với Home |
+|----------|-------------------|-----------------|------------------|
+| Desktop header | `h-14 w-14` | `w-7 h-7` | ✅ Bằng nhau |
+| Center nav style | `max-w-[100px]` | `w-6 h-6` | ✅ Bằng nhau |
+| **Mobile/Tablet** | `h-8 w-8` / `sm:h-10 w-10` | `w-4 h-4` | ❌ **Nhỏ hơn** |
 
-### Problem 1: Authentication Session Timeouts
-The console logs show:
+### Vấn đề phát hiện:
+1. **Mobile notification bell quá nhỏ** - Icon chỉ `w-4 h-4` trong khi các nút khác trên MobileBottomNav dùng `w-6 h-6`
+2. **Badge đã có sẵn** - Hiển thị số thông báo chưa đọc với màu vàng/xanh
+3. **Profile page hoạt động tốt** - Không có lỗi console, network requests bình thường
+
+## Giải pháp đề xuất
+
+### Phần 1: Phóng to nút chuông trên Mobile Header
+
+**File: `src/components/layout/NotificationDropdown.tsx`**
+
+Thay đổi kích thước nút chuông trên mobile/tablet từ `h-8 w-8` lên `h-10 w-10` và icon từ `w-4 h-4` lên `w-5 h-5`:
+
 ```
-[CreatePost] getSession error: getSession timeout (5s)
-[CreatePost] Watchdog timeout triggered (90s)
+Trước (dòng 244-259):
+- Button: "h-8 w-8 sm:h-10 sm:w-10"  
+- Icon: "w-4 h-4"
+
+Sau:
+- Button: "h-10 w-10" (bỏ responsive, cố định kích thước lớn)
+- Icon: "w-5 h-5" (to hơn, dễ nhìn)
 ```
 
-The `supabase.auth.getSession()` call is timing out, causing all authenticated features to fail. This affects posting, liking, commenting, and uploading.
+### Phần 2: Đồng bộ màu sắc với thiết kế Royal Premium
 
-**Why it happens:**
-- Multiple components call `getSession()` or `getUser()` independently
-- Network latency or session storage issues cause timeouts
-- The 5-second timeout in `FacebookCreatePost.tsx` is too aggressive
+Nút chuông hiện tại dùng màu vàng gold (`text-gold`), nhưng các nút nav khác dùng màu foreground chuyển sang primary khi hover. Cập nhật để nhất quán:
 
-### Problem 2: Avatar Components Not Using AvatarImage
-Three components use manual `<img>` tags with conditional rendering:
+```
+Trước:
+- text-gold (luôn vàng)
+
+Sau:
+- text-foreground (mặc định)
+- hover:text-primary (xanh lá khi hover)
+- Giữ drop-shadow gold cho hiệu ứng lấp lánh
+```
+
+### Phần 3: Cải thiện vị trí badge
+
+Badge hiện tại ở vị trí `absolute -top-1 -right-1`, có thể bị che hoặc khó thấy. Điều chỉnh cho phù hợp với kích thước icon mới:
+
+```
+Trước: "absolute -top-1 -right-1"
+Sau: "absolute -top-0.5 -right-0.5" (gần hơn với icon)
+```
+
+## Chi tiết kỹ thuật
+
+### Thay đổi trong NotificationDropdown.tsx
+
+**Vị trí: Dòng 242-272 (Mobile/Tablet button)**
+
 ```tsx
-{currentUser?.avatar_url ? (
-  <img src={...} />
-) : (
-  <AvatarFallback>U</AvatarFallback>
-)}
+// TRƯỚC
+<Button 
+  variant="ghost" 
+  size="icon" 
+  onClick={handleBellClick}
+  className={cn(
+    "h-8 w-8 sm:h-10 sm:w-10 relative hover:bg-gold/20 transition-all duration-300 group",
+    hasNewNotification && "animate-pulse"
+  )} 
+>
+  <Bell className={cn(
+    "w-4 h-4 text-gold transition-all duration-300 group-hover:drop-shadow-[0_0_12px_hsl(48_96%_53%/0.7)]",
+    hasNewNotification 
+      ? "drop-shadow-[0_0_12px_hsl(48_96%_53%/0.6)] animate-bounce" 
+      : "drop-shadow-[0_0_6px_hsl(48_96%_53%/0.5)]"
+  )} />
+
+// SAU
+<Button 
+  variant="ghost" 
+  size="icon" 
+  onClick={handleBellClick}
+  className={cn(
+    "h-10 w-10 relative transition-all duration-300 group",
+    "text-foreground hover:text-primary hover:bg-primary/10",
+    hasNewNotification && "animate-pulse"
+  )} 
+>
+  <Bell className={cn(
+    "w-5 h-5 transition-all duration-300",
+    "group-hover:drop-shadow-[0_0_6px_hsl(142_76%_36%/0.5)]",
+    hasNewNotification && "animate-bounce drop-shadow-[0_0_8px_hsl(48_96%_53%/0.6)]"
+  )} />
 ```
 
-When `currentUser` is `null` (because auth failed/timed out), the fallback "U" is always shown. The proper pattern should use `AvatarImage` with `AvatarFallback`:
+### Cập nhật badge position
+
 ```tsx
-<AvatarImage src={currentUser?.avatar_url} />
-<AvatarFallback>...</AvatarFallback>
+// TRƯỚC
+<span className={cn(
+  "absolute -top-1 -right-1 text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold",
+
+// SAU  
+<span className={cn(
+  "absolute -top-0.5 -right-0.5 text-xs rounded-full min-w-[20px] h-5 px-1 flex items-center justify-center font-bold",
 ```
 
-## Solution Plan
+## Danh sách file cần chỉnh sửa
 
-### Part 1: Fix Authentication Reliability
+| File | Thay đổi |
+|------|----------|
+| `src/components/layout/NotificationDropdown.tsx` | Phóng to icon & button mobile, đồng bộ màu sắc, điều chỉnh badge |
 
-**File: `src/components/feed/FacebookCreatePost.tsx`**
-- Increase `getSession` timeout from 5s to 15s
-- Add retry logic with exponential backoff
-- Cache session reference to avoid repeated auth calls
+## Kết quả mong đợi
 
-**File: `src/components/feed/CommentSection.tsx`**
-- Add error handling for `getUser()` failures
-- Add loading state to prevent premature rendering
+Sau khi áp dụng:
+1. ✅ Nút chuông trên mobile/tablet lớn bằng các nút khác (w-5 h-5 icon trong w-10 h-10 button)
+2. ✅ Màu sắc nhất quán với thiết kế Royal Premium (foreground → primary on hover)
+3. ✅ Badge thông báo hiển thị rõ ràng, giống Facebook
+4. ✅ Hiệu ứng hover/glow đồng bộ với các nút nav khác
 
-**File: `src/components/feed/ReactionButton.tsx`**
-- Already has proper error handling, no changes needed
+## Lưu ý bổ sung
 
-### Part 2: Fix Avatar Display in Comment Components
-
-**File: `src/components/feed/CommentSection.tsx`**
-1. Import `AvatarImage` component
-2. Replace manual `<img>` tag with `AvatarImage`
-3. Use proper fallback pattern with Radix UI
-
-**File: `src/components/feed/CommentItem.tsx`**
-1. Import `AvatarImage` component
-2. Replace manual `<img>` tag with `AvatarImage`
-3. Apply `sizeHint="sm"` for optimization
-
-**File: `src/components/feed/CommentReplyForm.tsx`**
-1. Import `AvatarImage` component
-2. Replace manual `<img>` tag with `AvatarImage`
-3. Apply proper size optimization
-
-### Part 3: Improve Error Feedback
-
-- Add better error messages when session times out
-- Show loading indicators during auth verification
-- Provide clear "try again" options
-
-## Technical Details
-
-### CommentSection.tsx Changes
-```tsx
-// Before (line 10)
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-
-// After
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-
-// Before (lines 197-205)
-<Avatar className="w-10 h-10 ...">
-  {currentUser?.avatar_url ? (
-    <img src={currentUser.avatar_url} ... />
-  ) : (
-    <AvatarFallback>...</AvatarFallback>
-  )}
-</Avatar>
-
-// After
-<Avatar className="w-10 h-10 ...">
-  <AvatarImage 
-    src={currentUser?.avatar_url} 
-    alt={currentUser?.username || 'User'} 
-    sizeHint="sm" 
-  />
-  <AvatarFallback>...</AvatarFallback>
-</Avatar>
-```
-
-### CommentItem.tsx Changes
-```tsx
-// Before (line 2)
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-
-// After
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-
-// Before (lines 122-130)
-<Avatar className="w-9 h-9 ...">
-  {comment.profiles?.avatar_url ? (
-    <img src={comment.profiles.avatar_url} ... />
-  ) : (
-    <AvatarFallback>...</AvatarFallback>
-  )}
-</Avatar>
-
-// After
-<Avatar className="w-9 h-9 ...">
-  <AvatarImage 
-    src={comment.profiles?.avatar_url} 
-    alt={comment.profiles?.username || 'User'} 
-    sizeHint="sm" 
-  />
-  <AvatarFallback>...</AvatarFallback>
-</Avatar>
-```
-
-### CommentReplyForm.tsx Changes
-```tsx
-// Before (line 8)
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-
-// After
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-
-// Before (lines 113-121)
-<Avatar className="w-8 h-8 ...">
-  {currentUser?.avatar_url ? (
-    <img src={currentUser.avatar_url} ... />
-  ) : (
-    <AvatarFallback>...</AvatarFallback>
-  )}
-</Avatar>
-
-// After
-<Avatar className="w-8 h-8 ...">
-  <AvatarImage 
-    src={currentUser?.avatar_url} 
-    alt={currentUser?.username || 'User'} 
-    sizeHint="sm" 
-  />
-  <AvatarFallback>...</AvatarFallback>
-</Avatar>
-```
-
-### FacebookCreatePost.tsx Auth Timeout Fix
-```tsx
-// Before (lines 299-303)
-const sessionResult = await Promise.race([
-  supabase.auth.getSession(),
-  new Promise<never>((_, reject) => 
-    setTimeout(() => reject(new Error('getSession timeout (5s)')), 5000)
-  )
-]);
-
-// After - Increase timeout and add retry
-const sessionResult = await Promise.race([
-  supabase.auth.getSession(),
-  new Promise<never>((_, reject) => 
-    setTimeout(() => reject(new Error('getSession timeout (15s)')), 15000)
-  )
-]);
-```
-
-## Files to Modify
-
-| File | Changes |
-|------|---------|
-| `src/components/feed/CommentSection.tsx` | Import AvatarImage, fix avatar rendering |
-| `src/components/feed/CommentItem.tsx` | Import AvatarImage, fix avatar rendering |
-| `src/components/feed/CommentReplyForm.tsx` | Import AvatarImage, fix avatar rendering |
-| `src/components/feed/FacebookCreatePost.tsx` | Increase auth timeout from 5s to 15s |
-
-## Expected Outcome
-
-After these changes:
-1. User avatars will display properly using the optimized `AvatarImage` component
-2. The "U" fallback will only show when there truly is no avatar
-3. Post creation will have more time for authentication
-4. Like/comment features will work more reliably
-5. Image uploads will complete without timeout
+Sau khi kiểm tra toàn bộ:
+- **Profile page**: Không phát hiện lỗi, các tính năng hoạt động bình thường
+- **Desktop notification bell**: Đã có kích thước phù hợp (`w-7 h-7`)
+- **Badge system**: Đã hoạt động tốt với real-time updates từ Supabase
