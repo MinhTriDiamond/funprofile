@@ -87,16 +87,16 @@ export const FacebookNavbar = () => {
 
   const isActive = (path: string) => location.pathname === path;
 
-  // Language options with flags
+  // Language options with country flag images (using flagcdn.com for consistent display)
   const languageOptions = [
-    { code: 'vi' as const, name: 'Tiếng Việt', flag: '🇻🇳' },
-    { code: 'en' as const, name: 'English', flag: '🇺🇸' },
-    { code: 'zh' as const, name: '中文', flag: '🇨🇳' },
-    { code: 'ja' as const, name: '日本語', flag: '🇯🇵' },
-    { code: 'ko' as const, name: '한국어', flag: '🇰🇷' },
-    { code: 'th' as const, name: 'ไทย', flag: '🇹🇭' },
-    { code: 'id' as const, name: 'Indonesia', flag: '🇮🇩' },
-    { code: 'fr' as const, name: 'Français', flag: '🇫🇷' },
+    { code: 'vi' as const, name: 'Tiếng Việt', flagUrl: 'https://flagcdn.com/w40/vn.png' },
+    { code: 'en' as const, name: 'English', flagUrl: 'https://flagcdn.com/w40/us.png' },
+    { code: 'zh' as const, name: '中文', flagUrl: 'https://flagcdn.com/w40/cn.png' },
+    { code: 'ja' as const, name: '日本語', flagUrl: 'https://flagcdn.com/w40/jp.png' },
+    { code: 'ko' as const, name: '한국어', flagUrl: 'https://flagcdn.com/w40/kr.png' },
+    { code: 'th' as const, name: 'ไทย', flagUrl: 'https://flagcdn.com/w40/th.png' },
+    { code: 'id' as const, name: 'Indonesia', flagUrl: 'https://flagcdn.com/w40/id.png' },
+    { code: 'fr' as const, name: 'Français', flagUrl: 'https://flagcdn.com/w40/fr.png' },
   ];
 
   // Navigation items for center nav (Desktop only)
@@ -249,7 +249,11 @@ export const FacebookNavbar = () => {
                               : 'hover:bg-accent text-foreground'
                           }`}
                         >
-                          <span className="text-base">{lang.flag}</span>
+                          <img 
+                            src={lang.flagUrl} 
+                            alt={lang.name}
+                            className="w-5 h-4 object-cover rounded-sm shadow-sm"
+                          />
                           <span>{lang.name}</span>
                         </button>
                       ))}
