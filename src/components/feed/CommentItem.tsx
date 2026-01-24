@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import { formatRelativeTime } from '@/lib/formatters';
 import { deleteStreamVideoByUrl, isStreamUrl } from '@/utils/streamHelpers';
+import { useLanguage } from '@/i18n/LanguageContext';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -47,6 +48,7 @@ export const CommentItem = ({
   onCommentDeleted,
   level = 0 
 }: CommentItemProps) => {
+  const { t } = useLanguage();
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [showMediaViewer, setShowMediaViewer] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -65,11 +67,11 @@ export const CommentItem = ({
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user || user.id !== comment.user_id) {
-      toast.error('Bạn chỉ có thể xóa comment của mình');
+      toast.error(t('canOnlyDeleteOwnComment'));
       return;
     }
 
-    if (!confirm('Xóa comment này?')) return;
+    if (!confirm(t('confirmDeleteComment'))) return;
 
     setDeleting(true);
     
@@ -84,9 +86,9 @@ export const CommentItem = ({
       .eq('id', comment.id);
 
     if (error) {
-      toast.error('Không thể xóa comment');
+      toast.error(t('cannotDeleteComment'));
     } else {
-      toast.success('Đã xóa comment');
+      toast.success(t('commentDeleted'));
       onCommentDeleted();
     }
     setDeleting(false);
@@ -95,11 +97,11 @@ export const CommentItem = ({
   const handleShare = () => {
     const url = `${window.location.origin}/post/${postId}#comment-${comment.id}`;
     navigator.clipboard.writeText(url);
-    toast.success('Đã copy link comment!');
+    toast.success(t('commentLinkCopied'));
   };
 
   const handleReport = () => {
-    toast.info('Đã gửi báo cáo. Cảm ơn bạn!');
+    toast.info(t('reportSent'));
   };
 
   const mediaUrl = comment.image_url || comment.video_url;
@@ -135,7 +137,7 @@ export const CommentItem = ({
                 to={`/profile/${comment.user_id}`}
                 className="font-semibold text-sm text-primary hover:underline cursor-pointer"
               >
-                {comment.profiles?.username || 'Ẩn danh'}
+                {comment.profiles?.username || t('anonymous')}
               </Link>
             </div>
             
@@ -175,7 +177,7 @@ export const CommentItem = ({
                 onClick={() => setShowReplyForm(!showReplyForm)}
                 className="text-xs text-muted-foreground hover:text-primary hover:bg-primary/10 gap-1 h-7 px-2"
               >
-                Trả lời
+                {t('reply')}
               </Button>
             )}
             
@@ -185,7 +187,7 @@ export const CommentItem = ({
               onClick={handleShare}
               className="text-xs text-muted-foreground hover:text-primary hover:bg-primary/10 gap-1 h-7 px-2"
             >
-              Chia sẻ
+              {t('share')}
             </Button>
             
             <span className="text-muted-foreground/60">
@@ -211,12 +213,12 @@ export const CommentItem = ({
                     className="text-destructive focus:text-destructive"
                   >
                     <Trash2 className="w-4 h-4 mr-2" />
-                    Xóa
+                    {t('delete')}
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuItem onClick={handleReport}>
                   <Flag className="w-4 h-4 mr-2" />
-                  Báo cáo
+                  {t('report')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -248,7 +250,7 @@ export const CommentItem = ({
                   className="text-xs text-primary hover:text-primary hover:bg-primary/10 font-medium h-7"
                 >
                   <MessageCircle className="w-3.5 h-3.5 mr-1.5" />
-                  Xem thêm {hiddenRepliesCount} trả lời...
+                  {t('viewMoreReplies').replace('{count}', String(hiddenRepliesCount))}
                 </Button>
               )}
               
@@ -270,7 +272,7 @@ export const CommentItem = ({
                   onClick={() => setShowAllReplies(false)}
                   className="text-xs text-muted-foreground hover:text-primary hover:bg-primary/10 h-7"
                 >
-                  Ẩn bớt trả lời
+                  {t('hideReplies')}
                 </Button>
               )}
             </div>

@@ -9,14 +9,16 @@ import {
   HoverCardTrigger,
 } from '@/components/ui/hover-card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { useLanguage } from '@/i18n/LanguageContext';
 
-const CHAKRA_REACTIONS = [
-  { type: 'like', emoji: '👍', label: 'Thích', color: 'text-blue-500' },
-  { type: 'love', emoji: '❤️', label: 'Yêu thương', color: 'text-red-500' },
-  { type: 'care', emoji: '🥰', label: 'Thương thương', color: 'text-orange-500' },
-  { type: 'wow', emoji: '😮', label: 'Ngạc nhiên', color: 'text-yellow-600' },
-  { type: 'haha', emoji: '😂', label: 'Haha', color: 'text-yellow-500' },
-  { type: 'pray', emoji: '🙏', label: 'Biết ơn', color: 'text-purple-500' },
+// Reaction type definitions - labels will be loaded from translations
+const REACTION_TYPES = [
+  { type: 'like', emoji: '👍', labelKey: 'like', color: 'text-blue-500' },
+  { type: 'love', emoji: '❤️', labelKey: 'reactionLove', color: 'text-red-500' },
+  { type: 'care', emoji: '🥰', labelKey: 'reactionCare', color: 'text-orange-500' },
+  { type: 'wow', emoji: '😮', labelKey: 'wow', color: 'text-yellow-600' },
+  { type: 'haha', emoji: '😂', labelKey: 'haha', color: 'text-yellow-500' },
+  { type: 'pray', emoji: '🙏', labelKey: 'gratitude', color: 'text-purple-500' },
 ];
 
 interface CommentReactionButtonProps {
@@ -35,6 +37,7 @@ interface CommentReaction {
 }
 
 export const CommentReactionButton = ({ commentId, onReactionChange }: CommentReactionButtonProps) => {
+  const { t } = useLanguage();
   const [userReaction, setUserReaction] = useState<string | null>(null);
   const [reactionCounts, setReactionCounts] = useState<Record<string, number>>({});
   const [reactions, setReactions] = useState<CommentReaction[]>([]);
@@ -44,6 +47,12 @@ export const CommentReactionButton = ({ commentId, onReactionChange }: CommentRe
   const containerRef = useRef<HTMLDivElement>(null);
 
   const totalReactions = Object.values(reactionCounts).reduce((a, b) => a + b, 0);
+  
+  // Build reactions with translated labels
+  const CHAKRA_REACTIONS = REACTION_TYPES.map(r => ({
+    ...r,
+    label: t(r.labelKey as any)
+  }));
 
   useEffect(() => {
     fetchReactions();
@@ -102,7 +111,7 @@ export const CommentReactionButton = ({ commentId, onReactionChange }: CommentRe
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) {
-      toast.error('Vui lòng đăng nhập để thả reaction');
+      toast.error(t('pleaseLoginToReact'));
       return;
     }
 
@@ -236,7 +245,7 @@ export const CommentReactionButton = ({ commentId, onReactionChange }: CommentRe
                           {reaction.profiles?.username?.[0]?.toUpperCase() || 'U'}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="text-sm truncate">{reaction.profiles?.username || 'Anonymous'}</span>
+                      <span className="text-sm truncate">{reaction.profiles?.username || t('anonymous')}</span>
                     </div>
                   );
                 })}
