@@ -351,7 +351,7 @@ const Profile = () => {
                 {/* Avatar - Overlapping cover photo */}
                 <div className="-mt-16 sm:-mt-20 md:-mt-24 relative z-10 flex justify-center md:justify-start">
                   {showPrivateElements ? (
-                    <div className="ring-4 ring-card rounded-full">
+                    <div className="ring-4 ring-emerald-500 rounded-full shadow-[0_0_20px_rgba(16,185,129,0.5)]">
                       <AvatarEditor
                         userId={currentUserId}
                         currentAvatarUrl={profile?.avatar_url}
@@ -361,7 +361,7 @@ const Profile = () => {
                       />
                     </div>
                   ) : (
-                    <Avatar className="w-32 h-32 sm:w-36 sm:h-36 md:w-44 md:h-44 ring-4 ring-card shadow-lg">
+                    <Avatar className="w-32 h-32 sm:w-36 sm:h-36 md:w-44 md:h-44 ring-4 ring-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.5)]">
                       {profile?.avatar_url && <AvatarImage src={profile.avatar_url} sizeHint="lg" />}
                       <AvatarFallback className="text-4xl md:text-5xl bg-primary text-primary-foreground">
                         {profile?.username?.[0]?.toUpperCase() || 'U'}
@@ -372,7 +372,7 @@ const Profile = () => {
 
                 {/* Name, Friends, Bio, Info - Facebook style inline */}
                 <div className="flex-1 text-center md:text-left pb-2 md:pb-4 md:ml-4">
-                  <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground">
+                  <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground">
                     {profile?.full_name || profile?.username}
                   </h1>
                   <p className="text-sm sm:text-base text-muted-foreground font-medium">
@@ -412,7 +412,7 @@ const Profile = () => {
 
                 {/* Honor Board - right aligned, parallel to avatar */}
                 <div className="hidden md:flex justify-end pb-2 md:pb-4">
-                  <div className="w-[840px] max-w-[65%]">
+                  <div className="w-[630px] max-w-[55%]">
                     <CoverHonorBoard 
                       userId={profile.id}
                       username={profile?.full_name || profile?.username}
