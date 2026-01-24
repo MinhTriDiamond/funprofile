@@ -246,23 +246,23 @@ export const NotificationDropdown = ({ centerNavStyle = false, isActiveRoute = f
         size="icon" 
         onClick={handleBellClick}
         className={cn(
-          "h-8 w-8 sm:h-10 sm:w-10 relative hover:bg-gold/20 transition-all duration-300 group",
+          "h-10 w-10 relative transition-all duration-300 group",
+          "text-foreground hover:text-primary hover:bg-primary/10",
           hasNewNotification && "animate-pulse"
         )} 
         aria-label="Thông báo"
       >
         <Bell className={cn(
-          "w-4 h-4 text-gold transition-all duration-300 group-hover:drop-shadow-[0_0_12px_hsl(48_96%_53%/0.7)]",
-          hasNewNotification 
-            ? "drop-shadow-[0_0_12px_hsl(48_96%_53%/0.6)] animate-bounce" 
-            : "drop-shadow-[0_0_6px_hsl(48_96%_53%/0.5)]"
+          "w-5 h-5 transition-all duration-300",
+          "group-hover:drop-shadow-[0_0_6px_hsl(142_76%_36%/0.5)]",
+          hasNewNotification && "animate-bounce drop-shadow-[0_0_8px_hsl(48_96%_53%/0.6)]"
         )} />
         {unreadCount > 0 && (
           <span className={cn(
-            "absolute -top-1 -right-1 text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold transition-all duration-300",
+            "absolute -top-0.5 -right-0.5 text-xs rounded-full min-w-[20px] h-5 px-1 flex items-center justify-center font-bold transition-all duration-300",
             hasNewNotification 
               ? "bg-gold text-black shadow-[0_0_15px_hsl(var(--gold-glow))] animate-pulse scale-110" 
-              : "bg-green-500 text-white"
+              : "bg-primary text-primary-foreground"
           )}>
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
