@@ -312,7 +312,7 @@ const Profile = () => {
         <div className="max-w-[1100px] mx-auto px-0 md:px-4">
           <div className="relative">
             {/* Cover Photo Container with rounded corners */}
-            <div className="h-[200px] sm:h-[300px] md:h-[400px] relative overflow-hidden md:rounded-b-xl">
+            <div className="h-[200px] sm:h-[300px] md:h-[400px] relative overflow-visible md:rounded-b-xl">
               {profile?.cover_url ? (
                 <LazyImage 
                   src={profile.cover_url} 
@@ -337,7 +337,7 @@ const Profile = () => {
 
               {/* Edit Cover Button - bottom right, below Honor Board */}
               {showPrivateElements && (
-                <div className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 z-[100]">
+                <div className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 z-[100] isolate">
                   <CoverPhotoEditor 
                     userId={currentUserId}
                     currentCoverUrl={profile?.cover_url}
