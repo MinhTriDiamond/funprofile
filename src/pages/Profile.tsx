@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { LazyImage } from '@/components/ui/LazyImage';
 import { CoverPhotoEditor } from '@/components/profile/CoverPhotoEditor';
 import { AvatarEditor } from '@/components/profile/AvatarEditor';
-import { Plus, PenSquare, MoreHorizontal, MapPin, Briefcase, GraduationCap, Heart, Clock, MessageCircle, Eye, X, Pin } from 'lucide-react';
+import { MoreHorizontal, MapPin, Briefcase, GraduationCap, Heart, Clock, MessageCircle, Eye, X, Pin, PenSquare } from 'lucide-react';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { useConversations } from '@/hooks/useConversations';
 import { toast } from 'sonner';
@@ -328,12 +328,7 @@ const Profile = () => {
               {/* Gradient overlay at bottom for better text readability */}
               <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/30 to-transparent" />
 
-              {/* Honor Board - positioned at top right corner */}
-              <CoverHonorBoard 
-                userId={profile.id}
-                username={profile?.full_name || profile?.username}
-                avatarUrl={profile?.avatar_url}
-              />
+              {/* Honor Board moved to profile info section */}
 
               {/* Edit Cover Button - bottom right, below Honor Board */}
               {showPrivateElements && (
@@ -415,46 +410,35 @@ const Profile = () => {
                   </div>
                 </div>
 
-                {/* Action Buttons - Facebook style right aligned */}
-                <div className="flex flex-wrap justify-center md:justify-end gap-2 pb-2 md:pb-4">
-                  {showPrivateElements ? (
-                    <>
-                      <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-4 h-10">
-                        <Plus className="w-4 h-4 mr-2" />
-                        Thêm vào tin
-                      </Button>
-                      <Button variant="secondary" className="font-semibold px-4 h-10">
-                        <PenSquare className="w-4 h-4 mr-2" />
-                        <span className="hidden sm:inline">Chỉnh sửa trang cá nhân</span>
-                        <span className="sm:hidden">Sửa</span>
-                      </Button>
-                      <Button 
-                        variant="secondary" 
-                        size="icon"
-                        className="h-10 w-10"
-                        onClick={() => setViewAsPublic(true)}
-                      >
-                        <Eye className="w-4 h-4" />
-                      </Button>
-                    </>
-                  ) : isOwnProfile && viewAsPublic ? null : (
-                    <>
-                      <FriendRequestButton userId={profile.id} currentUserId={currentUserId} />
-                      <Button 
-                        variant="secondary" 
-                        className="font-semibold px-4 h-10"
-                        onClick={handleStartChat}
-                        disabled={createDirectConversation.isPending}
-                      >
-                        <MessageCircle className="w-4 h-4 mr-2" />
-                        Nhắn tin
-                      </Button>
-                      <Button variant="secondary" size="icon" className="h-10 w-10">
-                        <MoreHorizontal className="w-4 h-4" />
-                      </Button>
-                    </>
-                  )}
+                {/* Honor Board - right aligned, parallel to avatar */}
+                <div className="hidden md:flex justify-end pb-2 md:pb-4">
+                  <div className="w-[320px] max-w-[40%]">
+                    <CoverHonorBoard 
+                      userId={profile.id}
+                      username={profile?.full_name || profile?.username}
+                      avatarUrl={profile?.avatar_url}
+                    />
+                  </div>
                 </div>
+
+                {/* Action Buttons for other users - Facebook style */}
+                {!isOwnProfile && !viewAsPublic && (
+                  <div className="flex flex-wrap justify-center md:hidden gap-2 pb-2">
+                    <FriendRequestButton userId={profile.id} currentUserId={currentUserId} />
+                    <Button 
+                      variant="secondary" 
+                      className="font-semibold px-4 h-10"
+                      onClick={handleStartChat}
+                      disabled={createDirectConversation.isPending}
+                    >
+                      <MessageCircle className="w-4 h-4 mr-2" />
+                      Nhắn tin
+                    </Button>
+                    <Button variant="secondary" size="icon" className="h-10 w-10">
+                      <MoreHorizontal className="w-4 h-4" />
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
 
