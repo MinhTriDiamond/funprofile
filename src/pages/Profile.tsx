@@ -357,11 +357,11 @@ const Profile = () => {
                         currentAvatarUrl={profile?.avatar_url}
                         username={profile?.username}
                         onAvatarUpdated={(newUrl) => setProfile({ ...profile, avatar_url: newUrl })}
-                        size="large"
+                        size="xl"
                       />
                     </div>
                   ) : (
-                    <Avatar className="w-32 h-32 sm:w-36 sm:h-36 md:w-44 md:h-44 ring-4 ring-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.5)]">
+                    <Avatar className="w-36 h-36 sm:w-44 sm:h-44 md:w-52 md:h-52 ring-4 ring-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.5)]">
                       {profile?.avatar_url && <AvatarImage src={profile.avatar_url} sizeHint="lg" />}
                       <AvatarFallback className="text-4xl md:text-5xl bg-primary text-primary-foreground">
                         {profile?.username?.[0]?.toUpperCase() || 'U'}
@@ -408,7 +408,7 @@ const Profile = () => {
 
                 {/* Honor Board - right aligned, parallel to avatar */}
                 <div className="hidden md:flex justify-end pb-2 md:pb-4">
-                  <div className="w-full max-w-[480px]">
+                  <div className="w-full max-w-[600px]">
                     <CoverHonorBoard 
                       userId={profile.id}
                       username={profile?.full_name || profile?.username}

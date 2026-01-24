@@ -11,7 +11,7 @@ interface AvatarEditorProps {
   currentAvatarUrl?: string | null;
   username?: string;
   onAvatarUpdated: (newUrl: string) => void;
-  size?: 'default' | 'large';
+  size?: 'default' | 'large' | 'xl';
 }
 
 export function AvatarEditor({ 
@@ -80,15 +80,19 @@ export function AvatarEditor({
     }
   };
 
-  const sizeClasses = size === 'large' 
-    ? 'w-32 h-32 md:w-44 md:h-44' 
-    : 'w-24 h-24';
+  const sizeClasses = size === 'xl'
+    ? 'w-36 h-36 sm:w-44 sm:h-44 md:w-52 md:h-52'
+    : size === 'large' 
+      ? 'w-32 h-32 md:w-44 md:h-44' 
+      : 'w-24 h-24';
   
-  const buttonSizeClasses = size === 'large'
-    ? 'w-9 h-9 bottom-2 right-2'
-    : 'w-7 h-7 bottom-1 right-1';
+  const buttonSizeClasses = size === 'xl'
+    ? 'w-10 h-10 bottom-3 right-3'
+    : size === 'large'
+      ? 'w-9 h-9 bottom-2 right-2'
+      : 'w-7 h-7 bottom-1 right-1';
 
-  const iconSizeClasses = size === 'large' ? 'w-5 h-5' : 'w-4 h-4';
+  const iconSizeClasses = size === 'xl' ? 'w-5 h-5' : size === 'large' ? 'w-5 h-5' : 'w-4 h-4';
 
   return (
     <>
