@@ -440,7 +440,7 @@ const Profile = () => {
 
             {/* Navigation Tabs - Facebook 2025 style with underline */}
             <div className="border-t border-border px-4 md:px-8">
-              <Tabs defaultValue="posts" className="w-full">
+              <Tabs defaultValue="posts" className="w-full" id="profile-tabs">
                 <TabsList className="h-auto bg-transparent p-0 border-0 justify-start gap-1 flex overflow-x-auto scrollbar-hide -mb-px">
                   <TabsTrigger 
                     value="posts" 
@@ -493,10 +493,23 @@ const Profile = () => {
                       <TabsContent value="posts" className="mt-0 space-y-4">
                         {/* Intro Card - Facebook style */}
                         <div className="bg-card rounded-xl shadow-sm border border-border p-4">
-                          <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center justify-between mb-3">
                             <h3 className="font-bold text-lg text-foreground">Thông tin cá nhân</h3>
                             {showPrivateElements && (
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-8 w-8"
+                                onClick={() => {
+                                  const tabsElement = document.querySelector('[data-state="active"][value="edit"]') as HTMLElement;
+                                  if (tabsElement) {
+                                    tabsElement.click();
+                                  } else {
+                                    const editTab = document.querySelector('[value="edit"]') as HTMLElement;
+                                    if (editTab) editTab.click();
+                                  }
+                                }}
+                              >
                                 <PenSquare className="w-4 h-4" />
                               </Button>
                             )}
@@ -526,7 +539,14 @@ const Profile = () => {
                           </div>
                           
                           {showPrivateElements && (
-                            <Button variant="secondary" className="w-full mt-4">
+                            <Button 
+                              variant="secondary" 
+                              className="w-full mt-4"
+                              onClick={() => {
+                                const editTab = document.querySelector('[value="edit"]') as HTMLElement;
+                                if (editTab) editTab.click();
+                              }}
+                            >
                               Chỉnh sửa chi tiết
                             </Button>
                           )}
@@ -536,7 +556,15 @@ const Profile = () => {
                         <div className="bg-card rounded-xl shadow-sm border border-border p-4">
                           <div className="flex justify-between items-center mb-3">
                             <h3 className="font-bold text-lg text-foreground">Ảnh</h3>
-                            <button className="text-primary hover:underline text-sm font-medium">Xem tất cả ảnh</button>
+                            <button 
+                              className="text-primary hover:underline text-sm font-medium"
+                              onClick={() => {
+                                const photosTab = document.querySelector('[value="photos"]') as HTMLElement;
+                                if (photosTab) photosTab.click();
+                              }}
+                            >
+                              Xem tất cả ảnh
+                            </button>
                           </div>
                           <div className="grid grid-cols-3 gap-1 rounded-lg overflow-hidden">
                             {originalPosts.filter(p => p.image_url).slice(0, 9).map((post, i) => (
@@ -545,6 +573,11 @@ const Profile = () => {
                                 src={post.image_url}
                                 alt=""
                                 className="w-full aspect-square"
+                                onClick={() => {
+                                  const photosTab = document.querySelector('[value="photos"]') as HTMLElement;
+                                  if (photosTab) photosTab.click();
+                                }}
+                                style={{ cursor: 'pointer' }}
                               />
                             ))}
                             {originalPosts.filter(p => p.image_url).length === 0 && (
@@ -562,7 +595,15 @@ const Profile = () => {
                               <h3 className="font-bold text-lg text-foreground">Bạn bè</h3>
                               <p className="text-sm text-muted-foreground">{friendsCount} người bạn</p>
                             </div>
-                            <button className="text-primary hover:underline text-sm font-medium">Xem tất cả bạn bè</button>
+                            <button 
+                              className="text-primary hover:underline text-sm font-medium"
+                              onClick={() => {
+                                const friendsTab = document.querySelector('[value="friends"]') as HTMLElement;
+                                if (friendsTab) friendsTab.click();
+                              }}
+                            >
+                              Xem tất cả bạn bè
+                            </button>
                           </div>
                           <div className="grid grid-cols-3 gap-2">
                             {[1, 2, 3, 4, 5, 6].map((i) => (
