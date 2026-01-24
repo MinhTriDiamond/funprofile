@@ -345,11 +345,11 @@ const Profile = () => {
 
           {/* Profile Info Section - Facebook 2025 Layout */}
           <div className="bg-card border-b border-border shadow-sm md:rounded-b-xl">
-            <div className="px-4 md:px-8 pb-2 md:pb-3">
+            <div className="px-4 md:px-8 py-4 md:py-6">
               {/* Avatar + Info Row */}
-              <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-4">
-                {/* Avatar - Overlapping cover photo more */}
-                <div className="-mt-20 sm:-mt-24 md:-mt-28 relative z-10 flex justify-center md:justify-start flex-shrink-0">
+              <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
+                {/* Avatar - positioned at bottom left, centered in white space */}
+                <div className="-mt-12 sm:-mt-14 md:-mt-16 relative z-10 flex justify-center md:justify-start flex-shrink-0">
                   {showPrivateElements ? (
                     <div className="ring-4 ring-emerald-500 rounded-full shadow-[0_0_20px_rgba(16,185,129,0.5)]">
                       <AvatarEditor
@@ -370,8 +370,8 @@ const Profile = () => {
                   )}
                 </div>
 
-                {/* Name, Friends, Bio, Info - Facebook style inline - shifted up */}
-                <div className="flex-1 text-center md:text-left md:ml-4 -mt-2 md:-mt-4">
+                {/* Name, Friends, Bio, Info - Facebook style inline */}
+                <div className="flex-1 text-center md:text-left md:ml-4">
                   <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground">
                     {profile?.full_name || profile?.username}
                   </h1>
