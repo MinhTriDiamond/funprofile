@@ -1610,6 +1610,54 @@ export type Database = {
         }
         Relationships: []
       }
+      user_custodial_wallets: {
+        Row: {
+          chain_id: number | null
+          created_at: string | null
+          id: string | null
+          is_active: boolean | null
+          last_activity_at: string | null
+          updated_at: string | null
+          user_id: string | null
+          wallet_address: string | null
+        }
+        Insert: {
+          chain_id?: number | null
+          created_at?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          last_activity_at?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+          wallet_address?: string | null
+        }
+        Update: {
+          chain_id?: number | null
+          created_at?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          last_activity_at?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+          wallet_address?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "custodial_wallets_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "custodial_wallets_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       approve_user_reward: {
@@ -1689,10 +1737,16 @@ export type Database = {
         Returns: boolean
       }
       normalize_username: { Args: { input_text: string }; Returns: string }
-      recalculate_user_financial: {
-        Args: { p_client_id?: string; p_user_id: string }
-        Returns: Json
-      }
+      recalculate_user_financial:
+        | { Args: { p_client_id?: string; p_user_id: string }; Returns: Json }
+        | {
+            Args: {
+              p_admin_id?: string
+              p_client_id?: string
+              p_user_id: string
+            }
+            Returns: Json
+          }
       reject_user_reward: {
         Args: { p_admin_id: string; p_note?: string; p_user_id: string }
         Returns: number
