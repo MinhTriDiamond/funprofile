@@ -387,7 +387,7 @@ const Profile = () => {
                   )}
                   
                   {/* Info badges - all in one horizontal row */}
-                  <div className="flex flex-nowrap items-center justify-center md:justify-start gap-x-4 mt-2 text-sm text-muted-foreground overflow-x-auto">
+                  <div className="flex flex-nowrap items-center justify-center md:justify-start gap-x-4 mt-2 text-sm text-muted-foreground">
                     <div className="flex items-center gap-1 whitespace-nowrap">
                       <MapPin className="w-4 h-4 flex-shrink-0" />
                       <span>Việt Nam</span>
@@ -395,10 +395,6 @@ const Profile = () => {
                     <div className="flex items-center gap-1 whitespace-nowrap">
                       <Briefcase className="w-4 h-4 flex-shrink-0" />
                       <span>FUN Ecosystem</span>
-                    </div>
-                    <div className="flex items-center gap-1 whitespace-nowrap">
-                      <Clock className="w-4 h-4 flex-shrink-0" />
-                      <span>Tham gia {new Date(profile?.created_at).toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })}</span>
                     </div>
                   </div>
                   
@@ -412,7 +408,7 @@ const Profile = () => {
 
                 {/* Honor Board - right aligned, parallel to avatar */}
                 <div className="hidden md:flex justify-end pb-2 md:pb-4">
-                  <div className="w-[630px] max-w-[55%]">
+                  <div className="w-full max-w-[480px]">
                     <CoverHonorBoard 
                       userId={profile.id}
                       username={profile?.full_name || profile?.username}
