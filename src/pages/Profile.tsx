@@ -441,12 +441,23 @@ const Profile = () => {
                     </div>
                   </div>
                   
-                  {/* Friend Avatars Stack */}
-                  <div className="hidden md:flex -space-x-2 mt-3">
-                    {[1, 2, 3, 4, 5, 6].map((i) => (
-                      <div key={i} className="w-8 h-8 rounded-full bg-muted border-2 border-card" />
-                    ))}
-                  </div>
+                  {/* Friend Avatars Stack - Real friend photos */}
+                  {friendsPreview.length > 0 && (
+                    <div className="hidden md:flex -space-x-2 mt-3">
+                      {friendsPreview.slice(0, 6).map((friend) => (
+                        <Avatar 
+                          key={friend.id} 
+                          className="w-8 h-8 border-2 border-card cursor-pointer hover:z-10 hover:scale-110 transition-transform"
+                          onClick={() => navigate(`/@${friend.username}`)}
+                        >
+                          <AvatarImage src={friend.avatar_url || undefined} sizeHint="sm" />
+                          <AvatarFallback className="bg-gradient-to-br from-primary/30 to-gold/30 text-foreground text-xs font-bold">
+                            {(friend.full_name || friend.username)?.[0]?.toUpperCase() || 'U'}
+                          </AvatarFallback>
+                        </Avatar>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Honor Board - right aligned, moved down with top margin */}
