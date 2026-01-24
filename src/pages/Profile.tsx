@@ -402,9 +402,9 @@ const Profile = () => {
                       />
                     </div>
                   ) : (
-                    <Avatar className="w-36 h-36 sm:w-44 sm:h-44 md:w-52 md:h-52 ring-4 ring-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.5)]">
+                    <Avatar className="w-28 h-28 sm:w-32 sm:h-32 md:w-40 md:h-40 ring-4 ring-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.5)]">
                       {profile?.avatar_url && <AvatarImage src={profile.avatar_url} sizeHint="lg" />}
-                      <AvatarFallback className="text-4xl md:text-5xl bg-primary text-primary-foreground">
+                      <AvatarFallback className="text-3xl md:text-4xl bg-primary text-primary-foreground">
                         {profile?.username?.[0]?.toUpperCase() || 'U'}
                       </AvatarFallback>
                     </Avatar>
@@ -420,9 +420,9 @@ const Profile = () => {
                     {friendsCount.toLocaleString('vi-VN')} người bạn
                   </p>
                   
-                  {/* Bio text - inline */}
+                  {/* Bio text - full display with wrap */}
                   {profile?.bio && (
-                    <p className="text-base sm:text-lg text-muted-foreground mt-1 line-clamp-1">
+                    <p className="text-sm sm:text-base text-muted-foreground mt-1 whitespace-pre-wrap break-words max-w-md">
                       {profile.bio}
                     </p>
                   )}
