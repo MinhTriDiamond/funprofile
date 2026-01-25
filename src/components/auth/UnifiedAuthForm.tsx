@@ -173,33 +173,45 @@ export const UnifiedAuthForm = () => {
           
           <CardContent className="pt-0">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-4 mb-6 bg-muted/80 p-1 rounded-xl">
+              <TabsList className="grid w-full grid-cols-4 mb-6 bg-muted/50 p-1.5 rounded-full border border-[#166534]/30">
                 <TabsTrigger 
                   value="email" 
-                  className="flex items-center gap-1 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-md data-[state=active]:text-primary transition-colors text-xs sm:text-sm"
+                  className="flex items-center gap-1.5 rounded-full data-[state=active]:bg-card data-[state=active]:shadow-md transition-colors text-sm sm:text-base font-semibold"
+                  style={{
+                    color: '#166534'
+                  }}
                 >
-                  <Mail size={14} />
+                  <Mail size={16} />
                   <span className="hidden sm:inline">OTP</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="wallet"
-                  className="flex items-center gap-1 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-md data-[state=active]:text-amber-600 transition-colors text-xs sm:text-sm"
+                  className="flex items-center gap-1.5 rounded-full data-[state=active]:bg-card data-[state=active]:shadow-md transition-colors text-sm sm:text-base font-semibold"
+                  style={{
+                    color: '#166534'
+                  }}
                 >
-                  <Wallet size={14} />
+                  <Wallet size={16} />
                   <span className="hidden sm:inline">{t('authMethodWallet')}</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="social"
-                  className="flex items-center gap-1 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-md data-[state=active]:text-blue-600 transition-colors text-xs sm:text-sm"
+                  className="flex items-center gap-1.5 rounded-full data-[state=active]:bg-card data-[state=active]:shadow-md transition-colors text-sm sm:text-base font-semibold"
+                  style={{
+                    color: '#166534'
+                  }}
                 >
-                  <Users size={14} />
+                  <Users size={16} />
                   <span className="hidden sm:inline">{t('authMethodSocial')}</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="classic"
-                  className="flex items-center gap-1 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-md data-[state=active]:text-foreground transition-colors text-xs sm:text-sm"
+                  className="flex items-center gap-1.5 rounded-full data-[state=active]:bg-card data-[state=active]:shadow-md transition-colors text-sm sm:text-base font-semibold"
+                  style={{
+                    color: '#166534'
+                  }}
                 >
-                  <KeyRound size={14} />
+                  <KeyRound size={16} />
                   <span className="hidden sm:inline">{t('classicLogin')}</span>
                 </TabsTrigger>
               </TabsList>
