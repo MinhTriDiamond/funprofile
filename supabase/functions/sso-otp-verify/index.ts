@@ -90,11 +90,41 @@ Deno.serve(async (req: Request) => {
       ? identifier.toLowerCase() 
       : `${identifier.replace(/[^0-9]/g, '')}@phone.local`;
 
-    // Optimized: Find user by email using single query with filter
+    // Rate limit OTP verification attempts (separate from generation)
+    const verifyRateLimit = await supabase.rpc('check_rate_limit', {
+      p_key: `otp_verify:${identifier.toLowerCase()}`,
+      p_limit: 10,
+      p_window_ms: 3600000 // 1 hour
+    });
+    
+    if (verifyRateLimit.data && !verifyRateLimit.data.allowed) {
+      console.warn('[OTP-VERIFY] Rate limit exceeded for verification:', identifier);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Too many verification attempts. Please wait.' }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Optimized: Find user by email using profiles table (O(1) indexed lookup instead of O(n) pagination)
     const findUserByEmail = async (email: string) => {
       const target = email.toLowerCase();
       
-      // Try to find user in a single batch (most users will be found here)
+      // First check profiles table for existing user (fast indexed lookup)
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('id')
+        .ilike('username', target.split('@')[0] + '%')
+        .limit(1);
+      
+      if (profileData && profileData.length > 0) {
+        // Verify this user has the matching email via auth.admin
+        const { data: userData } = await supabase.auth.admin.getUserById(profileData[0].id);
+        if (userData?.user?.email?.toLowerCase() === target) {
+          return userData.user;
+        }
+      }
+      
+      // Fallback: Single page lookup (most users found here)
       const { data, error } = await supabase.auth.admin.listUsers({ 
         page: 1, 
         perPage: 1000 
@@ -105,24 +135,54 @@ Deno.serve(async (req: Request) => {
       const found = data?.users?.find((u) => u.email?.toLowerCase() === target);
       if (found) return found;
       
-      // Only paginate if not found and there might be more users
+      // Only paginate if not found and there might be more users (limit to 2 pages)
       if (data?.users?.length === 1000) {
-        // Check subsequent pages only if needed
-        for (let page = 2; page <= 5; page++) {
-          const { data: pageData, error: pageError } = await supabase.auth.admin.listUsers({ 
-            page, 
-            perPage: 1000 
-          });
-          if (pageError) throw pageError;
-          
-          const foundInPage = pageData?.users?.find((u) => u.email?.toLowerCase() === target);
-          if (foundInPage) return foundInPage;
-          
-          if (!pageData?.users || pageData.users.length < 1000) break;
-        }
+        const { data: pageData, error: pageError } = await supabase.auth.admin.listUsers({ 
+          page: 2, 
+          perPage: 1000 
+        });
+        if (pageError) throw pageError;
+        
+        const foundInPage = pageData?.users?.find((u) => u.email?.toLowerCase() === target);
+        if (foundInPage) return foundInPage;
       }
       
       return null;
+    };
+
+    // Generate cryptographically secure username
+    const generateSecureUsername = (identifier: string): string => {
+      let baseUsername = identifier.split('@')[0].replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+      
+      // Ensure minimum length - prefix with 'user' if too short
+      if (baseUsername.length < 3) {
+        baseUsername = 'user' + baseUsername;
+      }
+      
+      // Truncate if too long (leave room for suffix)
+      if (baseUsername.length > 20) {
+        baseUsername = baseUsername.substring(0, 20);
+      }
+      
+      // Generate cryptographically secure random suffix (6 chars)
+      const randomBytes = new Uint8Array(4);
+      crypto.getRandomValues(randomBytes);
+      const randomSuffix = Array.from(randomBytes)
+        .map(b => b.toString(36))
+        .join('')
+        .substring(0, 6);
+      
+      const username = `${baseUsername}${randomSuffix}`;
+      
+      // Final validation: ensure 5-30 chars, alphanumeric only
+      if (username.length < 5 || username.length > 30 || !/^[a-z0-9]+$/.test(username)) {
+        // Fallback to completely random username
+        const fallbackBytes = new Uint8Array(8);
+        crypto.getRandomValues(fallbackBytes);
+        return 'user' + Array.from(fallbackBytes).map(b => b.toString(36)).join('').substring(0, 12);
+      }
+      
+      return username;
     };
 
     // Check if user exists
@@ -133,10 +193,8 @@ Deno.serve(async (req: Request) => {
       console.log('[OTP-VERIFY] Creating new user for:', userEmail);
       isNewUser = true;
       
-      // Generate unique username from identifier
-      const baseUsername = identifier.split('@')[0].replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-      const uniqueSuffix = Date.now().toString(36).slice(-4);
-      const username = `${baseUsername}${uniqueSuffix}`;
+      // Generate secure unique username from identifier
+      const username = generateSecureUsername(identifier);
 
       // Create new user
       const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
