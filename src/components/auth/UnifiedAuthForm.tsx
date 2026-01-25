@@ -153,9 +153,9 @@ export const UnifiedAuthForm = () => {
         {/* Inner Card - clean white background */}
         <Card className="relative border-0 overflow-hidden rounded-[20px] bg-card shadow-inner p-2">
           <CardHeader className="pb-4">
-            {/* Step into the Light - Metallic green 3D */}
+            {/* Step into the Light - Metallic green 3D - 40% larger */}
             <CardTitle 
-              className="text-2xl font-bold text-center"
+              className="text-4xl font-bold text-center"
               style={{
                 background: 'linear-gradient(135deg, #166534 0%, #22c55e 30%, #15803d 50%, #22c55e 70%, #166534 100%)',
                 WebkitBackgroundClip: 'text',
@@ -166,7 +166,7 @@ export const UnifiedAuthForm = () => {
             >
               {t('lightCloakWelcome')}
             </CardTitle>
-            <CardDescription className="text-center text-muted-foreground">
+            <CardDescription className="text-center text-muted-foreground text-base mt-2">
               {t('lightCloakDescription')}
             </CardDescription>
           </CardHeader>
