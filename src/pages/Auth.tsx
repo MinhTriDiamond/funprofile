@@ -139,13 +139,13 @@ const Auth = () => {
             {t('authBrandDescription')}
           </p>
           
-          {/* Feature highlights */}
+          {/* Feature highlights - localized */}
           <div className="mt-8 space-y-3 hidden md:block">
-            <FeatureItem icon="✉️" text="Email OTP - No password needed" />
-            <FeatureItem icon="🦊" text="MetaMask Wallet Login" />
-            <FeatureItem icon="🔐" text="Google Single Sign-On" />
-            <FeatureItem icon="🔑" text="Classic Email & Password" />
-            <FeatureItem icon="💎" text="Auto Soul NFT Minting" />
+            <FeatureItem icon="✉️" text={t('authFeatureOtp')} />
+            <FeatureItem icon="🦊" text={t('authFeatureMetamask')} />
+            <FeatureItem icon="🔐" text={t('authFeatureGoogle')} />
+            <FeatureItem icon="🔑" text={t('authFeatureClassic')} />
+            <FeatureItem icon="💎" text={t('authFeatureSoulNft')} />
           </div>
         </div>
 
@@ -190,8 +190,8 @@ const Auth = () => {
             </div>
           </div>
           
-          {/* Last line 50% larger */}
-          <p className="text-center mt-4 text-xl text-muted-foreground">
+          {/* Last line - smaller text */}
+          <p className="text-center mt-4 text-sm text-muted-foreground">
             <strong>{t('authCreatePage')}</strong>
           </p>
         </div>
