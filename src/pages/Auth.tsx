@@ -163,32 +163,35 @@ const Auth = () => {
               <div className="flex-1 border-t border-muted" />
             </div>
             
-            {/* View as Guest button with rainbow metallic border */}
+            {/* View as Guest button with rainbow metallic border, white bg, metallic green text */}
             <div 
-              className="relative p-[2px] rounded-full mt-3"
+              className="relative p-[3px] rounded-full mt-3"
               style={{
                 background: 'linear-gradient(90deg, #FF0000 0%, #FF7F00 14%, #FFFF00 28%, #00FF00 42%, #0000FF 57%, #4B0082 71%, #9400D3 85%, #FF0000 100%)',
-                boxShadow: '0 0 12px rgba(255, 0, 0, 0.2), 0 0 12px rgba(0, 255, 0, 0.2), 0 0 12px rgba(0, 0, 255, 0.2)'
+                boxShadow: '0 0 15px rgba(255, 0, 0, 0.2), 0 0 15px rgba(0, 255, 0, 0.2), 0 0 15px rgba(0, 0, 255, 0.2)'
               }}
             >
-              <Button
-                variant="outline"
+              <button
                 onClick={() => navigate('/')}
-                className="w-full gap-3 font-bold text-xl h-14 bg-white hover:bg-slate-50 border-0 rounded-full transition-colors"
-                style={{
-                  background: 'linear-gradient(135deg, #166534 0%, #22c55e 30%, #15803d 50%, #22c55e 70%, #166534 100%)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  backgroundClip: 'text',
-                }}
+                className="w-full flex items-center justify-center gap-3 font-bold text-xl h-14 bg-white hover:bg-slate-50 border-0 rounded-full transition-colors"
               >
-                <Eye size={24} className="text-emerald-600" style={{ WebkitTextFillColor: 'initial' }} />
-                {t('viewAsGuest')}
-              </Button>
+                <Eye size={24} className="text-emerald-600" />
+                <span
+                  style={{
+                    background: 'linear-gradient(135deg, #166534 0%, #22c55e 30%, #15803d 50%, #22c55e 70%, #166534 100%)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    backgroundClip: 'text',
+                  }}
+                >
+                  {t('viewAsGuest')}
+                </span>
+              </button>
             </div>
           </div>
           
-          <p className="text-center mt-4 text-base text-muted-foreground">
+          {/* Last line 50% larger */}
+          <p className="text-center mt-4 text-xl text-muted-foreground">
             <strong>{t('authCreatePage')}</strong>
           </p>
         </div>
