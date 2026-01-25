@@ -106,10 +106,10 @@ export function AvatarEditor({
     <>
       <div className="relative">
         <Avatar 
-          className={`${sizeClasses} border-4 shadow-lg`}
+          className={`${sizeClasses} border-4`}
           style={{
-            borderColor: '#166534',
-            boxShadow: '0 0 0 2px #22c55e, 0 0 20px rgba(22, 101, 52, 0.6), inset 0 1px 0 rgba(255,255,255,0.2)'
+            borderColor: '#22c55e',
+            boxShadow: '0 0 0 3px #16a34a'
           }}
         >
           {currentAvatarUrl && <AvatarImage src={currentAvatarUrl} />}

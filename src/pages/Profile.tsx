@@ -403,10 +403,10 @@ const Profile = () => {
                     />
                   ) : (
                     <Avatar 
-                      className="w-28 h-28 sm:w-32 sm:h-32 md:w-40 md:h-40 border-4 shadow-lg"
+                      className="w-28 h-28 sm:w-32 sm:h-32 md:w-40 md:h-40 border-4"
                       style={{
-                        borderColor: '#166534',
-                        boxShadow: '0 0 0 2px #22c55e, 0 0 20px rgba(22, 101, 52, 0.6), inset 0 1px 0 rgba(255,255,255,0.2)'
+                        borderColor: '#22c55e',
+                        boxShadow: '0 0 0 3px #16a34a'
                       }}
                     >
                       {profile?.avatar_url && <AvatarImage src={profile.avatar_url} sizeHint="lg" />}
