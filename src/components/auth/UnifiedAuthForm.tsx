@@ -193,7 +193,7 @@ export const UnifiedAuthForm = () => {
                   className="flex items-center gap-1 rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-md data-[state=active]:text-blue-600 transition-colors text-xs sm:text-sm"
                 >
                   <Users size={14} />
-                  <span className="hidden sm:inline">Social</span>
+                  <span className="hidden sm:inline">{t('authMethodSocial')}</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="classic"

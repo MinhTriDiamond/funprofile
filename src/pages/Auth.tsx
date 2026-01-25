@@ -190,9 +190,9 @@ const Auth = () => {
             </div>
           </div>
           
-          {/* Last line - smaller text */}
-          <p className="text-center mt-4 text-sm text-muted-foreground">
-            <strong>{t('authCreatePage')}</strong>
+          {/* Last line - same size as left sidebar features */}
+          <p className="text-center mt-4 text-base text-muted-foreground font-medium">
+            {t('authCreatePage')}
           </p>
         </div>
       </div>
