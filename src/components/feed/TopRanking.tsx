@@ -103,12 +103,12 @@ export const TopRanking = memo(() => {
             className="text-[22px] font-black tracking-wider uppercase"
             style={{
               fontFamily: "'Orbitron', 'Rajdhani', sans-serif",
-              background: 'linear-gradient(135deg, #22c55e 0%, #86efac 20%, #4ade80 40%, #fbbf24 60%, #22c55e 80%, #16a34a 100%)',
+              background: 'linear-gradient(135deg, #FFD700 0%, #FFEC8B 15%, #FFD700 30%, #FFC125 50%, #FFD700 70%, #FFEC8B 85%, #FFD700 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
-              WebkitTextStroke: '1px rgba(0,80,0,0.5)',
-              filter: 'drop-shadow(0 1px 1px rgba(34, 197, 94, 0.4))',
+              WebkitTextStroke: '1px rgba(139,101,8,0.6)',
+              filter: 'drop-shadow(0 1px 2px rgba(255, 215, 0, 0.5))',
             }}
           >
             TOP RANKING
