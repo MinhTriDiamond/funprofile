@@ -64,7 +64,8 @@ export const SocialLogin = ({
         options: {
           redirectTo: `${window.location.origin}/`,
           queryParams: {
-            prompt: 'select_account'
+            access_type: 'offline',
+            prompt: 'consent select_account'
           }
         }
       });
