@@ -200,7 +200,7 @@ export const AppHonorBoard = memo(() => {
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
                 backgroundClip: 'text',
-                WebkitTextStroke: '0.5px rgba(0,0,0,0.3)',
+                WebkitTextStroke: '1px rgba(0,0,0,0.3)',
               }}
             >
               {t('honorBoard')}
