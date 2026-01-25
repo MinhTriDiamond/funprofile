@@ -164,7 +164,6 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
-              WebkitTextStroke: '1px rgba(139,101,8,0.6)',
               filter: 'drop-shadow(0 1px 2px rgba(255, 215, 0, 0.5))',
             }}
           >
