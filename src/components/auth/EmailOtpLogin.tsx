@@ -143,7 +143,7 @@ export const EmailOtpLogin = ({ onSuccess }: EmailOtpLoginProps) => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder={t('authEmailPlaceholder')}
-                className="pl-10 h-12 rounded-xl border-2 border-slate-300 bg-gradient-to-br from-white to-slate-50 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/30 transition-all duration-300"
+                className="pl-10 h-12 rounded-full border-2 border-slate-300 bg-gradient-to-br from-white to-slate-50 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/30 transition-all duration-300"
                 onKeyDown={(e) => e.key === 'Enter' && handleSendOtp()}
               />
             </div>
@@ -152,10 +152,10 @@ export const EmailOtpLogin = ({ onSuccess }: EmailOtpLoginProps) => {
           <Button
             onClick={handleSendOtp}
             disabled={loading || !email}
-            className="w-full h-14 text-lg font-bold rounded-2xl relative overflow-hidden group"
+            className="w-full h-14 text-lg font-bold rounded-full relative overflow-hidden text-white"
             style={{
-              background: 'linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%)',
-              boxShadow: '0 0 30px rgba(16, 185, 129, 0.5), 0 4px 15px rgba(0, 0, 0, 0.2)',
+              background: 'linear-gradient(135deg, #166534 0%, #15803d 50%, #166534 100%)',
+              boxShadow: '0 4px 20px rgba(22, 101, 52, 0.4)',
             }}
           >
             <span className="relative z-10 flex items-center justify-center gap-2">
@@ -199,7 +199,7 @@ export const EmailOtpLogin = ({ onSuccess }: EmailOtpLoginProps) => {
                     <InputOTPSlot
                       key={index}
                       index={index}
-                      className="w-12 h-14 text-xl font-bold border-2 border-slate-300 rounded-xl bg-white focus:border-emerald-500"
+                      className="w-12 h-14 text-xl font-bold border-2 border-slate-300 rounded-full bg-white focus:border-emerald-500"
                     />
                   ))}
                 </InputOTPGroup>
@@ -216,10 +216,10 @@ export const EmailOtpLogin = ({ onSuccess }: EmailOtpLoginProps) => {
           <Button
             onClick={handleVerifyOtp}
             disabled={loading || otp.length !== 6}
-            className="w-full h-14 text-lg font-bold rounded-2xl relative overflow-hidden"
+            className="w-full h-14 text-lg font-bold rounded-full relative overflow-hidden text-white"
             style={{
-              background: 'linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%)',
-              boxShadow: '0 0 30px rgba(16, 185, 129, 0.5), 0 4px 15px rgba(0, 0, 0, 0.2)',
+              background: 'linear-gradient(135deg, #166534 0%, #15803d 50%, #166534 100%)',
+              boxShadow: '0 4px 20px rgba(22, 101, 52, 0.4)',
             }}
           >
             <span className="relative z-10 flex items-center justify-center gap-2">
