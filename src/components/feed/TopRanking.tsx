@@ -68,7 +68,7 @@ export const TopRanking = memo(() => {
     >
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-3">
-          <span className="text-[#D4AF37] font-bold text-lg w-5 text-center">{rank}</span>
+          <span className="text-[#FFD700] font-bold text-lg w-5 text-center">{rank}</span>
           <Avatar className="w-8 h-8 border-2 border-[#D4AF37]/60">
             <AvatarImage src={user.avatar_url} />
             <AvatarFallback className="text-xs bg-[#D4AF37]/10 text-primary">
@@ -77,7 +77,7 @@ export const TopRanking = memo(() => {
           </Avatar>
           <span className="text-primary text-sm font-medium truncate max-w-[120px]">{user.username}</span>
         </div>
-        <span className="text-[#D4AF37] font-bold text-sm">{user.total_reward.toLocaleString("vi-VN")}</span>
+        <span className="text-[#FFD700] font-bold text-sm">{user.total_reward.toLocaleString("vi-VN")}</span>
       </div>
     </div>
   );
@@ -103,7 +103,7 @@ export const TopRanking = memo(() => {
             className="text-xl font-black tracking-wider uppercase"
             style={{
               fontFamily: "'Orbitron', 'Rajdhani', sans-serif",
-              background: 'linear-gradient(135deg, #D4AF37 0%, #C5A028 50%, #D4AF37 100%)',
+              background: 'linear-gradient(135deg, #FFD700 0%, #FFC125 30%, #FFD700 50%, #FFDF00 70%, #FFD700 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
             }}
