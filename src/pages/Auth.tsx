@@ -104,7 +104,7 @@ const Auth = () => {
         {/* Left Side - Branding */}
         <div className="text-center md:text-left">
           <div className="flex items-center justify-center md:justify-start gap-3 mb-4">
-            {/* LCP Image - use direct path for consistency across all environments - 256px with green border */}
+            {/* LCP Image - 256px with dark green metallic border */}
             <img 
               src="/fun-profile-logo-128.webp" 
               alt="FUN Profile" 
@@ -113,14 +113,26 @@ const Auth = () => {
               loading="eager"
               fetchPriority="high"
               decoding="sync"
-              className="w-64 h-64 rounded-full shadow-xl"
+              className="w-64 h-64 rounded-full"
               style={{
-                border: '4px solid #22c55e',
-                boxShadow: '0 0 30px rgba(34, 197, 94, 0.4), 0 10px 40px rgba(0,0,0,0.1)'
+                border: '5px solid transparent',
+                background: 'linear-gradient(white, white) padding-box, linear-gradient(135deg, #166534 0%, #22c55e 25%, #15803d 50%, #22c55e 75%, #166534 100%) border-box',
+                boxShadow: '0 0 25px rgba(22, 101, 52, 0.5), 0 10px 40px rgba(0,0,0,0.15), inset 0 0 20px rgba(22, 101, 52, 0.1)'
               }}
             />
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-emerald-600 via-emerald-500 to-amber-500 bg-clip-text text-transparent mb-4">
+          {/* FUN Profile title - Metallic green 3D */}
+          <h1 
+            className="text-4xl md:text-5xl font-bold mb-4"
+            style={{
+              background: 'linear-gradient(135deg, #166534 0%, #22c55e 30%, #15803d 50%, #22c55e 70%, #166534 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              textShadow: '0 2px 4px rgba(22, 101, 52, 0.3)',
+              filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.1))'
+            }}
+          >
             {t('authBrandTitle')}
           </h1>
           <p className="text-xl md:text-2xl text-muted-foreground">
