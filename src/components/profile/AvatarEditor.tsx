@@ -105,18 +105,21 @@ export function AvatarEditor({
   return (
     <>
       <div className="relative">
-        <Avatar 
-          className={`${sizeClasses} border-4`}
+        <div 
+          className="rounded-full p-1"
           style={{
-            borderColor: '#22c55e',
-            boxShadow: '0 0 0 3px #16a34a'
+            background: 'linear-gradient(135deg, #166534 0%, #22c55e 50%, #16a34a 100%)'
           }}
         >
-          {currentAvatarUrl && <AvatarImage src={currentAvatarUrl} />}
-          <AvatarFallback className="text-4xl md:text-5xl bg-primary text-white">
-            {username?.[0]?.toUpperCase() || 'U'}
-          </AvatarFallback>
-        </Avatar>
+          <Avatar 
+            className={`${sizeClasses} border-4 border-white`}
+          >
+            {currentAvatarUrl && <AvatarImage src={currentAvatarUrl} />}
+            <AvatarFallback className="text-4xl md:text-5xl bg-primary text-white">
+              {username?.[0]?.toUpperCase() || 'U'}
+            </AvatarFallback>
+          </Avatar>
+        </div>
         
         <button 
           onClick={() => fileInputRef.current?.click()}
