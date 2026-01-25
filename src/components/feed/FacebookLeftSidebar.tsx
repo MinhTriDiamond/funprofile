@@ -160,11 +160,10 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
             className="font-black text-xl tracking-wider uppercase"
             style={{
               fontFamily: "'Orbitron', 'Rajdhani', sans-serif",
-              background: 'linear-gradient(135deg, #FFD700 0%, #FFC125 25%, #DAA520 50%, #FFC125 75%, #FFD700 100%)',
+              background: 'linear-gradient(135deg, #FFD700 0%, #FFC125 30%, #FFD700 50%, #FFDF00 70%, #FFD700 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
-              textShadow: '0 0 20px rgba(255,215,0,0.6)',
-              filter: 'drop-shadow(0 0 8px rgba(255,215,0,0.5))'
+              backgroundClip: 'text',
             }}
           >
             {t('funEcosystem')}
