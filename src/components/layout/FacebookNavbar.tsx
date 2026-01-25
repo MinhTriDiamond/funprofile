@@ -237,33 +237,47 @@ export const FacebookNavbar = () => {
                   
                   <DropdownMenuSeparator />
                   
-                  {/* Language Switcher with flags */}
-                  <div className="px-2 py-1.5">
-                    <div className="flex items-center gap-2 px-2 py-1 text-sm text-muted-foreground mb-1">
-                      <Globe className="w-4 h-4" />
-                      <span>{t('language')}</span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-1">
-                      {languageOptions.map((lang) => (
-                        <button
-                          key={lang.code}
-                          onClick={() => setLanguage(lang.code)}
-                          className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors ${
-                            language === lang.code
-                              ? 'bg-primary/10 text-primary font-medium'
-                              : 'hover:bg-accent text-foreground'
-                          }`}
-                        >
+                  {/* Language Switcher - Collapsible */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button className="flex items-center justify-between w-full px-2 py-2 text-sm hover:bg-accent rounded-md transition-colors">
+                        <div className="flex items-center gap-2">
+                          <Globe className="w-4 h-4" />
+                          <span>{t('language')}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
                           <img 
-                            src={lang.flagUrl} 
-                            alt={lang.name}
-                            className="w-5 h-4 object-cover rounded-sm shadow-sm"
+                            src={languageOptions.find(l => l.code === language)?.flagUrl} 
+                            alt={language}
+                            className="w-5 h-4 object-cover rounded-sm"
                           />
-                          <span>{lang.name}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                          <span className="text-xs text-muted-foreground">{language.toUpperCase()}</span>
+                        </div>
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent side="left" align="start" className="min-w-[200px]">
+                      <div className="grid grid-cols-2 gap-1 p-2">
+                        {languageOptions.map((lang) => (
+                          <button
+                            key={lang.code}
+                            onClick={() => setLanguage(lang.code)}
+                            className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors ${
+                              language === lang.code
+                                ? 'bg-primary/10 text-primary font-medium'
+                                : 'hover:bg-accent text-foreground'
+                            }`}
+                          >
+                            <img 
+                              src={lang.flagUrl} 
+                              alt={lang.name}
+                              className="w-5 h-4 object-cover rounded-sm"
+                            />
+                            <span>{lang.name}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                   
                   <DropdownMenuSeparator />
                   
