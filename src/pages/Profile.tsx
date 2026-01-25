@@ -394,17 +394,21 @@ const Profile = () => {
                 {/* Avatar - positioned lower, centered in white space */}
                 <div className="-mt-2 sm:-mt-4 md:-mt-6 relative z-10 flex justify-center md:justify-start flex-shrink-0">
                   {showPrivateElements ? (
-                    <div className="ring-4 ring-emerald-500 rounded-full shadow-[0_0_20px_rgba(16,185,129,0.5)]">
-                      <AvatarEditor
-                        userId={currentUserId}
-                        currentAvatarUrl={profile?.avatar_url}
-                        username={profile?.username}
-                        onAvatarUpdated={(newUrl) => setProfile({ ...profile, avatar_url: newUrl })}
-                        size="xl"
-                      />
-                    </div>
+                    <AvatarEditor
+                      userId={currentUserId}
+                      currentAvatarUrl={profile?.avatar_url}
+                      username={profile?.username}
+                      onAvatarUpdated={(newUrl) => setProfile({ ...profile, avatar_url: newUrl })}
+                      size="xl"
+                    />
                   ) : (
-                    <Avatar className="w-28 h-28 sm:w-32 sm:h-32 md:w-40 md:h-40 ring-4 ring-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.5)]">
+                    <Avatar 
+                      className="w-28 h-28 sm:w-32 sm:h-32 md:w-40 md:h-40 border-4 shadow-lg"
+                      style={{
+                        borderColor: '#166534',
+                        boxShadow: '0 0 0 2px #22c55e, 0 0 20px rgba(22, 101, 52, 0.6), inset 0 1px 0 rgba(255,255,255,0.2)'
+                      }}
+                    >
                       {profile?.avatar_url && <AvatarImage src={profile.avatar_url} sizeHint="lg" />}
                       <AvatarFallback className="text-3xl md:text-4xl bg-primary text-primary-foreground">
                         {profile?.username?.[0]?.toUpperCase() || 'U'}

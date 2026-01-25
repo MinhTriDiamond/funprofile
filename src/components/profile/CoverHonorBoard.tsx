@@ -77,16 +77,22 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
   };
 
   const StatRow = ({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) => (
-    <div className="flex items-center justify-between py-1.5 px-3 sm:px-4 rounded-full bg-gradient-to-b from-[#1a7d45]/80 via-[#166534]/80 to-[#0d4a2a]/80 backdrop-blur-sm border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_0_6px_rgba(218,165,32,0.3)] overflow-hidden">
+    <div className="flex items-center justify-between py-1.5 px-3 sm:px-4 rounded-full bg-gradient-to-b from-[#1e3a5f] via-[#0f2744] to-[#0c1929] backdrop-blur-sm border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.15)] overflow-hidden">
       <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink min-w-0 overflow-hidden">
-        <div className="text-[#E8D5A3] drop-shadow-[0_0_4px_rgba(218,165,32,0.5)] flex-shrink-0">
+        <div className="text-[#E8D5A3] flex-shrink-0">
           {icon}
         </div>
-        <span className="text-[#E8D5A3] font-bold text-[10px] sm:text-[11px] md:text-xs uppercase tracking-wide truncate">
+        <span 
+          className="text-[#E8D5A3] text-[10px] sm:text-[11px] md:text-xs uppercase tracking-wide truncate"
+          style={{ fontWeight: 800 }}
+        >
           {label}
         </span>
       </div>
-      <span className={`text-[#FFD700] font-bold ${getValueFontSize(value)} drop-shadow-[0_0_4px_rgba(255,215,0,0.4)] tabular-nums flex-shrink-0 ml-2`}>
+      <span 
+        className={`text-[#FFD700] ${getValueFontSize(value)} tabular-nums flex-shrink-0 ml-2`}
+        style={{ fontWeight: 800 }}
+      >
         {formatNumber(value)}
       </span>
     </div>
@@ -97,7 +103,7 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
       {/* Desktop: Inline block for profile info section - aligned to right */}
       <div className="w-full flex justify-end">
         {/* Main Container - Glassmorphism */}
-        <div className="rounded-2xl overflow-hidden border-2 border-white/30 bg-white/10 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.2)] w-full max-w-[420px]">
+        <div className="rounded-2xl overflow-hidden border-2 border-[#DAA520] bg-gradient-to-br from-[#1e3a5f] via-[#0f2744] to-[#0c1929] shadow-[0_8px_32px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.1)] w-full max-w-[420px]">
           <div className="p-3 sm:p-4">
             {/* Header - Logo, Title, Avatar */}
             <div className="text-center mb-3">
@@ -109,14 +115,11 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
                   className="w-8 h-8 rounded-full border-2 border-[#DAA520] shadow-[0_0_12px_rgba(218,165,32,0.6)]"
                 />
                 <h1 
-                  className="text-lg font-black tracking-wider uppercase leading-none"
+                  className="text-lg tracking-wider uppercase leading-none"
                   style={{
                     fontFamily: "'Orbitron', 'Rajdhani', sans-serif",
-                    background: 'linear-gradient(135deg, #fcd34d 0%, #f59e0b 50%, #fcd34d 100%)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    textShadow: '0 0 20px rgba(250,204,21,0.8)',
-                    filter: 'drop-shadow(0 0 8px rgba(250,204,21,0.6))',
+                    fontWeight: 800,
+                    color: '#FFD700',
                   }}
                 >
                   {t('honorBoard').toUpperCase()}
@@ -218,21 +221,21 @@ export const MobileStats = ({ userId, username, avatarUrl }: MobileStatsProps) =
 
   // Mobile stat cell with auto-scaling font
   const MobileStatCell = ({ icon, value, label }: { icon: React.ReactNode; value: number; label: string }) => (
-    <div className="bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] rounded-lg py-1.5 px-1 border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_0_4px_rgba(218,165,32,0.3)] overflow-hidden">
+    <div className="bg-gradient-to-b from-[#1e3a5f] via-[#0f2744] to-[#0c1929] rounded-lg py-1.5 px-1 border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] overflow-hidden">
       <div className="mx-auto text-[#E8D5A3] mb-0.5 flex justify-center">{icon}</div>
-      <div className={`text-[#FFD700] font-bold ${getValueFontSize(value)} tabular-nums truncate`}>{formatNumber(value)}</div>
-      <div className="text-[#E8D5A3]/80 text-[8px] uppercase truncate">{label}</div>
+      <div className={`text-[#FFD700] ${getValueFontSize(value)} tabular-nums truncate`} style={{ fontWeight: 800 }}>{formatNumber(value)}</div>
+      <div className="text-[#E8D5A3]/80 text-[8px] uppercase truncate" style={{ fontWeight: 700 }}>{label}</div>
     </div>
   );
 
   // Mobile total row with auto-scaling font
   const MobileTotalRow = ({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) => (
-    <div className="bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] rounded-lg py-1.5 px-2 border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_0_6px_rgba(218,165,32,0.4)] flex items-center justify-between overflow-hidden">
+    <div className="bg-gradient-to-b from-[#1e3a5f] via-[#0f2744] to-[#0c1929] rounded-lg py-1.5 px-2 border-[2px] border-[#DAA520] shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] flex items-center justify-between overflow-hidden">
       <div className="flex items-center gap-1 flex-shrink min-w-0">
         <div className="text-[#E8D5A3] flex-shrink-0">{icon}</div>
-        <span className="text-[#E8D5A3] font-bold text-[9px] uppercase truncate">{label}</span>
+        <span className="text-[#E8D5A3] text-[9px] uppercase truncate" style={{ fontWeight: 800 }}>{label}</span>
       </div>
-      <span className={`text-[#FFD700] font-bold ${getValueFontSize(value)} drop-shadow-[0_0_4px_rgba(255,215,0,0.4)] tabular-nums flex-shrink-0 ml-1`}>{formatNumber(value)}</span>
+      <span className={`text-[#FFD700] ${getValueFontSize(value)} tabular-nums flex-shrink-0 ml-1`} style={{ fontWeight: 800 }}>{formatNumber(value)}</span>
     </div>
   );
 
@@ -246,17 +249,17 @@ export const MobileStats = ({ userId, username, avatarUrl }: MobileStatsProps) =
 
   return (
     <div className="w-full">
-      <div className="rounded-xl overflow-hidden border-2 border-yellow-400 bg-gradient-to-br from-green-900 via-green-800 to-emerald-900">
+      <div className="rounded-xl overflow-hidden border-2 border-[#DAA520] bg-gradient-to-br from-[#1e3a5f] via-[#0f2744] to-[#0c1929]">
         <div className="p-3">
           {/* Header with user info */}
           <div className="flex items-center justify-center gap-2 mb-3">
-            <Avatar className="w-8 h-8 border-2 border-yellow-400/70">
+            <Avatar className="w-8 h-8 border-2 border-[#DAA520]">
               <AvatarImage src={avatarUrl} sizeHint="sm" />
-              <AvatarFallback className="bg-gradient-to-br from-yellow-500 to-yellow-600 text-black font-bold text-sm">
+              <AvatarFallback className="bg-gradient-to-br from-[#1e3a5f] to-[#0f2744] text-[#FFD700] text-sm" style={{ fontWeight: 800 }}>
                 {username?.[0]?.toUpperCase() || 'U'}
               </AvatarFallback>
             </Avatar>
-            <span className="text-white font-bold text-lg uppercase truncate max-w-[150px]">
+            <span className="text-[#FFD700] text-lg uppercase truncate max-w-[150px]" style={{ fontWeight: 800 }}>
               {username || 'USER'}
             </span>
           </div>
