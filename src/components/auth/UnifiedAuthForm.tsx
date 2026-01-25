@@ -140,18 +140,18 @@ export const UnifiedAuthForm = () => {
   }
 
   return (
-    <div className="w-full max-w-md relative">
-      {/* Outer Gold Frame - Premium metallic gold with shine */}
+    <div className="w-full max-w-lg relative">
+      {/* Outer Frame - Premium dark green metallic with shine */}
       <div 
-        className="relative p-[3px] rounded-3xl"
+        className="relative p-[4px] rounded-3xl"
         style={{
-          background: 'linear-gradient(135deg, #FFD700 0%, #FFC125 25%, #FFE66D 50%, #FFC125 75%, #FFD700 100%)',
-          boxShadow: '0 0 20px rgba(255, 215, 0, 0.5), 0 4px 20px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.4)'
+          background: 'linear-gradient(135deg, #166534 0%, #22c55e 25%, #15803d 50%, #22c55e 75%, #166534 100%)',
+          boxShadow: '0 0 25px rgba(22, 101, 52, 0.5), 0 4px 20px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.2)'
         }}
       >
         
         {/* Inner Card - clean white background */}
-        <Card className="relative border-0 overflow-hidden rounded-[21px] bg-card shadow-inner">
+        <Card className="relative border-0 overflow-hidden rounded-[20px] bg-card shadow-inner p-2">
           <CardHeader className="pb-4">
             {/* Step into the Light - Metallic green 3D */}
             <CardTitle 
