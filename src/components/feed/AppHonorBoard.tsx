@@ -192,11 +192,11 @@ export const AppHonorBoard = memo(() => {
               height={40} 
               className="w-10 h-10 rounded-full border border-gold/50" 
             />
-            <h3 
+          <h3 
               className="font-black text-xl tracking-wider uppercase"
               style={{
                 fontFamily: "'Orbitron', 'Rajdhani', sans-serif",
-                background: 'linear-gradient(135deg, #D4AF37 0%, #C5A028 50%, #D4AF37 100%)',
+                background: 'linear-gradient(135deg, #FFD700 0%, #FFC125 30%, #FFD700 50%, #FFDF00 70%, #FFD700 100%)',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
               }}
@@ -220,7 +220,7 @@ export const AppHonorBoard = memo(() => {
                 <span className="text-[#F5E6C8] text-[10px] sm:text-xs uppercase font-semibold truncate flex-shrink min-w-0">
                   {item.label}
                 </span>
-                <span className="text-[#D4AF37] font-bold text-[11px] sm:text-sm flex items-center gap-1 flex-shrink-0">
+                <span className="text-[#FFD700] font-bold text-[11px] sm:text-sm flex items-center gap-1 flex-shrink-0">
                   <span className="tabular-nums">{formatNumber(item.value)}</span>
                   {item.showCamlyLogo && (
                     <img 
@@ -248,7 +248,7 @@ export const AppHonorBoard = memo(() => {
                   <span className="text-[#F5E6C8] text-[10px] sm:text-xs uppercase font-semibold truncate flex-shrink min-w-0">
                     {index === 0 ? t('totalMoney') : `Circulating ${token.symbol}`}
                   </span>
-                  <span className="text-[#D4AF37] font-bold text-[11px] sm:text-sm flex items-center gap-1 flex-shrink-0">
+                  <span className="text-[#FFD700] font-bold text-[11px] sm:text-sm flex items-center gap-1 flex-shrink-0">
                     <span className="tabular-nums">{formatNumber(token.amount, token.symbol === 'CAMLY' ? 0 : 6)}</span>
                     <img 
                       src={token.logoPath} 
