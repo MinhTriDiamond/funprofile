@@ -76,12 +76,6 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
     return 'text-[8px] sm:text-[9px] md:text-[10px]';
   };
 
-  // Helper function to capitalize first letter only
-  const capitalizeFirst = (str: string): string => {
-    if (!str) return str;
-    return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
-  };
-
   const StatRow = ({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) => (
     <div className="flex items-center justify-between py-1.5 px-3 sm:px-4 rounded-full bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] backdrop-blur-sm border-[3px] border-[#D4AF37] shadow-[inset_0_1px_0_rgba(255,255,255,0.15)] overflow-hidden transition-all duration-300 hover:scale-[1.02] cursor-pointer">
       <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink min-w-0 overflow-hidden">
@@ -89,13 +83,13 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
           {icon}
         </div>
         <span 
-          className="text-[#F5E6C8] text-[10px] sm:text-[11px] md:text-xs tracking-wide truncate font-medium"
+          className="text-[#F5E6C8] text-[10px] sm:text-[11px] md:text-xs uppercase tracking-wide truncate font-extrabold"
         >
-          {capitalizeFirst(label)}
+          {label}
         </span>
       </div>
       <span 
-        className={`text-[#FFD700] ${getValueFontSize(value)} tabular-nums flex-shrink-0 ml-2 font-medium`}
+        className={`text-[#FFD700] ${getValueFontSize(value)} tabular-nums flex-shrink-0 ml-2 font-extrabold`}
       >
         {formatNumber(value)}
       </span>
@@ -107,7 +101,16 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
       {/* Desktop: Inline block for profile info section - aligned to right */}
       <div className="w-full flex justify-end">
         {/* Main Container - Glassmorphism with green gradient matching homepage */}
-        <div className="rounded-2xl overflow-hidden border-[3px] border-[#D4AF37] bg-white/80 backdrop-blur-xl shadow-lg w-full max-w-[420px]">
+        <div 
+          className="rounded-2xl overflow-hidden bg-white/80 backdrop-blur-xl shadow-lg w-full max-w-[420px]"
+          style={{
+            border: '3px solid transparent',
+            backgroundImage: 'linear-gradient(white, white), linear-gradient(135deg, #22c55e 0%, #4ade80 25%, #22c55e 50%, #16a34a 75%, #22c55e 100%)',
+            backgroundOrigin: 'border-box',
+            backgroundClip: 'padding-box, border-box',
+            boxShadow: '0 0 15px rgba(34, 197, 94, 0.4)'
+          }}
+        >
           <div className="p-3 sm:p-4">
             {/* Header - Logo, Title, Avatar */}
             <div className="text-center mb-3">
@@ -116,24 +119,25 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
                 <img 
                   src="/fun-profile-logo-40.webp" 
                   alt="FUN Profile" 
-                  className="w-8 h-8 rounded-full border-2 border-[#D4AF37] shadow-[0_0_12px_rgba(212,175,55,0.6)]"
+                  className="w-8 h-8 rounded-full border-2 border-[#22c55e] shadow-[0_0_12px_rgba(34,197,94,0.6)]"
                 />
                 <h1 
-                  className="text-lg tracking-wider leading-none font-semibold"
+                  className="text-lg tracking-wider uppercase leading-none font-black"
                   style={{
                     fontFamily: "'Orbitron', 'Rajdhani', sans-serif",
                     background: 'linear-gradient(135deg, #FFD700 0%, #FFC125 30%, #FFD700 50%, #FFDF00 70%, #FFD700 100%)',
                     WebkitBackgroundClip: 'text',
                     WebkitTextFillColor: 'transparent',
                     backgroundClip: 'text',
+                    WebkitTextStroke: '1px rgba(0,0,0,0.3)',
                   }}
                 >
-                  Honor Board
+                  {t('honorBoard').toUpperCase()}
                 </h1>
                 {/* User Avatar */}
-                <Avatar className="w-8 h-8 border-2 border-[#D4AF37]">
+                <Avatar className="w-8 h-8 border-2 border-[#22c55e] shadow-[0_0_12px_rgba(34,197,94,0.6)]">
                   <AvatarImage src={avatarUrl} sizeHint="sm" />
-                  <AvatarFallback className="bg-gradient-to-br from-green-600 to-green-800 text-white font-medium text-sm">
+                  <AvatarFallback className="bg-gradient-to-br from-green-600 to-green-800 text-white font-bold text-sm">
                     {username?.[0]?.toUpperCase() || 'U'}
                   </AvatarFallback>
                 </Avatar>
