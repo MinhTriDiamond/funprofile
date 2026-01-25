@@ -95,25 +95,25 @@ const Auth = () => {
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-amber-100/40 rounded-full" />
       </div>
 
-      {/* Language Switcher - Top Right */}
+      {/* Language Switcher - Top Right with 13 languages */}
       <div className="absolute top-4 right-4 z-50">
-        <LanguageSwitcher variant="full" />
+        <LanguageSwitcher variant="dropdown" />
       </div>
 
       <div className="w-full max-w-5xl grid md:grid-cols-2 gap-8 items-center relative z-10">
         {/* Left Side - Branding */}
         <div className="text-center md:text-left">
           <div className="flex items-center justify-center md:justify-start gap-3 mb-4">
-            {/* LCP Image - use direct path for consistency across all environments */}
+            {/* LCP Image - use direct path for consistency across all environments - DOUBLED SIZE */}
             <img 
               src="/fun-profile-logo-128.webp" 
               alt="FUN Profile" 
-              width={64} 
-              height={64}
+              width={128} 
+              height={128}
               loading="eager"
               fetchPriority="high"
               decoding="sync"
-              className="w-16 h-16 rounded-full shadow-lg" 
+              className="w-32 h-32 rounded-full shadow-xl" 
             />
           </div>
           <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-emerald-600 via-emerald-500 to-amber-500 bg-clip-text text-transparent mb-4">
