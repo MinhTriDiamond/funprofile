@@ -64,43 +64,26 @@ export const TopRanking = memo(() => {
   const UserRow = ({ user, rank }: { user: LeaderboardUser; rank: number }) => (
     <div
       onClick={() => handleUserClick(user.id)}
-      className="relative border-b border-gold/30 last:border-b-0 py-2 first:pt-0 last:pb-0 bg-white/90 hover:bg-gold/5 transition-all cursor-pointer"
+      className="relative border-b border-gold/20 last:border-b-0 py-2 first:pt-0 last:pb-0 bg-white/60 hover:bg-white/80 transition-all cursor-pointer"
     >
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-3">
-          <span className="text-gold font-bold text-lg w-5 text-center">{rank}</span>
-          <Avatar className="w-8 h-8 border-2 border-gold">
+          <span className="text-[#D4AF37] font-bold text-lg w-5 text-center">{rank}</span>
+          <Avatar className="w-8 h-8 border-2 border-[#D4AF37]/60">
             <AvatarImage src={user.avatar_url} />
-            <AvatarFallback className="text-xs bg-gold/20 text-primary">
+            <AvatarFallback className="text-xs bg-[#D4AF37]/10 text-primary">
               {user.username?.[0]?.toUpperCase()}
             </AvatarFallback>
           </Avatar>
           <span className="text-primary text-sm font-medium truncate max-w-[120px]">{user.username}</span>
         </div>
-        <span className="text-gold font-bold text-sm">{user.total_reward.toLocaleString("vi-VN")}</span>
+        <span className="text-[#D4AF37] font-bold text-sm">{user.total_reward.toLocaleString("vi-VN")}</span>
       </div>
     </div>
   );
 
   return (
-    <div className="rounded-2xl overflow-hidden border-2 border-gold bg-white shadow-gold-glow animate-gold-pulse">
-      {/* Sparkle effects */}
-      <div className="absolute inset-0 opacity-10 pointer-events-none">
-        <div className="absolute top-2 left-2 w-1 h-1 bg-gold rounded-full animate-pulse"></div>
-        <div
-          className="absolute top-4 right-4 w-1 h-1 bg-gold rounded-full animate-pulse"
-          style={{ animationDelay: "0.5s" }}
-        ></div>
-        <div
-          className="absolute bottom-6 left-6 w-1 h-1 bg-gold rounded-full animate-pulse"
-          style={{ animationDelay: "1s" }}
-        ></div>
-        <div
-          className="absolute bottom-4 right-8 w-1 h-1 bg-gold rounded-full animate-pulse"
-          style={{ animationDelay: "1.5s" }}
-        ></div>
-      </div>
-
+    <div className="rounded-2xl overflow-hidden border-2 border-gold/60 bg-white/80 backdrop-blur-xl shadow-lg">
       <div className="relative p-3 space-y-2">
         {/* Header with logo */}
         <div className="text-center space-y-1">
@@ -111,7 +94,7 @@ export const TopRanking = memo(() => {
                 alt="Fun Profile Web3"
                 width={48}
                 height={48}
-                className="w-12 h-12 mx-auto rounded-full border border-yellow-400 shadow-lg"
+                className="w-12 h-12 mx-auto rounded-full border border-gold/50"
               />
             </div>
           </div>
@@ -120,11 +103,9 @@ export const TopRanking = memo(() => {
             className="text-xl font-black tracking-wider uppercase"
             style={{
               fontFamily: "'Orbitron', 'Rajdhani', sans-serif",
-              background: 'linear-gradient(135deg, #FFD700 0%, #FFC125 25%, #DAA520 50%, #FFC125 75%, #FFD700 100%)',
+              background: 'linear-gradient(135deg, #D4AF37 0%, #C5A028 50%, #D4AF37 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
-              textShadow: '0 0 20px rgba(255,215,0,0.6)',
-              filter: 'drop-shadow(0 0 8px rgba(255,215,0,0.5))'
             }}
           >
             TOP RANKING
@@ -132,7 +113,7 @@ export const TopRanking = memo(() => {
         </div>
 
         {/* Top 5 Users - Single column layout */}
-        <div className="grid grid-cols-1 gap-0 rounded-lg border border-gold/20 overflow-hidden">
+        <div className="grid grid-cols-1 gap-0 rounded-lg border border-gold/30 overflow-hidden">
           {topRewards.map((user, index) => (
             <UserRow key={user.id} user={user} rank={index + 1} />
           ))}
@@ -144,7 +125,7 @@ export const TopRanking = memo(() => {
         {/* View All Button */}
         <Button
           onClick={() => navigate("/leaderboard")}
-          className="w-full mt-3 bg-gold hover:bg-gold-glow text-white font-bold shadow-lg transition-all group"
+          className="w-full mt-3 bg-[#1a7d45] hover:bg-[#166534] text-white font-bold transition-all group border border-[#D4AF37]"
         >
           Xem bảng xếp hạng đầy đủ
           <ChevronRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
