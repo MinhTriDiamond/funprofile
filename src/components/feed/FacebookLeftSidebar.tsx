@@ -160,7 +160,7 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
             className="font-black text-xl tracking-wider uppercase"
             style={{
               fontFamily: "'Orbitron', 'Rajdhani', sans-serif",
-              background: 'linear-gradient(135deg, #E6B422 0%, #C9A227 30%, #D4A84B 50%, #C9A227 70%, #E6B422 100%)',
+              background: 'linear-gradient(135deg, #DAA520 0%, #B8860B 30%, #CD853F 50%, #B8860B 70%, #DAA520 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
