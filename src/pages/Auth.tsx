@@ -104,16 +104,20 @@ const Auth = () => {
         {/* Left Side - Branding */}
         <div className="text-center md:text-left">
           <div className="flex items-center justify-center md:justify-start gap-3 mb-4">
-            {/* LCP Image - use direct path for consistency across all environments - DOUBLED SIZE */}
+            {/* LCP Image - use direct path for consistency across all environments - 256px with green border */}
             <img 
               src="/fun-profile-logo-128.webp" 
               alt="FUN Profile" 
-              width={128} 
-              height={128}
+              width={256} 
+              height={256}
               loading="eager"
               fetchPriority="high"
               decoding="sync"
-              className="w-32 h-32 rounded-full shadow-xl" 
+              className="w-64 h-64 rounded-full shadow-xl"
+              style={{
+                border: '4px solid #22c55e',
+                boxShadow: '0 0 30px rgba(34, 197, 94, 0.4), 0 10px 40px rgba(0,0,0,0.1)'
+              }}
             />
           </div>
           <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-emerald-600 via-emerald-500 to-amber-500 bg-clip-text text-transparent mb-4">

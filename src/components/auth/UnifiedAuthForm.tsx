@@ -141,11 +141,17 @@ export const UnifiedAuthForm = () => {
 
   return (
     <div className="w-full max-w-md relative">
-      {/* Outer Gold Frame - simplified gradient, no heavy shadows */}
-      <div className="relative p-2 rounded-3xl bg-gradient-to-br from-amber-400 via-yellow-500 to-amber-500 shadow-lg">
+      {/* Outer Gold Frame - Premium metallic gold with shine */}
+      <div 
+        className="relative p-[3px] rounded-3xl"
+        style={{
+          background: 'linear-gradient(135deg, #FFD700 0%, #FFC125 25%, #FFE66D 50%, #FFC125 75%, #FFD700 100%)',
+          boxShadow: '0 0 20px rgba(255, 215, 0, 0.5), 0 4px 20px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.4)'
+        }}
+      >
         
         {/* Inner Card - clean white background */}
-        <Card className="relative border-0 overflow-hidden rounded-2xl bg-card shadow-inner">
+        <Card className="relative border-0 overflow-hidden rounded-[21px] bg-card shadow-inner">
           <CardHeader className="pb-4">
             <CardTitle className="text-2xl font-bold text-center bg-gradient-to-r from-primary via-emerald-500 to-primary bg-clip-text text-transparent">
               {t('lightCloakWelcome')}
