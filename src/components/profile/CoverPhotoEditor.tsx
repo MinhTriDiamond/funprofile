@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { uploadToR2 } from '@/utils/r2Upload';
-import { compressImage } from '@/utils/imageCompression';
+import { CoverCropper } from './CoverCropper';
 
 // Template cover images - using high-quality placeholder URLs
 const coverTemplates = [
@@ -134,6 +134,7 @@ export function CoverPhotoEditor({ userId, currentCoverUrl, onCoverUpdated }: Co
   const [isTemplateLibraryOpen, setIsTemplateLibraryOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
+  const [cropImage, setCropImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -152,8 +153,24 @@ export function CoverPhotoEditor({ userId, currentCoverUrl, onCoverUpdated }: Co
       return;
     }
 
-    setIsUploading(true);
     setIsMenuOpen(false);
+
+    // Read file and open cropper
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCropImage(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleCropComplete = async (croppedImageBlob: Blob) => {
+    setCropImage(null);
+    setIsUploading(true);
 
     try {
       // Get session for access token
@@ -164,18 +181,10 @@ export function CoverPhotoEditor({ userId, currentCoverUrl, onCoverUpdated }: Co
         return;
       }
 
-      // Compress image for cover (1920px wide, high quality)
-      toast.loading('Đang nén ảnh...');
-      const compressedFile = await compressImage(file, {
-        maxWidth: 1920,
-        maxHeight: 1080,
-        quality: 0.85,
-        targetSizeKB: 500
-      });
-      toast.dismiss();
+      const file = new File([croppedImageBlob], 'cover.jpg', { type: 'image/jpeg' });
       
       // Upload to R2 using 'avatars' bucket with access token
-      const result = await uploadToR2(compressedFile, 'avatars', undefined, session.access_token);
+      const result = await uploadToR2(file, 'avatars', `${userId}/cover-${Date.now()}.jpg`, session.access_token);
       const uploadedUrl = result.url;
       
       // Update profile in database
@@ -193,9 +202,6 @@ export function CoverPhotoEditor({ userId, currentCoverUrl, onCoverUpdated }: Co
       toast.error('Không thể tải lên ảnh bìa');
     } finally {
       setIsUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
     }
   };
 
@@ -374,6 +380,15 @@ export function CoverPhotoEditor({ userId, currentCoverUrl, onCoverUpdated }: Co
         <div 
           className="fixed inset-0 z-[199]" 
           onClick={() => setIsMenuOpen(false)}
+        />
+      )}
+
+      {/* Cover Cropper Dialog */}
+      {cropImage && (
+        <CoverCropper
+          image={cropImage}
+          onCropComplete={handleCropComplete}
+          onCancel={() => setCropImage(null)}
         />
       )}
     </>

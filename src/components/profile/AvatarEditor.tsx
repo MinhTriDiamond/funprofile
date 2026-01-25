@@ -105,7 +105,13 @@ export function AvatarEditor({
   return (
     <>
       <div className="relative">
-        <Avatar className={`${sizeClasses} border-4 border-white shadow-lg`}>
+        <Avatar 
+          className={`${sizeClasses} border-4 shadow-lg`}
+          style={{
+            borderColor: '#166534',
+            boxShadow: '0 0 0 2px #22c55e, 0 0 20px rgba(22, 101, 52, 0.6), inset 0 1px 0 rgba(255,255,255,0.2)'
+          }}
+        >
           {currentAvatarUrl && <AvatarImage src={currentAvatarUrl} />}
           <AvatarFallback className="text-4xl md:text-5xl bg-primary text-white">
             {username?.[0]?.toUpperCase() || 'U'}
