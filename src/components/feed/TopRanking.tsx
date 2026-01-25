@@ -103,7 +103,7 @@ export const TopRanking = memo(() => {
             className="text-xl font-black tracking-wider uppercase"
             style={{
               fontFamily: "'Orbitron', 'Rajdhani', sans-serif",
-              background: 'linear-gradient(135deg, #DAA520 0%, #B8860B 30%, #CD853F 50%, #B8860B 70%, #DAA520 100%)',
+              background: 'linear-gradient(135deg, #FFD700 0%, #FFC125 30%, #FFD700 50%, #FFDF00 70%, #FFD700 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
