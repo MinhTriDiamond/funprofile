@@ -402,18 +402,21 @@ const Profile = () => {
                       size="xl"
                     />
                   ) : (
-                    <Avatar 
-                      className="w-28 h-28 sm:w-32 sm:h-32 md:w-40 md:h-40 border-4"
+                    <div 
+                      className="rounded-full p-1"
                       style={{
-                        borderColor: '#22c55e',
-                        boxShadow: '0 0 0 3px #16a34a'
+                        background: 'linear-gradient(135deg, #166534 0%, #22c55e 50%, #16a34a 100%)'
                       }}
                     >
-                      {profile?.avatar_url && <AvatarImage src={profile.avatar_url} sizeHint="lg" />}
-                      <AvatarFallback className="text-3xl md:text-4xl bg-primary text-primary-foreground">
-                        {profile?.username?.[0]?.toUpperCase() || 'U'}
-                      </AvatarFallback>
-                    </Avatar>
+                      <Avatar 
+                        className="w-28 h-28 sm:w-32 sm:h-32 md:w-40 md:h-40 border-4 border-white"
+                      >
+                        {profile?.avatar_url && <AvatarImage src={profile.avatar_url} sizeHint="lg" />}
+                        <AvatarFallback className="text-3xl md:text-4xl bg-primary text-primary-foreground">
+                          {profile?.username?.[0]?.toUpperCase() || 'U'}
+                        </AvatarFallback>
+                      </Avatar>
+                    </div>
                   )}
                 </div>
 
