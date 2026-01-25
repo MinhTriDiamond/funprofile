@@ -150,30 +150,39 @@ const Auth = () => {
         </div>
 
         {/* Right Side - Auth Form with fixed dimensions to prevent CLS */}
-        <div className="w-full max-w-md mx-auto min-h-[520px]">
+        <div className="w-full max-w-lg mx-auto min-h-[560px]">
           <UnifiedAuthForm />
           
           {/* Guest Mode Option */}
           <div className="mt-6 text-center">
             <div className="relative flex items-center gap-4 py-2">
               <div className="flex-1 border-t border-muted" />
-              <span className="text-xs text-muted-foreground uppercase tracking-wider">
+              <span className="text-sm text-muted-foreground uppercase tracking-wider font-medium">
                 {t('orContinueAs')}
               </span>
               <div className="flex-1 border-t border-muted" />
             </div>
             
-            <Button
-              variant="outline"
-              onClick={() => navigate('/')}
-              className="w-full mt-3 gap-2 text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors"
+            {/* View as Guest button with rainbow metallic border */}
+            <div 
+              className="relative p-[3px] rounded-full mt-3"
+              style={{
+                background: 'linear-gradient(90deg, #FF0000 0%, #FF7F00 14%, #FFFF00 28%, #00FF00 42%, #0000FF 57%, #4B0082 71%, #9400D3 85%, #FF0000 100%)',
+                boxShadow: '0 0 15px rgba(255, 0, 0, 0.3), 0 0 15px rgba(0, 255, 0, 0.3), 0 0 15px rgba(0, 0, 255, 0.3)'
+              }}
             >
-              <Eye size={18} />
-              {t('viewAsGuest')}
-            </Button>
+              <Button
+                variant="outline"
+                onClick={() => navigate('/')}
+                className="w-full gap-2 text-foreground font-semibold text-lg h-12 bg-white hover:bg-slate-50 border-0 rounded-full transition-colors"
+              >
+                <Eye size={22} />
+                {t('viewAsGuest')}
+              </Button>
+            </div>
           </div>
           
-          <p className="text-center mt-4 text-sm text-muted-foreground">
+          <p className="text-center mt-4 text-base text-muted-foreground">
             <strong>{t('authCreatePage')}</strong>
           </p>
         </div>
@@ -182,11 +191,11 @@ const Auth = () => {
   );
 };
 
-// Feature highlight component
+// Feature highlight component - larger text
 const FeatureItem = ({ icon, text }: { icon: string; text: string }) => (
   <div className="flex items-center gap-3 text-muted-foreground">
-    <span className="text-xl">{icon}</span>
-    <span className="text-sm">{text}</span>
+    <span className="text-2xl">{icon}</span>
+    <span className="text-base font-medium">{text}</span>
   </div>
 );
 
