@@ -1272,6 +1272,16 @@ export const translations = {
     reactionCare: '关心',
     reactionWow: '哇',
     reactionGratitude: '感恩',
+    // Unified Auth keys
+    authMethodSocial: '社交登录',
+    authMethodWallet: '钱包',
+    classicLogin: '经典登录',
+    lightCloakWelcome: '步入光明',
+    lightCloakDescription: '您的Web3之旅从这里开始',
+    creatingWallet: '正在创建您的钱包...',
+    welcomeNewUser: '欢迎来到FUN Profile！',
+    accountSetupComplete: '账户设置完成',
+    walletCreationFailed: '创建钱包失败，请稍后重试',
   },
   
   // Japanese
@@ -1744,6 +1754,16 @@ export const translations = {
     reactionCare: '気遣い',
     reactionWow: 'わお',
     reactionGratitude: '感謝',
+    // Unified Auth keys
+    authMethodSocial: 'ソーシャル',
+    authMethodWallet: 'ウォレット',
+    classicLogin: 'クラシック',
+    lightCloakWelcome: '光の中へ',
+    lightCloakDescription: 'あなたのWeb3の旅がここから始まります',
+    creatingWallet: 'ウォレットを作成中...',
+    welcomeNewUser: 'FUN Profileへようこそ！',
+    accountSetupComplete: 'アカウント設定完了',
+    walletCreationFailed: 'ウォレットの作成に失敗しました。後でもう一度お試しください',
   },
   
   // Korean
@@ -2216,6 +2236,16 @@ export const translations = {
     reactionCare: '마음',
     reactionWow: '와우',
     reactionGratitude: '감사',
+    // Unified Auth keys
+    authMethodSocial: '소셜',
+    authMethodWallet: '지갑',
+    classicLogin: '클래식',
+    lightCloakWelcome: '빛 속으로',
+    lightCloakDescription: '당신의 Web3 여정이 여기서 시작됩니다',
+    creatingWallet: '지갑 생성 중...',
+    welcomeNewUser: 'FUN Profile에 오신 것을 환영합니다!',
+    accountSetupComplete: '계정 설정 완료',
+    walletCreationFailed: '지갑 생성에 실패했습니다. 나중에 다시 시도해 주세요',
   },
   
   // Thai
@@ -2688,6 +2718,16 @@ export const translations = {
     reactionCare: 'ห่วงใย',
     reactionWow: 'ว้าว',
     reactionGratitude: 'ขอบคุณ',
+    // Unified Auth keys
+    authMethodSocial: 'โซเชียล',
+    authMethodWallet: 'กระเป๋า',
+    classicLogin: 'คลาสสิก',
+    lightCloakWelcome: 'ก้าวเข้าสู่แสง',
+    lightCloakDescription: 'การเดินทาง Web3 ของคุณเริ่มต้นที่นี่',
+    creatingWallet: 'กำลังสร้างกระเป๋าเงินของคุณ...',
+    welcomeNewUser: 'ยินดีต้อนรับสู่ FUN Profile!',
+    accountSetupComplete: 'ตั้งค่าบัญชีเสร็จสมบูรณ์',
+    walletCreationFailed: 'ไม่สามารถสร้างกระเป๋าเงินได้ โปรดลองอีกครั้งในภายหลัง',
   },
   
   // Indonesian
@@ -3160,6 +3200,16 @@ export const translations = {
     reactionCare: 'Peduli',
     reactionWow: 'Wow',
     reactionGratitude: 'Terima kasih',
+    // Unified Auth keys
+    authMethodSocial: 'Sosial',
+    authMethodWallet: 'Dompet',
+    classicLogin: 'Klasik',
+    lightCloakWelcome: 'Masuklah ke Cahaya',
+    lightCloakDescription: 'Perjalanan Web3 Anda dimulai di sini',
+    creatingWallet: 'Membuat dompet Anda...',
+    welcomeNewUser: 'Selamat datang di FUN Profile!',
+    accountSetupComplete: 'Pengaturan akun selesai',
+    walletCreationFailed: 'Gagal membuat dompet, coba lagi nanti',
   },
   
   // French
@@ -3636,6 +3686,16 @@ export const translations = {
     pleaseLoginToShare: 'Veuillez vous connecter pour partager',
     anonymous: 'Anonyme',
     loginToPost: 'Connectez-vous pour publier',
+    // Unified Auth keys
+    authMethodSocial: 'Social',
+    authMethodWallet: 'Portefeuille',
+    classicLogin: 'Classique',
+    lightCloakWelcome: 'Entrez dans la Lumière',
+    lightCloakDescription: 'Votre voyage Web3 commence ici',
+    creatingWallet: 'Création de votre portefeuille...',
+    welcomeNewUser: 'Bienvenue sur FUN Profile!',
+    accountSetupComplete: 'Configuration du compte terminée',
+    walletCreationFailed: 'Échec de création du portefeuille, veuillez réessayer plus tard',
   },
   // Spanish
   es: {
@@ -3977,6 +4037,16 @@ export const translations = {
     pleaseLoginToShare: 'Por favor inicia sesión para compartir',
     anonymous: 'Anónimo',
     loginToPost: 'Inicia sesión para publicar',
+    // Unified Auth keys
+    authMethodSocial: 'Social',
+    authMethodWallet: 'Billetera',
+    classicLogin: 'Clásico',
+    lightCloakWelcome: 'Entra en la Luz',
+    lightCloakDescription: 'Tu viaje Web3 comienza aquí',
+    creatingWallet: 'Creando tu billetera...',
+    welcomeNewUser: '¡Bienvenido a FUN Profile!',
+    accountSetupComplete: 'Configuración de cuenta completada',
+    walletCreationFailed: 'Error al crear billetera, intenta más tarde',
   },
   // German
   de: {
@@ -4317,6 +4387,16 @@ export const translations = {
     pleaseLoginToShare: 'Bitte melde dich an, um zu teilen',
     anonymous: 'Anonym',
     loginToPost: 'Melde dich an, um zu posten',
+    // Unified Auth keys
+    authMethodSocial: 'Sozial',
+    authMethodWallet: 'Wallet',
+    classicLogin: 'Klassisch',
+    lightCloakWelcome: 'Tritt ins Licht',
+    lightCloakDescription: 'Deine Web3-Reise beginnt hier',
+    creatingWallet: 'Dein Wallet wird erstellt...',
+    welcomeNewUser: 'Willkommen bei FUN Profile!',
+    accountSetupComplete: 'Konto-Einrichtung abgeschlossen',
+    walletCreationFailed: 'Wallet-Erstellung fehlgeschlagen, bitte später erneut versuchen',
   },
   // Portuguese
   pt: {
@@ -4657,6 +4737,16 @@ export const translations = {
     pleaseLoginToShare: 'Faça login para compartilhar',
     anonymous: 'Anônimo',
     loginToPost: 'Faça login para publicar',
+    // Unified Auth keys
+    authMethodSocial: 'Social',
+    authMethodWallet: 'Carteira',
+    classicLogin: 'Clássico',
+    lightCloakWelcome: 'Entre na Luz',
+    lightCloakDescription: 'Sua jornada Web3 começa aqui',
+    creatingWallet: 'Criando sua carteira...',
+    welcomeNewUser: 'Bem-vindo ao FUN Profile!',
+    accountSetupComplete: 'Configuração da conta concluída',
+    walletCreationFailed: 'Falha ao criar carteira, tente novamente mais tarde',
   },
   // Russian
   ru: {
@@ -5002,6 +5092,16 @@ export const translations = {
     pleaseLoginToShare: 'Войдите, чтобы поделиться',
     anonymous: 'Аноним',
     loginToPost: 'Войдите, чтобы опубликовать',
+    // Unified Auth keys
+    authMethodSocial: 'Социальные',
+    authMethodWallet: 'Кошелек',
+    classicLogin: 'Классический',
+    lightCloakWelcome: 'Войдите в Свет',
+    lightCloakDescription: 'Ваше Web3 путешествие начинается здесь',
+    creatingWallet: 'Создание вашего кошелька...',
+    welcomeNewUser: 'Добро пожаловать в FUN Profile!',
+    accountSetupComplete: 'Настройка аккаунта завершена',
+    walletCreationFailed: 'Не удалось создать кошелек, попробуйте позже',
   },
   // Arabic
   ar: {
@@ -5347,6 +5447,16 @@ export const translations = {
     pleaseLoginToShare: 'يرجى تسجيل الدخول للمشاركة',
     anonymous: 'مجهول',
     loginToPost: 'سجل الدخول للنشر',
+    // Unified Auth keys
+    authMethodSocial: 'اجتماعي',
+    authMethodWallet: 'المحفظة',
+    classicLogin: 'كلاسيكي',
+    lightCloakWelcome: 'ادخل إلى النور',
+    lightCloakDescription: 'رحلتك في Web3 تبدأ هنا',
+    creatingWallet: 'جاري إنشاء محفظتك...',
+    welcomeNewUser: 'مرحباً بك في FUN Profile!',
+    accountSetupComplete: 'اكتمل إعداد الحساب',
+    walletCreationFailed: 'فشل إنشاء المحفظة، يرجى المحاولة لاحقاً',
   },
 } as const;
 
