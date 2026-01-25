@@ -76,6 +76,9 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
     return 'text-[8px] sm:text-[9px] md:text-[10px]';
   };
 
+  // Helper to capitalize first letter only
+  const capitalizeFirst = (str: string) => str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+
   const StatRow = ({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) => (
     <div className="flex items-center justify-between py-1.5 px-3 sm:px-4 rounded-full bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] backdrop-blur-sm border-[3px] border-[#D4AF37] shadow-[inset_0_1px_0_rgba(255,255,255,0.15)] overflow-hidden transition-all duration-300 hover:scale-[1.02] cursor-pointer">
       <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink min-w-0 overflow-hidden">
@@ -83,13 +86,13 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
           {icon}
         </div>
         <span 
-          className="text-[#F5E6C8] text-[10px] sm:text-[11px] md:text-xs uppercase tracking-wide truncate font-extrabold"
+          className="text-[#F5E6C8] text-[10px] sm:text-[11px] md:text-xs tracking-wide truncate font-normal"
         >
-          {label}
+          {capitalizeFirst(label)}
         </span>
       </div>
       <span 
-        className={`text-[#FFD700] ${getValueFontSize(value)} tabular-nums flex-shrink-0 ml-2 font-extrabold`}
+        className={`text-[#FFD700] ${getValueFontSize(value)} tabular-nums flex-shrink-0 ml-2 font-normal`}
       >
         {formatNumber(value)}
       </span>
