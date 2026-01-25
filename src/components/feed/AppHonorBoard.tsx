@@ -213,7 +213,7 @@ export const AppHonorBoard = memo(() => {
           {statItems.map((item, index) => (
             <div 
               key={index} 
-              className="flex items-center gap-3 py-2.5 px-4 rounded-full bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] border-[2px] border-[#D4AF37] transition-all duration-300 hover:scale-[1.02] cursor-pointer"
+              className="flex items-center gap-3 py-2.5 px-4 rounded-full bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] border-[3px] border-[#D4AF37] transition-all duration-300 hover:scale-[1.02] cursor-pointer"
             >
               <div className="p-1.5 rounded-full bg-white/10 shrink-0">
                 <item.icon className="w-4 h-4 text-[#F5E6C8]" />
@@ -241,7 +241,7 @@ export const AppHonorBoard = memo(() => {
             stats.tokenBalances.map((token, index) => (
               <div 
                 key={token.symbol} 
-                className="flex items-center gap-3 py-2.5 px-4 rounded-full bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] border-[2px] border-[#D4AF37] transition-all duration-300 hover:scale-[1.02] cursor-pointer"
+                className="flex items-center gap-3 py-2.5 px-4 rounded-full bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] border-[3px] border-[#D4AF37] transition-all duration-300 hover:scale-[1.02] cursor-pointer"
               >
                 <div className="p-1.5 rounded-full bg-white/10 shrink-0">
                   <Coins className="w-4 h-4 text-[#F5E6C8]" />
