@@ -131,14 +131,14 @@ export const ClassicEmailLogin = ({
             <Label htmlFor="classic-username" className="text-slate-700 font-semibold text-sm uppercase tracking-wide">
               {t('authUsername')}
             </Label>
-            <Input id="classic-username" type="text" value={username} onChange={e => setUsername(e.target.value)} required={!isLogin} placeholder={t('authUsernamePlaceholder')} className="h-12 rounded-xl border-2 border-slate-300 bg-gradient-to-br from-white to-slate-50 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/30 transition-all" />
+            <Input id="classic-username" type="text" value={username} onChange={e => setUsername(e.target.value)} required={!isLogin} placeholder={t('authUsernamePlaceholder')} className="h-12 rounded-full border-2 border-slate-300 bg-gradient-to-br from-white to-slate-50 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/30 transition-all" />
           </div>}
         
         <div className="space-y-2">
           <Label htmlFor="classic-email" className="text-slate-700 font-semibold text-sm uppercase tracking-wide">
             {t('authEmail')}
           </Label>
-          <Input id="classic-email" type="email" value={email} onChange={e => setEmail(e.target.value)} required placeholder={t('authEmailPlaceholder')} className="h-12 rounded-xl border-2 border-slate-300 bg-gradient-to-br from-white to-slate-50 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/30 transition-all" />
+          <Input id="classic-email" type="email" value={email} onChange={e => setEmail(e.target.value)} required placeholder={t('authEmailPlaceholder')} className="h-12 rounded-full border-2 border-slate-300 bg-gradient-to-br from-white to-slate-50 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/30 transition-all" />
         </div>
         
         <div className="space-y-2">
@@ -146,16 +146,16 @@ export const ClassicEmailLogin = ({
             {t('authPassword')}
           </Label>
           <div className="relative">
-            <Input id="classic-password" type={showPassword ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} required placeholder={t('authPasswordPlaceholder')} className="h-12 rounded-xl pr-10 border-2 border-slate-300 bg-gradient-to-br from-white to-slate-50 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/30 transition-all" />
+            <Input id="classic-password" type={showPassword ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} required placeholder={t('authPasswordPlaceholder')} className="h-12 rounded-full pr-10 border-2 border-slate-300 bg-gradient-to-br from-white to-slate-50 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/30 transition-all" />
             <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-emerald-500 transition-colors">
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
         </div>
         
-        <Button type="submit" className="w-full h-14 text-lg font-bold rounded-2xl relative overflow-hidden" disabled={loading} style={{
-        background: 'linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%)',
-        boxShadow: '0 0 30px rgba(16, 185, 129, 0.5), 0 4px 15px rgba(0, 0, 0, 0.2)'
+        <Button type="submit" className="w-full h-14 text-lg font-bold rounded-full relative overflow-hidden text-white" disabled={loading} style={{
+        background: 'linear-gradient(135deg, #166534 0%, #15803d 50%, #166534 100%)',
+        boxShadow: '0 4px 20px rgba(22, 101, 52, 0.4)'
       }}>
           <span className="relative z-10 flex items-center justify-center gap-2">
             {loading ? <>

@@ -131,9 +131,9 @@ export const WalletLoginContent = ({
             </p>
           </div>
 
-          <Button onClick={handleConnect} disabled={isLoading} className="w-full h-14 text-lg font-bold rounded-2xl relative overflow-hidden" style={{
-        background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #b45309 100%)',
-        boxShadow: '0 0 30px rgba(245, 158, 11, 0.5), 0 4px 15px rgba(0, 0, 0, 0.2)'
+          <Button onClick={handleConnect} disabled={isLoading} className="w-full h-14 text-lg font-bold rounded-full relative overflow-hidden text-white" style={{
+        background: 'linear-gradient(135deg, #166534 0%, #15803d 50%, #166534 100%)',
+        boxShadow: '0 4px 20px rgba(22, 101, 52, 0.4)'
       }}>
             <span className="relative z-10 flex items-center justify-center gap-2 text-white">
               {isLoading ? <>
@@ -162,9 +162,9 @@ export const WalletLoginContent = ({
             </p>
           </div>
 
-          <Button onClick={handleSignAndVerify} disabled={isLoading} className="w-full h-14 text-lg font-bold rounded-2xl relative overflow-hidden" style={{
-        background: 'linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%)',
-        boxShadow: '0 0 30px rgba(16, 185, 129, 0.5), 0 4px 15px rgba(0, 0, 0, 0.2)'
+          <Button onClick={handleSignAndVerify} disabled={isLoading} className="w-full h-14 text-lg font-bold rounded-full relative overflow-hidden text-white" style={{
+        background: 'linear-gradient(135deg, #166534 0%, #15803d 50%, #166534 100%)',
+        boxShadow: '0 4px 20px rgba(22, 101, 52, 0.4)'
       }}>
             <span className="relative z-10 flex items-center justify-center gap-2 text-white">
               {isLoading ? <>
