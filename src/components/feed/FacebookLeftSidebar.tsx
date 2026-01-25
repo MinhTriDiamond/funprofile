@@ -164,6 +164,7 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
+              WebkitTextStroke: '0.5px rgba(0,0,0,0.3)',
             }}
           >
             {t('funEcosystem')}
