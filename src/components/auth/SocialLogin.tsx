@@ -73,18 +73,18 @@ export const SocialLogin = ({
   };
   return <div className="space-y-6">
       <div className="text-center space-y-2">
-        <h3 className="text-lg font-bold text-slate-800">{t('authMethodSocial')}</h3>
-        <p className="text-sm text-slate-500">
+        <h3 className="text-xl font-bold text-slate-800">{t('authMethodSocial')}</h3>
+        <p className="text-base text-slate-500">
           {t('lightCloakDescription')}
         </p>
       </div>
 
-      {/* Google Sign In Button - Rainbow metallic border, green background, larger G icon */}
+      {/* Google Sign In Button - Thinner rainbow border (1.5px), green background, larger G icon */}
       <div 
-        className="relative p-[3px] rounded-full"
+        className="relative p-[1.5px] rounded-full"
         style={{
           background: 'linear-gradient(90deg, #FF0000 0%, #FF7F00 14%, #FFFF00 28%, #00FF00 42%, #0000FF 57%, #4B0082 71%, #9400D3 85%, #FF0000 100%)',
-          boxShadow: '0 0 15px rgba(255, 0, 0, 0.2), 0 0 15px rgba(0, 255, 0, 0.2), 0 0 15px rgba(0, 0, 255, 0.2)'
+          boxShadow: '0 0 10px rgba(255, 0, 0, 0.15), 0 0 10px rgba(0, 255, 0, 0.15), 0 0 10px rgba(0, 0, 255, 0.15)'
         }}
       >
         <Button 

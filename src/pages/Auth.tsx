@@ -165,18 +165,24 @@ const Auth = () => {
             
             {/* View as Guest button with rainbow metallic border */}
             <div 
-              className="relative p-[3px] rounded-full mt-3"
+              className="relative p-[2px] rounded-full mt-3"
               style={{
                 background: 'linear-gradient(90deg, #FF0000 0%, #FF7F00 14%, #FFFF00 28%, #00FF00 42%, #0000FF 57%, #4B0082 71%, #9400D3 85%, #FF0000 100%)',
-                boxShadow: '0 0 15px rgba(255, 0, 0, 0.3), 0 0 15px rgba(0, 255, 0, 0.3), 0 0 15px rgba(0, 0, 255, 0.3)'
+                boxShadow: '0 0 12px rgba(255, 0, 0, 0.2), 0 0 12px rgba(0, 255, 0, 0.2), 0 0 12px rgba(0, 0, 255, 0.2)'
               }}
             >
               <Button
                 variant="outline"
                 onClick={() => navigate('/')}
-                className="w-full gap-2 text-foreground font-semibold text-lg h-12 bg-white hover:bg-slate-50 border-0 rounded-full transition-colors"
+                className="w-full gap-3 font-bold text-xl h-14 bg-white hover:bg-slate-50 border-0 rounded-full transition-colors"
+                style={{
+                  background: 'linear-gradient(135deg, #166534 0%, #22c55e 30%, #15803d 50%, #22c55e 70%, #166534 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                }}
               >
-                <Eye size={22} />
+                <Eye size={24} className="text-emerald-600" style={{ WebkitTextFillColor: 'initial' }} />
                 {t('viewAsGuest')}
               </Button>
             </div>
