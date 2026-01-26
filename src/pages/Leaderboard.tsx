@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Trophy, Medal, Award, TrendingUp, Users, MessageCircle, Heart, ArrowLeft, Video, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 interface LeaderboardUser {
   id: string;
@@ -24,6 +25,7 @@ interface LeaderboardUser {
 
 const Leaderboard = () => {
   const navigate = useNavigate();
+  const { t, language } = useLanguage();
   const [users, setUsers] = useState<LeaderboardUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState('reward');
@@ -91,13 +93,13 @@ const Leaderboard = () => {
   };
 
   const categories = [
-    { value: 'reward', label: 'Tổng thưởng', icon: Trophy },
-    { value: 'today', label: 'Hôm nay', icon: Calendar },
-    { value: 'posts', label: 'Bài viết', icon: TrendingUp },
-    { value: 'friends', label: 'Bạn bè', icon: Users },
-    { value: 'comments', label: 'Bình luận', icon: MessageCircle },
-    { value: 'reactions_on_posts', label: 'Lượt thích', icon: Heart },
-    { value: 'livestreams', label: 'Livestream', icon: Video },
+    { value: 'reward', label: t('totalReward'), icon: Trophy },
+    { value: 'today', label: t('today'), icon: Calendar },
+    { value: 'posts', label: t('posts'), icon: TrendingUp },
+    { value: 'friends', label: t('friends'), icon: Users },
+    { value: 'comments', label: t('comments'), icon: MessageCircle },
+    { value: 'reactions_on_posts', label: t('reactions'), icon: Heart },
+    { value: 'livestreams', label: t('liveVideo'), icon: Video },
   ];
 
   const sortedByCategory = [...users].sort((a, b) => {
@@ -130,8 +132,8 @@ const Leaderboard = () => {
             </Button>
             
             <Trophy className="w-16 h-16 mx-auto mb-4" />
-            <h1 className="text-3xl font-bold mb-2">Bảng Xếp Hạng</h1>
-            <p className="text-white/80">Những thành viên xuất sắc nhất FUN Profile</p>
+            <h1 className="text-3xl font-bold mb-2">{t('leaderboard')}</h1>
+            <p className="text-white/80">{t('leaderboardSubtitle')}</p>
           </div>
 
           {/* Category Tabs */}
@@ -167,7 +169,7 @@ const Leaderboard = () => {
                   <AvatarImage src={sortedByCategory[1].avatar_url || ''} />
                   <AvatarFallback>{sortedByCategory[1].username[0]?.toUpperCase()}</AvatarFallback>
                 </Avatar>
-                <h3 className="font-semibold">{sortedByCategory[1].full_name || sortedByCategory[1].username}</h3>
+                <h3 className="font-semibold">{sortedByCategory[1].username}</h3>
                 <p className="text-primary font-bold text-lg">
                   {activeCategory === 'reward' 
                     ? `${sortedByCategory[1].total_reward.toLocaleString('vi-VN')} 🪙`
@@ -188,10 +190,10 @@ const Leaderboard = () => {
                   <AvatarImage src={sortedByCategory[0].avatar_url || ''} />
                   <AvatarFallback>{sortedByCategory[0].username[0]?.toUpperCase()}</AvatarFallback>
                 </Avatar>
-                <h3 className="font-bold text-lg">{sortedByCategory[0].full_name || sortedByCategory[0].username}</h3>
+                <h3 className="font-bold text-lg">{sortedByCategory[0].username}</h3>
                 <p className="text-primary font-bold text-xl">
                   {activeCategory === 'reward' 
-                    ? `${sortedByCategory[0].total_reward.toLocaleString('vi-VN')} 🪙`
+                    ? `${sortedByCategory[0].total_reward.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')} 🪙`
                     : sortedByCategory[0][`${activeCategory}_count` as keyof LeaderboardUser]?.toLocaleString('vi-VN')
                   }
                 </p>
@@ -209,10 +211,10 @@ const Leaderboard = () => {
                   <AvatarImage src={sortedByCategory[2].avatar_url || ''} />
                   <AvatarFallback>{sortedByCategory[2].username[0]?.toUpperCase()}</AvatarFallback>
                 </Avatar>
-                <h3 className="font-semibold text-sm">{sortedByCategory[2].full_name || sortedByCategory[2].username}</h3>
+                <h3 className="font-semibold text-sm">{sortedByCategory[2].username}</h3>
                 <p className="text-primary font-bold">
                   {activeCategory === 'reward' 
-                    ? `${sortedByCategory[2].total_reward.toLocaleString('vi-VN')} 🪙`
+                    ? `${sortedByCategory[2].total_reward.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')} 🪙`
                     : sortedByCategory[2][`${activeCategory}_count` as keyof LeaderboardUser]?.toLocaleString('vi-VN')
                   }
                 </p>
@@ -223,7 +225,7 @@ const Leaderboard = () => {
           {/* Full Leaderboard */}
           <div className="bg-white rounded-xl shadow-sm overflow-hidden">
             <div className="p-4 border-b">
-              <h2 className="font-bold text-lg">Bảng xếp hạng đầy đủ</h2>
+              <h2 className="font-bold text-lg">{t('fullLeaderboard')}</h2>
             </div>
 
             {loading ? (
@@ -252,25 +254,25 @@ const Leaderboard = () => {
                       </Avatar>
                       
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold truncate">{user.full_name || user.username}</p>
+                        <p className="font-semibold truncate">{user.username}</p>
                         <div className="flex gap-4 text-xs text-muted-foreground">
-                          <span>{user.posts_count} bài viết</span>
-                          <span>{user.friends_count} bạn bè</span>
-                          {user.livestreams_count > 0 && <span>{user.livestreams_count} livestream</span>}
+                          <span>{user.posts_count} {t('posts').toLowerCase()}</span>
+                          <span>{user.friends_count} {t('friends').toLowerCase()}</span>
+                          {user.livestreams_count > 0 && <span>{user.livestreams_count} {t('liveVideo').toLowerCase()}</span>}
                         </div>
                       </div>
                       
                       <div className="text-right">
                         <p className="font-bold text-lg text-primary">
                           {activeCategory === 'reward' 
-                            ? user.total_reward.toLocaleString('vi-VN')
+                            ? user.total_reward.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')
                             : activeCategory === 'today'
-                            ? user.today_reward.toLocaleString('vi-VN')
-                            : (user[`${activeCategory}_count` as keyof LeaderboardUser] as number)?.toLocaleString('vi-VN')
+                            ? user.today_reward.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')
+                            : (user[`${activeCategory}_count` as keyof LeaderboardUser] as number)?.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')
                           }
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {activeCategory === 'reward' ? 'Camly Coin' : activeCategory === 'today' ? 'Hôm nay' : categories.find(c => c.value === activeCategory)?.label}
+                          {activeCategory === 'reward' ? t('camlyCoin') : activeCategory === 'today' ? t('today') : categories.find(c => c.value === activeCategory)?.label}
                         </p>
                       </div>
                     </div>

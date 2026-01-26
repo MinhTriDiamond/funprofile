@@ -4,9 +4,11 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
-import { vi } from 'date-fns/locale';
+import { vi, enUS, zhCN, ja, ko, th, id, fr, es, de, pt, ru, ar } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { useLanguage } from '@/i18n/LanguageContext';
 import { Users } from 'lucide-react';
+import type { Locale } from 'date-fns';
 
 interface ConversationListProps {
   conversations: Conversation[];
@@ -16,6 +18,10 @@ interface ConversationListProps {
   isLoading: boolean;
 }
 
+const dateLocales: Record<string, Locale> = {
+  vi, en: enUS, zh: zhCN, ja, ko, th, id, fr, es, de, pt, ru, ar
+};
+
 export function ConversationList({
   conversations,
   selectedId,
@@ -23,6 +29,9 @@ export function ConversationList({
   onSelect,
   isLoading,
 }: ConversationListProps) {
+  const { t, language } = useLanguage();
+  const dateLocale = dateLocales[language] || enUS;
+
   if (isLoading) {
     return (
       <div className="p-4 space-y-3">
@@ -42,7 +51,7 @@ export function ConversationList({
   if (conversations.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center p-4 text-muted-foreground">
-        <p>Chưa có cuộc trò chuyện nào</p>
+        <p>{t('noConversations')}</p>
       </div>
     );
   }
@@ -62,7 +71,7 @@ export function ConversationList({
 
           const displayName = isGroup
             ? conversation.name
-            : profile?.full_name || profile?.username || 'Người dùng';
+            : profile?.username || t('user');
 
           const avatarUrl = isGroup
             ? conversation.avatar_url
@@ -109,7 +118,7 @@ export function ConversationList({
                     <span className="text-xs text-muted-foreground flex-shrink-0">
                       {formatDistanceToNow(new Date(conversation.last_message_at), {
                         addSuffix: false,
-                        locale: vi,
+                        locale: dateLocale,
                       })}
                     </span>
                   )}

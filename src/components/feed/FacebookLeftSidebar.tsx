@@ -236,7 +236,7 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
                   {profile.username?.[0]?.toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <span className="font-semibold text-sm">{profile.full_name || profile.username}</span>
+              <span className="font-semibold text-sm">{profile.username}</span>
             </button>
           )}
 
