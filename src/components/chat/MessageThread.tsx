@@ -52,7 +52,7 @@ export function MessageThread({ conversationId, userId, username }: MessageThrea
   
   const headerName = isGroup
     ? conversation?.name
-    : headerProfile?.full_name || headerProfile?.username || 'Người dùng';
+    : headerProfile?.username || 'User';
   const headerAvatar = isGroup
     ? conversation?.avatar_url
     : headerProfile?.avatar_url;

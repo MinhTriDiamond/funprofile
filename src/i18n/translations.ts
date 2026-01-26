@@ -283,6 +283,14 @@ export const translations = {
     user: 'User',
     reward: 'Reward',
     
+    // Leaderboard
+    leaderboardSubtitle: 'Top members of FUN Profile',
+    fullLeaderboard: 'Full Leaderboard',
+    camlyCoin: 'Camly Coin',
+    
+    // Chat
+    noConversations: 'No conversations yet',
+    
     // Time
     today: 'Today',
     justNow: 'Just now',
@@ -684,6 +692,14 @@ export const translations = {
     user: 'Người dùng',
     reward: 'Thưởng',
     
+    // Leaderboard
+    leaderboardSubtitle: 'Những thành viên xuất sắc nhất FUN Profile',
+    fullLeaderboard: 'Bảng xếp hạng đầy đủ',
+    camlyCoin: 'Camly Coin',
+    
+    // Chat
+    noConversations: 'Chưa có cuộc trò chuyện nào',
+    
     // Time
     today: 'Hôm nay',
     justNow: 'Vừa xong',
@@ -993,6 +1009,14 @@ export const translations = {
     claimRewards: '领取奖励',
     rank: '排名',
     points: '积分',
+    
+    // Leaderboard
+    leaderboardSubtitle: 'FUN Profile 最优秀成员',
+    fullLeaderboard: '完整排行榜',
+    camlyCoin: 'Camly Coin',
+    
+    // Chat
+    noConversations: '暂无对话',
     level: '等级',
     badges: '徽章',
     achievements: '成就',
@@ -1475,6 +1499,14 @@ export const translations = {
     claimRewards: '報酬を請求',
     rank: 'ランク',
     points: 'ポイント',
+    
+    // Leaderboard
+    leaderboardSubtitle: 'FUN Profileのトップメンバー',
+    fullLeaderboard: '完全なランキング',
+    camlyCoin: 'Camly Coin',
+    
+    // Chat
+    noConversations: '会話がありません',
     level: 'レベル',
     badges: 'バッジ',
     achievements: '実績',
@@ -1957,6 +1989,14 @@ export const translations = {
     claimRewards: '보상 청구',
     rank: '순위',
     points: '포인트',
+    
+    // Leaderboard
+    leaderboardSubtitle: 'FUN Profile 최고의 회원들',
+    fullLeaderboard: '전체 리더보드',
+    camlyCoin: 'Camly Coin',
+    
+    // Chat
+    noConversations: '대화가 없습니다',
     level: '레벨',
     badges: '배지',
     achievements: '업적',
@@ -2439,6 +2479,14 @@ export const translations = {
     claimRewards: 'รับรางวัล',
     rank: 'อันดับ',
     points: 'คะแนน',
+    
+    // Leaderboard
+    leaderboardSubtitle: 'สมาชิกยอดเยี่ยมของ FUN Profile',
+    fullLeaderboard: 'กระดานผู้นำฉบับเต็ม',
+    camlyCoin: 'Camly Coin',
+    
+    // Chat
+    noConversations: 'ยังไม่มีการสนทนา',
     level: 'ระดับ',
     badges: 'เหรียญ',
     achievements: 'ความสำเร็จ',
@@ -2921,6 +2969,14 @@ export const translations = {
     claimRewards: 'Klaim Hadiah',
     rank: 'Peringkat',
     points: 'Poin',
+    
+    // Leaderboard
+    leaderboardSubtitle: 'Anggota teratas FUN Profile',
+    fullLeaderboard: 'Papan Peringkat Lengkap',
+    camlyCoin: 'Camly Coin',
+    
+    // Chat
+    noConversations: 'Belum ada percakapan',
     level: 'Level',
     badges: 'Lencana',
     achievements: 'Pencapaian',
@@ -3403,6 +3459,14 @@ export const translations = {
     claimRewards: 'Réclamer les récompenses',
     rank: 'Rang',
     points: 'Points',
+    
+    // Leaderboard
+    leaderboardSubtitle: 'Les meilleurs membres de FUN Profile',
+    fullLeaderboard: 'Classement complet',
+    camlyCoin: 'Camly Coin',
+    
+    // Chat
+    noConversations: 'Pas encore de conversation',
     level: 'Niveau',
     badges: 'Badges',
     achievements: 'Réalisations',
@@ -3905,6 +3969,14 @@ export const translations = {
     totalReactions: 'Total Reacciones',
     rank: 'Rango',
     points: 'Puntos',
+    
+    // Leaderboard
+    leaderboardSubtitle: 'Los mejores miembros de FUN Profile',
+    fullLeaderboard: 'Tabla de clasificación completa',
+    camlyCoin: 'Camly Coin',
+    
+    // Chat
+    noConversations: 'Sin conversaciones aún',
     level: 'Nivel',
     experience: 'Experiencia',
     achievements: 'Logros',
@@ -4255,6 +4327,14 @@ export const translations = {
     totalReactions: 'Reaktionen gesamt',
     rank: 'Rang',
     points: 'Punkte',
+    
+    // Leaderboard
+    leaderboardSubtitle: 'Die besten Mitglieder von FUN Profile',
+    fullLeaderboard: 'Vollständige Rangliste',
+    camlyCoin: 'Camly Coin',
+    
+    // Chat
+    noConversations: 'Noch keine Gespräche',
     level: 'Level',
     experience: 'Erfahrung',
     achievements: 'Erfolge',
@@ -4605,6 +4685,14 @@ export const translations = {
     totalReactions: 'Total de Reações',
     rank: 'Posição',
     points: 'Pontos',
+    
+    // Leaderboard
+    leaderboardSubtitle: 'Os melhores membros do FUN Profile',
+    fullLeaderboard: 'Tabela de classificação completa',
+    camlyCoin: 'Camly Coin',
+    
+    // Chat
+    noConversations: 'Ainda não há conversas',
     level: 'Nível',
     experience: 'Experiência',
     achievements: 'Conquistas',
@@ -4955,6 +5043,14 @@ export const translations = {
     totalReactions: 'Всего реакций',
     rank: 'Ранг',
     points: 'Очки',
+    
+    // Leaderboard
+    leaderboardSubtitle: 'Лучшие участники FUN Profile',
+    fullLeaderboard: 'Полный рейтинг',
+    camlyCoin: 'Camly Coin',
+    
+    // Chat
+    noConversations: 'Пока нет бесед',
     level: 'Уровень',
     experience: 'Опыт',
     achievements: 'Достижения',
@@ -5310,6 +5406,14 @@ export const translations = {
     totalReactions: 'إجمالي التفاعلات',
     rank: 'الرتبة',
     points: 'النقاط',
+    
+    // Leaderboard
+    leaderboardSubtitle: 'أفضل أعضاء FUN Profile',
+    fullLeaderboard: 'قائمة المتصدرين الكاملة',
+    camlyCoin: 'Camly Coin',
+    
+    // Chat
+    noConversations: 'لا توجد محادثات بعد',
     level: 'المستوى',
     experience: 'الخبرة',
     achievements: 'الإنجازات',

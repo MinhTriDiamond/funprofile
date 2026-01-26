@@ -148,7 +148,7 @@ const Notifications = () => {
   };
 
   const getNotificationText = (notification: NotificationWithActor) => {
-    const actorName = notification.actor?.full_name || notification.actor?.username || "Ai đó";
+    const actorName = notification.actor?.username || t('anonymous');
     
     switch (notification.type) {
       case "like":

@@ -422,8 +422,8 @@ const Profile = () => {
 
                 {/* Name, Friends, Bio, Info - Facebook style inline */}
                 <div className="flex-1 text-center md:text-left md:ml-4">
-                  <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground">
-                    {profile?.full_name || profile?.username}
+                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground">
+                    {profile?.username}
                   </h1>
                   <p className="text-base sm:text-lg text-muted-foreground font-medium">
                     {friendsCount.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')} {t('friendsSuffix')}
@@ -472,7 +472,7 @@ const Profile = () => {
                   <div className="w-full max-w-[600px]">
                     <CoverHonorBoard 
                       userId={profile.id}
-                      username={profile?.full_name || profile?.username}
+                      username={profile?.username}
                       avatarUrl={profile?.avatar_url}
                     />
                   </div>
