@@ -1,109 +1,129 @@
 
-# Kế hoạch: Thêm tính năng căn chỉnh ảnh bìa + Nâng cấp màu sắc Profile
+# Kế hoạch: Đồng nhất Tên Người Dùng, Kiểm tra Đa Ngôn Ngữ & Sửa Lỗi
 
 ## Tổng quan
-
-Con sẽ thực hiện 3 nhóm thay đổi chính:
-
-1. **Thêm tính năng căn chỉnh ảnh bìa** (Cover Cropper) - cho phép người dùng crop/căn chỉnh ảnh bìa trước khi upload
-2. **Cải thiện viền ảnh đại diện** - đổi sang màu xanh kim loại đậm sáng 
-3. **Nâng cấp màu sắc HonorBoard** - đổi sang màu xanh đậm sang trọng, chữ và số đậm nét rõ ràng (không bóng)
+Cha đã kiểm tra kỹ toàn bộ codebase và phát hiện:
+1. **Vấn đề hiển thị tên**: Nhiều nơi đang dùng `full_name || username` thay vì chỉ dùng `username`
+2. **Hệ thống ngôn ngữ**: Đã có đầy đủ 13 ngôn ngữ, nhưng một số text còn hardcode tiếng Việt
+3. **Một số bugs tiềm ẩn**: Text cứng không đổi theo ngôn ngữ
 
 ---
 
-## Chi tiết thực hiện
+## Phần 1: Các nơi cần sửa để dùng `username` thay vì `full_name`
 
-### 1. Tạo CoverCropper component mới
+### Danh sách files cần sửa:
 
-Tạo file `src/components/profile/CoverCropper.tsx`:
-- Sử dụng thư viện `react-easy-crop` (đã có sẵn trong project)
-- Cho phép crop ảnh với tỷ lệ 16:9 hoặc 3:1 (phù hợp ảnh bìa)
-- Có slider zoom để phóng to/thu nhỏ
-- Nút Apply và Cancel
-
-### 2. Cập nhật CoverPhotoEditor
-
-File: `src/components/profile/CoverPhotoEditor.tsx`
-
-**Thay đổi:**
-- Thay vì upload trực tiếp, mở CoverCropper dialog để người dùng căn chỉnh
-- Sau khi crop xong mới upload lên R2
-
-### 3. Cập nhật viền Avatar
-
-File: `src/pages/Profile.tsx` và `src/components/profile/AvatarEditor.tsx`
-
-**Thay đổi viền:**
-- Hiện tại: `ring-4 ring-emerald-500`
-- Thay đổi: Gradient xanh kim loại đậm sáng với hiệu ứng glow
-- Sử dụng màu: từ `#0d4a2a` (xanh đậm) đến `#22c55e` (xanh sáng) với viền metallic
-
-### 4. Cập nhật HonorBoard colors
-
-File: `src/components/profile/CoverHonorBoard.tsx`
-
-**Thay đổi:**
-- Đổi từ gradient xanh lá sang **xanh dương đậm sang trọng** (navy/royal blue)
-- Màu nền: `#0f172a` → `#1e3a5f` → `#0c1929` (gradient xanh navy đậm)
-- Viền: vàng gold (#DAA520) giữ nguyên
-- Chữ và số: **đậm nét, rõ ràng, KHÔNG BÓNG**
-  - Bỏ `drop-shadow` và `text-shadow`
-  - Thêm `-webkit-text-stroke: 1px` cho độ nét
-  - Sử dụng font-weight: 800 (extra bold)
+| File | Dòng | Hiện tại | Sửa thành |
+|------|------|----------|-----------|
+| `src/pages/Profile.tsx` | 426 | `profile?.full_name \|\| profile?.username` | `profile?.username` |
+| `src/pages/Profile.tsx` | 475 | `username={profile?.full_name \|\| profile?.username}` | `username={profile?.username}` |
+| `src/components/feed/FacebookCreatePost.tsx` | 582-583 | `profile.full_name \|\| profile.username` | `profile.username` |
+| `src/components/feed/FacebookCreatePost.tsx` | 696 | `profile.full_name \|\| profile.username` | `profile.username` |
+| `src/components/feed/FacebookLeftSidebar.tsx` | 239 | `profile.full_name \|\| profile.username` | `profile.username` |
+| `src/components/chat/ConversationList.tsx` | 65 | `profile?.full_name \|\| profile?.username` | `profile?.username` |
+| `src/components/chat/MessageThread.tsx` | 55 | `headerProfile?.full_name \|\| headerProfile?.username` | `headerProfile?.username` |
+| `src/pages/Notifications.tsx` | 151 | `notification.actor?.full_name \|\| notification.actor?.username` | `notification.actor?.username` |
+| `src/pages/Leaderboard.tsx` | 170, 191, 212, 255 | `sortedByCategory[x].full_name \|\| sortedByCategory[x].username` | `sortedByCategory[x].username` |
 
 ---
 
-## File cần tạo/chỉnh sửa
+## Phần 2: Các text hardcode tiếng Việt cần đa ngôn ngữ hóa
 
-| File | Hành động |
-|------|-----------|
-| `src/components/profile/CoverCropper.tsx` | Tạo mới |
-| `src/components/profile/CoverPhotoEditor.tsx` | Cập nhật - thêm cropper |
-| `src/components/profile/AvatarEditor.tsx` | Cập nhật - viền xanh kim loại |
-| `src/pages/Profile.tsx` | Cập nhật - viền avatar |
-| `src/components/profile/CoverHonorBoard.tsx` | Cập nhật - màu xanh đậm + chữ không bóng |
+### Files cần sửa:
+
+| File | Text cứng | Key i18n cần dùng |
+|------|-----------|-------------------|
+| `src/components/chat/ConversationList.tsx:45` | `"Chưa có cuộc trò chuyện nào"` | Cần thêm key mới: `noConversations` |
+| `src/pages/Leaderboard.tsx:133-134` | `"Bảng Xếp Hạng"`, `"Những thành viên xuất sắc nhất"` | Dùng `t('leaderboard')` + thêm key mới |
+| `src/pages/Leaderboard.tsx:226` | `"Bảng xếp hạng đầy đủ"` | Thêm key mới: `fullLeaderboard` |
+| `src/pages/Leaderboard.tsx:94-100` | Category labels hardcode | Dùng các keys đã có trong translations |
+| `src/pages/Leaderboard.tsx:257-259` | `"bài viết"`, `"bạn bè"`, `"livestream"` | Dùng `t('posts')`, `t('friends')`, etc. |
+| `src/pages/Leaderboard.tsx:273` | `"Camly Coin"`, `"Hôm nay"` | Thêm keys mới |
 
 ---
 
-## Chi tiết kỹ thuật
+## Phần 3: Thêm keys i18n còn thiếu
 
-### CoverCropper Component
-```text
-- Props: image (string), onCropComplete (blob), onCancel
-- State: crop, zoom, croppedAreaPixels
-- Cropper với aspect ratio 16:9 hoặc 3:1
-- Slider zoom từ 1x đến 3x
-- Buttons: Hủy / Áp dụng
-```
+Thêm vào file `src/i18n/translations.ts` cho tất cả 13 ngôn ngữ:
 
-### Viền Avatar mới (Xanh kim loại đậm)
-```text
-CSS: 
-- ring với gradient: #166534 (xanh đậm) → #22c55e (xanh sáng)
-- box-shadow: 0 0 15px rgba(22, 101, 52, 0.6)
-- border: 4px solid với gradient metallic
-```
+```typescript
+// Leaderboard
+leaderboardTitle: 'Bảng Xếp Hạng',
+leaderboardSubtitle: 'Những thành viên xuất sắc nhất FUN Profile',
+fullLeaderboard: 'Bảng xếp hạng đầy đủ',
+camlyCoin: 'Camly Coin',
+totalRewardLabel: 'Tổng thưởng',
+todayLabel: 'Hôm nay',
 
-### HonorBoard mới (Xanh navy đậm + chữ rõ nét)
-```text
-Background gradient:
-- from: #1e3a5f (navy sáng)
-- via: #0f2744 (navy trung)
-- to: #0c1929 (navy đậm)
-
-Text styling:
-- Bỏ drop-shadow, text-shadow
-- Font-weight: 800
-- -webkit-text-stroke: 0.5px cho độ nét
-- Màu vàng #FFD700 cho giá trị
-- Màu champagne #E8D5A3 cho label
+// Chat
+noConversations: 'Chưa có cuộc trò chuyện nào',
+userLabel: 'Người dùng',
 ```
 
 ---
 
-## Kết quả mong đợi
+## Phần 4: Chi tiết kỹ thuật
 
-1. Người dùng có thể căn chỉnh/crop ảnh bìa trước khi upload
-2. Ảnh đại diện có viền xanh kim loại đậm sáng sang trọng
-3. HonorBoard có màu xanh navy đậm sang trọng
-4. Chữ và số trong HonorBoard đậm nét, rõ ràng, không bị bóng/mờ
+### 1. Profile.tsx - Sửa tiêu đề tên người dùng
+```typescript
+// Line 426: Sửa từ
+{profile?.full_name || profile?.username}
+// Thành
+{profile?.username}
+
+// Line 475: Sửa từ  
+username={profile?.full_name || profile?.username}
+// Thành
+username={profile?.username}
+```
+
+### 2. FacebookCreatePost.tsx - Sửa lời chào
+```typescript
+// Line 582-583: Sửa từ
+`${profile.full_name || profile.username} ơi, bạn đang nghĩ gì thế?`
+// Thành
+`${profile.username} ơi, bạn đang nghĩ gì thế?`
+```
+
+### 3. Leaderboard.tsx - Đa ngôn ngữ hóa hoàn toàn
+- Import `useLanguage` hook
+- Thay thế tất cả text tiếng Việt bằng `t('key')`
+- Sửa hiển thị tên từ `full_name || username` thành `username`
+
+### 4. ConversationList.tsx & MessageThread.tsx
+- Sửa displayName chỉ dùng `username`
+- Thay text "Chưa có cuộc trò chuyện" bằng `t('noConversations')`
+
+### 5. Notifications.tsx
+- Sửa `actorName` chỉ dùng `username`
+- Thay các text notification bằng keys đa ngôn ngữ đã có
+
+---
+
+## Phần 5: Kiểm tra các nơi đã đúng (không cần sửa)
+
+Các nơi đã dùng đúng `username`:
+- ✅ `FacebookNavbar.tsx` - line 235: dùng `profile?.username`
+- ✅ `FacebookPostCard.tsx` - line 334: dùng `post.profiles?.username`
+- ✅ `CommentItem.tsx` - line 141: dùng `comment.profiles?.username`
+- ✅ `WalletHeader.tsx` - line 61: dùng `profile?.username`
+- ✅ `InlineSearch.tsx` - line 267: dùng `profile.username`
+
+---
+
+## Tóm tắt công việc
+
+| Hạng mục | Số files | Ưu tiên |
+|----------|----------|---------|
+| Sửa `full_name \|\| username` → `username` | 8 files | Cao |
+| Thêm i18n keys mới | 1 file (translations.ts) | Cao |
+| Đa ngôn ngữ hóa text cứng | 3 files | Trung bình |
+| Testing sau khi sửa | Toàn app | Cao |
+
+---
+
+## Lợi ích sau khi hoàn thành
+
+1. **Tính nhất quán**: Tất cả nơi đều hiển thị `username`, không còn nhầm lẫn
+2. **Đa ngôn ngữ hoàn chỉnh**: Khi chuyển ngôn ngữ, toàn bộ app thay đổi đúng
+3. **Trải nghiệm người dùng tốt hơn**: Không còn text tiếng Việt "lạc" khi dùng ngôn ngữ khác
