@@ -172,7 +172,7 @@ export const getVideoDuration = (file: File): Promise<number> => {
  */
 export const FILE_LIMITS = {
   IMAGE_MAX_SIZE: 100 * 1024 * 1024, // 100MB - cho ảnh chất lượng cao
-  VIDEO_MAX_SIZE: 2 * 1024 * 1024 * 1024, // 2GB - cho video Full HD/4K
+  VIDEO_MAX_SIZE: 10 * 1024 * 1024 * 1024, // 10GB - cho video 4K/dài
   VIDEO_MAX_DURATION: 7200, // 120 phút (2 giờ)
   AVATAR_MAX_WIDTH: 256,
   AVATAR_MAX_HEIGHT: 256,
@@ -182,4 +182,6 @@ export const FILE_LIMITS = {
   POST_IMAGE_MAX_HEIGHT: 1200,
   // Threshold for using TUS resumable upload
   TUS_THRESHOLD: 100 * 1024 * 1024, // 100MB
+  // Max files per post
+  MAX_FILES_PER_POST: 100,
 };
