@@ -16,6 +16,7 @@ export interface FeedPost {
   media_urls: Array<{ url: string; type: 'image' | 'video' }> | null;
   created_at: string;
   user_id: string;
+  visibility: string;
   profiles: {
     username: string;
     avatar_url: string | null;
@@ -101,6 +102,7 @@ const fetchFeedPage = async (cursor: string | null): Promise<FeedPage> => {
   const postsData: FeedPost[] = (postsToReturn || []).map(post => ({
     ...post,
     media_urls: (post.media_urls as Array<{ url: string; type: 'image' | 'video' }>) || null,
+    visibility: post.visibility || 'public',
   }));
   
   const postIds = postsData.map(p => p.id);

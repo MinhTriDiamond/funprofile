@@ -19,6 +19,7 @@ interface CreatePostRequest {
   video_url?: string | null;
   location?: string | null;
   tagged_user_ids?: string[];
+  visibility?: string;
 }
 
 Deno.serve(async (req) => {
@@ -94,6 +95,12 @@ Deno.serve(async (req) => {
     console.log("[create-post] Inserting post...");
     const insertStart = Date.now();
     
+    // Validate visibility value
+    const validVisibilities = ['public', 'friends', 'private'];
+    const visibility = validVisibilities.includes(body.visibility || '') 
+      ? body.visibility 
+      : 'public';
+
     const { data: post, error: insertError } = await supabase
       .from("posts")
       .insert({
@@ -103,6 +110,7 @@ Deno.serve(async (req) => {
         video_url: body.video_url || null,
         media_urls: body.media_urls || [],
         location: body.location || null,
+        visibility: visibility,
       })
       .select("id")
       .single();
