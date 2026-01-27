@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState, memo } from 'react';
+import { useEffect, useRef, useState, memo, useCallback } from 'react';
 import Hls from 'hls.js';
 import { cn } from '@/lib/utils';
-import { Play, Pause, Volume2, VolumeX, Maximize, Loader2, AlertCircle } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Maximize, Loader2 } from 'lucide-react';
+import { checkVideoStatus, extractStreamUid } from '@/utils/streamUpload';
+import { VideoProcessingState } from './VideoProcessingState';
 
 interface StreamPlayerProps {
   src: string; // HLS manifest URL, Stream UID, or iframe embed URL
@@ -13,6 +15,8 @@ interface StreamPlayerProps {
   controls?: boolean;
   onError?: (error: Error) => void;
   onReady?: () => void;
+  /** Enable status polling for processing videos */
+  enableStatusCheck?: boolean;
 }
 
 /**
@@ -55,6 +59,7 @@ function parseVideoSource(src: string): { type: 'iframe' | 'hls' | 'direct'; url
  * - Fallback to native HLS for Safari
  * - Iframe embed support for maximum compatibility
  * - Custom controls
+ * - Auto-polling for processing videos
  */
 export const StreamPlayer = memo(({
   src,
@@ -66,9 +71,12 @@ export const StreamPlayer = memo(({
   controls = true,
   onError,
   onReady,
+  enableStatusCheck = true,
 }: StreamPlayerProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
+  
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(muted);
   const [isLoading, setIsLoading] = useState(true);
@@ -76,39 +84,264 @@ export const StreamPlayer = memo(({
   const [showControls, setShowControls] = useState(false);
   const [useIframeFallback, setUseIframeFallback] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processingProgress, setProcessingProgress] = useState<number | undefined>(undefined);
+  const [isVideoReady, setIsVideoReady] = useState<boolean | null>(null);
 
   const { type, url, uid } = parseVideoSource(src);
   
   // Generate thumbnail URL from UID
   const thumbnailUrl = uid ? `https://videodelivery.net/${uid}/thumbnails/thumbnail.jpg?time=1s` : poster;
 
-  // For iframe embeds, use iframe directly
-  if (type === 'iframe' || useIframeFallback) {
+  // Determine effective type after fallback
+  const effectiveType = useIframeFallback ? 'iframe' : type;
+
+  // Poll video status for processing videos
+  const pollVideoStatus = useCallback(async () => {
+    const videoUid = uid || extractStreamUid(src);
+    if (!videoUid) {
+      setIsVideoReady(true);
+      return;
+    }
+
+    try {
+      const status = await checkVideoStatus(videoUid);
+      console.log('[StreamPlayer] Video status:', status);
+      
+      if (status.readyToStream) {
+        setIsVideoReady(true);
+        setIsProcessing(false);
+        setHasError(false);
+        // Stop polling
+        if (pollingRef.current) {
+          clearInterval(pollingRef.current);
+          pollingRef.current = null;
+        }
+      } else {
+        setIsVideoReady(false);
+        setIsProcessing(true);
+        // Parse progress from pctComplete
+        if (status.status?.pctComplete) {
+          const pct = parseFloat(status.status.pctComplete);
+          if (!isNaN(pct)) {
+            setProcessingProgress(pct);
+          }
+        }
+        // Check for errors
+        if (status.status?.state === 'error') {
+          setHasError(true);
+          setIsProcessing(false);
+          onError?.(new Error(status.status.errorReasonText || 'Video processing failed'));
+          if (pollingRef.current) {
+            clearInterval(pollingRef.current);
+            pollingRef.current = null;
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[StreamPlayer] Failed to check video status:', err);
+      // Don't set error state, just assume ready and let player handle it
+      setIsVideoReady(true);
+    }
+  }, [src, uid, onError]);
+
+  // Start polling when component mounts
+  useEffect(() => {
+    if (!enableStatusCheck) {
+      setIsVideoReady(true);
+      return;
+    }
+
+    // Check status immediately on mount
+    pollVideoStatus();
+
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
+    };
+  }, [enableStatusCheck, pollVideoStatus]);
+
+  // Start/stop polling based on processing state
+  useEffect(() => {
+    if (isProcessing && !pollingRef.current) {
+      console.log('[StreamPlayer] Starting status polling...');
+      pollingRef.current = setInterval(pollVideoStatus, 5000);
+    }
+    
+    return () => {
+      if (pollingRef.current && !isProcessing) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
+    };
+  }, [isProcessing, pollVideoStatus]);
+
+  // HLS playback setup - only runs for HLS type
+  useEffect(() => {
+    // Skip if not HLS type or video not ready
+    if (effectiveType !== 'hls' || isVideoReady === false || isProcessing) return;
+    
+    const video = videoRef.current;
+    if (!video || !src) return;
+
+    setIsLoading(true);
+    setHasError(false);
+
+    // Check if HLS.js is supported
+    if (Hls.isSupported()) {
+      const hls = new Hls({
+        enableWorker: true,
+        lowLatencyMode: false,
+        backBufferLength: 30,
+        maxBufferLength: 30,
+        maxMaxBufferLength: 60,
+        startLevel: -1, // Auto quality selection
+      });
+
+      hlsRef.current = hls;
+
+      hls.loadSource(url);
+      hls.attachMedia(video);
+
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        setIsLoading(false);
+        onReady?.();
+        if (autoPlay) {
+          video.play().catch(() => {
+            video.muted = true;
+            video.play().catch(() => {});
+          });
+        }
+      });
+
+      hls.on(Hls.Events.ERROR, (_, data) => {
+        if (data.fatal) {
+          console.error('[StreamPlayer] Fatal error:', data);
+          
+          if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+            hls.startLoad();
+          } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+            hls.recoverMediaError();
+          } else {
+            console.log('[StreamPlayer] Falling back to iframe embed');
+            setUseIframeFallback(true);
+          }
+        }
+      });
+
+      return () => {
+        hls.destroy();
+        hlsRef.current = null;
+      };
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      // Safari native HLS support
+      video.src = url;
+      
+      const handleMetadata = () => {
+        setIsLoading(false);
+        onReady?.();
+        if (autoPlay) {
+          video.play().catch(() => {
+            video.muted = true;
+            video.play().catch(() => {});
+          });
+        }
+      };
+
+      const handleError = () => {
+        setUseIframeFallback(true);
+      };
+
+      video.addEventListener('loadedmetadata', handleMetadata);
+      video.addEventListener('error', handleError);
+
+      return () => {
+        video.removeEventListener('loadedmetadata', handleMetadata);
+        video.removeEventListener('error', handleError);
+      };
+    } else {
+      // No HLS support - use iframe
+      setUseIframeFallback(true);
+    }
+  }, [src, url, autoPlay, onError, onReady, effectiveType, isVideoReady, isProcessing]);
+
+  // Video play/pause event listeners
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const handlePlay = () => setIsPlaying(true);
+    const handlePause = () => setIsPlaying(false);
+
+    video.addEventListener('play', handlePlay);
+    video.addEventListener('pause', handlePause);
+
+    return () => {
+      video.removeEventListener('play', handlePlay);
+      video.removeEventListener('pause', handlePause);
+    };
+  }, []);
+
+  // Control functions
+  const togglePlay = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    if (isPlaying) {
+      video.pause();
+    } else {
+      video.play().catch(() => {
+        video.muted = true;
+        video.play().catch(() => {});
+      });
+    }
+  }, [isPlaying]);
+
+  const toggleMute = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    video.muted = !video.muted;
+    setIsMuted(video.muted);
+  }, []);
+
+  const toggleFullscreen = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      video.requestFullscreen?.();
+    }
+  }, []);
+
+  // --- RENDER SECTION ---
+  
+  // Show processing UI when video is still being encoded
+  if (isProcessing && isVideoReady === false) {
+    return (
+      <VideoProcessingState
+        thumbnailUrl={thumbnailUrl}
+        progress={processingProgress}
+        className={className}
+      />
+    );
+  }
+
+  // For iframe embeds
+  if (effectiveType === 'iframe') {
     const iframeUrl = type === 'iframe' ? url : `https://iframe.videodelivery.net/${uid || src}`;
     
-    // If video is still processing or has error, show thumbnail with processing message
+    // If video had error (fallback from HLS), show processing state
     if (hasError || isProcessing) {
       return (
-        <div className={cn('relative bg-black aspect-video', className)}>
-          {thumbnailUrl && (
-            <img 
-              src={thumbnailUrl} 
-              alt="Video thumbnail"
-              className="w-full h-full object-cover"
-              fetchPriority="high"
-              decoding="async"
-              onError={(e) => {
-                // Hide broken thumbnail
-                (e.target as HTMLImageElement).style.display = 'none';
-              }}
-            />
-          )}
-          <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center">
-            <Loader2 className="w-8 h-8 text-white animate-spin mb-2" />
-            <span className="text-white text-sm">Đang xử lý video...</span>
-            <span className="text-white/60 text-xs mt-1">Vui lòng đợi trong giây lát</span>
-          </div>
-        </div>
+        <VideoProcessingState
+          thumbnailUrl={thumbnailUrl}
+          progress={processingProgress}
+          className={className}
+        />
       );
     }
     
@@ -125,7 +358,7 @@ export const StreamPlayer = memo(({
             onReady?.();
           }}
           onError={() => {
-            // Video might be processing, show processing state instead of error
+            // Video might be processing, show processing state
             setIsProcessing(true);
             setHasError(true);
           }}
@@ -140,7 +373,7 @@ export const StreamPlayer = memo(({
   }
 
   // For direct videos (R2, mp4, etc.)
-  if (type === 'direct') {
+  if (effectiveType === 'direct') {
     return (
       <div className={cn('relative bg-black', className)}>
         <video
@@ -170,162 +403,18 @@ export const StreamPlayer = memo(({
     );
   }
 
-  // HLS playback with hls.js
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video || !src) return;
-
-    setIsLoading(true);
-    setHasError(false);
-
-    // Check if HLS.js is supported
-    if (Hls.isSupported()) {
-      const hls = new Hls({
-        enableWorker: true,
-        lowLatencyMode: false,
-        backBufferLength: 30,
-        maxBufferLength: 30,
-        maxMaxBufferLength: 60,
-        startLevel: -1, // Auto quality selection
-      });
-
-      hlsRef.current = hls;
-
-      hls.loadSource(url);
-      hls.attachMedia(video);
-
-      hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        setIsLoading(false);
-        onReady?.();
-        if (autoPlay) {
-          video.play().catch(() => {
-            // Autoplay blocked - try muted
-            video.muted = true;
-            video.play().catch(() => {});
-          });
-        }
-      });
-
-      hls.on(Hls.Events.ERROR, (_, data) => {
-        if (data.fatal) {
-          console.error('[StreamPlayer] Fatal error:', data);
-          
-          if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-            // Try to recover from network errors
-            hls.startLoad();
-          } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
-            hls.recoverMediaError();
-          } else {
-            // Fall back to iframe
-            console.log('[StreamPlayer] Falling back to iframe embed');
-            setUseIframeFallback(true);
-          }
-        }
-      });
-
-      return () => {
-        hls.destroy();
-        hlsRef.current = null;
-      };
-    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      // Safari native HLS support
-      video.src = url;
-      
-      video.addEventListener('loadedmetadata', () => {
-        setIsLoading(false);
-        onReady?.();
-        if (autoPlay) {
-          video.play().catch(() => {
-            video.muted = true;
-            video.play().catch(() => {});
-          });
-        }
-      });
-
-      video.addEventListener('error', () => {
-        // Fall back to iframe
-        setUseIframeFallback(true);
-      });
-    } else {
-      // No HLS support - use iframe
-      setUseIframeFallback(true);
-    }
-  }, [src, url, autoPlay, onError, onReady]);
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    const handlePlay = () => setIsPlaying(true);
-    const handlePause = () => setIsPlaying(false);
-
-    video.addEventListener('play', handlePlay);
-    video.addEventListener('pause', handlePause);
-
-    return () => {
-      video.removeEventListener('play', handlePlay);
-      video.removeEventListener('pause', handlePause);
-    };
-  }, []);
-
-  const togglePlay = () => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    if (isPlaying) {
-      video.pause();
-    } else {
-      video.play().catch(() => {
-        video.muted = true;
-        video.play().catch(() => {});
-      });
-    }
-  };
-
-  const toggleMute = () => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    video.muted = !video.muted;
-    setIsMuted(video.muted);
-  };
-
-  const toggleFullscreen = () => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    if (document.fullscreenElement) {
-      document.exitFullscreen();
-    } else {
-      video.requestFullscreen?.();
-    }
-  };
-
-  // Show processing state instead of error (video might still be encoding)
+  // HLS playback - show error as processing state
   if (hasError) {
     return (
-      <div className={cn('relative bg-black aspect-video', className)}>
-        {thumbnailUrl && (
-          <img 
-            src={thumbnailUrl} 
-            alt="Video thumbnail"
-            className="w-full h-full object-cover"
-            fetchPriority="high"
-            decoding="async"
-            onError={(e) => {
-              (e.target as HTMLImageElement).style.display = 'none';
-            }}
-          />
-        )}
-        <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center">
-          <Loader2 className="w-8 h-8 text-white animate-spin mb-2" />
-          <span className="text-white text-sm">Đang xử lý video...</span>
-          <span className="text-white/60 text-xs mt-1">Vui lòng đợi trong giây lát</span>
-        </div>
-      </div>
+      <VideoProcessingState
+        thumbnailUrl={thumbnailUrl}
+        progress={processingProgress}
+        className={className}
+      />
     );
   }
 
+  // HLS video player with custom controls
   return (
     <div 
       className={cn('relative bg-black group', className)}
