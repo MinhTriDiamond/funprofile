@@ -39,8 +39,10 @@ interface DebugTimeline {
   lastStep: string;
 }
 
-const CHUNK_SIZE = 50 * 1024 * 1024;
-const BACKEND_TIMEOUT_MS = 20000; // 20 seconds timeout for backend calls
+// 150MB chunk size - tối ưu cho video lớn
+const CHUNK_SIZE = 150 * 1024 * 1024;
+const BACKEND_TIMEOUT_MS = 30000; // 30 seconds timeout for backend calls
+const PARALLEL_UPLOADS = 6; // 6 kết nối song song
 
 /**
  * Generate a thumbnail from video file using canvas

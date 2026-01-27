@@ -36,8 +36,11 @@ export interface StreamVideoStatus {
   preview?: string;
 }
 
-// 50MB chunk size
-const CHUNK_SIZE = 50 * 1024 * 1024;
+// 150MB chunk size - tối ưu cho video lớn, giảm overhead HTTP
+const CHUNK_SIZE = 150 * 1024 * 1024;
+
+// Số kết nối song song tối đa
+const PARALLEL_UPLOADS = 6;
 
 /**
  * Call backend stream-video function
@@ -240,16 +243,18 @@ export async function uploadToStreamTus(
 
       // Step 2: Upload directly to Cloudflare using tus-js-client
       // NO AUTH HEADERS NEEDED - this is a pre-signed Direct Creator Upload URL
+      // Optimized for MAXIMUM SPEED with larger chunks
       const upload = new tus.Upload(file, {
         uploadUrl,
-        chunkSize: CHUNK_SIZE,
-        retryDelays: [0, 1000, 3000, 5000, 10000],
+        chunkSize: CHUNK_SIZE, // 150MB chunks for reduced HTTP overhead
+        retryDelays: [0, 500, 1000, 2000, 4000], // Faster retries
         removeFingerprintOnSuccess: true,
         // No headers needed for Direct Creator Upload!
         headers: {},
         metadata: {
           filename: file.name,
           filetype: file.type,
+          maxDuration: '36000', // 10 hours support
         },
         onError: (error) => {
           console.error('[streamUpload] TUS upload error:', error);
