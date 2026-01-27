@@ -998,7 +998,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
               )}
               <Button
                 onClick={handleSubmit}
-                disabled={loading || isVideoUploading || content.length > MAX_CONTENT_LENGTH || (!content.trim() && mediaItems.length === 0 && !uppyVideoResult)}
+                disabled={loading || isVideoUploading || content.length > MAX_CONTENT_LENGTH || (!content.trim() && uploadItems.length === 0 && !uppyVideoResult)}
                 className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
               >
                 {(loading || isVideoUploading) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
