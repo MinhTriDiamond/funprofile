@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 import { Play, Pause, Volume2, VolumeX, Maximize, Loader2 } from 'lucide-react';
 import { checkVideoStatus, extractStreamUid } from '@/utils/streamUpload';
 import { VideoProcessingState } from './VideoProcessingState';
+import { VideoErrorState } from './VideoErrorState';
 
 interface StreamPlayerProps {
   src: string; // HLS manifest URL, Stream UID, or iframe embed URL
@@ -86,6 +87,8 @@ export const StreamPlayer = memo(({
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingProgress, setProcessingProgress] = useState<number | undefined>(undefined);
   const [isVideoReady, setIsVideoReady] = useState<boolean | null>(null);
+  const [errorCode, setErrorCode] = useState<string | undefined>(undefined);
+  const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined);
 
   const { type, url, uid } = parseVideoSource(src);
   
@@ -111,6 +114,8 @@ export const StreamPlayer = memo(({
         setIsVideoReady(true);
         setIsProcessing(false);
         setHasError(false);
+        setErrorCode(undefined);
+        setErrorMessage(undefined);
         // Stop polling
         if (pollingRef.current) {
           clearInterval(pollingRef.current);
@@ -118,22 +123,27 @@ export const StreamPlayer = memo(({
         }
       } else {
         setIsVideoReady(false);
-        setIsProcessing(true);
-        // Parse progress from pctComplete
-        if (status.status?.pctComplete) {
-          const pct = parseFloat(status.status.pctComplete);
-          if (!isNaN(pct)) {
-            setProcessingProgress(pct);
-          }
-        }
-        // Check for errors
+        
+        // Check for errors (permanent failures)
         if (status.status?.state === 'error') {
           setHasError(true);
           setIsProcessing(false);
+          setErrorCode(status.status.errorReasonCode);
+          setErrorMessage(status.status.errorReasonText);
           onError?.(new Error(status.status.errorReasonText || 'Video processing failed'));
           if (pollingRef.current) {
             clearInterval(pollingRef.current);
             pollingRef.current = null;
+          }
+        } else {
+          // Still processing
+          setIsProcessing(true);
+          // Parse progress from pctComplete
+          if (status.status?.pctComplete) {
+            const pct = parseFloat(status.status.pctComplete);
+            if (!isNaN(pct)) {
+              setProcessingProgress(pct);
+            }
           }
         }
       }
@@ -320,7 +330,7 @@ export const StreamPlayer = memo(({
   // --- RENDER SECTION ---
   
   // Show processing UI when video is still being encoded
-  if (isProcessing && isVideoReady === false) {
+  if (isProcessing && isVideoReady === false && !hasError) {
     return (
       <VideoProcessingState
         thumbnailUrl={thumbnailUrl}
@@ -330,16 +340,29 @@ export const StreamPlayer = memo(({
     );
   }
 
+  // Show error UI when video has a permanent error
+  if (hasError && errorCode) {
+    return (
+      <VideoErrorState
+        errorCode={errorCode}
+        errorMessage={errorMessage}
+        thumbnailUrl={thumbnailUrl}
+        className={className}
+      />
+    );
+  }
+
   // For iframe embeds
   if (effectiveType === 'iframe') {
     const iframeUrl = type === 'iframe' ? url : `https://iframe.videodelivery.net/${uid || src}`;
     
-    // If video had error (fallback from HLS), show processing state
-    if (hasError || isProcessing) {
+    // If video has permanent error, show error state
+    if (hasError && errorCode) {
       return (
-        <VideoProcessingState
+        <VideoErrorState
+          errorCode={errorCode}
+          errorMessage={errorMessage}
           thumbnailUrl={thumbnailUrl}
-          progress={processingProgress}
           className={className}
         />
       );
@@ -358,9 +381,8 @@ export const StreamPlayer = memo(({
             onReady?.();
           }}
           onError={() => {
-            // Video might be processing, show processing state
-            setIsProcessing(true);
-            setHasError(true);
+            // Video might be processing, trigger status check
+            pollVideoStatus();
           }}
         />
         {isLoading && !isProcessing && (
@@ -403,8 +425,20 @@ export const StreamPlayer = memo(({
     );
   }
 
-  // HLS playback - show error as processing state
-  if (hasError) {
+  // HLS playback - show error state for permanent errors
+  if (hasError && errorCode) {
+    return (
+      <VideoErrorState
+        errorCode={errorCode}
+        errorMessage={errorMessage}
+        thumbnailUrl={thumbnailUrl}
+        className={className}
+      />
+    );
+  }
+
+  // HLS playback - show processing state for encoding
+  if (hasError && !errorCode) {
     return (
       <VideoProcessingState
         thumbnailUrl={thumbnailUrl}
