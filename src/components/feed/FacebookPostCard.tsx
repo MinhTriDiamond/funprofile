@@ -31,6 +31,8 @@ import {
   Bookmark,
   Pin,
   PinOff,
+  Users,
+  Lock,
 } from 'lucide-react';
 
 interface PostStats {
@@ -48,6 +50,7 @@ interface FacebookPostCardProps {
     media_urls?: Array<{ url: string; type: 'image' | 'video' }> | null;
     created_at: string;
     user_id: string;
+    visibility?: string;
     profiles: {
       username: string;
       avatar_url: string | null;
@@ -341,7 +344,13 @@ const FacebookPostCardComponent = ({
                   })}
                 </span>
                 <span>·</span>
-                <Globe className="w-3 h-3" />
+                {post.visibility === 'private' ? (
+                  <Lock className="w-3 h-3" />
+                ) : post.visibility === 'friends' ? (
+                  <Users className="w-3 h-3" />
+                ) : (
+                  <Globe className="w-3 h-3" />
+                )}
               </div>
             </div>
           </div>

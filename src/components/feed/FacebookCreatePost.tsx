@@ -384,6 +384,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
           video_url: firstVideo?.url || null,
           location: location,
           tagged_user_ids: taggedFriends.map(f => f.id),
+          visibility: privacy,
         }),
         signal: abortController.signal,
       });
@@ -425,9 +426,11 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
       setMediaItems([]);
       setTaggedFriends([]);
       setLocation(null);
+      setPrivacy('public'); // Reset privacy to default
+      setFeeling(null); // Reset feeling
       setIsDialogOpen(false);
       setShowMediaUpload(false);
-      toast.success('Đã đăng bài viết!');
+      toast.success(t('postPublished'));
       onPostCreated();
     } catch (error: any) {
       if (error.name === 'AbortError' || error.message === 'Đã huỷ') {
