@@ -9,7 +9,7 @@ import metamaskLogo from '@/assets/metamask-logo.png';
 import bitgetLogo from '@/assets/bitget-logo.png';
 import trustWalletLogo from '@/assets/trust-wallet-logo.png';
 import funProfileLogo from '@/assets/fun-profile-logo.png';
-import funWalletLogo from '@/assets/fun-wallet-logo.png';
+import funWalletLogo from '@/assets/fun-wallet-logo.gif';
 
 interface WalletCardProps {
   walletType: 'custodial' | 'external';
