@@ -1,171 +1,187 @@
 
-# Kế Hoạch Thiết Kế Lại Giao Diện Ví: 2 Cột Song Song
+# Kế Hoạch Thêm FUN Wallet Vào Danh Sách Kết Nối Ví
 
-## Mục Tiêu
+## Phân Tích Yêu Cầu
 
-Thiết kế lại trang `/wallet` theo layout 2 cột song song như mockup, hiển thị cả 2 ví cùng lúc thay vì phải switch qua lại.
+Bạn muốn thêm **FUN Wallet** vào mục kết nối ví ngoài (External Wallet), bên cạnh MetaMask, Bitget, và Trust Wallet.
 
-## Layout Mới
+## Hiện Trạng
 
-```text
-┌──────────────────────────────────────────────────────────────────────────┐
-│                           My Wallet                                       │
-│                        BNB Smart Chain                                    │
-├────────────────────────────────┬─────────────────────────────────────────┤
-│       Ví F.U. Wallet           │     Ví MetaMask / Bitget / Trust        │
-│        (Custodial)             │           (External)                     │
-├────────────────────────────────┼─────────────────────────────────────────┤
-│  0x2e11...f6bd      [Copy]     │  0xABC1...DEF4        [Copy][Connect]   │
-│                                │                                          │
-│  Total: $XXX.XX                │  Total: $XXX.XX                          │
-│                                │                                          │
-│  ┌──────┐ ┌───────┐ ┌──────┐   │  ┌──────┐ ┌───────┐ ┌──────┐            │
-│  │ Send │ │Receive│ │ Swap │   │  │ Send │ │Receive│ │ Swap │            │
-│  └──────┘ └───────┘ └──────┘   │  └──────┘ └───────┘ └──────┘            │
-│                                │                                          │
-│  ── Tokens ──────────────────  │  ── Tokens ──────────────────            │
-│  BNB    $XXX.XX    0.XXX       │  BNB    $XXX.XX    0.XXX                 │
-│  USDT   $XXX.XX    XXX         │  USDT   $XXX.XX    XXX                   │
-│  CAMLY  $XXX.XX    XXX         │  CAMLY  $XXX.XX    XXX                   │
-│                                │                                          │
-└────────────────────────────────┴─────────────────────────────────────────┘
+Cấu hình hiện tại trong `src/config/web3.ts`:
+```typescript
+const connectors = connectorsForWallets([
+  {
+    groupName: 'Popular',
+    wallets: [
+      metaMaskWallet,
+      trustWallet,
+      bitgetWallet,
+    ],
+  },
+], { ... });
 ```
+
+## Giải Pháp: Tạo Custom Wallet cho FUN Wallet
+
+RainbowKit hỗ trợ tạo custom wallet với WalletConnect. Tôi sẽ tạo một custom connector cho FUN Wallet.
 
 ## Chi Tiết Triển Khai
 
-### Phần 1: Tạo Component `WalletCard` Mới
+### Phần 1: Copy Logo FUN Wallet
 
-Tạo một component tái sử dụng cho mỗi ví với các props:
-- `walletType`: 'custodial' | 'external'
-- `walletAddress`: địa chỉ ví
-- `walletName`: tên hiển thị (F.U. Wallet / MetaMask / Bitget / Trust)
-- `walletLogo`: logo tương ứng
-- `isConnected`: trạng thái kết nối (cho external)
-- `onConnect`: callback kết nối ví
-- `onReceive`, `onSend`, `onSwap`: callbacks cho các action
+**Action:** Copy logo FUN Wallet từ `user-uploads://image-93.png` vào `src/assets/fun-wallet-logo.png`
 
-**File mới:** `src/components/wallet/WalletCard.tsx`
+### Phần 2: Tạo Custom FUN Wallet Connector
 
-### Phần 2: Tạo Hook `useTokenBalancesForAddress`
-
-Sửa đổi `useTokenBalances` để có thể fetch balances cho một địa chỉ cụ thể, không phụ thuộc vào connected address:
+**File mới:** `src/config/funWallet.ts`
 
 ```typescript
-// Hook mới cho từng địa chỉ ví cụ thể
-const useSingleWalletBalances = (address: `0x${string}` | null) => {
-  // Fetch balances cho địa chỉ được chỉ định
+import { Wallet, getWalletConnectConnector } from '@rainbow-me/rainbowkit';
+
+export interface FunWalletOptions {
+  projectId: string;
 }
+
+export const funWallet = ({ projectId }: FunWalletOptions): Wallet => ({
+  id: 'fun-wallet',
+  name: 'FUN Wallet',
+  iconUrl: '/fun-wallet-logo.png', // hoặc import từ assets
+  iconBackground: '#2E7D32', // màu xanh lá phù hợp với branding
+  downloadUrls: {
+    // URL download FUN Wallet (nếu có)
+    android: 'https://play.google.com/store/apps/details?id=fun.wallet',
+    ios: 'https://apps.apple.com/app/fun-wallet',
+    qrCode: 'https://funwallet.app',
+  },
+  mobile: {
+    getUri: (uri: string) => `funwallet://wc?uri=${encodeURIComponent(uri)}`,
+  },
+  qrCode: {
+    getUri: (uri: string) => uri,
+    instructions: {
+      learnMoreUrl: 'https://funwallet.app/learn-more',
+      steps: [
+        {
+          description: 'Mở ứng dụng FUN Wallet trên điện thoại',
+          step: 'install',
+          title: 'Mở FUN Wallet',
+        },
+        {
+          description: 'Quét mã QR để kết nối ví của bạn',
+          step: 'scan',
+          title: 'Quét mã QR',
+        },
+      ],
+    },
+  },
+  createConnector: getWalletConnectConnector({ projectId }),
+});
 ```
 
-### Phần 3: Cập Nhật `WalletCenterContainer`
+### Phần 3: Cập Nhật web3.ts Config
 
-Thay đổi layout từ single column sang grid 2 columns:
+**File:** `src/config/web3.ts`
 
 ```typescript
-<div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-  {/* Left: F.U. Wallet (Custodial) */}
-  <WalletCard
-    walletType="custodial"
-    walletAddress={walletProfile?.custodial_wallet_address}
-    walletName="F.U. Wallet"
-    walletLogo={fuWalletLogo}
-    isConnected={true}
-  />
-  
-  {/* Right: External Wallet */}
-  <WalletCard
-    walletType="external"
-    walletAddress={walletProfile?.external_wallet_address || address}
-    walletName={getWalletDisplayName()}
-    walletLogo={getWalletLogo()}
-    isConnected={isConnected}
-    onConnect={handleConnect}
-  />
-</div>
+import { connectorsForWallets } from '@rainbow-me/rainbowkit';
+import {
+  metaMaskWallet,
+  trustWallet,
+  bitgetWallet,
+} from '@rainbow-me/rainbowkit/wallets';
+import { funWallet } from './funWallet'; // Import custom wallet
+import { createConfig, http } from 'wagmi';
+import { mainnet, bsc } from 'wagmi/chains';
+
+const projectId = '21fef48091f12692cad574a6f7753643';
+
+const connectors = connectorsForWallets(
+  [
+    {
+      groupName: 'Popular',
+      wallets: [
+        metaMaskWallet,
+        trustWallet,
+        bitgetWallet,
+        funWallet, // Thêm FUN Wallet
+      ],
+    },
+  ],
+  {
+    appName: 'F.U. Profile',
+    projectId,
+  }
+);
+
+// ... rest unchanged
 ```
 
-### Phần 4: Responsive Design
+### Phần 4: Cập Nhật WalletCenterContainer để nhận diện FUN Wallet
 
-- Desktop (lg+): 2 cột song song
-- Tablet/Mobile: 1 cột, ví Custodial trước, External sau
+**File:** `src/components/wallet/WalletCenterContainer.tsx`
+
+Thêm detection cho FUN Wallet trong `connectedWalletType`:
+
+```typescript
+const connectedWalletType = useMemo(() => {
+  if (!connector) return null;
+  const name = connector.name.toLowerCase();
+  if (name.includes('metamask')) return 'metamask';
+  if (name.includes('bitget')) return 'bitget';
+  if (name.includes('trust')) return 'trust';
+  if (name.includes('fun')) return 'fun'; // Thêm FUN Wallet
+  return 'other';
+}, [connector]);
+```
+
+### Phần 5: Cập Nhật WalletCard để hiển thị Logo FUN Wallet
+
+**File:** `src/components/wallet/WalletCard.tsx`
+
+Thêm import và logic cho FUN Wallet logo:
+
+```typescript
+import funWalletLogo from '@/assets/fun-wallet-logo.png';
+
+// Trong getWalletLogo function
+const getWalletLogo = (connectorType: string | null | undefined) => {
+  switch (connectorType) {
+    case 'metamask': return metamaskLogo;
+    case 'bitget': return bitgetLogo;
+    case 'trust': return trustWalletLogo;
+    case 'fun': return funWalletLogo; // Thêm FUN Wallet
+    default: return metamaskLogo;
+  }
+};
+```
 
 ## Files Cần Tạo/Sửa
 
 | File | Action | Mô tả |
 |------|--------|-------|
-| `src/components/wallet/WalletCard.tsx` | CREATE | Component ví riêng biệt với actions và token list |
-| `src/components/wallet/WalletCenterContainer.tsx` | UPDATE | Sử dụng grid 2 columns, render 2 WalletCard |
-| `src/hooks/useTokenBalances.ts` | UPDATE | Hỗ trợ fetch balances cho địa chỉ cụ thể |
+| `src/assets/fun-wallet-logo.png` | COPY | Logo FUN Wallet từ upload |
+| `src/config/funWallet.ts` | CREATE | Custom wallet connector cho FUN Wallet |
+| `src/config/web3.ts` | UPDATE | Thêm FUN Wallet vào danh sách |
+| `src/components/wallet/WalletCard.tsx` | UPDATE | Thêm logo detection |
+| `src/components/wallet/WalletCenterContainer.tsx` | UPDATE | Thêm wallet type detection |
 
-## Chi Tiết Component WalletCard
+## Kết Quả Sau Khi Sửa
 
-```typescript
-interface WalletCardProps {
-  walletType: 'custodial' | 'external';
-  walletAddress: string | null;
-  walletName: string;
-  walletLogo: string;
-  isConnected?: boolean;
-  isLinked?: boolean; // external wallet đã liên kết vào DB chưa
-  onConnect?: () => void;
-  onLink?: () => void;
-  onUnlink?: () => void;
-  onDisconnect?: () => void;
-  tokens: TokenBalance[];
-  isTokensLoading: boolean;
-}
+Khi nhấn **"Connect Wallet"**, modal RainbowKit sẽ hiển thị:
 
-// Mỗi WalletCard render:
-// 1. Header với logo, tên, địa chỉ rút gọn, nút copy
-// 2. Total assets value
-// 3. Action buttons (Send, Receive, Swap)
-// 4. Token list (BNB, USDT, CAMLY)
-// 5. Status badge (Connected/Linked/etc)
+```
+┌─────────────────────────────────┐
+│     Connect a Wallet            │
+├─────────────────────────────────┤
+│  [MetaMask icon] MetaMask       │
+│  [Trust icon] Trust Wallet      │
+│  [Bitget icon] Bitget Wallet    │
+│  [FUN icon] FUN Wallet   ← NEW  │
+└─────────────────────────────────┘
 ```
 
-## Điểm Khác Biệt Giữa 2 Ví
+Sau khi kết nối FUN Wallet, card External sẽ hiển thị đúng tên "FUN Wallet" với logo tương ứng.
 
-| Tính năng | F.U. Wallet (Custodial) | External Wallet |
-|-----------|------------------------|-----------------|
-| Header color | Emerald gradient | Orange/Amber gradient |
-| Logo | Shield icon | MetaMask/Bitget/Trust logo |
-| Connect button | Không có | Có (nếu chưa kết nối) |
-| Disconnect | Không có | Có |
-| Link to Profile | Không cần | Có nếu chưa liên kết |
-| Send function | Thông qua Edge Function | Trực tiếp qua wallet |
-| Token balances | Fetch từ địa chỉ custodial | Fetch từ địa chỉ connected |
+## Lưu Ý Quan Trọng
 
-## User Flow Mới
-
-1. User vào /wallet
-2. Thấy 2 card song song:
-   - Trái: F.U. Wallet với số dư thật
-   - Phải: External Wallet (nếu chưa connect thì hiện nút Connect)
-3. Mỗi ví có actions riêng
-4. User có thể so sánh số dư 2 ví dễ dàng
-5. Claim rewards vẫn chọn được ví nhận
-
-## Responsive Behavior
-
-```text
-Desktop (lg:):
-┌─────────────────┬─────────────────┐
-│   F.U. Wallet   │ External Wallet │
-└─────────────────┴─────────────────┘
-
-Mobile/Tablet:
-┌─────────────────┐
-│   F.U. Wallet   │
-├─────────────────┤
-│ External Wallet │
-└─────────────────┘
-```
-
-## Tóm Tắt Thay Đổi
-
-1. **Tạo WalletCard component** - Card riêng biệt cho mỗi loại ví
-2. **Grid layout 2 columns** - Hiển thị song song trên desktop
-3. **Mỗi ví có tokens riêng** - Fetch balances độc lập
-4. **Actions riêng biệt** - Send/Receive/Swap cho từng ví
-5. **Visual distinction** - Màu sắc/icon khác nhau để phân biệt
-
+FUN Wallet cần hỗ trợ **WalletConnect** để có thể kết nối qua RainbowKit. Nếu FUN Wallet là ví browser extension riêng (không qua WalletConnect), tôi sẽ cần điều chỉnh connector để inject trực tiếp như MetaMask.
