@@ -1,73 +1,129 @@
 
-# Kế Hoạch Thêm FUN Wallet Vào Danh Sách Kết Nối Ví
+# Kế Hoạch Sửa Lỗi Kết Nối FUN Wallet
 
-## Phân Tích Yêu Cầu
+## Phân Tích Vấn Đề
 
-Bạn muốn thêm **FUN Wallet** vào mục kết nối ví ngoài (External Wallet), bên cạnh MetaMask, Bitget, và Trust Wallet.
+### Nguyên Nhân Không Kết Nối Được:
 
-## Hiện Trạng
+**FUN Wallet** (https://wallet-fun-rich.lovable.app) là một **ví web**, không phải ứng dụng mobile native. Cấu hình hiện tại đang dùng:
+- Deep link: `funwallet://wc?uri=...` - CHỈ hoạt động với mobile apps
+- WalletConnect protocol - yêu cầu ví phải implement WalletConnect SDK
 
-Cấu hình hiện tại trong `src/config/web3.ts`:
+### Vấn Đề Kỹ Thuật:
+FUN Wallet cần implement WalletConnect protocol ở phía server để có thể nhận kết nối từ các dApp khác. Đây không phải thay đổi ở F.U. Profile, mà cần thay đổi ở **FUN Wallet project**.
+
+## Giải Pháp
+
+### Phương Án 1: Cập Nhật Redirect Flow (Khuyến nghị)
+
+Thay vì dùng WalletConnect, sử dụng custom redirect flow để kết nối với FUN Wallet web:
+
+1. Khi user click "FUN Wallet", mở popup/redirect đến FUN Wallet
+2. User đăng nhập FUN Wallet và authorize kết nối
+3. FUN Wallet redirect về F.U. Profile với wallet address đã sign
+
+**Cấu hình mới:**
 ```typescript
-const connectors = connectorsForWallets([
-  {
-    groupName: 'Popular',
-    wallets: [
-      metaMaskWallet,
-      trustWallet,
-      bitgetWallet,
-    ],
+// funWallet.ts - Sử dụng desktop redirect thay vì WalletConnect
+export const funWallet = (): Wallet => ({
+  id: 'fun-wallet',
+  name: 'FUN Wallet',
+  iconUrl: funWalletLogo,
+  iconBackground: '#2E7D32',
+  downloadUrls: {
+    browserExtension: 'https://wallet-fun-rich.lovable.app',
   },
-], { ... });
+  // Desktop flow - mở web wallet
+  desktop: {
+    getUri: (uri: string) => {
+      const callbackUrl = encodeURIComponent(window.location.origin + '/wallet');
+      return `https://wallet-fun-rich.lovable.app/connect?callback=${callbackUrl}&wc_uri=${encodeURIComponent(uri)}`;
+    },
+  },
+  // QR code vẫn dùng WalletConnect URI cho mobile scanning
+  qrCode: {
+    getUri: (uri: string) => uri,
+    instructions: {
+      learnMoreUrl: 'https://wallet-fun-rich.lovable.app',
+      steps: [
+        {
+          description: 'Mở FUN Wallet trên trình duyệt',
+          step: 'install',
+          title: 'Mở FUN Wallet',
+        },
+        {
+          description: 'Quét mã QR hoặc đăng nhập để kết nối',
+          step: 'scan',
+          title: 'Kết nối ví',
+        },
+      ],
+    },
+  },
+  createConnector: getWalletConnectConnector({ projectId }),
+});
 ```
 
-## Giải Pháp: Tạo Custom Wallet cho FUN Wallet
+### Phương Án 2: FUN Wallet Implement WalletConnect (Cần sửa ở FUN Wallet)
 
-RainbowKit hỗ trợ tạo custom wallet với WalletConnect. Tôi sẽ tạo một custom connector cho FUN Wallet.
+Để FUN Wallet hoạt động đúng với WalletConnect, cần:
 
-## Chi Tiết Triển Khai
+1. **Ở FUN Wallet project**, thêm WalletConnect Web3Wallet SDK
+2. Register FUN Wallet làm wallet trong WalletConnect Cloud
+3. Implement session handling để sign transactions
 
-### Phần 1: Copy Logo FUN Wallet
+Đây là thay đổi phức tạp hơn và cần chỉnh sửa FUN Wallet project.
 
-**Action:** Copy logo FUN Wallet từ `user-uploads://image-93.png` vào `src/assets/fun-wallet-logo.png`
+## Chi Tiết Triển Khai (Phương Án 1)
 
-### Phần 2: Tạo Custom FUN Wallet Connector
+### File cần sửa:
 
-**File mới:** `src/config/funWallet.ts`
+| File | Action | Mô tả |
+|------|--------|-------|
+| `src/config/funWallet.ts` | UPDATE | Thêm desktop redirect flow |
+
+### Thay đổi code:
 
 ```typescript
+// src/config/funWallet.ts
 import { Wallet, getWalletConnectConnector } from '@rainbow-me/rainbowkit';
+import funWalletLogo from '@/assets/fun-wallet-logo.png';
 
 export interface FunWalletOptions {
   projectId: string;
 }
 
+const FUN_WALLET_URL = 'https://wallet-fun-rich.lovable.app';
+
 export const funWallet = ({ projectId }: FunWalletOptions): Wallet => ({
   id: 'fun-wallet',
   name: 'FUN Wallet',
-  iconUrl: '/fun-wallet-logo.png', // hoặc import từ assets
-  iconBackground: '#2E7D32', // màu xanh lá phù hợp với branding
+  iconUrl: funWalletLogo,
+  iconBackground: '#2E7D32',
   downloadUrls: {
-    // URL download FUN Wallet (nếu có)
-    android: 'https://play.google.com/store/apps/details?id=fun.wallet',
-    ios: 'https://apps.apple.com/app/fun-wallet',
-    qrCode: 'https://funwallet.app',
+    browserExtension: FUN_WALLET_URL,
   },
+  // Desktop: redirect to FUN Wallet web app
+  desktop: {
+    getUri: (uri: string) => {
+      return `${FUN_WALLET_URL}/connect?wc_uri=${encodeURIComponent(uri)}`;
+    },
+  },
+  // Mobile: deep link (nếu có mobile app trong tương lai)
   mobile: {
     getUri: (uri: string) => `funwallet://wc?uri=${encodeURIComponent(uri)}`,
   },
   qrCode: {
     getUri: (uri: string) => uri,
     instructions: {
-      learnMoreUrl: 'https://funwallet.app/learn-more',
+      learnMoreUrl: FUN_WALLET_URL,
       steps: [
         {
-          description: 'Mở ứng dụng FUN Wallet trên điện thoại',
+          description: 'Mở FUN Wallet tại wallet-fun-rich.lovable.app',
           step: 'install',
           title: 'Mở FUN Wallet',
         },
         {
-          description: 'Quét mã QR để kết nối ví của bạn',
+          description: 'Quét mã QR bằng tính năng WalletConnect trong FUN Wallet',
           step: 'scan',
           title: 'Quét mã QR',
         },
@@ -78,110 +134,23 @@ export const funWallet = ({ projectId }: FunWalletOptions): Wallet => ({
 });
 ```
 
-### Phần 3: Cập Nhật web3.ts Config
-
-**File:** `src/config/web3.ts`
-
-```typescript
-import { connectorsForWallets } from '@rainbow-me/rainbowkit';
-import {
-  metaMaskWallet,
-  trustWallet,
-  bitgetWallet,
-} from '@rainbow-me/rainbowkit/wallets';
-import { funWallet } from './funWallet'; // Import custom wallet
-import { createConfig, http } from 'wagmi';
-import { mainnet, bsc } from 'wagmi/chains';
-
-const projectId = '21fef48091f12692cad574a6f7753643';
-
-const connectors = connectorsForWallets(
-  [
-    {
-      groupName: 'Popular',
-      wallets: [
-        metaMaskWallet,
-        trustWallet,
-        bitgetWallet,
-        funWallet, // Thêm FUN Wallet
-      ],
-    },
-  ],
-  {
-    appName: 'F.U. Profile',
-    projectId,
-  }
-);
-
-// ... rest unchanged
-```
-
-### Phần 4: Cập Nhật WalletCenterContainer để nhận diện FUN Wallet
-
-**File:** `src/components/wallet/WalletCenterContainer.tsx`
-
-Thêm detection cho FUN Wallet trong `connectedWalletType`:
-
-```typescript
-const connectedWalletType = useMemo(() => {
-  if (!connector) return null;
-  const name = connector.name.toLowerCase();
-  if (name.includes('metamask')) return 'metamask';
-  if (name.includes('bitget')) return 'bitget';
-  if (name.includes('trust')) return 'trust';
-  if (name.includes('fun')) return 'fun'; // Thêm FUN Wallet
-  return 'other';
-}, [connector]);
-```
-
-### Phần 5: Cập Nhật WalletCard để hiển thị Logo FUN Wallet
-
-**File:** `src/components/wallet/WalletCard.tsx`
-
-Thêm import và logic cho FUN Wallet logo:
-
-```typescript
-import funWalletLogo from '@/assets/fun-wallet-logo.png';
-
-// Trong getWalletLogo function
-const getWalletLogo = (connectorType: string | null | undefined) => {
-  switch (connectorType) {
-    case 'metamask': return metamaskLogo;
-    case 'bitget': return bitgetLogo;
-    case 'trust': return trustWalletLogo;
-    case 'fun': return funWalletLogo; // Thêm FUN Wallet
-    default: return metamaskLogo;
-  }
-};
-```
-
-## Files Cần Tạo/Sửa
-
-| File | Action | Mô tả |
-|------|--------|-------|
-| `src/assets/fun-wallet-logo.png` | COPY | Logo FUN Wallet từ upload |
-| `src/config/funWallet.ts` | CREATE | Custom wallet connector cho FUN Wallet |
-| `src/config/web3.ts` | UPDATE | Thêm FUN Wallet vào danh sách |
-| `src/components/wallet/WalletCard.tsx` | UPDATE | Thêm logo detection |
-| `src/components/wallet/WalletCenterContainer.tsx` | UPDATE | Thêm wallet type detection |
-
-## Kết Quả Sau Khi Sửa
-
-Khi nhấn **"Connect Wallet"**, modal RainbowKit sẽ hiển thị:
-
-```
-┌─────────────────────────────────┐
-│     Connect a Wallet            │
-├─────────────────────────────────┤
-│  [MetaMask icon] MetaMask       │
-│  [Trust icon] Trust Wallet      │
-│  [Bitget icon] Bitget Wallet    │
-│  [FUN icon] FUN Wallet   ← NEW  │
-└─────────────────────────────────┘
-```
-
-Sau khi kết nối FUN Wallet, card External sẽ hiển thị đúng tên "FUN Wallet" với logo tương ứng.
-
 ## Lưu Ý Quan Trọng
 
-FUN Wallet cần hỗ trợ **WalletConnect** để có thể kết nối qua RainbowKit. Nếu FUN Wallet là ví browser extension riêng (không qua WalletConnect), tôi sẽ cần điều chỉnh connector để inject trực tiếp như MetaMask.
+**Điều kiện để kết nối thành công:**
+
+FUN Wallet (https://wallet-fun-rich.lovable.app) cần implement một trong các tính năng:
+
+1. **WalletConnect Web3Wallet** - Để nhận và xử lý WalletConnect sessions
+2. **Custom Connect Page** - `/connect` endpoint để xử lý callback từ F.U. Profile
+
+Nếu FUN Wallet chưa có các tính năng này, kết nối sẽ không hoạt động dù sửa config phía F.U. Profile.
+
+## Cập Nhật Logo
+
+Tôi cũng sẽ cập nhật logo FUN Wallet từ file GIF bạn đã upload (download_10.gif).
+
+## Tóm Tắt
+
+1. **Cập nhật `funWallet.ts`** - Thêm desktop redirect flow đến FUN Wallet web
+2. **Cập nhật logo** - Sử dụng logo mới từ upload
+3. **Ghi chú**: FUN Wallet cũng cần implement WalletConnect hoặc custom connect endpoint để hoàn thiện flow kết nối
