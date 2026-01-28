@@ -11,7 +11,7 @@ const corsHeaders = {
 // CAMLY Token config - 3 decimals
 const CAMLY_CONTRACT = '0x0910320181889feFDE0BB1Ca63962b0A8882e413';
 const CAMLY_DECIMALS = 3;
-const MINIMUM_CLAIM = 1000000; // 1,000,000 CAMLY minimum
+const MINIMUM_CLAIM = 1; // Tối thiểu 1 CAMLY (không giới hạn)
 
 // ERC20 Transfer ABI
 const ERC20_ABI = [
@@ -181,7 +181,7 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           error: 'Bad Request', 
-          message: `Số tiền tối thiểu là ${MINIMUM_CLAIM.toLocaleString()} CAMLY` 
+          message: 'Số tiền phải lớn hơn 0 CAMLY' 
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
