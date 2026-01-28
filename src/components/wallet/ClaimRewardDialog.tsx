@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Gift, Wallet, ExternalLink, CheckCircle2, Loader2, AlertCircle } from 'lucide-react';
 import { useClaimReward } from '@/hooks/useClaimReward';
 
-const MINIMUM_CLAIM = 1000000; // 1,000,000 CAMLY
+const MINIMUM_CLAIM = 1; // Tối thiểu 1 CAMLY (không giới hạn)
 
 interface ClaimRewardDialogProps {
   open: boolean;
@@ -157,7 +157,7 @@ export const ClaimRewardDialog = ({
             <Input
               id="amount"
               type="text"
-              placeholder={`Tối thiểu ${formatNumber(MINIMUM_CLAIM)}`}
+              placeholder="Nhập số lượng CAMLY"
               value={amount ? formatNumber(Number(amount)) : ''}
               onChange={(e) => handleAmountChange(e.target.value.replace(/\./g, ''))}
               className="pr-16 text-lg font-medium"
@@ -177,9 +177,9 @@ export const ClaimRewardDialog = ({
               ~{formatUsd(Number(amount))}
             </p>
           )}
-          {amount && Number(amount) < MINIMUM_CLAIM && (
+          {amount && Number(amount) < 1 && (
             <p className="text-sm text-red-500">
-              Tối thiểu {formatNumber(MINIMUM_CLAIM)} CAMLY
+              Số lượng phải lớn hơn 0
             </p>
           )}
           {amount && Number(amount) > claimableAmount && (
