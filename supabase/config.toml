@@ -22,7 +22,7 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.claim-reward]
-verify_jwt = true
+verify_jwt = false
 
 [functions.admin-update-media-url]
 verify_jwt = true
@@ -112,3 +112,9 @@ verify_jwt = false
 
 [functions.create-post]
 verify_jwt = false
+
+[functions.connect-external-wallet]
+verify_jwt = true
+
+[functions.delete-user-account]
+verify_jwt = true
