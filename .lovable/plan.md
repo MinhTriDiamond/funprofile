@@ -1,188 +1,171 @@
 
-# Kế Hoạch Cải Thiện Kết Nối Ví: Hỗ Trợ MetaMask, Bitget và Trust Wallet
+# Kế Hoạch Thiết Kế Lại Giao Diện Ví: 2 Cột Song Song
 
-## Phân Tích Hiện Trạng
+## Mục Tiêu
 
-### Cấu Hình Hiện Tại
-- **RainbowKit đã cấu hình**: MetaMask, Trust Wallet, Bitget Wallet trong `src/config/web3.ts`
-- **F.U. Wallet (Custodial)**: Hoạt động đúng, địa chỉ `0x2e11...f6bd` là ví custodial tự động tạo
-- **Vấn đề**: UI chỉ hiển thị "Connect MetaMask", không cho phép chọn ví khác
+Thiết kế lại trang `/wallet` theo layout 2 cột song song như mockup, hiển thị cả 2 ví cùng lúc thay vì phải switch qua lại.
 
-### Giải Pháp
-Sử dụng RainbowKit's **ConnectButton** hoặc **useConnectModal** để hiển thị modal chọn ví, cho phép user chọn giữa MetaMask, Bitget, Trust Wallet.
+## Layout Mới
+
+```text
+┌──────────────────────────────────────────────────────────────────────────┐
+│                           My Wallet                                       │
+│                        BNB Smart Chain                                    │
+├────────────────────────────────┬─────────────────────────────────────────┤
+│       Ví F.U. Wallet           │     Ví MetaMask / Bitget / Trust        │
+│        (Custodial)             │           (External)                     │
+├────────────────────────────────┼─────────────────────────────────────────┤
+│  0x2e11...f6bd      [Copy]     │  0xABC1...DEF4        [Copy][Connect]   │
+│                                │                                          │
+│  Total: $XXX.XX                │  Total: $XXX.XX                          │
+│                                │                                          │
+│  ┌──────┐ ┌───────┐ ┌──────┐   │  ┌──────┐ ┌───────┐ ┌──────┐            │
+│  │ Send │ │Receive│ │ Swap │   │  │ Send │ │Receive│ │ Swap │            │
+│  └──────┘ └───────┘ └──────┘   │  └──────┘ └───────┘ └──────┘            │
+│                                │                                          │
+│  ── Tokens ──────────────────  │  ── Tokens ──────────────────            │
+│  BNB    $XXX.XX    0.XXX       │  BNB    $XXX.XX    0.XXX                 │
+│  USDT   $XXX.XX    XXX         │  USDT   $XXX.XX    XXX                   │
+│  CAMLY  $XXX.XX    XXX         │  CAMLY  $XXX.XX    XXX                   │
+│                                │                                          │
+└────────────────────────────────┴─────────────────────────────────────────┘
+```
 
 ## Chi Tiết Triển Khai
 
-### Phần 1: Thêm Logo Ví Bitget và Trust Wallet
+### Phần 1: Tạo Component `WalletCard` Mới
 
-**Tải thêm logo:**
-- `src/assets/bitget-logo.png` - Logo Bitget Wallet
-- `src/assets/trust-wallet-logo.png` - Logo Trust Wallet
+Tạo một component tái sử dụng cho mỗi ví với các props:
+- `walletType`: 'custodial' | 'external'
+- `walletAddress`: địa chỉ ví
+- `walletName`: tên hiển thị (F.U. Wallet / MetaMask / Bitget / Trust)
+- `walletLogo`: logo tương ứng
+- `isConnected`: trạng thái kết nối (cho external)
+- `onConnect`: callback kết nối ví
+- `onReceive`, `onSend`, `onSwap`: callbacks cho các action
 
-### Phần 2: Sử Dụng RainbowKit Modal
+**File mới:** `src/components/wallet/WalletCard.tsx`
 
-Thay đổi `handleConnect()` để sử dụng RainbowKit's `useConnectModal`:
+### Phần 2: Tạo Hook `useTokenBalancesForAddress`
 
-```typescript
-import { useConnectModal } from '@rainbow-me/rainbowkit';
-
-const { openConnectModal } = useConnectModal();
-
-const handleConnect = () => {
-  if (openConnectModal) {
-    openConnectModal(); // Mở modal RainbowKit với đầy đủ các ví
-  }
-};
-```
-
-### Phần 3: Cập Nhật UI Hiển Thị
-
-**Thay đổi nút Connect:**
-```text
-Trước: [Connect MetaMask] - chỉ MetaMask
-Sau:   [Connect Wallet] - mở modal với MetaMask, Bitget, Trust Wallet
-```
-
-**Cập nhật Wallet Type Badge:**
-- Hiển thị đúng logo ví đang kết nối (MetaMask/Bitget/Trust)
-- Sử dụng `connector.name` từ wagmi để xác định loại ví
-
-### Phần 4: Cập Nhật Function Link Wallet
-
-Thay vì dùng `window.ethereum.request()`, sử dụng wagmi's `useSignMessage` hook để hỗ trợ tất cả các ví:
+Sửa đổi `useTokenBalances` để có thể fetch balances cho một địa chỉ cụ thể, không phụ thuộc vào connected address:
 
 ```typescript
-import { useSignMessage } from 'wagmi';
-
-const { signMessageAsync } = useSignMessage();
-
-const linkWalletToProfile = async () => {
-  const signature = await signMessageAsync({ 
-    message: `Xác nhận liên kết ví ${address}...`
-  });
-  // ... rest of logic
-};
+// Hook mới cho từng địa chỉ ví cụ thể
+const useSingleWalletBalances = (address: `0x${string}` | null) => {
+  // Fetch balances cho địa chỉ được chỉ định
+}
 ```
+
+### Phần 3: Cập Nhật `WalletCenterContainer`
+
+Thay đổi layout từ single column sang grid 2 columns:
+
+```typescript
+<div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+  {/* Left: F.U. Wallet (Custodial) */}
+  <WalletCard
+    walletType="custodial"
+    walletAddress={walletProfile?.custodial_wallet_address}
+    walletName="F.U. Wallet"
+    walletLogo={fuWalletLogo}
+    isConnected={true}
+  />
+  
+  {/* Right: External Wallet */}
+  <WalletCard
+    walletType="external"
+    walletAddress={walletProfile?.external_wallet_address || address}
+    walletName={getWalletDisplayName()}
+    walletLogo={getWalletLogo()}
+    isConnected={isConnected}
+    onConnect={handleConnect}
+  />
+</div>
+```
+
+### Phần 4: Responsive Design
+
+- Desktop (lg+): 2 cột song song
+- Tablet/Mobile: 1 cột, ví Custodial trước, External sau
 
 ## Files Cần Tạo/Sửa
 
 | File | Action | Mô tả |
 |------|--------|-------|
-| `src/components/wallet/WalletCenterContainer.tsx` | UPDATE | Sử dụng RainbowKit modal, cập nhật UI |
-| `src/assets/bitget-logo.webp` | CREATE | Logo Bitget Wallet |
-| `src/assets/trust-wallet-logo.webp` | CREATE | Logo Trust Wallet |
+| `src/components/wallet/WalletCard.tsx` | CREATE | Component ví riêng biệt với actions và token list |
+| `src/components/wallet/WalletCenterContainer.tsx` | UPDATE | Sử dụng grid 2 columns, render 2 WalletCard |
+| `src/hooks/useTokenBalances.ts` | UPDATE | Hỗ trợ fetch balances cho địa chỉ cụ thể |
 
-## Thay Đổi Chi Tiết trong WalletCenterContainer.tsx
-
-### 1. Import thêm hooks từ RainbowKit
+## Chi Tiết Component WalletCard
 
 ```typescript
-import { useConnectModal } from '@rainbow-me/rainbowkit';
-import { useSignMessage, useAccount } from 'wagmi';
+interface WalletCardProps {
+  walletType: 'custodial' | 'external';
+  walletAddress: string | null;
+  walletName: string;
+  walletLogo: string;
+  isConnected?: boolean;
+  isLinked?: boolean; // external wallet đã liên kết vào DB chưa
+  onConnect?: () => void;
+  onLink?: () => void;
+  onUnlink?: () => void;
+  onDisconnect?: () => void;
+  tokens: TokenBalance[];
+  isTokensLoading: boolean;
+}
+
+// Mỗi WalletCard render:
+// 1. Header với logo, tên, địa chỉ rút gọn, nút copy
+// 2. Total assets value
+// 3. Action buttons (Send, Receive, Swap)
+// 4. Token list (BNB, USDT, CAMLY)
+// 5. Status badge (Connected/Linked/etc)
 ```
 
-### 2. Lấy thông tin connector
+## Điểm Khác Biệt Giữa 2 Ví
 
-```typescript
-const { connector } = useAccount();
+| Tính năng | F.U. Wallet (Custodial) | External Wallet |
+|-----------|------------------------|-----------------|
+| Header color | Emerald gradient | Orange/Amber gradient |
+| Logo | Shield icon | MetaMask/Bitget/Trust logo |
+| Connect button | Không có | Có (nếu chưa kết nối) |
+| Disconnect | Không có | Có |
+| Link to Profile | Không cần | Có nếu chưa liên kết |
+| Send function | Thông qua Edge Function | Trực tiếp qua wallet |
+| Token balances | Fetch từ địa chỉ custodial | Fetch từ địa chỉ connected |
 
-// Xác định loại ví đang kết nối
-const connectedWalletType = useMemo(() => {
-  if (!connector) return null;
-  const name = connector.name.toLowerCase();
-  if (name.includes('metamask')) return 'metamask';
-  if (name.includes('bitget')) return 'bitget';
-  if (name.includes('trust')) return 'trust';
-  return 'other';
-}, [connector]);
-```
+## User Flow Mới
 
-### 3. Cập nhật handleConnect()
+1. User vào /wallet
+2. Thấy 2 card song song:
+   - Trái: F.U. Wallet với số dư thật
+   - Phải: External Wallet (nếu chưa connect thì hiện nút Connect)
+3. Mỗi ví có actions riêng
+4. User có thể so sánh số dư 2 ví dễ dàng
+5. Claim rewards vẫn chọn được ví nhận
 
-```typescript
-const { openConnectModal } = useConnectModal();
-
-const handleConnect = useCallback(() => {
-  localStorage.removeItem(WALLET_DISCONNECTED_KEY);
-  setShowDisconnectedUI(false);
-  
-  if (openConnectModal) {
-    openConnectModal();
-  }
-}, [openConnectModal]);
-```
-
-### 4. Cập nhật linkWalletToProfile() với useSignMessage
-
-```typescript
-const { signMessageAsync } = useSignMessage();
-
-const linkWalletToProfile = useCallback(async () => {
-  if (!address || !isConnected) return;
-  
-  const message = `Xác nhận liên kết ví ${address}...`;
-  
-  try {
-    const signature = await signMessageAsync({ message });
-    
-    const { data, error } = await supabase.functions.invoke('connect-external-wallet', {
-      body: { wallet_address: address, signature, message }
-    });
-    // ...
-  } catch (err) {
-    // Handle error
-  }
-}, [address, isConnected, signMessageAsync]);
-```
-
-### 5. Cập nhật UI Badge với dynamic wallet info
-
-```typescript
-// Trong Wallet Type Badge section
-{activeWalletType === 'external' && (
-  <>
-    {connectedWalletType === 'metamask' && <img src={metamaskLogo} ... />}
-    {connectedWalletType === 'bitget' && <img src={bitgetLogo} ... />}
-    {connectedWalletType === 'trust' && <img src={trustLogo} ... />}
-    <span>{connector?.name || 'External'} (External)</span>
-  </>
-)}
-```
-
-### 6. Cập nhật nút Connect trong UI
-
-```typescript
-// Thay thế nút "Connect MetaMask" bằng "Connect Wallet"
-<Button onClick={handleConnect}>
-  <Wallet className="w-4 h-4 mr-1" />
-  Connect Wallet
-</Button>
-```
-
-## User Flow Sau Khi Sửa
+## Responsive Behavior
 
 ```text
-1. User vào /wallet, thấy F.U. Wallet (Custodial)
-2. Nhấn "Connect Wallet"
-3. RainbowKit modal hiện lên với các lựa chọn:
-   ├─ MetaMask
-   ├─ Trust Wallet
-   └─ Bitget Wallet
-4. User chọn ví muốn kết nối (VD: Bitget)
-5. Ví được kết nối, hiển thị badge "Bitget Wallet (External)"
-6. User có thể "Liên kết với Profile" để lưu vào database
-7. Có thể switch giữa F.U. Wallet và External Wallet
+Desktop (lg:):
+┌─────────────────┬─────────────────┐
+│   F.U. Wallet   │ External Wallet │
+└─────────────────┴─────────────────┘
+
+Mobile/Tablet:
+┌─────────────────┐
+│   F.U. Wallet   │
+├─────────────────┤
+│ External Wallet │
+└─────────────────┘
 ```
 
-## Ghi Chú Quan Trọng
+## Tóm Tắt Thay Đổi
 
-**F.U. Wallet (Custodial) - `0x2e11...f6bd`:**
-- Đây là ví được hệ thống tạo tự động cho bạn
-- KHÔNG THỂ xóa hoặc thay đổi
-- Private key được mã hóa và lưu an toàn trong database
-- Luôn available ngay cả khi không có MetaMask/Bitget
+1. **Tạo WalletCard component** - Card riêng biệt cho mỗi loại ví
+2. **Grid layout 2 columns** - Hiển thị song song trên desktop
+3. **Mỗi ví có tokens riêng** - Fetch balances độc lập
+4. **Actions riêng biệt** - Send/Receive/Swap cho từng ví
+5. **Visual distinction** - Màu sắc/icon khác nhau để phân biệt
 
-**External Wallet (MetaMask/Bitget/Trust):**
-- Ví cá nhân của bạn, do bạn quản lý
-- Có thể liên kết/hủy liên kết tùy ý
-- Cần ký message để xác minh quyền sở hữu khi liên kết
