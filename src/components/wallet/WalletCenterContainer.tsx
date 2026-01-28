@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useAccount, useConnect, useDisconnect, useSwitchChain } from 'wagmi';
+import { useAccount, useDisconnect, useSwitchChain, useSignMessage } from 'wagmi';
+import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { bsc } from 'wagmi/chains';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ArrowDown, ArrowUp, RefreshCw, ShoppingCart, Copy, Check, Gift, ArrowUpRight, ArrowDownLeft, Repeat, Wallet, LogOut, UserRoundCog, Info, AlertTriangle, Shield } from 'lucide-react';
+import { ArrowDown, ArrowUp, RefreshCw, ShoppingCart, Copy, Check, Gift, ArrowUpRight, ArrowDownLeft, Repeat, Wallet, LogOut, UserRoundCog, Info, AlertTriangle, Shield, LinkIcon } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { ReceiveTab } from './ReceiveTab';
@@ -15,6 +16,8 @@ import { ClaimRewardDialog } from './ClaimRewardDialog';
 import { useTokenBalances } from '@/hooks/useTokenBalances';
 import { formatRelativeTime } from '@/lib/formatters';
 import metamaskLogo from '@/assets/metamask-logo.png';
+import bitgetLogo from '@/assets/bitget-logo.png';
+import trustWalletLogo from '@/assets/trust-wallet-logo.png';
 import bnbLogo from '@/assets/tokens/bnb-logo.webp';
 
 interface Profile {
@@ -44,10 +47,11 @@ interface Transaction {
 const WALLET_DISCONNECTED_KEY = 'fun_profile_wallet_disconnected';
 
 const WalletCenterContainer = () => {
-  const { address, isConnected, chainId } = useAccount();
-  const { connect, connectors } = useConnect();
+  const { address, isConnected, chainId, connector } = useAccount();
+  const { openConnectModal } = useConnectModal();
   const { disconnect } = useDisconnect();
   const { switchChain } = useSwitchChain();
+  const { signMessageAsync, isPending: isSigningMessage } = useSignMessage();
   
   const [profile, setProfile] = useState<Profile | null>(null);
   const [walletProfile, setWalletProfile] = useState<WalletProfile | null>(null);
@@ -60,7 +64,6 @@ const WalletCenterContainer = () => {
   const [showSend, setShowSend] = useState(false);
   const [showClaimDialog, setShowClaimDialog] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
-  const [isConnecting, setIsConnecting] = useState(false);
   
   // Auto-create wallet states
   const [isCreatingWallet, setIsCreatingWallet] = useState(false);
@@ -75,10 +78,43 @@ const WalletCenterContainer = () => {
     return localStorage.getItem(WALLET_DISCONNECTED_KEY) === 'true';
   });
 
+  // Detect connected wallet type based on connector name
+  const connectedWalletType = useMemo(() => {
+    if (!connector) return null;
+    const name = connector.name.toLowerCase();
+    if (name.includes('metamask')) return 'metamask';
+    if (name.includes('bitget')) return 'bitget';
+    if (name.includes('trust')) return 'trust';
+    if (name.includes('coinbase')) return 'coinbase';
+    if (name.includes('walletconnect')) return 'walletconnect';
+    return 'other';
+  }, [connector]);
+
+  // Get wallet logo based on connector
+  const getWalletLogo = useCallback((walletType: string | null) => {
+    switch (walletType) {
+      case 'metamask': return metamaskLogo;
+      case 'bitget': return bitgetLogo;
+      case 'trust': return trustWalletLogo;
+      default: return metamaskLogo; // fallback
+    }
+  }, []);
+
+  // Get wallet display name
+  const getWalletDisplayName = useCallback(() => {
+    if (connector?.name) return connector.name;
+    switch (connectedWalletType) {
+      case 'metamask': return 'MetaMask';
+      case 'bitget': return 'Bitget Wallet';
+      case 'trust': return 'Trust Wallet';
+      default: return 'External Wallet';
+    }
+  }, [connector, connectedWalletType]);
+
   // Compute the active wallet address based on wallet type
   const activeWalletAddress = useMemo(() => {
     if (activeWalletType === 'external') {
-      // For external wallet, prioritize connected MetaMask address
+      // For external wallet, prioritize connected wallet address
       return address || (walletProfile?.external_wallet_address as `0x${string}` | null);
     }
     return walletProfile?.custodial_wallet_address as `0x${string}` | null;
@@ -233,12 +269,6 @@ const WalletCenterContainer = () => {
   // Auto-create custodial wallet if user has no wallet at all
   useEffect(() => {
     const autoCreateWallet = async () => {
-      // Only auto-create if:
-      // 1. walletProfile has been fetched (not null check, but fetched flag)
-      // 2. User has no custodial AND no external wallet
-      // 3. Not currently creating wallet
-      // 4. MetaMask not connected
-      // 5. No previous creation error (prevent infinite loop)
       if (
         walletProfileFetched &&
         walletProfile !== null &&
@@ -356,83 +386,18 @@ const WalletCenterContainer = () => {
     }
   };
 
-  const handleConnect = useCallback(async () => {
+  // Connect wallet using RainbowKit modal
+  const handleConnect = useCallback(() => {
     setConnectionError(null);
-    setIsConnecting(true);
     setShowDisconnectedUI(false);
     localStorage.removeItem(WALLET_DISCONNECTED_KEY);
 
-    if (typeof window === 'undefined' || !window.ethereum) {
-      setIsConnecting(false);
-      toast.error('Vui lòng cài đặt MetaMask để tiếp tục');
-      window.open('https://metamask.io/download/', '_blank');
-      return;
+    if (openConnectModal) {
+      openConnectModal();
+    } else {
+      toast.error('Không thể mở modal kết nối ví');
     }
-
-    try {
-      await window.ethereum.request({ method: 'eth_requestAccounts' });
-
-      const metamaskConnector =
-        connectors.find((c) => c.name === 'MetaMask') ||
-        connectors.find((c) => c.id === 'metaMask') ||
-        connectors.find((c) => c.id === 'injected') ||
-        connectors[0];
-
-      if (!metamaskConnector) {
-        setIsConnecting(false);
-        setConnectionError('Không tìm thấy ví để kết nối');
-        toast.error('Không tìm thấy ví để kết nối');
-        return;
-      }
-
-      connect(
-        { connector: metamaskConnector },
-        {
-          onSuccess: () => {
-            setIsConnecting(false);
-            setConnectionError(null);
-            setActiveWalletType('external');
-            toast.success('Kết nối ví thành công!');
-          },
-          onError: async (err) => {
-            try {
-              const accounts = await window.ethereum?.request?.({ method: 'eth_accounts' });
-              if (Array.isArray(accounts) && accounts.length > 0) {
-                setIsConnecting(false);
-                setConnectionError(null);
-                setActiveWalletType('external');
-                toast.success('Kết nối ví thành công!');
-                return;
-              }
-            } catch {
-              // ignore
-            }
-
-            setIsConnecting(false);
-            setConnectionError('Không thể đồng bộ kết nối ví. Vui lòng thử lại.');
-            toast.error('Không thể kết nối ví');
-            console.error('Wagmi connect error:', err);
-          },
-        }
-      );
-    } catch (error: any) {
-      setIsConnecting(false);
-      const errorMsg = error?.message || '';
-      const errorCode = error?.code;
-
-      if (errorCode === 4001 || errorMsg.includes('User rejected') || errorMsg.includes('rejected')) {
-        setConnectionError('Bạn đã từ chối kết nối ví');
-        toast.error('Bạn đã từ chối kết nối ví');
-      } else if (errorCode === -32002 || errorMsg.includes('already pending')) {
-        setConnectionError('Đang có yêu cầu kết nối. Vui lòng mở MetaMask và xác nhận.');
-        toast.info('Vui lòng mở MetaMask và xác nhận kết nối', { duration: 5000 });
-      } else {
-        setConnectionError('Không thể kết nối ví. Vui lòng thử lại.');
-        toast.error('Không thể kết nối ví');
-        console.error('Connect error:', error);
-      }
-    }
-  }, [connectors, connect]);
+  }, [openConnectModal]);
 
   const handleSwitchAccount = useCallback(async () => {
     try {
@@ -445,7 +410,7 @@ const WalletCenterContainer = () => {
         refetchTokens();
         fetchTransactions();
       } else {
-        toast.error('MetaMask không khả dụng');
+        toast.error('Wallet không khả dụng');
       }
     } catch (error: any) {
       if (error?.code === 4001) {
@@ -469,10 +434,10 @@ const WalletCenterContainer = () => {
     toast.success('Đã ngắt kết nối ví');
   };
 
-  // Link MetaMask wallet to profile (save to database with signature verification)
+  // Link wallet to profile using wagmi's useSignMessage (works with all wallets)
   const linkWalletToProfile = useCallback(async () => {
     if (!address || !isConnected) {
-      toast.error('Vui lòng kết nối MetaMask trước');
+      toast.error('Vui lòng kết nối ví trước');
       return;
     }
 
@@ -483,15 +448,8 @@ const WalletCenterContainer = () => {
       const timestamp = Date.now();
       const message = `Xác nhận liên kết ví ${address} với tài khoản F.U. Profile của bạn.\n\nTimestamp: ${timestamp}`;
       
-      // Request signature from MetaMask
-      if (typeof window === 'undefined' || !window.ethereum) {
-        throw new Error('MetaMask không khả dụng');
-      }
-      
-      const signature = await window.ethereum.request({
-        method: 'personal_sign',
-        params: [message, address],
-      });
+      // Request signature using wagmi hook (works with all wallets)
+      const signature = await signMessageAsync({ message, account: address });
       
       // Send to edge function for verification
       const { data, error } = await supabase.functions.invoke('connect-external-wallet', {
@@ -504,13 +462,12 @@ const WalletCenterContainer = () => {
       
       // Refetch wallet profile
       await fetchWalletProfile();
-      toast.success('Đã liên kết ví MetaMask thành công!');
+      toast.success(`Đã liên kết ${getWalletDisplayName()} thành công!`);
       
     } catch (err: any) {
       console.error('[WalletCenter] Link wallet error:', err);
       
-      const errorCode = err?.code;
-      if (errorCode === 4001 || err?.message?.includes('rejected')) {
+      if (err?.message?.includes('rejected') || err?.name === 'UserRejectedRequestError') {
         toast.error('Bạn đã từ chối ký xác nhận');
       } else if (err?.message?.includes('already connected')) {
         toast.error('Ví này đã được liên kết với tài khoản khác');
@@ -520,7 +477,7 @@ const WalletCenterContainer = () => {
     } finally {
       setIsLinkingWallet(false);
     }
-  }, [address, isConnected]);
+  }, [address, isConnected, signMessageAsync, getWalletDisplayName]);
 
   // Unlink external wallet from profile (remove from database)
   const unlinkWalletFromProfile = useCallback(async () => {
@@ -547,7 +504,7 @@ const WalletCenterContainer = () => {
       // Refetch wallet profile
       await fetchWalletProfile();
       
-      toast.success('Đã hủy liên kết ví MetaMask');
+      toast.success('Đã hủy liên kết ví External');
       
     } catch (err: any) {
       console.error('[WalletCenter] Unlink wallet error:', err);
@@ -639,8 +596,8 @@ const WalletCenterContainer = () => {
               : 'hover:bg-gray-200'
           }`}
         >
-          <img src={metamaskLogo} alt="MetaMask" className="w-4 h-4 mr-1" />
-          MetaMask
+          <img src={getWalletLogo(connectedWalletType)} alt="Wallet" className="w-4 h-4 mr-1" />
+          {getWalletDisplayName()}
         </Button>
         <Button
           variant={activeWalletType === 'custodial' ? 'default' : 'ghost'}
@@ -685,7 +642,7 @@ const WalletCenterContainer = () => {
           </div>
           <h2 className="text-2xl font-bold text-gray-800 mb-3">Kết nối ví để tiếp tục</h2>
           <p className="text-muted-foreground mb-8 max-w-md mx-auto">
-            Vui lòng kết nối MetaMask để xem tài sản và thực hiện giao dịch trên BNB Smart Chain
+            Kết nối ví của bạn (MetaMask, Bitget, Trust Wallet) để xem tài sản và thực hiện giao dịch trên BNB Smart Chain
           </p>
           
           {connectionError && (
@@ -696,39 +653,39 @@ const WalletCenterContainer = () => {
           
           <Button
             onClick={handleConnect}
-            disabled={isConnecting}
-            className="bg-gradient-to-r from-emerald-600 to-green-500 hover:from-emerald-700 hover:to-green-600 text-yellow-300 font-bold text-lg px-10 py-6 rounded-xl shadow-lg hover:shadow-green-500/40 transition-all duration-300 hover:scale-105 disabled:opacity-70"
+            className="bg-gradient-to-r from-emerald-600 to-green-500 hover:from-emerald-700 hover:to-green-600 text-yellow-300 font-bold text-lg px-10 py-6 rounded-xl shadow-lg hover:shadow-green-500/40 transition-all duration-300 hover:scale-105"
             style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.2)' }}
           >
-            {isConnecting ? (
-              <>
-                <RefreshCw className="w-6 h-6 mr-2 animate-spin" />
-                Đang kết nối...
-              </>
-            ) : (
-              <>
-                <img src={metamaskLogo} alt="MetaMask" className="w-6 h-6 mr-2" />
-                Connect Wallet
-              </>
-            )}
+            <Wallet className="w-6 h-6 mr-2" />
+            Connect Wallet
           </Button>
 
-          {isConnecting && (
-            <p className="text-sm text-muted-foreground mt-4 animate-pulse">
-              MetaMask popup sẽ hiện lên, vui lòng xác nhận kết nối...
-            </p>
-          )}
+          {/* Supported wallets */}
+          <div className="flex items-center justify-center gap-4 mt-6">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <img src={metamaskLogo} alt="MetaMask" className="w-8 h-8 opacity-60 hover:opacity-100 transition-opacity" />
+                </TooltipTrigger>
+                <TooltipContent><p>MetaMask</p></TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger>
+                  <img src={bitgetLogo} alt="Bitget" className="w-8 h-8 opacity-60 hover:opacity-100 transition-opacity" />
+                </TooltipTrigger>
+                <TooltipContent><p>Bitget Wallet</p></TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger>
+                  <img src={trustWalletLogo} alt="Trust Wallet" className="w-8 h-8 opacity-60 hover:opacity-100 transition-opacity" />
+                </TooltipTrigger>
+                <TooltipContent><p>Trust Wallet</p></TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
 
           <p className="text-xs text-muted-foreground mt-6">
-            Chưa có MetaMask?{' '}
-            <a 
-              href="https://metamask.io/download/" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-primary hover:underline font-medium"
-            >
-              Tải xuống tại đây
-            </a>
+            Hỗ trợ MetaMask, Bitget Wallet, Trust Wallet và nhiều ví khác
           </p>
         </div>
       </div>
@@ -809,7 +766,7 @@ const WalletCenterContainer = () => {
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>Xóa ví MetaMask khỏi tài khoản (cần ký lại để liên kết)</p>
+                        <p>Xóa ví khỏi tài khoản (cần ký lại để liên kết)</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -817,25 +774,25 @@ const WalletCenterContainer = () => {
               </>
             )}
             
-            {/* Show Link button if MetaMask connected but not saved to DB */}
+            {/* Show Link button if wallet connected but not saved to DB */}
             {activeWalletType === 'external' && isConnected && !walletProfile?.external_wallet_address && (
               <Button
                 onClick={linkWalletToProfile}
-                disabled={isLinkingWallet}
+                disabled={isLinkingWallet || isSigningMessage}
                 variant="ghost"
                 size="sm"
                 className="bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white transition-all duration-200"
               >
-                {isLinkingWallet ? (
+                {isLinkingWallet || isSigningMessage ? (
                   <RefreshCw className="w-4 h-4 mr-1 animate-spin" />
                 ) : (
-                  <Shield className="w-4 h-4 mr-1" />
+                  <LinkIcon className="w-4 h-4 mr-1" />
                 )}
                 Liên kết với Profile
               </Button>
             )}
             
-            {/* Show connect MetaMask button if viewing custodial but MetaMask not connected */}
+            {/* Show connect wallet button if viewing custodial but no external connected */}
             {activeWalletType === 'custodial' && !isConnected && (
               <Button
                 onClick={handleConnect}
@@ -843,8 +800,8 @@ const WalletCenterContainer = () => {
                 size="sm"
                 className="bg-orange-50 text-orange-600 hover:bg-orange-500 hover:text-white transition-all duration-200"
               >
-                <img src={metamaskLogo} alt="MetaMask" className="w-4 h-4 mr-1" />
-                Connect MetaMask
+                <Wallet className="w-4 h-4 mr-1" />
+                Connect Wallet
               </Button>
             )}
             
@@ -865,7 +822,7 @@ const WalletCenterContainer = () => {
                       ) : (
                         <LogOut className="w-4 h-4 mr-1" />
                       )}
-                      Hủy liên kết MetaMask
+                      Hủy liên kết External
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -883,12 +840,12 @@ const WalletCenterContainer = () => {
             <>
               <Shield className="w-4 h-4 text-emerald-600" />
               <span className="text-sm text-emerald-700 font-medium">F.U. Wallet (Custodial)</span>
-              <span className="text-xs text-muted-foreground">• Ví được tạo tự động, không cần MetaMask</span>
+              <span className="text-xs text-muted-foreground">• Ví được tạo tự động, không cần ví bên ngoài</span>
             </>
           ) : (
             <>
-              <img src={metamaskLogo} alt="MetaMask" className="w-4 h-4" />
-              <span className="text-sm text-orange-700 font-medium">MetaMask (External)</span>
+              <img src={getWalletLogo(connectedWalletType)} alt="Wallet" className="w-4 h-4" />
+              <span className="text-sm text-orange-700 font-medium">{getWalletDisplayName()} (External)</span>
               {isConnected ? (
                 walletProfile?.external_wallet_address ? (
                   <span className="text-xs text-green-600">• Đã liên kết với Profile</span>
@@ -1193,7 +1150,6 @@ const WalletCenterContainer = () => {
         custodialWallet={walletProfile?.custodial_wallet_address || null}
         camlyPrice={camlyPrice}
         onSuccess={() => {
-          // Refresh all data after successful claim
           fetchClaimableReward();
           fetchTransactions();
           refetchTokens();
