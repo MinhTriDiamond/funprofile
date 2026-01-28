@@ -1,172 +1,153 @@
 
-# Kế Hoạch Kích Hoạt Reward Claims và Tạo Giao Diện Claim CAMLY
+# Kế Hoạch Sửa Lỗi Địa Chỉ Ví Hiển Thị 0x0000...0000
 
-## Tổng Quan
+## Phân Tích Vấn Đề
 
-Tạo hệ thống claim CAMLY token hoàn chỉnh, cho phép người dùng nhận phần thưởng từ Treasury Wallet vào ví cá nhân (MetaMask hoặc F.U. Custodial Wallet).
+### Nguyên Nhân
+User **hoangtydo88** hiện có:
+- `external_wallet_address`: **NULL**
+- `custodial_wallet_address`: **NULL**
+- Không có record nào trong bảng `custodial_wallets`
 
-## Thông Tin Hiện Có
+Kết quả là dòng code sau trả về fallback `0x0000...0000`:
+```typescript
+const shortenedAddress = activeWalletAddress 
+  ? `${activeWalletAddress.slice(0, 6)}...${activeWalletAddress.slice(-4)}` 
+  : '0x0000...0000';
+```
 
-### Cấu Trúc Database
-- **reward_claims**: Lưu trữ lịch sử claim (user_id, amount, wallet_address)
-- **profiles**: Có trường `reward_status` ('pending', 'approved', 'on_hold', 'rejected')
-- **transactions**: Lưu giao dịch blockchain
+### Lý Do User Chưa Có Ví
+1. Tài khoản được tạo trước khi logic auto-create được implement
+2. Có lỗi khi tạo ví trong quá trình đăng ký
+3. User đăng nhập bằng phương thức không trigger auto-create
 
-### Reward System
-- RPC function `get_user_rewards_v2` đã tính toán totalReward và todayReward
-- Hook `useRewardCalculation` đã fetch claimableAmount = totalReward - claimedAmount
-- Minimum claim: 1,000,000 CAMLY (theo memory)
+## Giải Pháp
 
-### Blockchain Config
-- **CAMLY Contract**: `0x0910320181889feFDE0BB1Ca63962b0A8882e413` (3 decimals)
-- **Network**: BNB Smart Chain (chainId: 56)
-- **Secrets đã có**: `TREASURY_WALLET_ADDRESS`, `TREASURY_PRIVATE_KEY`
+### Phần 1: Tự động tạo Custodial Wallet khi vào trang Wallet
 
-### UI Hiện Tại
-- WalletCenterContainer.tsx đã có UI hiển thị claimable amount
-- Nút "Claim to Wallet" hiện toast "Tính năng đang phát triển"
-
-## Kiến Trúc Giải Pháp
+Thêm useEffect mới trong `WalletCenterContainer.tsx` để kiểm tra và tự động tạo custodial wallet nếu user chưa có:
 
 ```text
-┌──────────────────────────────────────────────────────────────────────┐
-│                         CLAIM REWARD FLOW                            │
-├──────────────────────────────────────────────────────────────────────┤
-│                                                                      │
-│   [Frontend]                    [Edge Function]        [Blockchain]  │
-│                                                                      │
-│   1. User clicks              2. Validate               4. Transfer  │
-│      "Claim to Wallet"  ──→     - Auth                     CAMLY     │
-│                                 - Amount                     │       │
-│   5. Update UI      ←────────  - Wallet address             ↓       │
-│      + Confetti                                                      │
-│                               3. Sign + Send TX    ──→  Treasury →   │
-│                                  with viem               User Wallet │
-│                                                                      │
-│   6. Record in                                                       │
-│      reward_claims table                                             │
-│      + transactions table                                            │
-│                                                                      │
-└──────────────────────────────────────────────────────────────────────┘
+Logic Flow:
+1. User vào trang /wallet
+2. Fetch wallet profile
+3. Nếu cả custodial_wallet_address và external_wallet_address đều NULL:
+   → Gọi create-custodial-wallet edge function
+   → Cập nhật UI với địa chỉ mới
+4. Hiển thị địa chỉ thật thay vì 0x0000...0000
 ```
+
+### Phần 2: Hiển thị loading state khi đang tạo ví
+
+Thay vì hiển thị `0x0000...0000`, hiển thị skeleton/loading state khi:
+- Đang fetch wallet profile
+- Đang tạo ví mới
+
+### Phần 3: Fallback UI rõ ràng
+
+Nếu không thể tạo ví tự động:
+- Hiển thị nút "Tạo Ví" thay vì địa chỉ placeholder
+- Thông báo lỗi rõ ràng
 
 ## Chi Tiết Triển Khai
 
-### Phần 1: Edge Function `claim-reward`
+### File: src/components/wallet/WalletCenterContainer.tsx
 
-**File**: `supabase/functions/claim-reward/index.ts`
+**Thay đổi 1**: Thêm state mới
+```typescript
+const [isCreatingWallet, setIsCreatingWallet] = useState(false);
+const [walletCreationError, setWalletCreationError] = useState<string | null>(null);
+```
 
-**Chức năng**:
-1. Xác thực người dùng qua JWT
-2. Kiểm tra reward_status phải là 'approved'
-3. Tính toán claimable amount từ get_user_rewards_v2
-4. Validate minimum amount (1,000,000 CAMLY)
-5. Kiểm tra wallet address hợp lệ
-6. Ký và gửi transaction CAMLY từ Treasury Wallet
-7. Lưu vào reward_claims và transactions table
-8. Trả về tx_hash và thông tin giao dịch
+**Thay đổi 2**: Thêm function tạo ví
+```typescript
+const createCustodialWallet = async () => {
+  setIsCreatingWallet(true);
+  setWalletCreationError(null);
+  
+  try {
+    const { data, error } = await supabase.functions.invoke('create-custodial-wallet', {
+      body: { chain_id: 56 }
+    });
 
-**Logic chính**:
+    if (error || !data?.success) {
+      throw new Error(data?.error || error?.message);
+    }
+
+    // Refetch wallet profile to get new address
+    await fetchWalletProfile();
+    toast.success('Đã tạo ví F.U. Wallet thành công!');
+  } catch (err) {
+    setWalletCreationError('Không thể tạo ví. Vui lòng thử lại.');
+    console.error('[WalletCenter] Create wallet error:', err);
+  } finally {
+    setIsCreatingWallet(false);
+  }
+};
+```
+
+**Thay đổi 3**: Thêm useEffect auto-create
+```typescript
+// Auto-create custodial wallet if user has no wallet
+useEffect(() => {
+  const autoCreateWallet = async () => {
+    // Only auto-create if:
+    // 1. walletProfile has been fetched
+    // 2. User has no custodial OR external wallet
+    // 3. Not currently creating wallet
+    // 4. MetaMask not connected
+    if (
+      walletProfile !== null &&
+      !walletProfile.custodial_wallet_address &&
+      !walletProfile.external_wallet_address &&
+      !isCreatingWallet &&
+      !isConnected
+    ) {
+      await createCustodialWallet();
+    }
+  };
+
+  autoCreateWallet();
+}, [walletProfile, isConnected, isCreatingWallet]);
+```
+
+**Thay đổi 4**: Update shortenedAddress logic
+```typescript
+const shortenedAddress = useMemo(() => {
+  if (isCreatingWallet) return 'Đang tạo ví...';
+  if (activeWalletAddress) {
+    return `${activeWalletAddress.slice(0, 6)}...${activeWalletAddress.slice(-4)}`;
+  }
+  return 'Chưa có ví';
+}, [activeWalletAddress, isCreatingWallet]);
+```
+
+**Thay đổi 5**: Update UI cho trạng thái loading/error
+- Hiển thị spinner khi đang tạo ví
+- Hiển thị nút "Tạo lại" nếu có lỗi
+- Disable copy button nếu không có địa chỉ
+
+## Files Cần Sửa
+
+| File | Thay đổi |
+|------|----------|
+| `src/components/wallet/WalletCenterContainer.tsx` | Thêm logic auto-create custodial wallet |
+
+## User Flow Sau Khi Sửa
+
 ```text
-Input: { wallet_address, amount }
-
-1. Verify JWT → get user_id
-2. Check profiles.reward_status = 'approved'
-3. Calculate claimable = get_user_rewards_v2.total_reward - SUM(reward_claims.amount)
-4. Validate: amount <= claimable && amount >= 1,000,000
-5. Create viem wallet client with TREASURY_PRIVATE_KEY
-6. Send ERC20 transfer: CAMLY_CONTRACT.transfer(wallet_address, amount * 10^3)
-7. Wait for transaction receipt
-8. INSERT into reward_claims + transactions
-9. Return { success: true, tx_hash, amount }
+1. User vào trang /wallet
+2. Fetch wallet profile
+3. Nếu chưa có ví:
+   a. Hiển thị "Đang tạo ví..." 
+   b. Gọi create-custodial-wallet
+   c. Cập nhật UI với địa chỉ mới
+4. User thấy địa chỉ ví thật (0x1234...5678)
+5. Có thể Receive/Send/Claim như bình thường
 ```
 
-### Phần 2: Cập Nhật supabase/config.toml
+## Kết Quả Mong Đợi
 
-Thêm cấu hình cho edge function mới:
-```toml
-[functions.claim-reward]
-verify_jwt = false
-```
-
-### Phần 3: Component ClaimRewardDialog
-
-**File**: `src/components/wallet/ClaimRewardDialog.tsx`
-
-**UI Elements**:
-- Dialog modal với header "Claim CAMLY Rewards"
-- Hiển thị số dư claimable
-- Input amount với nút "Max"
-- Dropdown chọn ví đích (MetaMask hoặc F.U. Wallet)
-- Hiển thị estimated gas fee
-- Nút "Claim" với loading state
-- Success state với confetti animation
-- Link đến BSCScan sau khi thành công
-
-### Phần 4: Hook useClaimReward
-
-**File**: `src/hooks/useClaimReward.ts`
-
-**Functions**:
-- `claimReward(amount, walletAddress)`: Gọi edge function
-- `isLoading`, `error`, `txHash` states
-- Auto-invalidate reward-stats cache sau khi claim thành công
-
-### Phần 5: Cập Nhật WalletCenterContainer
-
-**Thay đổi**:
-- Import và sử dụng ClaimRewardDialog
-- Thay toast bằng mở dialog khi click "Claim to Wallet"
-- Thêm confetti animation khi claim thành công
-- Refresh token balances và transactions sau khi claim
-
-## Validation Rules
-
-| Rule | Value | Error Message |
-|------|-------|---------------|
-| Minimum claim | 1,000,000 CAMLY | "Số tiền tối thiểu là 1,000,000 CAMLY" |
-| Reward status | Must be 'approved' | "Phần thưởng chưa được Admin duyệt" |
-| Wallet address | Valid BSC address | "Địa chỉ ví không hợp lệ" |
-| Sufficient balance | amount <= claimable | "Số tiền vượt quá số dư khả dụng" |
-| Treasury balance | Sufficient CAMLY | "Treasury không đủ token, vui lòng liên hệ Admin" |
-
-## Bảo Mật
-
-1. **JWT Verification**: Tất cả request phải có auth token
-2. **Rate Limiting**: Tối đa 1 claim/phút/user
-3. **Wallet Validation**: Kiểm tra checksum address
-4. **Amount Validation**: Server-side validation, không tin client
-5. **Audit Logging**: Ghi log mọi claim vào audit_logs
-
-## Files Cần Tạo/Sửa
-
-| File | Action | Mô tả |
-|------|--------|-------|
-| `supabase/functions/claim-reward/index.ts` | CREATE | Edge function xử lý claim |
-| `supabase/config.toml` | UPDATE | Thêm config cho claim-reward |
-| `src/components/wallet/ClaimRewardDialog.tsx` | CREATE | Dialog UI cho claim |
-| `src/hooks/useClaimReward.ts` | CREATE | Hook quản lý claim logic |
-| `src/components/wallet/WalletCenterContainer.tsx` | UPDATE | Tích hợp ClaimRewardDialog |
-
-## User Flow Hoàn Chỉnh
-
-1. User vào trang `/wallet`
-2. Thấy "Claimable: X CAMLY" với nút "Claim to Wallet"
-3. Nếu reward_status != 'approved': Hiển thị trạng thái và disable nút
-4. Nếu reward_status == 'approved':
-   - Click "Claim to Wallet" → Mở ClaimRewardDialog
-   - Nhập số lượng hoặc click "Max"
-   - Chọn ví đích (MetaMask/F.U. Wallet)
-   - Click "Claim" → Loading state
-   - Thành công → Confetti + Success message + Link BSCScan
-   - Tự động refresh balances và claimable amount
-5. Giao dịch xuất hiện trong "Recent Activity"
-
-## Timeline Ước Tính
-
-1. Edge Function claim-reward: Core blockchain logic
-2. ClaimRewardDialog: UI component với animations
-3. useClaimReward hook: State management
-4. Tích hợp vào WalletCenterContainer: Final integration
-5. Test end-to-end: Verify trên BSC
-
+- User **hoangtydo88** sẽ có ví custodial được tạo tự động
+- Địa chỉ ví hiển thị đúng thay vì `0x0000...0000`
+- Trải nghiệm mượt mà với loading state phù hợp
