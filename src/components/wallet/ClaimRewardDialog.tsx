@@ -9,16 +9,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Gift, Wallet, ExternalLink, CheckCircle2, Loader2, AlertCircle, Shield } from 'lucide-react';
+import { Gift, Wallet, ExternalLink, CheckCircle2, Loader2, AlertCircle } from 'lucide-react';
 import { useClaimReward } from '@/hooks/useClaimReward';
-import metamaskLogo from '@/assets/metamask-logo.png';
 
 const MINIMUM_CLAIM = 1000000; // 1,000,000 CAMLY
 
@@ -27,7 +19,6 @@ interface ClaimRewardDialogProps {
   onOpenChange: (open: boolean) => void;
   claimableAmount: number;
   externalWallet: string | null;
-  custodialWallet: string | null;
   camlyPrice: number;
   onSuccess: () => void;
 }
@@ -39,16 +30,11 @@ export const ClaimRewardDialog = ({
   onOpenChange,
   claimableAmount,
   externalWallet,
-  custodialWallet,
   camlyPrice,
   onSuccess,
 }: ClaimRewardDialogProps) => {
   const [amount, setAmount] = useState('');
-  const [selectedWallet, setSelectedWallet] = useState<'external' | 'custodial'>(
-    externalWallet ? 'external' : 'custodial'
-  );
   const [step, setStep] = useState<ClaimStep>('input');
-  const [showConfetti, setShowConfetti] = useState(false);
 
   const { claimReward, isLoading, error, result, reset } = useClaimReward();
 
@@ -57,20 +43,9 @@ export const ClaimRewardDialog = ({
     if (open) {
       setAmount('');
       setStep('input');
-      setShowConfetti(false);
       reset();
-      // Default to available wallet
-      if (externalWallet) {
-        setSelectedWallet('external');
-      } else if (custodialWallet) {
-        setSelectedWallet('custodial');
-      }
     }
-  }, [open, externalWallet, custodialWallet, reset]);
-
-  const getWalletAddress = () => {
-    return selectedWallet === 'external' ? externalWallet : custodialWallet;
-  };
+  }, [open, reset]);
 
   const formatNumber = (num: number) => {
     return num.toLocaleString('vi-VN');
@@ -96,16 +71,14 @@ export const ClaimRewardDialog = ({
   };
 
   const handleClaim = async () => {
-    const walletAddress = getWalletAddress();
-    if (!walletAddress) return;
+    if (!externalWallet) return;
 
     setStep('confirming');
     
-    const claimResult = await claimReward(Number(amount), walletAddress);
+    const claimResult = await claimReward(Number(amount), externalWallet);
     
     if (claimResult) {
       setStep('success');
-      setShowConfetti(true);
       // Trigger confetti animation
       triggerConfetti();
       onSuccess();
@@ -216,36 +189,24 @@ export const ClaimRewardDialog = ({
           )}
         </div>
 
-        {/* Wallet Selection */}
-        <div className="space-y-2">
-          <Label>Ví nhận</Label>
-          <Select
-            value={selectedWallet}
-            onValueChange={(v) => setSelectedWallet(v as 'external' | 'custodial')}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {externalWallet && (
-                <SelectItem value="external">
-                  <div className="flex items-center gap-2">
-                    <img src={metamaskLogo} alt="MetaMask" className="w-5 h-5" />
-                    <span>MetaMask - {externalWallet.slice(0, 6)}...{externalWallet.slice(-4)}</span>
-                  </div>
-                </SelectItem>
-              )}
-              {custodialWallet && (
-                <SelectItem value="custodial">
-                  <div className="flex items-center gap-2">
-                    <Shield className="w-5 h-5 text-emerald-600" />
-                    <span>F.U. Wallet - {custodialWallet.slice(0, 6)}...{custodialWallet.slice(-4)}</span>
-                  </div>
-                </SelectItem>
-              )}
-            </SelectContent>
-          </Select>
-        </div>
+        {/* Wallet Info */}
+        {externalWallet ? (
+          <div className="space-y-2">
+            <Label>Ví nhận</Label>
+            <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border">
+              <Wallet className="w-5 h-5 text-amber-600" />
+              <span className="text-sm font-mono">
+                {externalWallet.slice(0, 6)}...{externalWallet.slice(-4)}
+              </span>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-center">
+            <p className="text-sm text-red-600">
+              Vui lòng kết nối ví để claim reward
+            </p>
+          </div>
+        )}
 
         {/* Network Info */}
         <div className="flex items-center gap-2 text-sm text-muted-foreground bg-gray-50 rounded-lg p-3">
@@ -264,7 +225,7 @@ export const ClaimRewardDialog = ({
         </Button>
         <Button
           onClick={handleClaim}
-          disabled={!isValidAmount() || !getWalletAddress()}
+          disabled={!isValidAmount() || !externalWallet}
           className="flex-1 bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-white"
         >
           <Gift className="w-4 h-4 mr-2" />

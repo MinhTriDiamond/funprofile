@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { RefreshCw, Gift, Wallet, Info, AlertTriangle } from 'lucide-react';
+import { Gift, Wallet, Info, AlertTriangle } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { ReceiveTab } from './ReceiveTab';
@@ -14,7 +14,6 @@ import { SendTab } from './SendTab';
 import { ClaimRewardDialog } from './ClaimRewardDialog';
 import { WalletCard } from './WalletCard';
 import { useTokenBalances } from '@/hooks/useTokenBalances';
-import { formatRelativeTime } from '@/lib/formatters';
 import bnbLogo from '@/assets/tokens/bnb-logo.webp';
 
 interface Profile {
@@ -46,17 +45,11 @@ const WalletCenterContainer = () => {
   const [walletProfileFetched, setWalletProfileFetched] = useState(false);
   const [claimableReward, setClaimableReward] = useState(0);
   const [showReceive, setShowReceive] = useState(false);
-  const [showReceiveFor, setShowReceiveFor] = useState<'custodial' | 'external'>('custodial');
   const [showSend, setShowSend] = useState(false);
   const [showClaimDialog, setShowClaimDialog] = useState(false);
   
-  // Copy states for each wallet
-  const [copiedCustodial, setCopiedCustodial] = useState(false);
+  // Copy state for external wallet
   const [copiedExternal, setCopiedExternal] = useState(false);
-  
-  // Auto-create wallet states
-  const [isCreatingWallet, setIsCreatingWallet] = useState(false);
-  const [walletCreationError, setWalletCreationError] = useState<string | null>(null);
   
   // Linking/Unlinking wallet states
   const [isLinkingWallet, setIsLinkingWallet] = useState(false);
@@ -90,15 +83,6 @@ const WalletCenterContainer = () => {
     }
   }, [connector, connectedWalletType]);
 
-  // Use token balances for custodial wallet
-  const custodialAddress = walletProfile?.custodial_wallet_address as `0x${string}` | undefined;
-  const { 
-    tokens: custodialTokens, 
-    totalUsdValue: custodialTotalValue, 
-    isLoading: isCustodialLoading, 
-    refetch: refetchCustodial 
-  } = useTokenBalances({ customAddress: custodialAddress });
-
   // Use token balances for external wallet
   const externalAddress = (address || walletProfile?.external_wallet_address) as `0x${string}` | undefined;
   const { 
@@ -110,9 +94,9 @@ const WalletCenterContainer = () => {
 
   // Get CAMLY price for claimable calculation
   const camlyPrice = useMemo(() => {
-    const camlyToken = custodialTokens.find(t => t.symbol === 'CAMLY');
+    const camlyToken = externalTokens.find(t => t.symbol === 'CAMLY');
     return camlyToken?.price || 0;
-  }, [custodialTokens]);
+  }, [externalTokens]);
 
   // On mount, disconnect wagmi if user explicitly disconnected before
   useEffect(() => {
@@ -188,49 +172,6 @@ const WalletCenterContainer = () => {
       setWalletProfileFetched(true);
     }
   };
-
-  // Auto-create custodial wallet
-  const createCustodialWallet = useCallback(async () => {
-    setIsCreatingWallet(true);
-    setWalletCreationError(null);
-    
-    try {
-      const { data, error } = await supabase.functions.invoke('create-custodial-wallet', {
-        body: { chain_id: 56 }
-      });
-
-      if (error || !data?.success) {
-        throw new Error(data?.error || error?.message || 'Unknown error');
-      }
-
-      await fetchWalletProfile();
-      toast.success('Đã tạo ví F.U. Wallet thành công!');
-    } catch (err: any) {
-      console.error('[WalletCenter] Create wallet error:', err);
-      setWalletCreationError('Không thể tạo ví. Vui lòng thử lại.');
-      toast.error('Không thể tạo ví tự động');
-    } finally {
-      setIsCreatingWallet(false);
-    }
-  }, []);
-
-  // Auto-create custodial wallet if user has no wallet at all
-  useEffect(() => {
-    const autoCreateWallet = async () => {
-      if (
-        walletProfileFetched &&
-        walletProfile !== null &&
-        !walletProfile.custodial_wallet_address &&
-        !walletProfile.external_wallet_address &&
-        !isCreatingWallet &&
-        !isConnected &&
-        !walletCreationError
-      ) {
-        await createCustodialWallet();
-      }
-    };
-    autoCreateWallet();
-  }, [walletProfileFetched, walletProfile, isConnected, isCreatingWallet, walletCreationError, createCustodialWallet]);
 
   const fetchClaimableReward = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -399,22 +340,13 @@ const WalletCenterContainer = () => {
     }
   }, [walletProfile, disconnect]);
 
-  // Copy handlers
-  const copyCustodialAddress = useCallback(() => {
-    if (walletProfile?.custodial_wallet_address) {
-      navigator.clipboard.writeText(walletProfile.custodial_wallet_address);
-      setCopiedCustodial(true);
-      toast.success('Đã copy địa chỉ F.U. Wallet');
-      setTimeout(() => setCopiedCustodial(false), 2000);
-    }
-  }, [walletProfile]);
-
+  // Copy handler
   const copyExternalAddress = useCallback(() => {
     const addr = address || walletProfile?.external_wallet_address;
     if (addr) {
       navigator.clipboard.writeText(addr);
       setCopiedExternal(true);
-      toast.success('Đã copy địa chỉ External Wallet');
+      toast.success('Đã copy địa chỉ ví');
       setTimeout(() => setCopiedExternal(false), 2000);
     }
   }, [address, walletProfile]);
@@ -432,7 +364,7 @@ const WalletCenterContainer = () => {
 
   // Has any wallet?
   const hasAnyWallet = useMemo(() => {
-    return !!(walletProfile?.external_wallet_address || walletProfile?.custodial_wallet_address || isConnected);
+    return !!(walletProfile?.external_wallet_address || isConnected);
   }, [walletProfile, isConnected]);
 
   // Show connect wallet screen if no wallet at all
@@ -459,7 +391,7 @@ const WalletCenterContainer = () => {
           </div>
           <h2 className="text-2xl font-bold text-gray-800 mb-3">Kết nối ví để tiếp tục</h2>
           <p className="text-muted-foreground mb-8 max-w-md mx-auto">
-            Kết nối ví của bạn (MetaMask, Bitget, Trust Wallet) để xem tài sản và thực hiện giao dịch trên BNB Smart Chain
+            Kết nối ví của bạn (MetaMask, Bitget, Trust Wallet, FUN Wallet) để xem tài sản và thực hiện giao dịch trên BNB Smart Chain
           </p>
           
           <Button
@@ -474,7 +406,7 @@ const WalletCenterContainer = () => {
     );
   }
 
-  // Main wallet UI with 2 columns
+  // Main wallet UI - single column layout
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -499,27 +431,8 @@ const WalletCenterContainer = () => {
         </div>
       </div>
 
-      {/* Two Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Left: F.U. Wallet (Custodial) */}
-        <WalletCard
-          walletType="custodial"
-          walletAddress={walletProfile?.custodial_wallet_address || null}
-          walletName="F.U. Wallet"
-          isLoading={isCreatingWallet}
-          tokens={custodialTokens}
-          totalUsdValue={custodialTotalValue}
-          isTokensLoading={isCustodialLoading}
-          copied={copiedCustodial}
-          onCopy={copyCustodialAddress}
-          onRefresh={refetchCustodial}
-          onReceive={() => { setShowReceiveFor('custodial'); setShowReceive(true); }}
-          onSend={() => toast.info('Tính năng Send cho F.U. Wallet đang phát triển')}
-          onSwap={() => window.open('https://pancakeswap.finance/swap', '_blank')}
-          onBuy={() => window.open('https://www.moonpay.com/buy', '_blank')}
-        />
-
-        {/* Right: External Wallet */}
+      {/* Single Column Layout - External Wallet Only */}
+      <div className="w-full">
         <WalletCard
           walletType="external"
           walletAddress={address || walletProfile?.external_wallet_address || null}
@@ -538,7 +451,7 @@ const WalletCenterContainer = () => {
           onLink={linkWalletToProfile}
           onUnlink={unlinkWalletFromProfile}
           onSwitchAccount={handleSwitchAccount}
-          onReceive={() => { setShowReceiveFor('external'); setShowReceive(true); }}
+          onReceive={() => setShowReceive(true)}
           onSend={() => setShowSend(true)}
           onSwap={() => window.open('https://pancakeswap.finance/swap', '_blank')}
           onBuy={() => window.open('https://www.moonpay.com/buy', '_blank')}
@@ -620,11 +533,7 @@ const WalletCenterContainer = () => {
             <DialogTitle>Nhận tiền</DialogTitle>
           </DialogHeader>
           <ReceiveTab 
-            walletAddress={
-              showReceiveFor === 'custodial' 
-                ? walletProfile?.custodial_wallet_address || undefined 
-                : (address || walletProfile?.external_wallet_address || undefined)
-            } 
+            walletAddress={address || walletProfile?.external_wallet_address || undefined} 
           />
         </DialogContent>
       </Dialog>
@@ -645,11 +554,9 @@ const WalletCenterContainer = () => {
         onOpenChange={setShowClaimDialog}
         claimableAmount={claimableReward}
         externalWallet={walletProfile?.external_wallet_address || (isConnected ? address : null) || null}
-        custodialWallet={walletProfile?.custodial_wallet_address || null}
         camlyPrice={camlyPrice}
         onSuccess={() => {
           fetchClaimableReward();
-          refetchCustodial();
           refetchExternal();
         }}
       />
