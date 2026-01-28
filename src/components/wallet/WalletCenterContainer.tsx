@@ -66,6 +66,10 @@ const WalletCenterContainer = () => {
   const [isCreatingWallet, setIsCreatingWallet] = useState(false);
   const [walletCreationError, setWalletCreationError] = useState<string | null>(null);
   
+  // Linking/Unlinking wallet states
+  const [isLinkingWallet, setIsLinkingWallet] = useState(false);
+  const [isUnlinkingWallet, setIsUnlinkingWallet] = useState(false);
+  
   // Track if we should show disconnected UI (user explicitly disconnected)
   const [showDisconnectedUI, setShowDisconnectedUI] = useState(() => {
     return localStorage.getItem(WALLET_DISCONNECTED_KEY) === 'true';
@@ -465,6 +469,94 @@ const WalletCenterContainer = () => {
     toast.success('Đã ngắt kết nối ví');
   };
 
+  // Link MetaMask wallet to profile (save to database with signature verification)
+  const linkWalletToProfile = useCallback(async () => {
+    if (!address || !isConnected) {
+      toast.error('Vui lòng kết nối MetaMask trước');
+      return;
+    }
+
+    setIsLinkingWallet(true);
+    
+    try {
+      // Create message for signing
+      const timestamp = Date.now();
+      const message = `Xác nhận liên kết ví ${address} với tài khoản F.U. Profile của bạn.\n\nTimestamp: ${timestamp}`;
+      
+      // Request signature from MetaMask
+      if (typeof window === 'undefined' || !window.ethereum) {
+        throw new Error('MetaMask không khả dụng');
+      }
+      
+      const signature = await window.ethereum.request({
+        method: 'personal_sign',
+        params: [message, address],
+      });
+      
+      // Send to edge function for verification
+      const { data, error } = await supabase.functions.invoke('connect-external-wallet', {
+        body: { wallet_address: address, signature, message }
+      });
+      
+      if (error || !data?.success) {
+        throw new Error(data?.error || error?.message || 'Không thể liên kết ví');
+      }
+      
+      // Refetch wallet profile
+      await fetchWalletProfile();
+      toast.success('Đã liên kết ví MetaMask thành công!');
+      
+    } catch (err: any) {
+      console.error('[WalletCenter] Link wallet error:', err);
+      
+      const errorCode = err?.code;
+      if (errorCode === 4001 || err?.message?.includes('rejected')) {
+        toast.error('Bạn đã từ chối ký xác nhận');
+      } else if (err?.message?.includes('already connected')) {
+        toast.error('Ví này đã được liên kết với tài khoản khác');
+      } else {
+        toast.error(err?.message || 'Không thể liên kết ví');
+      }
+    } finally {
+      setIsLinkingWallet(false);
+    }
+  }, [address, isConnected]);
+
+  // Unlink external wallet from profile (remove from database)
+  const unlinkWalletFromProfile = useCallback(async () => {
+    if (!walletProfile?.external_wallet_address) {
+      toast.error('Không có ví external để hủy liên kết');
+      return;
+    }
+
+    setIsUnlinkingWallet(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('disconnect-external-wallet');
+      
+      if (error || !data?.success) {
+        throw new Error(data?.error || error?.message || 'Không thể hủy liên kết');
+      }
+      
+      // Switch to custodial wallet
+      setActiveWalletType('custodial');
+      
+      // Disconnect wagmi session
+      disconnect();
+      
+      // Refetch wallet profile
+      await fetchWalletProfile();
+      
+      toast.success('Đã hủy liên kết ví MetaMask');
+      
+    } catch (err: any) {
+      console.error('[WalletCenter] Unlink wallet error:', err);
+      toast.error(err?.message || 'Không thể hủy liên kết ví');
+    } finally {
+      setIsUnlinkingWallet(false);
+    }
+  }, [walletProfile, disconnect]);
+
   const handleSwitchNetwork = () => {
     switchChain(
       { chainId: bsc.id },
@@ -696,7 +788,51 @@ const WalletCenterContainer = () => {
                   <LogOut className="w-4 h-4 mr-1" />
                   Disconnect
                 </Button>
+                {/* Unlink from Profile button - removes from database */}
+                {walletProfile?.external_wallet_address && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          onClick={unlinkWalletFromProfile}
+                          disabled={isUnlinkingWallet}
+                          variant="ghost"
+                          size="sm"
+                          className="bg-orange-50 text-orange-600 hover:bg-orange-500 hover:text-white transition-all duration-200"
+                        >
+                          {isUnlinkingWallet ? (
+                            <RefreshCw className="w-4 h-4 mr-1 animate-spin" />
+                          ) : (
+                            <LogOut className="w-4 h-4 mr-1" />
+                          )}
+                          Hủy liên kết
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Xóa ví MetaMask khỏi tài khoản (cần ký lại để liên kết)</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
               </>
+            )}
+            
+            {/* Show Link button if MetaMask connected but not saved to DB */}
+            {activeWalletType === 'external' && isConnected && !walletProfile?.external_wallet_address && (
+              <Button
+                onClick={linkWalletToProfile}
+                disabled={isLinkingWallet}
+                variant="ghost"
+                size="sm"
+                className="bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white transition-all duration-200"
+              >
+                {isLinkingWallet ? (
+                  <RefreshCw className="w-4 h-4 mr-1 animate-spin" />
+                ) : (
+                  <Shield className="w-4 h-4 mr-1" />
+                )}
+                Liên kết với Profile
+              </Button>
             )}
             
             {/* Show connect MetaMask button if viewing custodial but MetaMask not connected */}
@@ -711,22 +847,57 @@ const WalletCenterContainer = () => {
                 Connect MetaMask
               </Button>
             )}
+            
+            {/* Show unlink button for custodial mode if external wallet exists in DB */}
+            {activeWalletType === 'custodial' && walletProfile?.external_wallet_address && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      onClick={unlinkWalletFromProfile}
+                      disabled={isUnlinkingWallet}
+                      variant="ghost"
+                      size="sm"
+                      className="bg-orange-50 text-orange-600 hover:bg-orange-500 hover:text-white transition-all duration-200"
+                    >
+                      {isUnlinkingWallet ? (
+                        <RefreshCw className="w-4 h-4 mr-1 animate-spin" />
+                      ) : (
+                        <LogOut className="w-4 h-4 mr-1" />
+                      )}
+                      Hủy liên kết MetaMask
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Địa chỉ đã liên kết: {walletProfile.external_wallet_address.slice(0, 6)}...{walletProfile.external_wallet_address.slice(-4)}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
           </div>
         </div>
 
         {/* Wallet Type Badge */}
-        <div className="px-4 py-2 bg-gray-50 border-b flex items-center gap-2">
+        <div className="px-4 py-2 bg-muted/50 border-b flex items-center gap-2 flex-wrap">
           {activeWalletType === 'custodial' ? (
             <>
               <Shield className="w-4 h-4 text-emerald-600" />
               <span className="text-sm text-emerald-700 font-medium">F.U. Wallet (Custodial)</span>
-              <span className="text-xs text-muted-foreground">• Không cần MetaMask</span>
+              <span className="text-xs text-muted-foreground">• Ví được tạo tự động, không cần MetaMask</span>
             </>
           ) : (
             <>
               <img src={metamaskLogo} alt="MetaMask" className="w-4 h-4" />
               <span className="text-sm text-orange-700 font-medium">MetaMask (External)</span>
-              {isConnected && <span className="text-xs text-green-600">• Connected</span>}
+              {isConnected ? (
+                walletProfile?.external_wallet_address ? (
+                  <span className="text-xs text-green-600">• Đã liên kết với Profile</span>
+                ) : (
+                  <span className="text-xs text-yellow-600">• Đã kết nối, chưa liên kết với Profile</span>
+                )
+              ) : (
+                <span className="text-xs text-muted-foreground">• Chưa kết nối</span>
+              )}
             </>
           )}
         </div>
