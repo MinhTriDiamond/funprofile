@@ -51,6 +51,7 @@ const WalletCenterContainer = () => {
   
   const [profile, setProfile] = useState<Profile | null>(null);
   const [walletProfile, setWalletProfile] = useState<WalletProfile | null>(null);
+  const [walletProfileFetched, setWalletProfileFetched] = useState(false);
   const [activeWalletType, setActiveWalletType] = useState<'external' | 'custodial'>('custodial');
   const [copied, setCopied] = useState(false);
   const [claimableReward, setClaimableReward] = useState(0);
@@ -60,6 +61,10 @@ const WalletCenterContainer = () => {
   const [showClaimDialog, setShowClaimDialog] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
+  
+  // Auto-create wallet states
+  const [isCreatingWallet, setIsCreatingWallet] = useState(false);
+  const [walletCreationError, setWalletCreationError] = useState<string | null>(null);
   
   // Track if we should show disconnected UI (user explicitly disconnected)
   const [showDisconnectedUI, setShowDisconnectedUI] = useState(() => {
@@ -188,8 +193,64 @@ const WalletCenterContainer = () => {
           setActiveWalletType('external');
         }
       }
+      setWalletProfileFetched(true);
     }
   };
+
+  // Auto-create custodial wallet if user has no wallet
+  const createCustodialWallet = useCallback(async () => {
+    setIsCreatingWallet(true);
+    setWalletCreationError(null);
+    
+    try {
+      console.log('[WalletCenter] Auto-creating custodial wallet...');
+      const { data, error } = await supabase.functions.invoke('create-custodial-wallet', {
+        body: { chain_id: 56 }
+      });
+
+      if (error || !data?.success) {
+        throw new Error(data?.error || error?.message || 'Unknown error');
+      }
+
+      console.log('[WalletCenter] Wallet created:', data.wallet_address);
+      
+      // Refetch wallet profile to get new address
+      await fetchWalletProfile();
+      toast.success('Đã tạo ví F.U. Wallet thành công!');
+    } catch (err: any) {
+      console.error('[WalletCenter] Create wallet error:', err);
+      setWalletCreationError('Không thể tạo ví. Vui lòng thử lại.');
+      toast.error('Không thể tạo ví tự động');
+    } finally {
+      setIsCreatingWallet(false);
+    }
+  }, []);
+
+  // Auto-create custodial wallet if user has no wallet at all
+  useEffect(() => {
+    const autoCreateWallet = async () => {
+      // Only auto-create if:
+      // 1. walletProfile has been fetched (not null check, but fetched flag)
+      // 2. User has no custodial AND no external wallet
+      // 3. Not currently creating wallet
+      // 4. MetaMask not connected
+      // 5. No previous creation error (prevent infinite loop)
+      if (
+        walletProfileFetched &&
+        walletProfile !== null &&
+        !walletProfile.custodial_wallet_address &&
+        !walletProfile.external_wallet_address &&
+        !isCreatingWallet &&
+        !isConnected &&
+        !walletCreationError
+      ) {
+        console.log('[WalletCenter] No wallet found, auto-creating...');
+        await createCustodialWallet();
+      }
+    };
+
+    autoCreateWallet();
+  }, [walletProfileFetched, walletProfile, isConnected, isCreatingWallet, walletCreationError, createCustodialWallet]);
 
   const fetchClaimableReward = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -423,7 +484,15 @@ const WalletCenterContainer = () => {
     }
   };
 
-  const shortenedAddress = activeWalletAddress ? `${activeWalletAddress.slice(0, 6)}...${activeWalletAddress.slice(-4)}` : '0x0000...0000';
+  // Compute shortened address with loading/error states
+  const shortenedAddress = useMemo(() => {
+    if (isCreatingWallet) return 'Đang tạo ví...';
+    if (activeWalletAddress) {
+      return `${activeWalletAddress.slice(0, 6)}...${activeWalletAddress.slice(-4)}`;
+    }
+    if (walletCreationError) return 'Lỗi tạo ví';
+    return 'Chưa có ví';
+  }, [activeWalletAddress, isCreatingWallet, walletCreationError]);
 
   const formatNumber = (num: number, decimals: number = 0) => {
     const fixed = num.toFixed(decimals);
