@@ -11,6 +11,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { toast } from 'sonner';
 import { ReceiveTab } from './ReceiveTab';
 import { SendTab } from './SendTab';
+import { ClaimRewardDialog } from './ClaimRewardDialog';
 import { useTokenBalances } from '@/hooks/useTokenBalances';
 import { formatRelativeTime } from '@/lib/formatters';
 import metamaskLogo from '@/assets/metamask-logo.png';
@@ -56,6 +57,7 @@ const WalletCenterContainer = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [showReceive, setShowReceive] = useState(false);
   const [showSend, setShowSend] = useState(false);
+  const [showClaimDialog, setShowClaimDialog] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   
@@ -797,7 +799,8 @@ const WalletCenterContainer = () => {
                     toast.error('Phần thưởng đã bị từ chối. Vui lòng liên hệ Admin.');
                   }
                 } else {
-                  toast.info('Tính năng claim reward đang phát triển');
+                  // Open claim dialog
+                  setShowClaimDialog(true);
                 }
               }}
               disabled={config.disabled}
@@ -940,6 +943,22 @@ const WalletCenterContainer = () => {
           <SendTab />
         </DialogContent>
       </Dialog>
+
+      {/* Claim Reward Dialog */}
+      <ClaimRewardDialog
+        open={showClaimDialog}
+        onOpenChange={setShowClaimDialog}
+        claimableAmount={claimableReward}
+        externalWallet={walletProfile?.external_wallet_address || (isConnected ? address : null) || null}
+        custodialWallet={walletProfile?.custodial_wallet_address || null}
+        camlyPrice={camlyPrice}
+        onSuccess={() => {
+          // Refresh all data after successful claim
+          fetchClaimableReward();
+          fetchTransactions();
+          refetchTokens();
+        }}
+      />
     </div>
   );
 };
