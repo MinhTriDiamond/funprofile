@@ -1,188 +1,188 @@
 
-# Kế Hoạch Sửa Lỗi Kết Nối Ví và Thêm Nút Ngắt Kết Nối
+# Kế Hoạch Cải Thiện Kết Nối Ví: Hỗ Trợ MetaMask, Bitget và Trust Wallet
 
 ## Phân Tích Hiện Trạng
 
-### Dữ liệu ví của user hoangtydo88:
-| Trường | Giá trị |
-|--------|---------|
-| `custodial_wallet_address` | `0x2e11f6e05fb1bb6f985d98a6e0e630e72d0af6bd` |
-| `external_wallet_address` | **NULL** (chưa kết nối MetaMask) |
-| `default_wallet_type` | `custodial` |
+### Cấu Hình Hiện Tại
+- **RainbowKit đã cấu hình**: MetaMask, Trust Wallet, Bitget Wallet trong `src/config/web3.ts`
+- **F.U. Wallet (Custodial)**: Hoạt động đúng, địa chỉ `0x2e11...f6bd` là ví custodial tự động tạo
+- **Vấn đề**: UI chỉ hiển thị "Connect MetaMask", không cho phép chọn ví khác
 
-### Giải thích:
-- **Ví đang hiển thị (`0x2e11...f6bd`)** là **F.U. Custodial Wallet** - ví do hệ thống tạo tự động
-- **Đây không phải ví MetaMask cá nhân của bạn** - Để kết nối ví MetaMask riêng, bạn cần nhấn "Connect MetaMask" và ký xác nhận
-- Hiện tại **nút Disconnect chỉ xuất hiện khi đang dùng External wallet (MetaMask)**
-
-## Những Thay Đổi Cần Làm
-
-### Phần 1: Thêm Logic Kết Nối Ví MetaMask và Lưu vào Database
-
-**Vấn đề hiện tại:**
-- Khi nhấn "Connect MetaMask", ví chỉ kết nối tạm thời qua wagmi
-- Địa chỉ MetaMask KHÔNG được lưu vào `external_wallet_address` trong database
-- Khi refresh trang, phải kết nối lại
-
-**Giải pháp:**
-- Sau khi kết nối MetaMask thành công, gọi Edge Function `connect-external-wallet` để:
-  1. Yêu cầu user ký message xác nhận quyền sở hữu ví
-  2. Verify signature trên server
-  3. Lưu địa chỉ vào `profiles.external_wallet_address`
-
-### Phần 2: Cải Thiện UI Nút Ngắt Kết Nối
-
-**Thay đổi:**
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│                       WALLET HEADER UI                           │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  [F.U. Wallet]  [MetaMask]    BNB Smart Chain    user  0x123... │
-│                                                                  │
-│  Hiện tại (Custodial mode):                                     │
-│  ├─ [Connect MetaMask] button                                   │
-│  └─ KHÔNG có Disconnect                                         │
-│                                                                  │
-│  Sau khi sửa (Custodial mode):                                  │
-│  ├─ [Connect MetaMask] button (để liên kết ví ngoài)            │
-│  ├─ Nếu đã có external_wallet_address:                          │
-│  │   └─ [Unlink MetaMask] button                                │
-│  └─ Info text: "Ví F.U. không thể xóa, chỉ có thể thêm MetaMask"│
-│                                                                  │
-│  External mode (MetaMask connected):                             │
-│  ├─ [Switch Account] button                                     │
-│  ├─ [Disconnect] button (ngắt kết nối tạm thời)                 │
-│  └─ [Unlink from Profile] button (xóa khỏi database)            │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### Phần 3: Edge Function Mới - `disconnect-external-wallet`
-
-**Chức năng:**
-- Xóa `external_wallet_address` khỏi profile
-- Chuyển `default_wallet_type` về `custodial`
-- Yêu cầu xác nhận từ user
+### Giải Pháp
+Sử dụng RainbowKit's **ConnectButton** hoặc **useConnectModal** để hiển thị modal chọn ví, cho phép user chọn giữa MetaMask, Bitget, Trust Wallet.
 
 ## Chi Tiết Triển Khai
 
-### File 1: Tạo Edge Function `disconnect-external-wallet`
+### Phần 1: Thêm Logo Ví Bitget và Trust Wallet
 
-**Path:** `supabase/functions/disconnect-external-wallet/index.ts`
+**Tải thêm logo:**
+- `src/assets/bitget-logo.png` - Logo Bitget Wallet
+- `src/assets/trust-wallet-logo.png` - Logo Trust Wallet
 
-**Logic:**
-```text
-1. Verify JWT -> get user_id
-2. Update profiles SET external_wallet_address = NULL, default_wallet_type = 'custodial'
-3. Return success
+### Phần 2: Sử Dụng RainbowKit Modal
+
+Thay đổi `handleConnect()` để sử dụng RainbowKit's `useConnectModal`:
+
+```typescript
+import { useConnectModal } from '@rainbow-me/rainbowkit';
+
+const { openConnectModal } = useConnectModal();
+
+const handleConnect = () => {
+  if (openConnectModal) {
+    openConnectModal(); // Mở modal RainbowKit với đầy đủ các ví
+  }
+};
 ```
 
-### File 2: Cập nhật WalletCenterContainer.tsx
+### Phần 3: Cập Nhật UI Hiển Thị
 
-**Thay đổi 1:** Thêm function `linkWalletToProfile`
+**Thay đổi nút Connect:**
+```text
+Trước: [Connect MetaMask] - chỉ MetaMask
+Sau:   [Connect Wallet] - mở modal với MetaMask, Bitget, Trust Wallet
+```
+
+**Cập nhật Wallet Type Badge:**
+- Hiển thị đúng logo ví đang kết nối (MetaMask/Bitget/Trust)
+- Sử dụng `connector.name` từ wagmi để xác định loại ví
+
+### Phần 4: Cập Nhật Function Link Wallet
+
+Thay vì dùng `window.ethereum.request()`, sử dụng wagmi's `useSignMessage` hook để hỗ trợ tất cả các ví:
+
 ```typescript
-// Sau khi MetaMask kết nối thành công, lưu vào database
+import { useSignMessage } from 'wagmi';
+
+const { signMessageAsync } = useSignMessage();
+
 const linkWalletToProfile = async () => {
-  if (!address) return;
-  
-  const message = `Xác nhận liên kết ví ${address} với tài khoản F.U. Profile của bạn.\n\nTimestamp: ${Date.now()}`;
-  
-  // Request signature from MetaMask
-  const signature = await window.ethereum.request({
-    method: 'personal_sign',
-    params: [message, address],
+  const signature = await signMessageAsync({ 
+    message: `Xác nhận liên kết ví ${address}...`
   });
-  
-  // Send to edge function
-  const { data, error } = await supabase.functions.invoke('connect-external-wallet', {
-    body: { wallet_address: address, signature, message }
-  });
-  
-  if (data?.success) {
-    await fetchWalletProfile();
-    toast.success('Đã liên kết ví MetaMask thành công!');
-  }
+  // ... rest of logic
 };
-```
-
-**Thay đổi 2:** Thêm function `unlinkWalletFromProfile`
-```typescript
-const unlinkWalletFromProfile = async () => {
-  const { data, error } = await supabase.functions.invoke('disconnect-external-wallet');
-  
-  if (data?.success) {
-    setActiveWalletType('custodial');
-    await fetchWalletProfile();
-    disconnect(); // Also disconnect wagmi
-    toast.success('Đã hủy liên kết ví MetaMask');
-  }
-};
-```
-
-**Thay đổi 3:** Cập nhật UI buttons
-- Thêm nút "Liên kết" sau khi connect MetaMask (nếu chưa lưu vào DB)
-- Thêm nút "Hủy liên kết" cho ví external đã lưu
-- Thêm tooltip giải thích sự khác biệt giữa 2 loại ví
-
-### File 3: Cập nhật supabase/config.toml
-
-Thêm cấu hình cho edge function mới:
-```toml
-[functions.disconnect-external-wallet]
-verify_jwt = false
-```
-
-## User Flow Sau Khi Sửa
-
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│                    COMPLETE WALLET FLOW                          │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  User mới đăng ký:                                              │
-│  1. Hệ thống tự động tạo F.U. Custodial Wallet                  │
-│  2. Hiển thị địa chỉ ví custodial (0xABC...)                    │
-│  3. User có thể kết nối thêm ví MetaMask:                       │
-│     a. Click "Connect MetaMask"                                 │
-│     b. Approve trong MetaMask                                   │
-│     c. Click "Liên kết với Profile"                             │
-│     d. Ký message xác nhận                                      │
-│     e. Địa chỉ được lưu vào external_wallet_address             │
-│  4. User có thể switch giữa 2 ví                                │
-│                                                                  │
-│  Ngắt kết nối MetaMask:                                         │
-│  • "Disconnect" = Ngắt kết nối tạm thời (có thể connect lại)    │
-│  • "Hủy liên kết" = Xóa khỏi database (phải ký lại để liên kết) │
-│                                                                  │
-│  F.U. Wallet:                                                   │
-│  • KHÔNG THỂ xóa hoặc ngắt kết nối                              │
-│  • Luôn available cho user                                      │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
 ```
 
 ## Files Cần Tạo/Sửa
 
 | File | Action | Mô tả |
 |------|--------|-------|
-| `supabase/functions/disconnect-external-wallet/index.ts` | CREATE | Edge function hủy liên kết ví |
-| `supabase/config.toml` | UPDATE | Thêm config cho disconnect-external-wallet |
-| `src/components/wallet/WalletCenterContainer.tsx` | UPDATE | Thêm logic link/unlink wallet + UI buttons |
+| `src/components/wallet/WalletCenterContainer.tsx` | UPDATE | Sử dụng RainbowKit modal, cập nhật UI |
+| `src/assets/bitget-logo.webp` | CREATE | Logo Bitget Wallet |
+| `src/assets/trust-wallet-logo.webp` | CREATE | Logo Trust Wallet |
 
-## Phân Biệt Rõ Hai Loại Ví
+## Thay Đổi Chi Tiết trong WalletCenterContainer.tsx
 
-| Tính năng | F.U. Custodial Wallet | MetaMask External |
-|-----------|----------------------|-------------------|
-| **Tạo bởi** | Hệ thống tự động | User kết nối |
-| **Private key** | Lưu encrypted trong DB | User quản lý |
-| **Có thể xóa?** | ❌ Không | ✅ Có thể hủy liên kết |
-| **Yêu cầu MetaMask?** | Không | Có |
-| **Send tokens** | Qua Edge Function | Trực tiếp qua MetaMask |
-| **Claim rewards** | ✅ Có thể | ✅ Có thể |
+### 1. Import thêm hooks từ RainbowKit
 
-## Bổ Sung: Hiển Thị Rõ Địa Chỉ Ví Đang Dùng
+```typescript
+import { useConnectModal } from '@rainbow-me/rainbowkit';
+import { useSignMessage, useAccount } from 'wagmi';
+```
 
-Thêm badge/tooltip cho user hiểu:
-- "Đây là ví F.U. được tạo tự động cho bạn"
-- "Muốn dùng ví MetaMask riêng? Nhấn 'Connect MetaMask' và 'Liên kết'"
+### 2. Lấy thông tin connector
+
+```typescript
+const { connector } = useAccount();
+
+// Xác định loại ví đang kết nối
+const connectedWalletType = useMemo(() => {
+  if (!connector) return null;
+  const name = connector.name.toLowerCase();
+  if (name.includes('metamask')) return 'metamask';
+  if (name.includes('bitget')) return 'bitget';
+  if (name.includes('trust')) return 'trust';
+  return 'other';
+}, [connector]);
+```
+
+### 3. Cập nhật handleConnect()
+
+```typescript
+const { openConnectModal } = useConnectModal();
+
+const handleConnect = useCallback(() => {
+  localStorage.removeItem(WALLET_DISCONNECTED_KEY);
+  setShowDisconnectedUI(false);
+  
+  if (openConnectModal) {
+    openConnectModal();
+  }
+}, [openConnectModal]);
+```
+
+### 4. Cập nhật linkWalletToProfile() với useSignMessage
+
+```typescript
+const { signMessageAsync } = useSignMessage();
+
+const linkWalletToProfile = useCallback(async () => {
+  if (!address || !isConnected) return;
+  
+  const message = `Xác nhận liên kết ví ${address}...`;
+  
+  try {
+    const signature = await signMessageAsync({ message });
+    
+    const { data, error } = await supabase.functions.invoke('connect-external-wallet', {
+      body: { wallet_address: address, signature, message }
+    });
+    // ...
+  } catch (err) {
+    // Handle error
+  }
+}, [address, isConnected, signMessageAsync]);
+```
+
+### 5. Cập nhật UI Badge với dynamic wallet info
+
+```typescript
+// Trong Wallet Type Badge section
+{activeWalletType === 'external' && (
+  <>
+    {connectedWalletType === 'metamask' && <img src={metamaskLogo} ... />}
+    {connectedWalletType === 'bitget' && <img src={bitgetLogo} ... />}
+    {connectedWalletType === 'trust' && <img src={trustLogo} ... />}
+    <span>{connector?.name || 'External'} (External)</span>
+  </>
+)}
+```
+
+### 6. Cập nhật nút Connect trong UI
+
+```typescript
+// Thay thế nút "Connect MetaMask" bằng "Connect Wallet"
+<Button onClick={handleConnect}>
+  <Wallet className="w-4 h-4 mr-1" />
+  Connect Wallet
+</Button>
+```
+
+## User Flow Sau Khi Sửa
+
+```text
+1. User vào /wallet, thấy F.U. Wallet (Custodial)
+2. Nhấn "Connect Wallet"
+3. RainbowKit modal hiện lên với các lựa chọn:
+   ├─ MetaMask
+   ├─ Trust Wallet
+   └─ Bitget Wallet
+4. User chọn ví muốn kết nối (VD: Bitget)
+5. Ví được kết nối, hiển thị badge "Bitget Wallet (External)"
+6. User có thể "Liên kết với Profile" để lưu vào database
+7. Có thể switch giữa F.U. Wallet và External Wallet
+```
+
+## Ghi Chú Quan Trọng
+
+**F.U. Wallet (Custodial) - `0x2e11...f6bd`:**
+- Đây là ví được hệ thống tạo tự động cho bạn
+- KHÔNG THỂ xóa hoặc thay đổi
+- Private key được mã hóa và lưu an toàn trong database
+- Luôn available ngay cả khi không có MetaMask/Bitget
+
+**External Wallet (MetaMask/Bitget/Trust):**
+- Ví cá nhân của bạn, do bạn quản lý
+- Có thể liên kết/hủy liên kết tùy ý
+- Cần ký message để xác minh quyền sở hữu khi liên kết
