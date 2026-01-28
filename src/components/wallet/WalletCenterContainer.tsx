@@ -74,6 +74,7 @@ const WalletCenterContainer = () => {
     if (name.includes('metamask')) return 'metamask';
     if (name.includes('bitget')) return 'bitget';
     if (name.includes('trust')) return 'trust';
+    if (name.includes('fun')) return 'fun';
     return 'other';
   }, [connector]);
 
@@ -84,6 +85,7 @@ const WalletCenterContainer = () => {
       case 'metamask': return 'MetaMask';
       case 'bitget': return 'Bitget Wallet';
       case 'trust': return 'Trust Wallet';
+      case 'fun': return 'FUN Wallet';
       default: return 'External Wallet';
     }
   }, [connector, connectedWalletType]);

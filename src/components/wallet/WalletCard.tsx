@@ -9,13 +9,14 @@ import metamaskLogo from '@/assets/metamask-logo.png';
 import bitgetLogo from '@/assets/bitget-logo.png';
 import trustWalletLogo from '@/assets/trust-wallet-logo.png';
 import funProfileLogo from '@/assets/fun-profile-logo.png';
+import funWalletLogo from '@/assets/fun-wallet-logo.png';
 
 interface WalletCardProps {
   walletType: 'custodial' | 'external';
   walletAddress: string | null;
   walletName: string;
   walletLogo?: string;
-  connectorType?: 'metamask' | 'bitget' | 'trust' | 'other' | null;
+  connectorType?: 'metamask' | 'bitget' | 'trust' | 'fun' | 'other' | null;
   isConnected?: boolean;
   isLinkedToProfile?: boolean;
   isLoading?: boolean;
@@ -68,6 +69,7 @@ const getWalletLogo = (connectorType: string | null | undefined) => {
     case 'metamask': return metamaskLogo;
     case 'bitget': return bitgetLogo;
     case 'trust': return trustWalletLogo;
+    case 'fun': return funWalletLogo;
     default: return metamaskLogo;
   }
 };
