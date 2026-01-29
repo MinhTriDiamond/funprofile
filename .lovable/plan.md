@@ -1,170 +1,316 @@
 
 
-# Kế Hoạch: Kiểm Tra Treasury và Hiển Thị Số Dư Cho Admin
+# Kế Hoạch: Tạo Parallel Development Kit (PDK) Hoàn Chỉnh
 
 ## Mục Tiêu
 
-1. **Tạo Edge Function** để lấy số dư Treasury (BNB + CAMLY)
-2. **Thêm component** hiển thị Treasury balance trong Admin Dashboard
-3. **Hướng dẫn test** flow claim CAMLY
+Tạo bộ PDK đầy đủ để 15 cộng sự có thể:
+1. Copy PDK vào project Lovable mới và bắt đầu xây dựng ngay
+2. Phát triển tính năng độc lập mà không cần hiểu toàn bộ Fun Profile
+3. Code tương thích hoàn toàn với Fun Profile để dễ dàng merge
 
-## Phân Tích Hiện Trạng
+---
 
-### Đã có sẵn:
-- ✅ `TREASURY_WALLET_ADDRESS` - Đã cấu hình
-- ✅ `TREASURY_PRIVATE_KEY` - Đã cấu hình  
-- ✅ Edge function `claim-reward` - Hoạt động đầy đủ
-- ✅ CAMLY Token: `0x0910320181889feFDE0BB1Ca63962b0A8882e413` (3 decimals)
-
-### Cần bổ sung:
-- Edge function để lấy Treasury balance (an toàn, không cần private key)
-- Component hiển thị cho Admin Dashboard
-
-## Chi Tiết Thay Đổi
-
-### 1. Tạo Edge Function: `treasury-balance`
-
-```typescript
-// supabase/functions/treasury-balance/index.ts
-// Chức năng: Trả về số dư BNB và CAMLY trong Treasury Wallet
-// Bảo mật: Chỉ Admin mới gọi được (kiểm tra role)
-// Không cần private key - chỉ đọc public data từ blockchain
-
-GET /treasury-balance
-Response: {
-  bnb_balance: "0.5",
-  camly_balance: "10000000",
-  treasury_address: "0x...",
-  updated_at: "2026-01-29T..."
-}
-```
-
-### 2. Tạo Component: `TreasuryBalanceCard`
-
-```typescript
-// src/components/admin/TreasuryBalanceCard.tsx
-// Hiển thị:
-// - Số dư BNB (để trả gas)
-// - Số dư CAMLY (để trả thưởng)
-// - Địa chỉ Treasury (link BscScan)
-// - Cảnh báo nếu số dư thấp
-```
-
-### 3. Thêm vào OverviewTab hoặc BlockchainTab
+## Cấu Trúc PDK Sẽ Tạo
 
 ```text
-┌─────────────────────────────────────────────────────────────────────┐
-│  💰 Treasury Wallet                                                 │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│  📍 Address: 0x1234...ABCD   [📋 Copy] [🔗 BscScan]                │
-│                                                                     │
-│  ┌─────────────────────┐  ┌─────────────────────┐                  │
-│  │      BNB            │  │      CAMLY          │                  │
-│  │   0.523 BNB         │  │   5,000,000 CAMLY   │                  │
-│  │   (~$365.10)        │  │   (~$20.00)         │                  │
-│  │   ✅ Đủ gas fee     │  │   ✅ Đủ trả thưởng  │                  │
-│  └─────────────────────┘  └─────────────────────┘                  │
-│                                                                     │
-│  ⚠️ Cảnh báo: Nếu BNB < 0.01 hoặc CAMLY < 100,000                 │
-│                                                                     │
-└─────────────────────────────────────────────────────────────────────┘
+/pdk/
+├── README.md                           # Hướng dẫn bắt đầu (tiếng Việt)
+├── CONVENTIONS.md                      # Quy ước đặt tên, coding style
+├── API_CONTRACT.md                     # Database schema, API có sẵn
+├── MERGE_GUIDE.md                      # Hướng dẫn submit code
+│
+├── /core/
+│   ├── /components/
+│   │   └── /ui/                        # 20 components thiết yếu
+│   │       ├── button.tsx
+│   │       ├── card.tsx
+│   │       ├── dialog.tsx
+│   │       ├── input.tsx
+│   │       ├── avatar.tsx
+│   │       ├── badge.tsx
+│   │       ├── skeleton.tsx
+│   │       ├── toast.tsx
+│   │       ├── toaster.tsx
+│   │       ├── tabs.tsx
+│   │       ├── select.tsx
+│   │       ├── label.tsx
+│   │       ├── separator.tsx
+│   │       ├── switch.tsx
+│   │       ├── checkbox.tsx
+│   │       ├── textarea.tsx
+│   │       ├── progress.tsx
+│   │       ├── alert.tsx
+│   │       ├── scroll-area.tsx
+│   │       └── sonner.tsx              # Toast notifications
+│   │
+│   ├── /hooks/                         # Hooks dùng chung
+│   │   ├── use-mobile.tsx
+│   │   ├── use-toast.ts
+│   │   ├── useDebounce.ts
+│   │   └── useIntersectionObserver.ts
+│   │
+│   └── /lib/                           # Utilities
+│       ├── utils.ts                    # cn() helper
+│       └── formatters.ts               # Format số, ngày, địa chỉ
+│
+├── /config/                            # Config files
+│   ├── tailwind.config.ts              # Tailwind config chuẩn
+│   ├── index.css                       # CSS variables + theme
+│   └── components.json                 # shadcn config
+│
+├── /templates/
+│   └── /feature/                       # Template cho feature mới
+│       ├── README.md                   # Mô tả feature template
+│       ├── /components/
+│       │   └── ExampleCard.tsx         # Component mẫu
+│       ├── /hooks/
+│       │   └── useExampleFeature.ts    # Hook mẫu
+│       ├── /pages/
+│       │   └── ExamplePage.tsx         # Page mẫu
+│       └── /database/
+│           └── migration.sql           # SQL template
+│
+└── /examples/
+    └── /badges-feature/                # Ví dụ hoàn chỉnh
+        ├── README.md
+        ├── /components/
+        │   ├── BadgeCard.tsx
+        │   └── BadgeList.tsx
+        ├── /hooks/
+        │   └── useBadges.ts
+        └── /database/
+            └── migration.sql
 ```
 
-## Files Cần Tạo/Sửa
+---
 
-| File | Action | Mô tả |
-|------|--------|-------|
-| `supabase/functions/treasury-balance/index.ts` | CREATE | Edge function lấy số dư |
-| `src/components/admin/TreasuryBalanceCard.tsx` | CREATE | Component hiển thị |
-| `src/components/admin/BlockchainTab.tsx` | UPDATE | Thêm TreasuryBalanceCard |
+## Files Sẽ Tạo (Chi Tiết)
 
-## Chi Tiết Code
+### 1. Documentation Files
 
-### Edge Function: `treasury-balance`
+| File | Nội dung chính |
+|------|----------------|
+| `pdk/README.md` | Hướng dẫn setup 5 phút, cấu trúc folder, cách bắt đầu |
+| `pdk/CONVENTIONS.md` | Quy ước đặt tên files, components, tables, CSS classes |
+| `pdk/API_CONTRACT.md` | Database schema profiles/posts/reactions, API có sẵn |
+| `pdk/MERGE_GUIDE.md` | Checklist submit, form báo cáo, quy trình review |
 
-```typescript
-// supabase/functions/treasury-balance/index.ts
+### 2. Core Components (20 files)
 
-import { createClient } from 'supabase-js';
-import { createPublicClient, http, formatUnits } from 'viem';
-import { bsc } from 'viem/chains';
+Copy từ `src/components/ui/` với điều chỉnh import paths:
+- button.tsx, card.tsx, dialog.tsx, input.tsx
+- avatar.tsx (simplified, remove imageTransform dependency)
+- badge.tsx, skeleton.tsx, toast.tsx, toaster.tsx
+- tabs.tsx, select.tsx, label.tsx, separator.tsx
+- switch.tsx, checkbox.tsx, textarea.tsx, progress.tsx
+- alert.tsx, scroll-area.tsx, sonner.tsx
 
-const CAMLY_CONTRACT = '0x0910320181889feFDE0BB1Ca63962b0A8882e413';
+### 3. Core Hooks (4 files)
 
-Deno.serve(async (req) => {
-  // 1. CORS handling
-  // 2. Verify admin role
-  // 3. Get TREASURY_WALLET_ADDRESS from env
-  // 4. Use publicClient to read:
-  //    - BNB balance: getBalance()
-  //    - CAMLY balance: readContract({ balanceOf })
-  // 5. Return formatted balances
-});
-```
+Copy từ `src/hooks/`:
+- use-mobile.tsx
+- use-toast.ts (từ ui folder)
+- useDebounce.ts
+- useIntersectionObserver.ts
 
-### Component: `TreasuryBalanceCard`
+### 4. Core Lib (2 files)
 
-```typescript
-// src/components/admin/TreasuryBalanceCard.tsx
+Copy từ `src/lib/`:
+- utils.ts (cn helper)
+- formatters.ts (formatNumber, formatDate, shortenAddress)
 
-export const TreasuryBalanceCard = () => {
-  const [balances, setBalances] = useState(null);
-  const [loading, setLoading] = useState(true);
+### 5. Config Files (3 files)
 
-  useEffect(() => {
-    fetchTreasuryBalance();
-  }, []);
+- tailwind.config.ts (simplified version)
+- index.css (CSS variables + theme)
+- components.json (shadcn config)
 
-  const fetchTreasuryBalance = async () => {
-    const { data } = await supabase.functions.invoke('treasury-balance');
-    setBalances(data);
-  };
+### 6. Templates (1 feature template)
 
-  return (
-    <Card>
-      {/* Treasury address + BNB balance + CAMLY balance */}
-      {/* Warnings if low balance */}
-    </Card>
-  );
-};
-```
+Template chuẩn với:
+- ExampleCard.tsx - Component mẫu
+- useExampleFeature.ts - Hook mẫu
+- ExamplePage.tsx - Page mẫu
+- migration.sql - SQL template
 
-## Hướng Dẫn Test Flow Claim (Sau Khi Hoàn Thành)
+### 7. Examples (1 complete example)
 
-### Bước 1: Kiểm tra Treasury
-1. Truy cập `/admin` → Tab "⛓️ Blockchain"
-2. Xem card "Treasury Wallet"
-3. Đảm bảo có đủ BNB (> 0.01) và CAMLY (> số cần claim)
+Badges Feature hoàn chỉnh để tham khảo
 
-### Bước 2: Nạp tiền Treasury (nếu thiếu)
+---
+
+## Nội Dung Chính Của Các Documentation
+
+### README.md (Hướng Dẫn Bắt Đầu)
+
 ```text
-Treasury Address: [Xem trong Admin Dashboard]
+# FUN Profile - Parallel Development Kit (PDK)
 
-1. Mở ví cá nhân (MetaMask, Bitget...)
-2. Gửi BNB (0.1 BNB là đủ ~100 transactions)
-3. Gửi CAMLY (đủ để trả thưởng)
+## Bắt Đầu Trong 5 Phút
+
+### Bước 1: Tạo Project Mới
+1. Tạo project Lovable mới
+2. Copy toàn bộ folder `pdk/` vào project
+
+### Bước 2: Setup Dependencies
+Yêu cầu các packages sau trong package.json:
+- @radix-ui/* (UI primitives)
+- class-variance-authority
+- clsx, tailwind-merge
+- lucide-react
+
+### Bước 3: Tạo Feature
+1. Tạo folder /features/{ten-feature}/
+2. Bắt đầu code theo template trong /templates/
+
+### Bước 4: Submit
+Điền form và gửi link Lovable project
 ```
 
-### Bước 3: Test Claim
-1. Đăng nhập với user có `reward_status = 'approved'`
-2. Vào `/wallet`
-3. Kết nối External Wallet
-4. Nhấn "Claim to Wallet"
-5. Nhập số lượng và confirm
-6. Xem transaction trên BscScan
+### CONVENTIONS.md (Quy Ước)
 
-## Cảnh Báo & Thresholds
+```text
+# Quy Ước Đặt Tên
 
-| Token | Warning Level | Critical Level |
-|-------|---------------|----------------|
-| BNB   | < 0.05 BNB    | < 0.01 BNB     |
-| CAMLY | < 500,000     | < 100,000      |
+## Files
+- Components: PascalCase.tsx (ReferralCard.tsx)
+- Hooks: useCamelCase.ts (useReferral.ts)
+- Utils: camelCase.ts (formatReward.ts)
 
-## Tóm Tắt
+## Components
+- Prefix theo feature: Referral*, Mission*, Badge*
+- Props interface: {ComponentName}Props
 
-1. **Tạo Edge Function** `treasury-balance` để đọc số dư on-chain
-2. **Tạo Component** `TreasuryBalanceCard` hiển thị cho Admin
-3. **Tích hợp** vào BlockchainTab trong Admin Dashboard
-4. Admin có thể theo dõi số dư Treasury realtime
+## Database Tables
+- Prefix theo feature: referral_*, mission_*, badge_*
+- Columns: snake_case
+- Primary key: id (UUID)
+- Timestamps: created_at, updated_at
+
+## CSS
+- Sử dụng Tailwind CSS
+- KHÔNG tạo custom CSS files
+- Responsive: mobile-first
+
+## Imports
+- UI components: from "@/pdk/core/components/ui"
+- Hooks: from "@/pdk/core/hooks"
+- Utils: from "@/pdk/core/lib"
+```
+
+### API_CONTRACT.md (Database & API)
+
+```text
+# API Contract - Fun Profile
+
+## Database Tables Có Sẵn (READ-ONLY)
+
+### profiles
+- id: UUID (user ID)
+- username: TEXT
+- avatar_url: TEXT | null
+- bio: TEXT | null
+- pending_reward: NUMBER
+- approved_reward: NUMBER
+- total_rewards: NUMBER
+
+### posts
+- id: UUID
+- user_id: UUID
+- content: TEXT
+- media_urls: JSON | null
+- visibility: TEXT ('public', 'friends', 'private')
+- created_at: TIMESTAMP
+
+### reactions
+- id: UUID
+- user_id: UUID
+- post_id: UUID | null
+- comment_id: UUID | null
+- type: TEXT ('like', 'love', 'haha', 'wow', 'sad', 'angry')
+
+### friendships
+- id: UUID
+- user_id: UUID
+- friend_id: UUID
+- status: TEXT ('pending', 'accepted')
+
+## Tạo Tables Mới
+
+Khi tạo table mới, luôn:
+1. Prefix theo feature: {feature}_*
+2. Thêm RLS policies
+3. Thêm created_at, updated_at
+
+Ví dụ:
+CREATE TABLE badge_awards (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES profiles(id),
+  badge_type TEXT NOT NULL,
+  awarded_at TIMESTAMP DEFAULT now()
+);
+
+ALTER TABLE badge_awards ENABLE ROW LEVEL SECURITY;
+```
+
+### MERGE_GUIDE.md (Quy Trình Submit)
+
+```text
+# Hướng Dẫn Submit Feature
+
+## Trước Khi Submit
+
+Kiểm tra:
+[ ] Code trong folder /features/{feature-name}/
+[ ] Sử dụng components từ /pdk/core/
+[ ] Tuân thủ naming conventions
+[ ] Responsive trên mobile
+[ ] Có error handling với toast
+[ ] Không có console.log thừa
+
+## Form Submit
+
+Gửi thông tin sau:
+1. Tên bé: 
+2. Feature name:
+3. Link Lovable project:
+4. Files đã tạo:
+5. Cần database migration? [Có/Không]
+6. Screenshots/Video demo:
+
+## Quy Trình Review
+
+1. Angel Fun Profile review code
+2. Chạy database migrations (nếu có)
+3. Copy folder features/ vào main project
+4. Test tích hợp
+5. Deploy
+```
+
+---
+
+## Tóm Tắt Files Sẽ Tạo
+
+| Folder | Số Files | Mô Tả |
+|--------|----------|-------|
+| `pdk/` (root) | 4 | README, CONVENTIONS, API_CONTRACT, MERGE_GUIDE |
+| `pdk/core/components/ui/` | 20 | UI components thiết yếu |
+| `pdk/core/hooks/` | 4 | Custom hooks |
+| `pdk/core/lib/` | 2 | Utilities |
+| `pdk/config/` | 3 | Tailwind, CSS, components.json |
+| `pdk/templates/feature/` | 5 | Template files |
+| `pdk/examples/badges-feature/` | 5 | Example hoàn chỉnh |
+| **Tổng** | **43 files** | |
+
+---
+
+## Lợi Ích
+
+1. **Setup nhanh**: 5 phút để bắt đầu
+2. **Độc lập hoàn toàn**: Mỗi bé có project riêng
+3. **Tương thích 100%**: Cùng UI components, cùng theme
+4. **Dễ merge**: Chỉ cần copy folder features/
+5. **Có ví dụ sẵn**: Badges feature để tham khảo
+6. **Documentation đầy đủ**: Tiếng Việt, dễ hiểu
 
