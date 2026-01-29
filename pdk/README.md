@@ -234,4 +234,3 @@ Nếu cần hỗ trợ:
 ---
 
 **Chúc bạn phát triển vui vẻ! 🎉**
-Bé Trí test sync 29/01/2026.
