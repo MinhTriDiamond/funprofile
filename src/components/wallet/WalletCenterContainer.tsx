@@ -13,6 +13,8 @@ import { ReceiveTab } from './ReceiveTab';
 import { SendTab } from './SendTab';
 import { ClaimRewardDialog } from './ClaimRewardDialog';
 import { WalletCard } from './WalletCard';
+import { RewardBreakdown, RewardStats } from './RewardBreakdown';
+import { RewardFormulaCard } from './RewardFormulaCard';
 import { useTokenBalances } from '@/hooks/useTokenBalances';
 import bnbLogo from '@/assets/tokens/bnb-logo.webp';
 
@@ -44,6 +46,9 @@ const WalletCenterContainer = () => {
   const [walletProfile, setWalletProfile] = useState<WalletProfile | null>(null);
   const [walletProfileFetched, setWalletProfileFetched] = useState(false);
   const [claimableReward, setClaimableReward] = useState(0);
+  const [claimedAmount, setClaimedAmount] = useState(0);
+  const [rewardStats, setRewardStats] = useState<RewardStats | null>(null);
+  const [isRewardLoading, setIsRewardLoading] = useState(true);
   const [showReceive, setShowReceive] = useState(false);
   const [showSend, setShowSend] = useState(false);
   const [showClaimDialog, setShowClaimDialog] = useState(false);
@@ -174,53 +179,74 @@ const WalletCenterContainer = () => {
   };
 
   const fetchClaimableReward = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) return;
+    setIsRewardLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        setIsRewardLoading(false);
+        return;
+      }
 
-    const userId = session.user.id;
-    
-    const { data: postsData } = await supabase.from('posts').select('id').eq('user_id', userId);
-    const postsCount = postsData?.length || 0;
-    const postIds = postsData?.map(p => p.id) || [];
-    
-    let reactionsOnPosts = 0;
-    if (postIds.length > 0) {
-      const { count } = await supabase.from('reactions').select('id', { count: 'exact', head: true }).in('post_id', postIds);
-      reactionsOnPosts = count || 0;
-    }
-    
-    let commentsOnPosts = 0;
-    if (postIds.length > 0) {
-      const { count } = await supabase.from('comments').select('id', { count: 'exact', head: true }).in('post_id', postIds);
-      commentsOnPosts = count || 0;
-    }
-    
-    let sharesCount = 0;
-    if (postIds.length > 0) {
-      const { count } = await supabase.from('shared_posts').select('id', { count: 'exact', head: true }).in('original_post_id', postIds);
-      sharesCount = count || 0;
-    }
-    
-    const { count: friendsCount } = await supabase
-      .from('friendships')
-      .select('id', { count: 'exact', head: true })
-      .or(`user_id.eq.${userId},friend_id.eq.${userId}`)
-      .eq('status', 'accepted');
-    
-    const postsReward = postsCount * 20000;
-    let reactionsReward = 0;
-    if (reactionsOnPosts >= 3) {
-      reactionsReward = 30000 + (reactionsOnPosts - 3) * 1000;
-    }
-    const commentsReward = commentsOnPosts * 5000;
-    const sharesReward = sharesCount * 5000;
-    const friendsReward = (friendsCount || 0) * 10000 + 10000;
-    
-    const totalReward = postsReward + reactionsReward + commentsReward + sharesReward + friendsReward;
+      const userId = session.user.id;
+      
+      // Gọi RPC để lấy reward đã tính đúng công thức từ database
+      const { data: rewardsData, error: rpcError } = await supabase.rpc('get_user_rewards_v2', {
+        limit_count: 10000
+      });
 
-    const { data: claims } = await supabase.from('reward_claims').select('amount').eq('user_id', userId);
-    const claimedAmount = claims?.reduce((sum, c) => sum + c.amount, 0) || 0;
-    setClaimableReward(totalReward - claimedAmount);
+      if (rpcError) {
+        console.error('[WalletCenter] RPC error:', rpcError);
+        setIsRewardLoading(false);
+        return;
+      }
+
+      // Tìm user hiện tại trong kết quả
+      const userData = rewardsData?.find((u: any) => u.id === userId);
+      
+      if (userData) {
+        // Lưu chi tiết stats để hiển thị breakdown
+        setRewardStats({
+          posts_count: Number(userData.posts_count) || 0,
+          reactions_on_posts: Number(userData.reactions_on_posts) || 0,
+          comments_count: Number(userData.comments_count) || 0,
+          shares_count: Number(userData.shares_count) || 0,
+          friends_count: Number(userData.friends_count) || 0,
+          livestreams_count: Number(userData.livestreams_count) || 0,
+          total_reward: Number(userData.total_reward) || 0,
+          today_reward: Number(userData.today_reward) || 0,
+        });
+
+        const totalReward = Number(userData.total_reward) || 0;
+
+        // Lấy số đã claimed
+        const { data: claims } = await supabase
+          .from('reward_claims')
+          .select('amount')
+          .eq('user_id', userId);
+          
+        const claimed = claims?.reduce((sum, c) => sum + Number(c.amount), 0) || 0;
+        setClaimedAmount(claimed);
+        setClaimableReward(Math.max(0, totalReward - claimed));
+      } else {
+        // User mới chưa có trong bảng xếp hạng
+        setRewardStats({
+          posts_count: 0,
+          reactions_on_posts: 0,
+          comments_count: 0,
+          shares_count: 0,
+          friends_count: 0,
+          livestreams_count: 0,
+          total_reward: 50000, // Bonus đăng ký mới
+          today_reward: 0,
+        });
+        setClaimableReward(50000);
+        setClaimedAmount(0);
+      }
+    } catch (error) {
+      console.error('[WalletCenter] fetchClaimableReward error:', error);
+    } finally {
+      setIsRewardLoading(false);
+    }
   };
 
   const handleConnect = useCallback(() => {
@@ -525,6 +551,16 @@ const WalletCenterContainer = () => {
           </div>
         );
       })()}
+
+      {/* Reward Breakdown - Chi tiết thưởng */}
+      <RewardBreakdown 
+        stats={rewardStats} 
+        claimedAmount={claimedAmount} 
+        isLoading={isRewardLoading} 
+      />
+
+      {/* Reward Formula Card - Công thức tính thưởng */}
+      <RewardFormulaCard defaultOpen={false} />
 
       {/* Receive Dialog */}
       <Dialog open={showReceive} onOpenChange={setShowReceive}>
