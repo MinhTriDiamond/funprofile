@@ -1,8 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
-import { uploadToR2 } from '@/utils/r2Upload';
 import { deleteStreamVideoByUid } from '@/utils/streamHelpers';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -15,8 +14,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { ImagePlus, Video, X, Loader2, UserPlus, MapPin, MoreHorizontal, Smile, Clapperboard, CheckCircle } from 'lucide-react';
-import { compressImage, FILE_LIMITS, getVideoDuration } from '@/utils/imageCompression';
+import { ImagePlus, Video, X, Loader2, UserPlus, MapPin, MoreHorizontal, Clapperboard, CheckCircle } from 'lucide-react';
+import { FILE_LIMITS, getVideoDuration } from '@/utils/imageCompression';
+import { UploadQueue, UploadItem, createUploadQueue } from '@/utils/uploadQueue';
 import { EmojiPicker } from './EmojiPicker';
 import { VideoUploadProgress, VideoUploadState } from './VideoUploadProgress';
 import { VideoUploaderUppy } from './VideoUploaderUppy';
@@ -24,19 +24,15 @@ import { FriendTagDialog, TaggedFriend } from './FriendTagDialog';
 import { LocationCheckin } from './LocationCheckin';
 import { PrivacySelector } from './PrivacySelector';
 import { FeelingActivityDialog, FeelingActivity } from './FeelingActivityDialog';
+import { MediaUploadPreview } from './MediaUploadPreview';
 import { useLanguage } from '@/i18n/LanguageContext';
 
 interface FacebookCreatePostProps {
   onPostCreated: () => void;
 }
 
-interface MediaItem {
-  file: File;
-  preview: string;
-  type: 'image' | 'video';
-}
-
 const MAX_CONTENT_LENGTH = 20000;
+const MAX_FILES_PER_POST = FILE_LIMITS.MAX_FILES_PER_POST || 100;
 
 const postSchema = z.object({
   content: z.string().max(MAX_CONTENT_LENGTH, `Nội dung tối đa ${MAX_CONTENT_LENGTH.toLocaleString()} ký tự`),
@@ -49,7 +45,6 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(false);
-  const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [privacy, setPrivacy] = useState('public');
   const [isDragging, setIsDragging] = useState(false);
   const [showMediaUpload, setShowMediaUpload] = useState(false);
@@ -57,6 +52,10 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
   const [videoUploadProgress, setVideoUploadProgress] = useState(0);
   const [currentVideoName, setCurrentVideoName] = useState('');
   const [currentVideoId, setCurrentVideoId] = useState<string | undefined>(undefined);
+  
+  // Upload queue state for parallel uploads
+  const uploadQueueRef = useRef<UploadQueue | null>(null);
+  const [uploadItems, setUploadItems] = useState<UploadItem[]>([]);
   
   // Friend tagging state
   const [showFriendTagDialog, setShowFriendTagDialog] = useState(false);
@@ -89,12 +88,46 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
   const photoVideoInputRef = useRef<HTMLInputElement>(null);
   const liveVideoInputRef = useRef<HTMLInputElement>(null);
 
+  // Initialize upload queue
+  useEffect(() => {
+    const queue = createUploadQueue({
+      maxConcurrent: 4,
+      maxFiles: MAX_FILES_PER_POST,
+      onProgress: (item) => {
+        // Update handled via subscribe
+      },
+      onComplete: (item) => {
+        console.log('[UploadQueue] Item completed:', item.id);
+      },
+      onError: (item, error) => {
+        console.error('[UploadQueue] Item failed:', item.id, error);
+        toast.error(`Upload thất bại: ${item.file.name}`);
+      },
+      onQueueComplete: (items) => {
+        console.log('[UploadQueue] All uploads complete:', items.length);
+      },
+    });
+
+    uploadQueueRef.current = queue;
+
+    // Subscribe to updates
+    const unsubscribe = queue.subscribe((items) => {
+      setUploadItems([...items]);
+    });
+
+    return () => {
+      unsubscribe();
+      queue.destroy();
+    };
+  }, []);
+
   // Prevent accidental tab close during upload
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (videoUploadState === 'uploading' || videoUploadState === 'processing') {
+      const isUploading = uploadQueueRef.current?.isUploading() || videoUploadState === 'uploading' || videoUploadState === 'processing';
+      if (isUploading) {
         e.preventDefault();
-        e.returnValue = 'Video đang được tải lên. Bạn có chắc muốn rời đi?';
+        e.returnValue = 'Đang tải lên. Bạn có chắc muốn rời đi?';
         return e.returnValue;
       }
     };
@@ -118,17 +151,13 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
     fetchProfile();
   }, []);
 
-  const handleFileSelect = async (files: FileList | null) => {
-    if (!files) return;
+  const handleFileSelect = async (files: FileList | null, accessToken?: string) => {
+    if (!files || !uploadQueueRef.current) return;
 
-    const newMediaItems: MediaItem[] = [];
+    const imageFiles: File[] = [];
+    const videoFiles: File[] = [];
 
     for (const file of Array.from(files)) {
-      if (mediaItems.length + newMediaItems.length >= 80) {
-        toast.error('Tối đa 80 file mỗi bài viết');
-        break;
-      }
-
       const isImage = file.type.startsWith('image/');
       const isVideo = file.type.startsWith('video/');
 
@@ -143,47 +172,52 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
       }
 
       if (isVideo && file.size > FILE_LIMITS.VIDEO_MAX_SIZE) {
-        toast.error(`Video "${file.name}" phải nhỏ hơn 2GB`);
+        toast.error(`Video "${file.name}" phải nhỏ hơn 10GB`);
         continue;
       }
 
-      try {
-        if (isVideo) {
+      if (isVideo) {
+        try {
           const duration = await getVideoDuration(file);
           if (duration > FILE_LIMITS.VIDEO_MAX_DURATION) {
             toast.error(`Video "${file.name}" phải ngắn hơn 120 phút`);
             continue;
           }
-          // Use Uppy for video uploads - set pending file and start upload
-          setPendingVideoFile(file);
-          setCurrentVideoName(file.name);
-          setIsVideoUploading(true);
-          setShowMediaUpload(true);
-          continue; // Don't add to mediaItems - Uppy handles it
+          videoFiles.push(file);
+        } catch (error) {
+          toast.error(`Không thể đọc video "${file.name}"`);
         }
-
-        let processedFile = file;
-        if (isImage) {
-          processedFile = await compressImage(file, {
-            maxWidth: FILE_LIMITS.POST_IMAGE_MAX_WIDTH,
-            maxHeight: FILE_LIMITS.POST_IMAGE_MAX_HEIGHT,
-            quality: 0.85,
-          });
-        }
-
-        newMediaItems.push({
-          file: processedFile,
-          preview: URL.createObjectURL(processedFile),
-          type: isImage ? 'image' : 'video',
-        });
-      } catch (error) {
-        toast.error(`Không thể xử lý file "${file.name}"`);
+      } else {
+        imageFiles.push(file);
       }
     }
 
-    if (newMediaItems.length > 0) {
-      setMediaItems((prev) => [...prev, ...newMediaItems]);
+    // Handle video via Uppy (one at a time for now)
+    if (videoFiles.length > 0) {
+      const videoFile = videoFiles[0];
+      setPendingVideoFile(videoFile);
+      setCurrentVideoName(videoFile.name);
+      setIsVideoUploading(true);
       setShowMediaUpload(true);
+      if (videoFiles.length > 1) {
+        toast.info(`Chỉ có thể upload 1 video mỗi lần. ${videoFiles.length - 1} video khác bị bỏ qua.`);
+      }
+    }
+
+    // Add images to upload queue
+    if (imageFiles.length > 0) {
+      const { added, rejected } = await uploadQueueRef.current.addFiles(imageFiles, accessToken);
+      
+      if (added.length > 0) {
+        setShowMediaUpload(true);
+        console.log('[CreatePost] Added', added.length, 'files to queue');
+      }
+      
+      if (rejected.length > 0) {
+        rejected.forEach(({ file, reason }) => {
+          toast.error(`${file.name}: ${reason}`);
+        });
+      }
     }
   };
 
@@ -201,15 +235,18 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
     e.preventDefault();
     setIsDragging(false);
     handleFileSelect(e.dataTransfer.files);
-  }, [mediaItems.length]);
+  }, []);
 
-  const removeMedia = (index: number) => {
-    setMediaItems((prev) => {
-      const newItems = [...prev];
-      URL.revokeObjectURL(newItems[index].preview);
-      newItems.splice(index, 1);
-      return newItems;
-    });
+  const removeMedia = (id: string) => {
+    uploadQueueRef.current?.removeItem(id);
+  };
+
+  const retryMedia = (id: string) => {
+    uploadQueueRef.current?.retryUpload(id);
+  };
+
+  const reorderMedia = (fromIndex: number, toIndex: number) => {
+    uploadQueueRef.current?.reorderItems(fromIndex, toIndex);
   };
 
   const handleEmojiSelect = (emoji: string) => {
@@ -240,14 +277,25 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
   };
 
   const handleSubmit = async () => {
+    // Get completed image URLs from the upload queue
+    const completedMedia = uploadQueueRef.current?.getCompletedUrls() || [];
+    const pendingUploads = uploadItems.filter(item => item.status === 'uploading' || item.status === 'queued');
+    
     console.log('[CreatePost] === SUBMIT START ===', {
       contentLength: content.length,
-      mediaCount: mediaItems.length,
+      completedMediaCount: completedMedia.length,
+      pendingUploadsCount: pendingUploads.length,
       hasUppyVideo: !!uppyVideoResult,
       isVideoUploading,
     });
     
-    if (!content.trim() && mediaItems.length === 0 && !uppyVideoResult) {
+    // Check if there are still uploads in progress
+    if (pendingUploads.length > 0) {
+      toast.error(`Vui lòng đợi ${pendingUploads.length} file upload xong`);
+      return;
+    }
+    
+    if (!content.trim() && completedMedia.length === 0 && !uppyVideoResult) {
       toast.error('Vui lòng thêm nội dung hoặc media');
       return;
     }
@@ -292,7 +340,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
       // Check if aborted
       if (abortController.signal.aborted) throw new Error('Đã huỷ');
       
-      // Get session with 5 second timeout
+      // Get session with 15 second timeout
       const authStartTime = Date.now();
       let session;
       try {
@@ -331,7 +379,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
       
       if (abortController.signal.aborted) throw new Error('Đã huỷ');
       
-      // Upload all media items (images only - videos handled by Uppy)
+      // Collect all media URLs (already uploaded via queue)
       const mediaUrls: Array<{ url: string; type: 'image' | 'video' }> = [];
       
       // Add Uppy-uploaded video first if exists
@@ -343,19 +391,9 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
         console.log('[CreatePost] Added video URL:', uppyVideoResult.url);
       }
       
-      for (const item of mediaItems) {
-        if (abortController.signal.aborted) throw new Error('Đã huỷ');
-        
-        if (item.type === 'video') {
-          continue;
-        } else {
-          // Pass access token to avoid multiple getSession calls
-          const result = await uploadToR2(item.file, 'posts', undefined, session.access_token);
-          mediaUrls.push({
-            url: result.url,
-            type: 'image',
-          });
-        }
+      // Add completed images from queue
+      for (const media of completedMedia) {
+        mediaUrls.push(media);
       }
 
       console.log('[CreatePost] Media URLs prepared:', mediaUrls.length);
@@ -420,10 +458,10 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
       setPendingVideoFile(null);
       setUppyVideoResult(null);
 
-      // Cleanup
-      mediaItems.forEach((item) => URL.revokeObjectURL(item.preview));
+      // Cleanup upload queue
+      uploadQueueRef.current?.cancelAll();
+      
       setContent('');
-      setMediaItems([]);
       setTaggedFriends([]);
       setLocation(null);
       setPrivacy('public'); // Reset privacy to default
@@ -790,13 +828,13 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
                   </div>
                 )}
 
-                {mediaItems.length === 0 && !pendingVideoFile && !uppyVideoResult ? (
+                {uploadItems.length === 0 && !pendingVideoFile && !uppyVideoResult ? (
                   <div className="text-center py-8">
                     <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-secondary flex items-center justify-center">
                       <ImagePlus className="w-8 h-8 text-muted-foreground" />
                     </div>
                     <p className="font-medium mb-1">Thêm ảnh/video</p>
-                    <p className="text-sm text-muted-foreground mb-4">hoặc kéo và thả</p>
+                    <p className="text-sm text-muted-foreground mb-4">hoặc kéo và thả (tối đa {MAX_FILES_PER_POST} file)</p>
                     <Input
                       id="media-upload"
                       type="file"
@@ -814,43 +852,20 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
                       Chọn từ thiết bị
                     </Button>
                   </div>
-                ) : mediaItems.length > 0 ? (
+                ) : uploadItems.length > 0 ? (
                   <div className="space-y-3">
-                    {/* Media Preview Grid */}
-                    <div className={`grid gap-2 ${mediaItems.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
-                      {mediaItems.map((item, index) => (
-                        <div
-                          key={index}
-                          className={`relative rounded-lg overflow-hidden ${
-                            mediaItems.length === 1 ? 'max-h-80' : 'aspect-square'
-                          }`}
-                        >
-                          {item.type === 'video' ? (
-                            <video
-                              src={item.preview}
-                              className="w-full h-full object-cover"
-                              controls
-                            />
-                          ) : (
-                            <img
-                              src={item.preview}
-                              alt={`Preview ${index + 1}`}
-                              className="w-full h-full object-cover"
-                            />
-                          )}
-                          <button
-                            onClick={() => removeMedia(index)}
-                            className="absolute top-2 right-2 w-7 h-7 bg-black/60 hover:bg-black/80 rounded-full flex items-center justify-center"
-                            disabled={loading}
-                          >
-                            <X className="w-4 h-4 text-white" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
+                    {/* Media Preview Grid with Progress */}
+                    <MediaUploadPreview
+                      items={uploadItems}
+                      onRemove={removeMedia}
+                      onRetry={retryMedia}
+                      onReorder={reorderMedia}
+                      disabled={loading}
+                      maxItems={MAX_FILES_PER_POST}
+                    />
 
                     {/* Add More Button */}
-                    {mediaItems.length < 80 && (
+                    {uploadItems.length < MAX_FILES_PER_POST && (
                       <div className="flex items-center gap-2">
                         <Input
                           id="add-more-media"
@@ -871,16 +886,15 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
                           Thêm ảnh/video
                         </Button>
                         <span className="text-sm text-muted-foreground">
-                          {mediaItems.length}/80
+                          {uploadItems.length}/{MAX_FILES_PER_POST}
                         </span>
                       </div>
                     )}
-
                   </div>
                 ) : null}
 
                 {/* Close Upload Area */}
-                {mediaItems.length === 0 && (
+                {uploadItems.length === 0 && !pendingVideoFile && !uppyVideoResult && (
                   <button
                     onClick={() => setShowMediaUpload(false)}
                     className="absolute top-2 right-2 w-7 h-7 bg-secondary hover:bg-muted rounded-full flex items-center justify-center"
@@ -984,7 +998,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
               )}
               <Button
                 onClick={handleSubmit}
-                disabled={loading || isVideoUploading || content.length > MAX_CONTENT_LENGTH || (!content.trim() && mediaItems.length === 0 && !uppyVideoResult)}
+                disabled={loading || isVideoUploading || content.length > MAX_CONTENT_LENGTH || (!content.trim() && uploadItems.length === 0 && !uppyVideoResult)}
                 className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
               >
                 {(loading || isVideoUploading) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}

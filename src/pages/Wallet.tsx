@@ -46,7 +46,7 @@ const Wallet = () => {
       <main className="pt-14">
         {/* Full width center container */}
         <div className="w-full px-4 py-6">
-          <div className="max-w-3xl lg:max-w-4xl mx-auto">
+          <div className="max-w-6xl mx-auto">
             {/* Web3 providers lazy-loaded to prevent loading on non-wallet pages */}
             <Suspense fallback={<WalletLoader />}>
               <WalletProviders />

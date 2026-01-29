@@ -4,6 +4,7 @@ import {
   trustWallet,
   bitgetWallet,
 } from '@rainbow-me/rainbowkit/wallets';
+import { funWallet } from './funWallet';
 import { createConfig, http } from 'wagmi';
 import { mainnet, bsc } from 'wagmi/chains';
 
@@ -17,6 +18,7 @@ const connectors = connectorsForWallets(
         metaMaskWallet,
         trustWallet,
         bitgetWallet,
+        funWallet,
       ],
     },
   ],

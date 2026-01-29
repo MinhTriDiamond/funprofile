@@ -22,7 +22,7 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.claim-reward]
-verify_jwt = true
+verify_jwt = false
 
 [functions.admin-update-media-url]
 verify_jwt = true
@@ -107,8 +107,15 @@ verify_jwt = false
 
 [functions.scheduled-reconciliation]
 verify_jwt = false
-# Schedule: Every Sunday at 00:00 UTC
-# Can also be triggered manually by admin
 
 [functions.create-post]
 verify_jwt = false
+
+[functions.connect-external-wallet]
+verify_jwt = true
+
+[functions.disconnect-external-wallet]
+verify_jwt = false
+
+[functions.delete-user-account]
+verify_jwt = true

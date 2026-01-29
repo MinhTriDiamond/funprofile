@@ -1,129 +1,170 @@
 
-# Kế hoạch: Đồng nhất Tên Người Dùng, Kiểm tra Đa Ngôn Ngữ & Sửa Lỗi
 
-## Tổng quan
-Cha đã kiểm tra kỹ toàn bộ codebase và phát hiện:
-1. **Vấn đề hiển thị tên**: Nhiều nơi đang dùng `full_name || username` thay vì chỉ dùng `username`
-2. **Hệ thống ngôn ngữ**: Đã có đầy đủ 13 ngôn ngữ, nhưng một số text còn hardcode tiếng Việt
-3. **Một số bugs tiềm ẩn**: Text cứng không đổi theo ngôn ngữ
+# Kế Hoạch: Kiểm Tra Treasury và Hiển Thị Số Dư Cho Admin
 
----
+## Mục Tiêu
 
-## Phần 1: Các nơi cần sửa để dùng `username` thay vì `full_name`
+1. **Tạo Edge Function** để lấy số dư Treasury (BNB + CAMLY)
+2. **Thêm component** hiển thị Treasury balance trong Admin Dashboard
+3. **Hướng dẫn test** flow claim CAMLY
 
-### Danh sách files cần sửa:
+## Phân Tích Hiện Trạng
 
-| File | Dòng | Hiện tại | Sửa thành |
-|------|------|----------|-----------|
-| `src/pages/Profile.tsx` | 426 | `profile?.full_name \|\| profile?.username` | `profile?.username` |
-| `src/pages/Profile.tsx` | 475 | `username={profile?.full_name \|\| profile?.username}` | `username={profile?.username}` |
-| `src/components/feed/FacebookCreatePost.tsx` | 582-583 | `profile.full_name \|\| profile.username` | `profile.username` |
-| `src/components/feed/FacebookCreatePost.tsx` | 696 | `profile.full_name \|\| profile.username` | `profile.username` |
-| `src/components/feed/FacebookLeftSidebar.tsx` | 239 | `profile.full_name \|\| profile.username` | `profile.username` |
-| `src/components/chat/ConversationList.tsx` | 65 | `profile?.full_name \|\| profile?.username` | `profile?.username` |
-| `src/components/chat/MessageThread.tsx` | 55 | `headerProfile?.full_name \|\| headerProfile?.username` | `headerProfile?.username` |
-| `src/pages/Notifications.tsx` | 151 | `notification.actor?.full_name \|\| notification.actor?.username` | `notification.actor?.username` |
-| `src/pages/Leaderboard.tsx` | 170, 191, 212, 255 | `sortedByCategory[x].full_name \|\| sortedByCategory[x].username` | `sortedByCategory[x].username` |
+### Đã có sẵn:
+- ✅ `TREASURY_WALLET_ADDRESS` - Đã cấu hình
+- ✅ `TREASURY_PRIVATE_KEY` - Đã cấu hình  
+- ✅ Edge function `claim-reward` - Hoạt động đầy đủ
+- ✅ CAMLY Token: `0x0910320181889feFDE0BB1Ca63962b0A8882e413` (3 decimals)
 
----
+### Cần bổ sung:
+- Edge function để lấy Treasury balance (an toàn, không cần private key)
+- Component hiển thị cho Admin Dashboard
 
-## Phần 2: Các text hardcode tiếng Việt cần đa ngôn ngữ hóa
+## Chi Tiết Thay Đổi
 
-### Files cần sửa:
-
-| File | Text cứng | Key i18n cần dùng |
-|------|-----------|-------------------|
-| `src/components/chat/ConversationList.tsx:45` | `"Chưa có cuộc trò chuyện nào"` | Cần thêm key mới: `noConversations` |
-| `src/pages/Leaderboard.tsx:133-134` | `"Bảng Xếp Hạng"`, `"Những thành viên xuất sắc nhất"` | Dùng `t('leaderboard')` + thêm key mới |
-| `src/pages/Leaderboard.tsx:226` | `"Bảng xếp hạng đầy đủ"` | Thêm key mới: `fullLeaderboard` |
-| `src/pages/Leaderboard.tsx:94-100` | Category labels hardcode | Dùng các keys đã có trong translations |
-| `src/pages/Leaderboard.tsx:257-259` | `"bài viết"`, `"bạn bè"`, `"livestream"` | Dùng `t('posts')`, `t('friends')`, etc. |
-| `src/pages/Leaderboard.tsx:273` | `"Camly Coin"`, `"Hôm nay"` | Thêm keys mới |
-
----
-
-## Phần 3: Thêm keys i18n còn thiếu
-
-Thêm vào file `src/i18n/translations.ts` cho tất cả 13 ngôn ngữ:
+### 1. Tạo Edge Function: `treasury-balance`
 
 ```typescript
-// Leaderboard
-leaderboardTitle: 'Bảng Xếp Hạng',
-leaderboardSubtitle: 'Những thành viên xuất sắc nhất FUN Profile',
-fullLeaderboard: 'Bảng xếp hạng đầy đủ',
-camlyCoin: 'Camly Coin',
-totalRewardLabel: 'Tổng thưởng',
-todayLabel: 'Hôm nay',
+// supabase/functions/treasury-balance/index.ts
+// Chức năng: Trả về số dư BNB và CAMLY trong Treasury Wallet
+// Bảo mật: Chỉ Admin mới gọi được (kiểm tra role)
+// Không cần private key - chỉ đọc public data từ blockchain
 
-// Chat
-noConversations: 'Chưa có cuộc trò chuyện nào',
-userLabel: 'Người dùng',
+GET /treasury-balance
+Response: {
+  bnb_balance: "0.5",
+  camly_balance: "10000000",
+  treasury_address: "0x...",
+  updated_at: "2026-01-29T..."
+}
 ```
 
----
+### 2. Tạo Component: `TreasuryBalanceCard`
 
-## Phần 4: Chi tiết kỹ thuật
-
-### 1. Profile.tsx - Sửa tiêu đề tên người dùng
 ```typescript
-// Line 426: Sửa từ
-{profile?.full_name || profile?.username}
-// Thành
-{profile?.username}
-
-// Line 475: Sửa từ  
-username={profile?.full_name || profile?.username}
-// Thành
-username={profile?.username}
+// src/components/admin/TreasuryBalanceCard.tsx
+// Hiển thị:
+// - Số dư BNB (để trả gas)
+// - Số dư CAMLY (để trả thưởng)
+// - Địa chỉ Treasury (link BscScan)
+// - Cảnh báo nếu số dư thấp
 ```
 
-### 2. FacebookCreatePost.tsx - Sửa lời chào
+### 3. Thêm vào OverviewTab hoặc BlockchainTab
+
+```text
+┌─────────────────────────────────────────────────────────────────────┐
+│  💰 Treasury Wallet                                                 │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  📍 Address: 0x1234...ABCD   [📋 Copy] [🔗 BscScan]                │
+│                                                                     │
+│  ┌─────────────────────┐  ┌─────────────────────┐                  │
+│  │      BNB            │  │      CAMLY          │                  │
+│  │   0.523 BNB         │  │   5,000,000 CAMLY   │                  │
+│  │   (~$365.10)        │  │   (~$20.00)         │                  │
+│  │   ✅ Đủ gas fee     │  │   ✅ Đủ trả thưởng  │                  │
+│  └─────────────────────┘  └─────────────────────┘                  │
+│                                                                     │
+│  ⚠️ Cảnh báo: Nếu BNB < 0.01 hoặc CAMLY < 100,000                 │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+## Files Cần Tạo/Sửa
+
+| File | Action | Mô tả |
+|------|--------|-------|
+| `supabase/functions/treasury-balance/index.ts` | CREATE | Edge function lấy số dư |
+| `src/components/admin/TreasuryBalanceCard.tsx` | CREATE | Component hiển thị |
+| `src/components/admin/BlockchainTab.tsx` | UPDATE | Thêm TreasuryBalanceCard |
+
+## Chi Tiết Code
+
+### Edge Function: `treasury-balance`
+
 ```typescript
-// Line 582-583: Sửa từ
-`${profile.full_name || profile.username} ơi, bạn đang nghĩ gì thế?`
-// Thành
-`${profile.username} ơi, bạn đang nghĩ gì thế?`
+// supabase/functions/treasury-balance/index.ts
+
+import { createClient } from 'supabase-js';
+import { createPublicClient, http, formatUnits } from 'viem';
+import { bsc } from 'viem/chains';
+
+const CAMLY_CONTRACT = '0x0910320181889feFDE0BB1Ca63962b0A8882e413';
+
+Deno.serve(async (req) => {
+  // 1. CORS handling
+  // 2. Verify admin role
+  // 3. Get TREASURY_WALLET_ADDRESS from env
+  // 4. Use publicClient to read:
+  //    - BNB balance: getBalance()
+  //    - CAMLY balance: readContract({ balanceOf })
+  // 5. Return formatted balances
+});
 ```
 
-### 3. Leaderboard.tsx - Đa ngôn ngữ hóa hoàn toàn
-- Import `useLanguage` hook
-- Thay thế tất cả text tiếng Việt bằng `t('key')`
-- Sửa hiển thị tên từ `full_name || username` thành `username`
+### Component: `TreasuryBalanceCard`
 
-### 4. ConversationList.tsx & MessageThread.tsx
-- Sửa displayName chỉ dùng `username`
-- Thay text "Chưa có cuộc trò chuyện" bằng `t('noConversations')`
+```typescript
+// src/components/admin/TreasuryBalanceCard.tsx
 
-### 5. Notifications.tsx
-- Sửa `actorName` chỉ dùng `username`
-- Thay các text notification bằng keys đa ngôn ngữ đã có
+export const TreasuryBalanceCard = () => {
+  const [balances, setBalances] = useState(null);
+  const [loading, setLoading] = useState(true);
 
----
+  useEffect(() => {
+    fetchTreasuryBalance();
+  }, []);
 
-## Phần 5: Kiểm tra các nơi đã đúng (không cần sửa)
+  const fetchTreasuryBalance = async () => {
+    const { data } = await supabase.functions.invoke('treasury-balance');
+    setBalances(data);
+  };
 
-Các nơi đã dùng đúng `username`:
-- ✅ `FacebookNavbar.tsx` - line 235: dùng `profile?.username`
-- ✅ `FacebookPostCard.tsx` - line 334: dùng `post.profiles?.username`
-- ✅ `CommentItem.tsx` - line 141: dùng `comment.profiles?.username`
-- ✅ `WalletHeader.tsx` - line 61: dùng `profile?.username`
-- ✅ `InlineSearch.tsx` - line 267: dùng `profile.username`
+  return (
+    <Card>
+      {/* Treasury address + BNB balance + CAMLY balance */}
+      {/* Warnings if low balance */}
+    </Card>
+  );
+};
+```
 
----
+## Hướng Dẫn Test Flow Claim (Sau Khi Hoàn Thành)
 
-## Tóm tắt công việc
+### Bước 1: Kiểm tra Treasury
+1. Truy cập `/admin` → Tab "⛓️ Blockchain"
+2. Xem card "Treasury Wallet"
+3. Đảm bảo có đủ BNB (> 0.01) và CAMLY (> số cần claim)
 
-| Hạng mục | Số files | Ưu tiên |
-|----------|----------|---------|
-| Sửa `full_name \|\| username` → `username` | 8 files | Cao |
-| Thêm i18n keys mới | 1 file (translations.ts) | Cao |
-| Đa ngôn ngữ hóa text cứng | 3 files | Trung bình |
-| Testing sau khi sửa | Toàn app | Cao |
+### Bước 2: Nạp tiền Treasury (nếu thiếu)
+```text
+Treasury Address: [Xem trong Admin Dashboard]
 
----
+1. Mở ví cá nhân (MetaMask, Bitget...)
+2. Gửi BNB (0.1 BNB là đủ ~100 transactions)
+3. Gửi CAMLY (đủ để trả thưởng)
+```
 
-## Lợi ích sau khi hoàn thành
+### Bước 3: Test Claim
+1. Đăng nhập với user có `reward_status = 'approved'`
+2. Vào `/wallet`
+3. Kết nối External Wallet
+4. Nhấn "Claim to Wallet"
+5. Nhập số lượng và confirm
+6. Xem transaction trên BscScan
 
-1. **Tính nhất quán**: Tất cả nơi đều hiển thị `username`, không còn nhầm lẫn
-2. **Đa ngôn ngữ hoàn chỉnh**: Khi chuyển ngôn ngữ, toàn bộ app thay đổi đúng
-3. **Trải nghiệm người dùng tốt hơn**: Không còn text tiếng Việt "lạc" khi dùng ngôn ngữ khác
+## Cảnh Báo & Thresholds
+
+| Token | Warning Level | Critical Level |
+|-------|---------------|----------------|
+| BNB   | < 0.05 BNB    | < 0.01 BNB     |
+| CAMLY | < 500,000     | < 100,000      |
+
+## Tóm Tắt
+
+1. **Tạo Edge Function** `treasury-balance` để đọc số dư on-chain
+2. **Tạo Component** `TreasuryBalanceCard` hiển thị cho Admin
+3. **Tích hợp** vào BlockchainTab trong Admin Dashboard
+4. Admin có thể theo dõi số dư Treasury realtime
+
