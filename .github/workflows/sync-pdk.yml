@@ -25,4 +25,5 @@ jobs:
           destination-github-username: 'MinhTriDiamond'
           destination-repository-name: 'fun-profile-pdk'
           target-branch: main
+          create-target-branch-if-needed: true
           commit-message: 'Sync PDK from Fun Profile - ${{ github.sha }}'
