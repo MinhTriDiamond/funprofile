@@ -1,97 +1,170 @@
 
 
-# Kế Hoạch Thêm Admin và Hướng Dẫn Claim CAMLY
+# Kế Hoạch: Kiểm Tra Treasury và Hiển Thị Số Dư Cho Admin
 
-## Phần 1: Hướng Dẫn Claim 301,000 CAMLY
+## Mục Tiêu
 
-### Quy trình Claim CAMLY:
+1. **Tạo Edge Function** để lấy số dư Treasury (BNB + CAMLY)
+2. **Thêm component** hiển thị Treasury balance trong Admin Dashboard
+3. **Hướng dẫn test** flow claim CAMLY
+
+## Phân Tích Hiện Trạng
+
+### Đã có sẵn:
+- ✅ `TREASURY_WALLET_ADDRESS` - Đã cấu hình
+- ✅ `TREASURY_PRIVATE_KEY` - Đã cấu hình  
+- ✅ Edge function `claim-reward` - Hoạt động đầy đủ
+- ✅ CAMLY Token: `0x0910320181889feFDE0BB1Ca63962b0A8882e413` (3 decimals)
+
+### Cần bổ sung:
+- Edge function để lấy Treasury balance (an toàn, không cần private key)
+- Component hiển thị cho Admin Dashboard
+
+## Chi Tiết Thay Đổi
+
+### 1. Tạo Edge Function: `treasury-balance`
+
+```typescript
+// supabase/functions/treasury-balance/index.ts
+// Chức năng: Trả về số dư BNB và CAMLY trong Treasury Wallet
+// Bảo mật: Chỉ Admin mới gọi được (kiểm tra role)
+// Không cần private key - chỉ đọc public data từ blockchain
+
+GET /treasury-balance
+Response: {
+  bnb_balance: "0.5",
+  camly_balance: "10000000",
+  treasury_address: "0x...",
+  updated_at: "2026-01-29T..."
+}
+```
+
+### 2. Tạo Component: `TreasuryBalanceCard`
+
+```typescript
+// src/components/admin/TreasuryBalanceCard.tsx
+// Hiển thị:
+// - Số dư BNB (để trả gas)
+// - Số dư CAMLY (để trả thưởng)
+// - Địa chỉ Treasury (link BscScan)
+// - Cảnh báo nếu số dư thấp
+```
+
+### 3. Thêm vào OverviewTab hoặc BlockchainTab
 
 ```text
-┌─────────────────────────────────────────────────────────────────┐
-│                   FLOW CLAIM CAMLY                              │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  BƯỚC 1: User tích lũy thưởng                                  │
-│     └── Đã có: 301,000 CAMLY ✅                                 │
-│                                                                 │
-│  BƯỚC 2: Admin vào /admin → "Duyệt thưởng"                     │
-│     └── Tìm user → Click "Duyệt" ⏳                            │
-│     └── reward_status = 'approved'                             │
-│                                                                 │
-│  BƯỚC 3: User vào /wallet                                      │
-│     └── Thấy nút "Claim to Wallet"                             │
-│     └── Kết nối External Wallet (MetaMask, Bitget...)          │
-│     └── Nhập số lượng → Confirm                                 │
-│                                                                 │
-│  BƯỚC 4: Nhận CAMLY                                            │
-│     └── CAMLY được chuyển từ Treasury → Ví user                │
-│     └── Xem transaction trên BscScan                           │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│  💰 Treasury Wallet                                                 │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  📍 Address: 0x1234...ABCD   [📋 Copy] [🔗 BscScan]                │
+│                                                                     │
+│  ┌─────────────────────┐  ┌─────────────────────┐                  │
+│  │      BNB            │  │      CAMLY          │                  │
+│  │   0.523 BNB         │  │   5,000,000 CAMLY   │                  │
+│  │   (~$365.10)        │  │   (~$20.00)         │                  │
+│  │   ✅ Đủ gas fee     │  │   ✅ Đủ trả thưởng  │                  │
+│  └─────────────────────┘  └─────────────────────┘                  │
+│                                                                     │
+│  ⚠️ Cảnh báo: Nếu BNB < 0.01 hoặc CAMLY < 100,000                 │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
-### Vấn đề hiện tại:
-- **reward_status = 'pending'** → Nút Claim bị vô hiệu hóa
-- Cần Admin duyệt trước thì mới claim được
+## Files Cần Tạo/Sửa
 
-## Phần 2: Thêm User hoangtydo88 Làm Admin
+| File | Action | Mô tả |
+|------|--------|-------|
+| `supabase/functions/treasury-balance/index.ts` | CREATE | Edge function lấy số dư |
+| `src/components/admin/TreasuryBalanceCard.tsx` | CREATE | Component hiển thị |
+| `src/components/admin/BlockchainTab.tsx` | UPDATE | Thêm TreasuryBalanceCard |
 
-### Thông tin User:
+## Chi Tiết Code
 
-| Field | Value |
-|-------|-------|
-| Username | Hoangtydo88 |
-| User ID | `9796f573-49d4-474d-be26-af0d23be2e39` |
-| Role hiện tại | user |
-| Role cần thêm | admin |
+### Edge Function: `treasury-balance`
 
-### SQL Migration cần chạy:
+```typescript
+// supabase/functions/treasury-balance/index.ts
 
-```sql
--- Thêm role 'admin' cho user hoangtydo88
-INSERT INTO public.user_roles (user_id, role)
-VALUES ('9796f573-49d4-474d-be26-af0d23be2e39', 'admin')
-ON CONFLICT (user_id, role) DO NOTHING;
+import { createClient } from 'supabase-js';
+import { createPublicClient, http, formatUnits } from 'viem';
+import { bsc } from 'viem/chains';
+
+const CAMLY_CONTRACT = '0x0910320181889feFDE0BB1Ca63962b0A8882e413';
+
+Deno.serve(async (req) => {
+  // 1. CORS handling
+  // 2. Verify admin role
+  // 3. Get TREASURY_WALLET_ADDRESS from env
+  // 4. Use publicClient to read:
+  //    - BNB balance: getBalance()
+  //    - CAMLY balance: readContract({ balanceOf })
+  // 5. Return formatted balances
+});
 ```
 
-### Sau khi thêm Admin:
+### Component: `TreasuryBalanceCard`
 
-1. User **Hoangtydo88** có thể truy cập `/admin`
-2. Vào tab **"🎁 Duyệt thưởng"**
-3. Tự duyệt cho chính mình hoặc duyệt cho users khác
-4. Sau khi reward_status = 'approved', vào `/wallet` để claim
+```typescript
+// src/components/admin/TreasuryBalanceCard.tsx
 
-## Phần 3: Hướng Dẫn Tự Duyệt Thưởng Cho Chính Mình
+export const TreasuryBalanceCard = () => {
+  const [balances, setBalances] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-### Bước 1: Truy cập Admin Dashboard
+  useEffect(() => {
+    fetchTreasuryBalance();
+  }, []);
+
+  const fetchTreasuryBalance = async () => {
+    const { data } = await supabase.functions.invoke('treasury-balance');
+    setBalances(data);
+  };
+
+  return (
+    <Card>
+      {/* Treasury address + BNB balance + CAMLY balance */}
+      {/* Warnings if low balance */}
+    </Card>
+  );
+};
 ```
-URL: https://funprofile.lovable.app/admin
+
+## Hướng Dẫn Test Flow Claim (Sau Khi Hoàn Thành)
+
+### Bước 1: Kiểm tra Treasury
+1. Truy cập `/admin` → Tab "⛓️ Blockchain"
+2. Xem card "Treasury Wallet"
+3. Đảm bảo có đủ BNB (> 0.01) và CAMLY (> số cần claim)
+
+### Bước 2: Nạp tiền Treasury (nếu thiếu)
+```text
+Treasury Address: [Xem trong Admin Dashboard]
+
+1. Mở ví cá nhân (MetaMask, Bitget...)
+2. Gửi BNB (0.1 BNB là đủ ~100 transactions)
+3. Gửi CAMLY (đủ để trả thưởng)
 ```
 
-### Bước 2: Chọn tab "🎁 Duyệt thưởng"
+### Bước 3: Test Claim
+1. Đăng nhập với user có `reward_status = 'approved'`
+2. Vào `/wallet`
+3. Kết nối External Wallet
+4. Nhấn "Claim to Wallet"
+5. Nhập số lượng và confirm
+6. Xem transaction trên BscScan
 
-### Bước 3: Tìm và duyệt
-- Tìm username "Hoangtydo88" trong danh sách
-- Click nút **"Duyệt"** màu xanh
+## Cảnh Báo & Thresholds
 
-### Bước 4: Claim
-- Quay lại `/wallet`
-- Nút "Claim to Wallet" sẽ active
-- Kết nối ví external (MetaMask, Bitget, Trust...)
-- Nhập số lượng 301,000 CAMLY
-- Confirm và đợi transaction
+| Token | Warning Level | Critical Level |
+|-------|---------------|----------------|
+| BNB   | < 0.05 BNB    | < 0.01 BNB     |
+| CAMLY | < 500,000     | < 100,000      |
 
-## Tóm Tắt Thay Đổi
+## Tóm Tắt
 
-| Task | Action | File/Location |
-|------|--------|---------------|
-| 1. Thêm Admin | SQL Migration | Database: user_roles |
-| 2. Duyệt thưởng | UI Action | /admin → Duyệt thưởng |
-| 3. Claim CAMLY | UI Action | /wallet → Claim to Wallet |
-
-## Lưu Ý Quan Trọng
-
-- Mỗi lần claim tốn gas fee BSC (~$0.01-0.05)
-- Cần có BNB trong ví để trả gas fee
-- Treasury Wallet phải có đủ CAMLY để chuyển
+1. **Tạo Edge Function** `treasury-balance` để đọc số dư on-chain
+2. **Tạo Component** `TreasuryBalanceCard` hiển thị cho Admin
+3. **Tích hợp** vào BlockchainTab trong Admin Dashboard
+4. Admin có thể theo dõi số dư Treasury realtime
 
