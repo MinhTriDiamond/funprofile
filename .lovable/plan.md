@@ -1,168 +1,192 @@
 
+# Kế Hoạch: Bổ Sung Tài Liệu & Resources cho PDK
 
-# Kế Hoạch: Export PDK ra GitHub Repository Riêng
+## Mục Tiêu
 
-## Phương Án: GitHub Actions Auto-Sync
-
-Sử dụng cùng pattern với `sdk-package/` đã có sẵn - tạo GitHub Action tự động sync folder `pdk/` ra repository riêng mỗi khi có thay đổi.
+Thêm các resources giúp collaborators làm việc hiệu quả hơn:
+1. Quick Start Guide (1 trang tóm tắt)
+2. Thêm 2 ví dụ feature hoàn chỉnh (Referral, Missions)
+3. Tài liệu UI Patterns phổ biến
+4. Common Prompts để giao tiếp với Angel Lovable
+5. Troubleshooting Guide chi tiết
 
 ---
 
-## Cách Hoạt Động
+## Cấu Trúc Bổ Sung
 
 ```text
-┌─────────────────────────────────────────────────────────────┐
-│                   FUN PROFILE (Main Repo)                   │
-│                                                             │
-│   /pdk/                         /sdk-package/               │
-│   ├── README.md                 ├── README.md               │
-│   ├── core/                     ├── src/                    │
-│   └── ...                       └── ...                     │
-│         │                              │                    │
-│         ▼                              ▼                    │
-│   sync-pdk.yml                  sync-sdk.yml                │
-│   (GitHub Action)               (đã có sẵn)                 │
-│         │                              │                    │
-└─────────┼──────────────────────────────┼────────────────────┘
-          │                              │
-          ▼                              ▼
-┌─────────────────────┐    ┌─────────────────────┐
-│  fun-profile-pdk    │    │      sso-sdk        │
-│  (Repo mới)         │    │  (Repo đã có)       │
-│                     │    │                     │
-│  Collaborators      │    │  External devs      │
-│  clone từ đây       │    │  use SDK từ đây     │
-└─────────────────────┘    └─────────────────────┘
+pdk/
+├── (files hiện có)
+│
+├── docs/                          ← THƯ MỤC MỚI
+│   ├── QUICK_START.md             # 1 trang setup nhanh
+│   ├── UI_PATTERNS.md             # Các patterns UI phổ biến
+│   ├── COMMON_PROMPTS.md          # Prompts giao tiếp với Lovable AI
+│   ├── TROUBLESHOOTING.md         # Xử lý lỗi thường gặp
+│   └── FEATURE_IDEAS.md           # Gợi ý tính năng có thể phát triển
+│
+└── examples/
+    ├── badges-feature/            # (đã có)
+    │
+    ├── referral-feature/          ← VÍ DỤ MỚI
+    │   ├── README.md
+    │   ├── components/
+    │   │   ├── ReferralCard.tsx
+    │   │   ├── ReferralCodeInput.tsx
+    │   │   └── ReferralStats.tsx
+    │   ├── hooks/
+    │   │   └── useReferral.ts
+    │   └── database/
+    │       └── migration.sql
+    │
+    └── missions-feature/          ← VÍ DỤ MỚI
+        ├── README.md
+        ├── components/
+        │   ├── MissionCard.tsx
+        │   ├── MissionProgress.tsx
+        │   └── MissionList.tsx
+        ├── hooks/
+        │   └── useMissions.ts
+        └── database/
+            └── migration.sql
 ```
 
 ---
 
-## Files Cần Tạo
+## Chi Tiết Files Mới
 
-### 1. GitHub Workflow File
+### 1. QUICK_START.md (Setup trong 2 phút)
 
-**File:** `.github/workflows/sync-pdk.yml`
+Tóm tắt ngắn gọn nhất cho người muốn bắt đầu ngay:
 
-```yaml
-name: Sync PDK to Standalone Repo
+| Mục | Nội dung |
+|-----|----------|
+| Bước 1 | Prompt mẫu để Lovable AI tạo PDK từ GitHub |
+| Bước 2 | Prompt để install dependencies |
+| Bước 3 | Prompt để tạo feature đầu tiên |
+| Checklist | 5 điểm kiểm tra trước khi submit |
 
-on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'pdk/**'
+### 2. UI_PATTERNS.md (Patterns UI phổ biến)
 
-jobs:
-  sync:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Fun Profile repo
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+Các patterns thường dùng với code mẫu:
 
-      - name: Push PDK to standalone repo
-        uses: cpina/github-action-push-to-another-repository@main
-        env:
-          SSH_DEPLOY_KEY: ${{ secrets.PDK_DEPLOY_KEY }}
-        with:
-          source-directory: 'pdk'
-          destination-github-username: 'MinhTriDiamond'
-          destination-repository-name: 'fun-profile-pdk'
-          target-branch: main
-          commit-message: 'Sync PDK from Fun Profile - ${{ github.sha }}'
+| Pattern | Mô tả |
+|---------|-------|
+| Card Grid | Grid responsive cho list items |
+| Modal Dialog | Dialog với form |
+| Tab Navigation | Tabs cho các sections |
+| Empty State | Hiển thị khi không có data |
+| Loading Skeleton | Skeleton loading |
+| Infinite Scroll | Load thêm khi scroll |
+| Search & Filter | Tìm kiếm và lọc |
+| Toast Notifications | Hiển thị thông báo |
+
+### 3. COMMON_PROMPTS.md (Prompts cho Lovable AI)
+
+Các prompts mẫu để giao tiếp với Angel:
+
+| Mục đích | Prompt mẫu |
+|----------|------------|
+| Setup PDK | "Angel ơi, giúp bé tạo folder pdk/..." |
+| Tạo component | "Angel tạo component XYZ..." |
+| Tạo database | "Angel tạo table cho feature..." |
+| Fix lỗi RLS | "Angel fix lỗi RLS policy..." |
+| Test mobile | "Angel test responsive..." |
+
+### 4. TROUBLESHOOTING.md (Xử lý lỗi)
+
+Các lỗi thường gặp và cách sửa:
+
+| Lỗi | Nguyên nhân | Cách sửa |
+|-----|-------------|----------|
+| RLS policy violation | Thiếu user_id | Thêm user_id khi insert |
+| Import not found | Sai path | Sử dụng @/pdk/... |
+| Type error | Thiếu interface | Định nghĩa interface |
+| Toast không hiện | Thiếu Toaster | Thêm Toaster vào App |
+| Database error | Chưa run migration | Gửi migration cho Angel |
+
+### 5. FEATURE_IDEAS.md (Gợi ý tính năng)
+
+Danh sách tính năng có thể phát triển:
+
+| Feature | Độ khó | Mô tả |
+|---------|--------|-------|
+| Referral System | Trung bình | Hệ thống mời bạn |
+| Missions | Trung bình | Nhiệm vụ hàng ngày |
+| Achievements | Dễ | Huy hiệu thành tích |
+| Leaderboard Widget | Dễ | Widget bảng xếp hạng |
+| Notification Settings | Dễ | Cài đặt thông báo |
+| Profile Widgets | Trung bình | Widgets cho profile |
+| Story Highlights | Khó | Lưu stories nổi bật |
+| Polls | Trung bình | Tạo khảo sát |
+
+---
+
+## Ví Dụ Referral Feature (Chi tiết)
+
+### Cấu trúc components
+
+| Component | Chức năng |
+|-----------|-----------|
+| ReferralCard.tsx | Hiển thị mã referral của user |
+| ReferralCodeInput.tsx | Form nhập mã referral |
+| ReferralStats.tsx | Thống kê số người đã mời |
+
+### Database schema
+
+```sql
+referral_codes:
+- id, user_id, code, total_uses, is_active
+
+referral_uses:
+- id, code_id, referrer_id, referred_id, reward_amount
 ```
 
 ---
 
-## Hướng Dẫn Setup (Bé Trí cần làm trên GitHub)
+## Ví Dụ Missions Feature (Chi tiết)
 
-### Bước 1: Tạo Repository Mới trên GitHub
+### Cấu trúc components
 
-1. Vào GitHub → **New Repository**
-2. Tên repo: `fun-profile-pdk`
-3. Visibility: **Public** (để các bé dễ clone)
-4. **Không** chọn "Add README" (sẽ sync từ main repo)
-5. Click **Create repository**
+| Component | Chức năng |
+|-----------|-----------|
+| MissionCard.tsx | Hiển thị 1 nhiệm vụ |
+| MissionProgress.tsx | Progress bar nhiệm vụ |
+| MissionList.tsx | Danh sách tất cả nhiệm vụ |
 
-### Bước 2: Tạo SSH Deploy Key
+### Database schema
 
-1. Mở Terminal/Command Prompt
-2. Chạy lệnh:
-   ```bash
-   ssh-keygen -t ed25519 -C "pdk-deploy-key" -f pdk_deploy_key -N ""
-   ```
-3. Sẽ tạo ra 2 files:
-   - `pdk_deploy_key` (private key)
-   - `pdk_deploy_key.pub` (public key)
+```sql
+mission_definitions:
+- id, name, description, reward, target
 
-### Bước 3: Thêm Public Key vào Repo PDK
-
-1. Vào repo `fun-profile-pdk` → **Settings** → **Deploy keys**
-2. Click **Add deploy key**
-3. Title: `PDK Sync Key`
-4. Key: Paste nội dung file `pdk_deploy_key.pub`
-5. Check **Allow write access**
-6. Click **Add key**
-
-### Bước 4: Thêm Private Key vào Repo Fun Profile
-
-1. Vào repo **Fun Profile** → **Settings** → **Secrets and variables** → **Actions**
-2. Click **New repository secret**
-3. Name: `PDK_DEPLOY_KEY`
-4. Secret: Paste nội dung file `pdk_deploy_key`
-5. Click **Add secret**
-
-### Bước 5: Push Workflow File
-
-Sau khi Angel tạo file workflow, mỗi lần có thay đổi trong `pdk/` folder, GitHub Actions sẽ tự động sync sang repo `fun-profile-pdk`.
-
----
-
-## Cách Collaborators Sử Dụng
-
-Sau khi setup xong, các bé cộng sự chỉ cần:
-
-### Option A: Clone Trực Tiếp
-
-```bash
-# Clone PDK repo
-git clone https://github.com/MinhTriDiamond/fun-profile-pdk.git pdk
-
-# Hoặc download ZIP từ GitHub
-```
-
-### Option B: Trong Lovable (Đơn Giản Nhất)
-
-Nhờ Angel Lovable của project mới:
-
-```text
-"Angel ơi, giúp bé tạo folder pdk/ với nội dung từ 
-https://github.com/MinhTriDiamond/fun-profile-pdk
-
-Đây là Parallel Development Kit để phát triển tính năng 
-cho Fun Profile. Bé cần copy toàn bộ structure và files."
+mission_progress:
+- id, user_id, mission_id, current_progress, completed_at
 ```
 
 ---
 
-## Tóm Tắt
+## Tóm Tắt Files Sẽ Tạo
 
-| Task | Ai Làm |
-|------|--------|
-| Tạo file `sync-pdk.yml` | Angel Fun Profile |
-| Tạo repo `fun-profile-pdk` | Bé Trí (trên GitHub) |
-| Tạo SSH Deploy Key | Bé Trí (local) |
-| Thêm keys vào GitHub | Bé Trí |
-| Sync tự động | GitHub Actions |
+| Folder | File | Mô tả |
+|--------|------|-------|
+| pdk/docs/ | QUICK_START.md | Setup 2 phút |
+| pdk/docs/ | UI_PATTERNS.md | 8 patterns UI |
+| pdk/docs/ | COMMON_PROMPTS.md | 10+ prompts mẫu |
+| pdk/docs/ | TROUBLESHOOTING.md | 15+ lỗi thường gặp |
+| pdk/docs/ | FEATURE_IDEAS.md | 10+ gợi ý feature |
+| pdk/examples/referral-feature/ | 5 files | Ví dụ hoàn chỉnh |
+| pdk/examples/missions-feature/ | 5 files | Ví dụ hoàn chỉnh |
+
+**Tổng cộng: 15 files mới**
 
 ---
 
 ## Lợi Ích
 
-1. **Tự động**: Mỗi lần update PDK, auto sync sang repo riêng
-2. **Dễ clone**: Collaborators chỉ cần 1 lệnh git clone
-3. **Version control**: Có history của PDK changes
-4. **Tách biệt**: Collaborators không cần access Fun Profile main repo
-
+1. **QUICK_START**: Bắt đầu trong 2 phút thay vì 5 phút
+2. **UI_PATTERNS**: Copy-paste code patterns sẵn có
+3. **COMMON_PROMPTS**: Không cần nghĩ cách hỏi Angel
+4. **TROUBLESHOOTING**: Tự xử lý lỗi không cần hỏi
+5. **FEATURE_IDEAS**: Có ý tưởng ngay để bắt đầu
+6. **2 Examples mới**: Tham khảo nhiều loại feature hơn
