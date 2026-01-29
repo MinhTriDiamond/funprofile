@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Link2, RefreshCw, ExternalLink, Coins } from "lucide-react";
-
+import TreasuryBalanceCard from "./TreasuryBalanceCard";
 interface ClaimData {
   id: string;
   user_id: string;
@@ -92,6 +92,9 @@ const BlockchainTab = ({ adminId }: BlockchainTabProps) => {
 
   return (
     <div className="space-y-6">
+      {/* Treasury Balance Card */}
+      <TreasuryBalanceCard />
+
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
