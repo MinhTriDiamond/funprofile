@@ -121,16 +121,20 @@ Deno.serve(async (req: Request) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
-    if (authError || !user) {
-      console.error('[stream-video] Auth error:', authError?.message || 'No user');
+    // Extract token and validate using getClaims (required for Lovable Cloud ES256 signing)
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: authError } = await supabaseClient.auth.getClaims(token);
+    
+    if (authError || !claimsData?.claims?.sub) {
+      console.error('[stream-video] Auth error:', authError?.message || 'No valid claims');
       return new Response(
-        JSON.stringify({ error: 'Unauthorized', details: authError?.message }),
+        JSON.stringify({ error: 'Unauthorized', details: authError?.message || 'Invalid token' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('[stream-video] User:', user.id);
+    const userId = claimsData.claims.sub as string;
+    console.log('[stream-video] User:', userId);
 
     switch (action) {
       // ============================================
@@ -154,7 +158,7 @@ Deno.serve(async (req: Request) => {
           fileName: safeName,
           fileType,
           fileId: fileId || 'not-provided',
-          userId: user.id,
+          userId,
           origin,
           timestamp: new Date().toISOString(),
         });
@@ -254,7 +258,7 @@ Deno.serve(async (req: Request) => {
               requireSignedURLs: false,
               allowedOrigins: ['*'],
               meta: {
-                userId: user.id,
+                userId,
                 uploadedAt: new Date().toISOString(),
               },
             }),
