@@ -5,6 +5,8 @@ import EcosystemDocs from "@/pages/EcosystemDocs";
 import PlatformDocs from "@/pages/PlatformDocs";
 import IntegrationDocs from "@/pages/IntegrationDocs";
 import SdkRepositoryDocs from "@/pages/SdkRepositoryDocs";
+import MasterCharterDocs from "@/pages/MasterCharterDocs";
+import PplpDocs from "@/pages/PplpDocs";
 
 const setCanonical = (href: string) => {
   let link = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
@@ -72,6 +74,24 @@ export default function DocsRouter() {
       return;
     }
 
+    if (first === "master-charter") {
+      document.title = "Hiến Pháp Gốc | Master Charter of FUN Ecosystem";
+      ensureMetaDescription(
+        "Hiến Pháp Gốc của FUN Ecosystem - Nền Kinh Tế Ánh Sáng 5D của Trái Đất Mới. 8 chương thiêng liêng."
+      );
+      setCanonical(`${origin}/docs/master-charter`);
+      return;
+    }
+
+    if (first === "pplp") {
+      document.title = "Proof of Pure Love Protocol (PPLP) | FUN Ecosystem";
+      ensureMetaDescription(
+        "Giao Thức Bằng Chứng Tình Yêu Thuần Khiết - Nền tảng đồng thuận ánh sáng cho Trái Đất Mới."
+      );
+      setCanonical(`${origin}/docs/pplp`);
+      return;
+    }
+
     document.title = "FUN Ecosystem Documentation";
     ensureMetaDescription(
       "Tài liệu FUN Ecosystem: SSO, app architecture, wallet, feed, rewards, media và admin."
@@ -83,6 +103,8 @@ export default function DocsRouter() {
   if (first === "ecosystem") return <EcosystemDocs />;
   if (first === "integration") return <IntegrationDocs />;
   if (first === "sdk-repository") return <SdkRepositoryDocs />;
+  if (first === "master-charter") return <MasterCharterDocs />;
+  if (first === "pplp") return <PplpDocs />;
 
   return <Navigate to="/docs/ecosystem" replace />;
 }

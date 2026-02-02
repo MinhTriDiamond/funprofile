@@ -697,7 +697,35 @@ const LawOfLight = () => {
 
             {/* Back button for read-only mode */}
             {isReadOnly && (
-              <div className="text-center pt-8">
+              <div className="text-center pt-8 space-y-6">
+                {/* Links to Sacred Documents */}
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                  <Button
+                    onClick={() => navigate('/docs/master-charter')}
+                    className="px-6 py-3 rounded-xl"
+                    style={{
+                      fontFamily: fontStyles.body,
+                      background: 'linear-gradient(135deg, #D4AF37 0%, #FFD700 50%, #D4AF37 100%)',
+                      color: '#FFFFFF',
+                      boxShadow: '0 4px 15px rgba(212,175,55,0.3)'
+                    }}
+                  >
+                    📜 Đọc Hiến Pháp Gốc
+                  </Button>
+                  <Button
+                    onClick={() => navigate('/docs/pplp')}
+                    className="px-6 py-3 rounded-xl"
+                    style={{
+                      fontFamily: fontStyles.body,
+                      background: 'linear-gradient(135deg, #D4AF37 0%, #FFD700 50%, #D4AF37 100%)',
+                      color: '#FFFFFF',
+                      boxShadow: '0 4px 15px rgba(212,175,55,0.3)'
+                    }}
+                  >
+                    🌞 Đọc Giao Thức PPLP
+                  </Button>
+                </div>
+                
                 <Button
                   onClick={() => navigate(-1)}
                   variant="outline"
