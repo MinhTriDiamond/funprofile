@@ -208,6 +208,7 @@ Deno.serve(async (req) => {
         publicUrl: filePublicUrl,
         key,
         expiresIn,
+        cacheControl: 'public, max-age=31536000, immutable',
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

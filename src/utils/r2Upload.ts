@@ -76,6 +76,7 @@ async function uploadWithPresignedUrl(
       body: file,
       headers: {
         'Content-Type': file.type,
+        'Cache-Control': 'public, max-age=31536000, immutable',
       },
       signal: controller.signal,
     });
