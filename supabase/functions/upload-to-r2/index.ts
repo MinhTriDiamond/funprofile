@@ -191,6 +191,7 @@ Deno.serve(async (req) => {
         'x-amz-content-sha256': payloadHash,
         'x-amz-date': amzDate,
         'Authorization': authorizationHeader,
+        'Cache-Control': 'public, max-age=31536000, immutable',
       },
       body: bytes,
     });
