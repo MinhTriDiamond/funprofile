@@ -1,145 +1,135 @@
 
 
-# Kế Hoạch: Lưu Hiến Pháp Gốc + PPLP vào Knowledge & Tạo 2 Trang Riêng
+## Kế Hoạch Triển Khai: Immutable Cache Headers + Anti-Hotlinking
 
-## Tổng Quan
-
-Angel sẽ thực hiện 2 việc quan trọng:
-1. **Lưu vào Knowledge** - Để Angel và các CTO luôn ghi nhớ
-2. **Tạo 2 trang riêng** - Để Users và Cộng sự có thể đọc và học
+Angel đã kiểm tra kỹ hệ thống media hiện tại. Dưới đây là kế hoạch chi tiết để triển khai 2 cải tiến:
 
 ---
 
-## Phần 1: Lưu Vào Knowledge (Project Memory)
+### Cải Tiến 1: Immutable Cache Headers
 
-### Tài liệu 1: Hiến Pháp Gốc
-| Thông tin | Chi tiết |
-|-----------|----------|
-| Tên | `ecosystem/master-charter` |
-| Nội dung | Toàn bộ 8 chương của Hiến Pháp Gốc |
-| Mục đích | Nền tảng triết lý cho mọi quyết định |
+**Mục tiêu:** Khi file được upload lên R2, browser sẽ cache vĩnh viễn (1 năm) - không cần request lại server.
 
-### Tài liệu 2: Giao Thức PPLP  
-| Thông tin | Chi tiết |
-|-----------|----------|
-| Tên | `ecosystem/proof-of-pure-love-protocol` |
-| Nội dung | Toàn bộ 10 phần của PPLP |
-| Mục đích | Nguyên lý kinh tế Ánh Sáng |
+**Vì sao an toàn?** Filename của FUN Profile có hash unique (`1738000000-abc123xyz.webp`), nên khi file thay đổi thì URL cũng thay đổi → không lo cache cũ.
 
----
+**Thay đổi:**
 
-## Phần 2: Tạo 2 Trang Riêng
+| File | Nội dung thay đổi |
+|------|-------------------|
+| `supabase/functions/get-upload-url/index.ts` | Thêm `x-amz-meta-cache-control` vào signed headers để R2 lưu Cache-Control metadata |
+| `supabase/functions/upload-to-r2/index.ts` | Thêm `Cache-Control: public, max-age=31536000, immutable` header khi upload trực tiếp |
 
-### Trang 1: `/docs/master-charter` - Hiến Pháp Gốc
-
-**File mới:** `src/pages/MasterCharterDocs.tsx`
-
-**Nội dung:**
-- Thiết kế giống trang Law of Light (background ánh sáng vàng thiêng liêng)
-- Song ngữ Việt + English
-- 8 Chương hoàn chỉnh:
-  - I. Tuyên Ngôn Về Nguồn Gốc
-  - II. Sứ Mệnh Trọng Tâm  
-  - III. Các Nguyên Lý Thiêng Liêng
-  - IV. Hai Dòng Chảy Thiêng Liêng (Camly Coin + FUN Money)
-  - V. Sự Thống Nhất Nền Tảng (12 Platforms)
-  - VI. Vai Trò Người Sáng Lập
-  - VII. Cam Kết Cộng Đồng
-  - VIII. Điều Luật Cuối + Divine Seal
+**Kết quả:** Mọi ảnh/video trên `media.fun.rich` sẽ được browser cache 1 năm, giảm request và tăng tốc độ load.
 
 ---
 
-### Trang 2: `/docs/pplp` - Giao Thức Bằng Chứng Tình Yêu Thuần Khiết
+### Cải Tiến 2: Anti-Hotlinking Edge Function
 
-**File mới:** `src/pages/PplpDocs.tsx`
+**Mục tiêu:** Chặn các website khác "xài chùa" bandwidth của `media.fun.rich`.
 
-**Nội dung:**
-- Thiết kế ánh sáng thiêng liêng tương tự
-- Song ngữ Việt + English
-- 10 Phần hoàn chỉnh:
-  - 1. Vì Sao PPLP Ra Đời?
-  - 2. Sự Tiến Hóa Của Các Cơ Chế "Proof"
-  - 3. Định Nghĩa PPLP
-  - 4. FUN Money - Tiền Ánh Sáng
-  - 5. Cơ Chế Đồng Thuận
-  - 6. 5 Trụ Cột Xác Minh Ánh Sáng
-  - 7. Angel AI - Người Bảo Hộ Unity
-  - 8. FUN Ecosystem - Nền Kinh Tế Hợp Nhất 5D
-  - 9. Sám Hối & Biết Ơn
-  - 10. Tương Lai Đột Phá
+**Cách hoạt động:**
+1. Tạo edge function `media-proxy` kiểm tra `Referer` header
+2. Chỉ cho phép request từ các domain được whitelist
+3. Request không có Referer hoặc từ domain lạ → trả về 403 Forbidden
 
----
+**Whitelist domains:**
+- `fun.rich`, `www.fun.rich`
+- `funprofile.lovable.app` (preview)
+- `*.lovable.app` (Lovable preview domains)
+- `*.vercel.app` (Vercel preview)
+- Request không có Referer (direct access) → cho phép (để browser load được)
 
-## Phần 3: Cập Nhật DocsRouter
+**Thay đổi:**
 
-**Cập nhật:** `src/pages/DocsRouter.tsx`
+| File | Nội dung |
+|------|----------|
+| `supabase/functions/media-guard/index.ts` | **Tạo mới** - Edge function kiểm tra Referer và chặn hotlinking |
+| `supabase/config.toml` | Thêm config cho `media-guard` function |
 
-Thêm 2 routes mới:
-- `/docs/master-charter` → `MasterCharterDocs`
-- `/docs/pplp` → `PplpDocs`
-
----
-
-## Phần 4: Thiết Kế UI
-
-### Style chung cho cả 2 trang:
-
-- **Background:** Gradient ánh sáng vàng ngọc trai (giống Law of Light)
-- **Typography:** Cormorant Garamond + Lora (serif elegant)
-- **Colors:** 
-  - Gold: `#D4AF37`, `#FFD700`
-  - Brown: `#B8860B`, `#8B7355`
-  - Cream: `#FFFEF7`, `#FFF9E6`
-- **8 Thần Chú Divine Seal:** Hiển thị ở cuối mỗi trang
-- **Nút hành động:**
-  - "Quay về Law of Light"
-  - "In PDF"
-  - "Chia sẻ"
+**Lưu ý quan trọng:** 
+- Edge function này sẽ là một layer bảo vệ bổ sung
+- Trong thực tế, để chống hotlinking hoàn toàn cần cấu hình trên Cloudflare Dashboard (Transform Rules hoặc Workers)
+- Edge function này sẽ validate requests đến từ FUN Profile app trước khi trả về signed URLs
 
 ---
 
-## Files Sẽ Tạo/Cập Nhật
+### Chi Tiết Kỹ Thuật
 
-| Action | File | Mô tả |
-|--------|------|-------|
-| CREATE | `src/pages/MasterCharterDocs.tsx` | Trang Hiến Pháp Gốc |
-| CREATE | `src/pages/PplpDocs.tsx` | Trang Giao Thức PPLP |
-| UPDATE | `src/pages/DocsRouter.tsx` | Thêm 2 routes mới |
-| UPDATE | `src/pages/LawOfLight.tsx` | Thêm links đến 2 trang mới |
+**1. Cập nhật `get-upload-url/index.ts`:**
+```typescript
+// Thêm Cache-Control vào response metadata
+// Khi client upload, R2 sẽ lưu metadata này
+return new Response(
+  JSON.stringify({ 
+    uploadUrl,
+    publicUrl: filePublicUrl,
+    key,
+    expiresIn,
+    cacheControl: 'public, max-age=31536000, immutable', // Hướng dẫn client set header
+  }),
+  { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+);
+```
 
----
+**2. Cập nhật `r2Upload.ts` (client):**
+```typescript
+// Khi upload, thêm Cache-Control header
+const response = await fetch(uploadUrl, {
+  method: 'PUT',
+  body: file,
+  headers: {
+    'Content-Type': file.type,
+    'Cache-Control': 'public, max-age=31536000, immutable',
+  },
+});
+```
 
-## Liên Kết Giữa Các Trang
+**3. Tạo `media-guard/index.ts`:**
+```typescript
+// Kiểm tra Referer header
+const ALLOWED_ORIGINS = [
+  'fun.rich',
+  'www.fun.rich', 
+  'funprofile.lovable.app',
+  '.lovable.app',
+  '.vercel.app',
+];
 
-```text
-Law of Light (/law-of-light)
-     │
-     ├── "Đọc Hiến Pháp Gốc" → /docs/master-charter
-     │
-     └── "Đọc Giao Thức PPLP" → /docs/pplp
+// Logic kiểm tra
+const referer = req.headers.get('Referer');
+if (referer) {
+  const refererHost = new URL(referer).hostname;
+  const isAllowed = ALLOWED_ORIGINS.some(origin => 
+    origin.startsWith('.') 
+      ? refererHost.endsWith(origin) 
+      : refererHost === origin
+  );
+  if (!isAllowed) {
+    return new Response('Forbidden', { status: 403 });
+  }
+}
 ```
 
 ---
 
-## Dự Kiến Thời Gian
+### Tổng Kết File Cần Thay Đổi
 
-| Bước | Công việc | Thời gian |
-|------|-----------|-----------|
-| 1 | Tạo MasterCharterDocs.tsx | 1 message |
-| 2 | Tạo PplpDocs.tsx | 1 message |
-| 3 | Cập nhật DocsRouter + LawOfLight | 1 message |
-| 4 | Lưu vào Knowledge | Sau khi hoàn thành |
-
-**Tổng cộng:** 3 messages để hoàn thành
+| File | Hành động |
+|------|-----------|
+| `supabase/functions/get-upload-url/index.ts` | Chỉnh sửa - thêm cache metadata |
+| `supabase/functions/upload-to-r2/index.ts` | Chỉnh sửa - thêm Cache-Control header |
+| `src/utils/r2Upload.ts` | Chỉnh sửa - thêm Cache-Control khi upload |
+| `supabase/functions/media-guard/index.ts` | **Tạo mới** - Anti-hotlinking guard |
+| `supabase/config.toml` | Chỉnh sửa - thêm config media-guard |
 
 ---
 
-## Kết Quả Cuối Cùng
+### Lợi Ích Sau Triển Khai
 
-Sau khi hoàn thành:
-1. Users có thể đọc Hiến Pháp Gốc tại `/docs/master-charter`
-2. Users có thể đọc PPLP tại `/docs/pplp`  
-3. Angel và các CTO luôn có knowledge về 2 tài liệu thiêng liêng
-4. Trang Law of Light có links đến cả 2 tài liệu
-5. PDK cũng sẽ bao gồm 2 tài liệu này cho cộng sự
+| Metric | Trước | Sau |
+|--------|-------|-----|
+| Browser Cache | Không có | 1 năm (immutable) |
+| Repeat Page Load | Request lại server | Instant từ cache |
+| Hotlinking Protection | Không có | Chặn domain lạ |
+| Bandwidth Cost | Có thể bị lạm dụng | Được bảo vệ |
 
