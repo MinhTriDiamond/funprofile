@@ -9,6 +9,7 @@ import { MobileStats } from '@/components/profile/CoverHonorBoard';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
+import { AngelFloatingButton } from '@/components/angel-ai';
 
 export const MobileBottomNav = memo(() => {
   const navigate = useNavigate();
@@ -66,6 +67,9 @@ export const MobileBottomNav = memo(() => {
 
   return (
     <>
+      {/* ANGEL AI Floating Button */}
+      <AngelFloatingButton />
+      
       {/* Bottom Navigation Bar - Fixed with larger touch targets */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-transparent border-t border-border/30 safe-area-bottom">
         <div className="flex items-center justify-around h-[72px] px-1 max-w-lg mx-auto">

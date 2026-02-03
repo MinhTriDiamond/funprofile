@@ -15,7 +15,10 @@ import {
   User,
   LogOut,
   Globe,
+  Sparkles,
 } from 'lucide-react';
+import { AngelChatWidget } from '@/components/angel-ai';
+import angelAvatar from '@/assets/angel-avatar.jpg';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Sheet,
@@ -45,6 +48,7 @@ export const FacebookNavbar = () => {
   const isMobileOrTablet = useIsMobileOrTablet();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isAngelChatOpen, setIsAngelChatOpen] = useState(false);
   const [profile, setProfile] = useState<{ avatar_url: string | null; username: string } | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
@@ -151,7 +155,7 @@ export const FacebookNavbar = () => {
         </div>
 
         {/* Center Section - Navigation (Desktop only, hidden on tablet) */}
-        <nav className="hidden lg:flex items-center justify-center flex-1 max-w-[600px] h-full gap-1">
+        <nav className="hidden lg:flex items-center justify-center flex-1 max-w-[700px] h-full gap-1">
           {/* Icon Navigation Items (Home, Friends, Chat, Wallet) */}
           <TooltipProvider delayDuration={200}>
             {iconNavItems.map((item) => (
@@ -181,6 +185,31 @@ export const FacebookNavbar = () => {
                 </TooltipContent>
               </Tooltip>
             ))}
+            
+            {/* ANGEL AI Button - Special styling */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => setIsAngelChatOpen(true)}
+                  aria-label="ANGEL AI"
+                  className="flex-1 h-full max-w-[100px] flex items-center justify-center relative transition-all duration-300 rounded-full border-[0.5px] group text-foreground hover:bg-gradient-to-r hover:from-amber-500/10 hover:to-orange-500/10 border-transparent hover:border-amber-500/50"
+                >
+                  <div className="relative">
+                    <img 
+                      src={angelAvatar} 
+                      alt="ANGEL AI" 
+                      className="w-7 h-7 rounded-full border border-amber-500/50 group-hover:border-amber-400 transition-all duration-300 group-hover:shadow-[0_0_12px_hsl(45_93%_47%/0.5)]"
+                    />
+                    <Sparkles className="absolute -top-0.5 -right-0.5 w-3 h-3 text-amber-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 border-amber-500/30 text-amber-500">
+                <p className="flex items-center gap-1">
+                  <Sparkles className="w-3 h-3" /> ANGEL AI
+                </p>
+              </TooltipContent>
+            </Tooltip>
           </TooltipProvider>
         </nav>
 
@@ -308,6 +337,9 @@ export const FacebookNavbar = () => {
           )}
         </div>
       </div>
+      
+      {/* ANGEL AI Chat Widget */}
+      <AngelChatWidget isOpen={isAngelChatOpen} onClose={() => setIsAngelChatOpen(false)} />
     </header>
   );
 };
