@@ -122,3 +122,6 @@ verify_jwt = true
 
 [functions.media-guard]
 verify_jwt = false
+
+[functions.angel-chat]
+verify_jwt = false
