@@ -29,20 +29,23 @@ serve(async (req) => {
 
     const { message, messages } = await req.json();
 
-    // Support both single message and messages array format
-    // ANGEL AI uses single message: { message: "..." }
+    // ANGEL AI expects both message and messages array
     let requestBody: any;
+    let messageContent: string;
     
     if (message) {
-      // Direct single message format
-      requestBody = { message };
+      messageContent = message;
     } else if (messages && Array.isArray(messages) && messages.length > 0) {
-      // Convert messages array to single message (get latest user message)
+      // Get latest user message from array
       const latestUserMessage = messages
         .filter((m: any) => m.role === "user")
         .pop();
-      requestBody = { message: latestUserMessage?.content || "" };
+      messageContent = latestUserMessage?.content || "";
     } else {
+      messageContent = "";
+    }
+    
+    if (!messageContent) {
       return new Response(
         JSON.stringify({ error: "Missing message or messages in request body" }),
         {
@@ -52,7 +55,13 @@ serve(async (req) => {
       );
     }
 
-    console.log("Calling ANGEL AI with message:", requestBody.message);
+    // Send both message and messages array to ANGEL AI API
+    requestBody = { 
+      message: messageContent,
+      messages: [{ role: "user", content: messageContent }]
+    };
+
+    console.log("Calling ANGEL AI with request:", JSON.stringify(requestBody));
 
     // Call ANGEL AI API
     const response = await fetch(ANGEL_AI_ENDPOINT, {
