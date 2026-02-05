@@ -15,6 +15,7 @@ import { ClaimRewardDialog } from './ClaimRewardDialog';
 import { WalletCard } from './WalletCard';
 import { RewardBreakdown, RewardStats } from './RewardBreakdown';
 import { RewardFormulaCard } from './RewardFormulaCard';
+import { LightScoreDashboard } from './LightScoreDashboard';
 import { useTokenBalances } from '@/hooks/useTokenBalances';
 import bnbLogo from '@/assets/tokens/bnb-logo.webp';
 
@@ -561,6 +562,9 @@ const WalletCenterContainer = () => {
 
       {/* Reward Formula Card - Công thức tính thưởng */}
       <RewardFormulaCard defaultOpen={false} />
+
+      {/* PPLP Light Score Dashboard */}
+      <LightScoreDashboard />
 
       {/* Receive Dialog */}
       <Dialog open={showReceive} onOpenChange={setShowReceive}>
