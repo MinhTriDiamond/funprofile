@@ -10,6 +10,7 @@ import { CommentMediaUpload } from './CommentMediaUpload';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { EmojiPicker } from './EmojiPicker';
 import { useLanguage } from '@/i18n/LanguageContext';
+import { usePplpEvaluate } from '@/hooks/usePplpEvaluate';
 
 const commentSchema = z.object({
   content: z.string().max(1000, 'Comment cannot exceed 1000 characters'),
@@ -38,6 +39,7 @@ interface CommentSectionProps {
 export const CommentSection = ({ postId, onCommentAdded }: CommentSectionProps) => {
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const { evaluateAsync } = usePplpEvaluate();
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
@@ -170,6 +172,13 @@ export const CommentSection = ({ postId, onCommentAdded }: CommentSectionProps) 
     if (error) {
       toast.error(t('cannotPostComment'));
     } else {
+      // PPLP: Evaluate comment action for Light Score (fire-and-forget)
+      evaluateAsync({
+        action_type: 'comment',
+        reference_id: postId,
+        content: newComment.trim(),
+      });
+      
       setNewComment('');
       setMediaUrl(null);
       setMediaType(null);

@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { UserPlus, UserMinus, UserCheck, Clock } from "lucide-react";
 import { toast } from "sonner";
+import { usePplpEvaluate } from "@/hooks/usePplpEvaluate";
 
 interface FriendRequestButtonProps {
   userId: string;
@@ -14,6 +15,7 @@ type FriendshipStatus = "none" | "pending_sent" | "pending_received" | "accepted
 
 export const FriendRequestButton = ({ userId, currentUserId }: FriendRequestButtonProps) => {
   const navigate = useNavigate();
+  const { evaluateAsync } = usePplpEvaluate();
   const [status, setStatus] = useState<FriendshipStatus>("none");
   const [loading, setLoading] = useState(false);
   const [friendshipId, setFriendshipId] = useState<string | null>(null);
@@ -104,6 +106,13 @@ export const FriendRequestButton = ({ userId, currentUserId }: FriendRequestButt
       toast.error("Failed to send friend request");
     } else {
       toast.success("Friend request sent!");
+      
+      // PPLP: Evaluate friend action for Light Score
+      evaluateAsync({
+        action_type: 'friend',
+        reference_id: userId,
+      });
+      
       checkFriendshipStatus();
     }
     setLoading(false);
@@ -121,6 +130,13 @@ export const FriendRequestButton = ({ userId, currentUserId }: FriendRequestButt
       toast.error("Failed to accept friend request");
     } else {
       toast.success("Friend request accepted!");
+      
+      // PPLP: Evaluate friend accept action for Light Score
+      evaluateAsync({
+        action_type: 'friend',
+        reference_id: userId,
+      });
+      
       checkFriendshipStatus();
     }
     setLoading(false);

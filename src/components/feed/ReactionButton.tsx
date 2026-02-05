@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ThumbsUp } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageContext';
+import { usePplpEvaluate } from '@/hooks/usePplpEvaluate';
 
 const REACTION_TYPES = [
   { type: 'like', icon: '👍', labelKey: 'like' as const, color: '#3b82f6' },
@@ -33,6 +34,7 @@ export const ReactionButton = ({
 }: ReactionButtonProps) => {
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const { evaluateAsync } = usePplpEvaluate();
   const REACTIONS = REACTION_TYPES.map(r => ({ ...r, label: t(r.labelKey) }));
   const [showReactions, setShowReactions] = useState(false);
   const [currentReaction, setCurrentReaction] = useState<string | null>(initialReaction);
@@ -280,6 +282,14 @@ export const ReactionButton = ({
         const wasNew = !currentReaction;
         setCurrentReaction(reactionType);
         onReactionChange(wasNew ? likeCount + 1 : likeCount, reactionType);
+        
+        // PPLP: Evaluate reaction action for Light Score (only for new reactions)
+        if (wasNew) {
+          evaluateAsync({
+            action_type: 'reaction',
+            reference_id: postId,
+          });
+        }
       }
     } catch (error: any) {
       console.error('Reaction error:', error);
