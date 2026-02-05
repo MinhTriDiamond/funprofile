@@ -1,56 +1,49 @@
 
-## Kế Hoạch Fix ANGEL AI Chat Che Bottom Navbar
+
+## Kế Hoạch Fix ANGEL AI Options Menu
 
 ### Phân Tích Vấn Đề
 
-Từ screenshot, bé Trí thấy:
-- ANGEL AI chat widget chiếm `bottom-0` đến `85vh` 
-- Input box "Nhắn tin cho ANGEL AI..." nằm ở vị trí thấp nhất
-- Bottom navbar (Feed, Friends, Chat, Notifications) cũng nằm `bottom-0` với cùng `z-50`
-- Kết quả: Input bị che bởi navbar
+Khi click vào avatar ANGEL AI, hiện ra bảng Options Menu với 2 lựa chọn:
+- "Chat ngay" - Mở chat tại đây
+- "Mở trang riêng" - Mở angel.fun.rich
 
-### Giải Pháp
+Bảng này có các thuộc tính làm nó mờ:
+- `bg-card/95` - Background 95% opacity
+- `backdrop-blur-xl` - Blur nền phía sau
 
-Điều chỉnh layout của ANGEL AI Chat Widget trên mobile để **không bị chồng lên bottom navbar**:
+### Giải Pháp Đề Xuất: Bỏ Options Menu
 
-| Thuộc tính hiện tại | Thuộc tính mới |
-|---------------------|----------------|
-| `bottom-0` | `bottom-[72px]` (trên mobile) |
-| `h-[85vh]` | `h-[calc(85vh-72px)]` (trên mobile) |
-| `z-50` | `z-40` (thấp hơn navbar hoặc giữ nguyên) |
+Thay vì hiện menu chọn, click vào avatar ANGEL AI sẽ **mở Chat Widget ngay** (UX đơn giản hơn).
 
-### Thay Đổi Cụ Thể
+Nếu bé muốn mở trang riêng angel.fun.rich, đã có nút External Link trong header của Chat Widget.
 
-**File: `src/components/angel-ai/AngelChatWidget.tsx`**
+### Thay Đổi Code
 
-```text
-Dòng 61 (Chat Widget Panel):
-TRƯỚC:
-  className="fixed bottom-0 left-0 right-0 lg:bottom-4 lg:right-4 lg:left-auto lg:w-[400px] z-50 ..."
+**File: `src/components/angel-ai/AngelFloatingButton.tsx`**
 
-SAU:
-  className="fixed bottom-[72px] left-0 right-0 lg:bottom-4 lg:right-4 lg:left-auto lg:w-[400px] z-40 ..."
+| Trước | Sau |
+|-------|-----|
+| `handleBubbleClick` toggle `showOptions` | `handleBubbleClick` mở Chat Widget trực tiếp |
+| Có Options Menu popup | Không cần Options Menu |
 
-Dòng 62 (Container height):
-TRƯỚC:
-  className="... h-[85vh] lg:h-[600px] max-h-[85vh]"
+```typescript
+// TRƯỚC
+const handleBubbleClick = () => {
+  setShowOptions(!showOptions);
+};
 
-SAU:
-  className="... h-[calc(85vh-72px)] lg:h-[600px] max-h-[calc(85vh-72px)] lg:max-h-[600px]"
+// SAU
+const handleBubbleClick = () => {
+  setIsChatOpen(true);
+};
 ```
 
-### Chi Tiết Kỹ Thuật
-
-| Thay đổi | Lý do |
-|----------|-------|
-| `bottom-[72px]` | Đẩy chat widget lên trên navbar (navbar cao 72px) |
-| `z-40` | Đảm bảo navbar vẫn hiển thị phía trên backdrop |
-| `h-[calc(85vh-72px)]` | Giảm chiều cao để không vượt quá viewport |
-| Giữ `lg:bottom-4` | Desktop vẫn giữ nguyên layout góc phải |
+Và xóa phần Options Menu JSX (dòng 33-65).
 
 ### Kết Quả Mong Đợi
 
-- Input box ANGEL AI sẽ hiển thị **phía trên** bottom navbar
-- Navbar vẫn nhìn thấy và có thể click được
-- Desktop layout không bị ảnh hưởng
-- UX tốt hơn trên mobile
+- Click vào avatar ANGEL AI → Chat Widget mở ngay
+- Không còn bảng mờ Options Menu
+- Nút External Link vẫn có trong Chat Widget header để mở angel.fun.rich
+
