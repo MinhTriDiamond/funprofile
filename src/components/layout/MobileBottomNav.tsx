@@ -10,6 +10,7 @@ import { useLanguage } from '@/i18n/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { AngelFloatingButton } from '@/components/angel-ai';
+import honorBoardIcon from '@/assets/honor-board-icon.png';
 
 export const MobileBottomNav = memo(() => {
   const navigate = useNavigate();
@@ -71,7 +72,7 @@ export const MobileBottomNav = memo(() => {
       <AngelFloatingButton />
       
       {/* Bottom Navigation Bar - Fixed with larger touch targets */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-transparent border-t border-border/30 safe-area-bottom">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-white dark:bg-gray-900 border-t border-border/30 safe-area-bottom">
         <div className="flex items-center justify-around h-[72px] px-1 max-w-lg mx-auto">
           {navItems.map((item, index) => (
             <button
@@ -89,15 +90,13 @@ export const MobileBottomNav = memo(() => {
               {item.isCenter ? (
                 /* Honor Board Center Button - Special Design */
                 <div className="relative -mt-1">
-                  {/* Glow ring effect */}
-                  <div className="absolute inset-0 w-12 h-12 rounded-full bg-gradient-to-br from-amber-400/40 to-yellow-500/40 blur-md animate-pulse" />
-                  {/* Main button */}
-                  <div className="relative w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 via-yellow-500 to-orange-500 shadow-lg shadow-amber-500/50 flex items-center justify-center border-2 border-background active:scale-95 transition-transform">
-                    <item.icon className="w-6 h-6 text-white drop-shadow-md" strokeWidth={2.5} />
+                  <div className="relative w-14 h-14 flex items-center justify-center active:scale-95 transition-transform">
+                    <img 
+                      src={honorBoardIcon} 
+                      alt="Honor Board" 
+                      className="w-14 h-14 object-contain drop-shadow-lg"
+                    />
                   </div>
-                  {/* Sparkle decorations */}
-                  <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-white rounded-full animate-ping opacity-75" />
-                  <div className="absolute bottom-0 -left-0.5 w-1.5 h-1.5 bg-amber-200 rounded-full animate-pulse" />
                 </div>
               ) : (
               <>
