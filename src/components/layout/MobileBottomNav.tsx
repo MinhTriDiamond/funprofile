@@ -80,7 +80,7 @@ export const MobileBottomNav = memo(() => {
               aria-label={item.label}
               className={`flex flex-col items-center justify-center min-w-[56px] min-h-[52px] rounded-full transition-all duration-300 touch-manipulation group border-[0.5px] ${
                 item.isCenter
-                  ? 'relative -mt-8 border-transparent'
+                  ? 'relative border-transparent'
                   : item.path && isActive(item.path)
                   ? 'text-white bg-primary border-[#C9A84C]'
                   : 'text-foreground hover:text-primary hover:bg-primary/10 border-transparent hover:border-[#C9A84C]/40 active:text-white active:bg-primary'
@@ -88,16 +88,16 @@ export const MobileBottomNav = memo(() => {
             >
               {item.isCenter ? (
                 /* Honor Board Center Button - Special Design */
-                <div className="relative">
+                <div className="relative -mt-1">
                   {/* Glow ring effect */}
-                  <div className="absolute inset-0 w-16 h-16 rounded-full bg-gradient-to-br from-amber-400/40 to-yellow-500/40 blur-md animate-pulse" />
+                  <div className="absolute inset-0 w-12 h-12 rounded-full bg-gradient-to-br from-amber-400/40 to-yellow-500/40 blur-md animate-pulse" />
                   {/* Main button */}
-                  <div className="relative w-16 h-16 rounded-full bg-gradient-to-br from-amber-400 via-yellow-500 to-orange-500 shadow-lg shadow-amber-500/50 flex items-center justify-center border-4 border-background active:scale-95 transition-transform">
-                    <item.icon className="w-7 h-7 text-white drop-shadow-md" strokeWidth={2.5} />
+                  <div className="relative w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 via-yellow-500 to-orange-500 shadow-lg shadow-amber-500/50 flex items-center justify-center border-2 border-background active:scale-95 transition-transform">
+                    <item.icon className="w-6 h-6 text-white drop-shadow-md" strokeWidth={2.5} />
                   </div>
                   {/* Sparkle decorations */}
-                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-white rounded-full animate-ping opacity-75" />
-                  <div className="absolute -bottom-0.5 -left-0.5 w-2 h-2 bg-amber-200 rounded-full animate-pulse" />
+                  <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-white rounded-full animate-ping opacity-75" />
+                  <div className="absolute bottom-0 -left-0.5 w-1.5 h-1.5 bg-amber-200 rounded-full animate-pulse" />
                 </div>
               ) : (
               <>
