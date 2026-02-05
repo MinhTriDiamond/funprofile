@@ -58,8 +58,8 @@ export const AngelChatWidget = memo(({ isOpen, onClose }: AngelChatWidgetProps) 
       />
       
       {/* Chat Widget Panel */}
-      <div className="fixed bottom-0 left-0 right-0 lg:bottom-4 lg:right-4 lg:left-auto lg:w-[400px] z-50 animate-in slide-in-from-bottom duration-300 pointer-events-auto">
-        <div className="bg-card/95 backdrop-blur-xl border-t lg:border border-amber-500/30 lg:rounded-2xl shadow-2xl shadow-amber-500/10 flex flex-col h-[85vh] lg:h-[600px] max-h-[85vh]">
+      <div className="fixed bottom-[72px] left-0 right-0 lg:bottom-4 lg:right-4 lg:left-auto lg:w-[400px] z-40 animate-in slide-in-from-bottom duration-300 pointer-events-auto">
+        <div className="bg-card/95 backdrop-blur-xl border-t lg:border border-amber-500/30 lg:rounded-2xl shadow-2xl shadow-amber-500/10 flex flex-col h-[calc(85vh-72px)] lg:h-[600px] max-h-[calc(85vh-72px)] lg:max-h-[600px]">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
             <div className="flex items-center gap-3">
