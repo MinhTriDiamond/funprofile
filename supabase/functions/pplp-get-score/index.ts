@@ -26,20 +26,21 @@
      }
  
      const token = authHeader.replace('Bearer ', '');
-     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-     
-     if (authError || !user) {
+    const { data: claimsData, error: authError } = await supabase.auth.getClaims(token);
+
+    if (authError || !claimsData?.claims?.sub) {
        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
          status: 401,
          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
        });
      }
  
-     console.log(`[PPLP] Getting light score for user ${user.id}`);
+    const userId = claimsData.claims.sub;
+    console.log(`[PPLP] Getting light score for user ${userId}`);
  
      // Call the RPC function to get user light score
      const { data, error } = await supabase.rpc('get_user_light_score', {
-       p_user_id: user.id
+      p_user_id: userId
      });
  
      if (error) {

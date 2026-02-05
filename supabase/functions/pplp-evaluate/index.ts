@@ -64,15 +64,17 @@
      }
  
      const token = authHeader.replace('Bearer ', '');
-     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-     
-     if (authError || !user) {
+    const { data: claimsData, error: authError } = await supabase.auth.getClaims(token);
+
+    if (authError || !claimsData?.claims?.sub) {
        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
          status: 401,
          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
        });
      }
  
+    const userId = claimsData.claims.sub;
+
      const { action_type, reference_id, content } = await req.json();
  
      if (!action_type || !BASE_REWARDS[action_type]) {
@@ -82,14 +84,14 @@
        });
      }
  
-     console.log(`[PPLP] Evaluating ${action_type} for user ${user.id}`);
+    console.log(`[PPLP] Evaluating ${action_type} for user ${userId}`);
  
      // Check daily limit for this action type
      const today = new Date().toISOString().split('T')[0];
      const { count: todayCount } = await supabase
        .from('light_actions')
        .select('id', { count: 'exact', head: true })
-       .eq('user_id', user.id)
+      .eq('user_id', userId)
        .eq('action_type', action_type)
        .gte('created_at', `${today}T00:00:00Z`);
  
@@ -108,7 +110,7 @@
      const { data: userStats } = await supabase
        .from('light_reputation')
        .select('*')
-       .eq('user_id', user.id)
+      .eq('user_id', userId)
        .single();
  
      // Call ANGEL AI for evaluation using Lovable AI Gateway
@@ -214,7 +216,7 @@
      const { data: lightAction, error: insertError } = await supabase
        .from('light_actions')
        .insert({
-         user_id: user.id,
+        user_id: userId,
          action_type,
          reference_id: reference_id || null,
          reference_type: action_type,
