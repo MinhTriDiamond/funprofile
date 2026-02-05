@@ -1,5 +1,5 @@
 import { memo, useState } from 'react';
-import { Sparkles, ExternalLink, MessageCircle } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import angelAvatar from '@/assets/angel-avatar.jpg';
 import { AngelChatWidget } from './AngelChatWidget';
 
@@ -9,61 +9,15 @@ interface AngelFloatingButtonProps {
 
 export const AngelFloatingButton = memo(({ showOnDesktop = false }: AngelFloatingButtonProps) => {
   const [isChatOpen, setIsChatOpen] = useState(false);
-  const [showOptions, setShowOptions] = useState(false);
-
-  const handleOpenExternal = () => {
-    window.open('https://angel.fun.rich/chat', '_blank');
-    setShowOptions(false);
-  };
-
-  const handleOpenChat = () => {
-    setIsChatOpen(true);
-    setShowOptions(false);
-  };
 
   const handleBubbleClick = () => {
-    setShowOptions(!showOptions);
+    setIsChatOpen(true);
   };
 
   return (
     <>
       {/* Floating Button Container */}
       <div className={`fixed bottom-24 right-4 z-50 ${showOnDesktop ? '' : 'lg:hidden'}`}>
-        {/* Options Menu */}
-        {showOptions && (
-          <div className="absolute bottom-16 right-0 mb-2 bg-card/95 backdrop-blur-xl border border-amber-500/30 rounded-2xl shadow-2xl shadow-amber-500/20 overflow-hidden animate-in slide-in-from-bottom-2 fade-in duration-200">
-            <button
-              onClick={handleOpenChat}
-              className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-amber-500/10 transition-colors group"
-            >
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
-                <MessageCircle className="w-4 h-4 text-white" />
-              </div>
-              <div className="flex flex-col">
-                <span className="font-medium text-foreground group-hover:text-amber-500 transition-colors">
-                  Chat ngay
-                </span>
-                <span className="text-xs text-muted-foreground">Mở chat tại đây</span>
-              </div>
-            </button>
-            <div className="border-t border-border/50" />
-            <button
-              onClick={handleOpenExternal}
-              className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-amber-500/10 transition-colors group"
-            >
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center">
-                <ExternalLink className="w-4 h-4 text-white" />
-              </div>
-              <div className="flex flex-col">
-                <span className="font-medium text-foreground group-hover:text-purple-400 transition-colors">
-                  Mở trang riêng
-                </span>
-                <span className="text-xs text-muted-foreground">angel.fun.rich</span>
-              </div>
-            </button>
-          </div>
-        )}
-
         {/* Main Floating Button */}
         <button
           onClick={handleBubbleClick}
