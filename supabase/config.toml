@@ -125,3 +125,12 @@ verify_jwt = false
 
 [functions.angel-chat]
 verify_jwt = false
+
+[functions.pplp-evaluate]
+verify_jwt = false
+
+[functions.pplp-get-score]
+verify_jwt = false
+
+[functions.pplp-mint-fun]
+verify_jwt = false

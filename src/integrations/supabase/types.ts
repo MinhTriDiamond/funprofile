@@ -496,6 +496,180 @@ export type Database = {
         }
         Relationships: []
       }
+      light_actions: {
+        Row: {
+          action_type: string
+          angel_evaluation: Json | null
+          base_reward: number
+          content_preview: string | null
+          created_at: string
+          evaluated_at: string | null
+          id: string
+          impact_score: number
+          integrity_score: number
+          is_eligible: boolean
+          light_score: number
+          mint_amount: number | null
+          mint_status: string
+          minted_at: string | null
+          quality_score: number
+          reference_id: string | null
+          reference_type: string | null
+          tx_hash: string | null
+          unity_multiplier: number
+          unity_score: number
+          user_id: string
+        }
+        Insert: {
+          action_type: string
+          angel_evaluation?: Json | null
+          base_reward?: number
+          content_preview?: string | null
+          created_at?: string
+          evaluated_at?: string | null
+          id?: string
+          impact_score?: number
+          integrity_score?: number
+          is_eligible?: boolean
+          light_score?: number
+          mint_amount?: number | null
+          mint_status?: string
+          minted_at?: string | null
+          quality_score?: number
+          reference_id?: string | null
+          reference_type?: string | null
+          tx_hash?: string | null
+          unity_multiplier?: number
+          unity_score?: number
+          user_id: string
+        }
+        Update: {
+          action_type?: string
+          angel_evaluation?: Json | null
+          base_reward?: number
+          content_preview?: string | null
+          created_at?: string
+          evaluated_at?: string | null
+          id?: string
+          impact_score?: number
+          integrity_score?: number
+          is_eligible?: boolean
+          light_score?: number
+          mint_amount?: number | null
+          mint_status?: string
+          minted_at?: string | null
+          quality_score?: number
+          reference_id?: string | null
+          reference_type?: string | null
+          tx_hash?: string | null
+          unity_multiplier?: number
+          unity_score?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "light_actions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "light_actions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      light_reputation: {
+        Row: {
+          actions_count: number
+          avg_impact: number
+          avg_integrity: number
+          avg_quality: number
+          avg_unity: number
+          created_at: string
+          daily_mint_cap: number
+          last_action_at: string | null
+          last_mint_at: string | null
+          pillar_healing: number
+          pillar_service: number
+          pillar_truth: number
+          pillar_unity: number
+          pillar_value: number
+          tier: number
+          today_date: string
+          today_minted: number
+          total_light_score: number
+          total_minted: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          actions_count?: number
+          avg_impact?: number
+          avg_integrity?: number
+          avg_quality?: number
+          avg_unity?: number
+          created_at?: string
+          daily_mint_cap?: number
+          last_action_at?: string | null
+          last_mint_at?: string | null
+          pillar_healing?: number
+          pillar_service?: number
+          pillar_truth?: number
+          pillar_unity?: number
+          pillar_value?: number
+          tier?: number
+          today_date?: string
+          today_minted?: number
+          total_light_score?: number
+          total_minted?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          actions_count?: number
+          avg_impact?: number
+          avg_integrity?: number
+          avg_quality?: number
+          avg_unity?: number
+          created_at?: string
+          daily_mint_cap?: number
+          last_action_at?: string | null
+          last_mint_at?: string | null
+          pillar_healing?: number
+          pillar_service?: number
+          pillar_truth?: number
+          pillar_unity?: number
+          pillar_value?: number
+          tier?: number
+          today_date?: string
+          today_minted?: number
+          total_light_score?: number
+          total_minted?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "light_reputation_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "light_reputation_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       livestreams: {
         Row: {
           created_at: string | null
@@ -661,6 +835,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      mint_epochs: {
+        Row: {
+          created_at: string
+          epoch_date: string
+          id: string
+          platform_pool: Json
+          total_actions: number
+          total_cap: number
+          total_minted: number
+          unique_users: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          epoch_date: string
+          id?: string
+          platform_pool?: Json
+          total_actions?: number
+          total_cap?: number
+          total_minted?: number
+          unique_users?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          epoch_date?: string
+          id?: string
+          platform_pool?: Json
+          total_actions?: number
+          total_cap?: number
+          total_minted?: number
+          unique_users?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       notifications: {
         Row: {
@@ -1671,6 +1881,21 @@ export type Database = {
         Args: { p_admin_id: string; p_reason?: string; p_user_id: string }
         Returns: boolean
       }
+      calculate_light_score: {
+        Args: {
+          base_reward: number
+          impact_score: number
+          integrity_score: number
+          quality_score: number
+          unity_multiplier: number
+        }
+        Returns: number
+      }
+      calculate_tier: { Args: { total_score: number }; Returns: number }
+      calculate_unity_multiplier: {
+        Args: { unity_score: number }
+        Returns: number
+      }
       check_rate_limit: {
         Args: { p_key: string; p_limit: number; p_window_ms?: number }
         Returns: Json
@@ -1692,6 +1917,8 @@ export type Database = {
           total_videos: number
         }[]
       }
+      get_daily_cap: { Args: { tier: number }; Returns: number }
+      get_user_light_score: { Args: { p_user_id: string }; Returns: Json }
       get_user_rewards: {
         Args: { limit_count?: number }
         Returns: {
