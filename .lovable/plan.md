@@ -1,49 +1,51 @@
 
-
-## Kế Hoạch Fix ANGEL AI Options Menu
+## Kế Hoạch Bỏ Backdrop Mờ Trên Mobile
 
 ### Phân Tích Vấn Đề
 
-Khi click vào avatar ANGEL AI, hiện ra bảng Options Menu với 2 lựa chọn:
-- "Chat ngay" - Mở chat tại đây
-- "Mở trang riêng" - Mở angel.fun.rich
+Khi mở ANGEL AI Chat Widget, có một lớp **Backdrop** phủ toàn màn hình với:
+- `bg-background/50` - nền mờ 50% opacity
+- `backdrop-blur-sm` - blur nền phía sau
 
-Bảng này có các thuộc tính làm nó mờ:
-- `bg-card/95` - Background 95% opacity
-- `backdrop-blur-xl` - Blur nền phía sau
+Backdrop này dùng để:
+1. Làm mờ nội dung phía sau chat
+2. Cho phép click ra ngoài để đóng chat
 
-### Giải Pháp Đề Xuất: Bỏ Options Menu
+### Giải Pháp
 
-Thay vì hiện menu chọn, click vào avatar ANGEL AI sẽ **mở Chat Widget ngay** (UX đơn giản hơn).
-
-Nếu bé muốn mở trang riêng angel.fun.rich, đã có nút External Link trong header của Chat Widget.
+Bỏ hoàn toàn Backdrop trên mobile - chat widget sẽ hiện trực tiếp mà không làm mờ nội dung phía sau.
 
 ### Thay Đổi Code
 
-**File: `src/components/angel-ai/AngelFloatingButton.tsx`**
+**File: `src/components/angel-ai/AngelChatWidget.tsx`**
 
-| Trước | Sau |
-|-------|-----|
-| `handleBubbleClick` toggle `showOptions` | `handleBubbleClick` mở Chat Widget trực tiếp |
-| Có Options Menu popup | Không cần Options Menu |
+| Dòng | Trước | Sau |
+|------|-------|-----|
+| 54-58 | Backdrop với `bg-background/50 backdrop-blur-sm` | Xóa hoàn toàn hoặc làm transparent |
 
 ```typescript
-// TRƯỚC
-const handleBubbleClick = () => {
-  setShowOptions(!showOptions);
-};
+// TRƯỚC (dòng 54-58)
+{/* Backdrop */}
+<div 
+  className="fixed inset-0 bg-background/50 backdrop-blur-sm z-50 lg:bg-transparent lg:backdrop-blur-none lg:pointer-events-none"
+  onClick={onClose}
+/>
 
-// SAU
-const handleBubbleClick = () => {
-  setIsChatOpen(true);
-};
+// SAU - Xóa hoàn toàn backdrop
+// (Không cần backdrop vì có nút X để đóng chat)
 ```
 
-Và xóa phần Options Menu JSX (dòng 33-65).
+### Thay Đổi Bổ Sung
+
+Sau khi bỏ backdrop, cần điều chỉnh z-index của Chat Widget:
+
+| Thuộc tính | Trước | Sau |
+|------------|-------|-----|
+| Chat Widget z-index | `z-40` | `z-50` (đảm bảo hiển thị trên các thành phần khác) |
 
 ### Kết Quả Mong Đợi
 
-- Click vào avatar ANGEL AI → Chat Widget mở ngay
-- Không còn bảng mờ Options Menu
-- Nút External Link vẫn có trong Chat Widget header để mở angel.fun.rich
-
+- Không còn lớp mờ khi mở ANGEL AI Chat
+- Nội dung Feed phía sau vẫn hiển thị rõ ràng
+- Chat widget hiện trực tiếp, tập trung vào conversation
+- Bấm nút X hoặc icon khác để đóng chat (không cần click backdrop)
