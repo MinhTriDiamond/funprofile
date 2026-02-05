@@ -26,6 +26,7 @@ import { PrivacySelector } from './PrivacySelector';
 import { FeelingActivityDialog, FeelingActivity } from './FeelingActivityDialog';
 import { MediaUploadPreview } from './MediaUploadPreview';
 import { useLanguage } from '@/i18n/LanguageContext';
+import { usePplpEvaluate } from '@/hooks/usePplpEvaluate';
 
 interface FacebookCreatePostProps {
   onPostCreated: () => void;
@@ -41,6 +42,7 @@ const postSchema = z.object({
 export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) => {
   const navigate = useNavigate();
   const { t, language } = useLanguage();
+  const { evaluateAsync } = usePplpEvaluate();
   const [profile, setProfile] = useState<any>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [content, setContent] = useState('');
@@ -469,6 +471,14 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
       setIsDialogOpen(false);
       setShowMediaUpload(false);
       toast.success(t('postPublished'));
+      
+      // PPLP: Evaluate post action for Light Score (fire-and-forget)
+      evaluateAsync({
+        action_type: 'post',
+        reference_id: result.post?.id,
+        content: content.trim(),
+      });
+      
       onPostCreated();
     } catch (error: any) {
       if (error.name === 'AbortError' || error.message === 'Đã huỷ') {
