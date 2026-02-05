@@ -38,15 +38,17 @@
      }
  
      const token = authHeader.replace('Bearer ', '');
-     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-     
-     if (authError || !user) {
+    const { data: claimsData, error: authError } = await supabase.auth.getClaims(token);
+
+    if (authError || !claimsData?.claims?.sub) {
        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
          status: 401,
          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
        });
      }
  
+    const userId = claimsData.claims.sub;
+
      const { action_ids } = await req.json();
  
      if (!action_ids || !Array.isArray(action_ids) || action_ids.length === 0) {
@@ -56,13 +58,13 @@
        });
      }
  
-     console.log(`[PPLP-MINT] Processing mint for user ${user.id}, actions: ${action_ids.length}`);
+    console.log(`[PPLP-MINT] Processing mint for user ${userId}, actions: ${action_ids.length}`);
  
      // Get user wallet address
      const { data: profile } = await supabase
        .from('profiles')
        .select('custodial_wallet_address, external_wallet_address, default_wallet_type')
-       .eq('id', user.id)
+      .eq('id', userId)
        .single();
  
      const walletAddress = profile?.default_wallet_type === 'external' 
@@ -81,7 +83,7 @@
        .from('light_actions')
        .select('*')
        .in('id', action_ids)
-       .eq('user_id', user.id)
+      .eq('user_id', userId)
        .eq('mint_status', 'approved')
        .eq('is_eligible', true);
  
@@ -96,7 +98,7 @@
      const { data: reputation } = await supabase
        .from('light_reputation')
        .select('*')
-       .eq('user_id', user.id)
+      .eq('user_id', userId)
        .single();
  
      const today = new Date().toISOString().split('T')[0];
