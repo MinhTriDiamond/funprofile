@@ -12,6 +12,7 @@ import {
   Globe,
   Link2,
   BookOpen,
+  Shield,
 } from 'lucide-react';
 // Use direct paths for logos to ensure consistency across all environments
 // Cloudflare Image Resizing only works on fun.rich domain
@@ -32,6 +33,7 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
   const { t } = useLanguage();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -44,14 +46,29 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
           .eq('id', session.user.id)
           .single();
         setProfile(data);
+        
+        // Check admin role
+        const { data: hasAdminRole } = await supabase.rpc('has_role', {
+          _user_id: session.user.id,
+          _role: 'admin'
+        });
+        setIsAdmin(!!hasAdminRole);
       }
     };
     fetchProfile();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setIsLoggedIn(!!session);
-      if (!session) {
+      if (session) {
+        // Check admin role on auth change
+        const { data: hasAdminRole } = await supabase.rpc('has_role', {
+          _user_id: session.user.id,
+          _role: 'admin'
+        });
+        setIsAdmin(!!hasAdminRole);
+      } else {
         setProfile(null);
+        setIsAdmin(false);
       }
     });
 
@@ -271,6 +288,19 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
               <LanguageSwitcher variant="full" />
             </div>
           </div>
+
+          {/* Admin Dashboard - Only show for admins */}
+          {isAdmin && (
+            <button
+              onClick={() => { navigate('/admin'); onItemClick?.(); }}
+              className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-white hover:shadow-[0_0_12px_rgba(251,191,36,0.5)] transition-all duration-300 text-amber-500"
+            >
+              <div className="w-9 h-9 rounded-full bg-amber-500/10 flex items-center justify-center">
+                <Shield className="w-5 h-5" />
+              </div>
+              <span className="font-medium text-sm">Admin Dashboard</span>
+            </button>
+          )}
 
           {/* Logout Button */}
           {isLoggedIn && (

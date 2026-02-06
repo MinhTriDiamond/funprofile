@@ -16,6 +16,7 @@ import {
   LogOut,
   Globe,
   Sparkles,
+  Shield,
 } from 'lucide-react';
 import { AngelChatWidget } from '@/components/angel-ai';
 import angelAvatar from '@/assets/angel-avatar.jpg';
@@ -51,6 +52,7 @@ export const FacebookNavbar = () => {
   const [isAngelChatOpen, setIsAngelChatOpen] = useState(false);
   const [profile, setProfile] = useState<{ avatar_url: string | null; username: string } | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -65,6 +67,13 @@ export const FacebookNavbar = () => {
           .eq('id', session.user.id)
           .single();
         if (data) setProfile(data);
+        
+        // Check admin role
+        const { data: hasAdminRole } = await supabase.rpc('has_role', {
+          _user_id: session.user.id,
+          _role: 'admin'
+        });
+        setIsAdmin(!!hasAdminRole);
       }
     };
 
@@ -80,9 +89,17 @@ export const FacebookNavbar = () => {
           .eq('id', session.user.id)
           .single();
         if (data) setProfile(data);
+        
+        // Check admin role
+        const { data: hasAdminRole } = await supabase.rpc('has_role', {
+          _user_id: session.user.id,
+          _role: 'admin'
+        });
+        setIsAdmin(!!hasAdminRole);
       } else {
         setProfile(null);
         setCurrentUserId(null);
+        setIsAdmin(false);
       }
     });
 
@@ -309,6 +326,17 @@ export const FacebookNavbar = () => {
                   </DropdownMenu>
                   
                   <DropdownMenuSeparator />
+                  
+                  {/* Admin Dashboard - Only show for admins */}
+                  {isAdmin && (
+                    <DropdownMenuItem 
+                      onClick={() => navigate('/admin')}
+                      className="cursor-pointer gap-2 text-amber-500 focus:text-amber-600"
+                    >
+                      <Shield className="w-4 h-4" />
+                      <span>Admin Dashboard</span>
+                    </DropdownMenuItem>
+                  )}
                   
                   {/* Logout */}
                   <DropdownMenuItem 
