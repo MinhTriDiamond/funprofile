@@ -1,12 +1,4 @@
 import { lazy, Suspense } from 'react';
-import { RainbowKitProvider } from "@rainbow-me/rainbowkit";
-import { WagmiProvider } from "wagmi";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { config } from "@/config/web3";
-import "@rainbow-me/rainbowkit/styles.css";
-
-// Create a client for React Query (required for wagmi v2)
-const queryClient = new QueryClient();
 
 // Lazy load the wallet container
 const WalletCenterContainer = lazy(() => import('@/components/wallet/WalletCenterContainer'));
@@ -23,15 +15,9 @@ const WalletLoader = () => (
 
 const WalletProviders = () => {
   return (
-    <WagmiProvider config={config}>
-      <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider>
-          <Suspense fallback={<WalletLoader />}>
-            <WalletCenterContainer />
-          </Suspense>
-        </RainbowKitProvider>
-      </QueryClientProvider>
-    </WagmiProvider>
+    <Suspense fallback={<WalletLoader />}>
+      <WalletCenterContainer />
+    </Suspense>
   );
 };
 

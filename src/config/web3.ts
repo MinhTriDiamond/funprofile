@@ -6,7 +6,7 @@ import {
 } from '@rainbow-me/rainbowkit/wallets';
 import { funWallet } from './funWallet';
 import { createConfig, http } from 'wagmi';
-import { mainnet, bsc } from 'wagmi/chains';
+import { mainnet, bsc, bscTestnet } from 'wagmi/chains';
 
 const projectId = '21fef48091f12692cad574a6f7753643';
 
@@ -30,9 +30,10 @@ const connectors = connectorsForWallets(
 
 export const config = createConfig({
   connectors,
-  chains: [mainnet, bsc],
+  chains: [mainnet, bsc, bscTestnet],
   transports: {
     [mainnet.id]: http(),
     [bsc.id]: http(),
+    [bscTestnet.id]: http('https://data-seed-prebsc-1-s1.binance.org:8545/'),
   },
 });
