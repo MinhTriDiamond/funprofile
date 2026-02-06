@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Shield, BarChart3, Gift, Users, Wallet, Trash2, Link2, LogOut, CloudUpload, GitMerge, DollarSign } from "lucide-react";
+import { Shield, BarChart3, Gift, Users, Wallet, Trash2, Link2, LogOut, CloudUpload, GitMerge, DollarSign, Sparkles } from "lucide-react";
 
 import OverviewTab from "@/components/admin/OverviewTab";
 import RewardApprovalTab from "@/components/admin/RewardApprovalTab";
@@ -15,6 +15,7 @@ import BlockchainTab from "@/components/admin/BlockchainTab";
 import MediaMigrationTab from "@/components/admin/MediaMigrationTab";
 import { MergeRequestsTab } from "@/components/admin/MergeRequestsTab";
 import FinancialTab from "@/components/admin/FinancialTab";
+import PplpMintTab from "@/components/admin/PplpMintTab";
 
 interface UserData {
   id: string;
@@ -154,10 +155,14 @@ const Admin = () => {
 
         {/* Main Tabs */}
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 lg:grid-cols-9 h-auto">
+          <TabsList className="grid w-full grid-cols-5 lg:grid-cols-10 h-auto">
             <TabsTrigger value="overview" className="gap-2 py-3">
               <BarChart3 className="w-4 h-4" />
               <span className="hidden sm:inline">📊 Tổng quan</span>
+            </TabsTrigger>
+            <TabsTrigger value="pplp" className="gap-2 py-3">
+              <Sparkles className="w-4 h-4" />
+              <span className="hidden sm:inline">⚡ PPLP Mint</span>
             </TabsTrigger>
             <TabsTrigger value="financial" className="gap-2 py-3">
               <DollarSign className="w-4 h-4" />
@@ -195,6 +200,10 @@ const Admin = () => {
 
           <TabsContent value="overview">
             <OverviewTab stats={stats} />
+          </TabsContent>
+
+          <TabsContent value="pplp">
+            <PplpMintTab adminId={currentUserId!} />
           </TabsContent>
 
           <TabsContent value="financial">

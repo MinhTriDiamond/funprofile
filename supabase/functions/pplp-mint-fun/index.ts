@@ -1,202 +1,285 @@
- import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
- import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
- 
- const corsHeaders = {
-   'Access-Control-Allow-Origin': '*',
-   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
- };
- 
- // FUN Money Contract on BSC Testnet
- const FUN_MONEY_CONTRACT = '0x1aa8DE8B1E4465C6d729E8564893f8EF823a5ff2';
- const CHAIN_ID = 97; // BSC Testnet
- 
- // EIP-712 Domain
- const DOMAIN = {
-   name: 'FUN Money',
-   version: '1',
-   chainId: CHAIN_ID,
-   verifyingContract: FUN_MONEY_CONTRACT,
- };
- 
- serve(async (req) => {
-   if (req.method === 'OPTIONS') {
-     return new Response('ok', { headers: corsHeaders });
-   }
- 
-   try {
-     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-     const supabase = createClient(supabaseUrl, supabaseKey);
- 
-     // Get auth token
-     const authHeader = req.headers.get('Authorization');
-     if (!authHeader) {
-       return new Response(JSON.stringify({ error: 'No authorization header' }), {
-         status: 401,
-         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-       });
-     }
- 
-     const token = authHeader.replace('Bearer ', '');
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { keccak256, toHex, toBytes, pad } from "https://esm.sh/viem@2";
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+};
+
+// FUN Money Contract on BSC Testnet
+const FUN_MONEY_CONTRACT = '0x1aa8DE8B1E4465C6d729E8564893f8EF823a5ff2';
+const CHAIN_ID = 97; // BSC Testnet
+
+// EIP-712 Domain - MUST match contract exactly
+const EIP712_DOMAIN = {
+  name: 'FUNMoneyProductionV1_2_1',
+  version: '1.2.1',
+  chainId: CHAIN_ID,
+  verifyingContract: FUN_MONEY_CONTRACT,
+};
+
+// Signature deadline (1 hour)
+const SIGNATURE_DEADLINE_SECONDS = 3600;
+
+// BSC Testnet RPC for reading nonce
+const BSC_TESTNET_RPC = 'https://data-seed-prebsc-1-s1.binance.org:8545/';
+
+// Get nonce from contract
+async function getNonceFromContract(address: string): Promise<bigint> {
+  try {
+    // Encode function call: nonces(address)
+    const functionSelector = keccak256(toBytes('nonces(address)')).slice(0, 10);
+    const paddedAddress = pad(address as `0x${string}`, { size: 32 });
+    const data = functionSelector + paddedAddress.slice(2);
+
+    const response = await fetch(BSC_TESTNET_RPC, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'eth_call',
+        params: [
+          { to: FUN_MONEY_CONTRACT, data },
+          'latest',
+        ],
+      }),
+    });
+
+    const result = await response.json();
+    if (result.error) {
+      console.error('[PPLP-MINT] RPC error:', result.error);
+      return 0n;
+    }
+
+    return BigInt(result.result || '0x0');
+  } catch (error) {
+    console.error('[PPLP-MINT] Failed to get nonce:', error);
+    return 0n;
+  }
+}
+
+// Generate action hash from action types
+function generateActionHash(actionTypes: string[], userId: string, timestamp: number): string {
+  const input = `${actionTypes.sort().join(',')}:${userId}:${timestamp}`;
+  return keccak256(toBytes(input));
+}
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Get auth token
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'No authorization header' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const token = authHeader.replace('Bearer ', '');
     const { data: claimsData, error: authError } = await supabase.auth.getClaims(token);
 
     if (authError || !claimsData?.claims?.sub) {
-       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-         status: 401,
-         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-       });
-     }
- 
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const userId = claimsData.claims.sub;
 
-     const { action_ids } = await req.json();
- 
-     if (!action_ids || !Array.isArray(action_ids) || action_ids.length === 0) {
-       return new Response(JSON.stringify({ error: 'action_ids required' }), {
-         status: 400,
-         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-       });
-     }
- 
-    console.log(`[PPLP-MINT] Processing mint for user ${userId}, actions: ${action_ids.length}`);
- 
-     // Get user wallet address
-     const { data: profile } = await supabase
-       .from('profiles')
-       .select('custodial_wallet_address, external_wallet_address, default_wallet_type')
+    const { action_ids } = await req.json();
+
+    if (!action_ids || !Array.isArray(action_ids) || action_ids.length === 0) {
+      return new Response(JSON.stringify({ error: 'action_ids required' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    console.log(`[PPLP-MINT] Processing mint request for user ${userId}, actions: ${action_ids.length}`);
+
+    // Get user wallet address
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('custodial_wallet_address, external_wallet_address, default_wallet_type')
       .eq('id', userId)
-       .single();
- 
-     const walletAddress = profile?.default_wallet_type === 'external' 
-       ? profile?.external_wallet_address 
-       : profile?.custodial_wallet_address;
- 
-     if (!walletAddress) {
-       return new Response(JSON.stringify({ error: 'No wallet address configured' }), {
-         status: 400,
-         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-       });
-     }
- 
-     // Get approved actions
-     const { data: actions, error: actionsError } = await supabase
-       .from('light_actions')
-       .select('*')
-       .in('id', action_ids)
+      .single();
+
+    const walletAddress = profile?.default_wallet_type === 'external' 
+      ? profile?.external_wallet_address 
+      : profile?.custodial_wallet_address;
+
+    if (!walletAddress) {
+      return new Response(JSON.stringify({ error: 'No wallet address configured' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Get approved actions
+    const { data: actions, error: actionsError } = await supabase
+      .from('light_actions')
+      .select('*')
+      .in('id', action_ids)
       .eq('user_id', userId)
-       .eq('mint_status', 'approved')
-       .eq('is_eligible', true);
- 
-     if (actionsError || !actions || actions.length === 0) {
-       return new Response(JSON.stringify({ error: 'No eligible actions found' }), {
-         status: 400,
-         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-       });
-     }
- 
-     // Check user daily cap
-     const { data: reputation } = await supabase
-       .from('light_reputation')
-       .select('*')
+      .eq('mint_status', 'approved')
+      .eq('is_eligible', true);
+
+    if (actionsError || !actions || actions.length === 0) {
+      return new Response(JSON.stringify({ error: 'No eligible actions found' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Check user daily cap
+    const { data: reputation } = await supabase
+      .from('light_reputation')
+      .select('*')
       .eq('user_id', userId)
-       .single();
- 
-     const today = new Date().toISOString().split('T')[0];
-     const todayMinted = reputation?.today_date === today ? (reputation?.today_minted || 0) : 0;
-     const dailyCap = reputation?.daily_mint_cap || 500;
-     const remainingCap = dailyCap - todayMinted;
- 
-     // Calculate total amount to mint
-     let totalAmount = actions.reduce((sum, a) => sum + (a.mint_amount || 0), 0);
-     
-     if (totalAmount > remainingCap) {
-       totalAmount = remainingCap;
-       console.log(`[PPLP-MINT] Capping mint to ${totalAmount} due to daily limit`);
-     }
- 
-     if (totalAmount <= 0) {
-       return new Response(JSON.stringify({ error: 'Daily mint cap reached' }), {
-         status: 429,
-         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-       });
-     }
- 
-     // Check epoch cap
-     const { data: epoch } = await supabase
-       .from('mint_epochs')
-       .select('*')
-       .eq('epoch_date', today)
-       .single();
- 
-     const epochMinted = epoch?.total_minted || 0;
-     const epochCap = epoch?.total_cap || 10000000;
-     
-     if (epochMinted + totalAmount > epochCap) {
-       return new Response(JSON.stringify({ error: 'Global epoch cap reached' }), {
-         status: 429,
-         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-       });
-     }
- 
-     // Generate mint data for signature
-     // NOTE: In production, this would be signed by the attester's private key
-     // For now, we prepare the data that the attester (bé Trí) would sign
-     const nonce = Date.now();
-     const deadline = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
-     const amountWei = BigInt(totalAmount) * BigInt(10 ** 18);
- 
-     const mintData = {
-       to: walletAddress,
-       amount: amountWei.toString(),
-       nonce,
-       deadline,
-       domain: DOMAIN,
-       contract: FUN_MONEY_CONTRACT,
-       chainId: CHAIN_ID,
-     };
- 
-     // For now, we'll mark actions as "pending_signature" 
-     // The actual on-chain mint will happen when attester signs
-     const actionIdsToUpdate = actions.slice(0, Math.ceil(totalAmount / 10)).map(a => a.id);
-     
-     const { error: updateError } = await supabase
-       .from('light_actions')
-       .update({ 
-         mint_status: 'minted',
-         tx_hash: `pending_${nonce}`, // Placeholder until actual tx
-         minted_at: new Date().toISOString(),
-       })
-       .in('id', actionIdsToUpdate);
- 
-     if (updateError) {
-       console.error('[PPLP-MINT] Update error:', updateError);
-       return new Response(JSON.stringify({ error: 'Failed to update actions' }), {
-         status: 500,
-         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-       });
-     }
- 
-     console.log(`[PPLP-MINT] Prepared mint for ${totalAmount} FUN to ${walletAddress}`);
- 
-     return new Response(JSON.stringify({
-       success: true,
-       mint: {
-         amount: totalAmount,
-         wallet: walletAddress,
-         actions_count: actionIdsToUpdate.length,
-         mint_data: mintData,
-         message: 'Mint prepared. Awaiting on-chain confirmation.',
-       },
-     }), {
-       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-     });
- 
-   } catch (error: unknown) {
-     console.error('[PPLP-MINT] Error:', error);
-     const message = error instanceof Error ? error.message : 'Unknown error';
-     return new Response(JSON.stringify({ error: message }), {
-       status: 500,
-       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-     });
-   }
- });
+      .single();
+
+    const today = new Date().toISOString().split('T')[0];
+    const todayMinted = reputation?.today_date === today ? (reputation?.today_minted || 0) : 0;
+    const dailyCap = reputation?.daily_mint_cap || 500;
+    const remainingCap = dailyCap - todayMinted;
+
+    // Calculate total amount to mint
+    let totalAmount = actions.reduce((sum, a) => sum + (a.mint_amount || 0), 0);
+    
+    if (totalAmount > remainingCap) {
+      totalAmount = remainingCap;
+      console.log(`[PPLP-MINT] Capping mint to ${totalAmount} due to daily limit`);
+    }
+
+    if (totalAmount <= 0) {
+      return new Response(JSON.stringify({ error: 'Daily mint cap reached' }), {
+        status: 429,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Check epoch cap
+    const { data: epoch } = await supabase
+      .from('mint_epochs')
+      .select('*')
+      .eq('epoch_date', today)
+      .single();
+
+    const epochMinted = epoch?.total_minted || 0;
+    const epochCap = epoch?.total_cap || 10000000;
+    
+    if (epochMinted + totalAmount > epochCap) {
+      return new Response(JSON.stringify({ error: 'Global epoch cap reached' }), {
+        status: 429,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Get nonce from contract
+    const nonce = await getNonceFromContract(walletAddress);
+    console.log(`[PPLP-MINT] Contract nonce for ${walletAddress}: ${nonce}`);
+
+    // Calculate deadline (1 hour from now)
+    const deadline = Math.floor(Date.now() / 1000) + SIGNATURE_DEADLINE_SECONDS;
+
+    // Convert amount to wei (18 decimals)
+    const amountWei = BigInt(Math.floor(totalAmount * 1e18)).toString();
+
+    // Generate action hash
+    const actionTypes = [...new Set(actions.map(a => a.action_type))];
+    const actionHash = generateActionHash(actionTypes, userId, Date.now());
+
+    console.log(`[PPLP-MINT] Creating mint request:`, {
+      recipient: walletAddress,
+      amount: totalAmount,
+      amountWei,
+      actionHash,
+      nonce: nonce.toString(),
+      deadline,
+      actionTypes,
+    });
+
+    // Create mint request in database
+    const { data: mintRequest, error: insertError } = await supabase
+      .from('pplp_mint_requests')
+      .insert({
+        user_id: userId,
+        recipient_address: walletAddress,
+        amount_wei: amountWei,
+        amount_display: totalAmount,
+        action_hash: actionHash,
+        action_types: actionTypes,
+        nonce: Number(nonce),
+        deadline,
+        status: 'pending_sig',
+        action_ids: actions.map(a => a.id),
+      })
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error('[PPLP-MINT] Insert error:', insertError);
+      return new Response(JSON.stringify({ error: 'Failed to create mint request' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Update light_actions with mint_request_id
+    const { error: updateActionsError } = await supabase
+      .from('light_actions')
+      .update({
+        mint_status: 'pending_sig',
+        mint_request_id: mintRequest.id,
+      })
+      .in('id', actions.map(a => a.id));
+
+    if (updateActionsError) {
+      console.error('[PPLP-MINT] Update actions error:', updateActionsError);
+    }
+
+    console.log(`[PPLP-MINT] Created mint request ${mintRequest.id} for ${totalAmount} FUN to ${walletAddress}`);
+
+    return new Response(JSON.stringify({
+      success: true,
+      mint_request: {
+        id: mintRequest.id,
+        amount: totalAmount,
+        wallet: walletAddress,
+        actions_count: actions.length,
+        status: 'pending_sig',
+        // EIP-712 data for frontend display
+        eip712_data: {
+          domain: EIP712_DOMAIN,
+          recipient: walletAddress,
+          amount: amountWei,
+          actionHash,
+          nonce: nonce.toString(),
+          deadline,
+        },
+        message: 'Mint request created. Awaiting Attester signature in Admin Panel.',
+      },
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+
+  } catch (error: unknown) {
+    console.error('[PPLP-MINT] Error:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return new Response(JSON.stringify({ error: message }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+});
