@@ -7,6 +7,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { LanguageProvider } from "@/i18n/LanguageContext";
 import { LawOfLightGuard } from "@/components/auth/LawOfLightGuard";
+import { Web3Provider } from "@/components/providers/Web3Provider";
 
 // Lazy load pages for code splitting
 const Auth = lazy(() => import("./pages/Auth"));
@@ -53,9 +54,10 @@ function App() {
   return (
     <LanguageProvider>
       <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
+        <Web3Provider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
           <BrowserRouter>
             <Suspense fallback={<PageLoader />}>
               <LawOfLightGuard>
@@ -89,6 +91,7 @@ function App() {
             </Suspense>
           </BrowserRouter>
         </TooltipProvider>
+        </Web3Provider>
       </QueryClientProvider>
     </LanguageProvider>
   );
