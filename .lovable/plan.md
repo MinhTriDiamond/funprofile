@@ -1,253 +1,207 @@
 
+# 🔧 Kế Hoạch Sửa Lỗi PPLP Tab Trang Trắng & Đồng Bộ UI
 
-# 🛡️ Kế Hoạch Thêm Nút Admin & Hướng Dẫn Test Mint FUN
+## 📋 Vấn Đề Đã Phát Hiện
 
-## 📋 Tổng Quan
+### 1. Nguyên Nhân Chính: `WagmiProviderNotFoundError`
+Từ screenshot console logs, lỗi **`WagmiProviderNotFoundError`** xảy ra khi click vào tab PPLP. Đây là do:
+- `PplpMintTab.tsx` sử dụng các wagmi hooks: `useAccount()`, `useConnect()`, `useDisconnect()`
+- `usePplpAdmin.ts` sử dụng: `useAccount()`, `useSignTypedData()`, `useWriteContract()`, `useWaitForTransactionReceipt()`
+- Trang `/admin` (Admin.tsx) KHÔNG được wrap bởi `WagmiProvider`
 
-Thêm nút "Admin Dashboard" cho users có role **admin**, hiển thị ở 2 vị trí:
-1. **Desktop**: Trong Dropdown Menu (Avatar) của Navbar
-2. **Mobile/Tablet**: Trong Sidebar Menu
+### 2. Thiếu BSC Testnet trong Config
+File `src/config/web3.ts` chỉ có:
+```typescript
+chains: [mainnet, bsc]  // ← Thiếu bscTestnet (chain ID 97)
+```
+Trong khi `src/config/pplp.ts` yêu cầu:
+```typescript
+chainId: 97  // BSC Testnet
+```
+
+### 3. Phân Mảnh Providers
+Hiện tại có 3 `QueryClient` riêng biệt:
+- `App.tsx` (line 31)
+- `WalletProviders.tsx` (line 9)
+- `WalletLoginProviders.tsx` (line 9)
+
+Điều này gây:
+- Không chia sẻ cache giữa các trang
+- Wallet state không persist khi navigate
+- Duplicate instances không cần thiết
 
 ---
 
-## 🔧 Thay Đổi Kỹ Thuật
+## 🎯 Giải Pháp
 
-### File 1: `src/components/layout/FacebookNavbar.tsx`
+### Chiến Lược: Globalize Web3 Providers
+Wrap toàn bộ app với `WagmiProvider` và `RainbowKitProvider` ở cấp cao nhất (`App.tsx`), đảm bảo mọi trang đều có access vào Web3 context.
 
-**Thêm:**
-- Import icon `Shield` từ `lucide-react`
-- State `isAdmin` để lưu trạng thái quyền
-- Gọi RPC `has_role` trong `useEffect` để kiểm tra quyền admin
-- Thêm menu item "Admin Dashboard" trong `DropdownMenuContent` (trước nút Logout)
+---
+
+## 📁 Các File Cần Thay Đổi
+
+### File 1: `src/config/web3.ts`
+**Thêm BSC Testnet vào config:**
+- Import `bscTestnet` từ `wagmi/chains`
+- Thêm vào mảng `chains`
+- Thêm transport cho `bscTestnet.id`
+
+### File 2: `src/components/providers/Web3Provider.tsx` (TẠO MỚI)
+**Tạo global Web3 provider component:**
+- Wrap `WagmiProvider` với shared config
+- Wrap `RainbowKitProvider` với theme
+- Nhận `children` và `queryClient` từ parent (App.tsx)
+- KHÔNG tạo QueryClient mới (tái sử dụng từ App.tsx)
+
+### File 3: `src/App.tsx`
+**Wrap toàn bộ app với Web3Provider:**
+- Import và sử dụng `Web3Provider`
+- Import RainbowKit styles
+- Đặt Web3Provider bên trong `QueryClientProvider` (để chia sẻ QueryClient)
+
+### File 4: `src/components/wallet/WalletProviders.tsx`
+**Loại bỏ duplicate providers:**
+- Xóa `WagmiProvider`, `QueryClientProvider`, `RainbowKitProvider`
+- Giữ lại chỉ content component (`WalletCenterContainer`)
+- Component này giờ sẽ dựa vào global providers từ App.tsx
+
+### File 5: `src/components/auth/WalletLoginProviders.tsx`
+**Loại bỏ duplicate providers:**
+- Xóa `WagmiProvider`, `QueryClientProvider`, `RainbowKitProvider`
+- Giữ lại chỉ content component với theme nếu cần
+- Sử dụng global providers từ App.tsx
+
+### File 6: `src/pages/Wallet.tsx`
+**Cập nhật để sử dụng simplified WalletProviders:**
+- Verify component vẫn hoạt động với global providers
+
+---
+
+## 🔧 Chi Tiết Kỹ Thuật
+
+### Cấu Trúc Provider Mới
 
 ```text
-┌─────────────────────────────────────────┐
-│  [Avatar] Username                      │
-├─────────────────────────────────────────┤
-│  🌐 Language                     [VI ▼] │
-├─────────────────────────────────────────┤
-│  🛡️ Admin Dashboard      ← CHỈ ADMIN    │
-├─────────────────────────────────────────┤
-│  🚪 Đăng xuất                           │
-└─────────────────────────────────────────┘
+App.tsx
+├── LanguageProvider
+│   └── QueryClientProvider (SHARED - single instance)
+│       └── Web3Provider (NEW)
+│           └── WagmiProvider
+│               └── RainbowKitProvider
+│                   └── TooltipProvider
+│                       └── BrowserRouter
+│                           └── Routes
+│                               ├── /admin → Admin.tsx → PplpMintTab ✅ (has wagmi context)
+│                               ├── /wallet → Wallet.tsx ✅ (has wagmi context)
+│                               └── ... other routes
+```
+
+### web3.ts Update
+
+```typescript
+// BEFORE
+import { mainnet, bsc } from 'wagmi/chains';
+chains: [mainnet, bsc],
+transports: {
+  [mainnet.id]: http(),
+  [bsc.id]: http(),
+},
+
+// AFTER
+import { mainnet, bsc, bscTestnet } from 'wagmi/chains';
+chains: [mainnet, bsc, bscTestnet],
+transports: {
+  [mainnet.id]: http(),
+  [bsc.id]: http(),
+  [bscTestnet.id]: http('https://data-seed-prebsc-1-s1.binance.org:8545/'),
+},
+```
+
+### Web3Provider.tsx (New)
+
+```typescript
+import { RainbowKitProvider } from '@rainbow-me/rainbowkit';
+import { WagmiProvider } from 'wagmi';
+import { config } from '@/config/web3';
+import '@rainbow-me/rainbowkit/styles.css';
+
+interface Web3ProviderProps {
+  children: React.ReactNode;
+}
+
+export const Web3Provider = ({ children }: Web3ProviderProps) => {
+  return (
+    <WagmiProvider config={config}>
+      <RainbowKitProvider>
+        {children}
+      </RainbowKitProvider>
+    </WagmiProvider>
+  );
+};
+```
+
+### App.tsx Update
+
+```typescript
+// Add import
+import { Web3Provider } from '@/components/providers/Web3Provider';
+
+// Wrap inside QueryClientProvider
+<QueryClientProvider client={queryClient}>
+  <Web3Provider>
+    <TooltipProvider>
+      {/* ... existing content */}
+    </TooltipProvider>
+  </Web3Provider>
+</QueryClientProvider>
 ```
 
 ---
 
-### File 2: `src/components/feed/FacebookLeftSidebar.tsx`
+## 🌐 Đảm Bảo Đồng Bộ UI Giữa Các Môi Trường
 
-**Thêm:**
-- Import icon `Shield` từ `lucide-react`
-- State `isAdmin` để lưu trạng thái quyền
-- Gọi RPC `has_role` trong `useEffect`
-- Thêm button "Admin Dashboard" trong Card 3 (Menu) - trước nút Logout
+### Preview vs Publish vs Production
+Tất cả 3 môi trường đều sử dụng cùng codebase, nên sau khi fix:
+- **Preview** (`preview--funprofile.lovable.app`): Sẽ hoạt động ngay sau deploy
+- **Publish** (`funprofile.lovable.app`): Cần publish để cập nhật
+- **Production** (`fun.rich`): Sẽ cập nhật khi publish
 
-```text
-┌─────────────────────────────────────────┐
-│  Menu                                   │
-├─────────────────────────────────────────┤
-│  🌐 Ngôn ngữ                            │
-│  🛡️ Admin Dashboard      ← CHỈ ADMIN    │
-│  🚪 Đăng xuất                           │
-└─────────────────────────────────────────┘
-```
+### Lỗi 404 cho `fun-profile-logo-40.webp`
+Từ console logs, có lỗi 404 cho file này. Cần verify file tồn tại trong `/public/`.
 
 ---
 
-## 📁 Files Cần Thay Đổi
+## ⏱️ Timeline
 
-| File | Thay Đổi |
-|------|----------|
-| `src/components/layout/FacebookNavbar.tsx` | Thêm state isAdmin, RPC check, menu item |
-| `src/components/feed/FacebookLeftSidebar.tsx` | Thêm state isAdmin, RPC check, button |
-
----
-
-## ⏱️ Thời Gian: ~10 phút
-
----
-
-# 📖 HƯỚNG DẪN CHI TIẾT TEST MINT FUN MONEY
-
-## Bước 1: Chuẩn Bị Tài Khoản Test
-
-**Yêu cầu:**
-- 1 tài khoản **User thường** (để tạo hoạt động ánh sáng)
-- 1 tài khoản **Admin** có role admin trong DB (tài khoản của bé)
-- Ví Attester `0xe32d50a0badE4cbD5B0d6120d3A5FD07f63694f1` được import vào MetaMask
-- Ví Attester có **tBNB** để trả gas
+| Phase | Task | Time |
+|-------|------|------|
+| 1 | Update `web3.ts` với BSC Testnet | 2 min |
+| 2 | Tạo `Web3Provider.tsx` | 5 min |
+| 3 | Update `App.tsx` với global provider | 5 min |
+| 4 | Simplify `WalletProviders.tsx` | 3 min |
+| 5 | Simplify `WalletLoginProviders.tsx` | 3 min |
+| 6 | Test và verify | 5 min |
+| **Total** | | **~23 min** |
 
 ---
 
-## Bước 2: Tạo Hoạt Động Ánh Sáng (User Flow)
+## ✅ Kết Quả Mong Đợi
 
-1. Đăng nhập bằng tài khoản **User thường**
-2. Thực hiện các hoạt động:
-   - ✍️ Đăng bài viết mới (Post)
-   - 💬 Bình luận (Comment)  
-   - ❤️ Thả cảm xúc (Reaction)
-3. **ANGEL AI** sẽ tự động đánh giá và cộng **Light Score**
-4. Vào **Wallet** → Xem **Light Score Dashboard**
-
----
-
-## Bước 3: Gửi Yêu Cầu Claim (User Flow)
-
-1. Trong **Light Score Dashboard**, bé sẽ thấy:
-   - Số FUN đang chờ claim
-   - Nút **"Claim X FUN"**
-2. Click nút **Claim**
-3. Hệ thống tạo **Mint Request** với status `pending_sig`
-4. User sẽ thấy thông báo: "Yêu cầu đã được gửi, đang chờ xử lý"
+| Trước | Sau |
+|-------|-----|
+| Tab PPLP → Trang trắng | Tab PPLP → Hiển thị UI đầy đủ |
+| Wallet không persist khi navigate | Wallet state được giữ xuyên suốt app |
+| 3 QueryClient instances | 1 shared QueryClient |
+| Thiếu BSC Testnet | Có đủ BSC Testnet cho PPLP minting |
+| WagmiProviderNotFoundError | Không còn lỗi |
 
 ---
 
-## Bước 4: Truy Cập Admin Panel (Admin Flow)
+## 🧪 Cách Test Sau Khi Fix
 
-1. Đăng nhập bằng tài khoản **Admin**
-2. Click vào nút **"🛡️ Admin Dashboard"** trong:
-   - Desktop: Dropdown Menu (Avatar)
-   - Mobile: Sidebar Menu
-3. Chuyển đến trang `/admin`
-4. Click tab **"⚡ PPLP Mint"**
-
----
-
-## Bước 5: Connect Ví Attester (Admin Flow)
-
-1. Trong tab PPLP Mint, click nút **"Kết nối Ví Attester"**
-2. MetaMask popup → Chọn ví `0xe32d...94f1`
-3. Approve connection
-4. Xác nhận ví hiển thị đúng (có badge xanh)
-
----
-
-## Bước 6: Ký Lệnh Mint (Attester Flow)
-
-**Ký đơn lẻ:**
-1. Tìm mint request trong danh sách "Chờ ký"
-2. Click nút **"Ký"** bên cạnh request
-3. MetaMask hiện popup **EIP-712 Signature Request**:
-   ```
-   Domain: FUNMoneyProductionV1_2_1 (v1.2.1)
-   Message:
-   - recipient: 0x...
-   - amount: 5000000000000000000000
-   - actionHash: 0x...
-   - nonce: 42
-   - deadline: 1707235200
-   ```
-4. Click **"Sign"** trong MetaMask
-5. Request chuyển sang tab **"Đã ký"**
-
-**Ký hàng loạt (Batch):**
-1. Tick checkbox các request muốn ký
-2. Click **"Ký hàng loạt (X)"**
-3. MetaMask sẽ popup X lần (mỗi request 1 signature)
-
----
-
-## Bước 7: Submit Lên Blockchain (Attester Flow)
-
-1. Vào tab **"Đã ký"**
-2. Click nút **"Submit"** bên cạnh request đã ký
-3. MetaMask hiện popup **Transaction Request**:
-   ```
-   Contract: 0x1aa8DE8B1E4465C6d729E8564893f8EF823a5ff2
-   Function: lockWithPPLP
-   Gas: ~150,000 - 300,000
-   ```
-4. Click **"Confirm"** trong MetaMask
-5. Đợi transaction được mined (~3-5 giây trên BSC Testnet)
-6. Request chuyển sang tab **"Đã gửi"** → **"Hoàn tất"**
-
----
-
-## Bước 8: Kiểm Tra Kết Quả
-
-**Trên Admin Panel:**
-- Tab "Hoàn tất" hiển thị request với tx_hash
-- Click **"BSCScan"** để xem transaction
-
-**Trên BSCScan:**
-```
-https://testnet.bscscan.com/tx/0x...
-```
-- Status: Success ✅
-- Function: lockWithPPLP
-- Logs: Transfer event với amount
-
-**Trên User Wallet:**
-- User nhận được **97.03%** số FUN (LOCKED state)
-- Ví dụ: Claim 1,000 FUN → User nhận 970.3 FUN
-
----
-
-## 🔍 Troubleshooting
-
-| Vấn đề | Nguyên nhân | Giải pháp |
-|--------|-------------|-----------|
-| "Không phải Attester" | Ví không đúng | Đổi sang ví `0xe32d...94f1` |
-| Transaction failed | Hết deadline (1h) | Click "Thử lại" để tạo request mới |
-| Nonce mismatch | Nonce đã được dùng | Refresh page và ký lại |
-| Insufficient gas | Hết tBNB | Nạp thêm tBNB vào ví Attester |
-| Signature invalid | Domain không khớp | Kiểm tra lại config EIP-712 |
-
----
-
-## 📊 Flow Diagram
-
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│                         USER JOURNEY                            │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  👤 User đăng bài/comment/reaction                              │
-│         │                                                       │
-│         ▼                                                       │
-│  🤖 ANGEL AI đánh giá → Cộng Light Score                        │
-│         │                                                       │
-│         ▼                                                       │
-│  💰 User vào Wallet → Click "Claim X FUN"                       │
-│         │                                                       │
-│         ▼                                                       │
-│  📝 Tạo Mint Request (status: pending_sig)                      │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                        ADMIN JOURNEY                            │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  🛡️ Admin vào Dashboard → Tab "⚡ PPLP Mint"                     │
-│         │                                                       │
-│         ▼                                                       │
-│  🔗 Connect Wallet Attester (0xe32d...94f1)                     │
-│         │                                                       │
-│         ▼                                                       │
-│  ✍️ Click "Ký" → MetaMask EIP-712 Signature                      │
-│         │                                                       │
-│         ▼                                                       │
-│  📤 Click "Submit" → MetaMask Transaction                       │
-│         │                                                       │
-│         ▼                                                       │
-│  ✅ Transaction confirmed → User nhận 97.03% FUN (LOCKED)       │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 🎯 Checklist Test
-
-- [ ] User tạo được Light Score qua post/comment/reaction
-- [ ] User thấy số FUN pending trong Wallet
-- [ ] User claim thành công → Tạo mint request
-- [ ] Admin thấy request trong tab "Chờ ký"
-- [ ] Admin connect được ví Attester
-- [ ] Admin ký thành công → Request chuyển tab "Đã ký"
-- [ ] Admin submit thành công → Có tx_hash
-- [ ] Transaction hiện trên BSCScan
-- [ ] User nhận được FUN trong ví (97.03%)
-
+1. Truy cập `/admin` → Click tab "⚡ PPLP Mint"
+2. Verify UI hiển thị đầy đủ (stats, tables, buttons)
+3. Click "Kết nối Ví Attester" → MetaMask popup xuất hiện
+4. Kiểm tra console không có lỗi `WagmiProviderNotFoundError`
+5. Navigate giữa `/wallet` và `/admin` → Wallet state được giữ nguyên
