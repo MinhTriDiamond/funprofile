@@ -510,6 +510,7 @@ export type Database = {
           is_eligible: boolean
           light_score: number
           mint_amount: number | null
+          mint_request_id: string | null
           mint_status: string
           minted_at: string | null
           quality_score: number
@@ -533,6 +534,7 @@ export type Database = {
           is_eligible?: boolean
           light_score?: number
           mint_amount?: number | null
+          mint_request_id?: string | null
           mint_status?: string
           minted_at?: string | null
           quality_score?: number
@@ -556,6 +558,7 @@ export type Database = {
           is_eligible?: boolean
           light_score?: number
           mint_amount?: number | null
+          mint_request_id?: string | null
           mint_status?: string
           minted_at?: string | null
           quality_score?: number
@@ -567,6 +570,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "light_actions_mint_request_id_fkey"
+            columns: ["mint_request_id"]
+            isOneToOne: false
+            referencedRelation: "pplp_mint_requests"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "light_actions_user_id_fkey"
             columns: ["user_id"]
@@ -1286,6 +1296,81 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      pplp_mint_requests: {
+        Row: {
+          action_hash: string
+          action_ids: string[]
+          action_types: string[]
+          amount_display: number
+          amount_wei: string
+          block_number: number | null
+          confirmed_at: string | null
+          created_at: string
+          deadline: number
+          error_message: string | null
+          id: string
+          nonce: number
+          recipient_address: string
+          retry_count: number
+          signature: string | null
+          signed_at: string | null
+          signed_by: string | null
+          status: string
+          submitted_at: string | null
+          tx_hash: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          action_hash: string
+          action_ids?: string[]
+          action_types?: string[]
+          amount_display: number
+          amount_wei: string
+          block_number?: number | null
+          confirmed_at?: string | null
+          created_at?: string
+          deadline: number
+          error_message?: string | null
+          id?: string
+          nonce: number
+          recipient_address: string
+          retry_count?: number
+          signature?: string | null
+          signed_at?: string | null
+          signed_by?: string | null
+          status?: string
+          submitted_at?: string | null
+          tx_hash?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          action_hash?: string
+          action_ids?: string[]
+          action_types?: string[]
+          amount_display?: number
+          amount_wei?: string
+          block_number?: number | null
+          confirmed_at?: string | null
+          created_at?: string
+          deadline?: number
+          error_message?: string | null
+          id?: string
+          nonce?: number
+          recipient_address?: string
+          retry_count?: number
+          signature?: string | null
+          signed_at?: string | null
+          signed_by?: string | null
+          status?: string
+          submitted_at?: string | null
+          tx_hash?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
