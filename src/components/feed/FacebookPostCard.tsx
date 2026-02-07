@@ -56,6 +56,7 @@ interface FacebookPostCardProps {
       username: string;
       avatar_url: string | null;
       external_wallet_address?: string | null;
+      custodial_wallet_address?: string | null;
     };
   };
   currentUserId: string;
@@ -479,7 +480,7 @@ const FacebookPostCardComponent = ({
               <DonationButton
                 recipientId={post.user_id}
                 recipientUsername={post.profiles?.username || 'Unknown'}
-                recipientWalletAddress={post.profiles?.external_wallet_address}
+                recipientWalletAddress={post.profiles?.external_wallet_address || post.profiles?.custodial_wallet_address}
                 recipientAvatarUrl={post.profiles?.avatar_url}
                 postId={post.id}
                 variant="post"

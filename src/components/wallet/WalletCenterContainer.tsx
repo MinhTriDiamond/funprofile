@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAccount, useDisconnect, useSwitchChain, useSignMessage } from 'wagmi';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { bsc } from 'wagmi/chains';
@@ -60,6 +60,9 @@ const WalletCenterContainer = () => {
   // Linking/Unlinking wallet states
   const [isLinkingWallet, setIsLinkingWallet] = useState(false);
   const [isUnlinkingWallet, setIsUnlinkingWallet] = useState(false);
+  
+  // Track if auto-link has been triggered this session
+  const autoLinkTriggeredRef = useRef(false);
   
   // Track if we should show disconnected UI
   const [showDisconnectedUI, setShowDisconnectedUI] = useState(() => {
@@ -338,6 +341,36 @@ const WalletCenterContainer = () => {
       setIsLinkingWallet(false);
     }
   }, [address, isConnected, signMessageAsync, getWalletDisplayName]);
+
+  // Auto-link wallet when connected but not yet linked to profile
+  useEffect(() => {
+    const autoLinkWallet = async () => {
+      // Only auto-link if:
+      // 1. Wallet is connected (wagmi state)
+      // 2. Profile data has been fetched
+      // 3. No external_wallet_address in profile yet (not linked)
+      // 4. We have an address from wagmi
+      // 5. Not currently in linking process
+      // 6. Auto-link hasn't been triggered yet this session
+      if (
+        isConnected &&
+        walletProfileFetched &&
+        !walletProfile?.external_wallet_address &&
+        address &&
+        !isLinkingWallet &&
+        !autoLinkTriggeredRef.current
+      ) {
+        console.log('[WalletCenter] Auto-linking wallet:', address);
+        autoLinkTriggeredRef.current = true; // Mark as triggered
+        // Small delay to ensure UI is ready
+        setTimeout(() => {
+          linkWalletToProfile();
+        }, 500);
+      }
+    };
+
+    autoLinkWallet();
+  }, [isConnected, walletProfileFetched, walletProfile?.external_wallet_address, address, isLinkingWallet, linkWalletToProfile]);
 
   // Unlink external wallet
   const unlinkWalletFromProfile = useCallback(async () => {
