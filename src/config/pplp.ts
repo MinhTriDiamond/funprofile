@@ -17,10 +17,10 @@ export const ATTESTER_ADDRESS = '0xe32d50a0badE4cbD5B0d6120d3A5FD07f63694f1' as 
 // BSC Testnet RPC
 export const BSC_TESTNET_RPC = 'https://data-seed-prebsc-1-s1.binance.org:8545/';
 
-// BSCScan URLs
-export const BSCSCAN_TESTNET_URL = 'https://testnet.bscscan.com';
-export const getTxUrl = (txHash: string) => `${BSCSCAN_TESTNET_URL}/tx/${txHash}`;
-export const getAddressUrl = (address: string) => `${BSCSCAN_TESTNET_URL}/address/${address}`;
+// BSCScan URLs (Mainnet)
+export const BSCSCAN_URL = 'https://bscscan.com';
+export const getTxUrl = (txHash: string) => `${BSCSCAN_URL}/tx/${txHash}`;
+export const getAddressUrl = (address: string) => `${BSCSCAN_URL}/address/${address}`;
 
 // Action Types
 export type ActionType = 'post' | 'comment' | 'reaction' | 'share' | 'friend' | 'livestream' | 'new_user_bonus';

@@ -8,7 +8,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { LanguageProvider } from "@/i18n/LanguageContext";
 import { LawOfLightGuard } from "@/components/auth/LawOfLightGuard";
 import { Web3Provider } from "@/components/providers/Web3Provider";
-
+import { DonationReceivedNotification } from "@/components/donations/DonationReceivedNotification";
 // Lazy load pages for code splitting
 const Auth = lazy(() => import("./pages/Auth"));
 const Friends = lazy(() => import("./pages/Friends"));
@@ -90,6 +90,7 @@ function App() {
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </LawOfLightGuard>
+              <DonationReceivedNotification />
             </Suspense>
           </BrowserRouter>
         </TooltipProvider>
