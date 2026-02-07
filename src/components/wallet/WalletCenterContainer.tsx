@@ -16,6 +16,7 @@ import { WalletCard } from './WalletCard';
 import { RewardBreakdown, RewardStats } from './RewardBreakdown';
 import { RewardFormulaCard } from './RewardFormulaCard';
 import { LightScoreDashboard } from './LightScoreDashboard';
+import { DonationHistoryTab } from './DonationHistoryTab';
 import { useTokenBalances } from '@/hooks/useTokenBalances';
 import bnbLogo from '@/assets/tokens/bnb-logo.webp';
 
@@ -604,6 +605,9 @@ const WalletCenterContainer = () => {
 
       {/* PPLP Light Score Dashboard */}
       <LightScoreDashboard />
+
+      {/* Donation History */}
+      <DonationHistoryTab />
 
       {/* Receive Dialog */}
       <Dialog open={showReceive} onOpenChange={setShowReceive}>
