@@ -2,14 +2,18 @@ import { useState } from 'react';
 import { Download, Send, Gift, Loader2, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useDonationHistory, useDonationStats } from '@/hooks/useDonationHistory';
+import { useDonationHistory, useDonationStats, DonationRecord } from '@/hooks/useDonationHistory';
 import { exportDonationsToCSV } from '@/utils/exportDonations';
 import { DonationHistoryItem } from './DonationHistoryItem';
+import { DonationSuccessCard } from '@/components/donations/DonationSuccessCard';
+import { DonationReceivedCard } from '@/components/donations/DonationReceivedCard';
 import { formatNumber } from '@/lib/formatters';
 import { toast } from 'sonner';
 
 export function DonationHistoryTab() {
   const [activeTab, setActiveTab] = useState<'sent' | 'received'>('sent');
+  const [selectedDonation, setSelectedDonation] = useState<DonationRecord | null>(null);
+  const [isCelebrationOpen, setIsCelebrationOpen] = useState(false);
   
   const { data: sentDonations, isLoading: isSentLoading } = useDonationHistory('sent');
   const { data: receivedDonations, isLoading: isReceivedLoading } = useDonationHistory('received');
@@ -17,6 +21,17 @@ export function DonationHistoryTab() {
 
   const currentDonations = activeTab === 'sent' ? sentDonations : receivedDonations;
   const isLoading = activeTab === 'sent' ? isSentLoading : isReceivedLoading;
+
+  const handleDonationClick = (donation: DonationRecord, type: 'sent' | 'received') => {
+    setActiveTab(type);
+    setSelectedDonation(donation);
+    setIsCelebrationOpen(true);
+  };
+
+  const handleCloseCelebration = () => {
+    setIsCelebrationOpen(false);
+    setSelectedDonation(null);
+  };
 
   const handleExport = () => {
     if (!currentDonations || currentDonations.length === 0) {
@@ -102,13 +117,62 @@ export function DonationHistoryTab() {
         </TabsList>
 
         <TabsContent value="sent" className="mt-0">
-          <DonationList donations={sentDonations} isLoading={isSentLoading} type="sent" />
+          <DonationList 
+            donations={sentDonations} 
+            isLoading={isSentLoading} 
+            type="sent" 
+            onItemClick={(donation) => handleDonationClick(donation, 'sent')}
+          />
         </TabsContent>
         
         <TabsContent value="received" className="mt-0">
-          <DonationList donations={receivedDonations} isLoading={isReceivedLoading} type="received" />
+          <DonationList 
+            donations={receivedDonations} 
+            isLoading={isReceivedLoading} 
+            type="received" 
+            onItemClick={(donation) => handleDonationClick(donation, 'received')}
+          />
         </TabsContent>
       </Tabs>
+
+      {/* Celebration Cards */}
+      {selectedDonation && activeTab === 'sent' && (
+        <DonationSuccessCard
+          isOpen={isCelebrationOpen}
+          onClose={handleCloseCelebration}
+          data={{
+            id: selectedDonation.id,
+            amount: selectedDonation.amount,
+            tokenSymbol: selectedDonation.token_symbol,
+            senderUsername: selectedDonation.sender?.username || 'Unknown',
+            senderAvatarUrl: selectedDonation.sender?.avatar_url,
+            recipientUsername: selectedDonation.recipient?.username || 'Unknown',
+            recipientAvatarUrl: selectedDonation.recipient?.avatar_url,
+            message: selectedDonation.message,
+            txHash: selectedDonation.tx_hash,
+            lightScoreEarned: selectedDonation.light_score_earned || 0,
+            createdAt: selectedDonation.created_at,
+          }}
+        />
+      )}
+
+      {selectedDonation && activeTab === 'received' && (
+        <DonationReceivedCard
+          isOpen={isCelebrationOpen}
+          onClose={handleCloseCelebration}
+          data={{
+            id: selectedDonation.id,
+            amount: selectedDonation.amount,
+            tokenSymbol: selectedDonation.token_symbol,
+            senderUsername: selectedDonation.sender?.username || 'Unknown',
+            senderAvatarUrl: selectedDonation.sender?.avatar_url,
+            senderId: selectedDonation.sender?.id || '',
+            message: selectedDonation.message,
+            txHash: selectedDonation.tx_hash,
+            createdAt: selectedDonation.created_at,
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -117,11 +181,13 @@ export function DonationHistoryTab() {
 function DonationList({ 
   donations, 
   isLoading, 
-  type 
+  type,
+  onItemClick
 }: { 
   donations: ReturnType<typeof useDonationHistory>['data'];
   isLoading: boolean;
   type: 'sent' | 'received';
+  onItemClick: (donation: DonationRecord) => void;
 }) {
   if (isLoading) {
     return (
@@ -145,7 +211,12 @@ function DonationList({
   return (
     <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
       {donations.map((donation) => (
-        <DonationHistoryItem key={donation.id} donation={donation} type={type} />
+        <DonationHistoryItem 
+          key={donation.id} 
+          donation={donation} 
+          type={type} 
+          onClick={() => onItemClick(donation)}
+        />
       ))}
     </div>
   );
