@@ -1,176 +1,140 @@
 
-# Kế Hoạch Hoàn Thiện Donation Celebration
+# Kế Hoạch Sửa Lỗi "Người Nhận Chưa Thiết Lập Ví" Khi Tặng Từ Navbar
 
-## Tổng Quan 3 Yêu Cầu
+## Nguyên Nhân Lỗi
 
-| # | Yêu Cầu | Giải Pháp |
-|---|---------|-----------|
-| 1 | Card thông báo thành công tươi sáng + âm thanh | Redesign style + thêm celebration sounds |
-| 2 | Link BSCScan đang vào Testnet | Sửa config để dùng Mainnet URL |
-| 3 | Thông báo nhận tiền cho người nhận | Tạo component + realtime listener |
+| Luồng | Query | Có `wallet_address`? | Kết quả |
+|-------|-------|---------------------|---------|
+| GiftNavButton (Navbar) | `id, username, avatar_url, full_name` | KHÔNG | Báo "chưa có ví" |
+| DonationButton (Post) | Nhận từ parent component | | Hoạt động bình thường |
 
----
-
-## 1. Redesign DonationSuccessCard - Style Tươi Sáng + Âm Thanh
-
-### Thay Đổi UI (DonationSuccessCard.tsx)
-
-**Trước**: Background tối (dark gradient #0a0a0a)
-
-**Sau**: Background sáng rạng rỡ với hiệu ứng hào quang
-- Gradient: Từ trắng ngà đến vàng nhạt
-- Border: Vàng gold với glow effect  
-- Icon: Lớn hơn, có animation glow
-- Số tiền: Font lớn với text-shadow
-
-### Thêm Celebration Sounds (DonationCelebration.tsx)
-
-Sử dụng Web Audio API với các file âm thanh public:
-- `coins-falling.mp3` - Âm thanh tiền rơi (chơi khi mở)
-- `celebration.mp3` - Âm thanh pháo hoa chúc mừng
-
-Thêm animations mới vào tailwind.config.ts:
-- `animate-glow-radiate` - Hiệu ứng tỏa sáng
-- `animate-sparkle-float` - Đốm sáng bay lơ lửng
+**Vấn đề cốt lõi:** `GiftNavButton` không lấy `wallet_address` khi query bảng `profiles`, nên khi mở `DonationDialog`, prop `recipientWalletAddress` là `undefined` dù user thực tế có ví.
 
 ---
 
-## 2. Sửa Link BSCScan → Mainnet
+## Giải Pháp
 
-**File**: `src/config/pplp.ts`
+### 1. Cập nhật Interface `FriendProfile`
+
+Thêm field `wallet_address` vào interface:
 
 ```typescript
-// Trước
-export const BSCSCAN_TESTNET_URL = 'https://testnet.bscscan.com';
-export const getTxUrl = (txHash: string) => `${BSCSCAN_TESTNET_URL}/tx/${txHash}`;
+interface FriendProfile {
+  id: string;
+  username: string;
+  avatar_url: string | null;
+  full_name: string | null;
+  wallet_address: string | null; // Thêm mới
+}
+```
 
-// Sau
-export const BSCSCAN_MAINNET_URL = 'https://bscscan.com';
-export const getTxUrl = (txHash: string) => `${BSCSCAN_MAINNET_URL}/tx/${txHash}`;
+### 2. Cập nhật Query trong useQuery
+
+Thêm `wallet_address` vào câu select:
+
+```typescript
+const { data: profiles } = await supabase
+  .from('profiles')
+  .select('id, username, avatar_url, full_name, wallet_address') // Thêm wallet_address
+  .in('id', friendIds);
+```
+
+### 3. Cập nhật DonationDialog Props
+
+Truyền `recipientWalletAddress` khi render `DonationDialog`:
+
+```typescript
+<DonationDialog
+  isOpen={isDonationDialogOpen}
+  onClose={handleDonationClose}
+  recipientId={selectedRecipient.id}
+  recipientUsername={selectedRecipient.username}
+  recipientAvatarUrl={selectedRecipient.avatar_url || undefined}
+  recipientWalletAddress={selectedRecipient.wallet_address} // Thêm mới
+/>
 ```
 
 ---
 
-## 3. Thông Báo Nhận Tiền Cho Người Nhận
-
-### Component Mới: DonationReceivedNotification.tsx
-
-Khi người nhận đang online, hiển thị popup chúc mừng:
-- Realtime listener trên bảng `donations` với filter `recipient_id = user.id`
-- Khi có donation mới → Trigger celebration popup
-- Âm thanh + hiệu ứng pháo hoa như bên gửi
-
-### Tích Hợp
-
-Thêm component vào App.tsx để lắng nghe realtime cho user đang login.
-
----
-
-## Files Cần Thay Đổi
+## File Cần Sửa
 
 | # | File | Thay Đổi |
 |---|------|----------|
-| 1 | `src/config/pplp.ts` | Đổi Testnet → Mainnet URL |
-| 2 | `src/components/donations/DonationSuccessCard.tsx` | Redesign bright style + glow effects |
-| 3 | `src/components/donations/DonationCelebration.tsx` | Thêm celebration sounds |
-| 4 | `tailwind.config.ts` | Thêm keyframes cho glow/sparkle animations |
-| 5 | `src/components/donations/DonationReceivedCard.tsx` | **Tạo mới** - Card cho người nhận |
-| 6 | `src/hooks/useDonationReceived.ts` | **Tạo mới** - Realtime listener |
-| 7 | `src/App.tsx` | Tích hợp realtime notification |
-| 8 | `public/sounds/coins.mp3` | **Tạo mới** - Âm thanh coins |
-| 9 | `public/sounds/celebration.mp3` | **Tạo mới** - Âm thanh chúc mừng |
+| 1 | `src/components/donations/GiftNavButton.tsx` | Thêm `wallet_address` vào interface, query và props |
 
 ---
 
-## UI Preview
+## Chi Tiết Thay Đổi
 
-### Sender Success Card (Người Gửi)
+### GiftNavButton.tsx
 
-```
-╔══════════════════════════════════════════════╗
-║              ✨ 🎊 🎉 🎊 ✨                   ║
-║                                              ║
-║    🎁 CHÚC MỪNG TẶNG THƯỞNG THÀNH CÔNG!     ║
-║                                              ║
-║   ╔══════════════════════════════════════╗   ║
-║   ║  ⭐ 1.000 CAMLY ⭐                   ║   ║
-║   ║  ≈ Priceless với tình yêu thương 💛  ║   ║
-║   ╚══════════════════════════════════════╝   ║
-║                                              ║
-║   👤 Người tặng: @MinhTri                    ║
-║   🎯 Người nhận: @User123                    ║
-║   💬 Lời nhắn: "Cảm ơn bạn rất nhiều!"       ║
-║   🕐 Thời gian: 07/02/2026 19:17:00          ║
-║   🔗 TX Hash: 0x1baaf783...44a3c84d          ║
-║                                              ║
-║   ✨ +10 Light Score được cộng! ✨            ║
-║                                              ║
-║   [Xem BSCScan] [Lưu Hình] [Đóng]            ║
-╚══════════════════════════════════════════════╝
-
-Background: Gradient trắng → vàng nhạt
-Border: Gold glow effect
-```
-
-### Recipient Received Card (Người Nhận)
-
-```
-╔══════════════════════════════════════════════╗
-║              🎉 💰 🎊 💰 🎉                   ║
-║                                              ║
-║    🎁 BẠN NHẬN ĐƯỢC QUÀ TẶNG!                ║
-║                                              ║
-║   ╔══════════════════════════════════════╗   ║
-║   ║  💰 1.000 CAMLY 💰                   ║   ║
-║   ║  Từ @MinhTri với tình yêu thương 💚   ║   ║
-║   ╚══════════════════════════════════════╝   ║
-║                                              ║
-║   💬 "Cảm ơn bạn rất nhiều!"                 ║
-║                                              ║
-║   [Xem BSCScan] [Gửi Lời Cảm Ơn] [Đóng]      ║
-╚══════════════════════════════════════════════╝
-```
-
----
-
-## Kỹ Thuật: Celebration Sounds
-
+**Interface (Line 18-23):**
 ```typescript
-// Sử dụng Web Audio API
-const playCelebrationSound = () => {
-  const coins = new Audio('/sounds/coins.mp3');
-  const celebration = new Audio('/sounds/celebration.mp3');
-  
-  coins.volume = 0.5;
-  celebration.volume = 0.3;
-  
-  coins.play();
-  setTimeout(() => celebration.play(), 500);
-};
+// Trước
+interface FriendProfile {
+  id: string;
+  username: string;
+  avatar_url: string | null;
+  full_name: string | null;
+}
+
+// Sau
+interface FriendProfile {
+  id: string;
+  username: string;
+  avatar_url: string | null;
+  full_name: string | null;
+  wallet_address: string | null;
+}
 ```
 
-Lưu ý: Sẽ sử dụng các file audio miễn phí từ web hoặc generate đơn giản với Web Audio API để tránh phụ thuộc external resources.
+**Query (Line 60-63):**
+```typescript
+// Trước
+.select('id, username, avatar_url, full_name')
 
----
+// Sau
+.select('id, username, avatar_url, full_name, wallet_address')
+```
 
-## Timeline Ước Tính
+**DonationDialog Desktop (Line 188-194):**
+```typescript
+// Trước
+<DonationDialog
+  recipientId={selectedRecipient.id}
+  recipientUsername={selectedRecipient.username}
+  recipientAvatarUrl={selectedRecipient.avatar_url || undefined}
+/>
 
-| Task | Thời gian |
-|------|-----------|
-| Sửa BSCScan URL (Mainnet) | 2 phút |
-| Redesign Success Card style | 15 phút |
-| Thêm celebration sounds | 10 phút |
-| Tạo DonationReceivedCard | 15 phút |
-| Realtime listener hook | 10 phút |
-| Tích hợp vào App.tsx | 5 phút |
-| Thêm animations mới | 5 phút |
-| **Tổng** | **~60 phút** |
+// Sau
+<DonationDialog
+  recipientId={selectedRecipient.id}
+  recipientUsername={selectedRecipient.username}
+  recipientAvatarUrl={selectedRecipient.avatar_url || undefined}
+  recipientWalletAddress={selectedRecipient.wallet_address}
+/>
+```
+
+**DonationDialog Mobile (Line 285-290):**
+Tương tự thêm `recipientWalletAddress={selectedRecipient.wallet_address}`
 
 ---
 
 ## Kết Quả Mong Đợi
 
-1. **Sender**: Khi gửi thành công → Card tươi sáng, rạng rỡ + âm thanh tiền rơi + pháo hoa
-2. **Recipient**: Khi có ai đó tặng → Popup chúc mừng real-time + âm thanh celebration
-3. **BSCScan**: Link đã chuyển sang Mainnet (bscscan.com)
-4. **UX**: Trải nghiệm vui vẻ, lễ hội cho cả người gửi và người nhận
+1. Khi click Gift từ Navbar và chọn "Minh Trí (Wallet 65c5)"
+2. `DonationDialog` sẽ nhận được `recipientWalletAddress = "0xe3e97a95d3f61814473f6d1eebba8253286d65c5"`
+3. Không còn hiện cảnh báo "Người nhận chưa thiết lập ví"
+4. Hiển thị form donation đầy đủ giống như khi click từ bài viết
+
+---
+
+## Timeline
+
+| Task | Thời gian |
+|------|-----------|
+| Cập nhật interface | 1 phút |
+| Cập nhật query | 1 phút |
+| Cập nhật 2 chỗ render DonationDialog | 2 phút |
+| Test | 3 phút |
+| **Tổng** | **~7 phút** |
