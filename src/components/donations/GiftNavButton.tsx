@@ -20,6 +20,7 @@ interface FriendProfile {
   username: string;
   avatar_url: string | null;
   full_name: string | null;
+  wallet_address: string | null;
 }
 
 export const GiftNavButton = memo(({ variant, className = '' }: GiftNavButtonProps) => {
@@ -59,7 +60,7 @@ export const GiftNavButton = memo(({ variant, className = '' }: GiftNavButtonPro
 
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, username, avatar_url, full_name')
+        .select('id, username, avatar_url, full_name, wallet_address')
         .in('id', friendIds);
 
       return profiles || [];
@@ -191,6 +192,7 @@ export const GiftNavButton = memo(({ variant, className = '' }: GiftNavButtonPro
             recipientId={selectedRecipient.id}
             recipientUsername={selectedRecipient.username}
             recipientAvatarUrl={selectedRecipient.avatar_url || undefined}
+            recipientWalletAddress={selectedRecipient.wallet_address}
           />
         )}
       </>
@@ -288,6 +290,7 @@ export const GiftNavButton = memo(({ variant, className = '' }: GiftNavButtonPro
           recipientId={selectedRecipient.id}
           recipientUsername={selectedRecipient.username}
           recipientAvatarUrl={selectedRecipient.avatar_url || undefined}
+          recipientWalletAddress={selectedRecipient.wallet_address}
         />
       )}
     </>
