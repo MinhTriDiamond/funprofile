@@ -2,126 +2,201 @@
  * Notification Utility Functions
  */
 
-import { Bell, Heart, MessageCircle, Share2, Gift, Shield, UserPlus } from 'lucide-react';
-import { differenceInHours, isToday, isYesterday, differenceInDays } from 'date-fns';
-import type { NotificationWithDetails, NotificationGroups } from './types';
-import { REACTION_ICONS } from './types';
+import { NotificationWithDetails, NotificationGroups, REACTION_ICONS } from './types';
+import { Bell, MessageCircle, Share2, Gift, Shield, UserPlus, UserCheck } from 'lucide-react';
 import React from 'react';
 
 /**
  * Group notifications by time periods
  */
-export function groupNotificationsByTime(notifications: NotificationWithDetails[]): NotificationGroups {
+export const groupNotificationsByTime = (notifications: NotificationWithDetails[]): NotificationGroups => {
   const now = new Date();
-  
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+  const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const hourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+
   const groups: NotificationGroups = {
     new: [],
     today: [],
     yesterday: [],
     thisWeek: [],
-    earlier: [],
+    earlier: []
   };
 
-  notifications.forEach(notification => {
-    const createdAt = new Date(notification.created_at);
-    const hoursAgo = differenceInHours(now, createdAt);
-    const daysAgo = differenceInDays(now, createdAt);
+  notifications.forEach(n => {
+    const createdAt = new Date(n.created_at);
 
-    if (hoursAgo < 1) {
-      groups.new.push(notification);
-    } else if (isToday(createdAt)) {
-      groups.today.push(notification);
-    } else if (isYesterday(createdAt)) {
-      groups.yesterday.push(notification);
-    } else if (daysAgo <= 7) {
-      groups.thisWeek.push(notification);
+    if (createdAt >= hourAgo) {
+      groups.new.push(n);
+    } else if (createdAt >= today) {
+      groups.today.push(n);
+    } else if (createdAt >= yesterday) {
+      groups.yesterday.push(n);
+    } else if (createdAt >= weekAgo) {
+      groups.thisWeek.push(n);
     } else {
-      groups.earlier.push(notification);
+      groups.earlier.push(n);
     }
   });
 
   return groups;
-}
+};
 
 /**
  * Get notification icon element based on type
  */
-export function getNotificationIcon(type: string): React.ReactNode {
-  if (REACTION_ICONS[type]) {
-    return React.createElement('span', { className: 'text-base' }, REACTION_ICONS[type].icon);
-  }
-
-  const iconProps = { className: 'w-4 h-4' };
-  
+export const getNotificationIcon = (type: string): React.ReactNode => {
   switch (type) {
+    case 'like':
+      return React.createElement('span', { className: 'text-lg' }, REACTION_ICONS.like.icon);
+    case 'love':
+      return React.createElement('span', { className: 'text-lg' }, REACTION_ICONS.love.icon);
+    case 'care':
+      return React.createElement('span', { className: 'text-lg' }, REACTION_ICONS.care.icon);
+    case 'haha':
+      return React.createElement('span', { className: 'text-lg' }, REACTION_ICONS.haha.icon);
+    case 'wow':
+      return React.createElement('span', { className: 'text-lg' }, REACTION_ICONS.wow.icon);
+    case 'sad':
+      return React.createElement('span', { className: 'text-lg' }, REACTION_ICONS.sad.icon);
+    case 'angry':
+      return React.createElement('span', { className: 'text-lg' }, REACTION_ICONS.angry.icon);
+    case 'pray':
+      return React.createElement('span', { className: 'text-lg' }, REACTION_ICONS.pray.icon);
     case 'comment':
-    case 'comment_reply':
     case 'comment_like':
-      return React.createElement(MessageCircle, { ...iconProps, className: 'w-4 h-4 text-primary' });
+    case 'comment_reply':
+      return React.createElement(MessageCircle, { className: 'w-4 h-4 text-primary' });
     case 'share':
-      return React.createElement(Share2, { ...iconProps, className: 'w-4 h-4 text-green-500' });
+      return React.createElement(Share2, { className: 'w-4 h-4 text-green-500' });
     case 'reward_approved':
     case 'reward_rejected':
-      return React.createElement(Gift, { ...iconProps, className: 'w-4 h-4 text-gold' });
+      return React.createElement(Gift, { className: 'w-4 h-4 text-gold' });
     case 'account_banned':
-      return React.createElement(Shield, { ...iconProps, className: 'w-4 h-4 text-destructive' });
+      return React.createElement(Shield, { className: 'w-4 h-4 text-destructive' });
     case 'friend_request':
+      return React.createElement(UserPlus, { className: 'w-4 h-4 text-purple-500' });
     case 'friend_accepted':
-      return React.createElement(UserPlus, { ...iconProps, className: 'w-4 h-4 text-pink-500' });
+      return React.createElement(UserCheck, { className: 'w-4 h-4 text-green-500' });
     default:
-      return React.createElement(Bell, { ...iconProps, className: 'w-4 h-4 text-muted-foreground' });
+      return React.createElement(Bell, { className: 'w-4 h-4 text-muted-foreground' });
   }
-}
+};
 
 /**
  * Truncate content to specified length
  */
-export function truncateContent(content: string | null | undefined, maxLength: number = 50): string {
+export const truncateContent = (content: string | null | undefined, maxLength: number = 50): string => {
   if (!content) return '';
-  if (content.length <= maxLength) return content;
-  return content.substring(0, maxLength).trim() + '...';
-}
+  return content.length > maxLength ? content.slice(0, maxLength) + '...' : content;
+};
 
 /**
  * Get notification text with optional post snippet
  */
-export function getNotificationText(
+export const getNotificationText = (
   type: string, 
   username: string, 
   postContent?: string | null
-): { main: React.ReactNode; snippet?: string } {
+): { main: React.ReactNode; snippet?: string } => {
   const snippet = postContent ? truncateContent(postContent, 50) : undefined;
-  
-  const textMap: Record<string, React.ReactNode> = {
-    like: React.createElement(React.Fragment, null, React.createElement('strong', null, username), ' đã thích bài viết của bạn'),
-    love: React.createElement(React.Fragment, null, React.createElement('strong', null, username), ' đã yêu thích bài viết của bạn'),
-    care: React.createElement(React.Fragment, null, React.createElement('strong', null, username), ' đã thương bài viết của bạn'),
-    haha: React.createElement(React.Fragment, null, React.createElement('strong', null, username), ' đã cười với bài viết của bạn'),
-    wow: React.createElement(React.Fragment, null, React.createElement('strong', null, username), ' đã ngạc nhiên với bài viết của bạn'),
-    sad: React.createElement(React.Fragment, null, React.createElement('strong', null, username), ' đã buồn với bài viết của bạn'),
-    angry: React.createElement(React.Fragment, null, React.createElement('strong', null, username), ' đã tức giận với bài viết của bạn'),
-    pray: React.createElement(React.Fragment, null, React.createElement('strong', null, username), ' đã cầu nguyện cho bài viết của bạn'),
-    comment: React.createElement(React.Fragment, null, React.createElement('strong', null, username), ' đã bình luận bài viết của bạn'),
-    comment_reply: React.createElement(React.Fragment, null, React.createElement('strong', null, username), ' đã trả lời bình luận của bạn'),
-    comment_like: React.createElement(React.Fragment, null, React.createElement('strong', null, username), ' đã thích bình luận của bạn'),
-    share: React.createElement(React.Fragment, null, React.createElement('strong', null, username), ' đã chia sẻ bài viết của bạn'),
-    reward_approved: React.createElement(React.Fragment, null, '🎉 ', React.createElement('strong', null, 'Chúc mừng!'), ' Phần thưởng của bạn đã được duyệt'),
-    reward_rejected: React.createElement(React.Fragment, null, '📋 Yêu cầu nhận thưởng cần được xem xét lại'),
-    account_banned: React.createElement(React.Fragment, null, '⚠️ Tài khoản của bạn đã bị hạn chế'),
-    friend_request: React.createElement(React.Fragment, null, React.createElement('strong', null, username), ' đã gửi lời mời kết bạn'),
-    friend_accepted: React.createElement(React.Fragment, null, React.createElement('strong', null, username), ' đã chấp nhận lời mời kết bạn'),
+
+  const createMainText = (action: string) => {
+    return React.createElement(React.Fragment, null,
+      React.createElement('strong', null, username),
+      ` ${action}`
+    );
   };
 
-  return {
-    main: textMap[type] || React.createElement(React.Fragment, null, React.createElement('strong', null, username), ' đã tương tác với bạn'),
-    snippet,
-  };
-}
+  let main: React.ReactNode;
+
+  switch (type) {
+    case 'like':
+      main = createMainText('đã thích bài viết của bạn');
+      break;
+    case 'love':
+      main = createMainText('đã yêu thích bài viết của bạn');
+      break;
+    case 'care':
+      main = createMainText('đã thương thương bài viết của bạn');
+      break;
+    case 'haha':
+      main = createMainText('đã cười với bài viết của bạn');
+      break;
+    case 'wow':
+      main = createMainText('đã ngạc nhiên với bài viết của bạn');
+      break;
+    case 'sad':
+      main = createMainText('đã buồn với bài viết của bạn');
+      break;
+    case 'angry':
+      main = createMainText('đã tức giận với bài viết của bạn');
+      break;
+    case 'pray':
+      main = createMainText('đã gửi lời biết ơn với bài viết của bạn');
+      break;
+    case 'comment':
+      main = createMainText('đã bình luận bài viết của bạn');
+      break;
+    case 'comment_like':
+      main = React.createElement(React.Fragment, null,
+        React.createElement('strong', null, username),
+        ' đã thích bình luận của bạn'
+      );
+      break;
+    case 'comment_reply':
+      main = React.createElement(React.Fragment, null,
+        React.createElement('strong', null, username),
+        ' đã trả lời bình luận của bạn'
+      );
+      break;
+    case 'share':
+      main = createMainText('đã chia sẻ bài viết của bạn');
+      break;
+    case 'reward_approved':
+      main = React.createElement(React.Fragment, null,
+        '🎉 ',
+        React.createElement('strong', null, 'Chúc mừng!'),
+        ' Phần thưởng của bạn đã được duyệt'
+      );
+      break;
+    case 'reward_rejected':
+      main = React.createElement(React.Fragment, null,
+        '📋 Yêu cầu nhận thưởng cần được xem xét lại'
+      );
+      break;
+    case 'account_banned':
+      main = React.createElement(React.Fragment, null,
+        '⚠️ Tài khoản của bạn đã bị hạn chế'
+      );
+      break;
+    case 'friend_request':
+      main = React.createElement(React.Fragment, null,
+        React.createElement('strong', null, username),
+        ' đã gửi cho bạn lời mời kết bạn'
+      );
+      break;
+    case 'friend_accepted':
+      main = React.createElement(React.Fragment, null,
+        React.createElement('strong', null, username),
+        ' đã chấp nhận lời mời kết bạn của bạn'
+      );
+      break;
+    default:
+      main = React.createElement(React.Fragment, null,
+        React.createElement('strong', null, username),
+        ' đã tương tác với bạn'
+      );
+  }
+
+  return { main, snippet };
+};
 
 /**
  * Get section title for time group
  */
-export function getSectionTitle(key: keyof NotificationGroups): string {
+export const getSectionTitle = (key: keyof NotificationGroups): string => {
   const titles: Record<keyof NotificationGroups, string> = {
     new: 'Mới',
     today: 'Hôm nay',
@@ -130,4 +205,4 @@ export function getSectionTitle(key: keyof NotificationGroups): string {
     earlier: 'Trước đó',
   };
   return titles[key];
-}
+};
