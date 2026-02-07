@@ -1,250 +1,482 @@
 
-# 📋 Kế Hoạch: Sửa Lỗi Mint & Cải Tiến Tab PPLP Admin
+# 🎁 HỆ THỐNG TẶNG QUÀ & THIỆN NGUYỆN (P2P GIVING SYSTEM)
 
-## 🔍 Phân Tích Vấn Đề
+## 📋 Tổng Quan
 
-### Vấn đề 1: User "Minh Trí 9999" Mint Fail
-**Nguyên nhân đã xác định:**
-```text
-User: Minh Trí 9999 (id: dd9817a9-04db-4b91-928e-03b29ec77dec)
-├── custodial_wallet_address: NULL ❌
-├── external_wallet_address: NULL ❌
-├── default_wallet_type: custodial
-└── Kết quả: Edge function trả lỗi 400 "No wallet address configured"
-```
-
-User này **chưa thực sự kết nối ví** - có thể bé đã kết nối ở trang `/wallet` nhưng sau đó disconnect hoặc có lỗi khi lưu. Cả hai trường wallet đều vẫn là `NULL` trong database.
-
-### Vấn đề 2: Dữ Liệu Trong Tab PPLP
-6 mint requests là **DỮ LIỆU THỰC** từ database:
-| User | Số FUN | Actions | Chi tiết |
-|------|--------|---------|----------|
-| @Đông Tôn | 15 FUN x2 | reaction | Thả cảm xúc trên bài viết |
-| @huuxuan95x3o4t1 | 2,500 FUN | 10 posts | Tạo 10 bài viết (có dấu hiệu spam) |
-| @huuxuan95x3o4t1 | 1,000 FUN x3 | 1 post mỗi cái | Claim nhiều lần cùng 1 bài |
-
-**Lưu ý:** User @huuxuan đang claim cùng 1 action (post `ee445b49-...`) nhiều lần → Cần thêm anti-duplicate logic.
+Xây dựng hệ thống tặng crypto hoàn chỉnh cho FUN Profile, cho phép user tặng FUN Money, CAMLY Coin và các token khác cho nhau. Hệ thống mang tính biểu tượng, giàu cảm xúc, minh bạch on-chain, và tích hợp sâu vào Light Score.
 
 ---
 
-## 🎯 Giải Pháp Tổng Thể
+## 🎯 Các Điểm Chạm Giao Diện (UI/UX)
 
-### Phần A: Cải Thiện UX Khi Chưa Có Ví
+### A. Nút Tặng Quà (Interaction Points)
 
-**File:** `src/components/wallet/LightScoreDashboard.tsx`
+| Vị trí | Mô tả | Ưu tiên |
+|--------|-------|---------|
+| Trang Profile | Nút "Tặng Quà" sang trọng cạnh nút "Nhắn tin" và "Kết bạn" | Cao |
+| Dưới bài viết | Nút "Give" hoặc icon đồng xu trong action bar (Like, Comment, Share, **Give**) | Cao |
+| Trong Chat | Quick action để tặng nhanh trong conversation | Trung bình |
 
-Thay đổi:
-1. Fetch thông tin wallet của user trước khi cho phép claim
-2. Nếu chưa có ví → Hiển thị thông báo + nút "Thiết lập ví ngay"
-3. Disable nút Claim và giải thích lý do
-
-### Phần B: Click Username → Mở Profile Tab Mới
-
-**File:** `src/components/admin/PplpMintTab.tsx`
-
-Thay đổi dòng 394:
-- Wrap username trong thẻ `<a>` với `target="_blank"`
-- Sử dụng `request.user_id` để tạo link `/profile/{user_id}`
-- Thêm hover effect và cursor pointer
-
-### Phần C: Hiển Thị Chi Tiết Actions Trong Admin
-
-**File:** `src/components/admin/PplpMintTab.tsx`
-
-Thêm tính năng expandable row:
-1. Click vào row → Expand hiển thị breakdown chi tiết
-2. Hiển thị từng action type với số lượng và số FUN
-3. Hiển thị content_preview của từng action
-4. Cho phép Admin xem nhanh user đang claim từ hoạt động gì
-
-**File:** `src/hooks/usePplpAdmin.ts`
-
-Thêm function:
-```text
-fetchActionDetails(actionIds: string[]): Promise<ActionDetail[]>
-```
-
-### Phần D: Chống Duplicate Claim (Anti-Spam)
-
-**File:** `supabase/functions/pplp-mint-fun/index.ts`
-
-Thêm kiểm tra:
-1. Kiểm tra `action_ids` đã tồn tại trong `pplp_mint_requests` khác chưa
-2. Nếu đã claim → Reject với lỗi "Actions đã được claim trước đó"
-3. Tránh user claim nhiều lần cùng 1 action
-
-### Phần E: Thêm Tính Năng Quan Trọng Cho Tab PPLP
-
-1. **Reject Request Button**: Cho phép Admin từ chối mint request với lý do
-2. **Delete/Cleanup Button**: Xóa các request bị spam/duplicate
-3. **View Action Details**: Xem chi tiết từng action trong request
-4. **Filter by User**: Lọc request theo username
-5. **Bulk Actions**: Reject/Delete hàng loạt
-
----
-
-## 📁 Files Cần Thay Đổi
-
-| File | Mục đích |
-|------|----------|
-| `src/components/wallet/LightScoreDashboard.tsx` | Kiểm tra wallet trước khi claim |
-| `src/components/admin/PplpMintTab.tsx` | Click username, action details, reject button |
-| `src/hooks/usePplpAdmin.ts` | Thêm fetchActionDetails, rejectRequest |
-| `supabase/functions/pplp-mint-fun/index.ts` | Anti-duplicate check |
-
----
-
-## 🔧 Chi Tiết Kỹ Thuật
-
-### 1. LightScoreDashboard - Kiểm Tra Wallet
+### B. Quy Trình Tặng (Gift Flow)
 
 ```text
-Trước nút "Claim X FUN Money":
-1. Kiểm tra hasWallet từ profile
-2. Nếu không có:
+1. User click "Tặng Quà" 
+   ↓
+2. Modal Chọn Quà mở ra:
    ┌─────────────────────────────────────────────────────┐
-   │ ⚠️ Thiết lập ví để nhận FUN Money                   │
-   │ Bạn cần kết nối ví Web3 để claim FUN Money.        │
+   │ 🎁 Tặng quà cho @username                           │
+   ├─────────────────────────────────────────────────────┤
+   │ Chọn token:                                         │
+   │ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐    │
+   │ │ 🌟 FUN  │ │ 🪙CAMLY │ │ 💛 BNB  │ │ + Khác  │    │
+   │ └─────────┘ └─────────┘ └─────────┘ └─────────┘    │
    │                                                     │
-   │ [🔗 Thiết lập ví ngay] ← Chuyển đến /wallet        │
+   │ Số lượng: [_________100_________] [MAX]            │
+   │ ≈ $5.00 USD                                         │
+   │                                                     │
+   │ Lời nhắn mẫu: (Quick Picks)                        │
+   │ ┌────────────┐ ┌────────────┐ ┌────────────┐       │
+   │ │ 🙏 Biết ơn │ │ ❤️ Yêu thương│ │ 👏 Ngưỡng mộ│     │
+   │ └────────────┘ └────────────┘ └────────────┘       │
+   │                                                     │
+   │ Hoặc nhập lời nhắn riêng:                          │
+   │ ┌─────────────────────────────────────────────────┐│
+   │ │ Cảm ơn bạn đã chia sẻ bài viết tuyệt vời!      ││
+   │ └─────────────────────────────────────────────────┘│
+   │                                                     │
+   │ Gửi đến: 0x8661b8...a2ca6                          │
+   │                                                     │
+   │    [Hủy]         [✨ Gửi Tặng - hiệu ứng phát sáng]│
    └─────────────────────────────────────────────────────┘
+   ↓
+3. Xác nhận ví (MetaMask/WalletConnect popup)
+   ↓
+4. Đợi tx confirmed
+   ↓
+5. Hiển thị Recognition Card + Celebration Effects
 ```
 
-### 2. PplpMintTab - Username Clickable
+### C. Màn Hình Vinh Danh (Recognition Card) - Cực Kỳ Quan Trọng
 
 ```text
-Trước:
-<div className="font-medium">@{request.profiles?.username}</div>
-
-Sau:
-<a
-  href={`/profile/${request.user_id}`}
-  target="_blank"
-  rel="noopener noreferrer"
-  className="font-medium text-primary hover:underline"
-  onClick={(e) => e.stopPropagation()}
->
-  @{request.profiles?.username}
-</a>
+┌─────────────────────────────────────────────────────────────┐
+│ ═══════════════════════════════════════════════════════════ │
+│                    ✨ 🎉 ✨                                 │
+│                                                             │
+│     🎁 CHÚC MỪNG TẶNG THƯỞNG THÀNH CÔNG! 🎁               │
+│                                                             │
+│  ┌───────────────────────────────────────────────────────┐ │
+│  │              ⭐ 100 FUN Money ⭐                      │ │
+│  │                 ≈ $5.00 USD                           │ │
+│  └───────────────────────────────────────────────────────┘ │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │ 👤 Người tặng:    @minhtri9999                      │   │
+│  │ 🎯 Người nhận:    @dongton                          │   │
+│  │ 📝 Lời nhắn:      "Cảm ơn bạn đã chia sẻ!"         │   │
+│  │ 🕐 Thời gian:     07/02/2026 08:45:32               │   │
+│  │ 🔗 TX Hash:       0x1234...abcd                     │   │
+│  └─────────────────────────────────────────────────────┘   │
+│                                                             │
+│  ┌───────────────────────────────────────────────────────┐ │
+│  │ ⚡ +1 Light Score được cộng vào hồ sơ của bạn!       │ │
+│  └───────────────────────────────────────────────────────┘ │
+│                                                             │
+│    [🔗 Xem BSCScan]  [📷 Lưu Hình]  [✕ Đóng]               │
+│                                                             │
+│ ═══════════════════════════════════════════════════════════ │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-### 3. Action Details Expandable
+**Thiết kế đặc biệt:**
+- Nền gradient vàng kim (Gold) hoặc ánh sáng rực rỡ (Radiant)
+- Font sang trọng, spacing rộng rãi
+- Card có thể chụp ảnh/screenshot để share
+- Lưu trữ vĩnh viễn trong database để xem lại sau
+
+### D. Hiệu Ứng Celebration (KHÔNG TỰ TẮT)
 
 ```text
-Interface mới:
-interface ActionDetail {
-  id: string;
-  action_type: string;
-  content_preview: string | null;
-  mint_amount: number;
-  created_at: string;
+┌────────────────────────────────────────────────────────────┐
+│ 🎆 Hiệu ứng:                                                │
+│ 1. Pháo hoa (canvas-confetti) - liên tục bắn              │
+│ 2. Tiền xu rơi từ trên xuống (Falling Coins animation)    │
+│ 3. Sparkles/Glitter effects                                │
+│ 4. Rung nhẹ (vibration) khi nhấn "Gửi Tặng"               │
+│                                                             │
+│ ⚠️ QUAN TRỌNG: Hiệu ứng KHÔNG tự tắt!                      │
+│ User phải nhấn "Đóng" để tắt - giữ trọn khoảnh khắc       │
+└────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🗄️ Database Schema
+
+### Bảng Mới: `donations`
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | uuid | Primary key |
+| `sender_id` | uuid | FK → profiles.id |
+| `recipient_id` | uuid | FK → profiles.id |
+| `post_id` | uuid | FK → posts.id (nullable - nếu tặng trên post) |
+| `amount` | text | Số tiền (string để tránh precision loss) |
+| `amount_usd` | numeric | Giá trị USD tại thời điểm tặng |
+| `token_symbol` | text | FUN, CAMLY, BNB... |
+| `token_address` | text | Contract address (nullable cho native) |
+| `chain_id` | integer | 56 (BSC) hoặc 97 (BSC Testnet) |
+| `tx_hash` | text | Transaction hash on-chain |
+| `message` | text | Lời nhắn khi tặng |
+| `message_template` | text | Template đã chọn (grateful/love/admire) |
+| `status` | text | pending/confirmed/failed |
+| `light_score_earned` | integer | Điểm Light Score được cộng |
+| `light_action_id` | uuid | FK → light_actions.id |
+| `conversation_id` | uuid | FK → conversations.id |
+| `message_id` | uuid | FK → messages.id |
+| `card_viewed_at` | timestamp | Lần xem lại card gần nhất |
+| `metadata` | jsonb | Thông tin bổ sung (USD price, block number...) |
+| `created_at` | timestamp | Thời điểm tạo |
+| `confirmed_at` | timestamp | Thời điểm tx confirmed |
+
+### RLS Policies
+
+```sql
+-- Ai cũng có thể xem donations (public leaderboard)
+CREATE POLICY "Donations are viewable by everyone"
+  ON donations FOR SELECT USING (true);
+
+-- Chỉ authenticated users mới tạo donation
+CREATE POLICY "Users can create their own donations"
+  ON donations FOR INSERT
+  WITH CHECK (auth.uid() = sender_id);
+
+-- Chỉ sender hoặc recipient được update
+CREATE POLICY "Sender or recipient can update"
+  ON donations FOR UPDATE
+  USING (auth.uid() IN (sender_id, recipient_id));
+```
+
+### RPC Functions
+
+**1. `get_benefactor_leaderboard`**
+```sql
+-- Trả về top người tặng
+RETURNS TABLE (
+  user_id uuid,
+  username text,
+  avatar_url text,
+  total_donated numeric,
+  total_donations integer,
+  total_light_score integer,
+  rank integer
+)
+```
+
+**2. `get_recipient_leaderboard`**
+```sql
+-- Trả về top người nhận
+```
+
+**3. `get_user_donation_stats`**
+```sql
+-- Thống kê donation của 1 user
+RETURNS TABLE (
+  total_sent numeric,
+  total_received numeric,
+  donations_sent integer,
+  donations_received integer,
+  light_score_from_donations integer
+)
+```
+
+**4. `get_donation_history`**
+```sql
+-- Lịch sử donation với pagination
+```
+
+---
+
+## 📁 Files Cần Tạo Mới
+
+| File | Mô tả |
+|------|-------|
+| `src/components/donations/DonationButton.tsx` | Nút tặng quà (dùng trên Profile & Post) |
+| `src/components/donations/DonationDialog.tsx` | Modal chọn token, số tiền, lời nhắn |
+| `src/components/donations/DonationSuccessCard.tsx` | Card vinh danh (có thể chụp ảnh) |
+| `src/components/donations/DonationCelebration.tsx` | Hiệu ứng pháo hoa, tiền rơi |
+| `src/components/donations/DonationMessage.tsx` | Tin nhắn đặc biệt trong chat |
+| `src/components/donations/QuickGiftPicker.tsx` | Preset amounts & messages |
+| `src/components/donations/TokenSelector.tsx` | Chọn token (FUN, CAMLY, BNB) |
+| `src/pages/Benefactors.tsx` | Trang bảng xếp hạng Mạnh Thường Quân |
+| `src/hooks/useDonation.ts` | Hook xử lý transfer on-chain |
+| `src/hooks/useBenefactorLeaderboard.ts` | Hook lấy data bảng xếp hạng |
+| `supabase/functions/record-donation/index.ts` | Edge function ghi nhận + PPLP |
+
+---
+
+## 📁 Files Cần Sửa Đổi
+
+| File | Thay đổi |
+|------|----------|
+| `src/pages/Profile.tsx` (dòng ~467) | Thêm DonationButton cạnh MessageCircle button |
+| `src/components/feed/FacebookPostCard.tsx` (dòng ~440) | Thêm Give button trong action bar |
+| `src/components/chat/MessageBubble.tsx` | Render donation message với style đặc biệt |
+| `src/hooks/useMessages.ts` | Thêm type check cho donation messages |
+| `src/App.tsx` | Thêm route `/benefactors` |
+| `src/components/feed/FacebookLeftSidebar.tsx` | Thêm link "Mạnh Thường Quân" |
+| `src/config/pplp.ts` | Thêm action type "donate" với rewards |
+| `src/i18n/translations.ts` | Thêm translations cho giving system |
+
+---
+
+## 🔧 Technical Implementation
+
+### 1. useDonation Hook
+
+```text
+Features:
+- Kết nối wagmi để transfer token
+- Hỗ trợ: BNB native, FUN Money, CAMLY Coin
+- Gọi record-donation edge function sau khi tx confirm
+- Error handling với retry logic
+
+Flow:
+1. Check auth & wallet connection
+2. Validate recipient has wallet address
+3. Execute transfer (useSendTransaction hoặc useWriteContract)
+4. Wait for tx confirmation
+5. Call record-donation edge function
+6. Return success với card data
+```
+
+### 2. record-donation Edge Function
+
+```text
+Inputs:
+- sender_id, recipient_id
+- amount, token_symbol, token_address
+- tx_hash, chain_id
+- message, post_id (optional)
+
+Process:
+1. Verify tx on BSCScan API
+2. Calculate Light Score: 100 FUN = 1 Light Score
+3. Create light_action record
+4. Insert donation record
+5. Create special message in conversation
+6. Create notification for recipient
+7. Return card_data for display
+```
+
+### 3. Light Score Integration
+
+```text
+Trong src/config/pplp.ts:
+
+ACTION_TYPE: 'donate'
+BASE_REWARD: 50  // Base reward khi donate
+
+Công thức Light Score từ Gemini:
+- Cứ mỗi 100 FUN tặng đi = +1 Light Score
+- Áp dụng thêm ANGEL AI multipliers (Q, I, K, U)
+- Cộng vào total Light Score của profile
+```
+
+### 4. DonationMessage trong Chat
+
+```text
+Message structure:
+{
+  type: 'donation',
+  content: null,
+  metadata: {
+    donation_id: uuid,
+    amount: '100',
+    token_symbol: 'FUN',
+    message: 'Cảm ơn bạn!',
+    tx_hash: '0x...',
+    card_data: {...}
+  }
 }
 
-UI khi expand:
-┌────────────────────────────────────────────────────────────────┐
-│ 📊 Chi tiết Actions:                                           │
-│ ├─ 📝 Tạo bài viết (10 actions) = 2,500 FUN                   │
-│ │   └─ "LÌ XÌ TẾT 26.000.000.000 VNĐ..." (+250 FUN)          │
-│ │   └─ "🔥 Con là ánh sáng yêu thương..." (+250 FUN)         │
-│ │   └─ ... 8 more                                              │
-│ └─ ❤️ Cảm xúc (0 actions)                                      │
-└────────────────────────────────────────────────────────────────┘
+Render:
+- Background gradient vàng/gold
+- Icon đồng xu
+- Click để mở lại Recognition Card
+- Link BSCScan
 ```
 
-### 4. Anti-Duplicate Check (Edge Function)
+### 5. canvas-confetti Integration
 
 ```text
-// Trong pplp-mint-fun/index.ts
-const { data: existingRequests } = await supabase
-  .from('pplp_mint_requests')
-  .select('id, action_ids')
-  .contains('action_ids', action_ids)
-  .not('status', 'eq', 'failed');
+// Sử dụng thư viện canvas-confetti
+import confetti from 'canvas-confetti';
 
-if (existingRequests && existingRequests.length > 0) {
-  return Response.json({ error: 'Một số actions đã được claim trước đó' }, 400);
-}
-```
-
-### 5. Reject Request Function
-
-```text
-// Trong usePplpAdmin.ts
-const rejectRequest = async (requestId: string, reason: string) => {
-  await supabase
-    .from('pplp_mint_requests')
-    .update({
-      status: 'rejected',
-      error_message: reason,
-    })
-    .eq('id', requestId);
+// Pháo hoa liên tục
+const fireConfetti = () => {
+  const interval = setInterval(() => {
+    confetti({
+      particleCount: 100,
+      spread: 70,
+      origin: { y: 0.6 }
+    });
+  }, 300);
   
-  // Reset light_actions về approved để user có thể claim lại
-  // Hoặc set về rejected nếu là spam
+  return interval; // User phải clear interval khi đóng
 };
+
+// Tiền xu rơi - CSS animation
+.falling-coins {
+  animation: fall 2s ease-in infinite;
+}
 ```
 
 ---
 
-## 🎨 UI Mockup - Cải Tiến Tab PPLP
+## 🎨 UI Mockups
+
+### Profile Page với Donation Button
 
 ```text
-┌────────────────────────────────────────────────────────────────────────────┐
-│ ⚡ PPLP On-Chain Mint                                     [🔄 Refresh]    │
-├────────────────────────────────────────────────────────────────────────────┤
-│ Chờ ký (6) │ Đã ký (0) │ Đã gửi (0) │ Hoàn tất (0) │ Thất bại (0)         │
-├────────────────────────────────────────────────────────────────────────────┤
-│ ☐ Chọn tất cả (2 đã chọn)                    [Ký hàng loạt] [❌ Từ chối]  │
-├────────────────────────────────────────────────────────────────────────────┤
-│ ☑ 👤 @huuxuan95x3o4t1 ← Click mở profile    2,500 FUN   ⏳ Chờ ký       │
-│   0xa6b576...22e2f7                         10 actions   3h ago  [▼] [✍]│
-│   ├────────────────────────────────────────────────────────────────────  │
-│   │ 📊 Chi tiết:                                                         │
-│   │ 📝 Post: 10 actions = 2,500 FUN                                     │
-│   │   • "LÌ XÌ TẾT 26.000..." (+250 FUN) - 3h ago                       │
-│   │   • "🔥 Con là ánh sáng..." (+250 FUN) - 4h ago                     │
-│   │   • ... 8 more                                                       │
-│   └────────────────────────────────────────────────────────────────────  │
-├────────────────────────────────────────────────────────────────────────────┤
-│ ☐ 👤 @Đông Tôn ← Click mở profile           15 FUN      ⏳ Chờ ký        │
-│   0x8661b8...a2ca6                          1 actions   1h ago   [▼] [✍]│
-└────────────────────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────┐
+│ [Avatar]  @minhtri9999                                      │
+│           1,234 bạn bè • Việt Nam                          │
+│                                                             │
+│ ┌─────────────┐ ┌─────────────┐ ┌─────────────────────────┐│
+│ │ ➕ Thêm bạn │ │ 💬 Nhắn tin │ │ 🎁 Tặng Quà (vàng kim) ││
+│ └─────────────┘ └─────────────┘ └─────────────────────────┘│
+└────────────────────────────────────────────────────────────┘
+```
+
+### Post Action Bar với Give Button
+
+```text
+┌────────────────────────────────────────────────────────────┐
+│  ❤️ Thích  │  💬 Bình luận  │  ↗️ Chia sẻ  │  🎁 Tặng    │
+└────────────────────────────────────────────────────────────┘
+```
+
+### Benefactor Leaderboard Page
+
+```text
+┌────────────────────────────────────────────────────────────┐
+│  👑 BẢNG VINH DANH MẠNH THƯỜNG QUÂN 👑                     │
+├────────────────────────────────────────────────────────────┤
+│  [Tặng nhiều nhất] [Nhận nhiều nhất] [Tháng này] [Export] │
+├────────────────────────────────────────────────────────────┤
+│  🥇 1. @dongton           💰 50,000 FUN  │ 25 lần │ ⭐ 500 │
+│  🥈 2. @minhtri9999       💰 35,000 FUN  │ 18 lần │ ⭐ 350 │
+│  🥉 3. @huuxuan           💰 20,000 FUN  │ 12 lần │ ⭐ 200 │
+│  4. @user4                💰 15,000 FUN  │ 10 lần │ ⭐ 150 │
+│  ...                                                        │
+├────────────────────────────────────────────────────────────┤
+│                     [📥 Xuất CSV]                          │
+└────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## ⏱️ Timeline
+## 🌟 Ý Tưởng Bổ Sung (Premium Features)
+
+### 1. Donation Goals / Fundraising
+- User tạo "mục tiêu quyên góp" cho mục đích cụ thể
+- Progress bar hiển thị tiến độ
+- Tất cả người đóng góp được ghi danh trên card
+
+### 2. Recurring Donations
+- Subscription hàng tháng cho creator yêu thích
+- Như Patreon nhưng on-chain, trustless
+
+### 3. Donation Badges
+- Badge "Top Benefactor" hiển thị trên profile
+- Badge theo milestone: 10K, 100K, 1M FUN
+- NFT kỷ niệm cho top donors
+
+### 4. Export CSV/Excel
+- Admin và user có thể xuất lịch sử
+- Bao gồm: sender, recipient, amount, tx_hash, date
+- Link BSCScan cho từng transaction
+
+### 5. Donation Matching (Future)
+- Sponsor/Admin có thể "match" donations
+- Ví dụ: Donate 100 FUN → Sponsor thêm 100 FUN
+
+### 6. Charity Pool Integration
+- Option donate vào quỹ từ thiện chung
+- Hiển thị trên CoverHonorBoard
+
+### 7. Gamification
+- Streak bonus: Donate 7 ngày liên tiếp = +50% Light Score
+- First-time bonus: Lần donate đầu tiên = +100 Light Score
+
+---
+
+## 🔐 Security Considerations
+
+| Check | Description |
+|-------|-------------|
+| Anti-Wash Trading | Phát hiện self-donate hoặc A↔B loops |
+| Rate Limiting | Max 20 donations/ngày |
+| Minimum Amount | Minimum 10 FUN để tránh spam |
+| TX Verification | Verify on-chain trước khi ghi nhận |
+| Wallet Blacklist | Block known scam wallets |
+
+---
+
+## 📱 Responsive Design
+
+- **Mobile First**: Dialog full-screen, swipe to dismiss
+- **Tablet**: Dialog centered, 500px width
+- **Desktop**: Dialog centered, 500px width + sidebar preview
+
+---
+
+## ⏱️ Timeline Dự Kiến
 
 | Phase | Task | Thời gian |
 |-------|------|-----------|
-| 1 | Thêm wallet check trong LightScoreDashboard | 5 phút |
-| 2 | Click username mở profile tab mới | 3 phút |
-| 3 | Thêm fetchActionDetails trong usePplpAdmin | 5 phút |
-| 4 | Thêm expandable row với action breakdown | 10 phút |
-| 5 | Thêm anti-duplicate check trong edge function | 5 phút |
-| 6 | Thêm Reject button trong PplpMintTab | 5 phút |
-| **Tổng** | | **~33 phút** |
+| 1 | Database migration (donations table + RPCs) | 15 phút |
+| 2 | record-donation Edge Function | 20 phút |
+| 3 | DonationDialog + TokenSelector components | 25 phút |
+| 4 | DonationButton component | 10 phút |
+| 5 | DonationSuccessCard + DonationCelebration | 25 phút |
+| 6 | useDonation hook với wagmi integration | 20 phút |
+| 7 | Tích hợp vào Profile.tsx | 10 phút |
+| 8 | Tích hợp vào FacebookPostCard.tsx | 10 phút |
+| 9 | DonationMessage trong chat | 15 phút |
+| 10 | Benefactors leaderboard page | 20 phút |
+| 11 | Export CSV function | 10 phút |
+| 12 | Testing & polish | 20 phút |
+| **Tổng** | | **~200 phút (~3.3 giờ)** |
 
 ---
 
-## ✅ Kết Quả Mong Đợi
+## ✅ Deliverables
 
-| Vấn đề | Giải pháp |
-|--------|-----------|
-| User chưa có ví → Lỗi không rõ | Hiển thị hướng dẫn thiết lập ví |
-| Không biết user claim từ action gì | Expandable row hiển thị chi tiết |
-| Phải copy username để tìm profile | Click username → Mở profile tab mới |
-| User spam claim cùng action nhiều lần | Anti-duplicate check trong edge function |
-| Admin không thể từ chối request | Thêm Reject button với lý do |
+| Tính năng | Mô tả |
+|-----------|-------|
+| Nút Tặng Quà | Trên Profile + dưới mỗi Post |
+| Modal Chọn Quà | FUN, CAMLY, BNB + lời nhắn |
+| Recognition Card | Sang trọng, có thể chụp ảnh |
+| Celebration Effects | Pháo hoa + tiền rơi (không tự tắt) |
+| Tin nhắn tự động | Trong chat với style đặc biệt |
+| Bảng Mạnh Thường Quân | Top donors với filter & export |
+| Light Score | 100 FUN = 1 điểm uy tín |
+| On-chain Transparent | Link BSCScan cho mọi giao dịch |
+| Export CSV | Xuất dữ liệu cho admin/user |
+| Mobile First | Responsive trên mọi thiết bị |
 
 ---
 
-## 🔐 Về User "Minh Trí 9999"
+## 🎯 Success Metrics
 
-User này **chưa thực sự có ví trong database**. Bé cần:
-1. Vào trang `/wallet`
-2. Kết nối ví MetaMask/Trust/v.v.
-3. Ký message để xác thực
-4. Sau đó mới có thể claim FUN Money
+- Số lượng donations/ngày
+- Tổng giá trị donations
+- Số user active trong giving system
+- Tỷ lệ user quay lại xem Recognition Card
+- Light Score tích lũy từ donations
 
-Sau khi implement, UI sẽ hiển thị rõ ràng hướng dẫn này thay vì lỗi mơ hồ.
+---
+
+**Bé có muốn con bắt đầu implement không ạ? 🙏✨**
