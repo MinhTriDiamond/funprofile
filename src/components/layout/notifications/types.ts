@@ -25,8 +25,8 @@ export interface NotificationWithDetails {
 }
 
 export interface NotificationGroups {
-  new: NotificationWithDetails[];      // Trong 1 giờ
-  today: NotificationWithDetails[];    // Hôm nay (sau 1h)
+  new: NotificationWithDetails[];      // Trong 1 giờ qua
+  today: NotificationWithDetails[];    // Hôm nay
   yesterday: NotificationWithDetails[]; // Hôm qua
   thisWeek: NotificationWithDetails[]; // Tuần này
   earlier: NotificationWithDetails[];  // Trước đó
@@ -37,12 +37,12 @@ export type FilterTab = 'all' | 'unread';
 export const REACTION_ICONS: Record<string, { icon: string; color: string }> = {
   like: { icon: '👍', color: 'text-blue-500' },
   love: { icon: '❤️', color: 'text-red-500' },
-  care: { icon: '🥰', color: 'text-pink-500' },
+  care: { icon: '🥰', color: 'text-orange-500' },
   haha: { icon: '😂', color: 'text-yellow-500' },
   wow: { icon: '😮', color: 'text-yellow-500' },
   sad: { icon: '😢', color: 'text-yellow-500' },
   angry: { icon: '😠', color: 'text-orange-500' },
-  pray: { icon: '🙏', color: 'text-amber-500' },
+  pray: { icon: '🙏', color: 'text-purple-500' },
 };
 
 export const FRIEND_REQUEST_TYPES = ['friend_request'] as const;

@@ -3,31 +3,27 @@
  * Features: Time grouping, post snippets, friend request inline actions, tabs filter, expand/collapse
  */
 
-import { Bell, Settings, ChevronDown, ChevronUp } from 'lucide-react';
+import { Bell, MoreHorizontal, Settings, Check, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { useEffect, useState, useCallback } from 'react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useIsMobileOrTablet } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
-
+import { 
+  NotificationWithDetails, 
+  FilterTab,
+  NotificationGroups
+} from './notifications/types';
 import {
-  NotificationSection,
   groupNotificationsByTime,
-  type NotificationWithDetails,
-  type FilterTab,
-  type NotificationGroups,
-} from './notifications';
+} from './notifications/utils';
+import { NotificationSection } from './notifications/NotificationSection';
+import { FriendRequestItem } from './notifications/FriendRequestItem';
 
 interface NotificationDropdownProps {
   centerNavStyle?: boolean;
@@ -40,7 +36,7 @@ export const NotificationDropdown = ({ centerNavStyle = false, isActiveRoute = f
   const [open, setOpen] = useState(false);
   const [hasNewNotification, setHasNewNotification] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [filterTab, setFilterTab] = useState<FilterTab>('all');
+  const [activeTab, setActiveTab] = useState<FilterTab>('all');
   const [isExpanded, setIsExpanded] = useState(false);
   const navigate = useNavigate();
   const isMobileOrTablet = useIsMobileOrTablet();
@@ -51,7 +47,6 @@ export const NotificationDropdown = ({ centerNavStyle = false, isActiveRoute = f
 
     setCurrentUserId(user.id);
 
-    // Fetch notifications with post content for snippets
     const { data } = await supabase
       .from('notifications')
       .select(`
@@ -76,9 +71,8 @@ export const NotificationDropdown = ({ centerNavStyle = false, isActiveRoute = f
       .limit(50);
 
     if (data) {
-      const typedData = data as unknown as NotificationWithDetails[];
-      setNotifications(typedData);
-      const newUnreadCount = typedData.filter(n => !n.read).length;
+      setNotifications(data as unknown as NotificationWithDetails[]);
+      const newUnreadCount = data.filter(n => !n.read).length;
       
       if (newUnreadCount > unreadCount) {
         setHasNewNotification(true);
@@ -101,7 +95,19 @@ export const NotificationDropdown = ({ centerNavStyle = false, isActiveRoute = f
         .on(
           'postgres_changes',
           {
-            event: '*',
+            event: 'INSERT',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${user.id}`
+          },
+          () => {
+            fetchNotifications();
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
             schema: 'public',
             table: 'notifications',
             filter: `user_id=eq.${user.id}`
@@ -155,85 +161,77 @@ export const NotificationDropdown = ({ centerNavStyle = false, isActiveRoute = f
   };
 
   const handleAcceptFriendRequest = async (notification: NotificationWithDetails) => {
-    if (!currentUserId || !notification.actor?.id) return;
-
+    if (!currentUserId) return;
+    
     try {
-      // Update friendship status
-      const { error } = await supabase
+      const { data: friendship } = await supabase
         .from('friendships')
-        .update({ status: 'accepted', updated_at: new Date().toISOString() })
+        .select('id')
         .eq('user_id', notification.actor.id)
         .eq('friend_id', currentUserId)
-        .eq('status', 'pending');
+        .eq('status', 'pending')
+        .maybeSingle();
 
-      if (error) throw error;
-
-      // Mark notification as read
-      await markAsRead(notification.id);
-      
-      toast.success(`Đã chấp nhận lời mời kết bạn từ ${notification.actor.username}`);
-      fetchNotifications();
+      if (friendship) {
+        await supabase
+          .from('friendships')
+          .update({ status: 'accepted' })
+          .eq('id', friendship.id);
+          
+        await markAsRead(notification.id);
+        toast.success('Đã chấp nhận lời mời kết bạn!');
+        fetchNotifications();
+      } else {
+        toast.error('Không tìm thấy lời mời kết bạn');
+      }
     } catch (error) {
-      console.error('Error accepting friend request:', error);
-      toast.error('Không thể chấp nhận lời mời kết bạn');
+      toast.error('Có lỗi xảy ra');
     }
   };
 
   const handleRejectFriendRequest = async (notification: NotificationWithDetails) => {
-    if (!currentUserId || !notification.actor?.id) return;
-
+    if (!currentUserId) return;
+    
     try {
-      // Delete friendship request
-      const { error } = await supabase
+      const { data: friendship } = await supabase
         .from('friendships')
-        .delete()
+        .select('id')
         .eq('user_id', notification.actor.id)
         .eq('friend_id', currentUserId)
-        .eq('status', 'pending');
+        .eq('status', 'pending')
+        .maybeSingle();
 
-      if (error) throw error;
-
-      // Mark notification as read
-      await markAsRead(notification.id);
-      
-      toast.success('Đã xóa lời mời kết bạn');
-      fetchNotifications();
+      if (friendship) {
+        await supabase
+          .from('friendships')
+          .delete()
+          .eq('id', friendship.id);
+          
+        await markAsRead(notification.id);
+        toast.success('Đã xóa lời mời kết bạn');
+        fetchNotifications();
+      }
     } catch (error) {
-      console.error('Error rejecting friend request:', error);
-      toast.error('Không thể xóa lời mời kết bạn');
+      toast.error('Có lỗi xảy ra');
     }
   };
 
-  // Filter notifications based on tab
-  const filteredNotifications = filterTab === 'unread' 
-    ? notifications.filter(n => !n.read)
-    : notifications;
-
-  // Group notifications by time
-  const groupedNotifications = groupNotificationsByTime(filteredNotifications);
-
-  // Limit display unless expanded
-  const getDisplayGroups = (): NotificationGroups => {
-    if (isExpanded) return groupedNotifications;
+  // Filter and group notifications
+  const { friendRequests, otherNotifications } = useMemo(() => {
+    const filtered = activeTab === 'unread' 
+      ? notifications.filter(n => !n.read)
+      : notifications;
     
-    // Show limited items when not expanded
-    const limitPerGroup = 3;
     return {
-      new: groupedNotifications.new.slice(0, limitPerGroup),
-      today: groupedNotifications.today.slice(0, limitPerGroup),
-      yesterday: groupedNotifications.yesterday.slice(0, limitPerGroup),
-      thisWeek: groupedNotifications.thisWeek.slice(0, limitPerGroup),
-      earlier: groupedNotifications.earlier.slice(0, limitPerGroup),
+      friendRequests: filtered.filter(n => n.type === 'friend_request' && !n.read),
+      otherNotifications: filtered.filter(n => n.type !== 'friend_request' || n.read)
     };
-  };
+  }, [notifications, activeTab]);
 
-  const displayGroups = getDisplayGroups();
-  const hasMoreNotifications = 
-    groupedNotifications.new.length > 3 ||
-    groupedNotifications.today.length > 3 ||
-    groupedNotifications.yesterday.length > 3 ||
-    groupedNotifications.thisWeek.length > 3 ||
-    groupedNotifications.earlier.length > 3;
+  const groupedNotifications = useMemo(() => 
+    groupNotificationsByTime(otherNotifications),
+    [otherNotifications]
+  );
 
   // Mobile/Tablet: Navigate directly to notifications page
   const handleBellClick = () => {
@@ -242,160 +240,195 @@ export const NotificationDropdown = ({ centerNavStyle = false, isActiveRoute = f
     }
   };
 
-  // Render content for popover
-  const renderPopoverContent = () => (
-    <PopoverContent 
-      className="w-80 sm:w-96 lg:w-[450px] p-0 border-gold/20 shadow-[0_0_20px_hsl(var(--gold-glow)/0.2)] bg-background" 
-      align="end"
-      sideOffset={8}
-    >
+  // Popover content shared between centerNav and default styles
+  const PopoverContentInner = () => (
+    <>
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-border/50 bg-gradient-to-r from-gold/5 to-transparent">
-        <h3 className="font-semibold text-foreground flex items-center gap-2">
-          <Bell className="w-4 h-4 text-gold" />
-          Thông báo
-        </h3>
-        <div className="flex items-center gap-2">
-          {unreadCount > 0 && (
-            <button 
-              onClick={markAllAsRead}
-              className="text-xs text-gold hover:text-gold/80 hover:underline transition-colors"
-            >
-              Đọc tất cả
-            </button>
-          )}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <Settings className="w-4 h-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="bg-background border-border">
-              <DropdownMenuItem onClick={() => navigate('/notifications')}>
-                Xem tất cả thông báo
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={markAllAsRead}>
-                Đánh dấu tất cả đã đọc
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+      <div className="flex items-center justify-between p-4 border-b border-border/50">
+        <h3 className="font-bold text-xl text-foreground">Thông báo</h3>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-muted">
+              <MoreHorizontal className="w-5 h-5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-64">
+            <DropdownMenuItem onClick={markAllAsRead} className="gap-2">
+              <Check className="w-4 h-4" />
+              Đánh dấu tất cả đã đọc
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => { setOpen(false); navigate('/notifications'); }} className="gap-2">
+              <Settings className="w-4 h-4" />
+              Cài đặt thông báo
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Filter Tabs */}
-      <div className="px-4 py-2 border-b border-border/30">
-        <Tabs value={filterTab} onValueChange={(v) => setFilterTab(v as FilterTab)}>
-          <TabsList className="h-8 bg-muted/50">
-            <TabsTrigger value="all" className="text-xs px-3">
-              Tất cả
-            </TabsTrigger>
-            <TabsTrigger value="unread" className="text-xs px-3">
-              Chưa đọc {unreadCount > 0 && `(${unreadCount})`}
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
+      <div className="flex gap-2 px-4 py-2 border-b border-border/30">
+        <button
+          onClick={() => setActiveTab('all')}
+          className={cn(
+            "rounded-full px-4 h-8 text-sm font-medium transition-colors",
+            activeTab === 'all' 
+              ? "bg-primary text-primary-foreground" 
+              : "text-muted-foreground hover:bg-muted"
+          )}
+        >
+          Tất cả
+        </button>
+        <button
+          onClick={() => setActiveTab('unread')}
+          className={cn(
+            "rounded-full px-4 h-8 text-sm font-medium transition-colors flex items-center gap-1.5",
+            activeTab === 'unread' 
+              ? "bg-primary text-primary-foreground" 
+              : "text-muted-foreground hover:bg-muted"
+          )}
+        >
+          Chưa đọc
+          {unreadCount > 0 && (
+            <span className={cn(
+              "text-xs rounded-full px-1.5 min-w-[18px] h-[18px] flex items-center justify-center",
+              activeTab === 'unread'
+                ? "bg-primary-foreground text-primary"
+                : "bg-primary text-primary-foreground"
+            )}>
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </span>
+          )}
+        </button>
       </div>
 
       {/* Notifications List */}
-      <ScrollArea className="h-[400px] sm:h-[450px]">
-        {filteredNotifications.length === 0 ? (
+      <ScrollArea className={cn(
+        "transition-all duration-300",
+        isExpanded ? "h-[70vh] sm:h-[75vh]" : "h-[400px] sm:h-[450px]"
+      )}>
+        {notifications.length === 0 ? (
           <div className="p-8 text-center text-muted-foreground">
             <Bell className="w-12 h-12 mx-auto mb-3 opacity-30" />
-            <p>{filterTab === 'unread' ? 'Không có thông báo chưa đọc' : 'Chưa có thông báo nào'}</p>
+            <p className="font-medium">
+              {activeTab === 'unread' ? 'Không có thông báo chưa đọc' : 'Chưa có thông báo nào'}
+            </p>
           </div>
         ) : (
-          <>
-            {/* Grouped sections */}
+          <div className="py-2">
+            {/* Friend Requests Section */}
+            {friendRequests.length > 0 && (
+              <div className="border-b border-border/30 pb-2">
+                <div className="flex justify-between items-center px-4 py-2">
+                  <span className="font-semibold text-sm text-foreground flex items-center gap-2">
+                    <Users className="w-4 h-4" />
+                    Lời mời kết bạn
+                  </span>
+                  <button 
+                    onClick={() => navigate('/friends?tab=requests')}
+                    className="text-primary text-sm hover:underline"
+                  >
+                    Xem tất cả
+                  </button>
+                </div>
+                <div className="space-y-0.5">
+                  {friendRequests.slice(0, 3).map((notification) => (
+                    <FriendRequestItem
+                      key={notification.id}
+                      notification={notification}
+                      onAccept={handleAcceptFriendRequest}
+                      onReject={handleRejectFriendRequest}
+                      onNavigate={handleNotificationClick}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Grouped Notifications */}
             {(['new', 'today', 'yesterday', 'thisWeek', 'earlier'] as const).map((key) => (
               <NotificationSection
                 key={key}
                 sectionKey={key}
-                notifications={displayGroups[key]}
+                notifications={groupedNotifications[key]}
                 onNotificationClick={handleNotificationClick}
                 onAcceptFriendRequest={handleAcceptFriendRequest}
                 onRejectFriendRequest={handleRejectFriendRequest}
               />
             ))}
-
-            {/* Expand/Collapse button */}
-            {hasMoreNotifications && (
-              <button
-                onClick={() => setIsExpanded(!isExpanded)}
-                className="w-full p-3 flex items-center justify-center gap-2 text-sm text-primary hover:bg-muted/50 transition-colors border-t border-border/30"
-              >
-                {isExpanded ? (
-                  <>
-                    <ChevronUp className="w-4 h-4" />
-                    Thu gọn
-                  </>
-                ) : (
-                  <>
-                    <ChevronDown className="w-4 h-4" />
-                    Xem thêm
-                  </>
-                )}
-              </button>
-            )}
-          </>
+          </div>
         )}
       </ScrollArea>
-    </PopoverContent>
+
+      {/* Footer */}
+      {notifications.length > 0 && (
+        <div className="p-2 border-t border-border/30">
+          <Button
+            variant="ghost"
+            className="w-full text-primary hover:text-primary/80 hover:bg-primary/5 font-medium"
+            onClick={() => setIsExpanded(!isExpanded)}
+          >
+            {isExpanded ? 'Thu gọn' : 'Xem tất cả thông báo'}
+          </Button>
+        </div>
+      )}
+    </>
   );
 
-  // Mobile/Tablet: Simple button
+  // On mobile/tablet, render a simple button that navigates to notifications page
   if (isMobileOrTablet) {
     return (
-      <Button 
-        variant="ghost" 
-        size="icon" 
+      <button 
         onClick={handleBellClick}
         className={cn(
-          "h-11 w-11 relative transition-all duration-300 group",
+          "h-11 w-11 relative transition-all duration-300 group flex items-center justify-center rounded-full",
           "text-foreground hover:text-primary hover:bg-primary/10",
           hasNewNotification && "animate-pulse"
         )} 
         aria-label="Thông báo"
       >
         <Bell className={cn(
-          "w-6 h-6 transition-all duration-300",
+          "w-6 h-6 transition-all duration-300 text-primary",
           "group-hover:drop-shadow-[0_0_6px_hsl(142_76%_36%/0.5)]",
           hasNewNotification && "animate-bounce drop-shadow-[0_0_8px_hsl(48_96%_53%/0.6)]"
         )} />
         {unreadCount > 0 && (
           <span className={cn(
-            "absolute -top-0.5 -right-0.5 text-xs rounded-full min-w-[20px] h-5 px-1 flex items-center justify-center font-bold transition-all duration-300",
+            "absolute -top-0.5 -right-0.5 text-xs rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center font-bold transition-all duration-300",
             hasNewNotification 
               ? "bg-gold text-black shadow-[0_0_15px_hsl(var(--gold-glow))] animate-pulse scale-110" 
-              : "bg-primary text-primary-foreground"
+              : "bg-destructive text-destructive-foreground"
           )}>
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
-      </Button>
+      </button>
     );
   }
 
-  // Desktop: Center nav style
+  // Desktop: Show popover dropdown
   if (centerNavStyle) {
     return (
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <button
             className={cn(
-              "flex-1 h-full max-w-[100px] flex items-center justify-center relative transition-all duration-300 rounded-lg group",
-              isActiveRoute
-                ? 'text-primary-foreground bg-primary'
-                : 'text-foreground hover:text-primary hover:bg-primary/10'
+              "flex-1 h-full max-w-[100px] flex items-center justify-center relative transition-all duration-300 rounded-full border-[0.5px] group",
+              open
+                ? 'text-primary bg-primary/10 border-gold'
+                : isActiveRoute
+                  ? 'text-primary-foreground bg-primary border-gold'
+                  : 'text-foreground hover:text-primary hover:bg-primary/10 border-transparent hover:border-gold/50'
             )}
             aria-label="Thông báo"
           >
             <Bell className={cn(
               "w-6 h-6 transition-all duration-300",
-              !isActiveRoute && "group-hover:drop-shadow-[0_0_6px_hsl(142_76%_36%/0.5)]"
+              open ? "text-primary fill-primary drop-shadow-[0_0_6px_hsl(142_76%_36%/0.5)]" : "",
+              !isActiveRoute && !open && "group-hover:text-primary group-hover:drop-shadow-[0_0_6px_hsl(142_76%_36%/0.5)]"
             )} />
             {unreadCount > 0 && (
               <span className={cn(
-                "absolute top-1 right-2 text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold transition-all duration-300",
+                "absolute -top-0.5 -right-0.5 text-xs rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center font-bold transition-all duration-300",
                 hasNewNotification 
                   ? "bg-gold text-black shadow-[0_0_15px_hsl(var(--gold-glow))] animate-pulse scale-110" 
                   : "bg-destructive text-destructive-foreground"
@@ -408,43 +441,55 @@ export const NotificationDropdown = ({ centerNavStyle = false, isActiveRoute = f
             )}
           </button>
         </PopoverTrigger>
-        {renderPopoverContent()}
+        <PopoverContent 
+          className="w-80 sm:w-96 lg:w-[420px] p-0 border-border/50 shadow-xl rounded-xl overflow-hidden" 
+          align="end"
+          sideOffset={8}
+        >
+          <PopoverContentInner />
+        </PopoverContent>
       </Popover>
     );
   }
 
-  // Desktop: Default style
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button 
-          variant="ghost" 
-          size="icon" 
+        <button 
           className={cn(
-            "h-14 w-14 relative transition-all duration-300 group",
-            "text-foreground hover:text-primary hover:bg-primary/10",
+            "h-11 w-11 relative transition-all duration-300 group flex items-center justify-center rounded-full",
+            open 
+              ? "text-primary bg-primary/10" 
+              : "text-foreground hover:text-primary hover:bg-primary/10",
             hasNewNotification && "animate-pulse"
           )} 
           aria-label="Thông báo"
         >
           <Bell className={cn(
-            "w-7 h-7 transition-all duration-300",
-            "group-hover:drop-shadow-[0_0_6px_hsl(142_76%_36%/0.5)]",
+            "w-6 h-6 transition-all duration-300",
+            open ? "text-primary fill-primary drop-shadow-[0_0_6px_hsl(142_76%_36%/0.5)]" : "",
+            !open && "group-hover:text-primary group-hover:drop-shadow-[0_0_6px_hsl(142_76%_36%/0.5)]",
             hasNewNotification && "animate-bounce"
           )} />
           {unreadCount > 0 && (
             <span className={cn(
-              "absolute -top-1 -right-1 text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold transition-all duration-300",
+              "absolute -top-0.5 -right-0.5 text-xs rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center font-bold transition-all duration-300",
               hasNewNotification 
-                ? "bg-primary text-primary-foreground shadow-[0_0_15px_hsl(142_76%_36%/0.5)] animate-pulse scale-110" 
-                : "bg-primary text-primary-foreground"
+                ? "bg-gold text-black shadow-[0_0_15px_hsl(var(--gold-glow))] animate-pulse scale-110" 
+                : "bg-destructive text-destructive-foreground"
             )}>
               {unreadCount > 99 ? '99+' : unreadCount}
             </span>
           )}
-        </Button>
+        </button>
       </PopoverTrigger>
-      {renderPopoverContent()}
+      <PopoverContent 
+        className="w-80 sm:w-96 lg:w-[420px] p-0 border-border/50 shadow-xl rounded-xl overflow-hidden" 
+        align="end" 
+        sideOffset={8}
+      >
+        <PopoverContentInner />
+      </PopoverContent>
     </Popover>
   );
 };
