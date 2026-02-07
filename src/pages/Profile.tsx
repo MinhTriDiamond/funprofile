@@ -15,7 +15,8 @@ import { Button } from '@/components/ui/button';
 import { LazyImage } from '@/components/ui/LazyImage';
 import { CoverPhotoEditor } from '@/components/profile/CoverPhotoEditor';
 import { AvatarEditor } from '@/components/profile/AvatarEditor';
-import { MoreHorizontal, MapPin, Briefcase, GraduationCap, Heart, Clock, MessageCircle, Eye, X, Pin, PenSquare } from 'lucide-react';
+import { MoreHorizontal, MapPin, Briefcase, GraduationCap, Heart, Clock, MessageCircle, Eye, X, Pin, PenSquare, Gift } from 'lucide-react';
+import { DonationButton } from '@/components/donations/DonationButton';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { useConversations } from '@/hooks/useConversations';
 import { toast } from 'sonner';
@@ -491,6 +492,13 @@ const Profile = () => {
                       <MessageCircle className="w-4 h-4 mr-2" />
                       {t('sendMessage')}
                     </Button>
+                    <DonationButton
+                      recipientId={profile.id}
+                      recipientUsername={profile.username}
+                      recipientWalletAddress={profile.external_wallet_address}
+                      recipientAvatarUrl={profile.avatar_url}
+                      variant="profile"
+                    />
                     <Button variant="secondary" size="icon" className="h-10 w-10">
                       <MoreHorizontal className="w-4 h-4" />
                     </Button>

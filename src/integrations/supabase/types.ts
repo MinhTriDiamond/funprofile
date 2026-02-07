@@ -433,6 +433,138 @@ export type Database = {
           },
         ]
       }
+      donations: {
+        Row: {
+          amount: string
+          amount_usd: number | null
+          block_number: number | null
+          card_viewed_at: string | null
+          chain_id: number
+          confirmed_at: string | null
+          conversation_id: string | null
+          created_at: string
+          id: string
+          light_action_id: string | null
+          light_score_earned: number | null
+          message: string | null
+          message_id: string | null
+          message_template: string | null
+          metadata: Json | null
+          post_id: string | null
+          recipient_id: string
+          sender_id: string
+          status: string
+          token_address: string | null
+          token_symbol: string
+          tx_hash: string
+        }
+        Insert: {
+          amount: string
+          amount_usd?: number | null
+          block_number?: number | null
+          card_viewed_at?: string | null
+          chain_id?: number
+          confirmed_at?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          light_action_id?: string | null
+          light_score_earned?: number | null
+          message?: string | null
+          message_id?: string | null
+          message_template?: string | null
+          metadata?: Json | null
+          post_id?: string | null
+          recipient_id: string
+          sender_id: string
+          status?: string
+          token_address?: string | null
+          token_symbol?: string
+          tx_hash: string
+        }
+        Update: {
+          amount?: string
+          amount_usd?: number | null
+          block_number?: number | null
+          card_viewed_at?: string | null
+          chain_id?: number
+          confirmed_at?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          light_action_id?: string | null
+          light_score_earned?: number | null
+          message?: string | null
+          message_id?: string | null
+          message_template?: string | null
+          metadata?: Json | null
+          post_id?: string | null
+          recipient_id?: string
+          sender_id?: string
+          status?: string
+          token_address?: string | null
+          token_symbol?: string
+          tx_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "donations_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "donations_light_action_id_fkey"
+            columns: ["light_action_id"]
+            isOneToOne: false
+            referencedRelation: "light_actions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "donations_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "donations_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "donations_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "donations_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "donations_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "donations_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       financial_transactions: {
         Row: {
           action: string
@@ -2002,7 +2134,77 @@ export type Database = {
           total_videos: number
         }[]
       }
+      get_benefactor_leaderboard: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_time_range?: string
+          p_token_symbol?: string
+        }
+        Returns: {
+          avatar_url: string
+          full_name: string
+          rank: number
+          total_donated: number
+          total_donations: number
+          total_light_score: number
+          user_id: string
+          username: string
+        }[]
+      }
       get_daily_cap: { Args: { tier: number }; Returns: number }
+      get_donation_history: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_type?: string
+          p_user_id: string
+        }
+        Returns: {
+          amount: string
+          amount_usd: number
+          confirmed_at: string
+          created_at: string
+          id: string
+          light_score_earned: number
+          message: string
+          message_template: string
+          post_id: string
+          recipient_avatar_url: string
+          recipient_id: string
+          recipient_username: string
+          sender_avatar_url: string
+          sender_id: string
+          sender_username: string
+          status: string
+          token_symbol: string
+          tx_hash: string
+        }[]
+      }
+      get_recipient_leaderboard: {
+        Args: { p_limit?: number; p_offset?: number; p_time_range?: string }
+        Returns: {
+          avatar_url: string
+          full_name: string
+          rank: number
+          total_donations: number
+          total_received: number
+          user_id: string
+          username: string
+        }[]
+      }
+      get_user_donation_stats: {
+        Args: { p_user_id: string }
+        Returns: {
+          donations_received: number
+          donations_sent: number
+          light_score_from_donations: number
+          total_received: number
+          total_sent: number
+          unique_donors: number
+          unique_recipients: number
+        }[]
+      }
       get_user_light_score: { Args: { p_user_id: string }; Returns: Json }
       get_user_rewards: {
         Args: { limit_count?: number }
