@@ -1,75 +1,157 @@
 
-# Kế Hoạch: Tăng Kích Thước Nút Chuông Thông Báo
+# 🔧 Kế Hoạch Sửa Lỗi: Tính Năng Thông Báo
 
-## Vấn Đề Hiện Tại
+## 📋 Vấn Đề Phát Hiện
 
-Nút chuông thông báo trên mobile/tablet đang nhỏ hơn so với các icon khác và desktop:
+Khi gọi API notifications, Supabase trả về lỗi:
 
-| Vị trí | Kích thước hiện tại | Icon |
-|--------|---------------------|------|
-| Mobile/Tablet NotificationDropdown | `w-5 h-5` (20px) | Nhỏ |
-| MobileBottomNav | `w-6 h-6` (24px) | Trung bình |
-| Desktop NotificationDropdown | `w-7 h-7` (28px) | Lớn |
-| Desktop Center Nav | `w-6 h-6` (24px) | Trung bình |
-
-## Giải Pháp
-
-Tăng kích thước nút chuông để đồng nhất và dễ nhấn hơn:
-
-### File: `src/components/layout/NotificationDropdown.tsx`
-
-**Thay đổi 1 - Mobile/Tablet (dòng 346-376):**
-- Tăng button từ `h-10 w-10` lên `h-11 w-11`
-- Tăng icon từ `w-5 h-5` lên `w-6 h-6`
-
-**Thay đổi 2 - Desktop Default (dòng 417-448):**
-- Giữ nguyên `h-14 w-14` (đã đủ lớn)
-- Giữ nguyên icon `w-7 h-7`
-
-### File: `src/components/layout/MobileBottomNav.tsx`
-
-- Icon chuông giữ nguyên `w-6 h-6` (đã đồng nhất với các icon khác trong bottom nav)
-
----
-
-## Chi Tiết Thay Đổi
-
-### NotificationDropdown.tsx - Mobile/Tablet Section
-
-```text
-// Dòng 352-363: Tăng kích thước
-
-Trước:
-className="h-10 w-10 relative transition-all..."
-<Bell className="w-5 h-5 transition-all..."
-
-Sau:
-className="h-11 w-11 relative transition-all..."
-<Bell className="w-6 h-6 transition-all..."
+```
+PGRST200: Could not find a relationship between 'notifications' and 'actor_id' in the schema cache
 ```
 
-### Kết quả sau khi sửa:
+### Nguyên Nhân:
+Bảng `notifications` có các cột `actor_id` và `post_id` nhưng **KHÔNG có foreign key constraints** đến bảng `profiles` và `posts`. Do đó, Supabase PostgREST không thể thực hiện join query.
 
-| Vị trí | Kích thước mới | Icon |
-|--------|----------------|------|
-| Mobile/Tablet NotificationDropdown | `h-11 w-11`, icon `w-6 h-6` | Đồng nhất |
-| MobileBottomNav | `w-6 h-6` (giữ nguyên) | Đồng nhất |
-| Desktop NotificationDropdown | `h-14 w-14`, icon `w-7 h-7` (giữ nguyên) | Lớn |
+### Schema hiện tại:
 
----
-
-## Thời Gian Thực Hiện
-
-| Task | Thời gian |
-|------|-----------|
-| Cập nhật NotificationDropdown.tsx | 2 phút |
-| Testing | 2 phút |
-| **Tổng** | **~4 phút** |
+| Column | Type | Has FK? |
+|--------|------|---------|
+| id | uuid | Primary Key |
+| user_id | uuid | Không |
+| actor_id | uuid | Không |
+| post_id | uuid (nullable) | Không |
+| type | text | - |
+| read | boolean | - |
+| created_at | timestamp | - |
 
 ---
 
-## Kết Quả Mong Đợi
+## 🎯 Giải Pháp
 
-- Nút chuông trên mobile/tablet lớn hơn và dễ nhấn
-- Đồng nhất kích thước với các icon khác trong navbar
-- Cải thiện trải nghiệm người dùng trên thiết bị cảm ứng
+### Bước 1: Thêm Foreign Key Constraints
+
+Thêm 3 foreign keys:
+1. `notifications.user_id` → `profiles.id`
+2. `notifications.actor_id` → `profiles.id`  
+3. `notifications.post_id` → `posts.id`
+
+### Bước 2: Sửa Query trong Code
+
+Sau khi có FK, sửa lại syntax join:
+
+```text
+Trước (lỗi):
+actor:actor_id (id, username, avatar_url)
+
+Sau (đúng):
+actor:profiles!notifications_actor_id_fkey (id, username, avatar_url)
+```
+
+---
+
+## 📁 Files Cần Sửa
+
+| # | File | Thay Đổi |
+|---|------|----------|
+| 1 | Database Migration | Thêm 3 foreign keys |
+| 2 | NotificationDropdown.tsx | Sửa join query syntax |
+| 3 | Notifications.tsx | Sửa join query syntax (nếu cần) |
+
+---
+
+## 📝 Chi Tiết Migration SQL
+
+```sql
+-- Add foreign key for user_id → profiles.id
+ALTER TABLE notifications
+ADD CONSTRAINT notifications_user_id_fkey
+FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE;
+
+-- Add foreign key for actor_id → profiles.id  
+ALTER TABLE notifications
+ADD CONSTRAINT notifications_actor_id_fkey
+FOREIGN KEY (actor_id) REFERENCES profiles(id) ON DELETE CASCADE;
+
+-- Add foreign key for post_id → posts.id
+ALTER TABLE notifications
+ADD CONSTRAINT notifications_post_id_fkey
+FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE;
+```
+
+---
+
+## 📝 Chi Tiết Code Changes
+
+### NotificationDropdown.tsx - Sửa Query (dòng 50-71)
+
+```text
+Trước:
+.select(`
+  id,
+  type,
+  read,
+  created_at,
+  post_id,
+  actor:actor_id (
+    id,
+    username,
+    avatar_url,
+    full_name
+  ),
+  post:post_id (
+    id,
+    content
+  )
+`)
+
+Sau:
+.select(`
+  id,
+  type,
+  read,
+  created_at,
+  post_id,
+  actor:profiles!notifications_actor_id_fkey (
+    id,
+    username,
+    avatar_url,
+    full_name
+  ),
+  post:posts!notifications_post_id_fkey (
+    id,
+    content
+  )
+`)
+```
+
+### Notifications.tsx - Đã có syntax đúng (giữ nguyên)
+
+Dòng 64: `actor:profiles!notifications_actor_id_fkey(...)` - Đã đúng, chỉ cần thêm FK vào database.
+
+---
+
+## ⏱️ Timeline
+
+| # | Task | Thời gian |
+|---|------|-----------|
+| 1 | Tạo migration thêm foreign keys | 2 phút |
+| 2 | Sửa NotificationDropdown.tsx query | 2 phút |
+| 3 | Testing | 3 phút |
+| **Tổng** | | **~7 phút** |
+
+---
+
+## ✅ Kết Quả Mong Đợi
+
+Sau khi sửa:
+- Query notifications hoạt động bình thường
+- Lấy được thông tin actor (username, avatar)
+- Lấy được snippet nội dung bài viết
+- Dropdown thông báo hiển thị đầy đủ thông tin
+
+---
+
+## ⚠️ Lưu Ý
+
+- Build error `429 Too Many Requests` là lỗi tạm thời của CloudFlare R2, không liên quan đến code
+- Migration sẽ tự động refresh schema cache của PostgREST
