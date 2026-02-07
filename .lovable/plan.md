@@ -1,182 +1,253 @@
 
+# Kế Hoạch Sửa PPLP Minting - Khớp Với Smart Contract v1.2.1
 
-# Kế Hoạch Thêm Tính Năng Switch Chain trước khi Ký
+## Vấn Đề Đã Xác Định
 
-## Vấn Đề Hiện Tại
+Transaction revert vì:
+1. EIP-712 signature struct không khớp với contract `PPLP_TYPEHASH`
+2. Contract call parameters sai type và thứ tự
 
-Khi Admin ký mint request, MetaMask đang kết nối BSC Mainnet (chainId 56) nhưng EIP-712 domain yêu cầu chainId 97 (BSC Testnet), dẫn đến lỗi:
-```
-Provided chainId "97" must match the active chainId "56"
-```
+## Thay Đổi Cần Thực Hiện
 
-## Giải Pháp
+### 1. Cập nhật `src/config/pplp.ts`
 
-Thêm logic tự động kiểm tra và chuyển đổi chain sang BSC Testnet trước khi thực hiện ký hoặc gửi transaction.
-
-## Chi Tiết Kỹ Thuật
-
-### File cần sửa: `src/hooks/usePplpAdmin.ts`
-
-#### 1. Thêm imports cần thiết
+#### A. Sửa EIP-712 Types
 
 ```typescript
-// Thêm useSwitchChain và useChainId vào imports
-import { 
-  useAccount, 
-  useSignTypedData, 
-  useWriteContract, 
-  useWaitForTransactionReceipt, 
-  useChainId,
-  useSwitchChain  // <-- Thêm mới
-} from 'wagmi';
+// TRƯỚC (SAI)
+export const EIP712_LOCK_TYPES = {
+  Lock: [
+    { name: 'recipient', type: 'address' },
+    { name: 'amount', type: 'uint256' },
+    { name: 'evidenceHash', type: 'bytes32' },
+    { name: 'nonce', type: 'uint256' },
+    { name: 'deadline', type: 'uint256' },  // <- Contract không có!
+  ],
+} as const;
+
+// SAU (ĐÚNG - khớp contract PPLP_TYPEHASH)
+export const EIP712_PPLP_TYPES = {
+  PureLoveProof: [
+    { name: 'user', type: 'address' },
+    { name: 'actionHash', type: 'bytes32' },
+    { name: 'amount', type: 'uint256' },
+    { name: 'evidenceHash', type: 'bytes32' },
+    { name: 'nonce', type: 'uint256' },
+  ],
+} as const;
 ```
 
-#### 2. Khởi tạo hook useSwitchChain trong component
+#### B. Sửa Contract ABI
 
 ```typescript
-export const usePplpAdmin = () => {
-  const { address, isConnected } = useAccount();
-  const chainId = useChainId();  // <-- Lấy chainId hiện tại
-  const { switchChainAsync, isPending: isSwitching } = useSwitchChain();  // <-- Thêm mới
-  // ... existing code
+// TRƯỚC (SAI - dựa trên tham số sai)
+{
+  name: 'lockWithPPLP',
+  inputs: [
+    { name: 'recipient', type: 'address' },
+    { name: 'amount', type: 'uint256' },
+    { name: 'actionHash', type: 'bytes32' },  // <- Contract nhận STRING!
+    { name: 'nonce', type: 'uint256' },
+    { name: 'deadline', type: 'uint256' },    // <- Contract không có!
+    { name: 'signatures', type: 'bytes[]' },
+  ],
+}
+
+// SAU (ĐÚNG - khớp contract function)
+{
+  name: 'lockWithPPLP',
+  inputs: [
+    { name: 'user', type: 'address' },
+    { name: 'action', type: 'string' },       // STRING action name!
+    { name: 'amount', type: 'uint256' },
+    { name: 'evidenceHash', type: 'bytes32' },
+    { name: 'sigs', type: 'bytes[]' },
+  ],
+}
 ```
 
-#### 3. Tạo helper function ensureBscTestnet
+#### C. Sửa BSCScan URL
 
 ```typescript
-// Helper: Đảm bảo đang ở BSC Testnet trước khi thực hiện action
-const ensureBscTestnet = useCallback(async (): Promise<boolean> => {
-  const targetChainId = 97; // BSC Testnet
-  
-  if (chainId === targetChainId) {
-    return true; // Đã đúng chain
-  }
-  
-  try {
-    toast.info('Đang chuyển sang BSC Testnet...');
-    await switchChainAsync({ chainId: targetChainId });
-    toast.success('Đã chuyển sang BSC Testnet!');
-    return true;
-  } catch (error: any) {
-    console.error('[usePplpAdmin] Switch chain error:', error);
-    
-    if (error.message?.includes('User rejected')) {
-      toast.error('Bé đã từ chối chuyển mạng');
-    } else {
-      toast.error('Không thể chuyển sang BSC Testnet. Vui lòng chuyển thủ công trong ví.');
-    }
-    return false;
-  }
-}, [chainId, switchChainAsync]);
+// TRƯỚC (SAI - Mainnet)
+export const BSCSCAN_URL = 'https://bscscan.com';
+
+// SAU (ĐÚNG - Testnet)
+export const BSCSCAN_URL = 'https://testnet.bscscan.com';
 ```
 
-#### 4. Cập nhật signMintRequest - thêm kiểm tra chain
+### 2. Cập nhật `src/hooks/usePplpAdmin.ts`
+
+#### A. Import mới
 
 ```typescript
-const signMintRequest = useCallback(async (request: MintRequest): Promise<string | null> => {
-  if (!isConnected || !address) {
-    toast.error('Vui lòng kết nối ví Attester trước');
-    return null;
-  }
-
-  // ✅ Thêm kiểm tra và switch chain
-  const isCorrectChain = await ensureBscTestnet();
-  if (!isCorrectChain) {
-    return null;
-  }
-
-  try {
-    // ... existing signing logic
-  }
-}, [isConnected, address, signTypedDataAsync, ensureBscTestnet]);
+import {
+  EIP712_DOMAIN,
+  EIP712_PPLP_TYPES,  // Thay đổi từ EIP712_LOCK_TYPES
+  FUN_MONEY_CONTRACT,
+  FUN_MONEY_ABI,
+  MINT_REQUEST_STATUS,
+  getTxUrl,
+} from '@/config/pplp';
 ```
 
-#### 5. Cập nhật submitToChain - thêm kiểm tra chain
+#### B. Sửa signMintRequest - EIP-712 message
 
 ```typescript
-const submitToChain = useCallback(async (request: MintRequest): Promise<string | null> => {
-  if (!isConnected || !address) {
-    toast.error('Vui lòng kết nối ví trước');
-    return null;
-  }
-
-  if (!request.signature) {
-    toast.error('Request chưa được ký');
-    return null;
-  }
-
-  // ✅ Thêm kiểm tra và switch chain
-  const isCorrectChain = await ensureBscTestnet();
-  if (!isCorrectChain) {
-    return null;
-  }
-
-  try {
-    // ... existing submit logic
-  }
-}, [isConnected, address, writeContractAsync, ensureBscTestnet]);
-```
-
-#### 6. Export thêm state mới
-
-```typescript
-return {
-  // State
-  isLoading,
-  mintRequests,
-  stats,
-  isConnected,
-  address,
-  isWritePending,
-  isConfirming,
-  chainId,           // <-- Thêm mới
-  isSwitching,       // <-- Thêm mới (để hiện loading khi đang switch)
-  
-  // Actions
-  fetchMintRequests,
-  signMintRequest,
-  batchSignMintRequests,
-  submitToChain,
-  confirmTransaction,
-  resetToPending,
-  fetchActionDetails,
-  rejectRequest,
-  deleteRequest,
-  ensureBscTestnet,  // <-- Thêm mới (optional, nếu cần gọi thủ công)
+// TRƯỚC (SAI)
+const message = {
+  recipient: request.recipient_address,
+  amount: BigInt(request.amount_wei),
+  evidenceHash: request.evidence_hash,
+  nonce: BigInt(request.nonce),
+  deadline: BigInt(request.deadline),  // <- Không tồn tại trong contract
 };
+
+// SAU (ĐÚNG)
+const message = {
+  user: request.recipient_address as `0x${string}`,
+  actionHash: request.action_hash as `0x${string}`,  // Cần thêm field này
+  amount: BigInt(request.amount_wei),
+  evidenceHash: request.evidence_hash as `0x${string}`,
+  nonce: BigInt(request.nonce),
+};
+```
+
+#### C. Sửa signTypedDataAsync call
+
+```typescript
+// TRƯỚC
+const signature = await signTypedDataAsync({
+  types: EIP712_LOCK_TYPES,
+  primaryType: 'Lock',
+  message,
+  ...
+});
+
+// SAU
+const signature = await signTypedDataAsync({
+  types: EIP712_PPLP_TYPES,
+  primaryType: 'PureLoveProof',
+  message,
+  ...
+});
+```
+
+#### D. Sửa submitToChain - Contract call
+
+```typescript
+// TRƯỚC (SAI)
+args: [
+  request.recipient_address,
+  BigInt(request.amount_wei),
+  request.evidence_hash,
+  BigInt(request.nonce),
+  BigInt(request.deadline),  // <- Contract không có param này!
+  [request.signature],
+],
+
+// SAU (ĐÚNG)
+args: [
+  request.recipient_address as `0x${string}`,  // user
+  request.action_name,                          // action (STRING!)
+  BigInt(request.amount_wei),                   // amount
+  request.evidence_hash as `0x${string}`,       // evidenceHash
+  [request.signature as `0x${string}`],         // sigs
+],
+```
+
+### 3. Cập nhật `supabase/functions/pplp-mint-fun/index.ts`
+
+#### A. Thêm tính toán action_hash
+
+Contract tính `actionHash = keccak256(bytes(action))`, nên Edge Function cần:
+
+```typescript
+// Thêm logic tính action_hash
+const actionName = 'light_action';  // Hoặc derive từ action_types
+const actionHash = keccak256(toBytes(actionName));
+
+// Lưu vào mint_request
+const { data: mintRequest } = await supabase
+  .from('pplp_mint_requests')
+  .insert({
+    ...existingFields,
+    action_name: actionName,      // Thêm mới
+    action_hash: actionHash,      // Thêm mới
+    // Bỏ deadline vì contract không dùng
+  })
+```
+
+### 4. Cập nhật Database Schema
+
+Thêm columns mới vào bảng `pplp_mint_requests`:
+
+```sql
+ALTER TABLE pplp_mint_requests 
+ADD COLUMN IF NOT EXISTS action_name TEXT NOT NULL DEFAULT 'light_action',
+ADD COLUMN IF NOT EXISTS action_hash TEXT;
+
+-- Bỏ constraint deadline nếu có
+ALTER TABLE pplp_mint_requests 
+ALTER COLUMN deadline DROP NOT NULL;
 ```
 
 ## Luồng Hoạt Động Sau Khi Sửa
 
 ```text
-Admin click [Ký] hoặc [Submit]
-       ↓
-Kiểm tra chainId === 97?
-       ↓
-   ┌───┴───┐
-   │  NO   │ → switchChainAsync(97) → MetaMask prompt "Switch to BSC Testnet"
-   └───────┘                               ↓
-       │                           User approve → Continue
-       │                           User reject  → Abort + Toast error
-   ┌───┴───┐
-   │  YES  │ → Tiếp tục signTypedDataAsync / writeContractAsync
-   └───────┘
-       ↓
-   ✅ Thành công!
+User Claim → Edge Function tạo request
+                ↓
+       Tính action_hash = keccak256("light_action")
+       Lưu action_name, action_hash vào DB
+                ↓
+Admin Ký → Frontend tạo EIP-712 message:
+       {
+         user: wallet_address,
+         actionHash: action_hash,      ← Khớp contract
+         amount: amount_wei,
+         evidenceHash: evidence_hash,
+         nonce: contract_nonce,
+       }
+                ↓
+       signTypedDataAsync với primaryType: 'PureLoveProof'
+                ↓
+Admin Submit → Contract call:
+       lockWithPPLP(
+         user,
+         "light_action",               ← STRING action name
+         amount,
+         evidenceHash,
+         [signature]
+       )
+                ↓
+       Contract verify:
+         1. h = keccak256("light_action") → actionHash
+         2. Validate action registered & not deprecated
+         3. Verify EIP-712 signature với structHash
+         4. Mint tokens!
 ```
 
-## Tổng Kết Thay Đổi
+## Quan Trọng: Đăng Ký Action Trước
 
-| Thay Đổi | Vị Trí |
-|----------|--------|
-| Import `useSwitchChain` | Line 2 |
-| Khởi tạo `switchChainAsync`, `isSwitching` | Line ~73 |
-| Tạo `ensureBscTestnet` helper | Sau line ~90 |
-| Gọi `ensureBscTestnet()` trong `signMintRequest` | Line ~165 |
-| Gọi `ensureBscTestnet()` trong `submitToChain` | Line ~250 |
-| Export thêm `chainId`, `isSwitching`, `ensureBscTestnet` | Return object |
+Contract kiểm tra:
+```solidity
+require(act.allowed && !act.deprecated, "ACTION_INVALID");
+```
+
+Nếu chưa đăng ký "light_action", Guardian Gov cần gọi:
+```solidity
+govRegisterAction("light_action", 1);
+```
+
+## Tóm Tắt Files Cần Sửa
+
+| File | Thay Đổi |
+|------|----------|
+| `src/config/pplp.ts` | EIP-712 types, ABI, BSCScan URL |
+| `src/hooks/usePplpAdmin.ts` | Sign message, contract call args |
+| `supabase/functions/pplp-mint-fun/index.ts` | Tính action_hash, bỏ deadline |
+| Database migration | Thêm action_name, action_hash columns |
 
 ## Thời Gian Triển Khai
 
-~15 phút
-
+~30 phút
