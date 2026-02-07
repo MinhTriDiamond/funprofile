@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { useAccount, useSignTypedData, useWriteContract, useWaitForTransactionReceipt, useChainId } from 'wagmi';
+import { useAccount, useSignTypedData, useWriteContract, useWaitForTransactionReceipt, useChainId, useSwitchChain } from 'wagmi';
 import { bscTestnet } from 'wagmi/chains';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -70,6 +70,8 @@ export interface MintStats {
 
 export const usePplpAdmin = () => {
   const { address, isConnected } = useAccount();
+  const chainId = useChainId();
+  const { switchChainAsync, isPending: isSwitching } = useSwitchChain();
   const { signTypedDataAsync } = useSignTypedData();
   const { writeContractAsync, data: writeHash, isPending: isWritePending } = useWriteContract();
   const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
@@ -155,10 +157,41 @@ export const usePplpAdmin = () => {
     }
   }, []);
 
+  // Helper: Đảm bảo đang ở BSC Testnet trước khi thực hiện action
+  const ensureBscTestnet = useCallback(async (): Promise<boolean> => {
+    const targetChainId = 97; // BSC Testnet
+    
+    if (chainId === targetChainId) {
+      return true; // Đã đúng chain
+    }
+    
+    try {
+      toast.info('Đang chuyển sang BSC Testnet...');
+      await switchChainAsync({ chainId: targetChainId });
+      toast.success('Đã chuyển sang BSC Testnet!');
+      return true;
+    } catch (error: any) {
+      console.error('[usePplpAdmin] Switch chain error:', error);
+      
+      if (error.message?.includes('User rejected')) {
+        toast.error('Bé đã từ chối chuyển mạng');
+      } else {
+        toast.error('Không thể chuyển sang BSC Testnet. Vui lòng chuyển thủ công trong ví.');
+      }
+      return false;
+    }
+  }, [chainId, switchChainAsync]);
+
   // Sign a single mint request
   const signMintRequest = useCallback(async (request: MintRequest): Promise<string | null> => {
     if (!isConnected || !address) {
       toast.error('Vui lòng kết nối ví Attester trước');
+      return null;
+    }
+
+    // Kiểm tra và switch chain sang BSC Testnet
+    const isCorrectChain = await ensureBscTestnet();
+    if (!isCorrectChain) {
       return null;
     }
 
@@ -213,11 +246,11 @@ export const usePplpAdmin = () => {
       if (error.message?.includes('User rejected')) {
         toast.error('Bé đã từ chối ký');
       } else {
-        toast.error(`Lỗi ký: ${error.message}`);
+      toast.error(`Lỗi ký: ${error.message}`);
       }
       return null;
     }
-  }, [isConnected, address, signTypedDataAsync]);
+  }, [isConnected, address, signTypedDataAsync, ensureBscTestnet]);
 
   // Batch sign multiple requests
   const batchSignMintRequests = useCallback(async (requests: MintRequest[]): Promise<number> => {
@@ -244,6 +277,12 @@ export const usePplpAdmin = () => {
 
     if (!request.signature) {
       toast.error('Request chưa được ký');
+      return null;
+    }
+
+    // Kiểm tra và switch chain sang BSC Testnet
+    const isCorrectChain = await ensureBscTestnet();
+    if (!isCorrectChain) {
       return null;
     }
 
@@ -313,11 +352,11 @@ export const usePplpAdmin = () => {
       } else if (error.message?.includes('insufficient funds')) {
         toast.error('Ví không đủ BNB để trả gas');
       } else {
-        toast.error(`Lỗi gửi transaction: ${error.shortMessage || error.message}`);
+      toast.error(`Lỗi gửi transaction: ${error.shortMessage || error.message}`);
       }
       return null;
     }
-  }, [isConnected, address, writeContractAsync]);
+  }, [isConnected, address, writeContractAsync, ensureBscTestnet]);
 
   // Confirm a submitted transaction
   const confirmTransaction = useCallback(async (request: MintRequest): Promise<boolean> => {
@@ -515,6 +554,8 @@ export const usePplpAdmin = () => {
     address,
     isWritePending,
     isConfirming,
+    chainId,
+    isSwitching,
     
     // Actions
     fetchMintRequests,
@@ -526,5 +567,6 @@ export const usePplpAdmin = () => {
     fetchActionDetails,
     rejectRequest,
     deleteRequest,
+    ensureBscTestnet,
   };
 };
