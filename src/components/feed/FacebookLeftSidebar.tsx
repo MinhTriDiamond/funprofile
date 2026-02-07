@@ -13,6 +13,7 @@ import {
   Link2,
   BookOpen,
   Shield,
+  Crown,
 } from 'lucide-react';
 // Use direct paths for logos to ensure consistency across all environments
 // Cloudflare Image Resizing only works on fun.rich domain
@@ -83,6 +84,7 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
 
   // Shortcuts for "Lối tắt của bạn" section
   const shortcutItems = [
+    { icon: Crown, label: 'Mạnh Thường Quân', path: '/benefactors', color: 'text-gold' },
     { icon: UsersRound, label: t('groups'), path: '/groups', color: 'text-blue-500' },
     { icon: Flag, label: t('pages') || 'Trang', path: '/pages', color: 'text-orange-500' },
     { icon: Link2, label: 'Connected Apps', path: '/profile/connected-apps', color: 'text-purple-500' },
