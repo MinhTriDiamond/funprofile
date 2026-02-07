@@ -13,8 +13,8 @@ import { TokenSelector, SUPPORTED_TOKENS, TokenOption } from './TokenSelector';
 import { QuickGiftPicker, MESSAGE_TEMPLATES, MessageTemplate } from './QuickGiftPicker';
 import { DonationSuccessCard, DonationCardData } from './DonationSuccessCard';
 import { useDonation } from '@/hooks/useDonation';
-import { useAccount, useConnect, useBalance, useReadContract } from 'wagmi';
-import { injected } from 'wagmi/connectors';
+import { useAccount, useBalance, useReadContract } from 'wagmi';
+import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { Loader2, Wallet, Gift, AlertCircle, Send, Copy, Smile } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatEther, formatUnits } from 'viem';
@@ -53,7 +53,7 @@ export const DonationDialog = ({
   postId,
 }: DonationDialogProps) => {
   const { address, isConnected } = useAccount();
-  const { connect, isPending: isConnecting } = useConnect();
+  const { openConnectModal } = useConnectModal();
   
   const [selectedToken, setSelectedToken] = useState<TokenOption>(SUPPORTED_TOKENS[0]);
   const [amount, setAmount] = useState('');
@@ -112,7 +112,7 @@ export const DonationDialog = ({
   }, [isOpen]);
 
   const handleConnectWallet = () => {
-    connect({ connector: injected() });
+    openConnectModal?.();
   };
 
   const handleSelectTemplate = (template: MessageTemplate) => {
@@ -268,15 +268,10 @@ export const DonationDialog = ({
                   </div>
                   <Button
                     onClick={handleConnectWallet}
-                    disabled={isConnecting}
                     size="sm"
                     className="bg-amber-500 hover:bg-amber-600"
                   >
-                    {isConnecting ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      'Kết nối'
-                    )}
+                    Kết nối
                   </Button>
                 </div>
               </div>

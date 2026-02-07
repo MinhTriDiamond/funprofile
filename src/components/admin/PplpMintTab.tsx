@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useAccount, useConnect, useDisconnect } from 'wagmi';
-import { injected } from 'wagmi/connectors';
+import { useAccount, useDisconnect } from 'wagmi';
+import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -66,7 +66,7 @@ const ACTION_LABELS: Record<string, string> = {
 
 const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
   const { address, isConnected } = useAccount();
-  const { connect, isPending: isConnecting } = useConnect();
+  const { openConnectModal } = useConnectModal();
   const { disconnect } = useDisconnect();
   
   const {
@@ -103,7 +103,7 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
   }, [fetchMintRequests]);
 
   const handleConnectWallet = () => {
-    connect({ connector: injected() });
+    openConnectModal?.();
   };
 
   const handleRefresh = () => {
@@ -256,12 +256,8 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
                 </Button>
               </div>
             ) : (
-              <Button onClick={handleConnectWallet} disabled={isConnecting}>
-                {isConnecting ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <Wallet className="w-4 h-4 mr-2" />
-                )}
+              <Button onClick={handleConnectWallet}>
+                <Wallet className="w-4 h-4 mr-2" />
                 Kết nối Ví Attester
               </Button>
             )}
