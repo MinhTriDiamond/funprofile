@@ -1,140 +1,171 @@
 
-# Kế Hoạch Sửa Lỗi "Người Nhận Chưa Thiết Lập Ví" Khi Tặng Từ Navbar
+# Kế Hoạch Xem & Xuất Lịch Sử Tặng Quà
 
-## Nguyên Nhân Lỗi
+## Tình Trạng Hiện Tại
 
-| Luồng | Query | Có `wallet_address`? | Kết quả |
-|-------|-------|---------------------|---------|
-| GiftNavButton (Navbar) | `id, username, avatar_url, full_name` | KHÔNG | Báo "chưa có ví" |
-| DonationButton (Post) | Nhận từ parent component | | Hoạt động bình thường |
+| Tính Năng | Trạng Thái | Ghi Chú |
+|-----------|-----------|---------|
+| Lưu donation vào database | ✅ Đã có | Bảng `donations` với đầy đủ thông tin |
+| UI xem lịch sử | ❌ Chưa có | Cần tạo mới |
+| Xuất file Excel/CSV | ❌ Chưa có | Cần tạo mới |
 
-**Vấn đề cốt lõi:** `GiftNavButton` không lấy `wallet_address` khi query bảng `profiles`, nên khi mở `DonationDialog`, prop `recipientWalletAddress` là `undefined` dù user thực tế có ví.
+**Lưu ý**: Dữ liệu donation đang được lưu thành công! Angel thấy 2 records gần đây trong database:
+- 1,000 CAMLY gửi lúc 21:35
+- 1,000 CAMLY gửi lúc 19:17
 
 ---
 
 ## Giải Pháp
 
-### 1. Cập nhật Interface `FriendProfile`
+### 1. Tạo Tab Lịch Sử Trong Wallet Page
 
-Thêm field `wallet_address` vào interface:
+Thêm tab "Lịch sử tặng quà" vào trang Wallet với 2 sections:
+- **Đã gửi**: Danh sách những khoản bạn đã tặng
+- **Đã nhận**: Danh sách những khoản bạn nhận được
 
-```typescript
-interface FriendProfile {
-  id: string;
-  username: string;
-  avatar_url: string | null;
-  full_name: string | null;
-  wallet_address: string | null; // Thêm mới
-}
+### 2. Component DonationHistory
+
+```
+╔══════════════════════════════════════════════════════════════╗
+║  📜 LỊCH SỬ TẶNG THƯỞNG                        [Xuất Excel]  ║
+╠══════════════════════════════════════════════════════════════╣
+║  [Đã gửi]  [Đã nhận]                                         ║
+╠══════════════════════════════════════════════════════════════╣
+║                                                              ║
+║  ┌────────────────────────────────────────────────────────┐  ║
+║  │ 🎁 1.000 CAMLY → @MinhTri                              │  ║
+║  │ "🌟 Tiếp tục phát huy nhé!"                            │  ║
+║  │ 📅 07/02/2026 21:35:03  │  🔗 TX: 0x12d3...cd05        │  ║
+║  │ ✨ +10 Light Score                                     │  ║
+║  └────────────────────────────────────────────────────────┘  ║
+║                                                              ║
+║  ┌────────────────────────────────────────────────────────┐  ║
+║  │ 🎁 1.000 CAMLY → @MinhTri                              │  ║
+║  │ "🙏 Cảm ơn bạn rất nhiều!"                             │  ║
+║  │ 📅 07/02/2026 19:17:00  │  🔗 TX: 0x1baa...c84d        │  ║
+║  │ ✨ +10 Light Score                                     │  ║
+║  └────────────────────────────────────────────────────────┘  ║
+║                                                              ║
+║  ────────────────────────────────────────────────────────    ║
+║  TỔNG KẾT: 2.000 CAMLY đã gửi | 0 CAMLY đã nhận              ║
+╚══════════════════════════════════════════════════════════════╝
 ```
 
-### 2. Cập nhật Query trong useQuery
+### 3. Tính Năng Xuất Excel/CSV
 
-Thêm `wallet_address` vào câu select:
-
-```typescript
-const { data: profiles } = await supabase
-  .from('profiles')
-  .select('id, username, avatar_url, full_name, wallet_address') // Thêm wallet_address
-  .in('id', friendIds);
-```
-
-### 3. Cập nhật DonationDialog Props
-
-Truyền `recipientWalletAddress` khi render `DonationDialog`:
-
-```typescript
-<DonationDialog
-  isOpen={isDonationDialogOpen}
-  onClose={handleDonationClose}
-  recipientId={selectedRecipient.id}
-  recipientUsername={selectedRecipient.username}
-  recipientAvatarUrl={selectedRecipient.avatar_url || undefined}
-  recipientWalletAddress={selectedRecipient.wallet_address} // Thêm mới
-/>
-```
+- Nút "Xuất Excel" sử dụng thư viện `xlsx` hoặc tự tạo CSV
+- File xuất ra bao gồm:
+  - Ngày giờ
+  - Người gửi/nhận  
+  - Số tiền + Token
+  - Message
+  - TX Hash
+  - Light Score earned
+  - Trạng thái
 
 ---
 
-## File Cần Sửa
+## Files Cần Tạo/Sửa
 
 | # | File | Thay Đổi |
 |---|------|----------|
-| 1 | `src/components/donations/GiftNavButton.tsx` | Thêm `wallet_address` vào interface, query và props |
+| 1 | `src/components/wallet/DonationHistoryTab.tsx` | **Tạo mới** - Component hiển thị lịch sử |
+| 2 | `src/components/wallet/DonationHistoryItem.tsx` | **Tạo mới** - Item trong danh sách |
+| 3 | `src/hooks/useDonationHistory.ts` | **Tạo mới** - Hook fetch data từ DB |
+| 4 | `src/utils/exportDonations.ts` | **Tạo mới** - Utility xuất Excel/CSV |
+| 5 | `src/components/wallet/WalletCenterContainer.tsx` | Thêm tab "Lịch sử" |
 
 ---
 
-## Chi Tiết Thay Đổi
+## Chi Tiết Kỹ Thuật
 
-### GiftNavButton.tsx
+### Hook useDonationHistory
 
-**Interface (Line 18-23):**
 ```typescript
-// Trước
-interface FriendProfile {
+interface DonationRecord {
   id: string;
-  username: string;
-  avatar_url: string | null;
-  full_name: string | null;
+  sender: { username: string; avatar_url: string | null };
+  recipient: { username: string; avatar_url: string | null };
+  amount: string;
+  token_symbol: string;
+  message: string | null;
+  tx_hash: string;
+  light_score_earned: number;
+  created_at: string;
 }
 
-// Sau
-interface FriendProfile {
-  id: string;
-  username: string;
-  avatar_url: string | null;
-  full_name: string | null;
-  wallet_address: string | null;
+function useDonationHistory(type: 'sent' | 'received') {
+  // Query donations table với join profiles
+  // Filter by sender_id hoặc recipient_id
 }
 ```
 
-**Query (Line 60-63):**
-```typescript
-// Trước
-.select('id, username, avatar_url, full_name')
+### Export to Excel (CSV Format)
 
-// Sau
-.select('id, username, avatar_url, full_name, wallet_address')
+Không cần thư viện ngoài, dùng native JavaScript:
+
+```typescript
+function exportToCSV(donations: DonationRecord[], filename: string) {
+  const headers = ['Ngày', 'Người gửi', 'Người nhận', 'Số tiền', 'Token', 'Message', 'TX Hash', 'Light Score'];
+  const rows = donations.map(d => [
+    formatDate(d.created_at),
+    d.sender.username,
+    d.recipient.username,
+    d.amount,
+    d.token_symbol,
+    d.message || '',
+    d.tx_hash,
+    d.light_score_earned
+  ]);
+  
+  // Generate CSV and trigger download
+  const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
+  downloadBlob(csv, filename);
+}
 ```
 
-**DonationDialog Desktop (Line 188-194):**
-```typescript
-// Trước
-<DonationDialog
-  recipientId={selectedRecipient.id}
-  recipientUsername={selectedRecipient.username}
-  recipientAvatarUrl={selectedRecipient.avatar_url || undefined}
-/>
+---
 
-// Sau
-<DonationDialog
-  recipientId={selectedRecipient.id}
-  recipientUsername={selectedRecipient.username}
-  recipientAvatarUrl={selectedRecipient.avatar_url || undefined}
-  recipientWalletAddress={selectedRecipient.wallet_address}
-/>
+## Tích Hợp Vào Wallet Page
+
+Trong WalletCenterContainer, thêm section mới bên dưới các card ví:
+
+```typescript
+<Tabs defaultValue="wallet">
+  <TabsList>
+    <TabsTrigger value="wallet">💳 Ví</TabsTrigger>
+    <TabsTrigger value="history">📜 Lịch sử</TabsTrigger>
+  </TabsList>
+  
+  <TabsContent value="wallet">
+    {/* Nội dung ví hiện tại */}
+  </TabsContent>
+  
+  <TabsContent value="history">
+    <DonationHistoryTab />
+  </TabsContent>
+</Tabs>
 ```
 
-**DonationDialog Mobile (Line 285-290):**
-Tương tự thêm `recipientWalletAddress={selectedRecipient.wallet_address}`
+---
+
+## Timeline Ước Tính
+
+| Task | Thời gian |
+|------|-----------|
+| Tạo useDonationHistory hook | 10 phút |
+| Tạo DonationHistoryItem component | 15 phút |
+| Tạo DonationHistoryTab với tabs sent/received | 15 phút |
+| Tạo exportDonations utility | 10 phút |
+| Tích hợp vào WalletCenterContainer | 10 phút |
+| **Tổng** | **~60 phút** |
 
 ---
 
 ## Kết Quả Mong Đợi
 
-1. Khi click Gift từ Navbar và chọn "Minh Trí (Wallet 65c5)"
-2. `DonationDialog` sẽ nhận được `recipientWalletAddress = "0xe3e97a95d3f61814473f6d1eebba8253286d65c5"`
-3. Không còn hiện cảnh báo "Người nhận chưa thiết lập ví"
-4. Hiển thị form donation đầy đủ giống như khi click từ bài viết
+1. User có thể xem đầy đủ lịch sử tặng quà trong Wallet page
+2. Filter theo "Đã gửi" và "Đã nhận"
+3. Xuất file Excel/CSV để lưu trữ hoặc báo cáo
+4. Mỗi record hiển thị đầy đủ thông tin + link BSCScan
 
----
-
-## Timeline
-
-| Task | Thời gian |
-|------|-----------|
-| Cập nhật interface | 1 phút |
-| Cập nhật query | 1 phút |
-| Cập nhật 2 chỗ render DonationDialog | 2 phút |
-| Test | 3 phút |
-| **Tổng** | **~7 phút** |
