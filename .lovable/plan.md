@@ -1,65 +1,91 @@
 
-# Kế Hoạch Sửa Lỗi Hoàn Chỉnh: Tính Năng Thông Báo
+# Kế Hoạch Hoàn Thiện: Tính Năng Thông Báo
 
-## Vấn Đề Phát Hiện
+## Vấn Đề 1: Chuông Thông Báo Nhấp Nháy
 
-Sau khi test, API thông báo vẫn trả về lỗi 400:
+### Nguyên Nhân
+Trong `NotificationDropdown.tsx`, có các class animation được kích hoạt khi `hasNewNotification = true`:
 
-```
-PGRST200: Could not find a relationship between 'notifications' and 'profiles' in the schema cache
-```
+| Vị trí | Class Animation | Hiệu ứng |
+|--------|----------------|----------|
+| Button container (dòng 385, 464) | `animate-pulse` | Nhấp nháy opacity |
+| Bell icon (dòng 392, 472) | `animate-bounce` | Nảy lên xuống |
+| Badge số (dòng 398, 433, 477) | `animate-pulse scale-110` | Nhấp nháy + phóng to |
 
-### Nguyên Nhân Gốc
-
-Foreign keys trong bảng `notifications` đang trỏ đến **SAI BẢNG**:
-
-| Foreign Key | Đang Trỏ Đến | Cần Trỏ Đến |
-|-------------|--------------|-------------|
-| `notifications_user_id_fkey` | `auth.users` | `public.profiles` |
-| `notifications_actor_id_fkey` | `auth.users` | `public.profiles` |
-| `notifications_post_id_fkey` | `public.posts` | (Đúng rồi) |
-
-PostgREST không thể join với schema `auth`, nên query thất bại.
+### Giải Pháp
+Xóa tất cả animation classes, giữ icon cố định như Facebook:
+- Xóa `animate-pulse` khỏi button container
+- Xóa `animate-bounce` khỏi Bell icon
+- Xóa `animate-pulse` khỏi badge số (giữ `scale-110` nếu muốn badge hơi lớn hơn khi có thông báo mới)
 
 ---
 
-## Giải Pháp
+## Vấn Đề 2: Kiểm Tra Tính Năng Đã Hoạt Động
 
-### Bước 1: Sửa Foreign Keys trong Database
-
-Xóa các foreign keys sai và tạo lại đúng:
-
-```sql
--- Xóa FK sai (đang trỏ đến auth.users)
-ALTER TABLE notifications DROP CONSTRAINT IF EXISTS notifications_user_id_fkey;
-ALTER TABLE notifications DROP CONSTRAINT IF EXISTS notifications_actor_id_fkey;
-
--- Tạo FK mới trỏ đến public.profiles
-ALTER TABLE notifications
-ADD CONSTRAINT notifications_user_id_fkey
-FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
-
-ALTER TABLE notifications
-ADD CONSTRAINT notifications_actor_id_fkey
-FOREIGN KEY (actor_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
-```
-
-### Bước 2: Không cần thay đổi code
-
-Code đã đúng syntax:
-- `actor:profiles!notifications_actor_id_fkey`
-- `post:posts!notifications_post_id_fkey`
-
-Chỉ cần sửa FK trong database là hoạt động.
+Sau khi sửa database FK, tính năng thông báo đã hoạt động:
+- Query lấy thông báo có actor profile (avatar, username)
+- Query lấy post snippet (nội dung bài viết)
+- Realtime subscription đang active
+- Phân nhóm theo thời gian hoạt động
 
 ---
 
-## Files Cần Thay Đổi
+## Files Cần Sửa
 
-| # | Loại | File/Action | Chi Tiết |
-|---|------|-------------|----------|
-| 1 | Database | Migration SQL | Xóa và tạo lại 2 foreign keys |
-| 2 | Code | Không cần thay đổi | Query đã đúng syntax |
+| File | Thay đổi |
+|------|----------|
+| `src/components/layout/NotificationDropdown.tsx` | Xóa animation classes từ 3 vị trí |
+
+---
+
+## Chi Tiết Code Changes
+
+### NotificationDropdown.tsx
+
+**Vị trí 1 - Mobile/Tablet Button (dòng 382-405):**
+```text
+Trước:
+hasNewNotification && "animate-pulse"
+...
+hasNewNotification && "animate-bounce drop-shadow-..."
+...
+hasNewNotification ? "bg-gold ... animate-pulse scale-110"
+
+Sau:
+(xóa tất cả animation)
+hasNewNotification && "drop-shadow-..."
+hasNewNotification ? "bg-gold ..."
+```
+
+**Vị trí 2 - Desktop Center Nav Badge (dòng 430-437):**
+```text
+Trước:
+hasNewNotification ? "bg-gold ... animate-pulse scale-110"
+
+Sau:
+hasNewNotification ? "bg-gold ..."
+```
+
+**Vị trí 3 - Desktop Default (dòng 458-484):**
+```text
+Trước:
+hasNewNotification && "animate-pulse"
+hasNewNotification && "animate-bounce"
+hasNewNotification ? "bg-gold ... animate-pulse scale-110"
+
+Sau:
+(xóa tất cả animation)
+```
+
+---
+
+## Kết Quả Mong Đợi
+
+Sau khi sửa:
+- Chuông thông báo cố định, không nhấp nháy/nảy
+- Badge số hiển thị tĩnh (vẫn có màu gold nổi bật khi có thông báo mới)
+- Giống phong cách Facebook: đơn giản, không gây phân tâm
+- Tất cả tính năng thông báo hoạt động bình thường
 
 ---
 
@@ -67,25 +93,6 @@ Chỉ cần sửa FK trong database là hoạt động.
 
 | Task | Thời gian |
 |------|-----------|
-| Tạo migration sửa foreign keys | 1 phút |
-| Testing lại | 2 phút |
-| **Tổng** | **~3 phút** |
-
----
-
-## Kết Quả Mong Đợi
-
-Sau khi sửa FK:
-- Query notifications hoạt động bình thường
-- Dropdown thông báo hiển thị đầy đủ thông tin
-- Hiển thị avatar, username của actor
-- Hiển thị snippet nội dung bài viết
-- Các tính năng khác (phân nhóm, lọc, realtime) hoạt động
-
----
-
-## Lưu Ý Kỹ Thuật
-
-- `auth.users` là bảng hệ thống của Supabase, không thể join qua PostgREST API
-- `public.profiles` là bảng public, có thể join bình thường
-- PostgREST schema cache sẽ tự động refresh sau khi migration chạy xong
+| Xóa animation classes | 2 phút |
+| Testing | 2 phút |
+| **Tổng** | **~4 phút** |
