@@ -1,207 +1,250 @@
 
-# 🔧 Kế Hoạch Sửa Lỗi PPLP Tab Trang Trắng & Đồng Bộ UI
+# 📋 Kế Hoạch: Sửa Lỗi Mint & Cải Tiến Tab PPLP Admin
 
-## 📋 Vấn Đề Đã Phát Hiện
+## 🔍 Phân Tích Vấn Đề
 
-### 1. Nguyên Nhân Chính: `WagmiProviderNotFoundError`
-Từ screenshot console logs, lỗi **`WagmiProviderNotFoundError`** xảy ra khi click vào tab PPLP. Đây là do:
-- `PplpMintTab.tsx` sử dụng các wagmi hooks: `useAccount()`, `useConnect()`, `useDisconnect()`
-- `usePplpAdmin.ts` sử dụng: `useAccount()`, `useSignTypedData()`, `useWriteContract()`, `useWaitForTransactionReceipt()`
-- Trang `/admin` (Admin.tsx) KHÔNG được wrap bởi `WagmiProvider`
-
-### 2. Thiếu BSC Testnet trong Config
-File `src/config/web3.ts` chỉ có:
-```typescript
-chains: [mainnet, bsc]  // ← Thiếu bscTestnet (chain ID 97)
-```
-Trong khi `src/config/pplp.ts` yêu cầu:
-```typescript
-chainId: 97  // BSC Testnet
+### Vấn đề 1: User "Minh Trí 9999" Mint Fail
+**Nguyên nhân đã xác định:**
+```text
+User: Minh Trí 9999 (id: dd9817a9-04db-4b91-928e-03b29ec77dec)
+├── custodial_wallet_address: NULL ❌
+├── external_wallet_address: NULL ❌
+├── default_wallet_type: custodial
+└── Kết quả: Edge function trả lỗi 400 "No wallet address configured"
 ```
 
-### 3. Phân Mảnh Providers
-Hiện tại có 3 `QueryClient` riêng biệt:
-- `App.tsx` (line 31)
-- `WalletProviders.tsx` (line 9)
-- `WalletLoginProviders.tsx` (line 9)
+User này **chưa thực sự kết nối ví** - có thể bé đã kết nối ở trang `/wallet` nhưng sau đó disconnect hoặc có lỗi khi lưu. Cả hai trường wallet đều vẫn là `NULL` trong database.
 
-Điều này gây:
-- Không chia sẻ cache giữa các trang
-- Wallet state không persist khi navigate
-- Duplicate instances không cần thiết
+### Vấn đề 2: Dữ Liệu Trong Tab PPLP
+6 mint requests là **DỮ LIỆU THỰC** từ database:
+| User | Số FUN | Actions | Chi tiết |
+|------|--------|---------|----------|
+| @Đông Tôn | 15 FUN x2 | reaction | Thả cảm xúc trên bài viết |
+| @huuxuan95x3o4t1 | 2,500 FUN | 10 posts | Tạo 10 bài viết (có dấu hiệu spam) |
+| @huuxuan95x3o4t1 | 1,000 FUN x3 | 1 post mỗi cái | Claim nhiều lần cùng 1 bài |
+
+**Lưu ý:** User @huuxuan đang claim cùng 1 action (post `ee445b49-...`) nhiều lần → Cần thêm anti-duplicate logic.
 
 ---
 
-## 🎯 Giải Pháp
+## 🎯 Giải Pháp Tổng Thể
 
-### Chiến Lược: Globalize Web3 Providers
-Wrap toàn bộ app với `WagmiProvider` và `RainbowKitProvider` ở cấp cao nhất (`App.tsx`), đảm bảo mọi trang đều có access vào Web3 context.
+### Phần A: Cải Thiện UX Khi Chưa Có Ví
+
+**File:** `src/components/wallet/LightScoreDashboard.tsx`
+
+Thay đổi:
+1. Fetch thông tin wallet của user trước khi cho phép claim
+2. Nếu chưa có ví → Hiển thị thông báo + nút "Thiết lập ví ngay"
+3. Disable nút Claim và giải thích lý do
+
+### Phần B: Click Username → Mở Profile Tab Mới
+
+**File:** `src/components/admin/PplpMintTab.tsx`
+
+Thay đổi dòng 394:
+- Wrap username trong thẻ `<a>` với `target="_blank"`
+- Sử dụng `request.user_id` để tạo link `/profile/{user_id}`
+- Thêm hover effect và cursor pointer
+
+### Phần C: Hiển Thị Chi Tiết Actions Trong Admin
+
+**File:** `src/components/admin/PplpMintTab.tsx`
+
+Thêm tính năng expandable row:
+1. Click vào row → Expand hiển thị breakdown chi tiết
+2. Hiển thị từng action type với số lượng và số FUN
+3. Hiển thị content_preview của từng action
+4. Cho phép Admin xem nhanh user đang claim từ hoạt động gì
+
+**File:** `src/hooks/usePplpAdmin.ts`
+
+Thêm function:
+```text
+fetchActionDetails(actionIds: string[]): Promise<ActionDetail[]>
+```
+
+### Phần D: Chống Duplicate Claim (Anti-Spam)
+
+**File:** `supabase/functions/pplp-mint-fun/index.ts`
+
+Thêm kiểm tra:
+1. Kiểm tra `action_ids` đã tồn tại trong `pplp_mint_requests` khác chưa
+2. Nếu đã claim → Reject với lỗi "Actions đã được claim trước đó"
+3. Tránh user claim nhiều lần cùng 1 action
+
+### Phần E: Thêm Tính Năng Quan Trọng Cho Tab PPLP
+
+1. **Reject Request Button**: Cho phép Admin từ chối mint request với lý do
+2. **Delete/Cleanup Button**: Xóa các request bị spam/duplicate
+3. **View Action Details**: Xem chi tiết từng action trong request
+4. **Filter by User**: Lọc request theo username
+5. **Bulk Actions**: Reject/Delete hàng loạt
 
 ---
 
-## 📁 Các File Cần Thay Đổi
+## 📁 Files Cần Thay Đổi
 
-### File 1: `src/config/web3.ts`
-**Thêm BSC Testnet vào config:**
-- Import `bscTestnet` từ `wagmi/chains`
-- Thêm vào mảng `chains`
-- Thêm transport cho `bscTestnet.id`
-
-### File 2: `src/components/providers/Web3Provider.tsx` (TẠO MỚI)
-**Tạo global Web3 provider component:**
-- Wrap `WagmiProvider` với shared config
-- Wrap `RainbowKitProvider` với theme
-- Nhận `children` và `queryClient` từ parent (App.tsx)
-- KHÔNG tạo QueryClient mới (tái sử dụng từ App.tsx)
-
-### File 3: `src/App.tsx`
-**Wrap toàn bộ app với Web3Provider:**
-- Import và sử dụng `Web3Provider`
-- Import RainbowKit styles
-- Đặt Web3Provider bên trong `QueryClientProvider` (để chia sẻ QueryClient)
-
-### File 4: `src/components/wallet/WalletProviders.tsx`
-**Loại bỏ duplicate providers:**
-- Xóa `WagmiProvider`, `QueryClientProvider`, `RainbowKitProvider`
-- Giữ lại chỉ content component (`WalletCenterContainer`)
-- Component này giờ sẽ dựa vào global providers từ App.tsx
-
-### File 5: `src/components/auth/WalletLoginProviders.tsx`
-**Loại bỏ duplicate providers:**
-- Xóa `WagmiProvider`, `QueryClientProvider`, `RainbowKitProvider`
-- Giữ lại chỉ content component với theme nếu cần
-- Sử dụng global providers từ App.tsx
-
-### File 6: `src/pages/Wallet.tsx`
-**Cập nhật để sử dụng simplified WalletProviders:**
-- Verify component vẫn hoạt động với global providers
+| File | Mục đích |
+|------|----------|
+| `src/components/wallet/LightScoreDashboard.tsx` | Kiểm tra wallet trước khi claim |
+| `src/components/admin/PplpMintTab.tsx` | Click username, action details, reject button |
+| `src/hooks/usePplpAdmin.ts` | Thêm fetchActionDetails, rejectRequest |
+| `supabase/functions/pplp-mint-fun/index.ts` | Anti-duplicate check |
 
 ---
 
 ## 🔧 Chi Tiết Kỹ Thuật
 
-### Cấu Trúc Provider Mới
+### 1. LightScoreDashboard - Kiểm Tra Wallet
 
 ```text
-App.tsx
-├── LanguageProvider
-│   └── QueryClientProvider (SHARED - single instance)
-│       └── Web3Provider (NEW)
-│           └── WagmiProvider
-│               └── RainbowKitProvider
-│                   └── TooltipProvider
-│                       └── BrowserRouter
-│                           └── Routes
-│                               ├── /admin → Admin.tsx → PplpMintTab ✅ (has wagmi context)
-│                               ├── /wallet → Wallet.tsx ✅ (has wagmi context)
-│                               └── ... other routes
+Trước nút "Claim X FUN Money":
+1. Kiểm tra hasWallet từ profile
+2. Nếu không có:
+   ┌─────────────────────────────────────────────────────┐
+   │ ⚠️ Thiết lập ví để nhận FUN Money                   │
+   │ Bạn cần kết nối ví Web3 để claim FUN Money.        │
+   │                                                     │
+   │ [🔗 Thiết lập ví ngay] ← Chuyển đến /wallet        │
+   └─────────────────────────────────────────────────────┘
 ```
 
-### web3.ts Update
+### 2. PplpMintTab - Username Clickable
 
-```typescript
-// BEFORE
-import { mainnet, bsc } from 'wagmi/chains';
-chains: [mainnet, bsc],
-transports: {
-  [mainnet.id]: http(),
-  [bsc.id]: http(),
-},
+```text
+Trước:
+<div className="font-medium">@{request.profiles?.username}</div>
 
-// AFTER
-import { mainnet, bsc, bscTestnet } from 'wagmi/chains';
-chains: [mainnet, bsc, bscTestnet],
-transports: {
-  [mainnet.id]: http(),
-  [bsc.id]: http(),
-  [bscTestnet.id]: http('https://data-seed-prebsc-1-s1.binance.org:8545/'),
-},
+Sau:
+<a
+  href={`/profile/${request.user_id}`}
+  target="_blank"
+  rel="noopener noreferrer"
+  className="font-medium text-primary hover:underline"
+  onClick={(e) => e.stopPropagation()}
+>
+  @{request.profiles?.username}
+</a>
 ```
 
-### Web3Provider.tsx (New)
+### 3. Action Details Expandable
 
-```typescript
-import { RainbowKitProvider } from '@rainbow-me/rainbowkit';
-import { WagmiProvider } from 'wagmi';
-import { config } from '@/config/web3';
-import '@rainbow-me/rainbowkit/styles.css';
-
-interface Web3ProviderProps {
-  children: React.ReactNode;
+```text
+Interface mới:
+interface ActionDetail {
+  id: string;
+  action_type: string;
+  content_preview: string | null;
+  mint_amount: number;
+  created_at: string;
 }
 
-export const Web3Provider = ({ children }: Web3ProviderProps) => {
-  return (
-    <WagmiProvider config={config}>
-      <RainbowKitProvider>
-        {children}
-      </RainbowKitProvider>
-    </WagmiProvider>
-  );
-};
+UI khi expand:
+┌────────────────────────────────────────────────────────────────┐
+│ 📊 Chi tiết Actions:                                           │
+│ ├─ 📝 Tạo bài viết (10 actions) = 2,500 FUN                   │
+│ │   └─ "LÌ XÌ TẾT 26.000.000.000 VNĐ..." (+250 FUN)          │
+│ │   └─ "🔥 Con là ánh sáng yêu thương..." (+250 FUN)         │
+│ │   └─ ... 8 more                                              │
+│ └─ ❤️ Cảm xúc (0 actions)                                      │
+└────────────────────────────────────────────────────────────────┘
 ```
 
-### App.tsx Update
+### 4. Anti-Duplicate Check (Edge Function)
 
-```typescript
-// Add import
-import { Web3Provider } from '@/components/providers/Web3Provider';
+```text
+// Trong pplp-mint-fun/index.ts
+const { data: existingRequests } = await supabase
+  .from('pplp_mint_requests')
+  .select('id, action_ids')
+  .contains('action_ids', action_ids)
+  .not('status', 'eq', 'failed');
 
-// Wrap inside QueryClientProvider
-<QueryClientProvider client={queryClient}>
-  <Web3Provider>
-    <TooltipProvider>
-      {/* ... existing content */}
-    </TooltipProvider>
-  </Web3Provider>
-</QueryClientProvider>
+if (existingRequests && existingRequests.length > 0) {
+  return Response.json({ error: 'Một số actions đã được claim trước đó' }, 400);
+}
+```
+
+### 5. Reject Request Function
+
+```text
+// Trong usePplpAdmin.ts
+const rejectRequest = async (requestId: string, reason: string) => {
+  await supabase
+    .from('pplp_mint_requests')
+    .update({
+      status: 'rejected',
+      error_message: reason,
+    })
+    .eq('id', requestId);
+  
+  // Reset light_actions về approved để user có thể claim lại
+  // Hoặc set về rejected nếu là spam
+};
 ```
 
 ---
 
-## 🌐 Đảm Bảo Đồng Bộ UI Giữa Các Môi Trường
+## 🎨 UI Mockup - Cải Tiến Tab PPLP
 
-### Preview vs Publish vs Production
-Tất cả 3 môi trường đều sử dụng cùng codebase, nên sau khi fix:
-- **Preview** (`preview--funprofile.lovable.app`): Sẽ hoạt động ngay sau deploy
-- **Publish** (`funprofile.lovable.app`): Cần publish để cập nhật
-- **Production** (`fun.rich`): Sẽ cập nhật khi publish
-
-### Lỗi 404 cho `fun-profile-logo-40.webp`
-Từ console logs, có lỗi 404 cho file này. Cần verify file tồn tại trong `/public/`.
+```text
+┌────────────────────────────────────────────────────────────────────────────┐
+│ ⚡ PPLP On-Chain Mint                                     [🔄 Refresh]    │
+├────────────────────────────────────────────────────────────────────────────┤
+│ Chờ ký (6) │ Đã ký (0) │ Đã gửi (0) │ Hoàn tất (0) │ Thất bại (0)         │
+├────────────────────────────────────────────────────────────────────────────┤
+│ ☐ Chọn tất cả (2 đã chọn)                    [Ký hàng loạt] [❌ Từ chối]  │
+├────────────────────────────────────────────────────────────────────────────┤
+│ ☑ 👤 @huuxuan95x3o4t1 ← Click mở profile    2,500 FUN   ⏳ Chờ ký       │
+│   0xa6b576...22e2f7                         10 actions   3h ago  [▼] [✍]│
+│   ├────────────────────────────────────────────────────────────────────  │
+│   │ 📊 Chi tiết:                                                         │
+│   │ 📝 Post: 10 actions = 2,500 FUN                                     │
+│   │   • "LÌ XÌ TẾT 26.000..." (+250 FUN) - 3h ago                       │
+│   │   • "🔥 Con là ánh sáng..." (+250 FUN) - 4h ago                     │
+│   │   • ... 8 more                                                       │
+│   └────────────────────────────────────────────────────────────────────  │
+├────────────────────────────────────────────────────────────────────────────┤
+│ ☐ 👤 @Đông Tôn ← Click mở profile           15 FUN      ⏳ Chờ ký        │
+│   0x8661b8...a2ca6                          1 actions   1h ago   [▼] [✍]│
+└────────────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
 ## ⏱️ Timeline
 
-| Phase | Task | Time |
-|-------|------|------|
-| 1 | Update `web3.ts` với BSC Testnet | 2 min |
-| 2 | Tạo `Web3Provider.tsx` | 5 min |
-| 3 | Update `App.tsx` với global provider | 5 min |
-| 4 | Simplify `WalletProviders.tsx` | 3 min |
-| 5 | Simplify `WalletLoginProviders.tsx` | 3 min |
-| 6 | Test và verify | 5 min |
-| **Total** | | **~23 min** |
+| Phase | Task | Thời gian |
+|-------|------|-----------|
+| 1 | Thêm wallet check trong LightScoreDashboard | 5 phút |
+| 2 | Click username mở profile tab mới | 3 phút |
+| 3 | Thêm fetchActionDetails trong usePplpAdmin | 5 phút |
+| 4 | Thêm expandable row với action breakdown | 10 phút |
+| 5 | Thêm anti-duplicate check trong edge function | 5 phút |
+| 6 | Thêm Reject button trong PplpMintTab | 5 phút |
+| **Tổng** | | **~33 phút** |
 
 ---
 
 ## ✅ Kết Quả Mong Đợi
 
-| Trước | Sau |
-|-------|-----|
-| Tab PPLP → Trang trắng | Tab PPLP → Hiển thị UI đầy đủ |
-| Wallet không persist khi navigate | Wallet state được giữ xuyên suốt app |
-| 3 QueryClient instances | 1 shared QueryClient |
-| Thiếu BSC Testnet | Có đủ BSC Testnet cho PPLP minting |
-| WagmiProviderNotFoundError | Không còn lỗi |
+| Vấn đề | Giải pháp |
+|--------|-----------|
+| User chưa có ví → Lỗi không rõ | Hiển thị hướng dẫn thiết lập ví |
+| Không biết user claim từ action gì | Expandable row hiển thị chi tiết |
+| Phải copy username để tìm profile | Click username → Mở profile tab mới |
+| User spam claim cùng action nhiều lần | Anti-duplicate check trong edge function |
+| Admin không thể từ chối request | Thêm Reject button với lý do |
 
 ---
 
-## 🧪 Cách Test Sau Khi Fix
+## 🔐 Về User "Minh Trí 9999"
 
-1. Truy cập `/admin` → Click tab "⚡ PPLP Mint"
-2. Verify UI hiển thị đầy đủ (stats, tables, buttons)
-3. Click "Kết nối Ví Attester" → MetaMask popup xuất hiện
-4. Kiểm tra console không có lỗi `WagmiProviderNotFoundError`
-5. Navigate giữa `/wallet` và `/admin` → Wallet state được giữ nguyên
+User này **chưa thực sự có ví trong database**. Bé cần:
+1. Vào trang `/wallet`
+2. Kết nối ví MetaMask/Trust/v.v.
+3. Ký message để xác thực
+4. Sau đó mới có thể claim FUN Money
+
+Sau khi implement, UI sẽ hiển thị rõ ràng hướng dẫn này thay vì lỗi mơ hồ.
