@@ -81,6 +81,10 @@ export const translations = {
     menu: 'Menu',
     myProfile: 'My Profile',
     language: 'Language',
+    gift: 'Gift',
+    selectRecipient: 'Select recipient',
+    searchFriends: 'Search friends...',
+    noFriendsFound: 'No friends found',
     
     // Left Sidebar
     funEcosystem: 'FUN ECOSYSTEM',
@@ -490,6 +494,10 @@ export const translations = {
     menu: 'Menu',
     myProfile: 'Trang cá nhân',
     language: 'Ngôn ngữ',
+    gift: 'Tặng quà',
+    selectRecipient: 'Chọn người nhận',
+    searchFriends: 'Tìm bạn bè...',
+    noFriendsFound: 'Không tìm thấy bạn bè',
     
     // Left Sidebar
     funEcosystem: 'FUN ECOSYSTEM',

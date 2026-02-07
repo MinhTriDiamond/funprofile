@@ -1,6 +1,6 @@
 import { useState, memo, useCallback } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
-import { Home, Users, Award, Bell, Wallet, MessageCircle } from 'lucide-react';
+import { Home, Users, Award, MessageCircle } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { FacebookLeftSidebar } from '@/components/feed/FacebookLeftSidebar';
@@ -10,6 +10,7 @@ import { useLanguage } from '@/i18n/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { AngelFloatingButton } from '@/components/angel-ai';
+import { GiftNavButton } from '@/components/donations/GiftNavButton';
 import honorBoardIcon from '@/assets/honor-board-icon.png';
 
 export const MobileBottomNav = memo(() => {
@@ -63,7 +64,7 @@ export const MobileBottomNav = memo(() => {
     { icon: Users, label: t('friends'), path: '/friends', action: () => handleNavigate('/friends') },
     { icon: Award, label: t('honorBoard'), isCenter: true, action: () => setHonorBoardOpen(true) },
     { icon: MessageCircle, label: 'Chat', path: '/chat', action: () => handleNavigate('/chat') },
-    { icon: Bell, label: t('notifications'), path: '/notifications', action: () => handleNavigate('/notifications') },
+    { isGift: true }, // Gift button - replaces Notifications
   ];
 
   return (
@@ -74,42 +75,49 @@ export const MobileBottomNav = memo(() => {
       {/* Bottom Navigation Bar - Fixed with larger touch targets */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-white dark:bg-gray-900 border-t border-border/30 safe-area-bottom">
         <div className="flex items-center justify-around h-[72px] px-1 max-w-lg mx-auto">
-          {navItems.map((item, index) => (
-            <button
-              key={index}
-              onClick={item.action}
-              aria-label={item.label}
-              className={`flex flex-col items-center justify-center min-w-[56px] min-h-[52px] rounded-full transition-all duration-300 touch-manipulation group border-[0.5px] ${
-                item.isCenter
-                  ? 'relative border-transparent'
-                  : item.path && isActive(item.path)
-                  ? 'text-white bg-primary border-[#C9A84C]'
-                  : 'text-foreground hover:text-primary hover:bg-primary/10 border-transparent hover:border-[#C9A84C]/40 active:text-white active:bg-primary'
-              }`}
-            >
-              {item.isCenter ? (
-                /* Honor Board Center Button - Special Design */
-                <div className="relative -mt-1">
-                  <div className="relative w-14 h-14 flex items-center justify-center active:scale-95 transition-transform">
-                    <img 
-                      src={honorBoardIcon} 
-                      alt="Honor Board" 
-                      className="w-14 h-14 object-contain drop-shadow-lg"
-                    />
+          {navItems.map((item, index) => {
+            // Gift button - special component
+            if ('isGift' in item && item.isGift) {
+              return <GiftNavButton key={index} variant="mobile" />;
+            }
+            
+            return (
+              <button
+                key={index}
+                onClick={item.action}
+                aria-label={item.label}
+                className={`flex flex-col items-center justify-center min-w-[56px] min-h-[52px] rounded-full transition-all duration-300 touch-manipulation group border-[0.5px] ${
+                  item.isCenter
+                    ? 'relative border-transparent'
+                    : item.path && isActive(item.path)
+                    ? 'text-white bg-primary border-[#C9A84C]'
+                    : 'text-foreground hover:text-primary hover:bg-primary/10 border-transparent hover:border-[#C9A84C]/40 active:text-white active:bg-primary'
+                }`}
+              >
+                {item.isCenter ? (
+                  /* Honor Board Center Button - Special Design */
+                  <div className="relative -mt-1">
+                    <div className="relative w-14 h-14 flex items-center justify-center active:scale-95 transition-transform">
+                      <img 
+                        src={honorBoardIcon} 
+                        alt="Honor Board" 
+                        className="w-14 h-14 object-contain drop-shadow-lg"
+                      />
+                    </div>
                   </div>
-                </div>
-              ) : (
-              <>
-                  <item.icon className={`w-6 h-6 transition-all duration-300 ${
-                    item.path && isActive(item.path) 
-                      ? 'drop-shadow-[0_0_8px_hsl(48_96%_53%/0.6)]' 
-                      : 'group-hover:drop-shadow-[0_0_6px_hsl(142_76%_36%/0.5)]'
-                  }`} strokeWidth={1.8} />
-                  <span className="text-[10px] mt-1 font-medium truncate max-w-[52px]">{item.label}</span>
-                </>
-              )}
-            </button>
-          ))}
+                ) : (
+                <>
+                    <item.icon className={`w-6 h-6 transition-all duration-300 ${
+                      item.path && isActive(item.path) 
+                        ? 'drop-shadow-[0_0_8px_hsl(48_96%_53%/0.6)]' 
+                        : 'group-hover:drop-shadow-[0_0_6px_hsl(142_76%_36%/0.5)]'
+                    }`} strokeWidth={1.8} />
+                    <span className="text-[10px] mt-1 font-medium truncate max-w-[52px]">{item.label}</span>
+                  </>
+                )}
+              </button>
+            );
+          })}
         </div>
       </nav>
 
