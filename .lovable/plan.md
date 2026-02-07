@@ -1,157 +1,91 @@
 
-# 🔧 Kế Hoạch Sửa Lỗi: Tính Năng Thông Báo
+# Kế Hoạch Sửa Lỗi Hoàn Chỉnh: Tính Năng Thông Báo
 
-## 📋 Vấn Đề Phát Hiện
+## Vấn Đề Phát Hiện
 
-Khi gọi API notifications, Supabase trả về lỗi:
+Sau khi test, API thông báo vẫn trả về lỗi 400:
 
 ```
-PGRST200: Could not find a relationship between 'notifications' and 'actor_id' in the schema cache
+PGRST200: Could not find a relationship between 'notifications' and 'profiles' in the schema cache
 ```
 
-### Nguyên Nhân:
-Bảng `notifications` có các cột `actor_id` và `post_id` nhưng **KHÔNG có foreign key constraints** đến bảng `profiles` và `posts`. Do đó, Supabase PostgREST không thể thực hiện join query.
+### Nguyên Nhân Gốc
 
-### Schema hiện tại:
+Foreign keys trong bảng `notifications` đang trỏ đến **SAI BẢNG**:
 
-| Column | Type | Has FK? |
-|--------|------|---------|
-| id | uuid | Primary Key |
-| user_id | uuid | Không |
-| actor_id | uuid | Không |
-| post_id | uuid (nullable) | Không |
-| type | text | - |
-| read | boolean | - |
-| created_at | timestamp | - |
+| Foreign Key | Đang Trỏ Đến | Cần Trỏ Đến |
+|-------------|--------------|-------------|
+| `notifications_user_id_fkey` | `auth.users` | `public.profiles` |
+| `notifications_actor_id_fkey` | `auth.users` | `public.profiles` |
+| `notifications_post_id_fkey` | `public.posts` | (Đúng rồi) |
+
+PostgREST không thể join với schema `auth`, nên query thất bại.
 
 ---
 
-## 🎯 Giải Pháp
+## Giải Pháp
 
-### Bước 1: Thêm Foreign Key Constraints
+### Bước 1: Sửa Foreign Keys trong Database
 
-Thêm 3 foreign keys:
-1. `notifications.user_id` → `profiles.id`
-2. `notifications.actor_id` → `profiles.id`  
-3. `notifications.post_id` → `posts.id`
-
-### Bước 2: Sửa Query trong Code
-
-Sau khi có FK, sửa lại syntax join:
-
-```text
-Trước (lỗi):
-actor:actor_id (id, username, avatar_url)
-
-Sau (đúng):
-actor:profiles!notifications_actor_id_fkey (id, username, avatar_url)
-```
-
----
-
-## 📁 Files Cần Sửa
-
-| # | File | Thay Đổi |
-|---|------|----------|
-| 1 | Database Migration | Thêm 3 foreign keys |
-| 2 | NotificationDropdown.tsx | Sửa join query syntax |
-| 3 | Notifications.tsx | Sửa join query syntax (nếu cần) |
-
----
-
-## 📝 Chi Tiết Migration SQL
+Xóa các foreign keys sai và tạo lại đúng:
 
 ```sql
--- Add foreign key for user_id → profiles.id
+-- Xóa FK sai (đang trỏ đến auth.users)
+ALTER TABLE notifications DROP CONSTRAINT IF EXISTS notifications_user_id_fkey;
+ALTER TABLE notifications DROP CONSTRAINT IF EXISTS notifications_actor_id_fkey;
+
+-- Tạo FK mới trỏ đến public.profiles
 ALTER TABLE notifications
 ADD CONSTRAINT notifications_user_id_fkey
-FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE;
+FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
 
--- Add foreign key for actor_id → profiles.id  
 ALTER TABLE notifications
 ADD CONSTRAINT notifications_actor_id_fkey
-FOREIGN KEY (actor_id) REFERENCES profiles(id) ON DELETE CASCADE;
-
--- Add foreign key for post_id → posts.id
-ALTER TABLE notifications
-ADD CONSTRAINT notifications_post_id_fkey
-FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE;
+FOREIGN KEY (actor_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
 ```
 
----
+### Bước 2: Không cần thay đổi code
 
-## 📝 Chi Tiết Code Changes
+Code đã đúng syntax:
+- `actor:profiles!notifications_actor_id_fkey`
+- `post:posts!notifications_post_id_fkey`
 
-### NotificationDropdown.tsx - Sửa Query (dòng 50-71)
-
-```text
-Trước:
-.select(`
-  id,
-  type,
-  read,
-  created_at,
-  post_id,
-  actor:actor_id (
-    id,
-    username,
-    avatar_url,
-    full_name
-  ),
-  post:post_id (
-    id,
-    content
-  )
-`)
-
-Sau:
-.select(`
-  id,
-  type,
-  read,
-  created_at,
-  post_id,
-  actor:profiles!notifications_actor_id_fkey (
-    id,
-    username,
-    avatar_url,
-    full_name
-  ),
-  post:posts!notifications_post_id_fkey (
-    id,
-    content
-  )
-`)
-```
-
-### Notifications.tsx - Đã có syntax đúng (giữ nguyên)
-
-Dòng 64: `actor:profiles!notifications_actor_id_fkey(...)` - Đã đúng, chỉ cần thêm FK vào database.
+Chỉ cần sửa FK trong database là hoạt động.
 
 ---
 
-## ⏱️ Timeline
+## Files Cần Thay Đổi
 
-| # | Task | Thời gian |
-|---|------|-----------|
-| 1 | Tạo migration thêm foreign keys | 2 phút |
-| 2 | Sửa NotificationDropdown.tsx query | 2 phút |
-| 3 | Testing | 3 phút |
-| **Tổng** | | **~7 phút** |
+| # | Loại | File/Action | Chi Tiết |
+|---|------|-------------|----------|
+| 1 | Database | Migration SQL | Xóa và tạo lại 2 foreign keys |
+| 2 | Code | Không cần thay đổi | Query đã đúng syntax |
 
 ---
 
-## ✅ Kết Quả Mong Đợi
+## Timeline
 
-Sau khi sửa:
+| Task | Thời gian |
+|------|-----------|
+| Tạo migration sửa foreign keys | 1 phút |
+| Testing lại | 2 phút |
+| **Tổng** | **~3 phút** |
+
+---
+
+## Kết Quả Mong Đợi
+
+Sau khi sửa FK:
 - Query notifications hoạt động bình thường
-- Lấy được thông tin actor (username, avatar)
-- Lấy được snippet nội dung bài viết
 - Dropdown thông báo hiển thị đầy đủ thông tin
+- Hiển thị avatar, username của actor
+- Hiển thị snippet nội dung bài viết
+- Các tính năng khác (phân nhóm, lọc, realtime) hoạt động
 
 ---
 
-## ⚠️ Lưu Ý
+## Lưu Ý Kỹ Thuật
 
-- Build error `429 Too Many Requests` là lỗi tạm thời của CloudFlare R2, không liên quan đến code
-- Migration sẽ tự động refresh schema cache của PostgREST
+- `auth.users` là bảng hệ thống của Supabase, không thể join qua PostgREST API
+- `public.profiles` là bảng public, có thể join bình thường
+- PostgREST schema cache sẽ tự động refresh sau khi migration chạy xong
