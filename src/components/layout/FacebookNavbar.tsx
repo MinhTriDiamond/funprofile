@@ -19,6 +19,7 @@ import {
   Shield,
 } from 'lucide-react';
 import { AngelChatWidget } from '@/components/angel-ai';
+import { GiftNavButton } from '@/components/donations/GiftNavButton';
 import angelAvatar from '@/assets/angel-avatar.jpg';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -251,9 +252,10 @@ export const FacebookNavbar = () => {
           {/* Notification for mobile/tablet */}
           {isMobileOrTablet && <NotificationDropdown />}
 
-          {/* Desktop only: Notification Bell + Avatar with Dropdown */}
+          {/* Desktop only: Gift + Notification Bell + Avatar with Dropdown */}
           {!isMobileOrTablet && isLoggedIn && (
             <div className="flex items-center gap-3">
+              <GiftNavButton variant="desktop" />
               <NotificationDropdown />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
