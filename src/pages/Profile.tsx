@@ -138,7 +138,7 @@ const Profile = () => {
         .from('profiles')
         .select(isViewingOwnProfile 
           ? '*' 
-          : 'id, username, avatar_url, full_name, bio, cover_url, created_at, soul_level, total_rewards, pinned_post_id')
+          : 'id, username, avatar_url, full_name, bio, cover_url, created_at, soul_level, total_rewards, pinned_post_id, external_wallet_address, custodial_wallet_address')
         .eq('id', profileId)
         .single();
 
@@ -495,7 +495,7 @@ const Profile = () => {
                     <DonationButton
                       recipientId={profile.id}
                       recipientUsername={profile.username}
-                      recipientWalletAddress={profile.external_wallet_address}
+                      recipientWalletAddress={profile.external_wallet_address || profile.custodial_wallet_address}
                       recipientAvatarUrl={profile.avatar_url}
                       variant="profile"
                     />
