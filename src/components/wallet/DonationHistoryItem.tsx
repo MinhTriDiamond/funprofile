@@ -6,16 +6,20 @@ import { formatDate, formatNumber, shortenAddress } from '@/lib/formatters';
 interface DonationHistoryItemProps {
   donation: DonationRecord;
   type: 'sent' | 'received';
+  onClick?: () => void;
 }
 
-export function DonationHistoryItem({ donation, type }: DonationHistoryItemProps) {
+export function DonationHistoryItem({ donation, type, onClick }: DonationHistoryItemProps) {
   const otherUser = type === 'sent' ? donation.recipient : donation.sender;
   const amount = parseFloat(donation.amount) || 0;
   
   const getBscScanUrl = (txHash: string) => `https://bscscan.com/tx/${txHash}`;
 
   return (
-    <div className="bg-white rounded-xl border border-gray-100 p-4 hover:shadow-md transition-shadow">
+    <div 
+      className="bg-white rounded-xl border border-gray-100 p-4 hover:shadow-md hover:border-primary/30 transition-all cursor-pointer active:scale-[0.98]"
+      onClick={onClick}
+    >
       {/* Header - Amount and User */}
       <div className="flex items-start justify-between gap-3 mb-2">
         <div className="flex items-center gap-3">
