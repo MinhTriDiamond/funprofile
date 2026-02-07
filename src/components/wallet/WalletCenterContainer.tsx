@@ -17,6 +17,10 @@ import { RewardBreakdown, RewardStats } from './RewardBreakdown';
 import { RewardFormulaCard } from './RewardFormulaCard';
 import { LightScoreDashboard } from './LightScoreDashboard';
 import { DonationHistoryTab } from './DonationHistoryTab';
+import { FunBalanceCard } from './FunBalanceCard';
+import { ClaimRewardsCard } from './ClaimRewardsCard';
+import { ActivateDialog } from './ActivateDialog';
+import { useFunBalance } from '@/hooks/useFunBalance';
 import { useTokenBalances } from '@/hooks/useTokenBalances';
 import bnbLogo from '@/assets/tokens/bnb-logo.webp';
 
@@ -54,6 +58,7 @@ const WalletCenterContainer = () => {
   const [showReceive, setShowReceive] = useState(false);
   const [showSend, setShowSend] = useState(false);
   const [showClaimDialog, setShowClaimDialog] = useState(false);
+  const [showActivateDialog, setShowActivateDialog] = useState(false);
   
   // Copy state for external wallet
   const [copiedExternal, setCopiedExternal] = useState(false);
@@ -101,6 +106,9 @@ const WalletCenterContainer = () => {
     isLoading: isExternalLoading, 
     refetch: refetchExternal 
   } = useTokenBalances({ customAddress: externalAddress });
+
+  // Use FUN balance hook
+  const { locked: lockedFun, refetch: refetchFunBalance } = useFunBalance(externalAddress);
 
   // Get CAMLY price for claimable calculation
   const camlyPrice = useMemo(() => {
@@ -606,6 +614,21 @@ const WalletCenterContainer = () => {
       {/* PPLP Light Score Dashboard */}
       <LightScoreDashboard />
 
+      {/* FUN Money Balance Card */}
+      {externalAddress && (
+        <FunBalanceCard
+          walletAddress={externalAddress}
+          onActivate={() => setShowActivateDialog(true)}
+        />
+      )}
+
+      {/* Claim FUN Rewards Card */}
+      <ClaimRewardsCard 
+        onClaimSuccess={() => {
+          refetchFunBalance();
+        }}
+      />
+
       {/* Donation History */}
       <DonationHistoryTab />
 
@@ -640,6 +663,17 @@ const WalletCenterContainer = () => {
         camlyPrice={camlyPrice}
         onSuccess={() => {
           fetchClaimableReward();
+          refetchExternal();
+        }}
+      />
+
+      {/* Activate FUN Dialog */}
+      <ActivateDialog
+        open={showActivateDialog}
+        onOpenChange={setShowActivateDialog}
+        lockedBalance={lockedFun}
+        onSuccess={() => {
+          refetchFunBalance();
           refetchExternal();
         }}
       />

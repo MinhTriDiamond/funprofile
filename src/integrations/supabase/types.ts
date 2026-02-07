@@ -1459,7 +1459,6 @@ export type Database = {
       }
       pplp_mint_requests: {
         Row: {
-          action_hash: string
           action_ids: string[]
           action_types: string[]
           amount_display: number
@@ -1469,6 +1468,7 @@ export type Database = {
           created_at: string
           deadline: number
           error_message: string | null
+          evidence_hash: string
           id: string
           nonce: number
           recipient_address: string
@@ -1483,7 +1483,6 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          action_hash: string
           action_ids?: string[]
           action_types?: string[]
           amount_display: number
@@ -1493,6 +1492,7 @@ export type Database = {
           created_at?: string
           deadline: number
           error_message?: string | null
+          evidence_hash: string
           id?: string
           nonce: number
           recipient_address: string
@@ -1507,7 +1507,6 @@ export type Database = {
           user_id: string
         }
         Update: {
-          action_hash?: string
           action_ids?: string[]
           action_types?: string[]
           amount_display?: number
@@ -1517,6 +1516,7 @@ export type Database = {
           created_at?: string
           deadline?: number
           error_message?: string | null
+          evidence_hash?: string
           id?: string
           nonce?: number
           recipient_address?: string

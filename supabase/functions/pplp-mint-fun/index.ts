@@ -13,7 +13,7 @@ const CHAIN_ID = 97; // BSC Testnet
 
 // EIP-712 Domain - MUST match contract exactly
 const EIP712_DOMAIN = {
-  name: 'FUNMoneyProductionV1_2_1',
+  name: 'FUN Money',
   version: '1.2.1',
   chainId: CHAIN_ID,
   verifyingContract: FUN_MONEY_CONTRACT,
@@ -60,8 +60,8 @@ async function getNonceFromContract(address: string): Promise<bigint> {
   }
 }
 
-// Generate action hash from action types
-function generateActionHash(actionTypes: string[], userId: string, timestamp: number): string {
+// Generate evidence hash from action types
+function generateEvidenceHash(actionTypes: string[], userId: string, timestamp: number): string {
   const input = `${actionTypes.sort().join(',')}:${userId}:${timestamp}`;
   return keccak256(toBytes(input));
 }
@@ -214,15 +214,15 @@ serve(async (req) => {
     // Convert amount to wei (18 decimals)
     const amountWei = BigInt(Math.floor(totalAmount * 1e18)).toString();
 
-    // Generate action hash
+    // Generate evidence hash
     const actionTypes = [...new Set(actions.map(a => a.action_type))];
-    const actionHash = generateActionHash(actionTypes, userId, Date.now());
+    const evidenceHash = generateEvidenceHash(actionTypes, userId, Date.now());
 
     console.log(`[PPLP-MINT] Creating mint request:`, {
       recipient: walletAddress,
       amount: totalAmount,
       amountWei,
-      actionHash,
+      evidenceHash,
       nonce: nonce.toString(),
       deadline,
       actionTypes,
@@ -236,7 +236,7 @@ serve(async (req) => {
         recipient_address: walletAddress,
         amount_wei: amountWei,
         amount_display: totalAmount,
-        action_hash: actionHash,
+        evidence_hash: evidenceHash,
         action_types: actionTypes,
         nonce: Number(nonce),
         deadline,
@@ -282,7 +282,7 @@ serve(async (req) => {
           domain: EIP712_DOMAIN,
           recipient: walletAddress,
           amount: amountWei,
-          actionHash,
+          evidenceHash,
           nonce: nonce.toString(),
           deadline,
         },

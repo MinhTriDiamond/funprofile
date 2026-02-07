@@ -107,7 +107,7 @@ export const CLAIM_COOLDOWN_MS = 60 * 60 * 1000; // 1 hour between claims
 
 // EIP-712 Domain - MUST match contract exactly
 export const EIP712_DOMAIN = {
-  name: 'FUNMoneyProductionV1_2_1',
+  name: 'FUN Money',
   version: '1.2.1',
   chainId: 97,
   verifyingContract: FUN_MONEY_CONTRACT.address,
@@ -118,7 +118,7 @@ export const EIP712_LOCK_TYPES = {
   Lock: [
     { name: 'recipient', type: 'address' },
     { name: 'amount', type: 'uint256' },
-    { name: 'actionHash', type: 'bytes32' },
+    { name: 'evidenceHash', type: 'bytes32' },
     { name: 'nonce', type: 'uint256' },
     { name: 'deadline', type: 'uint256' },
   ],
