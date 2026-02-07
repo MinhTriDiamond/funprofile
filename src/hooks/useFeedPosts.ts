@@ -20,6 +20,8 @@ export interface FeedPost {
   profiles: {
     username: string;
     avatar_url: string | null;
+    external_wallet_address?: string | null;
+    custodial_wallet_address?: string | null;
   };
 }
 
@@ -84,7 +86,7 @@ const fetchPostStats = async (postIds: string[]): Promise<Record<string, PostSta
 const fetchFeedPage = async (cursor: string | null): Promise<FeedPage> => {
   let query = supabase
     .from('posts')
-    .select(`*, profiles!posts_user_id_fkey (username, avatar_url, external_wallet_address)`)
+    .select(`*, profiles!posts_user_id_fkey (username, avatar_url, external_wallet_address, custodial_wallet_address)`)
     .order('created_at', { ascending: false })
     .limit(POSTS_PER_PAGE + 1);
 

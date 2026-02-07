@@ -35,7 +35,7 @@ const Post = () => {
         .from('posts')
         .select(`
           *,
-          profiles!posts_user_id_fkey (username, avatar_url, full_name, external_wallet_address),
+          profiles!posts_user_id_fkey (username, avatar_url, full_name, external_wallet_address, custodial_wallet_address),
           reactions (id, user_id, type),
           comments (id)
         `)
