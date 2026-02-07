@@ -1,12 +1,17 @@
 import { cn } from '@/lib/utils';
-import { Sparkles, Coins, CircleDollarSign, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
+
+// Token logos
+import funLogo from '@/assets/tokens/fun-logo.png';
+import camlyLogo from '@/assets/tokens/camly-logo.webp';
+import bnbLogo from '@/assets/tokens/bnb-logo.webp';
 
 export interface TokenOption {
   symbol: string;
   name: string;
   address: string | null; // null for native BNB
   decimals: number;
-  icon: React.ReactNode;
+  logo: string;
   color: string;
 }
 
@@ -16,15 +21,15 @@ export const SUPPORTED_TOKENS: TokenOption[] = [
     name: 'FUN Money',
     address: '0x1aa8DE8B1E4465C6d729E8564893f8EF823a5ff2',
     decimals: 18,
-    icon: <Sparkles className="w-5 h-5" />,
+    logo: funLogo,
     color: 'from-primary to-green-400',
   },
   {
     symbol: 'CAMLY',
     name: 'Camly Coin',
-    address: '0x0000000000000000000000000000000000000000', // Placeholder - update when deployed
-    decimals: 18,
-    icon: <Coins className="w-5 h-5" />,
+    address: '0x0910320181889feFDE0BB1Ca63962b0A8882e413',
+    decimals: 3,
+    logo: camlyLogo,
     color: 'from-purple-500 to-pink-400',
   },
   {
@@ -32,7 +37,7 @@ export const SUPPORTED_TOKENS: TokenOption[] = [
     name: 'BNB',
     address: null,
     decimals: 18,
-    icon: <CircleDollarSign className="w-5 h-5" />,
+    logo: bnbLogo,
     color: 'from-amber-400 to-yellow-300',
   },
 ];
@@ -57,13 +62,12 @@ export const TokenSelector = ({ selectedToken, onSelect }: TokenSelectorProps) =
               : 'border-border hover:border-gold/50 hover:bg-muted/50'
           )}
         >
-          <div
-            className={cn(
-              'w-10 h-10 rounded-full flex items-center justify-center mb-1 bg-gradient-to-br',
-              token.color
-            )}
-          >
-            {token.icon}
+          <div className="w-10 h-10 rounded-full flex items-center justify-center mb-1 overflow-hidden">
+            <img 
+              src={token.logo} 
+              alt={token.symbol} 
+              className="w-full h-full object-cover"
+            />
           </div>
           <span className="font-semibold text-sm">{token.symbol}</span>
         </button>

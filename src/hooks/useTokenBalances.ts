@@ -15,6 +15,7 @@ export const TOKEN_CONTRACTS = {
   USDT: '0x55d398326f99059fF775485246999027B3197955' as `0x${string}`,
   BTCB: '0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c' as `0x${string}`,
   CAMLY: '0x0910320181889feFDE0BB1Ca63962b0A8882e413' as `0x${string}`,
+  FUN: '0x1aa8DE8B1E4465C6d729E8564893f8EF823a5ff2' as `0x${string}`,
 };
 
 // CoinGecko IDs for price fetching

@@ -13,12 +13,25 @@ import { TokenSelector, SUPPORTED_TOKENS, TokenOption } from './TokenSelector';
 import { QuickGiftPicker, MESSAGE_TEMPLATES, MessageTemplate } from './QuickGiftPicker';
 import { DonationSuccessCard, DonationCardData } from './DonationSuccessCard';
 import { useDonation } from '@/hooks/useDonation';
-import { useAccount, useConnect, useBalance } from 'wagmi';
+import { useAccount, useConnect, useBalance, useReadContract } from 'wagmi';
 import { injected } from 'wagmi/connectors';
-import { Loader2, Wallet, Gift, AlertCircle, Send } from 'lucide-react';
+import { Loader2, Wallet, Gift, AlertCircle, Send, Copy, Smile } from 'lucide-react';
 import { toast } from 'sonner';
-import { formatEther } from 'viem';
+import { formatEther, formatUnits } from 'viem';
 import { supabase } from '@/integrations/supabase/client';
+import { EmojiPicker } from '@/components/feed/EmojiPicker';
+import { bsc } from 'wagmi/chains';
+
+// ERC20 ABI for balanceOf
+const ERC20_BALANCE_ABI = [
+  {
+    name: 'balanceOf',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [{ name: 'account', type: 'address' }],
+    outputs: [{ name: '', type: 'uint256' }],
+  },
+] as const;
 
 interface DonationDialogProps {
   isOpen: boolean;
@@ -49,12 +62,36 @@ export const DonationDialog = ({
   const [showSuccessCard, setShowSuccessCard] = useState(false);
   const [successCardData, setSuccessCardData] = useState<DonationCardData | null>(null);
   const [isSendingReminder, setIsSendingReminder] = useState(false);
+  const [senderDisplayName, setSenderDisplayName] = useState('');
 
-  // Get wallet balance
-  const { data: balance } = useBalance({
+  // Get native BNB balance
+  const { data: bnbBalance } = useBalance({
     address,
-    token: selectedToken.address as `0x${string}` | undefined,
+    chainId: bsc.id,
   });
+
+  // Get ERC20 token balance (for FUN, CAMLY)
+  const { data: tokenBalance } = useReadContract({
+    address: selectedToken.address as `0x${string}` | undefined,
+    abi: ERC20_BALANCE_ABI,
+    functionName: 'balanceOf',
+    args: address ? [address] : undefined,
+    chainId: bsc.id,
+  });
+
+  // Calculate formatted balance based on selected token
+  const getFormattedBalance = () => {
+    if (selectedToken.symbol === 'BNB') {
+      return bnbBalance ? parseFloat(bnbBalance.formatted) : 0;
+    }
+    if (tokenBalance) {
+      return parseFloat(formatUnits(tokenBalance as bigint, selectedToken.decimals));
+    }
+    return 0;
+  };
+
+  const formattedBalance = getFormattedBalance();
+  const hasBalance = formattedBalance > 0;
 
   const { donate, isProcessing } = useDonation({
     onSuccess: (data) => {
@@ -70,6 +107,7 @@ export const DonationDialog = ({
       setSelectedTemplate(null);
       setCustomMessage('');
       setSelectedToken(SUPPORTED_TOKENS[0]);
+      setSenderDisplayName('');
     }
   }, [isOpen]);
 
@@ -90,6 +128,29 @@ export const DonationDialog = ({
     setAmount(quickAmount.toString());
   };
 
+  const handleMaxAmount = () => {
+    if (hasBalance) {
+      // Leave a small buffer for gas if BNB
+      if (selectedToken.symbol === 'BNB') {
+        const maxBnb = Math.max(0, formattedBalance - 0.001);
+        setAmount(maxBnb.toString());
+      } else {
+        setAmount(formattedBalance.toString());
+      }
+    }
+  };
+
+  const handleCopyAddress = () => {
+    if (recipientWalletAddress) {
+      navigator.clipboard.writeText(recipientWalletAddress);
+      toast.success('Đã copy địa chỉ ví');
+    }
+  };
+
+  const handleEmojiSelect = (emoji: string) => {
+    setCustomMessage(prev => prev + emoji);
+  };
+
   const handleDonate = async () => {
     if (!recipientWalletAddress) {
       toast.error('Người nhận chưa thiết lập ví');
@@ -108,6 +169,7 @@ export const DonationDialog = ({
       message: customMessage,
       messageTemplate: selectedTemplate?.id,
       postId,
+      senderDisplayName: senderDisplayName || undefined,
     });
 
     if (result) {
@@ -122,7 +184,7 @@ export const DonationDialog = ({
   };
 
   const isValidAmount = parseFloat(amount) >= 10;
-  const hasEnoughBalance = balance && parseFloat(amount) <= parseFloat(formatEther(balance.value));
+  const hasEnoughBalance = formattedBalance >= parseFloat(amount || '0');
 
   return (
     <>
@@ -222,6 +284,19 @@ export const DonationDialog = ({
 
             {recipientWalletAddress && (
               <>
+                {/* Sender Display Name */}
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground mb-2 block">
+                    Tên hiển thị (tùy chọn):
+                  </label>
+                  <Input
+                    value={senderDisplayName}
+                    onChange={(e) => setSenderDisplayName(e.target.value)}
+                    placeholder="Nhập tên bạn muốn hiển thị..."
+                    className="text-sm"
+                  />
+                </div>
+
                 {/* Token Selection */}
                 <div>
                   <label className="text-sm font-medium text-muted-foreground mb-2 block">
@@ -245,24 +320,24 @@ export const DonationDialog = ({
                       onChange={(e) => setAmount(e.target.value)}
                       placeholder="0"
                       min="10"
-                      className="text-lg font-semibold pr-20"
+                      className="text-lg font-semibold pr-24"
                     />
                     <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
                       <span className="text-sm text-muted-foreground">{selectedToken.symbol}</span>
-                      {balance && (
+                      {hasBalance && (
                         <button
                           type="button"
-                          onClick={() => setAmount(formatEther(balance.value))}
-                          className="text-xs text-primary hover:underline"
+                          onClick={handleMaxAmount}
+                          className="text-xs text-primary hover:underline font-medium"
                         >
                           MAX
                         </button>
                       )}
                     </div>
                   </div>
-                  {balance && (
+                  {isConnected && (
                     <p className="text-xs text-muted-foreground mt-1">
-                      Số dư: {parseFloat(formatEther(balance.value)).toLocaleString()} {selectedToken.symbol}
+                      Số dư: {formattedBalance.toLocaleString(undefined, { maximumFractionDigits: selectedToken.decimals })} {selectedToken.symbol}
                     </p>
                   )}
                   {amount && parseFloat(amount) < 10 && (
@@ -280,25 +355,31 @@ export const DonationDialog = ({
                   currentAmount={amount}
                 />
 
-                {/* Custom Message */}
+                {/* Custom Message with Emoji Picker */}
                 <div>
                   <label className="text-sm font-medium text-muted-foreground mb-2 block">
                     Lời nhắn:
                   </label>
-                  <Textarea
-                    value={customMessage}
-                    onChange={(e) => {
-                      setCustomMessage(e.target.value);
-                      if (selectedTemplate?.id !== 'custom') {
-                        setSelectedTemplate(MESSAGE_TEMPLATES.find(t => t.id === 'custom') || null);
-                      }
-                    }}
-                    placeholder="Nhập lời nhắn của bạn..."
-                    rows={2}
-                  />
+                  <div className="relative">
+                    <Textarea
+                      value={customMessage}
+                      onChange={(e) => {
+                        setCustomMessage(e.target.value);
+                        if (selectedTemplate?.id !== 'custom') {
+                          setSelectedTemplate(MESSAGE_TEMPLATES.find(t => t.id === 'custom') || null);
+                        }
+                      }}
+                      placeholder="Nhập lời nhắn của bạn..."
+                      rows={2}
+                      className="pr-12"
+                    />
+                    <div className="absolute right-2 bottom-2">
+                      <EmojiPicker onEmojiSelect={handleEmojiSelect} />
+                    </div>
+                  </div>
                 </div>
 
-                {/* Recipient Preview */}
+                {/* Recipient Preview with Copy Button */}
                 <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border">
                   <span className="text-sm text-muted-foreground">Gửi đến:</span>
                   <div className="flex items-center gap-2">
@@ -311,6 +392,14 @@ export const DonationDialog = ({
                     <span className="font-mono text-sm">
                       {recipientWalletAddress.slice(0, 8)}...{recipientWalletAddress.slice(-6)}
                     </span>
+                    <button
+                      type="button"
+                      onClick={handleCopyAddress}
+                      className="p-1 rounded hover:bg-muted transition-colors"
+                      title="Copy địa chỉ ví"
+                    >
+                      <Copy className="w-4 h-4 text-muted-foreground hover:text-foreground" />
+                    </button>
                   </div>
                 </div>
               </>

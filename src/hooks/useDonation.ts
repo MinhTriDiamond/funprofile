@@ -36,6 +36,7 @@ export interface DonationParams {
   message?: string;
   messageTemplate?: string;
   postId?: string;
+  senderDisplayName?: string;
 }
 
 export function useDonation(options?: UseDonationOptions) {
