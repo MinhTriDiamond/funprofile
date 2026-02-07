@@ -1,168 +1,182 @@
 
-# Kế Hoạch Thêm Click Xem Chi Tiết Lịch Sử Tặng Thưởng
 
-## Tổng Quan
+# Kế Hoạch Thêm Tính Năng Switch Chain trước khi Ký
 
-Khi click vào một item trong lịch sử tặng thưởng sẽ hiển thị popup chúc mừng:
-- **Đã gửi (sender)** → Hiển thị bảng "Chúc Mừng Tặng Thưởng Thành Công" (theme vàng gold)
-- **Đã nhận (receiver)** → Hiển thị bảng "Chúc Mừng Nhận Quà" (theme xanh lá)
+## Vấn Đề Hiện Tại
 
----
-
-## Thay Đổi Cần Làm
-
-### 1. Cập nhật DonationHistoryItem
-
-Thêm chức năng click và gọi callback khi user click vào item:
-
+Khi Admin ký mint request, MetaMask đang kết nối BSC Mainnet (chainId 56) nhưng EIP-712 domain yêu cầu chainId 97 (BSC Testnet), dẫn đến lỗi:
 ```
-╔══════════════════════════════════════════════════════════════╗
-║  🎁 1.000 CAMLY → @MinhTri                        ✨ +10     ║
-║  "🌟 Tiếp tục phát huy nhé!"                                 ║
-║  📅 21:35:03 7/2/2026  │  🔗 TX: 0x12d3...cd05               ║
-╚══════════════════════════════════════════════════════════════╝
-        ↓ Click vào item ↓
-        
-╔══════════════════════════════════════════════════════════════╗
-║              ✨ 🎊 🎉 🎊 ✨                                   ║
-║    🎁 CHÚC MỪNG TẶNG THƯỞNG THÀNH CÔNG!                      ║
-║       (hoặc BẠN NHẬN ĐƯỢC QUÀ TẶNG!)                         ║
-║                                                              ║
-║           ⭐ 1.000 CAMLY ⭐                                   ║
-║                   ...                                        ║
-╚══════════════════════════════════════════════════════════════╝
+Provided chainId "97" must match the active chainId "56"
 ```
 
-### 2. Cập nhật DonationHistoryTab
+## Giải Pháp
 
-Thêm state và handlers để quản lý popup:
-- State: `selectedDonation` và `isDialogOpen`
-- Render `DonationSuccessCard` hoặc `DonationReceivedCard` dựa trên tab đang active
-
-### 3. Cập nhật DonationList
-
-Truyền callback `onItemClick` xuống `DonationHistoryItem`
-
----
-
-## Files Cần Sửa
-
-| # | File | Thay Đổi |
-|---|------|----------|
-| 1 | `src/components/wallet/DonationHistoryItem.tsx` | Thêm onClick prop và hover effect |
-| 2 | `src/components/wallet/DonationHistoryTab.tsx` | Thêm state quản lý popup + render celebration cards |
-
----
+Thêm logic tự động kiểm tra và chuyển đổi chain sang BSC Testnet trước khi thực hiện ký hoặc gửi transaction.
 
 ## Chi Tiết Kỹ Thuật
 
-### DonationHistoryItem.tsx
+### File cần sửa: `src/hooks/usePplpAdmin.ts`
+
+#### 1. Thêm imports cần thiết
 
 ```typescript
-interface DonationHistoryItemProps {
-  donation: DonationRecord;
-  type: 'sent' | 'received';
-  onClick?: () => void; // Thêm mới
-}
-
-// Trong component
-<div 
-  className="bg-white rounded-xl border border-gray-100 p-4 
-             hover:shadow-md transition-shadow cursor-pointer"
-  onClick={onClick}
->
+// Thêm useSwitchChain và useChainId vào imports
+import { 
+  useAccount, 
+  useSignTypedData, 
+  useWriteContract, 
+  useWaitForTransactionReceipt, 
+  useChainId,
+  useSwitchChain  // <-- Thêm mới
+} from 'wagmi';
 ```
 
-### DonationHistoryTab.tsx
+#### 2. Khởi tạo hook useSwitchChain trong component
 
 ```typescript
-// Thêm state
-const [selectedDonation, setSelectedDonation] = useState<DonationRecord | null>(null);
-const [isCelebrationOpen, setIsCelebrationOpen] = useState(false);
+export const usePplpAdmin = () => {
+  const { address, isConnected } = useAccount();
+  const chainId = useChainId();  // <-- Lấy chainId hiện tại
+  const { switchChainAsync, isPending: isSwitching } = useSwitchChain();  // <-- Thêm mới
+  // ... existing code
+```
 
-// Thêm handler
-const handleDonationClick = (donation: DonationRecord) => {
-  setSelectedDonation(donation);
-  setIsCelebrationOpen(true);
+#### 3. Tạo helper function ensureBscTestnet
+
+```typescript
+// Helper: Đảm bảo đang ở BSC Testnet trước khi thực hiện action
+const ensureBscTestnet = useCallback(async (): Promise<boolean> => {
+  const targetChainId = 97; // BSC Testnet
+  
+  if (chainId === targetChainId) {
+    return true; // Đã đúng chain
+  }
+  
+  try {
+    toast.info('Đang chuyển sang BSC Testnet...');
+    await switchChainAsync({ chainId: targetChainId });
+    toast.success('Đã chuyển sang BSC Testnet!');
+    return true;
+  } catch (error: any) {
+    console.error('[usePplpAdmin] Switch chain error:', error);
+    
+    if (error.message?.includes('User rejected')) {
+      toast.error('Bé đã từ chối chuyển mạng');
+    } else {
+      toast.error('Không thể chuyển sang BSC Testnet. Vui lòng chuyển thủ công trong ví.');
+    }
+    return false;
+  }
+}, [chainId, switchChainAsync]);
+```
+
+#### 4. Cập nhật signMintRequest - thêm kiểm tra chain
+
+```typescript
+const signMintRequest = useCallback(async (request: MintRequest): Promise<string | null> => {
+  if (!isConnected || !address) {
+    toast.error('Vui lòng kết nối ví Attester trước');
+    return null;
+  }
+
+  // ✅ Thêm kiểm tra và switch chain
+  const isCorrectChain = await ensureBscTestnet();
+  if (!isCorrectChain) {
+    return null;
+  }
+
+  try {
+    // ... existing signing logic
+  }
+}, [isConnected, address, signTypedDataAsync, ensureBscTestnet]);
+```
+
+#### 5. Cập nhật submitToChain - thêm kiểm tra chain
+
+```typescript
+const submitToChain = useCallback(async (request: MintRequest): Promise<string | null> => {
+  if (!isConnected || !address) {
+    toast.error('Vui lòng kết nối ví trước');
+    return null;
+  }
+
+  if (!request.signature) {
+    toast.error('Request chưa được ký');
+    return null;
+  }
+
+  // ✅ Thêm kiểm tra và switch chain
+  const isCorrectChain = await ensureBscTestnet();
+  if (!isCorrectChain) {
+    return null;
+  }
+
+  try {
+    // ... existing submit logic
+  }
+}, [isConnected, address, writeContractAsync, ensureBscTestnet]);
+```
+
+#### 6. Export thêm state mới
+
+```typescript
+return {
+  // State
+  isLoading,
+  mintRequests,
+  stats,
+  isConnected,
+  address,
+  isWritePending,
+  isConfirming,
+  chainId,           // <-- Thêm mới
+  isSwitching,       // <-- Thêm mới (để hiện loading khi đang switch)
+  
+  // Actions
+  fetchMintRequests,
+  signMintRequest,
+  batchSignMintRequests,
+  submitToChain,
+  confirmTransaction,
+  resetToPending,
+  fetchActionDetails,
+  rejectRequest,
+  deleteRequest,
+  ensureBscTestnet,  // <-- Thêm mới (optional, nếu cần gọi thủ công)
 };
-
-// Render card phù hợp
-{selectedDonation && activeTab === 'sent' && (
-  <DonationSuccessCard
-    isOpen={isCelebrationOpen}
-    onClose={() => setIsCelebrationOpen(false)}
-    data={{
-      id: selectedDonation.id,
-      amount: selectedDonation.amount,
-      tokenSymbol: selectedDonation.token_symbol,
-      senderUsername: selectedDonation.sender.username,
-      senderAvatarUrl: selectedDonation.sender.avatar_url,
-      recipientUsername: selectedDonation.recipient.username,
-      recipientAvatarUrl: selectedDonation.recipient.avatar_url,
-      message: selectedDonation.message,
-      txHash: selectedDonation.tx_hash,
-      lightScoreEarned: selectedDonation.light_score_earned || 0,
-      createdAt: selectedDonation.created_at,
-    }}
-  />
-)}
-
-{selectedDonation && activeTab === 'received' && (
-  <DonationReceivedCard
-    isOpen={isCelebrationOpen}
-    onClose={() => setIsCelebrationOpen(false)}
-    data={{
-      id: selectedDonation.id,
-      amount: selectedDonation.amount,
-      tokenSymbol: selectedDonation.token_symbol,
-      senderUsername: selectedDonation.sender.username,
-      senderAvatarUrl: selectedDonation.sender.avatar_url,
-      senderId: selectedDonation.sender.id,
-      message: selectedDonation.message,
-      txHash: selectedDonation.tx_hash,
-      createdAt: selectedDonation.created_at,
-    }}
-  />
-)}
 ```
 
----
-
-## UX Flow
+## Luồng Hoạt Động Sau Khi Sửa
 
 ```text
-User vào Wallet → Tab "Lịch sử"
+Admin click [Ký] hoặc [Submit]
        ↓
-Tab "Đã gửi" hoặc "Đã nhận"
+Kiểm tra chainId === 97?
        ↓
-Click vào 1 donation item
+   ┌───┴───┐
+   │  NO   │ → switchChainAsync(97) → MetaMask prompt "Switch to BSC Testnet"
+   └───────┘                               ↓
+       │                           User approve → Continue
+       │                           User reject  → Abort + Toast error
+   ┌───┴───┐
+   │  YES  │ → Tiếp tục signTypedDataAsync / writeContractAsync
+   └───────┘
        ↓
-   ┌─────────────────┐     ┌─────────────────┐
-   │  Tab "Đã gửi"   │     │  Tab "Đã nhận"  │
-   │        ↓        │     │        ↓        │
-   │ Success Card    │     │ Received Card   │
-   │ (theme vàng)    │     │ (theme xanh)    │
-   │ + âm thanh      │     │ + âm thanh      │
-   │ + pháo hoa      │     │ + pháo hoa      │
-   └─────────────────┘     └─────────────────┘
+   ✅ Thành công!
 ```
 
----
+## Tổng Kết Thay Đổi
 
-## Kết Quả Mong Đợi
+| Thay Đổi | Vị Trí |
+|----------|--------|
+| Import `useSwitchChain` | Line 2 |
+| Khởi tạo `switchChainAsync`, `isSwitching` | Line ~73 |
+| Tạo `ensureBscTestnet` helper | Sau line ~90 |
+| Gọi `ensureBscTestnet()` trong `signMintRequest` | Line ~165 |
+| Gọi `ensureBscTestnet()` trong `submitToChain` | Line ~250 |
+| Export thêm `chainId`, `isSwitching`, `ensureBscTestnet` | Return object |
 
-1. User click vào item "Đã gửi" → Popup gold celebration với đầy đủ thông tin + âm thanh
-2. User click vào item "Đã nhận" → Popup green celebration với nút "Gửi lời cảm ơn"
-3. Đóng popup → Quay lại danh sách bình thường
-4. Có hiệu ứng hover để user biết item có thể click
+## Thời Gian Triển Khai
 
----
+~15 phút
 
-## Timeline Ước Tính
-
-| Task | Thời gian |
-|------|-----------|
-| Cập nhật DonationHistoryItem với onClick | 5 phút |
-| Cập nhật DonationHistoryTab với state và cards | 10 phút |
-| Test | 5 phút |
-| **Tổng** | **~20 phút** |
