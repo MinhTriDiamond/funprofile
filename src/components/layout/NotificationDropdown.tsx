@@ -381,21 +381,20 @@ export const NotificationDropdown = ({ centerNavStyle = false, isActiveRoute = f
         onClick={handleBellClick}
         className={cn(
           "h-11 w-11 relative transition-all duration-300 group flex items-center justify-center rounded-full",
-          "text-foreground hover:text-primary hover:bg-primary/10",
-          hasNewNotification && "animate-pulse"
+          "text-foreground hover:text-primary hover:bg-primary/10"
         )} 
         aria-label="Thông báo"
       >
         <Bell className={cn(
           "w-6 h-6 transition-all duration-300 text-primary",
           "group-hover:drop-shadow-[0_0_6px_hsl(142_76%_36%/0.5)]",
-          hasNewNotification && "animate-bounce drop-shadow-[0_0_8px_hsl(48_96%_53%/0.6)]"
+          hasNewNotification && "drop-shadow-[0_0_8px_hsl(48_96%_53%/0.6)]"
         )} />
         {unreadCount > 0 && (
           <span className={cn(
             "absolute -top-0.5 -right-0.5 text-xs rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center font-bold transition-all duration-300",
             hasNewNotification 
-              ? "bg-gold text-black shadow-[0_0_15px_hsl(var(--gold-glow))] animate-pulse scale-110" 
+              ? "bg-gold text-black shadow-[0_0_15px_hsl(var(--gold-glow))]" 
               : "bg-destructive text-destructive-foreground"
           )}>
             {unreadCount > 99 ? '99+' : unreadCount}
@@ -430,7 +429,7 @@ export const NotificationDropdown = ({ centerNavStyle = false, isActiveRoute = f
               <span className={cn(
                 "absolute -top-0.5 -right-0.5 text-xs rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center font-bold transition-all duration-300",
                 hasNewNotification 
-                  ? "bg-gold text-black shadow-[0_0_15px_hsl(var(--gold-glow))] animate-pulse scale-110" 
+                  ? "bg-gold text-black shadow-[0_0_15px_hsl(var(--gold-glow))]" 
                   : "bg-destructive text-destructive-foreground"
               )}>
                 {unreadCount > 99 ? '99+' : unreadCount}
@@ -460,22 +459,20 @@ export const NotificationDropdown = ({ centerNavStyle = false, isActiveRoute = f
             "h-11 w-11 relative transition-all duration-300 group flex items-center justify-center rounded-full",
             open 
               ? "text-primary bg-primary/10" 
-              : "text-foreground hover:text-primary hover:bg-primary/10",
-            hasNewNotification && "animate-pulse"
+              : "text-foreground hover:text-primary hover:bg-primary/10"
           )} 
           aria-label="Thông báo"
         >
           <Bell className={cn(
             "w-6 h-6 transition-all duration-300",
             open ? "text-primary fill-primary drop-shadow-[0_0_6px_hsl(142_76%_36%/0.5)]" : "",
-            !open && "group-hover:text-primary group-hover:drop-shadow-[0_0_6px_hsl(142_76%_36%/0.5)]",
-            hasNewNotification && "animate-bounce"
+            !open && "group-hover:text-primary group-hover:drop-shadow-[0_0_6px_hsl(142_76%_36%/0.5)]"
           )} />
           {unreadCount > 0 && (
             <span className={cn(
               "absolute -top-0.5 -right-0.5 text-xs rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center font-bold transition-all duration-300",
               hasNewNotification 
-                ? "bg-gold text-black shadow-[0_0_15px_hsl(var(--gold-glow))] animate-pulse scale-110" 
+                ? "bg-gold text-black shadow-[0_0_15px_hsl(var(--gold-glow))]" 
                 : "bg-destructive text-destructive-foreground"
             )}>
               {unreadCount > 99 ? '99+' : unreadCount}
