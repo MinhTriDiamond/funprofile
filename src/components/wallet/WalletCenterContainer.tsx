@@ -332,8 +332,14 @@ const WalletCenterContainer = () => {
       
       if (err?.message?.includes('rejected') || err?.name === 'UserRejectedRequestError') {
         toast.error('Bạn đã từ chối ký xác nhận');
-      } else if (err?.message?.includes('already connected')) {
-        toast.error('Ví này đã được liên kết với tài khoản khác');
+      } else if (err?.message?.includes('already connected') || err?.message?.includes('WALLET_ALREADY_LINKED')) {
+        toast.error(
+          'Ví này đã được dùng để đăng nhập trước đó. Vui lòng sử dụng Wallet Login hoặc chọn ví khác.',
+          {
+            duration: 8000,
+            description: 'Bạn có thể Disconnect ví hiện tại và chọn ví khác, hoặc đăng nhập lại bằng ví này.',
+          }
+        );
       } else {
         toast.error(err?.message || 'Không thể liên kết ví');
       }

@@ -87,7 +87,12 @@ Deno.serve(async (req) => {
     if (existingProfile) {
       console.warn('[CONNECT-WALLET] Wallet already connected to another account');
       return new Response(
-        JSON.stringify({ success: false, error: 'Wallet already connected to another account' }),
+        JSON.stringify({ 
+          success: false, 
+          error: 'Wallet already connected to another account',
+          error_code: 'WALLET_ALREADY_LINKED',
+          suggestion: 'Ví này đã được dùng để đăng nhập trước đó. Vui lòng sử dụng Wallet Login hoặc chọn ví khác.'
+        }),
         { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -103,7 +108,12 @@ Deno.serve(async (req) => {
     if (legacyProfile) {
       console.warn('[CONNECT-WALLET] Wallet already connected to another account (legacy)');
       return new Response(
-        JSON.stringify({ success: false, error: 'Wallet already connected to another account' }),
+        JSON.stringify({ 
+          success: false, 
+          error: 'Wallet already connected to another account',
+          error_code: 'WALLET_ALREADY_LINKED',
+          suggestion: 'Ví này đã được dùng để đăng nhập trước đó. Vui lòng sử dụng Wallet Login hoặc chọn ví khác.'
+        }),
         { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
