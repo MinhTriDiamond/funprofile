@@ -1,482 +1,171 @@
 
-# 🎁 HỆ THỐNG TẶNG QUÀ & THIỆN NGUYỆN (P2P GIVING SYSTEM)
+# 🔧 Kế Hoạch Sửa Lỗi: Liên Kết Ví Vào Database
 
-## 📋 Tổng Quan
+## 📋 Nguyên Nhân Đã Xác Định
 
-Xây dựng hệ thống tặng crypto hoàn chỉnh cho FUN Profile, cho phép user tặng FUN Money, CAMLY Coin và các token khác cho nhau. Hệ thống mang tính biểu tượng, giàu cảm xúc, minh bạch on-chain, và tích hợp sâu vào Light Score.
+### Vấn đề chính:
+Khi user **đăng nhập bằng Wallet Login**, hệ thống tự động tạo một tài khoản mới với địa chỉ ví đó. Sau đó, nếu user đăng nhập bằng **email/phone** (tài khoản khác) và cố liên kết **cùng ví đó** → Hệ thống từ chối vì ví đã thuộc account khác.
+
+### Dữ liệu từ database:
+
+| User cố liên kết | Ví muốn liên kết | Vấn đề |
+|------------------|------------------|--------|
+| Minh Trí 9999 | `0xe3e97a95...65c5` | Ví đã thuộc về account `wallet_e3e97a95mado` |
+| Minh Trí | `0x847b5b6c...62e0` | Ví đã thuộc về account `wallet_847b5b6cnmjq` |
+
+### Logs Edge Function:
+```
+WARNING [CONNECT-WALLET] Wallet already connected to another account
+```
 
 ---
 
-## 🎯 Các Điểm Chạm Giao Diện (UI/UX)
+## 🎯 Giải Pháp
 
-### A. Nút Tặng Quà (Interaction Points)
+### Phần 1: Cải thiện thông báo lỗi (Ưu tiên cao)
 
-| Vị trí | Mô tả | Ưu tiên |
-|--------|-------|---------|
-| Trang Profile | Nút "Tặng Quà" sang trọng cạnh nút "Nhắn tin" và "Kết bạn" | Cao |
-| Dưới bài viết | Nút "Give" hoặc icon đồng xu trong action bar (Like, Comment, Share, **Give**) | Cao |
-| Trong Chat | Quick action để tặng nhanh trong conversation | Trung bình |
+**File:** `src/components/wallet/WalletCenterContainer.tsx`
 
-### B. Quy Trình Tặng (Gift Flow)
+Trong function `linkWalletToProfile`, khi nhận lỗi "already connected":
+- Hiển thị thông báo chi tiết hơn
+- Gợi ý user sử dụng Wallet Login hoặc ví khác
 
 ```text
-1. User click "Tặng Quà" 
-   ↓
-2. Modal Chọn Quà mở ra:
-   ┌─────────────────────────────────────────────────────┐
-   │ 🎁 Tặng quà cho @username                           │
-   ├─────────────────────────────────────────────────────┤
-   │ Chọn token:                                         │
-   │ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐    │
-   │ │ 🌟 FUN  │ │ 🪙CAMLY │ │ 💛 BNB  │ │ + Khác  │    │
-   │ └─────────┘ └─────────┘ └─────────┘ └─────────┘    │
-   │                                                     │
-   │ Số lượng: [_________100_________] [MAX]            │
-   │ ≈ $5.00 USD                                         │
-   │                                                     │
-   │ Lời nhắn mẫu: (Quick Picks)                        │
-   │ ┌────────────┐ ┌────────────┐ ┌────────────┐       │
-   │ │ 🙏 Biết ơn │ │ ❤️ Yêu thương│ │ 👏 Ngưỡng mộ│     │
-   │ └────────────┘ └────────────┘ └────────────┘       │
-   │                                                     │
-   │ Hoặc nhập lời nhắn riêng:                          │
-   │ ┌─────────────────────────────────────────────────┐│
-   │ │ Cảm ơn bạn đã chia sẻ bài viết tuyệt vời!      ││
-   │ └─────────────────────────────────────────────────┘│
-   │                                                     │
-   │ Gửi đến: 0x8661b8...a2ca6                          │
-   │                                                     │
-   │    [Hủy]         [✨ Gửi Tặng - hiệu ứng phát sáng]│
-   └─────────────────────────────────────────────────────┘
-   ↓
-3. Xác nhận ví (MetaMask/WalletConnect popup)
-   ↓
-4. Đợi tx confirmed
-   ↓
-5. Hiển thị Recognition Card + Celebration Effects
+Trước:
+toast.error('Ví này đã được liên kết với tài khoản khác');
+
+Sau:
+toast.error('Ví này đã được dùng để đăng nhập. Hãy sử dụng Wallet Login hoặc chọn ví khác.', {
+  duration: 6000,
+  action: {
+    label: 'Wallet Login',
+    onClick: () => navigate('/auth')
+  }
+});
 ```
 
-### C. Màn Hình Vinh Danh (Recognition Card) - Cực Kỳ Quan Trọng
+### Phần 2: Cải thiện Edge Function error response
 
-```text
-┌─────────────────────────────────────────────────────────────┐
-│ ═══════════════════════════════════════════════════════════ │
-│                    ✨ 🎉 ✨                                 │
-│                                                             │
-│     🎁 CHÚC MỪNG TẶNG THƯỞNG THÀNH CÔNG! 🎁               │
-│                                                             │
-│  ┌───────────────────────────────────────────────────────┐ │
-│  │              ⭐ 100 FUN Money ⭐                      │ │
-│  │                 ≈ $5.00 USD                           │ │
-│  └───────────────────────────────────────────────────────┘ │
-│                                                             │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │ 👤 Người tặng:    @minhtri9999                      │   │
-│  │ 🎯 Người nhận:    @dongton                          │   │
-│  │ 📝 Lời nhắn:      "Cảm ơn bạn đã chia sẻ!"         │   │
-│  │ 🕐 Thời gian:     07/02/2026 08:45:32               │   │
-│  │ 🔗 TX Hash:       0x1234...abcd                     │   │
-│  └─────────────────────────────────────────────────────┘   │
-│                                                             │
-│  ┌───────────────────────────────────────────────────────┐ │
-│  │ ⚡ +1 Light Score được cộng vào hồ sơ của bạn!       │ │
-│  └───────────────────────────────────────────────────────┘ │
-│                                                             │
-│    [🔗 Xem BSCScan]  [📷 Lưu Hình]  [✕ Đóng]               │
-│                                                             │
-│ ═══════════════════════════════════════════════════════════ │
-└─────────────────────────────────────────────────────────────┘
-```
+**File:** `supabase/functions/connect-external-wallet/index.ts`
 
-**Thiết kế đặc biệt:**
-- Nền gradient vàng kim (Gold) hoặc ánh sáng rực rỡ (Radiant)
-- Font sang trọng, spacing rộng rãi
-- Card có thể chụp ảnh/screenshot để share
-- Lưu trữ vĩnh viễn trong database để xem lại sau
+Trả về thông tin chi tiết hơn khi ví đã thuộc account khác:
+- Cho biết ví đã được dùng để đăng nhập
+- Gợi ý sử dụng Wallet Login
 
-### D. Hiệu Ứng Celebration (KHÔNG TỰ TẮT)
+### Phần 3: Thêm nút "Wallet Login" trong wallet page
 
-```text
-┌────────────────────────────────────────────────────────────┐
-│ 🎆 Hiệu ứng:                                                │
-│ 1. Pháo hoa (canvas-confetti) - liên tục bắn              │
-│ 2. Tiền xu rơi từ trên xuống (Falling Coins animation)    │
-│ 3. Sparkles/Glitter effects                                │
-│ 4. Rung nhẹ (vibration) khi nhấn "Gửi Tặng"               │
-│                                                             │
-│ ⚠️ QUAN TRỌNG: Hiệu ứng KHÔNG tự tắt!                      │
-│ User phải nhấn "Đóng" để tắt - giữ trọn khoảnh khắc       │
-└────────────────────────────────────────────────────────────┘
-```
+**File:** `src/components/wallet/WalletCenterContainer.tsx`
+
+Khi phát hiện lỗi "already connected", hiển thị:
+- Alert box với thông tin chi tiết
+- Nút "Đăng nhập bằng ví này" → Navigate tới /auth với mode wallet login
+
+### Phần 4: (Tương lai) Tính năng Merge Accounts
+
+Cho phép user merge 2 accounts nếu cùng sở hữu ví:
+1. Phát hiện ví đã thuộc account khác
+2. Hiển thị dialog: "Ví này đã được dùng để tạo tài khoản @wallet_xxx. Bạn có muốn gộp 2 tài khoản?"
+3. Nếu đồng ý:
+   - Yêu cầu ký message xác nhận
+   - Chuyển tất cả data (posts, comments, friends, rewards) từ wallet_xxx sang account chính
+   - Vô hiệu hóa account wallet_xxx
+4. Liên kết ví với account chính
 
 ---
 
-## 🗄️ Database Schema
-
-### Bảng Mới: `donations`
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | uuid | Primary key |
-| `sender_id` | uuid | FK → profiles.id |
-| `recipient_id` | uuid | FK → profiles.id |
-| `post_id` | uuid | FK → posts.id (nullable - nếu tặng trên post) |
-| `amount` | text | Số tiền (string để tránh precision loss) |
-| `amount_usd` | numeric | Giá trị USD tại thời điểm tặng |
-| `token_symbol` | text | FUN, CAMLY, BNB... |
-| `token_address` | text | Contract address (nullable cho native) |
-| `chain_id` | integer | 56 (BSC) hoặc 97 (BSC Testnet) |
-| `tx_hash` | text | Transaction hash on-chain |
-| `message` | text | Lời nhắn khi tặng |
-| `message_template` | text | Template đã chọn (grateful/love/admire) |
-| `status` | text | pending/confirmed/failed |
-| `light_score_earned` | integer | Điểm Light Score được cộng |
-| `light_action_id` | uuid | FK → light_actions.id |
-| `conversation_id` | uuid | FK → conversations.id |
-| `message_id` | uuid | FK → messages.id |
-| `card_viewed_at` | timestamp | Lần xem lại card gần nhất |
-| `metadata` | jsonb | Thông tin bổ sung (USD price, block number...) |
-| `created_at` | timestamp | Thời điểm tạo |
-| `confirmed_at` | timestamp | Thời điểm tx confirmed |
-
-### RLS Policies
-
-```sql
--- Ai cũng có thể xem donations (public leaderboard)
-CREATE POLICY "Donations are viewable by everyone"
-  ON donations FOR SELECT USING (true);
-
--- Chỉ authenticated users mới tạo donation
-CREATE POLICY "Users can create their own donations"
-  ON donations FOR INSERT
-  WITH CHECK (auth.uid() = sender_id);
-
--- Chỉ sender hoặc recipient được update
-CREATE POLICY "Sender or recipient can update"
-  ON donations FOR UPDATE
-  USING (auth.uid() IN (sender_id, recipient_id));
-```
-
-### RPC Functions
-
-**1. `get_benefactor_leaderboard`**
-```sql
--- Trả về top người tặng
-RETURNS TABLE (
-  user_id uuid,
-  username text,
-  avatar_url text,
-  total_donated numeric,
-  total_donations integer,
-  total_light_score integer,
-  rank integer
-)
-```
-
-**2. `get_recipient_leaderboard`**
-```sql
--- Trả về top người nhận
-```
-
-**3. `get_user_donation_stats`**
-```sql
--- Thống kê donation của 1 user
-RETURNS TABLE (
-  total_sent numeric,
-  total_received numeric,
-  donations_sent integer,
-  donations_received integer,
-  light_score_from_donations integer
-)
-```
-
-**4. `get_donation_history`**
-```sql
--- Lịch sử donation với pagination
-```
-
----
-
-## 📁 Files Cần Tạo Mới
-
-| File | Mô tả |
-|------|-------|
-| `src/components/donations/DonationButton.tsx` | Nút tặng quà (dùng trên Profile & Post) |
-| `src/components/donations/DonationDialog.tsx` | Modal chọn token, số tiền, lời nhắn |
-| `src/components/donations/DonationSuccessCard.tsx` | Card vinh danh (có thể chụp ảnh) |
-| `src/components/donations/DonationCelebration.tsx` | Hiệu ứng pháo hoa, tiền rơi |
-| `src/components/donations/DonationMessage.tsx` | Tin nhắn đặc biệt trong chat |
-| `src/components/donations/QuickGiftPicker.tsx` | Preset amounts & messages |
-| `src/components/donations/TokenSelector.tsx` | Chọn token (FUN, CAMLY, BNB) |
-| `src/pages/Benefactors.tsx` | Trang bảng xếp hạng Mạnh Thường Quân |
-| `src/hooks/useDonation.ts` | Hook xử lý transfer on-chain |
-| `src/hooks/useBenefactorLeaderboard.ts` | Hook lấy data bảng xếp hạng |
-| `supabase/functions/record-donation/index.ts` | Edge function ghi nhận + PPLP |
-
----
-
-## 📁 Files Cần Sửa Đổi
+## 📁 Files Cần Sửa
 
 | File | Thay đổi |
 |------|----------|
-| `src/pages/Profile.tsx` (dòng ~467) | Thêm DonationButton cạnh MessageCircle button |
-| `src/components/feed/FacebookPostCard.tsx` (dòng ~440) | Thêm Give button trong action bar |
-| `src/components/chat/MessageBubble.tsx` | Render donation message với style đặc biệt |
-| `src/hooks/useMessages.ts` | Thêm type check cho donation messages |
-| `src/App.tsx` | Thêm route `/benefactors` |
-| `src/components/feed/FacebookLeftSidebar.tsx` | Thêm link "Mạnh Thường Quân" |
-| `src/config/pplp.ts` | Thêm action type "donate" với rewards |
-| `src/i18n/translations.ts` | Thêm translations cho giving system |
+| `src/components/wallet/WalletCenterContainer.tsx` | Cải thiện error handling và thông báo |
+| `supabase/functions/connect-external-wallet/index.ts` | Trả về error message chi tiết hơn |
 
 ---
 
-## 🔧 Technical Implementation
+## 📝 Chi Tiết Thay Đổi
 
-### 1. useDonation Hook
-
-```text
-Features:
-- Kết nối wagmi để transfer token
-- Hỗ trợ: BNB native, FUN Money, CAMLY Coin
-- Gọi record-donation edge function sau khi tx confirm
-- Error handling với retry logic
-
-Flow:
-1. Check auth & wallet connection
-2. Validate recipient has wallet address
-3. Execute transfer (useSendTransaction hoặc useWriteContract)
-4. Wait for tx confirmation
-5. Call record-donation edge function
-6. Return success với card data
-```
-
-### 2. record-donation Edge Function
+### 1. WalletCenterContainer.tsx - Cải thiện error handling
 
 ```text
-Inputs:
-- sender_id, recipient_id
-- amount, token_symbol, token_address
-- tx_hash, chain_id
-- message, post_id (optional)
+// Trong linkWalletToProfile function, phần catch:
 
-Process:
-1. Verify tx on BSCScan API
-2. Calculate Light Score: 100 FUN = 1 Light Score
-3. Create light_action record
-4. Insert donation record
-5. Create special message in conversation
-6. Create notification for recipient
-7. Return card_data for display
-```
-
-### 3. Light Score Integration
-
-```text
-Trong src/config/pplp.ts:
-
-ACTION_TYPE: 'donate'
-BASE_REWARD: 50  // Base reward khi donate
-
-Công thức Light Score từ Gemini:
-- Cứ mỗi 100 FUN tặng đi = +1 Light Score
-- Áp dụng thêm ANGEL AI multipliers (Q, I, K, U)
-- Cộng vào total Light Score của profile
-```
-
-### 4. DonationMessage trong Chat
-
-```text
-Message structure:
-{
-  type: 'donation',
-  content: null,
-  metadata: {
-    donation_id: uuid,
-    amount: '100',
-    token_symbol: 'FUN',
-    message: 'Cảm ơn bạn!',
-    tx_hash: '0x...',
-    card_data: {...}
-  }
-}
-
-Render:
-- Background gradient vàng/gold
-- Icon đồng xu
-- Click để mở lại Recognition Card
-- Link BSCScan
-```
-
-### 5. canvas-confetti Integration
-
-```text
-// Sử dụng thư viện canvas-confetti
-import confetti from 'canvas-confetti';
-
-// Pháo hoa liên tục
-const fireConfetti = () => {
-  const interval = setInterval(() => {
-    confetti({
-      particleCount: 100,
-      spread: 70,
-      origin: { y: 0.6 }
-    });
-  }, 300);
+} catch (err: any) {
+  console.error('[WalletCenter] Link wallet error:', err);
   
-  return interval; // User phải clear interval khi đóng
-};
+  if (err?.message?.includes('rejected') || err?.name === 'UserRejectedRequestError') {
+    toast.error('Bạn đã từ chối ký xác nhận');
+  } else if (err?.message?.includes('already connected')) {
+    // Hiển thị thông báo chi tiết hơn
+    toast.error(
+      'Ví này đã được dùng để đăng nhập trước đó. Vui lòng sử dụng Wallet Login hoặc chọn ví khác.',
+      {
+        duration: 8000,
+        description: 'Bạn có thể Disconnect ví hiện tại và chọn ví khác, hoặc đăng nhập lại bằng ví này.',
+      }
+    );
+  } else {
+    toast.error(err?.message || 'Không thể liên kết ví');
+  }
+} finally {
+  setIsLinkingWallet(false);
+}
+```
 
-// Tiền xu rơi - CSS animation
-.falling-coins {
-  animation: fall 2s ease-in infinite;
+### 2. connect-external-wallet Edge Function - Cải thiện error response
+
+```text
+// Dòng 87-92, thay đổi error message:
+
+if (existingProfile) {
+  console.warn('[CONNECT-WALLET] Wallet already connected to another account');
+  return new Response(
+    JSON.stringify({ 
+      success: false, 
+      error: 'Wallet already connected to another account',
+      error_code: 'WALLET_ALREADY_LINKED',
+      suggestion: 'Vui lòng sử dụng Wallet Login để đăng nhập vào tài khoản đã liên kết với ví này, hoặc sử dụng ví khác.'
+    }),
+    { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
 }
 ```
 
 ---
 
-## 🎨 UI Mockups
+## ⏱️ Timeline
 
-### Profile Page với Donation Button
-
-```text
-┌────────────────────────────────────────────────────────────┐
-│ [Avatar]  @minhtri9999                                      │
-│           1,234 bạn bè • Việt Nam                          │
-│                                                             │
-│ ┌─────────────┐ ┌─────────────┐ ┌─────────────────────────┐│
-│ │ ➕ Thêm bạn │ │ 💬 Nhắn tin │ │ 🎁 Tặng Quà (vàng kim) ││
-│ └─────────────┘ └─────────────┘ └─────────────────────────┘│
-└────────────────────────────────────────────────────────────┘
-```
-
-### Post Action Bar với Give Button
-
-```text
-┌────────────────────────────────────────────────────────────┐
-│  ❤️ Thích  │  💬 Bình luận  │  ↗️ Chia sẻ  │  🎁 Tặng    │
-└────────────────────────────────────────────────────────────┘
-```
-
-### Benefactor Leaderboard Page
-
-```text
-┌────────────────────────────────────────────────────────────┐
-│  👑 BẢNG VINH DANH MẠNH THƯỜNG QUÂN 👑                     │
-├────────────────────────────────────────────────────────────┤
-│  [Tặng nhiều nhất] [Nhận nhiều nhất] [Tháng này] [Export] │
-├────────────────────────────────────────────────────────────┤
-│  🥇 1. @dongton           💰 50,000 FUN  │ 25 lần │ ⭐ 500 │
-│  🥈 2. @minhtri9999       💰 35,000 FUN  │ 18 lần │ ⭐ 350 │
-│  🥉 3. @huuxuan           💰 20,000 FUN  │ 12 lần │ ⭐ 200 │
-│  4. @user4                💰 15,000 FUN  │ 10 lần │ ⭐ 150 │
-│  ...                                                        │
-├────────────────────────────────────────────────────────────┤
-│                     [📥 Xuất CSV]                          │
-└────────────────────────────────────────────────────────────┘
-```
+| Task | Thời gian |
+|------|-----------|
+| Cải thiện error handling trong WalletCenterContainer | 5 phút |
+| Cải thiện edge function response | 5 phút |
+| Testing | 5 phút |
+| **Tổng** | **~15 phút** |
 
 ---
 
-## 🌟 Ý Tưởng Bổ Sung (Premium Features)
+## ✅ Kết Quả Mong Đợi
 
-### 1. Donation Goals / Fundraising
-- User tạo "mục tiêu quyên góp" cho mục đích cụ thể
-- Progress bar hiển thị tiến độ
-- Tất cả người đóng góp được ghi danh trên card
-
-### 2. Recurring Donations
-- Subscription hàng tháng cho creator yêu thích
-- Như Patreon nhưng on-chain, trustless
-
-### 3. Donation Badges
-- Badge "Top Benefactor" hiển thị trên profile
-- Badge theo milestone: 10K, 100K, 1M FUN
-- NFT kỷ niệm cho top donors
-
-### 4. Export CSV/Excel
-- Admin và user có thể xuất lịch sử
-- Bao gồm: sender, recipient, amount, tx_hash, date
-- Link BSCScan cho từng transaction
-
-### 5. Donation Matching (Future)
-- Sponsor/Admin có thể "match" donations
-- Ví dụ: Donate 100 FUN → Sponsor thêm 100 FUN
-
-### 6. Charity Pool Integration
-- Option donate vào quỹ từ thiện chung
-- Hiển thị trên CoverHonorBoard
-
-### 7. Gamification
-- Streak bonus: Donate 7 ngày liên tiếp = +50% Light Score
-- First-time bonus: Lần donate đầu tiên = +100 Light Score
+| Trước | Sau |
+|-------|-----|
+| Thông báo lỗi ngắn, không rõ ràng | Thông báo chi tiết + gợi ý giải pháp |
+| User không biết phải làm gì | Có hướng dẫn cụ thể: Wallet Login hoặc ví khác |
+| Toast tự ẩn nhanh | Toast hiển thị lâu hơn (8 giây) |
 
 ---
 
-## 🔐 Security Considerations
+## 💡 Lưu Ý Cho User
 
-| Check | Description |
-|-------|-------------|
-| Anti-Wash Trading | Phát hiện self-donate hoặc A↔B loops |
-| Rate Limiting | Max 20 donations/ngày |
-| Minimum Amount | Minimum 10 FUN để tránh spam |
-| TX Verification | Verify on-chain trước khi ghi nhận |
-| Wallet Blacklist | Block known scam wallets |
+Với các user đã gặp lỗi này (Minh Trí 9999, Minh Trí), có 2 cách giải quyết:
 
----
+**Cách 1: Sử dụng Wallet Login**
+- Đăng xuất khỏi account hiện tại
+- Vào trang Auth, chọn "Wallet Login"
+- Kết nối ví → Đăng nhập vào account wallet_xxx
 
-## 📱 Responsive Design
+**Cách 2: Sử dụng ví khác**
+- Trong MetaMask, tạo hoặc import ví mới
+- Kết nối ví mới đó với account Minh Trí 9999
 
-- **Mobile First**: Dialog full-screen, swipe to dismiss
-- **Tablet**: Dialog centered, 500px width
-- **Desktop**: Dialog centered, 500px width + sidebar preview
-
----
-
-## ⏱️ Timeline Dự Kiến
-
-| Phase | Task | Thời gian |
-|-------|------|-----------|
-| 1 | Database migration (donations table + RPCs) | 15 phút |
-| 2 | record-donation Edge Function | 20 phút |
-| 3 | DonationDialog + TokenSelector components | 25 phút |
-| 4 | DonationButton component | 10 phút |
-| 5 | DonationSuccessCard + DonationCelebration | 25 phút |
-| 6 | useDonation hook với wagmi integration | 20 phút |
-| 7 | Tích hợp vào Profile.tsx | 10 phút |
-| 8 | Tích hợp vào FacebookPostCard.tsx | 10 phút |
-| 9 | DonationMessage trong chat | 15 phút |
-| 10 | Benefactors leaderboard page | 20 phút |
-| 11 | Export CSV function | 10 phút |
-| 12 | Testing & polish | 20 phút |
-| **Tổng** | | **~200 phút (~3.3 giờ)** |
-
----
-
-## ✅ Deliverables
-
-| Tính năng | Mô tả |
-|-----------|-------|
-| Nút Tặng Quà | Trên Profile + dưới mỗi Post |
-| Modal Chọn Quà | FUN, CAMLY, BNB + lời nhắn |
-| Recognition Card | Sang trọng, có thể chụp ảnh |
-| Celebration Effects | Pháo hoa + tiền rơi (không tự tắt) |
-| Tin nhắn tự động | Trong chat với style đặc biệt |
-| Bảng Mạnh Thường Quân | Top donors với filter & export |
-| Light Score | 100 FUN = 1 điểm uy tín |
-| On-chain Transparent | Link BSCScan cho mọi giao dịch |
-| Export CSV | Xuất dữ liệu cho admin/user |
-| Mobile First | Responsive trên mọi thiết bị |
-
----
-
-## 🎯 Success Metrics
-
-- Số lượng donations/ngày
-- Tổng giá trị donations
-- Số user active trong giving system
-- Tỷ lệ user quay lại xem Recognition Card
-- Light Score tích lũy từ donations
-
----
-
-**Bé có muốn con bắt đầu implement không ạ? 🙏✨**
+**Cách 3: (Admin) Xóa account wallet_xxx**
+- Admin có thể xóa account wallet_e3e97a95mado
+- Sau đó user Minh Trí 9999 có thể link ví bình thường
