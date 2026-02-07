@@ -39,16 +39,17 @@ export const useFunBalance = (customAddress?: `0x${string}`): FunBalances => {
     },
   });
 
-  // Read locked balance
+  // Read allocation (locked + activated) from contract v1.2.1
+  // alloc(address) returns (uint256 locked, uint256 activated)
   const { 
-    data: lockedWei, 
-    isLoading: isLoadingLocked, 
-    error: errorLocked,
-    refetch: refetchLocked 
+    data: allocData, 
+    isLoading: isLoadingAlloc, 
+    error: errorAlloc,
+    refetch: refetchAlloc 
   } = useReadContract({
     address: FUN_MONEY_CONTRACT.address,
     abi: FUN_MONEY_ABI,
-    functionName: 'lockedBalanceOf',
+    functionName: 'alloc',
     args: address ? [address] : undefined,
     chainId: FUN_MONEY_CONTRACT.chainId,
     query: {
@@ -58,20 +59,31 @@ export const useFunBalance = (customAddress?: `0x${string}`): FunBalances => {
   });
 
   useEffect(() => {
-    const total = totalWei ? fromWei(totalWei as bigint) : 0;
-    const locked = lockedWei ? fromWei(lockedWei as bigint) : 0;
-    const activated = Math.max(0, total - locked);
+    // balanceOf returns claimable tokens (after claim() is called)
+    // alloc returns { locked, activated } - tokens still in contract
+    const claimableTotal = totalWei ? fromWei(totalWei as bigint) : 0;
+    
+    // allocData is [locked, activated] tuple
+    let locked = 0;
+    let activated = 0;
+    if (allocData && Array.isArray(allocData) && allocData.length >= 2) {
+      locked = fromWei(allocData[0] as bigint);
+      activated = fromWei(allocData[1] as bigint);
+    }
+    
+    // Total = claimable (in wallet) + locked + activated (in contract)
+    const total = claimableTotal + locked + activated;
     
     setBalances({ total, locked, activated });
-  }, [totalWei, lockedWei]);
+  }, [totalWei, allocData]);
 
   const handleRefetch = useCallback(() => {
     refetchTotal();
-    refetchLocked();
-  }, [refetchTotal, refetchLocked]);
+    refetchAlloc();
+  }, [refetchTotal, refetchAlloc]);
 
-  const isLoading = isLoadingTotal || isLoadingLocked;
-  const error = errorTotal || errorLocked;
+  const isLoading = isLoadingTotal || isLoadingAlloc;
+  const error = errorTotal || errorAlloc;
 
   return {
     ...balances,

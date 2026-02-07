@@ -11,19 +11,11 @@ const corsHeaders = {
 const FUN_MONEY_CONTRACT = '0x1aa8DE8B1E4465C6d729E8564893f8EF823a5ff2';
 const CHAIN_ID = 97; // BSC Testnet
 
-// EIP-712 Domain - MUST match contract exactly
-const EIP712_DOMAIN = {
-  name: 'FUN Money',
-  version: '1.2.1',
-  chainId: CHAIN_ID,
-  verifyingContract: FUN_MONEY_CONTRACT,
-};
-
-// Signature deadline (1 hour)
-const SIGNATURE_DEADLINE_SECONDS = 3600;
-
 // BSC Testnet RPC for reading nonce
 const BSC_TESTNET_RPC = 'https://data-seed-prebsc-1-s1.binance.org:8545/';
+
+// Default action name - must be registered in contract via govRegisterAction
+const DEFAULT_ACTION_NAME = 'light_action';
 
 // Get nonce from contract
 async function getNonceFromContract(address: string): Promise<bigint> {
@@ -60,10 +52,15 @@ async function getNonceFromContract(address: string): Promise<bigint> {
   }
 }
 
-// Generate evidence hash from action types
+// Generate evidence hash from action types + user + timestamp
 function generateEvidenceHash(actionTypes: string[], userId: string, timestamp: number): string {
   const input = `${actionTypes.sort().join(',')}:${userId}:${timestamp}`;
   return keccak256(toBytes(input));
+}
+
+// Generate action hash - must match contract's keccak256(bytes(action))
+function generateActionHash(actionName: string): string {
+  return keccak256(toBytes(actionName));
 }
 
 serve(async (req) => {
@@ -208,13 +205,15 @@ serve(async (req) => {
     const nonce = await getNonceFromContract(walletAddress);
     console.log(`[PPLP-MINT] Contract nonce for ${walletAddress}: ${nonce}`);
 
-    // Calculate deadline (1 hour from now)
-    const deadline = Math.floor(Date.now() / 1000) + SIGNATURE_DEADLINE_SECONDS;
-
     // Convert amount to wei (18 decimals)
     const amountWei = BigInt(Math.floor(totalAmount * 1e18)).toString();
 
-    // Generate evidence hash
+    // Generate action_name and action_hash
+    // Contract will compute: h = keccak256(bytes(action)) and verify it's registered
+    const actionName = DEFAULT_ACTION_NAME;
+    const actionHash = generateActionHash(actionName);
+
+    // Generate evidence hash for additional data integrity
     const actionTypes = [...new Set(actions.map(a => a.action_type))];
     const evidenceHash = generateEvidenceHash(actionTypes, userId, Date.now());
 
@@ -222,13 +221,14 @@ serve(async (req) => {
       recipient: walletAddress,
       amount: totalAmount,
       amountWei,
+      actionName,
+      actionHash,
       evidenceHash,
       nonce: nonce.toString(),
-      deadline,
       actionTypes,
     });
 
-    // Create mint request in database
+    // Create mint request in database (no deadline - contract v1.2.1 doesn't use it)
     const { data: mintRequest, error: insertError } = await supabase
       .from('pplp_mint_requests')
       .insert({
@@ -236,10 +236,12 @@ serve(async (req) => {
         recipient_address: walletAddress,
         amount_wei: amountWei,
         amount_display: totalAmount,
+        action_name: actionName,
+        action_hash: actionHash,
         evidence_hash: evidenceHash,
         action_types: actionTypes,
         nonce: Number(nonce),
-        deadline,
+        deadline: null, // Not used in contract v1.2.1
         status: 'pending_sig',
         action_ids: actions.map(a => a.id),
       })
@@ -277,14 +279,24 @@ serve(async (req) => {
         wallet: walletAddress,
         actions_count: actions.length,
         status: 'pending_sig',
-        // EIP-712 data for frontend display
+        // EIP-712 data for frontend display (matches contract PureLoveProof struct)
         eip712_data: {
-          domain: EIP712_DOMAIN,
-          recipient: walletAddress,
+          domain: {
+            name: 'FUN Money',
+            version: '1.2.1',
+            chainId: CHAIN_ID,
+            verifyingContract: FUN_MONEY_CONTRACT,
+          },
+          user: walletAddress,
+          actionHash,
           amount: amountWei,
           evidenceHash,
           nonce: nonce.toString(),
-          deadline,
+        },
+        // Contract call data
+        contract_call: {
+          action_name: actionName,
+          action_hash: actionHash,
         },
         message: 'Mint request created. Awaiting Attester signature in Admin Panel.',
       },
