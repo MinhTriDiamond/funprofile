@@ -15,9 +15,10 @@ import { DonationSuccessCard, DonationCardData } from './DonationSuccessCard';
 import { useDonation } from '@/hooks/useDonation';
 import { useAccount, useConnect, useBalance } from 'wagmi';
 import { injected } from 'wagmi/connectors';
-import { Loader2, Wallet, Gift, AlertCircle } from 'lucide-react';
+import { Loader2, Wallet, Gift, AlertCircle, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatEther } from 'viem';
+import { supabase } from '@/integrations/supabase/client';
 
 interface DonationDialogProps {
   isOpen: boolean;
@@ -47,6 +48,7 @@ export const DonationDialog = ({
   const [customMessage, setCustomMessage] = useState('');
   const [showSuccessCard, setShowSuccessCard] = useState(false);
   const [successCardData, setSuccessCardData] = useState<DonationCardData | null>(null);
+  const [isSendingReminder, setIsSendingReminder] = useState(false);
 
   // Get wallet balance
   const { data: balance } = useBalance({
@@ -136,14 +138,61 @@ export const DonationDialog = ({
           <div className="space-y-5 py-2">
             {/* Check if recipient has wallet */}
             {!recipientWalletAddress && (
-              <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/30">
-                <div className="flex items-center gap-2 text-destructive">
-                  <AlertCircle className="w-5 h-5" />
-                  <span className="font-medium">Người nhận chưa thiết lập ví</span>
+              <div className="space-y-4">
+                <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/30">
+                  <div className="flex items-center gap-2 text-destructive">
+                    <AlertCircle className="w-5 h-5" />
+                    <span className="font-medium">Người nhận chưa thiết lập ví</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Người này cần kết nối ví Web3 trước khi có thể nhận quà.
+                  </p>
                 </div>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Người này cần kết nối ví Web3 trước khi có thể nhận quà.
-                </p>
+                
+                {/* Hướng Dẫn Nhận Quà Button */}
+                <Button
+                  onClick={async () => {
+                    setIsSendingReminder(true);
+                    try {
+                      const { data: { session } } = await supabase.auth.getSession();
+                      if (!session) {
+                        toast.error('Bạn cần đăng nhập để gửi hướng dẫn');
+                        return;
+                      }
+                      
+                      const { data, error } = await supabase.functions.invoke('notify-gift-ready', {
+                        body: {
+                          recipientId,
+                          notificationType: 'no_wallet',
+                        },
+                      });
+                      
+                      if (error) throw error;
+                      
+                      toast.success(`Đã gửi hướng dẫn nhận quà cho @${recipientUsername}!`);
+                      onClose();
+                    } catch (error) {
+                      console.error('Error sending reminder:', error);
+                      toast.error('Không thể gửi hướng dẫn. Vui lòng thử lại.');
+                    } finally {
+                      setIsSendingReminder(false);
+                    }
+                  }}
+                  disabled={isSendingReminder}
+                  className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
+                >
+                  {isSendingReminder ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Đang gửi...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4 mr-2" />
+                      Hướng Dẫn Nhận Quà
+                    </>
+                  )}
+                </Button>
               </div>
             )}
 
