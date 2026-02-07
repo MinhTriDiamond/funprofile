@@ -19,7 +19,7 @@ export interface MintRequest {
   recipient_address: string;
   amount_wei: string;
   amount_display: number;
-  action_hash: string;
+  evidence_hash: string;
   action_types: string[];
   nonce: number;
   deadline: number;
@@ -169,7 +169,7 @@ export const usePplpAdmin = () => {
       const message = {
         recipient: request.recipient_address as `0x${string}`,
         amount: BigInt(request.amount_wei),
-        actionHash: request.action_hash as `0x${string}`,
+        evidenceHash: request.evidence_hash as `0x${string}`,
         nonce: BigInt(request.nonce),
         deadline: BigInt(request.deadline),
       };
@@ -260,7 +260,7 @@ export const usePplpAdmin = () => {
         args: [
           request.recipient_address as `0x${string}`,
           BigInt(request.amount_wei),
-          request.action_hash as `0x${string}`,
+          request.evidence_hash as `0x${string}`,
           BigInt(request.nonce),
           BigInt(request.deadline),
           [request.signature as `0x${string}`], // signatures array
