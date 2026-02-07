@@ -1,13 +1,19 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAccount, useDisconnect, useSwitchChain, useSignMessage } from 'wagmi';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
-import { bsc } from 'wagmi/chains';
+import { bsc, bscTestnet } from 'wagmi/chains';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Gift, Wallet, Info, AlertTriangle } from 'lucide-react';
+import { Gift, Wallet, Info, AlertTriangle, ChevronDown, CheckCircle2 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { ReceiveTab } from './ReceiveTab';
 import { SendTab } from './SendTab';
@@ -132,22 +138,54 @@ const WalletCenterContainer = () => {
     }
   }, [isConnected]);
 
-  // Switch to BNB Chain if wrong network
-  useEffect(() => {
-    if (isConnected && chainId && chainId !== bsc.id) {
-      switchChain(
-        { chainId: bsc.id },
-        {
-          onSuccess: () => toast.success('Đã chuyển sang BNB Smart Chain'),
-          onError: () => {
-            toast.error('Vui lòng chuyển sang BNB Smart Chain', {
-              action: { label: 'Switch Network', onClick: handleSwitchNetwork },
-            });
-          },
-        }
-      );
+  // Network configuration based on chainId
+  const networkConfig = useMemo(() => {
+    if (chainId === bscTestnet.id) {
+      return {
+        name: 'BSC Testnet',
+        color: 'bg-orange-400/20 border-orange-400/30 text-white',
+        badgeColor: 'bg-orange-100 border-orange-300 text-orange-700',
+        isTestnet: true,
+      };
     }
-  }, [isConnected, chainId]);
+    return {
+      name: 'BNB Mainnet',
+      color: 'bg-yellow-400/20 border-yellow-400/30 text-white',
+      badgeColor: 'bg-yellow-100 border-yellow-300 text-yellow-700',
+      isTestnet: false,
+    };
+  }, [chainId]);
+
+  // Switch to Testnet handler
+  const handleSwitchToTestnet = useCallback(() => {
+    switchChain(
+      { chainId: bscTestnet.id },
+      {
+        onSuccess: () => toast.success('Đã chuyển sang BSC Testnet'),
+        onError: () => toast.error('Không thể chuyển network. Vui lòng thử lại.'),
+      }
+    );
+  }, [switchChain]);
+
+  // Switch to Mainnet handler
+  const handleSwitchToMainnet = useCallback(() => {
+    switchChain(
+      { chainId: bsc.id },
+      {
+        onSuccess: () => toast.success('Đã chuyển sang BNB Mainnet'),
+        onError: () => toast.error('Không thể chuyển network. Vui lòng thử lại.'),
+      }
+    );
+  }, [switchChain]);
+
+  // Warn if on unsupported network (not BSC or BSC Testnet)
+  useEffect(() => {
+    if (isConnected && chainId && chainId !== bsc.id && chainId !== bscTestnet.id) {
+      toast.warning('Vui lòng chuyển sang BNB Smart Chain hoặc BSC Testnet', {
+        action: { label: 'Switch to Mainnet', onClick: handleSwitchToMainnet },
+      });
+    }
+  }, [isConnected, chainId, handleSwitchToMainnet]);
 
   useEffect(() => {
     fetchProfile();
@@ -300,15 +338,10 @@ const WalletCenterContainer = () => {
     toast.success('Đã ngắt kết nối ví');
   }, [disconnect]);
 
+  // Legacy switch network handler (kept for compatibility)
   const handleSwitchNetwork = useCallback(() => {
-    switchChain(
-      { chainId: bsc.id },
-      {
-        onSuccess: () => toast.success('Đã chuyển sang BNB Smart Chain'),
-        onError: () => toast.error('Không thể chuyển network. Vui lòng thử lại.'),
-      }
-    );
-  }, [switchChain]);
+    handleSwitchToMainnet();
+  }, [handleSwitchToMainnet]);
 
   // Link wallet to profile
   const linkWalletToProfile = useCallback(async () => {
@@ -499,12 +532,43 @@ const WalletCenterContainer = () => {
               <p className="text-sm text-muted-foreground">{profile?.username || 'Account'}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2 bg-yellow-100 px-3 py-1.5 rounded-full border border-yellow-300">
-            <img src={bnbLogo} alt="BNB" className="w-5 h-5" />
-            <span className="text-sm font-medium text-yellow-700">BNB Smart Chain</span>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${networkConfig.badgeColor} hover:opacity-80 transition-opacity cursor-pointer`}>
+                <img src={bnbLogo} alt="BNB" className="w-5 h-5" />
+                <span className="text-sm font-medium">{networkConfig.name}</span>
+                <ChevronDown className="w-4 h-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48 bg-white z-50">
+              <DropdownMenuItem 
+                onClick={handleSwitchToMainnet}
+                className="flex items-center justify-between cursor-pointer"
+              >
+                <span>BNB Mainnet (56)</span>
+                {chainId === bsc.id && <CheckCircle2 className="w-4 h-4 text-green-500" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={handleSwitchToTestnet}
+                className="flex items-center justify-between cursor-pointer"
+              >
+                <span>BSC Testnet (97)</span>
+                {chainId === bscTestnet.id && <CheckCircle2 className="w-4 h-4 text-green-500" />}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
+
+      {/* Testnet Warning Banner */}
+      {chainId === bscTestnet.id && (
+        <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 flex items-center gap-2">
+          <AlertTriangle className="w-5 h-5 text-orange-500 shrink-0" />
+          <span className="text-sm text-orange-700">
+            Bạn đang ở BSC Testnet. Các giao dịch không dùng tiền thật.
+          </span>
+        </div>
+      )}
 
       {/* Single Column Layout - External Wallet Only */}
       <div className="w-full">
