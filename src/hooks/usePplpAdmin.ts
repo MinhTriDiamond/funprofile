@@ -5,14 +5,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import {
   EIP712_DOMAIN,
-  EIP712_LOCK_TYPES,
+  EIP712_PPLP_TYPES,
   FUN_MONEY_CONTRACT,
   FUN_MONEY_ABI,
   MINT_REQUEST_STATUS,
   getTxUrl,
 } from '@/config/pplp';
 
-// Types
+// Types - Updated for contract v1.2.1
 export interface MintRequest {
   id: string;
   user_id: string;
@@ -21,8 +21,10 @@ export interface MintRequest {
   amount_display: number;
   evidence_hash: string;
   action_types: string[];
+  action_name: string;        // Action name string (e.g., "light_action")
+  action_hash: string | null; // keccak256(bytes(action_name))
   nonce: number;
-  deadline: number;
+  deadline: number | null;    // No longer used by contract v1.2.1
   status: string;
   signature: string | null;
   signed_at: string | null;
@@ -198,22 +200,29 @@ export const usePplpAdmin = () => {
     try {
       console.log('[usePplpAdmin] Signing request:', request.id);
 
-      // Create the typed data message
+      // Validate action_hash exists
+      if (!request.action_hash) {
+        toast.error('Request thiếu action_hash. Vui lòng tạo lại claim request.');
+        return null;
+      }
+
+      // Create the typed data message - MUST match contract PPLP_TYPEHASH exactly:
+      // keccak256("PureLoveProof(address user,bytes32 actionHash,uint256 amount,bytes32 evidenceHash,uint256 nonce)")
       const message = {
-        recipient: request.recipient_address as `0x${string}`,
+        user: request.recipient_address as `0x${string}`,
+        actionHash: request.action_hash as `0x${string}`,
         amount: BigInt(request.amount_wei),
         evidenceHash: request.evidence_hash as `0x${string}`,
         nonce: BigInt(request.nonce),
-        deadline: BigInt(request.deadline),
       };
 
-      console.log('[usePplpAdmin] EIP-712 message:', message);
+      console.log('[usePplpAdmin] EIP-712 PureLoveProof message:', message);
 
-      // Sign using EIP-712 (wagmi v2 API)
+      // Sign using EIP-712 (wagmi v2 API) - primaryType must be 'PureLoveProof'
       const signature = await signTypedDataAsync({
         account: address,
-        types: EIP712_LOCK_TYPES,
-        primaryType: 'Lock',
+        types: EIP712_PPLP_TYPES,
+        primaryType: 'PureLoveProof',
         message,
         domain: {
           name: EIP712_DOMAIN.name,
@@ -289,7 +298,14 @@ export const usePplpAdmin = () => {
     try {
       console.log('[usePplpAdmin] Submitting to chain:', request.id);
 
+      // Validate action_name exists
+      if (!request.action_name) {
+        toast.error('Request thiếu action_name');
+        return null;
+      }
+
       // Call lockWithPPLP on the contract (wagmi v2 API)
+      // Contract signature: lockWithPPLP(address user, string action, uint256 amount, bytes32 evidenceHash, bytes[] sigs)
       const txHash = await writeContractAsync({
         account: address,
         chain: bscTestnet,
@@ -297,12 +313,11 @@ export const usePplpAdmin = () => {
         abi: FUN_MONEY_ABI,
         functionName: 'lockWithPPLP',
         args: [
-          request.recipient_address as `0x${string}`,
-          BigInt(request.amount_wei),
-          request.evidence_hash as `0x${string}`,
-          BigInt(request.nonce),
-          BigInt(request.deadline),
-          [request.signature as `0x${string}`], // signatures array
+          request.recipient_address as `0x${string}`,  // user
+          request.action_name,                          // action (STRING!)
+          BigInt(request.amount_wei),                   // amount
+          request.evidence_hash as `0x${string}`,       // evidenceHash
+          [request.signature as `0x${string}`],         // sigs array
         ],
       });
 

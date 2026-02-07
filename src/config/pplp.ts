@@ -17,8 +17,8 @@ export const ATTESTER_ADDRESS = '0xe32d50a0badE4cbD5B0d6120d3A5FD07f63694f1' as 
 // BSC Testnet RPC
 export const BSC_TESTNET_RPC = 'https://data-seed-prebsc-1-s1.binance.org:8545/';
 
-// BSCScan URLs (Mainnet)
-export const BSCSCAN_URL = 'https://bscscan.com';
+// BSCScan URLs (Testnet - matching chainId 97)
+export const BSCSCAN_URL = 'https://testnet.bscscan.com';
 export const getTxUrl = (txHash: string) => `${BSCSCAN_URL}/tx/${txHash}`;
 export const getAddressUrl = (address: string) => `${BSCSCAN_URL}/address/${address}`;
 
@@ -113,18 +113,23 @@ export const EIP712_DOMAIN = {
   verifyingContract: FUN_MONEY_CONTRACT.address,
 } as const;
 
-// EIP-712 Types for Lock message
-export const EIP712_LOCK_TYPES = {
-  Lock: [
-    { name: 'recipient', type: 'address' },
+// EIP-712 Types for PureLoveProof - MUST match contract PPLP_TYPEHASH exactly:
+// keccak256("PureLoveProof(address user,bytes32 actionHash,uint256 amount,bytes32 evidenceHash,uint256 nonce)")
+export const EIP712_PPLP_TYPES = {
+  PureLoveProof: [
+    { name: 'user', type: 'address' },
+    { name: 'actionHash', type: 'bytes32' },
     { name: 'amount', type: 'uint256' },
     { name: 'evidenceHash', type: 'bytes32' },
     { name: 'nonce', type: 'uint256' },
-    { name: 'deadline', type: 'uint256' },
   ],
 } as const;
 
-// Contract ABI for FUN Money
+// Legacy export for backwards compatibility
+export const EIP712_LOCK_TYPES = EIP712_PPLP_TYPES;
+
+// Contract ABI for FUN Money v1.2.1
+// Based on FUNMoneyProductionV1_2_1 verified source
 export const FUN_MONEY_ABI = [
   // Read functions
   {
@@ -142,29 +147,56 @@ export const FUN_MONEY_ABI = [
     stateMutability: 'view',
   },
   {
-    name: 'lockedBalanceOf',
+    name: 'alloc',
     type: 'function',
-    inputs: [{ name: 'account', type: 'address' }],
-    outputs: [{ name: '', type: 'uint256' }],
+    inputs: [{ name: 'user', type: 'address' }],
+    outputs: [
+      { name: 'locked', type: 'uint256' },
+      { name: 'activated', type: 'uint256' },
+    ],
     stateMutability: 'view',
   },
-  // Write functions
+  {
+    name: 'actions',
+    type: 'function',
+    inputs: [{ name: 'actionHash', type: 'bytes32' }],
+    outputs: [
+      { name: 'allowed', type: 'bool' },
+      { name: 'version', type: 'uint32' },
+      { name: 'deprecated', type: 'bool' },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    name: 'isAttester',
+    type: 'function',
+    inputs: [{ name: 'attester', type: 'address' }],
+    outputs: [{ name: '', type: 'bool' }],
+    stateMutability: 'view',
+  },
+  // Write functions - lockWithPPLP matches contract signature exactly
   {
     name: 'lockWithPPLP',
     type: 'function',
     inputs: [
-      { name: 'recipient', type: 'address' },
+      { name: 'user', type: 'address' },
+      { name: 'action', type: 'string' },      // STRING action name, not bytes32!
       { name: 'amount', type: 'uint256' },
-      { name: 'actionHash', type: 'bytes32' },
-      { name: 'nonce', type: 'uint256' },
-      { name: 'deadline', type: 'uint256' },
-      { name: 'signatures', type: 'bytes[]' },
+      { name: 'evidenceHash', type: 'bytes32' },
+      { name: 'sigs', type: 'bytes[]' },
     ],
     outputs: [],
     stateMutability: 'nonpayable',
   },
   {
     name: 'activate',
+    type: 'function',
+    inputs: [{ name: 'amount', type: 'uint256' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    name: 'claim',
     type: 'function',
     inputs: [{ name: 'amount', type: 'uint256' }],
     outputs: [],
