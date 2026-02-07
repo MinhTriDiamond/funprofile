@@ -1,169 +1,93 @@
 
-# Kế Hoạch Thêm Nút "Tặng Quà" Vào Navigation
 
-## Tổng Quan Yêu Cầu
+# Kế Hoạch Sửa Lỗi "Không thể thực hiện giao dịch" (Donation)
 
-| Thiết bị | Vị trí | Mô tả |
-|----------|--------|-------|
-| Desktop | Bên trái icon chuông (navbar trên) | Nút Gift với tooltip |
-| Tablet/Mobile | Bên phải ngoài cùng (bottom nav) | Thay thế vị trí icon chuông |
+## Nguyên Nhân Lỗi
 
----
+Lỗi **`connection.connector.getChainId is not a function`** xảy ra do cách kết nối ví không đúng:
 
-## Phân Tích Hiện Trạng
-
-### Desktop (FacebookNavbar.tsx)
-- Cấu trúc right section: Search → Wallet (mobile) → Notification → Avatar
-- Notification nằm ở line 257 trong desktop section
-- Cần thêm Gift button VÀO TRƯỚC NotificationDropdown
-
-### Mobile/Tablet (MobileBottomNav.tsx)
-- Hiện tại: Home → Friends → Honor Board → Chat → Notifications
-- Cần đổi thành: Home → Friends → Honor Board → Chat → **Gift**
-- Icon chuông sẽ được giữ ở top navbar (đã có)
-
----
-
-## Giải Pháp Chi Tiết
-
-### 1. Tạo Component Mới: GiftNavButton
-
-**File mới**: `src/components/donations/GiftNavButton.tsx`
-
-Component này sẽ:
-- Hiển thị icon Gift (🎁 HandCoins hoặc Gift)
-- Click → Mở dialog chọn người nhận
-- Hỗ trợ 2 variants: `desktop` và `mobile`
-
-Luồng hoạt động:
-```text
-User click Gift button
-    │
-    └─► Mở Dialog chọn người nhận
-            │
-            ├─► Hiển thị danh sách bạn bè
-            │
-            └─► User chọn → Mở DonationDialog cho người đó
-```
-
-### 2. Cập Nhật Desktop Navbar
-
-**File**: `src/components/layout/FacebookNavbar.tsx`
-
-Thêm GiftNavButton VÀO TRƯỚC NotificationDropdown (line 257):
-
-```text
-Right Section (Logged in):
-[Search] [Wallet] [🎁 Gift] [🔔 Notification] [Avatar]
-                  ↑ NEW
-```
-
-Styling tương tự các icon khác với gold accent.
-
-### 3. Cập Nhật Mobile Bottom Nav
-
-**File**: `src/components/layout/MobileBottomNav.tsx`
-
-Đổi navItems:
 ```typescript
-// Trước
-{ icon: Bell, label: t('notifications'), path: '/notifications' }
-
-// Sau
-{ icon: Gift, label: 'Tặng', path: null, isGift: true }
+// ❌ SAI - Tạo connector mới mỗi lần gọi
+import { injected } from 'wagmi/connectors';
+connect({ connector: injected() });
 ```
 
-Vị trí mới:
-```text
-[Home] [Friends] [🏅] [Chat] [🎁]
-                             ↑ Gift thay Notifications
-```
-
-**Lưu ý**: Notification vẫn hiện ở top navbar mobile (đã có NotificationDropdown)
+Vấn đề là dự án sử dụng **RainbowKit** để quản lý connectors, nhưng code đang tạo connector mới bằng `injected()` - không sync với hệ thống của RainbowKit, dẫn đến transaction bị lỗi.
 
 ---
 
-## Thiết Kế GiftNavButton
+## Giải Pháp
 
-### Props Interface
+Sử dụng **`useConnectModal`** từ RainbowKit thay vì tự tạo connector:
+
 ```typescript
-interface GiftNavButtonProps {
-  variant: 'desktop' | 'mobile';
-  className?: string;
-}
+// ✅ ĐÚNG - Dùng RainbowKit modal
+import { useConnectModal } from '@rainbow-me/rainbowkit';
+
+const { openConnectModal } = useConnectModal();
+
+const handleConnectWallet = () => {
+  openConnectModal?.();
+};
 ```
 
-### Desktop Variant
-- Tooltip "Tặng quà"
-- Icon màu gold với hover effect
-- Kích thước tương tự NotificationDropdown
-
-### Mobile Variant
-- Icon + Label "Tặng"
-- Style giống các nav item khác
-- Gold accent color
-
 ---
 
-## Component: Chọn Người Nhận Dialog
-
-Khi click GiftNavButton, mở dialog cho phép:
-1. Hiển thị danh sách bạn bè (friendships accepted)
-2. Search theo username
-3. Click chọn → Mở DonationDialog với recipientId đã chọn
-
----
-
-## Files Cần Thay Đổi
+## Files Cần Sửa
 
 | # | File | Thay Đổi |
 |---|------|----------|
-| 1 | `src/components/donations/GiftNavButton.tsx` | **Tạo mới** - Component nút + dialog chọn người nhận |
-| 2 | `src/components/layout/FacebookNavbar.tsx` | Thêm GiftNavButton desktop variant trước Notification |
-| 3 | `src/components/layout/MobileBottomNav.tsx` | Thay Bell bằng Gift ở vị trí cuối cùng |
+| 1 | `src/components/donations/DonationDialog.tsx` | Thay `injected()` bằng `useConnectModal` |
+| 2 | `src/components/admin/PplpMintTab.tsx` | Thay `injected()` bằng `useConnectModal` |
 
 ---
 
-## UI Preview
+## Chi Tiết Thay Đổi
 
-### Desktop Navbar (Right Section)
-```text
-┌─────────────────────────────────────────────────────────┐
-│  🔍  │  💰  │  🎁  │  🔔  │  👤  │
-│      │Wallet│ Gift │ Bell │Avatar│
-└─────────────────────────────────────────────────────────┘
-                 ↑
-            NEW BUTTON
+### 1. DonationDialog.tsx
+
+**Trước:**
+```typescript
+import { injected } from 'wagmi/connectors';
+
+const { connect, isPending: isConnecting } = useConnect();
+
+const handleConnectWallet = () => {
+  connect({ connector: injected() });
+};
 ```
 
-### Mobile Bottom Nav
-```text
-┌──────────────────────────────────────────┐
-│  🏠  │  👥  │  🏅  │  💬  │  🎁  │
-│ Home │Friend│Honor │ Chat │ Gift │
-└──────────────────────────────────────────┘
-                              ↑
-                      Replaces Notifications
+**Sau:**
+```typescript
+import { useConnectModal } from '@rainbow-me/rainbowkit';
+
+const { openConnectModal } = useConnectModal();
+
+const handleConnectWallet = () => {
+  openConnectModal?.();
+};
 ```
+
+### 2. PplpMintTab.tsx
+
+Tương tự - thay `injected()` bằng `useConnectModal`.
 
 ---
 
 ## Kết Quả Mong Đợi
 
-1. **Desktop**: Nút Gift nổi bật với màu gold, bên trái chuông thông báo
-2. **Mobile/Tablet**: Nút Gift ở vị trí dễ tiếp cận (bên phải ngoài cùng)
-3. **UX liền mạch**: Click → Chọn người nhận → Mở form tặng quà
-4. **Không mất tính năng**: Notification vẫn hoạt động (desktop + mobile top bar)
+1. Khi bấm "Kết nối" → Mở RainbowKit modal với tất cả ví đã config (MetaMask, Trust, Bitget, FUN Wallet)
+2. Sau khi kết nối → Giao dịch transfer token hoạt động bình thường
+3. Không còn lỗi `getChainId is not a function`
 
 ---
 
-## Timeline Ước Tính
+## Timeline
 
 | Task | Thời gian |
 |------|-----------|
-| Tạo GiftNavButton component | 15 phút |
-| Dialog chọn người nhận | 15 phút |
-| Cập nhật FacebookNavbar | 5 phút |
-| Cập nhật MobileBottomNav | 5 phút |
-| Testing | 10 phút |
-| **Tổng** | **~50 phút** |
+| Sửa DonationDialog.tsx | 2 phút |
+| Sửa PplpMintTab.tsx | 2 phút |
+| Test giao dịch | 5 phút |
+| **Tổng** | **~10 phút** |
+
