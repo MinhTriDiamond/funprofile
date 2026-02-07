@@ -42,12 +42,29 @@ export interface MintRequest {
   } | null;
 }
 
+export interface ActionDetail {
+  id: string;
+  action_type: string;
+  content_preview: string | null;
+  mint_amount: number;
+  created_at: string;
+  reference_id: string | null;
+}
+
+export interface ActionBreakdown {
+  action_type: string;
+  count: number;
+  total_amount: number;
+  items: ActionDetail[];
+}
+
 export interface MintStats {
   pending_sig: number;
   signed: number;
   submitted: number;
   confirmed: number;
   failed: number;
+  rejected: number;
   total_minted: number;
 }
 
@@ -67,6 +84,7 @@ export const usePplpAdmin = () => {
     submitted: 0,
     confirmed: 0,
     failed: 0,
+    rejected: 0,
     total_minted: 0,
   });
 
@@ -112,6 +130,7 @@ export const usePplpAdmin = () => {
         submitted: 0,
         confirmed: 0,
         failed: 0,
+        rejected: 0,
         total_minted: 0,
       };
 
@@ -124,6 +143,7 @@ export const usePplpAdmin = () => {
           newStats.total_minted += req.amount_display;
         }
         else if (req.status === MINT_REQUEST_STATUS.FAILED) newStats.failed++;
+        else if (req.status === 'rejected') newStats.rejected++;
       });
 
       setStats(newStats);
@@ -362,6 +382,130 @@ export const usePplpAdmin = () => {
     }
   }, []);
 
+  // Fetch action details for a mint request
+  const fetchActionDetails = useCallback(async (actionIds: string[]): Promise<ActionBreakdown[]> => {
+    if (!actionIds || actionIds.length === 0) return [];
+
+    try {
+      const { data: actions, error } = await supabase
+        .from('light_actions')
+        .select('id, action_type, content_preview, mint_amount, created_at, reference_id')
+        .in('id', actionIds)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Group by action_type
+      const breakdown: Record<string, ActionBreakdown> = {};
+      
+      for (const action of actions || []) {
+        const type = action.action_type;
+        if (!breakdown[type]) {
+          breakdown[type] = {
+            action_type: type,
+            count: 0,
+            total_amount: 0,
+            items: [],
+          };
+        }
+        breakdown[type].count++;
+        breakdown[type].total_amount += action.mint_amount || 0;
+        breakdown[type].items.push({
+          id: action.id,
+          action_type: action.action_type,
+          content_preview: action.content_preview,
+          mint_amount: action.mint_amount,
+          created_at: action.created_at,
+          reference_id: action.reference_id,
+        });
+      }
+
+      return Object.values(breakdown);
+    } catch (error) {
+      console.error('[usePplpAdmin] fetchActionDetails error:', error);
+      return [];
+    }
+  }, []);
+
+  // Reject a mint request
+  const rejectRequest = useCallback(async (requestId: string, reason: string): Promise<boolean> => {
+    try {
+      // Get the request first to get action_ids
+      const { data: request } = await supabase
+        .from('pplp_mint_requests')
+        .select('action_ids')
+        .eq('id', requestId)
+        .single();
+
+      // Update request status to rejected
+      const { error } = await supabase
+        .from('pplp_mint_requests')
+        .update({
+          status: 'rejected',
+          error_message: reason,
+        })
+        .eq('id', requestId);
+
+      if (error) throw error;
+
+      // Reset light_actions back to approved so user can try again (or mark as rejected if spam)
+      if (request?.action_ids && request.action_ids.length > 0) {
+        await supabase
+          .from('light_actions')
+          .update({
+            mint_status: 'rejected',
+            mint_request_id: null,
+          })
+          .in('id', request.action_ids);
+      }
+
+      toast.success('Đã từ chối mint request');
+      return true;
+    } catch (error) {
+      console.error('[usePplpAdmin] rejectRequest error:', error);
+      toast.error('Không thể từ chối request');
+      return false;
+    }
+  }, []);
+
+  // Delete a mint request
+  const deleteRequest = useCallback(async (requestId: string): Promise<boolean> => {
+    try {
+      // Get the request first to get action_ids
+      const { data: request } = await supabase
+        .from('pplp_mint_requests')
+        .select('action_ids')
+        .eq('id', requestId)
+        .single();
+
+      // Reset light_actions first
+      if (request?.action_ids && request.action_ids.length > 0) {
+        await supabase
+          .from('light_actions')
+          .update({
+            mint_status: 'approved',
+            mint_request_id: null,
+          })
+          .in('id', request.action_ids);
+      }
+
+      // Delete the request
+      const { error } = await supabase
+        .from('pplp_mint_requests')
+        .delete()
+        .eq('id', requestId);
+
+      if (error) throw error;
+
+      toast.success('Đã xóa mint request');
+      return true;
+    } catch (error) {
+      console.error('[usePplpAdmin] deleteRequest error:', error);
+      toast.error('Không thể xóa request');
+      return false;
+    }
+  }, []);
+
   return {
     // State
     isLoading,
@@ -379,5 +523,8 @@ export const usePplpAdmin = () => {
     submitToChain,
     confirmTransaction,
     resetToPending,
+    fetchActionDetails,
+    rejectRequest,
+    deleteRequest,
   };
 };
