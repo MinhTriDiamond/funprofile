@@ -34,6 +34,7 @@ import {
   Users,
   Lock,
 } from 'lucide-react';
+import { DonationButton } from '@/components/donations/DonationButton';
 
 interface PostStats {
   reactions: { id: string; user_id: string; type: string }[];
@@ -54,6 +55,7 @@ interface FacebookPostCardProps {
     profiles: {
       username: string;
       avatar_url: string | null;
+      external_wallet_address?: string | null;
     };
   };
   currentUserId: string;
@@ -471,6 +473,18 @@ const FacebookPostCardComponent = ({
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+
+            {/* Donation Button - only show for other users' posts */}
+            {post.user_id !== currentUserId && (
+              <DonationButton
+                recipientId={post.user_id}
+                recipientUsername={post.profiles?.username || 'Unknown'}
+                recipientWalletAddress={post.profiles?.external_wallet_address}
+                recipientAvatarUrl={post.profiles?.avatar_url}
+                postId={post.id}
+                variant="post"
+              />
+            )}
           </div>
         </div>
 

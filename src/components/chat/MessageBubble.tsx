@@ -2,6 +2,7 @@ import { useState, memo } from 'react';
 import { Message } from '@/hooks/useMessages';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { LazyImage } from '@/components/ui/LazyImage';
+import { DonationMessage } from '@/components/donations/DonationMessage';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
@@ -41,6 +42,10 @@ export const MessageBubble = memo(function MessageBubble({
 
   const mediaUrls = Array.isArray(message.media_urls) ? message.media_urls as string[] : [];
   
+  // Check if this is a donation message
+  const metadata = message.media_urls as unknown as { type?: string; donation_id?: string } | null;
+  const isDonationMessage = metadata?.type === 'donation' && metadata?.donation_id;
+  
   // Group reactions by emoji
   const reactionCounts = message.reactions?.reduce((acc, r) => {
     acc[r.emoji] = (acc[r.emoji] || 0) + 1;
@@ -52,6 +57,68 @@ export const MessageBubble = memo(function MessageBubble({
     .map((r) => r.emoji) || [];
 
   const isRead = message.read_by && message.read_by.length > 0;
+
+  // Render donation message with special styling
+  if (isDonationMessage) {
+    const donationMetadata = metadata as {
+      type: string;
+      donation_id: string;
+      amount: string;
+      token_symbol: string;
+      message?: string | null;
+      tx_hash: string;
+      sender_username: string;
+      sender_avatar_url?: string | null;
+      recipient_username: string;
+      recipient_avatar_url?: string | null;
+      light_score_earned?: number;
+      created_at: string;
+    };
+
+    return (
+      <div
+        className={cn('flex gap-2 group', isOwn ? 'flex-row-reverse' : '')}
+        onMouseEnter={() => setShowActions(true)}
+        onMouseLeave={() => setShowActions(false)}
+      >
+        {/* Avatar */}
+        <div className="w-8 flex-shrink-0">
+          {showAvatar && !isOwn && message.sender && (
+            <Avatar className="h-8 w-8">
+              <AvatarImage
+                src={message.sender.avatar_url || undefined}
+                alt={message.sender.username}
+              />
+              <AvatarFallback>
+                {message.sender.username[0].toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+          )}
+        </div>
+
+        {/* Donation Message */}
+        <div className={cn('flex flex-col', isOwn ? 'items-end' : 'items-start')}>
+          <DonationMessage metadata={donationMetadata} isOwn={isOwn} />
+          
+          {/* Timestamp */}
+          <div className="flex items-center gap-1 mt-1 px-2">
+            <span className="text-[10px] text-muted-foreground">
+              {message.created_at && format(new Date(message.created_at), 'HH:mm', { locale: vi })}
+            </span>
+            {isOwn && (
+              <span className="text-muted-foreground">
+                {isRead ? (
+                  <CheckCheck className="h-3 w-3 text-primary" />
+                ) : (
+                  <Check className="h-3 w-3" />
+                )}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
