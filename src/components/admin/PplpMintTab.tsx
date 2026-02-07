@@ -9,6 +9,14 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import {
   Sparkles,
   Wallet,
   RefreshCw,
@@ -20,8 +28,16 @@ import {
   Loader2,
   Pencil,
   RotateCcw,
+  ChevronDown,
+  ChevronUp,
+  XCircle,
+  Trash2,
+  FileText,
+  Heart,
+  MessageCircle,
+  Users,
 } from 'lucide-react';
-import { usePplpAdmin, MintRequest } from '@/hooks/usePplpAdmin';
+import { usePplpAdmin, MintRequest, ActionBreakdown } from '@/hooks/usePplpAdmin';
 import { ATTESTER_ADDRESS, formatFUN, getTxUrl, MINT_REQUEST_STATUS } from '@/config/pplp';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
@@ -29,6 +45,24 @@ import { vi } from 'date-fns/locale';
 interface PplpMintTabProps {
   adminId: string;
 }
+
+const ACTION_ICONS: Record<string, React.ReactNode> = {
+  post: <FileText className="w-4 h-4 text-blue-500" />,
+  reaction: <Heart className="w-4 h-4 text-pink-500" />,
+  comment: <MessageCircle className="w-4 h-4 text-green-500" />,
+  share: <Send className="w-4 h-4 text-purple-500" />,
+  friend: <Users className="w-4 h-4 text-cyan-500" />,
+};
+
+const ACTION_LABELS: Record<string, string> = {
+  post: 'Tạo bài viết',
+  reaction: 'Cảm xúc',
+  comment: 'Bình luận',
+  share: 'Chia sẻ',
+  friend: 'Kết bạn',
+  livestream: 'Phát trực tiếp',
+  new_user_bonus: 'Thưởng người mới',
+};
 
 const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
   const { address, isConnected } = useAccount();
@@ -45,12 +79,24 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
     batchSignMintRequests,
     submitToChain,
     resetToPending,
+    fetchActionDetails,
+    rejectRequest,
+    deleteRequest,
   } = usePplpAdmin();
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState('pending_sig');
   const [signingId, setSigningId] = useState<string | null>(null);
   const [submittingId, setSubmittingId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [actionDetails, setActionDetails] = useState<Record<string, ActionBreakdown[]>>({});
+  const [loadingDetails, setLoadingDetails] = useState<string | null>(null);
+  
+  // Reject dialog state
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [rejectingRequest, setRejectingRequest] = useState<MintRequest | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const [isRejecting, setIsRejecting] = useState(false);
 
   useEffect(() => {
     fetchMintRequests();
@@ -63,6 +109,8 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
   const handleRefresh = () => {
     fetchMintRequests();
     setSelectedIds(new Set());
+    setExpandedId(null);
+    setActionDetails({});
   };
 
   const handleSelectAll = (checked: boolean) => {
@@ -112,6 +160,50 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
     fetchMintRequests();
   };
 
+  const handleToggleExpand = async (request: MintRequest) => {
+    if (expandedId === request.id) {
+      setExpandedId(null);
+      return;
+    }
+    
+    setExpandedId(request.id);
+    
+    // Fetch action details if not cached
+    if (!actionDetails[request.id] && request.action_ids?.length > 0) {
+      setLoadingDetails(request.id);
+      const details = await fetchActionDetails(request.action_ids);
+      setActionDetails(prev => ({ ...prev, [request.id]: details }));
+      setLoadingDetails(null);
+    }
+  };
+
+  const handleOpenRejectDialog = (request: MintRequest) => {
+    setRejectingRequest(request);
+    setRejectReason('');
+    setRejectDialogOpen(true);
+  };
+
+  const handleConfirmReject = async () => {
+    if (!rejectingRequest) return;
+    
+    setIsRejecting(true);
+    const success = await rejectRequest(rejectingRequest.id, rejectReason || 'Bị từ chối bởi Admin');
+    setIsRejecting(false);
+    
+    if (success) {
+      setRejectDialogOpen(false);
+      setRejectingRequest(null);
+      fetchMintRequests();
+    }
+  };
+
+  const handleDelete = async (requestId: string) => {
+    if (!confirm('Xóa mint request này? Actions sẽ được reset về trạng thái approved.')) return;
+    
+    await deleteRequest(requestId);
+    fetchMintRequests();
+  };
+
   const isAttesterWallet = address?.toLowerCase() === ATTESTER_ADDRESS.toLowerCase();
 
   const getStatusBadge = (status: string) => {
@@ -126,6 +218,8 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
         return <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30">Hoàn tất</Badge>;
       case MINT_REQUEST_STATUS.FAILED:
         return <Badge variant="destructive">Thất bại</Badge>;
+      case 'rejected':
+        return <Badge variant="outline" className="bg-red-500/10 text-red-600 border-red-500/30">Từ chối</Badge>;
       default:
         return <Badge variant="secondary">{status}</Badge>;
     }
@@ -175,7 +269,7 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
         </CardHeader>
         <CardContent>
           {/* Stats Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
             <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Chờ ký</span>
@@ -203,6 +297,13 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
                 <CheckCircle className="w-5 h-5 text-accent-foreground" />
               </div>
               <div className="text-2xl font-bold mt-1">{stats.confirmed}</div>
+            </div>
+            <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Từ chối</span>
+                <XCircle className="w-5 h-5 text-destructive" />
+              </div>
+              <div className="text-2xl font-bold mt-1">{stats.rejected}</div>
             </div>
             <div className="bg-primary/10 border border-primary/20 rounded-lg p-4">
               <div className="flex items-center justify-between">
@@ -239,7 +340,7 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
 
           {/* Tabs for different statuses */}
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-6">
               <TabsTrigger value="pending_sig" className="gap-1">
                 <Clock className="w-4 h-4" />
                 Chờ ký ({stats.pending_sig})
@@ -255,6 +356,10 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
               <TabsTrigger value="confirmed" className="gap-1">
                 <CheckCircle className="w-4 h-4" />
                 Hoàn tất ({stats.confirmed})
+              </TabsTrigger>
+              <TabsTrigger value="rejected" className="gap-1">
+                <XCircle className="w-4 h-4" />
+                Từ chối ({stats.rejected})
               </TabsTrigger>
               <TabsTrigger value="failed" className="gap-1">
                 <AlertCircle className="w-4 h-4" />
@@ -275,14 +380,31 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
                       Chọn tất cả ({selectedIds.size} đã chọn)
                     </span>
                   </div>
-                  <Button
-                    onClick={handleBatchSign}
-                    disabled={selectedIds.size === 0 || !isConnected || !isAttesterWallet}
-                    className="gap-2"
-                  >
-                    <Pencil className="w-4 h-4" />
-                    Ký hàng loạt ({selectedIds.size})
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const selectedRequests = mintRequests.filter(r => selectedIds.has(r.id));
+                        if (selectedRequests.length > 0) {
+                          handleOpenRejectDialog(selectedRequests[0]);
+                        }
+                      }}
+                      disabled={selectedIds.size === 0}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <XCircle className="w-4 h-4 mr-1" />
+                      Từ chối ({selectedIds.size})
+                    </Button>
+                    <Button
+                      onClick={handleBatchSign}
+                      disabled={selectedIds.size === 0 || !isConnected || !isAttesterWallet}
+                      className="gap-2"
+                    >
+                      <Pencil className="w-4 h-4" />
+                      Ký hàng loạt ({selectedIds.size})
+                    </Button>
+                  </div>
                 </div>
               )}
 
@@ -316,10 +438,16 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
                         key={request.id}
                         request={request}
                         isSelected={selectedIds.has(request.id)}
+                        isExpanded={expandedId === request.id}
+                        actionBreakdown={actionDetails[request.id]}
+                        isLoadingDetails={loadingDetails === request.id}
                         onSelect={(checked) => handleSelectOne(request.id, checked)}
                         onSign={() => handleSign(request)}
                         onSubmit={() => handleSubmit(request)}
                         onReset={() => handleReset(request.id)}
+                        onReject={() => handleOpenRejectDialog(request)}
+                        onDelete={() => handleDelete(request.id)}
+                        onToggleExpand={() => handleToggleExpand(request)}
                         isSigning={signingId === request.id}
                         isSubmitting={submittingId === request.id}
                         canSign={isConnected && isAttesterWallet}
@@ -334,6 +462,60 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
           </Tabs>
         </CardContent>
       </Card>
+
+      {/* Reject Dialog */}
+      <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <XCircle className="w-5 h-5 text-destructive" />
+              Từ chối Mint Request
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+              <Avatar className="w-10 h-10">
+                <AvatarImage src={rejectingRequest?.profiles?.avatar_url || undefined} />
+                <AvatarFallback>
+                  {rejectingRequest?.profiles?.username?.[0]?.toUpperCase() || 'U'}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <p className="font-medium">@{rejectingRequest?.profiles?.username || 'Unknown'}</p>
+                <p className="text-sm text-amber-600 font-bold">
+                  {formatFUN(rejectingRequest?.amount_display || 0)} FUN
+                </p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Lý do từ chối (tùy chọn)</label>
+              <Textarea
+                placeholder="Nhập lý do từ chối..."
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRejectDialogOpen(false)}>
+              Hủy
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleConfirmReject}
+              disabled={isRejecting}
+            >
+              {isRejecting ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <XCircle className="w-4 h-4 mr-2" />
+              )}
+              Xác nhận từ chối
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
@@ -342,10 +524,16 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
 interface MintRequestRowProps {
   request: MintRequest;
   isSelected: boolean;
+  isExpanded: boolean;
+  actionBreakdown?: ActionBreakdown[];
+  isLoadingDetails: boolean;
   onSelect: (checked: boolean) => void;
   onSign: () => void;
   onSubmit: () => void;
   onReset: () => void;
+  onReject: () => void;
+  onDelete: () => void;
+  onToggleExpand: () => void;
   isSigning: boolean;
   isSubmitting: boolean;
   canSign: boolean;
@@ -356,10 +544,16 @@ interface MintRequestRowProps {
 const MintRequestRow = ({
   request,
   isSelected,
+  isExpanded,
+  actionBreakdown,
+  isLoadingDetails,
   onSelect,
   onSign,
   onSubmit,
   onReset,
+  onReject,
+  onDelete,
+  onToggleExpand,
   isSigning,
   isSubmitting,
   canSign,
@@ -371,113 +565,221 @@ const MintRequestRow = ({
   const showSubmit = request.status === MINT_REQUEST_STATUS.SIGNED;
   const showTxLink = request.tx_hash && !request.tx_hash.startsWith('pending_');
   const showReset = request.status === MINT_REQUEST_STATUS.FAILED;
+  const showReject = request.status === MINT_REQUEST_STATUS.PENDING_SIG;
+  const showDelete = request.status === 'rejected' || request.status === MINT_REQUEST_STATUS.FAILED;
 
   return (
-    <div className="flex items-center gap-4 p-4 bg-card border rounded-lg hover:bg-muted/50 transition-colors">
-      {/* Checkbox */}
-      {showCheckbox && (
-        <Checkbox
-          checked={isSelected}
-          onCheckedChange={onSelect}
-        />
-      )}
+    <div className="bg-card border rounded-lg overflow-hidden">
+      <div className="flex items-center gap-4 p-4 hover:bg-muted/50 transition-colors">
+        {/* Checkbox */}
+        {showCheckbox && (
+          <Checkbox
+            checked={isSelected}
+            onCheckedChange={onSelect}
+          />
+        )}
 
-      {/* User Info */}
-      <div className="flex items-center gap-3 min-w-[150px]">
-        <Avatar className="w-10 h-10">
-          <AvatarImage src={request.profiles?.avatar_url || undefined} />
-          <AvatarFallback>
-            {request.profiles?.username?.[0]?.toUpperCase() || 'U'}
-          </AvatarFallback>
-        </Avatar>
-        <div>
-          <div className="font-medium">@{request.profiles?.username || 'Unknown'}</div>
-          <div className="text-xs text-muted-foreground">
-            {request.recipient_address.slice(0, 8)}...{request.recipient_address.slice(-6)}
+        {/* Expand Button */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={onToggleExpand}
+        >
+          {isExpanded ? (
+            <ChevronUp className="w-4 h-4" />
+          ) : (
+            <ChevronDown className="w-4 h-4" />
+          )}
+        </Button>
+
+        {/* User Info - Clickable */}
+        <div className="flex items-center gap-3 min-w-[180px]">
+          <Avatar className="w-10 h-10">
+            <AvatarImage src={request.profiles?.avatar_url || undefined} />
+            <AvatarFallback>
+              {request.profiles?.username?.[0]?.toUpperCase() || 'U'}
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <a
+              href={`/profile/${request.user_id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-primary hover:underline cursor-pointer"
+              onClick={(e) => e.stopPropagation()}
+            >
+              @{request.profiles?.username || 'Unknown'}
+            </a>
+            <div className="text-xs text-muted-foreground">
+              {request.recipient_address.slice(0, 8)}...{request.recipient_address.slice(-6)}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Amount */}
-      <div className="min-w-[100px]">
-        <div className="font-bold text-lg text-amber-500">
-          {formatFUN(request.amount_display)} FUN
+        {/* Amount */}
+        <div className="min-w-[100px]">
+          <div className="font-bold text-lg text-amber-500">
+            {formatFUN(request.amount_display)} FUN
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {request.action_types.length} actions
+          </div>
         </div>
-        <div className="text-xs text-muted-foreground">
-          {request.action_types.length} actions
+
+        {/* Status */}
+        <div className="min-w-[100px]">
+          {getStatusBadge(request.status)}
         </div>
-      </div>
 
-      {/* Status */}
-      <div className="min-w-[100px]">
-        {getStatusBadge(request.status)}
-      </div>
+        {/* Time */}
+        <div className="text-sm text-muted-foreground min-w-[100px]">
+          {formatDistanceToNow(new Date(request.created_at), { addSuffix: true, locale: vi })}
+        </div>
 
-      {/* Time */}
-      <div className="text-sm text-muted-foreground min-w-[100px]">
-        {formatDistanceToNow(new Date(request.created_at), { addSuffix: true, locale: vi })}
-      </div>
-
-      {/* Actions */}
-      <div className="flex items-center gap-2 ml-auto">
-        {showSign && (
-          <Button
-            size="sm"
-            onClick={onSign}
-            disabled={!canSign || isSigning}
-            className="gap-1"
-          >
-            {isSigning ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Pencil className="w-4 h-4" />
-            )}
-            Ký
-          </Button>
-        )}
-
-        {showSubmit && (
-          <Button
-            size="sm"
-            variant="default"
-            onClick={onSubmit}
-            disabled={!canSubmit || isSubmitting}
-            className="gap-1 bg-gradient-to-r from-purple-500 to-blue-500"
-          >
-            {isSubmitting ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Send className="w-4 h-4" />
-            )}
-            Submit
-          </Button>
-        )}
-
-        {showTxLink && (
-          <a
-            href={getTxUrl(request.tx_hash!)}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Button size="sm" variant="outline" className="gap-1">
-              <ExternalLink className="w-4 h-4" />
-              BSCScan
+        {/* Actions */}
+        <div className="flex items-center gap-2 ml-auto">
+          {showReject && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onReject}
+              className="gap-1 text-destructive hover:text-destructive"
+            >
+              <XCircle className="w-4 h-4" />
+              Từ chối
             </Button>
-          </a>
-        )}
+          )}
 
-        {showReset && (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={onReset}
-            className="gap-1"
-          >
-            <RotateCcw className="w-4 h-4" />
-            Thử lại
-          </Button>
-        )}
+          {showSign && (
+            <Button
+              size="sm"
+              onClick={onSign}
+              disabled={!canSign || isSigning}
+              className="gap-1"
+            >
+              {isSigning ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Pencil className="w-4 h-4" />
+              )}
+              Ký
+            </Button>
+          )}
+
+          {showSubmit && (
+            <Button
+              size="sm"
+              variant="default"
+              onClick={onSubmit}
+              disabled={!canSubmit || isSubmitting}
+              className="gap-1 bg-gradient-to-r from-purple-500 to-blue-500"
+            >
+              {isSubmitting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
+              Submit
+            </Button>
+          )}
+
+          {showTxLink && (
+            <a
+              href={getTxUrl(request.tx_hash!)}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Button size="sm" variant="outline" className="gap-1">
+                <ExternalLink className="w-4 h-4" />
+                BSCScan
+              </Button>
+            </a>
+          )}
+
+          {showReset && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onReset}
+              className="gap-1"
+            >
+              <RotateCcw className="w-4 h-4" />
+              Thử lại
+            </Button>
+          )}
+
+          {showDelete && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={onDelete}
+              className="gap-1 text-destructive hover:text-destructive"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
       </div>
+
+      {/* Expanded Action Details */}
+      {isExpanded && (
+        <div className="border-t bg-muted/30 p-4">
+          <h4 className="font-medium mb-3 flex items-center gap-2">
+            📊 Chi tiết Actions ({request.action_ids?.length || 0} actions)
+          </h4>
+          
+          {isLoadingDetails ? (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : actionBreakdown && actionBreakdown.length > 0 ? (
+            <div className="space-y-4">
+              {actionBreakdown.map((breakdown) => (
+                <div key={breakdown.action_type} className="space-y-2">
+                  <div className="flex items-center gap-2 font-medium">
+                    {ACTION_ICONS[breakdown.action_type] || <FileText className="w-4 h-4" />}
+                    <span>{ACTION_LABELS[breakdown.action_type] || breakdown.action_type}</span>
+                    <Badge variant="secondary" className="ml-auto">
+                      {breakdown.count} actions = {formatFUN(breakdown.total_amount)} FUN
+                    </Badge>
+                  </div>
+                  <div className="pl-6 space-y-1">
+                    {breakdown.items.slice(0, 5).map((item) => (
+                      <div key={item.id} className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <span className="text-xs">•</span>
+                        <span className="flex-1 truncate">
+                          {item.content_preview || `${breakdown.action_type} action`}
+                        </span>
+                        <span className="text-green-600 font-medium">
+                          +{item.mint_amount} FUN
+                        </span>
+                        <span className="text-xs">
+                          {formatDistanceToNow(new Date(item.created_at), { addSuffix: true, locale: vi })}
+                        </span>
+                      </div>
+                    ))}
+                    {breakdown.items.length > 5 && (
+                      <div className="text-xs text-muted-foreground pl-3">
+                        ... và {breakdown.items.length - 5} actions khác
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">Không có chi tiết actions</p>
+          )}
+
+          {/* Error message if any */}
+          {request.error_message && (
+            <div className="mt-4 p-3 bg-destructive/10 border border-destructive/30 rounded-lg">
+              <p className="text-sm text-destructive font-medium">Lỗi: {request.error_message}</p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

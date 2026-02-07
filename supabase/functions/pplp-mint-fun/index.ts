@@ -108,6 +108,24 @@ serve(async (req) => {
 
     console.log(`[PPLP-MINT] Processing mint request for user ${userId}, actions: ${action_ids.length}`);
 
+    // Anti-duplicate check: Check if any of these action_ids are already in a non-failed mint request
+    const { data: existingRequests, error: existingError } = await supabase
+      .from('pplp_mint_requests')
+      .select('id, action_ids, status')
+      .not('status', 'in', '("failed","rejected")')
+      .overlaps('action_ids', action_ids);
+
+    if (!existingError && existingRequests && existingRequests.length > 0) {
+      console.log(`[PPLP-MINT] Duplicate detected! Actions already in request(s):`, existingRequests.map(r => r.id));
+      return new Response(JSON.stringify({ 
+        error: 'Một số actions đã được claim trước đó. Vui lòng refresh và thử lại.',
+        duplicate_request_ids: existingRequests.map(r => r.id)
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Get user wallet address
     const { data: profile } = await supabase
       .from('profiles')
