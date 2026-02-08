@@ -560,3 +560,19 @@ html {
 .animate-spin-slow {
   animation: spin-slow 3s linear infinite;
 }
+
+/* Tet-themed transparent cards for floral background visibility */
+.tet-card {
+  @apply bg-card/80 backdrop-blur-sm rounded-xl border border-border;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.tet-card-strong {
+  @apply bg-card/90 backdrop-blur-md rounded-xl border border-border;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+/* Semi-transparent fb-card for Tet theme */
+.fb-card-tet {
+  @apply bg-card/80 backdrop-blur-sm rounded-lg shadow-sm border border-border;
+}
