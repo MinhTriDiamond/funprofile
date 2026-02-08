@@ -106,11 +106,11 @@
     margin-right: 16px;
   }
   
-  /* Scale video lớn hơn + tăng màu sắc hoa trên mobile */
+  /* Mobile: Không scale để hoa mai/đào ở góc không bị crop */
   .tet-video {
     top: 0 !important;
-    object-position: center center !important;
-    transform: translateX(-50%) scale(1.15) !important;
+    object-position: top center !important;
+    transform: translateX(-50%) scale(1.0) !important;
     filter: saturate(1.25) contrast(1.12) brightness(1.05) !important;
   }
 }
