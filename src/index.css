@@ -115,12 +115,12 @@
 
 /* Tết Background Container - Bắt đầu từ dưới header */
 .tet-background-container {
-  top: 56px; /* Height of header on desktop (h-14 = 56px) */
+  top: calc(56px + env(safe-area-inset-top, 0px)); /* Height of header on desktop + safe area */
 }
 
 @media (max-width: 768px) {
   .tet-background-container {
-    top: 48px; /* Height of header on mobile (h-12 = 48px) */
+    top: calc(48px + env(safe-area-inset-top, 0px)); /* Height of header on mobile + safe area */
   }
 }
 
