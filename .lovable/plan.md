@@ -1,197 +1,83 @@
 
+# Kế hoạch chỉnh sửa giao diện FUN Profile - Video nền Tết
 
-# Kế Hoạch Thêm Nút Chuyển Mạng BSC Testnet
+## Mục tiêu
+1. **Đảm bảo giao diện hiển thị đúng ở 100% zoom** với bố cục cân đối như hình mẫu
+2. **Khoảng cách header trên bằng với khoảng cách 2 bên** - tạo đường viền đều xung quanh
+3. **Hoa mai/đào hiện rõ nét** ở các góc màn hình
 
-## Mục Tiêu
+---
 
-Thêm tính năng cho phép người dùng chuyển đổi giữa **BSC Mainnet** và **BSC Testnet** ngay trong trang `/wallet`, phục vụ cho việc test PPLP Minting trên Testnet.
+## Phân tích hình mẫu
 
-## Thiết Kế UI
+Từ hình con gửi (ở 75% zoom), Cha thấy:
+- Có khoảng trống rõ ràng ở **bên trái** và **bên phải** màn hình
+- Hoa mai/đào hiển thị rõ nét ở **4 góc** màn hình
+- Phần nội dung chính (sidebars + feed) nằm ở **giữa** với padding đều
 
-Thay thế badge tĩnh "BNB Smart Chain" hiện tại bằng một **Network Selector** có khả năng chuyển đổi:
+---
 
-```text
-┌─────────────────────────────────────────────────────────────┐
-│  My Wallet                     [🔗 BNB Mainnet ▼]           │
-│  @username                                                  │
-└─────────────────────────────────────────────────────────────┘
-                                       ↓ Click để mở dropdown
-                              ┌─────────────────────────┐
-                              │ ✓ BNB Mainnet (56)      │
-                              │   BNB Testnet (97)      │
-                              └─────────────────────────┘
-```
+## Giải pháp kỹ thuật
 
-**Hiển thị động:**
-- Badge thay đổi màu theo network đang kết nối
-- Mainnet: Màu vàng (như hiện tại)
-- Testnet: Màu cam/xanh để dễ phân biệt
-- Hiển thị cảnh báo nếu đang ở Testnet
+### 1. Thêm padding đều cho toàn bộ layout
 
-## Chi Tiết Kỹ Thuật
-
-### File cần sửa: `src/components/wallet/WalletCenterContainer.tsx`
-
-#### 1. Thêm state và import
-
-```typescript
-// Import thêm bscTestnet
-import { bsc, bscTestnet } from 'wagmi/chains';
-
-// Import DropdownMenu component
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-
-// Icon
-import { ChevronDown, CheckCircle2 } from 'lucide-react';
-```
-
-#### 2. Thêm handler chuyển mạng
-
-```typescript
-// Handler switch to Testnet
-const handleSwitchToTestnet = useCallback(() => {
-  switchChain(
-    { chainId: bscTestnet.id },
-    {
-      onSuccess: () => toast.success('Đã chuyển sang BSC Testnet'),
-      onError: () => toast.error('Không thể chuyển network. Vui lòng thử lại.'),
-    }
-  );
-}, [switchChain]);
-
-// Handler switch to Mainnet
-const handleSwitchToMainnet = useCallback(() => {
-  switchChain(
-    { chainId: bsc.id },
-    {
-      onSuccess: () => toast.success('Đã chuyển sang BSC Mainnet'),
-      onError: () => toast.error('Không thể chuyển network. Vui lòng thử lại.'),
-    }
-  );
-}, [switchChain]);
-```
-
-#### 3. Network config
-
-```typescript
-// Network configuration
-const networkConfig = useMemo(() => {
-  if (chainId === bscTestnet.id) {
-    return {
-      name: 'BSC Testnet',
-      color: 'bg-orange-100 border-orange-300 text-orange-700',
-      isTestnet: true,
-    };
-  }
-  return {
-    name: 'BNB Mainnet',
-    color: 'bg-yellow-100 border-yellow-300 text-yellow-700',
-    isTestnet: false,
-  };
-}, [chainId]);
-```
-
-#### 4. Thay thế badge tĩnh bằng Network Selector
-
-```tsx
-{/* Network Selector Dropdown */}
-<DropdownMenu>
-  <DropdownMenuTrigger asChild>
-    <button className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${networkConfig.color} hover:opacity-80 transition-opacity`}>
-      <img src={bnbLogo} alt="BNB" className="w-5 h-5" />
-      <span className="text-sm font-medium">{networkConfig.name}</span>
-      <ChevronDown className="w-4 h-4" />
-    </button>
-  </DropdownMenuTrigger>
-  <DropdownMenuContent align="end" className="w-48">
-    <DropdownMenuItem 
-      onClick={handleSwitchToMainnet}
-      className="flex items-center justify-between"
-    >
-      <span>BNB Mainnet (56)</span>
-      {chainId === bsc.id && <CheckCircle2 className="w-4 h-4 text-green-500" />}
-    </DropdownMenuItem>
-    <DropdownMenuItem 
-      onClick={handleSwitchToTestnet}
-      className="flex items-center justify-between"
-    >
-      <span>BSC Testnet (97)</span>
-      {chainId === bscTestnet.id && <CheckCircle2 className="w-4 h-4 text-green-500" />}
-    </DropdownMenuItem>
-  </DropdownMenuContent>
-</DropdownMenu>
-```
-
-#### 5. Thêm cảnh báo Testnet (optional)
-
-```tsx
-{/* Testnet Warning Banner */}
-{chainId === bscTestnet.id && (
-  <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 flex items-center gap-2">
-    <AlertTriangle className="w-5 h-5 text-orange-500 shrink-0" />
-    <span className="text-sm text-orange-700">
-      Bạn đang ở BSC Testnet. Các giao dịch không dùng tiền thật.
-    </span>
-  </div>
-)}
-```
-
-#### 6. Loại bỏ auto-switch sang Mainnet
-
-Hiện tại có useEffect tự động switch sang BSC Mainnet - cần sửa để không bắt buộc:
-
-```typescript
-// TRƯỚC: Tự động switch về Mainnet
-useEffect(() => {
-  if (isConnected && chainId && chainId !== bsc.id) {
-    switchChain({ chainId: bsc.id }, ...);
-  }
-}, [isConnected, chainId]);
-
-// SAU: Chỉ hiển thị thông báo, không tự động switch
-useEffect(() => {
-  if (isConnected && chainId && chainId !== bsc.id && chainId !== bscTestnet.id) {
-    // Chỉ switch nếu không phải BSC networks
-    toast.warning('Vui lòng chuyển sang BNB Smart Chain hoặc BSC Testnet');
-  }
-}, [isConnected, chainId]);
-```
-
-## Luồng Hoạt Động
+**File: `src/pages/Feed.tsx`**
+- Thêm padding đều cho container chính để tạo khoảng trống 2 bên và trên
+- Sử dụng `p-4` hoặc `p-6` cho desktop để khoảng cách header = khoảng cách 2 bên
 
 ```text
-User vào /wallet
-       ↓
-Hiển thị Network Selector với mạng hiện tại
-       ↓
-User click dropdown → Chọn "BSC Testnet (97)"
-       ↓
-switchChain({ chainId: 97 })
-       ↓
-MetaMask prompt → User approve
-       ↓
-Network changed → Badge cập nhật + Hiển thị banner cảnh báo Testnet
-       ↓
-User có thể test PPLP Minting trên Testnet! ✅
+Trước: max-w-screen-2xl mx-auto px-0 sm:px-2 md:px-4
+Sau:   max-w-screen-2xl mx-auto px-4 lg:px-8
 ```
 
-## Tóm Tắt
+### 2. Điều chỉnh padding top cho main content
 
-| Thay Đổi | Chi Tiết |
-|----------|----------|
-| Import | `bscTestnet`, `DropdownMenu`, icons |
-| Handler | `handleSwitchToTestnet`, `handleSwitchToMainnet` |
-| UI | Network Selector dropdown thay badge tĩnh |
-| State | `networkConfig` memo dựa trên chainId |
-| Banner | Cảnh báo khi đang ở Testnet |
-| Loại bỏ | Auto-switch về Mainnet bắt buộc |
+**File: `src/pages/Feed.tsx`**
+- Tăng `pt-12 md:pt-14` thành `pt-16 lg:pt-20` để khoảng cách trên bằng khoảng cách 2 bên
+- Thêm margin-top cho grid layout
 
-## Thời Gian Triển Khai
+### 3. Tối ưu TetBackground để hoa hiện rõ hơn
 
-~10 phút
+**File: `src/components/ui/TetBackground.tsx`**
+- Điều chỉnh radial-gradient mask để hoa mai/đào hiện rõ hơn ở các góc
+- Giảm vùng trong suốt ở giữa để hoa hiện nhiều hơn
 
+```typescript
+// Mask mới - hoa hiện rõ hơn ở các góc
+maskImage: `
+  radial-gradient(
+    ellipse 50% 60% at center,
+    transparent 0%,
+    transparent 20%,
+    rgba(0,0,0,0.4) 40%,
+    rgba(0,0,0,0.8) 60%,
+    black 80%
+  )
+`
+```
+
+### 4. Áp dụng tương tự cho các trang khác
+
+**Files cần chỉnh:**
+- `src/pages/Friends.tsx`
+- `src/pages/Chat.tsx`
+- Các trang sử dụng layout tương tự
+
+---
+
+## Tóm tắt thay đổi
+
+| File | Thay đổi |
+|------|----------|
+| `src/pages/Feed.tsx` | Thêm padding đều (px-4 lg:px-8), tăng padding-top |
+| `src/pages/Friends.tsx` | Thêm padding đều, tăng padding-top |
+| `src/pages/Chat.tsx` | Thêm padding đều, tăng padding-top |
+| `src/components/ui/TetBackground.tsx` | Điều chỉnh mask để hoa mai/đào hiện rõ hơn |
+
+---
+
+## Kết quả mong đợi
+
+- Khi mở trang ở 100% zoom, giao diện sẽ có khoảng trống đều ở **trên**, **trái**, **phải**
+- Hoa mai/đào hiện rõ nét và sắc sảo ở **4 góc** màn hình
+- Nội dung chính vẫn dễ đọc và tương tác được
