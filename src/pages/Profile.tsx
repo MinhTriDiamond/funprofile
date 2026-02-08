@@ -308,7 +308,7 @@ const Profile = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#f0f2f5] overflow-hidden">
+      <div className="min-h-screen overflow-hidden">
         <FacebookNavbar />
         <main className="fixed inset-x-0 top-[3cm] bottom-0 overflow-y-auto">
           <Skeleton className="h-[350px] w-full" />
@@ -319,7 +319,7 @@ const Profile = () => {
 
   if (!profile) {
     return (
-      <div className="min-h-screen bg-[#f0f2f5] overflow-hidden">
+      <div className="min-h-screen overflow-hidden">
         <FacebookNavbar />
         <main className="fixed inset-x-0 top-[3cm] bottom-0 overflow-y-auto">
           <div className="max-w-5xl mx-auto px-[2cm] text-center py-12">
@@ -331,7 +331,7 @@ const Profile = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background overflow-hidden">
+    <div className="min-h-screen overflow-hidden">
       <FacebookNavbar />
       
       {/* View As Banner */}
@@ -388,7 +388,7 @@ const Profile = () => {
           </div>
 
           {/* Profile Info Section - Facebook 2025 Layout */}
-          <div className="bg-card border-b border-border shadow-sm md:rounded-b-xl">
+          <div className="bg-card/80 border-b border-border shadow-sm md:rounded-b-xl">
             <div className="px-4 md:px-8 py-4 md:py-6">
               {/* Avatar + Info Row */}
               <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
@@ -560,7 +560,7 @@ const Profile = () => {
                     <div className="lg:col-span-2 space-y-4">
                       <TabsContent value="posts" className="mt-0 space-y-4">
                         {/* Intro Card - Facebook style */}
-                        <div className="bg-card rounded-xl shadow-sm border border-border p-4">
+                        <div className="bg-card/70 rounded-xl shadow-sm border border-border p-4">
                         <div className="flex items-center justify-between mb-3">
                             <h3 className="font-bold text-lg text-foreground">{t('personalInfo')}</h3>
                             {showPrivateElements && (
@@ -610,7 +610,7 @@ const Profile = () => {
                         </div>
 
                         {/* Photos Card - Facebook style */}
-                        <div className="bg-card rounded-xl shadow-sm border border-border p-4">
+                        <div className="bg-card/70 rounded-xl shadow-sm border border-border p-4">
                           <div className="flex justify-between items-center mb-3">
                             <h3 className="font-bold text-lg text-foreground">{t('photos')}</h3>
                             <button 
@@ -639,7 +639,7 @@ const Profile = () => {
                         </div>
 
                         {/* Friends Card - Facebook style with real data */}
-                        <div className="bg-card rounded-xl shadow-sm border border-border p-4">
+                        <div className="bg-card/70 rounded-xl shadow-sm border border-border p-4">
                           <div className="flex justify-between items-center mb-3">
                             <div>
                               <h3 className="font-bold text-lg text-foreground">{t('friends')}</h3>
@@ -701,7 +701,7 @@ const Profile = () => {
                         )}
                         
                         {sortedPosts.length === 0 ? (
-                          <div className="bg-card rounded-xl shadow-sm border border-border p-8 text-center text-muted-foreground">
+                          <div className="bg-card/70 rounded-xl shadow-sm border border-border p-8 text-center text-muted-foreground">
                             {t('noPostsYet')}
                           </div>
                         ) : (
@@ -745,7 +745,7 @@ const Profile = () => {
                       </TabsContent>
 
                       <TabsContent value="about" className="mt-0">
-                        <div className="bg-card rounded-xl shadow-sm border border-border p-6">
+                        <div className="bg-card/70 rounded-xl shadow-sm border border-border p-6">
                           <h3 className="font-bold text-xl mb-4 text-foreground">{t('about')}</h3>
                           <div className="space-y-4">
                             <div className="flex items-center gap-3 text-foreground">
@@ -769,14 +769,14 @@ const Profile = () => {
                       </TabsContent>
 
                       <TabsContent value="friends" className="mt-0">
-                        <div className="bg-card rounded-xl shadow-sm border border-border p-6">
+                        <div className="bg-card/70 rounded-xl shadow-sm border border-border p-6">
                           <h3 className="font-bold text-xl mb-4 text-foreground">{t('friends')}</h3>
                           <FriendsList userId={profile.id} />
                         </div>
                       </TabsContent>
 
                       <TabsContent value="photos" className="mt-0">
-                        <div className="bg-card rounded-xl shadow-sm border border-border p-6">
+                        <div className="bg-card/70 rounded-xl shadow-sm border border-border p-6">
                           <h3 className="font-bold text-xl mb-4 text-foreground">{t('photos')}</h3>
                           <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                             {originalPosts.filter(p => p.image_url).map((post, i) => (
@@ -795,7 +795,7 @@ const Profile = () => {
                       </TabsContent>
 
                       <TabsContent value="videos" className="mt-0">
-                        <div className="bg-card rounded-xl shadow-sm border border-border p-6">
+                        <div className="bg-card/70 rounded-xl shadow-sm border border-border p-6">
                           <h3 className="font-bold text-xl mb-4 text-foreground">{t('reels')}</h3>
                           <div className="grid grid-cols-2 gap-4">
                             {originalPosts.filter(p => p.video_url).map((post, i) => (
@@ -815,7 +815,7 @@ const Profile = () => {
 
                       {showPrivateElements && (
                         <TabsContent value="edit" className="mt-0">
-                          <div className="bg-card rounded-xl shadow-sm border border-border p-6">
+                          <div className="bg-card/70 rounded-xl shadow-sm border border-border p-6">
                             <EditProfile />
                           </div>
                         </TabsContent>
