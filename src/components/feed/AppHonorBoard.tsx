@@ -180,7 +180,7 @@ export const AppHonorBoard = memo(() => {
   ];
 
   return (
-    <div className="rounded-2xl overflow-hidden border-2 border-gold/60 bg-card/70 backdrop-blur-sm shadow-lg">
+    <div className="rounded-2xl overflow-hidden border-2 border-gold/60 bg-card/70 shadow-lg">
       <div className="relative p-3 space-y-3">
         {/* Header */}
         <div className="text-center">
