@@ -113,6 +113,17 @@
 /* Desktop: cover, Mobile: contain  */
 /* ================================ */
 
+/* Tết Background Container - Bắt đầu từ dưới header */
+.tet-background-container {
+  top: 56px; /* Height of header on desktop (h-14 = 56px) */
+}
+
+@media (max-width: 768px) {
+  .tet-background-container {
+    top: 48px; /* Height of header on mobile (h-12 = 48px) */
+  }
+}
+
 /* Desktop: cover full + màu sắc nhẹ nhàng */
 .tet-video {
   object-fit: cover;
