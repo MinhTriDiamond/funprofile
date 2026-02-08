@@ -10,7 +10,7 @@ export const TetBackground = memo(() => {
   return (
     <div 
       className="fixed inset-0 overflow-hidden pointer-events-none"
-      style={{ zIndex: -100 }}
+      style={{ zIndex: 9999 }}
     >
       <video
         autoPlay
