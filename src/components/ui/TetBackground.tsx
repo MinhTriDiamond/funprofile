@@ -4,7 +4,7 @@ import tetVideo from '@/assets/tet-background.mp4';
 /**
  * Tết Background Video Component
  * Video nền hoa mai/đào động, hiển thị phía dưới tất cả nội dung
- * Hoa mai/đào hiện rõ nét ở 2 bên góc màn hình
+ * Hoa mai/đào hiện rõ nét ở 2 bên góc màn hình - KHÔNG CÓ OVERLAY che phủ
  */
 export const TetBackground = memo(() => {
   return (
@@ -22,7 +22,10 @@ export const TetBackground = memo(() => {
       >
         <source src={tetVideo} type="video/mp4" />
       </video>
-      {/* Gradient overlay: trong suốt hoàn toàn ở 2 bên để hoa mai/đào hiển thị rõ nét */}
+      {/* 
+        Overlay gradient cực nhẹ - chỉ làm mờ nhẹ ở vùng giữa để text dễ đọc
+        Hai bên hoàn toàn trong suốt để hoa mai/đào hiển thị rõ nét 100%
+      */}
       <div 
         className="absolute inset-0"
         style={{
@@ -30,9 +33,11 @@ export const TetBackground = memo(() => {
             linear-gradient(
               to right,
               rgba(255,255,255,0) 0%,
-              rgba(255,255,255,0.3) 15%,
+              rgba(255,255,255,0) 20%,
+              rgba(255,255,255,0.4) 35%,
               rgba(255,255,255,0.5) 50%,
-              rgba(255,255,255,0.3) 85%,
+              rgba(255,255,255,0.4) 65%,
+              rgba(255,255,255,0) 80%,
               rgba(255,255,255,0) 100%
             )
           `
