@@ -111,7 +111,7 @@ const Feed = () => {
             </aside>
 
             {/* Main Feed - Full width on mobile */}
-            <div className="col-span-1 lg:col-span-6 w-full px-2 sm:px-0">
+            <div className="col-span-1 lg:col-span-6 w-full px-0">
               <StoriesBar />
 
               {currentUserId && <FacebookCreatePost onPostCreated={refetch} />}

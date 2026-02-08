@@ -319,7 +319,7 @@ const FacebookPostCardComponent = ({
 
   return (
     <>
-      <div className="fb-card mb-3 sm:mb-4 overflow-hidden mx-0">
+      <div className="fb-card mb-3 sm:mb-4 overflow-hidden">
         {/* Post Header */}
         <div className="flex items-start justify-between p-4">
           <div className="flex items-center gap-3">
