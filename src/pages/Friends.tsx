@@ -228,7 +228,7 @@ const Friends = () => {
           <aside className={`
             fixed inset-y-0 left-0 z-40 w-[300px] lg:w-[360px] bg-card shadow-lg 
             transform transition-transform duration-300 ease-in-out
-            lg:translate-x-0 lg:top-14 lg:h-[calc(100vh-56px)]
+            lg:translate-x-0 lg:top-28 xl:top-32 lg:h-[calc(100vh-7rem)] xl:h-[calc(100vh-8rem)]
             ${showSidebar ? 'translate-x-0' : '-translate-x-full'}
           `}>
             {/* Mobile close button */}
