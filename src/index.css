@@ -93,6 +93,11 @@
   contain-intrinsic-size: auto 300px;
 }
 
+/* Desktop: Tăng màu sắc hoa mai/hoa đào nhẹ nhàng */
+.tet-video {
+  filter: saturate(1.15) contrast(1.08) brightness(1.02);
+}
+
 /* Mobile: Tối ưu hoa mai/đào hiển thị rõ ràng - CHỈ MOBILE */
 @media (max-width: 768px) {
   .fb-card {
