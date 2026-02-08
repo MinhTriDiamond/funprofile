@@ -4,10 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { UnifiedAuthForm } from '@/components/auth/UnifiedAuthForm';
 import { useLanguage } from '@/i18n/LanguageContext';
 import LanguageSwitcher from '@/components/layout/LanguageSwitcher';
-// Use direct paths for logos to ensure consistency across all environments
-import { Button } from '@/components/ui/button';
+import { TetBackground } from '@/components/ui/TetBackground';
 import { Eye } from 'lucide-react';
-
 const Auth = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -88,12 +86,9 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50/30 to-amber-50/20 flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Static background - no blur for performance */}
-      <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-emerald-100/40 rounded-full" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-amber-100/40 rounded-full" />
-      </div>
+    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Video nền hoa mai/hoa đào - rõ nét 100% như hoa thật */}
+      <TetBackground />
 
       {/* Language Switcher - Top Right with 13 languages */}
       <div className="absolute top-4 right-4 z-50">
