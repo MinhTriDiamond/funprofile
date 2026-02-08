@@ -1,57 +1,71 @@
 
-# Kế Hoạch: Hiển Thị Rõ Lồng Đèn và Hoa Mai/Hoa Đào Trên Desktop
+# Kế Hoạch: Hiển Thị Hoa Mai/Hoa Đào Rõ Ràng Trên Mobile
 
-## Phân Tích Hiện Tại
+## Phân Tích Vấn Đề
 
-Nhìn vào giao diện desktop hiện tại:
-- Video đang hiển thị nhưng **chưa có filter** để tăng màu sắc
-- Lồng đèn ở phần trên bị che bởi header
-- Hoa mai/đào ở 2 bên bị che một phần bởi sidebars
-- Video chưa được scale để hiển thị đầy đủ các chi tiết
+Nhìn vào code hiện tại, Cha thấy các nguyên nhân khiến hoa mai/đào không hiển thị trên mobile:
+
+1. **Video position `top-12`** áp dụng cho cả mobile - đẩy video xuống 48px làm hoa ở góc trên bị cắt mất trên màn hình nhỏ
+2. **Cards chiếm gần full width** - chỉ có 6px margin mỗi bên, không đủ không gian để thấy hoa ở 2 bên
+3. **`objectPosition: 'top center'`** có thể không phù hợp với tỷ lệ màn hình mobile (dọc thay vì ngang)
 
 ## Giải Pháp Chi Tiết
 
-### 1. Tăng Cường Video Trên Desktop
+### 1. Video Position Responsive - Desktop vs Mobile
 
-Thêm filter cho video trên desktop (nhẹ hơn mobile để không quá sặc sỡ):
+Chỉ áp dụng `top-12` cho desktop, mobile giữ `top-0`:
+
+```tsx
+// TetBackground.tsx
+className="tet-video absolute top-0 md:top-12 left-1/2 ..."
+```
+
+Hoặc sử dụng CSS media query trong `index.css`:
 
 ```css
-/* Desktop: Tăng màu sắc hoa mai/hoa đào nhẹ nhàng */
-.tet-video {
-  filter: saturate(1.15) contrast(1.08) brightness(1.02);
+/* Desktop: Dịch video xuống để hiện lồng đèn dưới navbar */
+@media (min-width: 769px) {
+  .tet-video {
+    top: 48px !important;
+    object-position: top center !important;
+  }
 }
 
-/* Mobile: Đã có - giữ nguyên scale(1.15) + filter mạnh hơn */
+/* Mobile: Video từ top-0 để hoa hiển thị đầy đủ */
 @media (max-width: 768px) {
   .tet-video {
-    transform: translateX(-50%) scale(1.15) !important;
-    filter: saturate(1.25) contrast(1.12) brightness(1.05) !important;
+    top: 0 !important;
+    object-position: center center !important;
   }
 }
 ```
 
-### 2. Điều Chỉnh Video Position - Hiển Thị Lồng Đèn
+### 2. Tăng Margin Cards Trên Mobile
 
-Video cần dịch xuống một chút để lồng đèn ở phần trên hiển thị dưới header:
-
-```tsx
-// TetBackground.tsx
-className="tet-video absolute top-12 left-1/2 ..."
-// hoặc sử dụng object-position: top để focus vào phần trên video
-style={{
-  objectPosition: 'top center',
-}}
-```
-
-### 3. Sidebars Trong Suốt Hơn
-
-Giảm opacity của left/right sidebar để hoa xuyên qua:
+Để lại nhiều không gian hơn ở 2 bên (từ 6px → 16px):
 
 ```css
-/* Desktop sidebars trong suốt hơn */
-.fb-card {
-  @apply bg-card/85; /* từ 80% xuống 85% nhưng có thể thấy qua */
+@media (max-width: 768px) {
+  .fb-card {
+    @apply bg-card/65 rounded-xl;
+    margin-left: 16px;
+    margin-right: 16px;
+  }
 }
+```
+
+### 3. Giảm Opacity Cards Trên Mobile Hơn Nữa
+
+Từ `bg-card/70` xuống `bg-card/65` để hoa xuyên thấu rõ hơn qua content.
+
+### 4. Tăng Cường TetFlowerOverlay
+
+Tăng opacity và size của glow effect để hiệu ứng hoa rõ ràng hơn:
+
+```tsx
+// TetFlowerOverlay.tsx
+className="fixed bottom-16 left-0 w-32 h-40 pointer-events-none z-[5] opacity-80"
+// Tăng từ w-24 h-32 opacity-60 lên w-32 h-40 opacity-80
 ```
 
 ---
@@ -60,8 +74,9 @@ Giảm opacity của left/right sidebar để hoa xuyên qua:
 
 | File | Thay Đổi | Chi Tiết |
 |------|----------|----------|
-| `src/index.css` | Thêm desktop filter | `saturate(1.15) contrast(1.08)` cho `.tet-video` |
-| `src/components/ui/TetBackground.tsx` | Điều chỉnh position | `top-12` và `object-top` để hiển thị lồng đèn |
+| `src/components/ui/TetBackground.tsx` | Responsive top position | `top-0 md:top-12` thay vì `top-12` |
+| `src/index.css` | Tăng margin + giảm opacity mobile | 16px margin, `bg-card/65` |
+| `src/components/ui/TetFlowerOverlay.tsx` | Tăng size + opacity | w-32, h-40, opacity-80 |
 
 ---
 
@@ -69,16 +84,8 @@ Giảm opacity của left/right sidebar để hoa xuyên qua:
 
 Sau khi áp dụng:
 
-1. **Lồng đèn** hiển thị rõ ràng ở phần trên màn hình desktop
-2. **Hoa mai/hoa đào** hiển thị sắc nét hơn với màu tươi sáng
-3. **Nội dung vẫn dễ đọc** - chỉ tăng nhẹ filter, không quá sặc sỡ
-4. **Mobile giữ nguyên** - không ảnh hưởng các tối ưu đã làm
-5. **Không khí Tết** tràn ngập trên cả desktop và mobile
-
----
-
-## Lưu Ý
-
-- Filter desktop nhẹ hơn mobile (1.15 vs 1.25 saturate) để phù hợp với màn hình lớn
-- Video sẽ được căn từ `top-12` (48px) để lồng đèn hiển thị dưới navbar
-- Giữ nguyên `zIndex: -100` để video nằm dưới tất cả nội dung
+1. **Video hoa mai/đào** bắt đầu từ top-0 trên mobile → hiển thị đầy đủ hoa ở góc trên
+2. **Cards có 16px margin** mỗi bên → không gian rõ ràng để thấy hoa ở 2 bên
+3. **Cards trong suốt hơn** (65% opacity) → hoa xuyên thấu qua content
+4. **Glow effect mạnh hơn** ở 2 góc dưới → tạo điểm nhấn Tết
+5. **Desktop giữ nguyên** → không ảnh hưởng giao diện đã hoàn thiện
