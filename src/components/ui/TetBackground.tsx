@@ -3,41 +3,49 @@ import tetVideo from '@/assets/tet-background.mp4';
 
 /**
  * Tết Background Video Component
- * Video nền hoa mai/đào động, hiển thị phía dưới tất cả nội dung
- * Hoa mai/đào hiện rõ nét ở 2 bên góc màn hình
+ * Video nền hoa mai/đào động, hiển thị ở LỚP TRÊN CÙNG (foreground)
+ * Sử dụng mask để hoa mai/đào hiện rõ nét ở 2 bên góc màn hình
+ * Phần giữa trong suốt để nội dung vẫn hiển thị và tương tác được
  */
 export const TetBackground = memo(() => {
   return (
     <div 
       className="fixed inset-0 overflow-hidden pointer-events-none"
-      style={{ zIndex: -100 }}
+      style={{ zIndex: 9999 }}
     >
       <video
         autoPlay
         loop
         muted
         playsInline
-        className="absolute top-1/2 left-1/2 min-w-full min-h-full w-auto h-auto -translate-x-1/2 -translate-y-1/2 object-cover"
+        className="absolute inset-0 w-full h-full object-cover"
+        style={{
+          // Mask: hiển thị rõ ở 4 góc, ẩn dần về giữa
+          maskImage: `
+            radial-gradient(
+              ellipse 60% 70% at center,
+              transparent 0%,
+              transparent 30%,
+              rgba(0,0,0,0.3) 50%,
+              rgba(0,0,0,0.7) 70%,
+              black 90%
+            )
+          `,
+          WebkitMaskImage: `
+            radial-gradient(
+              ellipse 60% 70% at center,
+              transparent 0%,
+              transparent 30%,
+              rgba(0,0,0,0.3) 50%,
+              rgba(0,0,0,0.7) 70%,
+              black 90%
+            )
+          `
+        }}
         aria-hidden="true"
       >
         <source src={tetVideo} type="video/mp4" />
       </video>
-      {/* Overlay rất nhẹ để hoa mai hoa đào hiện rõ nét */}
-      <div 
-        className="absolute inset-0"
-        style={{
-          background: `
-            linear-gradient(
-              to right,
-              rgba(255,255,255,0) 0%,
-              rgba(255,255,255,0.35) 20%,
-              rgba(255,255,255,0.45) 50%,
-              rgba(255,255,255,0.35) 80%,
-              rgba(255,255,255,0) 100%
-            )
-          `
-        }}
-      />
     </div>
   );
 });
