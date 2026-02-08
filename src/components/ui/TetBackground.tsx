@@ -8,6 +8,8 @@ import tetVideo from '@/assets/tet-background.mp4';
  * 
  * Mobile: object-fit: contain để KHÔNG crop hoa/lồng đèn
  * Desktop: object-fit: cover để full-screen đẹp
+ * 
+ * Tương thích: iOS Safari, Chrome, Firefox, Edge
  */
 export const TetBackground = memo(() => {
   return (
@@ -23,8 +25,19 @@ export const TetBackground = memo(() => {
         loop
         muted
         playsInline
+        webkit-playsinline="true"
+        x5-playsinline="true"
+        x5-video-player-type="h5"
+        x5-video-player-fullscreen="false"
+        disablePictureInPicture
+        disableRemotePlayback
+        preload="auto"
         className="tet-video absolute inset-0 w-full h-full"
         aria-hidden="true"
+        style={{
+          WebkitTransform: 'translateZ(0)',
+          transform: 'translateZ(0)',
+        }}
       >
         <source src={tetVideo} type="video/mp4" />
       </video>
