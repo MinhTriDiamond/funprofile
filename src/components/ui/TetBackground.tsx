@@ -18,26 +18,11 @@ export const TetBackground = memo(() => {
         muted
         playsInline
         className="absolute top-1/2 left-1/2 min-w-full min-h-full w-auto h-auto -translate-x-1/2 -translate-y-1/2 object-cover"
+        style={{ mixBlendMode: 'multiply' }}
         aria-hidden="true"
       >
         <source src={tetVideo} type="video/mp4" />
       </video>
-      {/* Overlay rất nhẹ để hoa mai hoa đào hiện rõ nét */}
-      <div 
-        className="absolute inset-0"
-        style={{
-          background: `
-            linear-gradient(
-              to right,
-              rgba(255,255,255,0) 0%,
-              rgba(255,255,255,0.35) 20%,
-              rgba(255,255,255,0.45) 50%,
-              rgba(255,255,255,0.35) 80%,
-              rgba(255,255,255,0) 100%
-            )
-          `
-        }}
-      />
     </div>
   );
 });
