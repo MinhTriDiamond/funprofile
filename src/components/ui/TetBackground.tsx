@@ -14,7 +14,7 @@ import tetVideo from '@/assets/tet-background.mp4';
 export const TetBackground = memo(() => {
   return (
     <div 
-      className="fixed inset-0 overflow-hidden pointer-events-none tet-background-container"
+      className="fixed left-0 right-0 bottom-0 overflow-hidden pointer-events-none tet-background-container"
       style={{ zIndex: -100 }}
     >
       {/* Nền phụ để lấp khoảng trống khi contain trên mobile */}
