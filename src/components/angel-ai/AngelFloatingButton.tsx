@@ -29,7 +29,7 @@ export const AngelFloatingButton = memo(({ showOnDesktop = false }: AngelFloatin
           {/* Avatar container */}
           <div className="relative w-14 h-14 rounded-full overflow-hidden border-2 border-amber-400 shadow-lg shadow-amber-500/50 group-hover:border-amber-300 group-hover:scale-105 transition-all duration-300">
             <img 
-              src="/angel-ai-logo-36.webp" 
+              src="/angel-ai-logo-36.png" 
               alt="ANGEL AI" 
               className="w-full h-full object-cover"
             />

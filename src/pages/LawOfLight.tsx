@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { Sparkles, Eye } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageContext';
 
-const ANGEL_LOGO = '/angel-ai-logo-128.webp';
+const ANGEL_LOGO = '/angel-ai-logo-128.png';
 
 const LawOfLight = () => {
   const navigate = useNavigate();
