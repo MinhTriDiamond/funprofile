@@ -222,8 +222,8 @@ const Friends = () => {
   return (
     <div className="min-h-screen">
       <FacebookNavbar />
-      <main className="pt-14 pb-20 md:pb-6">
-        <div className="flex">
+      <main className="pt-16 lg:pt-20 pb-20 md:pb-6">
+        <div className="flex px-4 lg:px-8">
           {/* Left Sidebar - Hidden on mobile, shown on lg+ */}
           <aside className={`
             fixed inset-y-0 left-0 z-40 w-[300px] lg:w-[360px] bg-card shadow-lg 
