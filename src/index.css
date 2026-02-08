@@ -93,25 +93,64 @@
   contain-intrinsic-size: auto 300px;
 }
 
-/* Desktop: Tăng màu sắc hoa mai/hoa đào nhẹ nhàng */
+/* ================================ */
+/* Fixed Scroll Shell - App Layout  */
+/* Safe-area aware for iPhone notch */
+/* ================================ */
+.app-shell-content {
+  top: calc(3cm + env(safe-area-inset-top, 0px));
+}
+
+@media (max-width: 640px) {
+  .app-shell-content {
+    top: calc(1.5cm + env(safe-area-inset-top, 0px));
+  }
+}
+
+/* ================================ */
+/* Tết Video Background             */
+/* Desktop: cover, Mobile: contain  */
+/* ================================ */
+
+/* Desktop: cover full + màu sắc nhẹ nhàng */
 .tet-video {
+  object-fit: cover;
+  object-position: top center;
   filter: saturate(1.15) contrast(1.08) brightness(1.02);
 }
 
-/* Mobile: Tối ưu hoa mai/đào hiển thị rõ ràng - CHỈ MOBILE */
-@media (max-width: 768px) {
+/* Mobile Portrait: contain để không crop hoa/lồng đèn */
+@media (max-width: 768px) and (orientation: portrait) {
+  .tet-video {
+    object-fit: contain;
+    object-position: top center;
+    filter: saturate(1.25) contrast(1.12) brightness(1.05);
+  }
+  
   .fb-card {
     @apply bg-card/65 rounded-xl;
     margin-left: 16px;
     margin-right: 16px;
   }
   
-  /* Mobile: Không scale để hoa mai/đào ở góc không bị crop */
+  /* Navbar trong suốt hơn để thấy lồng đèn */
+  .fb-header {
+    @apply bg-card/70;
+  }
+}
+
+/* Mobile Landscape: cover vẫn đẹp */
+@media (max-width: 768px) and (orientation: landscape) {
   .tet-video {
-    top: 0 !important;
-    object-position: top center !important;
-    transform: translateX(-50%) scale(1.0) !important;
-    filter: saturate(1.25) contrast(1.12) brightness(1.05) !important;
+    object-fit: cover;
+    object-position: center center;
+    filter: saturate(1.20) contrast(1.10) brightness(1.03);
+  }
+  
+  .fb-card {
+    @apply bg-card/70 rounded-xl;
+    margin-left: 8px;
+    margin-right: 8px;
   }
 }
 
