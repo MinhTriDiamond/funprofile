@@ -57,7 +57,7 @@ const Post = () => {
     return (
       <div className="min-h-screen bg-[#f0f2f5] pb-20 lg:pb-0">
         <FacebookNavbar />
-        <main className="pt-28 md:pt-32">
+        <main className="pt-36 md:pt-40">
           <div className="max-w-2xl mx-auto px-4 sm:px-6 md:px-10 py-6">
             <Skeleton className="h-[400px] w-full rounded-xl" />
           </div>
@@ -71,7 +71,7 @@ const Post = () => {
     return (
       <div className="min-h-screen bg-[#f0f2f5] pb-20 lg:pb-0">
         <FacebookNavbar />
-        <main className="pt-28 md:pt-32">
+        <main className="pt-36 md:pt-40">
           <div className="max-w-2xl mx-auto px-4 sm:px-6 md:px-10 py-20">
             <div className="bg-white rounded-xl shadow-sm p-12 text-center">
               <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -96,7 +96,7 @@ const Post = () => {
   return (
     <div className="min-h-screen bg-[#f0f2f5] pb-20 lg:pb-0">
       <FacebookNavbar />
-      <main className="pt-28 md:pt-32">
+      <main className="pt-36 md:pt-40">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 md:px-10 py-6">
           {/* Back Button */}
           <Button 
