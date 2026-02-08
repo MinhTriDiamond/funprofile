@@ -183,8 +183,7 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
-              textShadow: '3px 3px 0px #9B30FF, 4px 4px 0px #8B008B, 5px 5px 8px rgba(139, 0, 139, 0.5)',
-              filter: 'drop-shadow(0 0 10px rgba(255, 105, 180, 0.4))',
+              filter: 'drop-shadow(1px 1px 0px rgba(255,255,255,0.5)) drop-shadow(0 0 8px rgba(255, 182, 193, 0.5))',
             }}
           >
             {t('funEcosystem')}
