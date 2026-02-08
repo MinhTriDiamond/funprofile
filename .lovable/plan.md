@@ -1,101 +1,124 @@
 
-
-# Kế Hoạch Hiển Thị Video Hoa Mai/Hoa Đào Tại Trang Cá Nhân
+# Kế Hoạch Chỉnh Sửa Nền Bóng Kính Cho Tất Cả Các Trang
 
 ## Phân Tích Vấn Đề
 
-Qua kiểm tra code, tôi phát hiện các vấn đề sau:
+Qua kiểm tra code và screenshots con gửi, tôi phát hiện các trang sau đang dùng **nền đặc (solid background)** khiến video hoa mai/hoa đào không hiển thị:
 
-### 1. Trang Profile dùng nền đặc (solid background)
-- **Dòng 334**: `<div className="min-h-screen bg-background overflow-hidden">`
-- `bg-background` là màu nền đặc, che hoàn toàn video Tết
+### 1. Trang Bạn Bè (Friends.tsx)
+- **Sidebar bên trái (dòng 229)**: `bg-card` - nền đặc hoàn toàn
+- **Mobile Header (dòng 292)**: `bg-card` - nền đặc
+- **Các card bạn bè**: `bg-card` - nền đặc
+- **Container đường dây 389**: `bg-card` - nền đặc
 
-### 2. Các card trong Profile dùng nền đặc
-- **Profile Info Section (dòng 391)**: `bg-card` - nền đặc
-- **Intro Card (dòng 563)**: `bg-card` - nền đặc  
-- **Photos Card (dòng 613)**: `bg-card` - nền đặc
-- **Friends Card (dòng 642)**: `bg-card` - nền đặc
-- **About, Photos, Videos, Edit tabs**: Tất cả dùng `bg-card` - nền đặc
+### 2. Trang Tin Nhắn (Chat.tsx)
+- **Mobile header (dòng 95)**: `bg-card` - nền đặc
+- **Desktop sidebar (dòng 183)**: `bg-card` - nền đặc
+- **Conversation list container**: nền đặc
 
-### 3. So sánh với trang Feed
-- Trang Feed: `<div className="min-h-screen overflow-hidden">` - KHÔNG có `bg-background`
-- Video Tết hiển thị được trên trang Feed
+### 3. Trang Thông Báo (Notifications.tsx)
+- **Container chính (dòng 235)**: `bg-background` - nền đặc
+- **Header (dòng 237)**: `bg-background/95` - gần như nền đặc
+
+### 4. Component FriendCarousel (FriendCarousel.tsx)
+- **Card bạn bè (dòng 164)**: `bg-card` - nền đặc
+
+### 5. Trang Wallet (WalletCenterContainer.tsx)
+- **Các card (dòng 483)**: `bg-white` - nền trắng đặc
 
 ---
 
 ## Giải Pháp
 
-### Bước 1: Xóa nền đặc của trang Profile
-Thay đổi container chính từ `bg-background` thành trong suốt để video Tết hiển thị.
-
-### Bước 2: Áp dụng hiệu ứng bóng kính cho các card
-Thay đổi tất cả `bg-card` thành `bg-card/70` hoặc `bg-card/80` để có hiệu ứng trong suốt, cho phép nhìn thấy hoa mai/hoa đào xuyên qua.
+Áp dụng hiệu ứng **bóng kính (glass effect)** cho tất cả các component bằng cách:
+- Thay `bg-card` → `bg-card/70` hoặc `bg-card/80`
+- Thay `bg-background` → xóa bỏ hoặc `bg-background/70`
+- Thay `bg-white` → `bg-white/70`
 
 ---
 
-## Chi Tiết Thay Đổi
+## Chi Tiết Thay Đổi Theo File
 
-### File: `src/pages/Profile.tsx`
+### File 1: `src/pages/Friends.tsx`
 
-| Vị trí | Thay đổi |
-|--------|----------|
-| Dòng 334 | `bg-background` → (xóa bỏ) |
-| Dòng 311 | `bg-[#f0f2f5]` → (xóa bỏ) - Loading state |
-| Dòng 322 | `bg-[#f0f2f5]` → (xóa bỏ) - Not found state |
-| Dòng 391 | Profile Info: `bg-card` → `bg-card/80` |
-| Dòng 563 | Intro Card: `bg-card` → `bg-card/70` |
-| Dòng 613 | Photos Card: `bg-card` → `bg-card/70` |
-| Dòng 642 | Friends Card: `bg-card` → `bg-card/70` |
-| Dòng 704 | Empty posts Card: `bg-card` → `bg-card/70` |
-| Dòng 748 | About Tab: `bg-card` → `bg-card/70` |
-| Dòng 772 | Friends Tab: `bg-card` → `bg-card/70` |
-| Dòng 779 | Photos Tab: `bg-card` → `bg-card/70` |
-| Dòng 798 | Videos Tab: `bg-card` → `bg-card/70` |
-| Dòng 818 | Edit Tab: `bg-card` → `bg-card/70` |
+| Dòng | Trước | Sau |
+|------|-------|-----|
+| 229 | `bg-card shadow-lg` | `bg-card/80 shadow-lg` |
+| 292 | `bg-card border-b` | `bg-card/80 border-b` |
+| 389 | `bg-card rounded-xl` | `bg-card/70 rounded-xl` |
+| 399 | `bg-card rounded-xl` | `bg-card/70 rounded-xl` |
+
+### File 2: `src/pages/Chat.tsx`
+
+| Dòng | Trước | Sau |
+|------|-------|-----|
+| 95 | `bg-card` | `bg-card/80` |
+| 183 | `bg-card flex` | `bg-card/80 flex` |
+
+### File 3: `src/pages/Notifications.tsx`
+
+| Dòng | Trước | Sau |
+|------|-------|-----|
+| 235 | `bg-background` | (xóa bỏ) |
+| 237 | `bg-background/95` | `bg-card/80` |
+
+### File 4: `src/components/friends/FriendCarousel.tsx`
+
+| Dòng | Trước | Sau |
+|------|-------|-----|
+| 164 | `bg-card rounded-xl` | `bg-card/70 rounded-xl` |
+
+### File 5: `src/components/wallet/WalletCenterContainer.tsx`
+
+| Dòng | Trước | Sau |
+|------|-------|-----|
+| 483 | `bg-white rounded-2xl` | `bg-white/80 rounded-2xl` |
+| Và các vị trí khác dùng `bg-white` | `bg-white` | `bg-white/70` hoặc `bg-white/80` |
 
 ---
 
 ## Kết Quả Mong Đợi
 
 Sau khi hoàn thành:
-- Video hoa mai/hoa đào hiển thị rõ nét phía sau trang cá nhân
-- Các card có hiệu ứng bóng kính trong suốt
-- Nội dung vẫn dễ đọc với độ mờ 70-80%
-- Cánh hoa bay động thấy được xuyên qua các phần trong suốt
+
+```text
+╔══════════════════════════════════════════════════════════════╗
+║ 🏮 HOA ĐÀO        [Navbar 85%]             HOA MAI 🏮       ║
+╠══════════════════════════════════════════════════════════════╣
+║                                                              ║
+║  ┌────────────────┐  ┌──────────────────────────────────┐   ║
+║  │ Sidebar        │  │  Main Content                    │   ║
+║  │ (bg-card/80)   │  │  (trong suốt - thấy hoa)         │   ║
+║  │                │  │                                  │   ║
+║  │ 🌸 hoa hiện rõ │  │  ┌────────────────────────────┐  │   ║
+║  │                │  │  │ Card Item (bg-card/70)     │  │   ║
+║  │                │  │  │ 🌺 thấy hoa xuyên qua      │  │   ║
+║  │                │  │  └────────────────────────────┘  │   ║
+║  │                │  │                                  │   ║
+║  └────────────────┘  └──────────────────────────────────┘   ║
+║                                                              ║
+║              🌸 cánh hoa bay động hiện rõ 🌸                 ║
+║                                                              ║
+╚══════════════════════════════════════════════════════════════╝
+```
 
 ---
 
-## Sơ Đồ Minh Họa
+## Tổng Quan Files Cần Chỉnh Sửa
 
-```text
-╔═══════════════════════════════════════════════════════════════╗
-║ 🏮 HOA ĐÀO       [Navbar 85%]              HOA MAI 🏮        ║
-╠═══════════════════════════════════════════════════════════════╣
-║                                                               ║
-║  ┌─────────────────────────────────────────────────────────┐  ║
-║  │ Cover Photo (ảnh bìa)                                   │  ║
-║  │                                                         │  ║
-║  └─────────────────────────────────────────────────────────┘  ║
-║                                                               ║
-║  ┌─────────────────────────────────────────────────────────┐  ║
-║  │ Profile Info (bg-card/80 - bóng kính)                   │  ║
-║  │ Avatar | Name | Friends | Bio | Honor Board             │  ║
-║  └─────────────────────────────────────────────────────────┘  ║
-║                                                               ║
-║  ┌─────────────────┐  ┌───────────────────────────────────┐  ║
-║  │ Intro Card      │  │ Posts                             │  ║
-║  │ (bg-card/70)    │  │ (hoa xuyên qua)                   │  ║
-║  │ 🌸 hoa hiện rõ  │  │                                   │  ║
-║  ├─────────────────┤  │ ┌─────────────────────────────┐   │  ║
-║  │ Photos Card     │  │ │ Post Card                   │   │  ║
-║  │ (bg-card/70)    │  │ │ (bg-card/70)                │   │  ║
-║  ├─────────────────┤  │ └─────────────────────────────┘   │  ║
-║  │ Friends Card    │  │                                   │  ║
-║  │ (bg-card/70)    │  │                                   │  ║
-║  └─────────────────┘  └───────────────────────────────────┘  ║
-║                                                               ║
-║               🌸 cánh hoa bay động hiện rõ 🌸                 ║
-║                                                               ║
-╚═══════════════════════════════════════════════════════════════╝
-```
+1. **src/pages/Friends.tsx** - 4 vị trí
+2. **src/pages/Chat.tsx** - 2 vị trí  
+3. **src/pages/Notifications.tsx** - 2 vị trí
+4. **src/components/friends/FriendCarousel.tsx** - 1 vị trí
+5. **src/components/wallet/WalletCenterContainer.tsx** - Nhiều vị trí dùng `bg-white`
 
+Tổng cộng: **5 files** cần chỉnh sửa
+
+---
+
+## Lưu Ý Kỹ Thuật
+
+- Độ trong suốt `70%` (`bg-card/70`) cho card/item nhỏ
+- Độ trong suốt `80%` (`bg-card/80`) cho sidebar/header lớn
+- Giữ nguyên `shadow-sm` và `border` để card vẫn có chiều sâu
+- Video hoa mai/hoa đào sẽ hiển thị xuyên qua các lớp trong suốt
