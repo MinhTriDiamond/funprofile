@@ -115,7 +115,7 @@ const Leaderboard = () => {
   });
 
   return (
-    <div className="min-h-screen bg-[#f0f2f5] overflow-hidden">
+    <div className="min-h-screen overflow-hidden">
       <FacebookNavbar />
       <main data-app-scroll className="fixed inset-x-0 top-[3cm] bottom-0 overflow-y-auto pb-20 lg:pb-0">
         <div className="max-w-5xl mx-auto px-[2cm] py-6">
@@ -137,7 +137,7 @@ const Leaderboard = () => {
           </div>
 
           {/* Category Tabs */}
-          <div className="bg-white rounded-xl shadow-sm p-2 mb-6 flex gap-2 overflow-x-auto">
+          <div className="bg-white/80 rounded-xl shadow-sm p-2 mb-6 flex gap-2 overflow-x-auto">
             {categories.map((cat) => (
               <button
                 key={cat.value}
@@ -158,7 +158,7 @@ const Leaderboard = () => {
           {!loading && sortedByCategory.length >= 3 && (
             <div className="grid grid-cols-3 gap-4 mb-6">
               {/* 2nd Place */}
-              <div className="bg-white rounded-xl shadow-sm p-6 text-center order-1 mt-8">
+              <div className="bg-white/80 rounded-xl shadow-sm p-6 text-center order-1 mt-8">
                 <div className="w-16 h-16 bg-gradient-to-r from-gray-300 to-gray-500 rounded-full flex items-center justify-center mx-auto mb-3 text-white text-2xl font-bold">
                   2
                 </div>
@@ -179,7 +179,7 @@ const Leaderboard = () => {
               </div>
 
               {/* 1st Place */}
-              <div className="bg-white rounded-xl shadow-lg p-6 text-center order-2 ring-2 ring-yellow-400">
+              <div className="bg-white/80 rounded-xl shadow-lg p-6 text-center order-2 ring-2 ring-yellow-400">
                 <div className="w-20 h-20 bg-gradient-to-r from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center mx-auto mb-3 text-white">
                   <Trophy className="w-10 h-10" />
                 </div>
@@ -200,7 +200,7 @@ const Leaderboard = () => {
               </div>
 
               {/* 3rd Place */}
-              <div className="bg-white rounded-xl shadow-sm p-6 text-center order-3 mt-12">
+              <div className="bg-white/80 rounded-xl shadow-sm p-6 text-center order-3 mt-12">
                 <div className="w-14 h-14 bg-gradient-to-r from-amber-500 to-amber-700 rounded-full flex items-center justify-center mx-auto mb-3 text-white text-xl font-bold">
                   3
                 </div>
@@ -223,7 +223,7 @@ const Leaderboard = () => {
           )}
 
           {/* Full Leaderboard */}
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div className="bg-white/80 rounded-xl shadow-sm overflow-hidden">
             <div className="p-4 border-b">
               <h2 className="font-bold text-lg">{t('fullLeaderboard')}</h2>
             </div>

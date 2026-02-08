@@ -17,12 +17,16 @@ export const TetBackground = memo(() => {
         loop
         muted
         playsInline
-        className="absolute top-12 left-1/2 min-w-full min-h-full w-auto h-auto -translate-x-1/2 object-cover object-top"
+        className="tet-video absolute top-12 left-1/2 min-w-full min-h-full w-auto h-auto -translate-x-1/2 object-cover object-top"
         aria-hidden="true"
+        style={{
+          willChange: 'transform',
+          filter: 'saturate(1.15) contrast(1.08)',
+        }}
       >
         <source src={tetVideo} type="video/mp4" />
       </video>
-      {/* No overlay - hoa mai/đào hiển thị rõ nét 100% */}
+      {/* No overlay - hoa mai/đào hiển thị rõ nét 100% như hoa thật */}
     </div>
   );
 });

@@ -73,7 +73,7 @@ export const MobileBottomNav = memo(() => {
       <AngelFloatingButton />
       
       {/* Bottom Navigation Bar - Fixed with larger touch targets */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-white dark:bg-gray-900 border-t border-border/30 safe-area-bottom">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-white/90 dark:bg-gray-900/90 border-t border-border/30 safe-area-bottom">
         <div className="flex items-center justify-around h-[72px] px-1 max-w-lg mx-auto">
           {navItems.map((item, index) => {
             // Gift button - special component
