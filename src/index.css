@@ -239,8 +239,7 @@
 @media (max-width: 1023px) {
   .fb-card {
     @apply rounded-none sm:rounded-lg;
-    margin-left: 0;
-    margin-right: 0;
+    /* margin removed - let 768px media query apply 16px margins for hoa mai/dao visibility */
   }
   
   /* Ensure adequate touch targets - but don't affect icons/small elements */
