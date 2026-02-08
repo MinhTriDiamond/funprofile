@@ -101,12 +101,6 @@
   top: calc(3cm + env(safe-area-inset-top, 0px));
 }
 
-@media (max-width: 640px) {
-  .app-shell-content {
-    top: calc(1.5cm + env(safe-area-inset-top, 0px));
-  }
-}
-
 /* ================================ */
 /* Tết Video Background             */
 /* Desktop: cover, Mobile: contain  */
