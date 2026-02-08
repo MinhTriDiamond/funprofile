@@ -232,7 +232,7 @@ const Notifications = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background pb-20 lg:pb-0 pt-[calc(3cm+100px)]">
+    <div className="min-h-screen bg-background overflow-hidden pb-20 lg:pb-0">
       {/* Header */}
       <div className="fixed top-[3cm] left-0 right-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border">
         <div className="flex items-center justify-between px-4 sm:px-6 md:px-10 py-3">
@@ -296,7 +296,7 @@ const Notifications = () => {
       </div>
 
       {/* Notifications List */}
-      <div className="divide-y divide-border">
+      <div className="fixed inset-x-0 top-[calc(3cm+100px)] bottom-[72px] lg:bottom-0 overflow-y-auto divide-y divide-border">
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />

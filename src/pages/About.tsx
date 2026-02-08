@@ -47,9 +47,9 @@ const About = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-[#f0f2f5] pb-20 lg:pb-0">
+    <div className="min-h-screen bg-[#f0f2f5] overflow-hidden pb-20 lg:pb-0">
       <FacebookNavbar />
-      <main className="pt-[3cm]">
+      <main data-app-scroll className="fixed inset-x-0 top-[3cm] bottom-0 overflow-y-auto pb-20 lg:pb-0">
         {/* Hero Section */}
         <div className="bg-gradient-to-r from-primary via-primary/90 to-gold py-16 px-4 sm:px-6 md:px-10">
           <div className="max-w-5xl mx-auto text-center text-white">

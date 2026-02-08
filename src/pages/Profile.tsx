@@ -308,9 +308,9 @@ const Profile = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#f0f2f5]">
+      <div className="min-h-screen bg-[#f0f2f5] overflow-hidden">
         <FacebookNavbar />
-        <main className="pt-[3cm]">
+        <main className="fixed inset-x-0 top-[3cm] bottom-0 overflow-y-auto">
           <Skeleton className="h-[350px] w-full" />
         </main>
       </div>
@@ -319,9 +319,9 @@ const Profile = () => {
 
   if (!profile) {
     return (
-      <div className="min-h-screen bg-[#f0f2f5]">
+      <div className="min-h-screen bg-[#f0f2f5] overflow-hidden">
         <FacebookNavbar />
-        <main className="pt-[3cm]">
+        <main className="fixed inset-x-0 top-[3cm] bottom-0 overflow-y-auto">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 md:px-10 text-center py-12">
             <p className="text-muted-foreground">{t('profileNotFound')}</p>
           </div>
@@ -331,7 +331,7 @@ const Profile = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-hidden">
       <FacebookNavbar />
       
       {/* View As Banner */}
@@ -351,7 +351,7 @@ const Profile = () => {
         </div>
       )}
       
-      <main className={`pb-20 lg:pb-4 ${viewAsPublic ? 'pt-[4cm]' : 'pt-[3cm]'}`}>
+      <main data-app-scroll className={`fixed inset-x-0 bottom-0 overflow-y-auto pb-20 lg:pb-4 ${viewAsPublic ? 'top-[4cm]' : 'top-[3cm]'}`}>
         {/* Cover Photo Section - Facebook 2025 Style */}
         <div className="max-w-[1100px] mx-auto px-4 sm:px-6 md:px-10">
           <div className="relative">
