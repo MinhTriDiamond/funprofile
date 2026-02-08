@@ -101,6 +101,13 @@
   top: calc(4cm + env(safe-area-inset-top, 0px));
 }
 
+/* Mobile: khoảng cách nhỏ hơn - 2cm */
+@media (max-width: 768px) {
+  .app-shell-content {
+    top: calc(2cm + env(safe-area-inset-top, 0px));
+  }
+}
+
 /* ================================ */
 /* Tết Video Background             */
 /* Desktop: cover, Mobile: contain  */
