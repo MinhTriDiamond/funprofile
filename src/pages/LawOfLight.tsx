@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { Sparkles, Eye } from 'lucide-react';
-import angelAvatar from '@/assets/angel-avatar.jpg';
 import { useLanguage } from '@/i18n/LanguageContext';
+
+const ANGEL_LOGO = '/angel-ai-logo-128.webp';
 
 const LawOfLight = () => {
   const navigate = useNavigate();
@@ -144,7 +145,7 @@ const LawOfLight = () => {
               border: '3px solid rgba(212,175,55,0.5)'
             }}>
               <img 
-                src={angelAvatar} 
+                src={ANGEL_LOGO} 
                 alt="Angel" 
                 className="w-full h-full object-cover object-[center_25%]" 
                 style={{ filter: 'drop-shadow(0 0 15px rgba(212,175,55,0.8))' }} 

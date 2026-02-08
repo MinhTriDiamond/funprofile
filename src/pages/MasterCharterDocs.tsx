@@ -1,7 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Book, Share2 } from 'lucide-react';
-import angelAvatar from '@/assets/angel-avatar.jpg';
+
+const ANGEL_LOGO = '/angel-ai-logo-128.webp';
 
 const MasterCharterDocs = () => {
   const navigate = useNavigate();
@@ -96,7 +97,7 @@ const MasterCharterDocs = () => {
               boxShadow: '0 0 80px rgba(212,175,55,0.4), 0 0 120px rgba(255,255,255,0.6)',
               border: '3px solid rgba(212,175,55,0.5)'
             }}>
-              <img src={angelAvatar} alt="Angel" className="w-full h-full object-cover object-[center_25%]" />
+              <img src={ANGEL_LOGO} alt="Angel" className="w-full h-full object-cover object-[center_25%]" />
             </div>
 
             <div className="flex items-center justify-center gap-2 mb-2">

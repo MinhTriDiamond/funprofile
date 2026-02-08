@@ -1,6 +1,5 @@
 import { memo, useState } from 'react';
 import { Sparkles } from 'lucide-react';
-import angelAvatar from '@/assets/angel-avatar.jpg';
 import { AngelChatWidget } from './AngelChatWidget';
 
 interface AngelFloatingButtonProps {
@@ -30,7 +29,7 @@ export const AngelFloatingButton = memo(({ showOnDesktop = false }: AngelFloatin
           {/* Avatar container */}
           <div className="relative w-14 h-14 rounded-full overflow-hidden border-2 border-amber-400 shadow-lg shadow-amber-500/50 group-hover:border-amber-300 group-hover:scale-105 transition-all duration-300">
             <img 
-              src={angelAvatar} 
+              src="/angel-ai-logo-36.webp" 
               alt="ANGEL AI" 
               className="w-full h-full object-cover"
             />
