@@ -10,7 +10,7 @@ export const TetBackground = memo(() => {
   return (
     <div 
       className="fixed inset-0 overflow-hidden pointer-events-none"
-      style={{ zIndex: -100 }}
+      style={{ zIndex: 9999 }}
     >
       <video
         autoPlay
@@ -22,20 +22,16 @@ export const TetBackground = memo(() => {
       >
         <source src={tetVideo} type="video/mp4" />
       </video>
-      {/* Overlay rất nhẹ để hoa mai hoa đào hiện rõ nét */}
+      {/* Mask để chỉ hiện hoa ở 2 góc: góc trái trên (logo) và góc phải trên (avatar) */}
       <div 
         className="absolute inset-0"
         style={{
           background: `
-            linear-gradient(
-              to right,
-              rgba(255,255,255,0) 0%,
-              rgba(255,255,255,0.35) 20%,
-              rgba(255,255,255,0.45) 50%,
-              rgba(255,255,255,0.35) 80%,
-              rgba(255,255,255,0) 100%
-            )
-          `
+            radial-gradient(ellipse 40% 60% at 0% 0%, transparent 0%, white 70%),
+            radial-gradient(ellipse 40% 60% at 100% 0%, transparent 0%, white 70%),
+            white
+          `,
+          backgroundBlendMode: 'multiply'
         }}
       />
     </div>
