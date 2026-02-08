@@ -18,10 +18,12 @@ export const TetBackground = memo(() => {
         loop
         muted
         playsInline
-        className="absolute top-12 left-1/2 w-auto h-auto min-w-full min-h-full -translate-x-1/2 object-cover object-top"
+        className="absolute top-0 left-1/2 w-auto h-auto min-w-full min-h-full object-cover object-center"
         style={{
+          // Scale lớn hơn để hoa mai/đào hiển thị rõ ở các góc
+          transform: 'translateX(-50%) scale(1.15)',
           // Tăng độ tươi sắc màu hoa mai/hoa đào như hoa thật
-          filter: 'saturate(1.15) contrast(1.08) brightness(1.02)',
+          filter: 'saturate(1.25) contrast(1.12) brightness(1.05)',
           // Tối ưu render video mượt mà
           willChange: 'transform',
           // Mobile: đảm bảo video full viewport
