@@ -562,49 +562,17 @@ html {
 }
 
 /* Tet-themed transparent cards for floral background visibility */
-/* NO backdrop-blur - hoa mai/đào hiển thị rõ nét 100% như hoa thật */
 .tet-card {
-  @apply bg-card/80 rounded-xl border border-border;
+  @apply bg-card/80 backdrop-blur-sm rounded-xl border border-border;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .tet-card-strong {
-  @apply bg-card/90 rounded-xl border border-border;
+  @apply bg-card/90 backdrop-blur-md rounded-xl border border-border;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 /* Semi-transparent fb-card for Tet theme */
 .fb-card-tet {
-  @apply bg-card/80 rounded-lg shadow-sm border border-border;
-}
-
-/* ================================ */
-/* TET VIDEO MOBILE OPTIMIZATION   */
-/* ================================ */
-
-/* Tăng độ rõ nét và tươi sáng cho video hoa mai/đào */
-.tet-video {
-  will-change: transform;
-  transform: translateZ(0);
-  backface-visibility: hidden;
-}
-
-/* Mobile: Video full height với dynamic viewport */
-@media (max-width: 768px) {
-  .tet-video {
-    min-height: 100vh;
-    min-height: 100dvh;
-    object-position: center top;
-  }
-}
-
-/* Safe area cho mobile - đảm bảo nội dung không bị che */
-@supports (padding-bottom: env(safe-area-inset-bottom)) {
-  .safe-area-bottom {
-    padding-bottom: max(env(safe-area-inset-bottom, 0px), 16px);
-  }
-  
-  .safe-area-top {
-    padding-top: env(safe-area-inset-top, 0px);
-  }
+  @apply bg-card/80 backdrop-blur-sm rounded-lg shadow-sm border border-border;
 }
