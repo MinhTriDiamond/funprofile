@@ -93,6 +93,15 @@
   contain-intrinsic-size: auto 300px;
 }
 
+/* Mobile: Cards trong suốt hơn để hoa mai/đào hiển thị rõ ràng */
+@media (max-width: 768px) {
+  .fb-card {
+    @apply bg-card/70 rounded-xl;
+    margin-left: 6px;
+    margin-right: 6px;
+  }
+}
+
 /* Facebook-style Hover */
 .fb-hover {
   @apply hover:bg-muted/50 transition-colors cursor-pointer rounded-lg;
