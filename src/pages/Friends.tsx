@@ -226,7 +226,7 @@ const Friends = () => {
         <div className="flex">
           {/* Left Sidebar - Hidden on mobile, shown on lg+ */}
           <aside className={`
-            fixed inset-y-0 left-0 z-40 w-[300px] lg:w-[360px] bg-card shadow-lg 
+            fixed inset-y-0 left-0 z-40 w-[300px] lg:w-[360px] bg-card/80 shadow-lg 
             transform transition-transform duration-300 ease-in-out
             lg:translate-x-0 lg:top-[3cm] lg:h-[calc(100vh-3cm)]
             ${showSidebar ? 'translate-x-0' : '-translate-x-full'}
@@ -289,7 +289,7 @@ const Friends = () => {
           {/* Main Content */}
           <div className="flex-1 lg:ml-[360px] min-w-0">
             {/* Mobile Header */}
-            <div className="lg:hidden sticky top-0 z-20 bg-card border-b border-border px-4 py-3">
+            <div className="lg:hidden sticky top-0 z-20 bg-card/80 border-b border-border px-4 py-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <button 
@@ -386,7 +386,7 @@ const Friends = () => {
                       />
                     </div>
                   </div>
-                  <div className="bg-card rounded-xl shadow-sm">
+                  <div className="bg-card/70 rounded-xl shadow-sm">
                     <FriendsList userId={currentUserId} />
                   </div>
                 </div>
@@ -396,7 +396,7 @@ const Friends = () => {
               {activeTab === 'birthdays' && (
                 <div className="px-4">
                   <h2 className="text-xl font-bold mb-4 hidden lg:block">Sinh nhật</h2>
-                  <div className="bg-card rounded-xl shadow-sm p-8 text-center">
+                  <div className="bg-card/70 rounded-xl shadow-sm p-8 text-center">
                     <Gift className="w-16 h-16 mx-auto text-muted-foreground/30 mb-4" />
                     <p className="text-muted-foreground">Không có sinh nhật nào hôm nay</p>
                   </div>
