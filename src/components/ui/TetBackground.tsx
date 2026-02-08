@@ -22,18 +22,18 @@ export const TetBackground = memo(() => {
       >
         <source src={tetVideo} type="video/mp4" />
       </video>
-      {/* Gradient overlay: trong suốt ở 2 bên để thấy hoa, mờ hơn ở giữa để đọc chữ */}
+      {/* Overlay rất nhẹ để hoa mai hoa đào hiện rõ nét */}
       <div 
         className="absolute inset-0"
         style={{
           background: `
             linear-gradient(
               to right,
-              rgba(255,255,255,0.1) 0%,
-              rgba(255,255,255,0.6) 15%,
-              rgba(255,255,255,0.75) 50%,
-              rgba(255,255,255,0.6) 85%,
-              rgba(255,255,255,0.1) 100%
+              rgba(255,255,255,0) 0%,
+              rgba(255,255,255,0.35) 20%,
+              rgba(255,255,255,0.45) 50%,
+              rgba(255,255,255,0.35) 80%,
+              rgba(255,255,255,0) 100%
             )
           `
         }}
