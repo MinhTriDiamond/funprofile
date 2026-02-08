@@ -100,7 +100,7 @@ const Feed = () => {
     <div className="min-h-screen">
       <FacebookNavbar />
       
-      <main className="pt-20 md:pt-24 pb-20 lg:pb-4">
+      <main className="pt-28 md:pt-32 pb-20 lg:pb-4">
         <div className="max-w-screen-2xl mx-auto px-0 sm:px-2 md:px-4">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 sm:gap-2 md:gap-4 py-2 md:py-4">
             {/* Left Sidebar - Hidden on mobile/tablet */}
