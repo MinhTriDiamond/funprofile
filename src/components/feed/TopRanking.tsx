@@ -83,7 +83,7 @@ export const TopRanking = memo(() => {
   );
 
   return (
-    <div className="rounded-2xl overflow-hidden border-2 border-gold/60 bg-card/80 backdrop-blur-sm shadow-lg">
+    <div className="rounded-2xl overflow-hidden border-2 border-gold/60 bg-card/70 backdrop-blur-sm shadow-lg">
       <div className="relative p-3 space-y-2">
         {/* Header with logo */}
         <div className="text-center space-y-1">
