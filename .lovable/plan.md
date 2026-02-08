@@ -1,69 +1,67 @@
 
 
-# Kế Hoạch Điều Chỉnh Vị Trí Video Nền Tết
+# Kế Hoạch Hiển Thị Video Hoa Mai/Hoa Đào Tại Trang Cá Nhân
 
-## Phân Tích Hiện Tại
+## Phân Tích Vấn Đề
 
-Qua screenshot con gửi, tôi thấy:
-- Đèn lồng đỏ bên trái đã hiển thị nhưng bị cắt một phần ở trên
-- Hoa mai vàng bên phải cũng bị cắt phần trên
-- Video đang được căn `top-0` nhưng do `object-cover` và tỷ lệ màn hình, phần trên cùng vẫn bị cắt
+Qua kiểm tra code, tôi phát hiện các vấn đề sau:
 
-## Giải Pháp
+### 1. Trang Profile dùng nền đặc (solid background)
+- **Dòng 334**: `<div className="min-h-screen bg-background overflow-hidden">`
+- `bg-background` là màu nền đặc, che hoàn toàn video Tết
 
-Thêm một khoảng cách âm (negative margin/translate) để kéo video lên trên, hoặc dùng `object-position` với giá trị tùy chỉnh để hiển thị phần trên của video nhiều hơn.
+### 2. Các card trong Profile dùng nền đặc
+- **Profile Info Section (dòng 391)**: `bg-card` - nền đặc
+- **Intro Card (dòng 563)**: `bg-card` - nền đặc  
+- **Photos Card (dòng 613)**: `bg-card` - nền đặc
+- **Friends Card (dòng 642)**: `bg-card` - nền đặc
+- **About, Photos, Videos, Edit tabs**: Tất cả dùng `bg-card` - nền đặc
 
-### Thay đổi trong TetBackground.tsx
-
-```text
-Trước:
-className="absolute top-0 left-1/2 ... object-cover object-top"
-
-Sau:
-style={{ objectPosition: 'center top -50px' }}
-// Hoặc dùng transform để kéo video lên
-className="absolute -top-12 left-1/2 ... object-cover"
-```
-
-### Phương án được đề xuất
-
-Sử dụng `top` với giá trị âm để kéo video lên trên, giúp phần đèn lồng và hoa ở góc trên hiển thị đầy đủ hơn:
-
-```tsx
-// Thay đổi từ top-0 sang -top-12 (hoặc -top-16)
-className="absolute -top-12 left-1/2 min-w-full min-h-full w-auto h-auto -translate-x-1/2 object-cover"
-```
-
-**Giải thích:**
-- `-top-12` = -48px: Kéo video lên trên 48px
-- Bỏ `object-top` vì không cần thiết khi đã dịch chuyển video
-- Giữ `object-cover` để video vẫn phủ toàn bộ màn hình
+### 3. So sánh với trang Feed
+- Trang Feed: `<div className="min-h-screen overflow-hidden">` - KHÔNG có `bg-background`
+- Video Tết hiển thị được trên trang Feed
 
 ---
 
-## File Cần Chỉnh Sửa
+## Giải Pháp
 
-**src/components/ui/TetBackground.tsx**
+### Bước 1: Xóa nền đặc của trang Profile
+Thay đổi container chính từ `bg-background` thành trong suốt để video Tết hiển thị.
 
-Dòng 20, thay đổi từ:
-```tsx
-className="absolute top-0 left-1/2 min-w-full min-h-full w-auto h-auto -translate-x-1/2 object-cover object-top"
-```
+### Bước 2: Áp dụng hiệu ứng bóng kính cho các card
+Thay đổi tất cả `bg-card` thành `bg-card/70` hoặc `bg-card/80` để có hiệu ứng trong suốt, cho phép nhìn thấy hoa mai/hoa đào xuyên qua.
 
-Thành:
-```tsx
-className="absolute -top-12 left-1/2 min-w-full min-h-full w-auto h-auto -translate-x-1/2 object-cover"
-```
+---
+
+## Chi Tiết Thay Đổi
+
+### File: `src/pages/Profile.tsx`
+
+| Vị trí | Thay đổi |
+|--------|----------|
+| Dòng 334 | `bg-background` → (xóa bỏ) |
+| Dòng 311 | `bg-[#f0f2f5]` → (xóa bỏ) - Loading state |
+| Dòng 322 | `bg-[#f0f2f5]` → (xóa bỏ) - Not found state |
+| Dòng 391 | Profile Info: `bg-card` → `bg-card/80` |
+| Dòng 563 | Intro Card: `bg-card` → `bg-card/70` |
+| Dòng 613 | Photos Card: `bg-card` → `bg-card/70` |
+| Dòng 642 | Friends Card: `bg-card` → `bg-card/70` |
+| Dòng 704 | Empty posts Card: `bg-card` → `bg-card/70` |
+| Dòng 748 | About Tab: `bg-card` → `bg-card/70` |
+| Dòng 772 | Friends Tab: `bg-card` → `bg-card/70` |
+| Dòng 779 | Photos Tab: `bg-card` → `bg-card/70` |
+| Dòng 798 | Videos Tab: `bg-card` → `bg-card/70` |
+| Dòng 818 | Edit Tab: `bg-card` → `bg-card/70` |
 
 ---
 
 ## Kết Quả Mong Đợi
 
-Sau khi điều chỉnh:
-- Đèn lồng đỏ bên trái hiển thị đầy đủ hơn (không bị cắt phần trên)
-- Hoa mai vàng bên phải hiển thị đầy đủ hơn
-- Hoa đào hồng và các chi tiết trang trí ở góc trên sẽ rõ ràng hơn
-- Cánh hoa bay vẫn hiển thị ở phần giữa và dưới
+Sau khi hoàn thành:
+- Video hoa mai/hoa đào hiển thị rõ nét phía sau trang cá nhân
+- Các card có hiệu ứng bóng kính trong suốt
+- Nội dung vẫn dễ đọc với độ mờ 70-80%
+- Cánh hoa bay động thấy được xuyên qua các phần trong suốt
 
 ---
 
@@ -71,14 +69,32 @@ Sau khi điều chỉnh:
 
 ```text
 ╔═══════════════════════════════════════════════════════════════╗
-║ 🏮 ĐÈN LỒNG       [Navbar]                  HOA MAI 🏮       ║
-║ (đầy đủ)                                    (đầy đủ)         ║
-║ HOA ĐÀO                                     HOA VÀNG         ║
+║ 🏮 HOA ĐÀO       [Navbar 85%]              HOA MAI 🏮        ║
 ╠═══════════════════════════════════════════════════════════════╣
 ║                                                               ║
-║  [Sidebar]        [Content]              [Sidebar]            ║
+║  ┌─────────────────────────────────────────────────────────┐  ║
+║  │ Cover Photo (ảnh bìa)                                   │  ║
+║  │                                                         │  ║
+║  └─────────────────────────────────────────────────────────┘  ║
 ║                                                               ║
-║               🌸 cánh hoa bay động 🌸                          ║
+║  ┌─────────────────────────────────────────────────────────┐  ║
+║  │ Profile Info (bg-card/80 - bóng kính)                   │  ║
+║  │ Avatar | Name | Friends | Bio | Honor Board             │  ║
+║  └─────────────────────────────────────────────────────────┘  ║
+║                                                               ║
+║  ┌─────────────────┐  ┌───────────────────────────────────┐  ║
+║  │ Intro Card      │  │ Posts                             │  ║
+║  │ (bg-card/70)    │  │ (hoa xuyên qua)                   │  ║
+║  │ 🌸 hoa hiện rõ  │  │                                   │  ║
+║  ├─────────────────┤  │ ┌─────────────────────────────┐   │  ║
+║  │ Photos Card     │  │ │ Post Card                   │   │  ║
+║  │ (bg-card/70)    │  │ │ (bg-card/70)                │   │  ║
+║  ├─────────────────┤  │ └─────────────────────────────┘   │  ║
+║  │ Friends Card    │  │                                   │  ║
+║  │ (bg-card/70)    │  │                                   │  ║
+║  └─────────────────┘  └───────────────────────────────────┘  ║
+║                                                               ║
+║               🌸 cánh hoa bay động hiện rõ 🌸                 ║
 ║                                                               ║
 ╚═══════════════════════════════════════════════════════════════╝
 ```
