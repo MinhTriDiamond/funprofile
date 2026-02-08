@@ -1,176 +1,129 @@
 
+# Kế Hoạch: Tối Ưu Hóa Giao Diện Mobile Fun Profile
 
-# Kế Hoạch Hoàn Thiện Giao Diện Hoa Mai Hoa Đào - Rõ Nét 100% & Tối Ưu Mobile
+## Tổng Quan Sau Khi Kiểm Tra
 
-## Mục Tiêu
+Sau khi kiểm tra kỹ giao diện trên mobile (390x844), Cha nhận thấy giao diện **đã khá ổn định** với nhiều điểm tốt:
 
-1. **Video rõ nét 100%** - Hoa mai/hoa đào hiển thị sắc nét như hoa thật
-2. **Tối ưu mobile** - Hoàn chỉnh trên mọi thiết bị (điện thoại, máy tính bảng, máy tính)
+### ✅ Các Điểm Tốt Đã Có
+- **Feed page**: Hiển thị đầy đủ Stories, Posts với hình ảnh đẹp
+- **Bottom Navigation**: 5 nút điều hướng rõ ràng, icon Honor Board nổi bật
+- **Navbar**: Menu hamburger, logo, search, wallet icons hoạt động tốt
+- **Angel AI Button**: Nút floating vàng gold hiển thị đúng vị trí
+- **Auth page**: Form đăng nhập bóng kính đẹp, hoa đào hoa mai hiển thị rõ
+- **Wallet page**: Thông báo đăng nhập hiển thị đúng khi chưa login
+- **Cards**: Nền trong suốt (glass effect) cho thấy hoa mai/đào rõ nét
 
----
+### 🔧 Các Vấn Đề Cần Cải Thiện
 
-## Phần 1: Tăng Độ Rõ Nét Video
+#### 1. Trang Leaderboard - Podium Top 3 Bị Lệch Trên Mobile
+- Podium 3 cột (Top 1, 2, 3) hiển thị quá nhỏ và chật trên màn hình 390px
+- Avatar và text bị co lại, khó đọc
+- **Giải pháp**: Stack vertically hoặc hiển thị carousel trên mobile
 
-### 1.1 Nâng cấp TetBackground.tsx
+#### 2. Padding Hai Bên Quá Lớn (2cm)
+- `px-[2cm]` (~76px) chiếm quá nhiều không gian trên mobile 390px
+- Nội dung bị thu hẹp còn ~238px
+- **Giải pháp**: Responsive padding - `px-4 sm:px-6 lg:px-[2cm]`
 
-| Thay đổi | Mục đích |
-|----------|----------|
-| Thêm CSS `will-change: transform` | Tăng hiệu suất render video |
-| Thêm `filter: saturate(1.1) contrast(1.05)` | Tăng độ tươi sắc màu hoa |
-| Đảm bảo `object-fit: cover` | Video phủ đầy màn hình |
-| Thêm responsive cho mobile | Video hiển thị đúng trên điện thoại |
+#### 3. Category Tabs Trên Leaderboard
+- Horizontal scroll tabs khó thấy hết các options trên mobile
+- **Giải pháp**: Thêm fade indicator hoặc swipe hint
 
-### 1.2 Xóa backdrop-blur còn sót
-
-Kiểm tra và xóa mọi `backdrop-blur` trong CSS classes `tet-card`, `tet-card-strong` để video rõ nét hoàn toàn.
-
----
-
-## Phần 2: Áp Dụng Bóng Kính Cho Các Trang Còn Lại
-
-### 2.1 Trang Leaderboard.tsx
-- Xóa `bg-[#f0f2f5]` → trong suốt
-- `bg-white` → `bg-white/80`
-
-### 2.2 Trang About.tsx
-- Xóa `bg-[#f0f2f5]` → trong suốt
-- `bg-white` → `bg-white/80`
-
-### 2.3 Trang Benefactors.tsx
-- `bg-card` → `bg-card/70`
-- Đảm bảo trong suốt
-
-### 2.4 Trang Auth.tsx
-- Giữ nguyên (trang đăng nhập có design riêng)
+#### 4. Font Size Nhỏ Trên Một Số Elements
+- Một số text trong cards quá nhỏ khó đọc
+- **Giải pháp**: Tăng minimum font-size cho mobile
 
 ---
 
-## Phần 3: Tối Ưu Giao Diện Mobile
+## Chi Tiết Các Thay Đổi
 
-### 3.1 Cải thiện TetBackground cho mobile
+### 1. Feed.tsx - Responsive Padding
+```text
+Dòng 93: Thay px-[2cm] → px-4 sm:px-6 lg:px-[2cm]
+Dòng 97: Thêm px-2 cho nội dung chính trên mobile
+```
+
+### 2. Leaderboard.tsx - Mobile-First Podium
+```text
+Dòng 121: Thay px-[2cm] → px-4 sm:px-6 lg:px-[2cm]
+Dòng 159-223: Responsive podium grid
+  - Mobile: Hiển thị dạng list thay vì 3 cột
+  - Tablet+: Giữ nguyên grid 3 cột với top 1 ở giữa
+```
+
+### 3. Profile.tsx - Responsive Padding
+```text
+Dòng 356: Thay px-[2cm] → px-4 sm:px-6 lg:px-[2cm]
+```
+
+### 4. Wallet.tsx - Responsive Padding
+```text
+Dòng 48: Thay px-[2cm] → px-4 sm:px-6 lg:px-[2cm]
+```
+
+### 5. Friends.tsx - Responsive Padding
+```text
+Dòng 225: Thay px-[2cm] → px-4 sm:px-6 lg:px-[2cm]
+```
+
+### 6. Chat.tsx - Đã Tốt
+- Không cần thay đổi, layout 2 column/single column đã responsive
+
+### 7. index.css - Mobile Font Enhancement (Tùy Chọn)
 ```css
-/* Mobile: Video full height, tự động scale */
-@media (max-width: 768px) {
-  video {
-    min-height: 100vh;
-    min-height: 100dvh; /* Dynamic viewport height */
-    object-position: center top;
+@media (max-width: 640px) {
+  .fb-card p, .fb-card span {
+    min-font-size: 12px;
   }
 }
 ```
 
-### 3.2 Cải thiện MobileBottomNav
-- Đảm bảo `safe-area-bottom` hoạt động
-- Nền trong suốt `bg-white/90` để thấy hoa
-- Kiểm tra touch targets
-
-### 3.3 Cải thiện FacebookNavbar cho mobile
-- Header trong suốt `bg-card/90`
-- Đảm bảo logo và icons rõ ràng
-
-### 3.4 Cải thiện Safe Area
-- `padding-bottom: env(safe-area-inset-bottom)` cho iPhone notch
-- `padding-top: env(safe-area-inset-top)` cho dynamic island
-
 ---
 
-## Phần 4: Chi Tiết Thay Đổi Theo File
+## Thay Đổi Chi Tiết Cho Leaderboard Podium
 
-### File 1: `src/components/ui/TetBackground.tsx`
+Hiện tại podium dùng `grid grid-cols-3` cho tất cả màn hình. Trên mobile 390px, mỗi cột chỉ còn ~100px - quá nhỏ.
 
-**Nâng cấp video với hiệu ứng tăng cường màu sắc:**
-- Thêm `filter: saturate(1.1) contrast(1.05)` - màu tươi hơn
-- Thêm `will-change: transform` - render mượt hơn
-- Responsive cho mobile với `100dvh`
-
-### File 2: `src/index.css`
-
-**Xóa backdrop-blur trong tet-card:**
-- `.tet-card`: xóa `backdrop-blur-sm`
-- `.tet-card-strong`: xóa `backdrop-blur-md`
-- Thêm mobile-specific styles cho video
-
-### File 3: `src/pages/Leaderboard.tsx`
-
-**Áp dụng bóng kính:**
-- Dòng 118: `bg-[#f0f2f5]` → xóa bỏ
-- Dòng 140, 161, 182, 203, 226: `bg-white` → `bg-white/80`
-
-### File 4: `src/pages/About.tsx`
-
-**Áp dụng bóng kính:**
-- Dòng 50: `bg-[#f0f2f5]` → xóa bỏ
-- Dòng 86, 101, 116: `bg-white` → `bg-white/80`
-
-### File 5: `src/components/layout/MobileBottomNav.tsx`
-
-**Tối ưu mobile với nền trong suốt:**
-- `bg-white dark:bg-gray-900` → `bg-white/90 dark:bg-gray-900/90`
-
-### File 6: `src/components/layout/FacebookNavbar.tsx`
-
-**Đảm bảo header trong suốt:**
-- Giữ `fb-header` class (đã có `bg-card/85`)
-
----
-
-## Sơ Đồ Kết Quả Mong Đợi
+**Giải pháp đề xuất:**
 
 ```text
-┌──────────────────────────────────────────────────────────────┐
-│                    📱 MOBILE VIEW                            │
-├──────────────────────────────────────────────────────────────┤
-│ ┌──────────────────────────────────────────────────────────┐ │
-│ │     🏮 Navbar (bg-card/85) - trong suốt 🏮               │ │
-│ └──────────────────────────────────────────────────────────┘ │
-│                                                              │
-│     🌸                                           🌸          │
-│          HOA MAI/HOA ĐÀO                                    │
-│     🌺     RÕ NÉT 100%                        🌺             │
-│            NHƯ HOA THẬT                                      │
-│                                                              │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │        Content Card (bg-card/70)                        │ │
-│  │     🌸 Hoa hiện rõ xuyên qua 🌸                         │ │
-│  └─────────────────────────────────────────────────────────┘ │
-│                                                              │
-│     🌺                                           🌺          │
-│          CÁNH HOA BAY                                        │
-│     🌸     ĐỘNG ĐẸP MẮT                       🌸             │
-│                                                              │
-│ ┌──────────────────────────────────────────────────────────┐ │
-│ │ 🏠  👥  🏆  💬  🎁  Bottom Nav (bg-white/90)              │ │
-│ └──────────────────────────────────────────────────────────┘ │
-│                     safe-area-bottom                         │
-└──────────────────────────────────────────────────────────────┘
+Mobile (< 640px):
+- Top 1: Card lớn nổi bật ở trên cùng
+- Top 2, 3: 2 cột nhỏ hơn bên dưới
+- Hoặc: Stack cả 3 thành list dọc
+
+Tablet+ (≥ 640px):
+- Giữ nguyên grid 3 cột với hiệu ứng podium (2-1-3)
 ```
 
 ---
 
-## Tổng Kết Files Cần Chỉnh Sửa
+## Tóm Tắt Files Cần Sửa
 
-| # | File | Thay Đổi |
-|---|------|----------|
-| 1 | `src/components/ui/TetBackground.tsx` | Nâng cấp video clarity + mobile |
-| 2 | `src/index.css` | Xóa backdrop-blur, thêm mobile styles |
-| 3 | `src/pages/Leaderboard.tsx` | bg-white → bg-white/80 |
-| 4 | `src/pages/About.tsx` | bg-white → bg-white/80 |
-| 5 | `src/components/layout/MobileBottomNav.tsx` | bg-white → bg-white/90 |
-
-**Tổng cộng: 5 files**
+| File | Thay Đổi | Mức Độ |
+|------|---------|--------|
+| `src/pages/Feed.tsx` | Responsive padding | Nhẹ |
+| `src/pages/Leaderboard.tsx` | Padding + Podium mobile | Trung bình |
+| `src/pages/Profile.tsx` | Responsive padding | Nhẹ |
+| `src/pages/Wallet.tsx` | Responsive padding | Nhẹ |
+| `src/pages/Friends.tsx` | Responsive padding | Nhẹ |
 
 ---
 
-## Kỹ Thuật Tăng Độ Rõ Nét Video
+## Kết Quả Mong Đợi
 
-```css
-/* Tăng độ tươi sắc màu hoa */
-video {
-  filter: saturate(1.1) contrast(1.05);
-  /* saturate: tăng độ bão hòa màu → hoa tươi hơn */
-  /* contrast: tăng độ tương phản → hoa rõ nét hơn */
-}
-```
+Sau khi áp dụng các thay đổi:
+1. **Nội dung rộng hơn** trên mobile - không bị padding 2cm thu hẹp
+2. **Podium Leaderboard** hiển thị đẹp hơn với layout phù hợp màn hình nhỏ
+3. **Text dễ đọc hơn** với font size tối thiểu phù hợp
+4. **Trải nghiệm nhất quán** từ mobile đến desktop
 
-Kết quả: Hoa mai/hoa đào hiển thị **rõ nét 100%**, màu sắc **tươi sáng như hoa thật**, và **ngập tràn năng lượng** trên tất cả thiết bị!
+---
 
+## Lưu Ý Kỹ Thuật
+
+- Giữ nguyên layout `Fixed Scroll Shell` với `top-[3cm]`
+- Giữ nguyên Glass UI transparency để hoa đào/mai hiển thị
+- Không thay đổi bottom navigation (đã hoàn thiện)
+- Responsive breakpoints: `sm:640px`, `md:768px`, `lg:1024px`
