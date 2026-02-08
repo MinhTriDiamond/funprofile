@@ -101,13 +101,15 @@
 /* Mobile: Tối ưu hoa mai/đào hiển thị rõ ràng - CHỈ MOBILE */
 @media (max-width: 768px) {
   .fb-card {
-    @apply bg-card/70 rounded-xl;
-    margin-left: 6px;
-    margin-right: 6px;
+    @apply bg-card/65 rounded-xl;
+    margin-left: 16px;
+    margin-right: 16px;
   }
   
   /* Scale video lớn hơn + tăng màu sắc hoa trên mobile */
   .tet-video {
+    top: 0 !important;
+    object-position: center center !important;
     transform: translateX(-50%) scale(1.15) !important;
     filter: saturate(1.25) contrast(1.12) brightness(1.05) !important;
   }

@@ -10,18 +10,18 @@ export const TetFlowerOverlay = memo(() => {
     <div className="md:hidden">
       {/* Decorative glow effect góc trái dưới - CHỈ MOBILE */}
       <div 
-        className="fixed bottom-16 left-0 w-24 h-32 pointer-events-none z-[5] opacity-60"
+        className="fixed bottom-16 left-0 w-32 h-40 pointer-events-none z-[5] opacity-80"
         style={{
-          background: 'radial-gradient(ellipse at bottom left, hsl(350 80% 70% / 0.3) 0%, transparent 70%)',
+          background: 'radial-gradient(ellipse at bottom left, hsl(350 80% 70% / 0.4) 0%, transparent 70%)',
         }}
         aria-hidden="true"
       />
       
       {/* Decorative glow effect góc phải dưới - CHỈ MOBILE */}
       <div 
-        className="fixed bottom-16 right-0 w-24 h-32 pointer-events-none z-[5] opacity-60"
+        className="fixed bottom-16 right-0 w-32 h-40 pointer-events-none z-[5] opacity-80"
         style={{
-          background: 'radial-gradient(ellipse at bottom right, hsl(45 90% 60% / 0.3) 0%, transparent 70%)',
+          background: 'radial-gradient(ellipse at bottom right, hsl(45 90% 60% / 0.4) 0%, transparent 70%)',
         }}
         aria-hidden="true"
       />
