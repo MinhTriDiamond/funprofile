@@ -141,14 +141,14 @@ export const UnifiedAuthForm = () => {
 
   return (
     <div className="w-full max-w-lg relative">
-      {/* Outer Frame - Premium dark green metallic with shine */}
-      <div 
-        className="relative p-[4px] rounded-3xl"
-        style={{
-          background: 'linear-gradient(135deg, #166534 0%, #22c55e 25%, #15803d 50%, #22c55e 75%, #166534 100%)',
-          boxShadow: '0 0 25px rgba(22, 101, 52, 0.5), 0 4px 20px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.2)'
-        }}
-      >
+        {/* Outer Frame - Premium dark green metallic with shine */}
+        <div 
+          className="relative p-[4px] rounded-3xl"
+          style={{
+            background: 'linear-gradient(135deg, #166534 0%, #22c55e 25%, #15803d 50%, #22c55e 75%, #166534 100%)',
+            boxShadow: '0 0 25px rgba(22, 101, 52, 0.5), 0 4px 20px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.2)'
+          }}
+        >
         
         {/* Inner Card - bóng kính để thấy hoa mai/hoa đào */}
         <Card className="relative border-0 overflow-hidden rounded-[20px] bg-card/80 shadow-inner p-2">
