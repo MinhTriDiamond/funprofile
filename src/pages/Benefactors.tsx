@@ -153,7 +153,7 @@ const Benefactors = () => {
   return (
     <div className="min-h-screen bg-background">
       <FacebookNavbar />
-      <main className="pt-14 pb-20 px-4 max-w-3xl mx-auto">
+      <main className="pt-28 md:pt-32 pb-20 px-4 sm:px-6 md:px-10 max-w-3xl mx-auto">
         {/* Header */}
         <div className="text-center py-8">
           <div className="inline-flex items-center justify-center gap-2 mb-4">

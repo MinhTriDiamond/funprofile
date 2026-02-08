@@ -205,7 +205,7 @@ const Friends = () => {
     return (
       <div className="min-h-screen">
         <FacebookNavbar />
-        <main className="pt-14 px-4">
+        <main className="pt-28 md:pt-32 px-4 sm:px-6 md:px-10">
           <div className="max-w-7xl mx-auto py-4">
             <Skeleton className="h-10 w-48 mb-4" />
             <div className="flex gap-3 overflow-hidden">
@@ -222,7 +222,7 @@ const Friends = () => {
   return (
     <div className="min-h-screen">
       <FacebookNavbar />
-      <main className="pt-14 pb-20 md:pb-6">
+      <main className="pt-28 md:pt-32 pb-20 md:pb-6 px-4 sm:px-6 md:px-10">
         <div className="flex">
           {/* Left Sidebar - Hidden on mobile, shown on lg+ */}
           <aside className={`

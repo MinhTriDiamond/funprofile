@@ -43,9 +43,9 @@ const Wallet = () => {
   return (
     <div className="min-h-screen bg-[#f0f2f5] pb-20 lg:pb-0">
       <FacebookNavbar />
-      <main className="pt-14">
+      <main className="pt-28 md:pt-32">
         {/* Full width center container */}
-        <div className="w-full px-4 py-6">
+        <div className="w-full px-4 sm:px-6 md:px-10 py-6">
           <div className="max-w-6xl mx-auto">
             {/* Web3 providers lazy-loaded to prevent loading on non-wallet pages */}
             <Suspense fallback={<WalletLoader />}>
