@@ -55,7 +55,7 @@ export const FacebookRightSidebar = memo(() => {
       <TopRanking />
 
       {/* Sponsored */}
-      <div className="fb-card p-4">
+      <div className="bg-card/80 backdrop-blur-sm rounded-lg border border-border p-4">
         <h3 className="font-semibold text-muted-foreground mb-3">{t('sponsored')}</h3>
         <div className="flex gap-3 cursor-pointer hover:bg-secondary rounded-lg p-2 -m-2 transition-colors">
           <img
@@ -115,7 +115,7 @@ export const FacebookRightSidebar = memo(() => {
       )}
 
       {/* Birthdays */}
-      <div className="fb-card p-4">
+      <div className="bg-card/80 backdrop-blur-sm rounded-lg border border-border p-4">
         <h3 className="font-semibold text-muted-foreground mb-3">{t('birthdays')}</h3>
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">

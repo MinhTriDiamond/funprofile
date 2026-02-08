@@ -168,7 +168,7 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
   return (
     <div className="space-y-3">
       {/* Card 1: FUN ECOSYSTEM */}
-      <div className="bg-card rounded-xl border-2 border-yellow-400/50 p-4 hover:border-yellow-400 hover:shadow-[0_0_20px_rgba(250,204,21,0.3)] transition-all duration-300">
+      <div className="bg-card/80 backdrop-blur-sm rounded-xl border-2 border-yellow-400/50 p-4 hover:border-yellow-400 hover:shadow-[0_0_20px_rgba(250,204,21,0.3)] transition-all duration-300">
         <div className="flex items-center gap-2 mb-3">
           <img 
             src="/fun-ecosystem-logo-36.webp" 
@@ -238,7 +238,7 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
       </div>
 
       {/* Card 2: Your Shortcuts - Avatar + Name, Groups, Pages */}
-      <div className="bg-card rounded-xl border-2 border-yellow-400/50 p-4 hover:border-yellow-400 hover:shadow-[0_0_20px_rgba(250,204,21,0.3)] transition-all duration-300">
+      <div className="bg-card/80 backdrop-blur-sm rounded-xl border-2 border-yellow-400/50 p-4 hover:border-yellow-400 hover:shadow-[0_0_20px_rgba(250,204,21,0.3)] transition-all duration-300">
         <h3 className="font-bold text-sm mb-3 text-muted-foreground">
           {t('yourShortcuts')}
         </h3>
@@ -276,7 +276,7 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
       </div>
 
       {/* Card 3: Menu - Language Switcher & Logout */}
-      <div className="bg-card rounded-xl border-2 border-yellow-400/50 p-4 hover:border-yellow-400 hover:shadow-[0_0_20px_rgba(250,204,21,0.3)] transition-all duration-300">
+      <div className="bg-card/80 backdrop-blur-sm rounded-xl border-2 border-yellow-400/50 p-4 hover:border-yellow-400 hover:shadow-[0_0_20px_rgba(250,204,21,0.3)] transition-all duration-300">
         <h3 className="font-bold text-sm mb-3 text-muted-foreground">
           Menu
         </h3>
