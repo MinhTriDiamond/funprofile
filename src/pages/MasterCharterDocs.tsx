@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Book, Share2 } from 'lucide-react';
 
-const ANGEL_LOGO = '/angel-ai-logo-128.webp';
+const ANGEL_LOGO = '/angel-ai-logo-128.png';
 
 const MasterCharterDocs = () => {
   const navigate = useNavigate();

@@ -102,7 +102,7 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
     },
     { 
       name: 'Angel AI', 
-      avatar: '/angel-ai-logo-36.webp',
+      avatar: '/angel-ai-logo-36.png',
       path: 'https://angel.fun.rich',
       isExternal: true,
       isSpecial: false

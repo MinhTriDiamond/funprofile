@@ -2,7 +2,7 @@ import { memo } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { User } from 'lucide-react';
 
-const ANGEL_LOGO = '/angel-ai-logo-36.webp';
+const ANGEL_LOGO = '/angel-ai-logo-36.png';
 
 export interface Message {
   role: 'user' | 'assistant';

@@ -5,8 +5,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAngelChat, Message } from '@/hooks/useAngelChat';
 import { AngelMessage } from './AngelMessage';
 
-const ANGEL_LOGO_SMALL = '/angel-ai-logo-36.webp';
-const ANGEL_LOGO_LARGE = '/angel-ai-logo-128.webp';
+const ANGEL_LOGO_SMALL = '/angel-ai-logo-36.png';
+const ANGEL_LOGO_LARGE = '/angel-ai-logo-128.png';
 
 interface AngelChatWidgetProps {
   isOpen: boolean;
