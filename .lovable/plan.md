@@ -1,70 +1,69 @@
 
-# Kế Hoạch: Sửa Lỗi Hoa Mai/Đào Không Hiển Thị Trên Mobile
+# Kế Hoạch: Sửa Lỗi CSS Override - Hiển Thị Hoa Mai/Đào Trên Mobile
 
-## Nguyên Nhân Đã Tìm Thấy
+## Nguyên Nhân Gốc
 
-Qua việc test trực tiếp trên mobile viewport và phân tích code, Cha đã tìm ra nguyên nhân:
+Cha đã tìm thấy nguyên nhân chính xác qua việc test trực tiếp trên mobile viewport:
 
-**`FacebookPostCard.tsx` có class `mx-0`** đang override CSS margin trong `index.css`:
+Trong `src/index.css` có **2 media queries** cùng apply cho mobile:
 
-```tsx
-// Dòng 322 - HIỆN TẠI
-<div className="fb-card mb-3 sm:mb-4 overflow-hidden mx-0">
-```
-
-Tailwind inline class `mx-0` có priority cao hơn CSS custom trong `index.css`, vì vậy dù đã set:
 ```css
+/* Dòng 102-107: max-width: 768px - Set margin 16px */
 @media (max-width: 768px) {
   .fb-card {
     margin-left: 16px;
     margin-right: 16px;
   }
 }
+
+/* Dòng 238-244: max-width: 1023px - Set margin 0 */
+@media (max-width: 1023px) {
+  .fb-card {
+    margin-left: 0;   /* ← OVERRIDE! */
+    margin-right: 0;  /* ← OVERRIDE! */
+  }
+}
 ```
 
-...nhưng PostCard vẫn có margin = 0 do `mx-0` override.
+**Vấn đề:** Trên mobile (< 768px), cả 2 media queries đều match. Do CSS cascade, rule xuất hiện SAU (dòng 238-244) sẽ thắng → margin = 0.
 
 ## Giải Pháp
 
-### 1. Xóa `mx-0` khỏi FacebookPostCard
+Sửa media query ở dòng 238-244 để **KHÔNG override** margin trên mobile:
 
-```tsx
-// SỬA THÀNH - cho phép CSS index.css áp dụng margin
-<div className="fb-card mb-3 sm:mb-4 overflow-hidden">
+### Option 1: Xóa margin rules khỏi media query 1023px
+
+```css
+/* Mobile touch target optimization */
+@media (max-width: 1023px) {
+  .fb-card {
+    @apply rounded-none sm:rounded-lg;
+    /* XÓA margin-left: 0; và margin-right: 0; */
+  }
+}
 ```
 
-### 2. Kiểm Tra Feed.tsx Container Padding
+### Option 2: Thêm !important cho mobile margin (không khuyến khích)
 
-Đảm bảo container trên mobile có padding phù hợp:
+Cha sẽ dùng **Option 1** - xóa margin rules vì chúng không cần thiết và đang gây conflict.
 
-```tsx
-// Feed.tsx dòng 114 - HIỆN TẠI
-<div className="col-span-1 lg:col-span-6 w-full px-2 sm:px-0">
-```
+## Chi Tiết Thay Đổi
 
-Cần sửa thành `px-0` để tránh padding + margin cộng dồn:
-
-```tsx
-<div className="col-span-1 lg:col-span-6 w-full px-0 sm:px-0">
-```
-
-## Chi Tiết Các File Cần Sửa
-
-| File | Thay Đổi | Chi Tiết |
-|------|----------|----------|
-| `src/components/feed/FacebookPostCard.tsx` | Xóa `mx-0` | Cho phép CSS margin apply trên mobile |
-| `src/pages/Feed.tsx` | Điều chỉnh padding | `px-0` để margin từ `.fb-card` có hiệu lực |
+| File | Dòng | Thay Đổi |
+|------|------|----------|
+| `src/index.css` | 238-244 | Xóa `margin-left: 0` và `margin-right: 0` khỏi media query `max-width: 1023px` |
 
 ## Kết Quả Mong Đợi
 
 Sau khi sửa:
 
-1. **Post cards có 16px margin** mỗi bên trên mobile → hoa mai/đào hiển thị ở 2 bên
-2. **Desktop giữ nguyên** → không ảnh hưởng vì CSS chỉ áp dụng cho `max-width: 768px`
-3. **Tất cả cards đồng nhất** → StoriesBar, CreatePost, PostCard đều có cùng margin
+1. **Mobile (< 768px):** Cards có 16px margin mỗi bên → hoa mai/đào hiển thị rõ ở 2 bên
+2. **Tablet (769px - 1023px):** Cards full width với rounded corners (như hiện tại)
+3. **Desktop (> 1023px):** Không ảnh hưởng
 
-## Lưu Ý Kỹ Thuật
+## Xác Nhận Trực Quan
 
-- Tailwind inline classes có specificity cao hơn CSS custom rules
-- Cần xóa hoặc thay đổi inline class để CSS rule có hiệu lực
-- Mobile media query trong `index.css` sẽ tự động apply khi không bị override
+Cha đã test trên viewport 390x844 (iPhone 14) và xác nhận:
+- Video background đang chạy đúng với top: 0
+- Cards đang chiếm full width do margin = 0 (bị override)
+- Sau khi sửa, cards sẽ có 16px margin → hoa mai/đào sẽ hiển thị ở góc trên như desktop
