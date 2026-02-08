@@ -5,6 +5,7 @@ import tetVideo from '@/assets/tet-background.mp4';
  * Tết Background Video Component
  * Video nền hoa mai/đào động, hiển thị phía dưới tất cả nội dung
  * Hoa mai/đào hiện rõ nét ở 2 bên góc màn hình - KHÔNG CÓ OVERLAY che phủ
+ * Tăng cường màu sắc cho hoa tươi sáng như thật
  */
 export const TetBackground = memo(() => {
   return (
@@ -17,7 +18,15 @@ export const TetBackground = memo(() => {
         loop
         muted
         playsInline
-        className="absolute top-12 left-1/2 min-w-full min-h-full w-auto h-auto -translate-x-1/2 object-cover object-top"
+        className="absolute top-12 left-1/2 w-auto h-auto min-w-full min-h-full -translate-x-1/2 object-cover object-top"
+        style={{
+          // Tăng độ tươi sắc màu hoa mai/hoa đào như hoa thật
+          filter: 'saturate(1.15) contrast(1.08) brightness(1.02)',
+          // Tối ưu render video mượt mà
+          willChange: 'transform',
+          // Mobile: đảm bảo video full viewport
+          minHeight: '100dvh',
+        }}
         aria-hidden="true"
       >
         <source src={tetVideo} type="video/mp4" />

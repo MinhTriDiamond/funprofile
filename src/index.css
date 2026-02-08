@@ -562,17 +562,27 @@ html {
 }
 
 /* Tet-themed transparent cards for floral background visibility */
+/* KHÔNG dùng backdrop-blur để hoa mai/hoa đào hiển thị rõ nét 100% */
 .tet-card {
-  @apply bg-card/80 backdrop-blur-sm rounded-xl border border-border;
+  @apply bg-card/80 rounded-xl border border-border;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .tet-card-strong {
-  @apply bg-card/90 backdrop-blur-md rounded-xl border border-border;
+  @apply bg-card/90 rounded-xl border border-border;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 /* Semi-transparent fb-card for Tet theme */
 .fb-card-tet {
-  @apply bg-card/80 backdrop-blur-sm rounded-lg shadow-sm border border-border;
+  @apply bg-card/80 rounded-lg shadow-sm border border-border;
+}
+
+/* Mobile optimization for Tet video background */
+@media (max-width: 768px) {
+  /* Đảm bảo video hoa mai/hoa đào hiển thị đầy đủ trên mobile */
+  .tet-mobile-optimized {
+    min-height: 100dvh;
+    min-height: -webkit-fill-available;
+  }
 }

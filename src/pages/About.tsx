@@ -47,7 +47,7 @@ const About = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-[#f0f2f5] overflow-hidden pb-20 lg:pb-0">
+    <div className="min-h-screen overflow-hidden pb-20 lg:pb-0">
       <FacebookNavbar />
       <main data-app-scroll className="fixed inset-x-0 top-[3cm] bottom-0 overflow-y-auto pb-20 lg:pb-0">
         {/* Hero Section */}
@@ -83,7 +83,7 @@ const About = () => {
           </Button>
 
           {/* Introduction */}
-          <div className="bg-white rounded-xl shadow-sm p-8 mb-8">
+          <div className="bg-white/80 rounded-xl shadow-sm p-8 mb-8">
             <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
               <Sparkles className="w-6 h-6 text-primary" />
               Giới thiệu
@@ -100,7 +100,7 @@ const About = () => {
               {features.map((feature, index) => (
                 <div 
                   key={index}
-                  className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition-shadow"
+                  className="bg-white/80 rounded-xl shadow-sm p-6 hover:shadow-md transition-shadow"
                 >
                   <div className={`w-14 h-14 rounded-xl bg-gradient-to-r ${feature.color} flex items-center justify-center mb-4`}>
                     <feature.icon className="w-7 h-7 text-white" />
@@ -113,7 +113,7 @@ const About = () => {
           </div>
 
           {/* Vision */}
-          <div className="bg-gradient-to-r from-primary/10 to-gold/10 rounded-xl p-8 text-center">
+          <div className="bg-white/70 rounded-xl p-8 text-center border border-primary/20">
             <h2 className="text-2xl font-bold mb-4">Tầm nhìn</h2>
             <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
               Với F.U. Profile, bạn không chỉ tham gia một mạng xã hội Web3, mà còn bước vào một không gian số thông minh, nơi AI và blockchain kết hợp để biến mọi ý tưởng thành tài sản thực sự. Đây chính là tương lai của mạng xã hội.
