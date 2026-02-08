@@ -235,7 +235,7 @@ const Notifications = () => {
     <div className="min-h-screen bg-background overflow-hidden pb-20 lg:pb-0">
       {/* Header */}
       <div className="fixed top-[3cm] left-0 right-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border">
-        <div className="flex items-center justify-between px-4 sm:px-6 md:px-10 py-3">
+        <div className="flex items-center justify-between px-[2cm] py-3">
           <div className="flex items-center gap-3">
             <Button
               variant="ghost"

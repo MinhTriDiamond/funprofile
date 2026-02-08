@@ -184,7 +184,7 @@ const ConnectedApps = () => {
       <div className="min-h-screen bg-background overflow-hidden">
         <FacebookNavbar />
         <main data-app-scroll className="fixed inset-x-0 top-[3cm] bottom-0 overflow-y-auto pb-20 md:pb-0">
-          <div className="container max-w-4xl mx-auto px-4 sm:px-6 md:px-10 py-8">
+          <div className="container max-w-4xl mx-auto px-[2cm] py-8">
             <Skeleton className="h-8 w-64 mb-6" />
             <div className="space-y-4">
               {[1, 2, 3].map(i => (
@@ -202,7 +202,7 @@ const ConnectedApps = () => {
       <FacebookNavbar />
       
       <main data-app-scroll className="fixed inset-x-0 top-[3cm] bottom-0 overflow-y-auto pb-20 md:pb-0">
-        <div className="container max-w-4xl mx-auto px-4 sm:px-6 md:px-10 py-8">
+        <div className="container max-w-4xl mx-auto px-[2cm] py-8">
           <h1 className="text-2xl font-bold text-foreground mb-2">
             Ứng dụng đã kết nối
           </h1>
