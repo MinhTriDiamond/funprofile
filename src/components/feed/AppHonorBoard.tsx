@@ -196,11 +196,12 @@ export const AppHonorBoard = memo(() => {
               className="font-black text-[22px] tracking-wider uppercase"
               style={{
                 fontFamily: "'Orbitron', 'Rajdhani', sans-serif",
-                background: 'linear-gradient(135deg, #FFD700 0%, #FFEC8B 15%, #FFD700 30%, #FFC125 50%, #FFD700 70%, #FFEC8B 85%, #FFD700 100%)',
+                background: 'linear-gradient(90deg, #FF0000 0%, #FF7F00 14%, #FFFF00 28%, #00FF00 42%, #0000FF 57%, #4B0082 71%, #9400D3 85%, #FF0000 100%)',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
                 backgroundClip: 'text',
-                filter: 'drop-shadow(0 1px 2px rgba(255, 215, 0, 0.5))',
+                filter: 'drop-shadow(0 2px 3px rgba(0, 0, 0, 0.3)) drop-shadow(0 0 8px rgba(255, 215, 0, 0.4))',
+                textShadow: '0 0 20px rgba(255, 215, 0, 0.3)',
               }}
             >
               {t('honorBoard')}
