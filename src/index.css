@@ -98,7 +98,7 @@
 /* Safe-area aware for iPhone notch */
 /* ================================ */
 .app-shell-content {
-  top: calc(3cm + env(safe-area-inset-top, 0px));
+  top: calc(4cm + env(safe-area-inset-top, 0px));
 }
 
 /* ================================ */
