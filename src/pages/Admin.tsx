@@ -134,7 +134,7 @@ const Admin = () => {
   if (!isAdmin) return null;
 
   return (
-    <div className="min-h-screen bg-[#f0f2f5] p-4 sm:p-6 md:p-10 pt-36 md:pt-40">
+    <div className="min-h-screen bg-[#f0f2f5] p-4 sm:p-6 md:p-10 pt-[3cm]">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
