@@ -97,7 +97,7 @@ const Feed = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       <FacebookNavbar />
       
       <main className="pt-12 md:pt-14 pb-20 lg:pb-4">
