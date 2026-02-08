@@ -1,197 +1,148 @@
 
 
-# Kế Hoạch Thêm Nút Chuyển Mạng BSC Testnet
+# Kế Hoạch Chuẩn Hóa Khoảng Cách Toàn Bộ Fun Profile
 
 ## Mục Tiêu
+Đảm bảo tất cả các trang trong Fun Profile có:
+- **Khoảng cách phía trên (top spacing)**: Cố định 3cm từ navbar
+- **Khoảng cách trái/phải (side margins)**: Cố định 2cm (tương đương `px-[2cm]`)
+- **Bố cục cố định (Fixed Scroll Shell)**: Navbar và khoảng cách trên không di chuyển khi cuộn
 
-Thêm tính năng cho phép người dùng chuyển đổi giữa **BSC Mainnet** và **BSC Testnet** ngay trong trang `/wallet`, phục vụ cho việc test PPLP Minting trên Testnet.
+---
 
-## Thiết Kế UI
+## Phân Tích Hiện Trạng
 
-Thay thế badge tĩnh "BNB Smart Chain" hiện tại bằng một **Network Selector** có khả năng chuyển đổi:
+### Các Trang Đã Chuẩn Hóa Đúng (Fixed Scroll Shell + 3cm top)
+| Trang | Top Spacing | Side Margins | Fixed Shell |
+|-------|-------------|--------------|-------------|
+| Feed.tsx | `top-[3cm]` | `px-4 sm:px-6 md:px-10` | Có |
+| Profile.tsx | `top-[3cm]` | `px-4 sm:px-6 md:px-10` | Có |
+| Chat.tsx | `top-[3cm]` | Không áp dụng (2-column) | Có |
+| Friends.tsx | `top-[3cm]` | `px-4 sm:px-6 md:px-10` | Có |
+| Wallet.tsx | `top-[3cm]` | `px-4 sm:px-6 md:px-10` | Có |
+| Leaderboard.tsx | `top-[3cm]` | `px-4 sm:px-6 md:px-10` | Có |
+| Benefactors.tsx | `top-[3cm]` | `px-4 sm:px-6 md:px-10` | Có |
+| Notifications.tsx | `top-[3cm]` | `px-4 sm:px-6 md:px-10` | Có |
+| About.tsx | `top-[3cm]` | `px-4 sm:px-6 md:px-10` | Có |
+| Post.tsx | `top-[3cm]` | `px-4 sm:px-6 md:px-10` | Có |
+| ConnectedApps.tsx | `top-[3cm]` | `px-4 sm:px-6 md:px-10` | Có |
 
-```text
-┌─────────────────────────────────────────────────────────────┐
-│  My Wallet                     [🔗 BNB Mainnet ▼]           │
-│  @username                                                  │
-└─────────────────────────────────────────────────────────────┘
-                                       ↓ Click để mở dropdown
-                              ┌─────────────────────────┐
-                              │ ✓ BNB Mainnet (56)      │
-                              │   BNB Testnet (97)      │
-                              └─────────────────────────┘
+### Các Trang Cần Cập Nhật
+| Trang | Vấn Đề Hiện Tại | Cần Sửa |
+|-------|-----------------|---------|
+| Admin.tsx | Dùng `pt-[3cm]` + `p-4 sm:p-6 md:p-10` nhưng không có Fixed Shell | Thêm Fixed Shell, chuẩn hóa margins |
+| Install.tsx | Không có Fixed Shell, không có spacing chuẩn | Thêm hoặc giữ nguyên (trang standalone) |
+| Auth.tsx | Không có Fixed Shell (trang standalone) | Giữ nguyên |
+| LawOfLight.tsx | Không có Fixed Shell (trang standalone) | Giữ nguyên |
+| SetPassword.tsx | Không có Fixed Shell (trang standalone) | Giữ nguyên |
+| NotFound.tsx | Không có Fixed Shell (trang standalone) | Giữ nguyên |
+| AdminMigration.tsx | Thiếu Fixed Shell và spacing chuẩn | Thêm Fixed Shell + navbar |
+| EcosystemDocs.tsx | Có sticky header riêng, không dùng FacebookNavbar | Cần đánh giá riêng |
+| Các trang Docs khác | Tương tự EcosystemDocs | Giữ nguyên cấu trúc riêng |
+
+---
+
+## Kế Hoạch Thực Hiện
+
+### Bước 1: Cập Nhật Admin.tsx
+**Vấn đề**: Sử dụng padding trực tiếp thay vì Fixed Scroll Shell
+
+**Thay đổi**:
+```tsx
+// Từ:
+<div className="min-h-screen bg-[#f0f2f5] p-4 sm:p-6 md:p-10 pt-[3cm]">
+
+// Thành:
+<div className="min-h-screen bg-[#f0f2f5] overflow-hidden">
+  <main data-app-scroll className="fixed inset-x-0 top-[3cm] bottom-0 overflow-y-auto pb-20 lg:pb-0">
+    <div className="max-w-7xl mx-auto px-[2cm] py-4">
 ```
 
-**Hiển thị động:**
-- Badge thay đổi màu theo network đang kết nối
-- Mainnet: Màu vàng (như hiện tại)
-- Testnet: Màu cam/xanh để dễ phân biệt
-- Hiển thị cảnh báo nếu đang ở Testnet
+### Bước 2: Cập Nhật AdminMigration.tsx  
+**Vấn đề**: Thiếu FacebookNavbar và Fixed Scroll Shell
+
+**Thay đổi**:
+- Thêm `FacebookNavbar` component
+- Thêm Fixed Scroll Shell layout
+- Chuẩn hóa spacing
+
+### Bước 3: Chuẩn Hóa Side Margins (px-[2cm])
+Thay đổi từ `px-4 sm:px-6 md:px-10` thành `px-[2cm]` cho các trang:
+- Feed.tsx
+- Profile.tsx
+- Friends.tsx
+- Wallet.tsx
+- Leaderboard.tsx
+- Benefactors.tsx
+- Notifications.tsx
+- About.tsx
+- Post.tsx
+- ConnectedApps.tsx
+
+### Bước 4: Các Trang Giữ Nguyên (Standalone Pages)
+Các trang sau không cần Fixed Scroll Shell vì là trang standalone với thiết kế riêng:
+- **Auth.tsx**: Trang đăng nhập với background riêng
+- **LawOfLight.tsx**: Trang spiritual với background thiêng liêng
+- **SetPassword.tsx**: Trang đặt mật khẩu đơn giản
+- **NotFound.tsx**: Trang 404
+- **Install.tsx**: Trang hướng dẫn cài đặt PWA
+- **Docs pages**: Có header và layout riêng cho tài liệu
+
+---
 
 ## Chi Tiết Kỹ Thuật
 
-### File cần sửa: `src/components/wallet/WalletCenterContainer.tsx`
-
-#### 1. Thêm state và import
-
-```typescript
-// Import thêm bscTestnet
-import { bsc, bscTestnet } from 'wagmi/chains';
-
-// Import DropdownMenu component
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-
-// Icon
-import { ChevronDown, CheckCircle2 } from 'lucide-react';
-```
-
-#### 2. Thêm handler chuyển mạng
-
-```typescript
-// Handler switch to Testnet
-const handleSwitchToTestnet = useCallback(() => {
-  switchChain(
-    { chainId: bscTestnet.id },
-    {
-      onSuccess: () => toast.success('Đã chuyển sang BSC Testnet'),
-      onError: () => toast.error('Không thể chuyển network. Vui lòng thử lại.'),
-    }
-  );
-}, [switchChain]);
-
-// Handler switch to Mainnet
-const handleSwitchToMainnet = useCallback(() => {
-  switchChain(
-    { chainId: bsc.id },
-    {
-      onSuccess: () => toast.success('Đã chuyển sang BSC Mainnet'),
-      onError: () => toast.error('Không thể chuyển network. Vui lòng thử lại.'),
-    }
-  );
-}, [switchChain]);
-```
-
-#### 3. Network config
-
-```typescript
-// Network configuration
-const networkConfig = useMemo(() => {
-  if (chainId === bscTestnet.id) {
-    return {
-      name: 'BSC Testnet',
-      color: 'bg-orange-100 border-orange-300 text-orange-700',
-      isTestnet: true,
-    };
-  }
-  return {
-    name: 'BNB Mainnet',
-    color: 'bg-yellow-100 border-yellow-300 text-yellow-700',
-    isTestnet: false,
-  };
-}, [chainId]);
-```
-
-#### 4. Thay thế badge tĩnh bằng Network Selector
-
+### Cấu Trúc Layout Chuẩn (Fixed Scroll Shell)
 ```tsx
-{/* Network Selector Dropdown */}
-<DropdownMenu>
-  <DropdownMenuTrigger asChild>
-    <button className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${networkConfig.color} hover:opacity-80 transition-opacity`}>
-      <img src={bnbLogo} alt="BNB" className="w-5 h-5" />
-      <span className="text-sm font-medium">{networkConfig.name}</span>
-      <ChevronDown className="w-4 h-4" />
-    </button>
-  </DropdownMenuTrigger>
-  <DropdownMenuContent align="end" className="w-48">
-    <DropdownMenuItem 
-      onClick={handleSwitchToMainnet}
-      className="flex items-center justify-between"
-    >
-      <span>BNB Mainnet (56)</span>
-      {chainId === bsc.id && <CheckCircle2 className="w-4 h-4 text-green-500" />}
-    </DropdownMenuItem>
-    <DropdownMenuItem 
-      onClick={handleSwitchToTestnet}
-      className="flex items-center justify-between"
-    >
-      <span>BSC Testnet (97)</span>
-      {chainId === bscTestnet.id && <CheckCircle2 className="w-4 h-4 text-green-500" />}
-    </DropdownMenuItem>
-  </DropdownMenuContent>
-</DropdownMenu>
+<div className="min-h-screen overflow-hidden">
+  <FacebookNavbar />
+  
+  <main 
+    data-app-scroll 
+    className="fixed inset-x-0 top-[3cm] bottom-0 overflow-y-auto pb-20 lg:pb-0"
+  >
+    <div className="max-w-7xl mx-auto px-[2cm] py-4">
+      {/* Nội dung trang */}
+    </div>
+  </main>
+  
+  <MobileBottomNav />
+</div>
 ```
 
-#### 5. Thêm cảnh báo Testnet (optional)
+### Giá Trị Spacing Chuẩn
+| Thuộc Tính | Giá Trị | Mô Tả |
+|------------|---------|-------|
+| Top spacing | `top-[3cm]` | Khoảng cách cố định từ navbar |
+| Side margins | `px-[2cm]` | Lề trái/phải 2cm |
+| Bottom padding | `pb-20 lg:pb-0` | Padding cho mobile bottom nav |
+| Max width | `max-w-7xl` | Giới hạn chiều rộng nội dung |
 
-```tsx
-{/* Testnet Warning Banner */}
-{chainId === bscTestnet.id && (
-  <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 flex items-center gap-2">
-    <AlertTriangle className="w-5 h-5 text-orange-500 shrink-0" />
-    <span className="text-sm text-orange-700">
-      Bạn đang ở BSC Testnet. Các giao dịch không dùng tiền thật.
-    </span>
-  </div>
-)}
-```
+---
 
-#### 6. Loại bỏ auto-switch sang Mainnet
+## Danh Sách Files Cần Chỉnh Sửa
 
-Hiện tại có useEffect tự động switch sang BSC Mainnet - cần sửa để không bắt buộc:
+1. **src/pages/Feed.tsx** - Cập nhật side margins thành `px-[2cm]`
+2. **src/pages/Profile.tsx** - Cập nhật side margins thành `px-[2cm]`
+3. **src/pages/Chat.tsx** - Giữ nguyên (layout 2 cột riêng)
+4. **src/pages/Friends.tsx** - Cập nhật side margins thành `px-[2cm]`
+5. **src/pages/Wallet.tsx** - Cập nhật side margins thành `px-[2cm]`
+6. **src/pages/Leaderboard.tsx** - Cập nhật side margins thành `px-[2cm]`
+7. **src/pages/Benefactors.tsx** - Cập nhật side margins thành `px-[2cm]`
+8. **src/pages/Notifications.tsx** - Cập nhật side margins thành `px-[2cm]`
+9. **src/pages/About.tsx** - Cập nhật side margins thành `px-[2cm]`
+10. **src/pages/Post.tsx** - Cập nhật side margins thành `px-[2cm]`
+11. **src/pages/ConnectedApps.tsx** - Cập nhật side margins thành `px-[2cm]`
+12. **src/pages/Admin.tsx** - Thêm Fixed Shell + chuẩn hóa spacing
+13. **src/pages/AdminMigration.tsx** - Thêm navbar + Fixed Shell + spacing
 
-```typescript
-// TRƯỚC: Tự động switch về Mainnet
-useEffect(() => {
-  if (isConnected && chainId && chainId !== bsc.id) {
-    switchChain({ chainId: bsc.id }, ...);
-  }
-}, [isConnected, chainId]);
+---
 
-// SAU: Chỉ hiển thị thông báo, không tự động switch
-useEffect(() => {
-  if (isConnected && chainId && chainId !== bsc.id && chainId !== bscTestnet.id) {
-    // Chỉ switch nếu không phải BSC networks
-    toast.warning('Vui lòng chuyển sang BNB Smart Chain hoặc BSC Testnet');
-  }
-}, [isConnected, chainId]);
-```
+## Kết Quả Mong Đợi
 
-## Luồng Hoạt Động
-
-```text
-User vào /wallet
-       ↓
-Hiển thị Network Selector với mạng hiện tại
-       ↓
-User click dropdown → Chọn "BSC Testnet (97)"
-       ↓
-switchChain({ chainId: 97 })
-       ↓
-MetaMask prompt → User approve
-       ↓
-Network changed → Badge cập nhật + Hiển thị banner cảnh báo Testnet
-       ↓
-User có thể test PPLP Minting trên Testnet! ✅
-```
-
-## Tóm Tắt
-
-| Thay Đổi | Chi Tiết |
-|----------|----------|
-| Import | `bscTestnet`, `DropdownMenu`, icons |
-| Handler | `handleSwitchToTestnet`, `handleSwitchToMainnet` |
-| UI | Network Selector dropdown thay badge tĩnh |
-| State | `networkConfig` memo dựa trên chainId |
-| Banner | Cảnh báo khi đang ở Testnet |
-| Loại bỏ | Auto-switch về Mainnet bắt buộc |
-
-## Thời Gian Triển Khai
-
-~10 phút
+Sau khi hoàn thành:
+- Tất cả trang chính có khoảng cách **3cm từ navbar** cố định không cuộn
+- Lề trái/phải đồng nhất **2cm** trên tất cả thiết bị  
+- Video hoa mai hoa đào hiển thị rõ nét ở các góc màn hình
+- Giao diện sang trọng, tươi mới, ngập tràn năng lượng Tết
 
