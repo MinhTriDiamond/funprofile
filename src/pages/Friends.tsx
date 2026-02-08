@@ -203,7 +203,7 @@ const Friends = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen">
         <FacebookNavbar />
         <main className="pt-14 px-4">
           <div className="max-w-7xl mx-auto py-4">
@@ -220,7 +220,7 @@ const Friends = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       <FacebookNavbar />
       <main className="pt-14 pb-20 md:pb-6">
         <div className="flex">
