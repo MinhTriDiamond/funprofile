@@ -1,76 +1,101 @@
 
-
-# Kế Hoạch Chuẩn Hóa Khoảng Cách Toàn Bộ Fun Profile
+# Kế Hoạch Hiển Thị Hoa Mai/Hoa Đào Rõ Nét Trên Toàn Bộ Fun Profile
 
 ## Mục Tiêu
-Đảm bảo tất cả các trang trong Fun Profile có:
-- **Khoảng cách phía trên (top spacing)**: Cố định 3cm từ navbar
-- **Khoảng cách trái/phải (side margins)**: Cố định 2cm (tương đương `px-[2cm]`)
-- **Bố cục cố định (Fixed Scroll Shell)**: Navbar và khoảng cách trên không di chuyển khi cuộn
+- Hiển thị video hoa mai/hoa đào rõ nét, đậm nét ở các góc màn hình
+- Đảm bảo hoa hiển thị ngay khi nhìn vào trang (không bị che khuất)
+- Áp dụng đồng nhất trên tất cả các trang chính (Feed, Profile, Friends, Chat, Wallet, v.v.)
+- Giao diện sang trọng, tươi mới, ngập tràn năng lượng Tết
 
 ---
 
-## Phân Tích Hiện Trạng
+## Phân Tích Vấn Đề Hiện Tại
 
-### Các Trang Đã Chuẩn Hóa Đúng (Fixed Scroll Shell + 3cm top)
-| Trang | Top Spacing | Side Margins | Fixed Shell |
-|-------|-------------|--------------|-------------|
-| Feed.tsx | `top-[3cm]` | `px-4 sm:px-6 md:px-10` | Có |
-| Profile.tsx | `top-[3cm]` | `px-4 sm:px-6 md:px-10` | Có |
-| Chat.tsx | `top-[3cm]` | Không áp dụng (2-column) | Có |
-| Friends.tsx | `top-[3cm]` | `px-4 sm:px-6 md:px-10` | Có |
-| Wallet.tsx | `top-[3cm]` | `px-4 sm:px-6 md:px-10` | Có |
-| Leaderboard.tsx | `top-[3cm]` | `px-4 sm:px-6 md:px-10` | Có |
-| Benefactors.tsx | `top-[3cm]` | `px-4 sm:px-6 md:px-10` | Có |
-| Notifications.tsx | `top-[3cm]` | `px-4 sm:px-6 md:px-10` | Có |
-| About.tsx | `top-[3cm]` | `px-4 sm:px-6 md:px-10` | Có |
-| Post.tsx | `top-[3cm]` | `px-4 sm:px-6 md:px-10` | Có |
-| ConnectedApps.tsx | `top-[3cm]` | `px-4 sm:px-6 md:px-10` | Có |
-
-### Các Trang Cần Cập Nhật
-| Trang | Vấn Đề Hiện Tại | Cần Sửa |
-|-------|-----------------|---------|
-| Admin.tsx | Dùng `pt-[3cm]` + `p-4 sm:p-6 md:p-10` nhưng không có Fixed Shell | Thêm Fixed Shell, chuẩn hóa margins |
-| Install.tsx | Không có Fixed Shell, không có spacing chuẩn | Thêm hoặc giữ nguyên (trang standalone) |
-| Auth.tsx | Không có Fixed Shell (trang standalone) | Giữ nguyên |
-| LawOfLight.tsx | Không có Fixed Shell (trang standalone) | Giữ nguyên |
-| SetPassword.tsx | Không có Fixed Shell (trang standalone) | Giữ nguyên |
-| NotFound.tsx | Không có Fixed Shell (trang standalone) | Giữ nguyên |
-| AdminMigration.tsx | Thiếu Fixed Shell và spacing chuẩn | Thêm Fixed Shell + navbar |
-| EcosystemDocs.tsx | Có sticky header riêng, không dùng FacebookNavbar | Cần đánh giá riêng |
-| Các trang Docs khác | Tương tự EcosystemDocs | Giữ nguyên cấu trúc riêng |
+1. **Overlay gradient quá đậm ở giữa**: 75% opacity làm mờ hoa
+2. **Sidebars có background đục**: `bg-card` che hết video nền ở hai bên
+3. **Các card component dùng màu nền solid**: Không cho phép video xuyên qua
+4. **Khoảng cách 2cm hai bên**: Đủ rộng nhưng nền vẫn bị che bởi sidebar
 
 ---
 
-## Kế Hoạch Thực Hiện
+## Giải Pháp Đề Xuất
 
-### Bước 1: Cập Nhật Admin.tsx
-**Vấn đề**: Sử dụng padding trực tiếp thay vì Fixed Scroll Shell
+### Bước 1: Điều Chỉnh TetBackground Component
+Giảm độ mờ của overlay gradient ở hai bên để hoa hiển thị rõ hơn:
 
-**Thay đổi**:
-```tsx
-// Từ:
-<div className="min-h-screen bg-[#f0f2f5] p-4 sm:p-6 md:p-10 pt-[3cm]">
-
-// Thành:
-<div className="min-h-screen bg-[#f0f2f5] overflow-hidden">
-  <main data-app-scroll className="fixed inset-x-0 top-[3cm] bottom-0 overflow-y-auto pb-20 lg:pb-0">
-    <div className="max-w-7xl mx-auto px-[2cm] py-4">
+```text
+Trước: rgba(255,255,255,0.1) 0% → rgba(255,255,255,0.75) 50%
+Sau:   rgba(255,255,255,0) 0% → rgba(255,255,255,0.5) 50%
 ```
 
-### Bước 2: Cập Nhật AdminMigration.tsx  
-**Vấn đề**: Thiếu FacebookNavbar và Fixed Scroll Shell
+Thay đổi cụ thể:
+- Hai bên: giảm từ 0.1 xuống 0 (trong suốt hoàn toàn)
+- Giữa: giảm từ 0.75 xuống 0.5 (vẫn đọc được chữ nhưng thấy hoa)
+- Vùng 15% và 85%: giảm từ 0.6 xuống 0.3
 
-**Thay đổi**:
-- Thêm `FacebookNavbar` component
-- Thêm Fixed Scroll Shell layout
-- Chuẩn hóa spacing
+### Bước 2: Làm Trong Suốt Sidebars
+Thay đổi background của sidebars từ solid sang semi-transparent:
 
-### Bước 3: Chuẩn Hóa Side Margins (px-[2cm])
-Thay đổi từ `px-4 sm:px-6 md:px-10` thành `px-[2cm]` cho các trang:
-- Feed.tsx
+```text
+Trước: bg-card (solid white)
+Sau:   bg-card/80 backdrop-blur-sm (semi-transparent with blur)
+```
+
+### Bước 3: Cập Nhật Sidebar Cards
+Thay đổi border và background của các card trong sidebar để hoa có thể "xuyên qua":
+
+- `FacebookLeftSidebar`: Các card dùng `bg-card/90 backdrop-blur-sm`
+- `FacebookRightSidebar`: Các card dùng `bg-card/90 backdrop-blur-sm`
+
+### Bước 4: Điều Chỉnh Feed Main Content
+Để vùng giữa vẫn dễ đọc nhưng hai bên rõ hoa:
+
+- Main feed container: giữ nguyên `bg-card` cho các post card (dễ đọc)
+- Khoảng trống hai bên: trong suốt để thấy hoa
+
+---
+
+## Chi Tiết File Cần Chỉnh Sửa
+
+### 1. src/components/ui/TetBackground.tsx
+```tsx
+// Gradient mới - trong suốt hơn ở hai bên
+background: `
+  linear-gradient(
+    to right,
+    rgba(255,255,255,0) 0%,
+    rgba(255,255,255,0.3) 15%,
+    rgba(255,255,255,0.5) 50%,
+    rgba(255,255,255,0.3) 85%,
+    rgba(255,255,255,0) 100%
+  )
+`
+```
+
+### 2. src/components/feed/FacebookLeftSidebar.tsx
+Thay đổi background các card từ `bg-card` thành `bg-card/90 backdrop-blur-sm`:
+- Card FUN Ecosystem
+- Card Your Shortcuts
+- Card Menu
+
+### 3. src/components/feed/FacebookRightSidebar.tsx
+Thay đổi background các card từ `fb-card` thành phiên bản semi-transparent:
+- AppHonorBoard container
+- TopRanking container
+- Sponsored card
+- Contacts section
+- Birthdays card
+
+### 4. src/pages/Feed.tsx
+Đảm bảo sidebar containers trong suốt:
+- Left sidebar wrapper: thêm transparency
+- Right sidebar wrapper: thêm transparency
+
+### 5. Các trang khác cần cập nhật
+Áp dụng pattern tương tự cho:
 - Profile.tsx
 - Friends.tsx
+- Chat.tsx
 - Wallet.tsx
 - Leaderboard.tsx
 - Benefactors.tsx
@@ -78,71 +103,45 @@ Thay đổi từ `px-4 sm:px-6 md:px-10` thành `px-[2cm]` cho các trang:
 - About.tsx
 - Post.tsx
 - ConnectedApps.tsx
-
-### Bước 4: Các Trang Giữ Nguyên (Standalone Pages)
-Các trang sau không cần Fixed Scroll Shell vì là trang standalone với thiết kế riêng:
-- **Auth.tsx**: Trang đăng nhập với background riêng
-- **LawOfLight.tsx**: Trang spiritual với background thiêng liêng
-- **SetPassword.tsx**: Trang đặt mật khẩu đơn giản
-- **NotFound.tsx**: Trang 404
-- **Install.tsx**: Trang hướng dẫn cài đặt PWA
-- **Docs pages**: Có header và layout riêng cho tài liệu
+- Admin.tsx
 
 ---
 
-## Chi Tiết Kỹ Thuật
+## CSS Helper Classes Mới
 
-### Cấu Trúc Layout Chuẩn (Fixed Scroll Shell)
-```tsx
-<div className="min-h-screen overflow-hidden">
-  <FacebookNavbar />
-  
-  <main 
-    data-app-scroll 
-    className="fixed inset-x-0 top-[3cm] bottom-0 overflow-y-auto pb-20 lg:pb-0"
-  >
-    <div className="max-w-7xl mx-auto px-[2cm] py-4">
-      {/* Nội dung trang */}
-    </div>
-  </main>
-  
-  <MobileBottomNav />
-</div>
+Thêm vào src/index.css:
+
+```css
+/* Tet-themed transparent cards */
+.tet-card {
+  @apply bg-card/90 backdrop-blur-sm rounded-xl border border-border;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.tet-card-strong {
+  @apply bg-card/95 backdrop-blur-md rounded-xl border border-border;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
 ```
-
-### Giá Trị Spacing Chuẩn
-| Thuộc Tính | Giá Trị | Mô Tả |
-|------------|---------|-------|
-| Top spacing | `top-[3cm]` | Khoảng cách cố định từ navbar |
-| Side margins | `px-[2cm]` | Lề trái/phải 2cm |
-| Bottom padding | `pb-20 lg:pb-0` | Padding cho mobile bottom nav |
-| Max width | `max-w-7xl` | Giới hạn chiều rộng nội dung |
-
----
-
-## Danh Sách Files Cần Chỉnh Sửa
-
-1. **src/pages/Feed.tsx** - Cập nhật side margins thành `px-[2cm]`
-2. **src/pages/Profile.tsx** - Cập nhật side margins thành `px-[2cm]`
-3. **src/pages/Chat.tsx** - Giữ nguyên (layout 2 cột riêng)
-4. **src/pages/Friends.tsx** - Cập nhật side margins thành `px-[2cm]`
-5. **src/pages/Wallet.tsx** - Cập nhật side margins thành `px-[2cm]`
-6. **src/pages/Leaderboard.tsx** - Cập nhật side margins thành `px-[2cm]`
-7. **src/pages/Benefactors.tsx** - Cập nhật side margins thành `px-[2cm]`
-8. **src/pages/Notifications.tsx** - Cập nhật side margins thành `px-[2cm]`
-9. **src/pages/About.tsx** - Cập nhật side margins thành `px-[2cm]`
-10. **src/pages/Post.tsx** - Cập nhật side margins thành `px-[2cm]`
-11. **src/pages/ConnectedApps.tsx** - Cập nhật side margins thành `px-[2cm]`
-12. **src/pages/Admin.tsx** - Thêm Fixed Shell + chuẩn hóa spacing
-13. **src/pages/AdminMigration.tsx** - Thêm navbar + Fixed Shell + spacing
 
 ---
 
 ## Kết Quả Mong Đợi
 
 Sau khi hoàn thành:
-- Tất cả trang chính có khoảng cách **3cm từ navbar** cố định không cuộn
-- Lề trái/phải đồng nhất **2cm** trên tất cả thiết bị  
-- Video hoa mai hoa đào hiển thị rõ nét ở các góc màn hình
-- Giao diện sang trọng, tươi mới, ngập tràn năng lượng Tết
+- Hoa mai/hoa đào hiển thị rõ nét ở 2 bên góc màn hình (như hình mẫu)
+- Video nền động với cánh hoa bay nhẹ nhàng
+- Các card và nội dung vẫn dễ đọc với backdrop blur
+- Giao diện sang trọng, tươi mới, mang không khí Tết
+- Áp dụng đồng nhất trên toàn bộ ứng dụng
 
+---
+
+## Thứ Tự Thực Hiện
+
+1. Cập nhật TetBackground.tsx (gradient mới)
+2. Thêm CSS helper classes vào index.css
+3. Cập nhật FacebookLeftSidebar.tsx
+4. Cập nhật FacebookRightSidebar.tsx
+5. Cập nhật Feed.tsx và các trang chính khác
+6. Kiểm tra và tinh chỉnh độ trong suốt nếu cần
