@@ -141,12 +141,12 @@ export const UnifiedAuthForm = () => {
 
   return (
     <div className="w-full max-w-lg relative">
-      {/* Outer Frame - Premium dark green metallic with shine */}
+      {/* Outer Frame - Clean white/light gray with subtle shadow */}
       <div 
         className="relative p-[4px] rounded-3xl"
         style={{
-          background: 'linear-gradient(135deg, #166534 0%, #22c55e 25%, #15803d 50%, #22c55e 75%, #166534 100%)',
-          boxShadow: '0 0 25px rgba(22, 101, 52, 0.5), 0 4px 20px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.2)'
+          background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 25%, #e9ecef 50%, #f8f9fa 75%, #ffffff 100%)',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.05)'
         }}
       >
         
