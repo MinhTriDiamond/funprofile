@@ -23,6 +23,7 @@ export const TetBackground = memo(() => {
           transform: 'translateX(-50%)',
           willChange: 'transform',
           minHeight: '100dvh',
+          objectPosition: 'top center',
         }}
         aria-hidden="true"
       >
