@@ -20,7 +20,6 @@ import {
 } from 'lucide-react';
 import { AngelChatWidget } from '@/components/angel-ai';
 import { GiftNavButton } from '@/components/donations/GiftNavButton';
-import angelAvatar from '@/assets/angel-avatar.jpg';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Sheet,
@@ -214,7 +213,7 @@ export const FacebookNavbar = () => {
                 >
                   <div className="relative">
                     <img 
-                      src={angelAvatar} 
+                      src="/angel-ai-logo-36.webp" 
                       alt="ANGEL AI" 
                       className="w-7 h-7 rounded-full border border-amber-500/50 group-hover:border-amber-400 transition-all duration-300 group-hover:shadow-[0_0_12px_hsl(45_93%_47%/0.5)]"
                     />

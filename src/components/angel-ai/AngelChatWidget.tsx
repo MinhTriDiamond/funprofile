@@ -1,10 +1,12 @@
 import { memo, useState, useRef, useEffect } from 'react';
-import { X, Send, Sparkles, ExternalLink, Trash2, Loader2 } from 'lucide-react';
+import { X, Send, Sparkles, ExternalLink, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAngelChat, Message } from '@/hooks/useAngelChat';
 import { AngelMessage } from './AngelMessage';
-import angelAvatar from '@/assets/angel-avatar.jpg';
+
+const ANGEL_LOGO_SMALL = '/angel-ai-logo-36.webp';
+const ANGEL_LOGO_LARGE = '/angel-ai-logo-128.webp';
 
 interface AngelChatWidgetProps {
   isOpen: boolean;
@@ -57,7 +59,7 @@ export const AngelChatWidget = memo(({ isOpen, onClose }: AngelChatWidgetProps) 
           <div className="flex items-center gap-3">
             <div className="relative">
               <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-amber-500/50">
-                <img src={angelAvatar} alt="ANGEL AI" className="w-full h-full object-cover" />
+                <img src={ANGEL_LOGO_SMALL} alt="ANGEL AI" className="w-full h-full object-cover" />
               </div>
               <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-card rounded-full" />
             </div>
@@ -106,7 +108,7 @@ export const AngelChatWidget = memo(({ isOpen, onClose }: AngelChatWidgetProps) 
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center py-8">
               <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-amber-500/30 mb-4">
-                <img src={angelAvatar} alt="ANGEL AI" className="w-full h-full object-cover" />
+                <img src={ANGEL_LOGO_LARGE} alt="ANGEL AI" className="w-full h-full object-cover" />
               </div>
               <h4 className="font-semibold text-lg text-foreground mb-2">
                 Chào mừng bé đến với ANGEL AI! ✨
@@ -143,7 +145,7 @@ export const AngelChatWidget = memo(({ isOpen, onClose }: AngelChatWidgetProps) 
               {isLoading && messages[messages.length - 1]?.role === 'user' && (
                 <div className="flex gap-3">
                   <div className="w-8 h-8 rounded-full overflow-hidden border border-amber-500/30 flex-shrink-0">
-                    <img src={angelAvatar} alt="ANGEL AI" className="w-full h-full object-cover" />
+                    <img src={ANGEL_LOGO_SMALL} alt="ANGEL AI" className="w-full h-full object-cover" />
                   </div>
                   <div className="bg-muted/50 border border-amber-500/20 rounded-2xl rounded-tl-sm px-4 py-2.5">
                     <div className="flex items-center gap-1">

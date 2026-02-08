@@ -1,7 +1,8 @@
 import { memo } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { User } from 'lucide-react';
-import angelAvatar from '@/assets/angel-avatar.jpg';
+
+const ANGEL_LOGO = '/angel-ai-logo-36.webp';
 
 export interface Message {
   role: 'user' | 'assistant';
@@ -28,7 +29,7 @@ export const AngelMessage = memo(({ message, isStreaming = false }: AngelMessage
           </>
         ) : (
           <>
-            <AvatarImage src={angelAvatar} alt="ANGEL AI" />
+            <AvatarImage src={ANGEL_LOGO} alt="ANGEL AI" />
             <AvatarFallback className="bg-amber-500/20 text-amber-500">✨</AvatarFallback>
           </>
         )}
