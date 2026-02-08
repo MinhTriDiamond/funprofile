@@ -93,12 +93,18 @@
   contain-intrinsic-size: auto 300px;
 }
 
-/* Mobile: Cards trong suốt hơn để hoa mai/đào hiển thị rõ ràng */
+/* Mobile: Tối ưu hoa mai/đào hiển thị rõ ràng - CHỈ MOBILE */
 @media (max-width: 768px) {
   .fb-card {
     @apply bg-card/70 rounded-xl;
     margin-left: 6px;
     margin-right: 6px;
+  }
+  
+  /* Scale video lớn hơn + tăng màu sắc hoa trên mobile */
+  .tet-video {
+    transform: translateX(-50%) scale(1.15) !important;
+    filter: saturate(1.25) contrast(1.12) brightness(1.05) !important;
   }
 }
 
