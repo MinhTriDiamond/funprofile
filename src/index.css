@@ -71,7 +71,9 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground;
+    /* Nền trong suốt để video hoa mai/hoa đào hiển thị */
+    background: transparent;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     text-rendering: optimizeSpeed;
   }
@@ -83,9 +85,9 @@
   content-visibility: visible;
 }
 
-/* Facebook-style Card - with CSS containment for performance */
+/* Facebook-style Card - Glass effect để hiển thị hoa mai/hoa đào */
 .fb-card {
-  @apply bg-card rounded-lg shadow-sm border border-border;
+  @apply bg-card/80 rounded-lg shadow-sm border border-border;
   contain: layout style paint;
   content-visibility: auto;
   contain-intrinsic-size: auto 300px;
