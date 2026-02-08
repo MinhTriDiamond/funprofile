@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Shield, BarChart3, Gift, Users, Wallet, Trash2, Link2, LogOut, CloudUpload, GitMerge, DollarSign, Sparkles } from "lucide-react";
+import { FacebookNavbar } from "@/components/layout/FacebookNavbar";
+import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 
 import OverviewTab from "@/components/admin/OverviewTab";
 import RewardApprovalTab from "@/components/admin/RewardApprovalTab";
@@ -134,8 +136,10 @@ const Admin = () => {
   if (!isAdmin) return null;
 
   return (
-    <div className="min-h-screen bg-[#f0f2f5] p-4 sm:p-6 md:p-10 pt-[3cm]">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-[#f0f2f5] overflow-hidden">
+      <FacebookNavbar />
+      <main data-app-scroll className="fixed inset-x-0 top-[3cm] bottom-0 overflow-y-auto pb-20 lg:pb-0">
+        <div className="max-w-7xl mx-auto px-[2cm] py-4">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
@@ -252,8 +256,10 @@ const Admin = () => {
           <TabsContent value="merge">
             <MergeRequestsTab />
           </TabsContent>
-        </Tabs>
-      </div>
+      </Tabs>
+        </div>
+      </main>
+      <MobileBottomNav />
     </div>
   );
 };

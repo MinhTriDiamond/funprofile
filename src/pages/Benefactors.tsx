@@ -153,7 +153,7 @@ const Benefactors = () => {
   return (
     <div className="min-h-screen bg-background overflow-hidden">
       <FacebookNavbar />
-      <main data-app-scroll className="fixed inset-x-0 top-[3cm] bottom-0 overflow-y-auto pb-20 px-4 sm:px-6 md:px-10 max-w-3xl mx-auto">
+      <main data-app-scroll className="fixed inset-x-0 top-[3cm] bottom-0 overflow-y-auto pb-20 px-[2cm] max-w-3xl mx-auto">
         {/* Header */}
         <div className="text-center py-8">
           <div className="inline-flex items-center justify-center gap-2 mb-4">

@@ -118,7 +118,7 @@ const Leaderboard = () => {
     <div className="min-h-screen bg-[#f0f2f5] overflow-hidden">
       <FacebookNavbar />
       <main data-app-scroll className="fixed inset-x-0 top-[3cm] bottom-0 overflow-y-auto pb-20 lg:pb-0">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 md:px-10 py-6">
+        <div className="max-w-5xl mx-auto px-[2cm] py-6">
           {/* Header */}
           <div className="bg-gradient-to-r from-primary to-gold rounded-2xl p-8 mb-6 text-white text-center relative">
             {/* Back Button */}

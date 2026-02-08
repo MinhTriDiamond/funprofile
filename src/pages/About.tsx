@@ -51,7 +51,7 @@ const About = () => {
       <FacebookNavbar />
       <main data-app-scroll className="fixed inset-x-0 top-[3cm] bottom-0 overflow-y-auto pb-20 lg:pb-0">
         {/* Hero Section */}
-        <div className="bg-gradient-to-r from-primary via-primary/90 to-gold py-16 px-4 sm:px-6 md:px-10">
+        <div className="bg-gradient-to-r from-primary via-primary/90 to-gold py-16 px-[2cm]">
           <div className="max-w-5xl mx-auto text-center text-white">
             <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-white/20 backdrop-blur flex items-center justify-center">
               <img 
@@ -72,7 +72,7 @@ const About = () => {
           </div>
         </div>
 
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 md:px-10 py-8">
+        <div className="max-w-5xl mx-auto px-[2cm] py-8">
           <Button
             variant="ghost"
             onClick={() => navigate(-1)}
