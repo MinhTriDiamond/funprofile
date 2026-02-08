@@ -205,7 +205,7 @@ const Friends = () => {
     return (
       <div className="min-h-screen overflow-hidden">
         <FacebookNavbar />
-        <main data-app-scroll className="fixed inset-x-0 top-[3cm] bottom-0 overflow-y-auto px-[2cm] pb-20 md:pb-6">
+        <main data-app-scroll className="fixed inset-x-0 top-[3cm] bottom-0 overflow-y-auto px-4 sm:px-6 lg:px-[2cm] pb-20 md:pb-6">
           <div className="max-w-7xl mx-auto py-4">
             <Skeleton className="h-10 w-48 mb-4" />
             <div className="flex gap-3 overflow-hidden">
@@ -222,7 +222,7 @@ const Friends = () => {
   return (
     <div className="min-h-screen overflow-hidden">
       <FacebookNavbar />
-      <main data-app-scroll className="fixed inset-x-0 top-[3cm] bottom-0 overflow-y-auto pb-20 md:pb-6 px-[2cm]">
+      <main data-app-scroll className="fixed inset-x-0 top-[3cm] bottom-0 overflow-y-auto pb-20 md:pb-6 px-4 sm:px-6 lg:px-[2cm]">
         <div className="flex">
           {/* Left Sidebar - Hidden on mobile, shown on lg+ */}
           <aside className={`

@@ -118,7 +118,7 @@ const Leaderboard = () => {
     <div className="min-h-screen overflow-hidden">
       <FacebookNavbar />
       <main data-app-scroll className="fixed inset-x-0 top-[3cm] bottom-0 overflow-y-auto pb-20 lg:pb-0">
-        <div className="max-w-5xl mx-auto px-[2cm] py-6">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-[2cm] py-6">
           {/* Header */}
           <div className="bg-gradient-to-r from-primary to-gold rounded-2xl p-8 mb-6 text-white text-center relative">
             {/* Back Button */}
@@ -154,70 +154,142 @@ const Leaderboard = () => {
             ))}
           </div>
 
-          {/* Top 3 Podium */}
+          {/* Top 3 Podium - Mobile: stacked, Desktop: 3 columns */}
           {!loading && sortedByCategory.length >= 3 && (
-            <div className="grid grid-cols-3 gap-4 mb-6">
-              {/* 2nd Place */}
-              <div className="bg-white/80 rounded-xl shadow-sm p-6 text-center order-1 mt-8">
-                <div className="w-16 h-16 bg-gradient-to-r from-gray-300 to-gray-500 rounded-full flex items-center justify-center mx-auto mb-3 text-white text-2xl font-bold">
-                  2
+            <div className="mb-6">
+              {/* Mobile Layout: Top 1 featured, Top 2-3 side by side */}
+              <div className="sm:hidden space-y-4">
+                {/* 1st Place - Featured */}
+                <div className="bg-white/90 rounded-xl shadow-lg p-6 text-center ring-2 ring-yellow-400">
+                  <div className="w-16 h-16 bg-gradient-to-r from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center mx-auto mb-3 text-white">
+                    <Trophy className="w-8 h-8" />
+                  </div>
+                  <Avatar 
+                    className="w-20 h-20 mx-auto mb-3 ring-4 ring-yellow-400 cursor-pointer"
+                    onClick={() => handleUserClick(sortedByCategory[0].id)}
+                  >
+                    <AvatarImage src={sortedByCategory[0].avatar_url || ''} />
+                    <AvatarFallback>{sortedByCategory[0].username[0]?.toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <h3 className="font-bold text-lg">{sortedByCategory[0].username}</h3>
+                  <p className="text-primary font-bold text-xl">
+                    {activeCategory === 'reward' 
+                      ? `${sortedByCategory[0].total_reward.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')} 🪙`
+                      : sortedByCategory[0][`${activeCategory}_count` as keyof LeaderboardUser]?.toLocaleString('vi-VN')
+                    }
+                  </p>
                 </div>
-                <Avatar 
-                  className="w-20 h-20 mx-auto mb-3 ring-4 ring-gray-300 cursor-pointer"
-                  onClick={() => handleUserClick(sortedByCategory[1].id)}
-                >
-                  <AvatarImage src={sortedByCategory[1].avatar_url || ''} />
-                  <AvatarFallback>{sortedByCategory[1].username[0]?.toUpperCase()}</AvatarFallback>
-                </Avatar>
-                <h3 className="font-semibold">{sortedByCategory[1].username}</h3>
-                <p className="text-primary font-bold text-lg">
-                  {activeCategory === 'reward' 
-                    ? `${sortedByCategory[1].total_reward.toLocaleString('vi-VN')} 🪙`
-                    : sortedByCategory[1][`${activeCategory}_count` as keyof LeaderboardUser]?.toLocaleString('vi-VN')
-                  }
-                </p>
+                
+                {/* 2nd & 3rd Place - Side by side */}
+                <div className="grid grid-cols-2 gap-3">
+                  {/* 2nd Place */}
+                  <div className="bg-white/80 rounded-xl shadow-sm p-4 text-center">
+                    <div className="w-10 h-10 bg-gradient-to-r from-gray-300 to-gray-500 rounded-full flex items-center justify-center mx-auto mb-2 text-white text-lg font-bold">
+                      2
+                    </div>
+                    <Avatar 
+                      className="w-14 h-14 mx-auto mb-2 ring-2 ring-gray-300 cursor-pointer"
+                      onClick={() => handleUserClick(sortedByCategory[1].id)}
+                    >
+                      <AvatarImage src={sortedByCategory[1].avatar_url || ''} />
+                      <AvatarFallback>{sortedByCategory[1].username[0]?.toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    <h3 className="font-semibold text-sm truncate">{sortedByCategory[1].username}</h3>
+                    <p className="text-primary font-bold text-sm">
+                      {activeCategory === 'reward' 
+                        ? `${sortedByCategory[1].total_reward.toLocaleString('vi-VN')} 🪙`
+                        : sortedByCategory[1][`${activeCategory}_count` as keyof LeaderboardUser]?.toLocaleString('vi-VN')
+                      }
+                    </p>
+                  </div>
+                  
+                  {/* 3rd Place */}
+                  <div className="bg-white/80 rounded-xl shadow-sm p-4 text-center">
+                    <div className="w-10 h-10 bg-gradient-to-r from-amber-500 to-amber-700 rounded-full flex items-center justify-center mx-auto mb-2 text-white text-lg font-bold">
+                      3
+                    </div>
+                    <Avatar 
+                      className="w-14 h-14 mx-auto mb-2 ring-2 ring-amber-500 cursor-pointer"
+                      onClick={() => handleUserClick(sortedByCategory[2].id)}
+                    >
+                      <AvatarImage src={sortedByCategory[2].avatar_url || ''} />
+                      <AvatarFallback>{sortedByCategory[2].username[0]?.toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    <h3 className="font-semibold text-sm truncate">{sortedByCategory[2].username}</h3>
+                    <p className="text-primary font-bold text-sm">
+                      {activeCategory === 'reward' 
+                        ? `${sortedByCategory[2].total_reward.toLocaleString('vi-VN')} 🪙`
+                        : sortedByCategory[2][`${activeCategory}_count` as keyof LeaderboardUser]?.toLocaleString('vi-VN')
+                      }
+                    </p>
+                  </div>
+                </div>
               </div>
 
-              {/* 1st Place */}
-              <div className="bg-white/90 rounded-xl shadow-lg p-6 text-center order-2 ring-2 ring-yellow-400">
-                <div className="w-20 h-20 bg-gradient-to-r from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center mx-auto mb-3 text-white">
-                  <Trophy className="w-10 h-10" />
+              {/* Desktop Layout: 3 columns with podium effect */}
+              <div className="hidden sm:grid grid-cols-3 gap-4">
+                {/* 2nd Place */}
+                <div className="bg-white/80 rounded-xl shadow-sm p-6 text-center order-1 mt-8">
+                  <div className="w-16 h-16 bg-gradient-to-r from-gray-300 to-gray-500 rounded-full flex items-center justify-center mx-auto mb-3 text-white text-2xl font-bold">
+                    2
+                  </div>
+                  <Avatar 
+                    className="w-20 h-20 mx-auto mb-3 ring-4 ring-gray-300 cursor-pointer"
+                    onClick={() => handleUserClick(sortedByCategory[1].id)}
+                  >
+                    <AvatarImage src={sortedByCategory[1].avatar_url || ''} />
+                    <AvatarFallback>{sortedByCategory[1].username[0]?.toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <h3 className="font-semibold">{sortedByCategory[1].username}</h3>
+                  <p className="text-primary font-bold text-lg">
+                    {activeCategory === 'reward' 
+                      ? `${sortedByCategory[1].total_reward.toLocaleString('vi-VN')} 🪙`
+                      : sortedByCategory[1][`${activeCategory}_count` as keyof LeaderboardUser]?.toLocaleString('vi-VN')
+                    }
+                  </p>
                 </div>
-                <Avatar 
-                  className="w-24 h-24 mx-auto mb-3 ring-4 ring-yellow-400 cursor-pointer"
-                  onClick={() => handleUserClick(sortedByCategory[0].id)}
-                >
-                  <AvatarImage src={sortedByCategory[0].avatar_url || ''} />
-                  <AvatarFallback>{sortedByCategory[0].username[0]?.toUpperCase()}</AvatarFallback>
-                </Avatar>
-                <h3 className="font-bold text-lg">{sortedByCategory[0].username}</h3>
-                <p className="text-primary font-bold text-xl">
-                  {activeCategory === 'reward' 
-                    ? `${sortedByCategory[0].total_reward.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')} 🪙`
-                    : sortedByCategory[0][`${activeCategory}_count` as keyof LeaderboardUser]?.toLocaleString('vi-VN')
-                  }
-                </p>
-              </div>
 
-              {/* 3rd Place */}
-              <div className="bg-white/80 rounded-xl shadow-sm p-6 text-center order-3 mt-12">
-                <div className="w-14 h-14 bg-gradient-to-r from-amber-500 to-amber-700 rounded-full flex items-center justify-center mx-auto mb-3 text-white text-xl font-bold">
-                  3
+                {/* 1st Place */}
+                <div className="bg-white/90 rounded-xl shadow-lg p-6 text-center order-2 ring-2 ring-yellow-400">
+                  <div className="w-20 h-20 bg-gradient-to-r from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center mx-auto mb-3 text-white">
+                    <Trophy className="w-10 h-10" />
+                  </div>
+                  <Avatar 
+                    className="w-24 h-24 mx-auto mb-3 ring-4 ring-yellow-400 cursor-pointer"
+                    onClick={() => handleUserClick(sortedByCategory[0].id)}
+                  >
+                    <AvatarImage src={sortedByCategory[0].avatar_url || ''} />
+                    <AvatarFallback>{sortedByCategory[0].username[0]?.toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <h3 className="font-bold text-lg">{sortedByCategory[0].username}</h3>
+                  <p className="text-primary font-bold text-xl">
+                    {activeCategory === 'reward' 
+                      ? `${sortedByCategory[0].total_reward.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')} 🪙`
+                      : sortedByCategory[0][`${activeCategory}_count` as keyof LeaderboardUser]?.toLocaleString('vi-VN')
+                    }
+                  </p>
                 </div>
-                <Avatar 
-                  className="w-16 h-16 mx-auto mb-3 ring-4 ring-amber-500 cursor-pointer"
-                  onClick={() => handleUserClick(sortedByCategory[2].id)}
-                >
-                  <AvatarImage src={sortedByCategory[2].avatar_url || ''} />
-                  <AvatarFallback>{sortedByCategory[2].username[0]?.toUpperCase()}</AvatarFallback>
-                </Avatar>
-                <h3 className="font-semibold text-sm">{sortedByCategory[2].username}</h3>
-                <p className="text-primary font-bold">
-                  {activeCategory === 'reward' 
-                    ? `${sortedByCategory[2].total_reward.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')} 🪙`
-                    : sortedByCategory[2][`${activeCategory}_count` as keyof LeaderboardUser]?.toLocaleString('vi-VN')
-                  }
-                </p>
+
+                {/* 3rd Place */}
+                <div className="bg-white/80 rounded-xl shadow-sm p-6 text-center order-3 mt-12">
+                  <div className="w-14 h-14 bg-gradient-to-r from-amber-500 to-amber-700 rounded-full flex items-center justify-center mx-auto mb-3 text-white text-xl font-bold">
+                    3
+                  </div>
+                  <Avatar 
+                    className="w-16 h-16 mx-auto mb-3 ring-4 ring-amber-500 cursor-pointer"
+                    onClick={() => handleUserClick(sortedByCategory[2].id)}
+                  >
+                    <AvatarImage src={sortedByCategory[2].avatar_url || ''} />
+                    <AvatarFallback>{sortedByCategory[2].username[0]?.toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <h3 className="font-semibold text-sm">{sortedByCategory[2].username}</h3>
+                  <p className="text-primary font-bold">
+                    {activeCategory === 'reward' 
+                      ? `${sortedByCategory[2].total_reward.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')} 🪙`
+                      : sortedByCategory[2][`${activeCategory}_count` as keyof LeaderboardUser]?.toLocaleString('vi-VN')
+                    }
+                  </p>
+                </div>
               </div>
             </div>
           )}

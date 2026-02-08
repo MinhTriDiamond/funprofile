@@ -322,7 +322,7 @@ const Profile = () => {
       <div className="min-h-screen overflow-hidden">
         <FacebookNavbar />
         <main className="fixed inset-x-0 top-[3cm] bottom-0 overflow-y-auto">
-          <div className="max-w-5xl mx-auto px-[2cm] text-center py-12">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-[2cm] text-center py-12">
             <p className="text-muted-foreground">{t('profileNotFound')}</p>
           </div>
         </main>
@@ -353,7 +353,7 @@ const Profile = () => {
       
       <main data-app-scroll className={`fixed inset-x-0 bottom-0 overflow-y-auto pb-20 lg:pb-4 ${viewAsPublic ? 'top-[4cm]' : 'top-[3cm]'}`}>
         {/* Cover Photo Section - Facebook 2025 Style */}
-        <div className="max-w-[1100px] mx-auto px-[2cm]">
+        <div className="max-w-[1100px] mx-auto px-4 sm:px-6 lg:px-[2cm]">
           <div className="relative">
             {/* Cover Photo Container with rounded corners */}
             <div className="h-[200px] sm:h-[300px] md:h-[400px] relative overflow-hidden rounded-2xl mx-2 md:mx-0">
