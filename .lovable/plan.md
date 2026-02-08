@@ -1,124 +1,176 @@
 
-# Kế Hoạch Chỉnh Sửa Nền Bóng Kính Cho Tất Cả Các Trang
 
-## Phân Tích Vấn Đề
+# Kế Hoạch Hoàn Thiện Giao Diện Hoa Mai Hoa Đào - Rõ Nét 100% & Tối Ưu Mobile
 
-Qua kiểm tra code và screenshots con gửi, tôi phát hiện các trang sau đang dùng **nền đặc (solid background)** khiến video hoa mai/hoa đào không hiển thị:
+## Mục Tiêu
 
-### 1. Trang Bạn Bè (Friends.tsx)
-- **Sidebar bên trái (dòng 229)**: `bg-card` - nền đặc hoàn toàn
-- **Mobile Header (dòng 292)**: `bg-card` - nền đặc
-- **Các card bạn bè**: `bg-card` - nền đặc
-- **Container đường dây 389**: `bg-card` - nền đặc
-
-### 2. Trang Tin Nhắn (Chat.tsx)
-- **Mobile header (dòng 95)**: `bg-card` - nền đặc
-- **Desktop sidebar (dòng 183)**: `bg-card` - nền đặc
-- **Conversation list container**: nền đặc
-
-### 3. Trang Thông Báo (Notifications.tsx)
-- **Container chính (dòng 235)**: `bg-background` - nền đặc
-- **Header (dòng 237)**: `bg-background/95` - gần như nền đặc
-
-### 4. Component FriendCarousel (FriendCarousel.tsx)
-- **Card bạn bè (dòng 164)**: `bg-card` - nền đặc
-
-### 5. Trang Wallet (WalletCenterContainer.tsx)
-- **Các card (dòng 483)**: `bg-white` - nền trắng đặc
+1. **Video rõ nét 100%** - Hoa mai/hoa đào hiển thị sắc nét như hoa thật
+2. **Tối ưu mobile** - Hoàn chỉnh trên mọi thiết bị (điện thoại, máy tính bảng, máy tính)
 
 ---
 
-## Giải Pháp
+## Phần 1: Tăng Độ Rõ Nét Video
 
-Áp dụng hiệu ứng **bóng kính (glass effect)** cho tất cả các component bằng cách:
-- Thay `bg-card` → `bg-card/70` hoặc `bg-card/80`
-- Thay `bg-background` → xóa bỏ hoặc `bg-background/70`
-- Thay `bg-white` → `bg-white/70`
+### 1.1 Nâng cấp TetBackground.tsx
 
----
+| Thay đổi | Mục đích |
+|----------|----------|
+| Thêm CSS `will-change: transform` | Tăng hiệu suất render video |
+| Thêm `filter: saturate(1.1) contrast(1.05)` | Tăng độ tươi sắc màu hoa |
+| Đảm bảo `object-fit: cover` | Video phủ đầy màn hình |
+| Thêm responsive cho mobile | Video hiển thị đúng trên điện thoại |
 
-## Chi Tiết Thay Đổi Theo File
+### 1.2 Xóa backdrop-blur còn sót
 
-### File 1: `src/pages/Friends.tsx`
-
-| Dòng | Trước | Sau |
-|------|-------|-----|
-| 229 | `bg-card shadow-lg` | `bg-card/80 shadow-lg` |
-| 292 | `bg-card border-b` | `bg-card/80 border-b` |
-| 389 | `bg-card rounded-xl` | `bg-card/70 rounded-xl` |
-| 399 | `bg-card rounded-xl` | `bg-card/70 rounded-xl` |
-
-### File 2: `src/pages/Chat.tsx`
-
-| Dòng | Trước | Sau |
-|------|-------|-----|
-| 95 | `bg-card` | `bg-card/80` |
-| 183 | `bg-card flex` | `bg-card/80 flex` |
-
-### File 3: `src/pages/Notifications.tsx`
-
-| Dòng | Trước | Sau |
-|------|-------|-----|
-| 235 | `bg-background` | (xóa bỏ) |
-| 237 | `bg-background/95` | `bg-card/80` |
-
-### File 4: `src/components/friends/FriendCarousel.tsx`
-
-| Dòng | Trước | Sau |
-|------|-------|-----|
-| 164 | `bg-card rounded-xl` | `bg-card/70 rounded-xl` |
-
-### File 5: `src/components/wallet/WalletCenterContainer.tsx`
-
-| Dòng | Trước | Sau |
-|------|-------|-----|
-| 483 | `bg-white rounded-2xl` | `bg-white/80 rounded-2xl` |
-| Và các vị trí khác dùng `bg-white` | `bg-white` | `bg-white/70` hoặc `bg-white/80` |
+Kiểm tra và xóa mọi `backdrop-blur` trong CSS classes `tet-card`, `tet-card-strong` để video rõ nét hoàn toàn.
 
 ---
 
-## Kết Quả Mong Đợi
+## Phần 2: Áp Dụng Bóng Kính Cho Các Trang Còn Lại
 
-Sau khi hoàn thành:
+### 2.1 Trang Leaderboard.tsx
+- Xóa `bg-[#f0f2f5]` → trong suốt
+- `bg-white` → `bg-white/80`
+
+### 2.2 Trang About.tsx
+- Xóa `bg-[#f0f2f5]` → trong suốt
+- `bg-white` → `bg-white/80`
+
+### 2.3 Trang Benefactors.tsx
+- `bg-card` → `bg-card/70`
+- Đảm bảo trong suốt
+
+### 2.4 Trang Auth.tsx
+- Giữ nguyên (trang đăng nhập có design riêng)
+
+---
+
+## Phần 3: Tối Ưu Giao Diện Mobile
+
+### 3.1 Cải thiện TetBackground cho mobile
+```css
+/* Mobile: Video full height, tự động scale */
+@media (max-width: 768px) {
+  video {
+    min-height: 100vh;
+    min-height: 100dvh; /* Dynamic viewport height */
+    object-position: center top;
+  }
+}
+```
+
+### 3.2 Cải thiện MobileBottomNav
+- Đảm bảo `safe-area-bottom` hoạt động
+- Nền trong suốt `bg-white/90` để thấy hoa
+- Kiểm tra touch targets
+
+### 3.3 Cải thiện FacebookNavbar cho mobile
+- Header trong suốt `bg-card/90`
+- Đảm bảo logo và icons rõ ràng
+
+### 3.4 Cải thiện Safe Area
+- `padding-bottom: env(safe-area-inset-bottom)` cho iPhone notch
+- `padding-top: env(safe-area-inset-top)` cho dynamic island
+
+---
+
+## Phần 4: Chi Tiết Thay Đổi Theo File
+
+### File 1: `src/components/ui/TetBackground.tsx`
+
+**Nâng cấp video với hiệu ứng tăng cường màu sắc:**
+- Thêm `filter: saturate(1.1) contrast(1.05)` - màu tươi hơn
+- Thêm `will-change: transform` - render mượt hơn
+- Responsive cho mobile với `100dvh`
+
+### File 2: `src/index.css`
+
+**Xóa backdrop-blur trong tet-card:**
+- `.tet-card`: xóa `backdrop-blur-sm`
+- `.tet-card-strong`: xóa `backdrop-blur-md`
+- Thêm mobile-specific styles cho video
+
+### File 3: `src/pages/Leaderboard.tsx`
+
+**Áp dụng bóng kính:**
+- Dòng 118: `bg-[#f0f2f5]` → xóa bỏ
+- Dòng 140, 161, 182, 203, 226: `bg-white` → `bg-white/80`
+
+### File 4: `src/pages/About.tsx`
+
+**Áp dụng bóng kính:**
+- Dòng 50: `bg-[#f0f2f5]` → xóa bỏ
+- Dòng 86, 101, 116: `bg-white` → `bg-white/80`
+
+### File 5: `src/components/layout/MobileBottomNav.tsx`
+
+**Tối ưu mobile với nền trong suốt:**
+- `bg-white dark:bg-gray-900` → `bg-white/90 dark:bg-gray-900/90`
+
+### File 6: `src/components/layout/FacebookNavbar.tsx`
+
+**Đảm bảo header trong suốt:**
+- Giữ `fb-header` class (đã có `bg-card/85`)
+
+---
+
+## Sơ Đồ Kết Quả Mong Đợi
 
 ```text
-╔══════════════════════════════════════════════════════════════╗
-║ 🏮 HOA ĐÀO        [Navbar 85%]             HOA MAI 🏮       ║
-╠══════════════════════════════════════════════════════════════╣
-║                                                              ║
-║  ┌────────────────┐  ┌──────────────────────────────────┐   ║
-║  │ Sidebar        │  │  Main Content                    │   ║
-║  │ (bg-card/80)   │  │  (trong suốt - thấy hoa)         │   ║
-║  │                │  │                                  │   ║
-║  │ 🌸 hoa hiện rõ │  │  ┌────────────────────────────┐  │   ║
-║  │                │  │  │ Card Item (bg-card/70)     │  │   ║
-║  │                │  │  │ 🌺 thấy hoa xuyên qua      │  │   ║
-║  │                │  │  └────────────────────────────┘  │   ║
-║  │                │  │                                  │   ║
-║  └────────────────┘  └──────────────────────────────────┘   ║
-║                                                              ║
-║              🌸 cánh hoa bay động hiện rõ 🌸                 ║
-║                                                              ║
-╚══════════════════════════════════════════════════════════════╝
+┌──────────────────────────────────────────────────────────────┐
+│                    📱 MOBILE VIEW                            │
+├──────────────────────────────────────────────────────────────┤
+│ ┌──────────────────────────────────────────────────────────┐ │
+│ │     🏮 Navbar (bg-card/85) - trong suốt 🏮               │ │
+│ └──────────────────────────────────────────────────────────┘ │
+│                                                              │
+│     🌸                                           🌸          │
+│          HOA MAI/HOA ĐÀO                                    │
+│     🌺     RÕ NÉT 100%                        🌺             │
+│            NHƯ HOA THẬT                                      │
+│                                                              │
+│  ┌─────────────────────────────────────────────────────────┐ │
+│  │        Content Card (bg-card/70)                        │ │
+│  │     🌸 Hoa hiện rõ xuyên qua 🌸                         │ │
+│  └─────────────────────────────────────────────────────────┘ │
+│                                                              │
+│     🌺                                           🌺          │
+│          CÁNH HOA BAY                                        │
+│     🌸     ĐỘNG ĐẸP MẮT                       🌸             │
+│                                                              │
+│ ┌──────────────────────────────────────────────────────────┐ │
+│ │ 🏠  👥  🏆  💬  🎁  Bottom Nav (bg-white/90)              │ │
+│ └──────────────────────────────────────────────────────────┘ │
+│                     safe-area-bottom                         │
+└──────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Tổng Quan Files Cần Chỉnh Sửa
+## Tổng Kết Files Cần Chỉnh Sửa
 
-1. **src/pages/Friends.tsx** - 4 vị trí
-2. **src/pages/Chat.tsx** - 2 vị trí  
-3. **src/pages/Notifications.tsx** - 2 vị trí
-4. **src/components/friends/FriendCarousel.tsx** - 1 vị trí
-5. **src/components/wallet/WalletCenterContainer.tsx** - Nhiều vị trí dùng `bg-white`
+| # | File | Thay Đổi |
+|---|------|----------|
+| 1 | `src/components/ui/TetBackground.tsx` | Nâng cấp video clarity + mobile |
+| 2 | `src/index.css` | Xóa backdrop-blur, thêm mobile styles |
+| 3 | `src/pages/Leaderboard.tsx` | bg-white → bg-white/80 |
+| 4 | `src/pages/About.tsx` | bg-white → bg-white/80 |
+| 5 | `src/components/layout/MobileBottomNav.tsx` | bg-white → bg-white/90 |
 
-Tổng cộng: **5 files** cần chỉnh sửa
+**Tổng cộng: 5 files**
 
 ---
 
-## Lưu Ý Kỹ Thuật
+## Kỹ Thuật Tăng Độ Rõ Nét Video
 
-- Độ trong suốt `70%` (`bg-card/70`) cho card/item nhỏ
-- Độ trong suốt `80%` (`bg-card/80`) cho sidebar/header lớn
-- Giữ nguyên `shadow-sm` và `border` để card vẫn có chiều sâu
-- Video hoa mai/hoa đào sẽ hiển thị xuyên qua các lớp trong suốt
+```css
+/* Tăng độ tươi sắc màu hoa */
+video {
+  filter: saturate(1.1) contrast(1.05);
+  /* saturate: tăng độ bão hòa màu → hoa tươi hơn */
+  /* contrast: tăng độ tương phản → hoa rõ nét hơn */
+}
+```
+
+Kết quả: Hoa mai/hoa đào hiển thị **rõ nét 100%**, màu sắc **tươi sáng như hoa thật**, và **ngập tràn năng lượng** trên tất cả thiết bị!
+
