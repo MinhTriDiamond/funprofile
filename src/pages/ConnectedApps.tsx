@@ -183,7 +183,7 @@ const ConnectedApps = () => {
     return (
       <div className="min-h-screen bg-background">
         <FacebookNavbar />
-        <div className="container max-w-4xl mx-auto px-4 sm:px-6 md:px-10 py-8 pt-28 md:pt-32">
+        <div className="container max-w-4xl mx-auto px-4 sm:px-6 md:px-10 py-8 pt-36 md:pt-40">
           <Skeleton className="h-8 w-64 mb-6" />
           <div className="space-y-4">
             {[1, 2, 3].map(i => (
@@ -199,7 +199,7 @@ const ConnectedApps = () => {
     <div className="min-h-screen bg-background pb-20 md:pb-0">
       <FacebookNavbar />
       
-      <div className="container max-w-4xl mx-auto px-4 sm:px-6 md:px-10 py-8 pt-28 md:pt-32">
+      <div className="container max-w-4xl mx-auto px-4 sm:px-6 md:px-10 py-8 pt-36 md:pt-40">
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-foreground mb-2">
             Ứng dụng đã kết nối

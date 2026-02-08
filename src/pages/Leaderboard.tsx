@@ -117,7 +117,7 @@ const Leaderboard = () => {
   return (
     <div className="min-h-screen bg-[#f0f2f5] pb-20 lg:pb-0">
       <FacebookNavbar />
-      <main className="pt-28 md:pt-32">
+      <main className="pt-36 md:pt-40">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 md:px-10 py-6">
           {/* Header */}
           <div className="bg-gradient-to-r from-primary to-gold rounded-2xl p-8 mb-6 text-white text-center relative">

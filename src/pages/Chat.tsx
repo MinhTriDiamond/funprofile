@@ -89,7 +89,7 @@ export default function Chat() {
       <div className="min-h-screen flex flex-col">
         <FacebookNavbar />
         
-        <main className="flex-1 pt-28 md:pt-32 pb-16">
+        <main className="flex-1 pt-36 md:pt-40 pb-16">
           {conversationId ? (
             <div className="h-full flex flex-col">
               <div className="flex items-center gap-2 p-3 border-b bg-card">
@@ -178,9 +178,9 @@ export default function Chat() {
     <div className="min-h-screen flex flex-col">
       <FacebookNavbar />
       
-      <main className="flex-1 pt-28 md:pt-32 flex">
+      <main className="flex-1 pt-36 md:pt-40 flex">
         {/* Left sidebar - Conversation list */}
-        <div className="w-80 border-r bg-card flex flex-col h-[calc(100vh-7rem)] md:h-[calc(100vh-8rem)]">
+        <div className="w-80 border-r bg-card flex flex-col h-[calc(100vh-9rem)] md:h-[calc(100vh-10rem)]">
           <div className="flex items-center justify-between p-4 border-b">
             <h1 className="text-xl font-bold">Tin nhắn</h1>
             <div className="flex items-center gap-1">
@@ -221,7 +221,7 @@ export default function Chat() {
         </div>
 
         {/* Main content - Message thread */}
-        <div className="flex-1 flex flex-col h-[calc(100vh-7rem)] md:h-[calc(100vh-8rem)]">
+        <div className="flex-1 flex flex-col h-[calc(100vh-9rem)] md:h-[calc(100vh-10rem)]">
           {conversationId ? (
             <MessageThread
               conversationId={conversationId}
