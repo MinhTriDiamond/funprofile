@@ -23,22 +23,22 @@ export const TetBackground = memo(() => {
           // Mask: hiển thị rõ ở 4 góc, ẩn dần về giữa
           maskImage: `
             radial-gradient(
-              ellipse 60% 70% at center,
+              ellipse 50% 60% at center,
               transparent 0%,
-              transparent 30%,
-              rgba(0,0,0,0.3) 50%,
-              rgba(0,0,0,0.7) 70%,
-              black 90%
+              transparent 20%,
+              rgba(0,0,0,0.4) 40%,
+              rgba(0,0,0,0.8) 60%,
+              black 80%
             )
           `,
           WebkitMaskImage: `
             radial-gradient(
-              ellipse 60% 70% at center,
+              ellipse 50% 60% at center,
               transparent 0%,
-              transparent 30%,
-              rgba(0,0,0,0.3) 50%,
-              rgba(0,0,0,0.7) 70%,
-              black 90%
+              transparent 20%,
+              rgba(0,0,0,0.4) 40%,
+              rgba(0,0,0,0.8) 60%,
+              black 80%
             )
           `
         }}
