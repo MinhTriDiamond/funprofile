@@ -1,100 +1,97 @@
 
-# Kế Hoạch: Cập Nhật Logo Angel AI Nền Trong Suốt
+# Kế Hoạch: Điều Chỉnh Vị Trí Hoa Mai/Đào và Lồng Đèn
 
-## Phân Tích Hiện Trạng
+## Phân Tích Yêu Cầu
 
-Hiện tại có 2 file logo Angel AI trong dự án:
+Theo hình ảnh tham khảo:
+- **Desktop**: Hoa mai/đào và lồng đèn nằm từ phía dưới header (~48px-56px từ top) xuống
+- **Mobile**: Tương tự - hoa/lồng đèn bắt đầu ngay dưới tiêu đề
 
-| File | Vị trí | Dùng ở |
-|------|--------|--------|
-| `angel-ai-logo-36.webp` | `public/` | FUN Ecosystem sidebar (mới thêm) |
-| `angel-avatar.jpg` | `src/assets/` | 8 components khác nhau |
+## Hiện Trạng
 
-## Các Vị Trí Sử Dụng Logo Angel AI
+| Component | Vị trí hiện tại |
+|-----------|-----------------|
+| `TetBackground` | `fixed inset-0` → Bắt đầu từ top: 0 |
+| `FacebookNavbar` (header) | `h-12 md:h-14` → 48px mobile, 56px desktop |
+| Nội dung chính | `top: 4cm` desktop, `top: 2cm` mobile |
 
-1. **FacebookLeftSidebar.tsx** - FUN Ecosystem shortcuts
-2. **FacebookNavbar.tsx** - Header navbar
-3. **AngelFloatingButton.tsx** - Nút chat floating
-4. **AngelChatWidget.tsx** - Widget chat (3 chỗ)
-5. **AngelMessage.tsx** - Tin nhắn trong chat
-6. **LawOfLight.tsx** - Trang Law of Light
-7. **MasterCharterDocs.tsx** - Trang docs
-8. **PplpDocs.tsx** - Trang PPLP docs
+Vấn đề: Video nền đang phủ từ top: 0, trong khi người dùng muốn hoa/lồng đèn bắt đầu từ dưới header.
 
 ## Giải Pháp
 
-### Bước 1: Thay Logo Nền Trong Suốt
-Tạo lại file `public/angel-ai-logo-36.webp` từ hình ảnh người dùng cung cấp (đã xóa nền đen, chỉ giữ logo).
+Điều chỉnh container của `TetBackground` để bắt đầu từ phía dưới navbar thay vì từ top 0:
 
-### Bước 2: Tạo Logo Kích Thước Lớn
-Tạo thêm `public/angel-ai-logo-128.webp` cho các vị trí cần hiển thị lớn (LawOfLight, chat widget welcome).
+### Bước 1: Cập nhật TetBackground.tsx
+Thay đổi `inset-0` thành vị trí cụ thể bắt đầu từ dưới header:
+- Desktop: `top: 56px` (14 × 4 = 56px = h-14)
+- Mobile: `top: 48px` (12 × 4 = 48px = h-12)
 
-### Bước 3: Cập Nhật Các Components
-
-**File 1:** `src/components/feed/FacebookLeftSidebar.tsx`
-- Đã dùng đúng path `/angel-ai-logo-36.webp` ✓
-
-**File 2:** `src/components/layout/FacebookNavbar.tsx`
-- Thay `import angelAvatar from '@/assets/angel-avatar.jpg'`
-- Dùng `/angel-ai-logo-36.webp`
-
-**File 3:** `src/components/angel-ai/AngelFloatingButton.tsx`
-- Thay avatar import thành logo mới
-
-**File 4:** `src/components/angel-ai/AngelChatWidget.tsx`
-- Thay avatar import (3 vị trí trong component)
-
-**File 5:** `src/components/angel-ai/AngelMessage.tsx`
-- Thay avatar thành logo mới
-
-**File 6:** `src/pages/LawOfLight.tsx`
-- Thay avatar thành logo lớn `/angel-ai-logo-128.webp`
-
-**File 7:** `src/pages/MasterCharterDocs.tsx`
-- Thay avatar thành logo mới
-
-**File 8:** `src/pages/PplpDocs.tsx`
-- Thay avatar thành logo mới
+### Bước 2: Cập nhật CSS trong index.css
+Thêm class `.tet-background-container` với quy tắc vị trí responsive.
 
 ## Chi Tiết Kỹ Thuật
 
-### Thay Đổi Import Pattern
+### File 1: `src/components/ui/TetBackground.tsx`
 
-**Trước:**
-```typescript
-import angelAvatar from '@/assets/angel-avatar.jpg';
-// ...
-<img src={angelAvatar} alt="ANGEL AI" />
+**Thay đổi:**
+```tsx
+// Trước
+<div 
+  className="fixed inset-0 overflow-hidden pointer-events-none tet-background-container"
+  style={{ zIndex: -100 }}
+>
+
+// Sau
+<div 
+  className="fixed left-0 right-0 bottom-0 overflow-hidden pointer-events-none tet-background-container"
+  style={{ zIndex: -100, top: '56px' }}
+>
 ```
 
-**Sau:**
-```typescript
-// Không cần import - dùng path trực tiếp từ public/
-<img src="/angel-ai-logo-36.webp" alt="ANGEL AI" />
-// Hoặc cho kích thước lớn:
-<img src="/angel-ai-logo-128.webp" alt="ANGEL AI" />
+Sử dụng CSS class để xử lý responsive thay vì inline style.
+
+### File 2: `src/index.css`
+
+**Thêm CSS cho container:**
+```css
+/* Tết Background - Bắt đầu từ dưới header */
+.tet-background-container {
+  top: 56px; /* Height of header on desktop (h-14 = 56px) */
+}
+
+@media (max-width: 768px) {
+  .tet-background-container {
+    top: 48px; /* Height of header on mobile (h-12 = 48px) */
+  }
+}
 ```
 
-### Điều Chỉnh Style Cho Logo Mới
-Logo mới có nền trong suốt, cần điều chỉnh CSS để hiển thị đẹp:
-- Thêm padding hoặc background cho container nếu cần
-- Đảm bảo logo hiển thị rõ trên mọi nền
+**Điều chỉnh object-position của video:**
+```css
+.tet-video {
+  object-fit: cover;
+  object-position: top center; /* Giữ hoa mai/lồng đèn ở phía trên */
+}
+
+@media (max-width: 768px) and (orientation: portrait) {
+  .tet-video {
+    object-fit: contain;
+    object-position: top center;
+  }
+}
+```
 
 ## Tổng Kết Files Cần Sửa
 
 | File | Thay đổi |
 |------|----------|
-| `public/angel-ai-logo-36.webp` | Thay bằng logo nền trong suốt |
-| `public/angel-ai-logo-128.webp` | Tạo mới (logo lớn) |
-| `src/components/layout/FacebookNavbar.tsx` | Cập nhật src |
-| `src/components/angel-ai/AngelFloatingButton.tsx` | Cập nhật src |
-| `src/components/angel-ai/AngelChatWidget.tsx` | Cập nhật src (3 chỗ) |
-| `src/components/angel-ai/AngelMessage.tsx` | Cập nhật src |
-| `src/pages/LawOfLight.tsx` | Cập nhật src |
-| `src/pages/MasterCharterDocs.tsx` | Cập nhật src |
-| `src/pages/PplpDocs.tsx` | Cập nhật src |
+| `src/components/ui/TetBackground.tsx` | Thay `inset-0` → `left-0 right-0 bottom-0` + class responsive |
+| `src/index.css` | Thêm CSS cho `.tet-background-container` với top responsive |
 
 ## Kết Quả Mong Đợi
-- Logo Angel AI hiển thị với nền trong suốt ở tất cả các vị trí
-- Đồng nhất giao diện trên toàn bộ ứng dụng
-- Logo hiển thị rõ ràng trên mọi nền (sáng/tối)
+
+- **Desktop**: Hoa mai/đào và lồng đèn xuất hiện từ vị trí 56px (dưới header) xuống cuối màn hình
+- **Mobile**: Hoa mai/đào và lồng đèn xuất hiện từ vị trí 48px (dưới header) xuống cuối màn hình
+- Header không bị che bởi video background
+- Nội dung vẫn hiển thị đúng với transparent cards
+- Tương thích iOS Safari, Chrome, Firefox
