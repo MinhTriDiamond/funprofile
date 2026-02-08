@@ -1,77 +1,108 @@
 
-# Kế Hoạch Sửa Lỗi Vị Trí Video Hoa Mai Hoa Đào
+# Kế Hoạch Hiển Thị Hoa Mai/Hoa Đào Rõ Nét & Đậm Nét
 
-## Vấn Đề Phát Hiện
+## Phân Tích Vấn Đề Hiện Tại
 
-Video nền Tết bị cắt phần trên (nơi có hoa mai, hoa đào, đèn lồng) vì:
-- Sử dụng `top-1/2 -translate-y-1/2` → căn giữa theo chiều dọc
-- Khi màn hình nhỏ hơn video, phần TOP bị cắt bỏ
-- Chỉ thấy phần giữa và dưới (cánh hoa rơi nhỏ)
+Qua kiểm tra screenshot và code, tôi phát hiện các vấn đề sau:
 
----
+### 1. Video đã căn đúng vị trí (top-0 + object-top)
+Video đã được sửa để hiển thị phần trên với hoa mai/hoa đào - đây là đúng.
 
-## Giải Pháp
+### 2. Overlay gradient vẫn làm mờ hoa ở giữa
+Hiện tại overlay có opacity 0.4-0.5 ở vùng giữa, làm hoa bị mờ.
 
-Thay đổi vị trí căn chỉnh video từ **center** sang **top** để đảm bảo hoa mai/hoa đào ở góc trên luôn hiển thị.
+### 3. Sidebars chiếm diện tích lớn ở 2 bên
+- Left sidebar: 3 cột (25%)
+- Right sidebar: 3 cột (25%)
+- Mặc dù đã có `bg-card/80 backdrop-blur-sm`, vẫn che phủ hoa ở 2 bên
 
-### Thay đổi trong TetBackground.tsx
-
-```text
-Trước:
-className="absolute top-1/2 left-1/2 min-w-full min-h-full 
-           w-auto h-auto -translate-x-1/2 -translate-y-1/2 object-cover"
-
-Sau:
-className="absolute top-0 left-1/2 min-w-full min-h-full 
-           w-auto h-auto -translate-x-1/2 object-cover object-top"
-```
-
-### Chi Tiết Thay Đổi:
-| Thuộc Tính | Trước | Sau | Giải Thích |
-|------------|-------|-----|------------|
-| `top` | `top-1/2` | `top-0` | Căn từ trên xuống |
-| `translate-y` | `-translate-y-1/2` | (xóa) | Không cần dịch chuyển |
-| `object-position` | (mặc định: center) | `object-top` | Ưu tiên hiển thị phần trên |
+### 4. Navbar che phần trên cùng
+Navbar có `fb-header` (bg-card solid) che mất phần hoa ở góc trên.
 
 ---
 
-## File Cần Chỉnh Sửa
+## Giải Pháp Đề Xuất
 
-**src/components/ui/TetBackground.tsx**
+### Bước 1: Xóa hoàn toàn overlay gradient
+Bỏ overlay che phủ video để hoa hiển thị rõ nét 100% - không có lớp mờ nào cả.
 
-Thay đổi dòng 20 từ:
+**File:** `src/components/ui/TetBackground.tsx`
 ```tsx
-className="absolute top-1/2 left-1/2 min-w-full min-h-full w-auto h-auto -translate-x-1/2 -translate-y-1/2 object-cover"
+// XÓA hoàn toàn div overlay gradient
+// Chỉ giữ lại video nền không có gì che
 ```
 
-Thành:
-```tsx
-className="absolute top-0 left-1/2 min-w-full min-h-full w-auto h-auto -translate-x-1/2 object-cover object-top"
+### Bước 2: Làm trong suốt Navbar
+Thay đổi navbar từ solid background sang semi-transparent để hoa ở góc trên hiển thị.
+
+**File:** `src/index.css`
+```css
+/* Cập nhật fb-header */
+.fb-header {
+  @apply bg-card/85 backdrop-blur-md shadow-sm border-b border-border;
+}
 ```
+
+### Bước 3: Tăng độ trong suốt cho Sidebars
+Giảm opacity của sidebars để hoa hiển thị rõ hơn ở 2 bên.
+
+**File:** `src/components/feed/FacebookLeftSidebar.tsx`
+**File:** `src/components/feed/FacebookRightSidebar.tsx`
+```tsx
+// Thay đổi từ bg-card/80 → bg-card/70
+// Giữ backdrop-blur-sm để vẫn đọc được chữ
+```
+
+### Bước 4: Tăng độ trong suốt cho các Card trong Sidebar
+Các card FUN Ecosystem, Your Shortcuts, Menu... cần trong suốt hơn.
+
+**File:** `src/components/feed/FacebookLeftSidebar.tsx`
+```tsx
+// Card 1, 2, 3: từ bg-card/80 → bg-card/70
+```
+
+### Bước 5: Cập nhật toàn bộ các trang
+Đảm bảo tất cả các trang (Profile, Friends, Chat, Wallet, Leaderboard, Benefactors, Notifications, About, Post, ConnectedApps, Admin) đều có cùng thiết lập trong suốt.
+
+---
+
+## Chi Tiết File Cần Chỉnh Sửa
+
+| File | Thay Đổi |
+|------|----------|
+| `src/components/ui/TetBackground.tsx` | Xóa overlay gradient hoàn toàn |
+| `src/index.css` | fb-header → bg-card/85 backdrop-blur-md |
+| `src/components/feed/FacebookLeftSidebar.tsx` | bg-card/80 → bg-card/70 cho tất cả cards |
+| `src/components/feed/FacebookRightSidebar.tsx` | bg-card/80 → bg-card/70 cho tất cả cards |
+| `src/components/feed/AppHonorBoard.tsx` | bg-card/80 → bg-card/70 |
+| `src/components/feed/TopRanking.tsx` | bg-card/80 → bg-card/70 |
 
 ---
 
 ## Kết Quả Mong Đợi
 
-Sau khi sửa:
-- Hoa đào (hồng) và đèn lồng đỏ ở góc **trên bên trái** hiển thị rõ
-- Hoa mai (vàng) và đèn lồng đỏ ở góc **trên bên phải** hiển thị rõ  
-- Cánh hoa rơi động vẫn hiển thị ở giữa và phía dưới
-- Giống hệt hình tham chiếu con gửi
+Sau khi hoàn thành:
+- Hoa mai/hoa đào hiển thị rõ nét 100% ở góc trên bên trái và phải
+- Đèn lồng đỏ nhìn thấy rõ ràng
+- Cánh hoa bay động thấy rõ trên toàn màn hình
+- Navbar và sidebars vẫn đọc được nhưng thấy hoa xuyên qua
+- Video nền động sống động, tràn đầy năng lượng Tết
 
 ---
 
 ## Sơ Đồ Minh Họa
 
 ```text
-╔═══════════════════════════════════════════════════╗
-║  🏮 HOA ĐÀO          [Navbar]           HOA MAI 🏮 ║  ← PHẦN NÀY sẽ hiển thị
-║  (hồng)                                  (vàng)   ║
-╠═══════════════════════════════════════════════════╣
-║                                                   ║
-║     [Sidebar]     [Content]     [Sidebar]         ║
-║                                                   ║
-║           🌸 cánh hoa rơi động 🌸                  ║
-║                                                   ║
-╚═══════════════════════════════════════════════════╝
+╔═══════════════════════════════════════════════════════════════╗
+║ 🏮 HOA ĐÀO      [Navbar trong suốt]              HOA MAI 🏮   ║
+║ (hiển thị rõ)                                    (hiển thị rõ)║
+╠═══════════════════════════════════════════════════════════════╣
+║                                                               ║
+║  [Sidebar/70%]    [Content/80%]     [Sidebar/70%]             ║
+║  hoa xuyên qua    vẫn dễ đọc        hoa xuyên qua             ║
+║                                                               ║
+║               🌸 cánh hoa bay động 🌸                          ║
+║               (hiển thị rõ trên toàn màn hình)                ║
+║                                                               ║
+╚═══════════════════════════════════════════════════════════════╝
 ```
