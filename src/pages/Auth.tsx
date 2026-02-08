@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { UnifiedAuthForm } from '@/components/auth/UnifiedAuthForm';
 import { useLanguage } from '@/i18n/LanguageContext';
 import LanguageSwitcher from '@/components/layout/LanguageSwitcher';
-import { TetBackground } from '@/components/ui/TetBackground';
+// TetBackground removed - global version in App.tsx handles it
 import { Eye } from 'lucide-react';
 const Auth = () => {
   const navigate = useNavigate();
@@ -87,8 +87,7 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Video nền hoa mai/hoa đào - rõ nét 100% như hoa thật */}
-      <TetBackground />
+      {/* Video nền hoa mai/hoa đào - handled by global TetBackground in App.tsx */}
 
       {/* Language Switcher - Top Right with 13 languages */}
       <div className="absolute top-4 right-4 z-50">

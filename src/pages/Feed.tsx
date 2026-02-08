@@ -100,7 +100,7 @@ const Feed = () => {
     <div className="min-h-screen overflow-hidden">
       <FacebookNavbar />
       
-      <main data-app-scroll className="fixed inset-x-0 top-[1.5cm] sm:top-[3cm] bottom-0 overflow-y-auto pb-20 lg:pb-4">
+      <main data-app-scroll className="app-shell-content fixed inset-x-0 bottom-0 overflow-y-auto pb-20 lg:pb-4">
         <div className="max-w-screen-2xl mx-auto px-0 sm:px-6 lg:px-[2cm]">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 sm:gap-2 md:gap-4 py-2 md:py-4">
             {/* Left Sidebar - Hidden on mobile/tablet */}
