@@ -232,9 +232,9 @@ const Notifications = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background pb-20 lg:pb-0 pt-[3cm]">
+    <div className="min-h-screen bg-background pb-20 lg:pb-0 pt-[calc(3cm+100px)]">
       {/* Header */}
-      <div className="sticky top-[3cm] z-40 bg-background/95 backdrop-blur-sm border-b border-border">
+      <div className="fixed top-[3cm] left-0 right-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border">
         <div className="flex items-center justify-between px-4 sm:px-6 md:px-10 py-3">
           <div className="flex items-center gap-3">
             <Button
