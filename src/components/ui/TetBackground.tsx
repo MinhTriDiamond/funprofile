@@ -18,12 +18,11 @@ export const TetBackground = memo(() => {
         loop
         muted
         playsInline
-        className="tet-video absolute top-12 left-1/2 w-auto h-auto min-w-full min-h-full object-cover"
+        className="tet-video absolute top-0 md:top-12 left-1/2 w-auto h-auto min-w-full min-h-full object-cover"
         style={{
           transform: 'translateX(-50%)',
           willChange: 'transform',
           minHeight: '100dvh',
-          objectPosition: 'top center',
         }}
         aria-hidden="true"
       >
