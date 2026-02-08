@@ -41,7 +41,7 @@ const Wallet = () => {
   }, [navigate]);
 
   return (
-    <div className="min-h-screen bg-[#f0f2f5] pb-20 lg:pb-0">
+    <div className="min-h-screen pb-20 lg:pb-0">
       <FacebookNavbar />
       <main className="pt-[3cm]">
         {/* Full width center container */}
