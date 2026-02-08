@@ -96,9 +96,9 @@
   @apply hover:bg-muted/50 transition-colors cursor-pointer rounded-lg;
 }
 
-/* Facebook Header Style */
+/* Facebook Header Style - Semi-transparent để hoa mai/đào hiển thị */
 .fb-header {
-  @apply bg-card shadow-sm border-b border-border;
+  @apply bg-card/85 backdrop-blur-md shadow-sm border-b border-border;
 }
 
 /* Facebook Icon Button */
