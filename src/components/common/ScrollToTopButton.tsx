@@ -12,19 +12,37 @@ const ScrollToTopButton = memo(({ threshold = 400, className }: ScrollToTopButto
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    const toggleVisibility = () => {
-      setIsVisible(window.scrollY > threshold);
+    const scrollTarget = document.querySelector<HTMLElement>('[data-app-scroll]');
+    const isWindowTarget = !scrollTarget;
+
+    const getScrollTop = () => {
+      if (isWindowTarget) return window.scrollY;
+      return scrollTarget?.scrollTop ?? 0;
     };
 
-    window.addEventListener('scroll', toggleVisibility, { passive: true });
-    return () => window.removeEventListener('scroll', toggleVisibility);
+    const toggleVisibility = () => {
+      setIsVisible(getScrollTop() > threshold);
+    };
+
+    // Set initial state
+    toggleVisibility();
+
+    const target: EventTarget = isWindowTarget ? window : (scrollTarget as unknown as EventTarget);
+    target.addEventListener('scroll', toggleVisibility, { passive: true } as AddEventListenerOptions);
+
+    return () => {
+      target.removeEventListener('scroll', toggleVisibility as EventListener);
+    };
   }, [threshold]);
 
   const scrollToTop = useCallback(() => {
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth'
-    });
+    const scrollTarget = document.querySelector<HTMLElement>('[data-app-scroll]');
+    if (scrollTarget) {
+      scrollTarget.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
   if (!isVisible) return null;

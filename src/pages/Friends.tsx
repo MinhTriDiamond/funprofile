@@ -203,9 +203,9 @@ const Friends = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen">
+      <div className="min-h-screen overflow-hidden">
         <FacebookNavbar />
-        <main className="pt-[3cm] px-4 sm:px-6 md:px-10">
+        <main data-app-scroll className="fixed inset-x-0 top-[3cm] bottom-0 overflow-y-auto px-4 sm:px-6 md:px-10 pb-20 md:pb-6">
           <div className="max-w-7xl mx-auto py-4">
             <Skeleton className="h-10 w-48 mb-4" />
             <div className="flex gap-3 overflow-hidden">
@@ -220,9 +220,9 @@ const Friends = () => {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen overflow-hidden">
       <FacebookNavbar />
-      <main className="pt-[3cm] pb-20 md:pb-6 px-4 sm:px-6 md:px-10">
+      <main data-app-scroll className="fixed inset-x-0 top-[3cm] bottom-0 overflow-y-auto pb-20 md:pb-6 px-4 sm:px-6 md:px-10">
         <div className="flex">
           {/* Left Sidebar - Hidden on mobile, shown on lg+ */}
           <aside className={`
@@ -289,7 +289,7 @@ const Friends = () => {
           {/* Main Content */}
           <div className="flex-1 lg:ml-[360px] min-w-0">
             {/* Mobile Header */}
-            <div className="lg:hidden sticky top-14 z-20 bg-card border-b border-border px-4 py-3">
+            <div className="lg:hidden sticky top-0 z-20 bg-card border-b border-border px-4 py-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <button 

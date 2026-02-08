@@ -41,9 +41,9 @@ const Wallet = () => {
   }, [navigate]);
 
   return (
-    <div className="min-h-screen pb-20 lg:pb-0">
+    <div className="min-h-screen overflow-hidden pb-20 lg:pb-0">
       <FacebookNavbar />
-      <main className="pt-[3cm]">
+      <main data-app-scroll className="fixed inset-x-0 top-[3cm] bottom-0 overflow-y-auto pb-20 lg:pb-0">
         {/* Full width center container */}
         <div className="w-full px-4 sm:px-6 md:px-10 py-6">
           <div className="max-w-6xl mx-auto">

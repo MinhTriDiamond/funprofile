@@ -181,26 +181,28 @@ const ConnectedApps = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background overflow-hidden">
         <FacebookNavbar />
-        <div className="container max-w-4xl mx-auto px-4 sm:px-6 md:px-10 py-8 pt-[3cm]">
-          <Skeleton className="h-8 w-64 mb-6" />
-          <div className="space-y-4">
-            {[1, 2, 3].map(i => (
-              <Skeleton key={i} className="h-48 w-full rounded-xl" />
-            ))}
+        <main data-app-scroll className="fixed inset-x-0 top-[3cm] bottom-0 overflow-y-auto pb-20 md:pb-0">
+          <div className="container max-w-4xl mx-auto px-4 sm:px-6 md:px-10 py-8">
+            <Skeleton className="h-8 w-64 mb-6" />
+            <div className="space-y-4">
+              {[1, 2, 3].map(i => (
+                <Skeleton key={i} className="h-48 w-full rounded-xl" />
+              ))}
+            </div>
           </div>
-        </div>
+        </main>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background pb-20 md:pb-0">
+    <div className="min-h-screen bg-background overflow-hidden pb-20 md:pb-0">
       <FacebookNavbar />
       
-      <div className="container max-w-4xl mx-auto px-4 sm:px-6 md:px-10 py-8 pt-[3cm]">
-        <div className="mb-8">
+      <main data-app-scroll className="fixed inset-x-0 top-[3cm] bottom-0 overflow-y-auto pb-20 md:pb-0">
+        <div className="container max-w-4xl mx-auto px-4 sm:px-6 md:px-10 py-8">
           <h1 className="text-2xl font-bold text-foreground mb-2">
             Ứng dụng đã kết nối
           </h1>
@@ -330,7 +332,7 @@ const ConnectedApps = () => {
             })}
           </div>
         )}
-      </div>
+      </main>
 
       {/* Revoke Confirmation Dialog */}
       <AlertDialog open={revokeDialogOpen} onOpenChange={setRevokeDialogOpen}>

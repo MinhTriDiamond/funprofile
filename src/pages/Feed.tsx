@@ -97,15 +97,15 @@ const Feed = () => {
   }, []);
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen overflow-hidden">
       <FacebookNavbar />
       
-      <main className="pt-[3cm] pb-20 lg:pb-4">
+      <main data-app-scroll className="fixed inset-x-0 top-[3cm] bottom-0 overflow-y-auto pb-20 lg:pb-4">
         <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 md:px-10">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 sm:gap-2 md:gap-4 py-2 md:py-4">
             {/* Left Sidebar - Hidden on mobile/tablet */}
             <aside className="hidden lg:block lg:col-span-3">
-              <div className="sticky top-[3cm] max-h-[calc(100vh-3cm)] overflow-y-auto pr-2 scrollbar-thin">
+              <div className="sticky top-0 max-h-[calc(100dvh-3cm)] overflow-y-auto pr-2 scrollbar-thin">
                 <FacebookLeftSidebar />
               </div>
             </aside>
@@ -161,7 +161,7 @@ const Feed = () => {
 
             {/* Right Sidebar - Hidden on mobile/tablet */}
             <aside className="hidden lg:block lg:col-span-3">
-              <div className="sticky top-[3cm] max-h-[calc(100vh-3cm)] overflow-y-auto pl-2 scrollbar-thin">
+              <div className="sticky top-0 max-h-[calc(100dvh-3cm)] overflow-y-auto pl-2 scrollbar-thin">
                 <FacebookRightSidebar />
               </div>
             </aside>

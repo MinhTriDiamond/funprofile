@@ -86,10 +86,10 @@ export default function Chat() {
   // Mobile/Tablet: Show only list or thread
   if (isMobileOrTablet) {
     return (
-      <div className="min-h-screen flex flex-col">
+      <div className="min-h-screen overflow-hidden">
         <FacebookNavbar />
         
-        <main className="flex-1 pt-[3cm] pb-16">
+        <main className="fixed inset-x-0 top-[3cm] bottom-[72px] flex flex-col overflow-hidden">
           {conversationId ? (
             <div className="h-full flex flex-col">
               <div className="flex items-center gap-2 p-3 border-b bg-card">
@@ -105,7 +105,7 @@ export default function Chat() {
               />
             </div>
           ) : (
-            <div className="h-full">
+            <div className="h-full flex flex-col">
               <div className="flex items-center justify-between p-4 border-b">
                 <h1 className="text-xl font-bold">Tin nhắn</h1>
                 <div className="flex items-center gap-2">
@@ -175,12 +175,12 @@ export default function Chat() {
 
   // Desktop: Two-column layout
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen overflow-hidden">
       <FacebookNavbar />
       
-      <main className="flex-1 pt-[3cm] flex">
+      <main className="fixed inset-x-0 top-[3cm] bottom-0 flex overflow-hidden">
         {/* Left sidebar - Conversation list */}
-        <div className="w-80 border-r bg-card flex flex-col h-[calc(100vh-3cm)]">
+        <div className="w-80 border-r bg-card flex flex-col h-full">
           <div className="flex items-center justify-between p-4 border-b">
             <h1 className="text-xl font-bold">Tin nhắn</h1>
             <div className="flex items-center gap-1">
@@ -221,7 +221,7 @@ export default function Chat() {
         </div>
 
         {/* Main content - Message thread */}
-        <div className="flex-1 flex flex-col h-[calc(100vh-3cm)]">
+        <div className="flex-1 flex flex-col h-full">
           {conversationId ? (
             <MessageThread
               conversationId={conversationId}
