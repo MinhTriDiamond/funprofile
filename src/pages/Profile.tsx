@@ -310,7 +310,7 @@ const Profile = () => {
     return (
       <div className="min-h-screen bg-[#f0f2f5]">
         <FacebookNavbar />
-        <main className="pt-36 md:pt-40">
+        <main className="pt-[3cm]">
           <Skeleton className="h-[350px] w-full" />
         </main>
       </div>
@@ -321,7 +321,7 @@ const Profile = () => {
     return (
       <div className="min-h-screen bg-[#f0f2f5]">
         <FacebookNavbar />
-        <main className="pt-36 md:pt-40">
+        <main className="pt-[3cm]">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 md:px-10 text-center py-12">
             <p className="text-muted-foreground">{t('profileNotFound')}</p>
           </div>
@@ -351,7 +351,7 @@ const Profile = () => {
         </div>
       )}
       
-      <main className={`pb-20 lg:pb-4 ${viewAsPublic ? 'pt-44' : 'pt-36 md:pt-40'}`}>
+      <main className={`pb-20 lg:pb-4 ${viewAsPublic ? 'pt-[4cm]' : 'pt-[3cm]'}`}>
         {/* Cover Photo Section - Facebook 2025 Style */}
         <div className="max-w-[1100px] mx-auto px-4 sm:px-6 md:px-10">
           <div className="relative">

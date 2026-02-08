@@ -205,7 +205,7 @@ const Friends = () => {
     return (
       <div className="min-h-screen">
         <FacebookNavbar />
-        <main className="pt-36 md:pt-40 px-4 sm:px-6 md:px-10">
+        <main className="pt-[3cm] px-4 sm:px-6 md:px-10">
           <div className="max-w-7xl mx-auto py-4">
             <Skeleton className="h-10 w-48 mb-4" />
             <div className="flex gap-3 overflow-hidden">
@@ -222,13 +222,13 @@ const Friends = () => {
   return (
     <div className="min-h-screen">
       <FacebookNavbar />
-      <main className="pt-36 md:pt-40 pb-20 md:pb-6 px-4 sm:px-6 md:px-10">
+      <main className="pt-[3cm] pb-20 md:pb-6 px-4 sm:px-6 md:px-10">
         <div className="flex">
           {/* Left Sidebar - Hidden on mobile, shown on lg+ */}
           <aside className={`
             fixed inset-y-0 left-0 z-40 w-[300px] lg:w-[360px] bg-card shadow-lg 
             transform transition-transform duration-300 ease-in-out
-            lg:translate-x-0 lg:top-36 xl:top-40 lg:h-[calc(100vh-9rem)] xl:h-[calc(100vh-10rem)]
+            lg:translate-x-0 lg:top-[3cm] lg:h-[calc(100vh-3cm)]
             ${showSidebar ? 'translate-x-0' : '-translate-x-full'}
           `}>
             {/* Mobile close button */}

@@ -49,7 +49,7 @@ const About = () => {
   return (
     <div className="min-h-screen bg-[#f0f2f5] pb-20 lg:pb-0">
       <FacebookNavbar />
-      <main className="pt-36 md:pt-40">
+      <main className="pt-[3cm]">
         {/* Hero Section */}
         <div className="bg-gradient-to-r from-primary via-primary/90 to-gold py-16 px-4 sm:px-6 md:px-10">
           <div className="max-w-5xl mx-auto text-center text-white">
