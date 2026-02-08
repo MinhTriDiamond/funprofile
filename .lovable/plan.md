@@ -1,147 +1,77 @@
 
-# Kế Hoạch Hiển Thị Hoa Mai/Hoa Đào Rõ Nét Trên Toàn Bộ Fun Profile
+# Kế Hoạch Sửa Lỗi Vị Trí Video Hoa Mai Hoa Đào
 
-## Mục Tiêu
-- Hiển thị video hoa mai/hoa đào rõ nét, đậm nét ở các góc màn hình
-- Đảm bảo hoa hiển thị ngay khi nhìn vào trang (không bị che khuất)
-- Áp dụng đồng nhất trên tất cả các trang chính (Feed, Profile, Friends, Chat, Wallet, v.v.)
-- Giao diện sang trọng, tươi mới, ngập tràn năng lượng Tết
+## Vấn Đề Phát Hiện
 
----
-
-## Phân Tích Vấn Đề Hiện Tại
-
-1. **Overlay gradient quá đậm ở giữa**: 75% opacity làm mờ hoa
-2. **Sidebars có background đục**: `bg-card` che hết video nền ở hai bên
-3. **Các card component dùng màu nền solid**: Không cho phép video xuyên qua
-4. **Khoảng cách 2cm hai bên**: Đủ rộng nhưng nền vẫn bị che bởi sidebar
+Video nền Tết bị cắt phần trên (nơi có hoa mai, hoa đào, đèn lồng) vì:
+- Sử dụng `top-1/2 -translate-y-1/2` → căn giữa theo chiều dọc
+- Khi màn hình nhỏ hơn video, phần TOP bị cắt bỏ
+- Chỉ thấy phần giữa và dưới (cánh hoa rơi nhỏ)
 
 ---
 
-## Giải Pháp Đề Xuất
+## Giải Pháp
 
-### Bước 1: Điều Chỉnh TetBackground Component
-Giảm độ mờ của overlay gradient ở hai bên để hoa hiển thị rõ hơn:
+Thay đổi vị trí căn chỉnh video từ **center** sang **top** để đảm bảo hoa mai/hoa đào ở góc trên luôn hiển thị.
+
+### Thay đổi trong TetBackground.tsx
 
 ```text
-Trước: rgba(255,255,255,0.1) 0% → rgba(255,255,255,0.75) 50%
-Sau:   rgba(255,255,255,0) 0% → rgba(255,255,255,0.5) 50%
+Trước:
+className="absolute top-1/2 left-1/2 min-w-full min-h-full 
+           w-auto h-auto -translate-x-1/2 -translate-y-1/2 object-cover"
+
+Sau:
+className="absolute top-0 left-1/2 min-w-full min-h-full 
+           w-auto h-auto -translate-x-1/2 object-cover object-top"
 ```
 
-Thay đổi cụ thể:
-- Hai bên: giảm từ 0.1 xuống 0 (trong suốt hoàn toàn)
-- Giữa: giảm từ 0.75 xuống 0.5 (vẫn đọc được chữ nhưng thấy hoa)
-- Vùng 15% và 85%: giảm từ 0.6 xuống 0.3
-
-### Bước 2: Làm Trong Suốt Sidebars
-Thay đổi background của sidebars từ solid sang semi-transparent:
-
-```text
-Trước: bg-card (solid white)
-Sau:   bg-card/80 backdrop-blur-sm (semi-transparent with blur)
-```
-
-### Bước 3: Cập Nhật Sidebar Cards
-Thay đổi border và background của các card trong sidebar để hoa có thể "xuyên qua":
-
-- `FacebookLeftSidebar`: Các card dùng `bg-card/90 backdrop-blur-sm`
-- `FacebookRightSidebar`: Các card dùng `bg-card/90 backdrop-blur-sm`
-
-### Bước 4: Điều Chỉnh Feed Main Content
-Để vùng giữa vẫn dễ đọc nhưng hai bên rõ hoa:
-
-- Main feed container: giữ nguyên `bg-card` cho các post card (dễ đọc)
-- Khoảng trống hai bên: trong suốt để thấy hoa
+### Chi Tiết Thay Đổi:
+| Thuộc Tính | Trước | Sau | Giải Thích |
+|------------|-------|-----|------------|
+| `top` | `top-1/2` | `top-0` | Căn từ trên xuống |
+| `translate-y` | `-translate-y-1/2` | (xóa) | Không cần dịch chuyển |
+| `object-position` | (mặc định: center) | `object-top` | Ưu tiên hiển thị phần trên |
 
 ---
 
-## Chi Tiết File Cần Chỉnh Sửa
+## File Cần Chỉnh Sửa
 
-### 1. src/components/ui/TetBackground.tsx
+**src/components/ui/TetBackground.tsx**
+
+Thay đổi dòng 20 từ:
 ```tsx
-// Gradient mới - trong suốt hơn ở hai bên
-background: `
-  linear-gradient(
-    to right,
-    rgba(255,255,255,0) 0%,
-    rgba(255,255,255,0.3) 15%,
-    rgba(255,255,255,0.5) 50%,
-    rgba(255,255,255,0.3) 85%,
-    rgba(255,255,255,0) 100%
-  )
-`
+className="absolute top-1/2 left-1/2 min-w-full min-h-full w-auto h-auto -translate-x-1/2 -translate-y-1/2 object-cover"
 ```
 
-### 2. src/components/feed/FacebookLeftSidebar.tsx
-Thay đổi background các card từ `bg-card` thành `bg-card/90 backdrop-blur-sm`:
-- Card FUN Ecosystem
-- Card Your Shortcuts
-- Card Menu
-
-### 3. src/components/feed/FacebookRightSidebar.tsx
-Thay đổi background các card từ `fb-card` thành phiên bản semi-transparent:
-- AppHonorBoard container
-- TopRanking container
-- Sponsored card
-- Contacts section
-- Birthdays card
-
-### 4. src/pages/Feed.tsx
-Đảm bảo sidebar containers trong suốt:
-- Left sidebar wrapper: thêm transparency
-- Right sidebar wrapper: thêm transparency
-
-### 5. Các trang khác cần cập nhật
-Áp dụng pattern tương tự cho:
-- Profile.tsx
-- Friends.tsx
-- Chat.tsx
-- Wallet.tsx
-- Leaderboard.tsx
-- Benefactors.tsx
-- Notifications.tsx
-- About.tsx
-- Post.tsx
-- ConnectedApps.tsx
-- Admin.tsx
-
----
-
-## CSS Helper Classes Mới
-
-Thêm vào src/index.css:
-
-```css
-/* Tet-themed transparent cards */
-.tet-card {
-  @apply bg-card/90 backdrop-blur-sm rounded-xl border border-border;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-}
-
-.tet-card-strong {
-  @apply bg-card/95 backdrop-blur-md rounded-xl border border-border;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-}
+Thành:
+```tsx
+className="absolute top-0 left-1/2 min-w-full min-h-full w-auto h-auto -translate-x-1/2 object-cover object-top"
 ```
 
 ---
 
 ## Kết Quả Mong Đợi
 
-Sau khi hoàn thành:
-- Hoa mai/hoa đào hiển thị rõ nét ở 2 bên góc màn hình (như hình mẫu)
-- Video nền động với cánh hoa bay nhẹ nhàng
-- Các card và nội dung vẫn dễ đọc với backdrop blur
-- Giao diện sang trọng, tươi mới, mang không khí Tết
-- Áp dụng đồng nhất trên toàn bộ ứng dụng
+Sau khi sửa:
+- Hoa đào (hồng) và đèn lồng đỏ ở góc **trên bên trái** hiển thị rõ
+- Hoa mai (vàng) và đèn lồng đỏ ở góc **trên bên phải** hiển thị rõ  
+- Cánh hoa rơi động vẫn hiển thị ở giữa và phía dưới
+- Giống hệt hình tham chiếu con gửi
 
 ---
 
-## Thứ Tự Thực Hiện
+## Sơ Đồ Minh Họa
 
-1. Cập nhật TetBackground.tsx (gradient mới)
-2. Thêm CSS helper classes vào index.css
-3. Cập nhật FacebookLeftSidebar.tsx
-4. Cập nhật FacebookRightSidebar.tsx
-5. Cập nhật Feed.tsx và các trang chính khác
-6. Kiểm tra và tinh chỉnh độ trong suốt nếu cần
+```text
+╔═══════════════════════════════════════════════════╗
+║  🏮 HOA ĐÀO          [Navbar]           HOA MAI 🏮 ║  ← PHẦN NÀY sẽ hiển thị
+║  (hồng)                                  (vàng)   ║
+╠═══════════════════════════════════════════════════╣
+║                                                   ║
+║     [Sidebar]     [Content]     [Sidebar]         ║
+║                                                   ║
+║           🌸 cánh hoa rơi động 🌸                  ║
+║                                                   ║
+╚═══════════════════════════════════════════════════╝
+```
