@@ -4,8 +4,7 @@ import tetVideo from '@/assets/tet-background.mp4';
 /**
  * Tết Background Video Component
  * Video nền hoa mai/đào động, hiển thị phía dưới tất cả nội dung
- * Hoa mai/đào hiện rõ nét, đậm màu, sang trọng ở 4 góc màn hình
- * Cố định vị trí khi phóng to/thu nhỏ
+ * Hoa mai/đào hiện rõ nét ở 2 bên góc màn hình
  */
 export const TetBackground = memo(() => {
   return (
@@ -13,32 +12,28 @@ export const TetBackground = memo(() => {
       className="fixed inset-0 overflow-hidden pointer-events-none"
       style={{ zIndex: -100 }}
     >
-      {/* Video nền với filter tăng độ đậm, tươi sáng */}
       <video
         autoPlay
         loop
         muted
         playsInline
-        className="absolute inset-0 w-full h-full object-cover"
-        style={{
-          filter: 'saturate(1.4) contrast(1.1) brightness(1.05)',
-        }}
+        className="absolute top-1/2 left-1/2 min-w-full min-h-full w-auto h-auto -translate-x-1/2 -translate-y-1/2 object-cover"
         aria-hidden="true"
       >
         <source src={tetVideo} type="video/mp4" />
       </video>
-      
-      {/* Radial gradient: trong suốt hoàn toàn ở 4 góc để hoa mai/đào rực rỡ */}
+      {/* Gradient overlay: trong suốt ở 2 bên để thấy hoa, mờ hơn ở giữa để đọc chữ */}
       <div 
         className="absolute inset-0"
         style={{
           background: `
-            radial-gradient(
-              ellipse 60% 70% at 50% 50%,
-              rgba(255,255,255,0.82) 0%,
-              rgba(255,255,255,0.7) 40%,
-              rgba(255,255,255,0.3) 70%,
-              rgba(255,255,255,0) 100%
+            linear-gradient(
+              to right,
+              rgba(255,255,255,0.1) 0%,
+              rgba(255,255,255,0.6) 15%,
+              rgba(255,255,255,0.75) 50%,
+              rgba(255,255,255,0.6) 85%,
+              rgba(255,255,255,0.1) 100%
             )
           `
         }}
