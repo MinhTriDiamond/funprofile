@@ -92,7 +92,7 @@ export default function Chat() {
         <main className="fixed inset-x-0 top-[3cm] bottom-[72px] flex flex-col overflow-hidden">
           {conversationId ? (
             <div className="h-full flex flex-col">
-              <div className="flex items-center gap-2 p-3 border-b bg-card">
+              <div className="flex items-center gap-2 p-3 border-b bg-card/80">
                 <Button variant="ghost" size="icon" onClick={handleBack}>
                   <ArrowLeft className="h-5 w-5" />
                 </Button>
@@ -180,7 +180,7 @@ export default function Chat() {
       
       <main className="fixed inset-x-0 top-[3cm] bottom-0 flex overflow-hidden">
         {/* Left sidebar - Conversation list */}
-        <div className="w-80 border-r bg-card flex flex-col h-full">
+        <div className="w-80 border-r bg-card/80 flex flex-col h-full">
           <div className="flex items-center justify-between p-4 border-b">
             <h1 className="text-xl font-bold">Tin nhắn</h1>
             <div className="flex items-center gap-1">

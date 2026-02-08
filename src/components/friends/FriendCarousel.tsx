@@ -161,7 +161,7 @@ export const FriendCarousel = ({
           {items.map((item, index) => (
             <div
               key={item.id}
-              className="flex-shrink-0 w-[160px] bg-card rounded-xl shadow-sm overflow-hidden border border-border/30"
+              className="flex-shrink-0 w-[160px] bg-card/70 rounded-xl shadow-sm overflow-hidden border border-border/30"
             >
               {/* Avatar/Image Area */}
               <div className="relative aspect-square">

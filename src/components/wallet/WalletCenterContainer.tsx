@@ -480,7 +480,7 @@ const WalletCenterContainer = () => {
     return (
       <div className="space-y-6">
         {/* Header */}
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+        <div className="bg-white/80 rounded-2xl shadow-sm overflow-hidden">
           <div className="bg-gradient-to-r from-emerald-800 via-emerald-600 to-green-500 p-6">
             <div className="flex items-center justify-between mb-4">
               <h1 className="text-2xl font-bold text-yellow-400 drop-shadow-lg">My Wallet</h1>
@@ -493,7 +493,7 @@ const WalletCenterContainer = () => {
         </div>
 
         {/* Connect Wallet Card */}
-        <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
+        <div className="bg-white/80 rounded-2xl shadow-lg p-12 text-center">
           <div className="w-24 h-24 bg-gradient-to-br from-emerald-500 to-green-400 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-green-500/30">
             <Wallet className="w-12 h-12 text-white" />
           </div>
@@ -518,7 +518,7 @@ const WalletCenterContainer = () => {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="bg-white rounded-2xl shadow-sm p-4">
+      <div className="bg-white/80 rounded-2xl shadow-sm p-4">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
             <Avatar className="w-10 h-10">
@@ -540,7 +540,7 @@ const WalletCenterContainer = () => {
                 <ChevronDown className="w-4 h-4" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48 bg-white z-50">
+            <DropdownMenuContent align="end" className="w-48 bg-white/90 z-50">
               <DropdownMenuItem 
                 onClick={handleSwitchToMainnet}
                 className="flex items-center justify-between cursor-pointer"
