@@ -98,7 +98,7 @@
 
 /* Facebook Header Style - Semi-transparent để hoa mai/đào hiển thị */
 .fb-header {
-  @apply bg-card/85 backdrop-blur-md shadow-sm border-b border-border;
+  @apply bg-card/85 shadow-sm border-b border-border;
 }
 
 /* Facebook Icon Button */
