@@ -1,98 +1,113 @@
 
-# Kế Hoạch: Sửa Lỗi Redirect Khi Xem Law of Light
 
-## Vấn Đề
+# Kế Hoạch: Thêm Nút Home Cho 3 Trang Tài Liệu Thiêng Liêng
 
-Khi user đã chấp nhận Law of Light và muốn xem lại trang này, họ bị redirect tự động về Feed (`/`) ngay lập tức. Điều này xảy ra vì logic kiểm tra redirect chạy trước khi kiểm tra parameter `?view=true`.
+## Tổng Quan
 
-## Nguyên Nhân
+Thêm nút Home để navigate về Feed (`/`) ở đầu trang và cuối trang của 3 trang: Law of Light, Master Charter và PPLP Docs.
 
-Trong `src/pages/LawOfLight.tsx`, đoạn code `checkAuth()` redirect user về Feed nếu họ đã chấp nhận, mà không kiểm tra xem user có đang ở chế độ "view only" hay không.
+## Cấu Trúc Thay Đổi
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
-│ User đã đăng nhập + đã chấp nhận Law of Light               │
-│                         │                                   │
-│                         ▼                                   │
-│               navigate('/') ← Redirect ngay!                │
+│  ĐẦU TRANG                                                  │
+│  ┌──────────────────────┐  ┌──────────────┐  ┌───────────┐  │
+│  │ 🏠 Về Trang Chủ      │  │ (nút hiện tại)│  │ Chia sẻ   │  │
+│  └──────────────────────┘  └──────────────┘  └───────────┘  │
+├─────────────────────────────────────────────────────────────┤
 │                                                             │
-│ ❌ Không kiểm tra ?view=true                                 │
-│ ❌ Không cho phép xem lại nội dung                           │
+│                      NỘI DUNG TRANG                         │
+│                                                             │
+├─────────────────────────────────────────────────────────────┤
+│  CUỐI TRANG                                                 │
+│  ┌──────────────────────┐  ┌──────────────┐  ┌───────────┐  │
+│  │ 🏠 Về Trang Chủ      │  │ (nút hiện tại)│  │ (nút khác)│  │
+│  └──────────────────────┘  └──────────────┘  └───────────┘  │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## Giải Pháp
+## Chi Tiết Thay Đổi Theo File
 
-Kiểm tra `?view=true` trước khi redirect. Nếu có parameter này, cho phép user xem trang mà không redirect.
+### 1. LawOfLight.tsx
 
-```text
-┌─────────────────────────────────────────────────────────────┐
-│ User vào /law-of-light                                      │
-│                         │                                   │
-│                         ▼                                   │
-│            Có ?view=true không?                             │
-│           /             \                                   │
-│         Có               Không                              │
-│          │                  │                               │
-│          ▼                  ▼                               │
-│    ✅ Cho xem           Đã accept?                          │
-│    (không redirect)    /         \                          │
-│                      Có           Không                     │
-│                       │             │                       │
-│                       ▼             ▼                       │
-│                 navigate('/')   ✅ Cho xem                   │
-└─────────────────────────────────────────────────────────────┘
-```
+**Thêm import:**
+- Import icon `Home` từ lucide-react
 
-## Thay Đổi Code
+**Đầu trang (trong isReadOnly mode):**
+- Thêm section navigation phía trên header với nút "🏠 Về Trang Chủ" navigate đến `/`
 
-### File: `src/pages/LawOfLight.tsx`
+**Cuối trang (trong isReadOnly mode):**
+- Thêm nút "🏠 Về Trang Chủ" vào group buttons hiện có (cạnh "Đọc Hiến Pháp Gốc" và "Đọc Giao Thức PPLP")
 
-Sửa useEffect để kiểm tra `view=true` trước:
+### 2. MasterCharterDocs.tsx
 
-| Trước | Sau |
-|-------|-----|
-| Set `isReadOnly` sau khi check auth | Set `isReadOnly` trước, dùng để quyết định redirect |
-| Luôn redirect nếu đã accept | Chỉ redirect nếu đã accept VÀ không có `?view=true` |
+**Thêm import:**
+- Import icon `Home` từ lucide-react
 
-### Logic mới:
+**Đầu trang:**
+- Hiện tại có: "Quay về Luật Ánh Sáng" | "Chia sẻ"
+- Thêm: "🏠 Về Trang Chủ" ở đầu tiên bên trái
 
-```typescript
-useEffect(() => {
-  const params = new URLSearchParams(location.search);
-  const viewMode = params.get('view') === 'true';
-  setIsReadOnly(viewMode);
-  
-  // Nếu đang ở chế độ xem lại, không redirect
-  if (viewMode) return;
-  
-  // Chỉ redirect nếu KHÔNG có ?view=true
-  const checkAuth = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('law_of_light_accepted')
-        .eq('id', session.user.id)
-        .single();
-      
-      if (profile?.law_of_light_accepted) {
-        navigate('/');
-      }
-    }
-  };
-  checkAuth();
-}, [location, navigate]);
+**Cuối trang:**
+- Hiện tại có: "Đọc Giao Thức PPLP" | "Quay về Luật Ánh Sáng"  
+- Thêm: "🏠 Về Trang Chủ" vào group
+
+### 3. PplpDocs.tsx
+
+**Thêm import:**
+- Import icon `Home` từ lucide-react
+
+**Đầu trang:**
+- Hiện tại có: "Quay về Luật Ánh Sáng" | "Chia sẻ"
+- Thêm: "🏠 Về Trang Chủ" ở đầu tiên bên trái
+
+**Cuối trang:**
+- Hiện tại có: "Đọc Hiến Pháp Gốc" | "Quay về Luật Ánh Sáng"
+- Thêm: "🏠 Về Trang Chủ" vào group
+
+## Thiết Kế Nút Home
+
+**Style nhất quán cho cả 3 trang:**
+
+| Vị trí | Style |
+|--------|-------|
+| Đầu trang | `variant="ghost"` với màu gold (`#B8860B`), icon Home, hover gold |
+| Cuối trang | Gradient gold background hoặc outline style phù hợp với các nút hiện có |
+
+**Code mẫu cho nút:**
+
+```tsx
+// Đầu trang - ghost style
+<Button
+  variant="ghost"
+  onClick={() => navigate('/')}
+  className="text-[#B8860B] hover:text-[#D4AF37] hover:bg-[#D4AF37]/10"
+>
+  <Home className="w-4 h-4 mr-2" />
+  Về Trang Chủ
+</Button>
+
+// Cuối trang - gradient style
+<Button
+  onClick={() => navigate('/')}
+  className="bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] text-[#E8D5A3] border-2 border-[#DAA520] rounded-full px-6"
+>
+  🏠 Về Trang Chủ
+</Button>
 ```
 
 ## Files Cần Sửa
 
 | File | Hành động |
 |------|-----------|
-| `src/pages/LawOfLight.tsx` | **Sửa** - Thêm điều kiện kiểm tra `viewMode` trước khi redirect |
+| `src/pages/LawOfLight.tsx` | **Sửa** - Thêm import Home, thêm nút đầu/cuối trang |
+| `src/pages/MasterCharterDocs.tsx` | **Sửa** - Thêm import Home, thêm nút đầu/cuối trang |
+| `src/pages/PplpDocs.tsx` | **Sửa** - Thêm import Home, thêm nút đầu/cuối trang |
 
 ## Kết Quả Mong Đợi
 
-- Vào `/law-of-light` khi đã accept → Redirect về Feed (giữ nguyên)
-- Vào `/law-of-light?view=true` khi đã accept → Cho phép xem lại (không redirect)
-- Vào `/law-of-light` khi chưa accept → Hiển thị trang để accept (giữ nguyên)
+- Người dùng có thể dễ dàng navigate về trang chủ (Feed) từ bất kỳ vị trí nào trên 3 trang tài liệu
+- Nút Home xuất hiện rõ ràng ở cả đầu và cuối trang
+- Style nhất quán với design system hiện tại (màu gold, font Cormorant/Lora)
+- UX cải thiện: không cần scroll hoặc dùng browser back button
+
