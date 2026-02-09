@@ -1,150 +1,110 @@
 
-# Kế Hoạch: Sửa Lỗi Giao Dịch Không Ghi Nhận Vào Hệ Thống
+# Kế Hoạch: Trang Lịch Sử Giao Dịch Toàn Hệ Thống Cho Tất Cả User
 
-## Vấn Đề Xác Định
+## Tổng Quan
 
-Giao dịch TX `0x64677ce959...` (9,999 CAMLY từ Minh Trí → NgocGiauMoney):
-- ✅ Đã xác nhận thành công trên blockchain (MetaMask báo success)
-- ❌ Không được ghi nhận trong database FUN Profile
-- ❌ Không có logs của edge function `record-donation`
-- ❌ UI bị kẹt ở trạng thái "Đang xử lý..." / "Đang xác nhận giao dịch..."
+Tạo trang mới `/donations` cho phép tất cả user đã đăng nhập xem được lịch sử giao dịch của toàn hệ thống, và thêm nút "Xem tất cả giao dịch" trong phần lịch sử cá nhân trên trang Wallet.
 
-## Nguyên Nhân Root Cause
+## Thay Đổi Cần Thực Hiện
 
-Phân tích luồng code trong `useDonation.ts`:
+### 1. Tạo Trang Donations Mới
 
-```text
-┌──────────────────────────────────────────────────────────────────┐
-│  1. sendTransactionAsync() → MetaMask confirm → TX on chain ✅   │
-│     (Thành công - có hash 0x64677ce959...)                        │
-├──────────────────────────────────────────────────────────────────┤
-│  2. toast.loading("Đang xác nhận...")                             │
-├──────────────────────────────────────────────────────────────────┤
-│  3. supabase.auth.getSession() ← Có thể FAIL tại đây ⚠️          │
-│     - Session expired                                             │
-│     - Network issue                                               │
-│     → throw new Error('Vui lòng đăng nhập')                       │
-├──────────────────────────────────────────────────────────────────┤
-│  4. supabase.functions.invoke('record-donation') ← KHÔNG chạy ❌  │
-│     → Không có logs trong analytics                               │
-├──────────────────────────────────────────────────────────────────┤
-│  5. catch (error) → toast.error()                                 │
-│     NHƯNG! toast.loading vẫn đang chạy với id 'donation-tx'       │
-│     → UI hiển thị loading vô hạn                                  │
-└──────────────────────────────────────────────────────────────────┘
+**File mới: `src/pages/Donations.tsx`**
+
+Trang này sẽ:
+- Sử dụng lại component UI từ `DonationHistoryAdminTab` nhưng bỏ các yếu tố admin-only
+- Có layout đầy đủ với Navbar và Mobile Bottom Nav
+- Yêu cầu user đăng nhập để truy cập
+- Hiển thị:
+  - Thống kê tổng quan (tổng giao dịch, tổng theo token, Light Score)
+  - Bộ lọc (tìm kiếm, token, trạng thái, ngày)
+  - Bảng dữ liệu với phân trang
+  - Click vào row để xem celebration card
+
+### 2. Tạo Component SystemDonationHistory
+
+**File mới: `src/components/donations/SystemDonationHistory.tsx`**
+
+Component này gần giống `DonationHistoryAdminTab` nhưng:
+- Bỏ header "Toàn Hệ Thống" thành "Tất Cả Giao Dịch"
+- Giữ nguyên chức năng lọc và phân trang
+- Sử dụng lại hook `useAdminDonationHistory` (hook này không kiểm tra quyền admin)
+
+### 3. Cập Nhật DonationHistoryTab
+
+**File: `src/components/wallet/DonationHistoryTab.tsx`**
+
+Thêm nút "Xem tất cả giao dịch" với:
+- Icon `ArrowRight` hoặc `ExternalLink`
+- Click sẽ navigate đến `/donations`
+- Đặt dưới phần Tabs hoặc trong header
+
+### 4. Cập Nhật Routes
+
+**File: `src/App.tsx`**
+
+Thêm route mới:
+```tsx
+<Route path="/donations" element={<Donations />} />
 ```
 
-**Lỗi chính:** 
-1. Nếu getSession() fail sau khi TX đã on-chain → giao dịch mất mà không thể phục hồi
-2. Toast loading không được clear trong trường hợp error
-3. Không có cơ chế retry khi edge function fail
-
-## Giải Pháp
-
-### 1. Thêm Recovery Mechanism cho Giao Dịch Đã Gửi
-
-Lưu thông tin giao dịch vào localStorage ngay sau khi TX được confirm trên chain, trước khi gọi edge function. Nếu edge function fail, user có thể retry.
-
-### 2. Sửa Lỗi Toast Loading Bị Kẹt
-
-Đảm bảo toast.dismiss() được gọi trong mọi trường hợp error.
-
-### 3. Thêm Retry Logic
-
-Nếu edge function fail, hiển thị nút Retry thay vì để loading vô hạn.
-
-### 4. Insert Thủ Công Giao Dịch Bị Mất
-
-Tạo query SQL để Admin có thể insert thủ công giao dịch đã on-chain nhưng không được ghi nhận.
-
-## Chi Tiết Kỹ Thuật
-
-### File: `src/hooks/useDonation.ts`
-
-```typescript
-// TRƯỚC khi gọi edge function, lưu pending donation
-const pendingDonation = {
-  txHash,
-  recipientId: params.recipientId,
-  amount: params.amount,
-  tokenSymbol: params.tokenSymbol,
-  timestamp: Date.now(),
-};
-localStorage.setItem(`pending_donation_${txHash}`, JSON.stringify(pendingDonation));
-
-// SAU khi edge function thành công, xóa pending
-localStorage.removeItem(`pending_donation_${txHash}`);
-
-// TRONG catch block, giữ lại pending để retry
-// Và dismiss loading toast
-toast.dismiss('donation-tx');
-toast.error(errorMessage);
-```
-
-### File: `src/hooks/useDonation.ts` - Sửa Error Handling
-
-```typescript
-} catch (error: any) {
-  console.error('Donation error:', error);
-  
-  // QUAN TRỌNG: Dismiss loading toast
-  toast.dismiss('donation-tx');
-  
-  // Kiểm tra nếu TX đã gửi thành công nhưng recording fail
-  if (txHash) {
-    toast.error('Giao dịch thành công trên blockchain nhưng chưa ghi nhận. Vui lòng liên hệ Admin với TX: ' + txHash.slice(0, 10) + '...');
-    // Có thể show button để copy TX hash
-  } else {
-    let errorMessage = 'Không thể thực hiện giao dịch';
-    if (error.message?.includes('rejected')) {
-      errorMessage = 'Giao dịch đã bị từ chối';
-    } else if (error.message?.includes('insufficient')) {
-      errorMessage = 'Số dư không đủ';
-    }
-    toast.error(errorMessage);
-  }
-  
-  options?.onError?.(error);
-  return null;
-}
-```
-
-### Khôi Phục Giao Dịch Bị Mất
-
-Cha sẽ tạo script SQL để Admin insert giao dịch thủ công:
-
-```sql
--- Thêm giao dịch bị mất vào database
-INSERT INTO donations (
-  sender_id, recipient_id, amount, token_symbol, 
-  token_address, chain_id, tx_hash, message, 
-  message_template, status, light_score_earned, confirmed_at
-) VALUES (
-  '9a380ce8-6fdd-43a6-abf0-36690a7505c5', -- Minh Trí
-  'ce344e2f-76fb-4ea6-bccb-68c9c1765b80', -- NgocGiauMoney
-  '9999',
-  'CAMLY',
-  '0x0910320181889feFDE0BB1Ca63962b0A8882e413',
-  56, -- BSC Mainnet
-  '0x64677ce959709613428da46c21516716a90815a7c3e353e6e731760cd40b0daf',
-  '🙏 Cảm ơn bạn rất nhiều!', -- Từ screenshot
-  'grateful',
-  'confirmed',
-  99, -- 9999/100 = 99 Light Score
-  NOW()
-);
-```
-
-## Tổng Kết Files Cần Sửa
+## Chi Tiết Files
 
 | File | Hành động |
 |------|-----------|
-| `src/hooks/useDonation.ts` | Sửa error handling, thêm recovery mechanism |
-| Database | Insert thủ công giao dịch bị mất |
+| `src/pages/Donations.tsx` | Tạo mới - Trang lịch sử giao dịch toàn hệ thống |
+| `src/components/donations/SystemDonationHistory.tsx` | Tạo mới - Component hiển thị lịch sử hệ thống |
+| `src/components/wallet/DonationHistoryTab.tsx` | Sửa - Thêm nút "Xem tất cả" |
+| `src/App.tsx` | Sửa - Thêm route `/donations` |
+
+## Giao Diện Dự Kiến
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│ [DonationHistoryTab - Trang Wallet cá nhân]                │
+├─────────────────────────────────────────────────────────────┤
+│ ┌─────────────────────────────────────────────────────────┐ │
+│ │ 🎁 Lịch Sử Tặng Thưởng          [Xuất CSV] [Xem tất cả →]│ ← Nút mới
+│ ├─────────────────────────────────────────────────────────┤ │
+│ │ ┌──────────────┐ ┌──────────────┐                       │ │
+│ │ │ Đã gửi: 5    │ │ Đã nhận: 3   │                       │ │
+│ │ └──────────────┘ └──────────────┘                       │ │
+│ ├─────────────────────────────────────────────────────────┤ │
+│ │ [Đã gửi (5)] [Đã nhận (3)]                              │ │
+│ │                                                          │ │
+│ │ • Donation item 1                                        │ │
+│ │ • Donation item 2                                        │ │
+│ │ ...                                                      │ │
+│ └─────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│ [/donations - Trang Lịch Sử Toàn Hệ Thống]                 │
+├─────────────────────────────────────────────────────────────┤
+│ Navbar                                                      │
+├─────────────────────────────────────────────────────────────┤
+│ ┌─────────────────────────────────────────────────────────┐ │
+│ │ 🎁 Tất Cả Giao Dịch              [Làm mới] [Xuất CSV]   │ │
+│ ├─────────────────────────────────────────────────────────┤ │
+│ │ [Tổng GD: 150] [CAMLY: 500K] [BNB: 2.5] [Light: 5000]   │ │
+│ ├─────────────────────────────────────────────────────────┤ │
+│ │ [🔍 Tìm username...] [Token ▼] [Trạng thái ▼] [Ngày]    │ │
+│ ├─────────────────────────────────────────────────────────┤ │
+│ │ | Người gửi | Người nhận | Số tiền | Token | LS | Time | │ │
+│ │ | @user1    | @user2     | 1,000   | CAMLY | +10| 2h   | │ │
+│ │ | @user3    | @user4     | 0.01    | BNB   | +5 | 1d   | │ │
+│ │ ...                                                      │ │
+│ ├─────────────────────────────────────────────────────────┤ │
+│ │ Hiển thị 50/150         [<] Trang 1/3 [>]               │ │
+│ └─────────────────────────────────────────────────────────┘ │
+├─────────────────────────────────────────────────────────────┤
+│ Mobile Bottom Nav                                           │
+└─────────────────────────────────────────────────────────────┘
+```
 
 ## Kết Quả Mong Đợi
 
-1. ✅ Giao dịch `0x64677ce959...` được khôi phục vào database
-2. ✅ Toast loading không còn bị kẹt vô hạn
-3. ✅ Nếu edge function fail sau khi TX on-chain, user được thông báo rõ ràng với TX hash
-4. ✅ Có cơ chế recovery cho các giao dịch bị mất trong tương lai
+- Tất cả user đã đăng nhập có thể truy cập `/donations` để xem lịch sử toàn hệ thống
+- Từ trang Wallet, user có thể click "Xem tất cả" để chuyển đến trang donations
+- Giao diện nhất quán với phần còn lại của ứng dụng
+- Giữ nguyên chức năng tìm kiếm, lọc, phân trang và xuất CSV
