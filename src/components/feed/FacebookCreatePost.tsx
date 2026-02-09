@@ -470,14 +470,24 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
       setFeeling(null); // Reset feeling
       setIsDialogOpen(false);
       setShowMediaUpload(false);
-      toast.success(t('postPublished'));
-      
-      // PPLP: Evaluate post action for Light Score (fire-and-forget)
-      evaluateAsync({
-        action_type: 'post',
-        reference_id: result.post?.id,
-        content: content.trim(),
-      });
+
+      // Handle duplicate detection - show loving reminder instead of normal toast
+      if (result.duplicate_detected) {
+        toast.info(
+          'Bài viết đã được đăng! Tuy nhiên, nội dung này tương tự một bài trước đó nên không được tính thưởng thêm. Hãy sáng tạo nội dung mới để lan tỏa Ánh Sáng nhiều hơn nhé! ✨🙏',
+          { duration: 8000 }
+        );
+        console.log('[CreatePost] Duplicate detected — skipping PPLP evaluate');
+      } else {
+        toast.success(t('postPublished'));
+        
+        // PPLP: Evaluate post action for Light Score (fire-and-forget) — only for eligible posts
+        evaluateAsync({
+          action_type: 'post',
+          reference_id: result.postId,
+          content: content.trim(),
+        });
+      }
       
       onPostCreated();
     } catch (error: any) {

@@ -1406,9 +1406,11 @@ export type Database = {
       posts: {
         Row: {
           content: string
+          content_hash: string | null
           created_at: string
           id: string
           image_url: string | null
+          is_reward_eligible: boolean | null
           location: string | null
           media_urls: Json | null
           updated_at: string
@@ -1418,9 +1420,11 @@ export type Database = {
         }
         Insert: {
           content: string
+          content_hash?: string | null
           created_at?: string
           id?: string
           image_url?: string | null
+          is_reward_eligible?: boolean | null
           location?: string | null
           media_urls?: Json | null
           updated_at?: string
@@ -1430,9 +1434,11 @@ export type Database = {
         }
         Update: {
           content?: string
+          content_hash?: string | null
           created_at?: string
           id?: string
           image_url?: string | null
+          is_reward_eligible?: boolean | null
           location?: string | null
           media_urls?: Json | null
           updated_at?: string

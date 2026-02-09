@@ -22,6 +22,24 @@ interface CreatePostRequest {
   visibility?: string;
 }
 
+// Normalize content for duplicate detection
+function normalizeContent(content: string): string {
+  return content
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .replace(/[^\p{L}\p{N}\s]/gu, '');
+}
+
+// Compute SHA-256 hash (hex) using Web Crypto API
+async function computeHash(text: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(text);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -91,8 +109,38 @@ Deno.serve(async (req) => {
       );
     }
 
+    // === DUPLICATE DETECTION ===
+    let contentHash: string | null = null;
+    let isRewardEligible = true;
+    let duplicateDetected = false;
+
+    const trimmedContent = body.content?.trim() || "";
+    if (trimmedContent.length > 0) {
+      const normalized = normalizeContent(trimmedContent);
+      contentHash = await computeHash(normalized);
+
+      // Check for duplicate within 30 days
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      const { data: existingPost } = await supabase
+        .from("posts")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("content_hash", contentHash)
+        .gte("created_at", thirtyDaysAgo.toISOString())
+        .limit(1)
+        .maybeSingle();
+
+      if (existingPost) {
+        isRewardEligible = false;
+        duplicateDetected = true;
+        console.log("[create-post] Duplicate detected, existing post:", existingPost.id);
+      }
+    }
+
     // Insert post
-    console.log("[create-post] Inserting post...");
+    console.log("[create-post] Inserting post...", { isRewardEligible, duplicateDetected });
     const insertStart = Date.now();
     
     // Validate visibility value
@@ -105,12 +153,14 @@ Deno.serve(async (req) => {
       .from("posts")
       .insert({
         user_id: userId,
-        content: body.content?.trim() || "",
+        content: trimmedContent,
         image_url: body.image_url || null,
         video_url: body.video_url || null,
         media_urls: body.media_urls || [],
         location: body.location || null,
         visibility: visibility,
+        content_hash: contentHash,
+        is_reward_eligible: isRewardEligible,
       })
       .select("id")
       .single();
@@ -158,12 +208,16 @@ Deno.serve(async (req) => {
       postId: post?.id,
       insertMs: insertDuration,
       totalMs: totalDuration,
+      duplicateDetected,
+      isRewardEligible,
     });
 
     return new Response(
       JSON.stringify({ 
         ok: true, 
         postId: post?.id,
+        is_reward_eligible: isRewardEligible,
+        duplicate_detected: duplicateDetected,
         timing: { insertMs: insertDuration, totalMs: totalDuration },
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
