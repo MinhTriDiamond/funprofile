@@ -5,6 +5,8 @@ import { Plus } from 'lucide-react';
 import funLogo from '@/assets/tokens/fun-logo.png';
 import camlyLogo from '@/assets/tokens/camly-logo.webp';
 import bnbLogo from '@/assets/tokens/bnb-logo.webp';
+import usdtLogo from '@/assets/tokens/usdt-logo.webp';
+import btcbLogo from '@/assets/tokens/btcb-logo.webp';
 
 export interface TokenOption {
   symbol: string;
@@ -40,6 +42,22 @@ export const SUPPORTED_TOKENS: TokenOption[] = [
     logo: bnbLogo,
     color: 'from-amber-400 to-yellow-300',
   },
+  {
+    symbol: 'USDT',
+    name: 'Tether USD',
+    address: '0x55d398326f99059fF775485246999027B3197955',
+    decimals: 18,
+    logo: usdtLogo,
+    color: 'from-emerald-500 to-green-400',
+  },
+  {
+    symbol: 'BTCB',
+    name: 'Bitcoin BEP20',
+    address: '0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c',
+    decimals: 18,
+    logo: btcbLogo,
+    color: 'from-orange-500 to-amber-400',
+  },
 ];
 
 interface TokenSelectorProps {
@@ -49,7 +67,7 @@ interface TokenSelectorProps {
 
 export const TokenSelector = ({ selectedToken, onSelect }: TokenSelectorProps) => {
   return (
-    <div className="grid grid-cols-4 gap-2">
+    <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
       {SUPPORTED_TOKENS.map((token) => (
         <button
           key={token.symbol}

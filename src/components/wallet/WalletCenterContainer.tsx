@@ -26,6 +26,7 @@ import { DonationHistoryTab } from './DonationHistoryTab';
 import { FunBalanceCard } from './FunBalanceCard';
 import { ClaimRewardsCard } from './ClaimRewardsCard';
 import { ActivateDialog } from './ActivateDialog';
+import { RecentTransactions } from './RecentTransactions';
 import { useFunBalance } from '@/hooks/useFunBalance';
 import { useTokenBalances } from '@/hooks/useTokenBalances';
 import bnbLogo from '@/assets/tokens/bnb-logo.webp';
@@ -692,6 +693,9 @@ const WalletCenterContainer = () => {
           refetchFunBalance();
         }}
       />
+
+      {/* Recent Transactions */}
+      <RecentTransactions />
 
       {/* Donation History */}
       <DonationHistoryTab />
