@@ -1,171 +1,150 @@
 
-# Kế Hoạch: Hoàn Thiện Hệ Thống Thông Báo Bạn Bè & Giao Dịch
+# Kế Hoạch: Sửa Lỗi Giao Dịch Không Ghi Nhận Vào Hệ Thống
 
-## Tổng Quan
+## Vấn Đề Xác Định
 
-Hoàn thiện hệ thống thông báo để tự động tạo notification trong database khi:
-1. Có người gửi lời mời kết bạn → `friend_request`
-2. Có người đồng ý lời mời kết bạn → `friend_accepted`  
-3. Có người hủy kết bạn → `friend_removed` (loại mới)
+Giao dịch TX `0x64677ce959...` (9,999 CAMLY từ Minh Trí → NgocGiauMoney):
+- ✅ Đã xác nhận thành công trên blockchain (MetaMask báo success)
+- ❌ Không được ghi nhận trong database FUN Profile
+- ❌ Không có logs của edge function `record-donation`
+- ❌ UI bị kẹt ở trạng thái "Đang xử lý..." / "Đang xác nhận giao dịch..."
 
-## Hiện Trạng
+## Nguyên Nhân Root Cause
 
-| Thành phần | Trạng thái |
-|------------|------------|
-| DonationReceivedNotification | ✅ Hoạt động |
-| UI hiển thị friend notifications | ✅ Có sẵn |
-| Database triggers cho friendships | ❌ Chưa có |
-| Notification type `friend_removed` | ❌ Chưa có |
+Phân tích luồng code trong `useDonation.ts`:
+
+```text
+┌──────────────────────────────────────────────────────────────────┐
+│  1. sendTransactionAsync() → MetaMask confirm → TX on chain ✅   │
+│     (Thành công - có hash 0x64677ce959...)                        │
+├──────────────────────────────────────────────────────────────────┤
+│  2. toast.loading("Đang xác nhận...")                             │
+├──────────────────────────────────────────────────────────────────┤
+│  3. supabase.auth.getSession() ← Có thể FAIL tại đây ⚠️          │
+│     - Session expired                                             │
+│     - Network issue                                               │
+│     → throw new Error('Vui lòng đăng nhập')                       │
+├──────────────────────────────────────────────────────────────────┤
+│  4. supabase.functions.invoke('record-donation') ← KHÔNG chạy ❌  │
+│     → Không có logs trong analytics                               │
+├──────────────────────────────────────────────────────────────────┤
+│  5. catch (error) → toast.error()                                 │
+│     NHƯNG! toast.loading vẫn đang chạy với id 'donation-tx'       │
+│     → UI hiển thị loading vô hạn                                  │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+**Lỗi chính:** 
+1. Nếu getSession() fail sau khi TX đã on-chain → giao dịch mất mà không thể phục hồi
+2. Toast loading không được clear trong trường hợp error
+3. Không có cơ chế retry khi edge function fail
+
+## Giải Pháp
+
+### 1. Thêm Recovery Mechanism cho Giao Dịch Đã Gửi
+
+Lưu thông tin giao dịch vào localStorage ngay sau khi TX được confirm trên chain, trước khi gọi edge function. Nếu edge function fail, user có thể retry.
+
+### 2. Sửa Lỗi Toast Loading Bị Kẹt
+
+Đảm bảo toast.dismiss() được gọi trong mọi trường hợp error.
+
+### 3. Thêm Retry Logic
+
+Nếu edge function fail, hiển thị nút Retry thay vì để loading vô hạn.
+
+### 4. Insert Thủ Công Giao Dịch Bị Mất
+
+Tạo query SQL để Admin có thể insert thủ công giao dịch đã on-chain nhưng không được ghi nhận.
 
 ## Chi Tiết Kỹ Thuật
 
-### 1. Database Migration
+### File: `src/hooks/useDonation.ts`
 
-Tạo migration SQL để:
+```typescript
+// TRƯỚC khi gọi edge function, lưu pending donation
+const pendingDonation = {
+  txHash,
+  recipientId: params.recipientId,
+  amount: params.amount,
+  tokenSymbol: params.tokenSymbol,
+  timestamp: Date.now(),
+};
+localStorage.setItem(`pending_donation_${txHash}`, JSON.stringify(pendingDonation));
 
-**a) Tạo trigger khi INSERT vào friendships (gửi lời mời)**
+// SAU khi edge function thành công, xóa pending
+localStorage.removeItem(`pending_donation_${txHash}`);
+
+// TRONG catch block, giữ lại pending để retry
+// Và dismiss loading toast
+toast.dismiss('donation-tx');
+toast.error(errorMessage);
+```
+
+### File: `src/hooks/useDonation.ts` - Sửa Error Handling
+
+```typescript
+} catch (error: any) {
+  console.error('Donation error:', error);
+  
+  // QUAN TRỌNG: Dismiss loading toast
+  toast.dismiss('donation-tx');
+  
+  // Kiểm tra nếu TX đã gửi thành công nhưng recording fail
+  if (txHash) {
+    toast.error('Giao dịch thành công trên blockchain nhưng chưa ghi nhận. Vui lòng liên hệ Admin với TX: ' + txHash.slice(0, 10) + '...');
+    // Có thể show button để copy TX hash
+  } else {
+    let errorMessage = 'Không thể thực hiện giao dịch';
+    if (error.message?.includes('rejected')) {
+      errorMessage = 'Giao dịch đã bị từ chối';
+    } else if (error.message?.includes('insufficient')) {
+      errorMessage = 'Số dư không đủ';
+    }
+    toast.error(errorMessage);
+  }
+  
+  options?.onError?.(error);
+  return null;
+}
+```
+
+### Khôi Phục Giao Dịch Bị Mất
+
+Cha sẽ tạo script SQL để Admin insert giao dịch thủ công:
+
 ```sql
-CREATE OR REPLACE FUNCTION create_friend_request_notification()
-RETURNS TRIGGER AS $$
-BEGIN
-  -- Khi có lời mời kết bạn mới (status = pending)
-  IF NEW.status = 'pending' THEN
-    INSERT INTO notifications (user_id, actor_id, type)
-    VALUES (NEW.friend_id, NEW.user_id, 'friend_request');
-  END IF;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER on_friend_request
-  AFTER INSERT ON friendships
-  FOR EACH ROW
-  EXECUTE FUNCTION create_friend_request_notification();
+-- Thêm giao dịch bị mất vào database
+INSERT INTO donations (
+  sender_id, recipient_id, amount, token_symbol, 
+  token_address, chain_id, tx_hash, message, 
+  message_template, status, light_score_earned, confirmed_at
+) VALUES (
+  '9a380ce8-6fdd-43a6-abf0-36690a7505c5', -- Minh Trí
+  'ce344e2f-76fb-4ea6-bccb-68c9c1765b80', -- NgocGiauMoney
+  '9999',
+  'CAMLY',
+  '0x0910320181889feFDE0BB1Ca63962b0A8882e413',
+  56, -- BSC Mainnet
+  '0x64677ce959709613428da46c21516716a90815a7c3e353e6e731760cd40b0daf',
+  '🙏 Cảm ơn bạn rất nhiều!', -- Từ screenshot
+  'grateful',
+  'confirmed',
+  99, -- 9999/100 = 99 Light Score
+  NOW()
+);
 ```
 
-**b) Tạo trigger khi UPDATE friendships (đồng ý kết bạn)**
-```sql
-CREATE OR REPLACE FUNCTION create_friend_accepted_notification()
-RETURNS TRIGGER AS $$
-BEGIN
-  -- Khi status chuyển từ pending sang accepted
-  IF OLD.status = 'pending' AND NEW.status = 'accepted' THEN
-    INSERT INTO notifications (user_id, actor_id, type)
-    VALUES (NEW.user_id, NEW.friend_id, 'friend_accepted');
-  END IF;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER on_friend_accepted
-  AFTER UPDATE ON friendships
-  FOR EACH ROW
-  EXECUTE FUNCTION create_friend_accepted_notification();
-```
-
-**c) Tạo trigger khi DELETE friendships (hủy kết bạn)**
-```sql
-CREATE OR REPLACE FUNCTION create_friend_removed_notification()
-RETURNS TRIGGER AS $$
-BEGIN
-  -- Chỉ thông báo khi hủy kết bạn đã được chấp nhận
-  IF OLD.status = 'accepted' THEN
-    -- Thông báo cho cả hai phía
-    INSERT INTO notifications (user_id, actor_id, type)
-    VALUES (OLD.friend_id, OLD.user_id, 'friend_removed');
-  END IF;
-  RETURN OLD;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER on_friend_removed
-  AFTER DELETE ON friendships
-  FOR EACH ROW
-  EXECUTE FUNCTION create_friend_removed_notification();
-```
-
-### 2. Cập Nhật Frontend
-
-**a) File: `src/components/layout/notifications/types.ts`**
-- Thêm `friend_removed` vào FRIEND_REQUEST_TYPES
-
-**b) File: `src/components/layout/notifications/utils.ts`**
-- Thêm icon cho `friend_removed` (UserX màu đỏ)
-- Thêm text: "đã hủy kết bạn với bạn"
-
-### 3. Sơ Đồ Luồng Thông Báo
-
-```text
-┌─────────────────────────────────────────────────────────────┐
-│                    FRIENDSHIP TRIGGERS                       │
-├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│  [User A gửi lời mời]                                        │
-│         │                                                    │
-│         ▼                                                    │
-│  INSERT friendships (status=pending)                         │
-│         │                                                    │
-│         ▼ Trigger                                            │
-│  ┌─────────────────────────────────────┐                    │
-│  │ notifications INSERT                 │                    │
-│  │ user_id: B (người nhận lời mời)     │                    │
-│  │ actor_id: A (người gửi)             │                    │
-│  │ type: 'friend_request'              │                    │
-│  └─────────────────────────────────────┘                    │
-│         │                                                    │
-│         ▼ Realtime                                           │
-│  User B nhận được thông báo chuông                           │
-│                                                              │
-├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│  [User B chấp nhận]                                          │
-│         │                                                    │
-│         ▼                                                    │
-│  UPDATE friendships SET status='accepted'                    │
-│         │                                                    │
-│         ▼ Trigger                                            │
-│  ┌─────────────────────────────────────┐                    │
-│  │ notifications INSERT                 │                    │
-│  │ user_id: A (người gửi lời mời ban đầu) │                │
-│  │ actor_id: B (người chấp nhận)        │                   │
-│  │ type: 'friend_accepted'              │                   │
-│  └─────────────────────────────────────┘                    │
-│         │                                                    │
-│         ▼ Realtime                                           │
-│  User A nhận được thông báo "B đã chấp nhận kết bạn"         │
-│                                                              │
-├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│  [User A hủy kết bạn]                                        │
-│         │                                                    │
-│         ▼                                                    │
-│  DELETE FROM friendships                                     │
-│         │                                                    │
-│         ▼ Trigger                                            │
-│  ┌─────────────────────────────────────┐                    │
-│  │ notifications INSERT                 │                    │
-│  │ user_id: B (người bị hủy)           │                    │
-│  │ actor_id: A (người hủy)             │                    │
-│  │ type: 'friend_removed'              │                    │
-│  └─────────────────────────────────────┘                    │
-│         │                                                    │
-│         ▼ Realtime                                           │
-│  User B nhận được thông báo "A đã hủy kết bạn"               │
-│                                                              │
-└─────────────────────────────────────────────────────────────┘
-```
-
-## Tổng Kết Files
+## Tổng Kết Files Cần Sửa
 
 | File | Hành động |
 |------|-----------|
-| `supabase/migrations/[new].sql` | Tạo 3 triggers cho friendships |
-| `src/components/layout/notifications/types.ts` | Thêm `friend_removed` type |
-| `src/components/layout/notifications/utils.ts` | Thêm icon + text cho `friend_removed` |
+| `src/hooks/useDonation.ts` | Sửa error handling, thêm recovery mechanism |
+| Database | Insert thủ công giao dịch bị mất |
 
 ## Kết Quả Mong Đợi
 
-- ✅ Khi gửi lời mời kết bạn → Người nhận thấy thông báo realtime
-- ✅ Khi đồng ý kết bạn → Người gửi lời mời thấy thông báo realtime
-- ✅ Khi hủy kết bạn → Người bị hủy thấy thông báo realtime
-- ✅ Thông báo nhận tiền giữ nguyên hoạt động bình thường
+1. ✅ Giao dịch `0x64677ce959...` được khôi phục vào database
+2. ✅ Toast loading không còn bị kẹt vô hạn
+3. ✅ Nếu edge function fail sau khi TX on-chain, user được thông báo rõ ràng với TX hash
+4. ✅ Có cơ chế recovery cho các giao dịch bị mất trong tương lai
