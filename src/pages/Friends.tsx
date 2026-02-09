@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
+import { PullToRefreshContainer } from '@/components/common/PullToRefreshContainer';
 import { FriendsList } from '@/components/friends/FriendsList';
 import { FriendCarousel } from '@/components/friends/FriendCarousel';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -201,6 +202,16 @@ const Friends = () => {
     { icon: Gift, label: 'Sinh nhật', value: 'birthdays' },
   ];
 
+  const handlePullRefresh = useCallback(async () => {
+    if (currentUserId) {
+      await Promise.all([
+        fetchFriendRequests(currentUserId),
+        fetchSentRequests(currentUserId),
+        fetchSuggestions(currentUserId),
+      ]);
+    }
+  }, [currentUserId]);
+
   if (loading) {
     return (
       <div className="min-h-screen overflow-hidden">
@@ -223,8 +234,9 @@ const Friends = () => {
     <div className="min-h-screen overflow-hidden">
       <FacebookNavbar />
       <main data-app-scroll className="fixed inset-x-0 top-[3cm] bottom-0 overflow-y-auto pb-20 md:pb-6 px-4 sm:px-6 lg:px-[2cm]">
-        <div className="flex">
-          {/* Left Sidebar - Hidden on mobile, shown on lg+ */}
+        <PullToRefreshContainer onRefresh={handlePullRefresh}>
+          <div className="flex">
+            {/* Left Sidebar - Hidden on mobile, shown on lg+ */}
           <aside className={`
             fixed inset-y-0 left-0 z-40 w-[300px] lg:w-[360px] bg-card/80 shadow-lg 
             transform transition-transform duration-300 ease-in-out
@@ -405,6 +417,7 @@ const Friends = () => {
             </div>
           </div>
         </div>
+        </PullToRefreshContainer>
       </main>
       
       {/* Mobile Bottom Navigation */}

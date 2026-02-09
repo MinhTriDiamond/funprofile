@@ -18,6 +18,7 @@ import { AvatarEditor } from '@/components/profile/AvatarEditor';
 import { MoreHorizontal, MapPin, Briefcase, GraduationCap, Heart, Clock, MessageCircle, Eye, X, Pin, PenSquare, Gift } from 'lucide-react';
 import { DonationButton } from '@/components/donations/DonationButton';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
+import { PullToRefreshContainer } from '@/components/common/PullToRefreshContainer';
 import { useConversations } from '@/hooks/useConversations';
 import { toast } from 'sonner';
 import { useLanguage } from '@/i18n/LanguageContext';
@@ -256,6 +257,13 @@ const Profile = () => {
     }
   };
 
+  const handlePullRefresh = useCallback(async () => {
+    const profileId = profile?.id || userId || currentUserId;
+    if (profileId) {
+      await fetchProfile(profileId, currentUserId);
+    }
+  }, [profile?.id, userId, currentUserId]);
+
   // Handle pin/unpin post
   const handlePinPost = async (postId: string) => {
     try {
@@ -352,9 +360,10 @@ const Profile = () => {
       )}
       
       <main data-app-scroll className={`fixed inset-x-0 bottom-0 overflow-y-auto pb-20 lg:pb-4 ${viewAsPublic ? 'top-[4cm]' : 'top-[3cm]'}`}>
-        {/* Cover Photo Section - Facebook 2025 Style */}
-        <div className="max-w-[1100px] mx-auto px-4 sm:px-6 lg:px-[2cm]">
-          <div className="relative">
+        <PullToRefreshContainer onRefresh={handlePullRefresh}>
+          {/* Cover Photo Section - Facebook 2025 Style */}
+          <div className="max-w-[1100px] mx-auto px-4 sm:px-6 lg:px-[2cm]">
+            <div className="relative">
             {/* Cover Photo Container with rounded corners */}
             <div className="h-[200px] sm:h-[300px] md:h-[400px] relative overflow-hidden rounded-2xl mx-2 md:mx-0">
               {profile?.cover_url ? (
@@ -827,6 +836,7 @@ const Profile = () => {
             </div>
           </div>
         </div>
+        </PullToRefreshContainer>
       </main>
       
       {/* Mobile Bottom Navigation with Honor Board */}

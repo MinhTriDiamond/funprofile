@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 import { useConversations } from '@/hooks/useConversations';
 import { useGroupConversations } from '@/hooks/useGroupConversations';
 import { useChatNotifications } from '@/hooks/useChatNotifications';
@@ -11,6 +12,7 @@ import { CreateGroupDialog } from '@/components/chat/CreateGroupDialog';
 import { ChatSettingsDialog } from '@/components/chat/ChatSettingsDialog';
 import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
+import { PullToRefreshContainer } from '@/components/common/PullToRefreshContainer';
 import { useIsMobile, useIsMobileOrTablet } from '@/hooks/use-mobile';
 import { ArrowLeft, MessageSquarePlus, Users, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -55,6 +57,7 @@ export default function Chat() {
 
   const { conversations, isLoading, createDirectConversation } = useConversations(userId);
   const { createGroupConversation } = useGroupConversations(userId);
+  const queryClient = useQueryClient();
 
   // Enable chat notifications
   useChatNotifications(userId, conversationId || null);
@@ -83,6 +86,13 @@ export default function Chat() {
     setShowCreateGroup(false);
   };
 
+  const handlePullRefresh = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    if (conversationId) {
+      await queryClient.invalidateQueries({ queryKey: ['messages', conversationId] });
+    }
+  }, [queryClient, conversationId]);
+
   // Mobile/Tablet: Show only list or thread
   if (isMobileOrTablet) {
     return (
@@ -105,45 +115,47 @@ export default function Chat() {
               />
             </div>
           ) : (
-            <div className="h-full flex flex-col">
-              <div className="flex items-center justify-between p-4 border-b">
-                <h1 className="text-xl font-bold">Tin nhắn</h1>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setShowSettings(true)}
-                    className="border border-transparent hover:border-[#C9A84C]/40 rounded-full"
-                  >
-                    <Settings className="h-5 w-5" />
-                  </Button>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="border border-transparent hover:border-[#C9A84C]/40 rounded-full">
-                        <MessageSquarePlus className="h-5 w-5" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => setShowNewConversation(true)}>
-                        <MessageSquarePlus className="h-4 w-4 mr-2" />
-                        Tin nhắn mới
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setShowCreateGroup(true)}>
-                        <Users className="h-4 w-4 mr-2" />
-                        Tạo nhóm
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+            <PullToRefreshContainer onRefresh={handlePullRefresh} className="h-full">
+              <div className="h-full flex flex-col">
+                <div className="flex items-center justify-between p-4 border-b">
+                  <h1 className="text-xl font-bold">Tin nhắn</h1>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setShowSettings(true)}
+                      className="border border-transparent hover:border-[#C9A84C]/40 rounded-full"
+                    >
+                      <Settings className="h-5 w-5" />
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="border border-transparent hover:border-[#C9A84C]/40 rounded-full">
+                          <MessageSquarePlus className="h-5 w-5" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setShowNewConversation(true)}>
+                          <MessageSquarePlus className="h-4 w-4 mr-2" />
+                          Tin nhắn mới
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setShowCreateGroup(true)}>
+                          <Users className="h-4 w-4 mr-2" />
+                          Tạo nhóm
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </div>
+                <ConversationList
+                  conversations={conversations}
+                  selectedId={null}
+                  currentUserId={userId}
+                  onSelect={handleSelectConversation}
+                  isLoading={isLoading}
+                />
               </div>
-              <ConversationList
-                conversations={conversations}
-                selectedId={null}
-                currentUserId={userId}
-                onSelect={handleSelectConversation}
-                isLoading={isLoading}
-              />
-            </div>
+            </PullToRefreshContainer>
           )}
         </main>
 
