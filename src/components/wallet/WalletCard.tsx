@@ -20,6 +20,8 @@ interface WalletCardProps {
   isConnected?: boolean;
   isLinkedToProfile?: boolean;
   isLoading?: boolean;
+  /** Số lượng accounts trong ví (multi-account) */
+  accountCount?: number;
   tokens: TokenBalance[];
   totalUsdValue: number;
   isTokensLoading: boolean;
@@ -83,6 +85,7 @@ export const WalletCard = ({
   isConnected = false,
   isLinkedToProfile = false,
   isLoading = false,
+  accountCount = 0,
   tokens,
   totalUsdValue,
   isTokensLoading,
@@ -311,7 +314,7 @@ export const WalletCard = ({
                 className="text-blue-600 hover:bg-blue-100"
               >
                 <UserRoundCog className="w-4 h-4 mr-1" />
-                Switch
+                {accountCount > 1 ? `Tài khoản (${accountCount})` : 'Switch'}
               </Button>
 
               <Button

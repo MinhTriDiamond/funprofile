@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { encodeERC20Transfer } from '@/lib/erc20';
 import { getBscScanTxUrl } from '@/lib/bscScanHelpers';
 import { validateEvmAddress } from '@/utils/walletValidation';
+import { useActiveAccount } from '@/contexts/ActiveAccountContext';
 import type { WalletToken } from '@/lib/tokens';
 
 interface SendTokenParams {
@@ -15,21 +16,38 @@ interface SendTokenParams {
 }
 
 export function useSendToken() {
-  const { address, isConnected, chainId } = useAccount();
+  const { address: providerAddress, isConnected, chainId } = useAccount();
+  const { activeAddress, accounts } = useActiveAccount();
   const { sendTransactionAsync, isPending } = useSendTransaction();
   const [isProcessing, setIsProcessing] = useState(false);
 
   const sendToken = async (params: SendTokenParams): Promise<string | null> => {
     const { token, recipient, amount } = params;
 
-    if (!isConnected || !address) {
+    // Xác định address gửi: ưu tiên activeAddress, fallback providerAddress
+    const senderAddress = activeAddress || providerAddress;
+
+    if (!isConnected || !senderAddress) {
       toast.error('Vui lòng kết nối ví trước');
+      return null;
+    }
+
+    // Validate activeAddress còn nằm trong danh sách accounts được ủy quyền
+    if (activeAddress && accounts.length > 0 && !accounts.includes(activeAddress.toLowerCase())) {
+      toast.error('Tài khoản không còn được ủy quyền. Vui lòng kết nối lại.');
+      return null;
+    }
+
+    // Cảnh báo bất đồng bộ giữa provider và active
+    if (activeAddress && providerAddress &&
+        activeAddress.toLowerCase() !== providerAddress.toLowerCase()) {
+      toast.error('Tài khoản trong ví khác với tài khoản đang chọn. Vui lòng đồng bộ trước khi gửi.');
       return null;
     }
 
     if (!validateEvmAddress(recipient)) return null;
 
-    if (recipient.toLowerCase() === address.toLowerCase()) {
+    if (recipient.toLowerCase() === senderAddress.toLowerCase()) {
       toast.error('Không thể gửi cho chính mình');
       return null;
     }
@@ -47,6 +65,7 @@ export function useSendToken() {
       if (!token.address) {
         // Native BNB transfer
         txHash = await sendTransactionAsync({
+          account: senderAddress as `0x${string}`,
           to: recipient as `0x${string}`,
           value: parseEther(amount),
         });
@@ -58,6 +77,7 @@ export function useSendToken() {
           token.decimals,
         );
         txHash = await sendTransactionAsync({
+          account: senderAddress as `0x${string}`,
           to: token.address,
           data,
         });
@@ -69,7 +89,7 @@ export function useSendToken() {
         await supabase.from('transactions').insert({
           user_id: user.id,
           tx_hash: txHash,
-          from_address: address,
+          from_address: senderAddress,
           to_address: recipient,
           amount: amount,
           token_symbol: token.symbol,
