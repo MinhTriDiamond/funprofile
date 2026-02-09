@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Sparkles, Share2 } from 'lucide-react';
+import { ArrowLeft, Sparkles, Share2, Home } from 'lucide-react';
 
 const ANGEL_LOGO = '/angel-ai-logo-128.png';
 
@@ -73,7 +73,15 @@ const PplpDocs = () => {
       <div className="relative z-10 min-h-screen py-6 md:py-12 px-3 md:px-4">
         <div className="max-w-4xl mx-auto">
           {/* Navigation */}
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-6">
+            <Button
+              variant="ghost"
+              onClick={() => navigate('/')}
+              className="text-[#B8860B] hover:text-[#D4AF37] hover:bg-[#D4AF37]/10"
+            >
+              <Home className="w-4 h-4 mr-2" />
+              Về Trang Chủ
+            </Button>
             <Button
               variant="ghost"
               onClick={() => navigate('/law-of-light?view=true')}
@@ -552,8 +560,14 @@ const PplpDocs = () => {
           {/* Navigation Links */}
           <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
             <Button
-              onClick={() => navigate('/docs/master-charter')}
+              onClick={() => navigate('/')}
               className="bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] text-[#E8D5A3] border-2 border-[#DAA520] rounded-full px-6"
+            >
+              🏠 Về Trang Chủ
+            </Button>
+            <Button
+              onClick={() => navigate('/docs/master-charter')}
+              className="bg-gradient-to-b from-[#D4AF37] via-[#FFD700] to-[#D4AF37] text-white border-2 border-[#DAA520] rounded-full px-6"
             >
               ← Đọc Hiến Pháp Gốc
             </Button>

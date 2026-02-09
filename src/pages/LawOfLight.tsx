@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import { Sparkles, Eye } from 'lucide-react';
+import { Sparkles, Eye, Home } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageContext';
 
 const ANGEL_LOGO = '/angel-ai-logo-128.png';
@@ -174,6 +174,20 @@ const LawOfLight = () => {
       {/* Main Content */}
       <div className="relative z-10 min-h-screen py-6 md:py-12 px-3 md:px-4">
         <div className="max-w-4xl mx-auto">
+          {/* Top Navigation for read-only mode */}
+          {isReadOnly && (
+            <div className="flex items-center justify-center mb-6">
+              <Button
+                variant="ghost"
+                onClick={() => navigate('/')}
+                className="text-[#B8860B] hover:text-[#D4AF37] hover:bg-[#D4AF37]/10"
+              >
+                <Home className="w-4 h-4 mr-2" />
+                Về Trang Chủ
+              </Button>
+            </div>
+          )}
+
           {/* Header with Angel Avatar */}
           <div className="text-center mb-8 md:mb-12">
             <div className="inline-flex items-center justify-center w-24 h-24 md:w-32 md:h-32 rounded-full mb-4 md:mb-6 overflow-hidden" style={{
@@ -661,6 +675,19 @@ const LawOfLight = () => {
                 {/* Links to Sacred Documents */}
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   <Button
+                    onClick={() => navigate('/')}
+                    className="px-6 py-3 rounded-xl"
+                    style={{
+                      fontFamily: fontStyles.body,
+                      background: 'linear-gradient(135deg, #1a7d45 0%, #166534 50%, #0d4a2a 100%)',
+                      color: '#E8D5A3',
+                      border: '2px solid #DAA520',
+                      boxShadow: '0 4px 15px rgba(212,175,55,0.3)'
+                    }}
+                  >
+                    🏠 Về Trang Chủ
+                  </Button>
+                  <Button
                     onClick={() => navigate('/docs/master-charter')}
                     className="px-6 py-3 rounded-xl"
                     style={{
@@ -685,19 +712,6 @@ const LawOfLight = () => {
                     🌞 Đọc Giao Thức PPLP
                   </Button>
                 </div>
-                
-                <Button
-                  onClick={() => navigate(-1)}
-                  variant="outline"
-                  className="px-8 py-3 border-2 hover:bg-yellow-50"
-                  style={{
-                    fontFamily: fontStyles.body,
-                    borderColor: '#D4AF37',
-                    color: '#D4AF37'
-                  }}
-                >
-                  ← Quay lại
-                </Button>
               </div>
             )}
           </div>
