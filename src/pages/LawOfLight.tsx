@@ -19,7 +19,11 @@ const LawOfLight = () => {
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    setIsReadOnly(params.get('view') === 'true');
+    const viewMode = params.get('view') === 'true';
+    setIsReadOnly(viewMode);
+    
+    // If in view mode, don't redirect - allow viewing the content
+    if (viewMode) return;
     
     // Check if user is already logged in and has accepted
     const checkAuth = async () => {
