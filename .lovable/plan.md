@@ -1,352 +1,239 @@
 
-# Kế Hoạch: Xây Dựng Tính Năng Gửi/Nhận USDT & BTCB (BSC)
+
+# Kế Hoạch: Tính Năng "Chọn Tài Khoản Trong Cùng Một Ví" (Multi-Account Selector)
 
 ## Tổng Quan
 
-Mở rộng tính năng ví FUN Profile để hỗ trợ gửi/nhận USDT và BTCB trên BSC Mainnet, tái sử dụng pattern hiện có từ TokenSelector, useDonation và useTokenBalances.
+Xây dựng tính năng cho phép người dùng xem và chuyển đổi giữa nhiều account/address trong cùng 1 ví (ví dụ MetaMask có nhiều accounts). Toàn bộ app sẽ sử dụng đúng Active Account đã chọn cho đọc số dư, ký và gửi giao dịch.
 
 ## Phân Tích Hiện Trạng
 
 ### Đã có sẵn
 | Component | Mô tả |
 |-----------|-------|
-| `TokenSelector.tsx` | UI chọn token (FUN, CAMLY, BNB) |
-| `useTokenBalances.ts` | Hook lấy balance các token (đã có USDT, BTCB) |
-| `useDonation.ts` | Logic gửi BNB/ERC20 với sendTransaction |
-| `SendTab.tsx` | UI gửi BNB cơ bản |
-| `ReceiveTab.tsx` | UI nhận với QR code |
-| `transactions` table | Bảng lưu lịch sử giao dịch |
-| `bscScanHelpers.ts` | Utility tạo link BscScan |
-| Token logos | `usdt-logo.webp`, `btcb-logo.webp` |
+| `Web3Provider.tsx` | WagmiProvider + RainbowKitProvider, cấu trúc đơn giản |
+| `WalletCenterContainer.tsx` | Đã có `handleSwitchAccount` dùng `wallet_requestPermissions` |
+| `WalletCard.tsx` | Đã có nút "Switch" và prop `onSwitchAccount` |
+| `useSendToken.ts` | Dùng `useAccount().address` để gửi giao dịch |
+| `useTokenBalances.ts` | Hỗ trợ `customAddress` option |
+| `web3.ts` | wagmi config với BSC chains + RainbowKit connectors |
+| `use-mobile.tsx` | Hook phát hiện mobile/desktop |
 
-### Cần bổ sung
-- Thêm USDT, BTCB vào `TokenSelector`
-- Nâng cấp `SendTab` với token selector, gas estimation, confirm modal
-- Tạo module `erc20.ts` tập trung logic ERC20
-- Tạo component Recent Transactions với status tracking
-- Thêm logic bắt buộc BSC Mainnet (chainId=56) + nút Switch Network
+### Hạn chế của wagmi v2
+- `useAccount()` chỉ trả về 1 address (account hiện tại của provider)
+- Wagmi không tự động expose danh sách accounts từ connector
+- Cần truy cập EIP-1193 provider để gọi `eth_accounts` lấy danh sách
 
 ## Kiến Trúc Giải Pháp
 
 ```text
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                           WALLET PAGE                                       │
-├─────────────────────────────────────────────────────────────────────────────┤
-│  ┌──────────────────────┐  ┌──────────────────────┐  ┌───────────────────┐  │
-│  │     SEND TAB         │  │    RECEIVE TAB       │  │  TRANSACTIONS     │  │
-│  │  • Token Selector    │  │  • QR Code           │  │  • Recent list    │  │
-│  │  • Amount + MAX      │  │  • Copy address      │  │  • Status badge   │  │
-│  │  • Recipient input   │  │  • Share             │  │  • Refresh btn    │  │
-│  │  • Gas estimate      │  │                      │  │  • BscScan link   │  │
-│  │  • Confirm modal     │  │                      │  │                   │  │
-│  └──────────────────────┘  └──────────────────────┘  └───────────────────┘  │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                        NETWORK GUARD                                        │
-│     ⚠️ If chainId ≠ 56 → Show "Switch to BSC" button                        │
-└─────────────────────────────────────────────────────────────────────────────┘
++---------------------------------------------------------------------+
+|                  ActiveAccountProvider (Context)                     |
+|  State: accounts[], activeAddress, lastUsedAt{}                      |
+|  Persistence: localStorage key = activeAccount:{connectorId}         |
++---------------------------------------------------------------------+
+|                                                                      |
+|  +------------------------+    +----------------------------------+  |
+|  |  useActiveAccount()    |    |  AccountSelectorModal.tsx        |  |
+|  |  - activeAddress       |    |  - Danh sach accounts + balance  |  |
+|  |  - accounts[]          |    |  - Tim kiem theo dia chi         |  |
+|  |  - setActive()         |    |  - Badge "Dang dung"             |  |
+|  |  - refreshAccounts()   |    |  - Identicon cho tung account    |  |
+|  +------------------------+    +----------------------------------+  |
+|                                                                      |
+|  Consumers:                                                          |
+|  - WalletCenterContainer (hien thi Active Account)                   |
+|  - WalletCard (nut "Chon tai khoan")                                 |
+|  - useSendToken (gui tx tu activeAddress)                            |
+|  - useTokenBalances (doc balance cua activeAddress)                  |
++---------------------------------------------------------------------+
 ```
 
-## Chi Tiết Files Cần Thay Đổi
+## Chi Tiết Thay Đổi Theo File
 
-### 1. Tạo mới: `src/lib/tokens.ts`
+### 1. Tạo mới: `src/contexts/ActiveAccountContext.tsx`
 
-**Mục đích:** Centralize danh sách token metadata
+**Mục đích:** React Context quản lý multi-account state
 
-```typescript
-export const WALLET_TOKENS = [
-  { symbol: 'BNB', name: 'BNB', address: null, decimals: 18, logo: bnbLogo },
-  { symbol: 'USDT', name: 'Tether USD', address: '0x55d398326f99059fF775485246999027B3197955', decimals: 18, logo: usdtLogo },
-  { symbol: 'BTCB', name: 'Bitcoin BEP20', address: '0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c', decimals: 18, logo: btcbLogo },
-  { symbol: 'FUN', name: 'FUN Money', address: '0x1aa8DE8B1E4465C6d729E8564893f8EF823a5ff2', decimals: 18, logo: funLogo },
-  { symbol: 'CAMLY', name: 'Camly Coin', address: '0x0910320181889feFDE0BB1Ca63962b0A8882e413', decimals: 3, logo: camlyLogo },
-];
+**State:**
+- `accounts: string[]` -- danh sách địa chỉ được ủy quyền
+- `activeAddress: string | null` -- account đang dùng
+- `lastUsedAt: Record<string, number>` -- timestamp lần cuối sử dụng mỗi account
+
+**Logic chính:**
+- Khi ví kết nối: lấy `connector.getProvider()` rồi gọi `provider.request({ method: 'eth_accounts' })` để lấy danh sách accounts
+- Lưu `activeAddress` vào `localStorage` theo key: `activeAccount:{connectorId}`
+- Lắng nghe sự kiện `accountsChanged` từ provider:
+  - Cập nhật `accounts[]`
+  - Nếu `activeAddress` không còn trong danh sách -> fallback sang `accounts[0]` + toast cảnh báo
+- Lắng nghe thay đổi từ wagmi `useAccount`: đồng bộ nếu provider đổi account
+- Khi disconnect: xóa toàn bộ state
+- Export: `ActiveAccountProvider`, `useActiveAccount()` hook
+
+### 2. Tạo mới: `src/components/wallet/AccountSelectorModal.tsx`
+
+**Mục đích:** UI cho phép chọn tài khoản
+
+**Thiết kế:**
+- Dialog trên desktop, full-width drawer trên mobile (dùng `useIsMobile()` có sẵn)
+- Danh sách accounts hiển thị:
+  - Identicon (tạo từ address bằng CSS gradient, không cần thư viện ngoài)
+  - Địa chỉ rút gọn: `0x1234...ABCD`
+  - Badge "Đang dùng" cho account hiện tại
+  - Số dư BNB native cho từng account (lazy load với skeleton)
+  - Sắp xếp theo `lastUsedAt` giảm dần
+- Ô tìm kiếm lọc theo address (debounce)
+- Click chọn account -> set active + đóng modal + toast thông báo
+- Nút "Làm mới danh sách" gọi lại `eth_accounts`
+- Nếu chỉ có 1 account: hiển thị 1 dòng, không cần switch
+
+### 3. Tạo mới: `src/components/wallet/AccountMismatchModal.tsx`
+
+**Mục đích:** Modal cảnh báo khi địa chỉ provider khác với active address
+
+**Khi nào hiển thị:** Khi phát hiện `useAccount().address !== activeAddress`
+
+**Hai lựa chọn:**
+- (A) Đồng bộ active theo ví (set active = provider address)
+- (B) Yêu cầu người dùng chuyển account trong ví để khớp active
+
+**Tự đóng khi đã khớp.**
+
+### 4. Sửa: `src/components/providers/Web3Provider.tsx`
+
+**Thay đổi:** Bọc thêm `ActiveAccountProvider` bên trong WagmiProvider
+
+```tsx
+<WagmiProvider config={config}>
+  <QueryClientProvider client={queryClient}>
+    <RainbowKitProvider>
+      <ActiveAccountProvider>
+        {children}
+      </ActiveAccountProvider>
+    </RainbowKitProvider>
+  </QueryClientProvider>
+</WagmiProvider>
 ```
 
-### 2. Tạo mới: `src/lib/erc20.ts`
+Lưu ý: Hiện tại Web3Provider chưa có `QueryClientProvider` -- sẽ đặt `ActiveAccountProvider` ở vị trí phù hợp trong cây component, sau RainbowKitProvider để có thể dùng wagmi hooks.
 
-**Mục đích:** Helper functions cho ERC20
+### 5. Sửa: `src/components/wallet/WalletCenterContainer.tsx`
 
-```typescript
-// Minimal ERC20 ABI
-export const ERC20_ABI = [
-  { name: 'balanceOf', ... },
-  { name: 'decimals', ... },
-  { name: 'transfer', ... },
-  { name: 'allowance', ... },
-];
+**Thay đổi chính:**
+- Import `useActiveAccount` từ context mới
+- Dùng `activeAddress` thay vì chỉ dùng `useAccount().address` cho mọi nơi cần address
+- Thay thế `handleSwitchAccount` (hiện gọi `wallet_requestPermissions`) bằng việc mở `AccountSelectorModal`
+- Truyền `activeAddress` cho `useTokenBalances({ customAddress: activeAddress })`
+- Hiển thị số lượng accounts trong UI (ví dụ: "Tài khoản 1/3")
+- Thêm nút "Chọn tài khoản" mở AccountSelectorModal
+- Tích hợp `AccountMismatchModal` để bắt trường hợp bất đồng bộ
 
-// Helper: Encode transfer call
-export function encodeTransfer(to: string, amount: bigint): string { ... }
+### 6. Sửa: `src/components/wallet/WalletCard.tsx`
 
-// Helper: Get decimals với fallback
-export async function getTokenDecimals(address: string, publicClient): Promise<number> { ... }
-```
+**Thay đổi:**
+- Thêm prop `accountCount?: number` để hiển thị số lượng accounts
+- Nút "Switch" đổi thành "Chọn tài khoản (X)" với số lượng
+- Thêm indicator nhỏ khi có nhiều hơn 1 account
 
-### 3. Sửa: `src/components/donations/TokenSelector.tsx`
+### 7. Sửa: `src/hooks/useSendToken.ts`
 
-**Thay đổi:** Thêm USDT và BTCB vào SUPPORTED_TOKENS
+**Thay đổi quan trọng:**
+- Import `useActiveAccount` từ context
+- Xác nhận `activeAddress` nằm trong `accounts[]` trước khi gửi
+- Truyền `account: activeAddress` vào `sendTransactionAsync` (wagmi v2 hỗ trợ tham số `account`)
+- Nếu `activeAddress !== useAccount().address`: hiển thị cảnh báo/chặn gửi
 
-```typescript
-import usdtLogo from '@/assets/tokens/usdt-logo.webp';
-import btcbLogo from '@/assets/tokens/btcb-logo.webp';
-
-export const SUPPORTED_TOKENS: TokenOption[] = [
-  { symbol: 'BNB', ... },
-  { symbol: 'USDT', name: 'Tether USD', address: '0x55d398326f99059fF775485246999027B3197955', decimals: 18, logo: usdtLogo, color: 'from-emerald-500 to-green-400' },
-  { symbol: 'BTCB', name: 'Bitcoin BEP20', address: '0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c', decimals: 18, logo: btcbLogo, color: 'from-orange-500 to-amber-400' },
-  { symbol: 'FUN', ... },
-  { symbol: 'CAMLY', ... },
-];
-```
-
-### 4. Thay thế: `src/components/wallet/SendTab.tsx`
-
-**Nâng cấp toàn diện:**
-
-- Token Selector dropdown (BNB, USDT, BTCB, FUN, CAMLY)
-- Balance display realtime
-- Input amount với nút MAX:
-  - BNB: `balance - 0.002` (gas buffer)
-  - Tokens: full balance
-- Recipient address input với validation EVM checksum
-- Gas estimation display
-- Cảnh báo nếu không đủ BNB trả gas
-- Cảnh báo nếu gửi số lượng lớn (>80% balance)
-- Modal xác nhận trước gửi
-- Network guard: BSC Mainnet only
-
-```text
-┌─────────────────────────────────────────────────────────┐
-│  GỬI TOKEN                                              │
-├─────────────────────────────────────────────────────────┤
-│  Token: [USDT ▼]                                        │
-│  Balance: 1,234.56 USDT                                 │
-├─────────────────────────────────────────────────────────┤
-│  Địa chỉ nhận: [0x...                         ]         │
-│  ✓ Địa chỉ hợp lệ                                       │
-├─────────────────────────────────────────────────────────┤
-│  Số lượng: [100        ] [MAX]  USDT                    │
-│  ≈ $100.00 USD                                          │
-├─────────────────────────────────────────────────────────┤
-│  ⛽ Gas estimate: ~0.0005 BNB ($0.35)                    │
-│  ⚠️ BNB để trả gas: 0.01 BNB (đủ)                        │
-├─────────────────────────────────────────────────────────┤
-│  [HỦY]              [XÁC NHẬN GỬI]                      │
-└─────────────────────────────────────────────────────────┘
-```
-
-### 5. Tạo mới: `src/components/wallet/SendConfirmModal.tsx`
-
-**Modal xác nhận gửi:**
-
-```typescript
-interface SendConfirmModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
-  token: TokenOption;
-  amount: string;
-  recipient: string;
-  gasEstimate: string;
-  isLoading: boolean;
-}
-```
-
-- Hiển thị: Token logo, số lượng, địa chỉ nhận (truncated + copy), network = BSC
-- Nút Confirm/Cancel
-- Loading state khi đang xử lý
-
-### 6. Tạo mới: `src/hooks/useSendToken.ts`
-
-**Hook xử lý gửi token:**
-
-```typescript
-export function useSendToken() {
-  const { sendTransactionAsync } = useSendTransaction();
+```tsx
+const sendToken = async (params: SendTokenParams) => {
+  const senderAddress = activeAddress || providerAddress;
   
-  async function sendToken(params: {
-    token: TokenOption;
-    recipient: string;
-    amount: string;
-  }): Promise<{ txHash: string } | null> {
-    // Validate recipient
-    // Parse amount theo decimals
-    // Native BNB: sendTransaction
-    // ERC20: encode transfer + sendTransaction
-    // Save to transactions table
-    // Return txHash
+  // Kiểm tra active address còn được ủy quyền
+  if (activeAddress && !accounts.includes(activeAddress.toLowerCase())) {
+    toast.error('Tài khoản không còn được ủy quyền. Vui lòng kết nối lại.');
+    return null;
   }
   
-  return { sendToken, isPending };
-}
-```
-
-### 7. Tạo mới: `src/components/wallet/RecentTransactions.tsx`
-
-**Component lịch sử giao dịch:**
-
-```text
-┌─────────────────────────────────────────────────────────┐
-│  LỊCH SỬ GIAO DỊCH                          [🔄 Refresh]│
-├─────────────────────────────────────────────────────────┤
-│  🟢 100 USDT → 0x1234...5678                            │
-│     2 phút trước • Confirmed                            │
-│     [🔗 BscScan]                                        │
-├─────────────────────────────────────────────────────────┤
-│  🟡 0.5 BNB → 0xabcd...efgh                             │
-│     5 phút trước • Pending                              │
-│     [🔗 BscScan]                                        │
-├─────────────────────────────────────────────────────────┤
-│  🔴 50 BTCB → 0x9876...5432                             │
-│     1 giờ trước • Failed                                │
-│     [🔗 BscScan]                                        │
-└─────────────────────────────────────────────────────────┘
-```
-
-- Lấy từ bảng `transactions`
-- Status badge: pending (🟡), confirmed (🟢), failed (🔴)
-- Nút Refresh để check transaction receipt
-- Link BscScan mỗi giao dịch
-
-### 8. Tạo mới: `src/hooks/useTransactionHistory.ts`
-
-**Hook quản lý lịch sử:**
-
-```typescript
-export function useTransactionHistory() {
-  // Lấy transactions từ Supabase
-  // Function refresh status từng tx
-  // Real-time subscription (optional)
-  
-  async function refreshTxStatus(txHash: string) {
-    // Call publicClient.getTransactionReceipt
-    // Update status trong DB
+  // Cảnh báo nếu bất đồng bộ
+  if (activeAddress && providerAddress && 
+      activeAddress.toLowerCase() !== providerAddress.toLowerCase()) {
+    toast.error('Tài khoản trong ví khác với tài khoản đang chọn. Vui lòng đồng bộ.');
+    return null;
   }
-  
-  return { transactions, isLoading, refreshTxStatus };
-}
+
+  // Gửi giao dịch với account cụ thể
+  txHash = await sendTransactionAsync({
+    account: senderAddress as `0x${string}`,
+    to: ...,
+    value/data: ...,
+  });
+};
 ```
 
-### 9. Sửa: `src/components/wallet/WalletCenterContainer.tsx`
+### 8. Sửa: `src/hooks/useTokenBalances.ts`
 
-**Thêm:**
+**Thay đổi nhỏ:**
+- Hook này đã hỗ trợ `customAddress` option
+- `WalletCenterContainer` sẽ truyền `activeAddress` vào thay vì dùng `address` trực tiếp
+- Không cần sửa logic bên trong hook
 
-- Import RecentTransactions component
-- Network guard logic cho BSC Mainnet
-- Tab/section cho Recent Transactions
-
-### 10. Sửa: `src/lib/bscScanHelpers.ts`
-
-**Thêm hỗ trợ USDT, BTCB:**
-
-```typescript
-// Đã có sẵn logic Mainnet cho non-FUN tokens
-// Chỉ cần verify USDT, BTCB đi vào Mainnet URL
-```
-
-## Flow Xử Lý Gửi Token
+## Luồng Xử Lý Chính
 
 ```text
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                           SEND TOKEN FLOW                                   │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ 1. User chọn token (USDT/BTCB/BNB/FUN/CAMLY)                                │
-│    → Hiển thị balance từ useTokenBalances                                   │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ 2. User nhập địa chỉ nhận                                                   │
-│    → validateEvmAddress() kiểm tra checksum                                 │
-│    → Block nếu gửi cho chính mình (tùy chọn)                                │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ 3. User nhập số lượng hoặc bấm MAX                                          │
-│    → BNB: balance - 0.002                                                   │
-│    → Token: full balance                                                    │
-│    → Hiển thị USD value                                                     │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ 4. Check điều kiện                                                          │
-│    → chainId = 56? Nếu không → Switch to BSC button                         │
-│    → Đủ BNB trả gas? Nếu không → Cảnh báo                                   │
-│    → Gửi >80% balance? → Cảnh báo số lượng lớn                              │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ 5. User bấm Gửi → Mở Confirm Modal                                          │
-│    → Hiển thị: Token, Amount, Recipient, Network, Gas estimate              │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ 6. User Confirm → Gọi sendToken()                                           │
-│    → BNB: sendTransactionAsync({ to, value })                               │
-│    → Token: encode transfer() + sendTransactionAsync({ to, data })          │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ 7. Wait 1 confirmation                                                      │
-│    → Save to transactions table (status: pending)                           │
-│    → Show toast với link BscScan                                            │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ 8. Update status khi confirmed                                              │
-│    → Update transactions.status = 'confirmed'                               │
-│    → Toast success                                                          │
-└─────────────────────────────────────────────────────────────────────────────┘
+1. Người dùng kết nối ví (RainbowKit)
+   -> wagmi: useAccount().address = accounts[0]
+   -> ActiveAccountContext: gọi eth_accounts -> lưu accounts[]
+   -> Đặt activeAddress = giá trị đã lưu localStorage || accounts[0]
+
+2. Người dùng mở Account Selector
+   -> Thấy danh sách accounts với số dư
+   -> Chọn account khác
+   -> Đặt activeAddress mới -> lưu localStorage
+   -> App re-render với address mới
+
+3. Người dùng đổi account trong ví (popup MetaMask)
+   -> Provider phát sự kiện accountsChanged
+   -> ActiveAccountContext cập nhật accounts[]
+   -> Nếu active không còn -> fallback accounts[0] + toast
+   -> Nếu active vẫn còn -> giữ nguyên, kiểm tra mismatch
+
+4. Phát hiện bất đồng bộ (provider address != active address)
+   -> Hiển thị AccountMismatchModal
+   -> Người dùng chọn: đồng bộ theo ví HOẶC yêu cầu đổi trong ví
+
+5. Người dùng gửi giao dịch
+   -> useSendToken kiểm tra activeAddress trong accounts[]
+   -> Kiểm tra chainId = 56
+   -> Gửi tx với account: activeAddress
 ```
 
 ## Xử Lý Lỗi
 
 | Lỗi | Xử lý |
 |-----|-------|
-| User reject signature | Toast: "Giao dịch đã bị từ chối" |
-| Insufficient gas (BNB) | Toast: "Không đủ BNB để trả phí gas. Cần tối thiểu 0.002 BNB" |
-| Transfer reverted | Toast: "Giao dịch thất bại. Vui lòng kiểm tra số dư" |
-| RPC error | Toast: "Lỗi kết nối mạng. Vui lòng thử lại" |
-| Invalid address | Inline error: "Địa chỉ không hợp lệ" |
-| Wrong network | Banner: "Vui lòng chuyển sang BNB Smart Chain" + Switch button |
+| Provider không hỗ trợ multi-account | Fallback: dùng useAccount().address, ẩn selector |
+| `eth_accounts` trả về mảng rỗng | Toast: "Không tìm thấy tài khoản. Vui lòng kết nối lại" |
+| Active address bị xóa khỏi ví | Tự động fallback accounts[0] + toast cảnh báo |
+| Bất đồng bộ provider vs active | Modal cho người dùng chọn cách đồng bộ |
+| Connector không có getProvider | Graceful fallback: chỉ dùng useAccount().address |
 
 ## Danh Sách Files
 
 | File | Hành động |
 |------|-----------|
-| `src/lib/tokens.ts` | **Tạo mới** |
-| `src/lib/erc20.ts` | **Tạo mới** |
-| `src/components/donations/TokenSelector.tsx` | **Sửa** - Thêm USDT, BTCB |
-| `src/components/wallet/SendTab.tsx` | **Sửa** - Nâng cấp toàn diện |
-| `src/components/wallet/SendConfirmModal.tsx` | **Tạo mới** |
-| `src/hooks/useSendToken.ts` | **Tạo mới** |
-| `src/components/wallet/RecentTransactions.tsx` | **Tạo mới** |
-| `src/hooks/useTransactionHistory.ts` | **Tạo mới** |
-| `src/components/wallet/WalletCenterContainer.tsx` | **Sửa** - Thêm Recent Transactions, Network guard |
-
-## Kết Quả Mong Đợi
-
-- Gửi/nhận USDT và BTCB hoạt động trên BSC Mainnet
-- UI Send có token selector, MAX button, gas estimation
-- Modal xác nhận trước khi gửi
-- Network guard bắt buộc BSC Mainnet
-- Recent Transactions với status tracking và BscScan links
-- Xử lý lỗi rõ ràng, thông báo dễ hiểu
-- Tái sử dụng tối đa code hiện có (useTokenBalances, bscScanHelpers, validateEvmAddress)
+| `src/contexts/ActiveAccountContext.tsx` | **Tạo mới** -- Context + Provider + useActiveAccount hook |
+| `src/components/wallet/AccountSelectorModal.tsx` | **Tạo mới** -- UI chọn tài khoản |
+| `src/components/wallet/AccountMismatchModal.tsx` | **Tạo mới** -- Modal cảnh báo bất đồng bộ |
+| `src/components/providers/Web3Provider.tsx` | **Sửa** -- Bọc thêm ActiveAccountProvider |
+| `src/components/wallet/WalletCenterContainer.tsx` | **Sửa** -- Dùng activeAddress, tích hợp selector + mismatch modal |
+| `src/components/wallet/WalletCard.tsx` | **Sửa** -- Hiển thị số lượng accounts |
+| `src/hooks/useSendToken.ts` | **Sửa** -- Kiểm tra và gửi tx theo activeAddress |
 
 ## Ghi Chú Kỹ Thuật
 
-- Gas buffer cho BNB: 0.002 BNB (tránh fail do thiếu gas)
-- Decimals: Ưu tiên đọc on-chain, fallback = 18
-- Chain enforcement: chainId phải = 56 (BSC Mainnet) cho mọi giao dịch
-- Transaction status tracking: Log vào DB, check receipt để update status
-- BscScan URLs: USDT/BTCB → Mainnet (`bscscan.com`), FUN → Testnet (giữ nguyên logic hiện tại)
+- **Không dùng ethers** -- Toàn bộ dùng viem v2 + wagmi v2
+- **localStorage persistence** -- Key: `activeAccount:{connectorId}`, value: address
+- **Identicon** -- Tạo từ address bằng CSS gradient (không cần thư viện ngoài)
+- **Hiệu năng** -- Lazy load balance cho từng account, debounce tìm kiếm
+- **Bảo mật** -- Tuyệt đối không lưu private key. Chỉ ký/gửi qua provider/walletClient
+- **Responsive** -- Dialog trên desktop, drawer trên mobile (dùng `useIsMobile()` có sẵn)
+- **Tương thích ngược** -- Nếu context chưa sẵn sàng hoặc chỉ có 1 account, app hoạt động như cũ
