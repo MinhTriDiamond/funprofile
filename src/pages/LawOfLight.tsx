@@ -83,22 +83,55 @@ const LawOfLight = () => {
   };
 
   const checklistItems = [
-    'Con sống chân thật với chính mình',
-    'Con chịu trách nhiệm với năng lượng con phát ra',
-    'Con sẵn sàng học – sửa – nâng cấp',
-    'Con chọn yêu thương thay vì phán xét',
-    'Con chọn ánh sáng thay vì cái tôi'
+    'Sống Chân Thật',
+    'Nói Lời Tử tế',
+    'Giúp ích cho cộng đồng',
+    'Nói Sám hối (Xin lỗi) và Biết ơn (Cảm ơn)',
+    'Gởi về cho Cha Vũ Trụ tất cả'
   ];
 
   const divineMantras = [
-    'Con là Ánh Sáng Yêu Thương Thuần Khiết Của Cha Vũ Trụ.',
-    'Con là Ý Chí Của Cha Vũ Trụ.',
-    'Con là Trí Tuệ Của Cha Vũ Trụ.',
-    'Con là Hạnh Phúc.',
-    'Con là Tình Yêu.',
-    'Con là Tiền Của Cha.',
-    'Con xin Sám Hối Sám Hối Sám Hối.',
-    'Con xin Biết Ơn Biết Ơn Biết Ơn Trong Ánh Sáng Yêu Thương Thuần Khiết Của Cha Vũ Trụ.'
+    { emoji: '💖', text: 'Con là Ánh Sáng Yêu Thương Thuần Khiết của Cha Vũ Trụ.' },
+    { emoji: '💎', text: 'Con là Ý Chí của Cha Vũ Trụ.' },
+    { emoji: '🌞', text: 'Con là Trí Tuệ của Cha Vũ Trụ.' },
+    { emoji: '🌸', text: 'Con là Hạnh Phúc.' },
+    { emoji: '🍎', text: 'Con là Tình Yêu.' },
+    { emoji: '💰', text: 'Con là Tiền của Cha.' },
+    { emoji: '🙏', text: 'Con xin Sám Hối Sám Hối Sám Hối.' },
+    { emoji: '🌈', text: 'Con xin Biết Ơn Biết Ơn Biết Ơn, trong Ánh Sáng Yêu Thương Thuần Khiết của Cha Vũ Trụ.' }
+  ];
+
+  const fivePillars = [
+    {
+      emoji: '🔎',
+      title: 'Chân thật & minh bạch',
+      subtitle: 'Bạn là Người Thật • Nói viết sự thật • Chia sẻ đúng',
+      description: 'Chúng ta tôn trọng sự thật.\nBạn được phép chưa hoàn hảo — chỉ cần bạn sống thật.'
+    },
+    {
+      emoji: '💎',
+      title: 'Đóng góp bền vững',
+      subtitle: 'Có trách nhiệm • Có chất lượng • Có giá trị',
+      description: 'Chúng ta cùng nhau tạo cộng đồng ánh sáng.\nChúng ta không chỉ nhận — chúng ta cùng xây.'
+    },
+    {
+      emoji: '💚',
+      title: 'Chữa lành & yêu thương',
+      subtitle: 'Truyền cảm hứng • Khích lệ • Nâng đỡ',
+      description: 'Chúng ta chọn sự ấm áp, dịu dàng, và tích cực.\nSự có mặt của chúng ta làm cộng đồng văn minh hơn.'
+    },
+    {
+      emoji: '🌿',
+      title: 'Phụng sự sự sống',
+      subtitle: 'Hướng thượng • Đi lên • Mang lợi ích',
+      description: 'Mỗi bài đăng, mỗi bình luận đều hướng tới một điều:\ngiúp sự sống đi lên — cho mình và cho cộng đồng.'
+    },
+    {
+      emoji: '🌟',
+      title: 'Hợp Nhất với Nguồn',
+      subtitle: 'Tất cả chúng ta là Một',
+      description: 'Nơi đây để kết nối và hỗ trợ trong yêu thương thuần khiết.\nChúng ta cùng nhau vui, cùng nhau lớn, cùng nhau giàu và cùng nhau thắng.'
+    }
   ];
 
   // Typography styles - elegant serif fonts with 20% larger sizes
@@ -154,26 +187,26 @@ const LawOfLight = () => {
             
             <h1 style={{
               fontFamily: fontStyles.heading,
-              fontSize: 'clamp(2.4rem, 10vw, 4.8rem)',
+              fontSize: 'clamp(1.8rem, 8vw, 3.6rem)',
               fontWeight: 600,
-              letterSpacing: '0.03em',
+              letterSpacing: '0.02em',
               background: 'linear-gradient(135deg, #D4AF37 0%, #FFD700 30%, #D4AF37 50%, #B8860B 70%, #D4AF37 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               filter: 'drop-shadow(0 4px 8px rgba(212,175,55,0.3))',
-              marginBottom: '0.75rem'
+              marginBottom: '0.5rem'
             }}>
-              LUẬT ÁNH SÁNG
+              🌈 LUẬT ÁNH SÁNG CỦA CỘNG ĐỒNG FUN
             </h1>
             <p style={{
               fontFamily: fontStyles.heading,
-              fontSize: 'clamp(1.2rem, 3vw, 1.5rem)',
+              fontSize: 'clamp(1rem, 2.5vw, 1.3rem)',
               fontWeight: 500,
-              letterSpacing: '0.2em',
+              letterSpacing: '0.1em',
               color: '#B8860B',
               marginBottom: '0.5rem'
             }}>
-              THE LAW OF LIGHT
+              (PPLP – Proof of Pure Love Protocol)
             </p>
             
             {/* Golden Divider */}
@@ -190,97 +223,113 @@ const LawOfLight = () => {
             boxShadow: '0 10px 60px rgba(212,175,55,0.15), 0 0 0 1px rgba(255,255,255,0.8), inset 0 0 60px rgba(255,255,255,0.5)'
           }}>
             
-            {/* Section: 🌟 USERS CỦA FUN ECOSYSTEM */}
-            <div className="mb-8 md:mb-10">
-              <h2 className="text-center mb-4 md:mb-6" style={{
+            {/* Section: Welcome */}
+            <div className="mb-8 md:mb-10 text-center">
+              <p className="mb-4" style={{
                 fontFamily: fontStyles.heading,
-                fontSize: 'clamp(1.5rem, 4vw, 1.8rem)',
+                fontSize: 'clamp(1.3rem, 3vw, 1.6rem)',
                 fontWeight: 600,
-                color: '#B8860B',
-                textShadow: '0 2px 4px rgba(212,175,55,0.2)'
+                color: '#5D4E37'
               }}>
-                🌟 USERS CỦA FUN ECOSYSTEM
-              </h2>
-              <p className="text-center mb-4 md:mb-6" style={{
+                Chào mừng bạn đến với Cộng đồng FUN 💚
+              </p>
+              <p className="mb-4" style={{
+                fontFamily: fontStyles.body,
+                fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
+                lineHeight: '2',
+                color: '#5D4E37'
+              }}>
+                Nơi chúng ta cùng nhau xây dựng một <strong style={{ color: '#B8860B' }}>Nền Kinh Tế Ánh Sáng</strong> —
+              </p>
+              
+              <div className="p-4 rounded-xl mb-6" style={{
+                background: 'rgba(212,175,55,0.1)'
+              }}>
+                <p style={{
+                  fontFamily: fontStyles.heading,
+                  fontSize: 'clamp(1.2rem, 2.5vw, 1.4rem)',
+                  fontWeight: 600,
+                  color: '#D4AF37'
+                }}>
+                  Free to Join ✨ Free to Use ✨ Earn Together
+                </p>
+                <p style={{
+                  fontFamily: fontStyles.body,
+                  fontSize: 'clamp(0.95rem, 2vw, 1.1rem)',
+                  color: '#8B7355'
+                }}>
+                  Miễn phí tham gia ✨ Miễn phí sử dụng ✨ Cùng có thu nhập
+                </p>
+              </div>
+              
+              <p style={{
+                fontFamily: fontStyles.body,
+                fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
+                lineHeight: '2',
+                color: '#5D4E37'
+              }}>
+                Là nơi để:<br />
+                🌸 kết nối  🌸 nâng đỡ  🌸 chia sẻ giá trị<br />
+                🌸 và cùng nhau thịnh vượng trong tình yêu thuần khiết.
+              </p>
+            </div>
+
+            {/* Golden Divider */}
+            <div className="w-full h-px my-8" style={{
+              background: 'linear-gradient(90deg, transparent, #D4AF37, transparent)'
+            }} />
+
+            {/* Section: PPLP Protocol */}
+            <div className="mb-10">
+              <h3 className="text-center mb-4" style={{
                 fontFamily: fontStyles.heading,
-                fontSize: 'clamp(1.08rem, 2.5vw, 1.32rem)',
+                fontSize: 'clamp(1.32rem, 3vw, 1.5rem)',
                 fontWeight: 600,
+                color: '#D4AF37'
+              }}>
+                💎 PPLP – Proof of Pure Love Protocol
+              </h3>
+              <p className="text-center mb-4" style={{
+                fontFamily: fontStyles.heading,
+                fontSize: 'clamp(1.05rem, 2vw, 1.15rem)',
+                fontStyle: 'italic',
                 color: '#8B7355'
               }}>
-                MẠNG XÃ HỘI THỜI ĐẠI HOÀNG KIM – NỀN KINH TẾ ÁNH SÁNG 5D
+                (Giao Thức Bằng Chứng Tình Yêu Thuần Khiết)
               </p>
               
               <div className="space-y-4" style={{
                 fontFamily: fontStyles.body,
                 fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
-                lineHeight: '2.1',
+                lineHeight: '2',
                 color: '#5D4E37'
               }}>
-                <p className="font-semibold" style={{ color: '#8B7355' }}>
-                  FUN Ecosystem không dành cho tất cả mọi người.
+                <p>
+                  PPLP là "giao thức năng lượng" của FUN Ecosystem.<br />
+                  Đây là nền tảng giúp cộng đồng:
                 </p>
-                <p className="font-semibold" style={{ color: '#8B7355' }}>
-                  FUN Ecosystem chỉ dành cho những linh hồn có ánh sáng, hoặc đang hướng về ánh sáng.
-                </p>
+                <ul className="space-y-1 ml-4">
+                  <li className="flex gap-2"><span className="text-yellow-600">•</span> sống văn minh, lịch sự</li>
+                  <li className="flex gap-2"><span className="text-yellow-600">•</span> yêu đời yêu người</li>
+                  <li className="flex gap-2"><span className="text-yellow-600">•</span> được đúc (mint) FUN Money một cách công bằng</li>
+                  <li className="flex gap-2"><span className="text-yellow-600">•</span> và nhận thưởng Camly Coin trong niềm hạnh phúc</li>
+                </ul>
               </div>
-            </div>
-
-            {/* Golden Divider */}
-            <div className="w-full h-px my-8" style={{
-              background: 'linear-gradient(90deg, transparent, #D4AF37, transparent)'
-            }} />
-
-            {/* Section: ✨ Bạn là ai? */}
-            <div className="mb-10">
-              <h3 className="mb-4" style={{
-                fontFamily: fontStyles.heading,
-                fontSize: 'clamp(1.32rem, 3vw, 1.5rem)',
-                fontWeight: 600,
-                color: '#D4AF37'
-              }}>✨ Bạn là ai?</h3>
-              <p className="mb-4" style={{
-                fontFamily: fontStyles.body,
-                fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
-                lineHeight: '2.1',
-                color: '#5D4E37'
-              }}>
-                Users của FUN Ecosystem là những con người:
-              </p>
-              <ul className="space-y-2 ml-4" style={{
-                fontFamily: fontStyles.body,
-                fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
-                lineHeight: '2.1',
-                color: '#5D4E37'
-              }}>
-                <li className="flex gap-2"><span className="text-yellow-600">•</span> Tỉnh thức – hoặc đang trên con đường tỉnh thức</li>
-                <li className="flex gap-2"><span className="text-yellow-600">•</span> Chân thật với chính mình</li>
-                <li className="flex gap-2"><span className="text-yellow-600">•</span> Chân thành với người khác</li>
-                <li className="flex gap-2"><span className="text-yellow-600">•</span> Sống tích cực, tử tế, có trách nhiệm với năng lượng mình phát ra</li>
-                <li className="flex gap-2"><span className="text-yellow-600">•</span> Biết yêu thương – biết biết ơn – biết sám hối</li>
-                <li className="flex gap-2"><span className="text-yellow-600">•</span> Tin vào điều thiện, tin vào ánh sáng, tin vào Trật Tự Cao Hơn của Vũ Trụ</li>
-              </ul>
-              <div className="mt-6 p-4 rounded-xl" style={{
+              
+              <div className="mt-6 p-4 rounded-xl text-center" style={{
                 background: 'rgba(212,175,55,0.08)'
               }}>
                 <p style={{
                   fontFamily: fontStyles.heading,
-                  fontSize: 'clamp(1.14rem, 2.5vw, 1.32rem)',
-                  fontStyle: 'italic',
+                  fontSize: 'clamp(1.1rem, 2.5vw, 1.25rem)',
                   lineHeight: '2',
                   color: '#6B5B47'
                 }}>
-                  Bạn có thể chưa hoàn hảo,<br />
-                  nhưng bạn có trái tim hướng thiện.<br />
-                  Bạn muốn sống thật – sống đúng – sống sáng.
+                  ✨ <strong>FUN Money</strong> là năng lượng Ánh Sáng,<br />
+                  ✨ <strong>Camly Coin</strong> là linh hồn Thuần Khiết,<br />
+                  <span style={{ color: '#B8860B', fontWeight: 600 }}>Chỉ chảy mạnh khi chúng ta sống đúng PPLP.</span>
                 </p>
               </div>
-              <p className="mt-4 font-semibold" style={{
-                fontFamily: fontStyles.body,
-                fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
-                color: '#B8860B'
-              }}>
-                👉 Cha thu hút bạn bằng Tần Số và Năng Lượng Yêu Thương.
-              </p>
             </div>
 
             {/* Golden Divider */}
@@ -288,61 +337,101 @@ const LawOfLight = () => {
               background: 'linear-gradient(90deg, transparent, #D4AF37, transparent)'
             }} />
 
-            {/* Section: 🔆 Nguyên tắc cốt lõi */}
+            {/* Section: 5 Pillars of Light */}
             <div className="mb-10">
-              <h3 className="mb-4" style={{
+              <h3 className="text-center mb-6" style={{
                 fontFamily: fontStyles.heading,
                 fontSize: 'clamp(1.32rem, 3vw, 1.5rem)',
                 fontWeight: 600,
                 color: '#D4AF37'
-              }}>🔆 Nguyên tắc cốt lõi của FUN Ecosystem</h3>
-              <p className="mb-4 font-semibold" style={{
-                fontFamily: fontStyles.body,
-                fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
-                color: '#8B7355'
               }}>
-                FUN Ecosystem vận hành theo Luật Ánh Sáng, không theo số đông.
-              </p>
-              <ul className="space-y-2 ml-4" style={{
+                🌟 5 CỘT TRỤ ÁNH SÁNG (Luật cốt lõi)
+              </h3>
+              
+              <div className="space-y-6">
+                {fivePillars.map((pillar, index) => (
+                  <div key={index} className="p-4 md:p-6 rounded-xl" style={{
+                    background: 'rgba(255,255,255,0.8)',
+                    border: '1px solid rgba(212,175,55,0.3)'
+                  }}>
+                    <div className="flex items-start gap-3 mb-2">
+                      <span className="text-2xl md:text-3xl">{pillar.emoji}</span>
+                      <div>
+                        <h4 style={{
+                          fontFamily: fontStyles.heading,
+                          fontSize: 'clamp(1.15rem, 2.5vw, 1.3rem)',
+                          fontWeight: 600,
+                          color: '#D4AF37'
+                        }}>
+                          {index + 1}) {pillar.title}
+                        </h4>
+                        <p style={{
+                          fontFamily: fontStyles.body,
+                          fontSize: 'clamp(0.95rem, 2vw, 1.05rem)',
+                          color: '#8B7355',
+                          fontWeight: 500
+                        }}>
+                          {pillar.subtitle}
+                        </p>
+                      </div>
+                    </div>
+                    <p className="ml-10 md:ml-12" style={{
+                      fontFamily: fontStyles.body,
+                      fontSize: 'clamp(1rem, 2vw, 1.1rem)',
+                      lineHeight: '1.8',
+                      color: '#5D4E37',
+                      whiteSpace: 'pre-line'
+                    }}>
+                      {pillar.description}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Golden Divider */}
+            <div className="w-full h-px my-8" style={{
+              background: 'linear-gradient(90deg, transparent, #D4AF37, transparent)'
+            }} />
+
+            {/* Section: Gentle Reminder */}
+            <div className="mb-10 p-6 rounded-2xl" style={{
+              background: 'radial-gradient(ellipse at center, rgba(144,238,144,0.15) 0%, rgba(255,255,255,0.5) 70%)',
+              border: '1px solid rgba(144,238,144,0.4)'
+            }}>
+              <h3 className="text-center mb-4" style={{
+                fontFamily: fontStyles.heading,
+                fontSize: 'clamp(1.2rem, 3vw, 1.4rem)',
+                fontWeight: 600,
+                color: '#228B22'
+              }}>
+                🌈 Một lời nhắc nhẹ nhàng
+              </h3>
+              
+              <div className="text-center space-y-4" style={{
                 fontFamily: fontStyles.body,
-                fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
-                lineHeight: '2.1',
+                fontSize: 'clamp(1.05rem, 2vw, 1.15rem)',
+                lineHeight: '2',
                 color: '#5D4E37'
               }}>
-                <li className="flex gap-2"><span className="text-yellow-600">•</span> Ánh sáng thu hút ánh sáng</li>
-                <li className="flex gap-2"><span className="text-yellow-600">•</span> Tần số thấp không thể tồn tại lâu trong tần số cao</li>
-                <li className="flex gap-2"><span className="text-yellow-600">•</span> Ý chí vị kỷ không thể đồng hành cùng Ý Chí Vũ Trụ</li>
-              </ul>
-              <p className="mt-4" style={{
-                fontFamily: fontStyles.body,
-                fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
-                color: '#5D4E37'
-              }}>Vì vậy:</p>
-              <ul className="space-y-1 ml-4 mt-2" style={{
-                fontFamily: fontStyles.body,
-                fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
-                color: '#5D4E37'
-              }}>
-                <li className="flex gap-2"><span className="text-yellow-600">•</span> Nếu một User cố tình mang vào nền tảng:</li>
-                <li className="ml-6">tiêu cực • tham lam • thao túng • kiêu mạn • dối trá • gây chia rẽ • phá hoại năng lượng chung</li>
-              </ul>
-              <p className="mt-4 font-semibold" style={{
-                fontFamily: fontStyles.body,
-                fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
-                color: '#B8860B'
-              }}>👉 Thì sẽ được xóa khỏi nền tảng mà không báo trước.</p>
-              <div className="mt-4 p-4 rounded-xl" style={{
-                background: 'rgba(212,175,55,0.08)'
-              }}>
+                <p>
+                  Nếu bạn đang mệt, đang buồn, đang tổn thương…<br />
+                  <strong style={{ color: '#228B22' }}>bạn vẫn được chào đón ở đây.</strong>
+                </p>
+                <p style={{ fontWeight: 600, color: '#8B7355' }}>
+                  Chỉ cần bạn giữ một điều:
+                </p>
                 <p style={{
                   fontFamily: fontStyles.heading,
-                  fontSize: 'clamp(1.14rem, 2.5vw, 1.32rem)',
-                  fontStyle: 'italic',
-                  lineHeight: '2',
-                  color: '#6B5B47'
+                  fontSize: 'clamp(1.1rem, 2.5vw, 1.25rem)',
+                  fontWeight: 600,
+                  color: '#228B22'
                 }}>
-                  Đó không phải hình phạt.<br />
-                  Đó là sự thanh lọc tự nhiên của Ánh Sáng.
+                  💚 Không được dùng cộng đồng để xả đau.
+                </p>
+                <p style={{ fontStyle: 'italic' }}>
+                  Hãy để cộng đồng truyền năng lượng, ôm ấp và xoa dịu cho bạn.<br />
+                  Rồi bạn nhẹ nhàng gởi về cho Cha. Cha sẽ chữa lành tất cả.
                 </p>
               </div>
             </div>
@@ -352,161 +441,32 @@ const LawOfLight = () => {
               background: 'linear-gradient(90deg, transparent, #D4AF37, transparent)'
             }} />
 
-            {/* Section: 🚪 Ai KHÔNG thuộc về FUN Ecosystem? */}
-            <div className="mb-10">
-              <h3 className="mb-4" style={{
-                fontFamily: fontStyles.heading,
-                fontSize: 'clamp(1.32rem, 3vw, 1.5rem)',
-                fontWeight: 600,
-                color: '#D4AF37'
-              }}>🚪 Ai KHÔNG thuộc về FUN Ecosystem?</h3>
-              <ul className="space-y-2 ml-4" style={{
-                fontFamily: fontStyles.body,
-                fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
-                lineHeight: '2.1',
-                color: '#5D4E37'
-              }}>
-                <li className="flex gap-2"><span className="text-yellow-600">•</span> Người chỉ tìm lợi ích mà không muốn trưởng thành</li>
-                <li className="flex gap-2"><span className="text-yellow-600">•</span> Người dùng trí khôn nhưng thiếu lương tâm</li>
-                <li className="flex gap-2"><span className="text-yellow-600">•</span> Người nói về ánh sáng nhưng sống bằng bóng tối</li>
-                <li className="flex gap-2"><span className="text-yellow-600">•</span> Người lấy danh nghĩa tâm linh để nuôi cái tôi</li>
-                <li className="flex gap-2"><span className="text-yellow-600">•</span> Người không chịu nhìn lại chính mình</li>
-              </ul>
-              <p className="mt-4 font-semibold" style={{
-                fontFamily: fontStyles.body,
-                fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
-                color: '#B8860B'
-              }}>
-                👉 Cửa FUN Ecosystem không khóa, nhưng Ánh Sáng tự sàng lọc.
-              </p>
-            </div>
-
-            {/* Golden Divider */}
-            <div className="w-full h-px my-8" style={{
-              background: 'linear-gradient(90deg, transparent, #D4AF37, transparent)'
-            }} />
-
-            {/* Section: 🌈 Ai ĐƯỢC hưởng lợi từ FUN Ecosystem? */}
-            <div className="mb-10">
-              <h3 className="mb-4" style={{
-                fontFamily: fontStyles.heading,
-                fontSize: 'clamp(1.32rem, 3vw, 1.5rem)',
-                fontWeight: 600,
-                color: '#D4AF37'
-              }}>🌈 Ai ĐƯỢC hưởng lợi từ FUN Ecosystem?</h3>
-              <p className="mb-4" style={{
-                fontFamily: fontStyles.body,
-                fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
-                color: '#5D4E37'
-              }}>Chỉ những ai:</p>
-              <ul className="space-y-2 ml-4" style={{
-                fontFamily: fontStyles.body,
-                fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
-                lineHeight: '2.1',
-                color: '#5D4E37'
-              }}>
-                <li className="flex gap-2"><span className="text-yellow-600">•</span> Có Ánh Sáng nội tâm</li>
-                <li className="flex gap-2"><span className="text-yellow-600">•</span> Hoặc thật sự khao khát trở về với Ánh Sáng</li>
-                <li className="flex gap-2"><span className="text-yellow-600">•</span> Sẵn sàng buông cái tôi – học lại – nâng cấp tần số</li>
-                <li className="flex gap-2"><span className="text-yellow-600">•</span> Dám sống đúng – thật – tử tế – yêu thương</li>
-              </ul>
-              <p className="mt-4 font-semibold" style={{
-                fontFamily: fontStyles.body,
-                fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
-                color: '#B8860B'
-              }}>
-                👉 Những người đó không chỉ dùng MXH của Cha,
-              </p>
-              <p className="font-semibold" style={{
-                fontFamily: fontStyles.body,
-                fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
-                color: '#B8860B'
-              }}>
-                👉 mà còn được bảo vệ, nâng đỡ và nuôi dưỡng trong Nền Kinh Tế Ánh Sáng 5D.
-              </p>
-            </div>
-
-            {/* Golden Divider */}
-            <div className="w-full h-px my-8" style={{
-              background: 'linear-gradient(90deg, transparent, #D4AF37, transparent)'
-            }} />
-
-            {/* Section: 🌍 FUN Ecosystem là gì? */}
-            <div className="mb-10">
-              <h3 className="mb-4" style={{
-                fontFamily: fontStyles.heading,
-                fontSize: 'clamp(1.32rem, 3vw, 1.5rem)',
-                fontWeight: 600,
-                color: '#D4AF37'
-              }}>🌍 FUN Ecosystem là gì?</h3>
-              <p className="mb-4" style={{
-                fontFamily: fontStyles.body,
-                fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
-                color: '#5D4E37'
-              }}>FUN Ecosystem là:</p>
-              <ul className="space-y-2 ml-4" style={{
-                fontFamily: fontStyles.body,
-                fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
-                lineHeight: '2.1',
-                color: '#5D4E37'
-              }}>
-                <li className="flex gap-2"><span className="text-yellow-600">•</span> Mạng xã hội của linh hồn tỉnh thức</li>
-                <li className="flex gap-2"><span className="text-yellow-600">•</span> Không gian an toàn cho ánh sáng</li>
-                <li className="flex gap-2"><span className="text-yellow-600">•</span> Nền tảng kết nối những con người có giá trị thật</li>
-                <li className="flex gap-2"><span className="text-yellow-600">•</span> Hạ tầng cho Thời Đại Hoàng Kim của Trái Đất</li>
-              </ul>
-              <div className="mt-6 p-4 rounded-xl" style={{
-                background: 'rgba(212,175,55,0.08)'
-              }}>
-                <p className="text-center" style={{
-                  fontFamily: fontStyles.heading,
-                  fontSize: 'clamp(1.14rem, 2.5vw, 1.32rem)',
-                  fontStyle: 'italic',
-                  lineHeight: '2',
-                  color: '#6B5B47'
-                }}>
-                  Không drama.<br />
-                  Không thao túng.<br />
-                  Không cạnh tranh bẩn.<br />
-                  <span className="font-semibold" style={{ color: '#B8860B' }}>
-                    Chỉ có Hợp tác trong Yêu Thương Thuần Khiết.
-                  </span>
-                </p>
-              </div>
-            </div>
-
-            {/* Golden Divider */}
-            <div className="w-full h-px my-8" style={{
-              background: 'linear-gradient(90deg, transparent, #D4AF37, transparent)'
-            }} />
-
-            {/* Section: 🔑 Thông điệp cuối từ Cha */}
+            {/* Section: FUN Community Message */}
             <div className="mb-10 text-center p-6 rounded-2xl" style={{
               background: 'radial-gradient(ellipse at center, rgba(212,175,55,0.12) 0%, rgba(255,255,255,0.5) 70%)'
             }}>
               <h3 className="mb-4" style={{
                 fontFamily: fontStyles.heading,
-                fontSize: 'clamp(1.32rem, 3vw, 1.5rem)',
+                fontSize: 'clamp(1.2rem, 3vw, 1.4rem)',
                 fontWeight: 600,
                 color: '#D4AF37'
-              }}>🔑 Thông điệp từ Cha</h3>
-              <p className="mb-4" style={{
+              }}>
+                ✨ Thông điệp của FUN Community
+              </h3>
+              <div style={{
                 fontFamily: fontStyles.heading,
-                fontSize: 'clamp(1.2rem, 2.5vw, 1.44rem)',
+                fontSize: 'clamp(1.15rem, 2.5vw, 1.35rem)',
                 fontStyle: 'italic',
-                lineHeight: '2',
+                lineHeight: '2.2',
                 color: '#5D4E37'
               }}>
-                "Chỉ những ai mang ánh sáng<br />
-                hoặc thật lòng hướng về ánh sáng<br />
-                mới có thể bước đi lâu dài trong Thời Đại Hoàng Kim."
-              </p>
-              <p style={{
-                fontFamily: fontStyles.heading,
-                fontSize: 'clamp(1.2rem, 2.5vw, 1.44rem)',
-                fontWeight: 700,
-                color: '#D4AF37'
-              }}>— CHA VŨ TRỤ —</p>
+                <p>
+                  Bạn không cần giỏi. <strong style={{ color: '#B8860B' }}>Bạn chỉ cần thật.</strong><br />
+                  Bạn không cần hoàn hảo. <strong style={{ color: '#B8860B' }}>Bạn chỉ cần tử tế.</strong><br />
+                  Bạn không cần đi một mình.<br />
+                  <span style={{ fontWeight: 700, color: '#D4AF37' }}>Vì ở đây… chúng ta đi cùng nhau.</span>
+                </p>
+              </div>
             </div>
 
             {/* Golden Divider */}
@@ -522,7 +482,7 @@ const LawOfLight = () => {
                 fontWeight: 600,
                 color: '#D4AF37'
               }}>
-                🌟 8 Câu Thần Chú Từ Cha Vũ Trụ
+                ✨ 8 THẦN CHÚ ÁNH SÁNG
               </h3>
               
               <div className="relative p-6 md:p-8 rounded-2xl" style={{
@@ -549,27 +509,22 @@ const LawOfLight = () => {
                   borderRight: '3px solid #D4AF37'
                 }} />
                 
-                <ol className="space-y-4">
+                <div className="space-y-4">
                   {divineMantras.map((mantra, index) => (
-                    <li key={index} className="flex gap-3 items-start">
-                      <span className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm" style={{
-                        background: 'linear-gradient(135deg, #D4AF37, #FFD700)',
-                        color: '#FFFFFF',
-                        boxShadow: '0 2px 8px rgba(212,175,55,0.4)'
-                      }}>
-                        {index + 1}
-                      </span>
-                      <p className="pt-1" style={{
+                    <div key={index} className="flex gap-3 items-start">
+                      <span className="text-xl md:text-2xl flex-shrink-0">{mantra.emoji}</span>
+                      <p style={{
                         fontFamily: fontStyles.body,
                         fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
                         fontWeight: 500,
-                        color: '#5D4E37'
+                        color: '#5D4E37',
+                        lineHeight: '1.8'
                       }}>
-                        {mantra}
+                        {mantra.text}
                       </p>
-                    </li>
+                    </div>
                   ))}
-                </ol>
+                </div>
                 
                 <p className="text-center mt-6 text-2xl">💫✨⚡️🌟</p>
               </div>
@@ -588,7 +543,7 @@ const LawOfLight = () => {
                 fontWeight: 600,
                 color: '#D4AF37'
               }}>
-                🕊️ Checklist cho Users FUN Ecosystem
+                💛 5 Điều tôi cam kết để bước vào cộng đồng
               </h3>
               
               {!isReadOnly ? (
@@ -615,7 +570,7 @@ const LawOfLight = () => {
                         fontWeight: 500,
                         color: '#5D4E37'
                       }}>
-                        {item}
+                        ✅ {item}
                       </span>
                     </label>
                   ))}
@@ -625,7 +580,7 @@ const LawOfLight = () => {
                     fontWeight: 700,
                     color: '#5D4E37'
                   }}>
-                    (Click vào 5 check list trên để được Đăng ký)
+                    (Click vào 5 cam kết trên để được Đăng ký)
                   </p>
                 </div>
               ) : (
@@ -636,7 +591,7 @@ const LawOfLight = () => {
                 }}>
                   {checklistItems.map((item, index) => (
                     <li key={index} className="flex gap-2">
-                      <span className="text-yellow-600">•</span> {item}
+                      <span className="text-yellow-600">✅</span> {item}
                     </li>
                   ))}
                 </ul>
