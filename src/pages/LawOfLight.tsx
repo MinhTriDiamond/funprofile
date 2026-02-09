@@ -148,7 +148,7 @@ const LawOfLight = () => {
     <div className="min-h-screen relative overflow-hidden">
       {/* Pearl White to Soft Yellow Gradient Background - STATIC */}
       <div className="fixed inset-0 z-0" style={{
-        background: 'linear-gradient(180deg, #FFFEF7 0%, #FFF9E6 30%, #FFF5D6 60%, #FFFDF5 100%)'
+        background: 'linear-gradient(180deg, #FFFEF7 0%, #FFF8DC 25%, #FFED8A 50%, #FFE44D 75%, #FFF176 100%)'
       }} />
       
       {/* Divine Light Rays from Top - White & Gold (static) */}
@@ -208,10 +208,10 @@ const LawOfLight = () => {
               fontSize: 'clamp(1.8rem, 8vw, 3.6rem)',
               fontWeight: 600,
               letterSpacing: '0.02em',
-              background: 'linear-gradient(135deg, #D4AF37 0%, #FFD700 30%, #D4AF37 50%, #B8860B 70%, #D4AF37 100%)',
+              background: 'linear-gradient(135deg, #C8902E 0%, #E8B830 20%, #FFD700 40%, #FFC800 60%, #DAA520 80%, #C8902E 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
-              filter: 'drop-shadow(0 4px 8px rgba(212,175,55,0.3))',
+              filter: 'drop-shadow(0 2px 4px rgba(180,130,20,0.5))',
               marginBottom: '0.5rem'
             }}>
               🌈 LUẬT ÁNH SÁNG CỦA CỘNG ĐỒNG FUN
@@ -221,7 +221,7 @@ const LawOfLight = () => {
               fontSize: 'clamp(1rem, 2.5vw, 1.3rem)',
               fontWeight: 500,
               letterSpacing: '0.1em',
-              color: '#B8860B',
+              color: '#C8902E',
               marginBottom: '0.5rem'
             }}>
               (PPLP – Proof of Pure Love Protocol)
@@ -247,7 +247,7 @@ const LawOfLight = () => {
                 fontFamily: fontStyles.heading,
                 fontSize: 'clamp(1.3rem, 3vw, 1.6rem)',
                 fontWeight: 600,
-                color: '#5D4E37'
+                color: '#14532d'
               }}>
                 Chào mừng bạn đến với Cộng đồng FUN 💚
               </p>
@@ -255,9 +255,9 @@ const LawOfLight = () => {
                 fontFamily: fontStyles.body,
                 fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
                 lineHeight: '2',
-                color: '#5D4E37'
+                color: '#14532d'
               }}>
-                Nơi chúng ta cùng nhau xây dựng một <strong style={{ color: '#B8860B' }}>Nền Kinh Tế Ánh Sáng</strong> —
+                Nơi chúng ta cùng nhau xây dựng một <strong style={{ color: '#C8902E' }}>Nền Kinh Tế Ánh Sáng</strong> —
               </p>
               
               <div className="p-4 rounded-xl mb-6" style={{
@@ -267,14 +267,14 @@ const LawOfLight = () => {
                   fontFamily: fontStyles.heading,
                   fontSize: 'clamp(1.2rem, 2.5vw, 1.4rem)',
                   fontWeight: 600,
-                  color: '#D4AF37'
+                  color: '#C8902E'
                 }}>
                   Free to Join ✨ Free to Use ✨ Earn Together
                 </p>
                 <p style={{
                   fontFamily: fontStyles.body,
                   fontSize: 'clamp(0.95rem, 2vw, 1.1rem)',
-                  color: '#8B7355'
+                  color: '#166534'
                 }}>
                   Miễn phí tham gia ✨ Miễn phí sử dụng ✨ Cùng có thu nhập
                 </p>
@@ -284,7 +284,7 @@ const LawOfLight = () => {
                 fontFamily: fontStyles.body,
                 fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
                 lineHeight: '2',
-                color: '#5D4E37'
+                color: '#14532d'
               }}>
                 Là nơi để:<br />
                 🌸 kết nối  🌸 nâng đỡ  🌸 chia sẻ giá trị<br />
@@ -303,7 +303,7 @@ const LawOfLight = () => {
                 fontFamily: fontStyles.heading,
                 fontSize: 'clamp(1.32rem, 3vw, 1.5rem)',
                 fontWeight: 600,
-                color: '#D4AF37'
+                color: '#C8902E'
               }}>
                 💎 PPLP – Proof of Pure Love Protocol
               </h3>
@@ -311,7 +311,7 @@ const LawOfLight = () => {
                 fontFamily: fontStyles.heading,
                 fontSize: 'clamp(1.05rem, 2vw, 1.15rem)',
                 fontStyle: 'italic',
-                color: '#8B7355'
+                color: '#166534'
               }}>
                 (Giao Thức Bằng Chứng Tình Yêu Thuần Khiết)
               </p>
@@ -320,17 +320,17 @@ const LawOfLight = () => {
                 fontFamily: fontStyles.body,
                 fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
                 lineHeight: '2',
-                color: '#5D4E37'
+                color: '#14532d'
               }}>
                 <p>
                   PPLP là "giao thức năng lượng" của FUN Ecosystem.<br />
                   Đây là nền tảng giúp cộng đồng:
                 </p>
                 <ul className="space-y-1 ml-4">
-                  <li className="flex gap-2"><span className="text-yellow-600">•</span> sống văn minh, lịch sự</li>
-                  <li className="flex gap-2"><span className="text-yellow-600">•</span> yêu đời yêu người</li>
-                  <li className="flex gap-2"><span className="text-yellow-600">•</span> được đúc (mint) FUN Money một cách công bằng</li>
-                  <li className="flex gap-2"><span className="text-yellow-600">•</span> và nhận thưởng Camly Coin trong niềm hạnh phúc</li>
+                  <li className="flex gap-2"><span style={{ color: '#C8902E' }}>•</span> sống văn minh, lịch sự</li>
+                  <li className="flex gap-2"><span style={{ color: '#C8902E' }}>•</span> yêu đời yêu người</li>
+                  <li className="flex gap-2"><span style={{ color: '#C8902E' }}>•</span> được đúc (mint) FUN Money một cách công bằng</li>
+                  <li className="flex gap-2"><span style={{ color: '#C8902E' }}>•</span> và nhận thưởng Camly Coin trong niềm hạnh phúc</li>
                 </ul>
               </div>
               
@@ -341,11 +341,11 @@ const LawOfLight = () => {
                   fontFamily: fontStyles.heading,
                   fontSize: 'clamp(1.1rem, 2.5vw, 1.25rem)',
                   lineHeight: '2',
-                  color: '#6B5B47'
+                  color: '#14532d'
                 }}>
                   ✨ <strong>FUN Money</strong> là năng lượng Ánh Sáng,<br />
                   ✨ <strong>Camly Coin</strong> là linh hồn Thuần Khiết,<br />
-                  <span style={{ color: '#B8860B', fontWeight: 600 }}>Chỉ chảy mạnh khi chúng ta sống đúng PPLP.</span>
+                  <span style={{ color: '#C8902E', fontWeight: 600 }}>Chỉ chảy mạnh khi chúng ta sống đúng PPLP.</span>
                 </p>
               </div>
             </div>
@@ -361,7 +361,7 @@ const LawOfLight = () => {
                 fontFamily: fontStyles.heading,
                 fontSize: 'clamp(1.32rem, 3vw, 1.5rem)',
                 fontWeight: 600,
-                color: '#D4AF37'
+                color: '#C8902E'
               }}>
                 🌟 5 CỘT TRỤ ÁNH SÁNG (Luật cốt lõi)
               </h3>
@@ -379,14 +379,14 @@ const LawOfLight = () => {
                           fontFamily: fontStyles.heading,
                           fontSize: 'clamp(1.15rem, 2.5vw, 1.3rem)',
                           fontWeight: 600,
-                          color: '#D4AF37'
+                          color: '#C8902E'
                         }}>
                           {index + 1}) {pillar.title}
                         </h4>
                         <p style={{
                           fontFamily: fontStyles.body,
                           fontSize: 'clamp(0.95rem, 2vw, 1.05rem)',
-                          color: '#8B7355',
+                          color: '#166534',
                           fontWeight: 500
                         }}>
                           {pillar.subtitle}
@@ -397,7 +397,7 @@ const LawOfLight = () => {
                       fontFamily: fontStyles.body,
                       fontSize: 'clamp(1rem, 2vw, 1.1rem)',
                       lineHeight: '1.8',
-                      color: '#5D4E37',
+                       color: '#14532d',
                       whiteSpace: 'pre-line'
                     }}>
                       {pillar.description}
@@ -430,13 +430,13 @@ const LawOfLight = () => {
                 fontFamily: fontStyles.body,
                 fontSize: 'clamp(1.05rem, 2vw, 1.15rem)',
                 lineHeight: '2',
-                color: '#5D4E37'
+                color: '#14532d'
               }}>
                 <p>
                   Nếu bạn đang mệt, đang buồn, đang tổn thương…<br />
                   <strong style={{ color: '#228B22' }}>bạn vẫn được chào đón ở đây.</strong>
                 </p>
-                <p style={{ fontWeight: 600, color: '#8B7355' }}>
+                <p style={{ fontWeight: 600, color: '#166534' }}>
                   Chỉ cần bạn giữ một điều:
                 </p>
                 <p style={{
@@ -467,7 +467,7 @@ const LawOfLight = () => {
                 fontFamily: fontStyles.heading,
                 fontSize: 'clamp(1.2rem, 3vw, 1.4rem)',
                 fontWeight: 600,
-                color: '#D4AF37'
+                 color: '#C8902E'
               }}>
                 ✨ Thông điệp của FUN Community
               </h3>
@@ -476,13 +476,13 @@ const LawOfLight = () => {
                 fontSize: 'clamp(1.15rem, 2.5vw, 1.35rem)',
                 fontStyle: 'italic',
                 lineHeight: '2.2',
-                color: '#5D4E37'
+                 color: '#14532d'
               }}>
                 <p>
-                  Bạn không cần giỏi. <strong style={{ color: '#B8860B' }}>Bạn chỉ cần thật.</strong><br />
-                  Bạn không cần hoàn hảo. <strong style={{ color: '#B8860B' }}>Bạn chỉ cần tử tế.</strong><br />
+                   Bạn không cần giỏi. <strong style={{ color: '#C8902E' }}>Bạn chỉ cần thật.</strong><br />
+                   Bạn không cần hoàn hảo. <strong style={{ color: '#C8902E' }}>Bạn chỉ cần tử tế.</strong><br />
                   Bạn không cần đi một mình.<br />
-                  <span style={{ fontWeight: 700, color: '#D4AF37' }}>Vì ở đây… chúng ta đi cùng nhau.</span>
+                  <span style={{ fontWeight: 700, color: '#C8902E' }}>Vì ở đây… chúng ta đi cùng nhau.</span>
                 </p>
               </div>
             </div>
@@ -498,7 +498,7 @@ const LawOfLight = () => {
                 fontFamily: fontStyles.heading,
                 fontSize: 'clamp(1.32rem, 3vw, 1.5rem)',
                 fontWeight: 600,
-                color: '#D4AF37'
+                 color: '#C8902E'
               }}>
                 ✨ 8 THẦN CHÚ ÁNH SÁNG
               </h3>
@@ -535,7 +535,7 @@ const LawOfLight = () => {
                         fontFamily: fontStyles.body,
                         fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
                         fontWeight: 500,
-                        color: '#5D4E37',
+                        color: '#14532d',
                         lineHeight: '1.8'
                       }}>
                         {mantra.text}
@@ -559,7 +559,7 @@ const LawOfLight = () => {
                 fontFamily: fontStyles.heading,
                 fontSize: 'clamp(1.32rem, 3vw, 1.5rem)',
                 fontWeight: 600,
-                color: '#D4AF37'
+                color: '#C8902E'
               }}>
                 💛 5 Điều tôi cam kết để bước vào cộng đồng
               </h3>
@@ -586,7 +586,7 @@ const LawOfLight = () => {
                         fontFamily: fontStyles.body,
                         fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
                         fontWeight: 500,
-                        color: '#5D4E37'
+                         color: '#14532d'
                       }}>
                         ✅ {item}
                       </span>
@@ -595,8 +595,8 @@ const LawOfLight = () => {
                   <p className="text-center mt-4" style={{
                     fontFamily: fontStyles.body,
                     fontSize: 'clamp(0.95rem, 2vw, 1.1rem)',
-                    fontWeight: 700,
-                    color: '#5D4E37'
+                     fontWeight: 700,
+                     color: '#14532d'
                   }}>
                     (Click vào 5 cam kết trên để được Đăng ký)
                   </p>
@@ -604,12 +604,12 @@ const LawOfLight = () => {
               ) : (
                 <ul className="space-y-3 max-w-xl mx-auto" style={{
                   fontFamily: fontStyles.body,
-                  fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
-                  color: '#5D4E37'
+                   fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
+                   color: '#14532d'
                 }}>
                   {checklistItems.map((item, index) => (
                     <li key={index} className="flex gap-2">
-                      <span className="text-yellow-600">✅</span> {item}
+                      <span style={{ color: '#C8902E' }}>✅</span> {item}
                     </li>
                   ))}
                 </ul>
@@ -676,7 +676,7 @@ const LawOfLight = () => {
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   <Button
                     onClick={() => navigate('/')}
-                    className="px-6 py-3 rounded-xl"
+                    className="px-8 py-3 rounded-full"
                     style={{
                       fontFamily: fontStyles.body,
                       background: 'linear-gradient(135deg, #1a7d45 0%, #166534 50%, #0d4a2a 100%)',
@@ -689,11 +689,12 @@ const LawOfLight = () => {
                   </Button>
                   <Button
                     onClick={() => navigate('/docs/master-charter')}
-                    className="px-6 py-3 rounded-xl"
+                    className="px-8 py-3 rounded-full"
                     style={{
                       fontFamily: fontStyles.body,
-                      background: 'linear-gradient(135deg, #D4AF37 0%, #FFD700 50%, #D4AF37 100%)',
+                      background: 'linear-gradient(135deg, #DAA520 0%, #FFD700 50%, #DAA520 100%)',
                       color: '#FFFFFF',
+                      border: '2px solid #C8902E',
                       boxShadow: '0 4px 15px rgba(212,175,55,0.3)'
                     }}
                   >
@@ -701,11 +702,12 @@ const LawOfLight = () => {
                   </Button>
                   <Button
                     onClick={() => navigate('/docs/pplp')}
-                    className="px-6 py-3 rounded-xl"
+                    className="px-8 py-3 rounded-full"
                     style={{
                       fontFamily: fontStyles.body,
-                      background: 'linear-gradient(135deg, #D4AF37 0%, #FFD700 50%, #D4AF37 100%)',
+                      background: 'linear-gradient(135deg, #DAA520 0%, #FFD700 50%, #DAA520 100%)',
                       color: '#FFFFFF',
+                      border: '2px solid #C8902E',
                       boxShadow: '0 4px 15px rgba(212,175,55,0.3)'
                     }}
                   >
