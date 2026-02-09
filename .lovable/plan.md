@@ -1,147 +1,171 @@
 
-
-# Kế Hoạch: Thêm Tab Lịch Sử Giao Dịch Toàn Hệ Thống vào Admin Dashboard
+# Kế Hoạch: Hoàn Thiện Hệ Thống Thông Báo Bạn Bè & Giao Dịch
 
 ## Tổng Quan
 
-Tạo tính năng cho Admin xem lịch sử tặng thưởng (donations) của tất cả users trong hệ thống, với đầy đủ chức năng lọc, tìm kiếm, phân trang và xuất CSV.
+Hoàn thiện hệ thống thông báo để tự động tạo notification trong database khi:
+1. Có người gửi lời mời kết bạn → `friend_request`
+2. Có người đồng ý lời mời kết bạn → `friend_accepted`  
+3. Có người hủy kết bạn → `friend_removed` (loại mới)
 
-## So Sánh User vs Admin
+## Hiện Trạng
 
-| Tính năng | User (hiện tại) | Admin (mới) |
-|-----------|-----------------|-------------|
-| Phạm vi | Chỉ của cá nhân | Toàn hệ thống |
-| Lọc theo user | Không | Có |
-| Lọc theo token | Không | Có |
-| Lọc theo trạng thái | Không | Có |
-| Lọc theo ngày | Không | Có |
-| Xem chi tiết | Click xem celebration | Click xem dialog chi tiết |
-| Xuất CSV | Có | Có (toàn bộ) |
-
-## Các File Cần Tạo/Sửa
-
-### 1. Tạo Hook mới: `src/hooks/useAdminDonationHistory.ts`
-
-Hook để fetch lịch sử donations của tất cả users với:
-- Phân trang (limit/offset)
-- Lọc theo sender_id, recipient_id
-- Lọc theo token_symbol
-- Lọc theo status (pending/confirmed/failed)
-- Lọc theo khoảng thời gian
-- Thống kê tổng hợp toàn hệ thống
-
-### 2. Tạo Component: `src/components/admin/DonationHistoryAdminTab.tsx`
-
-Tab mới trong Admin Dashboard với:
-- **Cards thống kê tổng quan**: Tổng số giao dịch, tổng giá trị theo token, Light Score tổng
-- **Bộ lọc**: Search username, dropdown token, dropdown status, date range
-- **Table hiển thị**: Sender, Recipient, Amount, Token, Message, TX Hash, Light Score, Status, Time
-- **Pagination**: Phân trang 50 records/page
-- **Export CSV**: Xuất file với tất cả dữ liệu đã lọc
-
-### 3. Sửa: `src/pages/Admin.tsx`
-
-Thêm tab mới "Donations" vào TabsList:
-- Icon: Gift
-- Label: "🎁 Donations"
-- Value: "donations"
+| Thành phần | Trạng thái |
+|------------|------------|
+| DonationReceivedNotification | ✅ Hoạt động |
+| UI hiển thị friend notifications | ✅ Có sẵn |
+| Database triggers cho friendships | ❌ Chưa có |
+| Notification type `friend_removed` | ❌ Chưa có |
 
 ## Chi Tiết Kỹ Thuật
 
-### Hook `useAdminDonationHistory.ts`
+### 1. Database Migration
 
-```typescript
-interface AdminDonationFilters {
-  searchTerm?: string;
-  tokenSymbol?: string;
-  status?: 'all' | 'pending' | 'confirmed' | 'failed';
-  dateFrom?: string;
-  dateTo?: string;
-  page?: number;
-  limit?: number;
-}
+Tạo migration SQL để:
 
-// Query donations với filters
-const query = supabase
-  .from('donations')
-  .select(`
-    id, amount, token_symbol, message, tx_hash,
-    light_score_earned, created_at, status,
-    sender:profiles!donations_sender_id_fkey(id, username, avatar_url),
-    recipient:profiles!donations_recipient_id_fkey(id, username, avatar_url)
-  `, { count: 'exact' })
-  .order('created_at', { ascending: false });
+**a) Tạo trigger khi INSERT vào friendships (gửi lời mời)**
+```sql
+CREATE OR REPLACE FUNCTION create_friend_request_notification()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Khi có lời mời kết bạn mới (status = pending)
+  IF NEW.status = 'pending' THEN
+    INSERT INTO notifications (user_id, actor_id, type)
+    VALUES (NEW.friend_id, NEW.user_id, 'friend_request');
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
-// Stats tổng hợp
-const statsQuery = supabase
-  .from('donations')
-  .select('amount, token_symbol, light_score_earned')
-  .eq('status', 'confirmed');
+CREATE TRIGGER on_friend_request
+  AFTER INSERT ON friendships
+  FOR EACH ROW
+  EXECUTE FUNCTION create_friend_request_notification();
 ```
 
-### Component `DonationHistoryAdminTab.tsx`
+**b) Tạo trigger khi UPDATE friendships (đồng ý kết bạn)**
+```sql
+CREATE OR REPLACE FUNCTION create_friend_accepted_notification()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Khi status chuyển từ pending sang accepted
+  IF OLD.status = 'pending' AND NEW.status = 'accepted' THEN
+    INSERT INTO notifications (user_id, actor_id, type)
+    VALUES (NEW.user_id, NEW.friend_id, 'friend_accepted');
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
-**Cấu trúc:**
-```
-┌──────────────────────────────────────────────────┐
-│ 🎁 Lịch Sử Tặng Thưởng Toàn Hệ Thống             │
-├──────────────────────────────────────────────────┤
-│ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ │
-│ │ Tổng GD │ │ CAMLY   │ │ BNB     │ │ Light   │ │
-│ │   4     │ │ 4,413   │ │ 0       │ │ Score   │ │
-│ └─────────┘ └─────────┘ └─────────┘ └─────────┘ │
-├──────────────────────────────────────────────────┤
-│ [Search...] [Token ▼] [Status ▼] [Từ] [Đến] [🔄]│
-├──────────────────────────────────────────────────┤
-│ | Người gửi | Người nhận | Số tiền | Token | ...│
-│ |-----------|------------|---------|-------|----│
-│ | @thuy     | @hanh      | 413     | CAMLY | ...│
-│ | @huyen    | @vinh      | 2,000   | CAMLY | ...│
-│ | ...       | ...        | ...     | ...   | ...│
-├──────────────────────────────────────────────────┤
-│ Trang 1/1    [<] [1] [>]             [Xuất CSV] │
-└──────────────────────────────────────────────────┘
+CREATE TRIGGER on_friend_accepted
+  AFTER UPDATE ON friendships
+  FOR EACH ROW
+  EXECUTE FUNCTION create_friend_accepted_notification();
 ```
 
-**Features:**
-- Sortable columns (click header để sort)
-- Clickable row → Mở dialog chi tiết
-- Copy TX hash với 1 click
-- Link đến profile của sender/recipient
-- Badge màu theo status
+**c) Tạo trigger khi DELETE friendships (hủy kết bạn)**
+```sql
+CREATE OR REPLACE FUNCTION create_friend_removed_notification()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Chỉ thông báo khi hủy kết bạn đã được chấp nhận
+  IF OLD.status = 'accepted' THEN
+    -- Thông báo cho cả hai phía
+    INSERT INTO notifications (user_id, actor_id, type)
+    VALUES (OLD.friend_id, OLD.user_id, 'friend_removed');
+  END IF;
+  RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
 
-### Sửa `Admin.tsx`
+CREATE TRIGGER on_friend_removed
+  AFTER DELETE ON friendships
+  FOR EACH ROW
+  EXECUTE FUNCTION create_friend_removed_notification();
+```
 
-Thêm import và tab mới:
-```tsx
-import { DonationHistoryAdminTab } from "@/components/admin/DonationHistoryAdminTab";
+### 2. Cập Nhật Frontend
 
-// Trong TabsList, thêm sau "Financial":
-<TabsTrigger value="donations" className="gap-2 py-3">
-  <Gift className="w-4 h-4" />
-  <span className="hidden sm:inline">🎁 Donations</span>
-</TabsTrigger>
+**a) File: `src/components/layout/notifications/types.ts`**
+- Thêm `friend_removed` vào FRIEND_REQUEST_TYPES
 
-// Thêm TabsContent:
-<TabsContent value="donations">
-  <DonationHistoryAdminTab />
-</TabsContent>
+**b) File: `src/components/layout/notifications/utils.ts`**
+- Thêm icon cho `friend_removed` (UserX màu đỏ)
+- Thêm text: "đã hủy kết bạn với bạn"
+
+### 3. Sơ Đồ Luồng Thông Báo
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│                    FRIENDSHIP TRIGGERS                       │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  [User A gửi lời mời]                                        │
+│         │                                                    │
+│         ▼                                                    │
+│  INSERT friendships (status=pending)                         │
+│         │                                                    │
+│         ▼ Trigger                                            │
+│  ┌─────────────────────────────────────┐                    │
+│  │ notifications INSERT                 │                    │
+│  │ user_id: B (người nhận lời mời)     │                    │
+│  │ actor_id: A (người gửi)             │                    │
+│  │ type: 'friend_request'              │                    │
+│  └─────────────────────────────────────┘                    │
+│         │                                                    │
+│         ▼ Realtime                                           │
+│  User B nhận được thông báo chuông                           │
+│                                                              │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  [User B chấp nhận]                                          │
+│         │                                                    │
+│         ▼                                                    │
+│  UPDATE friendships SET status='accepted'                    │
+│         │                                                    │
+│         ▼ Trigger                                            │
+│  ┌─────────────────────────────────────┐                    │
+│  │ notifications INSERT                 │                    │
+│  │ user_id: A (người gửi lời mời ban đầu) │                │
+│  │ actor_id: B (người chấp nhận)        │                   │
+│  │ type: 'friend_accepted'              │                   │
+│  └─────────────────────────────────────┘                    │
+│         │                                                    │
+│         ▼ Realtime                                           │
+│  User A nhận được thông báo "B đã chấp nhận kết bạn"         │
+│                                                              │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  [User A hủy kết bạn]                                        │
+│         │                                                    │
+│         ▼                                                    │
+│  DELETE FROM friendships                                     │
+│         │                                                    │
+│         ▼ Trigger                                            │
+│  ┌─────────────────────────────────────┐                    │
+│  │ notifications INSERT                 │                    │
+│  │ user_id: B (người bị hủy)           │                    │
+│  │ actor_id: A (người hủy)             │                    │
+│  │ type: 'friend_removed'              │                    │
+│  └─────────────────────────────────────┘                    │
+│         │                                                    │
+│         ▼ Realtime                                           │
+│  User B nhận được thông báo "A đã hủy kết bạn"               │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ## Tổng Kết Files
 
 | File | Hành động |
 |------|-----------|
-| `src/hooks/useAdminDonationHistory.ts` | Tạo mới |
-| `src/components/admin/DonationHistoryAdminTab.tsx` | Tạo mới |
-| `src/pages/Admin.tsx` | Sửa - thêm tab |
-| `src/utils/exportDonations.ts` | Sửa - thêm export all |
+| `supabase/migrations/[new].sql` | Tạo 3 triggers cho friendships |
+| `src/components/layout/notifications/types.ts` | Thêm `friend_removed` type |
+| `src/components/layout/notifications/utils.ts` | Thêm icon + text cho `friend_removed` |
 
 ## Kết Quả Mong Đợi
 
-- Admin có thể xem TOÀN BỘ lịch sử tặng thưởng của hệ thống
-- Lọc và tìm kiếm nhanh theo nhiều tiêu chí
-- Thống kê tổng hợp ở đầu trang
-- Xuất CSV để báo cáo/phân tích
-- Giao diện nhất quán với các tab admin khác
-
+- ✅ Khi gửi lời mời kết bạn → Người nhận thấy thông báo realtime
+- ✅ Khi đồng ý kết bạn → Người gửi lời mời thấy thông báo realtime
+- ✅ Khi hủy kết bạn → Người bị hủy thấy thông báo realtime
+- ✅ Thông báo nhận tiền giữ nguyên hoạt động bình thường
