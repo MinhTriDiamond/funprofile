@@ -47,6 +47,9 @@ export function useDonation(options?: UseDonationOptions) {
   const { sendTransactionAsync, isPending: isSendPending } = useSendTransaction();
 
   const donate = async (params: DonationParams): Promise<DonationCardData | null> => {
+    // Track txHash outside try block for error recovery
+    let txHash: `0x${string}` | undefined;
+    
     if (!isConnected || !address) {
       toast.error('Vui lòng kết nối ví trước');
       return null;
@@ -73,8 +76,6 @@ export function useDonation(options?: UseDonationOptions) {
     setIsProcessing(true);
 
     try {
-      let txHash: `0x${string}`;
-
       // For simplicity, we'll use sendTransaction for all transfers
       // The recipient will receive native or we encode the ERC20 transfer call
       if (!params.tokenAddress) {
@@ -101,7 +102,23 @@ export function useDonation(options?: UseDonationOptions) {
         });
       }
 
-      toast.loading('Đang xác nhận giao dịch trên blockchain...', { id: 'donation-tx' });
+      // ✅ TX confirmed on chain - save to localStorage for recovery
+      const pendingDonation = {
+        txHash,
+        recipientId: params.recipientId,
+        recipientUsername: params.recipientUsername,
+        amount: params.amount,
+        tokenSymbol: params.tokenSymbol,
+        tokenAddress: params.tokenAddress,
+        chainId: chainId || 56,
+        message: params.message,
+        messageTemplate: params.messageTemplate,
+        postId: params.postId,
+        timestamp: Date.now(),
+      };
+      localStorage.setItem(`pending_donation_${txHash}`, JSON.stringify(pendingDonation));
+
+      toast.loading('Đang ghi nhận giao dịch vào hệ thống...', { id: 'donation-tx' });
 
       // Get current user info
       const { data: { session } } = await supabase.auth.getSession();
@@ -124,7 +141,7 @@ export function useDonation(options?: UseDonationOptions) {
           amount: params.amount,
           token_symbol: params.tokenSymbol,
           token_address: params.tokenAddress,
-          chain_id: chainId || 97,
+          chain_id: chainId || 56,
           tx_hash: txHash,
           message: params.message,
           message_template: params.messageTemplate,
@@ -135,10 +152,15 @@ export function useDonation(options?: UseDonationOptions) {
       if (error) {
         console.error('Error recording donation:', error);
         // Don't fail the whole process - tx is already on chain
-        toast.warning('Giao dịch thành công nhưng chưa ghi nhận được vào hệ thống');
+        toast.warning('Giao dịch thành công nhưng chưa ghi nhận được vào hệ thống. TX: ' + txHash.slice(0, 18) + '...', { 
+          id: 'donation-tx',
+          duration: 10000,
+        });
+      } else {
+        // ✅ Successfully recorded - remove from localStorage
+        localStorage.removeItem(`pending_donation_${txHash}`);
+        toast.success('Tặng thưởng thành công!', { id: 'donation-tx' });
       }
-
-      toast.success('Tặng thưởng thành công!', { id: 'donation-tx' });
 
       const cardData: DonationCardData = {
         id: donationData?.donation?.id || crypto.randomUUID(),
@@ -160,14 +182,30 @@ export function useDonation(options?: UseDonationOptions) {
     } catch (error: any) {
       console.error('Donation error:', error);
       
-      let errorMessage = 'Không thể thực hiện giao dịch';
-      if (error.message?.includes('rejected')) {
-        errorMessage = 'Giao dịch đã bị từ chối';
-      } else if (error.message?.includes('insufficient')) {
-        errorMessage = 'Số dư không đủ';
+      // CRITICAL: Always dismiss loading toast first
+      toast.dismiss('donation-tx');
+      
+      // Check if TX was already sent successfully but recording failed
+      if (txHash) {
+        // TX is on chain but not recorded - show clear message with TX hash
+        toast.error(
+          `Giao dịch đã thành công trên blockchain nhưng chưa ghi nhận vào hệ thống. Vui lòng liên hệ Admin với TX: ${txHash.slice(0, 18)}...`,
+          { duration: 15000 }
+        );
+        // Keep pending donation in localStorage for potential recovery
+      } else {
+        // TX never happened - show appropriate error
+        let errorMessage = 'Không thể thực hiện giao dịch';
+        if (error.message?.includes('rejected') || error.message?.includes('denied')) {
+          errorMessage = 'Giao dịch đã bị từ chối';
+        } else if (error.message?.includes('insufficient')) {
+          errorMessage = 'Số dư không đủ';
+        } else if (error.message?.includes('đăng nhập')) {
+          errorMessage = 'Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại';
+        }
+        toast.error(errorMessage);
       }
       
-      toast.error(errorMessage, { id: 'donation-tx' });
       options?.onError?.(error);
       return null;
     } finally {
