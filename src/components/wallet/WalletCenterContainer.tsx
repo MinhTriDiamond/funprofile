@@ -6,8 +6,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Gift, Wallet, Info, AlertTriangle, ChevronDown, CheckCircle2 } from 'lucide-react';
+import { Gift, Wallet, Info, AlertTriangle, ChevronDown, CheckCircle2, Users } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useActiveAccount } from '@/contexts/ActiveAccountContext';
+import { AccountSelectorModal } from './AccountSelectorModal';
+import { AccountMismatchModal } from './AccountMismatchModal';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -50,10 +53,15 @@ const WALLET_DISCONNECTED_KEY = 'fun_profile_wallet_disconnected';
 
 const WalletCenterContainer = () => {
   const { address, isConnected, chainId, connector } = useAccount();
+  const { activeAddress, accounts, setActiveAddress } = useActiveAccount();
   const { openConnectModal } = useConnectModal();
   const { disconnect } = useDisconnect();
   const { switchChain } = useSwitchChain();
   const { signMessageAsync, isPending: isSigningMessage } = useSignMessage();
+  
+  // Modal states cho multi-account
+  const [showAccountSelector, setShowAccountSelector] = useState(false);
+  const [showMismatchModal, setShowMismatchModal] = useState(false);
   
   const [profile, setProfile] = useState<Profile | null>(null);
   const [walletProfile, setWalletProfile] = useState<WalletProfile | null>(null);
@@ -105,8 +113,9 @@ const WalletCenterContainer = () => {
     }
   }, [connector, connectedWalletType]);
 
-  // Use token balances for external wallet
-  const externalAddress = (address || walletProfile?.external_wallet_address) as `0x${string}` | undefined;
+  // Use token balances - ưu tiên activeAddress từ multi-account context
+  const effectiveAddress = activeAddress as `0x${string}` | undefined;
+  const externalAddress = (effectiveAddress || address || walletProfile?.external_wallet_address) as `0x${string}` | undefined;
   const { 
     tokens: externalTokens, 
     totalUsdValue: externalTotalValue, 
@@ -311,26 +320,27 @@ const WalletCenterContainer = () => {
     }
   }, [openConnectModal]);
 
-  const handleSwitchAccount = useCallback(async () => {
-    try {
-      if (typeof window !== 'undefined' && window.ethereum) {
-        await window.ethereum.request({
-          method: 'wallet_requestPermissions',
-          params: [{ eth_accounts: {} }],
-        });
-        toast.success('Đã chuyển tài khoản thành công!');
-        refetchExternal();
-      } else {
-        toast.error('Wallet không khả dụng');
-      }
-    } catch (error: any) {
-      if (error?.code === 4001) {
-        toast.error('Bạn đã hủy chuyển tài khoản');
-      } else {
-        toast.error('Không thể chuyển tài khoản');
-      }
+  // Mở modal chọn tài khoản thay vì gọi wallet_requestPermissions
+  const handleSwitchAccount = useCallback(() => {
+    if (accounts.length > 1) {
+      setShowAccountSelector(true);
+    } else {
+      // Nếu chỉ có 1 account, mở modal vẫn được (hiển thị thông tin)
+      setShowAccountSelector(true);
     }
-  }, [refetchExternal]);
+  }, [accounts]);
+
+  // Phát hiện mismatch giữa provider address và active address
+  useEffect(() => {
+    if (
+      isConnected &&
+      activeAddress &&
+      address &&
+      activeAddress.toLowerCase() !== address.toLowerCase()
+    ) {
+      setShowMismatchModal(true);
+    }
+  }, [isConnected, activeAddress, address]);
 
   const handleDisconnect = useCallback(() => {
     localStorage.setItem(WALLET_DISCONNECTED_KEY, 'true');
@@ -575,11 +585,12 @@ const WalletCenterContainer = () => {
       <div className="w-full">
         <WalletCard
           walletType="external"
-          walletAddress={address || walletProfile?.external_wallet_address || null}
+          walletAddress={activeAddress || address || walletProfile?.external_wallet_address || null}
           walletName={getWalletDisplayName()}
           connectorType={connectedWalletType}
           isConnected={isConnected}
           isLinkedToProfile={!!walletProfile?.external_wallet_address}
+          accountCount={accounts.length}
           tokens={externalTokens}
           totalUsdValue={externalTotalValue}
           isTokensLoading={isExternalLoading}
@@ -744,6 +755,18 @@ const WalletCenterContainer = () => {
           refetchFunBalance();
           refetchExternal();
         }}
+      />
+
+      {/* Account Selector Modal (multi-account) */}
+      <AccountSelectorModal
+        open={showAccountSelector}
+        onOpenChange={setShowAccountSelector}
+      />
+
+      {/* Account Mismatch Modal */}
+      <AccountMismatchModal
+        open={showMismatchModal}
+        onOpenChange={setShowMismatchModal}
       />
     </div>
   );
