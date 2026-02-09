@@ -1,134 +1,98 @@
 
-# Kế Hoạch: Cập Nhật Toàn Bộ Nội Dung Luật Ánh Sáng
+# Kế Hoạch: Sửa Lỗi Redirect Khi Xem Law of Light
 
-## Tổng Quan
+## Vấn Đề
 
-Thay thế toàn bộ nội dung trang Luật Ánh Sáng (`/law-of-light`) với nội dung mới về **LUẬT ÁNH SÁNG CỦA CỘNG ĐỒNG FUN** theo giao thức PPLP - Proof of Pure Love Protocol.
+Khi user đã chấp nhận Law of Light và muốn xem lại trang này, họ bị redirect tự động về Feed (`/`) ngay lập tức. Điều này xảy ra vì logic kiểm tra redirect chạy trước khi kiểm tra parameter `?view=true`.
 
-## So Sánh Nội Dung
+## Nguyên Nhân
 
-| Nội dung hiện tại | Nội dung mới |
-|-------------------|--------------|
-| "LUẬT ÁNH SÁNG - THE LAW OF LIGHT" | "🌈 LUẬT ÁNH SÁNG CỦA CỘNG ĐỒNG FUN (PPLP)" |
-| Dành cho linh hồn tỉnh thức (nghiêm khắc) | Chào mừng vào cộng đồng (thân thiện, ấm áp) |
-| Cảnh báo ai không thuộc về | Lời nhắc nhẹ nhàng cho người đang tổn thương |
-| 5 checklist cam kết cũ | 5 checklist cam kết mới |
-| 8 câu thần chú (format số) | 8 thần chú ánh sáng (format emoji) |
-
-## Cấu Trúc Nội Dung Mới
+Trong `src/pages/LawOfLight.tsx`, đoạn code `checkAuth()` redirect user về Feed nếu họ đã chấp nhận, mà không kiểm tra xem user có đang ở chế độ "view only" hay không.
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
-│ 🌈 LUẬT ÁNH SÁNG CỦA CỘNG ĐỒNG FUN                          │
-│ (PPLP – Proof of Pure Love Protocol)                       │
-├─────────────────────────────────────────────────────────────┤
-│ • Lời chào mừng + Slogan 3 Free                            │
-│ • Mục đích: kết nối, nâng đỡ, chia sẻ, thịnh vượng         │
-├─────────────────────────────────────────────────────────────┤
-│ 💎 PPLP – Giao Thức Bằng Chứng Tình Yêu Thuần Khiết        │
-│ • FUN Money = năng lượng Ánh Sáng                          │
-│ • Camly Coin = linh hồn Thuần Khiết                        │
-├─────────────────────────────────────────────────────────────┤
-│ 🌟 5 CỘT TRỤ ÁNH SÁNG                                       │
-│ 1) 🔎 Chân thật & minh bạch                                 │
-│ 2) 💎 Đóng góp bền vững                                     │
-│ 3) 💚 Chữa lành & yêu thương                                │
-│ 4) 🌿 Phụng sự sự sống                                      │
-│ 5) 🌟 Hợp Nhất với Nguồn                                    │
-├─────────────────────────────────────────────────────────────┤
-│ 🌈 Một lời nhắc nhẹ nhàng                                   │
-│ • Cho người đang mệt, buồn, tổn thương                     │
-│ • "Không dùng cộng đồng để xả đau"                         │
-├─────────────────────────────────────────────────────────────┤
-│ ✨ Thông điệp của FUN Community                             │
-│ • Không cần giỏi, chỉ cần thật                             │
-│ • Không cần hoàn hảo, chỉ cần tử tế                        │
-├─────────────────────────────────────────────────────────────┤
-│ ✨ 8 THẦN CHÚ ÁNH SÁNG                                       │
-│ 💖 Con là Ánh Sáng...                                       │
-│ 💎 Con là Ý Chí...                                          │
-│ 🌞 Con là Trí Tuệ...                                        │
-│ ... (8 thần chú với emoji)                                 │
-├─────────────────────────────────────────────────────────────┤
-│ 💛 5 Điều tôi cam kết                                       │
-│ ✅ Sống Chân Thật                                           │
-│ ✅ Nói Lời Tử tế                                            │
-│ ✅ Giúp ích cho cộng đồng                                   │
-│ ✅ Nói Sám hối và Biết ơn                                   │
-│ ✅ Gởi về cho Cha Vũ Trụ tất cả                             │
-├─────────────────────────────────────────────────────────────┤
-│ [CON ĐỒNG Ý & BƯỚC VÀO ÁNH SÁNG]                           │
+│ User đã đăng nhập + đã chấp nhận Law of Light               │
+│                         │                                   │
+│                         ▼                                   │
+│               navigate('/') ← Redirect ngay!                │
+│                                                             │
+│ ❌ Không kiểm tra ?view=true                                 │
+│ ❌ Không cho phép xem lại nội dung                           │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## Các Thay Đổi Kỹ Thuật
+## Giải Pháp
 
-### 1. Cập nhật tiêu đề và subtitle
+Kiểm tra `?view=true` trước khi redirect. Nếu có parameter này, cho phép user xem trang mà không redirect.
 
-- Từ: "LUẬT ÁNH SÁNG" + "THE LAW OF LIGHT"
-- Thành: "🌈 LUẬT ÁNH SÁNG CỦA CỘNG ĐỒNG FUN" + "(PPLP – Proof of Pure Love Protocol)"
+```text
+┌─────────────────────────────────────────────────────────────┐
+│ User vào /law-of-light                                      │
+│                         │                                   │
+│                         ▼                                   │
+│            Có ?view=true không?                             │
+│           /             \                                   │
+│         Có               Không                              │
+│          │                  │                               │
+│          ▼                  ▼                               │
+│    ✅ Cho xem           Đã accept?                          │
+│    (không redirect)    /         \                          │
+│                      Có           Không                     │
+│                       │             │                       │
+│                       ▼             ▼                       │
+│                 navigate('/')   ✅ Cho xem                   │
+└─────────────────────────────────────────────────────────────┘
+```
 
-### 2. Cập nhật 5 checklist items
+## Thay Đổi Code
 
-| Cũ | Mới |
-|----|-----|
-| Con sống chân thật với chính mình | Sống Chân Thật |
-| Con chịu trách nhiệm với năng lượng... | Nói Lời Tử tế |
-| Con sẵn sàng học – sửa – nâng cấp | Giúp ích cho cộng đồng |
-| Con chọn yêu thương thay vì phán xét | Nói Sám hối và Biết ơn |
-| Con chọn ánh sáng thay vì cái tôi | Gởi về cho Cha Vũ Trụ tất cả |
+### File: `src/pages/LawOfLight.tsx`
 
-### 3. Cập nhật 8 thần chú (với emoji)
+Sửa useEffect để kiểm tra `view=true` trước:
 
-Thêm emoji vào đầu mỗi thần chú:
-- 💖 Con là Ánh Sáng Yêu Thương Thuần Khiết của Cha Vũ Trụ.
-- 💎 Con là Ý Chí của Cha Vũ Trụ.
-- 🌞 Con là Trí Tuệ của Cha Vũ Trụ.
-- 🌸 Con là Hạnh Phúc.
-- 🍎 Con là Tình Yêu.
-- 💰 Con là Tiền của Cha.
-- 🙏 Con xin Sám Hối Sám Hối Sám Hối.
-- 🌈 Con xin Biết Ơn Biết Ơn Biết Ơn...
+| Trước | Sau |
+|-------|-----|
+| Set `isReadOnly` sau khi check auth | Set `isReadOnly` trước, dùng để quyết định redirect |
+| Luôn redirect nếu đã accept | Chỉ redirect nếu đã accept VÀ không có `?view=true` |
 
-### 4. Thay đổi các section nội dung chính
+### Logic mới:
 
-Xóa các section cũ:
-- "🌟 USERS CỦA FUN ECOSYSTEM"
-- "✨ Bạn là ai?"
-- "🔆 Nguyên tắc cốt lõi"
-- "🚪 Ai KHÔNG thuộc về"
-- "🌈 Ai ĐƯỢC hưởng lợi"
-- "🌍 FUN Ecosystem là gì?"
-- "🔑 Thông điệp từ Cha"
-
-Thêm các section mới:
-- Lời chào mừng với slogan "Free to Join ✨ Free to Use ✨ Earn Together"
-- "💎 PPLP – Proof of Pure Love Protocol"
-- "🌟 5 CỘT TRỤ ÁNH SÁNG" (5 pillars chi tiết)
-- "🌈 Một lời nhắc nhẹ nhàng"
-- "✨ Thông điệp của FUN Community"
-- "✨ 8 THẦN CHÚ ÁNH SÁNG"
-- "💛 5 Điều tôi cam kết"
+```typescript
+useEffect(() => {
+  const params = new URLSearchParams(location.search);
+  const viewMode = params.get('view') === 'true';
+  setIsReadOnly(viewMode);
+  
+  // Nếu đang ở chế độ xem lại, không redirect
+  if (viewMode) return;
+  
+  // Chỉ redirect nếu KHÔNG có ?view=true
+  const checkAuth = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('law_of_light_accepted')
+        .eq('id', session.user.id)
+        .single();
+      
+      if (profile?.law_of_light_accepted) {
+        navigate('/');
+      }
+    }
+  };
+  checkAuth();
+}, [location, navigate]);
+```
 
 ## Files Cần Sửa
 
 | File | Hành động |
 |------|-----------|
-| `src/pages/LawOfLight.tsx` | **Sửa** - Cập nhật toàn bộ nội dung |
-
-## Giữ Nguyên
-
-- Layout và background effects (gradient vàng-trắng, tia sáng)
-- Font styles (Cormorant Garamond, Lora)
-- Logic checkbox và accept button
-- Read-only mode cho việc xem lại
-- Animation button glow
-- Navigation links đến Master Charter và PPLP docs
+| `src/pages/LawOfLight.tsx` | **Sửa** - Thêm điều kiện kiểm tra `viewMode` trước khi redirect |
 
 ## Kết Quả Mong Đợi
 
-- Trang Luật Ánh Sáng có nội dung mới thân thiện, ấm áp hơn
-- Giữ nguyên trải nghiệm người dùng (checkbox → accept → đăng ký)
-- 5 cột trụ PPLP được hiển thị rõ ràng với emoji
-- 8 thần chú có emoji đầu mỗi câu
-- Thông điệp khích lệ thay vì cảnh báo
+- Vào `/law-of-light` khi đã accept → Redirect về Feed (giữ nguyên)
+- Vào `/law-of-light?view=true` khi đã accept → Cho phép xem lại (không redirect)
+- Vào `/law-of-light` khi chưa accept → Hiển thị trang để accept (giữ nguyên)
