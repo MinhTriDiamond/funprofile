@@ -141,20 +141,20 @@ const LawOfLight = () => {
 
   // === COLOR PALETTE - Kim loại vàng sang trọng ===
   const gold = {
-    bright: '#D4A017',    // Vàng kim loại đậm sang trọng
-    vivid: '#B8860B',     // Vàng DarkGoldenrod - kim loại đậm nét
-    glow: '#F0C75E',      // Vàng sáng kim loại
-    light: '#FFF9E6',     // Vàng chanh nhẹ nhàng (nền ngoài)
-    accent: '#996515',    // Vàng accent đậm kim loại
-    metallic: '#C5960C',  // Vàng metallic trung
-    shine: '#E8C547',     // Vàng bóng kim loại
+    bright: '#D4A017',
+    vivid: '#B8860B',
+    glow: '#F0C75E',
+    light: '#FFF9E6',
+    accent: '#996515',
+    metallic: '#C5960C',
+    shine: '#E8C547',
   };
-  // Xanh lá sẫm sang trọng (thay cho xám)
+  // Xanh lá sẫm đậm nét tươi mới năng lượng
   const green = {
-    deep: '#14532d',
-    dark: '#166534',
-    rich: '#1B6B3A',
-    medium: '#1E7A42',
+    deep: '#0C4A1F',      // Đậm hơn, rõ nét hơn
+    dark: '#15803D',      // Xanh lá tươi đậm
+    rich: '#16A34A',      // Xanh lá tươi mới năng lượng
+    medium: '#22C55E',    // Xanh lá sáng năng lượng
   };
 
   // Metallic gold border style - dùng chung cho tất cả khung
@@ -165,9 +165,9 @@ const LawOfLight = () => {
 
   return (
     <div className="min-h-screen relative overflow-hidden">
-      {/* Nền ngoài: Vàng chanh thật nhẹ nhàng tươi mới */}
+      {/* Nền ngoài: Xanh bơ nhẹ nhàng */}
       <div className="fixed inset-0 z-0" style={{
-        background: `linear-gradient(180deg, #FFFEF5 0%, ${gold.light} 25%, #FFF4CC 50%, ${gold.light} 75%, #FFFEF5 100%)`
+        background: `linear-gradient(180deg, #F5FFF0 0%, #EAFCE4 25%, #E0F8D8 50%, #EAFCE4 75%, #F5FFF0 100%)`
       }} />
       
       {/* Divine Light Rays */}
