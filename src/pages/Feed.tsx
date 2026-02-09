@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useFeedPosts } from '@/hooks/useFeedPosts';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import ScrollToTopButton from '@/components/common/ScrollToTopButton';
+import { PullToRefreshContainer } from '@/components/common/PullToRefreshContainer';
 import { Loader2 } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageContext';
 
@@ -96,77 +97,83 @@ const Feed = () => {
     };
   }, []);
 
+  const handlePullRefresh = useCallback(async () => {
+    await refetch();
+  }, [refetch]);
+
   return (
     <div className="min-h-screen overflow-hidden">
       <FacebookNavbar />
       
       <main data-app-scroll className="app-shell-content fixed inset-x-0 bottom-0 overflow-y-auto pb-20 lg:pb-4">
-        <div className="max-w-screen-2xl mx-auto px-0 sm:px-6 lg:px-[2cm]">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 sm:gap-2 md:gap-4 py-2 md:py-4">
-            {/* Left Sidebar - Hidden on mobile/tablet */}
-            <aside className="hidden lg:block lg:col-span-3">
-              <div className="sticky top-0 max-h-[calc(100dvh-3cm)] overflow-y-auto pr-2 scrollbar-thin">
-                <FacebookLeftSidebar />
-              </div>
-            </aside>
-
-            {/* Main Feed - Full width on mobile */}
-            <div className="col-span-1 lg:col-span-6 w-full px-0">
-              <StoriesBar />
-
-              {currentUserId && <FacebookCreatePost onPostCreated={refetch} />}
-
-              {!currentUserId && (
-                <div className="fb-card p-4 mb-4 text-center">
-                  <p className="text-muted-foreground">{t('loginToPost')}</p>
+        <PullToRefreshContainer onRefresh={handlePullRefresh}>
+          <div className="max-w-screen-2xl mx-auto px-0 sm:px-6 lg:px-[2cm]">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 sm:gap-2 md:gap-4 py-2 md:py-4">
+              {/* Left Sidebar - Hidden on mobile/tablet */}
+              <aside className="hidden lg:block lg:col-span-3">
+                <div className="sticky top-0 max-h-[calc(100dvh-3cm)] overflow-y-auto pr-2 scrollbar-thin">
+                  <FacebookLeftSidebar />
                 </div>
-              )}
+              </aside>
 
-              {isLoading ? (
-                <div className="space-y-4">
-                  {[1, 2, 3].map(i => <PostSkeleton key={i} />)}
-                </div>
-              ) : posts.length === 0 ? (
-                <div className="fb-card p-8 text-center">
-                  <p className="text-muted-foreground">Chưa có bài viết nào</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {posts.map(post => (
-                    <FacebookPostCard
-                      key={post.id}
-                      post={post}
-                      currentUserId={currentUserId}
-                      onPostDeleted={refetch}
-                      initialStats={postStats[post.id]}
-                    />
-                  ))}
+              {/* Main Feed - Full width on mobile */}
+              <div className="col-span-1 lg:col-span-6 w-full px-0">
+                <StoriesBar />
 
-                  <div ref={loadMoreRef} className="py-4">
-                    {isFetchingNextPage && (
-                      <div className="flex justify-center items-center gap-2 text-muted-foreground">
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                        <span>{t('loadingMorePosts')}</span>
-                      </div>
-                    )}
-                    {!hasNextPage && posts.length > 0 && (
-                      <div className="text-center text-muted-foreground text-sm py-2">
-                        {t('noMorePostsMessage')} 🎉
-                      </div>
-                    )}
+                {currentUserId && <FacebookCreatePost onPostCreated={refetch} />}
+
+                {!currentUserId && (
+                  <div className="fb-card p-4 mb-4 text-center">
+                    <p className="text-muted-foreground">{t('loginToPost')}</p>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
 
-            {/* Right Sidebar - Hidden on mobile/tablet */}
-            <aside className="hidden lg:block lg:col-span-3">
-              <div className="sticky top-0 max-h-[calc(100dvh-3cm)] overflow-y-auto pl-2 scrollbar-thin">
-                <FacebookRightSidebar />
+                {isLoading ? (
+                  <div className="space-y-4">
+                    {[1, 2, 3].map(i => <PostSkeleton key={i} />)}
+                  </div>
+                ) : posts.length === 0 ? (
+                  <div className="fb-card p-8 text-center">
+                    <p className="text-muted-foreground">Chưa có bài viết nào</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {posts.map(post => (
+                      <FacebookPostCard
+                        key={post.id}
+                        post={post}
+                        currentUserId={currentUserId}
+                        onPostDeleted={refetch}
+                        initialStats={postStats[post.id]}
+                      />
+                    ))}
+
+                    <div ref={loadMoreRef} className="py-4">
+                      {isFetchingNextPage && (
+                        <div className="flex justify-center items-center gap-2 text-muted-foreground">
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          <span>{t('loadingMorePosts')}</span>
+                        </div>
+                      )}
+                      {!hasNextPage && posts.length > 0 && (
+                        <div className="text-center text-muted-foreground text-sm py-2">
+                          {t('noMorePostsMessage')} 🎉
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
-            </aside>
+
+              {/* Right Sidebar - Hidden on mobile/tablet */}
+              <aside className="hidden lg:block lg:col-span-3">
+                <div className="sticky top-0 max-h-[calc(100dvh-3cm)] overflow-y-auto pl-2 scrollbar-thin">
+                  <FacebookRightSidebar />
+                </div>
+              </aside>
+            </div>
           </div>
-        </div>
+        </PullToRefreshContainer>
       </main>
 
       {/* Mobile Bottom Navigation */}

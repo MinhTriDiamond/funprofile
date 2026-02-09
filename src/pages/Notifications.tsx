@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -12,6 +12,7 @@ import { vi } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
+import { PullToRefreshContainer } from "@/components/common/PullToRefreshContainer";
 
 type NotificationFilter = "all" | "reactions" | "comments" | "shares" | "friends" | "system";
 
@@ -235,11 +236,15 @@ const Notifications = () => {
     { value: "system", label: "Hệ thống", icon: Gift },
   ];
 
+  const handlePullRefresh = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: ["notifications-page", userId] });
+  }, [queryClient, userId]);
+
   return (
     <div className="min-h-screen overflow-hidden pb-20 lg:pb-0">
       {/* Header */}
       <div className="fixed top-[3cm] left-0 right-0 z-40 bg-card/80 border-b border-border">
-        <div className="flex items-center justify-between px-[2cm] py-3">
+        <div className="flex items-center justify-between px-4 sm:px-[2cm] py-3">
           <div className="flex items-center gap-3">
             <Button
               variant="ghost"
@@ -300,77 +305,81 @@ const Notifications = () => {
       </div>
 
       {/* Notifications List */}
-      <div className="fixed inset-x-0 top-[calc(3cm+100px)] bottom-[72px] lg:bottom-0 overflow-y-auto divide-y divide-border">
-        {isLoading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-          </div>
-        ) : filteredNotifications.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
-            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-              <Bell className="h-8 w-8 text-muted-foreground" />
-            </div>
-            <p className="text-muted-foreground">
-              {filter === "all" 
-                ? "Chưa có thông báo nào" 
-                : "Không có thông báo nào thuộc loại này"}
-            </p>
-          </div>
-        ) : (
-          filteredNotifications.map((notification) => (
-            <div
-              key={notification.id}
-              onClick={() => handleNotificationClick(notification)}
-              className={cn(
-                "flex items-start gap-3 p-4 cursor-pointer transition-all duration-300",
-                "hover:bg-muted/50 active:bg-muted",
-                !notification.read && "bg-primary/5 relative",
-                !notification.read && "before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-gradient-to-b before:from-yellow-400 before:via-amber-500 before:to-yellow-400 before:animate-pulse"
-              )}
-            >
-              {/* Avatar with Icon Badge */}
-              <div className="relative shrink-0">
-                <Avatar className={cn(
-                  "h-12 w-12 ring-2",
-                  !notification.read 
-                    ? "ring-amber-400/50 shadow-lg shadow-amber-400/20" 
-                    : "ring-transparent"
-                )}>
-                  <AvatarImage src={notification.actor?.avatar_url || ""} />
-                  <AvatarFallback className="bg-gradient-to-br from-primary to-primary/60 text-primary-foreground">
-                    {notification.actor?.username?.charAt(0)?.toUpperCase() || "?"}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="absolute -bottom-1 -right-1 bg-background rounded-full p-1 shadow-md">
-                  {getNotificationIcon(notification.type)}
-                </div>
+      <div data-app-scroll className="fixed inset-x-0 top-[calc(3cm+100px)] bottom-[72px] lg:bottom-0 overflow-y-auto">
+        <PullToRefreshContainer onRefresh={handlePullRefresh}>
+          <div className="divide-y divide-border">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-20">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
               </div>
-
-              {/* Content */}
-              <div className="flex-1 min-w-0">
-                <p className={cn(
-                  "text-sm leading-relaxed",
-                  !notification.read ? "font-medium text-foreground" : "text-muted-foreground"
-                )}>
-                  {getNotificationText(notification)}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {formatDistanceToNow(new Date(notification.created_at), { 
-                    addSuffix: true,
-                    locale: vi 
-                  })}
+            ) : filteredNotifications.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
+                <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                  <Bell className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <p className="text-muted-foreground">
+                  {filter === "all" 
+                    ? "Chưa có thông báo nào" 
+                    : "Không có thông báo nào thuộc loại này"}
                 </p>
               </div>
+            ) : (
+              filteredNotifications.map((notification) => (
+                <div
+                  key={notification.id}
+                  onClick={() => handleNotificationClick(notification)}
+                  className={cn(
+                    "flex items-start gap-3 p-4 cursor-pointer transition-all duration-300",
+                    "hover:bg-muted/50 active:bg-muted",
+                    !notification.read && "bg-primary/5 relative",
+                    !notification.read && "before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-gradient-to-b before:from-yellow-400 before:via-amber-500 before:to-yellow-400 before:animate-pulse"
+                  )}
+                >
+                  {/* Avatar with Icon Badge */}
+                  <div className="relative shrink-0">
+                    <Avatar className={cn(
+                      "h-12 w-12 ring-2",
+                      !notification.read 
+                        ? "ring-amber-400/50 shadow-lg shadow-amber-400/20" 
+                        : "ring-transparent"
+                    )}>
+                      <AvatarImage src={notification.actor?.avatar_url || ""} />
+                      <AvatarFallback className="bg-gradient-to-br from-primary to-primary/60 text-primary-foreground">
+                        {notification.actor?.username?.charAt(0)?.toUpperCase() || "?"}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="absolute -bottom-1 -right-1 bg-background rounded-full p-1 shadow-md">
+                      {getNotificationIcon(notification.type)}
+                    </div>
+                  </div>
 
-              {/* Unread Indicator */}
-              {!notification.read && (
-                <div className="shrink-0 mt-1">
-                  <div className="w-3 h-3 rounded-full bg-gradient-to-r from-green-400 to-emerald-500 animate-pulse shadow-lg shadow-green-400/50" />
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <p className={cn(
+                      "text-sm leading-relaxed",
+                      !notification.read ? "font-medium text-foreground" : "text-muted-foreground"
+                    )}>
+                      {getNotificationText(notification)}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {formatDistanceToNow(new Date(notification.created_at), { 
+                        addSuffix: true,
+                        locale: vi 
+                      })}
+                    </p>
+                  </div>
+
+                  {/* Unread Indicator */}
+                  {!notification.read && (
+                    <div className="shrink-0 mt-1">
+                      <div className="w-3 h-3 rounded-full bg-gradient-to-r from-green-400 to-emerald-500 animate-pulse shadow-lg shadow-green-400/50" />
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          ))
-        )}
+              ))
+            )}
+          </div>
+        </PullToRefreshContainer>
       </div>
       
       {/* Mobile Bottom Navigation */}
