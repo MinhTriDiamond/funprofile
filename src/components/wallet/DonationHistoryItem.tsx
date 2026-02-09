@@ -2,6 +2,7 @@ import { Gift, ExternalLink, Sparkles, MessageSquare } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DonationRecord } from '@/hooks/useDonationHistory';
 import { formatDate, formatNumber, shortenAddress } from '@/lib/formatters';
+import { getBscScanTxUrl } from '@/lib/bscScanHelpers';
 
 interface DonationHistoryItemProps {
   donation: DonationRecord;
@@ -12,8 +13,6 @@ interface DonationHistoryItemProps {
 export function DonationHistoryItem({ donation, type, onClick }: DonationHistoryItemProps) {
   const otherUser = type === 'sent' ? donation.recipient : donation.sender;
   const amount = parseFloat(donation.amount) || 0;
-  
-  const getBscScanUrl = (txHash: string) => `https://bscscan.com/tx/${txHash}`;
 
   return (
     <div 
@@ -66,7 +65,7 @@ export function DonationHistoryItem({ donation, type, onClick }: DonationHistory
       <div className="flex items-center justify-between text-xs text-muted-foreground pl-11">
         <span>📅 {formatDate(donation.created_at)}</span>
         <a
-          href={getBscScanUrl(donation.tx_hash)}
+          href={getBscScanTxUrl(donation.tx_hash, donation.token_symbol)}
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-1 text-primary hover:underline"

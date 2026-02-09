@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DonationSuccessCard, DonationCardData } from './DonationSuccessCard';
-import { getTxUrl } from '@/config/pplp';
+import { getBscScanTxUrl } from '@/lib/bscScanHelpers';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
@@ -107,7 +107,7 @@ export const DonationMessage = ({ metadata, isOwn }: DonationMessageProps) => {
             {format(new Date(metadata.created_at), 'HH:mm dd/MM', { locale: vi })}
           </span>
           <a
-            href={getTxUrl(metadata.tx_hash)}
+            href={getBscScanTxUrl(metadata.tx_hash, metadata.token_symbol)}
             target="_blank"
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
