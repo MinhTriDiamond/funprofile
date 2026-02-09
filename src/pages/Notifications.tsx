@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Bell, Heart, MessageCircle, Share2, Gift, UserPlus, Filter, Check, CheckCheck } from "lucide-react";
+import { ArrowLeft, Bell, Heart, MessageCircle, Share2, Gift, UserPlus, UserX, Filter, Check, CheckCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -110,7 +110,7 @@ const Notifications = () => {
         return notifs.filter(n => n.type === "share");
       case "friends":
         return notifs.filter(n => 
-          ["friend_request", "friend_accepted"].includes(n.type)
+          ["friend_request", "friend_accepted", "friend_removed"].includes(n.type)
         );
       case "system":
         return notifs.filter(n => 
@@ -139,6 +139,8 @@ const Notifications = () => {
       case "friend_request":
       case "friend_accepted":
         return <UserPlus className="h-4 w-4 text-purple-500" />;
+      case "friend_removed":
+        return <UserX className="h-4 w-4 text-destructive" />;
       case "reward_approved":
       case "reward_rejected":
         return <Gift className="h-4 w-4 text-amber-500" />;
@@ -173,6 +175,8 @@ const Notifications = () => {
         return `${actorName} đã gửi lời mời kết bạn`;
       case "friend_accepted":
         return `${actorName} đã chấp nhận lời mời kết bạn`;
+      case "friend_removed":
+        return `${actorName} đã hủy kết bạn với bạn`;
       case "reward_approved":
         return "Phần thưởng của bạn đã được duyệt!";
       case "reward_rejected":
@@ -214,7 +218,7 @@ const Notifications = () => {
     
     if (notification.post_id) {
       navigate(`/post/${notification.post_id}`);
-    } else if (notification.type === "friend_request" || notification.type === "friend_accepted") {
+    } else if (["friend_request", "friend_accepted", "friend_removed"].includes(notification.type)) {
       navigate(`/profile/${notification.actor?.id}`);
     }
   };

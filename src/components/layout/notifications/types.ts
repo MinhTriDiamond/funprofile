@@ -45,5 +45,5 @@ export const REACTION_ICONS: Record<string, { icon: string; color: string }> = {
   pray: { icon: '🙏', color: 'text-purple-500' },
 };
 
-export const FRIEND_REQUEST_TYPES = ['friend_request'] as const;
+export const FRIEND_REQUEST_TYPES = ['friend_request', 'friend_removed'] as const;
 export const REACTION_TYPES = ['like', 'love', 'care', 'haha', 'wow', 'sad', 'angry', 'pray', 'comment_like'] as const;
