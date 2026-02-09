@@ -148,7 +148,7 @@ const LawOfLight = () => {
     <div className="min-h-screen relative overflow-hidden">
       {/* Pearl White to Soft Yellow Gradient Background - STATIC */}
       <div className="fixed inset-0 z-0" style={{
-        background: 'linear-gradient(180deg, #FFFEF7 0%, #FFF9E6 20%, #FFF3CC 45%, #FFEDAA 70%, #FFF3CC 90%, #FFFEF7 100%)'
+        background: 'linear-gradient(180deg, #FFFEF7 0%, #FFF8DC 25%, #FFED8A 50%, #FFE44D 75%, #FFF176 100%)'
       }} />
       
       {/* Divine Light Rays from Top - White & Gold (static) */}
