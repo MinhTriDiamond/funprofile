@@ -1,156 +1,110 @@
 
-# Kế Hoạch: Thêm Tính Năng Vuốt Xuống Để Refresh (Pull-to-Refresh)
+# Kế Hoạch: Cập Nhật Liên Kết BscScan Với Logic Động
 
 ## Tổng Quan
 
-Thêm tính năng Pull-to-Refresh cho các trang chính trên mobile và tablet, cho phép user vuốt từ trên xuống để làm mới dữ liệu - giống như trải nghiệm của các ứng dụng native.
+Tạo hàm helper `getBscScanUrl` thông minh có thể quyết định sử dụng Mainnet hay Testnet dựa trên loại token, sau đó cập nhật tất cả các component sử dụng liên kết BscScan sai.
 
-## Cách Hoạt Động
+## Quy Tắc Logic
 
 ```text
-┌─────────────────────────────────────────┐
-│          ┌──────────────┐               │
-│          │   ↓ ↓ ↓      │  ← User kéo xuống
-│          └──────────────┘               │
-│    ┌─────────────────────────┐          │
-│    │   🔄 Đang tải lại...    │  ← Spinner xuất hiện
-│    └─────────────────────────┘          │
-│                                         │
-│    ┌─────────────────────────┐          │
-│    │   📝 Post 1             │          │
-│    │   📝 Post 2             │          │
-│    │   📝 Post 3             │          │
-│    └─────────────────────────┘          │
-│                                         │
-└─────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                    getBscScanUrl(hash, type, tokenSymbol)    │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│   tokenSymbol === 'FUN'   ──────────►  Testnet               │
+│   (FUN Money)                          testnet.bscscan.com   │
+│                                                              │
+│   tokenSymbol !== 'FUN'   ──────────►  Mainnet               │
+│   (BNB, CAMLY, USDT...)                bscscan.com           │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-## Phạm Vi Áp Dụng
+## Các Vị Trí Cần Sửa
 
-| Trang | Pull-to-Refresh |
-|-------|-----------------|
-| Feed (`/`) | ✅ Refresh posts |
-| Friends (`/friends`) | ✅ Refresh friend lists |
-| Donations (`/donations`) | ✅ Refresh transactions |
-| Notifications (`/notifications`) | ✅ Refresh notifications |
-| Wallet (`/wallet`) | ✅ Refresh balances |
-| Profile (`/profile`) | ✅ Refresh profile data |
-| Chat (`/chat`) | ✅ Refresh messages |
+### Vấn Đề 1: Donation Cards sử dụng sai URL
+
+Các component `DonationSuccessCard`, `DonationReceivedCard`, `DonationMessage` đang import `getTxUrl` từ `pplp.ts` (Testnet), nhưng donation chủ yếu là CAMLY/BNB nên cần chuyển sang Mainnet.
+
+### Vấn Đề 2: Không có logic động theo token
+
+Hiện tại không có cơ chế phân biệt URL theo loại token.
 
 ## Giải Pháp Kỹ Thuật
 
-### 1. Tạo Custom Hook `usePullToRefresh`
+### 1. Tạo Helper Mới Trong `src/lib/bscScanHelpers.ts`
 
-Hook này sẽ:
-- Theo dõi touch events (touchstart, touchmove, touchend)
-- Tính toán khoảng cách kéo
-- Trigger callback khi kéo đủ xa
-- Chỉ hoạt động khi scroll position = 0 (đầu trang)
+```typescript
+const MAINNET_URL = 'https://bscscan.com';
+const TESTNET_URL = 'https://testnet.bscscan.com';
 
-### 2. Tạo Component `PullToRefreshContainer`
+// Token FUN luôn dùng Testnet (Chain ID 97)
+// Các token khác (BNB, CAMLY, USDT) dùng Mainnet (Chain ID 56)
+export const getBscScanTxUrl = (txHash: string, tokenSymbol?: string) => {
+  const baseUrl = tokenSymbol?.toUpperCase() === 'FUN' ? TESTNET_URL : MAINNET_URL;
+  return `${baseUrl}/tx/${txHash}`;
+};
 
-Component wrapper sẽ:
-- Hiển thị loading indicator khi đang kéo
-- Animation mượt mà khi thả tay
-- Cho phép custom refresh function từ props
-- Tự động ẩn sau khi refresh xong
+export const getBscScanAddressUrl = (address: string, tokenSymbol?: string) => {
+  const baseUrl = tokenSymbol?.toUpperCase() === 'FUN' ? TESTNET_URL : MAINNET_URL;
+  return `${baseUrl}/address/${address}`;
+};
+```
 
-### 3. Tích Hợp Vào Các Trang
+### 2. Giữ Nguyên `src/config/pplp.ts`
 
-Mỗi trang sẽ wrap nội dung trong `PullToRefreshContainer` và truyền function refresh tương ứng (ví dụ: `refetch` từ React Query).
+File này chuyên dành cho FUN Money (Testnet), giữ nguyên để các component PPLP tiếp tục hoạt động đúng.
 
-## Chi Tiết Files
+### 3. Cập Nhật Các Donation Components
+
+| Component | Thay đổi |
+|-----------|----------|
+| `DonationSuccessCard.tsx` | Thay `getTxUrl(data.txHash)` → `getBscScanTxUrl(data.txHash, data.tokenSymbol)` |
+| `DonationReceivedCard.tsx` | Thay `getTxUrl(data.txHash)` → `getBscScanTxUrl(data.txHash, data.tokenSymbol)` |
+| `DonationMessage.tsx` | Thay `getTxUrl(metadata.tx_hash)` → `getBscScanTxUrl(metadata.tx_hash, metadata.token_symbol)` |
+| `DonationHistoryItem.tsx` | Đã đúng (Mainnet), chuyển sang dùng helper để nhất quán |
+
+## Chi Tiết Files Cần Sửa
 
 | File | Hành động |
 |------|-----------|
-| `src/hooks/usePullToRefresh.ts` | Tạo mới - Hook xử lý touch events |
-| `src/components/common/PullToRefreshContainer.tsx` | Tạo mới - UI wrapper với loading indicator |
-| `src/pages/Feed.tsx` | Sửa - Thêm pull-to-refresh |
-| `src/pages/Friends.tsx` | Sửa - Thêm pull-to-refresh |
-| `src/pages/Donations.tsx` | Sửa - Thêm pull-to-refresh |
-| `src/pages/Notifications.tsx` | Sửa - Thêm pull-to-refresh |
-| `src/pages/Wallet.tsx` | Sửa - Thêm pull-to-refresh |
-| `src/pages/Profile.tsx` | Sửa - Thêm pull-to-refresh |
-| `src/pages/Chat.tsx` | Sửa - Thêm pull-to-refresh |
+| `src/lib/bscScanHelpers.ts` | **Tạo mới** - Helper functions với logic động |
+| `src/components/donations/DonationSuccessCard.tsx` | **Sửa** - Import và sử dụng helper mới |
+| `src/components/donations/DonationReceivedCard.tsx` | **Sửa** - Import và sử dụng helper mới |
+| `src/components/donations/DonationMessage.tsx` | **Sửa** - Import và sử dụng helper mới |
+| `src/components/wallet/DonationHistoryItem.tsx` | **Sửa** - Thay hardcode bằng helper |
 
-## Thiết Kế UI
+## Files Giữ Nguyên (Đã Đúng)
+
+| File | Lý do |
+|------|-------|
+| `src/config/pplp.ts` | Chuyên cho FUN Money (Testnet) - đúng |
+| `src/components/admin/PplpMintTab.tsx` | Dùng getTxUrl từ pplp.ts cho FUN - đúng |
+| `src/components/wallet/WalletManagement.tsx` | Đã dùng Mainnet - đúng |
+| `src/components/admin/TreasuryBalanceCard.tsx` | Đã dùng Mainnet - đúng |
+| `src/components/admin/BlockchainTab.tsx` | Đã dùng Mainnet - đúng |
+| `supabase/functions/claim-reward/index.ts` | Đã dùng Mainnet (CAMLY) - đúng |
+
+## Ví Dụ Logic Hoạt Động
 
 ```text
-Trạng thái 1: Chưa kéo
-┌─────────────────────────────────────┐
-│ Navbar                              │
-├─────────────────────────────────────┤
-│ [Content bình thường]               │
-└─────────────────────────────────────┘
+Giao dịch tặng 1000 CAMLY:
+  → getBscScanTxUrl('0xabc...', 'CAMLY')
+  → https://bscscan.com/tx/0xabc...  ✅ Mainnet
 
-Trạng thái 2: Đang kéo (< threshold)
-┌─────────────────────────────────────┐
-│ Navbar                              │
-├─────────────────────────────────────┤
-│     ↓ Kéo để làm mới                │  ← 50% opacity, text nhỏ
-├─────────────────────────────────────┤
-│ [Content bị đẩy xuống]              │
-└─────────────────────────────────────┘
+Giao dịch tặng 0.01 BNB:
+  → getBscScanTxUrl('0xdef...', 'BNB')
+  → https://bscscan.com/tx/0xdef...  ✅ Mainnet
 
-Trạng thái 3: Kéo đủ xa (≥ threshold)
-┌─────────────────────────────────────┐
-│ Navbar                              │
-├─────────────────────────────────────┤
-│     ↑ Thả để làm mới                │  ← Full opacity, màu primary
-├─────────────────────────────────────┤
-│ [Content bị đẩy xuống]              │
-└─────────────────────────────────────┘
-
-Trạng thái 4: Đang refresh
-┌─────────────────────────────────────┐
-│ Navbar                              │
-├─────────────────────────────────────┤
-│     🔄 Đang tải lại...              │  ← Spinner animation
-├─────────────────────────────────────┤
-│ [Content bị đẩy xuống]              │
-└─────────────────────────────────────┘
-```
-
-## Chi Tiết Kỹ Thuật
-
-### Hook `usePullToRefresh`
-
-```typescript
-interface UsePullToRefreshOptions {
-  onRefresh: () => Promise<void>;
-  threshold?: number;      // Khoảng cách tối thiểu để trigger (default: 80px)
-  maxPull?: number;        // Khoảng cách kéo tối đa (default: 150px)
-  disabled?: boolean;      // Tắt tính năng
-}
-
-interface UsePullToRefreshReturn {
-  isRefreshing: boolean;
-  pullDistance: number;
-  isPulling: boolean;
-  bindEvents: {
-    onTouchStart: (e: TouchEvent) => void;
-    onTouchMove: (e: TouchEvent) => void;
-    onTouchEnd: () => void;
-  };
-}
-```
-
-### Component Props
-
-```typescript
-interface PullToRefreshContainerProps {
-  onRefresh: () => Promise<void>;
-  children: React.ReactNode;
-  disabled?: boolean;
-  className?: string;
-}
+Giao dịch mint 500 FUN:
+  → getTxUrl('0x123...')  (từ pplp.ts)
+  → https://testnet.bscscan.com/tx/0x123...  ✅ Testnet
 ```
 
 ## Kết Quả Mong Đợi
 
-- ✅ Vuốt từ đầu trang xuống sẽ hiển thị loading indicator
-- ✅ Thả tay sau khi kéo đủ xa sẽ trigger refresh
-- ✅ Animation mượt mà, feedback rõ ràng
-- ✅ Chỉ hoạt động trên mobile/tablet (không ảnh hưởng desktop)
-- ✅ Không conflict với scroll bình thường
-- ✅ Tích hợp với React Query để invalidate cache
+- Tất cả link BNB/CAMLY sẽ chỉ đến BSC Mainnet (bscscan.com)
+- Tất cả link FUN Money vẫn chỉ đến BSC Testnet (testnet.bscscan.com)
+- Code dễ bảo trì với helper tập trung
+- Không ảnh hưởng đến các component PPLP/FUN đang hoạt động đúng
