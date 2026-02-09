@@ -3,7 +3,7 @@
  */
 
 import { NotificationWithDetails, NotificationGroups, REACTION_ICONS } from './types';
-import { Bell, MessageCircle, Share2, Gift, Shield, UserPlus, UserCheck } from 'lucide-react';
+import { Bell, MessageCircle, Share2, Gift, Shield, UserPlus, UserCheck, UserX } from 'lucide-react';
 import React from 'react';
 
 /**
@@ -79,6 +79,8 @@ export const getNotificationIcon = (type: string): React.ReactNode => {
       return React.createElement(UserPlus, { className: 'w-4 h-4 text-purple-500' });
     case 'friend_accepted':
       return React.createElement(UserCheck, { className: 'w-4 h-4 text-green-500' });
+    case 'friend_removed':
+      return React.createElement(UserX, { className: 'w-4 h-4 text-destructive' });
     default:
       return React.createElement(Bell, { className: 'w-4 h-4 text-muted-foreground' });
   }
@@ -181,6 +183,12 @@ export const getNotificationText = (
       main = React.createElement(React.Fragment, null,
         React.createElement('strong', null, username),
         ' đã chấp nhận lời mời kết bạn của bạn'
+      );
+      break;
+    case 'friend_removed':
+      main = React.createElement(React.Fragment, null,
+        React.createElement('strong', null, username),
+        ' đã hủy kết bạn với bạn'
       );
       break;
     default:
