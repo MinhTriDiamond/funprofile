@@ -1,239 +1,147 @@
 
 
-# Kế Hoạch: Tính Năng "Chọn Tài Khoản Trong Cùng Một Ví" (Multi-Account Selector)
+# Kế Hoạch: Lọc Bài Trùng Nội Dung - Chống Lạm Dụng Thưởng
 
 ## Tổng Quan
 
-Xây dựng tính năng cho phép người dùng xem và chuyển đổi giữa nhiều account/address trong cùng 1 ví (ví dụ MetaMask có nhiều accounts). Toàn bộ app sẽ sử dụng đúng Active Account đã chọn cho đọc số dư, ký và gửi giao dịch.
+Khi một user đăng nhiều bài có nội dung giống/gần giống nhau, chỉ bài **đầu tiên** được tính thưởng (CAMLY + Light Score + PPLP mint). Các bài sau vẫn được đăng bình thường nhưng được đánh dấu `is_reward_eligible = false` và hiển thị thông báo nhắc nhở yêu thương.
 
-## Phân Tích Hiện Trạng
+## Cơ Chế Phát Hiện Trùng
 
-### Đã có sẵn
-| Component | Mô tả |
-|-----------|-------|
-| `Web3Provider.tsx` | WagmiProvider + RainbowKitProvider, cấu trúc đơn giản |
-| `WalletCenterContainer.tsx` | Đã có `handleSwitchAccount` dùng `wallet_requestPermissions` |
-| `WalletCard.tsx` | Đã có nút "Switch" và prop `onSwitchAccount` |
-| `useSendToken.ts` | Dùng `useAccount().address` để gửi giao dịch |
-| `useTokenBalances.ts` | Hỗ trợ `customAddress` option |
-| `web3.ts` | wagmi config với BSC chains + RainbowKit connectors |
-| `use-mobile.tsx` | Hook phát hiện mobile/desktop |
+Sử dụng **content hash** (MD5 của nội dung đã normalize):
+- Normalize: trim, lowercase, loại bỏ khoảng trắng thừa, loại bỏ emoji/ký tự đặc biệt
+- So sánh hash với các bài trước đó của cùng user (trong 30 ngày gần nhất)
+- Nếu hash trùng -> bài trùng lặp
 
-### Hạn chế của wagmi v2
-- `useAccount()` chỉ trả về 1 address (account hiện tại của provider)
-- Wagmi không tự động expose danh sách accounts từ connector
-- Cần truy cập EIP-1193 provider để gọi `eth_accounts` lấy danh sách
+## Chi Tiết Thay Đổi
 
-## Kiến Trúc Giải Pháp
+### 1. Migration: Thêm cột vào bảng `posts`
+
+Thêm 2 cột mới:
+- `content_hash TEXT` -- MD5 hash của nội dung đã normalize
+- `is_reward_eligible BOOLEAN DEFAULT true` -- đánh dấu bài có đủ điều kiện nhận thưởng
+
+Tạo index trên `(user_id, content_hash)` để query nhanh.
+
+### 2. Sửa: `supabase/functions/create-post/index.ts`
+
+Thêm logic kiểm tra trùng **trong edge function** (server-side, không bypass được):
+
+- Sau khi xác thực user, trước khi insert:
+  1. Normalize nội dung: trim, lowercase, loại bỏ whitespace thừa
+  2. Tính MD5 hash
+  3. Query: tìm bài cùng `user_id` + cùng `content_hash` trong 30 ngày
+  4. Nếu tìm thấy -> set `is_reward_eligible = false`
+  5. Insert post với `content_hash` và `is_reward_eligible`
+- Trả về thêm trường `is_reward_eligible` và `duplicate_detected` trong response
+
+### 3. Sửa: `supabase/functions/pplp-evaluate/index.ts`
+
+Thêm kiểm tra trước khi đánh giá:
+
+- Sau khi parse `reference_id` (post ID):
+  1. Nếu `action_type === 'post'` và có `reference_id`:
+     - Query bảng `posts` kiểm tra `is_reward_eligible`
+     - Nếu `is_reward_eligible = false` -> trả về ngay, không tính điểm, ghi log
+  2. Nếu không có `reference_id`: kiểm tra trùng bằng `content` trực tiếp
+     - Normalize + hash content
+     - So sánh với `light_actions.content_preview` gần đây của cùng user
+
+### 4. Sửa: RPC `get_user_rewards_v2`
+
+Migration cập nhật function để **chỉ đếm** các bài có `is_reward_eligible = true`:
+
+Thay đổi trong các CTE:
+- `new_daily_posts`: thêm `AND is_reward_eligible = true` (hoặc `AND is_reward_eligible IS NOT FALSE` để tương thích với bài cũ chưa có cột)
+- `old_stats.old_posts`: tương tự, nhưng bài cũ mặc định `true` nên dùng `COALESCE(is_reward_eligible, true) = true`
+
+### 5. Sửa: `src/components/feed/FacebookCreatePost.tsx`
+
+Sau khi gọi `create-post` thành công:
+
+- Đọc `result.duplicate_detected` từ response
+- Nếu `true`: hiển thị toast nhắc nhở yêu thương thay vì toast thành công thông thường
+- Nếu `false`: hiển thị toast thành công như bình thường
+- Không gọi `evaluateAsync()` nếu bài trùng
+
+Thông báo nhắc nhở (ví dụ):
+
+> "Bài viết đã được đăng! Tuy nhiên, nội dung này tương tự một bài trước đó nên không được tính thưởng thêm. Hãy sáng tạo nội dung mới để lan tỏa Ánh Sáng nhiều hơn nhé! ✨🙏"
+
+### 6. Tạo mới: `src/utils/contentHash.ts`
+
+Utility dùng chung (client-side, chỉ để hiển thị preview nếu cần):
+
+```typescript
+export function normalizeContent(content: string): string {
+  return content
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .replace(/[^\p{L}\p{N}\s]/gu, '');
+}
+```
+
+Logic hash chính nằm ở server-side (edge function), client-side chỉ dùng để hiển thị.
+
+## Luồng Xử Lý
 
 ```text
-+---------------------------------------------------------------------+
-|                  ActiveAccountProvider (Context)                     |
-|  State: accounts[], activeAddress, lastUsedAt{}                      |
-|  Persistence: localStorage key = activeAccount:{connectorId}         |
-+---------------------------------------------------------------------+
-|                                                                      |
-|  +------------------------+    +----------------------------------+  |
-|  |  useActiveAccount()    |    |  AccountSelectorModal.tsx        |  |
-|  |  - activeAddress       |    |  - Danh sach accounts + balance  |  |
-|  |  - accounts[]          |    |  - Tim kiem theo dia chi         |  |
-|  |  - setActive()         |    |  - Badge "Dang dung"             |  |
-|  |  - refreshAccounts()   |    |  - Identicon cho tung account    |  |
-|  +------------------------+    +----------------------------------+  |
-|                                                                      |
-|  Consumers:                                                          |
-|  - WalletCenterContainer (hien thi Active Account)                   |
-|  - WalletCard (nut "Chon tai khoan")                                 |
-|  - useSendToken (gui tx tu activeAddress)                            |
-|  - useTokenBalances (doc balance cua activeAddress)                  |
-+---------------------------------------------------------------------+
+User nhập nội dung -> Bấm Đăng
+       |
+       v
+  create-post Edge Function
+       |
+       v
+  Normalize content -> Tính MD5 hash
+       |
+       v
+  Query: Có bài nào cùng user_id + content_hash trong 30 ngày?
+       |
+   +---+---+
+   |       |
+  Không   Có (trùng)
+   |       |
+   v       v
+  Insert post              Insert post
+  is_reward_eligible=true   is_reward_eligible=false
+  duplicate_detected=false  duplicate_detected=true
+       |                          |
+       v                          v
+  Client: toast thành công   Client: toast nhắc nhở yêu thương
+  + gọi PPLP evaluate       + KHÔNG gọi PPLP evaluate
+       |                          |
+       v                          v
+  PPLP evaluate              Không tính điểm Light Score
+  -> Tính điểm bình thường   -> Không tính thưởng CAMLY
+  -> Đủ điều kiện mint       -> Không đủ điều kiện mint
 ```
-
-## Chi Tiết Thay Đổi Theo File
-
-### 1. Tạo mới: `src/contexts/ActiveAccountContext.tsx`
-
-**Mục đích:** React Context quản lý multi-account state
-
-**State:**
-- `accounts: string[]` -- danh sách địa chỉ được ủy quyền
-- `activeAddress: string | null` -- account đang dùng
-- `lastUsedAt: Record<string, number>` -- timestamp lần cuối sử dụng mỗi account
-
-**Logic chính:**
-- Khi ví kết nối: lấy `connector.getProvider()` rồi gọi `provider.request({ method: 'eth_accounts' })` để lấy danh sách accounts
-- Lưu `activeAddress` vào `localStorage` theo key: `activeAccount:{connectorId}`
-- Lắng nghe sự kiện `accountsChanged` từ provider:
-  - Cập nhật `accounts[]`
-  - Nếu `activeAddress` không còn trong danh sách -> fallback sang `accounts[0]` + toast cảnh báo
-- Lắng nghe thay đổi từ wagmi `useAccount`: đồng bộ nếu provider đổi account
-- Khi disconnect: xóa toàn bộ state
-- Export: `ActiveAccountProvider`, `useActiveAccount()` hook
-
-### 2. Tạo mới: `src/components/wallet/AccountSelectorModal.tsx`
-
-**Mục đích:** UI cho phép chọn tài khoản
-
-**Thiết kế:**
-- Dialog trên desktop, full-width drawer trên mobile (dùng `useIsMobile()` có sẵn)
-- Danh sách accounts hiển thị:
-  - Identicon (tạo từ address bằng CSS gradient, không cần thư viện ngoài)
-  - Địa chỉ rút gọn: `0x1234...ABCD`
-  - Badge "Đang dùng" cho account hiện tại
-  - Số dư BNB native cho từng account (lazy load với skeleton)
-  - Sắp xếp theo `lastUsedAt` giảm dần
-- Ô tìm kiếm lọc theo address (debounce)
-- Click chọn account -> set active + đóng modal + toast thông báo
-- Nút "Làm mới danh sách" gọi lại `eth_accounts`
-- Nếu chỉ có 1 account: hiển thị 1 dòng, không cần switch
-
-### 3. Tạo mới: `src/components/wallet/AccountMismatchModal.tsx`
-
-**Mục đích:** Modal cảnh báo khi địa chỉ provider khác với active address
-
-**Khi nào hiển thị:** Khi phát hiện `useAccount().address !== activeAddress`
-
-**Hai lựa chọn:**
-- (A) Đồng bộ active theo ví (set active = provider address)
-- (B) Yêu cầu người dùng chuyển account trong ví để khớp active
-
-**Tự đóng khi đã khớp.**
-
-### 4. Sửa: `src/components/providers/Web3Provider.tsx`
-
-**Thay đổi:** Bọc thêm `ActiveAccountProvider` bên trong WagmiProvider
-
-```tsx
-<WagmiProvider config={config}>
-  <QueryClientProvider client={queryClient}>
-    <RainbowKitProvider>
-      <ActiveAccountProvider>
-        {children}
-      </ActiveAccountProvider>
-    </RainbowKitProvider>
-  </QueryClientProvider>
-</WagmiProvider>
-```
-
-Lưu ý: Hiện tại Web3Provider chưa có `QueryClientProvider` -- sẽ đặt `ActiveAccountProvider` ở vị trí phù hợp trong cây component, sau RainbowKitProvider để có thể dùng wagmi hooks.
-
-### 5. Sửa: `src/components/wallet/WalletCenterContainer.tsx`
-
-**Thay đổi chính:**
-- Import `useActiveAccount` từ context mới
-- Dùng `activeAddress` thay vì chỉ dùng `useAccount().address` cho mọi nơi cần address
-- Thay thế `handleSwitchAccount` (hiện gọi `wallet_requestPermissions`) bằng việc mở `AccountSelectorModal`
-- Truyền `activeAddress` cho `useTokenBalances({ customAddress: activeAddress })`
-- Hiển thị số lượng accounts trong UI (ví dụ: "Tài khoản 1/3")
-- Thêm nút "Chọn tài khoản" mở AccountSelectorModal
-- Tích hợp `AccountMismatchModal` để bắt trường hợp bất đồng bộ
-
-### 6. Sửa: `src/components/wallet/WalletCard.tsx`
-
-**Thay đổi:**
-- Thêm prop `accountCount?: number` để hiển thị số lượng accounts
-- Nút "Switch" đổi thành "Chọn tài khoản (X)" với số lượng
-- Thêm indicator nhỏ khi có nhiều hơn 1 account
-
-### 7. Sửa: `src/hooks/useSendToken.ts`
-
-**Thay đổi quan trọng:**
-- Import `useActiveAccount` từ context
-- Xác nhận `activeAddress` nằm trong `accounts[]` trước khi gửi
-- Truyền `account: activeAddress` vào `sendTransactionAsync` (wagmi v2 hỗ trợ tham số `account`)
-- Nếu `activeAddress !== useAccount().address`: hiển thị cảnh báo/chặn gửi
-
-```tsx
-const sendToken = async (params: SendTokenParams) => {
-  const senderAddress = activeAddress || providerAddress;
-  
-  // Kiểm tra active address còn được ủy quyền
-  if (activeAddress && !accounts.includes(activeAddress.toLowerCase())) {
-    toast.error('Tài khoản không còn được ủy quyền. Vui lòng kết nối lại.');
-    return null;
-  }
-  
-  // Cảnh báo nếu bất đồng bộ
-  if (activeAddress && providerAddress && 
-      activeAddress.toLowerCase() !== providerAddress.toLowerCase()) {
-    toast.error('Tài khoản trong ví khác với tài khoản đang chọn. Vui lòng đồng bộ.');
-    return null;
-  }
-
-  // Gửi giao dịch với account cụ thể
-  txHash = await sendTransactionAsync({
-    account: senderAddress as `0x${string}`,
-    to: ...,
-    value/data: ...,
-  });
-};
-```
-
-### 8. Sửa: `src/hooks/useTokenBalances.ts`
-
-**Thay đổi nhỏ:**
-- Hook này đã hỗ trợ `customAddress` option
-- `WalletCenterContainer` sẽ truyền `activeAddress` vào thay vì dùng `address` trực tiếp
-- Không cần sửa logic bên trong hook
-
-## Luồng Xử Lý Chính
-
-```text
-1. Người dùng kết nối ví (RainbowKit)
-   -> wagmi: useAccount().address = accounts[0]
-   -> ActiveAccountContext: gọi eth_accounts -> lưu accounts[]
-   -> Đặt activeAddress = giá trị đã lưu localStorage || accounts[0]
-
-2. Người dùng mở Account Selector
-   -> Thấy danh sách accounts với số dư
-   -> Chọn account khác
-   -> Đặt activeAddress mới -> lưu localStorage
-   -> App re-render với address mới
-
-3. Người dùng đổi account trong ví (popup MetaMask)
-   -> Provider phát sự kiện accountsChanged
-   -> ActiveAccountContext cập nhật accounts[]
-   -> Nếu active không còn -> fallback accounts[0] + toast
-   -> Nếu active vẫn còn -> giữ nguyên, kiểm tra mismatch
-
-4. Phát hiện bất đồng bộ (provider address != active address)
-   -> Hiển thị AccountMismatchModal
-   -> Người dùng chọn: đồng bộ theo ví HOẶC yêu cầu đổi trong ví
-
-5. Người dùng gửi giao dịch
-   -> useSendToken kiểm tra activeAddress trong accounts[]
-   -> Kiểm tra chainId = 56
-   -> Gửi tx với account: activeAddress
-```
-
-## Xử Lý Lỗi
-
-| Lỗi | Xử lý |
-|-----|-------|
-| Provider không hỗ trợ multi-account | Fallback: dùng useAccount().address, ẩn selector |
-| `eth_accounts` trả về mảng rỗng | Toast: "Không tìm thấy tài khoản. Vui lòng kết nối lại" |
-| Active address bị xóa khỏi ví | Tự động fallback accounts[0] + toast cảnh báo |
-| Bất đồng bộ provider vs active | Modal cho người dùng chọn cách đồng bộ |
-| Connector không có getProvider | Graceful fallback: chỉ dùng useAccount().address |
 
 ## Danh Sách Files
 
 | File | Hành động |
 |------|-----------|
-| `src/contexts/ActiveAccountContext.tsx` | **Tạo mới** -- Context + Provider + useActiveAccount hook |
-| `src/components/wallet/AccountSelectorModal.tsx` | **Tạo mới** -- UI chọn tài khoản |
-| `src/components/wallet/AccountMismatchModal.tsx` | **Tạo mới** -- Modal cảnh báo bất đồng bộ |
-| `src/components/providers/Web3Provider.tsx` | **Sửa** -- Bọc thêm ActiveAccountProvider |
-| `src/components/wallet/WalletCenterContainer.tsx` | **Sửa** -- Dùng activeAddress, tích hợp selector + mismatch modal |
-| `src/components/wallet/WalletCard.tsx` | **Sửa** -- Hiển thị số lượng accounts |
-| `src/hooks/useSendToken.ts` | **Sửa** -- Kiểm tra và gửi tx theo activeAddress |
+| Migration SQL mới | **Tạo mới** -- Thêm cột `content_hash`, `is_reward_eligible` vào bảng `posts` |
+| Migration SQL mới | **Tạo mới** -- Cập nhật `get_user_rewards_v2` thêm điều kiện `is_reward_eligible` |
+| `supabase/functions/create-post/index.ts` | **Sửa** -- Thêm logic normalize + hash + check trùng |
+| `supabase/functions/pplp-evaluate/index.ts` | **Sửa** -- Kiểm tra `is_reward_eligible` trước khi đánh giá |
+| `src/components/feed/FacebookCreatePost.tsx` | **Sửa** -- Hiển thị toast nhắc nhở + skip PPLP nếu trùng |
+
+## Xử Lý Edge Cases
+
+| Trường hợp | Xử lý |
+|-------------|-------|
+| Bài chỉ có media, không có text | Không kiểm tra trùng (hash rỗng = bỏ qua) |
+| Bài có text rất ngắn (< 10 ký tự) | Vẫn kiểm tra trùng bình thường |
+| Bài cũ chưa có `content_hash` | `COALESCE(is_reward_eligible, true)` = true, không ảnh hưởng |
+| User sửa 1-2 từ để lách | Normalize loại bỏ emoji/ký tự đặc biệt, nhưng nếu thay đổi từ thực sự thì vẫn tính bài mới (chấp nhận) |
+| User đăng lại sau 30 ngày | Được tính thưởng lại (window 30 ngày) |
 
 ## Ghi Chú Kỹ Thuật
 
-- **Không dùng ethers** -- Toàn bộ dùng viem v2 + wagmi v2
-- **localStorage persistence** -- Key: `activeAccount:{connectorId}`, value: address
-- **Identicon** -- Tạo từ address bằng CSS gradient (không cần thư viện ngoài)
-- **Hiệu năng** -- Lazy load balance cho từng account, debounce tìm kiếm
-- **Bảo mật** -- Tuyệt đối không lưu private key. Chỉ ký/gửi qua provider/walletClient
-- **Responsive** -- Dialog trên desktop, drawer trên mobile (dùng `useIsMobile()` có sẵn)
-- **Tương thích ngược** -- Nếu context chưa sẵn sàng hoặc chỉ có 1 account, app hoạt động như cũ
+- **Hash server-side**: Dùng Web Crypto API (`crypto.subtle.digest`) trong Deno edge function, không phụ thuộc thư viện ngoài
+- **Window 30 ngày**: Đủ dài để ngăn spam, đủ ngắn để cho phép repost hợp lý
+- **Backward compatible**: Bài cũ không có `content_hash` mặc định `is_reward_eligible = true`
+- **Không chặn đăng bài**: Bài trùng vẫn được đăng, chỉ không tính thưởng
+- **Thông báo tích cực**: Giọng văn yêu thương, khích lệ sáng tạo mới, không phạt hay chỉ trích
+
