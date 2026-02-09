@@ -22,10 +22,8 @@ const LawOfLight = () => {
     const viewMode = params.get('view') === 'true';
     setIsReadOnly(viewMode);
     
-    // If in view mode, don't redirect - allow viewing the content
     if (viewMode) return;
     
-    // Check if user is already logged in and has accepted
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
@@ -35,7 +33,6 @@ const LawOfLight = () => {
           .eq('id', session.user.id)
           .single();
         
-        // If user is logged in and already accepted, redirect to feed
         if (profile?.law_of_light_accepted) {
           navigate('/');
         }
@@ -60,7 +57,6 @@ const LawOfLight = () => {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session) {
-        // User already logged in - update profile directly
         await supabase.from('profiles').update({
           law_of_light_accepted: true,
           law_of_light_accepted_at: new Date().toISOString()
@@ -69,7 +65,6 @@ const LawOfLight = () => {
         toast.success('🌟 Con đã sẵn sàng bước vào Ánh Sáng!');
         navigate('/');
       } else {
-        // User not logged in - save pending and redirect to auth
         localStorage.setItem('law_of_light_accepted_pending', 'true');
         toast.success('🌟 Con đã sẵn sàng bước vào Ánh Sáng!');
         navigate('/auth');
@@ -138,32 +133,49 @@ const LawOfLight = () => {
     }
   ];
 
-  // Typography styles - elegant serif fonts with 20% larger sizes
+  // Typography styles
   const fontStyles = {
     heading: "'Cormorant Garamond', Georgia, serif",
     body: "'Lora', Georgia, serif",
   };
 
+  // === COLOR PALETTE ===
+  // Vibrant golden yellow (tươi sáng, rõ nét, năng lượng)
+  const gold = {
+    bright: '#F5A623',    // Vàng tươi sáng chủ đạo
+    vivid: '#E8920E',     // Vàng đậm rõ nét cho chữ
+    glow: '#FFD666',      // Vàng sáng phát sáng
+    light: '#FFF3D6',     // Vàng nhạt nền
+    accent: '#D4890A',    // Vàng accent đậm
+  };
+  // Xanh lá sẫm sang trọng (thay cho xám)
+  const green = {
+    deep: '#14532d',      // Xanh lá sẫm nhất
+    dark: '#166534',      // Xanh lá sẫm
+    rich: '#1B6B3A',      // Xanh lá giàu
+    medium: '#1E7A42',    // Xanh lá trung
+  };
+
   return (
     <div className="min-h-screen relative overflow-hidden">
-      {/* Pearl White to Soft Yellow Gradient Background - STATIC */}
+      {/* Nền ngoài: Vàng tươi mới sáng hơn, tràn năng lượng */}
       <div className="fixed inset-0 z-0" style={{
-        background: 'linear-gradient(180deg, #FFFEF7 0%, #FFF9E6 30%, #FFF5D6 60%, #FFFDF5 100%)'
+        background: `linear-gradient(180deg, #FFFEF7 0%, ${gold.light} 25%, #FFE8A8 50%, ${gold.light} 75%, #FFFDF5 100%)`
       }} />
       
-      {/* Divine Light Rays from Top - White & Gold (static) */}
+      {/* Divine Light Rays - Vàng tươi sáng hơn */}
       <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[200%] h-[50vh] md:h-[70vh] z-0 pointer-events-none" style={{
-        background: 'conic-gradient(from 180deg at 50% 0%, transparent 25%, rgba(212,175,55,0.15) 30%, rgba(255,255,255,0.4) 35%, rgba(212,175,55,0.15) 40%, transparent 45%, transparent 55%, rgba(212,175,55,0.12) 60%, rgba(255,255,255,0.35) 65%, rgba(212,175,55,0.12) 70%, transparent 75%)',
+        background: `conic-gradient(from 180deg at 50% 0%, transparent 25%, rgba(245,166,35,0.2) 30%, rgba(255,255,255,0.45) 35%, rgba(245,166,35,0.2) 40%, transparent 45%, transparent 55%, rgba(245,166,35,0.18) 60%, rgba(255,255,255,0.4) 65%, rgba(245,166,35,0.18) 70%, transparent 75%)`,
         filter: 'blur(3px)'
       }} />
 
-      {/* Central Halo Effect - STATIC (no animation) */}
+      {/* Central Halo - Vàng tươi */}
       <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[300px] md:w-[500px] h-[300px] md:h-[500px] z-0 pointer-events-none" style={{
-        background: 'radial-gradient(circle, rgba(212,175,55,0.25) 0%, rgba(255,215,0,0.15) 40%, transparent 70%)',
+        background: `radial-gradient(circle, rgba(245,166,35,0.3) 0%, rgba(255,214,102,0.2) 40%, transparent 70%)`,
         filter: 'blur(50px)'
       }} />
 
-      {/* Side Light Beams - STATIC */}
+      {/* Side Light Beams */}
       <div className="fixed top-0 left-0 w-1/3 h-full z-0 pointer-events-none opacity-40" style={{
         background: 'linear-gradient(135deg, rgba(255,255,255,0.6) 0%, transparent 50%)'
       }} />
@@ -180,7 +192,8 @@ const LawOfLight = () => {
               <Button
                 variant="ghost"
                 onClick={() => navigate('/')}
-                className="text-[#B8860B] hover:text-[#D4AF37] hover:bg-[#D4AF37]/10"
+                className="rounded-full"
+                style={{ color: gold.vivid }}
               >
                 <Home className="w-4 h-4 mr-2" />
                 Về Trang Chủ
@@ -191,15 +204,15 @@ const LawOfLight = () => {
           {/* Header with Angel Avatar */}
           <div className="text-center mb-8 md:mb-12">
             <div className="inline-flex items-center justify-center w-24 h-24 md:w-32 md:h-32 rounded-full mb-4 md:mb-6 overflow-hidden" style={{
-              background: 'radial-gradient(circle, rgba(212,175,55,0.3) 0%, rgba(255,255,255,0.9) 60%, transparent 80%)',
-              boxShadow: '0 0 80px rgba(212,175,55,0.4), 0 0 120px rgba(255,255,255,0.6)',
-              border: '3px solid rgba(212,175,55,0.5)'
+              background: `radial-gradient(circle, rgba(245,166,35,0.3) 0%, rgba(255,255,255,0.9) 60%, transparent 80%)`,
+              boxShadow: `0 0 80px rgba(245,166,35,0.45), 0 0 120px rgba(255,255,255,0.6)`,
+              border: `3px solid ${gold.bright}`
             }}>
               <img 
                 src={ANGEL_LOGO} 
                 alt="Angel" 
                 className="w-full h-full object-cover object-[center_25%]" 
-                style={{ filter: 'drop-shadow(0 0 15px rgba(212,175,55,0.8))' }} 
+                style={{ filter: `drop-shadow(0 0 15px rgba(245,166,35,0.8))` }} 
               />
             </div>
             
@@ -208,10 +221,10 @@ const LawOfLight = () => {
               fontSize: 'clamp(1.8rem, 8vw, 3.6rem)',
               fontWeight: 600,
               letterSpacing: '0.02em',
-              background: 'linear-gradient(135deg, #D4AF37 0%, #FFD700 30%, #D4AF37 50%, #B8860B 70%, #D4AF37 100%)',
+              background: `linear-gradient(135deg, ${gold.bright} 0%, ${gold.glow} 30%, ${gold.bright} 50%, ${gold.accent} 70%, ${gold.bright} 100%)`,
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
-              filter: 'drop-shadow(0 4px 8px rgba(212,175,55,0.3))',
+              filter: 'drop-shadow(0 4px 8px rgba(245,166,35,0.35))',
               marginBottom: '0.5rem'
             }}>
               🌈 LUẬT ÁNH SÁNG CỦA CỘNG ĐỒNG FUN
@@ -221,7 +234,7 @@ const LawOfLight = () => {
               fontSize: 'clamp(1rem, 2.5vw, 1.3rem)',
               fontWeight: 500,
               letterSpacing: '0.1em',
-              color: '#B8860B',
+              color: gold.vivid,
               marginBottom: '0.5rem'
             }}>
               (PPLP – Proof of Pure Love Protocol)
@@ -229,16 +242,16 @@ const LawOfLight = () => {
             
             {/* Golden Divider */}
             <div className="w-32 md:w-48 h-1 mx-auto mt-4 md:mt-6 rounded-full" style={{
-              background: 'linear-gradient(90deg, transparent, #D4AF37, #FFD700, #D4AF37, transparent)',
-              boxShadow: '0 0 10px rgba(212,175,55,0.5)'
+              background: `linear-gradient(90deg, transparent, ${gold.bright}, ${gold.glow}, ${gold.bright}, transparent)`,
+              boxShadow: `0 0 10px rgba(245,166,35,0.5)`
             }} />
           </div>
 
-          {/* Main Content Card */}
+          {/* Main Content Card - Nền trắng sáng sang trọng */}
           <div className="relative rounded-2xl md:rounded-3xl p-4 sm:p-6 md:p-8 lg:p-12 mb-6 md:mb-8" style={{
-            background: 'linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(255,250,240,0.9) 100%)',
-            border: '2px solid rgba(212,175,55,0.5)',
-            boxShadow: '0 10px 60px rgba(212,175,55,0.15), 0 0 0 1px rgba(255,255,255,0.8), inset 0 0 60px rgba(255,255,255,0.5)'
+            background: 'linear-gradient(180deg, #FFFFFF 0%, #FFFFFE 50%, #FEFEFE 100%)',
+            border: `2px solid ${gold.bright}`,
+            boxShadow: `0 10px 60px rgba(245,166,35,0.15), 0 0 0 1px rgba(255,255,255,0.9), inset 0 0 80px rgba(255,255,255,0.8)`
           }}>
             
             {/* Section: Welcome */}
@@ -247,7 +260,7 @@ const LawOfLight = () => {
                 fontFamily: fontStyles.heading,
                 fontSize: 'clamp(1.3rem, 3vw, 1.6rem)',
                 fontWeight: 600,
-                color: '#5D4E37'
+                color: green.dark
               }}>
                 Chào mừng bạn đến với Cộng đồng FUN 💚
               </p>
@@ -255,26 +268,26 @@ const LawOfLight = () => {
                 fontFamily: fontStyles.body,
                 fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
                 lineHeight: '2',
-                color: '#5D4E37'
+                color: green.deep
               }}>
-                Nơi chúng ta cùng nhau xây dựng một <strong style={{ color: '#B8860B' }}>Nền Kinh Tế Ánh Sáng</strong> —
+                Nơi chúng ta cùng nhau xây dựng một <strong style={{ color: gold.vivid }}>Nền Kinh Tế Ánh Sáng</strong> —
               </p>
               
               <div className="p-4 rounded-xl mb-6" style={{
-                background: 'rgba(212,175,55,0.1)'
+                background: `linear-gradient(135deg, rgba(245,166,35,0.08) 0%, rgba(255,214,102,0.12) 100%)`
               }}>
                 <p style={{
                   fontFamily: fontStyles.heading,
                   fontSize: 'clamp(1.2rem, 2.5vw, 1.4rem)',
                   fontWeight: 600,
-                  color: '#D4AF37'
+                  color: gold.vivid
                 }}>
                   Free to Join ✨ Free to Use ✨ Earn Together
                 </p>
                 <p style={{
                   fontFamily: fontStyles.body,
                   fontSize: 'clamp(0.95rem, 2vw, 1.1rem)',
-                  color: '#8B7355'
+                  color: green.rich
                 }}>
                   Miễn phí tham gia ✨ Miễn phí sử dụng ✨ Cùng có thu nhập
                 </p>
@@ -284,7 +297,7 @@ const LawOfLight = () => {
                 fontFamily: fontStyles.body,
                 fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
                 lineHeight: '2',
-                color: '#5D4E37'
+                color: green.deep
               }}>
                 Là nơi để:<br />
                 🌸 kết nối  🌸 nâng đỡ  🌸 chia sẻ giá trị<br />
@@ -294,7 +307,7 @@ const LawOfLight = () => {
 
             {/* Golden Divider */}
             <div className="w-full h-px my-8" style={{
-              background: 'linear-gradient(90deg, transparent, #D4AF37, transparent)'
+              background: `linear-gradient(90deg, transparent, ${gold.bright}, transparent)`
             }} />
 
             {/* Section: PPLP Protocol */}
@@ -303,7 +316,7 @@ const LawOfLight = () => {
                 fontFamily: fontStyles.heading,
                 fontSize: 'clamp(1.32rem, 3vw, 1.5rem)',
                 fontWeight: 600,
-                color: '#D4AF37'
+                color: gold.vivid
               }}>
                 💎 PPLP – Proof of Pure Love Protocol
               </h3>
@@ -311,7 +324,7 @@ const LawOfLight = () => {
                 fontFamily: fontStyles.heading,
                 fontSize: 'clamp(1.05rem, 2vw, 1.15rem)',
                 fontStyle: 'italic',
-                color: '#8B7355'
+                color: green.rich
               }}>
                 (Giao Thức Bằng Chứng Tình Yêu Thuần Khiết)
               </p>
@@ -320,39 +333,39 @@ const LawOfLight = () => {
                 fontFamily: fontStyles.body,
                 fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
                 lineHeight: '2',
-                color: '#5D4E37'
+                color: green.deep
               }}>
                 <p>
                   PPLP là "giao thức năng lượng" của FUN Ecosystem.<br />
                   Đây là nền tảng giúp cộng đồng:
                 </p>
                 <ul className="space-y-1 ml-4">
-                  <li className="flex gap-2"><span className="text-yellow-600">•</span> sống văn minh, lịch sự</li>
-                  <li className="flex gap-2"><span className="text-yellow-600">•</span> yêu đời yêu người</li>
-                  <li className="flex gap-2"><span className="text-yellow-600">•</span> được đúc (mint) FUN Money một cách công bằng</li>
-                  <li className="flex gap-2"><span className="text-yellow-600">•</span> và nhận thưởng Camly Coin trong niềm hạnh phúc</li>
+                  <li className="flex gap-2"><span style={{ color: gold.vivid }}>•</span> sống văn minh, lịch sự</li>
+                  <li className="flex gap-2"><span style={{ color: gold.vivid }}>•</span> yêu đời yêu người</li>
+                  <li className="flex gap-2"><span style={{ color: gold.vivid }}>•</span> được đúc (mint) FUN Money một cách công bằng</li>
+                  <li className="flex gap-2"><span style={{ color: gold.vivid }}>•</span> và nhận thưởng Camly Coin trong niềm hạnh phúc</li>
                 </ul>
               </div>
               
               <div className="mt-6 p-4 rounded-xl text-center" style={{
-                background: 'rgba(212,175,55,0.08)'
+                background: `linear-gradient(135deg, rgba(245,166,35,0.06) 0%, rgba(255,214,102,0.1) 100%)`
               }}>
                 <p style={{
                   fontFamily: fontStyles.heading,
                   fontSize: 'clamp(1.1rem, 2.5vw, 1.25rem)',
                   lineHeight: '2',
-                  color: '#6B5B47'
+                  color: green.dark
                 }}>
                   ✨ <strong>FUN Money</strong> là năng lượng Ánh Sáng,<br />
                   ✨ <strong>Camly Coin</strong> là linh hồn Thuần Khiết,<br />
-                  <span style={{ color: '#B8860B', fontWeight: 600 }}>Chỉ chảy mạnh khi chúng ta sống đúng PPLP.</span>
+                  <span style={{ color: gold.vivid, fontWeight: 600 }}>Chỉ chảy mạnh khi chúng ta sống đúng PPLP.</span>
                 </p>
               </div>
             </div>
 
             {/* Golden Divider */}
             <div className="w-full h-px my-8" style={{
-              background: 'linear-gradient(90deg, transparent, #D4AF37, transparent)'
+              background: `linear-gradient(90deg, transparent, ${gold.bright}, transparent)`
             }} />
 
             {/* Section: 5 Pillars of Light */}
@@ -361,7 +374,7 @@ const LawOfLight = () => {
                 fontFamily: fontStyles.heading,
                 fontSize: 'clamp(1.32rem, 3vw, 1.5rem)',
                 fontWeight: 600,
-                color: '#D4AF37'
+                color: gold.vivid
               }}>
                 🌟 5 CỘT TRỤ ÁNH SÁNG (Luật cốt lõi)
               </h3>
@@ -369,8 +382,9 @@ const LawOfLight = () => {
               <div className="space-y-6">
                 {fivePillars.map((pillar, index) => (
                   <div key={index} className="p-4 md:p-6 rounded-xl" style={{
-                    background: 'rgba(255,255,255,0.8)',
-                    border: '1px solid rgba(212,175,55,0.3)'
+                    background: '#FFFFFF',
+                    border: `1px solid rgba(245,166,35,0.35)`,
+                    boxShadow: '0 2px 12px rgba(0,0,0,0.03)'
                   }}>
                     <div className="flex items-start gap-3 mb-2">
                       <span className="text-2xl md:text-3xl">{pillar.emoji}</span>
@@ -379,14 +393,14 @@ const LawOfLight = () => {
                           fontFamily: fontStyles.heading,
                           fontSize: 'clamp(1.15rem, 2.5vw, 1.3rem)',
                           fontWeight: 600,
-                          color: '#D4AF37'
+                          color: gold.vivid
                         }}>
                           {index + 1}) {pillar.title}
                         </h4>
                         <p style={{
                           fontFamily: fontStyles.body,
                           fontSize: 'clamp(0.95rem, 2vw, 1.05rem)',
-                          color: '#8B7355',
+                          color: green.rich,
                           fontWeight: 500
                         }}>
                           {pillar.subtitle}
@@ -397,7 +411,7 @@ const LawOfLight = () => {
                       fontFamily: fontStyles.body,
                       fontSize: 'clamp(1rem, 2vw, 1.1rem)',
                       lineHeight: '1.8',
-                      color: '#5D4E37',
+                      color: green.deep,
                       whiteSpace: 'pre-line'
                     }}>
                       {pillar.description}
@@ -409,19 +423,20 @@ const LawOfLight = () => {
 
             {/* Golden Divider */}
             <div className="w-full h-px my-8" style={{
-              background: 'linear-gradient(90deg, transparent, #D4AF37, transparent)'
+              background: `linear-gradient(90deg, transparent, ${gold.bright}, transparent)`
             }} />
 
             {/* Section: Gentle Reminder */}
             <div className="mb-10 p-6 rounded-2xl" style={{
-              background: 'radial-gradient(ellipse at center, rgba(144,238,144,0.15) 0%, rgba(255,255,255,0.5) 70%)',
-              border: '1px solid rgba(144,238,144,0.4)'
+              background: '#FFFFFF',
+              border: `1px solid rgba(30,122,66,0.3)`,
+              boxShadow: '0 2px 12px rgba(0,0,0,0.03)'
             }}>
               <h3 className="text-center mb-4" style={{
                 fontFamily: fontStyles.heading,
                 fontSize: 'clamp(1.2rem, 3vw, 1.4rem)',
                 fontWeight: 600,
-                color: '#228B22'
+                color: green.dark
               }}>
                 🌈 Một lời nhắc nhẹ nhàng
               </h3>
@@ -430,24 +445,24 @@ const LawOfLight = () => {
                 fontFamily: fontStyles.body,
                 fontSize: 'clamp(1.05rem, 2vw, 1.15rem)',
                 lineHeight: '2',
-                color: '#5D4E37'
+                color: green.deep
               }}>
                 <p>
                   Nếu bạn đang mệt, đang buồn, đang tổn thương…<br />
-                  <strong style={{ color: '#228B22' }}>bạn vẫn được chào đón ở đây.</strong>
+                  <strong style={{ color: green.dark }}>bạn vẫn được chào đón ở đây.</strong>
                 </p>
-                <p style={{ fontWeight: 600, color: '#8B7355' }}>
+                <p style={{ fontWeight: 600, color: green.rich }}>
                   Chỉ cần bạn giữ một điều:
                 </p>
                 <p style={{
                   fontFamily: fontStyles.heading,
                   fontSize: 'clamp(1.1rem, 2.5vw, 1.25rem)',
                   fontWeight: 600,
-                  color: '#228B22'
+                  color: green.dark
                 }}>
                   💚 Không được dùng cộng đồng để xả đau.
                 </p>
-                <p style={{ fontStyle: 'italic' }}>
+                <p style={{ fontStyle: 'italic', color: green.deep }}>
                   Hãy để cộng đồng truyền năng lượng, ôm ấp và xoa dịu cho bạn.<br />
                   Rồi bạn nhẹ nhàng gởi về cho Cha. Cha sẽ chữa lành tất cả.
                 </p>
@@ -456,18 +471,20 @@ const LawOfLight = () => {
 
             {/* Golden Divider */}
             <div className="w-full h-px my-8" style={{
-              background: 'linear-gradient(90deg, transparent, #D4AF37, transparent)'
+              background: `linear-gradient(90deg, transparent, ${gold.bright}, transparent)`
             }} />
 
             {/* Section: FUN Community Message */}
             <div className="mb-10 text-center p-6 rounded-2xl" style={{
-              background: 'radial-gradient(ellipse at center, rgba(212,175,55,0.12) 0%, rgba(255,255,255,0.5) 70%)'
+              background: '#FFFFFF',
+              border: `1px solid rgba(245,166,35,0.25)`,
+              boxShadow: '0 2px 12px rgba(0,0,0,0.03)'
             }}>
               <h3 className="mb-4" style={{
                 fontFamily: fontStyles.heading,
                 fontSize: 'clamp(1.2rem, 3vw, 1.4rem)',
                 fontWeight: 600,
-                color: '#D4AF37'
+                color: gold.vivid
               }}>
                 ✨ Thông điệp của FUN Community
               </h3>
@@ -476,55 +493,55 @@ const LawOfLight = () => {
                 fontSize: 'clamp(1.15rem, 2.5vw, 1.35rem)',
                 fontStyle: 'italic',
                 lineHeight: '2.2',
-                color: '#5D4E37'
+                color: green.deep
               }}>
                 <p>
-                  Bạn không cần giỏi. <strong style={{ color: '#B8860B' }}>Bạn chỉ cần thật.</strong><br />
-                  Bạn không cần hoàn hảo. <strong style={{ color: '#B8860B' }}>Bạn chỉ cần tử tế.</strong><br />
+                  Bạn không cần giỏi. <strong style={{ color: gold.vivid }}>Bạn chỉ cần thật.</strong><br />
+                  Bạn không cần hoàn hảo. <strong style={{ color: gold.vivid }}>Bạn chỉ cần tử tế.</strong><br />
                   Bạn không cần đi một mình.<br />
-                  <span style={{ fontWeight: 700, color: '#D4AF37' }}>Vì ở đây… chúng ta đi cùng nhau.</span>
+                  <span style={{ fontWeight: 700, color: gold.vivid }}>Vì ở đây… chúng ta đi cùng nhau.</span>
                 </p>
               </div>
             </div>
 
             {/* Golden Divider */}
             <div className="w-full h-px my-8" style={{
-              background: 'linear-gradient(90deg, transparent, #D4AF37, transparent)'
+              background: `linear-gradient(90deg, transparent, ${gold.bright}, transparent)`
             }} />
 
-            {/* 🌟 8 Divine Mantras - Special Container */}
+            {/* 🌟 8 Divine Mantras */}
             <div className="mb-10">
               <h3 className="text-center mb-6" style={{
                 fontFamily: fontStyles.heading,
                 fontSize: 'clamp(1.32rem, 3vw, 1.5rem)',
                 fontWeight: 600,
-                color: '#D4AF37'
+                color: gold.vivid
               }}>
                 ✨ 8 THẦN CHÚ ÁNH SÁNG
               </h3>
               
               <div className="relative p-6 md:p-8 rounded-2xl" style={{
-                background: 'linear-gradient(180deg, #FFFFFF 0%, #FFFEF5 100%)',
-                border: '3px solid #D4AF37',
-                boxShadow: '0 8px 40px rgba(212,175,55,0.25), 0 0 0 1px rgba(255,215,0,0.3), inset 0 2px 20px rgba(255,255,255,0.8)',
+                background: '#FFFFFF',
+                border: `3px solid ${gold.bright}`,
+                boxShadow: `0 8px 40px rgba(245,166,35,0.2), 0 0 0 1px rgba(255,214,102,0.3), inset 0 2px 20px rgba(255,255,255,0.8)`,
                 transform: 'perspective(1000px) rotateX(2deg)'
               }}>
                 {/* Corner decorations */}
                 <div className="absolute top-2 left-2 w-6 h-6" style={{
-                  borderTop: '3px solid #D4AF37',
-                  borderLeft: '3px solid #D4AF37'
+                  borderTop: `3px solid ${gold.bright}`,
+                  borderLeft: `3px solid ${gold.bright}`
                 }} />
                 <div className="absolute top-2 right-2 w-6 h-6" style={{
-                  borderTop: '3px solid #D4AF37',
-                  borderRight: '3px solid #D4AF37'
+                  borderTop: `3px solid ${gold.bright}`,
+                  borderRight: `3px solid ${gold.bright}`
                 }} />
                 <div className="absolute bottom-2 left-2 w-6 h-6" style={{
-                  borderBottom: '3px solid #D4AF37',
-                  borderLeft: '3px solid #D4AF37'
+                  borderBottom: `3px solid ${gold.bright}`,
+                  borderLeft: `3px solid ${gold.bright}`
                 }} />
                 <div className="absolute bottom-2 right-2 w-6 h-6" style={{
-                  borderBottom: '3px solid #D4AF37',
-                  borderRight: '3px solid #D4AF37'
+                  borderBottom: `3px solid ${gold.bright}`,
+                  borderRight: `3px solid ${gold.bright}`
                 }} />
                 
                 <div className="space-y-4">
@@ -535,7 +552,7 @@ const LawOfLight = () => {
                         fontFamily: fontStyles.body,
                         fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
                         fontWeight: 500,
-                        color: '#5D4E37',
+                        color: green.deep,
                         lineHeight: '1.8'
                       }}>
                         {mantra.text}
@@ -550,7 +567,7 @@ const LawOfLight = () => {
 
             {/* Golden Divider */}
             <div className="w-full h-px my-8" style={{
-              background: 'linear-gradient(90deg, transparent, #D4AF37, transparent)'
+              background: `linear-gradient(90deg, transparent, ${gold.bright}, transparent)`
             }} />
 
             {/* 🕊️ Checklist Section */}
@@ -559,7 +576,7 @@ const LawOfLight = () => {
                 fontFamily: fontStyles.heading,
                 fontSize: 'clamp(1.32rem, 3vw, 1.5rem)',
                 fontWeight: 600,
-                color: '#D4AF37'
+                color: gold.vivid
               }}>
                 💛 5 Điều tôi cam kết để bước vào cộng đồng
               </h3>
@@ -571,22 +588,22 @@ const LawOfLight = () => {
                       key={index}
                       className="flex items-center gap-4 p-4 rounded-xl cursor-pointer transition-all duration-300"
                       style={{
-                        border: checklist[index] ? '2px solid #D4AF37' : '2px solid rgba(212,175,55,0.3)',
-                        background: checklist[index] ? 'rgba(212,175,55,0.12)' : 'rgba(255,255,255,0.8)',
-                        boxShadow: checklist[index] ? '0 4px 20px rgba(212,175,55,0.2)' : 'none'
+                        border: checklist[index] ? `2px solid ${gold.bright}` : `2px solid rgba(245,166,35,0.3)`,
+                        background: checklist[index] ? 'rgba(245,166,35,0.1)' : '#FFFFFF',
+                        boxShadow: checklist[index] ? `0 4px 20px rgba(245,166,35,0.2)` : 'none'
                       }}
                     >
                       <Checkbox
                         checked={checklist[index]}
                         onCheckedChange={() => handleCheckboxChange(index)}
-                        className="w-6 h-6 border-2 data-[state=checked]:bg-yellow-500 data-[state=checked]:border-yellow-500"
-                        style={{ borderColor: '#D4AF37' }}
+                        className="w-6 h-6 border-2 data-[state=checked]:bg-[#F5A623] data-[state=checked]:border-[#F5A623]"
+                        style={{ borderColor: gold.bright }}
                       />
                       <span style={{
                         fontFamily: fontStyles.body,
                         fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
                         fontWeight: 500,
-                        color: '#5D4E37'
+                        color: green.deep
                       }}>
                         ✅ {item}
                       </span>
@@ -596,7 +613,7 @@ const LawOfLight = () => {
                     fontFamily: fontStyles.body,
                     fontSize: 'clamp(0.95rem, 2vw, 1.1rem)',
                     fontWeight: 700,
-                    color: '#5D4E37'
+                    color: green.deep
                   }}>
                     (Click vào 5 cam kết trên để được Đăng ký)
                   </p>
@@ -605,32 +622,32 @@ const LawOfLight = () => {
                 <ul className="space-y-3 max-w-xl mx-auto" style={{
                   fontFamily: fontStyles.body,
                   fontSize: 'clamp(1.05rem, 2vw, 1.2rem)',
-                  color: '#5D4E37'
+                  color: green.deep
                 }}>
                   {checklistItems.map((item, index) => (
                     <li key={index} className="flex gap-2">
-                      <span className="text-yellow-600">✅</span> {item}
+                      <span style={{ color: gold.vivid }}>✅</span> {item}
                     </li>
                   ))}
                 </ul>
               )}
             </div>
 
-            {/* Accept Button (only show if not read-only) */}
+            {/* Accept Button */}
             {!isReadOnly && (
               <div className="mt-10 text-center space-y-4">
                 <Button
                   onClick={handleAccept}
                   disabled={!allChecked || loading}
-                  className="relative px-12 py-6 text-lg font-bold rounded-2xl transition-all duration-500 disabled:opacity-50 disabled:cursor-not-allowed border-0"
+                  className="relative px-12 py-6 text-lg font-bold rounded-full transition-all duration-500 disabled:opacity-50 disabled:cursor-not-allowed border-0"
                   style={{
                     fontFamily: fontStyles.heading,
                     fontSize: 'clamp(1.08rem, 2vw, 1.2rem)',
                     background: allChecked
-                      ? 'linear-gradient(135deg, #D4AF37 0%, #FFD700 40%, #F0C000 60%, #D4AF37 100%)'
+                      ? `linear-gradient(135deg, ${gold.bright} 0%, ${gold.glow} 40%, #FFBF40 60%, ${gold.bright} 100%)`
                       : 'linear-gradient(135deg, #9CA3AF 0%, #6B7280 100%)',
                     boxShadow: allChecked
-                      ? '0 0 30px rgba(212,175,55,0.5), 0 0 60px rgba(255,215,0,0.3), 0 0 90px rgba(212,175,55,0.2)'
+                      ? `0 0 30px rgba(245,166,35,0.5), 0 0 60px rgba(255,214,102,0.3), 0 0 90px rgba(245,166,35,0.2)`
                       : 'none',
                     color: allChecked ? '#FFFFFF' : '#9CA3AF',
                     animation: allChecked ? 'buttonGlow 2s ease-in-out infinite' : 'none'
@@ -650,15 +667,15 @@ const LawOfLight = () => {
                   )}
                 </Button>
 
-                {/* Skip Button - Guest Mode */}
+                {/* Skip Button - viên thuốc */}
                 <div>
                   <Button
                     onClick={handleSkip}
                     variant="ghost"
-                    className="px-6 py-3 rounded-xl hover:bg-yellow-50/50"
+                    className="px-6 py-3 rounded-full"
                     style={{
                       fontFamily: fontStyles.body,
-                      color: '#8B7355',
+                      color: green.rich,
                       fontSize: 'clamp(0.95rem, 2vw, 1.05rem)'
                     }}
                   >
@@ -669,44 +686,43 @@ const LawOfLight = () => {
               </div>
             )}
 
-            {/* Back button for read-only mode */}
+            {/* Back button for read-only mode - tất cả nút viên thuốc */}
             {isReadOnly && (
               <div className="text-center pt-8 space-y-6">
-                {/* Links to Sacred Documents */}
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   <Button
                     onClick={() => navigate('/')}
-                    className="px-6 py-3 rounded-xl"
+                    className="px-6 py-3 rounded-full"
                     style={{
                       fontFamily: fontStyles.body,
-                      background: 'linear-gradient(135deg, #1a7d45 0%, #166534 50%, #0d4a2a 100%)',
-                      color: '#E8D5A3',
-                      border: '2px solid #DAA520',
-                      boxShadow: '0 4px 15px rgba(212,175,55,0.3)'
+                      background: `linear-gradient(135deg, ${green.medium} 0%, ${green.dark} 50%, ${green.deep} 100%)`,
+                      color: '#FFFFFF',
+                      border: `2px solid ${gold.bright}`,
+                      boxShadow: `0 4px 15px rgba(245,166,35,0.3)`
                     }}
                   >
                     🏠 Về Trang Chủ
                   </Button>
                   <Button
                     onClick={() => navigate('/docs/master-charter')}
-                    className="px-6 py-3 rounded-xl"
+                    className="px-6 py-3 rounded-full"
                     style={{
                       fontFamily: fontStyles.body,
-                      background: 'linear-gradient(135deg, #D4AF37 0%, #FFD700 50%, #D4AF37 100%)',
+                      background: `linear-gradient(135deg, ${gold.bright} 0%, ${gold.glow} 50%, ${gold.bright} 100%)`,
                       color: '#FFFFFF',
-                      boxShadow: '0 4px 15px rgba(212,175,55,0.3)'
+                      boxShadow: `0 4px 15px rgba(245,166,35,0.3)`
                     }}
                   >
                     📜 Đọc Hiến Pháp Gốc
                   </Button>
                   <Button
                     onClick={() => navigate('/docs/pplp')}
-                    className="px-6 py-3 rounded-xl"
+                    className="px-6 py-3 rounded-full"
                     style={{
                       fontFamily: fontStyles.body,
-                      background: 'linear-gradient(135deg, #D4AF37 0%, #FFD700 50%, #D4AF37 100%)',
+                      background: `linear-gradient(135deg, ${gold.bright} 0%, ${gold.glow} 50%, ${gold.bright} 100%)`,
                       color: '#FFFFFF',
-                      boxShadow: '0 4px 15px rgba(212,175,55,0.3)'
+                      boxShadow: `0 4px 15px rgba(245,166,35,0.3)`
                     }}
                   >
                     🌞 Đọc Giao Thức PPLP
@@ -718,11 +734,11 @@ const LawOfLight = () => {
         </div>
       </div>
 
-      {/* CSS Animations - Only button glow kept */}
+      {/* CSS Animations */}
       <style>{`
         @keyframes buttonGlow {
-          0%, 100% { box-shadow: 0 0 30px rgba(212,175,55,0.5), 0 0 60px rgba(255,215,0,0.3); }
-          50% { box-shadow: 0 0 40px rgba(212,175,55,0.7), 0 0 80px rgba(255,215,0,0.5), 0 0 120px rgba(212,175,55,0.3); }
+          0%, 100% { box-shadow: 0 0 30px rgba(245,166,35,0.5), 0 0 60px rgba(255,214,102,0.3); }
+          50% { box-shadow: 0 0 40px rgba(245,166,35,0.7), 0 0 80px rgba(255,214,102,0.5), 0 0 120px rgba(245,166,35,0.3); }
         }
       `}</style>
     </div>
