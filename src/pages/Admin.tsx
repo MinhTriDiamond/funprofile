@@ -18,6 +18,7 @@ import MediaMigrationTab from "@/components/admin/MediaMigrationTab";
 import { MergeRequestsTab } from "@/components/admin/MergeRequestsTab";
 import FinancialTab from "@/components/admin/FinancialTab";
 import PplpMintTab from "@/components/admin/PplpMintTab";
+import { DonationHistoryAdminTab } from "@/components/admin/DonationHistoryAdminTab";
 
 interface UserData {
   id: string;
@@ -159,7 +160,7 @@ const Admin = () => {
 
         {/* Main Tabs */}
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 lg:grid-cols-10 h-auto">
+          <TabsList className="grid w-full grid-cols-5 lg:grid-cols-11 h-auto">
             <TabsTrigger value="overview" className="gap-2 py-3">
               <BarChart3 className="w-4 h-4" />
               <span className="hidden sm:inline">📊 Tổng quan</span>
@@ -172,9 +173,13 @@ const Admin = () => {
               <DollarSign className="w-4 h-4" />
               <span className="hidden sm:inline">💰 Financial</span>
             </TabsTrigger>
+            <TabsTrigger value="donations" className="gap-2 py-3">
+              <Gift className="w-4 h-4" />
+              <span className="hidden sm:inline">🎁 Donations</span>
+            </TabsTrigger>
             <TabsTrigger value="rewards" className="gap-2 py-3">
               <Gift className="w-4 h-4" />
-              <span className="hidden sm:inline">🎁 Duyệt thưởng</span>
+              <span className="hidden sm:inline">🏆 Duyệt thưởng</span>
             </TabsTrigger>
             <TabsTrigger value="review" className="gap-2 py-3">
               <Users className="w-4 h-4" />
@@ -212,6 +217,10 @@ const Admin = () => {
 
           <TabsContent value="financial">
             <FinancialTab />
+          </TabsContent>
+
+          <TabsContent value="donations">
+            <DonationHistoryAdminTab />
           </TabsContent>
 
           <TabsContent value="rewards">
