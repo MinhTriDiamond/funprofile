@@ -6,7 +6,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DonationCelebration } from './DonationCelebration';
-import { getTxUrl } from '@/config/pplp';
+import { getBscScanTxUrl } from '@/lib/bscScanHelpers';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import {
@@ -167,7 +167,7 @@ export const DonationReceivedCard = ({
               {/* Action Buttons */}
               <div className="flex items-center justify-center gap-3">
                 <a
-                  href={getTxUrl(data.txHash)}
+                  href={getBscScanTxUrl(data.txHash, data.tokenSymbol)}
                   target="_blank"
                   rel="noopener noreferrer"
                 >

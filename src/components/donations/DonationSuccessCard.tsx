@@ -6,7 +6,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DonationCelebration } from './DonationCelebration';
-import { getTxUrl } from '@/config/pplp';
+import { getBscScanTxUrl } from '@/lib/bscScanHelpers';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import {
@@ -233,7 +233,7 @@ export const DonationSuccessCard = ({
                   <Link2 className="w-5 h-5 text-amber-600 flex-shrink-0" />
                   <span className="text-amber-700 w-24 font-medium">TX Hash:</span>
                   <a
-                    href={getTxUrl(data.txHash)}
+                    href={getBscScanTxUrl(data.txHash, data.tokenSymbol)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-blue-600 hover:underline truncate flex-1 font-mono text-sm"
@@ -267,7 +267,7 @@ export const DonationSuccessCard = ({
                 className="flex items-center justify-center gap-3 mt-6"
               >
                 <a
-                  href={getTxUrl(data.txHash)}
+                  href={getBscScanTxUrl(data.txHash, data.tokenSymbol)}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
