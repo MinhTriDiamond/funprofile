@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Download, Send, Gift, Loader2, History } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Download, Send, Gift, Loader2, History, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useDonationHistory, useDonationStats, DonationRecord } from '@/hooks/useDonationHistory';
@@ -11,6 +12,7 @@ import { formatNumber } from '@/lib/formatters';
 import { toast } from 'sonner';
 
 export function DonationHistoryTab() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'sent' | 'received'>('sent');
   const [selectedDonation, setSelectedDonation] = useState<DonationRecord | null>(null);
   const [isCelebrationOpen, setIsCelebrationOpen] = useState(false);
@@ -50,16 +52,27 @@ export function DonationHistoryTab() {
           <History className="w-5 h-5 text-primary" />
           <h2 className="text-lg font-bold text-gray-900">Lịch Sử Tặng Thưởng</h2>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleExport}
-          disabled={!currentDonations || currentDonations.length === 0}
-          className="gap-2"
-        >
-          <Download className="w-4 h-4" />
-          Xuất CSV
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExport}
+            disabled={!currentDonations || currentDonations.length === 0}
+            className="gap-2"
+          >
+            <Download className="w-4 h-4" />
+            <span className="hidden sm:inline">Xuất CSV</span>
+          </Button>
+          <Button
+            variant="default"
+            size="sm"
+            onClick={() => navigate('/donations')}
+            className="gap-2"
+          >
+            <span className="hidden sm:inline">Xem tất cả</span>
+            <ArrowRight className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Summary Stats */}
