@@ -365,27 +365,49 @@ const Profile = () => {
           <div className="max-w-[1100px] mx-auto px-4 sm:px-6 lg:px-[2cm]">
             <div className="relative">
             {/* Cover Photo Container with rounded corners */}
-            <div className="h-[200px] sm:h-[300px] md:h-[400px] relative overflow-hidden rounded-2xl mx-2 md:mx-0">
-              {profile?.cover_url ? (
-                <LazyImage 
-                  src={profile.cover_url} 
-                  alt="Cover" 
-                  className="w-full h-full object-cover"
-                  transformPreset="cover"
-                  priority
+            <div className="h-[220px] sm:h-[300px] md:h-[400px] relative rounded-2xl mx-2 md:mx-0">
+              {/* Cover Image with overflow hidden only on image */}
+              <div className="absolute inset-0 overflow-hidden rounded-2xl">
+                {profile?.cover_url ? (
+                  <LazyImage 
+                    src={profile.cover_url} 
+                    alt="Cover" 
+                    className="w-full h-full object-cover"
+                    transformPreset="cover"
+                    priority
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-r from-primary/40 via-gold/30 to-primary/40" />
+                )}
+                
+                {/* Gradient overlay at bottom for better text readability */}
+                <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/30 to-transparent" />
+              </div>
+
+              {/* Honor Board Overlay - inside cover, right side */}
+              <div 
+                className="absolute z-20 hidden md:block top-3 right-3 lg:top-4 lg:right-4 rounded-2xl p-1.5 bg-white/30 backdrop-blur-sm"
+                style={{ width: 'clamp(280px, 28vw, 400px)' }}
+              >
+                <CoverHonorBoard 
+                  userId={profile.id}
+                  username={profile?.username}
+                  avatarUrl={profile?.avatar_url}
                 />
-              ) : (
-                <div className="w-full h-full bg-gradient-to-r from-primary/40 via-gold/30 to-primary/40" />
-              )}
-              
-              {/* Gradient overlay at bottom for better text readability */}
-              <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/30 to-transparent" />
+              </div>
 
-              {/* Honor Board moved to profile info section */}
+              {/* Mobile Honor Board Overlay - smaller, bottom-right */}
+              <div className="absolute z-20 md:hidden bottom-12 right-2 sm:right-3 w-[220px] sm:w-[250px] rounded-2xl p-1 bg-white/50 backdrop-blur-sm origin-bottom-right scale-[0.85] sm:scale-90">
+                <CoverHonorBoard 
+                  userId={profile.id}
+                  username={profile?.username}
+                  avatarUrl={profile?.avatar_url}
+                />
+              </div>
 
-              {/* Edit Cover Button - bottom right, below Honor Board */}
+              {/* Edit Cover Button - bottom left on md+, bottom right on mobile */}
               {showPrivateElements && (
-                <div className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 z-[100] isolate">
+                <div className="absolute bottom-3 right-3 md:right-auto md:left-3 sm:bottom-4 sm:right-4 md:sm:left-4 z-[100] isolate">
                   <CoverPhotoEditor 
                     userId={currentUserId}
                     currentCoverUrl={profile?.cover_url}
@@ -509,16 +531,7 @@ const Profile = () => {
                   )}
                 </div>
 
-                {/* Honor Board - right aligned, moved down with top margin */}
-                <div className="hidden md:flex justify-end mt-4 md:mt-6">
-                  <div className="w-full max-w-[600px]">
-                    <CoverHonorBoard 
-                      userId={profile.id}
-                      username={profile?.username}
-                      avatarUrl={profile?.avatar_url}
-                    />
-                  </div>
-                </div>
+                {/* Honor Board now rendered inside cover photo overlay */}
 
                 {/* Action Buttons - visible on ALL breakpoints */}
                 {!viewAsPublic && (
