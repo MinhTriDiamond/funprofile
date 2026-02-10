@@ -13,6 +13,8 @@ import { TokenSelector, SUPPORTED_TOKENS, TokenOption } from './TokenSelector';
 import { QuickGiftPicker, MESSAGE_TEMPLATES, MessageTemplate } from './QuickGiftPicker';
 import { DonationSuccessCard, DonationCardData } from './DonationSuccessCard';
 import { useDonation } from '@/hooks/useDonation';
+import { useTokenBalances } from '@/hooks/useTokenBalances';
+import { validateMinSendValue } from '@/lib/minSendValidation';
 import { useAccount, useBalance, useReadContract } from 'wagmi';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { Loader2, Wallet, Gift, AlertCircle, Send, Copy, Smile } from 'lucide-react';
@@ -54,6 +56,7 @@ export const DonationDialog = ({
 }: DonationDialogProps) => {
   const { address, isConnected } = useAccount();
   const { openConnectModal } = useConnectModal();
+  const { tokens: tokenBalanceList } = useTokenBalances();
   
   const [selectedToken, setSelectedToken] = useState<TokenOption>(SUPPORTED_TOKENS[0]);
   const [amount, setAmount] = useState('');
@@ -170,6 +173,7 @@ export const DonationDialog = ({
       messageTemplate: selectedTemplate?.id,
       postId,
       senderDisplayName: senderDisplayName || undefined,
+      tokenPriceUSD: selectedTokenPrice,
     });
 
     if (result) {
@@ -183,8 +187,20 @@ export const DonationDialog = ({
     onClose();
   };
 
-  const isValidAmount = parseFloat(amount) >= 10;
-  const hasEnoughBalance = formattedBalance >= parseFloat(amount || '0');
+  // Get USD price for the selected token from useTokenBalances
+  const selectedTokenPrice = (() => {
+    const found = tokenBalanceList.find(t => t.symbol === selectedToken.symbol);
+    return found?.price ?? null;
+  })();
+
+  const parsedAmountNum = parseFloat(amount) || 0;
+  const minSendCheck = parsedAmountNum > 0
+    ? validateMinSendValue(parsedAmountNum, selectedTokenPrice)
+    : { valid: false } as { valid: boolean; message?: string };
+  const estimatedUsd = parsedAmountNum * (selectedTokenPrice || 0);
+
+  const isValidAmount = minSendCheck.valid;
+  const hasEnoughBalance = formattedBalance >= parsedAmountNum;
 
   return (
     <>
@@ -335,9 +351,14 @@ export const DonationDialog = ({
                       Số dư: {formattedBalance.toLocaleString(undefined, { maximumFractionDigits: selectedToken.decimals })} {selectedToken.symbol}
                     </p>
                   )}
-                  {amount && parseFloat(amount) < 10 && (
+                  {estimatedUsd > 0 && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      ≈ ${estimatedUsd.toFixed(4)} USD
+                    </p>
+                  )}
+                  {parsedAmountNum > 0 && !minSendCheck.valid && minSendCheck.message && (
                     <p className="text-xs text-destructive mt-1">
-                      Số lượng tối thiểu là 10 token
+                      {minSendCheck.message}
                     </p>
                   )}
                 </div>

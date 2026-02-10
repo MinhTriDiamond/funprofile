@@ -10,6 +10,7 @@ import { bsc } from 'wagmi/chains';
 import { useTokenBalances } from '@/hooks/useTokenBalances';
 import { useSendToken } from '@/hooks/useSendToken';
 import { WALLET_TOKENS, BNB_GAS_BUFFER, type WalletToken } from '@/lib/tokens';
+import { validateMinSendValue } from '@/lib/minSendValidation';
 import { SendConfirmModal } from './SendConfirmModal';
 
 interface SendTabProps {
@@ -38,12 +39,21 @@ export const SendTab = ({ onSuccess }: SendTabProps) => {
     return balances.find(b => b.symbol === 'BNB')?.balance || 0;
   }, [balances]);
 
-  const usdValue = useMemo(() => {
+  const tokenPrice = useMemo(() => {
     const found = balances.find(b => b.symbol === selectedToken.symbol);
-    const price = found?.price || 0;
+    return found?.price ?? null;
+  }, [balances, selectedToken]);
+
+  const usdValue = useMemo(() => {
     const amt = parseFloat(amount) || 0;
-    return amt * price;
-  }, [balances, selectedToken, amount]);
+    return amt * (tokenPrice || 0);
+  }, [tokenPrice, amount]);
+
+  const minSendCheck = useMemo(() => {
+    const amt = parseFloat(amount) || 0;
+    if (amt <= 0) return { valid: false } as { valid: boolean; message?: string };
+    return validateMinSendValue(amt, tokenPrice);
+  }, [amount, tokenPrice]);
 
   const isWrongNetwork = chainId !== bsc.id;
 
@@ -176,7 +186,10 @@ export const SendTab = ({ onSuccess }: SendTabProps) => {
               </Button>
             </div>
             {usdValue > 0 && (
-              <p className="text-xs text-muted-foreground">≈ ${usdValue.toFixed(2)} USD</p>
+              <p className="text-xs text-muted-foreground">≈ ${usdValue.toFixed(4)} USD</p>
+            )}
+            {parsedAmount > 0 && !minSendCheck.valid && minSendCheck.message && (
+              <p className="text-xs text-destructive">{minSendCheck.message}</p>
             )}
           </div>
 
@@ -200,7 +213,7 @@ export const SendTab = ({ onSuccess }: SendTabProps) => {
           {/* Send Button */}
           <Button
             onClick={handleSendClick}
-            disabled={!isConnected || isPending || isWrongNetwork || !recipient || !amount}
+            disabled={!isConnected || isPending || isWrongNetwork || !recipient || !amount || !minSendCheck.valid}
             className="w-full"
           >
             {isPending ? 'Đang xử lý...' : 'Gửi'}
