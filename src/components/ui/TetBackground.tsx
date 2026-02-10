@@ -37,6 +37,7 @@ export const TetBackground = memo(() => {
         style={{
           WebkitTransform: 'translateZ(0)',
           transform: 'translateZ(0)',
+          backgroundColor: 'hsl(45 30% 97%)',
         }}
       >
         <source src={tetVideo} type="video/mp4" />
