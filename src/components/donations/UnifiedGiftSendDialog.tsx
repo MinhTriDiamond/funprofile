@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TokenSelector, SUPPORTED_TOKENS, TokenOption } from './TokenSelector';
 import { QuickGiftPicker, MESSAGE_TEMPLATES, MessageTemplate } from './QuickGiftPicker';
 import { DonationSuccessCard, DonationCardData } from './DonationSuccessCard';
@@ -17,9 +18,10 @@ import { useSendToken, TxStep } from '@/hooks/useSendToken';
 import { useTokenBalances } from '@/hooks/useTokenBalances';
 import { validateMinSendValue } from '@/lib/minSendValidation';
 import { validateEvmAddress } from '@/utils/walletValidation';
+import { useDebounce } from '@/hooks/useDebounce';
 import { useAccount, useBalance, useReadContract, useChainId, useSwitchChain } from 'wagmi';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
-import { Loader2, Wallet, Gift, AlertCircle, Send, Copy, Smile, AlertTriangle, ExternalLink, CheckCircle2, RefreshCw } from 'lucide-react';
+import { Loader2, Wallet, Gift, AlertCircle, Send, Copy, AlertTriangle, ExternalLink, CheckCircle2, RefreshCw, Search, User, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatUnits } from 'viem';
 import { supabase } from '@/integrations/supabase/client';
@@ -47,6 +49,13 @@ const STEP_CONFIG: Record<string, { label: string; progress: number }> = {
   success: { label: 'Hoàn tất!', progress: 100 },
   timeout: { label: 'Chưa nhận được xác nhận kịp thời', progress: 70 },
 };
+
+interface ResolvedRecipient {
+  id: string;
+  username: string;
+  avatarUrl: string | null;
+  walletAddress: string | null;
+}
 
 export interface UnifiedGiftSendDialogProps {
   isOpen: boolean;
@@ -81,15 +90,37 @@ export const UnifiedGiftSendDialog = ({
   const [amount, setAmount] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState<MessageTemplate | null>(null);
   const [customMessage, setCustomMessage] = useState('');
-  const [senderDisplayName, setSenderDisplayName] = useState('');
-  const [recipientAddress, setRecipientAddress] = useState('');
   const [showSuccessCard, setShowSuccessCard] = useState(false);
   const [successCardData, setSuccessCardData] = useState<DonationCardData | null>(null);
   const [isSendingReminder, setIsSendingReminder] = useState(false);
   const [isRecordingDonation, setIsRecordingDonation] = useState(false);
 
-  // Effective recipient address
-  const effectiveRecipientAddress = presetRecipient?.walletAddress || recipientAddress;
+  // Recipient search state
+  const [searchTab, setSearchTab] = useState<'username' | 'address'>('username');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<ResolvedRecipient[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState('');
+  const [resolvedRecipient, setResolvedRecipient] = useState<ResolvedRecipient | null>(null);
+
+  const debouncedSearchQuery = useDebounce(searchQuery, 500);
+
+  // Determine effective recipient
+  const effectiveRecipient = useMemo(() => {
+    if (presetRecipient?.id && presetRecipient?.username) {
+      return {
+        id: presetRecipient.id,
+        username: presetRecipient.username,
+        avatarUrl: presetRecipient.avatarUrl ?? null,
+        walletAddress: presetRecipient.walletAddress ?? null,
+      } as ResolvedRecipient;
+    }
+    return resolvedRecipient;
+  }, [presetRecipient, resolvedRecipient]);
+
+  const effectiveRecipientAddress = effectiveRecipient?.walletAddress || '';
+  const hasRecipient = !!effectiveRecipient;
+  const isFormDisabled = !hasRecipient;
 
   // Get native BNB balance
   const { data: bnbBalance } = useBalance({
@@ -140,6 +171,88 @@ export const UnifiedGiftSendDialog = ({
   const isInProgress = ['signing', 'broadcasted', 'confirming', 'finalizing'].includes(txStep);
   const stepInfo = STEP_CONFIG[txStep] || STEP_CONFIG.idle;
 
+  // Search for recipient by username or address
+  const performSearch = useCallback(async (query: string, tab: 'username' | 'address') => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      setSearchError('');
+      return;
+    }
+
+    setIsSearching(true);
+    setSearchError('');
+
+    try {
+      if (tab === 'username') {
+        const cleanQuery = query.replace(/^@/, '');
+        if (cleanQuery.length < 2) {
+          setSearchResults([]);
+          setIsSearching(false);
+          return;
+        }
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('id, username, avatar_url, wallet_address')
+          .ilike('username', `%${cleanQuery}%`)
+          .limit(5);
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          setSearchResults(data.map(p => ({
+            id: p.id,
+            username: p.username,
+            avatarUrl: p.avatar_url,
+            walletAddress: p.wallet_address,
+          })));
+        } else {
+          setSearchResults([]);
+          setSearchError('Không tìm thấy người dùng');
+        }
+      } else {
+        // address tab
+        const addr = query.trim();
+        if (!/^0x[a-fA-F0-9]{40}$/.test(addr)) {
+          setSearchResults([]);
+          if (addr.length > 3) setSearchError('Địa chỉ ví không hợp lệ');
+          setIsSearching(false);
+          return;
+        }
+
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('id, username, avatar_url, wallet_address')
+          .ilike('wallet_address', addr)
+          .limit(1);
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          setSearchResults(data.map(p => ({
+            id: p.id,
+            username: p.username,
+            avatarUrl: p.avatar_url,
+            walletAddress: p.wallet_address,
+          })));
+        } else {
+          setSearchResults([]);
+          setSearchError('Không tìm thấy FUN username cho địa chỉ này');
+        }
+      }
+    } catch (err) {
+      console.error('Search error:', err);
+      setSearchError('Lỗi khi tìm kiếm');
+    } finally {
+      setIsSearching(false);
+    }
+  }, []);
+
+  // Trigger search on debounced query change
+  useEffect(() => {
+    if (!isOpen || (mode === 'post' && presetRecipient?.id)) return;
+    performSearch(debouncedSearchQuery, searchTab);
+  }, [debouncedSearchQuery, searchTab, isOpen, mode, presetRecipient, performSearch]);
+
   // Reset form when dialog opens
   useEffect(() => {
     if (isOpen) {
@@ -147,13 +260,29 @@ export const UnifiedGiftSendDialog = ({
       setSelectedTemplate(null);
       setCustomMessage('');
       setSelectedToken(SUPPORTED_TOKENS[0]);
-      setSenderDisplayName('');
-      setRecipientAddress('');
       setShowSuccessCard(false);
       setSuccessCardData(null);
+      setSearchTab('username');
+      setSearchQuery('');
+      setSearchResults([]);
+      setSearchError('');
+      setResolvedRecipient(null);
       resetState();
     }
   }, [isOpen]);
+
+  const handleSelectRecipient = (recipient: ResolvedRecipient) => {
+    setResolvedRecipient(recipient);
+    setSearchResults([]);
+    setSearchQuery('');
+  };
+
+  const handleClearRecipient = () => {
+    setResolvedRecipient(null);
+    setSearchQuery('');
+    setSearchResults([]);
+    setSearchError('');
+  };
 
   const handleSelectTemplate = (template: MessageTemplate) => {
     setSelectedTemplate(template);
@@ -192,12 +321,8 @@ export const UnifiedGiftSendDialog = ({
 
   const handleSend = async () => {
     if (!effectiveRecipientAddress) {
-      toast.error('Vui lòng nhập địa chỉ nhận');
+      toast.error('Người nhận chưa có ví liên kết');
       return;
-    }
-
-    if (mode === 'wallet' && !validateEvmAddress(recipientAddress)) {
-      return; // validateEvmAddress shows toast
     }
 
     // Map TokenOption to WalletToken for useSendToken
@@ -217,8 +342,8 @@ export const UnifiedGiftSendDialog = ({
     });
 
     if (hash) {
-      // Record donation if we have a recipientId (post/navbar mode)
-      if (presetRecipient?.id) {
+      // Record donation if we have a recipientId
+      if (effectiveRecipient?.id) {
         await recordDonation(hash);
       }
       onSuccess?.();
@@ -240,7 +365,7 @@ export const UnifiedGiftSendDialog = ({
       const { data: donationData, error } = await supabase.functions.invoke('record-donation', {
         body: {
           sender_id: session.user.id,
-          recipient_id: presetRecipient!.id,
+          recipient_id: effectiveRecipient!.id,
           amount,
           token_symbol: selectedToken.symbol,
           token_address: selectedToken.address,
@@ -263,8 +388,8 @@ export const UnifiedGiftSendDialog = ({
         tokenSymbol: selectedToken.symbol,
         senderUsername: senderProfile?.username || 'Unknown',
         senderAvatarUrl: senderProfile?.avatar_url,
-        recipientUsername: presetRecipient!.username || 'Unknown',
-        recipientAvatarUrl: presetRecipient!.avatarUrl,
+        recipientUsername: effectiveRecipient!.username || 'Unknown',
+        recipientAvatarUrl: effectiveRecipient!.avatarUrl,
         message: customMessage,
         txHash: hash,
         lightScoreEarned: donationData?.light_score_earned || Math.floor(parseFloat(amount) / 100),
@@ -281,7 +406,7 @@ export const UnifiedGiftSendDialog = ({
   };
 
   const handleSendReminder = async () => {
-    if (!presetRecipient?.id) return;
+    if (!effectiveRecipient?.id) return;
     setIsSendingReminder(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -290,10 +415,10 @@ export const UnifiedGiftSendDialog = ({
         return;
       }
       const { error } = await supabase.functions.invoke('notify-gift-ready', {
-        body: { recipientId: presetRecipient.id, notificationType: 'no_wallet' },
+        body: { recipientId: effectiveRecipient.id, notificationType: 'no_wallet' },
       });
       if (error) throw error;
-      toast.success(`Đã gửi hướng dẫn nhận quà cho @${presetRecipient.username}!`);
+      toast.success(`Đã gửi hướng dẫn nhận quà cho @${effectiveRecipient.username}!`);
       onClose();
     } catch (error) {
       console.error('Error sending reminder:', error);
@@ -316,12 +441,12 @@ export const UnifiedGiftSendDialog = ({
   };
 
   // Title
-  const dialogTitle = presetRecipient?.username
-    ? `Tặng quà cho @${presetRecipient.username}`
-    : 'Gửi token';
+  const dialogTitle = effectiveRecipient?.username
+    ? `Trao gửi yêu thương cho @${effectiveRecipient.username} 🎁❤️🎉`
+    : 'Trao gửi yêu thương 🎁❤️🎉';
 
-  // No wallet warning (post/navbar mode only)
-  const recipientHasNoWallet = (mode === 'post' || mode === 'navbar') && presetRecipient && !presetRecipient.walletAddress;
+  // No wallet warning
+  const recipientHasNoWallet = hasRecipient && !effectiveRecipientAddress;
 
   // Determine if send button should be disabled
   const isSendDisabled =
@@ -336,19 +461,146 @@ export const UnifiedGiftSendDialog = ({
 
   const scanUrl = txHash ? getBscScanTxUrl(txHash, selectedToken.symbol) : null;
 
+  const isPresetMode = mode === 'post' || (mode === 'navbar' && !!presetRecipient?.id);
+
   return (
     <>
       <Dialog open={isOpen && !showSuccessCard} onOpenChange={(open) => !open && handleDialogClose()}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Gift className="w-5 h-5 text-gold" />
-              {dialogTitle}
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <Gift className="w-5 h-5 text-gold shrink-0" />
+              <span className="truncate">{dialogTitle}</span>
             </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-5 py-2">
-            {/* Recipient has no wallet (post/navbar mode) */}
+            {/* ====== RECIPIENT SECTION ====== */}
+            {isPresetMode ? (
+              /* Post/Navbar with preset: fixed recipient card */
+              <div>
+                <label className="text-sm font-medium text-muted-foreground mb-2 block">Người nhận:</label>
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border">
+                  <Avatar className="w-10 h-10 border-2 border-gold/30">
+                    <AvatarImage src={effectiveRecipient?.avatarUrl || ''} />
+                    <AvatarFallback className="bg-primary/20 text-primary">
+                      {effectiveRecipient?.username?.[0]?.toUpperCase() || '?'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">@{effectiveRecipient?.username}</p>
+                    {effectiveRecipientAddress && (
+                      <p className="text-xs text-muted-foreground font-mono truncate">
+                        {effectiveRecipientAddress.slice(0, 8)}...{effectiveRecipientAddress.slice(-6)}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* Wallet/Navbar without preset: search tabs */
+              <div>
+                <label className="text-sm font-medium text-muted-foreground mb-2 block">Người nhận:</label>
+
+                {resolvedRecipient ? (
+                  /* Selected recipient card */
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border">
+                    <Avatar className="w-10 h-10 border-2 border-gold/30">
+                      <AvatarImage src={resolvedRecipient.avatarUrl || ''} />
+                      <AvatarFallback className="bg-primary/20 text-primary">
+                        {resolvedRecipient.username[0]?.toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">@{resolvedRecipient.username}</p>
+                      {resolvedRecipient.walletAddress && (
+                        <p className="text-xs text-muted-foreground font-mono truncate">
+                          {resolvedRecipient.walletAddress.slice(0, 8)}...{resolvedRecipient.walletAddress.slice(-6)}
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleClearRecipient}
+                      className="p-1.5 rounded-full hover:bg-destructive/10 transition-colors"
+                    >
+                      <X className="w-4 h-4 text-muted-foreground" />
+                    </button>
+                  </div>
+                ) : (
+                  /* Search UI */
+                  <div className="space-y-2">
+                    <Tabs value={searchTab} onValueChange={(v) => {
+                      setSearchTab(v as 'username' | 'address');
+                      setSearchQuery('');
+                      setSearchResults([]);
+                      setSearchError('');
+                    }}>
+                      <TabsList className="w-full">
+                        <TabsTrigger value="username" className="flex-1 text-xs gap-1">
+                          <User className="w-3.5 h-3.5" />Tìm theo username
+                        </TabsTrigger>
+                        <TabsTrigger value="address" className="flex-1 text-xs gap-1">
+                          <Wallet className="w-3.5 h-3.5" />Tìm theo địa chỉ ví
+                        </TabsTrigger>
+                      </TabsList>
+                    </Tabs>
+
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder={searchTab === 'username' ? '@username...' : '0x...'}
+                        className={`pl-9 text-sm ${searchTab === 'address' ? 'font-mono' : ''}`}
+                      />
+                      {isSearching && (
+                        <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
+                      )}
+                    </div>
+
+                    {/* Search results */}
+                    {searchResults.length > 0 && (
+                      <div className="border rounded-lg divide-y max-h-40 overflow-y-auto">
+                        {searchResults.map((result) => (
+                          <button
+                            key={result.id}
+                            type="button"
+                            onClick={() => handleSelectRecipient(result)}
+                            className="w-full flex items-center gap-3 p-2.5 hover:bg-accent transition-colors text-left"
+                          >
+                            <Avatar className="w-8 h-8">
+                              <AvatarImage src={result.avatarUrl || ''} />
+                              <AvatarFallback className="bg-primary/20 text-primary text-xs">
+                                {result.username[0]?.toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm truncate">@{result.username}</p>
+                              {result.walletAddress && (
+                                <p className="text-xs text-muted-foreground font-mono truncate">
+                                  {result.walletAddress.slice(0, 8)}...{result.walletAddress.slice(-6)}
+                                </p>
+                              )}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Search error */}
+                    {searchError && !isSearching && (
+                      <div className="flex items-center gap-2 p-2.5 rounded-lg bg-destructive/10 border border-destructive/20">
+                        <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
+                        <p className="text-xs text-destructive">{searchError}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Recipient has no wallet */}
             {recipientHasNoWallet && (
               <div className="space-y-4">
                 <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/30">
@@ -371,6 +623,14 @@ export const UnifiedGiftSendDialog = ({
                     <><Send className="w-4 h-4 mr-2" />Hướng Dẫn Nhận Quà</>
                   )}
                 </Button>
+              </div>
+            )}
+
+            {/* Hint when no recipient selected */}
+            {isFormDisabled && !recipientHasNoWallet && !isPresetMode && (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 border border-dashed border-muted-foreground/30">
+                <User className="w-4 h-4 text-muted-foreground shrink-0" />
+                <p className="text-sm text-muted-foreground">Vui lòng chọn người nhận trước</p>
               </div>
             )}
 
@@ -401,45 +661,17 @@ export const UnifiedGiftSendDialog = ({
             )}
 
             {!recipientHasNoWallet && (
-              <>
-                {/* Sender Display Name (optional) */}
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground mb-2 block">
-                    Tên hiển thị (tùy chọn):
-                  </label>
-                  <Input
-                    value={senderDisplayName}
-                    onChange={(e) => setSenderDisplayName(e.target.value)}
-                    placeholder="Nhập tên bạn muốn hiển thị..."
-                    className="text-sm"
-                  />
-                </div>
-
+              <div className={isFormDisabled && !isPresetMode ? 'opacity-50 pointer-events-none' : ''}>
                 {/* Token Selection */}
-                <div>
+                <div className="mb-5">
                   <label className="text-sm font-medium text-muted-foreground mb-2 block">
                     Chọn token:
                   </label>
                   <TokenSelector selectedToken={selectedToken} onSelect={setSelectedToken} />
                 </div>
 
-                {/* Recipient Address Input (wallet mode only) */}
-                {mode === 'wallet' && (
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground mb-2 block">
-                      Địa chỉ nhận:
-                    </label>
-                    <Input
-                      value={recipientAddress}
-                      onChange={(e) => setRecipientAddress(e.target.value)}
-                      placeholder="0x..."
-                      className="font-mono text-sm"
-                    />
-                  </div>
-                )}
-
                 {/* Amount Input */}
-                <div>
+                <div className="mb-5">
                   <label className="text-sm font-medium text-muted-foreground mb-2 block">
                     Số lượng:
                   </label>
@@ -474,15 +706,18 @@ export const UnifiedGiftSendDialog = ({
                 </div>
 
                 {/* Quick Picks */}
-                <QuickGiftPicker
-                  selectedTemplate={selectedTemplate}
-                  onSelectTemplate={handleSelectTemplate}
-                  onSelectAmount={handleSelectQuickAmount}
-                  currentAmount={amount}
-                />
+                <div className="mb-5">
+                  <QuickGiftPicker
+                    selectedTemplate={selectedTemplate}
+                    onSelectTemplate={handleSelectTemplate}
+                    onSelectAmount={handleSelectQuickAmount}
+                    currentAmount={amount}
+                    tokenSymbol={selectedToken.symbol}
+                  />
+                </div>
 
                 {/* Custom Message with Emoji Picker */}
-                <div>
+                <div className="mb-5">
                   <label className="text-sm font-medium text-muted-foreground mb-2 block">
                     Lời nhắn:
                   </label>
@@ -507,13 +742,13 @@ export const UnifiedGiftSendDialog = ({
 
                 {/* Warnings */}
                 {isLargeAmount && (
-                  <div className="flex items-center gap-2 p-2 bg-destructive/10 border border-destructive/20 rounded-lg">
+                  <div className="flex items-center gap-2 p-2 mb-3 bg-destructive/10 border border-destructive/20 rounded-lg">
                     <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
                     <p className="text-xs text-destructive">Bạn đang gửi hơn 80% số dư token.</p>
                   </div>
                 )}
                 {needsGasWarning && (
-                  <div className="flex items-center gap-2 p-2 bg-destructive/10 border border-destructive/20 rounded-lg">
+                  <div className="flex items-center gap-2 p-2 mb-3 bg-destructive/10 border border-destructive/20 rounded-lg">
                     <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
                     <p className="text-xs text-destructive">
                       BNB còn {bnbBalanceNum.toFixed(4)}. Cần tối thiểu 0.002 BNB để trả phí gas.
@@ -521,19 +756,11 @@ export const UnifiedGiftSendDialog = ({
                   </div>
                 )}
 
-                {/* Recipient Preview */}
+                {/* Recipient Address Preview */}
                 {effectiveRecipientAddress && (
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border">
+                  <div className="flex items-center justify-between p-3 mb-3 rounded-lg bg-muted/50 border">
                     <span className="text-sm text-muted-foreground">Gửi đến:</span>
                     <div className="flex items-center gap-2">
-                      {presetRecipient?.avatarUrl && (
-                        <Avatar className="w-6 h-6">
-                          <AvatarImage src={presetRecipient.avatarUrl} />
-                          <AvatarFallback className="text-xs">
-                            {presetRecipient.username?.[0]?.toUpperCase() || '?'}
-                          </AvatarFallback>
-                        </Avatar>
-                      )}
                       <span className="font-mono text-sm">
                         {effectiveRecipientAddress.slice(0, 8)}...{effectiveRecipientAddress.slice(-6)}
                       </span>
@@ -546,7 +773,7 @@ export const UnifiedGiftSendDialog = ({
 
                 {/* TX Progress */}
                 {(isInProgress || txStep === 'success' || txStep === 'timeout') && (
-                  <div className="space-y-2">
+                  <div className="space-y-2 mb-3">
                     <div className="flex items-center gap-2">
                       {txStep === 'success' ? (
                         <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
@@ -563,7 +790,7 @@ export const UnifiedGiftSendDialog = ({
 
                 {/* BscScan link */}
                 {scanUrl && (
-                  <Button variant="outline" size="sm" className="w-full gap-2" onClick={() => window.open(scanUrl, '_blank')}>
+                  <Button variant="outline" size="sm" className="w-full gap-2 mb-3" onClick={() => window.open(scanUrl, '_blank')}>
                     <ExternalLink className="w-3.5 h-3.5" />
                     Xem trên BscScan
                   </Button>
@@ -578,7 +805,7 @@ export const UnifiedGiftSendDialog = ({
                         <RefreshCw className="w-3.5 h-3.5" />Kiểm tra lại
                       </Button>
                     </>
-                  ) : txStep === 'success' && !presetRecipient?.id ? (
+                  ) : txStep === 'success' && !effectiveRecipient?.id ? (
                     <Button variant="outline" onClick={handleDialogClose} className="w-full">Đóng</Button>
                   ) : (
                     <>
@@ -587,7 +814,7 @@ export const UnifiedGiftSendDialog = ({
                       </Button>
                       <Button
                         onClick={handleSend}
-                        disabled={isSendDisabled}
+                        disabled={isSendDisabled || isFormDisabled}
                         className="flex-1 bg-gradient-to-r from-gold to-amber-500 hover:from-gold/90 hover:to-amber-500/90 text-primary-foreground"
                       >
                         {isPending || isInProgress || isRecordingDonation ? (
@@ -595,20 +822,20 @@ export const UnifiedGiftSendDialog = ({
                         ) : (
                           <>
                             <Gift className="w-4 h-4 mr-2" />
-                            {presetRecipient ? 'Gửi Tặng' : 'Gửi'} {amount && `${parseFloat(amount).toLocaleString()} ${selectedToken.symbol}`}
+                            Gửi Tặng {amount && `${parseFloat(amount).toLocaleString()} ${selectedToken.symbol}`}
                           </>
                         )}
                       </Button>
                     </>
                   )}
                 </div>
-              </>
+              </div>
             )}
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Success Card (only for gift mode with recipientId) */}
+      {/* Success Card */}
       {successCardData && (
         <DonationSuccessCard
           isOpen={showSuccessCard}
