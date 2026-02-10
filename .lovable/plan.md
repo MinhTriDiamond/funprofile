@@ -1,89 +1,46 @@
 
-# Xoá Tính Năng Auto-Link Ví Vào Profile Trên /wallet
+# Thêm Liên Kết Profile Cho @username
 
 ## Tổng Quan
 
-Tách bạch hoàn toàn 2 khái niệm:
-- **Wallet session** (wagmi address): dùng để giao dịch, xem số dư -- chỉ tồn tại trong phiên
-- **Public wallet address** (public_wallet_address): thông tin công khai do user tự khai báo trên /profile
+Hiện tại, @username trong các card chúc mừng (gửi/nhận) và lịch sử giao dịch chỉ hiển thị dạng text tĩnh. Sẽ biến chúng thành link click được, điều hướng đến `/profile/:userId`.
 
-/wallet sẽ KHÔNG còn ghi bất kỳ thứ gì vào DB profile liên quan đến ví.
+## Thay Đổi
 
-## Danh Sách Thay Đổi
+### 1. `GiftCelebrationModal.tsx` -- Thêm link cho sender & recipient username
 
-### 1. `src/components/wallet/WalletCenterContainer.tsx` -- Xoá auto-link logic
+**Cần thêm:**
+- Import `useNavigate` từ `react-router-dom`
+- Thêm `senderId` và `recipientId` vào interface `GiftCardData`
+- Dòng 255 (`@{data.senderUsername}`): wrap trong thẻ `<button>` hoặc `<span>` có `onClick={() => navigate('/profile/' + data.senderId)}`
+- Dòng 280 (`@{data.recipientUsername}`): tương tự, navigate đến profile recipient
+- Style: thêm `cursor-pointer hover:underline text-primary` để user biết đây là link
 
-Xoá/loại bỏ:
-- State: `isLinkingWallet`, `isUnlinkingWallet`, `autoLinkTriggeredRef`
-- Import `useSignMessage` (nếu chỉ dùng cho link)
-- Hàm `linkWalletToProfile()` (dòng 358-402)
-- useEffect auto-link (dòng 405-432)
-- Hàm `unlinkWalletFromProfile()` (dòng 435-460)
-- Xoá các prop `onLink`, `onUnlink`, `isLinkingWallet`, `isUnlinkingWallet`, `isLinkedToProfile` khi truyền vào `WalletCard` (dòng 602-609)
-- Interface `WalletProfile` không cần `external_wallet_address` nữa (nhưng giữ fetch nếu cần cho ReceiveTab fallback)
+### 2. `DonationReceivedCard.tsx` -- Thêm link cho sender username
 
-Giữ nguyên:
-- `handleConnect`, `handleDisconnect` (session only)
-- Toàn bộ logic balance, reward, send, receive
-- `walletProfile` fetch (vẫn cần `custodial_wallet_address` cho một số fallback)
+- Dòng 147 (`@{data.senderUsername}`): wrap trong `<button>` có `onClick` navigate đến `/profile/${data.senderId}`
+- Component đã import `useNavigate` sẵn, và đã có `data.senderId` trong interface
+- Style: `cursor-pointer hover:underline`
 
-### 2. `src/components/wallet/WalletCard.tsx` -- Xoá UI Link/Unlink
+### 3. `DonationHistoryItem.tsx` -- Thêm link cho @username
 
-Xoá khỏi interface và component:
-- Props: `isLinkedToProfile`, `onLink`, `onUnlink`, `isLinkingWallet`, `isUnlinkingWallet`
-- Badge hiển thị "Linked" / "Connected" -- chỉ giữ "Connected" / "Not Connected"
-- Block nút "Liên kết ví" và "Hủy liên kết" (khu vực Link/Unlink buttons)
+**Cần thêm:**
+- Import `useNavigate` từ `react-router-dom`
+- Dòng 40 (`@{otherUser?.username}`): wrap trong `<button>` có `onClick` navigate đến `/profile/${otherUser?.id}`
+- Quan trọng: cần `stopPropagation()` để click vào username không trigger `onClick` của card cha (card cha mở celebration modal)
+- Style: `text-primary hover:underline cursor-pointer`
 
-Giữ nguyên:
-- Connect / Disconnect / Switch Account / Send / Receive / Swap / Buy
+### 4. `DonationHistoryTab.tsx` -- Truyền thêm ID vào GiftCelebrationModal
 
-### 3. `src/pages/Profile.tsx` -- Bỏ fallback external_wallet_address
-
-Dòng 466: thay
-```
-public_wallet_address || external_wallet_address || custodial_wallet_address
-```
-thành
-```
-public_wallet_address || custodial_wallet_address
-```
-
-Không còn hiển thị `external_wallet_address` trên profile.
-
-### 4. `src/components/profile/EditProfile.tsx` -- Bỏ prefill từ external
-
-Dòng 71: thay
-```
-data.public_wallet_address || data.external_wallet_address || ''
-```
-thành
-```
-data.public_wallet_address || ''
-```
-
-### 5. `src/components/wallet/WalletManagement.tsx` -- Xoá logic connect-external-wallet
-
-Hàm `handleConnectExternalWallet` gọi Edge Function `connect-external-wallet` để lưu ví vào DB. Xoá hoàn toàn hàm này và nút "Kết nối MetaMask" trong card External Wallet.
-
-Component này chủ yếu phục vụ profile-link, nên sẽ đơn giản hoá hoặc loại bỏ phần External Wallet card (chỉ giữ Custodial card nếu cần).
-
-### 6. `src/components/wallet/WalletSettingsDialog.tsx` -- Cập nhật tương ứng
-
-Nếu `WalletManagement` được đơn giản hoá, dialog này cũng cần cập nhật cho phù hợp.
-
-### 7. Edge Functions -- Không xoá file, chỉ ngưng gọi
-
-- `connect-external-wallet` và `disconnect-external-wallet`: giữ file (có thể cần cho web3 auth flow khác), nhưng frontend KHÔNG còn gọi nữa.
-- Không cần xoá file vì chúng có thể phục vụ `sso-web3-auth` (tạo user mới qua wallet login vẫn dùng `external_wallet_address`).
+Khi truyền data cho `GiftCelebrationModal` (dòng 120-135), thêm:
+- `senderId: selectedDonation.sender?.id`
+- `recipientId: selectedDonation.recipient?.id`
 
 ## Tóm Tắt Files
 
-| File | Hành động | Mô tả |
-|------|-----------|-------|
-| `WalletCenterContainer.tsx` | Sửa lớn | Xoá auto-link, linkWallet, unlinkWallet, useEffect |
-| `WalletCard.tsx` | Sửa | Xoá props/UI link-unlink, chỉ giữ session actions |
-| `Profile.tsx` | Sửa nhỏ | Bỏ fallback `external_wallet_address` |
-| `EditProfile.tsx` | Sửa nhỏ | Bỏ prefill từ `external_wallet_address` |
-| `WalletManagement.tsx` | Sửa | Xoá `handleConnectExternalWallet` |
-| `WalletSettingsDialog.tsx` | Sửa nhỏ | Cập nhật theo WalletManagement |
-| Edge Functions | Giữ nguyên | Không xoá, chỉ ngưng gọi từ frontend |
+| File | Hành động | Chi tiết |
+|------|-----------|----------|
+| `GiftCelebrationModal.tsx` | Sửa | Thêm `senderId`, `recipientId` vào interface; wrap @username thành link navigable |
+| `DonationReceivedCard.tsx` | Sửa nhỏ | Wrap @senderUsername thành link (đã có senderId + useNavigate) |
+| `DonationHistoryItem.tsx` | Sửa | Import useNavigate, wrap @username thành link với stopPropagation |
+| `DonationHistoryTab.tsx` | Sửa nhỏ | Truyền thêm senderId, recipientId vào GiftCelebrationModal data |
