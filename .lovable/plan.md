@@ -1,72 +1,127 @@
 
-# Thêm Validation Giá Trị Gửi Tối Thiểu 0,01 USD
+# Hợp Nhất Dialog "Gửi" và "Tặng" Thành 1 Component Duy Nhất
 
 ## Tổng Quan
 
-Hiện tại hệ thống có 2 điểm gửi token:
-1. **SendTab** (tab Gửi trong Ví) — đã có giá USD từ `useTokenBalances`
-2. **DonationDialog** (Tặng quà từ Post/Navbar) — chỉ kiểm tra `amount >= 10 tokens`, chưa có giá USD
+Hiện tại có 2 dialog riêng biệt:
+- **Ảnh 1 (SendTab)**: Dialog đơn giản trong `/wallet`, chỉ có chọn token + nhập address + nhập amount
+- **Ảnh 2 (DonationDialog)**: Dialog đầy đủ với tên hiển thị, token grid lớn, quick amount chips, lời nhắn mẫu, emoji, avatar người nhận
 
-Cần thêm validation thống nhất: giá trị giao dịch phải >= 0,01 USD.
+Mục tiêu: Tạo **1 component duy nhất** theo UI ảnh 2, dùng cho tất cả 3 ngữ cảnh (wallet send, post gift, navbar gift).
 
 ## Thay Đổi
 
-### 1. Tạo hằng số và hàm validation dùng chung
+### 1. Tạo component mới: `UnifiedGiftSendDialog`
 
-**File mới: `src/lib/minSendValidation.ts`**
+**File mới: `src/components/donations/UnifiedGiftSendDialog.tsx`**
 
-- Hằng số `MIN_SEND_USD = 0.01`
-- Hàm `validateMinSendValue(amount: number, priceUSD: number | null)` trả về `{ valid, message? }`
-  - Nếu `priceUSD === null` → không hợp lệ, message: "Chưa xác định được giá trị USD của token này"
-  - Nếu `amount * priceUSD < 0.01` → không hợp lệ, message: "Giá trị gửi tối thiểu là 0,01 USD"
-  - Ngược lại → hợp lệ
+Component này kết hợp UI của DonationDialog (ảnh 2) với khả năng nhập address tự do (từ SendTab):
 
-### 2. Cập nhật SendTab
+- Props:
+  - `isOpen`, `onClose`
+  - `mode: 'wallet' | 'post' | 'navbar'`
+  - `presetRecipient?: { id?, username?, avatarUrl?, walletAddress? }`
+  - `postId?: string`
+  - `onSuccess?: () => void`
+- Tiêu đề thay đổi theo mode:
+  - Có recipient: "Tặng quà cho @username"
+  - Không có recipient (wallet mode): "Gửi token"
+- Khi `mode = 'wallet'`: hiện ô input "Địa chỉ nhận (0x...)" thay vì khu "Gửi đến" cố định
+- Khi `mode = 'post'`: recipient preset, khu "Gửi đến" hiển thị avatar + address (không sửa được)
+- Khi `mode = 'navbar'`: recipient đã chọn từ GiftNavButton trước khi mở dialog
 
-**File: `src/components/wallet/SendTab.tsx`**
+Logic gửi on-chain:
+- Dùng `useSendToken` (state machine đã sửa) cho tất cả — thay vì `useDonation`
+- Ghi log DB qua edge function `record-donation` (nếu có recipientId) hoặc insert `transactions` (nếu mode wallet)
+- Tích hợp DonationSuccessCard khi có recipientId
+- Validation: `validateMinSendValue` + address checksum + balance check + gas warning
 
-- Import `validateMinSendValue`
-- Gọi validation dựa trên `usdValue` đã có sẵn (computed từ `useTokenBalances` prices)
-- Hiển thị message cảnh báo dưới ô "Số lượng" khi giá trị < 0,01 USD
-- Disable nút "Gửi" khi chưa đạt điều kiện
-- Xoá validation cũ `amount >= 10 tokens` (thay bằng validation USD)
+### 2. Cập nhật `WalletCenterContainer` — thay SendTab bằng UnifiedGiftSendDialog
 
-### 3. Cập nhật DonationDialog
+**File: `src/components/wallet/WalletCenterContainer.tsx`**
 
-**File: `src/components/donations/DonationDialog.tsx`**
+- Thay block Dialog "Gửi tiền" chứa `<SendTab />` bằng `<UnifiedGiftSendDialog mode="wallet" />`
+- Xoá import SendTab
 
-- Import `useTokenBalances` để lấy prices (đã có sẵn hook này)
-- Import `validateMinSendValue`
-- Tính `usdValue = amount * price` cho token đang chọn
-- Hiển thị giá trị USD ước tính dưới ô số lượng
-- Hiển thị message cảnh báo khi < 0,01 USD
-- Thay validation cũ `amount >= 10` bằng validation USD
-- Disable nút "Gửi Tặng" khi chưa đạt điều kiện
+### 3. Cập nhật `DonationButton` — dùng UnifiedGiftSendDialog
 
-### 4. Cập nhật useDonation hook
+**File: `src/components/donations/DonationButton.tsx`**
 
-**File: `src/hooks/useDonation.ts`**
+- Thay `DonationDialog` bằng `UnifiedGiftSendDialog` với `mode="post"` và `presetRecipient`
 
-- Thêm kiểm tra cuối cùng (guard) trước khi gọi `sendTransactionAsync`: nếu không có price hoặc giá trị < 0,01 USD → từ chối, không mở MetaMask
+### 4. Cập nhật `GiftNavButton` — dùng UnifiedGiftSendDialog
+
+**File: `src/components/donations/GiftNavButton.tsx`**
+
+- Thay `DonationDialog` bằng `UnifiedGiftSendDialog` với `mode="navbar"` và `presetRecipient`
+
+### 5. Giữ nguyên nhưng retire files cũ
+
+- `SendTab.tsx` — không còn dùng (có thể xoá hoặc giữ tạm)
+- `SendConfirmModal.tsx` — không còn dùng
+- `DonationDialog.tsx` — không còn dùng
 
 ## Chi Tiết Kỹ Thuật
 
-### Lấy giá token
+### UnifiedGiftSendDialog — Cấu trúc UI (giống ảnh 2)
 
-- **SendTab**: đã có sẵn `usdValue` từ `useTokenBalances` → dùng trực tiếp
-- **DonationDialog**: cần lấy price từ `useTokenBalances().prices` — map symbol sang giá USD. Fallback prices đã có trong hook (BNB: 700, USDT: 1, BTCB: 100000, CAMLY: 0.000004). Token FUN chưa có trên CoinGecko → price = null → không cho gửi nếu chưa có giá
+```text
++------------------------------------------+
+| [Gift icon] Tặng quà cho @username       | (hoặc "Gửi token" nếu wallet mode)
++------------------------------------------+
+| Tên hiển thị (tùy chọn): [input]         | (optional, ẩn bớt ở wallet mode)
+|                                          |
+| Chọn token:                              |
+| [FUN] [CAMLY] [BNB]                      |
+| [USDT] [BTCB] [+Khác]                   |
+|                                          |
+| [Nếu wallet mode: Địa chỉ nhận: 0x...]  |
+|                                          |
+| Số lượng:                                |
+| [input] .............. [symbol] [MAX]    |
+| So du: xxx | ~ $x.xx USD                 |
+|                                          |
+| Số lượng nhanh: [10][50][100][500][1000] |
+|                                          |
+| Lời nhắn mẫu:                           |
+| [Biết ơn][Yêu thương][Ngưỡng mộ]        |
+| [Ủng hộ][Khích lệ][Tùy chỉnh]          |
+|                                          |
+| Lời nhắn: [textarea] [emoji]            |
+|                                          |
+| Gửi đến: [avatar] 0x746b2f...685eb6 [copy] |
+|                                          |
+| [Huỷ]              [Gửi Tặng xxx FUN]   |
++------------------------------------------+
+```
+
+### Logic gửi on-chain thống nhất
+
+Component sẽ dùng `useSendToken` hook (đã có state machine + timeout) cho phần gửi on-chain. Sau khi gửi thành công:
+- Nếu có `recipientId` (post/navbar mode): gọi edge function `record-donation` để ghi nhận tặng thưởng + hiện DonationSuccessCard
+- Nếu chỉ là wallet send (không có recipientId): insert vào bảng `transactions` + toast thành công
+
+### Xử lý "Người nhận chưa có ví" (chỉ post/navbar mode)
+
+Giữ nguyên logic hiện tại: hiện cảnh báo + nút "Hướng Dẫn Nhận Quà" gọi `notify-gift-ready`.
 
 ### Danh sách files
 
 | File | Hành động |
 |------|-----------|
-| `src/lib/minSendValidation.ts` | **Tạo mới** — hàm validation dùng chung |
-| `src/components/wallet/SendTab.tsx` | **Cập nhật** — thêm validation USD, hiển thị cảnh báo |
-| `src/components/donations/DonationDialog.tsx` | **Cập nhật** — thêm price lookup, validation USD, thay thế validation 10 token |
-| `src/hooks/useDonation.ts` | **Cập nhật** — thêm guard cuối cùng trước khi gửi tx |
+| `src/components/donations/UnifiedGiftSendDialog.tsx` | **Tạo mới** — component thống nhất |
+| `src/components/wallet/WalletCenterContainer.tsx` | **Cập nhật** — dùng UnifiedGiftSendDialog thay SendTab |
+| `src/components/donations/DonationButton.tsx` | **Cập nhật** — dùng UnifiedGiftSendDialog thay DonationDialog |
+| `src/components/donations/GiftNavButton.tsx` | **Cập nhật** — dùng UnifiedGiftSendDialog thay DonationDialog |
+| `src/components/wallet/SendTab.tsx` | **Xoá** (retire) |
+| `src/components/wallet/SendConfirmModal.tsx` | **Xoá** (retire) |
+| `src/components/donations/DonationDialog.tsx` | **Xoá** (retire) |
 
-### UX Message
+### Tái sử dụng components hiện có
 
-- Khi giá trị < 0,01 USD: hiển thị text đỏ "Giá trị gửi tối thiểu là 0,01 USD" ngay dưới ô số lượng
-- Khi token chưa có giá: hiển thị text "Chưa xác định được giá trị USD của token này"
-- Nút Gửi/Tặng bị disable khi chưa đạt điều kiện
+- `TokenSelector` + `SUPPORTED_TOKENS` — giữ nguyên (UI grid 3 cột + nút "Khác")
+- `QuickGiftPicker` + `MESSAGE_TEMPLATES` + `QUICK_AMOUNTS` — giữ nguyên
+- `DonationSuccessCard` — giữ nguyên (celebration card)
+- `EmojiPicker` — giữ nguyên
+- `useSendToken` — dùng cho on-chain send (state machine + timeout)
+- `validateMinSendValue` — dùng cho validation USD tối thiểu
