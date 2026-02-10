@@ -1,127 +1,120 @@
 
-# Hợp Nhất Dialog "Gửi" và "Tặng" Thành 1 Component Duy Nhất
+
+# Chỉnh Sửa Dialog Gửi Tiền (UnifiedGiftSendDialog) Theo UI/UX Mới
 
 ## Tổng Quan
 
-Hiện tại có 2 dialog riêng biệt:
-- **Ảnh 1 (SendTab)**: Dialog đơn giản trong `/wallet`, chỉ có chọn token + nhập address + nhập amount
-- **Ảnh 2 (DonationDialog)**: Dialog đầy đủ với tên hiển thị, token grid lớn, quick amount chips, lời nhắn mẫu, emoji, avatar người nhận
+Cập nhật toàn diện dialog gửi tiền/tặng quà theo 8 yêu cầu: đổi tiêu đề, thay "Tên hiển thị" bằng section "Người nhận" có tìm kiếm theo username/address, quick amounts theo token, emoji cuối câu, fix emoji picker.
 
-Mục tiêu: Tạo **1 component duy nhất** theo UI ảnh 2, dùng cho tất cả 3 ngữ cảnh (wallet send, post gift, navbar gift).
+## Chi Tiết Thay Đổi
 
-## Thay Đổi
+### 1. Đổi tiêu đề
 
-### 1. Tạo component mới: `UnifiedGiftSendDialog`
+- Wallet mode: "Trao gửi yeu thuong" (kèm emoji 🎁❤️🎉)
+- Post mode (có preset recipient): "Trao gửi yeu thuong cho @username 🎁❤️🎉"
 
-**File mới: `src/components/donations/UnifiedGiftSendDialog.tsx`**
+### 2. Thay "Tên hiển thị" bằng section "Người nhận"
 
-Component này kết hợp UI của DonationDialog (ảnh 2) với khả năng nhập address tự do (từ SendTab):
+**Wallet/Navbar mode**: Hiển thị 2 tab toggle "Tim theo username" / "Tim theo dia chi vi"
 
-- Props:
-  - `isOpen`, `onClose`
-  - `mode: 'wallet' | 'post' | 'navbar'`
-  - `presetRecipient?: { id?, username?, avatarUrl?, walletAddress? }`
-  - `postId?: string`
-  - `onSuccess?: () => void`
-- Tiêu đề thay đổi theo mode:
-  - Có recipient: "Tặng quà cho @username"
-  - Không có recipient (wallet mode): "Gửi token"
-- Khi `mode = 'wallet'`: hiện ô input "Địa chỉ nhận (0x...)" thay vì khu "Gửi đến" cố định
-- Khi `mode = 'post'`: recipient preset, khu "Gửi đến" hiển thị avatar + address (không sửa được)
-- Khi `mode = 'navbar'`: recipient đã chọn từ GiftNavButton trước khi mở dialog
+- Tab username: Input text, debounce 500ms, gọi Supabase `profiles` tìm theo `username` (ilike), trả về avatar_url, username, wallet_address, id. Hiển thị preview card khi tìm thấy.
+- Tab address: Input 0x..., validate checksum, lookup `profiles` theo `wallet_address`. Hiển thị preview card khi tìm thấy.
+- Nếu không tìm thấy: hiển thị lỗi "Khong tim thay FUN username cho dia chi nay" và disable gửi.
+- Khi chọn xong recipient: auto-fill "Dia chi nhan" field.
 
-Logic gửi on-chain:
-- Dùng `useSendToken` (state machine đã sửa) cho tất cả — thay vì `useDonation`
-- Ghi log DB qua edge function `record-donation` (nếu có recipientId) hoặc insert `transactions` (nếu mode wallet)
-- Tích hợp DonationSuccessCard khi có recipientId
-- Validation: `validateMinSendValue` + address checksum + balance check + gas warning
+**Post mode**: Hiển thị cố định avatar + username của chủ post (không cho chỉnh). Nếu thiếu data, fallback lookup theo userId.
 
-### 2. Cập nhật `WalletCenterContainer` — thay SendTab bằng UnifiedGiftSendDialog
+**Bonus UX**: Khi chưa chọn "Nguoi nhan" -> disable toàn bộ phần nhập số lượng + nút Gửi, hiển thị hint.
 
-**File: `src/components/wallet/WalletCenterContainer.tsx`**
+### 3. Quick amounts theo token
 
-- Thay block Dialog "Gửi tiền" chứa `<SendTab />` bằng `<UnifiedGiftSendDialog mode="wallet" />`
-- Xoá import SendTab
+Thay thế `QUICK_AMOUNTS` cố định bằng map theo token:
 
-### 3. Cập nhật `DonationButton` — dùng UnifiedGiftSendDialog
+| Token | Quick amounts |
+|-------|--------------|
+| FUN | 10, 50, 100, 500, 1.000 |
+| CAMLY | 10.000, 50.000, 100.000, 500.000, 1.000.000 |
+| BNB | 0,01 / 0,05 / 0,1 / 0,5 |
+| USDT | 5 / 10 / 50 / 100 |
+| BTCB | 0,001 / 0,005 / 0,01 / 0,05 |
 
-**File: `src/components/donations/DonationButton.tsx`**
+Hiển thị format tiếng Việt (dấu chấm ngàn, dấu phẩy thập phân) nhưng value thật là number chuẩn.
 
-- Thay `DonationDialog` bằng `UnifiedGiftSendDialog` với `mode="post"` và `presetRecipient`
+### 4. Lời nhắn mẫu: emoji cuối câu
 
-### 4. Cập nhật `GiftNavButton` — dùng UnifiedGiftSendDialog
+Cập nhật `MESSAGE_TEMPLATES` trong `QuickGiftPicker.tsx`:
+- "Cam on ban rat nhieu! 🙏"
+- "Gui tang ban voi tinh yeu thuong! ❤️"
+- "Nguong mo su cong hien cua ban! 👏"
+- "Ung ho ban het minh! 💪"
+- "Tiep tuc phat huy nhe! 🌟"
 
-**File: `src/components/donations/GiftNavButton.tsx`**
+### 5. Fix emoji picker
 
-- Thay `DonationDialog` bằng `UnifiedGiftSendDialog` với `mode="navbar"` và `presetRecipient`
+EmojiPicker component hiện đã hoạt động (Popover + click chèn emoji). Tuy nhiên cần đảm bảo:
+- Thêm `type="button"` trên PopoverTrigger button để tránh form submit
+- Không đóng dialog khi mở popover (đã OK vì dùng Radix Popover)
+- Emoji append vào cuối message (đã OK trong handleEmojiSelect)
 
-### 5. Giữ nguyên nhưng retire files cũ
-
-- `SendTab.tsx` — không còn dùng (có thể xoá hoặc giữ tạm)
-- `SendConfirmModal.tsx` — không còn dùng
-- `DonationDialog.tsx` — không còn dùng
-
-## Chi Tiết Kỹ Thuật
-
-### UnifiedGiftSendDialog — Cấu trúc UI (giống ảnh 2)
-
-```text
-+------------------------------------------+
-| [Gift icon] Tặng quà cho @username       | (hoặc "Gửi token" nếu wallet mode)
-+------------------------------------------+
-| Tên hiển thị (tùy chọn): [input]         | (optional, ẩn bớt ở wallet mode)
-|                                          |
-| Chọn token:                              |
-| [FUN] [CAMLY] [BNB]                      |
-| [USDT] [BTCB] [+Khác]                   |
-|                                          |
-| [Nếu wallet mode: Địa chỉ nhận: 0x...]  |
-|                                          |
-| Số lượng:                                |
-| [input] .............. [symbol] [MAX]    |
-| So du: xxx | ~ $x.xx USD                 |
-|                                          |
-| Số lượng nhanh: [10][50][100][500][1000] |
-|                                          |
-| Lời nhắn mẫu:                           |
-| [Biết ơn][Yêu thương][Ngưỡng mộ]        |
-| [Ủng hộ][Khích lệ][Tùy chỉnh]          |
-|                                          |
-| Lời nhắn: [textarea] [emoji]            |
-|                                          |
-| Gửi đến: [avatar] 0x746b2f...685eb6 [copy] |
-|                                          |
-| [Huỷ]              [Gửi Tặng xxx FUN]   |
-+------------------------------------------+
-```
-
-### Logic gửi on-chain thống nhất
-
-Component sẽ dùng `useSendToken` hook (đã có state machine + timeout) cho phần gửi on-chain. Sau khi gửi thành công:
-- Nếu có `recipientId` (post/navbar mode): gọi edge function `record-donation` để ghi nhận tặng thưởng + hiện DonationSuccessCard
-- Nếu chỉ là wallet send (không có recipientId): insert vào bảng `transactions` + toast thành công
-
-### Xử lý "Người nhận chưa có ví" (chỉ post/navbar mode)
-
-Giữ nguyên logic hiện tại: hiện cảnh báo + nút "Hướng Dẫn Nhận Quà" gọi `notify-gift-ready`.
-
-### Danh sách files
+## Danh Sach Files
 
 | File | Hành động |
 |------|-----------|
-| `src/components/donations/UnifiedGiftSendDialog.tsx` | **Tạo mới** — component thống nhất |
-| `src/components/wallet/WalletCenterContainer.tsx` | **Cập nhật** — dùng UnifiedGiftSendDialog thay SendTab |
-| `src/components/donations/DonationButton.tsx` | **Cập nhật** — dùng UnifiedGiftSendDialog thay DonationDialog |
-| `src/components/donations/GiftNavButton.tsx` | **Cập nhật** — dùng UnifiedGiftSendDialog thay DonationDialog |
-| `src/components/wallet/SendTab.tsx` | **Xoá** (retire) |
-| `src/components/wallet/SendConfirmModal.tsx` | **Xoá** (retire) |
-| `src/components/donations/DonationDialog.tsx` | **Xoá** (retire) |
+| `src/components/donations/UnifiedGiftSendDialog.tsx` | **Cập nhật lớn** — đổi tiêu đề, thay "Tên hiển thị" bằng section "Người nhận" với 2 tab tìm kiếm (username/address), auto-fill recipient address, quick amounts theo token, disable form khi chưa chọn recipient |
+| `src/components/donations/QuickGiftPicker.tsx` | **Cập nhật** — nhận thêm prop `tokenSymbol` để render quick amounts theo token, emoji cuối câu trong MESSAGE_TEMPLATES |
+| `src/components/feed/EmojiPicker.tsx` | **Cập nhật nhỏ** — thêm `type="button"` để tránh lỗi form, đảm bảo hoạt động trên mobile Safari |
 
-### Tái sử dụng components hiện có
+### Flow "Nguoi nhan" trong UnifiedGiftSendDialog
 
-- `TokenSelector` + `SUPPORTED_TOKENS` — giữ nguyên (UI grid 3 cột + nút "Khác")
-- `QuickGiftPicker` + `MESSAGE_TEMPLATES` + `QUICK_AMOUNTS` — giữ nguyên
-- `DonationSuccessCard` — giữ nguyên (celebration card)
-- `EmojiPicker` — giữ nguyên
-- `useSendToken` — dùng cho on-chain send (state machine + timeout)
-- `validateMinSendValue` — dùng cho validation USD tối thiểu
+```text
+mode = 'wallet' hoac 'navbar' (khong co presetRecipient):
+  +-- [Tab: Tim theo username] [Tab: Tim theo dia chi vi] --+
+  |                                                          |
+  | Input: @minhtri                                         |
+  |   -> debounce 500ms                                      |
+  |   -> supabase.from('profiles')                           |
+  |      .select('id, username, avatar_url, wallet_address') |
+  |      .ilike('username', '%minhtri%')                     |
+  |      .limit(5)                                           |
+  |                                                          |
+  | Ket qua: [Avatar] minhtri  0x746b...685e                |
+  |   -> Click chon -> set resolvedRecipient                 |
+  |   -> Auto-fill "Dia chi nhan"                            |
+  |   -> Enable phan nhap so luong + nut Gui                 |
+  +----------------------------------------------------------+
+
+mode = 'post' (co presetRecipient):
+  +-- [Avatar] @username (co dinh, khong cho sua) -----------+
+  |   Dia chi: 0x746b...685e                                 |
+  +----------------------------------------------------------+
+```
+
+### Cau truc du lieu resolvedRecipient
+
+```text
+{
+  id: string
+  username: string
+  avatarUrl: string | null
+  walletAddress: string | null
+}
+```
+
+State mới trong UnifiedGiftSendDialog:
+- `searchTab: 'username' | 'address'` (default: 'username')
+- `searchQuery: string`
+- `searchResults: Profile[]`
+- `isSearching: boolean`
+- `resolvedRecipient: ResolvedRecipient | null`
+- Xóa: `senderDisplayName`, `recipientAddress` (thay bằng resolvedRecipient)
+
+### Logic disable form
+
+Khi `resolvedRecipient === null` VA `mode !== 'post'` (hoac presetRecipient khong co wallet):
+- Disable token selector (opacity-50, pointer-events-none)
+- Disable amount input
+- Disable quick amounts
+- Disable message templates
+- Disable nút Gửi
+- Hiển thị hint: "Vui long chon nguoi nhan truoc"
+
