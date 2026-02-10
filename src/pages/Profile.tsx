@@ -463,7 +463,7 @@ const Profile = () => {
 
                   {/* Public Wallet Address - fallback: public > external > custodial */}
                   {(() => {
-                    const displayAddress = profile?.public_wallet_address || profile?.external_wallet_address || profile?.custodial_wallet_address;
+                    const displayAddress = profile?.public_wallet_address || profile?.custodial_wallet_address;
                     if (displayAddress) {
                       return (
                         <div className="inline-flex items-center gap-2 mt-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20">
