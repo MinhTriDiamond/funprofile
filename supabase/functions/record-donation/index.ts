@@ -18,6 +18,8 @@ interface DonationRequest {
   message?: string;
   message_template?: string;
   post_id?: string;
+  card_theme?: string;
+  card_sound?: string;
 }
 
 serve(async (req: Request) => {
@@ -30,7 +32,6 @@ serve(async (req: Request) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get authorization header
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(
@@ -39,7 +40,6 @@ serve(async (req: Request) => {
       );
     }
 
-    // Verify user token
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) {
@@ -51,7 +51,6 @@ serve(async (req: Request) => {
 
     const body: DonationRequest = await req.json();
 
-    // Validate required fields
     if (!body.sender_id || !body.recipient_id || !body.amount || !body.tx_hash) {
       return new Response(
         JSON.stringify({ error: "Missing required fields" }),
@@ -59,7 +58,6 @@ serve(async (req: Request) => {
       );
     }
 
-    // Ensure sender matches authenticated user
     if (body.sender_id !== user.id) {
       return new Response(
         JSON.stringify({ error: "Sender does not match authenticated user" }),
@@ -67,7 +65,7 @@ serve(async (req: Request) => {
       );
     }
 
-    // Check for duplicate tx_hash
+    // Check duplicate
     const { data: existingDonation } = await supabase
       .from("donations")
       .select("id")
@@ -81,11 +79,11 @@ serve(async (req: Request) => {
       );
     }
 
-    // Calculate Light Score: 100 token = 1 Light Score
+    // Calculate Light Score
     const amount = parseFloat(body.amount);
     const lightScoreEarned = Math.floor(amount / 100);
 
-    // Create light_action record for PPLP tracking
+    // Create light_action
     let lightActionId = null;
     if (lightScoreEarned > 0) {
       const { data: lightAction } = await supabase
@@ -96,24 +94,22 @@ serve(async (req: Request) => {
           reference_type: body.post_id ? "post" : "profile",
           reference_id: body.post_id || body.recipient_id,
           content_preview: `Tặng ${body.amount} ${body.token_symbol} cho @${body.recipient_id.slice(0, 8)}`,
-          base_reward: 50, // Base reward for donate action
+          base_reward: 50,
           quality_score: 1.0,
-          impact_score: Math.min(5.0, 1 + amount / 1000), // Impact scales with amount
+          impact_score: Math.min(5.0, 1 + amount / 1000),
           integrity_score: 1.0,
           unity_score: 80,
-          light_score: lightScoreEarned * 10, // Convert to light score
+          light_score: lightScoreEarned * 10,
           mint_status: "pending",
           mint_amount: lightScoreEarned,
         })
         .select("id")
         .single();
 
-      if (lightAction) {
-        lightActionId = lightAction.id;
-      }
+      if (lightAction) lightActionId = lightAction.id;
     }
 
-    // Insert donation record
+    // Insert donation
     const { data: donation, error: insertError } = await supabase
       .from("donations")
       .insert({
@@ -127,10 +123,12 @@ serve(async (req: Request) => {
         tx_hash: body.tx_hash,
         message: body.message,
         message_template: body.message_template,
-        status: "confirmed", // Assume confirmed since client waits for tx
+        status: "confirmed",
         light_score_earned: lightScoreEarned,
         light_action_id: lightActionId,
         confirmed_at: new Date().toISOString(),
+        card_theme: body.card_theme || "celebration",
+        card_sound: body.card_sound || "rich-1",
       })
       .select()
       .single();
@@ -143,11 +141,10 @@ serve(async (req: Request) => {
       );
     }
 
-    // Create or find conversation between sender and recipient
+    // Create conversation & message
     let conversationId = null;
     let messageId = null;
 
-    // Check if direct conversation exists
     const { data: existingConv } = await supabase
       .from("conversation_participants")
       .select("conversation_id")
@@ -161,33 +158,25 @@ serve(async (req: Request) => {
       );
 
     if (existingConv && existingConv.length > 0) {
-      // Find direct conversation (not group)
       for (const conv of existingConv) {
         const { data: convData } = await supabase
           .from("conversations")
-          .select("id, is_group")
+          .select("id, type")
           .eq("id", conv.conversation_id)
-          .eq("is_group", false)
+          .eq("type", "direct")
           .single();
-        
-        if (convData) {
-          conversationId = convData.id;
-          break;
-        }
+        if (convData) { conversationId = convData.id; break; }
       }
     }
 
-    // If no conversation, create one
     if (!conversationId) {
       const { data: newConv } = await supabase
         .from("conversations")
-        .insert({ is_group: false })
+        .insert({ type: "direct" })
         .select("id")
         .single();
-
       if (newConv) {
         conversationId = newConv.id;
-        // Add participants
         await supabase.from("conversation_participants").insert([
           { conversation_id: conversationId, user_id: body.sender_id, role: "member" },
           { conversation_id: conversationId, user_id: body.recipient_id, role: "member" },
@@ -195,7 +184,6 @@ serve(async (req: Request) => {
       }
     }
 
-    // Create special donation message in chat
     if (conversationId) {
       const { data: senderProfile } = await supabase
         .from("profiles")
@@ -203,7 +191,7 @@ serve(async (req: Request) => {
         .eq("id", body.sender_id)
         .single();
 
-      const messageContent = `🎁 ${senderProfile?.username || "Người dùng"} đã tặng bạn ${amount.toLocaleString()} ${body.token_symbol}${body.message ? `\n\n"${body.message}"` : ""}`;
+      const messageContent = `🎁 ${senderProfile?.username || "Người dùng"} đã tặng bạn ${amount.toLocaleString()} ${body.token_symbol}!\n\n${body.message ? `"${body.message}"\n\n` : ""}💰 TX: ${body.tx_hash.slice(0, 18)}...\n\n👉 Nhấn "Xem Card Chúc Mừng" để xem chi tiết!`;
 
       const { data: message } = await supabase
         .from("messages")
@@ -224,7 +212,6 @@ serve(async (req: Request) => {
 
       if (message) {
         messageId = message.id;
-        // Update donation with message reference
         await supabase
           .from("donations")
           .update({ conversation_id: conversationId, message_id: messageId })
@@ -232,7 +219,7 @@ serve(async (req: Request) => {
       }
     }
 
-    // Create notification for recipient
+    // Notification
     await supabase.from("notifications").insert({
       user_id: body.recipient_id,
       actor_id: body.sender_id,
@@ -243,17 +230,13 @@ serve(async (req: Request) => {
     return new Response(
       JSON.stringify({
         success: true,
-        donation: {
-          id: donation.id,
-          tx_hash: donation.tx_hash,
-        },
+        donation: { id: donation.id, tx_hash: donation.tx_hash },
         light_score_earned: lightScoreEarned,
         conversation_id: conversationId,
         message_id: messageId,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-
   } catch (error: any) {
     console.error("Error in record-donation:", error);
     return new Response(

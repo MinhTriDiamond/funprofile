@@ -438,6 +438,9 @@ export type Database = {
           amount: string
           amount_usd: number | null
           block_number: number | null
+          card_background: string | null
+          card_sound: string | null
+          card_theme: string | null
           card_viewed_at: string | null
           chain_id: number
           confirmed_at: string | null
@@ -462,6 +465,9 @@ export type Database = {
           amount: string
           amount_usd?: number | null
           block_number?: number | null
+          card_background?: string | null
+          card_sound?: string | null
+          card_theme?: string | null
           card_viewed_at?: string | null
           chain_id?: number
           confirmed_at?: string | null
@@ -486,6 +492,9 @@ export type Database = {
           amount?: string
           amount_usd?: number | null
           block_number?: number | null
+          card_background?: string | null
+          card_sound?: string | null
+          card_theme?: string | null
           card_viewed_at?: string | null
           chain_id?: number
           confirmed_at?: string | null

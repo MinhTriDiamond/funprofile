@@ -12,6 +12,9 @@ export interface DonationRecord {
   light_score_earned: number | null;
   created_at: string;
   status: string;
+  card_theme?: string | null;
+  card_background?: string | null;
+  card_sound?: string | null;
 }
 
 export function useDonationHistory(type: 'sent' | 'received') {
@@ -35,6 +38,9 @@ export function useDonationHistory(type: 'sent' | 'received') {
           light_score_earned,
           created_at,
           status,
+          card_theme,
+          card_background,
+          card_sound,
           sender:profiles!donations_sender_id_fkey(id, username, avatar_url),
           recipient:profiles!donations_recipient_id_fkey(id, username, avatar_url)
         `)
@@ -56,6 +62,9 @@ export function useDonationHistory(type: 'sent' | 'received') {
         light_score_earned: d.light_score_earned,
         created_at: d.created_at,
         status: d.status,
+        card_theme: d.card_theme,
+        card_background: d.card_background,
+        card_sound: d.card_sound,
       })) as DonationRecord[];
     },
     staleTime: 30000,
