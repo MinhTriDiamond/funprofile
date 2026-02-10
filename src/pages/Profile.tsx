@@ -461,37 +461,46 @@ const Profile = () => {
                     {friendsCount.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')} {t('friendsSuffix')}
                   </p>
 
-                  {/* Public Wallet Address */}
-                  {profile?.public_wallet_address ? (
-                    <div className="flex items-center gap-2 mt-1">
-                      <Wallet className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                      <span className="text-sm text-muted-foreground font-mono">
-                        {profile.public_wallet_address.slice(0, 6)}...{profile.public_wallet_address.slice(-4)}
-                      </span>
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(profile.public_wallet_address);
-                          toast.success(t('walletCopied'));
-                        }}
-                        className="p-1 rounded hover:bg-muted transition-colors"
-                      >
-                        <Copy className="w-3.5 h-3.5 text-muted-foreground" />
-                      </button>
-                    </div>
-                  ) : showPrivateElements ? (
-                    <button
-                      onClick={() => navigateToTab('edit')}
-                      className="flex items-center gap-2 mt-1 text-sm text-primary hover:underline"
-                    >
-                      <Wallet className="w-4 h-4" />
-                      {t('addPublicWallet')}
-                    </button>
-                  ) : (
-                    <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
-                      <Wallet className="w-4 h-4" />
-                      <span>{t('notUpdated')}</span>
-                    </div>
-                  )}
+                  {/* Public Wallet Address - fallback: public > external > custodial */}
+                  {(() => {
+                    const displayAddress = profile?.public_wallet_address || profile?.external_wallet_address || profile?.custodial_wallet_address;
+                    if (displayAddress) {
+                      return (
+                        <div className="flex items-center gap-2 mt-1">
+                          <Wallet className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                          <span className="text-sm text-muted-foreground font-mono">
+                            {displayAddress.slice(0, 6)}...{displayAddress.slice(-4)}
+                          </span>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(displayAddress);
+                              toast.success(t('walletCopied'));
+                            }}
+                            className="p-1 rounded hover:bg-muted transition-colors"
+                          >
+                            <Copy className="w-3.5 h-3.5 text-muted-foreground" />
+                          </button>
+                        </div>
+                      );
+                    }
+                    if (showPrivateElements) {
+                      return (
+                        <button
+                          onClick={() => navigateToTab('edit')}
+                          className="flex items-center gap-2 mt-1 text-sm text-primary hover:underline"
+                        >
+                          <Wallet className="w-4 h-4" />
+                          {t('addPublicWallet')}
+                        </button>
+                      );
+                    }
+                    return (
+                      <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
+                        <Wallet className="w-4 h-4" />
+                        <span>{t('notUpdated')}</span>
+                      </div>
+                    );
+                  })()}
                   
                   {/* Bio text - full display with wrap */}
                   {profile?.bio && (
