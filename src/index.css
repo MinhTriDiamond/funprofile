@@ -129,6 +129,7 @@
   object-fit: cover;
   object-position: top center;
   filter: saturate(1.15) contrast(1.08) brightness(1.02);
+  background-color: hsl(45 30% 97%); /* prevent black letterbox on mobile */
 }
 
 /* Mobile Portrait: contain để không crop hoa/lồng đèn */
