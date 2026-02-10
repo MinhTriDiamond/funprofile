@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { LazyImage } from '@/components/ui/LazyImage';
 import { CoverPhotoEditor } from '@/components/profile/CoverPhotoEditor';
 import { AvatarEditor } from '@/components/profile/AvatarEditor';
-import { MoreHorizontal, MapPin, Briefcase, GraduationCap, Heart, Clock, MessageCircle, Eye, X, Pin, PenSquare, Gift } from 'lucide-react';
+import { MoreHorizontal, MapPin, Briefcase, GraduationCap, Heart, Clock, MessageCircle, Eye, X, Pin, PenSquare, Gift, Copy, Wallet } from 'lucide-react';
 import { DonationButton } from '@/components/donations/DonationButton';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { PullToRefreshContainer } from '@/components/common/PullToRefreshContainer';
@@ -139,7 +139,7 @@ const Profile = () => {
         .from('profiles')
         .select(isViewingOwnProfile 
           ? '*' 
-          : 'id, username, avatar_url, full_name, bio, cover_url, created_at, soul_level, total_rewards, pinned_post_id, external_wallet_address, custodial_wallet_address')
+          : 'id, username, avatar_url, full_name, bio, cover_url, created_at, soul_level, total_rewards, pinned_post_id, external_wallet_address, custodial_wallet_address, public_wallet_address')
         .eq('id', profileId)
         .single();
 
@@ -438,6 +438,38 @@ const Profile = () => {
                   <p className="text-base sm:text-lg text-muted-foreground font-medium">
                     {friendsCount.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')} {t('friendsSuffix')}
                   </p>
+
+                  {/* Public Wallet Address */}
+                  {profile?.public_wallet_address ? (
+                    <div className="flex items-center gap-2 mt-1">
+                      <Wallet className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                      <span className="text-sm text-muted-foreground font-mono">
+                        {profile.public_wallet_address.slice(0, 6)}...{profile.public_wallet_address.slice(-4)}
+                      </span>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(profile.public_wallet_address);
+                          toast.success(t('walletCopied'));
+                        }}
+                        className="p-1 rounded hover:bg-muted transition-colors"
+                      >
+                        <Copy className="w-3.5 h-3.5 text-muted-foreground" />
+                      </button>
+                    </div>
+                  ) : showPrivateElements ? (
+                    <button
+                      onClick={() => navigateToTab('edit')}
+                      className="flex items-center gap-2 mt-1 text-sm text-primary hover:underline"
+                    >
+                      <Wallet className="w-4 h-4" />
+                      {t('addPublicWallet')}
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
+                      <Wallet className="w-4 h-4" />
+                      <span>{t('notUpdated')}</span>
+                    </div>
+                  )}
                   
                   {/* Bio text - full display with wrap */}
                   {profile?.bio && (
@@ -488,29 +520,39 @@ const Profile = () => {
                   </div>
                 </div>
 
-                {/* Action Buttons for other users - Facebook style */}
-                {!isOwnProfile && !viewAsPublic && (
-                  <div className="flex flex-wrap justify-center md:hidden gap-2 pb-2">
-                    <FriendRequestButton userId={profile.id} currentUserId={currentUserId} />
-                    <Button 
-                      variant="secondary" 
-                      className="font-semibold px-4 h-10"
-                      onClick={handleStartChat}
-                      disabled={createDirectConversation.isPending}
-                    >
-                      <MessageCircle className="w-4 h-4 mr-2" />
-                      {t('sendMessage')}
-                    </Button>
-                    <DonationButton
-                      recipientId={profile.id}
-                      recipientUsername={profile.username}
-                      recipientWalletAddress={profile.external_wallet_address || profile.custodial_wallet_address}
-                      recipientAvatarUrl={profile.avatar_url}
-                      variant="profile"
-                    />
-                    <Button variant="secondary" size="icon" className="h-10 w-10">
-                      <MoreHorizontal className="w-4 h-4" />
-                    </Button>
+                {/* Action Buttons - visible on ALL breakpoints */}
+                {!viewAsPublic && (
+                  <div className="flex flex-wrap justify-center md:justify-end gap-2 pb-2">
+                    {isOwnProfile ? (
+                      <Button 
+                        variant="secondary" 
+                        className="font-semibold px-4 h-10"
+                        onClick={() => navigateToTab('edit')}
+                      >
+                        <PenSquare className="w-4 h-4 mr-2" />
+                        {t('editPersonalPage')}
+                      </Button>
+                    ) : (
+                      <>
+                        <FriendRequestButton userId={profile.id} currentUserId={currentUserId} />
+                        <Button 
+                          variant="secondary" 
+                          className="font-semibold px-4 h-10"
+                          onClick={handleStartChat}
+                          disabled={createDirectConversation.isPending}
+                        >
+                          <MessageCircle className="w-4 h-4 mr-2" />
+                          {t('sendMessage')}
+                        </Button>
+                        <DonationButton
+                          recipientId={profile.id}
+                          recipientUsername={profile.username}
+                          recipientWalletAddress={profile.external_wallet_address || profile.custodial_wallet_address}
+                          recipientAvatarUrl={profile.avatar_url}
+                          variant="profile"
+                        />
+                      </>
+                    )}
                   </div>
                 )}
               </div>
@@ -549,12 +591,18 @@ const Profile = () => {
                   >
                     {t('reels')}
                   </TabsTrigger>
+                  <TabsTrigger 
+                    value="honorboard" 
+                    className="px-4 py-4 rounded-t-lg border-b-[3px] border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary hover:bg-muted/50 font-semibold text-base whitespace-nowrap transition-colors md:hidden"
+                  >
+                    {t('honorBoard')}
+                  </TabsTrigger>
                   {showPrivateElements && (
                     <TabsTrigger 
                       value="edit" 
                       className="px-4 py-4 rounded-t-lg border-b-[3px] border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary hover:bg-muted/50 font-semibold text-base whitespace-nowrap transition-colors"
                     >
-                      {t('moreOptions')} ▼
+                      {t('editProfile')}
                     </TabsTrigger>
                   )}
                   <div className="flex-1" />
@@ -757,6 +805,43 @@ const Profile = () => {
                         <div className="bg-card/70 rounded-xl shadow-sm border border-border p-6">
                           <h3 className="font-bold text-xl mb-4 text-foreground">{t('about')}</h3>
                           <div className="space-y-4">
+                            {/* Public Wallet Address in About */}
+                            <div className="flex items-center gap-3 text-foreground">
+                              <Wallet className="w-6 h-6 text-muted-foreground" />
+                              {profile?.public_wallet_address ? (
+                                <div className="flex items-center gap-2">
+                                  <span className="font-mono text-sm">
+                                    {profile.public_wallet_address.slice(0, 6)}...{profile.public_wallet_address.slice(-4)}
+                                  </span>
+                                  <button
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(profile.public_wallet_address);
+                                      toast.success(t('walletCopied'));
+                                    }}
+                                    className="p-1 rounded hover:bg-muted transition-colors"
+                                  >
+                                    <Copy className="w-4 h-4 text-muted-foreground" />
+                                  </button>
+                                  {showPrivateElements && (
+                                    <button
+                                      onClick={() => navigateToTab('edit')}
+                                      className="text-xs text-primary hover:underline ml-1"
+                                    >
+                                      {t('edit')}
+                                    </button>
+                                  )}
+                                </div>
+                              ) : showPrivateElements ? (
+                                <button
+                                  onClick={() => navigateToTab('edit')}
+                                  className="text-primary hover:underline text-sm"
+                                >
+                                  {t('addPublicWallet')}
+                                </button>
+                              ) : (
+                                <span className="text-muted-foreground text-sm">{t('notUpdated')}</span>
+                              )}
+                            </div>
                             <div className="flex items-center gap-3 text-foreground">
                               <Briefcase className="w-6 h-6 text-muted-foreground" />
                               <span>{t('worksAt')} <strong>FUN Ecosystem</strong></span>
@@ -819,6 +904,16 @@ const Profile = () => {
                           {originalPosts.filter(p => p.video_url).length === 0 && (
                             <p className="text-center text-muted-foreground py-8">{t('noReelsYet')}</p>
                           )}
+                        </div>
+                      </TabsContent>
+
+                      <TabsContent value="honorboard" className="mt-0 md:hidden">
+                        <div className="bg-card/70 rounded-xl shadow-sm border border-border p-6">
+                          <CoverHonorBoard 
+                            userId={profile.id}
+                            username={profile?.username}
+                            avatarUrl={profile?.avatar_url}
+                          />
                         </div>
                       </TabsContent>
 

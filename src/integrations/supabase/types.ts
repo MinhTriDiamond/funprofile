@@ -1576,6 +1576,7 @@ export type Database = {
           oauth_provider: string | null
           pending_reward: number
           pinned_post_id: string | null
+          public_wallet_address: string | null
           registered_from: string | null
           reward_status: string
           soul_level: number
@@ -1615,6 +1616,7 @@ export type Database = {
           oauth_provider?: string | null
           pending_reward?: number
           pinned_post_id?: string | null
+          public_wallet_address?: string | null
           registered_from?: string | null
           reward_status?: string
           soul_level?: number
@@ -1654,6 +1656,7 @@ export type Database = {
           oauth_provider?: string | null
           pending_reward?: number
           pinned_post_id?: string | null
+          public_wallet_address?: string | null
           registered_from?: string | null
           reward_status?: string
           soul_level?: number

@@ -410,6 +410,17 @@ export const translations = {
     reactionCare: 'Care',
     reactionWow: 'Wow',
     reactionGratitude: 'Gratitude',
+    
+    // Profile wallet & friend actions
+    publicWalletAddress: 'Public Wallet Address',
+    addPublicWallet: 'Add Public Wallet',
+    walletCopied: 'Wallet address copied',
+    notUpdated: 'Not updated',
+    friendStatus: 'Friends',
+    addFriendBtn: 'Add Friend',
+    editPersonalPage: 'Edit Profile',
+    invalidWalletAddress: 'Invalid wallet address',
+    walletAddressUpdated: 'Public wallet address updated',
   },
   
   vi: {
@@ -823,6 +834,17 @@ export const translations = {
     reactionCare: 'Thương thương',
     reactionWow: 'Ngạc nhiên',
     reactionGratitude: 'Biết ơn',
+    
+    // Profile wallet & friend actions
+    publicWalletAddress: 'Địa chỉ ví công khai',
+    addPublicWallet: 'Thêm địa chỉ ví công khai',
+    walletCopied: 'Đã copy địa chỉ ví',
+    notUpdated: 'Chưa cập nhật',
+    friendStatus: 'Bạn bè',
+    addFriendBtn: 'Thêm bạn bè',
+    editPersonalPage: 'Chỉnh sửa trang cá nhân',
+    invalidWalletAddress: 'Địa chỉ ví không hợp lệ',
+    walletAddressUpdated: 'Đã cập nhật địa chỉ ví công khai',
   },
   
   // Chinese (Simplified)

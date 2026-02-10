@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
-import { Upload, AlertTriangle } from 'lucide-react';
+import { Upload, AlertTriangle, Wallet } from 'lucide-react';
 import { AvatarCropper } from './AvatarCropper';
 import { DeleteAccountDialog } from './DeleteAccountDialog';
 import { z } from 'zod';
@@ -39,6 +39,7 @@ export const EditProfile = () => {
   const [bio, setBio] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [coverUrl, setCoverUrl] = useState('');
+  const [publicWalletAddress, setPublicWalletAddress] = useState('');
   const [cropImage, setCropImage] = useState<string | null>(null);
   const [userId, setUserId] = useState<string>('');
   const { t } = useLanguage();
@@ -67,6 +68,7 @@ export const EditProfile = () => {
       setBio(data.bio || '');
       setAvatarUrl(data.avatar_url || '');
       setCoverUrl(data.cover_url || '');
+      setPublicWalletAddress(data.public_wallet_address || '');
     } catch (error) {
       // Error fetching profile - silent fail for security
     }
@@ -223,12 +225,20 @@ export const EditProfile = () => {
     try {
       if (!userId) throw new Error('No user found');
 
+      // Validate wallet address if provided
+      if (publicWalletAddress && !/^0x[a-fA-F0-9]{40}$/.test(publicWalletAddress)) {
+        toast.error(t('invalidWalletAddress'));
+        setLoading(false);
+        return;
+      }
+
       const { error } = await supabase
         .from('profiles')
         .update({
           username,
           full_name: fullName,
           bio,
+          public_wallet_address: publicWalletAddress || null,
         })
         .eq('id', userId);
 
@@ -344,6 +354,22 @@ export const EditProfile = () => {
                 maxLength={120}
               />
               <p className="text-xs text-muted-foreground">{bio.length}/120 ký tự</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="publicWallet" className="flex items-center gap-2">
+                <Wallet className="w-4 h-4" />
+                {t('publicWalletAddress')}
+              </Label>
+              <Input
+                id="publicWallet"
+                value={publicWalletAddress}
+                onChange={(e) => setPublicWalletAddress(e.target.value)}
+                placeholder="0x..."
+                className="font-mono text-sm"
+              />
+              <p className="text-xs text-muted-foreground">
+                {t('publicWalletAddress')} (EVM, 0x...)
+              </p>
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? 'Đang cập nhật...' : 'Cập nhật hồ sơ'}
