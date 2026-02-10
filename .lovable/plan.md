@@ -1,115 +1,72 @@
 
-# Sửa Lỗi UI Kẹt "Đang Xử Lý" Khi Gửi USDT
+# Thêm Validation Giá Trị Gửi Tối Thiểu 0,01 USD
 
-## Nguyên Nhân Gốc
+## Tổng Quan
 
-Hook `useSendToken` hiện tại sử dụng `sendTransactionAsync` từ wagmi. Hàm này trả về `txHash` **sau khi giao dịch đã được ký và broadcast**, nhưng có 2 điểm gây kẹt:
+Hiện tại hệ thống có 2 điểm gửi token:
+1. **SendTab** (tab Gửi trong Ví) — đã có giá USD từ `useTokenBalances`
+2. **DonationDialog** (Tặng quà từ Post/Navbar) — chỉ kiểm tra `amount >= 10 tokens`, chưa có giá USD
 
-1. **Bước ghi DB (dòng 87-98)**: Sau khi có txHash, code gọi `supabase.auth.getUser()` rồi `supabase.from('transactions').insert(...)` — nếu session hết hạn hoặc mạng chậm, bước này treo vô thời hạn
-2. **Không có timeout** cho bất kỳ bước async nào sau khi có txHash
-3. **SendConfirmModal** hiển thị "Đang gửi..." dựa trên `isPending` nhưng không có trạng thái trung gian để user biết giao dịch đã thành công on-chain
+Cần thêm validation thống nhất: giá trị giao dịch phải >= 0,01 USD.
 
-## Giải Pháp
+## Thay Đổi
 
-### 1. Thêm State Machine vào `useSendToken`
+### 1. Tạo hằng số và hàm validation dùng chung
 
-Thay vì chỉ có `isProcessing` (boolean), thêm trạng thái rõ ràng:
+**File mới: `src/lib/minSendValidation.ts`**
 
-- `idle` — chưa làm gì
-- `signing` — chờ user ký trong MetaMask
-- `broadcasted` — đã có txHash, đang chờ confirm
-- `confirming` — đang chờ receipt từ blockchain
-- `finalizing` — ghi log DB
-- `success` — hoàn tất
-- `timeout` — chờ confirm quá lâu, cần kiểm tra lại
+- Hằng số `MIN_SEND_USD = 0.01`
+- Hàm `validateMinSendValue(amount: number, priceUSD: number | null)` trả về `{ valid, message? }`
+  - Nếu `priceUSD === null` → không hợp lệ, message: "Chưa xác định được giá trị USD của token này"
+  - Nếu `amount * priceUSD < 0.01` → không hợp lệ, message: "Giá trị gửi tối thiểu là 0,01 USD"
+  - Ngược lại → hợp lệ
 
-### 2. Thêm Receipt Polling + Timeout vào `useSendToken`
+### 2. Cập nhật SendTab
 
-- Sau khi có txHash, dùng `publicClient.waitForTransactionReceipt` với timeout 60 giây
-- Nếu timeout: UI vẫn chuyển thành công (vì giao dịch đã broadcast), hiện nút "Kiểm tra lại"
-- Nếu receipt.status reverted: báo "Giao dịch không thành công (reverted)"
+**File: `src/components/wallet/SendTab.tsx`**
 
-### 3. Bọc bước ghi DB bằng Timeout 8 giây
+- Import `validateMinSendValue`
+- Gọi validation dựa trên `usdValue` đã có sẵn (computed từ `useTokenBalances` prices)
+- Hiển thị message cảnh báo dưới ô "Số lượng" khi giá trị < 0,01 USD
+- Disable nút "Gửi" khi chưa đạt điều kiện
+- Xoá validation cũ `amount >= 10 tokens` (thay bằng validation USD)
 
-- Ghi log DB (insert vào bảng `transactions`) được bọc trong `Promise.race` với timeout 8 giây
-- Nếu quá thời gian hoặc lỗi: UI vẫn báo thành công on-chain, hiện cảnh báo nhẹ "Chưa ghi nhận vào hệ thống, vui lòng tải lại"
+### 3. Cập nhật DonationDialog
 
-### 4. Cập nhật `SendConfirmModal` hiển thị tiến trình
+**File: `src/components/donations/DonationDialog.tsx`**
 
-- Hiển thị các bước: Ký giao dịch → Đã broadcast → Đang xác nhận → Hoàn tất
-- Ngay khi có txHash: hiện link "Xem trên BscScan"
-- Nếu timeout: hiện nút "Kiểm tra lại"
+- Import `useTokenBalances` để lấy prices (đã có sẵn hook này)
+- Import `validateMinSendValue`
+- Tính `usdValue = amount * price` cho token đang chọn
+- Hiển thị giá trị USD ước tính dưới ô số lượng
+- Hiển thị message cảnh báo khi < 0,01 USD
+- Thay validation cũ `amount >= 10` bằng validation USD
+- Disable nút "Gửi Tặng" khi chưa đạt điều kiện
 
-### 5. Thêm debug logs tại các mốc quan trọng
+### 4. Cập nhật useDonation hook
 
-- `[SEND] SIGN_REQUESTED`
-- `[SEND] TX_HASH_RECEIVED: {hash}`
-- `[SEND] WAIT_RECEIPT_START`
-- `[SEND] RECEIPT_RECEIVED: {status}`
-- `[SEND] DB_LOG_START`
-- `[SEND] DB_LOG_DONE`
-- `[SEND] FLOW_FINALLY`
+**File: `src/hooks/useDonation.ts`**
 
-### 6. Cập nhật thông báo theo Ngôn Ngữ Ánh Sáng
-
-- User huỷ ký: "Bạn đã huỷ giao dịch"
-- Không đủ BNB: "Cần thêm BNB để trả phí gas"
-- Reverted: "Giao dịch chưa hoàn tất, vui lòng thử lại"
-- RPC chậm: "Mạng đang bận, vui lòng thử lại sau"
+- Thêm kiểm tra cuối cùng (guard) trước khi gọi `sendTransactionAsync`: nếu không có price hoặc giá trị < 0,01 USD → từ chối, không mở MetaMask
 
 ## Chi Tiết Kỹ Thuật
 
-### Danh sách files cần thay đổi
+### Lấy giá token
+
+- **SendTab**: đã có sẵn `usdValue` từ `useTokenBalances` → dùng trực tiếp
+- **DonationDialog**: cần lấy price từ `useTokenBalances().prices` — map symbol sang giá USD. Fallback prices đã có trong hook (BNB: 700, USDT: 1, BTCB: 100000, CAMLY: 0.000004). Token FUN chưa có trên CoinGecko → price = null → không cho gửi nếu chưa có giá
+
+### Danh sách files
 
 | File | Hành động |
 |------|-----------|
-| `src/hooks/useSendToken.ts` | **Viết lại** — thêm state machine, receipt polling, DB timeout, debug logs |
-| `src/components/wallet/SendConfirmModal.tsx` | **Cập nhật** — hiển thị tiến trình theo step, link BscScan, nút "Kiểm tra lại" |
-| `src/components/wallet/SendTab.tsx` | **Cập nhật** — nhận thêm state từ hook, truyền xuống modal |
+| `src/lib/minSendValidation.ts` | **Tạo mới** — hàm validation dùng chung |
+| `src/components/wallet/SendTab.tsx` | **Cập nhật** — thêm validation USD, hiển thị cảnh báo |
+| `src/components/donations/DonationDialog.tsx` | **Cập nhật** — thêm price lookup, validation USD, thay thế validation 10 token |
+| `src/hooks/useDonation.ts` | **Cập nhật** — thêm guard cuối cùng trước khi gửi tx |
 
-### Flow mới trong `useSendToken`
+### UX Message
 
-```text
-User bấm "Xác nhận gửi"
-  |
-  v
-step = "signing"
-  |  (sendTransactionAsync)
-  v
-step = "broadcasted"  -->  txHash có ngay  -->  UI hiện link BscScan
-  |
-  v
-step = "confirming"
-  |  (waitForTransactionReceipt, timeout 60s)
-  |
-  +-- Thành công --> step = "finalizing"
-  |                    |  (DB insert, timeout 8s)
-  |                    v
-  |                  step = "success"  -->  reset form, toast thành công
-  |
-  +-- Timeout 60s --> step = "success" (vẫn thành công vì đã broadcast)
-  |                    hiện cảnh báo: "Chưa nhận xác nhận kịp thời"
-  |                    hiện nút "Kiểm tra lại"
-  |
-  +-- Reverted --> toast: "Giao dịch chưa hoàn tất"
-```
-
-### Cấu trúc return mới của `useSendToken`
-
-```text
-{
-  sendToken,
-  txStep: 'idle' | 'signing' | 'broadcasted' | 'confirming' | 'finalizing' | 'success' | 'timeout',
-  txHash: string | null,
-  isPending: boolean,
-  recheckReceipt: () => Promise<void>   // nút "Kiểm tra lại"
-}
-```
-
-### SendConfirmModal cập nhật
-
-- Props mới: `txStep`, `txHash`, `onRecheck`
-- Khi `txStep = 'signing'`: "Vui lòng xác nhận trong ví..."
-- Khi `txStep = 'broadcasted' | 'confirming'`: Hiện thanh tiến trình + link BscScan
-- Khi `txStep = 'success'`: Hiện thông báo thành công, auto đóng sau 3 giây
-- Khi `txStep = 'timeout'`: Hiện link BscScan + nút "Kiểm tra lại"
+- Khi giá trị < 0,01 USD: hiển thị text đỏ "Giá trị gửi tối thiểu là 0,01 USD" ngay dưới ô số lượng
+- Khi token chưa có giá: hiển thị text "Chưa xác định được giá trị USD của token này"
+- Nút Gửi/Tặng bị disable khi chưa đạt điều kiện
