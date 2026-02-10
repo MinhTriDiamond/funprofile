@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { ReceiveTab } from './ReceiveTab';
-import { SendTab } from './SendTab';
+import { UnifiedGiftSendDialog } from '@/components/donations/UnifiedGiftSendDialog';
 import { ClaimRewardDialog } from './ClaimRewardDialog';
 import { WalletCard } from './WalletCard';
 import { RewardBreakdown, RewardStats } from './RewardBreakdown';
@@ -724,14 +724,12 @@ const WalletCenterContainer = () => {
       </Dialog>
 
       {/* Send Dialog */}
-      <Dialog open={showSend} onOpenChange={setShowSend}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Gửi tiền</DialogTitle>
-          </DialogHeader>
-          <SendTab />
-        </DialogContent>
-      </Dialog>
+      <UnifiedGiftSendDialog
+        isOpen={showSend}
+        onClose={() => setShowSend(false)}
+        mode="wallet"
+        onSuccess={() => refetchExternal()}
+      />
 
       {/* Claim Reward Dialog */}
       <ClaimRewardDialog

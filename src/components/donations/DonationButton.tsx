@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Gift, HandCoins } from 'lucide-react';
-import { DonationDialog } from './DonationDialog';
+import { UnifiedGiftSendDialog } from './UnifiedGiftSendDialog';
 import { cn } from '@/lib/utils';
 
 interface DonationButtonProps {
@@ -25,33 +25,24 @@ export const DonationButton = ({
 }: DonationButtonProps) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  if (variant === 'icon') {
-    return (
-      <>
-        <button
-          onClick={() => setIsDialogOpen(true)}
-          className={cn(
-            'flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-3 min-h-[48px] rounded-lg transition-colors hover:bg-secondary text-muted-foreground active:bg-secondary/80',
-            className
-          )}
-        >
-          <HandCoins className="w-5 h-5 text-gold" />
-          <span className="font-semibold text-xs sm:text-sm">Tặng</span>
-        </button>
-        <DonationDialog
-          isOpen={isDialogOpen}
-          onClose={() => setIsDialogOpen(false)}
-          recipientId={recipientId}
-          recipientUsername={recipientUsername}
-          recipientWalletAddress={recipientWalletAddress}
-          recipientAvatarUrl={recipientAvatarUrl}
-          postId={postId}
-        />
-      </>
-    );
-  }
+  const presetRecipient = {
+    id: recipientId,
+    username: recipientUsername,
+    walletAddress: recipientWalletAddress,
+    avatarUrl: recipientAvatarUrl,
+  };
 
-  if (variant === 'post') {
+  const dialog = (
+    <UnifiedGiftSendDialog
+      isOpen={isDialogOpen}
+      onClose={() => setIsDialogOpen(false)}
+      mode="post"
+      presetRecipient={presetRecipient}
+      postId={postId}
+    />
+  );
+
+  if (variant === 'icon' || variant === 'post') {
     return (
       <>
         <button
@@ -64,15 +55,7 @@ export const DonationButton = ({
           <HandCoins className="w-5 h-5 text-gold" />
           <span className="font-semibold text-xs sm:text-sm">Tặng</span>
         </button>
-        <DonationDialog
-          isOpen={isDialogOpen}
-          onClose={() => setIsDialogOpen(false)}
-          recipientId={recipientId}
-          recipientUsername={recipientUsername}
-          recipientWalletAddress={recipientWalletAddress}
-          recipientAvatarUrl={recipientAvatarUrl}
-          postId={postId}
-        />
+        {dialog}
       </>
     );
   }
@@ -90,15 +73,7 @@ export const DonationButton = ({
           <Gift className="w-4 h-4 mr-2" />
           Tặng Quà
         </Button>
-        <DonationDialog
-          isOpen={isDialogOpen}
-          onClose={() => setIsDialogOpen(false)}
-          recipientId={recipientId}
-          recipientUsername={recipientUsername}
-          recipientWalletAddress={recipientWalletAddress}
-          recipientAvatarUrl={recipientAvatarUrl}
-          postId={postId}
-        />
+        {dialog}
       </>
     );
   }
@@ -116,15 +91,7 @@ export const DonationButton = ({
         <Gift className="w-4 h-4 mr-2" />
         Tặng Quà
       </Button>
-        <DonationDialog
-          isOpen={isDialogOpen}
-          onClose={() => setIsDialogOpen(false)}
-          recipientId={recipientId}
-          recipientUsername={recipientUsername}
-          recipientWalletAddress={recipientWalletAddress}
-          recipientAvatarUrl={recipientAvatarUrl}
-          postId={postId}
-        />
+      {dialog}
     </>
   );
 };
