@@ -466,11 +466,11 @@ export const UnifiedGiftSendDialog = ({
   return (
     <>
       <Dialog open={isOpen && !showSuccessCard} onOpenChange={(open) => !open && handleDialogClose()}>
-        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] max-w-md lg:max-w-[720px] max-h-[90vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base">
               <Gift className="w-5 h-5 text-gold shrink-0" />
-              <span className="truncate">{dialogTitle}</span>
+              <span className="break-words">{dialogTitle}</span>
             </DialogTitle>
           </DialogHeader>
 
