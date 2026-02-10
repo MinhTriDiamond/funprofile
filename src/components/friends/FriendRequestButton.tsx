@@ -2,9 +2,16 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { UserPlus, UserMinus, UserCheck, Clock } from "lucide-react";
+import { UserPlus, UserMinus, UserCheck, Clock, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { usePplpEvaluate } from "@/hooks/usePplpEvaluate";
+import { useLanguage } from "@/i18n/LanguageContext";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface FriendRequestButtonProps {
   userId: string;
@@ -15,6 +22,7 @@ type FriendshipStatus = "none" | "pending_sent" | "pending_received" | "accepted
 
 export const FriendRequestButton = ({ userId, currentUserId }: FriendRequestButtonProps) => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const { evaluateAsync } = usePplpEvaluate();
   const [status, setStatus] = useState<FriendshipStatus>("none");
   const [loading, setLoading] = useState(false);
@@ -23,7 +31,6 @@ export const FriendRequestButton = ({ userId, currentUserId }: FriendRequestButt
   useEffect(() => {
     checkFriendshipStatus();
     
-    // Set up realtime subscription for friendships
     const channel = supabase
       .channel('friendship-status-changes')
       .on(
@@ -34,9 +41,7 @@ export const FriendRequestButton = ({ userId, currentUserId }: FriendRequestButt
           table: 'friendships',
           filter: `user_id=eq.${currentUserId},friend_id=eq.${userId}`
         },
-        () => {
-          checkFriendshipStatus();
-        }
+        () => { checkFriendshipStatus(); }
       )
       .on(
         'postgres_changes',
@@ -46,15 +51,11 @@ export const FriendRequestButton = ({ userId, currentUserId }: FriendRequestButt
           table: 'friendships',
           filter: `user_id=eq.${userId},friend_id=eq.${currentUserId}`
         },
-        () => {
-          checkFriendshipStatus();
-        }
+        () => { checkFriendshipStatus(); }
       )
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [userId, currentUserId]);
 
   const checkFriendshipStatus = async () => {
@@ -64,10 +65,7 @@ export const FriendRequestButton = ({ userId, currentUserId }: FriendRequestButt
       .or(`and(user_id.eq.${currentUserId},friend_id.eq.${userId}),and(user_id.eq.${userId},friend_id.eq.${currentUserId})`)
       .maybeSingle();
 
-    if (error) {
-      // Error checking friendship - silent fail
-      return;
-    }
+    if (error) return;
 
     if (!data) {
       setStatus("none");
@@ -85,7 +83,6 @@ export const FriendRequestButton = ({ userId, currentUserId }: FriendRequestButt
   };
 
   const sendFriendRequest = async () => {
-    // Guest check - show login prompt
     if (!currentUserId) {
       toast.error('Vui lòng đăng nhập để kết bạn', {
         action: { label: 'Đăng nhập', onClick: () => navigate('/auth') }
@@ -96,23 +93,13 @@ export const FriendRequestButton = ({ userId, currentUserId }: FriendRequestButt
     setLoading(true);
     const { error } = await supabase
       .from("friendships")
-      .insert({
-        user_id: currentUserId,
-        friend_id: userId,
-        status: "pending"
-      });
+      .insert({ user_id: currentUserId, friend_id: userId, status: "pending" });
 
     if (error) {
       toast.error("Failed to send friend request");
     } else {
-      toast.success("Friend request sent!");
-      
-      // PPLP: Evaluate friend action for Light Score
-      evaluateAsync({
-        action_type: 'friend',
-        reference_id: userId,
-      });
-      
+      toast.success(t('requestSent') + '!');
+      evaluateAsync({ action_type: 'friend', reference_id: userId });
       checkFriendshipStatus();
     }
     setLoading(false);
@@ -129,14 +116,8 @@ export const FriendRequestButton = ({ userId, currentUserId }: FriendRequestButt
     if (error) {
       toast.error("Failed to accept friend request");
     } else {
-      toast.success("Friend request accepted!");
-      
-      // PPLP: Evaluate friend accept action for Light Score
-      evaluateAsync({
-        action_type: 'friend',
-        reference_id: userId,
-      });
-      
+      toast.success(t('acceptRequest') + '!');
+      evaluateAsync({ action_type: 'friend', reference_id: userId });
       checkFriendshipStatus();
     }
     setLoading(false);
@@ -153,7 +134,7 @@ export const FriendRequestButton = ({ userId, currentUserId }: FriendRequestButt
     if (error) {
       toast.error("Failed to remove friend");
     } else {
-      toast.success("Friend removed");
+      toast.success(t('unfriend'));
       checkFriendshipStatus();
     }
     setLoading(false);
@@ -161,28 +142,18 @@ export const FriendRequestButton = ({ userId, currentUserId }: FriendRequestButt
 
   if (status === "none") {
     return (
-      <Button 
-        onClick={sendFriendRequest} 
-        disabled={loading} 
-        size="sm"
-        variant="secondary"
-      >
+      <Button onClick={sendFriendRequest} disabled={loading} size="sm" variant="secondary">
         <UserPlus className="w-4 h-4 mr-2 text-gold" />
-        Add Friend
+        {t('addFriendBtn')}
       </Button>
     );
   }
 
   if (status === "pending_sent") {
     return (
-      <Button 
-        onClick={removeFriend} 
-        disabled={loading} 
-        variant="outline" 
-        size="sm"
-      >
+      <Button onClick={removeFriend} disabled={loading} variant="outline" size="sm">
         <Clock className="w-4 h-4 mr-2 text-gold" />
-        Cancel Request
+        {t('requestSent')}
       </Button>
     );
   }
@@ -190,21 +161,12 @@ export const FriendRequestButton = ({ userId, currentUserId }: FriendRequestButt
   if (status === "pending_received") {
     return (
       <div className="flex gap-2">
-        <Button 
-          onClick={acceptFriendRequest} 
-          disabled={loading} 
-          size="sm"
-        >
+        <Button onClick={acceptFriendRequest} disabled={loading} size="sm">
           <UserCheck className="w-4 h-4 mr-2" />
-          Accept
+          {t('acceptRequest')}
         </Button>
-        <Button 
-          onClick={removeFriend} 
-          disabled={loading} 
-          variant="outline" 
-          size="sm"
-        >
-          Reject
+        <Button onClick={removeFriend} disabled={loading} variant="outline" size="sm">
+          {t('declineRequest')}
         </Button>
       </div>
     );
@@ -212,15 +174,21 @@ export const FriendRequestButton = ({ userId, currentUserId }: FriendRequestButt
 
   if (status === "accepted") {
     return (
-      <Button 
-        onClick={removeFriend} 
-        disabled={loading} 
-        variant="outline" 
-        size="sm"
-      >
-        <UserMinus className="w-4 h-4 mr-2 text-gold" />
-        Unfriend
-      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="secondary" size="sm" disabled={loading}>
+            <UserCheck className="w-4 h-4 mr-2 text-gold" />
+            {t('friendStatus')}
+            <ChevronDown className="w-3 h-3 ml-1" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={removeFriend} className="text-destructive">
+            <UserMinus className="w-4 h-4 mr-2" />
+            {t('unfriend')}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     );
   }
 
