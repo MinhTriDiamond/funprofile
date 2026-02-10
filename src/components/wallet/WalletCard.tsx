@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Copy, Check, ArrowDown, ArrowUp, RefreshCw, ShoppingCart, Shield, Wallet, LinkIcon, LogOut, UserRoundCog } from 'lucide-react';
+import { Copy, Check, ArrowDown, ArrowUp, RefreshCw, ShoppingCart, Shield, Wallet, LogOut, UserRoundCog } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { TokenBalance } from '@/hooks/useTokenBalances';
@@ -18,7 +18,6 @@ interface WalletCardProps {
   walletLogo?: string;
   connectorType?: 'metamask' | 'bitget' | 'trust' | 'fun' | 'other' | null;
   isConnected?: boolean;
-  isLinkedToProfile?: boolean;
   isLoading?: boolean;
   /** Số lượng accounts trong ví (multi-account) */
   accountCount?: number;
@@ -31,16 +30,11 @@ interface WalletCardProps {
   // Actions
   onConnect?: () => void;
   onDisconnect?: () => void;
-  onLink?: () => void;
-  onUnlink?: () => void;
   onSwitchAccount?: () => void;
   onReceive: () => void;
   onSend: () => void;
   onSwap: () => void;
   onBuy: () => void;
-  // Loading states for actions
-  isLinkingWallet?: boolean;
-  isUnlinkingWallet?: boolean;
 }
 
 // Formatting helpers
@@ -83,7 +77,6 @@ export const WalletCard = ({
   walletLogo,
   connectorType,
   isConnected = false,
-  isLinkedToProfile = false,
   isLoading = false,
   accountCount = 0,
   tokens,
@@ -94,15 +87,11 @@ export const WalletCard = ({
   onRefresh,
   onConnect,
   onDisconnect,
-  onLink,
-  onUnlink,
   onSwitchAccount,
   onReceive,
   onSend,
   onSwap,
   onBuy,
-  isLinkingWallet = false,
-  isUnlinkingWallet = false,
 }: WalletCardProps) => {
   const isCustodial = walletType === 'custodial';
 
@@ -154,15 +143,13 @@ export const WalletCard = ({
             isCustodial 
               ? 'bg-emerald-900/30 text-emerald-100' 
               : isConnected 
-                ? isLinkedToProfile 
-                  ? 'bg-green-500/30 text-green-100'
-                  : 'bg-yellow-500/30 text-yellow-100'
+                ? 'bg-green-500/30 text-green-100'
                 : 'bg-white/20 text-white/80'
           )}>
             {isCustodial 
               ? 'Custodial' 
               : isConnected 
-                ? isLinkedToProfile ? 'Linked' : 'Connected'
+                ? 'Connected'
                 : 'Not Connected'
             }
           </div>
@@ -266,47 +253,6 @@ export const WalletCard = ({
             </Button>
           ) : (
             <>
-              {/* Link/Unlink buttons */}
-              {!isLinkedToProfile ? (
-                <Button
-                  onClick={onLink}
-                  disabled={isLinkingWallet}
-                  size="sm"
-                  className="bg-emerald-500 hover:bg-emerald-600 text-white"
-                >
-                  {isLinkingWallet ? (
-                    <RefreshCw className="w-4 h-4 mr-1 animate-spin" />
-                  ) : (
-                    <LinkIcon className="w-4 h-4 mr-1" />
-                  )}
-                  Liên kết với Profile
-                </Button>
-              ) : (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        onClick={onUnlink}
-                        disabled={isUnlinkingWallet}
-                        size="sm"
-                        variant="ghost"
-                        className="text-orange-600 hover:bg-orange-100"
-                      >
-                        {isUnlinkingWallet ? (
-                          <RefreshCw className="w-4 h-4 mr-1 animate-spin" />
-                        ) : (
-                          <LogOut className="w-4 h-4 mr-1" />
-                        )}
-                        Hủy liên kết
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Xóa ví khỏi tài khoản</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-
               <Button
                 onClick={onSwitchAccount}
                 size="sm"

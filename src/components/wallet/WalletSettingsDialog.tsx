@@ -113,9 +113,7 @@ export const WalletSettingsDialog = ({ open, onOpenChange }: WalletSettingsDialo
               </div>
             ) : (
               <WalletManagement
-                externalWalletAddress={walletProfile?.external_wallet_address}
                 custodialWalletAddress={walletProfile?.custodial_wallet_address}
-                defaultWalletType={walletProfile?.default_wallet_type as 'custodial' | 'external' | null}
                 onRefresh={loadWalletProfile}
               />
             )}

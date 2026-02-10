@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useAccount, useDisconnect, useSwitchChain, useSignMessage } from 'wagmi';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useAccount, useDisconnect, useSwitchChain } from 'wagmi';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { bsc, bscTestnet } from 'wagmi/chains';
 import { supabase } from '@/integrations/supabase/client';
@@ -43,9 +43,7 @@ interface Profile {
 }
 
 interface WalletProfile {
-  external_wallet_address: string | null;
   custodial_wallet_address: string | null;
-  default_wallet_type: 'custodial' | 'external' | null;
 }
 
 // Key to track if user explicitly disconnected
@@ -57,7 +55,6 @@ const WalletCenterContainer = () => {
   const { openConnectModal } = useConnectModal();
   const { disconnect } = useDisconnect();
   const { switchChain } = useSwitchChain();
-  const { signMessageAsync, isPending: isSigningMessage } = useSignMessage();
   
   // Modal states cho multi-account
   const [showAccountSelector, setShowAccountSelector] = useState(false);
@@ -65,7 +62,6 @@ const WalletCenterContainer = () => {
   
   const [profile, setProfile] = useState<Profile | null>(null);
   const [walletProfile, setWalletProfile] = useState<WalletProfile | null>(null);
-  const [walletProfileFetched, setWalletProfileFetched] = useState(false);
   const [claimableReward, setClaimableReward] = useState(0);
   const [claimedAmount, setClaimedAmount] = useState(0);
   const [rewardStats, setRewardStats] = useState<RewardStats | null>(null);
@@ -77,13 +73,6 @@ const WalletCenterContainer = () => {
   
   // Copy state for external wallet
   const [copiedExternal, setCopiedExternal] = useState(false);
-  
-  // Linking/Unlinking wallet states
-  const [isLinkingWallet, setIsLinkingWallet] = useState(false);
-  const [isUnlinkingWallet, setIsUnlinkingWallet] = useState(false);
-  
-  // Track if auto-link has been triggered this session
-  const autoLinkTriggeredRef = useRef(false);
   
   // Track if we should show disconnected UI
   const [showDisconnectedUI, setShowDisconnectedUI] = useState(() => {
@@ -115,7 +104,7 @@ const WalletCenterContainer = () => {
 
   // Use token balances - ưu tiên activeAddress từ multi-account context
   const effectiveAddress = activeAddress as `0x${string}` | undefined;
-  const externalAddress = (effectiveAddress || address || walletProfile?.external_wallet_address) as `0x${string}` | undefined;
+  const externalAddress = (effectiveAddress || address) as `0x${string}` | undefined;
   const { 
     tokens: externalTokens, 
     totalUsdValue: externalTotalValue, 
@@ -228,14 +217,13 @@ const WalletCenterContainer = () => {
     if (session?.user) {
       const { data } = await supabase
         .from('profiles')
-        .select('external_wallet_address, custodial_wallet_address, default_wallet_type')
+        .select('custodial_wallet_address')
         .eq('id', session.user.id)
         .single();
       
       if (data) {
         setWalletProfile(data as WalletProfile);
       }
-      setWalletProfileFetched(true);
     }
   };
 
@@ -354,114 +342,9 @@ const WalletCenterContainer = () => {
     handleSwitchToMainnet();
   }, [handleSwitchToMainnet]);
 
-  // Link wallet to profile
-  const linkWalletToProfile = useCallback(async () => {
-    if (!address || !isConnected) {
-      toast.error('Vui lòng kết nối ví trước');
-      return;
-    }
-
-    setIsLinkingWallet(true);
-    
-    try {
-      const timestamp = Date.now();
-      const message = `Xác nhận liên kết ví ${address} với tài khoản F.U. Profile của bạn.\n\nTimestamp: ${timestamp}`;
-      
-      const signature = await signMessageAsync({ message, account: address });
-      
-      const { data, error } = await supabase.functions.invoke('connect-external-wallet', {
-        body: { wallet_address: address, signature, message }
-      });
-      
-      if (error || !data?.success) {
-        throw new Error(data?.error || error?.message || 'Không thể liên kết ví');
-      }
-      
-      await fetchWalletProfile();
-      toast.success(`Đã liên kết ${getWalletDisplayName()} thành công!`);
-      
-    } catch (err: any) {
-      console.error('[WalletCenter] Link wallet error:', err);
-      
-      if (err?.message?.includes('rejected') || err?.name === 'UserRejectedRequestError') {
-        toast.error('Bạn đã từ chối ký xác nhận');
-      } else if (err?.message?.includes('already connected') || err?.message?.includes('WALLET_ALREADY_LINKED')) {
-        toast.error(
-          'Ví này đã được dùng để đăng nhập trước đó. Vui lòng sử dụng Wallet Login hoặc chọn ví khác.',
-          {
-            duration: 8000,
-            description: 'Bạn có thể Disconnect ví hiện tại và chọn ví khác, hoặc đăng nhập lại bằng ví này.',
-          }
-        );
-      } else {
-        toast.error(err?.message || 'Không thể liên kết ví');
-      }
-    } finally {
-      setIsLinkingWallet(false);
-    }
-  }, [address, isConnected, signMessageAsync, getWalletDisplayName]);
-
-  // Auto-link wallet when connected but not yet linked to profile
-  useEffect(() => {
-    const autoLinkWallet = async () => {
-      // Only auto-link if:
-      // 1. Wallet is connected (wagmi state)
-      // 2. Profile data has been fetched
-      // 3. No external_wallet_address in profile yet (not linked)
-      // 4. We have an address from wagmi
-      // 5. Not currently in linking process
-      // 6. Auto-link hasn't been triggered yet this session
-      if (
-        isConnected &&
-        walletProfileFetched &&
-        !walletProfile?.external_wallet_address &&
-        address &&
-        !isLinkingWallet &&
-        !autoLinkTriggeredRef.current
-      ) {
-        console.log('[WalletCenter] Auto-linking wallet:', address);
-        autoLinkTriggeredRef.current = true; // Mark as triggered
-        // Small delay to ensure UI is ready
-        setTimeout(() => {
-          linkWalletToProfile();
-        }, 500);
-      }
-    };
-
-    autoLinkWallet();
-  }, [isConnected, walletProfileFetched, walletProfile?.external_wallet_address, address, isLinkingWallet, linkWalletToProfile]);
-
-  // Unlink external wallet
-  const unlinkWalletFromProfile = useCallback(async () => {
-    if (!walletProfile?.external_wallet_address) {
-      toast.error('Không có ví external để hủy liên kết');
-      return;
-    }
-
-    setIsUnlinkingWallet(true);
-    
-    try {
-      const { data, error } = await supabase.functions.invoke('disconnect-external-wallet');
-      
-      if (error || !data?.success) {
-        throw new Error(data?.error || error?.message || 'Không thể hủy liên kết');
-      }
-      
-      disconnect();
-      await fetchWalletProfile();
-      toast.success('Đã hủy liên kết ví External');
-      
-    } catch (err: any) {
-      console.error('[WalletCenter] Unlink wallet error:', err);
-      toast.error(err?.message || 'Không thể hủy liên kết ví');
-    } finally {
-      setIsUnlinkingWallet(false);
-    }
-  }, [walletProfile, disconnect]);
-
   // Copy handler
   const copyExternalAddress = useCallback(() => {
-    const addr = address || walletProfile?.external_wallet_address;
+    const addr = address;
     if (addr) {
       navigator.clipboard.writeText(addr);
       setCopiedExternal(true);
@@ -483,8 +366,8 @@ const WalletCenterContainer = () => {
 
   // Has any wallet?
   const hasAnyWallet = useMemo(() => {
-    return !!(walletProfile?.external_wallet_address || isConnected);
-  }, [walletProfile, isConnected]);
+    return !!isConnected;
+  }, [isConnected]);
 
   // Show connect wallet screen if no wallet at all
   if (!hasAnyWallet && !isConnected && showDisconnectedUI) {
@@ -585,11 +468,10 @@ const WalletCenterContainer = () => {
       <div className="w-full">
         <WalletCard
           walletType="external"
-          walletAddress={activeAddress || address || walletProfile?.external_wallet_address || null}
+          walletAddress={activeAddress || address || null}
           walletName={getWalletDisplayName()}
           connectorType={connectedWalletType}
           isConnected={isConnected}
-          isLinkedToProfile={!!walletProfile?.external_wallet_address}
           accountCount={accounts.length}
           tokens={externalTokens}
           totalUsdValue={externalTotalValue}
@@ -599,15 +481,11 @@ const WalletCenterContainer = () => {
           onRefresh={refetchExternal}
           onConnect={handleConnect}
           onDisconnect={handleDisconnect}
-          onLink={linkWalletToProfile}
-          onUnlink={unlinkWalletFromProfile}
           onSwitchAccount={handleSwitchAccount}
           onReceive={() => setShowReceive(true)}
           onSend={() => setShowSend(true)}
           onSwap={() => window.open('https://pancakeswap.finance/swap', '_blank')}
           onBuy={() => window.open('https://www.moonpay.com/buy', '_blank')}
-          isLinkingWallet={isLinkingWallet || isSigningMessage}
-          isUnlinkingWallet={isUnlinkingWallet}
         />
       </div>
 
@@ -718,7 +596,7 @@ const WalletCenterContainer = () => {
             <DialogTitle>Nhận tiền</DialogTitle>
           </DialogHeader>
           <ReceiveTab 
-            walletAddress={address || walletProfile?.external_wallet_address || undefined} 
+            walletAddress={address || undefined} 
           />
         </DialogContent>
       </Dialog>
@@ -736,7 +614,7 @@ const WalletCenterContainer = () => {
         open={showClaimDialog}
         onOpenChange={setShowClaimDialog}
         claimableAmount={claimableReward}
-        externalWallet={walletProfile?.external_wallet_address || (isConnected ? address : null) || null}
+        externalWallet={(isConnected ? address : null) || null}
         camlyPrice={camlyPrice}
         onSuccess={() => {
           fetchClaimableReward();
