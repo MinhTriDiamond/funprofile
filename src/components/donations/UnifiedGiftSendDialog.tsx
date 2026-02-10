@@ -13,7 +13,7 @@ import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TokenSelector, SUPPORTED_TOKENS, TokenOption } from './TokenSelector';
 import { QuickGiftPicker, MESSAGE_TEMPLATES, MessageTemplate } from './QuickGiftPicker';
-import { DonationSuccessCard, DonationCardData } from './DonationSuccessCard';
+import { GiftCelebrationModal, GiftCardData } from './GiftCelebrationModal';
 import { useSendToken, TxStep } from '@/hooks/useSendToken';
 import { useTokenBalances } from '@/hooks/useTokenBalances';
 import { validateMinSendValue } from '@/lib/minSendValidation';
@@ -21,7 +21,7 @@ import { validateEvmAddress } from '@/utils/walletValidation';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useAccount, useBalance, useReadContract, useChainId, useSwitchChain } from 'wagmi';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
-import { Loader2, Wallet, Gift, AlertCircle, Send, Copy, AlertTriangle, ExternalLink, CheckCircle2, RefreshCw, Search, User, X } from 'lucide-react';
+import { Loader2, Wallet, Gift, AlertCircle, Send, Copy, AlertTriangle, ExternalLink, CheckCircle2, RefreshCw, Search, User, X, ArrowLeft, ArrowRight, Shield } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatUnits } from 'viem';
 import { supabase } from '@/integrations/supabase/client';
@@ -49,6 +49,8 @@ const STEP_CONFIG: Record<string, { label: string; progress: number }> = {
   success: { label: 'Hoàn tất!', progress: 100 },
   timeout: { label: 'Chưa nhận được xác nhận kịp thời', progress: 70 },
 };
+
+type FlowStep = 'form' | 'confirm' | 'celebration';
 
 interface ResolvedRecipient {
   id: string;
@@ -86,14 +88,20 @@ export const UnifiedGiftSendDialog = ({
   const { tokens: tokenBalanceList } = useTokenBalances();
   const { sendToken, isPending, txStep, txHash, recheckReceipt, resetState } = useSendToken();
 
-  const [selectedToken, setSelectedToken] = useState<TokenOption>(SUPPORTED_TOKENS[0]);
+  // Default to CAMLY
+  const defaultToken = SUPPORTED_TOKENS.find(t => t.symbol === 'CAMLY') || SUPPORTED_TOKENS[0];
+  const [flowStep, setFlowStep] = useState<FlowStep>('form');
+  const [selectedToken, setSelectedToken] = useState<TokenOption>(defaultToken);
   const [amount, setAmount] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState<MessageTemplate | null>(null);
   const [customMessage, setCustomMessage] = useState('');
-  const [showSuccessCard, setShowSuccessCard] = useState(false);
-  const [successCardData, setSuccessCardData] = useState<DonationCardData | null>(null);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [celebrationData, setCelebrationData] = useState<GiftCardData | null>(null);
   const [isSendingReminder, setIsSendingReminder] = useState(false);
   const [isRecordingDonation, setIsRecordingDonation] = useState(false);
+
+  // Sender profile
+  const [senderProfile, setSenderProfile] = useState<{ username: string; avatar_url: string | null; wallet_address: string | null } | null>(null);
 
   // Recipient search state
   const [searchTab, setSearchTab] = useState<'username' | 'address'>('username');
@@ -104,6 +112,21 @@ export const UnifiedGiftSendDialog = ({
   const [resolvedRecipient, setResolvedRecipient] = useState<ResolvedRecipient | null>(null);
 
   const debouncedSearchQuery = useDebounce(searchQuery, 500);
+
+  // Fetch sender profile
+  useEffect(() => {
+    if (!isOpen) return;
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const { data } = await supabase
+        .from('profiles')
+        .select('username, avatar_url, wallet_address')
+        .eq('id', session.user.id)
+        .single();
+      if (data) setSenderProfile(data);
+    })();
+  }, [isOpen]);
 
   // Determine effective recipient
   const effectiveRecipient = useMemo(() => {
@@ -123,10 +146,7 @@ export const UnifiedGiftSendDialog = ({
   const isFormDisabled = !hasRecipient;
 
   // Get native BNB balance
-  const { data: bnbBalance } = useBalance({
-    address,
-    chainId: bsc.id,
-  });
+  const { data: bnbBalance } = useBalance({ address, chainId: bsc.id });
 
   // Get ERC20 token balance
   const { data: tokenBalance } = useReadContract({
@@ -138,20 +158,13 @@ export const UnifiedGiftSendDialog = ({
   });
 
   const formattedBalance = useMemo(() => {
-    if (selectedToken.symbol === 'BNB') {
-      return bnbBalance ? parseFloat(bnbBalance.formatted) : 0;
-    }
-    if (tokenBalance) {
-      return parseFloat(formatUnits(tokenBalance as bigint, selectedToken.decimals));
-    }
+    if (selectedToken.symbol === 'BNB') return bnbBalance ? parseFloat(bnbBalance.formatted) : 0;
+    if (tokenBalance) return parseFloat(formatUnits(tokenBalance as bigint, selectedToken.decimals));
     return 0;
   }, [selectedToken, bnbBalance, tokenBalance]);
 
-  const bnbBalanceNum = useMemo(() => {
-    return bnbBalance ? parseFloat(bnbBalance.formatted) : 0;
-  }, [bnbBalance]);
+  const bnbBalanceNum = useMemo(() => bnbBalance ? parseFloat(bnbBalance.formatted) : 0, [bnbBalance]);
 
-  // Get USD price for the selected token
   const selectedTokenPrice = useMemo(() => {
     const found = tokenBalanceList.find(t => t.symbol === selectedToken.symbol);
     return found?.price ?? null;
@@ -171,46 +184,28 @@ export const UnifiedGiftSendDialog = ({
   const isInProgress = ['signing', 'broadcasted', 'confirming', 'finalizing'].includes(txStep);
   const stepInfo = STEP_CONFIG[txStep] || STEP_CONFIG.idle;
 
-  // Search for recipient by username or address
+  // Search for recipient
   const performSearch = useCallback(async (query: string, tab: 'username' | 'address') => {
-    if (!query.trim()) {
-      setSearchResults([]);
-      setSearchError('');
-      return;
-    }
-
+    if (!query.trim()) { setSearchResults([]); setSearchError(''); return; }
     setIsSearching(true);
     setSearchError('');
-
     try {
       if (tab === 'username') {
         const cleanQuery = query.replace(/^@/, '');
-        if (cleanQuery.length < 2) {
-          setSearchResults([]);
-          setIsSearching(false);
-          return;
-        }
+        if (cleanQuery.length < 2) { setSearchResults([]); setIsSearching(false); return; }
         const { data, error } = await supabase
           .from('profiles')
           .select('id, username, avatar_url, wallet_address')
           .ilike('username', `%${cleanQuery}%`)
           .limit(5);
-
         if (error) throw error;
-
         if (data && data.length > 0) {
-          setSearchResults(data.map(p => ({
-            id: p.id,
-            username: p.username,
-            avatarUrl: p.avatar_url,
-            walletAddress: p.wallet_address,
-          })));
+          setSearchResults(data.map(p => ({ id: p.id, username: p.username, avatarUrl: p.avatar_url, walletAddress: p.wallet_address })));
         } else {
           setSearchResults([]);
           setSearchError('Không tìm thấy người dùng');
         }
       } else {
-        // address tab
         const addr = query.trim();
         if (!/^0x[a-fA-F0-9]{40}$/.test(addr)) {
           setSearchResults([]);
@@ -218,22 +213,14 @@ export const UnifiedGiftSendDialog = ({
           setIsSearching(false);
           return;
         }
-
         const { data, error } = await supabase
           .from('profiles')
           .select('id, username, avatar_url, wallet_address')
           .ilike('wallet_address', addr)
           .limit(1);
-
         if (error) throw error;
-
         if (data && data.length > 0) {
-          setSearchResults(data.map(p => ({
-            id: p.id,
-            username: p.username,
-            avatarUrl: p.avatar_url,
-            walletAddress: p.wallet_address,
-          })));
+          setSearchResults(data.map(p => ({ id: p.id, username: p.username, avatarUrl: p.avatar_url, walletAddress: p.wallet_address })));
         } else {
           setSearchResults([]);
           setSearchError('Không tìm thấy FUN username cho địa chỉ này');
@@ -247,7 +234,6 @@ export const UnifiedGiftSendDialog = ({
     }
   }, []);
 
-  // Trigger search on debounced query change
   useEffect(() => {
     if (!isOpen || (mode === 'post' && presetRecipient?.id)) return;
     performSearch(debouncedSearchQuery, searchTab);
@@ -259,14 +245,15 @@ export const UnifiedGiftSendDialog = ({
       setAmount('');
       setSelectedTemplate(null);
       setCustomMessage('');
-      setSelectedToken(SUPPORTED_TOKENS[0]);
-      setShowSuccessCard(false);
-      setSuccessCardData(null);
+      setSelectedToken(defaultToken);
+      setShowCelebration(false);
+      setCelebrationData(null);
       setSearchTab('username');
       setSearchQuery('');
       setSearchResults([]);
       setSearchError('');
       setResolvedRecipient(null);
+      setFlowStep('form');
       resetState();
     }
   }, [isOpen]);
@@ -286,37 +273,39 @@ export const UnifiedGiftSendDialog = ({
 
   const handleSelectTemplate = (template: MessageTemplate) => {
     setSelectedTemplate(template);
-    if (template.id !== 'custom') {
-      setCustomMessage(template.message);
-    } else {
-      setCustomMessage('');
-    }
+    if (template.id !== 'custom') setCustomMessage(template.message);
+    else setCustomMessage('');
   };
 
-  const handleSelectQuickAmount = (quickAmount: number) => {
-    setAmount(quickAmount.toString());
-  };
+  const handleSelectQuickAmount = (quickAmount: number) => setAmount(quickAmount.toString());
 
   const handleMaxAmount = () => {
     if (formattedBalance > 0) {
       if (selectedToken.symbol === 'BNB') {
-        const maxBnb = Math.max(0, formattedBalance - 0.002);
-        setAmount(maxBnb.toString());
+        setAmount(Math.max(0, formattedBalance - 0.002).toString());
       } else {
         setAmount(formattedBalance.toString());
       }
     }
   };
 
-  const handleCopyAddress = () => {
-    if (effectiveRecipientAddress) {
-      navigator.clipboard.writeText(effectiveRecipientAddress);
-      toast.success('Đã copy địa chỉ ví');
-    }
+  const handleCopyAddress = (addr: string) => {
+    navigator.clipboard.writeText(addr);
+    toast.success('Đã copy địa chỉ ví');
   };
 
-  const handleEmojiSelect = (emoji: string) => {
-    setCustomMessage(prev => prev + emoji);
+  const handleEmojiSelect = (emoji: string) => setCustomMessage(prev => prev + emoji);
+
+  // Can proceed to confirm step?
+  const canProceedToConfirm = isConnected && effectiveRecipientAddress && isValidAmount && hasEnoughBalance && !isWrongNetwork;
+
+  const handleGoToConfirm = () => {
+    if (!canProceedToConfirm) return;
+    setFlowStep('confirm');
+  };
+
+  const handleGoBackToForm = () => {
+    if (!isInProgress) setFlowStep('form');
   };
 
   const handleSend = async () => {
@@ -325,7 +314,6 @@ export const UnifiedGiftSendDialog = ({
       return;
     }
 
-    // Map TokenOption to WalletToken for useSendToken
     const walletToken = {
       symbol: selectedToken.symbol,
       name: selectedToken.name,
@@ -335,14 +323,9 @@ export const UnifiedGiftSendDialog = ({
       color: selectedToken.color,
     };
 
-    const hash = await sendToken({
-      token: walletToken,
-      recipient: effectiveRecipientAddress,
-      amount,
-    });
+    const hash = await sendToken({ token: walletToken, recipient: effectiveRecipientAddress, amount });
 
     if (hash) {
-      // Record donation if we have a recipientId
       if (effectiveRecipient?.id) {
         await recordDonation(hash);
       }
@@ -355,12 +338,6 @@ export const UnifiedGiftSendDialog = ({
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
-
-      const { data: senderProfile } = await supabase
-        .from('profiles')
-        .select('username, avatar_url')
-        .eq('id', session.user.id)
-        .single();
 
       const { data: donationData, error } = await supabase.functions.invoke('record-donation', {
         body: {
@@ -382,26 +359,42 @@ export const UnifiedGiftSendDialog = ({
         toast.warning('Giao dịch thành công nhưng chưa ghi nhận được. TX: ' + hash.slice(0, 18) + '...', { duration: 10000 });
       }
 
-      const cardData: DonationCardData = {
+      const cardData: GiftCardData = {
         id: donationData?.donation?.id || crypto.randomUUID(),
         amount,
         tokenSymbol: selectedToken.symbol,
         senderUsername: senderProfile?.username || 'Unknown',
         senderAvatarUrl: senderProfile?.avatar_url,
+        senderWalletAddress: address,
         recipientUsername: effectiveRecipient!.username || 'Unknown',
         recipientAvatarUrl: effectiveRecipient!.avatarUrl,
+        recipientWalletAddress: effectiveRecipientAddress,
         message: customMessage,
         txHash: hash,
         lightScoreEarned: donationData?.light_score_earned || Math.floor(parseFloat(amount) / 100),
         createdAt: new Date().toISOString(),
       };
 
-      setSuccessCardData(cardData);
-      setShowSuccessCard(true);
+      setCelebrationData(cardData);
+      setShowCelebration(true);
+      setFlowStep('celebration');
     } catch (err) {
       console.error('recordDonation error:', err);
     } finally {
       setIsRecordingDonation(false);
+    }
+  };
+
+  const handleSaveTheme = async (themeId: string, bgIndex: number, soundId: string) => {
+    if (!celebrationData?.id) return;
+    try {
+      await supabase.from('donations').update({
+        card_theme: themeId,
+        card_background: bgIndex.toString(),
+        card_sound: soundId,
+      } as any).eq('id', celebrationData.id);
+    } catch (err) {
+      console.error('Save theme error:', err);
     }
   };
 
@@ -410,10 +403,7 @@ export const UnifiedGiftSendDialog = ({
     setIsSendingReminder(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast.error('Bạn cần đăng nhập để gửi hướng dẫn');
-        return;
-      }
+      if (!session) { toast.error('Bạn cần đăng nhập'); return; }
       const { error } = await supabase.functions.invoke('notify-gift-ready', {
         body: { recipientId: effectiveRecipient.id, notificationType: 'no_wallet' },
       });
@@ -422,50 +412,37 @@ export const UnifiedGiftSendDialog = ({
       onClose();
     } catch (error) {
       console.error('Error sending reminder:', error);
-      toast.error('Không thể gửi hướng dẫn. Vui lòng thử lại.');
+      toast.error('Không thể gửi hướng dẫn.');
     } finally {
       setIsSendingReminder(false);
     }
   };
 
-  const handleCloseSuccessCard = () => {
-    setShowSuccessCard(false);
-    setSuccessCardData(null);
+  const handleCloseCelebration = () => {
+    setShowCelebration(false);
+    setCelebrationData(null);
     onClose();
   };
 
   const handleDialogClose = () => {
-    if (!isInProgress && !isRecordingDonation) {
-      onClose();
-    }
+    if (!isInProgress && !isRecordingDonation) onClose();
   };
 
-  // Title
   const dialogTitle = effectiveRecipient?.username
     ? `Trao gửi yêu thương cho @${effectiveRecipient.username} 🎁❤️🎉`
     : 'Trao gửi yêu thương 🎁❤️🎉';
 
-  // No wallet warning
   const recipientHasNoWallet = hasRecipient && !effectiveRecipientAddress;
-
-  // Determine if send button should be disabled
-  const isSendDisabled =
-    !isConnected ||
-    !effectiveRecipientAddress ||
-    !isValidAmount ||
-    !hasEnoughBalance ||
-    isPending ||
-    isInProgress ||
-    isRecordingDonation ||
-    isWrongNetwork;
-
+  const isPresetMode = mode === 'post' || (mode === 'navbar' && !!presetRecipient?.id);
   const scanUrl = txHash ? getBscScanTxUrl(txHash, selectedToken.symbol) : null;
 
-  const isPresetMode = mode === 'post' || (mode === 'navbar' && !!presetRecipient?.id);
+  const isSendDisabled = !isConnected || !effectiveRecipientAddress || !isValidAmount || !hasEnoughBalance || isPending || isInProgress || isRecordingDonation || isWrongNetwork;
+
+  const showMainDialog = isOpen && flowStep !== 'celebration';
 
   return (
     <>
-      <Dialog open={isOpen && !showSuccessCard} onOpenChange={(open) => !open && handleDialogClose()}>
+      <Dialog open={showMainDialog} onOpenChange={(open) => !open && handleDialogClose()}>
         <DialogContent className="w-[95vw] max-w-md lg:max-w-[720px] max-h-[90vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base">
@@ -474,373 +451,380 @@ export const UnifiedGiftSendDialog = ({
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-5 py-2">
-            {/* ====== RECIPIENT SECTION ====== */}
-            {isPresetMode ? (
-              /* Post/Navbar with preset: fixed recipient card */
-              <div>
-                <label className="text-sm font-medium text-muted-foreground mb-2 block">Người nhận:</label>
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border">
-                  <Avatar className="w-10 h-10 border-2 border-gold/30">
-                    <AvatarImage src={effectiveRecipient?.avatarUrl || ''} />
-                    <AvatarFallback className="bg-primary/20 text-primary">
-                      {effectiveRecipient?.username?.[0]?.toUpperCase() || '?'}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">@{effectiveRecipient?.username}</p>
-                    {effectiveRecipientAddress && (
-                      <p className="text-xs text-muted-foreground font-mono truncate">
-                        {effectiveRecipientAddress.slice(0, 8)}...{effectiveRecipientAddress.slice(-6)}
-                      </p>
-                    )}
-                  </div>
+          {/* Step indicator */}
+          <div className="flex items-center gap-2 mb-2">
+            {['form', 'confirm'].map((step, idx) => (
+              <div key={step} className="flex items-center gap-1 flex-1">
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                  flowStep === step ? 'bg-primary text-primary-foreground' :
+                  (flowStep === 'confirm' && idx === 0) ? 'bg-primary/20 text-primary' :
+                  'bg-muted text-muted-foreground'
+                }`}>
+                  {idx + 1}
                 </div>
+                <span className="text-xs text-muted-foreground hidden sm:inline">
+                  {idx === 0 ? 'Thông tin' : 'Xác nhận'}
+                </span>
+                {idx < 1 && <div className="flex-1 h-px bg-border" />}
               </div>
-            ) : (
-              /* Wallet/Navbar without preset: search tabs */
-              <div>
-                <label className="text-sm font-medium text-muted-foreground mb-2 block">Người nhận:</label>
+            ))}
+          </div>
 
-                {resolvedRecipient ? (
-                  /* Selected recipient card */
+          {/* ========== STEP 1: FORM ========== */}
+          {flowStep === 'form' && (
+            <div className="space-y-5 py-2">
+              {/* Sender info */}
+              {senderProfile && (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground mb-2 block">Người gửi:</label>
                   <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border">
-                    <Avatar className="w-10 h-10 border-2 border-gold/30">
-                      <AvatarImage src={resolvedRecipient.avatarUrl || ''} />
+                    <Avatar className="w-10 h-10 border-2 border-primary/30">
+                      <AvatarImage src={senderProfile.avatar_url || ''} />
                       <AvatarFallback className="bg-primary/20 text-primary">
-                        {resolvedRecipient.username[0]?.toUpperCase()}
+                        {senderProfile.username?.[0]?.toUpperCase() || '?'}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">@{resolvedRecipient.username}</p>
-                      {resolvedRecipient.walletAddress && (
-                        <p className="text-xs text-muted-foreground font-mono truncate">
-                          {resolvedRecipient.walletAddress.slice(0, 8)}...{resolvedRecipient.walletAddress.slice(-6)}
-                        </p>
-                      )}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleClearRecipient}
-                      className="p-1.5 rounded-full hover:bg-destructive/10 transition-colors"
-                    >
-                      <X className="w-4 h-4 text-muted-foreground" />
-                    </button>
-                  </div>
-                ) : (
-                  /* Search UI */
-                  <div className="space-y-2">
-                    <Tabs value={searchTab} onValueChange={(v) => {
-                      setSearchTab(v as 'username' | 'address');
-                      setSearchQuery('');
-                      setSearchResults([]);
-                      setSearchError('');
-                    }}>
-                      <TabsList className="w-full">
-                        <TabsTrigger value="username" className="flex-1 text-xs gap-1">
-                          <User className="w-3.5 h-3.5" />Tìm theo username
-                        </TabsTrigger>
-                        <TabsTrigger value="address" className="flex-1 text-xs gap-1">
-                          <Wallet className="w-3.5 h-3.5" />Tìm theo địa chỉ ví
-                        </TabsTrigger>
-                      </TabsList>
-                    </Tabs>
-
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                      <Input
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder={searchTab === 'username' ? '@username...' : '0x...'}
-                        className={`pl-9 text-sm ${searchTab === 'address' ? 'font-mono' : ''}`}
-                      />
-                      {isSearching && (
-                        <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
-                      )}
-                    </div>
-
-                    {/* Search results */}
-                    {searchResults.length > 0 && (
-                      <div className="border rounded-lg divide-y max-h-40 overflow-y-auto">
-                        {searchResults.map((result) => (
-                          <button
-                            key={result.id}
-                            type="button"
-                            onClick={() => handleSelectRecipient(result)}
-                            className="w-full flex items-center gap-3 p-2.5 hover:bg-accent transition-colors text-left"
-                          >
-                            <Avatar className="w-8 h-8">
-                              <AvatarImage src={result.avatarUrl || ''} />
-                              <AvatarFallback className="bg-primary/20 text-primary text-xs">
-                                {result.username[0]?.toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-sm truncate">@{result.username}</p>
-                              {result.walletAddress && (
-                                <p className="text-xs text-muted-foreground font-mono truncate">
-                                  {result.walletAddress.slice(0, 8)}...{result.walletAddress.slice(-6)}
-                                </p>
-                              )}
-                            </div>
+                      <p className="font-medium truncate">@{senderProfile.username}</p>
+                      {address && (
+                        <div className="flex items-center gap-1">
+                          <p className="text-xs text-muted-foreground font-mono truncate">{address.slice(0, 8)}...{address.slice(-6)}</p>
+                          <button type="button" onClick={() => handleCopyAddress(address)} className="p-0.5 hover:bg-muted rounded">
+                            <Copy className="w-3 h-3 text-muted-foreground" />
                           </button>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Search error */}
-                    {searchError && !isSearching && (
-                      <div className="flex items-center gap-2 p-2.5 rounded-lg bg-destructive/10 border border-destructive/20">
-                        <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
-                        <p className="text-xs text-destructive">{searchError}</p>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Recipient has no wallet */}
-            {recipientHasNoWallet && (
-              <div className="space-y-4">
-                <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/30">
-                  <div className="flex items-center gap-2 text-destructive">
-                    <AlertCircle className="w-5 h-5" />
-                    <span className="font-medium">Người nhận chưa thiết lập ví</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Người này cần kết nối ví Web3 trước khi có thể nhận quà.
-                  </p>
-                </div>
-                <Button
-                  onClick={handleSendReminder}
-                  disabled={isSendingReminder}
-                  className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
-                >
-                  {isSendingReminder ? (
-                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Đang gửi...</>
-                  ) : (
-                    <><Send className="w-4 h-4 mr-2" />Hướng Dẫn Nhận Quà</>
-                  )}
-                </Button>
-              </div>
-            )}
-
-            {/* Hint when no recipient selected */}
-            {isFormDisabled && !recipientHasNoWallet && !isPresetMode && (
-              <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 border border-dashed border-muted-foreground/30">
-                <User className="w-4 h-4 text-muted-foreground shrink-0" />
-                <p className="text-sm text-muted-foreground">Vui lòng chọn người nhận trước</p>
-              </div>
-            )}
-
-            {/* Wrong network warning */}
-            {isWrongNetwork && isConnected && (
-              <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-                <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
-                <p className="text-sm text-destructive flex-1">Vui lòng chuyển sang BNB Smart Chain</p>
-                <Button size="sm" variant="outline" onClick={() => switchChain({ chainId: bsc.id })}>
-                  Switch
-                </Button>
-              </div>
-            )}
-
-            {/* Connect wallet prompt */}
-            {!isConnected && !recipientHasNoWallet && (
-              <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-amber-500">
-                    <Wallet className="w-5 h-5" />
-                    <span className="font-medium">Kết nối ví để gửi</span>
-                  </div>
-                  <Button onClick={() => openConnectModal?.()} size="sm" className="bg-amber-500 hover:bg-amber-600">
-                    Kết nối
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {!recipientHasNoWallet && (
-              <div className={isFormDisabled && !isPresetMode ? 'opacity-50 pointer-events-none' : ''}>
-                {/* Token Selection */}
-                <div className="mb-5">
-                  <label className="text-sm font-medium text-muted-foreground mb-2 block">
-                    Chọn token:
-                  </label>
-                  <TokenSelector selectedToken={selectedToken} onSelect={setSelectedToken} />
-                </div>
-
-                {/* Amount Input */}
-                <div className="mb-5">
-                  <label className="text-sm font-medium text-muted-foreground mb-2 block">
-                    Số lượng:
-                  </label>
-                  <div className="relative">
-                    <Input
-                      type="number"
-                      value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
-                      placeholder="0"
-                      className="text-lg font-semibold pr-24"
-                    />
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                      <span className="text-sm text-muted-foreground">{selectedToken.symbol}</span>
-                      {formattedBalance > 0 && (
-                        <button type="button" onClick={handleMaxAmount} className="text-xs text-primary hover:underline font-medium">
-                          MAX
-                        </button>
+                        </div>
                       )}
                     </div>
                   </div>
-                  {isConnected && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Số dư: {formattedBalance.toLocaleString(undefined, { maximumFractionDigits: selectedToken.decimals })} {selectedToken.symbol}
-                    </p>
-                  )}
-                  {estimatedUsd > 0 && (
-                    <p className="text-xs text-muted-foreground mt-1">≈ ${estimatedUsd.toFixed(4)} USD</p>
-                  )}
-                  {parsedAmountNum > 0 && !minSendCheck.valid && minSendCheck.message && (
-                    <p className="text-xs text-destructive mt-1">{minSendCheck.message}</p>
-                  )}
                 </div>
+              )}
 
-                {/* Quick Picks */}
-                <div className="mb-5">
-                  <QuickGiftPicker
-                    selectedTemplate={selectedTemplate}
-                    onSelectTemplate={handleSelectTemplate}
-                    onSelectAmount={handleSelectQuickAmount}
-                    currentAmount={amount}
-                    tokenSymbol={selectedToken.symbol}
-                  />
-                </div>
-
-                {/* Custom Message with Emoji Picker */}
-                <div className="mb-5">
-                  <label className="text-sm font-medium text-muted-foreground mb-2 block">
-                    Lời nhắn:
-                  </label>
-                  <div className="relative">
-                    <Textarea
-                      value={customMessage}
-                      onChange={(e) => {
-                        setCustomMessage(e.target.value);
-                        if (selectedTemplate?.id !== 'custom') {
-                          setSelectedTemplate(MESSAGE_TEMPLATES.find(t => t.id === 'custom') || null);
-                        }
-                      }}
-                      placeholder="Nhập lời nhắn của bạn..."
-                      rows={2}
-                      className="pr-12"
-                    />
-                    <div className="absolute right-2 bottom-2">
-                      <EmojiPicker onEmojiSelect={handleEmojiSelect} />
+              {/* Recipient */}
+              {isPresetMode ? (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground mb-2 block">Người nhận:</label>
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border">
+                    <Avatar className="w-10 h-10 border-2 border-gold/30">
+                      <AvatarImage src={effectiveRecipient?.avatarUrl || ''} />
+                      <AvatarFallback className="bg-primary/20 text-primary">
+                        {effectiveRecipient?.username?.[0]?.toUpperCase() || '?'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">@{effectiveRecipient?.username}</p>
+                      {effectiveRecipientAddress && (
+                        <div className="flex items-center gap-1">
+                          <p className="text-xs text-muted-foreground font-mono truncate">{effectiveRecipientAddress.slice(0, 8)}...{effectiveRecipientAddress.slice(-6)}</p>
+                          <button type="button" onClick={() => handleCopyAddress(effectiveRecipientAddress)} className="p-0.5 hover:bg-muted rounded">
+                            <Copy className="w-3 h-3 text-muted-foreground" />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
-
-                {/* Warnings */}
-                {isLargeAmount && (
-                  <div className="flex items-center gap-2 p-2 mb-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-                    <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
-                    <p className="text-xs text-destructive">Bạn đang gửi hơn 80% số dư token.</p>
-                  </div>
-                )}
-                {needsGasWarning && (
-                  <div className="flex items-center gap-2 p-2 mb-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-                    <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
-                    <p className="text-xs text-destructive">
-                      BNB còn {bnbBalanceNum.toFixed(4)}. Cần tối thiểu 0.002 BNB để trả phí gas.
-                    </p>
-                  </div>
-                )}
-
-                {/* Recipient Address Preview */}
-                {effectiveRecipientAddress && (
-                  <div className="flex items-center justify-between p-3 mb-3 rounded-lg bg-muted/50 border">
-                    <span className="text-sm text-muted-foreground">Gửi đến:</span>
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-sm">
-                        {effectiveRecipientAddress.slice(0, 8)}...{effectiveRecipientAddress.slice(-6)}
-                      </span>
-                      <button type="button" onClick={handleCopyAddress} className="p-1 rounded hover:bg-muted transition-colors" title="Copy địa chỉ ví">
-                        <Copy className="w-4 h-4 text-muted-foreground hover:text-foreground" />
+              ) : (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground mb-2 block">Người nhận:</label>
+                  {resolvedRecipient ? (
+                    <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border">
+                      <Avatar className="w-10 h-10 border-2 border-gold/30">
+                        <AvatarImage src={resolvedRecipient.avatarUrl || ''} />
+                        <AvatarFallback className="bg-primary/20 text-primary">
+                          {resolvedRecipient.username[0]?.toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">@{resolvedRecipient.username}</p>
+                        {resolvedRecipient.walletAddress && (
+                          <div className="flex items-center gap-1">
+                            <p className="text-xs text-muted-foreground font-mono truncate">
+                              {resolvedRecipient.walletAddress.slice(0, 8)}...{resolvedRecipient.walletAddress.slice(-6)}
+                            </p>
+                            <button type="button" onClick={() => handleCopyAddress(resolvedRecipient.walletAddress!)} className="p-0.5 hover:bg-muted rounded">
+                              <Copy className="w-3 h-3 text-muted-foreground" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                      <button type="button" onClick={handleClearRecipient} className="p-1.5 rounded-full hover:bg-destructive/10 transition-colors">
+                        <X className="w-4 h-4 text-muted-foreground" />
                       </button>
                     </div>
-                  </div>
-                )}
-
-                {/* TX Progress */}
-                {(isInProgress || txStep === 'success' || txStep === 'timeout') && (
-                  <div className="space-y-2 mb-3">
-                    <div className="flex items-center gap-2">
-                      {txStep === 'success' ? (
-                        <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
-                      ) : txStep === 'timeout' ? (
-                        <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
-                      ) : (
-                        <Loader2 className="w-4 h-4 animate-spin text-primary shrink-0" />
-                      )}
-                      <p className="text-sm font-medium">{stepInfo.label}</p>
-                    </div>
-                    <Progress value={stepInfo.progress} className="h-2" />
-                  </div>
-                )}
-
-                {/* BscScan link */}
-                {scanUrl && (
-                  <Button variant="outline" size="sm" className="w-full gap-2 mb-3" onClick={() => window.open(scanUrl, '_blank')}>
-                    <ExternalLink className="w-3.5 h-3.5" />
-                    Xem trên BscScan
-                  </Button>
-                )}
-
-                {/* Actions */}
-                <div className="flex gap-3 pt-2">
-                  {txStep === 'timeout' ? (
-                    <>
-                      <Button variant="outline" onClick={handleDialogClose} className="flex-1">Đóng</Button>
-                      <Button onClick={recheckReceipt} className="flex-1 gap-2">
-                        <RefreshCw className="w-3.5 h-3.5" />Kiểm tra lại
-                      </Button>
-                    </>
-                  ) : txStep === 'success' && !effectiveRecipient?.id ? (
-                    <Button variant="outline" onClick={handleDialogClose} className="w-full">Đóng</Button>
                   ) : (
-                    <>
-                      <Button variant="outline" onClick={handleDialogClose} className="flex-1" disabled={isInProgress || isRecordingDonation}>
-                        Hủy
-                      </Button>
-                      <Button
-                        onClick={handleSend}
-                        disabled={isSendDisabled || isFormDisabled}
-                        className="flex-1 bg-gradient-to-r from-gold to-amber-500 hover:from-gold/90 hover:to-amber-500/90 text-primary-foreground"
-                      >
-                        {isPending || isInProgress || isRecordingDonation ? (
-                          <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Đang xử lý...</>
-                        ) : (
-                          <>
-                            <Gift className="w-4 h-4 mr-2" />
-                            Gửi Tặng {amount && `${parseFloat(amount).toLocaleString()} ${selectedToken.symbol}`}
-                          </>
-                        )}
-                      </Button>
-                    </>
+                    <div className="space-y-2">
+                      <Tabs value={searchTab} onValueChange={(v) => { setSearchTab(v as 'username' | 'address'); setSearchQuery(''); setSearchResults([]); setSearchError(''); }}>
+                        <TabsList className="w-full">
+                          <TabsTrigger value="username" className="flex-1 text-xs gap-1"><User className="w-3.5 h-3.5" />Tìm theo username</TabsTrigger>
+                          <TabsTrigger value="address" className="flex-1 text-xs gap-1"><Wallet className="w-3.5 h-3.5" />Tìm theo địa chỉ ví</TabsTrigger>
+                        </TabsList>
+                      </Tabs>
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder={searchTab === 'username' ? '@username...' : '0x...'} className={`pl-9 text-sm ${searchTab === 'address' ? 'font-mono' : ''}`} />
+                        {isSearching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />}
+                      </div>
+                      {searchResults.length > 0 && (
+                        <div className="border rounded-lg divide-y max-h-40 overflow-y-auto">
+                          {searchResults.map((result) => (
+                            <button key={result.id} type="button" onClick={() => handleSelectRecipient(result)} className="w-full flex items-center gap-3 p-2.5 hover:bg-accent transition-colors text-left">
+                              <Avatar className="w-8 h-8">
+                                <AvatarImage src={result.avatarUrl || ''} />
+                                <AvatarFallback className="bg-primary/20 text-primary text-xs">{result.username[0]?.toUpperCase()}</AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-sm truncate">@{result.username}</p>
+                                {result.walletAddress && <p className="text-xs text-muted-foreground font-mono truncate">{result.walletAddress.slice(0, 8)}...{result.walletAddress.slice(-6)}</p>}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      {searchError && !isSearching && (
+                        <div className="flex items-center gap-2 p-2.5 rounded-lg bg-destructive/10 border border-destructive/20">
+                          <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
+                          <p className="text-xs text-destructive">{searchError}</p>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
+              )}
+
+              {/* No wallet warning */}
+              {recipientHasNoWallet && (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/30">
+                    <div className="flex items-center gap-2 text-destructive">
+                      <AlertCircle className="w-5 h-5" />
+                      <span className="font-medium">Người nhận chưa thiết lập ví</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1">Người này cần kết nối ví Web3 trước khi có thể nhận quà.</p>
+                  </div>
+                  <Button onClick={handleSendReminder} disabled={isSendingReminder} className="w-full bg-gradient-to-r from-primary to-primary/80">
+                    {isSendingReminder ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Đang gửi...</> : <><Send className="w-4 h-4 mr-2" />Hướng Dẫn Nhận Quà</>}
+                  </Button>
+                </div>
+              )}
+
+              {/* Hint when no recipient */}
+              {isFormDisabled && !recipientHasNoWallet && !isPresetMode && (
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 border border-dashed border-muted-foreground/30">
+                  <User className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <p className="text-sm text-muted-foreground">Vui lòng chọn người nhận trước</p>
+                </div>
+              )}
+
+              {/* Wrong network */}
+              {isWrongNetwork && isConnected && (
+                <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                  <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
+                  <p className="text-sm text-destructive flex-1">Vui lòng chuyển sang BNB Smart Chain</p>
+                  <Button size="sm" variant="outline" onClick={() => switchChain({ chainId: bsc.id })}>Switch</Button>
+                </div>
+              )}
+
+              {/* Connect wallet */}
+              {!isConnected && !recipientHasNoWallet && (
+                <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-amber-500">
+                      <Wallet className="w-5 h-5" />
+                      <span className="font-medium">Kết nối ví để gửi</span>
+                    </div>
+                    <Button onClick={() => openConnectModal?.()} size="sm" className="bg-amber-500 hover:bg-amber-600">Kết nối</Button>
+                  </div>
+                </div>
+              )}
+
+              {!recipientHasNoWallet && (
+                <div className={isFormDisabled && !isPresetMode ? 'opacity-50 pointer-events-none' : ''}>
+                  {/* Token */}
+                  <div className="mb-5">
+                    <label className="text-sm font-medium text-muted-foreground mb-2 block">Chọn token:</label>
+                    <TokenSelector selectedToken={selectedToken} onSelect={setSelectedToken} />
+                  </div>
+
+                  {/* Amount */}
+                  <div className="mb-5">
+                    <label className="text-sm font-medium text-muted-foreground mb-2 block">Số lượng:</label>
+                    <div className="relative">
+                      <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0" className="text-lg font-semibold pr-24" />
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">{selectedToken.symbol}</span>
+                        {formattedBalance > 0 && (
+                          <button type="button" onClick={handleMaxAmount} className="text-xs text-primary hover:underline font-medium">MAX</button>
+                        )}
+                      </div>
+                    </div>
+                    {isConnected && <p className="text-xs text-muted-foreground mt-1">Số dư: {formattedBalance.toLocaleString(undefined, { maximumFractionDigits: selectedToken.decimals })} {selectedToken.symbol}</p>}
+                    {estimatedUsd > 0 && <p className="text-xs text-muted-foreground mt-1">≈ ${estimatedUsd.toFixed(4)} USD</p>}
+                    {parsedAmountNum > 0 && !minSendCheck.valid && minSendCheck.message && <p className="text-xs text-destructive mt-1">{minSendCheck.message}</p>}
+                  </div>
+
+                  {/* Quick picks */}
+                  <div className="mb-5">
+                    <QuickGiftPicker selectedTemplate={selectedTemplate} onSelectTemplate={handleSelectTemplate} onSelectAmount={handleSelectQuickAmount} currentAmount={amount} tokenSymbol={selectedToken.symbol} />
+                  </div>
+
+                  {/* Message */}
+                  <div className="mb-5">
+                    <label className="text-sm font-medium text-muted-foreground mb-2 block">Lời nhắn:</label>
+                    <div className="relative">
+                      <Textarea value={customMessage} onChange={(e) => { setCustomMessage(e.target.value); if (selectedTemplate?.id !== 'custom') setSelectedTemplate(MESSAGE_TEMPLATES.find(t => t.id === 'custom') || null); }} placeholder="Nhập lời nhắn của bạn..." rows={2} className="pr-12" />
+                      <div className="absolute right-2 bottom-2"><EmojiPicker onEmojiSelect={handleEmojiSelect} /></div>
+                    </div>
+                  </div>
+
+                  {/* Warnings */}
+                  {isLargeAmount && (
+                    <div className="flex items-center gap-2 p-2 mb-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                      <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
+                      <p className="text-xs text-destructive">Bạn đang gửi hơn 80% số dư token.</p>
+                    </div>
+                  )}
+                  {needsGasWarning && (
+                    <div className="flex items-center gap-2 p-2 mb-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                      <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
+                      <p className="text-xs text-destructive">BNB còn {bnbBalanceNum.toFixed(4)}. Cần tối thiểu 0.002 BNB để trả phí gas.</p>
+                    </div>
+                  )}
+
+                  {/* Next button */}
+                  <div className="flex gap-3 pt-2">
+                    <Button variant="outline" onClick={handleDialogClose} className="flex-1" disabled={isInProgress}>Hủy</Button>
+                    <Button onClick={handleGoToConfirm} disabled={!canProceedToConfirm || isFormDisabled} className="flex-1 bg-gradient-to-r from-gold to-amber-500 hover:from-gold/90 hover:to-amber-500/90 text-primary-foreground gap-2">
+                      Xem lại & Xác nhận <ArrowRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ========== STEP 2: CONFIRM ========== */}
+          {flowStep === 'confirm' && (
+            <div className="space-y-4 py-2">
+              {/* Confirm table */}
+              <div className="bg-muted/30 rounded-xl p-4 space-y-4 border">
+                {/* Sender */}
+                <div className="flex items-center gap-3">
+                  <Avatar className="w-10 h-10 border-2 border-primary/30">
+                    <AvatarImage src={senderProfile?.avatar_url || ''} />
+                    <AvatarFallback className="bg-primary/20 text-primary">{senderProfile?.username?.[0]?.toUpperCase() || '?'}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm">@{senderProfile?.username}</p>
+                    {address && (
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-muted-foreground font-mono">{address.slice(0, 8)}...{address.slice(-6)}</span>
+                        <button type="button" onClick={() => handleCopyAddress(address)} className="p-0.5 hover:bg-muted rounded"><Copy className="w-3 h-3 text-muted-foreground" /></button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Arrow + Amount */}
+                <div className="flex items-center justify-center gap-3 py-2">
+                  <div className="h-px flex-1 bg-border" />
+                  <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-gold/20 to-amber-500/20 border border-gold/50">
+                    <span className="text-lg font-bold text-amber-800">{Number(amount).toLocaleString()} {selectedToken.symbol}</span>
+                  </div>
+                  <div className="h-px flex-1 bg-border" />
+                </div>
+
+                {/* Recipient */}
+                <div className="flex items-center gap-3">
+                  <Avatar className="w-10 h-10 border-2 border-gold/30">
+                    <AvatarImage src={effectiveRecipient?.avatarUrl || ''} />
+                    <AvatarFallback className="bg-primary/20 text-primary">{effectiveRecipient?.username?.[0]?.toUpperCase() || '?'}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm">@{effectiveRecipient?.username}</p>
+                    {effectiveRecipientAddress && (
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-muted-foreground font-mono">{effectiveRecipientAddress.slice(0, 8)}...{effectiveRecipientAddress.slice(-6)}</span>
+                        <button type="button" onClick={() => handleCopyAddress(effectiveRecipientAddress)} className="p-0.5 hover:bg-muted rounded"><Copy className="w-3 h-3 text-muted-foreground" /></button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Message */}
+                {customMessage && (
+                  <div className="bg-white/80 rounded-lg p-3 border">
+                    <p className="text-sm text-muted-foreground mb-1">Lời nhắn:</p>
+                    <p className="text-sm italic">"{customMessage}"</p>
+                  </div>
+                )}
+
+                {/* Chain info */}
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Shield className="w-4 h-4" />
+                  <span>Chain: BSC (BNB Smart Chain)</span>
+                </div>
               </div>
-            )}
-          </div>
+
+              {/* Warning */}
+              <div className="flex items-center gap-2 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                <p className="text-xs text-amber-700 font-medium">Giao dịch blockchain không thể hoàn tác. Vui lòng kiểm tra kỹ trước khi xác nhận.</p>
+              </div>
+
+              {/* TX Progress */}
+              {(isInProgress || txStep === 'success' || txStep === 'timeout') && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    {txStep === 'success' ? <CheckCircle2 className="w-4 h-4 text-primary shrink-0" /> :
+                     txStep === 'timeout' ? <AlertTriangle className="w-4 h-4 text-destructive shrink-0" /> :
+                     <Loader2 className="w-4 h-4 animate-spin text-primary shrink-0" />}
+                    <p className="text-sm font-medium">{stepInfo.label}</p>
+                  </div>
+                  <Progress value={stepInfo.progress} className="h-2" />
+                </div>
+              )}
+
+              {scanUrl && (
+                <Button variant="outline" size="sm" className="w-full gap-2" onClick={() => window.open(scanUrl, '_blank')}>
+                  <ExternalLink className="w-3.5 h-3.5" />Xem trên BscScan
+                </Button>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-3 pt-2">
+                {txStep === 'timeout' ? (
+                  <>
+                    <Button variant="outline" onClick={handleDialogClose} className="flex-1">Đóng</Button>
+                    <Button onClick={recheckReceipt} className="flex-1 gap-2"><RefreshCw className="w-3.5 h-3.5" />Kiểm tra lại</Button>
+                  </>
+                ) : (
+                  <>
+                    <Button variant="outline" onClick={handleGoBackToForm} className="flex-1 gap-2" disabled={isInProgress || isRecordingDonation}>
+                      <ArrowLeft className="w-4 h-4" />Quay lại
+                    </Button>
+                    <Button onClick={handleSend} disabled={isSendDisabled} className="flex-1 bg-gradient-to-r from-gold to-amber-500 hover:from-gold/90 hover:to-amber-500/90 text-primary-foreground">
+                      {isPending || isInProgress || isRecordingDonation ? (
+                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Đang xử lý...</>
+                      ) : (
+                        <><CheckCircle2 className="w-4 h-4 mr-2" />Xác nhận & Tặng</>
+                      )}
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
-      {/* Success Card */}
-      {successCardData && (
-        <DonationSuccessCard
-          isOpen={showSuccessCard}
-          onClose={handleCloseSuccessCard}
-          data={successCardData}
+      {/* Celebration Modal */}
+      {celebrationData && (
+        <GiftCelebrationModal
+          isOpen={showCelebration}
+          onClose={handleCloseCelebration}
+          data={celebrationData}
+          editable={true}
+          onSaveTheme={handleSaveTheme}
         />
       )}
     </>
