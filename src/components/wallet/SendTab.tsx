@@ -21,7 +21,7 @@ export const SendTab = ({ onSuccess }: SendTabProps) => {
   const chainId = useChainId();
   const { switchChain } = useSwitchChain();
   const { tokens: balances } = useTokenBalances();
-  const { sendToken, isPending } = useSendToken();
+  const { sendToken, isPending, txStep, txHash, recheckReceipt, resetState } = useSendToken();
 
   const [selectedToken, setSelectedToken] = useState<WalletToken>(WALLET_TOKENS[0]);
   const [recipient, setRecipient] = useState('');
@@ -38,7 +38,6 @@ export const SendTab = ({ onSuccess }: SendTabProps) => {
     return balances.find(b => b.symbol === 'BNB')?.balance || 0;
   }, [balances]);
 
-  // USD value
   const usdValue = useMemo(() => {
     const found = balances.find(b => b.symbol === selectedToken.symbol);
     const price = found?.price || 0;
@@ -64,13 +63,14 @@ export const SendTab = ({ onSuccess }: SendTabProps) => {
     }
     const parsedAmount = parseFloat(amount);
     if (isNaN(parsedAmount) || parsedAmount <= 0) {
-      toast.error('Số lượng không hợp lệ');
+      toast.error('Số lượng chưa hợp lệ');
       return;
     }
     if (parsedAmount > tokenBalance) {
-      toast.error('Số dư không đủ');
+      toast.error('Số dư chưa đủ');
       return;
     }
+    resetState();
     setShowConfirm(true);
   };
 
@@ -81,12 +81,18 @@ export const SendTab = ({ onSuccess }: SendTabProps) => {
       amount,
     });
     if (result) {
+      // Chỉ reset form khi success (auto-close modal sẽ xử lý đóng)
       setRecipient('');
       setAmount('');
-      setShowConfirm(false);
       onSuccess?.();
-    } else {
-      setShowConfirm(false);
+    }
+  };
+
+  const handleCloseModal = () => {
+    setShowConfirm(false);
+    // Reset step khi đóng modal
+    if (txStep === 'success' || txStep === 'timeout') {
+      resetState();
     }
   };
 
@@ -176,9 +182,9 @@ export const SendTab = ({ onSuccess }: SendTabProps) => {
 
           {/* Warnings */}
           {isLargeAmount && (
-            <div className="flex items-center gap-2 p-2 bg-amber-50 border border-amber-200 rounded-lg">
-              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-              <p className="text-xs text-amber-700">Bạn đang gửi hơn 80% số dư token.</p>
+            <div className="flex items-center gap-2 p-2 bg-destructive/10 border border-destructive/20 rounded-lg">
+              <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
+              <p className="text-xs text-destructive">Bạn đang gửi hơn 80% số dư token.</p>
             </div>
           )}
 
@@ -197,20 +203,23 @@ export const SendTab = ({ onSuccess }: SendTabProps) => {
             disabled={!isConnected || isPending || isWrongNetwork || !recipient || !amount}
             className="w-full"
           >
-            {isPending ? 'Đang gửi...' : 'Gửi'}
+            {isPending ? 'Đang xử lý...' : 'Gửi'}
           </Button>
         </CardContent>
       </Card>
 
       <SendConfirmModal
         isOpen={showConfirm}
-        onClose={() => setShowConfirm(false)}
+        onClose={handleCloseModal}
         onConfirm={handleConfirmSend}
         token={selectedToken}
         amount={amount}
         recipient={recipient}
         bnbBalance={bnbBalance}
         isLoading={isPending}
+        txStep={txStep}
+        txHash={txHash}
+        onRecheck={recheckReceipt}
       />
     </>
   );
