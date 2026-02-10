@@ -1,147 +1,106 @@
 
-# Hoàn Thiện Trang Profile Facebook-Like
+
+# Di Chuyển Honor Board Vào Bên Trong Ảnh Bìa (Cover Photo)
 
 ## Tổng Quan
 
-Nâng cấp toàn diện trang Profile theo phong cách Facebook 2025, bao gồm: thêm địa chỉ ví công khai, cải thiện FriendRequestButton với dropdown và text tiếng Việt, hiển thị action buttons trên desktop, và tổ chức lại tabs + Honor Board.
+Đưa component `CoverHonorBoard` từ vị trí hiện tại (bên dưới cover, trong phần profile info) vào **bên trong khung ảnh bìa** dưới dạng overlay tuyệt đối, đặt ở phía bên phải. Giữ nguyên style/màu sắc bên trong Honor Board.
 
-## Thay Đổi Cần Thực Hiện
+## Thay Đổi
 
-### 1. Database: Thêm cột `public_wallet_address`
+### File duy nhất: `src/pages/Profile.tsx`
 
-Migration SQL:
-```sql
-ALTER TABLE public.profiles ADD COLUMN public_wallet_address text;
+#### 1. Xóa Honor Board khỏi vị trí cũ (dòng 512-521)
+
+Xóa block:
+```tsx
+{/* Honor Board - right aligned, moved down with top margin */}
+<div className="hidden md:flex justify-end mt-4 md:mt-6">
+  <div className="w-full max-w-[600px]">
+    <CoverHonorBoard ... />
+  </div>
+</div>
 ```
-- Nullable, text
-- RLS: read public (da co san), update chi owner (da co san vi profiles co RLS update WHERE id = auth.uid())
 
-### 2. Cập nhật `FriendRequestButton.tsx` -- UI tiếng Việt + Dropdown "Hủy kết bạn"
+#### 2. Thêm Honor Board overlay vào bên trong cover container (dòng 368-396)
 
-Hiện tại:
-- Text tiếng Anh cứng ("Add Friend", "Unfriend", "Cancel Request", "Accept", "Reject")
-- Trạng thái "accepted" chỉ hiện nút "Unfriend" trực tiếp
+Đặt Honor Board ngay trước nút "Edit Cover" bên trong `div.relative.overflow-hidden.rounded-2xl`:
 
-Sửa thành:
-- Dùng `useLanguage()` + i18n keys cho tất cả text
-- Trạng thái `accepted`: hiện nút "Ban be" (icon UserCheck + chevron down) -> click mở dropdown với tùy chọn "Hủy kết bạn"
-- Trạng thái `none`: "Thêm bạn bè" (UserPlus)
-- Trạng thái `pending_sent`: "Đã gửi lời mời" (Clock) -> click hủy
-- Trạng thái `pending_received`: "Chấp nhận" + "Từ chối"
+```text
+Cover Container (relative, overflow-hidden -> bỏ overflow-hidden hoặc đổi thành overflow-visible)
+  ├── Cover Image
+  ├── Gradient overlay
+  ├── [MỚI] Honor Board Overlay Wrapper (absolute, right, z-20)
+  │     └── CoverHonorBoard (giữ nguyên)
+  └── Edit Cover Button (absolute, bottom-right)
+```
 
-### 3. Cập nhật `Profile.tsx` -- Header + Actions + Tabs
+#### 3. Chi tiết kỹ thuật
 
-#### 3a. Địa chỉ ví công khai trong header
-- Dưới username + friends count, thêm hiển thị `public_wallet_address`:
-  - Rút gọn: `0x1234...abcd`
-  - Nút copy -> toast "Đã copy địa chỉ ví"
-  - Chủ profile chưa có ví: CTA "Thêm địa chỉ ví công khai" -> chuyển sang tab edit
-  - Người khác chưa có ví: hiện "Chưa cập nhật"
+**Cover container**: Bỏ `overflow-hidden` để Honor Board không bị cắt (hoặc đảm bảo Honor Board nằm gọn trong cover).
 
-#### 3b. Action buttons hiển thị trên CẢ desktop và mobile
-- Hiện tại action buttons (Bạn bè, Nhắn tin, Tặng quà) chỉ hiện trên mobile (`md:hidden`)
-- Sửa: bỏ `md:hidden`, hiển thị trên mọi breakpoint
-- Chủ profile: hiện nút "Chỉnh sửa trang cá nhân" thay vì 3 nút kia
-- Desktop: nằm bên phải header info, ngang hàng
-- Mobile: giữ layout hiện tại (centered, wrap)
+**Honor Board overlay wrapper classes** (responsive):
 
-#### 3c. Tabs: thêm tab "HONOR BOARD"
-- Thêm TabsTrigger cho "HONOR BOARD" (hiện trên mobile, vi Honor Board desktop đã ở header section)
-- Tab "HONOR BOARD" content: render `CoverHonorBoard` component
-- Đổi tab "edit" label thành key i18n `editProfile` (thay vì `moreOptions`)
+| Breakpoint | Vị trí | Width | Hiệu ứng nền |
+|-----------|--------|-------|---------------|
+| Desktop (lg+) | `top-3 right-3` | `w-[clamp(300px,28vw,400px)]` | `bg-white/30 backdrop-blur-sm` |
+| Tablet (md-lg) | `top-2 right-2` | `w-[clamp(240px,34vw,320px)]` | `bg-white/40 backdrop-blur-sm` |
+| Mobile (<md) | `bottom-2 right-2` | `w-[220px] sm:w-[250px]` | `bg-white/50 backdrop-blur-sm` |
 
-#### 3d. Fetch `public_wallet_address` trong query
-- Thêm `public_wallet_address` vào select query trong `fetchProfile()`
+Wrapper: `absolute z-20 rounded-2xl p-1.5`
 
-### 4. Cập nhật `EditProfile.tsx` -- Thêm field "Địa chỉ ví công khai"
+**Edit Cover button**: Dời sang góc trái dưới (`bottom-3 left-3`) trên desktop/tablet để không chồng lên Honor Board. Mobile giữ `bottom-3 right-3` nhưng Honor Board đặt ở `bottom-12 right-2` (cao hơn nút edit).
 
-- Thêm input field "Địa chỉ ví công khai" dưới bio
-- Validate EVM address: `/^0x[a-fA-F0-9]{40}$/`
-- Lưu vào `public_wallet_address` cùng lúc với các field khác
-- Toast "Đã cập nhật địa chỉ ví công khai" khi lưu thành công
+#### 4. Scale Honor Board cho vừa cover
 
-### 5. Tab "Giới thiệu" -- Hiển thị ví công khai
+Thêm `transform scale` cho CoverHonorBoard wrapper để thu nhỏ trên mobile:
+- Desktop: `scale-100` (giữ nguyên)
+- Tablet: `scale-90` hoặc dùng width nhỏ hơn
+- Mobile: `scale-[0.75]` với `origin-bottom-right`
 
-- Thêm row hiển thị `public_wallet_address` trong tab About
-- Icon Wallet + địa chỉ rút gọn + nút copy
-- Chủ profile: có nút "Chỉnh sửa" chuyển sang tab edit
+Hoặc đơn giản hơn: dùng CSS `max-w` + overflow đảm bảo vừa vặn, vì CoverHonorBoard đã responsive sẵn.
 
-### 6. i18n -- Thêm translation keys mới
+#### 5. Đảm bảo chiều cao cover đủ chứa Honor Board
 
-Keys cần thêm (cho tất cả 13 ngôn ngữ, ưu tiên vi + en):
-- `publicWalletAddress`: "Địa chỉ ví công khai" / "Public Wallet Address"
-- `addPublicWallet`: "Thêm địa chỉ ví công khai" / "Add Public Wallet"
-- `walletCopied`: "Đã copy địa chỉ ví" / "Wallet address copied"
-- `notUpdated`: "Chưa cập nhật" / "Not updated"
-- `friendStatus`: "Bạn bè" / "Friends"
-- `addFriendBtn`: "Thêm bạn bè" / "Add Friend"
-- `requestSent`: "Đã gửi lời mời" / "Request Sent"
-- `unfriend`: "Hủy kết bạn" / "Unfriend"
-- `acceptRequest`: "Chấp nhận" / "Accept"
-- `rejectRequest`: "Từ chối" / "Reject"
-- `editPersonalPage`: "Chỉnh sửa trang cá nhân" / "Edit Profile"
-- `invalidWalletAddress`: "Địa chỉ ví không hợp lệ" / "Invalid wallet address"
-- `honorBoard` (da co)
+Cover hiện có:
+- Mobile: `h-[200px]` -- có thể hơi chật, tăng lên `h-[220px]` nếu cần
+- Tablet: `h-[300px]` -- OK
+- Desktop: `h-[400px]` -- OK
 
-## Danh Sách Files
+Nếu Honor Board bị cắt trên mobile, sẽ đặt Honor Board ở `bottom` thay vì `top` và cho phép nó tràn ra dưới một chút (bằng cách bỏ `overflow-hidden` trên cover container và thêm vào cover image thay thế).
 
-| File | Hành động |
-|------|-----------|
-| Migration SQL | **Tạo** -- thêm cột `public_wallet_address` |
-| `src/pages/Profile.tsx` | **Cập nhật** -- header ví, action buttons desktop, tab Honor Board, fetch public_wallet_address |
-| `src/components/friends/FriendRequestButton.tsx` | **Cập nhật** -- i18n, dropdown cho trạng thái "accepted" |
-| `src/components/profile/EditProfile.tsx` | **Cập nhật** -- thêm field ví công khai |
-| `src/i18n/translations.ts` | **Cập nhật** -- thêm keys mới cho 13 ngôn ngữ |
-
-## Chi Tiết Kỹ Thuật
-
-### Layout Header Desktop (sau khi sửa)
+### Layout sau khi sửa
 
 ```text
 +------------------------------------------------------------------+
-|                    [Cover Photo]                                  |
-|                                              [Honor Board]       |
-|                                              (giữ vị trí phải)   |
+|  Cover Photo (relative)                                          |
+|                                                                   |
+|  [Edit Cover]              [========= HONOR BOARD =========]     |
+|  (bottom-left)             (absolute, right-3, top-3)            |
+|                            (rounded-2xl, bg-white/30, blur)      |
 +------------------------------------------------------------------+
-| [Avatar]  Username                    [Bạn bè v] [Nhắn tin] [Tặng quà] |
+| [Avatar]  Username    [Bạn bè v] [Nhắn tin] [Tặng quà]          |
 |           123 bạn bè                                              |
 |           0x1234...abcd [copy]                                    |
-|           Bio text here...                                        |
-|           VN | FUN Ecosystem                                      |
-|           [friend avatars]                                        |
-+------------------------------------------------------------------+
-| [Bài viết] [Giới thiệu] [Ảnh] [Bạn bè] [Honor Board] [Chỉnh sửa] |
 +------------------------------------------------------------------+
 ```
 
-Khi là chủ profile, thay 3 nút action bằng: `[Chỉnh sửa trang cá nhân]`
-
-### FriendRequestButton -- Trạng thái "accepted" dropdown
-
+Mobile:
 ```text
-+------------------+
-| ✓ Bạn bè    ▼   |  <- Button chính
-+------------------+
-      |
-      +-------------------+
-      | ✗ Hủy kết bạn     |  <- Dropdown item
-      +-------------------+
++------------------------------+
+|  Cover Photo                 |
+|                              |
+|           [HONOR BOARD nhỏ]  |
+|           (bottom-right)     |
+|  [Edit]                      |
++------------------------------+
 ```
 
-Sử dụng DropdownMenu từ shadcn (đã có trong project).
+## Tóm tắt
 
-### Tương thích 4 phương thức đăng nhập
-
-Profile page dùng `supabase.auth.getUser()` và `supabase.auth.getSession()` -- cả 2 đều hoạt động đồng nhất cho OTP, Wallet, Google, Password vì Supabase Auth trả về cùng format session. Không cần logic đặc biệt theo phương thức đăng nhập.
-
-Điểm cần lưu ý:
-- Wallet login: user có thể đã có `external_wallet_address` nhưng `public_wallet_address` là field riêng do user tự cập nhật
-- Google/OTP login: user chưa có wallet address nào -> CTA "Thêm địa chỉ ví công khai"
-- Tất cả auth methods đều tạo profile row qua trigger -> EditProfile luôn tìm được profile
-
-### Validation địa chỉ ví
-
-Dùng regex đơn giản (không cần import viem):
-```typescript
-const isValidEvmAddress = (addr: string) => /^0x[a-fA-F0-9]{40}$/.test(addr);
-```
+Chỉ sửa 1 file `src/pages/Profile.tsx`:
+1. Xóa Honor Board block cũ (dòng 512-521)
+2. Thêm Honor Board overlay vào trong cover container (dòng ~383)
+3. Dời nút Edit Cover sang trái dưới trên md+ để tránh chồng lấn
+4. Thêm wrapper với responsive width + nền mờ nhẹ
+5. Giữ nguyên hoàn toàn style bên trong CoverHonorBoard
