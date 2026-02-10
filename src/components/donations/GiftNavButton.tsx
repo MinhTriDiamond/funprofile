@@ -8,7 +8,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useLanguage } from '@/i18n/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
-import { DonationDialog } from './DonationDialog';
+import { UnifiedGiftSendDialog } from './UnifiedGiftSendDialog';
 
 interface GiftNavButtonProps {
   variant: 'desktop' | 'mobile';
@@ -186,13 +186,16 @@ export const GiftNavButton = memo(({ variant, className = '' }: GiftNavButtonPro
 
         {/* Donation Dialog */}
         {selectedRecipient && (
-          <DonationDialog
+          <UnifiedGiftSendDialog
             isOpen={isDonationDialogOpen}
             onClose={handleDonationClose}
-            recipientId={selectedRecipient.id}
-            recipientUsername={selectedRecipient.username}
-            recipientAvatarUrl={selectedRecipient.avatar_url || undefined}
-            recipientWalletAddress={selectedRecipient.wallet_address}
+            mode="navbar"
+            presetRecipient={{
+              id: selectedRecipient.id,
+              username: selectedRecipient.username,
+              avatarUrl: selectedRecipient.avatar_url,
+              walletAddress: selectedRecipient.wallet_address,
+            }}
           />
         )}
       </>
@@ -284,13 +287,16 @@ export const GiftNavButton = memo(({ variant, className = '' }: GiftNavButtonPro
 
       {/* Donation Dialog */}
       {selectedRecipient && (
-        <DonationDialog
+        <UnifiedGiftSendDialog
           isOpen={isDonationDialogOpen}
           onClose={handleDonationClose}
-          recipientId={selectedRecipient.id}
-          recipientUsername={selectedRecipient.username}
-          recipientAvatarUrl={selectedRecipient.avatar_url || undefined}
-          recipientWalletAddress={selectedRecipient.wallet_address}
+          mode="navbar"
+          presetRecipient={{
+            id: selectedRecipient.id,
+            username: selectedRecipient.username,
+            avatarUrl: selectedRecipient.avatar_url,
+            walletAddress: selectedRecipient.wallet_address,
+          }}
         />
       )}
     </>
