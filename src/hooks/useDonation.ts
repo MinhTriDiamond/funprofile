@@ -4,6 +4,7 @@ import { parseEther, parseUnits } from 'viem';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { DonationCardData } from '@/components/donations/DonationSuccessCard';
+import { validateMinSendValue, MIN_SEND_USD } from '@/lib/minSendValidation';
 
 // ERC20 Transfer ABI
 const ERC20_TRANSFER_ABI = [
@@ -37,6 +38,7 @@ export interface DonationParams {
   messageTemplate?: string;
   postId?: string;
   senderDisplayName?: string;
+  tokenPriceUSD?: number | null;
 }
 
 export function useDonation(options?: UseDonationOptions) {
@@ -67,9 +69,11 @@ export function useDonation(options?: UseDonationOptions) {
       return null;
     }
 
-    // Check minimum amount
-    if (amount < 10) {
-      toast.error('Số lượng tối thiểu là 10 token');
+    // Check minimum USD value
+    const priceUSD = params.tokenPriceUSD ?? null;
+    const minCheck = validateMinSendValue(amount, priceUSD);
+    if (!minCheck.valid) {
+      toast.error(minCheck.message || `Giá trị gửi tối thiểu là ${MIN_SEND_USD} USD`);
       return null;
     }
 
