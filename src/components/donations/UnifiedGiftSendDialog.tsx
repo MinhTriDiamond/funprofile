@@ -98,10 +98,10 @@ export const UnifiedGiftSendDialog = ({
   const [showCelebration, setShowCelebration] = useState(false);
   const [celebrationData, setCelebrationData] = useState<GiftCardData | null>(null);
   const [isSendingReminder, setIsSendingReminder] = useState(false);
-  const [isRecordingDonation, setIsRecordingDonation] = useState(false);
 
   // Sender profile
   const [senderProfile, setSenderProfile] = useState<{ username: string; avatar_url: string | null; wallet_address: string | null } | null>(null);
+  const [senderUserId, setSenderUserId] = useState<string | null>(null);
 
   // Recipient search state
   const [searchTab, setSearchTab] = useState<'username' | 'address'>('username');
@@ -119,6 +119,7 @@ export const UnifiedGiftSendDialog = ({
     (async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
+      setSenderUserId(session.user.id);
       const { data } = await supabase
         .from('profiles')
         .select('username, avatar_url, wallet_address')
@@ -326,62 +327,95 @@ export const UnifiedGiftSendDialog = ({
     const hash = await sendToken({ token: walletToken, recipient: effectiveRecipientAddress, amount });
 
     if (hash) {
-      if (effectiveRecipient?.id) {
-        await recordDonation(hash);
-      }
-      onSuccess?.();
-    }
-  };
-
-  const recordDonation = async (hash: string) => {
-    setIsRecordingDonation(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-
-      const { data: donationData, error } = await supabase.functions.invoke('record-donation', {
-        body: {
-          sender_id: session.user.id,
-          recipient_id: effectiveRecipient!.id,
-          amount,
-          token_symbol: selectedToken.symbol,
-          token_address: selectedToken.address,
-          chain_id: chainId || 56,
-          tx_hash: hash,
-          message: customMessage,
-          message_template: selectedTemplate?.id,
-          post_id: postId,
-        },
-      });
-
-      if (error) {
-        console.error('Error recording donation:', error);
-        toast.warning('Giao dịch thành công nhưng chưa ghi nhận được. TX: ' + hash.slice(0, 18) + '...', { duration: 10000 });
-      }
-
+      // CREATE celebration data IMMEDIATELY — don't wait for edge function
       const cardData: GiftCardData = {
-        id: donationData?.donation?.id || crypto.randomUUID(),
+        id: crypto.randomUUID(),
         amount,
         tokenSymbol: selectedToken.symbol,
         senderUsername: senderProfile?.username || 'Unknown',
         senderAvatarUrl: senderProfile?.avatar_url,
+        senderId: senderUserId || undefined,
         senderWalletAddress: address,
         recipientUsername: effectiveRecipient!.username || 'Unknown',
         recipientAvatarUrl: effectiveRecipient!.avatarUrl,
+        recipientId: effectiveRecipient!.id,
         recipientWalletAddress: effectiveRecipientAddress,
         message: customMessage,
         txHash: hash,
-        lightScoreEarned: donationData?.light_score_earned || Math.floor(parseFloat(amount) / 100),
+        lightScoreEarned: Math.floor(parseFloat(amount) / 100),
         createdAt: new Date().toISOString(),
       };
 
+      // SHOW CELEBRATION IMMEDIATELY
       setCelebrationData(cardData);
       setShowCelebration(true);
       setFlowStep('celebration');
+
+      // RECORD TO DB IN BACKGROUND (non-blocking)
+      if (effectiveRecipient?.id) {
+        recordDonationBackground(hash, cardData);
+      }
+
+      onSuccess?.();
+    }
+  };
+
+  /** Record donation in background with 10s timeout — never blocks UI */
+  const recordDonationBackground = async (hash: string, _cardData: GiftCardData) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      // 10s timeout for edge function
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10_000);
+
+      try {
+        const { data: donationData, error } = await supabase.functions.invoke('record-donation', {
+          body: {
+            sender_id: session.user.id,
+            recipient_id: effectiveRecipient!.id,
+            amount,
+            token_symbol: selectedToken.symbol,
+            token_address: selectedToken.address,
+            chain_id: chainId || 56,
+            tx_hash: hash,
+            message: customMessage,
+            message_template: selectedTemplate?.id,
+            post_id: postId,
+          },
+        });
+        clearTimeout(timeoutId);
+
+        if (!error && donationData?.donation?.id) {
+          console.log('[GIFT] record-donation OK:', donationData.donation.id);
+          // Update celebration data with real DB ID
+          setCelebrationData(prev => prev ? {
+            ...prev,
+            id: donationData.donation.id,
+            lightScoreEarned: donationData.light_score_earned || prev.lightScoreEarned,
+          } : prev);
+          localStorage.removeItem(`pending_donation_${hash}`);
+        } else {
+          throw new Error(error?.message || 'Record failed');
+        }
+      } catch (err: any) {
+        clearTimeout(timeoutId);
+        console.error('[GIFT] record-donation failed/timeout:', err?.message);
+        // Save to localStorage as fallback
+        localStorage.setItem(`pending_donation_${hash}`, JSON.stringify({
+          txHash: hash,
+          recipientId: effectiveRecipient!.id,
+          senderId: session.user.id,
+          amount,
+          tokenSymbol: selectedToken.symbol,
+          message: customMessage,
+          timestamp: Date.now(),
+        }));
+        toast.warning('Chưa ghi nhận được vào hệ thống. Hệ thống sẽ tự đồng bộ.', { duration: 6000 });
+      }
     } catch (err) {
-      console.error('recordDonation error:', err);
-    } finally {
-      setIsRecordingDonation(false);
+      console.error('[GIFT] recordDonationBackground outer error:', err);
     }
   };
 
@@ -425,7 +459,8 @@ export const UnifiedGiftSendDialog = ({
   };
 
   const handleDialogClose = () => {
-    if (!isInProgress && !isRecordingDonation) onClose();
+    if (txStep === 'signing') return; // only block during wallet signing
+    onClose();
   };
 
   const dialogTitle = effectiveRecipient?.username
@@ -436,7 +471,7 @@ export const UnifiedGiftSendDialog = ({
   const isPresetMode = mode === 'post' || (mode === 'navbar' && !!presetRecipient?.id);
   const scanUrl = txHash ? getBscScanTxUrl(txHash, selectedToken.symbol) : null;
 
-  const isSendDisabled = !isConnected || !effectiveRecipientAddress || !isValidAmount || !hasEnoughBalance || isPending || isInProgress || isRecordingDonation || isWrongNetwork;
+  const isSendDisabled = !isConnected || !effectiveRecipientAddress || !isValidAmount || !hasEnoughBalance || isPending || isInProgress || isWrongNetwork;
 
   const showMainDialog = isOpen && flowStep !== 'celebration';
 
@@ -799,11 +834,11 @@ export const UnifiedGiftSendDialog = ({
                   </>
                 ) : (
                   <>
-                    <Button variant="outline" onClick={handleGoBackToForm} className="flex-1 gap-2" disabled={isInProgress || isRecordingDonation}>
+                    <Button variant="outline" onClick={handleGoBackToForm} className="flex-1 gap-2" disabled={isInProgress}>
                       <ArrowLeft className="w-4 h-4" />Quay lại
                     </Button>
                     <Button onClick={handleSend} disabled={isSendDisabled} className="flex-1 bg-gradient-to-r from-gold to-amber-500 hover:from-gold/90 hover:to-amber-500/90 text-primary-foreground">
-                      {isPending || isInProgress || isRecordingDonation ? (
+                      {isPending || isInProgress ? (
                         <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Đang xử lý...</>
                       ) : (
                         <><CheckCircle2 className="w-4 h-4 mr-2" />Xác nhận & Tặng</>
