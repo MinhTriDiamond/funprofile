@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { Gift, ExternalLink, Sparkles, MessageSquare } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DonationRecord } from '@/hooks/useDonationHistory';
@@ -11,6 +12,7 @@ interface DonationHistoryItemProps {
 }
 
 export function DonationHistoryItem({ donation, type, onClick }: DonationHistoryItemProps) {
+  const navigate = useNavigate();
   const otherUser = type === 'sent' ? donation.recipient : donation.sender;
   const amount = parseFloat(donation.amount) || 0;
 
@@ -37,7 +39,7 @@ export function DonationHistoryItem({ donation, type, onClick }: DonationHistory
                   {otherUser?.username?.charAt(0).toUpperCase() || '?'}
                 </AvatarFallback>
               </Avatar>
-              <span className="font-medium">@{otherUser?.username || 'Unknown'}</span>
+              <button type="button" onClick={(e) => { e.stopPropagation(); navigate(`/profile/${otherUser?.id}`); }} className="font-medium hover:underline text-primary cursor-pointer">@{otherUser?.username || 'Unknown'}</button>
             </div>
           </div>
         </div>

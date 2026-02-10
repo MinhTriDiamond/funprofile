@@ -144,7 +144,7 @@ export const DonationReceivedCard = ({
                       {data.senderUsername[0]?.toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="font-bold">@{data.senderUsername}</span>
+                  <button type="button" onClick={(e) => { e.stopPropagation(); handleClose(); navigate(`/profile/${data.senderId}`); }} className="font-bold hover:underline cursor-pointer">@{data.senderUsername}</button>
                   <span>với tình yêu thương 💚</span>
                 </div>
               </div>

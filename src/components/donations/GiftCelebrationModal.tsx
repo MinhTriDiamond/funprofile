@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -23,9 +24,11 @@ export interface GiftCardData {
   tokenSymbol: string;
   senderUsername: string;
   senderAvatarUrl?: string | null;
+  senderId?: string;
   senderWalletAddress?: string;
   recipientUsername: string;
   recipientAvatarUrl?: string | null;
+  recipientId?: string;
   recipientWalletAddress?: string;
   message?: string | null;
   txHash: string;
@@ -54,6 +57,7 @@ export const GiftCelebrationModal = ({
   editable = true,
   onSaveTheme,
 }: GiftCelebrationModalProps) => {
+  const navigate = useNavigate();
   const [isCelebrationActive, setIsCelebrationActive] = useState(true);
   const cardRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -252,7 +256,7 @@ export const GiftCelebrationModal = ({
                         {data.senderUsername[0]?.toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    <span className={`font-bold text-sm ${selectedTheme.textColor} truncate`}>@{data.senderUsername}</span>
+                    <button type="button" onClick={() => { handleClose(); navigate(`/profile/${data.senderId}`); }} className={`font-bold text-sm ${selectedTheme.textColor} truncate hover:underline cursor-pointer`}>@{data.senderUsername}</button>
                   </div>
                 </div>
                 {data.senderWalletAddress && (
@@ -277,7 +281,7 @@ export const GiftCelebrationModal = ({
                         {data.recipientUsername[0]?.toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    <span className={`font-bold text-sm ${selectedTheme.textColor} truncate`}>@{data.recipientUsername}</span>
+                    <button type="button" onClick={() => { handleClose(); navigate(`/profile/${data.recipientId}`); }} className={`font-bold text-sm ${selectedTheme.textColor} truncate hover:underline cursor-pointer`}>@{data.recipientUsername}</button>
                   </div>
                 </div>
                 {data.recipientWalletAddress && (
