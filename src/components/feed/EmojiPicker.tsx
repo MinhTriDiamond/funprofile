@@ -32,7 +32,7 @@ export const EmojiPicker = ({ onEmojiSelect }: EmojiPickerProps) => {
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <button className="w-9 h-9 rounded-full hover:bg-secondary flex items-center justify-center transition-colors">
+        <button type="button" className="w-9 h-9 rounded-full hover:bg-secondary flex items-center justify-center transition-colors">
           <Smile className="w-6 h-6 text-gold" />
         </button>
       </PopoverTrigger>
