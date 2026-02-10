@@ -68,7 +68,7 @@ export const EditProfile = () => {
       setBio(data.bio || '');
       setAvatarUrl(data.avatar_url || '');
       setCoverUrl(data.cover_url || '');
-      setPublicWalletAddress(data.public_wallet_address || '');
+      setPublicWalletAddress(data.public_wallet_address || data.external_wallet_address || '');
     } catch (error) {
       // Error fetching profile - silent fail for security
     }
