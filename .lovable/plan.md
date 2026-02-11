@@ -1,38 +1,49 @@
 
 
-# Cap Nhat Mau Sac va Them Xuat PDF
+# Nang Cap The Chuc Mung Tang Thuong (DonationSuccessCard)
 
-## Cac thay doi
+## Tong quan
+Cap nhat the chuc mung cua nguoi gui (DonationSuccessCard) de dong bo trai nghiem voi the nguoi nhan: nen xanh la cay tuoi sang, tieu de vang hoang kim, nhac Rich3.mp3 lap lien tuc, confetti + chu "RICH" 9 sac cau vong + phao hoa ban tung toe.
 
-### File: `src/components/donations/SystemDonationHistory.tsx`
+---
 
-#### 1. So tien token (Hinh 1)
-- Doi mau so tien tu do/cam sang **xanh la cay tuoi sang** (`text-emerald-500 font-bold text-xl`)
-- Ap dung cho ca desktop card va mobile
+## Cac thay doi trong file `src/components/donations/DonationSuccessCard.tsx`
 
-#### 2. Loi nhan chuc mung (Hinh 2)
-- Doi mau loi nhan tu `text-gray-600 italic` sang **mau vang hoang kim** (`text-yellow-500 font-semibold italic text-base`)
-- Lam to chu hon va in dam
+### 1. Nhac Rich3.mp3 lap lien tuc
+- Thay `playCelebrationSounds()` (chi phat 1 lan) bang `playCelebrationMusicLoop('rich-3')` (lap lien tuc)
+- Them `audioRef` de dung nhac khi dong the
+- Import `playCelebrationMusicLoop` thay vi `playCelebrationSounds`
 
-#### 3. So lieu thong ke (Hinh 3)
-- Doi mau tat ca so trong Stats Cards sang **xanh la dam** (`text-green-700`)
-- Tong gia tri giu mau vang/amber nhu hien tai (da dung)
-- Lam to hon va in dam hon
+### 2. Doi nen sang xanh la cay tuoi sang
+- Nen chinh: `linear-gradient(135deg, #d4f7dc 0%, #34d399 40%, #10b981 100%)`
+- Vien: `linear-gradient(135deg, #22c55e, #10b981, #22c55e)` voi boxShadow xanh
+- Sparkles: `text-green-500` thay cho `text-gold`
+- Light rays: `from-green-400/30 via-green-300/10`
 
-#### 4. Them nut Xuat PDF (Hinh 4)
-- Them nut "Xuat PDF" ben canh nut "Xuat CSV"
-- Su dung thu vien browser (`window.print()` hoac tao PDF tu HTML bang `html2canvas` + jsPDF approach)
-- Vi du vien da co `html2canvas`, se dung no de tao PDF don gian
+### 3. Doi tieu de thanh dong chu moi mau vang hoang kim
+- Tu: "CHUC MUNG TANG THUONG THANH CONG!"
+- Thanh: "Chuc mung! Ban vua nhan duoc dong tien hanh phuc cua Cha va Be Angel CamLy!"
+- Kem emoji: 🎉✨ ... ✨🎉
+- Mau: vang tuoi (#fbbf24) voi textShadow phat sang
 
-### File: `src/utils/exportDonations.ts`
-- Them ham `exportDonationsToPDF()` su dung html2canvas de chup va xuat PDF
+### 4. Bat confetti + chu "RICH" 9 sac cau vong + phao hoa
+- Doi `showRichText` trong DonationCelebration tu mac dinh (false) sang `true`
+- Hieu ung da co san trong DonationCelebration component
+
+### 5. Cap nhat o hien thi so tien
+- Doi gradient tu vang sang xanh la: `linear-gradient(135deg, #22c55e, #10b981, #22c55e)`
+- Giu chu trang in dam
+
+### 6. Cap nhat cac mau phu
+- Cac icon va label: tu amber sang green
+- Nut dong: tu gold sang green gradient
+- Footer branding: tu amber sang green
 
 ---
 
 ## Tong hop
 
 | File | Thay doi |
-|------|--------|
-| `src/components/donations/SystemDonationHistory.tsx` | Doi mau so tien (xanh la), loi nhan (vang hoang kim), so thong ke (xanh dam), them nut Xuat PDF |
-| `src/utils/exportDonations.ts` | Them ham exportDonationsToPDF |
+|------|----------|
+| `src/components/donations/DonationSuccessCard.tsx` | Nhac loop Rich3, nen xanh la, tieu de vang moi, showRichText=true, mau phu xanh |
 
