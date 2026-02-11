@@ -1,67 +1,77 @@
 
-
-# Sửa lỗi "Admin only" trong migrate-stream-to-r2
+# Cải thiện xác thực khi tạo bài viết
 
 ## Nguyên nhân
 
-Edge function `migrate-stream-to-r2` hardcode danh sách admin ID cũ (dòng 17):
+Trong `FacebookCreatePost.tsx`, logic xác thực khi đăng bài có 2 bước nối tiếp:
+1. `getSession()` timeout 15s
+2. Nếu thất bại, `refreshSession()` timeout 10s
 
-```text
-ADMIN_IDS = ['e7b21a96-bf54-4594-97a5-c581c4e504f0']
-```
-
-ID này không khớp với bất kỳ admin nào trong hệ thống hiện tại. Các admin thực tế:
-- `5f9de7c5-...` (nguyenaivan10389)
-- `a39d467c-...` (hoangtydo88)
-- `ac174b69-...` (daothianhnguyet.pt)
+Khi mạng chậm hoặc tab bị suspend, cả 2 bước đều timeout, tổng cộng **25 giây** chờ rồi báo lỗi. Ngoài ra, `getSession()` chỉ đọc từ cache -- nếu cache trống thì timeout vô nghĩa.
 
 ## Giải pháp
 
-### File: `supabase/functions/migrate-stream-to-r2/index.ts`
+### File: `src/components/feed/FacebookCreatePost.tsx` (dòng 346-386)
 
-Thay thế kiểm tra hardcoded `ADMIN_IDS` bằng truy vấn bảng `user_roles` qua `supabaseAdmin`, giống cách các edge function khác trong hệ thống hoạt động.
+Thay thế logic xác thực hiện tại bằng cách tiếp cận đơn giản hơn:
 
-**Xoa dong 17** (xoa bien `ADMIN_IDS`)
+1. Gọi `getSession()` trước (không cần timeout vì nó đọc từ memory cache, rất nhanh)
+2. Nếu session tồn tại nhưng sắp hết hạn (dưới 5 phút), gọi `refreshSession()` với timeout 15s
+3. Nếu không có session, gọi `refreshSession()` một lần với timeout 15s
+4. Nếu vẫn thất bại, hiển thị thông báo rõ ràng yêu cầu đăng nhập lại
 
-**Thay doi dong 44-49** -- thay the logic kiem tra admin:
+Thay doi cu the:
 
-Truoc:
 ```typescript
-const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
-if (userError || !user || !ADMIN_IDS.includes(user.id)) {
-  return new Response(JSON.stringify({ error: 'Admin only' }), {
-    status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  });
+// BEFORE (lines 346-386): 2 buoc timeout noi tiep = 25s
+let session;
+try {
+  const sessionResult = await Promise.race([
+    supabase.auth.getSession(),
+    new Promise<never>((_, reject) => 
+      setTimeout(() => reject(new Error('getSession timeout (15s)')), 15000)
+    )
+  ]);
+  session = sessionResult.data.session;
+} catch (authError: any) {
+  // fallback refreshSession with another timeout...
+}
+
+// AFTER: Don giản và mạnh hơn
+let session;
+const { data: sessionData } = await supabase.auth.getSession();
+session = sessionData.session;
+
+if (!session || (session.expires_at && session.expires_at * 1000 - Date.now() < 300000)) {
+  // Token sap het han hoac khong co -> refresh
+  try {
+    const { data: refreshData } = await Promise.race([
+      supabase.auth.refreshSession(),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('timeout')), 15000)
+      )
+    ]);
+    if (refreshData.session) {
+      session = refreshData.session;
+    }
+  } catch {
+    // Refresh that bai, neu van con session cu thi dung tam
+  }
+}
+
+if (!session) {
+  throw new Error('Phien dang nhap het han. Vui long tai lai trang va dang nhap lai.');
 }
 ```
 
-Sau:
-```typescript
-const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
-if (userError || !user) {
-  return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-    status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  });
-}
+Thay doi chinh:
+- Bo `getSession()` timeout (vi no doc tu memory, khong can timeout)
+- Chi goi `refreshSession()` khi can thiet (token sap het han hoac khong co session)
+- Giam tu 2 buoc timeout (25s) xuong 1 buoc (15s)
+- Thong bao loi ro rang hon cho nguoi dung
 
-// Check admin role via user_roles table
-const { data: roleData } = await supabaseAdmin
-  .from('user_roles')
-  .select('role')
-  .eq('user_id', user.id)
-  .eq('role', 'admin')
-  .maybeSingle();
+## Danh sach file
 
-if (!roleData) {
-  return new Response(JSON.stringify({ error: 'Admin only' }), {
-    status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  });
-}
-```
-
-## Ket qua
-
-- Moi admin trong bang `user_roles` deu co the su dung chuc nang migrate
-- Khong can cap nhat code khi them/xoa admin
-- Nhat quan voi cach kiem tra quyen trong toan he thong
-
+| File | Hanh dong | Mo ta |
+|------|-----------|-------|
+| `src/components/feed/FacebookCreatePost.tsx` | Sua | Cai thien logic xac thuc khi tao bai viet |
