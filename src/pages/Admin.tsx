@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Shield, BarChart3, Gift, Users, Wallet, Trash2, Link2, LogOut, CloudUpload, GitMerge, DollarSign, Sparkles } from "lucide-react";
+import { Shield, BarChart3, Gift, Users, Wallet, Trash2, Link2, LogOut, CloudUpload, GitMerge, DollarSign, Sparkles, FileSpreadsheet } from "lucide-react";
+import { exportToExcel } from "@/utils/exportExcel";
 import { FacebookNavbar } from "@/components/layout/FacebookNavbar";
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 
@@ -118,9 +119,20 @@ const Admin = () => {
     totalUsers: users.length,
     pendingRewards: users.filter(u => u.pending_reward > 0).length,
     approvedRewards: users.filter(u => u.approved_reward > 0).length,
-    onChainClaims: 0, // Will be loaded from reward_claims
+    onChainClaims: 0,
     bannedUsers: users.filter(u => u.is_banned).length,
     suspiciousUsers: users.filter(u => !u.is_banned && (!u.avatar_url || !u.full_name)).length
+  };
+
+  const handleExportExcel = () => {
+    const headers = ['STT', 'Username', 'Tên đầy đủ', 'Wallet', 'Thưởng chờ duyệt', 'Thưởng đã duyệt', 'Trạng thái', 'Bài đăng', 'Bình luận', 'Reactions', 'Ngày tham gia'];
+    const rows = users.map((u, i) => [
+      i + 1, u.username, u.full_name || '', u.wallet_address || '',
+      u.pending_reward, u.approved_reward, u.reward_status,
+      u.posts_count || 0, u.comments_count || 0, u.reactions_count || 0,
+      new Date(u.created_at).toLocaleDateString('vi-VN'),
+    ]);
+    exportToExcel(headers, rows, `bao-cao-admin-${new Date().toISOString().slice(0, 10)}.xls`, 'Admin Report');
   };
 
   if (loading) {
@@ -152,10 +164,16 @@ const Admin = () => {
               <p className="text-muted-foreground">FUN Profile - Trái tim điều hành</p>
             </div>
           </div>
-          <Button variant="outline" onClick={() => navigate("/")} className="gap-2">
-            <LogOut className="w-4 h-4" />
-            Thoát
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={handleExportExcel} className="gap-2 bg-green-50 hover:bg-green-100 text-green-700 border-green-300">
+              <FileSpreadsheet className="w-4 h-4" />
+              Xuất Excel
+            </Button>
+            <Button variant="outline" onClick={() => navigate("/")} className="gap-2">
+              <LogOut className="w-4 h-4" />
+              Thoát
+            </Button>
+          </div>
         </div>
 
         {/* Main Tabs */}
