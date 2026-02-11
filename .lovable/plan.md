@@ -1,41 +1,38 @@
 
 
-# Sua Loi Upload Anh Dai Dien
+# Sua Loi Ngat Ket Noi Vi (Disconnect Wallet Race Condition)
 
 ## Van de
-Khi nguoi dung upload anh dai dien, he thong tao presigned URL thanh cong (buoc 1) nhung loi xay ra o buoc 2 khi trinh duyet PUT truc tiep len R2. Nguyen nhan co the la CORS tren R2 bucket khong cho phep origin cua Lovable preview/published domain.
+Khi nguoi dung bam "Disconnect", co mot race condition:
+- `showDisconnectedUI` duoc set `true`
+- Nhung wagmi van bao `isConnected = true` trong choc lat
+- Effect o dong 135 thay `isConnected = true` va **xoa** co disconnect ngay lap tuc
+- Khi wagmi thuc su disconnect xong, `showDisconnectedUI` da bi xoa mat -> UI khong hien man hinh "Ket noi vi" ma van hien giao dien vi cu voi du lieu rong
 
 ## Giai phap
-Thay doi cach upload avatar: thay vi client PUT truc tiep len R2 (can CORS), se gui file qua edge function `upload-to-r2` (server-side upload, khong can CORS). Voi avatar da crop (thuong nho hon 1MB), cach nay hoan toan phu hop.
-
-## Cac buoc thuc hien
-
-### Buoc 1: Cap nhat AvatarEditor.tsx
-- Thay doi `handleCropComplete` de su dung edge function `upload-to-r2` thay vi `uploadToR2` (presigned URL)
-- Chuyen anh crop sang base64 va gui qua edge function
-- Them console.error chi tiet de de debug neu co loi
-
-### Buoc 2: Them ham helper uploadAvatarViaEdgeFunction
-- Chuyen Blob sang base64
-- Goi edge function `upload-to-r2` voi file data, key va contentType
-- Nhan ve URL cua anh da upload
+Them mot `useRef` de theo doi khi nao nguoi dung chu dong disconnect, ngan effect o dong 135 xoa co `showDisconnectedUI` trong thoi gian disconnect dang xu ly.
 
 ## Chi tiet ky thuat
 
-### File thay doi
-- `src/components/profile/AvatarEditor.tsx`: Thay doi logic upload tu presigned URL sang edge function
+### File thay doi: `src/components/wallet/WalletCenterContainer.tsx`
 
-### Logic moi
-```
-1. User chon anh -> Crop -> Blob
-2. Chuyen Blob sang base64
-3. Goi edge function upload-to-r2 voi { file: base64, key: "avatars/{userId}/avatar-{timestamp}.jpg", contentType: "image/jpeg" }
-4. Edge function upload len R2 server-side (khong can CORS)
-5. Cap nhat profiles.avatar_url
-```
+1. **Them `intentionalDisconnectRef`** (useRef):
+   - Set `true` trong `handleDisconnect` truoc khi goi `disconnect()`
+   - Bao ve co `showDisconnectedUI` khong bi xoa boi effect
 
-### Uu diem
-- Khong phu thuoc vao CORS cua R2 bucket
-- Avatar sau crop thuong chi 50-200KB, phu hop voi base64 qua edge function
-- Su dung lai edge function `upload-to-r2` da co san va dang hoat dong tot
+2. **Sua effect o dong 134-140** (clear disconnected flag):
+   - Kiem tra `intentionalDisconnectRef.current` truoc khi xoa co
+   - Neu dang trong qua trinh disconnect chu dong -> khong xoa
+   - Chi xoa khi nguoi dung ket noi lai that su (qua `handleConnect`)
+
+3. **Sua `handleConnect`** (dong 303-311):
+   - Reset `intentionalDisconnectRef` khi nguoi dung chu dong bam ket noi lai
+
+4. **Sua dieu kien hien thi disconnected UI** (dong 375):
+   - Don gian hoa: `if (!isConnected && showDisconnectedUI)` hoac `if (showDisconnectedUI && !isConnected)`
+   - Bo `!hasAnyWallet` vi no trung lap voi `!isConnected`
+
+5. **Them cleanup localStorage wagmi** trong `handleDisconnect`:
+   - Xoa `wagmi.store`, `wagmi.connected`, va cac WalletConnect session keys
+   - Dam bao disconnect triet de, khong tu dong reconnect khi reload trang
 
