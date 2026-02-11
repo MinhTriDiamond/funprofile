@@ -202,17 +202,19 @@ Deno.serve(async (req) => {
     }
     
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    const { data: claimsData, error: authError } = await supabase.auth.getClaims(token);
     
-    if (authError || !user) {
+    if (authError || !claimsData?.claims) {
       throw new Error('Unauthorized');
     }
+    
+    const userId = claimsData.claims.sub as string;
     
     // Check if user is admin
     const { data: roles } = await supabase
       .from('user_roles')
       .select('role')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .eq('role', 'admin')
       .single();
     
