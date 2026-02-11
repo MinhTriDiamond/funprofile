@@ -9,6 +9,7 @@ import bnbLogo from '@/assets/tokens/bnb-logo.webp';
 import usdtLogo from '@/assets/tokens/usdt-logo.webp';
 import btcbLogo from '@/assets/tokens/btcb-logo.webp';
 import camlyLogo from '@/assets/tokens/camly-logo.webp';
+import funLogo from '@/assets/tokens/fun-logo.png';
 
 // Token contract addresses on BSC
 export const TOKEN_CONTRACTS = {
@@ -62,18 +63,21 @@ interface UseTokenBalancesOptions {
 }
 
 export const useTokenBalances = (options?: UseTokenBalancesOptions) => {
-  const { address: connectedAddress, isConnected } = useAccount();
+  const { address: connectedAddress, isConnected, chainId } = useAccount();
   const [prices, setPrices] = useState<PriceData>({});
   const [isPriceLoading, setIsPriceLoading] = useState(true);
   const [lastPrices, setLastPrices] = useState<PriceData>({});
 
   // Use custom address if provided, otherwise use connected wallet address
   const address = options?.customAddress || connectedAddress;
+  
+  // Use current chainId or default to BSC mainnet
+  const activeChainId = chainId || bsc.id;
 
   // Native BNB balance
   const { data: bnbBalance, refetch: refetchBnb, isLoading: isBnbLoading } = useBalance({
     address,
-    chainId: bsc.id,
+    chainId: activeChainId,
   });
 
   // USDT balance
@@ -82,7 +86,7 @@ export const useTokenBalances = (options?: UseTokenBalancesOptions) => {
     abi: ERC20_BALANCE_ABI,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
-    chainId: bsc.id,
+    chainId: activeChainId,
   });
 
   // BTCB balance
@@ -91,7 +95,7 @@ export const useTokenBalances = (options?: UseTokenBalancesOptions) => {
     abi: ERC20_BALANCE_ABI,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
-    chainId: bsc.id,
+    chainId: activeChainId,
   });
 
   // CAMLY balance (3 decimals)
@@ -100,7 +104,16 @@ export const useTokenBalances = (options?: UseTokenBalancesOptions) => {
     abi: ERC20_BALANCE_ABI,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
-    chainId: bsc.id,
+    chainId: activeChainId,
+  });
+
+  // FUN token balance (on current chain - mainly BSC Testnet)
+  const { data: funBalance, refetch: refetchFun, isLoading: isFunLoading } = useReadContract({
+    address: TOKEN_CONTRACTS.FUN,
+    abi: ERC20_BALANCE_ABI,
+    functionName: 'balanceOf',
+    args: address ? [address] : undefined,
+    chainId: activeChainId,
   });
 
   // Fetch prices from CoinGecko
@@ -165,6 +178,7 @@ export const useTokenBalances = (options?: UseTokenBalancesOptions) => {
   const usdtAmount = parseBalance(usdtBalance as bigint | undefined, 18);
   const btcbAmount = parseBalance(btcbBalance as bigint | undefined, 18);
   const camlyAmount = parseBalance(camlyBalance as bigint | undefined, 3);
+  const funAmount = parseBalance(funBalance as bigint | undefined, 18);
 
   // Build tokens array with real data
   const tokens: TokenBalance[] = [
@@ -215,18 +229,31 @@ export const useTokenBalances = (options?: UseTokenBalancesOptions) => {
       contractAddress: TOKEN_CONTRACTS.CAMLY,
       decimals: 3,
     },
+    {
+      symbol: 'FUN',
+      name: 'FUN Money',
+      icon: funLogo,
+      balance: funAmount,
+      price: 0, // FUN has no market price yet
+      usdValue: 0,
+      change24h: 0,
+      isLoading: isFunLoading || isPriceLoading,
+      contractAddress: TOKEN_CONTRACTS.FUN,
+      decimals: 18,
+    },
   ];
 
   const totalUsdValue = tokens.reduce((sum, token) => sum + token.usdValue, 0);
-  const isLoading = isBnbLoading || isUsdtLoading || isBtcbLoading || isCamlyLoading || isPriceLoading;
+  const isLoading = isBnbLoading || isUsdtLoading || isBtcbLoading || isCamlyLoading || isFunLoading || isPriceLoading;
 
   const refetch = useCallback(() => {
     refetchBnb();
     refetchUsdt();
     refetchBtcb();
     refetchCamly();
+    refetchFun();
     fetchPrices();
-  }, [refetchBnb, refetchUsdt, refetchBtcb, refetchCamly, fetchPrices]);
+  }, [refetchBnb, refetchUsdt, refetchBtcb, refetchCamly, refetchFun, fetchPrices]);
 
   return {
     tokens,
