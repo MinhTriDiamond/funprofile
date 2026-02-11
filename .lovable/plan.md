@@ -1,77 +1,59 @@
 
-# Thong Ke Tinh Nang Vi (Wallet) - Hoan Thanh va Chua Hoan Thanh
 
-## A. DA HOAN THANH (17+ thanh phan)
+# Giai doan 3: Auto-Confirm TX (B7) va Batch Submit (B8)
 
-### 1. Ket noi vi va quan ly phien
-| Thanh phan | File | Mo ta |
-|------------|------|-------|
-| RainbowKit Connect | `src/config/web3.ts` | Ho tro MetaMask, Trust Wallet, Bitget, FUN Wallet |
-| Multi-account selector | `ActiveAccountContext.tsx` | Chon nhieu tai khoan trong 1 vi |
-| Account Mismatch Modal | `AccountMismatchModal.tsx` | Canh bao khi dia chi provider khac voi dia chi dang chon |
-| Network Selector | `WalletCenterContainer.tsx` | Chuyen doi BNB Mainnet / BSC Testnet |
-| Disconnect flow | `WalletCenterContainer.tsx` | Luu trang thai disconnect vao localStorage |
+## B7. Auto-Confirm TX sau khi Admin Submit
 
-### 2. Hien thi tai san
-| Thanh phan | File | Mo ta |
-|------------|------|-------|
-| Token Balances | `useTokenBalances.ts` | Doc so du BNB, USDT, BTCB, CAMLY, FUN tu on-chain |
-| Price Fetching | `useTokenBalances.ts` | Gia tu CoinGecko, cap nhat moi 30s |
-| Dynamic chainId | `useTokenBalances.ts` | ✅ Doc balance theo network hien tai (Mainnet/Testnet) |
-| FUN Token display | `useTokenBalances.ts` | ✅ FUN token hien thi trong danh sach tai san |
-| WalletCard | `WalletCard.tsx` | Hien thi tong tai san, danh sach token, gia, % thay doi 24h |
-| FUN Balance Card | `FunBalanceCard.tsx` | Hien thi LOCKED / ACTIVATED / TOTAL tu smart contract |
+### Van de hien tai
+Sau khi Admin submit transaction on-chain, trang thai trong database van la "submitted". Admin phai thu cong xac nhan. Hook `useWaitForTransactionReceipt` da ton tai nhung KHONG duoc ket noi voi logic cap nhat database.
 
-### 3. Giao dich
-| Thanh phan | File | Mo ta |
-|------------|------|-------|
-| Send tokens | `useSendToken.ts` | Gui BNB/USDT/BTCB/CAMLY voi may trang thai 7 buoc |
-| Receive (QR Code) | `ReceiveTab.tsx` | Ma QR + Copy/Share dia chi |
-| Swap (External) | `WalletCenterContainer.tsx` | Mo PancakeSwap |
-| Buy (External) | `WalletCenterContainer.tsx` | Mo MoonPay |
-| Recent Transactions | `RecentTransactions.tsx` | Lich su giao dich voi auto-refresh trang thai |
+### Giai phap
+Them logic polling tu dong trong `usePplpAdmin.ts`:
+- Sau khi `submitToChain` thanh cong va co `txHash`, tu dong goi `waitForTransactionReceipt` tu viem
+- Khi receipt co (`isSuccess`), tu dong cap nhat database: status -> "confirmed", cap nhat `light_actions` -> "minted"
+- Hien thi toast thong bao thanh cong
 
-### 4. Phan thuong CAMLY
-| Thanh phan | File | Mo ta |
-|------------|------|-------|
-| Reward Breakdown | `RewardBreakdown.tsx` | Chi tiet thuong theo tung loai hoat dong |
-| Reward Formula | `RewardFormulaCard.tsx` | Cong thuc tinh thuong minh bach |
-| Claim CAMLY Dialog | `ClaimRewardDialog.tsx` | Chuyen CAMLY vao vi, co confetti animation |
+### File can sua: `src/hooks/usePplpAdmin.ts`
 
-### 5. PPLP / FUN Money
-| Thanh phan | File | Mo ta |
-|------------|------|-------|
-| Light Score Dashboard | `LightScoreDashboard.tsx` | 5 Pillars, tier, progress bar |
-| Light Actions List | `ClaimRewardsCard.tsx` | Danh sach actions cho claim, nhom theo loai |
-| Claim FUN (mint request) | `useMintFun.ts` + `usePendingActions.ts` | Tao mint request gui Admin |
-| Activate Dialog | `ActivateDialog.tsx` | Chuyen FUN tu LOCKED sang ACTIVATED tren smart contract |
-| Claim FUN Dialog | `ClaimFunDialog.tsx` | ✅ Chuyen FUN tu ACTIVATED sang vi ca nhan |
-| FUN Balance on-chain | `useFunBalance.ts` | Doc locked/activated tu contract alloc() |
+1. Them `usePublicClient` tu wagmi de goi `waitForTransactionReceipt`
+2. Sua `submitToChain`: sau khi co txHash, bat dau polling receipt
+3. Khi receipt confirmed -> tu dong goi `confirmTransaction` va refresh danh sach
 
-### 6. Lich su tang thuong
-| Thanh phan | File | Mo ta |
-|------------|------|-------|
-| Donation History Tab | `DonationHistoryTab.tsx` | Tab gui/nhan, thong ke, xuat CSV |
-| Gift Celebration replay | `DonationHistoryTab.tsx` | Click xem lai the chuc mung voi hieu ung goc |
-
-### 7. Database
-| Thanh phan | Mo ta |
-|------------|-------|
-| Transactions UPDATE RLS | ✅ User co the cap nhat status giao dich cua minh |
-| Mint Requests Realtime | ✅ pplp_mint_requests duoc them vao supabase_realtime |
+```typescript
+// Trong submitToChain, sau khi co txHash:
+const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+if (receipt.status === 'success') {
+  await confirmTransaction({ ...request, tx_hash: txHash });
+}
+```
 
 ---
 
-## B. CHUA HOAN THANH / CAN CAI THIEN (4 muc con lai)
+## B8. Batch Submit cho Admin
 
-### B5. Wallet Settings - CHUA SU DUNG
-- File `WalletSettingsDialog.tsx` ton tai nhung khong duoc su dung
+### Van de hien tai
+Nut "Submit tat ca" trong tab "Da ky" (line 409-417) ton tai nhung KHONG CO onClick handler. Admin phai submit tung request mot.
 
-### B6. Realtime updates cho mint requests - CAN TICH HOP UI
-- Realtime da duoc bat (publication), can them subscription trong UI
+### Giai phap
 
-### B7. Auto-confirm TX sau khi Admin submit - THIEU
-- Them polling transaction receipt trong `usePplpAdmin.ts`
+**File 1: `src/hooks/usePplpAdmin.ts`**
+- Them ham `batchSubmitToChain(requests: MintRequest[])` 
+- Submit tung request mot (vi moi request la 1 TX rieng biet)
+- Tra ve so luong thanh cong
 
-### B8. Batch submit cho Admin - THIEU
-- Batch signing va batch submit trong PplpMintTab
+**File 2: `src/components/admin/PplpMintTab.tsx`**
+- Them `handleBatchSubmit` goi `batchSubmitToChain`
+- Ket noi voi nut "Submit tat ca" hien co (line 409-417)
+- Them checkbox selection cho tab "signed" (tuong tu tab "pending_sig")
+- Hien thi progress khi dang batch submit
+
+---
+
+## Tong hop thay doi
+
+| File | Thay doi |
+|------|----------|
+| `src/hooks/usePplpAdmin.ts` | Them auto-confirm bang `waitForTransactionReceipt`, them `batchSubmitToChain` |
+| `src/components/admin/PplpMintTab.tsx` | Ket noi batch submit button, them checkbox cho tab signed, hien thi progress |
+| `.lovable/plan.md` | Cap nhat trang thai B7, B8 thanh "hoan thanh" |
+
