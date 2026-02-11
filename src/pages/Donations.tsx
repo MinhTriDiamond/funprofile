@@ -17,14 +17,11 @@ export default function Donations() {
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        navigate('/auth', { replace: true });
-      } else {
-        setIsAuthenticated(true);
-      }
+      // Allow guest access - donations are public on-chain data
+      setIsAuthenticated(!!session);
     };
     checkAuth();
-  }, [navigate]);
+  }, []);
 
   const handlePullRefresh = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: ['admin-donation-history'] });
@@ -37,6 +34,8 @@ export default function Donations() {
       </div>
     );
   }
+
+  // isAuthenticated can be false (guest) or true (logged in) - both render the page
 
   return (
     <div className="min-h-screen bg-muted/30">

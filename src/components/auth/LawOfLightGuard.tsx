@@ -40,16 +40,22 @@ export const LawOfLightGuard = ({ children }: LawOfLightGuardProps) => {
 
       const { data: { session } } = await supabase.auth.getSession();
       
-      // Guest mode: Allow unauthenticated users to view feed
+      // Guest mode: Allow unauthenticated users to view public content
       // They can browse but not interact (handled in components)
       if (!session) {
-        // For root/feed path, allow guest access
-        if (location.pathname === '/' || location.pathname === '/feed') {
+        // Public routes accessible to guests (Open · Public Access)
+        const guestAllowedPaths = ['/', '/feed', '/about', '/install', '/leaderboard', '/benefactors', '/donations'];
+        const isGuestPath = guestAllowedPaths.includes(location.pathname)
+          || location.pathname.startsWith('/profile/')
+          || location.pathname.startsWith('/@')
+          || location.pathname.startsWith('/post/');
+        
+        if (isGuestPath) {
           setIsAllowed(true);
           setIsChecking(false);
           return;
         }
-        // For other protected routes, redirect to law-of-light
+        // For protected routes (chat, friends, wallet, notifications, admin), redirect
         navigate('/law-of-light', { replace: true });
         return;
       }
