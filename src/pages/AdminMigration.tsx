@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
-import { Loader2, Database, CheckCircle, XCircle, AlertTriangle, SkipForward, StopCircle, Wrench, Trash2, Video } from 'lucide-react';
+import { Loader2, Database, CheckCircle, XCircle, AlertTriangle, SkipForward, StopCircle, Wrench, Trash2, Video, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface MigrationResult {
@@ -45,6 +45,18 @@ interface OrphanVideoResult {
   deletedUids: string[];
   dryRun: boolean;
 }
+interface StreamMigrationResult {
+  dryRun?: boolean;
+  processed?: number;
+  results?: Array<{ postId: string; uid?: string; status: string; reason?: string; newUrl?: string; size?: number }>;
+  remaining?: { postsWithStreamVideoUrl: number; postsWithStreamMediaUrls: number; commentsWithStreamVideo: number };
+  postsWithStreamVideoUrl?: number;
+  postsWithStreamMediaUrls?: number;
+  commentsWithStreamVideo?: number;
+  samplePosts?: Array<{ id: string; video_url?: string }>;
+  sampleMediaPosts?: Array<{ id: string }>;
+  sampleComments?: Array<{ id: string; video_url?: string }>;
+}
 
 const AdminMigration = () => {
   const navigate = useNavigate();
@@ -61,6 +73,9 @@ const AdminMigration = () => {
   const [cleanupResult, setCleanupResult] = useState<CleanupResult | null>(null);
   const [cleaningOrphanVideos, setCleaningOrphanVideos] = useState(false);
   const [orphanVideoResult, setOrphanVideoResult] = useState<OrphanVideoResult | null>(null);
+  const [streamMigrating, setStreamMigrating] = useState(false);
+  const [streamDryRunning, setStreamDryRunning] = useState(false);
+  const [streamMigrationResult, setStreamMigrationResult] = useState<StreamMigrationResult | null>(null);
   
   // Skip/Stop controls
   const skipCurrentRef = useRef(false);
@@ -755,6 +770,55 @@ const AdminMigration = () => {
     }
   };
 
+  const runStreamToR2Migration = async (dryRun: boolean, deleteFromStream: boolean = false) => {
+    if (dryRun) setStreamDryRunning(true);
+    else setStreamMigrating(true);
+    setStreamMigrationResult(null);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { toast.error('Phiên đăng nhập hết hạn'); return; }
+
+      toast.info(dryRun ? '🔍 Đang quét video Stream...' : '🚀 Đang migrate video từ Stream sang R2...');
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/migrate-stream-to-r2`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ dryRun, batchSize: 5, deleteFromStream }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.error || 'Migration failed');
+      }
+
+      setStreamMigrationResult(data);
+
+      if (dryRun) {
+        const total = (data.postsWithStreamVideoUrl || 0) + (data.postsWithStreamMediaUrls || 0) + (data.commentsWithStreamVideo || 0);
+        toast.info(`🔍 Tìm thấy ${total} video cần migrate từ Stream sang R2`);
+      } else {
+        const migrated = data.results?.filter((r: any) => r.status === 'migrated').length || 0;
+        const errors = data.results?.filter((r: any) => r.status === 'error').length || 0;
+        toast.success(`✅ Đã migrate ${migrated} video${errors > 0 ? `, ${errors} lỗi` : ''}`);
+      }
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Stream migration error:', error);
+      toast.error(`❌ Lỗi: ${msg}`);
+    } finally {
+      setStreamMigrating(false);
+      setStreamDryRunning(false);
+    }
+  };
+
   const runMigration = async () => {
     setMigrating(true);
     setProgress(0);
@@ -1264,6 +1328,124 @@ const AdminMigration = () => {
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Migrate Stream to R2 Card */}
+          <Card className="border-2 border-cyan-500">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Video className="w-5 h-5 text-cyan-500" />
+                <ArrowRight className="w-4 h-4 text-cyan-500" />
+                Migrate Stream → R2
+              </CardTitle>
+              <CardDescription>
+                Chuyển video từ Cloudflare Stream sang R2 (media.fun.rich). Mỗi batch xử lý 5 video.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex gap-3 flex-wrap">
+                <Button
+                  onClick={() => runStreamToR2Migration(true)}
+                  disabled={streamMigrating || streamDryRunning}
+                  variant="outline"
+                  size="lg"
+                >
+                  {streamDryRunning ? (
+                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Đang quét...</>
+                  ) : (
+                    <>🔍 Preview (Dry Run)</>
+                  )}
+                </Button>
+                <Button
+                  onClick={() => runStreamToR2Migration(false, false)}
+                  disabled={streamMigrating || streamDryRunning}
+                  className="bg-cyan-600 hover:bg-cyan-700"
+                  size="lg"
+                >
+                  {streamMigrating ? (
+                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Đang migrate...</>
+                  ) : (
+                    <>🚀 Migrate Batch (5)</>
+                  )}
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (window.confirm('⚠️ Migrate VÀ XÓA video gốc trên Stream?\n\nVideo sẽ bị xóa khỏi Cloudflare Stream sau khi migrate sang R2.\n\nNhấn OK để tiếp tục.')) {
+                      runStreamToR2Migration(false, true);
+                    }
+                  }}
+                  disabled={streamMigrating || streamDryRunning}
+                  variant="destructive"
+                  size="lg"
+                >
+                  🗑️ Migrate & Delete Stream
+                </Button>
+              </div>
+
+              {streamMigrationResult && (
+                <div className="space-y-3 mt-4">
+                  {/* Dry run results */}
+                  {streamMigrationResult.dryRun && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div className="p-3 bg-cyan-500/10 border border-cyan-500/20 rounded-lg text-center">
+                        <div className="text-lg font-bold text-cyan-600">{streamMigrationResult.postsWithStreamVideoUrl || 0}</div>
+                        <div className="text-xs text-muted-foreground">Posts (video_url)</div>
+                      </div>
+                      <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg text-center">
+                        <div className="text-lg font-bold text-blue-600">{streamMigrationResult.postsWithStreamMediaUrls || 0}</div>
+                        <div className="text-xs text-muted-foreground">Posts (media_urls)</div>
+                      </div>
+                      <div className="p-3 bg-purple-500/10 border border-purple-500/20 rounded-lg text-center">
+                        <div className="text-lg font-bold text-purple-600">{streamMigrationResult.commentsWithStreamVideo || 0}</div>
+                        <div className="text-xs text-muted-foreground">Comments</div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Migration results table */}
+                  {streamMigrationResult.results && streamMigrationResult.results.length > 0 && (
+                    <div className="space-y-2">
+                      <h4 className="font-medium">Kết quả migration:</h4>
+                      <div className="max-h-64 overflow-y-auto">
+                        <table className="w-full text-sm">
+                          <thead className="bg-muted/50">
+                            <tr>
+                              <th className="text-left p-2">Post ID</th>
+                              <th className="text-left p-2">UID</th>
+                              <th className="text-left p-2">Status</th>
+                              <th className="text-right p-2">Size</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {streamMigrationResult.results.map((r, idx) => (
+                              <tr key={idx} className="border-t border-border">
+                                <td className="p-2 font-mono text-xs">{r.postId?.substring(0, 8)}...</td>
+                                <td className="p-2 font-mono text-xs">{r.uid?.substring(0, 8) || '-'}</td>
+                                <td className="p-2">
+                                  {r.status === 'migrated' && <span className="text-green-600 flex items-center gap-1"><CheckCircle className="w-3 h-3" /> Migrated</span>}
+                                  {r.status === 'error' && <span className="text-red-600 flex items-center gap-1"><XCircle className="w-3 h-3" /> {r.reason}</span>}
+                                  {r.status === 'skip' && <span className="text-yellow-600 flex items-center gap-1"><SkipForward className="w-3 h-3" /> {r.reason}</span>}
+                                </td>
+                                <td className="p-2 text-right text-xs">{r.size ? `${(r.size / 1024 / 1024).toFixed(1)} MB` : '-'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Remaining count */}
+                  {streamMigrationResult.remaining && (
+                    <Alert>
+                      <AlertDescription>
+                        Còn lại: {streamMigrationResult.remaining.postsWithStreamVideoUrl} posts (video_url), {streamMigrationResult.remaining.postsWithStreamMediaUrls} posts (media_urls), {streamMigrationResult.remaining.commentsWithStreamVideo} comments
+                      </AlertDescription>
+                    </Alert>
+                  )}
                 </div>
               )}
             </CardContent>

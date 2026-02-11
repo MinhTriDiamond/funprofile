@@ -1,7 +1,8 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import Feed from "./pages/Feed";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
+import { supabase } from "@/integrations/supabase/client";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
@@ -44,6 +45,39 @@ const queryClient = new QueryClient({
   },
 });
 
+// Keep auth session alive when user returns to tab
+function AuthSessionKeeper() {
+  useEffect(() => {
+    let lastHiddenAt = 0;
+
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible' && lastHiddenAt > 0) {
+        const hiddenDuration = Date.now() - lastHiddenAt;
+        if (hiddenDuration >= 30000) {
+          try {
+            await Promise.race([
+              supabase.auth.refreshSession(),
+              new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error('timeout')), 10000)
+              ),
+            ]);
+            console.log('[AuthKeeper] Token refreshed after', Math.round(hiddenDuration / 1000), 's hidden');
+          } catch (err) {
+            console.warn('[AuthKeeper] Token refresh failed:', err);
+          }
+        }
+      } else if (document.visibilityState === 'hidden') {
+        lastHiddenAt = Date.now();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+
+  return null;
+}
+
 // Loading fallback component with smooth animation
 const PageLoader = () => (
   <div className="min-h-screen bg-background flex items-center justify-center">
@@ -62,6 +96,7 @@ function App() {
           <TooltipProvider>
             <Toaster />
             <Sonner />
+            <AuthSessionKeeper />
           <BrowserRouter>
             <TetBackground />
             <TetFlowerOverlay />
