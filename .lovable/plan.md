@@ -1,72 +1,107 @@
 
 
-# Sửa lỗi giao diện bị kẹt khi đăng bài có video lớn
+# Thêm Visibility Change Listener + Stream-to-R2 Migration UI
 
-## Nguyên nhân
+## Phần 1: Visibility Change Listener (Giữ phiên đăng nhập)
 
-Khi upload video 265MB (59 phút), quá trình upload kéo dài nhiều phút. Trong thời gian đó, **phiên đăng nhập (auth token) có thể hết hạn**. Khi nhấn "Đăng":
+### File: `src/App.tsx`
 
-1. `getSession()` bị treo hoặc trả về token hết hạn -- code có timeout 15 giây (OK)
-2. Fallback gọi `refreshSession()` -- **KHÔNG CÓ timeout** --> treo vô thời hạn
-3. Watchdog 90 giây có thể không kịp xử lý nếu `refreshSession()` treo ở tầng network
+Thêm một component `AuthSessionKeeper` bên trong `App` sử dụng `useEffect` để lắng nghe sự kiện `visibilitychange`. Khi user quay lại tab (từ hidden sang visible), tự động gọi `supabase.auth.refreshSession()` để đảm bảo token luôn mới.
 
-Ngoài ra, sau khi upload video lớn xong, token đã cũ nhưng code không **chủ động refresh** trước khi submit.
-
-## Giải pháp
-
-### File: `src/components/feed/FacebookCreatePost.tsx`
-
-1. **Thêm timeout cho `refreshSession()`**: Bọc mỗi lần gọi `refreshSession()` trong `Promise.race` với timeout 10 giây, giống `getSession()`.
-
-2. **Chủ động refresh token khi video upload xong**: Trong callback `onUploadComplete` của `VideoUploaderUppy`, gọi `supabase.auth.refreshSession()` ngay để đảm bảo token mới nhất sẵn sàng khi người dùng nhấn "Đăng".
-
-3. **Giảm watchdog timeout**: 90 giây quá lâu cho bước submit (không upload). Giảm xuống **45 giây** để người dùng không phải chờ quá lâu khi có lỗi.
-
-### Chi tiết kỹ thuật
-
-**Thay doi 1 - Timeout cho refreshSession (dòng 361 va 371):**
+Logic:
+- Khi `document.visibilityState === 'visible'`: gọi `refreshSession()` (có timeout 10s)
+- Nếu refresh thất bại: gọi `getSession()` để kiểm tra phiên còn hợp lệ không
+- Nếu cả hai đều thất bại: log warning (không tự logout, để SDK tự xử lý)
+- Chỉ refresh nếu tab đã ẩn >= 30 giây (tránh refresh liên tục khi alt-tab nhanh)
 
 ```typescript
-// Hiện tại (KHÔNG có timeout):
-const { data: refreshData } = await supabase.auth.refreshSession();
+// Component mới trong App.tsx
+function AuthSessionKeeper() {
+  useEffect(() => {
+    let lastHiddenAt = 0;
 
-// Sửa thành (CÓ timeout 10 giây):
-const { data: refreshData } = await Promise.race([
-  supabase.auth.refreshSession(),
-  new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error('refreshSession timeout (10s)')), 10000)
-  )
-]);
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible' && lastHiddenAt > 0) {
+        const hiddenDuration = Date.now() - lastHiddenAt;
+        // Chỉ refresh nếu tab ẩn >= 30 giây
+        if (hiddenDuration >= 30000) {
+          try {
+            await Promise.race([
+              supabase.auth.refreshSession(),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 10000))
+            ]);
+          } catch (err) {
+            console.warn('[AuthKeeper] Token refresh failed:', err);
+          }
+        }
+      } else if (document.visibilityState === 'hidden') {
+        lastHiddenAt = Date.now();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+
+  return null;
+}
 ```
 
-**Thay đổi 2 - Refresh token khi video upload xong (dòng 791-795):**
+Render `<AuthSessionKeeper />` ngay sau `<Sonner />` trong JSX.
 
+## Phần 2: Stream-to-R2 Migration UI trong AdminMigration
+
+### File: `src/pages/AdminMigration.tsx`
+
+Thêm một Card mới "Migrate Stream to R2" vào trang AdminMigration (đặt trước card Orphan Videos). Card này sẽ:
+
+**State mới:**
+- `streamMigrating` (boolean)
+- `streamDryRunning` (boolean) 
+- `streamMigrationResult` (object chứa kết quả)
+
+**Chức năng:**
+1. **Nút "Preview (Dry Run)"**: Gọi edge function `migrate-stream-to-r2` với `{ dryRun: true }` để xem số lượng video cần migrate
+2. **Nút "Migrate Batch"**: Gọi edge function với `{ batchSize: 5, deleteFromStream: false }` để migrate 5 video/lần
+3. **Nút "Migrate & Delete from Stream"**: Gọi edge function với `{ batchSize: 5, deleteFromStream: true }`
+4. Hiển thị kết quả: số video đã migrate, lỗi, video còn lại
+
+**Giao diện:**
+- Border màu cyan (border-cyan-500)
+- Icon: Video + ArrowRight
+- Hiển thị bảng kết quả với các cột: Post ID, UID, Status, Size
+- Alert thông báo số video còn lại sau mỗi batch
+
+**Hàm gọi edge function:**
 ```typescript
-onUploadComplete={(result) => {
-  setUppyVideoResult(result);
-  setIsVideoUploading(false);
-  setPendingVideoFile(null);
-  // Chủ động refresh token sau khi upload video lâu
-  supabase.auth.refreshSession().catch(err =>
-    console.warn('[CreatePost] Token refresh after video upload failed:', err)
+const runStreamToR2Migration = async (dryRun: boolean, deleteFromStream: boolean = false) => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) { toast.error('Phiên đăng nhập hết hạn'); return; }
+
+  const response = await fetch(
+    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/migrate-stream-to-r2`,
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ dryRun, batchSize: 5, deleteFromStream }),
+    }
   );
-}}
+  // ... xử lý response
+};
 ```
 
-**Thay đổi 3 - Giảm watchdog (dòng 329):**
+## Danh sách file thay đổi
 
-```typescript
-// 90000 -> 45000
-const watchdogTimeout = setTimeout(() => {
-  console.error('[CreatePost] Watchdog timeout triggered (45s)');
-  // ...
-}, 45000);
-```
+| File | Hành động | Mô tả |
+|------|-----------|-------|
+| `src/App.tsx` | Sửa | Thêm `AuthSessionKeeper` component + import supabase |
+| `src/pages/AdminMigration.tsx` | Sửa | Thêm Card "Migrate Stream to R2" với Preview/Migrate/Delete |
 
-### Kết quả mong đợi
+## Thứ tự thực hiện
 
-- Sau khi video upload xong, token được refresh ngay --> nhấn "Đăng" sẽ có token mới
-- Nếu `getSession()` hoặc `refreshSession()` bị treo, timeout sẽ bắt lỗi trong tối đa 25 giây (15s + 10s)
-- Watchdog 45 giây đảm bảo UI không bao giờ treo quá lâu
-- Thông báo lỗi rõ ràng thay vì treo vô hạn
+1. Thêm `AuthSessionKeeper` vào `App.tsx`
+2. Thêm Stream-to-R2 migration UI vào `AdminMigration.tsx`
 
