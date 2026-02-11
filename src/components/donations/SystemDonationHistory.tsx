@@ -65,6 +65,7 @@ export function SystemDonationHistory() {
   const [celebrationType, setCelebrationType] = useState<'sent' | 'received'>('sent');
   const [isCelebrationOpen, setIsCelebrationOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   const handleDonationClick = (donation: DonationRecord) => {
     setSelectedDonation(donation);
@@ -102,6 +103,35 @@ export function SystemDonationHistory() {
       toast.error('Lỗi khi xuất file');
     } finally {
       setIsExporting(false);
+    }
+  };
+
+  const handleExportPdf = async () => {
+    try {
+      setIsExportingPdf(true);
+      const allDonations = await fetchAllDonationsForExport({
+        searchTerm: filters.searchTerm,
+        tokenSymbol: filters.tokenSymbol,
+        status: filters.status,
+        dateFrom: filters.dateFrom,
+        dateTo: filters.dateTo,
+        onlyOnchain: filters.onlyOnchain,
+        type: filters.type,
+      });
+
+      if (allDonations.length === 0) {
+        toast.error('Không có dữ liệu để xuất');
+        return;
+      }
+
+      const { exportDonationsToPDF } = await import('@/utils/exportDonations');
+      await exportDonationsToPDF(allDonations, 'sent');
+      toast.success(`Đã xuất ${allDonations.length} giao dịch ra file PDF`);
+    } catch (error) {
+      console.error('PDF Export error:', error);
+      toast.error('Lỗi khi xuất file PDF');
+    } finally {
+      setIsExportingPdf(false);
     }
   };
 
@@ -197,7 +227,21 @@ export function SystemDonationHistory() {
             ) : (
               <Download className="w-4 h-4 mr-2" />
             )}
-            <span className="hidden sm:inline">Xuất CSV</span>
+           <span className="hidden sm:inline">Xuất CSV</span>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportPdf}
+            disabled={isExportingPdf || donations.length === 0}
+            className="bg-white/20 border-white/30 text-white hover:bg-white/30"
+          >
+            {isExportingPdf ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Download className="w-4 h-4 mr-2" />
+            )}
+            <span className="hidden sm:inline">Xuất PDF</span>
           </Button>
         </div>
       </div>
@@ -212,7 +256,7 @@ export function SystemDonationHistory() {
             </CardTitle>
           </CardHeader>
           <CardContent className="px-3 pb-3">
-            <div className="text-xl font-bold">
+            <div className="text-2xl font-extrabold text-green-700">
               {isStatsLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : formatNumber(stats?.totalCount || 0)}
             </div>
           </CardContent>
@@ -240,7 +284,7 @@ export function SystemDonationHistory() {
             </CardTitle>
           </CardHeader>
           <CardContent className="px-3 pb-3">
-            <div className="text-xl font-bold text-blue-600">
+            <div className="text-2xl font-extrabold text-green-700">
               {isStatsLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : formatNumber(stats?.todayCount || 0)}
             </div>
           </CardContent>
@@ -254,7 +298,7 @@ export function SystemDonationHistory() {
             </CardTitle>
           </CardHeader>
           <CardContent className="px-3 pb-3">
-            <div className="text-xl font-bold text-green-600">
+            <div className="text-2xl font-extrabold text-green-700">
               {isStatsLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : formatNumber(stats?.confirmedCount || 0)}
             </div>
           </CardContent>
@@ -268,7 +312,7 @@ export function SystemDonationHistory() {
             </CardTitle>
           </CardHeader>
           <CardContent className="px-3 pb-3">
-            <div className="text-xl font-bold text-yellow-600">
+            <div className="text-2xl font-extrabold text-green-700">
               {isStatsLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : formatNumber(stats?.pendingCount || 0)}
             </div>
           </CardContent>
@@ -390,7 +434,7 @@ export function SystemDonationHistory() {
                 {donations.map((donation) => {
                   const senderWallet = getWalletAddress(donation.sender);
                   const recipientWallet = getWalletAddress(donation.recipient);
-                  const tokenColor = donation.token_symbol === 'USDT' ? 'text-green-600' : donation.token_symbol === 'CAMLY' ? 'text-red-500' : 'text-amber-600';
+                  const tokenColor = 'text-emerald-500';
                   return (
                     <div
                       key={donation.id}
@@ -447,14 +491,14 @@ export function SystemDonationHistory() {
                             <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 text-xs">Onchain</Badge>
                           )}
                         </div>
-                        <p className={`font-mono font-bold text-lg ${tokenColor}`}>
+                        <p className={`font-mono font-bold text-xl ${tokenColor}`}>
                           {formatNumber(parseFloat(donation.amount))} {donation.token_symbol}
                         </p>
                       </div>
 
                       {/* Row 3: Message */}
                       {donation.message && (
-                        <p className="text-gray-600 italic text-sm mt-2">"{donation.message}"</p>
+                        <p className="text-yellow-500 font-semibold italic text-base mt-2">"{donation.message}"</p>
                       )}
 
                       {/* Row 4: Footer */}
@@ -512,7 +556,7 @@ export function SystemDonationHistory() {
                         </div>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="font-mono font-bold">
+                        <p className="font-mono font-bold text-xl text-emerald-500">
                           {formatNumber(parseFloat(donation.amount))} {donation.token_symbol}
                         </p>
                         <div className="flex gap-1 justify-end mt-1">
@@ -550,7 +594,7 @@ export function SystemDonationHistory() {
                     )}
                     {/* Message */}
                     {donation.message && (
-                      <p className="text-xs text-muted-foreground mt-1 italic truncate">"{donation.message}"</p>
+                      <p className="text-sm text-yellow-500 font-semibold mt-1 italic truncate">"{donation.message}"</p>
                     )}
                     <div className="flex items-center justify-between mt-2">
                       <div className="flex items-center gap-2">
