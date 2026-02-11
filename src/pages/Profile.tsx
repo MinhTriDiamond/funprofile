@@ -103,7 +103,8 @@ const Profile = () => {
         if (session) {
           profileId = session.user.id;
         } else {
-          navigate('/auth');
+          // Guest trying to view /profile without userId → redirect to feed
+          navigate('/', { replace: true });
           return;
         }
       }
