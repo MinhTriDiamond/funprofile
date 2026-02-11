@@ -11,6 +11,8 @@ export interface AdminDonationFilters {
   dateTo: string;
   page: number;
   limit: number;
+  onlyOnchain: boolean;
+  type: 'all' | 'reward' | 'transfer';
 }
 
 export interface AdminDonationStats {
@@ -27,6 +29,8 @@ const DEFAULT_FILTERS: AdminDonationFilters = {
   dateTo: '',
   page: 1,
   limit: 50,
+  onlyOnchain: false,
+  type: 'all',
 };
 
 export function useAdminDonationHistory() {
@@ -77,6 +81,10 @@ export function useAdminDonationHistory() {
         query = query.lte('created_at', `${filters.dateTo}T23:59:59`);
       }
 
+      if (filters.onlyOnchain) {
+        query = query.not('tx_hash', 'is', null);
+      }
+
       // Pagination
       const from = (filters.page - 1) * filters.limit;
       const to = from + filters.limit - 1;
@@ -104,7 +112,8 @@ export function useAdminDonationHistory() {
         const term = filters.searchTerm.toLowerCase();
         donations = donations.filter(d => 
           d.sender?.username?.toLowerCase().includes(term) ||
-          d.recipient?.username?.toLowerCase().includes(term)
+          d.recipient?.username?.toLowerCase().includes(term) ||
+          d.tx_hash?.toLowerCase().includes(term)
         );
       }
 
@@ -123,24 +132,34 @@ export function useAdminDonationHistory() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('donations')
-        .select('amount, token_symbol, light_score_earned, status');
+        .select('amount, token_symbol, light_score_earned, status, created_at');
 
       if (error) throw error;
 
       const totalByToken: Record<string, number> = {};
       let totalLightScore = 0;
       let confirmedCount = 0;
+      let pendingCount = 0;
+      let totalValue = 0;
+      let todayCount = 0;
+      const todayStr = new Date().toISOString().split('T')[0];
 
       (data || []).forEach((d: any) => {
         const amount = parseFloat(d.amount) || 0;
         totalByToken[d.token_symbol] = (totalByToken[d.token_symbol] || 0) + amount;
         totalLightScore += d.light_score_earned || 0;
+        totalValue += amount;
         if (d.status === 'confirmed') confirmedCount++;
+        if (d.status === 'pending') pendingCount++;
+        if (d.created_at?.startsWith(todayStr)) todayCount++;
       });
 
       return {
         totalCount: data?.length || 0,
         confirmedCount,
+        pendingCount,
+        todayCount,
+        totalValue,
         totalByToken,
         totalLightScore,
       };
@@ -163,7 +182,7 @@ export function useAdminDonationHistory() {
 }
 
 // Export all donations for CSV
-export async function fetchAllDonationsForExport(filters: Omit<AdminDonationFilters, 'page' | 'limit'>) {
+export async function fetchAllDonationsForExport(filters: Partial<AdminDonationFilters> & { searchTerm: string; tokenSymbol: string; status: string; dateFrom: string; dateTo: string }) {
   let query = supabase
     .from('donations')
     .select(`
@@ -196,6 +215,10 @@ export async function fetchAllDonationsForExport(filters: Omit<AdminDonationFilt
     query = query.lte('created_at', `${filters.dateTo}T23:59:59`);
   }
 
+  if (filters.onlyOnchain) {
+    query = query.not('tx_hash', 'is', null);
+  }
+
   const { data, error } = await query;
 
   if (error) throw error;
@@ -217,7 +240,8 @@ export async function fetchAllDonationsForExport(filters: Omit<AdminDonationFilt
     const term = filters.searchTerm.toLowerCase();
     donations = donations.filter(d => 
       d.sender?.username?.toLowerCase().includes(term) ||
-      d.recipient?.username?.toLowerCase().includes(term)
+      d.recipient?.username?.toLowerCase().includes(term) ||
+      d.tx_hash?.toLowerCase().includes(term)
     );
   }
 
