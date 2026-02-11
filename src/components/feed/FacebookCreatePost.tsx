@@ -342,47 +342,34 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
       // Check if aborted
       if (abortController.signal.aborted) throw new Error('Đã huỷ');
       
-      // Get session with 15 second timeout
-      const authStartTime = Date.now();
+      // Get session from memory cache (instant, no timeout needed)
       let session;
-      try {
-        const sessionResult = await Promise.race([
-          supabase.auth.getSession(),
-          new Promise<never>((_, reject) => 
-            setTimeout(() => reject(new Error('getSession timeout (15s)')), 15000)
-          )
-        ]);
-        session = sessionResult.data.session;
-        console.log('[CreatePost] getSession completed in', Date.now() - authStartTime, 'ms');
-      } catch (authError: any) {
-        console.error('[CreatePost] getSession error:', authError.message);
-        // Try refresh session as fallback
-        console.log('[CreatePost] Trying refreshSession...');
-        const { data: refreshData } = await Promise.race([
-          supabase.auth.refreshSession(),
-          new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error('refreshSession timeout (10s)')), 10000)
-          )
-        ]);
-        if (!refreshData.session) {
-          throw new Error('Phiên đăng nhập hết hạn, vui lòng đăng nhập lại');
+      const { data: sessionData } = await supabase.auth.getSession();
+      session = sessionData.session;
+      console.log('[CreatePost] getSession from cache:', session ? 'found' : 'empty');
+
+      // Refresh if session missing or expiring within 5 minutes
+      if (!session || (session.expires_at && session.expires_at * 1000 - Date.now() < 300000)) {
+        console.log('[CreatePost] Session needs refresh, reason:', !session ? 'no session' : 'expiring soon');
+        try {
+          const { data: refreshData } = await Promise.race([
+            supabase.auth.refreshSession(),
+            new Promise<never>((_, reject) =>
+              setTimeout(() => reject(new Error('refreshSession timeout (15s)')), 15000)
+            )
+          ]);
+          if (refreshData.session) {
+            session = refreshData.session;
+            console.log('[CreatePost] refreshSession succeeded');
+          }
+        } catch (refreshError: any) {
+          console.warn('[CreatePost] refreshSession failed:', refreshError.message);
+          // If we still have an existing session (just couldn't refresh), continue with it
         }
-        session = refreshData.session;
-        console.log('[CreatePost] refreshSession succeeded');
       }
-      
+
       if (!session) {
-        console.log('[CreatePost] No session found, trying refresh...');
-        const { data: refreshData } = await Promise.race([
-          supabase.auth.refreshSession(),
-          new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error('refreshSession timeout (10s)')), 10000)
-          )
-        ]);
-        if (!refreshData.session) {
-          throw new Error('Chưa đăng nhập');
-        }
-        session = refreshData.session;
+        throw new Error('Phiên đăng nhập hết hạn. Vui lòng tải lại trang và đăng nhập lại.');
       }
 
       console.log('[CreatePost] Auth OK, user:', session.user.id.substring(0, 8) + '...');
