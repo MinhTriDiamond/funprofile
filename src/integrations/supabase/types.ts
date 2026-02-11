@@ -1592,6 +1592,7 @@ export type Database = {
           total_rewards: number
           updated_at: string
           username: string
+          username_normalized: string | null
           wallet_address: string | null
         }
         Insert: {
@@ -1632,6 +1633,7 @@ export type Database = {
           total_rewards?: number
           updated_at?: string
           username: string
+          username_normalized?: string | null
           wallet_address?: string | null
         }
         Update: {
@@ -1672,6 +1674,7 @@ export type Database = {
           total_rewards?: number
           updated_at?: string
           username?: string
+          username_normalized?: string | null
           wallet_address?: string | null
         }
         Relationships: [
