@@ -59,8 +59,8 @@ export function useAdminDonationHistory() {
           light_score_earned,
           created_at,
           status,
-          sender:profiles!donations_sender_id_fkey(id, username, avatar_url, public_wallet_address, custodial_wallet_address),
-          recipient:profiles!donations_recipient_id_fkey(id, username, avatar_url, public_wallet_address, custodial_wallet_address)
+          sender:profiles!donations_sender_id_fkey(id, username, avatar_url),
+          recipient:profiles!donations_recipient_id_fkey(id, username, avatar_url)
         `, { count: 'exact' })
         .order('created_at', { ascending: false });
 
@@ -194,8 +194,8 @@ export async function fetchAllDonationsForExport(filters: Partial<AdminDonationF
       light_score_earned,
       created_at,
       status,
-      sender:profiles!donations_sender_id_fkey(id, username, avatar_url, public_wallet_address, custodial_wallet_address),
-      recipient:profiles!donations_recipient_id_fkey(id, username, avatar_url, public_wallet_address, custodial_wallet_address)
+      sender:profiles!donations_sender_id_fkey(id, username, avatar_url),
+      recipient:profiles!donations_recipient_id_fkey(id, username, avatar_url)
     `)
     .order('created_at', { ascending: false });
 
