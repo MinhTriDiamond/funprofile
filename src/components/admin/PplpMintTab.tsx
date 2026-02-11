@@ -38,7 +38,7 @@ import {
   Users,
 } from 'lucide-react';
 import { usePplpAdmin, MintRequest, ActionBreakdown } from '@/hooks/usePplpAdmin';
-import { ATTESTER_ADDRESS, formatFUN, getTxUrl, MINT_REQUEST_STATUS } from '@/config/pplp';
+import { isAttesterAddress, ATTESTER_ADDRESSES, formatFUN, getTxUrl, MINT_REQUEST_STATUS } from '@/config/pplp';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
 
@@ -221,7 +221,7 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
     fetchMintRequests();
   };
 
-  const isAttesterWallet = address?.toLowerCase() === ATTESTER_ADDRESS.toLowerCase();
+  const isAttesterWallet = isAttesterAddress(address ?? '');
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -334,7 +334,7 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
                 <span className="font-medium">Kết nối ví Attester để ký và submit transactions</span>
               </div>
               <p className="text-sm text-muted-foreground mt-1">
-                Địa chỉ Attester: <code className="bg-muted px-1 rounded">{ATTESTER_ADDRESS}</code>
+                Địa chỉ Attester: {ATTESTER_ADDRESSES.map((a, i) => <code key={i} className="bg-muted px-1 rounded text-xs mr-1">{a.slice(0,6)}...{a.slice(-4)}</code>)}
               </p>
             </div>
           )}
@@ -346,7 +346,7 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
                 <span className="font-medium">Ví hiện tại không phải là Attester!</span>
               </div>
               <p className="text-sm text-muted-foreground mt-1">
-                Vui lòng đổi sang ví: <code className="bg-muted px-1 rounded">{ATTESTER_ADDRESS}</code>
+                Vui lòng đổi sang một trong các ví Attester được ủy quyền
               </p>
             </div>
           )}
