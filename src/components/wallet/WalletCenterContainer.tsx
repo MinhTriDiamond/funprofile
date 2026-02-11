@@ -29,6 +29,7 @@ import { DonationHistoryTab } from './DonationHistoryTab';
 import { FunBalanceCard } from './FunBalanceCard';
 import { ClaimRewardsCard } from './ClaimRewardsCard';
 import { ActivateDialog } from './ActivateDialog';
+import { ClaimFunDialog } from './ClaimFunDialog';
 import { RecentTransactions } from './RecentTransactions';
 import { useFunBalance } from '@/hooks/useFunBalance';
 import { useTokenBalances } from '@/hooks/useTokenBalances';
@@ -70,6 +71,7 @@ const WalletCenterContainer = () => {
   const [showSend, setShowSend] = useState(false);
   const [showClaimDialog, setShowClaimDialog] = useState(false);
   const [showActivateDialog, setShowActivateDialog] = useState(false);
+  const [showClaimFunDialog, setShowClaimFunDialog] = useState(false);
   
   // Copy state for external wallet
   const [copiedExternal, setCopiedExternal] = useState(false);
@@ -113,7 +115,7 @@ const WalletCenterContainer = () => {
   } = useTokenBalances({ customAddress: externalAddress });
 
   // Use FUN balance hook
-  const { locked: lockedFun, refetch: refetchFunBalance } = useFunBalance(externalAddress);
+  const { locked: lockedFun, activated: activatedFun, refetch: refetchFunBalance } = useFunBalance(externalAddress);
 
   // Get CAMLY price for claimable calculation
   const camlyPrice = useMemo(() => {
@@ -573,6 +575,7 @@ const WalletCenterContainer = () => {
         <FunBalanceCard
           walletAddress={externalAddress}
           onActivate={() => setShowActivateDialog(true)}
+          onClaim={() => setShowClaimFunDialog(true)}
         />
       )}
 
@@ -627,6 +630,17 @@ const WalletCenterContainer = () => {
         open={showActivateDialog}
         onOpenChange={setShowActivateDialog}
         lockedBalance={lockedFun}
+        onSuccess={() => {
+          refetchFunBalance();
+          refetchExternal();
+        }}
+      />
+
+      {/* Claim FUN Dialog */}
+      <ClaimFunDialog
+        open={showClaimFunDialog}
+        onOpenChange={setShowClaimFunDialog}
+        activatedBalance={activatedFun}
         onSuccess={() => {
           refetchFunBalance();
           refetchExternal();

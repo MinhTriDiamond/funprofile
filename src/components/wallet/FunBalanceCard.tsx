@@ -19,9 +19,10 @@ import funLogo from '@/assets/tokens/fun-logo.png';
 interface FunBalanceCardProps {
   walletAddress?: `0x${string}`;
   onActivate?: () => void;
+  onClaim?: () => void;
 }
 
-export const FunBalanceCard = ({ walletAddress, onActivate }: FunBalanceCardProps) => {
+export const FunBalanceCard = ({ walletAddress, onActivate, onClaim }: FunBalanceCardProps) => {
   const { total, locked, activated, isLoading, refetch } = useFunBalance(walletAddress);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -136,6 +137,16 @@ export const FunBalanceCard = ({ walletAddress, onActivate }: FunBalanceCardProp
                 >
                   <Lock className="w-4 h-4 mr-2" />
                   Activate FUN
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              )}
+              {activated > 0 && onClaim && (
+                <Button
+                  onClick={onClaim}
+                  className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
+                >
+                  <Zap className="w-4 h-4 mr-2" />
+                  Claim FUN
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               )}
