@@ -385,123 +385,106 @@ export function SystemDonationHistory() {
           ) : (
             <>
               {/* Desktop Table */}
-              <div className="hidden md:block overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Người gửi</TableHead>
-                      <TableHead>Người nhận</TableHead>
-                      <TableHead className="text-right">Số tiền</TableHead>
-                      <TableHead>Token</TableHead>
-                      <TableHead>Lời nhắn</TableHead>
-                      <TableHead>Loại</TableHead>
-                      <TableHead>TX Hash</TableHead>
-                      <TableHead>Trạng thái</TableHead>
-                      <TableHead>
-                        <div className="flex items-center gap-1">
-                          Thời gian
-                          <ArrowUpDown className="w-3 h-3" />
-                        </div>
-                      </TableHead>
-                      <TableHead className="w-[70px]"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {donations.map((donation) => (
-                      <TableRow key={donation.id} className="hover:bg-accent/50">
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Avatar className="w-8 h-8">
-                              <AvatarImage src={donation.sender?.avatar_url || undefined} />
-                              <AvatarFallback>
-                                {donation.sender?.username?.charAt(0).toUpperCase() || '?'}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <span className="font-medium text-sm">@{donation.sender?.username || 'Unknown'}</span>
-                              {renderWalletAddress(donation.sender, donation.token_symbol)}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Avatar className="w-8 h-8">
-                              <AvatarImage src={donation.recipient?.avatar_url || undefined} />
-                              <AvatarFallback>
-                                {donation.recipient?.username?.charAt(0).toUpperCase() || '?'}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <span className="font-medium text-sm">@{donation.recipient?.username || 'Unknown'}</span>
-                              {renderWalletAddress(donation.recipient, donation.token_symbol)}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right font-mono font-medium">
-                          {formatNumber(parseFloat(donation.amount))}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{donation.token_symbol}</Badge>
-                        </TableCell>
-                        <TableCell className="max-w-[200px]">
-                          {donation.message ? (
-                            <p className="text-xs italic text-muted-foreground truncate" title={donation.message}>
-                              "{donation.message}"
-                            </p>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-1 flex-wrap">
-                            <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 text-xs">Tặng thưởng</Badge>
-                            {donation.tx_hash && (
-                              <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 text-xs">Onchain</Badge>
+              {/* Desktop Card Layout */}
+              <div className="hidden md:block space-y-3 p-4">
+                {donations.map((donation) => {
+                  const senderWallet = getWalletAddress(donation.sender);
+                  const recipientWallet = getWalletAddress(donation.recipient);
+                  const tokenColor = donation.token_symbol === 'USDT' ? 'text-green-600' : donation.token_symbol === 'CAMLY' ? 'text-red-500' : 'text-amber-600';
+                  return (
+                    <div
+                      key={donation.id}
+                      className="bg-white/95 border border-green-200 rounded-xl p-4 hover:shadow-lg transition-shadow"
+                    >
+                      {/* Row 1: Sender → Recipient */}
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Avatar className="w-10 h-10 shrink-0">
+                            <AvatarImage src={donation.sender?.avatar_url || undefined} />
+                            <AvatarFallback>{donation.sender?.username?.charAt(0).toUpperCase() || '?'}</AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-sm truncate">@{donation.sender?.username || 'Unknown'}</p>
+                            {senderWallet && (
+                              <div className="flex items-center gap-1 mt-0.5">
+                                <a href={getBscScanAddressUrl(senderWallet, donation.token_symbol)} target="_blank" rel="noopener noreferrer" className="font-mono text-[10px] text-blue-600 hover:underline" onClick={(e) => e.stopPropagation()}>
+                                  {shortenAddress(senderWallet)}
+                                </a>
+                                <button onClick={(e) => { e.stopPropagation(); copyToClipboard(senderWallet); }} className="text-gray-400 hover:text-gray-600"><Copy className="w-2.5 h-2.5" /></button>
+                                <a href={getBscScanAddressUrl(senderWallet, donation.token_symbol)} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-gray-600" onClick={(e) => e.stopPropagation()}><ExternalLink className="w-2.5 h-2.5" /></a>
+                              </div>
                             )}
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          {donation.tx_hash ? (
-                            <div className="flex items-center gap-1">
-                              <a
-                                href={getBscScanTxUrl(donation.tx_hash, donation.token_symbol)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="font-mono text-xs text-blue-600 hover:underline"
-                                onClick={(e) => e.stopPropagation()}
-                              >
+                        </div>
+
+                        <div className="text-green-600 font-bold text-lg shrink-0">→</div>
+
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="min-w-0 text-right">
+                            <p className="font-semibold text-sm truncate">@{donation.recipient?.username || 'Unknown'}</p>
+                            {recipientWallet && (
+                              <div className="flex items-center gap-1 mt-0.5 justify-end">
+                                <a href={getBscScanAddressUrl(recipientWallet, donation.token_symbol)} target="_blank" rel="noopener noreferrer" className="font-mono text-[10px] text-blue-600 hover:underline" onClick={(e) => e.stopPropagation()}>
+                                  {shortenAddress(recipientWallet)}
+                                </a>
+                                <button onClick={(e) => { e.stopPropagation(); copyToClipboard(recipientWallet); }} className="text-gray-400 hover:text-gray-600"><Copy className="w-2.5 h-2.5" /></button>
+                                <a href={getBscScanAddressUrl(recipientWallet, donation.token_symbol)} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-gray-600" onClick={(e) => e.stopPropagation()}><ExternalLink className="w-2.5 h-2.5" /></a>
+                              </div>
+                            )}
+                          </div>
+                          <Avatar className="w-10 h-10 shrink-0">
+                            <AvatarImage src={donation.recipient?.avatar_url || undefined} />
+                            <AvatarFallback>{donation.recipient?.username?.charAt(0).toUpperCase() || '?'}</AvatarFallback>
+                          </Avatar>
+                        </div>
+                      </div>
+
+                      {/* Row 2: Badges + Amount */}
+                      <div className="flex items-center justify-between mt-3">
+                        <div className="flex gap-1.5">
+                          <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 text-xs">Tặng thưởng</Badge>
+                          {donation.tx_hash && (
+                            <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 text-xs">Onchain</Badge>
+                          )}
+                        </div>
+                        <p className={`font-mono font-bold text-lg ${tokenColor}`}>
+                          {formatNumber(parseFloat(donation.amount))} {donation.token_symbol}
+                        </p>
+                      </div>
+
+                      {/* Row 3: Message */}
+                      {donation.message && (
+                        <p className="text-gray-600 italic text-sm mt-2">"{donation.message}"</p>
+                      )}
+
+                      {/* Row 4: Footer */}
+                      <div className="flex items-center justify-between mt-3 pt-3 border-t border-green-100">
+                        <div className="flex items-center gap-2 flex-wrap text-xs text-gray-500">
+                          {getStatusBadge(donation.status)}
+                          <span>·</span>
+                          <span>{formatDate(donation.created_at)}</span>
+                          <span>·</span>
+                          <span className="font-medium">BSC</span>
+                          {donation.tx_hash && (
+                            <>
+                              <span>·</span>
+                              <span className="text-gray-400">TX:</span>
+                              <a href={getBscScanTxUrl(donation.tx_hash, donation.token_symbol)} target="_blank" rel="noopener noreferrer" className="font-mono text-blue-600 hover:underline" onClick={(e) => e.stopPropagation()}>
                                 {shortenAddress(donation.tx_hash)}
                               </a>
-                              <button
-                                onClick={(e) => { e.stopPropagation(); copyToClipboard(donation.tx_hash); }}
-                                className="text-muted-foreground hover:text-foreground"
-                              >
-                                <Copy className="w-3 h-3" />
-                              </button>
-                            </div>
-                          ) : (
-                            <span className="text-muted-foreground text-xs">-</span>
+                              <button onClick={(e) => { e.stopPropagation(); copyToClipboard(donation.tx_hash); }} className="text-gray-400 hover:text-gray-600"><Copy className="w-3 h-3" /></button>
+                              <a href={getBscScanTxUrl(donation.tx_hash, donation.token_symbol)} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-gray-600" onClick={(e) => e.stopPropagation()}><ExternalLink className="w-3 h-3" /></a>
+                            </>
                           )}
-                        </TableCell>
-                        <TableCell>{getStatusBadge(donation.status)}</TableCell>
-                        <TableCell className="text-muted-foreground text-sm">
-                          {formatDate(donation.created_at)}
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => { e.stopPropagation(); handleDonationClick(donation); }}
-                            className="text-xs"
-                          >
-                            <Eye className="w-3.5 h-3.5 mr-1" />
-                            Xem
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                        </div>
+                        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleDonationClick(donation); }} className="text-xs h-7">
+                          <Sparkles className="w-3.5 h-3.5 mr-1 text-amber-500" />
+                          Xem Card
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
 
               {/* Mobile List */}
