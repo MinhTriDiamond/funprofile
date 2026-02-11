@@ -71,6 +71,8 @@ export function DonationHistoryAdminTab() {
         status: filters.status,
         dateFrom: filters.dateFrom,
         dateTo: filters.dateTo,
+        onlyOnchain: filters.onlyOnchain,
+        type: filters.type,
       });
 
       if (allDonations.length === 0) {
