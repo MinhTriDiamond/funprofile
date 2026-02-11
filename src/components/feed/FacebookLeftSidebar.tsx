@@ -86,6 +86,7 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
   const shortcutItems = [
     { icon: Crown, label: 'Mạnh Thường Quân', path: '/benefactors', color: 'text-gold' },
     { icon: Globe, label: 'Lịch Sử Giao Dịch', path: '/donations', color: 'text-emerald-500' },
+    { icon: UsersRound, label: 'Danh Sách Thành Viên', path: '/users', color: 'text-red-500' },
     { icon: UsersRound, label: t('groups'), path: '/groups', color: 'text-blue-500' },
     { icon: Flag, label: t('pages') || 'Trang', path: '/pages', color: 'text-orange-500' },
     { icon: Link2, label: 'Connected Apps', path: '/profile/connected-apps', color: 'text-purple-500' },
