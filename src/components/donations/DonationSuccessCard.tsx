@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { toast } from 'sonner';
-import { playCelebrationSounds } from '@/lib/celebrationSounds';
+import { playCelebrationMusicLoop } from '@/lib/celebrationSounds';
 
 export interface DonationCardData {
   id: string;
@@ -52,17 +52,28 @@ export const DonationSuccessCard = ({
 }: DonationSuccessCardProps) => {
   const [isCelebrationActive, setIsCelebrationActive] = useState(true);
   const cardRef = useRef<HTMLDivElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Play celebration sounds when card opens
+  // Play celebration music loop when card opens
   useEffect(() => {
     if (isOpen) {
-      playCelebrationSounds();
+      audioRef.current = playCelebrationMusicLoop('rich-3');
     }
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
   }, [isOpen]);
 
   const handleClose = () => {
     setIsCelebrationActive(false);
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
     onClose();
   };
 
@@ -99,7 +110,7 @@ export const DonationSuccessCard = ({
 
   return (
     <>
-      <DonationCelebration isActive={isOpen && isCelebrationActive} />
+      <DonationCelebration isActive={isOpen && isCelebrationActive} showRichText={true} />
       
       <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
         <DialogContent 
@@ -109,7 +120,7 @@ export const DonationSuccessCard = ({
             ref={cardRef}
             className="relative rounded-2xl overflow-hidden animate-glow-radiate"
             style={{
-              background: 'linear-gradient(135deg, #fffef5 0%, #fff9e6 30%, #fff3cc 70%, #ffe4a0 100%)',
+              background: 'linear-gradient(135deg, #d4f7dc 0%, #34d399 40%, #10b981 100%)',
             }}
           >
             {/* Radiant gold border effect */}
@@ -117,10 +128,10 @@ export const DonationSuccessCard = ({
               className="absolute inset-0 rounded-2xl pointer-events-none"
               style={{
                 border: '3px solid transparent',
-                backgroundImage: 'linear-gradient(135deg, #ffd700, #ffb347, #ffd700)',
+                backgroundImage: 'linear-gradient(135deg, #22c55e, #10b981, #22c55e)',
                 backgroundOrigin: 'border-box',
                 backgroundClip: 'padding-box, border-box',
-                boxShadow: '0 0 30px rgba(255, 215, 0, 0.5), inset 0 0 30px rgba(255, 215, 0, 0.1)',
+                boxShadow: '0 0 30px rgba(34, 197, 94, 0.5), inset 0 0 30px rgba(34, 197, 94, 0.1)',
               }}
             />
             
@@ -136,26 +147,25 @@ export const DonationSuccessCard = ({
                     animationDelay: `${i * 0.3}s`,
                   }}
                 >
-                  <Sparkles className="w-4 h-4 text-gold" />
+                  <Sparkles className="w-4 h-4 text-green-500" />
                 </div>
               ))}
             </div>
 
             {/* Light rays background */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-96 bg-gradient-radial from-gold/30 via-gold/10 to-transparent rounded-full blur-2xl" />
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-96 bg-gradient-radial from-green-400/30 via-green-300/10 to-transparent rounded-full blur-2xl" />
             </div>
 
             {/* Content */}
             <div className="relative p-6 text-center">
               {/* Header with celebration emojis */}
               <div className="mb-4">
-                <div className="inline-flex items-center gap-2 text-gold text-lg font-bold mb-2">
-                  ✨ 🎊 🎉 🎊 ✨
-                </div>
-                <h2 className="text-2xl font-bold text-amber-800 flex items-center justify-center gap-2 drop-shadow-sm">
-                  <Gift className="w-7 h-7 text-gold animate-bounce" />
-                  CHÚC MỪNG TẶNG THƯỞNG THÀNH CÔNG!
+                <h2 
+                  className="text-xl font-bold flex items-center justify-center gap-1 leading-tight"
+                  style={{ color: '#fbbf24', textShadow: '0 0 10px rgba(251, 191, 36, 0.6), 0 0 20px rgba(251, 191, 36, 0.3)' }}
+                >
+                  🎉✨ Chúc mừng! Bạn vừa nhận được đồng tiền hạnh phúc của Cha và Bé Angel CamLy! ✨🎉
                 </h2>
               </div>
 
@@ -163,8 +173,8 @@ export const DonationSuccessCard = ({
               <div 
                 className="my-6 py-5 px-6 rounded-xl animate-glow-radiate"
                 style={{
-                  background: 'linear-gradient(135deg, #ffd700 0%, #ffb347 50%, #ffd700 100%)',
-                  boxShadow: '0 4px 20px rgba(255, 215, 0, 0.5)',
+                  background: 'linear-gradient(135deg, #22c55e 0%, #10b981 50%, #22c55e 100%)',
+                  boxShadow: '0 4px 20px rgba(34, 197, 94, 0.5)',
                 }}
               >
                 <div 
@@ -179,34 +189,34 @@ export const DonationSuccessCard = ({
               </div>
 
               {/* Details card */}
-              <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 space-y-3 text-left border border-gold/30 shadow-lg">
+              <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 space-y-3 text-left border border-green-400/30 shadow-lg">
                 {/* Sender */}
                 <div className="flex items-center gap-3">
-                  <User className="w-5 h-5 text-amber-600 flex-shrink-0" />
-                  <span className="text-amber-700 w-24 font-medium">Người tặng:</span>
+                  <User className="w-5 h-5 text-green-600 flex-shrink-0" />
+                  <span className="text-green-700 w-24 font-medium">Người tặng:</span>
                   <div className="flex items-center gap-2 flex-1">
-                    <Avatar className="w-6 h-6 ring-2 ring-gold/50">
+                    <Avatar className="w-6 h-6 ring-2 ring-green-400/50">
                       <AvatarImage src={data.senderAvatarUrl || undefined} />
-                      <AvatarFallback className="text-xs bg-gold text-white">
+                      <AvatarFallback className="text-xs bg-green-500 text-white">
                         {data.senderUsername[0]?.toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="font-bold text-amber-900">@{data.senderUsername}</span>
+                    <span className="font-bold text-green-900">@{data.senderUsername}</span>
                   </div>
                 </div>
 
                 {/* Recipient */}
                 <div className="flex items-center gap-3">
-                  <Target className="w-5 h-5 text-gold flex-shrink-0" />
-                  <span className="text-amber-700 w-24 font-medium">Người nhận:</span>
+                  <Target className="w-5 h-5 text-green-500 flex-shrink-0" />
+                  <span className="text-green-700 w-24 font-medium">Người nhận:</span>
                   <div className="flex items-center gap-2 flex-1">
-                    <Avatar className="w-6 h-6 ring-2 ring-gold/50">
+                    <Avatar className="w-6 h-6 ring-2 ring-green-400/50">
                       <AvatarImage src={data.recipientAvatarUrl || undefined} />
-                      <AvatarFallback className="text-xs bg-gold text-white">
+                      <AvatarFallback className="text-xs bg-green-500 text-white">
                         {data.recipientUsername[0]?.toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="font-bold text-amber-900">@{data.recipientUsername}</span>
+                    <span className="font-bold text-green-900">@{data.recipientUsername}</span>
                   </div>
                 </div>
 
@@ -214,24 +224,24 @@ export const DonationSuccessCard = ({
                 {data.message && (
                   <div className="flex items-start gap-3">
                     <MessageCircle className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
-                    <span className="text-amber-700 w-24 font-medium">Lời nhắn:</span>
-                    <p className="text-amber-900 italic flex-1">"{data.message}"</p>
+                    <span className="text-green-700 w-24 font-medium">Lời nhắn:</span>
+                    <p className="text-green-900 italic flex-1">"{data.message}"</p>
                   </div>
                 )}
 
                 {/* Time */}
                 <div className="flex items-center gap-3">
-                  <Clock className="w-5 h-5 text-amber-600 flex-shrink-0" />
-                  <span className="text-amber-700 w-24 font-medium">Thời gian:</span>
-                  <span className="text-amber-900">
+                  <Clock className="w-5 h-5 text-green-600 flex-shrink-0" />
+                  <span className="text-green-700 w-24 font-medium">Thời gian:</span>
+                  <span className="text-green-900">
                     {format(new Date(data.createdAt), "dd/MM/yyyy HH:mm:ss", { locale: vi })}
                   </span>
                 </div>
 
                 {/* TX Hash */}
                 <div className="flex items-center gap-3">
-                  <Link2 className="w-5 h-5 text-amber-600 flex-shrink-0" />
-                  <span className="text-amber-700 w-24 font-medium">TX Hash:</span>
+                  <Link2 className="w-5 h-5 text-green-600 flex-shrink-0" />
+                  <span className="text-green-700 w-24 font-medium">TX Hash:</span>
                   <a
                     href={getBscScanTxUrl(data.txHash, data.tokenSymbol)}
                     target="_blank"
@@ -274,7 +284,7 @@ export const DonationSuccessCard = ({
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    className="gap-2 bg-white hover:bg-amber-50 border-gold/50 text-amber-800"
+                    className="gap-2 bg-white hover:bg-green-50 border-green-400/50 text-green-800"
                   >
                     <ExternalLink className="w-4 h-4" />
                     Xem BSCScan
@@ -283,7 +293,7 @@ export const DonationSuccessCard = ({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="gap-2 bg-white hover:bg-amber-50 border-gold/50 text-amber-800"
+                  className="gap-2 bg-white hover:bg-green-50 border-green-400/50 text-green-800"
                   onClick={handleSaveImage}
                   disabled={isSaving}
                 >
@@ -292,7 +302,7 @@ export const DonationSuccessCard = ({
                 </Button>
                 <Button
                   size="sm"
-                  className="gap-2 bg-gradient-to-r from-gold to-amber-500 hover:from-gold-hover hover:to-amber-600 text-white border-0"
+                  className="gap-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0"
                   onClick={handleClose}
                 >
                   <X className="w-4 h-4" />
@@ -301,7 +311,7 @@ export const DonationSuccessCard = ({
               </div>
 
               {/* Footer branding */}
-              <div className="mt-4 text-xs text-amber-600 font-medium">
+              <div className="mt-4 text-xs text-green-700 font-medium">
                 🌟 FUN Profile • Mạnh Thường Quân 🌟
               </div>
             </div>
