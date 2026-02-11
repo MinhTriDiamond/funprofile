@@ -64,12 +64,15 @@ Deno.serve(async (req) => {
 
     const { batchSize = 5, dryRun = false, deleteFromStream = false } = await req.json().catch(() => ({}));
 
+    // Scan limit: dry run scans all, migration uses batch
+    const scanLimit = dryRun ? 1000 : batchSize;
+
     // Find posts with Stream video URLs
     const { data: posts, error: queryError } = await supabaseAdmin
       .from('posts')
       .select('id, video_url, media_urls')
       .or('video_url.ilike.%videodelivery.net%,video_url.ilike.%cloudflarestream.com%')
-      .limit(batchSize);
+      .limit(scanLimit);
 
     if (queryError) throw queryError;
 
@@ -78,24 +81,27 @@ Deno.serve(async (req) => {
       .from('posts')
       .select('id, video_url, media_urls')
       .not('media_urls', 'is', null)
-      .limit(200);
+      .limit(1000);
 
     if (mediaError) throw mediaError;
 
-    // Filter media_urls posts that contain Stream URLs
+    // Filter media_urls posts that contain Stream URLs, deduplicate against video_url posts
+    const postIds = new Set((posts || []).map(p => p.id));
     const mediaPostsWithStream = (mediaPosts || []).filter(p => {
       if (!p.media_urls || !Array.isArray(p.media_urls)) return false;
+      if (postIds.has(p.id)) return false;
       return (p.media_urls as any[]).some((m: any) => 
         m.type === 'video' && (m.url?.includes('videodelivery.net') || m.url?.includes('cloudflarestream.com'))
       );
     });
 
     // Also check comments with Stream video URLs
+    const commentLimit = dryRun ? 1000 : batchSize;
     const { data: comments, error: commentsError } = await supabaseAdmin
       .from('comments')
       .select('id, video_url')
       .or('video_url.ilike.%videodelivery.net%,video_url.ilike.%cloudflarestream.com%')
-      .limit(batchSize);
+      .limit(commentLimit);
 
     if (commentsError) throw commentsError;
 
@@ -106,12 +112,13 @@ Deno.serve(async (req) => {
     if (dryRun) {
       return new Response(JSON.stringify({
         dryRun: true,
+        totalVideos: totalPosts + totalMediaPosts + totalComments,
         postsWithStreamVideoUrl: totalPosts,
         postsWithStreamMediaUrls: totalMediaPosts,
         commentsWithStreamVideo: totalComments,
-        samplePosts: posts?.slice(0, 3).map(p => ({ id: p.id, video_url: p.video_url?.substring(0, 80) })),
-        sampleMediaPosts: mediaPostsWithStream.slice(0, 3).map(p => ({ id: p.id })),
-        sampleComments: comments?.slice(0, 3).map(c => ({ id: c.id, video_url: c.video_url?.substring(0, 80) })),
+        samplePosts: posts?.slice(0, 5).map(p => ({ id: p.id, video_url: p.video_url?.substring(0, 80) })),
+        sampleMediaPosts: mediaPostsWithStream.slice(0, 5).map(p => ({ id: p.id })),
+        sampleComments: comments?.slice(0, 5).map(c => ({ id: c.id, video_url: c.video_url?.substring(0, 80) })),
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
