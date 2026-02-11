@@ -1,90 +1,86 @@
 
 
-# Nang Cap Trang Lich Su Giao Dich theo FUN Play
+# Nang Cap Giao Dien Lich Su Giao Dich
 
 ## Tong quan
-Bo sung cac tinh nang tu trang `/transactions` cua FUN Play vao trang `/donations` hien tai, va them lien ket "Lich Su Giao Dich" vao thanh dieu huong ben trai (sidebar).
+Chuyen giao dien danh sach giao dich sang dang "card" giong FUN Play (hinh 1), hien thi dia chi vi duoi avatar, loi nhan chuc mung, va doi mau nen sang xanh la (hinh 3).
 
 ---
 
-## 1. Them "Lich Su Giao Dich" vao Sidebar
-
-### File: `src/components/feed/FacebookLeftSidebar.tsx`
-- Them mot muc moi vao mang `shortcutItems` (line 86-92), dat ngay sau "Manh Thuong Quan"
-- Icon: `Globe` (tu lucide-react, da import san)
-- Label: "Lich Su Giao Dich"
-- Path: `/donations`
-- Color: `text-emerald-500`
-
----
-
-## 2. Nang cap Stats Cards (5 the thay vi 4)
-
-### File: `src/components/donations/SystemDonationHistory.tsx`
-Thay doi stats cards tu 4 thanh 5 the theo mau FUN Play:
-
-| The hien tai | The moi (theo FUN Play) |
-|---|---|
-| Tong giao dich | Tong giao dich (giu nguyen) |
-| Tong CAMLY | **Tong gia tri** (gop tat ca token thanh 1 so) |
-| Tong BNB | **Hom nay** (so giao dich trong ngay) |
-| Light Score | **Thanh cong** (so giao dich confirmed) |
-| _(khong co)_ | **Cho xu ly** (so giao dich pending) |
+## 1. Bo sung wallet address vao query
 
 ### File: `src/hooks/useAdminDonationHistory.ts`
-- Them `todayCount` vao stats query (dem giao dich trong ngay hom nay)
-- Them `pendingCount` vao stats query
-- Them `totalValue` (tong so luong tat ca token)
+- Them `public_wallet_address` va `custodial_wallet_address` vao select cua profiles join:
+  ```
+  sender:profiles!donations_sender_id_fkey(id, username, avatar_url, public_wallet_address, custodial_wallet_address)
+  recipient:profiles!donations_recipient_id_fkey(id, username, avatar_url, public_wallet_address, custodial_wallet_address)
+  ```
+- Tuong tu cho ham `fetchAllDonationsForExport`
+
+### File: `src/hooks/useDonationHistory.ts`
+- Cap nhat `DonationRecord` interface, them wallet address vao sender va recipient:
+  ```
+  sender: { id: string; username: string; avatar_url: string | null; public_wallet_address?: string | null; custodial_wallet_address?: string | null };
+  recipient: { id: string; username: string; avatar_url: string | null; public_wallet_address?: string | null; custodial_wallet_address?: string | null };
+  ```
 
 ---
 
-## 3. Bo sung Header giong FUN Play
-
-### File: `src/components/donations/SystemDonationHistory.tsx`
-- Them subtitle: "Minh bach - Truy vet Blockchain - Chuan Web3"
-- Doi icon header thanh Globe (thay vi Gift)
-- Doi tieu de thanh "Lich Su Giao Dich"
-
----
-
-## 4. Nang cap bo loc (Filters)
-
-### File: `src/components/donations/SystemDonationHistory.tsx`
-Them cac bo loc moi:
-- **"Tat ca loai"** dropdown: Tat ca / Tang thuong / Chuyen tien
-- **"Chi onchain"** toggle switch: loc chi hien giao dich co tx_hash (on-chain)
-- Mo rong search placeholder: "Tim theo ten, dia chi vi, ma giao dich (tx hash)..."
-
-### File: `src/hooks/useAdminDonationHistory.ts`
-- Them filter `onlyOnchain: boolean` va `type: string` vao `AdminDonationFilters`
-- Ap dung filter `onlyOnchain`: chi lay record co `tx_hash IS NOT NULL`
-- Mo rong search de tim theo tx_hash
-
----
-
-## 5. Nang cap giao dien danh sach giao dich
+## 2. Doi giao dien desktop tu Table sang Card layout (giong hinh 1)
 
 ### File: `src/components/donations/SystemDonationHistory.tsx`
 
-**Desktop (Table):**
-- Hien thi wallet address rut gon (0x1234...abcd) ben canh username
-- Them nut copy address va link BscScan cho moi dia chi vi
-- Them badges "Tang thuong" (vang) va "Onchain" (xanh la) cho moi giao dich
-- Hien thi message (loi nhan) inline trong moi dong
-- Them cot TX Hash voi link BscScan
-- Them nut "Xem Card" (thay vi click ca dong) de mo celebration card
+Thay the Table hien tai bang layout dang card cho moi giao dich, moi card gom:
 
-**Mobile (List):**
-- Tuong tu desktop nhung layout doc
-- Hien thi wallet address rut gon
-- Nut "Xem Card" o goc phai duoi
+**Header (dong 1):**
+- Trai: Avatar nguoi gui + Ten + dia chi vi rut gon (0xABC...1234) + nut Copy + nut BscScan link
+- Giua: Mui ten (->)
+- Phai: Ten nguoi nhan + Avatar + dia chi vi rut gon + nut Copy + nut BscScan link
+
+**Dong 2:**
+- Trai: Badges "Tang thuong" (do/cam) + "Onchain" (xanh la) 
+- Phai: So tien + Token symbol (vd: 9.999 CAMLY) - mau do/cam noi bat
+
+**Dong 3 (Loi nhan):**
+- Hien thi day du loi nhan chuc mung trong dau ngoac kep, font in nghieng
+
+**Footer (dong 4):**
+- Trai: Icon tich xanh + "Thanh cong" + thoi gian + "BSC"
+- Giua: TX hash rut gon + nut Copy + nut BscScan
+- Phai: Nut "Xem Card" (mau do/cam)
 
 ---
 
-## 6. Cap nhat tieu de trang
+## 3. Doi mau nen sang xanh la (green theme)
 
-### File: `src/pages/Donations.tsx`
-- Khong can thay doi nhieu, chi la wrapper
+### File: `src/components/donations/SystemDonationHistory.tsx`
+- Doi background cua toan bo trang tu trang/xam sang gradient xanh la dam (tuong tu hinh 3):
+  - Container chinh: `bg-gradient-to-br from-green-600 to-green-700` hoac `bg-[#5a8f5a]`
+  - Cac card giao dich: `bg-white/95` de noi bat tren nen xanh
+  - Stats cards: `bg-white/90 backdrop-blur`
+  - Filter card: `bg-white/90 backdrop-blur`
+  - Text header: `text-white`
+  - Pagination: background trong suot voi text trang
+
+---
+
+## 4. Cap nhat Mobile layout tuong tu
+
+### File: `src/components/donations/SystemDonationHistory.tsx`
+- Mobile list cung chuyen sang card layout nho gon hon
+- Hien thi dia chi vi rut gon duoi username
+- Hien thi loi nhan day du
+- Nut Copy + BscScan link cho dia chi vi
+
+---
+
+## 5. Helper lay dia chi vi
+
+Them helper function trong component:
+```text
+const getWalletAddress = (user) => 
+  user?.public_wallet_address || user?.custodial_wallet_address || null;
+```
 
 ---
 
@@ -92,7 +88,7 @@ Them cac bo loc moi:
 
 | File | Thay doi |
 |------|----------|
-| `src/components/feed/FacebookLeftSidebar.tsx` | Them muc "Lich Su Giao Dich" vao shortcutItems |
-| `src/components/donations/SystemDonationHistory.tsx` | Nang cap header, stats (5 the), filters (loai, onchain toggle), danh sach (wallet addr, badges, TX hash, Xem Card) |
-| `src/hooks/useAdminDonationHistory.ts` | Them todayCount, pendingCount, totalValue vao stats; them onlyOnchain va type filter; mo rong search cho tx_hash |
+| `src/hooks/useDonationHistory.ts` | Them wallet address vao DonationRecord interface |
+| `src/hooks/useAdminDonationHistory.ts` | Them public_wallet_address, custodial_wallet_address vao select query |
+| `src/components/donations/SystemDonationHistory.tsx` | Doi layout thanh card, them wallet address + loi nhan, doi mau nen xanh la |
 
