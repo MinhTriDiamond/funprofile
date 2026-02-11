@@ -1,50 +1,98 @@
 
 
-# Bo Sung Dia Chi Attester Moi
+# Nang Cap Trang Lich Su Giao Dich theo FUN Play
 
-## Thay doi
+## Tong quan
+Bo sung cac tinh nang tu trang `/transactions` cua FUN Play vao trang `/donations` hien tai, va them lien ket "Lich Su Giao Dich" vao thanh dieu huong ben trai (sidebar).
 
-Chuyen `ATTESTER_ADDRESS` tu mot dia chi duy nhat thanh mot mang (array) cac dia chi duoc uy quyen, va cap nhat logic kiem tra trong `PplpMintTab.tsx`.
+---
 
-### 1. Cap nhat `src/config/pplp.ts`
-- Doi `ATTESTER_ADDRESS` thanh `ATTESTER_ADDRESSES` (mang)
-- Giu `ATTESTER_ADDRESS` cu lam alias cho tuong thich nguoc
-- Them dia chi moi `0xD41Cc6beCB196FaCa3CDebDa2f6Fb42A12EdC389`
+## 1. Them "Lich Su Giao Dich" vao Sidebar
 
-### 2. Cap nhat `src/components/admin/PplpMintTab.tsx`
-- Thay doi logic `isAttesterWallet` tu so sanh 1 dia chi thanh kiem tra trong mang
-- Cap nhat thong bao loi de khong con hien thi 1 dia chi cu dinh
+### File: `src/components/feed/FacebookLeftSidebar.tsx`
+- Them mot muc moi vao mang `shortcutItems` (line 86-92), dat ngay sau "Manh Thuong Quan"
+- Icon: `Globe` (tu lucide-react, da import san)
+- Label: "Lich Su Giao Dich"
+- Path: `/donations`
+- Color: `text-emerald-500`
 
-### 3. Cap nhat `src/hooks/usePplpAdmin.ts`  
-- Cap nhat toast message neu co tham chieu den Attester address
+---
 
-## Chi tiet ky thuat
+## 2. Nang cap Stats Cards (5 the thay vi 4)
 
-```text
-// Truoc:
-export const ATTESTER_ADDRESS = '0xe32d...' as const;
+### File: `src/components/donations/SystemDonationHistory.tsx`
+Thay doi stats cards tu 4 thanh 5 the theo mau FUN Play:
 
-// Sau:
-export const ATTESTER_ADDRESSES: readonly string[] = [
-  '0xe32d50a0badE4cbD5B0d6120d3A5FD07f63694f1',
-  '0xD41Cc6beCB196FaCa3CDebDa2f6Fb42A12EdC389',
-];
-export const ATTESTER_ADDRESS = ATTESTER_ADDRESSES[0]; // backward compat
+| The hien tai | The moi (theo FUN Play) |
+|---|---|
+| Tong giao dich | Tong giao dich (giu nguyen) |
+| Tong CAMLY | **Tong gia tri** (gop tat ca token thanh 1 so) |
+| Tong BNB | **Hom nay** (so giao dich trong ngay) |
+| Light Score | **Thanh cong** (so giao dich confirmed) |
+| _(khong co)_ | **Cho xu ly** (so giao dich pending) |
 
-// Helper
-export const isAttesterAddress = (addr: string) =>
-  ATTESTER_ADDRESSES.some(a => a.toLowerCase() === addr.toLowerCase());
-```
+### File: `src/hooks/useAdminDonationHistory.ts`
+- Them `todayCount` vao stats query (dem giao dich trong ngay hom nay)
+- Them `pendingCount` vao stats query
+- Them `totalValue` (tong so luong tat ca token)
 
-Logic kiem tra trong PplpMintTab se doi tu:
-```text
-address?.toLowerCase() === ATTESTER_ADDRESS.toLowerCase()
-```
-thanh:
-```text
-isAttesterAddress(address ?? '')
-```
+---
 
-## Luu y quan trong
-Dia chi moi **phai duoc dang ky tren Smart Contract** boi Guardian/Owner thong qua ham `govRegisterAttester` (hoac tuong duong). Neu chua dang ky on-chain, vi se duoc nhan dien tren giao dien nhung giao dich ky se bi tu choi boi contract.
+## 3. Bo sung Header giong FUN Play
+
+### File: `src/components/donations/SystemDonationHistory.tsx`
+- Them subtitle: "Minh bach - Truy vet Blockchain - Chuan Web3"
+- Doi icon header thanh Globe (thay vi Gift)
+- Doi tieu de thanh "Lich Su Giao Dich"
+
+---
+
+## 4. Nang cap bo loc (Filters)
+
+### File: `src/components/donations/SystemDonationHistory.tsx`
+Them cac bo loc moi:
+- **"Tat ca loai"** dropdown: Tat ca / Tang thuong / Chuyen tien
+- **"Chi onchain"** toggle switch: loc chi hien giao dich co tx_hash (on-chain)
+- Mo rong search placeholder: "Tim theo ten, dia chi vi, ma giao dich (tx hash)..."
+
+### File: `src/hooks/useAdminDonationHistory.ts`
+- Them filter `onlyOnchain: boolean` va `type: string` vao `AdminDonationFilters`
+- Ap dung filter `onlyOnchain`: chi lay record co `tx_hash IS NOT NULL`
+- Mo rong search de tim theo tx_hash
+
+---
+
+## 5. Nang cap giao dien danh sach giao dich
+
+### File: `src/components/donations/SystemDonationHistory.tsx`
+
+**Desktop (Table):**
+- Hien thi wallet address rut gon (0x1234...abcd) ben canh username
+- Them nut copy address va link BscScan cho moi dia chi vi
+- Them badges "Tang thuong" (vang) va "Onchain" (xanh la) cho moi giao dich
+- Hien thi message (loi nhan) inline trong moi dong
+- Them cot TX Hash voi link BscScan
+- Them nut "Xem Card" (thay vi click ca dong) de mo celebration card
+
+**Mobile (List):**
+- Tuong tu desktop nhung layout doc
+- Hien thi wallet address rut gon
+- Nut "Xem Card" o goc phai duoi
+
+---
+
+## 6. Cap nhat tieu de trang
+
+### File: `src/pages/Donations.tsx`
+- Khong can thay doi nhieu, chi la wrapper
+
+---
+
+## Tong hop file can sua
+
+| File | Thay doi |
+|------|----------|
+| `src/components/feed/FacebookLeftSidebar.tsx` | Them muc "Lich Su Giao Dich" vao shortcutItems |
+| `src/components/donations/SystemDonationHistory.tsx` | Nang cap header, stats (5 the), filters (loai, onchain toggle), danh sach (wallet addr, badges, TX hash, Xem Card) |
+| `src/hooks/useAdminDonationHistory.ts` | Them todayCount, pendingCount, totalValue vao stats; them onlyOnchain va type filter; mo rong search cho tx_hash |
 
