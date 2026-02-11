@@ -13,6 +13,8 @@ import ScrollToTopButton from '@/components/common/ScrollToTopButton';
 import { PullToRefreshContainer } from '@/components/common/PullToRefreshContainer';
 import { Loader2 } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageContext';
+import { useGuestPrompt } from '@/hooks/useGuestPrompt';
+import { GuestRegistrationPrompt } from '@/components/auth/GuestRegistrationPrompt';
 
 // Lightweight skeleton components
 const SidebarSkeleton = memo(() => (
@@ -46,6 +48,7 @@ PostSkeleton.displayName = 'PostSkeleton';
 const Feed = () => {
   const [currentUserId, setCurrentUserId] = useState('');
   const { t } = useLanguage();
+  const { isGuest, showPrompt, triggerSource, dismissPrompt } = useGuestPrompt();
   const { 
     posts, 
     postStats, 
@@ -181,6 +184,13 @@ const Feed = () => {
 
       {/* Scroll to top button */}
       <ScrollToTopButton />
+
+      {/* Guest Registration Prompt */}
+      <GuestRegistrationPrompt 
+        open={showPrompt} 
+        onClose={dismissPrompt} 
+        triggerSource={triggerSource} 
+      />
     </div>
   );
 };
