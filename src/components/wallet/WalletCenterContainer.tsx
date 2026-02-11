@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAccount, useDisconnect, useSwitchChain } from 'wagmi';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { bsc, bscTestnet } from 'wagmi/chains';
@@ -81,6 +81,9 @@ const WalletCenterContainer = () => {
     return localStorage.getItem(WALLET_DISCONNECTED_KEY) === 'true';
   });
 
+  // Ref to track intentional disconnect - prevents effect from clearing showDisconnectedUI
+  const intentionalDisconnectRef = useRef(false);
+
   // Detect connected wallet type
   const connectedWalletType = useMemo(() => {
     if (!connector) return null;
@@ -132,8 +135,9 @@ const WalletCenterContainer = () => {
   }, [isConnected, disconnect, showDisconnectedUI]);
 
   // When wallet becomes connected, clear disconnected flag
+  // BUT skip if user is intentionally disconnecting (race condition protection)
   useEffect(() => {
-    if (isConnected) {
+    if (isConnected && !intentionalDisconnectRef.current) {
       localStorage.removeItem(WALLET_DISCONNECTED_KEY);
       setShowDisconnectedUI(false);
     }
@@ -301,6 +305,7 @@ const WalletCenterContainer = () => {
   };
 
   const handleConnect = useCallback(() => {
+    intentionalDisconnectRef.current = false;
     setShowDisconnectedUI(false);
     localStorage.removeItem(WALLET_DISCONNECTED_KEY);
     if (openConnectModal) {
@@ -333,8 +338,33 @@ const WalletCenterContainer = () => {
   }, [isConnected, activeAddress, address]);
 
   const handleDisconnect = useCallback(() => {
+    // Mark as intentional disconnect BEFORE calling disconnect()
+    intentionalDisconnectRef.current = true;
     localStorage.setItem(WALLET_DISCONNECTED_KEY, 'true');
     setShowDisconnectedUI(true);
+    
+    // Cleanup wagmi localStorage to prevent auto-reconnect
+    try {
+      localStorage.removeItem('wagmi.store');
+      localStorage.removeItem('wagmi.connected');
+      localStorage.removeItem('wagmi.wallet');
+      localStorage.removeItem('wagmi.recentConnectorId');
+      // Clean WalletConnect sessions
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('wc@') || key.startsWith('walletconnect')) {
+          localStorage.removeItem(key);
+        }
+      });
+      // Clean ActiveAccount context keys
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('activeAccount:') || key.startsWith('lastUsedAt:')) {
+          localStorage.removeItem(key);
+        }
+      });
+    } catch (e) {
+      console.warn('[WalletCenter] localStorage cleanup error:', e);
+    }
+    
     disconnect();
     toast.success('Đã ngắt kết nối ví');
   }, [disconnect]);
@@ -372,7 +402,7 @@ const WalletCenterContainer = () => {
   }, [isConnected]);
 
   // Show connect wallet screen if no wallet at all
-  if (!hasAnyWallet && !isConnected && showDisconnectedUI) {
+  if (!isConnected && showDisconnectedUI) {
     return (
       <div className="space-y-6">
         {/* Header */}
