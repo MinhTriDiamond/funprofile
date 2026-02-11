@@ -3,7 +3,6 @@ import { Camera } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { uploadToR2 } from '@/utils/r2Upload';
 import { AvatarCropper } from './AvatarCropper';
 
 interface AvatarEditorProps {
@@ -59,7 +58,6 @@ export function AvatarEditor({
     setCropImage(null);
 
     try {
-      // Get session for access token
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         toast.error('Vui lòng đăng nhập để tải ảnh lên');
@@ -67,10 +65,39 @@ export function AvatarEditor({
         return;
       }
 
-      const file = new File([croppedImageBlob], 'avatar.jpg', { type: 'image/jpeg' });
-      const result = await uploadToR2(file, 'avatars', `${userId}/avatar-${Date.now()}.jpg`, session.access_token);
+      // Convert blob to base64
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const result = reader.result as string;
+          resolve(result.split(',')[1]); // Remove data:image/jpeg;base64, prefix
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(croppedImageBlob);
+      });
 
-      // Update profile in database
+      const key = `avatars/${userId}/avatar-${Date.now()}.jpg`;
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+      const response = await fetch(`${supabaseUrl}/functions/v1/upload-to-r2`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+          'apikey': supabaseKey,
+        },
+        body: JSON.stringify({ file: base64, key, contentType: 'image/jpeg' }),
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        console.error('Upload edge function error:', errData);
+        throw new Error(errData.error || `HTTP ${response.status}`);
+      }
+
+      const result = await response.json();
+
       const { error } = await supabase
         .from('profiles')
         .update({ avatar_url: result.url })
