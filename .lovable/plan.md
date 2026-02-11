@@ -1,94 +1,96 @@
 
 
-# Sửa lỗi Dry Run chỉ quét được 7/165 video
+# Sửa 3 tính năng bị kẹt: Post Video, Orphan Cleanup, Stream Migration
 
-## Nguyên nhân
+## Nguyên nhân chung
 
-Edge function `migrate-stream-to-r2` giới hạn kết quả khi quét:
-- Query `video_url`: dùng `.limit(batchSize)` (mặc định 5) -- chỉ thấy 5 bài
-- Query `media_urls`: dùng `.limit(200)` rồi filter trong code -- chỉ filter ra 2 bài có Stream URL
-- Tổng: 5 + 2 = 7, trong khi thực tế DB có 155+ posts chứa Stream URL
+Cả 3 tính năng đều bị kẹt vì cùng 2 vấn đề:
 
-## Giải pháp
+1. **`verify_jwt = true` trong config.toml**: Lovable Cloud sử dụng ES256 signing keys, khiến hệ thống gateway không xác thực được JWT trước khi request đến edge function. Request bị reject ngay tại gateway, function code không bao giờ chạy.
 
-### File: `supabase/functions/migrate-stream-to-r2/index.ts`
+2. **Sử dụng `getUser()` thay vì `getClaims()`**: Theo quy tắc của dự án, edge functions phải dùng `getClaims(token)` để xác thực vì `getUser()` có thể thất bại với ES256 tokens.
 
-**1. Tách logic dry run và migration:**
+## Chi tiết thay đổi
 
-Khi `dryRun = true`: dùng query **không có limit** (hoặc limit 1000) để đếm chính xác tổng số video cần migrate.
+### 1. File: `supabase/config.toml`
 
-Khi `dryRun = false`: giữ nguyên `.limit(batchSize)` để xử lý từng batch.
+Chuyển 2 function sang `verify_jwt = false`:
 
-**2. Thay đổi cụ thể:**
+```
+[functions.cleanup-orphan-videos]
+verify_jwt = false
 
-Dòng 67-83: Thay thế bằng logic phân biệt dry run vs migration:
-
-```typescript
-// Scan limit: dry run lấy tất cả, migration lấy theo batch
-const scanLimit = dryRun ? 1000 : batchSize;
-
-// Find posts with Stream video URLs
-const { data: posts, error: queryError } = await supabaseAdmin
-  .from('posts')
-  .select('id, video_url, media_urls')
-  .or('video_url.ilike.%videodelivery.net%,video_url.ilike.%cloudflarestream.com%')
-  .limit(scanLimit);
-
-if (queryError) throw queryError;
-
-// Also find posts with Stream URLs in media_urls
-const { data: mediaPosts, error: mediaError } = await supabaseAdmin
-  .from('posts')
-  .select('id, video_url, media_urls')
-  .not('media_urls', 'is', null)
-  .limit(1000);
-
-if (mediaError) throw mediaError;
+[functions.migrate-stream-to-r2]
+verify_jwt = false
 ```
 
-Dòng 86-91: Thêm loại bỏ trùng lặp (vì 1 post có thể xuất hiện ở cả 2 query):
+### 2. File: `supabase/functions/cleanup-orphan-videos/index.ts`
+
+Thay thế xác thực `getUser()` bằng `getClaims()`:
 
 ```typescript
-// Filter media_urls posts that contain Stream URLs
-const mediaPostsWithStream = (mediaPosts || []).filter(p => {
-  if (!p.media_urls || !Array.isArray(p.media_urls)) return false;
-  // Bỏ qua post đã có trong danh sách video_url
-  const alreadyInPosts = (posts || []).some(pp => pp.id === p.id);
-  if (alreadyInPosts) return false;
-  return (p.media_urls as any[]).some((m: any) => 
-    m.type === 'video' && (m.url?.includes('videodelivery.net') || m.url?.includes('cloudflarestream.com'))
-  );
-});
-```
+// BEFORE (line 205):
+const { data: { user }, error: authError } = await supabase.auth.getUser(token);
 
-**3. Cải thiện dry run response:** Thêm tổng số video thực tế:
-
-```typescript
-if (dryRun) {
-  return new Response(JSON.stringify({
-    dryRun: true,
-    totalVideos: totalPosts + totalMediaPosts + totalComments,
-    postsWithStreamVideoUrl: totalPosts,
-    postsWithStreamMediaUrls: totalMediaPosts,
-    commentsWithStreamVideo: totalComments,
-    samplePosts: posts?.slice(0, 5).map(p => ({ 
-      id: p.id, 
-      video_url: p.video_url?.substring(0, 80) 
-    })),
-    sampleMediaPosts: mediaPostsWithStream.slice(0, 5).map(p => ({ id: p.id })),
-  }), { ... });
+// AFTER:
+const { data: claimsData, error: authError } = await supabase.auth.getClaims(token);
+if (authError || !claimsData?.claims) {
+  throw new Error('Unauthorized');
 }
+const userId = claimsData.claims.sub;
 ```
 
-## Danh sách file thay đổi
+Sau đó thay `user.id` bằng `userId` khi kiểm tra admin role.
 
-| File | Hành động | Mô tả |
+### 3. File: `supabase/functions/migrate-stream-to-r2/index.ts`
+
+Thay thế xác thực `getUser()` bằng `getClaims()`:
+
+```typescript
+// BEFORE (lines 38-49):
+const supabaseUser = createClient(...);
+const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
+
+// AFTER: Dùng supabaseAdmin + getClaims
+const token = authHeader.replace('Bearer ', '');
+const { data: claimsData, error: claimsError } = await supabaseAdmin.auth.getClaims(token);
+if (claimsError || !claimsData?.claims) {
+  return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+}
+const userId = claimsData.claims.sub;
+```
+
+Xoa bo `supabaseUser` client (khong can thiet nua), dung `userId` thay cho `user.id`.
+
+### 4. File: `supabase/functions/create-post/index.ts`
+
+Thay the `getUser()` bang `getClaims()` de fix loi "Dang xac thuc..." khi post video:
+
+```typescript
+// BEFORE (line 72):
+const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+// AFTER:
+const token = authHeader.replace('Bearer ', '');
+const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
+if (claimsError || !claimsData?.claims) {
+  return new Response(JSON.stringify({ error: 'Invalid token' }), { status: 401 });
+}
+const userId = claimsData.claims.sub;
+```
+
+## Danh sach file thay doi
+
+| File | Hanh dong | Mo ta |
 |------|-----------|-------|
-| `supabase/functions/migrate-stream-to-r2/index.ts` | Sửa | Dry run dùng limit 1000 thay vì batchSize; loại bỏ trùng lặp giữa 2 query |
+| `supabase/config.toml` | Sua | `verify_jwt = false` cho cleanup-orphan-videos va migrate-stream-to-r2 |
+| `supabase/functions/cleanup-orphan-videos/index.ts` | Sua | Doi `getUser()` -> `getClaims()` |
+| `supabase/functions/migrate-stream-to-r2/index.ts` | Sua | Xoa `supabaseUser`, doi `getUser()` -> `getClaims()` |
+| `supabase/functions/create-post/index.ts` | Sua | Doi `getUser()` -> `getClaims()` |
 
-## Kết quả mong đợi
+## Ket qua mong doi
 
-- Dry Run sẽ hiển thị đúng ~155 posts (video_url) + posts bổ sung từ media_urls
-- Migration vẫn xử lý theo batch 5 video/lần như cũ
-- Không còn trùng lặp giữa video_url và media_urls
+- Post video: khong con ket o "Dang xac thuc...", xac thuc nhanh va dang bai thanh cong
+- Orphan cleanup: quet duoc tat ca 165 video tren Cloudflare Stream
+- Stream migration: dry run va migration deu hoat dong binh thuong
 
