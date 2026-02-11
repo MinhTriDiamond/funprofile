@@ -11,8 +11,16 @@ export const FUN_MONEY_CONTRACT = {
   decimals: 18,
 };
 
-// Attester wallet address (used for EIP-712 signing)
-export const ATTESTER_ADDRESS = '0xe32d50a0badE4cbD5B0d6120d3A5FD07f63694f1' as const;
+// Attester wallet addresses (used for EIP-712 signing)
+export const ATTESTER_ADDRESSES: readonly string[] = [
+  '0xe32d50a0badE4cbD5B0d6120d3A5FD07f63694f1',
+  '0xD41Cc6beCB196FaCa3CDebDa2f6Fb42A12EdC389',
+];
+export const ATTESTER_ADDRESS = ATTESTER_ADDRESSES[0]; // backward compat
+
+// Helper to check if an address is an authorized attester
+export const isAttesterAddress = (addr: string): boolean =>
+  ATTESTER_ADDRESSES.some(a => a.toLowerCase() === addr.toLowerCase());
 
 // BSC Testnet RPC
 export const BSC_TESTNET_RPC = 'https://data-seed-prebsc-1-s1.binance.org:8545/';
