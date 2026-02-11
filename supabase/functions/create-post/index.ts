@@ -68,18 +68,19 @@ Deno.serve(async (req) => {
       global: { headers: { Authorization: authHeader } },
     });
 
-    // Verify user using getUser()
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    // Verify user using getClaims()
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
     
-    if (userError || !user) {
-      console.log("[create-post] Invalid token:", userError?.message);
+    if (claimsError || !claimsData?.claims) {
+      console.log("[create-post] Invalid token:", claimsError?.message);
       return new Response(
         JSON.stringify({ error: "Invalid token" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const userId = user.id;
+    const userId = claimsData.claims.sub as string;
     console.log("[create-post] User verified:", userId.substring(0, 8) + "...");
 
     // Parse request body
