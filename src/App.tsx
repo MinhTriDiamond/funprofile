@@ -32,6 +32,7 @@ const Chat = lazy(() => import("./pages/Chat"));
 const Install = lazy(() => import("./pages/Install"));
 const Benefactors = lazy(() => import("./pages/Benefactors"));
 const Donations = lazy(() => import("./pages/Donations"));
+const UserDirectory = lazy(() => import("./pages/UserDirectory"));
 
 // Optimized QueryClient with caching
 const queryClient = new QueryClient({
@@ -126,6 +127,7 @@ function App() {
                   <Route path="/install" element={<Install />} />
                   <Route path="/benefactors" element={<Benefactors />} />
                   <Route path="/donations" element={<Donations />} />
+                  <Route path="/users" element={<UserDirectory />} />
                   {/* Dynamic username route - must be AFTER static routes */}
                   <Route path="/:username" element={<Profile />} />
                   <Route path="*" element={<NotFound />} />
