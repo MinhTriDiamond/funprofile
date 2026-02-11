@@ -1,49 +1,30 @@
 
 
-# Nang Cap The Chuc Mung Tang Thuong (DonationSuccessCard)
+# Cap Nhat Vi Treasury Moi
 
-## Tong quan
-Cap nhat the chuc mung cua nguoi gui (DonationSuccessCard) de dong bo trai nghiem voi the nguoi nhan: nen xanh la cay tuoi sang, tieu de vang hoang kim, nhac Rich3.mp3 lap lien tuc, confetti + chu "RICH" 9 sac cau vong + phao hoa ban tung toe.
+## Dia chi vi moi
+`0xd0a262453a42059b7a5DBe6164420cbe674c28f1`
 
----
+## Cac buoc thuc hien
 
-## Cac thay doi trong file `src/components/donations/DonationSuccessCard.tsx`
+### Buoc 1: Cap nhat TREASURY_WALLET_ADDRESS
+- Cap nhat secret `TREASURY_WALLET_ADDRESS` thanh dia chi moi phia tren
 
-### 1. Nhac Rich3.mp3 lap lien tuc
-- Thay `playCelebrationSounds()` (chi phat 1 lan) bang `playCelebrationMusicLoop('rich-3')` (lap lien tuc)
-- Them `audioRef` de dung nhac khi dong the
-- Import `playCelebrationMusicLoop` thay vi `playCelebrationSounds`
+### Buoc 2: Cap nhat TREASURY_PRIVATE_KEY
+- Can private key cua vi moi de ky giao dich gui CAMLY cho nguoi dung
+- Con can cung cap private key cua vi `0xd0a262...4c28f1` de Cha cap nhat
 
-### 2. Doi nen sang xanh la cay tuoi sang
-- Nen chinh: `linear-gradient(135deg, #d4f7dc 0%, #34d399 40%, #10b981 100%)`
-- Vien: `linear-gradient(135deg, #22c55e, #10b981, #22c55e)` voi boxShadow xanh
-- Sparkles: `text-green-500` thay cho `text-gold`
-- Light rays: `from-green-400/30 via-green-300/10`
+### Buoc 3: Kiem tra vi moi
+- Sau khi cap nhat, vao Admin Dashboard > Financial tab de kiem tra Treasury Balance
+- Dam bao vi moi co du:
+  - **BNB** (toi thieu 0.05 BNB cho gas fee)
+  - **CAMLY token** (toi thieu 500,000 CAMLY de tra thuong)
 
-### 3. Doi tieu de thanh dong chu moi mau vang hoang kim
-- Tu: "CHUC MUNG TANG THUONG THANH CONG!"
-- Thanh: "Chuc mung! Ban vua nhan duoc dong tien hanh phuc cua Cha va Be Angel CamLy!"
-- Kem emoji: 🎉✨ ... ✨🎉
-- Mau: vang tuoi (#fbbf24) voi textShadow phat sang
+## Luu y quan trong
+- Vi moi phai co san BNB va CAMLY truoc khi duyet thuong
+- Neu vi chua co token, can chuyen BNB va CAMLY vao dia chi `0xd0a262453a42059b7a5DBe6164420cbe674c28f1` truoc
+- Sau khi Cha cap nhat xong, con co the kiem tra so du ngay tren Admin Dashboard
 
-### 4. Bat confetti + chu "RICH" 9 sac cau vong + phao hoa
-- Doi `showRichText` trong DonationCelebration tu mac dinh (false) sang `true`
-- Hieu ung da co san trong DonationCelebration component
-
-### 5. Cap nhat o hien thi so tien
-- Doi gradient tu vang sang xanh la: `linear-gradient(135deg, #22c55e, #10b981, #22c55e)`
-- Giu chu trang in dam
-
-### 6. Cap nhat cac mau phu
-- Cac icon va label: tu amber sang green
-- Nut dong: tu gold sang green gradient
-- Footer branding: tu amber sang green
-
----
-
-## Tong hop
-
-| File | Thay doi |
-|------|----------|
-| `src/components/donations/DonationSuccessCard.tsx` | Nhac loop Rich3, nen xanh la, tieu de vang moi, showRichText=true, mau phu xanh |
+## Buoc tiep theo
+Con hay cung cap **Private Key** cua vi moi de Cha cap nhat. Private Key se duoc luu an toan trong he thong backend, khong hien thi trong code.
 
