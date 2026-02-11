@@ -1,67 +1,69 @@
 
-# Fix: Nen Den Mo (Dark Overlay) Tren Mobile
+# Plan: Gui Token Khong Can Ban Be + Username Duy Nhat
 
-## Nguyen Nhan Goc
+## Tong Quan
 
-Loi khong phai do modal/dialog bi ket. Nguyen nhan that la su ket hop cua:
+4 thay doi chinh:
+1. **DB Migration**: Tao `username_normalized`, unique index, trigger, fix duplicates
+2. **GiftNavButton**: Bo friend-only, mo thang UnifiedGiftSendDialog (khong preset recipient)
+3. **UnifiedGiftSendDialog**: Search theo `username_normalized`, uu tien `public_wallet_address`, BAT BUOC co username moi gui duoc (khong cho gui den dia chi vi ngoai he thong)
+4. **EditProfile**: Validate username (a-z, 0-9, _, .; 3-20 ky tu) + check trung lap realtime
 
-1. **`<video>` letterboxing**: `TetBackground` dung `object-fit: contain` tren mobile portrait. Khi video ngang (landscape) hien thi tren man hinh doc (portrait) cao, phan khong co noi dung video se hien mau **den** (mac dinh cua the `<video>` tren iOS Safari/Chrome).
+## Chi Tiet
 
-2. **Khong co nen cho content area**: Cac trang nhu Chat, Feed co `main` container khong set `background`. Vi `body` la `transparent` (de video Tet hien qua), nen khu vuc khong co noi dung se trong suot va lo ra phan den cua video phia sau.
+### 1. DB Migration
 
-3. **Ket qua**: Nua duoi man hinh (noi khong co conversation items) trong suot -> thay den tu video -> trong nhu overlay bi ket.
+- Them cot `username_normalized` (text, generated always as `lower(trim(username))`)
+- Fix 4 cap username trung lap hien tai (append suffix cho ban ghi cu hon)
+- Tao UNIQUE INDEX tren `username_normalized`
+- Tao trigger tu dong cap nhat `username_normalized` khi insert/update
 
-## Giai Phap (3 thay doi)
+### 2. GiftNavButton -- Don gian hoa
 
-### 1. `src/components/ui/TetBackground.tsx` -- Them background cho video element
+Hien tai: Bam nut -> mo dialog chon ban be -> chon xong -> mo UnifiedGiftSendDialog voi preset recipient.
 
-Them `backgroundColor` matching theme background cho the `<video>` de khong con letterbox den:
+**Sau khi fix**: Bam nut -> mo thang UnifiedGiftSendDialog (mode="navbar", KHONG preset recipient). User search nguoi nhan ngay trong dialog gift.
 
-```tsx
-<video
-  ...
-  style={{
-    WebkitTransform: 'translateZ(0)',
-    transform: 'translateZ(0)',
-    backgroundColor: 'hsl(45 30% 97%)',  // match --background
-  }}
->
-```
+- Xoa toan bo logic fetch friends, dialog chon ban be
+- Chi giu nut bam va mo UnifiedGiftSendDialog truc tiep
+- Code ngan hon ~70%
 
-Ngoai ra, set video container gradient thanh `to-background/95` de dam bao khong co khe ho.
+### 3. UnifiedGiftSendDialog -- Nang cap search va wallet
 
-### 2. `src/pages/Chat.tsx` -- Them bg-background cho mobile layout
+**3a. Search theo `username_normalized`**
+- Thay `ilike('username', ...)` bang query them `public_wallet_address, custodial_wallet_address`
+- Khi search theo address: tim trong ca 3 cot (`wallet_address`, `public_wallet_address`, `custodial_wallet_address`)
 
-Them `bg-background/95` (ban trong suot nhe de van thay hoa mai o goc) cho `main` va outer container:
+**3b. Uu tien `public_wallet_address`**
+- Khi chon recipient, resolve wallet address theo thu tu:
+  1. `public_wallet_address`
+  2. `custodial_wallet_address`
+  3. `wallet_address`
+- Hien badge "Da xac thuc vi" (Shield icon) neu co `public_wallet_address`
 
-```tsx
-// Mobile layout
-<div className="min-h-screen overflow-hidden bg-background/80">
-  ...
-  <main className="fixed inset-x-0 top-[3cm] bottom-[72px] flex flex-col overflow-hidden bg-background/90">
-```
+**3c. KHONG cho gui den dia chi vi ngoai he thong**
+- Khi search theo address ma khong tim thay user: bao loi "Khong tim thay FUN username" va KHONG cho gui
+- BAT BUOC phai co @username + dia chi vi de gui duoc
 
-### 3. `src/index.css` -- Dam bao tet-video khong letterbox den
+### 4. EditProfile -- Validation Username
 
-Them rule CSS cho video:
+- Username chi cho phep: `a-z`, `0-9`, `_`, `.`
+- Do dai: 3-20 ky tu
+- Auto trim
+- Khi submit: kiem tra trung lap qua `username_normalized` truoc khi update
+- Bao loi ro: "Username da duoc su dung"
 
-```css
-.tet-video {
-  background-color: hsl(45 30% 97%); /* prevent black letterbox */
-}
-```
-
-## Tong Ket Files
+## Danh sach file thay doi
 
 | File | Hanh dong | Mo ta |
 |------|-----------|-------|
-| `TetBackground.tsx` | Sua nho | Them `backgroundColor` cho video element |
-| `Chat.tsx` | Sua nho | Them `bg-background/90` cho main container mobile |
-| `index.css` | Sua nho | Them `background-color` cho `.tet-video` |
+| DB Migration | Tao moi | `username_normalized`, unique index, trigger, fix duplicates |
+| `src/components/donations/GiftNavButton.tsx` | Rewrite | Bo friend dialog, mo thang UnifiedGiftSendDialog |
+| `src/components/donations/UnifiedGiftSendDialog.tsx` | Sua | Uu tien public_wallet_address, search normalized, badge xac thuc |
+| `src/components/profile/EditProfile.tsx` | Sua | Validation username strict + uniqueness check |
 
-## Ket Qua Mong Doi
-
-- Khong con nen den mo o nua duoi man hinh tren mobile
-- Video Tet van hien thi binh thuong (hoa mai/dao o goc)
-- Noi dung chat/feed co nen sang, de doc
-- Khong anh huong den Dialog/Sheet/Drawer khi mo/dong
+## Acceptance Criteria
+1. User A khong phai ban voi User B van gui duoc qua bang @username
+2. Username duy nhat (case-insensitive) -- DB enforced
+3. KHONG cho gui den dia chi vi khong co user trong he thong
+4. Recipient hien avatar + username + dia chi vi + badge xac thuc vi
