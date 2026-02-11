@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { useAccount, useSignTypedData, useWriteContract, useWaitForTransactionReceipt, useChainId, useSwitchChain } from 'wagmi';
+import { useAccount, useSignTypedData, useWriteContract, useWaitForTransactionReceipt, useChainId, useSwitchChain, usePublicClient } from 'wagmi';
 import { bscTestnet } from 'wagmi/chains';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -73,6 +73,7 @@ export interface MintStats {
 export const usePplpAdmin = () => {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
+  const publicClient = usePublicClient({ chainId: 97 });
   const { switchChainAsync, isPending: isSwitching } = useSwitchChain();
   const { signTypedDataAsync } = useSignTypedData();
   const { writeContractAsync, data: writeHash, isPending: isWritePending } = useWriteContract();
@@ -277,7 +278,39 @@ export const usePplpAdmin = () => {
     return successCount;
   }, [signMintRequest]);
 
-  // Submit a signed request to blockchain
+  // Confirm a submitted transaction
+  const confirmTransaction = useCallback(async (request: MintRequest): Promise<boolean> => {
+    if (!request.tx_hash) return false;
+
+    try {
+      const { error } = await supabase
+        .from('pplp_mint_requests')
+        .update({
+          status: MINT_REQUEST_STATUS.CONFIRMED,
+          confirmed_at: new Date().toISOString(),
+        })
+        .eq('id', request.id);
+
+      if (error) throw error;
+
+      if (request.action_ids && request.action_ids.length > 0) {
+        await supabase
+          .from('light_actions')
+          .update({
+            mint_status: 'minted',
+            minted_at: new Date().toISOString(),
+          })
+          .in('id', request.action_ids);
+      }
+
+      return true;
+    } catch (error) {
+      console.error('[usePplpAdmin] confirmTransaction error:', error);
+      return false;
+    }
+  }, []);
+
+  // Submit a signed request to blockchain (with B7 auto-confirm)
   const submitToChain = useCallback(async (request: MintRequest): Promise<string | null> => {
     if (!isConnected || !address) {
       toast.error('Vui lòng kết nối ví trước');
@@ -289,23 +322,17 @@ export const usePplpAdmin = () => {
       return null;
     }
 
-    // Kiểm tra và switch chain sang BSC Testnet
     const isCorrectChain = await ensureBscTestnet();
-    if (!isCorrectChain) {
-      return null;
-    }
+    if (!isCorrectChain) return null;
 
     try {
       console.log('[usePplpAdmin] Submitting to chain:', request.id);
 
-      // Validate action_name exists
       if (!request.action_name) {
         toast.error('Request thiếu action_name');
         return null;
       }
 
-      // Call lockWithPPLP on the contract (wagmi v2 API)
-      // Contract signature: lockWithPPLP(address user, string action, uint256 amount, bytes32 evidenceHash, bytes[] sigs)
       const txHash = await writeContractAsync({
         account: address,
         chain: bscTestnet,
@@ -313,17 +340,16 @@ export const usePplpAdmin = () => {
         abi: FUN_MONEY_ABI,
         functionName: 'lockWithPPLP',
         args: [
-          request.recipient_address as `0x${string}`,  // user
-          request.action_name,                          // action (STRING!)
-          BigInt(request.amount_wei),                   // amount
-          request.evidence_hash as `0x${string}`,       // evidenceHash
-          [request.signature as `0x${string}`],         // sigs array
+          request.recipient_address as `0x${string}`,
+          request.action_name,
+          BigInt(request.amount_wei),
+          request.evidence_hash as `0x${string}`,
+          [request.signature as `0x${string}`],
         ],
       });
 
       console.log('[usePplpAdmin] Transaction hash:', txHash);
 
-      // Update database with tx_hash
       const { error: updateError } = await supabase
         .from('pplp_mint_requests')
         .update({
@@ -335,79 +361,59 @@ export const usePplpAdmin = () => {
 
       if (updateError) throw updateError;
 
-      // Also update linked light_actions
       if (request.action_ids && request.action_ids.length > 0) {
         await supabase
           .from('light_actions')
-          .update({
-            tx_hash: txHash,
-            mint_status: 'submitted',
-          })
+          .update({ tx_hash: txHash, mint_status: 'submitted' })
           .in('id', request.action_ids);
       }
 
-      toast.success(`Transaction đã gửi! Xem trên BSCScan: ${getTxUrl(txHash)}`);
+      toast.success(`Transaction đã gửi! Đang chờ xác nhận on-chain...`);
+
+      // B7: Auto-confirm - poll for transaction receipt
+      if (publicClient) {
+        try {
+          const receipt = await publicClient.waitForTransactionReceipt({ 
+            hash: txHash, confirmations: 2, timeout: 120_000,
+          });
+
+          if (receipt.status === 'success') {
+            await confirmTransaction({ ...request, tx_hash: txHash });
+            toast.success(`✅ TX xác nhận on-chain! Block #${receipt.blockNumber}`);
+          } else {
+            await supabase.from('pplp_mint_requests').update({
+              status: MINT_REQUEST_STATUS.FAILED,
+              error_message: 'Transaction reverted on-chain',
+              retry_count: (request.retry_count || 0) + 1,
+            }).eq('id', request.id);
+            toast.error('Transaction bị revert on-chain');
+          }
+        } catch (receiptError: any) {
+          console.warn('[usePplpAdmin] Auto-confirm polling failed:', receiptError.message);
+          toast.info('TX đã gửi nhưng chưa xác nhận tự động. Kiểm tra BSCScan.');
+        }
+      }
 
       return txHash;
     } catch (error: any) {
       console.error('[usePplpAdmin] submitToChain error:', error);
 
-      // Update status to failed
-      await supabase
-        .from('pplp_mint_requests')
-        .update({
-          status: MINT_REQUEST_STATUS.FAILED,
-          error_message: error.message,
-          retry_count: (request.retry_count || 0) + 1,
-        })
-        .eq('id', request.id);
+      await supabase.from('pplp_mint_requests').update({
+        status: MINT_REQUEST_STATUS.FAILED,
+        error_message: error.message,
+        retry_count: (request.retry_count || 0) + 1,
+      }).eq('id', request.id);
 
       if (error.message?.includes('User rejected')) {
         toast.error('Bé đã từ chối giao dịch');
       } else if (error.message?.includes('insufficient funds')) {
         toast.error('Ví không đủ BNB để trả gas');
       } else {
-      toast.error(`Lỗi gửi transaction: ${error.shortMessage || error.message}`);
+        toast.error(`Lỗi gửi transaction: ${error.shortMessage || error.message}`);
       }
       return null;
     }
-  }, [isConnected, address, writeContractAsync, ensureBscTestnet]);
-
-  // Confirm a submitted transaction
-  const confirmTransaction = useCallback(async (request: MintRequest): Promise<boolean> => {
-    if (!request.tx_hash) return false;
-
-    try {
-      // In production, you'd poll for transaction receipt
-      // For now, just update status
-      const { error } = await supabase
-        .from('pplp_mint_requests')
-        .update({
-          status: MINT_REQUEST_STATUS.CONFIRMED,
-          confirmed_at: new Date().toISOString(),
-        })
-        .eq('id', request.id);
-
-      if (error) throw error;
-
-      // Update light_actions
-      if (request.action_ids && request.action_ids.length > 0) {
-        await supabase
-          .from('light_actions')
-          .update({
-            mint_status: 'minted',
-            minted_at: new Date().toISOString(),
-          })
-          .in('id', request.action_ids);
-      }
-
-      toast.success('Transaction đã được xác nhận on-chain!');
-      return true;
-    } catch (error) {
-      console.error('[usePplpAdmin] confirmTransaction error:', error);
-      return false;
-    }
-  }, []);
+  }, [isConnected, address, writeContractAsync, ensureBscTestnet, publicClient, confirmTransaction]);
 
   // Reset a failed request back to pending
   const resetToPending = useCallback(async (requestId: string): Promise<boolean> => {
@@ -560,6 +566,28 @@ export const usePplpAdmin = () => {
     }
   }, []);
 
+  // B8: Batch submit multiple signed requests to chain
+  const batchSubmitToChain = useCallback(async (
+    requests: MintRequest[],
+    onProgress?: (completed: number, total: number) => void,
+  ): Promise<number> => {
+    let successCount = 0;
+
+    for (let i = 0; i < requests.length; i++) {
+      onProgress?.(i, requests.length);
+      const txHash = await submitToChain(requests[i]);
+      if (txHash) successCount++;
+    }
+
+    onProgress?.(requests.length, requests.length);
+
+    if (successCount > 0) {
+      toast.success(`Đã submit ${successCount}/${requests.length} transactions`);
+    }
+
+    return successCount;
+  }, [submitToChain]);
+
   return {
     // State
     isLoading,
@@ -577,6 +605,7 @@ export const usePplpAdmin = () => {
     signMintRequest,
     batchSignMintRequests,
     submitToChain,
+    batchSubmitToChain,
     confirmTransaction,
     resetToPending,
     fetchActionDetails,
