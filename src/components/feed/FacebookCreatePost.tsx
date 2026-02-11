@@ -327,12 +327,12 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
     
     // Watchdog timeout - auto cancel after 90 seconds
     const watchdogTimeout = setTimeout(() => {
-      console.error('[CreatePost] Watchdog timeout triggered (90s)');
+      console.error('[CreatePost] Watchdog timeout triggered (45s)');
       abortController.abort();
       setLoading(false);
       setSubmitStep('idle');
       toast.error('Đăng bài bị timeout, vui lòng thử lại');
-    }, 90000);
+    }, 45000);
 
     setLoading(true);
     setSubmitStep('auth');
@@ -358,7 +358,12 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
         console.error('[CreatePost] getSession error:', authError.message);
         // Try refresh session as fallback
         console.log('[CreatePost] Trying refreshSession...');
-        const { data: refreshData } = await supabase.auth.refreshSession();
+        const { data: refreshData } = await Promise.race([
+          supabase.auth.refreshSession(),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('refreshSession timeout (10s)')), 10000)
+          )
+        ]);
         if (!refreshData.session) {
           throw new Error('Phiên đăng nhập hết hạn, vui lòng đăng nhập lại');
         }
@@ -368,7 +373,12 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
       
       if (!session) {
         console.log('[CreatePost] No session found, trying refresh...');
-        const { data: refreshData } = await supabase.auth.refreshSession();
+        const { data: refreshData } = await Promise.race([
+          supabase.auth.refreshSession(),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('refreshSession timeout (10s)')), 10000)
+          )
+        ]);
         if (!refreshData.session) {
           throw new Error('Chưa đăng nhập');
         }
@@ -792,6 +802,10 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
                         setUppyVideoResult(result);
                         setIsVideoUploading(false);
                         setPendingVideoFile(null);
+                        // Chủ động refresh token sau khi upload video lâu
+                        supabase.auth.refreshSession().catch(err =>
+                          console.warn('[CreatePost] Token refresh after video upload failed:', err)
+                        );
                       }}
                       onUploadError={() => {
                         setIsVideoUploading(false);
