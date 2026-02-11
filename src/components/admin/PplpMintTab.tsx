@@ -78,6 +78,7 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
     signMintRequest,
     batchSignMintRequests,
     submitToChain,
+    batchSubmitToChain,
     resetToPending,
     fetchActionDetails,
     rejectRequest,
@@ -97,6 +98,7 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
   const [rejectingRequest, setRejectingRequest] = useState<MintRequest | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [isRejecting, setIsRejecting] = useState(false);
+  const [batchSubmitProgress, setBatchSubmitProgress] = useState<{ current: number; total: number } | null>(null);
 
   useEffect(() => {
     fetchMintRequests();
@@ -152,6 +154,21 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
     setSubmittingId(request.id);
     await submitToChain(request);
     setSubmittingId(null);
+    fetchMintRequests();
+  };
+
+  const handleBatchSubmit = async () => {
+    const selectedRequests = mintRequests.filter(
+      r => selectedIds.has(r.id) && r.status === MINT_REQUEST_STATUS.SIGNED
+    );
+    if (selectedRequests.length === 0) return;
+
+    setBatchSubmitProgress({ current: 0, total: selectedRequests.length });
+    await batchSubmitToChain(selectedRequests, (current, total) => {
+      setBatchSubmitProgress({ current, total });
+    });
+    setBatchSubmitProgress(null);
+    setSelectedIds(new Set());
     fetchMintRequests();
   };
 
@@ -405,15 +422,35 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
               )}
 
               {activeTab === 'signed' && filteredRequests.length > 0 && (
-                <div className="flex justify-end mb-4">
-                  <Button
-                    variant="outline"
-                    className="gap-2"
-                    disabled={!isConnected}
-                  >
-                    <Send className="w-4 h-4" />
-                    Submit tất cả ({filteredRequests.length})
-                  </Button>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      checked={selectedIds.size === filteredRequests.length && filteredRequests.length > 0}
+                      onCheckedChange={handleSelectAll}
+                    />
+                    <span className="text-sm text-muted-foreground">
+                      Chọn tất cả ({selectedIds.size} đã chọn)
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {batchSubmitProgress && (
+                      <span className="text-sm text-muted-foreground">
+                        Đang submit {batchSubmitProgress.current}/{batchSubmitProgress.total}...
+                      </span>
+                    )}
+                    <Button
+                      onClick={handleBatchSubmit}
+                      disabled={selectedIds.size === 0 || !isConnected || !!batchSubmitProgress}
+                      className="gap-2 bg-gradient-to-r from-purple-500 to-blue-500"
+                    >
+                      {batchSubmitProgress ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Send className="w-4 h-4" />
+                      )}
+                      Submit hàng loạt ({selectedIds.size})
+                    </Button>
+                  </div>
                 </div>
               )}
 
@@ -556,7 +593,7 @@ const MintRequestRow = ({
   canSubmit,
   getStatusBadge,
 }: MintRequestRowProps) => {
-  const showCheckbox = request.status === MINT_REQUEST_STATUS.PENDING_SIG;
+  const showCheckbox = request.status === MINT_REQUEST_STATUS.PENDING_SIG || request.status === MINT_REQUEST_STATUS.SIGNED;
   const showSign = request.status === MINT_REQUEST_STATUS.PENDING_SIG;
   const showSubmit = request.status === MINT_REQUEST_STATUS.SIGNED;
   const showTxLink = request.tx_hash && !request.tx_hash.startsWith('pending_');
