@@ -14,8 +14,8 @@ export const LawOfLightGuard = ({ children }: LawOfLightGuardProps) => {
 
   useEffect(() => {
     const checkLawOfLightAcceptance = async () => {
-      // Skip check for public pages
-      const publicPaths = ['/law-of-light', '/docs'];
+      // Skip check for public pages (Open Access Model)
+      const publicPaths = ['/law-of-light', '/docs', '/about', '/leaderboard', '/benefactors', '/donations', '/install'];
       const isPublicPath = publicPaths.some(path => location.pathname.startsWith(path));
       
       if (isPublicPath) {
@@ -40,16 +40,22 @@ export const LawOfLightGuard = ({ children }: LawOfLightGuardProps) => {
 
       const { data: { session } } = await supabase.auth.getSession();
       
-      // Guest mode: Allow unauthenticated users to view feed
-      // They can browse but not interact (handled in components)
+      // Guest mode: Allow unauthenticated users to view public content
+      // Open Access Model: Feed, Profile (view), Post detail, Leaderboard, etc.
       if (!session) {
-        // For root/feed path, allow guest access
-        if (location.pathname === '/' || location.pathname === '/feed') {
+        const guestAllowedPaths = ['/', '/feed', '/profile', '/post', '/leaderboard', '/benefactors', '/donations', '/about', '/install'];
+        const isGuestAllowed = guestAllowedPaths.some(path => 
+          location.pathname === path || location.pathname.startsWith(path + '/')
+        );
+        // Also allow /@username and /:username profile routes
+        const isProfileRoute = /^\/@?[a-zA-Z0-9_]+$/.test(location.pathname);
+        
+        if (isGuestAllowed || isProfileRoute) {
           setIsAllowed(true);
           setIsChecking(false);
           return;
         }
-        // For other protected routes, redirect to law-of-light
+        // For protected routes (chat, wallet, admin, notifications), redirect to law-of-light
         navigate('/law-of-light', { replace: true });
         return;
       }
