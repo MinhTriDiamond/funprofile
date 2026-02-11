@@ -145,7 +145,7 @@ export const UnifiedGiftSendDialog = ({
 
   const effectiveRecipientAddress = effectiveRecipient?.walletAddress || '';
   const hasRecipient = !!effectiveRecipient;
-  const isFormDisabled = !hasRecipient;
+  // isFormDisabled removed — form fields are always visible, only the confirm button is gated
 
   // Get native BNB balance
   const { data: bnbBalance } = useBalance({ address, chainId: bsc.id });
@@ -555,6 +555,51 @@ export const UnifiedGiftSendDialog = ({
                 </div>
               )}
 
+              {/* Token */}
+              <div>
+                <label className="text-sm font-medium text-muted-foreground mb-2 block">Chọn token:</label>
+                <TokenSelector selectedToken={selectedToken} onSelect={setSelectedToken} />
+              </div>
+
+              {/* Amount */}
+              <div>
+                <label className="text-sm font-medium text-muted-foreground mb-2 block">Số lượng:</label>
+                <div className="relative">
+                  <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0" className="text-lg font-semibold pr-24" />
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">{selectedToken.symbol}</span>
+                    {formattedBalance > 0 && (
+                      <button type="button" onClick={handleMaxAmount} className="text-xs text-primary hover:underline font-medium">MAX</button>
+                    )}
+                  </div>
+                </div>
+                {isConnected && <p className="text-xs text-muted-foreground mt-1">Số dư: {formattedBalance.toLocaleString(undefined, { maximumFractionDigits: selectedToken.decimals })} {selectedToken.symbol}</p>}
+                {estimatedUsd > 0 && <p className="text-xs text-muted-foreground mt-1">≈ ${estimatedUsd.toFixed(4)} USD</p>}
+                {parsedAmountNum > 0 && !minSendCheck.valid && minSendCheck.message && <p className="text-xs text-destructive mt-1">{minSendCheck.message}</p>}
+              </div>
+
+              {/* Wrong network */}
+              {isWrongNetwork && isConnected && (
+                <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                  <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
+                  <p className="text-sm text-destructive flex-1">Vui lòng chuyển sang BNB Smart Chain</p>
+                  <Button size="sm" variant="outline" onClick={() => switchChain({ chainId: bsc.id })}>Switch</Button>
+                </div>
+              )}
+
+              {/* Connect wallet */}
+              {!isConnected && !recipientHasNoWallet && (
+                <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-amber-500">
+                      <Wallet className="w-5 h-5" />
+                      <span className="font-medium">Kết nối ví để gửi</span>
+                    </div>
+                    <Button onClick={() => openConnectModal?.()} size="sm" className="bg-amber-500 hover:bg-amber-600">Kết nối</Button>
+                  </div>
+                </div>
+              )}
+
               {/* Recipient */}
               {isPresetMode ? (
                 <div>
@@ -673,68 +718,15 @@ export const UnifiedGiftSendDialog = ({
                 </div>
               )}
 
-              {/* Hint when no recipient */}
-              {isFormDisabled && !recipientHasNoWallet && !isPresetMode && (
-                <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 border border-dashed border-muted-foreground/30">
-                  <User className="w-4 h-4 text-muted-foreground shrink-0" />
-                  <p className="text-sm text-muted-foreground">Vui lòng chọn người nhận trước</p>
-                </div>
-              )}
-
-              {/* Wrong network */}
-              {isWrongNetwork && isConnected && (
-                <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-                  <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
-                  <p className="text-sm text-destructive flex-1">Vui lòng chuyển sang BNB Smart Chain</p>
-                  <Button size="sm" variant="outline" onClick={() => switchChain({ chainId: bsc.id })}>Switch</Button>
-                </div>
-              )}
-
-              {/* Connect wallet */}
-              {!isConnected && !recipientHasNoWallet && (
-                <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-amber-500">
-                      <Wallet className="w-5 h-5" />
-                      <span className="font-medium">Kết nối ví để gửi</span>
-                    </div>
-                    <Button onClick={() => openConnectModal?.()} size="sm" className="bg-amber-500 hover:bg-amber-600">Kết nối</Button>
-                  </div>
-                </div>
-              )}
-
               {!recipientHasNoWallet && (
-                <div className={isFormDisabled && !isPresetMode ? 'opacity-50 pointer-events-none' : ''}>
-                  {/* Token */}
-                  <div className="mb-5">
-                    <label className="text-sm font-medium text-muted-foreground mb-2 block">Chọn token:</label>
-                    <TokenSelector selectedToken={selectedToken} onSelect={setSelectedToken} />
-                  </div>
-
-                  {/* Amount */}
-                  <div className="mb-5">
-                    <label className="text-sm font-medium text-muted-foreground mb-2 block">Số lượng:</label>
-                    <div className="relative">
-                      <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0" className="text-lg font-semibold pr-24" />
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                        <span className="text-sm text-muted-foreground">{selectedToken.symbol}</span>
-                        {formattedBalance > 0 && (
-                          <button type="button" onClick={handleMaxAmount} className="text-xs text-primary hover:underline font-medium">MAX</button>
-                        )}
-                      </div>
-                    </div>
-                    {isConnected && <p className="text-xs text-muted-foreground mt-1">Số dư: {formattedBalance.toLocaleString(undefined, { maximumFractionDigits: selectedToken.decimals })} {selectedToken.symbol}</p>}
-                    {estimatedUsd > 0 && <p className="text-xs text-muted-foreground mt-1">≈ ${estimatedUsd.toFixed(4)} USD</p>}
-                    {parsedAmountNum > 0 && !minSendCheck.valid && minSendCheck.message && <p className="text-xs text-destructive mt-1">{minSendCheck.message}</p>}
-                  </div>
-
+                <>
                   {/* Quick picks */}
-                  <div className="mb-5">
+                  <div>
                     <QuickGiftPicker selectedTemplate={selectedTemplate} onSelectTemplate={handleSelectTemplate} onSelectAmount={handleSelectQuickAmount} currentAmount={amount} tokenSymbol={selectedToken.symbol} />
                   </div>
 
                   {/* Message */}
-                  <div className="mb-5">
+                  <div>
                     <label className="text-sm font-medium text-muted-foreground mb-2 block">Lời nhắn:</label>
                     <div className="relative">
                       <Textarea value={customMessage} onChange={(e) => { setCustomMessage(e.target.value); if (selectedTemplate?.id !== 'custom') setSelectedTemplate(MESSAGE_TEMPLATES.find(t => t.id === 'custom') || null); }} placeholder="Nhập lời nhắn của bạn..." rows={2} className="pr-12" />
@@ -744,13 +736,13 @@ export const UnifiedGiftSendDialog = ({
 
                   {/* Warnings */}
                   {isLargeAmount && (
-                    <div className="flex items-center gap-2 p-2 mb-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                    <div className="flex items-center gap-2 p-2 bg-destructive/10 border border-destructive/20 rounded-lg">
                       <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
                       <p className="text-xs text-destructive">Bạn đang gửi hơn 80% số dư token.</p>
                     </div>
                   )}
                   {needsGasWarning && (
-                    <div className="flex items-center gap-2 p-2 mb-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                    <div className="flex items-center gap-2 p-2 bg-destructive/10 border border-destructive/20 rounded-lg">
                       <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
                       <p className="text-xs text-destructive">BNB còn {bnbBalanceNum.toFixed(4)}. Cần tối thiểu 0.002 BNB để trả phí gas.</p>
                     </div>
@@ -759,11 +751,11 @@ export const UnifiedGiftSendDialog = ({
                   {/* Next button */}
                   <div className="flex gap-3 pt-2">
                     <Button variant="outline" onClick={handleDialogClose} className="flex-1" disabled={isInProgress}>Hủy</Button>
-                    <Button onClick={handleGoToConfirm} disabled={!canProceedToConfirm || isFormDisabled} className="flex-1 bg-gradient-to-r from-gold to-amber-500 hover:from-gold/90 hover:to-amber-500/90 text-primary-foreground gap-2">
+                    <Button onClick={handleGoToConfirm} disabled={!canProceedToConfirm} className="flex-1 bg-gradient-to-r from-gold to-amber-500 hover:from-gold/90 hover:to-amber-500/90 text-primary-foreground gap-2">
                       Xem lại & Xác nhận <ArrowRight className="w-4 h-4" />
                     </Button>
                   </div>
-                </div>
+                </>
               )}
             </div>
           )}
