@@ -14,7 +14,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const ADMIN_IDS = ['e7b21a96-bf54-4594-97a5-c581c4e504f0'];
+
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -42,7 +42,21 @@ Deno.serve(async (req) => {
     );
 
     const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
-    if (userError || !user || !ADMIN_IDS.includes(user.id)) {
+    if (userError || !user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Check admin role via user_roles table
+    const { data: roleData } = await supabaseAdmin
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .eq('role', 'admin')
+      .maybeSingle();
+
+    if (!roleData) {
       return new Response(JSON.stringify({ error: 'Admin only' }), {
         status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
