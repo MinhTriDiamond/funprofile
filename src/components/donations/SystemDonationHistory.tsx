@@ -118,8 +118,43 @@ export function SystemDonationHistory() {
     }
   };
 
+  const getWalletAddress = (user: any) => user?.public_wallet_address || user?.custodial_wallet_address || null;
+
+  const renderWalletAddress = (user: any, tokenSymbol?: string) => {
+    const address = getWalletAddress(user);
+    if (!address) return null;
+    return (
+      <div className="flex items-center gap-1 mt-0.5">
+        <a
+          href={getBscScanAddressUrl(address, tokenSymbol)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-mono text-[10px] text-blue-600 hover:underline"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {shortenAddress(address)}
+        </a>
+        <button
+          onClick={(e) => { e.stopPropagation(); copyToClipboard(address); }}
+          className="text-muted-foreground hover:text-foreground"
+        >
+          <Copy className="w-2.5 h-2.5" />
+        </button>
+        <a
+          href={getBscScanAddressUrl(address, tokenSymbol)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-muted-foreground hover:text-foreground"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <ExternalLink className="w-2.5 h-2.5" />
+        </a>
+      </div>
+    );
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="bg-gradient-to-br from-green-600 via-green-700 to-emerald-800 min-h-screen p-4 rounded-xl space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -127,16 +162,16 @@ export function SystemDonationHistory() {
             variant="ghost"
             size="icon"
             onClick={() => navigate(-1)}
-            className="md:hidden"
+            className="md:hidden text-white hover:bg-white/20"
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <div className="p-2 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-lg">
+          <div className="p-2 bg-white/20 backdrop-blur rounded-lg">
             <Globe className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h2 className="text-xl font-bold">Lịch Sử Giao Dịch</h2>
-            <p className="text-sm text-muted-foreground">Minh bạch · Truy vết Blockchain · Chuẩn Web3</p>
+            <h2 className="text-xl font-bold text-white">Lịch Sử Giao Dịch</h2>
+            <p className="text-sm text-white/70">Minh bạch · Truy vết Blockchain · Chuẩn Web3</p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -145,6 +180,7 @@ export function SystemDonationHistory() {
             size="sm"
             onClick={() => refetch()}
             disabled={isLoading}
+            className="bg-white/20 border-white/30 text-white hover:bg-white/30"
           >
             <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             <span className="hidden sm:inline">Làm mới</span>
@@ -154,6 +190,7 @@ export function SystemDonationHistory() {
             size="sm"
             onClick={handleExport}
             disabled={isExporting || donations.length === 0}
+            className="bg-white/20 border-white/30 text-white hover:bg-white/30"
           >
             {isExporting ? (
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -167,7 +204,7 @@ export function SystemDonationHistory() {
 
       {/* Stats Cards - 5 cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <Card>
+        <Card className="bg-white/90 backdrop-blur">
           <CardHeader className="pb-2 px-3 pt-3">
             <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1">
               <Activity className="w-3 h-3" />
@@ -181,7 +218,7 @@ export function SystemDonationHistory() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-white/90 backdrop-blur">
           <CardHeader className="pb-2 px-3 pt-3">
             <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1">
               <TrendingUp className="w-3 h-3" />
@@ -195,7 +232,7 @@ export function SystemDonationHistory() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-white/90 backdrop-blur">
           <CardHeader className="pb-2 px-3 pt-3">
             <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1">
               <Sparkles className="w-3 h-3" />
@@ -209,7 +246,7 @@ export function SystemDonationHistory() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-white/90 backdrop-blur">
           <CardHeader className="pb-2 px-3 pt-3">
             <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1">
               <CheckCircle className="w-3 h-3 text-green-500" />
@@ -223,7 +260,7 @@ export function SystemDonationHistory() {
           </CardContent>
         </Card>
 
-        <Card className="col-span-2 md:col-span-1">
+        <Card className="col-span-2 md:col-span-1 bg-white/90 backdrop-blur">
           <CardHeader className="pb-2 px-3 pt-3">
             <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1">
               <Clock className="w-3 h-3 text-yellow-500" />
@@ -239,7 +276,7 @@ export function SystemDonationHistory() {
       </div>
 
       {/* Filters */}
-      <Card>
+      <Card className="bg-white/90 backdrop-blur">
         <CardContent className="pt-4">
           <div className="flex flex-wrap gap-3 items-center">
             <div className="flex-1 min-w-[200px]">
@@ -334,7 +371,7 @@ export function SystemDonationHistory() {
       </Card>
 
       {/* Table */}
-      <Card>
+      <Card className="bg-white/95 backdrop-blur">
         <CardContent className="p-0">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
@@ -356,6 +393,7 @@ export function SystemDonationHistory() {
                       <TableHead>Người nhận</TableHead>
                       <TableHead className="text-right">Số tiền</TableHead>
                       <TableHead>Token</TableHead>
+                      <TableHead>Lời nhắn</TableHead>
                       <TableHead>Loại</TableHead>
                       <TableHead>TX Hash</TableHead>
                       <TableHead>Trạng thái</TableHead>
@@ -379,7 +417,10 @@ export function SystemDonationHistory() {
                                 {donation.sender?.username?.charAt(0).toUpperCase() || '?'}
                               </AvatarFallback>
                             </Avatar>
-                            <span className="font-medium text-sm">@{donation.sender?.username || 'Unknown'}</span>
+                            <div>
+                              <span className="font-medium text-sm">@{donation.sender?.username || 'Unknown'}</span>
+                              {renderWalletAddress(donation.sender, donation.token_symbol)}
+                            </div>
                           </div>
                         </TableCell>
                         <TableCell>
@@ -390,7 +431,10 @@ export function SystemDonationHistory() {
                                 {donation.recipient?.username?.charAt(0).toUpperCase() || '?'}
                               </AvatarFallback>
                             </Avatar>
-                            <span className="font-medium text-sm">@{donation.recipient?.username || 'Unknown'}</span>
+                            <div>
+                              <span className="font-medium text-sm">@{donation.recipient?.username || 'Unknown'}</span>
+                              {renderWalletAddress(donation.recipient, donation.token_symbol)}
+                            </div>
                           </div>
                         </TableCell>
                         <TableCell className="text-right font-mono font-medium">
@@ -398,6 +442,15 @@ export function SystemDonationHistory() {
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline">{donation.token_symbol}</Badge>
+                        </TableCell>
+                        <TableCell className="max-w-[200px]">
+                          {donation.message ? (
+                            <p className="text-xs italic text-muted-foreground truncate" title={donation.message}>
+                              "{donation.message}"
+                            </p>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">-</span>
+                          )}
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-1 flex-wrap">
@@ -468,9 +521,11 @@ export function SystemDonationHistory() {
                         </Avatar>
                         <div className="min-w-0">
                           <p className="font-medium truncate">@{donation.sender?.username || 'Unknown'}</p>
+                          {renderWalletAddress(donation.sender, donation.token_symbol)}
                           <p className="text-sm text-muted-foreground truncate">
                             → @{donation.recipient?.username || 'Unknown'}
                           </p>
+                          {renderWalletAddress(donation.recipient, donation.token_symbol)}
                         </div>
                       </div>
                       <div className="text-right shrink-0">
