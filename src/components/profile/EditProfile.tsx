@@ -15,11 +15,16 @@ import { z } from 'zod';
 import { compressImage, FILE_LIMITS } from '@/utils/imageCompression';
 import { useLanguage } from '@/i18n/LanguageContext';
 
+const USERNAME_REGEX = /^[a-z0-9_.]+$/;
+
 const profileSchema = z.object({
   username: z.string()
-    .min(3, 'Username must be at least 3 characters')
-    .max(30, 'Username must be less than 30 characters')
-    .trim(),
+    .min(3, 'Username phải có ít nhất 3 ký tự')
+    .max(20, 'Username tối đa 20 ký tự')
+    .trim()
+    .refine(val => USERNAME_REGEX.test(val.toLowerCase()), {
+      message: 'Username chỉ được dùng chữ cái, số, dấu gạch dưới (_) và dấu chấm (.)',
+    }),
   full_name: z.string()
     .max(100, 'Name must be less than 100 characters')
     .trim()
@@ -209,9 +214,11 @@ export const EditProfile = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    const trimmedUsername = username.trim().toLowerCase();
+    
     // Validate profile fields
     const validation = profileSchema.safeParse({ 
-      username, 
+      username: trimmedUsername, 
       full_name: fullName || undefined,
       bio: bio || undefined 
     });
@@ -232,10 +239,24 @@ export const EditProfile = () => {
         return;
       }
 
+      // Check username uniqueness via username_normalized
+      const { data: existing } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('username_normalized', trimmedUsername)
+        .neq('id', userId)
+        .limit(1);
+
+      if (existing && existing.length > 0) {
+        toast.error('Username đã được sử dụng. Vui lòng chọn username khác.');
+        setLoading(false);
+        return;
+      }
+
       const { error } = await supabase
         .from('profiles')
         .update({
-          username,
+          username: trimmedUsername,
           full_name: fullName,
           bio,
           public_wallet_address: publicWalletAddress || null,
@@ -330,9 +351,10 @@ export const EditProfile = () => {
               <Input
                 id="username"
                 value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Nhập tên người dùng"
+                onChange={(e) => setUsername(e.target.value.replace(/[^a-zA-Z0-9_.]/g, '').slice(0, 20))}
+                placeholder="vd: nguyen_van_a"
               />
+              <p className="text-xs text-muted-foreground">Chỉ gồm a-z, 0-9, dấu gạch dưới (_) và dấu chấm (.). Tối đa 20 ký tự.</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="fullName">Họ và tên</Label>
