@@ -1,116 +1,100 @@
 
-# Nang Cap The Chuc Mung Nhan Thuong (DonationReceivedCard)
+# Trang Danh Sach Thanh Vien - Chuong trinh Li Xi 26 ty
 
 ## Tong quan
-Cap nhat the chuc mung khi nguoi dung nhan duoc qua tang: doi mau nen sang xanh la tuoi sang, thay doi tieu de, them nhac Rich3.mp3 lap lai lien tuc, va bo sung hieu ung confetti + chu "RICH" 9 sac cau vong nhay mua khap man hinh.
+Tao trang `/users` hien thi danh sach tat ca thanh vien voi day du thong tin: hoat dong, diem Anh Sang (Light Score), thuong CAMLY, USDT, va cac so lieu lien quan. Phuc vu chuong trinh Li Xi 26.000.000.000 dong. Giao dien phong cach Li Xi (do va vang gold).
 
 ---
 
-## 1. Copy file nhac Rich3.mp3 vao du an
+## 1. Tao hook du lieu: `src/hooks/useUserDirectory.ts`
 
-- Copy `user-uploads://Rich3.mp3` vao `public/sounds/rich-3.mp3` (thay the file cu neu co)
+Hook nay gop du lieu tu nhieu nguon:
+- **RPC `get_user_rewards_v2`**: Lay thong tin hoat dong (posts, comments, reactions, friends, shares, livestreams) va tong thuong CAMLY tinh toan
+- **Bang `profiles`**: Lay username, avatar, wallet address, `pending_reward`, `approved_reward`, `reward_status`
+- **Bang `reward_claims`**: Lay so CAMLY da claim (da thuong thuc te)
+- **Bang `light_reputation`**: Lay Light Score, Tier, FUN Minted
+- **Bang `donations`**: Tong hop thuong USDT/BTCB nhan duoc
 
----
-
-## 2. Cap nhat `src/lib/celebrationSounds.ts`
-
-- Them ham `playCelebrationMusicLoop(soundId)` phat nhac lap lai lien tuc (loop = true)
-- Ham tra ve HTMLAudioElement de co the dung lai khi dong card
-- Cap nhat `playReceivedNotificationSound()` de su dung `rich-3` voi che do loop
-
----
-
-## 3. Cap nhat `src/components/donations/DonationReceivedCard.tsx`
-
-### 3a. Mau nen xanh la tuoi sang
-- Doi gradient nen tu `#f0fdf4 -> #86efac` sang xanh la tuoi hon: `#d4f7dc -> #34d399 -> #10b981`
-- Doi border glow sang xanh la tuoi: `#22c55e -> #10b981`
-
-### 3b. Thay doi tieu de
-- Doi tu "BAN NHAN DUOC QUA TANG!" thanh:
-  "🎉✨ Chuc mung! Ban vua nhan duoc dong tien hanh phuc cua Cha va Be Angel CamLy! ✨🎉"
-- Mau chu vang tuoi (#fbbf24 / amber-400) tren nen xanh
-
-### 3c. Nhac Rich3.mp3 lap lai lien tuc
-- Khi card mo: goi `playCelebrationMusicLoop('rich-3')` 
-- Luu reference audioRef de dung nhac khi dong card
-- Khi dong card: dung nhac (audio.pause())
-
-### 3d. Them confetti + chu "RICH" 9 sac cau vong
-- Truyen them props `showRichText={true}` cho DonationCelebration
+### Tinh nang:
+- Tim kiem theo username
+- Phan trang (50 user/trang)
+- Xuat CSV
+- Tinh tong thong ke toan he thong
 
 ---
 
-## 4. Cap nhat `src/components/donations/DonationCelebration.tsx`
+## 2. Tao trang: `src/pages/Users.tsx`
 
-### 4a. Bo sung confetti ruc ro hon
-- Tang particleCount len 80 moi dot
-- Them nhieu mau cau vong: do, cam, vang, xanh la, xanh duong, tim, hong, trang, vang gold
-- Giam interval tu 800ms xuong 600ms de ban lien tuc hon
-- Them confetti burst tu center bottom (phao hoa phia duoi ban len)
+Layout giong trang Benefactors (Navbar + Content + MobileBottomNav)
 
-### 4b. Them chu "RICH" 9 sac cau vong nhay mua
-- Them 12-15 chu "RICH" voi cac mau cau vong khac nhau
-- Moi chu co animation `animate-float-random` (bay lung lo khap man hinh)
-- Font bold, kich thuoc lon (text-2xl den text-4xl), co text-shadow de noi bat
-- Rotation ngau nhien va animation delay khac nhau de tao hieu ung dong
+### Header
+- Tieu de: "DANH SACH THANH VIEN" voi icon Gift va mau do/vang Li Xi
+- Phu de: "Chuong trinh Li Xi 26.000.000.000 dong"
 
-### 4c. Them phao hoa burst hieu ung
-- Bo sung confetti kieu "firework" (ban tu phia duoi len roi no ra): `startVelocity: 45, gravity: 1.2, ticks: 200`
-- Them dot ban phao hoa xen ke voi confetti thuong
+### Stats Cards (4 the tren cung)
+- Tong thanh vien
+- Tong CAMLY da tinh toan (tu rewards v2)
+- Tong CAMLY da thuong (tu reward_claims)
+- Tong Light Score
+
+### Bo loc
+- O tim kiem (theo username)
+- Nut xuat CSV
+
+### Bang danh sach (moi dong 1 user)
+
+| Cot | Du lieu |
+|-----|---------|
+| # | So thu tu |
+| User | Avatar + username + wallet address rut gon (link BscScan) |
+| Hoat dong | Posts, Comments nhan duoc, Reactions nhan duoc, Friends, Shares |
+| Light Score | Total Score, Tier (New Soul / Light Seeker / Light Bearer / Light Guardian), FUN Minted |
+| CAMLY | So tinh toan (tu get_user_rewards_v2) / So da thuong (tu reward_claims) / Trang thai (pending/approved) |
+| USDT | Tong USDT nhan tu donations (neu co) |
+
+---
+
+## 3. Them route `/users` vao App.tsx
+
+- Them `const Users = lazy(() => import("./pages/Users"));`
+- Them route: `<Route path="/users" element={<Users />} />`
+
+---
+
+## 4. Them lien ket vao Sidebar
+
+### File: `src/components/feed/FacebookLeftSidebar.tsx`
+- Them muc "Danh Sach Thanh Vien" vao `shortcutItems`, dat sau "Lich Su Giao Dich"
+- Icon: `UsersRound` (da import san)
+- Path: `/users`
+- Color: `text-red-500` (mau do Li Xi)
 
 ---
 
 ## Chi tiet ky thuat
 
-### celebrationSounds.ts - Ham moi:
+### useUserDirectory.ts - Query chinh:
 ```text
-playCelebrationMusicLoop(soundId): HTMLAudioElement | null
-  - audio.loop = true
-  - audio.volume = 0.7
-  - Tra ve audio element de caller co the .pause() khi can
+1. Goi get_user_rewards_v2(10000) de lay tat ca user voi activity stats
+2. Goi profiles select (username, avatar_url, public_wallet_address, custodial_wallet_address, pending_reward, approved_reward, reward_status)
+3. Goi reward_claims group by user_id de tinh da claim
+4. Goi light_reputation (total_light_score, tier, total_minted)
+5. Goi donations (token_symbol = 'USDT', group by recipient_id) de tinh USDT nhan
+6. Gop tat ca du lieu lai theo user_id
 ```
 
-### DonationCelebration - Confetti rainbow colors:
+### CSV Export:
 ```text
-const RAINBOW_COLORS = [
-  '#FF0000', '#FF7700', '#FFD700', 
-  '#00FF00', '#00BFFF', '#0000FF',
-  '#8B00FF', '#FF69B4', '#FFFFFF'
-];
-```
-
-### DonationCelebration - Firework burst:
-```text
-confetti({
-  particleCount: 100,
-  spread: 360,
-  startVelocity: 45,
-  gravity: 1.2,
-  ticks: 200,
-  origin: { x: Math.random(), y: 1 },
-  colors: RAINBOW_COLORS
-});
-```
-
-### DonationCelebration - Chu RICH nhay mua:
-```text
-15 phan tu <span> voi:
-  - Noi dung: "RICH"  
-  - Vi tri: ngau nhien (left, top %)
-  - Mau: 1 trong 9 mau cau vong
-  - Animation: float + rotate + scale pulse
-  - Font: bold, text-2xl -> text-4xl
-  - text-shadow: 0 0 10px currentColor
+Headers: STT, Username, Wallet, Posts, Comments, Reactions, Friends, Shares, Light Score, Tier, FUN Minted, CAMLY Tinh Toan, CAMLY Da Thuong, Trang Thai, USDT
 ```
 
 ---
 
-## Tong hop file can thay doi
+## Tong hop file can tao/sua
 
-| File | Thay doi |
+| File | Thao tac |
 |------|----------|
-| `public/sounds/rich-3.mp3` | Copy file nhac moi tu user upload |
-| `src/lib/celebrationSounds.ts` | Them ham `playCelebrationMusicLoop`, cap nhat `playReceivedNotificationSound` |
-| `src/components/donations/DonationCelebration.tsx` | Them confetti rainbow, phao hoa burst, chu "RICH" 9 sac nhay mua |
-| `src/components/donations/DonationReceivedCard.tsx` | Doi mau xanh la tuoi, doi tieu de, nhac loop rich-3, dung nhac khi dong |
+| `src/hooks/useUserDirectory.ts` | **Tao moi** - Hook lay va gop du lieu tu nhieu nguon |
+| `src/pages/Users.tsx` | **Tao moi** - Trang danh sach thanh vien phong cach Li Xi |
+| `src/App.tsx` | **Sua** - Them lazy import va route /users |
+| `src/components/feed/FacebookLeftSidebar.tsx` | **Sua** - Them muc "Danh Sach Thanh Vien" vao shortcutItems |
