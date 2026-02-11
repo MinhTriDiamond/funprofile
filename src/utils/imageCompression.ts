@@ -172,8 +172,8 @@ export const getVideoDuration = (file: File): Promise<number> => {
  */
 export const FILE_LIMITS = {
   IMAGE_MAX_SIZE: 100 * 1024 * 1024, // 100MB - cho ảnh chất lượng cao
-  VIDEO_MAX_SIZE: 10 * 1024 * 1024 * 1024, // 10GB - cho video 4K/dài
-  VIDEO_MAX_DURATION: 36000, // 600 phút (10 giờ) - hỗ trợ video siêu dài
+  VIDEO_MAX_SIZE: 2 * 1024 * 1024 * 1024, // 2GB
+  VIDEO_MAX_DURATION: 7200, // 120 phút
   AVATAR_MAX_WIDTH: 256,
   AVATAR_MAX_HEIGHT: 256,
   COVER_MAX_WIDTH: 1200,

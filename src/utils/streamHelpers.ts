@@ -5,6 +5,47 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { extractStreamUid, isStreamUrl } from './streamUpload';
+import { deleteFromR2 } from './r2Upload';
+
+/**
+ * Check if URL is an R2 media URL
+ */
+export function isR2Url(url: string): boolean {
+  return url.includes('media.fun.rich') || (url.includes('.r2.dev') && !url.includes('videodelivery.net'));
+}
+
+/**
+ * Extract R2 key from URL (e.g. "videos/1234-abc.mp4" from "https://media.fun.rich/videos/1234-abc.mp4")
+ */
+export function extractR2Key(url: string): string | null {
+  try {
+    const u = new URL(url);
+    // Remove leading slash
+    return u.pathname.replace(/^\//, '');
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Delete a video by URL — auto-detects R2 vs Stream
+ */
+export async function deleteVideoByUrl(videoUrl: string): Promise<boolean> {
+  if (isR2Url(videoUrl)) {
+    const key = extractR2Key(videoUrl);
+    if (!key) return false;
+    try {
+      await deleteFromR2(key);
+      console.log('[streamHelpers] R2 video deleted:', key);
+      return true;
+    } catch (err) {
+      console.error('[streamHelpers] R2 delete error:', err);
+      return false;
+    }
+  }
+  // Fallback to Stream deletion
+  return deleteStreamVideoByUrl(videoUrl);
+}
 
 /**
  * Delete a video from Cloudflare Stream by URL

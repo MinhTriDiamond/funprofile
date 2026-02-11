@@ -134,3 +134,6 @@ verify_jwt = false
 
 [functions.pplp-mint-fun]
 verify_jwt = false
+
+[functions.migrate-stream-to-r2]
+verify_jwt = true

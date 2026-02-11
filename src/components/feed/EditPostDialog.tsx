@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { uploadToR2, deleteFromR2 } from '@/utils/r2Upload';
-import { deleteStreamVideoByUid, extractStreamUid } from '@/utils/streamHelpers';
+import { deleteVideoByUrl } from '@/utils/streamHelpers';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -135,9 +135,9 @@ export const EditPostDialog = ({ post, isOpen, onClose, onPostUpdated, currentUs
   };
 
   const removeVideo = () => {
-    // If we have an Uppy video result, delete it from Stream
+    // If we have an Uppy video result, delete it from R2
     if (uppyVideoResult?.uid) {
-      deleteStreamVideoByUid(uppyVideoResult.uid);
+      deleteFromR2(uppyVideoResult.uid).catch(err => console.warn('Cleanup error:', err));
     }
     setPendingVideoFile(null);
     setUppyVideoResult(null);
@@ -201,19 +201,15 @@ export const EditPostDialog = ({ post, isOpen, onClose, onPostUpdated, currentUs
         }
       }
 
-      // Use Uppy video result if available
       if (uppyVideoResult) {
         videoUrl = uppyVideoResult.url;
         
-        // Delete old video from Stream if it was a Stream URL
-        if (post.video_url) {
-          const oldUid = extractStreamUid(post.video_url);
-          if (oldUid && oldUid !== uppyVideoResult.uid) {
-            try {
-              await deleteStreamVideoByUid(oldUid);
-            } catch (error) {
-              console.error('Error deleting old video from Stream:', error);
-            }
+        // Delete old video if it was replaced
+        if (post.video_url && post.video_url !== uppyVideoResult.url) {
+          try {
+            await deleteVideoByUrl(post.video_url);
+          } catch (error) {
+            console.error('Error deleting old video:', error);
           }
         }
       }
