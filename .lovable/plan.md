@@ -1,56 +1,38 @@
 
 
-# Chuyen Giao Dien Lich Su Giao Dich Sang Dang The (Card Layout)
+# Cap Nhat Mau Sac va Them Xuat PDF
 
-## Tong quan
-Thay the giao dien bang (Table) hien tai bang giao dien dang the (Card) giong Hinh 1 do nguoi dung yeu cau. Moi giao dich la 1 the rieng biet voi bo cuc ro rang.
+## Cac thay doi
 
----
+### File: `src/components/donations/SystemDonationHistory.tsx`
 
-## Thay doi duy nhat: `src/components/donations/SystemDonationHistory.tsx`
+#### 1. So tien token (Hinh 1)
+- Doi mau so tien tu do/cam sang **xanh la cay tuoi sang** (`text-emerald-500 font-bold text-xl`)
+- Ap dung cho ca desktop card va mobile
 
-### Bo cuc moi cho moi giao dich (Desktop) - giong Hinh 1:
+#### 2. Loi nhan chuc mung (Hinh 2)
+- Doi mau loi nhan tu `text-gray-600 italic` sang **mau vang hoang kim** (`text-yellow-500 font-semibold italic text-base`)
+- Lam to chu hon va in dam
 
-```text
-+------------------------------------------------------------------+
-| [Avatar] TEN NGUOI GUI    -->    TEN NGUOI NHAN [Avatar]         |
-|          0xABC...1234 [Copy][Link]   0xDEF...5678 [Copy][Link]   |
-|                                                                   |
-| [Tang thuong] [Onchain]                    9.999 CAMLY           |
-|                                                                   |
-| "Loi nhan chuc mung day du hien thi o day..."                    |
-|                                                                   |
-| [V] Thanh cong  ·  21:37 09/02/2026  ·  BSC                     |
-|                TX: 0x24219...  [Copy][Link]      [Fire] Xem Card |
-+------------------------------------------------------------------+
-```
+#### 3. So lieu thong ke (Hinh 3)
+- Doi mau tat ca so trong Stats Cards sang **xanh la dam** (`text-green-700`)
+- Tong gia tri giu mau vang/amber nhu hien tai (da dung)
+- Lam to hon va in dam hon
 
-### Chi tiet thay doi:
-1. **Xoa Table desktop** (dong 388-505): Thay bang danh sach card
-2. **Moi card** la 1 `div` voi border, rounded, padding, hover effect
-3. **Dong 1**: Sender (trai) voi Avatar + Ten + Wallet --- Arrow --> --- Recipient (phai) voi Avatar + Ten + Wallet
-4. **Dong 2**: Badges "Tang thuong" + "Onchain" ben trai, So tien + Token ben phai (mau do/cam noi bat)
-5. **Dong 3**: Loi nhan in nghieng, trong dau ngoac kep, hien thi day du (khong truncate)
-6. **Dong 4 (footer)**: Trang thai + Thoi gian + BSC + TX Hash voi Copy/Link + Nut "Xem Card"
+#### 4. Them nut Xuat PDF (Hinh 4)
+- Them nut "Xuat PDF" ben canh nut "Xuat CSV"
+- Su dung thu vien browser (`window.print()` hoac tao PDF tu HTML bang `html2canvas` + jsPDF approach)
+- Vi du vien da co `html2canvas`, se dung no de tao PDF don gian
 
-### Mau sac:
-- So tien CAMLY: `text-red-500 font-bold`
-- So tien USDT: `text-green-600 font-bold`
-- Card background: `bg-white/95 border border-green-200`
-- Loi nhan: `text-gray-600 italic`
-
-### Giu nguyen:
-- Stats Cards (4 the tren cung)
-- Bo loc (filters)
-- Mobile layout (da tot)
-- Pagination
-- Celebration Cards
+### File: `src/utils/exportDonations.ts`
+- Them ham `exportDonationsToPDF()` su dung html2canvas de chup va xuat PDF
 
 ---
 
 ## Tong hop
 
 | File | Thay doi |
-|------|----------|
-| `src/components/donations/SystemDonationHistory.tsx` | Thay Table desktop bang Card layout giong Hinh 1 |
+|------|--------|
+| `src/components/donations/SystemDonationHistory.tsx` | Doi mau so tien (xanh la), loi nhan (vang hoang kim), so thong ke (xanh dam), them nut Xuat PDF |
+| `src/utils/exportDonations.ts` | Them ham exportDonationsToPDF |
 
