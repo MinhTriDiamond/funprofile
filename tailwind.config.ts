@@ -133,6 +133,13 @@ export default {
           "0%, 100%": { opacity: "0", transform: "scale(0)" },
           "50%": { opacity: "1", transform: "scale(1)" },
         },
+        "rich-float": {
+          "0%": { transform: "translateY(0) rotate(0deg) scale(1)", opacity: "0.8" },
+          "25%": { transform: "translateY(-30px) rotate(10deg) scale(1.2)", opacity: "1" },
+          "50%": { transform: "translateY(-10px) rotate(-5deg) scale(0.9)", opacity: "0.9" },
+          "75%": { transform: "translateY(-40px) rotate(15deg) scale(1.1)", opacity: "1" },
+          "100%": { transform: "translateY(0) rotate(0deg) scale(1)", opacity: "0.8" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -147,6 +154,7 @@ export default {
         "fall": "fall 4s linear forwards",
         "spin-slow": "spin-slow 3s linear infinite",
         "sparkle": "sparkle 1.5s ease-in-out infinite",
+        "rich-float": "rich-float 3s ease-in-out infinite",
       },
     },
   },
