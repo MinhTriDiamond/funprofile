@@ -1,30 +1,41 @@
 
 
-# Cap Nhat Vi Treasury Moi
+# Sua Loi Upload Anh Dai Dien
 
-## Dia chi vi moi
-`0xd0a262453a42059b7a5DBe6164420cbe674c28f1`
+## Van de
+Khi nguoi dung upload anh dai dien, he thong tao presigned URL thanh cong (buoc 1) nhung loi xay ra o buoc 2 khi trinh duyet PUT truc tiep len R2. Nguyen nhan co the la CORS tren R2 bucket khong cho phep origin cua Lovable preview/published domain.
+
+## Giai phap
+Thay doi cach upload avatar: thay vi client PUT truc tiep len R2 (can CORS), se gui file qua edge function `upload-to-r2` (server-side upload, khong can CORS). Voi avatar da crop (thuong nho hon 1MB), cach nay hoan toan phu hop.
 
 ## Cac buoc thuc hien
 
-### Buoc 1: Cap nhat TREASURY_WALLET_ADDRESS
-- Cap nhat secret `TREASURY_WALLET_ADDRESS` thanh dia chi moi phia tren
+### Buoc 1: Cap nhat AvatarEditor.tsx
+- Thay doi `handleCropComplete` de su dung edge function `upload-to-r2` thay vi `uploadToR2` (presigned URL)
+- Chuyen anh crop sang base64 va gui qua edge function
+- Them console.error chi tiet de de debug neu co loi
 
-### Buoc 2: Cap nhat TREASURY_PRIVATE_KEY
-- Can private key cua vi moi de ky giao dich gui CAMLY cho nguoi dung
-- Con can cung cap private key cua vi `0xd0a262...4c28f1` de Cha cap nhat
+### Buoc 2: Them ham helper uploadAvatarViaEdgeFunction
+- Chuyen Blob sang base64
+- Goi edge function `upload-to-r2` voi file data, key va contentType
+- Nhan ve URL cua anh da upload
 
-### Buoc 3: Kiem tra vi moi
-- Sau khi cap nhat, vao Admin Dashboard > Financial tab de kiem tra Treasury Balance
-- Dam bao vi moi co du:
-  - **BNB** (toi thieu 0.05 BNB cho gas fee)
-  - **CAMLY token** (toi thieu 500,000 CAMLY de tra thuong)
+## Chi tiet ky thuat
 
-## Luu y quan trong
-- Vi moi phai co san BNB va CAMLY truoc khi duyet thuong
-- Neu vi chua co token, can chuyen BNB va CAMLY vao dia chi `0xd0a262453a42059b7a5DBe6164420cbe674c28f1` truoc
-- Sau khi Cha cap nhat xong, con co the kiem tra so du ngay tren Admin Dashboard
+### File thay doi
+- `src/components/profile/AvatarEditor.tsx`: Thay doi logic upload tu presigned URL sang edge function
 
-## Buoc tiep theo
-Con hay cung cap **Private Key** cua vi moi de Cha cap nhat. Private Key se duoc luu an toan trong he thong backend, khong hien thi trong code.
+### Logic moi
+```
+1. User chon anh -> Crop -> Blob
+2. Chuyen Blob sang base64
+3. Goi edge function upload-to-r2 voi { file: base64, key: "avatars/{userId}/avatar-{timestamp}.jpg", contentType: "image/jpeg" }
+4. Edge function upload len R2 server-side (khong can CORS)
+5. Cap nhat profiles.avatar_url
+```
+
+### Uu diem
+- Khong phu thuoc vao CORS cua R2 bucket
+- Avatar sau crop thuong chi 50-200KB, phu hop voi base64 qua edge function
+- Su dung lai edge function `upload-to-r2` da co san va dang hoat dong tot
 
