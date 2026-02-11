@@ -1,77 +1,94 @@
 
-# Cải thiện xác thực khi tạo bài viết
+
+# Sửa lỗi Dry Run chỉ quét được 7/165 video
 
 ## Nguyên nhân
 
-Trong `FacebookCreatePost.tsx`, logic xác thực khi đăng bài có 2 bước nối tiếp:
-1. `getSession()` timeout 15s
-2. Nếu thất bại, `refreshSession()` timeout 10s
-
-Khi mạng chậm hoặc tab bị suspend, cả 2 bước đều timeout, tổng cộng **25 giây** chờ rồi báo lỗi. Ngoài ra, `getSession()` chỉ đọc từ cache -- nếu cache trống thì timeout vô nghĩa.
+Edge function `migrate-stream-to-r2` giới hạn kết quả khi quét:
+- Query `video_url`: dùng `.limit(batchSize)` (mặc định 5) -- chỉ thấy 5 bài
+- Query `media_urls`: dùng `.limit(200)` rồi filter trong code -- chỉ filter ra 2 bài có Stream URL
+- Tổng: 5 + 2 = 7, trong khi thực tế DB có 155+ posts chứa Stream URL
 
 ## Giải pháp
 
-### File: `src/components/feed/FacebookCreatePost.tsx` (dòng 346-386)
+### File: `supabase/functions/migrate-stream-to-r2/index.ts`
 
-Thay thế logic xác thực hiện tại bằng cách tiếp cận đơn giản hơn:
+**1. Tách logic dry run và migration:**
 
-1. Gọi `getSession()` trước (không cần timeout vì nó đọc từ memory cache, rất nhanh)
-2. Nếu session tồn tại nhưng sắp hết hạn (dưới 5 phút), gọi `refreshSession()` với timeout 15s
-3. Nếu không có session, gọi `refreshSession()` một lần với timeout 15s
-4. Nếu vẫn thất bại, hiển thị thông báo rõ ràng yêu cầu đăng nhập lại
+Khi `dryRun = true`: dùng query **không có limit** (hoặc limit 1000) để đếm chính xác tổng số video cần migrate.
 
-Thay doi cu the:
+Khi `dryRun = false`: giữ nguyên `.limit(batchSize)` để xử lý từng batch.
+
+**2. Thay đổi cụ thể:**
+
+Dòng 67-83: Thay thế bằng logic phân biệt dry run vs migration:
 
 ```typescript
-// BEFORE (lines 346-386): 2 buoc timeout noi tiep = 25s
-let session;
-try {
-  const sessionResult = await Promise.race([
-    supabase.auth.getSession(),
-    new Promise<never>((_, reject) => 
-      setTimeout(() => reject(new Error('getSession timeout (15s)')), 15000)
-    )
-  ]);
-  session = sessionResult.data.session;
-} catch (authError: any) {
-  // fallback refreshSession with another timeout...
-}
+// Scan limit: dry run lấy tất cả, migration lấy theo batch
+const scanLimit = dryRun ? 1000 : batchSize;
 
-// AFTER: Don giản và mạnh hơn
-let session;
-const { data: sessionData } = await supabase.auth.getSession();
-session = sessionData.session;
+// Find posts with Stream video URLs
+const { data: posts, error: queryError } = await supabaseAdmin
+  .from('posts')
+  .select('id, video_url, media_urls')
+  .or('video_url.ilike.%videodelivery.net%,video_url.ilike.%cloudflarestream.com%')
+  .limit(scanLimit);
 
-if (!session || (session.expires_at && session.expires_at * 1000 - Date.now() < 300000)) {
-  // Token sap het han hoac khong co -> refresh
-  try {
-    const { data: refreshData } = await Promise.race([
-      supabase.auth.refreshSession(),
-      new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('timeout')), 15000)
-      )
-    ]);
-    if (refreshData.session) {
-      session = refreshData.session;
-    }
-  } catch {
-    // Refresh that bai, neu van con session cu thi dung tam
-  }
-}
+if (queryError) throw queryError;
 
-if (!session) {
-  throw new Error('Phien dang nhap het han. Vui long tai lai trang va dang nhap lai.');
+// Also find posts with Stream URLs in media_urls
+const { data: mediaPosts, error: mediaError } = await supabaseAdmin
+  .from('posts')
+  .select('id, video_url, media_urls')
+  .not('media_urls', 'is', null)
+  .limit(1000);
+
+if (mediaError) throw mediaError;
+```
+
+Dòng 86-91: Thêm loại bỏ trùng lặp (vì 1 post có thể xuất hiện ở cả 2 query):
+
+```typescript
+// Filter media_urls posts that contain Stream URLs
+const mediaPostsWithStream = (mediaPosts || []).filter(p => {
+  if (!p.media_urls || !Array.isArray(p.media_urls)) return false;
+  // Bỏ qua post đã có trong danh sách video_url
+  const alreadyInPosts = (posts || []).some(pp => pp.id === p.id);
+  if (alreadyInPosts) return false;
+  return (p.media_urls as any[]).some((m: any) => 
+    m.type === 'video' && (m.url?.includes('videodelivery.net') || m.url?.includes('cloudflarestream.com'))
+  );
+});
+```
+
+**3. Cải thiện dry run response:** Thêm tổng số video thực tế:
+
+```typescript
+if (dryRun) {
+  return new Response(JSON.stringify({
+    dryRun: true,
+    totalVideos: totalPosts + totalMediaPosts + totalComments,
+    postsWithStreamVideoUrl: totalPosts,
+    postsWithStreamMediaUrls: totalMediaPosts,
+    commentsWithStreamVideo: totalComments,
+    samplePosts: posts?.slice(0, 5).map(p => ({ 
+      id: p.id, 
+      video_url: p.video_url?.substring(0, 80) 
+    })),
+    sampleMediaPosts: mediaPostsWithStream.slice(0, 5).map(p => ({ id: p.id })),
+  }), { ... });
 }
 ```
 
-Thay doi chinh:
-- Bo `getSession()` timeout (vi no doc tu memory, khong can timeout)
-- Chi goi `refreshSession()` khi can thiet (token sap het han hoac khong co session)
-- Giam tu 2 buoc timeout (25s) xuong 1 buoc (15s)
-- Thong bao loi ro rang hon cho nguoi dung
+## Danh sách file thay đổi
 
-## Danh sach file
-
-| File | Hanh dong | Mo ta |
+| File | Hành động | Mô tả |
 |------|-----------|-------|
-| `src/components/feed/FacebookCreatePost.tsx` | Sua | Cai thien logic xac thuc khi tao bai viet |
+| `supabase/functions/migrate-stream-to-r2/index.ts` | Sửa | Dry run dùng limit 1000 thay vì batchSize; loại bỏ trùng lặp giữa 2 query |
+
+## Kết quả mong đợi
+
+- Dry Run sẽ hiển thị đúng ~155 posts (video_url) + posts bổ sung từ media_urls
+- Migration vẫn xử lý theo batch 5 video/lần như cũ
+- Không còn trùng lặp giữa video_url và media_urls
+
