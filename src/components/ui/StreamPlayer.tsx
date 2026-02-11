@@ -45,8 +45,8 @@ function parseVideoSource(src: string): { type: 'iframe' | 'hls' | 'direct'; url
     return { type: 'iframe', url: `https://iframe.videodelivery.net/${src}`, uid: src };
   }
   
-  // R2 or other direct video URLs
-  if (src.includes('.r2.dev') || src.includes('.mp4') || src.includes('.webm')) {
+  // R2 or other direct video URLs (including media.fun.rich)
+  if (src.includes('.r2.dev') || src.includes('media.fun.rich') || src.includes('.mp4') || src.includes('.webm')) {
     return { type: 'direct', url: src };
   }
   

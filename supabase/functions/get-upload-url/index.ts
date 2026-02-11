@@ -24,7 +24,7 @@ const ALLOWED_CONTENT_TYPES = [
 
 // Max sizes
 const MAX_IMAGE_SIZE = 100 * 1024 * 1024; // 100MB
-const MAX_VIDEO_SIZE = 10 * 1024 * 1024 * 1024; // 10GB - support long videos
+const MAX_VIDEO_SIZE = 2 * 1024 * 1024 * 1024; // 2GB
 
 // HMAC-SHA256 helper
 async function hmacSha256(key: ArrayBuffer, message: string): Promise<ArrayBuffer> {

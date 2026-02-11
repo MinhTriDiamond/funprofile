@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
-import { deleteStreamVideoByUid } from '@/utils/streamHelpers';
+import { deleteFromR2 } from '@/utils/r2Upload';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -827,9 +827,9 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
                       variant="ghost"
                       size="icon"
                       onClick={() => {
-                        // Delete the video from Cloudflare Stream to prevent orphans
+                        // Delete the video from R2 to prevent orphans
                         if (uppyVideoResult?.uid) {
-                          deleteStreamVideoByUid(uppyVideoResult.uid);
+                          deleteFromR2(uppyVideoResult.uid).catch(err => console.warn('Cleanup error:', err));
                         }
                         setUppyVideoResult(null);
                       }}
