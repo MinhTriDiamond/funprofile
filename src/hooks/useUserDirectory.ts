@@ -1,6 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 
 export interface UserDirectoryEntry {
   id: string;
@@ -121,9 +121,35 @@ const fetchUserDirectory = async (): Promise<UserDirectoryEntry[]> => {
 };
 
 export const useUserDirectory = () => {
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
   const pageSize = 50;
+
+  // Realtime: auto-refresh when donations change
+  useEffect(() => {
+    const channel = supabase
+      .channel('user-directory-donations')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'donations' },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['user-directory'] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'reward_claims' },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['user-directory'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   const { data: allUsers, isLoading, error } = useQuery({
     queryKey: ['user-directory'],
