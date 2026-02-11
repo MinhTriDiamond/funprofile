@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { exportToExcel } from '@/utils/exportExcel';
 import { TIERS } from '@/config/pplp';
 
 export interface UserDirectoryEntry {
@@ -52,6 +53,7 @@ interface UseUserDirectoryReturn {
   totalReward: number;
   totalLightScore: number;
   exportCsv: () => void;
+  exportExcel: () => void;
 }
 
 const PAGE_SIZE = 50;
@@ -189,16 +191,21 @@ export const useUserDirectory = (): UseUserDirectoryReturn => {
   const totalReward = useMemo(() => allUsers.reduce((s, u) => s + u.total_reward, 0), [allUsers]);
   const totalLightScore = useMemo(() => allUsers.reduce((s, u) => s + u.total_light_score, 0), [allUsers]);
 
-  const exportCsv = useCallback(() => {
-    const headers = ['STT', 'Username', 'Wallet', 'Posts', 'Comments', 'Reactions', 'Shares', 'Friends', 'Livestreams', 'Light Score', 'Tier', 'FUN Minted', 'CAMLY Total', 'CAMLY Claimed', 'CAMLY Claimable', 'USDT Received', 'BTCB Received', 'Tổng Tặng', 'Tổng Nhận'];
-    const rows = filtered.map((u, i) => [
+  const EXPORT_HEADERS = ['STT', 'Username', 'Wallet', 'Posts', 'Comments', 'Reactions', 'Shares', 'Friends', 'Livestreams', 'Light Score', 'Tier', 'FUN Minted', 'CAMLY Total', 'CAMLY Claimed', 'CAMLY Claimable', 'USDT Received', 'BTCB Received', 'Tổng Tặng', 'Tổng Nhận'];
+
+  const buildExportRows = useCallback(() => {
+    return filtered.map((u, i) => [
       i + 1, u.username, u.public_wallet_address || u.custodial_wallet_address || '',
       u.posts_count, u.comments_count, u.reactions_on_posts, u.shares_count, u.friends_count, u.livestreams_count,
       u.total_light_score, `${u.tier_emoji} ${u.tier_name}`, u.total_minted,
       u.total_reward, u.claimed_amount, u.claimable_amount,
       u.usdt_received, u.btcb_received, u.total_sent, u.total_received,
     ]);
-    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+  }, [filtered]);
+
+  const exportCsv = useCallback(() => {
+    const rows = buildExportRows();
+    const csv = [EXPORT_HEADERS.join(','), ...rows.map(r => r.join(','))].join('\n');
     const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -206,7 +213,12 @@ export const useUserDirectory = (): UseUserDirectoryReturn => {
     a.download = `users-directory-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [filtered]);
+  }, [buildExportRows]);
+
+  const exportExcel = useCallback(() => {
+    const rows = buildExportRows();
+    exportToExcel(EXPORT_HEADERS, rows, `bao-cao-thanh-vien-${new Date().toISOString().slice(0, 10)}.xls`, 'Danh Sách Thành Viên');
+  }, [buildExportRows]);
 
   // Reset page when search/sort changes
   useEffect(() => { setPage(1); }, [search, sortField]);
@@ -224,5 +236,6 @@ export const useUserDirectory = (): UseUserDirectoryReturn => {
     totalReward,
     totalLightScore,
     exportCsv,
+    exportExcel,
   };
 };

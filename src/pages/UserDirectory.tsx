@@ -13,7 +13,7 @@ import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import {
   Gift, Sparkles, Search, Download, Users, ChevronLeft, ChevronRight,
-  Copy, ExternalLink, FileText, MessageSquare, Heart, Share2, UserPlus, Radio, Sun
+  Copy, ExternalLink, FileText, MessageSquare, Heart, Share2, UserPlus, Radio, Sun, FileSpreadsheet
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getAddressUrl } from '@/config/pplp';
@@ -29,7 +29,7 @@ const UserDirectory = () => {
     filteredUsers, isLoading, error,
     search, setSearch, sortField, setSortField,
     page, setPage, totalPages, totalUsers, totalReward, totalLightScore,
-    exportCsv,
+    exportCsv, exportExcel,
   } = useUserDirectory();
 
   const copyAddress = (addr: string) => {
@@ -96,7 +96,10 @@ const UserDirectory = () => {
             </SelectContent>
           </Select>
           <Button onClick={exportCsv} variant="outline" className="gap-2 whitespace-nowrap">
-            <Download className="w-4 h-4" /> Xuất CSV
+            <Download className="w-4 h-4" /> CSV
+          </Button>
+          <Button onClick={exportExcel} variant="outline" className="gap-2 whitespace-nowrap bg-green-50 hover:bg-green-100 text-green-700 border-green-300">
+            <FileSpreadsheet className="w-4 h-4" /> Excel
           </Button>
         </div>
 
