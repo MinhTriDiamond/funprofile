@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -9,10 +9,13 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Gift, Wallet, ExternalLink, CheckCircle2, Loader2, AlertCircle } from 'lucide-react';
+import { Gift, Wallet, ExternalLink, Loader2, AlertCircle, Sparkles } from 'lucide-react';
 import { useClaimReward } from '@/hooks/useClaimReward';
+import { DonationCelebration } from '@/components/donations/DonationCelebration';
+import { playCelebrationMusicLoop } from '@/lib/celebrationSounds';
+import camlyCoinRainbow from '@/assets/tokens/camly-coin-rainbow.png';
 
-const MINIMUM_CLAIM = 1; // Tối thiểu 1 CAMLY (không giới hạn)
+const MINIMUM_CLAIM = 1;
 
 interface ClaimRewardDialogProps {
   open: boolean;
@@ -35,34 +38,37 @@ export const ClaimRewardDialog = ({
 }: ClaimRewardDialogProps) => {
   const [amount, setAmount] = useState('');
   const [step, setStep] = useState<ClaimStep>('input');
+  const [showCelebration, setShowCelebration] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const { claimReward, isLoading, error, result, reset } = useClaimReward();
 
-  // Reset state when dialog opens
   useEffect(() => {
     if (open) {
       setAmount('');
       setStep('input');
+      setShowCelebration(false);
       reset();
     }
   }, [open, reset]);
 
-  const formatNumber = (num: number) => {
-    return num.toLocaleString('vi-VN');
-  };
+  // Cleanup audio on unmount or dialog close
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
 
-  const formatUsd = (num: number) => {
-    return `$${(num * camlyPrice).toFixed(2)}`;
-  };
+  const formatNumber = (num: number) => num.toLocaleString('vi-VN');
+  const formatUsd = (num: number) => `$${(num * camlyPrice).toFixed(2)}`;
 
-  const handleMaxClick = () => {
-    setAmount(claimableAmount.toString());
-  };
+  const handleMaxClick = () => setAmount(claimableAmount.toString());
 
   const handleAmountChange = (value: string) => {
-    // Only allow numbers
-    const cleanValue = value.replace(/[^0-9]/g, '');
-    setAmount(cleanValue);
+    setAmount(value.replace(/[^0-9]/g, ''));
   };
 
   const isValidAmount = () => {
@@ -72,60 +78,25 @@ export const ClaimRewardDialog = ({
 
   const handleClaim = async () => {
     if (!externalWallet) return;
-
     setStep('confirming');
-    
     const claimResult = await claimReward(Number(amount), externalWallet);
-    
     if (claimResult) {
       setStep('success');
-      // Trigger confetti animation
-      triggerConfetti();
+      setShowCelebration(true);
+      audioRef.current = playCelebrationMusicLoop('rich-3');
       onSuccess();
     } else {
       setStep('error');
     }
   };
 
-  // Simple confetti effect using CSS animations
-  const triggerConfetti = () => {
-    const confettiContainer = document.createElement('div');
-    confettiContainer.className = 'fixed inset-0 pointer-events-none z-[200] overflow-hidden';
-    confettiContainer.id = 'claim-confetti';
-    
-    const colors = ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7'];
-    
-    for (let i = 0; i < 100; i++) {
-      const confetti = document.createElement('div');
-      confetti.className = 'absolute w-3 h-3 rounded-sm';
-      confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
-      confetti.style.left = `${Math.random() * 100}%`;
-      confetti.style.top = '-10px';
-      confetti.style.animation = `confetti-fall ${2 + Math.random() * 2}s linear forwards`;
-      confetti.style.animationDelay = `${Math.random() * 0.5}s`;
-      confetti.style.transform = `rotate(${Math.random() * 360}deg)`;
-      confettiContainer.appendChild(confetti);
+  const handleClose = () => {
+    setShowCelebration(false);
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
     }
-    
-    document.body.appendChild(confettiContainer);
-    
-    // Add keyframes if not exists
-    if (!document.getElementById('confetti-styles')) {
-      const style = document.createElement('style');
-      style.id = 'confetti-styles';
-      style.textContent = `
-        @keyframes confetti-fall {
-          0% { transform: translateY(0) rotate(0deg); opacity: 1; }
-          100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
-        }
-      `;
-      document.head.appendChild(style);
-    }
-    
-    // Remove after animation
-    setTimeout(() => {
-      confettiContainer.remove();
-    }, 4000);
+    onOpenChange(false);
   };
 
   const renderInputStep = () => (
@@ -173,19 +144,13 @@ export const ClaimRewardDialog = ({
             </Button>
           </div>
           {amount && Number(amount) > 0 && (
-            <p className="text-sm text-muted-foreground">
-              ~{formatUsd(Number(amount))}
-            </p>
+            <p className="text-sm text-muted-foreground">~{formatUsd(Number(amount))}</p>
           )}
           {amount && Number(amount) < 1 && (
-            <p className="text-sm text-red-500">
-              Số lượng phải lớn hơn 0
-            </p>
+            <p className="text-sm text-red-500">Số lượng phải lớn hơn 0</p>
           )}
           {amount && Number(amount) > claimableAmount && (
-            <p className="text-sm text-red-500">
-              Vượt quá số dư khả dụng
-            </p>
+            <p className="text-sm text-red-500">Vượt quá số dư khả dụng</p>
           )}
         </div>
 
@@ -202,9 +167,7 @@ export const ClaimRewardDialog = ({
           </div>
         ) : (
           <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-center">
-            <p className="text-sm text-red-600">
-              Vui lòng kết nối ví để claim reward
-            </p>
+            <p className="text-sm text-red-600">Vui lòng kết nối ví để claim reward</p>
           </div>
         )}
 
@@ -216,11 +179,7 @@ export const ClaimRewardDialog = ({
       </div>
 
       <div className="flex gap-3">
-        <Button
-          variant="outline"
-          onClick={() => onOpenChange(false)}
-          className="flex-1"
-        >
+        <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
           Hủy
         </Button>
         <Button
@@ -253,33 +212,62 @@ export const ClaimRewardDialog = ({
   );
 
   const renderSuccessStep = () => (
-    <div className="py-8 text-center">
-      <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-        <CheckCircle2 className="w-14 h-14 text-green-600" />
+    <div className="relative py-6 text-center">
+      {/* CAMLY Coin Rainbow Logo */}
+      <div className="flex justify-center mb-4">
+        <img
+          src={camlyCoinRainbow}
+          alt="CAMLY Coin"
+          className="w-24 h-24 animate-bounce"
+          style={{ filter: 'drop-shadow(0 0 12px rgba(255, 215, 0, 0.6))' }}
+        />
       </div>
-      <h3 className="text-2xl font-bold text-green-700 mb-2">Claim Thành Công! 🎉</h3>
-      <p className="text-lg text-gray-600 mb-4">
-        Đã chuyển <span className="font-bold text-yellow-600">{formatNumber(result?.amount || 0)} CAMLY</span>
-      </p>
-      <p className="text-sm text-muted-foreground mb-6">
-        vào ví {result?.wallet_address?.slice(0, 8)}...{result?.wallet_address?.slice(-6)}
-      </p>
 
+      {/* Golden Title */}
+      <h3
+        className="text-xl font-extrabold mb-4 px-2"
+        style={{
+          color: '#FFD700',
+          textShadow: '0 0 10px rgba(255, 215, 0, 0.5), 0 0 20px rgba(255, 215, 0, 0.3), 0 2px 4px rgba(0,0,0,0.3)',
+        }}
+      >
+        🎉✨ Chúc mừng! Bạn vừa nhận được đồng tiền hạnh phúc của Cha và Bé Angel CamLy! ✨🎉
+      </h3>
+
+      {/* Amount Card */}
+      <div className="bg-gradient-to-r from-emerald-400 to-green-500 rounded-xl p-4 mx-2 mb-4 shadow-lg">
+        <div className="flex items-center justify-center gap-2 mb-1">
+          <Sparkles className="w-5 h-5 text-yellow-200" />
+          <span className="text-white/80 text-sm">Đã nhận thành công</span>
+          <Sparkles className="w-5 h-5 text-yellow-200" />
+        </div>
+        <p className="text-3xl font-extrabold text-white" style={{ textShadow: '0 0 10px rgba(255,255,255,0.5)' }}>
+          {formatNumber(result?.amount || 0)} CAMLY
+        </p>
+        <p className="text-white/70 text-xs mt-1">
+          vào ví {result?.wallet_address?.slice(0, 8)}...{result?.wallet_address?.slice(-6)}
+        </p>
+      </div>
+
+      {/* BscScan Link */}
       {result?.bscscan_url && (
         <a
           href={result.bscscan_url}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 text-primary hover:underline mb-6"
+          className="inline-flex items-center gap-2 text-emerald-600 hover:underline mb-4 text-sm"
         >
           <ExternalLink className="w-4 h-4" />
           Xem trên BscScan
         </a>
       )}
 
+      {/* Footer */}
+      <p className="text-xs text-emerald-600 mb-4 font-medium">FUN Profile — Mạnh Thương Quân 💚</p>
+
       <Button
-        onClick={() => onOpenChange(false)}
-        className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
+        onClick={handleClose}
+        className="w-full bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white font-bold"
       >
         Đóng
       </Button>
@@ -291,38 +279,35 @@ export const ClaimRewardDialog = ({
       <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
         <AlertCircle className="w-12 h-12 text-red-600" />
       </div>
-      <h3 className="text-xl font-semibold text-red-700 mb-2">Claim Thất Bại</h3>
+      <h3 className="text-xl font-semibold text-red-700 mb-2">Claim Chưa Thành Công</h3>
       <p className="text-muted-foreground mb-6">
-        {error || 'Đã xảy ra lỗi, vui lòng thử lại sau'}
+        {error || 'Đã xảy ra sự cố, vui lòng thử lại sau'}
       </p>
-
       <div className="flex gap-3">
-        <Button
-          variant="outline"
-          onClick={() => onOpenChange(false)}
-          className="flex-1"
-        >
-          Đóng
-        </Button>
-        <Button
-          onClick={() => setStep('input')}
-          className="flex-1"
-        >
-          Thử lại
-        </Button>
+        <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">Đóng</Button>
+        <Button onClick={() => setStep('input')} className="flex-1">Thử lại</Button>
       </div>
     </div>
   );
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        {step === 'input' && renderInputStep()}
-        {step === 'confirming' && renderConfirmingStep()}
-        {step === 'success' && renderSuccessStep()}
-        {step === 'error' && renderErrorStep()}
-      </DialogContent>
-    </Dialog>
+    <>
+      <DonationCelebration isActive={showCelebration} showRichText={true} />
+      <Dialog open={open} onOpenChange={handleClose}>
+        <DialogContent
+          className="sm:max-w-md"
+          style={step === 'success' ? {
+            background: 'linear-gradient(135deg, #34d399, #10b981)',
+            border: 'none',
+          } : undefined}
+        >
+          {step === 'input' && renderInputStep()}
+          {step === 'confirming' && renderConfirmingStep()}
+          {step === 'success' && renderSuccessStep()}
+          {step === 'error' && renderErrorStep()}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 
