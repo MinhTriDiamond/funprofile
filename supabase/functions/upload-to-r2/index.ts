@@ -58,41 +58,37 @@ Deno.serve(async (req) => {
 
     console.log(`Authenticated user: ${user.id}`);
 
-    const { file, key, contentType } = await req.json();
+    let key: string;
+    let contentType: string;
+    let bytes: Uint8Array;
 
-    // ✅ VALIDATE CONTENT TYPE
-    if (!ALLOWED_CONTENT_TYPES.includes(contentType)) {
-      console.error(`Invalid content type: ${contentType}`);
-      return new Response(
-        JSON.stringify({ error: 'File type not allowed. Only images and videos are permitted.' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    const reqContentType = req.headers.get('content-type') || '';
 
-    // ✅ VALIDATE KEY FORMAT (prevent path traversal)
-    if (key.includes('..') || key.startsWith('/')) {
-      console.error(`Invalid key format: ${key}`);
-      return new Response(
-        JSON.stringify({ error: 'Invalid file path' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    if (reqContentType.includes('multipart/form-data')) {
+      const formData = await req.formData();
+      const uploadedFile = formData.get('file') as File | null;
+      key = formData.get('key') as string;
+      contentType = formData.get('contentType') as string || 'image/jpeg';
 
-    const CLOUDFLARE_ACCOUNT_ID = Deno.env.get('CLOUDFLARE_ACCOUNT_ID');
-    const CLOUDFLARE_ACCESS_KEY_ID = Deno.env.get('CLOUDFLARE_ACCESS_KEY_ID');
-    const CLOUDFLARE_SECRET_ACCESS_KEY = Deno.env.get('CLOUDFLARE_SECRET_ACCESS_KEY');
-    const CLOUDFLARE_R2_BUCKET_NAME = Deno.env.get('CLOUDFLARE_R2_BUCKET_NAME');
-    const CLOUDFLARE_R2_PUBLIC_URL = Deno.env.get('CLOUDFLARE_R2_PUBLIC_URL');
+      if (!uploadedFile || !key) {
+        return new Response(
+          JSON.stringify({ error: 'Missing file or key in form data' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
 
-    if (!CLOUDFLARE_ACCOUNT_ID || !CLOUDFLARE_ACCESS_KEY_ID || !CLOUDFLARE_SECRET_ACCESS_KEY || !CLOUDFLARE_R2_BUCKET_NAME || !CLOUDFLARE_R2_PUBLIC_URL) {
-      throw new Error('Missing Cloudflare R2 configuration');
-    }
+      const arrayBuffer = await uploadedFile.arrayBuffer();
+      bytes = new Uint8Array(arrayBuffer);
+    } else {
+      const body = await req.json();
+      key = body.key;
+      contentType = body.contentType;
 
-    // Decode base64 file
-    const binaryString = atob(file);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
+      const binaryString = atob(body.file);
+      bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
     }
 
     // ✅ VALIDATE FILE SIZE
