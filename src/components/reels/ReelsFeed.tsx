@@ -11,7 +11,11 @@ import { useReelBookmarks } from '@/hooks/useReelBookmarks';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { toast } from 'sonner';
 
-const ReelsFeed = () => {
+interface ReelsFeedProps {
+  initialReelId?: string;
+}
+
+const ReelsFeed = ({ initialReelId }: ReelsFeedProps) => {
   const { reels, isLoading, toggleLike, recordView, currentUser } = useReels(20);
   const { toggleBookmark } = useReelBookmarks();
   const { t } = useLanguage();
@@ -24,8 +28,26 @@ const ReelsFeed = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const lastTap = useRef(0);
   const viewRecorded = useRef<Set<string>>(new Set());
+  const deepLinkScrolled = useRef(false);
 
   const currentReel = reels[currentIndex];
+
+  // Deep link: scroll to specific reel when loaded
+  useEffect(() => {
+    if (!initialReelId || deepLinkScrolled.current || reels.length === 0 || !containerRef.current) return;
+    const targetIndex = reels.findIndex(r => r.id === initialReelId);
+    if (targetIndex >= 0) {
+      deepLinkScrolled.current = true;
+      setCurrentIndex(targetIndex);
+      // Use requestAnimationFrame to ensure DOM is ready
+      requestAnimationFrame(() => {
+        containerRef.current?.scrollTo({
+          top: targetIndex * containerRef.current.clientHeight,
+          behavior: 'instant',
+        });
+      });
+    }
+  }, [initialReelId, reels]);
 
   // Record view when reel changes
   useEffect(() => {

@@ -1,4 +1,5 @@
 import { lazy, Suspense } from 'react';
+import { useParams } from 'react-router-dom';
 import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 
@@ -11,12 +12,14 @@ const ReelsLoader = () => (
 );
 
 const Reels = () => {
+  const { reelId } = useParams<{ reelId?: string }>();
+
   return (
     <div className="min-h-screen bg-black">
       <FacebookNavbar />
       <main className="fixed inset-x-0 top-[3cm] bottom-0 lg:pb-0 pb-[72px]">
         <Suspense fallback={<ReelsLoader />}>
-          <ReelsFeed />
+          <ReelsFeed initialReelId={reelId} />
         </Suspense>
       </main>
       <MobileBottomNav />
