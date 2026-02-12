@@ -1,25 +1,31 @@
 
 
-# Tăng cường hiệu ứng RICH text thêm nữa cho Người Gởi
+# Fix chữ RICH bị ẩn bên trong khung thông báo Card -- Nổi lên trên toàn màn hình
 
-## Tình trạng hiện tại
-Hiệu ứng đã được nâng cấp lần 1: scale 1.5x, translateY -60px, translateX 20px, glow 80px, brightness 1.2. Tuy nhiên cần tăng thêm để chữ RICH nổi bật hơn nữa.
+## Nguyên nhân
+
+Component `RichTextOverlay` hiện render bên trong cây DOM của ứng dụng (React root). Tuy nhiên, Dialog của Radix UI sử dụng **Portal** render ở cuối `<body>`, tạo ra stacking context riêng biệt. Dù `RichTextOverlay` có `z-[10001]`, nhưng vì nằm trong stacking context của app root, nó bị Dialog overlay (z-150) che phủ.
+
+## Giải pháp
+
+Sử dụng `ReactDOM.createPortal` trong `RichTextOverlay` để render trực tiếp vào `document.body`, đảm bảo chữ RICH luôn nổi lên trên mọi thứ -- bao gồm cả Dialog portal.
 
 ## Thay đổi cần thực hiện
 
-### 1. `tailwind.config.ts` -- Tăng animation mạnh hơn
-- Tăng **scale** từ 1.5x lên **1.8x** ở đỉnh nhảy
-- Tăng **translateY** từ -60px lên **-80px** bay cao hơn
-- Tăng **translateX** từ 20px lên **30px** lắc ngang mạnh hơn
-- Giảm thời gian từ 2.5s xuống **2s** nhịp nhanh hơn, sôi động hơn
+### 1. `src/components/donations/RichTextOverlay.tsx`
+- Import `createPortal` từ `react-dom`
+- Bọc toàn bộ nội dung trong `createPortal(content, document.body)` để render trực tiếp vào body
+- Giữ nguyên tất cả style, animation, z-index hiện tại
 
-### 2. `src/components/donations/RichTextOverlay.tsx` -- Glow cực mạnh
-- Tăng lớp glow cao nhất từ 80px lên **120px** blur
-- Tăng brightness từ 1.2 lên **1.4**
-- Tăng stroke từ 0.5px lên **1px** để viền chữ sắc nét hơn
-- Thêm lớp glow 100px để chữ phát sáng rực rỡ hơn
+Thay đổi duy nhất: thêm portal wrapper. Không thay đổi gì về visual hay animation.
 
 ## Kết quả mong đợi
-- Chữ RICH nhảy cao hơn, to hơn, lắc mạnh hơn, nhịp nhanh hơn
-- Glow effect cực mạnh, chữ phát sáng rực rỡ như đèn neon
-- Đồng bộ hoàn toàn giữa Người Gởi và Người Nhận (cùng dùng RichTextOverlay)
+- Chữ RICH 9 sắc cầu vồng sẽ NỔI LÊN TRÊN tất cả -- bao gồm cả Dialog card
+- Hiệu ứng giống hệt Video 2 (bên nhận) cho cả bên gửi
+- Không ảnh hưởng đến bất kỳ component nào khác
+
+## Chi tiết kỹ thuật
+- Chỉ sửa 1 file: `RichTextOverlay.tsx`
+- Thêm `createPortal` từ `react-dom` để bypass stacking context của React root
+- Tất cả 6 component sử dụng `RichTextOverlay` (DonationSuccessCard, DonationReceivedCard, GiftCelebrationModal, ClaimRewardDialog, ClaimFunDialog) sẽ tự động được fix
+
