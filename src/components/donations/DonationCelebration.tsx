@@ -38,9 +38,9 @@ export const DonationCelebration = ({ isActive, showRichText = false }: Donation
     }
 
     const fireConfetti = () => {
-      confetti({ particleCount: 45, spread: 80, origin: { x: 0.15, y: 0.6 }, colors: RAINBOW_COLORS, ticks: 150, zIndex: 9999 });
-      confetti({ particleCount: 45, spread: 80, origin: { x: 0.85, y: 0.6 }, colors: RAINBOW_COLORS, ticks: 150, zIndex: 9999 });
-      confetti({ particleCount: 30, spread: 120, origin: { x: 0.5, y: 0.2 }, colors: RAINBOW_COLORS, scalar: 1.3, ticks: 150, zIndex: 9999 });
+      confetti({ particleCount: 45, spread: 80, origin: { x: 0.15, y: 0.6 }, colors: RAINBOW_COLORS, ticks: 150, zIndex: 9998 });
+      confetti({ particleCount: 45, spread: 80, origin: { x: 0.85, y: 0.6 }, colors: RAINBOW_COLORS, ticks: 150, zIndex: 9998 });
+      confetti({ particleCount: 30, spread: 120, origin: { x: 0.5, y: 0.2 }, colors: RAINBOW_COLORS, scalar: 1.3, ticks: 150, zIndex: 9998 });
     };
 
     const fireFirework = () => {
@@ -52,7 +52,7 @@ export const DonationCelebration = ({ isActive, showRichText = false }: Donation
         ticks: 150,
         origin: { x: 0.1 + Math.random() * 0.8, y: 0.9 + Math.random() * 0.1 },
         colors: RAINBOW_COLORS,
-        zIndex: 9999,
+        zIndex: 9998,
       });
     };
 
