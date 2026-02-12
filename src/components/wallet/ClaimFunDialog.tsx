@@ -16,6 +16,7 @@ import { Zap, Wallet, ArrowRight, Loader2, Sparkles } from 'lucide-react';
 import { formatFUN } from '@/config/pplp';
 import { useClaimFun } from '@/hooks/useClaimFun';
 import { DonationCelebration } from '@/components/donations/DonationCelebration';
+import { RichTextOverlay } from '@/components/donations/RichTextOverlay';
 import { playCelebrationMusicLoop } from '@/lib/celebrationSounds';
 import funLogo from '@/assets/tokens/fun-logo.png';
 import funEcosystemLogo from '@/assets/tokens/fun-ecosystem-logo.gif';
@@ -98,6 +99,7 @@ export const ClaimFunDialog = ({
     return (
       <>
         <DonationCelebration isActive={true} showRichText={true} />
+        <RichTextOverlay />
         <Dialog open={open} onOpenChange={handleClose}>
           <DialogContent
             className="sm:max-w-[425px]"

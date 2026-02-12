@@ -639,7 +639,7 @@ const WalletCenterContainer = () => {
         isOpen={showSend}
         onClose={() => setShowSend(false)}
         mode="wallet"
-        onSuccess={() => refetchExternal()}
+        onSuccess={() => { refetchExternal(); fetchClaimableReward(); }}
       />
 
       {/* Claim Reward Dialog */}

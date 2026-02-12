@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Gift, Wallet, ExternalLink, Loader2, AlertCircle, Sparkles } from 'lucide-react';
 import { useClaimReward } from '@/hooks/useClaimReward';
 import { DonationCelebration } from '@/components/donations/DonationCelebration';
+import { RichTextOverlay } from '@/components/donations/RichTextOverlay';
 import { playCelebrationMusicLoop } from '@/lib/celebrationSounds';
 import funEcosystemLogo from '@/assets/tokens/fun-ecosystem-logo.gif';
 
@@ -293,6 +294,7 @@ export const ClaimRewardDialog = ({
   return (
     <>
       <DonationCelebration isActive={showCelebration} showRichText={true} />
+      {showCelebration && <RichTextOverlay />}
       <Dialog open={open} onOpenChange={handleClose}>
         <DialogContent
           className="sm:max-w-md"
