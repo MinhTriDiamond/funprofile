@@ -1,26 +1,46 @@
 
+# Fix 3 issues: Sync Error + RICH Text Hidden + Confetti Overwhelming
 
-# Tăng cường Confetti + Pháo hoa + Chữ RICH liên tục rực rỡ hơn
+## Issue 1: Sync Error "Chưa ghi nhận được vào hệ thống"
 
-## Vấn đề
-Hiện tại confetti và pháo hoa đã chạy lặp lại (600ms/1200ms), nhưng hiệu ứng chưa đủ dày đặc và rực rỡ như mong muốn. Chữ "RICH" cũng cần nhiều hơn và nổi bật hơn.
+**Root cause**: The `record-donation` edge function crashes at line 152 with:
+```
+TypeError: object is not iterable (cannot read property Symbol(Symbol.iterator))
+```
 
-## Thay đổi
+The code passes a Supabase query builder to `.in()`, but `.in()` expects a plain array. This causes the entire function to fail, so the donation is never recorded in the database.
 
-### 1. `src/components/donations/DonationCelebration.tsx`
-- Tăng `particleCount` cho confetti từ 80 lên 120 mỗi đợt, spread rộng hơn
-- Tăng `particleCount` cho firework từ 100 lên 150, thêm nhiều điểm bắn (từ 1 lên 2 firework mỗi lần)
-- Giảm interval confetti từ 600ms xuống 400ms để bắn liên tục dày đặc hơn
-- Giảm interval firework từ 1200ms xuống 800ms
-- Thêm thêm đợt confetti bắn từ nhiều góc khác nhau (trên, dưới, trái, phải)
-- Tăng `ticks` (thời gian tồn tại mỗi hạt) từ 200 lên 300 để confetti rơi lâu hơn trên màn hình
+**Fix**: In `supabase/functions/record-donation/index.ts`, replace the subquery approach with a two-step query:
+1. First query: get all `conversation_id` values for the recipient
+2. Second query: filter sender's conversations using the resulting array
 
-### 2. `src/components/donations/RichTextOverlay.tsx`
-- Tăng số lượng chữ "RICH" từ 15 lên 25 vị trí phân bố khắp màn hình
-- Thêm nhiều kích thước hơn (text-5xl) cho một số chữ RICH lớn nổi bật
-- Tăng cường text-shadow với blur rộng hơn để chữ phát sáng mạnh hơn
+## Issue 2: RICH Text Not Visible
 
-### File cần sửa:
-1. `src/components/donations/DonationCelebration.tsx` — tăng mật độ confetti + firework
-2. `src/components/donations/RichTextOverlay.tsx` — thêm nhiều chữ RICH hơn, sáng hơn
+**Root cause**: The confetti fires every 400ms with 120-150 particles per burst, plus fireworks every 800ms. This creates a wall of confetti that completely covers the RICH text floating underneath.
 
+**Fix**: In `src/components/donations/DonationCelebration.tsx`:
+- Reduce `particleCount` per burst (120 down to 40-50)
+- Increase intervals (confetti: 400ms to 1500ms, fireworks: 800ms to 2500ms)
+- Reduce `ticks` from 300 to 150 so particles disappear faster
+- This allows the RICH text to be clearly visible between confetti bursts
+
+## Issue 3: Confetti Covering Card
+
+Same fix as Issue 2. The reduced density will let the card content remain readable.
+
+## Files to change
+
+1. **`supabase/functions/record-donation/index.ts`** (lines 148-158)
+   - Replace `.in(field, subquery)` with two separate queries
+   - First fetch recipient's conversation IDs as an array, then use `.in(field, array)`
+
+2. **`src/components/donations/DonationCelebration.tsx`**
+   - Reduce `particleCount` in all `confetti()` calls (40-50 instead of 60-120)
+   - Increase `fireConfetti` interval from 400ms to 1500ms
+   - Increase `fireFirework` interval from 800ms to 2500ms
+   - Reduce `ticks` from 300 to 150
+
+## Expected results
+- Donations will be recorded successfully in the database (no more sync error toast)
+- RICH text will be clearly visible, dancing across the screen in 9 rainbow colors
+- Confetti and fireworks will still fire but at a balanced intensity that does not obscure the card or the RICH text
