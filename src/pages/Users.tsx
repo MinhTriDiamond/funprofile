@@ -26,7 +26,7 @@ const Users = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background overflow-hidden">
+    <div className="min-h-screen bg-background/80 overflow-hidden">
       <FacebookNavbar />
       <main data-app-scroll className="fixed inset-x-0 top-[3cm] bottom-0 overflow-y-auto pb-20 px-2 md:px-8 max-w-7xl mx-auto">
         {/* Header */}
