@@ -46,9 +46,9 @@ export const RichTextOverlay = () => (
           top: pos.top,
           animationDelay: pos.delay,
           color: RICH_COLORS[i % RICH_COLORS.length],
-          textShadow: `0 0 20px ${RICH_COLORS[i % RICH_COLORS.length]}BB, 0 0 40px ${RICH_COLORS[i % RICH_COLORS.length]}80, 0 0 64px ${RICH_COLORS[i % RICH_COLORS.length]}50, 0 0 80px ${RICH_COLORS[i % RICH_COLORS.length]}30, 0 2px 4px rgba(0,0,0,0.7)`,
-          WebkitTextStroke: '0.5px rgba(0,0,0,0.3)',
-          filter: 'brightness(1.2)',
+          textShadow: `0 0 20px ${RICH_COLORS[i % RICH_COLORS.length]}DD, 0 0 40px ${RICH_COLORS[i % RICH_COLORS.length]}AA, 0 0 60px ${RICH_COLORS[i % RICH_COLORS.length]}80, 0 0 80px ${RICH_COLORS[i % RICH_COLORS.length]}60, 0 0 100px ${RICH_COLORS[i % RICH_COLORS.length]}40, 0 0 120px ${RICH_COLORS[i % RICH_COLORS.length]}30, 0 2px 4px rgba(0,0,0,0.8)`,
+          WebkitTextStroke: '1px rgba(0,0,0,0.4)',
+          filter: 'brightness(1.4)',
         }}
       >
         RICH
