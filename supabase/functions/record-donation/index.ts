@@ -145,17 +145,22 @@ serve(async (req: Request) => {
     let conversationId = null;
     let messageId = null;
 
-    const { data: existingConv } = await supabase
+    // Step 1: get recipient's conversation IDs as a plain array
+    const { data: recipientConvs } = await supabase
       .from("conversation_participants")
       .select("conversation_id")
-      .eq("user_id", body.sender_id)
-      .in(
-        "conversation_id",
-        supabase
+      .eq("user_id", body.recipient_id);
+
+    const recipientConvIds = (recipientConvs || []).map((r: any) => r.conversation_id);
+
+    // Step 2: find sender's conversations that overlap with recipient's
+    const { data: existingConv } = recipientConvIds.length > 0
+      ? await supabase
           .from("conversation_participants")
           .select("conversation_id")
-          .eq("user_id", body.recipient_id)
-      );
+          .eq("user_id", body.sender_id)
+          .in("conversation_id", recipientConvIds)
+      : { data: [] };
 
     if (existingConv && existingConv.length > 0) {
       for (const conv of existingConv) {
