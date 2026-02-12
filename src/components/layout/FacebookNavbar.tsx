@@ -12,6 +12,7 @@ import {
   MessageCircle,
   Menu,
   Wallet,
+  Film,
   User,
   LogOut,
   Globe,
@@ -129,6 +130,7 @@ export const FacebookNavbar = () => {
   const iconNavItems = [
     { icon: Home, path: '/', label: t('home') },
     { icon: Users, path: '/friends', label: t('friends') },
+    { icon: Film, path: '/reels', label: 'Reels' },
     { icon: MessageCircle, path: '/chat', label: 'Chat' },
     // Bell (Notification) is handled separately with NotificationDropdown component
     { icon: Wallet, path: '/wallet', label: 'Wallet' },
