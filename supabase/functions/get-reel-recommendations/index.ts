@@ -2,7 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 Deno.serve(async (req) => {
@@ -11,7 +11,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const supabase = createClient(
+    const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
@@ -19,10 +19,20 @@ Deno.serve(async (req) => {
     const url = new URL(req.url);
     const limit = parseInt(url.searchParams.get("limit") || "10");
     const offset = parseInt(url.searchParams.get("offset") || "0");
-    const userId = url.searchParams.get("user_id");
+
+    // Extract user_id from JWT token
+    let userId: string | null = null;
+    const authHeader = req.headers.get("Authorization");
+    if (authHeader?.startsWith("Bearer ")) {
+      const token = authHeader.replace("Bearer ", "");
+      const { data } = await supabaseAdmin.auth.getUser(token);
+      if (data?.user) {
+        userId = data.user.id;
+      }
+    }
 
     // Fetch public active reels with creator info
-    let query = supabase
+    const { data: reels, error } = await supabaseAdmin
       .from("reels")
       .select(`
         *,
@@ -33,24 +43,22 @@ Deno.serve(async (req) => {
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
 
-    const { data: reels, error } = await query;
-
     if (error) throw error;
 
     // If user is logged in, fetch their like/bookmark status
     let userLikes: Set<string> = new Set();
     let userBookmarks: Set<string> = new Set();
 
-    if (userId) {
-      const reelIds = (reels || []).map((r: any) => r.id);
+    if (userId && reels && reels.length > 0) {
+      const reelIds = reels.map((r: any) => r.id);
 
       const [likesRes, bookmarksRes] = await Promise.all([
-        supabase
+        supabaseAdmin
           .from("reel_likes")
           .select("reel_id")
           .eq("user_id", userId)
           .in("reel_id", reelIds),
-        supabase
+        supabaseAdmin
           .from("reel_bookmarks")
           .select("reel_id")
           .eq("user_id", userId)
