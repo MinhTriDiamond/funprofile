@@ -36,7 +36,7 @@ const RICH_POSITIONS = [
 ];
 
 export const RichTextOverlay = () => (
-  <div className="fixed inset-0 overflow-hidden pointer-events-none z-[9999]">
+  <div className="fixed inset-0 overflow-hidden pointer-events-none z-[10001]">
     {RICH_POSITIONS.map((pos, i) => (
       <span
         key={i}
