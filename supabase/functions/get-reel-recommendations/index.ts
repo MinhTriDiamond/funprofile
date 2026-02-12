@@ -16,9 +16,16 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const url = new URL(req.url);
-    const limit = parseInt(url.searchParams.get("limit") || "10");
-    const offset = parseInt(url.searchParams.get("offset") || "0");
+    let limit = 10, offset = 0;
+    if (req.method === "POST") {
+      const body = await req.json().catch(() => ({}));
+      limit = body.limit || 10;
+      offset = body.offset || 0;
+    } else {
+      const url = new URL(req.url);
+      limit = parseInt(url.searchParams.get("limit") || "10");
+      offset = parseInt(url.searchParams.get("offset") || "0");
+    }
 
     // Extract user_id from JWT token
     let userId: string | null = null;
