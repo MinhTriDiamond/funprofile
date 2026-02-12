@@ -45,7 +45,8 @@ export const LawOfLightGuard = ({ children }: LawOfLightGuardProps) => {
           const isGuestPath = guestAllowedPaths.includes(location.pathname)
             || location.pathname.startsWith('/profile/')
             || location.pathname.startsWith('/@')
-            || location.pathname.startsWith('/post/');
+            || location.pathname.startsWith('/post/')
+            || location.pathname.startsWith('/reels');
           
           if (isGuestPath) {
             setIsAllowed(true);
