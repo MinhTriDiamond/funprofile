@@ -20,7 +20,8 @@ import {
   Link2,
   Sparkles,
 } from 'lucide-react';
-import camlyCoinRainbow from '@/assets/tokens/camly-coin-rainbow.png';
+import funEcosystemLogo from '@/assets/tokens/fun-ecosystem-logo.gif';
+import { RichTextOverlay } from './RichTextOverlay';
 import html2canvas from 'html2canvas';
 import { toast } from 'sonner';
 import { playCelebrationMusicLoop } from '@/lib/celebrationSounds';
@@ -116,13 +117,15 @@ export const DonationSuccessCard = ({
         <DialogContent 
           className="max-w-md p-0 overflow-hidden border-0 bg-transparent shadow-none [&>button]:hidden"
         >
-          <div
+           <div
             ref={cardRef}
             className="relative rounded-2xl overflow-hidden animate-glow-radiate"
             style={{
               background: 'linear-gradient(135deg, #d4f7dc 0%, #34d399 40%, #10b981 100%)',
             }}
           >
+            {/* RICH Text Overlay */}
+            <RichTextOverlay />
             {/* Radiant gold border effect */}
             <div 
               className="absolute inset-0 rounded-2xl pointer-events-none"
@@ -162,10 +165,9 @@ export const DonationSuccessCard = ({
               {/* Header with celebration emojis */}
               <div className="mb-4 flex flex-col items-center">
                 <img
-                  src={camlyCoinRainbow}
-                  alt="CAMLY Coin"
+                  src={funEcosystemLogo}
+                  alt="FUN Ecosystem"
                   className="w-16 h-16 mb-3"
-                  style={{ animation: 'spin 3s linear infinite' }}
                 />
                 <h2 
                   className="text-2xl font-extrabold flex items-center justify-center gap-1 leading-tight"

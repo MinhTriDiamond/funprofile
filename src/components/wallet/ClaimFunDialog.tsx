@@ -18,7 +18,7 @@ import { useClaimFun } from '@/hooks/useClaimFun';
 import { DonationCelebration } from '@/components/donations/DonationCelebration';
 import { playCelebrationMusicLoop } from '@/lib/celebrationSounds';
 import funLogo from '@/assets/tokens/fun-logo.png';
-import camlyCoinRainbow from '@/assets/tokens/camly-coin-rainbow.png';
+import funEcosystemLogo from '@/assets/tokens/fun-ecosystem-logo.gif';
 
 interface ClaimFunDialogProps {
   open: boolean;
@@ -110,10 +110,10 @@ export const ClaimFunDialog = ({
               {/* Logo */}
               <div className="flex justify-center mb-4">
                 <img
-                  src={camlyCoinRainbow}
-                  alt="FUN Coin"
+                  src={funEcosystemLogo}
+                  alt="FUN Ecosystem"
                   className="w-24 h-24"
-                  style={{ filter: 'drop-shadow(0 0 12px rgba(255, 215, 0, 0.6))', animation: 'spin 3s linear infinite' }}
+                  style={{ filter: 'drop-shadow(0 0 12px rgba(255, 215, 0, 0.6))' }}
                 />
               </div>
 
