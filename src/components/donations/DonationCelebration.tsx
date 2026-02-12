@@ -38,9 +38,9 @@ export const DonationCelebration = ({ isActive, showRichText = false }: Donation
     }
 
     const fireConfetti = () => {
-      confetti({ particleCount: 80, spread: 60, origin: { x: 0.2, y: 0.6 }, colors: RAINBOW_COLORS });
-      confetti({ particleCount: 80, spread: 60, origin: { x: 0.8, y: 0.6 }, colors: RAINBOW_COLORS });
-      confetti({ particleCount: 50, spread: 100, origin: { x: 0.5, y: 0.3 }, colors: RAINBOW_COLORS, scalar: 1.2 });
+      confetti({ particleCount: 80, spread: 60, origin: { x: 0.2, y: 0.6 }, colors: RAINBOW_COLORS, zIndex: 9999 });
+      confetti({ particleCount: 80, spread: 60, origin: { x: 0.8, y: 0.6 }, colors: RAINBOW_COLORS, zIndex: 9999 });
+      confetti({ particleCount: 50, spread: 100, origin: { x: 0.5, y: 0.3 }, colors: RAINBOW_COLORS, scalar: 1.2, zIndex: 9999 });
     };
 
     const fireFirework = () => {
@@ -52,6 +52,7 @@ export const DonationCelebration = ({ isActive, showRichText = false }: Donation
         ticks: 200,
         origin: { x: 0.2 + Math.random() * 0.6, y: 1 },
         colors: RAINBOW_COLORS,
+        zIndex: 9999,
       });
     };
 
@@ -69,7 +70,7 @@ export const DonationCelebration = ({ isActive, showRichText = false }: Donation
   if (!isActive) return null;
 
   return (
-    <div className="fixed inset-0 pointer-events-none z-[200]">
+    <div className="fixed inset-0 pointer-events-none z-[9999]">
       {/* Falling coins */}
       <div className="absolute inset-0 overflow-hidden">
         {[...Array(20)].map((_, i) => (
