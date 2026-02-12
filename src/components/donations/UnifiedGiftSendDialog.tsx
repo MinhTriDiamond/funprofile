@@ -197,7 +197,7 @@ export const UnifiedGiftSendDialog = ({
     setIsSearching(true);
     setSearchError('');
     try {
-      const selectFields = 'id, username, avatar_url, wallet_address, public_wallet_address';
+      const selectFields = 'id, username, avatar_url, wallet_address, public_wallet_address, custodial_wallet_address';
       if (tab === 'username') {
         const cleanQuery = query.replace(/^@/, '').toLowerCase().trim();
         if (cleanQuery.length < 2) { setSearchResults([]); setIsSearching(false); return; }
@@ -232,7 +232,7 @@ export const UnifiedGiftSendDialog = ({
         const { data, error } = await supabase
           .from('profiles')
           .select(selectFields)
-          .or(`wallet_address.ilike.${addr},public_wallet_address.ilike.${addr}`)
+          .or(`wallet_address.ilike.${addr},public_wallet_address.ilike.${addr},custodial_wallet_address.ilike.${addr}`)
           .limit(1);
         if (error) throw error;
         if (data && data.length > 0) {
@@ -565,12 +565,19 @@ export const UnifiedGiftSendDialog = ({
               <div>
                 <label className="text-sm font-medium text-muted-foreground mb-2 block">Số lượng:</label>
                 <div className="relative">
-                  <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0" className="text-lg font-semibold pr-24" />
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                  <Input
+                    type="text"
+                    inputMode="decimal"
+                    value={amount}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[^0-9.]/g, '');
+                      setAmount(val);
+                    }}
+                    placeholder="0"
+                    className="text-lg font-semibold pr-16 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
+                  />
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
                     <span className="text-sm text-muted-foreground">{selectedToken.symbol}</span>
-                    {formattedBalance > 0 && (
-                      <button type="button" onClick={handleMaxAmount} className="text-xs text-primary hover:underline font-medium">MAX</button>
-                    )}
                   </div>
                 </div>
                 {isConnected && <p className="text-xs text-muted-foreground mt-1">Số dư: {formattedBalance.toLocaleString(undefined, { maximumFractionDigits: selectedToken.decimals })} {selectedToken.symbol}</p>}

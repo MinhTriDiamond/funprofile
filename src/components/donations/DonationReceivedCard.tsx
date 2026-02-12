@@ -16,7 +16,8 @@ import {
   MessageCircle,
   Sparkles,
 } from 'lucide-react';
-import camlyCoinRainbow from '@/assets/tokens/camly-coin-rainbow.png';
+import funEcosystemLogo from '@/assets/tokens/fun-ecosystem-logo.gif';
+import { RichTextOverlay } from './RichTextOverlay';
 import { playCelebrationMusicLoop } from '@/lib/celebrationSounds';
 import { useNavigate } from 'react-router-dom';
 
@@ -88,6 +89,8 @@ export const DonationReceivedCard = ({
               background: 'linear-gradient(135deg, #d4f7dc 0%, #34d399 40%, #10b981 100%)',
             }}
           >
+            {/* RICH Text Overlay */}
+            <RichTextOverlay />
             {/* Green radiant border */}
             <div
               className="absolute inset-0 rounded-2xl pointer-events-none"
@@ -122,10 +125,9 @@ export const DonationReceivedCard = ({
               {/* Header */}
               <div className="mb-4 flex flex-col items-center">
                 <img
-                  src={camlyCoinRainbow}
-                  alt="CAMLY Coin"
+                  src={funEcosystemLogo}
+                  alt="FUN Ecosystem"
                   className="w-16 h-16 mb-3"
-                  style={{ animation: 'spin 3s linear infinite' }}
                 />
                 <h2
                   className="text-2xl font-extrabold flex items-center justify-center gap-2 drop-shadow-sm leading-tight"

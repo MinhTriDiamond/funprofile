@@ -8,7 +8,8 @@ import { CardThemeSelector, CARD_THEMES, CardTheme } from './CardThemeSelector';
 import { CardSoundSelector, SOUND_OPTIONS } from './CardSoundSelector';
 import { getBscScanTxUrl } from '@/lib/bscScanHelpers';
 import { playCelebrationMusicLoop } from '@/lib/celebrationSounds';
-import camlyCoinRainbow from '@/assets/tokens/camly-coin-rainbow.png';
+import funEcosystemLogo from '@/assets/tokens/fun-ecosystem-logo.gif';
+import { RichTextOverlay } from './RichTextOverlay';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import {
@@ -187,6 +188,8 @@ export const GiftCelebrationModal = ({
             className="relative rounded-2xl overflow-hidden"
             style={{ background: 'linear-gradient(135deg, #34d399, #10b981)' }}
           >
+            {/* RICH Text Overlay */}
+            <RichTextOverlay />
             {/* Border glow */}
             <div
               className="absolute inset-0 rounded-2xl pointer-events-none"
@@ -218,10 +221,10 @@ export const GiftCelebrationModal = ({
               {/* Header */}
               <div className="mb-3 flex flex-col items-center">
                 <img
-                  src={camlyCoinRainbow}
-                  alt="CAMLY Coin"
+                  src={funEcosystemLogo}
+                  alt="FUN Ecosystem"
                   className="w-20 h-20 mb-2"
-                  style={{ filter: 'drop-shadow(0 0 12px rgba(255, 215, 0, 0.7))', animation: 'spin 3s linear infinite' }}
+                  style={{ filter: 'drop-shadow(0 0 12px rgba(255, 215, 0, 0.7))' }}
                 />
                 <h2
                   className="text-2xl font-extrabold text-center leading-snug"

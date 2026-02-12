@@ -13,7 +13,7 @@ import { Gift, Wallet, ExternalLink, Loader2, AlertCircle, Sparkles } from 'luci
 import { useClaimReward } from '@/hooks/useClaimReward';
 import { DonationCelebration } from '@/components/donations/DonationCelebration';
 import { playCelebrationMusicLoop } from '@/lib/celebrationSounds';
-import camlyCoinRainbow from '@/assets/tokens/camly-coin-rainbow.png';
+import funEcosystemLogo from '@/assets/tokens/fun-ecosystem-logo.gif';
 
 const MINIMUM_CLAIM = 1;
 
@@ -216,10 +216,10 @@ export const ClaimRewardDialog = ({
       {/* CAMLY Coin Rainbow Logo */}
       <div className="flex justify-center mb-4">
         <img
-          src={camlyCoinRainbow}
-          alt="CAMLY Coin"
+          src={funEcosystemLogo}
+          alt="FUN Ecosystem"
           className="w-24 h-24"
-          style={{ filter: 'drop-shadow(0 0 12px rgba(255, 215, 0, 0.6))', animation: 'spin 3s linear infinite' }}
+          style={{ filter: 'drop-shadow(0 0 12px rgba(255, 215, 0, 0.6))' }}
         />
       </div>
 
