@@ -1,6 +1,9 @@
+import { createPortal } from 'react-dom';
+
 /**
  * Floating "RICH" text animation overlay for celebration cards.
- * Renders as a fixed full-screen layer above Dialog portals.
+ * Uses createPortal to render directly into document.body,
+ * bypassing any stacking context from Dialog portals.
  */
 const RICH_COLORS = [
   '#FF0000', '#FF7F00', '#FFFF00', '#00FF00', '#00FFFF',
@@ -35,24 +38,26 @@ const RICH_POSITIONS = [
   { left: '22%', top: '95%', delay: '1.45s', size: 'text-4xl' },
 ];
 
-export const RichTextOverlay = () => (
-  <div className="fixed inset-0 overflow-hidden pointer-events-none z-[10001]">
-    {RICH_POSITIONS.map((pos, i) => (
-      <span
-        key={i}
-        className={`absolute font-black ${pos.size} animate-rich-float select-none`}
-        style={{
-          left: pos.left,
-          top: pos.top,
-          animationDelay: pos.delay,
-          color: RICH_COLORS[i % RICH_COLORS.length],
-          textShadow: `0 0 20px ${RICH_COLORS[i % RICH_COLORS.length]}DD, 0 0 40px ${RICH_COLORS[i % RICH_COLORS.length]}AA, 0 0 60px ${RICH_COLORS[i % RICH_COLORS.length]}80, 0 0 80px ${RICH_COLORS[i % RICH_COLORS.length]}60, 0 0 100px ${RICH_COLORS[i % RICH_COLORS.length]}40, 0 0 120px ${RICH_COLORS[i % RICH_COLORS.length]}30, 0 2px 4px rgba(0,0,0,0.8)`,
-          WebkitTextStroke: '1px rgba(0,0,0,0.4)',
-          filter: 'brightness(1.4)',
-        }}
-      >
-        RICH
-      </span>
-    ))}
-  </div>
-);
+export const RichTextOverlay = () =>
+  createPortal(
+    <div className="fixed inset-0 overflow-hidden pointer-events-none z-[10001]">
+      {RICH_POSITIONS.map((pos, i) => (
+        <span
+          key={i}
+          className={`absolute font-black ${pos.size} animate-rich-float select-none`}
+          style={{
+            left: pos.left,
+            top: pos.top,
+            animationDelay: pos.delay,
+            color: RICH_COLORS[i % RICH_COLORS.length],
+            textShadow: `0 0 20px ${RICH_COLORS[i % RICH_COLORS.length]}DD, 0 0 40px ${RICH_COLORS[i % RICH_COLORS.length]}AA, 0 0 60px ${RICH_COLORS[i % RICH_COLORS.length]}80, 0 0 80px ${RICH_COLORS[i % RICH_COLORS.length]}60, 0 0 100px ${RICH_COLORS[i % RICH_COLORS.length]}40, 0 0 120px ${RICH_COLORS[i % RICH_COLORS.length]}30, 0 2px 4px rgba(0,0,0,0.8)`,
+            WebkitTextStroke: '1px rgba(0,0,0,0.4)',
+            filter: 'brightness(1.4)',
+          }}
+        >
+          RICH
+        </span>
+      ))}
+    </div>,
+    document.body,
+  );
