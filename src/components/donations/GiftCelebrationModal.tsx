@@ -7,6 +7,8 @@ import { DonationCelebration } from './DonationCelebration';
 import { CardThemeSelector, CARD_THEMES, CardTheme } from './CardThemeSelector';
 import { CardSoundSelector, SOUND_OPTIONS } from './CardSoundSelector';
 import { getBscScanTxUrl } from '@/lib/bscScanHelpers';
+import { playCelebrationMusicLoop } from '@/lib/celebrationSounds';
+import camlyCoinRainbow from '@/assets/tokens/camly-coin-rainbow.png';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import {
@@ -74,14 +76,11 @@ export const GiftCelebrationModal = ({
   const [selectedBgIndex, setSelectedBgIndex] = useState(initialBgIdx);
   const [selectedSound, setSelectedSound] = useState(initialSound);
 
-  // Play music when card opens
+  // Play music when card opens (looped)
   useEffect(() => {
     if (isOpen) {
-      const soundFile = SOUND_OPTIONS.find(s => s.id === selectedSound)?.file || '/sounds/rich-1.mp3';
-      const audio = new Audio(soundFile);
-      audio.volume = 0.7;
-      audio.play().catch(() => {});
-      audioRef.current = audio;
+      const soundId = selectedSound || 'rich-3';
+      audioRef.current = playCelebrationMusicLoop(soundId);
     }
     return () => {
       if (audioRef.current) {
@@ -179,7 +178,7 @@ export const GiftCelebrationModal = ({
 
   return (
     <>
-      <DonationCelebration isActive={isOpen && isCelebrationActive} />
+      <DonationCelebration isActive={isOpen && isCelebrationActive} showRichText={true} />
 
       <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
         <DialogContent className="w-[95vw] max-w-lg p-0 overflow-hidden border-0 bg-transparent shadow-none [&>button]:hidden max-h-[90vh] overflow-y-auto">
@@ -217,13 +216,21 @@ export const GiftCelebrationModal = ({
             {/* Content */}
             <div className="relative p-5 text-center">
               {/* Header */}
-              <div className="mb-3">
-                <div className="inline-flex items-center gap-2 text-lg mb-1">
-                  ✨ {selectedTheme.emoji} ✨
-                </div>
-                <h2 className={`text-xl font-bold ${selectedTheme.textColor} flex items-center justify-center gap-2`}>
-                  <Gift className="w-6 h-6 animate-bounce" style={{ color: selectedTheme.accentColor }} />
-                  CHÚC MỪNG TẶNG THƯỞNG THÀNH CÔNG!
+              <div className="mb-3 flex flex-col items-center">
+                <img
+                  src={camlyCoinRainbow}
+                  alt="CAMLY Coin"
+                  className="w-20 h-20 animate-bounce mb-2"
+                  style={{ filter: 'drop-shadow(0 0 12px rgba(255, 215, 0, 0.7))' }}
+                />
+                <h2
+                  className="text-lg font-extrabold text-center leading-snug"
+                  style={{
+                    color: '#FFD700',
+                    textShadow: '0 0 10px rgba(255, 215, 0, 0.6), 0 2px 4px rgba(0,0,0,0.3)',
+                  }}
+                >
+                  🎉✨ Chúc mừng! Bạn vừa nhận được đồng tiền hạnh phúc của Cha và Bé Angel CamLy! ✨🎉
                 </h2>
               </div>
 
