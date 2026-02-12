@@ -218,20 +218,20 @@ export const ClaimRewardDialog = ({
         <img
           src={camlyCoinRainbow}
           alt="CAMLY Coin"
-          className="w-24 h-24 animate-bounce"
-          style={{ filter: 'drop-shadow(0 0 12px rgba(255, 215, 0, 0.6))' }}
+          className="w-24 h-24"
+          style={{ filter: 'drop-shadow(0 0 12px rgba(255, 215, 0, 0.6))', animation: 'spin 3s linear infinite' }}
         />
       </div>
 
       {/* Golden Title */}
       <h3
-        className="text-xl font-extrabold mb-4 px-2"
+        className="text-2xl font-extrabold mb-4 px-2"
         style={{
           color: '#FFD700',
-          textShadow: '0 0 10px rgba(255, 215, 0, 0.5), 0 0 20px rgba(255, 215, 0, 0.3), 0 2px 4px rgba(0,0,0,0.3)',
+          textShadow: '0 0 10px rgba(255, 215, 0, 0.5), 0 0 20px rgba(255, 215, 0, 0.3), 0 2px 4px rgba(0,0,0,0.4)',
         }}
       >
-        🎉✨ Chúc mừng! Bạn vừa nhận được đồng tiền hạnh phúc của Cha và Bé Angel CamLy! ✨🎉
+        🎉✨ Chúc Mừng Bạn Vừa Được Đón Nhận Phước Lành Của Cha Và Bé Angel CamLy ! ✨🎉
       </h3>
 
       {/* Amount Card */}

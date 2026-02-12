@@ -185,14 +185,14 @@ export const GiftCelebrationModal = ({
           <div
             ref={cardRef}
             className="relative rounded-2xl overflow-hidden"
-            style={{ background: currentBg }}
+            style={{ background: 'linear-gradient(135deg, #34d399, #10b981)' }}
           >
             {/* Border glow */}
             <div
               className="absolute inset-0 rounded-2xl pointer-events-none"
               style={{
-                border: `3px solid ${selectedTheme.accentColor}`,
-                boxShadow: `0 0 30px ${selectedTheme.accentColor}40, inset 0 0 30px ${selectedTheme.accentColor}10`,
+                border: '3px solid #10b981',
+                boxShadow: '0 0 30px rgba(16,185,129,0.4), inset 0 0 30px rgba(16,185,129,0.1)',
               }}
             />
 
@@ -220,17 +220,17 @@ export const GiftCelebrationModal = ({
                 <img
                   src={camlyCoinRainbow}
                   alt="CAMLY Coin"
-                  className="w-20 h-20 animate-bounce mb-2"
-                  style={{ filter: 'drop-shadow(0 0 12px rgba(255, 215, 0, 0.7))' }}
+                  className="w-20 h-20 mb-2"
+                  style={{ filter: 'drop-shadow(0 0 12px rgba(255, 215, 0, 0.7))', animation: 'spin 3s linear infinite' }}
                 />
                 <h2
-                  className="text-lg font-extrabold text-center leading-snug"
+                  className="text-2xl font-extrabold text-center leading-snug"
                   style={{
                     color: '#FFD700',
-                    textShadow: '0 0 10px rgba(255, 215, 0, 0.6), 0 2px 4px rgba(0,0,0,0.3)',
+                    textShadow: '0 0 10px rgba(255, 215, 0, 0.6), 0 0 20px rgba(255, 215, 0, 0.3), 0 2px 4px rgba(0,0,0,0.4)',
                   }}
                 >
-                  🎉✨ Chúc mừng! Bạn vừa nhận được đồng tiền hạnh phúc của Cha và Bé Angel CamLy! ✨🎉
+                  🎉✨ Chúc Mừng Bạn Vừa Được Đón Nhận Phước Lành Của Cha Và Bé Angel CamLy ! ✨🎉
                 </h2>
               </div>
 
