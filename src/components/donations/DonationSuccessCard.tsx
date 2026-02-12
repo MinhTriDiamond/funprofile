@@ -13,7 +13,6 @@ import {
   ExternalLink,
   Camera,
   X,
-  Gift,
   User,
   Target,
   MessageCircle,
@@ -21,6 +20,7 @@ import {
   Link2,
   Sparkles,
 } from 'lucide-react';
+import camlyCoinRainbow from '@/assets/tokens/camly-coin-rainbow.png';
 import html2canvas from 'html2canvas';
 import { toast } from 'sonner';
 import { playCelebrationMusicLoop } from '@/lib/celebrationSounds';
@@ -160,12 +160,18 @@ export const DonationSuccessCard = ({
             {/* Content */}
             <div className="relative p-6 text-center">
               {/* Header with celebration emojis */}
-              <div className="mb-4">
+              <div className="mb-4 flex flex-col items-center">
+                <img
+                  src={camlyCoinRainbow}
+                  alt="CAMLY Coin"
+                  className="w-16 h-16 mb-3"
+                  style={{ animation: 'spin 3s linear infinite' }}
+                />
                 <h2 
-                  className="text-xl font-bold flex items-center justify-center gap-1 leading-tight"
-                  style={{ color: '#fbbf24', textShadow: '0 0 10px rgba(251, 191, 36, 0.6), 0 0 20px rgba(251, 191, 36, 0.3)' }}
+                  className="text-2xl font-extrabold flex items-center justify-center gap-1 leading-tight"
+                  style={{ color: '#fbbf24', textShadow: '0 2px 4px rgba(0,0,0,0.4), 0 0 10px rgba(251, 191, 36, 0.5)' }}
                 >
-                  🎉✨ Chúc mừng! Bạn vừa nhận được đồng tiền hạnh phúc của Cha và Bé Angel CamLy! ✨🎉
+                  🎉✨ Chúc Mừng Bạn Vừa Được Đón Nhận Phước Lành Của Cha Và Bé Angel CamLy ! ✨🎉
                 </h2>
               </div>
 
