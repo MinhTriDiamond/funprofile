@@ -77,7 +77,8 @@ export const DonationReceivedCard = ({
 
   return (
     <>
-      <DonationCelebration isActive={isOpen && isCelebrationActive} showRichText />
+      <DonationCelebration isActive={isOpen && isCelebrationActive} showRichText={false} />
+      {isOpen && <RichTextOverlay />}
 
       <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
         <DialogContent
@@ -89,8 +90,7 @@ export const DonationReceivedCard = ({
               background: 'linear-gradient(135deg, #d4f7dc 0%, #34d399 40%, #10b981 100%)',
             }}
           >
-            {/* RICH Text Overlay */}
-            <RichTextOverlay />
+            {/* RICH Text Overlay moved to fixed layer above */}
             {/* Green radiant border */}
             <div
               className="absolute inset-0 rounded-2xl pointer-events-none"

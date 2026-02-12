@@ -179,7 +179,8 @@ export const GiftCelebrationModal = ({
 
   return (
     <>
-      <DonationCelebration isActive={isOpen && isCelebrationActive} showRichText={true} />
+      <DonationCelebration isActive={isOpen && isCelebrationActive} showRichText={false} />
+      {isOpen && <RichTextOverlay />}
 
       <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
         <DialogContent className="w-[95vw] max-w-lg p-0 overflow-hidden border-0 bg-transparent shadow-none [&>button]:hidden max-h-[90vh] overflow-y-auto">
@@ -188,8 +189,7 @@ export const GiftCelebrationModal = ({
             className="relative rounded-2xl overflow-hidden"
             style={{ background: 'linear-gradient(135deg, #34d399, #10b981)' }}
           >
-            {/* RICH Text Overlay */}
-            <RichTextOverlay />
+            {/* RICH Text Overlay moved to fixed layer above */}
             {/* Border glow */}
             <div
               className="absolute inset-0 rounded-2xl pointer-events-none"
