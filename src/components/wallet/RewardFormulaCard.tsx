@@ -140,7 +140,7 @@ export const RewardFormulaCard = ({ defaultOpen = false }: RewardFormulaCardProp
             <div className="mt-3 flex items-start gap-2 text-xs text-gray-500 dark:text-gray-400">
               <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
               <p>
-                Daily limits áp dụng từ ngày 15/01/2025. Dữ liệu trước đó không bị giới hạn. 
+                Daily limits áp dụng từ ngày 15/01/2026. Dữ liệu trước đó không bị giới hạn. 
                 Admin cần duyệt thưởng trước khi user có thể claim.
               </p>
             </div>

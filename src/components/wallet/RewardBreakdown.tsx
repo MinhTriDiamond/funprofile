@@ -57,13 +57,6 @@ export const RewardBreakdown = ({ stats, claimedAmount, isLoading }: RewardBreak
     return null;
   }
 
-  const postsReward = stats.posts_count * REWARD_CONFIG.posts.reward;
-  const reactionsReward = stats.reactions_on_posts * REWARD_CONFIG.reactions.reward;
-  const commentsReward = stats.comments_count * REWARD_CONFIG.comments.reward;
-  const sharesReward = stats.shares_count * REWARD_CONFIG.shares.reward;
-  const friendsReward = stats.friends_count * REWARD_CONFIG.friends.reward;
-  const livestreamsReward = stats.livestreams_count * REWARD_CONFIG.livestreams.reward;
-
   const totalReward = Number(stats.total_reward) || 0;
   const claimable = Math.max(0, totalReward - claimedAmount);
 
@@ -73,49 +66,42 @@ export const RewardBreakdown = ({ stats, claimedAmount, isLoading }: RewardBreak
       label: 'Bonus đăng ký',
       count: null,
       reward: REWARD_CONFIG.NEW_USER_BONUS,
-      total: REWARD_CONFIG.NEW_USER_BONUS,
     },
     {
       emoji: REWARD_CONFIG.posts.emoji,
       label: REWARD_CONFIG.posts.label,
       count: stats.posts_count,
       reward: REWARD_CONFIG.posts.reward,
-      total: postsReward,
     },
     {
       emoji: REWARD_CONFIG.reactions.emoji,
       label: REWARD_CONFIG.reactions.label,
       count: stats.reactions_on_posts,
       reward: REWARD_CONFIG.reactions.reward,
-      total: reactionsReward,
     },
     {
       emoji: REWARD_CONFIG.comments.emoji,
       label: REWARD_CONFIG.comments.label,
       count: stats.comments_count,
       reward: REWARD_CONFIG.comments.reward,
-      total: commentsReward,
     },
     {
       emoji: REWARD_CONFIG.shares.emoji,
       label: REWARD_CONFIG.shares.label,
       count: stats.shares_count,
       reward: REWARD_CONFIG.shares.reward,
-      total: sharesReward,
     },
     {
       emoji: REWARD_CONFIG.friends.emoji,
       label: REWARD_CONFIG.friends.label,
       count: stats.friends_count,
       reward: REWARD_CONFIG.friends.reward,
-      total: friendsReward,
     },
     {
       emoji: REWARD_CONFIG.livestreams.emoji,
       label: REWARD_CONFIG.livestreams.label,
       count: stats.livestreams_count,
       reward: REWARD_CONFIG.livestreams.reward,
-      total: livestreamsReward,
     },
   ];
 
@@ -151,13 +137,15 @@ export const RewardBreakdown = ({ stats, claimedAmount, isLoading }: RewardBreak
                     1 lần
                   </span>
                 )}
-                <span className="font-semibold text-amber-800 dark:text-amber-200 min-w-[80px] text-right">
-                  {formatNumber(item.total)} CAMLY
-                </span>
               </div>
             </div>
           ))}
         </div>
+
+        {/* Note about daily caps */}
+        <p className="text-xs text-amber-600 dark:text-amber-400 italic px-2">
+          ⚠️ Tổng thưởng đã áp dụng giới hạn hàng ngày (daily cap) từ 15/01/2026.
+        </p>
 
         {/* Divider */}
         <div className="border-t border-amber-300 dark:border-amber-700 my-3" />

@@ -36,7 +36,7 @@ export interface UserRewardStats {
  */
 export const REWARD_CONFIG = {
   NEW_USER_BONUS: 50000,
-  CUTOFF_DATE: '2025-01-15',
+  CUTOFF_DATE: '2026-01-15',
   DAILY_LIMITS: {
     posts: { reward: 10000, maxPerDay: 10, maxDaily: 100000 },
     reactions: { reward: 1000, maxPerDay: 50, maxDaily: 50000 },
