@@ -91,6 +91,34 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ✅ VALIDATE CONTENT TYPE
+    if (!ALLOWED_CONTENT_TYPES.includes(contentType)) {
+      console.error(`Invalid content type: ${contentType}`);
+      return new Response(
+        JSON.stringify({ error: 'File type not allowed. Only images and videos are permitted.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // ✅ VALIDATE KEY FORMAT (prevent path traversal)
+    if (key.includes('..') || key.startsWith('/')) {
+      console.error(`Invalid key format: ${key}`);
+      return new Response(
+        JSON.stringify({ error: 'Invalid file path' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const CLOUDFLARE_ACCOUNT_ID = Deno.env.get('CLOUDFLARE_ACCOUNT_ID');
+    const CLOUDFLARE_ACCESS_KEY_ID = Deno.env.get('CLOUDFLARE_ACCESS_KEY_ID');
+    const CLOUDFLARE_SECRET_ACCESS_KEY = Deno.env.get('CLOUDFLARE_SECRET_ACCESS_KEY');
+    const CLOUDFLARE_R2_BUCKET_NAME = Deno.env.get('CLOUDFLARE_R2_BUCKET_NAME');
+    const CLOUDFLARE_R2_PUBLIC_URL = Deno.env.get('CLOUDFLARE_R2_PUBLIC_URL');
+
+    if (!CLOUDFLARE_ACCOUNT_ID || !CLOUDFLARE_ACCESS_KEY_ID || !CLOUDFLARE_SECRET_ACCESS_KEY || !CLOUDFLARE_R2_BUCKET_NAME || !CLOUDFLARE_R2_PUBLIC_URL) {
+      throw new Error('Missing Cloudflare R2 configuration');
+    }
+
     // ✅ VALIDATE FILE SIZE
     const isVideo = contentType.startsWith('video/');
     const maxSize = isVideo ? MAX_VIDEO_SIZE : MAX_IMAGE_SIZE;
