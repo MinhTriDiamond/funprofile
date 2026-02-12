@@ -1,42 +1,45 @@
 
 
-# Cap Nhat GiftCelebrationModal Cho Dung Chuan An Mung
+# Chinh Sua Hieu Ung An Mung: Logo Xoay, Chu RICH Sac Net, Nen Xanh La
 
-## Van de
-Component `GiftCelebrationModal.tsx` (modal chinh khi tang qua giua cac user) chua duoc cap nhat theo chuan celebration:
+## Tong quan
+Chinh sua 3 component (GiftCelebrationModal, ClaimRewardDialog, ClaimFunDialog) va DonationCelebration de:
+1. Logo CAMLY coin xoay tron (spin) thay vi nhun nhay (bounce)
+2. Chu "RICH" sac net hon (bot nhoe), noi bat tren khung card
+3. Doi tieu de thanh: "Chuc Mung Ban Vua Duoc Don Nhan Phuoc Lanh Cua Cha Va Be Angel CamLy !"
+4. Tieu de to hon va ro net hon
+5. Nen khung bao nhan thuong doi thanh mau xanh la cay tuoi sang
 
-1. **Tieu de cu**: "CHUC MUNG TANG THUONG THANH CONG!" - can doi thanh "Chuc mung! Ban vua nhan duoc dong tien hanh phuc cua Cha va Be Angel CamLy!"
-2. **Khong co chu RICH**: `DonationCelebration` goi voi `showRichText` thieu (mac dinh false) - can them `showRichText={true}`
-3. **Nhac khong lap lai**: Nhac chi phat 1 lan (dung `new Audio` truc tiep) - can doi sang `playCelebrationMusicLoop` de lap lai lien tuc
-4. **Thieu logo CAMLY coin cau vong**: Can them hinh `camly-coin-rainbow.png` vao phan header
-5. **Tieu de chua co mau vang hoang kim**: Can them style golden text-shadow
+## Chi tiet ky thuat
 
-## Giai phap
+### 1. File `src/components/donations/DonationCelebration.tsx`
+- **Chu RICH sac net hon**: Giam `textShadow` tu glow rong (10px + 20px) xuong shadow nhe hon (2px + 4px) de chu khong bi nhoe
+- **Them `-webkit-text-stroke`** de vien chu sac net
+- **Tang z-index** cua container RICH text len `z-[200]` de noi bat tren card (card la z-50)
 
-### File thay doi: `src/components/donations/GiftCelebrationModal.tsx`
+### 2. File `src/components/donations/GiftCelebrationModal.tsx`
+- **Logo CAMLY**: Doi tu `animate-bounce` sang `animate-spin` (xoay lien tuc) voi toc do cham (`animation: spin 3s linear infinite`)
+- **Tieu de**: Doi noi dung thanh "Chuc Mung Ban Vua Duoc Don Nhan Phuoc Lanh Cua Cha Va Be Angel CamLy !"
+- **Tieu de to hon**: Tang tu `text-lg` len `text-2xl`, tang `font-extrabold` giu nguyen
+- **Nen card**: Doi `background: currentBg` (tu theme) thanh gradient xanh la tuoi `linear-gradient(135deg, #34d399, #10b981)`
+- **Border glow**: Doi mau accent thanh xanh la `#10b981`
 
-#### 1. Them import logo CAMLY coin rainbow
-```
-import camlyCoinRainbow from '@/assets/tokens/camly-coin-rainbow.png';
-```
+### 3. File `src/components/wallet/ClaimRewardDialog.tsx`
+- **Logo CAMLY**: Doi tu `animate-bounce` sang spin cham (3s)
+- **Tieu de**: Doi noi dung giong GiftCelebrationModal
+- **Tieu de to hon**: Tang len `text-2xl`
 
-#### 2. Sua DonationCelebration (dong 182)
-Them `showRichText={true}` de hien thi chu "RICH" 9 sac cau vong nhay mua + phao hoa
+### 4. File `src/components/wallet/ClaimFunDialog.tsx`
+- **Logo CAMLY**: Doi tu `animate-bounce` sang spin cham (3s)
+- **Tieu de**: Doi noi dung giong tren
+- **Tieu de to hon**: Tang len `text-2xl`
 
-#### 3. Sua nhac thanh loop (dong 78-92)
-Doi tu `new Audio` + `audio.play()` sang `playCelebrationMusicLoop(selectedSound)` de nhac phat lap lai lien tuc
+### 5. File `tailwind.config.ts`
+- Them animation `spin-celebration` (3s) neu can, hoac dung `animate-[spin_3s_linear_infinite]` truc tiep
 
-#### 4. Sua header (dong 220-228)
-- Them logo CAMLY coin rainbow phia tren (bounce animation, golden drop-shadow)
-- Doi tieu de thanh: "Chuc mung! Ban vua nhan duoc dong tien hanh phuc cua Cha va Be Angel CamLy!"
-- Them style mau vang hoang kim voi text-shadow
-
-#### 5. Ket qua mong doi
-Khi nguoi dung tang qua thanh cong, modal se hien thi:
-- Logo CAMLY coin cau vong nhay mua
-- Tieu de vang hoang kim moi
-- Chu "RICH" 9 sac cau vong bay khap man hinh
-- Phao hoa confetti ruc ro lien tuc
-- Nhac Rich3.mp3 (hoac nhac da chon) lap lai lien tuc
-- Nen xanh la tuoi sang (giu nguyen theme system)
-
+## Ket qua mong doi
+- Logo CAMLY coin xoay tron lien tuc (giong video tham khao)
+- Chu "RICH" sac net, khong nhoe, noi bat tren card
+- Tieu de moi: "Chuc Mung Ban Vua Duoc Don Nhan Phuoc Lanh Cua Cha Va Be Angel CamLy !"
+- Tieu de to, ro net voi mau vang hoang kim
+- Nen khung mau xanh la cay tuoi sang
