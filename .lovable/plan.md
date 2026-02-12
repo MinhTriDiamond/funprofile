@@ -1,22 +1,29 @@
 
-# Fix chữ RICH bị confetti che khuất + Cân bằng pháo hoa
 
-## Nguyên nhân gốc
-- Thư viện `canvas-confetti` tạo canvas riêng với `zIndex: 9999`
-- `RichTextOverlay` cũng dùng `z-[9999]` -- cùng tầng nên confetti che khuất chữ RICH
-- Pháo hoa vẫn còn dày, cần giảm thêm để thẻ card đọc được
+# Tăng cường hiệu ứng chữ RICH cho Người Gởi -- Đồng bộ với mẫu Video 2
+
+## Tình trạng hiện tại
+
+Sau khi kiểm tra kỹ mã nguồn, cả bên **Người Gởi** (`GiftCelebrationModal`) và **Người Nhận** (`DonationReceivedCard`) đều sử dụng cùng component `RichTextOverlay` (25 chữ RICH, 9 màu cầu vồng, z-10001) và `DonationCelebration` (confetti + pháo hoa, z-9998) + nhạc `rich-3.mp3` lặp liên tục.
+
+Tuy nhiên, hiệu ứng animation `rich-float` hiện tại khá nhỏ (scale tối đa 1.2x, di chuyển tối đa 40px). Để chữ RICH **nổi bật hơn, nhảy múa mạnh hơn** giống như mẫu video 2, cần tăng cường animation.
 
 ## Thay đổi cần thực hiện
 
-### 1. `src/components/donations/RichTextOverlay.tsx`
-- Nâng z-index từ `z-[9999]` lên `z-[10001]` để chữ RICH luôn nổi TRÊN confetti canvas
-- Đảm bảo chữ RICH hiển thị rõ ràng, nhảy múa không bị che
+### 1. `tailwind.config.ts` -- Tăng cường animation `rich-float`
+- Tăng **scale** từ 1.2x lên **1.5x** để chữ RICH to hơn khi nhảy
+- Tăng **translateY** từ -40px lên **-60px** để chữ bay cao hơn
+- Thêm **translateX** +/- 20px để chữ lắc ngang, tạo cảm giác nhảy múa tung tăng
+- Giảm thời gian animation từ 3s xuống **2.5s** để nhịp nhanh hơn, vui hơn
 
-### 2. `src/components/donations/DonationCelebration.tsx`
-- Giảm `zIndex` của confetti từ `9999` xuống `9998` để confetti nằm DƯỚI cả RICH text và thẻ card
-- Giữ nguyên interval (1500ms confetti, 2500ms fireworks) -- mật độ cân bằng theo chuẩn thương hiệu
+### 2. `src/components/donations/RichTextOverlay.tsx` -- Tăng glow effect
+- Tăng cường `textShadow` với lớp glow rộng hơn (64px blur) để chữ RICH phát sáng mạnh hơn
+- Tăng font-weight từ `font-black` lên kết hợp thêm `scale` CSS ban đầu để chữ to hơn
+- Thêm `filter: brightness(1.2)` để màu sắc rực rỡ hơn
 
-### Kết quả mong đợi
-- Thứ tự hiển thị từ trên xuống: Chữ RICH (z-10001) > Thẻ Card Dialog (z-50 default) > Confetti/Pháo hoa (z-9998)
-- Chữ RICH 9 sắc cầu vồng nhảy múa rõ ràng khắp màn hình, TRÊN confetti
-- Pháo hoa vẫn bắn liên tục nhưng không che khuất thẻ card và chữ RICH
+## Kết quả mong đợi
+- Chữ RICH 9 sắc cầu vồng nhảy múa mạnh mẽ, nổi bật khắp màn hình
+- Hiệu ứng hoàn toàn giống nhau giữa Người Gởi và Người Nhận
+- Pháo hoa + confetti vẫn bắn liên tục ở tầng dưới (z-9998)
+- Nhạc rich-3.mp3 vẫn lặp liên tục cho đến khi đóng
+
