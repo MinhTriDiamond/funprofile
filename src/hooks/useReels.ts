@@ -61,9 +61,7 @@ export function useReels(limit = 10) {
     queryKey: ['reels', limit, currentUser?.id],
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke('get-reel-recommendations', {
-        body: null,
-        method: 'GET',
-        headers: {},
+        body: { limit, offset: 0 },
       });
       
       // Fallback: direct query if edge function fails

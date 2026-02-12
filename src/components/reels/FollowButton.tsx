@@ -1,6 +1,7 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
+import { toast } from 'sonner';
 
 interface FollowButtonProps {
   userId: string;
@@ -8,6 +9,7 @@ interface FollowButtonProps {
 
 export const FollowButton = ({ userId }: FollowButtonProps) => {
   const { t } = useLanguage();
+  const queryClient = useQueryClient();
 
   const { data: currentUser } = useQuery({
     queryKey: ['current-user-follow'],
@@ -18,7 +20,7 @@ export const FollowButton = ({ userId }: FollowButtonProps) => {
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: isFollowing } = useQuery({
+  const { data: friendshipStatus } = useQuery({
     queryKey: ['is-following', userId, currentUser?.id],
     queryFn: async () => {
       if (!currentUser || currentUser.id === userId) return null;
@@ -26,16 +28,31 @@ export const FollowButton = ({ userId }: FollowButtonProps) => {
         .from('friendships')
         .select('id, status')
         .or(`and(user_id.eq.${currentUser.id},friend_id.eq.${userId}),and(user_id.eq.${userId},friend_id.eq.${currentUser.id})`)
-        .eq('status', 'accepted')
         .maybeSingle();
-      return !!data;
+      return data;
     },
     enabled: !!currentUser && currentUser.id !== userId,
   });
 
-  if (!currentUser || currentUser.id === userId || isFollowing === null) return null;
+  const sendRequest = useMutation({
+    mutationFn: async () => {
+      if (!currentUser) throw new Error('Login required');
+      const { error } = await supabase.from('friendships').insert({
+        user_id: currentUser.id,
+        friend_id: userId,
+        status: 'pending',
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['is-following', userId] });
+      toast.success('Follow request sent!');
+    },
+  });
 
-  if (isFollowing) {
+  if (!currentUser || currentUser.id === userId) return null;
+
+  if (friendshipStatus?.status === 'accepted') {
     return (
       <span className="text-white/70 text-xs border border-white/30 px-3 py-1 rounded-full">
         {t('reelFollowing')}
@@ -43,8 +60,20 @@ export const FollowButton = ({ userId }: FollowButtonProps) => {
     );
   }
 
+  if (friendshipStatus?.status === 'pending') {
+    return (
+      <span className="text-white/70 text-xs border border-white/30 px-3 py-1 rounded-full">
+        Pending
+      </span>
+    );
+  }
+
   return (
-    <button className="text-white text-xs font-semibold border border-white px-3 py-1 rounded-full hover:bg-white/20 transition-colors">
+    <button
+      onClick={() => sendRequest.mutate()}
+      disabled={sendRequest.isPending}
+      className="text-white text-xs font-semibold border border-white px-3 py-1 rounded-full hover:bg-white/20 transition-colors disabled:opacity-50"
+    >
       {t('reelFollow')}
     </button>
   );
