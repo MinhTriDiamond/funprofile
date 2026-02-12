@@ -126,13 +126,13 @@ serve(async (req) => {
     // Get user wallet address
     const { data: profile } = await supabase
       .from('profiles')
-      .select('custodial_wallet_address, external_wallet_address, default_wallet_type')
+      .select('public_wallet_address, custodial_wallet_address, external_wallet_address')
       .eq('id', userId)
       .single();
 
-    const walletAddress = profile?.default_wallet_type === 'external' 
-      ? profile?.external_wallet_address 
-      : profile?.custodial_wallet_address;
+    const walletAddress = profile?.public_wallet_address 
+      || profile?.custodial_wallet_address 
+      || profile?.external_wallet_address;
 
     if (!walletAddress) {
       return new Response(JSON.stringify({ error: 'No wallet address configured' }), {
