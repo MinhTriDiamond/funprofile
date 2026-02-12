@@ -34,7 +34,7 @@ const Users = () => {
           <div className="inline-flex items-center justify-center gap-2 mb-2">
             <Gift className="w-8 h-8 text-red-500" />
             <h1
-              className="text-2xl md:text-3xl font-black tracking-wider uppercase"
+              className="text-[28px] md:text-[36px] font-black tracking-wider uppercase"
               style={{
                 background: 'linear-gradient(90deg, #dc2626, #f59e0b, #dc2626)',
                 WebkitBackgroundClip: 'text',
@@ -46,7 +46,16 @@ const Users = () => {
             </h1>
             <Gift className="w-8 h-8 text-red-500" />
           </div>
-          <p className="text-amber-500 font-semibold text-sm md:text-base">
+          <p
+            className="font-bold text-[19px] md:text-[21px] tracking-wide"
+            style={{
+              background: 'linear-gradient(90deg, #d4a017, #f5d060, #e6b422, #f5d060, #d4a017)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              filter: 'drop-shadow(0 1px 2px rgba(212, 160, 23, 0.4))',
+            }}
+          >
             Chương trình Lì Xì 26.000.000.000 đồng
           </p>
         </div>
