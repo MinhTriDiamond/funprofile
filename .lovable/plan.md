@@ -1,38 +1,50 @@
 
 
-# Fix lỗi đăng bài: "supabase.auth.getClaims is not a function"
+# Fix lỗi kẹt màn hình "Đang kiểm tra..."
 
 ## Nguyên nhân
 
-Edge function `create-post` sử dụng `supabase.auth.getClaims(token)` -- nhưng method này **không tồn tại** trong phiên bản Supabase JS client `@2.49.1` đang dùng. Đây là lý do bài viết không thể đăng được.
+Component `LawOfLightGuard` không có `try/catch` bao quanh các lời gọi async (`getSession`, query `profiles`). Khi kết nối database chậm hoặc lỗi mạng, `isChecking` giữ nguyên `true` mãi mãi, khiến UI hiển thị spinner vĩnh viễn.
+
+Ngoài ra, một số nhánh code (redirect cases) gọi `navigate()` nhưng không set `isChecking = false`, gây treo nếu navigate không hoạt động như mong đợi.
 
 ## Giải pháp
 
-Thay `getClaims(token)` bằng `getUser(token)` -- giống cách các edge function khác đang hoạt động tốt (ví dụ `record-donation`).
+### `src/components/auth/LawOfLightGuard.tsx`
 
-## Thay đổi cần thực hiện
+1. Bọc toàn bộ logic trong `try/catch` -- nếu có lỗi, vẫn cho phép truy cập (fail-open) thay vì kẹt spinner
+2. Thêm timeout 8 giây -- nếu kiểm tra quá lâu, tự động cho qua
+3. Đảm bảo mọi nhánh code đều set `isChecking = false` (kể cả khi navigate)
 
-### `supabase/functions/create-post/index.ts`
+Thay doi chinh:
 
-Thay đoạn xác thực user (dòng 71-83):
-
-**Trước:**
 ```typescript
-const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
-if (claimsError || !claimsData?.claims) { ... }
-const userId = claimsData.claims.sub as string;
-```
+useEffect(() => {
+  const checkLawOfLightAcceptance = async () => {
+    try {
+      // ... existing logic giữ nguyên ...
+    } catch (error) {
+      console.error('[LawOfLightGuard] Error:', error);
+      // Fail-open: cho phép truy cập thay vì kẹt spinner
+      setIsAllowed(true);
+    } finally {
+      setIsChecking(false); // Luôn tắt spinner
+    }
+  };
 
-**Sau:**
-```typescript
-const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-if (authError || !user) { ... }
-const userId = user.id;
-```
+  // Timeout safety: 8 giây max
+  const timeout = setTimeout(() => {
+    setIsChecking(false);
+    setIsAllowed(true);
+  }, 8000);
 
-Chỉ sửa 1 file, thay 3 dòng. Toàn bộ logic tạo bài viết, duplicate detection, media, tags giữ nguyên.
+  checkLawOfLightAcceptance();
+  return () => clearTimeout(timeout);
+}, [...]);
+```
 
 ## Kết quả mong đợi
-- Đăng bài với text, ảnh, video hoạt động bình thường trở lại
-- Không còn lỗi "getClaims is not a function"
+- Không bao giờ kẹt ở "Đang kiểm tra..." vĩnh viễn
+- Nếu database chậm/lỗi, sau tối đa 8 giây sẽ tự cho qua
+- Logic Law of Light vẫn hoạt động bình thường khi kết nối ổn định
 
