@@ -637,6 +637,105 @@ export type Database = {
         }
         Relationships: []
       }
+      fun_distribution_logs: {
+        Row: {
+          action_id: string
+          actor_id: string
+          created_at: string | null
+          fund_processed_at: string | null
+          fund_processing_status: string | null
+          fund_tx_hashes: Json | null
+          genesis_amount: number | null
+          genesis_percentage: number | null
+          id: string
+          mint_request_id: string | null
+          partners_amount: number | null
+          partners_percentage: number | null
+          platform_amount: number | null
+          platform_percentage: number | null
+          total_reward: number
+          user_amount: number
+          user_percentage: number
+        }
+        Insert: {
+          action_id: string
+          actor_id: string
+          created_at?: string | null
+          fund_processed_at?: string | null
+          fund_processing_status?: string | null
+          fund_tx_hashes?: Json | null
+          genesis_amount?: number | null
+          genesis_percentage?: number | null
+          id?: string
+          mint_request_id?: string | null
+          partners_amount?: number | null
+          partners_percentage?: number | null
+          platform_amount?: number | null
+          platform_percentage?: number | null
+          total_reward?: number
+          user_amount?: number
+          user_percentage?: number
+        }
+        Update: {
+          action_id?: string
+          actor_id?: string
+          created_at?: string | null
+          fund_processed_at?: string | null
+          fund_processing_status?: string | null
+          fund_tx_hashes?: Json | null
+          genesis_amount?: number | null
+          genesis_percentage?: number | null
+          id?: string
+          mint_request_id?: string | null
+          partners_amount?: number | null
+          partners_percentage?: number | null
+          platform_amount?: number | null
+          platform_percentage?: number | null
+          total_reward?: number
+          user_amount?: number
+          user_percentage?: number
+        }
+        Relationships: []
+      }
+      fun_pool_config: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          pool_label: string
+          pool_name: string
+          retention_rate: number | null
+          tier_order: number | null
+          updated_at: string | null
+          wallet_address: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          pool_label: string
+          pool_name: string
+          retention_rate?: number | null
+          tier_order?: number | null
+          updated_at?: string | null
+          wallet_address?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          pool_label?: string
+          pool_name?: string
+          retention_rate?: number | null
+          tier_order?: number | null
+          updated_at?: string | null
+          wallet_address?: string | null
+        }
+        Relationships: []
+      }
       light_actions: {
         Row: {
           action_type: string
@@ -1472,6 +1571,298 @@ export type Database = {
           },
         ]
       }
+      pplp_action_caps: {
+        Row: {
+          action_type: string
+          base_reward: number | null
+          cooldown_seconds: number | null
+          created_at: string | null
+          diminishing_factor: number | null
+          diminishing_threshold: number | null
+          id: string
+          is_active: boolean | null
+          max_global_daily: number | null
+          max_per_user_daily: number | null
+          max_per_user_weekly: number | null
+          min_quality_score: number | null
+          multiplier_ranges: Json | null
+          platform_id: string | null
+          thresholds: Json | null
+        }
+        Insert: {
+          action_type: string
+          base_reward?: number | null
+          cooldown_seconds?: number | null
+          created_at?: string | null
+          diminishing_factor?: number | null
+          diminishing_threshold?: number | null
+          id?: string
+          is_active?: boolean | null
+          max_global_daily?: number | null
+          max_per_user_daily?: number | null
+          max_per_user_weekly?: number | null
+          min_quality_score?: number | null
+          multiplier_ranges?: Json | null
+          platform_id?: string | null
+          thresholds?: Json | null
+        }
+        Update: {
+          action_type?: string
+          base_reward?: number | null
+          cooldown_seconds?: number | null
+          created_at?: string | null
+          diminishing_factor?: number | null
+          diminishing_threshold?: number | null
+          id?: string
+          is_active?: boolean | null
+          max_global_daily?: number | null
+          max_per_user_daily?: number | null
+          max_per_user_weekly?: number | null
+          min_quality_score?: number | null
+          multiplier_ranges?: Json | null
+          platform_id?: string | null
+          thresholds?: Json | null
+        }
+        Relationships: []
+      }
+      pplp_actions: {
+        Row: {
+          action_type: string
+          action_type_enum: string | null
+          actor_id: string
+          canonical_hash: string | null
+          created_at: string | null
+          evidence_hash: string | null
+          id: string
+          impact: Json | null
+          integrity: Json | null
+          metadata: Json | null
+          mint_request_hash: string | null
+          minted_at: string | null
+          platform_id: string
+          policy_snapshot: Json | null
+          policy_version: string | null
+          scored_at: string | null
+          status: string | null
+          target_id: string | null
+        }
+        Insert: {
+          action_type: string
+          action_type_enum?: string | null
+          actor_id: string
+          canonical_hash?: string | null
+          created_at?: string | null
+          evidence_hash?: string | null
+          id?: string
+          impact?: Json | null
+          integrity?: Json | null
+          metadata?: Json | null
+          mint_request_hash?: string | null
+          minted_at?: string | null
+          platform_id?: string
+          policy_snapshot?: Json | null
+          policy_version?: string | null
+          scored_at?: string | null
+          status?: string | null
+          target_id?: string | null
+        }
+        Update: {
+          action_type?: string
+          action_type_enum?: string | null
+          actor_id?: string
+          canonical_hash?: string | null
+          created_at?: string | null
+          evidence_hash?: string | null
+          id?: string
+          impact?: Json | null
+          integrity?: Json | null
+          metadata?: Json | null
+          mint_request_hash?: string | null
+          minted_at?: string | null
+          platform_id?: string
+          policy_snapshot?: Json | null
+          policy_version?: string | null
+          scored_at?: string | null
+          status?: string | null
+          target_id?: string | null
+        }
+        Relationships: []
+      }
+      pplp_audits: {
+        Row: {
+          action_id: string | null
+          actor_id: string
+          audit_type: string | null
+          created_at: string | null
+          id: string
+          status: string | null
+        }
+        Insert: {
+          action_id?: string | null
+          actor_id: string
+          audit_type?: string | null
+          created_at?: string | null
+          id?: string
+          status?: string | null
+        }
+        Update: {
+          action_id?: string | null
+          actor_id?: string
+          audit_type?: string | null
+          created_at?: string | null
+          id?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pplp_audits_action_id_fkey"
+            columns: ["action_id"]
+            isOneToOne: false
+            referencedRelation: "pplp_actions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pplp_device_registry: {
+        Row: {
+          device_hash: string
+          flag_reason: string | null
+          id: string
+          is_flagged: boolean | null
+          last_seen: string | null
+          usage_count: number | null
+          user_id: string
+        }
+        Insert: {
+          device_hash: string
+          flag_reason?: string | null
+          id?: string
+          is_flagged?: boolean | null
+          last_seen?: string | null
+          usage_count?: number | null
+          user_id: string
+        }
+        Update: {
+          device_hash?: string
+          flag_reason?: string | null
+          id?: string
+          is_flagged?: boolean | null
+          last_seen?: string | null
+          usage_count?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      pplp_epoch_caps: {
+        Row: {
+          action_counts: Json | null
+          created_at: string | null
+          epoch_date: string
+          epoch_type: string | null
+          id: string
+          total_minted: number | null
+          unique_users: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          action_counts?: Json | null
+          created_at?: string | null
+          epoch_date: string
+          epoch_type?: string | null
+          id?: string
+          total_minted?: number | null
+          unique_users?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          action_counts?: Json | null
+          created_at?: string | null
+          epoch_date?: string
+          epoch_type?: string | null
+          id?: string
+          total_minted?: number | null
+          unique_users?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      pplp_evidences: {
+        Row: {
+          action_id: string | null
+          content_hash: string | null
+          created_at: string | null
+          evidence_type: string
+          evidence_type_enum: string | null
+          id: string
+          metadata: Json | null
+          uri: string | null
+        }
+        Insert: {
+          action_id?: string | null
+          content_hash?: string | null
+          created_at?: string | null
+          evidence_type: string
+          evidence_type_enum?: string | null
+          id?: string
+          metadata?: Json | null
+          uri?: string | null
+        }
+        Update: {
+          action_id?: string | null
+          content_hash?: string | null
+          created_at?: string | null
+          evidence_type?: string
+          evidence_type_enum?: string | null
+          id?: string
+          metadata?: Json | null
+          uri?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pplp_evidences_action_id_fkey"
+            columns: ["action_id"]
+            isOneToOne: false
+            referencedRelation: "pplp_actions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pplp_fraud_signals: {
+        Row: {
+          actor_id: string
+          created_at: string | null
+          details: Json | null
+          id: string
+          is_resolved: boolean | null
+          resolution: string | null
+          severity: number | null
+          signal_type: string
+          source: string | null
+        }
+        Insert: {
+          actor_id: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          is_resolved?: boolean | null
+          resolution?: string | null
+          severity?: number | null
+          signal_type: string
+          source?: string | null
+        }
+        Update: {
+          actor_id?: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          is_resolved?: boolean | null
+          resolution?: string | null
+          severity?: number | null
+          signal_type?: string
+          source?: string | null
+        }
+        Relationships: []
+      }
       pplp_mint_requests: {
         Row: {
           action_hash: string | null
@@ -1549,6 +1940,224 @@ export type Database = {
           submitted_at?: string | null
           tx_hash?: string | null
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      pplp_policies: {
+        Row: {
+          action_configs: Json | null
+          caps: Json | null
+          created_at: string | null
+          formulas: Json | null
+          id: string
+          is_active: boolean | null
+          policy_hash: string | null
+          thresholds: Json | null
+          version: string
+        }
+        Insert: {
+          action_configs?: Json | null
+          caps?: Json | null
+          created_at?: string | null
+          formulas?: Json | null
+          id?: string
+          is_active?: boolean | null
+          policy_hash?: string | null
+          thresholds?: Json | null
+          version: string
+        }
+        Update: {
+          action_configs?: Json | null
+          caps?: Json | null
+          created_at?: string | null
+          formulas?: Json | null
+          id?: string
+          is_active?: boolean | null
+          policy_hash?: string | null
+          thresholds?: Json | null
+          version?: string
+        }
+        Relationships: []
+      }
+      pplp_scores: {
+        Row: {
+          action_id: string | null
+          base_reward: number | null
+          created_at: string | null
+          decision: string
+          decision_reason: string | null
+          fail_reasons: string[] | null
+          final_reward: number
+          id: string
+          light_score: number
+          multiplier_i: number | null
+          multiplier_k: number | null
+          multiplier_q: number | null
+          pillar_c: number
+          pillar_h: number
+          pillar_s: number
+          pillar_t: number
+          pillar_u: number
+          policy_version: string | null
+          scored_by: string | null
+        }
+        Insert: {
+          action_id?: string | null
+          base_reward?: number | null
+          created_at?: string | null
+          decision?: string
+          decision_reason?: string | null
+          fail_reasons?: string[] | null
+          final_reward?: number
+          id?: string
+          light_score?: number
+          multiplier_i?: number | null
+          multiplier_k?: number | null
+          multiplier_q?: number | null
+          pillar_c?: number
+          pillar_h?: number
+          pillar_s?: number
+          pillar_t?: number
+          pillar_u?: number
+          policy_version?: string | null
+          scored_by?: string | null
+        }
+        Update: {
+          action_id?: string | null
+          base_reward?: number | null
+          created_at?: string | null
+          decision?: string
+          decision_reason?: string | null
+          fail_reasons?: string[] | null
+          final_reward?: number
+          id?: string
+          light_score?: number
+          multiplier_i?: number | null
+          multiplier_k?: number | null
+          multiplier_q?: number | null
+          pillar_c?: number
+          pillar_h?: number
+          pillar_s?: number
+          pillar_t?: number
+          pillar_u?: number
+          policy_version?: string | null
+          scored_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pplp_scores_action_id_fkey"
+            columns: ["action_id"]
+            isOneToOne: true
+            referencedRelation: "pplp_actions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pplp_user_caps: {
+        Row: {
+          action_counts: Json | null
+          created_at: string | null
+          epoch_date: string
+          epoch_type: string | null
+          id: string
+          last_action_at: string | null
+          total_minted: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          action_counts?: Json | null
+          created_at?: string | null
+          epoch_date?: string
+          epoch_type?: string | null
+          id?: string
+          last_action_at?: string | null
+          total_minted?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          action_counts?: Json | null
+          created_at?: string | null
+          epoch_date?: string
+          epoch_type?: string | null
+          id?: string
+          last_action_at?: string | null
+          total_minted?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      pplp_user_nonces: {
+        Row: {
+          current_nonce: number | null
+          last_used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          current_nonce?: number | null
+          last_used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          current_nonce?: number | null
+          last_used_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      pplp_user_tiers: {
+        Row: {
+          cap_multiplier: number | null
+          created_at: string | null
+          failed_actions: number | null
+          fraud_flags: number | null
+          id: string
+          known_device_hashes: string[] | null
+          last_device_hash: string | null
+          last_tier_change: string | null
+          passed_actions: number | null
+          tier: number | null
+          tier_change_reason: string | null
+          total_actions_scored: number | null
+          trust_score: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          cap_multiplier?: number | null
+          created_at?: string | null
+          failed_actions?: number | null
+          fraud_flags?: number | null
+          id?: string
+          known_device_hashes?: string[] | null
+          last_device_hash?: string | null
+          last_tier_change?: string | null
+          passed_actions?: number | null
+          tier?: number | null
+          tier_change_reason?: string | null
+          total_actions_scored?: number | null
+          trust_score?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          cap_multiplier?: number | null
+          created_at?: string | null
+          failed_actions?: number | null
+          fraud_flags?: number | null
+          id?: string
+          known_device_hashes?: string[] | null
+          last_device_hash?: string | null
+          last_tier_change?: string | null
+          passed_actions?: number | null
+          tier?: number | null
+          tier_change_reason?: string | null
+          total_actions_scored?: number | null
+          trust_score?: number | null
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: []
@@ -2172,12 +2781,17 @@ export type Database = {
         Args: { p_key: string; p_limit: number; p_window_ms?: number }
         Returns: Json
       }
+      check_user_cap_and_update: {
+        Args: { _action_type: string; _reward_amount: number; _user_id: string }
+        Returns: Json
+      }
       cleanup_expired_oauth_data: { Args: never; Returns: undefined }
       delete_storage_object: {
         Args: { bucket_name: string; object_path: string }
         Returns: undefined
       }
       end_livestream: { Args: { p_livestream_id: string }; Returns: boolean }
+      expire_old_mint_requests_v2: { Args: never; Returns: number }
       generate_secure_token: { Args: { length?: number }; Returns: string }
       get_app_stats: {
         Args: never
@@ -2236,6 +2850,7 @@ export type Database = {
           tx_hash: string
         }[]
       }
+      get_next_nonce: { Args: { _user_id: string }; Returns: number }
       get_recipient_leaderboard: {
         Args: { p_limit?: number; p_offset?: number; p_time_range?: string }
         Returns: {
