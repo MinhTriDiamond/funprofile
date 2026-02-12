@@ -69,7 +69,7 @@ export const DonationCelebration = ({ isActive, showRichText = false }: Donation
   if (!isActive) return null;
 
   return (
-    <div className="fixed inset-0 pointer-events-none z-[100]">
+    <div className="fixed inset-0 pointer-events-none z-[200]">
       {/* Falling coins */}
       <div className="absolute inset-0 overflow-hidden">
         {[...Array(20)].map((_, i) => (
@@ -112,7 +112,8 @@ export const DonationCelebration = ({ isActive, showRichText = false }: Donation
                 animationDelay: item.delay,
                 animationDuration: item.duration,
                 transform: `rotate(${item.rotation}deg)`,
-                textShadow: `0 0 10px ${item.color}, 0 0 20px ${item.color}`,
+                textShadow: `1px 1px 2px rgba(0,0,0,0.5), 0 0 4px ${item.color}`,
+                WebkitTextStroke: `1px rgba(0,0,0,0.3)`,
               }}
             >
               RICH
