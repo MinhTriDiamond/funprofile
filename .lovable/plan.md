@@ -1,98 +1,46 @@
 
+# Cập nhật giao diện Tặng Quà & Thẻ Chúc Mừng
 
-# Cập nhật tiếng Việt có dấu cho trang đăng bài
+## 4 thay đổi chính
 
-## Vấn đề
-Component `FacebookCreatePost.tsx` và `Post.tsx` có nhiều chuỗi tiếng Việt được viết trực tiếp (hardcoded) thay vì sử dụng hệ thống đa ngôn ngữ `t()`. Điều này khiến:
-- Khi người dùng chuyển sang ngôn ngữ khác, vẫn thấy tiếng Việt
-- Không thống nhất với phần còn lại của ứng dụng
+### 1. Thay logo trên thẻ chúc mừng
+Thay logo `camly-coin-rainbow.png` (hình tĩnh) bằng file GIF mới do con upload (`Bản_sao_của_Bản_sao_của_LOGO_FUN_ECOSYSTEM_18_1_2026_1920_x_1920_px_13.gif`). Logo mới sẽ được áp dụng trên tất cả các thẻ chúc mừng:
+- `DonationReceivedCard.tsx` (thẻ nhận quà)
+- `DonationSuccessCard.tsx` (thẻ gửi quà)
+- `GiftCelebrationModal.tsx` (thẻ chúc mừng chính)
+- `ClaimRewardDialog.tsx` (claim CAMLY)
+- `ClaimFunDialog.tsx` (claim FUN)
 
-## Phạm vi thay đổi
+### 2. Gỡ bỏ nút lăn chuột (spinner) và nút MAX trong ô Số lượng
+Trong `UnifiedGiftSendDialog.tsx`:
+- Chuyển input từ `type="number"` sang `type="text"` để loại bỏ hoàn toàn nút tăng/giảm (spinner arrows)
+- Thêm CSS ẩn spinner cho trình duyệt (Chrome/Firefox)
+- Xóa nút "MAX" bên cạnh ô nhập số lượng
+- Giữ nguyên logic nhập liệu, chỉ cho phép nhập số
 
-### 1. Thêm translation keys mới vào `src/i18n/translations.ts`
+### 3. Đồng bộ Profile + Username + Địa chỉ ví trong mục Người nhận
+Cập nhật query tìm kiếm trong `UnifiedGiftSendDialog.tsx`:
+- Thêm cột `custodial_wallet_address` vào `selectFields` để đồng bộ đầy đủ 3 loại ví
+- Hiển thị thêm địa chỉ ví (rút gọn) ngay dưới username trong kết quả tìm kiếm
+- Đảm bảo hàm `resolveWalletAddress` đã tìm đúng thứ tự ưu tiên: `public_wallet_address` > `custodial_wallet_address` > `wallet_address`
 
-Thêm các key cho tất cả chuỗi hardcoded trong flow đăng bài:
+### 4. Hiệu ứng chữ "RICH" nhảy múa trên thẻ chúc mừng
+Thêm hiệu ứng chữ "RICH" bay nhảy trực tiếp bên trong thẻ chúc mừng (không chỉ ở lớp nền mà còn xung quanh nội dung card):
+- Thêm lớp `RICH` text animation vào bên trong `GiftCelebrationModal.tsx`, `DonationReceivedCard.tsx`, và `DonationSuccessCard.tsx`
+- Sử dụng animation `rich-float` đã có sẵn trong tailwind config
+- Chữ "RICH" xuất hiện ở nhiều vị trí ngẫu nhiên với 9 màu cầu vồng, hiệu ứng nhảy múa liên tục
 
-| Key | Tiếng Anh | Tiếng Việt |
-|-----|-----------|------------|
-| `uploadFailed` | Upload failed | Upload thất bại |
-| `fileNotSupported` | File not supported | File không được hỗ trợ |
-| `imageTooLarge` | Image must be smaller than 100MB | Ảnh phải nhỏ hơn 100MB |
-| `videoTooLarge` | Video must be smaller than 10GB | Video phải nhỏ hơn 10GB |
-| `videoTooLong` | Video must be shorter than 120 minutes | Video phải ngắn hơn 120 phút |
-| `cannotReadVideo` | Cannot read video | Không thể đọc video |
-| `onlyOneVideoAtATime` | Only 1 video can be uploaded at a time | Chỉ có thể upload 1 video mỗi lần |
-| `videosSkipped` | other videos skipped | video khác bị bỏ qua |
-| `uploadingLeaveWarning` | Uploading. Are you sure you want to leave? | Đang tải lên. Bạn có chắc muốn rời đi? |
-| `waitForFileUpload` | Please wait for files to finish uploading | Vui lòng đợi file upload xong |
-| `contentTooLongDetail` | Content too long | Nội dung quá dài |
-| `authenticating` | Authenticating... | Đang xác thực... |
-| `preparingMedia` | Preparing media... | Đang chuẩn bị media... |
-| `savingPost` | Saving post... | Đang lưu bài viết... |
-| `uploadingVideo` | Uploading video... | Đang upload video... |
-| `posting` | Posting... | Đang đăng... |
-| `postButton` | Post | Đăng |
-| `cancelButton` | Cancel | Huỷ |
-| `sessionExpired` | Session expired. Please reload and login again. | Phiên đăng nhập hết hạn. Vui lòng tải lại trang và đăng nhập lại. |
-| `postTimeout` | Post timed out, please try again | Đăng bài bị timeout, vui lòng thử lại |
-| `cancelledPost` | Post cancelled | Đã huỷ đăng bài |
-| `cannotPost` | Cannot post | Không thể đăng bài |
-| `serverConnectionError` | Server connection error | Lỗi kết nối với server |
-| `cannotSavePost` | Cannot save post | Không thể lưu bài viết |
-| `duplicatePostMessage` | Post published! However, this content is similar to a previous post so no additional rewards. Create new content to spread more Light! | Bài viết đã được đăng! Tuy nhiên, nội dung này tương tự một bài trước đó nên không được tính thưởng thêm. Hãy sáng tạo nội dung mới để lan tỏa Ánh Sáng nhiều hơn nhé! |
-| `loginToPostMessage` | Please login to post | Vui lòng đăng nhập để đăng bài |
-| `loginButton` | Login | Đăng nhập |
-| `liveVideo` | Live video | Video trực tiếp |
-| `photoVideo` | Photo/Video | Ảnh/video |
-| `feelingActivity` | Feeling/Activity | Cảm xúc/hoạt động |
-| `addToYourPost` | Add to your post | Thêm vào bài viết của bạn |
-| `addPhotoVideo` | Add photo/video | Thêm ảnh/video |
-| `dragAndDrop` | or drag and drop | hoặc kéo và thả |
-| `maxFiles` | max files | tối đa file |
-| `chooseFromDevice` | Choose from device | Chọn từ thiết bị |
-| `readyToPost` | Ready to post | Sẵn sàng đăng |
-| `tagFriends` | Tag friends | Gắn thẻ bạn bè |
-| `gifComingSoon` | GIF (Coming soon) | GIF (Sắp có) |
-| `more` | More | Thêm |
-| `feelingPrefix` | is feeling | đang cảm thấy |
-| `withPrefix` | with | cùng với |
-| `andOthers` | and others | và người khác |
-| `atPrefix` | at | tại |
-| `postNotFound` | Post not found | Bài viết không tồn tại |
-| `postNotFoundDesc` | This post may have been deleted or you don't have permission to view it. | Bài viết này có thể đã bị xóa hoặc bạn không có quyền xem. |
-| `backToHome` | Back to home | Về trang chủ |
-| `goBack` | Go back | Quay lại |
-| `relatedPosts` | Related posts | Bài viết liên quan |
-| `featureInDevelopment` | Feature in development | Chức năng đang phát triển |
+---
 
-Cũng thêm tương ứng cho các ngôn ngữ khác (zh, ja, ko, th).
+## Chi tiết kỹ thuật
 
-### 2. Cập nhật `src/components/feed/FacebookCreatePost.tsx`
+**File mới:**
+- Copy file GIF upload vào `src/assets/tokens/fun-ecosystem-logo.gif`
 
-Thay tất cả chuỗi hardcoded bằng `t('key')`:
-- Toast messages (error, info, success)
-- Button labels (Đăng, Huỷ, Chọn từ thiết bị...)
-- Dialog title (Tạo bài viết)
-- Placeholder text
-- Status text (Sẵn sàng đăng, Thêm vào bài viết...)
-- Feeling/tag/location prefixes (đang cảm thấy, cùng với, tại)
-
-### 3. Cập nhật `src/pages/Post.tsx`
-
-Thay các chuỗi hardcoded:
-- "Bài viết không tồn tại" -> `t('postNotFound')`
-- "Quay lại" -> `t('goBack')`
-- "Về trang chủ" -> `t('backToHome')`
-- "Bài viết liên quan" -> `t('relatedPosts')`
-- "Chức năng đang phát triển" -> `t('featureInDevelopment')`
-
-### 4. Cập nhật `src/pages/Feed.tsx`
-
-Thay chuỗi hardcoded duy nhất còn lại:
-- "Chưa có bài viết nào" -> `t('noPostsYet')` (key đã tồn tại)
-
-## Ghi chú kỹ thuật
-- Không thay đổi logic, chỉ thay chuỗi text
-- Import `useLanguage` vào `Post.tsx` (hiện chưa có)
-- Tổng cộng 3 file cần sửa code + 1 file translations
-
+**File cần sửa:**
+1. `src/components/donations/DonationReceivedCard.tsx` - Thay logo + thêm RICH text
+2. `src/components/donations/DonationSuccessCard.tsx` - Thay logo + thêm RICH text
+3. `src/components/donations/GiftCelebrationModal.tsx` - Thay logo + thêm RICH text
+4. `src/components/wallet/ClaimRewardDialog.tsx` - Thay logo
+5. `src/components/wallet/ClaimFunDialog.tsx` - Thay logo
+6. `src/components/donations/UnifiedGiftSendDialog.tsx` - Gỡ spinner + MAX, cập nhật search query
