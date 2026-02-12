@@ -38,31 +38,19 @@ export const DonationCelebration = ({ isActive, showRichText = false }: Donation
     }
 
     const fireConfetti = () => {
-      confetti({ particleCount: 120, spread: 80, origin: { x: 0.15, y: 0.6 }, colors: RAINBOW_COLORS, ticks: 300, zIndex: 9999 });
-      confetti({ particleCount: 120, spread: 80, origin: { x: 0.85, y: 0.6 }, colors: RAINBOW_COLORS, ticks: 300, zIndex: 9999 });
-      confetti({ particleCount: 80, spread: 120, origin: { x: 0.5, y: 0.2 }, colors: RAINBOW_COLORS, scalar: 1.3, ticks: 300, zIndex: 9999 });
-      confetti({ particleCount: 60, spread: 70, origin: { x: 0.3, y: 0.8 }, colors: RAINBOW_COLORS, ticks: 300, zIndex: 9999 });
-      confetti({ particleCount: 60, spread: 70, origin: { x: 0.7, y: 0.4 }, colors: RAINBOW_COLORS, ticks: 300, zIndex: 9999 });
+      confetti({ particleCount: 45, spread: 80, origin: { x: 0.15, y: 0.6 }, colors: RAINBOW_COLORS, ticks: 150, zIndex: 9999 });
+      confetti({ particleCount: 45, spread: 80, origin: { x: 0.85, y: 0.6 }, colors: RAINBOW_COLORS, ticks: 150, zIndex: 9999 });
+      confetti({ particleCount: 30, spread: 120, origin: { x: 0.5, y: 0.2 }, colors: RAINBOW_COLORS, scalar: 1.3, ticks: 150, zIndex: 9999 });
     };
 
     const fireFirework = () => {
       confetti({
-        particleCount: 150,
+        particleCount: 50,
         spread: 360,
         startVelocity: 50,
         gravity: 1.2,
-        ticks: 300,
+        ticks: 150,
         origin: { x: 0.1 + Math.random() * 0.8, y: 0.9 + Math.random() * 0.1 },
-        colors: RAINBOW_COLORS,
-        zIndex: 9999,
-      });
-      confetti({
-        particleCount: 120,
-        spread: 360,
-        startVelocity: 40,
-        gravity: 1,
-        ticks: 300,
-        origin: { x: Math.random(), y: Math.random() * 0.5 },
         colors: RAINBOW_COLORS,
         zIndex: 9999,
       });
@@ -70,8 +58,8 @@ export const DonationCelebration = ({ isActive, showRichText = false }: Donation
 
     fireConfetti();
     fireFirework();
-    intervalRef.current = setInterval(fireConfetti, 400);
-    fireworkRef.current = setInterval(fireFirework, 800);
+    intervalRef.current = setInterval(fireConfetti, 1500);
+    fireworkRef.current = setInterval(fireFirework, 2500);
 
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
