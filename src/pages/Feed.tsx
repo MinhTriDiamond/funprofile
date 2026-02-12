@@ -134,7 +134,7 @@ const Feed = () => {
                   </div>
                 ) : posts.length === 0 ? (
                   <div className="fb-card p-8 text-center">
-                    <p className="text-muted-foreground">Chưa có bài viết nào</p>
+                    <p className="text-muted-foreground">{t('noPostsYet')}</p>
                   </div>
                 ) : (
                   <div className="space-y-4">

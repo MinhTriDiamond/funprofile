@@ -7,10 +7,12 @@ import { FacebookPostCard } from '@/components/feed/FacebookPostCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Home } from 'lucide-react';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 const Post = () => {
   const { postId } = useParams();
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [post, setPost] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string>('');
@@ -77,13 +79,13 @@ const Post = () => {
               <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
                 <span className="text-5xl">😕</span>
               </div>
-              <h2 className="text-2xl font-bold mb-3">Bài viết không tồn tại</h2>
+               <h2 className="text-2xl font-bold mb-3">{t('postNotFound')}</h2>
               <p className="text-muted-foreground mb-6">
-                Bài viết này có thể đã bị xóa hoặc bạn không có quyền xem.
+                {t('postNotFoundDesc')}
               </p>
               <Button onClick={() => navigate('/')} className="bg-primary hover:bg-primary/90">
                 <Home className="w-4 h-4 mr-2" />
-                Về trang chủ
+                {t('backToHome')}
               </Button>
             </div>
           </div>
@@ -105,7 +107,7 @@ const Post = () => {
             className="mb-4 hover:bg-white"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Quay lại
+            {t('goBack')}
           </Button>
 
           {/* Post Card */}
@@ -117,9 +119,9 @@ const Post = () => {
 
           {/* Related Posts Section */}
           <div className="mt-6 bg-white rounded-xl shadow-sm p-4">
-            <h3 className="font-semibold text-lg mb-4">Bài viết liên quan</h3>
+            <h3 className="font-semibold text-lg mb-4">{t('relatedPosts')}</h3>
             <div className="text-center py-8 text-muted-foreground">
-              <p>Chức năng đang phát triển</p>
+              <p>{t('featureInDevelopment')}</p>
             </div>
           </div>
         </div>

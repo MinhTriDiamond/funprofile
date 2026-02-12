@@ -103,7 +103,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
       },
       onError: (item, error) => {
         console.error('[UploadQueue] Item failed:', item.id, error);
-        toast.error(`Upload thất bại: ${item.file.name}`);
+        toast.error(`${t('uploadFailed')}: ${item.file.name}`);
       },
       onQueueComplete: (items) => {
         console.log('[UploadQueue] All uploads complete:', items.length);
@@ -129,7 +129,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
       const isUploading = uploadQueueRef.current?.isUploading() || videoUploadState === 'uploading' || videoUploadState === 'processing';
       if (isUploading) {
         e.preventDefault();
-        e.returnValue = 'Đang tải lên. Bạn có chắc muốn rời đi?';
+        e.returnValue = t('uploadingLeaveWarning');
         return e.returnValue;
       }
     };
@@ -164,17 +164,17 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
       const isVideo = file.type.startsWith('video/');
 
       if (!isImage && !isVideo) {
-        toast.error(`File "${file.name}" không được hỗ trợ`);
+        toast.error(`${t('fileNotSupported')}: "${file.name}"`);
         continue;
       }
 
       if (isImage && file.size > FILE_LIMITS.IMAGE_MAX_SIZE) {
-        toast.error(`Ảnh "${file.name}" phải nhỏ hơn 100MB`);
+        toast.error(`${t('imageTooLarge')}: "${file.name}"`);
         continue;
       }
 
       if (isVideo && file.size > FILE_LIMITS.VIDEO_MAX_SIZE) {
-        toast.error(`Video "${file.name}" phải nhỏ hơn 10GB`);
+        toast.error(`${t('videoTooLarge')}: "${file.name}"`);
         continue;
       }
 
@@ -182,12 +182,12 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
         try {
           const duration = await getVideoDuration(file);
           if (duration > FILE_LIMITS.VIDEO_MAX_DURATION) {
-            toast.error(`Video "${file.name}" phải ngắn hơn 120 phút`);
+            toast.error(`${t('videoTooLong')}: "${file.name}"`);
             continue;
           }
           videoFiles.push(file);
         } catch (error) {
-          toast.error(`Không thể đọc video "${file.name}"`);
+          toast.error(`${t('cannotReadVideo')}: "${file.name}"`);
         }
       } else {
         imageFiles.push(file);
@@ -202,7 +202,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
       setIsVideoUploading(true);
       setShowMediaUpload(true);
       if (videoFiles.length > 1) {
-        toast.info(`Chỉ có thể upload 1 video mỗi lần. ${videoFiles.length - 1} video khác bị bỏ qua.`);
+        toast.info(`${t('onlyOneVideoAtATime')}. ${videoFiles.length - 1} ${t('videosSkipped')}.`);
       }
     }
 
@@ -260,12 +260,12 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
   const submitAbortRef = useRef<AbortController | null>(null);
 
   const getSubmitButtonText = () => {
-    if (isVideoUploading) return 'Đang upload video...';
+    if (isVideoUploading) return t('uploadingVideo');
     switch (submitStep) {
-      case 'auth': return 'Đang xác thực...';
-      case 'prepare_media': return 'Đang chuẩn bị media...';
-      case 'saving': return 'Đang lưu bài viết...';
-      default: return loading ? 'Đang đăng...' : 'Đăng';
+      case 'auth': return t('authenticating');
+      case 'prepare_media': return t('preparingMedia');
+      case 'saving': return t('savingPost');
+      default: return loading ? t('posting') : t('postButton');
     }
   };
 
@@ -275,7 +275,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
     }
     setLoading(false);
     setSubmitStep('idle');
-    toast.info('Đã huỷ đăng bài');
+    toast.info(t('cancelledPost'));
   };
 
   const handleSubmit = async () => {
@@ -293,24 +293,24 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
     
     // Check if there are still uploads in progress
     if (pendingUploads.length > 0) {
-      toast.error(`Vui lòng đợi ${pendingUploads.length} file upload xong`);
+      toast.error(`${t('waitForFileUpload')} (${pendingUploads.length})`);
       return;
     }
     
     if (!content.trim() && completedMedia.length === 0 && !uppyVideoResult) {
-      toast.error('Vui lòng thêm nội dung hoặc media');
+      toast.error(t('pleaseAddContent'));
       return;
     }
 
     // Check if video is still uploading
     if (isVideoUploading) {
-      toast.error('Vui lòng đợi video upload xong');
+      toast.error(t('waitForVideoUpload'));
       return;
     }
 
     // Check content length before validation
     if (content.length > MAX_CONTENT_LENGTH) {
-      toast.error(`Nội dung quá dài (${content.length.toLocaleString()}/${MAX_CONTENT_LENGTH.toLocaleString()} ký tự)`);
+      toast.error(`${t('contentTooLongDetail')} (${content.length.toLocaleString()}/${MAX_CONTENT_LENGTH.toLocaleString()})`);
       return;
     }
 
@@ -331,7 +331,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
       abortController.abort();
       setLoading(false);
       setSubmitStep('idle');
-      toast.error('Đăng bài bị timeout, vui lòng thử lại');
+      toast.error(t('postTimeout'));
     }, 45000);
 
     setLoading(true);
@@ -369,7 +369,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
       }
 
       if (!session) {
-        throw new Error('Phiên đăng nhập hết hạn. Vui lòng tải lại trang và đăng nhập lại.');
+        throw new Error(t('sessionExpired'));
       }
 
       console.log('[CreatePost] Auth OK, user:', session.user.id.substring(0, 8) + '...');
@@ -438,13 +438,13 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
           console.log('[CreatePost] Assuming success despite JSON parse error');
           result = { ok: true };
         } else {
-          throw new Error('Lỗi kết nối với server');
+          throw new Error(t('serverConnectionError'));
         }
       }
       
       if (!response.ok) {
         console.error('[CreatePost] Edge function error:', result);
-        throw new Error(result.error || 'Không thể lưu bài viết');
+        throw new Error(result.error || t('cannotSavePost'));
       }
 
       console.log('[CreatePost] Success!', result);
@@ -471,7 +471,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
       // Handle duplicate detection - show loving reminder instead of normal toast
       if (result.duplicate_detected) {
         toast.info(
-          'Bài viết đã được đăng! Tuy nhiên, nội dung này tương tự một bài trước đó nên không được tính thưởng thêm. Hãy sáng tạo nội dung mới để lan tỏa Ánh Sáng nhiều hơn nhé! ✨🙏',
+          t('duplicatePostMessage') + ' ✨🙏',
           { duration: 8000 }
         );
         console.log('[CreatePost] Duplicate detected — skipping PPLP evaluate');
@@ -493,7 +493,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
         // Don't show error for user-initiated cancel
       } else {
         console.error('[CreatePost] Error:', error.message, error);
-        toast.error(error.message || 'Không thể đăng bài');
+        toast.error(error.message || t('cannotPost'));
       }
       setVideoUploadState('idle');
     } finally {
@@ -542,13 +542,13 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
           </Avatar>
           <button
             onClick={() => {
-              toast.error('Vui lòng đăng nhập để đăng bài', {
-                action: { label: 'Đăng nhập', onClick: () => navigate('/auth') }
+              toast.error(t('loginToPostMessage'), {
+                action: { label: t('loginButton'), onClick: () => navigate('/auth') }
               });
             }}
             className="flex-1 text-left px-4 py-2.5 bg-muted hover:bg-muted/80 rounded-full text-muted-foreground text-[15px] transition-colors"
           >
-            Bạn đang nghĩ gì thế?
+            {t('whatsOnYourMind')}
           </button>
         </div>
 
@@ -556,36 +556,36 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
           <div className="flex items-center">
             <button
               onClick={() => {
-                toast.error('Vui lòng đăng nhập để đăng bài', {
-                  action: { label: 'Đăng nhập', onClick: () => navigate('/auth') }
+              toast.error(t('loginToPostMessage'), {
+                action: { label: t('loginButton'), onClick: () => navigate('/auth') }
                 });
               }}
               className="flex-1 flex items-center justify-center gap-2 py-2.5 hover:bg-muted rounded-lg transition-colors group"
             >
               <Video className="w-6 h-6 text-destructive" />
-              <span className="font-medium text-muted-foreground text-sm hidden sm:inline">Video trực tiếp</span>
+              <span className="font-medium text-muted-foreground text-sm hidden sm:inline">{t('liveVideo')}</span>
             </button>
             <button
               onClick={() => {
-                toast.error('Vui lòng đăng nhập để đăng bài', {
-                  action: { label: 'Đăng nhập', onClick: () => navigate('/auth') }
+              toast.error(t('loginToPostMessage'), {
+                action: { label: t('loginButton'), onClick: () => navigate('/auth') }
                 });
               }}
               className="flex-1 flex items-center justify-center gap-2 py-2.5 hover:bg-muted rounded-lg transition-colors group"
             >
               <ImagePlus className="w-6 h-6 text-[#45BD62]" />
-              <span className="font-medium text-muted-foreground text-sm hidden sm:inline">Ảnh/video</span>
+              <span className="font-medium text-muted-foreground text-sm hidden sm:inline">{t('photoVideo')}</span>
             </button>
             <button
               onClick={() => {
-                toast.error('Vui lòng đăng nhập để đăng bài', {
-                  action: { label: 'Đăng nhập', onClick: () => navigate('/auth') }
+              toast.error(t('loginToPostMessage'), {
+                action: { label: t('loginButton'), onClick: () => navigate('/auth') }
                 });
               }}
               className="flex-1 flex items-center justify-center gap-2 py-2.5 hover:bg-muted rounded-lg transition-colors group"
             >
               <span className="text-xl sm:text-2xl">😊</span>
-              <span className="font-medium text-muted-foreground text-sm hidden sm:inline">Cảm xúc</span>
+              <span className="font-medium text-muted-foreground text-sm hidden sm:inline">{t('feeling')}</span>
             </button>
           </div>
         </div>
@@ -652,7 +652,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
               className="flex-1 flex items-center justify-center gap-2 py-2.5 hover:bg-muted rounded-lg transition-colors group"
             >
               <Video className="w-6 h-6 text-red-500 group-hover:scale-110 transition-transform" />
-              <span className="font-medium text-muted-foreground text-sm hidden sm:inline">Video trực tiếp</span>
+              <span className="font-medium text-muted-foreground text-sm hidden sm:inline">{t('liveVideo')}</span>
             </button>
             
             {/* Ảnh/video - Opens file picker DIRECTLY (Facebook behavior) */}
@@ -661,7 +661,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
               className="flex-1 flex items-center justify-center gap-2 py-2.5 hover:bg-muted rounded-lg transition-colors group"
             >
               <ImagePlus className="w-6 h-6 text-[#45BD62] group-hover:scale-110 transition-transform" />
-              <span className="font-medium text-muted-foreground text-sm hidden sm:inline">Ảnh/video</span>
+              <span className="font-medium text-muted-foreground text-sm hidden sm:inline">{t('photoVideo')}</span>
             </button>
             
             {/* Cảm xúc/hoạt động - Opens Feeling Dialog */}
@@ -673,7 +673,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
                 {feeling ? feeling.emoji : '😊'}
               </span>
               <span className="font-medium text-muted-foreground text-sm hidden sm:inline">
-                {feeling ? feeling.label : 'Cảm xúc/hoạt động'}
+                {feeling ? feeling.label : t('feeling')}
               </span>
             </button>
           </div>
@@ -684,7 +684,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-[500px] p-0 max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader className="p-4 border-b border-border shrink-0">
-            <DialogTitle className="text-center text-xl font-bold">Tạo bài viết</DialogTitle>
+            <DialogTitle className="text-center text-xl font-bold">{t('createPost')}</DialogTitle>
           </DialogHeader>
 
           <div className="p-4 flex-1 overflow-y-auto">
@@ -705,7 +705,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
                   <span className="font-semibold">{profile.username}</span>
                   {feeling && (
                     <span className="text-muted-foreground text-sm">
-                      {' '}đang cảm thấy{' '}
+                      {' '}{t('feelingPrefix')}{' '}
                       <button
                         onClick={() => setShowFeelingDialog(true)}
                         className="text-foreground font-semibold hover:underline inline-flex items-center gap-1"
@@ -716,21 +716,21 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
                   )}
                   {taggedFriends.length > 0 && (
                     <span className="text-muted-foreground text-sm">
-                      {' '}cùng với{' '}
+                      {' '}{t('withPrefix')}{' '}
                       <button
                         onClick={() => setShowFriendTagDialog(true)}
                         className="text-foreground font-semibold hover:underline"
                       >
                         {taggedFriends.length === 1 
                           ? (taggedFriends[0].full_name || taggedFriends[0].username)
-                          : `${taggedFriends[0].full_name || taggedFriends[0].username} và ${taggedFriends.length - 1} người khác`
+                          : `${taggedFriends[0].full_name || taggedFriends[0].username} ${t('andOthers')} ${taggedFriends.length - 1}`
                         }
                       </button>
                     </span>
                   )}
                   {location && (
                     <span className="text-muted-foreground text-sm">
-                      {' '}tại{' '}
+                      {' '}{t('atPrefix')}{' '}
                       <button
                         onClick={() => setShowLocationDialog(true)}
                         className="text-foreground font-semibold hover:underline"
@@ -840,7 +840,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
                     </Button>
                     <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-black/60 rounded px-2 py-1">
                       <CheckCircle className="w-4 h-4 text-green-400" />
-                      <span className="text-white text-xs font-medium">Sẵn sàng đăng</span>
+                      <span className="text-white text-xs font-medium">{t('readyToPost')}</span>
                     </div>
                     <div className="absolute bottom-2 right-2 flex items-center gap-1 bg-black/60 rounded px-2 py-1">
                       <Video className="w-4 h-4 text-white" />
@@ -854,8 +854,8 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
                     <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-secondary flex items-center justify-center">
                       <ImagePlus className="w-8 h-8 text-muted-foreground" />
                     </div>
-                    <p className="font-medium mb-1">Thêm ảnh/video</p>
-                    <p className="text-sm text-muted-foreground mb-4">hoặc kéo và thả (tối đa {MAX_FILES_PER_POST} file)</p>
+                    <p className="font-medium mb-1">{t('addPhotoVideo')}</p>
+                    <p className="text-sm text-muted-foreground mb-4">{t('dragAndDrop')} ({t('maxFiles')} {MAX_FILES_PER_POST})</p>
                     <Input
                       id="media-upload"
                       type="file"
@@ -870,7 +870,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
                       onClick={() => document.getElementById('media-upload')?.click()}
                       disabled={loading}
                     >
-                      Chọn từ thiết bị
+                      {t('chooseFromDevice')}
                     </Button>
                   </div>
                 ) : uploadItems.length > 0 ? (
@@ -904,7 +904,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
                           disabled={loading}
                         >
                           <ImagePlus className="w-4 h-4 mr-2" />
-                          Thêm ảnh/video
+                          {t('addPhotoVideo')}
                         </Button>
                         <span className="text-sm text-muted-foreground">
                           {uploadItems.length}/{MAX_FILES_PER_POST}
@@ -929,7 +929,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
             {/* Add to Post - Facebook style colored icons */}
             <div className="mt-4 border border-border rounded-lg p-3">
               <div className="flex items-center justify-between">
-                <span className="font-semibold text-sm">Thêm vào bài viết của bạn</span>
+                <span className="font-semibold text-sm">{t('addToYourPost')}</span>
                 <div className="flex items-center gap-0.5 overflow-x-auto scrollbar-hide">
                   {/* Media - Green */}
                   <button
@@ -941,7 +941,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
                     }}
                     className="w-9 h-9 min-w-[36px] rounded-full hover:bg-secondary flex items-center justify-center transition-colors"
                     disabled={loading}
-                    title="Ảnh/Video"
+                    title={t('photoVideo')}
                   >
                     <ImagePlus className="w-6 h-6" style={{ color: '#45BD62' }} />
                   </button>
@@ -958,7 +958,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
                       taggedFriends.length > 0 ? 'bg-blue-100 dark:bg-blue-900/30' : ''
                     }`}
                     disabled={loading}
-                    title="Gắn thẻ bạn bè"
+                    title={t('tagFriends')}
                   >
                     <UserPlus className="w-6 h-6" style={{ color: '#1877F2' }} />
                   </button>
@@ -987,7 +987,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
                   <button 
                     className="w-9 h-9 min-w-[36px] rounded-full hover:bg-secondary flex items-center justify-center transition-colors opacity-50 cursor-not-allowed"
                     disabled
-                    title="GIF (Sắp có)"
+                    title={t('gifComingSoon')}
                   >
                     <Clapperboard className="w-6 h-6" style={{ color: '#3BC7BD' }} />
                   </button>
@@ -996,7 +996,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
                   <button 
                     className="w-9 h-9 min-w-[36px] rounded-full hover:bg-secondary flex items-center justify-center transition-colors"
                     disabled={loading}
-                    title="Thêm"
+                    title={t('more')}
                   >
                     <MoreHorizontal className="w-6 h-6 text-muted-foreground" />
                   </button>
@@ -1014,7 +1014,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
                   onClick={handleCancelSubmit}
                   className="shrink-0"
                 >
-                  Huỷ
+                  {t('cancelButton')}
                 </Button>
               )}
               <Button
