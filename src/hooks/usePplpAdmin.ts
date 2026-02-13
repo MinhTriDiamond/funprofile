@@ -105,6 +105,7 @@ export const usePplpAdmin = () => {
   });
   const [ecosystemStats, setEcosystemStats] = useState<EcosystemStats | null>(null);
   const [isLoadingEcosystem, setIsLoadingEcosystem] = useState(false);
+  const [isBatchCreating, setIsBatchCreating] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
   const [mintRequests, setMintRequests] = useState<MintRequest[]>([]);
@@ -627,6 +628,44 @@ export const usePplpAdmin = () => {
     return successCount;
   }, [submitToChain]);
 
+  // Batch create mint requests for all eligible users
+  const batchCreateMintRequests = useCallback(async (): Promise<{ created: number; skipped_no_wallet: number; rejected_cleaned: number } | null> => {
+    setIsBatchCreating(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('Vui lòng đăng nhập lại');
+        return null;
+      }
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-batch-mint-requests`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to batch create');
+      }
+
+      toast.success(result.message);
+      return result.summary;
+    } catch (error: any) {
+      console.error('[usePplpAdmin] batchCreateMintRequests error:', error);
+      toast.error(`Lỗi: ${error.message}`);
+      return null;
+    } finally {
+      setIsBatchCreating(false);
+    }
+  }, []);
+
   return {
     // State
     isLoading,
@@ -640,6 +679,7 @@ export const usePplpAdmin = () => {
     isSwitching,
     ecosystemStats,
     isLoadingEcosystem,
+    isBatchCreating,
     
     // Actions
     fetchMintRequests,
@@ -654,5 +694,6 @@ export const usePplpAdmin = () => {
     rejectRequest,
     deleteRequest,
     ensureBscTestnet,
+    batchCreateMintRequests,
   };
 };
