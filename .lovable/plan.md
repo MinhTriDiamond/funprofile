@@ -1,111 +1,45 @@
 
 
-# Tạo Trang Mint FUN Money và Nút Mint Trên Navbar
+# Sửa Lỗi Claim FUN Money - Duplicate Detection
 
-## Tổng Quan
+## Vấn Đề
 
-Tạo trang `/mint` riêng biệt (tham khảo angel.fun.rich/mint) và thêm nút "Mint" với logo GIF màu vàng trên thanh điều hướng, nằm bên phải icon Ví.
+Khi người dùng bấm "Claim tất cả 5241 FUN", Edge Function trả lỗi "Duplicate detected" vì:
 
-## Phần 1: Thêm Nút "Mint" Trên Navbar
+- Trước đó, 88 mint requests đã bị reject do sai địa chỉ ví
+- Các light_actions được reset (mint_status = 'approved', mint_request_id = NULL)
+- NHƯNG các action IDs vẫn còn nằm trong mảng `action_ids` của các mint requests cũ (status = confirmed/signed/pending_sig)
+- Edge Function kiểm tra `.overlaps('action_ids', action_ids)` -> thấy trùng -> chặn toàn bộ
 
-### Desktop (FacebookNavbar)
-- Thêm mục "Mint" vào danh sách `iconNavItems`, đặt ngay sau Wallet
-- Sử dụng logo GIF được upload (copy vào `src/assets/tokens/fun-ecosystem-mint.gif`)
-- Chữ "Mint" màu vàng gold trong tooltip
-- Khi nhấn, điều hướng đến `/mint`
+## Kế Hoạch Sửa
 
-### Mobile (MobileBottomNav)
-- Không thay đổi bottom nav (giữ nguyên 5 mục hiện tại)
-- Trang `/mint` vẫn truy cập được từ trang Wallet hoặc qua URL trực tiếp
+### Bước 1: Sửa dữ liệu (Database)
+Cập nhật 3 mint requests cũ (`c2ab87c0`, `4c53d680`, `d7fce8d4`) để loại bỏ các action IDs đã được reset khỏi mảng `action_ids`. Chỉ giữ lại các action IDs mà light_actions vẫn còn trạng thái pending_sig/minted/signed (thuộc về request đó thật sự).
 
-## Phần 2: Tạo Trang `/mint` Mới
+### Bước 2: Sửa Edge Function `pplp-mint-fun`
+Cải thiện logic kiểm tra trùng lặp để thông minh hơn: thay vì chỉ dùng `.overlaps()` trên mảng action_ids, kiểm tra thêm điều kiện `mint_request_id IS NOT NULL` trên bảng `light_actions` để xác nhận action thực sự đang thuộc về một request khác.
 
-Trang này tổng hợp các tính năng mint FUN Money vào một giao diện chuyên biệt, tham khảo từ angel.fun.rich/mint:
+**File sửa**: `supabase/functions/pplp-mint-fun/index.ts`
 
-### Section 1: Header "Mint FUN Money"
-- Badge "Proof of Pure Love Protocol" phía trên
-- Tiêu đề "Mint FUN Money" màu cam/vàng
-- Mô tả: "Claim FUN Money token (BEP-20) về ví của bạn từ các Light Actions đã được Angel AI xác nhận"
+Thay đổi logic anti-duplicate (khoảng dòng 95-110):
+- Thay vì dùng `.overlaps('action_ids', action_ids)`, kiểm tra trực tiếp trên bảng `light_actions`
+- Chỉ coi là "duplicate" nếu action có `mint_request_id IS NOT NULL` VÀ request đó có status KHÔNG phải failed/rejected
 
-### Section 2: Thông Báo Quan Trọng
-- Banner cảnh báo: "FUN Money đang chạy trên BSC Testnet. Bạn cần tBNB để trả phí gas."
-- Link "Lấy tBNB miễn phí" dẫn đến faucet
-
-### Section 3: Hướng Dẫn Activate & Claim (4 bước)
-1. Kết nối ví MetaMask vào BSC Testnet (Chain ID: 97)
-2. Kiểm tra mục "Token Lifecycle" - số Locked
-3. Nhấn "Activate All" - chuyển Locked sang Activated
-4. Nhấn "Claim All" - FUN chuyển về ví cá nhân
-
-### Section 4: FUN Money On-Chain (2 cột trên desktop)
-**Cột trái:**
-- Card "FUN Money On-Chain" hiển thị địa chỉ ví, số dư, BSCScan link
-- Trạng thái Locked / Activated (đã có `FunBalanceCard`)
-- Token Lifecycle: Locked, Activated, Flowing
-- Pipeline Progress bar
-- Nút Activate & Claim
-- Phần "Cách thức hoạt động" (5 bước)
-
-**Cột phải:**
-- Thống kê tổng quan: Chưa gửi / Đang chờ duyệt / Đã mint
-- Danh sách "Light Actions của bạn" với nút "Làm mới"
-- Mỗi action card hiển thị: loại hành động, thời gian, Light Score, 5 cột trụ (S/T/H/C/U), Reward, trạng thái
-
-### Section 5: Trạng Thái Action Cards
-- "Sẵn sàng mint" (badge xanh lá) - có nút claim
-- "Đang chờ Admin phê duyệt" (badge vàng)
-- "Đang xử lý..." (badge xám)
-- "Đã nhận FUN" (badge xanh) - link "Xem trên BSCScan"
-- "Đã mint on-chain" (badge xanh đậm)
-
-## Chi Tiết Kỹ Thuật
-
-### Files mới:
-1. `src/pages/Mint.tsx` - Trang chính
-2. `src/components/mint/MintHeader.tsx` - Header + hướng dẫn
-3. `src/components/mint/MintGuide.tsx` - 4 bước hướng dẫn
-4. `src/components/mint/LightActionCard.tsx` - Card hiển thị từng action
-5. `src/components/mint/LightActionsList.tsx` - Danh sách actions với thống kê
-6. `src/components/mint/MintOnChainPanel.tsx` - Panel bên trái (balance + lifecycle)
-7. `src/components/mint/HowItWorks.tsx` - Phần cách thức hoạt động
-8. Copy file GIF logo vào `src/assets/tokens/fun-ecosystem-mint.gif`
-
-### Files sửa:
-1. `src/App.tsx` - Thêm route `/mint`
-2. `src/components/layout/FacebookNavbar.tsx` - Thêm nút Mint sau Wallet
-3. `src/components/layout/MobileBottomNav.tsx` - Không thay đổi (giữ nguyên)
-
-### Dữ liệu sử dụng:
-- Hook `usePendingActions` - lấy tất cả light actions chờ claim
-- Hook `useFunBalance` - lấy số dư on-chain (locked/activated)
-- Hook `useLightScore` - lấy điểm Light Score và pillars
-- Hook `useMintFun` - thực hiện mint
-- Truy vấn `light_actions` với tất cả trạng thái (approved, pending, minted) để hiển thị lịch sử đầy đủ
-
-### Navbar - Vị trí nút Mint:
-```text
-[Home] [Friends] [Reels] [Chat] [Wallet] [Mint] [Angel AI]
-                                           ^^^^^
-                                    Logo GIF + chữ vàng
+```
+-- Logic mới: Chỉ chặn nếu action thực sự đang gắn với request hợp lệ
+SELECT id FROM light_actions 
+WHERE id IN (action_ids) 
+AND mint_request_id IS NOT NULL
+AND mint_status NOT IN ('approved')
 ```
 
-### Trang Mint - Layout responsive:
-```text
-Desktop (lg+):
-+-------------------------------------------+
-|     Proof of Pure Love Protocol           |
-|        Mint FUN Money                     |
-|     (mô tả + cảnh báo BSC Testnet)       |
-|     (4 bước hướng dẫn)                    |
-+-------------------+-----------------------+
-| FUN Money On-Chain| Light Actions của bạn |
-| - Số dư           | - Thống kê           |
-| - Lifecycle        | - Danh sách cards    |
-| - Activate/Claim   | - Trạng thái         |
-| - Cách hoạt động   |                      |
-+-------------------+-----------------------+
+## Tóm Tắt
 
-Mobile:
-Tất cả xếp theo 1 cột dọc
-```
+| Bước | Thay Doi | Mục Dich |
+|------|----------|----------|
+| 1 | Dọn dữ liệu cũ trong DB | Giải phóng 23 action IDs bị kẹt |
+| 2 | Sửa logic Edge Function | Ngăn lỗi tương tự xảy ra trong tương lai |
+
+- **1 file sửa**: `supabase/functions/pplp-mint-fun/index.ts`
+- **1 lần chạy SQL**: Dọn dữ liệu action_ids trong pplp_mint_requests
 
