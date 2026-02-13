@@ -1,91 +1,111 @@
 
-# Sửa Lỗi Claim FUN Money Không Hiển Thị Trong Chờ Ký
 
-## Vấn Đề
+# Tạo Trang Mint FUN Money và Nút Mint Trên Navbar
 
-Khi người dùng bấm "Claim FUN Money" trong trang Wallet, yêu cầu mint **không xuất hiện** trong tab "Chờ ký" của Admin. Nguyên nhân có 2 lỗi:
+## Tổng Quan
 
-### Lỗi 1: Claim chỉ gửi 10 actions (thay vì tất cả)
-- Component `LightScoreDashboard` lấy danh sách actions từ `data.recent_actions` (RPC `get_user_light_score` chỉ trả về **10 actions gần nhất**)
-- Khi bấm Claim, chỉ gửi 10 action IDs đó lên server
-- Kết quả: mint request chỉ có ~150 FUN thay vì 5,091 FUN
+Tạo trang `/mint` riêng biệt (tham khảo angel.fun.rich/mint) và thêm nút "Mint" với logo GIF màu vàng trên thanh điều hướng, nằm bên phải icon Ví.
 
-### Lỗi 2: Kiểm tra ví sử dụng sai trường
-- `LightScoreDashboard` kiểm tra `custodial_wallet_address` và `external_wallet_address`
-- Nhưng edge function `pplp-mint-fun` yêu cầu `public_wallet_address`
-- Người dùng đã cài `public_wallet_address` nhưng hệ thống có thể hiểu sai là "chưa có ví"
+## Phần 1: Thêm Nút "Mint" Trên Navbar
 
-## Kế Hoạch Sửa
+### Desktop (FacebookNavbar)
+- Thêm mục "Mint" vào danh sách `iconNavItems`, đặt ngay sau Wallet
+- Sử dụng logo GIF được upload (copy vào `src/assets/tokens/fun-ecosystem-mint.gif`)
+- Chữ "Mint" màu vàng gold trong tooltip
+- Khi nhấn, điều hướng đến `/mint`
 
-### Bước 1: Sửa `LightScoreDashboard` - Dùng `usePendingActions` thay vì `recent_actions`
-**File**: `src/components/wallet/LightScoreDashboard.tsx`
+### Mobile (MobileBottomNav)
+- Không thay đổi bottom nav (giữ nguyên 5 mục hiện tại)
+- Trang `/mint` vẫn truy cập được từ trang Wallet hoặc qua URL trực tiếp
 
-Thay đổi:
-- Import và sử dụng hook `usePendingActions` (đã có sẵn, dùng trong `ClaimRewardsCard`)
-- Hook này truy vấn **TẤT CẢ** light_actions có `mint_status = 'approved'` (không giới hạn 10)
-- Khi bấm Claim, gửi tất cả action IDs lên server
-- Sửa hàm `handleClaimAll` để dùng actions từ `usePendingActions`
+## Phần 2: Tạo Trang `/mint` Mới
 
-### Bước 2: Sửa kiểm tra ví - Dùng `public_wallet_address`
-**File**: `src/components/wallet/LightScoreDashboard.tsx`
+Trang này tổng hợp các tính năng mint FUN Money vào một giao diện chuyên biệt, tham khảo từ angel.fun.rich/mint:
 
-Thay đổi:
-- Truy vấn `public_wallet_address` thay vì `custodial_wallet_address` và `external_wallet_address`
-- Kiểm tra `!!profile?.public_wallet_address` để xác định người dùng đã cài ví chưa
+### Section 1: Header "Mint FUN Money"
+- Badge "Proof of Pure Love Protocol" phía trên
+- Tiêu đề "Mint FUN Money" màu cam/vàng
+- Mô tả: "Claim FUN Money token (BEP-20) về ví của bạn từ các Light Actions đã được Angel AI xác nhận"
+
+### Section 2: Thông Báo Quan Trọng
+- Banner cảnh báo: "FUN Money đang chạy trên BSC Testnet. Bạn cần tBNB để trả phí gas."
+- Link "Lấy tBNB miễn phí" dẫn đến faucet
+
+### Section 3: Hướng Dẫn Activate & Claim (4 bước)
+1. Kết nối ví MetaMask vào BSC Testnet (Chain ID: 97)
+2. Kiểm tra mục "Token Lifecycle" - số Locked
+3. Nhấn "Activate All" - chuyển Locked sang Activated
+4. Nhấn "Claim All" - FUN chuyển về ví cá nhân
+
+### Section 4: FUN Money On-Chain (2 cột trên desktop)
+**Cột trái:**
+- Card "FUN Money On-Chain" hiển thị địa chỉ ví, số dư, BSCScan link
+- Trạng thái Locked / Activated (đã có `FunBalanceCard`)
+- Token Lifecycle: Locked, Activated, Flowing
+- Pipeline Progress bar
+- Nút Activate & Claim
+- Phần "Cách thức hoạt động" (5 bước)
+
+**Cột phải:**
+- Thống kê tổng quan: Chưa gửi / Đang chờ duyệt / Đã mint
+- Danh sách "Light Actions của bạn" với nút "Làm mới"
+- Mỗi action card hiển thị: loại hành động, thời gian, Light Score, 5 cột trụ (S/T/H/C/U), Reward, trạng thái
+
+### Section 5: Trạng Thái Action Cards
+- "Sẵn sàng mint" (badge xanh lá) - có nút claim
+- "Đang chờ Admin phê duyệt" (badge vàng)
+- "Đang xử lý..." (badge xám)
+- "Đã nhận FUN" (badge xanh) - link "Xem trên BSCScan"
+- "Đã mint on-chain" (badge xanh đậm)
 
 ## Chi Tiết Kỹ Thuật
 
-### File thay đổi: `src/components/wallet/LightScoreDashboard.tsx`
+### Files mới:
+1. `src/pages/Mint.tsx` - Trang chính
+2. `src/components/mint/MintHeader.tsx` - Header + hướng dẫn
+3. `src/components/mint/MintGuide.tsx` - 4 bước hướng dẫn
+4. `src/components/mint/LightActionCard.tsx` - Card hiển thị từng action
+5. `src/components/mint/LightActionsList.tsx` - Danh sách actions với thống kê
+6. `src/components/mint/MintOnChainPanel.tsx` - Panel bên trái (balance + lifecycle)
+7. `src/components/mint/HowItWorks.tsx` - Phần cách thức hoạt động
+8. Copy file GIF logo vào `src/assets/tokens/fun-ecosystem-mint.gif`
 
-**Thay đổi 1** - Import `usePendingActions`:
-```typescript
-// Thêm import
-import { usePendingActions } from '@/hooks/usePendingActions';
+### Files sửa:
+1. `src/App.tsx` - Thêm route `/mint`
+2. `src/components/layout/FacebookNavbar.tsx` - Thêm nút Mint sau Wallet
+3. `src/components/layout/MobileBottomNav.tsx` - Không thay đổi (giữ nguyên)
+
+### Dữ liệu sử dụng:
+- Hook `usePendingActions` - lấy tất cả light actions chờ claim
+- Hook `useFunBalance` - lấy số dư on-chain (locked/activated)
+- Hook `useLightScore` - lấy điểm Light Score và pillars
+- Hook `useMintFun` - thực hiện mint
+- Truy vấn `light_actions` với tất cả trạng thái (approved, pending, minted) để hiển thị lịch sử đầy đủ
+
+### Navbar - Vị trí nút Mint:
+```text
+[Home] [Friends] [Reels] [Chat] [Wallet] [Mint] [Angel AI]
+                                           ^^^^^
+                                    Logo GIF + chữ vàng
 ```
 
-**Thay đổi 2** - Sử dụng hook trong component:
-```typescript
-// Thêm vào component
-const { actions: allPendingActions, totalAmount: pendingTotal, claim, isClaiming: isClaimingActions } = usePendingActions();
+### Trang Mint - Layout responsive:
+```text
+Desktop (lg+):
++-------------------------------------------+
+|     Proof of Pure Love Protocol           |
+|        Mint FUN Money                     |
+|     (mô tả + cảnh báo BSC Testnet)       |
+|     (4 bước hướng dẫn)                    |
++-------------------+-----------------------+
+| FUN Money On-Chain| Light Actions của bạn |
+| - Số dư           | - Thống kê           |
+| - Lifecycle        | - Danh sách cards    |
+| - Activate/Claim   | - Trạng thái         |
+| - Cách hoạt động   |                      |
++-------------------+-----------------------+
+
+Mobile:
+Tất cả xếp theo 1 cột dọc
 ```
 
-**Thay đổi 3** - Sửa kiểm tra ví (dòng 57-63):
-```typescript
-// Trước:
-.select('custodial_wallet_address, external_wallet_address')
-const walletExists = !!(profile?.custodial_wallet_address || profile?.external_wallet_address);
-
-// Sau:
-.select('public_wallet_address')
-const walletExists = !!profile?.public_wallet_address;
-```
-
-**Thay đổi 4** - Sửa hàm `handleClaimAll` (dòng 104-111):
-```typescript
-// Trước: Chỉ gửi 10 actions từ recent_actions
-const pendingActions = data.recent_actions?.filter(a => a.mint_status === 'approved') || [];
-const ids = pendingActions.map(a => a.id);
-const result = await mintPendingActions(ids);
-
-// Sau: Gửi TẤT CẢ actions từ usePendingActions
-const handleClaimAll = async () => {
-  if (allPendingActions.length === 0) return;
-  const actionIds = allPendingActions.map(a => a.id);
-  const result = await claim(actionIds);
-  if (result.success) {
-    refetch();
-  }
-};
-```
-
-**Thay đổi 5** - Cập nhật nút Claim hiển thị đúng số lượng từ `pendingTotal` và trạng thái `isClaimingActions`.
-
-## Tóm Tắt
-
-| STT | Thay đổi | Mục đích |
-|-----|----------|----------|
-| 1 | Dùng `usePendingActions` hook | Lấy TẤT CẢ actions chờ claim (không giới hạn 10) |
-| 2 | Sửa trường kiểm tra ví | Khớp với yêu cầu `public_wallet_address` của edge function |
-
-- **1 file sửa**: `src/components/wallet/LightScoreDashboard.tsx`
-- **0 file mới**
