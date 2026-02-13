@@ -1,69 +1,72 @@
 
 
-# Hồi Lại Từ Chối + Tạo Mint Requests Cho Users Có Ví
+# Hồi Lại 88 Từ Chối + Tạo Mint Requests Cho Users Có Ví
 
-## Van De Phat Hien
+## Tình Trạng Hiện Tại
 
-1. **88 mint requests bị từ chối** cần được hồi lại. Tuy nhiên, tất cả 88 request cũ đều trỏ đến **cùng một địa chỉ ví sai** (0x44d1...3858) - không phải ví riêng của từng user. Vì vậy, không thể chỉ đơn giản chuyển trạng thái về "Chờ ký" mà cần **xóa request cũ** và **tạo request mới** với đúng địa chỉ ví của từng user.
+- **88 mint requests** bị từ chối (rejected) - tất cả trỏ đến cùng 1 địa chỉ ví sai
+- **41 light_actions** đang bị kẹt ở trạng thái "rejected"
+- **180 users** có ví + có actions approved nhưng chưa có mint request trong hàng đợi
+- Chỉ có **6 requests** đang chờ ký
 
-2. **179 users có ví** nhưng chưa có mint request trong hàng đợi. Cần tạo mint requests tự động cho tất cả users này.
+## Giải Pháp
 
-3. **41 light_actions đang bị "rejected"** cần được reset về "approved" để có thể tạo mint request mới.
+### 1. Tạo Edge Function mới: `admin-batch-mint-requests`
 
-## Ke Hoach Sua
+Edge function dành riêng cho Admin thực hiện:
 
-### 1. Tao Edge Function moi: `admin-batch-mint-requests`
-Chức năng: Admin gọi để tự động tạo mint requests cho tất cả users đủ điều kiện.
-
-Logic:
-- Xóa tất cả mint requests bị từ chối (88 requests)
+- Xác thực quyền admin qua bảng `user_roles`
+- Xóa toàn bộ 88 mint requests bị rejected
 - Reset 41 light_actions từ "rejected" về "approved"
-- Tìm tất cả users có light_actions "approved" + có ví (ưu tiên public_wallet_address, fallback wallet_address)
-- Tạo mint request mới cho từng user với đúng địa chỉ ví của họ
-- Trả về kết quả: bao nhiêu request được tạo, bao nhiêu bị bỏ qua (chưa có ví)
+- Tìm tất cả users có light_actions approved + có ví (ưu tiên `public_wallet_address`, fallback `wallet_address`)
+- Tạo mint request mới cho từng user với đúng địa chỉ ví, nonce từ contract, evidence_hash và action_hash
+- Trả về tổng kết: bao nhiêu requests đã tạo, bao nhiêu bỏ qua
 
-### 2. Cap nhat UI: PplpMintTab.tsx
+### 2. Cập nhật UI: `PplpMintTab.tsx`
+
 - Thêm nút "Tạo Mint Requests Hàng Loạt" trong phần Ecosystem Overview
-- Nút hiển thị số lượng users đủ điều kiện (179 users có ví)
-- Hiển thị dialog xác nhận trước khi thực hiện
-- Hiển thị kết quả sau khi hoàn thành (số requests đã tạo)
+- Dialog xác nhận hiển thị số users đủ điều kiện trước khi thực hiện
+- Hiển thị kết quả sau khi hoàn thành
+- Auto-refresh danh sách sau khi tạo xong
 
-### 3. Cap nhat Hook: usePplpAdmin.ts
+### 3. Cập nhật Hook: `usePplpAdmin.ts`
+
 - Thêm hàm `batchCreateMintRequests` gọi edge function mới
-- Thêm state loading cho quá trình batch create
+- Thêm state loading riêng cho quá trình batch create
 
-## Chi Tiet Ky Thuat
+## Chi Tiết Kỹ Thuật
 
-### Edge Function `admin-batch-mint-requests`:
+### Edge Function Logic
+
 ```text
 POST /admin-batch-mint-requests
-Headers: Authorization: Bearer <admin_token>
+Authorization: Bearer <admin_token>
 
-Steps:
-1. Verify admin role
-2. Delete rejected mint requests
-3. Reset rejected light_actions -> approved
-4. For each user with approved actions + wallet:
-   - Group all approved actions
-   - Get nonce from contract
-   - Generate evidence_hash, action_hash
-   - Create pplp_mint_requests record
-   - Update light_actions with mint_request_id
-5. Return summary
+Bước 1: Verify admin role qua user_roles table
+Bước 2: Delete 88 rejected mint requests
+Bước 3: Reset rejected light_actions -> approved (clear mint_request_id)
+Bước 4: Query all users with approved+eligible actions + wallet
+Bước 5: For each user:
+  - Get nonce from BSC Testnet contract
+  - Calculate evidence_hash, action_hash
+  - Create pplp_mint_requests record
+  - Update light_actions with mint_request_id
+Bước 6: Return summary { created, skipped, errors }
 ```
 
-### UI Changes:
+### Thay Đổi UI
+
 ```text
+Phần Ecosystem Overview sẽ thêm:
 +--------------------------------------------------+
-| 🌍 Tổng Quan FUN Money Ecosystem                |
-| [Stats Cards...]                                  |
-|                                                   |
-| [🔄 Hồi lại 88 từ chối] [⚡ Tạo Mint (179 users)]|
+| [Zap icon] Tạo Mint Requests Hàng Loạt (180 users)|
 +--------------------------------------------------+
 ```
 
-### Files can sua:
-1. **Moi**: `supabase/functions/admin-batch-mint-requests/index.ts` - Edge function tạo batch mint requests
-2. **Sua**: `src/hooks/usePplpAdmin.ts` - Thêm hàm `batchCreateMintRequests`
-3. **Sua**: `src/components/admin/PplpMintTab.tsx` - Thêm nút batch create + dialog xác nhận
+### Files cần tạo/sửa
+
+1. **Mới**: `supabase/functions/admin-batch-mint-requests/index.ts`
+2. **Sửa**: `src/hooks/usePplpAdmin.ts` - thêm `batchCreateMintRequests`
+3. **Sửa**: `src/components/admin/PplpMintTab.tsx` - thêm nút + dialog
+4. **Sửa**: `supabase/config.toml` - thêm config cho function mới (verify_jwt = false)
 
