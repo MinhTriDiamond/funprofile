@@ -83,16 +83,16 @@ serve(async (req) => {
     }
 
     const token = authHeader.replace('Bearer ', '');
-    const { data: claimsData, error: authError } = await supabase.auth.getClaims(token);
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
 
-    if (authError || !claimsData?.claims?.sub) {
+    if (authError || !user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const userId = claimsData.claims.sub;
+    const userId = user.id;
 
     const { action_ids } = await req.json();
 
@@ -105,18 +105,19 @@ serve(async (req) => {
 
     console.log(`[PPLP-MINT] Processing mint request for user ${userId}, actions: ${action_ids.length}`);
 
-    // Anti-duplicate check: Check if any of these action_ids are already in a non-failed mint request
-    const { data: existingRequests, error: existingError } = await supabase
-      .from('pplp_mint_requests')
-      .select('id, action_ids, status')
-      .not('status', 'in', '("failed","rejected")')
-      .overlaps('action_ids', action_ids);
+    // Anti-duplicate check: Only block if action is actually linked to an active mint request
+    const { data: duplicateActions, error: dupError } = await supabase
+      .from('light_actions')
+      .select('id, mint_request_id, mint_status')
+      .in('id', action_ids)
+      .not('mint_request_id', 'is', null)
+      .not('mint_status', 'in', '("approved","failed")');
 
-    if (!existingError && existingRequests && existingRequests.length > 0) {
-      console.log(`[PPLP-MINT] Duplicate detected! Actions already in request(s):`, existingRequests.map(r => r.id));
+    if (!dupError && duplicateActions && duplicateActions.length > 0) {
+      console.log(`[PPLP-MINT] Duplicate detected! Actions already linked:`, duplicateActions.map(a => a.id));
       return new Response(JSON.stringify({ 
         error: 'Một số actions đã được claim trước đó. Vui lòng refresh và thử lại.',
-        duplicate_request_ids: existingRequests.map(r => r.id)
+        duplicate_action_ids: duplicateActions.map(a => a.id)
       }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
