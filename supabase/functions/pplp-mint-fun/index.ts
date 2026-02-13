@@ -123,19 +123,20 @@ serve(async (req) => {
       });
     }
 
-    // Get user wallet address
+    // Get user wallet address - ONLY use public_wallet_address from Profile
     const { data: profile } = await supabase
       .from('profiles')
-      .select('public_wallet_address, custodial_wallet_address, external_wallet_address')
+      .select('public_wallet_address')
       .eq('id', userId)
       .single();
 
-    const walletAddress = profile?.public_wallet_address 
-      || profile?.custodial_wallet_address 
-      || profile?.external_wallet_address;
+    const walletAddress = profile?.public_wallet_address;
 
     if (!walletAddress) {
-      return new Response(JSON.stringify({ error: 'No wallet address configured' }), {
+      return new Response(JSON.stringify({ 
+        error: 'Vui lòng cài đặt địa chỉ ví công khai trong trang cá nhân trước khi mint FUN Money.',
+        error_code: 'NO_PUBLIC_WALLET'
+      }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });

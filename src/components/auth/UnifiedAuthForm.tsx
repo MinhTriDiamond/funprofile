@@ -33,26 +33,9 @@ export const UnifiedAuthForm = () => {
         localStorage.removeItem('law_of_light_accepted_pending');
       }
 
-      // Step 2: Create custodial wallet (only if NOT using external wallet)
-      if (!hasExternalWallet) {
-        setSetupStep('wallet');
-        console.log('[Setup] Creating custodial wallet for user:', userId);
-        
-        const { data: walletData, error: walletError } = await supabase.functions.invoke('create-custodial-wallet', {
-          body: { user_id: userId },
-        });
-
-        if (walletError) {
-          console.error('[Setup] Wallet creation error:', walletError);
-          toast.error(t('walletCreationFailed') || 'Failed to create wallet');
-        } else {
-          console.log('[Setup] Custodial wallet created:', walletData);
-        }
-      } else {
-        console.log('[Setup] Skipping wallet creation - user has external wallet');
-      }
-
-      // Note: Soul NFT minting will be done later when user meets conditions
+      // Note: Custodial wallet auto-creation removed.
+      // Users set their own wallet address in Profile settings.
+      // Soul NFT minting will be done later when user meets conditions
 
       setSetupStep('complete');
       toast.success(t('accountSetupComplete'));
