@@ -77,6 +77,8 @@ export interface EcosystemTopUser {
   total_fun: number;
   action_count: number;
   has_wallet: boolean;
+  public_wallet_address: string | null;
+  wallet_address: string | null;
 }
 
 export interface EcosystemStats {

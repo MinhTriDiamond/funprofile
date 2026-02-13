@@ -293,47 +293,73 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
             {ecosystemStats.top_users && ecosystemStats.top_users.length > 0 && (
               <div>
                 <h4 className="font-medium mb-2 flex items-center gap-2">
-                  🏆 Top Users Chờ Claim
+                  🏆 Tất Cả Users Chờ Claim ({ecosystemStats.top_users.length} users)
                 </h4>
                 <div className="border rounded-lg overflow-hidden">
-                  <div className="grid grid-cols-[40px_1fr_120px_80px_80px] gap-2 p-2 bg-muted/50 text-xs font-medium text-muted-foreground">
+                  <div className="grid grid-cols-[40px_1fr_1fr_100px_80px_60px] gap-2 p-2 bg-muted/50 text-xs font-medium text-muted-foreground">
                     <span>#</span>
                     <span>User</span>
+                    <span>Địa chỉ ví</span>
                     <span className="text-right">FUN</span>
                     <span className="text-right">Actions</span>
                     <span className="text-center">Ví</span>
                   </div>
-                  <ScrollArea className="max-h-[300px]">
-                    {ecosystemStats.top_users.map((user: EcosystemTopUser, idx: number) => (
-                      <div key={user.user_id} className="grid grid-cols-[40px_1fr_120px_80px_80px] gap-2 p-2 items-center border-t text-sm hover:bg-muted/30">
-                        <span className="text-muted-foreground font-medium">{idx + 1}</span>
-                        <div className="flex items-center gap-2 min-w-0">
-                          <Avatar className="w-7 h-7">
-                            <AvatarImage src={user.avatar_url || undefined} />
-                            <AvatarFallback className="text-xs">
-                              {user.username?.[0]?.toUpperCase() || 'U'}
-                            </AvatarFallback>
-                          </Avatar>
-                          <a
-                            href={`/profile/${user.user_id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-primary hover:underline truncate text-xs"
-                          >
-                            @{user.username || 'Unknown'}
-                          </a>
+                  <ScrollArea className="h-[500px]">
+                    {ecosystemStats.top_users.map((user: EcosystemTopUser, idx: number) => {
+                      const walletAddr = user.public_wallet_address || user.wallet_address;
+                      const walletStatus = user.has_wallet ? 'primary' : (user.wallet_address ? 'legacy' : 'none');
+                      return (
+                        <div key={user.user_id} className="grid grid-cols-[40px_1fr_1fr_100px_80px_60px] gap-2 p-2 items-center border-t text-sm hover:bg-muted/30">
+                          <span className="text-muted-foreground font-medium">{idx + 1}</span>
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Avatar className="w-7 h-7">
+                              <AvatarImage src={user.avatar_url || undefined} />
+                              <AvatarFallback className="text-xs">
+                                {user.username?.[0]?.toUpperCase() || 'U'}
+                              </AvatarFallback>
+                            </Avatar>
+                            <a
+                              href={`/profile/${user.user_id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-primary hover:underline truncate text-xs"
+                            >
+                              @{user.username || 'Unknown'}
+                            </a>
+                          </div>
+                          <div className="truncate text-xs font-mono text-muted-foreground">
+                            {walletAddr ? (
+                              <a
+                                href={`https://testnet.bscscan.com/address/${walletAddr}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="hover:text-primary hover:underline"
+                                title={walletAddr}
+                              >
+                                {walletAddr.slice(0, 6)}...{walletAddr.slice(-4)}
+                              </a>
+                            ) : (
+                              <span className="text-red-400 italic">Chưa cài ví</span>
+                            )}
+                          </div>
+                          <span className="text-right font-bold text-amber-500">{formatFUN(user.total_fun)}</span>
+                          <span className="text-right text-muted-foreground">{user.action_count}</span>
+                          <div className="flex justify-center" title={
+                            walletStatus === 'primary' ? 'Ví chính thức (public_wallet_address)' :
+                            walletStatus === 'legacy' ? 'Ví cũ (wallet_address) - cần cập nhật' :
+                            'Chưa có ví'
+                          }>
+                            {walletStatus === 'primary' ? (
+                              <CheckCircle className="w-4 h-4 text-green-500" />
+                            ) : walletStatus === 'legacy' ? (
+                              <AlertCircle className="w-4 h-4 text-yellow-500" />
+                            ) : (
+                              <XCircle className="w-4 h-4 text-red-500" />
+                            )}
+                          </div>
                         </div>
-                        <span className="text-right font-bold text-amber-500">{formatFUN(user.total_fun)}</span>
-                        <span className="text-right text-muted-foreground">{user.action_count}</span>
-                        <div className="flex justify-center">
-                          {user.has_wallet ? (
-                            <CheckCircle className="w-4 h-4 text-green-500" />
-                          ) : (
-                            <AlertCircle className="w-4 h-4 text-red-500" />
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </ScrollArea>
                 </div>
               </div>
