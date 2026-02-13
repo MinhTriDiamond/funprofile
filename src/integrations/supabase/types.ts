@@ -3248,6 +3248,7 @@ export type Database = {
         }[]
       }
       get_next_nonce: { Args: { _user_id: string }; Returns: number }
+      get_pplp_admin_stats: { Args: never; Returns: Json }
       get_recipient_leaderboard: {
         Args: { p_limit?: number; p_offset?: number; p_time_range?: string }
         Returns: {

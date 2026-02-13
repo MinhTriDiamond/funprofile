@@ -37,7 +37,7 @@ import {
   MessageCircle,
   Users,
 } from 'lucide-react';
-import { usePplpAdmin, MintRequest, ActionBreakdown } from '@/hooks/usePplpAdmin';
+import { usePplpAdmin, MintRequest, ActionBreakdown, EcosystemTopUser } from '@/hooks/usePplpAdmin';
 import { isAttesterAddress, ATTESTER_ADDRESSES, formatFUN, getTxUrl, MINT_REQUEST_STATUS } from '@/config/pplp';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
@@ -75,6 +75,9 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
     stats,
     isWritePending,
     fetchMintRequests,
+    fetchEcosystemStats,
+    ecosystemStats,
+    isLoadingEcosystem,
     signMintRequest,
     batchSignMintRequests,
     submitToChain,
@@ -102,7 +105,8 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
 
   useEffect(() => {
     fetchMintRequests();
-  }, [fetchMintRequests]);
+    fetchEcosystemStats();
+  }, [fetchMintRequests, fetchEcosystemStats]);
 
   const handleConnectWallet = () => {
     openConnectModal?.();
@@ -110,6 +114,7 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
 
   const handleRefresh = () => {
     fetchMintRequests();
+    fetchEcosystemStats();
     setSelectedIds(new Set());
     setExpandedId(null);
     setActionDetails({});
@@ -246,7 +251,96 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
 
   return (
     <div className="space-y-6">
-      {/* Header with Wallet Connection */}
+      {/* Ecosystem Overview */}
+      {ecosystemStats && (
+        <Card className="border-amber-500/30 bg-gradient-to-br from-amber-500/5 to-transparent">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              🌍 Tổng Quan FUN Money Ecosystem
+              {isLoadingEcosystem && <Loader2 className="w-4 h-4 animate-spin" />}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Stats Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4">
+                <div className="text-sm text-muted-foreground">Tổng FUN chờ claim</div>
+                <div className="text-2xl font-bold text-amber-500">{formatFUN(ecosystemStats.total_approved_fun)}</div>
+                <div className="text-xs text-muted-foreground">{ecosystemStats.total_approved_actions.toLocaleString()} actions</div>
+              </div>
+              <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4">
+                <div className="text-sm text-muted-foreground flex items-center gap-1">
+                  <Wallet className="w-3 h-3" /> Users có ví
+                </div>
+                <div className="text-2xl font-bold text-green-500">{ecosystemStats.users_with_wallet.count}</div>
+                <div className="text-xs text-muted-foreground">{formatFUN(ecosystemStats.users_with_wallet.total_fun)} FUN</div>
+              </div>
+              <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
+                <div className="text-sm text-muted-foreground flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" /> Users chưa có ví
+                </div>
+                <div className="text-2xl font-bold text-red-500">{ecosystemStats.users_without_wallet.count}</div>
+                <div className="text-xs text-muted-foreground">{formatFUN(ecosystemStats.users_without_wallet.total_fun)} FUN</div>
+              </div>
+              <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+                <div className="text-sm text-muted-foreground">Đã mint thành công</div>
+                <div className="text-2xl font-bold text-blue-500">{formatFUN(ecosystemStats.total_minted_fun)}</div>
+                <div className="text-xs text-muted-foreground">{ecosystemStats.total_minted_requests} requests</div>
+              </div>
+            </div>
+
+            {/* Top Users Table */}
+            {ecosystemStats.top_users && ecosystemStats.top_users.length > 0 && (
+              <div>
+                <h4 className="font-medium mb-2 flex items-center gap-2">
+                  🏆 Top Users Chờ Claim
+                </h4>
+                <div className="border rounded-lg overflow-hidden">
+                  <div className="grid grid-cols-[40px_1fr_120px_80px_80px] gap-2 p-2 bg-muted/50 text-xs font-medium text-muted-foreground">
+                    <span>#</span>
+                    <span>User</span>
+                    <span className="text-right">FUN</span>
+                    <span className="text-right">Actions</span>
+                    <span className="text-center">Ví</span>
+                  </div>
+                  <ScrollArea className="max-h-[300px]">
+                    {ecosystemStats.top_users.map((user: EcosystemTopUser, idx: number) => (
+                      <div key={user.user_id} className="grid grid-cols-[40px_1fr_120px_80px_80px] gap-2 p-2 items-center border-t text-sm hover:bg-muted/30">
+                        <span className="text-muted-foreground font-medium">{idx + 1}</span>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Avatar className="w-7 h-7">
+                            <AvatarImage src={user.avatar_url || undefined} />
+                            <AvatarFallback className="text-xs">
+                              {user.username?.[0]?.toUpperCase() || 'U'}
+                            </AvatarFallback>
+                          </Avatar>
+                          <a
+                            href={`/profile/${user.user_id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary hover:underline truncate text-xs"
+                          >
+                            @{user.username || 'Unknown'}
+                          </a>
+                        </div>
+                        <span className="text-right font-bold text-amber-500">{formatFUN(user.total_fun)}</span>
+                        <span className="text-right text-muted-foreground">{user.action_count}</span>
+                        <div className="flex justify-center">
+                          {user.has_wallet ? (
+                            <CheckCircle className="w-4 h-4 text-green-500" />
+                          ) : (
+                            <AlertCircle className="w-4 h-4 text-red-500" />
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </ScrollArea>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle className="flex items-center gap-2">

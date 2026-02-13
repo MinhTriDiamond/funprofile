@@ -70,6 +70,27 @@ export interface MintStats {
   total_minted: number;
 }
 
+export interface EcosystemTopUser {
+  user_id: string;
+  username: string;
+  avatar_url: string | null;
+  total_fun: number;
+  action_count: number;
+  has_wallet: boolean;
+}
+
+export interface EcosystemStats {
+  total_approved_fun: number;
+  total_approved_actions: number;
+  total_minted_fun: number;
+  total_minted_requests: number;
+  pending_sig_fun: number;
+  pending_sig_count: number;
+  users_with_wallet: { count: number; total_fun: number };
+  users_without_wallet: { count: number; total_fun: number };
+  top_users: EcosystemTopUser[];
+}
+
 export const usePplpAdmin = () => {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
@@ -80,6 +101,8 @@ export const usePplpAdmin = () => {
   const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
     hash: writeHash,
   });
+  const [ecosystemStats, setEcosystemStats] = useState<EcosystemStats | null>(null);
+  const [isLoadingEcosystem, setIsLoadingEcosystem] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
   const [mintRequests, setMintRequests] = useState<MintRequest[]>([]);
@@ -157,6 +180,20 @@ export const usePplpAdmin = () => {
       toast.error('Không thể tải danh sách mint requests');
     } finally {
       setIsLoading(false);
+    }
+  }, []);
+
+  // Fetch ecosystem-wide stats via RPC
+  const fetchEcosystemStats = useCallback(async () => {
+    setIsLoadingEcosystem(true);
+    try {
+      const { data, error } = await supabase.rpc('get_pplp_admin_stats');
+      if (error) throw error;
+      setEcosystemStats(data as unknown as EcosystemStats);
+    } catch (error) {
+      console.error('[usePplpAdmin] fetchEcosystemStats error:', error);
+    } finally {
+      setIsLoadingEcosystem(false);
     }
   }, []);
 
@@ -599,9 +636,12 @@ export const usePplpAdmin = () => {
     isConfirming,
     chainId,
     isSwitching,
+    ecosystemStats,
+    isLoadingEcosystem,
     
     // Actions
     fetchMintRequests,
+    fetchEcosystemStats,
     signMintRequest,
     batchSignMintRequests,
     submitToChain,
