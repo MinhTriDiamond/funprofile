@@ -1,45 +1,76 @@
 
 
-# Sửa Lỗi Claim FUN Money - Duplicate Detection
+# Sửa Trang Đăng Nhập Chạy Mượt Mà
 
-## Vấn Đề
+## Vấn Đề Phát Hiện
 
-Khi người dùng bấm "Claim tất cả 5241 FUN", Edge Function trả lỗi "Duplicate detected" vì:
+### 1. Nút đăng nhập bị kẹt "Đang khởi tạo..." (Critical)
+- Khi gọi Edge Function `sso-otp-request`, không có timeout. Nếu function chậm (cold start 5-10s) hoặc lỗi mạng, nút loading kẹt vĩnh viễn.
+- Tương tự với `sso-otp-verify` khi xác minh OTP.
+- `ClassicEmailLogin` cũng có thể bị kẹt nếu Supabase Auth phản hồi chậm.
 
-- Trước đó, 88 mint requests đã bị reject do sai địa chỉ ví
-- Các light_actions được reset (mint_status = 'approved', mint_request_id = NULL)
-- NHƯNG các action IDs vẫn còn nằm trong mảng `action_ids` của các mint requests cũ (status = confirmed/signed/pending_sig)
-- Edge Function kiểm tra `.overlaps('action_ids', action_ids)` -> thấy trùng -> chặn toàn bộ
+### 2. CoinGecko API spam liên tục (Performance)
+- Hook `useTokenBalances` gọi CoinGecko API mỗi 30 giây, kể cả khi không có ví kết nối.
+- Trong preview, tất cả requests đều thất bại ("Failed to fetch"), tạo hàng chục lỗi trong console.
+- Gây lãng phí tài nguyên và có thể ảnh hưởng hiệu năng tổng thể.
 
 ## Kế Hoạch Sửa
 
-### Bước 1: Sửa dữ liệu (Database)
-Cập nhật 3 mint requests cũ (`c2ab87c0`, `4c53d680`, `d7fce8d4`) để loại bỏ các action IDs đã được reset khỏi mảng `action_ids`. Chỉ giữ lại các action IDs mà light_actions vẫn còn trạng thái pending_sig/minted/signed (thuộc về request đó thật sự).
+### Bước 1: Thêm timeout cho các Edge Function calls trong `EmailOtpLogin`
+**File**: `src/components/auth/EmailOtpLogin.tsx`
 
-### Bước 2: Sửa Edge Function `pplp-mint-fun`
-Cải thiện logic kiểm tra trùng lặp để thông minh hơn: thay vì chỉ dùng `.overlaps()` trên mảng action_ids, kiểm tra thêm điều kiện `mint_request_id IS NOT NULL` trên bảng `light_actions` để xác nhận action thực sự đang thuộc về một request khác.
+- Bọc `supabase.functions.invoke('sso-otp-request')` trong `Promise.race` với timeout 15 giây
+- Bọc `supabase.functions.invoke('sso-otp-verify')` tương tự
+- Khi timeout, hiển thị thông báo lỗi rõ ràng ("Kết nối chậm, vui lòng thử lại") và reset loading state
 
-**File sửa**: `supabase/functions/pplp-mint-fun/index.ts`
+### Bước 2: Thêm timeout cho `ClassicEmailLogin`
+**File**: `src/components/auth/ClassicEmailLogin.tsx`
 
-Thay đổi logic anti-duplicate (khoảng dòng 95-110):
-- Thay vì dùng `.overlaps('action_ids', action_ids)`, kiểm tra trực tiếp trên bảng `light_actions`
-- Chỉ coi là "duplicate" nếu action có `mint_request_id IS NOT NULL` VÀ request đó có status KHÔNG phải failed/rejected
+- Bọc `supabase.auth.signInWithPassword` và `supabase.auth.signUp` trong timeout 15 giây
+- Reset loading khi timeout
 
+### Bước 3: Sửa CoinGecko fetch spam trong `useTokenBalances`
+**File**: `src/hooks/useTokenBalances.ts`
+
+- Chỉ fetch prices khi có ví kết nối (`isConnected && address`)
+- Nếu không có ví, dùng fallback prices ngay lập tức thay vì gọi API
+- Giảm tần suất retry khi gặp lỗi (dùng exponential backoff hoặc dừng sau 3 lần thất bại)
+
+## Chi Tiết Kỹ Thuật
+
+### EmailOtpLogin - Timeout pattern:
+```typescript
+const timeoutPromise = new Promise((_, reject) => 
+  setTimeout(() => reject(new Error('Kết nối chậm, vui lòng thử lại')), 15000)
+);
+
+const { data, error } = await Promise.race([
+  supabase.functions.invoke('sso-otp-request', { body: { identifier: email, type: 'email' } }),
+  timeoutPromise
+]);
 ```
--- Logic mới: Chỉ chặn nếu action thực sự đang gắn với request hợp lệ
-SELECT id FROM light_actions 
-WHERE id IN (action_ids) 
-AND mint_request_id IS NOT NULL
-AND mint_status NOT IN ('approved')
+
+### useTokenBalances - Conditional fetch:
+```typescript
+useEffect(() => {
+  if (!isConnected || !address) {
+    // Use fallback prices, don't call API
+    setPrices({ BNB: { usd: 700, ... }, ... });
+    return;
+  }
+  fetchPrices();
+  const interval = setInterval(fetchPrices, 30000);
+  return () => clearInterval(interval);
+}, [isConnected, address]);
 ```
 
 ## Tóm Tắt
 
-| Bước | Thay Doi | Mục Dich |
-|------|----------|----------|
-| 1 | Dọn dữ liệu cũ trong DB | Giải phóng 23 action IDs bị kẹt |
-| 2 | Sửa logic Edge Function | Ngăn lỗi tương tự xảy ra trong tương lai |
+| STT | File | Thay Doi | Muc Dich |
+|-----|------|----------|----------|
+| 1 | EmailOtpLogin.tsx | Timeout 15s cho OTP request/verify | Tránh kẹt loading |
+| 2 | ClassicEmailLogin.tsx | Timeout 15s cho signIn/signUp | Tránh kẹt loading |
+| 3 | useTokenBalances.ts | Conditional fetch khi co vi | Loại bỏ spam API |
 
-- **1 file sửa**: `supabase/functions/pplp-mint-fun/index.ts`
-- **1 lần chạy SQL**: Dọn dữ liệu action_ids trong pplp_mint_requests
+- **3 files sửa**, **0 files mới**
 
