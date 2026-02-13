@@ -116,6 +116,17 @@ export const useTokenBalances = (options?: UseTokenBalancesOptions) => {
     chainId: activeChainId,
   });
 
+  // Fallback prices used when no wallet is connected or on error
+  const fallbackPrices: PriceData = {
+    BNB: { usd: 700, usd_24h_change: 0 },
+    BTCB: { usd: 100000, usd_24h_change: 0 },
+    USDT: { usd: 1, usd_24h_change: 0 },
+    CAMLY: { usd: 0.000004, usd_24h_change: 0 },
+  };
+
+  // Track consecutive failures for backoff
+  const [failCount, setFailCount] = useState(0);
+
   // Fetch prices from CoinGecko
   const fetchPrices = useCallback(async () => {
     try {
@@ -131,41 +142,42 @@ export const useTokenBalances = (options?: UseTokenBalancesOptions) => {
       
       const data = await response.json();
       
-      // Map CoinGecko response to our format
       const priceData: PriceData = {
-        BNB: data[COINGECKO_IDS.BNB] || lastPrices.BNB || { usd: 700, usd_24h_change: 0 },
-        BTCB: data[COINGECKO_IDS.BTCB] || lastPrices.BTCB || { usd: 100000, usd_24h_change: 0 },
-        USDT: data[COINGECKO_IDS.USDT] || lastPrices.USDT || { usd: 1, usd_24h_change: 0 },
-        CAMLY: data[COINGECKO_IDS.CAMLY] || lastPrices.CAMLY || { usd: 0.000004, usd_24h_change: 0 },
+        BNB: data[COINGECKO_IDS.BNB] || lastPrices.BNB || fallbackPrices.BNB,
+        BTCB: data[COINGECKO_IDS.BTCB] || lastPrices.BTCB || fallbackPrices.BTCB,
+        USDT: data[COINGECKO_IDS.USDT] || lastPrices.USDT || fallbackPrices.USDT,
+        CAMLY: data[COINGECKO_IDS.CAMLY] || lastPrices.CAMLY || fallbackPrices.CAMLY,
       };
       
       setPrices(priceData);
       setLastPrices(priceData);
+      setFailCount(0);
       setIsPriceLoading(false);
     } catch (error) {
       console.error('Error fetching prices:', error);
-      // Use last known prices or fallback
       if (Object.keys(lastPrices).length > 0) {
         setPrices(lastPrices);
       } else {
-        // Fallback prices
-        setPrices({
-          BNB: { usd: 700, usd_24h_change: 0 },
-          BTCB: { usd: 100000, usd_24h_change: 0 },
-          USDT: { usd: 1, usd_24h_change: 0 },
-          CAMLY: { usd: 0.000004, usd_24h_change: 0 },
-        });
+        setPrices(fallbackPrices);
       }
+      setFailCount(prev => prev + 1);
       setIsPriceLoading(false);
     }
   }, [lastPrices]);
 
-  // Initial price fetch and 30-second interval
+  // Only fetch prices when wallet is connected; stop after 3 consecutive failures
   useEffect(() => {
+    if (!isConnected || !address) {
+      setPrices(fallbackPrices);
+      setIsPriceLoading(false);
+      return;
+    }
+    if (failCount >= 3) return; // Stop retrying after 3 failures
+
     fetchPrices();
-    const interval = setInterval(fetchPrices, 30000); // Update every 30 seconds
+    const interval = setInterval(fetchPrices, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [isConnected, address, failCount]);
 
   // Parse token balances
   const parseBalance = (value: bigint | undefined, decimals: number): number => {

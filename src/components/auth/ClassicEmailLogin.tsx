@@ -45,17 +45,20 @@ export const ClassicEmailLogin = ({
         setLoading(false);
         return;
       }
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Kết nối chậm, vui lòng thử lại')), 15000)
+      );
+
       if (isLogin) {
         const {
           data,
           error
-        } = await supabase.auth.signInWithPassword({
-          email,
-          password
-        });
+        } = await Promise.race([
+          supabase.auth.signInWithPassword({ email, password }),
+          timeoutPromise,
+        ]);
         if (error) throw error;
         if (data.user) {
-          // Update last_login_platform
           await supabase.from('profiles').update({
             last_login_platform: 'FUN Profile'
           }).eq('id', data.user.id);
@@ -66,19 +69,19 @@ export const ClassicEmailLogin = ({
         const {
           data,
           error
-        } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              username
-            },
-            emailRedirectTo: `${window.location.origin}/`
-          }
-        });
+        } = await Promise.race([
+          supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              data: { username },
+              emailRedirectTo: `${window.location.origin}/`
+            }
+          }),
+          timeoutPromise,
+        ]);
         if (error) throw error;
         if (data.user) {
-          // Update last_login_platform for new user
           setTimeout(async () => {
             await supabase.from('profiles').update({
               last_login_platform: 'FUN Profile'
