@@ -1,58 +1,56 @@
 
 
-# Cai Dat Vi Chinh De Mint FUN Money
+# Cap Nhat He Thong Vi Cho Mint FUN Money
 
-## Van de hien tai
-Edge function `pplp-mint-fun` (dong 127-135) chi doc `custodial_wallet_address` va `external_wallet_address` tu profile, KHONG doc `public_wallet_address`. Do do, FUN Money luon duoc mint ve vi custodial thay vi vi ma con muon.
+## Van De Hien Tai (NGHIEM TRONG)
 
-## Ke hoach sua
+Tat ca cac yeu cau mint FUN Money hien tai deu tro ve **cung mot dia chi vi** (`0x44d1a5...243858`) thay vi vi rieng cua tung user. Nguyen nhan:
+- Edge function `pplp-mint-fun` truoc day su dung custodial wallet lam fallback
+- Nhieu user chua cai dat `public_wallet_address` trong trang ca nhan
+- Tinh nang tu dong tao vi F.U. (custodial) khi dang ky lam nhieu user khong chu dong thiet lap vi rieng
 
-### Buoc 1: Cap nhat edge function `pplp-mint-fun` de uu tien `public_wallet_address`
-Thay doi thu tu uu tien khi doc vi:
-1. `public_wallet_address` (uu tien cao nhat - vi nguoi dung tu chon)
-2. `custodial_wallet_address` (fallback)
-3. `external_wallet_address` (fallback cuoi)
+## Ke Hoach Sua
 
-**File**: `supabase/functions/pplp-mint-fun/index.ts` (dong 127-135)
+### Buoc 1: Cap nhat Edge Function `pplp-mint-fun` - Chi dung `public_wallet_address`
+**File**: `supabase/functions/pplp-mint-fun/index.ts`
 
-Thay doi tu:
+Thay doi logic chon vi:
+- **Bo**: Fallback sang `custodial_wallet_address` va `external_wallet_address`
+- **Chi dung**: `public_wallet_address` tu trang ca nhan
+- Neu user chua cai vi, tra loi loi yeu cau cai dat vi trong Profile truoc
+
 ```typescript
-const { data: profile } = await supabase
-  .from('profiles')
-  .select('custodial_wallet_address, external_wallet_address, default_wallet_type')
-  .eq('id', userId)
-  .single();
-
-const walletAddress = profile?.default_wallet_type === 'external' 
-  ? profile?.external_wallet_address 
-  : profile?.custodial_wallet_address;
-```
-
-Thanh:
-```typescript
-const { data: profile } = await supabase
-  .from('profiles')
-  .select('public_wallet_address, custodial_wallet_address, external_wallet_address')
-  .eq('id', userId)
-  .single();
-
+// Truoc (co fallback):
 const walletAddress = profile?.public_wallet_address 
   || profile?.custodial_wallet_address 
   || profile?.external_wallet_address;
+
+// Sau (chi public_wallet_address):
+const walletAddress = profile?.public_wallet_address;
+if (!walletAddress) {
+  return error('Vui long cai dat dia chi vi cong khai trong trang ca nhan truoc khi mint');
+}
 ```
 
-Logic nay phu hop voi tieu chuan da thiet lap: `public_wallet_address` luon duoc uu tien (xem memory: wallet-address-resolution-logic).
+### Buoc 2: Go bo tu dong tao vi F.U. Wallet khi dang ky
+**File**: `src/components/auth/UnifiedAuthForm.tsx`
 
-### Buoc 2: Cap nhat 2 mint request cu chua hoan thanh
-Cap nhat `recipient_address` cho cac request chua duoc gui on-chain:
-- Request `pending_sig` (1,000 FUN): doi vi tu custodial sang `0x44d1a529...8243858`
-- Request `signed` (1,000 FUN): doi vi tuong tu (vi chua submit on-chain)
+Xoa doan code tu dong goi `create-custodial-wallet` trong ham `handleNewUserSetup` (dong 36-53). User se tu thiet lap vi trong Profile khi can.
 
-Thuc hien bang SQL update truc tiep trong database.
+### Buoc 3: Cap nhat cac mint request cu trong database
+Chay SQL update de cap nhat `recipient_address` cho cac request `pending_sig` chua gui on-chain:
+- Voi user DA co `public_wallet_address`: cap nhat sang dia chi dung
+- Voi user CHUA co `public_wallet_address`: giu nguyen (Admin se tu choi hoac cho user cai vi)
 
-### Tong ket
-- **1 file sua**: `supabase/functions/pplp-mint-fun/index.ts`
-- **1 SQL update**: Cap nhat recipient_address cho 2 mint request cu
+### Tong Ket
+
+| STT | File | Thay doi |
+|-----|------|----------|
+| 1 | `supabase/functions/pplp-mint-fun/index.ts` | Chi dung public_wallet_address, khong fallback |
+| 2 | `src/components/auth/UnifiedAuthForm.tsx` | Go bo tu dong tao custodial wallet |
+| 3 | Database SQL | Cap nhat recipient_address cho mint requests cu |
+
+- **2 file sua**
+- **1 SQL update**
 - **0 file moi**
-- Sau khi sua, tat ca FUN Money mint moi se tu dong gui ve vi `0x44d1a52927465d879D4cc4e76189d87Bf8243858`
 
