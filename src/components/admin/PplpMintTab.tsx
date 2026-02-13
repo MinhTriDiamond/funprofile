@@ -38,6 +38,7 @@ import {
   MessageCircle,
   Users,
   Search,
+  Zap,
 } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
 import { usePplpAdmin, MintRequest, ActionBreakdown, EcosystemTopUser } from '@/hooks/usePplpAdmin';
@@ -89,6 +90,8 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
     fetchActionDetails,
     rejectRequest,
     deleteRequest,
+    batchCreateMintRequests,
+    isBatchCreating,
   } = usePplpAdmin();
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -105,6 +108,8 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
   const [rejectReason, setRejectReason] = useState('');
   const [isRejecting, setIsRejecting] = useState(false);
   const [batchSubmitProgress, setBatchSubmitProgress] = useState<{ current: number; total: number } | null>(null);
+  const [batchCreateDialogOpen, setBatchCreateDialogOpen] = useState(false);
+  const [batchCreateResult, setBatchCreateResult] = useState<{ created: number; skipped_no_wallet: number; rejected_cleaned: number } | null>(null);
 
   // Search & filter state for Top Users
   const [searchQuery, setSearchQuery] = useState('');
@@ -323,6 +328,31 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
                 <div className="text-2xl font-bold text-blue-500">{formatFUN(ecosystemStats.total_minted_fun)}</div>
                 <div className="text-xs text-muted-foreground">{ecosystemStats.total_minted_requests} requests</div>
               </div>
+            </div>
+
+            {/* Batch Create Button */}
+            <div className="flex items-center gap-3">
+              <Button
+                onClick={() => setBatchCreateDialogOpen(true)}
+                disabled={isBatchCreating}
+                className="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white gap-2"
+              >
+                {isBatchCreating ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Zap className="w-4 h-4" />
+                )}
+                Tạo Mint Requests Hàng Loạt
+                {ecosystemStats.users_with_wallet && (
+                  <Badge variant="secondary" className="ml-1">{ecosystemStats.users_with_wallet.count} users</Badge>
+                )}
+              </Button>
+              {batchCreateResult && (
+                <div className="text-sm text-green-600 flex items-center gap-1">
+                  <CheckCircle className="w-4 h-4" />
+                  Đã tạo {batchCreateResult.created} requests, dọn {batchCreateResult.rejected_cleaned} rejected, bỏ qua {batchCreateResult.skipped_no_wallet} (chưa ví)
+                </div>
+              )}
             </div>
 
             {/* Top Users Table */}
@@ -758,6 +788,55 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
                 <XCircle className="w-4 h-4 mr-2" />
               )}
               Xác nhận từ chối
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Batch Create Dialog */}
+      <Dialog open={batchCreateDialogOpen} onOpenChange={setBatchCreateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Zap className="w-5 h-5 text-amber-500" />
+              Tạo Mint Requests Hàng Loạt
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <p className="text-sm text-muted-foreground">
+              Thao tác này sẽ:
+            </p>
+            <ul className="text-sm space-y-1 list-disc pl-5">
+              <li>Xóa tất cả mint requests bị <strong>từ chối</strong></li>
+              <li>Reset light_actions bị rejected về <strong>approved</strong></li>
+              <li>Tạo mint requests mới cho tất cả users có ví + actions approved</li>
+            </ul>
+            <p className="text-sm font-medium text-amber-600">
+              ⚠️ Bạn có chắc chắn muốn thực hiện?
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBatchCreateDialogOpen(false)}>
+              Hủy
+            </Button>
+            <Button
+              onClick={async () => {
+                const result = await batchCreateMintRequests();
+                if (result) {
+                  setBatchCreateResult(result);
+                  setBatchCreateDialogOpen(false);
+                  handleRefresh();
+                }
+              }}
+              disabled={isBatchCreating}
+              className="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white"
+            >
+              {isBatchCreating ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Zap className="w-4 h-4 mr-2" />
+              )}
+              Xác nhận tạo hàng loạt
             </Button>
           </DialogFooter>
         </DialogContent>
