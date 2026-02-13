@@ -136,6 +136,8 @@ export const FacebookNavbar = () => {
     { icon: Wallet, path: '/wallet', label: 'Wallet' },
   ];
 
+  // Mint nav item with GIF logo (inserted after iconNavItems in render)
+
   return (
     <header className="fixed top-0 left-0 right-0 z-50 fb-header h-12 md:h-14 safe-area-top">
       <div className="h-full max-w-screen-2xl mx-auto px-2 sm:px-4 flex items-center justify-between">
@@ -204,7 +206,34 @@ export const FacebookNavbar = () => {
                 </TooltipContent>
               </Tooltip>
             ))}
-            
+
+            {/* Mint Button - GIF Logo + Gold text */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => navigate('/mint')}
+                  aria-label="Mint FUN Money"
+                  className={`flex-1 h-full max-w-[100px] flex items-center justify-center relative transition-all duration-300 rounded-full border-[0.5px] group ${
+                    isActive('/mint')
+                      ? 'text-primary-foreground bg-primary border-[#C9A84C]'
+                      : 'text-foreground hover:bg-gradient-to-r hover:from-amber-500/10 hover:to-yellow-500/10 border-transparent hover:border-amber-500/50'
+                  }`}
+                >
+                  <img
+                    src={new URL('@/assets/tokens/fun-ecosystem-mint.gif', import.meta.url).href}
+                    alt="Mint"
+                    className="w-7 h-7 rounded-full"
+                  />
+                  {isActive('/mint') && (
+                    <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-400 rounded-t-full" />
+                  )}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="bg-gradient-to-r from-amber-500/10 to-yellow-500/10 border-amber-500/30">
+                <p className="text-amber-500 font-semibold">Mint</p>
+              </TooltipContent>
+            </Tooltip>
+
             {/* ANGEL AI Button - Special styling */}
             <Tooltip>
               <TooltipTrigger asChild>
