@@ -606,7 +606,7 @@ export const usePplpAdmin = () => {
     }
   }, []);
 
-  // B8: Batch submit multiple signed requests to chain
+  // B8: Batch submit multiple signed requests to chain (SEQUENTIAL with delay)
   const batchSubmitToChain = useCallback(async (
     requests: MintRequest[],
     onProgress?: (completed: number, total: number) => void,
@@ -617,6 +617,12 @@ export const usePplpAdmin = () => {
       onProgress?.(i, requests.length);
       const txHash = await submitToChain(requests[i]);
       if (txHash) successCount++;
+
+      // Wait 3 seconds between transactions to avoid nonce race conditions
+      if (i < requests.length - 1) {
+        console.log(`[usePplpAdmin] Waiting 3s before next TX (${i + 1}/${requests.length})...`);
+        await new Promise(resolve => setTimeout(resolve, 3000));
+      }
     }
 
     onProgress?.(requests.length, requests.length);
@@ -627,6 +633,93 @@ export const usePplpAdmin = () => {
 
     return successCount;
   }, [submitToChain]);
+
+  // Reconcile failed requests by checking on-chain status
+  const reconcileFailedRequests = useCallback(async (
+    onProgress?: (current: number, total: number, reconciled: number) => void,
+  ): Promise<{ reconciled: number; genuinelyFailed: number; noReceipt: number }> => {
+    const result = { reconciled: 0, genuinelyFailed: 0, noReceipt: 0 };
+
+    try {
+      // Fetch all failed requests that have a tx_hash
+      const { data: failedRequests, error } = await supabase
+        .from('pplp_mint_requests')
+        .select('*')
+        .eq('status', MINT_REQUEST_STATUS.FAILED)
+        .not('tx_hash', 'is', null);
+
+      if (error) throw error;
+      if (!failedRequests || failedRequests.length === 0) {
+        toast.info('Không có request thất bại nào có tx_hash để kiểm tra');
+        return result;
+      }
+
+      toast.info(`Đang kiểm tra ${failedRequests.length} failed requests on-chain...`);
+
+      for (let i = 0; i < failedRequests.length; i++) {
+        const req = failedRequests[i];
+        onProgress?.(i + 1, failedRequests.length, result.reconciled);
+
+        if (!req.tx_hash || !publicClient) {
+          result.noReceipt++;
+          continue;
+        }
+
+        try {
+          const receipt = await publicClient.getTransactionReceipt({
+            hash: req.tx_hash as `0x${string}`,
+          });
+
+          if (receipt.status === 'success') {
+            // TX actually succeeded on-chain! Fix DB
+            await supabase
+              .from('pplp_mint_requests')
+              .update({
+                status: MINT_REQUEST_STATUS.CONFIRMED,
+                confirmed_at: new Date().toISOString(),
+                block_number: Number(receipt.blockNumber),
+                error_message: null,
+              })
+              .eq('id', req.id);
+
+            // Update light_actions to minted
+            if (req.action_ids && req.action_ids.length > 0) {
+              await supabase
+                .from('light_actions')
+                .update({
+                  mint_status: 'minted',
+                  minted_at: new Date().toISOString(),
+                })
+                .in('id', req.action_ids);
+            }
+
+            result.reconciled++;
+            console.log(`[Reconcile] ✅ Request ${req.id} was actually successful! Block #${receipt.blockNumber}`);
+          } else {
+            // Genuinely reverted
+            result.genuinelyFailed++;
+            console.log(`[Reconcile] ❌ Request ${req.id} genuinely reverted on-chain`);
+          }
+        } catch (receiptError: any) {
+          // No receipt found (TX may not exist or was dropped)
+          result.noReceipt++;
+          console.log(`[Reconcile] ⚠️ No receipt for ${req.id}: ${receiptError.message}`);
+        }
+      }
+
+      if (result.reconciled > 0) {
+        toast.success(`✅ Đã khôi phục ${result.reconciled} requests thành công on-chain!`);
+      } else {
+        toast.info('Không có request nào cần khôi phục');
+      }
+
+      return result;
+    } catch (error: any) {
+      console.error('[usePplpAdmin] reconcileFailedRequests error:', error);
+      toast.error(`Lỗi reconcile: ${error.message}`);
+      return result;
+    }
+  }, [publicClient]);
 
   // Batch create mint requests for all eligible users
   const batchCreateMintRequests = useCallback(async (): Promise<{ created: number; skipped_no_wallet: number; rejected_cleaned: number } | null> => {
@@ -695,5 +788,6 @@ export const usePplpAdmin = () => {
     deleteRequest,
     ensureBscTestnet,
     batchCreateMintRequests,
+    reconcileFailedRequests,
   };
 };

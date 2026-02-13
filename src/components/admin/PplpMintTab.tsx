@@ -92,6 +92,7 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
     deleteRequest,
     batchCreateMintRequests,
     isBatchCreating,
+    reconcileFailedRequests,
   } = usePplpAdmin();
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -110,6 +111,9 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
   const [batchSubmitProgress, setBatchSubmitProgress] = useState<{ current: number; total: number } | null>(null);
   const [batchCreateDialogOpen, setBatchCreateDialogOpen] = useState(false);
   const [batchCreateResult, setBatchCreateResult] = useState<{ created: number; skipped_no_wallet: number; rejected_cleaned: number } | null>(null);
+  const [isReconciling, setIsReconciling] = useState(false);
+  const [reconcileProgress, setReconcileProgress] = useState<{ current: number; total: number; reconciled: number } | null>(null);
+  const [reconcileResult, setReconcileResult] = useState<{ reconciled: number; genuinelyFailed: number; noReceipt: number } | null>(null);
 
   // Search & filter state for Top Users
   const [searchQuery, setSearchQuery] = useState('');
@@ -692,6 +696,52 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
                         <Send className="w-4 h-4" />
                       )}
                       Submit hàng loạt ({selectedIds.size})
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Reconcile Failed TXs */}
+              {activeTab === 'failed' && (
+                <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+                  <div className="text-sm text-muted-foreground">
+                    Kiểm tra các TX thất bại trên blockchain để khôi phục các giao dịch thực sự thành công
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {reconcileProgress && (
+                      <span className="text-sm text-muted-foreground">
+                        Đang kiểm tra {reconcileProgress.current}/{reconcileProgress.total}... ({reconcileProgress.reconciled} khôi phục)
+                      </span>
+                    )}
+                    {reconcileResult && !isReconciling && (
+                      <span className="text-sm text-green-600 flex items-center gap-1">
+                        <CheckCircle className="w-4 h-4" />
+                        ✅ {reconcileResult.reconciled} khôi phục, {reconcileResult.genuinelyFailed} thật sự lỗi, {reconcileResult.noReceipt} không tìm thấy
+                      </span>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={isReconciling || !isConnected}
+                      onClick={async () => {
+                        setIsReconciling(true);
+                        setReconcileResult(null);
+                        const result = await reconcileFailedRequests((current, total, reconciled) => {
+                          setReconcileProgress({ current, total, reconciled });
+                        });
+                        setReconcileResult(result);
+                        setReconcileProgress(null);
+                        setIsReconciling(false);
+                        fetchMintRequests();
+                      }}
+                      className="gap-2 border-amber-500/50 text-amber-600 hover:bg-amber-500/10"
+                    >
+                      {isReconciling ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <RotateCcw className="w-4 h-4" />
+                      )}
+                      Reconcile Failed TXs
                     </Button>
                   </div>
                 </div>
