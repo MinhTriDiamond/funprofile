@@ -1,40 +1,89 @@
 
-# Tối Ưu Đăng Nhập - Tăng Timeout và Thêm Auto-Retry
+# Nâng Cấp Admin PPLP Mint - Bảng Thống Kê Toàn Diện FUN Money
 
 ## Vấn Đề
 
-Edge Function `sso-otp-request` hoạt động bình thường (test trực tiếp ~2 giây), nhưng khi gọi từ published site lần đầu, cold start có thể mất >15 giây khiến timeout bắn lỗi "Kết nối chậm, vui lòng thử lại".
+Trang `/mint` của user hiển thị tổng FUN từ tất cả Light Actions đã duyệt (approved), nhưng Admin chỉ thấy các mint requests đã được user bấm "Claim". Điều này gây nhầm lẫn vì:
+- User thấy: 5,241 FUN (tổng approved actions chưa claim)
+- Admin thấy: 1,000 FUN (chỉ mint request đã tạo)
 
-## Kế Hoạch Sửa
+Cần thêm bảng tổng quan toàn diện vào trang Admin để quản lý dễ hơn.
 
-### 1. Tăng timeout từ 15s lên 25s
-Cold start Edge Function có thể mất 10-20 giây. Timeout 15s quá ngắn.
+## Kế Hoạch
 
-### 2. Thêm auto-retry (1 lần) cho OTP request
-Nếu lần gọi đầu timeout (cold start), tự động thử lại 1 lần nữa (lần 2 function đã warm, sẽ nhanh hơn nhiều).
+### 1. Thêm Section "Tổng Quan FUN Money" vào đầu PplpMintTab
 
-### 3. Hiển thị trạng thái rõ ràng hơn khi đang retry
-Thay vì chỉ "Đang khởi tạo...", hiển thị "Đang kết nối..." lần đầu và "Đang thử lại..." khi retry.
+Hiển thị các thông số quan trọng:
 
-## Chi Tiết Kỹ Thuật
+```text
++-----------------------------------------------------------+
+|           TONG QUAN FUN MONEY ECOSYSTEM                   |
++-----------------------------------------------------------+
+| Tong approved  | Users co vi  | Users chua vi | Cho ky    |
+| 1,790,256 FUN  | 21 users     | 178 users     | 3,555 FUN |
+| 11,993 actions | 155,780 FUN  | 1,634,476 FUN | 6 reqs    |
++-----------------------------------------------------------+
+```
 
-### Files sửa:
+### 2. Thêm bảng "Top Users Chờ Claim" 
 
-**1. `src/components/auth/EmailOtpLogin.tsx`**
-- Tăng timeout: 15000 -> 25000ms
-- Thêm auto-retry logic cho `handleSendOtp`: nếu timeout lần 1, tự động thử lại 1 lần (timeout 15s cho lần retry vì function đã warm)
-- Thêm state `retrying` để hiển thị trạng thái "Đang thử lại..."
-- Tương tự cho `handleVerifyOtp`
+Hiển thị danh sách users có nhiều FUN approved nhất, kèm trạng thái ví:
+- Username, avatar
+- Tong FUN approved (chua claim)
+- So actions
+- Trang thai vi (co/khong co wallet)
+- Link den profile
 
-**2. `src/components/auth/ClassicEmailLogin.tsx`**
-- Tăng timeout: 15000 -> 25000ms cho signIn/signUp
-- Classic login gọi trực tiếp Supabase Auth (không qua Edge Function) nên ít bị cold start, chỉ cần tăng timeout
+### 3. Tao Database Function (RPC) de lay thong ke
 
-## Tóm Tắt
+Tao ham `get_pplp_admin_stats` de tinh toan tren server, tranh gioi han 1000 rows:
+- Tong approved actions va FUN
+- So users co vi / chua co vi
+- Top users theo FUN amount
+- Tong da mint thanh cong
 
-| File | Thay Doi |
-|------|----------|
-| EmailOtpLogin.tsx | Timeout 25s + auto-retry 1 lan |
-| ClassicEmailLogin.tsx | Timeout 25s |
+### 4. Cap nhat PplpMintTab.tsx
 
-- **2 files sửa**, **0 files mới**
+- Them component overview section phia tren stats hien tai
+- Goi RPC `get_pplp_admin_stats` khi load
+- Hien thi bang top users voi trang thai vi (icon xanh = co vi, icon do = chua vi)
+
+## Chi Tiet Ky Thuat
+
+### File moi:
+Khong can file moi - tat ca thay doi trong cac file hien co
+
+### Database migration:
+Tao RPC function `get_pplp_admin_stats` tra ve:
+```sql
+CREATE OR REPLACE FUNCTION get_pplp_admin_stats()
+RETURNS jsonb AS $$
+  -- Tong approved actions, users co/chua co vi
+  -- Top 20 users theo FUN amount
+  -- Mint request stats
+$$
+```
+
+### Files sua:
+1. **`src/components/admin/PplpMintTab.tsx`** - Them overview section voi:
+   - Card "Tong FUN chua claim" (tong approved actions chua co mint request)
+   - Card "Users da co vi" (so luong + tong FUN)
+   - Card "Users chua co vi" (so luong + tong FUN) 
+   - Card "Mint requests cho ky" (da co)
+   - Bang danh sach top users voi trang thai vi
+
+2. **`src/hooks/usePplpAdmin.ts`** - Them ham `fetchEcosystemStats` goi RPC moi
+
+### Giao dien du kien:
+
+Phan overview se nam phia tren stats hien tai, su dung gradient card noi bat:
+- Card vang: Tong FUN approved chua claim (con so lon, de thay)
+- Card xanh la: Users da ket noi vi (san sang mint)
+- Card do nhat: Users chua co vi (can ket noi vi truoc)
+- Card xanh duong: Tong da mint thanh cong
+
+Bang top users hien thi:
+- Cot: STT, Avatar, Username, Tong FUN, So Actions, Trang Thai Vi
+- Icon vi xanh neu da co public_wallet_address
+- Icon vi do/warning neu chua co
+- Sap xep theo tong FUN giam dan
