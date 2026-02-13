@@ -18,6 +18,7 @@ export const EmailOtpLogin = ({ onSuccess }: EmailOtpLoginProps) => {
   const [otp, setOtp] = useState('');
   const [step, setStep] = useState<'email' | 'otp'>('email');
   const [loading, setLoading] = useState(false);
+  const [retrying, setRetrying] = useState(false);
   const [countdown, setCountdown] = useState(0);
 
   // Countdown timer for OTP expiry
@@ -28,6 +29,16 @@ export const EmailOtpLogin = ({ onSuccess }: EmailOtpLoginProps) => {
     }
   }, [countdown]);
 
+  const invokeWithTimeout = async (fnName: string, body: Record<string, unknown>, timeoutMs: number) => {
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('TIMEOUT')), timeoutMs)
+    );
+    return Promise.race([
+      supabase.functions.invoke(fnName, { body }),
+      timeoutPromise,
+    ]);
+  };
+
   const handleSendOtp = useCallback(async () => {
     if (!email) {
       toast.error(t('authErrorInvalidEmail'));
@@ -35,32 +46,37 @@ export const EmailOtpLogin = ({ onSuccess }: EmailOtpLoginProps) => {
     }
 
     setLoading(true);
+    setRetrying(false);
     try {
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Kết nối chậm, vui lòng thử lại')), 15000)
-      );
+      let result;
+      try {
+        result = await invokeWithTimeout('sso-otp-request', { identifier: email, type: 'email' }, 25000);
+      } catch (err: unknown) {
+        const isTimeout = err instanceof Error && err.message === 'TIMEOUT';
+        if (!isTimeout) throw err;
+        // Auto-retry once (function should be warm now)
+        setRetrying(true);
+        result = await invokeWithTimeout('sso-otp-request', { identifier: email, type: 'email' }, 15000);
+      }
 
-      const { data, error } = await Promise.race([
-        supabase.functions.invoke('sso-otp-request', {
-          body: { identifier: email, type: 'email' },
-        }),
-        timeoutPromise,
-      ]);
-
+      const { data, error } = result;
       if (error) throw error;
 
       if (data?.success) {
         setStep('otp');
-        setCountdown(300); // 5 minutes
+        setCountdown(300);
         toast.success(`${t('otpSentTo')} ${email}`);
       } else {
         throw new Error(data?.error || 'Failed to send OTP');
       }
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : t('errorOccurred');
+      const message = error instanceof Error
+        ? (error.message === 'TIMEOUT' ? 'Kết nối chậm, vui lòng thử lại' : error.message)
+        : t('errorOccurred');
       toast.error(message);
     } finally {
       setLoading(false);
+      setRetrying(false);
     }
   }, [email, t]);
 
@@ -71,22 +87,22 @@ export const EmailOtpLogin = ({ onSuccess }: EmailOtpLoginProps) => {
     }
 
     setLoading(true);
+    setRetrying(false);
     try {
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Kết nối chậm, vui lòng thử lại')), 15000)
-      );
+      let result;
+      try {
+        result = await invokeWithTimeout('sso-otp-verify', { identifier: email, code: otp, type: 'email' }, 25000);
+      } catch (err: unknown) {
+        const isTimeout = err instanceof Error && err.message === 'TIMEOUT';
+        if (!isTimeout) throw err;
+        setRetrying(true);
+        result = await invokeWithTimeout('sso-otp-verify', { identifier: email, code: otp, type: 'email' }, 15000);
+      }
 
-      const { data, error } = await Promise.race([
-        supabase.functions.invoke('sso-otp-verify', {
-          body: { identifier: email, code: otp, type: 'email' },
-        }),
-        timeoutPromise,
-      ]);
-
+      const { data, error } = result;
       if (error) throw error;
 
       if (data?.success && data?.access_token && data?.refresh_token) {
-        // Set session directly from tokens returned by edge function
         const { error: sessionError } = await supabase.auth.setSession({
           access_token: data.access_token,
           refresh_token: data.refresh_token,
@@ -97,13 +113,11 @@ export const EmailOtpLogin = ({ onSuccess }: EmailOtpLoginProps) => {
           throw new Error('Failed to establish session');
         }
 
-        // Verify session is set
         const { data: sessionCheck } = await supabase.auth.getSession();
         if (!sessionCheck.session) {
           throw new Error('Session not established');
         }
 
-        // Update last_login_platform to 'FUN Profile'
         await supabase
           .from('profiles')
           .update({ last_login_platform: 'FUN Profile' })
@@ -116,10 +130,13 @@ export const EmailOtpLogin = ({ onSuccess }: EmailOtpLoginProps) => {
         throw new Error(data?.error || 'Verification failed');
       }
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : t('otpInvalid');
+      const message = error instanceof Error
+        ? (error.message === 'TIMEOUT' ? 'Kết nối chậm, vui lòng thử lại' : error.message)
+        : t('otpInvalid');
       toast.error(message);
     } finally {
       setLoading(false);
+      setRetrying(false);
     }
   }, [email, otp, t, onSuccess]);
 
@@ -176,7 +193,7 @@ export const EmailOtpLogin = ({ onSuccess }: EmailOtpLoginProps) => {
               {loading ? (
                 <>
                   <Loader2 className="animate-spin" size={20} />
-                  {t('authInitializing')}
+                  {retrying ? 'Đang thử lại...' : t('authInitializing')}
                 </>
               ) : (
                 <>
@@ -240,7 +257,7 @@ export const EmailOtpLogin = ({ onSuccess }: EmailOtpLoginProps) => {
               {loading ? (
                 <>
                   <Loader2 className="animate-spin" size={20} />
-                  {t('walletVerifying')}
+                  {retrying ? 'Đang thử lại...' : t('walletVerifying')}
                 </>
               ) : (
                 <>

@@ -46,7 +46,7 @@ export const ClassicEmailLogin = ({
         return;
       }
       const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Kết nối chậm, vui lòng thử lại')), 15000)
+        setTimeout(() => reject(new Error('Kết nối chậm, vui lòng thử lại')), 25000)
       );
 
       if (isLogin) {
