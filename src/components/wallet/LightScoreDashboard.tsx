@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLightScore } from '@/hooks/useLightScore';
 import { useMintFun } from '@/hooks/useMintFun';
+import { usePendingActions } from '@/hooks/usePendingActions';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -42,6 +43,7 @@ export const LightScoreDashboard = () => {
   const navigate = useNavigate();
   const { data, isLoading, error, refetch, getTierInfo, getNextTierProgress } = useLightScore();
   const { mintPendingActions, isMinting } = useMintFun();
+  const { actions: allPendingActions, totalAmount: pendingTotal, claim, isClaiming: isClaimingActions } = usePendingActions();
   const [hasWallet, setHasWallet] = useState<boolean | null>(null);
 
   // Check if user has wallet configured
@@ -55,11 +57,11 @@ export const LightScoreDashboard = () => {
       
       const { data: profile } = await supabase
         .from('profiles')
-        .select('custodial_wallet_address, external_wallet_address')
+        .select('public_wallet_address')
         .eq('id', user.id)
         .single();
       
-      const walletExists = !!(profile?.custodial_wallet_address || profile?.external_wallet_address);
+      const walletExists = !!profile?.public_wallet_address;
       setHasWallet(walletExists);
     };
     
@@ -97,18 +99,17 @@ export const LightScoreDashboard = () => {
  
    if (!data) return null;
  
-   const tierInfo = getTierInfo();
-   const { progress, nextTier, remaining } = getNextTierProgress();
-   const pendingActions = data.recent_actions?.filter(a => a.mint_status === 'approved') || [];
- 
-   const handleClaimAll = async () => {
-     if (pendingActions.length === 0) return;
-     const ids = pendingActions.map(a => a.id);
-     const result = await mintPendingActions(ids);
-     if (result) {
-       refetch();
-     }
-   };
+    const tierInfo = getTierInfo();
+    const { progress, nextTier, remaining } = getNextTierProgress();
+  
+    const handleClaimAll = async () => {
+      if (allPendingActions.length === 0) return;
+      const actionIds = allPendingActions.map(a => a.id);
+      const result = await claim(actionIds);
+      if (result.success) {
+        refetch();
+      }
+    };
  
    return (
      <div className="space-y-4">
@@ -206,16 +207,16 @@ export const LightScoreDashboard = () => {
            </div>
  
             {/* Wallet Check Warning */}
-            {hasWallet === false && data.pending_amount > 0 && (
-              <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4 space-y-3">
-                <div className="flex items-start gap-3">
-                  <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                  <div className="space-y-1">
-                    <p className="font-medium text-amber-800 dark:text-amber-200">
-                      Thiết lập ví để nhận FUN Money
-                    </p>
-                    <p className="text-sm text-amber-700 dark:text-amber-300">
-                      Bạn cần kết nối ví Web3 để claim {data.pending_amount} FUN Money đang chờ.
+             {hasWallet === false && pendingTotal > 0 && (
+               <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4 space-y-3">
+                 <div className="flex items-start gap-3">
+                   <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                   <div className="space-y-1">
+                     <p className="font-medium text-amber-800 dark:text-amber-200">
+                       Thiết lập ví để nhận FUN Money
+                     </p>
+                     <p className="text-sm text-amber-700 dark:text-amber-300">
+                       Bạn cần kết nối ví Web3 để claim {pendingTotal} FUN Money đang chờ.
                     </p>
                   </div>
                 </div>
@@ -230,30 +231,30 @@ export const LightScoreDashboard = () => {
             )}
 
             {/* Claim Button */}
-            {data.pending_amount > 0 && hasWallet !== false && (
-              <Button 
-                onClick={handleClaimAll}
-                disabled={isMinting || data.today_minted >= data.daily_cap || hasWallet === null}
-                className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
-              >
-                {isMinting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Đang mint...
-                  </>
-                ) : hasWallet === null ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Đang kiểm tra ví...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-4 h-4 mr-2" />
-                    Claim {data.pending_amount} FUN Money
-                  </>
-                )}
-              </Button>
-            )}
+             {pendingTotal > 0 && hasWallet !== false && (
+               <Button 
+                 onClick={handleClaimAll}
+                 disabled={isClaimingActions || data.today_minted >= data.daily_cap || hasWallet === null}
+                 className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
+               >
+                 {isClaimingActions ? (
+                   <>
+                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                     Đang mint...
+                   </>
+                 ) : hasWallet === null ? (
+                   <>
+                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                     Đang kiểm tra ví...
+                   </>
+                 ) : (
+                   <>
+                     <Sparkles className="w-4 h-4 mr-2" />
+                     Claim {pendingTotal} FUN Money
+                   </>
+                 )}
+               </Button>
+             )}
           </CardContent>
         </Card>
  
