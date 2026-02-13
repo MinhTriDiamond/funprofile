@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAccount, useDisconnect } from 'wagmi';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,6 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
 import {
   Dialog,
   DialogContent,
@@ -36,7 +37,9 @@ import {
   Heart,
   MessageCircle,
   Users,
+  Search,
 } from 'lucide-react';
+import { useDebounce } from '@/hooks/useDebounce';
 import { usePplpAdmin, MintRequest, ActionBreakdown, EcosystemTopUser } from '@/hooks/usePplpAdmin';
 import { isAttesterAddress, ATTESTER_ADDRESSES, formatFUN, getTxUrl, MINT_REQUEST_STATUS } from '@/config/pplp';
 import { formatDistanceToNow } from 'date-fns';
@@ -102,6 +105,39 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
   const [rejectReason, setRejectReason] = useState('');
   const [isRejecting, setIsRejecting] = useState(false);
   const [batchSubmitProgress, setBatchSubmitProgress] = useState<{ current: number; total: number } | null>(null);
+
+  // Search & filter state for Top Users
+  const [searchQuery, setSearchQuery] = useState('');
+  const [walletFilter, setWalletFilter] = useState<'all' | 'primary' | 'legacy' | 'none'>('all');
+  const debouncedSearch = useDebounce(searchQuery, 300);
+
+  // Wallet status helper
+  const getWalletStatus = (user: EcosystemTopUser) =>
+    user.has_wallet ? 'primary' : (user.wallet_address ? 'legacy' : 'none');
+
+  // Filtered top users
+  const filteredTopUsers = useMemo(() => {
+    if (!ecosystemStats?.top_users) return [];
+    return ecosystemStats.top_users.filter((user: EcosystemTopUser) => {
+      const matchesSearch = !debouncedSearch || 
+        (user.username || '').toLowerCase().includes(debouncedSearch.toLowerCase());
+      const status = getWalletStatus(user);
+      const matchesFilter = walletFilter === 'all' || status === walletFilter;
+      return matchesSearch && matchesFilter;
+    });
+  }, [ecosystemStats?.top_users, debouncedSearch, walletFilter]);
+
+  // Wallet filter counts
+  const walletCounts = useMemo(() => {
+    if (!ecosystemStats?.top_users) return { all: 0, primary: 0, legacy: 0, none: 0 };
+    const users = ecosystemStats.top_users as EcosystemTopUser[];
+    return {
+      all: users.length,
+      primary: users.filter(u => getWalletStatus(u) === 'primary').length,
+      legacy: users.filter(u => getWalletStatus(u) === 'legacy').length,
+      none: users.filter(u => getWalletStatus(u) === 'none').length,
+    };
+  }, [ecosystemStats?.top_users]);
 
   useEffect(() => {
     fetchMintRequests();
@@ -295,6 +331,59 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
                 <h4 className="font-medium mb-2 flex items-center gap-2">
                   🏆 Tất Cả Users Chờ Claim ({ecosystemStats.top_users.length} users)
                 </h4>
+
+                {/* Search & Filter Toolbar */}
+                <div className="space-y-2 mb-3">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Tìm kiếm theo username..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-9 h-9"
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant={walletFilter === 'all' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setWalletFilter('all')}
+                      className="text-xs h-7"
+                    >
+                      Tất cả ({walletCounts.all})
+                    </Button>
+                    <Button
+                      variant={walletFilter === 'primary' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setWalletFilter('primary')}
+                      className="text-xs h-7 border-green-500/50 text-green-600 hover:bg-green-500/10"
+                    >
+                      <CheckCircle className="w-3 h-3 mr-1" /> Có ví chính thức ({walletCounts.primary})
+                    </Button>
+                    <Button
+                      variant={walletFilter === 'legacy' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setWalletFilter('legacy')}
+                      className="text-xs h-7 border-yellow-500/50 text-yellow-600 hover:bg-yellow-500/10"
+                    >
+                      <AlertCircle className="w-3 h-3 mr-1" /> Ví cũ ({walletCounts.legacy})
+                    </Button>
+                    <Button
+                      variant={walletFilter === 'none' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setWalletFilter('none')}
+                      className="text-xs h-7 border-red-500/50 text-red-600 hover:bg-red-500/10"
+                    >
+                      <XCircle className="w-3 h-3 mr-1" /> Chưa có ví ({walletCounts.none})
+                    </Button>
+                  </div>
+                  {debouncedSearch && (
+                    <div className="text-xs text-muted-foreground">
+                      Hiển thị {filteredTopUsers.length} / {ecosystemStats.top_users.length} users
+                    </div>
+                  )}
+                </div>
+
                 <div className="border rounded-lg overflow-hidden">
                   <div className="grid grid-cols-[40px_1fr_1fr_100px_80px_60px] gap-2 p-2 bg-muted/50 text-xs font-medium text-muted-foreground">
                     <span>#</span>
@@ -305,9 +394,13 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
                     <span className="text-center">Ví</span>
                   </div>
                   <ScrollArea className="h-[500px]">
-                    {ecosystemStats.top_users.map((user: EcosystemTopUser, idx: number) => {
+                    {filteredTopUsers.length === 0 ? (
+                      <div className="p-6 text-center text-sm text-muted-foreground">
+                        Không tìm thấy user nào phù hợp
+                      </div>
+                    ) : filteredTopUsers.map((user: EcosystemTopUser, idx: number) => {
                       const walletAddr = user.public_wallet_address || user.wallet_address;
-                      const walletStatus = user.has_wallet ? 'primary' : (user.wallet_address ? 'legacy' : 'none');
+                      const walletStatus = getWalletStatus(user);
                       return (
                         <div key={user.user_id} className="grid grid-cols-[40px_1fr_1fr_100px_80px_60px] gap-2 p-2 items-center border-t text-sm hover:bg-muted/30">
                           <span className="text-muted-foreground font-medium">{idx + 1}</span>
