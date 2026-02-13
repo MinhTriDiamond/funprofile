@@ -36,9 +36,16 @@ export const EmailOtpLogin = ({ onSuccess }: EmailOtpLoginProps) => {
 
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('sso-otp-request', {
-        body: { identifier: email, type: 'email' },
-      });
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Kết nối chậm, vui lòng thử lại')), 15000)
+      );
+
+      const { data, error } = await Promise.race([
+        supabase.functions.invoke('sso-otp-request', {
+          body: { identifier: email, type: 'email' },
+        }),
+        timeoutPromise,
+      ]);
 
       if (error) throw error;
 
@@ -65,9 +72,16 @@ export const EmailOtpLogin = ({ onSuccess }: EmailOtpLoginProps) => {
 
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('sso-otp-verify', {
-        body: { identifier: email, code: otp, type: 'email' },
-      });
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Kết nối chậm, vui lòng thử lại')), 15000)
+      );
+
+      const { data, error } = await Promise.race([
+        supabase.functions.invoke('sso-otp-verify', {
+          body: { identifier: email, code: otp, type: 'email' },
+        }),
+        timeoutPromise,
+      ]);
 
       if (error) throw error;
 
