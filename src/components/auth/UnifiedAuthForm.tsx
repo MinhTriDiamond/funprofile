@@ -64,6 +64,15 @@ export const UnifiedAuthForm = () => {
 
     console.log('[Auth] Session verified for user:', userId, 'isNewUser:', isNewUser, 'hasExternalWallet:', hasExternalWallet);
 
+    // Log login IP (fire-and-forget)
+    try {
+      supabase.functions.invoke('log-login-ip', {
+        headers: { Authorization: `Bearer ${session.access_token}` }
+      });
+    } catch (e) {
+      console.warn('[Auth] Failed to log IP:', e);
+    }
+
     if (isNewUser) {
       await handleNewUserSetup(userId, hasExternalWallet);
     } else {
