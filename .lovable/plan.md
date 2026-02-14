@@ -1,79 +1,80 @@
 
-# Fix: Batch Submit Race Condition and On-Chain Balance Discrepancy
 
-## Problem
+# Nâng Cấp Tab "Phát Hiện Lạm Dụng" - Thêm Phát Hiện Bio Trùng, Thiết Bị & IP
 
-The system shows TONG = 6,290 FUN on-chain but the database only records 5,150 FUN as confirmed. The difference (1,140 FUN) comes from transactions that were marked "failed" in the database but actually succeeded on-chain.
+## Phát Hiện Hiện Tại (Dữ Liệu Thực)
 
-**Root cause**: When batch-submitting multiple transactions, they fire within seconds of each other. This causes:
-1. Nonce conflicts on the blockchain
-2. `waitForTransactionReceipt` timeouts
-3. The error handler marks the request as "failed" even though the transaction was broadcast and may succeed
+Sau khi kiểm tra database, phát hiện:
 
-## Solution (3 Parts)
+**1. Bio trùng nhau trên nhiều tài khoản:**
+- "Con là ánh sáng yêu thương thuần khiết của Cha Vũ Trụ" -- 3 tài khoản: `lequangvu2210.hue`, `happycamlycoin7979`, `hieu.le`
+- "CON LA ANH SANG..." (viết hoa) -- 2 tài khoản: `phi`, `Angel Kiều Phi`
+- "Con La Anh Sang...!" (có dấu chấm than) -- 2 tài khoản: `Angel Ái Vân`, `Huỳnh Tỷ Đô`
 
-### Part 1: Sequential Batch Submit with Confirmation Wait
+**2. Ví trùng nhau (public_wallet_address):**
+- `0xb608538d...BFB197` -- 2 tài khoản: `happycamlycoin7979` + `hieu.le` (cũng trùng bio!)
 
-Fix `batchSubmitToChain` in `usePplpAdmin.ts` to wait for each transaction to be fully confirmed before submitting the next one. Add a delay between transactions to avoid nonce conflicts.
+**3. Thiết bị trùng:** Bảng `pplp_device_registry` hiện chưa có dữ liệu chia sẻ thiết bị.
 
-**Changes**: `src/hooks/usePplpAdmin.ts`
-- In `batchSubmitToChain`: After each `submitToChain` call, add a 3-second delay before processing the next request
-- This prevents nonce race conditions
+**4. IP trùng:** Hiện chưa có bảng theo dõi IP. Cần tạo mới.
 
-### Part 2: Reconciliation Function for Failed Transactions
+## Giải Pháp
 
-Create a new function `reconcileFailedRequests` in `usePplpAdmin.ts` that:
-1. Fetches all "failed" requests that have a `tx_hash`
-2. For each, checks the actual transaction receipt on-chain via `publicClient.getTransactionReceipt()`
-3. If receipt shows `status: 'success'`, updates the DB to `confirmed` and marks light_actions as `minted`
-4. If receipt shows `status: 'reverted'` or no receipt found, keeps as `failed`
+### Phần 1: Thêm 2 tab mới vào WalletAbuseTab
 
-**Changes**: `src/hooks/usePplpAdmin.ts`
-- Add `reconcileFailedRequests` function
-- Export it from the hook
+Mở rộng từ 3 tab hiện tại (Ví chung, Tên ảo, Thiếu profile) lên **5 tab**:
 
-### Part 3: Admin UI - Reconciliation Button
+| Tab | Icon | Mô tả |
+|-----|------|--------|
+| Vi chung | Wallet | Giữ nguyên - phát hiện ví dùng chung |
+| **Bio trùng** | **FileText** | **MỚI** - Tài khoản có bio giống nhau (so sánh không phân biệt hoa/thường) |
+| Tên ảo | AlertTriangle | Giữ nguyên |
+| Thiếu profile | Ban | Giữ nguyên |
+| **Cùng thiết bị** | **Smartphone** | **MỚI** - Tài khoản từ cùng device (từ pplp_device_registry) |
 
-Add a "Reconcile Failed TXs" button in the Failed tab of PplpMintTab that:
-1. Scans all failed requests with tx_hash
-2. Checks on-chain status
-3. Auto-corrects DB status
-4. Shows summary of corrections
+### Phần 2: Tạo bảng theo dõi IP đăng nhập
 
-**Changes**: `src/components/admin/PplpMintTab.tsx`
-- Add reconciliation button in the Failed tab header
-- Show progress and results
+Tạo bảng `login_ip_logs` để ghi lại IP mỗi khi user đăng nhập, phục vụ phát hiện multi-account từ cùng IP.
 
-## Technical Details
+### Phần 3: Edge Function ghi IP
 
-### Reconciliation Logic (Part 2)
+Tạo edge function `log-login-ip` được gọi sau khi đăng nhập thành công, ghi IP vào `login_ip_logs`.
+
+## Chi Tiết Kỹ Thuật
+
+### Database Migration
+
 ```text
-For each failed request with tx_hash:
-  1. Call publicClient.getTransactionReceipt({ hash: tx_hash })
-  2. If receipt.status === 'success':
-     - Update pplp_mint_requests: status = 'confirmed', confirmed_at = now
-     - Update light_actions: mint_status = 'minted'
-     - Count as reconciled
-  3. If receipt.status === 'reverted' or no receipt:
-     - Keep as 'failed' (genuinely failed)
-  4. Report summary: X reconciled, Y genuinely failed
+Tạo bảng login_ip_logs:
+- id (uuid, PK)
+- user_id (uuid, references profiles)
+- ip_address (text)
+- user_agent (text)
+- created_at (timestamptz)
+- RLS: admin-only read, service_role insert
 ```
 
-### Sequential Submit Fix (Part 1)
-```text
-batchSubmitToChain:
-  for each request:
-    1. Submit to chain (includes auto-confirm wait)
-    2. Wait 3 seconds before next request
-    3. Update progress UI
-  This ensures nonce increments properly between txs
-```
+### WalletAbuseTab.tsx - Thay Đổi
 
-### Files to Modify
-1. `src/hooks/usePplpAdmin.ts` - Add reconciliation function + fix batch submit delay
-2. `src/components/admin/PplpMintTab.tsx` - Add reconciliation button in Failed tab
+1. Thêm `bio` vào interface `UserData`
+2. Thêm logic phát hiện bio trùng (normalize: lowercase + trim)
+3. Thêm logic phát hiện thiết bị trùng (query `pplp_device_registry` khi mount)
+4. Đổi TabsList từ `grid-cols-3` sang `grid-cols-5`
+5. Thêm 2 TabsContent mới cho "Bio trùng" và "Cùng thiết bị"
 
-### Expected Outcome
-- After running reconciliation: Failed requests that actually succeeded on-chain will be corrected to "confirmed"
-- Future batch submits will not have nonce race conditions
-- The TONG balance will match the database confirmed total
+### Admin.tsx - Thay Đổi
+
+Đảm bảo `bio` được truyền vào `users` prop (đã có sẵn vì query `select('*')`)
+
+### Auth Flow - Thay Đổi
+
+Sau khi đăng nhập thành công, gọi edge function `log-login-ip` để ghi IP.
+
+### Files cần tạo/sửa
+
+1. **Sửa**: `src/components/admin/WalletAbuseTab.tsx` - thêm 2 tab mới (bio trùng + thiết bị)
+2. **Tạo**: Migration SQL cho bảng `login_ip_logs`
+3. **Tạo**: `supabase/functions/log-login-ip/index.ts` - ghi IP đăng nhập
+4. **Sửa**: `src/components/auth/UnifiedAuthForm.tsx` hoặc auth callback - gọi log IP sau login
+5. **Sửa**: `supabase/config.toml` - thêm config cho function mới
+
