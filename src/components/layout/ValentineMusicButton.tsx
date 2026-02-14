@@ -2,102 +2,111 @@ import { useState, useRef, useCallback, useEffect, memo } from 'react';
 import { Music, Volume2 } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 
+// ── Singleton state (persists across remounts / page navigations) ──
+let globalAudio: HTMLAudioElement | null = null;
+let globalVolume = 0.5;
+let globalAutoplayDone = false;
+let globalUserStopped = false;
+let globalResumeListener: (() => void) | null = null;
+
+function ensureAudio(): HTMLAudioElement {
+  if (!globalAudio) {
+    globalAudio = new Audio('/sounds/valentine.mp3');
+    globalAudio.loop = true;
+    globalAudio.volume = globalVolume;
+  }
+  return globalAudio;
+}
+
+function isAudioPlaying(): boolean {
+  return !!globalAudio && !globalAudio.paused;
+}
+
+function cleanupResumeListener() {
+  if (globalResumeListener) {
+    document.removeEventListener('click', globalResumeListener);
+    document.removeEventListener('touchstart', globalResumeListener);
+    globalResumeListener = null;
+  }
+}
+
+// ── Component ──
 interface ValentineMusicButtonProps {
   variant?: 'desktop' | 'mobile';
 }
 
 export const ValentineMusicButton = memo(({ variant = 'desktop' }: ValentineMusicButtonProps) => {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [volume, setVolume] = useState(0.5);
+  const [isPlaying, setIsPlaying] = useState(isAudioPlaying);
+  const [volume, setVolume] = useState(globalVolume);
   const [showVolume, setShowVolume] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const autoplayAttempted = useRef(false);
-  const resumeListenerRef = useRef<(() => void) | null>(null);
 
   const volumePercent = Math.round(volume * 100);
 
-  const ensureAudio = useCallback(() => {
-    if (!audioRef.current) {
-      audioRef.current = new Audio('/sounds/valentine.mp3');
-      audioRef.current.loop = true;
-      audioRef.current.volume = volume;
-    }
-  }, [volume]);
-
-  // Autoplay on mount
+  // Sync UI when component mounts (e.g. after navigation)
   useEffect(() => {
-    if (autoplayAttempted.current) return;
-    autoplayAttempted.current = true;
+    setIsPlaying(isAudioPlaying());
+  }, []);
 
-    ensureAudio();
-    if (!audioRef.current) return;
+  // Autoplay – runs only once globally
+  useEffect(() => {
+    if (globalAutoplayDone || globalUserStopped) return;
+    globalAutoplayDone = true;
 
-    audioRef.current.volume = volume;
-    audioRef.current.currentTime = 0;
-    const playPromise = audioRef.current.play();
+    const audio = ensureAudio();
+    audio.volume = globalVolume;
+    audio.currentTime = 0;
 
+    const playPromise = audio.play();
     if (playPromise) {
       playPromise
         .then(() => setIsPlaying(true))
         .catch(() => {
+          // Browser blocked autoplay – wait for first user interaction
           const resumeOnInteraction = () => {
-            resumeListenerRef.current = null;
-            if (audioRef.current && !audioRef.current.paused) return;
-            ensureAudio();
-            if (!audioRef.current) return;
-            audioRef.current.volume = volume;
-            audioRef.current.currentTime = 0;
-            audioRef.current.play()
+            globalResumeListener = null;
+            if (globalUserStopped) return;
+            if (globalAudio && !globalAudio.paused) return;
+            const a = ensureAudio();
+            a.volume = globalVolume;
+            a.currentTime = 0;
+            a.play()
               .then(() => setIsPlaying(true))
               .catch(() => {});
             document.removeEventListener('click', resumeOnInteraction);
             document.removeEventListener('touchstart', resumeOnInteraction);
           };
-          resumeListenerRef.current = resumeOnInteraction;
+          cleanupResumeListener();
+          globalResumeListener = resumeOnInteraction;
           document.addEventListener('click', resumeOnInteraction, { once: true });
           document.addEventListener('touchstart', resumeOnInteraction, { once: true });
         });
     }
-  }, [ensureAudio, volume]);
-
-  // Cleanup fallback listener on unmount
-  useEffect(() => {
-    return () => {
-      if (resumeListenerRef.current) {
-        document.removeEventListener('click', resumeListenerRef.current);
-        document.removeEventListener('touchstart', resumeListenerRef.current);
-        resumeListenerRef.current = null;
-      }
-    };
   }, []);
 
   const toggle = useCallback(() => {
-    // Remove fallback listener to prevent it from overriding manual toggle
-    if (resumeListenerRef.current) {
-      document.removeEventListener('click', resumeListenerRef.current);
-      document.removeEventListener('touchstart', resumeListenerRef.current);
-      resumeListenerRef.current = null;
-    }
-    ensureAudio();
-    if (!audioRef.current) return;
+    cleanupResumeListener();
+    const audio = ensureAudio();
 
     if (isPlaying) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
+      audio.pause();
+      globalUserStopped = true;
+      setIsPlaying(false);
     } else {
-      audioRef.current.volume = volume;
-      audioRef.current.currentTime = 0;
-      audioRef.current.play().catch(() => {});
+      audio.volume = globalVolume;
+      audio.currentTime = audio.currentTime || 0;
+      audio.play().catch(() => {});
+      globalUserStopped = false;
+      setIsPlaying(true);
     }
-    setIsPlaying(prev => !prev);
-  }, [isPlaying, volume, ensureAudio]);
+  }, [isPlaying]);
 
   const handleVolumeChange = useCallback((val: number[]) => {
     const v = val[0];
     setVolume(v);
-    if (audioRef.current) {
-      audioRef.current.volume = v;
+    globalVolume = v;
+    if (globalAudio) {
+      globalAudio.volume = v;
     }
   }, []);
 
