@@ -173,6 +173,103 @@ Deno.serve(async (req) => {
       );
     }
 
+    // 7e. Auto fraud detection
+    const fraudReasons: string[] = [];
+
+    // Check shared device
+    const { data: userDevices } = await supabaseAdmin
+      .from('pplp_device_registry')
+      .select('device_hash')
+      .eq('user_id', userId);
+
+    if (userDevices && userDevices.length > 0) {
+      for (const dev of userDevices) {
+        const { count } = await supabaseAdmin
+          .from('pplp_device_registry')
+          .select('user_id', { count: 'exact', head: true })
+          .eq('device_hash', dev.device_hash)
+          .neq('user_id', userId);
+        if (count && count > 0) {
+          fraudReasons.push('Phát hiện nhiều tài khoản trên cùng 1 thiết bị');
+          break;
+        }
+      }
+    }
+
+    // Check duplicate avatar
+    if (profile.avatar_url) {
+      const { count: avatarDups } = await supabaseAdmin
+        .from('profiles')
+        .select('id', { count: 'exact', head: true })
+        .eq('avatar_url', profile.avatar_url)
+        .neq('id', userId);
+      if (avatarDups && avatarDups > 0) {
+        fraudReasons.push('Ảnh đại diện trùng với tài khoản khác');
+      }
+    }
+
+    // Check duplicate wallet
+    if (profile.public_wallet_address) {
+      const { count: walletDups } = await supabaseAdmin
+        .from('profiles')
+        .select('id', { count: 'exact', head: true })
+        .eq('public_wallet_address', profile.public_wallet_address)
+        .neq('id', userId);
+      if (walletDups && walletDups > 0) {
+        fraudReasons.push('Địa chỉ ví trùng với tài khoản khác');
+      }
+    }
+
+    // Check duplicate posts today
+    const { data: userPosts } = await supabaseAdmin
+      .from('posts')
+      .select('content')
+      .eq('user_id', userId)
+      .gte('created_at', postTodayStart.toISOString())
+      .not('content', 'is', null)
+      .limit(10);
+
+    if (userPosts && userPosts.length > 0) {
+      for (const post of userPosts) {
+        if (!post.content || post.content.trim().length < 20) continue;
+        const { count: dupPosts } = await supabaseAdmin
+          .from('posts')
+          .select('id', { count: 'exact', head: true })
+          .eq('content', post.content)
+          .neq('user_id', userId)
+          .gte('created_at', postTodayStart.toISOString());
+        if (dupPosts && dupPosts > 0) {
+          fraudReasons.push('Bài viết trong ngày trùng nội dung với tài khoản khác');
+          break;
+        }
+      }
+    }
+
+    // If fraud detected -> hold + return 403
+    if (fraudReasons.length > 0) {
+      const holdNote = fraudReasons.join('; ');
+      console.warn(`Fraud detected for user ${userId}: ${holdNote}`);
+
+      await supabaseAdmin.from('profiles').update({
+        reward_status: 'on_hold',
+        admin_notes: holdNote,
+      }).eq('id', userId);
+
+      await supabaseAdmin.from('pplp_fraud_signals').insert({
+        actor_id: userId,
+        signal_type: 'AUTO_HOLD',
+        severity: 3,
+        details: { reasons: fraudReasons },
+        source: 'claim-reward',
+      });
+
+      return new Response(JSON.stringify({
+        error: 'Account Held',
+        message: `Tài khoản tạm dừng rút tiền do: ${holdNote}. Vui lòng liên hệ Admin để được xem xét.`,
+        reasons: fraudReasons,
+      }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     const blockedStatuses = ['on_hold', 'rejected'];
     if (blockedStatuses.includes(profile.reward_status)) {
       const statusMessages: Record<string, string> = {
