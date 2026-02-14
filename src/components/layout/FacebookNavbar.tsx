@@ -391,12 +391,15 @@ export const FacebookNavbar = () => {
 
           {/* Sign In Button - Only show when not logged in */}
           {!isLoggedIn && (
-            <Button
-              onClick={() => navigate('/auth')}
-              className="bg-primary text-primary-foreground hover:bg-primary-hover"
-            >
-              {t('signIn')}
-            </Button>
+            <>
+              {!isMobileOrTablet && <ValentineMusicButton variant="desktop" />}
+              <Button
+                onClick={() => navigate('/auth')}
+                className="bg-primary text-primary-foreground hover:bg-primary-hover"
+              >
+                {t('signIn')}
+              </Button>
+            </>
           )}
         </div>
       </div>
