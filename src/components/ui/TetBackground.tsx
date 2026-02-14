@@ -57,7 +57,7 @@ export const TetBackground = memo(() => {
       {/* HAPPY VALENTINE'S DAY text - canh giữa header và nội dung */}
       <div 
         className="absolute inset-x-0 flex justify-center pointer-events-none"
-        style={{ zIndex: 1, top: 'calc(56px + env(safe-area-inset-top, 0px) + 0.5rem)' }}
+        style={{ zIndex: 1, top: 'calc(56px + env(safe-area-inset-top, 0px) - 0.5rem)' }}
       >
         <h1 
           className="text-2xl md:text-5xl lg:text-6xl font-black tracking-wider uppercase"
