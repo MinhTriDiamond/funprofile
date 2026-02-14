@@ -367,6 +367,30 @@ Deno.serve(async (req) => {
       console.error('Failed to insert transaction:', txInsertError);
     }
 
+    // 16b. Record in donations table for history visibility
+    const TREASURY_SENDER_ID = '9e702a6f-4035-4f30-9c04-f2e21419b37a';
+    const { error: donationInsertError } = await supabaseAdmin
+      .from('donations')
+      .insert({
+        sender_id: TREASURY_SENDER_ID,
+        recipient_id: userId,
+        amount: effectiveAmount.toString(),
+        token_symbol: 'CAMLY',
+        token_address: CAMLY_CONTRACT.toLowerCase(),
+        chain_id: 56,
+        tx_hash: txHash,
+        status: 'confirmed',
+        block_number: Number(receipt.blockNumber),
+        message: `Claim ${effectiveAmount.toLocaleString()} CAMLY từ phần thưởng`,
+        light_score_earned: 0,
+        confirmed_at: new Date().toISOString(),
+        metadata: { type: 'claim_reward' },
+      });
+
+    if (donationInsertError) {
+      console.error('Failed to insert donation record:', donationInsertError);
+    }
+
     // 17. Log to audit_logs
     await supabaseAdmin.from('audit_logs').insert({
       admin_id: userId,
