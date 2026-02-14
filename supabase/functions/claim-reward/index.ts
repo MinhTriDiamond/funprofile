@@ -63,18 +63,17 @@ Deno.serve(async (req) => {
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
     // 3. Verify JWT and get user
-    const token = authHeader.replace('Bearer ', '');
-    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
     
-    if (claimsError || !claimsData?.claims) {
-      console.error('JWT verification failed:', claimsError);
+    if (userError || !user) {
+      console.error('JWT verification failed:', userError);
       return new Response(
         JSON.stringify({ error: 'Unauthorized', message: 'Phiên đăng nhập hết hạn' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const userId = claimsData.claims.sub as string;
+    const userId = user.id;
     console.log(`Claim request from user: ${userId}`);
 
     // 4. Parse request body
