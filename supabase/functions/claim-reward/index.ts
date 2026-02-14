@@ -11,7 +11,8 @@ const corsHeaders = {
 // CAMLY Token config - 3 decimals
 const CAMLY_CONTRACT = '0x0910320181889feFDE0BB1Ca63962b0A8882e413';
 const CAMLY_DECIMALS = 3;
-const MINIMUM_CLAIM = 1; // Tối thiểu 1 CAMLY (không giới hạn)
+const MINIMUM_CLAIM = 1; // Tối thiểu 1 CAMLY
+const DAILY_CLAIM_CAP = 500000; // Giới hạn 500.000 CAMLY/ngày
 
 // ERC20 Transfer ABI
 const ERC20_ABI = [
@@ -174,7 +175,19 @@ Deno.serve(async (req) => {
     const claimedAmount = claims?.reduce((sum, c) => sum + Number(c.amount), 0) || 0;
     const claimableAmount = Math.max(0, totalReward - claimedAmount);
 
-    console.log(`User ${userId}: total=${totalReward}, claimed=${claimedAmount}, claimable=${claimableAmount}, requested=${claimAmount}`);
+    // Calculate daily claimed amount (UTC day)
+    const todayStart = new Date();
+    todayStart.setUTCHours(0, 0, 0, 0);
+    const { data: todayClaims } = await supabaseAdmin
+      .from('reward_claims')
+      .select('amount')
+      .eq('user_id', userId)
+      .gte('created_at', todayStart.toISOString());
+
+    const todayClaimed = todayClaims?.reduce((sum, c) => sum + Number(c.amount), 0) || 0;
+    const dailyRemaining = Math.max(0, DAILY_CLAIM_CAP - todayClaimed);
+
+    console.log(`User ${userId}: total=${totalReward}, claimed=${claimedAmount}, claimable=${claimableAmount}, requested=${claimAmount}, todayClaimed=${todayClaimed}, dailyRemaining=${dailyRemaining}`);
 
     // 9. Validate claim amount
     if (claimAmount < MINIMUM_CLAIM) {
@@ -187,7 +200,34 @@ Deno.serve(async (req) => {
       );
     }
 
-    if (claimAmount > claimableAmount) {
+    if (dailyRemaining <= 0) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Daily Limit', 
+          message: 'Bạn đã claim tối đa 500.000 CAMLY hôm nay, vui lòng quay lại ngày mai',
+          daily_claimed: todayClaimed,
+          daily_remaining: 0,
+        }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Auto-cap to daily remaining
+    const effectiveAmount = Math.min(claimAmount, claimableAmount, dailyRemaining);
+
+    if (effectiveAmount <= 0) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Bad Request', 
+          message: `Không đủ số dư hoặc đã hết giới hạn hôm nay`,
+          daily_claimed: todayClaimed,
+          daily_remaining: dailyRemaining,
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (effectiveAmount > claimableAmount) {
       return new Response(
         JSON.stringify({ 
           error: 'Bad Request', 
@@ -231,7 +271,7 @@ Deno.serve(async (req) => {
       args: [treasuryAddress as `0x${string}`],
     });
 
-    const requiredAmount = parseUnits(claimAmount.toString(), CAMLY_DECIMALS);
+    const requiredAmount = parseUnits(effectiveAmount.toString(), CAMLY_DECIMALS);
     
     if (treasuryBalance < requiredAmount) {
       console.error(`Treasury insufficient: has ${treasuryBalance}, needs ${requiredAmount}`);
@@ -245,7 +285,7 @@ Deno.serve(async (req) => {
     }
 
     // 13. Send CAMLY transfer transaction
-    console.log(`Sending ${claimAmount} CAMLY to ${wallet_address}...`);
+    console.log(`Sending ${effectiveAmount} CAMLY to ${wallet_address}...`);
     
     const data = encodeFunctionData({
       abi: ERC20_ABI,
@@ -264,7 +304,7 @@ Deno.serve(async (req) => {
     // 14. Wait for transaction confirmation
     const receipt = await publicClient.waitForTransactionReceipt({
       hash: txHash,
-      timeout: 60_000, // 60 second timeout
+      timeout: 60_000,
     });
 
     if (receipt.status !== 'success') {
@@ -282,13 +322,12 @@ Deno.serve(async (req) => {
       .from('reward_claims')
       .insert({
         user_id: userId,
-        amount: claimAmount,
+        amount: effectiveAmount,
         wallet_address: wallet_address.toLowerCase(),
       });
 
     if (claimInsertError) {
       console.error('Failed to insert reward_claims:', claimInsertError);
-      // Don't fail the request - transaction already succeeded
     }
 
     // 16. Record in transactions table
@@ -299,7 +338,7 @@ Deno.serve(async (req) => {
         tx_hash: txHash,
         from_address: treasuryAddress.toLowerCase(),
         to_address: wallet_address.toLowerCase(),
-        amount: claimAmount.toString(),
+        amount: effectiveAmount.toString(),
         token_symbol: 'CAMLY',
         token_address: CAMLY_CONTRACT.toLowerCase(),
         chain_id: 56,
@@ -310,18 +349,18 @@ Deno.serve(async (req) => {
       console.error('Failed to insert transaction:', txInsertError);
     }
 
-    // 17. Log to audit_logs (if user has admin reviewing)
+    // 17. Log to audit_logs
     await supabaseAdmin.from('audit_logs').insert({
-      admin_id: userId, // Self-action
+      admin_id: userId,
       target_user_id: userId,
       action: 'CLAIM_REWARD',
       details: {
-        amount: claimAmount,
+        amount: effectiveAmount,
         wallet_address,
         tx_hash: txHash,
         block_number: receipt.blockNumber?.toString(),
       },
-      reason: `Claimed ${claimAmount.toLocaleString()} CAMLY to ${wallet_address}`,
+      reason: `Claimed ${effectiveAmount.toLocaleString()} CAMLY to ${wallet_address}`,
     });
 
     // 17b. Create notification for the user
@@ -332,18 +371,21 @@ Deno.serve(async (req) => {
       type: 'claim_reward',
     });
 
-    console.log(`Successfully claimed ${claimAmount} CAMLY for user ${userId}`);
+    const newDailyClaimed = todayClaimed + effectiveAmount;
+    console.log(`Successfully claimed ${effectiveAmount} CAMLY for user ${userId}`);
 
     // 18. Return success response
     return new Response(
       JSON.stringify({
         success: true,
         tx_hash: txHash,
-        amount: claimAmount,
+        amount: effectiveAmount,
         wallet_address,
         block_number: receipt.blockNumber?.toString(),
-        message: `Đã chuyển ${claimAmount.toLocaleString()} CAMLY thành công!`,
+        message: `Đã chuyển ${effectiveAmount.toLocaleString()} CAMLY thành công!`,
         bscscan_url: `https://bscscan.com/tx/${txHash}`,
+        daily_claimed: newDailyClaimed,
+        daily_remaining: Math.max(0, DAILY_CLAIM_CAP - newDailyClaimed),
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

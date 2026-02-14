@@ -11,6 +11,8 @@ interface ClaimResult {
   block_number: string;
   message: string;
   bscscan_url: string;
+  daily_claimed: number;
+  daily_remaining: number;
 }
 
 interface ClaimError {
