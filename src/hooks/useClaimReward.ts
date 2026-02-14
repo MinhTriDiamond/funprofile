@@ -48,7 +48,13 @@ export const useClaimReward = () => {
       });
 
       if (response.error) {
-        const errorMsg = response.error.message || 'Lỗi không xác định';
+        let errorMsg = response.error.message || 'Lỗi không xác định';
+        try {
+          const errorBody = await response.error.context?.json();
+          if (errorBody?.message) {
+            errorMsg = errorBody.message;
+          }
+        } catch {}
         setError(errorMsg);
         toast.error(errorMsg);
         return null;
