@@ -42,11 +42,10 @@ export const TetBackground = memo(() => {
     >
       <div className="absolute inset-0 bg-gradient-to-b from-secondary via-background to-background" />
       
-      {/* Desktop: 3 video sát nhau phủ kín, không khoảng cách */}
-      <div className="hidden md:flex absolute inset-0" style={{ gap: 0 }}>
-        <VideoElement className="w-1/3 min-w-0" />
-        <VideoElement className="w-1/3 min-w-0" />
-        <VideoElement className="w-1/3 min-w-0" />
+      {/* Desktop: 2 video cạnh nhau để thấy rõ thiên thần */}
+      <div className="hidden md:flex absolute inset-0 justify-center" style={{ gap: 0 }}>
+        <VideoElement className="w-1/2 min-w-0" />
+        <VideoElement className="w-1/2 min-w-0" />
       </div>
 
       {/* Mobile: 1 video cover full */}
