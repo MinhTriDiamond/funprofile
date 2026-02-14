@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Copy, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { QRCodeSVG } from 'qrcode.react';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 interface ReceiveTabProps {
   walletAddress?: string;
@@ -11,14 +12,14 @@ interface ReceiveTabProps {
 
 export const ReceiveTab = ({ walletAddress }: ReceiveTabProps) => {
   const { address: connectedAddress } = useAccount();
+  const { t } = useLanguage();
   
-  // Use provided wallet address or fall back to connected address
   const address = walletAddress || connectedAddress;
 
   const handleCopy = () => {
     if (address) {
       navigator.clipboard.writeText(address);
-      toast.success('Đã copy địa chỉ ví!');
+      toast.success(t('walletAddressCopied'));
     }
   };
 
@@ -27,8 +28,8 @@ export const ReceiveTab = ({ walletAddress }: ReceiveTabProps) => {
       if (navigator.share) {
         try {
           await navigator.share({
-            title: 'Địa chỉ ví của tôi',
-            text: `Gửi tiền đến địa chỉ này: ${address}`,
+            title: t('walletMyAddress'),
+            text: `${t('walletSendTo')}: ${address}`,
           });
         } catch (err) {
           // Error sharing - fallback to copy
@@ -42,7 +43,7 @@ export const ReceiveTab = ({ walletAddress }: ReceiveTabProps) => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Nhận tiền</CardTitle>
+        <CardTitle>{t('walletReceiveMoney')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="text-center space-y-4">
@@ -60,7 +61,7 @@ export const ReceiveTab = ({ walletAddress }: ReceiveTabProps) => {
           </div>
           
           <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">Địa chỉ ví của bạn</p>
+            <p className="text-sm text-muted-foreground">{t('walletYourAddress')}</p>
             <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
               <code className="flex-1 text-xs break-all">{address}</code>
               <Button
@@ -80,7 +81,7 @@ export const ReceiveTab = ({ walletAddress }: ReceiveTabProps) => {
               onClick={handleCopy}
             >
               <Copy className="h-4 w-4 mr-2" />
-              Copy địa chỉ
+              {t('walletCopyAddress')}
             </Button>
             <Button
               variant="outline"
@@ -88,12 +89,12 @@ export const ReceiveTab = ({ walletAddress }: ReceiveTabProps) => {
               onClick={handleShare}
             >
               <Share2 className="h-4 w-4 mr-2" />
-              Chia sẻ
+              {t('walletShareAddress')}
             </Button>
           </div>
           
           <p className="text-sm text-muted-foreground">
-            Quét mã QR hoặc copy địa chỉ để nhận tiền
+            {t('walletScanQr')}
           </p>
         </div>
       </CardContent>

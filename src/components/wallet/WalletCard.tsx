@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { TokenBalance } from '@/hooks/useTokenBalances';
 import { cn } from '@/lib/utils';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 import metamaskLogo from '@/assets/metamask-logo.png';
 import bitgetLogo from '@/assets/bitget-logo.png';
@@ -94,6 +95,7 @@ export const WalletCard = ({
   onBuy,
 }: WalletCardProps) => {
   const isCustodial = walletType === 'custodial';
+  const { t } = useLanguage();
 
   // Determine actual logo to use
   const displayLogo = useMemo(() => {
@@ -103,11 +105,11 @@ export const WalletCard = ({
 
   // Shortened address
   const shortenedAddress = useMemo(() => {
-    if (isLoading) return 'Đang tải...';
+    if (isLoading) return t('walletLoading');
     if (walletAddress) {
       return `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`;
     }
-    return 'Chưa có ví';
+    return t('walletNoWallet');
   }, [walletAddress, isLoading]);
 
   // Header gradient colors
@@ -147,10 +149,10 @@ export const WalletCard = ({
                 : 'bg-white/20 text-white/80'
           )}>
             {isCustodial 
-              ? 'Custodial' 
+              ? t('walletCustodial')
               : isConnected 
-                ? 'Connected'
-                : 'Not Connected'
+                ? t('walletPageConnected')
+                : t('walletNotConnected')
             }
           </div>
         </div>
@@ -170,7 +172,7 @@ export const WalletCard = ({
 
       {/* Total Value */}
       <div className="px-4 py-4 border-b bg-gradient-to-b from-gray-50 to-white">
-        <p className="text-xs text-muted-foreground mb-1">Total Assets</p>
+        <p className="text-xs text-muted-foreground mb-1">{t('walletTotalAssets')}</p>
         {isTokensLoading ? (
           <div className="animate-pulse bg-gray-200 rounded h-8 w-32" />
         ) : (
@@ -194,7 +196,7 @@ export const WalletCard = ({
             )}>
               <ArrowDown className={cn('w-5 h-5', isCustodial ? 'text-emerald-600' : 'text-orange-600')} />
             </div>
-            <span className="text-xs font-medium text-gray-600">Receive</span>
+            <span className="text-xs font-medium text-gray-600">{t('walletReceive')}</span>
           </button>
 
           <button 
@@ -208,7 +210,7 @@ export const WalletCard = ({
             )}>
               <ArrowUp className={cn('w-5 h-5', isCustodial ? 'text-emerald-600' : 'text-orange-600')} />
             </div>
-            <span className="text-xs font-medium text-gray-600">Send</span>
+            <span className="text-xs font-medium text-gray-600">{t('walletSend')}</span>
           </button>
 
           <button 
@@ -221,7 +223,7 @@ export const WalletCard = ({
             )}>
               <RefreshCw className={cn('w-5 h-5', isCustodial ? 'text-emerald-600' : 'text-orange-600')} />
             </div>
-            <span className="text-xs font-medium text-gray-600">Swap</span>
+            <span className="text-xs font-medium text-gray-600">{t('walletSwap')}</span>
           </button>
 
           <button 
@@ -234,7 +236,7 @@ export const WalletCard = ({
             )}>
               <ShoppingCart className={cn('w-5 h-5', isCustodial ? 'text-emerald-600' : 'text-orange-600')} />
             </div>
-            <span className="text-xs font-medium text-gray-600">Buy</span>
+            <span className="text-xs font-medium text-gray-600">{t('walletBuy')}</span>
           </button>
         </div>
       </div>
@@ -249,7 +251,7 @@ export const WalletCard = ({
               className="bg-orange-500 hover:bg-orange-600 text-white"
             >
               <Wallet className="w-4 h-4 mr-1" />
-              Connect Wallet
+              {t('walletConnectWallet')}
             </Button>
           ) : (
             <>
@@ -260,7 +262,7 @@ export const WalletCard = ({
                 className="text-blue-600 hover:bg-blue-100"
               >
                 <UserRoundCog className="w-4 h-4 mr-1" />
-                {accountCount > 1 ? `Tài khoản (${accountCount})` : 'Switch'}
+                {accountCount > 1 ? `${t('walletAccount')} (${accountCount})` : t('walletSwitch')}
               </Button>
 
               <Button
@@ -270,7 +272,7 @@ export const WalletCard = ({
                 className="text-red-500 hover:bg-red-100"
               >
                 <LogOut className="w-4 h-4 mr-1" />
-                Disconnect
+                {t('walletDisconnect')}
               </Button>
             </>
           )}
@@ -280,7 +282,7 @@ export const WalletCard = ({
       {/* Tokens List */}
       <div className="divide-y">
         <div className="px-4 py-2 bg-gray-50 flex items-center justify-between">
-          <span className="text-sm font-semibold text-gray-600">Tokens</span>
+          <span className="text-sm font-semibold text-gray-600">{t('walletTokens')}</span>
           <Button
             variant="ghost"
             size="sm"
@@ -289,7 +291,7 @@ export const WalletCard = ({
             className="text-xs text-muted-foreground hover:text-primary h-7 px-2"
           >
             <RefreshCw className={cn('w-3 h-3 mr-1', isTokensLoading && 'animate-spin')} />
-            Refresh
+            {t('walletRefresh')}
           </Button>
         </div>
 
