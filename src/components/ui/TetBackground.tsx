@@ -50,7 +50,7 @@ export const TetBackground = memo(() => {
         />
         <VideoElement 
           className="h-full" 
-          style={{ objectPosition: 'right bottom', maxWidth: '50%', transform: 'scaleX(-1) translateZ(0)' }} 
+          style={{ objectPosition: 'right bottom', maxWidth: '50%' }} 
         />
       </div>
 
