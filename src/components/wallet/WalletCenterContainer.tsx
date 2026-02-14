@@ -47,9 +47,6 @@ interface Profile {
   admin_notes?: string | null;
 }
 
-interface WalletProfile {
-  custodial_wallet_address: string | null;
-}
 
 // Key to track if user explicitly disconnected
 const WALLET_DISCONNECTED_KEY = 'fun_profile_wallet_disconnected';
@@ -67,7 +64,7 @@ const WalletCenterContainer = () => {
   const [showMismatchModal, setShowMismatchModal] = useState(false);
   
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [walletProfile, setWalletProfile] = useState<WalletProfile | null>(null);
+  
   const [claimableReward, setClaimableReward] = useState(0);
   const [claimedAmount, setClaimedAmount] = useState(0);
   const [dailyClaimed, setDailyClaimed] = useState(0);
@@ -197,7 +194,6 @@ const WalletCenterContainer = () => {
 
   useEffect(() => {
     fetchProfile();
-    fetchWalletProfile();
     fetchClaimableReward();
     fetchTodayPostCount();
   }, []);
@@ -205,7 +201,7 @@ const WalletCenterContainer = () => {
   useEffect(() => {
     if (isConnected) {
       fetchProfile();
-      fetchWalletProfile();
+      
       fetchClaimableReward();
       fetchTodayPostCount();
     }
@@ -223,20 +219,6 @@ const WalletCenterContainer = () => {
     }
   };
 
-  const fetchWalletProfile = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.user) {
-      const { data } = await supabase
-        .from('profiles')
-        .select('custodial_wallet_address')
-        .eq('id', session.user.id)
-        .single();
-      
-      if (data) {
-        setWalletProfile(data as WalletProfile);
-      }
-    }
-  };
 
   const fetchTodayPostCount = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -410,7 +392,7 @@ const WalletCenterContainer = () => {
       toast.success(t('walletAddressCopied'));
       setTimeout(() => setCopiedExternal(false), 2000);
     }
-  }, [address, walletProfile]);
+  }, [address]);
 
   // Format helpers
   const formatNumber = (num: number, decimals: number = 0) => {

@@ -50,7 +50,7 @@ const fetchUserDirectory = async (): Promise<UserDirectoryEntry[]> => {
   // Fetch all data sources in parallel
   const [rewardsRes, profilesRes, claimsRes, lightRes, usdtRes] = await Promise.all([
     supabase.rpc('get_user_rewards_v2', { limit_count: 10000 }),
-    supabase.from('profiles').select('id, username, avatar_url, public_wallet_address, custodial_wallet_address, pending_reward, approved_reward, reward_status'),
+    supabase.from('profiles').select('id, username, avatar_url, public_wallet_address, pending_reward, approved_reward, reward_status'),
     supabase.from('reward_claims').select('user_id, amount'),
     supabase.from('light_reputation').select('user_id, total_light_score, tier, total_minted'),
     supabase.from('donations').select('recipient_id, amount, token_symbol').in('token_symbol', ['USDT', 'BTCB']),
@@ -95,7 +95,7 @@ const fetchUserDirectory = async (): Promise<UserDirectoryEntry[]> => {
       id: userId,
       username: profile.username || 'unknown',
       avatar_url: profile.avatar_url,
-      wallet_address: profile.public_wallet_address || profile.custodial_wallet_address || null,
+      wallet_address: profile.public_wallet_address || null,
       posts_count: Number(reward?.posts_count) || 0,
       comments_count: Number(reward?.comments_count) || 0,
       reactions_on_posts: Number(reward?.reactions_on_posts) || 0,
