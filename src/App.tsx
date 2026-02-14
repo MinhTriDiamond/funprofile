@@ -12,6 +12,7 @@ import { Web3Provider } from "@/components/providers/Web3Provider";
 import { DonationReceivedNotification } from "@/components/donations/DonationReceivedNotification";
 import { TetBackground } from "@/components/ui/TetBackground";
 import { TetFlowerOverlay } from "@/components/ui/TetFlowerOverlay";
+import { ValentineMusicButton } from "@/components/layout/ValentineMusicButton";
 // Lazy load pages for code splitting
 const Auth = lazy(() => import("./pages/Auth"));
 const Friends = lazy(() => import("./pages/Friends"));
@@ -103,6 +104,10 @@ function App() {
           <BrowserRouter>
             <TetBackground />
             <TetFlowerOverlay />
+            {/* Global floating music button – visible on all pages including pre-login */}
+            <div className="fixed bottom-24 right-4 z-50 lg:hidden">
+              <ValentineMusicButton variant="mobile" />
+            </div>
             <Suspense fallback={<PageLoader />}>
               <LawOfLightGuard>
                 <Routes>
