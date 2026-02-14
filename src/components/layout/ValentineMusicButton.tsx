@@ -17,10 +17,12 @@ export const ValentineMusicButton = memo(({ variant = 'desktop' }: ValentineMusi
 
     if (isPlaying) {
       audioRef.current.pause();
+      audioRef.current.currentTime = 0;
     } else {
+      audioRef.current.currentTime = 0;
       audioRef.current.play().catch(() => {});
     }
-    setIsPlaying(!isPlaying);
+    setIsPlaying(prev => !prev);
   }, [isPlaying]);
 
   if (variant === 'mobile') {
