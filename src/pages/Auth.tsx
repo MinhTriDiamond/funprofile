@@ -6,6 +6,7 @@ import { useLanguage } from '@/i18n/LanguageContext';
 import LanguageSwitcher from '@/components/layout/LanguageSwitcher';
 // TetBackground removed - global version in App.tsx handles it
 import { Eye } from 'lucide-react';
+import { ValentineMusicButton } from '@/components/layout/ValentineMusicButton';
 const Auth = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -90,7 +91,8 @@ const Auth = () => {
       {/* Video nền Valentine - handled by global TetBackground in App.tsx */}
 
       {/* Language Switcher - Top Right with 13 languages */}
-      <div className="absolute top-4 right-4 z-50">
+      <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
+        <ValentineMusicButton variant="desktop" />
         <LanguageSwitcher variant="dropdown" />
       </div>
 
