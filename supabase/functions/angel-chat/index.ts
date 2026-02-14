@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -6,37 +7,72 @@ const corsHeaders = {
 };
 
 const ANGEL_AI_ENDPOINT = "https://ssjoetiitctqzapymtzl.supabase.co/functions/v1/angel-chat";
+const MAX_MESSAGE_LENGTH = 4000;
+const RATE_LIMIT = 10; // requests per minute
+const RATE_WINDOW_MS = 60000;
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    const ANGEL_AI_API_KEY = Deno.env.get("ANGEL_AI_API_KEY");
+    // --- Authentication ---
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(
+        JSON.stringify({ error: "Authentication required" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
+      return new Response(
+        JSON.stringify({ error: "Invalid or expired token" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const userId = claimsData.claims.sub;
+
+    // --- Rate Limiting ---
+    const supabaseAdmin = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const { data: rateLimit } = await supabaseAdmin.rpc("check_rate_limit", {
+      p_key: `angel_chat:${userId}`,
+      p_limit: RATE_LIMIT,
+      p_window_ms: RATE_WINDOW_MS,
+    });
+
+    if (rateLimit && !rateLimit.allowed) {
+      return new Response(
+        JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // --- Input Parsing & Validation ---
+    const ANGEL_AI_API_KEY = Deno.env.get("ANGEL_AI_API_KEY");
     if (!ANGEL_AI_API_KEY) {
       console.error("ANGEL_AI_API_KEY is not configured");
       return new Response(
-        JSON.stringify({ error: "ANGEL_AI_API_KEY is not configured" }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        JSON.stringify({ error: "Service not configured" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     const { message, messages } = await req.json();
 
-    // ANGEL AI expects both message and messages array
-    let requestBody: any;
     let messageContent: string;
-    
     if (message) {
       messageContent = message;
     } else if (messages && Array.isArray(messages) && messages.length > 0) {
-      // Get latest user message from array
       const latestUserMessage = messages
         .filter((m: any) => m.role === "user")
         .pop();
@@ -44,26 +80,30 @@ serve(async (req) => {
     } else {
       messageContent = "";
     }
-    
+
     if (!messageContent) {
       return new Response(
         JSON.stringify({ error: "Missing message or messages in request body" }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Send both message and messages array to ANGEL AI API
-    requestBody = { 
+    // Input length validation
+    if (messageContent.length > MAX_MESSAGE_LENGTH) {
+      return new Response(
+        JSON.stringify({ error: `Message too long (max ${MAX_MESSAGE_LENGTH} characters)` }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const requestBody = {
       message: messageContent,
-      messages: [{ role: "user", content: messageContent }]
+      messages: [{ role: "user", content: messageContent }],
     };
 
-    console.log("Calling ANGEL AI with request:", JSON.stringify(requestBody));
+    console.log(`Angel chat request from user ${userId}, length: ${messageContent.length}`);
 
-    // Call ANGEL AI API
+    // --- Proxy to Angel AI ---
     const response = await fetch(ANGEL_AI_ENDPOINT, {
       method: "POST",
       headers: {
@@ -73,59 +113,38 @@ serve(async (req) => {
       body: JSON.stringify(requestBody),
     });
 
-    console.log("ANGEL AI response status:", response.status);
-
     if (!response.ok) {
       const errorText = await response.text();
       console.error("ANGEL AI error:", response.status, errorText);
 
-      // Handle specific error codes
       if (response.status === 429) {
         return new Response(
           JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
-          {
-            status: 429,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-
       if (response.status === 402) {
         return new Response(
           JSON.stringify({ error: "Payment required. Please check your ANGEL AI subscription." }),
-          {
-            status: 402,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
+          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-
       if (response.status === 401 || response.status === 403) {
         return new Response(
-          JSON.stringify({ error: "Invalid API key. Please check your ANGEL_AI_API_KEY." }),
-          {
-            status: 401,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
+          JSON.stringify({ error: "AI service authentication error." }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-
       return new Response(
         JSON.stringify({ error: `ANGEL AI error: ${response.status}` }),
-        {
-          status: response.status,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        { status: response.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Stream the response back to the client
-    // Check content type to determine if it's SSE or JSON
+    // --- Stream Response ---
     const contentType = response.headers.get("content-type") || "";
-    
+
     if (contentType.includes("text/event-stream")) {
-      // SSE streaming response - pass through directly
-      console.log("Streaming SSE response from ANGEL AI");
       return new Response(response.body, {
         headers: {
           ...corsHeaders,
@@ -135,17 +154,12 @@ serve(async (req) => {
         },
       });
     } else {
-      // JSON response - convert to SSE format for consistency
-      console.log("Converting JSON response to SSE format");
       const jsonResponse = await response.json();
-      
-      // Create a simple SSE stream from the JSON response
       const encoder = new TextEncoder();
       const content = jsonResponse.response || jsonResponse.content || jsonResponse.message || JSON.stringify(jsonResponse);
-      
+
       const stream = new ReadableStream({
         start(controller) {
-          // Send content as single SSE event
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
           controller.enqueue(encoder.encode("data: [DONE]\n\n"));
           controller.close();
@@ -164,11 +178,8 @@ serve(async (req) => {
   } catch (error) {
     console.error("angel-chat edge function error:", error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      JSON.stringify({ error: "An unexpected error occurred" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
