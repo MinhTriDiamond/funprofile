@@ -122,7 +122,7 @@ Deno.serve(async (req) => {
     // 7. Check user profile and reward_status
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('reward_status, username')
+      .select('reward_status, username, avatar_url, public_wallet_address')
       .eq('id', userId)
       .single();
 
@@ -131,6 +131,21 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({ error: 'Not Found', message: 'Không tìm thấy hồ sơ người dùng' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // 7b. Check profile completeness (avatar + wallet)
+    if (!profile.avatar_url) {
+      return new Response(
+        JSON.stringify({ error: 'Incomplete Profile', message: 'Vui lòng cập nhật ảnh đại diện trong trang cá nhân trước khi claim' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!profile.public_wallet_address || !/^0x[a-fA-F0-9]{40}$/.test(profile.public_wallet_address)) {
+      return new Response(
+        JSON.stringify({ error: 'Incomplete Profile', message: 'Vui lòng cập nhật địa chỉ ví trong trang cá nhân trước khi claim' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
