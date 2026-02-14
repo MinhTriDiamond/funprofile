@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { AngelFloatingButton } from '@/components/angel-ai';
 import { GiftNavButton } from '@/components/donations/GiftNavButton';
+import { ValentineMusicButton } from './ValentineMusicButton';
 import honorBoardIcon from '@/assets/honor-board-icon.png';
 
 export const MobileBottomNav = memo(() => {
@@ -64,7 +65,8 @@ export const MobileBottomNav = memo(() => {
     { icon: Users, label: t('friends'), path: '/friends', action: () => handleNavigate('/friends') },
     { icon: Award, label: t('honorBoard'), isCenter: true, action: () => setHonorBoardOpen(true) },
     { icon: MessageCircle, label: 'Chat', path: '/chat', action: () => handleNavigate('/chat') },
-    { isGift: true }, // Gift button - replaces Notifications
+    { isGift: true }, // Gift button
+    { isMusic: true }, // Valentine music button
   ];
 
   return (
@@ -79,6 +81,9 @@ export const MobileBottomNav = memo(() => {
             // Gift button - special component
             if ('isGift' in item && item.isGift) {
               return <GiftNavButton key={index} variant="mobile" />;
+            }
+            if ('isMusic' in item && item.isMusic) {
+              return <ValentineMusicButton key={index} variant="mobile" />;
             }
             
             return (
