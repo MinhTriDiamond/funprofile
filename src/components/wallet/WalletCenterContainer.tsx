@@ -6,8 +6,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Gift, Wallet, Info, AlertTriangle, ChevronDown, CheckCircle2, Users } from 'lucide-react';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Wallet, AlertTriangle, ChevronDown, CheckCircle2 } from 'lucide-react';
+
 import { useActiveAccount } from '@/contexts/ActiveAccountContext';
 import { AccountSelectorModal } from './AccountSelectorModal';
 import { AccountMismatchModal } from './AccountMismatchModal';
@@ -26,6 +26,7 @@ import { RewardBreakdown, RewardStats } from './RewardBreakdown';
 import { RewardFormulaCard } from './RewardFormulaCard';
 import { LightScoreDashboard } from './LightScoreDashboard';
 import { DonationHistoryTab } from './DonationHistoryTab';
+import { ClaimRewardsSection } from './ClaimRewardsSection';
 import { FunBalanceCard } from './FunBalanceCard';
 import { ClaimRewardsCard } from './ClaimRewardsCard';
 import { ActivateDialog } from './ActivateDialog';
@@ -532,71 +533,20 @@ const WalletCenterContainer = () => {
         />
       </div>
 
-      {/* Reward Ready to Claim */}
-      {(() => {
-        const rewardStatus = profile?.reward_status || 'pending';
-        const adminNotes = profile?.admin_notes;
-        
-        const statusConfig = {
-          pending: { bg: 'bg-gradient-to-r from-gray-400 via-gray-500 to-gray-600', label: t('walletPendingApproval'), labelColor: 'text-gray-900', disabled: true },
-          approved: { bg: 'bg-gradient-to-r from-yellow-400 via-yellow-500 to-amber-500', label: t('walletReadyToClaim'), labelColor: 'text-yellow-900', disabled: false },
-          on_hold: { bg: 'bg-gradient-to-r from-yellow-600 via-orange-500 to-amber-600', label: t('walletOnHold'), labelColor: 'text-yellow-100', disabled: true },
-          rejected: { bg: 'bg-gradient-to-r from-red-500 via-red-600 to-red-700', label: t('walletRejected'), labelColor: 'text-white', disabled: true }
-        };
-        
-        const config = statusConfig[rewardStatus as keyof typeof statusConfig] || statusConfig.pending;
-        
-        return (
-          <div className={`${config.bg} rounded-xl p-4 flex items-center justify-between shadow-lg flex-wrap gap-3`}>
-            <div className="flex items-center gap-3">
-              <Gift className={`w-6 h-6 ${config.labelColor}`} />
-              <div className="flex flex-col">
-                <span className={`font-semibold ${config.labelColor}`}>
-                  Claimable: {formatNumber(claimableReward, 0)} CAMLY (~{formatUsd(claimableReward * camlyPrice)})
-                </span>
-                <span className={`text-xs ${config.labelColor} opacity-80`}>{t('walletRewardStatus')}: {config.label}</span>
-              </div>
-              {(rewardStatus === 'on_hold' || rewardStatus === 'rejected') && adminNotes && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button className={`p-1 rounded-full ${rewardStatus === 'rejected' ? 'bg-white/20' : 'bg-yellow-900/20'}`}>
-                        <Info className={`w-4 h-4 ${config.labelColor}`} />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="max-w-xs">
-                      <p className="text-sm font-medium mb-1">{t('walletAdminNotes')}:</p>
-                      <p className="text-sm">{adminNotes}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-            </div>
-            <Button 
-              className={`font-semibold px-6 shadow-md transition-all ${
-                config.disabled 
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                  : 'bg-white text-yellow-700 hover:bg-yellow-50 hover:shadow-lg border-2 border-yellow-600'
-              }`}
-              onClick={() => {
-                if (config.disabled) {
-                  if (rewardStatus === 'pending') toast.info(t('walletWaitingApproval'));
-                  else if (rewardStatus === 'on_hold') toast.warning(t('walletOnHoldContact'));
-                  else if (rewardStatus === 'rejected') toast.error(t('walletRejectedContact'));
-                } else {
-                  setShowClaimDialog(true);
-                }
-              }}
-              disabled={config.disabled}
-            >
-              {config.disabled ? (
-                rewardStatus === 'on_hold' ? <><AlertTriangle className="w-4 h-4 mr-1" /> {t('walletOnHold')}</> :
-                rewardStatus === 'rejected' ? t('walletRejected') : t('walletPendingApproval')
-              ) : t('walletClaimToWallet')}
-            </Button>
-          </div>
-        );
-      })()}
+      {/* Claim Rewards Section */}
+      <ClaimRewardsSection
+        claimableReward={claimableReward}
+        claimedAmount={claimedAmount}
+        dailyClaimed={dailyClaimed}
+        rewardStats={rewardStats}
+        camlyPrice={camlyPrice}
+        isConnected={isConnected}
+        rewardStatus={profile?.reward_status || 'pending'}
+        adminNotes={profile?.admin_notes}
+        isLoading={isRewardLoading}
+        onClaimClick={() => setShowClaimDialog(true)}
+        onConnectClick={handleConnect}
+      />
 
       {/* Reward Breakdown - Chi tiết thưởng */}
       <RewardBreakdown 
