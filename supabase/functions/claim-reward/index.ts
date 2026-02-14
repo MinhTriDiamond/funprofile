@@ -249,7 +249,11 @@ Deno.serve(async (req) => {
     }
 
     // 11. Create viem clients
-    const account = privateKeyToAccount(treasuryPrivateKey as `0x${string}`);
+    let pk = treasuryPrivateKey;
+    if (!pk.startsWith('0x')) {
+      pk = '0x' + pk;
+    }
+    const account = privateKeyToAccount(pk as `0x${string}`);
     
     const publicClient = createPublicClient({
       chain: bsc,
