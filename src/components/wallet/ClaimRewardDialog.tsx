@@ -16,7 +16,7 @@ import { RichTextOverlay } from '@/components/donations/RichTextOverlay';
 import { playCelebrationMusicLoop } from '@/lib/celebrationSounds';
 import funEcosystemLogo from '@/assets/tokens/fun-ecosystem-logo.gif';
 
-const MINIMUM_CLAIM = 1;
+const MINIMUM_CLAIM = 200000;
 const DAILY_CLAIM_CAP = 500000;
 
 interface ClaimRewardDialogProps {
