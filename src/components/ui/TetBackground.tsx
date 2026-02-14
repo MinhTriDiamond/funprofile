@@ -44,9 +44,8 @@ export const TetBackground = memo(() => {
       
       {/* Desktop: 3 video sát nhau phủ kín, không khoảng cách */}
       <div className="hidden md:flex absolute inset-0" style={{ gap: 0 }}>
-        <VideoElement className="w-1/3 min-w-0" />
-        <VideoElement className="w-1/3 min-w-0" />
-        <VideoElement className="w-1/3 min-w-0" />
+        <VideoElement className="w-1/2 min-w-0" />
+        <VideoElement className="w-1/2 min-w-0" />
       </div>
 
       {/* Mobile: 1 video cover full */}
