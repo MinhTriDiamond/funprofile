@@ -40,7 +40,7 @@ export const TetBackground = memo(() => {
       className="fixed left-0 right-0 bottom-0 overflow-hidden pointer-events-none tet-background-container"
       style={{ zIndex: -100 }}
     >
-      <div className="absolute inset-0 bg-gradient-to-b from-secondary via-background to-background" />
+      <div className="absolute inset-0 bg-gradient-to-b from-secondary/30 via-background/20 to-background/30" />
       
       {/* Desktop: 2 video trái phải, contain để thấy rõ thiên thần */}
       <div className="hidden md:flex absolute inset-0 items-end justify-between">
