@@ -124,12 +124,19 @@
   }
 }
 
-/* Desktop: contain để thiên thần hiện đầy đủ */
+/* Desktop: 3 video cạnh nhau, mỗi video contain để hiện thiên thần đầy đủ */
 .tet-video {
   object-fit: contain;
   object-position: center center;
   filter: saturate(1.15) contrast(1.08) brightness(1.02);
-  background-color: hsl(45 30% 97%);
+}
+
+@media (min-width: 769px) {
+  .tet-video {
+    width: 33.34%;
+    object-fit: contain;
+    object-position: center center;
+  }
 }
 
 /* Mobile Portrait: contain để thiên thần hiện đầy đủ */
