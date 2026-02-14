@@ -1,58 +1,52 @@
 
 
-## Giới hạn Claim CAMLY tối đa 500.000/ngày
+## Fix: Nhạc không dừng khi bấm nút tắt
 
-### Tổng quan
-Thêm giới hạn claim tối đa 500.000 CAMLY mỗi ngày cho mỗi người dùng. Phần CAMLY chưa claim hết sẽ được giữ lại và claim tiếp vào ngày hôm sau. Phần thưởng chỉ được nhận sau khi Admin duyệt (logic hiện tại giữ nguyên).
+### Nguyên nhân lỗi
+Khi trình duyệt chặn autoplay, code đăng ký một listener `click` trên toàn bộ `document` để chờ người dùng tương tác. Khi người dùng bấm nút dừng nhạc:
 
-### Thay đổi chi tiết
+1. `toggle()` chạy -> tạm dừng nhạc, đặt `isPlaying = false`
+2. Ngay sau đó, listener `resumeOnInteraction` cũng bắt được click này -> phát nhạc lại, đặt `isPlaying = true`
 
-#### 1. Edge Function `claim-reward/index.ts`
-- Thêm hằng số `DAILY_CLAIM_CAP = 500000`
-- Trước khi xử lý giao dịch, truy vấn bảng `reward_claims` để tính tổng số CAMLY user đã claim **trong ngày hôm nay** (theo UTC)
-- Nếu user đã claim đủ 500.000 trong ngày, trả lỗi thông báo "Bạn đã claim tối đa 500.000 CAMLY hôm nay, vui lòng quay lại ngày mai"
-- Nếu số lượng yêu cầu + đã claim hôm nay vượt 500.000, tự động giảm xuống còn phần cho phép
-- Trả thêm thông tin `daily_claimed` và `daily_remaining` trong response
+Kết quả: nhạc không bao giờ dừng được.
 
-#### 2. Component `ClaimRewardDialog.tsx`
-- Hiển thị thông tin "Đã claim hôm nay" và "Còn lại hôm nay" trong giao diện
-- Giới hạn nút MAX theo số nhỏ hơn giữa `claimableAmount` và `dailyRemaining`
-- Thêm thông báo khi user đã claim hết giới hạn ngày
+### Giải pháp
+Lưu reference của listener vào một `ref`, và khi người dùng bấm toggle lần đầu (dù là play hay pause), xóa listener fallback đó đi. Điều này đảm bảo:
 
-#### 3. Component `WalletCenterContainer.tsx`
-- Truyền thêm thông tin `dailyClaimed` vào `ClaimRewardDialog`
-- Fetch thêm tổng claim hôm nay từ bảng `reward_claims`
+- Nếu user bấm play: nhạc phát bình thường, listener bị xóa
+- Nếu user bấm pause: nhạc dừng, listener không can thiệp
 
-#### 4. Hook `useClaimReward.ts`
-- Cập nhật `ClaimResult` interface thêm `daily_claimed` và `daily_remaining`
+### Chi tiết thay đổi
 
-### Luồng hoạt động
+**File: `src/components/layout/ValentineMusicButton.tsx`**
 
-1. User mở Wallet, thấy tổng CAMLY khả dụng (sau Admin duyệt)
-2. User bấm Claim, dialog hiển thị:
-   - Tổng khả dụng: X CAMLY
-   - Đã claim hôm nay: Y / 500.000 CAMLY
-   - Còn được claim hôm nay: Z CAMLY
-3. User chỉ có thể claim tối đa Z CAMLY
-4. Ngày hôm sau, giới hạn reset về 0, user tiếp tục claim
+1. Thêm `resumeListenerRef = useRef` để lưu reference của fallback listener
+2. Trong autoplay fallback, lưu listener vào ref trước khi đăng ký
+3. Trong hàm `toggle()`, gọi `removeEventListener` để xóa fallback listener trước khi xử lý play/pause
+4. Thêm cleanup trong `useEffect` return để xóa listener khi component unmount
 
-### Chi tiết kỹ thuật
+### Code thay doi chinh
 
-**Query tính daily claimed (trong Edge Function):**
-```sql
-SELECT COALESCE(SUM(amount), 0) as today_claimed
-FROM reward_claims
-WHERE user_id = $userId
-AND created_at >= CURRENT_DATE
-AND created_at < CURRENT_DATE + INTERVAL '1 day'
-```
-
-**Validation trong Edge Function:**
 ```typescript
-const DAILY_CLAIM_CAP = 500000;
-const dailyRemaining = Math.max(0, DAILY_CLAIM_CAP - todayClaimed);
-const effectiveAmount = Math.min(claimAmount, dailyRemaining);
-```
+const resumeListenerRef = useRef<(() => void) | null>(null);
 
-Khong cần thay đổi database schema -- bảng `reward_claims` hiện tại đã có `created_at` để filter theo ngày.
+// In autoplay catch block:
+const resumeOnInteraction = () => {
+  resumeListenerRef.current = null; // clear ref
+  // ... play logic
+};
+resumeListenerRef.current = resumeOnInteraction;
+document.addEventListener('click', resumeOnInteraction, { once: true });
+
+// In toggle():
+const toggle = useCallback(() => {
+  // Remove fallback listener first
+  if (resumeListenerRef.current) {
+    document.removeEventListener('click', resumeListenerRef.current);
+    document.removeEventListener('touchstart', resumeListenerRef.current);
+    resumeListenerRef.current = null;
+  }
+  // ... existing toggle logic
+}, [...]);
+```
 
