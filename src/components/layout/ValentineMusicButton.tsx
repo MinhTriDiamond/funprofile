@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, memo } from 'react';
+import { useState, useRef, useCallback, useEffect, memo } from 'react';
 import { Music, VolumeX, Volume2 } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 
@@ -12,6 +12,7 @@ export const ValentineMusicButton = memo(({ variant = 'desktop' }: ValentineMusi
   const [showVolume, setShowVolume] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoplayAttempted = useRef(false);
 
   const ensureAudio = useCallback(() => {
     if (!audioRef.current) {
@@ -20,6 +21,42 @@ export const ValentineMusicButton = memo(({ variant = 'desktop' }: ValentineMusi
       audioRef.current.volume = volume;
     }
   }, [volume]);
+
+  // Autoplay on mount — browsers may block this without user interaction,
+  // so we also listen for the first user click/touch to retry.
+  useEffect(() => {
+    if (autoplayAttempted.current) return;
+    autoplayAttempted.current = true;
+
+    ensureAudio();
+    if (!audioRef.current) return;
+
+    audioRef.current.volume = volume;
+    audioRef.current.currentTime = 0;
+    const playPromise = audioRef.current.play();
+
+    if (playPromise) {
+      playPromise
+        .then(() => setIsPlaying(true))
+        .catch(() => {
+          // Browser blocked autoplay — wait for first interaction
+          const resumeOnInteraction = () => {
+            if (audioRef.current && !audioRef.current.paused) return;
+            ensureAudio();
+            if (!audioRef.current) return;
+            audioRef.current.volume = volume;
+            audioRef.current.currentTime = 0;
+            audioRef.current.play()
+              .then(() => setIsPlaying(true))
+              .catch(() => {});
+            document.removeEventListener('click', resumeOnInteraction);
+            document.removeEventListener('touchstart', resumeOnInteraction);
+          };
+          document.addEventListener('click', resumeOnInteraction, { once: true });
+          document.addEventListener('touchstart', resumeOnInteraction, { once: true });
+        });
+    }
+  }, [ensureAudio, volume]);
 
   const toggle = useCallback(() => {
     ensureAudio();
