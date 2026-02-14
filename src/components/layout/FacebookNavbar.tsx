@@ -269,7 +269,8 @@ export const FacebookNavbar = () => {
             <InlineSearch />
           </div>
 
-          {/* Mobile/Tablet: Wallet icon */}
+          {/* Mobile/Tablet: Music + Wallet icon */}
+          {isMobileOrTablet && <ValentineMusicButton variant="desktop" />}
           {isMobileOrTablet && (
             <button 
               className="fun-icon-btn-gold group" 
