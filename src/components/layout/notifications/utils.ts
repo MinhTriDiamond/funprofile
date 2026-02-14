@@ -3,7 +3,7 @@
  */
 
 import { NotificationWithDetails, NotificationGroups, REACTION_ICONS } from './types';
-import { Bell, MessageCircle, Share2, Gift, Shield, UserPlus, UserCheck, UserX } from 'lucide-react';
+import { Bell, MessageCircle, Share2, Gift, Shield, UserPlus, UserCheck, UserX, Wallet } from 'lucide-react';
 import React from 'react';
 
 /**
@@ -73,6 +73,8 @@ export const getNotificationIcon = (type: string): React.ReactNode => {
     case 'reward_approved':
     case 'reward_rejected':
       return React.createElement(Gift, { className: 'w-4 h-4 text-gold' });
+    case 'claim_reward':
+      return React.createElement(Wallet, { className: 'w-4 h-4 text-gold' });
     case 'account_banned':
       return React.createElement(Shield, { className: 'w-4 h-4 text-destructive' });
     case 'friend_request':
@@ -171,6 +173,12 @@ export const getNotificationText = (
     case 'account_banned':
       main = React.createElement(React.Fragment, null,
         '⚠️ Tài khoản của bạn đã bị hạn chế'
+      );
+      break;
+    case 'claim_reward':
+      main = React.createElement(React.Fragment, null,
+        React.createElement('strong', null, 'FUN Profile Treasury'),
+        ' đã chuyển phần thưởng CAMLY về ví của bạn'
       );
       break;
     case 'friend_request':
