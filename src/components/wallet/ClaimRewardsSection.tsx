@@ -46,8 +46,8 @@ export const ClaimRewardsSection = ({
   const dailyRemaining = Math.max(0, DAILY_LIMIT - dailyClaimed);
 
   const statusConfig: Record<string, { label: string; color: string; disabled: boolean }> = {
-    pending: { label: 'Chờ duyệt', color: 'text-yellow-600', disabled: true },
-    approved: { label: 'Đã duyệt', color: 'text-green-600', disabled: false },
+    pending: { label: `Claim ${formatNumber(claimableReward)} CAMLY`, color: 'text-green-600', disabled: false },
+    approved: { label: `Claim ${formatNumber(claimableReward)} CAMLY`, color: 'text-green-600', disabled: false },
     on_hold: { label: 'Tạm giữ', color: 'text-orange-600', disabled: true },
     rejected: { label: 'Từ chối', color: 'text-red-600', disabled: true },
   };
@@ -60,8 +60,7 @@ export const ClaimRewardsSection = ({
       return;
     }
     if (config.disabled) {
-      if (rewardStatus === 'pending') toast.info('Phần thưởng đang chờ admin duyệt');
-      else if (rewardStatus === 'on_hold') toast.warning('Tài khoản đang bị tạm giữ, vui lòng liên hệ admin');
+      if (rewardStatus === 'on_hold') toast.warning('Tài khoản đang bị tạm giữ, vui lòng liên hệ admin');
       else if (rewardStatus === 'rejected') toast.error('Phần thưởng đã bị từ chối, vui lòng liên hệ admin');
       return;
     }
