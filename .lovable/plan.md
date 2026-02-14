@@ -1,34 +1,34 @@
 
 
-# Thay Video Nền Hoa Mai Bằng Video Valentine (Thiên Thần)
+## Kế hoạch: Cập nhật giao diện Valentine cho production
 
-## Thay Đổi
+### Nguyên nhân
 
-Thay thế video nền hoa mai/đào bằng video Valentine mới (`vale.mp4`) và điều chỉnh CSS để hình thiên thần hiển thị rõ ràng trên cả desktop và mobile.
+Khi người dùng truy cập **fun.rich**, họ vẫn thấy giao diện hoa mai/hoa đào vì các thay đổi Valentine chưa được **publish** lên production. Tất cả chỉnh sửa (video nền, chữ Valentine, overlay) hiện chỉ có trên bản xem trước (preview).
 
-### Các bước thực hiện:
+Ngoài ra, trong mã nguồn CSS (`index.css`) vẫn còn nhiều comment và tên class đề cập "hoa mai", "hoa đào", "Tết" cần được cập nhật cho phù hợp chủ đề Valentine.
 
-1. **Copy file video mới** `vale.mp4` vào `src/assets/vale.mp4`
+### Các bước thực hiện
 
-2. **Cập nhật `src/components/ui/TetBackground.tsx`**:
-   - Đổi import từ `tet-background.mp4` sang `vale.mp4`
-   - Cập nhật comment mô tả cho phù hợp theme Valentine
+**Bước 1: Dọn dẹp CSS comments trong `src/index.css`**
+- Dòng 75: `/* Nền trong suốt để video hoa mai/hoa đào hiển thị */` -> cập nhật thành Valentine
+- Dòng 88: `/* Facebook-style Card - Glass effect để hiển thị hoa mai/hoa đào */` -> cập nhật
+- Dòng 112-116: `/* Tết Video Background */` -> đổi thành Valentine
+- Dòng 136: `/* Navbar trong suốt hơn để thấy lồng đèn */` -> cập nhật
+- Dòng 156: `/* Facebook Header Style - Semi-transparent để hoa mai/đào hiển thị */` -> cập nhật
+- Dòng 275: comment về hoa mai/dao visibility -> cập nhật
+- Dòng 620-643: Các class `.tet-card`, `.fb-card-tet`, comment "hoa mai/hoa đào" -> đổi tên/comment thành Valentine
 
-3. **Cập nhật CSS trong `src/index.css`** -- để thiên thần hiển thị rõ:
-   - **Desktop**: Đổi `object-fit` từ `cover` sang `contain` để không bị crop mất thiên thần. Thêm `object-position: center center` để thiên thần nằm giữa màn hình
-   - **Mobile Portrait**: Giữ `object-fit: contain` và `object-position: center center` để thiên thần hiện đầy đủ
-   - **Mobile Landscape**: Đổi sang `contain` để không bị crop
+**Bước 2: Dọn dẹp comments trong các component**
+- `src/pages/Auth.tsx` dòng 90: comment hoa mai/hoa đào -> Valentine
+- `src/components/auth/UnifiedAuthForm.tsx` dòng 145: comment hoa mai/hoa đào -> Valentine
 
-### Chi tiết kỹ thuật
+**Bước 3: Publish lên production**
+- Sau khi dọn dẹp xong, cần **publish** bản mới lên production để người dùng truy cập fun.rich thấy giao diện Valentine.
 
-| File | Thay đổi |
-|------|----------|
-| `src/assets/vale.mp4` | Copy file video mới vào đây |
-| `src/components/ui/TetBackground.tsx` | Đổi import video sang `vale.mp4` |
-| `src/index.css` | Đổi `object-fit: cover` sang `contain` cho desktop, đổi `object-position` sang `center center` cho tất cả breakpoint để thiên thần hiện rõ giữa màn hình |
-
-### Lý do thay đổi CSS:
-- Video hoa mai cũ dùng `cover` vì hoa nằm ở viền, crop không mất nội dung chính
-- Video Valentine mới có hình thiên thần ở giữa, nếu dùng `cover` trên desktop rộng sẽ bị crop mất thiên thần
-- Dùng `contain` sẽ giữ nguyên tỷ lệ video, hiển thị đầy đủ thiên thần, phần thừa sẽ được lấp bằng gradient nền sẵn có
+### Lưu ý quan trọng
+- Video nền `vale.mp4` đã đúng là video Valentine
+- Chữ "HAPPY VALENTINE'S DAY FROM FUN.RICH" đã được thêm
+- Overlay Valentine (TetFlowerOverlay) đã cập nhật màu hồng/đỏ
+- **Chỉ cần dọn comment cũ và publish** là người dùng sẽ thấy giao diện mới
 
