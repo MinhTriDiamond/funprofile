@@ -83,6 +83,19 @@ serve(async (req) => {
       });
     }
 
+    // Rate limiting: 1 request per minute per admin
+    const { data: rateLimit } = await supabaseAdmin.rpc('check_rate_limit', {
+      p_key: `admin_batch_mint:${user.id}`,
+      p_limit: 1,
+      p_window_ms: 60000,
+    });
+
+    if (rateLimit && !rateLimit.allowed) {
+      return new Response(JSON.stringify({ error: 'Rate limit exceeded. Please wait 1 minute between batch operations.' }), {
+        status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     console.log(`[BATCH-MINT] Admin ${user.id} triggered batch mint request creation`);
 
     // Step 1: Get all rejected mint requests
