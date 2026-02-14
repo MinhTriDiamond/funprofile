@@ -1,41 +1,49 @@
 
 
-# Sửa hiển thị thông báo lỗi chi tiết khi Claim bị từ chối
+# Hien thi giao dich Claim trong Lich su giao dich
 
-## Nguyên nhân gốc
+## Van de
+Khi nguoi dung claim CAMLY thanh cong, edge function `claim-reward` ghi vao bang `transactions` va `reward_claims`, nhung KHONG ghi vao bang `donations`. Trang lich su giao dich (`/donations`) chi truy van bang `donations`, nen giao dich claim khong hien thi.
 
-Edge function `claim-reward` hoạt động đúng: chặn những user chưa cập nhật ví (`public_wallet_address = null`) với mã 403 kèm thông báo tiếng Việt cụ thể.
+## Giai phap
+Them mot buoc ghi vao bang `donations` trong edge function `claim-reward` sau khi giao dich blockchain thanh cong. Dieu nay dam bao giao dich claim xuat hien trong lich su giao dich cua he thong.
 
-Tuy nhiên, Supabase JS SDK khi nhận non-2xx status chỉ trả về lỗi chung "Edge Function returned a non-2xx status code" mà không parse body chứa thông báo cụ thể. Cần sửa hook `useClaimReward` để đọc body từ response lỗi.
+## Chi tiet ky thuat
 
-## Thay doi
+### File: `supabase/functions/claim-reward/index.ts`
 
-**File**: `src/hooks/useClaimReward.ts`
-
-Khi `response.error` xay ra, doc body tu `response.error.context` (la doi tuong Response goc) de lay thong bao cu the tu edge function:
+Sau buoc 16 (ghi vao `transactions`), them buoc ghi vao bang `donations`:
 
 ```typescript
-if (response.error) {
-  // Try to extract specific error message from response body
-  let errorMsg = response.error.message || 'Loi khong xac dinh';
-  try {
-    const errorBody = await response.error.context?.json();
-    if (errorBody?.message) {
-      errorMsg = errorBody.message;
-    }
-  } catch {}
-  setError(errorMsg);
-  toast.error(errorMsg);
-  return null;
+// 16b. Record in donations table for history visibility
+const TREASURY_SENDER_ID = '9e702a6f-4035-4f30-9c04-f2e21419b37a';
+const { error: donationInsertError } = await supabaseAdmin
+  .from('donations')
+  .insert({
+    sender_id: TREASURY_SENDER_ID,
+    recipient_id: userId,
+    amount: effectiveAmount.toString(),
+    token_symbol: 'CAMLY',
+    token_address: CAMLY_CONTRACT.toLowerCase(),
+    chain_id: 56,
+    tx_hash: txHash,
+    status: 'confirmed',
+    block_number: Number(receipt.blockNumber),
+    message: `Claim ${effectiveAmount.toLocaleString()} CAMLY tu phan thuong`,
+    light_score_earned: 0,
+    confirmed_at: new Date().toISOString(),
+    metadata: { type: 'claim_reward' },
+  });
+
+if (donationInsertError) {
+  console.error('Failed to insert donation record:', donationInsertError);
 }
 ```
 
-Thay doi nay giup dialog hien thi dung thong bao nhu "Vui long cap nhat dia chi vi trong trang ca nhan truoc khi claim" thay vi loi chung chung.
+- `sender_id`: Su dung Treasury actor ID (da co san trong code)
+- `recipient_id`: ID cua nguoi dung claim
+- `metadata`: Danh dau `{ type: 'claim_reward' }` de phan biet voi giao dich tang thuong thong thuong
+- `light_score_earned`: 0 (claim khong tang diem)
 
-## Ket qua mong doi
-
-- User chua co vi: Thay thong bao "Vui long cap nhat dia chi vi trong trang ca nhan truoc khi claim"
-- User chua co avatar: Thay thong bao "Vui long cap nhat anh dai dien trong trang ca nhan truoc khi claim"
-- User bi treo/tu choi: Thay thong bao tuong ung
-- Loi rate limit: Thay thong bao "Vui long cho X giay"
+Sau do redeploy edge function `claim-reward`.
 
