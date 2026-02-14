@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import tetVideo from '@/assets/valen.mp4';
+import tetVideo from '@/assets/tet-background.mp4';
 
 /**
  * Tết Background Video Component
