@@ -65,7 +65,7 @@ const ProfileBadge = ({ ok, label }: { ok: boolean; label: string }) => (
 
 const RewardApprovalTab = ({ adminId, onRefresh }: RewardApprovalTabProps) => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortBy, setSortBy] = useState<"claimable_desc" | "claimable_asc" | "total_desc">("claimable_desc");
+  const [sortBy, setSortBy] = useState<"alpha_asc" | "claimable_desc" | "claimable_asc" | "total_desc">("alpha_asc");
   const [profileFilter, setProfileFilter] = useState<"all" | "ready" | "incomplete">("all");
   const [loading, setLoading] = useState<string | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
@@ -153,10 +153,11 @@ const RewardApprovalTab = ({ adminId, onRefresh }: RewardApprovalTabProps) => {
     })
     .sort((a, b) => {
       switch (sortBy) {
+        case "alpha_asc": return (a.full_name || a.username).localeCompare((b.full_name || b.username), 'vi');
         case "claimable_desc": return b.claimable_amount - a.claimable_amount;
         case "claimable_asc": return a.claimable_amount - b.claimable_amount;
         case "total_desc": return b.total_reward - a.total_reward;
-        default: return b.claimable_amount - a.claimable_amount;
+        default: return (a.full_name || a.username).localeCompare((b.full_name || b.username), 'vi');
       }
     });
 
@@ -327,13 +328,15 @@ const RewardApprovalTab = ({ adminId, onRefresh }: RewardApprovalTabProps) => {
               variant="outline"
               size="sm"
               onClick={() => setSortBy(prev => {
+                if (prev === "alpha_asc") return "claimable_desc";
                 if (prev === "claimable_desc") return "claimable_asc";
                 if (prev === "claimable_asc") return "total_desc";
-                return "claimable_desc";
+                return "alpha_asc";
               })}
               className="gap-1"
             >
               <ArrowUpDown className="w-4 h-4" />
+              {sortBy === "alpha_asc" && "A-Z"}
               {sortBy === "claimable_desc" && "Claimable ↓"}
               {sortBy === "claimable_asc" && "Claimable ↑"}
               {sortBy === "total_desc" && "Total ↓"}
