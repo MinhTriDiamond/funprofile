@@ -13,6 +13,7 @@ export const ValentineMusicButton = memo(({ variant = 'desktop' }: ValentineMusi
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoplayAttempted = useRef(false);
+  const resumeListenerRef = useRef<(() => void) | null>(null);
 
   const volumePercent = Math.round(volume * 100);
 
@@ -41,6 +42,7 @@ export const ValentineMusicButton = memo(({ variant = 'desktop' }: ValentineMusi
         .then(() => setIsPlaying(true))
         .catch(() => {
           const resumeOnInteraction = () => {
+            resumeListenerRef.current = null;
             if (audioRef.current && !audioRef.current.paused) return;
             ensureAudio();
             if (!audioRef.current) return;
@@ -52,13 +54,31 @@ export const ValentineMusicButton = memo(({ variant = 'desktop' }: ValentineMusi
             document.removeEventListener('click', resumeOnInteraction);
             document.removeEventListener('touchstart', resumeOnInteraction);
           };
+          resumeListenerRef.current = resumeOnInteraction;
           document.addEventListener('click', resumeOnInteraction, { once: true });
           document.addEventListener('touchstart', resumeOnInteraction, { once: true });
         });
     }
   }, [ensureAudio, volume]);
 
+  // Cleanup fallback listener on unmount
+  useEffect(() => {
+    return () => {
+      if (resumeListenerRef.current) {
+        document.removeEventListener('click', resumeListenerRef.current);
+        document.removeEventListener('touchstart', resumeListenerRef.current);
+        resumeListenerRef.current = null;
+      }
+    };
+  }, []);
+
   const toggle = useCallback(() => {
+    // Remove fallback listener to prevent it from overriding manual toggle
+    if (resumeListenerRef.current) {
+      document.removeEventListener('click', resumeListenerRef.current);
+      document.removeEventListener('touchstart', resumeListenerRef.current);
+      resumeListenerRef.current = null;
+    }
     ensureAudio();
     if (!audioRef.current) return;
 
