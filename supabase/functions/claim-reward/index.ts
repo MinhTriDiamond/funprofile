@@ -134,9 +134,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    if (profile.reward_status !== 'approved') {
+    const blockedStatuses = ['on_hold', 'rejected'];
+    if (blockedStatuses.includes(profile.reward_status)) {
       const statusMessages: Record<string, string> = {
-        pending: 'Phần thưởng đang chờ Admin duyệt',
         on_hold: 'Phần thưởng đang bị treo. Vui lòng liên hệ Admin.',
         rejected: 'Phần thưởng đã bị từ chối. Vui lòng liên hệ Admin.',
       };
