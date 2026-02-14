@@ -1,38 +1,34 @@
 
 
-## Add Prominent Claim Rewards Section to Wallet Page
+## Fix: Nut "Cho duyet" hien sai khi chua claim
 
-Redesign the Claim Rewards area in the Wallet page to match the play.fun.rich/wallet layout, replacing the current small banner with a full card section.
+### Van de hien tai
 
-### What Changes
+Truong `reward_status` trong database mac dinh la `'pending'` cho TAT CA nguoi dung (415/416 user). Component `ClaimRewardsSection` coi `pending` la "bi khoa" nen hien nut "Cho duyet" (disabled) thay vi cho phep claim.
 
-**Replace the existing reward banner** (the gradient bar with "Claimable: X CAMLY" text) with a dedicated "Claim Rewards" card that includes:
+Thuc te, quy trinh claim khong can admin duyet truoc - nguoi dung co the claim bat cu luc nao khi du dieu kien (>= 200,000 CAMLY, chua het han muc ngay).
 
-1. **Header**: "Claim Rewards" title with description "Nhan thuong CAMLY tu hoat dong tren FUN PROFILE"
-2. **Valentine banner** (reuse existing Valentine styling)
-3. **4 stat boxes in a 2x2 grid**:
-   - Co the Claim (claimable amount)
-   - Cho duyet (pending approval amount)
-   - Da Claim (already claimed amount)
-   - Tong da nhan (total reward earned)
-4. **Claim button** - "Ket noi vi de Claim" when disconnected, or active claim button when connected
-5. **Progress bars**:
-   - Minimum threshold: X / 200,000 CAMLY
-   - Daily limit: X / 500,000 CAMLY
-6. **Info text** explaining rules (minimum threshold, admin approval, daily limit)
+### Giai phap
 
-### Technical Details
+Thay doi logic hien thi nut Claim: chi vo hieu hoa khi `reward_status` la `on_hold` hoac `rejected` (admin chu dong khoa). Cac trang thai khac (`pending`, `approved`, null) deu cho phep claim binh thuong.
 
-**File: `src/components/wallet/WalletCenterContainer.tsx`**
-- Replace the inline reward banner (lines 535-599) with a new `<ClaimRewardsSection>` component
-- Pass existing state: `claimableReward`, `claimedAmount`, `dailyClaimed`, `rewardStats`, `camlyPrice`, `isConnected`, `profile?.reward_status`
+### Chi tiet ky thuat
 
-**New file: `src/components/wallet/ClaimRewardsSection.tsx`**
-- Standalone card component matching play.fun.rich design
-- 2x2 grid for stats: claimable, pending (total_reward - claimedAmount - claimableReward or from reward_status), claimed, total
-- Progress bars with thresholds (200,000 minimum, 500,000 daily)
-- Conditional button: disabled if not connected, disabled if pending approval, active if approved
-- Valentine banner (date-conditional, currently active)
-- Info footer with 3 rules
+**File: `src/components/wallet/ClaimRewardsSection.tsx`**
 
-**No database or backend changes needed** - all data already available from existing hooks and state.
+1. Sua `statusConfig` de `pending` khong con disabled:
+   - `pending` -> `disabled: false` (mac dinh cho phep claim)
+   - `approved` -> `disabled: false` (da duyet, cho phep)
+   - `on_hold` -> `disabled: true` (admin tam giu)
+   - `rejected` -> `disabled: true` (admin tu choi)
+
+2. Sua logic hien thi nut:
+   - Khi `pending` hoac `approved`: hien "Claim X CAMLY" (nut vang, cho phep nhan)
+   - Khi `on_hold`: hien "Tam giu" (nut xam, disabled)
+   - Khi `rejected`: hien "Tu choi" (nut xam, disabled)
+   - Khi chua ket noi vi: hien "Ket noi vi de Claim" (nut xanh)
+
+3. Bo dieu kien `claimableReward < MINIMUM_THRESHOLD` ra khoi disabled cua nut - thay vao do chi hien canh bao duoi thanh tien trinh (da co san).
+
+Khong thay doi database hay backend. Chi sua logic UI trong 1 file duy nhat.
+
