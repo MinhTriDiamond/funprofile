@@ -1,80 +1,78 @@
 
 
-# Nâng Cấp Tab "Phát Hiện Lạm Dụng" - Thêm Phát Hiện Bio Trùng, Thiết Bị & IP
+# Nâng Cấp Hệ Thống Duyệt Thưởng - Xác Minh Profile Đầy Đủ
 
-## Phát Hiện Hiện Tại (Dữ Liệu Thực)
+## Vấn Đề Hiện Tại
 
-Sau khi kiểm tra database, phát hiện:
+Hiện tại, tab "Duyệt thưởng" cho phép admin duyệt cho bất kỳ user nào mà **không kiểm tra** profile có đầy đủ hay không. Dữ liệu thực tế:
 
-**1. Bio trùng nhau trên nhiều tài khoản:**
-- "Con là ánh sáng yêu thương thuần khiết của Cha Vũ Trụ" -- 3 tài khoản: `lequangvu2210.hue`, `happycamlycoin7979`, `hieu.le`
-- "CON LA ANH SANG..." (viết hoa) -- 2 tài khoản: `phi`, `Angel Kiều Phi`
-- "Con La Anh Sang...!" (có dấu chấm than) -- 2 tài khoản: `Angel Ái Vân`, `Huỳnh Tỷ Đô`
+| Tiêu chí | Số lượng | Tỷ lệ |
+|----------|----------|--------|
+| Tổng user (chưa bị cấm) | 393 | 100% |
+| Có avatar | 376 | 96% |
+| Có ảnh bìa | 125 | 32% |
+| Có tên đầy đủ | 107 | 27% |
+| Có ví công khai | 35 | 9% |
+| **Đầy đủ (avatar + tên + ví)** | **30** | **8%** |
 
-**2. Ví trùng nhau (public_wallet_address):**
-- `0xb608538d...BFB197` -- 2 tài khoản: `happycamlycoin7979` + `hieu.le` (cũng trùng bio!)
-
-**3. Thiết bị trùng:** Bảng `pplp_device_registry` hiện chưa có dữ liệu chia sẻ thiết bị.
-
-**4. IP trùng:** Hiện chưa có bảng theo dõi IP. Cần tạo mới.
+Nhiều user có reward lớn nhưng chưa thiết lập ví hoặc chưa có tên thật.
 
 ## Giải Pháp
 
-### Phần 1: Thêm 2 tab mới vào WalletAbuseTab
+### 1. Thêm trạng thái "Profile Readiness" vào RewardApprovalTab
 
-Mở rộng từ 3 tab hiện tại (Ví chung, Tên ảo, Thiếu profile) lên **5 tab**:
+Mỗi user trong danh sách duyệt thưởng sẽ hiển thị **badge xác minh** cho từng tiêu chí:
+- Avatar thật (co avatar_url)
+- Tên đầy đủ (full_name khong trong)
+- Ví công khai (public_wallet_address)
 
-| Tab | Icon | Mô tả |
-|-----|------|--------|
-| Vi chung | Wallet | Giữ nguyên - phát hiện ví dùng chung |
-| **Bio trùng** | **FileText** | **MỚI** - Tài khoản có bio giống nhau (so sánh không phân biệt hoa/thường) |
-| Tên ảo | AlertTriangle | Giữ nguyên |
-| Thiếu profile | Ban | Giữ nguyên |
-| **Cùng thiết bị** | **Smartphone** | **MỚI** - Tài khoản từ cùng device (từ pplp_device_registry) |
+### 2. Phân loại user: "Sẵn sàng" vs "Chưa đủ điều kiện"
 
-### Phần 2: Tạo bảng theo dõi IP đăng nhập
+- **Sẵn sàng (xanh)**: Có avatar + tên đầy đủ + ví cong khai -- cho phep duyet
+- **Chưa đủ (vàng)**: Thiếu 1 hoặc nhiều tiêu chí -- nút duyệt bị vô hiệu hóa, hiển thị lý do
 
-Tạo bảng `login_ip_logs` để ghi lại IP mỗi khi user đăng nhập, phục vụ phát hiện multi-account từ cùng IP.
+### 3. Thêm bộ lọc nhanh
 
-### Phần 3: Edge Function ghi IP
+Thêm các filter button ở đầu danh sách:
+- "Tất cả" -- hiển thị tất cả
+- "Sẵn sàng duyệt" -- chỉ user đủ điều kiện
+- "Chưa đủ điều kiện" -- user cần hoàn thiện profile
 
-Tạo edge function `log-login-ip` được gọi sau khi đăng nhập thành công, ghi IP vào `login_ip_logs`.
+### 4. Fetch thêm dữ liệu profile
+
+Hiện tại `RewardApprovalTab` chỉ lấy dữ liệu từ `get_user_rewards_v2` (chỉ có username, avatar_url). Cần fetch thêm `full_name`, `public_wallet_address`, `cover_url` từ bảng `profiles` để kiểm tra.
 
 ## Chi Tiết Kỹ Thuật
 
-### Database Migration
+### File cần sửa: `src/components/admin/RewardApprovalTab.tsx`
 
+1. **Mở rộng interface `UserWithReward`**: Thêm `full_name`, `public_wallet_address`, `cover_url`
+
+2. **Trong `loadRewardData`**: Sau khi lấy dữ liệu rewards, fetch thêm profiles data:
 ```text
-Tạo bảng login_ip_logs:
-- id (uuid, PK)
-- user_id (uuid, references profiles)
-- ip_address (text)
-- user_agent (text)
-- created_at (timestamptz)
-- RLS: admin-only read, service_role insert
+const { data: profilesData } = await supabase
+  .from('profiles')
+  .select('id, full_name, public_wallet_address, cover_url')
+```
+Merge vào danh sách users.
+
+3. **Thêm hàm `isProfileComplete`**:
+```text
+isProfileComplete(user):
+  - has avatar_url (not null, not empty)
+  - has full_name (not null, length >= 2)
+  - has public_wallet_address (not null, starts with 0x, length 42)
 ```
 
-### WalletAbuseTab.tsx - Thay Đổi
+4. **Thêm filter state**: `profileFilter: 'all' | 'ready' | 'incomplete'`
 
-1. Thêm `bio` vào interface `UserData`
-2. Thêm logic phát hiện bio trùng (normalize: lowercase + trim)
-3. Thêm logic phát hiện thiết bị trùng (query `pplp_device_registry` khi mount)
-4. Đổi TabsList từ `grid-cols-3` sang `grid-cols-5`
-5. Thêm 2 TabsContent mới cho "Bio trùng" và "Cùng thiết bị"
+5. **UI thay đổi cho mỗi user row**:
+   - Hiển thị 3 badge nhỏ: Avatar (xanh/đỏ), Tên (xanh/đỏ), Ví (xanh/đỏ)
+   - Nút "Duyệt" bị disabled nếu chưa đủ 3 tiêu chí
+   - Tooltip giải thích thiếu gì khi hover nút bị disabled
 
-### Admin.tsx - Thay Đổi
+6. **Thêm summary card**: "Sẵn sàng duyệt: X users | Chưa đủ: Y users"
 
-Đảm bảo `bio` được truyền vào `users` prop (đã có sẵn vì query `select('*')`)
+### Không cần thay đổi database
 
-### Auth Flow - Thay Đổi
-
-Sau khi đăng nhập thành công, gọi edge function `log-login-ip` để ghi IP.
-
-### Files cần tạo/sửa
-
-1. **Sửa**: `src/components/admin/WalletAbuseTab.tsx` - thêm 2 tab mới (bio trùng + thiết bị)
-2. **Tạo**: Migration SQL cho bảng `login_ip_logs`
-3. **Tạo**: `supabase/functions/log-login-ip/index.ts` - ghi IP đăng nhập
-4. **Sửa**: `src/components/auth/UnifiedAuthForm.tsx` hoặc auth callback - gọi log IP sau login
-5. **Sửa**: `supabase/config.toml` - thêm config cho function mới
-
+Tất cả logic kiểm tra đều dựa trên dữ liệu đã có trong bảng `profiles`. Không cần migration.
