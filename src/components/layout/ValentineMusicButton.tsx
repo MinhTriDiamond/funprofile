@@ -103,7 +103,7 @@ export const ValentineMusicButton = memo(({ variant = 'desktop' }: ValentineMusi
           }`}
         >
           {isPlaying ? (
-            <VolumeX className="w-6 h-6" strokeWidth={1.8} />
+            <VolumeX className="w-6 h-6 animate-spin" strokeWidth={1.8} style={{ animationDuration: '2s' }} />
           ) : (
             <Music className="w-6 h-6" strokeWidth={1.8} />
           )}
@@ -132,7 +132,7 @@ export const ValentineMusicButton = memo(({ variant = 'desktop' }: ValentineMusi
         className={`fun-icon-btn-gold group relative ${isPlaying ? 'ring-2 ring-destructive/50' : ''}`}
       >
         {isPlaying ? (
-          <Volume2 className="w-5 h-5 text-destructive drop-shadow-[0_0_6px_rgba(220,38,38,0.5)]" />
+          <Volume2 className="w-5 h-5 text-destructive drop-shadow-[0_0_6px_rgba(220,38,38,0.5)] animate-spin" style={{ animationDuration: '2s' }} />
         ) : (
           <Music className="w-5 h-5 text-gold drop-shadow-[0_0_6px_hsl(48_96%_53%/0.5)] group-hover:drop-shadow-[0_0_12px_hsl(48_96%_53%/0.8)] transition-all duration-300" />
         )}
