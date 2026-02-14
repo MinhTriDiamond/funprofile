@@ -40,6 +40,7 @@ import { useLanguage } from '@/i18n/LanguageContext';
 interface Profile {
   username: string;
   avatar_url: string | null;
+  cover_url: string | null;
   full_name: string | null;
   reward_status?: string;
   admin_notes?: string | null;
@@ -76,7 +77,7 @@ const WalletCenterContainer = () => {
   const [showClaimDialog, setShowClaimDialog] = useState(false);
   const [showActivateDialog, setShowActivateDialog] = useState(false);
   const [showClaimFunDialog, setShowClaimFunDialog] = useState(false);
-  
+  const [todayPostCount, setTodayPostCount] = useState(0);
   // Copy state for external wallet
   const [copiedExternal, setCopiedExternal] = useState(false);
   
@@ -200,6 +201,7 @@ const WalletCenterContainer = () => {
     fetchProfile();
     fetchWalletProfile();
     fetchClaimableReward();
+    fetchTodayPostCount();
   }, []);
 
   useEffect(() => {
@@ -207,6 +209,7 @@ const WalletCenterContainer = () => {
       fetchProfile();
       fetchWalletProfile();
       fetchClaimableReward();
+      fetchTodayPostCount();
     }
   }, [isConnected, address]);
 
@@ -215,10 +218,10 @@ const WalletCenterContainer = () => {
     if (session?.user) {
       const { data } = await supabase
         .from('profiles')
-        .select('username, avatar_url, full_name, reward_status, admin_notes')
+        .select('username, avatar_url, cover_url, full_name, reward_status, admin_notes')
         .eq('id', session.user.id)
         .single();
-      if (data) setProfile(data);
+      if (data) setProfile(data as Profile);
     }
   };
 
@@ -234,6 +237,20 @@ const WalletCenterContainer = () => {
       if (data) {
         setWalletProfile(data as WalletProfile);
       }
+    }
+  };
+
+  const fetchTodayPostCount = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      const todayStart = new Date();
+      todayStart.setUTCHours(0, 0, 0, 0);
+      const { count } = await supabase
+        .from('posts')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', session.user.id)
+        .gte('created_at', todayStart.toISOString());
+      setTodayPostCount(count || 0);
     }
   };
 
@@ -544,6 +561,9 @@ const WalletCenterContainer = () => {
         rewardStatus={profile?.reward_status || 'pending'}
         adminNotes={profile?.admin_notes}
         isLoading={isRewardLoading}
+        hasAvatar={!!profile?.avatar_url}
+        hasCover={!!profile?.cover_url}
+        hasTodayPost={todayPostCount > 0}
         onClaimClick={() => setShowClaimDialog(true)}
         onConnectClick={handleConnect}
       />

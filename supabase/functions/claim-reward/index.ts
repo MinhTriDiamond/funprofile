@@ -122,7 +122,7 @@ Deno.serve(async (req) => {
     // 7. Check user profile and reward_status
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('reward_status, username, avatar_url, public_wallet_address')
+      .select('reward_status, username, avatar_url, cover_url, public_wallet_address')
       .eq('id', userId)
       .single();
 
@@ -144,7 +144,31 @@ Deno.serve(async (req) => {
 
     if (!profile.public_wallet_address || !/^0x[a-fA-F0-9]{40}$/.test(profile.public_wallet_address)) {
       return new Response(
-        JSON.stringify({ error: 'Incomplete Profile', message: 'Vui lòng cập nhật địa chỉ ví trong trang cá nhân trước khi claim' }),
+        JSON.stringify({ error: 'Incomplete Profile', message: 'Vui lòng cập nhật địa chỉ ví trong trang cá nhân trước khi claim', missing: ['wallet'] }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // 7c. Check cover photo
+    if (!profile.cover_url) {
+      return new Response(
+        JSON.stringify({ error: 'Incomplete Profile', message: 'Vui lòng cập nhật ảnh bìa trong trang cá nhân trước khi claim. Vào trang cá nhân → nhấn vào ảnh bìa để cập nhật!', missing: ['cover_url'] }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // 7d. Check at least 1 post today
+    const postTodayStart = new Date();
+    postTodayStart.setUTCHours(0, 0, 0, 0);
+    const { count: todayPostCount } = await supabaseAdmin
+      .from('posts')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .gte('created_at', postTodayStart.toISOString());
+
+    if (!todayPostCount || todayPostCount === 0) {
+      return new Response(
+        JSON.stringify({ error: 'Activity Required', message: 'Bạn cần đăng ít nhất 1 bài viết hôm nay để được claim. Hãy chia sẻ một bài viết trên trang chủ của bạn!', missing: ['today_post'] }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
