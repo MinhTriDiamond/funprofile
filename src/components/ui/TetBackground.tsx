@@ -20,11 +20,14 @@ const VideoElement = ({ className = '' }: { className?: string }) => (
     disablePictureInPicture
     disableRemotePlayback
     preload="auto"
-    className={`tet-video h-full flex-shrink-0 ${className}`}
+    className={`h-full flex-shrink-0 ${className}`}
     aria-hidden="true"
     style={{
       WebkitTransform: 'translateZ(0)',
       transform: 'translateZ(0)',
+      objectFit: 'cover',
+      objectPosition: 'center center',
+      filter: 'saturate(1.15) contrast(1.08) brightness(1.02)',
     }}
   >
     <source src={bgVideo} type="video/mp4" />
@@ -39,16 +42,34 @@ export const TetBackground = memo(() => {
     >
       <div className="absolute inset-0 bg-gradient-to-b from-secondary via-background to-background" />
       
-      {/* Desktop: 3 video cạnh nhau phủ kín */}
-      <div className="hidden md:flex absolute inset-0 justify-center items-center">
-        <VideoElement />
-        <VideoElement />
-        <VideoElement />
+      {/* Desktop: 3 video sát nhau phủ kín, không khoảng cách */}
+      <div className="hidden md:flex absolute inset-0" style={{ gap: 0 }}>
+        <VideoElement className="w-1/3 min-w-0" />
+        <VideoElement className="w-1/3 min-w-0" />
+        <VideoElement className="w-1/3 min-w-0" />
       </div>
 
-      {/* Mobile: 1 video contain */}
-      <div className="md:hidden absolute inset-0 flex justify-center items-center">
+      {/* Mobile: 1 video cover full */}
+      <div className="md:hidden absolute inset-0">
         <VideoElement className="w-full" />
+      </div>
+
+      {/* HAPPY VALENTINE'S DAY text */}
+      <div 
+        className="absolute inset-x-0 bottom-[15%] md:bottom-[10%] flex justify-center pointer-events-none"
+        style={{ zIndex: 1 }}
+      >
+        <h1 
+          className="text-3xl md:text-6xl lg:text-7xl font-extrabold tracking-wider uppercase"
+          style={{
+            color: '#DC2626',
+            textShadow: '0 0 20px rgba(220, 38, 38, 0.6), 0 2px 4px rgba(0,0,0,0.3), 0 0 40px rgba(220, 38, 38, 0.3)',
+            fontFamily: "'Georgia', 'Times New Roman', serif",
+            letterSpacing: '0.1em',
+          }}
+        >
+          Happy Valentine's Day
+        </h1>
       </div>
     </div>
   );

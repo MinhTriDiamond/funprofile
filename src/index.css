@@ -124,28 +124,8 @@
   }
 }
 
-/* Desktop: 3 video cạnh nhau, mỗi video contain để hiện thiên thần đầy đủ */
-.tet-video {
-  object-fit: contain;
-  object-position: center center;
-  filter: saturate(1.15) contrast(1.08) brightness(1.02);
-}
-
-@media (min-width: 769px) {
-  .tet-video {
-    width: 33.34%;
-    object-fit: contain;
-    object-position: center center;
-  }
-}
-
-/* Mobile Portrait: contain để thiên thần hiện đầy đủ */
+/* Mobile Portrait */
 @media (max-width: 768px) and (orientation: portrait) {
-  .tet-video {
-    object-fit: contain;
-    object-position: center center;
-    filter: saturate(1.25) contrast(1.12) brightness(1.05);
-  }
   
   .fb-card {
     @apply bg-card/65 rounded-xl;
@@ -159,14 +139,8 @@
   }
 }
 
-/* Mobile Landscape: contain để thiên thần không bị crop */
+/* Mobile Landscape */
 @media (max-width: 768px) and (orientation: landscape) {
-  .tet-video {
-    object-fit: contain;
-    object-position: center center;
-    filter: saturate(1.20) contrast(1.10) brightness(1.03);
-  }
-  
   .fb-card {
     @apply bg-card/70 rounded-xl;
     margin-left: 8px;
