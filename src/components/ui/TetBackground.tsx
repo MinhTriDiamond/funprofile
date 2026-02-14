@@ -54,13 +54,13 @@ export const TetBackground = memo(() => {
         <VideoElement className="w-full" />
       </div>
 
-      {/* HAPPY VALENTINE'S DAY text */}
+      {/* HAPPY VALENTINE'S DAY text - ngay dưới header */}
       <div 
-        className="absolute inset-x-0 bottom-[15%] md:bottom-[10%] flex justify-center pointer-events-none"
+        className="absolute inset-x-0 top-0 flex justify-center pointer-events-none pt-2"
         style={{ zIndex: 1 }}
       >
         <h1 
-          className="text-3xl md:text-6xl lg:text-7xl font-extrabold tracking-wider uppercase"
+          className="text-2xl md:text-5xl lg:text-6xl font-extrabold tracking-wider uppercase"
           style={{
             color: '#DC2626',
             textShadow: '0 0 20px rgba(220, 38, 38, 0.6), 0 2px 4px rgba(0,0,0,0.3), 0 0 40px rgba(220, 38, 38, 0.3)',
