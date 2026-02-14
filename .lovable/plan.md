@@ -1,36 +1,41 @@
 
-# Cập nhật lịch sử giao dịch và thông báo sau khi Claim thành công
 
-## Vấn đề
-Sau khi claim CAMLY thành công, giao dịch được ghi vào bảng `transactions` và thông báo vào bảng `notifications` bởi Edge Function, nhưng giao diện không tự động cập nhật vì:
-1. `onSuccess` trong `WalletCenterContainer` chỉ gọi `fetchClaimableReward()` và `refetchExternal()` -- không refresh lịch sử giao dịch
-2. Component `RecentTransactions` quản lý state nội bộ, không có cơ chế để parent trigger refetch
+# Sửa hiển thị thông báo lỗi chi tiết khi Claim bị từ chối
 
-## Giải pháp
+## Nguyên nhân gốc
 
-### 1. Chuyển `useTransactionHistory` sang dùng React Query
-**File**: `src/hooks/useTransactionHistory.ts`
+Edge function `claim-reward` hoạt động đúng: chặn những user chưa cập nhật ví (`public_wallet_address = null`) với mã 403 kèm thông báo tiếng Việt cụ thể.
 
-Thay vì dùng `useState` + `useEffect` thủ công, chuyển sang `useQuery` từ `@tanstack/react-query` để có thể invalidate từ bất kỳ đâu thông qua `queryKey: ['transaction-history']`.
+Tuy nhiên, Supabase JS SDK khi nhận non-2xx status chỉ trả về lỗi chung "Edge Function returned a non-2xx status code" mà không parse body chứa thông báo cụ thể. Cần sửa hook `useClaimReward` để đọc body từ response lỗi.
 
-### 2. Invalidate cache sau khi claim thành công
+## Thay doi
+
 **File**: `src/hooks/useClaimReward.ts`
 
-Thêm invalidation cho `transaction-history` và `notifications` vào callback thành công, cùng với `reward-stats` đã có:
+Khi `response.error` xay ra, doc body tu `response.error.context` (la doi tuong Response goc) de lay thong bao cu the tu edge function:
 
 ```typescript
-queryClient.invalidateQueries({ queryKey: ['reward-stats'] });
-queryClient.invalidateQueries({ queryKey: ['transaction-history'] });
+if (response.error) {
+  // Try to extract specific error message from response body
+  let errorMsg = response.error.message || 'Loi khong xac dinh';
+  try {
+    const errorBody = await response.error.context?.json();
+    if (errorBody?.message) {
+      errorMsg = errorBody.message;
+    }
+  } catch {}
+  setError(errorMsg);
+  toast.error(errorMsg);
+  return null;
+}
 ```
 
-### 3. Cập nhật component RecentTransactions
-**File**: `src/components/wallet/RecentTransactions.tsx`
+Thay doi nay giup dialog hien thi dung thong bao nhu "Vui long cap nhat dia chi vi trong trang ca nhan truoc khi claim" thay vi loi chung chung.
 
-Sử dụng hook đã chuyển sang React Query thay vì state thủ công.
+## Ket qua mong doi
 
-## Chi tiết kỹ thuật
+- User chua co vi: Thay thong bao "Vui long cap nhat dia chi vi trong trang ca nhan truoc khi claim"
+- User chua co avatar: Thay thong bao "Vui long cap nhat anh dai dien trong trang ca nhan truoc khi claim"
+- User bi treo/tu choi: Thay thong bao tuong ung
+- Loi rate limit: Thay thong bao "Vui long cho X giay"
 
-- `useTransactionHistory` sẽ dùng `useQuery` với `queryKey: ['transaction-history']`
-- `useClaimReward` sẽ invalidate thêm key `transaction-history` sau khi claim thành công
-- Không cần thay đổi `WalletCenterContainer` hay `ClaimRewardDialog` vì invalidation xảy ra tự động qua React Query
-- Giữ nguyên chức năng `refreshTxStatus` để kiểm tra trạng thái pending trên blockchain
