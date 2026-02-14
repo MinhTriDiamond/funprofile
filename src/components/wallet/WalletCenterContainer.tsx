@@ -34,6 +34,7 @@ import { RecentTransactions } from './RecentTransactions';
 import { useFunBalance } from '@/hooks/useFunBalance';
 import { useTokenBalances } from '@/hooks/useTokenBalances';
 import bnbLogo from '@/assets/tokens/bnb-logo.webp';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 interface Profile {
   username: string;
@@ -56,6 +57,7 @@ const WalletCenterContainer = () => {
   const { openConnectModal } = useConnectModal();
   const { disconnect } = useDisconnect();
   const { switchChain } = useSwitchChain();
+  const { t } = useLanguage();
   
   // Modal states cho multi-account
   const [showAccountSelector, setShowAccountSelector] = useState(false);
@@ -166,8 +168,8 @@ const WalletCenterContainer = () => {
     switchChain(
       { chainId: bscTestnet.id },
       {
-        onSuccess: () => toast.success('Đã chuyển sang BSC Testnet'),
-        onError: () => toast.error('Không thể chuyển network. Vui lòng thử lại.'),
+        onSuccess: () => toast.success(t('walletSwitchedTestnet')),
+        onError: () => toast.error(t('walletCannotSwitch')),
       }
     );
   }, [switchChain]);
@@ -177,8 +179,8 @@ const WalletCenterContainer = () => {
     switchChain(
       { chainId: bsc.id },
       {
-        onSuccess: () => toast.success('Đã chuyển sang BNB Mainnet'),
-        onError: () => toast.error('Không thể chuyển network. Vui lòng thử lại.'),
+        onSuccess: () => toast.success(t('walletSwitchedMainnet')),
+        onError: () => toast.error(t('walletCannotSwitch')),
       }
     );
   }, [switchChain]);
@@ -186,7 +188,7 @@ const WalletCenterContainer = () => {
   // Warn if on unsupported network (not BSC or BSC Testnet)
   useEffect(() => {
     if (isConnected && chainId && chainId !== bsc.id && chainId !== bscTestnet.id) {
-      toast.warning('Vui lòng chuyển sang BNB Smart Chain hoặc BSC Testnet', {
+      toast.warning(t('walletPleaseSwitch'), {
         action: { label: 'Switch to Mainnet', onClick: handleSwitchToMainnet },
       });
     }
@@ -311,7 +313,7 @@ const WalletCenterContainer = () => {
     if (openConnectModal) {
       openConnectModal();
     } else {
-      toast.error('Không thể mở modal kết nối ví');
+      toast.error(t('walletCannotOpenConnect'));
     }
   }, [openConnectModal]);
 
@@ -366,7 +368,7 @@ const WalletCenterContainer = () => {
     }
     
     disconnect();
-    toast.success('Đã ngắt kết nối ví');
+    toast.success(t('walletDisconnected'));
   }, [disconnect]);
 
   // Legacy switch network handler (kept for compatibility)
@@ -380,7 +382,7 @@ const WalletCenterContainer = () => {
     if (addr) {
       navigator.clipboard.writeText(addr);
       setCopiedExternal(true);
-      toast.success('Đã copy địa chỉ ví');
+      toast.success(t('walletAddressCopied'));
       setTimeout(() => setCopiedExternal(false), 2000);
     }
   }, [address, walletProfile]);
@@ -409,7 +411,7 @@ const WalletCenterContainer = () => {
         <div className="bg-white/80 rounded-2xl shadow-sm overflow-hidden">
           <div className="bg-gradient-to-r from-emerald-800 via-emerald-600 to-green-500 p-6">
             <div className="flex items-center justify-between mb-4">
-              <h1 className="text-2xl font-bold text-yellow-400 drop-shadow-lg">My Wallet</h1>
+              <h1 className="text-2xl font-bold text-yellow-400 drop-shadow-lg">{t('walletMyWallet')}</h1>
               <div className="flex items-center gap-2 bg-yellow-400/20 backdrop-blur-sm px-3 py-1.5 rounded-full border border-yellow-400/30">
                 <img src={bnbLogo} alt="BNB" className="w-5 h-5" />
                 <span className="text-sm font-medium text-white">BNB Smart Chain</span>
@@ -423,9 +425,9 @@ const WalletCenterContainer = () => {
           <div className="w-24 h-24 bg-gradient-to-br from-emerald-500 to-green-400 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-green-500/30">
             <Wallet className="w-12 h-12 text-white" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-3">Kết nối ví để tiếp tục</h2>
+          <h2 className="text-2xl font-bold text-gray-800 mb-3">{t('walletConnectToContinue')}</h2>
           <p className="text-muted-foreground mb-8 max-w-md mx-auto">
-            Kết nối ví của bạn (MetaMask, Bitget, Trust Wallet, FUN Wallet) để xem tài sản và thực hiện giao dịch trên BNB Smart Chain
+            {t('walletConnectDesc')}
           </p>
           
           <Button
@@ -433,7 +435,7 @@ const WalletCenterContainer = () => {
             className="bg-gradient-to-r from-emerald-600 to-green-500 hover:from-emerald-700 hover:to-green-600 text-yellow-300 font-bold text-lg px-10 py-6 rounded-xl shadow-lg hover:shadow-green-500/40 transition-all duration-300 hover:scale-105"
           >
             <Wallet className="w-6 h-6 mr-2" />
-            Connect Wallet
+            {t('walletConnectWallet')}
           </Button>
         </div>
       </div>
@@ -454,7 +456,7 @@ const WalletCenterContainer = () => {
               </AvatarFallback>
             </Avatar>
             <div>
-              <h1 className="text-xl font-bold text-gray-900">My Wallet</h1>
+              <h1 className="text-xl font-bold text-gray-900">{t('walletMyWallet')}</h1>
               <p className="text-sm text-muted-foreground">{profile?.username || 'Account'}</p>
             </div>
           </div>
@@ -491,7 +493,7 @@ const WalletCenterContainer = () => {
         <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 flex items-center gap-2">
           <AlertTriangle className="w-5 h-5 text-orange-500 shrink-0" />
           <span className="text-sm text-orange-700">
-            Bạn đang ở BSC Testnet. Các giao dịch không dùng tiền thật.
+            {t('walletTestnetWarning')}
           </span>
         </div>
       )}
@@ -527,10 +529,10 @@ const WalletCenterContainer = () => {
         const adminNotes = profile?.admin_notes;
         
         const statusConfig = {
-          pending: { bg: 'bg-gradient-to-r from-gray-400 via-gray-500 to-gray-600', label: 'Đang chờ duyệt', labelColor: 'text-gray-900', disabled: true },
-          approved: { bg: 'bg-gradient-to-r from-yellow-400 via-yellow-500 to-amber-500', label: 'Sẵn sàng Claim', labelColor: 'text-yellow-900', disabled: false },
-          on_hold: { bg: 'bg-gradient-to-r from-yellow-600 via-orange-500 to-amber-600', label: 'Đang treo', labelColor: 'text-yellow-100', disabled: true },
-          rejected: { bg: 'bg-gradient-to-r from-red-500 via-red-600 to-red-700', label: 'Đã từ chối', labelColor: 'text-white', disabled: true }
+          pending: { bg: 'bg-gradient-to-r from-gray-400 via-gray-500 to-gray-600', label: t('walletPendingApproval'), labelColor: 'text-gray-900', disabled: true },
+          approved: { bg: 'bg-gradient-to-r from-yellow-400 via-yellow-500 to-amber-500', label: t('walletReadyToClaim'), labelColor: 'text-yellow-900', disabled: false },
+          on_hold: { bg: 'bg-gradient-to-r from-yellow-600 via-orange-500 to-amber-600', label: t('walletOnHold'), labelColor: 'text-yellow-100', disabled: true },
+          rejected: { bg: 'bg-gradient-to-r from-red-500 via-red-600 to-red-700', label: t('walletRejected'), labelColor: 'text-white', disabled: true }
         };
         
         const config = statusConfig[rewardStatus as keyof typeof statusConfig] || statusConfig.pending;
@@ -543,7 +545,7 @@ const WalletCenterContainer = () => {
                 <span className={`font-semibold ${config.labelColor}`}>
                   Claimable: {formatNumber(claimableReward, 0)} CAMLY (~{formatUsd(claimableReward * camlyPrice)})
                 </span>
-                <span className={`text-xs ${config.labelColor} opacity-80`}>Trạng thái: {config.label}</span>
+                <span className={`text-xs ${config.labelColor} opacity-80`}>{t('walletRewardStatus')}: {config.label}</span>
               </div>
               {(rewardStatus === 'on_hold' || rewardStatus === 'rejected') && adminNotes && (
                 <TooltipProvider>
@@ -554,7 +556,7 @@ const WalletCenterContainer = () => {
                       </button>
                     </TooltipTrigger>
                     <TooltipContent side="bottom" className="max-w-xs">
-                      <p className="text-sm font-medium mb-1">Ghi chú từ Admin:</p>
+                      <p className="text-sm font-medium mb-1">{t('walletAdminNotes')}:</p>
                       <p className="text-sm">{adminNotes}</p>
                     </TooltipContent>
                   </Tooltip>
@@ -569,9 +571,9 @@ const WalletCenterContainer = () => {
               }`}
               onClick={() => {
                 if (config.disabled) {
-                  if (rewardStatus === 'pending') toast.info('Phần thưởng đang chờ Admin duyệt');
-                  else if (rewardStatus === 'on_hold') toast.warning('Phần thưởng đang bị treo. Vui lòng liên hệ Admin.');
-                  else if (rewardStatus === 'rejected') toast.error('Phần thưởng đã bị từ chối. Vui lòng liên hệ Admin.');
+                  if (rewardStatus === 'pending') toast.info(t('walletWaitingApproval'));
+                  else if (rewardStatus === 'on_hold') toast.warning(t('walletOnHoldContact'));
+                  else if (rewardStatus === 'rejected') toast.error(t('walletRejectedContact'));
                 } else {
                   setShowClaimDialog(true);
                 }
@@ -579,9 +581,9 @@ const WalletCenterContainer = () => {
               disabled={config.disabled}
             >
               {config.disabled ? (
-                rewardStatus === 'on_hold' ? <><AlertTriangle className="w-4 h-4 mr-1" /> Đang treo</> :
-                rewardStatus === 'rejected' ? 'Đã từ chối' : 'Chờ duyệt'
-              ) : 'Claim to Wallet'}
+                rewardStatus === 'on_hold' ? <><AlertTriangle className="w-4 h-4 mr-1" /> {t('walletOnHold')}</> :
+                rewardStatus === 'rejected' ? t('walletRejected') : t('walletPendingApproval')
+              ) : t('walletClaimToWallet')}
             </Button>
           </div>
         );
@@ -626,7 +628,7 @@ const WalletCenterContainer = () => {
       <Dialog open={showReceive} onOpenChange={setShowReceive}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Nhận tiền</DialogTitle>
+            <DialogTitle>{t('walletReceiveMoney')}</DialogTitle>
           </DialogHeader>
           <ReceiveTab 
             walletAddress={address || undefined} 

@@ -10,9 +10,11 @@ import { GiftCelebrationModal, GiftCardData } from '@/components/donations/GiftC
 import { DonationReceivedCard } from '@/components/donations/DonationReceivedCard';
 import { formatNumber } from '@/lib/formatters';
 import { toast } from 'sonner';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 export function DonationHistoryTab() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<'sent' | 'received'>('sent');
   const [selectedDonation, setSelectedDonation] = useState<DonationRecord | null>(null);
   const [isCelebrationOpen, setIsCelebrationOpen] = useState(false);
@@ -37,41 +39,39 @@ export function DonationHistoryTab() {
 
   const handleExport = () => {
     if (!currentDonations || currentDonations.length === 0) {
-      toast.error('Không có dữ liệu để xuất');
+      toast.error(t('walletNoData'));
       return;
     }
     exportDonationsToCSV(currentDonations, activeTab);
-    toast.success(`Đã xuất ${currentDonations.length} records ra file CSV`);
+    toast.success(`${t('walletExported')}`);
   };
 
   return (
     <div className="bg-white rounded-2xl shadow-sm p-4">
-      {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <History className="w-5 h-5 text-primary" />
-          <h2 className="text-lg font-bold text-gray-900">Lịch Sử Tặng Thưởng</h2>
+          <h2 className="text-lg font-bold text-gray-900">{t('walletDonationHistory')}</h2>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={handleExport} disabled={!currentDonations || currentDonations.length === 0} className="gap-2">
             <Download className="w-4 h-4" />
-            <span className="hidden sm:inline">Xuất CSV</span>
+            <span className="hidden sm:inline">{t('walletExportCsv')}</span>
           </Button>
           <Button variant="default" size="sm" onClick={() => navigate('/donations')} className="gap-2">
-            <span className="hidden sm:inline">Xem tất cả</span>
+            <span className="hidden sm:inline">{t('walletViewAll')}</span>
             <ArrowRight className="w-4 h-4" />
           </Button>
         </div>
       </div>
 
-      {/* Summary Stats */}
       <div className="grid grid-cols-2 gap-3 mb-4">
         <div className="bg-gradient-to-br from-emerald-50 to-green-50 rounded-xl p-3 border border-emerald-100">
           <div className="flex items-center gap-2 mb-1">
             <Send className="w-4 h-4 text-emerald-600" />
-            <span className="text-sm text-emerald-700 font-medium">Đã gửi</span>
+            <span className="text-sm text-emerald-700 font-medium">{t('walletSent')}</span>
           </div>
-          <div className="text-lg font-bold text-emerald-800">{stats?.totalSentCount || 0} lần</div>
+          <div className="text-lg font-bold text-emerald-800">{stats?.totalSentCount || 0} {t('walletTimes')}</div>
           {stats?.sent && Object.keys(stats.sent).length > 0 && (
             <div className="text-xs text-emerald-600 mt-1">
               {Object.entries(stats.sent).map(([token, amount]) => (
@@ -83,9 +83,9 @@ export function DonationHistoryTab() {
         <div className="bg-gradient-to-br from-amber-50 to-yellow-50 rounded-xl p-3 border border-amber-100">
           <div className="flex items-center gap-2 mb-1">
             <Gift className="w-4 h-4 text-amber-600" />
-            <span className="text-sm text-amber-700 font-medium">Đã nhận</span>
+            <span className="text-sm text-amber-700 font-medium">{t('walletReceived')}</span>
           </div>
-          <div className="text-lg font-bold text-amber-800">{stats?.totalReceivedCount || 0} lần</div>
+          <div className="text-lg font-bold text-amber-800">{stats?.totalReceivedCount || 0} {t('walletTimes')}</div>
           {stats?.received && Object.keys(stats.received).length > 0 && (
             <div className="text-xs text-amber-600 mt-1">
               {Object.entries(stats.received).map(([token, amount]) => (
@@ -96,22 +96,20 @@ export function DonationHistoryTab() {
         </div>
       </div>
 
-      {/* Tabs */}
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'sent' | 'received')}>
         <TabsList className="w-full mb-4">
-          <TabsTrigger value="sent" className="flex-1 gap-2"><Send className="w-4 h-4" />Đã gửi ({sentDonations?.length || 0})</TabsTrigger>
-          <TabsTrigger value="received" className="flex-1 gap-2"><Gift className="w-4 h-4" />Đã nhận ({receivedDonations?.length || 0})</TabsTrigger>
+          <TabsTrigger value="sent" className="flex-1 gap-2"><Send className="w-4 h-4" />{t('walletSent')} ({sentDonations?.length || 0})</TabsTrigger>
+          <TabsTrigger value="received" className="flex-1 gap-2"><Gift className="w-4 h-4" />{t('walletReceived')} ({receivedDonations?.length || 0})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="sent" className="mt-0">
-          <DonationList donations={sentDonations} isLoading={isSentLoading} type="sent" onItemClick={(donation) => handleDonationClick(donation, 'sent')} />
+          <DonationList donations={sentDonations} isLoading={isSentLoading} type="sent" onItemClick={(donation) => handleDonationClick(donation, 'sent')} emptyText={t('walletNoGiftSent')} />
         </TabsContent>
         <TabsContent value="received" className="mt-0">
-          <DonationList donations={receivedDonations} isLoading={isReceivedLoading} type="received" onItemClick={(donation) => handleDonationClick(donation, 'received')} />
+          <DonationList donations={receivedDonations} isLoading={isReceivedLoading} type="received" onItemClick={(donation) => handleDonationClick(donation, 'received')} emptyText={t('walletNoGiftReceived')} />
         </TabsContent>
       </Tabs>
 
-      {/* Celebration Cards */}
       {selectedDonation && activeTab === 'sent' && (
         <GiftCelebrationModal
           isOpen={isCelebrationOpen}
@@ -159,12 +157,12 @@ export function DonationHistoryTab() {
   );
 }
 
-// Sub-component for list
-function DonationList({ donations, isLoading, type, onItemClick }: {
+function DonationList({ donations, isLoading, type, onItemClick, emptyText }: {
   donations: ReturnType<typeof useDonationHistory>['data'];
   isLoading: boolean;
   type: 'sent' | 'received';
   onItemClick: (donation: DonationRecord) => void;
+  emptyText: string;
 }) {
   if (isLoading) {
     return (
@@ -178,7 +176,7 @@ function DonationList({ donations, isLoading, type, onItemClick }: {
     return (
       <div className="text-center py-12">
         <Gift className="w-12 h-12 text-muted-foreground mx-auto mb-3 opacity-50" />
-        <p className="text-muted-foreground">{type === 'sent' ? 'Bạn chưa tặng quà cho ai' : 'Bạn chưa nhận được quà nào'}</p>
+        <p className="text-muted-foreground">{emptyText}</p>
       </div>
     );
   }

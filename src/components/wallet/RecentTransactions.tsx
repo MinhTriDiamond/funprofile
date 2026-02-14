@@ -6,15 +6,17 @@ import { getBscScanTxUrl } from '@/lib/bscScanHelpers';
 import { useTransactionHistory, type Transaction } from '@/hooks/useTransactionHistory';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 const StatusBadge = ({ status }: { status: string }) => {
+  const { t } = useLanguage();
   switch (status) {
     case 'confirmed':
-      return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Confirmed</Badge>;
+      return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">{t('walletConfirmed')}</Badge>;
     case 'failed':
-      return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">Failed</Badge>;
+      return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">{t('walletFailed')}</Badge>;
     default:
-      return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">Pending</Badge>;
+      return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">{t('walletPending')}</Badge>;
   }
 };
 
@@ -51,6 +53,7 @@ const TxItem = ({ tx }: { tx: Transaction }) => {
 
 export const RecentTransactions = () => {
   const { transactions, isLoading, refreshAll } = useTransactionHistory();
+  const { t } = useLanguage();
 
   if (transactions.length === 0 && !isLoading) return null;
 
@@ -58,7 +61,7 @@ export const RecentTransactions = () => {
     <Card>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base">Lịch sử giao dịch</CardTitle>
+          <CardTitle className="text-base">{t('walletTransactionHistory')}</CardTitle>
           <Button
             size="sm"
             variant="ghost"
@@ -66,13 +69,13 @@ export const RecentTransactions = () => {
             disabled={isLoading}
           >
             <RefreshCw className={`h-4 w-4 mr-1 ${isLoading ? 'animate-spin' : ''}`} />
-            Refresh
+            {t('walletRefresh')}
           </Button>
         </div>
       </CardHeader>
       <CardContent>
         {isLoading && transactions.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">Đang tải...</p>
+          <p className="text-sm text-muted-foreground text-center py-4">{t('walletLoading')}</p>
         ) : (
           <div className="divide-y">
             {transactions.map(tx => (
