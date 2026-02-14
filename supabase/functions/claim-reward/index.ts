@@ -237,8 +237,8 @@ Deno.serve(async (req) => {
     }
 
     // 10. Get Treasury wallet credentials
-    const treasuryAddress = Deno.env.get('TREASURY_WALLET_ADDRESS');
-    const treasuryPrivateKey = Deno.env.get('TREASURY_PRIVATE_KEY');
+    const treasuryAddress = Deno.env.get('TREASURY_WALLET_ADDRESS')?.trim();
+    const treasuryPrivateKey = Deno.env.get('TREASURY_PRIVATE_KEY')?.trim();
 
     if (!treasuryAddress || !treasuryPrivateKey) {
       console.error('Treasury wallet not configured');
