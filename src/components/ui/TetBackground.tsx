@@ -1,13 +1,12 @@
 import { memo } from 'react';
-import tetVideo from '@/assets/tet-background.mp4';
+import bgVideo from '@/assets/vale.mp4';
 
 /**
- * Tết Background Video Component
- * Video nền hoa mai/đào động, hiển thị phía dưới tất cả nội dung
- * Hoa mai/đào hiện rõ nét ở 2 bên góc màn hình - KHÔNG CÓ OVERLAY che phủ
+ * Valentine Background Video Component
+ * Video nền thiên thần Valentine, hiển thị phía dưới tất cả nội dung
+ * Thiên thần hiện rõ nét ở giữa màn hình - KHÔNG CÓ OVERLAY che phủ
  * 
- * Mobile: object-fit: contain để KHÔNG crop hoa/lồng đèn
- * Desktop: object-fit: cover để full-screen đẹp
+ * Desktop & Mobile: object-fit: contain để KHÔNG crop mất thiên thần
  * 
  * Tương thích: iOS Safari, Chrome, Firefox, Edge
  */
@@ -17,7 +16,7 @@ export const TetBackground = memo(() => {
       className="fixed left-0 right-0 bottom-0 overflow-hidden pointer-events-none tet-background-container"
       style={{ zIndex: -100 }}
     >
-      {/* Nền phụ để lấp khoảng trống khi contain trên mobile */}
+      {/* Nền phụ để lấp khoảng trống khi contain */}
       <div className="absolute inset-0 bg-gradient-to-b from-secondary via-background to-background" />
       
       <video
@@ -40,9 +39,9 @@ export const TetBackground = memo(() => {
           backgroundColor: 'hsl(45 30% 97%)',
         }}
       >
-        <source src={tetVideo} type="video/mp4" />
+        <source src={bgVideo} type="video/mp4" />
       </video>
-      {/* No overlay - hoa mai/đào hiển thị rõ nét 100% */}
+      {/* No overlay - thiên thần hiển thị rõ nét 100% */}
     </div>
   );
 });
