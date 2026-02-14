@@ -67,6 +67,7 @@ const WalletCenterContainer = () => {
   const [walletProfile, setWalletProfile] = useState<WalletProfile | null>(null);
   const [claimableReward, setClaimableReward] = useState(0);
   const [claimedAmount, setClaimedAmount] = useState(0);
+  const [dailyClaimed, setDailyClaimed] = useState(0);
   const [rewardStats, setRewardStats] = useState<RewardStats | null>(null);
   const [isRewardLoading, setIsRewardLoading] = useState(true);
   const [showReceive, setShowReceive] = useState(false);
@@ -278,12 +279,19 @@ const WalletCenterContainer = () => {
         // Lấy số đã claimed
         const { data: claims } = await supabase
           .from('reward_claims')
-          .select('amount')
+          .select('amount, created_at')
           .eq('user_id', userId);
           
         const claimed = claims?.reduce((sum, c) => sum + Number(c.amount), 0) || 0;
         setClaimedAmount(claimed);
         setClaimableReward(Math.max(0, totalReward - claimed));
+
+        // Tính daily claimed (hôm nay UTC)
+        const todayStart = new Date();
+        todayStart.setUTCHours(0, 0, 0, 0);
+        const todayCl = claims?.filter(c => new Date(c.created_at) >= todayStart)
+          .reduce((sum, c) => sum + Number(c.amount), 0) || 0;
+        setDailyClaimed(todayCl);
       } else {
         // User mới chưa có trong bảng xếp hạng
         setRewardStats({
@@ -298,6 +306,7 @@ const WalletCenterContainer = () => {
         });
         setClaimableReward(50000);
         setClaimedAmount(0);
+        setDailyClaimed(0);
       }
     } catch (error) {
       console.error('[WalletCenter] fetchClaimableReward error:', error);
@@ -651,6 +660,7 @@ const WalletCenterContainer = () => {
         claimableAmount={claimableReward}
         externalWallet={(isConnected ? address : null) || null}
         camlyPrice={camlyPrice}
+        dailyClaimed={dailyClaimed}
         onSuccess={() => {
           fetchClaimableReward();
           refetchExternal();

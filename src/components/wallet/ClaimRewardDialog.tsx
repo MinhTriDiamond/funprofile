@@ -17,6 +17,7 @@ import { playCelebrationMusicLoop } from '@/lib/celebrationSounds';
 import funEcosystemLogo from '@/assets/tokens/fun-ecosystem-logo.gif';
 
 const MINIMUM_CLAIM = 1;
+const DAILY_CLAIM_CAP = 500000;
 
 interface ClaimRewardDialogProps {
   open: boolean;
@@ -24,6 +25,7 @@ interface ClaimRewardDialogProps {
   claimableAmount: number;
   externalWallet: string | null;
   camlyPrice: number;
+  dailyClaimed: number;
   onSuccess: () => void;
 }
 
@@ -35,6 +37,7 @@ export const ClaimRewardDialog = ({
   claimableAmount,
   externalWallet,
   camlyPrice,
+  dailyClaimed,
   onSuccess,
 }: ClaimRewardDialogProps) => {
   const [amount, setAmount] = useState('');
@@ -66,7 +69,10 @@ export const ClaimRewardDialog = ({
   const formatNumber = (num: number) => num.toLocaleString('vi-VN');
   const formatUsd = (num: number) => `$${(num * camlyPrice).toFixed(2)}`;
 
-  const handleMaxClick = () => setAmount(claimableAmount.toString());
+  const dailyRemaining = Math.max(0, DAILY_CLAIM_CAP - dailyClaimed);
+  const maxClaimable = Math.min(claimableAmount, dailyRemaining);
+
+  const handleMaxClick = () => setAmount(maxClaimable.toString());
 
   const handleAmountChange = (value: string) => {
     setAmount(value.replace(/[^0-9]/g, ''));
@@ -74,7 +80,7 @@ export const ClaimRewardDialog = ({
 
   const isValidAmount = () => {
     const numAmount = Number(amount);
-    return numAmount >= MINIMUM_CLAIM && numAmount <= claimableAmount;
+    return numAmount >= MINIMUM_CLAIM && numAmount <= maxClaimable;
   };
 
   const handleClaim = async () => {
@@ -122,6 +128,26 @@ export const ClaimRewardDialog = ({
           <p className="text-sm text-yellow-600">~{formatUsd(claimableAmount)}</p>
         </div>
 
+        {/* Daily Claim Info */}
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4">
+          <div className="flex justify-between items-center mb-2">
+            <p className="text-sm text-blue-700">Đã claim hôm nay</p>
+            <p className="text-sm font-semibold text-blue-800">{formatNumber(dailyClaimed)} / {formatNumber(DAILY_CLAIM_CAP)}</p>
+          </div>
+          <div className="w-full bg-blue-100 rounded-full h-2 mb-2">
+            <div 
+              className="bg-blue-500 h-2 rounded-full transition-all" 
+              style={{ width: `${Math.min(100, (dailyClaimed / DAILY_CLAIM_CAP) * 100)}%` }} 
+            />
+          </div>
+          <p className="text-sm text-blue-600">
+            Còn được claim hôm nay: <span className="font-bold">{formatNumber(dailyRemaining)} CAMLY</span>
+          </p>
+          {dailyRemaining <= 0 && (
+            <p className="text-sm text-red-500 font-medium mt-1">⚠️ Đã hết giới hạn claim hôm nay, vui lòng quay lại ngày mai</p>
+          )}
+        </div>
+
         {/* Amount Input */}
         <div className="space-y-2">
           <Label htmlFor="amount">Số lượng claim</Label>
@@ -150,8 +176,10 @@ export const ClaimRewardDialog = ({
           {amount && Number(amount) < 1 && (
             <p className="text-sm text-red-500">Số lượng phải lớn hơn 0</p>
           )}
-          {amount && Number(amount) > claimableAmount && (
-            <p className="text-sm text-red-500">Vượt quá số dư khả dụng</p>
+          {amount && Number(amount) > maxClaimable && (
+            <p className="text-sm text-red-500">
+              {Number(amount) > claimableAmount ? 'Vượt quá số dư khả dụng' : 'Vượt quá giới hạn claim hôm nay'}
+            </p>
           )}
         </div>
 
