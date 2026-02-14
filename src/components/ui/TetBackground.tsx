@@ -56,13 +56,13 @@ export const TetBackground = memo(() => {
 
       {/* HAPPY VALENTINE'S DAY text - dưới header */}
       <div 
-        className="absolute inset-x-0 top-0 flex justify-center pointer-events-none pt-12 md:pt-16"
+        className="absolute inset-x-0 top-0 flex justify-center pointer-events-none pt-1 md:pt-2"
         style={{ zIndex: 1 }}
       >
         <h1 
           className="text-2xl md:text-5xl lg:text-6xl font-black tracking-wider uppercase"
           style={{
-            background: 'linear-gradient(135deg, #FF6B9D 0%, #FF8A80 20%, #FFB347 40%, #FF6B9D 60%, #E91E63 80%, #FF6B9D 100%)',
+            background: 'linear-gradient(135deg, #DC2626 0%, #FF1744 25%, #E91E63 50%, #FF1744 75%, #DC2626 100%)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
             backgroundClip: 'text',
