@@ -1,27 +1,27 @@
 
 
-# Sửa lỗi format Private Key trong claim-reward
+# Sửa lỗi khoảng trắng thừa trong Treasury Address
 
-## Vấn đề
-Private key export từ MetaMask/Trust Wallet chỉ có 64 ký tự hex (không có prefix `0x`). Nhưng thư viện `viem` yêu cầu format `0x` + 64 hex. Hiện tại edge function không tự động xử lý trường hợp này nên bị lỗi "invalid private key".
+## Nguyên nhân
+Secret `TREASURY_WALLET_ADDRESS` được lưu với dấu cách thừa ở đầu: `" 0xd0a262..."` thay vì `"0xd0a262..."`. Khi viem nhận địa chỉ này, nó báo lỗi "invalid address".
 
 ## Giải pháp
-Sửa file `supabase/functions/claim-reward/index.ts` tại bước 10 (khoảng dòng 240-248) để tự động thêm prefix `0x` nếu private key chưa có:
+Sửa file `supabase/functions/claim-reward/index.ts` để `.trim()` cả `treasuryAddress` và `treasuryPrivateKey` ngay khi đọc từ env, tránh lỗi tương tự trong tương lai.
 
+### Thay doi cu the
+File: `supabase/functions/claim-reward/index.ts` (khoang dong 240-241)
+
+**Truoc:**
 ```typescript
-// Trước khi tạo account từ private key:
-let pk = treasuryPrivateKey;
-if (!pk.startsWith('0x')) {
-  pk = '0x' + pk;
-}
-const account = privateKeyToAccount(pk as `0x${string}`);
+const treasuryAddress = Deno.env.get('TREASURY_WALLET_ADDRESS');
+const treasuryPrivateKey = Deno.env.get('TREASURY_PRIVATE_KEY');
 ```
 
-Thay đổi duy nhất trong 1 file, sau đó redeploy edge function.
+**Sau:**
+```typescript
+const treasuryAddress = Deno.env.get('TREASURY_WALLET_ADDRESS')?.trim();
+const treasuryPrivateKey = Deno.env.get('TREASURY_PRIVATE_KEY')?.trim();
+```
 
-## Kỹ thuật
-- File: `supabase/functions/claim-reward/index.ts`
-- Vị trí: dòng khoảng 250-251, nơi gọi `privateKeyToAccount()`
-- Thêm logic normalize prefix `0x` trước khi dùng private key
-- Không cần con nhập lại secret, code sẽ tự xử lý
+Sau do redeploy edge function `claim-reward`.
 
