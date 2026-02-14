@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect, memo } from 'react';
-import { Music, VolumeX, Volume2 } from 'lucide-react';
+import { Music, Volume2 } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 
 interface ValentineMusicButtonProps {
@@ -14,6 +14,8 @@ export const ValentineMusicButton = memo(({ variant = 'desktop' }: ValentineMusi
   const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoplayAttempted = useRef(false);
 
+  const volumePercent = Math.round(volume * 100);
+
   const ensureAudio = useCallback(() => {
     if (!audioRef.current) {
       audioRef.current = new Audio('/sounds/valentine.mp3');
@@ -22,8 +24,7 @@ export const ValentineMusicButton = memo(({ variant = 'desktop' }: ValentineMusi
     }
   }, [volume]);
 
-  // Autoplay on mount — browsers may block this without user interaction,
-  // so we also listen for the first user click/touch to retry.
+  // Autoplay on mount
   useEffect(() => {
     if (autoplayAttempted.current) return;
     autoplayAttempted.current = true;
@@ -39,7 +40,6 @@ export const ValentineMusicButton = memo(({ variant = 'desktop' }: ValentineMusi
       playPromise
         .then(() => setIsPlaying(true))
         .catch(() => {
-          // Browser blocked autoplay — wait for first interaction
           const resumeOnInteraction = () => {
             if (audioRef.current && !audioRef.current.paused) return;
             ensureAudio();
@@ -87,14 +87,34 @@ export const ValentineMusicButton = memo(({ variant = 'desktop' }: ValentineMusi
   }, []);
 
   const handleMouseLeave = useCallback(() => {
-    hideTimeoutRef.current = setTimeout(() => setShowVolume(false), 1200);
+    hideTimeoutRef.current = setTimeout(() => setShowVolume(false), 1500);
   }, []);
+
+  const handleTouchToggleVolume = useCallback(() => {
+    setShowVolume(prev => !prev);
+  }, []);
+
+  const volumePopover = (
+    <div className="flex items-center gap-2 bg-card border border-border rounded-lg px-3 py-2 shadow-lg z-50 w-36">
+      <Volume2 className="w-4 h-4 shrink-0 text-destructive" />
+      <Slider
+        value={[volume]}
+        onValueChange={handleVolumeChange}
+        max={1}
+        step={0.05}
+        className="flex-1"
+      />
+      <span className="text-xs font-semibold text-foreground min-w-[28px] text-right">{volumePercent}%</span>
+    </div>
+  );
 
   if (variant === 'mobile') {
     return (
       <div className="relative flex flex-col items-center" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
         <button
           onClick={toggle}
+          onContextMenu={(e) => { e.preventDefault(); handleTouchToggleVolume(); }}
+          onDoubleClick={handleTouchToggleVolume}
           aria-label={isPlaying ? 'Tắt nhạc' : 'Bật nhạc Valentine'}
           className={`flex flex-col items-center justify-center min-w-[56px] min-h-[52px] rounded-full transition-all duration-300 touch-manipulation group border-[0.5px] ${
             isPlaying
@@ -102,22 +122,16 @@ export const ValentineMusicButton = memo(({ variant = 'desktop' }: ValentineMusi
               : 'text-foreground hover:text-destructive hover:bg-destructive/10 border-transparent hover:border-destructive/40'
           }`}
         >
-          {isPlaying ? (
-            <VolumeX className="w-6 h-6 animate-spin" strokeWidth={1.8} style={{ animationDuration: '2s' }} />
-          ) : (
-            <Music className="w-6 h-6" strokeWidth={1.8} />
-          )}
+          <Music
+            className={`w-6 h-6 ${isPlaying ? 'animate-spin' : ''}`}
+            strokeWidth={1.8}
+            style={isPlaying ? { animationDuration: '2s' } : undefined}
+          />
           <span className="text-[10px] mt-1 font-medium">Nhạc</span>
         </button>
-        {isPlaying && showVolume && (
-          <div className="absolute top-full mt-2 bg-card border border-border rounded-lg p-2 shadow-lg z-50 w-28">
-            <Slider
-              value={[volume]}
-              onValueChange={handleVolumeChange}
-              max={1}
-              step={0.05}
-              className="w-full"
-            />
+        {showVolume && (
+          <div className="absolute top-full mt-2">
+            {volumePopover}
           </div>
         )}
       </div>
@@ -131,24 +145,21 @@ export const ValentineMusicButton = memo(({ variant = 'desktop' }: ValentineMusi
         aria-label={isPlaying ? 'Tắt nhạc' : 'Bật nhạc Valentine'}
         className={`fun-icon-btn-gold group relative ${isPlaying ? 'ring-2 ring-destructive/50' : ''}`}
       >
-        {isPlaying ? (
-          <Volume2 className="w-5 h-5 text-destructive drop-shadow-[0_0_6px_rgba(220,38,38,0.5)] animate-spin" style={{ animationDuration: '2s' }} />
-        ) : (
-          <Music className="w-5 h-5 text-gold drop-shadow-[0_0_6px_hsl(48_96%_53%/0.5)] group-hover:drop-shadow-[0_0_12px_hsl(48_96%_53%/0.8)] transition-all duration-300" />
-        )}
+        <Music
+          className={`w-5 h-5 ${
+            isPlaying
+              ? 'text-destructive drop-shadow-[0_0_6px_rgba(220,38,38,0.5)] animate-spin'
+              : 'text-gold drop-shadow-[0_0_6px_hsl(48_96%_53%/0.5)] group-hover:drop-shadow-[0_0_12px_hsl(48_96%_53%/0.8)] transition-all duration-300'
+          }`}
+          style={isPlaying ? { animationDuration: '2s' } : undefined}
+        />
         {isPlaying && (
           <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-destructive rounded-full animate-pulse" />
         )}
       </button>
-      {isPlaying && showVolume && (
-        <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 bg-card border border-border rounded-lg p-2 shadow-lg z-50 w-28">
-          <Slider
-            value={[volume]}
-            onValueChange={handleVolumeChange}
-            max={1}
-            step={0.05}
-            className="w-full"
-          />
+      {showVolume && (
+        <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2">
+          {volumePopover}
         </div>
       )}
     </div>
