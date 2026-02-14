@@ -72,7 +72,7 @@
 
   body {
     @apply text-foreground;
-    /* Nền trong suốt để video hoa mai/hoa đào hiển thị */
+    /* Nền trong suốt để video Valentine hiển thị */
     background: transparent;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     text-rendering: optimizeSpeed;
@@ -85,7 +85,7 @@
   content-visibility: visible;
 }
 
-/* Facebook-style Card - Glass effect để hiển thị hoa mai/hoa đào */
+/* Facebook-style Card - Glass effect để hiển thị video Valentine */
 .fb-card {
   @apply bg-card/80 rounded-lg shadow-sm border border-border;
   contain: layout style paint;
@@ -109,11 +109,11 @@
 }
 
 /* ================================ */
-/* Tết Video Background             */
+/* Valentine Video Background       */
 /* Desktop: cover, Mobile: contain  */
 /* ================================ */
 
-/* Tết Background Container - Bắt đầu từ dưới header */
+/* Valentine Background Container - Bắt đầu từ dưới header */
 .tet-background-container {
   top: calc(56px + env(safe-area-inset-top, 0px)); /* Height of header on desktop + safe area */
 }
@@ -133,7 +133,7 @@
     margin-right: 16px;
   }
   
-  /* Navbar trong suốt hơn để thấy lồng đèn */
+  /* Navbar trong suốt hơn để thấy video Valentine */
   .fb-header {
     @apply bg-card/70;
   }
@@ -153,7 +153,7 @@
   @apply hover:bg-muted/50 transition-colors cursor-pointer rounded-lg;
 }
 
-/* Facebook Header Style - Semi-transparent để hoa mai/đào hiển thị */
+/* Facebook Header Style - Semi-transparent để video Valentine hiển thị */
 .fb-header {
   @apply bg-card/85 shadow-sm border-b border-border;
 }
@@ -272,7 +272,7 @@
 @media (max-width: 1023px) {
   .fb-card {
     @apply rounded-none sm:rounded-lg;
-    /* margin removed - let 768px media query apply 16px margins for hoa mai/dao visibility */
+    /* margin removed - let 768px media query apply 16px margins for Valentine background visibility */
   }
   
   /* Ensure adequate touch targets - but don't affect icons/small elements */
@@ -617,8 +617,8 @@ html {
   animation: spin-slow 3s linear infinite;
 }
 
-/* Tet-themed transparent cards for floral background visibility */
-/* KHÔNG dùng backdrop-blur để hoa mai/hoa đào hiển thị rõ nét 100% */
+/* Valentine-themed transparent cards for background visibility */
+/* KHÔNG dùng backdrop-blur để video Valentine hiển thị rõ nét 100% */
 .tet-card {
   @apply bg-card/80 rounded-xl border border-border;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
@@ -629,14 +629,14 @@ html {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
-/* Semi-transparent fb-card for Tet theme */
+/* Semi-transparent fb-card for Valentine theme */
 .fb-card-tet {
   @apply bg-card/80 rounded-lg shadow-sm border border-border;
 }
 
-/* Mobile optimization for Tet video background */
+/* Mobile optimization for Valentine video background */
 @media (max-width: 768px) {
-  /* Đảm bảo video hoa mai/hoa đào hiển thị đầy đủ trên mobile */
+  /* Đảm bảo video Valentine hiển thị đầy đủ trên mobile */
   .tet-mobile-optimized {
     min-height: 100dvh;
     min-height: -webkit-fill-available;

@@ -142,7 +142,7 @@ export const UnifiedAuthForm = () => {
         }}
       >
         
-        {/* Inner Card - bóng kính để thấy hoa mai/hoa đào */}
+        {/* Inner Card - bóng kính để thấy video Valentine */}
         <Card className="relative border-0 overflow-hidden rounded-[20px] bg-card/80 shadow-inner p-2">
           <CardHeader className="pb-4">
             {/* Step into the Light - Metallic green 3D - 40% larger */}
