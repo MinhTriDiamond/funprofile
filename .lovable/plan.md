@@ -1,27 +1,36 @@
 
+# Cập nhật lịch sử giao dịch và thông báo sau khi Claim thành công
 
-# Sửa lỗi khoảng trắng thừa trong Treasury Address
-
-## Nguyên nhân
-Secret `TREASURY_WALLET_ADDRESS` được lưu với dấu cách thừa ở đầu: `" 0xd0a262..."` thay vì `"0xd0a262..."`. Khi viem nhận địa chỉ này, nó báo lỗi "invalid address".
+## Vấn đề
+Sau khi claim CAMLY thành công, giao dịch được ghi vào bảng `transactions` và thông báo vào bảng `notifications` bởi Edge Function, nhưng giao diện không tự động cập nhật vì:
+1. `onSuccess` trong `WalletCenterContainer` chỉ gọi `fetchClaimableReward()` và `refetchExternal()` -- không refresh lịch sử giao dịch
+2. Component `RecentTransactions` quản lý state nội bộ, không có cơ chế để parent trigger refetch
 
 ## Giải pháp
-Sửa file `supabase/functions/claim-reward/index.ts` để `.trim()` cả `treasuryAddress` và `treasuryPrivateKey` ngay khi đọc từ env, tránh lỗi tương tự trong tương lai.
 
-### Thay doi cu the
-File: `supabase/functions/claim-reward/index.ts` (khoang dong 240-241)
+### 1. Chuyển `useTransactionHistory` sang dùng React Query
+**File**: `src/hooks/useTransactionHistory.ts`
 
-**Truoc:**
+Thay vì dùng `useState` + `useEffect` thủ công, chuyển sang `useQuery` từ `@tanstack/react-query` để có thể invalidate từ bất kỳ đâu thông qua `queryKey: ['transaction-history']`.
+
+### 2. Invalidate cache sau khi claim thành công
+**File**: `src/hooks/useClaimReward.ts`
+
+Thêm invalidation cho `transaction-history` và `notifications` vào callback thành công, cùng với `reward-stats` đã có:
+
 ```typescript
-const treasuryAddress = Deno.env.get('TREASURY_WALLET_ADDRESS');
-const treasuryPrivateKey = Deno.env.get('TREASURY_PRIVATE_KEY');
+queryClient.invalidateQueries({ queryKey: ['reward-stats'] });
+queryClient.invalidateQueries({ queryKey: ['transaction-history'] });
 ```
 
-**Sau:**
-```typescript
-const treasuryAddress = Deno.env.get('TREASURY_WALLET_ADDRESS')?.trim();
-const treasuryPrivateKey = Deno.env.get('TREASURY_PRIVATE_KEY')?.trim();
-```
+### 3. Cập nhật component RecentTransactions
+**File**: `src/components/wallet/RecentTransactions.tsx`
 
-Sau do redeploy edge function `claim-reward`.
+Sử dụng hook đã chuyển sang React Query thay vì state thủ công.
 
+## Chi tiết kỹ thuật
+
+- `useTransactionHistory` sẽ dùng `useQuery` với `queryKey: ['transaction-history']`
+- `useClaimReward` sẽ invalidate thêm key `transaction-history` sau khi claim thành công
+- Không cần thay đổi `WalletCenterContainer` hay `ClaimRewardDialog` vì invalidation xảy ra tự động qua React Query
+- Giữ nguyên chức năng `refreshTxStatus` để kiểm tra trạng thái pending trên blockchain
