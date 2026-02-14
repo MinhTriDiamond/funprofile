@@ -124,19 +124,19 @@
   }
 }
 
-/* Desktop: cover full + màu sắc nhẹ nhàng */
+/* Desktop: contain để thiên thần hiện đầy đủ */
 .tet-video {
-  object-fit: cover;
-  object-position: top center;
+  object-fit: contain;
+  object-position: center center;
   filter: saturate(1.15) contrast(1.08) brightness(1.02);
-  background-color: hsl(45 30% 97%); /* prevent black letterbox on mobile */
+  background-color: hsl(45 30% 97%);
 }
 
-/* Mobile Portrait: contain để không crop hoa/lồng đèn */
+/* Mobile Portrait: contain để thiên thần hiện đầy đủ */
 @media (max-width: 768px) and (orientation: portrait) {
   .tet-video {
     object-fit: contain;
-    object-position: top center;
+    object-position: center center;
     filter: saturate(1.25) contrast(1.12) brightness(1.05);
   }
   
@@ -152,10 +152,10 @@
   }
 }
 
-/* Mobile Landscape: cover vẫn đẹp */
+/* Mobile Landscape: contain để thiên thần không bị crop */
 @media (max-width: 768px) and (orientation: landscape) {
   .tet-video {
-    object-fit: cover;
+    object-fit: contain;
     object-position: center center;
     filter: saturate(1.20) contrast(1.10) brightness(1.03);
   }
