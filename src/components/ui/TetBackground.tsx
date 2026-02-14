@@ -54,18 +54,21 @@ export const TetBackground = memo(() => {
         <VideoElement className="w-full" />
       </div>
 
-      {/* HAPPY VALENTINE'S DAY text - ngay dưới header */}
+      {/* HAPPY VALENTINE'S DAY text - canh giữa header và nội dung */}
       <div 
-        className="absolute inset-x-0 top-0 flex justify-center pointer-events-none pt-2"
-        style={{ zIndex: 1 }}
+        className="absolute inset-x-0 flex justify-center pointer-events-none"
+        style={{ zIndex: 1, top: 'calc(56px + env(safe-area-inset-top, 0px) + 0.5rem)' }}
       >
         <h1 
-          className="text-2xl md:text-5xl lg:text-6xl font-extrabold tracking-wider uppercase"
+          className="text-2xl md:text-5xl lg:text-6xl font-black tracking-wider uppercase"
           style={{
-            color: '#DC2626',
-            textShadow: '0 0 20px rgba(220, 38, 38, 0.6), 0 2px 4px rgba(0,0,0,0.3), 0 0 40px rgba(220, 38, 38, 0.3)',
-            fontFamily: "'Georgia', 'Times New Roman', serif",
-            letterSpacing: '0.1em',
+            background: 'linear-gradient(135deg, #FF6B9D 0%, #FF1744 20%, #D50000 40%, #FFD700 60%, #FF6F00 80%, #FFB347 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
+            fontFamily: "'Orbitron', 'Rajdhani', sans-serif",
+            letterSpacing: '0.12em',
+            filter: 'drop-shadow(0 1px 1px rgba(255,255,255,0.8))',
           }}
         >
           Happy Valentine's Day
