@@ -59,21 +59,38 @@ export const TetBackground = memo(() => {
         className="absolute inset-x-0 top-0 flex justify-center pointer-events-none pt-1 md:pt-2"
         style={{ zIndex: 1 }}
       >
-        <h1 
-          className="text-2xl md:text-5xl lg:text-6xl font-black tracking-wider uppercase"
-          style={{
-            background: 'linear-gradient(135deg, #8B0000 0%, #DC143C 18%, #FF2D2D 35%, #FFB3B3 48%, #FF2D2D 52%, #DC143C 65%, #B22222 82%, #8B0000 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text',
-            fontFamily: "'Georgia', 'Times New Roman', serif",
-            letterSpacing: '0.12em',
-            WebkitTextStroke: '0.3px rgba(139,0,0,0.3)',
-            filter: 'drop-shadow(0 0 2px rgba(255,255,255,0.6))',
-          }}
-        >
-          Happy Valentine's Day
-        </h1>
+        <div className="text-center">
+          <h1 
+            className="text-2xl md:text-5xl lg:text-6xl font-black tracking-wider uppercase"
+            style={{
+              background: 'linear-gradient(135deg, #8B0000 0%, #DC143C 18%, #FF2D2D 35%, #FFB3B3 48%, #FF2D2D 52%, #DC143C 65%, #B22222 82%, #8B0000 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              fontFamily: "'Georgia', 'Times New Roman', serif",
+              letterSpacing: '0.12em',
+              WebkitTextStroke: '0.3px rgba(139,0,0,0.3)',
+              filter: 'drop-shadow(0 0 2px rgba(255,255,255,0.6))',
+            }}
+          >
+            Happy Valentine's Day
+          </h1>
+          <p 
+            className="text-lg md:text-3xl lg:text-4xl font-black tracking-widest uppercase mt-0"
+            style={{
+              background: 'linear-gradient(135deg, #8B0000 0%, #DC143C 18%, #FF2D2D 35%, #FFB3B3 48%, #FF2D2D 52%, #DC143C 65%, #B22222 82%, #8B0000 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              fontFamily: "'Georgia', 'Times New Roman', serif",
+              letterSpacing: '0.15em',
+              WebkitTextStroke: '0.3px rgba(139,0,0,0.3)',
+              filter: 'drop-shadow(0 0 2px rgba(255,255,255,0.6))',
+            }}
+          >
+            From FUN.RICH
+          </p>
+        </div>
       </div>
     </div>
   );
