@@ -1,27 +1,26 @@
 import { memo } from 'react';
 
 /**
- * Hoa mai/đào trang trí cố định ở 2 góc màn hình
- * Sử dụng CSS gradient để tạo hiệu ứng hoa xuyên thấu vào nội dung
- * Hiển thị rõ ràng trên cả desktop và mobile
+ * Valentine decorative glow effects ở 2 góc màn hình
+ * Hiển thị trên mobile để tạo không khí Valentine
  */
 export const TetFlowerOverlay = memo(() => {
   return (
     <div className="md:hidden">
-      {/* Decorative glow effect góc trái dưới - CHỈ MOBILE */}
+      {/* Valentine glow góc trái dưới - CHỈ MOBILE */}
       <div 
-        className="fixed bottom-16 left-0 w-32 h-40 pointer-events-none z-[5] opacity-80"
+        className="fixed bottom-16 left-0 w-36 h-44 pointer-events-none z-[5] opacity-70"
         style={{
-          background: 'radial-gradient(ellipse at bottom left, hsl(350 80% 70% / 0.4) 0%, transparent 70%)',
+          background: 'radial-gradient(ellipse at bottom left, hsl(340 80% 55% / 0.35) 0%, hsl(350 90% 70% / 0.15) 40%, transparent 70%)',
         }}
         aria-hidden="true"
       />
       
-      {/* Decorative glow effect góc phải dưới - CHỈ MOBILE */}
+      {/* Valentine glow góc phải dưới - CHỈ MOBILE */}
       <div 
-        className="fixed bottom-16 right-0 w-32 h-40 pointer-events-none z-[5] opacity-80"
+        className="fixed bottom-16 right-0 w-36 h-44 pointer-events-none z-[5] opacity-70"
         style={{
-          background: 'radial-gradient(ellipse at bottom right, hsl(45 90% 60% / 0.4) 0%, transparent 70%)',
+          background: 'radial-gradient(ellipse at bottom right, hsl(340 80% 55% / 0.35) 0%, hsl(350 90% 70% / 0.15) 40%, transparent 70%)',
         }}
         aria-hidden="true"
       />
