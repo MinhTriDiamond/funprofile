@@ -12,6 +12,15 @@ serve(async (req) => {
   }
 
   try {
+    // This is a backend-to-backend function - verify service role authorization
+    const authHeader = req.headers.get('Authorization');
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    if (!authHeader || authHeader !== `Bearer ${serviceRoleKey}`) {
+      return new Response(JSON.stringify({ error: 'Unauthorized - service role required' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const supabase = createAdminClient();
     const BATCH_SIZE = 50;
 
