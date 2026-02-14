@@ -7,7 +7,7 @@ import bgVideo from '@/assets/vale.mp4';
  * Mobile: chỉ hiện 1 video contain
  */
 
-const VideoElement = ({ className = '' }: { className?: string }) => (
+const VideoElement = ({ className = '', style = {} }: { className?: string; style?: React.CSSProperties }) => (
   <video
     autoPlay
     loop
@@ -20,14 +20,14 @@ const VideoElement = ({ className = '' }: { className?: string }) => (
     disablePictureInPicture
     disableRemotePlayback
     preload="auto"
-    className={`h-full flex-shrink-0 ${className}`}
+    className={`flex-shrink-0 ${className}`}
     aria-hidden="true"
     style={{
       WebkitTransform: 'translateZ(0)',
       transform: 'translateZ(0)',
-      objectFit: 'cover',
-      objectPosition: 'center center',
+      objectFit: 'contain',
       filter: 'saturate(1.15) contrast(1.08) brightness(1.02)',
+      ...style,
     }}
   >
     <source src={bgVideo} type="video/mp4" />
@@ -42,10 +42,16 @@ export const TetBackground = memo(() => {
     >
       <div className="absolute inset-0 bg-gradient-to-b from-secondary via-background to-background" />
       
-      {/* Desktop: 3 video sát nhau phủ kín, không khoảng cách */}
-      <div className="hidden md:flex absolute inset-0" style={{ gap: 0 }}>
-        <VideoElement className="w-1/2 min-w-0" />
-        <VideoElement className="w-1/2 min-w-0" />
+      {/* Desktop: 2 video trái phải, contain để thấy rõ thiên thần */}
+      <div className="hidden md:flex absolute inset-0 items-end justify-between">
+        <VideoElement 
+          className="h-full" 
+          style={{ objectPosition: 'left bottom', maxWidth: '50%' }} 
+        />
+        <VideoElement 
+          className="h-full" 
+          style={{ objectPosition: 'right bottom', maxWidth: '50%', transform: 'scaleX(-1) translateZ(0)' }} 
+        />
       </div>
 
       {/* Mobile: 1 video cover full */}
