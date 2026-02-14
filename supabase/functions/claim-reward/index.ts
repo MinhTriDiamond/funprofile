@@ -324,6 +324,14 @@ Deno.serve(async (req) => {
       reason: `Claimed ${claimAmount.toLocaleString()} CAMLY to ${wallet_address}`,
     });
 
+    // 17b. Create notification for the user
+    const TREASURY_ACTOR_ID = '9e702a6f-4035-4f30-9c04-f2e21419b37a';
+    await supabaseAdmin.from('notifications').insert({
+      user_id: userId,
+      actor_id: TREASURY_ACTOR_ID,
+      type: 'claim_reward',
+    });
+
     console.log(`Successfully claimed ${claimAmount} CAMLY for user ${userId}`);
 
     // 18. Return success response
