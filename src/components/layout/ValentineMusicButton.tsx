@@ -43,9 +43,18 @@ export const ValentineMusicButton = memo(({ variant = 'desktop' }: ValentineMusi
 
   const volumePercent = Math.round(volume * 100);
 
-  // Sync UI when component mounts (e.g. after navigation)
+  // Sync UI via play/pause events on the singleton audio
   useEffect(() => {
-    setIsPlaying(isAudioPlaying());
+    const audio = ensureAudio();
+    const onPlay = () => setIsPlaying(true);
+    const onPause = () => setIsPlaying(false);
+    audio.addEventListener('play', onPlay);
+    audio.addEventListener('pause', onPause);
+    setIsPlaying(!audio.paused);
+    return () => {
+      audio.removeEventListener('play', onPlay);
+      audio.removeEventListener('pause', onPause);
+    };
   }, []);
 
   // Autoplay – runs only once globally
@@ -60,9 +69,7 @@ export const ValentineMusicButton = memo(({ variant = 'desktop' }: ValentineMusi
     const playPromise = audio.play();
     if (playPromise) {
       playPromise
-        .then(() => setIsPlaying(true))
         .catch(() => {
-          // Browser blocked autoplay – wait for first user interaction
           const resumeOnInteraction = () => {
             globalResumeListener = null;
             if (globalUserStopped) return;
@@ -70,9 +77,7 @@ export const ValentineMusicButton = memo(({ variant = 'desktop' }: ValentineMusi
             const a = ensureAudio();
             a.volume = globalVolume;
             a.currentTime = 0;
-            a.play()
-              .then(() => setIsPlaying(true))
-              .catch(() => {});
+            a.play().catch(() => {});
             document.removeEventListener('click', resumeOnInteraction);
             document.removeEventListener('touchstart', resumeOnInteraction);
           };
