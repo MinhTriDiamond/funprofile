@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface Message {
   role: 'user' | 'assistant';
@@ -18,11 +19,15 @@ interface StreamChatOptions {
 
 async function streamChat({ message, onDelta, onDone, onError, signal }: StreamChatOptions) {
   try {
+    // Get user's session token for authenticated requests
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
     const resp = await fetch(CHAT_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        "Authorization": `Bearer ${token}`,
       },
       body: JSON.stringify({ message }),
       signal,
