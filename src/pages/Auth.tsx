@@ -87,7 +87,7 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Video nền hoa mai/hoa đào - handled by global TetBackground in App.tsx */}
+      {/* Video nền Valentine - handled by global TetBackground in App.tsx */}
 
       {/* Language Switcher - Top Right with 13 languages */}
       <div className="absolute top-4 right-4 z-50">
