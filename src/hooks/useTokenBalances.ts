@@ -121,7 +121,7 @@ export const useTokenBalances = (options?: UseTokenBalancesOptions) => {
     BNB: { usd: 700, usd_24h_change: 0 },
     BTCB: { usd: 100000, usd_24h_change: 0 },
     USDT: { usd: 1, usd_24h_change: 0 },
-    CAMLY: { usd: 0.000004, usd_24h_change: 0 },
+    CAMLY: { usd: 0.000014, usd_24h_change: 0 },
   };
 
   // Track consecutive failures for backoff
@@ -165,19 +165,14 @@ export const useTokenBalances = (options?: UseTokenBalancesOptions) => {
     }
   }, [lastPrices]);
 
-  // Only fetch prices when wallet is connected; stop after 3 consecutive failures
+  // Always fetch prices (even without wallet connected) for accurate display
   useEffect(() => {
-    if (!isConnected || !address) {
-      setPrices(fallbackPrices);
-      setIsPriceLoading(false);
-      return;
-    }
     if (failCount >= 3) return; // Stop retrying after 3 failures
 
     fetchPrices();
     const interval = setInterval(fetchPrices, 30000);
     return () => clearInterval(interval);
-  }, [isConnected, address, failCount]);
+  }, [failCount]);
 
   // Parse token balances
   const parseBalance = (value: bigint | undefined, decimals: number): number => {
@@ -234,8 +229,8 @@ export const useTokenBalances = (options?: UseTokenBalancesOptions) => {
       name: 'Camly Coin',
       icon: camlyLogo,
       balance: camlyAmount,
-      price: prices.CAMLY?.usd || 0.000004,
-      usdValue: camlyAmount * (prices.CAMLY?.usd || 0.000004),
+      price: prices.CAMLY?.usd || 0.000014,
+      usdValue: camlyAmount * (prices.CAMLY?.usd || 0.000014),
       change24h: prices.CAMLY?.usd_24h_change || 0,
       isLoading: isCamlyLoading || isPriceLoading,
       contractAddress: TOKEN_CONTRACTS.CAMLY,

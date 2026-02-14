@@ -34,6 +34,7 @@ import { ClaimFunDialog } from './ClaimFunDialog';
 import { RecentTransactions } from './RecentTransactions';
 import { useFunBalance } from '@/hooks/useFunBalance';
 import { useTokenBalances } from '@/hooks/useTokenBalances';
+import { useCamlyPrice } from '@/hooks/useCamlyPrice';
 import bnbLogo from '@/assets/tokens/bnb-logo.webp';
 import { useLanguage } from '@/i18n/LanguageContext';
 
@@ -125,11 +126,8 @@ const WalletCenterContainer = () => {
   // Use FUN balance hook
   const { locked: lockedFun, activated: activatedFun, refetch: refetchFunBalance } = useFunBalance(externalAddress);
 
-  // Get CAMLY price for claimable calculation
-  const camlyPrice = useMemo(() => {
-    const camlyToken = externalTokens.find(t => t.symbol === 'CAMLY');
-    return camlyToken?.price || 0;
-  }, [externalTokens]);
+  // Get CAMLY price independently (works without wallet connection)
+  const { price: camlyPrice } = useCamlyPrice();
 
   // On mount, disconnect wagmi if user explicitly disconnected before
   useEffect(() => {
