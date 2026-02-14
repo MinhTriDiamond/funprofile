@@ -62,7 +62,7 @@ export const TetBackground = memo(() => {
         <h1 
           className="text-2xl md:text-5xl lg:text-6xl font-black tracking-wider uppercase"
           style={{
-            background: 'linear-gradient(135deg, #DC2626 0%, #FF1744 25%, #E91E63 50%, #FF1744 75%, #DC2626 100%)',
+            background: 'linear-gradient(135deg, #B8860B 0%, #FFD700 20%, #FFF8DC 40%, #FFD700 60%, #DAA520 80%, #B8860B 100%)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
             backgroundClip: 'text',
