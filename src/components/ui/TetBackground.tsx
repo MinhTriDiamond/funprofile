@@ -1,13 +1,18 @@
-import { memo } from 'react';
-import bgVideo from '@/assets/vale.mp4';
+import { memo, useMemo } from 'react';
+import bgVideo1 from '@/assets/vale-1.mp4';
+import bgVideo2 from '@/assets/vale-2.mp4';
+import bgVideo3 from '@/assets/vale-3.mp4';
 
 /**
  * Valentine Background Video Component
- * 3 video cạnh nhau để phủ kín màn hình desktop
- * Mobile: chỉ hiện 1 video contain
+ * Ngẫu nhiên chọn 1 trong 3 video mỗi lần truy cập
+ * Desktop: 2 video cạnh nhau để thấy rõ thiên thần
+ * Mobile/Tablet: 1 video cover full màn hình
  */
 
-const VideoElement = ({ className = '' }: { className?: string }) => (
+const videos = [bgVideo1, bgVideo2, bgVideo3];
+
+const VideoElement = ({ src, className = '' }: { src: string; className?: string }) => (
   <video
     autoPlay
     loop
@@ -30,11 +35,14 @@ const VideoElement = ({ className = '' }: { className?: string }) => (
       filter: 'saturate(1.15) contrast(1.08) brightness(1.02)',
     }}
   >
-    <source src={bgVideo} type="video/mp4" />
+    <source src={src} type="video/mp4" />
   </video>
 );
 
 export const TetBackground = memo(() => {
+  // Chọn ngẫu nhiên 1 video mỗi lần mount (mỗi lần truy cập/đăng nhập)
+  const selectedVideo = useMemo(() => videos[Math.floor(Math.random() * videos.length)], []);
+
   return (
     <div 
       className="fixed left-0 right-0 bottom-0 overflow-hidden pointer-events-none tet-background-container"
@@ -44,16 +52,16 @@ export const TetBackground = memo(() => {
       
       {/* Desktop: 2 video cạnh nhau để thấy rõ thiên thần */}
       <div className="hidden md:flex absolute inset-0 justify-center" style={{ gap: 0 }}>
-        <VideoElement className="w-1/2 min-w-0" />
-        <VideoElement className="w-1/2 min-w-0" />
+        <VideoElement src={selectedVideo} className="w-1/2 min-w-0" />
+        <VideoElement src={selectedVideo} className="w-1/2 min-w-0" />
       </div>
 
-      {/* Mobile: 1 video cover full */}
+      {/* Mobile/Tablet: 1 video cover full */}
       <div className="md:hidden absolute inset-0">
-        <VideoElement className="w-full" />
+        <VideoElement src={selectedVideo} className="w-full" />
       </div>
 
-      {/* HAPPY VALENTINE'S DAY text - dưới header */}
+      {/* HAPPY VALENTINE'S DAY text */}
       <div 
         className="absolute inset-x-0 top-0 flex justify-center pointer-events-none pt-1 md:pt-2"
         style={{ zIndex: 1 }}
