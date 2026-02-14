@@ -325,7 +325,7 @@ export const ClaimRewardDialog = ({
       {showCelebration && <RichTextOverlay />}
       <Dialog open={open} onOpenChange={handleClose}>
         <DialogContent
-          className="sm:max-w-md"
+          className="sm:max-w-md max-h-[90vh] overflow-y-auto"
           style={step === 'success' ? {
             background: 'linear-gradient(135deg, #34d399, #10b981)',
             border: 'none',
