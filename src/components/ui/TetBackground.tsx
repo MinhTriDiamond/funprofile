@@ -62,13 +62,14 @@ export const TetBackground = memo(() => {
         <h1 
           className="text-2xl md:text-5xl lg:text-6xl font-black tracking-wider uppercase"
           style={{
-            background: 'linear-gradient(135deg, #DC2626 0%, #FF1744 25%, #E91E63 50%, #FF1744 75%, #DC2626 100%)',
+            background: 'linear-gradient(135deg, #8B0000 0%, #DC143C 18%, #FF2D2D 35%, #FFB3B3 48%, #FF2D2D 52%, #DC143C 65%, #B22222 82%, #8B0000 100%)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
             backgroundClip: 'text',
             fontFamily: "'Georgia', 'Times New Roman', serif",
             letterSpacing: '0.12em',
-            filter: 'drop-shadow(0 1px 1px rgba(255,255,255,0.5))',
+            WebkitTextStroke: '0.3px rgba(139,0,0,0.3)',
+            filter: 'drop-shadow(0 0 2px rgba(255,255,255,0.6))',
           }}
         >
           Happy Valentine's Day
