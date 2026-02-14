@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { usePublicClient } from 'wagmi';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -14,35 +15,29 @@ export interface Transaction {
   created_at: string;
 }
 
+const fetchTransactions = async (): Promise<Transaction[]> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data, error } = await supabase
+    .from('transactions')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+    .limit(20);
+
+  if (error || !data) return [];
+  return data as Transaction[];
+};
+
 export function useTransactionHistory() {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const publicClient = usePublicClient();
+  const queryClient = useQueryClient();
 
-  const fetchTransactions = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from('transactions')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(20);
-
-      if (!error && data) {
-        setTransactions(data as Transaction[]);
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchTransactions();
-  }, [fetchTransactions]);
+  const { data: transactions = [], isLoading } = useQuery({
+    queryKey: ['transaction-history'],
+    queryFn: fetchTransactions,
+  });
 
   const refreshTxStatus = useCallback(async (txHash: string) => {
     if (!publicClient) return;
@@ -58,21 +53,21 @@ export function useTransactionHistory() {
         .update({ status: newStatus })
         .eq('tx_hash', txHash);
 
-      setTransactions(prev =>
-        prev.map(tx =>
-          tx.tx_hash === txHash ? { ...tx, status: newStatus } : tx
-        )
-      );
+      queryClient.invalidateQueries({ queryKey: ['transaction-history'] });
     } catch {
       // Receipt not available yet — still pending
     }
-  }, [publicClient]);
+  }, [publicClient, queryClient]);
 
   const refreshAll = useCallback(async () => {
     const pendingTxs = transactions.filter(tx => tx.status === 'pending');
     await Promise.allSettled(pendingTxs.map(tx => refreshTxStatus(tx.tx_hash)));
-    await fetchTransactions();
-  }, [transactions, refreshTxStatus, fetchTransactions]);
+    queryClient.invalidateQueries({ queryKey: ['transaction-history'] });
+  }, [transactions, refreshTxStatus, queryClient]);
 
-  return { transactions, isLoading, refreshTxStatus, refreshAll, refetch: fetchTransactions };
+  const refetch = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['transaction-history'] });
+  }, [queryClient]);
+
+  return { transactions, isLoading, refreshTxStatus, refreshAll, refetch };
 }

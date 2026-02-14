@@ -66,8 +66,10 @@ export const useClaimReward = () => {
       setTxHash(data.tx_hash);
       setResult(data);
       
-      // Invalidate reward stats cache to refresh claimable amount
+      // Invalidate caches to refresh UI
       queryClient.invalidateQueries({ queryKey: ['reward-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['transaction-history'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
       
       return data;
 
