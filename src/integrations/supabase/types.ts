@@ -3110,6 +3110,45 @@ export type Database = {
       }
     }
     Views: {
+      public_light_reputation: {
+        Row: {
+          actions_count: number | null
+          tier: number | null
+          total_light_score: number | null
+          total_minted: number | null
+          user_id: string | null
+        }
+        Insert: {
+          actions_count?: number | null
+          tier?: number | null
+          total_light_score?: number | null
+          total_minted?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          actions_count?: number | null
+          tier?: number | null
+          total_light_score?: number | null
+          total_minted?: number | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "light_reputation_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "light_reputation_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       public_profiles: {
         Row: {
           avatar_url: string | null
