@@ -1,11 +1,12 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Gift, Wallet, AlertTriangle, Info, Heart, Clock, CheckCircle2, TrendingUp } from 'lucide-react';
+import { Gift, Wallet, AlertTriangle, Info, Heart, Clock, CheckCircle2, TrendingUp, XCircle, Camera, Image, FileText } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { RewardStats } from './RewardBreakdown';
 import camlyLogo from '@/assets/tokens/camly-logo.webp';
+import { useNavigate } from 'react-router-dom';
 
 const MINIMUM_THRESHOLD = 200000;
 const DAILY_LIMIT = 500000;
@@ -20,6 +21,9 @@ interface ClaimRewardsSectionProps {
   rewardStatus: string;
   adminNotes?: string | null;
   isLoading: boolean;
+  hasAvatar: boolean;
+  hasCover: boolean;
+  hasTodayPost: boolean;
   onClaimClick: () => void;
   onConnectClick: () => void;
 }
@@ -38,9 +42,13 @@ export const ClaimRewardsSection = ({
   rewardStatus,
   adminNotes,
   isLoading,
+  hasAvatar,
+  hasCover,
+  hasTodayPost,
   onClaimClick,
   onConnectClick,
 }: ClaimRewardsSectionProps) => {
+  const navigate = useNavigate();
   const totalReward = rewardStats?.total_reward || 0;
   const pendingAmount = Math.max(0, totalReward - claimedAmount - claimableReward);
   const dailyRemaining = Math.max(0, DAILY_LIMIT - dailyClaimed);
@@ -151,52 +159,100 @@ export const ClaimRewardsSection = ({
           </div>
         </div>
 
-        {/* Claim Button */}
-        <div>
-          {!isConnected ? (
-            <Button
-              onClick={onConnectClick}
-              className="w-full bg-gradient-to-r from-emerald-600 to-green-500 hover:from-emerald-700 hover:to-green-600 text-white font-bold py-6 text-base rounded-xl shadow-lg"
-            >
-              <Wallet className="w-5 h-5 mr-2" />
-              Kết nối ví để Claim
-            </Button>
-          ) : (
-            <Button
-              onClick={handleClaimClick}
-              disabled={config.disabled || claimableReward <= 0}
-              className={`w-full py-6 text-base rounded-xl font-bold shadow-lg transition-all ${
-                config.disabled || claimableReward <= 0
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-white hover:shadow-xl hover:scale-[1.01]'
-              }`}
-            >
-              {config.disabled ? (
-                <span className="flex items-center gap-2">
-                  {rewardStatus === 'on_hold' && <AlertTriangle className="w-5 h-5" />}
-                  {config.label}
-                  {(rewardStatus === 'on_hold' || rewardStatus === 'rejected') && adminNotes && (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Info className="w-4 h-4" />
-                        </TooltipTrigger>
-                        <TooltipContent side="bottom" className="max-w-xs">
-                          <p className="text-sm">{adminNotes}</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  )}
-                </span>
-              ) : (
-                <span className="flex items-center gap-2">
-                  <Gift className="w-5 h-5" />
-                  Claim {formatNumber(claimableReward)} CAMLY
-                </span>
-              )}
-            </Button>
-          )}
-        </div>
+        {/* Claim Checklist */}
+        {(() => {
+          const allConditionsMet = hasAvatar && hasCover && hasTodayPost && isConnected;
+          const conditions = [
+            { met: hasAvatar, label: 'Ảnh đại diện (hình người thật)', icon: Camera, action: () => navigate('/profile'), actionLabel: 'Cập nhật' },
+            { met: hasCover, label: 'Ảnh bìa trang cá nhân', icon: Image, action: () => navigate('/profile'), actionLabel: 'Cập nhật' },
+            { met: hasTodayPost, label: 'Đăng ít nhất 1 bài hôm nay', icon: FileText, action: () => navigate('/'), actionLabel: 'Đăng bài' },
+            { met: isConnected, label: 'Ví đã kết nối', icon: Wallet, action: onConnectClick, actionLabel: 'Kết nối' },
+          ];
+
+          return (
+            <div className="space-y-3">
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-3.5">
+                <p className="text-sm font-semibold text-blue-800 mb-2.5">📋 Điều kiện claim:</p>
+                <div className="space-y-2">
+                  {conditions.map((c, i) => (
+                    <div key={i} className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        {c.met ? (
+                          <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+                        ) : (
+                          <XCircle className="w-4 h-4 text-red-500 shrink-0" />
+                        )}
+                        <span className={`text-sm ${c.met ? 'text-green-700' : 'text-red-700'}`}>
+                          {c.label}
+                        </span>
+                      </div>
+                      {!c.met && (
+                        <button
+                          onClick={c.action}
+                          className="text-xs text-blue-600 hover:text-blue-800 font-medium underline shrink-0"
+                        >
+                          {c.actionLabel} →
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Claim Button */}
+              <div>
+                {!isConnected ? (
+                  <Button
+                    onClick={onConnectClick}
+                    className="w-full bg-gradient-to-r from-emerald-600 to-green-500 hover:from-emerald-700 hover:to-green-600 text-white font-bold py-6 text-base rounded-xl shadow-lg"
+                  >
+                    <Wallet className="w-5 h-5 mr-2" />
+                    Kết nối ví để Claim
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={handleClaimClick}
+                    disabled={config.disabled || claimableReward <= 0 || !allConditionsMet}
+                    className={`w-full py-6 text-base rounded-xl font-bold shadow-lg transition-all ${
+                      config.disabled || claimableReward <= 0 || !allConditionsMet
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        : 'bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-white hover:shadow-xl hover:scale-[1.01]'
+                    }`}
+                  >
+                    {config.disabled ? (
+                      <span className="flex items-center gap-2">
+                        {rewardStatus === 'on_hold' && <AlertTriangle className="w-5 h-5" />}
+                        {config.label}
+                        {(rewardStatus === 'on_hold' || rewardStatus === 'rejected') && adminNotes && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Info className="w-4 h-4" />
+                              </TooltipTrigger>
+                              <TooltipContent side="bottom" className="max-w-xs">
+                                <p className="text-sm">{adminNotes}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                      </span>
+                    ) : !allConditionsMet ? (
+                      <span className="flex items-center gap-2">
+                        <AlertTriangle className="w-5 h-5" />
+                        Hoàn thành điều kiện để Claim
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-2">
+                        <Gift className="w-5 h-5" />
+                        Claim {formatNumber(claimableReward)} CAMLY
+                      </span>
+                    )}
+                  </Button>
+                )}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Progress Bars */}
         <div className="space-y-3">
