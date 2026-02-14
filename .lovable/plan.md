@@ -1,34 +1,58 @@
 
 
-## Kế hoạch: Cập nhật giao diện Valentine cho production
+## Giới hạn Claim CAMLY tối đa 500.000/ngày
 
-### Nguyên nhân
+### Tổng quan
+Thêm giới hạn claim tối đa 500.000 CAMLY mỗi ngày cho mỗi người dùng. Phần CAMLY chưa claim hết sẽ được giữ lại và claim tiếp vào ngày hôm sau. Phần thưởng chỉ được nhận sau khi Admin duyệt (logic hiện tại giữ nguyên).
 
-Khi người dùng truy cập **fun.rich**, họ vẫn thấy giao diện hoa mai/hoa đào vì các thay đổi Valentine chưa được **publish** lên production. Tất cả chỉnh sửa (video nền, chữ Valentine, overlay) hiện chỉ có trên bản xem trước (preview).
+### Thay đổi chi tiết
 
-Ngoài ra, trong mã nguồn CSS (`index.css`) vẫn còn nhiều comment và tên class đề cập "hoa mai", "hoa đào", "Tết" cần được cập nhật cho phù hợp chủ đề Valentine.
+#### 1. Edge Function `claim-reward/index.ts`
+- Thêm hằng số `DAILY_CLAIM_CAP = 500000`
+- Trước khi xử lý giao dịch, truy vấn bảng `reward_claims` để tính tổng số CAMLY user đã claim **trong ngày hôm nay** (theo UTC)
+- Nếu user đã claim đủ 500.000 trong ngày, trả lỗi thông báo "Bạn đã claim tối đa 500.000 CAMLY hôm nay, vui lòng quay lại ngày mai"
+- Nếu số lượng yêu cầu + đã claim hôm nay vượt 500.000, tự động giảm xuống còn phần cho phép
+- Trả thêm thông tin `daily_claimed` và `daily_remaining` trong response
 
-### Các bước thực hiện
+#### 2. Component `ClaimRewardDialog.tsx`
+- Hiển thị thông tin "Đã claim hôm nay" và "Còn lại hôm nay" trong giao diện
+- Giới hạn nút MAX theo số nhỏ hơn giữa `claimableAmount` và `dailyRemaining`
+- Thêm thông báo khi user đã claim hết giới hạn ngày
 
-**Bước 1: Dọn dẹp CSS comments trong `src/index.css`**
-- Dòng 75: `/* Nền trong suốt để video hoa mai/hoa đào hiển thị */` -> cập nhật thành Valentine
-- Dòng 88: `/* Facebook-style Card - Glass effect để hiển thị hoa mai/hoa đào */` -> cập nhật
-- Dòng 112-116: `/* Tết Video Background */` -> đổi thành Valentine
-- Dòng 136: `/* Navbar trong suốt hơn để thấy lồng đèn */` -> cập nhật
-- Dòng 156: `/* Facebook Header Style - Semi-transparent để hoa mai/đào hiển thị */` -> cập nhật
-- Dòng 275: comment về hoa mai/dao visibility -> cập nhật
-- Dòng 620-643: Các class `.tet-card`, `.fb-card-tet`, comment "hoa mai/hoa đào" -> đổi tên/comment thành Valentine
+#### 3. Component `WalletCenterContainer.tsx`
+- Truyền thêm thông tin `dailyClaimed` vào `ClaimRewardDialog`
+- Fetch thêm tổng claim hôm nay từ bảng `reward_claims`
 
-**Bước 2: Dọn dẹp comments trong các component**
-- `src/pages/Auth.tsx` dòng 90: comment hoa mai/hoa đào -> Valentine
-- `src/components/auth/UnifiedAuthForm.tsx` dòng 145: comment hoa mai/hoa đào -> Valentine
+#### 4. Hook `useClaimReward.ts`
+- Cập nhật `ClaimResult` interface thêm `daily_claimed` và `daily_remaining`
 
-**Bước 3: Publish lên production**
-- Sau khi dọn dẹp xong, cần **publish** bản mới lên production để người dùng truy cập fun.rich thấy giao diện Valentine.
+### Luồng hoạt động
 
-### Lưu ý quan trọng
-- Video nền `vale.mp4` đã đúng là video Valentine
-- Chữ "HAPPY VALENTINE'S DAY FROM FUN.RICH" đã được thêm
-- Overlay Valentine (TetFlowerOverlay) đã cập nhật màu hồng/đỏ
-- **Chỉ cần dọn comment cũ và publish** là người dùng sẽ thấy giao diện mới
+1. User mở Wallet, thấy tổng CAMLY khả dụng (sau Admin duyệt)
+2. User bấm Claim, dialog hiển thị:
+   - Tổng khả dụng: X CAMLY
+   - Đã claim hôm nay: Y / 500.000 CAMLY
+   - Còn được claim hôm nay: Z CAMLY
+3. User chỉ có thể claim tối đa Z CAMLY
+4. Ngày hôm sau, giới hạn reset về 0, user tiếp tục claim
+
+### Chi tiết kỹ thuật
+
+**Query tính daily claimed (trong Edge Function):**
+```sql
+SELECT COALESCE(SUM(amount), 0) as today_claimed
+FROM reward_claims
+WHERE user_id = $userId
+AND created_at >= CURRENT_DATE
+AND created_at < CURRENT_DATE + INTERVAL '1 day'
+```
+
+**Validation trong Edge Function:**
+```typescript
+const DAILY_CLAIM_CAP = 500000;
+const dailyRemaining = Math.max(0, DAILY_CLAIM_CAP - todayClaimed);
+const effectiveAmount = Math.min(claimAmount, dailyRemaining);
+```
+
+Khong cần thay đổi database schema -- bảng `reward_claims` hiện tại đã có `created_at` để filter theo ngày.
 
