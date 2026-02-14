@@ -1,49 +1,38 @@
 
 
-## Fix: Nhạc tự động hát lại và chồng lên nhau khi chuyển trang
+## Add Prominent Claim Rewards Section to Wallet Page
 
-### Nguyên nhân gốc
+Redesign the Claim Rewards area in the Wallet page to match the play.fun.rich/wallet layout, replacing the current small banner with a full card section.
 
-Có 2 vấn đề chính:
+### What Changes
 
-1. **Nhạc chồng lên nhau**: Khi chuyển trang, component `ValentineMusicButton` bị unmount rồi mount lại. Mỗi lần mount tạo một `new Audio()` mới, nhưng audio cũ vẫn đang phát -> nhiều audio chạy cùng lúc.
+**Replace the existing reward banner** (the gradient bar with "Claimable: X CAMLY" text) with a dedicated "Claim Rewards" card that includes:
 
-2. **Nhạc tự hát lại**: Ref `autoplayAttempted` reset về `false` mỗi lần component mount lại, nên autoplay chạy lại mỗi khi chuyển trang - kể cả khi user đã bấm dừng.
+1. **Header**: "Claim Rewards" title with description "Nhan thuong CAMLY tu hoat dong tren FUN PROFILE"
+2. **Valentine banner** (reuse existing Valentine styling)
+3. **4 stat boxes in a 2x2 grid**:
+   - Co the Claim (claimable amount)
+   - Cho duyet (pending approval amount)
+   - Da Claim (already claimed amount)
+   - Tong da nhan (total reward earned)
+4. **Claim button** - "Ket noi vi de Claim" when disconnected, or active claim button when connected
+5. **Progress bars**:
+   - Minimum threshold: X / 200,000 CAMLY
+   - Daily limit: X / 500,000 CAMLY
+6. **Info text** explaining rules (minimum threshold, admin approval, daily limit)
 
-### Giải pháp
+### Technical Details
 
-Chuyển audio instance và trạng thái play/pause ra ngoài component (singleton pattern). Khi user bấm dừng, lưu lại trạng thái đó. Khi component mount lại (chuyển trang), đọc trạng thái đã lưu thay vì autoplay lại.
+**File: `src/components/wallet/WalletCenterContainer.tsx`**
+- Replace the inline reward banner (lines 535-599) with a new `<ClaimRewardsSection>` component
+- Pass existing state: `claimableReward`, `claimedAmount`, `dailyClaimed`, `rewardStats`, `camlyPrice`, `isConnected`, `profile?.reward_status`
 
-### Chi tiết thay đổi
+**New file: `src/components/wallet/ClaimRewardsSection.tsx`**
+- Standalone card component matching play.fun.rich design
+- 2x2 grid for stats: claimable, pending (total_reward - claimedAmount - claimableReward or from reward_status), claimed, total
+- Progress bars with thresholds (200,000 minimum, 500,000 daily)
+- Conditional button: disabled if not connected, disabled if pending approval, active if approved
+- Valentine banner (date-conditional, currently active)
+- Info footer with 3 rules
 
-**File: `src/components/layout/ValentineMusicButton.tsx`**
-
-1. Khai báo biến ngoài component (module-level singleton):
-   - `globalAudio`: Audio instance duy nhất, dùng chung cho mọi lần mount
-   - `globalIsPlaying`: trạng thái đang phát hay không
-   - `globalVolume`: âm lượng hiện tại
-   - `globalAutoplayDone`: đánh dấu autoplay đã thử 1 lần duy nhất (không reset khi remount)
-   - `globalUserStopped`: khi user bấm dừng, đặt `true` -> không bao giờ autoplay lại
-
-2. Hàm `ensureAudio()` chỉ tạo audio nếu `globalAudio` chưa có (tránh tạo nhiều instance)
-
-3. Autoplay effect:
-   - Chỉ chạy nếu `globalAutoplayDone === false` VÀ `globalUserStopped === false`
-   - Sau khi chạy, đặt `globalAutoplayDone = true`
-
-4. Hàm `toggle()`:
-   - Khi user bấm dừng: đặt `globalUserStopped = true`, pause audio
-   - Khi user bấm hát: đặt `globalUserStopped = false`, play audio
-
-5. Bỏ cleanup audio khi unmount (vì audio là singleton, không cần tạo lại)
-
-6. Component mount lại: đọc `globalIsPlaying` để sync UI state, không autoplay lại
-
-### Kết quả mong đợi
-
-- Vào trang lần đầu: nhạc tự động phát
-- User bấm dừng: nhạc dừng
-- Chuyển sang trang khác: nhạc KHÔNG tự hát lại, không chồng lên
-- User bấm hát lại: nhạc phát bình thường
-- Chỉ có 1 audio instance duy nhất trong toàn bộ app
-
+**No database or backend changes needed** - all data already available from existing hooks and state.
