@@ -252,31 +252,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Check duplicate posts today
-    const { data: userPosts } = await supabaseAdmin
-      .from('posts')
-      .select('content')
-      .eq('user_id', userId)
-      .gte('created_at', postTodayStart.toISOString())
-      .not('content', 'is', null)
-      .limit(10);
-
-    if (userPosts && userPosts.length > 0) {
-      for (const post of userPosts) {
-        if (!post.content || post.content.trim().length < 20) continue;
-        const { count: dupPosts } = await supabaseAdmin
-          .from('posts')
-          .select('id', { count: 'exact', head: true })
-          .eq('content', post.content)
-          .neq('user_id', userId)
-          .gte('created_at', postTodayStart.toISOString());
-        if (dupPosts && dupPosts > 0) {
-          fraudReasons.push('Bài viết trong ngày trùng nội dung với tài khoản khác');
-          break;
-        }
-      }
-    }
-
+    // Cross-user duplicate check removed: different users ARE allowed to post same content
+    // Same-user duplicate protection is handled at create-post level (30-day cycle)
     // If fraud detected -> hold + return 403
     if (fraudReasons.length > 0) {
       const holdNote = fraudReasons.join('; ');
