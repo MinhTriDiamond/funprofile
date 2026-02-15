@@ -40,7 +40,7 @@ const RICH_POSITIONS = [
 
 export const RichTextOverlay = () =>
   createPortal(
-    <div className="fixed inset-0 overflow-hidden pointer-events-none z-[10001]">
+    <div className="fixed inset-0 overflow-hidden pointer-events-none z-[9999]">
       {RICH_POSITIONS.map((pos, i) => (
         <span
           key={i}
