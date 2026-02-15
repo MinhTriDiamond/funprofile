@@ -137,11 +137,12 @@ Deno.serve(async (req: Request) => {
       
       if (profileByLegacy) {
         existingProfile = profileByLegacy;
-        // Migrate legacy wallet_address to external_wallet_address
+        // Migrate legacy wallet_address to external_wallet_address + sync public
         await supabase
           .from('profiles')
           .update({ 
             external_wallet_address: normalizedAddress,
+            public_wallet_address: normalizedAddress,
             default_wallet_type: 'external'
           })
           .eq('id', profileByLegacy.id);
@@ -192,12 +193,13 @@ Deno.serve(async (req: Request) => {
 
       userId = newUser.user.id;
 
-      // Update profile with external wallet address
+      // Update profile with external wallet address + sync public_wallet_address
       await supabase
         .from('profiles')
         .update({
           external_wallet_address: normalizedAddress,
           wallet_address: normalizedAddress, // backward compatible
+          public_wallet_address: normalizedAddress, // sync for gift detection
           default_wallet_type: 'external',
           registered_from: 'FUN Profile',
           oauth_provider: 'Wallet',
