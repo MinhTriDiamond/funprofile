@@ -1,36 +1,78 @@
 
 
-## Xoá hoàn toàn ví lưu ký (Custodial Wallet / Ví F.U.)
+## Tự động pending user có tên không rõ ràng (dạng "wallet_xxx")
 
-### Tong quan
-Gỡ bỏ toàn bộ giao diện và logic liên quan đến ví lưu ký (custodial wallet / Ví F.U.), chỉ giữ lại ví do người dùng tự cập nhật (public_wallet_address).
+### Phát hiện
+- Có **54 user** với username dạng `wallet_xxxx` và chưa cập nhật họ tên đầy đủ (full_name rỗng hoặc dưới 4 ký tự)
+- Những user này cần được chuyển sang trạng thái `on_hold` và yêu cầu admin duyệt thủ công
 
-### Thay doi
+### Thay đổi
 
-#### 1. Xoá file: `src/components/wallet/WalletManagement.tsx`
-- Toàn bộ component này chỉ phục vụ ví custodial -> xoá hoàn toàn
+#### 1. Edge Function: `supabase/functions/claim-reward/index.ts`
 
-#### 2. Xoá edge function: `supabase/functions/create-custodial-wallet/index.ts`
-- Edge function tạo ví custodial không còn cần thiết
+**a) Thêm `full_name` vào query profile (dòng 125):**
+```
+.select('reward_status, username, full_name, avatar_url, cover_url, public_wallet_address')
+```
 
-#### 3. Cập nhật: `src/components/wallet/WalletSettingsDialog.tsx`
-- Xoá import `WalletManagement`
-- Xoá tab "Quản lý ví" (chỉ giữ tab "Cài đặt")
-- Xoá interface `WalletProfile` và state `walletProfile`, `isLoadingProfile`
-- Xoá hàm `loadWalletProfile`
-- Bỏ `Tabs` wrapper, chỉ render nội dung Settings trực tiếp
+**b) Thêm bước kiểm tra tên (sau bước 7d, trước bước 7e fraud detection):**
 
-#### 4. Cập nhật: `src/components/wallet/WalletCenterContainer.tsx`
-- Xoá interface `WalletProfile` chứa `custodial_wallet_address`
-- Xoá state và logic fetch `custodial_wallet_address` từ profiles
-- Xoá mọi tham chiếu đến custodial wallet
+Quy tắc phát hiện tên không rõ ràng:
+- `full_name` null/rỗng hoặc dưới 4 ký tự
+- Username dạng `wallet_` + chuỗi hex/random
+- `full_name` chỉ chứa số hoặc không có chữ cái
 
-#### 5. Cập nhật: `src/hooks/useUserDirectory.ts`
-- Xoá `custodial_wallet_address` khỏi select query
-- Xoá fallback `|| profile.custodial_wallet_address` trong logic gán `wallet_address`
+Nếu vi phạm: tự động `reward_status = 'on_hold'`, ghi `admin_notes`, log `pplp_fraud_signals` với signal_type `UNCLEAR_NAME`, trả về 403.
 
-### Ket qua
-- Giao diện Wallet Settings chỉ còn phần Cài đặt (hiển thị, bảo mật, thông báo)
-- Không còn bất kỳ tham chiếu nào đến ví lưu ký trong toàn bộ ứng dụng
-- Hệ thống chỉ sử dụng `public_wallet_address` do người dùng tự cập nhật
+#### 2. Frontend: `src/components/wallet/ClaimRewardsSection.tsx`
+
+- Thêm prop `hasFullName: boolean`
+- Thêm 1 dòng checklist: "Cập nhật họ tên đầy đủ (tối thiểu 4 ký tự)" với icon User
+- Cập nhật `allConditionsMet` để bao gồm `hasFullName`
+
+#### 3. Frontend: `src/components/wallet/WalletCenterContainer.tsx`
+
+- Thêm `full_name` vào profile select query
+- Tính `hasFullName` theo cùng logic: `trim().length >= 4` và chứa chữ cái, không phải dạng `wallet_`
+- Truyền `hasFullName` xuống `ClaimRewardsSection`
+
+### Chi tiết kỹ thuật
+
+**Edge Function - logic kiểm tra tên:**
+```typescript
+const fullName = (profile.full_name || '').trim();
+const username = profile.username || '';
+const isWalletUsername = /^wallet_[a-z0-9]+$/i.test(username);
+const isNameValid = fullName.length >= 4
+  && !/^\d+$/.test(fullName)
+  && /[a-zA-ZÀ-ỹ]/.test(fullName);
+
+if (!isNameValid || (isWalletUsername && !isNameValid)) {
+  await supabaseAdmin.from('profiles').update({
+    reward_status: 'on_hold',
+    admin_notes: 'Tên hiển thị không rõ ràng hoặc chưa cập nhật họ tên đầy đủ. Vui lòng cập nhật tên thật.',
+  }).eq('id', userId);
+
+  await supabaseAdmin.from('pplp_fraud_signals').insert({
+    actor_id: userId,
+    signal_type: 'UNCLEAR_NAME',
+    severity: 2,
+    details: { full_name: profile.full_name, username },
+    source: 'claim-reward',
+  });
+
+  return 403 with message hướng dẫn cập nhật tên
+}
+```
+
+**Frontend checklist mới:**
+```tsx
+{ met: hasFullName, label: 'Cập nhật họ tên đầy đủ (tối thiểu 4 ký tự)', icon: User, action: () => navigate('/profile'), actionLabel: 'Cập nhật' }
+```
+
+### Kết quả
+- 54 user hiện tại dạng `wallet_xxx` sẽ bị tự động `on_hold` khi cố claim
+- Admin thấy trong danh sách duyệt thưởng kèm ghi chú "Tên hiển thị không rõ ràng"
+- Frontend hiển thị rõ ràng điều kiện cần cập nhật họ tên
+- Fraud signal được log lại để admin theo dõi
 
