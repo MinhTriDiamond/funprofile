@@ -82,7 +82,7 @@ export const DonationReceivedCard = ({
 
       <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
         <DialogContent
-          className="max-w-[min(85vw,360px)] p-0 overflow-hidden border-0 bg-transparent shadow-none [&>button]:hidden !z-[10002] aspect-[2/3]"
+          className="max-w-[480px] w-[92vw] p-0 overflow-hidden border-0 bg-transparent shadow-none [&>button]:hidden !z-[10002]"
           overlayClassName="!z-[10002]"
         >
           <div
@@ -122,7 +122,7 @@ export const DonationReceivedCard = ({
             </div>
 
             {/* Content */}
-            <div className="relative p-6 text-center">
+            <div className="relative p-4 text-center">
               {/* Header */}
               <div className="mb-4 flex flex-col items-center">
                 <img
@@ -140,14 +140,14 @@ export const DonationReceivedCard = ({
 
               {/* Amount */}
               <div
-                className="my-6 py-5 px-6 rounded-xl"
+                className="my-3 py-3 px-4 rounded-xl"
                 style={{
                   background: 'linear-gradient(135deg, #22c55e 0%, #10b981 50%, #22c55e 100%)',
                   boxShadow: '0 4px 20px rgba(34, 197, 94, 0.5)',
                 }}
               >
                 <div
-                  className="text-4xl font-bold text-white mb-2"
+                  className="text-3xl font-bold text-white mb-1"
                   style={{ textShadow: '0 2px 10px rgba(0,0,0,0.3)' }}
                 >
                   💰 {Number(data.amount).toLocaleString()} {data.tokenSymbol} 💰
@@ -168,7 +168,7 @@ export const DonationReceivedCard = ({
 
               {/* Message */}
               {data.message && (
-                <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 text-left border border-green-300 shadow-lg mb-4">
+                <div className="bg-white/80 backdrop-blur-sm rounded-xl p-3 text-left border border-green-300 shadow-lg mb-3">
                   <div className="flex items-start gap-3">
                     <MessageCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
                     <p className="text-green-800 italic text-lg">"{data.message}"</p>
@@ -177,7 +177,7 @@ export const DonationReceivedCard = ({
               )}
 
               {/* Time */}
-              <div className="text-sm text-green-700 mb-4">
+              <div className="text-sm text-green-700 mb-3">
                 {format(new Date(data.createdAt), "dd/MM/yyyy 'lúc' HH:mm", { locale: vi })}
               </div>
 
