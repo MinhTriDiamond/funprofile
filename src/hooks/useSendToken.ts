@@ -123,79 +123,76 @@ export function useSendToken() {
         });
       }
 
-      // Step 2: Broadcasted
+      // Step 2: Broadcasted — return hash IMMEDIATELY, run rest in background
       console.log('[SEND] TX_HASH_RECEIVED:', hash);
       setTxHash(hash);
       setTxStep('broadcasted');
 
-      // Step 3: Wait for receipt with timeout
-      console.log('[SEND] WAIT_RECEIPT_START');
-      setTxStep('confirming');
-
-      let receiptOk = false;
-      try {
-        if (publicClient && hash) {
-          const receipt = await withTimeout(
-            publicClient.waitForTransactionReceipt({ hash: hash as `0x${string}`, confirmations: 1 }),
-            RECEIPT_TIMEOUT_MS,
-            'WAIT_RECEIPT',
-          );
-          console.log('[SEND] RECEIPT_RECEIVED:', receipt.status);
-          if (receipt.status === 'reverted') {
-            toast.error('Giao dịch chưa hoàn tất (reverted). Vui lòng thử lại.');
-            setTxStep('idle');
-            return null;
+      // Background: receipt polling + DB insert (non-blocking)
+      (async () => {
+        let receiptOk = false;
+        try {
+          if (publicClient && hash) {
+            console.log('[SEND] WAIT_RECEIPT_START (background)');
+            setTxStep('confirming');
+            const receipt = await withTimeout(
+              publicClient.waitForTransactionReceipt({ hash: hash as `0x${string}`, confirmations: 1 }),
+              RECEIPT_TIMEOUT_MS,
+              'WAIT_RECEIPT',
+            );
+            console.log('[SEND] RECEIPT_RECEIVED:', receipt.status);
+            if (receipt.status === 'reverted') {
+              toast.error('Giao dịch chưa hoàn tất (reverted).');
+              setTxStep('idle');
+              return;
+            }
+            receiptOk = true;
           }
-          receiptOk = true;
+        } catch (receiptErr: any) {
+          console.log('[SEND] RECEIPT_TIMEOUT_OR_ERROR:', receiptErr?.message);
         }
-      } catch (receiptErr: any) {
-        console.log('[SEND] RECEIPT_TIMEOUT_OR_ERROR:', receiptErr?.message);
-        // Timeout → vẫn tiếp tục vì đã broadcast thành công
-      }
 
-      // Step 4: Finalize — ghi DB (không block UI)
-      console.log('[SEND] DB_LOG_START');
-      setTxStep('finalizing');
-
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user && hash) {
-          await withTimeout(
-            Promise.resolve(supabase.from('transactions').insert({
-              user_id: user.id,
-              tx_hash: hash,
-              from_address: senderAddress,
-              to_address: recipient,
-              amount: amount,
-              token_symbol: token.symbol,
-              chain_id: chainId || 56,
-              status: receiptOk ? 'confirmed' : 'pending',
-            })),
-            DB_TIMEOUT_MS,
-            'DB_INSERT',
-          );
-          console.log('[SEND] DB_LOG_DONE');
+        // DB insert
+        try {
+          console.log('[SEND] DB_LOG_START (background)');
+          setTxStep('finalizing');
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user && hash) {
+            await withTimeout(
+              Promise.resolve(supabase.from('transactions').insert({
+                user_id: user.id,
+                tx_hash: hash,
+                from_address: senderAddress,
+                to_address: recipient,
+                amount: amount,
+                token_symbol: token.symbol,
+                chain_id: chainId || 56,
+                status: receiptOk ? 'confirmed' : 'pending',
+              })),
+              DB_TIMEOUT_MS,
+              'DB_INSERT',
+            );
+            console.log('[SEND] DB_LOG_DONE');
+          }
+        } catch (dbErr: any) {
+          console.log('[SEND] DB_LOG_SKIPPED:', dbErr?.message);
         }
-      } catch (dbErr: any) {
-        console.log('[SEND] DB_LOG_SKIPPED:', dbErr?.message);
-        toast('Chưa ghi nhận vào hệ thống. Vui lòng tải lại trang.', { duration: 6000 });
-      }
 
-      // Step 5: Success or Timeout
-      if (receiptOk) {
-        setTxStep('success');
-        const scanUrl = getBscScanTxUrl(hash!, token.symbol);
-        toast.success('Giao dịch đã được xác nhận thành công!', {
-          action: { label: 'BscScan', onClick: () => window.open(scanUrl, '_blank') },
-        });
-      } else {
-        setTxStep('timeout');
-        const scanUrl = getBscScanTxUrl(hash!, token.symbol);
-        toast('Giao dịch đã được gửi. Chưa nhận xác nhận kịp thời.', {
-          action: { label: 'BscScan', onClick: () => window.open(scanUrl, '_blank') },
-          duration: 8000,
-        });
-      }
+        if (receiptOk) {
+          setTxStep('success');
+          const scanUrl = getBscScanTxUrl(hash!, token.symbol);
+          toast.success('Giao dịch đã được xác nhận thành công!', {
+            action: { label: 'BscScan', onClick: () => window.open(scanUrl, '_blank') },
+          });
+        } else {
+          setTxStep('timeout');
+          const scanUrl = getBscScanTxUrl(hash!, token.symbol);
+          toast('Giao dịch đã được gửi. Chưa nhận xác nhận kịp thời.', {
+            action: { label: 'BscScan', onClick: () => window.open(scanUrl, '_blank') },
+            duration: 8000,
+          });
+        }
+      })();
 
       return hash;
     } catch (error: any) {
