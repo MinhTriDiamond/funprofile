@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Gift, Wallet, ExternalLink, Loader2, AlertCircle, Sparkles } from 'lucide-react';
+import { toast } from 'sonner';
 import { useClaimReward } from '@/hooks/useClaimReward';
 import { DonationCelebration } from '@/components/donations/DonationCelebration';
 import { RichTextOverlay } from '@/components/donations/RichTextOverlay';
@@ -290,6 +291,44 @@ export const ClaimRewardDialog = ({
           Xem trên BscScan
         </a>
       )}
+
+      {/* Add CAMLY to MetaMask */}
+      <Button
+        variant="outline"
+        size="sm"
+        className="mb-3 border-amber-300 text-amber-700 hover:bg-amber-50"
+        onClick={async () => {
+          try {
+            const provider = (window as any).ethereum;
+            if (!provider) {
+              toast.error('Vui lòng mở MetaMask');
+              return;
+            }
+            await provider.request({
+              method: 'wallet_watchAsset',
+              params: {
+                type: 'ERC20',
+                options: {
+                  address: '0x0910320181889feFDE0BB1Ca63962b0A8882e413',
+                  symbol: 'CAMLY',
+                  decimals: 3,
+                },
+              },
+            });
+            toast.success('Đã thêm CAMLY vào ví!');
+          } catch {
+            toast.error('Không thể thêm token. Vui lòng thêm thủ công.');
+          }
+        }}
+      >
+        <Wallet className="w-4 h-4 mr-2" />
+        Thêm CAMLY vào ví MetaMask
+      </Button>
+
+      <p className="text-[10px] text-white/60 mb-3">
+        Nếu không thấy số dư CAMLY, hãy bấm nút trên hoặc thêm thủ công token:<br />
+        Contract: 0x0910...e413 | Symbol: CAMLY | Decimals: 3
+      </p>
 
       {/* Footer */}
       <p className="text-xs text-emerald-600 mb-4 font-medium">FUN Profile — Mạnh Thương Quân 💚</p>

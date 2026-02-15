@@ -186,9 +186,9 @@ export const UnifiedGiftSendDialog = ({
   const isInProgress = ['signing', 'broadcasted', 'confirming', 'finalizing'].includes(txStep);
   const stepInfo = STEP_CONFIG[txStep] || STEP_CONFIG.idle;
 
-  // Resolve wallet address with priority: public_wallet_address > custodial > wallet_address
+  // Resolve wallet address with priority: public_wallet_address > wallet_address
   const resolveWalletAddress = (profile: any): string | null => {
-    return profile.public_wallet_address || profile.custodial_wallet_address || profile.wallet_address || null;
+    return profile.public_wallet_address || profile.wallet_address || null;
   };
 
   // Search for recipient
@@ -197,7 +197,7 @@ export const UnifiedGiftSendDialog = ({
     setIsSearching(true);
     setSearchError('');
     try {
-      const selectFields = 'id, username, avatar_url, wallet_address, public_wallet_address, custodial_wallet_address';
+      const selectFields = 'id, username, avatar_url, wallet_address, public_wallet_address';
       if (tab === 'username') {
         const cleanQuery = query.replace(/^@/, '').toLowerCase().trim();
         if (cleanQuery.length < 2) { setSearchResults([]); setIsSearching(false); return; }
@@ -232,7 +232,7 @@ export const UnifiedGiftSendDialog = ({
         const { data, error } = await supabase
           .from('profiles')
           .select(selectFields)
-          .or(`wallet_address.ilike.${addr},public_wallet_address.ilike.${addr},custodial_wallet_address.ilike.${addr}`)
+          .or(`wallet_address.ilike.${addr},public_wallet_address.ilike.${addr}`)
           .limit(1);
         if (error) throw error;
         if (data && data.length > 0) {
