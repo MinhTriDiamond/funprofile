@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Copy, Check, ArrowDown, ArrowUp, RefreshCw, ShoppingCart, Shield, Wallet, LogOut, UserRoundCog } from 'lucide-react';
+import { Copy, Check, ArrowDown, ArrowUp, RefreshCw, ShoppingCart, Wallet, LogOut, UserRoundCog } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { TokenBalance } from '@/hooks/useTokenBalances';
@@ -9,11 +9,9 @@ import { useLanguage } from '@/i18n/LanguageContext';
 import metamaskLogo from '@/assets/metamask-logo.png';
 import bitgetLogo from '@/assets/bitget-logo.png';
 import trustWalletLogo from '@/assets/trust-wallet-logo.png';
-import funProfileLogo from '@/assets/fun-profile-logo.png';
 import funWalletLogo from '@/assets/fun-wallet-logo.gif';
 
 interface WalletCardProps {
-  walletType: 'custodial' | 'external';
   walletAddress: string | null;
   walletName: string;
   walletLogo?: string;
@@ -72,7 +70,7 @@ const getWalletLogo = (connectorType: string | null | undefined) => {
 };
 
 export const WalletCard = ({
-  walletType,
+  
   walletAddress,
   walletName,
   walletLogo,
@@ -94,14 +92,12 @@ export const WalletCard = ({
   onSwap,
   onBuy,
 }: WalletCardProps) => {
-  const isCustodial = walletType === 'custodial';
   const { t } = useLanguage();
 
   // Determine actual logo to use
   const displayLogo = useMemo(() => {
-    if (isCustodial) return funProfileLogo;
     return walletLogo || getWalletLogo(connectorType);
-  }, [isCustodial, walletLogo, connectorType]);
+  }, [walletLogo, connectorType]);
 
   // Shortened address
   const shortenedAddress = useMemo(() => {
@@ -113,12 +109,8 @@ export const WalletCard = ({
   }, [walletAddress, isLoading]);
 
   // Header gradient colors
-  const headerGradient = isCustodial
-    ? 'from-emerald-700 via-emerald-600 to-green-500'
-    : 'from-orange-600 via-amber-500 to-yellow-400';
-
-  // Card border color
-  const borderColor = isCustodial ? 'border-emerald-200' : 'border-orange-200';
+  const headerGradient = 'from-orange-600 via-amber-500 to-yellow-400';
+  const borderColor = 'border-orange-200';
 
   return (
     <div className={cn(
@@ -129,11 +121,7 @@ export const WalletCard = ({
       <div className={cn('bg-gradient-to-r p-4', headerGradient)}>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            {isCustodial ? (
-              <Shield className="w-5 h-5 text-yellow-300" />
-            ) : (
-              <img src={displayLogo} alt={walletName} className="w-5 h-5" />
-            )}
+            <img src={displayLogo} alt={walletName} className="w-5 h-5" />
             <span className="font-bold text-white text-sm">
               {walletName}
             </span>
@@ -142,17 +130,13 @@ export const WalletCard = ({
           {/* Status Badge */}
           <div className={cn(
             'px-2 py-0.5 rounded-full text-xs font-medium',
-            isCustodial 
-              ? 'bg-emerald-900/30 text-emerald-100' 
-              : isConnected 
-                ? 'bg-green-500/30 text-green-100'
-                : 'bg-white/20 text-white/80'
+            isConnected 
+              ? 'bg-green-500/30 text-green-100'
+              : 'bg-white/20 text-white/80'
           )}>
-            {isCustodial 
-              ? t('walletCustodial')
-              : isConnected 
-                ? t('walletPageConnected')
-                : t('walletNotConnected')
+            {isConnected 
+              ? t('walletPageConnected')
+              : t('walletNotConnected')
             }
           </div>
         </div>
@@ -190,11 +174,8 @@ export const WalletCard = ({
             disabled={!walletAddress}
             className="flex-1 flex flex-col items-center gap-1 p-3 bg-white rounded-xl border hover:bg-gray-50 hover:border-primary transition-all disabled:opacity-50"
           >
-            <div className={cn(
-              'w-10 h-10 rounded-full flex items-center justify-center',
-              isCustodial ? 'bg-emerald-100' : 'bg-orange-100'
-            )}>
-              <ArrowDown className={cn('w-5 h-5', isCustodial ? 'text-emerald-600' : 'text-orange-600')} />
+            <div className="w-10 h-10 rounded-full flex items-center justify-center bg-orange-100">
+              <ArrowDown className="w-5 h-5 text-orange-600" />
             </div>
             <span className="text-xs font-medium text-gray-600">{t('walletReceive')}</span>
           </button>
@@ -204,11 +185,8 @@ export const WalletCard = ({
             disabled={!walletAddress}
             className="flex-1 flex flex-col items-center gap-1 p-3 bg-white rounded-xl border hover:bg-gray-50 hover:border-primary transition-all disabled:opacity-50"
           >
-            <div className={cn(
-              'w-10 h-10 rounded-full flex items-center justify-center',
-              isCustodial ? 'bg-emerald-100' : 'bg-orange-100'
-            )}>
-              <ArrowUp className={cn('w-5 h-5', isCustodial ? 'text-emerald-600' : 'text-orange-600')} />
+            <div className="w-10 h-10 rounded-full flex items-center justify-center bg-orange-100">
+              <ArrowUp className="w-5 h-5 text-orange-600" />
             </div>
             <span className="text-xs font-medium text-gray-600">{t('walletSend')}</span>
           </button>
@@ -217,11 +195,8 @@ export const WalletCard = ({
             onClick={onSwap}
             className="flex-1 flex flex-col items-center gap-1 p-3 bg-white rounded-xl border hover:bg-gray-50 hover:border-primary transition-all"
           >
-            <div className={cn(
-              'w-10 h-10 rounded-full flex items-center justify-center',
-              isCustodial ? 'bg-emerald-100' : 'bg-orange-100'
-            )}>
-              <RefreshCw className={cn('w-5 h-5', isCustodial ? 'text-emerald-600' : 'text-orange-600')} />
+            <div className="w-10 h-10 rounded-full flex items-center justify-center bg-orange-100">
+              <RefreshCw className="w-5 h-5 text-orange-600" />
             </div>
             <span className="text-xs font-medium text-gray-600">{t('walletSwap')}</span>
           </button>
@@ -230,19 +205,16 @@ export const WalletCard = ({
             onClick={onBuy}
             className="flex-1 flex flex-col items-center gap-1 p-3 bg-white rounded-xl border hover:bg-gray-50 hover:border-primary transition-all"
           >
-            <div className={cn(
-              'w-10 h-10 rounded-full flex items-center justify-center',
-              isCustodial ? 'bg-emerald-100' : 'bg-orange-100'
-            )}>
-              <ShoppingCart className={cn('w-5 h-5', isCustodial ? 'text-emerald-600' : 'text-orange-600')} />
+            <div className="w-10 h-10 rounded-full flex items-center justify-center bg-orange-100">
+              <ShoppingCart className="w-5 h-5 text-orange-600" />
             </div>
             <span className="text-xs font-medium text-gray-600">{t('walletBuy')}</span>
           </button>
         </div>
       </div>
 
-      {/* External Wallet Actions */}
-      {!isCustodial && (
+      {/* Wallet Actions */}
+      {(
         <div className="px-4 py-2 bg-orange-50/50 border-b flex items-center gap-2 flex-wrap">
           {!isConnected ? (
             <Button

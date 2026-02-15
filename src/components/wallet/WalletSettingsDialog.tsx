@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -23,6 +23,19 @@ export const WalletSettingsDialog = ({ open, onOpenChange }: WalletSettingsDialo
   const [currency, setCurrency] = useState('USD');
   const [autoLock, setAutoLock] = useState(false);
   const [notifications, setNotifications] = useState(true);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('wallet_settings');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setShowBalance(parsed.showBalance ?? true);
+        setCurrency(parsed.currency ?? 'USD');
+        setAutoLock(parsed.autoLock ?? false);
+        setNotifications(parsed.notifications ?? true);
+      } catch {}
+    }
+  }, []);
 
   const handleSaveSettings = () => {
     localStorage.setItem('wallet_settings', JSON.stringify({

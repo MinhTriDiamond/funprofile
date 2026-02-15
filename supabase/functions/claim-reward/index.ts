@@ -544,6 +544,11 @@ Deno.serve(async (req) => {
       console.error('Failed to insert donation record:', donationInsertError);
     }
 
+    // 16c. Update reward_status to 'claimed'
+    await supabaseAdmin.from('profiles').update({
+      reward_status: 'claimed',
+    }).eq('id', userId);
+
     // 17. Log to audit_logs
     await supabaseAdmin.from('audit_logs').insert({
       admin_id: userId,

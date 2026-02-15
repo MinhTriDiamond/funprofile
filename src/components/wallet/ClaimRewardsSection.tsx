@@ -98,14 +98,6 @@ export const ClaimRewardsSection = ({
       </CardHeader>
 
       <CardContent className="pt-5 space-y-5">
-        {/* Valentine Banner */}
-        <div className="bg-gradient-to-r from-pink-500/10 via-red-500/10 to-pink-500/10 border border-pink-200 rounded-xl p-3 flex items-center gap-3">
-          <Heart className="w-5 h-5 text-red-500 shrink-0 animate-pulse" />
-          <p className="text-sm text-red-700 font-medium">
-            🌹 Happy Valentine's Day — Claim phần thưởng yêu thương từ FUN.RICH! 💕
-          </p>
-        </div>
-
         {/* 2x2 Stats Grid */}
         <div className="grid grid-cols-2 gap-3">
           {/* Có thể Claim */}

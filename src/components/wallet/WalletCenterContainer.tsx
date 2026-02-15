@@ -508,7 +508,6 @@ const WalletCenterContainer = () => {
       {/* Single Column Layout - External Wallet Only */}
       <div className="w-full">
         <WalletCard
-          walletType="external"
           walletAddress={activeAddress || address || null}
           walletName={getWalletDisplayName()}
           connectorType={connectedWalletType}
