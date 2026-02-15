@@ -140,6 +140,7 @@ Deno.serve(async (req) => {
       .update({
         external_wallet_address: normalizedAddress,
         wallet_address: normalizedAddress, // backward compatible
+        public_wallet_address: normalizedAddress, // sync for gift detection
       })
       .eq('id', user.id);
 
