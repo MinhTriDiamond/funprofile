@@ -1,122 +1,112 @@
 
 
-## Phat hien bai viet "dang cho co" va pending cho Admin duyet
+## Bo sung tin nhan chat tu dong khi claim thuong + ghi nhan giao dich thu cong
 
-### Tong quan
-Them co che tu dong phat hien cac bai viet chat luong thap (dang cho co, spam) va chuyen sang trang thai `pending_review` de Admin kiem duyet truoc khi hien thi tren newsfeed.
+### Phan 1: Ghi nhan giao dich thu cong cho user daothianhnguyet.pt
 
-### Tieu chi phat hien bai viet "dang cho co"
+Sau khi nhan duoc tx hash tu nguoi dung, se insert thu cong vao 3 bang:
 
-1. **Noi dung qua ngan** -- duoi 15 ky tu VA khong co media (anh/video)
-2. **Chi co emoji/ky tu dac biet** -- khong co chu cai thuc su
-3. **Noi dung la chuoi vo nghia** -- vi du: "aaa", "...", "123", "test", "abc"
-4. **Noi dung lap lai ky tu** -- vi du: "aaaaaaa", "hahahaha" (1-2 ky tu lap > 5 lan)
+1. **donations** -- ghi nhan giao dich gift voi sender la Treasury, recipient la user `ac174b69-1a24-4a9a-bf74-e448b9a754cf`
+2. **transactions** -- ghi nhan trong lich su giao dich cua user
+3. **notifications** -- gui thong bao cho user
 
-Bai viet co media (anh/video) se KHONG bi danh dau spam du noi dung ngan, vi nguoi dung co the dang anh kem caption ngan.
+Dong thoi tao conversation + message de hien thi trong chat.
 
-### Thay doi can thuc hien
+### Phan 2: Bo sung tin nhan chat vao Edge Function `claim-reward`
 
-#### 1. Migration: Them cot `moderation_status` vao bang `posts`
+Hien tai `claim-reward/index.ts` da ghi nhan vao `donations`, `transactions`, `notifications` nhung **KHONG** tao conversation va message trong chat. Can bo sung:
 
-```sql
-ALTER TABLE posts ADD COLUMN moderation_status text NOT NULL DEFAULT 'approved';
-CREATE INDEX idx_posts_moderation ON posts(moderation_status) WHERE moderation_status = 'pending_review';
-```
+#### Cap nhat `supabase/functions/claim-reward/index.ts`
 
-Gia tri: `'approved'` (mac dinh), `'pending_review'`, `'rejected'`
+Them buoc 16d sau buoc 16c (dong ~550), tuong tu logic trong `record-donation`:
 
-#### 2. Cap nhat Edge Function `create-post/index.ts`
+1. Tim conversation truc tiep (direct) giua Treasury va user
+2. Neu chua co: tao conversation moi + 2 participant
+3. Gui message voi noi dung: "FUN Profile Treasury da chuyen [amount] CAMLY ve vi cua ban! TX: [txHash]..."
+4. Cap nhat donation record voi `conversation_id` va `message_id`
 
-Them ham `detectLowQuality(content, mediaCount)` tra ve `boolean`:
-- Kiem tra do dai noi dung (< 15 ky tu va khong co media)
-- Kiem tra chi emoji (regex loai bo emoji, con lai rong)
-- Kiem tra chuoi vo nghia (regex phat hien lap ky tu)
-- Kiem tra tu khoa spam phho bien ("test", "abc", "aaa", "...")
-
-Neu `detectLowQuality` tra ve `true`:
-- Set `moderation_status = 'pending_review'` khi insert
-- Tra ve `moderation_status: 'pending_review'` trong response
-- Van cho phep dang (khong block) nhung khong hien thi tren feed
-
-#### 3. Cap nhat Feed query (`useFeedPosts.ts`)
-
-Them filter `.eq('moderation_status', 'approved')` vao query fetch posts de chi hien bai viet da duoc duyet.
-
-Luu y: Bai viet cua chinh user do van hien thi cho ho (de ho khong biet bi pending).
-
-#### 4. Cap nhat `FacebookCreatePost.tsx`
-
-Khi response tra ve `moderation_status: 'pending_review'`:
-- Hien toast thong bao nhe: "Bai viet cua ban dang duoc xem xet"
-- Khong chay PPLP evaluate cho bai viet pending
-
-#### 5. Them tab Admin "Duyet bai viet" (`PostModerationTab.tsx`)
-
-Tab moi trong Admin Dashboard hien thi:
-- Danh sach bai viet co `moderation_status = 'pending_review'`
-- Thong tin: ten user, noi dung bai, thoi gian dang
-- 2 nut: "Duyet" (chuyen sang `approved`) va "Tu choi" (chuyen sang `rejected`)
-- So luong bai cho duyet hien o tab header
-
-#### 6. Cap nhat `Admin.tsx`
-
-Them tab "Duyet bai" vao TabsList voi icon va label tuong ung.
-
-### Chi tiet ky thuat
-
-**Ham `detectLowQuality` trong create-post:**
 ```text
-function detectLowQuality(content: string, mediaCount: number): boolean {
-  // Co media → khong phai spam
-  if (mediaCount > 0) return false;
+// 16d. Create chat message for claim notification
+const TREASURY_SENDER_ID = '9e702a6f-4035-4f30-9c04-f2e21419b37a';
+let conversationId = null;
+let messageId = null;
+
+// Find existing direct conversation between Treasury and user
+const { data: recipientConvs } = await supabaseAdmin
+  .from('conversation_participants')
+  .select('conversation_id')
+  .eq('user_id', userId);
+
+const recipientConvIds = (recipientConvs || []).map(r => r.conversation_id);
+
+if (recipientConvIds.length > 0) {
+  const { data: existingConv } = await supabaseAdmin
+    .from('conversation_participants')
+    .select('conversation_id')
+    .eq('user_id', TREASURY_SENDER_ID)
+    .in('conversation_id', recipientConvIds);
   
-  const trimmed = content.trim();
-  
-  // Qua ngan (< 15 ky tu, khong media)
-  if (trimmed.length < 15) return true;
-  
-  // Chi emoji/ky tu dac biet, khong co chu
-  const textOnly = trimmed.replace(/[\p{Emoji}\s\p{P}\p{S}]/gu, '');
-  if (textOnly.length === 0) return true;
-  
-  // Lap ky tu vo nghia: "aaaa", "hahaha"
-  const deduped = trimmed.replace(/(.)\1{4,}/g, '$1');
-  if (deduped.length <= 3) return true;
-  
-  return false;
+  for (const conv of existingConv || []) {
+    const { data: convData } = await supabaseAdmin
+      .from('conversations')
+      .select('id, type')
+      .eq('id', conv.conversation_id)
+      .eq('type', 'direct')
+      .single();
+    if (convData) { conversationId = convData.id; break; }
+  }
+}
+
+if (!conversationId) {
+  const { data: newConv } = await supabaseAdmin
+    .from('conversations')
+    .insert({ type: 'direct' })
+    .select('id')
+    .single();
+  if (newConv) {
+    conversationId = newConv.id;
+    await supabaseAdmin.from('conversation_participants').insert([
+      { conversation_id: conversationId, user_id: TREASURY_SENDER_ID, role: 'member' },
+      { conversation_id: conversationId, user_id: userId, role: 'member' },
+    ]);
+  }
+}
+
+if (conversationId) {
+  const messageContent = `FUN Profile Treasury da chuyen ${effectiveAmount.toLocaleString()} CAMLY ve vi cua ban!\n\nTX: ${txHash.slice(0, 18)}...\nXem chi tiet: https://bscscan.com/tx/${txHash}`;
+
+  const { data: message } = await supabaseAdmin
+    .from('messages')
+    .insert({
+      conversation_id: conversationId,
+      sender_id: TREASURY_SENDER_ID,
+      content: messageContent,
+    })
+    .select('id')
+    .single();
+
+  if (message) {
+    messageId = message.id;
+    // Update donation with conversation link
+    await supabaseAdmin
+      .from('donations')
+      .update({ conversation_id: conversationId, message_id: messageId })
+      .eq('tx_hash', txHash);
+  }
 }
 ```
 
-**Feed query filter:**
-```typescript
-// useFeedPosts.ts
-let query = supabase
-  .from('posts')
-  .select(...)
-  .or(`moderation_status.eq.approved,user_id.eq.${currentUserId}`)
-  .order('created_at', { ascending: false });
-```
+### Phan 3: Cap nhat donation records cu (khong co conversation)
 
-Dieu nay dam bao: bai viet da duyet hien cho tat ca, bai viet pending chi hien cho chinh nguoi dang.
-
-**PostModerationTab component:**
-- Query `posts` WHERE `moderation_status = 'pending_review'` ORDER BY `created_at DESC`
-- Join `profiles` de lay username, avatar
-- Admin update `moderation_status` bang client supabase (RLS cho phep admin update)
-
-**RLS bo sung:**
-```sql
--- Admin co the update moderation_status
-CREATE POLICY "Admins can update post moderation"
-ON posts FOR UPDATE TO authenticated
-USING (has_role(auth.uid(), 'admin'))
-WITH CHECK (has_role(auth.uid(), 'admin'));
-```
+Doi voi cac giao dich claim truoc do (khoang 10 ban ghi hien tai co `conversation_id = null`), se KHONG hoi to cap nhat vi cac user da nhan duoc thong bao qua notification roi.
 
 ### Ket qua
-- Bai viet "dang cho co" tu dong bi giữ lai cho admin duyet
-- User van thay bai viet cua minh (khong biet bi pending) 
-- Admin co tab rieng de duyet/tu choi bai viet
-- Bai viet co anh/video khong bi anh huong
-- Khong anh huong den PPLP reward (bai pending khong duoc evaluate)
 
+- Cac lan claim thuong trong tuong lai se tu dong gui tin nhan chat tu Treasury den user
+- User se thay tin nhan trong muc Chat voi noi dung va link BscScan
+- Giao dich cua user `daothianhnguyet.pt` se duoc ghi nhan thu cong (can tx hash)
+- Khong anh huong den cac chuc nang hien tai
+
+### Luu y
+
+Can nguoi dung cung cap **tx hash** cua giao dich da gui cho `daothianhnguyet.pt` de thuc hien Phan 1.
