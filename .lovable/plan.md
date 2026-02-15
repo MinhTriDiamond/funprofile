@@ -1,92 +1,74 @@
 
-## Sua loi tang tien bi treo va claim tien chua nhan
 
-### Van de 1: Tang tien (Gift) bi treo o "Dang ghi nhan vao he thong..."
+## Sửa lỗi "Người nhận chưa thiết lập ví" khi họ đã kết nối ví
 
-**Nguyen nhan goc**: Trong `useSendToken.ts`, ham `sendToken` la mot async function **chan toan bo luong** (blocking):
+### Nguyên nhân gốc
 
-```text
-1. MetaMask duyet → txHash co ngay (line 128: setTxHash(hash))
-2. Cho receipt tu blockchain (len toi 60 giay)     ← TREO O DAY
-3. Ghi DB (len toi 8 giay)
-4. Moi return hash ve cho caller
-```
+Hệ thống có **3 cột** lưu địa chỉ ví trong bảng profiles:
+- `public_wallet_address` -- do user tự nhập trong Edit Profile
+- `wallet_address` -- trường cũ (legacy)
+- `external_wallet_address` -- do hệ thống tự lưu khi user đăng nhập/kết nối ví qua Web3
 
-Trong `UnifiedGiftSendDialog`, `handleSend` goi `const hash = await sendToken(...)` va CHI hien celebration SAU KHI `sendToken` return. Nghia la du MetaMask da duyet, UI van phai cho toi 68 giay moi hien the chuc mung.
+Khi user đăng nhập bằng ví (Web3 Login) hoặc kết nối ví trong Wallet Center, hệ thống chỉ lưu vào `external_wallet_address` và `wallet_address`, nhưng **KHÔNG** lưu vào `public_wallet_address`.
 
-**Giai phap**: Thay vi cho `sendToken` return hash, dialog se **theo doi state `txHash`** (duoc set ngay khi MetaMask duyet) va tu dong chuyen sang celebration ngay lap tuc.
+Trong khi đó, giao diện Tặng Quà kiểm tra ví người nhận qua: `public_wallet_address || wallet_address` -- bỏ sót `external_wallet_address`.
 
-### Van de 2: Claim tien chua nhan duoc
+Kết quả: **54 user** đã kết nối ví nhưng hệ thống báo "chưa thiết lập ví".
 
-**Kiem tra log**: Edge function `claim-reward` ghi nhan thanh cong (tx confirmed on block 81294247). Nghia la tien DA duoc gui len blockchain thanh cong. Nguyen nhan co the la nguoi dung chua them token CAMLY vao MetaMask de hien thi so du. Se bo sung huong dan them token CAMLY ngay sau khi claim thanh cong.
-
-### Thay doi cu the
+### Thay đổi cần thực hiện
 
 #### 1. `src/components/donations/UnifiedGiftSendDialog.tsx`
 
-- Them `useEffect` theo doi `txHash` tu `useSendToken`:
-  - Khi `txHash` thay doi tu null sang co gia tri VA `flowStep === 'confirm'` → tu dong tao celebrationData va chuyen sang flowStep `'celebration'` ngay lap tuc
-  - Khong con cho `sendToken` return hash
-- Sua `handleSend` thanh "fire and forget": goi `sendToken` nhung KHONG await ket qua. Celebration duoc trigger boi useEffect o tren
-- Ghi nhan donation vao DB van chay background nhu cu (recordDonationBackground)
-
-Logic moi:
-```typescript
-// useEffect theo doi txHash
-useEffect(() => {
-  if (txHash && flowStep === 'confirm' && effectiveRecipient && senderProfile) {
-    // Tao celebration data ngay
-    const cardData = { ... };
-    setCelebrationData(cardData);
-    setShowCelebration(true);
-    setFlowStep('celebration');
-    
-    // Record DB in background
-    recordDonationBackground(txHash, cardData);
-    onSuccess?.();
-  }
-}, [txHash]);
-
-// handleSend khong con await ket qua
-const handleSend = async () => {
-  sendToken({ token, recipient, amount }); // fire & forget
+**a) Cập nhật `resolveWalletAddress`** để kiểm tra cả 3 trường:
+```
+const resolveWalletAddress = (profile: any): string | null => {
+  return profile.public_wallet_address || profile.external_wallet_address || profile.wallet_address || null;
 };
 ```
 
-#### 2. `src/hooks/useSendToken.ts`
-
-- Tach rieng buoc receipt va DB insert thanh background tasks sau khi co txHash
-- Return hash NGAY sau khi MetaMask duyet (khong cho receipt)
-- Receipt polling va DB insert van chay nhung khong block return
-
-Logic moi:
-```typescript
-// Sau khi co hash tu MetaMask:
-setTxHash(hash);
-setTxStep('broadcasted');
-
-// Return hash NGAY - khong cho receipt
-// Receipt + DB insert chay background
-backgroundFinalize(hash, receiptOk); 
-return hash;
+**b) Cập nhật `selectFields`** để thêm `external_wallet_address`:
+```
+const selectFields = 'id, username, avatar_url, wallet_address, public_wallet_address, external_wallet_address';
 ```
 
-#### 3. `src/components/wallet/ClaimRewardDialog.tsx` (hoac component tuong ung)
+**c) Cập nhật `hasVerifiedWallet`** để bao gồm cả `external_wallet_address`:
+```
+hasVerifiedWallet: !!(p.public_wallet_address || p.external_wallet_address),
+```
 
-- Sau khi claim thanh cong, hien thi huong dan them token CAMLY vao MetaMask:
-  - Contract: `0x0910320181889feFDE0BB1Ca63962b0A8882e413`
-  - Symbol: CAMLY
-  - Decimals: 3
-- Them nut "Them CAMLY vao vi" su dung `wallet_watchAsset` API cua MetaMask
+#### 2. `supabase/functions/sso-web3-auth/index.ts`
 
-#### 4. Don dep `custodial_wallet_address` con sot
+Khi user đăng nhập bằng ví (cả user mới và user cũ), tự động đồng bộ `public_wallet_address` nếu nó đang trống:
 
-- Trong `UnifiedGiftSendDialog.tsx` line 200 va 235: van select va search `custodial_wallet_address` - can xoa
-- Trong `resolveWalletAddress` (line 190-192): van fallback qua `custodial_wallet_address` - can xoa
+Thêm vào bước update profile (khi user mới tạo xong hoặc user cũ đăng nhập):
+```
+public_wallet_address: normalizedAddress,
+```
 
-### Ket qua
+#### 3. `supabase/functions/connect-external-wallet/index.ts`
 
-- Gift: Celebration hien ngay khi MetaMask duyet (khong cho 60-68 giay)
-- Gift: Receipt polling va DB insert van chay background, khong anh huong UX
-- Claim: Nguoi dung duoc huong dan them token CAMLY vao MetaMask de thay so du
-- Code sach hon: khong con tham chieu den custodial_wallet_address
+Khi user kết nối ví bên ngoài, cũng tự động đồng bộ `public_wallet_address`:
+```
+update({
+  external_wallet_address: normalizedAddress,
+  wallet_address: normalizedAddress,
+  public_wallet_address: normalizedAddress,
+})
+```
+
+#### 4. Migration: Đồng bộ 54 user hiện tại
+
+Chạy migration SQL để cập nhật `public_wallet_address` cho những user đã có `external_wallet_address` nhưng chưa có `public_wallet_address`:
+```sql
+UPDATE profiles
+SET public_wallet_address = external_wallet_address
+WHERE external_wallet_address IS NOT NULL
+  AND (public_wallet_address IS NULL OR public_wallet_address = '');
+```
+
+### Kết quả
+- 54 user hiện tại sẽ được đồng bộ ngay lập tức qua migration
+- Giao diện Tặng Quà sẽ nhận diện đúng ví người nhận từ cả 3 trường
+- Các user đăng nhập/kết nối ví trong tương lai sẽ tự động có `public_wallet_address`
+- Không ảnh hưởng đến user đã tự nhập `public_wallet_address` trong Edit Profile
+
