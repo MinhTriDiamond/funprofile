@@ -1,47 +1,52 @@
 
 
-## Cap nhat tin nhan chat cho 2 giao dich cua user daothianhnguyet.pt
+## Sua loi: Bo kiem tra bai trung noi dung voi tai khoan khac khi Claim
 
-Hien tai 2 tin nhan trong Chat chi hien thi don gian:
-```
-🎁 Angel Ái Vân đã tặng bạn 142,202.6 CAMLY!
-💰 TX: 0xc9ef...
-👉 Nhấn "Xem Card Chúc Mừng" để xem chi tiết!
-```
+### Van de
 
-Can cap nhat de giong mau (reference image) -- co them loi chuc Valentine:
+Khi nguoi dung claim CAMLY, he thong kiem tra bai viet trong ngay co trung noi dung voi tai khoan khac khong (lines 255-278 trong `claim-reward/index.ts`). Neu trung -> tu dong chuyen trang thai `on_hold` va chan claim.
 
-### Buoc 1: Cap nhat noi dung 2 tin nhan (messages)
+Tuy nhien, theo quy tac da thiet lap: **chi chan bai trung cua CUNG mot nguoi dung** (30 ngay). Nguoi dung khac nhau duoc phep dang cung noi dung.
 
-Cap nhat `content` cua 2 message ID:
-- `b4812fe5-fa6a-4519-ac31-5a0b30309698` (tx 0xc9ef...)
-- `674df6c8-1730-4281-9868-1383e3c8ee5b` (tx 0x6b62...)
+### Giai phap
 
-Noi dung moi se theo dung format cua cac user khac:
-```
-🎁 Angel Ái Vân đã tặng bạn 142,202.6 CAMLY!
+Xoa doan kiem tra "duplicate posts today cross-user" (lines 255-278) trong Edge Function `claim-reward/index.ts`. Cu the:
 
-"HAPPY VALENTINE'S DAY! ❤️❤️❤️
-Chúc bé Angel Nguyệt Ánh ngày 14/02 ngập tràn tình yêu, hạnh phúc, luôn vui vẻ, xinh đẹp, bình an và luôn ngập tràn năng lượng yêu thương thuần khiết của Cha và bé Angel Camly nhé! I LOVE YOU!🌼🌸🌹🌺❤️❤️❤️"
-
-💰 TX: 0xc9ef85eb694d6cd9...
-
-👉 Nhấn "Xem Card Chúc Mừng" để xem chi tiết!
-```
-
-### Buoc 2: Cap nhat message va message_template trong bang donations
-
-Cap nhat 2 ban ghi donation:
-- `4abc75ff-bce1-4f63-affe-9325438e50bf`
-- `793bc6fa-f45f-46e0-b7dc-d4f8ab7417fe`
-
-Them truong `message` va `message_template = 'custom'` de khi user click xem lai Card Chuc Mung se hien thi dung loi chuc.
-
-### Ket qua
-
-- Tin nhan trong Chat se hien thi giong nhu mau reference (co loi chuc Valentine day du)
-- Card Chuc Mung khi click vao lich su cung se hien thi loi chuc
+- Xoa toan bo block code tu dong `// Check duplicate posts today` den het vong lap `for`.
+- Giu nguyen cac kiem tra fraud khac (device_hash, avatar trung, vi trung, ten ao...).
 
 ### Chi tiet ky thuat
 
-Thuc hien bang 2 lenh SQL UPDATE qua database, khong can thay doi code frontend.
+File: `supabase/functions/claim-reward/index.ts`
+
+Xoa doan code sau (lines 255-278):
+
+```typescript
+// Check duplicate posts today
+const { data: userPosts } = await supabaseAdmin
+  .from('posts')
+  .select('content')
+  .eq('user_id', userId)
+  .gte('created_at', postTodayStart.toISOString())
+  .not('content', 'is', null)
+  .limit(10);
+
+if (userPosts && userPosts.length > 0) {
+  for (const post of userPosts) {
+    if (!post.content || post.content.trim().length < 20) continue;
+    const { count: dupPosts } = await supabaseAdmin
+      .from('posts')
+      .select('id', { count: 'exact', head: true })
+      .eq('content', post.content)
+      .neq('user_id', userId)
+      .gte('created_at', postTodayStart.toISOString());
+    if (dupPosts && dupPosts > 0) {
+      fraudReasons.push('Bai viet trong ngay trung noi dung voi tai khoan khac');
+      break;
+    }
+  }
+}
+```
+
+Sau khi deploy, nguoi dung se khong bi chan claim chi vi bai viet trung noi dung voi nguoi khac nua. Viec loc bai trung lap van duoc xu ly rieng o tang `create-post` (chi ap dung trong cung 1 user, 30 ngay).
+
