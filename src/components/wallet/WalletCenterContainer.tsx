@@ -544,6 +544,10 @@ const WalletCenterContainer = () => {
         hasAvatar={!!profile?.avatar_url}
         hasCover={!!profile?.cover_url}
         hasTodayPost={todayPostCount > 0}
+        hasFullName={(() => {
+          const fn = (profile?.full_name || '').trim();
+          return fn.length >= 4 && !/^\d+$/.test(fn) && /[a-zA-ZÀ-ỹ]/.test(fn);
+        })()}
         onClaimClick={() => setShowClaimDialog(true)}
         onConnectClick={handleConnect}
       />

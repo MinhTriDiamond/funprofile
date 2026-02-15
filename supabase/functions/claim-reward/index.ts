@@ -122,7 +122,7 @@ Deno.serve(async (req) => {
     // 7. Check user profile and reward_status
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('reward_status, username, avatar_url, cover_url, public_wallet_address')
+      .select('reward_status, username, full_name, avatar_url, cover_url, public_wallet_address')
       .eq('id', userId)
       .single();
 
@@ -173,7 +173,39 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 7e. Auto fraud detection
+    // 7e. Check full name validity (auto hold unclear names like wallet_xxx)
+    const fullName = (profile.full_name || '').trim();
+    const username = profile.username || '';
+    const isWalletUsername = /^wallet_[a-z0-9]+$/i.test(username);
+    const isNameValid = fullName.length >= 4
+      && !/^\d+$/.test(fullName)
+      && /[a-zA-ZÀ-ỹ]/.test(fullName);
+
+    if (!isNameValid) {
+      const holdNote = 'Tên hiển thị không rõ ràng hoặc chưa cập nhật họ tên đầy đủ. Vui lòng cập nhật tên thật.';
+      console.warn(`Unclear name for user ${userId}: full_name="${profile.full_name}", username="${username}"`);
+
+      await supabaseAdmin.from('profiles').update({
+        reward_status: 'on_hold',
+        admin_notes: holdNote,
+      }).eq('id', userId);
+
+      await supabaseAdmin.from('pplp_fraud_signals').insert({
+        actor_id: userId,
+        signal_type: 'UNCLEAR_NAME',
+        severity: 2,
+        details: { full_name: profile.full_name, username },
+        source: 'claim-reward',
+      });
+
+      return new Response(JSON.stringify({
+        error: 'Incomplete Profile',
+        message: 'Tên hiển thị chưa rõ ràng. Vui lòng cập nhật họ tên đầy đủ (tối thiểu 4 ký tự, có chữ cái) trong trang cá nhân. Tài khoản đã được chuyển sang chờ Admin duyệt.',
+        missing: ['full_name'],
+      }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    // 7f. Auto fraud detection
     const fraudReasons: string[] = [];
 
     // Check shared device

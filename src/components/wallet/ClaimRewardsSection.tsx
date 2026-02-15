@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Gift, Wallet, AlertTriangle, Info, Heart, Clock, CheckCircle2, TrendingUp, XCircle, Camera, Image, FileText } from 'lucide-react';
+import { Gift, Wallet, AlertTriangle, Info, Heart, Clock, CheckCircle2, TrendingUp, XCircle, Camera, Image, FileText, User } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { RewardStats } from './RewardBreakdown';
@@ -24,6 +24,7 @@ interface ClaimRewardsSectionProps {
   hasAvatar: boolean;
   hasCover: boolean;
   hasTodayPost: boolean;
+  hasFullName: boolean;
   onClaimClick: () => void;
   onConnectClick: () => void;
 }
@@ -45,6 +46,7 @@ export const ClaimRewardsSection = ({
   hasAvatar,
   hasCover,
   hasTodayPost,
+  hasFullName,
   onClaimClick,
   onConnectClick,
 }: ClaimRewardsSectionProps) => {
@@ -161,8 +163,9 @@ export const ClaimRewardsSection = ({
 
         {/* Claim Checklist */}
         {(() => {
-          const allConditionsMet = hasAvatar && hasCover && hasTodayPost && isConnected;
+          const allConditionsMet = hasAvatar && hasCover && hasTodayPost && hasFullName && isConnected;
           const conditions = [
+            { met: hasFullName, label: 'Cập nhật họ tên đầy đủ (tối thiểu 4 ký tự)', icon: User, action: () => navigate('/profile'), actionLabel: 'Cập nhật' },
             { met: hasAvatar, label: 'Ảnh đại diện (hình người thật)', icon: Camera, action: () => navigate('/profile'), actionLabel: 'Cập nhật' },
             { met: hasCover, label: 'Ảnh bìa trang cá nhân', icon: Image, action: () => navigate('/profile'), actionLabel: 'Cập nhật' },
             { met: hasTodayPost, label: 'Đăng ít nhất 1 bài hôm nay', icon: FileText, action: () => navigate('/'), actionLabel: 'Đăng bài' },
