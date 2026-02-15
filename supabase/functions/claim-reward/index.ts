@@ -549,6 +549,78 @@ Deno.serve(async (req) => {
       reward_status: 'claimed',
     }).eq('id', userId);
 
+    // 16d. Create chat message for claim notification
+    let conversationId: string | null = null;
+    let chatMessageId: string | null = null;
+
+    try {
+      // Find existing direct conversation between Treasury and user
+      const { data: recipientConvs } = await supabaseAdmin
+        .from('conversation_participants')
+        .select('conversation_id')
+        .eq('user_id', userId);
+
+      const recipientConvIds = (recipientConvs || []).map((r: any) => r.conversation_id);
+
+      if (recipientConvIds.length > 0) {
+        const { data: existingConv } = await supabaseAdmin
+          .from('conversation_participants')
+          .select('conversation_id')
+          .eq('user_id', TREASURY_SENDER_ID)
+          .in('conversation_id', recipientConvIds);
+
+        for (const conv of existingConv || []) {
+          const { data: convData } = await supabaseAdmin
+            .from('conversations')
+            .select('id, type')
+            .eq('id', conv.conversation_id)
+            .eq('type', 'direct')
+            .single();
+          if (convData) { conversationId = convData.id; break; }
+        }
+      }
+
+      if (!conversationId) {
+        const { data: newConv } = await supabaseAdmin
+          .from('conversations')
+          .insert({ type: 'direct' })
+          .select('id')
+          .single();
+        if (newConv) {
+          conversationId = newConv.id;
+          await supabaseAdmin.from('conversation_participants').insert([
+            { conversation_id: conversationId, user_id: TREASURY_SENDER_ID, role: 'member' },
+            { conversation_id: conversationId, user_id: userId, role: 'member' },
+          ]);
+        }
+      }
+
+      if (conversationId) {
+        const messageContent = `🎁 FUN Profile Treasury đã chuyển ${effectiveAmount.toLocaleString()} CAMLY về ví của bạn!\n\nTX: ${txHash.slice(0, 18)}...\nXem chi tiết: https://bscscan.com/tx/${txHash}`;
+
+        const { data: chatMsg } = await supabaseAdmin
+          .from('messages')
+          .insert({
+            conversation_id: conversationId,
+            sender_id: TREASURY_SENDER_ID,
+            content: messageContent,
+          })
+          .select('id')
+          .single();
+
+        if (chatMsg) {
+          chatMessageId = chatMsg.id;
+          // Update donation with conversation link
+          await supabaseAdmin
+            .from('donations')
+            .update({ conversation_id: conversationId, message_id: chatMessageId })
+            .eq('tx_hash', txHash);
+        }
+      }
+    } catch (chatError) {
+      console.error('Failed to create chat message (non-blocking):', chatError);
+    }
+
     // 17. Log to audit_logs
     await supabaseAdmin.from('audit_logs').insert({
       admin_id: userId,
