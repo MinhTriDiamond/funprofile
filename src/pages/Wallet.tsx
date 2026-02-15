@@ -47,6 +47,8 @@ const Wallet = () => {
     await queryClient.invalidateQueries({ queryKey: ['fun-balance'] });
     await queryClient.invalidateQueries({ queryKey: ['donation-history'] });
     await queryClient.invalidateQueries({ queryKey: ['light-reputation'] });
+    await queryClient.invalidateQueries({ queryKey: ['token-balances'] });
+    await queryClient.invalidateQueries({ queryKey: ['transaction-history'] });
   }, [queryClient]);
 
   return (
