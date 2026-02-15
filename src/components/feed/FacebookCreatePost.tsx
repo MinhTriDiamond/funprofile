@@ -468,8 +468,15 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
       setIsDialogOpen(false);
       setShowMediaUpload(false);
 
-      // Handle duplicate detection - show loving reminder instead of normal toast
-      if (result.duplicate_detected) {
+      // Handle moderation - pending review
+      if (result.moderation_status === 'pending_review') {
+        toast.info(
+          language === 'vi' ? 'Bài viết của bạn đang được xem xét ✨' : 'Your post is being reviewed ✨',
+          { duration: 5000 }
+        );
+        console.log('[CreatePost] Post pending review — skipping PPLP evaluate');
+      } else if (result.duplicate_detected) {
+        // Handle duplicate detection
         toast.info(
           t('duplicatePostMessage') + ' ✨🙏',
           { duration: 8000 }

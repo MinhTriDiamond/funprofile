@@ -1560,6 +1560,7 @@ export type Database = {
           is_reward_eligible: boolean | null
           location: string | null
           media_urls: Json | null
+          moderation_status: string
           updated_at: string
           user_id: string
           video_url: string | null
@@ -1574,6 +1575,7 @@ export type Database = {
           is_reward_eligible?: boolean | null
           location?: string | null
           media_urls?: Json | null
+          moderation_status?: string
           updated_at?: string
           user_id: string
           video_url?: string | null
@@ -1588,6 +1590,7 @@ export type Database = {
           is_reward_eligible?: boolean | null
           location?: string | null
           media_urls?: Json | null
+          moderation_status?: string
           updated_at?: string
           user_id?: string
           video_url?: string | null

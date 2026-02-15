@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface PostStats {
@@ -83,12 +83,19 @@ const fetchPostStats = async (postIds: string[]): Promise<Record<string, PostSta
 };
 
 // Fetch a page of posts with cursor-based pagination
-const fetchFeedPage = async (cursor: string | null): Promise<FeedPage> => {
+const fetchFeedPage = async (cursor: string | null, currentUserId: string | null): Promise<FeedPage> => {
   let query = supabase
     .from('posts')
     .select(`*, profiles!posts_user_id_fkey (username, avatar_url, external_wallet_address, custodial_wallet_address)`)
     .order('created_at', { ascending: false })
     .limit(POSTS_PER_PAGE + 1);
+
+  // Only show approved posts + own posts (so author doesn't know they're pending)
+  if (currentUserId) {
+    query = query.or(`moderation_status.eq.approved,user_id.eq.${currentUserId}`);
+  } else {
+    query = query.eq('moderation_status', 'approved');
+  }
 
   if (cursor) {
     query = query.lt('created_at', cursor);
@@ -119,16 +126,24 @@ const fetchFeedPage = async (cursor: string | null): Promise<FeedPage> => {
 
 export const useFeedPosts = () => {
   const queryClient = useQueryClient();
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setCurrentUserId(session?.user?.id ?? null);
+    });
+  }, []);
 
   const query = useInfiniteQuery<FeedPage, Error>({
-    queryKey: ['feed-posts'],
-    queryFn: ({ pageParam }) => fetchFeedPage(pageParam as string | null),
+    queryKey: ['feed-posts', currentUserId],
+    queryFn: ({ pageParam }) => fetchFeedPage(pageParam as string | null, currentUserId),
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage: FeedPage) => lastPage.nextCursor ?? undefined,
     staleTime: 30 * 1000,
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     retry: 2,
+    enabled: currentUserId !== undefined,
   });
 
   const refetch = useCallback(() => {
