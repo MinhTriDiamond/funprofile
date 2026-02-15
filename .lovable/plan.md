@@ -1,85 +1,92 @@
 
+## Sua loi tang tien bi treo va claim tien chua nhan
 
-## Ke Hoach Hoan Thien He Thong Vi
+### Van de 1: Tang tien (Gift) bi treo o "Dang ghi nhan vao he thong..."
 
-### Tong quan
-Sau khi kiem tra ky, he thong vi da hoat dong tot voi phan lon tinh nang. Con can don dep mot so code cu va bo sung mot vai cai thien nho.
+**Nguyen nhan goc**: Trong `useSendToken.ts`, ham `sendToken` la mot async function **chan toan bo luong** (blocking):
 
-### Ket qua kiem tra CLAIM CAMLY
-**DA HOAT DONG DAY DU.** User co the claim CAMLY ve vi khi dat du 5 dieu kien: (1) Ho ten >= 4 ky tu, (2) Anh dai dien, (3) Anh bia, (4) Dang bai hom nay, (5) Ket noi vi. He thong tu dong phat hien gian lan va tam dung tai khoan bat thuong.
-
-### Thay doi can thuc hien
-
-#### 1. Xoa file `WalletHeader.tsx` khong su dung
-File nay chua duoc su dung o bat ky dau trong WalletCenterContainer va la phan con lai tu he thong cu.
-
-#### 2. Xoa Valentine Banner da het han
-Thay banner "Happy Valentine's Day" trong ClaimRewardsSection bang thong bao trung lap hoac loai bo hoan toan (vi da qua Valentine 2026-02-14).
-
-#### 3. Loai bo custodial type khoi WalletCard
-Xoa `walletType: 'custodial'` khoi interface va cac logic kiem tra `isCustodial` trong WalletCard.tsx de phan anh dung viec he thong chi ho tro vi ngoai.
-
-#### 4. Bo sung refresh token balances khi pull-to-refresh
-Cap nhat `handlePullRefresh` trong Wallet.tsx de bao gom invalidate `token-balances` query key, dam bao so du token duoc lam moi khi keo xuong.
-
-#### 5. Wallet Settings doc lai gia tri da luu
-Cap nhat WalletSettingsDialog de doc `wallet_settings` tu localStorage khi mount, dam bao cai dat duoc giu lai giua cac phien.
-
-#### 6. Cap nhat reward_status sau claim thanh cong
-Them logic trong edge function `claim-reward` de update `reward_status = 'claimed'` sau khi giao dich blockchain thanh cong, giup Admin theo doi chinh xac trang thai.
-
-### Chi tiet ky thuat
-
-**Xoa file:**
-- `src/components/wallet/WalletHeader.tsx`
-
-**WalletCard.tsx (loai bo custodial):**
-- Xoa `walletType: 'custodial' | 'external'` -> chi giu `walletType: 'external'`
-- Xoa bien `isCustodial` va cac nhanh logic lien quan
-- Xoa import `Shield`, `funProfileLogo`
-- Don gian hoa gradient, logo, badge chi cho external wallet
-
-**ClaimRewardsSection.tsx:**
-- Xoa khoi Valentine Banner (dong 101-107)
-
-**Wallet.tsx - Pull to refresh:**
-```
-const handlePullRefresh = useCallback(async () => {
-  await queryClient.invalidateQueries({ queryKey: ['fun-balance'] });
-  await queryClient.invalidateQueries({ queryKey: ['donation-history'] });
-  await queryClient.invalidateQueries({ queryKey: ['light-reputation'] });
-  await queryClient.invalidateQueries({ queryKey: ['token-balances'] });
-  await queryClient.invalidateQueries({ queryKey: ['transaction-history'] });
-}, [queryClient]);
+```text
+1. MetaMask duyet → txHash co ngay (line 128: setTxHash(hash))
+2. Cho receipt tu blockchain (len toi 60 giay)     ← TREO O DAY
+3. Ghi DB (len toi 8 giay)
+4. Moi return hash ve cho caller
 ```
 
-**WalletSettingsDialog.tsx - Doc lai localStorage:**
-```
-// Khi mount, doc lai cai dat da luu
+Trong `UnifiedGiftSendDialog`, `handleSend` goi `const hash = await sendToken(...)` va CHI hien celebration SAU KHI `sendToken` return. Nghia la du MetaMask da duyet, UI van phai cho toi 68 giay moi hien the chuc mung.
+
+**Giai phap**: Thay vi cho `sendToken` return hash, dialog se **theo doi state `txHash`** (duoc set ngay khi MetaMask duyet) va tu dong chuyen sang celebration ngay lap tuc.
+
+### Van de 2: Claim tien chua nhan duoc
+
+**Kiem tra log**: Edge function `claim-reward` ghi nhan thanh cong (tx confirmed on block 81294247). Nghia la tien DA duoc gui len blockchain thanh cong. Nguyen nhan co the la nguoi dung chua them token CAMLY vao MetaMask de hien thi so du. Se bo sung huong dan them token CAMLY ngay sau khi claim thanh cong.
+
+### Thay doi cu the
+
+#### 1. `src/components/donations/UnifiedGiftSendDialog.tsx`
+
+- Them `useEffect` theo doi `txHash` tu `useSendToken`:
+  - Khi `txHash` thay doi tu null sang co gia tri VA `flowStep === 'confirm'` → tu dong tao celebrationData va chuyen sang flowStep `'celebration'` ngay lap tuc
+  - Khong con cho `sendToken` return hash
+- Sua `handleSend` thanh "fire and forget": goi `sendToken` nhung KHONG await ket qua. Celebration duoc trigger boi useEffect o tren
+- Ghi nhan donation vao DB van chay background nhu cu (recordDonationBackground)
+
+Logic moi:
+```typescript
+// useEffect theo doi txHash
 useEffect(() => {
-  const saved = localStorage.getItem('wallet_settings');
-  if (saved) {
-    const parsed = JSON.parse(saved);
-    setShowBalance(parsed.showBalance ?? true);
-    setCurrency(parsed.currency ?? 'USD');
-    setAutoLock(parsed.autoLock ?? false);
-    setNotifications(parsed.notifications ?? true);
+  if (txHash && flowStep === 'confirm' && effectiveRecipient && senderProfile) {
+    // Tao celebration data ngay
+    const cardData = { ... };
+    setCelebrationData(cardData);
+    setShowCelebration(true);
+    setFlowStep('celebration');
+    
+    // Record DB in background
+    recordDonationBackground(txHash, cardData);
+    onSuccess?.();
   }
-}, []);
+}, [txHash]);
+
+// handleSend khong con await ket qua
+const handleSend = async () => {
+  sendToken({ token, recipient, amount }); // fire & forget
+};
 ```
 
-**claim-reward/index.ts - Cap nhat status sau claim:**
+#### 2. `src/hooks/useSendToken.ts`
+
+- Tach rieng buoc receipt va DB insert thanh background tasks sau khi co txHash
+- Return hash NGAY sau khi MetaMask duyet (khong cho receipt)
+- Receipt polling va DB insert van chay nhung khong block return
+
+Logic moi:
+```typescript
+// Sau khi co hash tu MetaMask:
+setTxHash(hash);
+setTxStep('broadcasted');
+
+// Return hash NGAY - khong cho receipt
+// Receipt + DB insert chay background
+backgroundFinalize(hash, receiptOk); 
+return hash;
 ```
-// Sau buoc 15 (ghi reward_claims), them:
-await supabaseAdmin.from('profiles').update({
-  reward_status: 'claimed',
-}).eq('id', userId);
-```
+
+#### 3. `src/components/wallet/ClaimRewardDialog.tsx` (hoac component tuong ung)
+
+- Sau khi claim thanh cong, hien thi huong dan them token CAMLY vao MetaMask:
+  - Contract: `0x0910320181889feFDE0BB1Ca63962b0A8882e413`
+  - Symbol: CAMLY
+  - Decimals: 3
+- Them nut "Them CAMLY vao vi" su dung `wallet_watchAsset` API cua MetaMask
+
+#### 4. Don dep `custodial_wallet_address` con sot
+
+- Trong `UnifiedGiftSendDialog.tsx` line 200 va 235: van select va search `custodial_wallet_address` - can xoa
+- Trong `resolveWalletAddress` (line 190-192): van fallback qua `custodial_wallet_address` - can xoa
 
 ### Ket qua
-- Code sach hon, khong con tham chieu den vi luu ky
-- Pull-to-refresh lam moi toan bo du lieu vi
-- Cai dat vi duoc luu tru va phuc hoi dung
-- Trang thai claim duoc dong bo chinh xac
-- Giao dien khong con banner het han
 
+- Gift: Celebration hien ngay khi MetaMask duyet (khong cho 60-68 giay)
+- Gift: Receipt polling va DB insert van chay background, khong anh huong UX
+- Claim: Nguoi dung duoc huong dan them token CAMLY vao MetaMask de thay so du
+- Code sach hon: khong con tham chieu den custodial_wallet_address
