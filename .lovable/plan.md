@@ -1,74 +1,122 @@
 
 
-## Sửa lỗi "Người nhận chưa thiết lập ví" khi họ đã kết nối ví
+## Phat hien bai viet "dang cho co" va pending cho Admin duyet
 
-### Nguyên nhân gốc
+### Tong quan
+Them co che tu dong phat hien cac bai viet chat luong thap (dang cho co, spam) va chuyen sang trang thai `pending_review` de Admin kiem duyet truoc khi hien thi tren newsfeed.
 
-Hệ thống có **3 cột** lưu địa chỉ ví trong bảng profiles:
-- `public_wallet_address` -- do user tự nhập trong Edit Profile
-- `wallet_address` -- trường cũ (legacy)
-- `external_wallet_address` -- do hệ thống tự lưu khi user đăng nhập/kết nối ví qua Web3
+### Tieu chi phat hien bai viet "dang cho co"
 
-Khi user đăng nhập bằng ví (Web3 Login) hoặc kết nối ví trong Wallet Center, hệ thống chỉ lưu vào `external_wallet_address` và `wallet_address`, nhưng **KHÔNG** lưu vào `public_wallet_address`.
+1. **Noi dung qua ngan** -- duoi 15 ky tu VA khong co media (anh/video)
+2. **Chi co emoji/ky tu dac biet** -- khong co chu cai thuc su
+3. **Noi dung la chuoi vo nghia** -- vi du: "aaa", "...", "123", "test", "abc"
+4. **Noi dung lap lai ky tu** -- vi du: "aaaaaaa", "hahahaha" (1-2 ky tu lap > 5 lan)
 
-Trong khi đó, giao diện Tặng Quà kiểm tra ví người nhận qua: `public_wallet_address || wallet_address` -- bỏ sót `external_wallet_address`.
+Bai viet co media (anh/video) se KHONG bi danh dau spam du noi dung ngan, vi nguoi dung co the dang anh kem caption ngan.
 
-Kết quả: **54 user** đã kết nối ví nhưng hệ thống báo "chưa thiết lập ví".
+### Thay doi can thuc hien
 
-### Thay đổi cần thực hiện
+#### 1. Migration: Them cot `moderation_status` vao bang `posts`
 
-#### 1. `src/components/donations/UnifiedGiftSendDialog.tsx`
-
-**a) Cập nhật `resolveWalletAddress`** để kiểm tra cả 3 trường:
-```
-const resolveWalletAddress = (profile: any): string | null => {
-  return profile.public_wallet_address || profile.external_wallet_address || profile.wallet_address || null;
-};
-```
-
-**b) Cập nhật `selectFields`** để thêm `external_wallet_address`:
-```
-const selectFields = 'id, username, avatar_url, wallet_address, public_wallet_address, external_wallet_address';
-```
-
-**c) Cập nhật `hasVerifiedWallet`** để bao gồm cả `external_wallet_address`:
-```
-hasVerifiedWallet: !!(p.public_wallet_address || p.external_wallet_address),
-```
-
-#### 2. `supabase/functions/sso-web3-auth/index.ts`
-
-Khi user đăng nhập bằng ví (cả user mới và user cũ), tự động đồng bộ `public_wallet_address` nếu nó đang trống:
-
-Thêm vào bước update profile (khi user mới tạo xong hoặc user cũ đăng nhập):
-```
-public_wallet_address: normalizedAddress,
-```
-
-#### 3. `supabase/functions/connect-external-wallet/index.ts`
-
-Khi user kết nối ví bên ngoài, cũng tự động đồng bộ `public_wallet_address`:
-```
-update({
-  external_wallet_address: normalizedAddress,
-  wallet_address: normalizedAddress,
-  public_wallet_address: normalizedAddress,
-})
-```
-
-#### 4. Migration: Đồng bộ 54 user hiện tại
-
-Chạy migration SQL để cập nhật `public_wallet_address` cho những user đã có `external_wallet_address` nhưng chưa có `public_wallet_address`:
 ```sql
-UPDATE profiles
-SET public_wallet_address = external_wallet_address
-WHERE external_wallet_address IS NOT NULL
-  AND (public_wallet_address IS NULL OR public_wallet_address = '');
+ALTER TABLE posts ADD COLUMN moderation_status text NOT NULL DEFAULT 'approved';
+CREATE INDEX idx_posts_moderation ON posts(moderation_status) WHERE moderation_status = 'pending_review';
 ```
 
-### Kết quả
-- 54 user hiện tại sẽ được đồng bộ ngay lập tức qua migration
-- Giao diện Tặng Quà sẽ nhận diện đúng ví người nhận từ cả 3 trường
-- Các user đăng nhập/kết nối ví trong tương lai sẽ tự động có `public_wallet_address`
-- Không ảnh hưởng đến user đã tự nhập `public_wallet_address` trong Edit Profile
+Gia tri: `'approved'` (mac dinh), `'pending_review'`, `'rejected'`
+
+#### 2. Cap nhat Edge Function `create-post/index.ts`
+
+Them ham `detectLowQuality(content, mediaCount)` tra ve `boolean`:
+- Kiem tra do dai noi dung (< 15 ky tu va khong co media)
+- Kiem tra chi emoji (regex loai bo emoji, con lai rong)
+- Kiem tra chuoi vo nghia (regex phat hien lap ky tu)
+- Kiem tra tu khoa spam phho bien ("test", "abc", "aaa", "...")
+
+Neu `detectLowQuality` tra ve `true`:
+- Set `moderation_status = 'pending_review'` khi insert
+- Tra ve `moderation_status: 'pending_review'` trong response
+- Van cho phep dang (khong block) nhung khong hien thi tren feed
+
+#### 3. Cap nhat Feed query (`useFeedPosts.ts`)
+
+Them filter `.eq('moderation_status', 'approved')` vao query fetch posts de chi hien bai viet da duoc duyet.
+
+Luu y: Bai viet cua chinh user do van hien thi cho ho (de ho khong biet bi pending).
+
+#### 4. Cap nhat `FacebookCreatePost.tsx`
+
+Khi response tra ve `moderation_status: 'pending_review'`:
+- Hien toast thong bao nhe: "Bai viet cua ban dang duoc xem xet"
+- Khong chay PPLP evaluate cho bai viet pending
+
+#### 5. Them tab Admin "Duyet bai viet" (`PostModerationTab.tsx`)
+
+Tab moi trong Admin Dashboard hien thi:
+- Danh sach bai viet co `moderation_status = 'pending_review'`
+- Thong tin: ten user, noi dung bai, thoi gian dang
+- 2 nut: "Duyet" (chuyen sang `approved`) va "Tu choi" (chuyen sang `rejected`)
+- So luong bai cho duyet hien o tab header
+
+#### 6. Cap nhat `Admin.tsx`
+
+Them tab "Duyet bai" vao TabsList voi icon va label tuong ung.
+
+### Chi tiet ky thuat
+
+**Ham `detectLowQuality` trong create-post:**
+```text
+function detectLowQuality(content: string, mediaCount: number): boolean {
+  // Co media → khong phai spam
+  if (mediaCount > 0) return false;
+  
+  const trimmed = content.trim();
+  
+  // Qua ngan (< 15 ky tu, khong media)
+  if (trimmed.length < 15) return true;
+  
+  // Chi emoji/ky tu dac biet, khong co chu
+  const textOnly = trimmed.replace(/[\p{Emoji}\s\p{P}\p{S}]/gu, '');
+  if (textOnly.length === 0) return true;
+  
+  // Lap ky tu vo nghia: "aaaa", "hahaha"
+  const deduped = trimmed.replace(/(.)\1{4,}/g, '$1');
+  if (deduped.length <= 3) return true;
+  
+  return false;
+}
+```
+
+**Feed query filter:**
+```typescript
+// useFeedPosts.ts
+let query = supabase
+  .from('posts')
+  .select(...)
+  .or(`moderation_status.eq.approved,user_id.eq.${currentUserId}`)
+  .order('created_at', { ascending: false });
+```
+
+Dieu nay dam bao: bai viet da duyet hien cho tat ca, bai viet pending chi hien cho chinh nguoi dang.
+
+**PostModerationTab component:**
+- Query `posts` WHERE `moderation_status = 'pending_review'` ORDER BY `created_at DESC`
+- Join `profiles` de lay username, avatar
+- Admin update `moderation_status` bang client supabase (RLS cho phep admin update)
+
+**RLS bo sung:**
+```sql
+-- Admin co the update moderation_status
+CREATE POLICY "Admins can update post moderation"
+ON posts FOR UPDATE TO authenticated
+USING (has_role(auth.uid(), 'admin'))
+WITH CHECK (has_role(auth.uid(), 'admin'));
+```
+
+### Ket qua
+- Bai viet "dang cho co" tu dong bi giữ lai cho admin duyet
+- User van thay bai viet cua minh (khong biet bi pending) 
+- Admin co tab rieng de duyet/tu choi bai viet
+- Bai viet co anh/video khong bi anh huong
+- Khong anh huong den PPLP reward (bai pending khong duoc evaluate)
 
