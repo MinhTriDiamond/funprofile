@@ -12,6 +12,27 @@ interface MediaUrl {
   type: "image" | "video";
 }
 
+// Detect low-quality / "posting for the sake of posting" content
+function detectLowQuality(content: string, mediaCount: number): boolean {
+  // Posts with media are NOT flagged (user may post a photo with short caption)
+  if (mediaCount > 0) return false;
+
+  const trimmed = content.trim();
+
+  // Too short (< 15 chars, no media)
+  if (trimmed.length < 15) return true;
+
+  // Only emoji / special characters, no real text
+  const textOnly = trimmed.replace(/[\p{Emoji_Presentation}\p{Emoji_Modifier_Base}\p{Emoji_Component}\s\p{P}\p{S}]/gu, '');
+  if (textOnly.length === 0) return true;
+
+  // Repetitive gibberish: "aaaaaaa", "hahaha" → dedupe runs of 5+
+  const deduped = trimmed.replace(/(.)\1{4,}/g, '$1');
+  if (deduped.length <= 3) return true;
+
+  return false;
+}
+
 interface CreatePostRequest {
   content: string;
   media_urls: MediaUrl[];
@@ -140,8 +161,18 @@ Deno.serve(async (req) => {
       }
     }
 
+    // === LOW-QUALITY DETECTION ===
+    const mediaCount = (body.media_urls || []).length;
+    const isLowQuality = detectLowQuality(trimmedContent, mediaCount);
+    const moderationStatus = isLowQuality ? 'pending_review' : 'approved';
+
+    if (isLowQuality) {
+      console.log("[create-post] Low-quality detected, setting pending_review");
+      isRewardEligible = false; // Pending posts don't get rewards
+    }
+
     // Insert post
-    console.log("[create-post] Inserting post...", { isRewardEligible, duplicateDetected });
+    console.log("[create-post] Inserting post...", { isRewardEligible, duplicateDetected, moderationStatus });
     const insertStart = Date.now();
     
     // Validate visibility value
@@ -162,6 +193,7 @@ Deno.serve(async (req) => {
         visibility: visibility,
         content_hash: contentHash,
         is_reward_eligible: isRewardEligible,
+        moderation_status: moderationStatus,
       })
       .select("id")
       .single();
@@ -219,6 +251,7 @@ Deno.serve(async (req) => {
         postId: post?.id,
         is_reward_eligible: isRewardEligible,
         duplicate_detected: duplicateDetected,
+        moderation_status: moderationStatus,
         timing: { insertMs: insertDuration, totalMs: totalDuration },
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
