@@ -82,7 +82,7 @@ export const DonationReceivedCard = ({
 
       <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
         <DialogContent
-          className="max-w-md p-0 overflow-hidden border-0 bg-transparent shadow-none [&>button]:hidden !z-[10002]"
+          className="max-w-[min(85vw,360px)] p-0 overflow-hidden border-0 bg-transparent shadow-none [&>button]:hidden !z-[10002] aspect-[2/3]"
           overlayClassName="!z-[10002]"
         >
           <div
