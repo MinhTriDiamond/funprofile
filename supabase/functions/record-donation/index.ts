@@ -189,13 +189,14 @@ serve(async (req: Request) => {
       }
     }
 
-    if (conversationId) {
-      const { data: senderProfile } = await supabase
-        .from("profiles")
-        .select("username")
-        .eq("id", body.sender_id)
-        .single();
+    // Fetch senderProfile BEFORE conversation block - used for both message and gift post
+    const { data: senderProfile } = await supabase
+      .from("profiles")
+      .select("username")
+      .eq("id", body.sender_id)
+      .single();
 
+    if (conversationId) {
       const messageContent = `🎁 ${senderProfile?.username || "Người dùng"} đã tặng bạn ${amount.toLocaleString()} ${body.token_symbol}!\n\n${body.message ? `"${body.message}"\n\n` : ""}💰 TX: ${body.tx_hash.slice(0, 18)}...\n\n👉 Nhấn "Xem Card Chúc Mừng" để xem chi tiết!`;
 
       const { data: message } = await supabase
