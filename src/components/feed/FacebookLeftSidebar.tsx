@@ -21,6 +21,7 @@ import {
 interface Profile {
   id: string;
   username: string;
+  display_name: string | null;
   avatar_url: string | null;
   full_name: string | null;
 }
@@ -43,7 +44,7 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
         setIsLoggedIn(true);
         const { data } = await supabase
           .from('profiles')
-          .select('id, username, avatar_url, full_name')
+          .select('id, username, display_name, avatar_url, full_name')
           .eq('id', session.user.id)
           .single();
         setProfile(data);
@@ -264,7 +265,7 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
                   {profile.username?.[0]?.toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <span className="font-semibold text-sm">{profile.username}</span>
+              <span className="font-semibold text-sm">{profile.display_name || profile.username}</span>
             </button>
           )}
 

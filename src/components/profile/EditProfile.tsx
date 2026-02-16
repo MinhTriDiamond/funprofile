@@ -389,7 +389,7 @@ export const EditProfile = () => {
                 className="font-mono text-sm"
               />
               <p className="text-xs text-muted-foreground">
-                Link hồ sơ: fun.rich/{username || 'username'}
+                Chọn @username duy nhất của bạn (giống Telegram).
               </p>
             </div>
             <div className="space-y-2">
