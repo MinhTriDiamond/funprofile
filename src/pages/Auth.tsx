@@ -7,6 +7,7 @@ import LanguageSwitcher from '@/components/layout/LanguageSwitcher';
 // TetBackground removed - global version in App.tsx handles it
 import { Eye } from 'lucide-react';
 import { ValentineMusicButton } from '@/components/layout/ValentineMusicButton';
+import { TetBackgroundSelector } from '@/components/layout/TetBackgroundSelector';
 const Auth = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -92,6 +93,7 @@ const Auth = () => {
 
       {/* Language Switcher - Top Right with 13 languages */}
       <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
+        <TetBackgroundSelector variant="desktop" />
         <ValentineMusicButton variant="desktop" />
         <LanguageSwitcher variant="dropdown" />
       </div>
