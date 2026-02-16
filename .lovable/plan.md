@@ -1,35 +1,22 @@
 
 
-## Chặn thưởng CAMLY cho bài viết ngắn (vẫn cho đăng bình thường)
+## Ẩn checklist điều kiện claim, chỉ hiện nhắc nhở khi claim
 
-### Vấn đề
-Các bài viết dạng câu ngắn 1 dòng (ví dụ: "Của một niềm đau không lời.", "Không ai nghe tiếng rất khẽ") dài khoảng 25-35 ký tự, vượt qua ngưỡng low-quality hiện tại (15 ký tự) nên vẫn được tính thưởng CAMLY. Cần cho phép đăng bình thường nhưng không tặng thưởng.
-
-### Giải pháp
-Thêm một bước kiểm tra mới trong Edge Function `create-post`: bài viết chỉ có text (không kèm ảnh/video) mà dưới **50 ký tự** sẽ được đánh dấu `is_reward_eligible = false`, nhưng vẫn giữ `moderation_status = 'approved'` (hiển thị bình thường trên feed).
-
-### Quy tắc chi tiết
-
-| Điều kiện | Cho đăng? | Thưởng CAMLY? |
-|-----------|-----------|---------------|
-| Text < 15 ký tự, không media | Chờ duyệt (pending_review) | Không |
-| Text 15-49 ký tự, không media | Có (approved) | **Không** |
-| Text >= 50 ký tự, không media | Có (approved) | Có |
-| Có media (ảnh/video) | Có (approved) | Có |
+### Thay đổi
+Ẩn khung "Điều kiện claim" (checklist xanh) khỏi giao diện Wallet. Khi người dùng nhấn nút Claim mà chưa đủ điều kiện, hiển thị toast thông báo cụ thể điều kiện nào chưa hoàn thành kèm hướng dẫn.
 
 ### Chi tiết kỹ thuật
 
-**File: `supabase/functions/create-post/index.ts`**
+**File: `src/components/wallet/ClaimRewardsSection.tsx`**
 
-Sau khối LOW-QUALITY DETECTION (dòng 164-172), thêm khối SHORT CONTENT CHECK:
+1. Xoá toàn bộ khối checklist "Điều kiện claim" (khung xanh với 5 điều kiện).
 
-```typescript
-// === SHORT CONTENT CHECK (no reward for short text-only posts) ===
-if (isRewardEligible && mediaCount === 0 && trimmedContent.length < 50) {
-  console.log("[create-post] Short text-only post, no reward:", trimmedContent.length, "chars");
-  isRewardEligible = false;
-}
-```
+2. Cập nhật hàm `handleClaimClick`: khi `allConditionsMet === false`, thay vì chỉ disable nút, hiển thị toast warning liệt kê các điều kiện chưa đạt:
+   - "Cập nhật họ tên đầy đủ" nếu chưa có
+   - "Thêm ảnh đại diện" nếu chưa có
+   - "Thêm ảnh bìa" nếu chưa có
+   - "Đăng ít nhất 1 bài hôm nay" nếu chưa đăng
+   - "Kết nối ví" nếu chưa kết nối
 
-Bài viết vẫn hiển thị bình thường, chỉ không được tính vào phần thưởng CAMLY.
+3. Nút Claim vẫn giữ nguyên logic disable khi chưa đủ điều kiện, nhưng thay vì `cursor-not-allowed` hoàn toàn, cho phép click để hiện toast nhắc nhở.
 
