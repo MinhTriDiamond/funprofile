@@ -140,7 +140,7 @@ const Profile = () => {
         .from('profiles')
         .select(isViewingOwnProfile 
           ? '*' 
-          : 'id, username, avatar_url, full_name, bio, cover_url, created_at, soul_level, total_rewards, pinned_post_id, external_wallet_address, custodial_wallet_address, public_wallet_address')
+          : 'id, username, display_name, avatar_url, full_name, bio, cover_url, created_at, soul_level, total_rewards, pinned_post_id, external_wallet_address, custodial_wallet_address, public_wallet_address')
         .eq('id', profileId)
         .single();
 
@@ -456,7 +456,7 @@ const Profile = () => {
                 {/* Name, Friends, Bio, Info - Facebook style inline */}
                 <div className="flex-1 text-center md:text-left md:ml-4">
                 <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-foreground">
-                    {profile?.username}
+                    {profile?.display_name || profile?.username}
                   </h1>
                   <p className="text-sm text-muted-foreground font-medium">
                     {friendsCount.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')} {t('friendsSuffix')}
