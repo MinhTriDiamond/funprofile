@@ -463,7 +463,7 @@ const Profile = () => {
                   </p>
                   {/* Username handle and profile link */}
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    @{profile?.username} · fun.rich/{profile?.username}
+                    @{profile?.username} · <a href={`/${profile?.username}`} className="hover:text-primary hover:underline transition-colors cursor-pointer">fun.rich/{profile?.username}</a>
                   </p>
 
                   {/* Public Wallet Address - fallback: public > external > custodial */}
