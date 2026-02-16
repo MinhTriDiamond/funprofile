@@ -41,6 +41,10 @@ export const EditProfile = () => {
   const [avatarUrl, setAvatarUrl] = useState('');
   const [coverUrl, setCoverUrl] = useState('');
   const [publicWalletAddress, setPublicWalletAddress] = useState('');
+  const [location, setLocation] = useState('');
+  const [workplace, setWorkplace] = useState('');
+  const [education, setEducation] = useState('');
+  const [relationshipStatus, setRelationshipStatus] = useState('');
   const [cropImage, setCropImage] = useState<string | null>(null);
   const [userId, setUserId] = useState<string>('');
   const { t } = useLanguage();
@@ -71,6 +75,10 @@ export const EditProfile = () => {
       setAvatarUrl(data.avatar_url || '');
       setCoverUrl(data.cover_url || '');
       setPublicWalletAddress(data.public_wallet_address || '');
+      setLocation((data as any).location || '');
+      setWorkplace((data as any).workplace || '');
+      setEducation((data as any).education || '');
+      setRelationshipStatus((data as any).relationship_status || '');
     } catch (error) {
       // Error fetching profile - silent fail for security
     }
@@ -258,7 +266,11 @@ export const EditProfile = () => {
           full_name: fullName,
           bio,
           public_wallet_address: publicWalletAddress || null,
-        })
+          location: location || null,
+          workplace: workplace || null,
+          education: education || null,
+          relationship_status: relationshipStatus || null,
+        } as any)
         .eq('id', userId);
 
       if (error) throw error;
@@ -401,6 +413,42 @@ export const EditProfile = () => {
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
                 </button>
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="location">📍 Sống ở</Label>
+              <Input
+                id="location"
+                value={location}
+                onChange={(e) => setLocation(e.target.value.slice(0, 100))}
+                placeholder="Ví dụ: Việt Nam, Hồ Chí Minh..."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="workplace">🏢 Làm việc tại</Label>
+              <Input
+                id="workplace"
+                value={workplace}
+                onChange={(e) => setWorkplace(e.target.value.slice(0, 100))}
+                placeholder="Ví dụ: FUN Ecosystem..."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="education">🎓 Học tại</Label>
+              <Input
+                id="education"
+                value={education}
+                onChange={(e) => setEducation(e.target.value.slice(0, 100))}
+                placeholder="Ví dụ: Cosmic University..."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="relationshipStatus">💕 Tình trạng mối quan hệ</Label>
+              <Input
+                id="relationshipStatus"
+                value={relationshipStatus}
+                onChange={(e) => setRelationshipStatus(e.target.value.slice(0, 50))}
+                placeholder="Ví dụ: Độc thân, Đã kết hôn..."
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="publicWallet" className="flex items-center gap-2">
