@@ -358,7 +358,7 @@ export const EditProfile = () => {
               <p className="text-sm font-medium text-foreground">@{username || 'username'}</p>
               <div className="flex items-center gap-1 -mt-3">
                 <a href={`/${username || 'username'}`} className="text-xs text-muted-foreground hover:text-primary hover:underline transition-colors">
-                  fun.rich/{username || 'username'}
+                  http://fun.rich/{username || 'username'}
                 </a>
                 <button
                   type="button"
