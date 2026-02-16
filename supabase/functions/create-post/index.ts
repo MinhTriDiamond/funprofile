@@ -171,6 +171,12 @@ Deno.serve(async (req) => {
       isRewardEligible = false; // Pending posts don't get rewards
     }
 
+    // === SHORT CONTENT CHECK (no reward for short text-only posts) ===
+    if (isRewardEligible && mediaCount === 0 && trimmedContent.length < 50) {
+      console.log("[create-post] Short text-only post, no reward:", trimmedContent.length, "chars");
+      isRewardEligible = false;
+    }
+
     // Insert post
     console.log("[create-post] Inserting post...", { isRewardEligible, duplicateDetected, moderationStatus });
     const insertStart = Date.now();
