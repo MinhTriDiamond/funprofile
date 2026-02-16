@@ -228,6 +228,31 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Check shared IP (login_ip_logs): if same IP used by >2 different users in last 7 days
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const { data: userIps } = await supabaseAdmin
+      .from('login_ip_logs')
+      .select('ip_address')
+      .eq('user_id', userId)
+      .gte('created_at', sevenDaysAgo);
+
+    if (userIps && userIps.length > 0) {
+      const uniqueIps = [...new Set(userIps.map(r => r.ip_address))];
+      for (const ip of uniqueIps) {
+        if (ip === 'unknown') continue;
+        const { count: ipUserCount } = await supabaseAdmin
+          .from('login_ip_logs')
+          .select('user_id', { count: 'exact', head: true })
+          .eq('ip_address', ip)
+          .neq('user_id', userId)
+          .gte('created_at', sevenDaysAgo);
+        if (ipUserCount && ipUserCount > 2) {
+          fraudReasons.push(`IP ${ip.slice(0, 6)}... dùng chung bởi ${ipUserCount + 1} tài khoản`);
+          break;
+        }
+      }
+    }
+
     // Check duplicate avatar
     if (profile.avatar_url) {
       const { count: avatarDups } = await supabaseAdmin

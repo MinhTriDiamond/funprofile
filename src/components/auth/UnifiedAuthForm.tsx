@@ -10,6 +10,7 @@ import { WalletLogin } from './WalletLogin';
 import { SocialLogin } from './SocialLogin';
 import { ClassicEmailLogin } from './ClassicEmailLogin';
 import { Mail, Wallet, Users, Loader2, Sparkles, KeyRound } from 'lucide-react';
+import { getDeviceHash } from '@/utils/deviceFingerprint';
 
 export const UnifiedAuthForm = () => {
   const navigate = useNavigate();
@@ -64,10 +65,12 @@ export const UnifiedAuthForm = () => {
 
     console.log('[Auth] Session verified for user:', userId, 'isNewUser:', isNewUser, 'hasExternalWallet:', hasExternalWallet);
 
-    // Log login IP (fire-and-forget)
+    // Log login IP + device fingerprint (fire-and-forget)
     try {
+      const deviceHash = await getDeviceHash();
       supabase.functions.invoke('log-login-ip', {
-        headers: { Authorization: `Bearer ${session.access_token}` }
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        body: { device_hash: deviceHash },
       });
     } catch (e) {
       console.warn('[Auth] Failed to log IP:', e);
