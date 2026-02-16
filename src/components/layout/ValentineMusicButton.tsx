@@ -11,7 +11,7 @@ let globalResumeListener: (() => void) | null = null;
 
 function ensureAudio(): HTMLAudioElement {
   if (!globalAudio) {
-    globalAudio = new Audio('/sounds/valentine.mp3');
+    globalAudio = new Audio('/sounds/tet.mp3');
     globalAudio.loop = true;
     globalAudio.volume = globalVolume;
   }
