@@ -1,19 +1,35 @@
 
-## Chinh sua hien thi the donation card ro rang hon
 
-### Van de
-Chu "RICH" (z-index 10001) van bay len tren the card (z-index 10002) khien noi dung the bi che khuat. Nguyen nhan la cac portal render doc lap vao document.body nen z-index chua du cach biet de dam bao thu tu hien thi.
+## Chặn thưởng CAMLY cho bài viết ngắn (vẫn cho đăng bình thường)
 
-### Giai phap
-Giam z-index cua RichTextOverlay tu 10001 xuong 9999 (ngang voi confetti/celebration effects), de the donation card (z-index 10002) va dialog overlay (z-index 10002) nam hoan toan phia tren chu RICH.
+### Vấn đề
+Các bài viết dạng câu ngắn 1 dòng (ví dụ: "Của một niềm đau không lời.", "Không ai nghe tiếng rất khẽ") dài khoảng 25-35 ký tự, vượt qua ngưỡng low-quality hiện tại (15 ký tự) nên vẫn được tính thưởng CAMLY. Cần cho phép đăng bình thường nhưng không tặng thưởng.
 
-### Chi tiet ky thuat
+### Giải pháp
+Thêm một bước kiểm tra mới trong Edge Function `create-post`: bài viết chỉ có text (không kèm ảnh/video) mà dưới **50 ký tự** sẽ được đánh dấu `is_reward_eligible = false`, nhưng vẫn giữ `moderation_status = 'approved'` (hiển thị bình thường trên feed).
 
-**File: `src/components/donations/RichTextOverlay.tsx`**
-- Doi `z-[10001]` thanh `z-[9999]` (line 43)
+### Quy tắc chi tiết
 
-Ket qua: Thu tu hien thi se la:
-1. Confetti + dong tien roi (z-9998-9999)
-2. Chu RICH bay (z-9999)
-3. Dialog overlay nen toi (z-10002)
-4. The donation card (z-10002) -- hien thi ro rang nhat
+| Điều kiện | Cho đăng? | Thưởng CAMLY? |
+|-----------|-----------|---------------|
+| Text < 15 ký tự, không media | Chờ duyệt (pending_review) | Không |
+| Text 15-49 ký tự, không media | Có (approved) | **Không** |
+| Text >= 50 ký tự, không media | Có (approved) | Có |
+| Có media (ảnh/video) | Có (approved) | Có |
+
+### Chi tiết kỹ thuật
+
+**File: `supabase/functions/create-post/index.ts`**
+
+Sau khối LOW-QUALITY DETECTION (dòng 164-172), thêm khối SHORT CONTENT CHECK:
+
+```typescript
+// === SHORT CONTENT CHECK (no reward for short text-only posts) ===
+if (isRewardEligible && mediaCount === 0 && trimmedContent.length < 50) {
+  console.log("[create-post] Short text-only post, no reward:", trimmedContent.length, "chars");
+  isRewardEligible = false;
+}
+```
+
+Bài viết vẫn hiển thị bình thường, chỉ không được tính vào phần thưởng CAMLY.
+
