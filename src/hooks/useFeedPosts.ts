@@ -17,6 +17,15 @@ export interface FeedPost {
   created_at: string;
   user_id: string;
   visibility: string;
+  post_type?: string;
+  tx_hash?: string | null;
+  gift_sender_id?: string | null;
+  gift_recipient_id?: string | null;
+  gift_token?: string | null;
+  gift_amount?: string | null;
+  gift_message?: string | null;
+  is_highlighted?: boolean;
+  highlight_expires_at?: string | null;
   profiles: {
     username: string;
     avatar_url: string | null;
@@ -83,6 +92,36 @@ const fetchPostStats = async (postIds: string[]): Promise<Record<string, PostSta
 };
 
 // Fetch a page of posts with cursor-based pagination
+// Fetch highlighted (pinned) gift celebration posts
+const fetchHighlightedPosts = async (currentUserId: string | null): Promise<FeedPost[]> => {
+  const now = new Date().toISOString();
+  let query = supabase
+    .from('posts')
+    .select(`*, profiles!posts_user_id_fkey (username, display_name, avatar_url, external_wallet_address, custodial_wallet_address)`)
+    .eq('is_highlighted', true)
+    .gt('highlight_expires_at', now)
+    .order('created_at', { ascending: false })
+    .limit(10);
+
+  if (currentUserId) {
+    query = query.or(`moderation_status.eq.approved,user_id.eq.${currentUserId}`);
+  } else {
+    query = query.eq('moderation_status', 'approved');
+  }
+
+  const { data, error } = await query;
+  if (error) {
+    console.error('Error fetching highlighted posts:', error);
+    return [];
+  }
+
+  return (data || []).map(post => ({
+    ...post,
+    media_urls: (post.media_urls as Array<{ url: string; type: 'image' | 'video' }>) || null,
+    visibility: post.visibility || 'public',
+  }));
+};
+
 const fetchFeedPage = async (cursor: string | null, currentUserId: string | null): Promise<FeedPage> => {
   let query = supabase
     .from('posts')
@@ -174,10 +213,37 @@ export const useFeedPosts = () => {
     };
   }, [queryClient]);
 
-  const allPosts = query.data?.pages?.flatMap(page => page.posts) || [];
-  const allPostStats = query.data?.pages?.reduce((acc, page) => {
-    return { ...acc, ...page.postStats };
-  }, {} as Record<string, PostStats>) || {};
+  // Fetch highlighted posts separately (only on first page)
+  const highlightedQuery = useInfiniteQuery<{ posts: FeedPost[]; postStats: Record<string, PostStats> }, Error>({
+    queryKey: ['highlighted-posts', currentUserId],
+    queryFn: async () => {
+      const posts = await fetchHighlightedPosts(currentUserId);
+      const postIds = posts.map(p => p.id);
+      const postStats = await fetchPostStats(postIds);
+      return { posts, postStats };
+    },
+    initialPageParam: null,
+    getNextPageParam: () => undefined,
+    staleTime: 30 * 1000,
+    gcTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    enabled: currentUserId !== undefined,
+  });
+
+  const highlightedPosts = highlightedQuery.data?.pages?.[0]?.posts || [];
+  const highlightedStats = highlightedQuery.data?.pages?.[0]?.postStats || {};
+  const highlightedIds = new Set(highlightedPosts.map(p => p.id));
+
+  const regularPosts = (query.data?.pages?.flatMap(page => page.posts) || [])
+    .filter(p => !highlightedIds.has(p.id));
+
+  const allPosts = [...highlightedPosts, ...regularPosts];
+  const allPostStats = {
+    ...highlightedStats,
+    ...(query.data?.pages?.reduce((acc, page) => {
+      return { ...acc, ...page.postStats };
+    }, {} as Record<string, PostStats>) || {}),
+  };
 
   return {
     posts: allPosts,

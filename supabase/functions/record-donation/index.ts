@@ -224,6 +224,36 @@ serve(async (req: Request) => {
       }
     }
 
+    // Create gift celebration post on feed
+    const { data: recipientProfileData } = await supabase
+      .from("profiles")
+      .select("username")
+      .eq("id", body.recipient_id)
+      .single();
+
+    const recipientName = recipientProfileData?.username;
+    const senderName = senderProfile?.username || "Người dùng";
+
+    if (recipientName) {
+      const postContent = `🎉 @${senderName} đã trao gửi ${amount.toLocaleString()} ${body.token_symbol} cho @${recipientName} ❤️${body.message ? `\n\n"${body.message.slice(0, 120)}"` : ''}`;
+
+      await supabase.from("posts").insert({
+        user_id: body.sender_id,
+        content: postContent,
+        post_type: "gift_celebration",
+        tx_hash: body.tx_hash,
+        gift_sender_id: body.sender_id,
+        gift_recipient_id: body.recipient_id,
+        gift_token: body.token_symbol,
+        gift_amount: body.amount,
+        gift_message: body.message || null,
+        is_highlighted: true,
+        highlight_expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+        visibility: "public",
+        moderation_status: "approved",
+      });
+    }
+
     // Notification
     await supabase.from("notifications").insert({
       user_id: body.recipient_id,
