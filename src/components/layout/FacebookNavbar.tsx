@@ -52,7 +52,7 @@ export const FacebookNavbar = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isAngelChatOpen, setIsAngelChatOpen] = useState(false);
-  const [profile, setProfile] = useState<{ avatar_url: string | null; username: string } | null>(null);
+  const [profile, setProfile] = useState<{ avatar_url: string | null; username: string; display_name: string | null } | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -65,7 +65,7 @@ export const FacebookNavbar = () => {
         // Fetch profile
         const { data } = await supabase
           .from('profiles')
-          .select('avatar_url, username')
+          .select('avatar_url, username, display_name')
           .eq('id', session.user.id)
           .single();
         if (data) setProfile(data);
@@ -87,7 +87,7 @@ export const FacebookNavbar = () => {
         setCurrentUserId(session.user.id);
         const { data } = await supabase
           .from('profiles')
-          .select('avatar_url, username')
+          .select('avatar_url, username, display_name')
           .eq('id', session.user.id)
           .single();
         if (data) setProfile(data);
@@ -313,7 +313,7 @@ export const FacebookNavbar = () => {
                         {profile?.username?.[0]?.toUpperCase() || 'U'}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="font-semibold text-foreground">{profile?.username || 'User'}</span>
+                    <span className="font-semibold text-foreground">{profile?.display_name || profile?.username || 'User'}</span>
                   </DropdownMenuItem>
                   
                   <DropdownMenuSeparator />
