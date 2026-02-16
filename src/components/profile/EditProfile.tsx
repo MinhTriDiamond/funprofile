@@ -363,7 +363,7 @@ export const EditProfile = () => {
                 id="displayName"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value.slice(0, 50))}
-                placeholder="vd: Angel Ái Vân"
+                placeholder="Nhập Tên bạn muốn hiển thị"
               />
               <p className="text-xs text-muted-foreground">Tối đa 50 ký tự.</p>
             </div>
@@ -385,12 +385,23 @@ export const EditProfile = () => {
                 id="usernameHandle"
                 value={username}
                 onChange={(e) => setUsername(e.target.value.slice(0, 50))}
-                placeholder="vd: angel_ai_van"
+                placeholder="Chọn @username duy nhất của bạn (giống Telegram)"
                 className="font-mono text-sm"
               />
-              <p className="text-xs text-muted-foreground">
-                Chọn @username duy nhất của bạn (giống Telegram).
-              </p>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span>Link hồ sơ: fun.rich/{username || 'username'}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(`fun.rich/${username || 'username'}`);
+                    toast.success('Đã sao chép link hồ sơ!');
+                  }}
+                  className="inline-flex items-center gap-1 text-primary hover:underline"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                  Copy
+                </button>
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="publicWallet" className="flex items-center gap-2">
