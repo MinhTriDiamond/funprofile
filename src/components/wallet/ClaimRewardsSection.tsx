@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Gift, Wallet, AlertTriangle, Info, Heart, Clock, CheckCircle2, TrendingUp, XCircle, Camera, Image, FileText, User } from 'lucide-react';
+import { Gift, Wallet, AlertTriangle, Info, Clock, CheckCircle2, TrendingUp } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { RewardStats } from './RewardBreakdown';
@@ -64,6 +64,8 @@ export const ClaimRewardsSection = ({
 
   const config = statusConfig[rewardStatus] || statusConfig.pending;
 
+  const allConditionsMet = hasAvatar && hasCover && hasTodayPost && hasFullName && isConnected;
+
   const handleClaimClick = () => {
     if (!isConnected) {
       onConnectClick();
@@ -72,6 +74,19 @@ export const ClaimRewardsSection = ({
     if (config.disabled) {
       if (rewardStatus === 'on_hold') toast.warning('Tài khoản đang bị tạm giữ, vui lòng liên hệ admin');
       else if (rewardStatus === 'rejected') toast.error('Phần thưởng đã bị từ chối, vui lòng liên hệ admin');
+      return;
+    }
+    if (!allConditionsMet) {
+      const missing: string[] = [];
+      if (!hasFullName) missing.push('• Cập nhật họ tên đầy đủ (tối thiểu 4 ký tự)');
+      if (!hasAvatar) missing.push('• Thêm ảnh đại diện (hình người thật)');
+      if (!hasCover) missing.push('• Thêm ảnh bìa trang cá nhân');
+      if (!hasTodayPost) missing.push('• Đăng ít nhất 1 bài hôm nay');
+      if (!isConnected) missing.push('• Kết nối ví');
+      toast.warning('Chưa đủ điều kiện claim', {
+        description: missing.join('\n'),
+        duration: 6000,
+      });
       return;
     }
     onClaimClick();
@@ -153,117 +168,68 @@ export const ClaimRewardsSection = ({
           </div>
         </div>
 
-        {/* Claim Checklist */}
-        {(() => {
-          const allConditionsMet = hasAvatar && hasCover && hasTodayPost && hasFullName && isConnected;
-          const conditions = [
-            { met: hasFullName, label: 'Cập nhật họ tên đầy đủ (tối thiểu 4 ký tự)', icon: User, action: () => navigate('/profile'), actionLabel: 'Cập nhật' },
-            { met: hasAvatar, label: 'Ảnh đại diện (hình người thật)', icon: Camera, action: () => navigate('/profile'), actionLabel: 'Cập nhật' },
-            { met: hasCover, label: 'Ảnh bìa trang cá nhân', icon: Image, action: () => navigate('/profile'), actionLabel: 'Cập nhật' },
-            { met: hasTodayPost, label: 'Đăng ít nhất 1 bài hôm nay', icon: FileText, action: () => navigate('/'), actionLabel: 'Đăng bài' },
-            { met: isConnected, label: 'Ví đã kết nối', icon: Wallet, action: onConnectClick, actionLabel: 'Kết nối' },
-          ];
-
-          return (
-            <div className="space-y-3">
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-3.5">
-                <p className="text-sm font-semibold text-blue-800 mb-2.5">📋 Điều kiện claim:</p>
-                <div className="space-y-2">
-                  {conditions.map((c, i) => (
-                    <div key={i} className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        {c.met ? (
-                          <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
-                        ) : (
-                          <XCircle className="w-4 h-4 text-red-500 shrink-0" />
-                        )}
-                        <span className={`text-sm ${c.met ? 'text-green-700' : 'text-red-700'}`}>
-                          {c.label}
-                        </span>
-                      </div>
-                      {!c.met && (
-                        <button
-                          onClick={c.action}
-                          className="text-xs text-blue-600 hover:text-blue-800 font-medium underline shrink-0"
-                        >
-                          {c.actionLabel} →
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* On Hold Alert */}
-              {rewardStatus === 'on_hold' && adminNotes && (
-                <div className="bg-orange-50 border border-orange-300 rounded-xl p-3.5">
-                  <div className="flex items-start gap-2">
-                    <AlertTriangle className="w-5 h-5 text-orange-600 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-semibold text-orange-800">Tài khoản đang bị tạm dừng rút tiền</p>
-                      <p className="text-xs text-orange-700 mt-1">{adminNotes}</p>
-                      <p className="text-xs text-orange-600 mt-2">
-                        Vui lòng liên hệ Admin qua tin nhắn hoặc email để được xem xét và mở khoá.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Claim Button */}
+        {/* On Hold Alert */}
+        {rewardStatus === 'on_hold' && adminNotes && (
+          <div className="bg-orange-50 border border-orange-300 rounded-xl p-3.5">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="w-5 h-5 text-orange-600 shrink-0 mt-0.5" />
               <div>
-                {!isConnected ? (
-                  <Button
-                    onClick={onConnectClick}
-                    className="w-full bg-gradient-to-r from-emerald-600 to-green-500 hover:from-emerald-700 hover:to-green-600 text-white font-bold py-6 text-base rounded-xl shadow-lg"
-                  >
-                    <Wallet className="w-5 h-5 mr-2" />
-                    Kết nối ví để Claim
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={handleClaimClick}
-                    disabled={config.disabled || claimableReward <= 0 || !allConditionsMet}
-                    className={`w-full py-6 text-base rounded-xl font-bold shadow-lg transition-all ${
-                      config.disabled || claimableReward <= 0 || !allConditionsMet
-                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                        : 'bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-white hover:shadow-xl hover:scale-[1.01]'
-                    }`}
-                  >
-                    {config.disabled ? (
-                      <span className="flex items-center gap-2">
-                        {rewardStatus === 'on_hold' && <AlertTriangle className="w-5 h-5" />}
-                        {config.label}
-                        {(rewardStatus === 'on_hold' || rewardStatus === 'rejected') && adminNotes && (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Info className="w-4 h-4" />
-                              </TooltipTrigger>
-                              <TooltipContent side="bottom" className="max-w-xs">
-                                <p className="text-sm">{adminNotes}</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        )}
-                      </span>
-                    ) : !allConditionsMet ? (
-                      <span className="flex items-center gap-2">
-                        <AlertTriangle className="w-5 h-5" />
-                        Hoàn thành điều kiện để Claim
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-2">
-                        <Gift className="w-5 h-5" />
-                        Claim {formatNumber(claimableReward)} CAMLY
-                      </span>
-                    )}
-                  </Button>
-                )}
+                <p className="text-sm font-semibold text-orange-800">Tài khoản đang bị tạm dừng rút tiền</p>
+                <p className="text-xs text-orange-700 mt-1">{adminNotes}</p>
+                <p className="text-xs text-orange-600 mt-2">
+                  Vui lòng liên hệ Admin qua tin nhắn hoặc email để được xem xét và mở khoá.
+                </p>
               </div>
             </div>
-          );
-        })()}
+          </div>
+        )}
+
+        {/* Claim Button */}
+        <div>
+          {!isConnected ? (
+            <Button
+              onClick={onConnectClick}
+              className="w-full bg-gradient-to-r from-emerald-600 to-green-500 hover:from-emerald-700 hover:to-green-600 text-white font-bold py-6 text-base rounded-xl shadow-lg"
+            >
+              <Wallet className="w-5 h-5 mr-2" />
+              Kết nối ví để Claim
+            </Button>
+          ) : (
+            <Button
+              onClick={handleClaimClick}
+              disabled={config.disabled || claimableReward <= 0}
+              className={`w-full py-6 text-base rounded-xl font-bold shadow-lg transition-all ${
+                config.disabled || claimableReward <= 0
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-white hover:shadow-xl hover:scale-[1.01]'
+              }`}
+            >
+              {config.disabled ? (
+                <span className="flex items-center gap-2">
+                  {rewardStatus === 'on_hold' && <AlertTriangle className="w-5 h-5" />}
+                  {config.label}
+                  {(rewardStatus === 'on_hold' || rewardStatus === 'rejected') && adminNotes && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="w-4 h-4" />
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="max-w-xs">
+                          <p className="text-sm">{adminNotes}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
+                  <Gift className="w-5 h-5" />
+                  Claim {formatNumber(claimableReward)} CAMLY
+                </span>
+              )}
+            </Button>
+          )}
+        </div>
 
         {/* Progress Bars */}
         <div className="space-y-3">
