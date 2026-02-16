@@ -389,7 +389,7 @@ export const EditProfile = () => {
                 className="font-mono text-sm"
               />
               <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>Link hồ sơ: fun.rich/{username || 'username'}</span>
+                <a href={`/${username || 'username'}`} className="hover:text-primary hover:underline transition-colors cursor-pointer">Link hồ sơ: fun.rich/{username || 'username'}</a>
                 <button
                   type="button"
                   onClick={() => {
