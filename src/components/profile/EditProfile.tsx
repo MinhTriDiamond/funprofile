@@ -358,7 +358,7 @@ export const EditProfile = () => {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="displayName">Tên hiển thị</Label>
+              <Label htmlFor="displayName">Tên người dùng</Label>
               <Input
                 id="displayName"
                 value={displayName}

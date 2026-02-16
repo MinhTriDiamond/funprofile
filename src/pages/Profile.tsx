@@ -442,7 +442,7 @@ const Profile = () => {
                       }}
                     >
                       <Avatar 
-                        className="w-28 h-28 sm:w-32 sm:h-32 md:w-40 md:h-40 border-4 border-white"
+                        className="w-24 h-24 sm:w-28 sm:h-28 md:w-36 md:h-36 border-4 border-white"
                       >
                         {profile?.avatar_url && <AvatarImage src={profile.avatar_url} sizeHint="lg" />}
                         <AvatarFallback className="text-3xl md:text-4xl bg-primary text-primary-foreground">
@@ -455,11 +455,15 @@ const Profile = () => {
 
                 {/* Name, Friends, Bio, Info - Facebook style inline */}
                 <div className="flex-1 text-center md:text-left md:ml-4">
-                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground">
+                <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-foreground">
                     {profile?.username}
                   </h1>
-                  <p className="text-base sm:text-lg text-muted-foreground font-medium">
+                  <p className="text-sm text-muted-foreground font-medium">
                     {friendsCount.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')} {t('friendsSuffix')}
+                  </p>
+                  {/* Username handle and profile link */}
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    @{profile?.username} · fun.rich/{profile?.username}
                   </p>
 
                   {/* Public Wallet Address - fallback: public > external > custodial */}
@@ -505,13 +509,13 @@ const Profile = () => {
                   
                   {/* Bio text - full display with wrap */}
                   {profile?.bio && (
-                    <p className="text-sm sm:text-base text-muted-foreground mt-1 whitespace-pre-wrap break-words max-w-md">
+                    <p className="text-xs sm:text-sm text-muted-foreground mt-1 whitespace-pre-wrap break-words max-w-md">
                       {profile.bio}
                     </p>
                   )}
                   
                   {/* Info badges - all in one horizontal row */}
-                  <div className="flex flex-nowrap items-center justify-center md:justify-start gap-x-4 mt-2 text-base sm:text-lg text-muted-foreground">
+                  <div className="flex flex-nowrap items-center justify-center md:justify-start gap-x-4 mt-2 text-sm sm:text-base text-muted-foreground">
                     <div className="flex items-center gap-1.5 whitespace-nowrap">
                       <MapPin className="w-5 h-5 flex-shrink-0" />
                       <span>Việt Nam</span>
