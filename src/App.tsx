@@ -107,7 +107,7 @@ function App() {
             <TetBackground />
             <TetFlowerOverlay />
             {/* Global floating music button – visible on all pages including pre-login */}
-            <div className="fixed bottom-24 right-4 z-50 lg:hidden">
+            <div className="fixed bottom-36 right-4 z-50 lg:hidden">
               <ValentineMusicButton variant="mobile" />
             </div>
             <Suspense fallback={<PageLoader />}>
