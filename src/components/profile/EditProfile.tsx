@@ -209,7 +209,7 @@ export const EditProfile = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const trimmedUsername = username.trim().toLowerCase();
+    const trimmedUsername = username.trim();
     
     // Validate profile fields
     const validation = profileSchema.safeParse({ 
@@ -340,6 +340,10 @@ export const EditProfile = () => {
                   disabled={uploading}
                 />
               </div>
+              <p className="text-sm font-medium text-foreground">@{username || 'username'}</p>
+              <p className="text-xs text-muted-foreground -mt-3">
+                Link hồ sơ: fun.rich/{username || 'username'}
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="fullName">Họ và tên</Label>
@@ -377,8 +381,9 @@ export const EditProfile = () => {
               <Input
                 id="usernameHandle"
                 value={username}
-                disabled
-                className="font-mono text-sm opacity-70"
+                onChange={(e) => setUsername(e.target.value.slice(0, 50))}
+                placeholder="vd: angel_ai_van"
+                className="font-mono text-sm"
               />
               <p className="text-xs text-muted-foreground">
                 Link hồ sơ: fun.rich/{username || 'username'}
