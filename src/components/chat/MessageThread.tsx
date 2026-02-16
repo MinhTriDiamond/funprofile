@@ -8,7 +8,7 @@ import { ChatInput } from './ChatInput';
 import { TypingIndicator } from './TypingIndicator';
 import { MessageSearch } from './MessageSearch';
 import { GroupSettingsDialog } from './GroupSettingsDialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
+
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -171,7 +171,7 @@ export function MessageThread({ conversationId, userId, username }: MessageThrea
       </div>
 
       {/* Messages */}
-      <ScrollArea ref={scrollRef} className="flex-1 p-4">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4">
         <div className="space-y-4">
           {messages.map((message, index) => {
             const isOwn = message.sender_id === userId;
@@ -196,7 +196,7 @@ export function MessageThread({ conversationId, userId, username }: MessageThrea
             <TypingIndicator users={typingUsers} />
           )}
         </div>
-      </ScrollArea>
+      </div>
 
       {/* Input */}
       <ChatInput
