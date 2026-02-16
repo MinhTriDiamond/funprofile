@@ -35,14 +35,19 @@ export const TetBackground = memo(() => {
           disablePictureInPicture
           disableRemotePlayback
           preload="auto"
+          // @ts-ignore
+          fetchpriority="low"
           className="h-full w-full"
           aria-hidden="true"
           style={{
             WebkitTransform: 'translateZ(0)',
             transform: 'translateZ(0)',
+            WebkitBackfaceVisibility: 'hidden',
+            backfaceVisibility: 'hidden',
+            willChange: 'transform',
             objectFit: 'cover',
             objectPosition: 'center center',
-            filter: 'saturate(1.15) contrast(1.08) brightness(1.02)',
+            filter: 'saturate(1.1) contrast(1.05) brightness(1.02)',
           }}
         >
           <source src={src} type="video/mp4" />

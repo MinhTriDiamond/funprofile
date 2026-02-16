@@ -9,18 +9,22 @@ export const TetFlowerOverlay = memo(() => {
     <div className="md:hidden">
       {/* Valentine glow góc trái dưới - CHỈ MOBILE */}
       <div 
-        className="fixed bottom-16 left-0 w-36 h-44 pointer-events-none z-[5] opacity-70"
+        className="fixed bottom-16 left-0 w-36 h-44 pointer-events-none z-[5] opacity-50"
         style={{
           background: 'radial-gradient(ellipse at bottom left, hsl(340 80% 55% / 0.35) 0%, hsl(350 90% 70% / 0.15) 40%, transparent 70%)',
+          willChange: 'opacity',
+          transform: 'translateZ(0)',
         }}
         aria-hidden="true"
       />
       
       {/* Valentine glow góc phải dưới - CHỈ MOBILE */}
       <div 
-        className="fixed bottom-16 right-0 w-36 h-44 pointer-events-none z-[5] opacity-70"
+        className="fixed bottom-16 right-0 w-36 h-44 pointer-events-none z-[5] opacity-50"
         style={{
           background: 'radial-gradient(ellipse at bottom right, hsl(340 80% 55% / 0.35) 0%, hsl(350 90% 70% / 0.15) 40%, transparent 70%)',
+          willChange: 'opacity',
+          transform: 'translateZ(0)',
         }}
         aria-hidden="true"
       />

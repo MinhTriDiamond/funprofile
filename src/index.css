@@ -115,7 +115,13 @@
 
 /* Valentine Background Container - Bắt đầu từ dưới header */
 .tet-background-container {
-  top: calc(56px + env(safe-area-inset-top, 0px)); /* Height of header on desktop + safe area */
+  top: calc(56px + env(safe-area-inset-top, 0px));
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+.tet-background-container video {
+  contain: strict;
 }
 
 @media (max-width: 768px) {
