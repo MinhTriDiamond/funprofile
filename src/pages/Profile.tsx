@@ -660,22 +660,30 @@ const Profile = () => {
                           </div>
                           
                           <div className="space-y-3">
-                            <div className="flex items-center gap-3 text-foreground">
-                              <MapPin className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-                              <span>{t('livesIn')} <strong>Việt Nam</strong></span>
-                            </div>
-                            <div className="flex items-center gap-3 text-foreground">
-                              <Briefcase className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-                              <span>{t('worksAt')} <strong>FUN Ecosystem</strong></span>
-                            </div>
-                            <div className="flex items-center gap-3 text-foreground">
-                              <GraduationCap className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-                              <span>{t('studiesAt')} <strong>Cosmic University</strong></span>
-                            </div>
-                            <div className="flex items-center gap-3 text-foreground">
-                              <Heart className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-                              <span>{t('single')}</span>
-                            </div>
+                            {(profile?.location || showPrivateElements) && (
+                              <div className="flex items-center gap-3 text-foreground">
+                                <MapPin className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+                                <span>{t('livesIn')} <strong>{profile?.location || (showPrivateElements ? '—' : '')}</strong></span>
+                              </div>
+                            )}
+                            {(profile?.workplace || showPrivateElements) && (
+                              <div className="flex items-center gap-3 text-foreground">
+                                <Briefcase className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+                                <span>{t('worksAt')} <strong>{profile?.workplace || (showPrivateElements ? '—' : '')}</strong></span>
+                              </div>
+                            )}
+                            {(profile?.education || showPrivateElements) && (
+                              <div className="flex items-center gap-3 text-foreground">
+                                <GraduationCap className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+                                <span>{t('studiesAt')} <strong>{profile?.education || (showPrivateElements ? '—' : '')}</strong></span>
+                              </div>
+                            )}
+                            {(profile?.relationship_status || showPrivateElements) && (
+                              <div className="flex items-center gap-3 text-foreground">
+                                <Heart className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+                                <span>{profile?.relationship_status || (showPrivateElements ? '—' : t('single'))}</span>
+                              </div>
+                            )}
                             <div className="flex items-center gap-3 text-foreground">
                               <Clock className="w-5 h-5 text-muted-foreground flex-shrink-0" />
                               <span>{t('joinedSince')} {new Date(profile?.created_at).toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US', { month: 'long', year: 'numeric' })}</span>
@@ -869,22 +877,30 @@ const Profile = () => {
                                 <span className="text-muted-foreground text-sm">{t('notUpdated')}</span>
                               )}
                             </div>
-                            <div className="flex items-center gap-3 text-foreground">
-                              <Briefcase className="w-6 h-6 text-muted-foreground" />
-                              <span>{t('worksAt')} <strong>FUN Ecosystem</strong></span>
-                            </div>
-                            <div className="flex items-center gap-3 text-foreground">
-                              <GraduationCap className="w-6 h-6 text-muted-foreground" />
-                              <span>{t('studiesAt')} <strong>Cosmic University</strong></span>
-                            </div>
-                            <div className="flex items-center gap-3 text-foreground">
-                              <MapPin className="w-6 h-6 text-muted-foreground" />
-                              <span>{t('livesIn')} <strong>Việt Nam</strong></span>
-                            </div>
-                            <div className="flex items-center gap-3 text-foreground">
-                              <Heart className="w-6 h-6 text-muted-foreground" />
-                              <span>{t('single')}</span>
-                            </div>
+                            {profile?.workplace && (
+                              <div className="flex items-center gap-3 text-foreground">
+                                <Briefcase className="w-6 h-6 text-muted-foreground" />
+                                <span>{t('worksAt')} <strong>{profile.workplace}</strong></span>
+                              </div>
+                            )}
+                            {profile?.education && (
+                              <div className="flex items-center gap-3 text-foreground">
+                                <GraduationCap className="w-6 h-6 text-muted-foreground" />
+                                <span>{t('studiesAt')} <strong>{profile.education}</strong></span>
+                              </div>
+                            )}
+                            {profile?.location && (
+                              <div className="flex items-center gap-3 text-foreground">
+                                <MapPin className="w-6 h-6 text-muted-foreground" />
+                                <span>{t('livesIn')} <strong>{profile.location}</strong></span>
+                              </div>
+                            )}
+                            {profile?.relationship_status && (
+                              <div className="flex items-center gap-3 text-foreground">
+                                <Heart className="w-6 h-6 text-muted-foreground" />
+                                <span>{profile.relationship_status}</span>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </TabsContent>

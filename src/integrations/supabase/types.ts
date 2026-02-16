@@ -2218,6 +2218,7 @@ export type Database = {
           custodial_wallet_address: string | null
           default_wallet_type: string | null
           display_name: string | null
+          education: string | null
           external_wallet_address: string | null
           financial_updated_at: string | null
           full_name: string | null
@@ -2234,11 +2235,13 @@ export type Database = {
           last_login_platform: string | null
           law_of_light_accepted: boolean
           law_of_light_accepted_at: string | null
+          location: string | null
           oauth_provider: string | null
           pending_reward: number
           pinned_post_id: string | null
           public_wallet_address: string | null
           registered_from: string | null
+          relationship_status: string | null
           reward_status: string
           soul_level: number
           total_rewards: number
@@ -2246,6 +2249,7 @@ export type Database = {
           username: string
           username_normalized: string | null
           wallet_address: string | null
+          workplace: string | null
         }
         Insert: {
           admin_notes?: string | null
@@ -2260,6 +2264,7 @@ export type Database = {
           custodial_wallet_address?: string | null
           default_wallet_type?: string | null
           display_name?: string | null
+          education?: string | null
           external_wallet_address?: string | null
           financial_updated_at?: string | null
           full_name?: string | null
@@ -2276,11 +2281,13 @@ export type Database = {
           last_login_platform?: string | null
           law_of_light_accepted?: boolean
           law_of_light_accepted_at?: string | null
+          location?: string | null
           oauth_provider?: string | null
           pending_reward?: number
           pinned_post_id?: string | null
           public_wallet_address?: string | null
           registered_from?: string | null
+          relationship_status?: string | null
           reward_status?: string
           soul_level?: number
           total_rewards?: number
@@ -2288,6 +2295,7 @@ export type Database = {
           username: string
           username_normalized?: string | null
           wallet_address?: string | null
+          workplace?: string | null
         }
         Update: {
           admin_notes?: string | null
@@ -2302,6 +2310,7 @@ export type Database = {
           custodial_wallet_address?: string | null
           default_wallet_type?: string | null
           display_name?: string | null
+          education?: string | null
           external_wallet_address?: string | null
           financial_updated_at?: string | null
           full_name?: string | null
@@ -2318,11 +2327,13 @@ export type Database = {
           last_login_platform?: string | null
           law_of_light_accepted?: boolean
           law_of_light_accepted_at?: string | null
+          location?: string | null
           oauth_provider?: string | null
           pending_reward?: number
           pinned_post_id?: string | null
           public_wallet_address?: string | null
           registered_from?: string | null
+          relationship_status?: string | null
           reward_status?: string
           soul_level?: number
           total_rewards?: number
@@ -2330,6 +2341,7 @@ export type Database = {
           username?: string
           username_normalized?: string | null
           wallet_address?: string | null
+          workplace?: string | null
         }
         Relationships: [
           {
