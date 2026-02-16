@@ -342,7 +342,16 @@ export const EditProfile = () => {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="username">Tên người dùng</Label>
+              <Label htmlFor="fullName">Họ và tên</Label>
+              <Input
+                id="fullName"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="Nhập họ và tên đầy đủ"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="username">Tên hiển thị</Label>
               <Input
                 id="username"
                 value={username}
@@ -350,15 +359,6 @@ export const EditProfile = () => {
                 placeholder="vd: Angel Ái Vân"
               />
               <p className="text-xs text-muted-foreground">Tối đa 50 ký tự.</p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="fullName">Họ và tên</Label>
-              <Input
-                id="fullName"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="Nhập họ và tên"
-              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="bio">Tiểu sử</Label>
@@ -371,6 +371,18 @@ export const EditProfile = () => {
                 maxLength={120}
               />
               <p className="text-xs text-muted-foreground">{bio.length}/120 ký tự</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="usernameHandle">@ Username</Label>
+              <Input
+                id="usernameHandle"
+                value={username}
+                disabled
+                className="font-mono text-sm opacity-70"
+              />
+              <p className="text-xs text-muted-foreground">
+                Link hồ sơ: fun.rich/{username || 'username'}
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="publicWallet" className="flex items-center gap-2">
