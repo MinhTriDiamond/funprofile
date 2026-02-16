@@ -54,6 +54,7 @@ interface FacebookPostCardProps {
     visibility?: string;
     profiles: {
       username: string;
+      display_name?: string | null;
       avatar_url: string | null;
       external_wallet_address?: string | null;
       custodial_wallet_address?: string | null;
@@ -337,7 +338,7 @@ const FacebookPostCardComponent = ({
                 className="font-semibold cursor-pointer hover:underline"
                 onClick={() => navigate(`/profile/${post.user_id}`)}
               >
-                {post.profiles?.username}
+                {post.profiles?.display_name || post.profiles?.username}
               </h3>
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
                 <span>

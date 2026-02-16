@@ -644,8 +644,8 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
             className="flex-1 text-left px-4 py-2.5 bg-muted hover:bg-muted/80 rounded-full text-muted-foreground text-[15px] transition-colors"
           >
             {language === 'vi' 
-              ? `${profile.username} ơi, bạn đang nghĩ gì thế?`
-              : `What's on your mind, ${profile.username}?`
+              ? `${profile.display_name || profile.username} ơi, bạn đang nghĩ gì thế?`
+              : `What's on your mind, ${profile.display_name || profile.username}?`
             }
           </button>
         </div>
@@ -709,7 +709,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
               </Avatar>
               <div className="flex-1">
                 <div className="flex items-center gap-1 flex-wrap">
-                  <span className="font-semibold">{profile.username}</span>
+                  <span className="font-semibold">{profile.display_name || profile.username}</span>
                   {feeling && (
                     <span className="text-muted-foreground text-sm">
                       {' '}{t('feelingPrefix')}{' '}
@@ -758,7 +758,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
             {/* Content Input with Emoji */}
             <div className="relative">
               <Textarea
-                placeholder={`${profile.username} ơi, bạn đang nghĩ gì thế?`}
+                placeholder={`${profile.display_name || profile.username} ơi, bạn đang nghĩ gì thế?`}
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 className="min-h-[100px] resize-none border-0 focus-visible:ring-0 text-lg placeholder:text-muted-foreground pr-10"
