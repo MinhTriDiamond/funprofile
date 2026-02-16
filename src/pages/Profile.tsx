@@ -461,10 +461,22 @@ const Profile = () => {
                   <p className="text-sm text-muted-foreground font-medium">
                     {friendsCount.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')} {t('friendsSuffix')}
                   </p>
-                  {/* Username handle and profile link */}
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    @{profile?.username} · <a href={`/${profile?.username}`} className="hover:text-primary hover:underline transition-colors cursor-pointer">fun.rich/{profile?.username}</a>
-                  </p>
+                   {/* Username handle and profile link */}
+                   <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                     <span>@{profile?.username}</span>
+                     <span>·</span>
+                     <a href={`/${profile?.username}`} className="hover:text-primary hover:underline transition-colors cursor-pointer">fun.rich/{profile?.username}</a>
+                     <button
+                       type="button"
+                       onClick={() => {
+                         navigator.clipboard.writeText(`http://fun.rich/${profile?.username}`);
+                         toast.success('Đã sao chép link hồ sơ!');
+                       }}
+                       className="p-0.5 rounded hover:bg-muted text-primary"
+                     >
+                       <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                     </button>
+                   </div>
 
                   {/* Public Wallet Address - fallback: public > external > custodial */}
                   {(() => {
