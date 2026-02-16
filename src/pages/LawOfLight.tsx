@@ -7,7 +7,6 @@ import { toast } from 'sonner';
 import { Sparkles, Eye, Home } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { ValentineMusicButton } from '@/components/layout/ValentineMusicButton';
-import { TetBackgroundSelector } from '@/components/layout/TetBackgroundSelector';
 
 const ANGEL_LOGO = '/angel-ai-logo-128.png';
 
@@ -148,9 +147,8 @@ const LawOfLight = () => {
 
   return (
     <div className="min-h-screen relative overflow-hidden">
-      {/* Background & Music Buttons - fixed top right */}
-      <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
-        <TetBackgroundSelector variant="desktop" />
+      {/* Valentine Music Button - fixed top right */}
+      <div className="fixed top-4 right-4 z-50">
         <ValentineMusicButton variant="desktop" />
       </div>
       {/* Pearl White to Soft Yellow Gradient Background - STATIC */}

@@ -13,7 +13,6 @@ import { DonationReceivedNotification } from "@/components/donations/DonationRec
 import { TetBackground } from "@/components/ui/TetBackground";
 import { TetFlowerOverlay } from "@/components/ui/TetFlowerOverlay";
 import { ValentineMusicButton } from "@/components/layout/ValentineMusicButton";
-import { TetBackgroundProvider } from "@/contexts/TetBackgroundContext";
 // Lazy load pages for code splitting
 const Auth = lazy(() => import("./pages/Auth"));
 const Friends = lazy(() => import("./pages/Friends"));
@@ -98,7 +97,6 @@ function App() {
     <LanguageProvider>
       <QueryClientProvider client={queryClient}>
         <Web3Provider>
-          <TetBackgroundProvider>
           <TooltipProvider>
             <Toaster />
             <Sonner />
@@ -149,7 +147,6 @@ function App() {
             </Suspense>
           </BrowserRouter>
         </TooltipProvider>
-          </TetBackgroundProvider>
         </Web3Provider>
       </QueryClientProvider>
     </LanguageProvider>

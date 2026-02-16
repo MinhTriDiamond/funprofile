@@ -22,7 +22,6 @@ import {
 import { AngelChatWidget } from '@/components/angel-ai';
 import { GiftNavButton } from '@/components/donations/GiftNavButton';
 import { ValentineMusicButton } from './ValentineMusicButton';
-import { TetBackgroundSelector } from './TetBackgroundSelector';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Sheet,
@@ -270,7 +269,7 @@ export const FacebookNavbar = () => {
             <InlineSearch />
           </div>
 
-          {isMobileOrTablet && <TetBackgroundSelector variant="desktop" />}
+          {/* Mobile/Tablet: Music + Wallet icon */}
           {isMobileOrTablet && <ValentineMusicButton variant="desktop" />}
           {isMobileOrTablet && (
             <button 
@@ -289,7 +288,6 @@ export const FacebookNavbar = () => {
           {!isMobileOrTablet && isLoggedIn && (
             <div className="flex items-center gap-3">
               <GiftNavButton variant="desktop" />
-              <TetBackgroundSelector variant="desktop" />
               <ValentineMusicButton variant="desktop" />
               <NotificationDropdown />
               <DropdownMenu>
@@ -394,7 +392,6 @@ export const FacebookNavbar = () => {
           {/* Sign In Button - Only show when not logged in */}
           {!isLoggedIn && (
             <>
-              {!isMobileOrTablet && <TetBackgroundSelector variant="desktop" />}
               {!isMobileOrTablet && <ValentineMusicButton variant="desktop" />}
               <Button
                 onClick={() => navigate('/auth')}
