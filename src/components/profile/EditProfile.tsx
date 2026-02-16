@@ -35,6 +35,7 @@ export const EditProfile = () => {
   const [uploading, setUploading] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
   const [username, setUsername] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [fullName, setFullName] = useState('');
   const [bio, setBio] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
@@ -64,6 +65,7 @@ export const EditProfile = () => {
       if (error) throw error;
 
       setUsername(data.username || '');
+      setDisplayName(data.display_name || '');
       setFullName(data.full_name || '');
       setBio(data.bio || '');
       setAvatarUrl(data.avatar_url || '');
@@ -252,6 +254,7 @@ export const EditProfile = () => {
         .from('profiles')
         .update({
           username: trimmedUsername,
+          display_name: displayName,
           full_name: fullName,
           bio,
           public_wallet_address: publicWalletAddress || null,
@@ -355,11 +358,11 @@ export const EditProfile = () => {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="username">Tên hiển thị</Label>
+              <Label htmlFor="displayName">Tên hiển thị</Label>
               <Input
-                id="username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value.slice(0, 50))}
+                id="displayName"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value.slice(0, 50))}
                 placeholder="vd: Angel Ái Vân"
               />
               <p className="text-xs text-muted-foreground">Tối đa 50 ký tự.</p>

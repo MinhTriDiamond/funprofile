@@ -2217,6 +2217,7 @@ export type Database = {
           cross_platform_data: Json | null
           custodial_wallet_address: string | null
           default_wallet_type: string | null
+          display_name: string | null
           external_wallet_address: string | null
           financial_updated_at: string | null
           full_name: string | null
@@ -2258,6 +2259,7 @@ export type Database = {
           cross_platform_data?: Json | null
           custodial_wallet_address?: string | null
           default_wallet_type?: string | null
+          display_name?: string | null
           external_wallet_address?: string | null
           financial_updated_at?: string | null
           full_name?: string | null
@@ -2299,6 +2301,7 @@ export type Database = {
           cross_platform_data?: Json | null
           custodial_wallet_address?: string | null
           default_wallet_type?: string | null
+          display_name?: string | null
           external_wallet_address?: string | null
           financial_updated_at?: string | null
           full_name?: string | null
