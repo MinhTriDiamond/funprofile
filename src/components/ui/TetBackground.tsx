@@ -15,7 +15,7 @@ export const TetBackground = memo(() => {
 
   return (
     <div 
-      className="fixed left-0 right-0 bottom-0 overflow-hidden pointer-events-none tet-background-container"
+      className="fixed left-0 right-0 bottom-0 top-12 md:top-14 overflow-hidden pointer-events-none tet-background-container"
       style={{ zIndex: -100 }}
     >
       <div className="absolute inset-0 bg-gradient-to-b from-secondary via-background to-background" />
