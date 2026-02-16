@@ -266,6 +266,58 @@ export const ClaimRewardsSection = ({
           </div>
         </div>
 
+        {/* Profile Completion Reminders */}
+        {!allConditionsMet && (
+          <div className="bg-orange-50 border border-orange-200 rounded-xl p-3.5 space-y-2">
+            <p className="text-sm font-semibold text-orange-800 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4" />
+              Cập nhật hồ sơ để rút tiền
+            </p>
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2 text-xs">
+                <span className={hasFullName ? 'text-green-600' : 'text-red-500'}>{hasFullName ? '✅' : '❌'}</span>
+                <span className={hasFullName ? 'text-green-700' : 'text-orange-700'}>
+                  Họ tên đầy đủ (tối thiểu 4 ký tự)
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                <span className={hasAvatar ? 'text-green-600' : 'text-red-500'}>{hasAvatar ? '✅' : '❌'}</span>
+                <span className={hasAvatar ? 'text-green-700' : 'text-orange-700'}>
+                  Ảnh đại diện (hình người thật)
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                <span className={hasCover ? 'text-green-600' : 'text-red-500'}>{hasCover ? '✅' : '❌'}</span>
+                <span className={hasCover ? 'text-green-700' : 'text-orange-700'}>
+                  Ảnh bìa trang cá nhân
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                <span className={hasTodayPost ? 'text-green-600' : 'text-red-500'}>{hasTodayPost ? '✅' : '❌'}</span>
+                <span className={hasTodayPost ? 'text-green-700' : 'text-orange-700'}>
+                  Đăng ít nhất 1 bài hôm nay
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                <span className={isConnected ? 'text-green-600' : 'text-red-500'}>{isConnected ? '✅' : '❌'}</span>
+                <span className={isConnected ? 'text-green-700' : 'text-orange-700'}>
+                  Kết nối ví
+                </span>
+              </div>
+            </div>
+            {!hasFullName || !hasAvatar || !hasCover ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full mt-2 border-orange-300 text-orange-700 hover:bg-orange-100"
+                onClick={() => navigate('/profile')}
+              >
+                Cập nhật trang cá nhân
+              </Button>
+            ) : null}
+          </div>
+        )}
+
         {/* Info Footer */}
         <div className="bg-gray-50 rounded-xl p-3.5 space-y-1.5">
           <p className="text-xs text-muted-foreground flex items-start gap-2">
