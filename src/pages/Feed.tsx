@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
 import { FacebookCreatePost } from '@/components/feed/FacebookCreatePost';
 import { FacebookPostCard } from '@/components/feed/FacebookPostCard';
+import { GiftCelebrationCard } from '@/components/feed/GiftCelebrationCard';
 import { FacebookLeftSidebar } from '@/components/feed/FacebookLeftSidebar';
 import { FacebookRightSidebar } from '@/components/feed/FacebookRightSidebar';
 import { StoriesBar } from '@/components/feed/StoriesBar';
@@ -139,13 +140,23 @@ const Feed = () => {
                 ) : (
                   <div className="space-y-4">
                     {posts.map(post => (
-                      <FacebookPostCard
-                        key={post.id}
-                        post={post}
-                        currentUserId={currentUserId}
-                        onPostDeleted={refetch}
-                        initialStats={postStats[post.id]}
-                      />
+                      post.post_type === 'gift_celebration' ? (
+                        <GiftCelebrationCard
+                          key={post.id}
+                          post={post}
+                          currentUserId={currentUserId}
+                          onPostDeleted={refetch}
+                          initialStats={postStats[post.id]}
+                        />
+                      ) : (
+                        <FacebookPostCard
+                          key={post.id}
+                          post={post}
+                          currentUserId={currentUserId}
+                          onPostDeleted={refetch}
+                          initialStats={postStats[post.id]}
+                        />
+                      )
                     ))}
 
                     <div ref={loadMoreRef} className="py-4">

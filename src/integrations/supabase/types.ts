@@ -1555,12 +1555,21 @@ export type Database = {
           content: string
           content_hash: string | null
           created_at: string
+          gift_amount: string | null
+          gift_message: string | null
+          gift_recipient_id: string | null
+          gift_sender_id: string | null
+          gift_token: string | null
+          highlight_expires_at: string | null
           id: string
           image_url: string | null
+          is_highlighted: boolean
           is_reward_eligible: boolean | null
           location: string | null
           media_urls: Json | null
           moderation_status: string
+          post_type: string
+          tx_hash: string | null
           updated_at: string
           user_id: string
           video_url: string | null
@@ -1570,12 +1579,21 @@ export type Database = {
           content: string
           content_hash?: string | null
           created_at?: string
+          gift_amount?: string | null
+          gift_message?: string | null
+          gift_recipient_id?: string | null
+          gift_sender_id?: string | null
+          gift_token?: string | null
+          highlight_expires_at?: string | null
           id?: string
           image_url?: string | null
+          is_highlighted?: boolean
           is_reward_eligible?: boolean | null
           location?: string | null
           media_urls?: Json | null
           moderation_status?: string
+          post_type?: string
+          tx_hash?: string | null
           updated_at?: string
           user_id: string
           video_url?: string | null
@@ -1585,12 +1603,21 @@ export type Database = {
           content?: string
           content_hash?: string | null
           created_at?: string
+          gift_amount?: string | null
+          gift_message?: string | null
+          gift_recipient_id?: string | null
+          gift_sender_id?: string | null
+          gift_token?: string | null
+          highlight_expires_at?: string | null
           id?: string
           image_url?: string | null
+          is_highlighted?: boolean
           is_reward_eligible?: boolean | null
           location?: string | null
           media_urls?: Json | null
           moderation_status?: string
+          post_type?: string
+          tx_hash?: string | null
           updated_at?: string
           user_id?: string
           video_url?: string | null
