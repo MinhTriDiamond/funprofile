@@ -15,16 +15,11 @@ import { z } from 'zod';
 import { compressImage, FILE_LIMITS } from '@/utils/imageCompression';
 import { useLanguage } from '@/i18n/LanguageContext';
 
-const USERNAME_REGEX = /^[a-z0-9_.]+$/;
-
 const profileSchema = z.object({
   username: z.string()
     .min(3, 'Username phải có ít nhất 3 ký tự')
-    .max(20, 'Username tối đa 20 ký tự')
-    .trim()
-    .refine(val => USERNAME_REGEX.test(val.toLowerCase()), {
-      message: 'Username chỉ được dùng chữ cái, số, dấu gạch dưới (_) và dấu chấm (.)',
-    }),
+    .max(50, 'Username tối đa 50 ký tự')
+    .trim(),
   full_name: z.string()
     .max(100, 'Name must be less than 100 characters')
     .trim()
@@ -351,10 +346,10 @@ export const EditProfile = () => {
               <Input
                 id="username"
                 value={username}
-                onChange={(e) => setUsername(e.target.value.replace(/[^a-zA-Z0-9_.]/g, '').slice(0, 20))}
-                placeholder="vd: nguyen_van_a"
+                onChange={(e) => setUsername(e.target.value.slice(0, 50))}
+                placeholder="vd: Angel Ái Vân"
               />
-              <p className="text-xs text-muted-foreground">Chỉ gồm a-z, 0-9, dấu gạch dưới (_) và dấu chấm (.). Tối đa 20 ký tự.</p>
+              <p className="text-xs text-muted-foreground">Tối đa 50 ký tự.</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="fullName">Họ và tên</Label>
