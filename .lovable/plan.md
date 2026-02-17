@@ -1,94 +1,89 @@
 
+# Kiem tra toan bo he thong fun.rich - Bao cao loi
 
-# Fix: Wallet address persistence and profile links
-
-## 3 van de can sua
-
-### 1. public_wallet_address bi ghi de moi khi dang nhap/ket noi vi
-**Nguyen nhan:** Ca 2 edge functions deu tu dong ghi `public_wallet_address = normalizedAddress` moi lan:
-- `connect-external-wallet` (dong 143): Luon ghi de
-- `sso-web3-auth` (dong 145, 202): Luon ghi de khi legacy migration va new user
-
-**Giai phap:** 
-- `public_wallet_address` mac dinh de trong (null) cho user moi
-- Chi ghi `public_wallet_address` khi user **chua co** (null/empty)
-- Khi user da co roi, **khong ghi de** - chi cap nhat khi user chu dong thay doi
-
-### 2. Profile links tro ve domain Lovable thay vi fun.rich
-**Nguyen nhan:** `href={/username}` la duong dan tuong doi, tro ve domain hien tai
-**Giai phap:** Doi thanh `https://fun.rich/${username}`
-
-### 3. User moi dang ky bang Web3 khong nen tu dong set public_wallet_address
-**Giai phap:** User moi chi luu `external_wallet_address` va `wallet_address`, de `public_wallet_address` = null cho den khi user tu ket noi vi
+## Tong quan
+Sau khi kiem tra toan bo code hien tai, phat hien **4 van de** can xu ly:
 
 ---
 
-## Chi tiet ky thuat
+## Van de 1: BUG - sso-web3-auth khong select `public_wallet_address` nhung lai tham chieu no
 
-### File 1: `supabase/functions/connect-external-wallet/index.ts`
-- Dong 136-145: Truoc khi update, kiem tra `public_wallet_address` hien tai
-- Neu da co gia tri -> chi update `external_wallet_address` va `wallet_address`, KHONG ghi de `public_wallet_address`
-- Neu chua co (null/empty) -> ghi `public_wallet_address` = normalizedAddress
+**Muc do:** Nghiem trong (gay loi logic)
 
-```typescript
-// Fetch current profile to check existing public_wallet_address
-const { data: currentProfile } = await supabase
-  .from('profiles')
-  .select('public_wallet_address')
-  .eq('id', user.id)
-  .single();
-
-const updateData: Record<string, string> = {
-  external_wallet_address: normalizedAddress,
-  wallet_address: normalizedAddress,
-};
-
-// Only set public_wallet_address if user doesn't have one yet
-if (!currentProfile?.public_wallet_address) {
-  updateData.public_wallet_address = normalizedAddress;
-}
+**Chi tiet:** Trong file `supabase/functions/sso-web3-auth/index.ts`, dong 132-134 query `profileByLegacy` chi select:
+```
+id, username, wallet_address, external_wallet_address, custodial_wallet_address
 ```
 
-### File 2: `supabase/functions/sso-web3-auth/index.ts`
-- **Legacy migration (dong 140-148):** Chi update `public_wallet_address` neu chua co
+Nhung dong 146 lai kiem tra `profileByLegacy.public_wallet_address` - truong nay **khong co trong select**, nen luon la `undefined`. Ket qua: moi lan legacy migration deu ghi de `public_wallet_address`, vi dieu kien `if (!profileByLegacy.public_wallet_address)` luon `true`.
 
-```typescript
-const legacyUpdate: Record<string, string> = {
-  external_wallet_address: normalizedAddress,
-  default_wallet_type: 'external',
-};
-if (!profileByLegacy.public_wallet_address) {
-  legacyUpdate.public_wallet_address = normalizedAddress;
-}
-```
-
-- **New user (dong 196-208):** Bo `public_wallet_address` khoi update - de null mac dinh, user se tu ket noi sau
-
-```typescript
-// Remove public_wallet_address from new user setup
-await supabase.from('profiles').update({
-  external_wallet_address: normalizedAddress,
-  wallet_address: normalizedAddress,
-  default_wallet_type: 'external',
-  registered_from: 'FUN Profile',
-  oauth_provider: 'Wallet',
-  last_login_platform: 'FUN Profile'
-  // NO public_wallet_address - user will connect manually
-}).eq('id', userId);
-```
-
-### File 3: `src/pages/Profile.tsx`
-- Dong 468: `href={/${profile?.username}}` -> `href={https://fun.rich/${profile?.username}}`
-
-### File 4: `src/components/profile/EditProfile.tsx`
-- Dong 360: `href={/${username || 'username'}}` -> `href={https://fun.rich/${username || 'username'}}`
-- Dong 416: Tuong tu
+**Giai phap:** Them `public_wallet_address` vao select cua ca 2 query (dong 124 va 134):
+- Dong 124: `'id, username, external_wallet_address, custodial_wallet_address, public_wallet_address'`
+- Dong 134: `'id, username, wallet_address, external_wallet_address, custodial_wallet_address, public_wallet_address'`
 
 ---
 
-## Ket qua mong doi
-- User moi: `public_wallet_address` = null (trong)
-- Khi user ket noi vi lan dau: `public_wallet_address` duoc set
-- Khi user dang nhap lai hoac ket noi vi khac: `public_wallet_address` KHONG bi ghi de
-- Link ho so luon tro den `https://fun.rich/username`
+## Van de 2: CoinGecko API bi chan (CORS / Rate Limit)
 
+**Muc do:** Trung binh (co fallback)
+
+**Chi tiet:** Tat ca request den `api.coingecko.com` deu that bai voi loi "Failed to fetch". Nguyen nhan: CoinGecko free API bi rate limit hoac bi chan CORS tu domain lovableproject.com. Dieu nay gay ra hang chuc log loi moi khi tai trang vi 2 hook goi dong thoi:
+- `useTokenBalances` goi CoinGecko (trong WalletCenterContainer va UnifiedGiftSendDialog)
+- `useCamlyPrice` goi CoinGecko rieng (trong WalletCenterContainer)
+
+He thong da co fallback prices nen khong bi crash, nhung gay nhieu log loi va UX khong tot.
+
+**Giai phap:** Chuyen CoinGecko API call qua edge function de tranh CORS va rate limit. Tao edge function `token-prices` lam proxy:
+- Client goi edge function thay vi goi truc tiep CoinGecko
+- Edge function cache ket qua 60 giay de giam tai
+- Ca `useTokenBalances` va `useCamlyPrice` deu goi chung 1 endpoint
+
+---
+
+## Van de 3: AuthKeeper Token refresh timeout
+
+**Muc do:** Thap (da co retry va khong gay crash)
+
+**Chi tiet:** Khi nguoi dung quay lai tab sau >30 giay, AuthSessionKeeper co goi `refreshSession()` nhung bi timeout 20s. Hien tai da co retry 1 lan. Day la van de mang, khong phai loi code.
+
+**Giai phap:** Khong can sua code. Chi la canh bao mang, khong anh huong chuc nang.
+
+---
+
+## Van de 4: Realtime connection interrupted
+
+**Muc do:** Thap (tu phuc hoi)
+
+**Chi tiet:** Loi `Connection interrupted while trying to subscribe` xay ra khi ket noi WebSocket bi mat (chuyen tab, mang yeu). Supabase Realtime tu phuc hoi ket noi.
+
+**Giai phap:** Khong can sua code. Day la hanh vi binh thuong.
+
+---
+
+## Tong ket cac file can sua
+
+### File 1: `supabase/functions/sso-web3-auth/index.ts` (BUG NGHIEM TRONG)
+- Dong 124: Them `public_wallet_address` vao select cua profileByExternal
+- Dong 134: Them `public_wallet_address` vao select cua profileByLegacy
+- Day la nguyen nhan khien vi bi ghi de moi khi dang nhap bang legacy wallet
+
+### File 2: `supabase/functions/token-prices/index.ts` (MOI)
+- Tao edge function proxy cho CoinGecko API
+- Cache ket qua 60 giay
+- Tra ve gia cua BNB, BTC, USDT, CAMLY
+
+### File 3: `src/hooks/useTokenBalances.ts`
+- Doi tu goi truc tiep CoinGecko sang goi edge function `token-prices`
+- Giam so luong request va tranh CORS
+
+### File 4: `src/hooks/useCamlyPrice.ts`
+- Doi tu goi truc tiep CoinGecko sang goi edge function `token-prices`
+- Hoac xoa hook nay va dung chung data tu `useTokenBalances`
+
+---
+
+## Uu tien xu ly
+
+1. **Van de 1** (BUG vi): Can sua ngay - day la nguyen nhan chinh khien `public_wallet_address` bi ghi de
+2. **Van de 2** (CoinGecko): Nen sua - giam loi va cai thien trai nghiem
+3. **Van de 3 & 4**: Khong can sua - hoat dong binh thuong
