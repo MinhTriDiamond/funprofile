@@ -135,13 +135,26 @@ Deno.serve(async (req) => {
 
     // 8. Update profile with external wallet address
     // Note: We don't change default_wallet_type - user keeps their current default
+    // Fetch current profile to check existing public_wallet_address
+    const { data: currentProfile } = await supabase
+      .from('profiles')
+      .select('public_wallet_address')
+      .eq('id', user.id)
+      .single();
+
+    const updateData: Record<string, string> = {
+      external_wallet_address: normalizedAddress,
+      wallet_address: normalizedAddress,
+    };
+
+    // Only set public_wallet_address if user doesn't have one yet
+    if (!currentProfile?.public_wallet_address) {
+      updateData.public_wallet_address = normalizedAddress;
+    }
+
     const { error: updateError } = await supabase
       .from('profiles')
-      .update({
-        external_wallet_address: normalizedAddress,
-        wallet_address: normalizedAddress, // backward compatible
-        public_wallet_address: normalizedAddress, // sync for gift detection
-      })
+      .update(updateData)
       .eq('id', user.id);
 
     if (updateError) {

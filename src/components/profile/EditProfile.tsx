@@ -357,7 +357,7 @@ export const EditProfile = () => {
               </div>
               <p className="text-sm font-medium text-foreground">@{username || 'username'}</p>
               <div className="flex items-center gap-1 -mt-3">
-                <a href={`/${username || 'username'}`} className="text-xs text-muted-foreground hover:text-primary hover:underline transition-colors">
+                <a href={`https://fun.rich/${username || 'username'}`} target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground hover:text-primary hover:underline transition-colors">
                   http://fun.rich/{username || 'username'}
                 </a>
                 <button
@@ -413,7 +413,7 @@ export const EditProfile = () => {
                 className="font-mono text-sm"
               />
               <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <a href={`/${username || 'username'}`} className="hover:text-primary hover:underline transition-colors cursor-pointer">Link hồ sơ: http://fun.rich/{username || 'username'}</a>
+                <a href={`https://fun.rich/${username || 'username'}`} target="_blank" rel="noopener noreferrer" className="hover:text-primary hover:underline transition-colors cursor-pointer">Link hồ sơ: http://fun.rich/{username || 'username'}</a>
                 <button
                   type="button"
                   onClick={() => {

@@ -137,14 +137,18 @@ Deno.serve(async (req: Request) => {
       
       if (profileByLegacy) {
         existingProfile = profileByLegacy;
-        // Migrate legacy wallet_address to external_wallet_address + sync public
+        // Migrate legacy wallet_address to external_wallet_address
+        const legacyUpdate: Record<string, string> = {
+          external_wallet_address: normalizedAddress,
+          default_wallet_type: 'external',
+        };
+        // Only set public_wallet_address if user doesn't have one yet
+        if (!profileByLegacy.public_wallet_address) {
+          legacyUpdate.public_wallet_address = normalizedAddress;
+        }
         await supabase
           .from('profiles')
-          .update({ 
-            external_wallet_address: normalizedAddress,
-            public_wallet_address: normalizedAddress,
-            default_wallet_type: 'external'
-          })
+          .update(legacyUpdate)
           .eq('id', profileByLegacy.id);
         console.log('[WEB3-AUTH] Migrated legacy wallet to external_wallet_address');
       }
@@ -193,13 +197,12 @@ Deno.serve(async (req: Request) => {
 
       userId = newUser.user.id;
 
-      // Update profile with external wallet address + sync public_wallet_address
+      // Update profile with external wallet address (NO public_wallet_address - user will connect manually)
       await supabase
         .from('profiles')
         .update({
           external_wallet_address: normalizedAddress,
-          wallet_address: normalizedAddress, // backward compatible
-          public_wallet_address: normalizedAddress, // sync for gift detection
+          wallet_address: normalizedAddress,
           default_wallet_type: 'external',
           registered_from: 'FUN Profile',
           oauth_provider: 'Wallet',
