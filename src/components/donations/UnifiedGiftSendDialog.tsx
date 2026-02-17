@@ -123,7 +123,7 @@ export const UnifiedGiftSendDialog = ({
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState('');
 
-  const debouncedSearchQuery = useDebounce(searchQuery, 500);
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
   // Fetch sender profile
   useEffect(() => {
@@ -220,8 +220,8 @@ export const UnifiedGiftSendDialog = ({
         const { data, error } = await supabase
           .from('profiles')
           .select(selectFields)
-          .ilike('username_normalized', `%${cleanQuery}%`)
-          .limit(10);
+          .or(`username_normalized.ilike.%${cleanQuery}%,full_name.ilike.%${cleanQuery}%`)
+          .limit(20);
         if (error) throw error;
         if (data && data.length > 0) {
           setSearchResults(data.map(p => ({

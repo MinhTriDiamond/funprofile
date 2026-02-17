@@ -69,8 +69,8 @@ export function NewConversationDialog({
         .from('profiles')
         .select('id, username, full_name, avatar_url')
         .neq('id', currentUserId)
-        .or(`username.ilike.%${debouncedSearch}%,full_name.ilike.%${debouncedSearch}%`)
-        .limit(10);
+        .or(`username_normalized.ilike.%${debouncedSearch.toLowerCase()}%,full_name.ilike.%${debouncedSearch}%`)
+        .limit(20);
 
       if (error) throw error;
       return data || [];

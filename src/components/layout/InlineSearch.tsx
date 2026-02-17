@@ -66,7 +66,7 @@ export const InlineSearch = () => {
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedQuery(searchQuery);
-    }, 400);
+    }, 300);
 
     return () => clearTimeout(timer);
   }, [searchQuery]);
@@ -83,37 +83,40 @@ export const InlineSearch = () => {
       setLoading(true);
 
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        
         const sanitizePattern = (input: string) => {
           return input.replace(/[%_\\]/g, '\\$&');
         };
         const safeQuery = sanitizePattern(debouncedQuery);
-        
-        if (user) {
-          await supabase.from('search_logs').insert({
-            user_id: user.id,
-            search_query: debouncedQuery
-          });
-        }
 
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('id, username, full_name, avatar_url')
-          .or(`username.ilike.%${safeQuery}%,full_name.ilike.%${safeQuery}%`)
-          .limit(6);
+        // Log search asynchronously (don't block results)
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          if (session?.user) {
+            supabase.from('search_logs').insert({
+              user_id: session.user.id,
+              search_query: debouncedQuery
+            }).then();
+          }
+        });
 
-        const { data: postData } = await supabase
-          .from('posts')
-          .select(`
-            id,
-            content,
-            created_at,
-            profiles!posts_user_id_fkey (username, avatar_url)
-          `)
-          .ilike('content', `%${safeQuery}%`)
-          .order('created_at', { ascending: false })
-          .limit(5);
+        // Search profiles and posts concurrently
+        const [{ data: profileData }, { data: postData }] = await Promise.all([
+          supabase
+            .from('profiles')
+            .select('id, username, full_name, avatar_url')
+            .or(`username_normalized.ilike.%${safeQuery.toLowerCase()}%,full_name.ilike.%${safeQuery}%`)
+            .limit(15),
+          supabase
+            .from('posts')
+            .select(`
+              id,
+              content,
+              created_at,
+              profiles!posts_user_id_fkey (username, avatar_url)
+            `)
+            .ilike('content', `%${safeQuery}%`)
+            .order('created_at', { ascending: false })
+            .limit(10),
+        ]);
 
         setProfiles(profileData || []);
         setPosts(postData as any || []);
