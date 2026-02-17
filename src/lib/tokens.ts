@@ -60,8 +60,8 @@ export const WALLET_TOKENS: WalletToken[] = [
   },
 ];
 
-/** BNB gas buffer to prevent failed transactions */
-export const BNB_GAS_BUFFER = 0.002;
+/** BNB gas buffer fallback when real-time gas price is unavailable */
+export const BNB_GAS_BUFFER = 0.0005;
 
 /** Find a token by symbol */
 export const findToken = (symbol: string): WalletToken | undefined =>
