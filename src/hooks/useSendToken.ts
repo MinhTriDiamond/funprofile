@@ -107,7 +107,7 @@ export function useSendToken() {
         .eq('id', currentUser.id)
         .single();
 
-      if (profile?.is_banned || ['on_hold', 'rejected', 'banned'].includes(profile?.reward_status)) {
+      if (profile?.is_banned || profile?.reward_status === 'pending') {
         toast.error('Tài khoản đang bị hạn chế. Không thể chuyển token. Vui lòng liên hệ Admin.');
         return null;
       }
