@@ -141,7 +141,7 @@ export const UnifiedGiftSendDialog = ({
         .single();
       if (data) setSenderProfile(data as any);
     })();
-  }, [isOpen]);
+  }, [isOpen, address]);
 
   // Determine effective recipients
   const isPresetMode = mode === 'post' || (mode === 'navbar' && !!presetRecipient?.id);
