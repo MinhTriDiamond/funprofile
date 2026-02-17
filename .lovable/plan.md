@@ -1,89 +1,73 @@
 
-# Kiem tra toan bo he thong fun.rich - Bao cao loi
+# Sửa lỗi hiển thị tên và đồng bộ ví trong mục Tặng quà
 
-## Tong quan
-Sau khi kiem tra toan bo code hien tai, phat hien **4 van de** can xu ly:
+## Vấn đề 1: Hiển thị "Van103" (username) thay vì tên hiển thị (display_name)
+
+**Nguyên nhân:** Trong `WalletCenterContainer.tsx`:
+- Interface `Profile` (dòng 41-48) không có trường `display_name`
+- Query `fetchProfile` (dòng 215) không select `display_name`
+- Dòng 467 hiển thị `profile?.username` thay vì `profile?.display_name || profile?.username`
+
+**Giải pháp:**
+- Thêm `display_name: string | null` vào interface Profile
+- Thêm `display_name` vào câu lệnh select
+- Đổi hiển thị từ `profile?.username` sang `profile?.display_name || profile?.username`
+
+## Vấn đề 2: Mục Tặng quà không cập nhật ví sau khi kết nối
+
+**Nguyên nhân:** Trong `UnifiedGiftSendDialog.tsx`, sender profile chỉ được fetch 1 lần khi dialog mở (`isOpen` thay đổi). Khi người dùng kết nối ví ở trang Wallet rồi mở dialog Tặng quà, dialog vẫn dùng dữ liệu cũ (ví cũ hoặc null).
+
+**Giải pháp:** Thêm dependency `address` (từ wagmi `useAccount`) vào useEffect fetch sender profile, để mỗi khi ví thay đổi và dialog đang mở, tự động refetch profile mới nhất từ database.
 
 ---
 
-## Van de 1: BUG - sso-web3-auth khong select `public_wallet_address` nhung lai tham chieu no
+## Chi tiết kỹ thuật
 
-**Muc do:** Nghiem trong (gay loi logic)
+### File 1: `src/components/wallet/WalletCenterContainer.tsx`
 
-**Chi tiet:** Trong file `supabase/functions/sso-web3-auth/index.ts`, dong 132-134 query `profileByLegacy` chi select:
+**Dòng 41-48** - Thêm `display_name` vào interface:
+```typescript
+interface Profile {
+  username: string;
+  display_name: string | null;  // THÊM MỚI
+  avatar_url: string | null;
+  cover_url: string | null;
+  full_name: string | null;
+  reward_status?: string;
+  admin_notes?: string | null;
+}
 ```
-id, username, wallet_address, external_wallet_address, custodial_wallet_address
+
+**Dòng 215** - Thêm `display_name` vào select:
+```typescript
+.select('username, display_name, avatar_url, cover_url, full_name, reward_status, admin_notes')
 ```
 
-Nhung dong 146 lai kiem tra `profileByLegacy.public_wallet_address` - truong nay **khong co trong select**, nen luon la `undefined`. Ket qua: moi lan legacy migration deu ghi de `public_wallet_address`, vi dieu kien `if (!profileByLegacy.public_wallet_address)` luon `true`.
+**Dòng 467** - Hiển thị display_name thay vì username:
+```typescript
+<p className="text-sm text-muted-foreground">{profile?.display_name || profile?.username || 'Account'}</p>
+```
 
-**Giai phap:** Them `public_wallet_address` vao select cua ca 2 query (dong 124 va 134):
-- Dong 124: `'id, username, external_wallet_address, custodial_wallet_address, public_wallet_address'`
-- Dong 134: `'id, username, wallet_address, external_wallet_address, custodial_wallet_address, public_wallet_address'`
+### File 2: `src/components/donations/UnifiedGiftSendDialog.tsx`
 
----
+**Dòng 131-144** - Thêm `address` vào dependency array để refetch khi ví thay đổi:
+```typescript
+useEffect(() => {
+  if (!isOpen) return;
+  (async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    setSenderUserId(session.user.id);
+    const { data } = await supabase
+      .from('profiles')
+      .select('username, display_name, avatar_url, wallet_address, public_wallet_address')
+      .eq('id', session.user.id)
+      .single();
+    if (data) setSenderProfile(data as any);
+  })();
+}, [isOpen, address]);  // Thêm address để refetch khi ví thay đổi
+```
 
-## Van de 2: CoinGecko API bi chan (CORS / Rate Limit)
-
-**Muc do:** Trung binh (co fallback)
-
-**Chi tiet:** Tat ca request den `api.coingecko.com` deu that bai voi loi "Failed to fetch". Nguyen nhan: CoinGecko free API bi rate limit hoac bi chan CORS tu domain lovableproject.com. Dieu nay gay ra hang chuc log loi moi khi tai trang vi 2 hook goi dong thoi:
-- `useTokenBalances` goi CoinGecko (trong WalletCenterContainer va UnifiedGiftSendDialog)
-- `useCamlyPrice` goi CoinGecko rieng (trong WalletCenterContainer)
-
-He thong da co fallback prices nen khong bi crash, nhung gay nhieu log loi va UX khong tot.
-
-**Giai phap:** Chuyen CoinGecko API call qua edge function de tranh CORS va rate limit. Tao edge function `token-prices` lam proxy:
-- Client goi edge function thay vi goi truc tiep CoinGecko
-- Edge function cache ket qua 60 giay de giam tai
-- Ca `useTokenBalances` va `useCamlyPrice` deu goi chung 1 endpoint
-
----
-
-## Van de 3: AuthKeeper Token refresh timeout
-
-**Muc do:** Thap (da co retry va khong gay crash)
-
-**Chi tiet:** Khi nguoi dung quay lai tab sau >30 giay, AuthSessionKeeper co goi `refreshSession()` nhung bi timeout 20s. Hien tai da co retry 1 lan. Day la van de mang, khong phai loi code.
-
-**Giai phap:** Khong can sua code. Chi la canh bao mang, khong anh huong chuc nang.
-
----
-
-## Van de 4: Realtime connection interrupted
-
-**Muc do:** Thap (tu phuc hoi)
-
-**Chi tiet:** Loi `Connection interrupted while trying to subscribe` xay ra khi ket noi WebSocket bi mat (chuyen tab, mang yeu). Supabase Realtime tu phuc hoi ket noi.
-
-**Giai phap:** Khong can sua code. Day la hanh vi binh thuong.
-
----
-
-## Tong ket cac file can sua
-
-### File 1: `supabase/functions/sso-web3-auth/index.ts` (BUG NGHIEM TRONG)
-- Dong 124: Them `public_wallet_address` vao select cua profileByExternal
-- Dong 134: Them `public_wallet_address` vao select cua profileByLegacy
-- Day la nguyen nhan khien vi bi ghi de moi khi dang nhap bang legacy wallet
-
-### File 2: `supabase/functions/token-prices/index.ts` (MOI)
-- Tao edge function proxy cho CoinGecko API
-- Cache ket qua 60 giay
-- Tra ve gia cua BNB, BTC, USDT, CAMLY
-
-### File 3: `src/hooks/useTokenBalances.ts`
-- Doi tu goi truc tiep CoinGecko sang goi edge function `token-prices`
-- Giam so luong request va tranh CORS
-
-### File 4: `src/hooks/useCamlyPrice.ts`
-- Doi tu goi truc tiep CoinGecko sang goi edge function `token-prices`
-- Hoac xoa hook nay va dung chung data tu `useTokenBalances`
-
----
-
-## Uu tien xu ly
-
-1. **Van de 1** (BUG vi): Can sua ngay - day la nguyen nhan chinh khien `public_wallet_address` bi ghi de
-2. **Van de 2** (CoinGecko): Nen sua - giam loi va cai thien trai nghiem
-3. **Van de 3 & 4**: Khong can sua - hoat dong binh thuong
+## Kết quả mong đợi
+- Trang Ví hiển thị đúng tên hiển thị (display_name) thay vì username "Van103"
+- Khi kết nối ví xong, mở dialog Tặng quà sẽ hiển thị đúng ví mới kết nối
