@@ -1,55 +1,57 @@
 
-# Sửa lỗi mục Tặng quà hiển thị sai ví (402 thay vì afaa)
+# Hiển thị phí gas thực tế thay vì con số cố định
 
-## Nguyên nhân
-
-Người dùng có **2 tài khoản** trong MetaMask và đã chọn tài khoản `0xb4dd...afaa` qua tính năng Account Selector trên trang Ví. Tuy nhiên, dialog Tặng quà (`UnifiedGiftSendDialog`) dùng `useAccount()` từ wagmi (dòng 94), trả về địa chỉ mặc định của provider (`0x5102Ec...58a402`) -- **không phải** tài khoản người dùng đã chọn.
-
-Trong khi đó, `useSendToken` đã xử lý đúng bằng cách dùng `useActiveAccount().activeAddress` làm ưu tiên (dòng 75: `const senderAddress = activeAddress || providerAddress`). Nhưng phần hiển thị trong dialog lại dùng `address` từ wagmi nên bị lệch.
+## Vấn đề hiện tại
+Hệ thống đang dùng con số cố định `0.002 BNB` cho mỗi giao dịch để ước tính phí gas. Con số này cao hơn thực tế 4-5 lần, khiến người dùng hoang mang.
 
 ## Giải pháp
-
-Trong file `src/components/donations/UnifiedGiftSendDialog.tsx`:
-
-1. **Import `useActiveAccount`** từ ActiveAccountContext
-2. **Lấy `activeAddress`** và sử dụng nó thay cho `address` ở những chỗ hiển thị:
-   - Dòng 94: Thêm `const { activeAddress } = useActiveAccount();`
-   - Tạo biến `const effectiveAddress = activeAddress || address;`
-   - Thay tất cả chỗ hiển thị `address` bằng `effectiveAddress` (dòng 666-668 hiển thị ví sender, dòng 677-679 kiểm tra mismatch)
-   - Giữ nguyên `isConnected` từ `useAccount()` vì logic kết nối vẫn cần wagmi
+Sử dụng `publicClient` từ wagmi để lấy `gasPrice` thực tế từ mạng BSC tại thời điểm giao dịch, kết hợp với gas limit chuẩn (21,000 cho BNB native, 65,000 cho ERC-20 token) để tính phí chính xác.
 
 ## Chi tiết kỹ thuật
 
-### File: `src/components/donations/UnifiedGiftSendDialog.tsx`
+### File 1: `src/lib/tokens.ts`
+- Giữ `BNB_GAS_BUFFER` nhưng giảm xuống `0.0005` làm giá trị dự phòng (fallback) khi không lấy được gasPrice từ mạng.
 
-**Dòng 1-30 (imports):** Thêm import:
+### File 2: `src/components/donations/UnifiedGiftSendDialog.tsx`
+
+**Thêm hook lấy gasPrice thực tế:**
+- Import `usePublicClient` từ wagmi, thêm `useEffect` + `useState` để gọi `publicClient.getGasPrice()` mỗi 30 giây
+- Tính `estimatedGasPerTx` = gasPrice x gasLimit (65,000 cho ERC-20, 21,000 cho BNB native), chuyển sang đơn vị BNB
+- Fallback về `0.0005` nếu không lấy được gasPrice
+
+**Cập nhật 3 vị trí dùng phí gas:**
+1. **Dòng 205** (gas warning): Thay `0.002 * recipientsWithWallet.length` bằng `estimatedGasPerTx * recipientsWithWallet.length`
+2. **Dòng 344** (tính "Tặng tối đa"): Thay `0.002 * recipientsWithWallet.length` bằng `estimatedGasPerTx * recipientsWithWallet.length`
+3. **Dòng 931** (hiển thị cảnh báo): Thay `0.002 * recipientsWithWallet.length` bằng `(estimatedGasPerTx * recipientsWithWallet.length).toFixed(4)` -- hiển thị con số thực tế
+
+**Code mẫu cho hook gasPrice:**
 ```typescript
-import { useActiveAccount } from '@/contexts/ActiveAccountContext';
+const publicClient = usePublicClient();
+const [estimatedGasPerTx, setEstimatedGasPerTx] = useState(0.0005);
+
+useEffect(() => {
+  const fetchGasPrice = async () => {
+    if (!publicClient) return;
+    try {
+      const gasPrice = await publicClient.getGasPrice();
+      const gasLimit = selectedToken.address ? 65000n : 21000n;
+      const totalWei = gasPrice * gasLimit;
+      const inBnb = Number(totalWei) / 1e18;
+      // Thêm 20% buffer an toàn
+      setEstimatedGasPerTx(inBnb * 1.2);
+    } catch {
+      setEstimatedGasPerTx(0.0005);
+    }
+  };
+  fetchGasPrice();
+  const interval = setInterval(fetchGasPrice, 30000);
+  return () => clearInterval(interval);
+}, [publicClient, selectedToken.address]);
 ```
 
-**Dòng 94:** Thêm activeAddress và tạo effectiveAddress:
-```typescript
-const { address, isConnected } = useAccount();
-const { activeAddress } = useActiveAccount();
-const effectiveAddress = activeAddress || address;
-```
+### Kết quả mong đợi
 
-**Dòng 666-668 (hiển thị ví sender):** Đổi `address` thành `effectiveAddress`:
-```typescript
-{effectiveAddress && (
-  <div className="flex items-center gap-1">
-    <p className="...">{effectiveAddress.slice(0, 8)}...{effectiveAddress.slice(-6)}</p>
-    <button onClick={() => handleCopyAddress(effectiveAddress)}>...</button>
-  </div>
-)}
-```
-
-**Dòng 677-679 (kiểm tra mismatch):** Đổi `address` thành `effectiveAddress`
-
-**Dòng 144 (useEffect dependency):** Đổi `address` thành `effectiveAddress` để refetch sender profile khi user chọn account khác
-
-Tất cả các chỗ sử dụng `address` trong phần **hiển thị** và **kiểm tra** sẽ chuyển sang `effectiveAddress`, đảm bảo đồng bộ với tài khoản người dùng đã chọn trên trang Ví.
-
-## Kết quả mong đợi
-- Khi người dùng chọn tài khoản `0xb4dd...afaa` trên trang Ví, dialog Tặng quà cũng hiển thị đúng `0xb4dd...afaa`
-- Giao dịch gửi từ đúng tài khoản đã chọn (useSendToken đã xử lý đúng rồi)
+| Trước | Sau |
+|-------|-----|
+| "Cần khoảng 0.0160 BNB phí gas cho 8 giao dịch" | "Cần khoảng 0.0032 BNB phí gas cho 8 giao dịch" (con số thực tế từ mạng) |
+| Con số cố định, không phản ánh tình trạng mạng | Con số cập nhật mỗi 30 giây, phản ánh đúng gasPrice hiện tại |
