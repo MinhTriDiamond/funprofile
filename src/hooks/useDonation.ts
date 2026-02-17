@@ -86,7 +86,7 @@ export function useDonation(options?: UseDonationOptions) {
         .eq('id', currentUser.id)
         .single();
 
-      if (senderProfile?.is_banned || senderProfile?.reward_status === 'pending') {
+      if (senderProfile?.is_banned) {
         toast.error('Tài khoản đang bị hạn chế. Không thể tặng quà. Vui lòng liên hệ Admin.');
         return null;
       }
