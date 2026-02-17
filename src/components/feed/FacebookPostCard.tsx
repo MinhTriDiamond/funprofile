@@ -483,6 +483,7 @@ const FacebookPostCardComponent = ({
               <DonationButton
                 recipientId={post.user_id}
                 recipientUsername={post.profiles?.username || 'Unknown'}
+                recipientDisplayName={post.profiles?.display_name}
                 recipientWalletAddress={post.profiles?.public_wallet_address || post.profiles?.external_wallet_address || post.profiles?.wallet_address || post.profiles?.custodial_wallet_address}
                 recipientAvatarUrl={post.profiles?.avatar_url}
                 postId={post.id}

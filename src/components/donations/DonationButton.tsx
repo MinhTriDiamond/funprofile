@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 interface DonationButtonProps {
   recipientId: string;
   recipientUsername: string;
+  recipientDisplayName?: string | null;
   recipientWalletAddress?: string | null;
   recipientAvatarUrl?: string | null;
   postId?: string;
@@ -17,6 +18,7 @@ interface DonationButtonProps {
 export const DonationButton = ({
   recipientId,
   recipientUsername,
+  recipientDisplayName,
   recipientWalletAddress,
   recipientAvatarUrl,
   postId,
@@ -28,6 +30,7 @@ export const DonationButton = ({
   const presetRecipient = {
     id: recipientId,
     username: recipientUsername,
+    displayName: recipientDisplayName,
     walletAddress: recipientWalletAddress,
     avatarUrl: recipientAvatarUrl,
   };

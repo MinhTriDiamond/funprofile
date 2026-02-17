@@ -55,6 +55,7 @@ type FlowStep = 'form' | 'confirm' | 'celebration';
 interface ResolvedRecipient {
   id: string;
   username: string;
+  displayName: string | null;
   avatarUrl: string | null;
   walletAddress: string | null;
   hasVerifiedWallet?: boolean;
@@ -74,6 +75,7 @@ export interface UnifiedGiftSendDialogProps {
   presetRecipient?: {
     id?: string;
     username?: string;
+    displayName?: string | null;
     avatarUrl?: string | null;
     walletAddress?: string | null;
   };
@@ -108,7 +110,7 @@ export const UnifiedGiftSendDialog = ({
   const [isSendingReminder, setIsSendingReminder] = useState(false);
 
   // Sender profile
-  const [senderProfile, setSenderProfile] = useState<{ username: string; avatar_url: string | null; wallet_address: string | null } | null>(null);
+  const [senderProfile, setSenderProfile] = useState<{ username: string; display_name: string | null; avatar_url: string | null; wallet_address: string | null; public_wallet_address: string | null } | null>(null);
   const [senderUserId, setSenderUserId] = useState<string | null>(null);
 
   // Multi-recipient state
@@ -134,10 +136,10 @@ export const UnifiedGiftSendDialog = ({
       setSenderUserId(session.user.id);
       const { data } = await supabase
         .from('profiles')
-        .select('username, avatar_url, wallet_address')
+        .select('username, display_name, avatar_url, wallet_address, public_wallet_address')
         .eq('id', session.user.id)
         .single();
-      if (data) setSenderProfile(data);
+      if (data) setSenderProfile(data as any);
     })();
   }, [isOpen]);
 
@@ -149,6 +151,7 @@ export const UnifiedGiftSendDialog = ({
       return [{
         id: presetRecipient.id,
         username: presetRecipient.username,
+        displayName: presetRecipient.displayName ?? null,
         avatarUrl: presetRecipient.avatarUrl ?? null,
         walletAddress: presetRecipient.walletAddress ?? null,
       }] as ResolvedRecipient[];
@@ -213,7 +216,7 @@ export const UnifiedGiftSendDialog = ({
     setIsSearching(true);
     setSearchError('');
     try {
-      const selectFields = 'id, username, avatar_url, wallet_address, public_wallet_address, external_wallet_address';
+      const selectFields = 'id, username, display_name, avatar_url, wallet_address, public_wallet_address, external_wallet_address';
       if (tab === 'username') {
         const cleanQuery = query.replace(/^@/, '').toLowerCase().trim();
         if (cleanQuery.length < 2) { setSearchResults([]); setIsSearching(false); return; }
@@ -224,9 +227,10 @@ export const UnifiedGiftSendDialog = ({
           .limit(20);
         if (error) throw error;
         if (data && data.length > 0) {
-          setSearchResults(data.map(p => ({
+          setSearchResults(data.map((p: any) => ({
             id: p.id,
             username: p.username,
+            displayName: p.display_name || null,
             avatarUrl: p.avatar_url,
             walletAddress: resolveWalletAddress(p),
             hasVerifiedWallet: !!(p.public_wallet_address || p.external_wallet_address),
@@ -250,9 +254,10 @@ export const UnifiedGiftSendDialog = ({
           .limit(1);
         if (error) throw error;
         if (data && data.length > 0) {
-          setSearchResults(data.map(p => ({
+          setSearchResults(data.map((p: any) => ({
             id: p.id,
             username: p.username,
+            displayName: p.display_name || null,
             avatarUrl: p.avatar_url,
             walletAddress: resolveWalletAddress(p),
             hasVerifiedWallet: !!(p.public_wallet_address || p.external_wallet_address),
@@ -656,7 +661,8 @@ export const UnifiedGiftSendDialog = ({
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">@{senderProfile.username}</p>
+                      <p className="font-medium truncate">{senderProfile.display_name || senderProfile.username}</p>
+                      <p className="text-xs text-muted-foreground truncate">@{senderProfile.username}</p>
                       {address && (
                         <div className="flex items-center gap-1">
                           <p className="text-xs text-muted-foreground font-mono truncate">{address.slice(0, 8)}...{address.slice(-6)}</p>
@@ -667,6 +673,15 @@ export const UnifiedGiftSendDialog = ({
                       )}
                     </div>
                   </div>
+                  {/* Wallet mismatch warning */}
+                  {address && senderProfile.wallet_address && senderProfile.public_wallet_address &&
+                    address.toLowerCase() !== senderProfile.wallet_address?.toLowerCase() &&
+                    address.toLowerCase() !== senderProfile.public_wallet_address?.toLowerCase() && (
+                    <div className="flex items-center gap-2 mt-2 p-2 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                      <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                      <p className="text-xs text-amber-700">Ví đang kết nối khác với ví đã lưu trong hồ sơ. Giao dịch sẽ gửi từ ví hiện tại.</p>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -749,7 +764,8 @@ export const UnifiedGiftSendDialog = ({
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">@{effectiveRecipients[0]?.username}</p>
+                      <p className="font-medium truncate">{effectiveRecipients[0]?.displayName || effectiveRecipients[0]?.username}</p>
+                      <p className="text-xs text-muted-foreground truncate">@{effectiveRecipients[0]?.username}</p>
                       {effectiveRecipients[0]?.walletAddress && (
                         <div className="flex items-center gap-1">
                           <p className="text-xs text-muted-foreground font-mono truncate">{effectiveRecipients[0].walletAddress.slice(0, 8)}...{effectiveRecipients[0].walletAddress.slice(-6)}</p>
@@ -780,7 +796,7 @@ export const UnifiedGiftSendDialog = ({
                             <AvatarImage src={r.avatarUrl || ''} />
                             <AvatarFallback className="bg-primary/20 text-primary text-[10px]">{r.username[0]?.toUpperCase()}</AvatarFallback>
                           </Avatar>
-                          <span className="font-medium truncate max-w-[100px]">@{r.username}</span>
+                          <span className="font-medium truncate max-w-[100px]">{r.displayName || r.username}</span>
                           {!r.walletAddress && <AlertCircle className="w-3 h-3 text-destructive shrink-0" />}
                           <button
                             type="button"
@@ -833,10 +849,10 @@ export const UnifiedGiftSendDialog = ({
                             </Avatar>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-1">
-                                <p className="font-medium text-sm truncate">@{result.username}</p>
+                                <p className="font-medium text-sm truncate">{result.displayName || result.username}</p>
                                 {result.hasVerifiedWallet && <Shield className="w-3 h-3 text-emerald-500 shrink-0" />}
                               </div>
-                              {result.walletAddress && <p className="text-xs text-muted-foreground font-mono truncate">{result.walletAddress.slice(0, 8)}...{result.walletAddress.slice(-6)}</p>}
+                              <p className="text-xs text-muted-foreground truncate">@{result.username}</p>
                             </div>
                           </button>
                         ))}
@@ -936,7 +952,8 @@ export const UnifiedGiftSendDialog = ({
                     <AvatarFallback className="bg-primary/20 text-primary">{senderProfile?.username?.[0]?.toUpperCase() || '?'}</AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm">@{senderProfile?.username}</p>
+                    <p className="font-medium text-sm">{senderProfile?.display_name || senderProfile?.username}</p>
+                    <p className="text-xs text-muted-foreground">@{senderProfile?.username}</p>
                     {address && (
                       <div className="flex items-center gap-1">
                         <span className="text-xs text-muted-foreground font-mono">{address.slice(0, 8)}...{address.slice(-6)}</span>
@@ -985,7 +1002,7 @@ export const UnifiedGiftSendDialog = ({
                               <AvatarFallback className="bg-primary/20 text-primary text-xs">{recipient.username[0]?.toUpperCase()}</AvatarFallback>
                             </Avatar>
                             <div className="flex-1 min-w-0">
-                              <p className="font-medium text-sm truncate">@{recipient.username}</p>
+                              <p className="font-medium text-sm truncate">{recipient.displayName || recipient.username}</p>
                               {recipient.walletAddress && (
                                 <p className="text-[10px] text-muted-foreground font-mono truncate">{recipient.walletAddress.slice(0, 8)}...{recipient.walletAddress.slice(-6)}</p>
                               )}
@@ -1007,7 +1024,8 @@ export const UnifiedGiftSendDialog = ({
                       <AvatarFallback className="bg-primary/20 text-primary">{recipientsWithWallet[0]?.username?.[0]?.toUpperCase() || '?'}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm">@{recipientsWithWallet[0]?.username}</p>
+                      <p className="font-medium text-sm">{recipientsWithWallet[0]?.displayName || recipientsWithWallet[0]?.username}</p>
+                      <p className="text-xs text-muted-foreground">@{recipientsWithWallet[0]?.username}</p>
                       {recipientsWithWallet[0]?.walletAddress && (
                         <div className="flex items-center gap-1">
                           <span className="text-xs text-muted-foreground font-mono">{recipientsWithWallet[0].walletAddress.slice(0, 8)}...{recipientsWithWallet[0].walletAddress.slice(-6)}</span>
