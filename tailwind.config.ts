@@ -154,7 +154,7 @@ export default {
         "fall": "fall 4s linear forwards",
         "spin-slow": "spin-slow 3s linear infinite",
         "sparkle": "sparkle 1.5s ease-in-out infinite",
-        "rich-float": "rich-float 2s ease-in-out infinite",
+        "rich-float": "rich-float 2.5s ease-in-out forwards",
       },
     },
   },

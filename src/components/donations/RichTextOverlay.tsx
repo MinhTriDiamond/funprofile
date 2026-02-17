@@ -1,11 +1,6 @@
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 
-/**
- * Floating "RICH" text animation overlay for celebration cards.
- * Uses createPortal to render directly into document.body,
- * bypassing any stacking context from Dialog portals.
- * Reduced to 10 items for a cleaner, less cluttered effect.
- */
 const RICH_COLORS = [
   '#FF0000', '#FF7F00', '#FFFF00', '#00FF00', '#00FFFF',
   '#0000FF', '#8B00FF', '#FF1493', '#FFD700',
@@ -24,8 +19,17 @@ const RICH_POSITIONS = [
   { left: '30%', top: '80%', delay: '0.2s', size: 'text-4xl' },
 ];
 
-export const RichTextOverlay = () =>
-  createPortal(
+export const RichTextOverlay = () => {
+  const [visible, setVisible] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setVisible(false), 3000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (!visible) return null;
+
+  return createPortal(
     <div className="fixed inset-0 overflow-hidden pointer-events-none z-[9999]">
       {RICH_POSITIONS.map((pos, i) => (
         <span
@@ -47,3 +51,4 @@ export const RichTextOverlay = () =>
     </div>,
     document.body,
   );
+};

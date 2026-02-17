@@ -24,7 +24,7 @@ import funEcosystemLogo from '@/assets/tokens/fun-ecosystem-logo.gif';
 import { RichTextOverlay } from './RichTextOverlay';
 import html2canvas from 'html2canvas';
 import { toast } from 'sonner';
-import { playCelebrationMusicLoop } from '@/lib/celebrationSounds';
+import { playCelebrationMusic } from '@/lib/celebrationSounds';
 
 export interface DonationCardData {
   id: string;
@@ -59,7 +59,7 @@ export const DonationSuccessCard = ({
   // Play celebration music loop when card opens
   useEffect(() => {
     if (isOpen) {
-      audioRef.current = playCelebrationMusicLoop('rich-3');
+      audioRef.current = playCelebrationMusic('rich-3');
     }
     return () => {
       if (audioRef.current) {

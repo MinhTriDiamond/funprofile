@@ -17,9 +17,9 @@ import {
   Sparkles,
 } from 'lucide-react';
 import funEcosystemLogo from '@/assets/tokens/fun-ecosystem-logo.gif';
-import celebrationBgVideo from '@/assets/tet6-2.mp4';
+import celebrationBgVideo from '@/assets/tet6-3.mp4';
 import { RichTextOverlay } from './RichTextOverlay';
-import { playCelebrationMusicLoop } from '@/lib/celebrationSounds';
+import { playCelebrationMusic } from '@/lib/celebrationSounds';
 import { useNavigate } from 'react-router-dom';
 
 // Mốc thời gian: từ 17/2/2026 00:00 (UTC+7) trở đi dùng giao diện Tết
@@ -57,7 +57,7 @@ export const DonationReceivedCard = ({
   // Play looped music when card opens, stop when closed
   useEffect(() => {
     if (isOpen) {
-      audioRef.current = playCelebrationMusicLoop('rich-3');
+      audioRef.current = playCelebrationMusic('rich-3');
     }
     return () => {
       if (audioRef.current) {
