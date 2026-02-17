@@ -160,7 +160,27 @@ const Profile = () => {
         .eq('user_id', profileId)
         .order('created_at', { ascending: false });
 
-      setOriginalPosts(postsData || []); // Keep for photos grid
+      // Also fetch gift_celebration posts where this user is the sender (but user_id might differ due to legacy data)
+      const { data: giftSenderPosts } = await supabase
+        .from('posts')
+        .select(`
+          *,
+          profiles!posts_user_id_fkey (username, display_name, avatar_url, full_name, external_wallet_address, custodial_wallet_address, public_wallet_address),
+          reactions (id, user_id, type),
+          comments (id)
+        `)
+        .eq('gift_sender_id', profileId)
+        .eq('post_type', 'gift_celebration')
+        .neq('user_id', profileId)
+        .order('created_at', { ascending: false });
+
+      const existingPostIds = new Set((postsData || []).map(p => p.id));
+      const allUserPosts = [
+        ...(postsData || []),
+        ...(giftSenderPosts || []).filter(p => !existingPostIds.has(p.id))
+      ];
+
+      setOriginalPosts(allUserPosts); // Keep for photos grid
 
       // Fetch shared posts
       const { data: sharedPostsData } = await supabase
@@ -181,7 +201,7 @@ const Profile = () => {
       const combinedPosts: any[] = [];
       
       // Add original posts with type marker
-      (postsData || []).forEach(post => {
+      allUserPosts.forEach(post => {
         combinedPosts.push({
           ...post,
           _type: 'original',
