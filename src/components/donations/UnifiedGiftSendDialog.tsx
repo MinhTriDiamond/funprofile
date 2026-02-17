@@ -621,6 +621,7 @@ export const UnifiedGiftSendDialog = ({
   const invalidateDonationCache = () => {
     // Use window event to notify React Query to refetch
     window.dispatchEvent(new CustomEvent('invalidate-donations'));
+    window.dispatchEvent(new CustomEvent('invalidate-feed'));
   };
 
   const handleSaveTheme = async (themeId: string, bgIndex: number, soundId: string) => {
