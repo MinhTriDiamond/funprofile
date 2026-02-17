@@ -18,14 +18,24 @@ export const GiftNavButton = memo(({ variant, className = '' }: GiftNavButtonPro
   const { data: currentUser } = useQuery({
     queryKey: ['current-user-gift'],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      return user;
+      const { data: { session } } = await supabase.auth.getSession();
+      return session?.user ?? null;
     },
     staleTime: 5 * 60 * 1000,
   });
 
-  const handleOpen = () => {
-    if (!currentUser) return;
+  const handleOpen = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (!currentUser) {
+      // Try refreshing session
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user) {
+          setIsDialogOpen(true);
+        }
+      });
+      return;
+    }
     setIsDialogOpen(true);
   };
 
