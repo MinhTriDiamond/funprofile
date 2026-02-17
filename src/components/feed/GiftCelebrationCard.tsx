@@ -7,6 +7,7 @@ import { useLanguage } from '@/i18n/LanguageContext';
 import { CommentSection } from './CommentSection';
 import { ReactionButton } from './ReactionButton';
 import { ReactionSummary } from './ReactionSummary';
+import { ImageViewer } from './ImageViewer';
 import { getBscScanTxUrl } from '@/lib/bscScanHelpers';
 import { playCelebrationMusic } from '@/lib/celebrationSounds';
 import confetti from 'canvas-confetti';
@@ -27,6 +28,7 @@ interface GiftCelebrationCardProps {
     content: string;
     created_at: string;
     user_id: string;
+    image_url?: string | null;
     gift_sender_id?: string | null;
     gift_recipient_id?: string | null;
     gift_token?: string | null;
@@ -65,6 +67,7 @@ const GiftCelebrationCardComponent = ({
   const [shareCount, setShareCount] = useState(initialStats?.shareCount || 0);
   const [recipientProfile, setRecipientProfile] = useState<{ username: string; avatar_url: string | null } | null>(null);
   const [senderProfile, setSenderProfile] = useState<{ username: string; avatar_url: string | null } | null>(null);
+  const [imageViewerOpen, setImageViewerOpen] = useState(false);
 
   // Check if sender is different from post author (e.g. Treasury claim)
   const isTreasurySender = post.gift_sender_id && post.gift_sender_id !== post.user_id;
@@ -121,7 +124,6 @@ const GiftCelebrationCardComponent = ({
       (entries) => {
         const [entry] = entries;
         if (entry.isIntersecting) {
-          // Play sound (only once on first view)
           if (!hasPlayedRef.current && !isMuted) {
             const audio = playCelebrationMusic('rich-1');
             if (audio) {
@@ -131,7 +133,6 @@ const GiftCelebrationCardComponent = ({
             hasPlayedRef.current = true;
           }
 
-          // Fire confetti once
           if (!hasConfettiFiredRef.current) {
             hasConfettiFiredRef.current = true;
             const rect = cardRef.current?.getBoundingClientRect();
@@ -159,7 +160,7 @@ const GiftCelebrationCardComponent = ({
 
   // Scroll-back sound (5s)
   useEffect(() => {
-    if (!hasPlayedRef.current) return; // only after first play
+    if (!hasPlayedRef.current) return;
     const isMuted = localStorage.getItem('celebration_muted') === 'true';
     if (isMuted) return;
 
@@ -178,7 +179,6 @@ const GiftCelebrationCardComponent = ({
       { threshold: 0.5 }
     );
 
-    // Delay subscribing so first-view observer doesn't conflict
     const timer = setTimeout(() => {
       if (cardRef.current) observer.observe(cardRef.current);
     }, 12000);
@@ -197,7 +197,6 @@ const GiftCelebrationCardComponent = ({
 
   const amount = post.gift_amount ? Number(post.gift_amount).toLocaleString() : '0';
   const token = post.gift_token || 'FUN';
-  // Use fetched sender profile for Treasury/cross-user claims, otherwise use post author profile
   const actualSenderProfile = isTreasurySender ? senderProfile : post.profiles;
   const senderUsername = actualSenderProfile?.username || 'FUN Profile Treasury';
   const senderAvatarUrl = actualSenderProfile?.avatar_url || '/fun-profile-treasury-logo.jpg';
@@ -295,6 +294,21 @@ const GiftCelebrationCardComponent = ({
           </p>
         </div>
 
+        {/* Celebration Image */}
+        {post.image_url && (
+          <div
+            className="mb-3 rounded-lg overflow-hidden cursor-pointer ring-2 ring-yellow-300/30 hover:ring-yellow-300/60 transition-all"
+            onClick={() => setImageViewerOpen(true)}
+          >
+            <img
+              src={post.image_url}
+              alt="Celebration Card"
+              className="w-full h-auto object-cover"
+              loading="lazy"
+            />
+          </div>
+        )}
+
         {/* Gift message */}
         {truncatedMessage && (
           <div className="bg-white/15 backdrop-blur-sm rounded-lg px-3 py-2 mb-3 text-center">
@@ -370,6 +384,15 @@ const GiftCelebrationCardComponent = ({
             onCommentAdded={() => setCommentCount(prev => prev + 1)}
           />
         </div>
+      )}
+
+      {/* Image Viewer Dialog */}
+      {post.image_url && (
+        <ImageViewer
+          imageUrl={post.image_url}
+          isOpen={imageViewerOpen}
+          onClose={() => setImageViewerOpen(false)}
+        />
       )}
     </div>
   );
