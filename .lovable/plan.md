@@ -1,47 +1,31 @@
 
+# Thêm giao diện Tết cho DonationSuccessCard (thẻ người gửi)
 
-# Chỉnh giao diện thông báo nhận tiền: Nền pháo hoa + RICH chạy 1 lần
-
-## Vấn đề hiện tại
-1. **Nền vẫn xanh**: Video `tet6-2.mp4` được import nhưng có thể không hiển thị đúng, cần thay bằng video mới `tet6-3.mp4` mà con vừa gửi.
-2. **Chữ RICH bay liên tục**: Animation `rich-float` đang đặt `infinite` nên chữ RICH bay hoài không dừng.
-3. **Nhạc RICH hát liên tục**: Đang dùng `playCelebrationMusicLoop` (loop = true) nên nhạc lặp mãi.
+## Vấn đề
+- Thẻ `DonationSuccessCard.tsx` (hiển thị cho người gửi, có nút "Lưu Hình") chưa được cập nhật giao diện Tết
+- Chỉ có `DonationReceivedCard.tsx` (thẻ người nhận) đã có logic chuyển đổi giao diện theo ngày
 
 ## Thay đổi cần thực hiện
 
-### 1. Thay video nền mới (`tet6-3.mp4`)
-- Copy file `tet6-3.mp4` vào `src/assets/tet6-3.mp4`
-- Cập nhật import trong `DonationReceivedCard.tsx` sang video mới
-- Cập nhật import trong `DonationSuccessCard.tsx` nếu cũng dùng video nền Tết
+### File: `src/components/donations/DonationSuccessCard.tsx`
 
-### 2. Chữ RICH chỉ chạy 1 lần rồi biến mất
-- **File `tailwind.config.ts`**: Đổi animation `rich-float` từ `infinite` thành chạy 1 lần (`forwards` để giữ trạng thái kết thúc ẩn đi)
-- **File `RichTextOverlay.tsx`**: Thêm state quản lý hiển thị, sau khi animation kết thúc (~3 giây) thì tự ẩn component
+1. **Import video nền** `tet6-3.mp4` (giống DonationReceivedCard)
+2. **Thêm hằng số `TET_CUTOFF`**: `2026-02-16T17:00:00.000Z` (tức 17/2/2026 00:00 UTC+7)
+3. **Thêm biến `isTetTheme`**: kiểm tra `data.createdAt >= TET_CUTOFF`
+4. **Điều kiện hiển thị**:
+   - Từ 17/2/2026 trở đi: video nền pháo hoa, chữ "HAPPY NEW YEAR" vàng kim, khung 3:2, sparkles vàng, chữ nhỏ hơn để vừa khung
+   - Trước 17/2/2026: giữ nguyên giao diện xanh lá hiện tại
 
-### 3. Nhạc RICH chỉ hát 1 lần rồi dừng
-- **File `DonationReceivedCard.tsx`**: Đổi từ `playCelebrationMusicLoop` sang `playCelebrationMusic` (hàm này đã có sẵn, chạy 1 lần không lặp)
-- **File `DonationSuccessCard.tsx`**: Tương tự đổi sang `playCelebrationMusic`
+### Chi tiết kỹ thuật
 
-## Chi tiết kỹ thuật
+Áp dụng cùng pattern đã dùng trong `DonationReceivedCard.tsx`:
 
-### File 1: `src/components/donations/RichTextOverlay.tsx`
-- Thêm `useState` và `useEffect` để tự ẩn sau 3 giây
-- Đổi animation class từ `animate-rich-float` (infinite) sang style riêng chạy 1 lần với `animation-fill-mode: forwards`
-
-### File 2: `tailwind.config.ts`
-- Giữ nguyên keyframes `rich-float`
-- Đổi dòng animation từ `"rich-float 2s ease-in-out infinite"` thành `"rich-float 2.5s ease-in-out forwards"` (chạy 1 lần, giữ trạng thái cuối)
-
-### File 3: `src/components/donations/DonationReceivedCard.tsx`
-- Thay import video: `tet6-2.mp4` thành `tet6-3.mp4`
-- Thay `playCelebrationMusicLoop` thành `playCelebrationMusic` (phát 1 lần)
-
-### File 4: `src/components/donations/DonationSuccessCard.tsx`
-- Thay `playCelebrationMusicLoop` thành `playCelebrationMusic` (phát 1 lần)
+- Thay `style={{ background: 'linear-gradient(...)' }}` bằng điều kiện `isTetTheme ? { aspectRatio: '3 / 2' } : { background: '...' }`
+- Thêm khối `{isTetTheme && (<video>...</video>)}` cho nền video
+- Thêm `{isTetTheme && (<h1>HAPPY NEW YEAR</h1>)}` trước lời chúc mừng
+- Điều chỉnh padding, font-size, spacing theo `isTetTheme` để nội dung vừa khung 3:2
+- Sparkles đổi màu vàng khi Tết
 
 ## Tóm tắt
-- Sửa **4 file** + copy **1 file video mới**
-- Nền video pháo hoa `tet6-3.mp4` hiển thị phía sau nội dung thẻ
-- Chữ RICH bay 1 lần (~3 giây) rồi tự biến mất
-- Nhạc RICH hát trọn 1 lần rồi dừng, không lặp lại
-
+- Chỉ sửa **1 file**: `src/components/donations/DonationSuccessCard.tsx`
+- Kết quả: Cả thẻ người gửi lẫn thẻ người nhận đều hiển thị giao diện Tết từ ngày 17/2/2026
