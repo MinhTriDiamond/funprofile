@@ -15,8 +15,12 @@ export const DonationReceivedNotification = () => {
     };
     getUser();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
-      setUserId(session?.user?.id || null);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session) {
+        setUserId(session.user.id);
+      } else if (event === 'SIGNED_OUT') {
+        setUserId(null);
+      }
     });
 
     return () => subscription.unsubscribe();

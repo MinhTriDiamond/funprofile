@@ -60,12 +60,18 @@ function AuthSessionKeeper() {
         const hiddenDuration = Date.now() - lastHiddenAt;
         if (hiddenDuration >= 30000) {
           try {
-            await Promise.race([
+            const tryRefresh = () => Promise.race([
               supabase.auth.refreshSession(),
               new Promise<never>((_, reject) =>
-                setTimeout(() => reject(new Error('timeout')), 10000)
+                setTimeout(() => reject(new Error('timeout')), 20000)
               ),
             ]);
+            try {
+              await tryRefresh();
+            } catch {
+              // Retry once on failure
+              await tryRefresh();
+            }
             console.log('[AuthKeeper] Token refreshed after', Math.round(hiddenDuration / 1000), 's hidden');
           } catch (err) {
             console.warn('[AuthKeeper] Token refresh failed:', err);

@@ -97,7 +97,7 @@ const fetchHighlightedPosts = async (currentUserId: string | null): Promise<Feed
   const now = new Date().toISOString();
   let query = supabase
     .from('posts')
-    .select(`*, profiles!posts_user_id_fkey (username, display_name, avatar_url, external_wallet_address, custodial_wallet_address)`)
+    .select(`*, profiles!posts_user_id_fkey (username, display_name, avatar_url, external_wallet_address, custodial_wallet_address, public_wallet_address, wallet_address)`)
     .eq('is_highlighted', true)
     .gt('highlight_expires_at', now)
     .order('created_at', { ascending: false })
@@ -125,7 +125,7 @@ const fetchHighlightedPosts = async (currentUserId: string | null): Promise<Feed
 const fetchFeedPage = async (cursor: string | null, currentUserId: string | null): Promise<FeedPage> => {
   let query = supabase
     .from('posts')
-    .select(`*, profiles!posts_user_id_fkey (username, display_name, avatar_url, external_wallet_address, custodial_wallet_address)`)
+    .select(`*, profiles!posts_user_id_fkey (username, display_name, avatar_url, external_wallet_address, custodial_wallet_address, public_wallet_address, wallet_address)`)
     .order('created_at', { ascending: false })
     .limit(POSTS_PER_PAGE + 1);
 

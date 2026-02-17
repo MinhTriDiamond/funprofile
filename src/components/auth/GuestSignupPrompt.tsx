@@ -151,8 +151,12 @@ export function useGuestPrompt() {
     };
     check();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
-      setIsGuest(!session);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session) {
+        setIsGuest(false);
+      } else if (event === 'SIGNED_OUT') {
+        setIsGuest(true);
+      }
     });
     return () => subscription.unsubscribe();
   }, []);
