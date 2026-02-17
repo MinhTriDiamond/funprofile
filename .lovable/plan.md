@@ -1,54 +1,47 @@
 
 
+# Chỉnh giao diện thông báo nhận tiền: Nền pháo hoa + RICH chạy 1 lần
 
-# Tự động đăng bài chúc mừng khi user rút thưởng (Claim Reward)
+## Vấn đề hiện tại
+1. **Nền vẫn xanh**: Video `tet6-2.mp4` được import nhưng có thể không hiển thị đúng, cần thay bằng video mới `tet6-3.mp4` mà con vừa gửi.
+2. **Chữ RICH bay liên tục**: Animation `rich-float` đang đặt `infinite` nên chữ RICH bay hoài không dừng.
+3. **Nhạc RICH hát liên tục**: Đang dùng `playCelebrationMusicLoop` (loop = true) nên nhạc lặp mãi.
 
-## Hiện trạng
-- **Tặng quà (Donation)**: ĐÃ CÓ bài đăng tự động loại `gift_celebration` trên Feed - không cần thay đổi.
-- **Rút thưởng (Claim Reward)**: CHƯA CÓ bài đăng tự động. Cần bổ sung.
+## Thay đổi cần thực hiện
 
-## Thay đổi
+### 1. Thay video nền mới (`tet6-3.mp4`)
+- Copy file `tet6-3.mp4` vào `src/assets/tet6-3.mp4`
+- Cập nhật import trong `DonationReceivedCard.tsx` sang video mới
+- Cập nhật import trong `DonationSuccessCard.tsx` nếu cũng dùng video nền Tết
 
-### File: `supabase/functions/claim-reward/index.ts`
-Thêm đoạn tạo bài đăng tự động sau bước 17b (notification), trước bước 18 (return):
+### 2. Chữ RICH chỉ chạy 1 lần rồi biến mất
+- **File `tailwind.config.ts`**: Đổi animation `rich-float` từ `infinite` thành chạy 1 lần (`forwards` để giữ trạng thái kết thúc ẩn đi)
+- **File `RichTextOverlay.tsx`**: Thêm state quản lý hiển thị, sau khi animation kết thúc (~3 giây) thì tự ẩn component
 
-- Tạo bài đăng loại `gift_celebration` với nội dung: "🎉 @username đã nhận thưởng [số lượng] CAMLY từ FUN Profile Treasury! ❤️"
-- Ghim bài đăng (highlight) trong 15 phút
-- Visibility: public, moderation: approved
-- Sử dụng `TREASURY_SENDER_ID` làm `gift_sender_id` và `userId` làm `gift_recipient_id`
+### 3. Nhạc RICH chỉ hát 1 lần rồi dừng
+- **File `DonationReceivedCard.tsx`**: Đổi từ `playCelebrationMusicLoop` sang `playCelebrationMusic` (hàm này đã có sẵn, chạy 1 lần không lặp)
+- **File `DonationSuccessCard.tsx`**: Tương tự đổi sang `playCelebrationMusic`
 
-### Chi tiết kỹ thuật
+## Chi tiết kỹ thuật
 
-Thêm khoảng 20 dòng code vào `claim-reward/index.ts` (sau dòng 666, trước dòng 668):
+### File 1: `src/components/donations/RichTextOverlay.tsx`
+- Thêm `useState` và `useEffect` để tự ẩn sau 3 giây
+- Đổi animation class từ `animate-rich-float` (infinite) sang style riêng chạy 1 lần với `animation-fill-mode: forwards`
 
-```typescript
-// 17c. Tạo bài đăng chúc mừng trên Feed
-try {
-  const claimUsername = profile.username || profile.full_name || 'Người dùng';
-  const celebrationContent = `🎉 @${claimUsername} đã nhận thưởng ${effectiveAmount.toLocaleString()} CAMLY từ FUN Profile Treasury! ❤️`;
+### File 2: `tailwind.config.ts`
+- Giữ nguyên keyframes `rich-float`
+- Đổi dòng animation từ `"rich-float 2s ease-in-out infinite"` thành `"rich-float 2.5s ease-in-out forwards"` (chạy 1 lần, giữ trạng thái cuối)
 
-  await supabaseAdmin.from('posts').insert({
-    user_id: userId,
-    content: celebrationContent,
-    post_type: 'gift_celebration',
-    tx_hash: txHash,
-    gift_sender_id: TREASURY_SENDER_ID,
-    gift_recipient_id: userId,
-    gift_token: 'CAMLY',
-    gift_amount: effectiveAmount.toString(),
-    gift_message: `Claim ${effectiveAmount.toLocaleString()} CAMLY`,
-    is_highlighted: true,
-    highlight_expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
-    visibility: 'public',
-    moderation_status: 'approved',
-  });
-} catch (postError) {
-  console.error('Không thể tạo bài đăng chúc mừng (non-blocking):', postError);
-}
-```
+### File 3: `src/components/donations/DonationReceivedCard.tsx`
+- Thay import video: `tet6-2.mp4` thành `tet6-3.mp4`
+- Thay `playCelebrationMusicLoop` thành `playCelebrationMusic` (phát 1 lần)
 
-## Tổng kết
-- Chỉ cần sửa **1 file**: `supabase/functions/claim-reward/index.ts`
-- Bài đăng sẽ hiển thị giống hệt bài tặng quà: card gradient xanh lá, avatar người gửi (Treasury) và người nhận, hiệu ứng RICH, pháo hoa
-- Bài đăng được ghim 15 phút đầu Feed
-- Lỗi tạo bài đăng không ảnh hưởng đến quy trình rút thưởng (non-blocking)
+### File 4: `src/components/donations/DonationSuccessCard.tsx`
+- Thay `playCelebrationMusicLoop` thành `playCelebrationMusic` (phát 1 lần)
+
+## Tóm tắt
+- Sửa **4 file** + copy **1 file video mới**
+- Nền video pháo hoa `tet6-3.mp4` hiển thị phía sau nội dung thẻ
+- Chữ RICH bay 1 lần (~3 giây) rồi tự biến mất
+- Nhạc RICH hát trọn 1 lần rồi dừng, không lặp lại
+
