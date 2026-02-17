@@ -1,42 +1,41 @@
 
-# Chỉnh sửa điều kiện hạn chế tài khoản khi tặng/chuyển tiền
 
-## Vấn đề hiện tại
-Hệ thống đang chặn các tài khoản có `reward_status` là `on_hold`, `rejected`, `banned` hoặc `is_banned = true`. Theo yêu cầu, chỉ tài khoản có trạng thái `pending` mới bị hạn chế chuyển tiền.
+# Loai bo han che giao dien "Tai khoan bi han che" khi tang qua
 
-Dữ liệu hiện tại:
-- 418 tài khoản: `pending`
-- 93 tài khoản: `claimed`
-- 37 tài khoản: `on_hold`
-- 1 tài khoản: `approved`
+## Van de
+Du code da duoc sua (chi chan `is_banned === true`), user van bao loi "Tai khoan dang bi han che" khi tang qua. Co the do cache chua cap nhat, hoac user muon bo hoan toan thong bao nay tren giao dien.
 
-Ví dụ: @NgocgiauMoney hiện đang bị chặn vì `reward_status = on_hold`.
+Hien tai chi co 1 tai khoan bi `is_banned = true` (wallet_63999042sihe). Tat ca 550 tai khoan khac deu `is_banned = false`.
 
-## Thay đổi
+## Giai phap
+Theo yeu cau cua con: "tat ca user deu duoc tang cho nhau, chi nhung tai khoan phat hien nhieu tai khoan tren 1 thiet bi moi bi khoa" - Cha se:
 
-Sửa điều kiện kiểm tra ở **3 file**, đổi từ:
-```typescript
-['on_hold', 'rejected', 'banned'].includes(reward_status)
-```
-thành:
-```typescript
-reward_status === 'pending'
-```
+1. **Xoa bo hoan toan kiem tra `isRestricted` trong UnifiedGiftSendDialog** - Bo khoi UI, khong hien thong bao han che nua. Viec chan se do backend (edge function `record-donation`) xu ly.
 
-Vẫn giữ nguyên kiểm tra `is_banned = true` (tài khoản bị cấm vĩnh viễn vẫn bị chặn).
+2. **Xoa kiem tra `is_banned` trong `useDonation.ts`** - Khong chan o frontend, de backend quyet dinh.
 
-### 1. `src/components/donations/UnifiedGiftSendDialog.tsx` (dòng 133-136)
-- Đổi điều kiện `isRestricted` thành chỉ chặn khi `is_banned === true` hoặc `reward_status === 'pending'`
+3. **Xoa kiem tra `is_banned` trong `useSendToken.ts`** - Tuong tu.
 
-### 2. `src/hooks/useSendToken.ts` (dòng 110)
-- Đổi điều kiện chặn chuyển token tương tự
+4. **Giu backend edge function** - `record-donation` van kiem tra va tu choi ghi nhan donation cho tai khoan bi cam (day la lop bao ve chinh).
 
-### 3. `src/hooks/useDonation.ts` (dòng 89)
-- Đổi điều kiện chặn tặng quà tương tự
+## Chi tiet ky thuat
 
-## Tóm tắt
-- Sửa **3 file** frontend
-- Tài khoản `pending` -- bị chặn (mới tạo, chưa kích hoạt)
-- Tài khoản `on_hold`, `claimed`, `approved` -- được phép tặng/chuyển bình thường
-- Tài khoản `is_banned = true` -- vẫn bị chặn
-- Không thay đổi database
+### File 1: `src/components/donations/UnifiedGiftSendDialog.tsx`
+- Xoa state `isRestricted` va `setIsRestricted`
+- Xoa doan code kiem tra `is_banned` trong useEffect (dong 133)
+- Xoa khoi UI warning "Tai khoan dang bi han che" (dong 537-545)
+- Xoa `!isRestricted` khoi dieu kien `canProceedToConfirm` (dong 327)
+
+### File 2: `src/hooks/useDonation.ts`
+- Xoa doan kiem tra `senderProfile?.is_banned` (dong 80-92) - bo toan bo block kiem tra restricted status
+
+### File 3: `src/hooks/useSendToken.ts`
+- Xoa doan kiem tra `profile?.is_banned` (dong 102-113) - bo toan bo block kiem tra restricted status
+
+## Tom tat
+- Sua 3 file
+- Xoa hoan toan kiem tra han che o frontend
+- Tat ca user deu co the tang qua cho nhau tu do
+- Bao ve van duoc giu o backend (edge function)
+- Tai khoan bi khoa (abuse) se do Admin xu ly truc tiep qua database
+
