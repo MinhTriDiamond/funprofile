@@ -170,14 +170,14 @@ export const ClaimRewardsSection = ({
 
         {/* On Hold Alert */}
         {rewardStatus === 'on_hold' && adminNotes && (
-          <div className="bg-orange-50 border border-orange-300 rounded-xl p-3.5">
+          <div className="bg-amber-50 border border-amber-300 rounded-xl p-3.5">
             <div className="flex items-start gap-2">
-              <AlertTriangle className="w-5 h-5 text-orange-600 shrink-0 mt-0.5" />
+              <Info className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-semibold text-orange-800">Tài khoản đang bị tạm dừng rút tiền</p>
-                <p className="text-xs text-orange-700 mt-1">{adminNotes}</p>
-                <p className="text-xs text-orange-600 mt-2">
-                  Vui lòng liên hệ Admin qua tin nhắn hoặc email để được xem xét và mở khoá.
+                <p className="text-sm font-semibold text-amber-800">Tài khoản đang chờ xác minh 🙏</p>
+                <p className="text-xs text-amber-700 mt-1">{adminNotes}</p>
+                <p className="text-xs text-amber-600 mt-2">
+                  Hệ thống cần xác minh để bảo vệ quyền lợi cho tất cả mọi người. Vui lòng liên hệ Admin qua tin nhắn để được hỗ trợ nhanh nhất. Cảm ơn bạn đã thấu hiểu 💛
                 </p>
               </div>
             </div>

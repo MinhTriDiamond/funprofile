@@ -205,10 +205,13 @@ Deno.serve(async (req) => {
       }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // 7f. Auto fraud detection
+    // 7f. Auto fraud detection - CHỈ dựa trên device fingerprint (KHÔNG dựa trên IP)
+    // Vì nhiều người có thể dùng chung mạng (Love House, văn phòng, quán cafe...)
+    // Chỉ cùng device_hash (cùng thiết bị vật lý) mới là dấu hiệu đa tài khoản
     const fraudReasons: string[] = [];
+    const relatedUserIds: string[] = [];
 
-    // Check shared device
+    // Check shared device fingerprint - cùng thiết bị = cùng người tạo nhiều tài khoản
     const { data: userDevices } = await supabaseAdmin
       .from('pplp_device_registry')
       .select('device_hash')
@@ -216,43 +219,16 @@ Deno.serve(async (req) => {
 
     if (userDevices && userDevices.length > 0) {
       for (const dev of userDevices) {
-        const { count } = await supabaseAdmin
+        const { data: otherDeviceUsers } = await supabaseAdmin
           .from('pplp_device_registry')
-          .select('user_id', { count: 'exact', head: true })
+          .select('user_id')
           .eq('device_hash', dev.device_hash)
           .neq('user_id', userId);
-        if (count && count > 0) {
-          fraudReasons.push('Phát hiện nhiều tài khoản trên cùng 1 thiết bị');
-          break;
-        }
-      }
-    }
 
-    // Check shared IP (login_ip_logs): if same IP used by >3 different users in last 7 days
-    // Allow up to 3 accounts per IP (flag when 4+ accounts share same IP)
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-    const { data: userIps } = await supabaseAdmin
-      .from('login_ip_logs')
-      .select('ip_address')
-      .eq('user_id', userId)
-      .gte('created_at', sevenDaysAgo);
-
-    if (userIps && userIps.length > 0) {
-      const uniqueIps = [...new Set(userIps.map(r => r.ip_address))];
-      for (const ip of uniqueIps) {
-        if (ip === 'unknown') continue;
-        // Fetch distinct user_ids sharing this IP (excluding current user)
-        const { data: ipUsers } = await supabaseAdmin
-          .from('login_ip_logs')
-          .select('user_id')
-          .eq('ip_address', ip)
-          .neq('user_id', userId)
-          .gte('created_at', sevenDaysAgo);
-        
-        const distinctOtherUsers = new Set((ipUsers || []).map(r => r.user_id));
-        // Total accounts = distinctOtherUsers + current user; flag if > 3 total
-        if (distinctOtherUsers.size > 2) {
-          fraudReasons.push(`IP ${ip.slice(0, 6)}... dùng chung bởi ${distinctOtherUsers.size + 1} tài khoản`);
+        if (otherDeviceUsers && otherDeviceUsers.length > 0) {
+          const otherIds = otherDeviceUsers.map(u => u.user_id);
+          relatedUserIds.push(...otherIds);
+          fraudReasons.push(`Thiết bị này đang được dùng bởi ${otherIds.length + 1} tài khoản. Để đảm bảo tính minh bạch, hệ thống cần Admin xác minh 🙏`);
           break;
         }
       }
@@ -266,7 +242,7 @@ Deno.serve(async (req) => {
         .eq('avatar_url', profile.avatar_url)
         .neq('id', userId);
       if (avatarDups && avatarDups > 0) {
-        fraudReasons.push('Ảnh đại diện trùng với tài khoản khác');
+        fraudReasons.push('Ảnh đại diện trùng với tài khoản khác. Vui lòng sử dụng ảnh cá nhân của riêng bạn 🌸');
       }
     }
 
@@ -278,33 +254,60 @@ Deno.serve(async (req) => {
         .eq('public_wallet_address', profile.public_wallet_address)
         .neq('id', userId);
       if (walletDups && walletDups > 0) {
-        fraudReasons.push('Địa chỉ ví trùng với tài khoản khác');
+        fraudReasons.push('Địa chỉ ví đang được sử dụng bởi tài khoản khác. Mỗi người nên có ví riêng để bảo vệ quyền lợi 💛');
       }
     }
 
-    // Cross-user duplicate check removed: different users ARE allowed to post same content
-    // Same-user duplicate protection is handled at create-post level (30-day cycle)
-    // If fraud detected -> hold + return 403
+    // If fraud detected -> freeze ALL related accounts + current user, send to admin
     if (fraudReasons.length > 0) {
       const holdNote = fraudReasons.join('; ');
-      console.warn(`Fraud detected for user ${userId}: ${holdNote}`);
+      console.warn(`Integrity check for user ${userId}: ${holdNote}`);
 
+      // Freeze current user
       await supabaseAdmin.from('profiles').update({
         reward_status: 'on_hold',
         admin_notes: holdNote,
       }).eq('id', userId);
 
+      // Freeze all related users on same device
+      const uniqueRelated = [...new Set(relatedUserIds)];
+      if (uniqueRelated.length > 0) {
+        for (const relatedId of uniqueRelated) {
+          await supabaseAdmin.from('profiles').update({
+            reward_status: 'on_hold',
+            admin_notes: `Liên quan đến tài khoản ${userId.slice(0, 8)}... - cùng thiết bị. Chờ Admin xác minh 🙏`,
+          }).eq('id', relatedId);
+        }
+      }
+
+      // Record integrity signal
       await supabaseAdmin.from('pplp_fraud_signals').insert({
         actor_id: userId,
-        signal_type: 'AUTO_HOLD',
+        signal_type: 'SHARED_DEVICE',
         severity: 3,
-        details: { reasons: fraudReasons },
+        details: { reasons: fraudReasons, related_users: uniqueRelated },
         source: 'claim-reward',
       });
 
+      // Notify admins
+      const { data: admins } = await supabaseAdmin
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', 'admin');
+
+      if (admins && admins.length > 0) {
+        const notifications = admins.map(a => ({
+          user_id: a.user_id,
+          actor_id: userId,
+          type: 'admin_shared_device',
+          read: false,
+        }));
+        await supabaseAdmin.from('notifications').insert(notifications);
+      }
+
       return new Response(JSON.stringify({
-        error: 'Account Held',
-        message: `Tài khoản tạm dừng rút tiền do: ${holdNote}. Vui lòng liên hệ Admin để được xem xét.`,
+        error: 'Account Review',
+        message: `Tài khoản của bạn đang chờ xác minh từ Admin 🙏\n\nĐể bảo vệ quyền lợi cho tất cả mọi người, hệ thống cần xác minh khi phát hiện các tài khoản có liên quan. Xin vui lòng liên hệ Admin để được hỗ trợ nhanh nhất. Cảm ơn bạn đã thấu hiểu 💛`,
         reasons: fraudReasons,
       }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
