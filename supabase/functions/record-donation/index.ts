@@ -270,7 +270,7 @@ serve(async (req: Request) => {
         gift_amount: body.amount,
         gift_message: body.message || null,
         is_highlighted: true,
-        highlight_expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+        highlight_expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
         visibility: "public",
         moderation_status: "approved",
       });
