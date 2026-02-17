@@ -25,27 +25,27 @@ export interface UserRewardStats {
  * NEW USER BONUS: 50,000 CAMLY (1 lần duy nhất)
  * 
  * DAILY REWARD LIMITS (từ 2026-01-15) - Chỉ giới hạn thưởng, không giới hạn hành động:
- * - Posts: 10,000 CAMLY/post, THƯỞNG TỐI ĐA 10 bài/ngày = 100,000/day
+ * - Posts: 5,000 CAMLY/post, THƯỞNG TỐI ĐA 10 bài/ngày = 50,000/day
  * - Reactions received: 1,000 CAMLY/reaction, THƯỞNG TỐI ĐA 50/ngày = 50,000/day
- * - Comments received (>20 chars): 2,000 CAMLY/comment, THƯỞNG TỐI ĐA 50/ngày = 100,000/day
- * - Shares received: 10,000 CAMLY/share, THƯỞNG TỐI ĐA 5/ngày = 50,000/day
+ * - Comments received (>20 chars): 1,000 CAMLY/comment, THƯỞNG TỐI ĐA 50/ngày = 50,000/day
+ * - Shares received: 1,000 CAMLY/share, THƯỞNG TỐI ĐA 10/ngày = 10,000/day
  * - Friends: 10,000 CAMLY/friend, THƯỞNG TỐI ĐA 10/ngày = 100,000/day
  * - Livestream (10-120 min): 20,000 CAMLY, THƯỞNG TỐI ĐA 5/ngày = 100,000/day
  * 
- * MAX DAILY REWARD: 500,000 CAMLY
+ * MAX DAILY REWARD: 360,000 CAMLY
  */
 export const REWARD_CONFIG = {
   NEW_USER_BONUS: 50000,
   CUTOFF_DATE: '2026-01-15',
   DAILY_LIMITS: {
-    posts: { reward: 10000, maxPerDay: 10, maxDaily: 100000 },
+    posts: { reward: 5000, maxPerDay: 10, maxDaily: 50000 },
     reactions: { reward: 1000, maxPerDay: 50, maxDaily: 50000 },
-    comments: { reward: 2000, maxPerDay: 50, maxDaily: 100000, minLength: 20 },
-    shares: { reward: 10000, maxPerDay: 5, maxDaily: 50000 },
+    comments: { reward: 1000, maxPerDay: 50, maxDaily: 50000, minLength: 20 },
+    shares: { reward: 1000, maxPerDay: 10, maxDaily: 10000 },
     friends: { reward: 10000, maxPerDay: 10, maxDaily: 100000 },
     livestreams: { reward: 20000, maxPerDay: 5, maxDaily: 100000, minMinutes: 10, maxMinutes: 120 },
   },
-  MAX_DAILY_REWARD: 500000,
+  MAX_DAILY_REWARD: 360000,
 };
 
 export const calculateReward = (
