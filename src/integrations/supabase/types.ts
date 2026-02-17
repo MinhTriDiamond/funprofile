@@ -3289,6 +3289,10 @@ export type Database = {
         Args: { admin_id: string; user_ids: string[] }
         Returns: number
       }
+      batch_delete_orphan_auth_users: {
+        Args: { p_admin_id: string }
+        Returns: number
+      }
       calculate_light_score: {
         Args: {
           base_reward: number
