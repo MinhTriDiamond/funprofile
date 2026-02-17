@@ -6,7 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { Wallet, Users, AlertTriangle, Ban, FileText, Smartphone } from "lucide-react";
+import { Wallet, Users, AlertTriangle, Ban, FileText, Smartphone, CheckCircle, Trash2, Globe, Monitor } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+import { vi } from "date-fns/locale";
 
 interface UserData {
   id: string;
@@ -16,6 +18,9 @@ interface UserData {
   wallet_address: string | null;
   is_banned: boolean;
   pending_reward: number;
+  approved_reward?: number;
+  reward_status?: string;
+  created_at?: string;
   bio?: string | null;
 }
 
@@ -25,45 +30,83 @@ interface WalletAbuseTabProps {
   onRefresh: () => void;
 }
 
+interface IpInfo {
+  ip_address: string;
+  user_agent: string | null;
+  created_at: string;
+}
+
 interface DeviceGroup {
   device_hash: string;
   users: { user_id: string; username: string }[];
+  totalCamly: number;
 }
 
 const WalletAbuseTab = ({ users, adminId, onRefresh }: WalletAbuseTabProps) => {
   const [loading, setLoading] = useState<string | null>(null);
   const [deviceGroups, setDeviceGroups] = useState<DeviceGroup[]>([]);
+  const [ipMap, setIpMap] = useState<Record<string, IpInfo>>({});
 
-  // Fetch shared devices on mount
+  // Fetch shared devices + IP logs on mount
   useEffect(() => {
-    const fetchDeviceGroups = async () => {
-      const { data, error } = await supabase
+    const fetchData = async () => {
+      // Fetch device groups
+      const { data: deviceData } = await supabase
         .from('pplp_device_registry')
         .select('device_hash, user_id');
 
-      if (error || !data) return;
+      if (deviceData) {
+        const groups: Record<string, string[]> = {};
+        deviceData.forEach((d: any) => {
+          if (!groups[d.device_hash]) groups[d.device_hash] = [];
+          if (!groups[d.device_hash].includes(d.user_id)) {
+            groups[d.device_hash].push(d.user_id);
+          }
+        });
 
-      const groups: Record<string, string[]> = {};
-      data.forEach((d: any) => {
-        if (!groups[d.device_hash]) groups[d.device_hash] = [];
-        if (!groups[d.device_hash].includes(d.user_id)) {
-          groups[d.device_hash].push(d.user_id);
-        }
-      });
-
-      const shared = Object.entries(groups)
-        .filter(([_, uids]) => uids.length > 1)
-        .map(([hash, uids]) => ({
-          device_hash: hash,
-          users: uids.map(uid => {
-            const u = users.find(u => u.id === uid);
-            return { user_id: uid, username: u?.username || uid.slice(0, 8) };
+        const shared = Object.entries(groups)
+          .filter(([_, uids]) => uids.length > 1)
+          .map(([hash, uids]) => {
+            const groupUsers = uids.map(uid => {
+              const u = users.find(u => u.id === uid);
+              return { user_id: uid, username: u?.username || uid.slice(0, 8) };
+            });
+            const totalCamly = uids.reduce((sum, uid) => {
+              const u = users.find(u => u.id === uid);
+              return sum + (u?.pending_reward || 0) + (u?.approved_reward || 0);
+            }, 0);
+            return { device_hash: hash, users: groupUsers, totalCamly };
           })
-        }));
+          .sort((a, b) => b.totalCamly - a.totalCamly);
 
-      setDeviceGroups(shared);
+        setDeviceGroups(shared);
+
+        // Fetch IP logs for all users in shared device groups
+        const allUserIds = shared.flatMap(g => g.users.map(u => u.user_id));
+        if (allUserIds.length > 0) {
+          const { data: ipData } = await supabase
+            .from('login_ip_logs')
+            .select('user_id, ip_address, user_agent, created_at')
+            .in('user_id', allUserIds)
+            .order('created_at', { ascending: false });
+
+          if (ipData) {
+            const map: Record<string, IpInfo> = {};
+            ipData.forEach((log: any) => {
+              if (!map[log.user_id]) {
+                map[log.user_id] = {
+                  ip_address: log.ip_address,
+                  user_agent: log.user_agent,
+                  created_at: log.created_at,
+                };
+              }
+            });
+            setIpMap(map);
+          }
+        }
+      }
     };
-    fetchDeviceGroups();
+    fetchData();
   }, [users]);
 
   // Detect shared wallets
@@ -146,6 +189,84 @@ const WalletAbuseTab = ({ users, adminId, onRefresh }: WalletAbuseTabProps) => {
     }
   };
 
+  const handlePermanentDelete = async (user: UserData) => {
+    if (!confirm(`⚠️ Xóa vĩnh viễn ${user.username}?\nHành động này không thể hoàn tác!`)) return;
+    setLoading(`delete-${user.id}`);
+    try {
+      const { error: banError } = await supabase.rpc('ban_user_permanently', {
+        p_admin_id: adminId,
+        p_user_id: user.id,
+        p_reason: 'Xóa vĩnh viễn - lạm dụng đa tài khoản'
+      });
+      if (banError) throw banError;
+
+      await supabase.from('profiles').update({
+        pending_reward: 0,
+        approved_reward: 0,
+        reward_status: 'banned'
+      }).eq('id', user.id);
+
+      await supabase.from('audit_logs').insert({
+        admin_id: adminId,
+        target_user_id: user.id,
+        action: 'permanent_delete',
+        reason: 'Xóa vĩnh viễn - lạm dụng đa tài khoản'
+      });
+
+      toast.success(`Đã xóa vĩnh viễn ${user.username}`);
+      onRefresh();
+    } catch (error: any) {
+      toast.error(error.message || "Lỗi khi xóa user");
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const handleReapprove = async (user: UserData) => {
+    setLoading(`reapprove-${user.id}`);
+    try {
+      const { error } = await supabase.from('profiles').update({
+        reward_status: 'approved'
+      }).eq('id', user.id);
+      if (error) throw error;
+
+      await supabase.from('audit_logs').insert({
+        admin_id: adminId,
+        target_user_id: user.id,
+        action: 'reapprove_reward',
+        reason: 'Admin duyệt lại từ tab Lạm dụng'
+      });
+
+      toast.success(`Đã duyệt lại ${user.username}`);
+      onRefresh();
+    } catch (error: any) {
+      toast.error(error.message || "Lỗi khi duyệt lại");
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const handleReapproveGroup = async (group: DeviceGroup) => {
+    setLoading(`reapprove-group-${group.device_hash}`);
+    try {
+      for (const u of group.users) {
+        await supabase.from('profiles').update({ reward_status: 'approved' }).eq('id', u.user_id);
+        await supabase.from('audit_logs').insert({
+          admin_id: adminId,
+          target_user_id: u.user_id,
+          action: 'reapprove_reward',
+          reason: 'Admin duyệt lại nhóm thiết bị từ tab Lạm dụng'
+        });
+      }
+      toast.success(`Đã duyệt lại ${group.users.length} tài khoản`);
+      onRefresh();
+    } catch (error: any) {
+      toast.error(error.message || "Lỗi khi duyệt lại nhóm");
+    } finally {
+      setLoading(null);
+    }
+  };
+
   const handleBanWalletGroup = async (walletGroup: { wallet_address: string; users: UserData[] }) => {
     setLoading(walletGroup.wallet_address);
     try {
@@ -157,6 +278,29 @@ const WalletAbuseTab = ({ users, adminId, onRefresh }: WalletAbuseTabProps) => {
         });
       }
       toast.success(`Đã cấm ${walletGroup.users.length} tài khoản dùng chung ví`);
+      onRefresh();
+    } catch (error: any) {
+      toast.error(error.message || "Lỗi khi cấm nhóm");
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const handleBanDeviceGroup = async (group: DeviceGroup) => {
+    if (!confirm(`⚠️ Cấm tất cả ${group.users.length} tài khoản trong nhóm thiết bị này?`)) return;
+    setLoading(`ban-group-${group.device_hash}`);
+    try {
+      for (const u of group.users) {
+        const userData = users.find(usr => usr.id === u.user_id);
+        if (userData) {
+          await supabase.rpc('ban_user_permanently', {
+            p_admin_id: adminId,
+            p_user_id: u.user_id,
+            p_reason: `Thiết bị dùng chung: ${group.device_hash.slice(0, 16)}`
+          });
+        }
+      }
+      toast.success(`Đã cấm ${group.users.length} tài khoản`);
       onRefresh();
     } catch (error: any) {
       toast.error(error.message || "Lỗi khi cấm nhóm");
@@ -187,6 +331,109 @@ const WalletAbuseTab = ({ users, adminId, onRefresh }: WalletAbuseTabProps) => {
   const formatNumber = (num: number) => num.toLocaleString('vi-VN');
   const truncateAddress = (addr: string) => `${addr.slice(0, 8)}...${addr.slice(-6)}`;
 
+  const parseUserAgent = (ua: string | null): string => {
+    if (!ua) return 'Không rõ';
+    const browser = ua.match(/(Chrome|Firefox|Safari|Edge|Opera|Samsung)/i)?.[1] || '';
+    const os = ua.match(/(Android|iPhone|iPad|Windows|Mac|Linux)/i)?.[1] || '';
+    return `${browser}/${os}`.replace(/^\/|\/$/g, '') || ua.slice(0, 30);
+  };
+
+  const getStatusBadge = (status?: string) => {
+    switch (status) {
+      case 'on_hold':
+        return <Badge className="bg-yellow-500/20 text-yellow-700 border-yellow-500/30">⏸️ Tạm ngưng</Badge>;
+      case 'approved':
+        return <Badge className="bg-green-500/20 text-green-700 border-green-500/30">✅ Đã duyệt</Badge>;
+      case 'banned':
+        return <Badge className="bg-red-500/20 text-red-700 border-red-500/30">🚫 Bị cấm</Badge>;
+      default:
+        return <Badge className="bg-blue-500/20 text-blue-700 border-blue-500/30">⏳ Chờ duyệt</Badge>;
+    }
+  };
+
+  const getAccountAge = (createdAt?: string) => {
+    if (!createdAt) return '';
+    try {
+      return formatDistanceToNow(new Date(createdAt), { addSuffix: false, locale: vi });
+    } catch {
+      return '';
+    }
+  };
+
+  // Enhanced user card for device tab
+  const DeviceUserCard = ({ userId, username }: { userId: string; username: string }) => {
+    const userData = users.find(u => u.id === userId);
+    const ipInfo = ipMap[userId];
+    if (!userData) return null;
+
+    return (
+      <div className="border rounded-lg p-3 bg-card space-y-2">
+        <div className="flex items-start gap-3">
+          <Avatar className="w-10 h-10">
+            <AvatarImage src={userData.avatar_url || ""} />
+            <AvatarFallback>{username[0]}</AvatarFallback>
+          </Avatar>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="font-semibold text-sm">{username}</p>
+              {getStatusBadge(userData.reward_status)}
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {userData.full_name || '(chưa có tên)'}
+            </p>
+          </div>
+        </div>
+
+        {/* Details grid */}
+        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs pl-[52px]">
+          <div className="flex items-center gap-1 text-muted-foreground">
+            <Globe className="w-3 h-3" />
+            <span>IP: {ipInfo?.ip_address || 'Chưa có'}</span>
+          </div>
+          <div className="flex items-center gap-1 text-muted-foreground">
+            <Monitor className="w-3 h-3" />
+            <span>{parseUserAgent(ipInfo?.user_agent || null)}</span>
+          </div>
+          <div>
+            <span className="text-amber-600 font-medium">{formatNumber(userData.pending_reward)} pending</span>
+          </div>
+          <div>
+            <span className="text-green-600 font-medium">{formatNumber(userData.approved_reward || 0)} approved</span>
+          </div>
+          {userData.created_at && (
+            <div className="col-span-2 text-muted-foreground">
+              📅 Tạo: {new Date(userData.created_at).toLocaleDateString('vi-VN')} ({getAccountAge(userData.created_at)})
+            </div>
+          )}
+        </div>
+
+        {/* Action buttons */}
+        <div className="flex gap-2 justify-end pt-1">
+          {userData.reward_status === 'on_hold' && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-green-600 border-green-300 hover:bg-green-50 text-xs"
+              onClick={() => handleReapprove(userData)}
+              disabled={loading === `reapprove-${userData.id}`}
+            >
+              <CheckCircle className="w-3 h-3 mr-1" /> Duyệt lại
+            </Button>
+          )}
+          <Button
+            size="sm"
+            variant="destructive"
+            className="text-xs"
+            onClick={() => handlePermanentDelete(userData)}
+            disabled={loading === `delete-${userData.id}` || loading === userData.id}
+          >
+            <Trash2 className="w-3 h-3 mr-1" /> Xóa vĩnh viễn
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -196,8 +443,12 @@ const WalletAbuseTab = ({ users, adminId, onRefresh }: WalletAbuseTabProps) => {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="shared">
+        <Tabs defaultValue="device">
           <TabsList className="grid w-full grid-cols-5 mb-4">
+            <TabsTrigger value="device" className="gap-1 text-xs sm:text-sm">
+              <Smartphone className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Thiết bị</span> ({deviceGroups.length})
+            </TabsTrigger>
             <TabsTrigger value="shared" className="gap-1 text-xs sm:text-sm">
               <Wallet className="w-3 h-3 sm:w-4 sm:h-4" />
               <span className="hidden sm:inline">Ví chung</span> ({sharedWallets.length})
@@ -214,11 +465,52 @@ const WalletAbuseTab = ({ users, adminId, onRefresh }: WalletAbuseTabProps) => {
               <Ban className="w-3 h-3 sm:w-4 sm:h-4" />
               <span className="hidden sm:inline">Thiếu</span> ({missingProfileUsers.length})
             </TabsTrigger>
-            <TabsTrigger value="device" className="gap-1 text-xs sm:text-sm">
-              <Smartphone className="w-3 h-3 sm:w-4 sm:h-4" />
-              <span className="hidden sm:inline">Thiết bị</span> ({deviceGroups.length})
-            </TabsTrigger>
           </TabsList>
+
+          {/* Shared Devices - Enhanced */}
+          <TabsContent value="device" className="max-h-[600px] overflow-y-auto space-y-4">
+            {deviceGroups.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">Không phát hiện thiết bị dùng chung</p>
+            ) : (
+              deviceGroups.map((group, idx) => (
+                <div key={idx} className="border-2 border-orange-200 rounded-xl p-4 space-y-3 bg-orange-50/30">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-mono text-sm font-bold">🖥️ Device: {group.device_hash.slice(0, 16)}...</p>
+                      <p className="text-sm text-muted-foreground">
+                        {group.users.length} tài khoản • <span className="text-red-600 font-semibold">Tổng CAMLY nhóm: {formatNumber(group.totalCamly)}</span>
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-green-600 border-green-300 hover:bg-green-50 text-xs"
+                        onClick={() => handleReapproveGroup(group)}
+                        disabled={loading === `reapprove-group-${group.device_hash}`}
+                      >
+                        <CheckCircle className="w-3 h-3 mr-1" /> Duyệt lại tất cả
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        className="text-xs"
+                        onClick={() => handleBanDeviceGroup(group)}
+                        disabled={loading === `ban-group-${group.device_hash}`}
+                      >
+                        <Ban className="w-3 h-3 mr-1" /> Cấm tất cả
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="grid gap-2">
+                    {group.users.map(u => (
+                      <DeviceUserCard key={u.user_id} userId={u.user_id} username={u.username} />
+                    ))}
+                  </div>
+                </div>
+              ))
+            )}
+          </TabsContent>
 
           {/* Shared Wallets */}
           <TabsContent value="shared" className="max-h-[500px] overflow-y-auto space-y-4">
@@ -339,44 +631,6 @@ const WalletAbuseTab = ({ users, adminId, onRefresh }: WalletAbuseTabProps) => {
                   <Button size="sm" variant="destructive" onClick={() => handleBanUser(user)} disabled={loading === user.id}>
                     <Ban className="w-4 h-4" />
                   </Button>
-                </div>
-              ))
-            )}
-          </TabsContent>
-
-          {/* Shared Devices */}
-          <TabsContent value="device" className="max-h-[500px] overflow-y-auto space-y-4">
-            {deviceGroups.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">Không phát hiện thiết bị dùng chung</p>
-            ) : (
-              deviceGroups.map((group, idx) => (
-                <div key={idx} className="border rounded-lg p-4 space-y-3">
-                  <div>
-                    <p className="font-mono text-sm">Device: {group.device_hash.slice(0, 16)}...</p>
-                    <p className="text-xs text-muted-foreground">{group.users.length} tài khoản</p>
-                  </div>
-                  <div className="grid gap-2">
-                    {group.users.map(u => {
-                      const userData = users.find(usr => usr.id === u.user_id);
-                      return (
-                        <div key={u.user_id} className="flex items-center gap-3 p-2 bg-muted/50 rounded">
-                          <Avatar className="w-8 h-8">
-                            <AvatarImage src={userData?.avatar_url || ""} />
-                            <AvatarFallback>{u.username[0]}</AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1">
-                            <p className="text-sm font-medium">{u.username}</p>
-                            <p className="text-xs text-muted-foreground">{formatNumber(userData?.pending_reward || 0)} CAMLY</p>
-                          </div>
-                          {userData && (
-                            <Button size="sm" variant="destructive" onClick={() => handleBanUser(userData)} disabled={loading === userData.id}>
-                              <Ban className="w-4 h-4" />
-                            </Button>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
                 </div>
               ))
             )}
