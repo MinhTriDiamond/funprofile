@@ -35,10 +35,10 @@ export type ActionType = 'post' | 'comment' | 'reaction' | 'share' | 'friend' | 
 
 // Base Rewards (BR) - FUN tokens per action
 export const BASE_REWARDS: Record<ActionType, number> = {
-  post: 100,
-  comment: 20,
+  post: 50,
+  comment: 10,
   reaction: 10,
-  share: 50,
+  share: 10,
   friend: 20,
   livestream: 200,
   new_user_bonus: 500,
@@ -46,10 +46,10 @@ export const BASE_REWARDS: Record<ActionType, number> = {
 
 // Daily Caps per action type
 export const DAILY_CAPS: Record<ActionType, { maxActions: number; maxReward: number }> = {
-  post: { maxActions: 10, maxReward: 1000 },
-  comment: { maxActions: 50, maxReward: 1000 },
+  post: { maxActions: 10, maxReward: 500 },
+  comment: { maxActions: 50, maxReward: 500 },
   reaction: { maxActions: 50, maxReward: 500 },
-  share: { maxActions: 10, maxReward: 500 },
+  share: { maxActions: 10, maxReward: 100 },
   friend: { maxActions: 10, maxReward: 200 },
   livestream: { maxActions: 5, maxReward: 1000 },
   new_user_bonus: { maxActions: 1, maxReward: 500 },
