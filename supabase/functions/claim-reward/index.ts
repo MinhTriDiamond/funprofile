@@ -685,48 +685,6 @@ Deno.serve(async (req) => {
         visibility: 'public',
         moderation_status: 'approved',
       });
-
-      // Generate celebration image (non-blocking)
-      try {
-        const imgRes = await fetch(`${supabaseUrl}/functions/v1/generate-celebration-image`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${supabaseServiceKey}`,
-          },
-          body: JSON.stringify({
-            sender_username: 'FUN Profile Treasury',
-            recipient_username: claimUsername,
-            amount: effectiveAmount.toString(),
-            token_symbol: 'CAMLY',
-            tx_hash: txHash,
-            type: 'claim',
-          }),
-        });
-        const imgData = await imgRes.json();
-        if (imgData.image_url) {
-          // Update post with image
-          await supabaseAdmin.from('posts')
-            .update({ image_url: imgData.image_url })
-            .eq('tx_hash', txHash)
-            .eq('post_type', 'gift_celebration');
-
-          // Update chat message with image
-          if (chatMessageId) {
-            await supabaseAdmin.from('messages')
-              .update({
-                media_urls: JSON.stringify([{
-                  type: 'image',
-                  url: imgData.image_url,
-                  label: 'Celebration Card',
-                }]),
-              })
-              .eq('id', chatMessageId);
-          }
-        }
-      } catch (imgErr) {
-        console.error('Image generation failed (non-blocking):', imgErr);
-      }
     } catch (postError) {
       console.error('Failed to create celebration post (non-blocking):', postError);
     }

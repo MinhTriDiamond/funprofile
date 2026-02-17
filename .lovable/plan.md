@@ -1,135 +1,55 @@
 
+# Sửa lỗi mục Tặng quà hiển thị sai ví (402 thay vì afaa)
 
-# Tự động tạo hình ảnh chúc mừng và đăng lên trang cá nhân người nhận
+## Nguyên nhân
 
-## Tổng quan
+Người dùng có **2 tài khoản** trong MetaMask và đã chọn tài khoản `0xb4dd...afaa` qua tính năng Account Selector trên trang Ví. Tuy nhiên, dialog Tặng quà (`UnifiedGiftSendDialog`) dùng `useAccount()` từ wagmi (dòng 94), trả về địa chỉ mặc định của provider (`0x5102Ec...58a402`) -- **không phải** tài khoản người dùng đã chọn.
 
-Khi người dùng tặng quà hoặc rút thưởng CAMLY, hệ thống sẽ tự động:
-1. Tạo hình ảnh chúc mừng (celebration card) bằng AI
-2. Upload lên Cloudflare R2
-3. Đính kèm hình ảnh vào bài đăng gift_celebration trên Feed
-4. Đính kèm hình ảnh vào tin nhắn chat gửi cho người nhận
+Trong khi đó, `useSendToken` đã xử lý đúng bằng cách dùng `useActiveAccount().activeAddress` làm ưu tiên (dòng 75: `const senderAddress = activeAddress || providerAddress`). Nhưng phần hiển thị trong dialog lại dùng `address` từ wagmi nên bị lệch.
 
 ## Giải pháp
 
-### Bước 1: Tạo Edge Function mới `generate-celebration-image`
+Trong file `src/components/donations/UnifiedGiftSendDialog.tsx`:
 
-Tạo file `supabase/functions/generate-celebration-image/index.ts`:
+1. **Import `useActiveAccount`** từ ActiveAccountContext
+2. **Lấy `activeAddress`** và sử dụng nó thay cho `address` ở những chỗ hiển thị:
+   - Dòng 94: Thêm `const { activeAddress } = useActiveAccount();`
+   - Tạo biến `const effectiveAddress = activeAddress || address;`
+   - Thay tất cả chỗ hiển thị `address` bằng `effectiveAddress` (dòng 666-668 hiển thị ví sender, dòng 677-679 kiểm tra mismatch)
+   - Giữ nguyên `isConnected` từ `useAccount()` vì logic kết nối vẫn cần wagmi
 
-- Nhận thông tin giao dịch: sender_username, recipient_username, amount, token_symbol, tx_hash
-- Gọi Lovable AI Gateway (google/gemini-2.5-flash-image) để tạo hình ảnh chúc mừng với nội dung:
-  - Logo FUN Profile
-  - Ten nguoi gui va nguoi nhan
-  - So luong token
-  - Thoi gian giao dich
-  - Thiet ke gradient xanh la voi hieu ung long lanh
-- Upload hinh anh (base64 -> bytes) len Cloudflare R2 thu muc `celebrations/`
-- Tra ve URL hinh anh
+## Chi tiết kỹ thuật
 
-### Buoc 2: Cap nhat `record-donation/index.ts`
+### File: `src/components/donations/UnifiedGiftSendDialog.tsx`
 
-Sau khi tao bai dang gift_celebration (dong 262-276), goi edge function `generate-celebration-image` de tao hinh anh, sau do:
-- Cap nhat bai dang voi `image_url` = URL hinh anh tu R2
-- Cap nhat tin nhan chat voi `media_urls` bao gom hinh anh celebration
-
-### Buoc 3: Cap nhat `claim-reward/index.ts`
-
-Tuong tu, sau khi tao bai dang celebration (dong 673-687):
-- Goi function tao hinh anh
-- Cap nhat bai dang va tin nhan chat voi hinh anh
-
-### Buoc 4: Cap nhat `GiftCelebrationCard.tsx`
-
-Hien thi hinh anh celebration trong card neu `image_url` co san, tao giao dien dep hon va co dinh (khong mat di).
-
----
-
-## Chi tiet ky thuat
-
-### Edge Function: `generate-celebration-image`
-
-```
-POST /generate-celebration-image
-Body: {
-  sender_username: string,
-  recipient_username: string, 
-  amount: string,
-  token_symbol: string,
-  tx_hash: string,
-  type: "gift" | "claim"
-}
-Response: { image_url: string }
-```
-
-Logic:
-1. Tao prompt cho AI: "Generate a beautiful celebration card image with green gradient background, golden sparkles. Show: [sender] sent [amount] [token] to [recipient]. Include FUN Profile branding. Professional, festive design."
-2. Goi Lovable AI Gateway voi model `google/gemini-2.5-flash-image` va `modalities: ["image", "text"]`
-3. Nhan base64 image tu response
-4. Upload len R2 tai `celebrations/{timestamp}-{random}.png`
-5. Tra ve public URL
-
-### Thay doi `record-donation/index.ts`
-
-Sau dong 276 (sau khi insert post), them:
+**Dòng 1-30 (imports):** Thêm import:
 ```typescript
-// Generate celebration image
-let celebrationImageUrl = null;
-try {
-  const imgRes = await fetch(`${supabaseUrl}/functions/v1/generate-celebration-image`, {
-    method: 'POST',
-    headers: { 
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${supabaseServiceKey}` 
-    },
-    body: JSON.stringify({
-      sender_username: senderName,
-      recipient_username: recipientName,
-      amount: body.amount,
-      token_symbol: body.token_symbol,
-      tx_hash: body.tx_hash,
-      type: 'gift'
-    })
-  });
-  const imgData = await imgRes.json();
-  celebrationImageUrl = imgData.image_url;
-  
-  // Update post with image
-  if (celebrationImageUrl) {
-    await supabase.from('posts')
-      .update({ image_url: celebrationImageUrl })
-      .eq('tx_hash', body.tx_hash)
-      .eq('post_type', 'gift_celebration');
-  }
-} catch (e) {
-  console.error('Image generation failed (non-blocking):', e);
-}
+import { useActiveAccount } from '@/contexts/ActiveAccountContext';
 ```
 
-Tuong tu cho tin nhan chat: them hinh anh vao `media_urls`.
+**Dòng 94:** Thêm activeAddress và tạo effectiveAddress:
+```typescript
+const { address, isConnected } = useAccount();
+const { activeAddress } = useActiveAccount();
+const effectiveAddress = activeAddress || address;
+```
 
-### Thay doi `claim-reward/index.ts`
+**Dòng 666-668 (hiển thị ví sender):** Đổi `address` thành `effectiveAddress`:
+```typescript
+{effectiveAddress && (
+  <div className="flex items-center gap-1">
+    <p className="...">{effectiveAddress.slice(0, 8)}...{effectiveAddress.slice(-6)}</p>
+    <button onClick={() => handleCopyAddress(effectiveAddress)}>...</button>
+  </div>
+)}
+```
 
-Them logic tuong tu sau dong 687, goi `generate-celebration-image` va cap nhat post + chat message.
+**Dòng 677-679 (kiểm tra mismatch):** Đổi `address` thành `effectiveAddress`
 
-### Thay doi `GiftCelebrationCard.tsx`
+**Dòng 144 (useEffect dependency):** Đổi `address` thành `effectiveAddress` để refetch sender profile khi user chọn account khác
 
-Them hien thi hinh anh trong card:
-- Neu `post.image_url` ton tai, hien thi hinh anh celebration ben trong card
-- Hinh anh se la bang chung vinh vien cua giao dich
+Tất cả các chỗ sử dụng `address` trong phần **hiển thị** và **kiểm tra** sẽ chuyển sang `effectiveAddress`, đảm bảo đồng bộ với tài khoản người dùng đã chọn trên trang Ví.
 
-### Tong ket cac file can tao/sua
-
-| File | Thao tac |
-|------|----------|
-| `supabase/functions/generate-celebration-image/index.ts` | Tao moi - Edge function tao hinh AI |
-| `supabase/functions/record-donation/index.ts` | Sua - Goi tao hinh va cap nhat post/chat |
-| `supabase/functions/claim-reward/index.ts` | Sua - Goi tao hinh va cap nhat post/chat |
-| `src/components/feed/GiftCelebrationCard.tsx` | Sua - Hien thi hinh anh celebration |
-| `supabase/config.toml` | Tu dong cap nhat khi deploy |
-
-### Luu y
-- Viec tao hinh anh la non-blocking: neu that bai, giao dich van thanh cong binh thuong
-- Hinh anh duoc luu vinh vien tren R2, bai dang va chat se luon co hinh
-- Su dung `LOVABLE_API_KEY` (da co san) de goi AI Gateway
-- Hinh anh ~500KB-1MB, upload nhanh qua R2
-
+## Kết quả mong đợi
+- Khi người dùng chọn tài khoản `0xb4dd...afaa` trên trang Ví, dialog Tặng quà cũng hiển thị đúng `0xb4dd...afaa`
+- Giao dịch gửi từ đúng tài khoản đã chọn (useSendToken đã xử lý đúng rồi)

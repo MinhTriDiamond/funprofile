@@ -284,55 +284,6 @@ serve(async (req: Request) => {
       type: "donation",
     });
 
-    // Generate celebration image (non-blocking)
-    let celebrationImageUrl: string | null = null;
-    try {
-      const imgRes = await fetch(`${supabaseUrl}/functions/v1/generate-celebration-image`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${supabaseServiceKey}`,
-        },
-        body: JSON.stringify({
-          sender_username: senderName,
-          recipient_username: recipientName,
-          amount: body.amount,
-          token_symbol: body.token_symbol,
-          tx_hash: body.tx_hash,
-          type: "gift",
-        }),
-      });
-      const imgData = await imgRes.json();
-      if (imgData.image_url) {
-        celebrationImageUrl = imgData.image_url;
-        // Update post with image
-        await supabase.from("posts")
-          .update({ image_url: celebrationImageUrl })
-          .eq("tx_hash", body.tx_hash)
-          .eq("post_type", "gift_celebration");
-
-        // Update chat message with image
-        if (messageId) {
-          const existingMediaUrls = [{
-            type: "donation",
-            donation_id: donation.id,
-            amount: body.amount,
-            token_symbol: body.token_symbol,
-            tx_hash: body.tx_hash,
-          }, {
-            type: "image",
-            url: celebrationImageUrl,
-            label: "Celebration Card",
-          }];
-          await supabase.from("messages")
-            .update({ media_urls: JSON.stringify(existingMediaUrls) })
-            .eq("id", messageId);
-        }
-      }
-    } catch (imgError) {
-      console.error("Image generation failed (non-blocking):", imgError);
-    }
-
     return new Response(
       JSON.stringify({
         success: true,
@@ -340,7 +291,6 @@ serve(async (req: Request) => {
         light_score_earned: lightScoreEarned,
         conversation_id: conversationId,
         message_id: messageId,
-        celebration_image_url: celebrationImageUrl,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
