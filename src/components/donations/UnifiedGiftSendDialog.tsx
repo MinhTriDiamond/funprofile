@@ -103,6 +103,7 @@ export const UnifiedGiftSendDialog = ({
   // Sender profile
   const [senderProfile, setSenderProfile] = useState<{ username: string; avatar_url: string | null; wallet_address: string | null } | null>(null);
   const [senderUserId, setSenderUserId] = useState<string | null>(null);
+  const [isRestricted, setIsRestricted] = useState(false);
 
   // Recipient search state
   const [searchTab, setSearchTab] = useState<'username' | 'address'>('username');
@@ -114,19 +115,26 @@ export const UnifiedGiftSendDialog = ({
 
   const debouncedSearchQuery = useDebounce(searchQuery, 500);
 
-  // Fetch sender profile
+  // Fetch sender profile + check restricted status
   useEffect(() => {
     if (!isOpen) return;
+    setIsRestricted(false);
     (async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
       setSenderUserId(session.user.id);
       const { data } = await supabase
         .from('profiles')
-        .select('username, avatar_url, wallet_address')
+        .select('username, avatar_url, wallet_address, reward_status, is_banned')
         .eq('id', session.user.id)
         .single();
-      if (data) setSenderProfile(data);
+      if (data) {
+        setSenderProfile(data);
+        setIsRestricted(
+          data.is_banned === true ||
+          ['on_hold', 'rejected', 'banned'].includes(data.reward_status)
+        );
+      }
     })();
   }, [isOpen]);
 
@@ -319,7 +327,7 @@ export const UnifiedGiftSendDialog = ({
   const handleEmojiSelect = (emoji: string) => setCustomMessage(prev => prev + emoji);
 
   // Can proceed to confirm step?
-  const canProceedToConfirm = isConnected && effectiveRecipientAddress && isValidAmount && hasEnoughBalance && !isWrongNetwork;
+  const canProceedToConfirm = isConnected && effectiveRecipientAddress && isValidAmount && hasEnoughBalance && !isWrongNetwork && !isRestricted;
 
   const handleGoToConfirm = () => {
     if (!canProceedToConfirm) return;
@@ -529,6 +537,16 @@ export const UnifiedGiftSendDialog = ({
           {/* ========== STEP 1: FORM ========== */}
           {flowStep === 'form' && (
             <div className="space-y-5 py-2">
+              {/* Restricted account warning */}
+              {isRestricted && (
+                <div className="flex items-center gap-2 p-4 bg-destructive/10 border border-destructive/30 rounded-lg">
+                  <AlertTriangle className="w-5 h-5 text-destructive shrink-0" />
+                  <div>
+                    <p className="font-medium text-destructive">Tài khoản đang bị hạn chế</p>
+                    <p className="text-xs text-destructive/80 mt-0.5">Bạn không thể gửi token hoặc tặng quà. Vui lòng liên hệ Admin.</p>
+                  </div>
+                </div>
+              )}
               {/* Sender info */}
               {senderProfile && (
                 <div>

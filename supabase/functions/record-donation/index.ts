@@ -65,6 +65,27 @@ serve(async (req: Request) => {
       );
     }
 
+    // Check sender profile status - block banned/on_hold users
+    const { data: senderStatus } = await supabase
+      .from("profiles")
+      .select("reward_status, is_banned")
+      .eq("id", user.id)
+      .single();
+
+    if (senderStatus?.is_banned) {
+      return new Response(
+        JSON.stringify({ error: "Tài khoản đã bị cấm. Không thể thực hiện giao dịch." }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (["on_hold", "rejected", "banned"].includes(senderStatus?.reward_status)) {
+      return new Response(
+        JSON.stringify({ error: "Tài khoản đang bị hạn chế. Vui lòng liên hệ Admin." }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Check duplicate
     const { data: existingDonation } = await supabase
       .from("donations")

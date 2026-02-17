@@ -98,6 +98,21 @@ export function useSendToken() {
       return null;
     }
 
+    // --- Check restricted status ---
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    if (currentUser) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('reward_status, is_banned')
+        .eq('id', currentUser.id)
+        .single();
+
+      if (profile?.is_banned || ['on_hold', 'rejected', 'banned'].includes(profile?.reward_status)) {
+        toast.error('Tài khoản đang bị hạn chế. Không thể chuyển token. Vui lòng liên hệ Admin.');
+        return null;
+      }
+    }
+
     // --- Begin send flow ---
     setIsProcessing(true);
     setTxHash(null);

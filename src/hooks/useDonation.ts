@@ -77,6 +77,21 @@ export function useDonation(options?: UseDonationOptions) {
       return null;
     }
 
+    // Check restricted status
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    if (currentUser) {
+      const { data: senderProfile } = await supabase
+        .from('profiles')
+        .select('reward_status, is_banned')
+        .eq('id', currentUser.id)
+        .single();
+
+      if (senderProfile?.is_banned || ['on_hold', 'rejected', 'banned'].includes(senderProfile?.reward_status)) {
+        toast.error('Tài khoản đang bị hạn chế. Không thể tặng quà. Vui lòng liên hệ Admin.');
+        return null;
+      }
+    }
+
     setIsProcessing(true);
 
     try {
