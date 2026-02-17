@@ -1,57 +1,80 @@
 
-# Hiển thị phí gas thực tế thay vì con số cố định
+# Sửa 3 lỗi trong tính năng Tặng quà đa người nhận
 
-## Vấn đề hiện tại
-Hệ thống đang dùng con số cố định `0.002 BNB` cho mỗi giao dịch để ước tính phí gas. Con số này cao hơn thực tế 4-5 lần, khiến người dùng hoang mang.
+## Vấn đề phát hiện
+
+Sau khi kiểm tra database và code, Cha xác nhận:
+
+1. **Giao dịch KHÔNG được ghi vào database**: Giao dịch multi-send từ @Van103 (tx `0x1f96e34d...`) hoàn toàn không có trong bảng `donations`. Nguyên nhân: `recordDonationBackground` chạy ngầm (fire-and-forget) nhưng không có cơ chế retry khi thất bại, và không invalidate cache sau khi ghi xong.
+
+2. **Không có tin nhắn chat**: Do giao dịch không được ghi vào database, edge function `record-donation` (tạo chat message) không chạy thành công.
+
+3. **Thẻ chúc mừng chỉ ghi "@6 người nhận"**: Code cố ý gom thành chuỗi `${successCount} người nhận` thay vì liệt kê tên từng người.
 
 ## Giải pháp
-Sử dụng `publicClient` từ wagmi để lấy `gasPrice` thực tế từ mạng BSC tại thời điểm giao dịch, kết hợp với gas limit chuẩn (21,000 cho BNB native, 65,000 cho ERC-20 token) để tính phí chính xác.
 
-## Chi tiết kỹ thuật
+### Thay doi 1: Liệt kê tên từng người nhận trên thẻ chúc mừng
 
-### File 1: `src/lib/tokens.ts`
-- Giữ `BNB_GAS_BUFFER` nhưng giảm xuống `0.0005` làm giá trị dự phòng (fallback) khi không lấy được gasPrice từ mạng.
+**File: `src/components/donations/UnifiedGiftSendDialog.tsx`** (dòng 486-504)
 
-### File 2: `src/components/donations/UnifiedGiftSendDialog.tsx`
+Thay vì gom thành "6 người nhận", hiển thị danh sách tên: "@user1, @user2, @user3..." và ghi nhận từng người nhận kèm tx_hash riêng.
 
-**Thêm hook lấy gasPrice thực tế:**
-- Import `usePublicClient` từ wagmi, thêm `useEffect` + `useState` để gọi `publicClient.getGasPrice()` mỗi 30 giây
-- Tính `estimatedGasPerTx` = gasPrice x gasLimit (65,000 cho ERC-20, 21,000 cho BNB native), chuyển sang đơn vị BNB
-- Fallback về `0.0005` nếu không lấy được gasPrice
+Thêm trường `multiRecipients` vào `GiftCardData` để lưu danh sách kết quả gửi.
 
-**Cập nhật 3 vị trí dùng phí gas:**
-1. **Dòng 205** (gas warning): Thay `0.002 * recipientsWithWallet.length` bằng `estimatedGasPerTx * recipientsWithWallet.length`
-2. **Dòng 344** (tính "Tặng tối đa"): Thay `0.002 * recipientsWithWallet.length` bằng `estimatedGasPerTx * recipientsWithWallet.length`
-3. **Dòng 931** (hiển thị cảnh báo): Thay `0.002 * recipientsWithWallet.length` bằng `(estimatedGasPerTx * recipientsWithWallet.length).toFixed(4)` -- hiển thị con số thực tế
+**File: `src/components/donations/GiftCelebrationModal.tsx`** (dòng 24-44, 283-306)
 
-**Code mẫu cho hook gasPrice:**
-```typescript
-const publicClient = usePublicClient();
-const [estimatedGasPerTx, setEstimatedGasPerTx] = useState(0.0005);
+- Thêm trường `multiRecipients` vào interface `GiftCardData`
+- Khi có `multiRecipients`, hiển thị danh sách từng người nhận kèm trạng thái (thanh cong/that bai) và tx hash riêng thay vì chỉ 1 người nhận
 
-useEffect(() => {
-  const fetchGasPrice = async () => {
-    if (!publicClient) return;
-    try {
-      const gasPrice = await publicClient.getGasPrice();
-      const gasLimit = selectedToken.address ? 65000n : 21000n;
-      const totalWei = gasPrice * gasLimit;
-      const inBnb = Number(totalWei) / 1e18;
-      // Thêm 20% buffer an toàn
-      setEstimatedGasPerTx(inBnb * 1.2);
-    } catch {
-      setEstimatedGasPerTx(0.0005);
-    }
-  };
-  fetchGasPrice();
-  const interval = setInterval(fetchGasPrice, 30000);
-  return () => clearInterval(interval);
-}, [publicClient, selectedToken.address]);
+### Thay doi 2: Dam bao giao dich duoc ghi vao database
+
+**File: `src/components/donations/UnifiedGiftSendDialog.tsx`** (dòng 442-518, 528-584)
+
+- Thay doi `handleSendMulti`: Thu thập tất cả kết quả gửi thành công, sau đó gọi `recordDonationBackground` cho từng người **tuần tự (sequential)** thay vì song song, để tránh race condition
+- Thêm cơ chế retry: Nếu `record-donation` thất bại, thử lại 1 lần sau 2 giây
+- Sau khi tất cả donation được ghi xong, invalidate các query: `donation-history`, `donation-stats`, `transaction-history`
+- Thêm `card_theme` và `card_sound` vào body gửi tới edge function
+- Redeploy edge function `record-donation` để đảm bảo nó đang hoạt động
+
+### Thay doi 3: Cai thien hien thi ket qua multi-send
+
+**File: `src/components/donations/GiftCelebrationModal.tsx`**
+
+Khi có `multiRecipients`, thay vì hiển thị 1 dòng "Người nhận: @6 người nhận", hiển thị danh sách:
+- Mỗi người nhận trên 1 dòng
+- Kèm avatar, username, trạng thái (thanh cong/that bai)
+- Link xem giao dịch trên BscScan cho từng người
+
+## Chi tiet ky thuat
+
+### Interface moi cho GiftCardData
+
+```text
+multiRecipients?: Array<{
+  username: string;
+  avatarUrl?: string | null;
+  recipientId: string;
+  walletAddress: string;
+  success: boolean;
+  txHash?: string;
+  error?: string;
+}>
 ```
 
-### Kết quả mong đợi
+### Flow sau khi sua
 
-| Trước | Sau |
-|-------|-----|
-| "Cần khoảng 0.0160 BNB phí gas cho 8 giao dịch" | "Cần khoảng 0.0032 BNB phí gas cho 8 giao dịch" (con số thực tế từ mạng) |
-| Con số cố định, không phản ánh tình trạng mạng | Con số cập nhật mỗi 30 giây, phản ánh đúng gasPrice hiện tại |
+```text
+Multi-send thanh cong
+  -> Hien thi the chuc mung voi DANH SACH tung nguoi nhan
+  -> Ghi tung donation vao database (tuan tu, co retry)
+  -> Invalidate cache donation-history, donation-stats
+  -> Moi nguoi nhan duoc: notification + chat message + bai dang
+```
+
+### Cac file thay doi
+
+| File | Thay doi |
+|------|---------|
+| `src/components/donations/UnifiedGiftSendDialog.tsx` | Sua celebration data, cai thien recordDonationBackground, them retry va invalidation |
+| `src/components/donations/GiftCelebrationModal.tsx` | Them hien thi danh sach multi-recipients |
+| `supabase/functions/record-donation/index.ts` | Redeploy de dam bao hoat dong |
