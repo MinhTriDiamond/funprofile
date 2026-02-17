@@ -205,6 +205,19 @@ Deno.serve(async (req) => {
       }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
+    // 7g. Check account age - must be at least 7 days old
+    const accountCreatedAt = new Date(user.created_at);
+    const accountAgeDays = (Date.now() - accountCreatedAt.getTime()) / (1000 * 60 * 60 * 24);
+    if (accountAgeDays < 7) {
+      const daysLeft = Math.ceil(7 - accountAgeDays);
+      return new Response(JSON.stringify({
+        error: 'Account Too New',
+        message: `Tài khoản cần hoạt động ít nhất 7 ngày trước khi được claim. Còn ${daysLeft} ngày nữa bạn sẽ có thể rút thưởng 🌱`,
+        missing: ['account_age'],
+        days_remaining: daysLeft,
+      }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     // 7f. Auto fraud detection - CHỈ dựa trên device fingerprint (KHÔNG dựa trên IP)
     // Vì nhiều người có thể dùng chung mạng (Love House, văn phòng, quán cafe...)
     // Chỉ cùng device_hash (cùng thiết bị vật lý) mới là dấu hiệu đa tài khoản
