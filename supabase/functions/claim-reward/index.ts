@@ -665,6 +665,30 @@ Deno.serve(async (req) => {
       type: 'claim_reward',
     });
 
+    // 17c. Create celebration post on feed
+    try {
+      const claimUsername = profile.username || profile.full_name || 'Nguoi dung';
+      const celebrationContent = `🎉 @${claimUsername} da nhan thuong ${effectiveAmount.toLocaleString()} CAMLY tu FUN Profile Treasury! ❤️`;
+
+      await supabaseAdmin.from('posts').insert({
+        user_id: userId,
+        content: celebrationContent,
+        post_type: 'gift_celebration',
+        tx_hash: txHash,
+        gift_sender_id: TREASURY_ACTOR_ID,
+        gift_recipient_id: userId,
+        gift_token: 'CAMLY',
+        gift_amount: effectiveAmount.toString(),
+        gift_message: `Claim ${effectiveAmount.toLocaleString()} CAMLY`,
+        is_highlighted: true,
+        highlight_expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+        visibility: 'public',
+        moderation_status: 'approved',
+      });
+    } catch (postError) {
+      console.error('Failed to create celebration post (non-blocking):', postError);
+    }
+
     const newDailyClaimed = todayClaimed + effectiveAmount;
     console.log(`Successfully claimed ${effectiveAmount} CAMLY for user ${userId}`);
 
