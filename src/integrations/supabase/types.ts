@@ -3285,6 +3285,10 @@ export type Database = {
         Args: { p_admin_id: string; p_reason?: string; p_user_id: string }
         Returns: boolean
       }
+      batch_ban_ghost_users: {
+        Args: { admin_id: string; user_ids: string[] }
+        Returns: number
+      }
       calculate_light_score: {
         Args: {
           base_reward: number

@@ -88,18 +88,58 @@ Deno.serve(async (req) => {
         .eq("device_hash", deviceHash)
         .neq("user_id", user.id);
 
-      if (otherUsers && otherUsers.length > 0) {
+      // Only flag if MORE THAN 2 other users share same device (allow up to 3 total)
+      if (otherUsers && otherUsers.length > 2) {
         const allUserIds = [user.id, ...otherUsers.map(u => u.user_id)];
         console.warn(`[SHARED DEVICE] device_hash=${deviceHash.slice(0, 8)}... shared by ${allUserIds.length} users`);
 
-        // Freeze ALL related accounts (current + others on same device)
-        const holdMessage = `Hệ thống nhận thấy thiết bị này được dùng bởi ${allUserIds.length} tài khoản. Để bảo vệ quyền lợi mọi người, tài khoản chờ Admin xác minh 🙏`;
-        
-        for (const uid of allUserIds) {
-          await supabaseAdmin.from("profiles").update({
-            reward_status: "on_hold",
-            admin_notes: holdMessage,
-          }).eq("id", uid);
+        // Check registration rate: how many accounts created on this device in last 24h
+        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        const { data: recentAccounts } = await supabaseAdmin
+          .from("pplp_device_registry")
+          .select("user_id, created_at")
+          .eq("device_hash", deviceHash);
+
+        // Get profiles created in last 24h on this device
+        const recentUserIds = recentAccounts?.map(a => a.user_id) || [];
+        const { data: recentProfiles } = await supabaseAdmin
+          .from("profiles")
+          .select("id, created_at")
+          .in("id", recentUserIds)
+          .gte("created_at", oneDayAgo);
+
+        const recentCount = recentProfiles?.length || 0;
+        const shouldAutoBan = recentCount > 3; // More than 3 accounts in 24h = auto-ban new ones
+
+        if (shouldAutoBan) {
+          // Auto-ban only the newest accounts (created in last 24h), not all
+          const newAccountIds = recentProfiles?.map(p => p.id) || [];
+          for (const uid of newAccountIds) {
+            await supabaseAdmin.from("profiles").update({
+              is_banned: true,
+              reward_status: "banned",
+              admin_notes: `Tự động cấm: ${recentCount} tài khoản tạo trên cùng thiết bị trong 24 giờ`,
+            }).eq("id", uid);
+          }
+
+          // Insert high-severity fraud signal
+          await supabaseAdmin.from("pplp_fraud_signals").insert({
+            actor_id: user.id,
+            signal_type: "RAPID_REGISTRATION",
+            severity: 5,
+            details: { device_hash: deviceHash.slice(0, 8), recent_count: recentCount, auto_banned: newAccountIds },
+            source: "log-login-ip",
+          });
+        } else {
+          // Standard shared device handling: put on hold
+          const holdMessage = `Hệ thống nhận thấy thiết bị này được dùng bởi ${allUserIds.length} tài khoản. Để bảo vệ quyền lợi mọi người, tài khoản chờ Admin xác minh 🙏`;
+          
+          for (const uid of allUserIds) {
+            await supabaseAdmin.from("profiles").update({
+              reward_status: "on_hold",
+              admin_notes: holdMessage,
+            }).eq("id", uid);
+          }
         }
 
         // Flag device
