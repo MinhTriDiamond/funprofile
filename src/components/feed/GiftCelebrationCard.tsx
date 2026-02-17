@@ -297,13 +297,13 @@ const GiftCelebrationCardComponent = ({
         {/* Celebration Image */}
         {post.image_url && (
           <div
-            className="mb-3 rounded-lg overflow-hidden cursor-pointer ring-2 ring-yellow-300/30 hover:ring-yellow-300/60 transition-all"
+            className="mb-3 mx-auto max-w-[280px] rounded-lg overflow-hidden cursor-pointer ring-2 ring-yellow-300/30 hover:ring-yellow-300/60 transition-all"
             onClick={() => setImageViewerOpen(true)}
           >
             <img
               src={post.image_url}
               alt="Celebration Card"
-              className="w-full h-auto object-cover"
+              className="w-full h-auto max-h-[200px] object-contain"
               loading="lazy"
             />
           </div>
