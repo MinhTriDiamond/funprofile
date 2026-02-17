@@ -92,24 +92,28 @@ Deno.serve(async (req) => {
         const allUserIds = [user.id, ...otherUsers.map(u => u.user_id)];
         console.warn(`[SHARED DEVICE] device_hash=${deviceHash.slice(0, 8)}... shared by ${allUserIds.length} users`);
 
-        // Set current user on_hold
-        await supabaseAdmin.from("profiles").update({
-          reward_status: "on_hold",
-          admin_notes: `Phát hiện thiết bị dùng chung với ${otherUsers.length} tài khoản khác. Device hash: ${deviceHash.slice(0, 8)}...`,
-        }).eq("id", user.id);
+        // Freeze ALL related accounts (current + others on same device)
+        const holdMessage = `Hệ thống nhận thấy thiết bị này được dùng bởi ${allUserIds.length} tài khoản. Để bảo vệ quyền lợi mọi người, tài khoản chờ Admin xác minh 🙏`;
+        
+        for (const uid of allUserIds) {
+          await supabaseAdmin.from("profiles").update({
+            reward_status: "on_hold",
+            admin_notes: holdMessage,
+          }).eq("id", uid);
+        }
 
         // Flag device
         await supabaseAdmin.from("pplp_device_registry").update({
           is_flagged: true,
-          flag_reason: `Shared by ${allUserIds.length} users`,
+          flag_reason: `Cùng thiết bị với ${allUserIds.length} tài khoản`,
         }).eq("device_hash", deviceHash);
 
-        // Insert fraud signal
+        // Insert integrity signal
         await supabaseAdmin.from("pplp_fraud_signals").insert({
           actor_id: user.id,
           signal_type: "SHARED_DEVICE",
           severity: 3,
-          details: { device_hash: deviceHash.slice(0, 8), other_user_count: otherUsers.length },
+          details: { device_hash: deviceHash.slice(0, 8), all_user_ids: allUserIds },
           source: "log-login-ip",
         });
 
