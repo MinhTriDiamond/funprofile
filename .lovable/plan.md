@@ -1,57 +1,71 @@
 
-# Sửa 3 lỗi: Bài tặng quà không hiển thị đúng
+# Sửa hoàn chỉnh: Giao dịch tặng quà không hiển thị
 
-## Nguyên nhân gốc rễ
+## Nguyên nhân gốc rễ (đã xác minh qua database)
 
-Sau khi kiểm tra kỹ database và code, Cha xác nhận:
+### 1. Edge function chưa được deploy thành công
+Database cho thấy `highlight_expires_at` chỉ có 15 phút (VD: 16:01 -> 16:16), trong khi code trong repo ghi 24 giờ. Ngoài ra, `user_id` trên bài gift_celebration được gán bằng **ID người nhận** thay vì người gửi. Điều này chứng tỏ phiên bản edge function đang chạy là phiên bản CŨ.
 
-- **Dữ liệu KHÔNG bị mất**: Giao dịch tặng quà VẪN được ghi vào bảng `donations` (10 giao dịch gần nhất đều có). Bài đăng `gift_celebration` cũng được tạo đầy đủ trên bảng `posts` với `moderation_status = approved`.
+### 2. Trang cá nhân chỉ query `user_id = profileId`
+Vì bài gift_celebration có `user_id = recipient_id` (do edge function cũ), người gửi không bao giờ thấy bài trên trang cá nhân của mình. Cần thêm query bài viết có `gift_sender_id = profileId`.
 
-- **Vấn đề nằm ở giao diện hiển thị**, không phải backend.
+### 3. Dữ liệu cũ trong database cần được sửa
+10+ bài gift_celebration hiện tại có `user_id` sai và `highlight_expires_at` hết hạn.
 
-### Lỗi 1: Trang cá nhân (Profile) không dùng GiftCelebrationCard
+## Giải pháp
 
-Trang Profile (dòng 836) render TẤT CẢ bài đăng bằng `FacebookPostCard`, kể cả bài `gift_celebration`. Vì `FacebookPostCard` không hiểu các trường `gift_sender_id`, `gift_recipient_id`, `gift_amount`... nên bài đăng tặng quà hiển thị trắng hoặc lỗi.
+### Bước 1: Deploy lại edge function `record-donation`
+Deploy lại edge function để đảm bảo:
+- `user_id: body.sender_id` (bài hiện trên trang cá nhân người gửi)
+- `highlight_expires_at: 24 giờ` (bài được ghim trên Feed 24h)
 
-**Sửa**: Import `GiftCelebrationCard` và kiểm tra `post_type === 'gift_celebration'` trước khi render, tương tự cách Feed.tsx đã làm.
+### Bước 2: Sửa dữ liệu cũ trong database
+Cập nhật tất cả bài gift_celebration hiện có:
+- Đổi `user_id` từ recipient sang sender (`gift_sender_id`)
+- Gia hạn `highlight_expires_at` thêm 24 giờ từ bây giờ cho các bài trong ngày hôm nay
 
-### Lỗi 2: Trang chủ (Feed) -- bài tặng quà có thể bị ẩn do stale cache
+### Bước 3: Sửa Profile query để hiển thị bài tặng quà
+Trong `src/pages/Profile.tsx`, thêm query bổ sung để lấy bài viết có `gift_sender_id = profileId` (phòng trường hợp edge function cũ đã tạo bài với user_id sai). Gộp kết quả vào danh sách bài viết hiện tại.
 
-Feed.tsx đã có logic đúng (`GiftCelebrationCard` cho `gift_celebration`), nhưng hook `useFeedPosts` có `staleTime: 30s` và realtime subscription chỉ lắng nghe INSERT trên bảng `posts`. Nếu bài đăng được tạo bởi edge function (service role), realtime có thể không trigger cho user anon/auth. Thêm invalidation mạnh hơn sau khi gửi quà.
-
-**Sửa**: Trong `UnifiedGiftSendDialog`, sau khi `recordDonationBackground` hoặc `recordMultiDonationsSequential` thành công, dispatch thêm event `invalidate-feed` để Feed refetch. Thêm listener trong `useFeedPosts`.
-
-### Lỗi 3: Lịch sử giao dịch -- dữ liệu có nhưng cần refetch
-
-Dữ liệu donations có trong database. Hook `useDonationHistory` đã có listener cho event `invalidate-donations`. Nhưng event này có thể không được dispatch đúng lúc nếu `recordDonationWithRetry` fail cả 2 lần. Thêm fallback invalidation.
-
-**Sửa**: Thêm invalidation cho `donation-history` và `donation-stats` query keys trực tiếp trong `invalidateDonationCache`, không chỉ dựa vào custom event.
+### Bước 4: Sửa Feed query để hiển thị bài tặng quà đúng cách
+Trong `src/hooks/useFeedPosts.ts`, đảm bảo `fetchFeedPage` không lọc bỏ bài `gift_celebration` và chúng xuất hiện trong dòng thời gian thông thường (không chỉ khi được ghim).
 
 ## Chi tiết kỹ thuật
 
-### File 1: `src/pages/Profile.tsx`
+### File 1: `supabase/functions/record-donation/index.ts`
+- Không thay đổi code (code đã đúng: `user_id: body.sender_id`, `24 * 60 * 60 * 1000`)
+- Chỉ cần deploy lại cho đúng
 
-- Import `GiftCelebrationCard` từ `@/components/feed/GiftCelebrationCard`
-- Tại dòng 827-845, thêm điều kiện: nếu `item.post_type === 'gift_celebration'`, render `GiftCelebrationCard` thay vì `FacebookPostCard`
+### File 2: Sửa dữ liệu database (SQL UPDATE)
+```text
+UPDATE posts 
+SET user_id = gift_sender_id,
+    highlight_expires_at = NOW() + INTERVAL '24 hours'
+WHERE post_type = 'gift_celebration' 
+  AND user_id != gift_sender_id
+  AND created_at > NOW() - INTERVAL '7 days';
+```
 
-### File 2: `src/hooks/useFeedPosts.ts`
+### File 3: `src/pages/Profile.tsx` (dòng 151-161)
+Thêm query bổ sung cho bài gift_celebration:
+```text
+// Sau query chính (dòng 161)
+const { data: giftPosts } = await supabase
+  .from('posts')
+  .select(`*, profiles!posts_user_id_fkey (...)`)
+  .eq('gift_sender_id', profileId)
+  .eq('post_type', 'gift_celebration')
+  .neq('user_id', profileId)  // tránh trùng lặp
+  .order('created_at', { ascending: false });
 
-- Thêm listener cho event `invalidate-feed` (tương tự pattern `invalidate-donations` trong `useDonationHistory`)
-- Khi nhận event, gọi `queryClient.invalidateQueries({ queryKey: ['feed-posts'] })` và `queryClient.invalidateQueries({ queryKey: ['highlighted-posts'] })`
+// Gộp giftPosts vào combinedPosts
+```
 
-### File 3: `src/components/donations/UnifiedGiftSendDialog.tsx`
+### Kết quả mong đợi
 
-- Trong hàm `invalidateDonationCache` (dòng 621-624), dispatch thêm event `invalidate-feed`
-- Import `useQueryClient` và gọi trực tiếp `queryClient.invalidateQueries` cho các key: `donation-history`, `donation-stats`, `feed-posts`, `highlighted-posts`
-
-### File 4: `supabase/functions/record-donation/index.ts`
-
-- Redeploy edge function để đảm bảo nó đang chạy phiên bản mới nhất
-
-## Kết quả mong đợi
-
-| Vị trí | Trước | Sau |
+| Vấn đề | Trước | Sau |
 |--------|-------|-----|
-| Trang cá nhân | Bài tặng quà hiển thị lỗi/trắng | Hiển thị thẻ xanh GiftCelebrationCard |
-| Trang chủ | Có thể không thấy bài mới ngay | Bài tặng quà xuất hiện ngay sau khi gửi |
-| Lịch sử giao dịch | Có thể không cập nhật ngay | Tự động refetch sau khi ghi donation thành công |
+| Trang cá nhân | Không thấy bài tặng quà | Hiển thị tất cả bài tặng quà của người gửi |
+| Trang chủ (Feed) | Bài bị hết hạn ghim sau 15 phút | Bài được ghim 24 giờ, sau đó hiện trong timeline |
+| Lịch sử giao dịch | Dữ liệu có nhưng cần refetch | Hiển thị ngay sau khi cache invalidation |
+| Tin nhắn chat | Đã có trong DB, cần refetch | Hiển thị đúng |
