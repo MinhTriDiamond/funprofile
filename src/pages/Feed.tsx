@@ -89,8 +89,12 @@ const Feed = () => {
 
     checkAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
-      setCurrentUserId(session?.user?.id || '');
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session) {
+        setCurrentUserId(session.user.id);
+      } else if (event === 'SIGNED_OUT') {
+        setCurrentUserId('');
+      }
     });
 
     return () => {

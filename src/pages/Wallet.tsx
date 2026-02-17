@@ -35,7 +35,7 @@ const Wallet = () => {
     checkAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!session) {
+      if (event === 'SIGNED_OUT') {
         navigate('/auth');
       }
     });
