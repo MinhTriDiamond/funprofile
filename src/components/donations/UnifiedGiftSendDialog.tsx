@@ -466,8 +466,6 @@ export const UnifiedGiftSendDialog = ({
         
         if (hash) {
           results.push({ recipient, success: true, txHash: hash });
-          // Record in background
-          recordDonationBackground(hash, recipient);
         } else {
           results.push({ recipient, success: false, error: 'Giao dịch bị từ chối' });
         }
@@ -480,9 +478,12 @@ export const UnifiedGiftSendDialog = ({
 
     setIsMultiSending(false);
 
-    const successCount = results.filter(r => r.success).length;
+    const successResults = results.filter(r => r.success);
+    const successCount = successResults.length;
+
     if (successCount > 0) {
-      const firstSuccess = results.find(r => r.success);
+      const firstSuccess = successResults[0];
+      const successNames = successResults.map(r => `@${r.recipient.username}`).join(', ');
       const cardData: GiftCardData = {
         id: crypto.randomUUID(),
         amount: (parsedAmountNum * successCount).toString(),
@@ -492,15 +493,24 @@ export const UnifiedGiftSendDialog = ({
         senderId: senderUserId || undefined,
         senderWalletAddress: address,
         recipientUsername: successCount === 1
-          ? firstSuccess!.recipient.username
-          : `${successCount} người nhận`,
-        recipientAvatarUrl: successCount === 1 ? firstSuccess!.recipient.avatarUrl : null,
-        recipientId: firstSuccess!.recipient.id,
-        recipientWalletAddress: firstSuccess!.recipient.walletAddress || '',
+          ? firstSuccess.recipient.username
+          : successNames,
+        recipientAvatarUrl: successCount === 1 ? firstSuccess.recipient.avatarUrl : null,
+        recipientId: firstSuccess.recipient.id,
+        recipientWalletAddress: firstSuccess.recipient.walletAddress || '',
         message: customMessage,
-        txHash: firstSuccess!.txHash || '',
+        txHash: firstSuccess.txHash || '',
         lightScoreEarned: Math.floor(parsedAmountNum * successCount / 100),
         createdAt: new Date().toISOString(),
+        multiRecipients: results.map(r => ({
+          username: r.recipient.username,
+          avatarUrl: r.recipient.avatarUrl,
+          recipientId: r.recipient.id,
+          walletAddress: r.recipient.walletAddress || '',
+          success: r.success,
+          txHash: r.txHash,
+          error: r.error,
+        })),
       };
 
       setCelebrationData(cardData);
@@ -512,6 +522,9 @@ export const UnifiedGiftSendDialog = ({
         const failedNames = results.filter(r => !r.success).map(r => `@${r.recipient.username}`).join(', ');
         toast.warning(`Không gửi được cho: ${failedNames}`, { duration: 8000 });
       }
+
+      // Record donations sequentially with retry, then invalidate cache
+      recordMultiDonationsSequential(successResults);
     } else {
       toast.error('Không gửi được cho bất kỳ người nhận nào');
     }
@@ -525,62 +538,89 @@ export const UnifiedGiftSendDialog = ({
     }
   };
 
-  /** Record donation in background */
+  /** Record a single donation with 1 retry */
+  const recordDonationWithRetry = async (hash: string, recipient: ResolvedRecipient, session: any): Promise<boolean> => {
+    const body = {
+      sender_id: session.user.id,
+      recipient_id: recipient.id,
+      amount,
+      token_symbol: selectedToken.symbol,
+      token_address: selectedToken.address,
+      chain_id: chainId || 56,
+      tx_hash: hash,
+      message: customMessage,
+      message_template: selectedTemplate?.id,
+      post_id: postId,
+      card_theme: 'celebration',
+      card_sound: 'rich-1',
+    };
+
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const { data: donationData, error } = await supabase.functions.invoke('record-donation', { body });
+        if (!error && donationData?.donation?.id) {
+          console.log(`[GIFT] record-donation OK (attempt ${attempt + 1}):`, donationData.donation.id);
+          localStorage.removeItem(`pending_donation_${hash}`);
+          return true;
+        }
+        throw new Error(error?.message || 'Record failed');
+      } catch (err: any) {
+        console.error(`[GIFT] record-donation attempt ${attempt + 1} failed:`, err?.message);
+        if (attempt === 0) await new Promise(r => setTimeout(r, 2000)); // wait 2s before retry
+      }
+    }
+
+    // Both attempts failed - save to localStorage for recovery
+    localStorage.setItem(`pending_donation_${hash}`, JSON.stringify({
+      txHash: hash, recipientId: recipient.id, senderId: session.user.id,
+      amount, tokenSymbol: selectedToken.symbol, message: customMessage, timestamp: Date.now(),
+    }));
+    return false;
+  };
+
+  /** Record donation in background (single recipient) */
   const recordDonationBackground = async (hash: string, recipient: ResolvedRecipient) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10_000);
-
-      try {
-        const { data: donationData, error } = await supabase.functions.invoke('record-donation', {
-          body: {
-            sender_id: session.user.id,
-            recipient_id: recipient.id,
-            amount,
-            token_symbol: selectedToken.symbol,
-            token_address: selectedToken.address,
-            chain_id: chainId || 56,
-            tx_hash: hash,
-            message: customMessage,
-            message_template: selectedTemplate?.id,
-            post_id: postId,
-          },
-        });
-        clearTimeout(timeoutId);
-
-        if (!error && donationData?.donation?.id) {
-          console.log('[GIFT] record-donation OK:', donationData.donation.id);
-          // Update celebration data with real DB ID (only for single send)
-          if (recipientsWithWallet.length === 1) {
-            setCelebrationData(prev => prev ? {
-              ...prev,
-              id: donationData.donation.id,
-              lightScoreEarned: donationData.light_score_earned || prev.lightScoreEarned,
-            } : prev);
-          }
-          localStorage.removeItem(`pending_donation_${hash}`);
-        } else {
-          throw new Error(error?.message || 'Record failed');
-        }
-      } catch (err: any) {
-        clearTimeout(timeoutId);
-        console.error('[GIFT] record-donation failed/timeout:', err?.message);
-        localStorage.setItem(`pending_donation_${hash}`, JSON.stringify({
-          txHash: hash,
-          recipientId: recipient.id,
-          senderId: session.user.id,
-          amount,
-          tokenSymbol: selectedToken.symbol,
-          message: customMessage,
-          timestamp: Date.now(),
-        }));
+      const ok = await recordDonationWithRetry(hash, recipient, session);
+      if (ok && recipientsWithWallet.length === 1) {
+        // Invalidate cache
+        invalidateDonationCache();
       }
     } catch (err) {
       console.error('[GIFT] recordDonationBackground outer error:', err);
     }
+  };
+
+  /** Record multiple donations sequentially with retry, then invalidate cache */
+  const recordMultiDonationsSequential = async (successResults: MultiSendResult[]) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      let recorded = 0;
+      for (const result of successResults) {
+        if (result.txHash) {
+          const ok = await recordDonationWithRetry(result.txHash, result.recipient, session);
+          if (ok) recorded++;
+        }
+      }
+
+      console.log(`[GIFT] Recorded ${recorded}/${successResults.length} donations`);
+      if (recorded > 0) invalidateDonationCache();
+      if (recorded < successResults.length) {
+        toast.warning(`${successResults.length - recorded} giao dịch chưa ghi nhận được. Admin sẽ xử lý sau.`, { duration: 10000 });
+      }
+    } catch (err) {
+      console.error('[GIFT] recordMultiDonationsSequential error:', err);
+    }
+  };
+
+  /** Invalidate donation-related queries */
+  const invalidateDonationCache = () => {
+    // Use window event to notify React Query to refetch
+    window.dispatchEvent(new CustomEvent('invalidate-donations'));
   };
 
   const handleSaveTheme = async (themeId: string, bgIndex: number, soundId: string) => {
