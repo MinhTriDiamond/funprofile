@@ -29,6 +29,7 @@ interface UserWithReward {
   total_reward: number;
   claimed_amount: number;
   claimable_amount: number;
+  last_claimed_at: string | null;
 }
 
 interface RewardApprovalTabProps {
@@ -89,7 +90,7 @@ const RewardApprovalTab = ({ adminId, onRefresh }: RewardApprovalTabProps) => {
 
       // Fetch claims + profiles in parallel
       const [claimsRes, profilesRes] = await Promise.all([
-        supabase.from('reward_claims').select('user_id, amount'),
+        supabase.from('reward_claims').select('user_id, amount, created_at').order('created_at', { ascending: false }),
         supabase.from('profiles').select('id, full_name, public_wallet_address, cover_url'),
       ]);
 
@@ -97,8 +98,13 @@ const RewardApprovalTab = ({ adminId, onRefresh }: RewardApprovalTabProps) => {
       if (profilesRes.error) throw profilesRes.error;
 
       const claimedMap = new Map<string, number>();
+      const lastClaimedMap = new Map<string, string>();
       claimsRes.data?.forEach(claim => {
         claimedMap.set(claim.user_id, (claimedMap.get(claim.user_id) || 0) + claim.amount);
+        // Since ordered desc, first occurrence is the latest
+        if (!lastClaimedMap.has(claim.user_id)) {
+          lastClaimedMap.set(claim.user_id, claim.created_at);
+        }
       });
 
       const profileMap = new Map<string, { full_name: string | null; public_wallet_address: string | null; cover_url: string | null }>();
@@ -127,6 +133,7 @@ const RewardApprovalTab = ({ adminId, onRefresh }: RewardApprovalTabProps) => {
           total_reward: Number(r.total_reward) || 0,
           claimed_amount: claimed,
           claimable_amount: Math.max(0, Number(r.total_reward) - claimed),
+          last_claimed_at: lastClaimedMap.get(r.id) || null,
         };
       });
 
@@ -401,6 +408,11 @@ const RewardApprovalTab = ({ adminId, onRefresh }: RewardApprovalTabProps) => {
                         </p>
                         <p className="text-xs text-muted-foreground">Total: {formatNumber(user.total_reward)}</p>
                         <p className="text-xs text-green-600">Claimed: {formatNumber(user.claimed_amount)}</p>
+                        {user.last_claimed_at && (
+                          <p className="text-[10px] text-muted-foreground">
+                            🕐 {new Date(user.last_claimed_at).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        )}
                       </div>
 
                       <div className="flex gap-2">
