@@ -392,6 +392,18 @@ Deno.serve(async (req) => {
     // Auto-cap to daily remaining
     const effectiveAmount = Math.min(claimAmount, claimableAmount, dailyRemaining);
 
+    if (effectiveAmount < MINIMUM_CLAIM) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Bad Request', 
+          message: `Số dư khả dụng (${claimableAmount.toLocaleString()} CAMLY) hoặc giới hạn còn lại (${dailyRemaining.toLocaleString()} CAMLY) chưa đủ tối thiểu 200.000 CAMLY để claim. Hãy tiếp tục hoạt động để tích lũy thêm!`,
+          daily_claimed: todayClaimed,
+          daily_remaining: dailyRemaining,
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     if (effectiveAmount <= 0) {
       return new Response(
         JSON.stringify({ 
