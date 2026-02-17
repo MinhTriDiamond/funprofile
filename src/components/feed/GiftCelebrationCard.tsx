@@ -71,7 +71,7 @@ const GiftCelebrationCardComponent = ({
   useEffect(() => {
     if (!post.gift_recipient_id) return;
     supabase
-      .from('profiles')
+      .from('public_profiles')
       .select('username, avatar_url')
       .eq('id', post.gift_recipient_id)
       .single()
