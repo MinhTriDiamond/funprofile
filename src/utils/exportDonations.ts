@@ -54,6 +54,15 @@ export function exportDonationsToCSV(
 }
 
 /**
+ * Escape HTML special characters to prevent XSS
+ */
+function escapeHtml(text: string): string {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+/**
  * Escape CSV special characters
  */
 function escapeCSV(str: string): string {
@@ -112,13 +121,13 @@ export async function exportDonationsToPDF(
       <tbody>
         ${donations.map((d, i) => `
           <tr style="background:${i % 2 === 0 ? '#f0fdf4' : '#fff'};border-bottom:1px solid #e5e7eb;">
-            <td style="padding:6px 8px;">${formatDate(d.created_at)}</td>
-            <td style="padding:6px 8px;">@${d.sender?.username || 'Unknown'}</td>
-            <td style="padding:6px 8px;">@${d.recipient?.username || 'Unknown'}</td>
-            <td style="padding:6px 8px;text-align:right;font-weight:bold;color:#10b981;">${d.amount}</td>
-            <td style="padding:6px 8px;">${d.token_symbol}</td>
-            <td style="padding:6px 8px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${d.message || ''}</td>
-            <td style="padding:6px 8px;">${translateStatus(d.status)}</td>
+            <td style="padding:6px 8px;">${escapeHtml(formatDate(d.created_at))}</td>
+            <td style="padding:6px 8px;">@${escapeHtml(d.sender?.username || 'Unknown')}</td>
+            <td style="padding:6px 8px;">@${escapeHtml(d.recipient?.username || 'Unknown')}</td>
+            <td style="padding:6px 8px;text-align:right;font-weight:bold;color:#10b981;">${escapeHtml(String(d.amount))}</td>
+            <td style="padding:6px 8px;">${escapeHtml(d.token_symbol)}</td>
+            <td style="padding:6px 8px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(d.message || '')}</td>
+            <td style="padding:6px 8px;">${escapeHtml(translateStatus(d.status))}</td>
           </tr>
         `).join('')}
       </tbody>
