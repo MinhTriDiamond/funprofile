@@ -28,6 +28,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { EmojiPicker } from '@/components/feed/EmojiPicker';
 import { bsc } from 'wagmi/chains';
 import { getBscScanTxUrl } from '@/lib/bscScanHelpers';
+import { useActiveAccount } from '@/contexts/ActiveAccountContext';
 
 // ERC20 ABI for balanceOf
 const ERC20_BALANCE_ABI = [
@@ -92,6 +93,8 @@ export const UnifiedGiftSendDialog = ({
   onSuccess,
 }: UnifiedGiftSendDialogProps) => {
   const { address, isConnected } = useAccount();
+  const { activeAddress } = useActiveAccount();
+  const effectiveAddress = activeAddress || address;
   const chainId = useChainId();
   const { switchChain } = useSwitchChain();
   const { openConnectModal } = useConnectModal();
@@ -141,7 +144,7 @@ export const UnifiedGiftSendDialog = ({
         .single();
       if (data) setSenderProfile(data as any);
     })();
-  }, [isOpen, address]);
+  }, [isOpen, effectiveAddress]);
 
   // Determine effective recipients
   const isPresetMode = mode === 'post' || (mode === 'navbar' && !!presetRecipient?.id);
@@ -165,14 +168,14 @@ export const UnifiedGiftSendDialog = ({
   const isMultiMode = effectiveRecipients.length > 1;
 
   // Get native BNB balance
-  const { data: bnbBalance } = useBalance({ address, chainId: bsc.id });
+  const { data: bnbBalance } = useBalance({ address: effectiveAddress as `0x${string}` | undefined, chainId: bsc.id });
 
   // Get ERC20 token balance
   const { data: tokenBalance } = useReadContract({
     address: selectedToken.address as `0x${string}` | undefined,
     abi: ERC20_BALANCE_ABI,
     functionName: 'balanceOf',
-    args: address ? [address] : undefined,
+    args: effectiveAddress ? [effectiveAddress as `0x${string}`] : undefined,
     chainId: bsc.id,
   });
 
@@ -390,7 +393,7 @@ export const UnifiedGiftSendDialog = ({
         senderUsername: senderProfile?.username || 'Unknown',
         senderAvatarUrl: senderProfile?.avatar_url,
         senderId: senderUserId || undefined,
-        senderWalletAddress: address,
+        senderWalletAddress: effectiveAddress,
         recipientUsername: recipient.username || 'Unknown',
         recipientAvatarUrl: recipient.avatarUrl,
         recipientId: recipient.id,
@@ -663,10 +666,10 @@ export const UnifiedGiftSendDialog = ({
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate">{senderProfile.display_name || senderProfile.username}</p>
                       <p className="text-xs text-muted-foreground truncate">@{senderProfile.username}</p>
-                      {address && (
+                      {effectiveAddress && (
                         <div className="flex items-center gap-1">
-                          <p className="text-xs text-muted-foreground font-mono truncate">{address.slice(0, 8)}...{address.slice(-6)}</p>
-                          <button type="button" onClick={() => handleCopyAddress(address)} className="p-0.5 hover:bg-muted rounded">
+                          <p className="text-xs text-muted-foreground font-mono truncate">{effectiveAddress.slice(0, 8)}...{effectiveAddress.slice(-6)}</p>
+                          <button type="button" onClick={() => handleCopyAddress(effectiveAddress)} className="p-0.5 hover:bg-muted rounded">
                             <Copy className="w-3 h-3 text-muted-foreground" />
                           </button>
                         </div>
@@ -674,9 +677,9 @@ export const UnifiedGiftSendDialog = ({
                     </div>
                   </div>
                   {/* Wallet mismatch warning */}
-                  {address && senderProfile.wallet_address && senderProfile.public_wallet_address &&
-                    address.toLowerCase() !== senderProfile.wallet_address?.toLowerCase() &&
-                    address.toLowerCase() !== senderProfile.public_wallet_address?.toLowerCase() && (
+                  {effectiveAddress && senderProfile.wallet_address && senderProfile.public_wallet_address &&
+                    effectiveAddress.toLowerCase() !== senderProfile.wallet_address?.toLowerCase() &&
+                    effectiveAddress.toLowerCase() !== senderProfile.public_wallet_address?.toLowerCase() && (
                     <div className="flex items-center gap-2 mt-2 p-2 bg-amber-500/10 border border-amber-500/30 rounded-lg">
                       <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
                       <p className="text-xs text-amber-700">Ví đang kết nối khác với ví đã lưu trong hồ sơ. Giao dịch sẽ gửi từ ví hiện tại.</p>
