@@ -1,33 +1,128 @@
 
-# Mo khoa 2 tai khoan: phuongloan79 va wallet_75468294ldfa
 
-## Muc tieu
-Chuyen trang thai `reward_status` cua 2 tai khoan tu `on_hold` ve `approved` de ho co the tiep tuc nhan thuong binh thuong.
+# Ngan chan user bi ghi nhan gian lan chuyen/rut token
 
-## Tai khoan can mo khoa
+## Van de
+Hien tai, khi user bi dat trang thai `on_hold` hoac `banned`, ho khong the **claim thuong** (da co kiem tra trong `claim-reward`). Nhung ho van co the:
+1. **Chuyen token noi bo** (Send Token) qua trang Vi - gui CAMLY/BNB cho nick khac
+2. **Tang qua** (Donation) - gui token cho nguoi khac qua tinh nang Gift
 
-| Username | ID | Trang thai hien tai |
-|---|---|---|
-| phuongloan79 | d38fcba7-74df-472e-8e0e-b3ccea1e5aa7 | on_hold |
-| wallet_75468294ldfa | 0695b7ac-e04a-44a7-9b7a-062c28f52f45 | on_hold |
+Nhu vay, user gian lan co the chuyen het token tu nick bi khoa sang nick khac de rut.
 
-## Thao tac
+## Giai phap
 
-1. Cap nhat `reward_status` tu `on_hold` thanh `approved` cho ca 2 tai khoan trong bang `profiles`.
-2. Ghi log vao bang `audit_logs` de luu vet hanh dong mo khoa cua Admin.
+### 1. Chan o backend: Edge function `record-donation`
+Them kiem tra `reward_status` va `is_banned` cua sender truoc khi ghi nhan donation. Neu user bi `on_hold`, `banned`, hoac `rejected` thi tu choi giao dich.
+
+### 2. Chan o frontend: `useSendToken.ts`
+Truoc khi gui giao dich on-chain, kiem tra trang thai user tu database. Neu bi chan thi hien thong bao va khong cho gui.
+
+### 3. Chan o frontend: `useDonation.ts`
+Tuong tu, kiem tra trang thai user truoc khi thuc hien donation.
+
+### 4. Chan o frontend: `UnifiedGiftSendDialog.tsx`
+Hien thi thong bao canh bao ngay khi mo dialog neu user bi han che.
 
 ## Chi tiet ky thuat
 
-Chay 1 migration SQL:
+### File 1: `supabase/functions/record-donation/index.ts`
+Them doan kiem tra sau khi xac thuc user (dong 50-66):
 
-```sql
--- Mo khoa 2 tai khoan
-UPDATE profiles
-SET reward_status = 'approved'
-WHERE id IN (
-  'd38fcba7-74df-472e-8e0e-b3ccea1e5aa7',
-  '0695b7ac-e04a-44a7-9b7a-062c28f52f45'
-);
+```typescript
+// Check sender profile status - block banned/on_hold users
+const { data: senderStatus } = await supabase
+  .from('profiles')
+  .select('reward_status, is_banned')
+  .eq('id', user.id)
+  .single();
+
+if (senderStatus?.is_banned) {
+  return new Response(
+    JSON.stringify({ error: 'Tai khoan da bi cam. Khong the thuc hien giao dich.' }),
+    { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
+}
+
+if (['on_hold', 'rejected', 'banned'].includes(senderStatus?.reward_status)) {
+  return new Response(
+    JSON.stringify({ error: 'Tai khoan dang bi han che. Vui long lien he Admin.' }),
+    { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
+}
 ```
 
-Dong thoi ghi audit log trong code (thong qua Supabase client) de dam bao truy vet duoc ai da mo khoa va khi nao.
+### File 2: `src/hooks/useSendToken.ts`
+Them ham kiem tra trang thai user truoc khi gui giao dich:
+
+```typescript
+// Truoc dong "setIsProcessing(true)" trong sendToken():
+const { data: { user: currentUser } } = await supabase.auth.getUser();
+if (currentUser) {
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('reward_status, is_banned')
+    .eq('id', currentUser.id)
+    .single();
+
+  if (profile?.is_banned || ['on_hold', 'rejected', 'banned'].includes(profile?.reward_status)) {
+    toast.error('Tai khoan dang bi han che. Khong the chuyen token. Vui long lien he Admin.');
+    return null;
+  }
+}
+```
+
+### File 3: `src/hooks/useDonation.ts`
+Them kiem tra tuong tu truoc khi gui donation:
+
+```typescript
+// Truoc dong "setIsProcessing(true)" trong donate():
+const { data: { user: currentUser } } = await supabase.auth.getUser();
+if (currentUser) {
+  const { data: senderProfile } = await supabase
+    .from('profiles')
+    .select('reward_status, is_banned')
+    .eq('id', currentUser.id)
+    .single();
+
+  if (senderProfile?.is_banned || ['on_hold', 'rejected', 'banned'].includes(senderProfile?.reward_status)) {
+    toast.error('Tai khoan dang bi han che. Khong the tang qua. Vui long lien he Admin.');
+    return null;
+  }
+}
+```
+
+### File 4: `src/components/donations/UnifiedGiftSendDialog.tsx`
+Them kiem tra khi mo dialog de hien canh bao som:
+
+```typescript
+// Fetch trang thai user khi dialog mo
+const [isRestricted, setIsRestricted] = useState(false);
+
+useEffect(() => {
+  if (isOpen) {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        supabase.from('profiles')
+          .select('reward_status, is_banned')
+          .eq('id', user.id)
+          .single()
+          .then(({ data }) => {
+            setIsRestricted(
+              data?.is_banned ||
+              ['on_hold', 'rejected', 'banned'].includes(data?.reward_status)
+            );
+          });
+      }
+    });
+  }
+}, [isOpen]);
+```
+
+Va vo hieu hoa nut gui khi `isRestricted === true`, hien thi thong bao canh bao.
+
+## Tong ket
+- **4 file** can sua
+- **Khong can thay doi database** - su dung du lieu co san (`profiles.reward_status`, `profiles.is_banned`)
+- Chan o **ca backend lan frontend** de dam bao an toan nhieu lop
+- User bi han che se thay thong bao ro rang huong dan lien he Admin
+
