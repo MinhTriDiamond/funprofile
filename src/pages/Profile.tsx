@@ -465,7 +465,7 @@ const Profile = () => {
                    <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
                      <span>@{profile?.username}</span>
                      <span>·</span>
-                     <a href={`/${profile?.username}`} className="hover:text-primary hover:underline transition-colors cursor-pointer">http://fun.rich/{profile?.username}</a>
+                     <a href={`https://fun.rich/${profile?.username}`} target="_blank" rel="noopener noreferrer" className="hover:text-primary hover:underline transition-colors cursor-pointer">http://fun.rich/{profile?.username}</a>
                      <button
                        type="button"
                        onClick={() => {
