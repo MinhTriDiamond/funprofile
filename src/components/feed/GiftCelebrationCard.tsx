@@ -64,6 +64,10 @@ const GiftCelebrationCardComponent = ({
   const [reactionCounts, setReactionCounts] = useState<{ type: string; count: number }[]>([]);
   const [shareCount, setShareCount] = useState(initialStats?.shareCount || 0);
   const [recipientProfile, setRecipientProfile] = useState<{ username: string; avatar_url: string | null } | null>(null);
+  const [senderProfile, setSenderProfile] = useState<{ username: string; avatar_url: string | null } | null>(null);
+
+  // Check if sender is different from post author (e.g. Treasury claim)
+  const isTreasurySender = post.gift_sender_id && post.gift_sender_id !== post.user_id;
 
   const isHighlighted = post.is_highlighted && post.highlight_expires_at && new Date(post.highlight_expires_at) > new Date();
 
@@ -79,6 +83,19 @@ const GiftCelebrationCardComponent = ({
         if (data) setRecipientProfile(data);
       });
   }, [post.gift_recipient_id]);
+
+  // Fetch sender profile when sender differs from post author (e.g. Treasury claim)
+  useEffect(() => {
+    if (!isTreasurySender) return;
+    supabase
+      .from('public_profiles')
+      .select('username, avatar_url')
+      .eq('id', post.gift_sender_id!)
+      .single()
+      .then(({ data }) => {
+        if (data) setSenderProfile(data);
+      });
+  }, [isTreasurySender, post.gift_sender_id]);
 
   // Process initial stats
   useEffect(() => {
@@ -180,7 +197,11 @@ const GiftCelebrationCardComponent = ({
 
   const amount = post.gift_amount ? Number(post.gift_amount).toLocaleString() : '0';
   const token = post.gift_token || 'FUN';
-  const senderUsername = post.profiles?.username || 'User';
+  // Use fetched sender profile for Treasury/cross-user claims, otherwise use post author profile
+  const actualSenderProfile = isTreasurySender ? senderProfile : post.profiles;
+  const senderUsername = actualSenderProfile?.username || 'FUN Profile Treasury';
+  const senderAvatarUrl = actualSenderProfile?.avatar_url || '/fun-profile-treasury-logo.jpg';
+  const senderNavigateId = isTreasurySender ? post.gift_sender_id : post.user_id;
   const recipientUsername = recipientProfile?.username || 'User';
   const scanUrl = post.tx_hash ? getBscScanTxUrl(post.tx_hash, token) : '#';
   const truncatedMessage = post.gift_message && post.gift_message.length > 120
@@ -230,9 +251,9 @@ const GiftCelebrationCardComponent = ({
           <div className="flex flex-col items-center">
             <Avatar
               className="w-12 h-12 ring-2 ring-white/40 cursor-pointer"
-              onClick={() => navigate(`/profile/${post.user_id}`)}
+              onClick={() => senderNavigateId && navigate(`/profile/${senderNavigateId}`)}
             >
-              <AvatarImage src={post.profiles?.avatar_url || ''} />
+              <AvatarImage src={senderAvatarUrl} />
               <AvatarFallback className="bg-emerald-700 text-white">
                 {senderUsername[0]?.toUpperCase()}
               </AvatarFallback>
@@ -262,9 +283,15 @@ const GiftCelebrationCardComponent = ({
         {/* Main text */}
         <div className="text-center mb-3">
           <p className="text-lg font-bold text-white leading-snug" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.3)' }}>
-            🎉 @{senderUsername} đã trao gửi{' '}
-            <span className="text-yellow-300">{amount} {token}</span>{' '}
-            cho @{recipientUsername} ❤️
+            {isTreasurySender ? (
+              <>🎉 @{recipientUsername} đã nhận thưởng{' '}
+                <span className="text-yellow-300">{amount} {token}</span>{' '}
+                từ @{senderUsername} ❤️</>
+            ) : (
+              <>🎉 @{senderUsername} đã trao gửi{' '}
+                <span className="text-yellow-300">{amount} {token}</span>{' '}
+                cho @{recipientUsername} ❤️</>
+            )}
           </p>
         </div>
 
