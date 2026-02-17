@@ -1,4 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface DonationRecord {
@@ -18,6 +19,17 @@ export interface DonationRecord {
 }
 
 export function useDonationHistory(type: 'sent' | 'received') {
+  const queryClient = useQueryClient();
+
+  // Listen for invalidation events from gift send dialog
+  useEffect(() => {
+    const handler = () => {
+      queryClient.invalidateQueries({ queryKey: ['donation-history'] });
+    };
+    window.addEventListener('invalidate-donations', handler);
+    return () => window.removeEventListener('invalidate-donations', handler);
+  }, [queryClient]);
+
   return useQuery({
     queryKey: ['donation-history', type],
     queryFn: async () => {

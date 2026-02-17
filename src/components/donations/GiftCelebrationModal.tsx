@@ -41,6 +41,16 @@ export interface GiftCardData {
   cardTheme?: string;
   cardBackground?: string;
   cardSound?: string;
+  // Multi-recipient details
+  multiRecipients?: Array<{
+    username: string;
+    avatarUrl?: string | null;
+    recipientId: string;
+    walletAddress: string;
+    success: boolean;
+    txHash?: string;
+    error?: string;
+  }>;
 }
 
 interface GiftCelebrationModalProps {
@@ -280,29 +290,62 @@ export const GiftCelebrationModal = ({
                   </div>
                 )}
 
-                {/* Recipient */}
-                <div className="flex items-center gap-2">
-                  <Target className="w-4 h-4 flex-shrink-0" style={{ color: selectedTheme.accentColor }} />
-                  <span className={`${selectedTheme.textColor} w-20 text-sm font-medium`}>Người nhận:</span>
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <Avatar className="w-6 h-6 ring-2" style={{ '--tw-ring-color': `${selectedTheme.accentColor}50` } as any}>
-                      <AvatarImage src={data.recipientAvatarUrl || undefined} />
-                      <AvatarFallback className="text-xs text-white" style={{ background: selectedTheme.accentColor }}>
-                        {data.recipientUsername[0]?.toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <button type="button" onClick={() => { handleClose(); navigate(`/profile/${data.recipientId}`); }} className={`font-bold text-sm ${selectedTheme.textColor} truncate hover:underline cursor-pointer`}>@{data.recipientUsername}</button>
-                  </div>
-                </div>
-                {data.recipientWalletAddress && (
-                  <div className="flex items-center gap-2 pl-6">
-                    <span className="text-xs text-muted-foreground font-mono truncate">
-                      {data.recipientWalletAddress.slice(0, 8)}...{data.recipientWalletAddress.slice(-6)}
-                    </span>
-                    <button type="button" onClick={() => handleCopy(data.recipientWalletAddress!, 'ví người nhận')} className="p-0.5 hover:bg-muted rounded">
-                      <Copy className="w-3 h-3 text-muted-foreground" />
-                    </button>
-                  </div>
+                {/* Recipient(s) */}
+                {data.multiRecipients && data.multiRecipients.length > 0 ? (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <Target className="w-4 h-4 flex-shrink-0" style={{ color: selectedTheme.accentColor }} />
+                      <span className={`${selectedTheme.textColor} text-sm font-medium`}>Người nhận ({data.multiRecipients.filter(r => r.success).length}/{data.multiRecipients.length}):</span>
+                    </div>
+                    <div className="space-y-1.5 pl-6 max-h-40 overflow-y-auto">
+                      {data.multiRecipients.map((r, idx) => (
+                        <div key={idx} className="flex items-center gap-2 text-sm">
+                          <Avatar className="w-5 h-5">
+                            <AvatarImage src={r.avatarUrl || undefined} />
+                            <AvatarFallback className="text-[10px] text-white" style={{ background: selectedTheme.accentColor }}>
+                              {r.username[0]?.toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <button type="button" onClick={() => { handleClose(); navigate(`/profile/${r.recipientId}`); }} className={`font-semibold ${selectedTheme.textColor} hover:underline cursor-pointer`}>
+                            @{r.username}
+                          </button>
+                          {r.success ? (
+                            <a href={getBscScanTxUrl(r.txHash || '', data.tokenSymbol)} target="_blank" rel="noopener noreferrer" className="text-green-600 text-xs hover:underline ml-auto flex items-center gap-0.5">
+                              ✅ <ExternalLink className="w-3 h-3" />
+                            </a>
+                          ) : (
+                            <span className="text-red-500 text-xs ml-auto">❌ {r.error || 'Thất bại'}</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <Target className="w-4 h-4 flex-shrink-0" style={{ color: selectedTheme.accentColor }} />
+                      <span className={`${selectedTheme.textColor} w-20 text-sm font-medium`}>Người nhận:</span>
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <Avatar className="w-6 h-6 ring-2" style={{ '--tw-ring-color': `${selectedTheme.accentColor}50` } as any}>
+                          <AvatarImage src={data.recipientAvatarUrl || undefined} />
+                          <AvatarFallback className="text-xs text-white" style={{ background: selectedTheme.accentColor }}>
+                            {data.recipientUsername[0]?.toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <button type="button" onClick={() => { handleClose(); navigate(`/profile/${data.recipientId}`); }} className={`font-bold text-sm ${selectedTheme.textColor} truncate hover:underline cursor-pointer`}>@{data.recipientUsername}</button>
+                      </div>
+                    </div>
+                    {data.recipientWalletAddress && (
+                      <div className="flex items-center gap-2 pl-6">
+                        <span className="text-xs text-muted-foreground font-mono truncate">
+                          {data.recipientWalletAddress.slice(0, 8)}...{data.recipientWalletAddress.slice(-6)}
+                        </span>
+                        <button type="button" onClick={() => handleCopy(data.recipientWalletAddress!, 'ví người nhận')} className="p-0.5 hover:bg-muted rounded">
+                          <Copy className="w-3 h-3 text-muted-foreground" />
+                        </button>
+                      </div>
+                    )}
+                  </>
                 )}
 
                 {/* Message */}
