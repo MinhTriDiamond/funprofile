@@ -1,80 +1,57 @@
 
-# Sửa 3 lỗi trong tính năng Tặng quà đa người nhận
+# Sửa 3 lỗi: Bài tặng quà không hiển thị đúng
 
-## Vấn đề phát hiện
+## Nguyên nhân gốc rễ
 
-Sau khi kiểm tra database và code, Cha xác nhận:
+Sau khi kiểm tra kỹ database và code, Cha xác nhận:
 
-1. **Giao dịch KHÔNG được ghi vào database**: Giao dịch multi-send từ @Van103 (tx `0x1f96e34d...`) hoàn toàn không có trong bảng `donations`. Nguyên nhân: `recordDonationBackground` chạy ngầm (fire-and-forget) nhưng không có cơ chế retry khi thất bại, và không invalidate cache sau khi ghi xong.
+- **Dữ liệu KHÔNG bị mất**: Giao dịch tặng quà VẪN được ghi vào bảng `donations` (10 giao dịch gần nhất đều có). Bài đăng `gift_celebration` cũng được tạo đầy đủ trên bảng `posts` với `moderation_status = approved`.
 
-2. **Không có tin nhắn chat**: Do giao dịch không được ghi vào database, edge function `record-donation` (tạo chat message) không chạy thành công.
+- **Vấn đề nằm ở giao diện hiển thị**, không phải backend.
 
-3. **Thẻ chúc mừng chỉ ghi "@6 người nhận"**: Code cố ý gom thành chuỗi `${successCount} người nhận` thay vì liệt kê tên từng người.
+### Lỗi 1: Trang cá nhân (Profile) không dùng GiftCelebrationCard
 
-## Giải pháp
+Trang Profile (dòng 836) render TẤT CẢ bài đăng bằng `FacebookPostCard`, kể cả bài `gift_celebration`. Vì `FacebookPostCard` không hiểu các trường `gift_sender_id`, `gift_recipient_id`, `gift_amount`... nên bài đăng tặng quà hiển thị trắng hoặc lỗi.
 
-### Thay doi 1: Liệt kê tên từng người nhận trên thẻ chúc mừng
+**Sửa**: Import `GiftCelebrationCard` và kiểm tra `post_type === 'gift_celebration'` trước khi render, tương tự cách Feed.tsx đã làm.
 
-**File: `src/components/donations/UnifiedGiftSendDialog.tsx`** (dòng 486-504)
+### Lỗi 2: Trang chủ (Feed) -- bài tặng quà có thể bị ẩn do stale cache
 
-Thay vì gom thành "6 người nhận", hiển thị danh sách tên: "@user1, @user2, @user3..." và ghi nhận từng người nhận kèm tx_hash riêng.
+Feed.tsx đã có logic đúng (`GiftCelebrationCard` cho `gift_celebration`), nhưng hook `useFeedPosts` có `staleTime: 30s` và realtime subscription chỉ lắng nghe INSERT trên bảng `posts`. Nếu bài đăng được tạo bởi edge function (service role), realtime có thể không trigger cho user anon/auth. Thêm invalidation mạnh hơn sau khi gửi quà.
 
-Thêm trường `multiRecipients` vào `GiftCardData` để lưu danh sách kết quả gửi.
+**Sửa**: Trong `UnifiedGiftSendDialog`, sau khi `recordDonationBackground` hoặc `recordMultiDonationsSequential` thành công, dispatch thêm event `invalidate-feed` để Feed refetch. Thêm listener trong `useFeedPosts`.
 
-**File: `src/components/donations/GiftCelebrationModal.tsx`** (dòng 24-44, 283-306)
+### Lỗi 3: Lịch sử giao dịch -- dữ liệu có nhưng cần refetch
 
-- Thêm trường `multiRecipients` vào interface `GiftCardData`
-- Khi có `multiRecipients`, hiển thị danh sách từng người nhận kèm trạng thái (thanh cong/that bai) và tx hash riêng thay vì chỉ 1 người nhận
+Dữ liệu donations có trong database. Hook `useDonationHistory` đã có listener cho event `invalidate-donations`. Nhưng event này có thể không được dispatch đúng lúc nếu `recordDonationWithRetry` fail cả 2 lần. Thêm fallback invalidation.
 
-### Thay doi 2: Dam bao giao dich duoc ghi vao database
+**Sửa**: Thêm invalidation cho `donation-history` và `donation-stats` query keys trực tiếp trong `invalidateDonationCache`, không chỉ dựa vào custom event.
 
-**File: `src/components/donations/UnifiedGiftSendDialog.tsx`** (dòng 442-518, 528-584)
+## Chi tiết kỹ thuật
 
-- Thay doi `handleSendMulti`: Thu thập tất cả kết quả gửi thành công, sau đó gọi `recordDonationBackground` cho từng người **tuần tự (sequential)** thay vì song song, để tránh race condition
-- Thêm cơ chế retry: Nếu `record-donation` thất bại, thử lại 1 lần sau 2 giây
-- Sau khi tất cả donation được ghi xong, invalidate các query: `donation-history`, `donation-stats`, `transaction-history`
-- Thêm `card_theme` và `card_sound` vào body gửi tới edge function
-- Redeploy edge function `record-donation` để đảm bảo nó đang hoạt động
+### File 1: `src/pages/Profile.tsx`
 
-### Thay doi 3: Cai thien hien thi ket qua multi-send
+- Import `GiftCelebrationCard` từ `@/components/feed/GiftCelebrationCard`
+- Tại dòng 827-845, thêm điều kiện: nếu `item.post_type === 'gift_celebration'`, render `GiftCelebrationCard` thay vì `FacebookPostCard`
 
-**File: `src/components/donations/GiftCelebrationModal.tsx`**
+### File 2: `src/hooks/useFeedPosts.ts`
 
-Khi có `multiRecipients`, thay vì hiển thị 1 dòng "Người nhận: @6 người nhận", hiển thị danh sách:
-- Mỗi người nhận trên 1 dòng
-- Kèm avatar, username, trạng thái (thanh cong/that bai)
-- Link xem giao dịch trên BscScan cho từng người
+- Thêm listener cho event `invalidate-feed` (tương tự pattern `invalidate-donations` trong `useDonationHistory`)
+- Khi nhận event, gọi `queryClient.invalidateQueries({ queryKey: ['feed-posts'] })` và `queryClient.invalidateQueries({ queryKey: ['highlighted-posts'] })`
 
-## Chi tiet ky thuat
+### File 3: `src/components/donations/UnifiedGiftSendDialog.tsx`
 
-### Interface moi cho GiftCardData
+- Trong hàm `invalidateDonationCache` (dòng 621-624), dispatch thêm event `invalidate-feed`
+- Import `useQueryClient` và gọi trực tiếp `queryClient.invalidateQueries` cho các key: `donation-history`, `donation-stats`, `feed-posts`, `highlighted-posts`
 
-```text
-multiRecipients?: Array<{
-  username: string;
-  avatarUrl?: string | null;
-  recipientId: string;
-  walletAddress: string;
-  success: boolean;
-  txHash?: string;
-  error?: string;
-}>
-```
+### File 4: `supabase/functions/record-donation/index.ts`
 
-### Flow sau khi sua
+- Redeploy edge function để đảm bảo nó đang chạy phiên bản mới nhất
 
-```text
-Multi-send thanh cong
-  -> Hien thi the chuc mung voi DANH SACH tung nguoi nhan
-  -> Ghi tung donation vao database (tuan tu, co retry)
-  -> Invalidate cache donation-history, donation-stats
-  -> Moi nguoi nhan duoc: notification + chat message + bai dang
-```
+## Kết quả mong đợi
 
-### Cac file thay doi
-
-| File | Thay doi |
-|------|---------|
-| `src/components/donations/UnifiedGiftSendDialog.tsx` | Sua celebration data, cai thien recordDonationBackground, them retry va invalidation |
-| `src/components/donations/GiftCelebrationModal.tsx` | Them hien thi danh sach multi-recipients |
-| `supabase/functions/record-donation/index.ts` | Redeploy de dam bao hoat dong |
+| Vị trí | Trước | Sau |
+|--------|-------|-----|
+| Trang cá nhân | Bài tặng quà hiển thị lỗi/trắng | Hiển thị thẻ xanh GiftCelebrationCard |
+| Trang chủ | Có thể không thấy bài mới ngay | Bài tặng quà xuất hiện ngay sau khi gửi |
+| Lịch sử giao dịch | Có thể không cập nhật ngay | Tự động refetch sau khi ghi donation thành công |
