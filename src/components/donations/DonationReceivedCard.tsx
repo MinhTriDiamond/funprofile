@@ -55,6 +55,9 @@ export const DonationReceivedCard = ({
   useEffect(() => {
     if (isOpen) {
       audioRef.current = playCelebrationMusicLoop('rich-3');
+      if (audioRef.current) {
+        audioRef.current.loop = false;
+      }
     }
     return () => {
       if (audioRef.current) {
