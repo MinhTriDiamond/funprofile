@@ -40,6 +40,7 @@ import { useLanguage } from '@/i18n/LanguageContext';
 
 interface Profile {
   username: string;
+  display_name: string | null;
   avatar_url: string | null;
   cover_url: string | null;
   full_name: string | null;
@@ -212,7 +213,7 @@ const WalletCenterContainer = () => {
     if (session?.user) {
       const { data } = await supabase
         .from('profiles')
-        .select('username, avatar_url, cover_url, full_name, reward_status, admin_notes')
+        .select('username, display_name, avatar_url, cover_url, full_name, reward_status, admin_notes')
         .eq('id', session.user.id)
         .single();
       if (data) setProfile(data as Profile);
@@ -464,7 +465,7 @@ const WalletCenterContainer = () => {
             </Avatar>
             <div>
               <h1 className="text-xl font-bold text-gray-900">{t('walletMyWallet')}</h1>
-              <p className="text-sm text-muted-foreground">{profile?.username || 'Account'}</p>
+              <p className="text-sm text-muted-foreground">{profile?.display_name || profile?.username || 'Account'}</p>
             </div>
           </div>
           <DropdownMenu>
