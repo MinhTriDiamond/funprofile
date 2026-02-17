@@ -19,7 +19,7 @@ import { useTokenBalances } from '@/hooks/useTokenBalances';
 import { validateMinSendValue } from '@/lib/minSendValidation';
 import { validateEvmAddress } from '@/utils/walletValidation';
 import { useDebounce } from '@/hooks/useDebounce';
-import { useAccount, useBalance, useReadContract, useChainId, useSwitchChain } from 'wagmi';
+import { useAccount, useBalance, useReadContract, useChainId, useSwitchChain, usePublicClient } from 'wagmi';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { Loader2, Wallet, Gift, AlertCircle, Send, Copy, AlertTriangle, ExternalLink, CheckCircle2, RefreshCw, Search, User, X, ArrowLeft, ArrowRight, Shield, Users } from 'lucide-react';
 import { toast } from 'sonner';
@@ -100,6 +100,10 @@ export const UnifiedGiftSendDialog = ({
   const { openConnectModal } = useConnectModal();
   const { tokens: tokenBalanceList } = useTokenBalances();
   const { sendToken, isPending, txStep, txHash, recheckReceipt, resetState } = useSendToken();
+  const publicClient = usePublicClient();
+
+  // Real-time gas price estimation
+  const [estimatedGasPerTx, setEstimatedGasPerTx] = useState(0.0005);
 
   // Default to CAMLY
   const defaultToken = SUPPORTED_TOKENS.find(t => t.symbol === 'CAMLY') || SUPPORTED_TOKENS[0];
@@ -145,6 +149,25 @@ export const UnifiedGiftSendDialog = ({
       if (data) setSenderProfile(data as any);
     })();
   }, [isOpen, effectiveAddress]);
+
+  // Fetch real-time gas price from BSC network
+  useEffect(() => {
+    if (!isOpen || !publicClient) return;
+    const fetchGasPrice = async () => {
+      try {
+        const gasPrice = await publicClient.getGasPrice();
+        const gasLimit = selectedToken.address ? 65000n : 21000n;
+        const totalWei = gasPrice * gasLimit;
+        const inBnb = Number(totalWei) / 1e18;
+        setEstimatedGasPerTx(inBnb * 1.2); // 20% safety buffer
+      } catch {
+        setEstimatedGasPerTx(0.0005);
+      }
+    };
+    fetchGasPrice();
+    const interval = setInterval(fetchGasPrice, 30000);
+    return () => clearInterval(interval);
+  }, [isOpen, publicClient, selectedToken.address]);
 
   // Determine effective recipients
   const isPresetMode = mode === 'post' || (mode === 'navbar' && !!presetRecipient?.id);
@@ -202,7 +225,7 @@ export const UnifiedGiftSendDialog = ({
   const isValidAmount = minSendCheck.valid;
   const hasEnoughBalance = formattedBalance >= totalAmount;
   const isWrongNetwork = chainId !== bsc.id;
-  const needsGasWarning = selectedToken.symbol !== 'BNB' && bnbBalanceNum < 0.002 * recipientsWithWallet.length && parsedAmountNum > 0;
+  const needsGasWarning = selectedToken.symbol !== 'BNB' && bnbBalanceNum < estimatedGasPerTx * recipientsWithWallet.length && parsedAmountNum > 0;
   const isLargeAmount = totalAmount > formattedBalance * 0.8 && totalAmount > 0;
 
   const isInProgress = ['signing', 'broadcasted', 'confirming', 'finalizing'].includes(txStep);
@@ -341,7 +364,7 @@ export const UnifiedGiftSendDialog = ({
   const handleMaxAmount = () => {
     if (formattedBalance > 0 && recipientsWithWallet.length > 0) {
       const perPerson = selectedToken.symbol === 'BNB'
-        ? Math.max(0, (formattedBalance - 0.002 * recipientsWithWallet.length) / recipientsWithWallet.length)
+        ? Math.max(0, (formattedBalance - estimatedGasPerTx * recipientsWithWallet.length) / recipientsWithWallet.length)
         : formattedBalance / recipientsWithWallet.length;
       setAmount(perPerson.toString());
     }
@@ -928,7 +951,7 @@ export const UnifiedGiftSendDialog = ({
                   {needsGasWarning && (
                     <div className="flex items-center gap-2 p-2 bg-destructive/10 border border-destructive/20 rounded-lg">
                       <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
-                      <p className="text-xs text-destructive">BNB còn {bnbBalanceNum.toFixed(4)}. Cần khoảng {(0.002 * recipientsWithWallet.length).toFixed(4)} BNB phí gas cho {recipientsWithWallet.length} giao dịch.</p>
+                      <p className="text-xs text-destructive">BNB còn {bnbBalanceNum.toFixed(4)}. Cần khoảng {(estimatedGasPerTx * recipientsWithWallet.length).toFixed(4)} BNB phí gas cho {recipientsWithWallet.length} giao dịch.</p>
                     </div>
                   )}
 
