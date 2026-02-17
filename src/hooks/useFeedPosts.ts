@@ -189,6 +189,16 @@ export const useFeedPosts = () => {
     queryClient.invalidateQueries({ queryKey: ['feed-posts'] });
   }, [queryClient]);
 
+  // Listen for invalidate-feed event (dispatched after donation)
+  useEffect(() => {
+    const handler = () => {
+      queryClient.invalidateQueries({ queryKey: ['feed-posts'] });
+      queryClient.invalidateQueries({ queryKey: ['highlighted-posts'] });
+    };
+    window.addEventListener('invalidate-feed', handler);
+    return () => window.removeEventListener('invalidate-feed', handler);
+  }, [queryClient]);
+
   useEffect(() => {
     const channel = supabase
       .channel('feed-posts-realtime')

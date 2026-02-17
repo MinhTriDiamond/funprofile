@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EditProfile } from '@/components/profile/EditProfile';
 import { FacebookPostCard } from '@/components/feed/FacebookPostCard';
+import { GiftCelebrationCard } from '@/components/feed/GiftCelebrationCard';
 import { FacebookCreatePost } from '@/components/feed/FacebookCreatePost';
 import { FriendRequestButton } from '@/components/friends/FriendRequestButton';
 import { FriendsList } from '@/components/friends/FriendsList';
@@ -833,16 +834,24 @@ const Profile = () => {
                                     <span className="font-medium">{t('pinnedPost')}</span>
                                   </div>
                                 )}
-                                <FacebookPostCard 
-                                  post={item} 
-                                  currentUserId={currentUserId}
-                                  onPostDeleted={handlePostDeleted}
-                                  isPinned={isPinned}
-                                  onPinPost={showPrivateElements ? handlePinPost : undefined}
-                                  onUnpinPost={showPrivateElements ? handleUnpinPost : undefined}
-                                  isOwnProfile={isOwnProfile}
-                                  viewAsPublic={viewAsPublic}
-                                />
+                                {item.post_type === 'gift_celebration' ? (
+                                  <GiftCelebrationCard
+                                    post={item}
+                                    currentUserId={currentUserId}
+                                    onPostDeleted={handlePostDeleted}
+                                  />
+                                ) : (
+                                  <FacebookPostCard 
+                                    post={item} 
+                                    currentUserId={currentUserId}
+                                    onPostDeleted={handlePostDeleted}
+                                    isPinned={isPinned}
+                                    onPinPost={showPrivateElements ? handlePinPost : undefined}
+                                    onUnpinPost={showPrivateElements ? handleUnpinPost : undefined}
+                                    isOwnProfile={isOwnProfile}
+                                    viewAsPublic={viewAsPublic}
+                                  />
+                                )}
                               </div>
                             );
                           })
