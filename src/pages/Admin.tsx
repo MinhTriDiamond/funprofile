@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Shield, BarChart3, Gift, Users, Wallet, Trash2, Link2, LogOut, CloudUpload, GitMerge, DollarSign, Sparkles, FileText } from "lucide-react";
+import { Shield, BarChart3, Gift, Users, Wallet, Trash2, Link2, LogOut, CloudUpload, GitMerge, DollarSign, Sparkles, FileText, Ghost } from "lucide-react";
 import { FacebookNavbar } from "@/components/layout/FacebookNavbar";
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 
@@ -20,6 +20,7 @@ import FinancialTab from "@/components/admin/FinancialTab";
 import PplpMintTab from "@/components/admin/PplpMintTab";
 import { DonationHistoryAdminTab } from "@/components/admin/DonationHistoryAdminTab";
 import PostModerationTab from "@/components/admin/PostModerationTab";
+import GhostCleanupTab from "@/components/admin/GhostCleanupTab";
 
 interface UserData {
   id: string;
@@ -162,7 +163,7 @@ const Admin = () => {
 
         {/* Main Tabs */}
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6 lg:grid-cols-12 h-auto">
+          <TabsList className="grid w-full grid-cols-7 lg:grid-cols-13 h-auto">
             <TabsTrigger value="overview" className="gap-2 py-3">
               <BarChart3 className="w-4 h-4" />
               <span className="hidden sm:inline">📊 Tổng quan</span>
@@ -210,6 +211,10 @@ const Admin = () => {
             <TabsTrigger value="moderation" className="gap-2 py-3">
               <FileText className="w-4 h-4" />
               <span className="hidden sm:inline">📝 Duyệt bài</span>
+            </TabsTrigger>
+            <TabsTrigger value="ghost" className="gap-2 py-3">
+              <Ghost className="w-4 h-4" />
+              <span className="hidden sm:inline">👻 User ảo</span>
             </TabsTrigger>
           </TabsList>
 
@@ -274,6 +279,10 @@ const Admin = () => {
 
           <TabsContent value="moderation">
             <PostModerationTab />
+          </TabsContent>
+
+          <TabsContent value="ghost">
+            <GhostCleanupTab adminId={currentUserId!} />
           </TabsContent>
       </Tabs>
         </div>
