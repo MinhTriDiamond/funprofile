@@ -41,12 +41,25 @@ export const LawOfLightGuard = ({ children }: LawOfLightGuardProps) => {
         const { data: { session } } = await supabase.auth.getSession();
         
         if (!session) {
-          const guestAllowedPaths = ['/', '/feed', '/about', '/install', '/leaderboard', '/benefactors', '/donations'];
+        const guestAllowedPaths = ['/', '/feed', '/about', '/install', '/leaderboard', '/benefactors', '/donations'];
+
+          // Danh sách các path tĩnh đã đăng ký trong router (không phải username)
+          const reservedPaths = ['auth', 'feed', 'friends', 'wallet', 'about', 'leaderboard',
+            'admin', 'notifications', 'docs', 'post', 'law-of-light', 'profile', 'chat',
+            'install', 'benefactors', 'donations', 'users', 'reels', 'mint', 'set-password',
+            'begin', 'connected-apps'];
+
+          // Kiểm tra xem path có phải là /:username (bare username) không
+          const pathSegments = location.pathname.split('/').filter(Boolean);
+          const isBareUsername = pathSegments.length === 1
+            && !reservedPaths.includes(pathSegments[0].toLowerCase());
+
           const isGuestPath = guestAllowedPaths.includes(location.pathname)
             || location.pathname.startsWith('/profile/')
             || location.pathname.startsWith('/@')
             || location.pathname.startsWith('/post/')
-            || location.pathname.startsWith('/reels');
+            || location.pathname.startsWith('/reels')
+            || isBareUsername;
           
           if (isGuestPath) {
             setIsAllowed(true);
