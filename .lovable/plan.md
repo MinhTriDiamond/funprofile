@@ -1,79 +1,53 @@
 
-# Fix: Tai khoan bi dang xuat sau khi dang nhap
+# Fix: Gift Dialog Search Spinning and Can't Confirm
 
-## Nguyen nhan goc
+## Root Cause Analysis
 
-Nhieu trang (Wallet, Friends, va cac trang khac) dang lang nghe su kien `onAuthStateChange` va **tu dong chuyen huong ve `/auth` bat cu khi nao `session` la null**, ma khong kiem tra loai su kien (`event`).
+There are **3 related issues** causing problems:
 
-Khi Supabase tu dong lam moi token (refresh token), co the xay ra tinh trang:
-1. Token cu het han
-2. Supabase gui su kien `TOKEN_REFRESHED` nhung trong qua trinh refresh, session co the tam thoi la `null`
-3. Cac listener bat duoc `session === null` va lap tuc chuyen ve `/auth`
-4. Nguoi dung bi "out" du khong chu dong dang xuat
+### Issue 1: Missing Wallet Address in Feed Data
+The feed query (`useFeedPosts.ts`) only selects `external_wallet_address` and `custodial_wallet_address` from profiles. However, **80 users** only have wallets in `wallet_address` or `public_wallet_address` columns. When opening the gift dialog from a post for these users, the wallet address is null, making the confirm button permanently disabled.
 
-Van de nay dac biet hay xay ra khi nguoi dung chuyen tab roi quay lai, hoac khi mang khong on dinh.
+### Issue 2: Auth Session Instability Causing Re-renders
+The console shows `[AuthKeeper] Token refresh failed: timeout`. Several components still react to null sessions during token refresh (not just `SIGNED_OUT`), causing unnecessary re-renders that can disrupt the gift dialog's state:
+- `Profile.tsx` - clears currentUserId on any null session
+- `FacebookLeftSidebar.tsx` - clears profile/admin state on null session
+- `DonationReceivedNotification.tsx` - clears userId on null session
+- `GuestSignupPrompt.tsx` - sets isGuest on null session
 
-## Giai phap
+### Issue 3: Wallet Address Not Fully Resolved in DonationButton
+`FacebookPostCard.tsx` and `Profile.tsx` pass `external_wallet_address || custodial_wallet_address` to DonationButton, missing `public_wallet_address` and `wallet_address` (the most common wallet columns with 380 and 288 users respectively).
 
-Chi chuyen huong ve `/auth` khi su kien la `SIGNED_OUT` (nguoi dung chu dong dang xuat). Cac su kien khac voi session null (nhu refresh that bai) se khong gay chuyen huong.
+---
 
-## Cac file can sua
+## Fix Plan
 
-### 1. `src/pages/Wallet.tsx` (dong 37-41)
-Hien tai:
-```typescript
-supabase.auth.onAuthStateChange((event, session) => {
-  if (!session) {
-    navigate('/auth');
-  }
-});
-```
-Doi thanh:
-```typescript
-supabase.auth.onAuthStateChange((event, session) => {
-  if (event === 'SIGNED_OUT') {
-    navigate('/auth');
-  }
-});
-```
+### File 1: `src/hooks/useFeedPosts.ts`
+Add `public_wallet_address` and `wallet_address` to the profiles select query (2 locations: highlighted posts query and main feed query).
 
-### 2. `src/pages/Friends.tsx` (dong 42-49)
-Hien tai:
-```typescript
-supabase.auth.onAuthStateChange((event, session) => {
-  if (session) {
-    setCurrentUserId(session.user.id);
-    setLoading(false);
-  } else {
-    navigate('/auth');
-  }
-});
-```
-Doi thanh:
-```typescript
-supabase.auth.onAuthStateChange((event, session) => {
-  if (session) {
-    setCurrentUserId(session.user.id);
-    setLoading(false);
-  } else if (event === 'SIGNED_OUT') {
-    navigate('/auth');
-  }
-});
-```
+### File 2: `src/components/feed/FacebookPostCard.tsx`
+Update DonationButton wallet address to include all wallet columns with priority: `public_wallet_address > external_wallet_address > wallet_address > custodial_wallet_address`
 
-### 3. `src/pages/Feed.tsx` (dong 92-94)
-Cap nhat tuong tu - chi set userId ve rong khi `SIGNED_OUT`:
-```typescript
-supabase.auth.onAuthStateChange((event, session) => {
-  if (session) {
-    setCurrentUserId(session?.user?.id || '');
-  } else if (event === 'SIGNED_OUT') {
-    setCurrentUserId('');
-  }
-});
-```
+### File 3: `src/pages/Profile.tsx`  
+- Update DonationButton wallet address resolution (same priority)
+- Fix `onAuthStateChange` to only clear state on `SIGNED_OUT` event
 
-## Ket qua
-- Nguoi dung se KHONG bi dang xuat khi token tu dong refresh
-- Chi bi chuyen ve trang dang nhap khi chu dong bam "Dang xuat"
-- AuthSessionKeeper trong App.tsx van hoat dong binh thuong de lam moi session khi quay lai tab
+### File 4: `src/components/feed/FacebookLeftSidebar.tsx`
+Fix `onAuthStateChange` to only clear profile/admin on `SIGNED_OUT`
+
+### File 5: `src/components/donations/DonationReceivedNotification.tsx`
+Fix `onAuthStateChange` to only clear userId on `SIGNED_OUT`
+
+### File 6: `src/components/auth/GuestSignupPrompt.tsx`
+Fix `onAuthStateChange` to only set isGuest on `SIGNED_OUT`
+
+### File 7: `src/App.tsx` (AuthSessionKeeper)
+Improve token refresh resilience: increase timeout from 10s to 20s and add retry logic.
+
+---
+
+## Summary
+- 7 files modified
+- Fixes wallet address resolution across feed, posts, and profiles
+- Stabilizes auth session to prevent dialog state resets
+- All users with any type of wallet can receive gifts
