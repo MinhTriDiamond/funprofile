@@ -59,16 +59,20 @@ serve(async (req: Request) => {
 
     const prompt = `Create a beautiful, professional celebration card image (landscape 16:9 ratio). 
 Design requirements:
-- Background: Rich green gradient (#10b981 to #047857) with subtle golden sparkle effects
-- Top: "🎉 FUN Profile" branding text in white
+- Background: Rich green gradient (#10b981 to #047857) with subtle golden sparkle effects and cosmic/galaxy texture
+- Top center: Place the attached FUN Profile logo (the round green galaxy logo with "FUN Profile" text) prominently at the top center of the card
 - Center: "${actionText}" in large bold white text with golden accent on the amount
 - Bottom: "TX: ${tx_hash.slice(0, 12)}..." and "${dateStr}" in small white text
 - Decorative elements: Golden stars, confetti particles, gift box icons
 - Style: Modern, festive, professional fintech celebration card
 - No photographs of people, only text and decorative graphics
-- The text must be clearly readable against the background`;
+- The text must be clearly readable against the background
+- The logo should be clearly visible and recognizable`;
 
-    console.log("Generating celebration image...");
+    console.log("Generating celebration image with logo...");
+
+    // Logo URL for the AI to reference
+    const logoUrl = "https://funprofile.lovable.app/fun-profile-logo-full.jpg";
 
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -78,7 +82,13 @@ Design requirements:
       },
       body: JSON.stringify({
         model: "google/gemini-2.5-flash-image",
-        messages: [{ role: "user", content: prompt }],
+        messages: [{
+          role: "user",
+          content: [
+            { type: "text", text: prompt },
+            { type: "image_url", image_url: { url: logoUrl } }
+          ]
+        }],
         modalities: ["image", "text"],
       }),
     });
