@@ -121,7 +121,7 @@ const Profile = () => {
         if (userId) {
           setIsOwnProfile(session.user.id === userId);
         }
-      } else {
+      } else if (event === 'SIGNED_OUT') {
         setCurrentUserId('');
         setIsOwnProfile(false);
       }
@@ -586,7 +586,7 @@ const Profile = () => {
                         <DonationButton
                           recipientId={profile.id}
                           recipientUsername={profile.username}
-                          recipientWalletAddress={profile.external_wallet_address || profile.custodial_wallet_address}
+                          recipientWalletAddress={profile.public_wallet_address || profile.external_wallet_address || profile.wallet_address || profile.custodial_wallet_address}
                           recipientAvatarUrl={profile.avatar_url}
                           variant="profile"
                         />

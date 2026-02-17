@@ -68,7 +68,7 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
           _role: 'admin'
         });
         setIsAdmin(!!hasAdminRole);
-      } else {
+      } else if (event === 'SIGNED_OUT') {
         setProfile(null);
         setIsAdmin(false);
       }
