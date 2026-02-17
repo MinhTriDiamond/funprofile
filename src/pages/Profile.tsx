@@ -152,7 +152,7 @@ const Profile = () => {
         .from('posts')
         .select(`
           *,
-          profiles!posts_user_id_fkey (username, avatar_url, full_name, external_wallet_address, custodial_wallet_address),
+          profiles!posts_user_id_fkey (username, display_name, avatar_url, full_name, external_wallet_address, custodial_wallet_address, public_wallet_address),
           reactions (id, user_id, type),
           comments (id)
         `)
@@ -168,7 +168,7 @@ const Profile = () => {
           *,
           posts:original_post_id (
             *,
-            profiles!posts_user_id_fkey (username, avatar_url, full_name, external_wallet_address, custodial_wallet_address),
+            profiles!posts_user_id_fkey (username, display_name, avatar_url, full_name, external_wallet_address, custodial_wallet_address, public_wallet_address),
             reactions (id, user_id, type),
             comments (id)
           )
@@ -480,7 +480,7 @@ const Profile = () => {
 
                   {/* Public Wallet Address - fallback: public > external > custodial */}
                   {(() => {
-                    const displayAddress = profile?.public_wallet_address || profile?.custodial_wallet_address;
+                    const displayAddress = profile?.public_wallet_address || profile?.external_wallet_address || profile?.custodial_wallet_address;
                     if (displayAddress) {
                       return (
                         <div className="inline-flex items-center gap-2 mt-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20">

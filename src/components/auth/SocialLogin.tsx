@@ -57,19 +57,31 @@ export const SocialLogin = ({
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
     try {
-      const {
-        error
-      } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/`,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent select_account'
-          }
-        }
-      });
-      if (error) throw error;
+      const isCustomDomain =
+        !window.location.hostname.includes('lovable.app') &&
+        !window.location.hostname.includes('lovableproject.com');
+
+      if (isCustomDomain) {
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: `${window.location.origin}/`,
+            skipBrowserRedirect: true,
+            queryParams: { access_type: 'offline', prompt: 'consent select_account' },
+          },
+        });
+        if (error) throw error;
+        if (data?.url) window.location.href = data.url;
+      } else {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: `${window.location.origin}/`,
+            queryParams: { access_type: 'offline', prompt: 'consent select_account' },
+          },
+        });
+        if (error) throw error;
+      }
     } catch (error: any) {
       toast.error(error.message || t('authErrorGeneric'));
       setGoogleLoading(false);
