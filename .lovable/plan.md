@@ -1,73 +1,83 @@
 
+# Hien thi "Ten hien thi" va Kiem tra dia chi vi trong muc Tang qua
 
-# Fix: Tim kiem cham va khong hien het ket qua
+## Van de 1: Hien thi "Ten hien thi" (display_name) thay vi @username
 
-## Van de hien tai
+Hien tai, moi noi co avatar trong dialog Tang qua deu chi hien thi `@username`. Theo chuan cua he thong, can hien thi `display_name` (ten hien thi) o dong chinh, `@username` o dong phu.
 
-### 1. Tim kiem trang chu (InlineSearch) - cham vi 3 nguyen nhan:
-- **Goi `supabase.auth.getUser()` moi lan tim** - Day la API call qua mang, mat 200-500ms moi lan nhap. Day la nguyen nhan chinh gay cham.
-- **Ghi log tim kiem dong bo** - Cho ghi xong moi tra ket qua, them 100-200ms nua.
-- **Khong dung `username_normalized`** - Tim tren `username` va `full_name` thay vi cot da duoc toi uu.
-- **Gioi han chi 6 user** - Khong hien het ket qua lien quan.
+### Cac vi tri can sua trong `UnifiedGiftSendDialog.tsx`:
 
-### 2. Tim kiem trong tang qua (UnifiedGiftSendDialog) - cham vi:
-- **Debounce 500ms** - Qua lau, nguoi dung phai cho nua giay sau khi ngung go.
-- **Gioi han chi 10 user** - Co the bo sot nguoi can tim.
-- **Khong tim tren `full_name`** - Chi tim `username_normalized`, bo sot nguoi dung co ten hien thi khac.
+1. **Nguoi gui (Sender)** - dong 648-670: Hien `display_name` thay vi `@username` lam ten chinh
+2. **Nguoi nhan preset** - dong 740-763: Them `display_name` 
+3. **Chip da chon** - dong 773-803: Hien `display_name` trong chip
+4. **Ket qua tim kiem** - dong 824-843: Hien `display_name` va `@username` phu
+5. **Xac nhan - Nguoi gui** - dong 932-947: Hien `display_name`
+6. **Xac nhan - Nguoi nhan multi** - dong 967-1002: Hien `display_name`
+7. **Xac nhan - Nguoi nhan single** - dong 1003-1018: Hien `display_name`
 
-### 3. Tim kiem theo dia chi vi - cham vi:
-- **Dung `.or()` voi 3 dieu kien** thay vi song song - co the toi uu hon.
+### Thay doi ky thuat:
 
-## Giai phap
-
-### File 1: `src/components/layout/InlineSearch.tsx`
-- **Bo `supabase.auth.getUser()`** - thay bang `supabase.auth.getSession()` (doc tu cache, khong goi API)
-- **Ghi search_logs bat dong bo** (khong cho ket qua) - dung `.then()` thay vi `await`
-- **Dung `username_normalized`** de tim user (da co index)
-- **Tim dong thoi ca `full_name`** de khong bo sot
-- **Tang gioi han len 15 user** va **10 bai viet**
-- **Giam debounce tu 400ms xuong 300ms**
-- **Tim profiles va posts song song** bang `Promise.all`
-
-### File 2: `src/components/donations/UnifiedGiftSendDialog.tsx`
-- **Giam debounce tu 500ms xuong 300ms**
-- **Tang gioi han tu 10 len 20 user**
-- **Them tim kiem tren `full_name`** de hien thi day du hon
-- **Them `username_normalized` vao select** de tim kiem chinh xac hon (da co san)
-
-### File 3: `src/components/chat/NewConversationDialog.tsx`
-- **Tang gioi han tu 10 len 20 user**
-- **Them tim kiem tren `full_name`** de day du hon
-
-## Chi tiet ky thuat
-
-### InlineSearch - thay doi chinh:
-
-```text
-Truoc:
-  getUser() [200-500ms] -> ghi log [100-200ms] -> tim profiles -> tim posts
-  Tong: ~500-900ms
-
-Sau:
-  getSession() [0ms, cache] -> tim profiles + tim posts [song song] -> ghi log [bat dong bo]
-  Tong: ~100-200ms
+**ResolvedRecipient interface** - them truong `displayName`:
+```typescript
+interface ResolvedRecipient {
+  id: string;
+  username: string;
+  displayName: string | null;  // NEW
+  avatarUrl: string | null;
+  walletAddress: string | null;
+  hasVerifiedWallet?: boolean;
+}
 ```
 
-Thay doi cu the:
-- `supabase.auth.getUser()` -> `supabase.auth.getSession()` (cache local, khong goi API)
-- `await supabase.from('search_logs').insert(...)` -> `supabase.from('search_logs').insert(...).then()` (khong cho)
-- Tim profiles va posts dong thoi bang `Promise.all([profileQuery, postQuery])`
-- Dung `username_normalized` thay vi `username` cho profiles query
-- Tang `.limit(6)` -> `.limit(15)` cho profiles, `.limit(5)` -> `.limit(10)` cho posts
+**Sender profile** - them `display_name` vao select:
+```typescript
+// Dong 137: Them display_name
+.select('username, display_name, avatar_url, wallet_address')
+```
 
-### UnifiedGiftSendDialog - thay doi chinh:
-- `useDebounce(searchQuery, 500)` -> `useDebounce(searchQuery, 300)`
-- `.limit(10)` -> `.limit(20)`
-- Them `or('username_normalized.ilike.%query%, full_name.ilike.%query%')` de tim rong hon
+**Search query** - them `display_name` vao selectFields:
+```typescript
+const selectFields = 'id, username, display_name, avatar_url, wallet_address, public_wallet_address, external_wallet_address';
+```
 
-## Ket qua mong doi
-- Tim kiem nhanh gap 3-5 lan (tu ~700ms xuong ~150ms)
-- Hien thi day du hon danh sach user lien quan
-- Tim kiem trong tang qua phan hoi nhanh hon
-- Khong anh huong gi den chuc nang hien tai
+**Hien thi**: Moi noi co avatar se hien:
+- Dong chinh: `display_name || username` (ten hien thi)
+- Dong phu: `@username` (nho hon, mau xam)
 
+---
+
+## Van de 2: Dia chi vi hien thi khong khop voi trang ca nhan
+
+### Nguyen nhan:
+Dialog hien thi `address` tu wagmi (vi hien tai dang ket noi trong trinh duyet), KHONG phai dia chi vi luu trong profile. Day la **dung thiet ke** vi giao dich blockchain can ky tu vi dang ket noi.
+
+Tuy nhien, neu nguoi dung ket noi mot tai khoan vi khac voi tai khoan da luu trong profile, se xuat hien khong khop. Can **canh bao nguoi dung** khi dia chi vi dang ket noi khac voi dia chi da luu trong profile.
+
+### Giai phap:
+Them canh bao khi `address` (wagmi) khac voi `senderProfile.wallet_address` / `public_wallet_address`:
+
+```typescript
+// So sanh dia chi vi dang ket noi voi dia chi luu trong profile
+const walletMismatch = address && senderProfile && 
+  address.toLowerCase() !== senderProfile.wallet_address?.toLowerCase() &&
+  address.toLowerCase() !== senderProfile.public_wallet_address?.toLowerCase();
+```
+
+Hien thi canh bao mau cam phia duoi phan Nguoi gui neu co khong khop.
+
+---
+
+## Tong ket cac file can sua:
+
+### File 1: `src/components/donations/UnifiedGiftSendDialog.tsx`
+- Them `display_name` vao interface, query, va select
+- Cap nhat tat ca 7 vi tri hien thi avatar de dung `display_name`
+- Them `public_wallet_address` vao sender profile query
+- Them canh bao khi dia chi vi khong khop
+- Truyen `displayName` vao `presetRecipient` mapping
+
+### File 2: `src/components/feed/FacebookPostCard.tsx`
+- Truyen them `displayName` vao presetRecipient cua DonationButton (neu co)
+
+### File 3: `src/pages/Profile.tsx`
+- Truyen them `displayName` vao presetRecipient cua DonationButton (neu co)
