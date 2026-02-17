@@ -67,7 +67,14 @@ Design requirements:
 - Style: Modern, festive, professional fintech celebration card
 - No photographs of people, only text and decorative graphics
 - The text must be clearly readable against the background
-- The logo should be clearly visible and recognizable`;
+- The logo should be clearly visible and recognizable
+
+CRITICAL TEXT RENDERING RULES:
+- The text is in Vietnamese and MUST include all correct diacritical marks (dấu sắc, huyền, hỏi, ngã, nặng, mũ, móc)
+- Render the Vietnamese text EXACTLY as provided, character by character: "${actionText}"
+- Do NOT remove, change, or omit any Vietnamese diacritics
+- Examples of correct rendering: "đã" (not "da"), "tặng" (not "tang"), "cho" (not "cho"), "nhận" (not "nhan"), "thưởng" (not "thuong")
+- Double-check every character has the correct accent marks before finalizing`;
 
     console.log("Generating celebration image with logo...");
 
