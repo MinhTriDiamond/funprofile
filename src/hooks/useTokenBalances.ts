@@ -19,13 +19,7 @@ export const TOKEN_CONTRACTS = {
   FUN: '0x1aa8DE8B1E4465C6d729E8564893f8EF823a5ff2' as `0x${string}`,
 };
 
-// CoinGecko IDs for price fetching
-const COINGECKO_IDS = {
-  BNB: 'binancecoin',
-  BTCB: 'bitcoin',
-  USDT: 'tether',
-  CAMLY: 'camly-coin',
-};
+import { supabase } from '@/integrations/supabase/client';
 
 // ERC20 ABI for balanceOf
 const ERC20_BALANCE_ABI = [
@@ -127,27 +121,15 @@ export const useTokenBalances = (options?: UseTokenBalancesOptions) => {
   // Track consecutive failures for backoff
   const [failCount, setFailCount] = useState(0);
 
-  // Fetch prices from CoinGecko
+  // Fetch prices from token-prices edge function
   const fetchPrices = useCallback(async () => {
     try {
       setIsPriceLoading(true);
-      const ids = Object.values(COINGECKO_IDS).join(',');
-      const response = await fetch(
-        `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`
-      );
+      const { data, error } = await supabase.functions.invoke('token-prices');
       
-      if (!response.ok) {
-        throw new Error('Failed to fetch prices');
-      }
+      if (error) throw error;
       
-      const data = await response.json();
-      
-      const priceData: PriceData = {
-        BNB: data[COINGECKO_IDS.BNB] || lastPrices.BNB || fallbackPrices.BNB,
-        BTCB: data[COINGECKO_IDS.BTCB] || lastPrices.BTCB || fallbackPrices.BTCB,
-        USDT: data[COINGECKO_IDS.USDT] || lastPrices.USDT || fallbackPrices.USDT,
-        CAMLY: data[COINGECKO_IDS.CAMLY] || lastPrices.CAMLY || fallbackPrices.CAMLY,
-      };
+      const priceData: PriceData = data?.prices || fallbackPrices;
       
       setPrices(priceData);
       setLastPrices(priceData);

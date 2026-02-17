@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 const CAMLY_FALLBACK_PRICE = 0.000014;
-const COINGECKO_ID = 'camly-coin';
 
 interface CamlyPriceResult {
   price: number;
@@ -17,12 +17,9 @@ export const useCamlyPrice = (): CamlyPriceResult => {
 
   const fetchPrice = useCallback(async () => {
     try {
-      const res = await fetch(
-        `https://api.coingecko.com/api/v3/simple/price?ids=${COINGECKO_ID}&vs_currencies=usd&include_24hr_change=true`
-      );
-      if (!res.ok) throw new Error('Failed');
-      const data = await res.json();
-      const camly = data[COINGECKO_ID];
+      const { data, error } = await supabase.functions.invoke('token-prices');
+      if (error) throw error;
+      const camly = data?.prices?.CAMLY;
       if (camly) {
         setPrice(camly.usd ?? CAMLY_FALLBACK_PRICE);
         setChange24h(camly.usd_24h_change ?? 0);
