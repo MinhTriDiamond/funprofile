@@ -22,6 +22,9 @@ import { RichTextOverlay } from './RichTextOverlay';
 import { playCelebrationMusicLoop } from '@/lib/celebrationSounds';
 import { useNavigate } from 'react-router-dom';
 
+// Mốc thời gian: từ 17/2/2026 00:00 (UTC+7) trở đi dùng giao diện Tết
+const TET_CUTOFF = new Date('2026-02-16T17:00:00.000Z'); // 17/2/2026 00:00 UTC+7
+
 export interface DonationReceivedData {
   id: string;
   amount: string;
@@ -48,6 +51,8 @@ export const DonationReceivedCard = ({
   const [isCelebrationActive, setIsCelebrationActive] = useState(true);
   const navigate = useNavigate();
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const isTetTheme = new Date(data.createdAt) >= TET_CUTOFF;
 
   // Play looped music when card opens, stop when closed
   useEffect(() => {
@@ -86,24 +91,29 @@ export const DonationReceivedCard = ({
           className="max-w-[480px] w-[92vw] p-0 overflow-hidden border-0 bg-transparent shadow-none [&>button]:hidden !z-[10002]"
           overlayClassName="!z-[10002]"
         >
-          {/* 3:2 aspect ratio container with video background */}
           <div
             className="relative rounded-2xl overflow-hidden animate-glow-radiate"
-            style={{ aspectRatio: '3 / 2' }}
+            style={{
+              ...(isTetTheme
+                ? { aspectRatio: '3 / 2' }
+                : { background: 'linear-gradient(135deg, #d4f7dc 0%, #34d399 40%, #10b981 100%)' }),
+            }}
           >
-            {/* Video background */}
-            <video
-              autoPlay
-              loop
-              muted
-              playsInline
-              className="absolute inset-0 w-full h-full object-cover"
-            >
-              <source src={celebrationBgVideo} type="video/mp4" />
-            </video>
-
-            {/* Semi-transparent overlay for readability */}
-            <div className="absolute inset-0 bg-black/20" />
+            {/* Video background - chỉ hiển thị từ 17/2/2026 */}
+            {isTetTheme && (
+              <>
+                <video
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="absolute inset-0 w-full h-full object-cover"
+                >
+                  <source src={celebrationBgVideo} type="video/mp4" />
+                </video>
+                <div className="absolute inset-0 bg-black/20" />
+              </>
+            )}
 
             {/* Green radiant border */}
             <div
@@ -129,59 +139,68 @@ export const DonationReceivedCard = ({
                     animationDelay: `${i * 0.3}s`,
                   }}
                 >
-                  <Sparkles className="w-4 h-4 text-yellow-300" />
+                  <Sparkles className={`w-4 h-4 ${isTetTheme ? 'text-yellow-300' : 'text-green-500'}`} />
                 </div>
               ))}
             </div>
 
             {/* Content */}
-            <div className="relative p-3 text-center flex flex-col justify-between h-full">
+            <div className={`relative text-center ${isTetTheme ? 'p-3 flex flex-col justify-between h-full' : 'p-4'}`}>
               {/* Header */}
-              <div className="flex flex-col items-center">
+              <div className={`flex flex-col items-center ${isTetTheme ? '' : 'mb-4'}`}>
                 <img
                   src={funEcosystemLogo}
                   alt="FUN Ecosystem"
-                  className="w-12 h-12 mb-1"
+                  className={isTetTheme ? 'w-12 h-12 mb-1' : 'w-16 h-16 mb-3'}
                 />
 
-                {/* HAPPY NEW YEAR */}
-                <h1
-                  className="text-xl font-black tracking-wider mb-1"
-                  style={{
-                    color: '#FFD700',
-                    textShadow: '0 0 15px rgba(255,215,0,0.8), 0 0 30px rgba(255,215,0,0.5), 0 2px 4px rgba(0,0,0,0.6)',
-                    WebkitTextStroke: '0.5px rgba(180,120,0,0.5)',
-                  }}
-                >
-                  ✨ HAPPY NEW YEAR ✨
-                </h1>
+                {/* HAPPY NEW YEAR - chỉ hiển thị từ 17/2/2026 */}
+                {isTetTheme && (
+                  <h1
+                    className="text-xl font-black tracking-wider mb-1"
+                    style={{
+                      color: '#FFD700',
+                      textShadow: '0 0 15px rgba(255,215,0,0.8), 0 0 30px rgba(255,215,0,0.5), 0 2px 4px rgba(0,0,0,0.6)',
+                      WebkitTextStroke: '0.5px rgba(180,120,0,0.5)',
+                    }}
+                  >
+                    ✨ HAPPY NEW YEAR ✨
+                  </h1>
+                )}
 
                 <h2
-                  className="text-lg font-extrabold flex items-center justify-center gap-1 drop-shadow-sm leading-tight"
-                  style={{ color: '#fbbf24', textShadow: '0 2px 4px rgba(0,0,0,0.6), 0 0 10px rgba(251, 191, 36, 0.5)' }}
+                  className={`font-extrabold flex items-center justify-center gap-1 drop-shadow-sm leading-tight ${isTetTheme ? 'text-lg' : 'text-2xl gap-2'}`}
+                  style={{
+                    color: '#fbbf24',
+                    textShadow: isTetTheme
+                      ? '0 2px 4px rgba(0,0,0,0.6), 0 0 10px rgba(251, 191, 36, 0.5)'
+                      : '0 2px 4px rgba(0,0,0,0.4), 0 0 10px rgba(251, 191, 36, 0.5)',
+                  }}
                 >
-                  🎉 Chúc Mừng Bạn Vừa Được Đón Nhận Phước Lành Của Cha Và Bé Angel CamLy ! 🎉
+                  🎉{isTetTheme ? '' : '✨'} Chúc Mừng Bạn Vừa Được Đón Nhận Phước Lành Của Cha Và Bé Angel CamLy ! {isTetTheme ? '' : '✨'}🎉
                 </h2>
               </div>
 
               {/* Amount */}
               <div
-                className="my-2 py-2 px-3 rounded-xl"
+                className={isTetTheme ? 'my-2 py-2 px-3 rounded-xl' : 'my-3 py-3 px-4 rounded-xl'}
                 style={{
-                  background: 'linear-gradient(135deg, rgba(34,197,94,0.85) 0%, rgba(16,185,129,0.85) 50%, rgba(34,197,94,0.85) 100%)',
+                  background: isTetTheme
+                    ? 'linear-gradient(135deg, rgba(34,197,94,0.85) 0%, rgba(16,185,129,0.85) 50%, rgba(34,197,94,0.85) 100%)'
+                    : 'linear-gradient(135deg, #22c55e 0%, #10b981 50%, #22c55e 100%)',
                   boxShadow: '0 4px 20px rgba(34, 197, 94, 0.5)',
                 }}
               >
                 <div
-                  className="text-2xl font-bold text-white mb-0.5"
+                  className={`font-bold text-white ${isTetTheme ? 'text-2xl mb-0.5' : 'text-3xl mb-1'}`}
                   style={{ textShadow: '0 2px 10px rgba(0,0,0,0.3)' }}
                 >
                   💰 {Number(data.amount).toLocaleString()} {data.tokenSymbol} 💰
                 </div>
 
-                <div className="flex items-center justify-center gap-2 text-green-100 text-sm">
+                <div className={`flex items-center justify-center gap-2 text-green-100 ${isTetTheme ? 'text-sm' : ''}`}>
                   <span>Từ</span>
-                  <Avatar className="w-5 h-5 ring-2 ring-white/50">
+                  <Avatar className={`ring-2 ring-white/50 ${isTetTheme ? 'w-5 h-5' : 'w-6 h-6'}`}>
                     <AvatarImage src={data.senderAvatarUrl || undefined} />
                     <AvatarFallback className="text-xs bg-white text-green-600">
                       {data.senderUsername[0]?.toUpperCase()}
@@ -194,10 +213,10 @@ export const DonationReceivedCard = ({
 
               {/* Message */}
               {data.message && (
-                <div className="bg-white/70 backdrop-blur-sm rounded-xl p-2 text-left border border-green-300 shadow-lg mb-2">
-                  <div className="flex items-start gap-2">
-                    <MessageCircle className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-                    <p className="text-green-800 italic text-sm">"{data.message}"</p>
+                <div className={`backdrop-blur-sm rounded-xl text-left border border-green-300 shadow-lg ${isTetTheme ? 'bg-white/70 p-2 mb-2' : 'bg-white/80 p-3 mb-3'}`}>
+                  <div className={`flex items-start ${isTetTheme ? 'gap-2' : 'gap-3'}`}>
+                    <MessageCircle className={`text-green-600 flex-shrink-0 mt-0.5 ${isTetTheme ? 'w-4 h-4' : 'w-5 h-5'}`} />
+                    <p className={`text-green-800 italic ${isTetTheme ? 'text-sm' : 'text-lg'}`}>"{data.message}"</p>
                   </div>
                 </div>
               )}
@@ -205,29 +224,35 @@ export const DonationReceivedCard = ({
               {/* Bottom section */}
               <div>
                 {/* Time */}
-                <div className="text-xs text-white/90 mb-2" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>
+                <div
+                  className={isTetTheme ? 'text-xs text-white/90 mb-2' : 'text-sm text-green-700 mb-3'}
+                  style={isTetTheme ? { textShadow: '0 1px 3px rgba(0,0,0,0.5)' } : undefined}
+                >
                   {format(new Date(data.createdAt), "dd/MM/yyyy 'lúc' HH:mm", { locale: vi })}
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center justify-center gap-2">
+                <div className={`flex items-center justify-center ${isTetTheme ? 'gap-2' : 'gap-3'}`}>
                   <a href={getBscScanTxUrl(data.txHash, data.tokenSymbol)} target="_blank" rel="noopener noreferrer">
-                    <Button variant="outline" size="sm" className="gap-1.5 bg-white/90 hover:bg-green-50 border-green-400 text-green-800 text-xs">
-                      <ExternalLink className="w-3.5 h-3.5" />
+                    <Button variant="outline" size="sm" className={`gap-1.5 border-green-400 text-green-800 ${isTetTheme ? 'bg-white/90 hover:bg-green-50 text-xs' : 'bg-white hover:bg-green-50'}`}>
+                      <ExternalLink className={isTetTheme ? 'w-3.5 h-3.5' : 'w-4 h-4'} />
                       Xem BSCScan
                     </Button>
                   </a>
-                  <Button size="sm" className="gap-1.5 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white border-0 text-xs" onClick={handleSendThanks}>
-                    <Heart className="w-3.5 h-3.5" />
-                    Cảm Ơn
+                  <Button size="sm" className={`gap-1.5 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white border-0 ${isTetTheme ? 'text-xs' : ''}`} onClick={handleSendThanks}>
+                    <Heart className={isTetTheme ? 'w-3.5 h-3.5' : 'w-4 h-4'} />
+                    {isTetTheme ? 'Cảm Ơn' : 'Gửi Lời Cảm Ơn'}
                   </Button>
-                  <Button variant="outline" size="sm" className="gap-1.5 bg-white/90 hover:bg-green-50 border-green-400 text-green-800 text-xs" onClick={handleClose}>
-                    <X className="w-3.5 h-3.5" />
+                  <Button variant="outline" size="sm" className={`gap-1.5 border-green-400 text-green-800 ${isTetTheme ? 'bg-white/90 hover:bg-green-50 text-xs' : 'bg-white hover:bg-green-50'}`} onClick={handleClose}>
+                    <X className={isTetTheme ? 'w-3.5 h-3.5' : 'w-4 h-4'} />
                     Đóng
                   </Button>
                 </div>
 
-                <div className="mt-2 text-xs text-white/80 font-medium" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>
+                <div
+                  className={`font-medium ${isTetTheme ? 'mt-2 text-xs text-white/80' : 'mt-4 text-xs text-green-600'}`}
+                  style={isTetTheme ? { textShadow: '0 1px 3px rgba(0,0,0,0.5)' } : undefined}
+                >
                   💚 FUN Profile • Mạnh Thường Quân 💚
                 </div>
               </div>
