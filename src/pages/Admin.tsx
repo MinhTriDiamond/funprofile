@@ -32,6 +32,7 @@ interface UserData {
   wallet_address: string | null;
   reward_status: string;
   created_at: string;
+  bio?: string | null;
   posts_count?: number;
   comments_count?: number;
   reactions_count?: number;
