@@ -129,7 +129,7 @@ export const DonationSuccessCard = ({
             className="relative rounded-2xl overflow-hidden animate-glow-radiate"
             style={{
               ...(isTetTheme
-                ? { aspectRatio: '3 / 2' }
+                ? {}
                 : { background: 'linear-gradient(135deg, #d4f7dc 0%, #34d399 40%, #10b981 100%)' }),
             }}
           >
