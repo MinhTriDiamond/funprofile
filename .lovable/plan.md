@@ -1,45 +1,53 @@
 
-# Cap nhat cong thuc thuong CAMLY
+# Sàng Lọc & Ngăn Chặn User Ảo
 
-## Thay doi cu the
+## Tình hình hiện tại
 
-| Hoat dong | Cu | Moi | Ghi chu |
-|---|---|---|---|
-| Dang bai | 10,000/bai | **5,000/bai** | Max 10 bai/ngay (giu nguyen) |
-| Binh luan nhan | 2,000/binh luan | **1,000/binh luan** | Max 50/ngay, >20 ky tu (giu nguyen) |
-| Chia se nhan | 10,000/chia se | **1,000/chia se** | Max **10**/ngay (truoc la 5) |
-| Cam xuc nhan | 1,000 | Giu nguyen | Max 50/ngay |
-| Ket ban | 10,000 | Giu nguyen | Max 10/ngay |
-| Livestream | 20,000 | Giu nguyen | Max 5/ngay |
+| Loại | Số lượng | Ghi chú |
+|------|----------|---------|
+| Tổng tài khoản | 580 | |
+| Tài khoản "ma" (0 hoạt động, 0 hồ sơ) | 124 | Tất cả 0 CAMLY |
+| Đang on_hold (thiết bị chung) | 65 | Chờ admin xử lý |
+| Đã bị cấm | 1 | Quá ít so với thực tế |
+| Nhóm thiết bị bị gắn cờ | 20+ | Lớn nhất 7 tài khoản/thiết bị |
 
-## Gioi han moi moi ngay
+## Kế hoạch xử lý
 
-- Bai dang: 5,000 x 10 = 50,000
-- Cam xuc: 1,000 x 50 = 50,000
-- Binh luan: 1,000 x 50 = 50,000
-- Chia se: 1,000 x 10 = 10,000
-- Ket ban: 10,000 x 10 = 100,000
-- Livestream: 20,000 x 5 = 100,000
-- **Tong toi da/ngay: 360,000 CAMLY** (truoc la 500,000)
+### Bước 1: Thêm tab "Dọn dẹp User ảo" vào Admin Dashboard
 
-## Chi tiet ky thuat
+Thêm một tab mới trong trang Admin hiển thị:
+- **Danh sách tài khoản ma**: Không avatar, không tên, không bài viết, không bình luận, không reaction
+- **Nút "Cấm hàng loạt"**: Cho phép admin chọn tất cả hoặc từng nhóm để cấm nhanh
+- **Bộ lọc thông minh**: Lọc theo thời gian tạo, trạng thái reward, mức độ hoạt động
+- **Thống kê tổng quan**: Hiển thị số lượng user ảo, user on_hold, user bị cấm
 
-### 1. Cap nhat `src/hooks/useRewardCalculation.ts`
-- Sua `REWARD_CONFIG.DAILY_LIMITS`:
-  - `posts.reward`: 10000 -> 5000, `maxDaily`: 100000 -> 50000
-  - `comments.reward`: 2000 -> 1000, `maxDaily`: 100000 -> 50000
-  - `shares.reward`: 10000 -> 1000, `maxPerDay`: 5 -> 10, `maxDaily`: 50000 -> 10000
-- Sua `MAX_DAILY_REWARD`: 500000 -> 360000
+### Bước 2: Tự động chặn đăng ký ảo (Edge Function)
 
-### 2. Cap nhat database function `get_user_rewards_v2`
-Tao migration moi de sua cong thuc tinh thuong trong SQL:
-- Tat ca `* 10000` cua posts -> `* 5000`
-- Tat ca `* 2000` cua comments -> `* 1000`
-- Tat ca `* 10000` cua shares -> `* 1000`
-- Cap shares: `LEAST(COUNT(*), 5)` -> `LEAST(COUNT(*), 10)`
+Nâng cấp edge function `log-login-ip` để:
+- Giảm ngưỡng cảnh báo thiết bị chung từ "hơn 0 user khác" xuống "hơn 2 user khác" (hiện tại bất kỳ 2 user trên cùng thiết bị đều bị hold - quá nhạy)
+- Thêm kiểm tra **tốc độ đăng ký**: Nếu cùng 1 thiết bị tạo hơn 3 tài khoản trong 24 giờ, tự động cấm tất cả tài khoản mới
 
-### 3. Cap nhat `src/config/pplp.ts`
-- Sua `BASE_REWARDS.post`: 100 -> 50
-- Sua `BASE_REWARDS.comment`: 20 -> 10
-- Sua `BASE_REWARDS.share`: 50 -> 10
-- Sua `DAILY_CAPS.share.maxActions`: 10 -> 10, `maxReward`: 500 -> 100
+### Bước 3: Yêu cầu hoàn thiện hồ sơ trước khi nhận thưởng
+
+Thêm logic vào hệ thống thưởng:
+- Tài khoản không có avatar VÀ không có tên sẽ không được tính thưởng (is_reward_eligible = false)
+- Hiển thị thông báo nhẹ nhàng yêu cầu người dùng cập nhật hồ sơ
+
+---
+
+## Chi tiết kỹ thuật
+
+### File cần tạo mới
+- `src/components/admin/GhostCleanupTab.tsx` - Tab dọn dẹp user ảo với:
+  - Query hiển thị 124 tài khoản ma (no avatar, no name, no activity)
+  - Checkbox chọn nhiều + nút "Cấm tất cả đã chọn"
+  - Hiển thị: username, ngày tạo, reward_status, device_hash nếu có
+  - Nút "Cấm tất cả tài khoản ma" (batch ban)
+
+### File cần sửa
+1. **`src/pages/Admin.tsx`**: Thêm tab "Ghost Cleanup" vào TabsList
+2. **`supabase/functions/log-login-ip/index.ts`**: Sửa ngưỡng shared device từ `> 0` thành `> 2` (cho phép tối đa 3 tài khoản/thiết bị), thêm rate limit đăng ký mới trên cùng device
+3. **`src/components/admin/WalletAbuseTab.tsx`**: Thêm nút batch action "Cấm tất cả ghost trong nhóm thiết bị"
+
+### Database
+- Tạo RPC function `batch_ban_ghost_users` cho phép admin cấm hàng loạt tài khoản không có hoạt động
