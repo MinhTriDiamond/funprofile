@@ -85,6 +85,35 @@ export function useAdminDonationHistory() {
         query = query.not('tx_hash', 'is', null);
       }
 
+      // Server-side search: find matching user IDs first, then filter donations
+      if (filters.searchTerm) {
+        const term = filters.searchTerm.trim();
+        
+        // Check if search term looks like a tx hash
+        if (term.startsWith('0x') && term.length > 10) {
+          query = query.ilike('tx_hash', `%${term}%`);
+        } else {
+          // Search by username - find matching profile IDs first
+          const { data: matchingProfiles } = await supabase
+            .from('profiles')
+            .select('id')
+            .ilike('username', `%${term}%`);
+          
+          const matchingIds = (matchingProfiles || []).map(p => p.id);
+          
+          if (matchingIds.length === 0) {
+            // No matching users, return empty
+            return { donations: [], totalCount: 0, totalPages: 0 };
+          }
+          
+          // Filter donations where sender OR recipient matches
+          query = query.or(
+            matchingIds.map(id => `sender_id.eq.${id}`).join(',') + ',' +
+            matchingIds.map(id => `recipient_id.eq.${id}`).join(',')
+          );
+        }
+      }
+
       // Pagination
       const from = (filters.page - 1) * filters.limit;
       const to = from + filters.limit - 1;
@@ -94,8 +123,7 @@ export function useAdminDonationHistory() {
 
       if (error) throw error;
 
-      // Filter by search term (username) in memory
-      let donations = (data || []).map((d: any) => ({
+      const donations = (data || []).map((d: any) => ({
         id: d.id,
         sender: d.sender,
         recipient: d.recipient,
@@ -107,15 +135,6 @@ export function useAdminDonationHistory() {
         created_at: d.created_at,
         status: d.status,
       })) as DonationRecord[];
-
-      if (filters.searchTerm) {
-        const term = filters.searchTerm.toLowerCase();
-        donations = donations.filter(d => 
-          d.sender?.username?.toLowerCase().includes(term) ||
-          d.recipient?.username?.toLowerCase().includes(term) ||
-          d.tx_hash?.toLowerCase().includes(term)
-        );
-      }
 
       return {
         donations,
@@ -219,11 +238,35 @@ export async function fetchAllDonationsForExport(filters: Partial<AdminDonationF
     query = query.not('tx_hash', 'is', null);
   }
 
+  if (filters.searchTerm) {
+    const term = filters.searchTerm.trim();
+    
+    if (term.startsWith('0x') && term.length > 10) {
+      query = query.ilike('tx_hash', `%${term}%`);
+    } else {
+      const { data: matchingProfiles } = await supabase
+        .from('profiles')
+        .select('id')
+        .ilike('username', `%${term}%`);
+      
+      const matchingIds = (matchingProfiles || []).map(p => p.id);
+      
+      if (matchingIds.length === 0) {
+        return [];
+      }
+      
+      query = query.or(
+        matchingIds.map(id => `sender_id.eq.${id}`).join(',') + ',' +
+        matchingIds.map(id => `recipient_id.eq.${id}`).join(',')
+      );
+    }
+  }
+
   const { data, error } = await query;
 
   if (error) throw error;
 
-  let donations = (data || []).map((d: any) => ({
+  const donations = (data || []).map((d: any) => ({
     id: d.id,
     sender: d.sender,
     recipient: d.recipient,
@@ -235,15 +278,6 @@ export async function fetchAllDonationsForExport(filters: Partial<AdminDonationF
     created_at: d.created_at,
     status: d.status,
   })) as DonationRecord[];
-
-  if (filters.searchTerm) {
-    const term = filters.searchTerm.toLowerCase();
-    donations = donations.filter(d => 
-      d.sender?.username?.toLowerCase().includes(term) ||
-      d.recipient?.username?.toLowerCase().includes(term) ||
-      d.tx_hash?.toLowerCase().includes(term)
-    );
-  }
 
   return donations;
 }
