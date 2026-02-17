@@ -43,7 +43,7 @@ const Friends = () => {
       if (session) {
         setCurrentUserId(session.user.id);
         setLoading(false);
-      } else {
+      } else if (event === 'SIGNED_OUT') {
         navigate('/auth');
       }
     });
