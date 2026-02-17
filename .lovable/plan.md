@@ -1,83 +1,94 @@
 
-# Hien thi "Ten hien thi" va Kiem tra dia chi vi trong muc Tang qua
 
-## Van de 1: Hien thi "Ten hien thi" (display_name) thay vi @username
+# Fix: Wallet address persistence and profile links
 
-Hien tai, moi noi co avatar trong dialog Tang qua deu chi hien thi `@username`. Theo chuan cua he thong, can hien thi `display_name` (ten hien thi) o dong chinh, `@username` o dong phu.
+## 3 van de can sua
 
-### Cac vi tri can sua trong `UnifiedGiftSendDialog.tsx`:
+### 1. public_wallet_address bi ghi de moi khi dang nhap/ket noi vi
+**Nguyen nhan:** Ca 2 edge functions deu tu dong ghi `public_wallet_address = normalizedAddress` moi lan:
+- `connect-external-wallet` (dong 143): Luon ghi de
+- `sso-web3-auth` (dong 145, 202): Luon ghi de khi legacy migration va new user
 
-1. **Nguoi gui (Sender)** - dong 648-670: Hien `display_name` thay vi `@username` lam ten chinh
-2. **Nguoi nhan preset** - dong 740-763: Them `display_name` 
-3. **Chip da chon** - dong 773-803: Hien `display_name` trong chip
-4. **Ket qua tim kiem** - dong 824-843: Hien `display_name` va `@username` phu
-5. **Xac nhan - Nguoi gui** - dong 932-947: Hien `display_name`
-6. **Xac nhan - Nguoi nhan multi** - dong 967-1002: Hien `display_name`
-7. **Xac nhan - Nguoi nhan single** - dong 1003-1018: Hien `display_name`
+**Giai phap:** 
+- `public_wallet_address` mac dinh de trong (null) cho user moi
+- Chi ghi `public_wallet_address` khi user **chua co** (null/empty)
+- Khi user da co roi, **khong ghi de** - chi cap nhat khi user chu dong thay doi
 
-### Thay doi ky thuat:
+### 2. Profile links tro ve domain Lovable thay vi fun.rich
+**Nguyen nhan:** `href={/username}` la duong dan tuong doi, tro ve domain hien tai
+**Giai phap:** Doi thanh `https://fun.rich/${username}`
 
-**ResolvedRecipient interface** - them truong `displayName`:
+### 3. User moi dang ky bang Web3 khong nen tu dong set public_wallet_address
+**Giai phap:** User moi chi luu `external_wallet_address` va `wallet_address`, de `public_wallet_address` = null cho den khi user tu ket noi vi
+
+---
+
+## Chi tiet ky thuat
+
+### File 1: `supabase/functions/connect-external-wallet/index.ts`
+- Dong 136-145: Truoc khi update, kiem tra `public_wallet_address` hien tai
+- Neu da co gia tri -> chi update `external_wallet_address` va `wallet_address`, KHONG ghi de `public_wallet_address`
+- Neu chua co (null/empty) -> ghi `public_wallet_address` = normalizedAddress
+
 ```typescript
-interface ResolvedRecipient {
-  id: string;
-  username: string;
-  displayName: string | null;  // NEW
-  avatarUrl: string | null;
-  walletAddress: string | null;
-  hasVerifiedWallet?: boolean;
+// Fetch current profile to check existing public_wallet_address
+const { data: currentProfile } = await supabase
+  .from('profiles')
+  .select('public_wallet_address')
+  .eq('id', user.id)
+  .single();
+
+const updateData: Record<string, string> = {
+  external_wallet_address: normalizedAddress,
+  wallet_address: normalizedAddress,
+};
+
+// Only set public_wallet_address if user doesn't have one yet
+if (!currentProfile?.public_wallet_address) {
+  updateData.public_wallet_address = normalizedAddress;
 }
 ```
 
-**Sender profile** - them `display_name` vao select:
-```typescript
-// Dong 137: Them display_name
-.select('username, display_name, avatar_url, wallet_address')
-```
-
-**Search query** - them `display_name` vao selectFields:
-```typescript
-const selectFields = 'id, username, display_name, avatar_url, wallet_address, public_wallet_address, external_wallet_address';
-```
-
-**Hien thi**: Moi noi co avatar se hien:
-- Dong chinh: `display_name || username` (ten hien thi)
-- Dong phu: `@username` (nho hon, mau xam)
-
----
-
-## Van de 2: Dia chi vi hien thi khong khop voi trang ca nhan
-
-### Nguyen nhan:
-Dialog hien thi `address` tu wagmi (vi hien tai dang ket noi trong trinh duyet), KHONG phai dia chi vi luu trong profile. Day la **dung thiet ke** vi giao dich blockchain can ky tu vi dang ket noi.
-
-Tuy nhien, neu nguoi dung ket noi mot tai khoan vi khac voi tai khoan da luu trong profile, se xuat hien khong khop. Can **canh bao nguoi dung** khi dia chi vi dang ket noi khac voi dia chi da luu trong profile.
-
-### Giai phap:
-Them canh bao khi `address` (wagmi) khac voi `senderProfile.wallet_address` / `public_wallet_address`:
+### File 2: `supabase/functions/sso-web3-auth/index.ts`
+- **Legacy migration (dong 140-148):** Chi update `public_wallet_address` neu chua co
 
 ```typescript
-// So sanh dia chi vi dang ket noi voi dia chi luu trong profile
-const walletMismatch = address && senderProfile && 
-  address.toLowerCase() !== senderProfile.wallet_address?.toLowerCase() &&
-  address.toLowerCase() !== senderProfile.public_wallet_address?.toLowerCase();
+const legacyUpdate: Record<string, string> = {
+  external_wallet_address: normalizedAddress,
+  default_wallet_type: 'external',
+};
+if (!profileByLegacy.public_wallet_address) {
+  legacyUpdate.public_wallet_address = normalizedAddress;
+}
 ```
 
-Hien thi canh bao mau cam phia duoi phan Nguoi gui neu co khong khop.
+- **New user (dong 196-208):** Bo `public_wallet_address` khoi update - de null mac dinh, user se tu ket noi sau
 
----
-
-## Tong ket cac file can sua:
-
-### File 1: `src/components/donations/UnifiedGiftSendDialog.tsx`
-- Them `display_name` vao interface, query, va select
-- Cap nhat tat ca 7 vi tri hien thi avatar de dung `display_name`
-- Them `public_wallet_address` vao sender profile query
-- Them canh bao khi dia chi vi khong khop
-- Truyen `displayName` vao `presetRecipient` mapping
-
-### File 2: `src/components/feed/FacebookPostCard.tsx`
-- Truyen them `displayName` vao presetRecipient cua DonationButton (neu co)
+```typescript
+// Remove public_wallet_address from new user setup
+await supabase.from('profiles').update({
+  external_wallet_address: normalizedAddress,
+  wallet_address: normalizedAddress,
+  default_wallet_type: 'external',
+  registered_from: 'FUN Profile',
+  oauth_provider: 'Wallet',
+  last_login_platform: 'FUN Profile'
+  // NO public_wallet_address - user will connect manually
+}).eq('id', userId);
+```
 
 ### File 3: `src/pages/Profile.tsx`
-- Truyen them `displayName` vao presetRecipient cua DonationButton (neu co)
+- Dong 468: `href={/${profile?.username}}` -> `href={https://fun.rich/${profile?.username}}`
+
+### File 4: `src/components/profile/EditProfile.tsx`
+- Dong 360: `href={/${username || 'username'}}` -> `href={https://fun.rich/${username || 'username'}}`
+- Dong 416: Tuong tu
+
+---
+
+## Ket qua mong doi
+- User moi: `public_wallet_address` = null (trong)
+- Khi user ket noi vi lan dau: `public_wallet_address` duoc set
+- Khi user dang nhap lai hoac ket noi vi khac: `public_wallet_address` KHONG bi ghi de
+- Link ho so luon tro den `https://fun.rich/username`
+
