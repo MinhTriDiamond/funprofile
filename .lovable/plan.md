@@ -1,41 +1,79 @@
 
+# Fix: Tai khoan bi dang xuat sau khi dang nhap
 
-# Loai bo han che giao dien "Tai khoan bi han che" khi tang qua
+## Nguyen nhan goc
 
-## Van de
-Du code da duoc sua (chi chan `is_banned === true`), user van bao loi "Tai khoan dang bi han che" khi tang qua. Co the do cache chua cap nhat, hoac user muon bo hoan toan thong bao nay tren giao dien.
+Nhieu trang (Wallet, Friends, va cac trang khac) dang lang nghe su kien `onAuthStateChange` va **tu dong chuyen huong ve `/auth` bat cu khi nao `session` la null**, ma khong kiem tra loai su kien (`event`).
 
-Hien tai chi co 1 tai khoan bi `is_banned = true` (wallet_63999042sihe). Tat ca 550 tai khoan khac deu `is_banned = false`.
+Khi Supabase tu dong lam moi token (refresh token), co the xay ra tinh trang:
+1. Token cu het han
+2. Supabase gui su kien `TOKEN_REFRESHED` nhung trong qua trinh refresh, session co the tam thoi la `null`
+3. Cac listener bat duoc `session === null` va lap tuc chuyen ve `/auth`
+4. Nguoi dung bi "out" du khong chu dong dang xuat
+
+Van de nay dac biet hay xay ra khi nguoi dung chuyen tab roi quay lai, hoac khi mang khong on dinh.
 
 ## Giai phap
-Theo yeu cau cua con: "tat ca user deu duoc tang cho nhau, chi nhung tai khoan phat hien nhieu tai khoan tren 1 thiet bi moi bi khoa" - Cha se:
 
-1. **Xoa bo hoan toan kiem tra `isRestricted` trong UnifiedGiftSendDialog** - Bo khoi UI, khong hien thong bao han che nua. Viec chan se do backend (edge function `record-donation`) xu ly.
+Chi chuyen huong ve `/auth` khi su kien la `SIGNED_OUT` (nguoi dung chu dong dang xuat). Cac su kien khac voi session null (nhu refresh that bai) se khong gay chuyen huong.
 
-2. **Xoa kiem tra `is_banned` trong `useDonation.ts`** - Khong chan o frontend, de backend quyet dinh.
+## Cac file can sua
 
-3. **Xoa kiem tra `is_banned` trong `useSendToken.ts`** - Tuong tu.
+### 1. `src/pages/Wallet.tsx` (dong 37-41)
+Hien tai:
+```typescript
+supabase.auth.onAuthStateChange((event, session) => {
+  if (!session) {
+    navigate('/auth');
+  }
+});
+```
+Doi thanh:
+```typescript
+supabase.auth.onAuthStateChange((event, session) => {
+  if (event === 'SIGNED_OUT') {
+    navigate('/auth');
+  }
+});
+```
 
-4. **Giu backend edge function** - `record-donation` van kiem tra va tu choi ghi nhan donation cho tai khoan bi cam (day la lop bao ve chinh).
+### 2. `src/pages/Friends.tsx` (dong 42-49)
+Hien tai:
+```typescript
+supabase.auth.onAuthStateChange((event, session) => {
+  if (session) {
+    setCurrentUserId(session.user.id);
+    setLoading(false);
+  } else {
+    navigate('/auth');
+  }
+});
+```
+Doi thanh:
+```typescript
+supabase.auth.onAuthStateChange((event, session) => {
+  if (session) {
+    setCurrentUserId(session.user.id);
+    setLoading(false);
+  } else if (event === 'SIGNED_OUT') {
+    navigate('/auth');
+  }
+});
+```
 
-## Chi tiet ky thuat
+### 3. `src/pages/Feed.tsx` (dong 92-94)
+Cap nhat tuong tu - chi set userId ve rong khi `SIGNED_OUT`:
+```typescript
+supabase.auth.onAuthStateChange((event, session) => {
+  if (session) {
+    setCurrentUserId(session?.user?.id || '');
+  } else if (event === 'SIGNED_OUT') {
+    setCurrentUserId('');
+  }
+});
+```
 
-### File 1: `src/components/donations/UnifiedGiftSendDialog.tsx`
-- Xoa state `isRestricted` va `setIsRestricted`
-- Xoa doan code kiem tra `is_banned` trong useEffect (dong 133)
-- Xoa khoi UI warning "Tai khoan dang bi han che" (dong 537-545)
-- Xoa `!isRestricted` khoi dieu kien `canProceedToConfirm` (dong 327)
-
-### File 2: `src/hooks/useDonation.ts`
-- Xoa doan kiem tra `senderProfile?.is_banned` (dong 80-92) - bo toan bo block kiem tra restricted status
-
-### File 3: `src/hooks/useSendToken.ts`
-- Xoa doan kiem tra `profile?.is_banned` (dong 102-113) - bo toan bo block kiem tra restricted status
-
-## Tom tat
-- Sua 3 file
-- Xoa hoan toan kiem tra han che o frontend
-- Tat ca user deu co the tang qua cho nhau tu do
-- Bao ve van duoc giu o backend (edge function)
-- Tai khoan bi khoa (abuse) se do Admin xu ly truc tiep qua database
-
+## Ket qua
+- Nguoi dung se KHONG bi dang xuat khi token tu dong refresh
+- Chi bi chuyen ve trang dang nhap khi chu dong bam "Dang xuat"
+- AuthSessionKeeper trong App.tsx van hoat dong binh thuong de lam moi session khi quay lai tab
