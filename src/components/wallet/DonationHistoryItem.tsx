@@ -66,15 +66,19 @@ export function DonationHistoryItem({ donation, type, onClick }: DonationHistory
       {/* Footer - Time and TX */}
       <div className="flex items-center justify-between text-xs text-muted-foreground pl-11">
         <span>📅 {formatDate(donation.created_at)}</span>
-        <a
-          href={getBscScanTxUrl(donation.tx_hash, donation.token_symbol)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-1 text-primary hover:underline"
-        >
-          🔗 TX: {shortenAddress(donation.tx_hash, 4)}
-          <ExternalLink className="w-3 h-3" />
-        </a>
+        <div className="flex items-center gap-3">
+          <span className="text-muted-foreground">{shortenAddress(donation.tx_hash, 4)}</span>
+          <a
+            href={getBscScanTxUrl(donation.tx_hash, donation.token_symbol)}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-center gap-1 text-primary font-medium hover:underline"
+          >
+            <ExternalLink className="w-3 h-3" />
+            Xem giao dịch
+          </a>
+        </div>
       </div>
     </div>
   );
