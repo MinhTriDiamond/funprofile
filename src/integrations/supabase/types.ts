@@ -3200,6 +3200,7 @@ export type Database = {
           bio: string | null
           cover_url: string | null
           created_at: string | null
+          display_name: string | null
           full_name: string | null
           id: string | null
           username: string | null
@@ -3209,6 +3210,7 @@ export type Database = {
           bio?: string | null
           cover_url?: string | null
           created_at?: string | null
+          display_name?: string | null
           full_name?: string | null
           id?: string | null
           username?: string | null
@@ -3218,6 +3220,7 @@ export type Database = {
           bio?: string | null
           cover_url?: string | null
           created_at?: string | null
+          display_name?: string | null
           full_name?: string | null
           id?: string | null
           username?: string | null
