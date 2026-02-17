@@ -1,54 +1,71 @@
 
 
+# Cập nhật giao diện thông báo nhận tiền — Chủ đề Tết 2026
 
-# Tự động đăng bài chúc mừng khi user rút thưởng (Claim Reward)
+## Tổng quan
+Từ ngày 17/02/2026, khi người dùng nhận được tiền (donation), thẻ thông báo sẽ chuyển sang giao diện Tết:
+- **Nền video Tết** `tet6-4.mp4` thay cho nền gradient xanh lá hiện tại
+- **Nền trắng trong suốt** cho phần nội dung bên trong (thay vì nền xanh)
+- **Dòng chữ "HAPPY NEW YEAR"** màu vàng kim hiển thị phía trên lời chúc mừng
+- **Giảm số lượng chữ RICH** bay trên màn hình (từ 25 xuống còn 10)
 
-## Hiện trạng
-- **Tặng quà (Donation)**: ĐÃ CÓ bài đăng tự động loại `gift_celebration` trên Feed - không cần thay đổi.
-- **Rút thưởng (Claim Reward)**: CHƯA CÓ bài đăng tự động. Cần bổ sung.
+## Các thay đổi cụ thể
 
-## Thay đổi
+### 1. Sao chép video nền Tết vào dự án
+- Copy file `tet6-4.mp4` từ user-uploads vào `src/assets/tet6-4.mp4`
 
-### File: `supabase/functions/claim-reward/index.ts`
-Thêm đoạn tạo bài đăng tự động sau bước 17b (notification), trước bước 18 (return):
+### 2. Sửa file `src/components/donations/DonationReceivedCard.tsx`
+- Thêm logic kiểm tra ngày: nếu từ 17/02/2026 trở đi thì áp dụng giao diện Tết
+- **Nền card**: Thay gradient xanh bằng video `tet6-4.mp4` chạy tự động, lặp lại, không tiếng
+- **Nội dung bên trong**: Đổi nền các khối (amount, message) sang trắng trong suốt (`rgba(255,255,255,0.85)`) thay vì xanh lá
+- **Thêm dòng chữ** `✨ HAPPY NEW YEAR ✨` màu vàng kim (#FFD700) với text-shadow rực rỡ, hiển thị phía trên lời chúc mừng hiện tại
+- Viền card đổi sang vàng kim thay vì xanh lá
 
-- Tạo bài đăng loại `gift_celebration` với nội dung: "🎉 @username đã nhận thưởng [số lượng] CAMLY từ FUN Profile Treasury! ❤️"
-- Ghim bài đăng (highlight) trong 15 phút
-- Visibility: public, moderation: approved
-- Sử dụng `TREASURY_SENDER_ID` làm `gift_sender_id` và `userId` làm `gift_recipient_id`
+### 3. Sửa file `src/components/donations/RichTextOverlay.tsx`
+- Giảm mảng `RICH_POSITIONS` từ 25 phần tử xuống còn **10 phần tử**
+- Giữ nguyên hiệu ứng màu sắc và animation, chỉ giảm mật độ
 
-### Chi tiết kỹ thuật
+## Chi tiết kỹ thuật
 
-Thêm khoảng 20 dòng code vào `claim-reward/index.ts` (sau dòng 666, trước dòng 668):
-
+### Kiểm tra ngày Tết (trong DonationReceivedCard)
 ```typescript
-// 17c. Tạo bài đăng chúc mừng trên Feed
-try {
-  const claimUsername = profile.username || profile.full_name || 'Người dùng';
-  const celebrationContent = `🎉 @${claimUsername} đã nhận thưởng ${effectiveAmount.toLocaleString()} CAMLY từ FUN Profile Treasury! ❤️`;
-
-  await supabaseAdmin.from('posts').insert({
-    user_id: userId,
-    content: celebrationContent,
-    post_type: 'gift_celebration',
-    tx_hash: txHash,
-    gift_sender_id: TREASURY_SENDER_ID,
-    gift_recipient_id: userId,
-    gift_token: 'CAMLY',
-    gift_amount: effectiveAmount.toString(),
-    gift_message: `Claim ${effectiveAmount.toLocaleString()} CAMLY`,
-    is_highlighted: true,
-    highlight_expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
-    visibility: 'public',
-    moderation_status: 'approved',
-  });
-} catch (postError) {
-  console.error('Không thể tạo bài đăng chúc mừng (non-blocking):', postError);
-}
+const isTetSeason = new Date() >= new Date('2026-02-17T00:00:00');
 ```
 
-## Tổng kết
-- Chỉ cần sửa **1 file**: `supabase/functions/claim-reward/index.ts`
-- Bài đăng sẽ hiển thị giống hệt bài tặng quà: card gradient xanh lá, avatar người gửi (Treasury) và người nhận, hiệu ứng RICH, pháo hoa
-- Bài đăng được ghim 15 phút đầu Feed
-- Lỗi tạo bài đăng không ảnh hưởng đến quy trình rút thưởng (non-blocking)
+### Cấu trúc nền video Tết
+```typescript
+{isTetSeason && (
+  <video
+    autoPlay loop muted playsInline
+    className="absolute inset-0 w-full h-full object-cover"
+    src={tetBackground}
+  />
+)}
+```
+
+### Nội dung bên trong — nền trắng trong suốt
+- Khối amount: `background: rgba(255,255,255,0.85)`, chữ đổi sang màu tối
+- Khối message: giữ `bg-white/80`
+- Viền và shadow chuyển sang tông vàng kim
+
+### Dòng HAPPY NEW YEAR
+```typescript
+{isTetSeason && (
+  <h3 style={{
+    color: '#FFD700',
+    textShadow: '0 0 10px rgba(255,215,0,0.5), 0 0 20px rgba(255,215,0,0.3)',
+  }}>
+    ✨ HAPPY NEW YEAR ✨
+  </h3>
+)}
+```
+
+### Giảm RICH overlay (RichTextOverlay.tsx)
+- Cắt `RICH_POSITIONS` từ 25 xuống 10 vị trí, giữ các vị trí phân bố đều trên màn hình
+
+## Tóm tắt
+- **3 thao tác**: Copy video + sửa 2 file
+- Không thay đổi database
+- Áp dụng tự động từ 17/02/2026 dựa trên ngày hệ thống
+- Nếu trước ngày 17/02 thì giao diện vẫn giữ nguyên như cũ (xanh lá)
+
