@@ -132,7 +132,7 @@ export const UnifiedGiftSendDialog = ({
         setSenderProfile(data);
         setIsRestricted(
           data.is_banned === true ||
-          ['on_hold', 'rejected', 'banned'].includes(data.reward_status)
+          data.reward_status === 'pending'
         );
       }
     })();
