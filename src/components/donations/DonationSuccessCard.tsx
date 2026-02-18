@@ -133,10 +133,11 @@ export const DonationSuccessCard = ({
 
       <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
         <DialogContent
-          className="max-w-[400px] w-[92vw] p-0 overflow-hidden border-0 shadow-2xl [&>button]:hidden !z-[10002]"
+          className="max-w-[400px] w-[92vw] p-0 border-0 shadow-2xl [&>button]:hidden !z-[10002] overflow-hidden"
           overlayClassName="!z-[10002]"
+          style={{ maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}
         >
-          <div ref={cardRef} className="bg-white rounded-2xl overflow-hidden" style={{ fontFamily: 'system-ui, sans-serif' }}>
+          <div ref={cardRef} className="bg-white rounded-2xl overflow-y-auto flex-1" style={{ fontFamily: 'system-ui, sans-serif' }}>
 
             {/* Header — white */}
             <div className="px-5 pt-6 pb-3 text-center bg-white">
