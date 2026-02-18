@@ -220,10 +220,9 @@ export const DonationSuccessCard = ({
                 <div
                   className="mt-3 text-sm font-bold italic px-3 py-2 rounded-xl"
                   style={{
-                    background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
+                    background: '#ffffff',
                     border: '1px solid #fde68a',
-                    color: '#92400e',
-                    textShadow: '0 1px 2px rgba(146,64,14,0.15)',
+                    color: '#d97706',
                   }}
                 >
                   "{data.message}"
