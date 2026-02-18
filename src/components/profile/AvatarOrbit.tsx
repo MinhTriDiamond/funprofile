@@ -1,5 +1,5 @@
-import React from 'react';
-import diamondImg from '@/assets/diamond-user.png';
+import React, { useEffect, useRef, useState } from 'react';
+import diamondSrc from '@/assets/diamond-user.png';
 
 interface OrbitSlot {
   href: string;
@@ -7,7 +7,6 @@ interface OrbitSlot {
   label: string;
 }
 
-// 7 ecosystem app slots — con cập nhật href sau nhé
 const ORBIT_SLOTS: OrbitSlot[] = [
   { href: 'https://academy.fun.rich', imageUrl: '/fun-academy-logo-36.webp', label: 'FUN Academy' },
   { href: 'https://play.fun.rich',    imageUrl: '/fun-play-logo-36.webp',    label: 'FUN Play' },
@@ -19,43 +18,80 @@ const ORBIT_SLOTS: OrbitSlot[] = [
 ];
 
 const ORBIT_ANGLES = [30, 80, 130, 180, 230, 280, 330];
-const ORBIT_RADIUS = 108; // px - ra ngoài ảnh đại diện
+const ORBIT_RADIUS = 108;
+
+/** Dùng Canvas để xoá nền trắng/sáng khỏi ảnh PNG, trả về data URL */
+function useTransparentDiamond(src: string) {
+  const [dataUrl, setDataUrl] = useState<string>(src);
+
+  useEffect(() => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext('2d')!;
+      ctx.drawImage(img, 0, 0);
+
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+
+      // Xoá pixel trắng/sáng: nếu R,G,B đều > 220 thì set alpha = 0
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        // Ngưỡng: pixel rất sáng (gần trắng) → trong suốt
+        if (r > 220 && g > 220 && b > 220) {
+          data[i + 3] = 0;
+        }
+      }
+
+      ctx.putImageData(imageData, 0, 0);
+      setDataUrl(canvas.toDataURL('image/png'));
+    };
+    img.src = src;
+  }, [src]);
+
+  return dataUrl;
+}
 
 interface AvatarOrbitProps {
   children: React.ReactNode;
 }
 
 export function AvatarOrbit({ children }: AvatarOrbitProps) {
+  const transparentDiamond = useTransparentDiamond(diamondSrc);
+
   return (
-    /* paddingTop đủ lớn để diamond nhô hẳn ra trên đỉnh avatar */
+    /* paddingTop để diamond nhô hẳn ra trên đỉnh avatar */
     <div className="relative" style={{ paddingTop: '100px' }}>
 
-      {/* Viên kim cương — nằm TRÊN và NGOÀI ảnh đại diện */}
-      {/* Tách filter ra wrapper riêng để mix-blend-mode hoạt động đúng */}
+      {/* Viên kim cương — nền trong suốt bằng Canvas, nằm TRÊN và NGOÀI avatar */}
       <div
-        className="absolute z-30 pointer-events-none"
+        className="absolute pointer-events-none"
         style={{
-          top: '0px',
+          top: '-20px',          /* nhô lên trên container để nằm ngoài avatar */
           left: '50%',
           transform: 'translateX(-50%)',
-          /* drop-shadow trên wrapper, không phải trên img */
-          filter: 'drop-shadow(0 8px 20px rgba(34,197,94,0.7))',
+          zIndex: 40,
         }}
       >
         <img
-          src={diamondImg}
+          src={transparentDiamond}
           alt="Kim cương xanh"
           style={{
-            width: '224px',   /* gấp đôi 112px */
+            width: '224px',
             height: '224px',
             objectFit: 'contain',
-            mixBlendMode: 'multiply',  /* xoá nền trắng khi không có filter cùng element */
+            display: 'block',
           }}
         />
       </div>
 
       {/* Avatar (children) */}
-      <div className="relative">
+      <div className="relative" style={{ zIndex: 10 }}>
         {children}
 
         {/* 7 vị trí liên kết hệ sinh thái xung quanh hình đại diện */}
@@ -72,12 +108,13 @@ export function AvatarOrbit({ children }: AvatarOrbitProps) {
               title={slot.label}
               target="_blank"
               rel="noopener noreferrer"
-              className="absolute z-20 group"
+              className="absolute group"
               style={{
                 left: `calc(50% + ${x}px - 12px)`,
                 top: `calc(50% + ${y}px - 12px)`,
                 width: '24px',
                 height: '24px',
+                zIndex: 20,
               }}
             >
               <div
