@@ -57,11 +57,11 @@ function angleToPos(angleDeg: number) {
 }
 
 function computeAddAngle(n: number): number {
-  if (n === 0) return 180;
-  const angles = computeAngles(n);
-  const last = angles[angles.length - 1];
-  const step = n === 1 ? 32 : 260 / Math.max(n - 1, 1);
-  return Math.min(last + step * 0.85, 310);
+  // + button stays on the left side, moves upward as more links are added
+  // 270° = pure left (9 o'clock), moves toward 220° (upper-left) as n increases
+  const base = 270;
+  const step = 8;
+  return Math.max(base - n * step, 210);
 }
 
 interface AvatarOrbitProps {
