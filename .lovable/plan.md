@@ -1,43 +1,38 @@
 
-# Thêm điều hướng nhanh tới Tab "Giám sát" khi nhấn số liệu "Đã bị cấm"
+# Thêm cột "Số dư còn lại" vào bảng Tài khoản đã bị BAN
 
-## Phân tích hiện tại
+## Phân tích nhanh
 
-Dựa trên ảnh cha gửi:
-- Cha đang ở tab "User ảo" (GhostCleanupTab), thấy card hiển thị **26 Đã bị cấm**
-- Cha muốn nhấn vào con số "26" đó (hoặc card đó) để **tự động chuyển sang tab Giám sát** và hiển thị danh sách ban ngay lập tức
-- Tab Giám sát đã có `defaultValue="banned"` nên khi vào sẽ thấy bảng ban ngay
+- Trường `pending_reward` đã có trong interface `BannedUser` và đã được fetch từ database (dòng 102: `.select("id, username, full_name, wallet_address, admin_notes, banned_at, pending_reward")`)
+- Giá trị này đã được map vào từng row (dòng 154: `pending_reward: Number(p.pending_reward ?? 0)`)
+- Vấn đề: **cột này chưa được render ra giao diện**
 
-## Vấn đề kỹ thuật
+## Thay đổi cần làm
 
-1. Trong `GhostCleanupTab.tsx`, các thẻ summary card (Tài khoản ma / Đang on_hold / **Đã bị cấm** / Tổng tài khoản) là các phần tử tĩnh, không có hành động điều hướng
-2. `Admin.tsx` quản lý tab bằng `defaultValue="overview"` nhưng không có cơ chế programmatic navigation để các tab con điều khiển tab cha
-3. Giải pháp: truyền một callback `onNavigate` từ `Admin.tsx` xuống các tab con, để khi nhấn card "Đã bị cấm" → Admin.tsx đổi active tab sang "surveillance"
+### File: `src/components/admin/SurveillanceTab.tsx`
 
-## Các file cần chỉnh sửa
+**1. Thêm header cột mới** — sau cột "Đã rút (CAMLY)", thêm:
+```
+<TableHead className="text-right">Còn lại (CAMLY)</TableHead>
+```
 
-### 1. `src/pages/Admin.tsx`
-- Thêm state `const [activeTab, setActiveTab] = useState("overview")`
-- Truyền `<Tabs value={activeTab} onValueChange={setActiveTab}>` thay vì `defaultValue`
-- Truyền prop `onNavigate={(tab) => setActiveTab(tab)}` xuống `GhostCleanupTab` và `OverviewTab`
+**2. Thêm cell dữ liệu** — sau cell hiển thị `total_claimed`, thêm:
+```tsx
+<TableCell className="text-right font-semibold text-emerald-600">
+  {u.pending_reward > 0 ? fmt(u.pending_reward) : "0"}
+</TableCell>
+```
 
-### 2. `src/components/admin/GhostCleanupTab.tsx`
-- Thêm prop `onNavigate?: (tab: string) => void`
-- Card "Đã bị cấm" (số 26) thêm `onClick={() => onNavigate?.("surveillance")}` với cursor pointer và hover effect
-- Thêm tooltip "Nhấn để xem danh sách bị cấm" khi hover
+**3. Sửa `colSpan`** — tăng từ `9` lên `10` cho trạng thái loading và empty.
 
-### 3. `src/components/admin/OverviewTab.tsx` (nếu có card tương tự)
-- Tương tự: thêm prop `onNavigate` và làm các card có thể click để nhảy tới tab tương ứng
+**4. Cập nhật export CSV** — thêm trường `con_lai_CAMLY: u.pending_reward` vào hàm `exportBanned` để CSV cũng có cột này.
 
-## UX được cải thiện
+## Lưu ý
 
-Sau khi thực hiện:
-- Nhấn card "**26 Đã bị cấm**" ở bất kỳ tab nào → tự động chuyển sang tab **Giám sát**, sub-tab "Đã bị ban" mở sẵn
-- Card sẽ có hiệu ứng hover (viền đỏ sáng lên, cursor pointer) để người dùng biết có thể click
-- Không cần phải tìm và nhấn tab "Giám sát" thủ công
+- Với 26 user đã bị ban cũ (bị reset về 0 trước đây), cột này sẽ hiển thị `0` — chính xác vì dữ liệu đã bị xóa.
+- Với các user bị ban trong **tương lai** (sau khi migration mới được áp dụng), cột này sẽ hiển thị số dư thực tế còn lại.
+- Màu xanh lá (`emerald-600`) để dễ phân biệt với cột "Đã rút" màu đỏ.
 
-## Thứ tự thực hiện
+## Chỉ 1 file cần sửa
 
-1. Sửa `src/pages/Admin.tsx` — thêm controlled tab state + truyền callback
-2. Sửa `src/components/admin/GhostCleanupTab.tsx` — nhận prop + card có thể click
-3. Kiểm tra `src/components/admin/OverviewTab.tsx` — thêm navigation tương tự nếu có card phù hợp
+- `src/components/admin/SurveillanceTab.tsx` — thêm header, cell, cập nhật colSpan và CSV export
