@@ -2306,6 +2306,7 @@ export type Database = {
           registered_from: string | null
           relationship_status: string | null
           reward_status: string
+          social_links: Json | null
           soul_level: number
           total_rewards: number
           updated_at: string
@@ -2352,6 +2353,7 @@ export type Database = {
           registered_from?: string | null
           relationship_status?: string | null
           reward_status?: string
+          social_links?: Json | null
           soul_level?: number
           total_rewards?: number
           updated_at?: string
@@ -2398,6 +2400,7 @@ export type Database = {
           registered_from?: string | null
           relationship_status?: string | null
           reward_status?: string
+          social_links?: Json | null
           soul_level?: number
           total_rewards?: number
           updated_at?: string
