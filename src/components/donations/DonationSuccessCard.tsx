@@ -141,8 +141,8 @@ export const DonationSuccessCard = ({
               <div className="flex justify-center mb-2">
                 <img src={funPlayLogo} alt="FUN Profile" className="w-14 h-14 rounded-full object-cover shadow-md" style={{ boxShadow: '0 0 0 3px #d1fae5, 0 0 0 5px #6ee7b7' }} />
               </div>
-              <div className="text-sm font-extrabold text-emerald-800 mb-0.5 tracking-wide">FUN Profile — Biên Nhận Tặng</div>
-              <div className="text-xs text-emerald-600 font-mono">#{data.id?.slice(0, 16)}</div>
+              <div className="text-base font-extrabold text-emerald-800 mb-0.5 tracking-wide">FUN Profile — Biên Nhận Tặng</div>
+              <div className="text-sm text-emerald-600 font-mono">#{data.id?.slice(0, 16)}</div>
             </div>
 
             {/* Dashed divider */}
@@ -153,8 +153,8 @@ export const DonationSuccessCard = ({
               className="mx-4 mt-3 rounded-xl px-4 py-2.5 text-center"
               style={{ background: 'linear-gradient(135deg, #fff5f7 0%, #ffe8ef 100%)', border: '1px solid #ffc9d9' }}
             >
-              <div className="text-sm font-extrabold text-pink-700 mb-0.5">🌸 Chúc Mừng Năm Mới 2026 🌸</div>
-              <div className="text-xs font-semibold text-pink-500">Phúc Lộc An Khang — Vạn Sự Như Ý</div>
+              <div className="text-lg font-extrabold text-pink-700 mb-0.5 uppercase tracking-wide">🌸 Chúc Mừng Năm Mới 2026 🌸</div>
+              <div className="text-sm font-semibold text-pink-500">Phúc Lộc An Khang — Vạn Sự Như Ý</div>
             </div>
 
             {/* Sender → Recipient */}
@@ -168,7 +168,7 @@ export const DonationSuccessCard = ({
                   </AvatarFallback>
                 </Avatar>
                 <div className="text-center">
-                  <div className="text-xs font-extrabold text-emerald-800 leading-tight">{data.senderDisplayName || data.senderUsername}</div>
+                  <div className="text-sm font-extrabold text-emerald-800 leading-tight">{data.senderDisplayName || data.senderUsername}</div>
                 </div>
               </div>
 
@@ -189,7 +189,7 @@ export const DonationSuccessCard = ({
                   </AvatarFallback>
                 </Avatar>
                 <div className="text-center">
-                  <div className="text-xs font-extrabold text-emerald-800 leading-tight">{data.recipientDisplayName || data.recipientUsername}</div>
+                  <div className="text-sm font-extrabold text-emerald-800 leading-tight">{data.recipientDisplayName || data.recipientUsername}</div>
                 </div>
               </div>
             </div>
@@ -215,9 +215,9 @@ export const DonationSuccessCard = ({
                   {Number(data.amount).toLocaleString('vi-VN')} {data.tokenSymbol}
                 </span>
               </div>
-              <div className="text-xs font-semibold text-emerald-700 mt-1">≈ Priceless với tình yêu thương 💛</div>
+              <div className="text-sm font-semibold text-emerald-700 mt-1">≈ Priceless với tình yêu thương 💛</div>
               {data.message && (
-                <div className="mt-2 text-xs font-semibold text-emerald-700 italic px-3">
+                <div className="mt-2 text-sm font-semibold text-emerald-700 italic px-3">
                   "{data.message}"
                 </div>
               )}
@@ -230,30 +230,30 @@ export const DonationSuccessCard = ({
             <div className="mx-4 mt-2 rounded-xl overflow-hidden border border-gray-100">
               <div className="divide-y divide-gray-100">
                 <div className="flex justify-between items-center px-4 py-2.5 bg-white">
-                  <span className="text-xs font-semibold text-emerald-700 flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" />Thời gian</span>
-                  <span className="text-xs font-bold text-emerald-800">
+                  <span className="text-sm font-semibold text-emerald-700 flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" />Thời gian</span>
+                  <span className="text-sm font-bold text-emerald-800">
                     {format(new Date(data.createdAt), 'HH:mm dd/MM/yyyy', { locale: vi })}
                   </span>
                 </div>
                 <div className="flex justify-between items-center px-4 py-2.5 bg-white">
-                  <span className="text-xs font-semibold text-emerald-700 flex items-center gap-1.5"><Link2 className="w-3.5 h-3.5" />TX Hash</span>
+                  <span className="text-sm font-semibold text-emerald-700 flex items-center gap-1.5"><Link2 className="w-3.5 h-3.5" />TX Hash</span>
                   <a
                     href={getBscScanTxUrl(data.txHash, data.tokenSymbol)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs font-mono font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1"
+                    className="text-sm font-mono font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1"
                   >
                     {shortTxHash}
                     <ExternalLink className="w-3 h-3" />
                   </a>
                 </div>
                 <div className="flex justify-between items-center px-4 py-2.5 bg-white">
-                  <span className="text-xs font-semibold text-emerald-700">Mạng</span>
-                  <span className="text-xs font-bold text-emerald-800">BSC (BNB Smart Chain)</span>
+                  <span className="text-sm font-semibold text-emerald-700">Mạng</span>
+                  <span className="text-sm font-bold text-emerald-800">BSC (BNB Smart Chain)</span>
                 </div>
                 <div className="flex justify-between items-center px-4 py-2.5 bg-white">
-                  <span className="text-xs font-semibold text-emerald-700">Trạng thái</span>
-                  <span className="text-xs font-bold text-emerald-700 flex items-center gap-1">
+                  <span className="text-sm font-semibold text-emerald-700">Trạng thái</span>
+                  <span className="text-sm font-bold text-emerald-700 flex items-center gap-1">
                     <CheckCircle2 className="w-3.5 h-3.5" />
                     Thành công
                   </span>
@@ -265,7 +265,7 @@ export const DonationSuccessCard = ({
             {data.lightScoreEarned > 0 && (
               <div className="mx-4 mt-3 rounded-xl px-4 py-2.5 text-center"
                 style={{ background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)', border: '1px solid #6ee7b7' }}>
-                <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-emerald-800">
+                <div className="flex items-center justify-center gap-1.5 text-sm font-bold text-emerald-800">
                   <Sparkles className="w-3.5 h-3.5" />
                   +{data.lightScoreEarned} Light Score được cộng vào hồ sơ! ✨
                 </div>
@@ -277,8 +277,8 @@ export const DonationSuccessCard = ({
               className="mx-4 mt-3 rounded-xl px-4 py-2.5 text-center"
               style={{ background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)', border: '1px solid #fde68a' }}
             >
-              <div className="text-xs font-extrabold text-amber-800">🧧 Phúc Lộc Thọ — FUN Profile 🧧</div>
-              <div className="text-xs font-semibold text-amber-600 mt-0.5">Tết Nguyên Đán 2026 — Năm Bính Ngọ</div>
+              <div className="text-sm font-extrabold text-amber-800">🧧 Phúc Lộc Thọ — FUN Profile 🧧</div>
+              <div className="text-sm font-semibold text-amber-600 mt-0.5">Tết Nguyên Đán 2026 — Năm Bính Ngọ</div>
             </div>
 
             {/* Action buttons */}
