@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { 
   Gift, Search, Download, RefreshCw, Loader2,
-  ChevronLeft, ChevronRight, Sparkles, ArrowUpDown
+  ChevronLeft, ChevronRight, Sparkles, ArrowUpDown, ScanSearch
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -30,6 +30,27 @@ import { DonationReceivedCard } from '@/components/donations/DonationReceivedCar
 import { exportDonationsToCSV } from '@/utils/exportDonations';
 import { formatNumber, formatDate } from '@/lib/formatters';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+
+interface MissingTransaction {
+  id: string;
+  tx_hash: string;
+  from_address: string;
+  to_address: string;
+  amount: string;
+  token_symbol: string;
+  created_at: string;
+  sender_id: string;
+  sender_username: string;
+  recipient_id: string;
+  recipient_username: string;
+}
 
 export function DonationHistoryAdminTab() {
   const {
@@ -49,6 +70,12 @@ export function DonationHistoryAdminTab() {
   const [celebrationType, setCelebrationType] = useState<'sent' | 'received'>('sent');
   const [isCelebrationOpen, setIsCelebrationOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
+  const [isBackfilling, setIsBackfilling] = useState(false);
+  const [scanDialogOpen, setScanDialogOpen] = useState(false);
+  const [missingTx, setMissingTx] = useState<MissingTransaction[]>([]);
+  const [unmappableTx, setUnmappableTx] = useState<any[]>([]);
+  const [totalScanned, setTotalScanned] = useState(0);
 
   const handleDonationClick = (donation: DonationRecord) => {
     setSelectedDonation(donation);
@@ -62,7 +89,48 @@ export function DonationHistoryAdminTab() {
     setSelectedDonation(null);
   };
 
-  const handleExport = async () => {
+  const handleScan = async () => {
+    try {
+      setIsScanning(true);
+      const { data, error } = await supabase.functions.invoke('backfill-donations', {
+        body: { mode: 'scan' },
+      });
+      if (error) throw error;
+      setMissingTx(data.missing || []);
+      setUnmappableTx(data.unmappable || []);
+      setTotalScanned(data.totalScanned || 0);
+      setScanDialogOpen(true);
+      if (data.missing?.length === 0) {
+        toast.success('Không có giao dịch nào bị thiếu!');
+      }
+    } catch (error: any) {
+      console.error('Scan error:', error);
+      toast.error('Lỗi khi quét: ' + (error.message || 'Unknown'));
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
+  const handleBackfill = async () => {
+    try {
+      setIsBackfilling(true);
+      const ids = missingTx.map((t) => t.id);
+      const { data, error } = await supabase.functions.invoke('backfill-donations', {
+        body: { mode: 'backfill', transactionIds: ids },
+      });
+      if (error) throw error;
+      toast.success(`Đã bổ sung ${data.inserted} giao dịch, bỏ qua ${data.skipped}`);
+      setScanDialogOpen(false);
+      setMissingTx([]);
+      refetch();
+    } catch (error: any) {
+      console.error('Backfill error:', error);
+      toast.error('Lỗi khi backfill: ' + (error.message || 'Unknown'));
+    } finally {
+      setIsBackfilling(false);
+    }
+  };
+
     try {
       setIsExporting(true);
       const allDonations = await fetchAllDonationsForExport({
@@ -117,6 +185,19 @@ export function DonationHistoryAdminTab() {
           </div>
         </div>
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleScan}
+            disabled={isScanning}
+          >
+            {isScanning ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <ScanSearch className="w-4 h-4 mr-2" />
+            )}
+            Quét GD thiếu
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -418,6 +499,72 @@ export function DonationHistoryAdminTab() {
           }}
         />
       )}
+
+      {/* Scan Dialog */}
+      <Dialog open={scanDialogOpen} onOpenChange={setScanDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ScanSearch className="w-5 h-5" />
+              Kết quả quét giao dịch thiếu
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Đã quét {totalScanned} giao dịch. Tìm thấy {missingTx.length} giao dịch có thể bổ sung
+              {unmappableTx.length > 0 && `, ${unmappableTx.length} không xác định được người nhận`}.
+            </p>
+
+            {missingTx.length > 0 && (
+              <>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Người gửi</TableHead>
+                      <TableHead>Người nhận</TableHead>
+                      <TableHead className="text-right">Số tiền</TableHead>
+                      <TableHead>Token</TableHead>
+                      <TableHead>Thời gian</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {missingTx.map((tx) => (
+                      <TableRow key={tx.id}>
+                        <TableCell className="font-medium">@{tx.sender_username}</TableCell>
+                        <TableCell className="font-medium">@{tx.recipient_username}</TableCell>
+                        <TableCell className="text-right font-mono">{formatNumber(parseFloat(tx.amount))}</TableCell>
+                        <TableCell><Badge variant="outline">{tx.token_symbol}</Badge></TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{formatDate(tx.created_at)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+
+                <Button
+                  onClick={handleBackfill}
+                  disabled={isBackfilling}
+                  className="w-full"
+                >
+                  {isBackfilling ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <ScanSearch className="w-4 h-4 mr-2" />
+                  )}
+                  Backfill tất cả ({missingTx.length} giao dịch)
+                </Button>
+              </>
+            )}
+
+            {missingTx.length === 0 && (
+              <div className="text-center py-8">
+                <Gift className="w-12 h-12 mx-auto text-muted-foreground opacity-50 mb-3" />
+                <p className="text-muted-foreground">Tất cả giao dịch đã được ghi nhận đầy đủ!</p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
