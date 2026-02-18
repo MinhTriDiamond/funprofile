@@ -33,7 +33,7 @@ Deno.serve(async (req: Request) => {
     // Return cached if fresh
     if (cachedPrices && now - cacheTimestamp < CACHE_TTL) {
       return new Response(JSON.stringify({ prices: cachedPrices, cached: true }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=60' },
       });
     }
 
@@ -62,7 +62,7 @@ Deno.serve(async (req: Request) => {
     cacheTimestamp = now;
 
     return new Response(JSON.stringify({ prices, cached: false }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=60' },
     });
   } catch (error) {
     console.error('[token-prices] Error:', error);
