@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import diamondSrc from '@/assets/diamond-user.png';
-import { X, Plus, Check } from 'lucide-react';
+import { X, Plus, Check, Pencil, ExternalLink } from 'lucide-react';
 import { PLATFORM_PRESETS, PLATFORM_ORDER } from './SocialLinksEditor';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -14,13 +14,11 @@ export interface SocialLink {
 }
 
 const ORBIT_RADIUS = 115;
-const ORBIT_SIZE = 40; // px
-const AVATAR_SIZE = 176; // px — fixed reference size (w-44)
+const ORBIT_SIZE = 40;
+const AVATAR_SIZE = 176;
 
-/** Dùng Canvas để xoá nền trắng/sáng khỏi ảnh PNG, trả về data URL */
 function useTransparentDiamond(src: string) {
   const [dataUrl, setDataUrl] = useState<string>(src);
-
   useEffect(() => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
@@ -30,63 +28,39 @@ function useTransparentDiamond(src: string) {
       canvas.height = img.naturalHeight;
       const ctx = canvas.getContext('2d')!;
       ctx.drawImage(img, 0, 0);
-
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       const data = imageData.data;
-
       for (let i = 0; i < data.length; i += 4) {
-        const r = data[i];
-        const g = data[i + 1];
-        const b = data[i + 2];
-        if (r > 220 && g > 220 && b > 220) {
-          data[i + 3] = 0;
-        }
+        if (data[i] > 220 && data[i + 1] > 220 && data[i + 2] > 220) data[i + 3] = 0;
       }
-
       ctx.putImageData(imageData, 0, 0);
       setDataUrl(canvas.toDataURL('image/png'));
     };
     img.src = src;
   }, [src]);
-
   return dataUrl;
 }
 
-/**
- * Phân bổ góc cho n ô quanh avatar.
- * - Kim cương cố định ở đỉnh (0° / 360°).
- * - Vùng bảo vệ kim cương: ±50° quanh đỉnh.
- * - n=1  → [180°] (thẳng xuống)
- * - n>1  → phân bổ đều trong span, tối đa 260°
- */
 function computeAngles(n: number): number[] {
   if (n === 0) return [];
   if (n === 1) return [180];
-
   const maxSpan = 260;
   const span = Math.min(maxSpan, (n - 1) * (maxSpan / 8));
   const start = 180 - span / 2;
   const step = span / (n - 1);
-
   return Array.from({ length: n }, (_, i) => start + step * i);
 }
 
-/** Tính vị trí pixel cho 1 góc */
 function angleToPos(angleDeg: number) {
   const rad = (angleDeg * Math.PI) / 180;
-  return {
-    x: Math.sin(rad) * ORBIT_RADIUS,
-    y: -Math.cos(rad) * ORBIT_RADIUS,
-  };
+  return { x: Math.sin(rad) * ORBIT_RADIUS, y: -Math.cos(rad) * ORBIT_RADIUS };
 }
 
-/** Góc cho nút + (ngay sau icon cuối) */
 function computeAddAngle(n: number): number {
   if (n === 0) return 180;
   const angles = computeAngles(n);
   const last = angles[angles.length - 1];
-  // Bước nhỏ từ icon cuối, không vượt 260° / 2 + 180° = 310°
-  const step = n === 1 ? 32 : (260 / Math.max(n - 1, 1));
+  const step = n === 1 ? 32 : 260 / Math.max(n - 1, 1);
   return Math.min(last + step * 0.85, 310);
 }
 
@@ -98,47 +72,46 @@ interface AvatarOrbitProps {
   onLinksChanged?: (links: SocialLink[]) => void;
 }
 
-export function AvatarOrbit({
-  children,
-  socialLinks = [],
-  isOwner = false,
-  userId,
-  onLinksChanged,
-}: AvatarOrbitProps) {
+export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userId, onLinksChanged }: AvatarOrbitProps) {
   const transparentDiamond = useTransparentDiamond(diamondSrc);
   const angles = computeAngles(socialLinks.length);
 
-  // Inline editor state
+  // Edit state (pencil button)
   const [editingPlatform, setEditingPlatform] = useState<string | null>(null);
   const [editUrl, setEditUrl] = useState('');
   const [saving, setSaving] = useState(false);
+  const [hoveredPlatform, setHoveredPlatform] = useState<string | null>(null);
 
-  // Add picker state
+  // Add picker
   const [showAddPicker, setShowAddPicker] = useState(false);
-  const [addingPlatform, setAddingPlatform] = useState<string>('');
+  const [addingPlatform, setAddingPlatform] = useState<string | null>(null);
   const [addUrl, setAddUrl] = useState('');
   const pickerRef = useRef<HTMLDivElement>(null);
+  const editRef = useRef<HTMLDivElement>(null);
 
   const usedPlatforms = new Set(socialLinks.map((l) => l.platform));
   const availablePlatforms = PLATFORM_ORDER.filter((p) => !usedPlatforms.has(p));
 
-  // Click outside to close picker
+  // Close picker / editor on outside click
   useEffect(() => {
-    if (!showAddPicker) return;
     const handler = (e: MouseEvent) => {
-      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
+      if (showAddPicker && pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
         setShowAddPicker(false);
+        setAddingPlatform(null);
+        setAddUrl('');
+      }
+      if (editingPlatform && editRef.current && !editRef.current.contains(e.target as Node)) {
+        setEditingPlatform(null);
       }
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, [showAddPicker]);
+  }, [showAddPicker, editingPlatform]);
 
   const saveLink = async (platform: string, url: string, isNew = false) => {
     if (!userId || !url.trim()) return;
     setSaving(true);
     const normalized = url.trim().startsWith('http') ? url.trim() : `https://${url.trim()}`;
-
     let newLinks: SocialLink[];
     if (isNew) {
       const preset = PLATFORM_PRESETS[platform];
@@ -147,7 +120,6 @@ export function AvatarOrbit({
     } else {
       newLinks = socialLinks.map((l) => l.platform === platform ? { ...l, url: normalized } : l);
     }
-
     const { error } = await supabase.from('profiles').update({ social_links: newLinks as any }).eq('id', userId);
     setSaving(false);
     if (error) { toast.error('Không thể lưu link'); return; }
@@ -155,8 +127,8 @@ export function AvatarOrbit({
     onLinksChanged?.(newLinks);
     setEditingPlatform(null);
     setShowAddPicker(false);
+    setAddingPlatform(null);
     setAddUrl('');
-    setAddingPlatform('');
   };
 
   const removeLink = async (platform: string) => {
@@ -166,9 +138,9 @@ export function AvatarOrbit({
     if (error) { toast.error('Không thể xoá link'); return; }
     toast.success('Đã xoá!');
     onLinksChanged?.(newLinks);
+    setEditingPlatform(null);
   };
 
-  // Add button position
   const addAngle = computeAddAngle(socialLinks.length);
   const addPos = angleToPos(addAngle);
   const showAddBtn = isOwner && socialLinks.length < 9;
@@ -178,29 +150,13 @@ export function AvatarOrbit({
       className="relative flex flex-col items-center"
       style={{ paddingTop: '110px', paddingBottom: `${ORBIT_RADIUS + ORBIT_SIZE / 2 + 8}px` }}
     >
-      {/* Viên kim cương */}
-      <div
-        className="absolute pointer-events-none"
-        style={{ top: '-10px', left: '50%', transform: 'translateX(-50%)', zIndex: 40 }}
-      >
-        <img
-          src={transparentDiamond}
-          alt="Kim cương xanh"
-          style={{ width: '200px', height: '200px', objectFit: 'contain', display: 'block' }}
-        />
+      {/* Kim cương */}
+      <div className="absolute pointer-events-none" style={{ top: '-10px', left: '50%', transform: 'translateX(-50%)', zIndex: 40 }}>
+        <img src={transparentDiamond} alt="Kim cương xanh" style={{ width: '200px', height: '200px', objectFit: 'contain', display: 'block' }} />
       </div>
 
-      {/* Wrapper cố định kích thước — tâm điểm cho orbit */}
-      <div
-        style={{
-          position: 'relative',
-          width: `${AVATAR_SIZE}px`,
-          height: `${AVATAR_SIZE}px`,
-          overflow: 'visible',
-          zIndex: 10,
-          flexShrink: 0,
-        }}
-      >
+      {/* Wrapper cố định */}
+      <div style={{ position: 'relative', width: `${AVATAR_SIZE}px`, height: `${AVATAR_SIZE}px`, overflow: 'visible', zIndex: 10, flexShrink: 0 }}>
         {/* Avatar */}
         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           {children}
@@ -208,9 +164,9 @@ export function AvatarOrbit({
 
         {/* Social link orbital slots */}
         {socialLinks.map((link, i) => {
-          const angleDeg = angles[i];
-          const { x, y } = angleToPos(angleDeg);
+          const { x, y } = angleToPos(angles[i]);
           const isEditing = editingPlatform === link.platform;
+          const isHovered = hoveredPlatform === link.platform;
 
           return (
             <div
@@ -221,12 +177,15 @@ export function AvatarOrbit({
                 top: `${AVATAR_SIZE / 2 + y - ORBIT_SIZE / 2}px`,
                 width: `${ORBIT_SIZE}px`,
                 height: `${ORBIT_SIZE}px`,
-                zIndex: 20,
+                zIndex: isEditing ? 30 : 20,
               }}
+              onMouseEnter={() => setHoveredPlatform(link.platform)}
+              onMouseLeave={() => setHoveredPlatform(null)}
             >
-              {/* Tooltip / Inline editor */}
-              {isEditing && isOwner ? (
+              {/* Edit popup */}
+              {isEditing && isOwner && (
                 <div
+                  ref={editRef}
                   className="absolute z-50 bg-card border border-border rounded-xl shadow-xl p-3"
                   style={{ bottom: '110%', left: '50%', transform: 'translateX(-50%)', width: '220px' }}
                 >
@@ -256,81 +215,83 @@ export function AvatarOrbit({
                     >
                       Xoá
                     </button>
+                    <a
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-1 text-xs px-2 py-1 rounded-lg border border-border hover:bg-muted transition-colors"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
                     <button
                       type="button"
                       disabled={saving}
                       onClick={() => saveLink(link.platform, editUrl)}
-                      className="flex-1 text-xs px-2 py-1 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors flex items-center justify-center gap-1"
+                      className="flex-1 text-xs px-2 py-1 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors flex items-center justify-center gap-1 disabled:opacity-50"
                     >
-                      <Check className="w-3 h-3" />
-                      Lưu
+                      <Check className="w-3 h-3" /> Lưu
                     </button>
                   </div>
                 </div>
-              ) : (
+              )}
+
+              {/* Tooltip for non-owner */}
+              {!isOwner && isHovered && (
                 <div
-                  className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 rounded text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 max-w-[160px] overflow-hidden text-ellipsis"
+                  className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 rounded text-xs whitespace-nowrap pointer-events-none z-50"
                   style={{ background: 'rgba(0,0,0,0.75)', color: '#fff' }}
                 >
                   {link.label}
                 </div>
               )}
 
-              {/* Icon circle */}
-              {isOwner ? (
+              {/* Icon — click goes to URL; pencil edit on hover for owner */}
+              <a
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full h-full rounded-full bg-white flex items-center justify-center transition-transform duration-200 shadow-md hover:scale-110"
+                style={{ border: `2.5px solid ${link.color}`, boxShadow: `0 0 8px ${link.color}66`, display: 'flex' }}
+              >
+                <img
+                  src={link.favicon}
+                  alt={link.label}
+                  className="w-6 h-6 object-contain"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    const p = e.currentTarget.parentElement;
+                    if (p && !p.querySelector('.fallback-letter')) {
+                      const s = document.createElement('span');
+                      s.className = 'fallback-letter text-xs font-bold';
+                      s.style.color = link.color;
+                      s.textContent = link.label[0];
+                      p.appendChild(s);
+                    }
+                  }}
+                />
+              </a>
+
+              {/* Pencil edit button (owner only, on hover) */}
+              {isOwner && isHovered && !isEditing && (
                 <button
                   type="button"
-                  onClick={() => {
-                    if (isEditing) { setEditingPlatform(null); return; }
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
                     setEditingPlatform(link.platform);
                     setEditUrl(link.url);
                   }}
-                  className="group w-full h-full rounded-full overflow-visible bg-white hover:scale-110 transition-transform duration-200 shadow-md flex items-center justify-center"
-                  style={{ border: `2.5px solid ${link.color}`, boxShadow: `0 0 8px ${link.color}66` }}
+                  className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-card border border-border shadow flex items-center justify-center hover:bg-primary hover:text-primary-foreground hover:border-primary transition-colors z-40"
+                  title="Sửa link"
                 >
-                  <img src={link.favicon} alt={link.label} className="w-6 h-6 object-contain"
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none';
-                      const p = e.currentTarget.parentElement;
-                      if (p && !p.querySelector('.fallback-letter')) {
-                        const s = document.createElement('span');
-                        s.className = 'fallback-letter text-xs font-bold';
-                        s.style.color = link.color;
-                        s.textContent = link.label[0];
-                        p.appendChild(s);
-                      }
-                    }}
-                  />
+                  <Pencil className="w-2.5 h-2.5" />
                 </button>
-              ) : (
-                <a
-                  href={link.url}
-                  title={link.label}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group w-full h-full rounded-full overflow-hidden bg-white hover:scale-110 transition-transform duration-200 shadow-md flex items-center justify-center"
-                  style={{ border: `2.5px solid ${link.color}`, boxShadow: `0 0 8px ${link.color}66` }}
-                >
-                  <img src={link.favicon} alt={link.label} className="w-6 h-6 object-contain"
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none';
-                      const p = e.currentTarget.parentElement;
-                      if (p && !p.querySelector('.fallback-letter')) {
-                        const s = document.createElement('span');
-                        s.className = 'fallback-letter text-xs font-bold';
-                        s.style.color = link.color;
-                        s.textContent = link.label[0];
-                        p.appendChild(s);
-                      }
-                    }}
-                  />
-                </a>
               )}
             </div>
           );
         })}
 
-        {/* Nút + để thêm mạng xã hội mới */}
+        {/* Nút + */}
         {showAddBtn && (
           <div
             className="absolute"
@@ -339,19 +300,25 @@ export function AvatarOrbit({
               top: `${AVATAR_SIZE / 2 + addPos.y - ORBIT_SIZE / 2}px`,
               width: `${ORBIT_SIZE}px`,
               height: `${ORBIT_SIZE}px`,
-              zIndex: 20,
+              zIndex: showAddPicker ? 30 : 20,
             }}
           >
-            {/* Add picker popup */}
+            {/* Add picker popup — hiện tất cả platform chưa dùng */}
             {showAddPicker && (
               <div
                 ref={pickerRef}
                 className="absolute z-50 bg-card border border-border rounded-xl shadow-xl p-3"
-                style={{ bottom: '110%', left: '50%', transform: 'translateX(-50%)', width: '240px' }}
+                style={{ bottom: '110%', left: '50%', transform: 'translateX(-50%)', width: '252px' }}
               >
-                <p className="text-xs font-semibold text-foreground mb-2">Thêm mạng xã hội</p>
-                {/* Platform grid */}
-                <div className="grid grid-cols-3 gap-1 mb-2">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-semibold text-foreground">Thêm mạng xã hội</p>
+                  <button type="button" onClick={() => { setShowAddPicker(false); setAddingPlatform(null); setAddUrl(''); }} className="p-0.5 rounded hover:bg-muted">
+                    <X className="w-3.5 h-3.5 text-muted-foreground" />
+                  </button>
+                </div>
+
+                {/* All available platforms grid */}
+                <div className="grid grid-cols-3 gap-1.5 mb-2">
                   {availablePlatforms.map((p) => {
                     const preset = PLATFORM_PRESETS[p];
                     const isSelected = addingPlatform === p;
@@ -359,50 +326,53 @@ export function AvatarOrbit({
                       <button
                         key={p}
                         type="button"
-                        onClick={() => setAddingPlatform(p)}
-                        className="flex flex-col items-center gap-0.5 px-1 py-1.5 rounded-lg border text-[10px] transition-all"
+                        onClick={() => { setAddingPlatform(isSelected ? null : p); setAddUrl(''); }}
+                        className="flex flex-col items-center gap-1 px-1 py-2 rounded-lg border text-[10px] transition-all"
                         style={{
-                          borderColor: isSelected ? preset.color : 'transparent',
+                          borderColor: isSelected ? preset.color : 'hsl(var(--border))',
                           background: isSelected ? `${preset.color}18` : 'transparent',
-                          color: isSelected ? preset.color : undefined,
                         }}
                       >
-                        <div className="w-5 h-5 rounded-full bg-white flex items-center justify-center" style={{ border: `1.5px solid ${preset.color}` }}>
-                          <img src={preset.favicon} alt="" className="w-3 h-3 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                        <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center shadow-sm" style={{ border: `1.5px solid ${preset.color}` }}>
+                          <img src={preset.favicon} alt={preset.label} className="w-4 h-4 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                         </div>
-                        <span className="truncate w-full text-center leading-tight">{preset.label}</span>
+                        <span className="truncate w-full text-center font-medium leading-tight" style={{ color: isSelected ? preset.color : undefined }}>{preset.label}</span>
                       </button>
                     );
                   })}
                 </div>
+
+                {/* URL input appears after selecting platform */}
                 {addingPlatform && (
-                  <>
-                    <input
-                      autoFocus
-                      type="url"
-                      value={addUrl}
-                      onChange={(e) => setAddUrl(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === 'Enter') saveLink(addingPlatform, addUrl, true); }}
-                      placeholder={`Link ${PLATFORM_PRESETS[addingPlatform]?.label || ''}`}
-                      className="w-full text-xs border border-border rounded-lg px-2 py-1.5 bg-background focus:outline-none focus:ring-1 focus:ring-primary mb-2"
-                    />
-                    <button
-                      type="button"
-                      disabled={saving || !addUrl.trim()}
-                      onClick={() => saveLink(addingPlatform, addUrl, true)}
-                      className="w-full text-xs px-2 py-1.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors flex items-center justify-center gap-1 disabled:opacity-50"
-                    >
-                      <Check className="w-3 h-3" />
-                      Thêm
-                    </button>
-                  </>
+                  <div className="border-t border-border pt-2">
+                    <p className="text-[10px] text-muted-foreground mb-1">Link trang {PLATFORM_PRESETS[addingPlatform]?.label}:</p>
+                    <div className="flex gap-1.5">
+                      <input
+                        autoFocus
+                        type="url"
+                        value={addUrl}
+                        onChange={(e) => setAddUrl(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter' && addUrl.trim()) saveLink(addingPlatform, addUrl, true); }}
+                        placeholder="https://..."
+                        className="flex-1 text-xs border border-border rounded-lg px-2 py-1.5 bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                      <button
+                        type="button"
+                        disabled={saving || !addUrl.trim()}
+                        onClick={() => saveLink(addingPlatform, addUrl, true)}
+                        className="px-2 py-1.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors flex items-center gap-1 disabled:opacity-50 text-xs"
+                      >
+                        <Check className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
                 )}
               </div>
             )}
 
             <button
               type="button"
-              onClick={() => { setShowAddPicker(!showAddPicker); setAddingPlatform(''); setAddUrl(''); }}
+              onClick={() => { setShowAddPicker(!showAddPicker); setAddingPlatform(null); setAddUrl(''); }}
               className="w-full h-full rounded-full bg-primary text-primary-foreground hover:scale-110 hover:bg-primary/90 transition-all duration-200 shadow-md flex items-center justify-center"
               style={{ boxShadow: '0 0 10px hsl(var(--primary) / 0.5)' }}
               title="Thêm mạng xã hội"
