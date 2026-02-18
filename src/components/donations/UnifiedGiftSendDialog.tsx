@@ -703,7 +703,7 @@ export const UnifiedGiftSendDialog = ({
             </DialogTitle>
           </DialogHeader>
 
-          {/* ⚠️ MAINTENANCE — XOÁ KHI MỞ LẠI */}
+          {/* MAINTENANCE BLOCK — currently disabled (IS_MAINTENANCE=false) */}
           {IS_MAINTENANCE && (
             <div className="py-4 space-y-4">
               <div className="bg-destructive/10 border-2 border-destructive/30 rounded-xl p-5 text-center space-y-3">
