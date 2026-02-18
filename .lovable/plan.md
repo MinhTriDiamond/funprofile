@@ -1,45 +1,44 @@
 
-# Cap nhat cong thuc thuong CAMLY
 
-## Thay doi cu the
+# Sua loi Gift History khong ghi nhan giao dich
 
-| Hoat dong | Cu | Moi | Ghi chu |
-|---|---|---|---|
-| Dang bai | 10,000/bai | **5,000/bai** | Max 10 bai/ngay (giu nguyen) |
-| Binh luan nhan | 2,000/binh luan | **1,000/binh luan** | Max 50/ngay, >20 ky tu (giu nguyen) |
-| Chia se nhan | 10,000/chia se | **1,000/chia se** | Max **10**/ngay (truoc la 5) |
-| Cam xuc nhan | 1,000 | Giu nguyen | Max 50/ngay |
-| Ket ban | 10,000 | Giu nguyen | Max 10/ngay |
-| Livestream | 20,000 | Giu nguyen | Max 5/ngay |
+## Van de da xac dinh
 
-## Gioi han moi moi ngay
+Edge function `record-donation` dang **chan** viec ghi nhan gift history khi `reward_status = 'on_hold'`. Tat ca 6 giao dich gan day deu tra ve HTTP 403.
 
-- Bai dang: 5,000 x 10 = 50,000
-- Cam xuc: 1,000 x 50 = 50,000
-- Binh luan: 1,000 x 50 = 50,000
-- Chia se: 1,000 x 10 = 10,000
-- Ket ban: 10,000 x 10 = 100,000
-- Livestream: 20,000 x 5 = 100,000
-- **Tong toi da/ngay: 360,000 CAMLY** (truoc la 500,000)
+Logic hien tai (dong 82-86 trong `record-donation/index.ts`):
+```text
+if reward_status in ['on_hold', 'rejected', 'banned'] -> 403 Forbidden
+```
+
+Tuy nhien, `on_hold` chi nen anh huong den viec **rut thuong (claim reward)**, khong nen chan viec **tang qua (donate)**. Viec tang qua la giao dich blockchain da thanh cong, can phai duoc ghi nhan de dam bao tinh minh bach.
+
+## De xuat giai phap
+
+### Thay doi 1: Cap nhat `record-donation/index.ts`
+
+Chi chan `is_banned = true`, bo dieu kien `on_hold` va `rejected` ra khoi logic chan ghi nhan donation:
+
+- **Truoc:** Chan `on_hold`, `rejected`, `banned`
+- **Sau:** Chi chan `is_banned = true`
+
+Ly do: Trang thai `on_hold`/`rejected` chi nen anh huong den tinh nang claim reward, khong anh huong den giao dich P2P da thuc hien tren blockchain.
+
+### Thay doi 2: Phuc hoi 6 giao dich bi mat
+
+Tao mot script SQL de ghi nhan lai 6 giao dich da bi mat vao bang `donations` dua tren du lieu tu bang `transactions`. Hoac chay lai `record-donation` sau khi sua code.
+
+**Cach 1 (de xuat):** Sau khi deploy code moi, con co the gui lai qua cho cung nguoi nhan -- nhung cach nay khong hieu qua vi phai gui them token.
+
+**Cach 2 (tot hon):** Admin insert truc tiep vao bang `donations` tu du lieu `transactions`:
+
+Can doc them thong tin tu `transactions` (to_address) de map voi `profiles` (wallet address -> user id) roi insert vao `donations`.
 
 ## Chi tiet ky thuat
 
-### 1. Cap nhat `src/hooks/useRewardCalculation.ts`
-- Sua `REWARD_CONFIG.DAILY_LIMITS`:
-  - `posts.reward`: 10000 -> 5000, `maxDaily`: 100000 -> 50000
-  - `comments.reward`: 2000 -> 1000, `maxDaily`: 100000 -> 50000
-  - `shares.reward`: 10000 -> 1000, `maxPerDay`: 5 -> 10, `maxDaily`: 50000 -> 10000
-- Sua `MAX_DAILY_REWARD`: 500000 -> 360000
+### File can sua:
+- `supabase/functions/record-donation/index.ts` -- xoa block `on_hold`/`rejected`, chi giu `is_banned`
 
-### 2. Cap nhat database function `get_user_rewards_v2`
-Tao migration moi de sua cong thuc tinh thuong trong SQL:
-- Tat ca `* 10000` cua posts -> `* 5000`
-- Tat ca `* 2000` cua comments -> `* 1000`
-- Tat ca `* 10000` cua shares -> `* 1000`
-- Cap shares: `LEAST(COUNT(*), 5)` -> `LEAST(COUNT(*), 10)`
+### Database:
+- Insert 6 ban ghi donation bi mat (tu transactions co tx_hash tuong ung)
 
-### 3. Cap nhat `src/config/pplp.ts`
-- Sua `BASE_REWARDS.post`: 100 -> 50
-- Sua `BASE_REWARDS.comment`: 20 -> 10
-- Sua `BASE_REWARDS.share`: 50 -> 10
-- Sua `DAILY_CAPS.share.maxActions`: 10 -> 10, `maxReward`: 500 -> 100
