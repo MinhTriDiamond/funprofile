@@ -1,5 +1,5 @@
 import React from 'react';
-import diamondImg from '@/assets/green-diamond.png';
+import diamondImg from '@/assets/green-diamond-v3.png';
 
 interface OrbitSlot {
   href: string;
@@ -21,7 +21,7 @@ const ORBIT_SLOTS: OrbitSlot[] = [
 // Phân bổ 7 vị trí từ 30° đến 330° (để trống đỉnh 0° cho kim cương)
 // 0° = trên cùng, chiều kim đồng hồ
 const ORBIT_ANGLES = [30, 80, 130, 180, 230, 280, 330];
-const ORBIT_RADIUS = 90; // px
+const ORBIT_RADIUS = 80; // px - nhỏ lại
 
 interface AvatarOrbitProps {
   children: React.ReactNode;
@@ -32,16 +32,15 @@ export function AvatarOrbit({ children }: AvatarOrbitProps) {
     <div className="relative">
       {children}
 
-      {/* Viên kim cương xanh ở đỉnh hình đại diện */}
+      {/* Viên kim cương xanh ở đỉnh hình đại diện - đưa lên cao hơn */}
       <div
         className="absolute z-30 pointer-events-none"
-        style={{ top: '-22px', left: '50%', transform: 'translateX(-50%)' }}
+        style={{ top: '-38px', left: '50%', transform: 'translateX(-50%)' }}
       >
         <img
           src={diamondImg}
           alt="Kim cương xanh"
-          className="w-12 h-12 object-contain drop-shadow-lg"
-          style={{ mixBlendMode: 'multiply' }}
+          className="w-14 h-14 object-contain drop-shadow-lg"
         />
       </div>
 
@@ -60,10 +59,10 @@ export function AvatarOrbit({ children }: AvatarOrbitProps) {
             title={slot.label}
             className="absolute z-20 group"
             style={{
-              left: `calc(50% + ${x}px - 18px)`,
-              top: `calc(50% + ${y}px - 18px)`,
-              width: '36px',
-              height: '36px',
+              left: `calc(50% + ${x}px - 14px)`,
+              top: `calc(50% + ${y}px - 14px)`,
+              width: '28px',
+              height: '28px',
             }}
             onClick={(e) => {
               if (slot.href === '#') e.preventDefault();
@@ -72,9 +71,9 @@ export function AvatarOrbit({ children }: AvatarOrbitProps) {
             <div
               className="w-full h-full rounded-full overflow-hidden bg-white group-hover:scale-110 transition-transform duration-200 shadow-md"
               style={{
-                border: '3px solid',
+                border: '2px solid',
                 borderColor: '#22c55e',
-                boxShadow: '0 0 8px rgba(34,197,94,0.5)',
+                boxShadow: '0 0 6px rgba(34,197,94,0.5)',
               }}
             >
               <img
@@ -82,7 +81,6 @@ export function AvatarOrbit({ children }: AvatarOrbitProps) {
                 alt={slot.label}
                 className="w-full h-full object-cover"
                 onError={(e) => {
-                  // Fallback: hiện số thứ tự nếu ảnh lỗi
                   e.currentTarget.style.display = 'none';
                 }}
               />
