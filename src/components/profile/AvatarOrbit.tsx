@@ -17,8 +17,10 @@ const ORBIT_SLOTS: OrbitSlot[] = [
   { href: 'https://wallet.fun.rich',  imageUrl: '/fun-wallet-logo-36.webp',  label: 'FUN Wallet' },
 ];
 
-const ORBIT_ANGLES = [30, 80, 130, 180, 230, 280, 330];
-const ORBIT_RADIUS = 108;
+// 7 vị trí phân bố đều 360°, bắt đầu từ 26° để cân bằng với viên kim cương trên đỉnh
+const ORBIT_ANGLES = Array.from({ length: 7 }, (_, i) => Math.round(26 + (360 / 7) * i));
+const ORBIT_RADIUS = 115;
+const ORBIT_SIZE = 40; // px
 
 /** Dùng Canvas để xoá nền trắng/sáng khỏi ảnh PNG, trả về data URL */
 function useTransparentDiamond(src: string) {
@@ -110,18 +112,18 @@ export function AvatarOrbit({ children }: AvatarOrbitProps) {
               rel="noopener noreferrer"
               className="absolute group"
               style={{
-                left: `calc(50% + ${x}px - 12px)`,
-                top: `calc(50% + ${y}px - 12px)`,
-                width: '24px',
-                height: '24px',
+                left: `calc(50% + ${x}px - ${ORBIT_SIZE / 2}px)`,
+                top: `calc(50% + ${y}px - ${ORBIT_SIZE / 2}px)`,
+                width: `${ORBIT_SIZE}px`,
+                height: `${ORBIT_SIZE}px`,
                 zIndex: 20,
               }}
             >
               <div
                 className="w-full h-full rounded-full overflow-hidden bg-white group-hover:scale-110 transition-transform duration-200 shadow-md"
                 style={{
-                  border: '2px solid #22c55e',
-                  boxShadow: '0 0 6px rgba(34,197,94,0.5)',
+                  border: '2.5px solid #22c55e',
+                  boxShadow: '0 0 8px rgba(34,197,94,0.6)',
                 }}
               >
                 <img
