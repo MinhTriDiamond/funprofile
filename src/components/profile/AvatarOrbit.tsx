@@ -174,8 +174,9 @@ export const AvatarOrbit = forwardRef<AvatarOrbitRef, AvatarOrbitProps>(function
     setPendingPlatform(platform);
     setPendingUrl('');
   };
-
-
+  const addAngle = computeAddAngle(allLinks.length);
+  const addPos = angleToPos(addAngle);
+  const showAddBtn = isOwner && allLinks.length < 9 && !pendingPlatform;
 
 
   return (
@@ -386,9 +387,32 @@ export const AvatarOrbit = forwardRef<AvatarOrbitRef, AvatarOrbitProps>(function
           );
         })}
 
+        {/* Nút + orbit slot */}
+        {showAddBtn && (
+          <div
+            className="absolute"
+            style={{
+              left: `${AVATAR_SIZE / 2 + addPos.x - ORBIT_SIZE / 2}px`,
+              top: `${AVATAR_SIZE / 2 + addPos.y - ORBIT_SIZE / 2}px`,
+              width: `${ORBIT_SIZE}px`,
+              height: `${ORBIT_SIZE}px`,
+              zIndex: 20,
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setShowAddPicker(true)}
+              className="w-full h-full rounded-full bg-primary/20 border-2 border-dashed border-primary text-primary hover:bg-primary hover:text-primary-foreground transition-all duration-200 shadow-sm flex items-center justify-center"
+              title="Thêm mạng xã hội"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Add picker popup — rendered at root level, triggered externally */}
+      {/* Add picker popup */}
+
       {showAddPicker && isOwner && (
         <div
           ref={pickerRef}

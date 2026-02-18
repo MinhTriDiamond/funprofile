@@ -455,27 +455,17 @@ const Profile = () => {
                 />
               </div>
 
-              {/* Edit Cover Button + Add Social Link button */}
+              {/* Edit Cover Button */}
               {showPrivateElements && (
-                <div className="absolute bottom-3 right-3 md:right-auto md:left-[8cm] sm:bottom-4 sm:right-4 z-[100] isolate flex items-center gap-2">
+                <div className="absolute bottom-3 right-3 md:right-auto md:left-[8cm] sm:bottom-4 sm:right-4 z-[100] isolate">
                   <CoverPhotoEditor 
                     userId={currentUserId}
                     currentCoverUrl={profile?.cover_url}
                     onCoverUpdated={(newUrl) => setProfile({ ...profile, cover_url: newUrl })}
                   />
-                  {isOwnProfile && (profile?.social_links?.length ?? 0) < 9 && (
-                    <button
-                      type="button"
-                      onClick={() => orbitRef.current?.openAddPicker()}
-                      className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-primary/90 text-primary-foreground text-xs font-medium hover:bg-primary transition-colors shadow"
-                      title="Thêm mạng xã hội"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Thêm MXH</span>
-                    </button>
-                  )}
                 </div>
               )}
+
 
             </div>
           </div>
