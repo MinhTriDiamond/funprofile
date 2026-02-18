@@ -110,6 +110,42 @@ export type Database = {
         }
         Relationships: []
       }
+      blacklisted_ips: {
+        Row: {
+          alert_on_login: boolean
+          associated_usernames: string[] | null
+          flagged_at: string
+          flagged_by: string | null
+          id: string
+          ip_address: string
+          is_active: boolean
+          notes: string | null
+          reason: string
+        }
+        Insert: {
+          alert_on_login?: boolean
+          associated_usernames?: string[] | null
+          flagged_at?: string
+          flagged_by?: string | null
+          id?: string
+          ip_address: string
+          is_active?: boolean
+          notes?: string | null
+          reason: string
+        }
+        Update: {
+          alert_on_login?: boolean
+          associated_usernames?: string[] | null
+          flagged_at?: string
+          flagged_by?: string | null
+          id?: string
+          ip_address?: string
+          is_active?: boolean
+          notes?: string | null
+          reason?: string
+        }
+        Relationships: []
+      }
       blacklisted_wallets: {
         Row: {
           created_at: string
