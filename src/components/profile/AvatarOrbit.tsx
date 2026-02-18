@@ -1,5 +1,5 @@
 import React from 'react';
-import diamondImg from '@/assets/diamond-transparent.png';
+import diamondImg from '@/assets/diamond-user.png';
 
 interface OrbitSlot {
   href: string;
