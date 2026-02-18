@@ -460,17 +460,23 @@ export const UnifiedGiftSendDialog = ({
       const recipient = recipientsWithWallet[i];
       setMultiSendProgress(prev => prev ? { ...prev, current: i + 1 } : prev);
 
+      // Delay giữa các TX để tránh nonce conflict trên BSC
+      if (i > 0) await new Promise(r => setTimeout(r, 500));
+
       try {
-        resetState();
+        // KHÔNG gọi resetState() ở đây — wagmi tự quản lý state giao dịch
         const hash = await sendToken({ token: walletToken, recipient: recipient.walletAddress!, amount });
         
         if (hash) {
           results.push({ recipient, success: true, txHash: hash });
+          resetState(); // Reset SAU khi có hash thành công
         } else {
           results.push({ recipient, success: false, error: 'Giao dịch bị từ chối' });
+          resetState();
         }
       } catch (err: any) {
         results.push({ recipient, success: false, error: err?.message || 'Lỗi gửi' });
+        resetState();
       }
 
       setMultiSendProgress(prev => prev ? { ...prev, results: [...results] } : prev);
