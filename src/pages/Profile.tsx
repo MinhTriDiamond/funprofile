@@ -12,6 +12,7 @@ import { FacebookCreatePost } from '@/components/feed/FacebookCreatePost';
 import { FriendRequestButton } from '@/components/friends/FriendRequestButton';
 import { FriendsList } from '@/components/friends/FriendsList';
 import { CoverHonorBoard } from '@/components/profile/CoverHonorBoard';
+import { AvatarOrbit } from '@/components/profile/AvatarOrbit';
 import { Button } from '@/components/ui/button';
 import { LazyImage } from '@/components/ui/LazyImage';
 import { CoverPhotoEditor } from '@/components/profile/CoverPhotoEditor';
@@ -473,40 +474,42 @@ const Profile = () => {
               <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
                 {/* Avatar - positioned higher to overlap cover */}
                 <div className="-mt-[193px] sm:-mt-[201px] md:-mt-[217px] relative z-10 flex justify-center md:justify-start flex-shrink-0">
-                  {showPrivateElements ? (
-                    <AvatarEditor
-                      userId={currentUserId}
-                      currentAvatarUrl={profile?.avatar_url}
-                      username={profile?.username}
-                      onAvatarUpdated={(newUrl) => setProfile({ ...profile, avatar_url: newUrl })}
-                      size="large"
-                    />
-                  ) : (
-                    <div 
-                      className="rounded-full p-1"
-                      style={{
-                        background: 'linear-gradient(135deg, #166534 0%, #22c55e 50%, #16a34a 100%)'
-                      }}
-                    >
-                      <Avatar 
-                        className="w-24 h-24 sm:w-28 sm:h-28 md:w-36 md:h-36 border-4 border-white"
+                  <AvatarOrbit>
+                    {showPrivateElements ? (
+                      <AvatarEditor
+                        userId={currentUserId}
+                        currentAvatarUrl={profile?.avatar_url}
+                        username={profile?.username}
+                        onAvatarUpdated={(newUrl) => setProfile({ ...profile, avatar_url: newUrl })}
+                        size="large"
+                      />
+                    ) : (
+                      <div 
+                        className="rounded-full p-1"
+                        style={{
+                          background: 'linear-gradient(135deg, #166534 0%, #22c55e 50%, #16a34a 100%)'
+                        }}
                       >
-                        {profile?.avatar_url && <AvatarImage src={profile.avatar_url} sizeHint="lg" />}
-                        <AvatarFallback className="text-3xl md:text-4xl bg-primary text-primary-foreground">
-                          {profile?.username?.[0]?.toUpperCase() || 'U'}
-                        </AvatarFallback>
-                      </Avatar>
-                    </div>
-                  )}
+                        <Avatar 
+                          className="w-24 h-24 sm:w-28 sm:h-28 md:w-36 md:h-36 border-4 border-white"
+                        >
+                          {profile?.avatar_url && <AvatarImage src={profile.avatar_url} sizeHint="lg" />}
+                          <AvatarFallback className="text-3xl md:text-4xl bg-primary text-primary-foreground">
+                            {profile?.username?.[0]?.toUpperCase() || 'U'}
+                          </AvatarFallback>
+                        </Avatar>
+                      </div>
+                    )}
+                  </AvatarOrbit>
                 </div>
 
                 {/* Name, Friends, Bio, Info - Facebook style inline */}
                 <div className="flex-1 text-center md:text-left md:ml-4">
-                <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-foreground">
+                <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-green-700">
                     {profile?.display_name || profile?.username}
                   </h1>
                    {/* Username handle and profile link */}
-                   <div className="flex items-center gap-1.5 text-sm font-bold text-foreground mt-0.5">
+                   <div className="flex items-center gap-1.5 text-sm font-bold text-green-600 mt-0.5">
                      <span>@{profile?.username}</span>
                      <span className="text-muted-foreground font-normal">·</span>
                      <a href={`https://fun.rich/${profile?.username}`} target="_blank" rel="noopener noreferrer" className="hover:text-primary hover:underline transition-colors cursor-pointer">fun.rich/{profile?.username}</a>
@@ -565,13 +568,13 @@ const Profile = () => {
                   
                   {/* Bio text - full display with wrap */}
                   {profile?.bio && (
-                    <p className="text-xs sm:text-sm text-muted-foreground mt-1 whitespace-pre-wrap break-words max-w-md">
+                    <p className="text-xs sm:text-sm text-green-700 mt-1 whitespace-pre-wrap break-words max-w-md">
                       {profile.bio}
                     </p>
                   )}
                   
                   {/* Info badges - all in one horizontal row */}
-                  <div className="flex flex-nowrap items-center justify-center md:justify-start gap-x-4 mt-2 text-sm sm:text-base text-muted-foreground">
+                  <div className="flex flex-nowrap items-center justify-center md:justify-start gap-x-4 mt-2 text-sm sm:text-base text-green-600 font-medium">
                     <div className="flex items-center gap-1.5 whitespace-nowrap">
                       <MapPin className="w-5 h-5 flex-shrink-0" />
                       <span>Việt Nam</span>
