@@ -215,14 +215,13 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
                     >
                       Xoá
                     </button>
-                    <a
-                      href={link.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <button
+                      type="button"
+                      onClick={() => window.open(link.url, '_blank', 'noopener,noreferrer')}
                       className="flex items-center justify-center gap-1 text-xs px-2 py-1 rounded-lg border border-border hover:bg-muted transition-colors"
                     >
                       <ExternalLink className="w-3 h-3" />
-                    </a>
+                    </button>
                     <button
                       type="button"
                       disabled={saving}
@@ -246,12 +245,11 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
               )}
 
               {/* Icon — click goes to URL; pencil edit on hover for owner */}
-              <a
-                href={link.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full h-full rounded-full bg-white flex items-center justify-center transition-transform duration-200 shadow-md hover:scale-110"
-                style={{ border: `2.5px solid ${link.color}`, boxShadow: `0 0 8px ${link.color}66`, display: 'flex' }}
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); window.open(link.url, '_blank', 'noopener,noreferrer'); }}
+                className="w-full h-full rounded-full bg-white flex items-center justify-center transition-transform duration-200 shadow-md hover:scale-110 cursor-pointer"
+                style={{ border: `2.5px solid ${link.color}`, boxShadow: `0 0 8px ${link.color}66` }}
               >
                 <img
                   src={link.favicon}
@@ -269,7 +267,7 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
                     }
                   }}
                 />
-              </a>
+              </button>
 
               {/* Pencil edit button (owner only, on hover) */}
               {isOwner && isHovered && !isEditing && (
