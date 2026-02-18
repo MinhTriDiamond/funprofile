@@ -131,6 +131,7 @@ export function DonationHistoryAdminTab() {
     }
   };
 
+  const handleExport = async () => {
     try {
       setIsExporting(true);
       const allDonations = await fetchAllDonationsForExport({
