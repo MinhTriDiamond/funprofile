@@ -11,6 +11,7 @@ export interface SocialLink {
   url: string;
   color: string;
   favicon: string;
+  avatarUrl?: string; // fetched og:image from the social profile page
 }
 
 const ORBIT_RADIUS = 115;
@@ -122,17 +123,33 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
     return () => document.removeEventListener('mousedown', handler);
   }, [showAddPicker, editingPlatform, pendingPlatform]);
 
+  const fetchLinkAvatar = async (url: string): Promise<string | null> => {
+    try {
+      const { data, error } = await supabase.functions.invoke('fetch-link-preview', {
+        body: { url },
+      });
+      if (error || !data?.avatarUrl) return null;
+      return data.avatarUrl;
+    } catch {
+      return null;
+    }
+  };
+
   const saveLink = async (platform: string, url: string, isNew = false) => {
     if (!userId || !url.trim()) return;
     setSaving(true);
     const normalized = url.trim().startsWith('http') ? url.trim() : `https://${url.trim()}`;
+
+    // Fetch avatar (og:image) from the linked profile page
+    const fetchedAvatarUrl = await fetchLinkAvatar(normalized);
+
     let newLinks: SocialLink[];
     if (isNew) {
       const preset = PLATFORM_PRESETS[platform];
       if (!preset) { setSaving(false); return; }
-      newLinks = [...socialLinks, { platform, label: preset.label, url: normalized, color: preset.color, favicon: preset.favicon }];
+      newLinks = [...socialLinks, { platform, label: preset.label, url: normalized, color: preset.color, favicon: preset.favicon, avatarUrl: fetchedAvatarUrl || undefined }];
     } else {
-      newLinks = socialLinks.map((l) => l.platform === platform ? { ...l, url: normalized } : l);
+      newLinks = socialLinks.map((l) => l.platform === platform ? { ...l, url: normalized, avatarUrl: fetchedAvatarUrl || l.avatarUrl } : l);
     }
     const { error } = await supabase.from('profiles').update({ social_links: newLinks as any }).eq('id', userId);
     setSaving(false);
@@ -308,7 +325,7 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
               {isPending ? (
                 /* Pending slot — hiển thị với viền nét đứt, mờ hơn */
                 <div
-                  className="w-full h-full rounded-full bg-white flex items-center justify-center shadow-md animate-pulse"
+                  className="w-full h-full rounded-full bg-white flex items-center justify-center shadow-md animate-pulse overflow-hidden"
                   style={{ border: `2.5px dashed ${link.color}`, boxShadow: `0 0 8px ${link.color}44`, opacity: 0.85 }}
                 >
                   <img src={link.favicon} alt={link.label} className="w-6 h-6 object-cover rounded-full" style={{ pointerEvents: 'none' }}
@@ -326,31 +343,45 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
                   />
                 </div>
               ) : (
-                /* Saved slot */
+                /* Saved slot — ưu tiên avatarUrl (ảnh đại diện thực), fallback về favicon */
                 <a
                   href={link.url.startsWith('http') ? link.url : `https://${link.url}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full h-full rounded-full bg-white flex items-center justify-center transition-transform duration-200 shadow-md hover:scale-110 cursor-pointer"
+                  className="w-full h-full rounded-full bg-white flex items-center justify-center transition-transform duration-200 shadow-md hover:scale-110 cursor-pointer overflow-hidden"
                   style={{ display: 'flex', border: `2.5px solid ${link.color}`, boxShadow: `0 0 8px ${link.color}66` }}
                 >
-                  <img
-                    src={link.favicon}
-                    alt={link.label}
-                    className="w-6 h-6 object-cover rounded-full"
-                    style={{ pointerEvents: 'none' }}
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none';
-                      const p = e.currentTarget.parentElement;
-                      if (p && !p.querySelector('.fallback-letter')) {
-                        const s = document.createElement('span');
-                        s.className = 'fallback-letter text-xs font-bold';
-                        s.style.color = link.color;
-                        s.textContent = link.label[0];
-                        p.appendChild(s);
-                      }
-                    }}
-                  />
+                  {link.avatarUrl ? (
+                    <img
+                      src={link.avatarUrl}
+                      alt={link.label}
+                      className="w-full h-full object-cover rounded-full"
+                      style={{ pointerEvents: 'none' }}
+                      onError={(e) => {
+                        // Fallback to favicon if avatarUrl fails
+                        e.currentTarget.src = link.favicon;
+                        e.currentTarget.className = 'w-6 h-6 object-cover rounded-full';
+                      }}
+                    />
+                  ) : (
+                    <img
+                      src={link.favicon}
+                      alt={link.label}
+                      className="w-6 h-6 object-cover rounded-full"
+                      style={{ pointerEvents: 'none' }}
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                        const p = e.currentTarget.parentElement;
+                        if (p && !p.querySelector('.fallback-letter')) {
+                          const s = document.createElement('span');
+                          s.className = 'fallback-letter text-xs font-bold';
+                          s.style.color = link.color;
+                          s.textContent = link.label[0];
+                          p.appendChild(s);
+                        }
+                      }}
+                    />
+                  )}
                 </a>
               )}
 
