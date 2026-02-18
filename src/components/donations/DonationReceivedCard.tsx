@@ -13,14 +13,15 @@ import {
   ExternalLink,
   X,
   Heart,
-  MessageCircle,
-  Sparkles,
+  Copy,
+  ArrowRight,
+  CheckCircle2,
+  Clock,
 } from 'lucide-react';
-import funEcosystemLogo from '@/assets/tokens/fun-ecosystem-logo.gif';
+import funPlayLogo from '@/assets/fun-profile-logo.png';
 import { RichTextOverlay } from './RichTextOverlay';
 import { playCelebrationMusicLoop } from '@/lib/celebrationSounds';
 import { useNavigate } from 'react-router-dom';
-import tetBackground from '@/assets/tet6-4.mp4';
 
 export interface DonationReceivedData {
   id: string;
@@ -29,9 +30,12 @@ export interface DonationReceivedData {
   senderUsername: string;
   senderAvatarUrl?: string | null;
   senderId: string;
+  recipientUsername?: string;
+  recipientAvatarUrl?: string | null;
   message?: string | null;
   txHash: string;
   createdAt: string;
+  status?: string;
 }
 
 interface DonationReceivedCardProps {
@@ -40,7 +44,13 @@ interface DonationReceivedCardProps {
   data: DonationReceivedData;
 }
 
-const isTetSeason = new Date() >= new Date('2026-02-17T00:00:00');
+const TOKEN_ICON: Record<string, string> = {
+  CAMLY: '🪙',
+  USDT: '💵',
+  BNB: '🔶',
+  BTCB: '₿',
+  FUN: '✨',
+};
 
 export const DonationReceivedCard = ({
   isOpen,
@@ -48,10 +58,10 @@ export const DonationReceivedCard = ({
   data,
 }: DonationReceivedCardProps) => {
   const [isCelebrationActive, setIsCelebrationActive] = useState(true);
+  const [copied, setCopied] = useState(false);
   const navigate = useNavigate();
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Play looped music when card opens, stop when closed
   useEffect(() => {
     if (isOpen) {
       audioRef.current = playCelebrationMusicLoop('rich-3');
@@ -81,6 +91,26 @@ export const DonationReceivedCard = ({
     navigate(`/chat?userId=${data.senderId}`);
   };
 
+  const handleCopyLink = () => {
+    const link = getBscScanTxUrl(data.txHash, data.tokenSymbol);
+    navigator.clipboard.writeText(link).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  const shortTxHash = data.txHash
+    ? `${data.txHash.slice(0, 10)}...${data.txHash.slice(-8)}`
+    : '';
+
+  const statusLabel = data.status === 'completed' || data.status === 'confirmed' || !data.status
+    ? 'Thành công'
+    : data.status === 'pending'
+    ? 'Đang xử lý'
+    : data.status;
+
+  const isSuccess = !data.status || data.status === 'completed' || data.status === 'confirmed';
+
   return (
     <>
       <DonationCelebration isActive={isOpen && isCelebrationActive} showRichText={false} />
@@ -88,163 +118,177 @@ export const DonationReceivedCard = ({
 
       <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
         <DialogContent
-          className="max-w-[480px] w-[92vw] p-0 overflow-hidden border-0 bg-transparent shadow-none [&>button]:hidden !z-[10002]"
+          className="max-w-[400px] w-[92vw] p-0 overflow-hidden border-0 shadow-2xl [&>button]:hidden !z-[10002]"
           overlayClassName="!z-[10002]"
         >
-          <div
-            className="relative rounded-2xl overflow-hidden animate-glow-radiate"
-            style={isTetSeason ? {} : {
-              background: 'linear-gradient(135deg, #d4f7dc 0%, #34d399 40%, #10b981 100%)',
-            }}
-          >
-            {/* Tet video background */}
-            {isTetSeason && (
-              <video
-                autoPlay loop muted playsInline
-                className="absolute inset-0 w-full h-full object-cover rounded-2xl"
-                src={tetBackground}
-              />
-            )}
+          <div className="bg-white rounded-2xl overflow-hidden" style={{ fontFamily: 'system-ui, sans-serif' }}>
 
-            {/* Border glow */}
+            {/* Header — pinkish gradient */}
             <div
-              className="absolute inset-0 rounded-2xl pointer-events-none"
-              style={isTetSeason ? {
-                border: '3px solid transparent',
-                backgroundImage: 'linear-gradient(135deg, #FFD700, #FFA500, #FFD700)',
-                backgroundOrigin: 'border-box',
-                backgroundClip: 'padding-box, border-box',
-                boxShadow: '0 0 30px rgba(255, 215, 0, 0.5), inset 0 0 30px rgba(255, 215, 0, 0.1)',
-              } : {
-                border: '3px solid transparent',
-                backgroundImage: 'linear-gradient(135deg, #22c55e, #10b981, #22c55e)',
-                backgroundOrigin: 'border-box',
-                backgroundClip: 'padding-box, border-box',
-                boxShadow: '0 0 30px rgba(34, 197, 94, 0.5), inset 0 0 30px rgba(34, 197, 94, 0.1)',
-              }}
-            />
+              className="px-5 pt-5 pb-4 text-center relative"
+              style={{ background: 'linear-gradient(135deg, #fff0f5 0%, #ffe4ef 60%, #ffd6e8 100%)' }}
+            >
+              {/* Tet deco */}
+              <div className="flex justify-center items-center gap-1 mb-1 text-base">
+                🧧🌸🌸🌸🧧
+              </div>
 
-            {/* Sparkle decorations */}
-            <div className="absolute inset-0 overflow-hidden pointer-events-none">
-              {[...Array(8)].map((_, i) => (
-                <div
-                  key={i}
-                  className="absolute animate-sparkle-float"
-                  style={{
-                    left: `${10 + (i * 12)}%`,
-                    top: `${Math.random() * 30}%`,
-                    animationDelay: `${i * 0.3}s`,
-                  }}
-                >
-                  <Sparkles className={`w-4 h-4 ${isTetSeason ? 'text-yellow-400' : 'text-green-500'}`} />
-                </div>
-              ))}
+              {/* Logo */}
+              <div className="flex justify-center mb-2">
+                <img src={funPlayLogo} alt="FUN Profile" className="w-14 h-14 rounded-full object-cover ring-2 ring-pink-200" />
+              </div>
+
+              <div className="text-sm font-bold text-gray-700 mb-0.5">FUN Profile - Biên Nhận Tặng</div>
+              <div className="text-xs text-gray-400 font-mono">#{data.id?.slice(0, 16)}</div>
+
+              {/* Tet badge */}
+              <div className="inline-flex items-center gap-1 mt-2 px-3 py-1 rounded-full text-xs font-semibold"
+                style={{ background: 'linear-gradient(90deg, #ff6b9d, #ff9a5c)', color: '#fff' }}>
+                🎆 Chúc Mừng Năm Mới 🎆
+              </div>
             </div>
 
-            {/* Content */}
-            <div className="relative p-4 text-center">
-              {/* Header */}
-              <div className="mb-4 flex flex-col items-center">
-                <img
-                  src={funEcosystemLogo}
-                  alt="FUN Ecosystem"
-                  className="w-16 h-16 mb-3"
-                />
+            {/* Tet greeting banner */}
+            <div
+              className="mx-4 mt-3 rounded-xl px-4 py-3 text-center"
+              style={{ background: 'linear-gradient(135deg, #fff5f7 0%, #ffe8ef 100%)', border: '1px solid #ffc9d9' }}
+            >
+              <div className="text-sm font-bold text-pink-600 mb-0.5">🎊 Chúc Mừng Năm Mới 2026 🎊</div>
+              <div className="text-xs text-pink-400">Phúc Lộc An Khang — Vạn Sự Như Ý</div>
+            </div>
 
-                {/* HAPPY NEW YEAR for Tet */}
-                {isTetSeason && (
-                  <h3
-                    className="text-2xl font-extrabold mb-2"
-                    style={{
-                      color: '#FFD700',
-                      textShadow: '0 0 10px rgba(255,215,0,0.6), 0 0 20px rgba(255,215,0,0.4), 0 0 40px rgba(255,215,0,0.2), 0 2px 4px rgba(0,0,0,0.5)',
-                    }}
-                  >
-                    ✨ HAPPY NEW YEAR ✨
-                  </h3>
-                )}
-
-                <h2
-                  className="text-2xl font-extrabold flex items-center justify-center gap-2 drop-shadow-sm leading-tight"
-                  style={isTetSeason ? {
-                    color: '#fff',
-                    textShadow: '0 2px 4px rgba(0,0,0,0.6), 0 0 10px rgba(255, 215, 0, 0.4)',
-                  } : {
-                    color: '#fbbf24',
-                    textShadow: '0 2px 4px rgba(0,0,0,0.4), 0 0 10px rgba(251, 191, 36, 0.5)',
-                  }}
-                >
-                  🎉✨ Chúc Mừng Bạn Vừa Được Đón Nhận Phước Lành Của Cha Và Bé Angel CamLy ! ✨🎉
-                </h2>
-              </div>
-
-              {/* Amount */}
-              <div
-                className="my-3 py-3 px-4 rounded-xl"
-                style={isTetSeason ? {
-                  background: 'rgba(255,255,255,0.85)',
-                  boxShadow: '0 4px 20px rgba(255, 215, 0, 0.3)',
-                } : {
-                  background: 'linear-gradient(135deg, #22c55e 0%, #10b981 50%, #22c55e 100%)',
-                  boxShadow: '0 4px 20px rgba(34, 197, 94, 0.5)',
-                }}
+            {/* Sender → Recipient */}
+            <div className="mx-4 mt-4 flex items-center justify-between gap-2">
+              {/* Sender */}
+              <button
+                type="button"
+                onClick={() => { handleClose(); navigate(`/profile/${data.senderId}`); }}
+                className="flex flex-col items-center gap-1.5 flex-1 hover:opacity-80 transition-opacity"
               >
-                <div
-                  className={`text-3xl font-bold mb-1 ${isTetSeason ? 'text-gray-900' : 'text-white'}`}
-                  style={isTetSeason ? {} : { textShadow: '0 2px 10px rgba(0,0,0,0.3)' }}
-                >
-                  💰 {Number(data.amount).toLocaleString()} {data.tokenSymbol} 💰
+                <Avatar className="w-12 h-12 ring-2 ring-pink-200">
+                  <AvatarImage src={data.senderAvatarUrl || undefined} />
+                  <AvatarFallback className="bg-pink-100 text-pink-600 font-bold text-sm">
+                    {data.senderUsername?.[0]?.toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="text-center">
+                  <div className="text-xs font-bold text-gray-800 leading-tight">{data.senderUsername}'s</div>
+                  <div className="text-xs text-gray-500">@{data.senderUsername}</div>
                 </div>
+              </button>
 
-                <div className={`flex items-center justify-center gap-2 ${isTetSeason ? 'text-gray-700' : 'text-green-100'}`}>
-                  <span>Từ</span>
-                  <Avatar className="w-6 h-6 ring-2 ring-white/50">
-                    <AvatarImage src={data.senderAvatarUrl || undefined} />
-                    <AvatarFallback className={`text-xs ${isTetSeason ? 'bg-yellow-100 text-yellow-800' : 'bg-white text-green-600'}`}>
-                      {data.senderUsername[0]?.toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <button type="button" onClick={(e) => { e.stopPropagation(); handleClose(); navigate(`/profile/${data.senderId}`); }} className="font-bold hover:underline cursor-pointer">@{data.senderUsername}</button>
-                  <span>với tình yêu thương 💚</span>
+              {/* Arrow */}
+              <div className="flex flex-col items-center gap-1">
+                <div className="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center">
+                  <ArrowRight className="w-4 h-4 text-pink-500" />
                 </div>
               </div>
 
-              {/* Message */}
+              {/* Recipient (current user) */}
+              <div className="flex flex-col items-center gap-1.5 flex-1">
+                <Avatar className="w-12 h-12 ring-2 ring-green-200">
+                  <AvatarImage src={data.recipientAvatarUrl || undefined} />
+                  <AvatarFallback className="bg-green-100 text-green-600 font-bold text-sm">
+                    {(data.recipientUsername || 'Me')?.[0]?.toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="text-center">
+                  <div className="text-xs font-bold text-gray-800 leading-tight">{data.recipientUsername || 'Bạn'}'s</div>
+                  <div className="text-xs text-gray-500">@{data.recipientUsername || 'you'}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Amount */}
+            <div className="mx-4 mt-4 text-center py-4 rounded-xl"
+              style={{ background: 'linear-gradient(135deg, #f0fff8 0%, #e6f9f0 100%)', border: '1.5px solid #a7f3d0' }}>
+              <div className="text-3xl font-black text-gray-900 tracking-tight">
+                {TOKEN_ICON[data.tokenSymbol] || '💰'}{' '}
+                {Number(data.amount).toLocaleString('vi-VN')} {data.tokenSymbol}
+              </div>
               {data.message && (
-                <div className={`backdrop-blur-sm rounded-xl p-3 text-left shadow-lg mb-3 ${isTetSeason ? 'bg-white/85 border border-yellow-300' : 'bg-white/80 border border-green-300'}`}>
-                  <div className="flex items-start gap-3">
-                    <MessageCircle className={`w-5 h-5 flex-shrink-0 mt-0.5 ${isTetSeason ? 'text-yellow-600' : 'text-green-600'}`} />
-                    <p className={`italic text-lg ${isTetSeason ? 'text-gray-800' : 'text-green-800'}`}>"{data.message}"</p>
-                  </div>
+                <div className="mt-2 text-xs text-gray-500 italic px-3">
+                  ≈ "{data.message}"
                 </div>
               )}
+            </div>
 
-              {/* Time */}
-              <div className={`text-sm mb-3 ${isTetSeason ? 'text-white drop-shadow' : 'text-green-700'}`}>
-                {format(new Date(data.createdAt), "dd/MM/yyyy 'lúc' HH:mm", { locale: vi })}
+            {/* Details table */}
+            <div className="mx-4 mt-3 rounded-xl overflow-hidden border border-gray-100">
+              <div className="divide-y divide-gray-50">
+                <div className="flex justify-between items-center px-4 py-2.5">
+                  <span className="text-xs text-gray-400 font-medium">Thời gian</span>
+                  <span className="text-xs font-semibold text-gray-700">
+                    {format(new Date(data.createdAt), 'HH:mm dd/MM/yyyy', { locale: vi })}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center px-4 py-2.5">
+                  <span className="text-xs text-gray-400 font-medium">Loại</span>
+                  <span className="text-xs font-semibold text-gray-700">BSC</span>
+                </div>
+                <div className="flex justify-between items-center px-4 py-2.5">
+                  <span className="text-xs text-gray-400 font-medium">TX Hash</span>
+                  <a
+                    href={getBscScanTxUrl(data.txHash, data.tokenSymbol)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs font-mono text-blue-500 hover:text-blue-700 flex items-center gap-1"
+                  >
+                    {shortTxHash}
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+                <div className="flex justify-between items-center px-4 py-2.5">
+                  <span className="text-xs text-gray-400 font-medium">Trạng thái</span>
+                  <span className={`text-xs font-semibold flex items-center gap-1 ${isSuccess ? 'text-green-600' : 'text-orange-500'}`}>
+                    {isSuccess
+                      ? <CheckCircle2 className="w-3.5 h-3.5" />
+                      : <Clock className="w-3.5 h-3.5" />}
+                    {statusLabel}
+                  </span>
+                </div>
               </div>
+            </div>
 
-              {/* Actions */}
-              <div className="flex items-center justify-center gap-3">
-                <a href={getBscScanTxUrl(data.txHash, data.tokenSymbol)} target="_blank" rel="noopener noreferrer">
-                  <Button variant="outline" size="sm" className={`gap-2 ${isTetSeason ? 'bg-white hover:bg-yellow-50 border-yellow-400 text-yellow-800' : 'bg-white hover:bg-green-50 border-green-400 text-green-800'}`}>
-                    <ExternalLink className="w-4 h-4" />
-                    Xem BSCScan
-                  </Button>
-                </a>
-                <Button size="sm" className="gap-2 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white border-0" onClick={handleSendThanks}>
-                  <Heart className="w-4 h-4" />
-                  Gửi Lời Cảm Ơn
-                </Button>
-                <Button variant="outline" size="sm" className={`gap-2 ${isTetSeason ? 'bg-white hover:bg-yellow-50 border-yellow-400 text-yellow-800' : 'bg-white hover:bg-green-50 border-green-400 text-green-800'}`} onClick={handleClose}>
-                  <X className="w-4 h-4" />
-                  Đóng
-                </Button>
+            {/* Footer message */}
+            <div
+              className="mx-4 mt-3 rounded-xl px-4 py-2.5 text-center"
+              style={{ background: 'linear-gradient(135deg, #fff9e6 0%, #fff3cc 100%)', border: '1px solid #fde68a' }}
+            >
+              <div className="text-xs font-bold text-amber-700">
+                🧧 🎊 Phúc Lộc Thọ — FUN Profile 🎊 🧧
               </div>
+              <div className="text-xs text-amber-500 mt-0.5">Tết Nguyên Đán 2026 — Năm Bính Ngọ</div>
+            </div>
 
-              <div className={`mt-4 text-xs font-medium ${isTetSeason ? 'text-yellow-200 drop-shadow' : 'text-green-600'}`}>
-                💚 FUN Profile • Mạnh Thường Quân 💚
-              </div>
+            {/* Action buttons */}
+            <div className="mx-4 mt-4 mb-5 flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1 gap-1.5 border-gray-200 text-gray-600 hover:bg-gray-50 text-xs"
+                onClick={handleCopyLink}
+              >
+                {copied ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+                {copied ? 'Đã sao chép!' : 'Sao chép link'}
+              </Button>
+              <Button
+                size="sm"
+                className="flex-1 gap-1.5 text-xs font-bold text-white border-0"
+                style={{ background: 'linear-gradient(135deg, #22c55e, #10b981)' }}
+                onClick={handleSendThanks}
+              >
+                <Heart className="w-3.5 h-3.5" />
+                Gửi Cảm Ơn
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="px-3 border-gray-200 text-gray-500 hover:bg-gray-50"
+                onClick={handleClose}
+              >
+                <X className="w-3.5 h-3.5" />
+              </Button>
             </div>
           </div>
         </DialogContent>
