@@ -141,8 +141,8 @@ export const DonationSuccessCard = ({
               <div className="flex justify-center mb-2">
                 <img src={funPlayLogo} alt="FUN Profile" className="w-14 h-14 rounded-full object-cover shadow-md" style={{ boxShadow: '0 0 0 3px #d1fae5, 0 0 0 5px #6ee7b7' }} />
               </div>
-              <div className="text-sm font-extrabold text-gray-900 mb-0.5 tracking-wide">FUN Profile — Biên Nhận Tặng</div>
-              <div className="text-xs text-gray-500 font-mono">#{data.id?.slice(0, 16)}</div>
+              <div className="text-sm font-extrabold text-emerald-800 mb-0.5 tracking-wide">FUN Profile — Biên Nhận Tặng</div>
+              <div className="text-xs text-emerald-600 font-mono">#{data.id?.slice(0, 16)}</div>
             </div>
 
             {/* Dashed divider */}
@@ -168,8 +168,8 @@ export const DonationSuccessCard = ({
                   </AvatarFallback>
                 </Avatar>
                 <div className="text-center">
-                  <div className="text-xs font-extrabold text-gray-900 leading-tight">{data.senderDisplayName || data.senderUsername}</div>
-                  <div className="text-xs font-medium text-gray-500">@{data.senderUsername}</div>
+                  <div className="text-xs font-extrabold text-emerald-800 leading-tight">{data.senderDisplayName || data.senderUsername}</div>
+                  <div className="text-xs font-medium text-emerald-600">@{data.senderUsername}</div>
                 </div>
               </div>
 
@@ -190,8 +190,8 @@ export const DonationSuccessCard = ({
                   </AvatarFallback>
                 </Avatar>
                 <div className="text-center">
-                  <div className="text-xs font-extrabold text-gray-900 leading-tight">{data.recipientDisplayName || data.recipientUsername}</div>
-                  <div className="text-xs font-medium text-gray-500">@{data.recipientUsername}</div>
+                  <div className="text-xs font-extrabold text-emerald-800 leading-tight">{data.recipientDisplayName || data.recipientUsername}</div>
+                  <div className="text-xs font-medium text-emerald-600">@{data.recipientUsername}</div>
                 </div>
               </div>
             </div>
@@ -205,8 +205,9 @@ export const DonationSuccessCard = ({
                   <span className="text-3xl">💰</span>
                 )}
                 <span
-                  className="text-4xl font-black tracking-tight"
+                  className="font-black tracking-tight"
                   style={{
+                    fontSize: '34px',
                     background: 'linear-gradient(135deg, #064e3b 0%, #065f46 30%, #047857 60%, #059669 100%)',
                     WebkitBackgroundClip: 'text',
                     WebkitTextFillColor: 'transparent',
@@ -216,9 +217,9 @@ export const DonationSuccessCard = ({
                   {Number(data.amount).toLocaleString('vi-VN')} {data.tokenSymbol}
                 </span>
               </div>
-              <div className="text-xs font-semibold text-gray-600 mt-1">≈ Priceless với tình yêu thương 💛</div>
+              <div className="text-xs font-semibold text-emerald-700 mt-1">≈ Priceless với tình yêu thương 💛</div>
               {data.message && (
-                <div className="mt-2 text-xs font-semibold text-gray-600 italic px-3">
+                <div className="mt-2 text-xs font-semibold text-emerald-700 italic px-3">
                   "{data.message}"
                 </div>
               )}
@@ -231,13 +232,13 @@ export const DonationSuccessCard = ({
             <div className="mx-4 mt-2 rounded-xl overflow-hidden border border-gray-100">
               <div className="divide-y divide-gray-100">
                 <div className="flex justify-between items-center px-4 py-2.5 bg-white">
-                  <span className="text-xs font-semibold text-gray-600 flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" />Thời gian</span>
-                  <span className="text-xs font-bold text-gray-800">
+                  <span className="text-xs font-semibold text-emerald-700 flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" />Thời gian</span>
+                  <span className="text-xs font-bold text-emerald-800">
                     {format(new Date(data.createdAt), 'HH:mm dd/MM/yyyy', { locale: vi })}
                   </span>
                 </div>
                 <div className="flex justify-between items-center px-4 py-2.5 bg-white">
-                  <span className="text-xs font-semibold text-gray-600 flex items-center gap-1.5"><Link2 className="w-3.5 h-3.5" />TX Hash</span>
+                  <span className="text-xs font-semibold text-emerald-700 flex items-center gap-1.5"><Link2 className="w-3.5 h-3.5" />TX Hash</span>
                   <a
                     href={getBscScanTxUrl(data.txHash, data.tokenSymbol)}
                     target="_blank"
@@ -249,11 +250,11 @@ export const DonationSuccessCard = ({
                   </a>
                 </div>
                 <div className="flex justify-between items-center px-4 py-2.5 bg-white">
-                  <span className="text-xs font-semibold text-gray-600">Mạng</span>
-                  <span className="text-xs font-bold text-gray-800">BSC</span>
+                  <span className="text-xs font-semibold text-emerald-700">Mạng</span>
+                  <span className="text-xs font-bold text-emerald-800">BSC (BNB Smart Chain)</span>
                 </div>
                 <div className="flex justify-between items-center px-4 py-2.5 bg-white">
-                  <span className="text-xs font-semibold text-gray-600">Trạng thái</span>
+                  <span className="text-xs font-semibold text-emerald-700">Trạng thái</span>
                   <span className="text-xs font-bold text-emerald-700 flex items-center gap-1">
                     <CheckCircle2 className="w-3.5 h-3.5" />
                     Thành công
