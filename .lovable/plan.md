@@ -1,44 +1,59 @@
 
 
-# Sua loi Gift History khong ghi nhan giao dich
+# Tinh nang Duyet lai giao dich On-chain chua ghi nhan
 
-## Van de da xac dinh
+## Tong quan
 
-Edge function `record-donation` dang **chan** viec ghi nhan gift history khi `reward_status = 'on_hold'`. Tat ca 6 giao dich gan day deu tra ve HTTP 403.
+Them tinh nang cho Admin de quet toan bo bang `transactions`, tim cac giao dich da on-chain nhung chua co trong bang `donations` (Gift History), va cho phep backfill chung tu dong.
 
-Logic hien tai (dong 82-86 trong `record-donation/index.ts`):
-```text
-if reward_status in ['on_hold', 'rejected', 'banned'] -> 403 Forbidden
-```
+## Cach hoat dong
 
-Tuy nhien, `on_hold` chi nen anh huong den viec **rut thuong (claim reward)**, khong nen chan viec **tang qua (donate)**. Viec tang qua la giao dich blockchain da thanh cong, can phai duoc ghi nhan de dam bao tinh minh bach.
-
-## De xuat giai phap
-
-### Thay doi 1: Cap nhat `record-donation/index.ts`
-
-Chi chan `is_banned = true`, bo dieu kien `on_hold` va `rejected` ra khoi logic chan ghi nhan donation:
-
-- **Truoc:** Chan `on_hold`, `rejected`, `banned`
-- **Sau:** Chi chan `is_banned = true`
-
-Ly do: Trang thai `on_hold`/`rejected` chi nen anh huong den tinh nang claim reward, khong anh huong den giao dich P2P da thuc hien tren blockchain.
-
-### Thay doi 2: Phuc hoi 6 giao dich bi mat
-
-Tao mot script SQL de ghi nhan lai 6 giao dich da bi mat vao bang `donations` dua tren du lieu tu bang `transactions`. Hoac chay lai `record-donation` sau khi sua code.
-
-**Cach 1 (de xuat):** Sau khi deploy code moi, con co the gui lai qua cho cung nguoi nhan -- nhung cach nay khong hieu qua vi phai gui them token.
-
-**Cach 2 (tot hon):** Admin insert truc tiep vao bang `donations` tu du lieu `transactions`:
-
-Can doc them thong tin tu `transactions` (to_address) de map voi `profiles` (wallet address -> user id) roi insert vao `donations`.
+1. Admin nhan nut "Quet giao dich thieu" trong tab Donations
+2. He thong so sanh `transactions.tx_hash` voi `donations.tx_hash` de tim giao dich bi thieu
+3. Map `to_address` voi `profiles.wallet_address` de xac dinh nguoi nhan
+4. Hien thi danh sach giao dich thieu va cho admin xac nhan backfill
+5. Insert vao bang `donations` voi status "confirmed"
 
 ## Chi tiet ky thuat
 
-### File can sua:
-- `supabase/functions/record-donation/index.ts` -- xoa block `on_hold`/`rejected`, chi giu `is_banned`
+### 1. Tao Edge Function `backfill-donations`
 
-### Database:
-- Insert 6 ban ghi donation bi mat (tu transactions co tx_hash tuong ung)
+File: `supabase/functions/backfill-donations/index.ts`
+
+- Yeu cau admin auth (kiem tra `user_roles`)
+- Co 2 mode:
+  - `scan`: Tra ve danh sach giao dich trong `transactions` ma khong co trong `donations`, kem thong tin mapping wallet -> profile
+  - `backfill`: Nhan danh sach transaction IDs, insert vao `donations`
+- Logic mapping: JOIN `transactions.to_address` voi `profiles.wallet_address` (case-insensitive) de tim `recipient_id`
+- Chi backfill nhung giao dich co the map duoc nguoi nhan (to_address khop voi 1 profile)
+- Khong tao light_action, conversation, hay notification (vi da qua thoi gian)
+
+### 2. Cap nhat Admin UI
+
+File: `src/components/admin/DonationHistoryAdminTab.tsx`
+
+Them vao header:
+- Nut "Quet giao dich thieu" voi icon `ScanSearch`
+- Khi nhan: goi edge function mode `scan`
+- Hien dialog hien thi danh sach giao dich thieu (sender, recipient, amount, token, tx_hash)
+- Nut "Backfill tat ca" de xac nhan insert
+
+### 3. Cau truc du lieu backfill
+
+Moi ban ghi donation duoc tao se co:
+- `sender_id`: tu `transactions.user_id`
+- `recipient_id`: tu mapping `to_address` -> `profiles.wallet_address`
+- `amount`, `token_symbol`, `chain_id`, `tx_hash`: tu `transactions`
+- `status`: "confirmed"
+- `confirmed_at`: `transactions.created_at`
+- `card_theme`: "celebration" (mac dinh)
+- `card_sound`: "rich-1" (mac dinh)
+- `message`: null
+- `light_score_earned`: 0 (khong tinh diem cho backfill)
+
+### Files can tao/sua:
+
+1. `supabase/functions/backfill-donations/index.ts` -- tao moi
+2. `supabase/config.toml` -- them config cho function moi (verify_jwt = false)
+3. `src/components/admin/DonationHistoryAdminTab.tsx` -- them nut scan va dialog backfill
 
