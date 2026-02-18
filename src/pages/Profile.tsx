@@ -435,7 +435,7 @@ const Profile = () => {
               {/* Honor Board Overlay - inside cover, right side */}
               <div 
                 className="absolute z-20 hidden md:block top-3 right-3 lg:top-4 lg:right-4 rounded-2xl p-1.5 bg-white/30 backdrop-blur-sm"
-                style={{ width: 'clamp(280px, 28vw, 400px)' }}
+                style={{ width: 'clamp(320px, 34vw, 460px)' }}
               >
                 <CoverHonorBoard 
                   userId={profile.id}
@@ -472,14 +472,14 @@ const Profile = () => {
               {/* Avatar + Info Row */}
               <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
                 {/* Avatar - positioned higher to overlap cover */}
-                <div className="-mt-[80px] sm:-mt-[88px] md:-mt-[104px] relative z-10 flex justify-center md:justify-start flex-shrink-0">
+                <div className="-mt-[193px] sm:-mt-[201px] md:-mt-[217px] relative z-10 flex justify-center md:justify-start flex-shrink-0">
                   {showPrivateElements ? (
                     <AvatarEditor
                       userId={currentUserId}
                       currentAvatarUrl={profile?.avatar_url}
                       username={profile?.username}
                       onAvatarUpdated={(newUrl) => setProfile({ ...profile, avatar_url: newUrl })}
-                      size="xl"
+                      size="large"
                     />
                   ) : (
                     <div 
