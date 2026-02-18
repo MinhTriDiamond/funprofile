@@ -1,119 +1,64 @@
 
-# Kế hoạch: Ban nhóm Farm Coin + Vá lỗ hổng UTC + Phát hiện sớm hành vi Farm
+# Thêm Tab "Giám Sát & Truy Vết" vào Admin Dashboard
 
-## Phân tích hiện trạng
+## Mục tiêu
+Tạo một tab chuyên dụng trong Admin Dashboard để theo dõi tất cả tài khoản bị ban và nghi ngờ, với bảng dữ liệu đầy đủ gồm: số đã rút, số tồn đọng, ngày giờ hoạt động, và bằng chứng gian lận.
 
-### 13 tài khoản cần ban ngay
+## Dữ liệu thực tế hiện có
 
-Tất cả 13 tài khoản hiện vẫn chưa bị ban (`is_banned = false`). Tổng đã rút: **~18.564.000 CAMLY**.
+Từ cơ sở dữ liệu, hệ thống đang theo dõi:
+- **26 tài khoản đã bị ban** — tổng đã rút **29,570,000 CAMLY**
+- **~20 tài khoản on_hold** — nghi ngờ qua tín hiệu SHARED_DEVICE (severity 3)
+- Có đầy đủ lịch sử: ngày rút đầu tiên, ngày rút cuối, số lần rút, địa chỉ ví
 
-| Username | Trạng thái | Tổng CAMLY | Lần rút cuối |
-|---|---|---|---|
-| tranhien | on_hold | 2.000.000 | 17/02 12:19 |
-| trinhnguyet | claimed | 2.000.000 | 17/02 12:28 |
-| tranphuong | claimed | 2.000.000 | 17/02 12:43 |
-| hoaque | claimed | 2.000.000 | 17/02 12:44 |
-| angel_leanhkhoahoc | claimed | 2.000.000 | 17/02 12:59 |
-| nguyetthu | claimed | 2.000.000 | 17/02 13:03 |
-| thuychau | claimed | 2.000.000 | 17/02 13:14 |
-| nguyenchinh | on_hold | 2.000.000 | 17/02 13:37 |
-| tranhong | claimed | 997.000 | 17/02 18:20 |
-| vinhlong | claimed | 903.000 | 17/02 18:13 |
-| nguyenanh | claimed | 678.000 | 17/02 18:07 |
-| quang | on_hold | 1.500.000 | 16/02 08:19 |
-| ngocna | on_hold | 486.000 | 15/02 20:52 |
+## Các file cần tạo/chỉnh sửa
 
-### Nguyên nhân lỗ hổng UTC (đã phân tích)
+### 1. Tạo mới: `src/components/admin/SurveillanceTab.tsx`
+Component tab mới với 2 phần:
 
-Hàm tính ngày trong `claim-reward` dùng UTC thay vì giờ Việt Nam (UTC+7):
+**Phần A — Bảng tài khoản đã bị BAN:**
 
+| Username | Họ tên | Đã rút (CAMLY) | Số lần rút | Lần rút đầu | Lần rút cuối | Ví | Lý do ban | Ghi chú |
+|---|---|---|---|---|---|---|---|---|
+| luudung | luu thi dung | 2,000,000 | 4 | 14/02 14:22 | 17/02 05:21 | 0x5003... | IP TH | Farm ring |
+
+**Phần B — Bảng tài khoản NGHI NGỜ (on_hold):**
+
+| Username | Loại tín hiệu | Severity | Ngày phát hiện | Device Hash | Tài khoản liên quan | Hành động |
+|---|---|---|---|---|---|---|
+| minh_quan | SHARED_DEVICE | 3 | 17/02 15:03 | 01cdbbe6 | 5 tài khoản | [Ban] [Xem] |
+
+### 2. Chỉnh sửa: `src/pages/Admin.tsx`
+- Import `SurveillanceTab`
+- Thêm tab trigger mới với icon `Eye` (Giám sát)
+- Cập nhật grid từ 13 cột thành 14 cột
+
+## Chi tiết kỹ thuật của SurveillanceTab
+
+**Data fetching:**
 ```
-todayStart.setUTCHours(0, 0, 0, 0)  ← BUG: reset lúc 07:00 sáng VN
-```
+Query 1 — Banned accounts:
+  SELECT profiles + LEFT JOIN reward_claims aggregated
+  WHERE is_banned = true OR reward_status = 'banned'
+  ORDER BY total_claimed DESC
 
-Kẻ farm biết điều này — rút lúc ~06:xx VN (UTC 23:xx ngày hôm trước) rồi rút lại lúc ~08:xx VN (UTC 01:xx ngày hôm sau). Hệ thống coi là 2 ngày khác nhau → bypass được giới hạn 500.000/ngày.
-
-### Dấu hiệu hành vi Farm Coin có tổ chức
-
-1. **Timing đồng loạt**: 8 tài khoản rút trong cùng cửa sổ 78 phút (12:19-13:37)
-2. **Khai thác UTC gap**: Nhiều tài khoản rút 4 lần/ngày thực tế bằng cách lợi dụng múi giờ
-3. **Pattern số chẵn**: Hầu hết rút đúng 2.000.000 = 4 × 500.000
-4. **Tài khoản "sạch" giả tạo**: Có ảnh, có tên, có bài đăng — nhưng hoạt động đột ngột cao bất thường
-5. **Wallet riêng từng nick**: Không dùng chung ví nên qua được bộ lọc shared-wallet
-
----
-
-## Kế hoạch thực hiện
-
-### Phần 1: Ban ngay 13 tài khoản (Backend SQL)
-
-Chạy lệnh SQL trực tiếp để:
-- Set `is_banned = true` và `reward_status = 'banned'` cho 13 user
-- Set `pending_reward = 0`, `approved_reward = 0` (xóa tài sản ảo)
-- Ghi vào `audit_logs` với lý do đầy đủ
-
-### Phần 2: Vá lỗ hổng UTC trong Edge Function `claim-reward`
-
-Thay đổi logic tính "ngày hôm nay" từ UTC sang múi giờ Việt Nam (UTC+7):
-
-**Trước (BUG):**
-```javascript
-const todayStart = new Date();
-todayStart.setUTCHours(0, 0, 0, 0);
+Query 2 — On-hold accounts:
+  SELECT profiles + pplp_fraud_signals (latest per user)
+  WHERE reward_status = 'on_hold' AND is_banned = false
+  ORDER BY severity DESC, signal_date DESC
 ```
 
-**Sau (FIX):**
-```javascript
-// Dùng giờ Việt Nam UTC+7 — reset lúc 00:00 VN thay vì 07:00 VN
-const VN_OFFSET_MS = 7 * 60 * 60 * 1000;
-const nowVN = new Date(Date.now() + VN_OFFSET_MS);
-const todayStart = new Date(
-  Date.UTC(nowVN.getUTCFullYear(), nowVN.getUTCMonth(), nowVN.getUTCDate())
-);
-todayStart.setTime(todayStart.getTime() - VN_OFFSET_MS);
-```
-
-Tương tự fix luôn logic kiểm tra bài đăng hôm nay (`postTodayStart`) cho nhất quán.
-
-### Phần 3: Thêm bộ phát hiện sớm "Claim Velocity" vào `claim-reward`
-
-Thêm kiểm tra **tần suất rút trong cửa sổ 24 giờ thực** (không phụ thuộc ngày UTC), nếu user rút >= 3 lần trong 24h thì tự động `on_hold` và alert admin:
-
-```javascript
-// Check: số lần claim trong 24h gần nhất
-const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
-const { count: recentClaimCount } = await supabaseAdmin
-  .from('reward_claims')
-  .select('id', { count: 'exact', head: true })
-  .eq('user_id', userId)
-  .gte('created_at', last24h.toISOString());
-
-if (recentClaimCount >= 3) {
-  // Auto on_hold + fraud signal + notify admin
-}
-```
-
-### Phần 4: Thêm tab "Farm Detector" trong Admin WalletAbuseTab
-
-Thêm tab mới trong `WalletAbuseTab.tsx` để Admin có thể nhìn thấy realtime:
-
-- **Claim Velocity**: Danh sách user rút >= 3 lần trong 24h gần nhất
-- **UTC Gap Exploiters**: User có 2 claim trong window 00:00-07:00 VN (khoảng UTC gap)
-- **Coordinated Timing**: Nhóm user rút trong cùng 2h window (có thể là farm có tổ chức)
-
-Tab này truy vấn trực tiếp từ `reward_claims` để Admin giám sát theo thời gian thực.
-
----
-
-## Các file sẽ thay đổi
-
-| File | Thay đổi |
-|---|---|
-| `supabase/functions/claim-reward/index.ts` | Fix UTC→VN timezone + thêm Claim Velocity check |
-| `src/components/admin/WalletAbuseTab.tsx` | Thêm tab "Farm Detector" |
+**UI Features:**
+- 2 tab nội bộ: "Đã bị ban" và "Đang theo dõi (on_hold)"
+- Summary cards ở đầu: Tổng bị ban / Tổng đã rút / Đang on_hold / CAMLY nguy cơ
+- Export CSV button (danh sách ban + on_hold)
+- Search/filter theo username
+- Badge màu sắc: đỏ = banned, vàng = on_hold
+- Cột "Lý do" rút gọn từ admin_notes (30 ký tự + tooltip đầy đủ)
+- Địa chỉ ví rút gọn với link BSCScan
+- Timestamp hiển thị theo múi giờ VN (UTC+7)
 
 ## Thứ tự thực hiện
 
-1. Ban 13 tài khoản bằng SQL (ngay lập tức, không cần deploy)
-2. Fix Edge Function `claim-reward` (deploy để ngăn tái phạm)
-3. Cập nhật Admin UI thêm Farm Detector tab
+1. Tạo `src/components/admin/SurveillanceTab.tsx` — component hoàn chỉnh
+2. Chỉnh sửa `src/pages/Admin.tsx` — thêm import + tab trigger + tab content
