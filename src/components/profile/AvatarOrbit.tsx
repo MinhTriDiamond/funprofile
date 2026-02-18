@@ -21,7 +21,7 @@ const ORBIT_SLOTS: OrbitSlot[] = [
 // Phân bổ 7 vị trí từ 30° đến 330° (để trống đỉnh 0° cho kim cương)
 // 0° = trên cùng, chiều kim đồng hồ
 const ORBIT_ANGLES = [30, 80, 130, 180, 230, 280, 330];
-const ORBIT_RADIUS = 80; // px - nhỏ lại
+const ORBIT_RADIUS = 108; // px - ra ngoài ảnh đại diện
 
 interface AvatarOrbitProps {
   children: React.ReactNode;
@@ -32,15 +32,16 @@ export function AvatarOrbit({ children }: AvatarOrbitProps) {
     <div className="relative">
       {children}
 
-      {/* Viên kim cương xanh ở đỉnh hình đại diện - đưa lên cao hơn */}
+      {/* Viên kim cương xanh - to, nằm trên đỉnh và nhô ra ngoài ảnh */}
       <div
         className="absolute z-30 pointer-events-none"
-        style={{ top: '-38px', left: '50%', transform: 'translateX(-50%)' }}
+        style={{ top: '-60px', left: '50%', transform: 'translateX(-50%)' }}
       >
         <img
           src={diamondImg}
           alt="Kim cương xanh"
-          className="w-14 h-14 object-contain drop-shadow-lg"
+          className="w-28 h-28 object-contain drop-shadow-2xl"
+          style={{ filter: 'drop-shadow(0 4px 12px rgba(34,197,94,0.5))' }}
         />
       </div>
 
@@ -59,10 +60,10 @@ export function AvatarOrbit({ children }: AvatarOrbitProps) {
             title={slot.label}
             className="absolute z-20 group"
             style={{
-              left: `calc(50% + ${x}px - 14px)`,
-              top: `calc(50% + ${y}px - 14px)`,
-              width: '28px',
-              height: '28px',
+              left: `calc(50% + ${x}px - 12px)`,
+              top: `calc(50% + ${y}px - 12px)`,
+              width: '24px',
+              height: '24px',
             }}
             onClick={(e) => {
               if (slot.href === '#') e.preventDefault();
