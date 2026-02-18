@@ -32,6 +32,60 @@ Deno.serve(async (req) => {
       || req.headers.get("x-real-ip")
       || "unknown";
 
+    // Check if IP is blacklisted → alert admins immediately
+    if (ip !== "unknown") {
+      const { data: blacklistedIp } = await supabaseAdmin
+        .from("blacklisted_ips")
+        .select("id, reason, associated_usernames")
+        .eq("ip_address", ip)
+        .eq("is_active", true)
+        .eq("alert_on_login", true)
+        .single();
+
+      if (blacklistedIp) {
+        console.warn(`[IP ALERT] Blacklisted IP ${ip} login attempt by user ${user.id}`);
+        
+        // Insert fraud signal
+        await supabaseAdmin.from("pplp_fraud_signals").insert({
+          actor_id: user.id,
+          signal_type: "BLACKLISTED_IP_LOGIN",
+          severity: 5,
+          details: { 
+            ip_address: ip, 
+            reason: blacklistedIp.reason,
+            known_usernames: blacklistedIp.associated_usernames 
+          },
+          source: "log-login-ip",
+        });
+
+        // Notify all admins
+        const { data: admins } = await supabaseAdmin
+          .from("user_roles")
+          .select("user_id")
+          .eq("role", "admin");
+
+        if (admins && admins.length > 0) {
+          const notifications = admins.map((a: { user_id: string }) => ({
+            user_id: a.user_id,
+            actor_id: user.id,
+            type: "admin_blacklisted_ip",
+            read: false,
+          }));
+          await supabaseAdmin.from("notifications").insert(notifications);
+        }
+
+        // Auto put on_hold if not already banned
+        await supabaseAdmin
+          .from("profiles")
+          .update({
+            reward_status: "on_hold",
+            admin_notes: `Đăng nhập từ IP bị chặn (${ip}): ${blacklistedIp.reason}`,
+          })
+          .eq("id", user.id)
+          .not("reward_status", "eq", "banned");
+      }
+    }
+
     const userAgent = req.headers.get("user-agent") || "unknown";
 
     // Read device_hash from body (optional)
