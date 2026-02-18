@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { 
   Gift, Search, Download, RefreshCw, Loader2,
-  ChevronLeft, ChevronRight, Sparkles, ArrowUpDown, ScanSearch
+  ChevronLeft, ChevronRight, Sparkles, ArrowUpDown, ScanSearch, ArrowLeft, AlertTriangle, CheckCircle2
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -31,12 +31,6 @@ import { exportDonationsToCSV } from '@/utils/exportDonations';
 import { formatNumber, formatDate } from '@/lib/formatters';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 
 interface MissingTransaction {
   id: string;
@@ -72,7 +66,7 @@ export function DonationHistoryAdminTab() {
   const [isExporting, setIsExporting] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [isBackfilling, setIsBackfilling] = useState(false);
-  const [scanDialogOpen, setScanDialogOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'donations' | 'scanResults'>('donations');
   const [missingTx, setMissingTx] = useState<MissingTransaction[]>([]);
   const [unmappableTx, setUnmappableTx] = useState<any[]>([]);
   const [totalScanned, setTotalScanned] = useState(0);
@@ -99,7 +93,7 @@ export function DonationHistoryAdminTab() {
       setMissingTx(data.missing || []);
       setUnmappableTx(data.unmappable || []);
       setTotalScanned(data.totalScanned || 0);
-      setScanDialogOpen(true);
+      setViewMode('scanResults');
       if (data.missing?.length === 0) {
         toast.success('Không có giao dịch nào bị thiếu!');
       }
@@ -120,7 +114,7 @@ export function DonationHistoryAdminTab() {
       });
       if (error) throw error;
       toast.success(`Đã bổ sung ${data.inserted} giao dịch, bỏ qua ${data.skipped}`);
-      setScanDialogOpen(false);
+      setViewMode('donations');
       setMissingTx([]);
       refetch();
     } catch (error: any) {
@@ -174,6 +168,121 @@ export function DonationHistoryAdminTab() {
 
   return (
     <div className="space-y-6">
+      {viewMode === 'scanResults' ? (
+        /* ===== SCAN RESULTS FULL PAGE ===== */
+        <>
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Button variant="ghost" size="sm" onClick={() => setViewMode('donations')}>
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Quay lại
+              </Button>
+              <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg">
+                <ScanSearch className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold">Kết Quả Quét Giao Dịch Thiếu</h2>
+                <p className="text-sm text-muted-foreground">So sánh transactions on-chain với donations đã ghi nhận</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Tổng đã quét</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{formatNumber(totalScanned)}</div>
+                <p className="text-xs text-muted-foreground">giao dịch on-chain</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-1 text-amber-600">
+                  <AlertTriangle className="w-4 h-4" />
+                  GD thiếu (có thể bổ sung)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-amber-600">{missingTx.length}</div>
+                <p className="text-xs text-muted-foreground">đã map được người nhận</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Không xác định</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-muted-foreground">{unmappableTx.length}</div>
+                <p className="text-xs text-muted-foreground">không map được người nhận</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Missing Transactions Table */}
+          <Card>
+            <CardContent className="p-0">
+              {missingTx.length > 0 ? (
+                <>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Người gửi</TableHead>
+                        <TableHead>Người nhận</TableHead>
+                        <TableHead className="text-right">Số tiền</TableHead>
+                        <TableHead>Token</TableHead>
+                        <TableHead>TX Hash</TableHead>
+                        <TableHead>Thời gian</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {missingTx.map((tx) => (
+                        <TableRow key={tx.id}>
+                          <TableCell className="font-medium">@{tx.sender_username}</TableCell>
+                          <TableCell className="font-medium">@{tx.recipient_username}</TableCell>
+                          <TableCell className="text-right font-mono">{formatNumber(parseFloat(tx.amount))}</TableCell>
+                          <TableCell><Badge variant="outline">{tx.token_symbol}</Badge></TableCell>
+                          <TableCell className="text-xs font-mono text-muted-foreground max-w-[120px] truncate">
+                            {tx.tx_hash}
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{formatDate(tx.created_at)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+
+                  <div className="p-4 border-t">
+                    <Button
+                      onClick={handleBackfill}
+                      disabled={isBackfilling}
+                      className="w-full"
+                      size="lg"
+                    >
+                      {isBackfilling ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <CheckCircle2 className="w-4 h-4 mr-2" />
+                      )}
+                      Backfill tất cả ({missingTx.length} giao dịch)
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-16">
+                  <CheckCircle2 className="w-16 h-16 mx-auto text-green-500 mb-4" />
+                  <h3 className="text-lg font-semibold mb-1">Không có giao dịch nào bị thiếu!</h3>
+                  <p className="text-muted-foreground">Tất cả giao dịch on-chain đã được ghi nhận đầy đủ trong hệ thống.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </>
+      ) : (
+      /* ===== NORMAL DONATIONS VIEW ===== */
+      <>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -501,71 +610,8 @@ export function DonationHistoryAdminTab() {
         />
       )}
 
-      {/* Scan Dialog */}
-      <Dialog open={scanDialogOpen} onOpenChange={setScanDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <ScanSearch className="w-5 h-5" />
-              Kết quả quét giao dịch thiếu
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Đã quét {totalScanned} giao dịch. Tìm thấy {missingTx.length} giao dịch có thể bổ sung
-              {unmappableTx.length > 0 && `, ${unmappableTx.length} không xác định được người nhận`}.
-            </p>
-
-            {missingTx.length > 0 && (
-              <>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Người gửi</TableHead>
-                      <TableHead>Người nhận</TableHead>
-                      <TableHead className="text-right">Số tiền</TableHead>
-                      <TableHead>Token</TableHead>
-                      <TableHead>Thời gian</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {missingTx.map((tx) => (
-                      <TableRow key={tx.id}>
-                        <TableCell className="font-medium">@{tx.sender_username}</TableCell>
-                        <TableCell className="font-medium">@{tx.recipient_username}</TableCell>
-                        <TableCell className="text-right font-mono">{formatNumber(parseFloat(tx.amount))}</TableCell>
-                        <TableCell><Badge variant="outline">{tx.token_symbol}</Badge></TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{formatDate(tx.created_at)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-
-                <Button
-                  onClick={handleBackfill}
-                  disabled={isBackfilling}
-                  className="w-full"
-                >
-                  {isBackfilling ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <ScanSearch className="w-4 h-4 mr-2" />
-                  )}
-                  Backfill tất cả ({missingTx.length} giao dịch)
-                </Button>
-              </>
-            )}
-
-            {missingTx.length === 0 && (
-              <div className="text-center py-8">
-                <Gift className="w-12 h-12 mx-auto text-muted-foreground opacity-50 mb-3" />
-                <p className="text-muted-foreground">Tất cả giao dịch đã được ghi nhận đầy đủ!</p>
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+      </>
+      )}
     </div>
   );
 }
