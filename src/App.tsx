@@ -137,7 +137,7 @@ function App() {
                   <Route path="/profile/:userId" element={<Profile />} />
                   <Route path="/profile/connected-apps" element={<ConnectedApps />} />
                   <Route path="/@:username" element={<Profile />} />
-                  <Route path="/wallet" element={<Wallet />} />
+                  <Route path="/wallet/*" element={<Wallet />} />
                   <Route path="/post/:postId" element={<Post />} />
                   <Route path="/about" element={<About />} />
                   <Route path="/leaderboard" element={<Leaderboard />} />
