@@ -95,6 +95,41 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
   const usedPlatforms = new Set(socialLinks.map((l) => l.platform));
   const availablePlatforms = PLATFORM_ORDER.filter((p) => !usedPlatforms.has(p));
 
+  // Auto-fetch avatarUrl for links that don't have one yet
+  useEffect(() => {
+    if (!isOwner || !userId) return;
+    const linksWithoutAvatar = socialLinks.filter((l) => !l.avatarUrl && l.url);
+    if (linksWithoutAvatar.length === 0) return;
+
+    const fetchMissing = async () => {
+      let updated = false;
+      const newLinks = [...socialLinks];
+      for (const link of linksWithoutAvatar) {
+        try {
+          const { data } = await supabase.functions.invoke('fetch-link-preview', {
+            body: { url: link.url, platform: link.platform },
+          });
+          if (data?.avatarUrl) {
+            const idx = newLinks.findIndex((l) => l.platform === link.platform);
+            if (idx !== -1) {
+              newLinks[idx] = { ...newLinks[idx], avatarUrl: data.avatarUrl };
+              updated = true;
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
+      if (updated) {
+        await supabase.from('profiles').update({ social_links: newLinks as any }).eq('id', userId);
+        onLinksChanged?.(newLinks);
+      }
+    };
+
+    fetchMissing();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOwner, userId]);
+
   // All slots = saved links + pending slot (if any)
   const allLinks: (SocialLink & { isPending?: boolean })[] = [
     ...socialLinks,
@@ -123,10 +158,10 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
     return () => document.removeEventListener('mousedown', handler);
   }, [showAddPicker, editingPlatform, pendingPlatform]);
 
-  const fetchLinkAvatar = async (url: string): Promise<string | null> => {
+  const fetchLinkAvatar = async (url: string, platform: string): Promise<string | null> => {
     try {
       const { data, error } = await supabase.functions.invoke('fetch-link-preview', {
-        body: { url },
+        body: { url, platform },
       });
       if (error || !data?.avatarUrl) return null;
       return data.avatarUrl;
@@ -141,7 +176,7 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
     const normalized = url.trim().startsWith('http') ? url.trim() : `https://${url.trim()}`;
 
     // Fetch avatar (og:image) from the linked profile page
-    const fetchedAvatarUrl = await fetchLinkAvatar(normalized);
+    const fetchedAvatarUrl = await fetchLinkAvatar(normalized, platform);
 
     let newLinks: SocialLink[];
     if (isNew) {
