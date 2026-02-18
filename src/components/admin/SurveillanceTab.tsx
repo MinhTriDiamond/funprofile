@@ -265,6 +265,7 @@ const SurveillanceTab = ({ adminId }: SurveillanceTabProps) => {
     exportCSV(
       filteredBanned.map(u => ({
         username: u.username, ho_ten: u.full_name ?? "", da_rut_CAMLY: u.total_claimed,
+        con_lai_CAMLY: u.pending_reward,
         so_lan_rut: u.claim_count, lan_rut_dau: toVN(u.first_claim_at),
         lan_rut_cuoi: toVN(u.last_claim_at), ngay_ban: toVN(u.banned_at),
         vi: u.wallet_address ?? "", ly_do: u.admin_notes ?? "",
@@ -392,6 +393,7 @@ const SurveillanceTab = ({ adminId }: SurveillanceTabProps) => {
                         <TableHead className="w-28">Username</TableHead>
                         <TableHead>Họ tên</TableHead>
                         <TableHead className="text-right">Đã rút (CAMLY)</TableHead>
+                        <TableHead className="text-right">Còn lại (CAMLY)</TableHead>
                         <TableHead className="text-right">Số lần rút</TableHead>
                         <TableHead>Lần rút đầu</TableHead>
                         <TableHead>Lần rút cuối</TableHead>
@@ -403,13 +405,13 @@ const SurveillanceTab = ({ adminId }: SurveillanceTabProps) => {
                     <TableBody>
                       {loading ? (
                         <TableRow>
-                          <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                          <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                             Đang tải…
                           </TableCell>
                         </TableRow>
                       ) : filteredBanned.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                          <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                             Không có dữ liệu
                           </TableCell>
                         </TableRow>
@@ -424,6 +426,9 @@ const SurveillanceTab = ({ adminId }: SurveillanceTabProps) => {
                           <TableCell className="text-sm">{u.full_name ?? "—"}</TableCell>
                           <TableCell className="text-right font-bold text-destructive">
                             {u.total_claimed > 0 ? fmt(u.total_claimed) : "0"}
+                          </TableCell>
+                          <TableCell className="text-right font-semibold text-emerald-600">
+                            {u.pending_reward > 0 ? fmt(u.pending_reward) : "0"}
                           </TableCell>
                           <TableCell className="text-right text-muted-foreground">{u.claim_count}</TableCell>
                           <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{toVN(u.first_claim_at)}</TableCell>
