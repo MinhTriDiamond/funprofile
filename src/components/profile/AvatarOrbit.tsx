@@ -56,12 +56,6 @@ function angleToPos(angleDeg: number) {
   return { x: Math.sin(rad) * ORBIT_RADIUS, y: -Math.cos(rad) * ORBIT_RADIUS };
 }
 
-function computeAddAngle(n: number): number {
-  // 2 o'clock = ~60°, moves upward (toward 12 o'clock) as more links are added
-  const base = 60;
-  const step = 8;
-  return Math.max(base - n * step, 10);
-}
 
 interface AvatarOrbitProps {
   children: React.ReactNode;
@@ -69,9 +63,14 @@ interface AvatarOrbitProps {
   isOwner?: boolean;
   userId?: string;
   onLinksChanged?: (links: SocialLink[]) => void;
+  // External control of add picker
+  showAddPicker?: boolean;
+  onToggleAddPicker?: () => void;
+  onCloseAddPicker?: () => void;
 }
 
-export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userId, onLinksChanged }: AvatarOrbitProps) {
+
+export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userId, onLinksChanged, showAddPicker: externalShowAddPicker, onToggleAddPicker, onCloseAddPicker }: AvatarOrbitProps) {
   const transparentDiamond = useTransparentDiamond(diamondSrc);
 
   // Edit state (pencil button)
@@ -84,8 +83,14 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
   const [pendingPlatform, setPendingPlatform] = useState<string | null>(null);
   const [pendingUrl, setPendingUrl] = useState('');
 
-  // Add picker
-  const [showAddPicker, setShowAddPicker] = useState(false);
+  // Add picker - use external state if provided
+  const [internalShowAddPicker, setInternalShowAddPicker] = useState(false);
+  const showAddPicker = externalShowAddPicker !== undefined ? externalShowAddPicker : internalShowAddPicker;
+  const setShowAddPicker = (v: boolean) => {
+    if (v && onToggleAddPicker) onToggleAddPicker();
+    else if (!v && onCloseAddPicker) onCloseAddPicker();
+    else setInternalShowAddPicker(v);
+  };
   const pickerRef = useRef<HTMLDivElement>(null);
   const editRef = useRef<HTMLDivElement>(null);
   const pendingRef = useRef<HTMLDivElement>(null);
@@ -161,9 +166,7 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
     setPendingUrl('');
   };
 
-  const addAngle = computeAddAngle(allLinks.length);
-  const addPos = angleToPos(addAngle);
-  const showAddBtn = isOwner && allLinks.length < 9 && !pendingPlatform;
+  
 
   return (
     <div
@@ -374,67 +377,44 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
         })}
 
         {/* Nút + */}
-        {showAddBtn && (
-          <div
-            className="absolute"
-            style={{
-              left: `${AVATAR_SIZE / 2 + addPos.x - ORBIT_SIZE / 2}px`,
-              top: `${AVATAR_SIZE / 2 + addPos.y - ORBIT_SIZE / 2}px`,
-              width: `${ORBIT_SIZE}px`,
-              height: `${ORBIT_SIZE}px`,
-              zIndex: showAddPicker ? 30 : 20,
-            }}
-          >
-            {/* Add picker popup */}
-            {showAddPicker && (
-              <div
-                ref={pickerRef}
-                className="absolute z-50 bg-card border border-border rounded-xl shadow-xl p-3"
-                style={{ bottom: '110%', left: '50%', transform: 'translateX(-50%)', width: '252px' }}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-semibold text-foreground">Chọn mạng xã hội</p>
-                  <button type="button" onClick={() => setShowAddPicker(false)} className="p-0.5 rounded hover:bg-muted">
-                    <X className="w-3.5 h-3.5 text-muted-foreground" />
-                  </button>
-                </div>
+      </div>
 
-                <div className="grid grid-cols-3 gap-1.5">
-                  {availablePlatforms.map((p) => {
-                    const preset = PLATFORM_PRESETS[p];
-                    return (
-                      <button
-                        key={p}
-                        type="button"
-                        onClick={() => handlePickPlatform(p)}
-                        className="flex flex-col items-center gap-1 px-1 py-2 rounded-lg border border-border text-[10px] transition-all hover:border-current hover:scale-105"
-                        style={{ '--tw-border-opacity': 1 } as React.CSSProperties}
-                        onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = preset.color; (e.currentTarget as HTMLButtonElement).style.background = `${preset.color}18`; }}
-                        onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = ''; (e.currentTarget as HTMLButtonElement).style.background = ''; }}
-                      >
-                        <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center shadow-sm" style={{ border: `1.5px solid ${preset.color}` }}>
-                          <img src={preset.favicon} alt={preset.label} className="w-4 h-4 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-                        </div>
-                        <span className="truncate w-full text-center font-medium leading-tight">{preset.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            <button
-              type="button"
-              onClick={() => setShowAddPicker(!showAddPicker)}
-              className="w-full h-full rounded-full bg-primary text-primary-foreground hover:scale-110 hover:bg-primary/90 transition-all duration-200 shadow-md flex items-center justify-center"
-              style={{ boxShadow: '0 0 10px hsl(var(--primary) / 0.5)' }}
-              title="Thêm mạng xã hội"
-            >
-              <Plus className="w-5 h-5" />
+      {/* Picker popup — rendered here so it floats over the orbit, triggered externally */}
+      {isOwner && showAddPicker && (
+        <div
+          ref={pickerRef}
+          className="absolute z-50 bg-card border border-border rounded-xl shadow-xl p-3"
+          style={{ top: '100%', left: '50%', transform: 'translateX(-50%)', width: '252px', marginTop: '8px' }}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-semibold text-foreground">Chọn mạng xã hội</p>
+            <button type="button" onClick={() => setShowAddPicker(false)} className="p-0.5 rounded hover:bg-muted">
+              <X className="w-3.5 h-3.5 text-muted-foreground" />
             </button>
           </div>
-        )}
-      </div>
+          <div className="grid grid-cols-3 gap-1.5">
+            {availablePlatforms.map((p) => {
+              const preset = PLATFORM_PRESETS[p];
+              return (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => handlePickPlatform(p)}
+                  className="flex flex-col items-center gap-1 px-1 py-2 rounded-lg border border-border text-[10px] transition-all hover:border-current hover:scale-105"
+                  style={{ '--tw-border-opacity': 1 } as React.CSSProperties}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = preset.color; (e.currentTarget as HTMLButtonElement).style.background = `${preset.color}18`; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = ''; (e.currentTarget as HTMLButtonElement).style.background = ''; }}
+                >
+                  <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center shadow-sm" style={{ border: `1.5px solid ${preset.color}` }}>
+                    <img src={preset.favicon} alt={preset.label} className="w-4 h-4 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                  </div>
+                  <span className="truncate w-full text-center font-medium leading-tight">{preset.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
