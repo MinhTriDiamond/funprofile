@@ -1,41 +1,107 @@
 
-## Redesign DonationReceivedCard — Nền Trắng, Metallic Sang Trọng
+# Hệ thống Mạng Xã Hội trên Avatar Orbit
 
-### Vấn đề hiện tại
-`DonationReceivedCard` vẫn hiển thị thẻ xanh lá (green gradient) ở phần modal thông báo nhận quà, trong khi con muốn giao diện **nền trắng sạch** như hình thứ hai (image-339.png).
+## Tổng quan thay đổi
 
-### Phân tích thiết kế mục tiêu (image-339.png)
-- **Nền tổng thể**: Trắng (`#ffffff`) với bo góc lớn
-- **Header**: 
-  - Logo FUN Play tròn ở giữa trên cùng
-  - Tiêu đề "FUN PLAY - Biên Nhận Tặng" — màu xám đậm, font bold
-  - ID giao dịch rút gọn `#fd34ee...` — màu xám nhạt, font mono
-  - Badge "Chúc Mừng Năm Mới" — nền đỏ/hồng gradient nhỏ
-- **Banner chúc mừng**: Ô nền hồng nhạt, chữ hồng đậm với hoa 🌸
-- **Sender → Recipient**: Avatar tròn, tên, username, mũi tên ở giữa — nằm trên nền trắng
-- **Số tiền**: Lớn, đậm, màu xanh lá metallic (`#10b981`) với icon token, trên nền trắng
-- **Bảng chi tiết**: 4 dòng (Thời gian, Loại, TX Hash, Trạng thái) — nền trắng, border xám nhạt, không background màu
-- **Footer**: Ô vàng nhạt với text "Phúc Lộc Thọ — FUN Play 🧧"
-- **Nút hành động**: 
-  - "Sao chép link" — outline, border xám
-  - "Về FUN Play" — gradient xanh lá sang đậm (metallic green)
+Thay thế các ô orbit cố định (7 nền tảng hệ sinh thái) bằng hệ thống orbit **động** — hiển thị các link mạng xã hội mà user tự cập nhật, phân bổ phía dưới avatar, không chạm vùng kim cương ở đỉnh.
 
-### Thay đổi kỹ thuật
+---
 
-**File duy nhất cần sửa:** `src/components/donations/DonationReceivedCard.tsx`
+## Phần 1 — Database Migration
 
-Các thay đổi cụ thể:
-1. **Xóa gradient hồng** ở header — đổi sang nền trắng thuần, chỉ giữ logo + title + ID + badge
-2. **Banner chúc mừng**: Giữ nền hồng nhạt với hoa 🌸 nhưng nền ngoài trắng
-3. **Sender → Recipient section**: Bỏ background, để nền trắng với divider line trên dưới
-4. **Amount section**: Bỏ background xanh nhạt — để số tiền lớn trên nền trắng, màu chữ xanh lá metallic (`text-emerald-500`, `font-black text-4xl`)
-5. **Bảng chi tiết**: Bỏ border màu, dùng `divide-y divide-gray-100` trên nền trắng
-6. **Footer**: Giữ ô vàng nhạt (amber) — phù hợp cả hai hình
-7. **Buttons**: Đổi nút "Gửi Cảm Ơn" thành "Về FUN Play" style — gradient `from-emerald-400 to-emerald-600` tạo hiệu ứng metallic xanh lá sang trọng; nút "Xem BSCScan" thêm outline; giữ nút "Đóng" (X)
+Thêm cột `social_links` kiểu `JSONB` vào bảng `profiles`:
 
-### Kết quả mong đợi
-Thẻ thông báo nhận quà sẽ có:
-- Nền **trắng sạch** thay vì xanh lá
-- Số tiền **xanh lá metallic** nổi bật trên nền trắng
-- Bố cục thanh lịch, chuyên nghiệp như biên lai kỹ thuật số
-- Giữ nguyên toàn bộ chức năng (âm thanh, confetti, copy link, gửi cảm ơn)
+```text
+ALTER TABLE profiles
+  ADD COLUMN social_links JSONB DEFAULT '[]'::jsonb;
+```
+
+Mỗi phần tử trong mảng có cấu trúc:
+```text
+{
+  "platform": "facebook",
+  "label": "Facebook",
+  "url": "https://facebook.com/username",
+  "color": "#1877F2",
+  "favicon": "https://www.facebook.com/favicon.ico"
+}
+```
+
+Không cần thêm RLS mới vì policy hiện tại đã cho phép user cập nhật hàng `profiles` của chính mình.
+
+---
+
+## Phần 2 — Cập nhật `AvatarOrbit.tsx`
+
+**Xoá** mảng `ORBIT_SLOTS` cố định và logic cũ.
+
+**Thêm** prop `socialLinks: SocialLink[]`.
+
+**Logic phân bổ góc** — tránh vùng kim cương (đỉnh trên):
+```text
+Vùng kim cương: -30° → +30° (tức 330° → 30°)
+Vùng orbit:     30°  → 330° (300° cung phía dưới)
+
+n = 1  → 180° (thẳng xuống)
+n = 2  → 150°, 210°
+n = 3  → 120°, 180°, 240°
+...
+n > 1  → angle_i = 30 + (300 / (n-1)) × i
+```
+
+**Mỗi ô tròn nhỏ:**
+- Hiển thị favicon/logo của platform
+- Viền màu theo `color` của platform, có glow nhẹ cùng màu
+- Hover → tooltip hiển thị URL đầy đủ
+- Click → mở link trong tab mới
+
+**Nếu `socialLinks` rỗng** → không hiển thị ô nào (chỉ còn viên kim cương ở đỉnh).
+
+---
+
+## Phần 3 — Cập nhật `Profile.tsx`
+
+Truyền `socialLinks` vào `<AvatarOrbit>`:
+
+```tsx
+<AvatarOrbit socialLinks={profile?.social_links || []}>
+  ...avatar...
+</AvatarOrbit>
+```
+
+---
+
+## Phần 4 — Cập nhật `EditProfile.tsx`
+
+Thêm section **"Mạng xã hội"** trong form, phía trên nút Lưu hồ sơ.
+
+**9 Platform được hỗ trợ** (theo đúng thứ tự yêu cầu):
+
+| # | Platform | Màu viền |
+|---|---|---|
+| 1 | Angel AI (angel.fun.rich) | #7C3AED |
+| 2 | Fun Play (play.fun.rich) | #22c55e |
+| 3 | Facebook | #1877F2 |
+| 4 | YouTube | #FF0000 |
+| 5 | Twitter/X | #000000 |
+| 6 | Telegram | #2AABEE |
+| 7 | TikTok | #010101 |
+| 8 | LinkedIn | #0077B5 |
+| 9 | Zalo | #0068FF |
+
+**UI Section:**
+- Dropdown chọn platform (9 lựa chọn với icon màu tương ứng)
+- Input nhập URL trang cá nhân
+- Nút **"Thêm"** → thêm vào danh sách (tối đa 9)
+- Danh sách các link đã thêm, mỗi hàng hiển thị: icon + tên platform + URL rút gọn + nút ❌ xoá
+- Không cho phép thêm cùng một platform hai lần
+- Tất cả được lưu vào DB khi nhấn **"Cập nhật hồ sơ"**
+
+---
+
+## Thứ tự thực hiện
+
+1. Chạy migration SQL thêm cột `social_links`
+2. Cập nhật `AvatarOrbit.tsx` — nhận prop, tính góc động, render orbit
+3. Cập nhật `Profile.tsx` — truyền `social_links` vào component
+4. Cập nhật `EditProfile.tsx` — thêm UI quản lý mạng xã hội
