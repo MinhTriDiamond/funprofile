@@ -463,11 +463,10 @@ const Profile = () => {
                     <button
                       type="button"
                       onClick={() => setShowSocialPicker((v) => !v)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-black/60 text-white hover:bg-black/80 shadow-lg border border-white/20 backdrop-blur-sm font-medium text-sm transition-colors"
+                      className="w-8 h-8 rounded-full bg-black/60 text-white hover:bg-black/80 shadow-lg border border-white/20 backdrop-blur-sm flex items-center justify-center transition-colors"
                       title="Thêm mạng xã hội"
                     >
                       <Plus className="w-4 h-4" />
-                      Thêm link
                     </button>
                   )}
                   <CoverPhotoEditor 
