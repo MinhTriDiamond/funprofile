@@ -1,91 +1,73 @@
 
-# Kế hoạch: Sửa lỗi tặng CAMLY hàng loạt & Mở khóa 2 tài khoản
+# Tạm dừng toàn bộ hệ thống giao dịch
 
-## Phần 1: Mở khóa angelthanhthuy & susu
+## Hiện trạng
 
-Cả hai tài khoản đang ở trạng thái `on_hold` với `approved_reward = 0`. Để cho phép claim, cần:
-- Đặt `reward_status = 'approved'`
-- Xóa `admin_notes` tạm giữ
-- Không thay đổi `is_banned` (vẫn false — tài khoản bình thường, chỉ bị giữ reward)
+| Chức năng | Trạng thái | File |
+|---|---|---|
+| Rút thưởng CAMLY | ✅ Đã chặn | ClaimRewardDialog.tsx |
+| Đúc FUN (Mint) | ✅ Đã chặn | ClaimRewardsCard.tsx |
+| Tặng quà / Chuyển tiền (CAMLY, USDT, BNB) | ❌ Còn hoạt động | UnifiedGiftSendDialog.tsx |
+| Rút FUN về ví on-chain | ❌ Còn hoạt động | ClaimFunDialog.tsx |
 
-Thực hiện bằng SQL update trực tiếp cho 2 user ID:
-- angelthanhthuy: `f3d8831c-83b2-475a-a9ee-72d0f7d0c803`
-- susu: `bfc87ada-bfce-4a5e-a185-4e4b246b1a50`
+## Kế hoạch
 
-**Lưu ý:** Cả hai đều có `approved_reward = 0` và `display_name = null` — sau khi mở khoá, họ cần có đủ phần thưởng và điều kiện hồ sơ mới claim được. Có thể admin vẫn cần duyệt thêm.
+### 1. Chặn Tặng quà / Chuyển tiền — UnifiedGiftSendDialog.tsx
 
-## Phần 2: Sửa lỗi tặng CAMLY hàng loạt
+Chèn một maintenance block ngay sau phần `<DialogHeader>` (dòng ~696), phía trên Step indicator. Khi IS_MAINTENANCE = true, toàn bộ nội dung form sẽ bị thay thế bằng thông báo bảo trì và nút Đóng.
 
-### Root cause
+```text
+return (
+  <>
+    <Dialog ...>
+      <DialogContent>
+        <DialogHeader> ... </DialogHeader>
 
-Trong `handleSendMulti` (UnifiedGiftSendDialog.tsx, dòng 459-531):
+        {/* ⚠️ MAINTENANCE — XOÁ KHI MỞ LẠI */}
+        <div className="bg-red-50 border-2 border-red-300 ...">
+          🔧 Hệ thống tạm dừng bảo trì
+          ...
+        </div>
+        <Button onClick={onClose}>Đóng</Button>
 
+        {/* Phần còn lại BỊ ẨN khi IS_MAINTENANCE = true */}
+        {!IS_MAINTENANCE && ( ... form content ... )}
+      </DialogContent>
+    </Dialog>
+  </>
+)
 ```
-for (let i = 0; i < recipientsWithWallet.length; i++) {
-  resetState(); // ← VẤN ĐỀ 1: reset state wagmi ngay trước khi gọi sendToken
-  const hash = await sendToken(...);
-  ...
+
+Cách triển khai: Thêm constant `const IS_MAINTENANCE = true;` ở đầu component, sau đó wrap toàn bộ nội dung của Dialog (step indicator, form, confirm...) trong `{!IS_MAINTENANCE && (...)}` và hiển thị maintenance banner thay thế khi flag bật.
+
+### 2. Chặn Rút FUN — ClaimFunDialog.tsx
+
+Tương tự, thêm `const IS_MAINTENANCE = true;` ở đầu component. Khi flag bật, hiển thị maintenance block thay vì form rút FUN.
+
+```text
+// Ở đầu component, ngay sau các state declarations:
+const IS_MAINTENANCE = true;
+
+if (IS_MAINTENANCE) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        🔧 Hệ thống tạm dừng bảo trì
+        ...
+        <Button onClick={() => onOpenChange(false)}>Đóng</Button>
+      </DialogContent>
+    </Dialog>
+  );
 }
 ```
 
-Vấn đề cụ thể:
-1. **`resetState()` gọi trước mỗi vòng lặp** làm clear `txHash` và `txStep` khi wagmi hook đang xử lý giao dịch trước → gây conflict state
-2. **Không có delay giữa các giao dịch** → nonce có thể bị trùng trên BSC nếu pending TX chưa confirm
-3. **`isPending` (wagmiPending)** bị check ở `isSendDisabled` — khi đang trong vòng lặp multi, button vẫn có thể được bấm lại
+## Cách mở lại sau này
 
-### Giải pháp
-
-**File: `src/components/donations/UnifiedGiftSendDialog.tsx`**
-
-Sửa `handleSendMulti`:
-- Bỏ `resetState()` khỏi đầu vòng lặp — chỉ reset sau khi nhận hash (hoặc lỗi)  
-- Thêm delay nhỏ (300ms) giữa mỗi giao dịch để BSC có thời gian xử lý nonce
-- Wrap mỗi `sendToken` call trong try/catch riêng biệt và cập nhật progress từng bước rõ ràng hơn
-
-```typescript
-// TRƯỚC (lỗi):
-for (let i = 0; i < recipientsWithWallet.length; i++) {
-  setMultiSendProgress(prev => prev ? { ...prev, current: i + 1 } : prev);
-  try {
-    resetState(); // ← XOÁ DÒNG NÀY
-    const hash = await sendToken(...);
-    ...
-  }
-}
-
-// SAU (đúng):
-for (let i = 0; i < recipientsWithWallet.length; i++) {
-  setMultiSendProgress(prev => prev ? { ...prev, current: i + 1 } : prev);
-  
-  // Delay giữa các TX để tránh nonce conflict
-  if (i > 0) await new Promise(r => setTimeout(r, 500));
-  
-  try {
-    const hash = await sendToken(...); // sendToken tự quản lý state
-    if (hash) {
-      results.push({ recipient, success: true, txHash: hash });
-      resetState(); // Reset SAU khi có hash thành công
-    } else {
-      results.push({ recipient, success: false, error: 'Giao dịch bị từ chối' });
-      resetState();
-    }
-  } catch (err: any) {
-    results.push({ recipient, success: false, error: err?.message || 'Lỗi gửi' });
-    resetState();
-  }
-  ...
-}
-```
+Khi cha muốn mở lại hệ thống, chỉ cần đổi `IS_MAINTENANCE = true` thành `IS_MAINTENANCE = false` trong từng file tương ứng — không cần sửa gì thêm.
 
 ## Tóm tắt thay đổi
 
-| Loại | Chi tiết |
+| File | Thay đổi |
 |---|---|
-| Database | Mở khóa 2 tài khoản: angelthanhthuy & susu (`reward_status = 'approved'`) |
-| Code | Sửa `handleSendMulti` trong UnifiedGiftSendDialog.tsx — bỏ `resetState()` đầu vòng lặp, thêm delay 500ms |
-
-## Ghi chú kỹ thuật
-
-- Việc gọi `resetState()` ngay trước `sendToken` làm Wagmi hook mất track state của chính nó — đây là pattern sai vì `sendToken` bên trong đã tự gọi `setTxStep('signing')` ngay sau khi vào
-- Delay 500ms giữa các TX là đủ để BSC node cập nhật nonce (BSC block time ~3 giây)
-- Với cả hai tài khoản: sau khi mở khóa, nếu `approved_reward = 0` thì họ vẫn cần admin duyệt thêm phần thưởng mới rút được CAMLY
+| src/components/donations/UnifiedGiftSendDialog.tsx | Thêm IS_MAINTENANCE flag + maintenance banner |
+| src/components/wallet/ClaimFunDialog.tsx | Thêm IS_MAINTENANCE flag + maintenance banner |
