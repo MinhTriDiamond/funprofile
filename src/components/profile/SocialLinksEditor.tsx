@@ -53,7 +53,7 @@ export const PLATFORM_PRESETS: Record<string, { label: string; color: string; fa
   },
 };
 
-const PLATFORM_ORDER = ['angel', 'funplay', 'facebook', 'youtube', 'twitter', 'telegram', 'tiktok', 'linkedin', 'zalo'];
+export const PLATFORM_ORDER = ['angel', 'funplay', 'facebook', 'youtube', 'twitter', 'telegram', 'tiktok', 'linkedin', 'zalo'];
 
 interface SocialLinksEditorProps {
   value: SocialLink[];
