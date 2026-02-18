@@ -311,7 +311,7 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
                   className="w-full h-full rounded-full bg-white flex items-center justify-center shadow-md animate-pulse"
                   style={{ border: `2.5px dashed ${link.color}`, boxShadow: `0 0 8px ${link.color}44`, opacity: 0.85 }}
                 >
-                  <img src={link.favicon} alt={link.label} className={link.platform === 'angel' ? 'w-8 h-8 object-contain' : 'w-6 h-6 object-contain'} style={{ pointerEvents: 'none' }}
+                  <img src={link.favicon} alt={link.label} className="w-6 h-6 object-contain" style={{ pointerEvents: 'none' }}
                     onError={(e) => {
                       e.currentTarget.style.display = 'none';
                       const p = e.currentTarget.parentElement;
@@ -337,7 +337,7 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
                   <img
                     src={link.favicon}
                     alt={link.label}
-                    className={link.platform === 'angel' ? 'w-8 h-8 object-contain' : 'w-6 h-6 object-contain'}
+                    className="w-6 h-6 object-contain"
                     style={{ pointerEvents: 'none' }}
                     onError={(e) => {
                       e.currentTarget.style.display = 'none';
