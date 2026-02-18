@@ -118,11 +118,29 @@ export const useTokenBalances = (options?: UseTokenBalancesOptions) => {
     CAMLY: { usd: 0.000014, usd_24h_change: 0 },
   };
 
+  const CACHE_KEY = 'fun_token_prices';
+  const CACHE_TTL = 60_000; // 60s localStorage cache
+  const POLL_INTERVAL = 300_000; // 5 minutes
+
   // Track consecutive failures for backoff
   const [failCount, setFailCount] = useState(0);
 
   // Fetch prices from token-prices edge function
   const fetchPrices = useCallback(async () => {
+    // Check localStorage cache first to avoid redundant calls
+    try {
+      const raw = localStorage.getItem(CACHE_KEY);
+      if (raw) {
+        const { prices: cached, ts } = JSON.parse(raw);
+        if (Date.now() - ts < CACHE_TTL && cached) {
+          setPrices(cached);
+          setLastPrices(cached);
+          setIsPriceLoading(false);
+          return;
+        }
+      }
+    } catch { /* ignore parse errors */ }
+
     try {
       setIsPriceLoading(true);
       const { data, error } = await supabase.functions.invoke('token-prices');
@@ -131,6 +149,11 @@ export const useTokenBalances = (options?: UseTokenBalancesOptions) => {
       
       const priceData: PriceData = data?.prices || fallbackPrices;
       
+      // Write to localStorage so other hooks can share
+      try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify({ prices: priceData, ts: Date.now() }));
+      } catch { /* quota exceeded */ }
+
       setPrices(priceData);
       setLastPrices(priceData);
       setFailCount(0);
@@ -152,7 +175,7 @@ export const useTokenBalances = (options?: UseTokenBalancesOptions) => {
     if (failCount >= 3) return; // Stop retrying after 3 failures
 
     fetchPrices();
-    const interval = setInterval(fetchPrices, 30000);
+    const interval = setInterval(fetchPrices, POLL_INTERVAL);
     return () => clearInterval(interval);
   }, [failCount]);
 

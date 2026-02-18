@@ -140,7 +140,7 @@ Deno.serve(async (req) => {
     const host = `${CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com`;
     
     // Calculate payload hash (SHA256 of the file content)
-    const payloadHashBuffer = await crypto.subtle.digest('SHA-256', bytes);
+    const payloadHashBuffer = await crypto.subtle.digest('SHA-256', bytes as BufferSource);
     const payloadHash = Array.from(new Uint8Array(payloadHashBuffer))
       .map(b => b.toString(16).padStart(2, '0'))
       .join('');
@@ -217,7 +217,7 @@ Deno.serve(async (req) => {
         'Authorization': authorizationHeader,
         'Cache-Control': 'public, max-age=31536000, immutable',
       },
-      body: bytes,
+      body: bytes as unknown as BodyInit,
     });
 
     if (!response.ok) {
