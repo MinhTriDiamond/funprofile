@@ -121,43 +121,39 @@ export const DonationReceivedCard = ({
           className="max-w-[400px] w-[92vw] p-0 overflow-hidden border-0 shadow-2xl [&>button]:hidden !z-[10002]"
           overlayClassName="!z-[10002]"
         >
+          {/* White luxury receipt card */}
           <div className="bg-white rounded-2xl overflow-hidden" style={{ fontFamily: 'system-ui, sans-serif' }}>
 
-            {/* Header — pinkish gradient */}
-            <div
-              className="px-5 pt-5 pb-4 text-center relative"
-              style={{ background: 'linear-gradient(135deg, #fff0f5 0%, #ffe4ef 60%, #ffd6e8 100%)' }}
-            >
-              {/* Tet deco */}
-              <div className="flex justify-center items-center gap-1 mb-1 text-base">
-                🧧🌸🌸🌸🧧
-              </div>
-
+            {/* Header — pure white */}
+            <div className="px-5 pt-6 pb-3 text-center relative bg-white">
               {/* Logo */}
               <div className="flex justify-center mb-2">
-                <img src={funPlayLogo} alt="FUN Profile" className="w-14 h-14 rounded-full object-cover ring-2 ring-pink-200" />
+                <img src={funPlayLogo} alt="FUN Profile" className="w-14 h-14 rounded-full object-cover shadow-md" style={{ boxShadow: '0 0 0 3px #d1fae5, 0 0 0 5px #6ee7b7' }} />
               </div>
 
-              <div className="text-sm font-bold text-gray-700 mb-0.5">FUN Profile - Biên Nhận Tặng</div>
+              <div className="text-sm font-bold text-gray-800 mb-0.5 tracking-wide">FUN Profile — Biên Nhận Tặng</div>
               <div className="text-xs text-gray-400 font-mono">#{data.id?.slice(0, 16)}</div>
 
-              {/* Tet badge */}
+              {/* Badge */}
               <div className="inline-flex items-center gap-1 mt-2 px-3 py-1 rounded-full text-xs font-semibold"
                 style={{ background: 'linear-gradient(90deg, #ff6b9d, #ff9a5c)', color: '#fff' }}>
                 🎆 Chúc Mừng Năm Mới 🎆
               </div>
             </div>
 
-            {/* Tet greeting banner */}
+            {/* Divider dashed */}
+            <div className="mx-4 border-t border-dashed border-gray-200 my-1" />
+
+            {/* Tet greeting banner — soft pink */}
             <div
-              className="mx-4 mt-3 rounded-xl px-4 py-3 text-center"
+              className="mx-4 mt-3 rounded-xl px-4 py-2.5 text-center"
               style={{ background: 'linear-gradient(135deg, #fff5f7 0%, #ffe8ef 100%)', border: '1px solid #ffc9d9' }}
             >
-              <div className="text-sm font-bold text-pink-600 mb-0.5">🎊 Chúc Mừng Năm Mới 2026 🎊</div>
+              <div className="text-sm font-bold text-pink-600 mb-0.5">🌸 Chúc Mừng Năm Mới 2026 🌸</div>
               <div className="text-xs text-pink-400">Phúc Lộc An Khang — Vạn Sự Như Ý</div>
             </div>
 
-            {/* Sender → Recipient */}
+            {/* Sender → Recipient — white bg */}
             <div className="mx-4 mt-4 flex items-center justify-between gap-2">
               {/* Sender */}
               <button
@@ -165,82 +161,93 @@ export const DonationReceivedCard = ({
                 onClick={() => { handleClose(); navigate(`/profile/${data.senderId}`); }}
                 className="flex flex-col items-center gap-1.5 flex-1 hover:opacity-80 transition-opacity"
               >
-                <Avatar className="w-12 h-12 ring-2 ring-pink-200">
+                <Avatar className="w-12 h-12" style={{ boxShadow: '0 0 0 2px #fca5a5' }}>
                   <AvatarImage src={data.senderAvatarUrl || undefined} />
-                  <AvatarFallback className="bg-pink-100 text-pink-600 font-bold text-sm">
+                  <AvatarFallback className="bg-rose-50 text-rose-500 font-bold text-sm">
                     {data.senderUsername?.[0]?.toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <div className="text-center">
-                  <div className="text-xs font-bold text-gray-800 leading-tight">{data.senderUsername}'s</div>
-                  <div className="text-xs text-gray-500">@{data.senderUsername}</div>
+                  <div className="text-xs font-bold text-gray-800 leading-tight">{data.senderUsername}</div>
+                  <div className="text-xs text-gray-400">@{data.senderUsername}</div>
                 </div>
               </button>
 
               {/* Arrow */}
               <div className="flex flex-col items-center gap-1">
-                <div className="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center">
-                  <ArrowRight className="w-4 h-4 text-pink-500" />
+                <div className="w-8 h-8 rounded-full flex items-center justify-center"
+                  style={{ background: 'linear-gradient(135deg, #d1fae5, #a7f3d0)', boxShadow: '0 1px 4px rgba(16,185,129,0.25)' }}>
+                  <ArrowRight className="w-4 h-4 text-emerald-600" />
                 </div>
               </div>
 
-              {/* Recipient (current user) */}
+              {/* Recipient */}
               <div className="flex flex-col items-center gap-1.5 flex-1">
-                <Avatar className="w-12 h-12 ring-2 ring-green-200">
+                <Avatar className="w-12 h-12" style={{ boxShadow: '0 0 0 2px #6ee7b7' }}>
                   <AvatarImage src={data.recipientAvatarUrl || undefined} />
-                  <AvatarFallback className="bg-green-100 text-green-600 font-bold text-sm">
+                  <AvatarFallback className="bg-emerald-50 text-emerald-600 font-bold text-sm">
                     {(data.recipientUsername || 'Me')?.[0]?.toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <div className="text-center">
-                  <div className="text-xs font-bold text-gray-800 leading-tight">{data.recipientUsername || 'Bạn'}'s</div>
-                  <div className="text-xs text-gray-500">@{data.recipientUsername || 'you'}</div>
+                  <div className="text-xs font-bold text-gray-800 leading-tight">{data.recipientUsername || 'Bạn'}</div>
+                  <div className="text-xs text-gray-400">@{data.recipientUsername || 'you'}</div>
                 </div>
               </div>
             </div>
 
-            {/* Amount */}
-            <div className="mx-4 mt-4 text-center py-4 rounded-xl"
-              style={{ background: 'linear-gradient(135deg, #f0fff8 0%, #e6f9f0 100%)', border: '1.5px solid #a7f3d0' }}>
-              <div className="text-3xl font-black text-gray-900 tracking-tight">
+            {/* Amount — white bg, metallic green text */}
+            <div className="mx-4 mt-4 text-center py-4">
+              <div
+                className="text-4xl font-black tracking-tight"
+                style={{
+                  background: 'linear-gradient(135deg, #059669 0%, #10b981 50%, #34d399 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  filter: 'drop-shadow(0 1px 2px rgba(16,185,129,0.3))',
+                }}
+              >
                 {TOKEN_ICON[data.tokenSymbol] || '💰'}{' '}
                 {Number(data.amount).toLocaleString('vi-VN')} {data.tokenSymbol}
               </div>
               {data.message && (
-                <div className="mt-2 text-xs text-gray-500 italic px-3">
-                  ≈ "{data.message}"
+                <div className="mt-2 text-xs text-gray-400 italic px-3">
+                  "{data.message}"
                 </div>
               )}
             </div>
 
-            {/* Details table */}
-            <div className="mx-4 mt-3 rounded-xl overflow-hidden border border-gray-100">
-              <div className="divide-y divide-gray-50">
-                <div className="flex justify-between items-center px-4 py-2.5">
+            {/* Divider dashed */}
+            <div className="mx-4 border-t border-dashed border-gray-200 my-1" />
+
+            {/* Details table — white bg */}
+            <div className="mx-4 mt-2 rounded-xl overflow-hidden border border-gray-100">
+              <div className="divide-y divide-gray-100">
+                <div className="flex justify-between items-center px-4 py-2.5 bg-white">
                   <span className="text-xs text-gray-400 font-medium">Thời gian</span>
                   <span className="text-xs font-semibold text-gray-700">
                     {format(new Date(data.createdAt), 'HH:mm dd/MM/yyyy', { locale: vi })}
                   </span>
                 </div>
-                <div className="flex justify-between items-center px-4 py-2.5">
-                  <span className="text-xs text-gray-400 font-medium">Loại</span>
+                <div className="flex justify-between items-center px-4 py-2.5 bg-white">
+                  <span className="text-xs text-gray-400 font-medium">Mạng</span>
                   <span className="text-xs font-semibold text-gray-700">BSC</span>
                 </div>
-                <div className="flex justify-between items-center px-4 py-2.5">
+                <div className="flex justify-between items-center px-4 py-2.5 bg-white">
                   <span className="text-xs text-gray-400 font-medium">TX Hash</span>
                   <a
                     href={getBscScanTxUrl(data.txHash, data.tokenSymbol)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs font-mono text-blue-500 hover:text-blue-700 flex items-center gap-1"
+                    className="text-xs font-mono text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
                   >
                     {shortTxHash}
                     <ExternalLink className="w-3 h-3" />
                   </a>
                 </div>
-                <div className="flex justify-between items-center px-4 py-2.5">
+                <div className="flex justify-between items-center px-4 py-2.5 bg-white">
                   <span className="text-xs text-gray-400 font-medium">Trạng thái</span>
-                  <span className={`text-xs font-semibold flex items-center gap-1 ${isSuccess ? 'text-green-600' : 'text-orange-500'}`}>
+                  <span className={`text-xs font-semibold flex items-center gap-1 ${isSuccess ? 'text-emerald-600' : 'text-orange-500'}`}>
                     {isSuccess
                       ? <CheckCircle2 className="w-3.5 h-3.5" />
                       : <Clock className="w-3.5 h-3.5" />}
@@ -250,13 +257,13 @@ export const DonationReceivedCard = ({
               </div>
             </div>
 
-            {/* Footer message */}
+            {/* Footer — amber */}
             <div
               className="mx-4 mt-3 rounded-xl px-4 py-2.5 text-center"
-              style={{ background: 'linear-gradient(135deg, #fff9e6 0%, #fff3cc 100%)', border: '1px solid #fde68a' }}
+              style={{ background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)', border: '1px solid #fde68a' }}
             >
               <div className="text-xs font-bold text-amber-700">
-                🧧 🎊 Phúc Lộc Thọ — FUN Profile 🎊 🧧
+                🧧 Phúc Lộc Thọ — FUN Profile 🧧
               </div>
               <div className="text-xs text-amber-500 mt-0.5">Tết Nguyên Đán 2026 — Năm Bính Ngọ</div>
             </div>
@@ -266,16 +273,16 @@ export const DonationReceivedCard = ({
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-1 gap-1.5 border-gray-200 text-gray-600 hover:bg-gray-50 text-xs"
+                className="flex-1 gap-1.5 border-gray-200 text-gray-500 hover:bg-gray-50 text-xs rounded-full"
                 onClick={handleCopyLink}
               >
-                {copied ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+                {copied ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
                 {copied ? 'Đã sao chép!' : 'Sao chép link'}
               </Button>
               <Button
                 size="sm"
-                className="flex-1 gap-1.5 text-xs font-bold text-white border-0"
-                style={{ background: 'linear-gradient(135deg, #22c55e, #10b981)' }}
+                className="flex-1 gap-1.5 text-xs font-bold text-white border-0 rounded-full"
+                style={{ background: 'linear-gradient(135deg, #059669 0%, #10b981 60%, #34d399 100%)', boxShadow: '0 2px 8px rgba(16,185,129,0.4)' }}
                 onClick={handleSendThanks}
               >
                 <Heart className="w-3.5 h-3.5" />
@@ -284,7 +291,7 @@ export const DonationReceivedCard = ({
               <Button
                 variant="outline"
                 size="sm"
-                className="px-3 border-gray-200 text-gray-500 hover:bg-gray-50"
+                className="px-3 border-gray-200 text-gray-400 hover:bg-gray-50 rounded-full"
                 onClick={handleClose}
               >
                 <X className="w-3.5 h-3.5" />
