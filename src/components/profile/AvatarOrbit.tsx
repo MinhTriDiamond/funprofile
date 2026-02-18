@@ -27,22 +27,29 @@ interface AvatarOrbitProps {
 
 export function AvatarOrbit({ children }: AvatarOrbitProps) {
   return (
-    /* wrapper thêm padding-top để diamond nhô ra ngoài mà không bị clip */
-    <div className="relative" style={{ paddingTop: '56px' }}>
-      {/* Viên kim cương nằm TRÊN và NGOÀI ảnh đại diện */}
+    /* paddingTop đủ lớn để diamond nhô hẳn ra trên đỉnh avatar */
+    <div className="relative" style={{ paddingTop: '100px' }}>
+
+      {/* Viên kim cương — nằm TRÊN và NGOÀI ảnh đại diện */}
+      {/* Tách filter ra wrapper riêng để mix-blend-mode hoạt động đúng */}
       <div
         className="absolute z-30 pointer-events-none"
-        style={{ top: '0px', left: '50%', transform: 'translateX(-50%)' }}
+        style={{
+          top: '0px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          /* drop-shadow trên wrapper, không phải trên img */
+          filter: 'drop-shadow(0 8px 20px rgba(34,197,94,0.7))',
+        }}
       >
         <img
           src={diamondImg}
           alt="Kim cương xanh"
           style={{
-            width: '112px',
-            height: '112px',
+            width: '224px',   /* gấp đôi 112px */
+            height: '224px',
             objectFit: 'contain',
-            mixBlendMode: 'multiply',
-            filter: 'drop-shadow(0 6px 16px rgba(34,197,94,0.6))',
+            mixBlendMode: 'multiply',  /* xoá nền trắng khi không có filter cùng element */
           }}
         />
       </div>
