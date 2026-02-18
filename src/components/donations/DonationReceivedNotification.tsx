@@ -54,21 +54,33 @@ export const DonationReceivedNotification = () => {
           // Fetch sender profile
           const { data: senderProfile } = await supabase
             .from('profiles')
-            .select('full_name, username, avatar_url')
+            .select('full_name, display_name, username, avatar_url')
             .eq('id', donation.sender_id)
             .single();
 
           const senderUsername = senderProfile?.username || 
                                  senderProfile?.full_name || 
                                  `User ${donation.sender_id.slice(0, 6)}`;
+          const senderDisplayName = senderProfile?.display_name || senderProfile?.full_name || senderUsername;
+
+          // Fetch recipient (current user) profile
+          const { data: recipientProfile } = await supabase
+            .from('profiles')
+            .select('full_name, display_name, username, avatar_url')
+            .eq('id', userId)
+            .single();
 
           setReceivedDonation({
             id: donation.id,
             amount: donation.amount,
             tokenSymbol: donation.token_symbol,
             senderUsername,
+            senderDisplayName,
             senderAvatarUrl: senderProfile?.avatar_url,
             senderId: donation.sender_id,
+            recipientUsername: recipientProfile?.username || 'Bạn',
+            recipientDisplayName: recipientProfile?.display_name || recipientProfile?.full_name,
+            recipientAvatarUrl: recipientProfile?.avatar_url,
             message: donation.message,
             txHash: donation.tx_hash,
             createdAt: donation.created_at,

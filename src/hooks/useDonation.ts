@@ -133,7 +133,7 @@ export function useDonation(options?: UseDonationOptions) {
       // Get sender profile
       const { data: senderProfile } = await supabase
         .from('profiles')
-        .select('username, avatar_url')
+        .select('username, display_name, full_name, avatar_url')
         .eq('id', session.user.id)
         .single();
 
@@ -171,8 +171,10 @@ export function useDonation(options?: UseDonationOptions) {
         amount: params.amount,
         tokenSymbol: params.tokenSymbol,
         senderUsername: senderProfile?.username || 'Unknown',
+        senderDisplayName: senderProfile?.display_name || senderProfile?.full_name || senderProfile?.username,
         senderAvatarUrl: senderProfile?.avatar_url,
         recipientUsername: params.recipientUsername,
+        recipientDisplayName: params.senderDisplayName, // passed from caller if available
         recipientAvatarUrl: params.recipientAvatarUrl,
         message: params.message,
         txHash,
