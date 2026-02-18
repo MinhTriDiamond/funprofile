@@ -208,8 +208,18 @@ const GiftCelebrationCardComponent = ({
   const senderUsername = actualSenderProfile?.username || 'FUN Profile Treasury';
   const senderAvatarUrl = actualSenderProfile?.avatar_url || '/fun-profile-treasury-logo.jpg';
   const senderNavigateId = isTreasurySender ? post.gift_sender_id : post.user_id;
-  const recipientDisplayName = recipientProfile?.display_name || recipientProfile?.username || 'User';
-  const recipientUsername = recipientProfile?.username || 'User';
+
+  // Parse recipient name from post content as fallback when gift_recipient_id is null
+  const parseRecipientFromContent = (): string | null => {
+    if (!post.content) return null;
+    // Content format: "🎉 @sender đã trao gửi X TOKEN cho @recipient ❤️"
+    const match = post.content.match(/cho @(\S+)/);
+    return match ? match[1] : null;
+  };
+  const fallbackRecipientName = parseRecipientFromContent();
+
+  const recipientDisplayName = recipientProfile?.display_name || recipientProfile?.username || fallbackRecipientName || 'User';
+  const recipientUsername = recipientProfile?.username || fallbackRecipientName || 'User';
   const scanUrl = post.tx_hash ? getBscScanTxUrl(post.tx_hash, token) : '#';
   const truncatedMessage = post.gift_message && post.gift_message.length > 120
     ? post.gift_message.slice(0, 120) + '...'
