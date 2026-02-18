@@ -1,64 +1,43 @@
 
-# Thêm Tab "Giám Sát & Truy Vết" vào Admin Dashboard
+# Thêm điều hướng nhanh tới Tab "Giám sát" khi nhấn số liệu "Đã bị cấm"
 
-## Mục tiêu
-Tạo một tab chuyên dụng trong Admin Dashboard để theo dõi tất cả tài khoản bị ban và nghi ngờ, với bảng dữ liệu đầy đủ gồm: số đã rút, số tồn đọng, ngày giờ hoạt động, và bằng chứng gian lận.
+## Phân tích hiện tại
 
-## Dữ liệu thực tế hiện có
+Dựa trên ảnh cha gửi:
+- Cha đang ở tab "User ảo" (GhostCleanupTab), thấy card hiển thị **26 Đã bị cấm**
+- Cha muốn nhấn vào con số "26" đó (hoặc card đó) để **tự động chuyển sang tab Giám sát** và hiển thị danh sách ban ngay lập tức
+- Tab Giám sát đã có `defaultValue="banned"` nên khi vào sẽ thấy bảng ban ngay
 
-Từ cơ sở dữ liệu, hệ thống đang theo dõi:
-- **26 tài khoản đã bị ban** — tổng đã rút **29,570,000 CAMLY**
-- **~20 tài khoản on_hold** — nghi ngờ qua tín hiệu SHARED_DEVICE (severity 3)
-- Có đầy đủ lịch sử: ngày rút đầu tiên, ngày rút cuối, số lần rút, địa chỉ ví
+## Vấn đề kỹ thuật
 
-## Các file cần tạo/chỉnh sửa
+1. Trong `GhostCleanupTab.tsx`, các thẻ summary card (Tài khoản ma / Đang on_hold / **Đã bị cấm** / Tổng tài khoản) là các phần tử tĩnh, không có hành động điều hướng
+2. `Admin.tsx` quản lý tab bằng `defaultValue="overview"` nhưng không có cơ chế programmatic navigation để các tab con điều khiển tab cha
+3. Giải pháp: truyền một callback `onNavigate` từ `Admin.tsx` xuống các tab con, để khi nhấn card "Đã bị cấm" → Admin.tsx đổi active tab sang "surveillance"
 
-### 1. Tạo mới: `src/components/admin/SurveillanceTab.tsx`
-Component tab mới với 2 phần:
+## Các file cần chỉnh sửa
 
-**Phần A — Bảng tài khoản đã bị BAN:**
+### 1. `src/pages/Admin.tsx`
+- Thêm state `const [activeTab, setActiveTab] = useState("overview")`
+- Truyền `<Tabs value={activeTab} onValueChange={setActiveTab}>` thay vì `defaultValue`
+- Truyền prop `onNavigate={(tab) => setActiveTab(tab)}` xuống `GhostCleanupTab` và `OverviewTab`
 
-| Username | Họ tên | Đã rút (CAMLY) | Số lần rút | Lần rút đầu | Lần rút cuối | Ví | Lý do ban | Ghi chú |
-|---|---|---|---|---|---|---|---|---|
-| luudung | luu thi dung | 2,000,000 | 4 | 14/02 14:22 | 17/02 05:21 | 0x5003... | IP TH | Farm ring |
+### 2. `src/components/admin/GhostCleanupTab.tsx`
+- Thêm prop `onNavigate?: (tab: string) => void`
+- Card "Đã bị cấm" (số 26) thêm `onClick={() => onNavigate?.("surveillance")}` với cursor pointer và hover effect
+- Thêm tooltip "Nhấn để xem danh sách bị cấm" khi hover
 
-**Phần B — Bảng tài khoản NGHI NGỜ (on_hold):**
+### 3. `src/components/admin/OverviewTab.tsx` (nếu có card tương tự)
+- Tương tự: thêm prop `onNavigate` và làm các card có thể click để nhảy tới tab tương ứng
 
-| Username | Loại tín hiệu | Severity | Ngày phát hiện | Device Hash | Tài khoản liên quan | Hành động |
-|---|---|---|---|---|---|---|
-| minh_quan | SHARED_DEVICE | 3 | 17/02 15:03 | 01cdbbe6 | 5 tài khoản | [Ban] [Xem] |
+## UX được cải thiện
 
-### 2. Chỉnh sửa: `src/pages/Admin.tsx`
-- Import `SurveillanceTab`
-- Thêm tab trigger mới với icon `Eye` (Giám sát)
-- Cập nhật grid từ 13 cột thành 14 cột
-
-## Chi tiết kỹ thuật của SurveillanceTab
-
-**Data fetching:**
-```
-Query 1 — Banned accounts:
-  SELECT profiles + LEFT JOIN reward_claims aggregated
-  WHERE is_banned = true OR reward_status = 'banned'
-  ORDER BY total_claimed DESC
-
-Query 2 — On-hold accounts:
-  SELECT profiles + pplp_fraud_signals (latest per user)
-  WHERE reward_status = 'on_hold' AND is_banned = false
-  ORDER BY severity DESC, signal_date DESC
-```
-
-**UI Features:**
-- 2 tab nội bộ: "Đã bị ban" và "Đang theo dõi (on_hold)"
-- Summary cards ở đầu: Tổng bị ban / Tổng đã rút / Đang on_hold / CAMLY nguy cơ
-- Export CSV button (danh sách ban + on_hold)
-- Search/filter theo username
-- Badge màu sắc: đỏ = banned, vàng = on_hold
-- Cột "Lý do" rút gọn từ admin_notes (30 ký tự + tooltip đầy đủ)
-- Địa chỉ ví rút gọn với link BSCScan
-- Timestamp hiển thị theo múi giờ VN (UTC+7)
+Sau khi thực hiện:
+- Nhấn card "**26 Đã bị cấm**" ở bất kỳ tab nào → tự động chuyển sang tab **Giám sát**, sub-tab "Đã bị ban" mở sẵn
+- Card sẽ có hiệu ứng hover (viền đỏ sáng lên, cursor pointer) để người dùng biết có thể click
+- Không cần phải tìm và nhấn tab "Giám sát" thủ công
 
 ## Thứ tự thực hiện
 
-1. Tạo `src/components/admin/SurveillanceTab.tsx` — component hoàn chỉnh
-2. Chỉnh sửa `src/pages/Admin.tsx` — thêm import + tab trigger + tab content
+1. Sửa `src/pages/Admin.tsx` — thêm controlled tab state + truyền callback
+2. Sửa `src/components/admin/GhostCleanupTab.tsx` — nhận prop + card có thể click
+3. Kiểm tra `src/components/admin/OverviewTab.tsx` — thêm navigation tương tự nếu có card phù hợp
