@@ -14,7 +14,7 @@ export const PLATFORM_PRESETS: Record<string, { label: string; color: string; fa
   funplay: {
     label: 'Fun Play',
     color: '#1a56db',
-    favicon: '/funplay-logo.jpg',
+    favicon: '/funplay-logo.png',
   },
   facebook: {
     label: 'Facebook',
