@@ -169,7 +169,6 @@ export const DonationSuccessCard = ({
                 </Avatar>
                 <div className="text-center">
                   <div className="text-xs font-extrabold text-emerald-800 leading-tight">{data.senderDisplayName || data.senderUsername}</div>
-                  <div className="text-xs font-medium text-emerald-600">@{data.senderUsername}</div>
                 </div>
               </div>
 
@@ -191,7 +190,6 @@ export const DonationSuccessCard = ({
                 </Avatar>
                 <div className="text-center">
                   <div className="text-xs font-extrabold text-emerald-800 leading-tight">{data.recipientDisplayName || data.recipientUsername}</div>
-                  <div className="text-xs font-medium text-emerald-600">@{data.recipientUsername}</div>
                 </div>
               </div>
             </div>
