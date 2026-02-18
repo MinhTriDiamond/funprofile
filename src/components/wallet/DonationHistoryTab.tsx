@@ -115,14 +115,14 @@ export function DonationHistoryTab() {
           isOpen={isCelebrationOpen}
           onClose={handleCloseCelebration}
           editable={false}
-          data={{
+            data={{
             id: selectedDonation.id,
             amount: selectedDonation.amount,
             tokenSymbol: selectedDonation.token_symbol,
-            senderUsername: selectedDonation.sender?.username || 'Unknown',
+            senderUsername: selectedDonation.sender?.display_name || selectedDonation.sender?.username || 'Unknown',
             senderAvatarUrl: selectedDonation.sender?.avatar_url,
             senderId: selectedDonation.sender?.id,
-            recipientUsername: selectedDonation.recipient?.username || 'Unknown',
+            recipientUsername: selectedDonation.recipient?.display_name || selectedDonation.recipient?.username || 'Unknown',
             recipientAvatarUrl: selectedDonation.recipient?.avatar_url,
             recipientId: selectedDonation.recipient?.id,
             message: selectedDonation.message,
@@ -144,7 +144,7 @@ export function DonationHistoryTab() {
             id: selectedDonation.id,
             amount: selectedDonation.amount,
             tokenSymbol: selectedDonation.token_symbol,
-            senderUsername: selectedDonation.sender?.username || 'Unknown',
+            senderUsername: selectedDonation.sender?.display_name || selectedDonation.sender?.username || 'Unknown',
             senderAvatarUrl: selectedDonation.sender?.avatar_url,
             senderId: selectedDonation.sender?.id || '',
             message: selectedDonation.message,

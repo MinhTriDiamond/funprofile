@@ -36,10 +36,12 @@ export function DonationHistoryItem({ donation, type, onClick }: DonationHistory
               <Avatar className="w-4 h-4">
                 <AvatarImage src={otherUser?.avatar_url || ''} />
                 <AvatarFallback className="text-[10px] bg-primary text-white">
-                  {otherUser?.username?.charAt(0).toUpperCase() || '?'}
+                  {(otherUser?.display_name || otherUser?.username)?.charAt(0).toUpperCase() || '?'}
                 </AvatarFallback>
               </Avatar>
-              <button type="button" onClick={(e) => { e.stopPropagation(); navigate(`/profile/${otherUser?.id}`); }} className="font-medium hover:underline text-primary cursor-pointer">@{otherUser?.username || 'Unknown'}</button>
+              <button type="button" onClick={(e) => { e.stopPropagation(); navigate(`/profile/${otherUser?.id}`); }} className="font-medium hover:underline text-primary cursor-pointer">
+                {otherUser?.display_name || otherUser?.username || 'Unknown'}
+              </button>
             </div>
           </div>
         </div>

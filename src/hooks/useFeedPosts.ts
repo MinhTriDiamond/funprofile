@@ -28,6 +28,7 @@ export interface FeedPost {
   highlight_expires_at?: string | null;
   profiles: {
     username: string;
+    display_name?: string | null;
     avatar_url: string | null;
     external_wallet_address?: string | null;
     custodial_wallet_address?: string | null;

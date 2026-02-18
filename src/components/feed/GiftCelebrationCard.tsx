@@ -37,13 +37,14 @@ interface GiftCelebrationCardProps {
     highlight_expires_at?: string | null;
     profiles: {
       username: string;
+      display_name?: string | null;
       avatar_url: string | null;
     };
   };
   currentUserId: string;
   onPostDeleted: () => void;
   initialStats?: PostStats;
-  recipientProfile?: { username: string; avatar_url: string | null } | null;
+  recipientProfile?: { username: string; display_name?: string | null; avatar_url: string | null } | null;
 }
 
 const GiftCelebrationCardComponent = ({
@@ -63,8 +64,8 @@ const GiftCelebrationCardComponent = ({
   const [currentReaction, setCurrentReaction] = useState<string | null>(null);
   const [reactionCounts, setReactionCounts] = useState<{ type: string; count: number }[]>([]);
   const [shareCount, setShareCount] = useState(initialStats?.shareCount || 0);
-  const [recipientProfile, setRecipientProfile] = useState<{ username: string; avatar_url: string | null } | null>(null);
-  const [senderProfile, setSenderProfile] = useState<{ username: string; avatar_url: string | null } | null>(null);
+  const [recipientProfile, setRecipientProfile] = useState<{ username: string; display_name?: string | null; avatar_url: string | null } | null>(null);
+  const [senderProfile, setSenderProfile] = useState<{ username: string; display_name?: string | null; avatar_url: string | null } | null>(null);
 
   // Check if sender is different from post author (e.g. Treasury claim)
   const isTreasurySender = post.gift_sender_id && post.gift_sender_id !== post.user_id;
@@ -76,7 +77,7 @@ const GiftCelebrationCardComponent = ({
     if (!post.gift_recipient_id) return;
     supabase
       .from('public_profiles')
-      .select('username, avatar_url')
+      .select('username, display_name, avatar_url')
       .eq('id', post.gift_recipient_id)
       .single()
       .then(({ data }) => {
@@ -89,7 +90,7 @@ const GiftCelebrationCardComponent = ({
     if (!isTreasurySender) return;
     supabase
       .from('public_profiles')
-      .select('username, avatar_url')
+      .select('username, display_name, avatar_url')
       .eq('id', post.gift_sender_id!)
       .single()
       .then(({ data }) => {
@@ -199,9 +200,11 @@ const GiftCelebrationCardComponent = ({
   const token = post.gift_token || 'FUN';
   // Use fetched sender profile for Treasury/cross-user claims, otherwise use post author profile
   const actualSenderProfile = isTreasurySender ? senderProfile : post.profiles;
+  const senderDisplayName = actualSenderProfile?.display_name || actualSenderProfile?.username || 'FUN Profile Treasury';
   const senderUsername = actualSenderProfile?.username || 'FUN Profile Treasury';
   const senderAvatarUrl = actualSenderProfile?.avatar_url || '/fun-profile-treasury-logo.jpg';
   const senderNavigateId = isTreasurySender ? post.gift_sender_id : post.user_id;
+  const recipientDisplayName = recipientProfile?.display_name || recipientProfile?.username || 'User';
   const recipientUsername = recipientProfile?.username || 'User';
   const scanUrl = post.tx_hash ? getBscScanTxUrl(post.tx_hash, token) : '#';
   const truncatedMessage = post.gift_message && post.gift_message.length > 120
@@ -258,7 +261,7 @@ const GiftCelebrationCardComponent = ({
                 {senderUsername[0]?.toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <span className="text-xs text-white/80 mt-1 truncate max-w-[80px]">@{senderUsername}</span>
+            <span className="text-xs text-white/80 mt-1 truncate max-w-[80px]">{senderDisplayName}</span>
           </div>
 
           <div className="flex items-center gap-1">
@@ -273,10 +276,10 @@ const GiftCelebrationCardComponent = ({
             >
               <AvatarImage src={recipientProfile?.avatar_url || ''} />
               <AvatarFallback className="bg-emerald-700 text-white">
-                {recipientUsername[0]?.toUpperCase()}
+                {recipientDisplayName[0]?.toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <span className="text-xs text-white/80 mt-1 truncate max-w-[80px]">@{recipientUsername}</span>
+            <span className="text-xs text-white/80 mt-1 truncate max-w-[80px]">{recipientDisplayName}</span>
           </div>
         </div>
 
@@ -284,13 +287,13 @@ const GiftCelebrationCardComponent = ({
         <div className="text-center mb-3">
           <p className="text-lg font-bold text-white leading-snug" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.3)' }}>
             {isTreasurySender ? (
-              <>🎉 @{recipientUsername} đã nhận thưởng{' '}
+              <>🎉 {recipientDisplayName} đã nhận thưởng{' '}
                 <span className="text-yellow-300">{amount} {token}</span>{' '}
-                từ @{senderUsername} ❤️</>
+                từ {senderDisplayName} ❤️</>
             ) : (
-              <>🎉 @{senderUsername} đã trao gửi{' '}
+              <>🎉 {senderDisplayName} đã trao gửi{' '}
                 <span className="text-yellow-300">{amount} {token}</span>{' '}
-                cho @{recipientUsername} ❤️</>
+                cho {recipientDisplayName} ❤️</>
             )}
           </p>
         </div>

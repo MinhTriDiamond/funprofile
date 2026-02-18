@@ -4,8 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 
 export interface DonationRecord {
   id: string;
-  sender: { id: string; username: string; avatar_url: string | null; public_wallet_address?: string | null; custodial_wallet_address?: string | null };
-  recipient: { id: string; username: string; avatar_url: string | null; public_wallet_address?: string | null; custodial_wallet_address?: string | null };
+  sender: { id: string; username: string; display_name?: string | null; avatar_url: string | null; public_wallet_address?: string | null; custodial_wallet_address?: string | null };
+  recipient: { id: string; username: string; display_name?: string | null; avatar_url: string | null; public_wallet_address?: string | null; custodial_wallet_address?: string | null };
   amount: string;
   token_symbol: string;
   message: string | null;
@@ -53,8 +53,8 @@ export function useDonationHistory(type: 'sent' | 'received') {
           card_theme,
           card_background,
           card_sound,
-          sender:profiles!donations_sender_id_fkey(id, username, avatar_url, public_wallet_address, custodial_wallet_address),
-          recipient:profiles!donations_recipient_id_fkey(id, username, avatar_url, public_wallet_address, custodial_wallet_address)
+          sender:profiles!donations_sender_id_fkey(id, username, display_name, avatar_url, public_wallet_address, custodial_wallet_address),
+          recipient:profiles!donations_recipient_id_fkey(id, username, display_name, avatar_url, public_wallet_address, custodial_wallet_address)
         `)
         .eq(type === 'sent' ? 'sender_id' : 'recipient_id', userId)
         .order('created_at', { ascending: false })
