@@ -3373,6 +3373,16 @@ export type Database = {
           total_videos: number
         }[]
       }
+      get_banned_user_claims: {
+        Args: never
+        Returns: {
+          claim_count: number
+          first_claim_at: string
+          last_claim_at: string
+          total_claimed: number
+          user_id: string
+        }[]
+      }
       get_benefactor_leaderboard: {
         Args: {
           p_limit?: number
