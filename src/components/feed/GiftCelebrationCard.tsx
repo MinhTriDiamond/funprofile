@@ -258,7 +258,7 @@ const GiftCelebrationCardComponent = ({
             >
               <AvatarImage src={senderAvatarUrl} />
               <AvatarFallback className="bg-emerald-700 text-white">
-                {senderUsername[0]?.toUpperCase()}
+                {senderDisplayName[0]?.toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <span className="text-xs text-white/80 mt-1 truncate max-w-[80px]">{senderDisplayName}</span>
@@ -356,7 +356,7 @@ const GiftCelebrationCardComponent = ({
           <button
             className="flex-1 flex items-center justify-center gap-1.5 py-3 min-h-[48px] rounded-lg transition-colors hover:bg-white/10 text-white/70"
             onClick={() => {
-              navigator.clipboard.writeText(`${window.location.origin}/post/${post.id}`);
+              navigator.clipboard.writeText(`https://fun.rich/post/${post.id}`);
             }}
           >
             <Share2 className="w-5 h-5" />
