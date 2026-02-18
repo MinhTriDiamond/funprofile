@@ -443,7 +443,10 @@ export function SystemDonationHistory() {
                       {/* Row 1: Sender → Recipient */}
                       <div className="flex items-center justify-between gap-4">
                         <div className="flex items-center gap-2 min-w-0">
-                          <Avatar className="w-10 h-10 shrink-0">
+                          <Avatar
+                            className="w-10 h-10 shrink-0 cursor-pointer hover:ring-2 hover:ring-green-400 transition-all"
+                            onClick={(e) => { e.stopPropagation(); if (donation.sender?.id) navigate(`/profile/${donation.sender.id}`); }}
+                          >
                             <AvatarImage src={donation.sender?.avatar_url || undefined} />
                             <AvatarFallback>{donation.sender?.username?.charAt(0).toUpperCase() || '?'}</AvatarFallback>
                           </Avatar>
@@ -476,7 +479,10 @@ export function SystemDonationHistory() {
                               </div>
                             )}
                           </div>
-                          <Avatar className="w-10 h-10 shrink-0">
+                          <Avatar
+                            className="w-10 h-10 shrink-0 cursor-pointer hover:ring-2 hover:ring-green-400 transition-all"
+                            onClick={(e) => { e.stopPropagation(); if (donation.recipient?.id) navigate(`/profile/${donation.recipient.id}`); }}
+                          >
                             <AvatarImage src={donation.recipient?.avatar_url || undefined} />
                             <AvatarFallback>{donation.recipient?.username?.charAt(0).toUpperCase() || '?'}</AvatarFallback>
                           </Avatar>
