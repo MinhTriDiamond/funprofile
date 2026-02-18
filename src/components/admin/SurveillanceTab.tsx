@@ -106,30 +106,40 @@ const SurveillanceTab = ({ adminId }: SurveillanceTabProps) => {
       if (e1) throw e1;
 
       if (bannedProfiles && bannedProfiles.length > 0) {
-        const bannedIds = bannedProfiles.map(p => p.id);
+        // Use RPC function to get accurate aggregated claim data (bypasses RLS row limits)
+        const [claimsRpc, claimsDetail] = await Promise.all([
+          supabase.rpc("get_banned_user_claims"),
+          supabase
+            .from("reward_claims")
+            .select("user_id, created_at")
+            .in("user_id", bannedProfiles.map(p => p.id))
+            .order("created_at", { ascending: true })
+            .limit(5000),
+        ]);
 
-        // Get reward_claims aggregated per user
-        const { data: claims } = await supabase
-          .from("reward_claims")
-          .select("user_id, amount, created_at")
-          .in("user_id", bannedIds);
+        // Build total+count map from RPC (accurate, no row limit issue)
+        const claimTotals = new Map<string, { total: number; count: number }>();
+        for (const row of (claimsRpc.data ?? [])) {
+          claimTotals.set(row.user_id, {
+            total: Number(row.total_claimed ?? 0),
+            count: Number(row.claim_count ?? 0),
+          });
+        }
 
-        // Aggregate in JS
-        const claimMap = new Map<string, { total: number; count: number; first: string | null; last: string | null }>();
-        for (const c of (claims ?? [])) {
-          const prev = claimMap.get(c.user_id) ?? { total: 0, count: 0, first: null, last: null };
-          const amt = Number(c.amount ?? 0);
+        // Build first/last timestamps from detail query
+        const claimDates = new Map<string, { first: string | null; last: string | null }>();
+        for (const c of (claimsDetail.data ?? [])) {
+          const prev = claimDates.get(c.user_id) ?? { first: null, last: null };
           const dt = c.created_at;
-          claimMap.set(c.user_id, {
-            total: prev.total + amt,
-            count: prev.count + 1,
+          claimDates.set(c.user_id, {
             first: !prev.first || dt < prev.first ? dt : prev.first,
             last: !prev.last || dt > prev.last ? dt : prev.last,
           });
         }
 
         const enriched: BannedUser[] = bannedProfiles.map(p => {
-          const agg = claimMap.get(p.id) ?? { total: 0, count: 0, first: null, last: null };
+          const totals = claimTotals.get(p.id) ?? { total: 0, count: 0 };
+          const dates = claimDates.get(p.id) ?? { first: null, last: null };
           return {
             id: p.id,
             username: p.username ?? "—",
@@ -137,10 +147,10 @@ const SurveillanceTab = ({ adminId }: SurveillanceTabProps) => {
             wallet_address: p.wallet_address,
             admin_notes: p.admin_notes,
             banned_at: p.banned_at ?? null,
-            total_claimed: agg.total,
-            claim_count: agg.count,
-            first_claim_at: agg.first,
-            last_claim_at: agg.last,
+            total_claimed: totals.total,
+            claim_count: totals.count,
+            first_claim_at: dates.first,
+            last_claim_at: dates.last,
             pending_reward: Number(p.pending_reward ?? 0),
           };
         });
