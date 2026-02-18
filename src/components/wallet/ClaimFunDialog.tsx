@@ -40,6 +40,9 @@ export const ClaimFunDialog = ({
   const [claimedAmount, setClaimedAmount] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  // ⚠️ MAINTENANCE — ĐỔI THÀNH false KHI MỞ LẠI
+  const IS_MAINTENANCE = true;
+
   const { claimFun, isProcessing, isConfirming, isSuccess } = useClaimFun({
     onSuccess: () => {
       setClaimedAmount(amount);
@@ -94,6 +97,33 @@ export const ClaimFunDialog = ({
     }
     onOpenChange(false);
   };
+
+  if (IS_MAINTENANCE) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <div className="bg-destructive/20 p-2 rounded-lg">
+                <Wallet className="w-5 h-5 text-destructive" />
+              </div>
+              Rút FUN về Ví
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="bg-destructive/10 border-2 border-destructive/30 rounded-xl p-5 text-center space-y-3">
+              <div className="text-4xl">🔧</div>
+              <h3 className="font-bold text-destructive text-lg">Hệ thống tạm dừng bảo trì</h3>
+              <p className="text-sm text-muted-foreground">
+                Chức năng rút FUN về ví đang tạm ngưng để bảo trì hệ thống. Vui lòng quay lại sau.
+              </p>
+            </div>
+            <Button variant="outline" className="w-full" onClick={() => onOpenChange(false)}>Đóng</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   if (showSuccess) {
     return (
