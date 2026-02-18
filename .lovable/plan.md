@@ -1,119 +1,91 @@
 
-# Kế hoạch: Sửa 3 vấn đề — Van103, Link fun.rich, & Đăng xuất tự động
+# Kế hoạch: Sửa lỗi tặng CAMLY hàng loạt & Mở khóa 2 tài khoản
 
-## Phân tích vấn đề
+## Phần 1: Mở khóa angelthanhthuy & susu
 
-### 1. Vẫn hiển thị "Van103" trong hình ảnh tặng tiền (GiftCelebrationCard)
+Cả hai tài khoản đang ở trạng thái `on_hold` với `approved_reward = 0`. Để cho phép claim, cần:
+- Đặt `reward_status = 'approved'`
+- Xóa `admin_notes` tạm giữ
+- Không thay đổi `is_banned` (vẫn false — tài khoản bình thường, chỉ bị giữ reward)
 
-Nhìn vào code hiện tại của `GiftCelebrationCard.tsx`:
-- Dòng 263 hiển thị avatar sender: `{senderUsername[0]?.toUpperCase()}` — dùng `username` (van103) cho `AvatarFallback`, không dùng `display_name`
-- Dòng 264: `<span>...{senderDisplayName}</span>` — đã đúng (dùng display_name)
+Thực hiện bằng SQL update trực tiếp cho 2 user ID:
+- angelthanhthuy: `f3d8831c-83b2-475a-a9ee-72d0f7d0c803`
+- susu: `bfc87ada-bfce-4a5e-a185-4e4b246b1a50`
 
-Vấn đề thực sự: Khi `post.profiles.display_name` là `null` hoặc chưa được đưa vào `GiftCelebrationCard` từ Feed, component fallback về `username`. Cần kiểm tra xem `posts` query trong `useFeedPosts` có thực sự join `display_name` không — code hiện tại ở dòng 101 và 129 query `profiles!posts_user_id_fkey (username, display_name, avatar_url, ...)` — ĐÃ ĐÚNG.
+**Lưu ý:** Cả hai đều có `approved_reward = 0` và `display_name = null` — sau khi mở khoá, họ cần có đủ phần thưởng và điều kiện hồ sơ mới claim được. Có thể admin vẫn cần duyệt thêm.
 
-Root cause thực sự: Trong `GiftCelebrationCardComponent`, biến `senderUsername` (dòng 204) dùng `actualSenderProfile?.username` thay vì `display_name`. Dòng `AvatarFallback` ở dòng 261 dùng `senderUsername[0]` — hiển thị chữ cái đầu của username, KHÔNG phải display_name. Đặc biệt khi render caption dưới avatar, **dòng 264 dùng `senderDisplayName`** — đúng. Nhưng avatar fallback vẫn lấy từ username.
+## Phần 2: Sửa lỗi tặng CAMLY hàng loạt
 
-Thực ra vấn đề sâu hơn: Trong `DonationHistoryItem.tsx`, dòng 39 và 43 đã được sửa đúng. Nhưng trong `GiftCelebrationCard` dòng 261, `AvatarFallback` dùng `senderUsername[0]` — có nghĩa là chữ cái hiển thị trong avatar vẫn là "V" (từ "van103"), không phải "A" (từ "Angel Ái Vân").
+### Root cause
 
-### 2. Link fun.rich vẫn ra Lovable
+Trong `handleSendMulti` (UnifiedGiftSendDialog.tsx, dòng 459-531):
 
-Đây là vấn đề về **Supabase Auth Redirect URL** configuration. Khi user click link `https://fun.rich/...`, domain `fun.rich` cần được cấu hình là `Site URL` trong Supabase Auth settings, và `https://fun.rich/**` phải có trong redirect URLs. Nếu chưa cấu hình, Supabase sẽ redirect về domain mặc định (lovable.app).
-
-Ngoài ra, link chia sẻ ở `GiftCelebrationCard.tsx` dòng 359 dùng:
-```js
-window.location.origin + '/post/' + post.id
 ```
-Nếu người dùng đang trên lovable.app thì link sẽ trỏ về lovable.app.
+for (let i = 0; i < recipientsWithWallet.length; i++) {
+  resetState(); // ← VẤN ĐỀ 1: reset state wagmi ngay trước khi gọi sendToken
+  const hash = await sendToken(...);
+  ...
+}
+```
 
-Cần sửa link chia sẻ để luôn dùng `https://fun.rich/post/${post.id}` — đây là domain production chính thức.
+Vấn đề cụ thể:
+1. **`resetState()` gọi trước mỗi vòng lặp** làm clear `txHash` và `txStep` khi wagmi hook đang xử lý giao dịch trước → gây conflict state
+2. **Không có delay giữa các giao dịch** → nonce có thể bị trùng trên BSC nếu pending TX chưa confirm
+3. **`isPending` (wagmiPending)** bị check ở `isSendDisabled` — khi đang trong vòng lặp multi, button vẫn có thể được bấm lại
 
-### 3. Đăng nhập xong bị đăng xuất sau một lúc
+### Giải pháp
 
-Đây là vấn đề race condition trong `onAuthStateChange`. Cụ thể:
-- **`FacebookNavbar.tsx` (dòng 85-106)**: `onAuthStateChange` gọi `await supabase.from('profiles').select(...)` và `await supabase.rpc('has_role', ...)` **bên trong callback** → deadlock, vì Supabase chưa hoàn thành auth cycle trước khi callback return
-- **`LawOfLightGuard.tsx` (dòng 105-111)**: `onAuthStateChange` gọi lại `checkLawOfLightAcceptance()` khi SIGNED_IN — hàm này gọi `await supabase.auth.getSession()` bên trong listener → gây deadlock
-- Kết quả: Supabase hiểu là session bị hỏng và tự đăng xuất
+**File: `src/components/donations/UnifiedGiftSendDialog.tsx`**
 
-Cách sửa chuẩn: Dùng `setTimeout(..., 0)` để thoát khỏi callback trước khi thực hiện async operations.
-
----
-
-## Các thay đổi cụ thể
-
-### File 1: `src/components/feed/GiftCelebrationCard.tsx`
-- **Avatar fallback**: Sửa dòng 261 từ `senderUsername[0]` → `senderDisplayName[0]`  
-- **Link chia sẻ**: Sửa dòng 359 từ `window.location.origin + '/post/' + post.id` → `https://fun.rich/post/${post.id}` để link luôn trỏ về production domain
-
-### File 2: `src/components/layout/FacebookNavbar.tsx`
-Sửa `onAuthStateChange` để tránh deadlock — không gọi async Supabase bên trong callback trực tiếp:
+Sửa `handleSendMulti`:
+- Bỏ `resetState()` khỏi đầu vòng lặp — chỉ reset sau khi nhận hash (hoặc lỗi)  
+- Thêm delay nhỏ (300ms) giữa mỗi giao dịch để BSC có thời gian xử lý nonce
+- Wrap mỗi `sendToken` call trong try/catch riêng biệt và cập nhật progress từng bước rõ ràng hơn
 
 ```typescript
-// TRƯỚC (lỗi - gây deadlock):
-const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-  setIsLoggedIn(!!session);
-  if (session) {
-    const { data } = await supabase.from('profiles').select(...); // ← DEADLOCK
+// TRƯỚC (lỗi):
+for (let i = 0; i < recipientsWithWallet.length; i++) {
+  setMultiSendProgress(prev => prev ? { ...prev, current: i + 1 } : prev);
+  try {
+    resetState(); // ← XOÁ DÒNG NÀY
+    const hash = await sendToken(...);
     ...
   }
-});
+}
 
-// SAU (đúng - dùng setTimeout để thoát khỏi callback cycle):
-const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-  setIsLoggedIn(!!session);
-  if (session) {
-    setCurrentUserId(session.user.id);
-    // Defer async calls to avoid deadlock
-    setTimeout(async () => {
-      const { data } = await supabase.from('profiles').select(...);
-      if (data) setProfile(data);
-      const { data: hasAdminRole } = await supabase.rpc('has_role', {...});
-      setIsAdmin(!!hasAdminRole);
-    }, 0);
-  } else {
-    setProfile(null);
-    setCurrentUserId(null);
-    setIsAdmin(false);
-  }
-});
-```
-
-### File 3: `src/components/auth/LawOfLightGuard.tsx`
-`onAuthStateChange` đang gọi lại `checkLawOfLightAcceptance()` bên trong callback (đã có `setTimeout(..., 0)` nhưng hàm đó vẫn gọi `await supabase.auth.getSession()` ngay). Cần đảm bảo event `SIGNED_IN` chỉ set `isAllowed = true` thay vì gọi lại toàn bộ function check:
-
-```typescript
 // SAU (đúng):
-const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-  if (event === 'SIGNED_IN' && session) {
-    // Only re-check if currently blocked (not allowed)
-    setTimeout(() => {
-      checkLawOfLightAcceptance();
-    }, 100); // Slight delay to ensure auth state is stable
+for (let i = 0; i < recipientsWithWallet.length; i++) {
+  setMultiSendProgress(prev => prev ? { ...prev, current: i + 1 } : prev);
+  
+  // Delay giữa các TX để tránh nonce conflict
+  if (i > 0) await new Promise(r => setTimeout(r, 500));
+  
+  try {
+    const hash = await sendToken(...); // sendToken tự quản lý state
+    if (hash) {
+      results.push({ recipient, success: true, txHash: hash });
+      resetState(); // Reset SAU khi có hash thành công
+    } else {
+      results.push({ recipient, success: false, error: 'Giao dịch bị từ chối' });
+      resetState();
+    }
+  } catch (err: any) {
+    results.push({ recipient, success: false, error: err?.message || 'Lỗi gửi' });
+    resetState();
   }
-  // SIGNED_OUT is handled by checkLawOfLightAcceptance on re-render
-});
+  ...
+}
 ```
 
-### File 4: `src/pages/Feed.tsx`
-`onAuthStateChange` ở Feed (dòng 92-98) đã tốt — chỉ set state đơn giản, không await. Không cần sửa.
+## Tóm tắt thay đổi
 
-### File 5: Các link chia sẻ trong `FacebookPostCard.tsx`
-Cần kiểm tra và sửa link chia sẻ post cũng dùng `https://fun.rich/post/${post.id}` thay vì `window.location.origin`.
-
----
-
-## Tóm tắt files thay đổi
-
-| File | Thay đổi |
+| Loại | Chi tiết |
 |---|---|
-| `src/components/feed/GiftCelebrationCard.tsx` | Sửa avatar fallback dùng `display_name`; sửa link chia sẻ → `fun.rich` |
-| `src/components/layout/FacebookNavbar.tsx` | Sửa `onAuthStateChange` — defer async calls bằng `setTimeout(0)` |
-| `src/components/auth/LawOfLightGuard.tsx` | Tinh chỉnh `onAuthStateChange` để tránh gọi lại toàn bộ check khi không cần |
-| `src/components/feed/FacebookPostCard.tsx` | Sửa link chia sẻ → `fun.rich` |
-
----
+| Database | Mở khóa 2 tài khoản: angelthanhthuy & susu (`reward_status = 'approved'`) |
+| Code | Sửa `handleSendMulti` trong UnifiedGiftSendDialog.tsx — bỏ `resetState()` đầu vòng lặp, thêm delay 500ms |
 
 ## Ghi chú kỹ thuật
 
-- **fun.rich redirect**: Vấn đề link fun.rich trỏ về lovable là do Supabase `Site URL` chưa được đặt là `https://fun.rich`. Điều này cần cấu hình trong Supabase Auth Settings. Việc sửa link chia sẻ trong code giúp các link copy/share luôn đúng, nhưng OAuth redirect về fun.rich là cấu hình phía backend.
-- **Deadlock pattern**: Gọi `await supabase.*` bên trong `onAuthStateChange` callback trực tiếp (không qua `setTimeout`) gây deadlock vì Supabase JS client chờ callback hoàn tất trước khi xử lý token refresh, dẫn đến timeout và auto-logout.
-- Không cần migration database.
+- Việc gọi `resetState()` ngay trước `sendToken` làm Wagmi hook mất track state của chính nó — đây là pattern sai vì `sendToken` bên trong đã tự gọi `setTxStep('signing')` ngay sau khi vào
+- Delay 500ms giữa các TX là đủ để BSC node cập nhật nonce (BSC block time ~3 giây)
+- Với cả hai tài khoản: sau khi mở khóa, nếu `approved_reward = 0` thì họ vẫn cần admin duyệt thêm phần thưởng mới rút được CAMLY
