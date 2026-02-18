@@ -12,51 +12,58 @@ interface OverviewStats {
 
 interface OverviewTabProps {
   stats: OverviewStats;
+  onNavigate?: (tab: string) => void;
 }
 
-const OverviewTab = ({ stats }: OverviewTabProps) => {
+const OverviewTab = ({ stats, onNavigate }: OverviewTabProps) => {
   const statCards = [
     {
       title: "Tổng Users",
       value: stats.totalUsers,
       icon: Users,
       color: "text-blue-500",
-      bgColor: "bg-blue-500/10"
+      bgColor: "bg-blue-500/10",
+      navigateTo: undefined as string | undefined,
     },
     {
       title: "Pending Rewards",
       value: stats.pendingRewards,
       icon: Clock,
       color: "text-yellow-500",
-      bgColor: "bg-yellow-500/10"
+      bgColor: "bg-yellow-500/10",
+      navigateTo: undefined,
     },
     {
       title: "Approved Rewards",
       value: stats.approvedRewards,
       icon: CheckCircle,
       color: "text-green-500",
-      bgColor: "bg-green-500/10"
+      bgColor: "bg-green-500/10",
+      navigateTo: undefined,
     },
     {
       title: "On-chain Claims",
       value: stats.onChainClaims,
       icon: Coins,
       color: "text-purple-500",
-      bgColor: "bg-purple-500/10"
+      bgColor: "bg-purple-500/10",
+      navigateTo: undefined,
     },
     {
       title: "Users Bị Cấm",
       value: stats.bannedUsers,
       icon: ShieldOff,
       color: "text-red-500",
-      bgColor: "bg-red-500/10"
+      bgColor: "bg-red-500/10",
+      navigateTo: "surveillance",
     },
     {
       title: "Users Nghi Ngờ",
       value: stats.suspiciousUsers,
       icon: AlertTriangle,
       color: "text-orange-500",
-      bgColor: "bg-orange-500/10"
+      bgColor: "bg-orange-500/10",
+      navigateTo: "surveillance",
     }
   ];
 
@@ -64,7 +71,12 @@ const OverviewTab = ({ stats }: OverviewTabProps) => {
     <div className="space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {statCards.map((stat, index) => (
-          <Card key={index} className="relative overflow-hidden">
+          <Card
+            key={index}
+            className={`relative overflow-hidden transition-all ${stat.navigateTo ? "cursor-pointer hover:border-red-400 hover:shadow-md hover:scale-[1.02]" : ""}`}
+            onClick={() => stat.navigateTo && onNavigate?.(stat.navigateTo)}
+            title={stat.navigateTo ? "Nhấn để xem danh sách" : undefined}
+          >
             <CardHeader className="pb-2">
               <div className={`p-2 rounded-lg ${stat.bgColor} w-fit`}>
                 <stat.icon className={`w-5 h-5 ${stat.color}`} />
@@ -73,6 +85,7 @@ const OverviewTab = ({ stats }: OverviewTabProps) => {
             <CardContent>
               <p className="text-2xl font-bold">{stat.value.toLocaleString()}</p>
               <p className="text-xs text-muted-foreground">{stat.title}</p>
+              {stat.navigateTo && <p className="text-xs text-red-400 mt-1">→ Xem danh sách</p>}
             </CardContent>
           </Card>
         ))}

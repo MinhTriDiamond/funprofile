@@ -22,9 +22,10 @@ interface GhostUser {
 
 interface Props {
   adminId: string;
+  onNavigate?: (tab: string) => void;
 }
 
-const GhostCleanupTab = ({ adminId }: Props) => {
+const GhostCleanupTab = ({ adminId, onNavigate }: Props) => {
   const [ghostUsers, setGhostUsers] = useState<GhostUser[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -180,11 +181,16 @@ const GhostCleanupTab = ({ adminId }: Props) => {
             <div className="text-xs text-muted-foreground">Đang on_hold</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card
+          className="cursor-pointer hover:border-red-400 hover:shadow-md hover:scale-[1.02] transition-all"
+          onClick={() => onNavigate?.("surveillance")}
+          title="Nhấn để xem danh sách bị cấm"
+        >
           <CardContent className="p-4 text-center">
             <Ban className="w-8 h-8 mx-auto mb-2 text-red-500" />
             <div className="text-2xl font-bold">{stats.banned}</div>
             <div className="text-xs text-muted-foreground">Đã bị cấm</div>
+            <div className="text-xs text-red-400 mt-1">→ Xem danh sách</div>
           </CardContent>
         </Card>
         <Card>

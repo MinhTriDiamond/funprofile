@@ -46,6 +46,7 @@ const Admin = () => {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState<UserData[]>([]);
+  const [activeTab, setActiveTab] = useState("overview");
 
   useEffect(() => {
     checkAdminStatus();
@@ -163,7 +164,7 @@ const Admin = () => {
         </div>
 
         {/* Main Tabs */}
-        <Tabs defaultValue="overview" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-7 lg:grid-cols-14 h-auto">
             <TabsTrigger value="overview" className="gap-2 py-3">
               <BarChart3 className="w-4 h-4" />
@@ -224,7 +225,7 @@ const Admin = () => {
           </TabsList>
 
           <TabsContent value="overview">
-            <OverviewTab stats={stats} />
+            <OverviewTab stats={stats} onNavigate={setActiveTab} />
           </TabsContent>
 
           <TabsContent value="pplp">
@@ -287,7 +288,7 @@ const Admin = () => {
           </TabsContent>
 
           <TabsContent value="ghost">
-            <GhostCleanupTab adminId={currentUserId!} />
+            <GhostCleanupTab adminId={currentUserId!} onNavigate={setActiveTab} />
           </TabsContent>
 
           <TabsContent value="surveillance">
