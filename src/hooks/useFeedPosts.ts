@@ -8,6 +8,12 @@ export interface PostStats {
   shareCount: number;
 }
 
+export interface GiftProfile {
+  username: string;
+  display_name?: string | null;
+  avatar_url: string | null;
+}
+
 export interface FeedPost {
   id: string;
   content: string;
@@ -33,6 +39,9 @@ export interface FeedPost {
     external_wallet_address?: string | null;
     custodial_wallet_address?: string | null;
   };
+  // Pre-fetched gift profiles to avoid loading states
+  recipientProfile?: GiftProfile | null;
+  senderProfile?: GiftProfile | null;
 }
 
 interface FeedPage {
@@ -92,6 +101,40 @@ const fetchPostStats = async (postIds: string[]): Promise<Record<string, PostSta
   }
 };
 
+// Batch-fetch profiles for gift_celebration posts (recipients + senders)
+const fetchGiftProfiles = async (posts: FeedPost[]): Promise<FeedPost[]> => {
+  const giftPosts = posts.filter(p => p.post_type === 'gift_celebration');
+  if (giftPosts.length === 0) return posts;
+
+  // Collect all unique profile IDs needed
+  const profileIds = new Set<string>();
+  giftPosts.forEach(p => {
+    if (p.gift_recipient_id) profileIds.add(p.gift_recipient_id);
+    // Fetch sender only if different from post author (treasury claim)
+    if (p.gift_sender_id && p.gift_sender_id !== p.user_id) profileIds.add(p.gift_sender_id);
+  });
+
+  if (profileIds.size === 0) return posts;
+
+  const { data: profiles } = await supabase
+    .from('public_profiles')
+    .select('id, username, display_name, avatar_url')
+    .in('id', Array.from(profileIds));
+
+  const profileMap = new Map((profiles || []).map(p => [p.id, p]));
+
+  return posts.map(post => {
+    if (post.post_type !== 'gift_celebration') return post;
+    return {
+      ...post,
+      recipientProfile: post.gift_recipient_id ? (profileMap.get(post.gift_recipient_id) || null) : null,
+      senderProfile: (post.gift_sender_id && post.gift_sender_id !== post.user_id)
+        ? (profileMap.get(post.gift_sender_id) || null)
+        : null,
+    };
+  });
+};
+
 // Fetch a page of posts with cursor-based pagination
 // Fetch highlighted (pinned) gift celebration posts
 const fetchHighlightedPosts = async (currentUserId: string | null): Promise<FeedPost[]> => {
@@ -116,11 +159,13 @@ const fetchHighlightedPosts = async (currentUserId: string | null): Promise<Feed
     return [];
   }
 
-  return (data || []).map(post => ({
+  const posts: FeedPost[] = (data || []).map(post => ({
     ...post,
     media_urls: (post.media_urls as Array<{ url: string; type: 'image' | 'video' }>) || null,
     visibility: post.visibility || 'public',
   }));
+
+  return fetchGiftProfiles(posts);
 };
 
 const fetchFeedPage = async (cursor: string | null, currentUserId: string | null): Promise<FeedPage> => {
@@ -148,11 +193,14 @@ const fetchFeedPage = async (cursor: string | null, currentUserId: string | null
   const hasMore = (posts?.length || 0) > POSTS_PER_PAGE;
   const postsToReturn = hasMore ? posts?.slice(0, POSTS_PER_PAGE) : posts;
 
-  const postsData: FeedPost[] = (postsToReturn || []).map(post => ({
+  let postsData: FeedPost[] = (postsToReturn || []).map(post => ({
     ...post,
     media_urls: (post.media_urls as Array<{ url: string; type: 'image' | 'video' }>) || null,
     visibility: post.visibility || 'public',
   }));
+
+  // Pre-fetch recipient/sender profiles for gift posts
+  postsData = await fetchGiftProfiles(postsData);
   
   const postIds = postsData.map(p => p.id);
   const postStats = await fetchPostStats(postIds);

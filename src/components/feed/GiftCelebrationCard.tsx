@@ -15,6 +15,12 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
+interface GiftProfile {
+  username: string;
+  display_name?: string | null;
+  avatar_url: string | null;
+}
+
 interface PostStats {
   reactions: { id: string; user_id: string; type: string }[];
   commentCount: number;
@@ -40,11 +46,13 @@ interface GiftCelebrationCardProps {
       display_name?: string | null;
       avatar_url: string | null;
     };
+    // Pre-fetched profiles passed from Feed hook
+    recipientProfile?: GiftProfile | null;
+    senderProfile?: GiftProfile | null;
   };
   currentUserId: string;
   onPostDeleted: () => void;
   initialStats?: PostStats;
-  recipientProfile?: { username: string; display_name?: string | null; avatar_url: string | null } | null;
 }
 
 const GiftCelebrationCardComponent = ({
@@ -64,39 +72,35 @@ const GiftCelebrationCardComponent = ({
   const [currentReaction, setCurrentReaction] = useState<string | null>(null);
   const [reactionCounts, setReactionCounts] = useState<{ type: string; count: number }[]>([]);
   const [shareCount, setShareCount] = useState(initialStats?.shareCount || 0);
-  const [recipientProfile, setRecipientProfile] = useState<{ username: string; display_name?: string | null; avatar_url: string | null } | null>(null);
-  const [senderProfile, setSenderProfile] = useState<{ username: string; display_name?: string | null; avatar_url: string | null } | null>(null);
+  // Use pre-fetched profiles from hook (no loading state / flash of "User")
+  const [recipientProfile, setRecipientProfile] = useState(post.recipientProfile || null);
+  const [senderProfile, setSenderProfile] = useState(post.senderProfile || null);
 
   // Check if sender is different from post author (e.g. Treasury claim)
   const isTreasurySender = post.gift_sender_id && post.gift_sender_id !== post.user_id;
 
   const isHighlighted = post.is_highlighted && post.highlight_expires_at && new Date(post.highlight_expires_at) > new Date();
 
-  // Fetch recipient profile
+  // Fallback: fetch profiles if pre-fetched data is missing (e.g. realtime new post)
   useEffect(() => {
-    if (!post.gift_recipient_id) return;
+    if (recipientProfile || !post.gift_recipient_id) return;
     supabase
       .from('public_profiles')
       .select('username, display_name, avatar_url')
       .eq('id', post.gift_recipient_id)
       .single()
-      .then(({ data }) => {
-        if (data) setRecipientProfile(data);
-      });
-  }, [post.gift_recipient_id]);
+      .then(({ data }) => { if (data) setRecipientProfile(data); });
+  }, [post.gift_recipient_id, recipientProfile]);
 
-  // Fetch sender profile when sender differs from post author (e.g. Treasury claim)
   useEffect(() => {
-    if (!isTreasurySender) return;
+    if (senderProfile || !isTreasurySender) return;
     supabase
       .from('public_profiles')
       .select('username, display_name, avatar_url')
       .eq('id', post.gift_sender_id!)
       .single()
-      .then(({ data }) => {
-        if (data) setSenderProfile(data);
-      });
-  }, [isTreasurySender, post.gift_sender_id]);
+      .then(({ data }) => { if (data) setSenderProfile(data); });
+  }, [isTreasurySender, post.gift_sender_id, senderProfile]);
 
   // Process initial stats
   useEffect(() => {
