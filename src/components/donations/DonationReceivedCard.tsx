@@ -70,6 +70,12 @@ export const DonationReceivedCard = ({
       audioRef.current = playCelebrationMusicLoop('rich-3');
       if (audioRef.current) {
         audioRef.current.loop = false;
+        // Tự động dừng sau 6 giây
+        setTimeout(() => {
+          if (audioRef.current) {
+            audioRef.current.pause();
+          }
+        }, 6000);
       }
     }
     return () => {
