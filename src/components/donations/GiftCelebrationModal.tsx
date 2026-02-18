@@ -26,10 +26,12 @@ export interface GiftCardData {
   amount: string;
   tokenSymbol: string;
   senderUsername: string;
+  senderDisplayName?: string | null;
   senderAvatarUrl?: string | null;
   senderId?: string;
   senderWalletAddress?: string;
   recipientUsername: string;
+  recipientDisplayName?: string | null;
   recipientAvatarUrl?: string | null;
   recipientId?: string;
   recipientWalletAddress?: string;

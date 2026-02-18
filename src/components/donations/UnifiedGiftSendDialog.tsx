@@ -14,6 +14,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TokenSelector, SUPPORTED_TOKENS, TokenOption } from './TokenSelector';
 import { QuickGiftPicker, MESSAGE_TEMPLATES, MessageTemplate } from './QuickGiftPicker';
 import { GiftCelebrationModal, GiftCardData } from './GiftCelebrationModal';
+import { DonationSuccessCard, DonationCardData } from './DonationSuccessCard';
 import { useSendToken, TxStep } from '@/hooks/useSendToken';
 import { useTokenBalances } from '@/hooks/useTokenBalances';
 import { validateMinSendValue } from '@/lib/minSendValidation';
@@ -417,10 +418,12 @@ export const UnifiedGiftSendDialog = ({
         amount,
         tokenSymbol: selectedToken.symbol,
         senderUsername: senderProfile?.username || 'Unknown',
+        senderDisplayName: senderProfile?.display_name || senderProfile?.username || 'Unknown',
         senderAvatarUrl: senderProfile?.avatar_url,
         senderId: senderUserId || undefined,
         senderWalletAddress: effectiveAddress,
         recipientUsername: recipient.username || 'Unknown',
+        recipientDisplayName: (recipient as any).display_name || recipient.username || 'Unknown',
         recipientAvatarUrl: recipient.avatarUrl,
         recipientId: recipient.id,
         recipientWalletAddress: recipient.walletAddress,
@@ -498,12 +501,16 @@ export const UnifiedGiftSendDialog = ({
         amount: (parsedAmountNum * successCount).toString(),
         tokenSymbol: selectedToken.symbol,
         senderUsername: senderProfile?.username || 'Unknown',
+        senderDisplayName: senderProfile?.display_name || senderProfile?.username || 'Unknown',
         senderAvatarUrl: senderProfile?.avatar_url,
         senderId: senderUserId || undefined,
         senderWalletAddress: address,
         recipientUsername: successCount === 1
           ? firstSuccess.recipient.username
           : successNames,
+        recipientDisplayName: successCount === 1
+          ? ((firstSuccess.recipient as any).display_name || firstSuccess.recipient.username)
+          : `${successCount} người nhận`,
         recipientAvatarUrl: successCount === 1 ? firstSuccess.recipient.avatarUrl : null,
         recipientId: firstSuccess.recipient.id,
         recipientWalletAddress: firstSuccess.recipient.walletAddress || '',
@@ -1223,12 +1230,26 @@ export const UnifiedGiftSendDialog = ({
 
       {/* Celebration Modal */}
       {celebrationData && (
-        <GiftCelebrationModal
+        <DonationSuccessCard
           isOpen={showCelebration}
           onClose={handleCloseCelebration}
-          data={celebrationData}
-          editable={!isMultiMode}
-          onSaveTheme={handleSaveTheme}
+          data={{
+            id: celebrationData.id,
+            amount: celebrationData.amount,
+            tokenSymbol: celebrationData.tokenSymbol,
+            senderUsername: celebrationData.senderUsername,
+            senderDisplayName: celebrationData.senderDisplayName || celebrationData.senderUsername,
+            senderAvatarUrl: celebrationData.senderAvatarUrl,
+            senderId: celebrationData.senderId,
+            recipientUsername: celebrationData.recipientUsername,
+            recipientDisplayName: celebrationData.recipientDisplayName || celebrationData.recipientUsername,
+            recipientAvatarUrl: celebrationData.recipientAvatarUrl,
+            recipientId: celebrationData.recipientId,
+            message: celebrationData.message,
+            txHash: celebrationData.txHash,
+            lightScoreEarned: celebrationData.lightScoreEarned,
+            createdAt: celebrationData.createdAt,
+          } as DonationCardData}
         />
       )}
     </>
