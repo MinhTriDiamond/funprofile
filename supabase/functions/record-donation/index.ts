@@ -245,32 +245,31 @@ serve(async (req: Request) => {
     // Create gift celebration post on feed
     const { data: recipientProfileData } = await supabase
       .from("profiles")
-      .select("username")
+      .select("username, display_name")
       .eq("id", body.recipient_id)
       .single();
 
-    const recipientName = recipientProfileData?.username;
+    const recipientName = recipientProfileData?.display_name || recipientProfileData?.username || "User";
     const senderName = senderProfile?.username || "Người dùng";
 
-    if (recipientName) {
-      const postContent = `🎉 @${senderName} đã trao gửi ${amount.toLocaleString()} ${body.token_symbol} cho @${recipientName} ❤️${body.message ? `\n\n"${body.message.slice(0, 120)}"` : ''}`;
+    // Always create gift celebration post (even if recipient name not found)
+    const postContent = `🎉 @${senderName} đã trao gửi ${amount.toLocaleString()} ${body.token_symbol} cho @${recipientName} ❤️${body.message ? `\n\n"${body.message.slice(0, 120)}"` : ''}`;
 
-      await supabase.from("posts").insert({
-        user_id: body.sender_id,
-        content: postContent,
-        post_type: "gift_celebration",
-        tx_hash: body.tx_hash,
-        gift_sender_id: body.sender_id,
-        gift_recipient_id: body.recipient_id,
-        gift_token: body.token_symbol,
-        gift_amount: body.amount,
-        gift_message: body.message || null,
-        is_highlighted: true,
-        highlight_expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-        visibility: "public",
-        moderation_status: "approved",
-      });
-    }
+    await supabase.from("posts").insert({
+      user_id: body.sender_id,
+      content: postContent,
+      post_type: "gift_celebration",
+      tx_hash: body.tx_hash,
+      gift_sender_id: body.sender_id,
+      gift_recipient_id: body.recipient_id,
+      gift_token: body.token_symbol,
+      gift_amount: body.amount,
+      gift_message: body.message || null,
+      is_highlighted: true,
+      highlight_expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      visibility: "public",
+      moderation_status: "approved",
+    });
 
     // Notification
     await supabase.from("notifications").insert({
