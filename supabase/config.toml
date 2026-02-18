@@ -155,3 +155,6 @@ verify_jwt = false
 
 [functions.admin-batch-mint-requests]
 verify_jwt = false
+
+[functions.backfill-donations]
+verify_jwt = false
