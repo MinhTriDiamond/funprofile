@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
@@ -12,12 +12,12 @@ import { FacebookCreatePost } from '@/components/feed/FacebookCreatePost';
 import { FriendRequestButton } from '@/components/friends/FriendRequestButton';
 import { FriendsList } from '@/components/friends/FriendsList';
 import { CoverHonorBoard } from '@/components/profile/CoverHonorBoard';
-import { AvatarOrbit, AvatarOrbitRef } from '@/components/profile/AvatarOrbit';
+import { AvatarOrbit } from '@/components/profile/AvatarOrbit';
 import { Button } from '@/components/ui/button';
 import { LazyImage } from '@/components/ui/LazyImage';
 import { CoverPhotoEditor } from '@/components/profile/CoverPhotoEditor';
 import { AvatarEditor } from '@/components/profile/AvatarEditor';
-import { MoreHorizontal, MapPin, Briefcase, GraduationCap, Heart, Clock, MessageCircle, Eye, X, Pin, PenSquare, Gift, Copy, Wallet, Plus } from 'lucide-react';
+import { MoreHorizontal, MapPin, Briefcase, GraduationCap, Heart, Clock, MessageCircle, Eye, X, Pin, PenSquare, Gift, Copy, Wallet } from 'lucide-react';
 import { DonationButton } from '@/components/donations/DonationButton';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { PullToRefreshContainer } from '@/components/common/PullToRefreshContainer';
@@ -37,7 +37,6 @@ const Profile = () => {
   const { userId, username } = useParams();
   const { t, language } = useLanguage();
   const [profile, setProfile] = useState<any>(null);
-  const orbitRef = useRef<AvatarOrbitRef>(null);
   const [allPosts, setAllPosts] = useState<any[]>([]); // Combined and sorted posts
   const [originalPosts, setOriginalPosts] = useState<any[]>([]); // For photos grid
   const [loading, setLoading] = useState(true);
@@ -455,7 +454,7 @@ const Profile = () => {
                 />
               </div>
 
-              {/* Edit Cover Button */}
+              {/* Edit Cover Button - bottom left on md+, bottom right on mobile */}
               {showPrivateElements && (
                 <div className="absolute bottom-3 right-3 md:right-auto md:left-[8cm] sm:bottom-4 sm:right-4 z-[100] isolate">
                   <CoverPhotoEditor 
@@ -465,8 +464,6 @@ const Profile = () => {
                   />
                 </div>
               )}
-
-
             </div>
           </div>
 
@@ -478,7 +475,6 @@ const Profile = () => {
                 {/* Avatar - positioned higher to overlap cover */}
                 <div className="-mt-[193px] sm:-mt-[201px] md:-mt-[217px] relative z-10 flex justify-center md:justify-start flex-shrink-0">
                   <AvatarOrbit
-                    ref={orbitRef}
                     socialLinks={Array.isArray(profile?.social_links) ? profile.social_links : []}
                     isOwner={isOwnProfile}
                     userId={profile?.id}
