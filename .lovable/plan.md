@@ -1,59 +1,26 @@
 
+# Chuyen ket qua Quet GD thieu tu Dialog sang trang full
 
-# Tinh nang Duyet lai giao dich On-chain chua ghi nhan
+## Thay doi
 
-## Tong quan
+Thay vi hien ket qua scan trong Dialog (modal nho), se chuyen sang hien thi inline ngay trong tab Donations duoi dang mot "view mode". Khi admin nhan "Quet GD thieu", ket qua se thay the noi dung chinh cua tab (bang donations) bang giao dien ket qua scan full-page voi:
 
-Them tinh nang cho Admin de quet toan bo bang `transactions`, tim cac giao dich da on-chain nhung chua co trong bang `donations` (Gift History), va cho phep backfill chung tu dong.
-
-## Cach hoat dong
-
-1. Admin nhan nut "Quet giao dich thieu" trong tab Donations
-2. He thong so sanh `transactions.tx_hash` voi `donations.tx_hash` de tim giao dich bi thieu
-3. Map `to_address` voi `profiles.wallet_address` de xac dinh nguoi nhan
-4. Hien thi danh sach giao dich thieu va cho admin xac nhan backfill
-5. Insert vao bang `donations` voi status "confirmed"
+- Header voi nut "Quay lai" de tro ve giao dien donations binh thuong
+- Thong ke tong quan (so giao dich da quet, so thieu, so khong map duoc)
+- Bang danh sach giao dich thieu full-width voi pagination
+- Nut "Backfill tat ca" noi bat
 
 ## Chi tiet ky thuat
 
-### 1. Tao Edge Function `backfill-donations`
+### File sua: `src/components/admin/DonationHistoryAdminTab.tsx`
 
-File: `supabase/functions/backfill-donations/index.ts`
-
-- Yeu cau admin auth (kiem tra `user_roles`)
-- Co 2 mode:
-  - `scan`: Tra ve danh sach giao dich trong `transactions` ma khong co trong `donations`, kem thong tin mapping wallet -> profile
-  - `backfill`: Nhan danh sach transaction IDs, insert vao `donations`
-- Logic mapping: JOIN `transactions.to_address` voi `profiles.wallet_address` (case-insensitive) de tim `recipient_id`
-- Chi backfill nhung giao dich co the map duoc nguoi nhan (to_address khop voi 1 profile)
-- Khong tao light_action, conversation, hay notification (vi da qua thoi gian)
-
-### 2. Cap nhat Admin UI
-
-File: `src/components/admin/DonationHistoryAdminTab.tsx`
-
-Them vao header:
-- Nut "Quet giao dich thieu" voi icon `ScanSearch`
-- Khi nhan: goi edge function mode `scan`
-- Hien dialog hien thi danh sach giao dich thieu (sender, recipient, amount, token, tx_hash)
-- Nut "Backfill tat ca" de xac nhan insert
-
-### 3. Cau truc du lieu backfill
-
-Moi ban ghi donation duoc tao se co:
-- `sender_id`: tu `transactions.user_id`
-- `recipient_id`: tu mapping `to_address` -> `profiles.wallet_address`
-- `amount`, `token_symbol`, `chain_id`, `tx_hash`: tu `transactions`
-- `status`: "confirmed"
-- `confirmed_at`: `transactions.created_at`
-- `card_theme`: "celebration" (mac dinh)
-- `card_sound`: "rich-1" (mac dinh)
-- `message`: null
-- `light_score_earned`: 0 (khong tinh diem cho backfill)
-
-### Files can tao/sua:
-
-1. `supabase/functions/backfill-donations/index.ts` -- tao moi
-2. `supabase/config.toml` -- them config cho function moi (verify_jwt = false)
-3. `src/components/admin/DonationHistoryAdminTab.tsx` -- them nut scan va dialog backfill
-
+1. **Them state `viewMode`**: `'donations' | 'scanResults'` de chuyen doi giua 2 giao dien
+2. **Khi scan xong**: set `viewMode = 'scanResults'` thay vi `setScanDialogOpen(true)`
+3. **Xoa Dialog scan**: Bo toan bo block `<Dialog>` cho scan results
+4. **Them giao dien scan results inline**: Render khi `viewMode === 'scanResults'`, bao gom:
+   - Header voi icon, tieu de "Ket qua quet giao dich thieu", nut "Quay lai"
+   - Card thong ke: Tong da quet, GD thieu, Khong map duoc
+   - Bang full-width hien thi danh sach missingTx (sender, recipient, amount, token, thoi gian)
+   - Nut "Backfill tat ca" o cuoi
+5. **Khi backfill xong hoac nhan "Quay lai"**: set `viewMode = 'donations'`
+6. **Xoa import Dialog** neu khong con su dung o cho khac
