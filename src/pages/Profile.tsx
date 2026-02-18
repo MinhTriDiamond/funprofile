@@ -182,6 +182,32 @@ const Profile = () => {
 
       setOriginalPosts(allUserPosts); // Keep for photos grid
 
+      // Batch-fetch recipient/sender profiles for gift_celebration posts
+      const giftPostsInProfile = allUserPosts.filter(p => p.post_type === 'gift_celebration');
+      const profileIdsToFetch = new Set<string>();
+      giftPostsInProfile.forEach(p => {
+        if (p.gift_recipient_id) profileIdsToFetch.add(p.gift_recipient_id);
+        if (p.gift_sender_id && p.gift_sender_id !== p.user_id) profileIdsToFetch.add(p.gift_sender_id);
+      });
+      let giftProfileMap = new Map<string, { username: string; display_name?: string | null; avatar_url: string | null }>();
+      if (profileIdsToFetch.size > 0) {
+        const { data: giftProfiles } = await supabase
+          .from('public_profiles')
+          .select('id, username, display_name, avatar_url')
+          .in('id', Array.from(profileIdsToFetch));
+        (giftProfiles || []).forEach(p => giftProfileMap.set(p.id, p));
+      }
+      const allUserPostsWithGiftProfiles = allUserPosts.map(post => {
+        if (post.post_type !== 'gift_celebration') return post;
+        return {
+          ...post,
+          recipientProfile: post.gift_recipient_id ? (giftProfileMap.get(post.gift_recipient_id) || null) : null,
+          senderProfile: (post.gift_sender_id && post.gift_sender_id !== post.user_id)
+            ? (giftProfileMap.get(post.gift_sender_id) || null)
+            : null,
+        };
+      });
+
       // Fetch shared posts
       const { data: sharedPostsData } = await supabase
         .from('shared_posts')
@@ -201,7 +227,7 @@ const Profile = () => {
       const combinedPosts: any[] = [];
       
       // Add original posts with type marker
-      allUserPosts.forEach(post => {
+      allUserPostsWithGiftProfiles.forEach(post => {
         combinedPosts.push({
           ...post,
           _type: 'original',
