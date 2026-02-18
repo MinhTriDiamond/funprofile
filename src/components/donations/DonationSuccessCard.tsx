@@ -217,7 +217,15 @@ export const DonationSuccessCard = ({
               </div>
               <div className="text-sm font-semibold text-emerald-700 mt-1">≈ Priceless với tình yêu thương 💛</div>
               {data.message && (
-                <div className="mt-2 text-sm font-semibold text-emerald-700 italic px-3">
+                <div
+                  className="mt-3 text-sm font-bold italic px-3 py-2 rounded-xl"
+                  style={{
+                    background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
+                    border: '1px solid #fde68a',
+                    color: '#92400e',
+                    textShadow: '0 1px 2px rgba(146,64,14,0.15)',
+                  }}
+                >
                   "{data.message}"
                 </div>
               )}
