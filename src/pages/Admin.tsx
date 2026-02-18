@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Shield, BarChart3, Gift, Users, Wallet, Trash2, Link2, LogOut, CloudUpload, GitMerge, DollarSign, Sparkles, FileText, Ghost } from "lucide-react";
+import { Shield, BarChart3, Gift, Users, Wallet, Trash2, Link2, LogOut, CloudUpload, GitMerge, DollarSign, Sparkles, FileText, Ghost, Eye } from "lucide-react";
 import { FacebookNavbar } from "@/components/layout/FacebookNavbar";
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 
@@ -21,6 +21,7 @@ import PplpMintTab from "@/components/admin/PplpMintTab";
 import { DonationHistoryAdminTab } from "@/components/admin/DonationHistoryAdminTab";
 import PostModerationTab from "@/components/admin/PostModerationTab";
 import GhostCleanupTab from "@/components/admin/GhostCleanupTab";
+import SurveillanceTab from "@/components/admin/SurveillanceTab";
 
 interface UserData {
   id: string;
@@ -163,7 +164,7 @@ const Admin = () => {
 
         {/* Main Tabs */}
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-7 lg:grid-cols-13 h-auto">
+          <TabsList className="grid w-full grid-cols-7 lg:grid-cols-14 h-auto">
             <TabsTrigger value="overview" className="gap-2 py-3">
               <BarChart3 className="w-4 h-4" />
               <span className="hidden sm:inline">📊 Tổng quan</span>
@@ -215,6 +216,10 @@ const Admin = () => {
             <TabsTrigger value="ghost" className="gap-2 py-3">
               <Ghost className="w-4 h-4" />
               <span className="hidden sm:inline">👻 User ảo</span>
+            </TabsTrigger>
+            <TabsTrigger value="surveillance" className="gap-2 py-3">
+              <Eye className="w-4 h-4" />
+              <span className="hidden sm:inline">🔍 Giám sát</span>
             </TabsTrigger>
           </TabsList>
 
@@ -283,6 +288,10 @@ const Admin = () => {
 
           <TabsContent value="ghost">
             <GhostCleanupTab adminId={currentUserId!} />
+          </TabsContent>
+
+          <TabsContent value="surveillance">
+            <SurveillanceTab adminId={currentUserId!} />
           </TabsContent>
       </Tabs>
         </div>
