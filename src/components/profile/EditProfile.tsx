@@ -14,8 +14,6 @@ import { DeleteAccountDialog } from './DeleteAccountDialog';
 import { z } from 'zod';
 import { compressImage, FILE_LIMITS } from '@/utils/imageCompression';
 import { useLanguage } from '@/i18n/LanguageContext';
-import { SocialLinksEditor } from './SocialLinksEditor';
-import type { SocialLink } from './AvatarOrbit';
 
 const profileSchema = z.object({
   username: z.string()
@@ -47,7 +45,6 @@ export const EditProfile = () => {
   const [workplace, setWorkplace] = useState('');
   const [education, setEducation] = useState('');
   const [relationshipStatus, setRelationshipStatus] = useState('');
-  const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
   const [cropImage, setCropImage] = useState<string | null>(null);
   const [userId, setUserId] = useState<string>('');
   const { t } = useLanguage();
@@ -82,7 +79,6 @@ export const EditProfile = () => {
       setWorkplace((data as any).workplace || '');
       setEducation((data as any).education || '');
       setRelationshipStatus((data as any).relationship_status || '');
-      setSocialLinks((data as any).social_links || []);
     } catch (error) {
       // Error fetching profile - silent fail for security
     }
@@ -274,7 +270,6 @@ export const EditProfile = () => {
           workplace: workplace || null,
           education: education || null,
           relationship_status: relationshipStatus || null,
-          social_links: socialLinks,
         } as any)
         .eq('id', userId);
 
@@ -483,10 +478,6 @@ export const EditProfile = () => {
                 {t('publicWalletAddress')} (EVM, 0x...)
               </p>
             </div>
-            <div className="space-y-2">
-              <SocialLinksEditor value={socialLinks} onChange={setSocialLinks} />
-            </div>
-
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? 'Đang cập nhật...' : 'Cập nhật hồ sơ'}
             </Button>

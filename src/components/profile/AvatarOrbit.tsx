@@ -1,13 +1,26 @@
 import React, { useEffect, useRef, useState } from 'react';
 import diamondSrc from '@/assets/diamond-user.png';
 
-export interface SocialLink {
-  platform: string;
+interface OrbitSlot {
+  href: string;
+  imageUrl: string;
   label: string;
-  url: string;
-  color: string;
-  favicon: string;
 }
+
+const ORBIT_SLOTS: OrbitSlot[] = [
+  { href: 'https://academy.fun.rich', imageUrl: '/fun-academy-logo-36.webp', label: 'FUN Academy' },
+  { href: 'https://play.fun.rich',    imageUrl: '/fun-play-logo-36.webp',    label: 'FUN Play' },
+  { href: 'https://planet.fun.rich',  imageUrl: '/fun-planet-logo-36.webp',  label: 'FUN Planet' },
+  { href: 'https://farm.fun.rich',    imageUrl: '/fun-farm-logo-36.webp',    label: 'FUN Farm' },
+  { href: 'https://charity.fun.rich', imageUrl: '/fun-charity-logo-36.webp', label: 'FUN Charity' },
+  { href: 'https://treasury.fun.rich',imageUrl: '/fun-treasury-logo-36.webp',label: 'FUN Treasury' },
+  { href: 'https://wallet.fun.rich',  imageUrl: '/fun-wallet-logo-36.webp',  label: 'FUN Wallet' },
+];
+
+// 7 vị trí phân bố đều 360°, bắt đầu từ 26° để cân bằng với viên kim cương trên đỉnh
+const ORBIT_ANGLES = Array.from({ length: 7 }, (_, i) => Math.round(26 + (360 / 7) * i));
+const ORBIT_RADIUS = 115;
+const ORBIT_SIZE = 40; // px
 
 /** Dùng Canvas để xoá nền trắng/sáng khỏi ảnh PNG, trả về data URL */
 function useTransparentDiamond(src: string) {
@@ -26,10 +39,12 @@ function useTransparentDiamond(src: string) {
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       const data = imageData.data;
 
+      // Xoá pixel trắng/sáng: nếu R,G,B đều > 220 thì set alpha = 0
       for (let i = 0; i < data.length; i += 4) {
         const r = data[i];
         const g = data[i + 1];
         const b = data[i + 2];
+        // Ngưỡng: pixel rất sáng (gần trắng) → trong suốt
         if (r > 220 && g > 220 && b > 220) {
           data[i + 3] = 0;
         }
@@ -44,37 +59,22 @@ function useTransparentDiamond(src: string) {
   return dataUrl;
 }
 
-/** Tính góc phân bổ trong cung 30°–330° (phía dưới, tránh kim cương đỉnh) */
-function computeAngles(n: number): number[] {
-  if (n === 0) return [];
-  if (n === 1) return [180];
-  const start = 30;
-  const end = 330;
-  const span = end - start;
-  return Array.from({ length: n }, (_, i) => start + (span / (n - 1)) * i);
-}
-
-const ORBIT_RADIUS = 115;
-const ORBIT_SIZE = 44; // px
-
 interface AvatarOrbitProps {
   children: React.ReactNode;
-  socialLinks?: SocialLink[];
 }
 
-export function AvatarOrbit({ children, socialLinks = [] }: AvatarOrbitProps) {
+export function AvatarOrbit({ children }: AvatarOrbitProps) {
   const transparentDiamond = useTransparentDiamond(diamondSrc);
-  const angles = computeAngles(socialLinks.length);
 
   return (
     /* paddingTop để diamond nhô hẳn ra trên đỉnh avatar */
     <div className="relative" style={{ paddingTop: '100px' }}>
 
-      {/* Viên kim cương — nằm TRÊN và NGOÀI avatar */}
+      {/* Viên kim cương — nền trong suốt bằng Canvas, nằm TRÊN và NGOÀI avatar */}
       <div
         className="absolute pointer-events-none"
         style={{
-          top: '-20px',
+          top: '-20px',          /* nhô lên trên container để nằm ngoài avatar */
           left: '50%',
           transform: 'translateX(-50%)',
           zIndex: 40,
@@ -92,21 +92,22 @@ export function AvatarOrbit({ children, socialLinks = [] }: AvatarOrbitProps) {
         />
       </div>
 
-      {/* Avatar (children) + orbit slots */}
+      {/* Avatar (children) */}
       <div className="relative" style={{ zIndex: 10 }}>
         {children}
 
-        {socialLinks.map((link, i) => {
-          const angleDeg = angles[i];
+        {/* 7 vị trí liên kết hệ sinh thái xung quanh hình đại diện */}
+        {ORBIT_SLOTS.map((slot, i) => {
+          const angleDeg = ORBIT_ANGLES[i];
           const angleRad = (angleDeg * Math.PI) / 180;
           const x = Math.sin(angleRad) * ORBIT_RADIUS;
           const y = -Math.cos(angleRad) * ORBIT_RADIUS;
 
           return (
             <a
-              key={link.platform}
-              href={link.url}
-              title={link.url}
+              key={i}
+              href={slot.href}
+              title={slot.label}
               target="_blank"
               rel="noopener noreferrer"
               className="absolute group"
@@ -118,56 +119,19 @@ export function AvatarOrbit({ children, socialLinks = [] }: AvatarOrbitProps) {
                 zIndex: 20,
               }}
             >
-              {/* Tooltip */}
               <div
-                className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 rounded text-xs whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-50"
+                className="w-full h-full rounded-full overflow-hidden bg-white group-hover:scale-110 transition-transform duration-200 shadow-md"
                 style={{
-                  background: 'hsl(var(--popover))',
-                  color: 'hsl(var(--popover-foreground))',
-                  border: '1px solid hsl(var(--border))',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                  maxWidth: '180px',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                }}
-              >
-                <span className="font-semibold">{link.label}</span>
-                <br />
-                <span className="opacity-70" style={{ fontSize: '10px' }}>
-                  {link.url.replace(/^https?:\/\//, '').slice(0, 30)}
-                </span>
-              </div>
-
-              {/* Vòng tròn platform */}
-              <div
-                className="w-full h-full rounded-full overflow-hidden bg-white group-hover:scale-110 transition-transform duration-200"
-                style={{
-                  border: `3px solid ${link.color}`,
-                  boxShadow: `0 0 10px ${link.color}66`,
+                  border: '2.5px solid #22c55e',
+                  boxShadow: '0 0 8px rgba(34,197,94,0.6)',
                 }}
               >
                 <img
-                  src={link.favicon}
-                  alt={link.label}
+                  src={slot.imageUrl}
+                  alt={slot.label}
                   className="w-full h-full object-cover"
                   onError={(e) => {
-                    // Fallback: hiện chữ cái đầu platform
-                    const target = e.currentTarget;
-                    target.style.display = 'none';
-                    const parent = target.parentElement;
-                    if (parent && !parent.querySelector('.fallback-text')) {
-                      const span = document.createElement('span');
-                      span.className = 'fallback-text';
-                      span.style.cssText = `
-                        display: flex; align-items: center; justify-content: center;
-                        width: 100%; height: 100%;
-                        font-size: 16px; font-weight: bold;
-                        color: ${link.color};
-                        background: white;
-                      `;
-                      span.textContent = link.label[0];
-                      parent.appendChild(span);
-                    }
+                    e.currentTarget.style.display = 'none';
                   }}
                 />
               </div>
