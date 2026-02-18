@@ -14,6 +14,7 @@ import { TetBackground } from "@/components/ui/TetBackground";
 import { TetFlowerOverlay } from "@/components/ui/TetFlowerOverlay";
 import { ValentineMusicButton } from "@/components/layout/ValentineMusicButton";
 import { TetBackgroundProvider } from "@/contexts/TetBackgroundContext";
+import { usePendingDonationRecovery } from "@/hooks/usePendingDonationRecovery";
 // Lazy load pages for code splitting
 const Auth = lazy(() => import("./pages/Auth"));
 const Friends = lazy(() => import("./pages/Friends"));
@@ -89,6 +90,12 @@ function AuthSessionKeeper() {
   return null;
 }
 
+// Tự động recover pending donations bị gián đoạn khi user đăng nhập
+function PendingDonationRecovery() {
+  usePendingDonationRecovery();
+  return null;
+}
+
 // Loading fallback component with smooth animation
 const PageLoader = () => (
   <div className="min-h-screen bg-background flex items-center justify-center">
@@ -109,6 +116,7 @@ function App() {
             <Toaster />
             <Sonner />
             <AuthSessionKeeper />
+            <PendingDonationRecovery />
           <BrowserRouter>
             <TetBackground />
             <TetFlowerOverlay />
