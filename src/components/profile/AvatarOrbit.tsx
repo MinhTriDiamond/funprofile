@@ -257,14 +257,25 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
                 href={link.url.startsWith('http') ? link.url : `https://${link.url}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  // Nếu đang ở chế độ owner và hover, ngăn mở link khi click vùng edit
+                  if (isEditing) {
+                    e.preventDefault();
+                    return;
+                  }
+                  const url = link.url.startsWith('http') ? link.url : `https://${link.url}`;
+                  window.open(url, '_blank', 'noopener,noreferrer');
+                  e.preventDefault();
+                }}
                 className="w-full h-full rounded-full bg-white flex items-center justify-center transition-transform duration-200 shadow-md hover:scale-110 cursor-pointer"
-                style={{ border: `2.5px solid ${link.color}`, boxShadow: `0 0 8px ${link.color}66` }}
+                style={{ display: 'flex', border: `2.5px solid ${link.color}`, boxShadow: `0 0 8px ${link.color}66` }}
               >
                 <img
                   src={link.favicon}
                   alt={link.label}
                   className="w-6 h-6 object-contain"
+                  style={{ pointerEvents: 'none' }}
                   onError={(e) => {
                     e.currentTarget.style.display = 'none';
                     const p = e.currentTarget.parentElement;
