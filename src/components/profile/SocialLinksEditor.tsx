@@ -9,7 +9,7 @@ export const PLATFORM_PRESETS: Record<string, { label: string; color: string; fa
   angel: {
     label: 'Angel AI',
     color: '#C9A227',
-    favicon: '/angel-logo.jpg',
+    favicon: '/angel-ai-logo-128.png',
   },
   funplay: {
     label: 'Fun Play',
