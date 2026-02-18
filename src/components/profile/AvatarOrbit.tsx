@@ -41,6 +41,7 @@ export function AvatarOrbit({ children }: AvatarOrbitProps) {
             width: '112px',
             height: '112px',
             objectFit: 'contain',
+            mixBlendMode: 'multiply',
             filter: 'drop-shadow(0 6px 16px rgba(34,197,94,0.6))',
           }}
         />

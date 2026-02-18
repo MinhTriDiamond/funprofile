@@ -456,7 +456,7 @@ const Profile = () => {
 
               {/* Edit Cover Button - bottom left on md+, bottom right on mobile */}
               {showPrivateElements && (
-                <div className="absolute bottom-3 right-3 md:right-auto md:left-3 sm:bottom-4 sm:right-4 md:sm:left-4 z-[100] isolate">
+                <div className="absolute bottom-3 right-3 md:right-auto md:left-[5cm] sm:bottom-4 sm:right-4 z-[100] isolate">
                   <CoverPhotoEditor 
                     userId={currentUserId}
                     currentCoverUrl={profile?.cover_url}
