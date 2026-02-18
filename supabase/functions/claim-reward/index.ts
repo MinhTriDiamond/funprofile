@@ -157,9 +157,12 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 7d. Check at least 1 post today
-    const postTodayStart = new Date();
-    postTodayStart.setUTCHours(0, 0, 0, 0);
+    // 7d. Check at least 1 post today (dùng giờ Việt Nam UTC+7)
+    const VN_OFFSET_MS = 7 * 60 * 60 * 1000;
+    const nowVN = new Date(Date.now() + VN_OFFSET_MS);
+    const postTodayStart = new Date(
+      Date.UTC(nowVN.getUTCFullYear(), nowVN.getUTCMonth(), nowVN.getUTCDate()) - VN_OFFSET_MS
+    );
     const { count: todayPostCount } = await supabaseAdmin
       .from('posts')
       .select('id', { count: 'exact', head: true })
@@ -365,9 +368,13 @@ Deno.serve(async (req) => {
     const claimedAmount = claims?.reduce((sum, c) => sum + Number(c.amount), 0) || 0;
     const claimableAmount = Math.max(0, totalReward - claimedAmount);
 
-    // Calculate daily claimed amount (UTC day)
-    const todayStart = new Date();
-    todayStart.setUTCHours(0, 0, 0, 0);
+    // Calculate daily claimed amount (Giờ Việt Nam UTC+7 - reset lúc 00:00 VN thay vì 07:00 VN)
+    const VN_OFFSET_MS_DAILY = 7 * 60 * 60 * 1000;
+    const nowVNDaily = new Date(Date.now() + VN_OFFSET_MS_DAILY);
+    const todayStart = new Date(
+      Date.UTC(nowVNDaily.getUTCFullYear(), nowVNDaily.getUTCMonth(), nowVNDaily.getUTCDate()) - VN_OFFSET_MS_DAILY
+    );
+
     const { data: todayClaims } = await supabaseAdmin
       .from('reward_claims')
       .select('amount')
@@ -376,6 +383,61 @@ Deno.serve(async (req) => {
 
     const todayClaimed = todayClaims?.reduce((sum, c) => sum + Number(c.amount), 0) || 0;
     const dailyRemaining = Math.max(0, DAILY_CLAIM_CAP - todayClaimed);
+
+    // ===== CLAIM VELOCITY CHECK: Phát hiện sớm hành vi farm =====
+    // Kiểm tra số lần rút trong 24 giờ thực (không phụ thuộc ngày UTC)
+    const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const { count: recentClaimCount } = await supabaseAdmin
+      .from('reward_claims')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .gte('created_at', last24h.toISOString());
+
+    if (recentClaimCount !== null && recentClaimCount >= 3) {
+      console.warn(`CLAIM_VELOCITY: User ${userId} đã rút ${recentClaimCount} lần trong 24h!`);
+      
+      // Tự động on_hold + ghi fraud signal
+      await supabaseAdmin.from('profiles').update({
+        reward_status: 'on_hold',
+        admin_notes: `CLAIM_VELOCITY: Rút ${recentClaimCount} lần trong 24 giờ. Nghi ngờ khai thác lỗ hổng timezone. Chờ Admin xác minh.`,
+      }).eq('id', userId);
+
+      await supabaseAdmin.from('pplp_fraud_signals').insert({
+        actor_id: userId,
+        signal_type: 'CLAIM_VELOCITY',
+        severity: 4,
+        details: { 
+          claim_count_24h: recentClaimCount, 
+          today_claimed: todayClaimed,
+          daily_remaining: dailyRemaining,
+          window: '24h',
+          threshold: 3
+        },
+        source: 'claim-reward',
+      });
+
+      // Thông báo tới admin
+      const { data: admins } = await supabaseAdmin
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', 'admin');
+      if (admins && admins.length > 0) {
+        await supabaseAdmin.from('notifications').insert(
+          admins.map(a => ({
+            user_id: a.user_id,
+            actor_id: userId,
+            type: 'admin_claim_velocity',
+            read: false,
+          }))
+        );
+      }
+
+      return new Response(JSON.stringify({
+        error: 'Account Review',
+        message: `Tài khoản của bạn đã rút thưởng ${recentClaimCount} lần trong 24 giờ và đang chờ Admin xác minh 🙏\n\nHệ thống phát hiện tần suất rút bất thường. Vui lòng liên hệ Admin để được hỗ trợ nhanh nhất. Cảm ơn bạn đã thấu hiểu 💛`,
+        claim_count_24h: recentClaimCount,
+      }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
 
     console.log(`User ${userId}: total=${totalReward}, claimed=${claimedAmount}, claimable=${claimableAmount}, requested=${claimAmount}, todayClaimed=${todayClaimed}, dailyRemaining=${dailyRemaining}`);
 

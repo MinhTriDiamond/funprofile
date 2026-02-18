@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { Wallet, Users, AlertTriangle, Ban, FileText, Smartphone, CheckCircle, Trash2, Globe, Monitor } from "lucide-react";
+import { Wallet, Users, AlertTriangle, Ban, FileText, Smartphone, CheckCircle, Trash2, Globe, Monitor, Zap, RefreshCw, Clock } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
 
@@ -42,12 +42,95 @@ interface DeviceGroup {
   totalCamly: number;
 }
 
+interface FarmDetectorEntry {
+  user_id: string;
+  username: string;
+  avatar_url: string | null;
+  claim_count: number;
+  total_claimed_24h: number;
+  last_claim_at: string;
+  signal_type: string;
+}
+
 const WalletAbuseTab = ({ users, adminId, onRefresh }: WalletAbuseTabProps) => {
   const [loading, setLoading] = useState<string | null>(null);
   const [deviceGroups, setDeviceGroups] = useState<DeviceGroup[]>([]);
   const [ipMap, setIpMap] = useState<Record<string, IpInfo>>({});
+  const [farmVelocity, setFarmVelocity] = useState<FarmDetectorEntry[]>([]);
+  const [farmUTCExploiters, setFarmUTCExploiters] = useState<FarmDetectorEntry[]>([]);
+  const [farmRefreshing, setFarmRefreshing] = useState(false);
 
-  // Fetch shared devices + IP logs on mount
+  // Fetch shared devices + IP logs + Farm Detector on mount
+  const fetchFarmDetectorData = async () => {
+    setFarmRefreshing(true);
+    try {
+      // Claim Velocity: user rút >= 3 lần trong 24h
+      const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { data: velocityData } = await supabase
+        .from('reward_claims')
+        .select('user_id, amount, created_at')
+        .gte('created_at', last24h)
+        .order('created_at', { ascending: false });
+
+      if (velocityData) {
+        const userClaimMap: Record<string, { count: number; total: number; last_at: string }> = {};
+        velocityData.forEach((c: any) => {
+          if (!userClaimMap[c.user_id]) {
+            userClaimMap[c.user_id] = { count: 0, total: 0, last_at: c.created_at };
+          }
+          userClaimMap[c.user_id].count += 1;
+          userClaimMap[c.user_id].total += Number(c.amount);
+        });
+
+        const velocityEntries: FarmDetectorEntry[] = Object.entries(userClaimMap)
+          .filter(([_, v]) => v.count >= 2)
+          .map(([uid, v]) => {
+            const u = users.find(u => u.id === uid);
+            return {
+              user_id: uid,
+              username: u?.username || uid.slice(0, 8),
+              avatar_url: u?.avatar_url || null,
+              claim_count: v.count,
+              total_claimed_24h: v.total,
+              last_claim_at: v.last_at,
+              signal_type: 'CLAIM_VELOCITY',
+            };
+          })
+          .sort((a, b) => b.claim_count - a.claim_count);
+        setFarmVelocity(velocityEntries);
+
+        // UTC Gap Exploiters: user có claim trong window 23:00-01:00 UTC (00:00-08:00 VN gap)
+        const utcGapData = velocityData.filter((c: any) => {
+          const h = new Date(c.created_at).getUTCHours();
+          return h >= 22 || h <= 1; // 22:00-01:59 UTC = 05:00-08:59 VN (khoảng nguy hiểm)
+        });
+        const utcGapMap: Record<string, { count: number; total: number; last_at: string }> = {};
+        utcGapData.forEach((c: any) => {
+          if (!utcGapMap[c.user_id]) utcGapMap[c.user_id] = { count: 0, total: 0, last_at: c.created_at };
+          utcGapMap[c.user_id].count += 1;
+          utcGapMap[c.user_id].total += Number(c.amount);
+        });
+        const utcEntries: FarmDetectorEntry[] = Object.entries(utcGapMap)
+          .map(([uid, v]) => {
+            const u = users.find(u => u.id === uid);
+            return {
+              user_id: uid,
+              username: u?.username || uid.slice(0, 8),
+              avatar_url: u?.avatar_url || null,
+              claim_count: v.count,
+              total_claimed_24h: v.total,
+              last_claim_at: v.last_at,
+              signal_type: 'UTC_GAP',
+            };
+          })
+          .sort((a, b) => b.total_claimed_24h - a.total_claimed_24h);
+        setFarmUTCExploiters(utcEntries);
+      }
+    } finally {
+      setFarmRefreshing(false);
+    }
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       // Fetch device groups
@@ -107,6 +190,7 @@ const WalletAbuseTab = ({ users, adminId, onRefresh }: WalletAbuseTabProps) => {
       }
     };
     fetchData();
+    fetchFarmDetectorData();
   }, [users]);
 
   // Detect shared wallets
@@ -443,8 +527,12 @@ const WalletAbuseTab = ({ users, adminId, onRefresh }: WalletAbuseTabProps) => {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="device">
-          <TabsList className="grid w-full grid-cols-5 mb-4">
+        <Tabs defaultValue="farm">
+          <TabsList className="grid w-full grid-cols-6 mb-4">
+            <TabsTrigger value="farm" className="gap-1 text-xs sm:text-sm">
+              <Zap className="w-3 h-3 sm:w-4 sm:h-4 text-red-500" />
+              <span className="hidden sm:inline">🚨 Farm</span> ({farmVelocity.length + farmUTCExploiters.length})
+            </TabsTrigger>
             <TabsTrigger value="device" className="gap-1 text-xs sm:text-sm">
               <Smartphone className="w-3 h-3 sm:w-4 sm:h-4" />
               <span className="hidden sm:inline">Thiết bị</span> ({deviceGroups.length})
@@ -467,7 +555,126 @@ const WalletAbuseTab = ({ users, adminId, onRefresh }: WalletAbuseTabProps) => {
             </TabsTrigger>
           </TabsList>
 
-          {/* Shared Devices - Enhanced */}
+          {/* ===== FARM DETECTOR TAB ===== */}
+          <TabsContent value="farm" className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-destructive flex items-center gap-2">
+                  <Zap className="w-4 h-4" /> Farm Detector — Realtime
+                </h3>
+                <p className="text-xs text-muted-foreground">Phát hiện sớm hành vi farm coin qua Claim Velocity và UTC Gap</p>
+              </div>
+              <Button size="sm" variant="outline" onClick={fetchFarmDetectorData} disabled={farmRefreshing} className="gap-1">
+                <RefreshCw className={`w-3 h-3 ${farmRefreshing ? 'animate-spin' : ''}`} /> Làm mới
+              </Button>
+            </div>
+
+            {/* Claim Velocity - rút >= 2 lần trong 24h */}
+            <div className="border rounded-lg p-4 space-y-3">
+              <h4 className="font-semibold text-sm flex items-center gap-2">
+                <Clock className="w-4 h-4 text-orange-500" />
+                ⚡ Claim Velocity — Rút nhiều lần trong 24h
+                <Badge variant="destructive" className="text-xs">{farmVelocity.length} tài khoản</Badge>
+              </h4>
+              {farmVelocity.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">✅ Không phát hiện claim velocity bất thường</p>
+              ) : (
+                <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                  {farmVelocity.map((entry) => {
+                    const userData = users.find(u => u.id === entry.user_id);
+                    return (
+                      <div key={entry.user_id} className="flex items-center gap-3 p-3 border rounded-lg bg-orange-50/50">
+                        <Avatar className="w-9 h-9">
+                          <AvatarImage src={entry.avatar_url || ""} />
+                          <AvatarFallback>{entry.username[0]}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-semibold text-sm">{entry.username}</p>
+                            <Badge variant="destructive" className="text-xs">
+                              {entry.claim_count} lần rút
+                            </Badge>
+                            {userData?.reward_status && (
+                              <Badge className="text-xs bg-yellow-100 text-yellow-800 border-yellow-300">
+                                {userData.reward_status}
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Tổng: {entry.total_claimed_24h.toLocaleString('vi-VN')} CAMLY trong 24h • Lần cuối: {formatDistanceToNow(new Date(entry.last_claim_at), { addSuffix: true, locale: vi })}
+                          </p>
+                        </div>
+                        <div className="flex gap-1">
+                          {userData && !userData.is_banned && (
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              className="text-xs"
+                              onClick={() => handleBanUser(userData)}
+                              disabled={loading === userData.id}
+                            >
+                              <Ban className="w-3 h-3 mr-1" /> Cấm
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* UTC Gap Exploiters - claim trong giờ nhạy cảm */}
+            <div className="border rounded-lg p-4 space-y-3">
+              <h4 className="font-semibold text-sm flex items-center gap-2">
+                <Globe className="w-4 h-4 text-red-500" />
+                🌏 UTC Gap Exploiters — Rút trong window 22:00-02:00 UTC (05:00-09:00 VN)
+                <Badge variant="destructive" className="text-xs">{farmUTCExploiters.length} tài khoản</Badge>
+              </h4>
+              <p className="text-xs text-muted-foreground bg-red-50 p-2 rounded">
+                ⚠️ Đây là cửa sổ thời gian kẻ farm lợi dụng để rút 2 lần trong cùng 1 ngày thực tế. Hệ thống đã được vá nhưng cần theo dõi các tài khoản cũ.
+              </p>
+              {farmUTCExploiters.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">✅ Không phát hiện khai thác UTC gap</p>
+              ) : (
+                <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                  {farmUTCExploiters.map((entry) => {
+                    const userData = users.find(u => u.id === entry.user_id);
+                    return (
+                      <div key={entry.user_id} className="flex items-center gap-3 p-3 border rounded-lg bg-red-50/50">
+                        <Avatar className="w-9 h-9">
+                          <AvatarImage src={entry.avatar_url || ""} />
+                          <AvatarFallback>{entry.username[0]}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-semibold text-sm">{entry.username}</p>
+                            <Badge className="text-xs bg-red-100 text-red-800 border-red-300">UTC Gap</Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            {entry.claim_count} lần trong giờ nhạy cảm • {entry.total_claimed_24h.toLocaleString('vi-VN')} CAMLY • {formatDistanceToNow(new Date(entry.last_claim_at), { addSuffix: true, locale: vi })}
+                          </p>
+                        </div>
+                        <div className="flex gap-1">
+                          {userData && !userData.is_banned && (
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              className="text-xs"
+                              onClick={() => handleBanUser(userData)}
+                              disabled={loading === userData.id}
+                            >
+                              <Ban className="w-3 h-3 mr-1" /> Cấm
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </TabsContent>
           <TabsContent value="device" className="max-h-[600px] overflow-y-auto space-y-4">
             {deviceGroups.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">Không phát hiện thiết bị dùng chung</p>
