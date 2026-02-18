@@ -133,8 +133,8 @@ export const DonationReceivedCard = ({
               <div className="flex justify-center mb-2">
                 <img src={funPlayLogo} alt="FUN Profile" className="w-14 h-14 rounded-full object-cover shadow-md" style={{ boxShadow: '0 0 0 3px #d1fae5, 0 0 0 5px #6ee7b7' }} />
               </div>
-              <div className="text-sm font-extrabold text-gray-900 mb-0.5 tracking-wide">FUN Profile — Biên Nhận Tặng</div>
-              <div className="text-xs text-gray-500 font-mono">#{data.id?.slice(0, 16)}</div>
+              <div className="text-xs font-extrabold mb-0.5 tracking-wide" style={{ color: '#047857' }}>FUN Profile — Biên Nhận Tặng</div>
+              <div className="text-[10px] font-mono" style={{ color: '#059669' }}>#{data.id?.slice(0, 16)}</div>
             </div>
 
             {/* Divider dashed */}
@@ -164,8 +164,8 @@ export const DonationReceivedCard = ({
                   </AvatarFallback>
                 </Avatar>
                 <div className="text-center">
-                  <div className="text-xs font-extrabold text-gray-900 leading-tight">{data.senderDisplayName || data.senderUsername}</div>
-                  <div className="text-xs font-medium text-gray-500">@{data.senderUsername}</div>
+                  <div className="text-xs font-extrabold leading-tight" style={{ color: '#047857' }}>{data.senderDisplayName || data.senderUsername}</div>
+                  <div className="text-[10px] font-medium" style={{ color: '#059669' }}>@{data.senderUsername}</div>
                 </div>
               </button>
 
@@ -186,8 +186,8 @@ export const DonationReceivedCard = ({
                   </AvatarFallback>
                 </Avatar>
                 <div className="text-center">
-                  <div className="text-xs font-extrabold text-gray-900 leading-tight">{data.recipientDisplayName || data.recipientUsername || 'Bạn'}</div>
-                  <div className="text-xs font-medium text-gray-500">@{data.recipientUsername || 'you'}</div>
+                  <div className="text-xs font-extrabold leading-tight" style={{ color: '#047857' }}>{data.recipientDisplayName || data.recipientUsername || 'Bạn'}</div>
+                  <div className="text-[10px] font-medium" style={{ color: '#059669' }}>@{data.recipientUsername || 'you'}</div>
                 </div>
               </div>
             </div>
@@ -201,19 +201,19 @@ export const DonationReceivedCard = ({
                   <span className="text-3xl">💰</span>
                 )}
                 <span
-                  className="text-4xl font-black tracking-tight"
+                  className="text-[34px] font-black tracking-tight"
                   style={{
-                    background: 'linear-gradient(135deg, #064e3b 0%, #065f46 30%, #047857 60%, #059669 100%)',
+                    background: 'linear-gradient(135deg, #059669 0%, #10b981 40%, #34d399 80%, #6ee7b7 100%)',
                     WebkitBackgroundClip: 'text',
                     WebkitTextFillColor: 'transparent',
-                    filter: 'drop-shadow(0 2px 4px rgba(4,78,59,0.4))',
+                    filter: 'drop-shadow(0 2px 6px rgba(16,185,129,0.5))',
                   }}
                 >
                   {Number(data.amount).toLocaleString('vi-VN')} {data.tokenSymbol}
                 </span>
               </div>
               {data.message && (
-                <div className="mt-2 text-xs font-semibold text-gray-600 italic px-3">
+                <div className="mt-2 text-xs font-semibold italic px-3" style={{ color: '#047857' }}>
                   "{data.message}"
                 </div>
               )}
@@ -226,30 +226,31 @@ export const DonationReceivedCard = ({
             <div className="mx-4 mt-2 rounded-xl overflow-hidden border border-gray-100">
               <div className="divide-y divide-gray-100">
                 <div className="flex justify-between items-center px-4 py-2.5 bg-white">
-                  <span className="text-xs font-semibold text-gray-600">Thời gian</span>
-                  <span className="text-xs font-bold text-gray-800">
+                  <span className="text-xs font-semibold" style={{ color: '#047857' }}>Thời gian</span>
+                  <span className="text-xs font-bold" style={{ color: '#064e3b' }}>
                     {format(new Date(data.createdAt), 'HH:mm dd/MM/yyyy', { locale: vi })}
                   </span>
                 </div>
                 <div className="flex justify-between items-center px-4 py-2.5 bg-white">
-                  <span className="text-xs font-semibold text-gray-600">Mạng</span>
-                  <span className="text-xs font-bold text-gray-800">BSC</span>
+                  <span className="text-xs font-semibold" style={{ color: '#047857' }}>Mạng</span>
+                  <span className="text-xs font-bold" style={{ color: '#064e3b' }}>BSC</span>
                 </div>
                 <div className="flex justify-between items-center px-4 py-2.5 bg-white">
-                  <span className="text-xs font-semibold text-gray-600">TX Hash</span>
+                  <span className="text-xs font-semibold" style={{ color: '#047857' }}>TX Hash</span>
                   <a
                     href={getBscScanTxUrl(data.txHash, data.tokenSymbol)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs font-mono font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1"
+                    className="text-xs font-mono font-bold flex items-center gap-1"
+                    style={{ color: '#059669' }}
                   >
                     {shortTxHash}
                     <ExternalLink className="w-3 h-3" />
                   </a>
                 </div>
                 <div className="flex justify-between items-center px-4 py-2.5 bg-white">
-                  <span className="text-xs font-semibold text-gray-600">Trạng thái</span>
-                  <span className={`text-xs font-bold flex items-center gap-1 ${isSuccess ? 'text-emerald-700' : 'text-orange-600'}`}>
+                  <span className="text-xs font-semibold" style={{ color: '#047857' }}>Trạng thái</span>
+                  <span className={`text-xs font-bold flex items-center gap-1 ${isSuccess ? 'text-emerald-600' : 'text-orange-600'}`}>
                     {isSuccess
                       ? <CheckCircle2 className="w-3.5 h-3.5" />
                       : <Clock className="w-3.5 h-3.5" />}
