@@ -18,6 +18,7 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabaseAdmin = createClient(supabaseUrl, serviceKey);
 
     // Verify user
     const supabaseAuth = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!);
@@ -98,7 +99,7 @@ Deno.serve(async (req) => {
     }
 
     // Insert using service role
-    const supabaseAdmin = createClient(supabaseUrl, serviceKey);
+    // Insert using service role (supabaseAdmin already created above)
     await supabaseAdmin.from("login_ip_logs").insert({
       user_id: user.id,
       ip_address: ip,
