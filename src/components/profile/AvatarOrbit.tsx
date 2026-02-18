@@ -11,6 +11,7 @@ export interface SocialLink {
 
 const ORBIT_RADIUS = 115;
 const ORBIT_SIZE = 40; // px
+const AVATAR_SIZE = 176; // px — fixed reference size (w-44)
 
 /** Dùng Canvas để xoá nền trắng/sáng khỏi ảnh PNG, trả về data URL */
 function useTransparentDiamond(src: string) {
@@ -48,18 +49,16 @@ function useTransparentDiamond(src: string) {
 }
 
 /**
- * Tính góc phân bổ cho n ô quanh avatar.
- * - Viên kim cương cố định ở 0° (đỉnh trên = 180° trong hệ toán học).
- * - Vùng bảo vệ kim cương: ±40° quanh đỉnh → ô đầu tiên tại 180° (thẳng xuống).
- * - n=1  → [180°]
- * - n>1  → phân bổ đều từ (180° - span/2) đến (180° + span/2)
- *          span tối đa 260° (tránh vùng ±50° quanh đỉnh)
+ * Phân bổ góc cho n ô quanh avatar.
+ * - Kim cương cố định ở đỉnh (0° / 360°).
+ * - Vùng bảo vệ kim cương: ±50° quanh đỉnh.
+ * - n=1  → [180°] (thẳng xuống)
+ * - n>1  → phân bổ đều trong span, tối đa 260°
  */
 function computeAngles(n: number): number[] {
   if (n === 0) return [];
   if (n === 1) return [180];
 
-  // span tăng dần theo n, tối đa 260° (tránh vùng 50° mỗi bên quanh đỉnh)
   const maxSpan = 260;
   const span = Math.min(maxSpan, (n - 1) * (maxSpan / 8));
   const start = 180 - span / 2;
@@ -78,14 +77,16 @@ export function AvatarOrbit({ children, socialLinks = [] }: AvatarOrbitProps) {
   const angles = computeAngles(socialLinks.length);
 
   return (
-    /* paddingTop để diamond nhô hẳn ra trên đỉnh avatar */
-    <div className="relative" style={{ paddingTop: '100px' }}>
-
-      {/* Viên kim cương — nằm TRÊN và NGOÀI avatar */}
+    /* paddingTop để kim cương nhô ra trên đỉnh avatar */
+    <div
+      className="relative flex flex-col items-center"
+      style={{ paddingTop: '110px', paddingBottom: `${ORBIT_RADIUS + ORBIT_SIZE / 2 + 8}px` }}
+    >
+      {/* Viên kim cương — nằm TRÊN avatar */}
       <div
         className="absolute pointer-events-none"
         style={{
-          top: '-20px',
+          top: '-10px',
           left: '50%',
           transform: 'translateX(-50%)',
           zIndex: 40,
@@ -95,17 +96,37 @@ export function AvatarOrbit({ children, socialLinks = [] }: AvatarOrbitProps) {
           src={transparentDiamond}
           alt="Kim cương xanh"
           style={{
-            width: '224px',
-            height: '224px',
+            width: '200px',
+            height: '200px',
             objectFit: 'contain',
             display: 'block',
           }}
         />
       </div>
 
-      {/* Avatar (children) */}
-      <div className="relative" style={{ zIndex: 10 }}>
-        {children}
+      {/* Wrapper cố định kích thước — làm tâm điểm cho orbit */}
+      <div
+        style={{
+          position: 'relative',
+          width: `${AVATAR_SIZE}px`,
+          height: `${AVATAR_SIZE}px`,
+          overflow: 'visible',
+          zIndex: 10,
+          flexShrink: 0,
+        }}
+      >
+        {/* Avatar (children) — căn giữa wrapper */}
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          {children}
+        </div>
 
         {/* Social link orbital slots */}
         {socialLinks.map((link, i) => {
@@ -124,8 +145,8 @@ export function AvatarOrbit({ children, socialLinks = [] }: AvatarOrbitProps) {
               rel="noopener noreferrer"
               className="absolute group"
               style={{
-                left: `calc(50% + ${x}px - ${ORBIT_SIZE / 2}px)`,
-                top: `calc(50% + ${y}px - ${ORBIT_SIZE / 2}px)`,
+                left: `${AVATAR_SIZE / 2 + x - ORBIT_SIZE / 2}px`,
+                top: `${AVATAR_SIZE / 2 + y - ORBIT_SIZE / 2}px`,
                 width: `${ORBIT_SIZE}px`,
                 height: `${ORBIT_SIZE}px`,
                 zIndex: 20,
@@ -153,7 +174,6 @@ export function AvatarOrbit({ children, socialLinks = [] }: AvatarOrbitProps) {
                   alt={link.label}
                   className="w-6 h-6 object-contain"
                   onError={(e) => {
-                    // Fallback: show first letter of platform
                     e.currentTarget.style.display = 'none';
                     const parent = e.currentTarget.parentElement;
                     if (parent && !parent.querySelector('.fallback-letter')) {
