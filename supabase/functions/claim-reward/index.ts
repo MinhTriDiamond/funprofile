@@ -358,6 +358,7 @@ Deno.serve(async (req) => {
 
     const userReward = rewardsData?.find((r: any) => r.id === userId);
     const totalReward = Number(userReward?.total_reward) || 0;
+    const todayReward = Number(userReward?.today_reward) || 0;
 
     // Get already claimed amount
     const { data: claims } = await supabase
@@ -366,7 +367,8 @@ Deno.serve(async (req) => {
       .eq('user_id', userId);
 
     const claimedAmount = claims?.reduce((sum, c) => sum + Number(c.amount), 0) || 0;
-    const claimableAmount = Math.max(0, totalReward - claimedAmount);
+    // Không cộng dồn: claimable chỉ dựa trên thưởng hôm nay trừ đã claim hôm nay
+    // todayClaimed sẽ được tính phía dưới
 
     // Calculate daily claimed amount (Giờ Việt Nam UTC+7 - reset lúc 00:00 VN thay vì 07:00 VN)
     const VN_OFFSET_MS_DAILY = 7 * 60 * 60 * 1000;
@@ -383,6 +385,8 @@ Deno.serve(async (req) => {
 
     const todayClaimed = todayClaims?.reduce((sum, c) => sum + Number(c.amount), 0) || 0;
     const dailyRemaining = Math.max(0, DAILY_CLAIM_CAP - todayClaimed);
+    // Không cộng dồn: claimable chỉ dựa trên thưởng hôm nay trừ đã claim hôm nay
+    const claimableAmount = Math.max(0, todayReward - todayClaimed);
 
     // ===== CLAIM VELOCITY CHECK: Phát hiện sớm hành vi farm =====
     // Kiểm tra số lần rút trong 24 giờ thực (không phụ thuộc ngày UTC)

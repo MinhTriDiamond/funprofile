@@ -328,10 +328,6 @@ export const ClaimRewardsSection = ({
             <span className="shrink-0">✅</span>
             <span>Admin duyệt trước khi cho phép claim</span>
           </p>
-          <p className="text-xs text-muted-foreground flex items-start gap-2">
-            <span className="shrink-0">⏰</span>
-            <span>Giới hạn: {formatNumber(DAILY_LIMIT)} CAMLY / ngày. Phần dư sẽ được cộng dồn ngày tiếp theo</span>
-          </p>
         </div>
       </CardContent>
     </Card>

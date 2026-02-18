@@ -256,15 +256,17 @@ const WalletCenterContainer = () => {
           total_reward: Number(userData.total_reward) || 0,
           today_reward: Number(userData.today_reward) || 0,
         });
+        const todayReward = Number(userData.today_reward) || 0;
         const totalReward = Number(userData.total_reward) || 0;
         const { data: claims } = await supabase.from('reward_claims').select('amount, created_at').eq('user_id', userId);
         const claimed = claims?.reduce((sum, c) => sum + Number(c.amount), 0) || 0;
         setClaimedAmount(claimed);
-        setClaimableReward(Math.max(0, totalReward - claimed));
+        // Không cộng dồn: claimable chỉ dựa trên thưởng hôm nay trừ đã claim hôm nay
         const todayStart = new Date();
         todayStart.setUTCHours(0, 0, 0, 0);
         const todayCl = claims?.filter(c => new Date(c.created_at) >= todayStart).reduce((sum, c) => sum + Number(c.amount), 0) || 0;
         setDailyClaimed(todayCl);
+        setClaimableReward(Math.max(0, todayReward - todayCl));
       } else {
         setRewardStats({ posts_count: 0, reactions_on_posts: 0, comments_count: 0, shares_count: 0, friends_count: 0, livestreams_count: 0, total_reward: 50000, today_reward: 0 });
         setClaimableReward(50000);
