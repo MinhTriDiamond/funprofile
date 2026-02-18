@@ -9,13 +9,13 @@ interface OrbitSlot {
 
 // 7 ecosystem app slots — con cập nhật href sau nhé
 const ORBIT_SLOTS: OrbitSlot[] = [
-  { href: '#', imageUrl: '/fun-academy-logo-36.webp', label: 'FUN Academy' },
-  { href: '#', imageUrl: '/fun-play-logo-36.webp', label: 'FUN Play' },
-  { href: '#', imageUrl: '/fun-planet-logo-36.webp', label: 'FUN Planet' },
-  { href: '#', imageUrl: '/fun-farm-logo-36.webp', label: 'FUN Farm' },
-  { href: '#', imageUrl: '/fun-charity-logo-36.webp', label: 'FUN Charity' },
-  { href: '#', imageUrl: '/fun-treasury-logo-36.webp', label: 'FUN Treasury' },
-  { href: '#', imageUrl: '/fun-wallet-logo-36.webp', label: 'FUN Wallet' },
+  { href: 'https://academy.fun.rich', imageUrl: '/fun-academy-logo-36.webp', label: 'FUN Academy' },
+  { href: 'https://play.fun.rich',    imageUrl: '/fun-play-logo-36.webp',    label: 'FUN Play' },
+  { href: 'https://planet.fun.rich',  imageUrl: '/fun-planet-logo-36.webp',  label: 'FUN Planet' },
+  { href: 'https://farm.fun.rich',    imageUrl: '/fun-farm-logo-36.webp',    label: 'FUN Farm' },
+  { href: 'https://charity.fun.rich', imageUrl: '/fun-charity-logo-36.webp', label: 'FUN Charity' },
+  { href: 'https://treasury.fun.rich',imageUrl: '/fun-treasury-logo-36.webp',label: 'FUN Treasury' },
+  { href: 'https://wallet.fun.rich',  imageUrl: '/fun-wallet-logo-36.webp',  label: 'FUN Wallet' },
 ];
 
 const ORBIT_ANGLES = [30, 80, 130, 180, 230, 280, 330];
@@ -62,15 +62,14 @@ export function AvatarOrbit({ children }: AvatarOrbitProps) {
               key={i}
               href={slot.href}
               title={slot.label}
+              target="_blank"
+              rel="noopener noreferrer"
               className="absolute z-20 group"
               style={{
                 left: `calc(50% + ${x}px - 12px)`,
                 top: `calc(50% + ${y}px - 12px)`,
                 width: '24px',
                 height: '24px',
-              }}
-              onClick={(e) => {
-                if (slot.href === '#') e.preventDefault();
               }}
             >
               <div
