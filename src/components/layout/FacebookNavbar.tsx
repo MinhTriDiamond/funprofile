@@ -82,24 +82,27 @@ export const FacebookNavbar = () => {
 
     checkAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setIsLoggedIn(!!session);
       if (session) {
         setCurrentUserId(session.user.id);
-        const { data } = await supabase
-          .from('profiles')
-          .select('avatar_url, username, display_name')
-          .eq('id', session.user.id)
-          .single();
-        if (data) setProfile(data);
-        
-        // Check admin role
-        const { data: hasAdminRole } = await supabase.rpc('has_role', {
-          _user_id: session.user.id,
-          _role: 'admin'
-        });
-        setIsAdmin(!!hasAdminRole);
-      } else {
+        // Defer async calls to avoid deadlock with auth cycle
+        setTimeout(async () => {
+          const { data } = await supabase
+            .from('profiles')
+            .select('avatar_url, username, display_name')
+            .eq('id', session.user.id)
+            .single();
+          if (data) setProfile(data);
+          
+          // Check admin role
+          const { data: hasAdminRole } = await supabase.rpc('has_role', {
+            _user_id: session.user.id,
+            _role: 'admin'
+          });
+          setIsAdmin(!!hasAdminRole);
+        }, 0);
+      } else if (event === 'SIGNED_OUT') {
         setProfile(null);
         setCurrentUserId(null);
         setIsAdmin(false);

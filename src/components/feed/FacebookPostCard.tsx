@@ -253,7 +253,7 @@ const FacebookPostCardComponent = ({
   }, [isDeleting, post, onPostDeleted, t]);
 
   const handleCopyLink = useCallback(() => {
-    const url = `${window.location.origin}/post/${post.id}`;
+    const url = `https://fun.rich/post/${post.id}`;
     navigator.clipboard.writeText(url);
     toast.success(t('linkCopied'));
   }, [post.id, t]);

@@ -101,13 +101,20 @@ export const LawOfLightGuard = ({ children }: LawOfLightGuardProps) => {
 
     checkLawOfLightAcceptance();
 
-    // Also listen for auth state changes
+    // Listen for auth state changes - only re-check on SIGNED_IN, ignore token refreshes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session) {
+        // Delay to ensure auth state is fully stable before re-checking
         setTimeout(() => {
           checkLawOfLightAcceptance();
-        }, 0);
+        }, 150);
+      } else if (event === 'SIGNED_OUT') {
+        // On explicit sign out, navigate to law-of-light
+        setIsAllowed(false);
+        setIsChecking(false);
+        navigate('/law-of-light', { replace: true });
       }
+      // TOKEN_REFRESHED and other events are intentionally ignored to prevent false logouts
     });
 
     return () => {
