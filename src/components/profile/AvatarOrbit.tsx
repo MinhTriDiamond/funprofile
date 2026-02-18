@@ -217,7 +217,15 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
                     </button>
                     <button
                       type="button"
-                      onClick={() => window.open(link.url, '_blank', 'noopener,noreferrer')}
+                      onClick={() => {
+                        const a = document.createElement('a');
+                        a.href = link.url;
+                        a.target = '_blank';
+                        a.rel = 'noopener noreferrer';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                      }}
                       className="flex items-center justify-center gap-1 text-xs px-2 py-1 rounded-lg border border-border hover:bg-muted transition-colors"
                     >
                       <ExternalLink className="w-3 h-3" />
@@ -247,7 +255,16 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
               {/* Icon — click goes to URL; pencil edit on hover for owner */}
               <button
                 type="button"
-                onClick={(e) => { e.stopPropagation(); window.open(link.url, '_blank', 'noopener,noreferrer'); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const a = document.createElement('a');
+                  a.href = link.url;
+                  a.target = '_blank';
+                  a.rel = 'noopener noreferrer';
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                }}
                 className="w-full h-full rounded-full bg-white flex items-center justify-center transition-transform duration-200 shadow-md hover:scale-110 cursor-pointer"
                 style={{ border: `2.5px solid ${link.color}`, boxShadow: `0 0 8px ${link.color}66` }}
               >
