@@ -17,7 +17,7 @@ import { Button } from '@/components/ui/button';
 import { LazyImage } from '@/components/ui/LazyImage';
 import { CoverPhotoEditor } from '@/components/profile/CoverPhotoEditor';
 import { AvatarEditor } from '@/components/profile/AvatarEditor';
-import { MoreHorizontal, MapPin, Briefcase, GraduationCap, Heart, Clock, MessageCircle, Eye, X, Pin, PenSquare, Gift, Copy, Wallet, Plus } from 'lucide-react';
+import { MoreHorizontal, MapPin, Briefcase, GraduationCap, Heart, Clock, MessageCircle, Eye, X, Pin, PenSquare, Gift, Copy, Wallet } from 'lucide-react';
 import { DonationButton } from '@/components/donations/DonationButton';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { PullToRefreshContainer } from '@/components/common/PullToRefreshContainer';
@@ -60,7 +60,6 @@ const Profile = () => {
     }
   };
   const [viewAsPublic, setViewAsPublic] = useState(false);
-  const [showSocialPicker, setShowSocialPicker] = useState(false);
 
   // Determine if we should show private elements (own profile AND not in View As mode)
   const showPrivateElements = isOwnProfile && !viewAsPublic;
@@ -457,18 +456,7 @@ const Profile = () => {
 
               {/* Edit Cover Button - bottom left on md+, bottom right on mobile */}
               {showPrivateElements && (
-                <div className="absolute bottom-3 right-3 md:right-auto md:left-[8cm] sm:bottom-4 sm:right-4 z-[100] isolate flex items-center gap-2">
-                  {/* + button to add social link */}
-                  {(Array.isArray(profile?.social_links) ? profile.social_links.length : 0) < 9 && (
-                    <button
-                      type="button"
-                      onClick={() => setShowSocialPicker((v) => !v)}
-                      className="w-8 h-8 rounded-full bg-black/60 text-white hover:bg-black/80 shadow-lg border border-white/20 backdrop-blur-sm flex items-center justify-center transition-colors"
-                      title="Thêm mạng xã hội"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </button>
-                  )}
+                <div className="absolute bottom-3 right-3 md:right-auto md:left-[8cm] sm:bottom-4 sm:right-4 z-[100] isolate">
                   <CoverPhotoEditor 
                     userId={currentUserId}
                     currentCoverUrl={profile?.cover_url}
@@ -491,9 +479,6 @@ const Profile = () => {
                     isOwner={isOwnProfile}
                     userId={profile?.id}
                     onLinksChanged={(links) => setProfile({ ...profile, social_links: links })}
-                    showAddPicker={showSocialPicker}
-                    onToggleAddPicker={() => setShowSocialPicker((v) => !v)}
-                    onCloseAddPicker={() => setShowSocialPicker(false)}
                   >
                     {showPrivateElements ? (
                       <AvatarEditor
