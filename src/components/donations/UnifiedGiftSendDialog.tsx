@@ -229,7 +229,7 @@ export const UnifiedGiftSendDialog = ({
   const isLargeAmount = totalAmount > formattedBalance * 0.8 && totalAmount > 0;
 
   // ⚠️ MAINTENANCE — ĐỔI THÀNH false KHI MỞ LẠI
-  const IS_MAINTENANCE = true;
+  const IS_MAINTENANCE = false;
 
   const isInProgress = ['signing', 'broadcasted', 'confirming', 'finalizing'].includes(txStep);
   const stepInfo = STEP_CONFIG[txStep] || STEP_CONFIG.idle;
