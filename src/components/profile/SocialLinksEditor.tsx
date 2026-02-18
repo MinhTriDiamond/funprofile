@@ -109,17 +109,29 @@ export function SocialLinksEditor({ value, onChange }: SocialLinksEditorProps) {
           {value.map((link) => (
             <div key={link.platform} className="flex items-center gap-2 p-2 rounded-lg border border-border bg-muted/30">
               <div
-                className="w-7 h-7 rounded-full bg-white flex items-center justify-center flex-shrink-0 shadow-sm"
+                className="w-7 h-7 rounded-full bg-white flex items-center justify-center flex-shrink-0 shadow-sm overflow-hidden"
                 style={{ border: `2px solid ${link.color}` }}
               >
-                <img
-                  src={link.favicon}
-                  alt={link.label}
-                  className="w-4 h-4 object-contain"
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none';
-                  }}
-                />
+                {link.avatarUrl ? (
+                  <img
+                    src={link.avatarUrl}
+                    alt={link.label}
+                    className="w-full h-full object-cover rounded-full"
+                    onError={(e) => {
+                      e.currentTarget.src = link.favicon;
+                      e.currentTarget.className = 'w-4 h-4 object-contain';
+                    }}
+                  />
+                ) : (
+                  <img
+                    src={link.favicon}
+                    alt={link.label}
+                    className="w-4 h-4 object-contain"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                )}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-semibold text-foreground">{link.label}</p>
