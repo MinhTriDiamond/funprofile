@@ -119,6 +119,34 @@ export const ClaimRewardDialog = ({
         </DialogDescription>
       </DialogHeader>
 
+      {/* ⚠️ MAINTENANCE BANNER — xóa block này khi mở lại hệ thống */}
+      <div className="bg-red-50 border-2 border-red-300 rounded-xl p-4 my-4 text-center">
+        <div className="text-3xl mb-2">🔧</div>
+        <p className="font-bold text-red-700 text-base mb-1">Hệ thống tạm dừng bảo trì</p>
+        <p className="text-red-600 text-sm">
+          Chức năng rút thưởng CAMLY đang tạm dừng để nâng cấp hệ thống.
+          Vui lòng quay lại sau. Xin lỗi vì sự bất tiện này! 🙏
+        </p>
+      </div>
+
+      <Button onClick={() => onOpenChange(false)} className="w-full" variant="outline">
+        Đóng
+      </Button>
+    </>
+  );
+
+  const _renderInputStep_DISABLED = () => (
+    <>
+      <DialogHeader>
+        <DialogTitle className="flex items-center gap-2 text-xl">
+          <Gift className="w-6 h-6 text-yellow-500" />
+          Claim CAMLY Rewards
+        </DialogTitle>
+        <DialogDescription>
+          Chuyển phần thưởng CAMLY vào ví của bạn
+        </DialogDescription>
+      </DialogHeader>
+
       <div className="space-y-6 py-4">
         {/* Available Balance */}
         <div className="bg-gradient-to-r from-yellow-50 to-amber-50 border border-yellow-200 rounded-xl p-4">

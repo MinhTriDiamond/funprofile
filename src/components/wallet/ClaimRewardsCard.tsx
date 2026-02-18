@@ -55,6 +55,24 @@ export const ClaimRewardsCard = ({ onClaimSuccess }: ClaimRewardsCardProps) => {
     setExpandedType(expandedType === type ? null : type);
   };
 
+  // ⚠️ MAINTENANCE MODE — đổi true → false khi mở lại hệ thống
+  const IS_MAINTENANCE = true;
+
+  if (IS_MAINTENANCE) {
+    return (
+      <Card>
+        <CardContent className="py-10 text-center">
+          <div className="text-4xl mb-3">🔧</div>
+          <p className="font-bold text-destructive text-base mb-2">Hệ thống tạm dừng bảo trì</p>
+          <p className="text-muted-foreground text-sm">
+            Chức năng đúc FUN đang tạm dừng để nâng cấp hệ thống.<br />
+            Vui lòng quay lại sau. Xin lỗi vì sự bất tiện! 🙏
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (isLoading) {
     return (
       <Card>
