@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import diamondSrc from '@/assets/diamond-user.png';
-import { X, Plus, Check, Pencil, ExternalLink } from 'lucide-react';
+import { X, Plus, Check, Pencil } from 'lucide-react';
 import { PLATFORM_PRESETS, PLATFORM_ORDER } from './SocialLinksEditor';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -74,7 +74,6 @@ interface AvatarOrbitProps {
 
 export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userId, onLinksChanged }: AvatarOrbitProps) {
   const transparentDiamond = useTransparentDiamond(diamondSrc);
-  const angles = computeAngles(socialLinks.length);
 
   // Edit state (pencil button)
   const [editingPlatform, setEditingPlatform] = useState<string | null>(null);
@@ -82,31 +81,46 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
   const [saving, setSaving] = useState(false);
   const [hoveredPlatform, setHoveredPlatform] = useState<string | null>(null);
 
+  // Pending new slot (selected from picker but not saved yet)
+  const [pendingPlatform, setPendingPlatform] = useState<string | null>(null);
+  const [pendingUrl, setPendingUrl] = useState('');
+
   // Add picker
   const [showAddPicker, setShowAddPicker] = useState(false);
-  const [addingPlatform, setAddingPlatform] = useState<string | null>(null);
-  const [addUrl, setAddUrl] = useState('');
   const pickerRef = useRef<HTMLDivElement>(null);
   const editRef = useRef<HTMLDivElement>(null);
+  const pendingRef = useRef<HTMLDivElement>(null);
 
   const usedPlatforms = new Set(socialLinks.map((l) => l.platform));
   const availablePlatforms = PLATFORM_ORDER.filter((p) => !usedPlatforms.has(p));
+
+  // All slots = saved links + pending slot (if any)
+  const allLinks: (SocialLink & { isPending?: boolean })[] = [
+    ...socialLinks,
+    ...(pendingPlatform && PLATFORM_PRESETS[pendingPlatform]
+      ? [{ platform: pendingPlatform, label: PLATFORM_PRESETS[pendingPlatform].label, url: '', color: PLATFORM_PRESETS[pendingPlatform].color, favicon: PLATFORM_PRESETS[pendingPlatform].favicon, isPending: true }]
+      : []),
+  ];
+
+  const angles = computeAngles(allLinks.length);
 
   // Close picker / editor on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (showAddPicker && pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
         setShowAddPicker(false);
-        setAddingPlatform(null);
-        setAddUrl('');
       }
       if (editingPlatform && editRef.current && !editRef.current.contains(e.target as Node)) {
         setEditingPlatform(null);
       }
+      if (pendingPlatform && pendingRef.current && !pendingRef.current.contains(e.target as Node)) {
+        setPendingPlatform(null);
+        setPendingUrl('');
+      }
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, [showAddPicker, editingPlatform]);
+  }, [showAddPicker, editingPlatform, pendingPlatform]);
 
   const saveLink = async (platform: string, url: string, isNew = false) => {
     if (!userId || !url.trim()) return;
@@ -126,9 +140,9 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
     toast.success('Đã lưu!');
     onLinksChanged?.(newLinks);
     setEditingPlatform(null);
+    setPendingPlatform(null);
+    setPendingUrl('');
     setShowAddPicker(false);
-    setAddingPlatform(null);
-    setAddUrl('');
   };
 
   const removeLink = async (platform: string) => {
@@ -141,9 +155,16 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
     setEditingPlatform(null);
   };
 
-  const addAngle = computeAddAngle(socialLinks.length);
+  // When user picks a platform from picker → move to orbit immediately
+  const handlePickPlatform = (platform: string) => {
+    setShowAddPicker(false);
+    setPendingPlatform(platform);
+    setPendingUrl('');
+  };
+
+  const addAngle = computeAddAngle(allLinks.length);
   const addPos = angleToPos(addAngle);
-  const showAddBtn = isOwner && socialLinks.length < 9;
+  const showAddBtn = isOwner && allLinks.length < 9 && !pendingPlatform;
 
   return (
     <div
@@ -163,9 +184,10 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
         </div>
 
         {/* Social link orbital slots */}
-        {socialLinks.map((link, i) => {
+        {allLinks.map((link, i) => {
           const { x, y } = angleToPos(angles[i]);
           const isEditing = editingPlatform === link.platform;
+          const isPending = !!link.isPending;
           const isHovered = hoveredPlatform === link.platform;
 
           return (
@@ -177,13 +199,58 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
                 top: `${AVATAR_SIZE / 2 + y - ORBIT_SIZE / 2}px`,
                 width: `${ORBIT_SIZE}px`,
                 height: `${ORBIT_SIZE}px`,
-                zIndex: isEditing ? 30 : 20,
+                zIndex: (isEditing || isPending) ? 30 : 20,
               }}
               onMouseEnter={() => setHoveredPlatform(link.platform)}
               onMouseLeave={() => setHoveredPlatform(null)}
             >
-              {/* Edit popup */}
-              {isEditing && isOwner && (
+              {/* Pending slot popup — mở sẵn để nhập link */}
+              {isPending && (
+                <div
+                  ref={pendingRef}
+                  className="absolute z-50 bg-card border border-border rounded-xl shadow-xl p-3"
+                  style={{ bottom: '110%', left: '50%', transform: 'translateX(-50%)', width: '220px' }}
+                >
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <div className="w-4 h-4 rounded-full bg-white flex items-center justify-center flex-shrink-0" style={{ border: `1.5px solid ${link.color}` }}>
+                      <img src={link.favicon} alt="" className="w-3 h-3 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                    </div>
+                    <span className="text-xs font-semibold" style={{ color: link.color }}>{link.label}</span>
+                    <button type="button" onClick={() => { setPendingPlatform(null); setPendingUrl(''); }} className="ml-auto p-0.5 rounded hover:bg-muted transition-colors">
+                      <X className="w-3.5 h-3.5 text-muted-foreground" />
+                    </button>
+                  </div>
+                  <input
+                    autoFocus
+                    type="url"
+                    value={pendingUrl}
+                    onChange={(e) => setPendingUrl(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && pendingUrl.trim()) saveLink(link.platform, pendingUrl, true); }}
+                    placeholder={`https://${link.label.toLowerCase()}.com/...`}
+                    className="w-full text-xs border border-border rounded-lg px-2 py-1.5 bg-background focus:outline-none focus:ring-1 focus:ring-primary mb-2"
+                  />
+                  <div className="flex gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => { setPendingPlatform(null); setPendingUrl(''); }}
+                      className="flex-1 text-xs px-2 py-1 rounded-lg border border-border hover:bg-muted transition-colors"
+                    >
+                      Huỷ
+                    </button>
+                    <button
+                      type="button"
+                      disabled={saving || !pendingUrl.trim()}
+                      onClick={() => saveLink(link.platform, pendingUrl, true)}
+                      className="flex-1 text-xs px-2 py-1 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors flex items-center justify-center gap-1 disabled:opacity-50"
+                    >
+                      <Check className="w-3 h-3" /> Lưu
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Edit popup (existing link) */}
+              {isEditing && isOwner && !isPending && (
                 <div
                   ref={editRef}
                   className="absolute z-50 bg-card border border-border rounded-xl shadow-xl p-3"
@@ -217,21 +284,6 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
-                        const a = document.createElement('a');
-                        a.href = link.url;
-                        a.target = '_blank';
-                        a.rel = 'noopener noreferrer';
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                      }}
-                      className="flex items-center justify-center gap-1 text-xs px-2 py-1 rounded-lg border border-border hover:bg-muted transition-colors"
-                    >
-                      <ExternalLink className="w-3 h-3" />
-                    </button>
-                    <button
-                      type="button"
                       disabled={saving}
                       onClick={() => saveLink(link.platform, editUrl)}
                       className="flex-1 text-xs px-2 py-1 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors flex items-center justify-center gap-1 disabled:opacity-50"
@@ -252,35 +304,58 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
                 </div>
               )}
 
-              {/* Icon — click goes to URL */}
-              <a
-                href={link.url.startsWith('http') ? link.url : `https://${link.url}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full h-full rounded-full bg-white flex items-center justify-center transition-transform duration-200 shadow-md hover:scale-110 cursor-pointer"
-                style={{ display: 'flex', border: `2.5px solid ${link.color}`, boxShadow: `0 0 8px ${link.color}66` }}
-              >
-                <img
-                  src={link.favicon}
-                  alt={link.label}
-                  className="w-6 h-6 object-contain"
-                  style={{ pointerEvents: 'none' }}
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none';
-                    const p = e.currentTarget.parentElement;
-                    if (p && !p.querySelector('.fallback-letter')) {
-                      const s = document.createElement('span');
-                      s.className = 'fallback-letter text-xs font-bold';
-                      s.style.color = link.color;
-                      s.textContent = link.label[0];
-                      p.appendChild(s);
-                    }
-                  }}
-                />
-              </a>
+              {/* Icon */}
+              {isPending ? (
+                /* Pending slot — hiển thị với viền nét đứt, mờ hơn */
+                <div
+                  className="w-full h-full rounded-full bg-white flex items-center justify-center shadow-md animate-pulse"
+                  style={{ border: `2.5px dashed ${link.color}`, boxShadow: `0 0 8px ${link.color}44`, opacity: 0.85 }}
+                >
+                  <img src={link.favicon} alt={link.label} className="w-6 h-6 object-contain" style={{ pointerEvents: 'none' }}
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                      const p = e.currentTarget.parentElement;
+                      if (p && !p.querySelector('.fallback-letter')) {
+                        const s = document.createElement('span');
+                        s.className = 'fallback-letter text-xs font-bold';
+                        s.style.color = link.color;
+                        s.textContent = link.label[0];
+                        p.appendChild(s);
+                      }
+                    }}
+                  />
+                </div>
+              ) : (
+                /* Saved slot */
+                <a
+                  href={link.url.startsWith('http') ? link.url : `https://${link.url}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full h-full rounded-full bg-white flex items-center justify-center transition-transform duration-200 shadow-md hover:scale-110 cursor-pointer"
+                  style={{ display: 'flex', border: `2.5px solid ${link.color}`, boxShadow: `0 0 8px ${link.color}66` }}
+                >
+                  <img
+                    src={link.favicon}
+                    alt={link.label}
+                    className="w-6 h-6 object-contain"
+                    style={{ pointerEvents: 'none' }}
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                      const p = e.currentTarget.parentElement;
+                      if (p && !p.querySelector('.fallback-letter')) {
+                        const s = document.createElement('span');
+                        s.className = 'fallback-letter text-xs font-bold';
+                        s.style.color = link.color;
+                        s.textContent = link.label[0];
+                        p.appendChild(s);
+                      }
+                    }}
+                  />
+                </a>
+              )}
 
-              {/* Pencil edit button (owner only, on hover) */}
-              {isOwner && isHovered && !isEditing && (
+              {/* Pencil edit button (owner only, on hover, saved links only) */}
+              {isOwner && isHovered && !isEditing && !isPending && (
                 <button
                   type="button"
                   onClick={(e) => {
@@ -311,7 +386,7 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
               zIndex: showAddPicker ? 30 : 20,
             }}
           >
-            {/* Add picker popup — hiện tất cả platform chưa dùng */}
+            {/* Add picker popup */}
             {showAddPicker && (
               <div
                 ref={pickerRef}
@@ -319,68 +394,39 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
                 style={{ bottom: '110%', left: '50%', transform: 'translateX(-50%)', width: '252px' }}
               >
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-semibold text-foreground">Thêm mạng xã hội</p>
-                  <button type="button" onClick={() => { setShowAddPicker(false); setAddingPlatform(null); setAddUrl(''); }} className="p-0.5 rounded hover:bg-muted">
+                  <p className="text-xs font-semibold text-foreground">Chọn mạng xã hội</p>
+                  <button type="button" onClick={() => setShowAddPicker(false)} className="p-0.5 rounded hover:bg-muted">
                     <X className="w-3.5 h-3.5 text-muted-foreground" />
                   </button>
                 </div>
 
-                {/* All available platforms grid */}
-                <div className="grid grid-cols-3 gap-1.5 mb-2">
+                <div className="grid grid-cols-3 gap-1.5">
                   {availablePlatforms.map((p) => {
                     const preset = PLATFORM_PRESETS[p];
-                    const isSelected = addingPlatform === p;
                     return (
                       <button
                         key={p}
                         type="button"
-                        onClick={() => { setAddingPlatform(isSelected ? null : p); setAddUrl(''); }}
-                        className="flex flex-col items-center gap-1 px-1 py-2 rounded-lg border text-[10px] transition-all"
-                        style={{
-                          borderColor: isSelected ? preset.color : 'hsl(var(--border))',
-                          background: isSelected ? `${preset.color}18` : 'transparent',
-                        }}
+                        onClick={() => handlePickPlatform(p)}
+                        className="flex flex-col items-center gap-1 px-1 py-2 rounded-lg border border-border text-[10px] transition-all hover:border-current hover:scale-105"
+                        style={{ '--tw-border-opacity': 1 } as React.CSSProperties}
+                        onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = preset.color; (e.currentTarget as HTMLButtonElement).style.background = `${preset.color}18`; }}
+                        onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = ''; (e.currentTarget as HTMLButtonElement).style.background = ''; }}
                       >
                         <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center shadow-sm" style={{ border: `1.5px solid ${preset.color}` }}>
                           <img src={preset.favicon} alt={preset.label} className="w-4 h-4 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                         </div>
-                        <span className="truncate w-full text-center font-medium leading-tight" style={{ color: isSelected ? preset.color : undefined }}>{preset.label}</span>
+                        <span className="truncate w-full text-center font-medium leading-tight">{preset.label}</span>
                       </button>
                     );
                   })}
                 </div>
-
-                {/* URL input appears after selecting platform */}
-                {addingPlatform && (
-                  <div className="border-t border-border pt-2">
-                    <p className="text-[10px] text-muted-foreground mb-1">Link trang {PLATFORM_PRESETS[addingPlatform]?.label}:</p>
-                    <div className="flex gap-1.5">
-                      <input
-                        autoFocus
-                        type="url"
-                        value={addUrl}
-                        onChange={(e) => setAddUrl(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === 'Enter' && addUrl.trim()) saveLink(addingPlatform, addUrl, true); }}
-                        placeholder="https://..."
-                        className="flex-1 text-xs border border-border rounded-lg px-2 py-1.5 bg-background focus:outline-none focus:ring-1 focus:ring-primary"
-                      />
-                      <button
-                        type="button"
-                        disabled={saving || !addUrl.trim()}
-                        onClick={() => saveLink(addingPlatform, addUrl, true)}
-                        className="px-2 py-1.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors flex items-center gap-1 disabled:opacity-50 text-xs"
-                      >
-                        <Check className="w-3 h-3" />
-                      </button>
-                    </div>
-                  </div>
-                )}
               </div>
             )}
 
             <button
               type="button"
-              onClick={() => { setShowAddPicker(!showAddPicker); setAddingPlatform(null); setAddUrl(''); }}
+              onClick={() => setShowAddPicker(!showAddPicker)}
               className="w-full h-full rounded-full bg-primary text-primary-foreground hover:scale-110 hover:bg-primary/90 transition-all duration-200 shadow-md flex items-center justify-center"
               style={{ boxShadow: '0 0 10px hsl(var(--primary) / 0.5)' }}
               title="Thêm mạng xã hội"
