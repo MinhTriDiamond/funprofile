@@ -8,13 +8,13 @@ import type { SocialLink } from './AvatarOrbit';
 export const PLATFORM_PRESETS: Record<string, { label: string; color: string; favicon: string }> = {
   angel: {
     label: 'Angel AI',
-    color: '#7C3AED',
-    favicon: 'https://angel.fun.rich/favicon.ico',
+    color: '#C9A227',
+    favicon: '/angel-logo.jpg',
   },
   funplay: {
     label: 'Fun Play',
-    color: '#22c55e',
-    favicon: 'https://play.fun.rich/favicon.ico',
+    color: '#1a56db',
+    favicon: '/funplay-logo.jpg',
   },
   facebook: {
     label: 'Facebook',
