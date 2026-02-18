@@ -1,41 +1,55 @@
 
-## Redesign DonationReceivedCard — Nền Trắng, Metallic Sang Trọng
+# Sửa lỗi AvatarOrbit — Vòng tròn nhỏ không hiển thị đúng
 
-### Vấn đề hiện tại
-`DonationReceivedCard` vẫn hiển thị thẻ xanh lá (green gradient) ở phần modal thông báo nhận quà, trong khi con muốn giao diện **nền trắng sạch** như hình thứ hai (image-339.png).
+## Phân tích vấn đề
 
-### Phân tích thiết kế mục tiêu (image-339.png)
-- **Nền tổng thể**: Trắng (`#ffffff`) với bo góc lớn
-- **Header**: 
-  - Logo FUN Play tròn ở giữa trên cùng
-  - Tiêu đề "FUN PLAY - Biên Nhận Tặng" — màu xám đậm, font bold
-  - ID giao dịch rút gọn `#fd34ee...` — màu xám nhạt, font mono
-  - Badge "Chúc Mừng Năm Mới" — nền đỏ/hồng gradient nhỏ
-- **Banner chúc mừng**: Ô nền hồng nhạt, chữ hồng đậm với hoa 🌸
-- **Sender → Recipient**: Avatar tròn, tên, username, mũi tên ở giữa — nằm trên nền trắng
-- **Số tiền**: Lớn, đậm, màu xanh lá metallic (`#10b981`) với icon token, trên nền trắng
-- **Bảng chi tiết**: 4 dòng (Thời gian, Loại, TX Hash, Trạng thái) — nền trắng, border xám nhạt, không background màu
-- **Footer**: Ô vàng nhạt với text "Phúc Lộc Thọ — FUN Play 🧧"
-- **Nút hành động**: 
-  - "Sao chép link" — outline, border xám
-  - "Về FUN Play" — gradient xanh lá sang đậm (metallic green)
+Có **2 vấn đề** đang xảy ra cùng lúc:
 
-### Thay đổi kỹ thuật
+**Vấn đề 1 — Định vị sai (lỗi layout):**
+Các vòng tròn nhỏ được đặt `position: absolute` tính từ `div.relative` bao quanh `{children}`. Tuy nhiên, `div` này không có kích thước cố định — kích thước phụ thuộc vào `AvatarEditor` bên trong (w-32 h-32 đến w-44 h-44 tùy màn hình). Công thức `calc(50% + Xpx)` tính `50%` từ chiều rộng của `div` wrapper này, nhưng `ORBIT_RADIUS = 115px` được cộng thêm từ tâm đó — kết quả không nhất quán giữa các màn hình và có thể render ra ngoài vùng nhìn thấy (bị `overflow: hidden` từ thẻ cha cắt mất).
 
-**File duy nhất cần sửa:** `src/components/donations/DonationReceivedCard.tsx`
+**Vấn đề 2 — Chưa có data social_links:**
+User chưa thêm link mạng xã hội nào qua EditProfile → mảng `social_links` rỗng → không có vòng tròn nào được render, nên con không thấy gì.
 
-Các thay đổi cụ thể:
-1. **Xóa gradient hồng** ở header — đổi sang nền trắng thuần, chỉ giữ logo + title + ID + badge
-2. **Banner chúc mừng**: Giữ nền hồng nhạt với hoa 🌸 nhưng nền ngoài trắng
-3. **Sender → Recipient section**: Bỏ background, để nền trắng với divider line trên dưới
-4. **Amount section**: Bỏ background xanh nhạt — để số tiền lớn trên nền trắng, màu chữ xanh lá metallic (`text-emerald-500`, `font-black text-4xl`)
-5. **Bảng chi tiết**: Bỏ border màu, dùng `divide-y divide-gray-100` trên nền trắng
-6. **Footer**: Giữ ô vàng nhạt (amber) — phù hợp cả hai hình
-7. **Buttons**: Đổi nút "Gửi Cảm Ơn" thành "Về FUN Play" style — gradient `from-emerald-400 to-emerald-600` tạo hiệu ứng metallic xanh lá sang trọng; nút "Xem BSCScan" thêm outline; giữ nút "Đóng" (X)
+---
 
-### Kết quả mong đợi
-Thẻ thông báo nhận quà sẽ có:
-- Nền **trắng sạch** thay vì xanh lá
-- Số tiền **xanh lá metallic** nổi bật trên nền trắng
-- Bố cục thanh lịch, chuyên nghiệp như biên lai kỹ thuật số
-- Giữ nguyên toàn bộ chức năng (âm thanh, confetti, copy link, gửi cảm ơn)
+## Giải pháp
+
+### Sửa `AvatarOrbit.tsx`
+
+Đặt **wrapper cố định kích thước** có `position: relative`, với kích thước đủ chứa cả avatar + orbit. Từ đó tính toán vị trí orbit chính xác từ tâm thật sự.
+
+**Thay đổi kỹ thuật:**
+
+- Thêm một wrapper `div` có `width` và `height` cố định (ví dụ `200px × 200px`) tương đương kích thước avatar lớn nhất (w-44 = 176px), để `50%` luôn trỏ đúng vào tâm avatar.
+- Dùng `overflow: visible` trên wrapper đó để các ô orbit không bị cắt.
+- Đặt `children` (avatar) vào chính giữa wrapper bằng `absolute inset-0 flex items-center justify-center`.
+- Các ô orbit cũng absolute từ cùng wrapper, tính góc đúng từ tâm.
+- Tăng `paddingTop` của container ngoài cùng để kim cương không bị che.
+
+### Kích thước avatar thực tế
+
+Trong `AvatarEditor`, kích thước `large` = `w-32 h-32 md:w-44 md:h-44` (128px → 176px). Avatar wrapper cố định sẽ dùng `176px × 176px` (tương đương `w-44 h-44`) để làm chuẩn tâm điểm. Bán kính orbit giữ nguyên `115px`.
+
+### Góc phân bổ (giữ logic hiện tại, chỉ sửa layout)
+
+```
+n=1 → 180° (thẳng xuống, đối xứng với kim cương ở đỉnh)
+n=2 → 150°, 210°
+n=3 → 120°, 180°, 240°
+...
+Span tối đa 260° (để tránh vùng kim cương ±50° đỉnh)
+```
+
+---
+
+## Các file thay đổi
+
+**`src/components/profile/AvatarOrbit.tsx`** — Sửa toàn bộ layout:
+- Thêm wrapper con `div` với kích thước cố định `176px × 176px` làm tâm điểm.
+- `children` đặt `absolute inset-0`, căn giữa.
+- Orbit slots tính `left/top` từ `50%` của wrapper `176px` này (đúng tâm).
+- Container ngoài tăng `paddingTop` lên `120px` để kim cương nhô đẹp hơn.
+- Đảm bảo `overflow: visible` xuyên suốt các lớp để orbit không bị cắt.
+
+**Không cần thay đổi** `Profile.tsx`, `EditProfile.tsx`, hay database — logic đúng rồi, chỉ layout bị sai.
