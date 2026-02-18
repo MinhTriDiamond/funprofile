@@ -413,7 +413,7 @@ const Profile = () => {
           <div className="max-w-[1100px] mx-auto px-4 sm:px-6 lg:px-[2cm]">
             <div className="relative">
             {/* Cover Photo Container with rounded corners */}
-            <div className="h-[220px] sm:h-[300px] md:h-[400px] relative rounded-2xl mx-2 md:mx-0">
+            <div className="h-[180px] sm:h-[240px] md:h-[320px] relative rounded-2xl mx-2 md:mx-0">
               {/* Cover Image with overflow hidden only on image */}
               <div className="absolute inset-0 overflow-hidden rounded-2xl">
                 {profile?.cover_url ? (
@@ -471,8 +471,8 @@ const Profile = () => {
             <div className="px-4 md:px-8 py-4 md:py-6">
               {/* Avatar + Info Row */}
               <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
-                {/* Avatar - positioned lower, centered in white space */}
-                <div className="-mt-2 sm:-mt-4 md:-mt-6 relative z-10 flex justify-center md:justify-start flex-shrink-0">
+                {/* Avatar - positioned higher to overlap cover */}
+                <div className="-mt-12 sm:-mt-16 md:-mt-20 relative z-10 flex justify-center md:justify-start flex-shrink-0">
                   {showPrivateElements ? (
                     <AvatarEditor
                       userId={currentUserId}
@@ -505,13 +505,10 @@ const Profile = () => {
                 <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-foreground">
                     {profile?.display_name || profile?.username}
                   </h1>
-                  <p className="text-sm text-muted-foreground font-medium">
-                    {friendsCount.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')} {t('friendsSuffix')}
-                  </p>
                    {/* Username handle and profile link */}
-                   <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                   <div className="flex items-center gap-1.5 text-sm font-bold text-foreground mt-0.5">
                      <span>@{profile?.username}</span>
-                     <span>·</span>
+                     <span className="text-muted-foreground font-normal">·</span>
                      <a href={`https://fun.rich/${profile?.username}`} target="_blank" rel="noopener noreferrer" className="hover:text-primary hover:underline transition-colors cursor-pointer">fun.rich/{profile?.username}</a>
                      <button
                        type="button"

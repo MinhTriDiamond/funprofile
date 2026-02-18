@@ -25,7 +25,7 @@ const profileSchema = z.object({
     .trim()
     .optional(),
   bio: z.string()
-    .max(120, 'Bio must be less than 120 characters')
+    .max(200, 'Bio must be less than 200 characters')
     .trim()
     .optional(),
 });
@@ -396,12 +396,12 @@ export const EditProfile = () => {
               <Textarea
                 id="bio"
                 value={bio}
-                onChange={(e) => setBio(e.target.value.slice(0, 120))}
-                placeholder="Giới thiệu về bạn (tối đa 120 ký tự)"
+                onChange={(e) => setBio(e.target.value.slice(0, 200))}
+                placeholder="Giới thiệu về bạn (tối đa 200 ký tự)"
                 rows={4}
-                maxLength={120}
+                maxLength={200}
               />
-              <p className="text-xs text-muted-foreground">{bio.length}/120 ký tự</p>
+              <p className="text-xs text-muted-foreground">{bio.length}/200 ký tự</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="usernameHandle">@ Username</Label>
