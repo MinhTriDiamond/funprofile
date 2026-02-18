@@ -79,12 +79,8 @@ serve(async (req: Request) => {
       );
     }
 
-    if (["on_hold", "rejected", "banned"].includes(senderStatus?.reward_status)) {
-      return new Response(
-        JSON.stringify({ error: "Tài khoản đang bị hạn chế. Vui lòng liên hệ Admin." }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    // Note: on_hold/rejected only affects claim-reward, not donations
+    // Donations are blockchain transactions that must be recorded for transparency
 
     // Check duplicate
     const { data: existingDonation } = await supabase
