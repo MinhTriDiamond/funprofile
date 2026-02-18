@@ -228,6 +228,9 @@ export const UnifiedGiftSendDialog = ({
   const needsGasWarning = selectedToken.symbol !== 'BNB' && bnbBalanceNum < estimatedGasPerTx * recipientsWithWallet.length && parsedAmountNum > 0;
   const isLargeAmount = totalAmount > formattedBalance * 0.8 && totalAmount > 0;
 
+  // ⚠️ MAINTENANCE — ĐỔI THÀNH false KHI MỞ LẠI
+  const IS_MAINTENANCE = true;
+
   const isInProgress = ['signing', 'broadcasted', 'confirming', 'finalizing'].includes(txStep);
   const stepInfo = STEP_CONFIG[txStep] || STEP_CONFIG.idle;
 
@@ -700,7 +703,22 @@ export const UnifiedGiftSendDialog = ({
             </DialogTitle>
           </DialogHeader>
 
-          {/* Step indicator */}
+          {/* ⚠️ MAINTENANCE — XOÁ KHI MỞ LẠI */}
+          {IS_MAINTENANCE && (
+            <div className="py-4 space-y-4">
+              <div className="bg-destructive/10 border-2 border-destructive/30 rounded-xl p-5 text-center space-y-3">
+                <div className="text-4xl">🔧</div>
+                <h3 className="font-bold text-destructive text-lg">Hệ thống tạm dừng bảo trì</h3>
+                <p className="text-sm text-muted-foreground">
+                  Chức năng tặng quà và chuyển tiền đang tạm ngưng để bảo trì hệ thống. Vui lòng quay lại sau.
+                </p>
+              </div>
+              <Button variant="outline" className="w-full" onClick={handleDialogClose}>Đóng</Button>
+            </div>
+          )}
+
+          {/* Step indicator + Form content */}
+          {!IS_MAINTENANCE && (<>
           <div className="flex items-center gap-2 mb-2">
             {['form', 'confirm'].map((step, idx) => (
               <div key={step} className="flex items-center gap-1 flex-1">
@@ -1199,6 +1217,7 @@ export const UnifiedGiftSendDialog = ({
               </div>
             </div>
           )}
+          </>)} {/* end !IS_MAINTENANCE */}
         </DialogContent>
       </Dialog>
 
