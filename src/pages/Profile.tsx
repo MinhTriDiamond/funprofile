@@ -472,7 +472,7 @@ const Profile = () => {
               {/* Avatar + Info Row */}
               <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
                 {/* Avatar - positioned higher to overlap cover */}
-                <div className="-mt-[48px] sm:-mt-[56px] md:-mt-[72px] relative z-10 flex justify-center md:justify-start flex-shrink-0">
+                <div className="-mt-[80px] sm:-mt-[88px] md:-mt-[104px] relative z-10 flex justify-center md:justify-start flex-shrink-0">
                   {showPrivateElements ? (
                     <AvatarEditor
                       userId={currentUserId}
