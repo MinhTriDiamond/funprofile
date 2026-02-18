@@ -1,5 +1,5 @@
 import React from 'react';
-import diamondImg from '@/assets/green-diamond-v3.png';
+import diamondImg from '@/assets/diamond-transparent.png';
 
 interface OrbitSlot {
   href: string;
@@ -18,8 +18,6 @@ const ORBIT_SLOTS: OrbitSlot[] = [
   { href: '#', imageUrl: '/fun-wallet-logo-36.webp', label: 'FUN Wallet' },
 ];
 
-// Phân bổ 7 vị trí từ 30° đến 330° (để trống đỉnh 0° cho kim cương)
-// 0° = trên cùng, chiều kim đồng hồ
 const ORBIT_ANGLES = [30, 80, 130, 180, 230, 280, 330];
 const ORBIT_RADIUS = 108; // px - ra ngoài ảnh đại diện
 
@@ -29,66 +27,72 @@ interface AvatarOrbitProps {
 
 export function AvatarOrbit({ children }: AvatarOrbitProps) {
   return (
-    <div className="relative">
-      {children}
-
-      {/* Viên kim cương xanh - to, nằm trên đỉnh và nhô ra ngoài ảnh */}
+    /* wrapper thêm padding-top để diamond nhô ra ngoài mà không bị clip */
+    <div className="relative" style={{ paddingTop: '56px' }}>
+      {/* Viên kim cương nằm TRÊN và NGOÀI ảnh đại diện */}
       <div
         className="absolute z-30 pointer-events-none"
-        style={{ top: '-60px', left: '50%', transform: 'translateX(-50%)' }}
+        style={{ top: '0px', left: '50%', transform: 'translateX(-50%)' }}
       >
         <img
           src={diamondImg}
           alt="Kim cương xanh"
-          className="w-28 h-28 object-contain drop-shadow-2xl"
-          style={{ filter: 'drop-shadow(0 4px 12px rgba(34,197,94,0.5))' }}
+          style={{
+            width: '112px',
+            height: '112px',
+            objectFit: 'contain',
+            filter: 'drop-shadow(0 6px 16px rgba(34,197,94,0.6))',
+          }}
         />
       </div>
 
-      {/* 7 vị trí liên kết hệ sinh thái xung quanh hình đại diện */}
-      {ORBIT_SLOTS.map((slot, i) => {
-        const angleDeg = ORBIT_ANGLES[i];
-        const angleRad = (angleDeg * Math.PI) / 180;
-        // CSS coords: y tăng xuống dưới, nên dùng sin/cos như sau
-        const x = Math.sin(angleRad) * ORBIT_RADIUS;
-        const y = -Math.cos(angleRad) * ORBIT_RADIUS;
+      {/* Avatar (children) */}
+      <div className="relative">
+        {children}
 
-        return (
-          <a
-            key={i}
-            href={slot.href}
-            title={slot.label}
-            className="absolute z-20 group"
-            style={{
-              left: `calc(50% + ${x}px - 12px)`,
-              top: `calc(50% + ${y}px - 12px)`,
-              width: '24px',
-              height: '24px',
-            }}
-            onClick={(e) => {
-              if (slot.href === '#') e.preventDefault();
-            }}
-          >
-            <div
-              className="w-full h-full rounded-full overflow-hidden bg-white group-hover:scale-110 transition-transform duration-200 shadow-md"
+        {/* 7 vị trí liên kết hệ sinh thái xung quanh hình đại diện */}
+        {ORBIT_SLOTS.map((slot, i) => {
+          const angleDeg = ORBIT_ANGLES[i];
+          const angleRad = (angleDeg * Math.PI) / 180;
+          const x = Math.sin(angleRad) * ORBIT_RADIUS;
+          const y = -Math.cos(angleRad) * ORBIT_RADIUS;
+
+          return (
+            <a
+              key={i}
+              href={slot.href}
+              title={slot.label}
+              className="absolute z-20 group"
               style={{
-                border: '2px solid',
-                borderColor: '#22c55e',
-                boxShadow: '0 0 6px rgba(34,197,94,0.5)',
+                left: `calc(50% + ${x}px - 12px)`,
+                top: `calc(50% + ${y}px - 12px)`,
+                width: '24px',
+                height: '24px',
+              }}
+              onClick={(e) => {
+                if (slot.href === '#') e.preventDefault();
               }}
             >
-              <img
-                src={slot.imageUrl}
-                alt={slot.label}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
+              <div
+                className="w-full h-full rounded-full overflow-hidden bg-white group-hover:scale-110 transition-transform duration-200 shadow-md"
+                style={{
+                  border: '2px solid #22c55e',
+                  boxShadow: '0 0 6px rgba(34,197,94,0.5)',
                 }}
-              />
-            </div>
-          </a>
-        );
-      })}
+              >
+                <img
+                  src={slot.imageUrl}
+                  alt={slot.label}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              </div>
+            </a>
+          );
+        })}
+      </div>
     </div>
   );
 }
