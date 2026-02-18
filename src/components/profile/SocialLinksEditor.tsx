@@ -49,7 +49,7 @@ export const PLATFORM_PRESETS: Record<string, { label: string; color: string; fa
   zalo: {
     label: 'Zalo',
     color: '#0068FF',
-    favicon: '/zalo-logo.png',
+    favicon: '/zalo-logo-v2.png',
   },
 };
 
