@@ -4,7 +4,7 @@
 // =============================================
 
 export const FUN_MONEY_CONTRACT = {
-  address: '0x1aa8DE8B1E4465C6d729E8564893f8EF823a5ff2' as const,
+  address: '0x39A1b047D5d143f8874888cfa1d30Fb2AE6F0CD6' as const,
   chainId: 97, // BSC Testnet
   name: 'FUN Money',
   symbol: 'FUN',
