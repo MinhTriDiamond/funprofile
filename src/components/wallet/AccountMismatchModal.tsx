@@ -93,7 +93,7 @@ export const AccountMismatchModal = ({ open, onOpenChange }: AccountMismatchModa
               className="w-full overflow-hidden"
             >
               <Wallet className="w-4 h-4 mr-2 flex-shrink-0" />
-              <span className="truncate">Giữ nguyên, tôi sẽ đổi trong ví</span>
+              <span className="truncate">Tiếp tục, tôi sẽ đổi sang địa chỉ ví đã chọn</span>
             </Button>
           </div>
         </div>
