@@ -99,74 +99,128 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
     </div>
   );
 
-  // Compact inline stat chip
+  // Compact inline stat chip — mobile only
   const StatChip = ({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) => (
     <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] border border-[#D4AF37] shadow-sm whitespace-nowrap">
       <span className="text-[#F5E6C8] flex-shrink-0">{icon}</span>
       <span className="text-[#FFD700] text-[9px] tabular-nums font-semibold">{formatNumber(value)}</span>
-      <span className="text-[#F5E6C8]/80 text-[8px] hidden sm:inline">{capitalizeFirst(label)}</span>
+      <span className="text-[#F5E6C8]/80 text-[8px]">{capitalizeFirst(label)}</span>
     </div>
   );
 
   return (
-    <div className="w-full">
-      {/* Compact horizontal honor board — fits in cover image */}
-      <div
-        className="rounded-lg overflow-hidden bg-white/85 backdrop-blur-xl shadow-md"
-        style={{
-          border: '1.5px solid transparent',
-          backgroundImage: 'linear-gradient(white, white), linear-gradient(135deg, #22c55e 0%, #4ade80 25%, #22c55e 50%, #16a34a 75%, #22c55e 100%)',
-          backgroundOrigin: 'border-box',
-          backgroundClip: 'padding-box, border-box',
-          boxShadow: '0 0 8px rgba(34, 197, 94, 0.3)'
-        }}
-      >
-        <div className="px-2 py-1.5">
-          {/* Header row: logo + title + avatar */}
-          <div className="flex items-center gap-1 mb-1">
-            <img
-              src="/fun-profile-logo-40.webp"
-              alt="FUN Profile"
-              className="w-4 h-4 rounded-full border border-[#22c55e] flex-shrink-0"
-            />
-            <span
-              className="text-[9px] tracking-widest uppercase font-black leading-none"
-              style={{
-                fontFamily: "'Orbitron', 'Rajdhani', sans-serif",
-                background: 'linear-gradient(90deg, #FF6B9D 0%, #C44FE2 20%, #7B68EE 40%, #00CED1 60%, #FFFF00 80%, #FFB347 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
-              }}
-            >
-              {t('honorBoard').toUpperCase()}
-            </span>
-            <Avatar className="w-4 h-4 border border-[#22c55e] flex-shrink-0 ml-auto">
-              <AvatarImage src={avatarUrl} sizeHint="sm" />
-              <AvatarFallback className="bg-gradient-to-br from-green-600 to-green-800 text-white font-bold text-[8px]">
-                {username?.[0]?.toUpperCase() || 'U'}
-              </AvatarFallback>
-            </Avatar>
-          </div>
-
-          {/* Stats — 2 rows of 4 chips */}
-          <div className="flex flex-wrap gap-0.5 justify-between">
-            <StatChip icon={<ArrowUp className="w-2.5 h-2.5" />} label="Bài viết" value={stats.posts_count} />
-            <StatChip icon={<Star className="w-2.5 h-2.5" />} label="Cảm xúc" value={stats.reactions_on_posts} />
-            <StatChip icon={<MessageCircle className="w-2.5 h-2.5" />} label="Bình luận" value={stats.comments_count} />
-            <StatChip icon={<Users className="w-2.5 h-2.5" />} label="Bạn bè" value={stats.friends_count} />
-          </div>
-          <div className="flex flex-wrap gap-0.5 justify-between mt-0.5">
-            <StatChip icon={<Gift className="w-2.5 h-2.5" />} label="Có thể rút" value={stats.claimable} />
-            <StatChip icon={<Coins className="w-2.5 h-2.5" />} label="Đã rút" value={stats.claimed} />
-            <StatChip icon={<Calendar className="w-2.5 h-2.5" />} label="Hôm nay" value={stats.today_reward} />
-            <StatChip icon={<BadgeDollarSign className="w-2.5 h-2.5" />} label="Tổng Thu" value={stats.total_reward} />
+    <>
+      {/* === MOBILE only: compact horizontal chip layout === */}
+      <div className="w-full md:hidden">
+        <div
+          className="rounded-lg overflow-hidden bg-white/85 backdrop-blur-xl shadow-md"
+          style={{
+            border: '1.5px solid transparent',
+            backgroundImage: 'linear-gradient(white, white), linear-gradient(135deg, #22c55e 0%, #4ade80 25%, #22c55e 50%, #16a34a 75%, #22c55e 100%)',
+            backgroundOrigin: 'border-box',
+            backgroundClip: 'padding-box, border-box',
+            boxShadow: '0 0 8px rgba(34, 197, 94, 0.3)'
+          }}
+        >
+          <div className="px-2 py-1.5">
+            <div className="flex items-center gap-1 mb-1">
+              <img src="/fun-profile-logo-40.webp" alt="FUN Profile" className="w-4 h-4 rounded-full border border-[#22c55e] flex-shrink-0" />
+              <span
+                className="text-[9px] tracking-widest uppercase font-black leading-none"
+                style={{
+                  fontFamily: "'Orbitron', 'Rajdhani', sans-serif",
+                  background: 'linear-gradient(90deg, #FF6B9D 0%, #C44FE2 20%, #7B68EE 40%, #00CED1 60%, #FFFF00 80%, #FFB347 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                }}
+              >
+                {t('honorBoard').toUpperCase()}
+              </span>
+              <Avatar className="w-4 h-4 border border-[#22c55e] flex-shrink-0 ml-auto">
+                <AvatarImage src={avatarUrl} sizeHint="sm" />
+                <AvatarFallback className="bg-gradient-to-br from-green-600 to-green-800 text-white font-bold text-[8px]">
+                  {username?.[0]?.toUpperCase() || 'U'}
+                </AvatarFallback>
+              </Avatar>
+            </div>
+            <div className="flex flex-wrap gap-0.5 justify-between">
+              <StatChip icon={<ArrowUp className="w-2.5 h-2.5" />} label="Bài viết" value={stats.posts_count} />
+              <StatChip icon={<Star className="w-2.5 h-2.5" />} label="Cảm xúc" value={stats.reactions_on_posts} />
+              <StatChip icon={<MessageCircle className="w-2.5 h-2.5" />} label="Bình luận" value={stats.comments_count} />
+              <StatChip icon={<Users className="w-2.5 h-2.5" />} label="Bạn bè" value={stats.friends_count} />
+            </div>
+            <div className="flex flex-wrap gap-0.5 justify-between mt-0.5">
+              <StatChip icon={<Gift className="w-2.5 h-2.5" />} label="Có thể rút" value={stats.claimable} />
+              <StatChip icon={<Coins className="w-2.5 h-2.5" />} label="Đã rút" value={stats.claimed} />
+              <StatChip icon={<Calendar className="w-2.5 h-2.5" />} label="Hôm nay" value={stats.today_reward} />
+              <StatChip icon={<BadgeDollarSign className="w-2.5 h-2.5" />} label="Tổng Thu" value={stats.total_reward} />
+            </div>
           </div>
         </div>
       </div>
-    </div>
+
+      {/* === DESKTOP only: original 2-column grid layout === */}
+      <div className="hidden md:flex w-full justify-end">
+        <div
+          className="rounded-xl overflow-hidden bg-white/80 backdrop-blur-xl shadow-lg w-full max-w-[340px]"
+          style={{
+            border: '2px solid transparent',
+            backgroundImage: 'linear-gradient(white, white), linear-gradient(135deg, #22c55e 0%, #4ade80 25%, #22c55e 50%, #16a34a 75%, #22c55e 100%)',
+            backgroundOrigin: 'border-box',
+            backgroundClip: 'padding-box, border-box',
+            boxShadow: '0 0 12px rgba(34, 197, 94, 0.35)'
+          }}
+        >
+          <div className="p-2 sm:p-3">
+            <div className="text-center mb-2">
+              <div className="flex items-center justify-center gap-1.5">
+                <img src="/fun-profile-logo-40.webp" alt="FUN Profile" className="w-6 h-6 rounded-full border-2 border-[#22c55e] shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
+                <h1
+                  className="text-sm tracking-wider uppercase leading-none font-black"
+                  style={{
+                    fontFamily: "'Orbitron', 'Rajdhani', sans-serif",
+                    background: 'linear-gradient(90deg, #FF6B9D 0%, #C44FE2 15%, #7B68EE 30%, #00CED1 50%, #98FB98 70%, #FFFF00 85%, #FFB347 100%)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    backgroundClip: 'text',
+                    filter: 'drop-shadow(1px 1px 0px rgba(255,255,255,0.5)) drop-shadow(0 0 8px rgba(255, 182, 193, 0.5))',
+                  }}
+                >
+                  {t('honorBoard').toUpperCase()}
+                </h1>
+                <Avatar className="w-6 h-6 border-2 border-[#22c55e] shadow-[0_0_8px_rgba(34,197,94,0.6)]">
+                  <AvatarImage src={avatarUrl} sizeHint="sm" />
+                  <AvatarFallback className="bg-gradient-to-br from-green-600 to-green-800 text-white font-bold text-xs">
+                    {username?.[0]?.toUpperCase() || 'U'}
+                  </AvatarFallback>
+                </Avatar>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-1">
+              <div className="space-y-1">
+                <StatRow icon={<ArrowUp className="w-3 h-3" />} label="Bài viết" value={stats.posts_count} />
+                <StatRow icon={<Star className="w-3 h-3" />} label="Cảm xúc" value={stats.reactions_on_posts} />
+                <StatRow icon={<MessageCircle className="w-3 h-3" />} label="Bình luận" value={stats.comments_count} />
+              </div>
+              <div className="space-y-1">
+                <StatRow icon={<Users className="w-3 h-3" />} label="Bạn bè" value={stats.friends_count} />
+                <StatRow icon={<Gift className="w-3 h-3" />} label="Có thể rút" value={stats.claimable} />
+                <StatRow icon={<Coins className="w-3 h-3" />} label="Đã rút" value={stats.claimed} />
+              </div>
+            </div>
+            <div className="mt-1.5 grid grid-cols-2 gap-1">
+              <StatRow icon={<Calendar className="w-3 h-3" />} label="Hôm nay" value={stats.today_reward} />
+              <StatRow icon={<BadgeDollarSign className="w-3 h-3" />} label="Tổng Thu" value={stats.total_reward} />
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
   );
 };
+
+
 
 // Standalone Mobile Stats component for use in bottom sheet
 interface MobileStatsProps {
