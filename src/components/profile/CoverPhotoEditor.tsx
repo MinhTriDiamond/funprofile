@@ -246,7 +246,7 @@ export function CoverPhotoEditor({ userId, currentCoverUrl, onCoverUpdated }: Co
         disabled={isUploading}
       >
         <Camera className="w-4 h-4 mr-2" />
-        {isUploading ? 'Đang tải...' : 'Chỉnh sửa ảnh bìa'}
+        {isUploading ? 'Đang tải...' : 'Sửa ảnh bìa'}
       </Button>
 
         {/* Dropdown Menu */}
