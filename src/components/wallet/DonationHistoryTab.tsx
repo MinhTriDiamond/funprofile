@@ -237,7 +237,7 @@ export function DonationHistoryTab() {
       <div className="flex justify-center">
         <Button
           variant="outline"
-          className="w-full max-w-md gap-2"
+          className="w-full max-w-md gap-2 border-yellow-400 bg-white text-blue-600 hover:bg-yellow-50 hover:text-blue-700"
           onClick={() => navigate('/donations')}
         >
           Xem Tất Cả Giao Dịch FUN Profile
