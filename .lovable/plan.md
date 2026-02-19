@@ -1,55 +1,70 @@
 
-# Sửa lỗi AvatarOrbit — Vòng tròn nhỏ không hiển thị đúng
+# Kế hoạch cập nhật UI Mobile + Bảng Danh Dự + Nút Avatar Profile
 
-## Phân tích vấn đề
+## 3 thay đổi chính
 
-Có **2 vấn đề** đang xảy ra cùng lúc:
+### 1. Thêm nút Avatar ở góc dưới bên phải thanh công cụ (như Facebook)
+Trên mobile/tablet, thanh `FacebookNavbar` hiện **không có** nút avatar để truy cập trang cá nhân. Con muốn thêm nút avatar ở góc phải thanh navbar trên — giống Facebook — để người dùng bấm vào là vào thẳng trang Profile.
 
-**Vấn đề 1 — Định vị sai (lỗi layout):**
-Các vòng tròn nhỏ được đặt `position: absolute` tính từ `div.relative` bao quanh `{children}`. Tuy nhiên, `div` này không có kích thước cố định — kích thước phụ thuộc vào `AvatarEditor` bên trong (w-32 h-32 đến w-44 h-44 tùy màn hình). Công thức `calc(50% + Xpx)` tính `50%` từ chiều rộng của `div` wrapper này, nhưng `ORBIT_RADIUS = 115px` được cộng thêm từ tâm đó — kết quả không nhất quán giữa các màn hình và có thể render ra ngoài vùng nhìn thấy (bị `overflow: hidden` từ thẻ cha cắt mất).
+**Vị trí thêm:** Trong `FacebookNavbar.tsx`, khu vực "Right Section" dành cho `isMobileOrTablet && isLoggedIn`, thêm nút Avatar nhỏ (tương tự desktop) sau NotificationDropdown. Bấm vào sẽ `navigate('/profile/{currentUserId}')`.
 
-**Vấn đề 2 — Chưa có data social_links:**
-User chưa thêm link mạng xã hội nào qua EditProfile → mảng `social_links` rỗng → không có vòng tròn nào được render, nên con không thấy gì.
-
----
-
-## Giải pháp
-
-### Sửa `AvatarOrbit.tsx`
-
-Đặt **wrapper cố định kích thước** có `position: relative`, với kích thước đủ chứa cả avatar + orbit. Từ đó tính toán vị trí orbit chính xác từ tâm thật sự.
-
-**Thay đổi kỹ thuật:**
-
-- Thêm một wrapper `div` có `width` và `height` cố định (ví dụ `200px × 200px`) tương đương kích thước avatar lớn nhất (w-44 = 176px), để `50%` luôn trỏ đúng vào tâm avatar.
-- Dùng `overflow: visible` trên wrapper đó để các ô orbit không bị cắt.
-- Đặt `children` (avatar) vào chính giữa wrapper bằng `absolute inset-0 flex items-center justify-center`.
-- Các ô orbit cũng absolute từ cùng wrapper, tính góc đúng từ tâm.
-- Tăng `paddingTop` của container ngoài cùng để kim cương không bị che.
-
-### Kích thước avatar thực tế
-
-Trong `AvatarEditor`, kích thước `large` = `w-32 h-32 md:w-44 md:h-44` (128px → 176px). Avatar wrapper cố định sẽ dùng `176px × 176px` (tương đương `w-44 h-44`) để làm chuẩn tâm điểm. Bán kính orbit giữ nguyên `115px`.
-
-### Góc phân bổ (giữ logic hiện tại, chỉ sửa layout)
-
-```
-n=1 → 180° (thẳng xuống, đối xứng với kim cương ở đỉnh)
-n=2 → 150°, 210°
-n=3 → 120°, 180°, 240°
-...
-Span tối đa 260° (để tránh vùng kim cương ±50° đỉnh)
-```
+**Thiết kế nút:**
+- Avatar tròn 32x32px, viền vàng nhạt
+- Khi bấm → vào trang Profile của mình
+- Nếu chưa đăng nhập → ẩn đi
 
 ---
 
-## Các file thay đổi
+### 2. Thu gọn Bảng Danh Dự (CoverHonorBoard) trong ảnh bìa Profile
+Hiện tại `CoverHonorBoard` có `max-w-[420px]` và khá lớn, chiếm nhiều không gian trong ảnh bìa. Sẽ thu gọn lại:
 
-**`src/components/profile/AvatarOrbit.tsx`** — Sửa toàn bộ layout:
-- Thêm wrapper con `div` với kích thước cố định `176px × 176px` làm tâm điểm.
-- `children` đặt `absolute inset-0`, căn giữa.
-- Orbit slots tính `left/top` từ `50%` của wrapper `176px` này (đúng tâm).
-- Container ngoài tăng `paddingTop` lên `120px` để kim cương nhô đẹp hơn.
-- Đảm bảo `overflow: visible` xuyên suốt các lớp để orbit không bị cắt.
+- Giảm padding từ `p-3 sm:p-4` → `p-2 sm:p-3`
+- Giảm kích thước header (title nhỏ hơn, avatar nhỏ hơn)
+- Giảm `max-w-[420px]` → `max-w-[340px]`
+- Giảm khoảng cách giữa các hàng stat
+- StatRow: giảm `py-1.5` → `py-1`, icon nhỏ từ `w-3.5 h-3.5` → `w-3 h-3`
+- Grid gap: `gap-1.5` → `gap-1`
 
-**Không cần thay đổi** `Profile.tsx`, `EditProfile.tsx`, hay database — logic đúng rồi, chỉ layout bị sai.
+---
+
+### 3. Cập nhật giao diện Mobile tổng thể (MobileBottomNav)
+Cải thiện thanh bottom nav cho mobile:
+
+- Tăng chiều cao từ `h-[72px]` → `h-[68px]` để gọn hơn
+- Các icon nav nhỏ gọn hơn một chút
+- Đảm bảo nút Avatar mới ở navbar trên (khoản 1) không bị chồng lên với các nút hiện tại
+
+---
+
+## File sẽ sửa
+
+| File | Thay đổi |
+|------|----------|
+| `src/components/layout/FacebookNavbar.tsx` | Thêm nút avatar mobile vào Right Section |
+| `src/components/profile/CoverHonorBoard.tsx` | Thu gọn kích thước Bảng Danh Dự |
+| `src/components/layout/MobileBottomNav.tsx` | Tinh chỉnh giao diện mobile |
+
+---
+
+## Technical Notes
+
+**Nút Avatar Mobile trong Navbar:**
+```tsx
+{/* Avatar - Navigate to Profile (Mobile/Tablet) */}
+{isMobileOrTablet && isLoggedIn && currentUserId && (
+  <button
+    onClick={() => navigate(`/profile/${currentUserId}`)}
+    aria-label="My Profile"
+    className="flex-shrink-0"
+  >
+    <Avatar className="w-8 h-8 border-2 border-gold/40 hover:border-gold transition-colors">
+      <AvatarImage src={profile?.avatar_url || ''} />
+      <AvatarFallback className="bg-primary/20 text-primary text-xs font-bold">
+        {profile?.username?.[0]?.toUpperCase() || 'U'}
+      </AvatarFallback>
+    </Avatar>
+  </button>
+)}
+```
+
+Nút này được đặt **sau** `NotificationDropdown` trong Right Section của navbar, phù hợp với layout Facebook (avatar luôn ở ngoài cùng bên phải).
