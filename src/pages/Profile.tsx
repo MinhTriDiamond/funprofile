@@ -142,7 +142,7 @@ const Profile = () => {
         .from('profiles')
         .select(isViewingOwnProfile 
           ? '*' 
-          : 'id, username, display_name, avatar_url, full_name, bio, cover_url, created_at, soul_level, total_rewards, pinned_post_id, external_wallet_address, custodial_wallet_address, public_wallet_address')
+          : 'id, username, display_name, avatar_url, full_name, bio, cover_url, created_at, soul_level, total_rewards, pinned_post_id, external_wallet_address, custodial_wallet_address, public_wallet_address, social_links')
         .eq('id', profileId)
         .single();
 
