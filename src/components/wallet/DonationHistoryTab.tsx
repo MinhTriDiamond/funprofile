@@ -281,7 +281,7 @@ export function DonationHistoryTab() {
             id: selectedDonation.id,
             amount: selectedDonation.amount,
             tokenSymbol: selectedDonation.token_symbol,
-            senderUsername: selectedDonation.sender?.display_name || selectedDonation.sender?.username || 'Unknown',
+            senderUsername: selectedDonation.sender?.display_name || selectedDonation.sender?.username || (selectedDonation.sender_address ? shortenAddress(selectedDonation.sender_address, 6) : 'Ví ngoài'),
             senderAvatarUrl: selectedDonation.sender?.avatar_url,
             senderId: selectedDonation.sender?.id,
             recipientUsername: selectedDonation.recipient?.display_name || selectedDonation.recipient?.username || 'Unknown',
@@ -306,7 +306,7 @@ export function DonationHistoryTab() {
             id: selectedDonation.id,
             amount: selectedDonation.amount,
             tokenSymbol: selectedDonation.token_symbol,
-            senderUsername: selectedDonation.sender?.display_name || selectedDonation.sender?.username || 'Unknown',
+            senderUsername: selectedDonation.sender?.display_name || selectedDonation.sender?.username || (selectedDonation.sender_address ? shortenAddress(selectedDonation.sender_address, 6) : 'Ví ngoài'),
             senderAvatarUrl: selectedDonation.sender?.avatar_url,
             senderId: selectedDonation.sender?.id || '',
             message: selectedDonation.message,
@@ -350,8 +350,14 @@ function PersonalDonationCard({
     return user?.public_wallet_address || user?.custodial_wallet_address || null;
   };
 
-  const senderWallet = getWallet(donation.sender);
+  const senderWallet = donation.sender ? getWallet(donation.sender) : donation.sender_address || null;
   const recipientWallet = getWallet(donation.recipient);
+
+  const senderDisplayName = donation.sender?.display_name || donation.sender?.username || 
+    (donation.sender_address ? shortenAddress(donation.sender_address, 6) : 'Ví ngoài');
+  const senderInitial = donation.sender 
+    ? (donation.sender.display_name || donation.sender.username)?.charAt(0).toUpperCase() || '?'
+    : '🌐';
 
   return (
     <div
@@ -367,16 +373,23 @@ function PersonalDonationCard({
             onClick={e => { e.stopPropagation(); if (donation.sender?.id) navigate(`/profile/${donation.sender.id}`); }}
           >
             <AvatarImage src={donation.sender?.avatar_url || undefined} />
-            <AvatarFallback>{(donation.sender?.display_name || donation.sender?.username)?.charAt(0).toUpperCase() || '?'}</AvatarFallback>
+            <AvatarFallback>{senderInitial}</AvatarFallback>
           </Avatar>
           <div className="min-w-0">
-            <button
-              type="button"
-              className="font-semibold text-sm text-foreground hover:underline truncate max-w-[120px] block text-left"
-              onClick={e => { e.stopPropagation(); if (donation.sender?.id) navigate(`/profile/${donation.sender.id}`); }}
-            >
-              {donation.sender?.display_name || donation.sender?.username || 'Unknown'}
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                className="font-semibold text-sm text-foreground hover:underline truncate max-w-[120px] block text-left"
+                onClick={e => { e.stopPropagation(); if (donation.sender?.id) navigate(`/profile/${donation.sender.id}`); }}
+              >
+                {senderDisplayName}
+              </button>
+              {donation.is_external && (
+                <Badge variant="secondary" className="bg-orange-100 text-orange-700 border-orange-200 text-[10px] px-1 py-0">
+                  Ví ngoài
+                </Badge>
+              )}
+            </div>
             {senderWallet && (
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
                 <span className="truncate max-w-[80px]">{shortenAddress(senderWallet, 4)}</span>

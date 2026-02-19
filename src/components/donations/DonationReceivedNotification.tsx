@@ -45,22 +45,29 @@ export const DonationReceivedNotification = () => {
             id: string;
             amount: string;
             token_symbol: string;
-            sender_id: string;
+            sender_id: string | null;
+            sender_address?: string | null;
+            is_external?: boolean;
             message?: string | null;
             tx_hash: string;
             created_at: string;
           };
 
-          // Fetch sender profile
-          const { data: senderProfile } = await supabase
-            .from('profiles')
-            .select('full_name, display_name, username, avatar_url')
-            .eq('id', donation.sender_id)
-            .single();
+          // Fetch sender profile (if sender_id exists)
+          let senderProfile: any = null;
+          if (donation.sender_id) {
+            const { data } = await supabase
+              .from('profiles')
+              .select('full_name, display_name, username, avatar_url')
+              .eq('id', donation.sender_id)
+              .single();
+            senderProfile = data;
+          }
 
+          const shortenAddr = (addr: string) => `${addr.slice(0, 6)}...${addr.slice(-4)}`;
           const senderUsername = senderProfile?.username || 
                                  senderProfile?.full_name || 
-                                 `User ${donation.sender_id.slice(0, 6)}`;
+                                 (donation.sender_address ? shortenAddr(donation.sender_address) : 'Ví ngoài');
           const senderDisplayName = senderProfile?.display_name || senderProfile?.full_name || senderUsername;
 
           // Fetch recipient (current user) profile
@@ -77,7 +84,7 @@ export const DonationReceivedNotification = () => {
             senderUsername,
             senderDisplayName,
             senderAvatarUrl: senderProfile?.avatar_url,
-            senderId: donation.sender_id,
+            senderId: donation.sender_id || '',
             recipientUsername: recipientProfile?.username || 'Bạn',
             recipientDisplayName: recipientProfile?.display_name || recipientProfile?.full_name,
             recipientAvatarUrl: recipientProfile?.avatar_url,

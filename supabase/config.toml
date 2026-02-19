@@ -158,3 +158,6 @@ verify_jwt = false
 
 [functions.backfill-donations]
 verify_jwt = false
+
+[functions.detect-incoming-transfers]
+verify_jwt = false

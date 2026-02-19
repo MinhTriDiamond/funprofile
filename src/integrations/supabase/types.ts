@@ -483,6 +483,7 @@ export type Database = {
           conversation_id: string | null
           created_at: string
           id: string
+          is_external: boolean | null
           light_action_id: string | null
           light_score_earned: number | null
           message: string | null
@@ -491,7 +492,8 @@ export type Database = {
           metadata: Json | null
           post_id: string | null
           recipient_id: string
-          sender_id: string
+          sender_address: string | null
+          sender_id: string | null
           status: string
           token_address: string | null
           token_symbol: string
@@ -510,6 +512,7 @@ export type Database = {
           conversation_id?: string | null
           created_at?: string
           id?: string
+          is_external?: boolean | null
           light_action_id?: string | null
           light_score_earned?: number | null
           message?: string | null
@@ -518,7 +521,8 @@ export type Database = {
           metadata?: Json | null
           post_id?: string | null
           recipient_id: string
-          sender_id: string
+          sender_address?: string | null
+          sender_id?: string | null
           status?: string
           token_address?: string | null
           token_symbol?: string
@@ -537,6 +541,7 @@ export type Database = {
           conversation_id?: string | null
           created_at?: string
           id?: string
+          is_external?: boolean | null
           light_action_id?: string | null
           light_score_earned?: number | null
           message?: string | null
@@ -545,7 +550,8 @@ export type Database = {
           metadata?: Json | null
           post_id?: string | null
           recipient_id?: string
-          sender_id?: string
+          sender_address?: string | null
+          sender_id?: string | null
           status?: string
           token_address?: string | null
           token_symbol?: string
