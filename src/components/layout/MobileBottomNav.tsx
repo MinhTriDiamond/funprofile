@@ -1,6 +1,6 @@
 import { useState, memo, useCallback } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
-import { Home, Users, Award, MessageCircle } from 'lucide-react';
+import { Home, Users, Award, MessageCircle, Gift } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { FacebookLeftSidebar } from '@/components/feed/FacebookLeftSidebar';
@@ -11,7 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { AngelFloatingButton } from '@/components/angel-ai';
 import honorBoardIcon from '@/assets/honor-board-icon.png';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { UnifiedGiftSendDialog } from '@/components/donations/UnifiedGiftSendDialog';
 
 export const MobileBottomNav = memo(() => {
   const navigate = useNavigate();
@@ -20,6 +20,7 @@ export const MobileBottomNav = memo(() => {
   const { t } = useLanguage();
   const [leftSheetOpen, setLeftSheetOpen] = useState(false);
   const [honorBoardOpen, setHonorBoardOpen] = useState(false);
+  const [giftDialogOpen, setGiftDialogOpen] = useState(false);
 
   // Detect if we're on a profile page
   const isProfilePage = location.pathname.startsWith('/profile');
@@ -53,21 +54,6 @@ export const MobileBottomNav = memo(() => {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Fetch current user's own profile for avatar button
-  const { data: myProfile } = useQuery({
-    queryKey: ['my-profile-nav', currentUser?.id],
-    queryFn: async () => {
-      if (!currentUser?.id) return null;
-      const { data } = await supabase
-        .from('profiles')
-        .select('username, avatar_url')
-        .eq('id', currentUser.id)
-        .single();
-      return data;
-    },
-    enabled: !!currentUser?.id,
-    staleTime: 5 * 60 * 1000,
-  });
 
   const isActive = useCallback((path: string) => location.pathname === path, [location.pathname]);
 
@@ -80,7 +66,7 @@ export const MobileBottomNav = memo(() => {
     { icon: Users, label: t('friends'), path: '/friends', action: () => handleNavigate('/friends') },
     { icon: Award, label: t('honorBoard'), isCenter: true, action: () => setHonorBoardOpen(true) },
     { icon: MessageCircle, label: 'Chat', path: '/chat', action: () => handleNavigate('/chat') },
-    { isAvatar: true }, // Avatar profile button
+    { isGift: true }, // Gift button
   ];
 
   return (
@@ -92,28 +78,17 @@ export const MobileBottomNav = memo(() => {
       <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-white/85 dark:bg-gray-900/85 border-t border-border/30 safe-area-bottom backdrop-blur-sm">
         <div className="flex items-center justify-around h-[72px] px-1 max-w-lg mx-auto">
           {navItems.map((item, index) => {
-            // Avatar profile button - special component
-            if ('isAvatar' in item && item.isAvatar) {
+            // Gift button - special component
+            if ('isGift' in item && item.isGift) {
               return (
                 <button
                   key={index}
-                  onClick={() => currentUser?.id && navigate(`/profile/${currentUser.id}`)}
-                  aria-label="My Profile"
-                  className="flex flex-col items-center justify-center min-w-[56px] min-h-[52px] touch-manipulation group"
+                  onClick={() => setGiftDialogOpen(true)}
+                  aria-label={t('gift') || 'Tặng quà'}
+                  className="flex flex-col items-center justify-center min-w-[56px] min-h-[52px] rounded-full transition-all duration-300 touch-manipulation group border-[0.5px] text-gold hover:text-gold hover:bg-gold/10 border-transparent hover:border-gold/40 active:bg-gold/20"
                 >
-                  <Avatar className={`w-9 h-9 border-2 transition-all duration-300 ${
-                    location.pathname === `/profile/${currentUser?.id}`
-                      ? 'border-gold ring-2 ring-gold/40'
-                      : 'border-gold/30 group-hover:border-gold group-active:border-gold'
-                  }`}>
-                    <AvatarImage src={myProfile?.avatar_url || ''} sizeHint="sm" />
-                    <AvatarFallback className="bg-primary/20 text-primary text-xs font-bold">
-                      {myProfile?.username?.[0]?.toUpperCase() || 'U'}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="text-[10px] mt-1 font-medium truncate max-w-[52px] text-foreground">
-                    {myProfile?.username?.split('').slice(0,6).join('') || 'Tôi'}
-                  </span>
+                  <Gift className="w-6 h-6 transition-all duration-300 drop-shadow-[0_0_6px_hsl(48_96%_53%/0.5)] group-hover:drop-shadow-[0_0_10px_hsl(48_96%_53%/0.7)]" strokeWidth={1.8} />
+                  <span className="text-[10px] mt-1 font-medium truncate max-w-[52px]">{t('gift') || 'Quà'}</span>
                 </button>
               );
             }
@@ -197,6 +172,13 @@ export const MobileBottomNav = memo(() => {
           </div>
         </DrawerContent>
       </Drawer>
+
+      {/* Gift Send Dialog */}
+      <UnifiedGiftSendDialog
+        isOpen={giftDialogOpen}
+        onClose={() => setGiftDialogOpen(false)}
+        mode="navbar"
+      />
     </>
   );
 });
