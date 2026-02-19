@@ -1,50 +1,37 @@
 
 
-## Hiển thị mặc định tất cả biểu tượng mạng xã hội cho mọi user
+## Sửa lỗi orbit icon không hiển thị khi xem profile người khác + Kim cương sát viền avatar
 
-### Vấn đề hiện tại
-- 525/567 user chưa thiết lập social_links, nên orbit trống (chỉ có avatar + kim cương)
-- Chỉ 42 user đã thêm link mới có các hình tròn xoay quanh avatar
+### Vấn đề 1: Orbit icon biến mất khi chuyển giữa các profile
+Khi điều hướng từ profile A (có social_links) sang profile B (không có), React tái sử dụng cùng component `AvatarOrbit` mà không reset state nội bộ (`localLinks`). Điều này khiến dữ liệu cũ bị "dính" lại, và logic fallback về `defaultLinks` không hoạt động đúng.
 
-### Giải pháp
-Khi user chưa có social_links (mảng rỗng `[]`), hệ thống sẽ tự động hiển thị tất cả 9 biểu tượng mạng xã hội mặc định (Angel, FunPlay, Facebook, YouTube, Twitter, Telegram, TikTok, LinkedIn, Zalo) với favicon/logo. Khi user đã thêm link, hiển thị avatar cá nhân của họ thay cho favicon mặc định.
+**Giải pháp**: Thêm `key={profile?.id}` vào component `AvatarOrbit` trong `Profile.tsx` để React tự động tạo mới component mỗi khi chuyển sang profile khác. Đồng thời cải thiện logic fallback trong `AvatarOrbit.tsx`.
+
+### Vấn đề 2: Kim cương chưa sát viền avatar
+Hiện tại kim cương đặt tại `top: 82px` trong wrapper 486px. Cần điều chỉnh để mũi nhọn phía dưới chạm sát viền tròn của avatar.
+
+**Giải pháp**: Tính toán lại vị trí: Avatar tâm tại 243px (center wrapper), avatar radius ~88px (176/2), nên đỉnh avatar ở ~155px. Kim cương 100px, nên `top = 155 - 100 = 55px` để mũi nhọn chạm sát.
 
 ### Chi tiết kỹ thuật
 
-**File: `src/components/profile/AvatarOrbit.tsx`**
+**File 1: `src/pages/Profile.tsx`**
+- Thêm `key={profile?.id}` vào `<AvatarOrbit>` để force remount khi đổi profile:
+```tsx
+<AvatarOrbit
+  key={profile?.id}
+  socialLinks={...}
+  ...
+>
+```
 
-1. Thay đổi logic tính `allLinks`:
-   - Hiện tại: `allLinks = localLinks.filter(l => isOwner || !!l.url)` -- chỉ hiển thị link có URL
-   - Mới: Nếu `localLinks` rỗng (user chưa thiết lập), tạo danh sách mặc định từ `PLATFORM_ORDER` với tất cả 9 platform, mỗi cái có favicon mặc định nhưng không có URL
-   - Nếu `localLinks` có dữ liệu, giữ nguyên logic hiện tại
+**File 2: `src/components/profile/AvatarOrbit.tsx`**
+1. Cải thiện logic fallback `displayLinks`:
+   - Kiểm tra cả trường hợp user có `social_links` nhưng tất cả đều rỗng (không có URL nào)
+   - Đảm bảo luôn hiển thị đủ 9 icon cho mọi user: nếu user đã có một số link, bổ sung thêm các platform còn thiếu với icon mặc định
 
-2. Cụ thể thay đổi trong block `allLinks` (khoảng dòng 227-234):
-   ```typescript
-   // Nếu user chưa có link nào, hiển thị tất cả icon mặc định
-   const defaultLinks: SocialLink[] = PLATFORM_ORDER.map(p => {
-     const preset = PLATFORM_PRESETS[p];
-     return { platform: p, label: preset.label, url: '', color: preset.color, favicon: preset.favicon };
-   });
-   
-   const displayLinks = localLinks.length > 0 ? localLinks : defaultLinks;
-   
-   const allLinks = [
-     ...displayLinks
-       .filter(l => isOwner || true) // Luôn hiển thị tất cả cho mọi người
-       .map(l => ({ ...l, isEmpty: !l.url })),
-     // pending slot chỉ cho owner...
-   ];
-   ```
-
-3. Đối với non-owner xem profile người khác:
-   - Link có URL: nhấp vào sẽ mở link trong tab mới (giữ nguyên)
-   - Link không có URL (mặc định): hiển thị favicon, nhấp vào không có hành động
-
-**File: `src/pages/Profile.tsx`** -- Không cần thay đổi, vì dữ liệu `social_links` đã được truyền đúng.
+2. Điều chỉnh vị trí kim cương từ `top: 82px` sang `top: 55px` để mũi nhọn chạm sát viền tròn avatar.
 
 ### Kết quả mong đợi
-- Mọi profile đều hiển thị 9 icon mạng xã hội xoay quanh avatar
-- User đã thêm link: hiển thị avatar cá nhân + nhấp mở link
-- User chưa thêm link: hiển thị favicon mặc định, chỉ mang tính trang trí
-- Giao diện đồng nhất cho tất cả 567 user
-
+- Mọi profile đều hiển thị đủ 9 icon orbit xoay quanh avatar
+- Chuyển giữa các profile luôn hiển thị đúng
+- Kim cương nằm sát viền tròn avatar như hình mẫu
