@@ -371,13 +371,16 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
                   top: `${AVATAR_SIZE / 2 + y - ORBIT_SIZE / 2}px`,
                   width: `${ORBIT_SIZE}px`,
                   height: `${ORBIT_SIZE}px`,
-                  zIndex: (isEditing || isPending || isPrompting || isDraggingThis) ? 30 : 20,
+                  zIndex: (isEditing || isPending || isPrompting || isDraggingThis || isHovered) ? 9999 : 20,
                   opacity: isDraggingThis ? 0.6 : 1,
                   transition: isDragging.current ? 'none' : 'opacity 0.2s',
                   cursor: isOwner && !isPending ? 'grab' : 'default',
+                  overflow: 'visible',
                 }}
                 onMouseEnter={() => { setHoveredPlatform(link.platform); isOrbitHovered.current = true; }}
                 onMouseLeave={() => { setHoveredPlatform(null); if (!isDragging.current) isOrbitHovered.current = false; }}
+                onTouchStart={() => { setHoveredPlatform(link.platform); isOrbitHovered.current = true; }}
+                onTouchEnd={() => { setTimeout(() => { setHoveredPlatform(null); isOrbitHovered.current = false; }, 1500); }}
                 draggable={isOwner && !isPending}
                 onDragStart={() => handleDragStart(i)}
                 onDragOver={(e) => { e.preventDefault(); handleDragOver(i); }}
@@ -478,19 +481,27 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
                 {/* Tooltip */}
                 {isHovered && !isPending && !isEditing && !isPrompting && !isDraggingThis && (
                   <div
-                    className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none z-50 flex flex-col items-center gap-0.5"
-                    style={{ minWidth: '120px', maxWidth: '220px' }}
+                    className="absolute pointer-events-none flex flex-col items-center gap-0.5"
+                    style={{
+                      bottom: 'calc(100% + 8px)',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      minWidth: '100px',
+                      maxWidth: '220px',
+                      zIndex: 99999,
+                      whiteSpace: 'nowrap',
+                    }}
                   >
-                    <div className="px-2.5 py-1.5 rounded-lg text-xs whitespace-nowrap shadow-lg" style={{ background: link.color, color: '#fff', fontWeight: 600 }}>
+                    <div className="px-2.5 py-1.5 rounded-lg text-xs shadow-lg" style={{ background: link.color, color: '#fff', fontWeight: 600, whiteSpace: 'nowrap' }}>
                       {link.label}
                     </div>
                     {link.url && (
-                      <div className="px-2 py-1 rounded-md text-xs shadow" style={{ background: 'rgba(0,0,0,0.8)', color: '#e5e7eb', maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <div className="px-2 py-1 rounded-md text-xs shadow" style={{ background: 'rgba(0,0,0,0.85)', color: '#e5e7eb', maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {link.url.replace(/^https?:\/\//, '')}
                       </div>
                     )}
                     {!link.url && isOwner && (
-                      <div className="px-2 py-1 rounded-md text-xs shadow" style={{ background: 'rgba(0,0,0,0.8)', color: '#fbbf24' }}>
+                      <div className="px-2 py-1 rounded-md text-xs shadow" style={{ background: 'rgba(0,0,0,0.85)', color: '#fbbf24', whiteSpace: 'nowrap' }}>
                         Nhấn ✏️ để thêm link
                       </div>
                     )}
