@@ -368,18 +368,33 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
       className="relative"
       style={{ width: `${AVATAR_SIZE}px`, height: `${AVATAR_SIZE}px`, flexShrink: 0, overflow: 'visible' }}
     >
-      {/* Kim cương - phía trên avatar */}
-      <div className="absolute pointer-events-none diamond-sparkle" style={{ top: '-10px', left: '50%', transform: 'translateX(-50%)', zIndex: 40, willChange: 'filter' }}>
-        {/* Sparkle dots */}
-        <span className="sparkle-dot-1 absolute text-yellow-300" style={{ top: '18%', left: '10%', fontSize: '12px' }}>✦</span>
-        <span className="sparkle-dot-2 absolute text-cyan-300" style={{ top: '5%', left: '55%', fontSize: '10px' }}>✦</span>
-        <span className="sparkle-dot-3 absolute text-white" style={{ top: '22%', right: '8%', fontSize: '14px' }}>✦</span>
-        <span className="sparkle-dot-4 absolute text-yellow-200" style={{ top: '55%', left: '5%', fontSize: '8px' }}>✦</span>
-        <span className="sparkle-dot-5 absolute text-purple-300" style={{ top: '8%', left: '30%', fontSize: '11px' }}>✦</span>
-        <span className="sparkle-dot-6 absolute text-cyan-200" style={{ top: '45%', right: '5%', fontSize: '9px' }}>✦</span>
-        <span className="sparkle-dot-7 absolute text-yellow-100" style={{ top: '70%', left: '20%', fontSize: '7px' }}>✦</span>
-        <span className="sparkle-dot-8 absolute text-white" style={{ top: '65%', right: '18%', fontSize: '10px' }}>✦</span>
-        <img src={transparentDiamond} alt="Kim cương xanh" style={{ width: '200px', height: '200px', objectFit: 'contain', display: 'block' }} />
+      {/* Kim cương - phía trên avatar, đặt trong wrapper 486px để không bị clip */}
+      <div
+        className="pointer-events-none diamond-sparkle"
+        style={{
+          position: 'absolute',
+          left: `${(AVATAR_SIZE - WRAPPER_SIZE) / 2}px`,
+          top: `${(AVATAR_SIZE - WRAPPER_SIZE) / 2}px`,
+          width: `${WRAPPER_SIZE}px`,
+          height: `${WRAPPER_SIZE}px`,
+          zIndex: 40,
+          willChange: 'filter',
+          overflow: 'visible',
+        }}
+      >
+        {/* Kim cương căn giữa theo trục X, nằm phía trên đỉnh orbit */}
+        <div style={{ position: 'absolute', left: '50%', top: '0px', transform: 'translateX(-50%)' }}>
+          {/* Sparkle dots */}
+          <span className="sparkle-dot-1 absolute text-yellow-300" style={{ top: '18%', left: '10%', fontSize: '12px' }}>✦</span>
+          <span className="sparkle-dot-2 absolute text-cyan-300" style={{ top: '5%', left: '55%', fontSize: '10px' }}>✦</span>
+          <span className="sparkle-dot-3 absolute text-white" style={{ top: '22%', right: '8%', fontSize: '14px' }}>✦</span>
+          <span className="sparkle-dot-4 absolute text-yellow-200" style={{ top: '55%', left: '5%', fontSize: '8px' }}>✦</span>
+          <span className="sparkle-dot-5 absolute text-purple-300" style={{ top: '8%', left: '30%', fontSize: '11px' }}>✦</span>
+          <span className="sparkle-dot-6 absolute text-cyan-200" style={{ top: '45%', right: '5%', fontSize: '9px' }}>✦</span>
+          <span className="sparkle-dot-7 absolute text-yellow-100" style={{ top: '70%', left: '20%', fontSize: '7px' }}>✦</span>
+          <span className="sparkle-dot-8 absolute text-white" style={{ top: '65%', right: '18%', fontSize: '10px' }}>✦</span>
+          <img src={transparentDiamond} alt="Kim cương xanh" style={{ width: '200px', height: '200px', objectFit: 'contain', display: 'block' }} />
+        </div>
       </div>
 
       {/* Avatar ở tâm */}
