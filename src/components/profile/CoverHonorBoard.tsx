@@ -112,16 +112,7 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
     <>
       {/* === MOBILE only: compact horizontal chip layout === */}
       <div className="w-full md:hidden">
-        <div
-          className="rounded-lg overflow-hidden bg-white/85 backdrop-blur-xl shadow-md"
-          style={{
-            border: '1.5px solid transparent',
-            backgroundImage: 'linear-gradient(white, white), linear-gradient(135deg, #22c55e 0%, #4ade80 25%, #22c55e 50%, #16a34a 75%, #22c55e 100%)',
-            backgroundOrigin: 'border-box',
-            backgroundClip: 'padding-box, border-box',
-            boxShadow: '0 0 8px rgba(34, 197, 94, 0.3)'
-          }}
-        >
+        <div className="rounded-lg overflow-hidden">
           <div className="px-2 py-1.5">
             <div className="flex items-center gap-1 mb-1">
               <img src="/fun-profile-logo-40.webp" alt="FUN Profile" className="w-4 h-4 rounded-full border border-[#22c55e] flex-shrink-0" />
