@@ -457,10 +457,10 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
                   overflow: 'visible',
                 }}
                 onMouseEnter={() => { setHoveredPlatform(link.platform); isOrbitHovered.current = true; }}
-                onMouseLeave={() => { setHoveredPlatform(null); if (!isDragging.current) isOrbitHovered.current = false; }}
+                onMouseLeave={() => { if (!isEditing && !isPrompting) { setHoveredPlatform(null); if (!isDragging.current) isOrbitHovered.current = false; } }}
                 onTouchStart={() => { setHoveredPlatform(link.platform); isOrbitHovered.current = true; }}
-                onTouchEnd={() => { setTimeout(() => { setHoveredPlatform(null); isOrbitHovered.current = false; }, 1500); }}
-                draggable={isOwner && !isPending}
+                onTouchEnd={() => { if (!isEditing && !isPrompting) { setTimeout(() => { setHoveredPlatform(null); isOrbitHovered.current = false; }, 1500); } }}
+                draggable={isOwner && !isPending && !isEditing && !isPrompting}
                 onDragStart={() => handleDragStart(i)}
                 onDragOver={(e) => { e.preventDefault(); handleDragOver(i); }}
                 onDragEnd={handleDragEnd}
@@ -472,6 +472,8 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
                     ref={promptRef}
                     className="absolute z-50 bg-card border border-border rounded-xl shadow-xl p-3"
                     style={{ bottom: '110%', left: '50%', transform: 'translateX(-50%)', width: '220px' }}
+                    onMouseEnter={() => { isOrbitHovered.current = true; }}
+                    onMouseLeave={() => { isOrbitHovered.current = true; }}
                   >
                     <div className="flex items-center gap-1.5 mb-2">
                       <div className="w-4 h-4 rounded-full bg-white flex items-center justify-center flex-shrink-0" style={{ border: `1.5px solid ${link.color}` }}>
@@ -518,6 +520,8 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
                     ref={editRef}
                     className="absolute z-50 bg-card border border-border rounded-xl shadow-xl p-3"
                     style={{ bottom: '110%', left: '50%', transform: 'translateX(-50%)', width: '220px' }}
+                    onMouseEnter={() => { isOrbitHovered.current = true; }}
+                    onMouseLeave={() => { isOrbitHovered.current = true; }}
                   >
                     <div className="flex items-center gap-1.5 mb-2">
                       <div className="w-4 h-4 rounded-full bg-white flex items-center justify-center flex-shrink-0" style={{ border: `1.5px solid ${link.color}` }}>
