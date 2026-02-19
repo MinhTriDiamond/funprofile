@@ -228,8 +228,11 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
     return { platform: p, label: preset.label, url: '', color: preset.color, favicon: preset.favicon };
   });
 
-  // Use default icons when user has no links configured
-  const displayLinks = localLinks.length > 0 ? localLinks : defaultLinks;
+  // Use default icons when user has no links configured or all links have empty URLs
+  const hasAnyUrl = localLinks.some(l => l.url && l.url.trim() !== '');
+  const displayLinks = (localLinks.length === 0 || (!hasAnyUrl && !isOwner))
+    ? defaultLinks
+    : localLinks.length > 0 ? localLinks : defaultLinks;
 
   const allLinks: (SocialLink & { isPending?: boolean; isEmpty?: boolean })[] = [
     ...displayLinks
@@ -390,7 +393,7 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
       >
         {/* Kim cương: mũi nhọn dưới chạm sát đỉnh avatar (top avatar = 155px trong wrapper) */}
         {/* Diamond 100px → top = 155 - 100 = 55px */}
-        <div style={{ position: 'absolute', left: '50%', top: '82px', transform: 'translateX(-50%)' }}>
+        <div style={{ position: 'absolute', left: '50%', top: '55px', transform: 'translateX(-50%)' }}>
           {/* Sparkle dots */}
           <span className="sparkle-dot-1 absolute text-yellow-300" style={{ top: '18%', left: '10%', fontSize: '8px' }}>✦</span>
           <span className="sparkle-dot-2 absolute text-cyan-300" style={{ top: '5%', left: '55%', fontSize: '7px' }}>✦</span>
