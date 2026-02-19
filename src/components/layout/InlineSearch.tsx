@@ -211,7 +211,7 @@ export const InlineSearch = () => {
 
       {/* Search Results Dropdown */}
       {showResults && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-popover border border-border rounded-xl shadow-xl overflow-hidden z-50 animate-fade-in">
+        <div className="absolute top-full left-0 right-0 mt-2 bg-popover border border-border rounded-xl shadow-xl overflow-hidden z-50 animate-fade-in max-h-[70vh] flex flex-col">
           {/* Tabs */}
           <div className="flex border-b border-border">
             <button
@@ -239,7 +239,7 @@ export const InlineSearch = () => {
           </div>
 
           {/* Results */}
-          <ScrollArea className="max-h-[360px]">
+          <ScrollArea className="flex-1 overflow-auto" style={{ maxHeight: 'calc(70vh - 44px)' }}>
             {loading ? (
               <div className="p-6 text-center">
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
