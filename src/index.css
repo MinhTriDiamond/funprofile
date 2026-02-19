@@ -665,6 +665,7 @@ html {
 @keyframes diamond-float {
   0%, 100% { transform: translateX(-50%) translateY(0px) rotate(0deg); }
   25% { transform: translateX(-50%) translateY(-5px) rotate(1.5deg); }
+  50% { transform: translateX(-50%) translateY(-2px) rotate(0.5deg); }
   75% { transform: translateX(-50%) translateY(3px) rotate(-1deg); }
 }
 

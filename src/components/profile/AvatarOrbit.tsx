@@ -21,25 +21,39 @@ const ORBIT_RADIUS = 115;
 const ORBIT_SIZE = 40;
 const AVATAR_SIZE = 176;
 
+// Cache the processed diamond so we only compute it once per session
+let _cachedDiamondUrl: string | null = null;
+
 function useTransparentDiamond(src: string) {
-  const [dataUrl, setDataUrl] = useState<string>(src);
+  const [dataUrl, setDataUrl] = useState<string>(_cachedDiamondUrl ?? src);
   useEffect(() => {
+    if (_cachedDiamondUrl) {
+      setDataUrl(_cachedDiamondUrl);
+      return;
+    }
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = img.naturalWidth;
-      canvas.height = img.naturalHeight;
-      const ctx = canvas.getContext('2d')!;
-      ctx.drawImage(img, 0, 0);
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const data = imageData.data;
-      for (let i = 0; i < data.length; i += 4) {
-        if (data[i] > 220 && data[i + 1] > 220 && data[i + 2] > 220) data[i + 3] = 0;
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext('2d')!;
+        ctx.drawImage(img, 0, 0);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        for (let i = 0; i < data.length; i += 4) {
+          if (data[i] > 220 && data[i + 1] > 220 && data[i + 2] > 220) data[i + 3] = 0;
+        }
+        ctx.putImageData(imageData, 0, 0);
+        _cachedDiamondUrl = canvas.toDataURL('image/png');
+        setDataUrl(_cachedDiamondUrl);
+      } catch {
+        // CORS or canvas taint — fallback to original src
+        setDataUrl(src);
       }
-      ctx.putImageData(imageData, 0, 0);
-      setDataUrl(canvas.toDataURL('image/png'));
     };
+    img.onerror = () => setDataUrl(src);
     img.src = src;
   }, [src]);
   return dataUrl;
@@ -346,7 +360,7 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
       style={{ paddingTop: '110px', paddingBottom: `${ORBIT_RADIUS + ORBIT_SIZE / 2 + 8}px` }}
     >
       {/* Kim cương */}
-      <div className="absolute pointer-events-none diamond-sparkle" style={{ top: '-10px', left: '50%', zIndex: 40 }}>
+      <div className="absolute pointer-events-none diamond-sparkle" style={{ top: '-10px', left: '50%', transform: 'translateX(-50%)', zIndex: 40, willChange: 'transform, filter' }}>
         {/* Sparkle dots */}
         <span className="sparkle-dot-1 absolute text-yellow-300" style={{ top: '18%', left: '10%', fontSize: '12px' }}>✦</span>
         <span className="sparkle-dot-2 absolute text-cyan-300" style={{ top: '5%', left: '55%', fontSize: '10px' }}>✦</span>
