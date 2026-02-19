@@ -6,8 +6,8 @@ const corsHeaders = {
 };
 
 // Platforms supported by unavatar.io for user profile pictures
+// NOTE: Facebook removed from unavatar — it returns placeholder, not real profile pic
 const UNAVATAR_MAP: Record<string, string> = {
-  facebook: 'facebook',
   youtube: 'youtube',
   twitter: 'twitter',
   tiktok: 'tiktok',
@@ -97,8 +97,8 @@ async function scrapeOgImage(url: string): Promise<string | null> {
         '/og-image',
         'default_',
         '/placeholder',
-        'logo.png',
         'favicon',
+        'funplay-og-image',
       ];
       if (!BAD_PATTERNS.some(p => imgUrl.includes(p))) {
         return imgUrl;
@@ -137,7 +137,16 @@ serve(async (req) => {
     const normalizedUrl = url.startsWith('http') ? url : `https://${url}`;
     let avatarUrl: string | null = null;
 
-    if (platform && UNAVATAR_MAP[platform]) {
+    if (platform === 'facebook') {
+      // Facebook: use graph API public picture endpoint
+      const username = extractUsername(normalizedUrl, 'facebook');
+      console.log(`Facebook username: ${username}`);
+      if (username) {
+        // graph.facebook.com returns a redirect to the actual profile picture
+        avatarUrl = `https://graph.facebook.com/${encodeURIComponent(username)}/picture?type=large&redirect=true`;
+        console.log(`Facebook graph URL: ${avatarUrl}`);
+      }
+    } else if (platform && UNAVATAR_MAP[platform]) {
       // Use unavatar.io for supported platforms (real user profile pictures)
       const username = extractUsername(normalizedUrl, platform);
       console.log(`Platform: ${platform}, Username: ${username}`);
@@ -147,7 +156,7 @@ serve(async (req) => {
         console.log(`Built unavatar URL: ${avatarUrl}`);
       }
     } else {
-      // For other platforms (Zalo, Angel, Fun Play, etc.): scrape og:image from page
+      // For other platforms (Angel, etc.): scrape og:image from page
       console.log(`Platform ${platform} — scraping og:image from: ${normalizedUrl}`);
       avatarUrl = await scrapeOgImage(normalizedUrl);
       console.log(`Scraped og:image: ${avatarUrl}`);
