@@ -20,6 +20,9 @@ export interface SocialLink {
 const ORBIT_RADIUS = 115;
 const ORBIT_SIZE = 40;
 const AVATAR_SIZE = 176;
+// Wrapper lớn đủ chứa orbit không bị clip: 176 + (115+40)*2 = 486px
+const WRAPPER_SIZE = AVATAR_SIZE + (ORBIT_RADIUS + ORBIT_SIZE) * 2;
+const CENTER = WRAPPER_SIZE / 2; // 243px
 
 // Cache the processed diamond so we only compute it once per session
 let _cachedDiamondUrl: string | null = null;
@@ -102,6 +105,7 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
   const slotRefs = useRef<(HTMLDivElement | null)[]>([]);
   const baseAnglesRef = useRef<number[]>([]);
 
+
   useEffect(() => {
     const animate = (time: number) => {
       if (lastTimeRef.current > 0 && !isOrbitHovered.current && !isDragging.current) {
@@ -115,13 +119,15 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
           const rad = (rotatedAngle * Math.PI) / 180;
           const x = Math.sin(rad) * ORBIT_RADIUS;
           const y = -Math.cos(rad) * ORBIT_RADIUS;
-          el.style.left = `${AVATAR_SIZE / 2 + x - ORBIT_SIZE / 2}px`;
-          el.style.top = `${AVATAR_SIZE / 2 + y - ORBIT_SIZE / 2}px`;
+          el.style.left = `${CENTER + x - ORBIT_SIZE / 2}px`;
+          el.style.top = `${CENTER + y - ORBIT_SIZE / 2}px`;
         });
       }
       lastTimeRef.current = time;
       rafRef.current = requestAnimationFrame(animate);
     };
+    // Set baseAnglesRef before starting animation loop
+    baseAnglesRef.current = computeAngles(0);
     rafRef.current = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(rafRef.current);
   }, []);
@@ -359,11 +365,11 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
 
   return (
     <div
-      className="relative flex flex-col items-center"
-      style={{ paddingTop: '110px', paddingBottom: `${ORBIT_RADIUS + ORBIT_SIZE / 2 + 8}px` }}
+      className="relative"
+      style={{ width: `${AVATAR_SIZE}px`, height: `${AVATAR_SIZE}px`, flexShrink: 0, overflow: 'visible' }}
     >
-      {/* Kim cương */}
-      <div className="absolute pointer-events-none diamond-sparkle" style={{ top: '-10px', left: '50%', transform: 'translateX(-50%)', zIndex: 40, willChange: 'transform, filter' }}>
+      {/* Kim cương - phía trên avatar */}
+      <div className="absolute pointer-events-none diamond-sparkle" style={{ top: '-10px', left: '50%', transform: 'translateX(-50%)', zIndex: 40, willChange: 'filter' }}>
         {/* Sparkle dots */}
         <span className="sparkle-dot-1 absolute text-yellow-300" style={{ top: '18%', left: '10%', fontSize: '12px' }}>✦</span>
         <span className="sparkle-dot-2 absolute text-cyan-300" style={{ top: '5%', left: '55%', fontSize: '10px' }}>✦</span>
@@ -376,16 +382,26 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
         <img src={transparentDiamond} alt="Kim cương xanh" style={{ width: '200px', height: '200px', objectFit: 'contain', display: 'block' }} />
       </div>
 
-      {/* Wrapper cố định */}
+      {/* Avatar ở tâm */}
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+        {children}
+      </div>
+
+      {/* Wrapper orbit 486px - absolute centered, overflow:visible → slots hiển thị đầy đủ trên mobile */}
       <div
-        style={{ position: 'relative', width: `${AVATAR_SIZE}px`, height: `${AVATAR_SIZE}px`, overflow: 'visible', zIndex: 10, flexShrink: 0 }}
+        style={{
+          position: 'absolute',
+          width: `${WRAPPER_SIZE}px`,
+          height: `${WRAPPER_SIZE}px`,
+          left: `${(AVATAR_SIZE - WRAPPER_SIZE) / 2}px`,
+          top: `${(AVATAR_SIZE - WRAPPER_SIZE) / 2}px`,
+          overflow: 'visible',
+          zIndex: 20,
+        }}
         onMouseEnter={() => { isOrbitHovered.current = true; }}
         onMouseLeave={() => { isOrbitHovered.current = false; }}
       >
-        {/* Avatar */}
-        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          {children}
-        </div>
+
 
         {/* Social link orbital slots */}
         {(() => {
@@ -405,8 +421,8 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
                 ref={(el) => { slotRefs.current[i] = el; }}
                 className="absolute"
                 style={{
-                  left: `${AVATAR_SIZE / 2 + x - ORBIT_SIZE / 2}px`,
-                  top: `${AVATAR_SIZE / 2 + y - ORBIT_SIZE / 2}px`,
+                  left: `${CENTER + x - ORBIT_SIZE / 2}px`,
+                  top: `${CENTER + y - ORBIT_SIZE / 2}px`,
                   width: `${ORBIT_SIZE}px`,
                   height: `${ORBIT_SIZE}px`,
                   zIndex: (isEditing || isPending || isPrompting || isDraggingThis || isHovered) ? 9999 : 20,
@@ -668,8 +684,8 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
           <div
             className="absolute"
             style={{
-              left: `${AVATAR_SIZE / 2 + addPos.x - ORBIT_SIZE / 2}px`,
-              top: `${AVATAR_SIZE / 2 + addPos.y - ORBIT_SIZE / 2}px`,
+              left: `${CENTER + addPos.x - ORBIT_SIZE / 2}px`,
+              top: `${CENTER + addPos.y - ORBIT_SIZE / 2}px`,
               width: `${ORBIT_SIZE}px`,
               height: `${ORBIT_SIZE}px`,
               zIndex: showAddPicker ? 30 : 20,

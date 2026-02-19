@@ -675,7 +675,7 @@ html {
 }
 
 .diamond-sparkle {
-  animation: diamond-glow 2.8s ease-in-out infinite, diamond-float 4.5s ease-in-out infinite;
+  animation: diamond-glow 2.8s ease-in-out infinite;
 }
 
 .sparkle-dot-1 { animation: sparkle-dot 2.2s ease-in-out infinite 0s; }
