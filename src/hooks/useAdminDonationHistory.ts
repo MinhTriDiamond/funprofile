@@ -59,6 +59,8 @@ export function useAdminDonationHistory() {
           light_score_earned,
           created_at,
           status,
+          sender_address,
+          is_external,
           sender:profiles!donations_sender_id_fkey(id, username, avatar_url, public_wallet_address, custodial_wallet_address),
           recipient:profiles!donations_recipient_id_fkey(id, username, avatar_url, public_wallet_address, custodial_wallet_address)
         `, { count: 'exact' })
@@ -134,6 +136,8 @@ export function useAdminDonationHistory() {
         light_score_earned: d.light_score_earned,
         created_at: d.created_at,
         status: d.status,
+        sender_address: d.sender_address,
+        is_external: d.is_external,
       })) as DonationRecord[];
 
       return {
@@ -213,6 +217,8 @@ export async function fetchAllDonationsForExport(filters: Partial<AdminDonationF
       light_score_earned,
       created_at,
       status,
+      sender_address,
+      is_external,
       sender:profiles!donations_sender_id_fkey(id, username, avatar_url, public_wallet_address, custodial_wallet_address),
       recipient:profiles!donations_recipient_id_fkey(id, username, avatar_url, public_wallet_address, custodial_wallet_address)
     `)
@@ -277,6 +283,8 @@ export async function fetchAllDonationsForExport(filters: Partial<AdminDonationF
     light_score_earned: d.light_score_earned,
     created_at: d.created_at,
     status: d.status,
+    sender_address: d.sender_address,
+    is_external: d.is_external,
   })) as DonationRecord[];
 
   return donations;
