@@ -1,20 +1,27 @@
 
-## Thay nút Avatar thành nút Quà tặng trên MobileBottomNav
+## Chỉnh sửa bố cục Avatar trên trang Profile (Mobile)
 
-### Thay đổi
-Trong file `src/components/layout/MobileBottomNav.tsx`:
+### Vấn đề hiện tại
+Trên điện thoại, avatar bị "chìm" hoàn toàn vào trong ảnh bìa vì:
+- Ảnh bìa chỉ cao 155px trên mobile
+- Avatar có negative margin `-mt-[193px]` kéo nó lên quá cao
+- Kết hợp với AvatarOrbit wrapper 486px, avatar bị nuốt vào ảnh bìa
 
-1. Thay thế nút Avatar (vị trí cuối cùng trong `navItems`) bằng nút Gift icon (dùng `Gift` từ lucide-react) với style màu vàng gold tương tự `GiftNavButton`.
-2. Khi click, mở `UnifiedGiftSendDialog` ở mode "navbar".
-3. Giữ nguyên nút Avatar ở góc trên bên phải (FacebookNavbar) -- không thay đổi gì.
+### Giải pháp
+Điều chỉnh lại các thông số để avatar nhô ra khỏi ảnh bìa đúng kiểu Facebook (nửa trên nằm trong cover, nửa dưới nhô xuống phần thông tin):
 
-### Chi tiết kỹ thuật
+**File: `src/pages/Profile.tsx`**
 
-**File: `src/components/layout/MobileBottomNav.tsx`**
+1. **Tăng chiều cao ảnh bìa trên mobile** từ `h-[155px]` lên `h-[200px]` để có nhiều không gian hơn cho Honor Board và avatar.
 
-- Import thêm `Gift` từ lucide-react và `UnifiedGiftSendDialog` từ donations.
-- Thêm state `giftDialogOpen`.
-- Thay item `{ isAvatar: true }` cuối mảng `navItems` thành `{ isGift: true }`.
-- Render nút Gift với icon Gift màu gold, label "Quà", click mở dialog.
-- Render `UnifiedGiftSendDialog` ở cuối component.
-- Bỏ các query `myProfile` vì không còn cần avatar trong bottom nav (giữ `currentUser` vì Honor Board vẫn cần).
+2. **Điều chỉnh negative margin của avatar** cho phù hợp với chiều cao mới:
+   - Mobile: `-mt-[120px]` (thay vì `-mt-[193px]`) -- avatar nhô xuống khoảng nửa
+   - SM: `-mt-[130px]` (thay vì `-mt-[201px]`)
+   - MD: giữ nguyên `-mt-[217px]` vì desktop đang đẹp
+
+3. **Điều chỉnh vị trí Mobile Honor Board** phù hợp chiều cao cover mới.
+
+### Kết quả mong đợi
+- Avatar sẽ nhô ra khỏi ảnh bìa giống hình mẫu desktop (nửa trên trong cover, nửa dưới bên ngoài)
+- Honor Board vẫn hiển thị gọn trong ảnh bìa
+- Desktop giữ nguyên không thay đổi
