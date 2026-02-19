@@ -95,20 +95,24 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
   const usedPlatforms = new Set(socialLinks.map((l) => l.platform));
   const availablePlatforms = PLATFORM_ORDER.filter((p) => !usedPlatforms.has(p));
 
-  // Platforms supported by unavatar.io (real user profile pictures)
+  // Platforms supported by unavatar.io for real user profile pictures
   const UNAVATAR_PLATFORMS = ['facebook', 'youtube', 'twitter', 'tiktok', 'telegram', 'instagram', 'github'];
-  // Known bad og:image domains (site-wide background images, not user avatars)
-  const BAD_AVATAR_DOMAINS = ['stc-zlogin.zdn.vn', 'zdn.vn', 'meta_background', 'og-image', 'funplay-og', 'static.xx.fbcdn.net/rsrc.php'];
+  // Platforms where we cannot get individual user avatars (JS-rendered or private API)
+  const NO_AVATAR_PLATFORMS = ['zalo', 'funplay'];
+  // Known bad og:image values (site-wide OG images, not user avatars)
+  const BAD_AVATAR_URLS = ['funplay-og-image', 'stc-zlogin.zdn.vn', 'static.xx.fbcdn.net/rsrc.php'];
 
-  // Auto-fetch: fix missing or bad stored avatarUrls for ALL platforms
+  // Auto-fetch: only for links missing avatarUrl, skip platforms that can't provide personal avatars
   useEffect(() => {
     if (!isOwner || !userId) return;
 
     const linksToRefetch = socialLinks.filter((l) => {
       if (!l.url) return false;
-      // If avatarUrl is bad domain → re-fetch
-      if (l.avatarUrl && BAD_AVATAR_DOMAINS.some((d) => l.avatarUrl!.includes(d))) return true;
-      // If no avatarUrl → try to fetch for all platforms
+      // Skip platforms that don't support personal avatar fetching
+      if (NO_AVATAR_PLATFORMS.includes(l.platform)) return false;
+      // Clear bad avatarUrls
+      if (l.avatarUrl && BAD_AVATAR_URLS.some((d) => l.avatarUrl!.includes(d))) return true;
+      // Only fetch if no avatarUrl yet
       if (!l.avatarUrl) return true;
       // For unavatar platforms: re-fetch if not using unavatar.io URL
       if (UNAVATAR_PLATFORMS.includes(l.platform) && !l.avatarUrl.includes('unavatar.io')) return true;
@@ -131,7 +135,7 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
               // Got a real user avatar
               newLinks[idx] = { ...newLinks[idx], avatarUrl: data.avatarUrl };
               updated = true;
-            } else if (newLinks[idx].avatarUrl && BAD_AVATAR_DOMAINS.some((d) => newLinks[idx].avatarUrl!.includes(d))) {
+            } else if (newLinks[idx].avatarUrl && BAD_AVATAR_URLS.some((d) => newLinks[idx].avatarUrl!.includes(d))) {
               // Clear bad stored avatarUrl so favicon shows instead
               const { avatarUrl: _bad, ...rest } = newLinks[idx];
               newLinks[idx] = rest as SocialLink;
