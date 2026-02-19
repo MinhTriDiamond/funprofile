@@ -99,18 +99,12 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
   const availablePlatforms = PLATFORM_ORDER.filter((p) => !usedPlatforms.has(p));
 
   // Platforms supported by unavatar.io for real user profile pictures
-  // Facebook removed: unavatar returns placeholder — use graph API server-side redirect following
+  // Facebook removed: unavatar returns placeholder, not real profile pic — use scraping instead
   const UNAVATAR_PLATFORMS = ['youtube', 'twitter', 'tiktok', 'telegram', 'instagram', 'github'];
-  // Platforms where we definitely cannot get individual user avatars
-  const NO_AVATAR_PLATFORMS = ['funplay'];
+  // Platforms where we cannot get individual user avatars (JS-rendered or private API)
+  const NO_AVATAR_PLATFORMS = ['zalo', 'funplay'];
   // Known bad og:image values (site-wide OG images, not user avatars)
-  const BAD_AVATAR_URLS = [
-    'funplay-og-image',
-    'stc-zlogin.zdn.vn',         // Zalo login page OG image
-    'static.xx.fbcdn.net/rsrc.php', // Facebook generic placeholder
-    'unavatar.io/facebook',
-    'graph.facebook.com',         // Raw graph URL — should now be resolved CDN URL
-  ];
+  const BAD_AVATAR_URLS = ['funplay-og-image', 'stc-zlogin.zdn.vn', 'static.xx.fbcdn.net/rsrc.php', 'unavatar.io/facebook'];
 
   // Auto-fetch: only for links missing avatarUrl, skip platforms that can't provide personal avatars
   useEffect(() => {

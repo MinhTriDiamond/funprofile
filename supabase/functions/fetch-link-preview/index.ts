@@ -166,40 +166,15 @@ serve(async (req) => {
     let avatarUrl: string | null = null;
 
     if (platform === 'facebook') {
-      // Facebook Graph API returns a redirect to the actual CDN image.
-      // We follow the redirect server-side and return the final resolved CDN URL
-      // so the browser <img> tag doesn't hit any CORS/hotlink restrictions.
+      // Facebook graph API: returns a redirect to actual CDN image
+      // Browser <img> can follow this redirect fine without CORS issues
       const username = extractUsername(normalizedUrl, 'facebook');
       console.log(`Facebook username: ${username}`);
       if (username) {
-        try {
-          const graphUrl = `https://graph.facebook.com/${encodeURIComponent(username)}/picture?type=large&redirect=true`;
-          const res = await fetch(graphUrl, {
-            redirect: 'follow',
-            headers: { 'User-Agent': 'Mozilla/5.0 (compatible; FunProfile/1.0)' },
-            signal: AbortSignal.timeout(8000),
-          });
-          // After following redirects, res.url is the actual CDN image URL
-          if (res.ok && res.url && res.url !== graphUrl) {
-            avatarUrl = res.url;
-            console.log(`Facebook resolved CDN URL: ${avatarUrl}`);
-          } else {
-            // Fallback: return the graph URL directly (browser will follow)
-            avatarUrl = graphUrl;
-            console.log(`Facebook fallback to graph URL: ${avatarUrl}`);
-          }
-        } catch (e) {
-          console.log(`Facebook fetch error: ${e}`);
-          // Fallback: let browser follow the redirect
-          const username2 = extractUsername(normalizedUrl, 'facebook');
-          if (username2) avatarUrl = `https://graph.facebook.com/${encodeURIComponent(username2)}/picture?type=large&redirect=true`;
-        }
+        // This URL redirects to the actual profile picture CDN URL
+        avatarUrl = `https://graph.facebook.com/${encodeURIComponent(username)}/picture?type=large&redirect=true`;
+        console.log(`Facebook graph URL: ${avatarUrl}`);
       }
-    } else if (platform === 'zalo') {
-      // Zalo profile pages require JS rendering — scrape og:image as best effort
-      console.log(`Zalo — scraping og:image from: ${normalizedUrl}`);
-      avatarUrl = await scrapeOgImage(normalizedUrl);
-      console.log(`Zalo scraped og:image: ${avatarUrl}`);
     } else if (platform && UNAVATAR_MAP[platform]) {
       // Use unavatar.io for supported platforms (real user profile pictures)
       const username = extractUsername(normalizedUrl, platform);
