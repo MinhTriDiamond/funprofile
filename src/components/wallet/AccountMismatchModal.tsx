@@ -85,7 +85,7 @@ export const AccountMismatchModal = ({ open, onOpenChange }: AccountMismatchModa
               className="w-full bg-emerald-600 hover:bg-emerald-700 text-white overflow-hidden"
             >
               <ArrowRightLeft className="w-4 h-4 mr-2 flex-shrink-0" />
-              <span className="truncate">Dùng tài khoản trong ví ({shortProvider})</span>
+              <span className="truncate">Quay lại, tôi không chuyển địa chỉ ví nữa</span>
             </Button>
             <Button
               onClick={keepActive}
