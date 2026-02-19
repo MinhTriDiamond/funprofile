@@ -69,7 +69,7 @@ export const AccountMismatchModal = ({ open, onOpenChange }: AccountMismatchModa
           {/* Hiển thị 2 address */}
           <div className="bg-orange-50 rounded-lg p-3 space-y-2 text-sm overflow-hidden">
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground flex-shrink-0">Trong ví:</span>
+              <span className="text-muted-foreground flex-shrink-0">Ví hiện tại:</span>
               <span className="font-mono font-medium truncate max-w-[140px] text-right">{shortProvider}</span>
             </div>
             <div className="flex items-center justify-between">
