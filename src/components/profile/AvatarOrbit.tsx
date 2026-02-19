@@ -82,19 +82,33 @@ interface AvatarOrbitProps {
 export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userId, onLinksChanged }: AvatarOrbitProps) {
   const transparentDiamond = useTransparentDiamond(diamondSrc);
 
-  // Rotation animation state
+  // Rotation animation — use DOM refs to avoid re-render every frame
   const rotationRef = useRef(0);
   const rafRef = useRef<number>(0);
   const lastTimeRef = useRef<number>(0);
-  const [rotationDeg, setRotationDeg] = useState(0);
   const isOrbitHovered = useRef(false);
+  // Refs to each orbital slot DOM element so we can update style directly
+  const slotRefs = useRef<(HTMLDivElement | null)[]>([]);
+  // Store base angles per slot
+  const baseAnglesRef = useRef<number[]>([]);
 
+  // Animation loop — updates DOM directly, no setState → no re-render
   useEffect(() => {
     const animate = (time: number) => {
-      if (lastTimeRef.current && !isOrbitHovered.current) {
+      if (lastTimeRef.current > 0 && !isOrbitHovered.current) {
         const delta = (time - lastTimeRef.current) / 1000;
         rotationRef.current = (rotationRef.current + ORBIT_SPEED * delta) % 360;
-        setRotationDeg(rotationRef.current);
+        const rot = rotationRef.current;
+        slotRefs.current.forEach((el, i) => {
+          if (!el) return;
+          const baseAngle = baseAnglesRef.current[i] ?? 0;
+          const rotatedAngle = baseAngle + rot;
+          const rad = (rotatedAngle * Math.PI) / 180;
+          const x = Math.sin(rad) * ORBIT_RADIUS;
+          const y = -Math.cos(rad) * ORBIT_RADIUS;
+          el.style.left = `${AVATAR_SIZE / 2 + x - ORBIT_SIZE / 2}px`;
+          el.style.top = `${AVATAR_SIZE / 2 + y - ORBIT_SIZE / 2}px`;
+        });
       }
       lastTimeRef.current = time;
       rafRef.current = requestAnimationFrame(animate);
@@ -294,31 +308,30 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
         </div>
 
         {/* Social link orbital slots */}
-        {allLinks.map((link, i) => {
-          // Apply rotation offset to each slot's base angle
-          const baseAngle = angles[i];
-          const rotatedAngle = baseAngle + rotationDeg;
-          const { x, y } = angleToPos(rotatedAngle);
-          const isEditing = editingPlatform === link.platform;
-          const isPending = !!link.isPending;
-          const isHovered = hoveredPlatform === link.platform;
+        {(() => {
+          // Sync base angles for animation loop
+          baseAnglesRef.current = angles;
+          return allLinks.map((link, i) => {
+            const { x, y } = angleToPos(angles[i]);
+            const isEditing = editingPlatform === link.platform;
+            const isPending = !!link.isPending;
+            const isHovered = hoveredPlatform === link.platform;
 
-          return (
-            <div
-              key={link.platform}
-              className="absolute"
-              style={{
-                left: `${AVATAR_SIZE / 2 + x - ORBIT_SIZE / 2}px`,
-                top: `${AVATAR_SIZE / 2 + y - ORBIT_SIZE / 2}px`,
-                width: `${ORBIT_SIZE}px`,
-                height: `${ORBIT_SIZE}px`,
-                zIndex: (isEditing || isPending) ? 30 : 20,
-                // Counter-rotate content so icon always faces up
-                transform: `rotate(0deg)`,
-              }}
-              onMouseEnter={() => { setHoveredPlatform(link.platform); isOrbitHovered.current = true; }}
-              onMouseLeave={() => { setHoveredPlatform(null); isOrbitHovered.current = false; }}
-            >
+            return (
+              <div
+                key={link.platform}
+                ref={(el) => { slotRefs.current[i] = el; }}
+                className="absolute"
+                style={{
+                  left: `${AVATAR_SIZE / 2 + x - ORBIT_SIZE / 2}px`,
+                  top: `${AVATAR_SIZE / 2 + y - ORBIT_SIZE / 2}px`,
+                  width: `${ORBIT_SIZE}px`,
+                  height: `${ORBIT_SIZE}px`,
+                  zIndex: (isEditing || isPending) ? 30 : 20,
+                }}
+                onMouseEnter={() => { setHoveredPlatform(link.platform); isOrbitHovered.current = true; }}
+                onMouseLeave={() => { setHoveredPlatform(null); isOrbitHovered.current = false; }}
+              >
               {/* Pending slot popup — mở sẵn để nhập link */}
               {isPending && (
                 <div
@@ -512,7 +525,8 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
               )}
             </div>
           );
-        })}
+        });
+        })()}
 
         {/* Nút + */}
         {showAddBtn && (
