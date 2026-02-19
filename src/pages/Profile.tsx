@@ -478,7 +478,7 @@ const Profile = () => {
               {/* Avatar + Info Row */}
               <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
                 {/* Avatar - positioned higher to overlap cover */}
-                <div className="-mt-[193px] sm:-mt-[201px] md:-mt-[217px] relative z-10 flex justify-center md:justify-start flex-shrink-0">
+                <div className="-mt-[193px] sm:-mt-[201px] md:-mt-[217px] relative z-10 flex justify-center md:justify-start flex-shrink-0" style={{ overflow: 'visible' }}>
                   <AvatarOrbit
                     socialLinks={Array.isArray(profile?.social_links) ? profile.social_links : []}
                     isOwner={isOwnProfile}
