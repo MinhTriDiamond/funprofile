@@ -346,7 +346,16 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
       style={{ paddingTop: '110px', paddingBottom: `${ORBIT_RADIUS + ORBIT_SIZE / 2 + 8}px` }}
     >
       {/* Kim cương */}
-      <div className="absolute pointer-events-none" style={{ top: '-10px', left: '50%', transform: 'translateX(-50%)', zIndex: 40 }}>
+      <div className="absolute pointer-events-none diamond-sparkle" style={{ top: '-10px', left: '50%', zIndex: 40 }}>
+        {/* Sparkle dots */}
+        <span className="sparkle-dot-1 absolute text-yellow-300" style={{ top: '18%', left: '10%', fontSize: '12px' }}>✦</span>
+        <span className="sparkle-dot-2 absolute text-cyan-300" style={{ top: '5%', left: '55%', fontSize: '10px' }}>✦</span>
+        <span className="sparkle-dot-3 absolute text-white" style={{ top: '22%', right: '8%', fontSize: '14px' }}>✦</span>
+        <span className="sparkle-dot-4 absolute text-yellow-200" style={{ top: '55%', left: '5%', fontSize: '8px' }}>✦</span>
+        <span className="sparkle-dot-5 absolute text-purple-300" style={{ top: '8%', left: '30%', fontSize: '11px' }}>✦</span>
+        <span className="sparkle-dot-6 absolute text-cyan-200" style={{ top: '45%', right: '5%', fontSize: '9px' }}>✦</span>
+        <span className="sparkle-dot-7 absolute text-yellow-100" style={{ top: '70%', left: '20%', fontSize: '7px' }}>✦</span>
+        <span className="sparkle-dot-8 absolute text-white" style={{ top: '65%', right: '18%', fontSize: '10px' }}>✦</span>
         <img src={transparentDiamond} alt="Kim cương xanh" style={{ width: '200px', height: '200px', objectFit: 'contain', display: 'block' }} />
       </div>
 
