@@ -288,22 +288,6 @@ export const FacebookNavbar = () => {
           {/* Notification for mobile/tablet */}
           {isMobileOrTablet && <NotificationDropdown />}
 
-          {/* Avatar button - Navigate to Profile (Mobile/Tablet only, Facebook-style) */}
-          {isMobileOrTablet && isLoggedIn && currentUserId && (
-            <button
-              onClick={() => navigate(`/profile/${currentUserId}`)}
-              aria-label="My Profile"
-              className="flex-shrink-0 touch-manipulation"
-            >
-              <Avatar className="w-8 h-8 border-2 border-gold/40 hover:border-gold transition-colors shadow-sm">
-                <AvatarImage src={profile?.avatar_url || ''} />
-                <AvatarFallback className="bg-primary/20 text-primary text-xs font-bold">
-                  {profile?.username?.[0]?.toUpperCase() || 'U'}
-                </AvatarFallback>
-              </Avatar>
-            </button>
-          )}
-
           {/* Desktop only: Gift + Notification Bell + Avatar with Dropdown */}
           {!isMobileOrTablet && isLoggedIn && (
             <div className="flex items-center gap-3">

@@ -80,19 +80,19 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
   const capitalizeFirst = (str: string) => str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
 
   const StatRow = ({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) => (
-    <div className="flex items-center justify-between py-1 px-2 sm:px-3 rounded-full bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] backdrop-blur-sm border-2 border-[#D4AF37] shadow-[inset_0_1px_0_rgba(255,255,255,0.15)] overflow-hidden transition-all duration-300 hover:scale-[1.02] cursor-pointer">
-      <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink min-w-0 overflow-hidden">
+    <div className="flex items-center justify-between py-1.5 px-3 sm:px-4 rounded-full bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] backdrop-blur-sm border-[3px] border-[#D4AF37] shadow-[inset_0_1px_0_rgba(255,255,255,0.15)] overflow-hidden transition-all duration-300 hover:scale-[1.02] cursor-pointer">
+      <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink min-w-0 overflow-hidden">
         <div className="text-[#F5E6C8] flex-shrink-0">
           {icon}
         </div>
         <span 
-          className="text-[#F5E6C8] text-[9px] sm:text-[10px] tracking-wide truncate font-normal"
+          className="text-[#F5E6C8] text-[10px] sm:text-[11px] md:text-xs tracking-wide truncate font-normal"
         >
           {capitalizeFirst(label)}
         </span>
       </div>
       <span 
-        className={`text-[#FFD700] ${getValueFontSize(value)} tabular-nums flex-shrink-0 ml-1 font-normal`}
+        className={`text-[#FFD700] ${getValueFontSize(value)} tabular-nums flex-shrink-0 ml-2 font-normal`}
       >
         {formatNumber(value)}
       </span>
@@ -105,27 +105,27 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
       <div className="w-full flex justify-end">
         {/* Main Container - Glassmorphism with green gradient matching homepage */}
         <div 
-          className="rounded-xl overflow-hidden bg-white/80 backdrop-blur-xl shadow-lg w-full max-w-[340px]"
+          className="rounded-2xl overflow-hidden bg-white/80 backdrop-blur-xl shadow-lg w-full max-w-[420px]"
           style={{
-            border: '2px solid transparent',
+            border: '3px solid transparent',
             backgroundImage: 'linear-gradient(white, white), linear-gradient(135deg, #22c55e 0%, #4ade80 25%, #22c55e 50%, #16a34a 75%, #22c55e 100%)',
             backgroundOrigin: 'border-box',
             backgroundClip: 'padding-box, border-box',
-            boxShadow: '0 0 12px rgba(34, 197, 94, 0.35)'
+            boxShadow: '0 0 15px rgba(34, 197, 94, 0.4)'
           }}
         >
-          <div className="p-2 sm:p-3">
+          <div className="p-3 sm:p-4">
             {/* Header - Logo, Title, Avatar */}
-            <div className="text-center mb-2">
-              <div className="flex items-center justify-center gap-1.5">
+            <div className="text-center mb-3">
+              <div className="flex items-center justify-center gap-2">
                 {/* FUN Profile Logo */}
                 <img 
                   src="/fun-profile-logo-40.webp" 
                   alt="FUN Profile" 
-                  className="w-6 h-6 rounded-full border-2 border-[#22c55e] shadow-[0_0_8px_rgba(34,197,94,0.6)]"
+                  className="w-8 h-8 rounded-full border-2 border-[#22c55e] shadow-[0_0_12px_rgba(34,197,94,0.6)]"
                 />
                 <h1 
-                  className="text-sm tracking-wider uppercase leading-none font-black"
+                  className="text-lg tracking-wider uppercase leading-none font-black"
                   style={{
                     fontFamily: "'Orbitron', 'Rajdhani', sans-serif",
                     background: 'linear-gradient(90deg, #FF6B9D 0%, #C44FE2 15%, #7B68EE 30%, #00CED1 50%, #98FB98 70%, #FFFF00 85%, #FFB347 100%)',
@@ -138,36 +138,36 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
                   {t('honorBoard').toUpperCase()}
                 </h1>
                 {/* User Avatar */}
-                <Avatar className="w-6 h-6 border-2 border-[#22c55e] shadow-[0_0_8px_rgba(34,197,94,0.6)]">
+                <Avatar className="w-8 h-8 border-2 border-[#22c55e] shadow-[0_0_12px_rgba(34,197,94,0.6)]">
                   <AvatarImage src={avatarUrl} sizeHint="sm" />
-                  <AvatarFallback className="bg-gradient-to-br from-green-600 to-green-800 text-white font-bold text-xs">
+                  <AvatarFallback className="bg-gradient-to-br from-green-600 to-green-800 text-white font-bold text-sm">
                     {username?.[0]?.toUpperCase() || 'U'}
                   </AvatarFallback>
                 </Avatar>
               </div>
             </div>
 
-            {/* Two Column Layout - 6 items (3 per column) */}
-            <div className="grid grid-cols-2 gap-1">
+            {/* Two Column Layout - 6 items (3 per column) — theo hình mẫu */}
+            <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
               {/* Left Column */}
-              <div className="space-y-1">
-                <StatRow icon={<ArrowUp className="w-3 h-3" />} label="Bài viết" value={stats.posts_count} />
-                <StatRow icon={<Star className="w-3 h-3" />} label="Cảm xúc" value={stats.reactions_on_posts} />
-                <StatRow icon={<MessageCircle className="w-3 h-3" />} label="Bình luận" value={stats.comments_count} />
+              <div className="space-y-1.5 sm:space-y-2">
+                <StatRow icon={<ArrowUp className="w-3.5 h-3.5" />} label="Bài viết" value={stats.posts_count} />
+                <StatRow icon={<Star className="w-3.5 h-3.5" />} label="Cảm xúc" value={stats.reactions_on_posts} />
+                <StatRow icon={<MessageCircle className="w-3.5 h-3.5" />} label="Bình luận" value={stats.comments_count} />
               </div>
 
               {/* Right Column */}
-              <div className="space-y-1">
-                <StatRow icon={<Users className="w-3 h-3" />} label="Bạn bè" value={stats.friends_count} />
-                <StatRow icon={<Gift className="w-3 h-3" />} label="Có thể rút" value={stats.claimable} />
-                <StatRow icon={<Coins className="w-3 h-3" />} label="Đã rút" value={stats.claimed} />
+              <div className="space-y-1.5 sm:space-y-2">
+                <StatRow icon={<Users className="w-3.5 h-3.5" />} label="Bạn bè" value={stats.friends_count} />
+                <StatRow icon={<Gift className="w-3.5 h-3.5" />} label="Có thể rút" value={stats.claimable} />
+                <StatRow icon={<Coins className="w-3.5 h-3.5" />} label="Đã rút" value={stats.claimed} />
               </div>
             </div>
 
             {/* Total Rows */}
-            <div className="mt-1.5 grid grid-cols-2 gap-1">
-              <StatRow icon={<Calendar className="w-3 h-3" />} label="Hôm nay" value={stats.today_reward} />
-              <StatRow icon={<BadgeDollarSign className="w-3 h-3" />} label="Tổng Thu" value={stats.total_reward} />
+            <div className="mt-2 sm:mt-3 grid grid-cols-2 gap-1.5 sm:gap-2">
+              <StatRow icon={<Calendar className="w-3.5 h-3.5" />} label="Hôm nay" value={stats.today_reward} />
+              <StatRow icon={<BadgeDollarSign className="w-3.5 h-3.5" />} label="Tổng Thu" value={stats.total_reward} />
             </div>
           </div>
         </div>

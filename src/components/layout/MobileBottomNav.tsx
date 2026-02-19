@@ -74,7 +74,7 @@ export const MobileBottomNav = memo(() => {
       
       {/* Bottom Navigation Bar - Fixed with larger touch targets - Semi-transparent for Tet theme */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-white/85 dark:bg-gray-900/85 border-t border-border/30 safe-area-bottom backdrop-blur-sm">
-        <div className="flex items-center justify-around h-[64px] px-1 max-w-lg mx-auto">
+        <div className="flex items-center justify-around h-[72px] px-1 max-w-lg mx-auto">
           {navItems.map((item, index) => {
             // Gift button - special component
             if ('isGift' in item && item.isGift) {
