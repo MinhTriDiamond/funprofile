@@ -95,24 +95,48 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
   const usedPlatforms = new Set(socialLinks.map((l) => l.platform));
   const availablePlatforms = PLATFORM_ORDER.filter((p) => !usedPlatforms.has(p));
 
-  // Auto-fetch avatarUrl for links that don't have one yet
+  // Platforms supported by unavatar.io (real user profile pictures)
+  const UNAVATAR_PLATFORMS = ['facebook', 'youtube', 'twitter', 'tiktok', 'telegram', 'instagram', 'github'];
+  // Known bad og:image domains (site-wide background images, not user avatars)
+  const BAD_AVATAR_DOMAINS = ['stc-zlogin.zdn.vn', 'zdn.vn', 'meta_background', 'og-image', 'funplay-og'];
+
+  // Auto-fetch: fix missing or bad stored avatarUrls
   useEffect(() => {
     if (!isOwner || !userId) return;
-    const linksWithoutAvatar = socialLinks.filter((l) => !l.avatarUrl && l.url);
-    if (linksWithoutAvatar.length === 0) return;
+
+    const linksToRefetch = socialLinks.filter((l) => {
+      if (!l.url) return false;
+      if (UNAVATAR_PLATFORMS.includes(l.platform)) {
+        // Re-fetch if not yet an unavatar.io URL
+        return !l.avatarUrl?.includes('unavatar.io');
+      }
+      // For non-unavatar platforms: clear bad og:image stored values
+      if (l.avatarUrl && BAD_AVATAR_DOMAINS.some((d) => l.avatarUrl!.includes(d))) {
+        return true;
+      }
+      return false;
+    });
+
+    if (linksToRefetch.length === 0) return;
 
     const fetchMissing = async () => {
       let updated = false;
       const newLinks = [...socialLinks];
-      for (const link of linksWithoutAvatar) {
+      for (const link of linksToRefetch) {
         try {
           const { data } = await supabase.functions.invoke('fetch-link-preview', {
             body: { url: link.url, platform: link.platform },
           });
-          if (data?.avatarUrl) {
-            const idx = newLinks.findIndex((l) => l.platform === link.platform);
-            if (idx !== -1) {
+          const idx = newLinks.findIndex((l) => l.platform === link.platform);
+          if (idx !== -1) {
+            if (data?.avatarUrl) {
+              // Got a real user avatar
               newLinks[idx] = { ...newLinks[idx], avatarUrl: data.avatarUrl };
+              updated = true;
+            } else if (newLinks[idx].avatarUrl && BAD_AVATAR_DOMAINS.some((d) => newLinks[idx].avatarUrl!.includes(d))) {
+              // Clear bad stored avatarUrl so favicon shows instead
+              const { avatarUrl: _bad, ...rest } = newLinks[idx];
+              newLinks[idx] = rest as SocialLink;
               updated = true;
             }
           }
