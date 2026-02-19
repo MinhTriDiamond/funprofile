@@ -496,12 +496,12 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
                       {link.label}
                     </div>
                     {link.url && (
-                      <div className="px-2 py-1 rounded-md text-xs shadow-md" style={{ background: 'rgba(255,255,255,0.95)', color: '#374151', maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', border: '1px solid rgba(0,0,0,0.08)' }}>
+                      <div className="px-2 py-1 rounded-md text-xs shadow-md font-semibold" style={{ background: 'rgba(255,255,255,0.97)', color: '#15803d', maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', border: '1px solid #bbf7d0' }}>
                         {link.url.replace(/^https?:\/\//, '')}
                       </div>
                     )}
                     {!link.url && isOwner && (
-                      <div className="px-2 py-1 rounded-md text-xs shadow-md" style={{ background: 'rgba(255,255,255,0.95)', color: '#d97706', whiteSpace: 'nowrap', border: '1px solid rgba(0,0,0,0.08)' }}>
+                      <div className="px-2 py-1 rounded-md text-xs shadow-md font-semibold" style={{ background: 'rgba(255,255,255,0.97)', color: '#15803d', whiteSpace: 'nowrap', border: '1px solid #bbf7d0' }}>
                         Nhấn ✏️ để thêm link
                       </div>
                     )}
