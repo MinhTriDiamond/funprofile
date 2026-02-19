@@ -126,6 +126,34 @@ serve(async (req) => {
   }
 
   try {
+    // Proxy endpoint for images that have hotlink restrictions (e.g. Facebook CDN)
+    // Called as GET /fetch-link-preview?proxy=<encoded_url>
+    const reqUrl = new URL(req.url);
+    const proxyTarget = reqUrl.searchParams.get('proxy');
+    if (proxyTarget && req.method === 'GET') {
+      const targetUrl = decodeURIComponent(proxyTarget);
+      console.log(`Proxying image: ${targetUrl}`);
+      const res = await fetch(targetUrl, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; FunProfile/1.0)' },
+        redirect: 'follow',
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!res.ok) {
+        return new Response(null, { status: res.status, headers: corsHeaders });
+      }
+      const contentType = res.headers.get('content-type') || 'image/jpeg';
+      const blob = await res.arrayBuffer();
+      return new Response(blob, {
+        status: 200,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': contentType,
+          'Cache-Control': 'public, max-age=86400',
+        },
+      });
+    }
+
+    // Avatar fetch endpoint: POST with { url, platform }
     const { url, platform } = await req.json();
     if (!url) {
       return new Response(JSON.stringify({ error: 'URL is required' }), {
@@ -138,26 +166,14 @@ serve(async (req) => {
     let avatarUrl: string | null = null;
 
     if (platform === 'facebook') {
-      // Facebook: use graph API then follow redirect to get the actual CDN image URL
+      // Facebook graph API: returns a redirect to actual CDN image
+      // Browser <img> can follow this redirect fine without CORS issues
       const username = extractUsername(normalizedUrl, 'facebook');
       console.log(`Facebook username: ${username}`);
       if (username) {
-        const graphUrl = `https://graph.facebook.com/${encodeURIComponent(username)}/picture?type=large`;
-        try {
-          // Follow redirect to get actual CDN URL (avoids CORS issues in browser)
-          const res = await fetch(graphUrl, {
-            redirect: 'follow',
-            headers: { 'User-Agent': 'Mozilla/5.0' },
-            signal: AbortSignal.timeout(6000),
-          });
-          if (res.ok) {
-            // res.url will be the final redirected CDN URL
-            avatarUrl = res.url;
-            console.log(`Facebook final CDN URL: ${avatarUrl}`);
-          }
-        } catch (e) {
-          console.log('Facebook graph fetch error:', e);
-        }
+        // This URL redirects to the actual profile picture CDN URL
+        avatarUrl = `https://graph.facebook.com/${encodeURIComponent(username)}/picture?type=large&redirect=true`;
+        console.log(`Facebook graph URL: ${avatarUrl}`);
       }
     } else if (platform && UNAVATAR_MAP[platform]) {
       // Use unavatar.io for supported platforms (real user profile pictures)
