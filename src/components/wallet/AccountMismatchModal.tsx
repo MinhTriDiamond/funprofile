@@ -73,7 +73,7 @@ export const AccountMismatchModal = ({ open, onOpenChange }: AccountMismatchModa
               <span className="font-mono font-medium truncate max-w-[140px] text-right">{shortProvider}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground flex-shrink-0">Đang chọn:</span>
+              <span className="text-muted-foreground flex-shrink-0">Sẽ chuyển sang ví này:</span>
               <span className="font-mono font-medium truncate max-w-[140px] text-right">{shortActive}</span>
             </div>
           </div>
