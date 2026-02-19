@@ -648,3 +648,40 @@ html {
     min-height: -webkit-fill-available;
   }
 }
+
+/* Diamond sparkle animations */
+@keyframes diamond-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 6px rgba(96, 215, 255, 0.7)) drop-shadow(0 0 14px rgba(148, 103, 255, 0.45)) brightness(1.05);
+  }
+  33% {
+    filter: drop-shadow(0 0 18px rgba(255, 220, 80, 0.9)) drop-shadow(0 0 32px rgba(255, 180, 50, 0.55)) brightness(1.3);
+  }
+  66% {
+    filter: drop-shadow(0 0 12px rgba(96, 215, 255, 1)) drop-shadow(0 0 26px rgba(0, 200, 255, 0.65)) brightness(1.18);
+  }
+}
+
+@keyframes diamond-float {
+  0%, 100% { transform: translateX(-50%) translateY(0px) rotate(0deg); }
+  25% { transform: translateX(-50%) translateY(-5px) rotate(1.5deg); }
+  75% { transform: translateX(-50%) translateY(3px) rotate(-1deg); }
+}
+
+@keyframes sparkle-dot {
+  0%, 100% { opacity: 0; transform: scale(0) rotate(0deg); }
+  40%, 60% { opacity: 1; transform: scale(1) rotate(180deg); }
+}
+
+.diamond-sparkle {
+  animation: diamond-glow 2.8s ease-in-out infinite, diamond-float 4.5s ease-in-out infinite;
+}
+
+.sparkle-dot-1 { animation: sparkle-dot 2.2s ease-in-out infinite 0s; }
+.sparkle-dot-2 { animation: sparkle-dot 2.2s ease-in-out infinite 0.55s; }
+.sparkle-dot-3 { animation: sparkle-dot 2.2s ease-in-out infinite 1.1s; }
+.sparkle-dot-4 { animation: sparkle-dot 2.2s ease-in-out infinite 1.65s; }
+.sparkle-dot-5 { animation: sparkle-dot 2.4s ease-in-out infinite 0.28s; }
+.sparkle-dot-6 { animation: sparkle-dot 2.4s ease-in-out infinite 0.84s; }
+.sparkle-dot-7 { animation: sparkle-dot 2.4s ease-in-out infinite 1.4s; }
+.sparkle-dot-8 { animation: sparkle-dot 2.4s ease-in-out infinite 1.96s; }
