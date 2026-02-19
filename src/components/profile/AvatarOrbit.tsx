@@ -5,6 +5,9 @@ import { PLATFORM_PRESETS, PLATFORM_ORDER } from './SocialLinksEditor';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+// Orbit rotation speed (degrees per second) — pause when hovering
+const ORBIT_SPEED = 8;
+
 
 
 
@@ -78,6 +81,27 @@ interface AvatarOrbitProps {
 
 export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userId, onLinksChanged }: AvatarOrbitProps) {
   const transparentDiamond = useTransparentDiamond(diamondSrc);
+
+  // Rotation animation state
+  const rotationRef = useRef(0);
+  const rafRef = useRef<number>(0);
+  const lastTimeRef = useRef<number>(0);
+  const [rotationDeg, setRotationDeg] = useState(0);
+  const isOrbitHovered = useRef(false);
+
+  useEffect(() => {
+    const animate = (time: number) => {
+      if (lastTimeRef.current && !isOrbitHovered.current) {
+        const delta = (time - lastTimeRef.current) / 1000;
+        rotationRef.current = (rotationRef.current + ORBIT_SPEED * delta) % 360;
+        setRotationDeg(rotationRef.current);
+      }
+      lastTimeRef.current = time;
+      rafRef.current = requestAnimationFrame(animate);
+    };
+    rafRef.current = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, []);
 
   // Edit state (pencil button)
   const [editingPlatform, setEditingPlatform] = useState<string | null>(null);
@@ -259,7 +283,11 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
       </div>
 
       {/* Wrapper cố định */}
-      <div style={{ position: 'relative', width: `${AVATAR_SIZE}px`, height: `${AVATAR_SIZE}px`, overflow: 'visible', zIndex: 10, flexShrink: 0 }}>
+      <div
+        style={{ position: 'relative', width: `${AVATAR_SIZE}px`, height: `${AVATAR_SIZE}px`, overflow: 'visible', zIndex: 10, flexShrink: 0 }}
+        onMouseEnter={() => { isOrbitHovered.current = true; }}
+        onMouseLeave={() => { isOrbitHovered.current = false; }}
+      >
         {/* Avatar */}
         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           {children}
@@ -267,7 +295,10 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
 
         {/* Social link orbital slots */}
         {allLinks.map((link, i) => {
-          const { x, y } = angleToPos(angles[i]);
+          // Apply rotation offset to each slot's base angle
+          const baseAngle = angles[i];
+          const rotatedAngle = baseAngle + rotationDeg;
+          const { x, y } = angleToPos(rotatedAngle);
           const isEditing = editingPlatform === link.platform;
           const isPending = !!link.isPending;
           const isHovered = hoveredPlatform === link.platform;
@@ -282,9 +313,11 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
                 width: `${ORBIT_SIZE}px`,
                 height: `${ORBIT_SIZE}px`,
                 zIndex: (isEditing || isPending) ? 30 : 20,
+                // Counter-rotate content so icon always faces up
+                transform: `rotate(0deg)`,
               }}
-              onMouseEnter={() => setHoveredPlatform(link.platform)}
-              onMouseLeave={() => setHoveredPlatform(null)}
+              onMouseEnter={() => { setHoveredPlatform(link.platform); isOrbitHovered.current = true; }}
+              onMouseLeave={() => { setHoveredPlatform(null); isOrbitHovered.current = false; }}
             >
               {/* Pending slot popup — mở sẵn để nhập link */}
               {isPending && (
