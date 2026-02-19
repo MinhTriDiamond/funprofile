@@ -1,64 +1,40 @@
 
 
-## Ghi nhận giao dịch từ ví ngoài cụ thể
+## Chuyển FUN Money sang Contract mới
 
-### Cách tiếp cận
+### Dia chi moi
+`0x39A1b047D5d143f8874888cfa1d30Fb2AE6F0CD6`
 
-Thay đổi Edge Function `detect-incoming-transfers` để nhận **địa chỉ ví ngoài cụ thể + tên** thay vì quét tự động cho user đang đăng nhập. Function sẽ:
+### Tong quan
 
-1. Nhận params: `sender_address` (ví ngoài) + `sender_name` (tên gán cho ví đó)
-2. Gọi Moralis API lấy lịch sử chuyển tiền CỦA ví ngoài đó
-3. Lọc chỉ những giao dịch chuyển ĐẾN một `public_wallet_address` có trong Fun Profile
-4. Ghi nhận vào bảng `donations` với `is_external = true`, lưu `sender_name` trong cột `metadata`
+Thay the dia chi contract cu `0x1aa8DE8B1E4465C6d729E8564893f8EF823a5ff2` bang dia chi moi trong **8 file**. Tat ca logic, ABI, EIP-712 domain, chain ID (97 - BSC Testnet) giu nguyen, chi doi dia chi.
 
-### Xóa dữ liệu cũ
+### Danh sach file can sua
 
-Vẫn còn 41 bản ghi `is_external = true` từ lần trước cần xóa sạch trước khi ghi nhận mới.
+| # | File | Vi tri thay doi |
+|---|------|-----------------|
+| 1 | `src/config/pplp.ts` | `FUN_MONEY_CONTRACT.address` + `EIP712_DOMAIN.verifyingContract` (tu dong theo) |
+| 2 | `src/lib/tokens.ts` | Token FUN `address` |
+| 3 | `src/hooks/useTokenBalances.ts` | `TOKEN_ADDRESSES.FUN` |
+| 4 | `src/components/donations/TokenSelector.tsx` | FUN token `address` |
+| 5 | `supabase/functions/_shared/pplp-eip712.ts` | `CONTRACT_ADDRESS` |
+| 6 | `supabase/functions/pplp-mint-fun/index.ts` | `FUN_MONEY_CONTRACT` |
+| 7 | `supabase/functions/admin-batch-mint-requests/index.ts` | `FUN_MONEY_CONTRACT` |
+| 8 | `supabase/functions/detect-incoming-transfers/index.ts` | `FUN_TOKEN_ADDRESS` |
 
-### Thay doi chi tiet
+### Chi tiet ky thuat
 
-**1. Xóa 41 bản ghi external còn lại**
+Moi file chi can thay **1 dong**: doi dia chi cu thanh `0x39A1b047D5d143f8874888cfa1d30Fb2AE6F0CD6`.
 
-```text
-DELETE FROM donations WHERE is_external = true
-```
+- **Frontend (4 file)**: Cap nhat dia chi de doc so du, hien thi token, va tuong tac contract (activate, claim, lockWithPPLP) dung contract moi.
+- **Edge Functions (3 file + 1 shared)**: Cap nhat de mint requests, batch signing, va EIP-712 domain tro dung contract moi.
+- **EIP-712 Domain**: `verifyingContract` trong `src/config/pplp.ts` tu dong cap nhat vi no tham chieu `FUN_MONEY_CONTRACT.address`. Trong `_shared/pplp-eip712.ts` can doi truc tiep.
 
-**2. Sửa Edge Function `detect-incoming-transfers`**
+### Khong thay doi
 
-Thay đổi logic:
-- Bỏ xác thực user (chuyển sang xác thực admin qua service role key)
-- Nhận body: `{ sender_address, sender_name }`
-- Gọi Moralis API cho `sender_address`
-- Lấy tất cả `public_wallet_address` từ bảng `profiles` để map `to_address` -> `recipient_id`
-- Chỉ ghi nhận giao dịch chuyển đến ví Fun Profile
-- Lưu `sender_name` trong `metadata: { sender_name: "LH Happy" }`
-- Set `created_at = block_timestamp` để đúng thứ tự thời gian
-
-**3. Gọi Edge Function cho 4 ví**
-
-Sau khi deploy, gọi function với:
-
-| Dia chi | Ten |
-|---------|-----|
-| 0x189EE1D2Aa474C04CcF9411f429f0cf494a1151d | LH Hao Quang Vu Tru |
-| 0x1BC49d17198E3beedd4B6dcC66946CBF532d48EB | LH Happy |
-| 0xc47ea868E2cA8f44E7Cf6448AbaDA7B5F567eA84 | LH Y Cha |
-| 0xAa498Ad9821D34816F0E8F6e461424A878f4e98d | LH Thinh Vuong |
-
-### Hien thi sender_name
-
-Cac component hien thi lich su giao dich se duoc cap nhat de doc `sender_name` tu `metadata` khi `is_external = true`, hien thi ten nay thay vi "Nguoi dung ben ngoai".
-
-### Files can sua
-
-| File | Thay doi |
-|------|----------|
-| `supabase/functions/detect-incoming-transfers/index.ts` | Viết lại logic: nhận sender_address + sender_name, quét FROM vi ngoai TO Fun Profile users |
-| `src/hooks/useDonationHistory.ts` | Doc sender_name tu metadata de hien thi |
-| `src/hooks/useAdminDonationHistory.ts` | Tuong tu |
-
-### Bao mat
-
-- Edge Function yeu cau `SUPABASE_SERVICE_ROLE_KEY` trong header de xac thuc (chi admin/owner moi goi duoc)
-- Khong co auto-scan, chi chay khi duoc yeu cau thu cong
+- ABI (`FUN_MONEY_ABI`, `LOCK_WITH_PPLP_ABI`) - giu nguyen vi contract moi co cung interface
+- Chain ID (97 - BSC Testnet) - giu nguyen
+- EIP-712 types (`PureLoveProof`) - giu nguyen
+- Logic mint, activate, claim - giu nguyen
+- Attester addresses - giu nguyen
 
