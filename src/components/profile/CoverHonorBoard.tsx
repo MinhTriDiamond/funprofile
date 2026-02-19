@@ -163,14 +163,7 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
       {/* === DESKTOP only: original 2-column grid layout === */}
       <div className="hidden md:flex w-full justify-end">
         <div
-          className="rounded-xl overflow-hidden bg-white/80 backdrop-blur-xl shadow-lg w-full max-w-[340px]"
-          style={{
-            border: '2px solid transparent',
-            backgroundImage: 'linear-gradient(white, white), linear-gradient(135deg, #22c55e 0%, #4ade80 25%, #22c55e 50%, #16a34a 75%, #22c55e 100%)',
-            backgroundOrigin: 'border-box',
-            backgroundClip: 'padding-box, border-box',
-            boxShadow: '0 0 12px rgba(34, 197, 94, 0.35)'
-          }}
+          className="rounded-xl overflow-hidden w-full max-w-[340px]"
         >
           <div className="p-2 sm:p-3">
             <div className="text-center mb-2">
