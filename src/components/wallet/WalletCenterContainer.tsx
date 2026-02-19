@@ -316,14 +316,14 @@ const WalletCenterContainer = () => {
   }, [disconnect]);
 
   const copyExternalAddress = useCallback(() => {
-    const addr = address;
+    const addr = activeAddress || address;
     if (addr) {
       navigator.clipboard.writeText(addr);
       setCopiedExternal(true);
       toast.success(t('walletAddressCopied'));
       setTimeout(() => setCopiedExternal(false), 2000);
     }
-  }, [address]);
+  }, [activeAddress, address]);
 
   // Disconnected UI
   if (!isConnected && showDisconnectedUI) {
@@ -491,7 +491,7 @@ const WalletCenterContainer = () => {
           <DialogHeader>
             <DialogTitle>{t('walletReceiveMoney')}</DialogTitle>
           </DialogHeader>
-          <ReceiveTab walletAddress={address || undefined} />
+          <ReceiveTab walletAddress={(activeAddress || address) || undefined} />
         </DialogContent>
       </Dialog>
 
@@ -506,7 +506,7 @@ const WalletCenterContainer = () => {
         open={showClaimDialog}
         onOpenChange={setShowClaimDialog}
         claimableAmount={claimableReward}
-        externalWallet={(isConnected ? address : null) || null}
+        externalWallet={(isConnected ? (activeAddress || address) : null) || null}
         camlyPrice={camlyPrice}
         dailyClaimed={dailyClaimed}
         onSuccess={() => { fetchClaimableReward(); refetchExternal(); }}
