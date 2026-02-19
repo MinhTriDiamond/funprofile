@@ -138,13 +138,26 @@ serve(async (req) => {
     let avatarUrl: string | null = null;
 
     if (platform === 'facebook') {
-      // Facebook: use graph API public picture endpoint
+      // Facebook: use graph API then follow redirect to get the actual CDN image URL
       const username = extractUsername(normalizedUrl, 'facebook');
       console.log(`Facebook username: ${username}`);
       if (username) {
-        // graph.facebook.com returns a redirect to the actual profile picture
-        avatarUrl = `https://graph.facebook.com/${encodeURIComponent(username)}/picture?type=large&redirect=true`;
-        console.log(`Facebook graph URL: ${avatarUrl}`);
+        const graphUrl = `https://graph.facebook.com/${encodeURIComponent(username)}/picture?type=large`;
+        try {
+          // Follow redirect to get actual CDN URL (avoids CORS issues in browser)
+          const res = await fetch(graphUrl, {
+            redirect: 'follow',
+            headers: { 'User-Agent': 'Mozilla/5.0' },
+            signal: AbortSignal.timeout(6000),
+          });
+          if (res.ok) {
+            // res.url will be the final redirected CDN URL
+            avatarUrl = res.url;
+            console.log(`Facebook final CDN URL: ${avatarUrl}`);
+          }
+        } catch (e) {
+          console.log('Facebook graph fetch error:', e);
+        }
       }
     } else if (platform && UNAVATAR_MAP[platform]) {
       // Use unavatar.io for supported platforms (real user profile pictures)
