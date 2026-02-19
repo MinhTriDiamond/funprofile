@@ -64,6 +64,7 @@ export function useAdminDonationHistory() {
           sender:profiles!donations_sender_id_fkey(id, username, avatar_url, public_wallet_address, custodial_wallet_address),
           recipient:profiles!donations_recipient_id_fkey(id, username, avatar_url, public_wallet_address, custodial_wallet_address)
         `, { count: 'exact' })
+        .order('confirmed_at', { ascending: false, nullsFirst: false })
         .order('created_at', { ascending: false });
 
       // Apply filters
@@ -222,6 +223,7 @@ export async function fetchAllDonationsForExport(filters: Partial<AdminDonationF
       sender:profiles!donations_sender_id_fkey(id, username, avatar_url, public_wallet_address, custodial_wallet_address),
       recipient:profiles!donations_recipient_id_fkey(id, username, avatar_url, public_wallet_address, custodial_wallet_address)
     `)
+    .order('confirmed_at', { ascending: false, nullsFirst: false })
     .order('created_at', { ascending: false });
 
   if (filters.tokenSymbol !== 'all') {
