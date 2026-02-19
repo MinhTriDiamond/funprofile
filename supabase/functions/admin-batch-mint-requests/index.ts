@@ -7,7 +7,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-const FUN_MONEY_CONTRACT = '0x1aa8DE8B1E4465C6d729E8564893f8EF823a5ff2';
+const FUN_MONEY_CONTRACT = '0x39A1b047D5d143f8874888cfa1d30Fb2AE6F0CD6';
 const BSC_TESTNET_RPC = 'https://data-seed-prebsc-1-s1.binance.org:8545/';
 const DEFAULT_ACTION_NAME = 'light_action';
 

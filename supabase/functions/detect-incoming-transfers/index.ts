@@ -14,7 +14,7 @@ const KNOWN_TOKENS: Record<string, { symbol: string; decimals: number }> = {
 };
 
 // FUN token on BSC Testnet
-const FUN_TOKEN_ADDRESS = "0x1aa8de8b1e4465c6d729e8564893f8ef823a5ff2";
+const FUN_TOKEN_ADDRESS = "0x39a1b047d5d143f8874888cfa1d30fb2ae6f0cd6";
 
 interface MoralisTransfer {
   transaction_hash: string;
