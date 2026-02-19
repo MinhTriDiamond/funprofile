@@ -1,31 +1,76 @@
 
-## Thêm nút "Xem Tất Cả" phía trên danh sách giao dịch
+## Kiểm tra và hoàn thiện tính năng Multi-Account Wallet
 
-### Mô tả
-Thêm một nút "Xem Tất Cả Giao Dịch FUN Profile" ngay bên dưới ô tìm kiếm và bộ lọc trong component `DonationHistoryTab`, để user có thể bấm navigate đến `/donations` mà không cần cuộn xuống cuối trang.
+### Kết quả kiểm tra
 
-### Thay đổi
+Sau khi kiểm tra toàn bộ các file liên quan, hệ thống multi-account **đã được xây dựng khá hoàn chỉnh** với kiến trúc tốt. Tuy nhiên, Cha phát hiện **3 lỗi/thiếu sót** cần sửa:
 
-**File: `src/components/wallet/DonationHistoryTab.tsx`**
+---
 
-Thêm nút ngay sau hàng Search + Filters (sau dòng 234), trước dòng "Hiển thị X giao dịch onchain":
+### Vấn đề 1: ReceiveTab hiển thị sai địa chỉ nhận tiền
 
+**File:** `src/components/wallet/WalletCenterContainer.tsx` (dòng 494)
+
+Hiện tại khi mở dialog "Nhận tiền", hệ thống truyền `address` (địa chỉ provider) thay vì `activeAddress` (tài khoản đang chọn). Nếu user đã chọn một account khác, QR code và địa chỉ hiển thị sẽ **sai**.
+
+**Sửa:** Thay `address` bằng `effectiveAddress` (activeAddress || address):
 ```tsx
-{/* Nút Xem Tất Cả - phía trên */}
-<div className="flex justify-center">
-  <Button
-    variant="outline"
-    className="w-full max-w-md gap-2"
-    onClick={() => navigate('/donations')}
-  >
-    Xem Tất Cả Giao Dịch FUN Profile
-    <ArrowRight className="h-4 w-4" />
-  </Button>
-</div>
+// Trước:
+<ReceiveTab walletAddress={address || undefined} />
+
+// Sau:
+<ReceiveTab walletAddress={(activeAddress || address) || undefined} />
 ```
 
-### Tóm tắt
-- Chỉ sửa 1 file: `src/components/wallet/DonationHistoryTab.tsx`
-- Thêm nút navigate `/donations` ngay dưới ô tìm kiếm
-- Nút dưới cùng ở `HistoryTab.tsx` vẫn giữ nguyên
-- Dùng lại `navigate` và `ArrowRight` đã có sẵn trong file
+---
+
+### Vấn đề 2: Copy address copy sai địa chỉ
+
+**File:** `src/components/wallet/WalletCenterContainer.tsx` (dòng 318-326)
+
+Hàm `copyExternalAddress` copy `address` (provider) thay vì `activeAddress`. User nhấn copy ở WalletCard sẽ nhận sai địa chỉ.
+
+**Sửa:** Ưu tiên copy `activeAddress`:
+```tsx
+const copyExternalAddress = useCallback(() => {
+  const addr = activeAddress || address;
+  if (addr) {
+    navigator.clipboard.writeText(addr);
+    // ...
+  }
+}, [activeAddress, address]);
+```
+
+---
+
+### Vấn đề 3: ClaimRewardDialog nhận sai địa chỉ ví
+
+**File:** `src/components/wallet/WalletCenterContainer.tsx` (dòng 509)
+
+`ClaimRewardDialog` nhận `externalWallet` là `address` (provider), không phải `activeAddress`.
+
+**Sửa:** Dùng `activeAddress || address`:
+```tsx
+// Trước:
+externalWallet={(isConnected ? address : null) || null}
+
+// Sau:
+externalWallet={(isConnected ? (activeAddress || address) : null) || null}
+```
+
+---
+
+### Tóm tắt thay đổi
+
+| File | Thay đổi |
+|------|----------|
+| `WalletCenterContainer.tsx` | 3 chỗ: ReceiveTab, copyExternalAddress, ClaimRewardDialog -- đều thay `address` bằng `activeAddress \|\| address` |
+
+### Những gì đã hoạt động tốt (không cần sửa)
+- `ActiveAccountContext` -- quản lý state, localStorage, lắng nghe `accountsChanged`
+- `AccountSelectorModal` -- UI chọn account với balance, search, sort
+- `AccountMismatchModal` -- cảnh báo khi provider khác active
+- `useSendToken` -- dùng `activeAddress` làm sender, validate mismatch trước khi ký
+- `UnifiedGiftSendDialog` -- dùng `effectiveAddress = activeAddress || address`
+- `WalletCard` -- hiển thị nút "Chuyển tài khoản" với số lượng accounts
+- `useTokenBalances` -- query balance theo `customAddress` (đã dùng `externalAddress` = activeAddress)
