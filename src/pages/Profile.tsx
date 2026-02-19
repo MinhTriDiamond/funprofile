@@ -149,6 +149,11 @@ const Profile = () => {
       if (error) throw error;
       setProfile(data);
 
+      // If accessed via /profile/:userId but user has a username, redirect to /:username for clean URL
+      if (userId && (data as any)?.username) {
+        navigate(`/${(data as any).username}`, { replace: true });
+      }
+
       // Fetch user's own posts
       const { data: postsData } = await supabase
         .from('posts')
