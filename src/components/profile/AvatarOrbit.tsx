@@ -222,11 +222,17 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOwner, userId]);
 
-  // All display slots = saved links + pending slot
-  // For non-owners: only show links that have a URL (hide empty slots)
+  // Default links for users who haven't set up social_links
+  const defaultLinks: SocialLink[] = PLATFORM_ORDER.map(p => {
+    const preset = PLATFORM_PRESETS[p];
+    return { platform: p, label: preset.label, url: '', color: preset.color, favicon: preset.favicon };
+  });
+
+  // Use default icons when user has no links configured
+  const displayLinks = localLinks.length > 0 ? localLinks : defaultLinks;
+
   const allLinks: (SocialLink & { isPending?: boolean; isEmpty?: boolean })[] = [
-    ...localLinks
-      .filter((l) => isOwner || !!l.url) // hide empty-url slots for visitors
+    ...displayLinks
       .map((l) => ({ ...l, isEmpty: !l.url })),
     ...(pendingPlatform && PLATFORM_PRESETS[pendingPlatform]
       ? [{ platform: pendingPlatform, label: PLATFORM_PRESETS[pendingPlatform].label, url: '', color: PLATFORM_PRESETS[pendingPlatform].color, favicon: PLATFORM_PRESETS[pendingPlatform].favicon, isPending: true }]
