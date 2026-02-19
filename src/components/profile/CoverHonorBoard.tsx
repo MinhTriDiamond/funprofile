@@ -191,18 +191,12 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
               </div>
             </div>
             <div className="grid grid-cols-2 gap-1">
-              <div className="space-y-1">
-                <StatRow icon={<ArrowUp className="w-3 h-3" />} label="Bài viết" value={stats.posts_count} />
-                <StatRow icon={<Star className="w-3 h-3" />} label="Cảm xúc" value={stats.reactions_on_posts} />
-                <StatRow icon={<MessageCircle className="w-3 h-3" />} label="Bình luận" value={stats.comments_count} />
-              </div>
-              <div className="space-y-1">
-                <StatRow icon={<Users className="w-3 h-3" />} label="Bạn bè" value={stats.friends_count} />
-                <StatRow icon={<Gift className="w-3 h-3" />} label="Có thể rút" value={stats.claimable} />
-                <StatRow icon={<Coins className="w-3 h-3" />} label="Đã rút" value={stats.claimed} />
-              </div>
-            </div>
-            <div className="mt-1.5 grid grid-cols-2 gap-1">
+              <StatRow icon={<ArrowUp className="w-3 h-3" />} label="Bài viết" value={stats.posts_count} />
+              <StatRow icon={<Users className="w-3 h-3" />} label="Bạn bè" value={stats.friends_count} />
+              <StatRow icon={<Star className="w-3 h-3" />} label="Cảm xúc" value={stats.reactions_on_posts} />
+              <StatRow icon={<Gift className="w-3 h-3" />} label="Có thể rút" value={stats.claimable} />
+              <StatRow icon={<MessageCircle className="w-3 h-3" />} label="Bình luận" value={stats.comments_count} />
+              <StatRow icon={<Coins className="w-3 h-3" />} label="Đã rút" value={stats.claimed} />
               <StatRow icon={<Calendar className="w-3 h-3" />} label="Hôm nay" value={stats.today_reward} />
               <StatRow icon={<BadgeDollarSign className="w-3 h-3" />} label="Tổng Thu" value={stats.total_reward} />
             </div>
