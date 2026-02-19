@@ -312,6 +312,9 @@ export function DonationHistoryTab() {
             message: selectedDonation.message,
             txHash: selectedDonation.tx_hash,
             createdAt: selectedDonation.created_at,
+            recipientUsername: selectedDonation.recipient?.username,
+            recipientDisplayName: selectedDonation.recipient?.display_name,
+            recipientAvatarUrl: selectedDonation.recipient?.avatar_url,
           }}
         />
       )}
