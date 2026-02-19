@@ -128,11 +128,11 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
                   className="text-lg tracking-wider uppercase leading-none font-black"
                   style={{
                     fontFamily: "'Orbitron', 'Rajdhani', sans-serif",
-                    background: 'linear-gradient(135deg, #FFD700 0%, #FFC125 30%, #FFD700 50%, #FFDF00 70%, #FFD700 100%)',
+                    background: 'linear-gradient(90deg, #FF6B9D 0%, #C44FE2 15%, #7B68EE 30%, #00CED1 50%, #98FB98 70%, #FFFF00 85%, #FFB347 100%)',
                     WebkitBackgroundClip: 'text',
                     WebkitTextFillColor: 'transparent',
                     backgroundClip: 'text',
-                    WebkitTextStroke: '1px rgba(0,0,0,0.3)',
+                    filter: 'drop-shadow(1px 1px 0px rgba(255,255,255,0.5)) drop-shadow(0 0 8px rgba(255, 182, 193, 0.5))',
                   }}
                 >
                   {t('honorBoard').toUpperCase()}
