@@ -150,8 +150,8 @@ export function SystemDonationHistory() {
 
   const getWalletAddress = (user: any) => user?.public_wallet_address || user?.custodial_wallet_address || null;
 
-  const renderWalletAddress = (user: any, tokenSymbol?: string) => {
-    const address = getWalletAddress(user);
+  const renderWalletAddress = (user: any, tokenSymbol?: string, fallbackAddress?: string | null) => {
+    const address = getWalletAddress(user) || fallbackAddress || null;
     if (!address) return null;
     return (
       <div className="flex items-center gap-1 mt-0.5">
@@ -432,7 +432,7 @@ export function SystemDonationHistory() {
               {/* Desktop Card Layout */}
               <div className="hidden md:block space-y-3 p-4">
                 {donations.map((donation) => {
-                  const senderWallet = getWalletAddress(donation.sender);
+                  const senderWallet = getWalletAddress(donation.sender) || donation.sender_address || null;
                   const recipientWallet = getWalletAddress(donation.recipient);
                   const tokenColor = 'text-emerald-500';
                   return (
@@ -448,10 +448,19 @@ export function SystemDonationHistory() {
                             onClick={(e) => { e.stopPropagation(); if (donation.sender?.id) navigate(`/profile/${donation.sender.id}`); }}
                           >
                             <AvatarImage src={donation.sender?.avatar_url || undefined} />
-                            <AvatarFallback>{donation.sender?.username?.charAt(0).toUpperCase() || '?'}</AvatarFallback>
+                            <AvatarFallback>{donation.sender?.username?.charAt(0).toUpperCase() || '🌐'}</AvatarFallback>
                           </Avatar>
                           <div className="min-w-0">
-                            <p className="font-semibold text-sm truncate">@{donation.sender?.username || 'Unknown'}</p>
+                            <div className="flex items-center gap-1.5">
+                              <p className="font-semibold text-sm truncate">
+                                {donation.sender?.username 
+                                  ? `@${donation.sender.username}`
+                                  : (donation.sender_address ? shortenAddress(donation.sender_address) : '@Unknown')}
+                              </p>
+                              {donation.is_external && (
+                                <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-100 text-[10px] px-1 py-0 shrink-0">Ví ngoài</Badge>
+                              )}
+                            </div>
                             {senderWallet && (
                               <div className="flex items-center gap-1 mt-0.5">
                                 <a href={getBscScanAddressUrl(senderWallet, donation.token_symbol)} target="_blank" rel="noopener noreferrer" className="font-mono text-[10px] text-blue-600 hover:underline" onClick={(e) => e.stopPropagation()}>
@@ -549,12 +558,21 @@ export function SystemDonationHistory() {
                         <Avatar className="w-10 h-10 shrink-0">
                           <AvatarImage src={donation.sender?.avatar_url || undefined} />
                           <AvatarFallback>
-                            {donation.sender?.username?.charAt(0).toUpperCase() || '?'}
+                            {donation.sender?.username?.charAt(0).toUpperCase() || '🌐'}
                           </AvatarFallback>
                         </Avatar>
                         <div className="min-w-0">
-                          <p className="font-medium truncate">@{donation.sender?.username || 'Unknown'}</p>
-                          {renderWalletAddress(donation.sender, donation.token_symbol)}
+                          <div className="flex items-center gap-1.5">
+                            <p className="font-medium truncate">
+                              {donation.sender?.username 
+                                ? `@${donation.sender.username}`
+                                : (donation.sender_address ? shortenAddress(donation.sender_address) : '@Unknown')}
+                            </p>
+                            {donation.is_external && (
+                              <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-100 text-[10px] px-1 py-0 shrink-0">Ví ngoài</Badge>
+                            )}
+                          </div>
+                          {renderWalletAddress(donation.sender, donation.token_symbol, donation.sender_address)}
                           <p className="text-sm text-muted-foreground truncate">
                             → @{donation.recipient?.username || 'Unknown'}
                           </p>
@@ -662,7 +680,7 @@ export function SystemDonationHistory() {
             id: selectedDonation.id,
             amount: selectedDonation.amount,
             tokenSymbol: selectedDonation.token_symbol,
-            senderUsername: selectedDonation.sender?.username || 'Unknown',
+            senderUsername: selectedDonation.sender?.username || (selectedDonation.sender_address ? shortenAddress(selectedDonation.sender_address) : 'Unknown'),
             senderAvatarUrl: selectedDonation.sender?.avatar_url,
             recipientUsername: selectedDonation.recipient?.username || 'Unknown',
             recipientAvatarUrl: selectedDonation.recipient?.avatar_url,
@@ -682,7 +700,7 @@ export function SystemDonationHistory() {
             id: selectedDonation.id,
             amount: selectedDonation.amount,
             tokenSymbol: selectedDonation.token_symbol,
-            senderUsername: selectedDonation.sender?.username || 'Unknown',
+            senderUsername: selectedDonation.sender?.username || (selectedDonation.sender_address ? shortenAddress(selectedDonation.sender_address) : 'Unknown'),
             senderAvatarUrl: selectedDonation.sender?.avatar_url,
             senderId: selectedDonation.sender?.id || '',
             message: selectedDonation.message,
