@@ -166,14 +166,39 @@ serve(async (req) => {
     let avatarUrl: string | null = null;
 
     if (platform === 'facebook') {
-      // Facebook graph API: returns a redirect to actual CDN image
-      // Browser <img> can follow this redirect fine without CORS issues
       const username = extractUsername(normalizedUrl, 'facebook');
       console.log(`Facebook username: ${username}`);
       if (username) {
-        // This URL redirects to the actual profile picture CDN URL
-        avatarUrl = `https://graph.facebook.com/${encodeURIComponent(username)}/picture?type=large&redirect=true`;
-        console.log(`Facebook graph URL: ${avatarUrl}`);
+        // Step 1: Call Graph API with redirect=false to get real image URL
+        try {
+          const metaRes = await fetch(
+            `https://graph.facebook.com/${encodeURIComponent(username)}/picture?type=large&redirect=false`,
+            { signal: AbortSignal.timeout(5000) }
+          );
+          if (metaRes.ok) {
+            const meta = await metaRes.json();
+            // Response: { data: { is_silhouette: bool, url: string } }
+            if (meta?.data?.url && !meta?.data?.is_silhouette) {
+              avatarUrl = meta.data.url;
+              console.log(`Facebook graph API real URL: ${avatarUrl}`);
+            }
+          }
+        } catch (e) {
+          console.log('Facebook graph API error:', e);
+        }
+
+        // Step 2: Fallback — scrape og:image from profile page
+        if (!avatarUrl) {
+          console.log(`Facebook fallback: scraping og:image from ${normalizedUrl}`);
+          avatarUrl = await scrapeOgImage(normalizedUrl);
+          console.log(`Facebook og:image scraped: ${avatarUrl}`);
+        }
+
+        // Step 3: Last fallback — return redirect URL (will be proxied by client)
+        if (!avatarUrl) {
+          avatarUrl = `https://graph.facebook.com/${encodeURIComponent(username)}/picture?type=large&redirect=true`;
+          console.log(`Facebook last fallback redirect URL: ${avatarUrl}`);
+        }
       }
     } else if (platform && UNAVATAR_MAP[platform]) {
       // Use unavatar.io for supported platforms (real user profile pictures)
