@@ -29,7 +29,6 @@ function extractUsername(url: string, platform: string): string | null {
         const id = u.searchParams.get('id');
         if (id) return id;
         const seg = pathname.split('/').filter(Boolean)[0];
-        // Skip generic facebook pages
         if (!seg || ['pages', 'groups', 'events', 'photo'].includes(seg)) return null;
         return seg;
       }
@@ -53,11 +52,6 @@ function extractUsername(url: string, platform: string): string | null {
         const seg = pathname.split('/').filter(Boolean)[0];
         return seg || null;
       }
-      case 'linkedin': {
-        const parts = pathname.split('/').filter(Boolean);
-        if (parts[0] === 'in' || parts[0] === 'company') return parts[1] || null;
-        return null;
-      }
       case 'instagram': {
         const seg = pathname.split('/').filter(Boolean)[0];
         if (!seg || ['explore', 'accounts', 'direct'].includes(seg)) return null;
@@ -67,6 +61,61 @@ function extractUsername(url: string, platform: string): string | null {
         return null;
     }
   } catch {
+    return null;
+  }
+}
+
+/**
+ * Scrape og:image or twitter:image from a URL's HTML
+ * Returns null if not found or not a valid user avatar
+ */
+async function scrapeOgImage(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+      },
+      signal: AbortSignal.timeout(8000),
+    });
+
+    if (!res.ok) return null;
+
+    const html = await res.text();
+
+    // Extract og:image
+    const ogMatch = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i)
+      || html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i);
+
+    if (ogMatch?.[1]) {
+      const imgUrl = ogMatch[1].trim();
+      // Reject known bad/generic images
+      const BAD_PATTERNS = [
+        'stc-zlogin.zdn.vn',
+        'static.xx.fbcdn.net/rsrc.php',
+        '/og-image',
+        'default_',
+        '/placeholder',
+        'logo.png',
+        'favicon',
+      ];
+      if (!BAD_PATTERNS.some(p => imgUrl.includes(p))) {
+        return imgUrl;
+      }
+    }
+
+    // Try twitter:image as fallback
+    const twMatch = html.match(/<meta[^>]*name=["']twitter:image["'][^>]*content=["']([^"']+)["']/i)
+      || html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*name=["']twitter:image["']/i);
+
+    if (twMatch?.[1]) {
+      return twMatch[1].trim();
+    }
+
+    return null;
+  } catch (e) {
+    console.log('scrapeOgImage error:', e);
     return null;
   }
 }
@@ -88,9 +137,8 @@ serve(async (req) => {
     const normalizedUrl = url.startsWith('http') ? url : `https://${url}`;
     let avatarUrl: string | null = null;
 
-    // Only use unavatar.io for supported social platforms (real user avatars)
-    // Platforms like Zalo, Angel, Fun Play don't have publicly accessible user avatars via unavatar
     if (platform && UNAVATAR_MAP[platform]) {
+      // Use unavatar.io for supported platforms (real user profile pictures)
       const username = extractUsername(normalizedUrl, platform);
       console.log(`Platform: ${platform}, Username: ${username}`);
 
@@ -99,9 +147,10 @@ serve(async (req) => {
         console.log(`Built unavatar URL: ${avatarUrl}`);
       }
     } else {
-      // For non-supported platforms (Zalo, Angel, Fun Play, etc.):
-      // Return null — the frontend will show the platform favicon/logo instead
-      console.log(`Platform ${platform} not in unavatar map — returning null`);
+      // For other platforms (Zalo, Angel, Fun Play, etc.): scrape og:image from page
+      console.log(`Platform ${platform} — scraping og:image from: ${normalizedUrl}`);
+      avatarUrl = await scrapeOgImage(normalizedUrl);
+      console.log(`Scraped og:image: ${avatarUrl}`);
     }
 
     return new Response(JSON.stringify({ avatarUrl }), {

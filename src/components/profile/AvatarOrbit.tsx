@@ -98,22 +98,20 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
   // Platforms supported by unavatar.io (real user profile pictures)
   const UNAVATAR_PLATFORMS = ['facebook', 'youtube', 'twitter', 'tiktok', 'telegram', 'instagram', 'github'];
   // Known bad og:image domains (site-wide background images, not user avatars)
-  const BAD_AVATAR_DOMAINS = ['stc-zlogin.zdn.vn', 'zdn.vn', 'meta_background', 'og-image', 'funplay-og'];
+  const BAD_AVATAR_DOMAINS = ['stc-zlogin.zdn.vn', 'zdn.vn', 'meta_background', 'og-image', 'funplay-og', 'static.xx.fbcdn.net/rsrc.php'];
 
-  // Auto-fetch: fix missing or bad stored avatarUrls
+  // Auto-fetch: fix missing or bad stored avatarUrls for ALL platforms
   useEffect(() => {
     if (!isOwner || !userId) return;
 
     const linksToRefetch = socialLinks.filter((l) => {
       if (!l.url) return false;
-      if (UNAVATAR_PLATFORMS.includes(l.platform)) {
-        // Re-fetch if not yet an unavatar.io URL
-        return !l.avatarUrl?.includes('unavatar.io');
-      }
-      // For non-unavatar platforms: clear bad og:image stored values
-      if (l.avatarUrl && BAD_AVATAR_DOMAINS.some((d) => l.avatarUrl!.includes(d))) {
-        return true;
-      }
+      // If avatarUrl is bad domain → re-fetch
+      if (l.avatarUrl && BAD_AVATAR_DOMAINS.some((d) => l.avatarUrl!.includes(d))) return true;
+      // If no avatarUrl → try to fetch for all platforms
+      if (!l.avatarUrl) return true;
+      // For unavatar platforms: re-fetch if not using unavatar.io URL
+      if (UNAVATAR_PLATFORMS.includes(l.platform) && !l.avatarUrl.includes('unavatar.io')) return true;
       return false;
     });
 
