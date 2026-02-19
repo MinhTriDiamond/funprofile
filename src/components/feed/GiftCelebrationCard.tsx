@@ -275,7 +275,12 @@ const GiftCelebrationCardComponent = ({
                 {senderDisplayName[0]?.toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <span className="text-xs text-white/80 mt-1 truncate max-w-[80px]">{senderDisplayName}</span>
+            <div className="text-center mt-1">
+              <div className="text-xs font-semibold text-white/90 truncate max-w-[80px]">{senderDisplayName}</div>
+              {senderUsername && senderUsername !== 'FUN Profile Treasury' && (
+                <div className="text-[10px] text-white/60 truncate max-w-[80px]">@{senderUsername}</div>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center gap-1">
@@ -293,7 +298,12 @@ const GiftCelebrationCardComponent = ({
                 {recipientDisplayName[0]?.toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <span className="text-xs text-white/80 mt-1 truncate max-w-[80px]">{recipientDisplayName}</span>
+            <div className="text-center mt-1">
+              <div className="text-xs font-semibold text-white/90 truncate max-w-[80px]">{recipientDisplayName}</div>
+              {recipientUsername && recipientUsername !== 'User' && (
+                <div className="text-[10px] text-white/60 truncate max-w-[80px]">@{recipientUsername}</div>
+              )}
+            </div>
           </div>
         </div>
 
