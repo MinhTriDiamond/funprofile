@@ -497,10 +497,10 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
                     <div className="flex gap-1.5">
                       <button
                         type="button"
-                        onClick={() => { setPromptingPlatform(null); setPromptUrl(''); }}
-                        className="flex-1 text-xs px-2 py-1 rounded-lg border border-border hover:bg-muted transition-colors"
+                        onClick={() => { removeLink(link.platform); setPromptingPlatform(null); setPromptUrl(''); }}
+                        className="flex-1 text-xs px-2 py-1 rounded-lg border border-destructive/40 text-destructive hover:bg-destructive/10 transition-colors"
                       >
-                        Bỏ qua
+                        Xoá
                       </button>
                       <button
                         type="button"
