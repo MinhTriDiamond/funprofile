@@ -5,6 +5,17 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
+// Platforms supported by unavatar.io for user profile pictures
+const UNAVATAR_MAP: Record<string, string> = {
+  facebook: 'facebook',
+  youtube: 'youtube',
+  twitter: 'twitter',
+  tiktok: 'tiktok',
+  telegram: 'telegram',
+  instagram: 'instagram',
+  github: 'github',
+};
+
 /**
  * Extract username/handle from social media URL
  */
@@ -60,18 +71,6 @@ function extractUsername(url: string, platform: string): string | null {
   }
 }
 
-/**
- * Map platform to unavatar.io service
- */
-const UNAVATAR_MAP: Record<string, string> = {
-  facebook: 'facebook',
-  youtube: 'youtube',
-  twitter: 'twitter',
-  tiktok: 'tiktok',
-  telegram: 'telegram',
-  instagram: 'instagram',
-};
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -89,43 +88,20 @@ serve(async (req) => {
     const normalizedUrl = url.startsWith('http') ? url : `https://${url}`;
     let avatarUrl: string | null = null;
 
-    // Strategy 1: Use unavatar.io for supported platforms (just build URL, no HEAD check needed)
+    // Only use unavatar.io for supported social platforms (real user avatars)
+    // Platforms like Zalo, Angel, Fun Play don't have publicly accessible user avatars via unavatar
     if (platform && UNAVATAR_MAP[platform]) {
       const username = extractUsername(normalizedUrl, platform);
       console.log(`Platform: ${platform}, Username: ${username}`);
 
       if (username) {
-        // unavatar.io returns a fallback image if not found, we use it directly
         avatarUrl = `https://unavatar.io/${UNAVATAR_MAP[platform]}/${encodeURIComponent(username)}`;
         console.log(`Built unavatar URL: ${avatarUrl}`);
       }
-    }
-
-    // Strategy 2: Fallback — fetch page and extract og:image (works for blogs, personal sites, etc.)
-    if (!avatarUrl) {
-      try {
-        const response = await fetch(normalizedUrl, {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
-            'Accept': 'text/html,application/xhtml+xml,*/*;q=0.8',
-          },
-          redirect: 'follow',
-          signal: AbortSignal.timeout(6000),
-        });
-
-        if (response.ok) {
-          const html = await response.text();
-          const ogMatch = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i)
-            || html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i);
-          const twitterMatch = html.match(/<meta[^>]*name=["']twitter:image["'][^>]*content=["']([^"']+)["']/i)
-            || html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*name=["']twitter:image["']/i);
-
-          avatarUrl = ogMatch?.[1] || twitterMatch?.[1] || null;
-          if (avatarUrl) console.log(`Got avatar from og:image: ${avatarUrl}`);
-        }
-      } catch (e) {
-        console.log(`og:image fetch failed: ${e}`);
-      }
+    } else {
+      // For non-supported platforms (Zalo, Angel, Fun Play, etc.):
+      // Return null — the frontend will show the platform favicon/logo instead
+      console.log(`Platform ${platform} not in unavatar map — returning null`);
     }
 
     return new Response(JSON.stringify({ avatarUrl }), {
