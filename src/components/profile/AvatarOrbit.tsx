@@ -373,13 +373,24 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
                 </div>
               )}
 
-              {/* Tooltip for non-owner */}
-              {!isOwner && isHovered && (
+              {/* Tooltip — hiện cho cả owner lẫn non-owner */}
+              {isHovered && !isPending && !isEditing && (
                 <div
-                  className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 rounded text-xs whitespace-nowrap pointer-events-none z-50"
-                  style={{ background: 'rgba(0,0,0,0.75)', color: '#fff' }}
+                  className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none z-50 flex flex-col items-center gap-0.5"
+                  style={{ minWidth: '120px', maxWidth: '220px' }}
                 >
-                  {link.label}
+                  <div
+                    className="px-2.5 py-1.5 rounded-lg text-xs whitespace-nowrap shadow-lg"
+                    style={{ background: link.color, color: '#fff', fontWeight: 600 }}
+                  >
+                    {link.label}
+                  </div>
+                  <div
+                    className="px-2 py-1 rounded-md text-xs shadow"
+                    style={{ background: 'rgba(0,0,0,0.8)', color: '#e5e7eb', maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', direction: 'ltr' }}
+                  >
+                    {link.url.replace(/^https?:\/\//, '')}
+                  </div>
                 </div>
               )}
 
