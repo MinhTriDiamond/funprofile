@@ -216,9 +216,12 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOwner, userId]);
 
-  // All display slots = saved links (with empty-url ones shown) + pending slot
+  // All display slots = saved links + pending slot
+  // For non-owners: only show links that have a URL (hide empty slots)
   const allLinks: (SocialLink & { isPending?: boolean; isEmpty?: boolean })[] = [
-    ...localLinks.map((l) => ({ ...l, isEmpty: !l.url })),
+    ...localLinks
+      .filter((l) => isOwner || !!l.url) // hide empty-url slots for visitors
+      .map((l) => ({ ...l, isEmpty: !l.url })),
     ...(pendingPlatform && PLATFORM_PRESETS[pendingPlatform]
       ? [{ platform: pendingPlatform, label: PLATFORM_PRESETS[pendingPlatform].label, url: '', color: PLATFORM_PRESETS[pendingPlatform].color, favicon: PLATFORM_PRESETS[pendingPlatform].favicon, isPending: true }]
       : []),
