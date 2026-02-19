@@ -61,6 +61,7 @@ export function useAdminDonationHistory() {
           status,
           sender_address,
           is_external,
+          metadata,
           sender:profiles!donations_sender_id_fkey(id, username, avatar_url, public_wallet_address, custodial_wallet_address),
           recipient:profiles!donations_recipient_id_fkey(id, username, avatar_url, public_wallet_address, custodial_wallet_address)
         `, { count: 'exact' })
@@ -139,6 +140,7 @@ export function useAdminDonationHistory() {
         status: d.status,
         sender_address: d.sender_address,
         is_external: d.is_external,
+        metadata: d.metadata,
       })) as DonationRecord[];
 
       return {
@@ -220,6 +222,7 @@ export async function fetchAllDonationsForExport(filters: Partial<AdminDonationF
       status,
       sender_address,
       is_external,
+      metadata,
       sender:profiles!donations_sender_id_fkey(id, username, avatar_url, public_wallet_address, custodial_wallet_address),
       recipient:profiles!donations_recipient_id_fkey(id, username, avatar_url, public_wallet_address, custodial_wallet_address)
     `)
@@ -287,6 +290,7 @@ export async function fetchAllDonationsForExport(filters: Partial<AdminDonationF
     status: d.status,
     sender_address: d.sender_address,
     is_external: d.is_external,
+    metadata: d.metadata,
   })) as DonationRecord[];
 
   return donations;

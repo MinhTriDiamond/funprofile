@@ -35,6 +35,11 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const moralisApiKey = Deno.env.get("MORALIS_API_KEY");
+
+    // Authenticate - require admin role
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -43,19 +48,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabaseAnon = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const moralisApiKey = Deno.env.get("MORALIS_API_KEY");
-
-    if (!moralisApiKey) {
-      return new Response(JSON.stringify({ error: "MORALIS_API_KEY not configured" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Verify user
     const userClient = createClient(supabaseUrl, supabaseAnon, {
       global: { headers: { Authorization: authHeader } },
     });
@@ -67,31 +60,69 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const userId = claims.user.id;
 
     const adminClient = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get user's public wallet address
-    const { data: profile } = await adminClient
-      .from("profiles")
-      .select("public_wallet_address")
-      .eq("id", userId)
-      .single();
+    // Check admin role
+    const { data: roleData } = await adminClient
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", claims.user.id)
+      .eq("role", "admin")
+      .maybeSingle();
 
-    const walletAddress = profile?.public_wallet_address;
-    if (!walletAddress) {
+    if (!roleData) {
+      return new Response(JSON.stringify({ error: "Admin role required" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!moralisApiKey) {
+      return new Response(JSON.stringify({ error: "MORALIS_API_KEY not configured" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Parse request body
+    const body = await req.json();
+    const senderAddress: string = body.sender_address;
+    const senderName: string = body.sender_name || "Unknown External Wallet";
+
+    if (!senderAddress || !senderAddress.startsWith("0x")) {
+      return new Response(JSON.stringify({ error: "sender_address is required" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Get all profiles with public_wallet_address to map recipients
+    const { data: profiles } = await adminClient
+      .from("profiles")
+      .select("id, username, public_wallet_address")
+      .not("public_wallet_address", "is", null);
+
+    const walletToRecipient = new Map<string, { id: string; username: string }>();
+    for (const p of profiles || []) {
+      if (p.public_wallet_address) {
+        walletToRecipient.set(p.public_wallet_address.toLowerCase(), { id: p.id, username: p.username });
+      }
+    }
+
+    if (walletToRecipient.size === 0) {
       return new Response(
-        JSON.stringify({ newTransfers: 0, message: "No wallet address configured" }),
+        JSON.stringify({ newTransfers: 0, message: "No Fun Profile wallets found" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Fetch ERC20 token transfers from Moralis (BSC Mainnet)
+    // Fetch ERC20 transfers FROM the sender address
     const moralisBaseUrl = "https://deep-index.moralis.io/api/v2.2";
     const headers = { "X-API-Key": moralisApiKey, "Accept": "application/json" };
 
-    // Fetch BSC mainnet transfers (USDT, BTCB, CAMLY)
-    const mainnetUrl = `${moralisBaseUrl}/${walletAddress}/erc20/transfers?chain=bsc&limit=100&order=DESC`;
+    // Fetch BSC mainnet transfers
+    const mainnetUrl = `${moralisBaseUrl}/${senderAddress}/erc20/transfers?chain=bsc&limit=100&order=DESC`;
     const mainnetRes = await fetch(mainnetUrl, { headers });
 
     if (!mainnetRes.ok) {
@@ -107,9 +138,9 @@ Deno.serve(async (req) => {
     const mainnetTransfers: MoralisTransfer[] = mainnetData.result || [];
 
     // Fetch BSC testnet transfers (FUN token)
-    const testnetUrl = `${moralisBaseUrl}/${walletAddress}/erc20/transfers?chain=bsc+testnet&limit=100&order=DESC`;
+    const testnetUrl = `${moralisBaseUrl}/${senderAddress}/erc20/transfers?chain=bsc+testnet&limit=100&order=DESC`;
     const testnetRes = await fetch(testnetUrl, { headers });
-    
+
     let testnetTransfers: MoralisTransfer[] = [];
     if (testnetRes.ok) {
       const testnetData = await testnetRes.json();
@@ -118,15 +149,17 @@ Deno.serve(async (req) => {
       console.warn("Moralis testnet fetch failed:", testnetRes.status);
     }
 
-    // Combine and filter: only incoming transfers to this wallet
-    const walletLower = walletAddress.toLowerCase();
-    const allTransfers = [...mainnetTransfers, ...testnetTransfers].filter(
-      (t) => t.to_address?.toLowerCase() === walletLower
-    );
+    // Filter: only OUTGOING from sender AND incoming to a Fun Profile wallet
+    const senderLower = senderAddress.toLowerCase();
+    const allTransfers = [...mainnetTransfers, ...testnetTransfers].filter((t) => {
+      const from = t.from_address?.toLowerCase();
+      const to = t.to_address?.toLowerCase();
+      return from === senderLower && walletToRecipient.has(to);
+    });
 
     if (allTransfers.length === 0) {
       return new Response(
-        JSON.stringify({ newTransfers: 0, message: "No incoming transfers found" }),
+        JSON.stringify({ newTransfers: 0, message: "No transfers from this wallet to Fun Profile users" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -140,7 +173,6 @@ Deno.serve(async (req) => {
 
     const existingSet = new Set((existingDonations || []).map((d) => d.tx_hash));
 
-    // Filter new transfers
     const newTransfers = allTransfers.filter(
       (t) => t.transaction_hash && !existingSet.has(t.transaction_hash)
     );
@@ -152,31 +184,14 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Get all profiles to map sender addresses
-    const senderAddresses = [...new Set(newTransfers.map((t) => t.from_address.toLowerCase()))];
-    const { data: profiles } = await adminClient
-      .from("profiles")
-      .select("id, username, public_wallet_address, custodial_wallet_address");
-
-    const walletToProfile = new Map<string, string>();
-    for (const p of profiles || []) {
-      if (p.public_wallet_address) {
-        walletToProfile.set(p.public_wallet_address.toLowerCase(), p.id);
-      }
-      if (p.custodial_wallet_address) {
-        walletToProfile.set(p.custodial_wallet_address.toLowerCase(), p.id);
-      }
-    }
-
     // Build donation records
     const donationsToInsert: any[] = [];
-    const notificationsToInsert: any[] = [];
 
     for (const transfer of newTransfers) {
       const contractAddr = transfer.address?.toLowerCase() || "";
       const tokenInfo = KNOWN_TOKENS[contractAddr];
       const isFun = contractAddr === FUN_TOKEN_ADDRESS;
-      
+
       let tokenSymbol = transfer.token_symbol || "UNKNOWN";
       let tokenDecimals = parseInt(transfer.token_decimals) || 18;
 
@@ -189,9 +204,7 @@ Deno.serve(async (req) => {
       }
 
       // Only process known tokens
-      if (!tokenInfo && !isFun) {
-        continue;
-      }
+      if (!tokenInfo && !isFun) continue;
 
       const rawValue = BigInt(transfer.value || "0");
       const divisor = BigInt(10 ** tokenDecimals);
@@ -199,13 +212,14 @@ Deno.serve(async (req) => {
       const fracPart = rawValue % divisor;
       const amount = `${intPart}.${fracPart.toString().padStart(tokenDecimals, "0")}`.replace(/\.?0+$/, "") || "0";
 
-      const senderAddress = transfer.from_address.toLowerCase();
-      const senderId = walletToProfile.get(senderAddress) || null;
+      const recipientWallet = transfer.to_address.toLowerCase();
+      const recipient = walletToRecipient.get(recipientWallet);
+      if (!recipient) continue;
 
       donationsToInsert.push({
-        sender_id: senderId,
-        sender_address: senderAddress,
-        recipient_id: userId,
+        sender_id: null,
+        sender_address: senderLower,
+        recipient_id: recipient.id,
         amount,
         token_symbol: tokenSymbol,
         token_address: contractAddr,
@@ -213,17 +227,13 @@ Deno.serve(async (req) => {
         tx_hash: transfer.transaction_hash,
         status: "confirmed",
         confirmed_at: transfer.block_timestamp,
-        is_external: !senderId,
+        created_at: transfer.block_timestamp, // sync with onchain time
+        is_external: true,
         card_theme: "celebration",
         card_sound: "rich-1",
         message: null,
         light_score_earned: 0,
-      });
-
-      notificationsToInsert.push({
-        user_id: userId,
-        actor_id: senderId || userId, // fallback to self if no sender profile
-        type: "donation_received",
+        metadata: { sender_name: senderName },
       });
     }
 
@@ -244,17 +254,16 @@ Deno.serve(async (req) => {
       throw new Error(`Failed to insert donations: ${insertError.message}`);
     }
 
-    // Insert notifications (best effort)
-    if (notificationsToInsert.length > 0) {
-      await adminClient.from("notifications").insert(notificationsToInsert).throwOnError().catch((e) => {
-        console.warn("Notification insert failed:", e);
-      });
-    }
-
     return new Response(
       JSON.stringify({
         newTransfers: donationsToInsert.length,
-        message: `Detected ${donationsToInsert.length} new incoming transfer(s)`,
+        message: `Recorded ${donationsToInsert.length} transfer(s) from ${senderName}`,
+        details: donationsToInsert.map(d => ({
+          recipient: walletToRecipient.get(d.sender_address)?.username || d.recipient_id,
+          amount: d.amount,
+          token: d.token_symbol,
+          tx: d.tx_hash,
+        })),
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

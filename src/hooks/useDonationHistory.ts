@@ -18,6 +18,7 @@ export interface DonationRecord {
   card_sound?: string | null;
   sender_address?: string | null;
   is_external?: boolean;
+  metadata?: { sender_name?: string } | null;
 }
 
 export function useDonationHistory(type: 'sent' | 'received') {
@@ -57,6 +58,7 @@ export function useDonationHistory(type: 'sent' | 'received') {
           card_sound,
           sender_address,
           is_external,
+          metadata,
           sender:profiles!donations_sender_id_fkey(id, username, display_name, avatar_url, public_wallet_address, custodial_wallet_address),
           recipient:profiles!donations_recipient_id_fkey(id, username, display_name, avatar_url, public_wallet_address, custodial_wallet_address)
         `)
@@ -84,6 +86,7 @@ export function useDonationHistory(type: 'sent' | 'received') {
         card_sound: d.card_sound,
         sender_address: d.sender_address,
         is_external: d.is_external,
+        metadata: d.metadata,
       })) as DonationRecord[];
     },
     staleTime: 30000,
