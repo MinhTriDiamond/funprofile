@@ -61,6 +61,7 @@ export function useDonationHistory(type: 'sent' | 'received') {
           recipient:profiles!donations_recipient_id_fkey(id, username, display_name, avatar_url, public_wallet_address, custodial_wallet_address)
         `)
         .eq(type === 'sent' ? 'sender_id' : 'recipient_id', userId)
+        .order('confirmed_at', { ascending: false, nullsFirst: false })
         .order('created_at', { ascending: false })
         .limit(100);
 

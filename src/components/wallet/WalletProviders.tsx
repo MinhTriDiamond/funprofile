@@ -1,5 +1,4 @@
 import { lazy, Suspense } from 'react';
-import { useIncomingTransferDetector } from '@/hooks/useIncomingTransferDetector';
 
 // Lazy load the wallet container
 const WalletCenterContainer = lazy(() => import('@/components/wallet/WalletCenterContainer'));
@@ -15,8 +14,6 @@ const WalletLoader = () => (
 );
 
 const WalletProviders = () => {
-  useIncomingTransferDetector();
-
   return (
     <Suspense fallback={<WalletLoader />}>
       <WalletCenterContainer />
