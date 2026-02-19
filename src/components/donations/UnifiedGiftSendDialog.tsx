@@ -26,6 +26,7 @@ import { Loader2, Wallet, Gift, AlertCircle, Send, Copy, AlertTriangle, External
 import { toast } from 'sonner';
 import { formatUnits } from 'viem';
 import { supabase } from '@/integrations/supabase/client';
+import { queryClient } from '@/lib/queryClient';
 import { EmojiPicker } from '@/components/feed/EmojiPicker';
 import { bsc } from 'wagmi/chains';
 import { getBscScanTxUrl } from '@/lib/bscScanHelpers';
@@ -125,6 +126,7 @@ export const UnifiedGiftSendDialog = ({
   const [resolvedRecipients, setResolvedRecipients] = useState<ResolvedRecipient[]>([]);
   const [multiSendProgress, setMultiSendProgress] = useState<{ current: number; total: number; results: MultiSendResult[] } | null>(null);
   const [isMultiSending, setIsMultiSending] = useState(false);
+  const [currentSendingIndex, setCurrentSendingIndex] = useState<number>(-1);
 
   // Recipient search state
   const [searchTab, setSearchTab] = useState<'username' | 'address'>('username');
@@ -450,6 +452,7 @@ export const UnifiedGiftSendDialog = ({
     if (recipientsWithWallet.length === 0) return;
     
     setIsMultiSending(true);
+    setCurrentSendingIndex(-1);
     const results: MultiSendResult[] = [];
     setMultiSendProgress({ current: 0, total: recipientsWithWallet.length, results: [] });
 
@@ -464,13 +467,13 @@ export const UnifiedGiftSendDialog = ({
 
     for (let i = 0; i < recipientsWithWallet.length; i++) {
       const recipient = recipientsWithWallet[i];
+      setCurrentSendingIndex(i);
       setMultiSendProgress(prev => prev ? { ...prev, current: i + 1 } : prev);
 
       // Delay giữa các TX để tránh nonce conflict trên BSC
       if (i > 0) await new Promise(r => setTimeout(r, 500));
 
       try {
-        // KHÔNG gọi resetState() ở đây — wagmi tự quản lý state giao dịch
         const hash = await sendToken({ token: walletToken, recipient: recipient.walletAddress!, amount });
         
         if (hash) {
@@ -485,9 +488,11 @@ export const UnifiedGiftSendDialog = ({
         resetState();
       }
 
+      // Update results in state immediately after each tx
       setMultiSendProgress(prev => prev ? { ...prev, results: [...results] } : prev);
     }
 
+    setCurrentSendingIndex(-1);
     setIsMultiSending(false);
 
     const successResults = results.filter(r => r.success);
@@ -635,9 +640,12 @@ export const UnifiedGiftSendDialog = ({
 
   /** Invalidate donation-related queries */
   const invalidateDonationCache = () => {
-    // Use window event to notify React Query to refetch
-    window.dispatchEvent(new CustomEvent('invalidate-donations'));
-    window.dispatchEvent(new CustomEvent('invalidate-feed'));
+    // Invalidate React Query caches so UI auto-refreshes
+    queryClient.invalidateQueries({ queryKey: ['donation-history'] });
+    queryClient.invalidateQueries({ queryKey: ['transaction-history'] });
+    queryClient.invalidateQueries({ queryKey: ['reward-stats'] });
+    queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    queryClient.invalidateQueries({ queryKey: ['feed'] });
   };
 
   const handleSaveTheme = async (themeId: string, bgIndex: number, soundId: string) => {
@@ -1088,11 +1096,12 @@ export const UnifiedGiftSendDialog = ({
                     <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1">
                       {recipientsWithWallet.map((recipient, idx) => {
                         const result = multiSendProgress?.results.find(r => r.recipient.id === recipient.id);
+                        const isSendingNow = currentSendingIndex === idx && isMultiSending && !result;
                         return (
                           <div key={recipient.id} className={`flex items-center gap-2.5 p-2 rounded-lg border ${
                             result?.success ? 'bg-emerald-50 border-emerald-200' :
                             result && !result.success ? 'bg-destructive/5 border-destructive/20' :
-                            multiSendProgress && multiSendProgress.current === idx + 1 ? 'bg-primary/5 border-primary/30' :
+                            isSendingNow ? 'bg-primary/5 border-primary/30' :
                             'bg-muted/30'
                           }`}>
                             <Avatar className="w-8 h-8 border border-gold/20">
@@ -1101,13 +1110,17 @@ export const UnifiedGiftSendDialog = ({
                             </Avatar>
                             <div className="flex-1 min-w-0">
                               <p className="font-medium text-sm truncate">{recipient.displayName || recipient.username}</p>
-                              {recipient.walletAddress && (
-                                <p className="text-[10px] text-muted-foreground font-mono truncate">{recipient.walletAddress.slice(0, 8)}...{recipient.walletAddress.slice(-6)}</p>
+                              <p className="text-[10px] text-muted-foreground truncate">@{recipient.username}</p>
+                              {result?.txHash && (
+                                <p className="text-[10px] text-emerald-600 font-mono truncate">{result.txHash.slice(0, 10)}...</p>
+                              )}
+                              {result?.error && (
+                                <p className="text-[10px] text-destructive truncate">{result.error}</p>
                               )}
                             </div>
                             {result?.success && <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />}
                             {result && !result.success && <AlertCircle className="w-4 h-4 text-destructive shrink-0" />}
-                            {multiSendProgress && multiSendProgress.current === idx + 1 && !result && (
+                            {isSendingNow && (
                               <Loader2 className="w-4 h-4 animate-spin text-primary shrink-0" />
                             )}
                           </div>
@@ -1164,12 +1177,18 @@ export const UnifiedGiftSendDialog = ({
               {multiSendProgress && (
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin text-primary shrink-0" />
+                    {isMultiSending
+                      ? <Loader2 className="w-4 h-4 animate-spin text-primary shrink-0" />
+                      : <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+                    }
                     <p className="text-sm font-medium">
-                      Đang gửi {multiSendProgress.current}/{multiSendProgress.total}...
+                      {isMultiSending
+                        ? `Đang gửi ${multiSendProgress.current}/${multiSendProgress.total}...`
+                        : `Hoàn tất ${multiSendProgress.results.filter(r => r.success).length}/${multiSendProgress.total} giao dịch`
+                      }
                     </p>
                   </div>
-                  <Progress value={(multiSendProgress.results.length / multiSendProgress.total) * 100} className="h-2" />
+                  <Progress value={(multiSendProgress.current / multiSendProgress.total) * 100} className="h-2" />
                   {multiSendProgress.results.length > 0 && (
                     <p className="text-xs text-muted-foreground">
                       ✅ {multiSendProgress.results.filter(r => r.success).length} thành công
