@@ -233,6 +233,18 @@ export function DonationHistoryTab() {
         </Select>
       </div>
 
+      {/* Nút Xem Tất Cả - phía trên */}
+      <div className="flex justify-center">
+        <Button
+          variant="outline"
+          className="w-full max-w-md gap-2"
+          onClick={() => navigate('/donations')}
+        >
+          Xem Tất Cả Giao Dịch FUN Profile
+          <ArrowRight className="h-4 w-4" />
+        </Button>
+      </div>
+
       {/* Result count */}
       <p className="text-sm text-muted-foreground">Hiển thị {allDonations.length} giao dịch onchain</p>
 
