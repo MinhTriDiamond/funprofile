@@ -419,7 +419,7 @@ const Profile = () => {
           <div className="max-w-[1100px] mx-auto px-4 sm:px-6 lg:px-[2cm]">
             <div className="relative">
             {/* Cover Photo Container with rounded corners */}
-            <div className="h-[155px] sm:h-[210px] md:h-[280px] relative rounded-2xl mx-2 md:mx-0">
+            <div className="h-[200px] sm:h-[210px] md:h-[280px] relative rounded-2xl mx-2 md:mx-0">
               {/* Cover Image with overflow hidden only on image */}
               <div className="absolute inset-0 overflow-hidden rounded-2xl">
                 {profile?.cover_url ? (
@@ -451,7 +451,7 @@ const Profile = () => {
               </div>
 
               {/* Mobile Honor Board Overlay - smaller, bottom-right */}
-              <div className="absolute z-20 md:hidden bottom-12 right-2 sm:right-3 w-[220px] sm:w-[250px] rounded-2xl p-1 bg-white/50 backdrop-blur-sm origin-bottom-right scale-[0.85] sm:scale-90">
+              <div className="absolute z-20 md:hidden bottom-16 right-2 sm:right-3 w-[220px] sm:w-[250px] rounded-2xl p-1 bg-white/50 backdrop-blur-sm origin-bottom-right scale-[0.85] sm:scale-90">
                 <CoverHonorBoard 
                   userId={profile.id}
                   username={profile?.username}
@@ -478,7 +478,7 @@ const Profile = () => {
               {/* Avatar + Info Row */}
               <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
                 {/* Avatar - positioned higher to overlap cover */}
-                <div className="-mt-[193px] sm:-mt-[201px] md:-mt-[217px] relative z-10 flex justify-center md:justify-start flex-shrink-0" style={{ overflow: 'visible' }}>
+                <div className="-mt-[120px] sm:-mt-[130px] md:-mt-[217px] relative z-10 flex justify-center md:justify-start flex-shrink-0" style={{ overflow: 'visible' }}>
                   <AvatarOrbit
                     socialLinks={Array.isArray(profile?.social_links) ? profile.social_links : []}
                     isOwner={isOwnProfile}
