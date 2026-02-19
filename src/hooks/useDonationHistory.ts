@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 export interface DonationRecord {
   id: string;
-  sender: { id: string; username: string; display_name?: string | null; avatar_url: string | null; public_wallet_address?: string | null; custodial_wallet_address?: string | null };
+  sender: { id: string; username: string; display_name?: string | null; avatar_url: string | null; public_wallet_address?: string | null; custodial_wallet_address?: string | null } | null;
   recipient: { id: string; username: string; display_name?: string | null; avatar_url: string | null; public_wallet_address?: string | null; custodial_wallet_address?: string | null };
   amount: string;
   token_symbol: string;
@@ -16,6 +16,8 @@ export interface DonationRecord {
   card_theme?: string | null;
   card_background?: string | null;
   card_sound?: string | null;
+  sender_address?: string | null;
+  is_external?: boolean;
 }
 
 export function useDonationHistory(type: 'sent' | 'received') {
@@ -53,6 +55,8 @@ export function useDonationHistory(type: 'sent' | 'received') {
           card_theme,
           card_background,
           card_sound,
+          sender_address,
+          is_external,
           sender:profiles!donations_sender_id_fkey(id, username, display_name, avatar_url, public_wallet_address, custodial_wallet_address),
           recipient:profiles!donations_recipient_id_fkey(id, username, display_name, avatar_url, public_wallet_address, custodial_wallet_address)
         `)
@@ -77,6 +81,8 @@ export function useDonationHistory(type: 'sent' | 'received') {
         card_theme: d.card_theme,
         card_background: d.card_background,
         card_sound: d.card_sound,
+        sender_address: d.sender_address,
+        is_external: d.is_external,
       })) as DonationRecord[];
     },
     staleTime: 30000,
