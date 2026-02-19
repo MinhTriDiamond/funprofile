@@ -10,8 +10,8 @@ import { useLanguage } from '@/i18n/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { AngelFloatingButton } from '@/components/angel-ai';
-import { GiftNavButton } from '@/components/donations/GiftNavButton';
 import honorBoardIcon from '@/assets/honor-board-icon.png';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 export const MobileBottomNav = memo(() => {
   const navigate = useNavigate();
@@ -53,6 +53,22 @@ export const MobileBottomNav = memo(() => {
     staleTime: 5 * 60 * 1000,
   });
 
+  // Fetch current user's own profile for avatar button
+  const { data: myProfile } = useQuery({
+    queryKey: ['my-profile-nav', currentUser?.id],
+    queryFn: async () => {
+      if (!currentUser?.id) return null;
+      const { data } = await supabase
+        .from('profiles')
+        .select('username, avatar_url')
+        .eq('id', currentUser.id)
+        .single();
+      return data;
+    },
+    enabled: !!currentUser?.id,
+    staleTime: 5 * 60 * 1000,
+  });
+
   const isActive = useCallback((path: string) => location.pathname === path, [location.pathname]);
 
   const handleNavigate = useCallback((path: string) => {
@@ -64,7 +80,7 @@ export const MobileBottomNav = memo(() => {
     { icon: Users, label: t('friends'), path: '/friends', action: () => handleNavigate('/friends') },
     { icon: Award, label: t('honorBoard'), isCenter: true, action: () => setHonorBoardOpen(true) },
     { icon: MessageCircle, label: 'Chat', path: '/chat', action: () => handleNavigate('/chat') },
-    { isGift: true }, // Gift button
+    { isAvatar: true }, // Avatar profile button
   ];
 
   return (
@@ -76,9 +92,30 @@ export const MobileBottomNav = memo(() => {
       <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-white/85 dark:bg-gray-900/85 border-t border-border/30 safe-area-bottom backdrop-blur-sm">
         <div className="flex items-center justify-around h-[72px] px-1 max-w-lg mx-auto">
           {navItems.map((item, index) => {
-            // Gift button - special component
-            if ('isGift' in item && item.isGift) {
-              return <GiftNavButton key={index} variant="mobile" />;
+            // Avatar profile button - special component
+            if ('isAvatar' in item && item.isAvatar) {
+              return (
+                <button
+                  key={index}
+                  onClick={() => currentUser?.id && navigate(`/profile/${currentUser.id}`)}
+                  aria-label="My Profile"
+                  className="flex flex-col items-center justify-center min-w-[56px] min-h-[52px] touch-manipulation group"
+                >
+                  <Avatar className={`w-9 h-9 border-2 transition-all duration-300 ${
+                    location.pathname === `/profile/${currentUser?.id}`
+                      ? 'border-gold ring-2 ring-gold/40'
+                      : 'border-gold/30 group-hover:border-gold group-active:border-gold'
+                  }`}>
+                    <AvatarImage src={myProfile?.avatar_url || ''} sizeHint="sm" />
+                    <AvatarFallback className="bg-primary/20 text-primary text-xs font-bold">
+                      {myProfile?.username?.[0]?.toUpperCase() || 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-[10px] mt-1 font-medium truncate max-w-[52px] text-foreground">
+                    {myProfile?.username?.split('').slice(0,6).join('') || 'Tôi'}
+                  </span>
+                </button>
+              );
             }
             
             return (
@@ -90,8 +127,8 @@ export const MobileBottomNav = memo(() => {
                   item.isCenter
                     ? 'relative border-transparent'
                     : item.path && isActive(item.path)
-                    ? 'text-white bg-primary border-[#C9A84C]'
-                    : 'text-foreground hover:text-primary hover:bg-primary/10 border-transparent hover:border-[#C9A84C]/40 active:text-white active:bg-primary'
+                    ? 'text-primary-foreground bg-primary border-gold'
+                    : 'text-foreground hover:text-primary hover:bg-primary/10 border-transparent hover:border-gold/40 active:text-primary-foreground active:bg-primary'
                 }`}
               >
                 {item.isCenter ? (
@@ -109,8 +146,8 @@ export const MobileBottomNav = memo(() => {
                 <>
                     <item.icon className={`w-6 h-6 transition-all duration-300 ${
                       item.path && isActive(item.path) 
-                        ? 'drop-shadow-[0_0_8px_hsl(48_96%_53%/0.6)]' 
-                        : 'group-hover:drop-shadow-[0_0_6px_hsl(142_76%_36%/0.5)]'
+                        ? 'drop-shadow-[0_0_8px_hsl(var(--gold)/0.6)]' 
+                        : 'group-hover:drop-shadow-[0_0_6px_hsl(var(--primary)/0.5)]'
                     }`} strokeWidth={1.8} />
                     <span className="text-[10px] mt-1 font-medium truncate max-w-[52px]">{item.label}</span>
                   </>
