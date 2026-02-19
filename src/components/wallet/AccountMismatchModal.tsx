@@ -54,7 +54,7 @@ export const AccountMismatchModal = ({ open, onOpenChange }: AccountMismatchModa
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <AlertTriangle className="w-5 h-5 text-orange-500" />
@@ -67,14 +67,14 @@ export const AccountMismatchModal = ({ open, onOpenChange }: AccountMismatchModa
 
         <div className="space-y-3 py-2">
           {/* Hiển thị 2 address */}
-          <div className="bg-orange-50 rounded-lg p-3 space-y-2 text-sm">
+          <div className="bg-orange-50 rounded-lg p-3 space-y-2 text-sm overflow-hidden">
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Trong ví:</span>
-              <span className="font-mono font-medium">{shortProvider}</span>
+              <span className="text-muted-foreground flex-shrink-0">Trong ví:</span>
+              <span className="font-mono font-medium truncate max-w-[140px] text-right">{shortProvider}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Đang chọn:</span>
-              <span className="font-mono font-medium">{shortActive}</span>
+              <span className="text-muted-foreground flex-shrink-0">Đang chọn:</span>
+              <span className="font-mono font-medium truncate max-w-[140px] text-right">{shortActive}</span>
             </div>
           </div>
 
@@ -82,18 +82,18 @@ export const AccountMismatchModal = ({ open, onOpenChange }: AccountMismatchModa
           <div className="space-y-2">
             <Button
               onClick={syncToProvider}
-              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white overflow-hidden"
             >
-              <ArrowRightLeft className="w-4 h-4 mr-2" />
-              Dùng tài khoản trong ví ({shortProvider})
+              <ArrowRightLeft className="w-4 h-4 mr-2 flex-shrink-0" />
+              <span className="truncate">Dùng tài khoản trong ví ({shortProvider})</span>
             </Button>
             <Button
               onClick={keepActive}
               variant="outline"
-              className="w-full"
+              className="w-full overflow-hidden"
             >
-              <Wallet className="w-4 h-4 mr-2" />
-              Giữ nguyên, tôi sẽ đổi trong ví
+              <Wallet className="w-4 h-4 mr-2 flex-shrink-0" />
+              <span className="truncate">Giữ nguyên, tôi sẽ đổi trong ví</span>
             </Button>
           </div>
         </div>
