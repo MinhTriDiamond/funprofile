@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -38,6 +39,7 @@ const SocialLinksTab = () => {
   const [search, setSearch] = useState("");
   const [platformFilter, setPlatformFilter] = useState<string | null>(null);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadUsers();
@@ -260,13 +262,19 @@ const SocialLinksTab = () => {
                               )}
                             </TableCell>
                             <TableCell>
-                              <div className="flex items-center gap-2">
+                              <div
+                                className="flex items-center gap-2 cursor-pointer group"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/profile/${user.id}`);
+                                }}
+                              >
                                 <img
                                   src={user.avatar_url || "/default-avatar.png"}
                                   alt=""
-                                  className="w-8 h-8 rounded-full object-cover"
+                                  className="w-8 h-8 rounded-full object-cover hover:ring-2 hover:ring-primary transition-all"
                                 />
-                                <span className="font-medium">{user.username}</span>
+                                <span className="font-medium group-hover:text-primary group-hover:underline transition-colors">{user.username}</span>
                               </div>
                             </TableCell>
                             <TableCell>{user.full_name || "—"}</TableCell>
