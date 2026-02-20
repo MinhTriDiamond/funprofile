@@ -10,9 +10,14 @@ import {
   FUN_MONEY_ABI,
   MINT_REQUEST_STATUS,
   getTxUrl,
+  GOV_GROUPS,
+  GovGroupKey,
+  MultisigSignatures,
+  getGovGroupForAddress,
+  getGovMemberName,
 } from '@/config/pplp';
 
-// Types - Updated for contract v1.2.1
+// Types - Updated for contract v1.2.1 + Multisig GOV-COMMUNITY
 export interface MintRequest {
   id: string;
   user_id: string;
@@ -37,6 +42,10 @@ export interface MintRequest {
   action_ids: string[];
   created_at: string;
   updated_at: string;
+  // Multisig GOV-COMMUNITY fields
+  multisig_signatures: MultisigSignatures | null;
+  multisig_required_groups: string[] | null;
+  multisig_completed_groups: string[] | null;
   // Joined data
   profiles?: {
     username: string;
@@ -149,6 +158,7 @@ export const usePplpAdmin = () => {
       // Merge data
       const enrichedRequests: MintRequest[] = (requests || []).map(req => ({
         ...req,
+        multisig_signatures: (req.multisig_signatures as MultisigSignatures) ?? null,
         profiles: profileMap.get(req.user_id) || null,
       }));
 
@@ -225,10 +235,24 @@ export const usePplpAdmin = () => {
     }
   }, [chainId, switchChainAsync]);
 
-  // Sign a single mint request
+  // Sign a single mint request — Multisig GOV-COMMUNITY (WILL + WISDOM + LOVE)
   const signMintRequest = useCallback(async (request: MintRequest): Promise<string | null> => {
     if (!isConnected || !address) {
-      toast.error('Vui lòng kết nối ví Attester trước');
+      toast.error('Vui lòng kết nối ví GOV trước');
+      return null;
+    }
+
+    // 1. Xác định nhóm GOV của ví đang kết nối
+    const groupKey = getGovGroupForAddress(address);
+    if (!groupKey) {
+      toast.error('Ví của bạn không thuộc nhóm GOV-COMMUNITY nào. Vui lòng dùng ví được ủy quyền.');
+      return null;
+    }
+
+    // 2. Kiểm tra nhóm này đã ký chưa
+    const currentSigs: MultisigSignatures = request.multisig_signatures ?? {};
+    if (currentSigs[groupKey]) {
+      toast.warning(`Nhóm ${GOV_GROUPS[groupKey].nameVi} (${GOV_GROUPS[groupKey].emoji}) đã ký request này rồi!`);
       return null;
     }
 
@@ -239,7 +263,7 @@ export const usePplpAdmin = () => {
     }
 
     try {
-      console.log('[usePplpAdmin] Signing request:', request.id);
+      console.log(`[usePplpAdmin] Signing request ${request.id} as group: ${groupKey} (${getGovMemberName(address)})`);
 
       // Validate action_hash exists
       if (!request.action_hash) {
@@ -247,8 +271,7 @@ export const usePplpAdmin = () => {
         return null;
       }
 
-      // Create the typed data message - MUST match contract PPLP_TYPEHASH exactly:
-      // keccak256("PureLoveProof(address user,bytes32 actionHash,uint256 amount,bytes32 evidenceHash,uint256 nonce)")
+      // Create the typed data message - MUST match contract PPLP_TYPEHASH exactly
       const message = {
         user: request.recipient_address as `0x${string}`,
         actionHash: request.action_hash as `0x${string}`,
@@ -259,7 +282,7 @@ export const usePplpAdmin = () => {
 
       console.log('[usePplpAdmin] EIP-712 PureLoveProof message:', message);
 
-      // Sign using EIP-712 (wagmi v2 API) - primaryType must be 'PureLoveProof'
+      // 3. Ký EIP-712 (gasless, off-chain)
       const signature = await signTypedDataAsync({
         account: address,
         types: EIP712_PPLP_TYPES,
@@ -273,30 +296,52 @@ export const usePplpAdmin = () => {
         },
       });
 
-      console.log('[usePplpAdmin] Signature:', signature);
+      console.log(`[usePplpAdmin] Signature from ${groupKey}:`, signature);
 
-      // Save signature to database
+      // 4. Cập nhật multisig_signatures trong DB
+      const newSigs: MultisigSignatures = {
+        ...currentSigs,
+        [groupKey]: {
+          signer: address,
+          signature,
+          signed_at: new Date().toISOString(),
+          signer_name: getGovMemberName(address),
+        },
+      };
+
+      const completedGroups = Object.keys(newSigs) as GovGroupKey[];
+      const isFullySigned = completedGroups.length === 3;
+
       const { error: updateError } = await supabase
         .from('pplp_mint_requests')
         .update({
-          signature,
-          signed_at: new Date().toISOString(),
+          multisig_signatures: newSigs as any,
+          multisig_completed_groups: completedGroups,
+          // Backward compat: lưu chữ ký cuối cùng vào cột signature cũ
+          signature: isFullySigned ? signature : (request.signature ?? null),
           signed_by: address,
-          status: MINT_REQUEST_STATUS.SIGNED,
+          signed_at: new Date().toISOString(),
+          // Đủ 3 nhóm → signed, chưa đủ → signing
+          status: isFullySigned ? MINT_REQUEST_STATUS.SIGNED : 'signing',
         })
         .eq('id', request.id);
 
       if (updateError) throw updateError;
 
-      toast.success('Đã ký thành công!');
+      if (isFullySigned) {
+        toast.success('🎉 Đã đủ 3 chữ ký GOV! Request sẵn sàng Submit lên blockchain.');
+      } else {
+        const remaining = 3 - completedGroups.length;
+        toast.success(`${GOV_GROUPS[groupKey].emoji} Nhóm ${GOV_GROUPS[groupKey].nameVi} đã ký! Cần thêm ${remaining} nhóm nữa.`);
+      }
       return signature;
     } catch (error: any) {
       console.error('[usePplpAdmin] signMintRequest error:', error);
       
       if (error.message?.includes('User rejected')) {
-        toast.error('Bé đã từ chối ký');
+        toast.error('Bạn đã từ chối ký');
       } else {
-      toast.error(`Lỗi ký: ${error.message}`);
+        toast.error(`Lỗi ký: ${error.message}`);
       }
       return null;
     }
@@ -350,15 +395,24 @@ export const usePplpAdmin = () => {
     }
   }, []);
 
-  // Submit a signed request to blockchain (with B7 auto-confirm)
+  // Submit a signed request to blockchain — dùng đủ 3 chữ ký multisig GOV
   const submitToChain = useCallback(async (request: MintRequest): Promise<string | null> => {
     if (!isConnected || !address) {
       toast.error('Vui lòng kết nối ví trước');
       return null;
     }
 
-    if (!request.signature) {
-      toast.error('Request chưa được ký');
+    // Kiểm tra đủ 3 nhóm đã ký chưa
+    const multisig = request.multisig_signatures ?? {};
+    const completedGroups = Object.keys(multisig) as GovGroupKey[];
+    const isMultisigReady = completedGroups.length === 3 && 
+      completedGroups.includes('will') && 
+      completedGroups.includes('wisdom') && 
+      completedGroups.includes('love');
+
+    // Fallback: nếu không có multisig nhưng có signature đơn (backward compat)
+    if (!isMultisigReady && !request.signature) {
+      toast.error('Request chưa đủ 3 chữ ký GOV (WILL + WISDOM + LOVE)');
       return null;
     }
 
@@ -373,6 +427,19 @@ export const usePplpAdmin = () => {
         return null;
       }
 
+      // Lấy 3 chữ ký theo thứ tự will → wisdom → love
+      let orderedSigs: `0x${string}`[];
+      if (isMultisigReady) {
+        orderedSigs = (['will', 'wisdom', 'love'] as GovGroupKey[])
+          .map(group => multisig[group]?.signature)
+          .filter(Boolean) as `0x${string}`[];
+        console.log(`[usePplpAdmin] Multisig: ${orderedSigs.length} signatures [WILL, WISDOM, LOVE]`);
+      } else {
+        // Backward compat: dùng 1 chữ ký cũ
+        orderedSigs = [request.signature as `0x${string}`];
+        console.log('[usePplpAdmin] Fallback: using single legacy signature');
+      }
+
       const txHash = await writeContractAsync({
         account: address,
         chain: bscTestnet,
@@ -384,7 +451,7 @@ export const usePplpAdmin = () => {
           request.action_name,
           BigInt(request.amount_wei),
           request.evidence_hash as `0x${string}`,
-          [request.signature as `0x${string}`],
+          orderedSigs,
         ],
       });
 

@@ -11,16 +11,91 @@ export const FUN_MONEY_CONTRACT = {
   decimals: 18,
 };
 
-// Attester wallet addresses (used for EIP-712 signing)
-export const ATTESTER_ADDRESSES: readonly string[] = [
-  '0xe32d50a0badE4cbD5B0d6120d3A5FD07f63694f1',
-  '0xD41Cc6beCB196FaCa3CDebDa2f6Fb42A12EdC389',
-];
-export const ATTESTER_ADDRESS = ATTESTER_ADDRESSES[0]; // backward compat
+// =============================================
+// GOV-COMMUNITY Multisig: WILL + WISDOM + LOVE
+// 9 đại diện cộng đồng, chia 3 nhóm, mỗi nhóm 3 người
+// Yêu cầu: 1 chữ ký từ mỗi nhóm → tổng 3 chữ ký
+// =============================================
 
-// Helper to check if an address is an authorized attester
+export const GOV_GROUPS = {
+  will: {
+    name: 'Will',
+    nameVi: 'Ý Chí',
+    emoji: '💪',
+    description: 'Kỹ thuật & Ý chí',
+    color: 'blue',
+    members: [
+      { name: 'Minh Trí',   address: '0xe32d50a0badE4cbD5B0d6120d3A5FD07f63694f1' },
+      { name: 'Ánh Nguyệt', address: '0xfd0Da7a744245e7aCECCd786d5a743Ef9291a557' },
+      { name: 'Thu Trang',  address: '0x02D5578173bd0DB25462BB32A254Cd4b2E6D9a0D' },
+    ],
+  },
+  wisdom: {
+    name: 'Wisdom',
+    nameVi: 'Trí Tuệ',
+    emoji: '🌟',
+    description: 'Tầm nhìn chiến lược',
+    color: 'yellow',
+    members: [
+      { name: 'Bé Giàu', address: '0xCa319fBc39F519822385F2D0a0114B14fa89A301' },
+      { name: 'Bé Ngọc', address: '0x699CC96A8C4E3555f95Bd620EC4A218155641E09' },
+      { name: 'Ái Vân',  address: '0x5102Ecc4a458a1af76aFA50d23359a712658a402' },
+    ],
+  },
+  love: {
+    name: 'Love',
+    nameVi: 'Yêu Thương',
+    emoji: '❤️',
+    description: 'Nhân ái & Chữa lành',
+    color: 'rose',
+    members: [
+      { name: 'Thanh Tiên', address: '0x0e1b399E4a88eB11dd0f77cc21E9B54835f6d385' },
+      { name: 'Bé Kim',     address: '0x38db3eC4e14946aE497992e6856216641D22c242' },
+      { name: 'Bé Hà',      address: '0x9ec8C51175526BEbB1D04100256De71CF99B7CCC' },
+    ],
+  },
+} as const;
+
+export type GovGroupKey = keyof typeof GOV_GROUPS;
+
+export interface GovSignature {
+  signer: string;
+  signature: string;
+  signed_at: string;
+  signer_name: string | null;
+}
+
+export type MultisigSignatures = Partial<Record<GovGroupKey, GovSignature>>;
+
+// Tất cả 9 địa chỉ GOV (cần đăng ký trên contract qua govRegisterAttester)
+export const ALL_GOV_ADDRESSES: readonly string[] = Object.values(GOV_GROUPS).flatMap(g => g.members.map(m => m.address));
+
+// Backward compat: ATTESTER_ADDRESSES vẫn trỏ về tất cả 9 địa chỉ
+export const ATTESTER_ADDRESSES: readonly string[] = ALL_GOV_ADDRESSES;
+export const ATTESTER_ADDRESS = GOV_GROUPS.will.members[0].address; // backward compat
+
+// Tìm nhóm GOV của một địa chỉ ví
+export function getGovGroupForAddress(addr: string): GovGroupKey | null {
+  for (const [key, group] of Object.entries(GOV_GROUPS)) {
+    if (group.members.some(m => m.address.toLowerCase() === addr.toLowerCase())) {
+      return key as GovGroupKey;
+    }
+  }
+  return null;
+}
+
+// Tìm tên thành viên GOV
+export function getGovMemberName(addr: string): string | null {
+  for (const group of Object.values(GOV_GROUPS)) {
+    const member = group.members.find(m => m.address.toLowerCase() === addr.toLowerCase());
+    if (member) return member.name;
+  }
+  return null;
+}
+
+// Helper to check if an address is an authorized GOV attester
 export const isAttesterAddress = (addr: string): boolean =>
-  ATTESTER_ADDRESSES.some(a => a.toLowerCase() === addr.toLowerCase());
+  ALL_GOV_ADDRESSES.some(a => a.toLowerCase() === addr.toLowerCase());
 
 // BSC Testnet RPC
 export const BSC_TESTNET_RPC = 'https://data-seed-prebsc-1-s1.binance.org:8545/';

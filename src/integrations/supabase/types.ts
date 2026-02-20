@@ -2009,6 +2009,9 @@ export type Database = {
           error_message: string | null
           evidence_hash: string
           id: string
+          multisig_completed_groups: string[] | null
+          multisig_required_groups: string[] | null
+          multisig_signatures: Json | null
           nonce: number
           recipient_address: string
           retry_count: number
@@ -2035,6 +2038,9 @@ export type Database = {
           error_message?: string | null
           evidence_hash: string
           id?: string
+          multisig_completed_groups?: string[] | null
+          multisig_required_groups?: string[] | null
+          multisig_signatures?: Json | null
           nonce: number
           recipient_address: string
           retry_count?: number
@@ -2061,6 +2067,9 @@ export type Database = {
           error_message?: string | null
           evidence_hash?: string
           id?: string
+          multisig_completed_groups?: string[] | null
+          multisig_required_groups?: string[] | null
+          multisig_signatures?: Json | null
           nonce?: number
           recipient_address?: string
           retry_count?: number

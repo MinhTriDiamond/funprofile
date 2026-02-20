@@ -42,7 +42,11 @@ import {
 } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
 import { usePplpAdmin, MintRequest, ActionBreakdown, EcosystemTopUser } from '@/hooks/usePplpAdmin';
-import { isAttesterAddress, ATTESTER_ADDRESSES, formatFUN, getTxUrl, MINT_REQUEST_STATUS } from '@/config/pplp';
+import { 
+  isAttesterAddress, formatFUN, getTxUrl, MINT_REQUEST_STATUS,
+  GOV_GROUPS, GovGroupKey, MultisigSignatures,
+  getGovGroupForAddress, getGovMemberName,
+} from '@/config/pplp';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
 
@@ -271,12 +275,17 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
     fetchMintRequests();
   };
 
-  const isAttesterWallet = isAttesterAddress(address ?? '');
+  const isGovWallet = isAttesterAddress(address ?? '');
+  const govGroupKey = getGovGroupForAddress(address ?? '');
+  const govGroupInfo = govGroupKey ? GOV_GROUPS[govGroupKey] : null;
+  const govMemberName = address ? getGovMemberName(address) : null;
 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case MINT_REQUEST_STATUS.PENDING_SIG:
         return <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/30">Chờ ký</Badge>;
+      case 'signing':
+        return <Badge variant="outline" className="bg-orange-500/10 text-orange-600 border-orange-500/30">Đang ký</Badge>;
       case MINT_REQUEST_STATUS.SIGNED:
         return <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-500/30">Đã ký</Badge>;
       case MINT_REQUEST_STATUS.SUBMITTED:
@@ -292,6 +301,8 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
     }
   };
 
+  // Đếm số lượng request theo từng status (kể cả 'signing')
+  const signingCount = mintRequests.filter(r => r.status === 'signing').length;
   const filteredRequests = mintRequests.filter(r => r.status === activeTab);
 
   return (
@@ -508,12 +519,19 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
             
             {isConnected ? (
               <div className="flex items-center gap-2">
-                <Badge variant={isAttesterWallet ? "default" : "destructive"} className="gap-1">
-                  <Wallet className="w-3 h-3" />
-                  {address?.slice(0, 6)}...{address?.slice(-4)}
-                </Badge>
-                {!isAttesterWallet && (
-                  <span className="text-xs text-destructive">Không phải Attester</span>
+                {govGroupInfo ? (
+                  <Badge variant="default" className="gap-1">
+                    <span>{govGroupInfo.emoji}</span>
+                    {govMemberName} · Nhóm {govGroupInfo.nameVi}
+                  </Badge>
+                ) : (
+                  <Badge variant="destructive" className="gap-1">
+                    <Wallet className="w-3 h-3" />
+                    {address?.slice(0, 6)}...{address?.slice(-4)}
+                  </Badge>
+                )}
+                {!isGovWallet && (
+                  <span className="text-xs text-destructive">Không phải ví GOV</span>
                 )}
                 <Button variant="ghost" size="sm" onClick={() => disconnect()}>
                   Ngắt kết nối
@@ -578,35 +596,39 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
             <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 mb-6">
               <div className="flex items-center gap-2 text-yellow-600">
                 <AlertCircle className="w-5 h-5" />
-                <span className="font-medium">Kết nối ví Attester để ký và submit transactions</span>
+                <span className="font-medium">Kết nối ví GOV-COMMUNITY để ký và submit transactions</span>
               </div>
               <p className="text-sm text-muted-foreground mt-1">
-                Địa chỉ Attester: {ATTESTER_ADDRESSES.map((a, i) => <code key={i} className="bg-muted px-1 rounded text-xs mr-1">{a.slice(0,6)}...{a.slice(-4)}</code>)}
+                Cần ví từ nhóm 💪 WILL · 🌟 WISDOM · ❤️ LOVE để tham gia ký duyệt
               </p>
             </div>
           )}
 
-          {isConnected && !isAttesterWallet && (
+          {isConnected && !isGovWallet && (
             <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4 mb-6">
               <div className="flex items-center gap-2 text-destructive">
                 <AlertCircle className="w-5 h-5" />
-                <span className="font-medium">Ví hiện tại không phải là Attester!</span>
+                <span className="font-medium">Ví hiện tại không phải là thành viên GOV-COMMUNITY!</span>
               </div>
               <p className="text-sm text-muted-foreground mt-1">
-                Vui lòng đổi sang một trong các ví Attester được ủy quyền
+                Vui lòng kết nối ví thuộc nhóm 💪 WILL, 🌟 WISDOM hoặc ❤️ LOVE để ký duyệt
               </p>
             </div>
           )}
 
           {/* Tabs for different statuses */}
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-6">
+            <TabsList className="grid w-full grid-cols-7">
               <TabsTrigger value="pending_sig" className="gap-1">
                 <Clock className="w-4 h-4" />
                 Chờ ký ({stats.pending_sig})
               </TabsTrigger>
-              <TabsTrigger value="signed" className="gap-1">
+              <TabsTrigger value="signing" className="gap-1">
                 <Pencil className="w-4 h-4" />
+                Đang ký ({signingCount})
+              </TabsTrigger>
+              <TabsTrigger value="signed" className="gap-1">
+                <CheckCircle className="w-4 h-4" />
                 Đã ký ({stats.signed})
               </TabsTrigger>
               <TabsTrigger value="submitted" className="gap-1">
@@ -658,7 +680,7 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
                     </Button>
                     <Button
                       onClick={handleBatchSign}
-                      disabled={selectedIds.size === 0 || !isConnected || !isAttesterWallet}
+                      disabled={selectedIds.size === 0 || !isConnected || !isGovWallet}
                       className="gap-2"
                     >
                       <Pencil className="w-4 h-4" />
@@ -776,8 +798,9 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
                         onToggleExpand={() => handleToggleExpand(request)}
                         isSigning={signingId === request.id}
                         isSubmitting={submittingId === request.id}
-                        canSign={isConnected && isAttesterWallet}
+                        canSign={isConnected && isGovWallet}
                         canSubmit={isConnected}
+                        connectedAddress={address ?? null}
                         getStatusBadge={getStatusBadge}
                       />
                     ))
@@ -895,6 +918,59 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
   );
 };
 
+// =============================================
+// MultisigProgressPanel — hiển thị tiến trình ký 3 nhóm GOV
+// =============================================
+const MultisigProgressPanel = ({ multisigSigs }: { multisigSigs: MultisigSignatures | null }) => {
+  const sigs = multisigSigs ?? {};
+  const groups: GovGroupKey[] = ['will', 'wisdom', 'love'];
+  const completedCount = groups.filter(g => !!sigs[g]).length;
+
+  return (
+    <div className="mt-3 p-3 bg-muted/40 border border-border/60 rounded-lg space-y-2">
+      <div className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-2">
+        🔐 Tiến trình Multisig GOV-COMMUNITY
+        <span className="ml-auto font-bold text-foreground">{completedCount}/3 nhóm đã ký</span>
+      </div>
+      {groups.map(groupKey => {
+        const group = GOV_GROUPS[groupKey];
+        const sig = sigs[groupKey];
+        return (
+          <div key={groupKey} className="flex items-start gap-2">
+            <span className="text-base leading-5">{group.emoji}</span>
+            <div className="flex-1 min-w-0">
+              <span className="text-xs font-semibold">{group.nameVi}</span>
+              {sig ? (
+                <div className="text-xs text-green-600 flex items-center gap-1">
+                  <CheckCircle className="w-3 h-3 flex-shrink-0" />
+                  <span className="font-medium">{sig.signer_name}</span>
+                  <span className="text-muted-foreground">·</span>
+                  <span className="text-muted-foreground">
+                    {new Date(sig.signed_at).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
+                  </span>
+                </div>
+              ) : (
+                <div className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Clock className="w-3 h-3 flex-shrink-0" />
+                  <span>Chờ ký từ: {group.members.map(m => m.name).join(' / ')}</span>
+                </div>
+              )}
+            </div>
+            <div className={`w-2 h-2 rounded-full mt-1 flex-shrink-0 ${sig ? 'bg-green-500' : 'bg-muted-foreground/30'}`} />
+          </div>
+        );
+      })}
+      {/* Progress bar */}
+      <div className="mt-2 h-1.5 bg-muted rounded-full overflow-hidden">
+        <div
+          className="h-full bg-green-500 rounded-full transition-all duration-500"
+          style={{ width: `${(completedCount / 3) * 100}%` }}
+        />
+      </div>
+    </div>
+  );
+};
+
 // Mint Request Row Component
 interface MintRequestRowProps {
   request: MintRequest;
@@ -913,6 +989,7 @@ interface MintRequestRowProps {
   isSubmitting: boolean;
   canSign: boolean;
   canSubmit: boolean;
+  connectedAddress: string | null;
   getStatusBadge: (status: string) => React.ReactNode;
 }
 
@@ -933,14 +1010,23 @@ const MintRequestRow = ({
   isSubmitting,
   canSign,
   canSubmit,
+  connectedAddress,
   getStatusBadge,
 }: MintRequestRowProps) => {
-  const showCheckbox = request.status === MINT_REQUEST_STATUS.PENDING_SIG || request.status === MINT_REQUEST_STATUS.SIGNED;
-  const showSign = request.status === MINT_REQUEST_STATUS.PENDING_SIG;
+  // Xác định nhóm GOV của ví đang kết nối
+  const connectedGroupKey = connectedAddress ? getGovGroupForAddress(connectedAddress) : null;
+  const connectedMemberName = connectedAddress ? getGovMemberName(connectedAddress) : null;
+  const multisigSigs = request.multisig_signatures ?? {};
+
+  // Logic nút Ký thông minh
+  const isSigningStatus = request.status === MINT_REQUEST_STATUS.PENDING_SIG || request.status === 'signing';
+  const groupAlreadySigned = connectedGroupKey ? !!multisigSigs[connectedGroupKey] : false;
+  const showSign = isSigningStatus && !!connectedGroupKey; // Chỉ hiện nút ký nếu thuộc GOV
+  const showCheckbox = request.status === MINT_REQUEST_STATUS.PENDING_SIG || request.status === 'signing' || request.status === MINT_REQUEST_STATUS.SIGNED;
   const showSubmit = request.status === MINT_REQUEST_STATUS.SIGNED;
   const showTxLink = request.tx_hash && !request.tx_hash.startsWith('pending_');
   const showReset = request.status === MINT_REQUEST_STATUS.FAILED;
-  const showReject = request.status === MINT_REQUEST_STATUS.PENDING_SIG;
+  const showReject = request.status === MINT_REQUEST_STATUS.PENDING_SIG || request.status === 'signing';
   const showDelete = request.status === 'rejected' || request.status === MINT_REQUEST_STATUS.FAILED;
 
   return (
@@ -1027,19 +1113,26 @@ const MintRequestRow = ({
           )}
 
           {showSign && (
-            <Button
-              size="sm"
-              onClick={onSign}
-              disabled={!canSign || isSigning}
-              className="gap-1"
-            >
-              {isSigning ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Pencil className="w-4 h-4" />
-              )}
-              Ký
-            </Button>
+            groupAlreadySigned ? (
+              <Button size="sm" disabled className="gap-1 opacity-60">
+                <CheckCircle className="w-4 h-4 text-green-500" />
+                Nhóm {connectedGroupKey && GOV_GROUPS[connectedGroupKey].nameVi} đã ký ✓
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                onClick={onSign}
+                disabled={!canSign || isSigning}
+                className="gap-1"
+              >
+                {isSigning ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Pencil className="w-4 h-4" />
+                )}
+                {connectedMemberName ? `Ký — ${connectedMemberName}` : 'Ký'}
+              </Button>
+            )
           )}
 
           {showSubmit && (
@@ -1100,7 +1193,11 @@ const MintRequestRow = ({
       {/* Expanded Action Details */}
       {isExpanded && (
         <div className="border-t bg-muted/30 p-4">
-          <h4 className="font-medium mb-3 flex items-center gap-2">
+          {/* Multisig GOV progress — hiển thị khi đang trong quá trình ký */}
+          {(request.status === 'pending_sig' || request.status === 'signing') && (
+            <MultisigProgressPanel multisigSigs={request.multisig_signatures} />
+          )}
+          <h4 className="font-medium mb-3 mt-4 flex items-center gap-2">
             📊 Chi tiết Actions ({request.action_ids?.length || 0} actions)
           </h4>
           
