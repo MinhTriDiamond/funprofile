@@ -64,12 +64,8 @@ function useTransparentDiamond(src: string) {
 
 function computeAngles(n: number): number[] {
   if (n === 0) return [];
-  if (n === 1) return [180];
-  const maxSpan = 260;
-  const span = Math.min(maxSpan, (n - 1) * (maxSpan / 8));
-  const start = 180 - span / 2;
-  const step = span / (n - 1);
-  return Array.from({ length: n }, (_, i) => start + step * i);
+  const step = 360 / n;
+  return Array.from({ length: n }, (_, i) => i * step);
 }
 
 function angleToPos(angleDeg: number) {
@@ -78,11 +74,9 @@ function angleToPos(angleDeg: number) {
 }
 
 function computeAddAngle(n: number): number {
-  if (n === 0) return 180;
-  const angles = computeAngles(n);
-  const last = angles[angles.length - 1];
-  const step = n === 1 ? 32 : 260 / Math.max(n - 1, 1);
-  return Math.min(last + step * 0.85, 310);
+  if (n === 0) return 0;
+  const step = 360 / (n + 1);
+  return n * step;
 }
 
 interface AvatarOrbitProps {
