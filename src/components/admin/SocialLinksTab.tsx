@@ -145,7 +145,7 @@ const SocialLinksTab = () => {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-bold uppercase tracking-wide">
+      <h2 className="text-xl font-bold uppercase tracking-wide text-primary">
         Danh sách những user đã liên kết với các platform
       </h2>
       {/* Summary Cards */}

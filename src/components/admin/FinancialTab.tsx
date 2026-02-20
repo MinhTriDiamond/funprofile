@@ -1157,7 +1157,7 @@ const FinancialTab = () => {
             {/* Recent Reconciliation Logs */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Reconciliation History</CardTitle>
+                <CardTitle className="text-lg text-primary">Reconciliation History</CardTitle>
               </CardHeader>
               <CardContent className="p-0">
                 <div className="overflow-x-auto">
