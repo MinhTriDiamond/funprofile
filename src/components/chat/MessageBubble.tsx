@@ -1,4 +1,5 @@
 import { useState, memo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Message } from '@/hooks/useMessages';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { LazyImage } from '@/components/ui/LazyImage';
@@ -39,6 +40,13 @@ export const MessageBubble = memo(function MessageBubble({
   onReaction,
 }: MessageBubbleProps) {
   const [showActions, setShowActions] = useState(false);
+  const navigate = useNavigate();
+
+  const handleAvatarClick = () => {
+    if (message.sender?.id) {
+      navigate(`/profile/${message.sender.id}`);
+    }
+  };
 
   const mediaUrls = Array.isArray(message.media_urls) ? message.media_urls as string[] : [];
   
@@ -84,7 +92,7 @@ export const MessageBubble = memo(function MessageBubble({
         {/* Avatar */}
         <div className="w-8 flex-shrink-0">
           {showAvatar && !isOwn && message.sender && (
-            <Avatar className="h-8 w-8">
+            <Avatar className="h-8 w-8 cursor-pointer hover:ring-2 hover:ring-primary transition-all" onClick={handleAvatarClick}>
               <AvatarImage
                 src={message.sender.avatar_url || undefined}
                 alt={message.sender.username}
@@ -129,7 +137,7 @@ export const MessageBubble = memo(function MessageBubble({
       {/* Avatar */}
       <div className="w-8 flex-shrink-0">
         {showAvatar && !isOwn && message.sender && (
-          <Avatar className="h-8 w-8">
+          <Avatar className="h-8 w-8 cursor-pointer hover:ring-2 hover:ring-primary transition-all" onClick={handleAvatarClick}>
             <AvatarImage
               src={message.sender.avatar_url || undefined}
               alt={message.sender.username}
