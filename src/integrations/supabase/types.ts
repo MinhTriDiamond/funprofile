@@ -781,6 +781,7 @@ export type Database = {
       light_actions: {
         Row: {
           action_type: string
+          actor_id: string | null
           angel_evaluation: Json | null
           base_reward: number
           content_preview: string | null
@@ -805,6 +806,7 @@ export type Database = {
         }
         Insert: {
           action_type: string
+          actor_id?: string | null
           angel_evaluation?: Json | null
           base_reward?: number
           content_preview?: string | null
@@ -829,6 +831,7 @@ export type Database = {
         }
         Update: {
           action_type?: string
+          actor_id?: string | null
           angel_evaluation?: Json | null
           base_reward?: number
           content_preview?: string | null
@@ -852,6 +855,20 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "light_actions_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "light_actions_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "light_actions_mint_request_id_fkey"
             columns: ["mint_request_id"]

@@ -339,30 +339,35 @@ export const LightScoreDashboard = ({ walletAddress, onActivate, onClaim }: Ligh
             </ScrollArea>
           )}
 
-          {/* ===== MINT BUTTON hoặc PENDING WARNING ===== */}
-          {hasPendingRequests ? (
-            /* Khi đang có yêu cầu pending → disable và thông báo */
-            <div className="space-y-2">
-              <div className="bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-800 rounded-lg p-3 flex items-start gap-2">
-                <Loader2 className="w-4 h-4 text-violet-500 animate-spin flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-violet-800 dark:text-violet-200">
-                    Đang có {activeRequests.length} yêu cầu đang xử lý
-                  </p>
-                  <p className="text-xs text-violet-600 dark:text-violet-400 mt-0.5">
-                    Không thể mint thêm cho đến khi các yêu cầu hiện tại hoàn tất.
-                  </p>
-                </div>
+          {/* ===== MINT BUTTON ===== */}
+          {/* Hiển thị nút Mint nếu có actions mới, kể cả khi đang có pending request */}
+          {hasPendingRequests && totalAmount === 0 ? (
+            /* Có pending nhưng KHÔNG có action mới → chỉ thông báo, không block */
+            <div className="bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-800 rounded-lg p-3 flex items-start gap-2">
+              <Loader2 className="w-4 h-4 text-violet-500 animate-spin flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-violet-800 dark:text-violet-200">
+                  Đang có {activeRequests.length} yêu cầu đang xử lý
+                </p>
+                <p className="text-xs text-violet-600 dark:text-violet-400 mt-0.5">
+                  Chờ Admin ký duyệt. Khi có actions mới, bạn vẫn có thể mint tiếp.
+                </p>
               </div>
-              <Button disabled className="w-full opacity-50 cursor-not-allowed">
-                <Clock className="w-4 h-4 mr-2" />Đang chờ xử lý...
-              </Button>
             </div>
           ) : totalAmount > 0 ? (
-            /* Khi có FUN sẵn sàng mint */
+            /* Khi có FUN sẵn sàng mint (kể cả khi đang có pending request khác) */
             <div className="space-y-2">
+              {/* Info banner nếu đang có pending request nhưng vẫn có action mới */}
+              {hasPendingRequests && (
+                <div className="bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-800 rounded-lg p-2.5 flex items-start gap-2">
+                  <Loader2 className="w-3.5 h-3.5 text-violet-500 animate-spin flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-violet-700 dark:text-violet-300">
+                    Đang có {activeRequests.length} yêu cầu xử lý. Actions mới bên dưới có thể mint độc lập.
+                  </p>
+                </div>
+              )}
               <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Tổng cộng:</span>
+                <span className="text-sm text-muted-foreground">Actions mới sẵn sàng:</span>
                 <div className="flex items-center gap-1.5">
                   <img src={funLogo} alt="FUN" className="w-5 h-5 rounded-full" />
                   <span className="text-xl font-bold text-amber-600">{formatFUN(totalAmount)} FUN</span>
