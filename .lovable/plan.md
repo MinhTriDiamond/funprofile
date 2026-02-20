@@ -1,138 +1,126 @@
 
-## Thêm Realtime Subscription vào useMintHistory
+## Thêm giới hạn mint: tối thiểu 1.000 FUN & tối đa 2 lần/ngày
 
-### Mục tiêu
-Khi Admin ký duyệt một mint request (status thay đổi từ `pending_sig` → `signed` → `submitted` → `confirmed`), giao diện của user tự động cập nhật mà không cần refresh trang.
+### Phân tích hiện trạng
 
-### Cơ chế hoạt động
+Hiện tại `pplp-mint-fun` edge function chỉ kiểm tra:
+- Daily FUN cap (ví dụ 500 FUN cho tier 0)
+- Epoch cap toàn cầu (10M FUN/ngày)
 
-Supabase Realtime có thể lắng nghe thay đổi trên bảng `pplp_mint_requests` với filter theo `user_id`. Mỗi khi Admin cập nhật status trong Admin Panel, Supabase sẽ push event tới client qua WebSocket, `useMintHistory` sẽ nhận event và cập nhật state ngay lập tức.
+Chưa có:
+- Kiểm tra tổng FUN phải >= 1.000 để mint
+- Giới hạn số lần tạo mint request trong ngày (tối đa 2 request/ngày)
 
-Cần kiểm tra bảng `pplp_mint_requests` đã có trong `supabase_realtime` publication chưa — nếu chưa cần thêm vào migration.
+---
 
 ### Các thay đổi cần thực hiện
 
-**1. Database Migration — Enable Realtime cho `pplp_mint_requests`**
+#### 1. Edge Function `pplp-mint-fun/index.ts`
 
-```sql
-ALTER PUBLICATION supabase_realtime ADD TABLE public.pplp_mint_requests;
-```
+Thêm 2 kiểm tra ngay sau khi tính `totalAmount`:
 
-**2. Cập nhật `src/hooks/useMintHistory.ts`**
-
-Thêm Supabase Realtime subscription với filter theo `user_id`:
-
+**Kiểm tra tối thiểu 1.000 FUN:**
 ```typescript
-useEffect(() => {
-  let userId: string | null = null;
+const MIN_MINT_AMOUNT = 1000;
 
-  const setupSubscription = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    userId = user.id;
-
-    // Fetch initial data
-    await fetchHistory();
-
-    // Subscribe to realtime changes for THIS user's mint requests
-    const channel = supabase
-      .channel(`mint-history-${user.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*', // INSERT, UPDATE, DELETE
-          schema: 'public',
-          table: 'pplp_mint_requests',
-          filter: `user_id=eq.${user.id}`,
-        },
-        (payload) => {
-          console.log('[useMintHistory] Realtime update:', payload);
-          // Khi có thay đổi bất kỳ → re-fetch để đảm bảo data đồng bộ
-          fetchHistory();
-        }
-      )
-      .subscribe();
-
-    return channel;
-  };
-
-  let channelRef: ReturnType<typeof supabase.channel> | null = null;
-
-  setupSubscription().then(channel => {
-    if (channel) channelRef = channel;
-  });
-
-  // Cleanup khi component unmount
-  return () => {
-    if (channelRef) {
-      supabase.removeChannel(channelRef);
-    }
-  };
-}, [fetchHistory]);
-```
-
-**Tối ưu hóa — Update state trực tiếp thay vì re-fetch:**
-
-Thay vì gọi `fetchHistory()` mỗi lần có event (tạo thêm network request), có thể cập nhật state trực tiếp từ payload:
-
-```typescript
-(payload) => {
-  if (payload.eventType === 'UPDATE') {
-    // Cập nhật chỉ row bị thay đổi, không cần re-fetch toàn bộ
-    setAllRequests(prev => prev.map(r =>
-      r.id === payload.new.id ? { ...r, ...payload.new } : r
-    ));
-  } else if (payload.eventType === 'INSERT') {
-    // Thêm request mới vào đầu danh sách
-    setAllRequests(prev => [payload.new as MintRequest, ...prev]);
-  }
+if (totalAmount < MIN_MINT_AMOUNT) {
+  return new Response(JSON.stringify({
+    error: `Cần tối thiểu ${MIN_MINT_AMOUNT} FUN để mint. Hiện tại: ${totalAmount.toFixed(0)} FUN.`,
+    error_code: 'BELOW_MIN_MINT',
+    current_amount: totalAmount,
+    min_required: MIN_MINT_AMOUNT,
+  }), { status: 400, ... });
 }
 ```
 
-Cách này hiệu quả hơn vì không tạo network request mới mỗi khi có update.
-
-**3. Thêm visual feedback khi nhận realtime update**
-
-Thêm state `lastUpdated` để hiển thị dấu hiệu trực quan khi có cập nhật tự động:
-
+**Kiểm tra tối đa 2 lần/ngày:**
 ```typescript
-const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+const MAX_DAILY_REQUESTS = 2;
+const today = new Date().toISOString().split('T')[0];
+
+const { count: todayRequestCount } = await supabase
+  .from('pplp_mint_requests')
+  .select('id', { count: 'exact', head: true })
+  .eq('user_id', userId)
+  .gte('created_at', `${today}T00:00:00.000Z`)
+  .not('status', 'eq', 'failed'); // không đếm failed requests
+
+if ((todayRequestCount ?? 0) >= MAX_DAILY_REQUESTS) {
+  return new Response(JSON.stringify({
+    error: `Bạn đã tạo ${MAX_DAILY_REQUESTS} yêu cầu mint hôm nay. Giới hạn tối đa ${MAX_DAILY_REQUESTS} lần/ngày.`,
+    error_code: 'DAILY_REQUEST_LIMIT',
+    today_count: todayRequestCount,
+    max_daily: MAX_DAILY_REQUESTS,
+  }), { status: 429, ... });
+}
 ```
 
-Trong `MintRequestRow`, khi status vừa thay đổi (trong vòng 5 giây), hiển thị flash animation nhẹ để user biết có cập nhật mới.
+---
 
-**4. Thêm `usePendingActions` realtime (bonus)**
+#### 2. Frontend `LightScoreDashboard.tsx`
 
-`usePendingActions` cũng nên subscribe vào `light_actions` để khi `mint_status` thay đổi (ví dụ: `approved` → `pending_sig` sau khi mint), UI cập nhật ngay không cần manual refetch.
+**Disable nút Mint với tooltip/message rõ ràng:**
 
-Tuy nhiên, `light_actions` có RLS filter theo `user_id` và cần enable realtime riêng — sẽ thêm vào cùng migration.
+Nếu `totalAmount < 1000`:
+- Nút bị disable
+- Hiển thị text bên dưới: "Cần tối thiểu 1.000 FUN để mint (đang có X FUN)"
+- Progress bar nhỏ cho thấy X/1000 FUN
+
+Nếu `todayRequestCount >= 2`:
+- Nút bị disable
+- Hiển thị: "Đã đạt giới hạn 2 lần mint hôm nay"
+
+**Cần thêm `todayRequestCount` từ `useMintHistory`:**
+
+`useMintHistory` hiện đã fetch toàn bộ requests và lọc theo `user_id`. Cần thêm computed value:
+
+```typescript
+// Trong useMintHistory.ts:
+const todayStr = new Date().toISOString().split('T')[0];
+const todayRequestCount = allRequests.filter(r => 
+  r.created_at.startsWith(todayStr) && r.status !== 'failed'
+).length;
+```
+
+Expose `todayRequestCount` qua `UseMintHistoryResult` interface.
+
+**Thêm UI progress bar "Tiến độ đến ngưỡng mint":**
+
+Khi `totalAmount < 1000`, thay vì nút Mint, hiển thị:
+```
+[████████░░] 800/1.000 FUN (80%)
+Cần thêm 200 FUN để đủ điều kiện mint
+```
+
+---
 
 ### Tổng hợp thay đổi
 
 | File | Thay đổi |
 |---|---|
-| `supabase/migrations/` | Enable realtime cho `pplp_mint_requests` và `light_actions` |
-| `src/hooks/useMintHistory.ts` | Thêm realtime subscription, cleanup on unmount, optimistic state update |
-| `src/hooks/usePendingActions.ts` | Thêm realtime subscription cho `light_actions` (bonus) |
+| `supabase/functions/pplp-mint-fun/index.ts` | Thêm check min 1.000 FUN và max 2 requests/ngày |
+| `src/hooks/useMintHistory.ts` | Thêm `todayRequestCount` vào return value |
+| `src/components/wallet/LightScoreDashboard.tsx` | Disable mint button với feedback rõ ràng, thêm progress bar min threshold |
 
-### Kết quả sau khi triển khai
+---
+
+### Luồng sau khi fix
 
 ```text
-Admin Panel: Admin bấm "Ký" mint request
-  ↓
-Database UPDATE pplp_mint_requests SET status='signed'
-  ↓
-Supabase Realtime push event tới user's browser (WebSocket)
-  ↓
-useMintHistory nhận payload → cập nhật state ngay lập tức
-  ↓
-UI tự động đổi badge từ "Chờ Admin ký" → "Đã ký, chờ Submit"
-  ↓
-(không cần refresh, không có loading)
+Trường hợp 1: totalAmount = 150 FUN
+  → Nút Mint bị disable
+  → Hiển thị: [███░░░░░░░] 150/1.000 FUN
+  → "Cần thêm 850 FUN để đủ điều kiện mint"
 
-Admin Submit → Confirmed:
-  ↓
-status = 'submitted' → UI hiện "Đã gửi blockchain"
-  ↓
-status = 'confirmed' → UI hiện "Đã xác nhận ✓" (chuyển sang Lịch sử)
+Trường hợp 2: totalAmount = 1.200 FUN, todayCount = 2
+  → Nút Mint bị disable
+  → "Đã đạt giới hạn 2 lần mint hôm nay. Quay lại vào ngày mai."
+
+Trường hợp 3: totalAmount = 1.200 FUN, todayCount = 1
+  → Nút Mint bật
+  → Bấm Mint → Edge function kiểm tra lại → Thành công
+  → todayCount = 2 → Lần mint tiếp theo trong ngày bị block
+
+Trường hợp 4: Edge function bị bypass (gọi trực tiếp)
+  → Vẫn bị block ở tầng backend → trả error 400/429
 ```
