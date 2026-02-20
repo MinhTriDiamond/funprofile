@@ -18,6 +18,7 @@ export interface UseMintHistoryResult {
   activeRequests: MintRequest[]; // pending_sig, signed, submitted
   historyRequests: MintRequest[]; // confirmed, failed
   hasPendingRequests: boolean;
+  todayRequestCount: number;
   isLoading: boolean;
   lastUpdated: Date | null;
   refetch: () => Promise<void>;
@@ -127,11 +128,17 @@ export const useMintHistory = (): UseMintHistoryResult => {
   const historyRequests = allRequests.filter(r => !activeStatuses.includes(r.status));
   const hasPendingRequests = activeRequests.length > 0;
 
+  const todayStr = new Date().toISOString().split('T')[0];
+  const todayRequestCount = allRequests.filter(r =>
+    r.created_at.startsWith(todayStr) && r.status !== 'failed'
+  ).length;
+
   return {
     allRequests,
     activeRequests,
     historyRequests,
     hasPendingRequests,
+    todayRequestCount,
     isLoading,
     lastUpdated,
     refetch: fetchHistory,

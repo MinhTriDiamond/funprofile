@@ -159,6 +159,10 @@ serve(async (req) => {
       });
     }
 
+    // Constants
+    const MIN_MINT_AMOUNT = 1000;
+    const MAX_DAILY_REQUESTS = 2;
+
     // Check user daily cap
     const { data: reputation } = await supabase
       .from('light_reputation')
@@ -181,6 +185,39 @@ serve(async (req) => {
 
     if (totalAmount <= 0) {
       return new Response(JSON.stringify({ error: 'Daily mint cap reached' }), {
+        status: 429,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Check minimum mint amount
+    if (totalAmount < MIN_MINT_AMOUNT) {
+      return new Response(JSON.stringify({
+        error: `Cần tối thiểu ${MIN_MINT_AMOUNT} FUN để mint. Hiện tại: ${totalAmount.toFixed(0)} FUN.`,
+        error_code: 'BELOW_MIN_MINT',
+        current_amount: totalAmount,
+        min_required: MIN_MINT_AMOUNT,
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Check max daily requests (excluding failed)
+    const { count: todayRequestCount } = await supabase
+      .from('pplp_mint_requests')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .gte('created_at', `${today}T00:00:00.000Z`)
+      .neq('status', 'failed');
+
+    if ((todayRequestCount ?? 0) >= MAX_DAILY_REQUESTS) {
+      return new Response(JSON.stringify({
+        error: `Bạn đã tạo ${MAX_DAILY_REQUESTS} yêu cầu mint hôm nay. Giới hạn tối đa ${MAX_DAILY_REQUESTS} lần/ngày.`,
+        error_code: 'DAILY_REQUEST_LIMIT',
+        today_count: todayRequestCount,
+        max_daily: MAX_DAILY_REQUESTS,
+      }), {
         status: 429,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });

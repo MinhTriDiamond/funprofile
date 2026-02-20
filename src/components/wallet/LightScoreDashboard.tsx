@@ -115,7 +115,12 @@ export const LightScoreDashboard = ({ walletAddress, onActivate, onClaim }: Ligh
   const { actions, groupedByType, totalAmount, isLoading: isPendingLoading, refetch: refetchPending, claim, isClaiming } = usePendingActions();
   const { total, locked, activated, isLoading: isBalanceLoading, refetch: refetchBalance } = useFunBalance(walletAddress);
 
-  const { activeRequests, historyRequests, hasPendingRequests, isLoading: isMintHistoryLoading, refetch: refetchMintHistory } = useMintHistory();
+  const { activeRequests, historyRequests, hasPendingRequests, todayRequestCount, isLoading: isMintHistoryLoading, refetch: refetchMintHistory } = useMintHistory();
+  const MIN_MINT_AMOUNT = 1000;
+  const MAX_DAILY_REQUESTS = 2;
+  const isBelowMinAmount = totalAmount > 0 && totalAmount < MIN_MINT_AMOUNT;
+  const isDailyLimitReached = todayRequestCount >= MAX_DAILY_REQUESTS;
+  const mintProgress = Math.min(100, (totalAmount / MIN_MINT_AMOUNT) * 100);
 
   const [hasWallet, setHasWallet] = useState<boolean | null>(null);
   const [expandedType, setExpandedType] = useState<string | null>(null);
@@ -340,8 +345,35 @@ export const LightScoreDashboard = ({ walletAddress, onActivate, onClaim }: Ligh
           )}
 
           {/* ===== MINT BUTTON ===== */}
-          {/* Hiển thị nút Mint nếu có actions mới, kể cả khi đang có pending request */}
-          {hasPendingRequests && totalAmount === 0 ? (
+          {isDailyLimitReached && totalAmount > 0 ? (
+            /* Đã đạt giới hạn 2 lần/ngày */
+            <div className="bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 rounded-lg p-3 flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 text-orange-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-orange-800 dark:text-orange-200">
+                  Đã đạt giới hạn {MAX_DAILY_REQUESTS} lần mint hôm nay
+                </p>
+                <p className="text-xs text-orange-600 dark:text-orange-400 mt-0.5">
+                  Quay lại vào ngày mai để tiếp tục mint FUN.
+                </p>
+              </div>
+            </div>
+          ) : isBelowMinAmount ? (
+            /* Chưa đủ 1.000 FUN tối thiểu */
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Tiến độ đến ngưỡng mint</span>
+                <div className="flex items-center gap-1.5">
+                  <img src={funLogo} alt="FUN" className="w-4 h-4 rounded-full" />
+                  <span className="font-bold text-amber-600">{formatFUN(totalAmount)}/{formatFUN(MIN_MINT_AMOUNT)} FUN</span>
+                </div>
+              </div>
+              <Progress value={mintProgress} className="h-2.5" />
+              <p className="text-xs text-muted-foreground text-center">
+                💡 Cần thêm <span className="font-semibold text-amber-600">{formatFUN(MIN_MINT_AMOUNT - totalAmount)} FUN</span> để đủ điều kiện mint
+              </p>
+            </div>
+          ) : hasPendingRequests && totalAmount === 0 ? (
             /* Có pending nhưng KHÔNG có action mới → chỉ thông báo, không block */
             <div className="bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-800 rounded-lg p-3 flex items-start gap-2">
               <Loader2 className="w-4 h-4 text-violet-500 animate-spin flex-shrink-0 mt-0.5" />
@@ -354,8 +386,8 @@ export const LightScoreDashboard = ({ walletAddress, onActivate, onClaim }: Ligh
                 </p>
               </div>
             </div>
-          ) : totalAmount > 0 ? (
-            /* Khi có FUN sẵn sàng mint (kể cả khi đang có pending request khác) */
+          ) : totalAmount >= MIN_MINT_AMOUNT ? (
+            /* Đủ điều kiện mint */
             <div className="space-y-2">
               {/* Info banner nếu đang có pending request nhưng vẫn có action mới */}
               {hasPendingRequests && (
@@ -373,9 +405,16 @@ export const LightScoreDashboard = ({ walletAddress, onActivate, onClaim }: Ligh
                   <span className="text-xl font-bold text-amber-600">{formatFUN(totalAmount)} FUN</span>
                 </div>
               </div>
+              {/* Daily request counter */}
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>Lượt mint hôm nay:</span>
+                <span className={todayRequestCount >= MAX_DAILY_REQUESTS - 1 ? 'text-orange-500 font-semibold' : ''}>
+                  {todayRequestCount}/{MAX_DAILY_REQUESTS} lần
+                </span>
+              </div>
               <Button
                 onClick={handleClaimAll}
-                disabled={isClaiming || data.today_minted >= data.daily_cap || hasWallet === false || hasWallet === null}
+                disabled={isClaiming || data.today_minted >= data.daily_cap || hasWallet === false || hasWallet === null || isDailyLimitReached}
                 className="w-full bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:from-violet-600 hover:to-fuchsia-600 text-white font-bold py-5"
               >
                 {isClaiming ? (
