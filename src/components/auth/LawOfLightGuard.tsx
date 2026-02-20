@@ -41,7 +41,7 @@ export const LawOfLightGuard = ({ children }: LawOfLightGuardProps) => {
         const { data: { session } } = await supabase.auth.getSession();
         
         if (!session) {
-        const guestAllowedPaths = ['/', '/feed', '/about', '/install', '/leaderboard', '/benefactors', '/donations'];
+        const guestAllowedPaths = ['/', '/feed', '/about', '/install', '/leaderboard', '/benefactors', '/donations', '/mint'];
 
           // Danh sách các path tĩnh đã đăng ký trong router (không phải username)
           const reservedPaths = ['auth', 'feed', 'friends', 'wallet', 'about', 'leaderboard',
