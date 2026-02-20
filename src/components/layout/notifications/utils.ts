@@ -77,6 +77,11 @@ export const getNotificationIcon = (type: string): React.ReactNode => {
       return React.createElement(Wallet, { className: 'w-4 h-4 text-gold' });
     case 'account_banned':
       return React.createElement(Shield, { className: 'w-4 h-4 text-destructive' });
+    case 'admin_shared_device':
+    case 'admin_email_farm':
+    case 'admin_blacklisted_ip':
+    case 'admin_fraud_daily':
+      return React.createElement(Shield, { className: 'w-4 h-4 text-orange-500' });
     case 'friend_request':
       return React.createElement(UserPlus, { className: 'w-4 h-4 text-purple-500' });
     case 'friend_accepted':
@@ -173,6 +178,34 @@ export const getNotificationText = (
     case 'account_banned':
       main = React.createElement(React.Fragment, null,
         '⚠️ Tài khoản của bạn đã bị hạn chế'
+      );
+      break;
+    case 'admin_shared_device':
+      main = React.createElement(React.Fragment, null,
+        '🔴 ',
+        React.createElement('strong', null, 'Cảnh báo:'),
+        ' Phát hiện thiết bị dùng chung nhiều tài khoản'
+      );
+      break;
+    case 'admin_email_farm':
+      main = React.createElement(React.Fragment, null,
+        '🔴 ',
+        React.createElement('strong', null, 'Cảnh báo:'),
+        ' Phát hiện cụm email farm nghi ngờ'
+      );
+      break;
+    case 'admin_blacklisted_ip':
+      main = React.createElement(React.Fragment, null,
+        '🔴 ',
+        React.createElement('strong', null, 'Cảnh báo:'),
+        ' Đăng nhập từ IP bị chặn'
+      );
+      break;
+    case 'admin_fraud_daily':
+      main = React.createElement(React.Fragment, null,
+        '📊 ',
+        React.createElement('strong', null, 'Báo cáo gian lận hàng ngày:'),
+        ' Có hoạt động đáng ngờ cần xử lý'
       );
       break;
     case 'claim_reward':
