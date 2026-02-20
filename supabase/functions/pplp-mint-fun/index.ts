@@ -268,7 +268,16 @@ serve(async (req) => {
       .in('id', actions.map(a => a.id));
 
     if (updateActionsError) {
-      console.error('[PPLP-MINT] Update actions error:', updateActionsError);
+      console.error('[PPLP-MINT] CRITICAL: Update actions error - rolling back:', updateActionsError);
+      // Rollback: delete the mint request to avoid orphan records
+      await supabase.from('pplp_mint_requests').delete().eq('id', mintRequest.id);
+      return new Response(JSON.stringify({ 
+        error: 'Không thể khóa actions. Vui lòng thử lại.',
+        details: updateActionsError.message,
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     console.log(`[PPLP-MINT] Created mint request ${mintRequest.id} for ${totalAmount} FUN to ${walletAddress}`);
