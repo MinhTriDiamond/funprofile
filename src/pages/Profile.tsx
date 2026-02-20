@@ -17,7 +17,7 @@ import { Button } from '@/components/ui/button';
 import { LazyImage } from '@/components/ui/LazyImage';
 import { CoverPhotoEditor } from '@/components/profile/CoverPhotoEditor';
 import { AvatarEditor } from '@/components/profile/AvatarEditor';
-import { MoreHorizontal, MapPin, Briefcase, GraduationCap, Heart, Clock, MessageCircle, Eye, X, Pin, PenSquare, Gift, Copy, Wallet } from 'lucide-react';
+import { MoreHorizontal, MapPin, Briefcase, GraduationCap, Heart, Clock, MessageCircle, Eye, X, Pin, PenSquare, Gift, Copy, Wallet, Shield } from 'lucide-react';
 import { DonationButton } from '@/components/donations/DonationButton';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { PullToRefreshContainer } from '@/components/common/PullToRefreshContainer';
@@ -45,6 +45,7 @@ const Profile = () => {
   const [friendsCount, setFriendsCount] = useState(0);
   const [friendsPreview, setFriendsPreview] = useState<FriendPreview[]>([]);
   const [activeTab, setActiveTab] = useState('posts'); // Controlled tabs state
+  const [isAdmin, setIsAdmin] = useState(false);
   
   const { createDirectConversation } = useConversations(currentUserId);
   
@@ -73,6 +74,9 @@ const Profile = () => {
       
       if (session) {
         setCurrentUserId(session.user.id);
+        // Check admin role
+        supabase.rpc('has_role', { _user_id: session.user.id, _role: 'admin' })
+          .then(({ data }) => setIsAdmin(!!data));
       }
       
       // Check if username route is actually a reserved path
@@ -621,14 +625,26 @@ const Profile = () => {
                 {!viewAsPublic && (
                   <div className="flex flex-wrap justify-center md:justify-end gap-2 pb-2">
                     {isOwnProfile ? (
-                      <Button 
-                        variant="secondary" 
-                        className="font-semibold px-4 h-10"
-                        onClick={() => navigateToTab('edit')}
-                      >
-                        <PenSquare className="w-4 h-4 mr-2" />
-                        {t('editPersonalPage')}
-                      </Button>
+                      <>
+                        <Button 
+                          variant="secondary" 
+                          className="font-semibold px-4 h-10"
+                          onClick={() => navigateToTab('edit')}
+                        >
+                          <PenSquare className="w-4 h-4 mr-2" />
+                          {t('editPersonalPage')}
+                        </Button>
+                        {isAdmin && (
+                          <Button 
+                            variant="outline"
+                            className="font-semibold px-4 h-10 border-primary/30 text-primary hover:bg-primary/10"
+                            onClick={() => navigate('/admin')}
+                          >
+                            <Shield className="w-4 h-4 mr-2" />
+                            Admin
+                          </Button>
+                        )}
+                      </>
                     ) : (
                       <>
                         <FriendRequestButton userId={profile.id} currentUserId={currentUserId} />
