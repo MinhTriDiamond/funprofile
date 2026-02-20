@@ -56,7 +56,7 @@ export const ClaimRewardsCard = ({ onClaimSuccess }: ClaimRewardsCardProps) => {
   };
 
   // ⚠️ MAINTENANCE MODE — đổi true → false khi mở lại hệ thống
-  const IS_MAINTENANCE = true;
+  const IS_MAINTENANCE = false;
 
   if (IS_MAINTENANCE) {
     return (

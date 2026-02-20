@@ -41,7 +41,7 @@ export const ClaimFunDialog = ({
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // ⚠️ MAINTENANCE — ĐỔI THÀNH false KHI MỞ LẠI
-  const IS_MAINTENANCE = true;
+  const IS_MAINTENANCE = false;
 
   const { claimFun, isProcessing, isConfirming, isSuccess } = useClaimFun({
     onSuccess: () => {
