@@ -105,13 +105,13 @@ serve(async (req) => {
 
     console.log(`[PPLP-MINT] Processing mint request for user ${userId}, actions: ${action_ids.length}`);
 
-    // Anti-duplicate check: Only block if action is actually linked to an active mint request
+    // Anti-duplicate check: Block if action already linked to an active mint request
     const { data: duplicateActions, error: dupError } = await supabase
       .from('light_actions')
       .select('id, mint_request_id, mint_status')
       .in('id', action_ids)
       .not('mint_request_id', 'is', null)
-      .not('mint_status', 'in', '("approved","failed")');
+      .in('mint_status', ['pending_sig', 'minted', 'confirmed']);
 
     if (!dupError && duplicateActions && duplicateActions.length > 0) {
       console.log(`[PPLP-MINT] Duplicate detected! Actions already linked:`, duplicateActions.map(a => a.id));

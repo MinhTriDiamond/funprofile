@@ -72,6 +72,19 @@ export const LightScoreDashboard = ({ walletAddress, onActivate, onClaim }: Ligh
   const [expandedType, setExpandedType] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [pendingMintRequests, setPendingMintRequests] = useState<Array<{id: string; amount_display: number; created_at: string; status: string}>>([]);
+
+  const fetchPendingMintRequests = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data } = await supabase
+      .from('pplp_mint_requests')
+      .select('id, amount_display, created_at, status')
+      .eq('user_id', user.id)
+      .in('status', ['pending_sig'])
+      .order('created_at', { ascending: false });
+    setPendingMintRequests(data || []);
+  };
 
   useEffect(() => {
     const checkWallet = async () => {
@@ -82,17 +95,18 @@ export const LightScoreDashboard = ({ walletAddress, onActivate, onClaim }: Ligh
       setHasWallet(!!profile?.public_wallet_address);
     };
     checkWallet();
+    fetchPendingMintRequests();
   }, []);
 
   const handleClaimAll = async () => {
     if (actions.length === 0) return;
     const result = await claim(actions.map(a => a.id));
-    if (result.success) { refetch(); refetchBalance(); }
+    if (result.success) { refetch(); refetchBalance(); fetchPendingMintRequests(); }
   };
 
   const handleRefreshAll = async () => {
     setIsRefreshing(true);
-    await Promise.all([refetch(), refetchPending(), refetchBalance()]);
+    await Promise.all([refetch(), refetchPending(), refetchBalance(), fetchPendingMintRequests()]);
     setTimeout(() => setIsRefreshing(false), 500);
   };
 
@@ -313,6 +327,32 @@ export const LightScoreDashboard = ({ walletAddress, onActivate, onClaim }: Ligh
                 )}
               </Button>
               <p className="text-xs text-muted-foreground text-center">💡 Sau khi mint, FUN sẽ chuyển về ví on-chain dưới dạng Locked.</p>
+            </div>
+          )}
+
+          {/* ===== PENDING MINT REQUESTS (đang chờ Admin ký) ===== */}
+          {pendingMintRequests.length > 0 && (
+            <div className="border border-violet-200 dark:border-violet-800 rounded-lg overflow-hidden">
+              <div className="flex items-center gap-2 bg-violet-50 dark:bg-violet-950/40 px-3 py-2">
+                <Loader2 className="w-3.5 h-3.5 text-violet-500 animate-spin" />
+                <span className="text-sm font-medium text-violet-700 dark:text-violet-300">Đang chờ Admin ký</span>
+                <Badge variant="secondary" className="ml-auto text-xs">{pendingMintRequests.length}</Badge>
+              </div>
+              <div className="divide-y">
+                {pendingMintRequests.map((req) => (
+                  <div key={req.id} className="flex items-center justify-between px-3 py-2">
+                    <div>
+                      <p className="text-sm font-semibold text-amber-600">{formatFUN(req.amount_display)} FUN</p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatDistanceToNow(new Date(req.created_at), { addSuffix: true, locale: vi })}
+                      </p>
+                    </div>
+                    <Badge className="bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-300 border-0 text-xs">
+                      Đang xử lý
+                    </Badge>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
