@@ -221,6 +221,11 @@ const SocialLinksTab = () => {
 
       {/* Table */}
       <Card>
+        <CardHeader>
+          <CardTitle className="text-lg font-bold uppercase tracking-wide">
+            Danh sách những user đã liên kết với các platform
+          </CardTitle>
+        </CardHeader>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
