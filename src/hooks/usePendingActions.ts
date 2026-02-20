@@ -48,12 +48,14 @@ export const usePendingActions = (): PendingActionsResult => {
       }
 
       // Fetch approved actions that haven't been claimed yet
+      // mint_request_id IS NULL is a safeguard to ensure actions already linked to a request are excluded
       const { data, error: fetchError } = await supabase
         .from('light_actions')
         .select('id, action_type, content_preview, mint_amount, light_score, created_at, mint_status')
         .eq('user_id', session.user.id)
         .eq('mint_status', 'approved')
         .eq('is_eligible', true)
+        .is('mint_request_id', null)
         .order('created_at', { ascending: false });
 
       if (fetchError) throw fetchError;
