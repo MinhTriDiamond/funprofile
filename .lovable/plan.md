@@ -1,111 +1,109 @@
 
-## Sửa lỗi: Actions vẫn hiện sau khi Mint và Admin có thể duyệt lại
+## Sửa triệt để: Ngăn Mint trùng lặp và Hiển thị Lịch sử Chi tiết
 
-### Chẩn đoán chính xác
+### Chẩn đoán cuối cùng
 
-Có 2 lỗi nối tiếp nhau tạo ra vòng lặp nguy hiểm:
+Từ database query, các actions của `leminhtri_test2` vẫn có `mint_status = 'approved'` và `mint_request_id = NULL` dù đã có 2 mint requests (195 FUN, 240 FUN đều ở trạng thái `signed`). Điều này chứng minh lệnh UPDATE trong edge function **thực sự không chạy được**.
 
-**Lỗi A — Edge function cập nhật `light_actions` bị thất bại im lặng**
+Lý do thực: Edge function tạo `supabase` client với `SUPABASE_SERVICE_ROLE_KEY` nhưng khi gọi `.update()` trên `light_actions`, Supabase PostgREST vẫn áp dụng RLS. Service role key chỉ bypass RLS khi client được khởi tạo với option `auth: { persistSession: false }` và **không truyền JWT user token** vào header. Nhưng trong code hiện tại, `createClient` dùng service role key đúng, vấn đề có thể do **policy `roles: {public}` không match `auth.role() = 'service_role'`** khi gọi từ edge function với service key.
 
-Sau khi tạo mint request, edge function gọi:
-```sql
-UPDATE light_actions
-SET mint_status = 'pending_sig', mint_request_id = <id>
-WHERE id IN (...)
-```
-
-Nhưng database cho thấy toàn bộ records vẫn có `mint_status = 'approved'` và `mint_request_id = NULL`. Nguyên nhân: **thiếu RLS policy** cho phép `service_role` UPDATE bảng `light_actions`. Edge function dù dùng service role key nhưng `light_actions` chỉ có policy cho authenticated users (`auth.uid() = user_id`), không có policy `(auth.role() = 'service_role')`.
-
-**Lỗi B — Anti-duplicate check sai logic**
-
-```typescript
-// Dòng 114 trong edge function — SAI:
-.not('mint_status', 'in', '("approved","failed")')
-// Câu này loại bỏ approved khỏi kết quả, tức là actions với mint_status='pending_sig'
-// KHÔNG được check, nhưng vì Lỗi A không update được, chúng vẫn là 'approved'
-// → Check này không bao giờ bắt được duplicate
-```
-
-Điều kiện đúng phải là: nếu action đã có `mint_request_id` và `mint_status` là `pending_sig` (hoặc `minted`) thì từ chối.
+**Giải pháp đúng**: Bỏ `auth.role()` check, dùng `USING (true)` cho service_role hoặc tốt hơn là dùng `ALTER TABLE ... DISABLE ROW LEVEL SECURITY` cho service_role calls. Cách đơn giản nhất và chắc chắn nhất là **thêm thêm bước kiểm tra ở phía frontend và sửa RLS policy đúng chuẩn**.
 
 ---
 
-### Giải pháp — 2 thay đổi cần thực hiện
+### Các thay đổi cần thực hiện
 
----
+**Sửa 1: Sửa RLS policy (Migration)**
 
-**Sửa 1: Thêm RLS policy cho `light_actions` — cho phép service_role UPDATE**
+Policy cũ `auth.role() = 'service_role'` có `roles: {public}` — đây là sai. Phải DROP và tạo lại với syntax đúng:
 
-Thêm migration SQL:
 ```sql
--- Cho phép edge function (service role) cập nhật mint_status và mint_request_id
+-- Xóa policy cũ sai
+DROP POLICY IF EXISTS "Service role can update light_actions" ON public.light_actions;
+
+-- Tạo policy đúng với TO service_role (không phải TO public)
 CREATE POLICY "Service role can update light_actions"
   ON public.light_actions
   FOR UPDATE
-  USING (auth.role() = 'service_role')
-  WITH CHECK (auth.role() = 'service_role');
+  TO service_role
+  USING (true)
+  WITH CHECK (true);
 ```
 
-Đây là fix quan trọng nhất — sau khi có policy này, lệnh UPDATE trong edge function sẽ thực thi thành công.
+**Sửa 2: Frontend — Disable nút Mint khi đang có pending request**
 
----
+Trong `LightScoreDashboard.tsx`, thêm điều kiện kiểm tra: nếu `pendingMintRequests.length > 0`, disable nút Mint và ẩn section "FUN chờ mint" (actions đó không còn có thể mint tiếp). Điều này đảm bảo UX ngay cả khi DB update có độ trễ.
 
-**Sửa 2: Sửa logic anti-duplicate trong `pplp-mint-fun/index.ts`**
+```tsx
+// Disable Mint button khi có pending request
+<Button
+  disabled={isClaiming || pendingMintRequests.length > 0 || ...}
+>
+```
+
+Khi `pendingMintRequests.length > 0`, thay nội dung bằng message "Đang có [X] yêu cầu chờ xử lý — không thể mint thêm cho đến khi hoàn tất".
+
+**Sửa 3: Mở rộng section "Đang chờ xử lý" — hiển thị tất cả trạng thái**
+
+Hiện tại chỉ query `status = 'pending_sig'`. Cần hiển thị tất cả mint requests theo thứ tự thời gian với các trạng thái:
+
+- `pending_sig` → "Chờ Admin ký" (spinner)
+- `signed` → "Đã ký, chờ Submit" (check màu xanh nhạt)
+- `submitted` → "Đã gửi lên blockchain"
+- `confirmed` → "Đã xác nhận on-chain" (check xanh đậm)
+- `failed` → "Thất bại" (đỏ)
+
+Mỗi request hiển thị: số FUN, thời gian tạo, trạng thái hiện tại, và thời gian cập nhật.
+
+**Sửa 4: Tạo hook `useMintHistory` riêng biệt**
+
+Tách logic fetch mint history ra hook riêng để có thể dùng lại và dễ maintain:
 
 ```typescript
-// TRƯỚC (sai — điều kiện loại trừ nhầm):
-const { data: duplicateActions } = await supabase
-  .from('light_actions')
-  .select('id, mint_request_id, mint_status')
-  .in('id', action_ids)
-  .not('mint_request_id', 'is', null)
-  .not('mint_status', 'in', '("approved","failed")');
-
-// SAU (đúng — chặn actions đã được gửi đi):
-const { data: duplicateActions } = await supabase
-  .from('light_actions')
-  .select('id, mint_request_id, mint_status')
-  .in('id', action_ids)
-  .not('mint_request_id', 'is', null)
-  .in('mint_status', ['pending_sig', 'minted', 'confirmed']);
+// src/hooks/useMintHistory.ts
+// Fetch toàn bộ pplp_mint_requests của user
+// Query: SELECT id, amount_display, status, created_at, action_ids, action_types, updated_at
+// WHERE user_id = current_user
+// ORDER BY created_at DESC
 ```
 
-Câu này có nghĩa: từ chối nếu action đã được gán vào một mint request và trạng thái đang ở `pending_sig`, `minted`, hoặc `confirmed`.
+**Sửa 5: Cập nhật `fetchPendingMintRequests` trong Dashboard**
+
+Query tất cả status (không chỉ `pending_sig`) để hiển thị lịch sử đầy đủ, nhưng phân loại hiển thị:
+- Section "Đang xử lý": `pending_sig`, `signed`, `submitted`
+- Section "Lịch sử" (collapsible): `confirmed`, `failed`
 
 ---
 
-**Sửa 3 (bổ sung): Hiển thị trạng thái `pending_sig` trong tab FUN Money**
+### Kết quả sau khi fix
 
-Sau khi bấm Mint, user nên thấy một section "Đang chờ Admin ký" thay vì thấy lại số FUN có thể mint. Hiện tại `usePendingActions` sau khi `refetch` sẽ lấy đúng (actions đã có `pending_sig` không còn trong danh sách `approved`), nhưng cần thêm một query riêng để hiển thị mint requests đang chờ.
-
-Cần thêm vào `LightScoreDashboard.tsx` một section nhỏ hiển thị các `pplp_mint_requests` có `status = 'pending_sig'` của user — giúp user biết yêu cầu đang được xử lý và không bấm lại.
+```text
+Luồng mới:
+User có 50 FUN (2 actions)
+  ↓
+Bấm Mint → Edge function tạo mint_request + UPDATE light_actions (RLS fixed)
+  ↓
+usePendingActions.refetch() → 0 actions (mint_status = 'pending_sig')
+  ↓
+Nút Mint bị DISABLE + hiện "Đang có 1 yêu cầu chờ xử lý"
+  ↓
+Section "Đang chờ Admin ký": 50 FUN | Chờ ký | 2 phút trước
+  ↓
+Admin ký → status = 'signed'
+  ↓
+Admin submit → status = 'submitted' → 'confirmed'
+  ↓
+Section chuyển thành: 50 FUN | Đã xác nhận | On-chain ✓
+  ↓
+Nút Mint ACTIVE lại (nếu user có actions mới)
+```
 
 ---
 
-### Tổng hợp các file thay đổi
+### Tổng hợp file thay đổi
 
 | File | Thay đổi |
 |---|---|
-| `supabase/migrations/` | Thêm RLS policy `service role UPDATE light_actions` |
-| `supabase/functions/pplp-mint-fun/index.ts` | Sửa logic anti-duplicate (dòng 113-114) |
-| `src/components/wallet/LightScoreDashboard.tsx` | Thêm section hiển thị mint requests đang chờ |
-
----
-
-### Luồng sau khi fix
-
-```text
-User bấm Mint 195 FUN
-  ↓
-Edge function tạo mint_request (pending_sig)
-  ↓
-UPDATE light_actions: mint_status = 'pending_sig' ← [Fix 1: RLS policy]
-  ↓
-usePendingActions.refetch() → query mint_status='approved' → trả về 0 actions
-  ↓
-Tab hiển thị: "0 FUN chờ mint" + section "Đang chờ Admin ký: 195 FUN"
-  ↓
-Admin ký → mint_request.status = 'confirmed' → light_actions.mint_status = 'minted'
-  ↓
-Tab hiển thị: "Đã mint thành công" + số dư on-chain tăng lên
-```
+| `supabase/migrations/` | DROP + CREATE lại RLS policy đúng `TO service_role` |
+| `src/hooks/useMintHistory.ts` | Tạo hook mới fetch toàn bộ mint history |
+| `src/components/wallet/LightScoreDashboard.tsx` | Dùng `useMintHistory`, disable Mint khi pending, hiển thị lịch sử đầy đủ |
