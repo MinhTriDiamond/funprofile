@@ -1,5 +1,5 @@
-import { Component, type ReactNode } from 'react';
-import { LightScoreDashboard } from '../LightScoreDashboard';
+import { useCallback, Component, type ReactNode } from 'react';
+import { MemoizedLightScoreDashboard } from '../LightScoreDashboard';
 import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
 
@@ -48,6 +48,8 @@ interface FunMoneyTabProps {
   onClaimSuccess: () => void;
 }
 
+// MED-6: onActivate/onClaim are passed as props — parent should useCallback to keep them stable
+// MemoizedLightScoreDashboard will skip re-renders unless walletAddress/callbacks change
 export function FunMoneyTab({
   externalAddress,
   onActivate,
@@ -55,7 +57,7 @@ export function FunMoneyTab({
 }: FunMoneyTabProps) {
   return (
     <Web3ErrorBoundary>
-      <LightScoreDashboard
+      <MemoizedLightScoreDashboard
         walletAddress={externalAddress}
         onActivate={onActivate}
         onClaim={onClaim}
@@ -63,4 +65,5 @@ export function FunMoneyTab({
     </Web3ErrorBoundary>
   );
 }
+
 

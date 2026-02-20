@@ -170,14 +170,31 @@ export const useTokenBalances = (options?: UseTokenBalancesOptions) => {
     }
   }, [lastPrices]);
 
-  // Always fetch prices (even without wallet connected) for accurate display
+  // Always fetch prices for accurate display, but pause when tab is hidden (MED-2 fix)
   useEffect(() => {
     if (failCount >= 3) return; // Stop retrying after 3 failures
 
     fetchPrices();
-    const interval = setInterval(fetchPrices, POLL_INTERVAL);
-    return () => clearInterval(interval);
-  }, [failCount]);
+
+    let interval: ReturnType<typeof setInterval> | null = setInterval(fetchPrices, POLL_INTERVAL);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        if (interval) { clearInterval(interval); interval = null; }
+      } else {
+        // Resume: immediate refetch + restart interval
+        fetchPrices();
+        interval = setInterval(fetchPrices, POLL_INTERVAL);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      if (interval) clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [failCount, fetchPrices]);
 
   // Parse token balances
   const parseBalance = (value: bigint | undefined, decimals: number): number => {

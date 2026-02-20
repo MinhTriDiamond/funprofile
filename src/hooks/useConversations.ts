@@ -100,18 +100,20 @@ export function useConversations(userId: string | null) {
     staleTime: 30 * 1000,
   });
 
-  // Realtime subscription for conversation updates
+  // Realtime subscription for conversation updates — filtered by userId to avoid
+  // triggering invalidation for unrelated conversations (MED-3 fix)
   useEffect(() => {
     if (!userId) return;
 
     const channel = supabase
-      .channel('conversations-changes')
+      .channel(`conversations-changes-${userId}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
-          table: 'conversations',
+          table: 'conversation_participants',
+          filter: `user_id=eq.${userId}`,
         },
         () => {
           queryClient.invalidateQueries({ queryKey: ['conversations', userId] });
@@ -120,12 +122,17 @@ export function useConversations(userId: string | null) {
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'UPDATE',
           schema: 'public',
-          table: 'conversation_participants',
+          table: 'conversations',
         },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['conversations', userId] });
+        (payload) => {
+          // Only invalidate if we're a participant — check against cached conversation ids
+          const cachedConvs = queryClient.getQueryData<{ id: string }[]>(['conversations', userId]);
+          const isRelevant = cachedConvs?.some(c => c.id === (payload.new as { id: string }).id);
+          if (isRelevant) {
+            queryClient.invalidateQueries({ queryKey: ['conversations', userId] });
+          }
         }
       )
       .subscribe();
