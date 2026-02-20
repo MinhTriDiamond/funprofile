@@ -140,8 +140,10 @@ export function MessageThread({ conversationId, userId, username }: MessageThrea
     <div className="flex-1 flex flex-col">
       {/* Header */}
       <div className="p-4 border-b flex items-center justify-between bg-card">
-        <div className="flex items-center gap-3">
-          <Avatar className="h-10 w-10">
+        <div className="flex items-center gap-3 cursor-pointer group" onClick={() => {
+          if (!isGroup && headerProfile?.id) navigate(`/profile/${headerProfile.id}`);
+        }}>
+          <Avatar className={!isGroup ? "h-10 w-10 hover:ring-2 hover:ring-primary transition-all" : "h-10 w-10"}>
             <AvatarImage src={headerAvatar || undefined} alt={headerName || ''} />
             <AvatarFallback>{(headerName || 'U')[0].toUpperCase()}</AvatarFallback>
           </Avatar>

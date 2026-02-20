@@ -959,6 +959,11 @@ export const UnifiedGiftSendDialog = ({
                                 {result.hasVerifiedWallet && <Shield className="w-3 h-3 text-emerald-500 shrink-0" />}
                               </div>
                               <p className="text-xs text-muted-foreground truncate">@{result.username}</p>
+                              {result.walletAddress && (
+                                <p className="text-[10px] text-muted-foreground/70 font-mono truncate">
+                                  {result.walletAddress.slice(0, 6)}...{result.walletAddress.slice(-4)}
+                                </p>
+                              )}
                             </div>
                           </button>
                         ))}
