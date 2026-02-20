@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { Wallet, Users, AlertTriangle, Ban, FileText, Smartphone, CheckCircle, Trash2, Globe, Monitor, Zap, RefreshCw, Clock } from "lucide-react";
+import { Wallet, Users, AlertTriangle, Ban, FileText, Smartphone, CheckCircle, Trash2, Globe, Monitor, Zap, RefreshCw, Clock, Mail } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
 
@@ -52,6 +52,12 @@ interface FarmDetectorEntry {
   signal_type: string;
 }
 
+interface EmailCluster {
+  emailBase: string;
+  accounts: { id: string; username: string; email: string; reward_status?: string; pending_reward: number; approved_reward: number }[];
+  totalCamly: number;
+}
+
 const WalletAbuseTab = ({ users, adminId, onRefresh }: WalletAbuseTabProps) => {
   const [loading, setLoading] = useState<string | null>(null);
   const [deviceGroups, setDeviceGroups] = useState<DeviceGroup[]>([]);
@@ -59,6 +65,9 @@ const WalletAbuseTab = ({ users, adminId, onRefresh }: WalletAbuseTabProps) => {
   const [farmVelocity, setFarmVelocity] = useState<FarmDetectorEntry[]>([]);
   const [farmUTCExploiters, setFarmUTCExploiters] = useState<FarmDetectorEntry[]>([]);
   const [farmRefreshing, setFarmRefreshing] = useState(false);
+  const [emailClusters, setEmailClusters] = useState<EmailCluster[]>([]);
+  const [emailLoading, setEmailLoading] = useState(false);
+  const [banningCluster, setBanningCluster] = useState<string | null>(null);
 
   // Fetch shared devices + IP logs + Farm Detector on mount
   const fetchFarmDetectorData = async () => {
@@ -131,6 +140,77 @@ const WalletAbuseTab = ({ users, adminId, onRefresh }: WalletAbuseTabProps) => {
     }
   };
 
+  // Fetch email farm clusters
+  const fetchEmailClusters = async () => {
+    setEmailLoading(true);
+    try {
+      const { data: signals } = await supabase
+        .from('pplp_fraud_signals')
+        .select('actor_id, details, created_at')
+        .eq('signal_type', 'EMAIL_FARM')
+        .order('created_at', { ascending: false });
+
+      const emailGroups: Record<string, EmailCluster['accounts']> = {};
+      
+      if (signals?.length) {
+        for (const signal of signals) {
+          const details = signal.details as any;
+          if (details?.email_base && details?.user_ids) {
+            if (!emailGroups[details.email_base]) emailGroups[details.email_base] = [];
+            for (let i = 0; i < details.user_ids.length; i++) {
+              const uid = details.user_ids[i];
+              const u = users.find(u => u.id === uid);
+              if (u && !emailGroups[details.email_base].find(a => a.id === uid)) {
+                emailGroups[details.email_base].push({
+                  id: uid, username: u.username,
+                  email: details.emails?.[i] || '',
+                  reward_status: u.reward_status,
+                  pending_reward: u.pending_reward,
+                  approved_reward: u.approved_reward || 0,
+                });
+              }
+            }
+          }
+        }
+      }
+
+      const clusters = Object.entries(emailGroups)
+        .filter(([_, accounts]) => accounts.length >= 3)
+        .map(([emailBase, accounts]) => ({
+          emailBase, accounts,
+          totalCamly: accounts.reduce((sum, a) => sum + a.pending_reward + a.approved_reward, 0),
+        }))
+        .sort((a, b) => b.accounts.length - a.accounts.length);
+
+      setEmailClusters(clusters);
+    } catch (err) {
+      console.error('Error fetching email clusters:', err);
+    } finally {
+      setEmailLoading(false);
+    }
+  };
+
+  const handleBanEmailCluster = async (cluster: EmailCluster) => {
+    if (!confirm(`⚠️ Cấm tất cả ${cluster.accounts.length} tài khoản trong cụm email "${cluster.emailBase}"?`)) return;
+    setBanningCluster(cluster.emailBase);
+    try {
+      for (const account of cluster.accounts) {
+        if (users.find(u => u.id === account.id)?.is_banned) continue;
+        await supabase.rpc('ban_user_permanently', {
+          p_admin_id: adminId,
+          p_user_id: account.id,
+          p_reason: `Gmail farm cluster: ${cluster.emailBase}`
+        });
+      }
+      toast.success(`Đã cấm ${cluster.accounts.length} tài khoản cụm "${cluster.emailBase}"`);
+      onRefresh();
+    } catch (error: any) {
+      toast.error(error.message || "Lỗi khi cấm cụm email");
+    } finally {
+      setBanningCluster(null);
+    }
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       // Fetch device groups
@@ -191,6 +271,7 @@ const WalletAbuseTab = ({ users, adminId, onRefresh }: WalletAbuseTabProps) => {
     };
     fetchData();
     fetchFarmDetectorData();
+    fetchEmailClusters();
   }, [users]);
 
   // Detect shared wallets
@@ -528,10 +609,14 @@ const WalletAbuseTab = ({ users, adminId, onRefresh }: WalletAbuseTabProps) => {
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="farm">
-          <TabsList className="grid w-full grid-cols-6 mb-4">
+          <TabsList className="grid w-full grid-cols-7 mb-4">
             <TabsTrigger value="farm" className="gap-1 text-xs sm:text-sm">
-              <Zap className="w-3 h-3 sm:w-4 sm:h-4 text-red-500" />
+              <Zap className="w-3 h-3 sm:w-4 sm:h-4 text-destructive" />
               <span className="hidden sm:inline">🚨 Farm</span> ({farmVelocity.length + farmUTCExploiters.length})
+            </TabsTrigger>
+            <TabsTrigger value="email-farm" className="gap-1 text-xs sm:text-sm">
+              <Mail className="w-3 h-3 sm:w-4 sm:h-4 text-destructive" />
+              <span className="hidden sm:inline">📧 Email</span> ({emailClusters.length})
             </TabsTrigger>
             <TabsTrigger value="device" className="gap-1 text-xs sm:text-sm">
               <Smartphone className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -675,6 +760,88 @@ const WalletAbuseTab = ({ users, adminId, onRefresh }: WalletAbuseTabProps) => {
               )}
             </div>
           </TabsContent>
+
+          {/* ===== EMAIL FARM TAB ===== */}
+          <TabsContent value="email-farm" className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-destructive flex items-center gap-2">
+                  <Mail className="w-4 h-4" /> Email Farm Detector
+                </h3>
+                <p className="text-xs text-muted-foreground">Tự động nhóm tài khoản có email prefix giống nhau (≥3 tài khoản)</p>
+              </div>
+              <Button size="sm" variant="outline" onClick={fetchEmailClusters} disabled={emailLoading} className="gap-1">
+                <RefreshCw className={`w-3 h-3 ${emailLoading ? 'animate-spin' : ''}`} /> Làm mới
+              </Button>
+            </div>
+
+            {emailClusters.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">
+                {emailLoading ? '⏳ Đang tải...' : '✅ Không phát hiện cụm email farm'}
+              </p>
+            ) : (
+              <div className="space-y-4 max-h-[600px] overflow-y-auto">
+                {emailClusters.map((cluster) => (
+                  <div key={cluster.emailBase} className="border-2 border-destructive/20 rounded-xl p-4 space-y-3 bg-destructive/5">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-semibold text-sm flex items-center gap-2">
+                          📧 Cụm: <span className="font-mono text-destructive">{cluster.emailBase}*@gmail.com</span>
+                          <Badge variant="destructive" className="text-xs">{cluster.accounts.length} tài khoản</Badge>
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Tổng CAMLY: <span className="font-semibold text-destructive">{formatNumber(cluster.totalCamly)}</span>
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        className="text-xs"
+                        onClick={() => handleBanEmailCluster(cluster)}
+                        disabled={banningCluster === cluster.emailBase}
+                      >
+                        <Ban className="w-3 h-3 mr-1" /> Cấm tất cả
+                      </Button>
+                    </div>
+                    <div className="grid gap-2">
+                      {cluster.accounts.map((account) => {
+                        const userData = users.find(u => u.id === account.id);
+                        return (
+                          <div key={account.id} className="flex items-center gap-3 p-2 border rounded-lg bg-card">
+                            <Avatar className="w-8 h-8">
+                              <AvatarImage src={userData?.avatar_url || ""} />
+                              <AvatarFallback>{account.username[0]}</AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="text-sm font-medium">{account.username}</p>
+                                {getStatusBadge(account.reward_status)}
+                              </div>
+                              <p className="text-xs text-muted-foreground truncate">
+                                {account.email} • {formatNumber(account.pending_reward + account.approved_reward)} CAMLY
+                              </p>
+                            </div>
+                            {userData && !userData.is_banned && (
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                className="text-xs"
+                                onClick={() => handleBanUser(userData)}
+                                disabled={loading === userData.id}
+                              >
+                                <Ban className="w-3 h-3" />
+                              </Button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
           <TabsContent value="device" className="max-h-[600px] overflow-y-auto space-y-4">
             {deviceGroups.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">Không phát hiện thiết bị dùng chung</p>
