@@ -1,25 +1,51 @@
 
-# Gỡ ban tài khoản angelanhnguyet (Angel AI Treasury)
+# Tab "Social Links" trong Admin Dashboard
 
-## Lý do
-Tài khoản `angelanhnguyet` là ví Angel AI Treasury chính thức, không phải tài khoản farm coin. Đã bị ban nhầm khi xử lý cụm gian lận Thanh Hóa ngày 12/01/2026.
+## Mục tiêu
+Thêm tab mới trong trang Admin để hiển thị danh sách tất cả user đã liên kết mạng xã hội, giúp admin theo dõi, kiểm tra tính hợp lệ và phát hiện link giả/spam.
 
-## Các bước thực hiện
+## Dữ liệu hiện tại
+- 42/571 user đã liên kết (7.4%)
+- Tổng 199 link mạng xã hội
+- Dữ liệu lưu trong cột `social_links` (JSONB) của bảng `profiles`
 
-### Bước 1: Gỡ ban tài khoản
-Cập nhật bảng `profiles` cho user `ac174b69-1a24-4a9a-bf74-e448b9a754cf`:
-- `is_banned` -> `false`
-- `reward_status` -> `pending` (trạng thái bình thường)
+## Giao diện tab mới
 
-### Bước 2: Xóa ví khỏi danh sách đen
-Xóa bản ghi ví `0x416336c3b7acae89a47ead2707412f20da159ac8` khỏi bảng `blacklisted_wallets`.
+### 1. Thẻ tóm tắt (Summary Cards)
+- Tổng user đã liên kết / tổng user
+- Tổng số link
+- Thống kê theo từng platform (Angel, FunPlay, Facebook, YouTube, Twitter, Telegram, TikTok, LinkedIn, Zalo)
 
-### Bước 3: Ghi audit log
-Tạo bản ghi trong `audit_logs` ghi nhận hành động gỡ ban với lý do "Angel AI Treasury - ban nhầm, xác nhận bởi admin".
+### 2. Bảng danh sách chi tiết
+Các cột hiển thị:
+- Avatar + Username
+- Họ tên
+- Số link đã liên kết
+- Danh sách platform (hiển thị icon)
+- Ngày tạo tài khoản
+- Trạng thái (banned/active)
 
----
+Tính năng:
+- Tim kiem theo username
+- Loc theo platform cu the (vd: chi xem user co Facebook)
+- Xem chi tiet link khi bam vao hang (expand row)
+- Xuat CSV
 
-**Chi tiết kỹ thuật:**
-- Sử dụng SQL UPDATE trực tiếp trên bảng `profiles`
-- DELETE bản ghi trong `blacklisted_wallets` (ID: `bdbca9c5-e5bc-4a5e-a2d9-e587541fc5ed`)
-- INSERT audit log để lưu lịch sử thao tác
+### 3. Chi tiet khi expand
+- Platform, Label, URL (clickable), Avatar (neu co)
+
+## Thay doi ky thuat
+
+### File moi
+- `src/components/admin/SocialLinksTab.tsx` -- Component tab moi
+
+### File can sua
+- `src/pages/Admin.tsx` -- Them tab "Social Links" vao TabsList va TabsContent
+
+### Khong can thay doi database
+- Du lieu da co san trong cot `social_links` cua bang `profiles`
+- Truy van truc tiep bang Supabase client, khong can RPC moi
+
+### Pattern su dung
+- Theo pattern cua `SurveillanceTab.tsx`: su dung Table, Card, Badge, Input search, export CSV
+- Su dung PLATFORM_PRESETS tu `SocialLinksEditor.tsx` de hien thi icon va mau sac dung chuan
