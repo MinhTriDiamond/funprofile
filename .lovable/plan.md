@@ -1,19 +1,34 @@
 
-## Khoi phuc quyen Admin cho angelaivan
+## Mở lại tính năng Mint FUN Money (Tắt Maintenance Mode)
 
-### Van de
-Tai khoan `angelaivan` (ID: `5f9de7c5-0c80-49aa-8e1c-92d8058558e4`) khong co ban ghi nao trong bang `user_roles`. Quyen admin da bi xoa hoac mat, nen muc "Admin" khong hien thi trong menu dropdown tren thanh dieu huong.
+### Vấn đề
+Tab "Mint Fun Money" tại `/wallet/fun_money` hiển thị thông báo **"Hệ thống tạm dừng bảo trì"** vì có 2 component đang bật cờ `IS_MAINTENANCE = true`:
 
-### Giai phap
-Them lai ban ghi admin vao bang `user_roles` bang cau lenh SQL:
+1. **`ClaimRewardsCard.tsx`** — Card đúc FUN từ pending actions (hiện đang block hoàn toàn)
+2. **`ClaimFunDialog.tsx`** — Dialog rút FUN về ví on-chain (cũng đang block)
 
-```sql
-INSERT INTO public.user_roles (user_id, role)
-VALUES ('5f9de7c5-0c80-49aa-8e1c-92d8058558e4', 'admin')
-ON CONFLICT (user_id, role) DO NOTHING;
+### Giải pháp
+Đổi cờ `IS_MAINTENANCE` từ `true` → `false` trong cả 2 file:
+
+**File 1: `src/components/wallet/ClaimRewardsCard.tsx`** (dòng 59)
+```ts
+// Trước:
+const IS_MAINTENANCE = true;
+
+// Sau:
+const IS_MAINTENANCE = false;
 ```
 
-### Ket qua
-Sau khi thuc hien, tai khoan `angelaivan` se thay lai nut Admin trong:
-- Menu dropdown (avatar) tren thanh dieu huong desktop
-- Trang ca nhan (Profile page)
+**File 2: `src/components/wallet/ClaimFunDialog.tsx`** (dòng 44)
+```ts
+// Trước:
+const IS_MAINTENANCE = true;
+
+// Sau:
+const IS_MAINTENANCE = false;
+```
+
+### Lưu ý
+- `UnifiedGiftSendDialog.tsx` (chuyển tiền P2P) đã có `IS_MAINTENANCE = false` rồi — không cần thay đổi.
+- Contract address `0x39A1b047D5d143f8874888cfa1d30Fb2AE6F0CD6` trên BSC Testnet (Chain ID 97) đã được cấu hình đúng trong `src/config/pplp.ts`.
+- Sau khi mở, người dùng sẽ có thể thực hiện đúc FUN từ Light Actions đã được duyệt và rút FUN về ví on-chain.
