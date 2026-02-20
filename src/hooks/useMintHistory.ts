@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface MintRequest {
@@ -19,12 +19,15 @@ export interface UseMintHistoryResult {
   historyRequests: MintRequest[]; // confirmed, failed
   hasPendingRequests: boolean;
   isLoading: boolean;
+  lastUpdated: Date | null;
   refetch: () => Promise<void>;
 }
 
 export const useMintHistory = (): UseMintHistoryResult => {
   const [allRequests, setAllRequests] = useState<MintRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   const fetchHistory = useCallback(async () => {
     setIsLoading(true);
@@ -48,7 +51,75 @@ export const useMintHistory = (): UseMintHistoryResult => {
   }, []);
 
   useEffect(() => {
-    fetchHistory();
+    let isMounted = true;
+
+    const setupSubscription = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || !isMounted) return;
+
+      // Initial fetch
+      await fetchHistory();
+
+      // Cleanup previous channel if any
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+      }
+
+      // Subscribe to realtime changes filtered by user_id
+      const channel = supabase
+        .channel(`mint-history-${user.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'pplp_mint_requests',
+            filter: `user_id=eq.${user.id}`,
+          },
+          (payload) => {
+            if (!isMounted) return;
+            console.log('[useMintHistory] Realtime UPDATE:', payload.new);
+            // Optimistic: update only the changed row, no re-fetch needed
+            setAllRequests(prev => prev.map(r =>
+              r.id === payload.new.id
+                ? { ...r, ...(payload.new as MintRequest) }
+                : r
+            ));
+            setLastUpdated(new Date());
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'pplp_mint_requests',
+            filter: `user_id=eq.${user.id}`,
+          },
+          (payload) => {
+            if (!isMounted) return;
+            console.log('[useMintHistory] Realtime INSERT:', payload.new);
+            // Prepend new request to the list
+            setAllRequests(prev => [payload.new as MintRequest, ...prev]);
+            setLastUpdated(new Date());
+          }
+        )
+        .subscribe((status) => {
+          console.log('[useMintHistory] Realtime subscription status:', status);
+        });
+
+      channelRef.current = channel;
+    };
+
+    setupSubscription();
+
+    return () => {
+      isMounted = false;
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+    };
   }, [fetchHistory]);
 
   const activeStatuses = ['pending_sig', 'signed', 'submitted'];
@@ -62,6 +133,7 @@ export const useMintHistory = (): UseMintHistoryResult => {
     historyRequests,
     hasPendingRequests,
     isLoading,
+    lastUpdated,
     refetch: fetchHistory,
   };
 };

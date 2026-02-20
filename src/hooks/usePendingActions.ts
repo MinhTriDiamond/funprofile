@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -35,6 +35,8 @@ export const usePendingActions = (): PendingActionsResult => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [isClaiming, setIsClaiming] = useState(false);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const userIdRef = useRef<string | null>(null);
 
   const fetchPendingActions = useCallback(async () => {
     setIsLoading(true);
@@ -46,9 +48,10 @@ export const usePendingActions = (): PendingActionsResult => {
         setActions([]);
         return;
       }
+      userIdRef.current = session.user.id;
 
       // Fetch approved actions that haven't been claimed yet
-      // mint_request_id IS NULL is a safeguard to ensure actions already linked to a request are excluded
+      // mint_request_id IS NULL ensures actions already linked to a request are excluded
       const { data, error: fetchError } = await supabase
         .from('light_actions')
         .select('id, action_type, content_preview, mint_amount, light_score, created_at, mint_status')
@@ -70,7 +73,86 @@ export const usePendingActions = (): PendingActionsResult => {
   }, []);
 
   useEffect(() => {
-    fetchPendingActions();
+    let isMounted = true;
+
+    const setupSubscription = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user || !isMounted) return;
+
+      const userId = session.user.id;
+
+      // Initial fetch
+      await fetchPendingActions();
+
+      // Cleanup previous channel
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+      }
+
+      // Subscribe to light_actions changes for this user
+      // When an action's mint_status or mint_request_id changes → refetch
+      const channel = supabase
+        .channel(`pending-actions-${userId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'light_actions',
+            filter: `user_id=eq.${userId}`,
+          },
+          (payload) => {
+            if (!isMounted) return;
+            console.log('[usePendingActions] Realtime UPDATE:', payload.new);
+            const updated = payload.new as { mint_status: string; mint_request_id: string | null; id: string };
+            
+            // If action is no longer approved/unassigned → remove from pending list
+            if (updated.mint_status !== 'approved' || updated.mint_request_id !== null) {
+              setActions(prev => prev.filter(a => a.id !== updated.id));
+            } else if (updated.mint_status === 'approved' && updated.mint_request_id === null) {
+              // Action became eligible again (edge case: rollback) → refetch to get full data
+              fetchPendingActions();
+            }
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'light_actions',
+            filter: `user_id=eq.${userId}`,
+          },
+          (payload) => {
+            if (!isMounted) return;
+            console.log('[usePendingActions] Realtime INSERT:', payload.new);
+            const newAction = payload.new as LightAction & { mint_request_id: string | null; is_eligible: boolean };
+            // Only add if it's an approved, eligible, unassigned action
+            if (
+              newAction.mint_status === 'approved' &&
+              newAction.is_eligible === true &&
+              newAction.mint_request_id === null
+            ) {
+              setActions(prev => [newAction, ...prev]);
+            }
+          }
+        )
+        .subscribe((status) => {
+          console.log('[usePendingActions] Realtime subscription status:', status);
+        });
+
+      channelRef.current = channel;
+    };
+
+    setupSubscription();
+
+    return () => {
+      isMounted = false;
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+    };
   }, [fetchPendingActions]);
 
   // Group actions by type
@@ -116,7 +198,7 @@ export const usePendingActions = (): PendingActionsResult => {
         description: 'Chờ Admin ký để nhận tokens.',
       });
 
-      // Refetch to update the list
+      // Refetch to update the list (realtime will also handle this but refetch for immediate consistency)
       await fetchPendingActions();
 
       return { success: true, requestId: data.mint_request.id };
