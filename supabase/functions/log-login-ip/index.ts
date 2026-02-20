@@ -5,6 +5,13 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+/** Extract email prefix (strip trailing digits before @) for farm detection */
+function getEmailBase(email: string): string {
+  const local = email.split('@')[0] || '';
+  // Remove dots (Gmail ignores them) and trailing numbers
+  return local.replace(/\./g, '').replace(/\d+$/, '').toLowerCase();
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -20,20 +27,18 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabaseAdmin = createClient(supabaseUrl, serviceKey);
 
-    // Verify user
     const supabaseAuth = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!);
     const { data: { user }, error: authError } = await supabaseAuth.auth.getUser(authHeader.replace("Bearer ", ""));
     if (authError || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
     }
 
-    // Get IP from headers (Cloudflare/proxy)
     const ip = req.headers.get("cf-connecting-ip") 
       || req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
       || req.headers.get("x-real-ip")
       || "unknown";
 
-    // Check if IP is blacklisted → alert admins immediately
+    // Check blacklisted IP
     if (ip !== "unknown") {
       const { data: blacklistedIp } = await supabaseAdmin
         .from("blacklisted_ips")
@@ -45,189 +50,38 @@ Deno.serve(async (req) => {
 
       if (blacklistedIp) {
         console.warn(`[IP ALERT] Blacklisted IP ${ip} login attempt by user ${user.id}`);
-        
-        // Insert fraud signal
-        await supabaseAdmin.from("pplp_fraud_signals").insert({
-          actor_id: user.id,
-          signal_type: "BLACKLISTED_IP_LOGIN",
-          severity: 5,
-          details: { 
-            ip_address: ip, 
-            reason: blacklistedIp.reason,
-            known_usernames: blacklistedIp.associated_usernames 
-          },
-          source: "log-login-ip",
-        });
-
-        // Notify all admins
-        const { data: admins } = await supabaseAdmin
-          .from("user_roles")
-          .select("user_id")
-          .eq("role", "admin");
-
-        if (admins && admins.length > 0) {
-          const notifications = admins.map((a: { user_id: string }) => ({
-            user_id: a.user_id,
-            actor_id: user.id,
-            type: "admin_blacklisted_ip",
-            read: false,
-          }));
-          await supabaseAdmin.from("notifications").insert(notifications);
-        }
-
-        // Auto put on_hold if not already banned
-        await supabaseAdmin
-          .from("profiles")
-          .update({
-            reward_status: "on_hold",
-            admin_notes: `Đăng nhập từ IP bị chặn (${ip}): ${blacklistedIp.reason}`,
-          })
-          .eq("id", user.id)
-          .not("reward_status", "eq", "banned");
+        await handleBlacklistedIp(supabaseAdmin, user.id, ip, blacklistedIp);
       }
     }
 
     const userAgent = req.headers.get("user-agent") || "unknown";
 
-    // Read device_hash from body (optional)
+    // Read body
     let deviceHash: string | null = null;
+    let fingerprintVersion = 1;
     try {
       const body = await req.json();
       deviceHash = body?.device_hash || null;
+      fingerprintVersion = body?.fingerprint_version || 1;
     } catch {
-      // No body or invalid JSON - that's fine
+      // No body
     }
 
-    // Insert using service role
-    // Insert using service role (supabaseAdmin already created above)
+    // Insert login log
     await supabaseAdmin.from("login_ip_logs").insert({
       user_id: user.id,
       ip_address: ip,
       user_agent: userAgent,
     });
 
-    // If device_hash provided, upsert to pplp_device_registry and check for shared devices
+    // Device fingerprint handling
     if (deviceHash && typeof deviceHash === "string" && deviceHash.length >= 16) {
-      // Upsert device registry
-      const { error: upsertErr } = await supabaseAdmin
-        .from("pplp_device_registry")
-        .upsert(
-          { user_id: user.id, device_hash: deviceHash, last_seen: new Date().toISOString(), usage_count: 1 },
-          { onConflict: "user_id,device_hash" }
-        );
+      await handleDeviceFingerprint(supabaseAdmin, user.id, deviceHash, fingerprintVersion);
+    }
 
-      if (upsertErr) {
-        // If upsert fails due to no unique constraint, try insert
-        if (upsertErr.code === "42P10" || upsertErr.message?.includes("unique")) {
-          await supabaseAdmin.from("pplp_device_registry").insert({
-            user_id: user.id,
-            device_hash: deviceHash,
-            last_seen: new Date().toISOString(),
-          });
-        } else {
-          console.error("Device registry upsert error:", upsertErr);
-        }
-      } else {
-        // Update usage_count for existing entries
-        await supabaseAdmin
-          .from("pplp_device_registry")
-          .update({ last_seen: new Date().toISOString() })
-          .eq("user_id", user.id)
-          .eq("device_hash", deviceHash);
-      }
-
-      // Check if same device_hash used by other users
-      const { data: otherUsers } = await supabaseAdmin
-        .from("pplp_device_registry")
-        .select("user_id")
-        .eq("device_hash", deviceHash)
-        .neq("user_id", user.id);
-
-      // Only flag if MORE THAN 2 other users share same device (allow up to 3 total)
-      if (otherUsers && otherUsers.length > 2) {
-        const allUserIds = [user.id, ...otherUsers.map(u => u.user_id)];
-        console.warn(`[SHARED DEVICE] device_hash=${deviceHash.slice(0, 8)}... shared by ${allUserIds.length} users`);
-
-        // Check registration rate: how many accounts created on this device in last 24h
-        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-        const { data: recentAccounts } = await supabaseAdmin
-          .from("pplp_device_registry")
-          .select("user_id, created_at")
-          .eq("device_hash", deviceHash);
-
-        // Get profiles created in last 24h on this device
-        const recentUserIds = recentAccounts?.map(a => a.user_id) || [];
-        const { data: recentProfiles } = await supabaseAdmin
-          .from("profiles")
-          .select("id, created_at")
-          .in("id", recentUserIds)
-          .gte("created_at", oneDayAgo);
-
-        const recentCount = recentProfiles?.length || 0;
-        const shouldAutoBan = recentCount > 3; // More than 3 accounts in 24h = auto-ban new ones
-
-        if (shouldAutoBan) {
-          // Auto-ban only the newest accounts (created in last 24h), not all
-          const newAccountIds = recentProfiles?.map(p => p.id) || [];
-          for (const uid of newAccountIds) {
-            await supabaseAdmin.from("profiles").update({
-              is_banned: true,
-              reward_status: "banned",
-              admin_notes: `Tự động cấm: ${recentCount} tài khoản tạo trên cùng thiết bị trong 24 giờ`,
-            }).eq("id", uid);
-          }
-
-          // Insert high-severity fraud signal
-          await supabaseAdmin.from("pplp_fraud_signals").insert({
-            actor_id: user.id,
-            signal_type: "RAPID_REGISTRATION",
-            severity: 5,
-            details: { device_hash: deviceHash.slice(0, 8), recent_count: recentCount, auto_banned: newAccountIds },
-            source: "log-login-ip",
-          });
-        } else {
-          // Standard shared device handling: put on hold
-          const holdMessage = `Hệ thống nhận thấy thiết bị này được dùng bởi ${allUserIds.length} tài khoản. Để bảo vệ quyền lợi mọi người, tài khoản chờ Admin xác minh 🙏`;
-          
-          for (const uid of allUserIds) {
-            await supabaseAdmin.from("profiles").update({
-              reward_status: "on_hold",
-              admin_notes: holdMessage,
-            }).eq("id", uid);
-          }
-        }
-
-        // Flag device
-        await supabaseAdmin.from("pplp_device_registry").update({
-          is_flagged: true,
-          flag_reason: `Cùng thiết bị với ${allUserIds.length} tài khoản`,
-        }).eq("device_hash", deviceHash);
-
-        // Insert integrity signal
-        await supabaseAdmin.from("pplp_fraud_signals").insert({
-          actor_id: user.id,
-          signal_type: "SHARED_DEVICE",
-          severity: 3,
-          details: { device_hash: deviceHash.slice(0, 8), all_user_ids: allUserIds },
-          source: "log-login-ip",
-        });
-
-        // Notify all admins
-        const { data: admins } = await supabaseAdmin
-          .from("user_roles")
-          .select("user_id")
-          .eq("role", "admin");
-
-        if (admins && admins.length > 0) {
-          const notifications = admins.map(a => ({
-            user_id: a.user_id,
-            actor_id: user.id,
-            type: "admin_shared_device",
-            read: false,
-          }));
-          await supabaseAdmin.from("notifications").insert(notifications);
-        }
-      }
+    // Email farm detection
+    if (user.email) {
+      await detectEmailFarm(supabaseAdmin, user.id, user.email);
     }
 
     return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -236,3 +90,175 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ error: "Internal error" }), { status: 500, headers: corsHeaders });
   }
 });
+
+// --- Helper functions ---
+
+async function handleBlacklistedIp(supabaseAdmin: any, userId: string, ip: string, blacklistedIp: any) {
+  await supabaseAdmin.from("pplp_fraud_signals").insert({
+    actor_id: userId,
+    signal_type: "BLACKLISTED_IP_LOGIN",
+    severity: 5,
+    details: { ip_address: ip, reason: blacklistedIp.reason, known_usernames: blacklistedIp.associated_usernames },
+    source: "log-login-ip",
+  });
+
+  const { data: admins } = await supabaseAdmin.from("user_roles").select("user_id").eq("role", "admin");
+  if (admins?.length) {
+    await supabaseAdmin.from("notifications").insert(
+      admins.map((a: { user_id: string }) => ({ user_id: a.user_id, actor_id: userId, type: "admin_blacklisted_ip", read: false }))
+    );
+  }
+
+  await supabaseAdmin.from("profiles").update({
+    reward_status: "on_hold",
+    admin_notes: `Đăng nhập từ IP bị chặn (${ip}): ${blacklistedIp.reason}`,
+  }).eq("id", userId).not("reward_status", "eq", "banned");
+}
+
+async function handleDeviceFingerprint(supabaseAdmin: any, userId: string, deviceHash: string, fingerprintVersion: number) {
+  const { error: upsertErr } = await supabaseAdmin
+    .from("pplp_device_registry")
+    .upsert(
+      { user_id: userId, device_hash: deviceHash, last_seen: new Date().toISOString(), usage_count: 1, fingerprint_version: fingerprintVersion },
+      { onConflict: "user_id,device_hash" }
+    );
+
+  if (upsertErr) {
+    if (upsertErr.code === "42P10" || upsertErr.message?.includes("unique")) {
+      await supabaseAdmin.from("pplp_device_registry").insert({
+        user_id: userId, device_hash: deviceHash, last_seen: new Date().toISOString(), fingerprint_version: fingerprintVersion,
+      });
+    } else {
+      console.error("Device registry upsert error:", upsertErr);
+    }
+  } else {
+    await supabaseAdmin.from("pplp_device_registry")
+      .update({ last_seen: new Date().toISOString() })
+      .eq("user_id", userId).eq("device_hash", deviceHash);
+  }
+
+  // Check shared device (>2 other users)
+  const { data: otherUsers } = await supabaseAdmin
+    .from("pplp_device_registry").select("user_id")
+    .eq("device_hash", deviceHash).neq("user_id", userId);
+
+  if (otherUsers && otherUsers.length > 2) {
+    const allUserIds = [userId, ...otherUsers.map((u: any) => u.user_id)];
+    console.warn(`[SHARED DEVICE] device_hash=${deviceHash.slice(0, 8)}... shared by ${allUserIds.length} users`);
+
+    // Check rapid registration
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { data: recentAccounts } = await supabaseAdmin
+      .from("pplp_device_registry").select("user_id, created_at").eq("device_hash", deviceHash);
+
+    const recentUserIds = recentAccounts?.map((a: any) => a.user_id) || [];
+    const { data: recentProfiles } = await supabaseAdmin
+      .from("profiles").select("id, created_at")
+      .in("id", recentUserIds).gte("created_at", oneDayAgo);
+
+    const recentCount = recentProfiles?.length || 0;
+
+    if (recentCount > 3) {
+      const newAccountIds = recentProfiles?.map((p: any) => p.id) || [];
+      for (const uid of newAccountIds) {
+        await supabaseAdmin.from("profiles").update({
+          is_banned: true, reward_status: "banned",
+          admin_notes: `Tự động cấm: ${recentCount} tài khoản tạo trên cùng thiết bị trong 24 giờ`,
+        }).eq("id", uid);
+      }
+      await supabaseAdmin.from("pplp_fraud_signals").insert({
+        actor_id: userId, signal_type: "RAPID_REGISTRATION", severity: 5,
+        details: { device_hash: deviceHash.slice(0, 8), recent_count: recentCount, auto_banned: newAccountIds },
+        source: "log-login-ip",
+      });
+    } else {
+      const holdMessage = `Hệ thống nhận thấy thiết bị này được dùng bởi ${allUserIds.length} tài khoản. Để bảo vệ quyền lợi mọi người, tài khoản chờ Admin xác minh 🙏`;
+      for (const uid of allUserIds) {
+        await supabaseAdmin.from("profiles").update({ reward_status: "on_hold", admin_notes: holdMessage }).eq("id", uid);
+      }
+    }
+
+    await supabaseAdmin.from("pplp_device_registry").update({
+      is_flagged: true, flag_reason: `Cùng thiết bị với ${allUserIds.length} tài khoản`,
+    }).eq("device_hash", deviceHash);
+
+    await supabaseAdmin.from("pplp_fraud_signals").insert({
+      actor_id: userId, signal_type: "SHARED_DEVICE", severity: 3,
+      details: { device_hash: deviceHash.slice(0, 8), all_user_ids: allUserIds },
+      source: "log-login-ip",
+    });
+
+    const { data: admins } = await supabaseAdmin.from("user_roles").select("user_id").eq("role", "admin");
+    if (admins?.length) {
+      await supabaseAdmin.from("notifications").insert(
+        admins.map((a: any) => ({ user_id: a.user_id, actor_id: userId, type: "admin_shared_device", read: false }))
+      );
+    }
+  }
+}
+
+async function detectEmailFarm(supabaseAdmin: any, userId: string, email: string) {
+  const emailBase = getEmailBase(email);
+  if (!emailBase || emailBase.length < 3) return;
+
+  // Find accounts with similar email prefix
+  const { data: allUsers } = await supabaseAdmin
+    .from("profiles")
+    .select("id, username")
+    .limit(1000);
+
+  if (!allUsers) return;
+
+  // Get auth emails for these users to compare
+  // We check by querying auth.users with similar patterns
+  const { data: similarEmails } = await supabaseAdmin.rpc('get_similar_email_accounts', { p_email_base: emailBase });
+  
+  // Fallback: if RPC doesn't exist, skip
+  if (!similarEmails) {
+    // Try direct approach - query auth users
+    const domain = email.split('@')[1] || 'gmail.com';
+    const { data: authUsers, error: authErr } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
+    
+    if (authErr || !authUsers?.users) return;
+    
+    const matchingUsers = authUsers.users.filter((u: any) => {
+      if (!u.email) return false;
+      return getEmailBase(u.email) === emailBase && u.email.endsWith(`@${domain}`);
+    });
+
+    if (matchingUsers.length >= 3) {
+      // Check if signal already exists recently
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      const { data: existingSignal } = await supabaseAdmin
+        .from("pplp_fraud_signals")
+        .select("id")
+        .eq("actor_id", userId)
+        .eq("signal_type", "EMAIL_FARM")
+        .gte("created_at", oneHourAgo)
+        .limit(1);
+
+      if (!existingSignal?.length) {
+        const matchedIds = matchingUsers.map((u: any) => u.id);
+        const matchedEmails = matchingUsers.map((u: any) => u.email);
+
+        await supabaseAdmin.from("pplp_fraud_signals").insert({
+          actor_id: userId,
+          signal_type: "EMAIL_FARM",
+          severity: 4,
+          details: { email_base: emailBase, count: matchingUsers.length, user_ids: matchedIds, emails: matchedEmails },
+          source: "log-login-ip",
+        });
+
+        // Notify admins
+        const { data: admins } = await supabaseAdmin.from("user_roles").select("user_id").eq("role", "admin");
+        if (admins?.length) {
+          await supabaseAdmin.from("notifications").insert(
+            admins.map((a: any) => ({ user_id: a.user_id, actor_id: userId, type: "admin_email_farm", read: false }))
+          );
+        }
+
+        console.warn(`[EMAIL FARM] Detected ${matchingUsers.length} accounts with email base "${emailBase}"`);
+      }
+    }
+  }
+}
