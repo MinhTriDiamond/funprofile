@@ -17,7 +17,7 @@ const BASE_REWARDS: Record<string, number> = {
   new_user_bonus: 500,
 };
 
-// Daily caps per action
+// Daily caps per action (per actor per day)
 const DAILY_CAPS: Record<string, { maxActions: number }> = {
   post: { maxActions: 10 },
   comment: { maxActions: 50 },
@@ -27,6 +27,10 @@ const DAILY_CAPS: Record<string, { maxActions: number }> = {
   livestream: { maxActions: 5 },
   new_user_bonus: { maxActions: 1 },
 };
+
+// Actions where beneficiary = post owner (not the actor)
+// actor performs action → post owner receives reward
+const BENEFICIARY_IS_POST_OWNER = new Set(['reaction', 'comment', 'share']);
 
 // Calculate Unity Multiplier from Unity Score
 function calculateUnityMultiplier(unityScore: number): number {
@@ -54,7 +58,7 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Get auth token
+    // Get auth token — actor is the person performing the action
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'No authorization header' }), {
@@ -64,16 +68,16 @@ serve(async (req) => {
     }
 
     const token = authHeader.replace('Bearer ', '');
-    const { data: claimsData, error: authError } = await supabase.auth.getClaims(token);
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
 
-    if (authError || !claimsData?.claims?.sub) {
+    if (authError || !user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const userId = claimsData.claims.sub;
+    const actorId = user.id; // Người thực hiện hành động
 
     const { action_type, reference_id, content } = await req.json();
 
@@ -84,9 +88,62 @@ serve(async (req) => {
       });
     }
 
-    console.log(`[PPLP] Evaluating ${action_type} for user ${userId}`);
+    console.log(`[PPLP] Evaluating ${action_type} for actor ${actorId}`);
 
-    // === DUPLICATE POST CHECK ===
+    // === DETERMINE BENEFICIARY (người nhận thưởng) ===
+    let beneficiaryId = actorId; // Mặc định: actor tự nhận thưởng (post, friend, new_user_bonus)
+
+    if (BENEFICIARY_IS_POST_OWNER.has(action_type) && reference_id) {
+      // reaction/comment/share → chủ bài nhận thưởng
+      const { data: postData } = await supabase
+        .from('posts')
+        .select('user_id, is_reward_eligible')
+        .eq('id', reference_id)
+        .maybeSingle();
+
+      if (!postData) {
+        console.log(`[PPLP] Post ${reference_id} not found. Skipping.`);
+        return new Response(JSON.stringify({ success: true, skipped: true, reason: 'post_not_found' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Kiểm tra bài có eligible không (duplicate post check)
+      if (postData.is_reward_eligible === false) {
+        console.log(`[PPLP] Post ${reference_id} is not reward-eligible (duplicate). Skipping.`);
+        return new Response(JSON.stringify({ success: true, skipped: true, reason: 'duplicate_content' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      beneficiaryId = postData.user_id;
+
+      // === SELF-ACTION CHECK: actor = chủ bài → không thưởng ===
+      if (actorId === beneficiaryId) {
+        console.log(`[PPLP] Self-action detected: actor ${actorId} = post owner. Skipping.`);
+        return new Response(JSON.stringify({ success: true, skipped: true, reason: 'self_action' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // === DUPLICATE CHECK: đã thưởng cho actor+post+action_type chưa? ===
+      // Đây là check theo cặp (actor, post, type) — không phải daily count
+      const { count: existingCount } = await supabase
+        .from('light_actions')
+        .select('id', { count: 'exact', head: true })
+        .eq('actor_id', actorId)
+        .eq('reference_id', reference_id)
+        .eq('action_type', action_type);
+
+      if (existingCount !== null && existingCount > 0) {
+        console.log(`[PPLP] Duplicate action: actor ${actorId} already rewarded for ${action_type} on post ${reference_id}`);
+        return new Response(JSON.stringify({ success: true, skipped: true, reason: 'already_rewarded' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
+    // === DUPLICATE POST CHECK (for post action_type) ===
     if (action_type === 'post' && reference_id) {
       const { data: postData } = await supabase
         .from('posts')
@@ -95,7 +152,7 @@ serve(async (req) => {
         .maybeSingle();
 
       if (postData && postData.is_reward_eligible === false) {
-        console.log(`[PPLP] Post ${reference_id} is not reward-eligible (duplicate). Skipping evaluation.`);
+        console.log(`[PPLP] Post ${reference_id} is not reward-eligible (duplicate). Skipping.`);
         return new Response(JSON.stringify({
           success: true,
           skipped: true,
@@ -106,11 +163,7 @@ serve(async (req) => {
             is_eligible: false,
             mint_amount: 0,
             evaluation: {
-              quality: 0,
-              impact: 0,
-              integrity: 0,
-              unity: 0,
-              unity_multiplier: 0,
+              quality: 0, impact: 0, integrity: 0, unity: 0, unity_multiplier: 0,
               reasoning: 'Bài viết trùng nội dung, không tính điểm.',
             },
           },
@@ -120,34 +173,45 @@ serve(async (req) => {
       }
     }
 
-    // Check daily limit for this action type
+    // === DAILY CAP CHECK (per actor, per action_type) ===
     const today = new Date().toISOString().split('T')[0];
     const { count: todayCount } = await supabase
       .from('light_actions')
       .select('id', { count: 'exact', head: true })
-      .eq('user_id', userId)
+      .eq('actor_id', actorId)
       .eq('action_type', action_type)
       .gte('created_at', `${today}T00:00:00Z`);
 
-    if (todayCount !== null && todayCount >= DAILY_CAPS[action_type].maxActions) {
+    // Fallback: nếu actor_id chưa có data (actions cũ), dùng user_id
+    const { count: todayCountFallback } = await supabase
+      .from('light_actions')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', actorId)
+      .eq('action_type', action_type)
+      .is('actor_id', null)
+      .gte('created_at', `${today}T00:00:00Z`);
+
+    const totalTodayCount = (todayCount || 0) + (todayCountFallback || 0);
+
+    if (totalTodayCount >= DAILY_CAPS[action_type].maxActions) {
       return new Response(JSON.stringify({ 
         error: 'Daily limit reached for this action type',
         limit: DAILY_CAPS[action_type].maxActions,
-        current: todayCount
+        current: totalTodayCount
       }), {
         status: 429,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Get user stats for context
+    // Get beneficiary stats for AI context
     const { data: userStats } = await supabase
       .from('light_reputation')
       .select('*')
-      .eq('user_id', userId)
+      .eq('user_id', beneficiaryId)
       .single();
 
-    // Call ANGEL AI for evaluation using Lovable AI Gateway
+    // === AI EVALUATION ===
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     
     let evaluation = {
@@ -209,7 +273,6 @@ USER AVG QUALITY: ${userStats?.avg_quality || 1.0}
           const aiContent = aiData.choices?.[0]?.message?.content;
           
           if (aiContent) {
-            // Parse JSON from AI response
             const jsonMatch = aiContent.match(/\{[\s\S]*\}/);
             if (jsonMatch) {
               const parsed = JSON.parse(jsonMatch[0]);
@@ -247,10 +310,13 @@ USER AVG QUALITY: ${userStats?.avg_quality || 1.0}
     const mintAmount = isEligible ? Math.floor(lightScore) : 0;
 
     // Insert light action record
+    // user_id = beneficiaryId (người nhận thưởng)
+    // actor_id = actorId (người thực hiện)
     const { data: lightAction, error: insertError } = await supabase
       .from('light_actions')
       .insert({
-        user_id: userId,
+        user_id: beneficiaryId,         // Người nhận thưởng (chủ bài hoặc actor)
+        actor_id: actorId,              // Người thực hiện hành động
         action_type,
         reference_id: reference_id || null,
         reference_type: action_type,
@@ -272,6 +338,13 @@ USER AVG QUALITY: ${userStats?.avg_quality || 1.0}
       .single();
 
     if (insertError) {
+      // Handle unique constraint violation (duplicate action)
+      if (insertError.code === '23505') {
+        console.log(`[PPLP] Unique constraint: actor ${actorId} already has ${action_type} for ${reference_id}`);
+        return new Response(JSON.stringify({ success: true, skipped: true, reason: 'already_rewarded' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
       console.error('[PPLP] Insert error:', insertError);
       return new Response(JSON.stringify({ error: 'Failed to record action' }), {
         status: 500,
@@ -279,7 +352,7 @@ USER AVG QUALITY: ${userStats?.avg_quality || 1.0}
       });
     }
 
-    console.log(`[PPLP] Action recorded: ${lightAction.id}, Score: ${lightScore}, Eligible: ${isEligible}`);
+    console.log(`[PPLP] Action recorded: ${lightAction.id}, Beneficiary: ${beneficiaryId}, Score: ${lightScore}, Eligible: ${isEligible}`);
 
     return new Response(JSON.stringify({
       success: true,
@@ -289,6 +362,8 @@ USER AVG QUALITY: ${userStats?.avg_quality || 1.0}
         light_score: lightScore,
         is_eligible: isEligible,
         mint_amount: mintAmount,
+        beneficiary_id: beneficiaryId,
+        actor_id: actorId,
         evaluation: {
           quality: evaluation.quality_score,
           impact: evaluation.impact_score,
