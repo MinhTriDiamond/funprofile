@@ -1,12 +1,15 @@
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Gift, Wallet, AlertTriangle, Info, Clock, CheckCircle2, TrendingUp } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Gift, Wallet, AlertTriangle, Info, Clock, CheckCircle2, TrendingUp, MessageCircle, Send, Loader2 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { RewardStats } from './RewardBreakdown';
 import camlyLogo from '@/assets/tokens/camly-logo.webp';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 
 const MINIMUM_THRESHOLD = 200000;
 const DAILY_LIMIT = 500000;
@@ -51,6 +54,8 @@ export const ClaimRewardsSection = ({
   onConnectClick,
 }: ClaimRewardsSectionProps) => {
   const navigate = useNavigate();
+  const [adminMessage, setAdminMessage] = useState('');
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
   const totalReward = rewardStats?.total_reward || 0;
   const pendingAmount = Math.max(0, totalReward - claimedAmount - claimableReward);
   const dailyRemaining = Math.max(0, DAILY_LIMIT - dailyClaimed);
@@ -90,6 +95,90 @@ export const ClaimRewardsSection = ({
       return;
     }
     onClaimClick();
+  };
+
+  const ADMIN_ID = '70640edc-337f-4e89-bd7e-9501bd79ec9f';
+
+  const handleSendToAdmin = async () => {
+    if (!adminMessage.trim()) {
+      toast.warning('Vui lòng nhập nội dung tin nhắn');
+      return;
+    }
+    setIsSendingMessage(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        toast.error('Vui lòng đăng nhập');
+        return;
+      }
+      const userId = session.user.id;
+      const messageContent = `[Hỗ trợ Claim Rewards] ${adminMessage.trim()}`;
+
+      // Find existing conversation with admin
+      const { data: existingConvs } = await supabase
+        .from('conversation_participants')
+        .select('conversation_id')
+        .eq('user_id', userId)
+        .is('left_at', null);
+
+      let conversationId: string | null = null;
+
+      if (existingConvs && existingConvs.length > 0) {
+        const convIds = existingConvs.map(c => c.conversation_id);
+        const { data: adminConv } = await supabase
+          .from('conversation_participants')
+          .select('conversation_id')
+          .eq('user_id', ADMIN_ID)
+          .in('conversation_id', convIds)
+          .is('left_at', null)
+          .limit(1)
+          .single();
+        
+        if (adminConv) conversationId = adminConv.conversation_id;
+      }
+
+      // Create new conversation if none exists
+      if (!conversationId) {
+        const { data: newConv, error: convErr } = await supabase
+          .from('conversations')
+          .insert({ type: 'direct', created_by: userId })
+          .select('id')
+          .single();
+        if (convErr || !newConv) throw convErr;
+        conversationId = newConv.id;
+
+        // Add both participants
+        await supabase.from('conversation_participants').insert([
+          { conversation_id: conversationId, user_id: userId, role: 'member' },
+          { conversation_id: conversationId, user_id: ADMIN_ID, role: 'admin' },
+        ]);
+      }
+
+      // Send the message
+      const { error: msgErr } = await supabase.from('messages').insert({
+        conversation_id: conversationId,
+        sender_id: userId,
+        content: messageContent,
+      });
+      if (msgErr) throw msgErr;
+
+      // Create notification for admin
+      await supabase.from('notifications').insert({
+        user_id: ADMIN_ID,
+        actor_id: userId,
+        type: 'comment', // reuse existing type for bell notification
+      });
+
+      toast.success('Đã gửi tin nhắn đến Admin!', {
+        description: 'Admin sẽ phản hồi sớm nhất có thể',
+      });
+      setAdminMessage('');
+    } catch (err) {
+      console.error('Error sending admin message:', err);
+      toast.error('Gửi tin nhắn thất bại, vui lòng thử lại');
+    } finally {
+      setIsSendingMessage(false);
+    }
   };
 
   const minThresholdProgress = Math.min(100, (claimableReward / MINIMUM_THRESHOLD) * 100);
@@ -180,6 +269,38 @@ export const ClaimRewardsSection = ({
                   Hệ thống cần xác minh để bảo vệ quyền lợi cho tất cả mọi người. Vui lòng liên hệ Admin qua tin nhắn để được hỗ trợ nhanh nhất. Cảm ơn bạn đã thấu hiểu 💛
                 </p>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Message Admin Section - shown when user can't claim */}
+        {(rewardStatus === 'on_hold' || rewardStatus === 'rejected') && (
+          <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-xl p-3.5 space-y-3">
+            <div className="flex items-center gap-2">
+              <MessageCircle className="w-4 h-4 text-blue-600" />
+              <p className="text-sm font-semibold text-blue-800 dark:text-blue-300">Nhắn tin với Admin</p>
+            </div>
+            <Textarea
+              value={adminMessage}
+              onChange={(e) => setAdminMessage(e.target.value)}
+              placeholder="Nhập nội dung cần hỗ trợ... (VD: Tài khoản em bị giữ, admin xem giúp em ạ)"
+              className="min-h-[80px] text-sm resize-none bg-white dark:bg-background"
+              maxLength={500}
+            />
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">{adminMessage.length}/500</span>
+              <Button
+                onClick={handleSendToAdmin}
+                disabled={isSendingMessage || !adminMessage.trim()}
+                size="sm"
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                {isSendingMessage ? (
+                  <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" />Đang gửi...</>
+                ) : (
+                  <><Send className="w-4 h-4 mr-1.5" />Gửi tin nhắn</>
+                )}
+              </Button>
             </div>
           </div>
         )}
