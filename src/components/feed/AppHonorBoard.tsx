@@ -41,45 +41,72 @@ export const AppHonorBoard = memo(() => {
   const { data: stats, isLoading } = useQuery({
     queryKey: ['app-honor-board-stats'],
     queryFn: async (): Promise<AppStats> => {
-      // Use RPC function to get all accurate counts (no 1000-row limit)
-      const { data: appStatsData, error } = await supabase.rpc('get_app_stats');
-      
-      if (error) throw error;
+      const [
+        appStatsResult,
+        rewardClaimsResult, 
+        transactionsResult,
+      ] = await Promise.all([
+        // Use RPC function to get accurate counts
+        supabase.rpc('get_app_stats'),
+        // All claimed rewards (CAMLY token)
+        supabase.from('reward_claims').select('amount'),
+        // All transactions with token info
+        supabase.from('transactions').select('amount, token_symbol'),
+      ]);
 
-      const appStats = appStatsData?.[0] as {
+      // Get stats from RPC result (returns single row)
+      const appStats = appStatsResult.data?.[0] as {
         total_users?: number;
         total_posts?: number;
         total_photos?: number;
         total_videos?: number;
         total_rewards?: number;
-        total_camly_circulating?: number;
-        total_usdt_circulating?: number;
-        total_btcb_circulating?: number;
       } || {};
-      
       const totalUsers = Number(appStats.total_users) || 0;
       const totalPosts = Number(appStats.total_posts) || 0;
       const totalPhotos = Number(appStats.total_photos) || 0;
       const totalVideos = Number(appStats.total_videos) || 0;
       const totalRewards = Number(appStats.total_rewards) || 0;
 
-      // Build token balances from RPC data (accurate, no row limits)
+      // Calculate total CAMLY from claimed rewards
+      const claims = rewardClaimsResult.data || [];
+      const claimedCamly = claims.reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
+
+      // Group transactions by token type
+      const transactions = transactionsResult.data || [];
+      const transactionsByToken: Record<string, number> = {};
+      
+      transactions.forEach((t: { amount: string; token_symbol: string }) => {
+        const symbol = t.token_symbol?.toUpperCase() || 'CAMLY';
+        const amount = Number(t.amount) || 0;
+        transactionsByToken[symbol] = (transactionsByToken[symbol] || 0) + amount;
+      });
+
+      // Add claimed CAMLY to transactions CAMLY
+      transactionsByToken['CAMLY'] = (transactionsByToken['CAMLY'] || 0) + claimedCamly;
+
+      // Build token balances array (only tokens with amount > 0)
       const tokenBalances: TokenBalance[] = [];
       
-      const camlyAmount = Number(appStats.total_camly_circulating) || 0;
-      if (camlyAmount > 0) {
-        tokenBalances.push({ symbol: 'CAMLY', amount: camlyAmount, logoPath: TOKEN_LOGOS.CAMLY });
+      // CAMLY first (always show if has any)
+      if (transactionsByToken['CAMLY'] > 0) {
+        tokenBalances.push({
+          symbol: 'CAMLY',
+          amount: transactionsByToken['CAMLY'],
+          logoPath: TOKEN_LOGOS.CAMLY,
+        });
       }
-      
-      const usdtAmount = Number(appStats.total_usdt_circulating) || 0;
-      if (usdtAmount > 0) {
-        tokenBalances.push({ symbol: 'USDT', amount: usdtAmount, logoPath: TOKEN_LOGOS.USDT });
-      }
-      
-      const btcbAmount = Number(appStats.total_btcb_circulating) || 0;
-      if (btcbAmount > 0) {
-        tokenBalances.push({ symbol: 'BTCB', amount: btcbAmount, logoPath: TOKEN_LOGOS.BTCB });
-      }
+
+      // Then other tokens in order: USDT, BTCB (BNB excluded per request)
+      ['USDT', 'BTCB'].forEach(symbol => {
+        if (transactionsByToken[symbol] > 0) {
+          tokenBalances.push({
+            symbol,
+            amount: transactionsByToken[symbol],
+            logoPath: TOKEN_LOGOS[symbol] || '',
+          });
+        }
+      });
 
       return {
         totalUsers,
