@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useLightScore } from '@/hooks/useLightScore';
 import { usePendingActions } from '@/hooks/usePendingActions';
 import { useFunBalance } from '@/hooks/useFunBalance';
+import { useMintHistory } from '@/hooks/useMintHistory';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,7 +14,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Sparkles, Coins, Lock, Zap, RefreshCw, Wallet, AlertTriangle,
   Loader2, FileText, Heart, MessageCircle, Users, Send, Gift,
-  ChevronDown, ChevronUp, Rocket, ExternalLink, ArrowRight, CheckCircle2, Clock, XCircle
+  ChevronDown, ChevronUp, Rocket, ExternalLink, ArrowRight, CheckCircle2, Clock, XCircle,
+  History
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
@@ -55,6 +57,51 @@ const ACTION_LABELS: Record<string, string> = {
   new_user_bonus: 'Thưởng người mới',
 };
 
+// Helper: status config cho mint request
+const getMintStatusConfig = (status: string) => {
+  switch (status) {
+    case 'pending_sig':
+      return { label: 'Chờ Admin ký', icon: <Loader2 className="w-3.5 h-3.5 animate-spin text-violet-500" />, badgeClass: 'bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-300' };
+    case 'signed':
+      return { label: 'Đã ký, chờ Submit', icon: <CheckCircle2 className="w-3.5 h-3.5 text-blue-500" />, badgeClass: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' };
+    case 'submitted':
+      return { label: 'Đã gửi blockchain', icon: <Rocket className="w-3.5 h-3.5 text-cyan-500" />, badgeClass: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900 dark:text-cyan-300' };
+    case 'confirmed':
+      return { label: 'Đã xác nhận ✓', icon: <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />, badgeClass: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' };
+    case 'failed':
+      return { label: 'Thất bại', icon: <XCircle className="w-3.5 h-3.5 text-red-500" />, badgeClass: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' };
+    default:
+      return { label: status, icon: <Clock className="w-3.5 h-3.5 text-muted-foreground" />, badgeClass: '' };
+  }
+};
+
+interface MintRequestRowProps {
+  req: { id: string; amount_display: number; status: string; created_at: string; updated_at: string; action_types: string[] | null };
+}
+const MintRequestRow = ({ req }: MintRequestRowProps) => {
+  const { label, icon, badgeClass } = getMintStatusConfig(req.status);
+  return (
+    <div className="flex items-center justify-between p-2.5 bg-muted/30 rounded-lg border">
+      <div className="flex items-center gap-2 min-w-0">
+        {icon}
+        <div className="min-w-0">
+          <p className="text-sm font-bold text-amber-600">{formatFUN(req.amount_display)} FUN</p>
+          <p className="text-xs text-muted-foreground">
+            {formatDistanceToNow(new Date(req.created_at), { addSuffix: true, locale: vi })}
+            {req.action_types && req.action_types.length > 0 && (
+              <span className="ml-1">· {req.action_types.join(', ')}</span>
+            )}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Cập nhật: {formatDistanceToNow(new Date(req.updated_at), { addSuffix: true, locale: vi })}
+          </p>
+        </div>
+      </div>
+      <Badge className={`${badgeClass} border-0 text-xs flex-shrink-0`}>{label}</Badge>
+    </div>
+  );
+};
+
 interface LightScoreDashboardProps {
   walletAddress?: `0x${string}`;
   onActivate?: () => void;
@@ -68,23 +115,13 @@ export const LightScoreDashboard = ({ walletAddress, onActivate, onClaim }: Ligh
   const { actions, groupedByType, totalAmount, isLoading: isPendingLoading, refetch: refetchPending, claim, isClaiming } = usePendingActions();
   const { total, locked, activated, isLoading: isBalanceLoading, refetch: refetchBalance } = useFunBalance(walletAddress);
 
+  const { activeRequests, historyRequests, hasPendingRequests, isLoading: isMintHistoryLoading, refetch: refetchMintHistory } = useMintHistory();
+
   const [hasWallet, setHasWallet] = useState<boolean | null>(null);
   const [expandedType, setExpandedType] = useState<string | null>(null);
-  const [showHistory, setShowHistory] = useState(false);
+  // showHistory removed — recent actions section replaced by useMintHistory
+  const [showMintHistory, setShowMintHistory] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [pendingMintRequests, setPendingMintRequests] = useState<Array<{id: string; amount_display: number; created_at: string; status: string}>>([]);
-
-  const fetchPendingMintRequests = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const { data } = await supabase
-      .from('pplp_mint_requests')
-      .select('id, amount_display, created_at, status')
-      .eq('user_id', user.id)
-      .in('status', ['pending_sig'])
-      .order('created_at', { ascending: false });
-    setPendingMintRequests(data || []);
-  };
 
   useEffect(() => {
     const checkWallet = async () => {
@@ -95,18 +132,17 @@ export const LightScoreDashboard = ({ walletAddress, onActivate, onClaim }: Ligh
       setHasWallet(!!profile?.public_wallet_address);
     };
     checkWallet();
-    fetchPendingMintRequests();
   }, []);
 
   const handleClaimAll = async () => {
     if (actions.length === 0) return;
     const result = await claim(actions.map(a => a.id));
-    if (result.success) { refetch(); refetchBalance(); fetchPendingMintRequests(); }
+    if (result.success) { refetch(); refetchBalance(); refetchMintHistory(); refetchPending(); }
   };
 
   const handleRefreshAll = async () => {
     setIsRefreshing(true);
-    await Promise.all([refetch(), refetchPending(), refetchBalance(), fetchPendingMintRequests()]);
+    await Promise.all([refetch(), refetchPending(), refetchBalance(), refetchMintHistory()]);
     setTimeout(() => setIsRefreshing(false), 500);
   };
 
@@ -303,8 +339,27 @@ export const LightScoreDashboard = ({ walletAddress, onActivate, onClaim }: Ligh
             </ScrollArea>
           )}
 
-          {/* Mint button */}
-          {totalAmount > 0 && (
+          {/* ===== MINT BUTTON hoặc PENDING WARNING ===== */}
+          {hasPendingRequests ? (
+            /* Khi đang có yêu cầu pending → disable và thông báo */
+            <div className="space-y-2">
+              <div className="bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-800 rounded-lg p-3 flex items-start gap-2">
+                <Loader2 className="w-4 h-4 text-violet-500 animate-spin flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-violet-800 dark:text-violet-200">
+                    Đang có {activeRequests.length} yêu cầu đang xử lý
+                  </p>
+                  <p className="text-xs text-violet-600 dark:text-violet-400 mt-0.5">
+                    Không thể mint thêm cho đến khi các yêu cầu hiện tại hoàn tất.
+                  </p>
+                </div>
+              </div>
+              <Button disabled className="w-full opacity-50 cursor-not-allowed">
+                <Clock className="w-4 h-4 mr-2" />Đang chờ xử lý...
+              </Button>
+            </div>
+          ) : totalAmount > 0 ? (
+            /* Khi có FUN sẵn sàng mint */
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Tổng cộng:</span>
@@ -328,72 +383,43 @@ export const LightScoreDashboard = ({ walletAddress, onActivate, onClaim }: Ligh
               </Button>
               <p className="text-xs text-muted-foreground text-center">💡 Sau khi mint, FUN sẽ chuyển về ví on-chain dưới dạng Locked.</p>
             </div>
-          )}
+          ) : null}
 
-          {/* ===== PENDING MINT REQUESTS (đang chờ Admin ký) ===== */}
-          {pendingMintRequests.length > 0 && (
-            <div className="border border-violet-200 dark:border-violet-800 rounded-lg overflow-hidden">
-              <div className="flex items-center gap-2 bg-violet-50 dark:bg-violet-950/40 px-3 py-2">
-                <Loader2 className="w-3.5 h-3.5 text-violet-500 animate-spin" />
-                <span className="text-sm font-medium text-violet-700 dark:text-violet-300">Đang chờ Admin ký</span>
-                <Badge variant="secondary" className="ml-auto text-xs">{pendingMintRequests.length}</Badge>
-              </div>
-              <div className="divide-y">
-                {pendingMintRequests.map((req) => (
-                  <div key={req.id} className="flex items-center justify-between px-3 py-2">
-                    <div>
-                      <p className="text-sm font-semibold text-amber-600">{formatFUN(req.amount_display)} FUN</p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatDistanceToNow(new Date(req.created_at), { addSuffix: true, locale: vi })}
-                      </p>
-                    </div>
-                    <Badge className="bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-300 border-0 text-xs">
-                      Đang xử lý
-                    </Badge>
+          {/* ===== MINT HISTORY — Đang xử lý + Lịch sử ===== */}
+          {!isMintHistoryLoading && (activeRequests.length > 0 || historyRequests.length > 0) && (
+            <div className="border-t pt-3 space-y-3">
+              {/* Active requests */}
+              {activeRequests.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                    <Loader2 className="w-3 h-3 animate-spin" />Đang xử lý ({activeRequests.length})
+                  </h4>
+                  <div className="space-y-1.5">
+                    {activeRequests.map((req) => (
+                      <MintRequestRow key={req.id} req={req} />
+                    ))}
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
+                </div>
+              )}
 
-          {/* Recent actions toggle */}
-          {data.recent_actions.length > 0 && (
-            <div className="border-t pt-3">
-              <button
-                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors w-full"
-                onClick={() => setShowHistory(!showHistory)}
-              >
-                <Clock className="w-3.5 h-3.5" />
-                <span>Lịch sử hoạt động gần đây</span>
-                {showHistory ? <ChevronUp className="w-3.5 h-3.5 ml-auto" /> : <ChevronDown className="w-3.5 h-3.5 ml-auto" />}
-              </button>
-              {showHistory && (
-                <div className="mt-2 space-y-1.5">
-                  {data.recent_actions.slice(0, 5).map((action) => (
-                    <div key={action.id} className="flex items-center gap-2 p-2 bg-muted/30 rounded-lg">
-                      {action.mint_status === 'minted' ? (
-                        <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
-                      ) : action.mint_status === 'approved' ? (
-                        <Clock className="w-4 h-4 text-amber-500 flex-shrink-0" />
-                      ) : (
-                        <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium truncate">{ACTION_LABELS[action.action_type] || action.action_type}</p>
-                        {action.content_preview && (
-                          <p className="text-xs text-muted-foreground truncate">{action.content_preview}</p>
-                        )}
-                      </div>
-                      <div className="text-right flex-shrink-0">
-                        <p className={`text-xs font-bold ${action.mint_status === 'rejected' ? 'text-red-400' : 'text-green-600'}`}>
-                          +{action.mint_amount} FUN
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatDistanceToNow(new Date(action.created_at), { addSuffix: true, locale: vi })}
-                        </p>
-                      </div>
+              {/* History (collapsible) */}
+              {historyRequests.length > 0 && (
+                <div>
+                  <button
+                    className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors w-full"
+                    onClick={() => setShowMintHistory(!showMintHistory)}
+                  >
+                    <History className="w-3.5 h-3.5" />
+                    <span>Lịch sử mint ({historyRequests.length} yêu cầu)</span>
+                    {showMintHistory ? <ChevronUp className="w-3.5 h-3.5 ml-auto" /> : <ChevronDown className="w-3.5 h-3.5 ml-auto" />}
+                  </button>
+                  {showMintHistory && (
+                    <div className="mt-2 space-y-1.5">
+                      {historyRequests.map((req) => (
+                        <MintRequestRow key={req.id} req={req} />
+                      ))}
                     </div>
-                  ))}
+                  )}
                 </div>
               )}
             </div>
