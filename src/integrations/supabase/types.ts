@@ -1837,6 +1837,7 @@ export type Database = {
       pplp_device_registry: {
         Row: {
           device_hash: string
+          fingerprint_version: number
           flag_reason: string | null
           id: string
           is_flagged: boolean | null
@@ -1846,6 +1847,7 @@ export type Database = {
         }
         Insert: {
           device_hash: string
+          fingerprint_version?: number
           flag_reason?: string | null
           id?: string
           is_flagged?: boolean | null
@@ -1855,6 +1857,7 @@ export type Database = {
         }
         Update: {
           device_hash?: string
+          fingerprint_version?: number
           flag_reason?: string | null
           id?: string
           is_flagged?: boolean | null
