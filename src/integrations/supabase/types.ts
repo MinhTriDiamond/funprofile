@@ -3251,6 +3251,8 @@ export type Database = {
           display_name: string | null
           full_name: string | null
           id: string | null
+          public_wallet_address: string | null
+          social_links: Json | null
           username: string | null
         }
         Insert: {
@@ -3261,6 +3263,8 @@ export type Database = {
           display_name?: string | null
           full_name?: string | null
           id?: string | null
+          public_wallet_address?: string | null
+          social_links?: Json | null
           username?: string | null
         }
         Update: {
@@ -3271,6 +3275,8 @@ export type Database = {
           display_name?: string | null
           full_name?: string | null
           id?: string | null
+          public_wallet_address?: string | null
+          social_links?: Json | null
           username?: string | null
         }
         Relationships: []

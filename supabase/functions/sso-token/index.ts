@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { compare } from "npm:bcryptjs@2.4.3";
 import { generateAccessToken, generateRefreshToken } from "../_shared/jwt.ts";
 
 const corsHeaders = {
@@ -96,10 +97,18 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Verify client_secret (if required by client type)
-    if (client.client_secret && client.client_secret !== client_secret) {
+    // Verify client_secret using bcrypt hash comparison
+    if (client.client_secret && client_secret) {
+      const secretValid = await compare(client_secret, client.client_secret);
+      if (!secretValid) {
+        return new Response(
+          JSON.stringify({ error: 'invalid_client', error_description: 'Invalid client credentials' }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    } else if (client.client_secret && !client_secret) {
       return new Response(
-        JSON.stringify({ error: 'invalid_client', error_description: 'Invalid client credentials' }),
+        JSON.stringify({ error: 'invalid_client', error_description: 'client_secret is required' }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
