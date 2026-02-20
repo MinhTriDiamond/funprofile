@@ -145,6 +145,9 @@ const SocialLinksTab = () => {
 
   return (
     <div className="space-y-6">
+      <h2 className="text-xl font-bold uppercase tracking-wide">
+        Danh sách những user đã liên kết với các platform
+      </h2>
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
@@ -221,11 +224,6 @@ const SocialLinksTab = () => {
 
       {/* Table */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg font-bold uppercase tracking-wide">
-            Danh sách những user đã liên kết với các platform
-          </CardTitle>
-        </CardHeader>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
