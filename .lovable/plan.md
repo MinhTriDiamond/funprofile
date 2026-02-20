@@ -1,252 +1,315 @@
 
-## AUDIT TOÀN BỘ CODEBASE FUN PROFILE — KẾT QUẢ & KẾ HOẠCH
+## Thiết Kế GOV-COMMUNITY Multisig: WILL + WISDOM + LOVE
 
 ---
 
-### TOP 10 VẤN ĐỀ ẢNH HƯỞNG PERFORMANCE/STABILITY
+### Hiểu kiến trúc hiện tại
 
-**Vấn đề 1 — CRITICAL: NotificationDropdown memory leak (không cleanup realtime channel)**
-File: `src/components/layout/NotificationDropdown.tsx` dòng 86-127
+Hiện tại, `lockWithPPLP(user, action, amount, evidenceHash, sigs[])` nhận một mảng chữ ký `bytes[]`. Smart contract (v1.2.1) đã được thiết kế để nhận **nhiều chữ ký từ nhiều Attester** — đây chính là nền tảng hoàn hảo cho Multisig.
 
-`setupRealtime()` trả về cleanup function bên trong, nhưng `useEffect` gọi `setupRealtime()` mà KHÔNG `await` và KHÔNG sử dụng cleanup trả về. Kết quả: Channel realtime không bao giờ bị remove khi component unmount → memory leak + multiple subscriptions khi component re-mount.
+Luồng hiện tại chỉ dùng **1 chữ ký** từ 1 trong 2 Attester cũ (`0xe32d...` hoặc `0xD41C...`). Kế hoạch này nâng cấp lên **3 chữ ký** từ 3 nhóm GOV-COMMUNITY.
 
-```ts
-// HIỆN TẠI: BUG - cleanup của setupRealtime() bị bỏ qua
-useEffect(() => {
-  fetchNotifications();
-  const setupRealtime = async () => {
-    const channel = supabase.channel(...)...subscribe();
-    return () => { supabase.removeChannel(channel); }; // ← BỊ BỎ QUA
-  };
-  setupRealtime(); // ← Không await, không nhận cleanup
-}, [fetchNotifications]);
+---
 
-// fetchNotifications trong dependency array gây re-create mỗi render (xem vấn đề 2)
+### Cơ chế WILL + WISDOM + LOVE
+
+Quy tắc: Mỗi lần mint FUN cần đủ **3 chữ ký độc lập**, mỗi chữ ký từ 1 trong 3 người thuộc nhóm tương ứng:
+
+```
+WILL  = Minh Trí  | Ánh Nguyệt | Thu Trang
+WISDOM= Bé Giàu   | Bé Ngọc    | Ái Vân
+LOVE  = Thanh Tiên| Bé Kim     | Bé Hà
+
+Thỏa điều kiện: ký_WILL + ký_WISDOM + ký_LOVE = sigs[3]
+→ gọi lockWithPPLP(..., [sig_will, sig_wisdom, sig_love])
 ```
 
 ---
 
-**Vấn đề 2 — HIGH: `fetchNotifications` trong NotificationDropdown phụ thuộc `unreadCount` state → infinite re-subscribe**
-File: `src/components/layout/NotificationDropdown.tsx` dòng 44-84
+### Các thay đổi cần thực hiện
 
-`fetchNotifications` được wrap bằng `useCallback` với `[unreadCount]` trong deps. Mỗi khi unreadCount thay đổi → fetchNotifications thay đổi → useEffect chạy lại → subscribe channel mới. Cycle này tạo nhiều subscription đồng thời.
+#### 1. Database — Thêm cột lưu multi-signatures
 
----
+Bảng `pplp_mint_requests` hiện chỉ có 1 cột `signature` (text) và 1 `signed_by`. Cần thêm cột JSONB để lưu đầy đủ:
 
-**Vấn đề 3 — HIGH: `LightScoreDashboard` mount 4 hooks nặng đồng thời, không memo**
-File: `src/components/wallet/LightScoreDashboard.tsx` dòng 111-119
-
-Mỗi lần render `LightScoreDashboard`, 4 hooks được mount: `useLightScore` (invoke edge function), `usePendingActions` (Supabase query + realtime), `useFunBalance` (2x on-chain read via wagmi), `useMintHistory` (Supabase query + realtime). Không có `React.memo` → parent re-render gây toàn bộ 4 hooks re-evaluate. Trên mobile BSC Testnet, latency cao, mỗi re-render = nhiều network call.
-
----
-
-**Vấn đề 4 — HIGH: `useTokenBalances` khởi tạo 5 contract reads & 1 price API call mà không cần address**
-File: `src/hooks/useTokenBalances.ts` dòng 174-180
-
-`fetchPrices` luôn chạy ngay cả khi không có ví kết nối, đồng thời `useCamlyPrice` (`src/hooks/useCamlyPrice.ts`) cũng fetch cùng endpoint `token-prices`. `WalletCenterContainer` import cả hai hooks → double fetch tới cùng 1 edge function trong cùng 1 page render. Mặc dù có localStorage cache, nhưng trong khoảng TTL đầu (< 60s) cả 2 hooks đều fire.
-
----
-
-**Vấn đề 5 — HIGH: `FacebookNavbar` fetch profile + admin check on EVERY auth state change, không cache**
-File: `src/components/layout/FacebookNavbar.tsx` dòng 60-113
-
-`useEffect` subscribe `onAuthStateChange`. Mỗi khi event trigger → 2 sequential Supabase queries (profile fetch + has_role RPC). Vì Navbar mount liên tục và auth events có thể fire nhiều lần (INITIAL_SESSION, TOKEN_REFRESHED, USER_UPDATED), điều này gây nhiều unnecessary DB calls.
-
----
-
-**Vấn đề 6 — MEDIUM: `usePendingActions` và `useMintHistory` đều gọi `fetchHistory` trong `useEffect` với `fetchHistory` trong deps — risk of re-subscribe loop**
-File: `src/hooks/usePendingActions.ts` dòng 75-156 và `src/hooks/useMintHistory.ts` dòng 54-124
-
-Cả 2 hooks có pattern `useEffect(..., [fetchXxx])`. Nếu `fetchXxx` được recreate (do dependency thay đổi), `useEffect` chạy lại → channel được cleanup + recreate. Hiện tại `useCallback([])` đủ ổn định, nhưng khi `fetchPendingActions` được gọi trong `claim()` (dòng 202), nó trigger re-render → có thể ảnh hưởng subscription lifecycle.
-
----
-
-**Vấn đề 7 — MEDIUM: `UnifiedGiftSendDialog` (1281 dòng) quá lớn, import nặng top-level**
-File: `src/components/donations/UnifiedGiftSendDialog.tsx`
-
-File này 1281 dòng, import `EmojiPicker` và nhiều components nặng ở top-level. Bất kỳ trang nào dùng dialog này (Feed, Profile, Chat, Navbar) đều load toàn bộ bundle này ngay cả khi dialog chưa mở. `EmojiPicker` nên được dynamic import.
-
----
-
-**Vấn đề 8 — MEDIUM: `useConversations` subscribe channel 'conversations-changes' không có filter theo userId**
-File: `src/hooks/useConversations.ts` dòng 104-136
-
-Channel `conversations-changes` subscribe ALL changes trên bảng `conversations` và `conversation_participants` mà không có filter. Nếu hệ thống có nhiều conversations (1000+), mỗi INSERT/UPDATE đều push tới tất cả connected clients → gây `invalidateQueries` không cần thiết, re-fetch tất cả conversations của user dù conversation đó không liên quan.
-
----
-
-**Vấn đề 9 — MEDIUM: `useLightScore` không sử dụng React Query — không có cache, retry, hoặc deduplication**
-File: `src/hooks/useLightScore.ts`
-
-Hook dùng manual `useState` + `useEffect` thay vì `useQuery`. Nếu 2 components mount `useLightScore` đồng thời → 2 requests tới `pplp-get-score` edge function (cold start risk). Không có stale-while-revalidate, không có error retry tự động.
-
----
-
-**Vấn đề 10 — MEDIUM: `useTokenBalances` và `useFunBalance` dùng `refetchInterval: 30000` kể cả khi app ở background**
-File: `src/hooks/useTokenBalances.ts` (dòng 174-180), `src/hooks/useFunBalance.ts` (dòng 36-39, 54-58)
-
-`useFunBalance` set `refetchInterval: 30000` trực tiếp trong wagmi `useReadContract`. `useTokenBalances` poll price mỗi 5 phút. Nếu user để tab background, các interval này vẫn chạy, tốn battery/bandwidth trên mobile, và có thể trigger wagmi store reset crash (vấn đề đã gặp: `hasValue` error).
-
----
-
-### KẾ HOẠCH FIX THEO 3 MỨC
-
----
-
-#### QUICK WINS (1–2 giờ) — Có thể sửa ngay, không cần refactor lớn
-
-**QW-1: Fix memory leak NotificationDropdown**
-- Chuyển subscription channel sang `useRef`, đảm bảo cleanup trong return của `useEffect`
-- Tách `unreadCount` ra khỏi `fetchNotifications` deps (dùng functional updater thay vì đọc state)
-- File: `src/components/layout/NotificationDropdown.tsx`
-
-**QW-2: Stop `useFunBalance` polling khi app ở background**
-- Thêm `refetchIntervalInBackground: false` vào `useReadContract` options
-- File: `src/hooks/useFunBalance.ts`
-
-**QW-3: Deduplicate price fetch — useCamlyPrice + useTokenBalances**
-- `useCamlyPrice` hiện tại đọc từ `localStorage` cache trước → đã ổn phần logic
-- Vấn đề: cả 2 hooks vẫn invoke edge function trong window 60s đầu nếu cache empty
-- Fix: Thêm global semaphore `window.__pricesFetching` để chỉ 1 call đồng thời
-
-**QW-4: Pause realtime intervals khi tab ẩn**
-- Trong `useMintHistory` và `usePendingActions`, khi `visibilitychange` → hidden, skip realtime callback; khi visible lại → refetch 1 lần
-- File: `src/hooks/useMintHistory.ts`, `src/hooks/usePendingActions.ts`
-
-**QW-5: Fix NotificationDropdown channel không cleanup**
-- Dùng `useRef<ReturnType<typeof supabase.channel>>` để track channel, cleanup đúng cách
-
----
-
-#### MEDIUM (0.5–1 ngày) — Cải thiện đáng kể performance & stability
-
-**MED-1: Migrate `useLightScore` sang React Query**
-- Dùng `useQuery({ queryKey: ['light-score'], queryFn: ..., staleTime: 60_000 })`
-- Tự động deduplication: 2 components dùng cùng query key → chỉ 1 network call
-- Tự động retry, stale-while-revalidate, background refetch
-- File: `src/hooks/useLightScore.ts`
-
-**MED-2: Thêm `visibilitychange` pause cho `useTokenBalances`**
-- Dừng `fetchPrices` interval khi tab ẩn, resume khi tab active
-- Đồng thời thêm `enabled: !!address` cho các `useReadContract` contract reads nếu chưa có địa chỉ
-- File: `src/hooks/useTokenBalances.ts`
-
-**MED-3: Fix `useConversations` channel filter**
-- Thay vì subscribe toàn bộ `conversations` table, dùng filter theo `created_by=eq.${userId}` hoặc kết hợp với `conversation_participants`
-- Hoặc chuyển sang `useEffect` đơn giản hơn: sau mỗi conversation update, chỉ invalidate nếu user là participant
-- File: `src/hooks/useConversations.ts`
-
-**MED-4: Dynamic import EmojiPicker trong UnifiedGiftSendDialog**
-- `const EmojiPicker = lazy(() => import('@/components/feed/EmojiPicker'))`
-- Bọc `<Suspense>` với fallback loading nhỏ
-- File: `src/components/donations/UnifiedGiftSendDialog.tsx`
-
-**MED-5: Cache profile và admin check trong Navbar bằng React Query**
-- `useQuery({ queryKey: ['navbar-profile', userId], queryFn: ..., staleTime: 5 * 60_000 })`
-- Không re-fetch mỗi auth state change nếu data còn fresh
-- File: `src/components/layout/FacebookNavbar.tsx`
-
-**MED-6: Wrap `LightScoreDashboard` với `React.memo`**
-- Ngăn re-render khi parent (`FunMoneyTab`) không thay đổi props thực sự
-- Xem xét dùng `useCallback` cho `onActivate`, `onClaim` trong `FunMoneyTab`
-- File: `src/components/wallet/LightScoreDashboard.tsx`, `src/components/wallet/tabs/FunMoneyTab.tsx`
-
----
-
-#### STRUCTURAL REFACTOR (2–5 ngày) — Nâng tầng kiến trúc
-
-**SR-1: Tạo `useCurrentUser` hook singleton**
-
-Hiện tại, 67+ file gọi `supabase.auth.getSession()` hoặc `supabase.auth.getUser()` riêng lẻ trong `useEffect`. Cần một hook trung tâm:
-
-```ts
-// src/hooks/useCurrentUser.ts
-export const useCurrentUser = () => useQuery({
-  queryKey: ['current-user'],
-  queryFn: () => supabase.auth.getSession().then(r => r.data.session?.user ?? null),
-  staleTime: Infinity, // Auth state managed by Supabase SDK
-});
+```sql
+ALTER TABLE pplp_mint_requests
+  ADD COLUMN multisig_signatures JSONB DEFAULT '{}',
+  ADD COLUMN multisig_required_groups TEXT[] DEFAULT ARRAY['will','wisdom','love'],
+  ADD COLUMN multisig_completed_groups TEXT[] DEFAULT '{}';
 ```
 
-Kết hợp với `supabase.auth.onAuthStateChange` để invalidate khi auth thay đổi. Tất cả components dùng chung 1 cache entry.
-
-**SR-2: Tách `UnifiedGiftSendDialog.tsx` (1281 dòng) thành modules**
-
-Đề xuất cấu trúc:
-```
-src/components/donations/gift-dialog/
-  index.tsx              ← Entry point (lazy loadable)
-  StepForm.tsx           ← Bước 1: nhập thông tin
-  StepConfirm.tsx        ← Bước 2: xác nhận
-  RecipientSearch.tsx    ← Tìm kiếm recipient
-  MultiSendProgress.tsx  ← Tiến trình gửi nhiều người
-  useDonationFlow.ts     ← Logic hook tập trung
-```
-
-**SR-3: Tạo notification service tập trung**
-
-```ts
-// src/services/notificationService.ts
-// Singleton channel: tất cả hooks/components subscribe qua 1 channel
-// Expose: subscribe(eventType, callback), unsubscribe, markRead, markAllRead
-```
-
-Tránh nhiều components tạo channel `notifications-${userId}` riêng lẻ.
-
-**SR-4: Chuẩn hóa realtime pattern với `useRealtimeTable` utility**
-
-```ts
-// src/hooks/useRealtimeTable.ts
-export function useRealtimeTable<T>({ table, filter, onInsert, onUpdate, enabled }) {
-  // Central channel management, cleanup, isMounted guard
+Cấu trúc `multisig_signatures`:
+```json
+{
+  "will": {
+    "signer": "0xe32d50a0badE4cbD5B0d6120d3A5FD07f63694f1",
+    "signature": "0x...",
+    "signed_at": "2026-02-20T10:00:00Z",
+    "signer_name": "Minh Trí"
+  },
+  "wisdom": {
+    "signer": "0xCa31...",
+    "signature": "0x...",
+    "signed_at": "2026-02-20T10:05:00Z",
+    "signer_name": "Bé Giàu"
+  },
+  "love": {
+    "signer": "0x0e1b...",
+    "signature": "0x...",
+    "signed_at": "2026-02-20T10:10:00Z",
+    "signer_name": "Thanh Tiên"
+  }
 }
 ```
 
-Dùng lại ở `useMintHistory`, `usePendingActions`, `useConversations`, `NotificationDropdown`.
-
-**SR-5: Web3 context stability — disable polling khi không active**
-
-Thêm `PageVisibilityProvider` theo dõi `document.visibilityState`, inject vào wagmi config:
-```ts
-// Wagmi queryClient config
-refetchIntervalInBackground: false, // global
+Status flow mới:
 ```
-
-Và tắt `useTokenBalances` price polling khi user không ở wallet tab.
+pending_sig → signing (đang thu thập chữ ký) → signed (đủ 3) → submitted → confirmed
+```
 
 ---
 
-### CHECKLIST TEST SAU KHI FIX
+#### 2. Config — `src/config/pplp.ts`
 
-- [ ] Mở DevTools → Network → Xác nhận `token-prices` chỉ được gọi 1 lần khi load `/wallet`
-- [ ] Mở Console → Không có lỗi `Cannot read properties of undefined (reading 'hasValue')` sau HMR
-- [ ] Mở Performance tab → Record 30s → Feed scroll không có excessive re-renders (mỗi PostCard không re-render khi post khác thay đổi)
-- [ ] Notification: Thêm notification mới từ admin → Dropdown tự update trong ≤2s mà không bị memory leak
-- [ ] Wallet → Fun Money: Giữ tab mở 5 phút → DevTools Memory → Không có heap growth liên tục
-- [ ] Background tab 2 phút → Quay lại → Balance refresh 1 lần, không có cascade requests
-- [ ] Mobile Safari: Mở/đóng `UnifiedGiftSendDialog` 3 lần → Không có overlay đen kẹt
-- [ ] Gửi token → Tab bị đóng trước khi DB log → Reload app → `usePendingDonationRecovery` tự recover
-- [ ] Admin ký mint request → User tab tự cập nhật status ≤3s qua realtime WebSocket
-- [ ] `useMintHistory` + `usePendingActions` unmount (navigate sang tab khác) → DevTools Application → Supabase channels = 0 sau cleanup
+Thay toàn bộ `ATTESTER_ADDRESSES` cũ bằng cấu hình 3 nhóm mới:
+
+```typescript
+export const GOV_GROUPS = {
+  will: {
+    name: 'Will',
+    nameVi: 'Ý Chí',
+    emoji: '💪',
+    description: 'Kỹ thuật & Ý chí',
+    color: 'blue',
+    members: [
+      { name: 'Minh Trí',   address: '0xe32d50a0badE4cbD5B0d6120d3A5FD07f63694f1' },
+      { name: 'Ánh Nguyệt', address: '0xfd0Da7a744245e7aCECCd786d5a743Ef9291a557' },
+      { name: 'Thu Trang',  address: '0x02D5578173bd0DB25462BB32A254Cd4b2E6D9a0D' },
+    ],
+  },
+  wisdom: {
+    name: 'Wisdom',
+    nameVi: 'Trí Tuệ',
+    emoji: '🌟',
+    description: 'Tầm nhìn chiến lược',
+    color: 'yellow',
+    members: [
+      { name: 'Bé Giàu', address: '0xCa319fBc39F519822385F2D0a0114B14fa89A301' },
+      { name: 'Bé Ngọc', address: '0x699CC96A8C4E3555f95Bd620EC4A218155641E09' },
+      { name: 'Ái Vân',  address: '0x5102Ecc4a458a1af76aFA50d23359a712658a402' },
+    ],
+  },
+  love: {
+    name: 'Love',
+    nameVi: 'Yêu Thương',
+    emoji: '❤️',
+    description: 'Nhân ái & Chữa lành',
+    color: 'rose',
+    members: [
+      { name: 'Thanh Tiên', address: '0x0e1b399E4a88eB11dd0f77cc21E9B54835f6d385' },
+      { name: 'Bé Kim',     address: '0x38db3eC4e14946aE497992e6856216641D22c242' },
+      { name: 'Bé Hà',      address: '0x9ec8C51175526BEbB1D04100256De71CF99B7CCC' },
+    ],
+  },
+} as const;
+
+export type GovGroupKey = keyof typeof GOV_GROUPS;
+
+// Tất cả 9 địa chỉ đều là Attester (cần đăng ký trên contract)
+export const ALL_GOV_ADDRESSES = Object.values(GOV_GROUPS).flatMap(g => g.members.map(m => m.address));
+
+// Tìm nhóm của một địa chỉ
+export function getGovGroupForAddress(addr: string): GovGroupKey | null {
+  for (const [key, group] of Object.entries(GOV_GROUPS)) {
+    if (group.members.some(m => m.address.toLowerCase() === addr.toLowerCase())) {
+      return key as GovGroupKey;
+    }
+  }
+  return null;
+}
+
+// Tìm tên thành viên
+export function getGovMemberName(addr: string): string | null {
+  for (const group of Object.values(GOV_GROUPS)) {
+    const member = group.members.find(m => m.address.toLowerCase() === addr.toLowerCase());
+    if (member) return member.name;
+  }
+  return null;
+}
+```
 
 ---
 
-### THỨ TỰ ƯU TIÊN THỰC HIỆN
+#### 3. Hook — `src/hooks/usePplpAdmin.ts`
 
-```text
-Tuần 1:
-  [Ngày 1] QW-1 (NotifDropdown leak) + QW-2 (FunBalance no bg poll) + QW-4 (visibility pause)
-  [Ngày 2] QW-5 (NotifDropdown channel fix) + MED-5 (Navbar profile cache)
-  [Ngày 3] MED-1 (useLightScore → React Query) + MED-4 (lazy EmojiPicker)
+**Thay đổi `signMintRequest`:**
 
-Tuần 2:
-  [Ngày 4] MED-2 (tokenBalances pause) + MED-3 (conversations filter)
-  [Ngày 5] MED-6 (LightScoreDashboard memo) + QW-3 (price semaphore)
-  [Ngày 6-7] SR-1 (useCurrentUser hook)
+Hàm ký hiện tại chỉ lưu 1 chữ ký. Cần nâng cấp để:
+- Xác định nhóm GOV của ví đang kết nối
+- Kiểm tra nhóm đó chưa ký cho request này
+- Lưu chữ ký vào `multisig_signatures[group_key]`
+- Tự động cập nhật `multisig_completed_groups`
+- Khi đủ 3 nhóm → tự động chuyển status sang `signed`
 
-Tuần 3-4 (nếu cần):
-  SR-2 (tách UnifiedGiftSendDialog)
-  SR-3 (notification service)
-  SR-4 (useRealtimeTable utility)
-  SR-5 (Web3 visibility)
+```typescript
+const signMintRequest = useCallback(async (request: MintRequest): Promise<string | null> => {
+  // 1. Xác định nhóm của ví đang kết nối
+  const groupKey = getGovGroupForAddress(address ?? '');
+  if (!groupKey) {
+    toast.error('Ví của bạn không thuộc nhóm GOV-COMMUNITY nào');
+    return null;
+  }
+
+  // 2. Kiểm tra nhóm này đã ký chưa
+  const currentSigs = request.multisig_signatures ?? {};
+  if (currentSigs[groupKey]) {
+    toast.warning(`Nhóm ${GOV_GROUPS[groupKey].nameVi} đã ký request này rồi`);
+    return null;
+  }
+
+  // 3. Ký EIP-712 (giống hiện tại)
+  const signature = await signTypedDataAsync({ ... });
+
+  // 4. Cập nhật multisig_signatures
+  const newSigs = {
+    ...currentSigs,
+    [groupKey]: {
+      signer: address,
+      signature,
+      signed_at: new Date().toISOString(),
+      signer_name: getGovMemberName(address ?? ''),
+    },
+  };
+
+  const completedGroups = Object.keys(newSigs);
+  const isFullySigned = completedGroups.length === 3;
+
+  await supabase.from('pplp_mint_requests').update({
+    multisig_signatures: newSigs,
+    multisig_completed_groups: completedGroups,
+    // Backward compat: lưu chữ ký cuối cùng vào cột signature cũ
+    signature: isFullySigned ? signature : request.signature,
+    signed_by: address,
+    signed_at: new Date().toISOString(),
+    status: isFullySigned ? 'signed' : 'signing', // trạng thái mới 'signing'
+  }).eq('id', request.id);
+
+  if (isFullySigned) {
+    toast.success('✅ Đủ 3 chữ ký GOV! Request sẵn sàng Submit lên blockchain');
+  } else {
+    toast.success(`Nhóm ${GOV_GROUPS[groupKey].name} đã ký! Cần thêm ${3 - completedGroups.length} nhóm nữa`);
+  }
+  return signature;
+}, [...]);
 ```
+
+**Thay đổi `submitToChain`:**
+
+Truyền đủ 3 chữ ký vào `sigs[]`:
+```typescript
+// Lấy 3 chữ ký từ multisig_signatures theo thứ tự will → wisdom → love
+const orderedSigs = ['will', 'wisdom', 'love']
+  .map(group => request.multisig_signatures?.[group]?.signature)
+  .filter(Boolean) as `0x${string}`[];
+
+const txHash = await writeContractAsync({
+  functionName: 'lockWithPPLP',
+  args: [
+    request.recipient_address as `0x${string}`,
+    request.action_name,
+    BigInt(request.amount_wei),
+    request.evidence_hash as `0x${string}`,
+    orderedSigs, // [sig_will, sig_wisdom, sig_love]
+  ],
+});
+```
+
+---
+
+#### 4. UI — `src/components/admin/PplpMintTab.tsx`
+
+**Thêm tab mới `signing` (Đang ký):**
+
+```
+[Chờ ký (N)] [Đang ký (M)] [Đã ký (K)] [Đã gửi] [Hoàn tất] [Từ chối] [Thất bại]
+```
+
+**Component `MultisigProgressPanel`** — hiển thị trong mỗi request card:
+
+```
+💪 WILL      ✅ Minh Trí ký — 20/02/2026 10:00
+🌟 WISDOM    ⏳ Chờ ký từ Bé Giàu / Bé Ngọc / Ái Vân
+❤️ LOVE      ⏳ Chờ ký từ Thanh Tiên / Bé Kim / Bé Hà
+
+[███████░░░░] 1/3 nhóm đã ký
+```
+
+**Logic nút Ký trong `MintRequestRow`:**
+
+- Nếu ví kết nối thuộc 1 trong 9 địa chỉ GOV → hiện nút "Ký với tư cách [Tên]"
+- Nếu nhóm của ví đã ký → nút disabled với text "Nhóm WILL đã ký ✓"
+- Nếu ví không thuộc GOV nào → ẩn nút ký
+
+**Banner thông minh hiển thị danh tính người ký:**
+
+```
+🔗 Ví đang kết nối: Minh Trí (Nhóm WILL)
+```
+
+---
+
+#### 5. Database Migration
+
+```sql
+-- Thêm cột multisig
+ALTER TABLE pplp_mint_requests
+  ADD COLUMN IF NOT EXISTS multisig_signatures JSONB DEFAULT '{}',
+  ADD COLUMN IF NOT EXISTS multisig_required_groups TEXT[] DEFAULT ARRAY['will','wisdom','love'],
+  ADD COLUMN IF NOT EXISTS multisig_completed_groups TEXT[] DEFAULT '{}';
+
+-- Thêm status 'signing' vào constraint (nếu có)
+-- Cập nhật các request pending_sig cũ: giữ nguyên workflow cũ
+-- (backward compatible: signature cũ vẫn hoạt động)
+```
+
+---
+
+### Tổng hợp file thay đổi
+
+| File | Thay đổi |
+|---|---|
+| Migration SQL | Thêm 3 cột multisig vào `pplp_mint_requests` |
+| `src/config/pplp.ts` | Thêm `GOV_GROUPS`, helper functions, 9 địa chỉ mới |
+| `src/hooks/usePplpAdmin.ts` | Nâng cấp `signMintRequest`, `submitToChain`, interface `MintRequest` |
+| `src/components/admin/PplpMintTab.tsx` | Thêm tab `signing`, `MultisigProgressPanel`, logic nút ký thông minh |
+
+---
+
+### Luồng hoàn chỉnh sau khi cài xong
+
+```
+[Tạo request]
+      ↓
+status: pending_sig
+      ↓ (Minh Trí kết nối ví → bấm Ký)
+multisig_signatures.will = {...}
+status: signing  ← Nhóm WILL đã ký (1/3)
+      ↓ (Bé Giàu kết nối ví → bấm Ký)
+multisig_signatures.wisdom = {...}
+status: signing  ← 2/3 nhóm đã ký
+      ↓ (Bé Kim kết nối ví → bấm Ký)
+multisig_signatures.love = {...}
+status: signed   ← ĐỦ 3 NHÓM! 🎉
+      ↓ (Attester Submit)
+lockWithPPLP(..., [sig_will, sig_wisdom, sig_love])
+status: submitted → confirmed
+```
+
+---
+
+### Lưu ý quan trọng về Smart Contract
+
+Để Multisig hoạt động **on-chain**, cả 9 địa chỉ GOV phải được đăng ký trên contract qua `govRegisterAttester(address)`. Contract sẽ verify từng chữ ký trong mảng `sigs[]` và kiểm tra mỗi signer có phải là Attester hợp lệ không. Nếu chưa đăng ký → transaction sẽ revert với lỗi "Attester not registered".
+
+Việc đăng ký on-chain là bước thực hiện **song song ngoài codebase này** (cần transaction từ contract owner/gov).
