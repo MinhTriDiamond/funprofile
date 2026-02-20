@@ -1,37 +1,25 @@
 
+# Gỡ ban tài khoản angelanhnguyet (Angel AI Treasury)
 
-## Sửa lỗi orbit icon không hiển thị khi xem profile người khác + Kim cương sát viền avatar
+## Lý do
+Tài khoản `angelanhnguyet` là ví Angel AI Treasury chính thức, không phải tài khoản farm coin. Đã bị ban nhầm khi xử lý cụm gian lận Thanh Hóa ngày 12/01/2026.
 
-### Vấn đề 1: Orbit icon biến mất khi chuyển giữa các profile
-Khi điều hướng từ profile A (có social_links) sang profile B (không có), React tái sử dụng cùng component `AvatarOrbit` mà không reset state nội bộ (`localLinks`). Điều này khiến dữ liệu cũ bị "dính" lại, và logic fallback về `defaultLinks` không hoạt động đúng.
+## Các bước thực hiện
 
-**Giải pháp**: Thêm `key={profile?.id}` vào component `AvatarOrbit` trong `Profile.tsx` để React tự động tạo mới component mỗi khi chuyển sang profile khác. Đồng thời cải thiện logic fallback trong `AvatarOrbit.tsx`.
+### Bước 1: Gỡ ban tài khoản
+Cập nhật bảng `profiles` cho user `ac174b69-1a24-4a9a-bf74-e448b9a754cf`:
+- `is_banned` -> `false`
+- `reward_status` -> `pending` (trạng thái bình thường)
 
-### Vấn đề 2: Kim cương chưa sát viền avatar
-Hiện tại kim cương đặt tại `top: 82px` trong wrapper 486px. Cần điều chỉnh để mũi nhọn phía dưới chạm sát viền tròn của avatar.
+### Bước 2: Xóa ví khỏi danh sách đen
+Xóa bản ghi ví `0x416336c3b7acae89a47ead2707412f20da159ac8` khỏi bảng `blacklisted_wallets`.
 
-**Giải pháp**: Tính toán lại vị trí: Avatar tâm tại 243px (center wrapper), avatar radius ~88px (176/2), nên đỉnh avatar ở ~155px. Kim cương 100px, nên `top = 155 - 100 = 55px` để mũi nhọn chạm sát.
+### Bước 3: Ghi audit log
+Tạo bản ghi trong `audit_logs` ghi nhận hành động gỡ ban với lý do "Angel AI Treasury - ban nhầm, xác nhận bởi admin".
 
-### Chi tiết kỹ thuật
+---
 
-**File 1: `src/pages/Profile.tsx`**
-- Thêm `key={profile?.id}` vào `<AvatarOrbit>` để force remount khi đổi profile:
-```tsx
-<AvatarOrbit
-  key={profile?.id}
-  socialLinks={...}
-  ...
->
-```
-
-**File 2: `src/components/profile/AvatarOrbit.tsx`**
-1. Cải thiện logic fallback `displayLinks`:
-   - Kiểm tra cả trường hợp user có `social_links` nhưng tất cả đều rỗng (không có URL nào)
-   - Đảm bảo luôn hiển thị đủ 9 icon cho mọi user: nếu user đã có một số link, bổ sung thêm các platform còn thiếu với icon mặc định
-
-2. Điều chỉnh vị trí kim cương từ `top: 82px` sang `top: 55px` để mũi nhọn chạm sát viền tròn avatar.
-
-### Kết quả mong đợi
-- Mọi profile đều hiển thị đủ 9 icon orbit xoay quanh avatar
-- Chuyển giữa các profile luôn hiển thị đúng
-- Kim cương nằm sát viền tròn avatar như hình mẫu
+**Chi tiết kỹ thuật:**
+- Sử dụng SQL UPDATE trực tiếp trên bảng `profiles`
+- DELETE bản ghi trong `blacklisted_wallets` (ID: `bdbca9c5-e5bc-4a5e-a2d9-e587541fc5ed`)
+- INSERT audit log để lưu lịch sử thao tác
