@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { InlineSearch } from './InlineSearch';
 import { NotificationDropdown } from './NotificationDropdown';
@@ -50,67 +51,60 @@ export const FacebookNavbar = () => {
   const location = useLocation();
   const { t, language, setLanguage } = useLanguage();
   const isMobileOrTablet = useIsMobileOrTablet();
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isAngelChatOpen, setIsAngelChatOpen] = useState(false);
-  const [profile, setProfile] = useState<{ avatar_url: string | null; username: string; display_name: string | null } | null>(null);
+
+  // MED-5: Track userId via state updated only on auth change (not every render)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
+  // Sync auth state (lightweight — only sets userId, no extra DB calls)
   useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        setIsLoggedIn(true);
-        setCurrentUserId(session.user.id);
-        // Fetch profile
-        const { data } = await supabase
-          .from('profiles')
-          .select('avatar_url, username, display_name')
-          .eq('id', session.user.id)
-          .single();
-        if (data) setProfile(data);
-        
-        // Check admin role
-        const { data: hasAdminRole } = await supabase.rpc('has_role', {
-          _user_id: session.user.id,
-          _role: 'admin'
-        });
-        setIsAdmin(!!hasAdminRole);
-      }
-    };
-
-    checkAuth();
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setIsLoggedIn(!!session);
+      setCurrentUserId(session?.user?.id ?? null);
+    });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setIsLoggedIn(!!session);
-      if (session) {
-        setCurrentUserId(session.user.id);
-        // Defer async calls to avoid deadlock with auth cycle
-        setTimeout(async () => {
-          const { data } = await supabase
-            .from('profiles')
-            .select('avatar_url, username, display_name')
-            .eq('id', session.user.id)
-            .single();
-          if (data) setProfile(data);
-          
-          // Check admin role
-          const { data: hasAdminRole } = await supabase.rpc('has_role', {
-            _user_id: session.user.id,
-            _role: 'admin'
-          });
-          setIsAdmin(!!hasAdminRole);
-        }, 0);
-      } else if (event === 'SIGNED_OUT') {
-        setProfile(null);
-        setCurrentUserId(null);
-        setIsAdmin(false);
-      }
+      setCurrentUserId(session?.user?.id ?? null);
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // MED-5: Profile cached via React Query — only re-fetches when userId changes or data is stale (5 min)
+  const { data: profile } = useQuery({
+    queryKey: ['navbar-profile', currentUserId],
+    queryFn: async () => {
+      if (!currentUserId) return null;
+      const { data } = await supabase
+        .from('profiles')
+        .select('avatar_url, username, display_name')
+        .eq('id', currentUserId)
+        .single();
+      return data ?? null;
+    },
+    enabled: !!currentUserId,
+    staleTime: 5 * 60_000, // 5 minutes
+    gcTime: 10 * 60_000,
+  });
+
+  // MED-5: Admin check also cached — admin role rarely changes
+  const { data: isAdmin } = useQuery({
+    queryKey: ['navbar-admin', currentUserId],
+    queryFn: async () => {
+      if (!currentUserId) return false;
+      const { data } = await supabase.rpc('has_role', {
+        _user_id: currentUserId,
+        _role: 'admin'
+      });
+      return !!data;
+    },
+    enabled: !!currentUserId,
+    staleTime: 10 * 60_000, // 10 minutes — admin role rarely changes
+    gcTime: 15 * 60_000,
+  });
 
   const isActive = (path: string) => location.pathname === path;
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLightScore } from '@/hooks/useLightScore';
 import { usePendingActions } from '@/hooks/usePendingActions';
@@ -577,3 +577,7 @@ export const LightScoreDashboard = ({ walletAddress, onActivate, onClaim }: Ligh
     </div>
   );
 };
+
+// MED-6: Wrap with React.memo to prevent re-renders when parent state changes
+// but LightScoreDashboard props don't change (walletAddress, onActivate, onClaim are stable)
+export const MemoizedLightScoreDashboard = memo(LightScoreDashboard);

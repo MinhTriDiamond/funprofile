@@ -36,6 +36,7 @@ export const useFunBalance = (customAddress?: `0x${string}`): FunBalances => {
     query: {
       enabled: !!address,
       refetchInterval: 30000,
+      refetchIntervalInBackground: false,
     },
   });
 
@@ -55,6 +56,7 @@ export const useFunBalance = (customAddress?: `0x${string}`): FunBalances => {
     query: {
       enabled: !!address,
       refetchInterval: 30000,
+      refetchIntervalInBackground: false,
     },
   });
 

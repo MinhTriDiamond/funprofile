@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -40,7 +40,12 @@ export const NotificationDropdown = ({ centerNavStyle = false, isActiveRoute = f
   const [isExpanded, setIsExpanded] = useState(false);
   const navigate = useNavigate();
   const isMobileOrTablet = useIsMobileOrTablet();
+  // QW-1+QW-5: Track channel via ref for proper cleanup
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  // Keep a ref to unreadCount so fetchNotifications doesn't need it as a dep
+  const unreadCountRef = useRef(0);
 
+  // QW-1 fix: removed `unreadCount` from deps — use functional updater instead
   const fetchNotifications = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -74,21 +79,32 @@ export const NotificationDropdown = ({ centerNavStyle = false, isActiveRoute = f
       setNotifications(data as unknown as NotificationWithDetails[]);
       const newUnreadCount = data.filter(n => !n.read).length;
       
-      if (newUnreadCount > unreadCount) {
+      // Use ref to compare without adding unreadCount as dep
+      if (newUnreadCount > unreadCountRef.current) {
         setHasNewNotification(true);
         setTimeout(() => setHasNewNotification(false), 3000);
       }
       
+      unreadCountRef.current = newUnreadCount;
       setUnreadCount(newUnreadCount);
     }
-  }, [unreadCount]);
+  }, []); // stable — no state deps
 
   useEffect(() => {
-    fetchNotifications();
+    let isMounted = true;
 
-    const setupRealtime = async () => {
+    const setup = async () => {
+      await fetchNotifications();
+      if (!isMounted) return;
+
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user || !isMounted) return;
+
+      // QW-5: cleanup previous channel before creating new one
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
 
       const channel = supabase
         .channel(`notifications-${user.id}`)
@@ -100,9 +116,7 @@ export const NotificationDropdown = ({ centerNavStyle = false, isActiveRoute = f
             table: 'notifications',
             filter: `user_id=eq.${user.id}`
           },
-          () => {
-            fetchNotifications();
-          }
+          () => { if (isMounted) fetchNotifications(); }
         )
         .on(
           'postgres_changes',
@@ -112,19 +126,24 @@ export const NotificationDropdown = ({ centerNavStyle = false, isActiveRoute = f
             table: 'notifications',
             filter: `user_id=eq.${user.id}`
           },
-          () => {
-            fetchNotifications();
-          }
+          () => { if (isMounted) fetchNotifications(); }
         )
         .subscribe();
 
-      return () => {
-        supabase.removeChannel(channel);
-      };
+      channelRef.current = channel;
     };
 
-    setupRealtime();
-  }, [fetchNotifications]);
+    setup();
+
+    // QW-1: proper cleanup on unmount — channel is always removed
+    return () => {
+      isMounted = false;
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+    };
+  }, [fetchNotifications]); // fetchNotifications is now stable (no state deps)
 
   const markAsRead = async (notificationId: string) => {
     await supabase
