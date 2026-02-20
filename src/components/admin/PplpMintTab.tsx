@@ -300,7 +300,7 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
       {ecosystemStats && (
         <Card className="border-amber-500/30 bg-gradient-to-br from-amber-500/5 to-transparent">
           <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg">
+            <CardTitle className="flex items-center gap-2 text-lg text-primary">
               🌍 Tổng Quan FUN Money Ecosystem
               {isLoadingEcosystem && <Loader2 className="w-4 h-4 animate-spin" />}
             </CardTitle>

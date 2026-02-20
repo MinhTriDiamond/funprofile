@@ -182,7 +182,7 @@ export function DonationHistoryAdminTab() {
                 <ScanSearch className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h2 className="text-xl font-bold">Kết Quả Quét Giao Dịch Thiếu</h2>
+                <h2 className="text-xl font-bold text-primary">Kết Quả Quét Giao Dịch Thiếu</h2>
                 <p className="text-sm text-muted-foreground">So sánh transactions on-chain với donations đã ghi nhận</p>
               </div>
             </div>
@@ -290,7 +290,7 @@ export function DonationHistoryAdminTab() {
             <Gift className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h2 className="text-xl font-bold">Lịch Sử Tặng Thưởng Toàn Hệ Thống</h2>
+            <h2 className="text-xl font-bold text-primary">Lịch Sử Tặng Thưởng Toàn Hệ Thống</h2>
             <p className="text-sm text-muted-foreground">Quản lý tất cả giao dịch tặng quà</p>
           </div>
         </div>

@@ -134,7 +134,7 @@ const TreasuryBalanceCard = () => {
   return (
     <Card className={hasWarning ? "border-yellow-300 bg-yellow-50/50" : ""}>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="flex items-center gap-2 text-lg">
+        <CardTitle className="flex items-center gap-2 text-lg text-primary">
           <Wallet className="w-5 h-5 text-purple-500" />
           💰 Treasury Wallet
         </CardTitle>

@@ -94,7 +94,7 @@ const OverviewTab = ({ stats, onNavigate }: OverviewTabProps) => {
       <div className="grid md:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
+             <CardTitle className="text-lg flex items-center gap-2 text-primary">
               <Clock className="w-5 h-5 text-yellow-500" />
               Hoạt động gần đây
             </CardTitle>
@@ -108,7 +108,7 @@ const OverviewTab = ({ stats, onNavigate }: OverviewTabProps) => {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
+            <CardTitle className="text-lg flex items-center gap-2 text-primary">
               <AlertTriangle className="w-5 h-5 text-orange-500" />
               Cảnh báo hệ thống
             </CardTitle>
