@@ -14,7 +14,7 @@ export interface UserProfile {
 // Conversation types
 export interface Conversation {
   id: string;
-  type: 'direct' | 'group';
+  type: string;
   name: string | null;
   avatar_url: string | null;
   created_by: string | null;

@@ -501,27 +501,30 @@ export function MessageThread({ conversationId, userId, username }: MessageThrea
                 message={message}
                 isOwn={isOwn}
                 showAvatar={showAvatar}
-                currentUserId={userId}
+                userId={userId}
                 onReply={() => setReplyTo(message)}
-                onReaction={(emoji, hasReacted) => handleReaction(message.id, emoji, hasReacted)}
-                onTogglePin={() => {
-                  if (message.pinned_at) {
-                    unpinMessage.mutate(message.id);
+                onReaction={(messageId, emoji, hasReacted) => handleReaction(messageId, emoji, hasReacted)}
+                onPin={(messageId) => {
+                  const msg = messages.find(m => m.id === messageId);
+                  if (msg?.pinned_at) {
+                    unpinMessage.mutate(messageId);
                   } else {
-                    pinMessage.mutate(message.id);
+                    pinMessage.mutate(messageId);
                   }
                 }}
                 onEdit={() => setEditingMessage(message)}
-                onDelete={() => {
+                onDelete={(messageId) => {
                   if (!isOwn) return;
                   if (window.confirm('Thu hồi / xóa tin nhắn này?')) {
-                    softDeleteMessage.mutate({ messageId: message.id });
+                    softDeleteMessage.mutate({ messageId });
                   }
                 }}
                 onReport={() => {
                   setReportTarget(message);
                   setShowReport(true);
                 }}
+                isPinned={!!message.pinned_at}
+                highlightId={highlightMessageId}
               />
               </div>
             );
@@ -595,8 +598,7 @@ export function MessageThread({ conversationId, userId, username }: MessageThrea
           setShowReport(open);
           if (!open) setReportTarget(null);
         }}
-        isSubmitting={createReport.isPending}
-        onSubmit={async ({ reason, details }) => {
+        onSubmit={async (reason: string, details: string) => {
           if (!reportTarget) return;
           try {
             await createReport.mutateAsync({
@@ -620,8 +622,8 @@ export function MessageThread({ conversationId, userId, username }: MessageThrea
           onOpenChange={setShowGroupSettings}
           conversation={conversation}
           currentUserId={userId}
-          onUpdate={handleGroupUpdate}
-          onLeave={handleLeaveGroup}
+          onUpdate={async () => { refetchConversation(); }}
+          onLeave={async () => { navigate('/chat'); }}
         />
       )}
 

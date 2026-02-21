@@ -72,11 +72,10 @@ export function CryptoGiftButton({
         <SendCryptoModal
           open={open}
           onOpenChange={setOpen}
-          recipientAddress={recipientAddress}
-          recipientUserId={recipientUserId}
-          recipientName={recipientName}
-          recipientAvatar={recipientAvatar}
-          conversationId={conversationId}
+          recipientUserId={recipientUserId || ''}
+          recipientUsername={recipientName || 'Người dùng'}
+          recipientWalletAddress={recipientAddress || null}
+          conversationId={conversationId || ''}
         />
       </CryptoGiftErrorBoundary>
     </>

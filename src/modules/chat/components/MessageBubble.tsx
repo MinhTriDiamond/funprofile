@@ -1,0 +1,289 @@
+import { useState } from 'react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { cn } from '@/lib/utils';
+import { MoreHorizontal, Reply, Pin, Edit, Trash2, Flag, Copy } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
+import { vi } from 'date-fns/locale';
+import type { Message, MessageReaction } from '../types';
+import { RedEnvelopeCard } from './RedEnvelopeCard';
+import { toast } from 'sonner';
+
+interface MessageBubbleProps {
+  message: Message;
+  isOwn: boolean;
+  showAvatar: boolean;
+  userId: string | null;
+  onReply: (message: Message) => void;
+  onReaction: (messageId: string, emoji: string, hasReacted: boolean) => void;
+  onPin?: (messageId: string) => void;
+  onEdit?: (message: Message) => void;
+  onDelete?: (messageId: string) => void;
+  onReport?: (message: Message) => void;
+  isPinned?: boolean;
+  highlightId?: string | null;
+}
+
+const QUICK_EMOJIS = ['❤️', '👍', '😂', '😮', '😢', '🙏'];
+
+export function MessageBubble({
+  message,
+  isOwn,
+  showAvatar,
+  userId,
+  onReply,
+  onReaction,
+  onPin,
+  onEdit,
+  onDelete,
+  onReport,
+  isPinned,
+  highlightId,
+}: MessageBubbleProps) {
+  const [showReactions, setShowReactions] = useState(false);
+
+  if (message.is_deleted) {
+    return (
+      <div id={`msg-${message.id}`} className={cn('flex items-end gap-2', isOwn ? 'justify-end' : '')}>
+        {!isOwn && showAvatar && (
+          <Avatar className="h-8 w-8">
+            <AvatarImage src={message.sender?.avatar_url || undefined} />
+            <AvatarFallback className="text-xs">
+              {(message.sender?.username || 'U')[0].toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+        )}
+        {!isOwn && !showAvatar && <div className="w-8" />}
+        <div className="px-4 py-2 rounded-2xl bg-muted text-muted-foreground italic text-sm">
+          Tin nhắn đã bị xóa
+        </div>
+      </div>
+    );
+  }
+
+  // Sticker message
+  if (message.message_type === 'sticker') {
+    const stickerMeta = message.metadata as any;
+    const stickerUrl = stickerMeta?.sticker?.url;
+    return (
+      <div id={`msg-${message.id}`} className={cn('flex items-end gap-2', isOwn ? 'justify-end' : '')}>
+        {!isOwn && showAvatar && (
+          <Avatar className="h-8 w-8">
+            <AvatarImage src={message.sender?.avatar_url || undefined} />
+            <AvatarFallback className="text-xs">{(message.sender?.username || 'U')[0].toUpperCase()}</AvatarFallback>
+          </Avatar>
+        )}
+        {!isOwn && !showAvatar && <div className="w-8" />}
+        {stickerUrl ? (
+          <img src={stickerUrl} alt="sticker" className="w-24 h-24 object-contain" />
+        ) : (
+          <span className="text-4xl">🎨</span>
+        )}
+      </div>
+    );
+  }
+
+  // Red envelope message
+  if (message.message_type === 'red_envelope') {
+    const meta = message.metadata as any;
+    return (
+      <div id={`msg-${message.id}`} className={cn('flex items-end gap-2', isOwn ? 'justify-end' : '')}>
+        {!isOwn && showAvatar && (
+          <Avatar className="h-8 w-8">
+            <AvatarImage src={message.sender?.avatar_url || undefined} />
+            <AvatarFallback className="text-xs">{(message.sender?.username || 'U')[0].toUpperCase()}</AvatarFallback>
+          </Avatar>
+        )}
+        {!isOwn && !showAvatar && <div className="w-8" />}
+        <RedEnvelopeCard envelopeId={meta?.envelopeId} userId={userId} />
+      </div>
+    );
+  }
+
+  // Group reactions by emoji
+  const reactionGroups = new Map<string, { count: number; hasReacted: boolean }>();
+  message.reactions?.forEach((r: MessageReaction) => {
+    const existing = reactionGroups.get(r.emoji) || { count: 0, hasReacted: false };
+    existing.count++;
+    if (r.user_id === userId) existing.hasReacted = true;
+    reactionGroups.set(r.emoji, existing);
+  });
+
+  const isHighlighted = highlightId === message.id;
+
+  return (
+    <div
+      id={`msg-${message.id}`}
+      className={cn(
+        'group flex items-end gap-2 transition-colors duration-700',
+        isOwn ? 'justify-end' : '',
+        isHighlighted && 'bg-primary/10 rounded-lg -mx-2 px-2 py-1'
+      )}
+      onMouseEnter={() => setShowReactions(true)}
+      onMouseLeave={() => setShowReactions(false)}
+    >
+      {!isOwn && showAvatar && (
+        <Avatar className="h-8 w-8">
+          <AvatarImage src={message.sender?.avatar_url || undefined} />
+          <AvatarFallback className="text-xs">
+            {(message.sender?.username || 'U')[0].toUpperCase()}
+          </AvatarFallback>
+        </Avatar>
+      )}
+      {!isOwn && !showAvatar && <div className="w-8" />}
+
+      <div className={cn('max-w-[70%] relative', isOwn ? 'order-first' : '')}>
+        {/* Sender name for group */}
+        {!isOwn && showAvatar && (
+          <p className="text-xs text-muted-foreground mb-1 ml-3">
+            {message.sender?.full_name || message.sender?.username || 'Người dùng'}
+          </p>
+        )}
+
+        {/* Reply preview */}
+        {message.reply_to && (
+          <div className="ml-3 mb-1 px-3 py-1 rounded-lg bg-muted/50 border-l-2 border-primary text-xs text-muted-foreground truncate max-w-[250px]">
+            {message.reply_to.content || '(Tin nhắn)'}
+          </div>
+        )}
+
+        <div className="flex items-center gap-1">
+          {isOwn && showReactions && (
+            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-6 w-6">
+                    <MoreHorizontal className="h-3 w-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => onReply(message)}>
+                    <Reply className="h-4 w-4 mr-2" /> Trả lời
+                  </DropdownMenuItem>
+                  {onEdit && <DropdownMenuItem onClick={() => onEdit(message)}>
+                    <Edit className="h-4 w-4 mr-2" /> Sửa
+                  </DropdownMenuItem>}
+                  {onPin && <DropdownMenuItem onClick={() => onPin(message.id)}>
+                    <Pin className="h-4 w-4 mr-2" /> {isPinned ? 'Bỏ ghim' : 'Ghim'}
+                  </DropdownMenuItem>}
+                  <DropdownMenuItem onClick={() => {
+                    navigator.clipboard.writeText(message.content || '');
+                    toast.success('Đã sao chép');
+                  }}>
+                    <Copy className="h-4 w-4 mr-2" /> Sao chép
+                  </DropdownMenuItem>
+                  {onDelete && <DropdownMenuItem className="text-destructive" onClick={() => onDelete(message.id)}>
+                    <Trash2 className="h-4 w-4 mr-2" /> Xóa
+                  </DropdownMenuItem>}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
+
+          <div
+            className={cn(
+              'px-4 py-2 rounded-2xl break-words whitespace-pre-wrap',
+              isOwn
+                ? 'bg-primary text-primary-foreground rounded-br-md'
+                : 'bg-muted rounded-bl-md',
+              isPinned && 'ring-1 ring-primary/30'
+            )}
+          >
+            {/* Media */}
+            {message.media_urls && Array.isArray(message.media_urls) && (message.media_urls as string[]).length > 0 && (
+              <div className="mb-2 space-y-1">
+                {(message.media_urls as string[]).map((url, i) => (
+                  <img key={i} src={url} alt="" className="max-w-full rounded-lg max-h-60 object-cover" loading="lazy" />
+                ))}
+              </div>
+            )}
+            {message.content && <p className="text-sm">{message.content}</p>}
+            <div className="flex items-center justify-end gap-1 mt-1">
+              {message.edited_at && <span className="text-[10px] opacity-60">(đã sửa)</span>}
+              <span className="text-[10px] opacity-60">
+                {message.created_at
+                  ? formatDistanceToNow(new Date(message.created_at), { addSuffix: false, locale: vi })
+                  : ''}
+              </span>
+            </div>
+          </div>
+
+          {!isOwn && showReactions && (
+            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-6 w-6">
+                    <MoreHorizontal className="h-3 w-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuItem onClick={() => onReply(message)}>
+                    <Reply className="h-4 w-4 mr-2" /> Trả lời
+                  </DropdownMenuItem>
+                  {onPin && <DropdownMenuItem onClick={() => onPin(message.id)}>
+                    <Pin className="h-4 w-4 mr-2" /> {isPinned ? 'Bỏ ghim' : 'Ghim'}
+                  </DropdownMenuItem>}
+                  <DropdownMenuItem onClick={() => {
+                    navigator.clipboard.writeText(message.content || '');
+                    toast.success('Đã sao chép');
+                  }}>
+                    <Copy className="h-4 w-4 mr-2" /> Sao chép
+                  </DropdownMenuItem>
+                  {onReport && <DropdownMenuItem onClick={() => onReport(message)}>
+                    <Flag className="h-4 w-4 mr-2" /> Phản hồi
+                  </DropdownMenuItem>}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
+        </div>
+
+        {/* Quick reactions */}
+        {showReactions && (
+          <div className={cn(
+            'absolute -bottom-3 flex gap-0.5 bg-card border rounded-full px-1 py-0.5 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity z-10',
+            isOwn ? 'right-0' : 'left-10'
+          )}>
+            {QUICK_EMOJIS.map((emoji) => (
+              <button
+                key={emoji}
+                onClick={() => {
+                  const hasReacted = reactionGroups.get(emoji)?.hasReacted || false;
+                  onReaction(message.id, emoji, hasReacted);
+                }}
+                className="text-sm hover:scale-125 transition-transform p-0.5"
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Reaction badges */}
+        {reactionGroups.size > 0 && (
+          <div className={cn('flex gap-1 mt-1 flex-wrap', isOwn ? 'justify-end' : 'ml-3')}>
+            {Array.from(reactionGroups.entries()).map(([emoji, { count, hasReacted }]) => (
+              <button
+                key={emoji}
+                onClick={() => onReaction(message.id, emoji, hasReacted)}
+                className={cn(
+                  'text-xs px-1.5 py-0.5 rounded-full border flex items-center gap-0.5',
+                  hasReacted ? 'border-primary bg-primary/10' : 'border-border'
+                )}
+              >
+                <span>{emoji}</span>
+                <span>{count}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

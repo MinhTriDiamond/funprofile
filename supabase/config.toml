@@ -167,3 +167,9 @@ verify_jwt = false
 
 [functions.admin-merge-mint-requests]
 verify_jwt = false
+
+[functions.agora-token]
+verify_jwt = false
+
+[functions.angel-inline]
+verify_jwt = false
