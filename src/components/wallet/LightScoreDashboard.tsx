@@ -116,7 +116,7 @@ export const LightScoreDashboard = ({ walletAddress, onActivate, onClaim }: Ligh
   const { total, locked, activated, isLoading: isBalanceLoading, refetch: refetchBalance } = useFunBalance(walletAddress);
 
   const { activeRequests, historyRequests, hasPendingRequests, todayRequestCount, isLoading: isMintHistoryLoading, refetch: refetchMintHistory } = useMintHistory();
-  const MIN_MINT_AMOUNT = 10;
+  const MIN_MINT_AMOUNT = 1000;
   const MAX_DAILY_REQUESTS = 2;
   const isBelowMinAmount = totalAmount > 0 && totalAmount < MIN_MINT_AMOUNT;
   const isDailyLimitReached = todayRequestCount >= MAX_DAILY_REQUESTS;
