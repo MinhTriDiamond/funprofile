@@ -1,58 +1,46 @@
 
-# Fix Live Video Replay: Playback + Delete + UI Improvement
 
-## Problems Found
+# Fix "Cannot Delete Post" Error
 
-### Problem 1: Video Play Button Blocked by Overlay
-In `LazyVideo.tsx`, the placeholder overlay (`absolute inset-0`) sits ON TOP of the video element. The `showPlaceholder` state only clears when `onLoadedData` fires, but for `.webm` files with `preload="metadata"`, this event may not fire reliably on all browsers. Even when it does, there's a race condition where the placeholder blocks the native video controls (play button) from receiving clicks.
+## Root Cause
 
-### Problem 2: Storage Video Not Cleaned Up on Delete
-`handleDelete` in `FacebookPostCard.tsx` only calls `extractPostStreamVideos()` which checks for Cloudflare Stream URLs (`videodelivery.net`). Live recordings stored in Supabase Storage (`supabase.co/storage/v1/...`) are never detected, so the video file remains in storage even after the post is deleted -- wasting space.
+The `posts` table has a database trigger called `cleanup_post_files` that fires BEFORE DELETE. This trigger calls `delete_storage_object()`, which runs `DELETE FROM storage.objects` -- a direct table operation that Supabase now blocks with error:
 
-### Problem 3: No Visual "LIVE Replay" Indicator
-The live replay post looks identical to a regular video post. Users have no visual cue that this was a live broadcast replay.
+```
+"Direct deletion from storage tables is not allowed. Use the Storage API instead."
+```
 
----
+This means ANY post deletion fails with 403, regardless of whether the post has media or not.
 
-## Implementation Plan
+The frontend code (`handleDelete` in `FacebookPostCard.tsx`) already properly handles video/image cleanup via the Storage API before attempting the post delete. So the trigger is redundant AND broken.
 
-### Step 1: Fix LazyVideo Playback (`src/components/ui/LazyVideo.tsx`)
+## Fix
 
-Three changes to ensure video controls are always clickable:
+### Step 1: Drop the broken trigger and function
 
-1. Add `onLoadedMetadata` handler as a backup to clear the placeholder (fires before `onLoadedData` and is more reliable for metadata-only preload)
-2. Add `pointer-events-none` to the placeholder overlay so it never blocks clicks on the video controls underneath
-3. Set a timeout fallback: if placeholder hasn't cleared after 3 seconds of being in view, force-remove it
+Create a database migration to:
+1. Drop the trigger `cleanup_post_files` from the `posts` table
+2. Drop the trigger function `cleanup_post_files()`
+3. Drop the now-unused helper function `delete_storage_object()`
 
-### Step 2: Fix Delete for Storage Videos (`src/components/feed/FacebookPostCard.tsx`)
+Similarly, there's a `cleanup_comment_files` trigger on the `comments` table using the same pattern -- this should also be dropped to prevent the same error when deleting comments.
 
-Update `handleDelete` to also detect and clean up Supabase Storage video files:
+### Step 2: No frontend changes needed
 
-1. Check if `video_url` contains `supabase.co/storage` 
-2. If so, extract the storage path and call `supabase.storage.from('live-recordings').remove([path])`
-3. This ensures the video file is deleted from storage when the post is deleted
+The existing `handleDelete` code already handles:
+- Cloudflare Stream video deletion via `extractPostStreamVideos` + `deleteStreamVideos`
+- Supabase Storage video deletion via `isSupabaseStorageUrl` + `deleteStorageFile`
 
-### Step 3: Add "LIVE Replay" Badge (`src/components/feed/FacebookPostCard.tsx`)
+These use the proper Storage API, so they work correctly.
 
-Add a small "LIVE Replay" badge overlay on live replay video posts:
+## Technical Details
 
-1. Check if `post.post_type === 'live'` 
-2. If so, render a small red badge with a play icon and "LIVE" text at the top-left corner of the video
-3. This gives users a clear visual indicator
+| Action | Detail |
+|--------|--------|
+| Drop trigger | `cleanup_post_files` on `posts` table |
+| Drop trigger | `cleanup_comment_files` on `comments` table |
+| Drop function | `cleanup_post_files()` |
+| Drop function | `cleanup_comment_files()` |
+| Drop function | `delete_storage_object()` |
+| Frontend changes | None needed |
 
-### Step 4: Improve Video UI for Live Replays
-
-For live replay posts specifically:
-- Show video duration if available from metadata
-- Ensure the video always shows native controls prominently
-- Add a larger centered play button overlay for better tap targets on mobile
-
----
-
-## Files to Change
-
-| File | Change |
-|------|--------|
-| `src/components/ui/LazyVideo.tsx` | Fix placeholder blocking controls; add `onLoadedMetadata`; timeout fallback |
-| `src/components/feed/FacebookPostCard.tsx` | Delete storage videos on post delete; add LIVE badge |
-| `src/utils/streamHelpers.ts` | Add `isSupabaseStorageUrl()` and `deleteStorageVideo()` helpers |
