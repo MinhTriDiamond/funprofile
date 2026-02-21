@@ -161,3 +161,6 @@ verify_jwt = false
 
 [functions.detect-incoming-transfers]
 verify_jwt = false
+
+[functions.recalculate-fun-amounts]
+verify_jwt = false

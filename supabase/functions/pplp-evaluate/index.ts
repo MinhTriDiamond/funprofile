@@ -7,14 +7,15 @@ const corsHeaders = {
 };
 
 // Base Rewards configuration
+// FUN = CAMLY / 1000
 const BASE_REWARDS: Record<string, number> = {
-  post: 100,
-  comment: 20,
-  reaction: 10,
-  share: 50,
-  friend: 20,
-  livestream: 200,
-  new_user_bonus: 500,
+  post: 5,           // 5,000 CAMLY / 1000
+  comment: 1,        // 1,000 CAMLY / 1000
+  reaction: 1,       // 1,000 CAMLY / 1000
+  share: 1,          // 1,000 CAMLY / 1000
+  friend: 10,        // 10,000 CAMLY / 1000
+  livestream: 20,    // 20,000 CAMLY / 1000
+  new_user_bonus: 50, // 50,000 CAMLY / 1000
 };
 
 // Daily caps per action (per actor per day)
@@ -306,7 +307,7 @@ USER AVG QUALITY: ${userStats?.avg_quality || 1.0}
     );
 
     // Determine eligibility
-    const isEligible = lightScore >= 10 && evaluation.integrity_score >= 0.3;
+    const isEligible = lightScore >= 0.5 && evaluation.integrity_score >= 0.3;
     const mintAmount = isEligible ? Math.floor(lightScore) : 0;
 
     // Insert light action record
