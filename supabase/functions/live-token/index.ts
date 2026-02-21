@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
     const userId = claims.claims.sub as string
 
     const body = await req.json().catch(() => ({}))
-    const sessionId = body.session_id
+    const sessionId = body.session_id || body.sessionId
     const role = body.role || 'audience'
 
     if (!sessionId) {
