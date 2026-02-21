@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Eye, Home, Loader2, Mic, MicOff, PhoneOff, Radio, RefreshCw, Video, VideoOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
@@ -63,7 +63,9 @@ const REC_BADGE: Record<RecordingStatus, { label: string; variant: 'default' | '
 
 export default function LiveHostPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { liveSessionId } = useParams<{ liveSessionId: string }>();
+  const preLiveState = (location.state as { title?: string; privacy?: string } | null);
 
   const [createdSessionId, setCreatedSessionId] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
@@ -133,7 +135,10 @@ export default function LiveHostPage() {
 
     setBootState('creating');
     const created = await withTimeout(
-      createLiveSession({ privacy: 'public' }),
+      createLiveSession({
+        privacy: preLiveState?.privacy === 'friends' ? 'friends' : 'public',
+        title: preLiveState?.title,
+      }),
       15000,
       'create live session timeout'
     );
