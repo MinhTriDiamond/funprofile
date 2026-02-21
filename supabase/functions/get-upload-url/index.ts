@@ -20,6 +20,18 @@ const ALLOWED_CONTENT_TYPES = [
   'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif', 'image/heic',
   // Videos  
   'video/mp4', 'video/webm', 'video/quicktime', 'video/x-m4v',
+  // Documents
+  'application/pdf',
+  'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'text/plain',
+  // Archives
+  'application/zip', 'application/x-zip-compressed',
+  'application/x-rar-compressed', 'application/vnd.rar',
+  'application/x-7z-compressed',
+  // Other
+  'application/vnd.android.package-archive',
+  'application/octet-stream',
 ];
 
 // Max sizes

@@ -80,8 +80,15 @@ export async function uploadMedia(
 
   let processedFile = file;
 
+  // Fallback MIME type cho file không xác định
+  const fileType = file.type || 'application/octet-stream';
+  if (fileType === 'application/octet-stream' && file.name) {
+    // Create new file with correct type fallback
+    processedFile = new File([file], file.name, { type: 'application/octet-stream' });
+  }
+
   // Nén ảnh client-side nếu là ảnh
-  if (compress && file.type.startsWith('image/')) {
+  if (compress && fileType.startsWith('image/')) {
     processedFile = await compressImage(file, {
       maxWidth: maxWidth || FILE_LIMITS.POST_IMAGE_MAX_WIDTH,
       maxHeight: maxHeight || FILE_LIMITS.POST_IMAGE_MAX_HEIGHT,
