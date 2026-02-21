@@ -1,35 +1,27 @@
 
 
-## Lọc AttesterSigningPanel chỉ hiển thị Sign-Request do Admin tạo
+## Fix: Lọc chỉ hiển thị sign-request thực sự trong AttesterSigningPanel
 
-### Vấn đề hiện tại
+### Nguyên nhân
 
-AttesterSigningPanel đang hiển thị **toàn bộ mint-request** (bao gồm cả những request chưa được admin tạo sign-request). Cần lọc chỉ hiển thị những request đã có ít nhất 1 chữ ký từ admin (tức là admin đã tạo sign-request).
+Các mint-request cũ (trước khi có multisig) vẫn có `status = 'signed'` nhưng `multisig_completed_groups = '{}'` (rỗng) và `multisig_signatures = '{}'`. Query hiện tại chỉ lọc theo status mà không kiểm tra xem request đó có thực sự đi qua quy trình multisig hay không.
 
 ### Giải pháp
 
-Chỉ cần thay đổi **1 file**: `src/hooks/useAttesterSigning.ts`
+**File:** `src/hooks/useAttesterSigning.ts`
 
-Thêm điều kiện lọc trong query để chỉ lấy các request mà `multisig_completed_groups` không rỗng (nghĩa là admin đã ký và tạo sign-request). Cụ thể:
+Thay doi duy nhat: them filter vao Supabase query de loai bo cac request co `multisig_completed_groups` rong:
 
-- Thêm filter `.not('multisig_completed_groups', 'eq', '{}')` vào truy vấn Supabase
-- Điều này đảm bảo chỉ hiển thị request mà admin (đồng thời là attester) đã ký ít nhất 1 chữ ký đầu tiên khi tạo sign-request
-
-### Chi tiết kỹ thuật
-
-**File:** `src/hooks/useAttesterSigning.ts` (dòng 75-79)
-
-Thay đổi query từ:
-```typescript
-.in('status', ['pending_sig', 'signing', 'signed'])
-```
-
-Thành:
 ```typescript
 .in('status', ['signing', 'signed'])
+.not('multisig_completed_groups', 'eq', '{}')  // Chi lay request da co it nhat 1 chu ky multisig
 ```
 
-Lý do: Khi admin tạo sign-request, chữ ký đầu tiên được gắn kèm và status chuyển sang `signing`. Những request còn ở `pending_sig` nghĩa là chưa có ai ký (chưa tạo sign-request), nên không cần hiển thị cho attester.
+Dieu nay dam bao chi nhung sign-request da duoc admin khoi tao (co it nhat 1 chu ky trong multisig_completed_groups) moi hien thi trong AttesterSigningPanel.
 
-Ngoài ra, cập nhật thêm text mô tả trong `AttesterSigningPanel.tsx` để rõ ràng hơn: "request cần chữ ký" thay vì hiển thị số lượng gây nhầm lẫn.
+### Ket qua
+
+- Request cu (pre-multisig) voi `multisig_completed_groups = '{}'`: **an**
+- Sign-request do admin tao (co 1+ chu ky): **hien thi**
+- Mint-request chua duoc admin tao sign-request: **an**
 
