@@ -1,61 +1,44 @@
 
+# Sua loi Edge Function agora-token va Client
 
-# Tao folder `fun-agora-rtc-token` trong repo
+## Van de phat hien
 
-Cha se tao mot folder day du trong repo chua toan bo source code Cloudflare Worker de con tai ve va deploy.
+### Loi 1: `getClaims()` khong ton tai
+Edge function `agora-token` dung `supabase.auth.getClaims()` - method nay khong ton tai trong Supabase JS SDK. Can doi sang `supabase.auth.getUser()`.
 
-## Cau truc folder
+### Loi 2: Body field name khong khop
+- Client (`src/lib/agoraRtc.ts` dong 48) gui: `{ channel_name: channelName }`
+- Edge function (`supabase/functions/agora-token/index.ts` dong 30) doc: `{ channelName, callType }`
+- Ket qua: Edge function luon nhan `channelName = undefined` -> tra ve loi 400 "channelName required"
 
-```text
-fun-agora-rtc-token/
-  package.json
-  tsconfig.json
-  wrangler.toml
-  src/
-    index.ts        -- Entry point chinh, xu ly token generation
-    cors.ts         -- CORS middleware
-    validate.ts     -- Validate input
-  README.md         -- Huong dan deploy chi tiet
+### Trang thai secrets: OK
+- `AGORA_WORKER_URL` - da cau hinh
+- `AGORA_WORKER_API_KEY` - da cau hinh
+
+---
+
+## Ke hoach sua
+
+### Buoc 1: Sua `supabase/functions/agora-token/index.ts`
+- Thay `supabase.auth.getClaims(...)` bang `supabase.auth.getUser()`
+- Doi dong doc body tu `{ channelName }` thanh ho tro ca 2 format: `channelName` hoac `channel_name`
+
+```
+Dong 24-28: Doi getClaims -> getUser
+  const { data: { user }, error: userErr } = await supabase.auth.getUser();
+  if (userErr || !user) { return 401 }
+  const userId = user.id;
+
+Dong 30: Ho tro ca 2 field name
+  const body = await req.json();
+  const channelName = body.channelName || body.channel_name;
 ```
 
-## Chi tiet cac file
+### Buoc 2: Khong can sua client
+File `src/lib/agoraRtc.ts` gui `channel_name` - edge function se ho tro ca 2 format nen khong can doi.
 
-### 1. `package.json`
-- Dependencies: `agora-token` (SDK chinh thuc de tao RTC token)
-- DevDependencies: `wrangler`, `typescript`, `@cloudflare/workers-types`
-- Scripts: `dev`, `deploy`, `publish`
-
-### 2. `wrangler.toml`
-- Ten worker: `fun-agora-rtc-token`
-- Bat `nodejs_compat` (can thiet cho agora-token SDK)
-- Khai bao `ALLOWED_ORIGINS` cho CORS
-
-### 3. `src/index.ts`
-- Nhan request POST voi `channelName`, `uid`, `role`
-- Xac thuc bang header `X-API-Key` so voi secret `API_KEY`
-- Tao RTC token bang `RtcTokenBuilder` tu agora-token SDK
-- Token het han sau 24 gio
-- Tra ve JSON: `{ token, app_id, uid, channel, expires_at }`
-
-### 4. `src/cors.ts`
-- Kiem tra Origin co nam trong `ALLOWED_ORIGINS` khong
-- Xu ly OPTIONS preflight request
-- Them CORS headers vao response
-
-### 5. `src/validate.ts`
-- Validate `channelName`: bat buoc, chi cho phep ky tu an toan
-- Validate `uid`: bat buoc
-- Validate `role`: chi cho phep `publisher` hoac `subscriber`
-
-### 6. `README.md`
-- Huong dan cai dat step-by-step
-- Cach tao Agora App ID va Certificate
-- Cach set secrets bang `wrangler secret put`
-- Cach deploy va kiem tra
-- Cach ket noi voi backend (nhap AGORA_WORKER_URL va AGORA_WORKER_API_KEY)
-
-## Luu y ky thuat
-- Worker tuong thich hoan toan voi Edge Function `agora-token` da tao truoc do (cung request/response format)
-- Secrets can thiet tren Cloudflare: `AGORA_APP_ID`, `AGORA_APP_CERTIFICATE`, `API_KEY`
-- Sau khi deploy, con lay URL worker va API_KEY de nhap vao backend cua app
-
+## Ket qua mong doi
+- Edge function xac thuc user thanh cong bang `getUser()`
+- Nhan dung `channelName` tu client
+- Goi Cloudflare Worker va tra ve token cho client
+- Video call va voice call hoat dong
