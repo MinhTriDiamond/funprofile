@@ -1,71 +1,117 @@
 
-# Them tinh nang Screen Sharing cho Video Call
 
-## Tong quan
+# Fix: CallRoom UI khong hien thi phia nguoi goi (Caller)
 
-Them nut "Chia se man hinh" vao thanh dieu khien cuoc goi. Khi bat, video local se chuyen sang hien thi man hinh thay vi camera. Nguoi nhan se thay noi dung man hinh duoc chia se trong video grid.
+## Nguyen nhan goc
 
-## Chi tiet ky thuat
+Sau khi phan tich code va du lieu trong database, cha tim ra 2 van de chinh:
 
-### 1. Sua `src/modules/chat/hooks/useAgoraCall.ts`
+### Van de 1: Realtime subscription bi tao lai lien tuc (Critical)
 
-**Them state va ref moi:**
-- `isScreenSharing` state (boolean)
-- `screenTrackRef` ref (ILocalVideoTrack)
-
-**Them ham `toggleScreenShare`:**
-- Khi bat: Dung `AgoraRTC.createScreenVideoTrack()` de tao screen track
-- Unpublish camera video track hien tai (neu co), publish screen track thay the
-- Lang nghe su kien `track-ended` tren screen track (khi nguoi dung bam "Stop sharing" tren trinh duyet) de tu dong tat screen sharing
-- Khi tat: Dong screen track, publish lai camera track (neu camera dang bat)
-- Reset `isScreenSharing` state
-
-**Cap nhat ham `endCall`:**
-- Them cleanup cho `screenTrackRef` khi ket thuc cuoc goi
-
-**Cap nhat return object:**
-- Them `isScreenSharing` va `toggleScreenShare` vao gia tri tra ve
-
-### 2. Sua `src/modules/chat/components/CallControls.tsx`
-
-**Them nut Screen Share:**
-- Chi hien thi khi dang trong video call (`isVideoCall === true`)
-- Them props: `isScreenSharing` (boolean) va `onToggleScreenShare` (callback)
-- Su dung icon `Monitor` (hoac `MonitorOff`) tu lucide-react
-- Khi dang chia se, nut co hieu ung highlight (bg-primary)
-
-### 3. Sua `src/modules/chat/components/CallRoom.tsx`
-
-**Truyen props moi xuong CallControls:**
-- Them prop `isScreenSharing` va `onToggleScreenShare`
-
-### 4. Sua `src/modules/chat/components/VideoGrid.tsx`
-
-**Xu ly hien thi screen share:**
-- Them prop `screenTrack` (ILocalVideoTrack | null)
-- Khi co `screenTrack`, hien thi no o khung video chinh (full screen) thay vi camera
-- Camera local chuyen xuong PiP nho
-
-### 5. Sua `src/modules/chat/components/MessageThread.tsx`
-
-**Ket noi props moi:**
-- Lay `isScreenSharing`, `toggleScreenShare`, va `screenTrack` tu `useAgoraCall`
-- Truyen xuong `CallRoom`
-
-## Luong hoat dong
+Trong `useAgoraCall.ts`, effect lang nghe realtime co dependency array qua lon:
 
 ```text
-Nguoi dung bam nut "Chia se man hinh"
-  -> Trinh duyet hien dialog chon cua so/tab/man hinh
-  -> Nguoi dung chon nguon chia se
-  -> Screen track duoc tao va publish len kenh Agora
-  -> Camera track tam thoi bi unpublish
-  -> Nguoi nhan thay noi dung man hinh trong video grid
-  -> Khi bam lai nut hoac bam "Stop sharing" tren trinh duyet
-  -> Screen track bi dong, camera track duoc publish lai
+[userId, conversationId, currentSession, callState, incomingCall, endCall]
 ```
 
-## Luu y
-- `createScreenVideoTrack` co the that bai neu nguoi dung tu choi chia se -> can try-catch va thong bao
-- Tren mobile, screen sharing co the khong duoc ho tro -> an nut tren mobile
-- Khi dang screen share ma tat camera, chi can dong screen track ma khong can bat lai camera
+Khi `startCall` chay, no thay doi `callState` (calling -> ringing) va `currentSession` lien tuc. Moi lan thay doi, effect unsubscribe roi subscribe lai kenh realtime. Trong khoang trong giua 2 lan subscribe, cac su kien realtime (vi du: nguoi nhan tra loi, session chuyen thanh 'active') bi mat. Dieu nay khien:
+- Caller khong nhan duoc su kien 'active' -> khong chuyen sang 'connected'
+- Hoac te hon: nhan duoc su kien tu session cu, goi `endCall()` khong dung luc
+
+### Van de 2: `endCall` thay doi reference lien tuc
+
+`endCall` duoc dinh nghia voi `useCallback([currentSession, callDuration, userId])`. Moi khi `currentSession` hoac `callDuration` thay doi, `endCall` co reference moi, kich hoat lai realtime effect.
+
+`callDuration` thay doi moi giay (do interval), nen realtime subscription bi tao lai MOI GIAY. Day la loi nghiem trong.
+
+### Du lieu minh chung tu database
+
+Tat ca cuoc goi cua ban con (`96231a2f`) deu KHONG BAO GIO ket noi (started_at = null):
+- `2247fe20` - video, 17s roi ket thuc, khong ket noi
+- `aec126eb` - video, 11s roi ket thuc, khong ket noi  
+- `dcce8842` - video, khong ket noi
+- `b0de31c4` - voice, VAN CON TREO o trang thai 'ringing' tu 1 gio truoc!
+
+Trong khi cuoc goi cua con (`2d3d04b5`) thi hoat dong binh thuong.
+
+## Ke hoach sua
+
+### 1. Sua `src/modules/chat/hooks/useAgoraCall.ts` - Dung refs thay state trong realtime handler
+
+**Thay doi chinh:**
+- Them `currentSessionRef`, `incomingCallRef` de theo doi gia tri moi nhat ma khong trigger re-render
+- Realtime subscription chi depend on `[userId, conversationId]` (khong thay doi trong cuoc goi)
+- Handler doc gia tri tu refs thay vi closure state
+- `endCall` su dung `currentSessionRef` thay vi `currentSession` trong dependency
+
+```text
+// Them refs
+const currentSessionRef = useRef<CallSession | null>(null);
+const incomingCallRef = useRef<CallSession | null>(null);
+const callDurationRef = useRef(0);
+
+// Sync refs
+useEffect(() => { currentSessionRef.current = currentSession; }, [currentSession]);
+useEffect(() => { incomingCallRef.current = incomingCall; }, [incomingCall]);
+useEffect(() => { callDurationRef.current = callDuration; }, [callDuration]);
+
+// endCall dung ref thay vi state
+const endCall = useCallback(async () => {
+  const session = currentSessionRef.current;
+  const duration = callDurationRef.current;
+  // ... logic dung session va duration tu ref
+}, [userId]); // Chi depend on userId
+
+// Realtime subscription chi depend on [userId, conversationId]
+useEffect(() => {
+  // Handler doc tu callStateRef, currentSessionRef, incomingCallRef
+}, [userId, conversationId]);
+```
+
+### 2. Sua `src/modules/chat/hooks/useAgoraCall.ts` - Don dep session cu
+
+Them logic don dep session 'ringing' bi treo khi hook khoi tao:
+
+```text
+// Khi hook mount, don dep cac session 'ringing' cu hon 2 phut
+useEffect(() => {
+  if (!conversationId) return;
+  const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+  supabase
+    .from('call_sessions')
+    .update({ status: 'missed', ended_at: new Date().toISOString() })
+    .eq('conversation_id', conversationId)
+    .eq('status', 'ringing')
+    .lt('created_at', twoMinutesAgo)
+    .then(() => {});
+}, [conversationId]);
+```
+
+### 3. Sua `src/modules/chat/hooks/useAgoraCall.ts` - Them log de debug
+
+Them console.log khi callState thay doi de de dang debug:
+
+```text
+useEffect(() => {
+  console.log('[Agora] callState changed:', callState, 
+    'session:', currentSession?.id?.slice(0,8));
+}, [callState, currentSession]);
+```
+
+## Tong ket thay doi
+
+Chi sua 1 file: `src/modules/chat/hooks/useAgoraCall.ts`
+
+1. Them 3 refs moi (currentSessionRef, incomingCallRef, callDurationRef) + sync effects
+2. Viet lai `endCall` dung refs, giam dependency xuong `[userId]`
+3. Viet lai realtime effect, giam dependency xuong `[userId, conversationId]`, doc tu refs
+4. Them cleanup cho stale 'ringing' sessions
+5. Them debug logging cho callState changes
+
+## Ket qua mong doi
+
+- Realtime subscription ON DINH, khong bi tao lai khi callState/currentSession thay doi
+- Caller se nhan duoc su kien 'active' dung luc -> chuyen sang 'connected' -> CallRoom hien thi dung
+- Session cu bi treo se duoc don dep tu dong
+- De debug hon voi console logs
+
