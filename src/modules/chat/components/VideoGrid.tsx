@@ -1,13 +1,14 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ICameraVideoTrack } from 'agora-rtc-sdk-ng';
+import { ICameraVideoTrack, ILocalVideoTrack } from 'agora-rtc-sdk-ng';
 import { cn } from '@/lib/utils';
 import { MicOff, VideoOff } from 'lucide-react';
 import type { RemoteUser } from '../types';
 
 interface VideoGridProps {
   localVideoTrack: ICameraVideoTrack | null;
+  screenTrack?: ILocalVideoTrack | null;
   remoteUsers: RemoteUser[];
   isLocalCameraOff: boolean;
   isLocalMuted?: boolean;
@@ -42,6 +43,7 @@ const PIP_H = 180;
 
 export function VideoGrid({
   localVideoTrack,
+  screenTrack,
   remoteUsers,
   isLocalCameraOff,
   isLocalMuted = false,
@@ -138,18 +140,28 @@ export function VideoGrid({
 
   if (isOneOnOne) {
     const remoteUser = remoteUsers[0];
+    const hasScreenShare = !!screenTrack;
 
-    const mainVideoTrack = isSwapped ? localVideoTrack : (remoteUser.hasVideo ? remoteUser.videoTrack : null);
-    const mainCameraOff = isSwapped ? isLocalCameraOff : !remoteUser.hasVideo;
-    const mainUserInfo = isSwapped ? localUserInfo : remoteUserInfo;
-    const mainLabel = isSwapped ? 'Bạn' : (remoteUserInfo?.username || 'User');
-    const mainMuted = isSwapped ? isLocalMuted : !remoteUser.hasAudio;
+    // When screen sharing, screen is always main, camera goes to PiP
+    const mainVideoTrack = hasScreenShare
+      ? screenTrack
+      : isSwapped ? localVideoTrack : (remoteUser.hasVideo ? remoteUser.videoTrack : null);
+    const mainCameraOff = hasScreenShare
+      ? false
+      : isSwapped ? isLocalCameraOff : !remoteUser.hasVideo;
+    const mainUserInfo = hasScreenShare ? localUserInfo : (isSwapped ? localUserInfo : remoteUserInfo);
+    const mainLabel = hasScreenShare ? 'Màn hình của bạn' : (isSwapped ? 'Bạn' : (remoteUserInfo?.username || 'User'));
+    const mainMuted = hasScreenShare ? false : (isSwapped ? isLocalMuted : !remoteUser.hasAudio);
 
-    const pipVideoTrack = isSwapped ? (remoteUser.hasVideo ? remoteUser.videoTrack : null) : localVideoTrack;
-    const pipCameraOff = isSwapped ? !remoteUser.hasVideo : isLocalCameraOff;
-    const pipUserInfo = isSwapped ? remoteUserInfo : localUserInfo;
-    const pipLabel = isSwapped ? (remoteUserInfo?.username || 'User') : 'Bạn';
-    const pipMuted = isSwapped ? !remoteUser.hasAudio : isLocalMuted;
+    const pipVideoTrack = hasScreenShare
+      ? (remoteUser.hasVideo ? remoteUser.videoTrack : null)
+      : isSwapped ? (remoteUser.hasVideo ? remoteUser.videoTrack : null) : localVideoTrack;
+    const pipCameraOff = hasScreenShare
+      ? !remoteUser.hasVideo
+      : isSwapped ? !remoteUser.hasVideo : isLocalCameraOff;
+    const pipUserInfo = hasScreenShare ? remoteUserInfo : (isSwapped ? remoteUserInfo : localUserInfo);
+    const pipLabel = hasScreenShare ? (remoteUserInfo?.username || 'User') : (isSwapped ? (remoteUserInfo?.username || 'User') : 'Bạn');
+    const pipMuted = hasScreenShare ? !remoteUser.hasAudio : (isSwapped ? !remoteUser.hasAudio : isLocalMuted);
 
     const pos = pipPosition ?? getDefaultPipPosition();
 

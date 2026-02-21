@@ -3,7 +3,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { CallControls } from './CallControls';
 import { VideoGrid } from './VideoGrid';
-import { ICameraVideoTrack } from 'agora-rtc-sdk-ng';
+import { ICameraVideoTrack, ILocalVideoTrack } from 'agora-rtc-sdk-ng';
 import { Phone, Video, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { CallState, CallType, RemoteUser } from '../types';
@@ -14,9 +14,11 @@ interface CallRoomProps {
   callType: CallType;
   callDuration: number;
   localVideoTrack: ICameraVideoTrack | null;
+  screenTrack?: ILocalVideoTrack | null;
   remoteUsers: RemoteUser[];
   isMuted: boolean;
   isCameraOff: boolean;
+  isScreenSharing?: boolean;
   hasMultipleCameras?: boolean;
   localUserInfo?: {
     username?: string;
@@ -28,6 +30,7 @@ interface CallRoomProps {
   };
   onToggleMute: () => void;
   onToggleCamera: () => void;
+  onToggleScreenShare?: () => void;
   onSwitchToVideo?: () => void;
   onFlipCamera?: () => void;
   onOpenSettings?: () => void;
@@ -46,14 +49,17 @@ export function CallRoom({
   callType,
   callDuration,
   localVideoTrack,
+  screenTrack,
   remoteUsers,
   isMuted,
   isCameraOff,
+  isScreenSharing = false,
   hasMultipleCameras = false,
   localUserInfo,
   remoteUserInfo,
   onToggleMute,
   onToggleCamera,
+  onToggleScreenShare,
   onSwitchToVideo,
   onFlipCamera,
   onOpenSettings,
@@ -103,6 +109,7 @@ export function CallRoom({
             {isVideoCall && isConnected ? (
               <VideoGrid
                 localVideoTrack={localVideoTrack}
+                screenTrack={screenTrack}
                 remoteUsers={remoteUsers}
                 isLocalCameraOff={isCameraOff}
                 isLocalMuted={isMuted}
@@ -161,9 +168,11 @@ export function CallRoom({
               isMuted={isMuted}
               isCameraOff={isCameraOff}
               isVideoCall={isVideoCall}
+              isScreenSharing={isScreenSharing}
               hasMultipleCameras={hasMultipleCameras}
               onToggleMute={onToggleMute}
               onToggleCamera={onToggleCamera}
+              onToggleScreenShare={onToggleScreenShare}
               onSwitchToVideo={!isVideoCall ? onSwitchToVideo : undefined}
               onFlipCamera={onFlipCamera}
               onOpenSettings={onOpenSettings}

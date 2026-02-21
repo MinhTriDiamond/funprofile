@@ -62,6 +62,8 @@ export function useAgoraCall({ conversationId, userId }: UseAgoraCallOptions) {
   const localAudioTrackRef = useRef<IMicrophoneAudioTrack | null>(null);
   const callInProgressRef = useRef(false);
   const localVideoTrackRef = useRef<ICameraVideoTrack | null>(null);
+  const screenTrackRef = useRef<any>(null);
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
   const durationIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const callTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const autoAnswerProcessedRef = useRef<string | null>(null);
@@ -439,8 +441,11 @@ export function useAgoraCall({ conversationId, userId }: UseAgoraCallOptions) {
       // Stop tracks
       localAudioTrackRef.current?.close();
       localVideoTrackRef.current?.close();
+      screenTrackRef.current?.close();
       localAudioTrackRef.current = null;
       localVideoTrackRef.current = null;
+      screenTrackRef.current = null;
+      setIsScreenSharing(false);
 
       // Leave channel
       await clientRef.current?.leave();
@@ -782,6 +787,67 @@ export function useAgoraCall({ conversationId, userId }: UseAgoraCallOptions) {
     };
   }, []);
 
+  // Toggle screen sharing
+  const toggleScreenShare = useCallback(async () => {
+    if (!clientRef.current) return;
+
+    if (isScreenSharing) {
+      // Stop screen sharing
+      if (screenTrackRef.current) {
+        await clientRef.current.unpublish(screenTrackRef.current);
+        screenTrackRef.current.close();
+        screenTrackRef.current = null;
+      }
+      // Re-publish camera track if camera is on
+      if (localVideoTrackRef.current && !isCameraOff) {
+        await clientRef.current.publish(localVideoTrackRef.current);
+      }
+      setIsScreenSharing(false);
+    } else {
+      // Start screen sharing
+      try {
+        const screenTrack = await AgoraRTC.createScreenVideoTrack({}, 'disable');
+        // screenTrack can be ILocalVideoTrack or [ILocalVideoTrack, ILocalAudioTrack]
+        const videoTrack = Array.isArray(screenTrack) ? screenTrack[0] : screenTrack;
+        
+        screenTrackRef.current = videoTrack;
+
+        // Unpublish camera track
+        if (localVideoTrackRef.current) {
+          await clientRef.current!.unpublish(localVideoTrackRef.current);
+        }
+
+        // Publish screen track
+        await clientRef.current!.publish(videoTrack);
+        setIsScreenSharing(true);
+
+        // Listen for browser's native "Stop sharing" button
+        videoTrack.on('track-ended', async () => {
+          console.log('[Agora] Screen sharing ended by browser');
+          if (screenTrackRef.current) {
+            await clientRef.current?.unpublish(screenTrackRef.current);
+            screenTrackRef.current.close();
+            screenTrackRef.current = null;
+          }
+          if (localVideoTrackRef.current && !isCameraOff) {
+            await clientRef.current?.publish(localVideoTrackRef.current);
+          }
+          setIsScreenSharing(false);
+        });
+      } catch (error: any) {
+        console.warn('[Agora] Screen sharing failed:', error.message);
+        // User cancelled or not supported
+        if (error.message !== 'Permission denied' && error.message !== 'NotAllowedError') {
+          toast({
+            title: 'Không thể chia sẻ màn hình',
+            description: error.message || 'Vui lòng thử lại',
+            variant: 'destructive',
+          });
+        }
+      }
+    }
+  }, [isScreenSharing, isCameraOff, toast]);
+
   // Flip camera (switch between front/back)
   const flipCamera = useCallback(async () => {
     if (!localVideoTrackRef.current) return false;
@@ -811,10 +877,12 @@ export function useAgoraCall({ conversationId, userId }: UseAgoraCallOptions) {
     remoteUsers,
     isMuted,
     isCameraOff,
+    isScreenSharing,
     incomingCall,
     callDuration,
     localVideoTrack: localVideoTrackRef.current,
     localAudioTrack: localAudioTrackRef.current,
+    screenTrack: screenTrackRef.current,
     
     // Actions
     startCall,
@@ -825,5 +893,6 @@ export function useAgoraCall({ conversationId, userId }: UseAgoraCallOptions) {
     toggleCamera,
     switchToVideo,
     flipCamera,
+    toggleScreenShare,
   };
 }
