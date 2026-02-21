@@ -173,7 +173,7 @@ export const UnifiedGiftSendDialog = ({
   }, [isOpen, publicClient, selectedToken.address]);
 
   // Determine effective recipients
-  const isPresetMode = mode === 'post' || (mode === 'navbar' && !!presetRecipient?.id);
+  const isPresetMode = mode === 'post' || ((mode === 'navbar' || mode === 'wallet') && !!presetRecipient?.id);
 
   const effectiveRecipients = useMemo(() => {
     if (presetRecipient?.id && presetRecipient?.username) {
