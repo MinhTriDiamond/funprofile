@@ -141,6 +141,13 @@ serve(async (req) => {
       .eq('is_eligible', true)
       .is('mint_request_id', null);
 
+    // Step 4b: Get banned user IDs to exclude
+    const { data: bannedUsers } = await supabaseAdmin
+      .from('profiles')
+      .select('id')
+      .eq('is_banned', true);
+    const bannedUserIds = new Set((bannedUsers || []).map(u => u.id));
+
     if (actionsError || !eligibleActions || eligibleActions.length === 0) {
       return new Response(JSON.stringify({
         success: true,
@@ -149,9 +156,10 @@ serve(async (req) => {
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // Group actions by user
+    // Group actions by user, excluding banned users
     const userActionsMap: Record<string, typeof eligibleActions> = {};
     for (const action of eligibleActions) {
+      if (bannedUserIds.has(action.user_id)) continue;
       if (!userActionsMap[action.user_id]) userActionsMap[action.user_id] = [];
       userActionsMap[action.user_id].push(action);
     }

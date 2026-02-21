@@ -98,7 +98,33 @@ serve(async (req) => {
 
     console.log(`[MERGE-MINT] Admin ${user.id} triggered merge mint requests`);
 
-    // Step 1: Find all pending_sig requests grouped by user
+    // Step 0: Auto-reject pending_sig requests from banned users
+    const { data: bannedUsers } = await supabaseAdmin
+      .from('profiles')
+      .select('id')
+      .eq('is_banned', true);
+
+    const bannedIds = (bannedUsers || []).map(u => u.id);
+    let bannedRejected = 0;
+
+    if (bannedIds.length > 0) {
+      const { data: bannedRequests } = await supabaseAdmin
+        .from('pplp_mint_requests')
+        .select('id')
+        .eq('status', 'pending_sig')
+        .in('user_id', bannedIds);
+
+      if (bannedRequests && bannedRequests.length > 0) {
+        await supabaseAdmin
+          .from('pplp_mint_requests')
+          .update({ status: 'rejected', error_message: 'User đã bị cấm', updated_at: new Date().toISOString() })
+          .in('id', bannedRequests.map(r => r.id));
+        bannedRejected = bannedRequests.length;
+        console.log(`[MERGE-MINT] Auto-rejected ${bannedRejected} requests from banned users`);
+      }
+    }
+
+    // Step 1: Find all pending_sig requests grouped by user (excluding banned)
     const { data: allRequests, error: fetchError } = await supabaseAdmin
       .from('pplp_mint_requests')
       .select('id, user_id, recipient_address, amount_wei, amount_display, action_ids, action_types, evidence_hash, nonce')
