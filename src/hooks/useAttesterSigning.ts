@@ -76,6 +76,7 @@ export const useAttesterSigning = (connectedAddress?: string): UseAttesterSignin
         .from('pplp_mint_requests')
         .select('*')
         .in('status', ['signing', 'signed'])
+        .not('multisig_completed_groups', 'eq', '{}')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
