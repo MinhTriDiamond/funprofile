@@ -176,6 +176,97 @@ export type Database = {
         }
         Relationships: []
       }
+      call_participants: {
+        Row: {
+          call_session_id: string | null
+          created_at: string | null
+          id: string
+          is_muted: boolean | null
+          is_video_off: boolean | null
+          joined_at: string | null
+          left_at: string | null
+          user_id: string
+        }
+        Insert: {
+          call_session_id?: string | null
+          created_at?: string | null
+          id?: string
+          is_muted?: boolean | null
+          is_video_off?: boolean | null
+          joined_at?: string | null
+          left_at?: string | null
+          user_id: string
+        }
+        Update: {
+          call_session_id?: string | null
+          created_at?: string | null
+          id?: string
+          is_muted?: boolean | null
+          is_video_off?: boolean | null
+          joined_at?: string | null
+          left_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "call_participants_call_session_id_fkey"
+            columns: ["call_session_id"]
+            isOneToOne: false
+            referencedRelation: "call_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      call_sessions: {
+        Row: {
+          call_type: string
+          channel_name: string
+          conversation_id: string | null
+          created_at: string | null
+          duration_seconds: number | null
+          ended_at: string | null
+          id: string
+          initiator_id: string
+          started_at: string | null
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          call_type: string
+          channel_name: string
+          conversation_id?: string | null
+          created_at?: string | null
+          duration_seconds?: number | null
+          ended_at?: string | null
+          id?: string
+          initiator_id: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          call_type?: string
+          channel_name?: string
+          conversation_id?: string | null
+          created_at?: string | null
+          duration_seconds?: number | null
+          ended_at?: string | null
+          id?: string
+          initiator_id?: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "call_sessions_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_settings: {
         Row: {
           created_at: string | null
@@ -411,6 +502,72 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crypto_gifts: {
+        Row: {
+          amount_numeric: number
+          chain_id: number
+          conversation_id: string | null
+          created_at: string
+          error: string | null
+          from_user_id: string
+          id: string
+          message_id: string | null
+          status: string
+          to_address: string
+          to_user_id: string
+          token: string
+          tx_hash: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount_numeric?: number
+          chain_id?: number
+          conversation_id?: string | null
+          created_at?: string
+          error?: string | null
+          from_user_id: string
+          id?: string
+          message_id?: string | null
+          status?: string
+          to_address: string
+          to_user_id: string
+          token?: string
+          tx_hash?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount_numeric?: number
+          chain_id?: number
+          conversation_id?: string | null
+          created_at?: string
+          error?: string | null
+          from_user_id?: string
+          id?: string
+          message_id?: string | null
+          status?: string
+          to_address?: string
+          to_user_id?: string
+          token?: string
+          tx_hash?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crypto_gifts_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crypto_gifts_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
             referencedColumns: ["id"]
           },
         ]
@@ -1136,9 +1293,14 @@ export type Database = {
           conversation_id: string
           created_at: string | null
           deleted_at: string | null
+          edited_at: string | null
           id: string
           is_deleted: boolean | null
           media_urls: Json | null
+          message_type: string
+          metadata: Json
+          pinned_at: string | null
+          pinned_by: string | null
           reply_to_id: string | null
           sender_id: string
           updated_at: string | null
@@ -1148,9 +1310,14 @@ export type Database = {
           conversation_id: string
           created_at?: string | null
           deleted_at?: string | null
+          edited_at?: string | null
           id?: string
           is_deleted?: boolean | null
           media_urls?: Json | null
+          message_type?: string
+          metadata?: Json
+          pinned_at?: string | null
+          pinned_by?: string | null
           reply_to_id?: string | null
           sender_id: string
           updated_at?: string | null
@@ -1160,9 +1327,14 @@ export type Database = {
           conversation_id?: string
           created_at?: string | null
           deleted_at?: string | null
+          edited_at?: string | null
           id?: string
           is_deleted?: boolean | null
           media_urls?: Json | null
+          message_type?: string
+          metadata?: Json
+          pinned_at?: string | null
+          pinned_by?: string | null
           reply_to_id?: string | null
           sender_id?: string
           updated_at?: string | null
@@ -2570,6 +2742,101 @@ export type Database = {
         }
         Relationships: []
       }
+      red_envelope_claims: {
+        Row: {
+          amount: number
+          claimed_at: string
+          claimer_id: string
+          envelope_id: string
+          id: string
+        }
+        Insert: {
+          amount: number
+          claimed_at?: string
+          claimer_id: string
+          envelope_id: string
+          id?: string
+        }
+        Update: {
+          amount?: number
+          claimed_at?: string
+          claimer_id?: string
+          envelope_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "red_envelope_claims_envelope_id_fkey"
+            columns: ["envelope_id"]
+            isOneToOne: false
+            referencedRelation: "red_envelopes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      red_envelopes: {
+        Row: {
+          conversation_id: string
+          created_at: string
+          creator_id: string
+          expires_at: string
+          greeting: string | null
+          id: string
+          message_id: string | null
+          remaining_amount: number
+          remaining_count: number
+          status: string
+          token: string
+          total_amount: number
+          total_count: number
+        }
+        Insert: {
+          conversation_id: string
+          created_at?: string
+          creator_id: string
+          expires_at?: string
+          greeting?: string | null
+          id?: string
+          message_id?: string | null
+          remaining_amount: number
+          remaining_count: number
+          status?: string
+          token?: string
+          total_amount: number
+          total_count: number
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string
+          creator_id?: string
+          expires_at?: string
+          greeting?: string | null
+          id?: string
+          message_id?: string | null
+          remaining_amount?: number
+          remaining_count?: number
+          status?: string
+          token?: string
+          total_amount?: number
+          total_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "red_envelopes_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "red_envelopes_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reel_bookmarks: {
         Row: {
           created_at: string
@@ -2925,6 +3192,57 @@ export type Database = {
           },
         ]
       }
+      reports: {
+        Row: {
+          conversation_id: string | null
+          created_at: string
+          details: string | null
+          id: string
+          message_id: string | null
+          reason: string
+          reported_user_id: string | null
+          reporter_id: string
+          status: string
+        }
+        Insert: {
+          conversation_id?: string | null
+          created_at?: string
+          details?: string | null
+          id?: string
+          message_id?: string | null
+          reason: string
+          reported_user_id?: string | null
+          reporter_id: string
+          status?: string
+        }
+        Update: {
+          conversation_id?: string | null
+          created_at?: string
+          details?: string | null
+          id?: string
+          message_id?: string | null
+          reason?: string
+          reported_user_id?: string | null
+          reporter_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reports_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reports_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reward_adjustments: {
         Row: {
           admin_id: string
@@ -3125,6 +3443,77 @@ export type Database = {
           },
         ]
       }
+      sticker_packs: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          is_free: boolean
+          name: string
+          preview_url: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_free?: boolean
+          name: string
+          preview_url: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_free?: boolean
+          name?: string
+          preview_url?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      stickers: {
+        Row: {
+          created_at: string
+          id: string
+          is_animated: boolean
+          name: string
+          pack_id: string
+          sort_order: number
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_animated?: boolean
+          name: string
+          pack_id: string
+          sort_order?: number
+          url: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_animated?: boolean
+          name?: string
+          pack_id?: string
+          sort_order?: number
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stickers_pack_id_fkey"
+            columns: ["pack_id"]
+            isOneToOne: false
+            referencedRelation: "sticker_packs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transactions: {
         Row: {
           amount: string
@@ -3164,6 +3553,27 @@ export type Database = {
           token_symbol?: string
           tx_hash?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      user_blocks: {
+        Row: {
+          blocked_id: string
+          blocker_id: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          blocked_id: string
+          blocker_id: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          blocked_id?: string
+          blocker_id?: string
+          created_at?: string
+          id?: string
         }
         Relationships: []
       }
@@ -3396,6 +3806,7 @@ export type Database = {
         Args: { _action_type: string; _reward_amount: number; _user_id: string }
         Returns: Json
       }
+      claim_red_envelope: { Args: { p_envelope_id: string }; Returns: number }
       cleanup_expired_oauth_data: { Args: never; Returns: undefined }
       delete_storage_object: {
         Args: { bucket_name: string; object_path: string }
@@ -3533,6 +3944,10 @@ export type Database = {
           username: string
         }[]
       }
+      has_block_between: {
+        Args: { user_a: string; user_b: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -3550,6 +3965,7 @@ export type Database = {
       }
       is_gov_attester: { Args: { check_user_id: string }; Returns: boolean }
       normalize_username: { Args: { input_text: string }; Returns: string }
+      pin_message: { Args: { p_message_id: string }; Returns: undefined }
       recalculate_user_financial:
         | { Args: { p_client_id?: string; p_user_id: string }; Returns: Json }
         | {
@@ -3568,6 +3984,7 @@ export type Database = {
         Args: { p_admin_id?: string }
         Returns: Json
       }
+      unpin_message: { Args: { p_message_id: string }; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "user"
