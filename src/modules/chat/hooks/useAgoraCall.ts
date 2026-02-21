@@ -71,6 +71,9 @@ export function useAgoraCall({ conversationId, userId }: UseAgoraCallOptions) {
   // Refs to avoid closure issues in event handlers
   const callStateRef = useRef<CallState>('idle');
   const endCallRef = useRef<(() => Promise<void>) | null>(null);
+  const currentSessionRef = useRef<CallSession | null>(null);
+  const incomingCallRef = useRef<CallSession | null>(null);
+  const callDurationRef = useRef(0);
 
   // Generate unique channel name
   const generateChannelName = useCallback(() => {
@@ -429,9 +432,12 @@ export function useAgoraCall({ conversationId, userId }: UseAgoraCallOptions) {
     }
   }, [incomingCall]);
 
-  // End call
+  // End call - uses refs to avoid dependency churn
   const endCall = useCallback(async () => {
     try {
+      const session = currentSessionRef.current;
+      const duration = callDurationRef.current;
+
       // Clear call timeout if exists
       if (callTimeoutRef.current) {
         clearTimeout(callTimeoutRef.current);
@@ -452,21 +458,21 @@ export function useAgoraCall({ conversationId, userId }: UseAgoraCallOptions) {
       clientRef.current = null;
 
       // Update database
-      if (currentSession) {
+      if (session) {
         const endTime = new Date().toISOString();
         await supabase
           .from('call_sessions')
           .update({ 
             status: 'ended',
             ended_at: endTime,
-            duration_seconds: callDuration
+            duration_seconds: duration
           })
-          .eq('id', currentSession.id);
+          .eq('id', session.id);
 
         await supabase
           .from('call_participants')
           .update({ left_at: endTime })
-          .eq('call_session_id', currentSession.id)
+          .eq('call_session_id', session.id)
           .eq('user_id', userId);
       }
 
@@ -487,7 +493,7 @@ export function useAgoraCall({ conversationId, userId }: UseAgoraCallOptions) {
     } catch (error) {
       console.error('Failed to end call:', error);
     }
-  }, [currentSession, callDuration, userId]);
+  }, [userId]);
 
   // Sync refs to avoid closure issues
   useEffect(() => {
@@ -497,6 +503,23 @@ export function useAgoraCall({ conversationId, userId }: UseAgoraCallOptions) {
   useEffect(() => {
     endCallRef.current = endCall;
   }, [endCall]);
+
+  useEffect(() => {
+    currentSessionRef.current = currentSession;
+  }, [currentSession]);
+
+  useEffect(() => {
+    incomingCallRef.current = incomingCall;
+  }, [incomingCall]);
+
+  useEffect(() => {
+    callDurationRef.current = callDuration;
+  }, [callDuration]);
+
+  // Debug logging for callState changes
+  useEffect(() => {
+    console.log('[Agora] callState changed:', callState, 'session:', currentSession?.id?.slice(0, 8));
+  }, [callState, currentSession]);
 
   // Toggle mute
   const toggleMute = useCallback(async () => {
@@ -695,9 +718,26 @@ export function useAgoraCall({ conversationId, userId }: UseAgoraCallOptions) {
     autoAnswerCall();
   }, [searchParams, userId, conversationId, callState, isAutoAnswering, getToken, initClient, toast, setSearchParams]);
 
-  // Subscribe to incoming calls via realtime
+  // Cleanup stale ringing sessions on mount
+  useEffect(() => {
+    if (!conversationId) return;
+    const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+    supabase
+      .from('call_sessions')
+      .update({ status: 'missed', ended_at: new Date().toISOString() })
+      .eq('conversation_id', conversationId)
+      .eq('status', 'ringing')
+      .lt('created_at', twoMinutesAgo)
+      .then(({ error }) => {
+        if (error) console.error('[Agora] Error cleaning up stale sessions:', error);
+      });
+  }, [conversationId]);
+
+  // Subscribe to incoming calls via realtime - STABLE dependencies only
   useEffect(() => {
     if (!userId || !conversationId) return;
+
+    console.log('[Agora] Setting up realtime subscription for:', conversationId);
 
     const channel = supabase
       .channel(`calls-${conversationId}-${userId}`)
@@ -731,11 +771,17 @@ export function useAgoraCall({ conversationId, userId }: UseAgoraCallOptions) {
         },
         (payload) => {
           const session = payload.new as any;
-          console.log('[Agora] Realtime session update:', session.id, session.status);
+          const curSession = currentSessionRef.current;
+          const curCallState = callStateRef.current;
+          const curIncoming = incomingCallRef.current;
+
+          console.log('[Agora] Realtime session update:', session.id?.slice(0, 8), session.status, 
+            'mySession:', curSession?.id?.slice(0, 8), 'myState:', curCallState);
           
           // If call became active and we're the caller, update state
-          if (currentSession?.id === session.id) {
-            if (session.status === 'active' && callState === 'ringing') {
+          if (curSession?.id === session.id) {
+            if (session.status === 'active' && curCallState === 'ringing') {
+              console.log('[Agora] Call answered! Transitioning to connected');
               // Clear the timeout since call was answered
               if (callTimeoutRef.current) {
                 clearTimeout(callTimeoutRef.current);
@@ -748,19 +794,19 @@ export function useAgoraCall({ conversationId, userId }: UseAgoraCallOptions) {
               }, 1000);
             }
             // If call was declined/missed/ended
-            if (['declined', 'missed', 'ended'].includes(session.status) && callState !== 'idle') {
+            if (['declined', 'missed', 'ended'].includes(session.status) && curCallState !== 'idle') {
               console.log('[Agora] Session ended via realtime, cleaning up');
               // Clear the timeout
               if (callTimeoutRef.current) {
                 clearTimeout(callTimeoutRef.current);
                 callTimeoutRef.current = null;
               }
-              endCall();
+              endCallRef.current?.();
             }
           }
 
           // If incoming call was cancelled
-          if (incomingCall?.id === session.id && ['ended', 'declined', 'missed'].includes(session.status)) {
+          if (curIncoming?.id === session.id && ['ended', 'declined', 'missed'].includes(session.status)) {
             setIncomingCall(null);
           }
         }
@@ -768,9 +814,10 @@ export function useAgoraCall({ conversationId, userId }: UseAgoraCallOptions) {
       .subscribe();
 
     return () => {
+      console.log('[Agora] Cleaning up realtime subscription');
       supabase.removeChannel(channel);
     };
-  }, [userId, conversationId, currentSession, callState, incomingCall, endCall]);
+  }, [userId, conversationId]);
 
   // Cleanup on unmount
   useEffect(() => {
