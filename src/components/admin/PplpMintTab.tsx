@@ -97,6 +97,8 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
     batchCreateMintRequests,
     isBatchCreating,
     reconcileFailedRequests,
+    mergeMintRequests,
+    isMergingRequests,
   } = usePplpAdmin();
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -118,6 +120,7 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
   const [isReconciling, setIsReconciling] = useState(false);
   const [reconcileProgress, setReconcileProgress] = useState<{ current: number; total: number; reconciled: number } | null>(null);
   const [reconcileResult, setReconcileResult] = useState<{ reconciled: number; genuinelyFailed: number; noReceipt: number } | null>(null);
+  const [mergeResult, setMergeResult] = useState<{ merged_users: number; old_requests_removed: number; new_requests_created: number } | null>(null);
 
   // Search & filter state for Top Users
   const [searchQuery, setSearchQuery] = useState('');
@@ -345,8 +348,8 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
               </div>
             </div>
 
-            {/* Batch Create Button */}
-            <div className="flex items-center gap-3">
+            {/* Batch Create & Merge Buttons */}
+            <div className="flex flex-wrap items-center gap-3">
               <Button
                 onClick={() => setBatchCreateDialogOpen(true)}
                 disabled={isBatchCreating}
@@ -362,10 +365,41 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
                   <Badge variant="secondary" className="ml-1">{ecosystemStats.users_with_wallet.count} users</Badge>
                 )}
               </Button>
+
+              <Button
+                onClick={async () => {
+                  const result = await mergeMintRequests();
+                  if (result) {
+                    setMergeResult(result);
+                    fetchMintRequests();
+                    fetchEcosystemStats();
+                  }
+                }}
+                disabled={isMergingRequests}
+                variant="outline"
+                className="border-purple-500/50 text-purple-600 hover:bg-purple-500/10 gap-2"
+              >
+                {isMergingRequests ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-4 h-4" />
+                )}
+                Gộp Mint Requests
+                {stats.pending_sig > 0 && (
+                  <Badge variant="secondary" className="ml-1">{stats.pending_sig} pending</Badge>
+                )}
+              </Button>
+
               {batchCreateResult && (
                 <div className="text-sm text-green-600 flex items-center gap-1">
                   <CheckCircle className="w-4 h-4" />
                   Đã tạo {batchCreateResult.created} requests, dọn {batchCreateResult.rejected_cleaned} rejected, bỏ qua {batchCreateResult.skipped_no_wallet} (chưa ví)
+                </div>
+              )}
+              {mergeResult && (
+                <div className="text-sm text-purple-600 flex items-center gap-1">
+                  <CheckCircle className="w-4 h-4" />
+                  Đã gộp {mergeResult.merged_users} users: {mergeResult.old_requests_removed} → {mergeResult.new_requests_created} requests
                 </div>
               )}
             </div>
