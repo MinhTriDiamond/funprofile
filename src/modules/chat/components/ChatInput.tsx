@@ -277,14 +277,7 @@ export function ChatInput({
                 Stickers
               </button>
 
-              {/* Lì xì */}
-              <button
-                onClick={() => { setShowRedEnvelope(true); setShowAttachMenu(false); }}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-accent text-sm text-left"
-              >
-                <Gift className="h-4 w-4 text-[#C9A84C] flex-shrink-0" />
-                Lì xì
-              </button>
+
 
               {/* Crypto Gift — chỉ hiện khi không phải group */}
               {!isGroup && (
