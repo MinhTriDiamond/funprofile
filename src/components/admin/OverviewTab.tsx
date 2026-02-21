@@ -55,7 +55,7 @@ const OverviewTab = ({ stats, onNavigate }: OverviewTabProps) => {
       icon: ShieldOff,
       color: "text-red-500",
       bgColor: "bg-red-500/10",
-      navigateTo: "surveillance",
+      navigateTo: "fraud",
     },
     {
       title: "Users Nghi Ngờ",
@@ -63,7 +63,7 @@ const OverviewTab = ({ stats, onNavigate }: OverviewTabProps) => {
       icon: AlertTriangle,
       color: "text-orange-500",
       bgColor: "bg-orange-500/10",
-      navigateTo: "surveillance",
+      navigateTo: "fraud",
     }
   ];
 
