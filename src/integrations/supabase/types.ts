@@ -3548,6 +3548,7 @@ export type Database = {
         Args: { check_user_id: string; conv_id: string }
         Returns: boolean
       }
+      is_gov_attester: { Args: { check_user_id: string }; Returns: boolean }
       normalize_username: { Args: { input_text: string }; Returns: string }
       recalculate_user_financial:
         | { Args: { p_client_id?: string; p_user_id: string }; Returns: Json }
