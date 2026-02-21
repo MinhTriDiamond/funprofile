@@ -56,7 +56,7 @@ export default {
 
       let token: string;
       if (userAccount) {
-        token = RtcTokenBuilder.buildTokenWithAccount(
+        token = RtcTokenBuilder.buildTokenWithUserAccount(
           env.AGORA_APP_ID,
           env.AGORA_APP_CERTIFICATE,
           channelName!,
