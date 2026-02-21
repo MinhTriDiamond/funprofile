@@ -1,3 +1,4 @@
+
 import AgoraRTC, { IAgoraRTCClient } from 'agora-rtc-sdk-ng';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -131,7 +132,7 @@ export async function getLiveToken(
 
     const { data: liveSession, error: sessionError } = await withTimeout(
       supabase
-        .from('live_sessions')
+        .from('live_sessions' as any)
         .select('channel_name, agora_channel, status, host_user_id')
         .eq('id', sessionId)
         .maybeSingle() as unknown as Promise<{ data: any; error: any }>,
