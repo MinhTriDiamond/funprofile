@@ -71,6 +71,7 @@ export interface ActionBreakdown {
 
 export interface MintStats {
   pending_sig: number;
+  signing: number;
   signed: number;
   submitted: number;
   confirmed: number;
@@ -120,6 +121,7 @@ export const usePplpAdmin = () => {
   const [mintRequests, setMintRequests] = useState<MintRequest[]>([]);
   const [stats, setStats] = useState<MintStats>({
     pending_sig: 0,
+    signing: 0,
     signed: 0,
     submitted: 0,
     confirmed: 0,
@@ -167,6 +169,7 @@ export const usePplpAdmin = () => {
       // Calculate stats
       const newStats: MintStats = {
         pending_sig: 0,
+        signing: 0,
         signed: 0,
         submitted: 0,
         confirmed: 0,
@@ -177,6 +180,7 @@ export const usePplpAdmin = () => {
 
       enrichedRequests.forEach((req) => {
         if (req.status === MINT_REQUEST_STATUS.PENDING_SIG) newStats.pending_sig++;
+        else if (req.status === 'signing') newStats.signing++;
         else if (req.status === MINT_REQUEST_STATUS.SIGNED) newStats.signed++;
         else if (req.status === MINT_REQUEST_STATUS.SUBMITTED) newStats.submitted++;
         else if (req.status === MINT_REQUEST_STATUS.CONFIRMED) {
@@ -535,6 +539,8 @@ export const usePplpAdmin = () => {
           tx_hash: null,
           submitted_at: null,
           error_message: null,
+          multisig_signatures: {} as any,
+          multisig_completed_groups: [],
         })
         .eq('id', requestId);
 

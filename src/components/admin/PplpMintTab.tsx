@@ -196,7 +196,7 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
   };
 
   const handleBatchSign = async () => {
-    const selectedRequests = mintRequests.filter(r => selectedIds.has(r.id) && r.status === MINT_REQUEST_STATUS.PENDING_SIG);
+    const selectedRequests = mintRequests.filter(r => selectedIds.has(r.id) && (r.status === MINT_REQUEST_STATUS.PENDING_SIG || r.status === 'signing'));
     if (selectedRequests.length === 0) return;
     
     await batchSignMintRequests(selectedRequests);
@@ -302,7 +302,7 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
   };
 
   // Đếm số lượng request theo từng status (kể cả 'signing')
-  const signingCount = mintRequests.filter(r => r.status === 'signing').length;
+  const signingCount = stats.signing;
   const filteredRequests = mintRequests.filter(r => r.status === activeTab);
 
   return (
@@ -650,8 +650,8 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
             </TabsList>
 
             <TabsContent value={activeTab} className="mt-4">
-              {/* Batch Actions */}
-              {activeTab === 'pending_sig' && filteredRequests.length > 0 && (
+              {/* Batch Actions for pending_sig and signing */}
+              {(activeTab === 'pending_sig' || activeTab === 'signing') && filteredRequests.length > 0 && (
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
                     <Checkbox
