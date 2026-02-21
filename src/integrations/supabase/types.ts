@@ -1136,6 +1136,299 @@ export type Database = {
           },
         ]
       }
+      live_comments: {
+        Row: {
+          created_at: string
+          id: string
+          live_session_id: string
+          message: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          live_session_id: string
+          message: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          live_session_id?: string
+          message?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_comments_live_session_id_fkey"
+            columns: ["live_session_id"]
+            isOneToOne: false
+            referencedRelation: "live_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      live_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: number
+          session_id: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: number
+          session_id: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: number
+          session_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_messages_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "live_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      live_reactions: {
+        Row: {
+          created_at: string
+          emoji: string
+          id: number
+          session_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          emoji: string
+          id?: number
+          session_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          emoji?: string
+          id?: number
+          session_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_reactions_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "live_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      live_recordings: {
+        Row: {
+          created_at: string
+          duration_seconds: number | null
+          error_message: string | null
+          file_list_json: Json
+          id: string
+          live_id: string
+          media_url: string | null
+          mode: string | null
+          raw_response: Json | null
+          recorder_uid: string | null
+          resource_id: string | null
+          sid: string | null
+          status: string
+          stopped_at: string | null
+          storage_region: number | null
+          storage_vendor: number | null
+          thumbnail_url: string | null
+        }
+        Insert: {
+          created_at?: string
+          duration_seconds?: number | null
+          error_message?: string | null
+          file_list_json?: Json
+          id?: string
+          live_id: string
+          media_url?: string | null
+          mode?: string | null
+          raw_response?: Json | null
+          recorder_uid?: string | null
+          resource_id?: string | null
+          sid?: string | null
+          status?: string
+          stopped_at?: string | null
+          storage_region?: number | null
+          storage_vendor?: number | null
+          thumbnail_url?: string | null
+        }
+        Update: {
+          created_at?: string
+          duration_seconds?: number | null
+          error_message?: string | null
+          file_list_json?: Json
+          id?: string
+          live_id?: string
+          media_url?: string | null
+          mode?: string | null
+          raw_response?: Json | null
+          recorder_uid?: string | null
+          resource_id?: string | null
+          sid?: string | null
+          status?: string
+          stopped_at?: string | null
+          storage_region?: number | null
+          storage_vendor?: number | null
+          thumbnail_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_recordings_live_id_fkey"
+            columns: ["live_id"]
+            isOneToOne: false
+            referencedRelation: "live_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      live_sessions: {
+        Row: {
+          agora_channel: string | null
+          agora_uid_host: number | null
+          channel_name: string
+          created_at: string
+          ended_at: string | null
+          host_user_id: string
+          id: string
+          last_worker_response: Json | null
+          owner_id: string
+          post_id: string | null
+          privacy: string
+          recording_acquired_at: string | null
+          recording_error: string | null
+          recording_files: Json | null
+          recording_ready_at: string | null
+          recording_resource_id: string | null
+          recording_sid: string | null
+          recording_started_at: string | null
+          recording_status: string
+          recording_stopped_at: string | null
+          recording_uid: number | null
+          resource_id: string | null
+          sid: string | null
+          started_at: string
+          status: string
+          title: string | null
+          updated_at: string
+          viewer_count: number
+        }
+        Insert: {
+          agora_channel?: string | null
+          agora_uid_host?: number | null
+          channel_name: string
+          created_at?: string
+          ended_at?: string | null
+          host_user_id: string
+          id?: string
+          last_worker_response?: Json | null
+          owner_id: string
+          post_id?: string | null
+          privacy?: string
+          recording_acquired_at?: string | null
+          recording_error?: string | null
+          recording_files?: Json | null
+          recording_ready_at?: string | null
+          recording_resource_id?: string | null
+          recording_sid?: string | null
+          recording_started_at?: string | null
+          recording_status?: string
+          recording_stopped_at?: string | null
+          recording_uid?: number | null
+          resource_id?: string | null
+          sid?: string | null
+          started_at?: string
+          status?: string
+          title?: string | null
+          updated_at?: string
+          viewer_count?: number
+        }
+        Update: {
+          agora_channel?: string | null
+          agora_uid_host?: number | null
+          channel_name?: string
+          created_at?: string
+          ended_at?: string | null
+          host_user_id?: string
+          id?: string
+          last_worker_response?: Json | null
+          owner_id?: string
+          post_id?: string | null
+          privacy?: string
+          recording_acquired_at?: string | null
+          recording_error?: string | null
+          recording_files?: Json | null
+          recording_ready_at?: string | null
+          recording_resource_id?: string | null
+          recording_sid?: string | null
+          recording_started_at?: string | null
+          recording_status?: string
+          recording_stopped_at?: string | null
+          recording_uid?: number | null
+          resource_id?: string | null
+          sid?: string | null
+          started_at?: string
+          status?: string
+          title?: string | null
+          updated_at?: string
+          viewer_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_sessions_host_user_id_fkey"
+            columns: ["host_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "live_sessions_host_user_id_fkey"
+            columns: ["host_user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "live_sessions_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "live_sessions_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "live_sessions_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       livestreams: {
         Row: {
           created_at: string | null
@@ -1798,6 +2091,7 @@ export type Database = {
           is_reward_eligible: boolean | null
           location: string | null
           media_urls: Json | null
+          metadata: Json
           moderation_status: string
           post_type: string
           tx_hash: string | null
@@ -1822,6 +2116,7 @@ export type Database = {
           is_reward_eligible?: boolean | null
           location?: string | null
           media_urls?: Json | null
+          metadata?: Json
           moderation_status?: string
           post_type?: string
           tx_hash?: string | null
@@ -1846,6 +2141,7 @@ export type Database = {
           is_reward_eligible?: boolean | null
           location?: string | null
           media_urls?: Json | null
+          metadata?: Json
           moderation_status?: string
           post_type?: string
           tx_hash?: string | null
@@ -3514,6 +3810,54 @@ export type Database = {
           },
         ]
       }
+      streams: {
+        Row: {
+          created_at: string
+          duration: number
+          id: string
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+          video_path: string
+        }
+        Insert: {
+          created_at?: string
+          duration: number
+          id?: string
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+          video_path: string
+        }
+        Update: {
+          created_at?: string
+          duration?: number
+          id?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+          video_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "streams_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "streams_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transactions: {
         Row: {
           amount: string
@@ -3771,6 +4115,50 @@ export type Database = {
         Args: { p_admin_id: string; p_note?: string; p_user_id: string }
         Returns: number
       }
+      attach_live_replay_to_post: {
+        Args: {
+          _duration_seconds?: number
+          _playback_url: string
+          _session_id: string
+          _thumbnail_url?: string
+        }
+        Returns: {
+          agora_channel: string | null
+          agora_uid_host: number | null
+          channel_name: string
+          created_at: string
+          ended_at: string | null
+          host_user_id: string
+          id: string
+          last_worker_response: Json | null
+          owner_id: string
+          post_id: string | null
+          privacy: string
+          recording_acquired_at: string | null
+          recording_error: string | null
+          recording_files: Json | null
+          recording_ready_at: string | null
+          recording_resource_id: string | null
+          recording_sid: string | null
+          recording_started_at: string | null
+          recording_status: string
+          recording_stopped_at: string | null
+          recording_uid: number | null
+          resource_id: string | null
+          sid: string | null
+          started_at: string
+          status: string
+          title: string | null
+          updated_at: string
+          viewer_count: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "live_sessions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       ban_user_permanently: {
         Args: { p_admin_id: string; p_reason?: string; p_user_id: string }
         Returns: boolean
@@ -3808,6 +4196,10 @@ export type Database = {
       }
       claim_red_envelope: { Args: { p_envelope_id: string }; Returns: number }
       cleanup_expired_oauth_data: { Args: never; Returns: undefined }
+      decrement_live_viewer_count: {
+        Args: { session_id: string }
+        Returns: undefined
+      }
       delete_storage_object: {
         Args: { bucket_name: string; object_path: string }
         Returns: undefined
@@ -3885,6 +4277,25 @@ export type Database = {
           tx_hash: string
         }[]
       }
+      get_live_recording_context: {
+        Args: { _session_id: string }
+        Returns: {
+          agora_channel: string
+          channel_name: string
+          host_user_id: string
+          id: string
+          last_worker_response: Json
+          post_id: string
+          recording_error: string
+          recording_ready_at: string
+          recording_started_at: string
+          recording_status: string
+          recording_stopped_at: string
+          recording_uid: number
+          resource_id: string
+          sid: string
+        }[]
+      }
       get_next_nonce: { Args: { _user_id: string }; Returns: number }
       get_pplp_admin_stats: { Args: never; Returns: Json }
       get_recipient_leaderboard: {
@@ -3955,6 +4366,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_live_viewer_count: {
+        Args: { session_id: string }
+        Returns: undefined
+      }
       is_conversation_admin: {
         Args: { check_user_id: string; conv_id: string }
         Returns: boolean
@@ -3984,7 +4399,97 @@ export type Database = {
         Args: { p_admin_id?: string }
         Returns: Json
       }
+      set_live_recording_state: {
+        Args: {
+          _last_worker_response?: Json
+          _recording_error?: string
+          _recording_ready_at?: string
+          _recording_started_at?: string
+          _recording_status?: string
+          _recording_stopped_at?: string
+          _recording_uid?: number
+          _resource_id?: string
+          _session_id: string
+          _sid?: string
+        }
+        Returns: {
+          agora_channel: string | null
+          agora_uid_host: number | null
+          channel_name: string
+          created_at: string
+          ended_at: string | null
+          host_user_id: string
+          id: string
+          last_worker_response: Json | null
+          owner_id: string
+          post_id: string | null
+          privacy: string
+          recording_acquired_at: string | null
+          recording_error: string | null
+          recording_files: Json | null
+          recording_ready_at: string | null
+          recording_resource_id: string | null
+          recording_sid: string | null
+          recording_started_at: string | null
+          recording_status: string
+          recording_stopped_at: string | null
+          recording_uid: number | null
+          resource_id: string | null
+          sid: string | null
+          started_at: string
+          status: string
+          title: string | null
+          updated_at: string
+          viewer_count: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "live_sessions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       unpin_message: { Args: { p_message_id: string }; Returns: undefined }
+      upsert_live_recording_row: {
+        Args: {
+          _duration_seconds?: number
+          _file_list_json?: Json
+          _media_url?: string
+          _raw_response?: Json
+          _recorder_uid?: string
+          _resource_id?: string
+          _session_id: string
+          _sid?: string
+          _status?: string
+          _stopped_at?: string
+          _thumbnail_url?: string
+        }
+        Returns: {
+          created_at: string
+          duration_seconds: number | null
+          error_message: string | null
+          file_list_json: Json
+          id: string
+          live_id: string
+          media_url: string | null
+          mode: string | null
+          raw_response: Json | null
+          recorder_uid: string | null
+          resource_id: string | null
+          sid: string | null
+          status: string
+          stopped_at: string | null
+          storage_region: number | null
+          storage_vendor: number | null
+          thumbnail_url: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "live_recordings"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
     }
     Enums: {
       app_role: "admin" | "user"
