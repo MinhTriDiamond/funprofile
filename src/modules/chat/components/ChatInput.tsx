@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { uploadCommentMedia } from '@/utils/mediaUpload';
 import { toast } from 'sonner';
 import { EmojiPicker } from '@/components/feed/EmojiPicker';
-import { SendCryptoModal } from './SendCryptoModal';
+import { UnifiedGiftSendDialog } from '@/components/donations/UnifiedGiftSendDialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { rewriteChatAttachmentUrl } from '@/lib/urlFix';
 import type { Message } from '../types';
@@ -355,13 +355,15 @@ export function ChatInput({
         }}
       />
 
-      <SendCryptoModal
-        open={showCryptoModal}
-        onOpenChange={setShowCryptoModal}
-        recipientUserId={recipientUserId || ''}
-        recipientUsername={recipientName || 'Người dùng'}
-        recipientWalletAddress={recipientWalletAddress || null}
-        conversationId={conversationId}
+      <UnifiedGiftSendDialog
+        isOpen={showCryptoModal}
+        onClose={() => setShowCryptoModal(false)}
+        mode="wallet"
+        presetRecipient={{
+          id: recipientUserId || undefined,
+          username: recipientName || undefined,
+          walletAddress: recipientWalletAddress || undefined,
+        }}
       />
     </div>
   );

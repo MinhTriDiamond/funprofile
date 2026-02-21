@@ -124,7 +124,13 @@ export function MessageThread({ conversationId, userId, username }: MessageThrea
     : headerProfile?.avatar_url;
   const recipientUserId = !isGroup ? otherParticipant?.user_id || null : null;
   // Chat gift should only read the single source of truth from Profile (web3_wallet_address).
-  const recipientWalletAddress = !isGroup ? headerProfile?.wallet_address || null : null;
+  const recipientWalletAddress = !isGroup
+    ? (headerProfile?.public_wallet_address
+      || headerProfile?.external_wallet_address
+      || headerProfile?.wallet_address
+      || headerProfile?.custodial_wallet_address
+      || null)
+    : null;
 
   const dmOtherUserId = !isGroup ? recipientUserId : null;
   const isDmBlockedByMe = !!dmOtherUserId && blockedIds.has(dmOtherUserId);
