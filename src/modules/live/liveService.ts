@@ -4,7 +4,6 @@ import type { CreateLiveSessionInput, LiveSession } from './types';
 const db = supabase as any;
 
 const LIVE_POST_DEFAULT_CONTENT = 'Dang LIVE tren FUN Profile';
-const WORKER_URL = import.meta.env.VITE_AGORA_WORKER_URL || '';
 
 const buildChannelName = (userId: string) => `live_${userId}_${Date.now()}`;
 
@@ -50,14 +49,6 @@ type LivePostMetadata = {
   playback_url?: string | null;
   [key: string]: unknown;
 };
-
-function ensureWorkerUrl(): string {
-  if (!WORKER_URL) {
-    throw new Error('VITE_AGORA_WORKER_URL is missing');
-  }
-  return WORKER_URL.replace(/\/+$/, '');
-}
-
 async function mergeLivePostMetadata(postId: string, patch: Partial<LivePostMetadata>): Promise<void> {
   const { data: existingPost } = await db
     .from('posts')
@@ -347,50 +338,29 @@ export async function uploadLiveRecording(
   mimeType: string,
   onProgress?: (percent: number) => void
 ): Promise<UploadLiveRecordingResult> {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (!session?.access_token) {
-    throw new Error('Not authenticated');
+  const extension = mimeType.includes('webm') ? 'webm' : 'mp4';
+  const filename = `live/${liveSessionId}/recording-${Date.now()}.${extension}`;
+
+  onProgress?.(10);
+
+  const { error } = await supabase.storage
+    .from('live-recordings')
+    .upload(filename, blob, {
+      contentType: mimeType,
+      upsert: true,
+    });
+
+  if (error) {
+    throw new Error(`Upload failed: ${error.message}`);
   }
 
-  const workerUrl = ensureWorkerUrl();
+  onProgress?.(90);
 
-  const extension = mimeType.includes('webm') ? 'webm' : 'mp4';
-  const filename = `live-${liveSessionId}-${Date.now()}.${extension}`;
+  const { data } = supabase.storage.from('live-recordings').getPublicUrl(filename);
 
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', `${workerUrl}/upload/live-recording`);
-    xhr.setRequestHeader('Authorization', `Bearer ${session.access_token}`);
-    xhr.setRequestHeader('Content-Type', mimeType);
-    xhr.setRequestHeader('X-Stream-Id', liveSessionId);
-    xhr.setRequestHeader('X-Filename', filename);
+  onProgress?.(100);
 
-    xhr.upload.onprogress = (event) => {
-      if (event.lengthComputable && onProgress) {
-        const percent = Math.round((event.loaded / event.total) * 100);
-        onProgress(percent);
-      }
-    };
-
-    xhr.onload = () => {
-      try {
-        const payload = JSON.parse(xhr.responseText || '{}');
-        if (xhr.status >= 200 && xhr.status < 300 && payload?.url && payload?.key) {
-          resolve({ key: payload.key, url: payload.url });
-        } else {
-          reject(new Error(payload?.error || 'Failed to upload recording'));
-        }
-      } catch {
-        reject(new Error('Failed to parse upload response'));
-      }
-    };
-
-    xhr.onerror = () => reject(new Error('Network error during upload'));
-    xhr.onabort = () => reject(new Error('Upload aborted'));
-    xhr.send(blob);
-  });
+  return { key: filename, url: data.publicUrl };
 }
 
 export async function saveLiveReplay(liveSessionId: string, playbackUrl?: string | null): Promise<void> {
