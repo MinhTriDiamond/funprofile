@@ -87,8 +87,10 @@ export function MessageThread({ conversationId, userId, username }: MessageThrea
     remoteUsers,
     isMuted,
     isCameraOff,
+    isScreenSharing,
     callDuration,
     localVideoTrack,
+    screenTrack,
     incomingCall,
     startCall,
     answerCall,
@@ -98,6 +100,7 @@ export function MessageThread({ conversationId, userId, username }: MessageThrea
     toggleCamera,
     switchToVideo,
     flipCamera,
+    toggleScreenShare,
   } = useAgoraCall({ conversationId, userId });
 
   // Get other participant for header
@@ -663,9 +666,11 @@ export function MessageThread({ conversationId, userId, username }: MessageThrea
           callType={callType}
           callDuration={callDuration}
           localVideoTrack={localVideoTrack}
+          screenTrack={screenTrack}
           remoteUsers={remoteUsers}
           isMuted={isMuted}
           isCameraOff={isCameraOff}
+          isScreenSharing={isScreenSharing}
           localUserInfo={{
             username: username || 'Bạn',
           }}
@@ -675,6 +680,7 @@ export function MessageThread({ conversationId, userId, username }: MessageThrea
           }}
           onToggleMute={toggleMute}
           onToggleCamera={toggleCamera}
+          onToggleScreenShare={toggleScreenShare}
           onSwitchToVideo={switchToVideo}
           onFlipCamera={flipCamera}
           onEndCall={endCall}

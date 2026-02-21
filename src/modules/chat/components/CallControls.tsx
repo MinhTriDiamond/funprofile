@@ -9,6 +9,8 @@ import {
   Camera,
   SwitchCamera,
   Settings,
+  Monitor,
+  MonitorOff,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -17,9 +19,11 @@ interface CallControlsProps {
   isMuted: boolean;
   isCameraOff: boolean;
   isVideoCall: boolean;
+  isScreenSharing?: boolean;
   hasMultipleCameras?: boolean;
   onToggleMute: () => void;
   onToggleCamera: () => void;
+  onToggleScreenShare?: () => void;
   onSwitchToVideo?: () => void;
   onFlipCamera?: () => void;
   onOpenSettings?: () => void;
@@ -30,9 +34,11 @@ export function CallControls({
   isMuted,
   isCameraOff,
   isVideoCall,
+  isScreenSharing = false,
   hasMultipleCameras = false,
   onToggleMute,
   onToggleCamera,
+  onToggleScreenShare,
   onSwitchToVideo,
   onFlipCamera,
   onOpenSettings,
@@ -67,6 +73,21 @@ export function CallControls({
           )}
         >
           {isCameraOff ? <VideoOff className="h-5 w-5 sm:h-6 sm:w-6" /> : <Video className="h-5 w-5 sm:h-6 sm:w-6" />}
+        </Button>
+      )}
+
+      {/* Screen share button (only on desktop for video calls) */}
+      {isVideoCall && !isMobile && onToggleScreenShare && (
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onToggleScreenShare}
+          className={cn(
+            'h-11 w-11 sm:h-12 sm:w-12 rounded-full',
+            isScreenSharing && 'bg-primary/20 text-primary hover:bg-primary/30'
+          )}
+        >
+          {isScreenSharing ? <MonitorOff className="h-5 w-5 sm:h-6 sm:w-6" /> : <Monitor className="h-5 w-5 sm:h-6 sm:w-6" />}
         </Button>
       )}
 
