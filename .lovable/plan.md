@@ -1,62 +1,93 @@
 
-# Fix build error + Create Edge Functions + Update Routes + Final configs
+# Fix Live Video - Multiple Issues Found
 
-## 1. Fix build error in `src/modules/live/streamService.ts`
+## Problems Identified
 
-Line 2: Change `import { uploadVideoToR2 } from '@/utils/r2Upload'` to `import { uploadToR2 } from '@/utils/r2Upload'`
+After thorough investigation, I found **6 issues** preventing Live Video from working:
 
-Line 8: Change `const result = await uploadVideoToR2(file)` to `const result = await uploadToR2(file, 'videos')`
+### Issue 1: CORS Headers Incomplete (All 7 Edge Functions)
+All edge functions use minimal CORS headers that are missing required Supabase client headers. This causes the browser to block requests.
 
-Line 9: Change `return { publicUrl: result.publicUrl, key: result.key }` to `return { publicUrl: result.url, key: result.key }`
-
-## 2. Create 7 Edge Functions
-
-All edge functions will use the secret fallback chain: `LIVE_AGORA_WORKER_URL` -> `AGORA_WORKER_URL` -> `VITE_AGORA_WORKER_URL` (and same for API key).
-
-| File | Description |
-|------|-------------|
-| `supabase/functions/live-token/index.ts` | Auth user, lookup live_sessions, call Worker for Agora RTC token |
-| `supabase/functions/live-token/deno.json` | Empty imports config |
-| `supabase/functions/live-start/index.ts` | Deprecated stub (410) |
-| `supabase/functions/live-stop/index.ts` | Deprecated stub (410) |
-| `supabase/functions/live-recording-start/index.ts` | Auth host, get recorder token, call Worker /recording/start |
-| `supabase/functions/live-recording-stop/index.ts` | Auth host, call Worker /recording/stop |
-| `supabase/functions/live-recording-status/index.ts` | Auth user, call get_live_recording_context RPC + Worker query |
-| `supabase/functions/live-recording-proxy/index.ts` | Deprecated stub (410) |
-
-Update `supabase/config.toml` to add all 7 new functions with `verify_jwt = false`.
-
-## 3. Update Routes in `src/App.tsx`
-
-Add lazy imports and routes (before the `/:username` catch-all route):
-
-```text
-/live                      -> LiveDiscoveryPage
-/live/new                  -> LiveHostPage (create new session)
-/live/stream               -> LiveStream (record & post)
-/live/:liveSessionId       -> LiveAudiencePage
-/live/:liveSessionId/host  -> LiveHostPage
+**Current:**
+```
+'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
 ```
 
-## 4. Connect "Live Video" button in `FacebookCreatePost.tsx`
-
-Change `handleLiveVideoClick` (line 526-528) from opening file picker to `navigate('/live/new')`.
-
-Remove the unused `liveVideoInputRef` hidden input (lines 614-620).
-
-## 5. Update `src/lib/agoraRtc.ts`
-
-Line 135: Remove `as any` cast from `.from('live_sessions' as any)` since the table now exists in the schema.
-
-## 6. Add animation to `tailwind.config.ts`
-
-Add `float-up` keyframe and animation for FloatingReactions component:
-
+**Required:**
 ```
-"float-up": {
-  "0%": { opacity: "1", transform: "translateY(0) scale(1)" },
-  "100%": { opacity: "0", transform: "translateY(-120px) scale(1.5)" },
-}
+'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version'
 ```
 
-Animation: `"float-up": "float-up 2s ease-out forwards"`
+**Affected files:** All 7 edge functions in `supabase/functions/live-*/index.ts`
+
+### Issue 2: camelCase/snake_case Mismatch (3 Edge Functions)
+The client (`api/agora.ts`) sends `sessionId` (camelCase), but `live-recording-start`, `live-recording-stop`, and `live-recording-status` only destructure `session_id` (snake_case). This was already fixed in `live-token` but not in the other 3 functions.
+
+**Fix:** Add `|| body.sessionId` fallback in each function, same pattern as the `live-token` fix.
+
+### Issue 3: VITE_AGORA_WORKER_URL Not Available in Browser
+`liveService.ts` line 7 uses `import.meta.env.VITE_AGORA_WORKER_URL` for the recording upload URL. This env var is not set in the project (the secret name is `AGORA_WORKER_URL` which is only available in Deno edge functions, not in Vite frontend).
+
+This breaks `uploadLiveRecording()` -- when a host ends the live, the video upload will fail because `WORKER_URL` is empty.
+
+**Fix options:**
+- Since the LiveHostPage uses browser-based MediaRecorder, the recording blob should be uploaded to Supabase Storage or R2 directly instead of via the Worker.
+- Alternative: Upload through an edge function proxy that forwards to the Worker.
+- Simplest fix: Upload the recording blob to Supabase Storage bucket directly from the browser.
+
+### Issue 4: `start()` Reference Instability in LiveAudiencePage
+In `LiveAudiencePage.tsx` line 36-38, `start` is called inside a `useEffect` with `[liveSessionId, session, start]` deps. The `start` function from `useLiveRtc` is recreated when its dependencies change (like `sessionId`, `role`, `enabled`), which can cause the effect to re-fire. However, `startedRef` inside `useLiveRtc` should prevent duplicate calls, so this is low severity.
+
+### Issue 5: Missing `owner_id` in INSERT
+`liveService.ts` inserts into `live_sessions` with `owner_id: userId`, but the SELECT statement after insert doesn't include `owner_id`, and `normalizeLiveSession` maps `host_user_id || owner_id`. The column `owner_id` is NOT NULL in the schema, so the insert should work. This is fine.
+
+### Issue 6: Storage Bucket for Thumbnails
+`uploadLiveThumbnail` uploads to a bucket called `live-thumbnails`. This bucket may not exist. If it doesn't, the thumbnail upload silently fails (which is acceptable since it's wrapped in try/catch), but it should be created.
+
+---
+
+## Implementation Plan
+
+### Step 1: Fix CORS in All Edge Functions
+Update the `corsHeaders` constant in all 7 edge functions to include the full set of required headers.
+
+Files to edit:
+- `supabase/functions/live-token/index.ts`
+- `supabase/functions/live-start/index.ts`
+- `supabase/functions/live-stop/index.ts`
+- `supabase/functions/live-recording-start/index.ts`
+- `supabase/functions/live-recording-stop/index.ts`
+- `supabase/functions/live-recording-status/index.ts`
+- `supabase/functions/live-recording-proxy/index.ts`
+
+### Step 2: Fix camelCase/snake_case in 3 Edge Functions
+Add `|| body.sessionId` fallback in:
+- `supabase/functions/live-recording-start/index.ts` (line 41)
+- `supabase/functions/live-recording-stop/index.ts` (line 41)
+- `supabase/functions/live-recording-status/index.ts` (line 30)
+
+### Step 3: Fix Recording Upload in liveService.ts
+Replace the `VITE_AGORA_WORKER_URL` worker upload with direct Supabase Storage upload. The recording blob will be uploaded to a `live-recordings` storage bucket instead of proxying through the Cloudflare Worker.
+
+Changes in `src/modules/live/liveService.ts`:
+- Remove `WORKER_URL` and `ensureWorkerUrl()` 
+- Rewrite `uploadLiveRecording()` to upload directly to Supabase Storage
+- The storage path: `live/{sessionId}/recording-{timestamp}.webm`
+- Return the public URL after upload
+
+### Step 4: Create Storage Buckets
+Create a migration to ensure the `live-recordings` and `live-thumbnails` storage buckets exist.
+
+### Step 5: Deploy and Test
+Deploy edge functions and verify the full flow works end-to-end.
+
+---
+
+## Files Changed Summary
+
+| Type | File | Change |
+|------|------|--------|
+| Edit | 7 edge functions | Fix CORS headers |
+| Edit | 3 edge functions | Fix sessionId/session_id |
+| Edit | `src/modules/live/liveService.ts` | Fix upload to use Supabase Storage |
+| New | SQL migration | Create storage buckets |
