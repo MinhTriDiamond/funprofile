@@ -1,63 +1,72 @@
 
+# Plan: Hoàn tất Recalculation + Tạo Function Gộp Mint Requests
 
-## Xóa RewardFormulaCard + Áp dụng công thức FUN = CAMLY / 1000
+## Phần 1: Gọi tiếp recalculate-fun-amounts
 
-### 1. Xóa RewardFormulaCard.tsx
+Cha sẽ gọi trực tiếp function cho đến khi 986 records còn lại được cập nhật xong (hiện tại đã 96%).
 
-File `src/components/wallet/RewardFormulaCard.tsx` hiện không được import ở đâu. Xóa file này.
+---
 
-### 2. Cập nhật công thức mint FUN trong pplp-evaluate
+## Phần 2: Tạo Edge Function gộp Mint Requests
 
-**File:** `supabase/functions/pplp-evaluate/index.ts`
+### Vấn đề hiện tại
+- 578 mint requests ở trạng thái `pending_sig`
+- Nhiều user có nhiều request riêng lẻ (1 user có tới 122 requests!)
+- Admin phải ký từng request => rất mất thời gian
 
-Thay đổi `BASE_REWARDS` từ giá trị cũ sang FUN = CAMLY / 1000:
+### Giải pháp: Edge Function `admin-merge-mint-requests`
+
+Tạo function mới thực hiện:
+1. Tìm tất cả users có nhiều hơn 1 request ở trạng thái `pending_sig`
+2. Với mỗi user, gộp tất cả requests thành 1 request duy nhất:
+   - Cộng tổng `amount_display` + `amount_wei`
+   - Gộp tất cả `action_ids` vào 1 mảng
+   - Gộp `action_types` (unique)
+   - Tạo mới `evidence_hash`, lấy lại `nonce` từ blockchain
+3. Xóa các requests cũ đã được gộp
+4. Cập nhật `mint_request_id` của các `light_actions` liên quan
+
+### Quy tắc an toàn
+- Chi gộp requests có trạng thái `pending_sig` (chưa ký)
+- Không gộp requests đã `signing`, `signed`, `submitted`
+- Yêu cầu quyền admin
+- Rate limit: 1 lần/phút
+
+---
+
+## Phần 3: Thêm UI vào PplpMintTab
+
+Thêm nút "Gộp Mint Requests" vào khu vực Ecosystem Overview (cạnh nút "Tạo Mint Requests Hàng Loạt"):
+- Hiển thị số users có nhiều requests
+- Nút bấm gọi function, hiển thị kết quả (số requests đã gộp, số users affected)
+- Thêm function `mergeRequests` vào hook `usePplpAdmin`
+
+---
+
+## Chi tiết kỹ thuật
+
+### File mới
+- `supabase/functions/admin-merge-mint-requests/index.ts` -- Edge function gộp requests
+
+### File sửa
+- `supabase/config.toml` -- Thêm config cho function mới
+- `src/hooks/usePplpAdmin.ts` -- Thêm `mergeRequests` function
+- `src/components/admin/PplpMintTab.tsx` -- Thêm nút UI gộp requests
+
+### Flow
 
 ```text
-Hành động      CAMLY    FUN (mới)   FUN (cũ)
-──────────────────────────────────────────────
-Post           5,000    5           100
-Comment        1,000    1           20
-Reaction       1,000    1           10
-Share          1,000    1           50
-Friend         10,000   10          20
-Livestream     20,000   20          200
-New User       50,000   50          500
+Admin bấm "Gộp Requests"
+  |
+  v
+Edge Function chạy (service_role)
+  |
+  +-- Tìm users có > 1 pending_sig request
+  +-- Với mỗi user:
+  |     +-- Gộp action_ids, tính tổng amount
+  |     +-- Lấy nonce từ contract
+  |     +-- Tạo 1 request mới
+  |     +-- Cập nhật light_actions -> trỏ về request mới
+  |     +-- Xóa requests cũ
+  +-- Trả kết quả: { merged_users, old_requests_removed, new_requests_created }
 ```
-
-Lưu ý: `mint_amount = floor(lightScore)` với `lightScore = baseReward * quality * impact * integrity * unityMultiplier`. Các multiplier (quality 0.5-3.0, impact 0.5-5.0, integrity 0-1.0, unity 0.5-2.5) vẫn giữ nguyên, nhưng base reward nhỏ hơn nên FUN cuối cùng sẽ hợp lý hơn.
-
-### 3. Điều chỉnh dữ liệu hiện tại
-
-**Dữ liệu hiện tại cần điều chỉnh:**
-
-- 28,055 light_actions có mint_amount tính theo công thức cũ (post avg ~514 FUN thay vì ~5 FUN)
-- 576 mint requests trạng thái `pending_sig` với tổng 900,953 FUN (quá cao)
-
-**Giải pháp:** Tạo edge function `recalculate-fun-amounts` để:
-
-1. Cập nhật `mint_amount` của tất cả `light_actions` eligible theo công thức mới:
-   - `new_mint_amount = floor(base_reward_new * quality * impact * integrity * unity_multiplier)`
-   - Với base_reward_new: post=5, comment=1, reaction=1, share=1, friend=10, livestream=20
-2. Cập nhật `amount_display` và `amount_wei` của các `pplp_mint_requests` (pending_sig, signed) bằng cách tính lại tổng từ light_actions đã điều chỉnh
-3. Ghi log kết quả
-
-### 4. Cập nhật MIN_MINT_AMOUNT
-
-Vì FUN giờ nhỏ hơn nhiều (post = 5 FUN thay vì 100+), ngưỡng tối thiểu 1,000 FUN sẽ rất khó đạt. Cần giảm xuống phù hợp:
-
-- **Đề xuất:** MIN_MINT_AMOUNT = 10 FUN (tương đương 10,000 CAMLY = 2 posts)
-- Cập nhật trong `pplp-mint-fun/index.ts` và `LightScoreDashboard.tsx`
-
-### 5. Chi tiết kỹ thuật
-
-**Files thay đổi:**
-1. Xóa `src/components/wallet/RewardFormulaCard.tsx`
-2. Sửa `supabase/functions/pplp-evaluate/index.ts` - BASE_REWARDS mới
-3. Sửa `supabase/functions/pplp-mint-fun/index.ts` - MIN_MINT_AMOUNT = 10
-4. Sửa `src/components/wallet/LightScoreDashboard.tsx` - MIN_MINT_AMOUNT = 10
-5. Tạo `supabase/functions/recalculate-fun-amounts/index.ts` - điều chỉnh dữ liệu cũ
-
-**Edge function recalculate sẽ:**
-- Chỉ admin mới gọi được
-- Cập nhật từng batch 500 records để tránh timeout
-- Trả về summary: bao nhiêu light_actions và mint_requests đã điều chỉnh
