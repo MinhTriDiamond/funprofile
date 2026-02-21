@@ -52,7 +52,7 @@ export function useConversations(userId: string | null) {
 
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, username, avatar_url, full_name, external_wallet_address, custodial_wallet_address, wallet_address')
+        .select('id, username, avatar_url, full_name, public_wallet_address, external_wallet_address, custodial_wallet_address, wallet_address')
         .in('id', Array.from(allUserIds));
 
       const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
@@ -275,7 +275,7 @@ export function useConversation(conversationId: string | null) {
 
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, username, avatar_url, full_name, external_wallet_address, custodial_wallet_address, wallet_address')
+        .select('id, username, avatar_url, full_name, public_wallet_address, external_wallet_address, custodial_wallet_address, wallet_address')
         .in('id', userIds);
 
       const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
