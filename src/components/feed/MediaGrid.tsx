@@ -3,12 +3,13 @@ import { ImageViewer } from './ImageViewer';
 import { LazyImage } from '@/components/ui/LazyImage';
 import { LazyVideo } from '@/components/ui/LazyVideo';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Radio, Play } from 'lucide-react';
 
 interface MediaItem {
   url: string;
   type: 'image' | 'video';
   poster?: string;
+  isLiveReplay?: boolean;
 }
 
 interface MediaGridProps {
@@ -56,14 +57,22 @@ export const MediaGrid = memo(({ media: initialMedia }: MediaGridProps) => {
     return (
       <>
         {item.type === 'video' ? (
-          <LazyVideo
-            src={item.url}
-            poster={item.poster}
-            className="w-full max-h-[600px] bg-black"
-            showControls
-            muted
-            onError={() => handleMediaError(item.url)}
-          />
+          <div className="relative">
+            <LazyVideo
+              src={item.url}
+              poster={item.poster}
+              className="w-full max-h-[600px] bg-black"
+              showControls
+              muted
+              onError={() => handleMediaError(item.url)}
+            />
+            {item.isLiveReplay && (
+              <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-destructive/90 text-destructive-foreground px-2.5 py-1 rounded-full text-xs font-bold shadow-lg backdrop-blur-sm pointer-events-none">
+                <Radio className="w-3.5 h-3.5" />
+                LIVE Replay
+              </div>
+            )}
+          </div>
         ) : (
           <div 
             className="cursor-pointer"

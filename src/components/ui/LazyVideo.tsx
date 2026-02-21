@@ -40,6 +40,7 @@ export const LazyVideo = memo(({
   const [hasError, setHasError] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const placeholderTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Check if this is a Cloudflare Stream video
   const isStream = isStreamUrl(src);
@@ -82,7 +83,26 @@ export const LazyVideo = memo(({
     return () => observer.disconnect();
   }, [slowConnection]);
 
+  // Timeout fallback: force-clear placeholder after 3s in view
+  useEffect(() => {
+    if (isInView && showPlaceholder) {
+      placeholderTimeoutRef.current = setTimeout(() => {
+        setShowPlaceholder(false);
+        setIsLoaded(true);
+      }, 3000);
+    }
+    return () => {
+      if (placeholderTimeoutRef.current) clearTimeout(placeholderTimeoutRef.current);
+    };
+  }, [isInView, showPlaceholder]);
+
   const handleLoadedData = () => {
+    setIsLoaded(true);
+    setShowPlaceholder(false);
+  };
+
+  const handleLoadedMetadata = () => {
+    // Backup event - fires before onLoadedData and is more reliable for preload="metadata"
     setIsLoaded(true);
     setShowPlaceholder(false);
   };
@@ -126,9 +146,9 @@ export const LazyVideo = memo(({
       ref={containerRef}
       className={cn('relative overflow-hidden bg-muted', className)}
     >
-      {/* Placeholder with poster */}
+      {/* Placeholder with poster - pointer-events-none so it never blocks video controls */}
       {showPlaceholder && (
-        <div className="absolute inset-0 flex items-center justify-center bg-muted">
+        <div className="absolute inset-0 flex items-center justify-center bg-muted pointer-events-none">
           {effectivePoster ? (
             <img
               src={effectivePoster}
@@ -175,8 +195,9 @@ export const LazyVideo = memo(({
             muted={muted}
             loop={loop}
             playsInline
-            preload={effectivePoster ? "none" : "metadata"}
+            preload="metadata"
             onLoadedData={handleLoadedData}
+            onLoadedMetadata={handleLoadedMetadata}
             onCanPlay={handleCanPlay}
             onError={handleError}
             className={cn(
