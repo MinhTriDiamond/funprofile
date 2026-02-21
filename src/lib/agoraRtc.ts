@@ -132,7 +132,7 @@ export async function getLiveToken(
 
     const { data: liveSession, error: sessionError } = await withTimeout(
       supabase
-        .from('live_sessions' as any)
+        .from('live_sessions')
         .select('channel_name, agora_channel, status, host_user_id')
         .eq('id', sessionId)
         .maybeSingle() as unknown as Promise<{ data: any; error: any }>,

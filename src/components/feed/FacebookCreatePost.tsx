@@ -88,7 +88,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
 
   // Refs for hidden file inputs (direct trigger on click) - must be before any returns
   const photoVideoInputRef = useRef<HTMLInputElement>(null);
-  const liveVideoInputRef = useRef<HTMLInputElement>(null);
+  
 
   // Initialize upload queue
   useEffect(() => {
@@ -522,9 +522,9 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
     photoVideoInputRef.current?.click();
   };
 
-  // Direct file picker for Live Video button
+  // Navigate to live stream setup
   const handleLiveVideoClick = () => {
-    liveVideoInputRef.current?.click();
+    navigate('/live/new');
   };
 
   // Handle direct file select from main card buttons
@@ -608,14 +608,6 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
         type="file"
         accept="image/*,video/*"
         multiple
-        onChange={(e) => handleDirectFileSelect(e.target.files)}
-        className="hidden"
-      />
-      <input
-        ref={liveVideoInputRef}
-        type="file"
-        accept="video/*"
-        capture="environment"
         onChange={(e) => handleDirectFileSelect(e.target.files)}
         className="hidden"
       />

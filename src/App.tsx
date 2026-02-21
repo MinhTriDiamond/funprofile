@@ -40,6 +40,10 @@ const Donations = lazy(() => import("./pages/Donations"));
 const Users = lazy(() => import("./pages/Users"));
 const Reels = lazy(() => import("./pages/Reels"));
 const Mint = lazy(() => import("./pages/Mint"));
+const LiveDiscoveryPage = lazy(() => import("./pages/LiveDiscoveryPage"));
+const LiveHostPage = lazy(() => import("./modules/live/pages/LiveHostPage").then(m => ({ default: m.default })));
+const LiveAudiencePage = lazy(() => import("./modules/live/pages/LiveAudiencePage").then(m => ({ default: m.default })));
+const LiveStream = lazy(() => import("./modules/live/pages/LiveStream").then(m => ({ default: m.default })));
 
 // Keep auth session alive when user returns to tab
 function AuthSessionKeeper() {
@@ -145,6 +149,11 @@ function App() {
                   <Route path="/reels" element={<Reels />} />
                   <Route path="/reels/:reelId" element={<Reels />} />
                   <Route path="/mint" element={<Mint />} />
+                  <Route path="/live" element={<LiveDiscoveryPage />} />
+                  <Route path="/live/new" element={<LiveHostPage />} />
+                  <Route path="/live/stream" element={<LiveStream />} />
+                  <Route path="/live/:liveSessionId" element={<LiveAudiencePage />} />
+                  <Route path="/live/:liveSessionId/host" element={<LiveHostPage />} />
                   {/* Dynamic username route - must be AFTER static routes */}
                   <Route path="/:username" element={<Profile />} />
                   <Route path="*" element={<NotFound />} />
