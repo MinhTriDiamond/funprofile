@@ -164,3 +164,6 @@ verify_jwt = false
 
 [functions.recalculate-fun-amounts]
 verify_jwt = false
+
+[functions.admin-merge-mint-requests]
+verify_jwt = false
