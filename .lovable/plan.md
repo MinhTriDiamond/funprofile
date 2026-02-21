@@ -1,42 +1,32 @@
 
+# Lam nut Angel AI co the keo tha (draggable) tren mobile va iPad
 
-# An muc Li xi va fix tinh nang Dinh kem file
+## Muc tieu
+Cho phep nguoi dung keo tha nut Angel AI den bat ky vi tri nao tren man hinh o che do mobile va tablet. Vi tri se duoc luu vao localStorage de giu nguyen khi quay lai.
 
-## Van de 1: An muc Li xi
-Muc "Li xi" hien thi trong menu dinh kem. Can an di vi chua su dung.
+## Cach thuc hien
 
-## Van de 2: Dinh kem file chi ho tro anh/video
-Edge function `get-upload-url` chi cho phep upload **anh va video**. Cac loai file khac (PDF, ZIP, RAR, DOC...) se bi tu choi voi loi "File type not allowed".
+### Sua file `src/components/angel-ai/AngelFloatingButton.tsx`
 
-Danh sach content types hien tai chi co:
-- `image/jpeg`, `image/png`, `image/gif`, `image/webp`, `image/avif`, `image/heic`
-- `video/mp4`, `video/webm`, `video/quicktime`, `video/x-m4v`
+Them logic touch drag vao component:
 
-**Thieu hoan toan:** PDF, Word, Excel, ZIP, RAR, APK, TXT...
+1. **State moi**: `position` (x, y) luu vi tri hien tai cua nut, `isDragging` de phan biet giua keo va click.
 
-## Ke hoach sua
+2. **Touch events**:
+   - `onTouchStart`: ghi nhan vi tri bat dau cham va offset giua ngon tay va nut
+   - `onTouchMove`: cap nhat vi tri nut theo ngon tay, gioi han trong viewport (khong cho keo ra ngoai man hinh)
+   - `onTouchEnd`: neu khoang cach di chuyen nho (duoi 10px) thi coi nhu click (mo chat), neu lon hon thi coi nhu keo tha va luu vi tri vao `localStorage`
 
-### Buoc 1: An muc "Li xi" trong `ChatInput.tsx`
-Xoa hoac comment block code cua nut "Li xi" (dong 280-287).
+3. **Vi tri mac dinh**: `bottom: 96px, right: 16px` (giong hien tai). Khi co vi tri luu trong localStorage thi dung vi tri do.
 
-### Buoc 2: Mo rong ALLOWED_CONTENT_TYPES trong edge function `get-upload-url`
-Them cac content types cho file tai lieu va nen:
-- `application/pdf`
-- `application/msword`, `application/vnd.openxmlformats-officedocument.wordprocessingml.document`
-- `application/vnd.ms-excel`, `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
-- `application/zip`, `application/x-rar-compressed`, `application/x-7z-compressed`
-- `application/vnd.android.package-archive` (APK)
-- `text/plain`
-- `application/octet-stream` (fallback cho file khong xac dinh MIME)
+4. **Style thay doi**: Chuyen tu dung Tailwind `fixed bottom-24 right-4` sang inline style `position: fixed; left: Xpx; top: Ypx` de ho tro vi tri dong.
 
-### Buoc 3: Xu ly truong hop file khong co MIME type
-Trong `uploadCommentMedia` (file `mediaUpload.ts`), khi file khong phai anh, ham goi `uploadMedia` voi `compress: false`. Tuy nhien, neu file co MIME rong hoac khong xac dinh, can dat fallback la `application/octet-stream`.
+5. **Snap to edge (tuy chon)**: Khi tha nut, tu dong dich nut ve canh trai hoac phai gan nhat de giao dien gon gang hon.
 
 ## Chi tiet ky thuat
 
 | File | Thay doi |
 |------|---------|
-| `src/modules/chat/components/ChatInput.tsx` | Xoa block nut "Li xi" (dong 280-287) |
-| `supabase/functions/get-upload-url/index.ts` | Them content types cho documents, archives |
-| `src/utils/mediaUpload.ts` | Them fallback MIME type cho file khong xac dinh |
+| `src/components/angel-ai/AngelFloatingButton.tsx` | Them touch drag logic, luu vi tri vao localStorage, chuyen sang inline position |
 
+Chi sua 1 file duy nhat. Khong can them thu vien nao moi.
