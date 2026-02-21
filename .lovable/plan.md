@@ -1,85 +1,40 @@
 
-# Fix: Sticker khong gui duoc trong chat
+
+# Fix: Sticker hinh anh bi loi - khong hien thi duoc
 
 ## Nguyen nhan goc
 
-Ham `sendMessage` trong `src/hooks/useMessages.ts` chi chap nhan 3 tham so: `content`, `mediaUrls`, `replyToId`. Khi gui sticker, `handleSendSticker` truyen them `messageType: 'sticker'` va `metadata: { sticker }`, nhung 2 tham so nay **bi bo qua hoan toan** vi khong co trong kieu du lieu cua mutation.
+Du lieu sticker trong database co URL la duong dan tuong doi nhu `/stickers/hello.svg`, `/stickers/love.svg`... nhung **khong co thu muc `public/stickers/` nao trong du an**. Cac file SVG nay chua bao gio duoc tao. Vi vay ca StickerPicker lan MessageBubble deu hien thi hinh bi vo (broken image).
 
-Ket qua: Sticker duoc luu vao database nhu tin nhan text binh thuong voi `message_type = 'text'` (gia tri mac dinh) va `metadata = '{}'` (rong). Khi hien thi, `MessageBubble` kiem tra `message_type === 'sticker'` nhung khong bao gio thoa man dieu kien -> sticker hien thi nhu dong chu "[Sticker]" thay vi hinh anh.
+Tuong tu, `sticker_packs.preview_url` cung la `/stickers/preview.svg` - khong ton tai.
 
 ## Ke hoach sua
 
-### Sua file `src/hooks/useMessages.ts`
+### Buoc 1: Tao file sticker SVG trong `public/stickers/`
 
-1. **Mo rong kieu du lieu cua `sendMessage` mutation** (dong 199-207):
-   - Them `messageType` (optional string, mac dinh `'text'`)
-   - Them `metadata` (optional object, mac dinh `{}`)
+Tao 7 file SVG don gian nhung dep mat:
 
-2. **Truyen cac gia tri moi vao lenh insert** (dong 211-219):
-   - Them `message_type: messageType || 'text'`
-   - Them `metadata: metadata || {}`
+- `public/stickers/preview.svg` - Icon preview cho pack
+- `public/stickers/hello.svg` - Mat cuoi vay tay
+- `public/stickers/love.svg` - Trai tim
+- `public/stickers/lol.svg` - Mat cuoi ha ha
+- `public/stickers/wow.svg` - Mat ngac nhien
+- `public/stickers/sad.svg` - Mat buon
+- `public/stickers/angry.svg` - Mat gian
 
-### Chi tiet thay doi
+Moi file la mot SVG emoji don gian, mau sac tuoi sang, kich thuoc 120x120px.
 
-```text
-// Truoc (dong 199-219):
-mutationFn: async ({
-  content,
-  mediaUrls,
-  replyToId,
-}: {
-  content?: string;
-  mediaUrls?: string[];
-  replyToId?: string;
-}) => {
-  ...
-  .insert({
-    conversation_id: conversationId,
-    sender_id: userId,
-    content: content?.trim() || null,
-    media_urls: mediaUrls || [],
-    reply_to_id: replyToId || null,
-  })
+### Buoc 2: Kiem tra lai MessageBubble
 
-// Sau:
-mutationFn: async ({
-  content,
-  mediaUrls,
-  replyToId,
-  messageType,
-  metadata,
-}: {
-  content?: string;
-  mediaUrls?: string[];
-  replyToId?: string;
-  messageType?: string;
-  metadata?: Record<string, any>;
-}) => {
-  ...
-  .insert({
-    conversation_id: conversationId,
-    sender_id: userId,
-    content: content?.trim() || null,
-    media_urls: mediaUrls || [],
-    reply_to_id: replyToId || null,
-    message_type: messageType || 'text',
-    metadata: metadata || {},
-  })
-```
+Code hien tai da dung: doc `stickerMeta?.sticker?.url` va hien thi `<img>`. Khi file SVG ton tai, hinh se hien thi dung. Khong can sua code.
 
-Ngoai ra can sua them dieu kien kiem tra tin nhan rong: cho phep gui khi co `messageType` khac `'text'` (vi sticker khong can noi dung text):
+### Buoc 3: Kiem tra StickerPicker
 
-```text
-// Truoc:
-if (!content?.trim() && !mediaUrls?.length) throw new Error('Message is empty');
-
-// Sau:
-if (!content?.trim() && !mediaUrls?.length && (!messageType || messageType === 'text')) 
-  throw new Error('Message is empty');
-```
+Code hien tai da dung: doc `sticker.url` va hien thi `<img>`. Khi file SVG ton tai, hinh se hien thi dung. Khong can sua code.
 
 ## Tong ket
-- Chi sua 1 file: `src/hooks/useMessages.ts`
-- Them 2 tham so `messageType` va `metadata` vao mutation
-- Cho phep gui tin nhan khong co noi dung text khi messageType khac 'text'
-- Khong can sua file nao khac vi `MessageThread.tsx` da truyen dung cac tham so nay
+
+- Tao 7 file SVG moi trong `public/stickers/`
+- Khong can sua code - chi can file hinh ton tai dung duong dan
+- Sticker picker va tin nhan sticker se tu dong hien thi dung
+
