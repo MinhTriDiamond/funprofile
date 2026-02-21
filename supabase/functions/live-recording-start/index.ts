@@ -30,12 +30,11 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     )
 
-    const token = authHeader.replace('Bearer ', '')
-    const { data: claims, error: claimsErr } = await supabase.auth.getClaims(token)
-    if (claimsErr || !claims?.claims) {
+    const { data: { user }, error: userErr } = await supabase.auth.getUser()
+    if (userErr || !user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders })
     }
-    const userId = claims.claims.sub as string
+    const userId = user.id
 
     const body = await req.json()
     const session_id = body.session_id || body.sessionId
@@ -72,10 +71,10 @@ Deno.serve(async (req) => {
     }
 
     // Get recorder token first
-    const tokenResp = await fetch(`${workerUrl}/token`, {
+    const tokenResp = await fetch(workerUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-API-Key': workerApiKey },
-      body: JSON.stringify({ channel_name: channel, uid: 'recorder', role: 'subscriber', expire_seconds: 86400 }),
+      body: JSON.stringify({ channelName: channel, uid: 'recorder', role: 'subscriber' }),
     })
 
     if (!tokenResp.ok) {

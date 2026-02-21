@@ -32,12 +32,11 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     )
 
-    const token = authHeader.replace('Bearer ', '')
-    const { data: claims, error: claimsErr } = await supabase.auth.getClaims(token)
-    if (claimsErr || !claims?.claims) {
+    const { data: { user }, error: userErr } = await supabase.auth.getUser()
+    if (userErr || !user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders })
     }
-    const userId = claims.claims.sub as string
+    const userId = user.id
 
     const body = await req.json().catch(() => ({}))
     const sessionId = body.session_id || body.sessionId
@@ -78,19 +77,23 @@ Deno.serve(async (req) => {
     const workerApiKey = getEnv('LIVE_AGORA_WORKER_API_KEY', 'AGORA_WORKER_API_KEY', 'VITE_AGORA_WORKER_API_KEY')
 
     if (workerUrl && workerApiKey) {
-      const workerResp = await fetch(`${workerUrl}/token`, {
+      const workerResp = await fetch(workerUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-API-Key': workerApiKey,
         },
         body: JSON.stringify({
-          channel_name: channel,
+          channelName: channel,
           uid: role === 'host' ? userId : undefined,
           role: role === 'host' ? 'publisher' : 'subscriber',
-          expire_seconds: 86400,
         }),
       })
+
+      if (!workerResp.ok) {
+        const errText = await workerResp.text()
+        console.error('Agora worker error:', workerResp.status, errText)
+      }
 
       if (workerResp.ok) {
         const workerData = await workerResp.json()
