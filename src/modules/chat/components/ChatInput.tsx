@@ -304,16 +304,17 @@ export function ChatInput({
         <EmojiPicker onEmojiSelect={handleEmojiSelect} />
 
         {/* StickerPicker controlled từ state */}
-        <StickerPicker
-          open={showStickerPicker}
-          onOpenChange={setShowStickerPicker}
-          disabled={isDisabled || disabled}
-          onSelect={async (sticker) => {
-            if (!onSendSticker) return;
-            await onSendSticker(sticker);
-            setShowStickerPicker(false);
-          }}
-        />
+        {showStickerPicker && (
+          <div className="absolute bottom-full mb-2 left-0 z-50 bg-card border rounded-lg shadow-lg">
+            <StickerPicker
+              onSelect={async (sticker) => {
+                if (!onSendSticker) return;
+                await onSendSticker(sticker);
+                setShowStickerPicker(false);
+              }}
+            />
+          </div>
+        )}
 
         <Textarea
           ref={textareaRef}
@@ -342,8 +343,7 @@ export function ChatInput({
       <RedEnvelopeDialog
         open={showRedEnvelope}
         onOpenChange={setShowRedEnvelope}
-        isCreating={isCreatingEnvelope}
-        onCreate={async (input) => {
+        onSubmit={async (input) => {
           if (!onCreateRedEnvelope) return;
           try {
             setIsCreatingEnvelope(true);
@@ -358,10 +358,9 @@ export function ChatInput({
       <SendCryptoModal
         open={showCryptoModal}
         onOpenChange={setShowCryptoModal}
-        recipientAddress={recipientWalletAddress}
-        recipientUserId={recipientUserId}
-        recipientName={recipientName}
-        recipientAvatar={recipientAvatar}
+        recipientUserId={recipientUserId || ''}
+        recipientUsername={recipientName || 'Người dùng'}
+        recipientWalletAddress={recipientWalletAddress || null}
         conversationId={conversationId}
       />
     </div>
