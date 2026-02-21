@@ -4200,10 +4200,6 @@ export type Database = {
         Args: { session_id: string }
         Returns: undefined
       }
-      delete_storage_object: {
-        Args: { bucket_name: string; object_path: string }
-        Returns: undefined
-      }
       end_livestream: { Args: { p_livestream_id: string }; Returns: boolean }
       expire_old_mint_requests_v2: { Args: never; Returns: number }
       generate_secure_token: { Args: { length?: number }; Returns: string }
