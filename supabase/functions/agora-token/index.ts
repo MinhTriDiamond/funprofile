@@ -21,13 +21,15 @@ serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    const { data: claims, error: claimsErr } = await supabase.auth.getClaims(authHeader.replace("Bearer ", ""));
-    if (claimsErr || !claims?.claims?.sub) {
+    const { data: { user }, error: userErr } = await supabase.auth.getUser();
+    if (userErr || !user) {
       return new Response(JSON.stringify({ error: "Invalid token" }), { status: 401, headers: corsHeaders });
     }
-    const userId = claims.claims.sub;
+    const userId = user.id;
 
-    const { channelName, callType } = await req.json();
+    const body = await req.json();
+    const channelName = body.channelName || body.channel_name;
+    const callType = body.callType || body.call_type;
     if (!channelName) {
       return new Response(JSON.stringify({ error: "channelName required" }), { status: 400, headers: corsHeaders });
     }
@@ -42,7 +44,7 @@ serve(async (req) => {
       .from("call_sessions")
       .select("id, conversation_id")
       .eq("channel_name", channelName)
-      .eq("status", "active")
+      .in("status", ["ringing", "active"])
       .maybeSingle();
 
     if (!session) {

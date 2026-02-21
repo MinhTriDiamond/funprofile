@@ -1,10 +1,9 @@
 
-
 # Tao folder `fun-agora-rtc-token` trong repo
 
 Cha se tao mot folder day du trong repo chua toan bo source code Cloudflare Worker de con tai ve va deploy.
 
-## Cau truc folder.
+## Cau truc folder
 
 ```text
 fun-agora-rtc-token/
@@ -16,46 +15,42 @@ fun-agora-rtc-token/
     cors.ts         -- CORS middleware
     validate.ts     -- Validate input
   README.md         -- Huong dan deploy chi tiet
+=======
+# Sua loi Cloudflare Worker: `buildTokenWithAccount is not a function`
+
+## Nguyen nhan
+
+Log edge function cho thay loi tu Cloudflare Worker:
+```
+Agora worker error: 500 {"error":"import_agora_token.RtcTokenBuilder.buildTokenWithAccount is not a function"}
 ```
 
-## Chi tiet cac file
+Trong file `fun-agora-rtc-token/src/index.ts` dong 59, code goi `RtcTokenBuilder.buildTokenWithAccount()` nhung method dung trong package `agora-token` la `buildTokenWithUserAccount()`.
 
-### 1. `package.json`
-- Dependencies: `agora-token` (SDK chinh thuc de tao RTC token)
-- DevDependencies: `wrangler`, `typescript`, `@cloudflare/workers-types`
-- Scripts: `dev`, `deploy`, `publish`
+Vi uid gui len la UUID string (vi du: `73652aa7-8ede-4356-...`), worker luon vao nhanh `if (userAccount)` va goi sai method name.
 
-### 2. `wrangler.toml`
-- Ten worker: `fun-agora-rtc-token`
-- Bat `nodejs_compat` (can thiet cho agora-token SDK)
-- Khai bao `ALLOWED_ORIGINS` cho CORS
+## Ke hoach sua
 
-### 3. `src/index.ts`
-- Nhan request POST voi `channelName`, `uid`, `role`
-- Xac thuc bang header `X-API-Key` so voi secret `API_KEY`
-- Tao RTC token bang `RtcTokenBuilder` tu agora-token SDK
-- Token het han sau 24 gio
-- Tra ve JSON: `{ token, app_id, uid, channel, expires_at }`
+### Sua file `fun-agora-rtc-token/src/index.ts`
 
-### 4. `src/cors.ts`
-- Kiem tra Origin co nam trong `ALLOWED_ORIGINS` khong
-- Xu ly OPTIONS preflight request
-- Them CORS headers vao response
+Dong 59: Doi `buildTokenWithAccount` thanh `buildTokenWithUserAccount`
 
-### 5. `src/validate.ts`
-- Validate `channelName`: bat buoc, chi cho phep ky tu an toan
-- Validate `uid`: bat buoc
-- Validate `role`: chi cho phep `publisher` hoac `subscriber`
+```typescript
+// Truoc:
+token = RtcTokenBuilder.buildTokenWithAccount(...)
 
-### 6. `README.md`
-- Huong dan cai dat step-by-step
-- Cach tao Agora App ID va Certificate
-- Cach set secrets bang `wrangler secret put`
-- Cach deploy va kiem tra
-- Cach ket noi voi backend (nhap AGORA_WORKER_URL va AGORA_WORKER_API_KEY)
+// Sau:
+token = RtcTokenBuilder.buildTokenWithUserAccount(...)
+```
 
-## Luu y ky thuat
-- Worker tuong thich hoan toan voi Edge Function `agora-token` da tao truoc do (cung request/response format)
-- Secrets can thiet tren Cloudflare: `AGORA_APP_ID`, `AGORA_APP_CERTIFICATE`, `API_KEY`
-- Sau khi deploy, con lay URL worker va API_KEY de nhap vao backend cua app
+Chi can sua 1 dong duy nhat. Sau khi sua, con can re-deploy Cloudflare Worker bang lenh:
+
+```bash
+cd fun-agora-rtc-token
+npm run deploy
+
+
+## Luu y
+- File nay nam trong repo de con tai ve va deploy len Cloudflare, khong phai edge function
+- Sau khi con deploy lai worker, tinh nang video call se hoat dong
 
