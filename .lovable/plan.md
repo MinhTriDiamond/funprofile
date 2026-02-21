@@ -1,42 +1,42 @@
 
 
-# Fix: Tu dong hien thi nguoi nhan khi mo Crypto Gift tu chat
+# An muc Li xi va fix tinh nang Dinh kem file
 
-## Van de
+## Van de 1: An muc Li xi
+Muc "Li xi" hien thi trong menu dinh kem. Can an di vi chua su dung.
 
-Khi mo Crypto Gift tu chat, du da truyen `presetRecipient` (username + wallet address), muc "Nguoi nhan" van hien thi o thanh tim kiem trong thay vi tu dong dien thong tin nguoi nhan.
+## Van de 2: Dinh kem file chi ho tro anh/video
+Edge function `get-upload-url` chi cho phep upload **anh va video**. Cac loai file khac (PDF, ZIP, RAR, DOC...) se bi tu choi voi loi "File type not allowed".
 
-## Nguyen nhan
+Danh sach content types hien tai chi co:
+- `image/jpeg`, `image/png`, `image/gif`, `image/webp`, `image/avif`, `image/heic`
+- `video/mp4`, `video/webm`, `video/quicktime`, `video/x-m4v`
 
-Trong `UnifiedGiftSendDialog.tsx` dong 176:
-```
-const isPresetMode = mode === 'post' || (mode === 'navbar' && !!presetRecipient?.id);
-```
+**Thieu hoan toan:** PDF, Word, Excel, ZIP, RAR, APK, TXT...
 
-Dieu kien nay **khong bao gom `mode === 'wallet'`**, nen khi chat truyen `mode="wallet"` voi `presetRecipient`, dialog van hien thi giao dien tim kiem thay vi hien thi nguoi nhan da chon san.
+## Ke hoach sua
 
-## Cach sua
+### Buoc 1: An muc "Li xi" trong `ChatInput.tsx`
+Xoa hoac comment block code cua nut "Li xi" (dong 280-287).
 
-### Sua 1 dong trong `src/components/donations/UnifiedGiftSendDialog.tsx`
+### Buoc 2: Mo rong ALLOWED_CONTENT_TYPES trong edge function `get-upload-url`
+Them cac content types cho file tai lieu va nen:
+- `application/pdf`
+- `application/msword`, `application/vnd.openxmlformats-officedocument.wordprocessingml.document`
+- `application/vnd.ms-excel`, `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
+- `application/zip`, `application/x-rar-compressed`, `application/x-7z-compressed`
+- `application/vnd.android.package-archive` (APK)
+- `text/plain`
+- `application/octet-stream` (fallback cho file khong xac dinh MIME)
 
-Dong 176, them dieu kien cho `mode === 'wallet'`:
+### Buoc 3: Xu ly truong hop file khong co MIME type
+Trong `uploadCommentMedia` (file `mediaUpload.ts`), khi file khong phai anh, ham goi `uploadMedia` voi `compress: false`. Tuy nhien, neu file co MIME rong hoac khong xac dinh, can dat fallback la `application/octet-stream`.
 
-```
-// Truoc:
-const isPresetMode = mode === 'post' || (mode === 'navbar' && !!presetRecipient?.id);
-
-// Sau:
-const isPresetMode = mode === 'post' || ((mode === 'navbar' || mode === 'wallet') && !!presetRecipient?.id);
-```
-
-Chi thay doi duy nhat 1 dong code. Khi `mode === 'wallet'` va co `presetRecipient.id`, dialog se:
-- Tu dong hien thi thong tin nguoi nhan (avatar, username, dia chi vi)
-- Khong hien thi thanh tim kiem
-- San sang de chon token va nhap so luong
-
-## File thay doi
+## Chi tiet ky thuat
 
 | File | Thay doi |
 |------|---------|
-| `src/components/donations/UnifiedGiftSendDialog.tsx` | Them `mode === 'wallet'` vao dieu kien `isPresetMode` |
+| `src/modules/chat/components/ChatInput.tsx` | Xoa block nut "Li xi" (dong 280-287) |
+| `supabase/functions/get-upload-url/index.ts` | Them content types cho documents, archives |
+| `src/utils/mediaUpload.ts` | Them fallback MIME type cho file khong xac dinh |
 
