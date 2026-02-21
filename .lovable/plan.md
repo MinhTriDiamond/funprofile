@@ -1,40 +1,47 @@
 
+# Sua loi: Khong hien thi giao dien UI khi goi video/voice call
 
-# Sua loi Cloudflare Worker: `buildTokenWithAccount is not a function`
+## Nguyen nhan goc
 
-## Nguyen nhan
+Khi bam nut goi video/voice trong `MessageThread`, ham `startCall()` duoc goi thanh cong (tao session, lay token, tham gia kenh Agora), nhung **khong co component `CallRoom` nao duoc render** de hien thi giao dien cuoc goi. Component `CallRoom` da duoc viet san nhung chua bao gio duoc su dung.
 
-Log edge function cho thay loi tu Cloudflare Worker:
-```
-Agora worker error: 500 {"error":"import_agora_token.RtcTokenBuilder.buildTokenWithAccount is not a function"}
-```
-
-Trong file `fun-agora-rtc-token/src/index.ts` dong 59, code goi `RtcTokenBuilder.buildTokenWithAccount()` nhung method dung trong package `agora-token` la `buildTokenWithUserAccount()`.
-
-Vi uid gui len la UUID string (vi du: `73652aa7-8ede-4356-...`), worker luon vao nhanh `if (userAccount)` va goi sai method name.
+Tuong tu, `IncomingCallDialog` va `answerCall`/`declineCall` cua `useAgoraCall` cung khong duoc ket noi voi UI trong `MessageThread`.
 
 ## Ke hoach sua
 
-### Sua file `fun-agora-rtc-token/src/index.ts`
+### Sua file `src/modules/chat/components/MessageThread.tsx`
 
-Dong 59: Doi `buildTokenWithAccount` thanh `buildTokenWithUserAccount`
+1. **Import them `CallRoom` va `IncomingCallDialog`**:
+   - Them import `CallRoom` va `IncomingCallDialog` tu cung thu muc components
 
-```typescript
-// Truoc:
-token = RtcTokenBuilder.buildTokenWithAccount(...)
+2. **Lay du cac gia tri tu `useAgoraCall`**:
+   - Hien tai chi lay `callState` va `startCall`
+   - Can lay them: `callType`, `currentSession`, `remoteUsers`, `isMuted`, `isCameraOff`, `callDuration`, `localVideoTrack`, `localAudioTrack`, `incomingCall`, `answerCall`, `declineCall`, `endCall`, `toggleMute`, `toggleCamera`, `switchToVideo`, `flipCamera`
 
-// Sau:
-token = RtcTokenBuilder.buildTokenWithUserAccount(...)
+3. **Render `CallRoom` khi `callState` khac `'idle'`**:
+   - Hien thi dialog `CallRoom` fullscreen khi co cuoc goi dang dien ra (calling, ringing, connecting, connected)
+   - Truyen cac props: callState, callType, callDuration, localVideoTrack, remoteUsers, isMuted, isCameraOff, va cac ham dieu khien
+
+4. **Render `IncomingCallDialog` khi co cuoc goi den**:
+   - Hien thi dialog khi `incomingCall` khac null
+   - Ket noi voi `answerCall` va `declineCall`
+
+5. **Truyen thong tin user cho CallRoom**:
+   - `localUserInfo`: lay tu profile cua user hien tai (username)
+   - `remoteUserInfo`: lay tu `headerProfile` (ten va avatar cua nguoi nhan)
+
+### Chi tiet code thay doi
+
+```text
+MessageThread.tsx:
+  Line 7:   Them import CallRoom
+  Line 20:  Them import IncomingCallDialog (tu modules/chat)
+  Line 80-84: Mo rong destructure useAgoraCall de lay tat ca cac gia tri can thiet
+  Line 618+: Them render CallRoom va IncomingCallDialog truoc the dong </div> cuoi cung
 ```
 
-Chi can sua 1 dong duy nhat. Sau khi sua, con can re-deploy Cloudflare Worker bang lenh:
-
-```bash
-cd fun-agora-rtc-token
-npm run deploy
-```
-
-## Luu y
-- File nay nam trong repo de con tai ve va deploy len Cloudflare, khong phai edge function
-- Sau khi con deploy lai worker, tinh nang video call se hoat dong
-
+## Ket qua mong doi
+- Khi bam nut goi, giao dien `CallRoom` fullscreen se hien thi voi trang thai "Dang do chuong..." hoac "Dang ket noi..."
+- Khi ket noi thanh cong, hien thi video grid (video call) hoac avatar (voice call) voi dong ho dem thoi gian
+- Khi co cuoc goi den, hien thi dialog `IncomingCallDialog` voi nut Tra loi/Tu choi
+- Cac nut dieu khien (tat mic, tat camera, ket thuc cuoc goi) hoat dong binh thuong
