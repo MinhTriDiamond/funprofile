@@ -175,7 +175,7 @@ export const LazyVideo = memo(({
             muted={muted}
             loop={loop}
             playsInline
-            preload="none"
+            preload={effectivePoster ? "none" : "metadata"}
             onLoadedData={handleLoadedData}
             onCanPlay={handleCanPlay}
             onError={handleError}

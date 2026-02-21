@@ -8,6 +8,7 @@ import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 interface MediaItem {
   url: string;
   type: 'image' | 'video';
+  poster?: string;
 }
 
 interface MediaGridProps {
@@ -57,6 +58,7 @@ export const MediaGrid = memo(({ media: initialMedia }: MediaGridProps) => {
         {item.type === 'video' ? (
           <LazyVideo
             src={item.url}
+            poster={item.poster}
             className="w-full max-h-[600px] bg-black"
             showControls
             muted
@@ -101,6 +103,7 @@ export const MediaGrid = memo(({ media: initialMedia }: MediaGridProps) => {
                 <div onClick={() => handleClick(index)} className="cursor-pointer h-full">
                   <LazyVideo
                     src={item.url}
+                    poster={item.poster}
                     className="w-full h-full object-cover"
                     showControls
                     muted
@@ -146,6 +149,7 @@ export const MediaGrid = memo(({ media: initialMedia }: MediaGridProps) => {
               <div onClick={() => handleClick(0)} className="cursor-pointer h-full">
                 <LazyVideo
                   src={media[0].url}
+                  poster={media[0].poster}
                   className="w-full h-full object-cover"
                   showControls
                   muted
@@ -171,6 +175,7 @@ export const MediaGrid = memo(({ media: initialMedia }: MediaGridProps) => {
               <div onClick={() => handleClick(1)} className="cursor-pointer h-full">
                 <LazyVideo
                   src={media[1].url}
+                  poster={media[1].poster}
                   className="w-full h-full object-cover"
                   showControls
                   muted
@@ -196,6 +201,7 @@ export const MediaGrid = memo(({ media: initialMedia }: MediaGridProps) => {
               <div onClick={() => handleClick(2)} className="cursor-pointer h-full">
                 <LazyVideo
                   src={media[2].url}
+                  poster={media[2].poster}
                   className="w-full h-full object-cover"
                   showControls
                   muted
@@ -242,6 +248,7 @@ export const MediaGrid = memo(({ media: initialMedia }: MediaGridProps) => {
               <div onClick={() => handleClick(index)} className="cursor-pointer h-full">
                 <LazyVideo
                   src={item.url}
+                  poster={item.poster}
                   className="w-full h-full object-cover"
                   showControls={false}
                   muted
