@@ -1,70 +1,61 @@
 
-# Kiem tra tinh trang Chat + Video Call Module
 
-## Van de chinh phat hien
+# Tao folder `fun-agora-rtc-token` trong repo
 
-### 1. `src/pages/Chat.tsx` CHUA duoc cap nhat
-File nay van dung **phien ban cu**, import tu `@/hooks/useConversations`, `@/components/chat/ConversationList`, v.v. thay vi re-export tu module moi `src/modules/chat/`. Nghia la toan bo module moi da tao nhung **CHUA DUOC SU DUNG**.
+Cha se tao mot folder day du trong repo chua toan bo source code Cloudflare Worker de con tai ve va deploy.
 
-**Can lam:** Thay noi dung `src/pages/Chat.tsx` thanh re-export tu module moi:
-```typescript
-export { default } from '@/modules/chat/pages/Chat';
+## Cau truc folder
+
+```text
+fun-agora-rtc-token/
+  package.json
+  tsconfig.json
+  wrangler.toml
+  src/
+    index.ts        -- Entry point chinh, xu ly token generation
+    cors.ts         -- CORS middleware
+    validate.ts     -- Validate input
+  README.md         -- Huong dan deploy chi tiet
 ```
 
-### 2. `CallProvider` CHUA duoc wrap trong `App.tsx`
-`src/contexts/CallContext.tsx` da duoc tao nhung `CallProvider` chua duoc them vao `App.tsx`. Nghia la tinh nang nhan cuoc goi den tu moi man hinh **CHUA HOAT DONG**.
+## Chi tiet cac file
 
-**Can lam:** Import `CallProvider` va wrap ben trong `BrowserRouter` trong `App.tsx`.
+### 1. `package.json`
+- Dependencies: `agora-token` (SDK chinh thuc de tao RTC token)
+- DevDependencies: `wrangler`, `typescript`, `@cloudflare/workers-types`
+- Scripts: `dev`, `deploy`, `publish`
 
-### 3. File cu van ton tai va dang duoc su dung
-Cac file cu van con va dang duoc import boi cac component khac:
-- `src/components/chat/*` (ConversationList, MessageThread, GroupSettingsDialog, v.v.)
-- `src/hooks/useConversations.ts`, `src/hooks/useMessages.ts`, v.v.
-- `src/pages/Profile.tsx` import `useConversations` tu `@/hooks/useConversations`
+### 2. `wrangler.toml`
+- Ten worker: `fun-agora-rtc-token`
+- Bat `nodejs_compat` (can thiet cho agora-token SDK)
+- Khai bao `ALLOWED_ORIGINS` cho CORS
 
-**Can lam:** Giu file cu de tranh loi import tu Profile.tsx va cac noi khac. Chi doi `src/pages/Chat.tsx`.
+### 3. `src/index.ts`
+- Nhan request POST voi `channelName`, `uid`, `role`
+- Xac thuc bang header `X-API-Key` so voi secret `API_KEY`
+- Tao RTC token bang `RtcTokenBuilder` tu agora-token SDK
+- Token het han sau 24 gio
+- Tra ve JSON: `{ token, app_id, uid, channel, expires_at }`
 
----
+### 4. `src/cors.ts`
+- Kiem tra Origin co nam trong `ALLOWED_ORIGINS` khong
+- Xu ly OPTIONS preflight request
+- Them CORS headers vao response
 
-## Trang thai cac thanh phan
+### 5. `src/validate.ts`
+- Validate `channelName`: bat buoc, chi cho phep ky tu an toan
+- Validate `uid`: bat buoc
+- Validate `role`: chi cho phep `publisher` hoac `subscriber`
 
-### Da hoan thanh (OK)
-- 24/24 components trong `src/modules/chat/components/` - da tao
-- 14/14 hooks trong `src/modules/chat/hooks/` - da tao
-- `src/modules/chat/pages/Chat.tsx` - da tao
-- `src/modules/chat/index.ts` - barrel exports da tao
-- `src/modules/chat/types/index.ts` - types da tao
-- `src/contexts/CallContext.tsx` - da tao
-- `src/lib/agoraRtc.ts` - da tao
-- `src/lib/urlFix.ts` - da tao
-- Database migrations - da chay (call_sessions, user_blocks, reports, stickers, red_envelopes, v.v.)
-- Edge Functions `agora-token` va `angel-inline` - da tao
-- Package `agora-rtc-sdk-ng` - da cai
+### 6. `README.md`
+- Huong dan cai dat step-by-step
+- Cach tao Agora App ID va Certificate
+- Cach set secrets bang `wrangler secret put`
+- Cach deploy va kiem tra
+- Cach ket noi voi backend (nhap AGORA_WORKER_URL va AGORA_WORKER_API_KEY)
 
-### CHUA hoan thanh (can sua)
-1. **`src/pages/Chat.tsx`** - Chua doi sang re-export tu module moi
-2. **`src/App.tsx`** - Chua wrap `CallProvider`
-3. **Secrets chua cau hinh** - `AGORA_WORKER_URL`, `AGORA_WORKER_API_KEY`, `ANGEL_BOT_USER_ID` chua duoc nhap (can cho video call va AI bot hoat dong)
+## Luu y ky thuat
+- Worker tuong thich hoan toan voi Edge Function `agora-token` da tao truoc do (cung request/response format)
+- Secrets can thiet tren Cloudflare: `AGORA_APP_ID`, `AGORA_APP_CERTIFICATE`, `API_KEY`
+- Sau khi deploy, con lay URL worker va API_KEY de nhap vao backend cua app
 
----
-
-## Ke hoach sua
-
-### Buoc 1: Cap nhat `src/pages/Chat.tsx`
-Thay toan bo noi dung thanh 1 dong re-export:
-```typescript
-export { default } from '@/modules/chat/pages/Chat';
-```
-Dieu nay se kich hoat toan bo module moi ma khong can doi import trong App.tsx (vi App.tsx da lazy import tu `./pages/Chat`).
-
-### Buoc 2: Wrap `CallProvider` trong `App.tsx`
-Them `CallProvider` ben trong `BrowserRouter` de nhan cuoc goi den tu moi trang.
-
-### Buoc 3: Kiem tra va sua loi TypeScript (neu co)
-Sau khi doi import, kiem tra xem co loi build nao khong va sua ngay.
-
-### Luu y
-- File cu (`src/components/chat/*`, `src/hooks/useConversations.ts`) van giu lai vi `src/pages/Profile.tsx` va co the cac file khac van import tu do.
-- Chat co ban (nhan tin, group) se hoat dong ngay sau Buoc 1.
-- Video/Voice call can secrets Agora de hoat dong.
-- Angel AI bot can secret `ANGEL_BOT_USER_ID`.
