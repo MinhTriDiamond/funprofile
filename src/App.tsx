@@ -11,6 +11,7 @@ import { LanguageProvider } from "@/i18n/LanguageContext";
 import { LawOfLightGuard } from "@/components/auth/LawOfLightGuard";
 import { Web3Provider } from "@/components/providers/Web3Provider";
 import { DonationReceivedNotification } from "@/components/donations/DonationReceivedNotification";
+import { CallProvider } from "@/contexts/CallContext";
 import { TetBackground } from "@/components/ui/TetBackground";
 import { TetFlowerOverlay } from "@/components/ui/TetFlowerOverlay";
 import { ValentineMusicButton } from "@/components/layout/ValentineMusicButton";
@@ -107,6 +108,7 @@ function App() {
             <AuthSessionKeeper />
             <PendingDonationRecovery />
           <BrowserRouter>
+            <CallProvider>
             <TetBackground />
             <TetFlowerOverlay />
             {/* Global floating music button – visible on all pages including pre-login */}
@@ -150,6 +152,7 @@ function App() {
               </LawOfLightGuard>
               <DonationReceivedNotification />
             </Suspense>
+            </CallProvider>
           </BrowserRouter>
         </TooltipProvider>
           </TetBackgroundProvider>
