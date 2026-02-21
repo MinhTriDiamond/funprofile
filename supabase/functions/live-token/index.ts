@@ -1,0 +1,111 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+function getEnv(primary: string, ...fallbacks: string[]): string | undefined {
+  const val = Deno.env.get(primary)
+  if (val) return val
+  for (const fb of fallbacks) {
+    const v = Deno.env.get(fb)
+    if (v) return v
+  }
+  return undefined
+}
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders })
+  }
+
+  try {
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders })
+    }
+
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } }
+    )
+
+    const token = authHeader.replace('Bearer ', '')
+    const { data: claims, error: claimsErr } = await supabase.auth.getClaims(token)
+    if (claimsErr || !claims?.claims) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders })
+    }
+    const userId = claims.claims.sub as string
+
+    const body = await req.json().catch(() => ({}))
+    const sessionId = body.session_id
+    const role = body.role || 'audience'
+
+    if (!sessionId) {
+      return new Response(JSON.stringify({ error: 'session_id required' }), { status: 400, headers: corsHeaders })
+    }
+
+    // Lookup live session
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    )
+
+    const { data: session, error: sessionErr } = await supabaseAdmin
+      .from('live_sessions')
+      .select('id, channel_name, agora_channel, status, host_user_id')
+      .eq('id', sessionId)
+      .maybeSingle()
+
+    if (sessionErr || !session) {
+      return new Response(JSON.stringify({ error: 'Session not found' }), { status: 404, headers: corsHeaders })
+    }
+
+    if (session.status !== 'live' && session.status !== 'starting') {
+      return new Response(JSON.stringify({ error: 'Session is not live' }), { status: 400, headers: corsHeaders })
+    }
+
+    if (role === 'host' && session.host_user_id !== userId) {
+      return new Response(JSON.stringify({ error: 'Only host can get host token' }), { status: 403, headers: corsHeaders })
+    }
+
+    const channel = session.agora_channel || session.channel_name
+
+    // Try Worker for token
+    const workerUrl = getEnv('LIVE_AGORA_WORKER_URL', 'AGORA_WORKER_URL', 'VITE_AGORA_WORKER_URL')
+    const workerApiKey = getEnv('LIVE_AGORA_WORKER_API_KEY', 'AGORA_WORKER_API_KEY', 'VITE_AGORA_WORKER_API_KEY')
+
+    if (workerUrl && workerApiKey) {
+      const workerResp = await fetch(`${workerUrl}/token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': workerApiKey,
+        },
+        body: JSON.stringify({
+          channel_name: channel,
+          uid: role === 'host' ? userId : undefined,
+          role: role === 'host' ? 'publisher' : 'subscriber',
+          expire_seconds: 86400,
+        }),
+      })
+
+      if (workerResp.ok) {
+        const workerData = await workerResp.json()
+        return new Response(JSON.stringify({
+          token: workerData.token,
+          channel,
+          uid: String(workerData.uid || workerData.userAccount || 0),
+          appId: workerData.app_id || workerData.appId,
+          expiresAt: workerData.expires_at || Math.floor(Date.now() / 1000) + 86400,
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+    }
+
+    return new Response(JSON.stringify({ error: 'Token generation failed' }), { status: 500, headers: corsHeaders })
+  } catch (err) {
+    return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders })
+  }
+})

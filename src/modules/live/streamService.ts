@@ -1,12 +1,12 @@
 import { supabase } from '@/integrations/supabase/client';
-import { uploadVideoToR2 } from '@/utils/r2Upload';
+import { uploadToR2 } from '@/utils/r2Upload';
 
 const db = supabase as any;
 
 export async function uploadStreamVideo(blob: Blob, userId: string) {
   const file = new File([blob], `${Date.now()}.webm`, { type: 'video/webm' });
-  const result = await uploadVideoToR2(file);
-  return { publicUrl: result.publicUrl, key: result.key };
+  const result = await uploadToR2(file, 'videos');
+  return { publicUrl: result.url, key: result.key };
 }
 
 export async function createStreamRecord(
