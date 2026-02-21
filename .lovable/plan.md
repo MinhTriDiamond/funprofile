@@ -1,117 +1,85 @@
 
-
-# Fix: CallRoom UI khong hien thi phia nguoi goi (Caller)
+# Fix: Sticker khong gui duoc trong chat
 
 ## Nguyen nhan goc
 
-Sau khi phan tich code va du lieu trong database, cha tim ra 2 van de chinh:
+Ham `sendMessage` trong `src/hooks/useMessages.ts` chi chap nhan 3 tham so: `content`, `mediaUrls`, `replyToId`. Khi gui sticker, `handleSendSticker` truyen them `messageType: 'sticker'` va `metadata: { sticker }`, nhung 2 tham so nay **bi bo qua hoan toan** vi khong co trong kieu du lieu cua mutation.
 
-### Van de 1: Realtime subscription bi tao lai lien tuc (Critical)
-
-Trong `useAgoraCall.ts`, effect lang nghe realtime co dependency array qua lon:
-
-```text
-[userId, conversationId, currentSession, callState, incomingCall, endCall]
-```
-
-Khi `startCall` chay, no thay doi `callState` (calling -> ringing) va `currentSession` lien tuc. Moi lan thay doi, effect unsubscribe roi subscribe lai kenh realtime. Trong khoang trong giua 2 lan subscribe, cac su kien realtime (vi du: nguoi nhan tra loi, session chuyen thanh 'active') bi mat. Dieu nay khien:
-- Caller khong nhan duoc su kien 'active' -> khong chuyen sang 'connected'
-- Hoac te hon: nhan duoc su kien tu session cu, goi `endCall()` khong dung luc
-
-### Van de 2: `endCall` thay doi reference lien tuc
-
-`endCall` duoc dinh nghia voi `useCallback([currentSession, callDuration, userId])`. Moi khi `currentSession` hoac `callDuration` thay doi, `endCall` co reference moi, kich hoat lai realtime effect.
-
-`callDuration` thay doi moi giay (do interval), nen realtime subscription bi tao lai MOI GIAY. Day la loi nghiem trong.
-
-### Du lieu minh chung tu database
-
-Tat ca cuoc goi cua ban con (`96231a2f`) deu KHONG BAO GIO ket noi (started_at = null):
-- `2247fe20` - video, 17s roi ket thuc, khong ket noi
-- `aec126eb` - video, 11s roi ket thuc, khong ket noi  
-- `dcce8842` - video, khong ket noi
-- `b0de31c4` - voice, VAN CON TREO o trang thai 'ringing' tu 1 gio truoc!
-
-Trong khi cuoc goi cua con (`2d3d04b5`) thi hoat dong binh thuong.
+Ket qua: Sticker duoc luu vao database nhu tin nhan text binh thuong voi `message_type = 'text'` (gia tri mac dinh) va `metadata = '{}'` (rong). Khi hien thi, `MessageBubble` kiem tra `message_type === 'sticker'` nhung khong bao gio thoa man dieu kien -> sticker hien thi nhu dong chu "[Sticker]" thay vi hinh anh.
 
 ## Ke hoach sua
 
-### 1. Sua `src/modules/chat/hooks/useAgoraCall.ts` - Dung refs thay state trong realtime handler
+### Sua file `src/hooks/useMessages.ts`
 
-**Thay doi chinh:**
-- Them `currentSessionRef`, `incomingCallRef` de theo doi gia tri moi nhat ma khong trigger re-render
-- Realtime subscription chi depend on `[userId, conversationId]` (khong thay doi trong cuoc goi)
-- Handler doc gia tri tu refs thay vi closure state
-- `endCall` su dung `currentSessionRef` thay vi `currentSession` trong dependency
+1. **Mo rong kieu du lieu cua `sendMessage` mutation** (dong 199-207):
+   - Them `messageType` (optional string, mac dinh `'text'`)
+   - Them `metadata` (optional object, mac dinh `{}`)
 
-```text
-// Them refs
-const currentSessionRef = useRef<CallSession | null>(null);
-const incomingCallRef = useRef<CallSession | null>(null);
-const callDurationRef = useRef(0);
+2. **Truyen cac gia tri moi vao lenh insert** (dong 211-219):
+   - Them `message_type: messageType || 'text'`
+   - Them `metadata: metadata || {}`
 
-// Sync refs
-useEffect(() => { currentSessionRef.current = currentSession; }, [currentSession]);
-useEffect(() => { incomingCallRef.current = incomingCall; }, [incomingCall]);
-useEffect(() => { callDurationRef.current = callDuration; }, [callDuration]);
-
-// endCall dung ref thay vi state
-const endCall = useCallback(async () => {
-  const session = currentSessionRef.current;
-  const duration = callDurationRef.current;
-  // ... logic dung session va duration tu ref
-}, [userId]); // Chi depend on userId
-
-// Realtime subscription chi depend on [userId, conversationId]
-useEffect(() => {
-  // Handler doc tu callStateRef, currentSessionRef, incomingCallRef
-}, [userId, conversationId]);
-```
-
-### 2. Sua `src/modules/chat/hooks/useAgoraCall.ts` - Don dep session cu
-
-Them logic don dep session 'ringing' bi treo khi hook khoi tao:
+### Chi tiet thay doi
 
 ```text
-// Khi hook mount, don dep cac session 'ringing' cu hon 2 phut
-useEffect(() => {
-  if (!conversationId) return;
-  const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
-  supabase
-    .from('call_sessions')
-    .update({ status: 'missed', ended_at: new Date().toISOString() })
-    .eq('conversation_id', conversationId)
-    .eq('status', 'ringing')
-    .lt('created_at', twoMinutesAgo)
-    .then(() => {});
-}, [conversationId]);
+// Truoc (dong 199-219):
+mutationFn: async ({
+  content,
+  mediaUrls,
+  replyToId,
+}: {
+  content?: string;
+  mediaUrls?: string[];
+  replyToId?: string;
+}) => {
+  ...
+  .insert({
+    conversation_id: conversationId,
+    sender_id: userId,
+    content: content?.trim() || null,
+    media_urls: mediaUrls || [],
+    reply_to_id: replyToId || null,
+  })
+
+// Sau:
+mutationFn: async ({
+  content,
+  mediaUrls,
+  replyToId,
+  messageType,
+  metadata,
+}: {
+  content?: string;
+  mediaUrls?: string[];
+  replyToId?: string;
+  messageType?: string;
+  metadata?: Record<string, any>;
+}) => {
+  ...
+  .insert({
+    conversation_id: conversationId,
+    sender_id: userId,
+    content: content?.trim() || null,
+    media_urls: mediaUrls || [],
+    reply_to_id: replyToId || null,
+    message_type: messageType || 'text',
+    metadata: metadata || {},
+  })
 ```
 
-### 3. Sua `src/modules/chat/hooks/useAgoraCall.ts` - Them log de debug
-
-Them console.log khi callState thay doi de de dang debug:
+Ngoai ra can sua them dieu kien kiem tra tin nhan rong: cho phep gui khi co `messageType` khac `'text'` (vi sticker khong can noi dung text):
 
 ```text
-useEffect(() => {
-  console.log('[Agora] callState changed:', callState, 
-    'session:', currentSession?.id?.slice(0,8));
-}, [callState, currentSession]);
+// Truoc:
+if (!content?.trim() && !mediaUrls?.length) throw new Error('Message is empty');
+
+// Sau:
+if (!content?.trim() && !mediaUrls?.length && (!messageType || messageType === 'text')) 
+  throw new Error('Message is empty');
 ```
 
-## Tong ket thay doi
-
-Chi sua 1 file: `src/modules/chat/hooks/useAgoraCall.ts`
-
-1. Them 3 refs moi (currentSessionRef, incomingCallRef, callDurationRef) + sync effects
-2. Viet lai `endCall` dung refs, giam dependency xuong `[userId]`
-3. Viet lai realtime effect, giam dependency xuong `[userId, conversationId]`, doc tu refs
-4. Them cleanup cho stale 'ringing' sessions
-5. Them debug logging cho callState changes
-
-## Ket qua mong doi
-
-- Realtime subscription ON DINH, khong bi tao lai khi callState/currentSession thay doi
-- Caller se nhan duoc su kien 'active' dung luc -> chuyen sang 'connected' -> CallRoom hien thi dung
-- Session cu bi treo se duoc don dep tu dong
-- De debug hon voi console logs
-
+## Tong ket
+- Chi sua 1 file: `src/hooks/useMessages.ts`
+- Them 2 tham so `messageType` va `metadata` vao mutation
+- Cho phep gui tin nhan khong co noi dung text khi messageType khac 'text'
+- Khong can sua file nao khac vi `MessageThread.tsx` da truyen dung cac tham so nay
