@@ -1,44 +1,84 @@
 
-# Sua loi Edge Function agora-token va Client
+# Sua loi "AgoraRTCError NOT_READABLE: Could not start video source"
 
-## Van de phat hien
+## Nguyen nhan
 
-### Loi 1: `getClaims()` khong ton tai
-Edge function `agora-token` dung `supabase.auth.getClaims()` - method nay khong ton tai trong Supabase JS SDK. Can doi sang `supabase.auth.getUser()`.
+Loi `NOT_READABLE: NotReadableError: Could not start video source` xay ra khi Agora SDK khong the truy cap camera. Cac nguyen nhan pho bien:
 
-### Loi 2: Body field name khong khop
-- Client (`src/lib/agoraRtc.ts` dong 48) gui: `{ channel_name: channelName }`
-- Edge function (`supabase/functions/agora-token/index.ts` dong 30) doc: `{ channelName, callType }`
-- Ket qua: Edge function luon nhan `channelName = undefined` -> tra ve loi 400 "channelName required"
+1. **Camera dang bi ung dung khac su dung** (Zoom, Teams, trinh duyet khac...)
+2. **Trinh duyet khong cap quyen camera** hoac quyen bi thu hoi
+3. **Thiet bi khong co camera** hoac driver loi
 
-### Trang thai secrets: OK
-- `AGORA_WORKER_URL` - da cau hinh
-- `AGORA_WORKER_API_KEY` - da cau hinh
-
----
+Hien tai code tai dong 202-205 trong `useAgoraCall.ts` goi `AgoraRTC.createMicrophoneAndCameraTracks()` - neu camera khong kha dung, toan bo cuoc goi that bai va khong co fallback.
 
 ## Ke hoach sua
 
-### Buoc 1: Sua `supabase/functions/agora-token/index.ts`
-- Thay `supabase.auth.getClaims(...)` bang `supabase.auth.getUser()`
-- Doi dong doc body tu `{ channelName }` thanh ho tro ca 2 format: `channelName` hoac `channel_name`
+### Sua file `src/modules/chat/hooks/useAgoraCall.ts`
 
+**Thay doi 1: Fallback khi camera khong kha dung (dong 198-211)**
+
+Khi goi video, neu `createMicrophoneAndCameraTracks()` that bai, thu tao rieng tung track:
+- Thu tao ca audio + video
+- Neu that bai, thu tao chi audio (fallback thanh voice call voi thong bao)
+- Neu audio cung that bai, bao loi ro rang cho nguoi dung
+
+```typescript
+// Thay the dong 198-211:
+let audioTrack: IMicrophoneAudioTrack;
+let videoTrack: ICameraVideoTrack | null = null;
+
+if (type === 'video') {
+  try {
+    const tracks = await AgoraRTC.createMicrophoneAndCameraTracks();
+    audioTrack = tracks[0];
+    videoTrack = tracks[1];
+  } catch (videoErr: any) {
+    console.warn('[Agora] Camera not available, falling back to audio only:', videoErr.message);
+    try {
+      audioTrack = await AgoraRTC.createMicrophoneAudioTrack();
+      type = 'voice'; // Fallback to voice
+      toast({
+        title: 'Camera khong kha dung',
+        description: 'Cuoc goi se chuyen sang che do thoai vi khong the truy cap camera.',
+      });
+    } catch (audioErr: any) {
+      throw new Error('Khong the truy cap microphone va camera. Vui long kiem tra quyen truy cap thiet bi.');
+    }
+  }
+} else {
+  try {
+    audioTrack = await AgoraRTC.createMicrophoneAudioTrack();
+  } catch (audioErr: any) {
+    throw new Error('Khong the truy cap microphone. Vui long kiem tra quyen truy cap thiet bi.');
+  }
+}
 ```
-Dong 24-28: Doi getClaims -> getUser
-  const { data: { user }, error: userErr } = await supabase.auth.getUser();
-  if (userErr || !user) { return 401 }
-  const userId = user.id;
 
-Dong 30: Ho tro ca 2 field name
-  const body = await req.json();
-  const channelName = body.channelName || body.channel_name;
+**Thay doi 2: Fallback cho `switchToVideo` (dong 514-527)**
+
+Tuong tu, them try-catch va thong bao khi camera khong kha dung thay vi loi im lang:
+
+```typescript
+const switchToVideo = useCallback(async () => {
+  if (callType === 'video' || !clientRef.current) return;
+  try {
+    const videoTrack = await AgoraRTC.createCameraVideoTrack();
+    localVideoTrackRef.current = videoTrack;
+    await clientRef.current.publish(videoTrack);
+    setCallType('video');
+    setIsCameraOff(false);
+  } catch (error: any) {
+    console.error('Failed to switch to video:', error);
+    toast({
+      title: 'Camera khong kha dung',
+      description: 'Khong the bat camera. Vui long kiem tra quyen truy cap.',
+      variant: 'destructive',
+    });
+  }
+}, [callType, toast]);
 ```
 
-### Buoc 2: Khong can sua client
-File `src/lib/agoraRtc.ts` gui `channel_name` - edge function se ho tro ca 2 format nen khong can doi.
-
-## Ket qua mong doi
-- Edge function xac thuc user thanh cong bang `getUser()`
-- Nhan dung `channelName` tu client
-- Goi Cloudflare Worker va tra ve token cho client
-- Video call va voice call hoat dong
+## Tong ket
+- Khi camera bi loi, cuoc goi video se tu dong chuyen sang cuoc goi thoai (voice) thay vi that bai hoan toan
+- Nguoi dung se nhan duoc thong bao ro rang ve trang thai
+- Chuc nang "Switch to video" cung duoc xu ly loi tuong tu
