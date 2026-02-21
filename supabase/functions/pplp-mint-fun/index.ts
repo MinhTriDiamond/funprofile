@@ -160,7 +160,7 @@ serve(async (req) => {
     }
 
     // Constants
-    const MIN_MINT_AMOUNT = 10;
+    const MIN_MINT_AMOUNT = 1000;
     const MAX_DAILY_REQUESTS = 2;
 
     // Check user daily cap
