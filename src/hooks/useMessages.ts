@@ -200,13 +200,17 @@ export function useMessages(conversationId: string | null, userId: string | null
       content,
       mediaUrls,
       replyToId,
+      messageType,
+      metadata,
     }: {
       content?: string;
       mediaUrls?: string[];
       replyToId?: string;
+      messageType?: string;
+      metadata?: Record<string, any>;
     }) => {
       if (!conversationId || !userId) throw new Error('Invalid state');
-      if (!content?.trim() && !mediaUrls?.length) throw new Error('Message is empty');
+      if (!content?.trim() && !mediaUrls?.length && (!messageType || messageType === 'text')) throw new Error('Message is empty');
 
       const { data, error } = await supabase
         .from('messages')
@@ -216,6 +220,8 @@ export function useMessages(conversationId: string | null, userId: string | null
           content: content?.trim() || null,
           media_urls: mediaUrls || [],
           reply_to_id: replyToId || null,
+          message_type: messageType || 'text',
+          metadata: metadata || {},
         })
         .select()
         .single();
