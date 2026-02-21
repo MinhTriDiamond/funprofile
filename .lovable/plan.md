@@ -1,76 +1,57 @@
 
-# Fix Live Token Edge Function - Root Cause Analysis
+# Fix Live Video Replay Not Showing on Feed
 
-## Problem
-The `live-token` edge function returns 500 "Token generation failed" because it calls the Agora Worker incorrectly in two ways:
+## Root Cause
 
-1. **Wrong endpoint path**: `live-token` calls `${workerUrl}/token` but the Worker expects requests at the root `${workerUrl}` (confirmed by the working `agora-token` function which calls `workerUrl` directly without `/token`)
-2. **Wrong parameter names**: `live-token` sends `channel_name` (snake_case) but the Worker expects `channelName` (camelCase), matching what `agora-token` sends
-3. **Deprecated auth method**: `live-token` uses `supabase.auth.getClaims()` which is deprecated and may fail; the working `agora-token` uses `supabase.auth.getUser()`
+The recording **is saved correctly** to the Supabase Storage bucket (`live-recordings`). The post's `video_url` is properly set. The problem is a **rendering bug** in the video player component.
 
-## Evidence
+### Why it appears as a grey box
 
-Working `agora-token` function (line 75-86):
-```typescript
-const tokenResp = await fetch(workerUrl, {   // <-- ROOT path, no /token
-  method: "POST",
-  headers: { "Content-Type": "application/json", "X-API-Key": workerApiKey },
-  body: JSON.stringify({
-    channelName,    // <-- camelCase
-    uid: userId,
-    role: "publisher",
-  }),
-});
-```
+`LazyVideo.tsx` has a deadlock condition:
 
-Broken `live-token` function (line 81-93):
-```typescript
-const workerResp = await fetch(`${workerUrl}/token`, {  // <-- WRONG: /token
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json', 'X-API-Key': workerApiKey },
-  body: JSON.stringify({
-    channel_name: channel,  // <-- WRONG: snake_case
-    uid: role === 'host' ? userId : undefined,
-    role: role === 'host' ? 'publisher' : 'subscriber',
-    expire_seconds: 86400,  // <-- May not be supported
-  }),
-})
-```
+1. Video uses `preload="none"` -- browser loads zero bytes
+2. The `<video>` element starts with `opacity: 0` (invisible)
+3. Opacity changes to `1` only when `onLoadedData` fires
+4. `onLoadedData` never fires because `preload="none"` prevents any loading
+5. Result: grey placeholder stays forever, video is invisible behind it
+
+### Missing thumbnail
+
+The live post's `metadata.thumbnail_url` exists in the database but `FacebookPostCard` doesn't pass it to the video player as a poster image.
+
+---
 
 ## Fix Plan
 
-### Step 1: Fix `supabase/functions/live-token/index.ts`
+### Step 1: Fix LazyVideo deadlock (`src/components/ui/LazyVideo.tsx`)
 
-Three changes:
-1. Replace `supabase.auth.getClaims(token)` with `supabase.auth.getUser()` (matching the working pattern)
-2. Change Worker call from `${workerUrl}/token` to `${workerUrl}` (root endpoint)
-3. Change parameter names from `channel_name` to `channelName` and `expire_seconds` to match Worker format
-4. Add error logging when Worker returns non-ok response (for debugging)
+Change `preload="none"` to `preload="metadata"` when no poster is available. This lets the browser load just enough data (first frame + duration) to trigger `onLoadedData`, breaking the deadlock.
 
-### Step 2: Fix `supabase/functions/live-recording-start/index.ts`
+```
+preload={effectivePoster ? "none" : "metadata"}
+```
 
-Same fixes:
-1. Replace `getClaims` with `getUser()`
-2. Change Worker token call from `${workerUrl}/token` to `${workerUrl}`
-3. Fix parameter names to camelCase
+This is safe -- `preload="metadata"` only downloads a few KB (video headers), not the full file.
 
-### Step 3: Fix `supabase/functions/live-recording-stop/index.ts`
+### Step 2: Pass thumbnail as poster for live posts (`src/components/feed/FacebookPostCard.tsx`)
 
-1. Replace `getClaims` with `getUser()`
+Extract `metadata.thumbnail_url` from live posts and pass it through to `MediaGrid` -> `LazyVideo` as a poster image. This provides an immediate visual before the video loads.
 
-### Step 4: Fix `supabase/functions/live-recording-status/index.ts`
+Changes:
+- Update `MediaItem` interface in `MediaGrid.tsx` to support an optional `poster` field
+- In `FacebookPostCard.tsx`, when building `mediaItems`, if `post.video_url` exists and `post.metadata?.thumbnail_url` exists, include it as `poster`
+- In `MediaGrid.tsx`, pass `poster` to `LazyVideo`
 
-1. Replace `getClaims` with `getUser()`
+### Step 3: Clean up old failed live posts (optional)
 
-### Step 5: Deploy and test
+The 4 older live sessions have `recording_status: failed` and `video_url: null`. These show as empty grey posts on the feed. No code change needed -- they just show text content "Dang LIVE tren FUN Profile" without media, which is correct behavior for failed recordings.
 
-Deploy all 4 updated edge functions and test the live flow end-to-end.
+---
 
 ## Files Changed
 
 | File | Change |
 |------|--------|
-| `supabase/functions/live-token/index.ts` | Fix Worker URL path, parameter names, auth method |
-| `supabase/functions/live-recording-start/index.ts` | Fix Worker URL path, parameter names, auth method |
-| `supabase/functions/live-recording-stop/index.ts` | Fix auth method |
-| `supabase/functions/live-recording-status/index.ts` | Fix auth method |
+| `src/components/ui/LazyVideo.tsx` | Change `preload` from `"none"` to `"metadata"` when no poster |
+| `src/components/feed/MediaGrid.tsx` | Add optional `poster` to `MediaItem`, pass to `LazyVideo` |
+| `src/components/feed/FacebookPostCard.tsx` | Extract `metadata.thumbnail_url` and attach as `poster` to video media items |
