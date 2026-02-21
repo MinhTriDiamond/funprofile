@@ -1,139 +1,106 @@
 
-# Tich hop tinh nang Live Stream tu file dong goi
+
+# Tao frontend module Live Stream + Edge Functions + Routes
 
 ## Tong quan
+Tao toan bo 26 file frontend trong `src/modules/live/`, 1 trang LiveDiscoveryPage, 7 edge functions, cap nhat routes trong App.tsx, va ket noi nut "Live Video" tren Feed.
 
-File dong goi chua day du code cho tinh nang Live Stream bao gom: frontend module (`src/modules/live/`), edge functions, database migrations, va Cloudflare Worker recording. Du an hien tai chua co bat ky file nao trong `src/modules/live/`, chua co bang `live_sessions`, va chua co route `/live`.
+## Buoc 1: Tao frontend module `src/modules/live/` (26 files)
 
-## Phan tich hien trang
+Tao cac file theo dung noi dung tu file dong goi:
 
-**Da co san:**
-- Agora SDK (agora-rtc-sdk-ng) da cai dat
-- `src/lib/agoraRtc.ts` da co ham `getLiveToken()` va `createAgoraRtcClient()`
-- Secrets: AGORA_WORKER_URL, AGORA_WORKER_API_KEY, AGORA_APP_ID, AGORA_APP_CERTIFICATE, CLOUDFLARE_R2_*, FUN_PROFILE_ORIGIN
-- Edge function `agora-token` da co
-- Edge function `stream-video`, `cleanup-stream-videos` da co
-- Bang `posts` da co cot `post_type`
-- Ham `update_updated_at_column()` da ton tai
+| File | Mo ta |
+|------|-------|
+| `src/modules/live/types.ts` | LiveSession, LivePrivacy, LiveStatus types |
+| `src/modules/live/index.ts` | Re-export tat ca |
+| `src/modules/live/liveService.ts` | CRUD live sessions, upload recording, viewer count |
+| `src/modules/live/streamService.ts` | Upload stream video va tao record |
+| `src/modules/live/useLiveSession.ts` | React Query hooks cho live session |
+| `src/modules/live/api/agora.ts` | API wrappers: getRtcToken, startRecording, stopRecording |
+| `src/modules/live/hooks/useFollowingLiveStatus.ts` | Theo doi ban be dang live |
+| `src/modules/live/hooks/useLiveComments.ts` | Comments realtime |
+| `src/modules/live/hooks/useLiveMessages.ts` | Messages realtime |
+| `src/modules/live/hooks/useLiveReactions.ts` | Reactions realtime |
+| `src/modules/live/hooks/useLiveRtc.ts` | Agora RTC connection (host/audience) |
+| `src/modules/live/components/FloatingReactions.tsx` | Emoji reactions bay |
+| `src/modules/live/components/LiveChatPanel.tsx` | Chat panel |
+| `src/modules/live/components/LiveChatReplay.tsx` | Replay chat |
+| `src/modules/live/components/LiveSessionCard.tsx` | Card hien thi session |
+| `src/modules/live/components/LiveSharePanel.tsx` | Share panel |
+| `src/modules/live/components/StartLiveDialog.tsx` | Dialog bat dau live |
+| `src/modules/live/pages/HostLive.tsx` | Re-export LiveHostPage |
+| `src/modules/live/pages/AudienceLive.tsx` | Re-export LiveAudiencePage |
+| `src/modules/live/pages/LiveHostPage.tsx` | Trang host phat live |
+| `src/modules/live/pages/LiveAudiencePage.tsx` | Trang xem live |
+| `src/modules/live/pages/LiveStream.tsx` | Trang ghi va dang video |
+| `src/modules/live/pages/LiveStudio.tsx` | Re-export LiveHostPage |
+| `src/modules/live/pages/LiveViewer.tsx` | Re-export LiveAudiencePage |
+| `src/modules/live/recording/clientRecorder.ts` | MediaRecorder wrapper |
+| `src/modules/live/README.md` | Tai lieu |
 
-**Chua co - can tao moi:**
-- Toan bo module `src/modules/live/` (26+ file)
-- Bang `live_sessions`, `live_recordings`, `live_messages`, `live_reactions`, `live_comments`, `streams`
-- Edge functions: `live-token`, `live-start`, `live-stop`, `live-recording-start`, `live-recording-stop`, `live-recording-status`, `live-recording-proxy`
-- Routes trong App.tsx
-- Trang `LiveDiscoveryPage.tsx`
-- Cac ham RPC: `increment_live_viewer_count`, `decrement_live_viewer_count`, `set_live_recording_state`, `upsert_live_recording_row`, `attach_live_replay_to_post`
+## Buoc 2: Tao trang LiveDiscoveryPage
 
-## Ke hoach thuc hien
+File `src/pages/LiveDiscoveryPage.tsx` - Hien thi ban be dang live va tat ca sessions dang live.
 
-### Buoc 1: Database Migration
+## Buoc 3: Tao 7 Edge Functions
 
-Tao migration SQL ket hop tat ca 7 file migration lam 1, bao gom:
+| Edge Function | Mo ta |
+|---------------|-------|
+| `supabase/functions/live-token/index.ts` | Token cho live (host/audience/recorder) - dieu chinh fallback dung `AGORA_WORKER_URL` da co |
+| `supabase/functions/live-start/index.ts` | Deprecated stub (410) |
+| `supabase/functions/live-stop/index.ts` | Deprecated stub (410) |
+| `supabase/functions/live-recording-start/index.ts` | Bat dau ghi hinh qua Worker |
+| `supabase/functions/live-recording-stop/index.ts` | Dung ghi hinh qua Worker |
+| `supabase/functions/live-recording-status/index.ts` | Query trang thai ghi hinh |
+| `supabase/functions/live-recording-proxy/index.ts` | Deprecated stub (410) |
 
-- Bang `live_sessions` voi day du cot (host_user_id, owner_id, channel_name, agora_channel, recording_uid, recording_status, resource_id, sid, title, privacy, status, viewer_count, post_id, va cac cot recording)
-- Bang `live_recordings` cho lifecycle ghi hinh
-- Bang `live_messages` cho chat trong live
-- Bang `live_reactions` cho reaction emoji
-- Bang `live_comments` cho binh luan
-- Bang `streams` cho video ghi va dang
-- Them cot `metadata` (jsonb) vao bang `posts` neu chua co
-- RLS policies cho tat ca cac bang
-- Cac ham RPC: `increment_live_viewer_count`, `decrement_live_viewer_count`, `set_live_recording_state`, `upsert_live_recording_row`, `attach_live_replay_to_post`
-- Enable realtime cho `live_sessions`, `live_messages`, `live_reactions`, `live_comments`
+Dieu chinh quan trong cho edge functions: Thay doi fallback secret name tu `VITE_AGORA_WORKER_URL` thanh `AGORA_WORKER_URL` (va tuong tu cho API key) vi du an da co san cac secret nay.
 
-### Buoc 2: Secrets kiem tra
+## Buoc 4: Cap nhat Routes trong App.tsx
 
-Can kiem tra va them neu thieu:
-- `LIVE_AGORA_WORKER_URL` - co the dung chung AGORA_WORKER_URL hien co
-- `LIVE_AGORA_WORKER_API_KEY` - co the dung chung AGORA_WORKER_API_KEY hien co
-
-Edge function `live-token` se fallback tim `LIVE_AGORA_WORKER_URL` hoac `VITE_AGORA_WORKER_URL` (tuong thich nguoc). Vi da co `AGORA_WORKER_URL`, ta se cap nhat edge function de su dung ten secret da co.
-
-### Buoc 3: Tao frontend module `src/modules/live/`
-
-Tao 26 file tu file dong goi:
-
-```text
-src/modules/live/
-  types.ts                     - LiveSession, LivePrivacy, LiveStatus types
-  index.ts                     - Re-export tat ca
-  liveService.ts               - CRUD live sessions, upload recording, viewer count
-  streamService.ts             - Upload stream video va tao record
-  useLiveSession.ts            - React Query hooks cho live session
-  api/agora.ts                 - API wrappers: getRtcToken, startRecording, stopRecording
-  hooks/useFollowingLiveStatus.ts - Theo doi ban be dang live
-  hooks/useLiveComments.ts     - Comments realtime
-  hooks/useLiveMessages.ts     - Messages realtime  
-  hooks/useLiveReactions.ts    - Reactions realtime
-  hooks/useLiveRtc.ts          - Agora RTC connection (host/audience)
-  components/FloatingReactions.tsx - Emoji reactions bay
-  components/LiveChatPanel.tsx     - Chat panel
-  components/LiveChatReplay.tsx    - Replay chat
-  components/LiveSessionCard.tsx   - Card hien thi session
-  components/LiveSharePanel.tsx    - Share panel
-  components/StartLiveDialog.tsx   - Dialog bat dau live
-  pages/HostLive.tsx           - Re-export
-  pages/AudienceLive.tsx       - Re-export
-  pages/LiveHostPage.tsx       - Trang host phat live
-  pages/LiveAudiencePage.tsx   - Trang xem live
-  pages/LiveStream.tsx         - Trang ghi & dang video
-  pages/LiveStudio.tsx         - Re-export
-  pages/LiveViewer.tsx         - Re-export
-  recording/clientRecorder.ts  - MediaRecorder wrapper
-  README.md                    - Tai lieu
-```
-
-### Buoc 4: Tao trang LiveDiscoveryPage
-
-`src/pages/LiveDiscoveryPage.tsx` - Trang kham pha live, hien thi ban be dang live va tat ca sessions dang live.
-
-### Buoc 5: Tao Edge Functions
-
-- `supabase/functions/live-token/index.ts` - Token cho live (host/audience/recorder)
-- `supabase/functions/live-start/index.ts` - Deprecated stub (410)
-- `supabase/functions/live-stop/index.ts` - Deprecated stub (410)
-- `supabase/functions/live-recording-start/index.ts` - Bat dau ghi hinh qua Worker
-- `supabase/functions/live-recording-stop/index.ts` - Dung ghi hinh qua Worker
-- `supabase/functions/live-recording-status/index.ts` - Query trang thai ghi hinh
-- `supabase/functions/live-recording-proxy/index.ts` - Proxy recording requests
-
-Cap nhat `supabase/config.toml` them verify_jwt cho cac function moi.
-
-### Buoc 6: Cap nhat Routes trong App.tsx
-
-Them cac route:
+Them lazy imports va routes:
 
 ```text
-/live          -> LiveDiscoveryPage (trang kham pha)
-/live/new      -> LiveStream (ghi & dang video) hoac StartLiveDialog
-/live/:liveSessionId       -> LiveAudiencePage (xem live)
-/live/:liveSessionId/host  -> LiveHostPage (host phat live)
-/live/stream   -> Redirect /live/new
-/live/studio/:liveSessionId -> Redirect /live/:liveSessionId/host
+/live                      -> LiveDiscoveryPage
+/live/new                  -> LiveHostPage (tao session moi)
+/live/stream               -> LiveStream (ghi & dang)
+/live/:liveSessionId       -> LiveAudiencePage
+/live/:liveSessionId/host  -> LiveHostPage
 ```
 
-### Buoc 7: Ket noi nut "Live Video" tren Feed
+## Buoc 5: Ket noi nut "Live Video" tren Feed
 
-Hien tai nut "Live Video" trong `FacebookCreatePost.tsx` chi mo file picker video. Se thay doi de navigate den `/live/new` (trang ghi & dang hoac bat dau live truc tiep).
+Sua `src/components/feed/FacebookCreatePost.tsx` de nut "Live Video" navigate den `/live/new` thay vi mo file picker.
 
-### Buoc 8: Cap nhat agoraRtc.ts
+## Buoc 6: Cap nhat agoraRtc.ts
 
-File `src/lib/agoraRtc.ts` hien tai da co `getLiveToken` nhung cast `live_sessions` bang `as any`. Se giu nguyen vi bang chua co trong types.ts (se tu dong cap nhat sau migration).
+Sua dong `from('live_sessions' as any)` thanh `from('live_sessions')` vi bang da ton tai sau migration.
 
-## Luu y quan trong
+## Chi tiet ky thuat
 
-- **Worker phia Cloudflare** (thu muc `worker/` trong file dong goi): Day la Cloudflare Worker rieng cho recording, can deploy rieng ngoai Lovable. Phan nay khong the tao tu dong trong Lovable, nhung cac Edge Functions se proxy den Worker nay.
-- **Secret LIVE_AGORA_WORKER_URL**: Edge function `live-token` su dung ten `LIVE_AGORA_WORKER_URL` hoac fallback `VITE_AGORA_WORKER_URL`. Ca hai deu chua co - se dieu chinh edge function su dung `AGORA_WORKER_URL` da co san.
-- Khoi luong thay doi lon (~40 files), se chia lam nhieu buoc thuc hien.
+### Secrets
+Da co day du: `AGORA_WORKER_URL`, `AGORA_WORKER_API_KEY`, `AGORA_APP_ID`, `AGORA_APP_CERTIFICATE`, `CLOUDFLARE_R2_*`, `FUN_PROFILE_ORIGIN`. Khong can them secret moi.
 
-## Files thay doi
+Edge function `live-token` se duoc dieu chinh fallback chain:
+1. `LIVE_AGORA_WORKER_URL` (chua co)
+2. `AGORA_WORKER_URL` (da co - se dung)
+3. `VITE_AGORA_WORKER_URL` (giu tuong thich)
 
-| Loai | File | Mo ta |
-|------|------|-------|
-| Migration | SQL | Tao 6 bang + RLS + RPC functions + realtime |
-| New | src/modules/live/* (26 files) | Toan bo module Live |
-| New | src/pages/LiveDiscoveryPage.tsx | Trang kham pha live |
-| New | 7 edge functions | live-token, live-start, live-stop, live-recording-* |
-| Edit | src/App.tsx | Them routes /live/* |
-| Edit | src/components/feed/FacebookCreatePost.tsx | Doi nut Live Video navigate den /live/new |
-| Edit | src/lib/agoraRtc.ts | Nho, giu tuong thich |
+### CSS Animation
+Can them keyframe `animate-float-up` cho FloatingReactions trong tailwind config.
+
+### Tong so files thay doi
+
+| Loai | So luong | Files |
+|------|----------|-------|
+| New | 26 | src/modules/live/* |
+| New | 1 | src/pages/LiveDiscoveryPage.tsx |
+| New | 7 | supabase/functions/live-* |
+| Edit | 1 | src/App.tsx (them routes) |
+| Edit | 1 | src/components/feed/FacebookCreatePost.tsx |
+| Edit | 1 | src/lib/agoraRtc.ts (nho) |
+| Edit | 1 | tailwind.config.ts (them animation) |
+| Total | ~38 | |
+
+Do khoi luong lon (~38 files), se tao song song tat ca files trong 1 lan thuc hien.
+
