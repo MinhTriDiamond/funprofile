@@ -200,11 +200,29 @@ export function useAgoraCall({ conversationId, userId }: UseAgoraCallOptions) {
       let videoTrack: ICameraVideoTrack | null = null;
       
       if (type === 'video') {
-        const tracks = await AgoraRTC.createMicrophoneAndCameraTracks();
-        audioTrack = tracks[0];
-        videoTrack = tracks[1];
+        try {
+          const tracks = await AgoraRTC.createMicrophoneAndCameraTracks();
+          audioTrack = tracks[0];
+          videoTrack = tracks[1];
+        } catch (videoErr: any) {
+          console.warn('[Agora] Camera not available, falling back to audio only:', videoErr.message);
+          try {
+            audioTrack = await AgoraRTC.createMicrophoneAudioTrack();
+            type = 'voice';
+            toast({
+              title: 'Camera không khả dụng',
+              description: 'Cuộc gọi sẽ chuyển sang chế độ thoại vì không thể truy cập camera.',
+            });
+          } catch (audioErr: any) {
+            throw new Error('Không thể truy cập microphone và camera. Vui lòng kiểm tra quyền truy cập thiết bị.');
+          }
+        }
       } else {
-        audioTrack = await AgoraRTC.createMicrophoneAudioTrack();
+        try {
+          audioTrack = await AgoraRTC.createMicrophoneAudioTrack();
+        } catch (audioErr: any) {
+          throw new Error('Không thể truy cập microphone. Vui lòng kiểm tra quyền truy cập thiết bị.');
+        }
       }
       
       localAudioTrackRef.current = audioTrack;
@@ -521,10 +539,15 @@ export function useAgoraCall({ conversationId, userId }: UseAgoraCallOptions) {
       await clientRef.current.publish(videoTrack);
       setCallType('video');
       setIsCameraOff(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to switch to video:', error);
+      toast({
+        title: 'Camera không khả dụng',
+        description: 'Không thể bật camera. Vui lòng kiểm tra quyền truy cập.',
+        variant: 'destructive',
+      });
     }
-  }, [callType]);
+  }, [callType, toast]);
 
   // Handle auto-answer from URL parameter (when accepting call from another page)
   useEffect(() => {
