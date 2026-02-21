@@ -1,57 +1,58 @@
 
-# Fix Live Video Replay Not Showing on Feed
+# Fix Live Video Replay: Playback + Delete + UI Improvement
 
-## Root Cause
+## Problems Found
 
-The recording **is saved correctly** to the Supabase Storage bucket (`live-recordings`). The post's `video_url` is properly set. The problem is a **rendering bug** in the video player component.
+### Problem 1: Video Play Button Blocked by Overlay
+In `LazyVideo.tsx`, the placeholder overlay (`absolute inset-0`) sits ON TOP of the video element. The `showPlaceholder` state only clears when `onLoadedData` fires, but for `.webm` files with `preload="metadata"`, this event may not fire reliably on all browsers. Even when it does, there's a race condition where the placeholder blocks the native video controls (play button) from receiving clicks.
 
-### Why it appears as a grey box
+### Problem 2: Storage Video Not Cleaned Up on Delete
+`handleDelete` in `FacebookPostCard.tsx` only calls `extractPostStreamVideos()` which checks for Cloudflare Stream URLs (`videodelivery.net`). Live recordings stored in Supabase Storage (`supabase.co/storage/v1/...`) are never detected, so the video file remains in storage even after the post is deleted -- wasting space.
 
-`LazyVideo.tsx` has a deadlock condition:
-
-1. Video uses `preload="none"` -- browser loads zero bytes
-2. The `<video>` element starts with `opacity: 0` (invisible)
-3. Opacity changes to `1` only when `onLoadedData` fires
-4. `onLoadedData` never fires because `preload="none"` prevents any loading
-5. Result: grey placeholder stays forever, video is invisible behind it
-
-### Missing thumbnail
-
-The live post's `metadata.thumbnail_url` exists in the database but `FacebookPostCard` doesn't pass it to the video player as a poster image.
+### Problem 3: No Visual "LIVE Replay" Indicator
+The live replay post looks identical to a regular video post. Users have no visual cue that this was a live broadcast replay.
 
 ---
 
-## Fix Plan
+## Implementation Plan
 
-### Step 1: Fix LazyVideo deadlock (`src/components/ui/LazyVideo.tsx`)
+### Step 1: Fix LazyVideo Playback (`src/components/ui/LazyVideo.tsx`)
 
-Change `preload="none"` to `preload="metadata"` when no poster is available. This lets the browser load just enough data (first frame + duration) to trigger `onLoadedData`, breaking the deadlock.
+Three changes to ensure video controls are always clickable:
 
-```
-preload={effectivePoster ? "none" : "metadata"}
-```
+1. Add `onLoadedMetadata` handler as a backup to clear the placeholder (fires before `onLoadedData` and is more reliable for metadata-only preload)
+2. Add `pointer-events-none` to the placeholder overlay so it never blocks clicks on the video controls underneath
+3. Set a timeout fallback: if placeholder hasn't cleared after 3 seconds of being in view, force-remove it
 
-This is safe -- `preload="metadata"` only downloads a few KB (video headers), not the full file.
+### Step 2: Fix Delete for Storage Videos (`src/components/feed/FacebookPostCard.tsx`)
 
-### Step 2: Pass thumbnail as poster for live posts (`src/components/feed/FacebookPostCard.tsx`)
+Update `handleDelete` to also detect and clean up Supabase Storage video files:
 
-Extract `metadata.thumbnail_url` from live posts and pass it through to `MediaGrid` -> `LazyVideo` as a poster image. This provides an immediate visual before the video loads.
+1. Check if `video_url` contains `supabase.co/storage` 
+2. If so, extract the storage path and call `supabase.storage.from('live-recordings').remove([path])`
+3. This ensures the video file is deleted from storage when the post is deleted
 
-Changes:
-- Update `MediaItem` interface in `MediaGrid.tsx` to support an optional `poster` field
-- In `FacebookPostCard.tsx`, when building `mediaItems`, if `post.video_url` exists and `post.metadata?.thumbnail_url` exists, include it as `poster`
-- In `MediaGrid.tsx`, pass `poster` to `LazyVideo`
+### Step 3: Add "LIVE Replay" Badge (`src/components/feed/FacebookPostCard.tsx`)
 
-### Step 3: Clean up old failed live posts (optional)
+Add a small "LIVE Replay" badge overlay on live replay video posts:
 
-The 4 older live sessions have `recording_status: failed` and `video_url: null`. These show as empty grey posts on the feed. No code change needed -- they just show text content "Dang LIVE tren FUN Profile" without media, which is correct behavior for failed recordings.
+1. Check if `post.post_type === 'live'` 
+2. If so, render a small red badge with a play icon and "LIVE" text at the top-left corner of the video
+3. This gives users a clear visual indicator
+
+### Step 4: Improve Video UI for Live Replays
+
+For live replay posts specifically:
+- Show video duration if available from metadata
+- Ensure the video always shows native controls prominently
+- Add a larger centered play button overlay for better tap targets on mobile
 
 ---
 
-## Files Changed
+## Files to Change
 
 | File | Change |
 |------|--------|
-| `src/components/ui/LazyVideo.tsx` | Change `preload` from `"none"` to `"metadata"` when no poster |
-| `src/components/feed/MediaGrid.tsx` | Add optional `poster` to `MediaItem`, pass to `LazyVideo` |
-| `src/components/feed/FacebookPostCard.tsx` | Extract `metadata.thumbnail_url` and attach as `poster` to video media items |
+| `src/components/ui/LazyVideo.tsx` | Fix placeholder blocking controls; add `onLoadedMetadata`; timeout fallback |
+| `src/components/feed/FacebookPostCard.tsx` | Delete storage videos on post delete; add LIVE badge |
+| `src/utils/streamHelpers.ts` | Add `isSupabaseStorageUrl()` and `deleteStorageVideo()` helpers |
