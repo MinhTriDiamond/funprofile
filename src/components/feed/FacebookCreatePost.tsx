@@ -524,7 +524,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
 
   // Navigate to live stream setup
   const handleLiveVideoClick = () => {
-    navigate('/live/new');
+    navigate('/live/setup');
   };
 
   // Handle direct file select from main card buttons
