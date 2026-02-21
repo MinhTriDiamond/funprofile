@@ -40,6 +40,7 @@ export const useMintHistory = (): UseMintHistoryResult => {
         .from('pplp_mint_requests')
         .select('id, amount_display, status, created_at, updated_at, action_ids, action_types, recipient_address, tx_hash')
         .eq('user_id', user.id)
+        .not('action_hash', 'is', null)  // Chỉ contract hiện tại 0x39A1...CD6
         .order('created_at', { ascending: false });
 
       if (error) throw error;
