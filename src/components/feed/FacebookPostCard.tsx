@@ -305,7 +305,7 @@ const FacebookPostCardComponent = ({
 
   // Prepare media items for MediaGrid - memoized
   const mediaItems = useMemo(() => {
-    const items: Array<{ url: string; type: 'image' | 'video' }> = [];
+    const items: Array<{ url: string; type: 'image' | 'video'; poster?: string }> = [];
     
     if (post.media_urls && Array.isArray(post.media_urls) && post.media_urls.length > 0) {
       return post.media_urls;
@@ -315,10 +315,13 @@ const FacebookPostCardComponent = ({
       items.push({ url: post.image_url, type: 'image' as const });
     }
     if (post.video_url) {
-      items.push({ url: post.video_url, type: 'video' as const });
+      // Extract thumbnail from live session metadata if available
+      const metadata = (post as any).metadata;
+      const poster = metadata?.thumbnail_url as string | undefined;
+      items.push({ url: post.video_url, type: 'video' as const, poster });
     }
     return items;
-  }, [post.media_urls, post.image_url, post.video_url]);
+  }, [post.media_urls, post.image_url, post.video_url, (post as any).metadata]);
 
   return (
     <>
