@@ -5,6 +5,8 @@ import { useMessages } from '../hooks/useMessages';
 import { useTypingIndicator } from '../hooks/useTypingIndicator';
 import { useConversation } from '../hooks/useConversations';
 import { useAgoraCall } from '../hooks/useAgoraCall';
+import { CallRoom } from './CallRoom';
+import { IncomingCallDialog } from './IncomingCallDialog';
 import { usePins } from '../hooks/usePins';
 import { useBlocks } from '../hooks/useBlocks';
 import { useReports } from '../hooks/useReports';
@@ -80,7 +82,22 @@ export function MessageThread({ conversationId, userId, username }: MessageThrea
   // Agora call hook
   const {
     callState,
+    callType,
+    currentSession,
+    remoteUsers,
+    isMuted,
+    isCameraOff,
+    callDuration,
+    localVideoTrack,
+    incomingCall,
     startCall,
+    answerCall,
+    declineCall,
+    endCall,
+    toggleMute,
+    toggleCamera,
+    switchToVideo,
+    flipCamera,
   } = useAgoraCall({ conversationId, userId });
 
   // Get other participant for header
@@ -634,37 +651,42 @@ export function MessageThread({ conversationId, userId, username }: MessageThrea
           username={headerName}
           isBlocking={false}
           mode={isDmBlockedByMe ? 'unblock' : 'block'}
-          onConfirm={async () => {
-            // Logic handled inside hook but simple toggle here for UI?
-            // Actually hook exposes blockUser/unblockUser
-            // We should use them.
-            // But we don't have direct access here? Ah we do: useBlocks
-            // But the dialog props are simple.
-            // We can implement the call here.
-            // Wait, MessageThread has useBlocks hook.
-            // blockedIds, blockUser, unblockUser.
-            // So we can pass a handler.
-            // The handler needs to be async.
-            // Let's implement it inline.
-            /*
-            try {
-              if (isDmBlockedByMe) {
-                await unblockUser.mutateAsync(dmOtherUserId);
-                toast.success('Đã kết nối lại');
-              } else {
-                await blockUser.mutateAsync(dmOtherUserId);
-                toast.success('Đã tạm ngừng kết nối');
-              }
-              setShowBlockDialog(false);
-            } catch (e) {
-              toast.error('Thao tác thất bại');
-            }
-            */
-            // Since useMutation is async, we can just call it.
-            // But we need to handle loading state.
-            // Dialog props: isBlocking, onConfirm.
-            // We can pass a wrapper.
+          onConfirm={async () => {}}
+        />
+      )}
+
+      {/* Call Room - shown when a call is active */}
+      {callState !== 'idle' && (
+        <CallRoom
+          isOpen={true}
+          callState={callState}
+          callType={callType}
+          callDuration={callDuration}
+          localVideoTrack={localVideoTrack}
+          remoteUsers={remoteUsers}
+          isMuted={isMuted}
+          isCameraOff={isCameraOff}
+          localUserInfo={{
+            username: username || 'Bạn',
           }}
+          remoteUserInfo={{
+            username: headerName || 'Người dùng',
+            avatarUrl: headerAvatar || undefined,
+          }}
+          onToggleMute={toggleMute}
+          onToggleCamera={toggleCamera}
+          onSwitchToVideo={switchToVideo}
+          onFlipCamera={flipCamera}
+          onEndCall={endCall}
+        />
+      )}
+
+      {/* Incoming Call Dialog */}
+      {incomingCall && (
+        <IncomingCallDialog
+          callSession={incomingCall}
+          onAnswer={answerCall}
+          onDecline={declineCall}
         />
       )}
     </div>
