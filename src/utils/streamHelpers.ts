@@ -8,6 +8,50 @@ import { extractStreamUid, isStreamUrl } from './streamUpload';
 import { deleteFromR2 } from './r2Upload';
 
 /**
+ * Check if URL is a Supabase Storage URL
+ */
+export function isSupabaseStorageUrl(url: string): boolean {
+  return url.includes('supabase.co/storage/v1') || url.includes('supabase.in/storage/v1');
+}
+
+/**
+ * Extract bucket and path from a Supabase Storage public URL
+ * e.g. "https://xxx.supabase.co/storage/v1/object/public/live-recordings/some/path.webm"
+ * → { bucket: "live-recordings", path: "some/path.webm" }
+ */
+export function extractStoragePath(url: string): { bucket: string; path: string } | null {
+  try {
+    const match = url.match(/\/storage\/v1\/object\/public\/([^/]+)\/(.+)$/);
+    if (match) {
+      return { bucket: match[1], path: match[2] };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Delete a file from Supabase Storage
+ */
+export async function deleteStorageFile(url: string): Promise<boolean> {
+  const info = extractStoragePath(url);
+  if (!info) return false;
+  try {
+    const { error } = await supabase.storage.from(info.bucket).remove([info.path]);
+    if (error) {
+      console.error('[streamHelpers] Storage delete error:', error);
+      return false;
+    }
+    console.log('[streamHelpers] Storage file deleted:', info.bucket, info.path);
+    return true;
+  } catch (err) {
+    console.error('[streamHelpers] Storage delete failed:', err);
+    return false;
+  }
+}
+
+/**
  * Check if URL is an R2 media URL
  */
 export function isR2Url(url: string): boolean {
@@ -31,6 +75,11 @@ export function extractR2Key(url: string): string | null {
  * Delete a video by URL — auto-detects R2 vs Stream
  */
 export async function deleteVideoByUrl(videoUrl: string): Promise<boolean> {
+  // Supabase Storage (live recordings)
+  if (isSupabaseStorageUrl(videoUrl)) {
+    return deleteStorageFile(videoUrl);
+  }
+  // R2
   if (isR2Url(videoUrl)) {
     const key = extractR2Key(videoUrl);
     if (!key) return false;

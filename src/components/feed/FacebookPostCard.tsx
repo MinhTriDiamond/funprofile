@@ -19,7 +19,7 @@ import { ReactionButton } from './ReactionButton';
 import { ReactionSummary } from './ReactionSummary';
 import { MediaGrid } from './MediaGrid';
 import { ExpandableContent } from './ExpandableContent';
-import { extractPostStreamVideos, deleteStreamVideos } from '@/utils/streamHelpers';
+import { extractPostStreamVideos, deleteStreamVideos, isSupabaseStorageUrl, deleteStorageFile } from '@/utils/streamHelpers';
 import {
   MessageCircle,
   Share2,
@@ -33,6 +33,7 @@ import {
   PinOff,
   Users,
   Lock,
+  Radio,
 } from 'lucide-react';
 import { DonationButton } from '@/components/donations/DonationButton';
 
@@ -234,10 +235,15 @@ const FacebookPostCardComponent = ({
     setIsDeleting(true);
     
     try {
+      // Delete Stream/R2 videos
       const videoUrls = extractPostStreamVideos(post);
-      
       if (videoUrls.length > 0) {
         await deleteStreamVideos(videoUrls);
+      }
+      
+      // Delete Supabase Storage videos (live recordings)
+      if (post.video_url && isSupabaseStorageUrl(post.video_url)) {
+        await deleteStorageFile(post.video_url);
       }
       
       const { error: deleteError } = await supabase.from('posts').delete().eq('id', post.id);
@@ -305,9 +311,19 @@ const FacebookPostCardComponent = ({
 
   // Prepare media items for MediaGrid - memoized
   const mediaItems = useMemo(() => {
-    const items: Array<{ url: string; type: 'image' | 'video'; poster?: string }> = [];
+    const items: Array<{ url: string; type: 'image' | 'video'; poster?: string; isLiveReplay?: boolean }> = [];
+    const metadata = (post as any).metadata;
+    const isLive = (post as any).post_type === 'live';
     
     if (post.media_urls && Array.isArray(post.media_urls) && post.media_urls.length > 0) {
+      // Tag live replay media items
+      if (isLive) {
+        return post.media_urls.map(m => ({
+          ...m,
+          isLiveReplay: m.type === 'video',
+          poster: m.type === 'video' ? metadata?.thumbnail_url : undefined,
+        }));
+      }
       return post.media_urls;
     }
     
@@ -315,13 +331,11 @@ const FacebookPostCardComponent = ({
       items.push({ url: post.image_url, type: 'image' as const });
     }
     if (post.video_url) {
-      // Extract thumbnail from live session metadata if available
-      const metadata = (post as any).metadata;
       const poster = metadata?.thumbnail_url as string | undefined;
-      items.push({ url: post.video_url, type: 'video' as const, poster });
+      items.push({ url: post.video_url, type: 'video' as const, poster, isLiveReplay: isLive });
     }
     return items;
-  }, [post.media_urls, post.image_url, post.video_url, (post as any).metadata]);
+  }, [post.media_urls, post.image_url, post.video_url, (post as any).metadata, (post as any).post_type]);
 
   return (
     <>
