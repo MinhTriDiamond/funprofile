@@ -44,7 +44,7 @@ serve(async (req) => {
       .from("call_sessions")
       .select("id, conversation_id")
       .eq("channel_name", channelName)
-      .eq("status", "active")
+      .in("status", ["ringing", "active"])
       .maybeSingle();
 
     if (!session) {
