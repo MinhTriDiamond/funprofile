@@ -1,47 +1,71 @@
 
-# Sua loi: Khong hien thi giao dien UI khi goi video/voice call
+# Them tinh nang Screen Sharing cho Video Call
 
-## Nguyen nhan goc
+## Tong quan
 
-Khi bam nut goi video/voice trong `MessageThread`, ham `startCall()` duoc goi thanh cong (tao session, lay token, tham gia kenh Agora), nhung **khong co component `CallRoom` nao duoc render** de hien thi giao dien cuoc goi. Component `CallRoom` da duoc viet san nhung chua bao gio duoc su dung.
+Them nut "Chia se man hinh" vao thanh dieu khien cuoc goi. Khi bat, video local se chuyen sang hien thi man hinh thay vi camera. Nguoi nhan se thay noi dung man hinh duoc chia se trong video grid.
 
-Tuong tu, `IncomingCallDialog` va `answerCall`/`declineCall` cua `useAgoraCall` cung khong duoc ket noi voi UI trong `MessageThread`.
+## Chi tiet ky thuat
 
-## Ke hoach sua
+### 1. Sua `src/modules/chat/hooks/useAgoraCall.ts`
 
-### Sua file `src/modules/chat/components/MessageThread.tsx`
+**Them state va ref moi:**
+- `isScreenSharing` state (boolean)
+- `screenTrackRef` ref (ILocalVideoTrack)
 
-1. **Import them `CallRoom` va `IncomingCallDialog`**:
-   - Them import `CallRoom` va `IncomingCallDialog` tu cung thu muc components
+**Them ham `toggleScreenShare`:**
+- Khi bat: Dung `AgoraRTC.createScreenVideoTrack()` de tao screen track
+- Unpublish camera video track hien tai (neu co), publish screen track thay the
+- Lang nghe su kien `track-ended` tren screen track (khi nguoi dung bam "Stop sharing" tren trinh duyet) de tu dong tat screen sharing
+- Khi tat: Dong screen track, publish lai camera track (neu camera dang bat)
+- Reset `isScreenSharing` state
 
-2. **Lay du cac gia tri tu `useAgoraCall`**:
-   - Hien tai chi lay `callState` va `startCall`
-   - Can lay them: `callType`, `currentSession`, `remoteUsers`, `isMuted`, `isCameraOff`, `callDuration`, `localVideoTrack`, `localAudioTrack`, `incomingCall`, `answerCall`, `declineCall`, `endCall`, `toggleMute`, `toggleCamera`, `switchToVideo`, `flipCamera`
+**Cap nhat ham `endCall`:**
+- Them cleanup cho `screenTrackRef` khi ket thuc cuoc goi
 
-3. **Render `CallRoom` khi `callState` khac `'idle'`**:
-   - Hien thi dialog `CallRoom` fullscreen khi co cuoc goi dang dien ra (calling, ringing, connecting, connected)
-   - Truyen cac props: callState, callType, callDuration, localVideoTrack, remoteUsers, isMuted, isCameraOff, va cac ham dieu khien
+**Cap nhat return object:**
+- Them `isScreenSharing` va `toggleScreenShare` vao gia tri tra ve
 
-4. **Render `IncomingCallDialog` khi co cuoc goi den**:
-   - Hien thi dialog khi `incomingCall` khac null
-   - Ket noi voi `answerCall` va `declineCall`
+### 2. Sua `src/modules/chat/components/CallControls.tsx`
 
-5. **Truyen thong tin user cho CallRoom**:
-   - `localUserInfo`: lay tu profile cua user hien tai (username)
-   - `remoteUserInfo`: lay tu `headerProfile` (ten va avatar cua nguoi nhan)
+**Them nut Screen Share:**
+- Chi hien thi khi dang trong video call (`isVideoCall === true`)
+- Them props: `isScreenSharing` (boolean) va `onToggleScreenShare` (callback)
+- Su dung icon `Monitor` (hoac `MonitorOff`) tu lucide-react
+- Khi dang chia se, nut co hieu ung highlight (bg-primary)
 
-### Chi tiet code thay doi
+### 3. Sua `src/modules/chat/components/CallRoom.tsx`
+
+**Truyen props moi xuong CallControls:**
+- Them prop `isScreenSharing` va `onToggleScreenShare`
+
+### 4. Sua `src/modules/chat/components/VideoGrid.tsx`
+
+**Xu ly hien thi screen share:**
+- Them prop `screenTrack` (ILocalVideoTrack | null)
+- Khi co `screenTrack`, hien thi no o khung video chinh (full screen) thay vi camera
+- Camera local chuyen xuong PiP nho
+
+### 5. Sua `src/modules/chat/components/MessageThread.tsx`
+
+**Ket noi props moi:**
+- Lay `isScreenSharing`, `toggleScreenShare`, va `screenTrack` tu `useAgoraCall`
+- Truyen xuong `CallRoom`
+
+## Luong hoat dong
 
 ```text
-MessageThread.tsx:
-  Line 7:   Them import CallRoom
-  Line 20:  Them import IncomingCallDialog (tu modules/chat)
-  Line 80-84: Mo rong destructure useAgoraCall de lay tat ca cac gia tri can thiet
-  Line 618+: Them render CallRoom va IncomingCallDialog truoc the dong </div> cuoi cung
+Nguoi dung bam nut "Chia se man hinh"
+  -> Trinh duyet hien dialog chon cua so/tab/man hinh
+  -> Nguoi dung chon nguon chia se
+  -> Screen track duoc tao va publish len kenh Agora
+  -> Camera track tam thoi bi unpublish
+  -> Nguoi nhan thay noi dung man hinh trong video grid
+  -> Khi bam lai nut hoac bam "Stop sharing" tren trinh duyet
+  -> Screen track bi dong, camera track duoc publish lai
 ```
 
-## Ket qua mong doi
-- Khi bam nut goi, giao dien `CallRoom` fullscreen se hien thi voi trang thai "Dang do chuong..." hoac "Dang ket noi..."
-- Khi ket noi thanh cong, hien thi video grid (video call) hoac avatar (voice call) voi dong ho dem thoi gian
-- Khi co cuoc goi den, hien thi dialog `IncomingCallDialog` voi nut Tra loi/Tu choi
-- Cac nut dieu khien (tat mic, tat camera, ket thuc cuoc goi) hoat dong binh thuong
+## Luu y
+- `createScreenVideoTrack` co the that bai neu nguoi dung tu choi chia se -> can try-catch va thong bao
+- Tren mobile, screen sharing co the khong duoc ho tro -> an nut tren mobile
+- Khi dang screen share ma tat camera, chi can dong screen track ma khong can bat lai camera
