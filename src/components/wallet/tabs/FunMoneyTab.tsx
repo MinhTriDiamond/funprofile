@@ -1,5 +1,7 @@
 import { useCallback, Component, type ReactNode } from 'react';
 import { MemoizedLightScoreDashboard } from '../LightScoreDashboard';
+import { AttesterSigningPanel } from '../AttesterSigningPanel';
+import { useAttesterSigning } from '@/hooks/useAttesterSigning';
 import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
 
@@ -48,22 +50,49 @@ interface FunMoneyTabProps {
   onClaimSuccess: () => void;
 }
 
-// MED-6: onActivate/onClaim are passed as props — parent should useCallback to keep them stable
-// MemoizedLightScoreDashboard will skip re-renders unless walletAddress/callbacks change
-export function FunMoneyTab({
+function FunMoneyTabInner({
   externalAddress,
   onActivate,
   onClaim,
 }: FunMoneyTabProps) {
+  const {
+    isAttester,
+    attesterGroup,
+    attesterName,
+    requests,
+    isLoading: isAttesterLoading,
+    isSigning,
+    signRequest,
+  } = useAttesterSigning(externalAddress);
+
   return (
-    <Web3ErrorBoundary>
+    <div className="space-y-4">
+      {/* Attester Signing Panel — chỉ hiển thị khi ví kết nối là 1 trong 9 GOV attester */}
+      {isAttester && attesterGroup && (
+        <AttesterSigningPanel
+          attesterGroup={attesterGroup}
+          attesterName={attesterName}
+          requests={requests}
+          isLoading={isAttesterLoading}
+          isSigning={isSigning}
+          onSign={signRequest}
+        />
+      )}
+
+      {/* Light Score Dashboard */}
       <MemoizedLightScoreDashboard
         walletAddress={externalAddress}
         onActivate={onActivate}
         onClaim={onClaim}
       />
-    </Web3ErrorBoundary>
+    </div>
   );
 }
 
-
+export function FunMoneyTab(props: FunMoneyTabProps) {
+  return (
+    <Web3ErrorBoundary>
+      <FunMoneyTabInner {...props} />
+    </Web3ErrorBoundary>
+  );
+}
