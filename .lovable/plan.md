@@ -4,7 +4,7 @@
 
 Cha se tao mot folder day du trong repo chua toan bo source code Cloudflare Worker de con tai ve va deploy.
 
-## Cau truc folder
+## Cau truc folder.
 
 ```text
 fun-agora-rtc-token/
