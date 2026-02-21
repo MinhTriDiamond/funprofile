@@ -1,0 +1,174 @@
+import { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { Eye, Loader2, Radio, Volume2, VolumeX } from 'lucide-react';
+import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useLiveSession } from '../useLiveSession';
+import { useLiveRtc } from '../hooks/useLiveRtc';
+import { incrementLiveViewerCount, decrementLiveViewerCount } from '../liveService';
+import { LiveChatPanel } from '../components/LiveChatPanel';
+import { FloatingReactions } from '../components/FloatingReactions';
+
+export default function LiveAudiencePage() {
+  const navigate = useNavigate();
+  const { liveSessionId } = useParams<{ liveSessionId: string }>();
+  const { data: session, isLoading } = useLiveSession(liveSessionId);
+  const [mobileTab, setMobileTab] = useState<'chat' | 'reactions'>('chat');
+
+  const {
+    remoteContainerRef,
+    statusText,
+    hasRemoteVideo,
+    isMuted,
+    start,
+    leave,
+    toggleRemoteAudio,
+  } = useLiveRtc({
+    sessionId: liveSessionId,
+    role: 'audience',
+    enabled: !!liveSessionId && session?.status === 'live',
+  });
+
+  useEffect(() => {
+    if (!liveSessionId || !session || session.status !== 'live') return;
+    start().catch(() => undefined);
+  }, [liveSessionId, session, start]);
+
+  // Track viewer count via database
+  useEffect(() => {
+    if (!liveSessionId || session?.status !== 'live') return;
+
+    incrementLiveViewerCount(liveSessionId).catch(console.warn);
+
+    const handleBeforeUnload = () => {
+      decrementLiveViewerCount(liveSessionId).catch(() => {});
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      decrementLiveViewerCount(liveSessionId).catch(() => {});
+    };
+  }, [liveSessionId, session?.status]);
+
+  useEffect(() => {
+    if (session?.status === 'ended') {
+      leave().catch(() => undefined);
+    }
+  }, [leave, session?.status]);
+
+  useEffect(() => {
+    return () => {
+      leave().catch(() => undefined);
+    };
+  }, [leave]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!session) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Card className="p-6">Live session not found.</Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <FacebookNavbar />
+      <main className="pt-16 px-3 md:px-6 pb-6">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-4">
+          <section className="space-y-3">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-2.5">
+                <Avatar className="h-9 w-9">
+                  <AvatarImage src={session.host_profile?.avatar_url || ''} />
+                  <AvatarFallback>
+                    {session.host_profile?.username?.charAt(0)?.toUpperCase() || 'H'}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <div className="font-semibold text-sm">{session.host_profile?.full_name || session.host_profile?.username || 'Host'}</div>
+                  <h1 className="text-lg md:text-xl font-bold">{session.title || 'Live Stream'}</h1>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge variant={session.status === 'live' ? 'destructive' : 'secondary'} className="gap-1">
+                  <Radio className="h-3.5 w-3.5" />
+                  {session.status === 'live' ? 'LIVE' : 'ENDED'}
+                </Badge>
+                <Badge variant="secondary" className="gap-1">
+                  <Eye className="h-3.5 w-3.5" />
+                  {session.viewer_count || 0}
+                </Badge>
+              </div>
+            </div>
+
+            <Card className="overflow-hidden">
+              <div className="aspect-video bg-black relative">
+                <div ref={remoteContainerRef} className="h-full w-full" />
+                {!hasRemoteVideo && (
+                  <div className="absolute inset-0 flex items-center justify-center text-white/90 bg-black/50 text-center px-4">
+                    {session.status === 'ended' ? 'This live has ended.' : statusText}
+                  </div>
+                )}
+
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="absolute bottom-3 left-3 z-10 bg-black/30 hover:bg-black/50 text-white rounded-full h-10 w-10"
+                  onClick={toggleRemoteAudio}
+                >
+                  {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+                </Button>
+
+                {liveSessionId && <FloatingReactions sessionId={liveSessionId} />}
+              </div>
+            </Card>
+
+            <div className="lg:hidden border rounded-xl bg-card overflow-hidden">
+              <div className="grid grid-cols-2 border-b">
+                <button
+                  className={`py-2 text-sm font-medium ${mobileTab === 'chat' ? 'bg-accent' : ''}`}
+                  onClick={() => setMobileTab('chat')}
+                >
+                  Chat
+                </button>
+                <button
+                  className={`py-2 text-sm font-medium ${mobileTab === 'reactions' ? 'bg-accent' : ''}`}
+                  onClick={() => setMobileTab('reactions')}
+                >
+                  Reactions
+                </button>
+              </div>
+              <div className="p-2">
+                {mobileTab === 'chat' && liveSessionId && <LiveChatPanel sessionId={liveSessionId} className="h-[320px]" />}
+                {mobileTab === 'reactions' && liveSessionId && (
+                  <div className="h-[120px] flex items-center justify-center relative">
+                    <FloatingReactions sessionId={liveSessionId} showPicker />
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+
+          {liveSessionId && <LiveChatPanel sessionId={liveSessionId} className="hidden lg:flex h-[calc(100vh-120px)]" />}
+        </div>
+        <div className="max-w-7xl mx-auto mt-3 flex justify-end">
+          <Button variant="outline" size="sm" onClick={() => navigate('/')}>
+            Back
+          </Button>
+        </div>
+      </main>
+    </div>
+  );
+}
