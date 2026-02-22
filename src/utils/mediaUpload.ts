@@ -14,6 +14,23 @@ import { compressImage, FILE_LIMITS } from './imageCompression';
 // R2 custom domain (dùng cho Cloudflare Image Resizing)
 const R2_CUSTOM_DOMAIN = 'https://media.fun.rich';
 
+// Mapping extension -> MIME type chuẩn (normalize cho browser gán sai)
+const EXT_TO_MIME: Record<string, string> = {
+  rar: 'application/x-rar-compressed',
+  zip: 'application/zip',
+  '7z': 'application/x-7z-compressed',
+  pdf: 'application/pdf',
+  doc: 'application/msword',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  xls: 'application/vnd.ms-excel',
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  txt: 'text/plain',
+  apk: 'application/vnd.android.package-archive',
+  mp4: 'video/mp4',
+  webm: 'video/webm',
+  mov: 'video/quicktime',
+};
+
 export interface MediaUploadResult {
   url: string;
   key: string;
@@ -80,11 +97,20 @@ export async function uploadMedia(
 
   let processedFile = file;
 
-  // Fallback MIME type cho file không xác định
-  const fileType = file.type || 'application/octet-stream';
-  if (fileType === 'application/octet-stream' && file.name) {
-    // Create new file with correct type fallback
-    processedFile = new File([file], file.name, { type: 'application/octet-stream' });
+  // Normalize MIME type dựa theo extension
+  const ext = file.name.split('.').pop()?.toLowerCase() || '';
+  const mappedMime = EXT_TO_MIME[ext];
+  let fileType = file.type || '';
+
+  if (!fileType || (!fileType.startsWith('image/') && !fileType.startsWith('video/') && !fileType.startsWith('audio/') && mappedMime)) {
+    fileType = mappedMime || 'application/octet-stream';
+  }
+  if (!fileType) {
+    fileType = 'application/octet-stream';
+  }
+
+  if (fileType !== file.type) {
+    processedFile = new File([file], file.name, { type: fileType });
   }
 
   // Nén ảnh client-side nếu là ảnh
