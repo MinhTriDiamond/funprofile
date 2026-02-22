@@ -1,7 +1,9 @@
 import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { useUserDirectory, getTierName } from '@/hooks/useUserDirectory';
+import { UserDirectoryFilters } from '@/components/users/UserDirectoryFilters';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -9,99 +11,77 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import {
-  Gift, Download, Users as UsersIcon, Sparkles, Search, ChevronLeft, ChevronRight, Star,
+  Download, Users as UsersIcon, Search, ChevronLeft, ChevronRight,
+  Coins, Gift, Star, FileText, MessageSquare, Wallet, Send, ArrowDownToLine,
+  Globe, TrendingUp,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const Users = () => {
   const navigate = useNavigate();
   const {
-    users, isLoading, stats, search, setSearch, page, setPage, totalPages, exportCSV, allUsers,
+    users, isLoading, stats, search, setSearch, page, setPage, totalPages, exportCSV, allUsers, filters, setFilters,
   } = useUserDirectory();
 
-  const formatNumber = (n: number) => n.toLocaleString('vi-VN');
-  const shortenAddress = (addr: string | null) => {
-    if (!addr) return '—';
-    return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-  };
+  const fmt = (n: number) => n.toLocaleString('vi-VN');
+  const shortenAddr = (addr: string | null) => addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : '—';
+  const fmtDate = (d: string | null) => d ? new Date(d).toLocaleDateString('vi-VN') : '—';
 
   return (
     <div className="min-h-screen bg-background/80 overflow-hidden">
       <FacebookNavbar />
-      <main data-app-scroll className="fixed inset-x-0 top-[3cm] bottom-0 overflow-y-auto pb-20 px-2 md:px-8 max-w-7xl mx-auto">
+      <main data-app-scroll className="fixed inset-x-0 top-[3cm] bottom-0 overflow-y-auto pb-20 px-2 md:px-6 max-w-[1400px] mx-auto">
         {/* Header */}
-        <div className="text-center py-6">
-          <div className="inline-flex items-center justify-center gap-2 mb-2">
-            <Gift className="w-8 h-8 text-red-500" />
-            <h1
-              className="text-[28px] md:text-[36px] font-black tracking-wider uppercase"
-              style={{
-                background: 'linear-gradient(90deg, #dc2626, #f59e0b, #dc2626)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
-              }}
-            >
-              🧧 DANH SÁCH THÀNH VIÊN 🧧
-            </h1>
-            <Gift className="w-8 h-8 text-red-500" />
+        <div className="flex items-center justify-between py-4">
+          <div>
+            <h1 className="text-xl md:text-2xl font-bold text-foreground">Quản lý User</h1>
+            <p className="text-sm text-muted-foreground">{fmt(stats.totalUsers)} thành viên</p>
           </div>
-          <p
-            className="font-bold text-[19px] md:text-[21px] tracking-wide"
-            style={{
-              background: 'linear-gradient(90deg, #d4a017, #f5d060, #e6b422, #f5d060, #d4a017)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
-              filter: 'drop-shadow(0 1px 2px rgba(212, 160, 23, 0.4))',
-            }}
-          >
-            Chương trình Lì Xì 26.000.000.000 đồng
-          </p>
+          <Button variant="outline" size="sm" onClick={exportCSV}>
+            <Download className="w-4 h-4 mr-1" /> Xuất CSV
+          </Button>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
-          <div className="bg-gradient-to-br from-red-500/10 to-red-600/5 border-2 border-red-500/30 rounded-xl p-4 text-center">
-            <UsersIcon className="w-6 h-6 mx-auto mb-1 text-red-500" />
-            <p className="text-xl md:text-2xl font-bold text-red-500">{formatNumber(stats.totalUsers)}</p>
-            <p className="text-xs text-muted-foreground">Tổng Thành Viên</p>
-          </div>
-          <div className="bg-gradient-to-br from-amber-500/10 to-amber-600/5 border-2 border-amber-500/30 rounded-xl p-4 text-center">
-            <Gift className="w-6 h-6 mx-auto mb-1 text-amber-500" />
-            <p className="text-xl md:text-2xl font-bold text-amber-500">{formatNumber(stats.totalCamlyCalculated)}</p>
-            <p className="text-xs text-muted-foreground">CAMLY Tính Toán</p>
-          </div>
-          <div className="bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 border-2 border-emerald-500/30 rounded-xl p-4 text-center">
-            <Star className="w-6 h-6 mx-auto mb-1 text-emerald-500" />
-            <p className="text-xl md:text-2xl font-bold text-emerald-500">{formatNumber(stats.totalCamlyClaimed)}</p>
-            <p className="text-xs text-muted-foreground">CAMLY Đã Thưởng</p>
-          </div>
-          <div className="bg-gradient-to-br from-purple-500/10 to-purple-600/5 border-2 border-purple-500/30 rounded-xl p-4 text-center">
-            <Sparkles className="w-6 h-6 mx-auto mb-1 text-purple-500" />
-            <p className="text-xl md:text-2xl font-bold text-purple-500">{formatNumber(stats.totalLightScore)}</p>
-            <p className="text-xs text-muted-foreground">Tổng Light Score</p>
-          </div>
+        {/* Stats Row 1 */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-2">
+          <StatCard icon={UsersIcon} label="Tổng Users" value={fmt(stats.totalUsers)} color="text-blue-500" />
+          <StatCard icon={Coins} label="CAMLY Còn lại" value={fmt(stats.totalPending)} color="text-amber-500" />
+          <StatCard icon={Gift} label="CAMLY Đã phát" value={fmt(stats.totalCamlyClaimed)} color="text-emerald-500" />
+          <StatCard icon={TrendingUp} label="CAMLY Tính toán" value={fmt(stats.totalCamlyCalculated)} color="text-purple-500" />
+          <StatCard icon={ArrowDownToLine} label="Tổng đã rút" value={fmt(stats.totalWithdrawn)} color="text-red-500" />
         </div>
 
-        {/* Search & Export */}
-        <div className="flex items-center gap-3 mb-4">
-          <div className="relative flex-1">
+        {/* Stats Row 2 */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-2">
+          <StatCard icon={Star} label="FUN Money" value={fmt(stats.totalMinted)} color="text-yellow-500" />
+          <StatCard icon={Send} label="Tặng NB (gửi)" value={fmt(Math.round(stats.totalInternalSent))} color="text-sky-500" />
+          <StatCard icon={Gift} label="Tặng NB (nhận)" value={fmt(Math.round(stats.totalInternalReceived))} color="text-teal-500" />
+          <StatCard icon={Globe} label="Tặng Web3 (gửi)" value={fmt(Math.round(stats.totalWeb3Sent))} color="text-indigo-500" />
+          <StatCard icon={Wallet} label="Tặng Web3 (nhận)" value={fmt(Math.round(stats.totalWeb3Received))} color="text-pink-500" />
+        </div>
+
+        {/* Stats Row 3 */}
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          <StatCard icon={FileText} label="Tổng bài đăng" value={fmt(stats.totalPosts)} color="text-orange-500" />
+          <StatCard icon={MessageSquare} label="Tổng bình luận" value={fmt(stats.totalComments)} color="text-cyan-500" />
+          <StatCard icon={Star} label="Tổng Light Score" value={fmt(stats.totalLightScore)} color="text-violet-500" />
+        </div>
+
+        {/* Search & Filters */}
+        <div className="space-y-2 mb-4">
+          <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Tìm kiếm theo username hoặc wallet..."
+              placeholder="Tìm theo username, họ tên hoặc wallet..."
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(0); }}
               className="pl-10"
             />
           </div>
-          <Button variant="outline" size="sm" onClick={exportCSV} className="shrink-0">
-            <Download className="w-4 h-4 mr-1" />
-            CSV
-          </Button>
+          <UserDirectoryFilters filters={filters} onChange={(f) => { setFilters(f); setPage(0); }} />
         </div>
 
-        {/* Results count */}
+        {/* Count */}
         <p className="text-xs text-muted-foreground mb-2">
           Hiển thị {users.length} / {allUsers.length} thành viên
         </p>
@@ -112,22 +92,29 @@ const Users = () => {
             {[...Array(8)].map((_, i) => <Skeleton key={i} className="h-14 rounded-lg" />)}
           </div>
         ) : (
-          <div className="border-2 border-red-500/20 rounded-xl overflow-hidden">
+          <div className="border rounded-xl overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="bg-gradient-to-r from-red-500/10 to-amber-500/10">
+                <TableRow className="bg-muted/50">
                   <TableHead className="w-10 text-center">#</TableHead>
-                  <TableHead>User</TableHead>
-                  <TableHead className="hidden md:table-cell">Hoạt Động</TableHead>
-                  <TableHead className="hidden lg:table-cell">Light Score</TableHead>
-                  <TableHead>CAMLY</TableHead>
-                  <TableHead className="hidden md:table-cell">USDT</TableHead>
+                  <TableHead className="min-w-[160px]">Người dùng</TableHead>
+                  <TableHead className="w-20">Trạng thái</TableHead>
+                  <TableHead className="hidden md:table-cell w-24">Tham gia</TableHead>
+                  <TableHead className="hidden md:table-cell w-20">Bài/BL</TableHead>
+                  <TableHead className="hidden lg:table-cell w-24">Ánh sáng</TableHead>
+                  <TableHead className="w-24">Số dư</TableHead>
+                  <TableHead className="hidden md:table-cell w-24">Tổng thưởng</TableHead>
+                  <TableHead className="hidden lg:table-cell w-20">FUN</TableHead>
+                  <TableHead className="hidden lg:table-cell w-24">Tặng NB</TableHead>
+                  <TableHead className="hidden xl:table-cell w-24">Tặng Web3</TableHead>
+                  <TableHead className="hidden md:table-cell w-20">Đã rút</TableHead>
+                  <TableHead className="hidden lg:table-cell w-28">Ví BSC</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {users.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
+                    <TableCell colSpan={13} className="text-center py-12 text-muted-foreground">
                       <UsersIcon className="w-10 h-10 mx-auto mb-3 opacity-40" />
                       <p>Không tìm thấy thành viên nào</p>
                     </TableCell>
@@ -136,67 +123,88 @@ const Users = () => {
                   users.map((user, idx) => (
                     <TableRow
                       key={user.id}
-                      className="cursor-pointer hover:bg-red-500/5 transition-colors"
+                      className="cursor-pointer hover:bg-muted/30 transition-colors"
                       onClick={() => navigate(`/profile/${user.id}`)}
                     >
-                      <TableCell className="text-center font-medium text-muted-foreground">
+                      <TableCell className="text-center text-xs text-muted-foreground">
                         {page * 50 + idx + 1}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <Avatar className="w-8 h-8 border border-amber-400/30">
+                          <Avatar className="w-8 h-8">
                             <AvatarImage src={user.avatar_url || undefined} />
-                            <AvatarFallback className="bg-red-500/10 text-red-500 text-xs">
+                            <AvatarFallback className="text-xs bg-primary/10 text-primary">
                               {user.username?.[0]?.toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
                           <div className="min-w-0">
-                            <p className="font-semibold text-sm truncate">@{user.username}</p>
-                            {user.wallet_address && (
-                              <a
-                                href={`https://bscscan.com/address/${user.wallet_address}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-xs text-muted-foreground hover:text-primary"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                {shortenAddress(user.wallet_address)}
-                              </a>
+                            <p className="font-medium text-sm truncate">@{user.username}</p>
+                            {user.full_name && (
+                              <p className="text-xs text-muted-foreground truncate">{user.full_name}</p>
                             )}
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        <div className="text-xs space-y-0.5">
-                          <p>📝 {user.posts_count} · 💬 {user.comments_count}</p>
-                          <p>❤️ {user.reactions_on_posts} · 👥 {user.friends_count}</p>
-                          <p>🔄 {user.shares_count} · 🎥 {user.livestreams_count}</p>
-                        </div>
+                      <TableCell>
+                        {user.is_banned ? (
+                          <Badge variant="destructive" className="text-[10px] px-1.5">Cấm</Badge>
+                        ) : (
+                          <Badge className="text-[10px] px-1.5 bg-emerald-500/10 text-emerald-600 border-emerald-500/20">Hoạt động</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
+                        {fmtDate(user.created_at)}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell text-xs">
+                        <span title="Bài đăng">📝{user.posts_count}</span>
+                        <span className="text-muted-foreground mx-0.5">/</span>
+                        <span title="Bình luận">💬{user.comments_count}</span>
                       </TableCell>
                       <TableCell className="hidden lg:table-cell">
-                        <div className="text-xs space-y-0.5">
-                          <p className="font-semibold text-purple-500">⭐ {formatNumber(user.total_light_score)}</p>
+                        <div className="text-xs">
+                          <p className="font-semibold text-purple-500">⭐ {fmt(user.total_light_score)}</p>
                           <p className="text-muted-foreground">{getTierName(user.tier)}</p>
-                          <p className="text-muted-foreground">🪙 {formatNumber(user.total_minted)} FUN</p>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="text-xs space-y-0.5">
-                          <p className="font-bold text-amber-500">{formatNumber(user.camly_calculated)}</p>
-                          <p className="text-emerald-500">✅ {formatNumber(user.camly_claimed)}</p>
-                          <p className={`text-xs ${user.reward_status === 'approved' ? 'text-emerald-500' : user.reward_status === 'rejected' ? 'text-red-500' : 'text-muted-foreground'}`}>
-                            {user.reward_status}
-                          </p>
+                        <div className="text-xs">
+                          <p className="text-amber-500 font-semibold">{fmt(user.pending_reward)}</p>
+                          <p className="text-emerald-500">{fmt(user.approved_reward)}</p>
                         </div>
                       </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        {user.usdt_received > 0 ? (
-                          <span className="text-sm font-semibold text-emerald-500">
-                            ${user.usdt_received.toFixed(2)}
-                          </span>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">—</span>
-                        )}
+                      <TableCell className="hidden md:table-cell text-xs font-semibold text-amber-600">
+                        {fmt(user.camly_calculated)}
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell text-xs">
+                        {user.total_minted > 0 ? (
+                          <span className="text-yellow-600 font-medium">{fmt(user.total_minted)}</span>
+                        ) : <span className="text-muted-foreground">—</span>}
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell text-xs">
+                        <p className="text-sky-500">↑{fmt(Math.round(user.internal_sent))}</p>
+                        <p className="text-teal-500">↓{fmt(Math.round(user.internal_received))}</p>
+                      </TableCell>
+                      <TableCell className="hidden xl:table-cell text-xs">
+                        <p className="text-indigo-500">↑{fmt(Math.round(user.web3_sent))}</p>
+                        <p className="text-pink-500">↓{fmt(Math.round(user.web3_received))}</p>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell text-xs">
+                        {user.camly_claimed > 0 ? (
+                          <span className="text-emerald-500 font-medium">{fmt(user.camly_claimed)}</span>
+                        ) : <span className="text-muted-foreground">—</span>}
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        {user.wallet_address ? (
+                          <a
+                            href={`https://bscscan.com/address/${user.wallet_address}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-muted-foreground hover:text-primary"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {shortenAddr(user.wallet_address)}
+                          </a>
+                        ) : <span className="text-xs text-muted-foreground">—</span>}
                       </TableCell>
                     </TableRow>
                   ))
@@ -209,23 +217,11 @@ const Users = () => {
         {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex items-center justify-center gap-4 mt-4 mb-8">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page === 0}
-              onClick={() => setPage(page - 1)}
-            >
+            <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(page - 1)}>
               <ChevronLeft className="w-4 h-4" />
             </Button>
-            <span className="text-sm text-muted-foreground">
-              Trang {page + 1} / {totalPages}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page >= totalPages - 1}
-              onClick={() => setPage(page + 1)}
-            >
+            <span className="text-sm text-muted-foreground">Trang {page + 1} / {totalPages}</span>
+            <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)}>
               <ChevronRight className="w-4 h-4" />
             </Button>
           </div>
@@ -235,5 +231,14 @@ const Users = () => {
     </div>
   );
 };
+
+// Small stat card component
+const StatCard = ({ icon: Icon, label, value, color }: { icon: any; label: string; value: string; color: string }) => (
+  <div className="bg-card border rounded-lg p-3 text-center">
+    <Icon className={`w-4 h-4 mx-auto mb-1 ${color}`} />
+    <p className={`text-sm md:text-base font-bold ${color}`}>{value}</p>
+    <p className="text-[10px] text-muted-foreground leading-tight">{label}</p>
+  </div>
+);
 
 export default Users;
