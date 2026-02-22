@@ -3,28 +3,10 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useLanguage } from '@/i18n/LanguageContext';
-import { Users, FileText, Image, Video, BadgeDollarSign, Coins } from 'lucide-react';
+import { Users, FileText, Image, Video, BadgeDollarSign, Wallet, Coins } from 'lucide-react';
 import { formatNumber } from '@/lib/formatters';
-// Use direct paths for logos to ensure consistency across all environments
 
-// Token logos
 import camlyLogo from '@/assets/tokens/camly-logo.webp';
-import bnbLogo from '@/assets/tokens/bnb-logo.webp';
-import usdtLogo from '@/assets/tokens/usdt-logo.webp';
-import btcbLogo from '@/assets/tokens/btcb-logo.webp';
-
-const TOKEN_LOGOS: Record<string, string> = {
-  CAMLY: camlyLogo,
-  BNB: bnbLogo,
-  USDT: usdtLogo,
-  BTCB: btcbLogo,
-};
-
-interface TokenBalance {
-  symbol: string;
-  amount: number;
-  logoPath: string;
-}
 
 interface AppStats {
   totalUsers: number;
@@ -32,7 +14,8 @@ interface AppStats {
   totalPhotos: number;
   totalVideos: number;
   totalRewards: number;
-  tokenBalances: TokenBalance[];
+  treasuryReceived: number;
+  totalCamlyClaimed: number;
 }
 
 export const AppHonorBoard = memo(() => {
@@ -50,23 +33,10 @@ export const AppHonorBoard = memo(() => {
       const totalPhotos = Number(row.total_photos) || 0;
       const totalVideos = Number(row.total_videos) || 0;
       const totalRewards = Number(row.total_rewards) || 0;
+      const treasuryReceived = Number(row.treasury_received) || 0;
+      const totalCamlyClaimed = Number(row.total_camly_claimed) || 0;
 
-      const camlyAmount = Number(row.total_camly_circulating) || 0;
-      const usdtAmount = Number(row.total_usdt_circulating) || 0;
-      const btcbAmount = Number(row.total_btcb_circulating) || 0;
-
-      const tokenBalances: TokenBalance[] = [];
-      if (camlyAmount > 0) {
-        tokenBalances.push({ symbol: 'CAMLY', amount: camlyAmount, logoPath: TOKEN_LOGOS.CAMLY });
-      }
-      if (usdtAmount > 0) {
-        tokenBalances.push({ symbol: 'USDT', amount: usdtAmount, logoPath: TOKEN_LOGOS.USDT });
-      }
-      if (btcbAmount > 0) {
-        tokenBalances.push({ symbol: 'BTCB', amount: btcbAmount, logoPath: TOKEN_LOGOS.BTCB });
-      }
-
-      return { totalUsers, totalPosts, totalPhotos, totalVideos, totalRewards, tokenBalances };
+      return { totalUsers, totalPosts, totalPhotos, totalVideos, totalRewards, treasuryReceived, totalCamlyClaimed };
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
@@ -128,6 +98,22 @@ export const AppHonorBoard = memo(() => {
       bgColor: 'bg-gold/10',
       showCamlyLogo: true,
     },
+    {
+      icon: Wallet,
+      label: t('treasuryReceived'),
+      value: stats?.treasuryReceived || 0,
+      color: 'text-emerald-400',
+      bgColor: 'bg-emerald-400/10',
+      showCamlyLogo: true,
+    },
+    {
+      icon: Coins,
+      label: t('totalCamlyClaimed'),
+      value: stats?.totalCamlyClaimed || 0,
+      color: 'text-orange-400',
+      bgColor: 'bg-orange-400/10',
+      showCamlyLogo: true,
+    },
   ];
 
   return (
@@ -187,32 +173,6 @@ export const AppHonorBoard = memo(() => {
             </div>
           ))}
 
-          {/* Dynamic Token Balances - Total Money Section */}
-          {stats?.tokenBalances && stats.tokenBalances.length > 0 && (
-            stats.tokenBalances.map((token, index) => (
-              <div 
-                key={token.symbol} 
-                className="flex items-center gap-3 py-2.5 px-4 rounded-full bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] border-[3px] border-[#D4AF37] transition-all duration-300 hover:scale-[1.02] cursor-pointer"
-              >
-                <div className="p-1.5 rounded-full bg-white/10 shrink-0">
-                  <Coins className="w-4 h-4 text-[#F5E6C8]" />
-                </div>
-                <div className="flex-1 flex items-center justify-between gap-2 min-w-0 overflow-hidden">
-                  <span className="text-[#F5E6C8] text-[10px] sm:text-xs uppercase font-semibold truncate flex-shrink min-w-0">
-                    {index === 0 ? t('totalMoney') : `Circulating ${token.symbol}`}
-                  </span>
-                  <span className="text-[#FFD700] font-bold text-[11px] sm:text-sm flex items-center gap-1 flex-shrink-0">
-                    <span className="tabular-nums">{formatNumber(token.amount, token.symbol === 'CAMLY' ? 0 : 6)}</span>
-                    <img 
-                      src={token.logoPath} 
-                      alt={token.symbol} 
-                      className="w-4 h-4 inline-block flex-shrink-0" 
-                    />
-                  </span>
-                </div>
-              </div>
-            ))
-          )}
         </div>
       </div>
     </div>

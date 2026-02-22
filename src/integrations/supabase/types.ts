@@ -4305,14 +4305,14 @@ export type Database = {
       get_app_stats: {
         Args: never
         Returns: {
-          total_btcb_circulating: number
           total_camly_circulating: number
+          total_camly_claimed: number
           total_photos: number
           total_posts: number
           total_rewards: number
-          total_usdt_circulating: number
           total_users: number
           total_videos: number
+          treasury_received: number
         }[]
       }
       get_banned_user_claims: {
