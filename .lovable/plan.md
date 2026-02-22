@@ -1,62 +1,75 @@
 
 
-# Thêm cột Email và chức năng Xóa tài khoản trong Quản lý User
+# Tối ưu tốc độ tải trang User Profile
 
-## Mục tiêu
-1. Hiển thị email (Gmail) của user trong tất cả các mục quản lý user
-2. Thêm nút xóa tài khoản cho admin khi user yêu cầu xóa do đăng ký nhầm
+## Phân tích nguyên nhân chậm
 
-## Vấn đề kỹ thuật
-- Email nằm trong bảng `auth.users` (không thể truy vấn trực tiếp từ client)
-- Cần tạo database function với `SECURITY DEFINER` để admin lấy được email
-- Đã có edge function `delete-user-account` nhưng chỉ cho user tự xóa (yêu cầu JWT của chính user đó). Cần tạo thêm edge function cho admin xóa bất kỳ user nào
+Sau khi kiểm tra code, có **3 nguyên nhân chính** gây chậm:
 
-## Kế hoạch thực hiện
+### 1. Waterfall queries trong Profile page (Nguyên nhân chính)
+Hàm `fetchProfile` trong `src/pages/Profile.tsx` thực hiện **6 truy vấn tuần tự** (query xong cái này mới query cái kia):
+1. Lấy profile
+2. Lấy bài viết gốc
+3. Lấy bài gift celebration
+4. Lấy profile gift recipients
+5. Lấy bài share
+6. Lấy danh sách bạn bè + profile bạn bè
 
-### Buoc 1: Tạo database function lấy email từ auth.users
-Tạo hàm `get_user_emails_for_admin(p_admin_id UUID)` trả về danh sách `(user_id, email)` cho tất cả user. Hàm kiểm tra quyền admin trước khi trả kết quả.
+Mỗi query mất 200-500ms, tổng cộng 1.5-3 giây chờ tuần tự. Nếu mạng chậm hoặc server bận, có thể lên 5-10 giây.
 
-### Buoc 2: Tạo edge function `admin-delete-user`
-Tạo edge function mới cho phép admin xóa hoàn toàn tài khoản user (bao gồm tất cả dữ liệu liên quan + auth.users). Edge function sẽ:
-- Xác minh admin qua JWT + kiểm tra role admin
-- Nhận `user_id` cần xóa
-- Xóa tuần tự dữ liệu trên 15+ bảng liên quan (giống `delete-user-account` hiện có)
-- Xóa user khỏi `auth.users`
+### 2. Infinite re-render loop trong useTokenBalances
+Console log cho thấy lỗi **"Maximum update depth exceeded"** từ `useTokenBalances.ts` (dòng 126). Hook này gọi `setState` trong `useEffect` tạo vòng lặp vô hạn, gây lag toàn bộ app.
 
-### Buoc 3: Cập nhật `useAdminUsers.ts`
-- Thêm field `email` vào interface `AdminUserData`
-- Gọi thêm hàm `get_user_emails_for_admin` trong `fetchAdminUsers`
-- Map email vào từng user
+### 3. Không có cache/React Query cho Profile page
+Profile page dùng `useState` + `useEffect` thay vì React Query, nên mỗi lần vào trang đều phải load lại từ đầu, không có cache.
 
-### Buoc 4: Cập nhật `UserReviewTab.tsx`
-- Hiển thị email bên cạnh username trong mỗi UserCard
-- Cắt ngắn email nếu quá dài
+## Kế hoạch sửa
 
-### Buoc 5: Cập nhật `QuickDeleteTab.tsx`
-- Hiển thị email trong UserCard
-- Thêm tìm kiếm theo email
-- Thêm nút "Xóa tài khoản" (bên cạnh nút "Cấm vĩnh viễn")
-- Thêm dialog xác nhận xóa tài khoản với cảnh báo rõ ràng (hành động không thể hoàn tác)
-- Gọi edge function `admin-delete-user` khi xác nhận
+### Buoc 1: Fix infinite loop trong useTokenBalances
+**File:** `src/hooks/useTokenBalances.ts`
+- Sửa hàm `fetchPrices` bị thiếu dependency ổn định trong `useCallback`, gây re-render loop
+- Tách `setPrices` + `setLastPrices` ra khỏi dependency chain của `useCallback`
+- Thêm ref để track giá trị `lastPrices` thay vì dùng state dependency
 
-## Chi tiết kỹ thuật
+### Buoc 2: Song song hóa queries trong Profile page
+**File:** `src/pages/Profile.tsx`
+- Chuyển từ query tuần tự sang `Promise.all` cho các query độc lập
+- Nhóm 1 (chạy song song ngay): profile + posts + gift posts + shared posts + friends
+- Nhóm 2 (chạy sau khi có kết quả): gift profiles (cần biết recipient IDs trước)
 
-### Database function
-```sql
-CREATE FUNCTION get_user_emails_for_admin(p_admin_id UUID)
-RETURNS TABLE(user_id UUID, email TEXT)
--- Chỉ admin mới gọi được
--- Truy vấn auth.users để lấy email
+Giảm từ 6 bước tuần tự xuống còn 2 bước, tiết kiệm 60-70% thời gian.
+
+### Buoc 3: Thêm React Query cache cho Profile data
+**File:** `src/pages/Profile.tsx`
+- Wrap `fetchProfile` bằng `useQuery` với `staleTime: 2 phút`
+- Lần vào lại trang sẽ hiển thị cache ngay lập tức, đồng thời refetch ngầm
+- Giữ Pull-to-refresh hoạt động bằng `queryClient.invalidateQueries`
+
+## Chi tiet ky thuat
+
+### Waterfall hien tai vs Song song moi:
+
+Hien tai (tuan tu):
+```text
+Profile -----> Posts -----> Gift Posts -----> Gift Profiles -----> Shared Posts -----> Friends
+  300ms         400ms         300ms              200ms                400ms              300ms
+                                                                            Total: ~1900ms
 ```
 
-### Edge function `admin-delete-user`
-- Method: POST
-- Body: `{ "user_id": "uuid-to-delete" }`
-- Auth: JWT của admin + kiểm tra `has_role(admin_id, 'admin')`
-- Xóa dữ liệu tuần tự trên tất cả bảng liên quan rồi xóa auth.users
+Sau khi toi uu (song song):
+```text
+Profile --|
+Posts ----|----> Gift Profiles ---> Done
+Gift Posts|        200ms
+Shared ---|
+Friends --|
+   400ms              
+                Total: ~600ms
+```
 
-### UI thay đổi
-- UserCard hiển thị thêm dòng email (icon Mail + text nhỏ)
-- QuickDeleteTab: thêm nút "Xóa vĩnh viễn" màu đỏ đậm với dialog xác nhận 2 bước
-- Tìm kiếm hỗ trợ thêm email
+### Fix useTokenBalances:
+- Dung `useRef` cho `lastPrices` thay vi `useState` de tranh re-render loop
+- Dam bao `fetchPrices` callback on dinh, khong thay doi moi render
+
+Tong cong thay doi 2 file, khong can them server hay thay doi database.
 
