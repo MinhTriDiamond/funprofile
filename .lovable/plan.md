@@ -1,31 +1,36 @@
 
 
-# Chuyen Live Replay tu Supabase Storage sang Cloudflare R2
+# Sua loi "File type not allowed" khi upload Live Replay len R2
 
-## Hien trang
+## Nguyen nhan
 
-Ham `uploadLiveRecording` trong `liveService.ts` dang su dung `supabase.storage.from('live-recordings')` de luu video replay. He thong da co san tien ich `uploadToR2` (trong `src/utils/r2Upload.ts`) ho tro upload file len R2 qua presigned URL, va edge function `get-upload-url` da duoc cau hinh day du voi cac secret R2.
+Khi ghi hinh, trinh duyet su dung MIME type day du la `video/webm;codecs=vp8,opus` (co them thong tin codec). Nhung edge function `get-upload-url` chi cho phep `video/webm` (khong co phan codec). Vi vay khi so sanh, he thong bao loi "File type not allowed".
 
-## Thay doi
+## Giai phap
 
-### File: `src/modules/live/liveService.ts`
-
-Viet lai ham `uploadLiveRecording` de su dung `uploadToR2` thay vi Supabase Storage:
-
-1. Import `uploadToR2` tu `@/utils/r2Upload`
-2. Chuyen doi `Blob` thanh `File` (vi `uploadToR2` nhan `File`)
-3. Su dung bucket path `videos` (hoac `live`) va custom path `live/{sessionId}/recording-{timestamp}.{ext}`
-4. Tra ve `{ key, url }` tuong tu nhu truoc -- khong can thay doi code goi ham
-
-### Khong can thay doi file khac
-
-- `LiveHostPage.tsx` goi `uploadLiveRecording` va chi dung `{ url }` -- khong thay doi
-- Edge function `get-upload-url` da ho tro video content types (`video/webm`, `video/mp4`) -- khong can thay doi
-- Cac secret R2 (`CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_ACCESS_KEY_ID`, `CLOUDFLARE_SECRET_ACCESS_KEY`, `CLOUDFLARE_R2_BUCKET_NAME`, `CLOUDFLARE_R2_PUBLIC_URL`) da duoc cau hinh san
+Sua trong `liveService.ts`: truoc khi goi `uploadToR2`, tach bo phan `;codecs=...` ra khoi `mimeType` de chi giu lai phan chinh (vi du: `video/webm`).
 
 ## Chi tiet ky thuat
 
+### File: `src/modules/live/liveService.ts`
+
+Trong ham `uploadLiveRecording`, them 1 dong normalize mimeType:
+
+```typescript
+// Truoc
+const extension = mimeType.includes('webm') ? 'webm' : 'mp4';
+
+// Sau
+const baseMimeType = mimeType.split(';')[0].trim(); // "video/webm;codecs=vp8,opus" -> "video/webm"
+const extension = baseMimeType.includes('webm') ? 'webm' : 'mp4';
+const file = new File([blob], `recording.${extension}`, { type: baseMimeType });
+```
+
+Chi thay doi duy nhat 1 file, them 1 dong code.
+
+## Cac file can thay doi
+
 | File | Thay doi |
 |------|---------|
-| `src/modules/live/liveService.ts` | Viet lai `uploadLiveRecording` su dung `uploadToR2` thay vi `supabase.storage` |
+| `src/modules/live/liveService.ts` | Normalize mimeType bang cach tach bo phan `;codecs=...` truoc khi truyen vao `uploadToR2` |
 
