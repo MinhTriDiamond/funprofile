@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { uploadToR2 } from '@/utils/r2Upload';
 import type { CreateLiveSessionInput, LiveSession } from './types';
 
 const db = supabase as any;
@@ -339,28 +340,20 @@ export async function uploadLiveRecording(
   onProgress?: (percent: number) => void
 ): Promise<UploadLiveRecordingResult> {
   const extension = mimeType.includes('webm') ? 'webm' : 'mp4';
-  const filename = `live/${liveSessionId}/recording-${Date.now()}.${extension}`;
+  const customPath = `live/${liveSessionId}/recording-${Date.now()}.${extension}`;
 
   onProgress?.(10);
 
-  const { error } = await supabase.storage
-    .from('live-recordings')
-    .upload(filename, blob, {
-      contentType: mimeType,
-      upsert: true,
-    });
+  // Convert Blob to File for uploadToR2
+  const file = new File([blob], `recording.${extension}`, { type: mimeType });
 
-  if (error) {
-    throw new Error(`Upload failed: ${error.message}`);
-  }
+  onProgress?.(30);
 
-  onProgress?.(90);
-
-  const { data } = supabase.storage.from('live-recordings').getPublicUrl(filename);
+  const result = await uploadToR2(file, 'videos', customPath);
 
   onProgress?.(100);
 
-  return { key: filename, url: data.publicUrl };
+  return { key: result.key, url: result.url };
 }
 
 export async function saveLiveReplay(liveSessionId: string, playbackUrl?: string | null): Promise<void> {
