@@ -43,6 +43,8 @@ export interface UploadOptions {
   maxWidth?: number;
   maxHeight?: number;
   quality?: number;
+  /** If true, preserve the original filename in the R2 key (for documents) */
+  preserveFilename?: boolean;
 }
 
 /**
@@ -64,6 +66,33 @@ export function generateCacheBustFilename(
     return `${userId}_${timestamp}_${randomHash}.${cleanExt}`;
   }
   return `${timestamp}_${randomHash}.${cleanExt}`;
+}
+
+/**
+ * Generate document path that preserves the original filename.
+ * Format: [userId]_[timestamp]_[randomHash]/[sanitizedOriginalName]
+ * 
+ * This allows getFileName(url) to extract the original name from the URL.
+ */
+export function generateDocumentPath(
+  originalName: string,
+  userId?: string
+): string {
+  const timestamp = Date.now();
+  const randomHash = Math.random().toString(36).substring(2, 10);
+  
+  // Sanitize original filename: keep alphanumeric, dots, hyphens, underscores, and common unicode chars
+  const sanitized = originalName
+    .replace(/[^\w.\-\u00C0-\u024F\u1E00-\u1EFF]/g, '_') // replace special chars with underscore
+    .replace(/_+/g, '_') // collapse multiple underscores
+    .replace(/^_|_$/g, ''); // trim leading/trailing underscores
+  
+  const safeName = sanitized || 'file';
+  const folder = userId
+    ? `${userId}_${timestamp}_${randomHash}`
+    : `${timestamp}_${randomHash}`;
+  
+  return `${folder}/${safeName}`;
 }
 
 /**
@@ -89,7 +118,7 @@ export async function uploadMedia(
   file: File,
   options: UploadOptions
 ): Promise<MediaUploadResult> {
-  const { bucket, compress = true, maxWidth, maxHeight, quality } = options;
+  const { bucket, compress = true, maxWidth, maxHeight, quality, preserveFilename = false } = options;
 
   // Get current user
   const { data: { user } } = await supabase.auth.getUser();
@@ -122,9 +151,11 @@ export async function uploadMedia(
     });
   }
 
-  // Generate cache-busting filename
-  const filename = generateCacheBustFilename(processedFile.name, user.id);
-  const key = `${bucket}/${filename}`;
+  // Generate key: preserve original filename for documents, hash for media
+  const pathSegment = preserveFilename
+    ? generateDocumentPath(file.name, user.id)
+    : generateCacheBustFilename(processedFile.name, user.id);
+  const key = `${bucket}/${pathSegment}`;
 
   // Get presigned URL từ edge function
   const { data: presignedData, error: presignedError } = await supabase.functions.invoke(
@@ -227,6 +258,7 @@ export async function uploadVideo(file: File): Promise<MediaUploadResult> {
 
 /**
  * Upload comment media
+ * For documents (non-image, non-video): preserves original filename in R2 key
  */
 export async function uploadCommentMedia(file: File): Promise<MediaUploadResult> {
   if (file.type.startsWith('image/')) {
@@ -238,9 +270,18 @@ export async function uploadCommentMedia(file: File): Promise<MediaUploadResult>
       quality: 0.8,
     });
   }
-  
+
+  if (file.type.startsWith('video/')) {
+    return uploadMedia(file, {
+      bucket: 'comment-media',
+      compress: false,
+    });
+  }
+
+  // Document files: use generateDocumentPath to preserve original filename
   return uploadMedia(file, {
     bucket: 'comment-media',
     compress: false,
+    preserveFilename: true,
   });
 }
