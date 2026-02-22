@@ -1,36 +1,35 @@
 
-# Loc nguoi dung bi cam khoi bang xep hang
+
+# Go bo co sai va vo hieu hoa Fingerprint v1
 
 ## Tinh trang hien tai
 
-- **joni** va **luudung** da duoc ban tu truoc (is_banned = true, reward_status = 'banned'). Khong can ban lai.
-- Van de chinh: ham `get_user_rewards_v2` (RPC) **khong loc** nguoi dung bi cam (`is_banned = true`), nen ho van xuat hien tren bang xep hang (Leaderboard va TopRanking).
-- Hien tai co 8 nguoi dung bi cam nhung van xuat hien trong top 20 bang xep hang.
+- **5 tai khoan bi on_hold oan**: phuong_loan79, vutrongvan931b5dv3, vanphuctruong6026z2l1y, Angelkieuphi_2, dinhtunghp19554j5x24 - tat ca deu bi on_hold vi fingerprint v1 nham nhan dien cung thiet bi
+- **Fingerprint v1 trong database**: 217 ban ghi, 137 device hash, 160 user - tat ca deu la du lieu khong dang tin cay
+- **23 device hash v1 dang bi flagged** - co the gay ban oan them
 
 ## Giai phap
 
-### 1. Cap nhat ham `get_user_rewards_v2` (Database Migration)
+### 1. Go on_hold cho 5 tai khoan (Data update)
 
-Them dieu kien `WHERE p.is_banned = false` vao truy van chinh cua ham RPC. Day la cach xu ly tap trung - chi can sua 1 cho se tu dong ap dung cho:
-- Trang Leaderboard (`/leaderboard`)
-- Widget TopRanking tren Feed
-- Trang Reward Approval (admin)
-- Wallet Center
-- User Directory
+Dat lai `reward_status` thanh `pending` va xoa `admin_notes` cho 5 tai khoan bi on_hold oan.
 
-Cu the: them `WHERE p.is_banned = false` vao cac CTE `old_stats`, `new_stats`, `today_stats`, `total_counts` va truy van chinh `FROM profiles p`.
+### 2. Unflag tat ca device hash v1 (Data update)
 
-### 2. Kiem tra ham `get_user_rewards` (v1)
+Dat `is_flagged = false` va xoa `flag_reason` cho tat ca ban ghi co `fingerprint_version = 1` de khong con anh huong den bat ky user nao.
 
-Ham cu `get_user_rewards` (v1) cung can them `WHERE p.is_banned = false` de dam bao khong co noi nao hien thi nguoi bi cam.
+### 3. Bo qua fingerprint v1 trong Edge Function `log-login-ip` (Code change)
+
+Sua ham `handleDeviceFingerprint` de chi xu ly khi `fingerprint_version >= 2`. Neu client gui v1 (hoac khong gui version), se bo qua hoan toan - khong luu, khong kiem tra, khong flag.
+
+### 4. Bo qua v1 trong `daily-fraud-scan` (Code change)
+
+Them dieu kien `fingerprint_version >= 2` khi truy van `pplp_device_registry` de khong quet cac device hash v1 khong dang tin cay.
 
 ## Tac dong
 
-- joni va luudung (da bi ban) se bien mat khoi moi bang xep hang
-- 6 nguoi dung bi ban khac cung se duoc an khoi bang xep hang
-- Nguoi dung binh thuong khong bi anh huong
-- Admin van thay duoc nguoi bi ban qua tab Giam sat trong Admin Dashboard
+- 5 tai khoan bi oan se duoc khoi phuc trang thai binh thuong
+- Tat ca 23 device hash v1 bi flagged se duoc go co
+- He thong se chi su dung fingerprint v2 (co do chinh xac cao hon) de phat hien gian lan
+- Du lieu v1 cu van giu trong database de tham khao nhung khong duoc su dung de flag/ban
 
-## Ky thuat
-
-Chi can 1 database migration de cap nhat 2 ham RPC. Khong can thay doi code frontend.
