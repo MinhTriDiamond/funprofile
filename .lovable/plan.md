@@ -1,51 +1,49 @@
 
 
-## Cập nhật Bảng Danh Dự + Admin Dashboard
+## Ke hoach: Doi soat Treasury va cap nhat so tong da chi
 
-### Thay đổi trên Bảng Danh Dự (AppHonorBoard)
+### Van de
+- Treasury nhan: 180,000,000 CAMLY
+- So du hien tai trong vi: 81,811,001 CAMLY
+- Tong chi thuc te on-chain: **98,188,999 CAMLY**
+- Database chi ghi nhan: **91,320,999 CAMLY** (reward_claims + donations)
+- **Thieu 6,868,000 CAMLY** chua duoc ghi nhan trong database
 
-**Hiện tại** bảng có 8 mục:
-1. Tong Thanh Vien
-2. Tong Bai Viet
-3. Tong Hinh Anh
-4. Tong Video
-5. Tong Phan Thuong (CAMLY tinh toan)
-6. Tong Tien Luu Thong (CAMLY circulating)
-7. Circulating USDT
-8. Circulating BTCB
+### Giai phap
 
-**Sau thay doi** se co 7 muc:
-1. Tong Thanh Vien (giu nguyen, da tru banned)
-2. Tong Bai Viet
-3. Tong Hinh Anh
-4. Tong Video
-5. Tong Phan Thuong (CAMLY tinh toan)
-6. **Treasury da nhan** (CAMLY cua vi FUN Profile Treasury - hien 180.000.000) -- MOI
-7. **CAMLY da rut** (tong so CAMLY user rut thanh cong tu reward_claims) -- MOI
-8. ~~Circulating USDT~~ -- XOA
-9. ~~Circulating BTCB~~ -- XOA
+#### Buoc 1: Tao Edge Function quet giao dich CAMLY di ra tu Treasury
+Tao edge function `scan-treasury-outgoing` su dung Moralis API (da co MORALIS_API_KEY) de:
+- Quet tat ca giao dich chuyen CAMLY tu Treasury wallet ra ngoai tren BSC Mainnet
+- So sanh voi du lieu trong `reward_claims` va `donations`
+- Tra ve danh sach cac giao dich thieu (chua duoc ghi nhan)
 
-### Thay doi tren Admin (Users.tsx)
+#### Buoc 2: Backfill cac giao dich thieu vao database
+- Cac giao dich thieu se duoc ghi nhan vao bang `donations` voi metadata ghi chu "backfill from on-chain"
+- Map `to_address` voi `wallet_address` trong `profiles` de xac dinh nguoi nhan
 
-- `totalUsers` trong bảng quản lý user sẽ chỉ đếm user chưa bị ban (khớp với Honor Board)
+#### Buoc 3: Cap nhat `total_camly_claimed` trong `get_app_stats`
+Sua RPC `get_app_stats` de tinh `total_camly_claimed` = tong tat ca giao dich chi tu Treasury (bao gom ca `reward_claims` va `donations` tu Treasury), hoac don gian hon:
+- Cap nhat gia tri `total_camly_claimed` = `TREASURY_CAMLY_RECEIVED - so du hien tai` = 98,188,999
+
+#### Buoc 4: Cap nhat `system_config`
+Them key `TREASURY_CAMLY_SPENT` = 98,188,999 vao `system_config` de theo doi chinh xac tong chi, hoac sua cong thuc tinh `total_camly_claimed` trong RPC thanh:
+```text
+total_camly_claimed = SUM(reward_claims.amount) + SUM(donations tu Treasury)
+```
 
 ### Chi tiet ky thuat
 
-**1. Migration - Cap nhat `get_app_stats` RPC:**
-- Thêm 2 cột mới: `treasury_received` (CAMLY trong ví treasury) và `total_camly_claimed` (tổng CAMLY đã rút thành công)
-- `treasury_received`: lấy từ bảng `system_config` (key = `TREASURY_CAMLY_RECEIVED`, giá trị 180.000.000) để admin có thể cập nhật khi cần
-- `total_camly_claimed`: `SELECT SUM(amount) FROM reward_claims`
-- Bỏ 2 cột `total_usdt_circulating` và `total_btcb_circulating`
+**Edge Function `scan-treasury-outgoing`**:
+- Su dung Moralis API: `GET /v2/{treasury_address}/erc20/transfers?contract_addresses[]={CAMLY_CONTRACT}&direction=outgoing`
+- So sanh tx_hash voi `donations.tx_hash` va tim cac giao dich thieu
+- Tra ve summary: tong on-chain, tong DB, chenh lech, danh sach giao dich thieu
 
-**2. Frontend - `AppHonorBoard.tsx`:**
-- Cập nhật interface `AppStats` để có `treasuryReceived` và `totalCamlyClaimed`
-- Thêm 2 stat items mới với icon Wallet và Coins + CAMLY logo
-- Xóa phần dynamic token balances (USDT, BTCB)
-- Xóa import `bnbLogo`, `usdtLogo`, `btcbLogo` (không cần nữa)
+**Cap nhat `get_app_stats` RPC**:
+- `total_camly_claimed` = tong tu `reward_claims` + tong `donations` tu Treasury (sender_id = '9e702a6f-...')
+- Cong thuc moi se phan anh chinh xac tong CAMLY da chi tu Treasury
 
-**3. Frontend - `useUserDirectory.ts`:**
-- Sửa `totalUsers` chỉ đếm user có `is_banned = false`
-
-**4. Translations - `translations.ts`:**
-- Thêm key `treasuryReceived` và `totalCamlyClaimed` cho tất cả ngôn ngữ
+**Uu diem**:
+- Tu dong phat hien giao dich thieu thong qua on-chain data
+- Backfill vao DB de dam bao du lieu nhat quan
+- Honor Board hien thi so lieu chinh xac
 
