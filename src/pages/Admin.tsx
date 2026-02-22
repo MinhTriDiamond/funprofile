@@ -59,7 +59,7 @@ const Admin = () => {
   };
 
   const stats = {
-    totalUsers: users.length,
+    totalUsers: users.filter(u => !u.is_banned).length,
     pendingRewards: users.filter(u => u.pending_reward > 0).length,
     approvedRewards: users.filter(u => u.approved_reward > 0).length,
     onChainClaims: 0,
