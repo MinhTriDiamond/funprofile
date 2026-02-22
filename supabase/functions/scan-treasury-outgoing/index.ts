@@ -152,23 +152,23 @@ Deno.serve(async (req) => {
     let totalMissingAmount = 0;
     const missingDetails = [];
 
-    // Get profiles for wallet mapping (wallet_address + public_wallet_address)
+    // Get profiles for wallet mapping (all wallet fields)
     const { data: profiles } = await adminClient
       .from("profiles")
-      .select("id, username, wallet_address, public_wallet_address, avatar_url");
+      .select("id, username, wallet_address, public_wallet_address, external_wallet_address, custodial_wallet_address, avatar_url");
 
     const walletMap = new Map<string, { id: string; username: string; avatar_url: string | null }>();
     for (const p of profiles || []) {
       const info = { id: p.id, username: p.username, avatar_url: p.avatar_url };
-      if (p.wallet_address) {
-        walletMap.set(p.wallet_address.toLowerCase(), info);
-      }
-      if (p.public_wallet_address) {
-        walletMap.set(p.public_wallet_address.toLowerCase(), info);
+      const addrs = [p.wallet_address, p.public_wallet_address, p.external_wallet_address, p.custodial_wallet_address];
+      for (const addr of addrs) {
+        if (addr && !walletMap.has(addr.toLowerCase())) {
+          walletMap.set(addr.toLowerCase(), info);
+        }
       }
     }
 
-    // Also map custodial wallets
+    // Also map custodial wallets table
     const { data: custodialWallets } = await adminClient
       .from("custodial_wallets")
       .select("user_id, wallet_address");
@@ -177,6 +177,23 @@ Deno.serve(async (req) => {
         const profile = (profiles || []).find((p: any) => p.id === cw.user_id);
         if (profile) {
           walletMap.set(cw.wallet_address.toLowerCase(), {
+            id: profile.id,
+            username: profile.username,
+            avatar_url: profile.avatar_url,
+          });
+        }
+      }
+    }
+
+    // Also map reward_claims wallet addresses
+    const { data: claimWallets } = await adminClient
+      .from("reward_claims")
+      .select("user_id, wallet_address");
+    for (const rc of claimWallets || []) {
+      if (rc.wallet_address && !walletMap.has(rc.wallet_address.toLowerCase())) {
+        const profile = (profiles || []).find((p: any) => p.id === rc.user_id);
+        if (profile) {
+          walletMap.set(rc.wallet_address.toLowerCase(), {
             id: profile.id,
             username: profile.username,
             avatar_url: profile.avatar_url,
@@ -206,12 +223,11 @@ Deno.serve(async (req) => {
       });
     }
 
-    // If mode is "backfill", insert missing transactions into donations
+    // If mode is "backfill", insert ALL missing transactions (mappable + unmappable)
     if (mode === "backfill") {
-      const mappable = missingDetails.filter((d) => d.mappable && d.recipient_id);
-      const toInsert = mappable.map((d) => ({
+      const toInsert = missingDetails.map((d) => ({
         sender_id: TREASURY_SENDER_ID,
-        recipient_id: d.recipient_id!,
+        recipient_id: d.recipient_id || null,
         amount: String(d.amount),
         token_symbol: "CAMLY",
         token_address: CAMLY_CONTRACT,
@@ -223,35 +239,38 @@ Deno.serve(async (req) => {
         card_sound: "rich-1",
         message: null,
         light_score_earned: 0,
-        metadata: { source: "backfill_from_onchain", block_number: d.block_number },
+        metadata: {
+          source: d.mappable ? "backfill_from_onchain" : "backfill_unmapped",
+          block_number: d.block_number,
+          to_address: d.to_address,
+          is_unmapped: !d.mappable,
+        },
       }));
 
       let inserted = 0;
       let skipped = 0;
 
-      if (toInsert.length > 0) {
-        // Insert one by one to handle duplicates gracefully
-        for (const record of toInsert) {
-          const { error: insertError } = await adminClient
-            .from("donations")
-            .insert(record);
-          if (insertError) {
-            console.warn(`Skip duplicate or error for ${record.tx_hash}:`, insertError.message);
-            skipped++;
-          } else {
-            inserted++;
-          }
+      for (const record of toInsert) {
+        const { error: insertError } = await adminClient
+          .from("donations")
+          .insert(record);
+        if (insertError) {
+          console.warn(`Skip duplicate or error for ${record.tx_hash}:`, insertError.message);
+          skipped++;
+        } else {
+          inserted++;
         }
       }
 
+      const mappableCount = missingDetails.filter((d) => d.mappable).length;
       return new Response(
         JSON.stringify({
           mode: "backfill",
           total_onchain: totalOnChain,
           total_missing: totalMissingAmount,
           missing_count: missingTx.length,
-          mappable_count: mappable.length,
-          unmappable_count: missingTx.length - mappable.length,
+          mappable_count: mappableCount,
+          unmappable_count: missingTx.length - mappableCount,
           inserted,
           skipped,
         }),

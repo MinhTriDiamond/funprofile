@@ -648,7 +648,7 @@ export type Database = {
           message_template: string | null
           metadata: Json | null
           post_id: string | null
-          recipient_id: string
+          recipient_id: string | null
           sender_address: string | null
           sender_id: string | null
           status: string
@@ -677,7 +677,7 @@ export type Database = {
           message_template?: string | null
           metadata?: Json | null
           post_id?: string | null
-          recipient_id: string
+          recipient_id?: string | null
           sender_address?: string | null
           sender_id?: string | null
           status?: string
@@ -706,7 +706,7 @@ export type Database = {
           message_template?: string | null
           metadata?: Json | null
           post_id?: string | null
-          recipient_id?: string
+          recipient_id?: string | null
           sender_address?: string | null
           sender_id?: string | null
           status?: string
