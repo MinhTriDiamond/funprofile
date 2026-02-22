@@ -81,8 +81,6 @@ Deno.serve(async (req) => {
             banned_at: new Date().toISOString(),
             ban_reason: reason,
             reward_status: "banned",
-            pending_reward: 0,
-            approved_reward: 0,
           })
           .eq("id", uid);
 
