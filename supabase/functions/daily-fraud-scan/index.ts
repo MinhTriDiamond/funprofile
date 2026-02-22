@@ -24,10 +24,12 @@ Deno.serve(async (req) => {
     const alerts: string[] = [];
 
     // 1. Shared device detection: devices with >2 users
+    // Only scan v2+ fingerprints (v1 is unreliable and causes false positives)
     const { data: flaggedDevices } = await supabase
       .from("pplp_device_registry")
       .select("device_hash, user_id")
-      .eq("is_flagged", false);
+      .eq("is_flagged", false)
+      .gte("fingerprint_version", 2);
 
     if (flaggedDevices) {
       const deviceMap = new Map<string, string[]>();

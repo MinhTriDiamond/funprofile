@@ -74,8 +74,8 @@ Deno.serve(async (req) => {
       user_agent: userAgent,
     });
 
-    // Device fingerprint handling
-    if (deviceHash && typeof deviceHash === "string" && deviceHash.length >= 16) {
+    // Device fingerprint handling - only process v2+ (v1 is unreliable)
+    if (deviceHash && typeof deviceHash === "string" && deviceHash.length >= 16 && fingerprintVersion >= 2) {
       await handleDeviceFingerprint(supabaseAdmin, user.id, deviceHash, fingerprintVersion);
     }
 
