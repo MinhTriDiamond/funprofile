@@ -4309,10 +4309,10 @@ export type Database = {
           total_camly_claimed: number
           total_photos: number
           total_posts: number
-          total_rewards: number
+          total_reward: number
           total_users: number
           total_videos: number
-          treasury_received: number
+          treasury_camly_received: number
         }[]
       }
       get_banned_user_claims: {
