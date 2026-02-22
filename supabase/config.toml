@@ -194,3 +194,6 @@ verify_jwt = false
 
 [functions.live-recording-proxy]
 verify_jwt = false
+
+[functions.scan-treasury-outgoing]
+verify_jwt = false
