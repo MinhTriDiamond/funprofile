@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { useUserDirectory, getTierName } from '@/hooks/useUserDirectory';
@@ -11,21 +12,53 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Download, Users as UsersIcon, Search, ChevronLeft, ChevronRight,
   Coins, Gift, Star, FileText, MessageSquare, Wallet, Send, ArrowDownToLine,
-  Globe, TrendingUp,
+  Globe, TrendingUp, Trash2,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 const Users = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
   const {
-    users, isLoading, stats, search, setSearch, page, setPage, totalPages, exportCSV, allUsers, filters, setFilters,
+    users, isLoading, stats, search, setSearch, page, setPage, totalPages, exportCSV, allUsers, filters, setFilters, isAdmin,
   } = useUserDirectory();
+
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; username: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fmt = (n: number) => n.toLocaleString('vi-VN');
   const shortenAddr = (addr: string | null) => addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : '—';
   const fmtDate = (d: string | null) => d ? new Date(d).toLocaleDateString('vi-VN') : '—';
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await supabase.functions.invoke('admin-delete-user', {
+        body: { user_id: deleteTarget.id },
+      });
+      if (res.error) throw res.error;
+      toast({ title: 'Đã xoá tài khoản', description: `@${deleteTarget.username} đã bị xoá thành công.` });
+      queryClient.invalidateQueries({ queryKey: ['user-directory'] });
+      queryClient.invalidateQueries({ queryKey: ['user-directory-admin-check'] });
+    } catch (err: any) {
+      toast({ title: 'Lỗi', description: err.message || 'Không thể xoá tài khoản', variant: 'destructive' });
+    } finally {
+      setIsDeleting(false);
+      setDeleteTarget(null);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background/80 overflow-hidden">
@@ -34,7 +67,7 @@ const Users = () => {
         {/* Header */}
         <div className="flex items-center justify-between py-4">
           <div>
-            <h1 className="text-xl md:text-2xl font-bold text-foreground">Quản lý User</h1>
+            <h1 className="text-xl md:text-2xl font-bold text-foreground">Danh sách thành viên</h1>
             <p className="text-sm text-muted-foreground">{fmt(stats.totalUsers)} thành viên</p>
           </div>
           <Button variant="outline" size="sm" onClick={exportCSV}>
@@ -98,6 +131,7 @@ const Users = () => {
                 <TableRow className="bg-muted/50">
                   <TableHead className="w-10 text-center">#</TableHead>
                   <TableHead className="min-w-[160px]">Người dùng</TableHead>
+                  {isAdmin && <TableHead className="hidden md:table-cell min-w-[180px]">Email</TableHead>}
                   <TableHead className="w-20">Trạng thái</TableHead>
                   <TableHead className="hidden md:table-cell w-24">Tham gia</TableHead>
                   <TableHead className="hidden md:table-cell w-20">Bài/BL</TableHead>
@@ -109,12 +143,13 @@ const Users = () => {
                   <TableHead className="hidden xl:table-cell w-24">Tặng Web3</TableHead>
                   <TableHead className="hidden md:table-cell w-20">Đã rút</TableHead>
                   <TableHead className="hidden lg:table-cell w-28">Ví BSC</TableHead>
+                  {isAdmin && <TableHead className="w-12"></TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {users.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={13} className="text-center py-12 text-muted-foreground">
+                    <TableCell colSpan={isAdmin ? 15 : 13} className="text-center py-12 text-muted-foreground">
                       <UsersIcon className="w-10 h-10 mx-auto mb-3 opacity-40" />
                       <p>Không tìm thấy thành viên nào</p>
                     </TableCell>
@@ -145,6 +180,11 @@ const Users = () => {
                           </div>
                         </div>
                       </TableCell>
+                      {isAdmin && (
+                        <TableCell className="hidden md:table-cell text-xs text-muted-foreground truncate max-w-[200px]">
+                          {user.email || '—'}
+                        </TableCell>
+                      )}
                       <TableCell>
                         {user.is_banned ? (
                           <Badge variant="destructive" className="text-[10px] px-1.5">Cấm</Badge>
@@ -206,6 +246,21 @@ const Users = () => {
                           </a>
                         ) : <span className="text-xs text-muted-foreground">—</span>}
                       </TableCell>
+                      {isAdmin && (
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteTarget({ id: user.id, username: user.username });
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))
                 )}
@@ -228,6 +283,28 @@ const Users = () => {
         )}
       </main>
       <MobileBottomNav />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xoá tài khoản @{deleteTarget?.username}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Hành động này sẽ xoá vĩnh viễn tài khoản và tất cả dữ liệu liên quan. Không thể hoàn tác.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Huỷ</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? 'Đang xoá...' : 'Xoá vĩnh viễn'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

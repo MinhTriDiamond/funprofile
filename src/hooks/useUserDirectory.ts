@@ -10,6 +10,7 @@ export interface UserDirectoryEntry {
   wallet_address: string | null;
   created_at: string | null;
   is_banned: boolean;
+  email?: string | null;
   // Activity
   posts_count: number;
   comments_count: number;
@@ -176,6 +177,35 @@ export const useUserDirectory = () => {
   });
   const pageSize = 50;
 
+  // Check admin status
+  const { data: adminData } = useQuery({
+    queryKey: ['user-directory-admin-check'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return { isAdmin: false, emails: new Map<string, string>() };
+      
+      const { data: roleData } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('role', 'admin')
+        .maybeSingle();
+      
+      if (!roleData) return { isAdmin: false, emails: new Map<string, string>() };
+      
+      const { data: emailsData } = await supabase.rpc('get_user_emails_for_admin', { p_admin_id: user.id });
+      const emails = new Map<string, string>();
+      if (emailsData) {
+        (emailsData as any[]).forEach((e: any) => emails.set(e.user_id, e.email));
+      }
+      return { isAdmin: true, emails };
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const isAdmin = adminData?.isAdmin || false;
+  const emailsMap = adminData?.emails || new Map<string, string>();
+
   useEffect(() => {
     const channel = supabase
       .channel('user-directory-donations')
@@ -235,8 +265,12 @@ export const useUserDirectory = () => {
   }, [allUsers, search, filters]);
 
   const paginated = useMemo(() => {
-    return filtered.slice(page * pageSize, (page + 1) * pageSize);
-  }, [filtered, page]);
+    const slice = filtered.slice(page * pageSize, (page + 1) * pageSize);
+    if (isAdmin && emailsMap.size > 0) {
+      return slice.map(u => ({ ...u, email: emailsMap.get(u.id) || null }));
+    }
+    return slice;
+  }, [filtered, page, isAdmin, emailsMap]);
 
   const totalPages = Math.ceil(filtered.length / pageSize);
 
@@ -298,5 +332,6 @@ export const useUserDirectory = () => {
     exportCSV,
     filters,
     setFilters,
+    isAdmin,
   };
 };
