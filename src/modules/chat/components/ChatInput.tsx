@@ -2,7 +2,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { FileText, Paperclip, Send, X, Gift, Wallet, Layers } from 'lucide-react';
+import { Paperclip, Send, X, Gift, Wallet, Layers } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { uploadCommentMedia } from '@/utils/mediaUpload';
 import { toast } from 'sonner';
@@ -14,6 +14,7 @@ import type { Message } from '../types';
 import type { Sticker } from '../types';
 import { StickerPicker } from './StickerPicker';
 import { RedEnvelopeDialog } from './RedEnvelopeDialog';
+import { AttachmentPreviewDialog } from './AttachmentPreviewDialog';
 
 interface ChatInputProps {
   onSend: (content: string, mediaUrls?: string[]) => Promise<void>;
@@ -59,6 +60,7 @@ export function ChatInput({
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [showStickerPicker, setShowStickerPicker] = useState(false);
   const [showCryptoModal, setShowCryptoModal] = useState(false);
+  const [showAttachPreview, setShowAttachPreview] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -101,6 +103,11 @@ export function ChatInput({
     setMediaFiles((prev) => [...prev, ...newFiles]);
     setMediaPreviews((prev) => [...prev, ...newPreviews]);
 
+    // Open preview dialog when files are selected
+    if (newFiles.length > 0) {
+      setShowAttachPreview(true);
+    }
+
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -114,30 +121,23 @@ export function ChatInput({
     setMediaPreviews((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleSend = async () => {
-    const trimmedContent = content.trim();
-    if (!trimmedContent && mediaFiles.length === 0) return;
-
+  const handleSendWithMedia = async (captionText: string, filesToUpload: File[]) => {
     try {
       setIsUploading(true);
-
-      // Upload media files
       let uploadedUrls: string[] = [];
-      if (mediaFiles.length > 0) {
-        const uploadPromises = mediaFiles.map((file) => uploadCommentMedia(file));
+      if (filesToUpload.length > 0) {
+        const uploadPromises = filesToUpload.map((file) => uploadCommentMedia(file));
         const results = await Promise.all(uploadPromises);
         uploadedUrls = results.map((r) => r.url);
       }
-
-      await onSend(trimmedContent, uploadedUrls.length > 0 ? uploadedUrls : undefined);
-
-      // Clear input
+      await onSend(captionText, uploadedUrls.length > 0 ? uploadedUrls : undefined);
+      // Clear
       setContent('');
       setMediaFiles([]);
       mediaPreviews.forEach((url) => URL.revokeObjectURL(url));
       setMediaPreviews([]);
+      setShowAttachPreview(false);
       onTyping(false);
-
     } catch (error) {
       console.error('Error sending message:', error);
       if (error instanceof Error && error.message === 'FILE_TYPE_NOT_SUPPORTED') {
@@ -148,6 +148,12 @@ export function ChatInput({
     } finally {
       setIsUploading(false);
     }
+  };
+
+  const handleSend = async () => {
+    const trimmedContent = content.trim();
+    if (!trimmedContent && mediaFiles.length === 0) return;
+    await handleSendWithMedia(trimmedContent, mediaFiles);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -190,47 +196,21 @@ export function ChatInput({
         </div>
       )}
 
-      {/* Media previews */}
-      {mediaPreviews.length > 0 && (
-        <div className="flex gap-2 mb-2 overflow-x-auto pb-2">
-          {mediaPreviews.map((preview, index) => {
-            const file = mediaFiles[index];
-            const isImage = isImageFile(file);
-            const isVideo = isVideoFile(file);
-            return (
-              <div key={index} className="relative flex-shrink-0">
-                {isImage && preview ? (
-                  <img
-                    src={preview}
-                    alt=""
-                    className="h-16 w-16 object-cover rounded-lg"
-                  />
-                ) : isVideo && preview ? (
-                  <video
-                    src={preview}
-                    className="h-16 w-16 object-cover rounded-lg"
-                    muted
-                    playsInline
-                  />
-                ) : (
-                  <div className="h-16 w-32 rounded-lg border bg-muted flex items-center gap-2 px-2">
-                    <FileText className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-xs truncate">{file?.name || 'File'}</span>
-                  </div>
-                )}
-                <Button
-                  variant="destructive"
-                  size="icon"
-                  className="absolute -top-1 -right-1 h-5 w-5 rounded-full"
-                  onClick={() => removeMedia(index)}
-                >
-                  <X className="h-3 w-3" />
-                </Button>
-              </div>
-            );
-          })}
-        </div>
-      )}
+      {/* Attachment preview dialog (Telegram-style) */}
+      <AttachmentPreviewDialog
+        open={showAttachPreview && mediaFiles.length > 0}
+        files={mediaFiles}
+        onClose={() => {
+          setShowAttachPreview(false);
+          setMediaFiles([]);
+          mediaPreviews.forEach((url) => URL.revokeObjectURL(url));
+          setMediaPreviews([]);
+        }}
+        onSend={(caption) => handleSendWithMedia(caption, mediaFiles)}
+        onAddMore={() => fileInputRef.current?.click()}
+        onRemoveFile={(index) => removeMedia(index)}
+        isSending={isUploading}
+      />
 
       {/* Input area */}
       <div className="flex items-end gap-2">
