@@ -4414,6 +4414,7 @@ export type Database = {
           camly_today: number
           comments_count: number
           created_at: string
+          email: string
           friends_count: number
           full_name: string
           id: string
