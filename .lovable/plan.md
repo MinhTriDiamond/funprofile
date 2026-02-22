@@ -1,63 +1,49 @@
 
-# Hien thi preview file dinh kem (PDF, ZIP, RAR, APK...) trong tin nhan chat
 
-## Van de
+# Sua loi gui file .rar bi bao "File type not allowed"
 
-Hien tai, `MessageBubble.tsx` trong module chat render **tat ca** URL dinh kem duoi dang the `<img>`. Khi nguoi dung gui file PDF, ZIP, RAR, APK... thi tin nhan hien thi mot anh bi loi (broken image) thay vi icon va ten file phu hop.
+## Nguyen nhan
+
+Khi chon file `.rar`, trinh duyet co the gan MIME type khong nam trong danh sach cho phep cua he thong (vi du `application/x-rar` thay vi `application/x-rar-compressed` hoac `application/vnd.rar`). Ham `uploadMedia` trong `src/utils/mediaUpload.ts` hien chi xu ly truong hop MIME type rong (fallback ve `application/octet-stream`), nhung khong xu ly truong hop MIME type sai/khong chuan.
 
 ## Giai phap
 
-### 1. Tao utility function phan loai file tu URL
-
-Tao file `src/modules/chat/utils/fileUtils.ts` voi cac ham:
-- `getFileTypeFromUrl(url)`: Tra ve loai file (`image`, `video`, `document`) dua tren phan mo rong trong URL
-- `getFileExtension(url)`: Lay phan mo rong file (pdf, zip, rar, apk, docx...)
-- `getFileIcon(ext)`: Tra ve ten Lucide icon tuong ung (FileText cho PDF/DOC, FileArchive cho ZIP/RAR, Smartphone cho APK...)
-- `getFileName(url)`: Lay ten file tu URL (phan cuoi cua path, decode URI)
-
-### 2. Tao component `FileAttachment`
-
-Tao file `src/modules/chat/components/FileAttachment.tsx`:
-- Hien thi mot the (card) nho voi: icon tuong ung loai file, ten file (truncate), phan mo rong / kich thuoc
-- Bam vao se mo file trong tab moi (`window.open`)
-- Style phu hop voi ca tin nhan cua minh (primary) va cua nguoi khac (muted)
-
-### 3. Cap nhat `MessageBubble.tsx`
-
-Thay khoi render media (dong 199-203) tu viec render tat ca la `<img>` sang:
-- Neu URL la anh: giu nguyen render `<img>`
-- Neu URL la video: render `<video>` voi controls
-- Neu URL la file khac: render component `FileAttachment`
+Them bang anh xa (mapping) tu phan mo rong file sang MIME type chuan trong `mediaUpload.ts`. Khi MIME type cua file khong nam trong danh sach cho phep, he thong se tu dong tra cuu MIME type dung dua theo phan mo rong cua ten file.
 
 ## Chi tiet ky thuat
 
+### File: `src/utils/mediaUpload.ts`
+
+1. Them hang so `EXT_TO_MIME` anh xa phan mo rong file sang MIME type chuan:
+
+```text
+rar  -> application/x-rar-compressed
+zip  -> application/zip
+7z   -> application/x-7z-compressed
+pdf  -> application/pdf
+doc  -> application/msword
+docx -> application/vnd.openxmlformats-officedocument.wordprocessingml.document
+xls  -> application/vnd.ms-excel
+xlsx -> application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+txt  -> text/plain
+apk  -> application/vnd.android.package-archive
+mp4  -> video/mp4
+webm -> video/webm
+mov  -> video/quicktime
+```
+
+2. Sua logic xu ly MIME type trong ham `uploadMedia` (khoang dong 83-88):
+   - Lay phan mo rong tu `file.name`
+   - Neu `file.type` rong hoac khong phai type chuan -> tra cuu `EXT_TO_MIME`
+   - Tao `File` moi voi MIME type da normalize
+   - Fallback cuoi cung van la `application/octet-stream`
+
+### Khong can thay doi file khac
+
+- Edge function `get-upload-url` da cho phep tat ca MIME type can thiet
+- `ChatInput.tsx` da cho phep chon file `.rar` qua thuoc tinh `accept`
+
 | File | Thay doi |
 |------|---------|
-| `src/modules/chat/utils/fileUtils.ts` | Tao moi - utility phan loai file tu URL |
-| `src/modules/chat/components/FileAttachment.tsx` | Tao moi - component hien thi file dinh kem |
-| `src/modules/chat/components/MessageBubble.tsx` | Cap nhat khoi render media de phan biet anh/video/file |
+| `src/utils/mediaUpload.ts` | Them `EXT_TO_MIME` mapping va normalize MIME type truoc khi upload |
 
-### Mapping icon theo loai file
-
-```text
-PDF          -> FileText (do)
-DOC/DOCX     -> FileText (xanh duong)
-XLS/XLSX     -> FileSpreadsheet (xanh la)
-TXT          -> FileText (xam)
-ZIP/RAR/7Z   -> FileArchive (vang)
-APK          -> Smartphone (xanh la)
-Khac         -> File (xam)
-```
-
-### Giao dien FileAttachment
-
-```text
-+----------------------------------+
-|  [Icon]  ten-file.pdf            |
-|          PDF - Bam de mo         |
-+----------------------------------+
-```
-
-- Bo goc tron, border nhe
-- Hover: hien download icon hoac underline
-- Chieu rong: min 200px, max 280px
