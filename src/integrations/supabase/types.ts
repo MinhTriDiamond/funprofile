@@ -4305,13 +4305,10 @@ export type Database = {
       get_app_stats: {
         Args: never
         Returns: {
-          total_camly_circulating: number
           total_camly_claimed: number
-          total_photos: number
           total_posts: number
-          total_reward: number
+          total_reactions: number
           total_users: number
-          total_videos: number
           treasury_camly_received: number
         }[]
       }
