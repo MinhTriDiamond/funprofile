@@ -2,8 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowUp, MessageCircle, Star, Share2, BadgeDollarSign, Coins, Gift, Wallet, Users, Image, Video, Calendar } from 'lucide-react';
-import { useRewardCalculation, REWARD_CONFIG } from '@/hooks/useRewardCalculation';
+import { ArrowUp, MessageCircle, Star, Share2, BadgeDollarSign, Coins, Gift, Users, Video, Calendar } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageContext';
 
 interface CoverHonorBoardProps {
@@ -15,44 +14,31 @@ interface CoverHonorBoardProps {
 export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoardProps) => {
   const { t, language } = useLanguage();
   
-  // Use the centralized reward calculation hook with React Query caching
-  const { stats: rewardStats, isLoading: rewardLoading } = useRewardCalculation(userId);
-
-  // Fetch additional data (transactions for total_money) with React Query caching
-  const { data: additionalData, isLoading: additionalLoading } = useQuery({
-    queryKey: ['profile-additional-stats', userId],
+  // Use dedicated RPC that includes banned users' data
+  const { data: honorData, isLoading: loading } = useQuery({
+    queryKey: ['honor-stats', userId],
     queryFn: async () => {
-      const { data: transactionsData } = await supabase
-        .from('transactions')
-        .select('amount')
-        .eq('user_id', userId)
-        .eq('status', 'success');
-
-      const receivedAmount = transactionsData?.reduce((sum, tx) => sum + parseFloat(tx.amount || '0'), 0) || 0;
-      return { receivedAmount };
+      const { data, error } = await supabase.rpc('get_user_honor_stats', { p_user_id: userId });
+      if (error) throw error;
+      return data?.[0] || null;
     },
     enabled: !!userId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
 
-  const loading = rewardLoading || additionalLoading;
-
-  // Calculate derived values
   const stats = {
-    posts_count: rewardStats?.postsCount || 0,
-    comments_count: rewardStats?.commentsOnPosts || 0,
-    reactions_on_posts: rewardStats?.reactionsOnPosts || 0,
-    shares_count: rewardStats?.sharesCount || 0,
-    friends_count: rewardStats?.friendsCount || 0,
-    livestreams_count: rewardStats?.livestreamsCount || 0,
-    nfts_count: 0, // NFTs not implemented yet
-    claimable: rewardStats?.claimableAmount || 0,
-    claimed: rewardStats?.claimedAmount || 0,
-    today_reward: rewardStats?.todayReward || 0,
-    total_reward: rewardStats?.totalReward || 0,
-    total_money: (rewardStats?.totalReward || 0) + (additionalData?.receivedAmount || 0),
+    posts_count: Number(honorData?.posts_count) || 0,
+    comments_count: Number(honorData?.comments_count) || 0,
+    reactions_on_posts: Number(honorData?.reactions_on_posts) || 0,
+    shares_count: Number(honorData?.shares_count) || 0,
+    friends_count: Number(honorData?.friends_count) || 0,
+    livestreams_count: Number(honorData?.livestreams_count) || 0,
+    claimable: Math.max(0, Number(honorData?.today_reward) || 0),
+    claimed: Number(honorData?.claimed_amount) || 0,
+    today_reward: Number(honorData?.today_reward) || 0,
+    total_reward: Number(honorData?.total_reward) || 0,
   };
 
   const formatNumber = (num: number): string => {
@@ -185,19 +171,13 @@ interface MobileStatsProps {
 
 export const MobileStats = ({ userId, username, avatarUrl }: MobileStatsProps) => {
   const { t, language } = useLanguage();
-  const { stats: rewardStats, isLoading: rewardLoading } = useRewardCalculation(userId);
 
-  const { data: additionalData, isLoading: additionalLoading } = useQuery({
-    queryKey: ['profile-additional-stats', userId],
+  const { data: honorData, isLoading: loading } = useQuery({
+    queryKey: ['honor-stats', userId],
     queryFn: async () => {
-      const { data: transactionsData } = await supabase
-        .from('transactions')
-        .select('amount')
-        .eq('user_id', userId)
-        .eq('status', 'success');
-
-      const receivedAmount = transactionsData?.reduce((sum, tx) => sum + parseFloat(tx.amount || '0'), 0) || 0;
-      return { receivedAmount };
+      const { data, error } = await supabase.rpc('get_user_honor_stats', { p_user_id: userId });
+      if (error) throw error;
+      return data?.[0] || null;
     },
     enabled: !!userId,
     staleTime: 5 * 60 * 1000,
@@ -205,20 +185,17 @@ export const MobileStats = ({ userId, username, avatarUrl }: MobileStatsProps) =
     refetchOnWindowFocus: false,
   });
 
-  const loading = rewardLoading || additionalLoading;
-
   const stats = {
-    posts_count: rewardStats?.postsCount || 0,
-    comments_count: rewardStats?.commentsOnPosts || 0,
-    reactions_on_posts: rewardStats?.reactionsOnPosts || 0,
-    shares_count: rewardStats?.sharesCount || 0,
-    friends_count: rewardStats?.friendsCount || 0,
-    livestreams_count: rewardStats?.livestreamsCount || 0,
-    claimable: rewardStats?.claimableAmount || 0,
-    claimed: rewardStats?.claimedAmount || 0,
-    today_reward: rewardStats?.todayReward || 0,
-    total_reward: rewardStats?.totalReward || 0,
-    total_money: (rewardStats?.totalReward || 0) + (additionalData?.receivedAmount || 0),
+    posts_count: Number(honorData?.posts_count) || 0,
+    comments_count: Number(honorData?.comments_count) || 0,
+    reactions_on_posts: Number(honorData?.reactions_on_posts) || 0,
+    shares_count: Number(honorData?.shares_count) || 0,
+    friends_count: Number(honorData?.friends_count) || 0,
+    livestreams_count: Number(honorData?.livestreams_count) || 0,
+    claimable: Math.max(0, Number(honorData?.today_reward) || 0),
+    claimed: Number(honorData?.claimed_amount) || 0,
+    today_reward: Number(honorData?.today_reward) || 0,
+    total_reward: Number(honorData?.total_reward) || 0,
   };
 
   const formatNumber = (num: number): string => num.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US');
