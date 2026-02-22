@@ -247,7 +247,7 @@ export const useUserDirectory = () => {
       totalInternalSent: 0, totalInternalReceived: 0, totalWeb3Sent: 0, totalWeb3Received: 0, totalWithdrawn: 0,
     };
     return {
-      totalUsers: allUsers.filter(u => !u.is_banned).length,
+      totalUsers: allUsers.length,
       totalCamlyCalculated: allUsers.reduce((s, u) => s + u.camly_calculated, 0),
       totalCamlyClaimed: allUsers.reduce((s, u) => s + u.camly_claimed, 0),
       totalLightScore: allUsers.reduce((s, u) => s + u.total_light_score, 0),
