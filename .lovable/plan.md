@@ -1,49 +1,50 @@
 
+# Sua loi khong mo/tai duoc file dinh kem trong chat
 
-# Sua loi gui file .rar bi bao "File type not allowed"
+## Nguyen nhan goc
 
-## Nguyen nhan
+Ham `rewriteChatAttachmentUrl` trong `src/lib/urlFix.ts` dang viet lai URL tu `media.fun.rich` sang `pub-fe745f8832684f4198a9b0e88e8d451a.r2.dev` -- day la **sai bucket R2**. File thuc te nam o bucket co URL la `pub-e83e74b0726742fbb6a60bc08f95624b.r2.dev` (hoac truy cap qua custom domain `media.fun.rich`).
 
-Khi chon file `.rar`, trinh duyet co the gan MIME type khong nam trong danh sach cho phep cua he thong (vi du `application/x-rar` thay vi `application/x-rar-compressed` hoac `application/vnd.rar`). Ham `uploadMedia` trong `src/utils/mediaUpload.ts` hien chi xu ly truong hop MIME type rong (fallback ve `application/octet-stream`), nhung khong xu ly truong hop MIME type sai/khong chuan.
+Ket qua: URL luu trong database tro den bucket khong ton tai file -> tra ve loi 404.
+
+Da kiem chung:
+- `media.fun.rich/comment-media/...rar` -> **hoat dong** (tra ve file)
+- `pub-e83e74b0726742fbb6a60bc08f95624b.r2.dev/comment-media/...rar` -> **hoat dong**
+- `pub-fe745f8832684f4198a9b0e88e8d451a.r2.dev/comment-media/...rar` -> **LOI 404**
 
 ## Giai phap
 
-Them bang anh xa (mapping) tu phan mo rong file sang MIME type chuan trong `mediaUpload.ts`. Khi MIME type cua file khong nam trong danh sach cho phep, he thong se tu dong tra cuu MIME type dung dua theo phan mo rong cua ten file.
+### 1. Bo rewrite URL trong ChatInput
 
-## Chi tiet ky thuat
+File `src/modules/chat/components/ChatInput.tsx`: Bo goi `rewriteChatAttachmentUrl`. Giu nguyen URL `media.fun.rich` tu `uploadMedia` tra ve -- day la custom domain chinh thuc va hoat dong tot.
 
-### File: `src/utils/mediaUpload.ts`
+### 2. Sua URL da luu sai trong database
 
-1. Them hang so `EXT_TO_MIME` anh xa phan mo rong file sang MIME type chuan:
+Chay 1 lenh SQL de sua tat ca URL dang tro den bucket sai (`pub-fe745f8832684f4198a9b0e88e8d451a.r2.dev`) ve lai `media.fun.rich`:
 
-```text
-rar  -> application/x-rar-compressed
-zip  -> application/zip
-7z   -> application/x-7z-compressed
-pdf  -> application/pdf
-doc  -> application/msword
-docx -> application/vnd.openxmlformats-officedocument.wordprocessingml.document
-xls  -> application/vnd.ms-excel
-xlsx -> application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
-txt  -> text/plain
-apk  -> application/vnd.android.package-archive
-mp4  -> video/mp4
-webm -> video/webm
-mov  -> video/quicktime
+```sql
+UPDATE messages
+SET media_urls = (
+  SELECT jsonb_agg(
+    CASE
+      WHEN elem::text LIKE '%pub-fe745f8832684f4198a9b0e88e8d451a.r2.dev%'
+      THEN replace(elem::text, 'https://pub-fe745f8832684f4198a9b0e88e8d451a.r2.dev', 'https://media.fun.rich')::jsonb
+      ELSE elem
+    END
+  )
+  FROM jsonb_array_elements(media_urls::jsonb) AS elem
+)
+WHERE media_urls::text LIKE '%pub-fe745f8832684f4198a9b0e88e8d451a.r2.dev%';
 ```
 
-2. Sua logic xu ly MIME type trong ham `uploadMedia` (khoang dong 83-88):
-   - Lay phan mo rong tu `file.name`
-   - Neu `file.type` rong hoac khong phai type chuan -> tra cuu `EXT_TO_MIME`
-   - Tao `File` moi voi MIME type da normalize
-   - Fallback cuoi cung van la `application/octet-stream`
+### 3. (Tuy chon) Don dep `urlFix.ts`
 
-### Khong can thay doi file khac
+Xoa hoac danh dau deprecated ham `rewriteChatAttachmentUrl` va hang so `R2_NEW_PUBLIC_URL` vi khong con su dung nua.
 
-- Edge function `get-upload-url` da cho phep tat ca MIME type can thiet
-- `ChatInput.tsx` da cho phep chon file `.rar` qua thuoc tinh `accept`
+## Cac file can thay doi
 
 | File | Thay doi |
 |------|---------|
-| `src/utils/mediaUpload.ts` | Them `EXT_TO_MIME` mapping va normalize MIME type truoc khi upload |
-
+| `src/modules/chat/components/ChatInput.tsx` | Bo import va goi `rewriteChatAttachmentUrl`, giu nguyen URL tu upload |
+| `src/lib/urlFix.ts` | Xoa ham `rewriteChatAttachmentUrl` (khong con dung) |
+| Database | Chay SQL de sua URL da luu sai |
