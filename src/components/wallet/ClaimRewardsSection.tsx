@@ -1,15 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
-import { Gift, Wallet, AlertTriangle, Info, Clock, CheckCircle2, TrendingUp, MessageCircle, Send, Loader2 } from 'lucide-react';
+import { Gift, Wallet, AlertTriangle, Info, Clock, CheckCircle2, TrendingUp, MessageCircle, Send, Loader2, ShieldAlert, Lock } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { RewardStats } from './RewardBreakdown';
 import camlyLogo from '@/assets/tokens/camly-logo.webp';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useWalletSecurity } from '@/hooks/useWalletSecurity';
 
 const MINIMUM_THRESHOLD = 200000;
 const DAILY_LIMIT = 500000;
@@ -56,6 +57,17 @@ export const ClaimRewardsSection = ({
   const navigate = useNavigate();
   const [adminMessage, setAdminMessage] = useState('');
   const [isSendingMessage, setIsSendingMessage] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+  
+  // Get current user for wallet security check
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session?.user) setUserId(data.session.user.id);
+    });
+  }, []);
+  
+  const { data: walletSecurity } = useWalletSecurity(userId);
+  
   const totalReward = rewardStats?.total_reward || 0;
   const pendingAmount = Math.max(0, totalReward - claimedAmount - claimableReward);
   const dailyRemaining = Math.max(0, DAILY_LIMIT - dailyClaimed);
@@ -74,6 +86,14 @@ export const ClaimRewardsSection = ({
   const handleClaimClick = () => {
     if (!isConnected) {
       onConnectClick();
+      return;
+    }
+    if (walletSecurity?.isBlocked) {
+      toast.error('Tài khoản bị khóa do thay đổi ví quá nhiều. Vui lòng liên hệ Admin.');
+      return;
+    }
+    if (walletSecurity?.isFrozen) {
+      toast.warning(`Rút thưởng tạm khóa do thay đổi ví. Vui lòng thử lại sau ${walletSecurity.freezeHoursLeft} giờ.`);
       return;
     }
     if (config.disabled) {
@@ -273,8 +293,43 @@ export const ClaimRewardsSection = ({
           </div>
         )}
 
+        {/* Wallet Freeze Banner */}
+        {walletSecurity?.isFrozen && !walletSecurity?.isBlocked && (
+          <div className="bg-red-50 border border-red-300 rounded-xl p-3.5">
+            <div className="flex items-start gap-2">
+              <Lock className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-red-800">Tạm khóa rút thưởng do thay đổi ví 🔒</p>
+                <p className="text-xs text-red-700 mt-1">
+                  Tài khoản đang được kiểm tra bảo mật. Vui lòng thử lại sau {walletSecurity.freezeHoursLeft} giờ.
+                </p>
+                {walletSecurity.claimFreezeUntil && (
+                  <p className="text-xs text-red-600 mt-1">
+                    ⏰ Mở khóa lúc: {new Date(walletSecurity.claimFreezeUntil).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Wallet Blocked Banner */}
+        {walletSecurity?.isBlocked && (
+          <div className="bg-red-100 border-2 border-red-400 rounded-xl p-3.5">
+            <div className="flex items-start gap-2">
+              <ShieldAlert className="w-5 h-5 text-red-700 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-red-900">Tài khoản bị khóa rút thưởng ⛔</p>
+                <p className="text-xs text-red-800 mt-1">
+                  Do thay đổi ví quá nhiều lần. Vui lòng liên hệ Admin để được hỗ trợ.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Message Admin Section - shown when user can't claim */}
-        {(rewardStatus === 'on_hold' || rewardStatus === 'rejected') && (
+        {(rewardStatus === 'on_hold' || rewardStatus === 'rejected' || walletSecurity?.isBlocked) && (
           <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-xl p-3.5 space-y-3">
             <div className="flex items-center gap-2">
               <MessageCircle className="w-4 h-4 text-blue-600" />
@@ -318,9 +373,9 @@ export const ClaimRewardsSection = ({
           ) : (
             <Button
               onClick={handleClaimClick}
-              disabled={config.disabled || claimableReward <= 0}
+              disabled={config.disabled || claimableReward <= 0 || walletSecurity?.isFrozen || walletSecurity?.isBlocked}
               className={`w-full py-6 text-base rounded-xl font-bold shadow-lg transition-all ${
-                config.disabled || claimableReward <= 0
+                config.disabled || claimableReward <= 0 || walletSecurity?.isFrozen || walletSecurity?.isBlocked
                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   : 'bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-white hover:shadow-xl hover:scale-[1.01]'
               }`}
