@@ -62,8 +62,8 @@ export function useAdminDonationHistory() {
           sender_address,
           is_external,
           metadata,
-          sender:profiles!donations_sender_id_fkey(id, username, avatar_url, public_wallet_address, custodial_wallet_address),
-          recipient:profiles!donations_recipient_id_fkey(id, username, avatar_url, public_wallet_address, custodial_wallet_address)
+          sender:public_profiles!donations_sender_id_fkey(id, username, avatar_url, public_wallet_address),
+          recipient:public_profiles!donations_recipient_id_fkey(id, username, avatar_url, public_wallet_address)
         `, { count: 'exact' })
         .order('confirmed_at', { ascending: false, nullsFirst: false })
         .order('created_at', { ascending: false });
@@ -99,7 +99,7 @@ export function useAdminDonationHistory() {
         } else {
           // Search by username - find matching profile IDs first
           const { data: matchingProfiles } = await supabase
-            .from('profiles')
+            .from('public_profiles')
             .select('id')
             .ilike('username', `%${term}%`);
           
@@ -223,8 +223,8 @@ export async function fetchAllDonationsForExport(filters: Partial<AdminDonationF
       sender_address,
       is_external,
       metadata,
-      sender:profiles!donations_sender_id_fkey(id, username, avatar_url, public_wallet_address, custodial_wallet_address),
-      recipient:profiles!donations_recipient_id_fkey(id, username, avatar_url, public_wallet_address, custodial_wallet_address)
+      sender:public_profiles!donations_sender_id_fkey(id, username, avatar_url, public_wallet_address),
+      recipient:public_profiles!donations_recipient_id_fkey(id, username, avatar_url, public_wallet_address)
     `)
     .order('confirmed_at', { ascending: false, nullsFirst: false })
     .order('created_at', { ascending: false });
@@ -256,7 +256,7 @@ export async function fetchAllDonationsForExport(filters: Partial<AdminDonationF
       query = query.ilike('tx_hash', `%${term}%`);
     } else {
       const { data: matchingProfiles } = await supabase
-        .from('profiles')
+        .from('public_profiles')
         .select('id')
         .ilike('username', `%${term}%`);
       

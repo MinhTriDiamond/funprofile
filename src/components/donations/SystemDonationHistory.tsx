@@ -148,7 +148,7 @@ export function SystemDonationHistory() {
     }
   };
 
-  const getWalletAddress = (user: any) => user?.public_wallet_address || user?.custodial_wallet_address || null;
+  const getWalletAddress = (user: any) => user?.public_wallet_address || null;
 
   const renderWalletAddress = (user: any, tokenSymbol?: string, fallbackAddress?: string | null) => {
     const address = getWalletAddress(user) || fallbackAddress || null;

@@ -58,10 +58,7 @@ interface FacebookPostCardProps {
       username: string;
       display_name?: string | null;
       avatar_url: string | null;
-      external_wallet_address?: string | null;
-      custodial_wallet_address?: string | null;
       public_wallet_address?: string | null;
-      wallet_address?: string | null;
     };
   };
   currentUserId: string;
@@ -502,7 +499,7 @@ const FacebookPostCardComponent = ({
                 recipientId={post.user_id}
                 recipientUsername={post.profiles?.username || 'Unknown'}
                 recipientDisplayName={post.profiles?.display_name}
-                recipientWalletAddress={post.profiles?.public_wallet_address || post.profiles?.external_wallet_address || post.profiles?.wallet_address || post.profiles?.custodial_wallet_address}
+                recipientWalletAddress={post.profiles?.public_wallet_address}
                 recipientAvatarUrl={post.profiles?.avatar_url}
                 postId={post.id}
                 variant="post"

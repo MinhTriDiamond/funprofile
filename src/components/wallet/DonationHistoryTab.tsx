@@ -350,7 +350,7 @@ function PersonalDonationCard({
   const isSuccess = donation.status === 'confirmed';
 
   const getWallet = (user: DonationRecord['sender'] | DonationRecord['recipient']) => {
-    return user?.public_wallet_address || user?.custodial_wallet_address || null;
+    return user?.public_wallet_address || null;
   };
 
   const senderWallet = donation.sender ? getWallet(donation.sender) : donation.sender_address || null;
