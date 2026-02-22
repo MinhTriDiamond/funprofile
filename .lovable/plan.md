@@ -1,50 +1,78 @@
 
-# Sua loi khong mo/tai duoc file dinh kem trong chat
 
-## Nguyen nhan goc
+# Nang cap giao dien dinh kem file kieu Telegram
 
-Ham `rewriteChatAttachmentUrl` trong `src/lib/urlFix.ts` dang viet lai URL tu `media.fun.rich` sang `pub-fe745f8832684f4198a9b0e88e8d451a.r2.dev` -- day la **sai bucket R2**. File thuc te nam o bucket co URL la `pub-e83e74b0726742fbb6a60bc08f95624b.r2.dev` (hoac truy cap qua custom domain `media.fun.rich`).
+## Tong quan
 
-Ket qua: URL luu trong database tro den bucket khong ton tai file -> tra ve loi 404.
+Khi nguoi dung chon file dinh kem, thay vi hien thi preview nho (16x16) trong khung chat, he thong se hien thi mot **dialog/modal xem truoc** toan man hinh voi:
+- Preview lon cho anh/video, icon cho file tai lieu
+- O nhap **Caption** (noi dung di kem)
+- Cac nut: **Them file** / **Huy** / **Gui**
+- Nut xoa tung file
 
-Da kiem chung:
-- `media.fun.rich/comment-media/...rar` -> **hoat dong** (tra ve file)
-- `pub-e83e74b0726742fbb6a60bc08f95624b.r2.dev/comment-media/...rar` -> **hoat dong**
-- `pub-fe745f8832684f4198a9b0e88e8d451a.r2.dev/comment-media/...rar` -> **LOI 404**
+## Giao dien moi (tham khao Telegram)
 
-## Giai phap
-
-### 1. Bo rewrite URL trong ChatInput
-
-File `src/modules/chat/components/ChatInput.tsx`: Bo goi `rewriteChatAttachmentUrl`. Giu nguyen URL `media.fun.rich` tu `uploadMedia` tra ve -- day la custom domain chinh thuc va hoat dong tot.
-
-### 2. Sua URL da luu sai trong database
-
-Chay 1 lenh SQL de sua tat ca URL dang tro den bucket sai (`pub-fe745f8832684f4198a9b0e88e8d451a.r2.dev`) ve lai `media.fun.rich`:
-
-```sql
-UPDATE messages
-SET media_urls = (
-  SELECT jsonb_agg(
-    CASE
-      WHEN elem::text LIKE '%pub-fe745f8832684f4198a9b0e88e8d451a.r2.dev%'
-      THEN replace(elem::text, 'https://pub-fe745f8832684f4198a9b0e88e8d451a.r2.dev', 'https://media.fun.rich')::jsonb
-      ELSE elem
-    END
-  )
-  FROM jsonb_array_elements(media_urls::jsonb) AS elem
-)
-WHERE media_urls::text LIKE '%pub-fe745f8832684f4198a9b0e88e8d451a.r2.dev%';
+```text
++---------------------------------------+
+|  Gui file dinh kem              [X]   |
++---------------------------------------+
+|                                       |
+|   [Preview anh/video lon]      [Xoa]  |
+|   hoac [Icon file + ten file]         |
+|                                       |
+|   Caption                             |
+|   [___________________________] [:-)] |
+|                                       |
+|   [+ Them]       [Huy]       [Gui]    |
++---------------------------------------+
 ```
 
-### 3. (Tuy chon) Don dep `urlFix.ts`
+## Chi tiet ky thuat
 
-Xoa hoac danh dau deprecated ham `rewriteChatAttachmentUrl` va hang so `R2_NEW_PUBLIC_URL` vi khong con su dung nua.
+### 1. Tao component `AttachmentPreviewDialog`
+
+File: `src/modules/chat/components/AttachmentPreviewDialog.tsx`
+
+- Su dung Radix Dialog (da co san)
+- Props:
+  - `open`: boolean
+  - `files`: File[] - danh sach file da chon
+  - `onClose`: () => void - dong dialog
+  - `onSend`: (caption: string) => void - gui voi caption
+  - `onAddMore`: () => void - mo file picker them
+  - `onRemoveFile`: (index: number) => void - xoa 1 file
+- Hien thi:
+  - Tieu de "Gui file dinh kem" voi nut dong
+  - Carousel/grid preview cac file (toi da 4)
+    - Anh: hien thi `<img>` voi object-cover, rounded
+    - Video: hien thi `<video>` voi play icon overlay
+    - File khac: hien thi icon tuong ung (tu `getFileIconInfo`) + ten file + dung luong
+  - Nut xoa (thung rac) tren moi file
+  - O nhap Caption voi emoji picker
+  - 3 nut hanh dong: Them / Huy / Gui
+
+### 2. Cap nhat `ChatInput.tsx`
+
+- Them state `showAttachPreview` (boolean)
+- Khi nguoi dung chon file (`handleFileSelect`):
+  - Van luu file vao `mediaFiles` nhu cu
+  - Tu dong mo `AttachmentPreviewDialog` (`showAttachPreview = true`)
+- Bo khoi preview nho cu (dong 194-233) - thay bang dialog moi
+- Khi nguoi dung bam "Gui" trong dialog:
+  - Lay caption tu dialog
+  - Thuc hien upload + gui tin nhan voi `content = caption`
+- Khi bam "Huy": xoa mediaFiles, dong dialog
+- Khi bam "Them": goi `fileInputRef.current?.click()` de chon them file
+
+### 3. Khong can thay doi backend
+
+- `onSend(content, mediaUrls)` da ho tro gui caption (content) kem media
+- Khong can sua database hay edge function
 
 ## Cac file can thay doi
 
 | File | Thay doi |
 |------|---------|
-| `src/modules/chat/components/ChatInput.tsx` | Bo import va goi `rewriteChatAttachmentUrl`, giu nguyen URL tu upload |
-| `src/lib/urlFix.ts` | Xoa ham `rewriteChatAttachmentUrl` (khong con dung) |
-| Database | Chay SQL de sua URL da luu sai |
+| `src/modules/chat/components/AttachmentPreviewDialog.tsx` | Tao moi - dialog xem truoc file kieu Telegram |
+| `src/modules/chat/components/ChatInput.tsx` | Cap nhat: mo dialog khi chon file, bo preview nho cu |
+
