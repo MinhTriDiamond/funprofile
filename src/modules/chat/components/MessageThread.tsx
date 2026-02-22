@@ -9,6 +9,17 @@ import { CallRoom } from './CallRoom';
 import { IncomingCallDialog } from './IncomingCallDialog';
 import { usePins } from '../hooks/usePins';
 import { useBlocks } from '../hooks/useBlocks';
+import { supabase } from '@/integrations/supabase/client';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useReports } from '../hooks/useReports';
 import { useAngelInline } from '../hooks/useAngelInline';
 import { MessageBubble } from './MessageBubble';
@@ -112,7 +123,7 @@ export function MessageThread({ conversationId, userId, username }: MessageThrea
   const participantCount = conversation?.participants?.filter((p: ConversationParticipant) => !p.left_at).length || 0;
 
   const { pinnedMessage, pinMessage, unpinMessage } = usePins(conversationId);
-  const { blockedIds, blockedByIds } = useBlocks(userId);
+  const { blockedIds, blockedByIds, blockUser, unblockUser } = useBlocks(userId);
   const { createReport } = useReports(userId);
   const { invokeAngel } = useAngelInline();
   
@@ -658,11 +669,60 @@ export function MessageThread({ conversationId, userId, username }: MessageThrea
           open={showBlockDialog}
           onOpenChange={setShowBlockDialog}
           username={headerName}
-          isBlocking={false}
+          isBlocking={blockUser.isPending || unblockUser.isPending}
           mode={isDmBlockedByMe ? 'unblock' : 'block'}
-          onConfirm={async () => {}}
+          onConfirm={async () => {
+            try {
+              if (isDmBlockedByMe) {
+                await unblockUser.mutateAsync(dmOtherUserId);
+                toast.success('Đã kết nối lại');
+              } else {
+                await blockUser.mutateAsync(dmOtherUserId);
+                toast.success('Đã tạm ngừng kết nối');
+              }
+              setShowBlockDialog(false);
+            } catch (e: any) {
+              toast.error(e?.message || 'Thao tác thất bại');
+            }
+          }}
         />
       )}
+
+      {/* Delete conversation confirm */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xóa cuộc trò chuyện</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn có chắc muốn xóa cuộc trò chuyện này? Bạn sẽ không còn thấy cuộc trò chuyện trong danh sách.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async () => {
+                try {
+                  if (!userId) return;
+                  const { error } = await supabase
+                    .from('conversation_participants')
+                    .update({ left_at: new Date().toISOString() })
+                    .eq('conversation_id', conversationId)
+                    .eq('user_id', userId);
+                  if (error) throw error;
+                  queryClient.invalidateQueries({ queryKey: ['conversations', userId] });
+                  toast.success('Đã xóa cuộc trò chuyện');
+                  navigate('/chat');
+                } catch (e: any) {
+                  toast.error(e?.message || 'Không thể xóa cuộc trò chuyện');
+                }
+              }}
+            >
+              Xóa
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Call Room - shown when a call is active */}
       {callState !== 'idle' && (
