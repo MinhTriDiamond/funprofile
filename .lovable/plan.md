@@ -1,49 +1,54 @@
 
+# Khôi phục số liệu CAMLY cho tài khoản bị ban
 
-## Ke hoach: Doi soat Treasury va cap nhat so tong da chi
+## Mục tiêu
+Tính toán lại phần thưởng (pending_reward) cho 116 tài khoản đã bị ban dựa trên lịch sử hoạt động thực tế, phục vụ mục đích lưu trữ và kiểm toán. Tài khoản vẫn giữ trạng thái bị ban, KHÔNG khôi phục hoạt động.
 
-### Van de
-- Treasury nhan: 180,000,000 CAMLY
-- So du hien tai trong vi: 81,811,001 CAMLY
-- Tong chi thuc te on-chain: **98,188,999 CAMLY**
-- Database chi ghi nhan: **91,320,999 CAMLY** (reward_claims + donations)
-- **Thieu 6,868,000 CAMLY** chua duoc ghi nhan trong database
+## Tình trạng hiện tại
+- 116 tài khoản bị ban: tất cả pending_reward = 0, approved_reward = 0
+- Đã rút tổng cộng: 71,969,000 CAMLY (đã có trong thống kê qua reward_claims)
+- Phần thưởng chưa rút bị mất do hàm ban cũ reset về 0
+- Không có bản ghi lưu số liệu gốc trước khi ban
 
-### Giai phap
+## Kế hoạch thực hiện
 
-#### Buoc 1: Tao Edge Function quet giao dich CAMLY di ra tu Treasury
-Tao edge function `scan-treasury-outgoing` su dung Moralis API (da co MORALIS_API_KEY) de:
-- Quet tat ca giao dich chuyen CAMLY tu Treasury wallet ra ngoai tren BSC Mainnet
-- So sanh voi du lieu trong `reward_claims` va `donations`
-- Tra ve danh sach cac giao dich thieu (chua duoc ghi nhan)
+### Bước 1: Tính lại pending_reward cho tài khoản bị ban
+Viết migration SQL để:
+- Tính tổng phần thưởng dựa trên hoạt động thực tế (bài viết, bình luận, cảm xúc, chia sẻ, kết bạn, livestream) theo công thức reward v2 hiện tại
+- Trừ đi số đã rút (reward_claims)
+- Cập nhật pending_reward = phần chênh lệch (phần thưởng chưa rút)
+- Chỉ áp dụng cho tài khoản có is_banned = true
 
-#### Buoc 2: Backfill cac giao dich thieu vao database
-- Cac giao dich thieu se duoc ghi nhan vao bang `donations` voi metadata ghi chu "backfill from on-chain"
-- Map `to_address` voi `wallet_address` trong `profiles` de xac dinh nguoi nhan
+### Bước 2: Sửa hàm batch_ban_ghost_users
+Cập nhật hàm này để KHÔNG reset pending_reward và approved_reward khi ban (giống như đã sửa ban_user_permanently)
 
-#### Buoc 3: Cap nhat `total_camly_claimed` trong `get_app_stats`
-Sua RPC `get_app_stats` de tinh `total_camly_claimed` = tong tat ca giao dich chi tu Treasury (bao gom ca `reward_claims` va `donations` tu Treasury), hoac don gian hon:
-- Cap nhat gia tri `total_camly_claimed` = `TREASURY_CAMLY_RECEIVED - so du hien tai` = 98,188,999
+### Bước 3: Sửa Edge Function batch-ban-users
+Cập nhật edge function để KHÔNG reset pending_reward và approved_reward khi ban hàng loạt
 
-#### Buoc 4: Cap nhat `system_config`
-Them key `TREASURY_CAMLY_SPENT` = 98,188,999 vao `system_config` de theo doi chinh xac tong chi, hoac sua cong thuc tinh `total_camly_claimed` trong RPC thanh:
-```text
-total_camly_claimed = SUM(reward_claims.amount) + SUM(donations tu Treasury)
-```
+### Bước 4: Ghi audit log
+Tạo bản ghi kiểm toán ghi nhận việc khôi phục số liệu
 
-### Chi tiet ky thuat
+## Chi tiết kỹ thuật
 
-**Edge Function `scan-treasury-outgoing`**:
-- Su dung Moralis API: `GET /v2/{treasury_address}/erc20/transfers?contract_addresses[]={CAMLY_CONTRACT}&direction=outgoing`
-- So sanh tx_hash voi `donations.tx_hash` va tim cac giao dich thieu
-- Tra ve summary: tong on-chain, tong DB, chenh lech, danh sach giao dich thieu
+### Migration SQL - Tính lại reward cho tài khoản bị ban
 
-**Cap nhat `get_app_stats` RPC**:
-- `total_camly_claimed` = tong tu `reward_claims` + tong `donations` tu Treasury (sender_id = '9e702a6f-...')
-- Cong thuc moi se phan anh chinh xac tong CAMLY da chi tu Treasury
+Sử dụng công thức tương tự `get_user_rewards_v2` với cutoff date 2026-01-15:
+- Trước 15/01: bài viết x 10,000, bình luận x 2,000, cảm xúc x 1,000, chia sẻ x 10,000, kết bạn x 10,000
+- Sau 15/01: bài viết x 5,000 (cap 10/ngày), bình luận x 1,000 (cap 50/ngày), cảm xúc x 1,000 (cap 50/ngày), chia sẻ x 1,000 (cap 10/ngày), kết bạn x 10,000 (cap 10/ngày), livestream x 20,000 (cap 5/ngày)
+- Cộng thêm 50,000 bonus cơ bản
+- Trừ đi tổng đã rút từ reward_claims
+- Kết quả = pending_reward cần khôi phục
 
-**Uu diem**:
-- Tu dong phat hien giao dich thieu thong qua on-chain data
-- Backfill vao DB de dam bao du lieu nhat quan
-- Honor Board hien thi so lieu chinh xac
+### Sửa batch_ban_ghost_users
 
+Bỏ dòng `pending_reward = 0, approved_reward = 0` - chỉ giữ `is_banned = true, reward_status = 'banned'`
+
+### Sửa Edge Function batch-ban-users
+
+Bỏ `pending_reward: 0, approved_reward: 0` trong update object
+
+## Kết quả mong đợi
+- Tổng phần thưởng trên Honor Board sẽ tăng lên (bao gồm cả phần thưởng chưa rút của tài khoản bị ban)
+- Dữ liệu kiểm toán được bảo toàn đầy đủ
+- Tài khoản bị ban vẫn giữ nguyên trạng thái ban, không thể hoạt động hay rút thưởng
+- Các lần ban trong tương lai sẽ không reset số liệu nữa
