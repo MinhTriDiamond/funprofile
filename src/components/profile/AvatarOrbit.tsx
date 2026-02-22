@@ -268,9 +268,20 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
     setSaving(true);
     const normalized = url.trim().startsWith('http') ? url.trim() : `https://${url.trim()}`;
     const fetchedAvatarUrl = await fetchLinkAvatar(normalized, platform);
-    const newLinks = localLinks.map((l) =>
-      l.platform === platform ? { ...l, url: normalized, avatarUrl: fetchedAvatarUrl || l.avatarUrl } : l
-    );
+    // If localLinks is empty (showing defaults), initialize from defaultLinks first
+    const baseLinks = localLinks.length === 0 ? defaultLinks : localLinks;
+    let newLinks: SocialLink[];
+    const existingIdx = baseLinks.findIndex((l) => l.platform === platform);
+    if (existingIdx !== -1) {
+      newLinks = baseLinks.map((l) =>
+        l.platform === platform ? { ...l, url: normalized, avatarUrl: fetchedAvatarUrl || l.avatarUrl } : l
+      );
+    } else {
+      // Platform not in list, add new entry
+      const preset = PLATFORM_PRESETS[platform];
+      if (!preset) { setSaving(false); return; }
+      newLinks = [...baseLinks, { platform, label: preset.label, url: normalized, color: preset.color, favicon: preset.favicon, avatarUrl: fetchedAvatarUrl || undefined }];
+    }
     const { error } = await supabase.from('profiles').update({ social_links: newLinks as any }).eq('id', userId);
     setSaving(false);
     if (error) { toast.error('Không thể lưu link'); return; }
@@ -307,7 +318,9 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
 
   const removeLink = async (platform: string) => {
     if (!userId) return;
-    const newLinks = localLinks.filter((l) => l.platform !== platform);
+    // If localLinks is empty (showing defaults), initialize from defaults then remove
+    const baseLinks = localLinks.length === 0 ? defaultLinks : localLinks;
+    const newLinks = baseLinks.filter((l) => l.platform !== platform);
     const { error } = await supabase.from('profiles').update({ social_links: newLinks as any }).eq('id', userId);
     if (error) { toast.error('Không thể xoá link'); return; }
     toast.success('Đã xoá!');
@@ -322,8 +335,19 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
     setShowAddPicker(false);
     const preset = PLATFORM_PRESETS[platform];
     if (!preset) return;
+    // If localLinks is empty (showing defaults), initialize from defaults first
+    const baseLinks = localLinks.length === 0 ? defaultLinks : localLinks;
+    // Check if platform already exists in baseLinks
+    if (baseLinks.some((l) => l.platform === platform)) {
+      // Platform already in list, just open prompt
+      setLocalLinks(baseLinks);
+      onLinksChanged?.(baseLinks);
+      setPromptingPlatform(platform);
+      setPromptUrl('');
+      return;
+    }
     const newLink: SocialLink = { platform, label: preset.label, url: '', color: preset.color, favicon: preset.favicon };
-    const newLinks = [...localLinks, newLink];
+    const newLinks = [...baseLinks, newLink];
     await supabase.from('profiles').update({ social_links: newLinks as any }).eq('id', userId);
     setLocalLinks(newLinks);
     onLinksChanged?.(newLinks);
@@ -342,15 +366,15 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
 
   const handleDragOver = useCallback((index: number) => {
     if (dragIndexRef.current === null || dragIndexRef.current === index) return;
-    const newLinks = [...localLinks];
+    // If localLinks is empty, initialize from displayLinks (defaults) first
+    const baseLinks = localLinks.length === 0 ? [...defaultLinks] : [...localLinks];
     const fromIdx = dragIndexRef.current;
-    // Only reorder saved (non-pending) links
-    if (fromIdx >= newLinks.length || index >= newLinks.length) return;
-    const [moved] = newLinks.splice(fromIdx, 1);
-    newLinks.splice(index, 0, moved);
+    if (fromIdx >= baseLinks.length || index >= baseLinks.length) return;
+    const [moved] = baseLinks.splice(fromIdx, 1);
+    baseLinks.splice(index, 0, moved);
     dragIndexRef.current = index;
-    setLocalLinks(newLinks);
-  }, [localLinks]);
+    setLocalLinks(baseLinks);
+  }, [localLinks, defaultLinks]);
 
   const handleDragEnd = useCallback(async () => {
     isDragging.current = false;
@@ -358,6 +382,7 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
     setDraggingIndex(null);
     dragIndexRef.current = null;
     if (!userId) return;
+    // If localLinks was empty before drag started, it's now initialized from defaults
     await supabase.from('profiles').update({ social_links: localLinks as any }).eq('id', userId);
     onLinksChanged?.(localLinks);
   }, [localLinks, userId, onLinksChanged]);
