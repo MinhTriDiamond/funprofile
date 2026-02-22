@@ -339,13 +339,13 @@ export async function uploadLiveRecording(
   mimeType: string,
   onProgress?: (percent: number) => void
 ): Promise<UploadLiveRecordingResult> {
-  const extension = mimeType.includes('webm') ? 'webm' : 'mp4';
+  const baseMimeType = mimeType.split(';')[0].trim();
+  const extension = baseMimeType.includes('webm') ? 'webm' : 'mp4';
   const customPath = `live/${liveSessionId}/recording-${Date.now()}.${extension}`;
 
   onProgress?.(10);
 
-  // Convert Blob to File for uploadToR2
-  const file = new File([blob], `recording.${extension}`, { type: mimeType });
+  const file = new File([blob], `recording.${extension}`, { type: baseMimeType });
 
   onProgress?.(30);
 
