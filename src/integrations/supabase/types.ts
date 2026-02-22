@@ -4034,6 +4034,7 @@ export type Database = {
           public_wallet_address: string | null
           social_links: Json | null
           username: string | null
+          username_normalized: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -4046,6 +4047,7 @@ export type Database = {
           public_wallet_address?: string | null
           social_links?: Json | null
           username?: string | null
+          username_normalized?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -4058,6 +4060,7 @@ export type Database = {
           public_wallet_address?: string | null
           social_links?: Json | null
           username?: string | null
+          username_normalized?: string | null
         }
         Relationships: []
       }
