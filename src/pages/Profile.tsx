@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
@@ -138,55 +138,53 @@ const Profile = () => {
 
   const fetchProfile = async (profileId: string, authUserId?: string) => {
     try {
-      // For own profile, fetch all fields; for others, use limited fields
-      // Use authUserId passed directly to avoid stale state issues
       const isViewingOwnProfile = authUserId ? profileId === authUserId : profileId === currentUserId;
       
-      const { data, error } = isViewingOwnProfile
-        ? await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', profileId)
-            .single()
-        : await supabase
-            .from('public_profiles')
+      const profileQuery = isViewingOwnProfile
+        ? supabase.from('profiles').select('*').eq('id', profileId).single()
+        : supabase.from('public_profiles')
             .select('id, username, display_name, avatar_url, full_name, bio, cover_url, created_at, public_wallet_address, social_links')
-            .eq('id', profileId)
-            .single();
+            .eq('id', profileId).single();
 
-      if (error) throw error;
-      setProfile(data);
-
-      // If accessed via /profile/:userId but user has a username, redirect to /:username for clean URL
-      if (userId && (data as any)?.username) {
-        navigate(`/${(data as any).username}`, { replace: true });
-      }
-
-      // Fetch user's own posts
-      const { data: postsData } = await supabase
+      const postsQuery = supabase
         .from('posts')
-        .select(`
-          *,
-          public_profiles!posts_user_id_fkey (username, display_name, avatar_url, full_name, public_wallet_address),
-          reactions (id, user_id, type),
-          comments (id)
-        `)
+        .select(`*, public_profiles!posts_user_id_fkey (username, display_name, avatar_url, full_name, public_wallet_address), reactions (id, user_id, type), comments (id)`)
         .eq('user_id', profileId)
         .order('created_at', { ascending: false });
 
-      // Also fetch gift_celebration posts where this user is the sender (but user_id might differ due to legacy data)
-      const { data: giftSenderPosts } = await supabase
+      const giftSenderQuery = supabase
         .from('posts')
-        .select(`
-          *,
-          public_profiles!posts_user_id_fkey (username, display_name, avatar_url, full_name, public_wallet_address),
-          reactions (id, user_id, type),
-          comments (id)
-        `)
+        .select(`*, public_profiles!posts_user_id_fkey (username, display_name, avatar_url, full_name, public_wallet_address), reactions (id, user_id, type), comments (id)`)
         .eq('gift_sender_id', profileId)
         .eq('post_type', 'gift_celebration')
         .neq('user_id', profileId)
         .order('created_at', { ascending: false });
+
+      const sharedQuery = supabase
+        .from('shared_posts')
+        .select(`*, posts:original_post_id (*, public_profiles!posts_user_id_fkey (username, display_name, avatar_url, full_name, public_wallet_address), reactions (id, user_id, type), comments (id))`)
+        .eq('user_id', profileId)
+        .order('created_at', { ascending: false });
+
+      const friendsQuery = supabase
+        .from('friendships')
+        .select('user_id, friend_id', { count: 'exact' })
+        .or(`user_id.eq.${profileId},friend_id.eq.${profileId}`)
+        .eq('status', 'accepted')
+        .limit(6);
+
+      // Run ALL queries in parallel
+      const [profileRes, postsRes, giftSenderRes, sharedRes, friendsRes] = await Promise.all([
+        profileQuery, postsQuery, giftSenderQuery, sharedQuery, friendsQuery,
+      ]);
+
+      if (profileRes.error) throw profileRes.error;
+      const data = profileRes.data;
+      setProfile(data);
+
+      if (userId && (data as any)?.username) {
+        navigate(`/${(data as any).username}`, { replace: true });
+      }
 
       // Map public_profiles to profiles key for component compatibility
       const mapProfiles = (posts: any[]) => (posts || []).map((p: any) => ({
@@ -194,113 +192,70 @@ const Profile = () => {
         profiles: p.public_profiles || p.profiles,
       }));
 
+      const postsData = postsRes.data;
+      const giftSenderPosts = giftSenderRes.data;
+
       const existingPostIds = new Set((postsData || []).map((p: any) => p.id));
       const allUserPosts = [
         ...mapProfiles(postsData || []),
         ...mapProfiles(giftSenderPosts || []).filter((p: any) => !existingPostIds.has(p.id))
       ];
 
-      setOriginalPosts(allUserPosts); // Keep for photos grid
+      setOriginalPosts(allUserPosts);
 
-      // Batch-fetch recipient/sender profiles for gift_celebration posts
+      // Batch-fetch recipient/sender profiles for gift_celebration posts (depends on posts results)
       const giftPostsInProfile = allUserPosts.filter(p => p.post_type === 'gift_celebration');
       const profileIdsToFetch = new Set<string>();
       giftPostsInProfile.forEach(p => {
         if (p.gift_recipient_id) profileIdsToFetch.add(p.gift_recipient_id);
         if (p.gift_sender_id && p.gift_sender_id !== p.user_id) profileIdsToFetch.add(p.gift_sender_id);
       });
-      let giftProfileMap = new Map<string, { username: string; display_name?: string | null; avatar_url: string | null }>();
-      if (profileIdsToFetch.size > 0) {
-        const { data: giftProfiles } = await supabase
-          .from('public_profiles')
-          .select('id, username, display_name, avatar_url')
-          .in('id', Array.from(profileIdsToFetch));
-        (giftProfiles || []).forEach(p => giftProfileMap.set(p.id, p));
-      }
+
+      // Friends preview query (depends on friends result)
+      const friendsData = friendsRes.data;
+      const friendIds = (friendsData || []).map(f => f.user_id === profileId ? f.friend_id : f.user_id);
+
+      // Run gift profiles + friend profiles in parallel (2nd wave)
+      const [giftProfilesRes, friendProfilesRes] = await Promise.all([
+        profileIdsToFetch.size > 0
+          ? supabase.from('public_profiles').select('id, username, display_name, avatar_url').in('id', Array.from(profileIdsToFetch))
+          : Promise.resolve({ data: [] as any[] }),
+        friendIds.length > 0
+          ? supabase.from('public_profiles').select('id, username, full_name, avatar_url').in('id', friendIds).limit(6)
+          : Promise.resolve({ data: [] as any[] }),
+      ]);
+
+      // Process gift profiles
+      const giftProfileMap = new Map<string, { username: string; display_name?: string | null; avatar_url: string | null }>();
+      ((giftProfilesRes as any).data || []).forEach((p: any) => giftProfileMap.set(p.id, p));
+
       const allUserPostsWithGiftProfiles = allUserPosts.map(post => {
         if (post.post_type !== 'gift_celebration') return post;
         return {
           ...post,
           recipientProfile: post.gift_recipient_id ? (giftProfileMap.get(post.gift_recipient_id) || null) : null,
           senderProfile: (post.gift_sender_id && post.gift_sender_id !== post.user_id)
-            ? (giftProfileMap.get(post.gift_sender_id) || null)
-            : null,
+            ? (giftProfileMap.get(post.gift_sender_id) || null) : null,
         };
       });
 
-      // Fetch shared posts
-      const { data: sharedPostsData } = await supabase
-        .from('shared_posts')
-        .select(`
-          *,
-          posts:original_post_id (
-            *,
-            public_profiles!posts_user_id_fkey (username, display_name, avatar_url, full_name, public_wallet_address),
-            reactions (id, user_id, type),
-            comments (id)
-          )
-        `)
-        .eq('user_id', profileId)
-        .order('created_at', { ascending: false });
-
-      // Combine and sort all posts by created_at (shared posts use their share time)
+      // Combine and sort posts
       const combinedPosts: any[] = [];
-      
-      // Add original posts with type marker
       allUserPostsWithGiftProfiles.forEach(post => {
-        combinedPosts.push({
-          ...post,
-          _type: 'original',
-          _sortTime: new Date(post.created_at).getTime()
-        });
+        combinedPosts.push({ ...post, _type: 'original', _sortTime: new Date(post.created_at).getTime() });
       });
-      
-      // Add shared posts with type marker (using share time for sorting)
+      const sharedPostsData = sharedRes.data;
       (sharedPostsData || []).forEach((sharedPost: any) => {
         if (sharedPost.posts) {
-          // Map public_profiles to profiles in nested post
           const mappedPost = { ...sharedPost.posts, profiles: sharedPost.posts.public_profiles || sharedPost.posts.profiles };
-          combinedPosts.push({
-            ...sharedPost,
-            posts: mappedPost,
-            _type: 'shared',
-            _sortTime: new Date(sharedPost.created_at).getTime()
-          });
+          combinedPosts.push({ ...sharedPost, posts: mappedPost, _type: 'shared', _sortTime: new Date(sharedPost.created_at).getTime() });
         }
       });
-      
-      // Sort by time descending (newest first)
       combinedPosts.sort((a, b) => b._sortTime - a._sortTime);
-      
       setAllPosts(combinedPosts);
 
-      // Fetch friends count and preview
-      const { data: friendsData, count } = await supabase
-        .from('friendships')
-        .select('user_id, friend_id', { count: 'exact' })
-        .or(`user_id.eq.${profileId},friend_id.eq.${profileId}`)
-        .eq('status', 'accepted')
-        .limit(6);
-
-      setFriendsCount(count || 0);
-
-      // Fetch friends preview (up to 6 friends with their profiles)
-      if (friendsData && friendsData.length > 0) {
-        // Get the friend IDs (the "other" person in each friendship)
-        const friendIds = friendsData.map(f => 
-          f.user_id === profileId ? f.friend_id : f.user_id
-        );
-        
-        const { data: friendProfiles } = await supabase
-          .from('public_profiles')
-          .select('id, username, full_name, avatar_url')
-          .in('id', friendIds)
-          .limit(6);
-        
-        setFriendsPreview(friendProfiles || []);
-      } else {
-        setFriendsPreview([]);
-      }
+      setFriendsCount(friendsRes.count || 0);
+      setFriendsPreview((friendProfilesRes as any).data || []);
     } catch (error) {
       // Error fetching profile - silent fail
     } finally {

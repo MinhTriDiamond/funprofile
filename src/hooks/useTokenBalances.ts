@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAccount, useBalance } from 'wagmi';
 import { formatUnits } from 'viem';
 import { bsc } from 'wagmi/chains';
@@ -60,7 +60,7 @@ export const useTokenBalances = (options?: UseTokenBalancesOptions) => {
   const { address: connectedAddress, isConnected, chainId } = useAccount();
   const [prices, setPrices] = useState<PriceData>({});
   const [isPriceLoading, setIsPriceLoading] = useState(true);
-  const [lastPrices, setLastPrices] = useState<PriceData>({});
+  const lastPricesRef = useRef<PriceData>({});
 
   // Use custom address if provided, otherwise use connected wallet address
   const address = options?.customAddress || connectedAddress;
@@ -134,7 +134,7 @@ export const useTokenBalances = (options?: UseTokenBalancesOptions) => {
         const { prices: cached, ts } = JSON.parse(raw);
         if (Date.now() - ts < CACHE_TTL && cached) {
           setPrices(cached);
-          setLastPrices(cached);
+          lastPricesRef.current = cached;
           setIsPriceLoading(false);
           return;
         }
@@ -155,20 +155,21 @@ export const useTokenBalances = (options?: UseTokenBalancesOptions) => {
       } catch { /* quota exceeded */ }
 
       setPrices(priceData);
-      setLastPrices(priceData);
+      lastPricesRef.current = priceData;
       setFailCount(0);
       setIsPriceLoading(false);
     } catch (error) {
       console.error('Error fetching prices:', error);
-      if (Object.keys(lastPrices).length > 0) {
-        setPrices(lastPrices);
+      const cached = lastPricesRef.current;
+      if (Object.keys(cached).length > 0) {
+        setPrices(cached);
       } else {
         setPrices(fallbackPrices);
       }
       setFailCount(prev => prev + 1);
       setIsPriceLoading(false);
     }
-  }, [lastPrices]);
+  }, []); // stable callback - no dependencies that change
 
   // Always fetch prices for accurate display, but pause when tab is hidden (MED-2 fix)
   useEffect(() => {
