@@ -1,46 +1,45 @@
 
 
-# Phục hồi 33 giao dịch Treasury bị thiếu (6,918,000 CAMLY)
+# Nang cap trang Danh sach Thanh vien (/users)
 
-## Tình trạng hiện tại
-- On-chain: 98,188,999 CAMLY (273 giao dịch outgoing)
-- Database donations: 91,320,999 CAMLY (241 records)
-- Thiếu: 33 giao dịch = 6,918,000 CAMLY
-- Tất cả 33 giao dịch thiếu KHONG map duoc voi bat ky user nao (dia chi vi khong con trong he thong)
+## Thay doi 1: Them cot Email (chi Admin thay)
 
-## Giai phap
+Hien tai hook `useUserDirectory` khong fetch email. Can bo sung:
+- Goi RPC `get_user_emails_for_admin` (da co san) trong `useUserDirectory.ts` khi user da dang nhap va co quyen admin
+- Them truong `email` vao `UserDirectoryEntry`
+- Hien thi cot "Email" trong bang tai `Users.tsx`, chi render khi user la admin
 
-### Buoc 1: Mo rong wallet mapping trong `scan-treasury-outgoing`
-Hien tai function chi tim user qua `profiles.wallet_address` va `profiles.public_wallet_address` + `custodial_wallets`. Can bo sung them:
-- `profiles.external_wallet_address`  
-- `profiles.custodial_wallet_address`
-- `reward_claims.wallet_address` (dia chi vi luc user claim, co the khac voi wallet hien tai)
+## Thay doi 2: Them nut Xoa tai khoan (chi Admin thay)
 
-### Buoc 2: Cho phep backfill giao dich "unmappable"
-Voi nhung giao dich khong the map duoc user, van insert vao `donations` voi:
-- `recipient_id = null`
-- `sender_id = Treasury ID`
-- `metadata = { source: "backfill_unmapped", to_address: "0x..." }`
-- `status = "confirmed"`
-- Day la cac giao dich on-chain co that, chi la khong xac dinh duoc user nhan
+- Them nut xoa (icon Trash) tren moi hang trong bang, chi hien khi la admin
+- Khi nhan, hien dialog xac nhan (AlertDialog) voi ten user
+- Goi edge function `admin-delete-user` (da co san) de xoa tai khoan
+- Sau khi xoa thanh cong, invalidate query va hien thong bao
 
-### Buoc 3: Chay backfill ngay 33 giao dich hien tai
-Goi `scan-treasury-outgoing` voi `mode: "backfill"` de insert 33 giao dich con thieu, dam bao tong so = 98,188,999 CAMLY
+## Thay doi 3: Guest co the xem trang
+
+- Trang `/users` da nam ngoai auth guard (khong bi bao ve), nen guest co the truy cap
+- Tuy nhien, du lieu hien tai fetch tu bang `profiles` truc tiep, co the bi RLS chan. Can kiem tra va dam bao:
+  - Hook `useUserDirectory` su dung cac bang/RPC ma `anon` role co quyen doc
+  - Neu RLS chan guest, se bo sung policy cho phep SELECT tren cac bang can thiet (profiles, light_reputation, reward_claims, donations) hoac su dung view `public_profiles`
 
 ## Chi tiet ky thuat
 
-### Thay doi trong `scan-treasury-outgoing`:
-1. Bo sung mapping `external_wallet_address` va `custodial_wallet_address` tu bang `profiles`
-2. Bo sung mapping tu `reward_claims.wallet_address` -> `user_id`
-3. Trong mode backfill: insert CA giao dich unmappable (recipient_id = null) thay vi chi insert mappable
-4. Them truong `is_unmapped: true` trong metadata de phan biet
+### File: `src/hooks/useUserDirectory.ts`
+- Import `supabase.auth.getUser()` de kiem tra dang nhap
+- Neu co user, goi RPC `get_user_emails_for_admin` de lay email
+- Map email vao `UserDirectoryEntry.email`
+- Export them `isAdmin` flag tu hook
 
-### Thay doi schema:
-- Kiem tra rang `donations.recipient_id` cho phep null (neu chua thi can migration)
-- Khong can tao bang moi
+### File: `src/pages/Users.tsx`
+- Nhan `isAdmin` tu hook
+- Them cot "Email" vao bang (chi render khi `isAdmin`)
+- Them cot "Hanh dong" voi nut xoa (chi render khi `isAdmin`)
+- Them AlertDialog xac nhan xoa
+- Goi edge function `admin-delete-user` khi xac nhan
 
-### Ket qua mong doi:
-- Tong donations tu Treasury = 98,188,999 CAMLY (khop voi on-chain)
-- 33 giao dich thieu se duoc ghi nhan day du voi tx_hash, amount, timestamp
-- Cac giao dich unmapped se co metadata de admin co the review sau
+### RLS: Dam bao guest doc duoc
+- Kiem tra RLS cua bang `profiles`, `light_reputation`, `reward_claims`, `donations`
+- Neu can, them policy SELECT cho role `anon` (chi cac truong cong khai)
+- Hoac chuyen sang dung `public_profiles` view cho guest
 
