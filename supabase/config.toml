@@ -197,3 +197,6 @@ verify_jwt = false
 
 [functions.scan-treasury-outgoing]
 verify_jwt = false
+
+[functions.auto-backfill-donations]
+verify_jwt = false
