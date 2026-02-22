@@ -1,49 +1,45 @@
 
 
-# Hien thi ten file goc khi dinh kem trong chat
+# Sửa hai tính năng: Xóa cuộc trò chuyện và Tạm ngừng kết nối
 
-## Van de hien tai
+## Tóm tắt
 
-Khi nguoi dung dinh kem file (VD: `BaoGia_2025.rar`), ham `generateCacheBustFilename` doi ten thanh `userId_timestamp_hash.rar`. Ten file hien thi trong chat va khi tai ve deu la ten he thong, khong phai ten goc.
+Cả hai tính năng đều có giao diện (nút bấm) nhưng thiếu phần xử lý logic. Cần bổ sung:
+1. Dialog xác nhận xóa cuộc trò chuyện + logic xóa
+2. Kết nối logic block/unblock vào dialog "Tạm ngừng kết nối"
 
-## Giai phap
+## Chi tiết kỹ thuật
 
-Thay doi cach dat ten file upload: giu nguyen ten goc trong duong dan R2, chi them prefix hash de tranh trung lap.
+### File cần sửa: `src/modules/chat/components/MessageThread.tsx`
 
-**Format moi:** `bucket/userId_timestamp_hash/originalFilename.ext`
+#### 1. Thêm dialog xác nhận "Xóa cuộc trò chuyện"
 
-VD: `comment-media/abc123_1708000000_x7k2m9/BaoGia_2025.rar`
+- Import `AlertDialog` từ `@/components/ui/alert-dialog`
+- Render `AlertDialog` sử dụng state `showDeleteConfirm` đã có sẵn
+- Khi xác nhận xóa:
+  - Gọi `supabase` để cập nhật `left_at = now()` cho participant hiện tại trong `conversation_participants` (xóa mềm - người dùng rời khỏi cuộc trò chuyện, không xóa dữ liệu)
+  - Invalidate query `conversations`
+  - Navigate về `/chat`
+  - Hiển thị toast thành công
 
-Nhu vay, ham `getFileName(url)` se tu dong trich xuat dung ten goc tu URL.
+#### 2. Kết nối logic block/unblock cho "Tạm ngừng kết nối"
 
-## Chi tiet ky thuat
+- Lấy `blockUser` và `unblockUser` từ hook `useBlocks` (đã import và sử dụng, chỉ lấy thêm 2 mutation)
+- Thay `onConfirm={async () => {}}` bằng logic thực:
+  - Nếu mode là `block`: gọi `blockUser.mutateAsync(dmOtherUserId)`
+  - Nếu mode là `unblock`: gọi `unblockUser.mutateAsync(dmOtherUserId)`
+  - Đóng dialog và hiển thị toast
+- Truyền `isBlocking={blockUser.isPending || unblockUser.isPending}` thay vì `false`
 
-### 1. Sua `generateCacheBustFilename` trong `src/utils/mediaUpload.ts`
+## Bảng tóm tắt thay đổi
 
-Tach thanh 2 phan:
-- **Anh/Video**: giu nguyen cach cu (doi ten hoan toan) vi khong can hien thi ten file
-- **File tai lieu**: tra ve dang `hash_folder/originalName` de giu ten goc
-
-Tao them ham `generateDocumentPath(originalName, userId)` tra ve: `userId_timestamp_hash/tenfile_goc.ext`
-
-### 2. Sua `uploadCommentMedia` trong `src/utils/mediaUpload.ts`
-
-Voi file khong phai anh/video: su dung `generateDocumentPath` thay vi `generateCacheBustFilename` de key trong R2 chua ten file goc.
-
-### 3. Sua `FileAttachment.tsx` - download dung ten goc
-
-Thay vi `window.open(url)`, su dung fetch + blob + download link de nguoi dung tai ve voi dung ten file goc (lay tu URL path).
-
-## Cac file can thay doi
-
-| File | Thay doi |
+| File | Thay đổi |
 |------|---------|
-| `src/utils/mediaUpload.ts` | Them ham `generateDocumentPath`, sua `uploadMedia` de nhan biet file tai lieu va giu ten goc trong key |
-| `src/modules/chat/components/FileAttachment.tsx` | Sua nut download de tai file ve voi ten goc thay vi mo tab moi |
+| `src/modules/chat/components/MessageThread.tsx` | Thêm AlertDialog xóa hội thoại + kết nối logic block/unblock |
 
-## Luu y
+## Lưu ý
 
-- Anh va video van giu ten he thong nhu cu (khong anh huong)
-- Cac file da gui truoc do khong anh huong (van hoat dong binh thuong, chi ten hien thi la ten he thong)
-- Ten file goc duoc lam sach (bo ky tu dac biet) de dam bao tuong thich URL
+- Xóa cuộc trò chuyện sử dụng **xóa mềm** (set `left_at`) - cuộc trò chuyện vẫn tồn tại cho người còn lại
+- Hook `useBlocks` đã có sẵn đầy đủ logic CRUD với bảng `user_blocks` - không cần thay đổi backend
+- Không cần tạo bảng mới hay migration
 
