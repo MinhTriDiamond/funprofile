@@ -29,7 +29,7 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabaseAnon = Deno.env.get("SUPABASE_ANON_KEY")!;
     const moralisApiKey = Deno.env.get("MORALIS_API_KEY");
-    const treasuryAddress = Deno.env.get("TREASURY_WALLET_ADDRESS");
+    const treasuryAddress = Deno.env.get("TREASURY_WALLET_ADDRESS")?.trim();
 
     if (!moralisApiKey) {
       return new Response(JSON.stringify({ error: "MORALIS_API_KEY not configured" }), {
@@ -152,19 +152,36 @@ Deno.serve(async (req) => {
     let totalMissingAmount = 0;
     const missingDetails = [];
 
-    // Get profiles for wallet mapping
+    // Get profiles for wallet mapping (wallet_address + public_wallet_address)
     const { data: profiles } = await adminClient
       .from("profiles")
-      .select("id, username, wallet_address, avatar_url");
+      .select("id, username, wallet_address, public_wallet_address, avatar_url");
 
     const walletMap = new Map<string, { id: string; username: string; avatar_url: string | null }>();
     for (const p of profiles || []) {
+      const info = { id: p.id, username: p.username, avatar_url: p.avatar_url };
       if (p.wallet_address) {
-        walletMap.set(p.wallet_address.toLowerCase(), {
-          id: p.id,
-          username: p.username,
-          avatar_url: p.avatar_url,
-        });
+        walletMap.set(p.wallet_address.toLowerCase(), info);
+      }
+      if (p.public_wallet_address) {
+        walletMap.set(p.public_wallet_address.toLowerCase(), info);
+      }
+    }
+
+    // Also map custodial wallets
+    const { data: custodialWallets } = await adminClient
+      .from("custodial_wallets")
+      .select("user_id, wallet_address");
+    for (const cw of custodialWallets || []) {
+      if (cw.wallet_address && !walletMap.has(cw.wallet_address.toLowerCase())) {
+        const profile = (profiles || []).find((p: any) => p.id === cw.user_id);
+        if (profile) {
+          walletMap.set(cw.wallet_address.toLowerCase(), {
+            id: profile.id,
+            username: profile.username,
+            avatar_url: profile.avatar_url,
+          });
+        }
       }
     }
 
