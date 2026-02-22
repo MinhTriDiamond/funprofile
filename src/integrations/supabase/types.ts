@@ -4306,9 +4306,11 @@ export type Database = {
         Args: never
         Returns: {
           total_camly_claimed: number
+          total_photos: number
           total_posts: number
-          total_reactions: number
+          total_rewards: number
           total_users: number
+          total_videos: number
           treasury_camly_received: number
         }[]
       }

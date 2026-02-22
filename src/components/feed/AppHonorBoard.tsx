@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useLanguage } from '@/i18n/LanguageContext';
-import { Users, FileText, Heart, Wallet, Coins } from 'lucide-react';
+import { Users, FileText, Image, Video, BadgeDollarSign, Wallet, Coins } from 'lucide-react';
 import { formatNumber } from '@/lib/formatters';
 
 import camlyLogo from '@/assets/tokens/camly-logo.webp';
@@ -11,7 +11,9 @@ import camlyLogo from '@/assets/tokens/camly-logo.webp';
 interface AppStats {
   totalUsers: number;
   totalPosts: number;
-  totalReactions: number;
+  totalPhotos: number;
+  totalVideos: number;
+  totalRewards: number;
   treasuryReceived: number;
   totalCamlyClaimed: number;
 }
@@ -28,11 +30,13 @@ export const AppHonorBoard = memo(() => {
       const row = (data as any)?.[0] || {};
       const totalUsers = Number(row.total_users) || 0;
       const totalPosts = Number(row.total_posts) || 0;
-      const totalReactions = Number(row.total_reactions) || 0;
+      const totalPhotos = Number(row.total_photos) || 0;
+      const totalVideos = Number(row.total_videos) || 0;
+      const totalRewards = Number(row.total_rewards) || 0;
       const treasuryReceived = Number(row.treasury_camly_received) || 0;
       const totalCamlyClaimed = Number(row.total_camly_claimed) || 0;
 
-      return { totalUsers, totalPosts, totalReactions, treasuryReceived, totalCamlyClaimed };
+      return { totalUsers, totalPosts, totalPhotos, totalVideos, totalRewards, treasuryReceived, totalCamlyClaimed };
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
@@ -73,11 +77,26 @@ export const AppHonorBoard = memo(() => {
       bgColor: 'bg-green-500/10',
     },
     {
-      icon: Heart,
-      label: t('totalReactions'),
-      value: stats?.totalReactions || 0,
-      color: 'text-pink-500',
-      bgColor: 'bg-pink-500/10',
+      icon: Image,
+      label: t('totalPhotos'),
+      value: stats?.totalPhotos || 0,
+      color: 'text-purple-500',
+      bgColor: 'bg-purple-500/10',
+    },
+    {
+      icon: Video,
+      label: t('totalVideos'),
+      value: stats?.totalVideos || 0,
+      color: 'text-red-500',
+      bgColor: 'bg-red-500/10',
+    },
+    {
+      icon: BadgeDollarSign,
+      label: t('totalRewards'),
+      value: stats?.totalRewards || 0,
+      color: 'text-gold',
+      bgColor: 'bg-gold/10',
+      showCamlyLogo: true,
     },
     {
       icon: Wallet,
