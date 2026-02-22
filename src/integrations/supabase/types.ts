@@ -4321,6 +4321,20 @@ export type Database = {
           unique_recipients: number
         }[]
       }
+      get_user_honor_stats: {
+        Args: { p_user_id: string }
+        Returns: {
+          claimed_amount: number
+          comments_count: number
+          friends_count: number
+          livestreams_count: number
+          posts_count: number
+          reactions_on_posts: number
+          shares_count: number
+          today_reward: number
+          total_reward: number
+        }[]
+      }
       get_user_light_score: { Args: { p_user_id: string }; Returns: Json }
       get_user_rewards: {
         Args: { limit_count?: number }
