@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { Search, Trash2, Ban, AlertTriangle } from "lucide-react";
+import { Search, Trash2, Ban, AlertTriangle, Mail, UserX } from "lucide-react";
 
 interface UserData {
   id: string;
@@ -20,6 +20,7 @@ interface UserData {
   pending_reward: number;
   approved_reward: number;
   posts_count?: number;
+  email?: string | null;
 }
 
 interface QuickDeleteTabProps {
@@ -38,6 +39,11 @@ const QuickDeleteTab = ({ users, adminId, onRefresh }: QuickDeleteTabProps) => {
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
   const [banReason, setBanReason] = useState("");
 
+  // Delete confirmation dialog
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteUser, setDeleteUser] = useState<UserData | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+
   const handleSearch = () => {
     if (!searchTerm.trim()) {
       setSearchResults([]);
@@ -48,7 +54,8 @@ const QuickDeleteTab = ({ users, adminId, onRefresh }: QuickDeleteTabProps) => {
     const results = users.filter(u => 
       u.id.toLowerCase() === term ||
       u.username.toLowerCase().includes(term) ||
-      (u.wallet_address && u.wallet_address.toLowerCase().includes(term))
+      (u.wallet_address && u.wallet_address.toLowerCase().includes(term)) ||
+      (u.email && u.email.toLowerCase().includes(term))
     );
     
     setSearchResults(results);
@@ -65,25 +72,18 @@ const QuickDeleteTab = ({ users, adminId, onRefresh }: QuickDeleteTabProps) => {
       let riskScore = 0;
       const reasons: string[] = [];
       
-      // High pending with no posts
       if (user.pending_reward > 500000 && (user.posts_count || 0) === 0) {
         riskScore += 2;
         reasons.push("Pending cao, không bài viết");
       }
-      
-      // No avatar
       if (!user.avatar_url) {
         riskScore += 1;
         reasons.push("Không avatar");
       }
-      
-      // No name
       if (!user.full_name) {
         riskScore += 1;
         reasons.push("Không tên");
       }
-      
-      // Very high pending
       if (user.pending_reward > 2000000) {
         riskScore += 2;
         reasons.push("Pending rất cao");
@@ -99,6 +99,12 @@ const QuickDeleteTab = ({ users, adminId, onRefresh }: QuickDeleteTabProps) => {
     setSelectedUser(user);
     setBanReason("");
     setBanDialogOpen(true);
+  };
+
+  const openDeleteDialog = (user: UserData) => {
+    setDeleteUser(user);
+    setDeleteConfirmText("");
+    setDeleteDialogOpen(true);
   };
 
   const handleBan = async () => {
@@ -131,6 +137,35 @@ const QuickDeleteTab = ({ users, adminId, onRefresh }: QuickDeleteTabProps) => {
     }
   };
 
+  const handleDeleteAccount = async () => {
+    if (!deleteUser) return;
+    if (deleteConfirmText !== deleteUser.username) {
+      toast.error("Vui lòng nhập đúng username để xác nhận");
+      return;
+    }
+
+    setLoading(deleteUser.id);
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-delete-user', {
+        body: { user_id: deleteUser.id }
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      
+      toast.success(`Đã xóa vĩnh viễn tài khoản ${deleteUser.username}`);
+      setDeleteDialogOpen(false);
+      setDeleteUser(null);
+      setSearchResults(prev => prev.filter(u => u.id !== deleteUser.id));
+      onRefresh();
+    } catch (error: any) {
+      console.error("Error deleting user:", error);
+      toast.error(error.message || "Lỗi khi xóa tài khoản");
+    } finally {
+      setLoading(null);
+    }
+  };
+
   const formatNumber = (num: number) => num.toLocaleString('vi-VN');
 
   const getRiskBadge = (riskScore: number) => {
@@ -157,6 +192,12 @@ const QuickDeleteTab = ({ users, adminId, onRefresh }: QuickDeleteTabProps) => {
           {user.is_banned && <Badge variant="destructive">Đã cấm</Badge>}
           {showRisk && getRiskBadge(riskScore)}
         </div>
+        {user.email && (
+          <div className="flex items-center gap-1 mt-0.5">
+            <Mail className="w-3 h-3 text-muted-foreground" />
+            <p className="text-xs text-muted-foreground truncate max-w-[250px]">{user.email}</p>
+          </div>
+        )}
         <p className="text-xs text-muted-foreground font-mono truncate">{user.id}</p>
         {showRisk && reasons.length > 0 && (
           <p className="text-xs text-orange-600 mt-1">{reasons.join(" • ")}</p>
@@ -167,18 +208,30 @@ const QuickDeleteTab = ({ users, adminId, onRefresh }: QuickDeleteTabProps) => {
         </div>
       </div>
 
-      {!user.is_banned && (
+      <div className="flex gap-2 flex-shrink-0">
+        {!user.is_banned && (
+          <Button
+            size="sm"
+            variant="destructive"
+            className="gap-1"
+            onClick={() => openBanDialog(user)}
+            disabled={loading === user.id}
+          >
+            <Ban className="w-4 h-4" />
+            Cấm
+          </Button>
+        )}
         <Button
           size="sm"
           variant="destructive"
-          className="gap-1"
-          onClick={() => openBanDialog(user)}
+          className="gap-1 bg-red-900 hover:bg-red-950"
+          onClick={() => openDeleteDialog(user)}
           disabled={loading === user.id}
         >
-          <Ban className="w-4 h-4" />
-          Cấm vĩnh viễn
+          <UserX className="w-4 h-4" />
+          Xóa TK
         </Button>
-      )}
+      </div>
     </div>
   );
 
@@ -195,7 +248,7 @@ const QuickDeleteTab = ({ users, adminId, onRefresh }: QuickDeleteTabProps) => {
         <CardContent className="space-y-4">
           <div className="flex gap-2">
             <Input
-              placeholder="Nhập UUID, username hoặc wallet address..."
+              placeholder="Nhập UUID, username, email hoặc wallet address..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
@@ -275,6 +328,11 @@ const QuickDeleteTab = ({ users, adminId, onRefresh }: QuickDeleteTabProps) => {
               <p className="text-sm mb-2">
                 Tài khoản: <strong>{selectedUser?.username}</strong>
               </p>
+              {selectedUser?.email && (
+                <p className="text-sm text-muted-foreground">
+                  Email: {selectedUser.email}
+                </p>
+              )}
               <p className="text-sm text-muted-foreground">
                 Pending: {formatNumber(selectedUser?.pending_reward || 0)} CAMLY
               </p>
@@ -299,6 +357,68 @@ const QuickDeleteTab = ({ users, adminId, onRefresh }: QuickDeleteTabProps) => {
             >
               <Trash2 className="w-4 h-4" />
               Xác nhận cấm vĩnh viễn
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Account Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <UserX className="w-5 h-5" />
+              Xóa vĩnh viễn tài khoản
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="p-4 bg-red-100 rounded-lg border border-red-300">
+              <p className="text-sm text-red-900 font-bold">
+                ⚠️ CẢNH BÁO: Hành động này KHÔNG THỂ hoàn tác!
+              </p>
+              <ul className="text-sm text-red-800 mt-2 list-disc list-inside">
+                <li>Xóa toàn bộ dữ liệu trên 30+ bảng</li>
+                <li>Xóa tài khoản đăng nhập vĩnh viễn</li>
+                <li>Bài viết, bình luận, tin nhắn sẽ bị xóa hết</li>
+                <li>Không thể khôi phục bằng bất kỳ cách nào</li>
+              </ul>
+            </div>
+            
+            <div>
+              <p className="text-sm mb-1">
+                Tài khoản: <strong>{deleteUser?.username}</strong>
+              </p>
+              {deleteUser?.email && (
+                <p className="text-sm text-muted-foreground">
+                  Email: {deleteUser.email}
+                </p>
+              )}
+              <p className="text-xs text-muted-foreground font-mono">{deleteUser?.id}</p>
+            </div>
+            
+            <div>
+              <p className="text-sm mb-2">
+                Nhập <strong>{deleteUser?.username}</strong> để xác nhận xóa:
+              </p>
+              <Input
+                placeholder={`Nhập "${deleteUser?.username}" để xác nhận`}
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+              Hủy
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleDeleteAccount} 
+              disabled={loading !== null || deleteConfirmText !== deleteUser?.username}
+              className="gap-2 bg-red-900 hover:bg-red-950"
+            >
+              <UserX className="w-4 h-4" />
+              Xóa vĩnh viễn tài khoản
             </Button>
           </DialogFooter>
         </DialogContent>

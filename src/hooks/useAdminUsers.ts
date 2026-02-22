@@ -17,6 +17,7 @@ export interface AdminUserData {
   posts_count?: number;
   comments_count?: number;
   reactions_count?: number;
+  email?: string | null;
 }
 
 const fetchAdminUsers = async (): Promise<AdminUserData[]> => {
@@ -31,6 +32,16 @@ const fetchAdminUsers = async (): Promise<AdminUserData[]> => {
   const { data: rewardsData } = await supabase.rpc("get_user_rewards", { limit_count: 500 });
   const rewardsMap = new Map(rewardsData?.map((r: any) => [r.id, r]) || []);
 
+  // Fetch emails for admin
+  const { data: { user: currentUser } } = await supabase.auth.getUser();
+  let emailsMap = new Map<string, string>();
+  if (currentUser) {
+    const { data: emailsData } = await supabase.rpc("get_user_emails_for_admin", { p_admin_id: currentUser.id });
+    if (emailsData) {
+      emailsMap = new Map((emailsData as any[]).map((e: any) => [e.user_id, e.email]));
+    }
+  }
+
   return profiles.map((profile) => {
     const rewardInfo = rewardsMap.get(profile.id) as any;
     return {
@@ -42,6 +53,7 @@ const fetchAdminUsers = async (): Promise<AdminUserData[]> => {
       posts_count: rewardInfo?.posts_count || 0,
       comments_count: rewardInfo?.comments_count || 0,
       reactions_count: rewardInfo?.reactions_count || 0,
+      email: emailsMap.get(profile.id) || null,
     };
   });
 };

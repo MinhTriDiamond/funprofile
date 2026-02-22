@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { Shield, AlertTriangle, UserCheck, Ban, Eye } from "lucide-react";
+import { Shield, AlertTriangle, UserCheck, Ban, Eye, Mail } from "lucide-react";
 
 interface UserData {
   id: string;
@@ -19,6 +19,7 @@ interface UserData {
   posts_count?: number;
   comments_count?: number;
   created_at?: string;
+  email?: string | null;
 }
 
 interface UserReviewTabProps {
@@ -122,6 +123,12 @@ const UserReviewTab = ({ users, adminId, onRefresh }: UserReviewTabProps) => {
             )}
           </div>
           <p className="text-xs text-muted-foreground truncate">{user.full_name || "Chưa có tên"}</p>
+          {user.email && (
+            <div className="flex items-center gap-1 mt-0.5">
+              <Mail className="w-3 h-3 text-muted-foreground" />
+              <p className="text-xs text-muted-foreground truncate max-w-[200px]">{user.email}</p>
+            </div>
+          )}
           <div className="flex gap-4 mt-1 text-xs text-muted-foreground">
             <span>Pending: {formatNumber(user.pending_reward)}</span>
             <span>Posts: {user.posts_count || 0}</span>

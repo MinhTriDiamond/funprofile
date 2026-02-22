@@ -4416,6 +4416,13 @@ export type Database = {
           unique_recipients: number
         }[]
       }
+      get_user_emails_for_admin: {
+        Args: { p_admin_id: string }
+        Returns: {
+          email: string
+          user_id: string
+        }[]
+      }
       get_user_honor_stats: {
         Args: { p_user_id: string }
         Returns: {
