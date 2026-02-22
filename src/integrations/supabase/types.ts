@@ -4404,6 +4404,57 @@ export type Database = {
           username: string
         }[]
       }
+      get_user_directory_summary: {
+        Args: never
+        Returns: {
+          approved_reward: number
+          avatar_url: string
+          camly_calculated: number
+          camly_claimed: number
+          camly_today: number
+          comments_count: number
+          created_at: string
+          friends_count: number
+          full_name: string
+          id: string
+          internal_received: number
+          internal_sent: number
+          is_banned: boolean
+          livestreams_count: number
+          pending_reward: number
+          posts_count: number
+          reactions_on_posts: number
+          reward_status: string
+          shares_count: number
+          tier: number
+          total_light_score: number
+          total_minted: number
+          usdt_received: number
+          username: string
+          wallet_address: string
+          web3_received: number
+          web3_sent: number
+        }[]
+      }
+      get_user_directory_totals: {
+        Args: never
+        Returns: {
+          total_approved: number
+          total_camly_calculated: number
+          total_camly_claimed: number
+          total_comments: number
+          total_internal_received: number
+          total_internal_sent: number
+          total_light_score: number
+          total_minted: number
+          total_pending: number
+          total_posts: number
+          total_users: number
+          total_web3_received: number
+          total_web3_sent: number
+          total_withdrawn: number
+        }[]
+      }
       get_user_donation_stats: {
         Args: { p_user_id: string }
         Returns: {

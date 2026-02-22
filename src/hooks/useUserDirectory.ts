@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 
 export interface UserDirectoryEntry {
   id: string;
@@ -74,94 +74,61 @@ const TIER_NAMES: Record<number, string> = {
 export const getTierName = (tier: number) => TIER_NAMES[tier] || `Tier ${tier}`;
 
 const fetchUserDirectory = async (): Promise<UserDirectoryEntry[]> => {
-  const [rewardsRes, profilesRes, claimsRes, lightRes, donationsRes] = await Promise.all([
-    supabase.rpc('get_user_rewards_v2', { limit_count: 10000 }),
-    supabase.from('profiles').select('id, username, full_name, avatar_url, public_wallet_address, pending_reward, approved_reward, reward_status, created_at, is_banned'),
-    supabase.from('reward_claims').select('user_id, amount'),
-    supabase.from('light_reputation').select('user_id, total_light_score, tier, total_minted'),
-    supabase.from('donations').select('sender_id, recipient_id, amount, token_symbol, is_external'),
-  ]);
+  const { data, error } = await supabase.rpc('get_user_directory_summary');
+  if (error) throw error;
 
-  const rewardsMap = new Map<string, any>();
-  (rewardsRes.data || []).forEach((r: any) => rewardsMap.set(r.id, r));
+  return (data || []).map((r: any) => ({
+    id: r.id,
+    username: r.username || 'unknown',
+    full_name: r.full_name || null,
+    avatar_url: r.avatar_url,
+    wallet_address: r.wallet_address || null,
+    created_at: r.created_at || null,
+    is_banned: r.is_banned || false,
+    posts_count: Number(r.posts_count) || 0,
+    comments_count: Number(r.comments_count) || 0,
+    reactions_on_posts: Number(r.reactions_on_posts) || 0,
+    friends_count: Number(r.friends_count) || 0,
+    shares_count: Number(r.shares_count) || 0,
+    livestreams_count: Number(r.livestreams_count) || 0,
+    total_light_score: Number(r.total_light_score) || 0,
+    tier: Number(r.tier) || 0,
+    total_minted: Number(r.total_minted) || 0,
+    camly_calculated: Number(r.camly_calculated) || 0,
+    camly_today: Number(r.camly_today) || 0,
+    pending_reward: Number(r.pending_reward) || 0,
+    approved_reward: Number(r.approved_reward) || 0,
+    reward_status: r.reward_status || 'pending',
+    camly_claimed: Number(r.camly_claimed) || 0,
+    usdt_received: Number(r.usdt_received) || 0,
+    internal_sent: Number(r.internal_sent) || 0,
+    internal_received: Number(r.internal_received) || 0,
+    web3_sent: Number(r.web3_sent) || 0,
+    web3_received: Number(r.web3_received) || 0,
+  }));
+};
 
-  const profilesMap = new Map<string, any>();
-  (profilesRes.data || []).forEach((p: any) => profilesMap.set(p.id, p));
+const fetchTotals = async (): Promise<UserDirectoryStats> => {
+  const { data, error } = await supabase.rpc('get_user_directory_totals');
+  if (error) throw error;
 
-  const claimsMap = new Map<string, number>();
-  (claimsRes.data || []).forEach((c: any) => {
-    claimsMap.set(c.user_id, (claimsMap.get(c.user_id) || 0) + Number(c.amount));
-  });
-
-  const lightMap = new Map<string, any>();
-  (lightRes.data || []).forEach((l: any) => lightMap.set(l.user_id, l));
-
-  // Donations aggregation
-  const internalSentMap = new Map<string, number>();
-  const internalReceivedMap = new Map<string, number>();
-  const web3SentMap = new Map<string, number>();
-  const web3ReceivedMap = new Map<string, number>();
-  const usdtMap = new Map<string, number>();
-
-  (donationsRes.data || []).forEach((d: any) => {
-    const amt = Number(d.amount);
-    if (d.is_external) {
-      if (d.sender_id) web3SentMap.set(d.sender_id, (web3SentMap.get(d.sender_id) || 0) + amt);
-      web3ReceivedMap.set(d.recipient_id, (web3ReceivedMap.get(d.recipient_id) || 0) + amt);
-    } else {
-      if (d.sender_id) internalSentMap.set(d.sender_id, (internalSentMap.get(d.sender_id) || 0) + amt);
-      internalReceivedMap.set(d.recipient_id, (internalReceivedMap.get(d.recipient_id) || 0) + amt);
-    }
-    if (['USDT', 'BTCB'].includes(d.token_symbol)) {
-      usdtMap.set(d.recipient_id, (usdtMap.get(d.recipient_id) || 0) + amt);
-    }
-  });
-
-  const allUserIds = new Set<string>();
-  profilesMap.forEach((_, id) => allUserIds.add(id));
-  rewardsMap.forEach((_, id) => allUserIds.add(id));
-
-  const entries: UserDirectoryEntry[] = [];
-  allUserIds.forEach((userId) => {
-    const profile = profilesMap.get(userId);
-    const reward = rewardsMap.get(userId);
-    const light = lightMap.get(userId);
-
-    if (!profile) return;
-
-    entries.push({
-      id: userId,
-      username: profile.username || 'unknown',
-      full_name: profile.full_name || null,
-      avatar_url: profile.avatar_url,
-      wallet_address: profile.public_wallet_address || null,
-      created_at: profile.created_at || null,
-      is_banned: profile.is_banned || false,
-      posts_count: Number(reward?.posts_count) || 0,
-      comments_count: Number(reward?.comments_count) || 0,
-      reactions_on_posts: Number(reward?.reactions_on_posts) || 0,
-      friends_count: Number(reward?.friends_count) || 0,
-      shares_count: Number(reward?.shares_count) || 0,
-      livestreams_count: Number(reward?.livestreams_count) || 0,
-      total_light_score: Number(light?.total_light_score) || 0,
-      tier: Number(light?.tier) || 0,
-      total_minted: Number(light?.total_minted) || 0,
-      camly_calculated: Number(reward?.total_reward) || 0,
-      camly_today: Number(reward?.today_reward) || 0,
-      pending_reward: Number(profile.pending_reward) || 0,
-      approved_reward: Number(profile.approved_reward) || 0,
-      reward_status: profile.reward_status || 'pending',
-      camly_claimed: claimsMap.get(userId) || 0,
-      usdt_received: usdtMap.get(userId) || 0,
-      internal_sent: internalSentMap.get(userId) || 0,
-      internal_received: internalReceivedMap.get(userId) || 0,
-      web3_sent: web3SentMap.get(userId) || 0,
-      web3_received: web3ReceivedMap.get(userId) || 0,
-    });
-  });
-
-  entries.sort((a, b) => b.camly_calculated - a.camly_calculated);
-  return entries;
+  const row = (data as any)?.[0] || data;
+  return {
+    totalUsers: Number(row?.total_users) || 0,
+    totalCamlyCalculated: Number(row?.total_camly_calculated) || 0,
+    totalCamlyClaimed: Number(row?.total_camly_claimed) || 0,
+    totalLightScore: Number(row?.total_light_score) || 0,
+    totalPending: Number(row?.total_pending) || 0,
+    totalApproved: Number(row?.total_approved) || 0,
+    totalMinted: Number(row?.total_minted) || 0,
+    totalPosts: Number(row?.total_posts) || 0,
+    totalComments: Number(row?.total_comments) || 0,
+    totalInternalSent: Number(row?.total_internal_sent) || 0,
+    totalInternalReceived: Number(row?.total_internal_received) || 0,
+    totalWeb3Sent: Number(row?.total_web3_sent) || 0,
+    totalWeb3Received: Number(row?.total_web3_received) || 0,
+    totalWithdrawn: Number(row?.total_withdrawn) || 0,
+  };
 };
 
 export const useUserDirectory = () => {
@@ -206,31 +173,26 @@ export const useUserDirectory = () => {
   const isAdmin = adminData?.isAdmin || false;
   const emailsMap = adminData?.emails || new Map<string, string>();
 
-  useEffect(() => {
-    const channel = supabase
-      .channel('user-directory-donations')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'donations' }, () => {
-        queryClient.invalidateQueries({ queryKey: ['user-directory'] });
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'reward_claims' }, () => {
-        queryClient.invalidateQueries({ queryKey: ['user-directory'] });
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [queryClient]);
-
+  // Single RPC call for all user data
   const { data: allUsers, isLoading, error } = useQuery({
     queryKey: ['user-directory'],
     queryFn: fetchUserDirectory,
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+  });
+
+  // Separate lightweight RPC for totals
+  const { data: stats } = useQuery({
+    queryKey: ['user-directory-totals'],
+    queryFn: fetchTotals,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
   });
 
   const filtered = useMemo(() => {
     if (!allUsers) return [];
     let result = allUsers;
 
-    // Search
     if (search.trim()) {
       const q = search.toLowerCase();
       result = result.filter(u =>
@@ -240,24 +202,19 @@ export const useUserDirectory = () => {
       );
     }
 
-    // Score filter
     if (filters.scoreRange === 'high') result = result.filter(u => u.total_light_score >= 1000);
     else if (filters.scoreRange === 'medium') result = result.filter(u => u.total_light_score >= 100 && u.total_light_score < 1000);
     else if (filters.scoreRange === 'low') result = result.filter(u => u.total_light_score < 100);
 
-    // FUN Money
     if (filters.funMoney === 'has') result = result.filter(u => u.total_minted > 0);
     else if (filters.funMoney === 'none') result = result.filter(u => u.total_minted === 0);
 
-    // Withdrawn
     if (filters.withdrawn === 'yes') result = result.filter(u => u.camly_claimed > 0);
     else if (filters.withdrawn === 'no') result = result.filter(u => u.camly_claimed === 0);
 
-    // Status
     if (filters.status === 'active') result = result.filter(u => !u.is_banned);
     else if (filters.status === 'banned') result = result.filter(u => u.is_banned);
 
-    // Wallet
     if (filters.wallet === 'has') result = result.filter(u => !!u.wallet_address);
     else if (filters.wallet === 'none') result = result.filter(u => !u.wallet_address);
 
@@ -274,29 +231,11 @@ export const useUserDirectory = () => {
 
   const totalPages = Math.ceil(filtered.length / pageSize);
 
-  const stats: UserDirectoryStats = useMemo(() => {
-    if (!allUsers) return {
-      totalUsers: 0, totalCamlyCalculated: 0, totalCamlyClaimed: 0, totalLightScore: 0,
-      totalPending: 0, totalApproved: 0, totalMinted: 0, totalPosts: 0, totalComments: 0,
-      totalInternalSent: 0, totalInternalReceived: 0, totalWeb3Sent: 0, totalWeb3Received: 0, totalWithdrawn: 0,
-    };
-    return {
-      totalUsers: allUsers.length,
-      totalCamlyCalculated: allUsers.reduce((s, u) => s + u.camly_calculated, 0),
-      totalCamlyClaimed: allUsers.reduce((s, u) => s + u.camly_claimed, 0),
-      totalLightScore: allUsers.reduce((s, u) => s + u.total_light_score, 0),
-      totalPending: allUsers.reduce((s, u) => s + u.pending_reward, 0),
-      totalApproved: allUsers.reduce((s, u) => s + u.approved_reward, 0),
-      totalMinted: allUsers.reduce((s, u) => s + u.total_minted, 0),
-      totalPosts: allUsers.reduce((s, u) => s + u.posts_count, 0),
-      totalComments: allUsers.reduce((s, u) => s + u.comments_count, 0),
-      totalInternalSent: allUsers.reduce((s, u) => s + u.internal_sent, 0),
-      totalInternalReceived: allUsers.reduce((s, u) => s + u.internal_received, 0),
-      totalWeb3Sent: allUsers.reduce((s, u) => s + u.web3_sent, 0),
-      totalWeb3Received: allUsers.reduce((s, u) => s + u.web3_received, 0),
-      totalWithdrawn: allUsers.reduce((s, u) => s + u.camly_claimed, 0),
-    };
-  }, [allUsers]);
+  const defaultStats: UserDirectoryStats = {
+    totalUsers: 0, totalCamlyCalculated: 0, totalCamlyClaimed: 0, totalLightScore: 0,
+    totalPending: 0, totalApproved: 0, totalMinted: 0, totalPosts: 0, totalComments: 0,
+    totalInternalSent: 0, totalInternalReceived: 0, totalWeb3Sent: 0, totalWeb3Received: 0, totalWithdrawn: 0,
+  };
 
   const exportCSV = () => {
     if (!filtered || filtered.length === 0) return;
@@ -323,7 +262,7 @@ export const useUserDirectory = () => {
     allUsers: filtered,
     isLoading,
     error,
-    stats,
+    stats: stats || defaultStats,
     search,
     setSearch,
     page,
