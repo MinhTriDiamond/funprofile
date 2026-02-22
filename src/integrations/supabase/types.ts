@@ -2778,6 +2778,7 @@ export type Database = {
           ban_reason: string | null
           banned_at: string | null
           bio: string | null
+          claim_freeze_until: string | null
           cover_url: string | null
           created_at: string
           cross_platform_data: Json | null
@@ -2799,6 +2800,7 @@ export type Database = {
           is_banned: boolean
           is_restricted: boolean
           last_login_platform: string | null
+          last_wallet_change_at: string | null
           law_of_light_accepted: boolean
           law_of_light_accepted_at: string | null
           location: string | null
@@ -2816,6 +2818,8 @@ export type Database = {
           username: string
           username_normalized: string | null
           wallet_address: string | null
+          wallet_change_count_30d: number | null
+          wallet_risk_status: string | null
           workplace: string | null
         }
         Insert: {
@@ -2825,6 +2829,7 @@ export type Database = {
           ban_reason?: string | null
           banned_at?: string | null
           bio?: string | null
+          claim_freeze_until?: string | null
           cover_url?: string | null
           created_at?: string
           cross_platform_data?: Json | null
@@ -2846,6 +2851,7 @@ export type Database = {
           is_banned?: boolean
           is_restricted?: boolean
           last_login_platform?: string | null
+          last_wallet_change_at?: string | null
           law_of_light_accepted?: boolean
           law_of_light_accepted_at?: string | null
           location?: string | null
@@ -2863,6 +2869,8 @@ export type Database = {
           username: string
           username_normalized?: string | null
           wallet_address?: string | null
+          wallet_change_count_30d?: number | null
+          wallet_risk_status?: string | null
           workplace?: string | null
         }
         Update: {
@@ -2872,6 +2880,7 @@ export type Database = {
           ban_reason?: string | null
           banned_at?: string | null
           bio?: string | null
+          claim_freeze_until?: string | null
           cover_url?: string | null
           created_at?: string
           cross_platform_data?: Json | null
@@ -2893,6 +2902,7 @@ export type Database = {
           is_banned?: boolean
           is_restricted?: boolean
           last_login_platform?: string | null
+          last_wallet_change_at?: string | null
           law_of_light_accepted?: boolean
           law_of_light_accepted_at?: string | null
           location?: string | null
@@ -2910,6 +2920,8 @@ export type Database = {
           username?: string
           username_normalized?: string | null
           wallet_address?: string | null
+          wallet_change_count_30d?: number | null
+          wallet_risk_status?: string | null
           workplace?: string | null
         }
         Relationships: [
@@ -3858,6 +3870,30 @@ export type Database = {
           },
         ]
       }
+      system_config: {
+        Row: {
+          description: string | null
+          key: string
+          updated_at: string | null
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          description?: string | null
+          key: string
+          updated_at?: string | null
+          updated_by?: string | null
+          value?: Json
+        }
+        Update: {
+          description?: string | null
+          key?: string
+          updated_at?: string | null
+          updated_by?: string | null
+          value?: Json
+        }
+        Relationships: []
+      }
       transactions: {
         Row: {
           amount: string
@@ -3980,6 +4016,66 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      wallet_history: {
+        Row: {
+          change_reason: string | null
+          created_at: string
+          device_hash: string | null
+          ended_at: string | null
+          id: string
+          ip_address: string | null
+          is_active: boolean
+          metadata: Json | null
+          started_at: string
+          user_agent: string | null
+          user_id: string
+          wallet_address: string
+        }
+        Insert: {
+          change_reason?: string | null
+          created_at?: string
+          device_hash?: string | null
+          ended_at?: string | null
+          id?: string
+          ip_address?: string | null
+          is_active?: boolean
+          metadata?: Json | null
+          started_at?: string
+          user_agent?: string | null
+          user_id: string
+          wallet_address: string
+        }
+        Update: {
+          change_reason?: string | null
+          created_at?: string
+          device_hash?: string | null
+          ended_at?: string | null
+          id?: string
+          ip_address?: string | null
+          is_active?: boolean
+          metadata?: Json | null
+          started_at?: string
+          user_agent?: string | null
+          user_id?: string
+          wallet_address?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_history_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallet_history_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -4368,6 +4464,10 @@ export type Database = {
           username: string
         }[]
       }
+      get_wallet_change_count_30d: {
+        Args: { p_user_id: string }
+        Returns: number
+      }
       has_block_between: {
         Args: { user_a: string; user_b: string }
         Returns: boolean
@@ -4394,6 +4494,18 @@ export type Database = {
       is_gov_attester: { Args: { check_user_id: string }; Returns: boolean }
       normalize_username: { Args: { input_text: string }; Returns: string }
       pin_message: { Args: { p_message_id: string }; Returns: undefined }
+      process_wallet_change: {
+        Args: {
+          p_device_hash?: string
+          p_ip?: string
+          p_new_wallet: string
+          p_old_wallet?: string
+          p_reason?: string
+          p_user_agent?: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       recalculate_user_financial:
         | { Args: { p_client_id?: string; p_user_id: string }; Returns: Json }
         | {

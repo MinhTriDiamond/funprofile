@@ -6,23 +6,19 @@ const corsHeaders = {
 };
 
 Deno.serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    // 1. Verify JWT token
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      console.error('[DISCONNECT-WALLET] Missing authorization header');
       return new Response(
         JSON.stringify({ success: false, error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // 2. Create client with anon key to verify user
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
@@ -31,7 +27,6 @@ Deno.serve(async (req) => {
     
     const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
     if (userError || !user) {
-      console.error('[DISCONNECT-WALLET] Unauthorized:', userError?.message);
       return new Response(
         JSON.stringify({ success: false, error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -40,19 +35,33 @@ Deno.serve(async (req) => {
 
     console.log(`[DISCONNECT-WALLET] Request from user: ${user.id}`);
 
-    // 3. Create Supabase client with service role for privileged operations
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // 4. Get current profile to check if there's an external wallet
+    // Check feature flag - block disconnect when wallet changes disabled
+    const { data: config } = await supabase
+      .from('system_config')
+      .select('value')
+      .eq('key', 'WALLET_CHANGE_DISABLED')
+      .single();
+
+    if (config?.value?.enabled) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: config.value.message || 'Tạm khóa thay đổi ví để nâng cấp bảo mật.' 
+        }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('external_wallet_address, custodial_wallet_address')
+      .select('external_wallet_address, custodial_wallet_address, claim_freeze_until, wallet_risk_status')
       .eq('id', user.id)
       .single();
 
-    if (profileError) {
-      console.error('[DISCONNECT-WALLET] Profile fetch error:', profileError);
+    if (profileError || !profile) {
       return new Response(
         JSON.stringify({ success: false, error: 'Profile not found' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -60,39 +69,60 @@ Deno.serve(async (req) => {
     }
 
     if (!profile.external_wallet_address) {
-      console.warn('[DISCONNECT-WALLET] No external wallet to disconnect');
       return new Response(
         JSON.stringify({ success: false, error: 'No external wallet connected' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    // Check if blocked
+    if (profile.wallet_risk_status === 'blocked') {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Tài khoản bị khóa do thay đổi ví quá nhiều. Liên hệ Admin.' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const disconnectedAddress = profile.external_wallet_address;
 
-    // 5. Update profile to remove external wallet and set default to custodial
+    // Record in wallet_history
+    await supabase.from('wallet_history')
+      .update({ is_active: false, ended_at: new Date().toISOString() })
+      .eq('user_id', user.id)
+      .eq('is_active', true);
+
+    // Update profile
     const { error: updateError } = await supabase
       .from('profiles')
       .update({
         external_wallet_address: null,
-        wallet_address: profile.custodial_wallet_address || null, // Keep custodial as legacy wallet_address
+        wallet_address: profile.custodial_wallet_address || null,
         default_wallet_type: 'custodial',
       })
       .eq('id', user.id);
 
     if (updateError) {
-      console.error('[DISCONNECT-WALLET] Failed to update profile:', updateError);
       return new Response(
         JSON.stringify({ success: false, error: 'Failed to disconnect wallet' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('[DISCONNECT-WALLET] External wallet disconnected successfully:', disconnectedAddress);
+    // Audit log
+    await supabase.from('audit_logs').insert({
+      admin_id: user.id,
+      action: 'WALLET_DISCONNECT',
+      target_user_id: user.id,
+      reason: 'user',
+      details: { disconnected_wallet: disconnectedAddress },
+    });
+
+    console.log('[DISCONNECT-WALLET] Disconnected:', disconnectedAddress);
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: 'External wallet disconnected successfully',
+        message: 'External wallet disconnected',
         disconnected_address: disconnectedAddress
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

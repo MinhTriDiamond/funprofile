@@ -122,7 +122,7 @@ Deno.serve(async (req) => {
     // 7. Check user profile and reward_status
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('reward_status, username, full_name, avatar_url, cover_url, public_wallet_address')
+      .select('reward_status, username, full_name, avatar_url, cover_url, public_wallet_address, claim_freeze_until, wallet_risk_status')
       .eq('id', userId)
       .single();
 
@@ -132,6 +132,35 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: 'Not Found', message: 'Không tìm thấy hồ sơ người dùng' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // 7aa. Check wallet risk status - BLOCKED users cannot claim
+    if (profile.wallet_risk_status === 'blocked') {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Wallet Blocked', 
+          message: 'Tài khoản bị tạm khóa do thay đổi ví quá nhiều lần. Vui lòng liên hệ Admin để được hỗ trợ.',
+          wallet_risk_status: 'blocked'
+        }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // 7ab. Check claim freeze (after wallet change)
+    if (profile.claim_freeze_until) {
+      const freezeUntil = new Date(profile.claim_freeze_until);
+      if (freezeUntil > new Date()) {
+        const hoursLeft = Math.ceil((freezeUntil.getTime() - Date.now()) / (1000 * 60 * 60));
+        return new Response(
+          JSON.stringify({ 
+            error: 'Claim Frozen', 
+            message: `Tài khoản đang được kiểm tra bảo mật do thay đổi ví. Vui lòng thử lại sau ${hoursLeft} giờ (${freezeUntil.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}).`,
+            freeze_until: profile.claim_freeze_until,
+            wallet_risk_status: profile.wallet_risk_status
+          }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     // 7b. Check profile completeness (avatar + wallet)
