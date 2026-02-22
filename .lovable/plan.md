@@ -1,25 +1,34 @@
 
-# Fix loi "column reference 'created_at' is ambiguous" trong get_user_directory_summary
+# Mở khóa 4 tài khoản Admin/Gia đình
 
-## Nguyen nhan
-Ham `get_user_directory_summary` khai bao `created_at` trong `RETURNS TABLE` (dong 11). Trong PL/pgSQL, ten cot output duoc coi la bien cuc bo. Khi cac subquery trong CTE `old_stats` (dong 70-74) dung `created_at` ma khong co table alias, PostgreSQL khong biet do la cot cua bang hay bien PL/pgSQL -> loi "ambiguous".
+## Tổng quan
+4 tài khoản bị đặt trạng thái `on_hold` do hệ thống phát hiện chia sẻ thiết bị (device_hash v1 trùng nhau). Người dùng xác nhận đây là các tài khoản hợp lệ (admin test, gia đình), không phải farm.
 
-Cu the cac dong loi:
-- Dong 70: `created_at < cutoff_date` (trong subquery tu bang `posts`) 
-- Dong 71: `r.created_at` OK nhung co `created_at` an
-- Dong 72: `c.created_at` OK
-- Dong 73: `sp.created_at` OK  
-- Dong 74: `created_at < cutoff_date` (trong subquery tu bang `friendships`) - **KHONG CO ALIAS**
+## Tài khoản cần mở khóa
 
-## Giai phap
-Tao migration moi de sua ham, them table alias cho tat ca cac `created_at` khong co alias trong CTE `old_stats`:
+| Username | Họ tên | Trạng thái hiện tại |
+|---|---|---|
+| angelaivan | Nguyễn Ái Vân | on_hold |
+| angeldieungoc | Angel Diệu Ngọc | on_hold |
+| AngelGiau | ANGEL Giàu.Treasury | on_hold |
+| leminhtri | Lê Minh Trí | on_hold |
 
-1. Dong 70: `AND created_at < cutoff_date` -> `AND posts.created_at < cutoff_date`
-2. Dong 74: `AND created_at < cutoff_date` -> `AND friendships.created_at < cutoff_date`
+## Thực hiện
 
-Chi can 1 migration SQL nho de DROP va tao lai ham voi cac reference da duoc qualify day du.
+Chạy **1 migration SQL** thực hiện 3 bước:
 
-## Chi tiet ky thuat
-- File: Migration SQL moi
-- Thay doi: Them table alias cho cac `created_at` bi ambiguous trong CTE `old_stats`
-- Khong thay doi logic tinh toan, chi fix syntax
+1. **Cập nhật `profiles`**: Đổi `reward_status` từ `on_hold` sang `approved` cho cả 4 tài khoản, xóa ghi chú admin liên quan (nếu có)
+
+2. **Giải quyết fraud signals**: Đánh dấu `is_resolved = true` cho 5 bản ghi `SHARED_DEVICE` đang mở của 4 tài khoản này trong bảng `pplp_fraud_signals`
+
+3. **Xóa fraud flags**: Reset `fraud_flags = 0` trong `pplp_user_tiers` (nếu có bản ghi)
+
+## Chi tiết kỹ thuật
+
+```text
+profiles.reward_status: 'on_hold' -> 'approved'  (4 users)
+pplp_fraud_signals.is_resolved: false -> true     (5 records)
+pplp_user_tiers.fraud_flags: -> 0                 (if exists)
+```
+
+Không thay đổi code frontend, chỉ cập nhật dữ liệu database.
