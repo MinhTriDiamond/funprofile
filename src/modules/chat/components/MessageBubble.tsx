@@ -13,6 +13,8 @@ import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import type { Message, MessageReaction } from '../types';
 import { RedEnvelopeCard } from './RedEnvelopeCard';
+import { FileAttachment } from './FileAttachment';
+import { getFileTypeFromUrl } from '../utils/fileUtils';
 import { toast } from 'sonner';
 
 interface MessageBubbleProps {
@@ -198,9 +200,16 @@ export function MessageBubble({
             {/* Media */}
             {message.media_urls && Array.isArray(message.media_urls) && (message.media_urls as string[]).length > 0 && (
               <div className="mb-2 space-y-1">
-                {(message.media_urls as string[]).map((url, i) => (
-                  <img key={i} src={url} alt="" className="max-w-full rounded-lg max-h-60 object-cover" loading="lazy" />
-                ))}
+                {(message.media_urls as string[]).map((url, i) => {
+                  const fileType = getFileTypeFromUrl(url);
+                  if (fileType === 'image') {
+                    return <img key={i} src={url} alt="" className="max-w-full rounded-lg max-h-60 object-cover" loading="lazy" />;
+                  }
+                  if (fileType === 'video') {
+                    return <video key={i} src={url} controls className="max-w-full rounded-lg max-h-60" />;
+                  }
+                  return <FileAttachment key={i} url={url} isOwn={isOwn} />;
+                })}
               </div>
             )}
             {message.content && <p className="text-sm">{message.content}</p>}
