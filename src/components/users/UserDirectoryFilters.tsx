@@ -48,13 +48,14 @@ export const UserDirectoryFilters = ({ filters, onChange }: Props) => {
       </Select>
 
       <Select value={filters.status} onValueChange={(v) => update('status', v)}>
-        <SelectTrigger className="w-[140px] h-9 text-xs bg-background">
-          <SelectValue placeholder="Trạng thái" />
+        <SelectTrigger className="w-[160px] h-9 text-xs bg-background">
+          <SelectValue placeholder="Tất cả trạng thái" />
         </SelectTrigger>
         <SelectContent className="bg-background z-50">
-          <SelectItem value="all">Tất cả TT</SelectItem>
-          <SelectItem value="active">Hoạt động</SelectItem>
-          <SelectItem value="banned">Bị cấm</SelectItem>
+          <SelectItem value="all">Tất cả trạng thái</SelectItem>
+          <SelectItem value="active">🟢 Hoạt động</SelectItem>
+          <SelectItem value="suspended">🟠 Đình chỉ</SelectItem>
+          <SelectItem value="banned">🔴 Cấm vĩnh viễn</SelectItem>
         </SelectContent>
       </Select>
 
@@ -64,7 +65,7 @@ export const UserDirectoryFilters = ({ filters, onChange }: Props) => {
         </SelectTrigger>
         <SelectContent className="bg-background z-50">
           <SelectItem value="all">Tất cả ví</SelectItem>
-          <SelectItem value="has">Có ví</SelectItem>
+          <SelectItem value="has">Đã có ví</SelectItem>
           <SelectItem value="none">Chưa có ví</SelectItem>
         </SelectContent>
       </Select>
