@@ -36,6 +36,7 @@ import {
   Radio,
 } from 'lucide-react';
 import { DonationButton } from '@/components/donations/DonationButton';
+import { LiveChatReplay } from '@/modules/live/components/LiveChatReplay';
 
 interface PostStats {
   reactions: { id: string; user_id: string; type: string }[];
@@ -513,6 +514,11 @@ const FacebookPostCardComponent = ({
         {/* Comments Section */}
         {showComments && (
           <div className="border-t border-border px-4 py-3">
+            {(post as any).post_type === 'live' && (post as any).metadata?.live_session_id && (
+              <div className="max-h-[300px] rounded-lg overflow-hidden border border-border mb-3">
+                <LiveChatReplay sessionId={(post as any).metadata.live_session_id} />
+              </div>
+            )}
             <CommentSection
               postId={post.id}
               onCommentAdded={incrementCommentCount}
