@@ -1,32 +1,31 @@
 
-# Hien thi binh luan Live Chat trong bai dang Live Replay
 
-## Van de
+# Chuyen Live Replay tu Supabase Storage sang Cloudflare R2
 
-Khi xem lai bai dang Live Replay tren Feed, nguoi dung chi thay phan binh luan thuong (bang `comments`). Nhung tin nhan chat trong buoi Live duoc luu trong bang `live_messages` (lien ket qua `live_session_id`), va component `LiveChatReplay` da ton tai nhung **chua bao gio duoc hien thi** trong bai dang tren Feed.
+## Hien trang
 
-Du lieu da duoc xac nhan: bang `live_messages` co 4 tin nhan, va moi bai dang live deu co `metadata.live_session_id`.
+Ham `uploadLiveRecording` trong `liveService.ts` dang su dung `supabase.storage.from('live-recordings')` de luu video replay. He thong da co san tien ich `uploadToR2` (trong `src/utils/r2Upload.ts`) ho tro upload file len R2 qua presigned URL, va edge function `get-upload-url` da duoc cau hinh day du voi cac secret R2.
 
-## Giai phap
+## Thay doi
 
-Them phan **"Live Chat Replay"** vao `FacebookPostCard.tsx` cho cac bai dang co `post_type === 'live'`. Khi nguoi dung bam nut "Binh luan", ngoai phan binh luan thuong, se hien thi them khu vuc "Tin nhan trong buoi Live" phia tren.
+### File: `src/modules/live/liveService.ts`
 
-## Chi tiet ky thuat
+Viet lai ham `uploadLiveRecording` de su dung `uploadToR2` thay vi Supabase Storage:
 
-### Thay doi file: `src/components/feed/FacebookPostCard.tsx`
-
-1. Import component `LiveChatReplay` tu `src/modules/live/components/LiveChatReplay.tsx`
-2. Trong phan `showComments`, kiem tra neu `post.post_type === 'live'` va `post.metadata?.live_session_id` ton tai:
-   - Hien thi `LiveChatReplay` voi `sessionId = metadata.live_session_id` trong mot khung co chieu cao co dinh (max-h-[300px])
-   - Dat phia tren `CommentSection` de nguoi dung thay tin nhan live truoc, roi binh luan thuong ben duoi
+1. Import `uploadToR2` tu `@/utils/r2Upload`
+2. Chuyen doi `Blob` thanh `File` (vi `uploadToR2` nhan `File`)
+3. Su dung bucket path `videos` (hoac `live`) va custom path `live/{sessionId}/recording-{timestamp}.{ext}`
+4. Tra ve `{ key, url }` tuong tu nhu truoc -- khong can thay doi code goi ham
 
 ### Khong can thay doi file khac
 
-- `LiveChatReplay` da hoat dong dung: truy van `live_messages` theo `session_id`, hien thi voi avatar va ten nguoi dung
-- Khong can migration database
+- `LiveHostPage.tsx` goi `uploadLiveRecording` va chi dung `{ url }` -- khong thay doi
+- Edge function `get-upload-url` da ho tro video content types (`video/webm`, `video/mp4`) -- khong can thay doi
+- Cac secret R2 (`CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_ACCESS_KEY_ID`, `CLOUDFLARE_SECRET_ACCESS_KEY`, `CLOUDFLARE_R2_BUCKET_NAME`, `CLOUDFLARE_R2_PUBLIC_URL`) da duoc cau hinh san
 
-## Cac file can thay doi
+## Chi tiet ky thuat
 
 | File | Thay doi |
 |------|---------|
-| `src/components/feed/FacebookPostCard.tsx` | Import `LiveChatReplay`, hien thi khi post la live replay co `live_session_id` |
+| `src/modules/live/liveService.ts` | Viet lai `uploadLiveRecording` su dung `uploadToR2` thay vi `supabase.storage` |
+
