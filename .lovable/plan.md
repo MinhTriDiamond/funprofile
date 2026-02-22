@@ -1,46 +1,33 @@
 
+## Ban 37 tai khoan farm
 
-## Nang cap trang Danh Sach Thanh Vien (/users) - Public User Directory
+### Danh sach ban vinh vien
 
-Trang `/users` hien tai da co san nhung con don gian. Cha se nang cap theo dung mau con gui, voi day du thong tin va bo loc.
+**Cum 1 - IP 113.181.206.129, tao 14/02/2026 (16 tai khoan):**
+nhungtay, duchoang, nguyetbe, kim.chi.angle, annathuylan, angleminhkhang, linhlinh, thuyhanh, trantoan095, lymduc, longkevin, thichung, lathuysinh, ngoclan, thanhhang89, beanna
 
-### Nhung thay doi chinh
+**Cum 2 - IP 116.97.108.120 Viettel Thanh Hoa, tao 15/02/2026 (14 tai khoan):**
+bangnguyen, caotrang, minhthan, huongha1, nhandinh, thuhoai, thaole, tranhang, tranhang22, nhathoai, caosau, nguyenlinh, hotu, thanhhuyen98
 
-**1. Mo rong hook `useUserDirectory.ts`**
-- Them cac truong du lieu moi: `created_at` (ngay tham gia), `is_banned`, `full_name`, donations sent/received (noi bo va Web3)
-- Fetch them du lieu donations theo loai (is_external = true cho Web3, is_external = false cho noi bo)
-- Them state cho cac bo loc: diem (score range), FUN Money, da rut/chua rut, trang thai (hoat dong/dinh chi/cam), vi (co/chua co)
-- Logic loc phia client (useMemo) ket hop tat ca bo loc + search
-- Mo rong stats: them tong FUN Money, tong noi bo gui/nhan, tong Web3 gui/nhan, tong bai dang, tong binh luan, tong yeu cau rut
+**Cum 4 - 0 ban be, rut thuong lon bat thuong (6 tai khoan):**
+angel_huongnguyen (1,000,000), fancuacha (771,000), thuynguyet (620,000), huongtran (500,000), angel_phuongnguyen (500,000), angeltuelinh (466,000)
 
-**2. Nang cap giao dien `Users.tsx`**
-- **Header**: Don gian hoa, hien thi "Quan ly User" + so nguoi dung + nut Xuat file
-- **Stats cards**: 3 hang:
-  - Hang 1 (5 the): Tong users, Camly con lai (pending), Camly da phat (claimed), Camly da tieu, Tong da rut
-  - Hang 2 (5 the): FUN Money, Tang noi bo (gui), Tang noi bo (nhan), Tang Web3 (gui), Tang Web3 (nhan)
-  - Hang 3 (3 the): Tong bai dang, Tong binh luan, Tong yeu cau rut
-- **Bo loc**: Search + 5 dropdown filters (Tat ca diem, FUN Money, Da rut, Trang thai, Vi)
-- **Bang**: Cac cot theo mau - Nguoi dung (avatar + ten, click vao di den profile), Trang thai (badge mau), Tham gia, Bai/BL, Anh sang, So du, Tong thuong, FUN Money, Tang noi bo, Tang Web3, Da rut, Vi BSC
+**Gian lan khac (1 tai khoan):**
+vulongt4 (EMAIL_FARM fraud signal)
 
-**3. Component dropdown filter**
-Tao component `UserDirectoryFilters` voi cac Select dropdown:
-- **Tat ca diem**: Tat ca / Cao (>=1000) / TB (100-999) / Thap (<100)
-- **FUN Money**: Tat ca / Co FUN Money / Chua co
-- **Da rut**: Tat ca / Da rut / Chua rut
-- **Trang thai**: Tat ca / Hoat dong / Dinh chi / Cam vinh vien
-- **Vi**: Tat ca / Co vi / Chua co vi
+### Tai khoan KHONG ban (da xac nhan that)
+- susu, phuong_loan79, angelthanhthuy, Angelkieuphi_2
+- Cum 3 (Quang Vu): quangvu51g1p4, 1equangvu2210hued4h612, quangvu73252o
+- Duplicate wallet users (hinh chup): Pham_Luong_2, Pham_Luong_68, tranghappy, angelthutrang, hieu.le, happycamlycoin7979, Camlythudong, thudong, angel_su.nguyen, AngelSuNguyen, dothihoa1953qn, hoado
 
-### Chi tiet ky thuat
+### Thuc hien ky thuat
 
-**Du lieu can fetch them:**
-- `profiles.created_at`, `profiles.is_banned`, `profiles.full_name`
-- Donations: group by `sender_id` va `recipient_id`, phan biet `is_external` (true = Web3, false = noi bo)
-- `reward_claims`: da co, dung lam "da rut"
+1. **Tao Edge Function `batch-ban-users`**: Nhan danh sach user IDs, thuc hien:
+   - Cap nhat `is_banned = true`, `reward_status = 'banned'`, reset pending/approved ve 0
+   - Blacklist tat ca vi lien quan (wallet_address, public_wallet_address, vi trong reward_claims)
+   - Tu choi cac mint requests dang cho
+   - Ghi audit log
 
-**Cau truc file:**
-- Sua: `src/hooks/useUserDirectory.ts` - them filters, them data fields
-- Sua: `src/pages/Users.tsx` - lam lai giao dien theo mau reference
+2. **Goi Edge Function** voi 37 user IDs da xac dinh
 
-**Khong can thay doi database** - tat ca du lieu da co san trong cac bang hien tai.
-
-**Bao mat**: Trang nay la public (khong can dang nhap), chi hien thi thong tin cong khai. Du lieu nhay cam nhu wallet noi bo se khong hien thi - chi hien thi `public_wallet_address`.
+3. **Ket qua du kien**: 37 tai khoan bi cam vinh vien, vi bi blacklist, mint requests bi tu choi
