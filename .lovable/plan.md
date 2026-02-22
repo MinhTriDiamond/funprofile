@@ -1,61 +1,32 @@
 
+# Hien thi binh luan Live Chat trong bai dang Live Replay
 
-# Nang cap giao dien Pre-Live Setup (Facebook-style)
+## Van de
 
-## Hien trang
+Khi xem lai bai dang Live Replay tren Feed, nguoi dung chi thay phan binh luan thuong (bang `comments`). Nhung tin nhan chat trong buoi Live duoc luu trong bang `live_messages` (lien ket qua `live_session_id`), va component `LiveChatReplay` da ton tai nhung **chua bao gio duoc hien thi** trong bai dang tren Feed.
 
-Khi nguoi dung bam "Live Video" tren Feed, ung dung chuyen thang den `/live/new` va tu dong bat camera + micro + tao phien LIVE ngay lap tuc. Khong co buoc chuan bi nao de nguoi dung kiem tra thiet bi hay them mo ta.
+Du lieu da duoc xac nhan: bang `live_messages` co 4 tin nhan, va moi bai dang live deu co `metadata.live_session_id`.
 
-## Thay doi
+## Giai phap
 
-Thay vi chuyen thang den trang host, se hien thi mot **man hinh chuan bi toan man hinh** (full-screen pre-live setup) giong Facebook Live, bao gom:
-
-1. **Camera preview toan man hinh** -- hien thi video tu camera phia truoc lam background
-2. **Thanh dieu khien ben phai** -- cac nut bat/tat micro, xoay camera (flip), bat/tat flash (neu ho tro)
-3. **O nhap mo ta** -- "Nhan de them mo ta..." o phia duoi
-4. **Nut "Phat truc tiep"** -- nut lon mau xanh o cuoi man hinh
-5. **Nut quay lai** -- goc trai tren de huy va quay ve
+Them phan **"Live Chat Replay"** vao `FacebookPostCard.tsx` cho cac bai dang co `post_type === 'live'`. Khi nguoi dung bam nut "Binh luan", ngoai phan binh luan thuong, se hien thi them khu vuc "Tin nhan trong buoi Live" phia tren.
 
 ## Chi tiet ky thuat
 
-### Tao trang moi: `src/modules/live/pages/PreLivePage.tsx`
+### Thay doi file: `src/components/feed/FacebookPostCard.tsx`
 
-Trang toan man hinh voi:
-- Goi `navigator.mediaDevices.getUserMedia({ video: true, audio: true })` de lay camera preview
-- Hien thi video stream lam background (full-screen, object-cover)
-- Sidebar ben phai gom cac icon button:
-  - Mic on/off (toggle)
-  - Xoay camera (flip giua front/back)
-  - Van ban (Aa) -- focus vao o mo ta
-- O input mo ta o phia duoi voi placeholder "Nhan de them mo ta..."
-- Nut "Phat truc tiep" mau xanh chiem toan bo chieu rong
-- Khi bam "Phat truc tiep":
-  - Dung preview stream
-  - Chuyen sang `/live/new` voi state `{ title, privacy }` de `LiveHostPage` su dung
+1. Import component `LiveChatReplay` tu `src/modules/live/components/LiveChatReplay.tsx`
+2. Trong phan `showComments`, kiem tra neu `post.post_type === 'live'` va `post.metadata?.live_session_id` ton tai:
+   - Hien thi `LiveChatReplay` voi `sessionId = metadata.live_session_id` trong mot khung co chieu cao co dinh (max-h-[300px])
+   - Dat phia tren `CommentSection` de nguoi dung thay tin nhan live truoc, roi binh luan thuong ben duoi
 
-### Cap nhat: `src/modules/live/pages/LiveHostPage.tsx`
+### Khong can thay doi file khac
 
-- Doc `location.state?.title` va `location.state?.privacy` de truyen vao `createLiveSession()`
-- Thay vi dung title rong, su dung title tu PreLivePage
-
-### Cap nhat: `src/components/feed/FacebookCreatePost.tsx`
-
-- Doi `handleLiveVideoClick` tu `navigate('/live/new')` thanh `navigate('/live/setup')`
-
-### Cap nhat: `src/App.tsx`
-
-- Them route `/live/setup` tro den `PreLivePage`
-
-### Cap nhat: `src/modules/live/liveService.ts`
-
-- `createLiveSession` da ho tro `title` va `privacy` tu `CreateLiveSessionInput`, khong can thay doi
+- `LiveChatReplay` da hoat dong dung: truy van `live_messages` theo `session_id`, hien thi voi avatar va ten nguoi dung
+- Khong can migration database
 
 ## Cac file can thay doi
 
 | File | Thay doi |
 |------|---------|
-| `src/modules/live/pages/PreLivePage.tsx` | TAO MOI -- man hinh setup toan man hinh voi camera preview, dieu khien mic/camera, o nhap mo ta |
-| `src/App.tsx` | Them route `/live/setup` |
-| `src/components/feed/FacebookCreatePost.tsx` | Doi navigate tu `/live/new` sang `/live/setup` |
-| `src/modules/live/pages/LiveHostPage.tsx` | Doc title/privacy tu `location.state` |
-
+| `src/components/feed/FacebookPostCard.tsx` | Import `LiveChatReplay`, hien thi khi post la live replay co `live_session_id` |
