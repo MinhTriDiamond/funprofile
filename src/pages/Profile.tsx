@@ -89,7 +89,7 @@ const Profile = () => {
       if (username) {
         const cleanUsername = username.startsWith('@') ? username.slice(1) : username;
         const { data: profileData } = await supabase
-          .from('profiles')
+          .from('public_profiles')
           .select('id')
           .eq('username', cleanUsername)
           .single();
@@ -142,13 +142,17 @@ const Profile = () => {
       // Use authUserId passed directly to avoid stale state issues
       const isViewingOwnProfile = authUserId ? profileId === authUserId : profileId === currentUserId;
       
-      const { data, error } = await supabase
-        .from('profiles')
-        .select(isViewingOwnProfile 
-          ? '*' 
-          : 'id, username, display_name, avatar_url, full_name, bio, cover_url, created_at, soul_level, total_rewards, pinned_post_id, external_wallet_address, custodial_wallet_address, public_wallet_address, social_links')
-        .eq('id', profileId)
-        .single();
+      const { data, error } = isViewingOwnProfile
+        ? await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', profileId)
+            .single()
+        : await supabase
+            .from('public_profiles')
+            .select('id, username, display_name, avatar_url, full_name, bio, cover_url, created_at, public_wallet_address, social_links')
+            .eq('id', profileId)
+            .single();
 
       if (error) throw error;
       setProfile(data);
@@ -163,7 +167,7 @@ const Profile = () => {
         .from('posts')
         .select(`
           *,
-          profiles!posts_user_id_fkey (username, display_name, avatar_url, full_name, external_wallet_address, custodial_wallet_address, public_wallet_address),
+          public_profiles!posts_user_id_fkey (username, display_name, avatar_url, full_name, public_wallet_address),
           reactions (id, user_id, type),
           comments (id)
         `)
@@ -175,7 +179,7 @@ const Profile = () => {
         .from('posts')
         .select(`
           *,
-          profiles!posts_user_id_fkey (username, display_name, avatar_url, full_name, external_wallet_address, custodial_wallet_address, public_wallet_address),
+          public_profiles!posts_user_id_fkey (username, display_name, avatar_url, full_name, public_wallet_address),
           reactions (id, user_id, type),
           comments (id)
         `)
@@ -184,10 +188,16 @@ const Profile = () => {
         .neq('user_id', profileId)
         .order('created_at', { ascending: false });
 
-      const existingPostIds = new Set((postsData || []).map(p => p.id));
+      // Map public_profiles to profiles key for component compatibility
+      const mapProfiles = (posts: any[]) => (posts || []).map((p: any) => ({
+        ...p,
+        profiles: p.public_profiles || p.profiles,
+      }));
+
+      const existingPostIds = new Set((postsData || []).map((p: any) => p.id));
       const allUserPosts = [
-        ...(postsData || []),
-        ...(giftSenderPosts || []).filter(p => !existingPostIds.has(p.id))
+        ...mapProfiles(postsData || []),
+        ...mapProfiles(giftSenderPosts || []).filter((p: any) => !existingPostIds.has(p.id))
       ];
 
       setOriginalPosts(allUserPosts); // Keep for photos grid
@@ -225,7 +235,7 @@ const Profile = () => {
           *,
           posts:original_post_id (
             *,
-            profiles!posts_user_id_fkey (username, display_name, avatar_url, full_name, external_wallet_address, custodial_wallet_address, public_wallet_address),
+            public_profiles!posts_user_id_fkey (username, display_name, avatar_url, full_name, public_wallet_address),
             reactions (id, user_id, type),
             comments (id)
           )
@@ -246,12 +256,15 @@ const Profile = () => {
       });
       
       // Add shared posts with type marker (using share time for sorting)
-      (sharedPostsData || []).forEach(sharedPost => {
+      (sharedPostsData || []).forEach((sharedPost: any) => {
         if (sharedPost.posts) {
+          // Map public_profiles to profiles in nested post
+          const mappedPost = { ...sharedPost.posts, profiles: sharedPost.posts.public_profiles || sharedPost.posts.profiles };
           combinedPosts.push({
             ...sharedPost,
+            posts: mappedPost,
             _type: 'shared',
-            _sortTime: new Date(sharedPost.created_at).getTime() // Use share time, not original post time
+            _sortTime: new Date(sharedPost.created_at).getTime()
           });
         }
       });
@@ -279,7 +292,7 @@ const Profile = () => {
         );
         
         const { data: friendProfiles } = await supabase
-          .from('profiles')
+          .from('public_profiles')
           .select('id, username, full_name, avatar_url')
           .in('id', friendIds)
           .limit(6);

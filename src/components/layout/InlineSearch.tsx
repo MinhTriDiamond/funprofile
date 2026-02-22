@@ -101,7 +101,7 @@ export const InlineSearch = () => {
         // Search profiles and posts concurrently
         const [{ data: profileData }, { data: postData }] = await Promise.all([
           supabase
-            .from('profiles')
+            .from('public_profiles')
             .select('id, username, full_name, avatar_url')
             .or(`username_normalized.ilike.%${safeQuery.toLowerCase()}%,full_name.ilike.%${safeQuery}%`)
             .limit(15),
@@ -111,7 +111,7 @@ export const InlineSearch = () => {
               id,
               content,
               created_at,
-              profiles!posts_user_id_fkey (username, avatar_url)
+              public_profiles!posts_user_id_fkey (username, avatar_url)
             `)
             .ilike('content', `%${safeQuery}%`)
             .order('created_at', { ascending: false })
@@ -119,7 +119,7 @@ export const InlineSearch = () => {
         ]);
 
         setProfiles(profileData || []);
-        setPosts(postData as any || []);
+        setPosts(((postData as any) || []).map((p: any) => ({ ...p, profiles: p.public_profiles || p.profiles })));
       } catch (error: any) {
         setProfiles([]);
         setPosts([]);

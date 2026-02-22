@@ -36,8 +36,7 @@ export interface FeedPost {
     username: string;
     display_name?: string | null;
     avatar_url: string | null;
-    external_wallet_address?: string | null;
-    custodial_wallet_address?: string | null;
+    public_wallet_address?: string | null;
   };
   // Pre-fetched gift profiles to avoid loading states
   recipientProfile?: GiftProfile | null;
@@ -141,7 +140,7 @@ const fetchHighlightedPosts = async (currentUserId: string | null): Promise<Feed
   const now = new Date().toISOString();
   let query = supabase
     .from('posts')
-    .select(`*, profiles!posts_user_id_fkey (username, display_name, avatar_url, external_wallet_address, custodial_wallet_address, public_wallet_address, wallet_address)`)
+    .select(`*, public_profiles!posts_user_id_fkey (username, display_name, avatar_url, public_wallet_address)`)
     .eq('is_highlighted', true)
     .gt('highlight_expires_at', now)
     .order('created_at', { ascending: false })
@@ -159,8 +158,9 @@ const fetchHighlightedPosts = async (currentUserId: string | null): Promise<Feed
     return [];
   }
 
-  const posts: FeedPost[] = (data || []).map(post => ({
+  const posts: FeedPost[] = (data || []).map((post: any) => ({
     ...post,
+    profiles: post.public_profiles,
     media_urls: (post.media_urls as Array<{ url: string; type: 'image' | 'video' }>) || null,
     visibility: post.visibility || 'public',
   }));
@@ -171,7 +171,7 @@ const fetchHighlightedPosts = async (currentUserId: string | null): Promise<Feed
 const fetchFeedPage = async (cursor: string | null, currentUserId: string | null): Promise<FeedPage> => {
   let query = supabase
     .from('posts')
-    .select(`*, profiles!posts_user_id_fkey (username, display_name, avatar_url, external_wallet_address, custodial_wallet_address, public_wallet_address, wallet_address)`)
+    .select(`*, public_profiles!posts_user_id_fkey (username, display_name, avatar_url, public_wallet_address)`)
     .order('created_at', { ascending: false })
     .limit(POSTS_PER_PAGE + 1);
 
@@ -193,8 +193,9 @@ const fetchFeedPage = async (cursor: string | null, currentUserId: string | null
   const hasMore = (posts?.length || 0) > POSTS_PER_PAGE;
   const postsToReturn = hasMore ? posts?.slice(0, POSTS_PER_PAGE) : posts;
 
-  let postsData: FeedPost[] = (postsToReturn || []).map(post => ({
+  let postsData: FeedPost[] = (postsToReturn || []).map((post: any) => ({
     ...post,
+    profiles: post.public_profiles,
     media_urls: (post.media_urls as Array<{ url: string; type: 'image' | 'video' }>) || null,
     visibility: post.visibility || 'public',
   }));

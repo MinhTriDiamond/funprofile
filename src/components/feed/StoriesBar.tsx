@@ -40,19 +40,19 @@ export const StoriesBar = memo(() => {
       // Fetch recent users who posted as "stories" simulation
       const { data: recentPosts } = await supabase
         .from('posts')
-        .select('user_id, profiles!posts_user_id_fkey(id, username, avatar_url)')
+        .select('user_id, public_profiles!posts_user_id_fkey(id, username, avatar_url)')
         .order('created_at', { ascending: false })
         .limit(10);
 
       if (recentPosts) {
         const uniqueUsers = new Map();
         recentPosts.forEach((post: any) => {
-          if (post.profiles && !uniqueUsers.has(post.user_id)) {
+          if (post.public_profiles && !uniqueUsers.has(post.user_id)) {
             uniqueUsers.set(post.user_id, {
               id: post.user_id,
               user_id: post.user_id,
-              username: post.profiles.username,
-              avatar_url: post.profiles.avatar_url,
+              username: post.public_profiles.username,
+              avatar_url: post.public_profiles.avatar_url,
             });
           }
         });

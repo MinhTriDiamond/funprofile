@@ -37,7 +37,7 @@ const Post = () => {
         .from('posts')
         .select(`
           *,
-          profiles!posts_user_id_fkey (username, display_name, avatar_url, full_name, external_wallet_address, custodial_wallet_address, public_wallet_address),
+          public_profiles!posts_user_id_fkey (username, display_name, avatar_url, full_name, public_wallet_address),
           reactions (id, user_id, type),
           comments (id)
         `)
@@ -47,7 +47,9 @@ const Post = () => {
       if (error) {
         // Error fetching post - silent fail
       } else {
-        setPost(data);
+        // Map public_profiles to profiles for component compatibility
+        const mappedData = { ...data, profiles: (data as any).public_profiles || (data as any).profiles };
+        setPost(mappedData);
       }
       setLoading(false);
     };

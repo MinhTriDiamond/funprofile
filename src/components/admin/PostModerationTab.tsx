@@ -30,7 +30,7 @@ const PostModerationTab = () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("posts")
-      .select("id, content, media_urls, created_at, user_id, profiles!posts_user_id_fkey(username, avatar_url)")
+      .select("id, content, media_urls, created_at, user_id, public_profiles!posts_user_id_fkey(username, avatar_url)")
       .eq("moderation_status", "pending_review")
       .order("created_at", { ascending: false })
       .limit(100);
@@ -39,7 +39,7 @@ const PostModerationTab = () => {
       console.error("Error fetching pending posts:", error);
       toast.error("Không thể tải danh sách bài viết");
     } else {
-      setPosts((data as any) || []);
+      setPosts(((data as any) || []).map((p: any) => ({ ...p, profiles: p.public_profiles || p.profiles })));
     }
     setLoading(false);
   };

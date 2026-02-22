@@ -4,8 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 
 export interface DonationRecord {
   id: string;
-  sender: { id: string; username: string; display_name?: string | null; avatar_url: string | null; public_wallet_address?: string | null; custodial_wallet_address?: string | null } | null;
-  recipient: { id: string; username: string; display_name?: string | null; avatar_url: string | null; public_wallet_address?: string | null; custodial_wallet_address?: string | null };
+  sender: { id: string; username: string; display_name?: string | null; avatar_url: string | null; public_wallet_address?: string | null } | null;
+  recipient: { id: string; username: string; display_name?: string | null; avatar_url: string | null; public_wallet_address?: string | null };
   amount: string;
   token_symbol: string;
   message: string | null;
@@ -59,8 +59,8 @@ export function useDonationHistory(type: 'sent' | 'received') {
           sender_address,
           is_external,
           metadata,
-          sender:profiles!donations_sender_id_fkey(id, username, display_name, avatar_url, public_wallet_address, custodial_wallet_address),
-          recipient:profiles!donations_recipient_id_fkey(id, username, display_name, avatar_url, public_wallet_address, custodial_wallet_address)
+          sender:public_profiles!donations_sender_id_fkey(id, username, display_name, avatar_url, public_wallet_address),
+          recipient:public_profiles!donations_recipient_id_fkey(id, username, display_name, avatar_url, public_wallet_address)
         `)
         .eq(type === 'sent' ? 'sender_id' : 'recipient_id', userId)
         .order('confirmed_at', { ascending: false, nullsFirst: false })
