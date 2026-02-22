@@ -1,78 +1,49 @@
 
 
-# Nang cap giao dien dinh kem file kieu Telegram
+# Hien thi ten file goc khi dinh kem trong chat
 
-## Tong quan
+## Van de hien tai
 
-Khi nguoi dung chon file dinh kem, thay vi hien thi preview nho (16x16) trong khung chat, he thong se hien thi mot **dialog/modal xem truoc** toan man hinh voi:
-- Preview lon cho anh/video, icon cho file tai lieu
-- O nhap **Caption** (noi dung di kem)
-- Cac nut: **Them file** / **Huy** / **Gui**
-- Nut xoa tung file
+Khi nguoi dung dinh kem file (VD: `BaoGia_2025.rar`), ham `generateCacheBustFilename` doi ten thanh `userId_timestamp_hash.rar`. Ten file hien thi trong chat va khi tai ve deu la ten he thong, khong phai ten goc.
 
-## Giao dien moi (tham khao Telegram)
+## Giai phap
 
-```text
-+---------------------------------------+
-|  Gui file dinh kem              [X]   |
-+---------------------------------------+
-|                                       |
-|   [Preview anh/video lon]      [Xoa]  |
-|   hoac [Icon file + ten file]         |
-|                                       |
-|   Caption                             |
-|   [___________________________] [:-)] |
-|                                       |
-|   [+ Them]       [Huy]       [Gui]    |
-+---------------------------------------+
-```
+Thay doi cach dat ten file upload: giu nguyen ten goc trong duong dan R2, chi them prefix hash de tranh trung lap.
+
+**Format moi:** `bucket/userId_timestamp_hash/originalFilename.ext`
+
+VD: `comment-media/abc123_1708000000_x7k2m9/BaoGia_2025.rar`
+
+Nhu vay, ham `getFileName(url)` se tu dong trich xuat dung ten goc tu URL.
 
 ## Chi tiet ky thuat
 
-### 1. Tao component `AttachmentPreviewDialog`
+### 1. Sua `generateCacheBustFilename` trong `src/utils/mediaUpload.ts`
 
-File: `src/modules/chat/components/AttachmentPreviewDialog.tsx`
+Tach thanh 2 phan:
+- **Anh/Video**: giu nguyen cach cu (doi ten hoan toan) vi khong can hien thi ten file
+- **File tai lieu**: tra ve dang `hash_folder/originalName` de giu ten goc
 
-- Su dung Radix Dialog (da co san)
-- Props:
-  - `open`: boolean
-  - `files`: File[] - danh sach file da chon
-  - `onClose`: () => void - dong dialog
-  - `onSend`: (caption: string) => void - gui voi caption
-  - `onAddMore`: () => void - mo file picker them
-  - `onRemoveFile`: (index: number) => void - xoa 1 file
-- Hien thi:
-  - Tieu de "Gui file dinh kem" voi nut dong
-  - Carousel/grid preview cac file (toi da 4)
-    - Anh: hien thi `<img>` voi object-cover, rounded
-    - Video: hien thi `<video>` voi play icon overlay
-    - File khac: hien thi icon tuong ung (tu `getFileIconInfo`) + ten file + dung luong
-  - Nut xoa (thung rac) tren moi file
-  - O nhap Caption voi emoji picker
-  - 3 nut hanh dong: Them / Huy / Gui
+Tao them ham `generateDocumentPath(originalName, userId)` tra ve: `userId_timestamp_hash/tenfile_goc.ext`
 
-### 2. Cap nhat `ChatInput.tsx`
+### 2. Sua `uploadCommentMedia` trong `src/utils/mediaUpload.ts`
 
-- Them state `showAttachPreview` (boolean)
-- Khi nguoi dung chon file (`handleFileSelect`):
-  - Van luu file vao `mediaFiles` nhu cu
-  - Tu dong mo `AttachmentPreviewDialog` (`showAttachPreview = true`)
-- Bo khoi preview nho cu (dong 194-233) - thay bang dialog moi
-- Khi nguoi dung bam "Gui" trong dialog:
-  - Lay caption tu dialog
-  - Thuc hien upload + gui tin nhan voi `content = caption`
-- Khi bam "Huy": xoa mediaFiles, dong dialog
-- Khi bam "Them": goi `fileInputRef.current?.click()` de chon them file
+Voi file khong phai anh/video: su dung `generateDocumentPath` thay vi `generateCacheBustFilename` de key trong R2 chua ten file goc.
 
-### 3. Khong can thay doi backend
+### 3. Sua `FileAttachment.tsx` - download dung ten goc
 
-- `onSend(content, mediaUrls)` da ho tro gui caption (content) kem media
-- Khong can sua database hay edge function
+Thay vi `window.open(url)`, su dung fetch + blob + download link de nguoi dung tai ve voi dung ten file goc (lay tu URL path).
 
 ## Cac file can thay doi
 
 | File | Thay doi |
 |------|---------|
-| `src/modules/chat/components/AttachmentPreviewDialog.tsx` | Tao moi - dialog xem truoc file kieu Telegram |
-| `src/modules/chat/components/ChatInput.tsx` | Cap nhat: mo dialog khi chon file, bo preview nho cu |
+| `src/utils/mediaUpload.ts` | Them ham `generateDocumentPath`, sua `uploadMedia` de nhan biet file tai lieu va giu ten goc trong key |
+| `src/modules/chat/components/FileAttachment.tsx` | Sua nut download de tai file ve voi ten goc thay vi mo tab moi |
+
+## Luu y
+
+- Anh va video van giu ten he thong nhu cu (khong anh huong)
+- Cac file da gui truoc do khong anh huong (van hoat dong binh thuong, chi ten hien thi la ten he thong)
+- Ten file goc duoc lam sach (bo ky tu dac biet) de dam bao tuong thich URL
 
