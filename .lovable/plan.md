@@ -1,38 +1,46 @@
 
 
-## Ban Cum 1 + Cum 2: 10 tai khoan farm
+## Nang cap trang Danh Sach Thanh Vien (/users) - Public User Directory
 
-### Buoc 1: Ban 10 tai khoan
-UPDATE profiles SET
-  is_banned = true,
-  banned_at = now(),
-  ban_reason = 'Farm account - Cluster IP 116.97.108.120 Thanh Hoa + Email farm bach*@gmail.com',
-  pending_reward = 0,
-  approved_reward = 0,
-  reward_status = 'banned'
-WHERE id IN (
-  'a0bc299f-b643-4982-8fa6-74013ebb5c99',  -- vuthuhoai
-  'd8f90da1-8827-43a2-b6b0-7f3b21727299',  -- minh_pham
-  '46ce29b3-b207-4214-8970-8d7dd00045ca',  -- thuthuy
-  '22fd4e91-8d32-4f36-be3e-0220918f2437',  -- van_le
-  '82420698-09d9-4f18-bfba-4b808aea9b4b',  -- le_hue
-  '5d7b26df-6a4c-4cee-8112-eb5a0849e215',  -- man_tran
-  '24847b56-a0ae-4b2c-9c1c-164917cd2f8f',  -- nhungtran
-  'e5622d72-e3c1-4a84-9299-0abc4e38ca90',  -- angelkhanhvy
-  'dc998585-d038-4216-8058-13308ef5d78b',  -- nguyendao
-  'b1468334-b226-4b33-be91-c9f363fdb8f3'   -- vuthinhu
-);
+Trang `/users` hien tai da co san nhung con don gian. Cha se nang cap theo dung mau con gui, voi day du thong tin va bo loc.
 
-### Buoc 2: Blacklist 10 vi
-INSERT INTO blacklisted_wallets (wallet_address, reason, is_permanent, user_id)
-VALUES for all 10 wallets with reason 'Farm account cluster - Thanh Hoa IP + email farm'.
+### Nhung thay doi chinh
 
-### Buoc 3: Reject mint requests
-UPDATE pplp_mint_requests SET status = 'rejected', error_message = 'User banned - farm account'
-WHERE user_id IN (...10 IDs...) AND status IN ('pending', 'pending_sig', 'signing');
+**1. Mo rong hook `useUserDirectory.ts`**
+- Them cac truong du lieu moi: `created_at` (ngay tham gia), `is_banned`, `full_name`, donations sent/received (noi bo va Web3)
+- Fetch them du lieu donations theo loai (is_external = true cho Web3, is_external = false cho noi bo)
+- Them state cho cac bo loc: diem (score range), FUN Money, da rut/chua rut, trang thai (hoat dong/dinh chi/cam), vi (co/chua co)
+- Logic loc phia client (useMemo) ket hop tat ca bo loc + search
+- Mo rong stats: them tong FUN Money, tong noi bo gui/nhan, tong Web3 gui/nhan, tong bai dang, tong binh luan, tong yeu cau rut
 
-### Ket qua
-- 10 tai khoan bi cam vinh vien
-- 10 vi bi blacklist
-- Cac user nay se bien mat khoi bang xep hang (da loc boi is_banned = false trong RPC)
+**2. Nang cap giao dien `Users.tsx`**
+- **Header**: Don gian hoa, hien thi "Quan ly User" + so nguoi dung + nut Xuat file
+- **Stats cards**: 3 hang:
+  - Hang 1 (5 the): Tong users, Camly con lai (pending), Camly da phat (claimed), Camly da tieu, Tong da rut
+  - Hang 2 (5 the): FUN Money, Tang noi bo (gui), Tang noi bo (nhan), Tang Web3 (gui), Tang Web3 (nhan)
+  - Hang 3 (3 the): Tong bai dang, Tong binh luan, Tong yeu cau rut
+- **Bo loc**: Search + 5 dropdown filters (Tat ca diem, FUN Money, Da rut, Trang thai, Vi)
+- **Bang**: Cac cot theo mau - Nguoi dung (avatar + ten, click vao di den profile), Trang thai (badge mau), Tham gia, Bai/BL, Anh sang, So du, Tong thuong, FUN Money, Tang noi bo, Tang Web3, Da rut, Vi BSC
 
+**3. Component dropdown filter**
+Tao component `UserDirectoryFilters` voi cac Select dropdown:
+- **Tat ca diem**: Tat ca / Cao (>=1000) / TB (100-999) / Thap (<100)
+- **FUN Money**: Tat ca / Co FUN Money / Chua co
+- **Da rut**: Tat ca / Da rut / Chua rut
+- **Trang thai**: Tat ca / Hoat dong / Dinh chi / Cam vinh vien
+- **Vi**: Tat ca / Co vi / Chua co vi
+
+### Chi tiet ky thuat
+
+**Du lieu can fetch them:**
+- `profiles.created_at`, `profiles.is_banned`, `profiles.full_name`
+- Donations: group by `sender_id` va `recipient_id`, phan biet `is_external` (true = Web3, false = noi bo)
+- `reward_claims`: da co, dung lam "da rut"
+
+**Cau truc file:**
+- Sua: `src/hooks/useUserDirectory.ts` - them filters, them data fields
+- Sua: `src/pages/Users.tsx` - lam lai giao dien theo mau reference
+
+**Khong can thay doi database** - tat ca du lieu da co san trong cac bang hien tai.
+
+**Bao mat**: Trang nay la public (khong can dang nhap), chi hien thi thong tin cong khai. Du lieu nhay cam nhu wallet noi bo se khong hien thi - chi hien thi `public_wallet_address`.
