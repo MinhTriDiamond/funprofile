@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { EmojiPicker } from '@/components/feed/EmojiPicker';
 import { UnifiedGiftSendDialog } from '@/components/donations/UnifiedGiftSendDialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { rewriteChatAttachmentUrl } from '@/lib/urlFix';
+
 import type { Message } from '../types';
 import type { Sticker } from '../types';
 import { StickerPicker } from './StickerPicker';
@@ -126,7 +126,7 @@ export function ChatInput({
       if (mediaFiles.length > 0) {
         const uploadPromises = mediaFiles.map((file) => uploadCommentMedia(file));
         const results = await Promise.all(uploadPromises);
-        uploadedUrls = results.map((r) => rewriteChatAttachmentUrl(r.url));
+        uploadedUrls = results.map((r) => r.url);
       }
 
       await onSend(trimmedContent, uploadedUrls.length > 0 ? uploadedUrls : undefined);
