@@ -1,31 +1,55 @@
 
+# Cải Thiện Điều Hướng Thông Báo Live Stream
 
-# Thêm Liên Kết Hồ Sơ Cho Tên Người Dùng Trong Gift Celebration
+## Tình trạng hiện tại
 
-## Mục tiêu
-Cho phép người dùng bấm vào tên người gửi/người nhận trong thẻ Gift Celebration trên Feed để xem hồ sơ cá nhân.
+Sau khi kiểm tra kỹ mã nguồn, hệ thống đã hoạt động đúng ở 2 phần:
 
-## Hiện trạng
-- Avatar đã có thể bấm được (có `onClick` + `cursor-pointer`) nhưng **tên hiển thị** và **@username** bên dưới avatar chỉ là text thuần, không bấm được.
-- Tên trong dòng chính ("Tống Văn Làm đã trao gửi... cho Phương Loan") cũng là text thuần.
+1. **Bài đăng Live trên Feed**: Khi bạn phát trực tiếp, một bài đăng với trạng thái "live" được tạo tự động. Bạn bè sẽ thấy bài đăng này trên Feed với huy hiệu LIVE đỏ nhấp nháy và nút "Xem trực tiếp".
+
+2. **Gửi thông báo cho bạn bè**: Edge function `notify-live-started` tự động gửi thông báo "đang phát trực tiếp" cho tất cả bạn bè khi bạn bắt đầu live.
+
+## Vấn đề phát hiện
+
+Khi bạn bè bấm vào thông báo "đang phát trực tiếp", ứng dụng điều hướng đến trang bài đăng (`/post/...`) thay vì vào thẳng phiên live (`/live/...`). Điều này khiến trải nghiệm kém trực quan -- bạn bè phải bấm thêm một lần nữa mới vào được live stream.
 
 ## Giải pháp
 
-Sửa file `src/components/feed/GiftCelebrationCard.tsx`:
-
-### 1. Tên + @username dưới avatar người gửi (dòng 278-283)
-Bọc tên và @username trong thẻ `button` có `onClick` điều hướng đến `/profile/{senderNavigateId}`, thêm `cursor-pointer` và hiệu ứng `hover:underline`.
-
-### 2. Tên + @username dưới avatar người nhận (dòng 301-306)
-Tương tự, bọc trong `button` điều hướng đến `/profile/{gift_recipient_id}`.
-
-### 3. Tên trong dòng nội dung chính (dòng 312-322)
-Biến tên người gửi và người nhận trong câu "đã trao gửi... cho..." thành `span` có thể bấm được, điều hướng đến trang hồ sơ tương ứng.
+Thêm xử lý đặc biệt cho thông báo `live_started` để điều hướng thẳng vào phiên live.
 
 ## Chi tiết kỹ thuật
 
-- File cần sửa: `src/components/feed/GiftCelebrationCard.tsx`
-- Sử dụng `navigate()` đã có sẵn trong component
-- Thêm style: `cursor-pointer hover:underline` cho các tên
-- Giữ nguyên logic hiện tại, chỉ bọc thêm element tương tác
+### File cần sửa: `src/components/layout/NotificationDropdown.tsx`
 
+Tại hàm `handleNotificationClick` (dòng 169-180), thêm case cho `live_started`:
+
+Trước:
+```
+if (notification.post_id) {
+  navigate(`/post/${notification.post_id}`);
+}
+```
+
+Sau:
+```
+if (notification.type === 'live_started' && notification.post_id) {
+  // Truy vấn live_sessions theo post_id để lấy session id
+  const { data: session } = await supabase
+    .from('live_sessions')
+    .select('id, status')
+    .eq('post_id', notification.post_id)
+    .single();
+  
+  if (session?.status === 'live') {
+    navigate(`/live/${session.id}`);
+  } else {
+    navigate(`/post/${notification.post_id}`);
+  }
+} else if (notification.post_id) {
+  navigate(`/post/${notification.post_id}`);
+}
+```
+
+Logic: Nếu phiên live vẫn đang diễn ra, điều hướng thẳng vào phòng live. Nếu đã kết thúc, điều hướng đến bài đăng để xem replay.
+
+Chỉ sửa 1 file duy nhất.
