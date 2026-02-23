@@ -205,9 +205,8 @@ export const getNotificationText = (
       break;
     case 'admin_shared_device': {
       const m = metadata;
-      const userList = formatUsernamesWithEmails(m?.usernames, m?.flagged_emails, 5);
       const detail = m?.device_hash
-        ? ` Thiết bị ${m.device_hash}... có ${m.user_count || '?'} tài khoản${userList ? ': ' + userList : ''}`
+        ? ` Thiết bị ${m.device_hash.slice(0, 8)}... có ${m.user_count || '?'} TK`
         : ' Phát hiện thiết bị dùng chung nhiều tài khoản';
       main = React.createElement(React.Fragment, null,
         '🔴 ',
@@ -218,9 +217,8 @@ export const getNotificationText = (
     }
     case 'admin_email_farm': {
       const m = metadata;
-      const userList = formatUsernamesWithEmails(m?.usernames, m?.flagged_emails, 5);
       const detail = m?.email_base
-        ? ` Cụm email "${m.email_base}" có ${m.count || '?'} tài khoản${userList ? ': ' + userList : m?.emails?.length ? ': ' + m.emails.slice(0, 5).join(', ') : ''}`
+        ? ` Cụm email "${m.email_base}" có ${m.count || '?'} TK`
         : ' Phát hiện cụm email farm nghi ngờ';
       main = React.createElement(React.Fragment, null,
         '🔴 ',
@@ -231,9 +229,8 @@ export const getNotificationText = (
     }
     case 'admin_blacklisted_ip': {
       const m = metadata;
-      const userList = formatUsernamesWithEmails(m?.known_usernames, m?.flagged_emails, 3);
       const detail = m?.ip_address
-        ? ` Đăng nhập từ IP bị chặn ${m.ip_address}${m.reason ? ' - ' + m.reason : ''}${userList ? ' (liên quan: ' + userList + ')' : ''}`
+        ? ` Đăng nhập từ IP bị chặn ${m.ip_address}`
         : ' Đăng nhập từ IP bị chặn';
       main = React.createElement(React.Fragment, null,
         '🔴 ',
@@ -244,14 +241,13 @@ export const getNotificationText = (
     }
     case 'admin_fraud_daily': {
       const m = metadata;
-      const alertsList = m?.alerts?.length ? m.alerts.join(', ') : '';
-      const detail = m?.alerts_count
-        ? ` ${m.alerts_count} cảnh báo${alertsList ? ' - ' + alertsList : ''}`
+      const summary = m?.alerts_count
+        ? ` ${m.alerts_count} cảnh báo${m?.accounts_held ? `, ${m.accounts_held} TK đình chỉ` : ''}`
         : ' Có hoạt động đáng ngờ cần xử lý';
       main = React.createElement(React.Fragment, null,
         '📊 ',
         React.createElement('strong', null, 'Báo cáo gian lận:'),
-        detail
+        summary
       );
       break;
     }
