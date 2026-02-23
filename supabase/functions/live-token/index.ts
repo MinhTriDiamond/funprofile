@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
         },
         body: JSON.stringify({
           channelName: channel,
-          uid: role === 'host' ? userId : undefined,
+          uid: userId,
           role: role === 'host' ? 'publisher' : 'subscriber',
         }),
       })
