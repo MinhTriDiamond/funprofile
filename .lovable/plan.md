@@ -1,76 +1,48 @@
 
+# Hiển Thị Video Live và Nút Xem Live Trên Bài Đăng Feed
 
-# Thông Báo Bạn Bè Khi Bắt Đầu Live
+## Vấn đề
 
-## Phân tích hiện tại
+Khi bạn đang phát live, bài đăng trên feed chỉ hiển thị text (tiêu đề). Không có:
+- Video preview hoặc thumbnail của buổi live
+- Nút "Xem trực tiếp" để bạn bè bấm vào xem
+- Badge "LIVE" nổi bật trên bài đăng
 
-### 1. Bài đăng Live trên Feed - DA HOAT DONG
-Khi bạn bắt đầu live, hệ thống tự tạo bài đăng với `post_type: 'live'` và `moderation_status: approved`. Bài này xuất hiện trên News Feed của tất cả mọi người (hoặc chỉ bạn bè nếu chọn privacy "friends"). Vậy bạn bè **đã có thể thấy** bài đăng Live trên feed.
-
-### 2. Thông báo cho bạn bè - CHUA CO
-Hiện tại **không có cơ chế gửi thông báo** đến bạn bè khi ai đó bắt đầu live. Hệ thống thông báo hỗ trợ nhiều loại (like, comment, friend_request, donation...) nhưng chưa có loại `live_started`.
+Nguyên nhân: Bài đăng live được tạo chỉ với `content` (text) và `metadata` (chứa thông tin channel, live_status). Không có `media_urls`, `image_url`, hay `video_url`. Component `FacebookPostCard` không có logic đặc biệt để render UI cho bài đăng đang live.
 
 ## Giải pháp
 
-Thêm tính năng gửi thông báo đến tất cả bạn bè khi người dùng bắt đầu phát trực tiếp.
-
-### Bước 1: Cập nhật Database
-
-- Thêm `'live_started'` vào constraint `notifications_type_check` để hỗ trợ loại thông báo mới.
-
-### Bước 2: Tạo Edge Function `notify-live-started`
-
-File: `supabase/functions/notify-live-started/index.ts`
-
-- Nhận `session_id` và `post_id` từ client
-- Xác thực người gọi là host của live session
-- Truy vấn danh sách bạn bè (bảng `friendships` với `status = 'accepted'`)
-- Tạo thông báo hàng loạt (batch insert) cho tất cả bạn bè với:
-  - `type: 'live_started'`
-  - `actor_id`: ID người phát live
-  - `post_id`: ID bài đăng live (để khi bấm vào thông báo có thể điều hướng)
-
-### Bước 3: Gọi Edge Function từ Client
-
-File sửa: `src/modules/live/liveService.ts`
-
-- Sau khi `createLiveSession` thành công, gọi edge function `notify-live-started` với `session_id` và `post_id`
-- Gọi không chặn (fire-and-forget) để không ảnh hưởng trải nghiệm người phát
-
-### Bước 4: Cập nhật UI Thông Báo
-
-File sửa: `src/components/layout/notifications/` (các file liên quan)
-
-- Thêm xử lý hiển thị cho loại thông báo `live_started`
-- Icon: biểu tượng phát trực tiếp (Radio) màu đỏ
-- Nội dung: "[Tên bạn bè] đang phát trực tiếp"
-- Khi bấm vào: điều hướng đến `/live/[sessionId]` hoặc bài đăng live
+Thêm một component `LivePostEmbed` hiển thị bên trong `FacebookPostCard` khi bài đăng có `post_type === 'live'` và `metadata.live_status === 'live'`.
 
 ## Chi tiết kỹ thuật
 
-### Database Migration
-```sql
-ALTER TABLE notifications DROP CONSTRAINT notifications_type_check;
-ALTER TABLE notifications ADD CONSTRAINT notifications_type_check 
-  CHECK (type = ANY(ARRAY[...existing types..., 'live_started']));
-```
+### 1. Tạo component mới: `src/components/feed/LivePostEmbed.tsx`
 
-### Edge Function Flow
-```text
-Client (sau khi createLiveSession)
-  |
-  v
-notify-live-started (Edge Function)
-  |-- Verify auth + host ownership
-  |-- Query friendships (status = 'accepted')
-  |-- Batch insert notifications for all friends
-  v
-Realtime subscription -> UI hiển thị thông báo
-```
+Component này sẽ hiển thị:
+- Khung preview với nền gradient tối (giống giao diện xem live)
+- Badge **LIVE** đỏ nhấp nháy (animated pulse) ở góc trên
+- Số người đang xem (`viewer_count` từ metadata)
+- Thumbnail nếu có (`metadata.thumbnail_url`), hoặc icon camera/video lớn nếu chưa có
+- Nút **"Xem trực tiếp"** nổi bật, khi bấm sẽ điều hướng đến `/live/[session_id]`
 
-### Hiển thị thông báo
-- Loại: `live_started`
-- Icon: Radio (lucide-react) với nền đỏ
-- Text: "[username] đang phát trực tiếp"
-- Action: Điều hướng đến trang xem live
+Props:
+- `metadata`: chứa `live_session_id`, `live_status`, `channel_name`, `viewer_count`, `thumbnail_url`
+- `hostName`: tên người phát
 
+### 2. Cập nhật `src/components/feed/FacebookPostCard.tsx`
+
+Thêm logic render `LivePostEmbed` ngay trước `MediaGrid`:
+- Điều kiện: `post.post_type === 'live'` VÀ `post.metadata?.live_status === 'live'`
+- Khi live đã kết thúc (`live_status !== 'live'`), hiển thị media bình thường (video replay nếu có)
+
+### 3. Cập nhật `src/modules/live/liveService.ts`
+
+Đảm bảo khi tạo live session, `metadata` của post chứa `live_session_id` để component có thể tạo link xem live:
+- Sau khi insert live_session thành công, update post metadata thêm `live_session_id`
+
+## Kết quả mong đợi
+
+- Bạn bè thấy bài đăng live với badge LIVE đỏ nhấp nháy
+- Có nút "Xem trực tiếp" bấm vào sẽ đến trang xem live
+- Hiển thị số người đang xem
+- Khi live kết thúc, nếu có video replay thì hiển thị video bình thường
