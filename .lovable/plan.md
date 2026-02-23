@@ -1,51 +1,48 @@
 
-# Phục hồi tất cả giao dịch cũ bị thiếu trong lịch sử
+# Xoá hàng loạt tất cả user bị ban
 
-## Nguyên nhân gốc
-
-Cả 2 Edge Function `auto-backfill-donations` và `backfill-donations` đều chỉ tìm người nhận qua trường `wallet_address` trong bảng profiles. Nhưng hệ thống FUN Profile còn dùng `public_wallet_address` (địa chỉ ví công khai) -- nhiều user chỉ có `public_wallet_address` mà không có `wallet_address`, nên các giao dịch gửi đến họ bị bỏ qua (unmappable).
-
-Thêm vào đó, `auto-backfill-donations` chỉ quét **50 giao dịch gần nhất**, nên các giao dịch cũ hơn không bao giờ được xử lý.
+## Mục tiêu
+Thêm nút trong mục **Hệ thống (SystemTab)** để admin có thể xoá vĩnh viễn tất cả tài khoản đã bị ban (`is_banned = true`) chỉ với 1 click.
 
 ## Giải pháp
 
-### 1. Sửa `auto-backfill-donations` (chạy tự động mỗi 5 phút)
-- Tăng limit từ 50 lên **1000** để quét được nhiều giao dịch hơn
-- Thêm `public_wallet_address` vào bản đồ ví để tìm được người nhận chính xác hơn
+### 1. Tạo Edge Function mới: `batch-delete-banned-users`
+- Xác thực admin qua JWT + bảng `user_roles`
+- Truy vấn tất cả profiles có `is_banned = true`
+- Lặp qua từng user, gọi lại logic xoá tuần tự giống `admin-delete-user` (xoá 34+ bảng con trước, rồi xoá profile + auth)
+- Bỏ qua admin đang thao tác (không tự xoá)
+- Trả về kết quả: tổng số user bị ban, số đã xoá thành công, số lỗi
 
-### 2. Sửa `backfill-donations` (admin gọi thủ công)
-- Tăng limit scan từ 500 lên **1000**
-- Thêm `public_wallet_address` vào bản đồ ví cho cả mode `scan` và `backfill`
-
-### 3. Tạo admin action chạy backfill toàn bộ một lần
-- Thêm nút trên trang Admin để gọi `auto-backfill-donations` ngay lập tức, phục hồi tất cả giao dịch cũ bị thiếu
+### 2. Thêm UI trong SystemTab
+- Thêm 1 Card mới bên dưới card "Phục hồi giao dịch bị thiếu"
+- Hiển thị nút **"Xoá tất cả user bị ban"** với icon Trash2 màu đỏ
+- Có dialog xác nhận trước khi xoá (tránh bấm nhầm)
+- Hiển thị kết quả sau khi chạy xong (số user đã xoá, lỗi nếu có)
+- Invalidate danh sách admin users sau khi xoá xong
 
 ## Chi tiết kỹ thuật
 
-### auto-backfill-donations/index.ts
+### Edge Function `batch-delete-banned-users`
 ```text
-Trước:
-  .select("id, wallet_address")
-  .limit(50)
-  walletMap chỉ dùng wallet_address
-
-Sau:
-  .select("id, wallet_address, public_wallet_address")
-  .limit(1000)
-  walletMap dùng cả wallet_address VÀ public_wallet_address
+1. Xác thực admin (JWT + user_roles)
+2. Query: SELECT id FROM profiles WHERE is_banned = true
+3. Với mỗi banned user:
+   a. Xoá dữ liệu từ 34+ bảng con (cùng thứ tự như admin-delete-user)
+   b. Xoá profile
+   c. Xoá auth user
+   d. Ghi audit log
+4. Trả về: { total_banned, deleted, errors[] }
 ```
 
-### backfill-donations/index.ts (mode scan + backfill)
+### SystemTab UI
 ```text
-Trước:
-  .select("id, wallet_address") hoặc .select("id, username, avatar_url, wallet_address")
-  walletMap chỉ dùng wallet_address
-
-Sau:
-  Thêm public_wallet_address vào select
-  walletMap dùng cả wallet_address VÀ public_wallet_address
+Card mới:
+  - Title: "Xoá tất cả user bị ban" (icon Trash2 đỏ)
+  - Mô tả: Xoá vĩnh viễn tất cả tài khoản đã bị cấm
+  - Nút: "Xoá tất cả" -> hiện AlertDialog xác nhận
+  - Kết quả: Hiển thị số liệu sau khi hoàn tất
 ```
 
 ### Files thay đổi
-1. `supabase/functions/auto-backfill-donations/index.ts` -- Tăng limit + thêm public_wallet_address
-2. `supabase/functions/backfill-donations/index.ts` -- Thêm public_wallet_address cho cả scan và backfill mode
+1. **Tạo mới**: `supabase/functions/batch-delete-banned-users/index.ts` -- Edge function xoá hàng loạt
+2. **Sửa**: `src/components/admin/SystemTab.tsx` -- Thêm card + nút xoá hàng loạt user bị ban
