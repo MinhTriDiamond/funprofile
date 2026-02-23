@@ -1,43 +1,44 @@
 
 
-# Thu Gọn Thông Báo Gian Lận - Thêm Nút "Xem Chi Tiết"
+# Sửa Dropdown Thông Báo: Thu Gọn Chi Tiết + Avatar Đỏ Cảnh Báo
 
-## Vấn Đề
-Thông báo báo cáo gian lận (`admin_fraud_daily`, `admin_shared_device`, `admin_email_farm`) hiển thị toàn bộ danh sách cảnh báo trực tiếp, làm nội dung rất dài và khó đọc.
+## Vấn Đề 1: Giao diện cũ vẫn hiển thị
+Tính năng thu gọn "Xem chi tiết" chỉ được thêm vào trang `/notifications` (Notifications.tsx), nhưng **dropdown thông báo trên thanh điều hướng** (NotificationDropdown) vẫn sử dụng component `NotificationItem` + hàm `getNotificationText` trong `utils.ts` -- nơi vẫn hiển thị **toàn bộ danh sách dài** (usernames, emails) trực tiếp.
 
-## Giải Pháp
-Hiển thị tóm tắt ngắn gọn (ví dụ: "7 cảnh báo - 3 TK đình chỉ"), kèm nút **"Xem chi tiết"** để mở rộng xem danh sách đầy đủ.
+## Vấn Đề 2: Avatar cần đổi thành nút đỏ cảnh báo
+Với các thông báo gian lận (admin_shared_device, admin_email_farm, admin_blacklisted_ip, admin_fraud_daily), avatar hiện tại hiển thị ảnh đại diện người dùng bình thường. Cần thay bằng **icon cảnh báo đỏ** để dễ nhận biết.
 
-## Thay Đổi
+## Cách Sửa
 
-### File: `src/pages/Notifications.tsx`
+### File 1: `src/components/layout/notifications/utils.ts`
+- Rút gọn nội dung hiển thị mặc định cho các loại fraud:
+  - `admin_shared_device`: "Thiết bị xxx... có 3 TK" (bỏ danh sách username dài)
+  - `admin_email_farm`: "Cụm email "abc" có 5 TK" (bỏ danh sách email dài)
+  - `admin_blacklisted_ip`: "Đăng nhập từ IP bị chặn xxx" (bỏ danh sách liên quan)
+  - `admin_fraud_daily`: "7 cảnh báo" (bỏ danh sách alerts)
 
-1. **Rút gọn nội dung hiển thị mặc định** cho các loại thông báo fraud:
-   - `admin_fraud_daily`: Chỉ hiện "7 cảnh báo, 3 TK đình chỉ"
-   - `admin_shared_device`: Chỉ hiện "Thiết bị xxx có 3 TK"
-   - `admin_email_farm`: Chỉ hiện "Cụm email "abc" có 5 TK"
+### File 2: `src/components/layout/notifications/NotificationItem.tsx`
+- Thêm state `expanded` để quản lý toggle xem chi tiết
+- Với thông báo fraud: thêm nút "Xem chi tiết / Thu gọn"
+- Khi mở rộng: hiển thị danh sách đầy đủ (usernames, emails, alerts) giống như đã làm ở Notifications.tsx
+- **Đổi Avatar**: Với các thông báo fraud, thay avatar người dùng bằng vòng tròn đỏ có icon Shield (khiên cảnh báo), tạo hiệu ứng nổi bật
 
-2. **Thêm state `expandedNotifications`** (Set) để theo dõi các thông báo đang mở rộng.
+### Giao Diện Mới
 
-3. **Thêm nút "Xem chi tiết" / "Thu gọn"** bên dưới dòng tóm tắt. Khi bấm sẽ hiện danh sách đầy đủ (alerts, usernames, emails).
+**Avatar cảnh báo đỏ**: Thay vì ảnh đại diện bình thường, hiển thị nền đỏ gradient + icon Shield trắng + viền đỏ nhấp nháy
 
-4. **Tách phần render** thông báo fraud thành một component con hoặc logic riêng trong cùng file, hiển thị:
-   - Dòng tóm tắt (luôn hiện)
-   - Nút toggle "Xem chi tiết" / "Thu gọn"
-   - Danh sách chi tiết (chỉ hiện khi expanded), mỗi alert trên 1 dòng riêng cho dễ đọc
-
-### Giao Diện Khi Thu Gọn
+**Thu gọn (mặc định)**:
 ```
-📊 Báo cáo gian lận: 7 cảnh báo, 3 TK đình chỉ
-[Xem chi tiết ▼]
+[Shield đỏ] Cảnh báo: Thiết bị dfb4ace9... có 3 TK
+             [Xem chi tiết v]
+             2 giờ trước
 ```
 
-### Giao Diện Khi Mở Rộng
+**Mở rộng (khi bấm)**:
 ```
-📊 Báo cáo gian lận: 7 cảnh báo, 3 TK đình chỉ
-[Thu gọn ▲]
-- Thiết bị dfb4ace9... có 3 TK: MINHCANH, @Binhan2024...
-- Cụm email "tacongminh" có 3 TK: vulongt4, hoyeu, long
-- Cụm email "congminhyvnh" có 18 TK: loannguyebn...
+[Shield đỏ] Cảnh báo: Thiết bị dfb4ace9... có 3 TK
+             [Thu gọn ^]
+             - Tài khoản: MINHCANH (email), @Binhan2024 (email)...
+             2 giờ trước
 ```
 
