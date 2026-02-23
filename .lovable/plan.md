@@ -1,32 +1,34 @@
 
-# Thêm Tài Khoản "bongsieuoi" Vào Danh Sách Ngoại Lệ
+# Thêm Nút Tìm Kiếm Email Trong Cột Email
 
-## Thông Tin
+## Mô Tả
 
-3 tài khoản Love House cần loại trừ:
-- **LH_HaoQuangVuTru** (bongsieuoi5@gmail.com)
-- **LH_ThinhVuong** (bongsieuoi2@gmail.com)
-- **LH_Happy** (bongsieuoi1@gmail.com)
+Thêm một nút tìm kiếm nhỏ vào cột Email (chỉ hiện cho Admin). Khi nhấp vào, sẽ mở một popover/dropdown hiển thị danh sách tất cả email được sắp xếp theo thứ tự ABC, có ô tìm kiếm để lọc nhanh. Nhấp vào email sẽ tự động điền vào ô tìm kiếm chính để lọc bảng theo email đó.
 
-Cụm email "bongsieuoi" (sau khi chuẩn hóa: bỏ số cuối -> `bongsieuoi`) sẽ bị hệ thống gắn cờ EMAIL_FARM vì >= 3 tài khoản cùng tiền tố.
+## Chi Tiết Kỹ Thuật
 
-## Thay Doi
+### File: `src/pages/Users.tsx`
 
-### 1. `supabase/functions/daily-fraud-scan/index.ts`
-- Thêm `'bongsieuoi'` vào mảng `EMAIL_FARM_ALLOWLIST` (dòng 15):
-```
-const EMAIL_FARM_ALLOWLIST = ['hoangtydo', 'bongsieuoi'];
-```
+1. **Thêm state** `emailSearchOpen` để quản lý popover.
 
-### 2. `supabase/functions/log-login-ip/index.ts`
-- Thêm cùng mảng allowlist và kiểm tra trong hàm `detectEmailFarm` trước khi gắn cờ:
-```
-const EMAIL_FARM_ALLOWLIST = ['hoangtydo', 'bongsieuoi'];
-```
-- Thêm điều kiện bỏ qua nếu emailBase khớp allowlist ngay đầu hàm `detectEmailFarm`.
+2. **Cập nhật header cột Email (dòng 134)**: Thêm nút Search icon bên cạnh chữ "Email". Khi nhấp sẽ mở Popover.
 
-### 3. Khôi phục trạng thái
-- Kiểm tra xem 3 tài khoản này có đang bị đình chỉ (`on_hold`) không, nếu có sẽ chuyển về `approved`.
-- Giải quyết (resolve) các tín hiệu gian lận EMAIL_FARM liên quan.
+3. **Tạo Popover nội dung**:
+   - Ô input tìm kiếm email riêng (lọc trong danh sách email).
+   - Danh sách email sắp xếp A-Z (dùng ScrollArea để cuộn được).
+   - Mỗi email là một dòng có thể nhấp. Khi nhấp:
+     - Tự động điền email vào ô tìm kiếm chính (`setSearch`).
+     - Đóng popover.
 
-Chỉ sửa 2 file edge function, deploy lại.
+4. **Tạo danh sách email từ `allUsers`**: Lọc các email không null, sắp xếp alphabetically, loại trùng.
+
+### File: `src/hooks/useUserDirectory.ts`
+
+5. **Mở rộng logic tìm kiếm (dòng ~178)**: Thêm kiểm tra email vào bộ lọc search để khi admin nhập email vào ô tìm kiếm chính, kết quả hiện đúng user.
+
+### Components sử dụng
+
+- `Popover` + `PopoverTrigger` + `PopoverContent` (có sẵn trong dự án)
+- `ScrollArea` (có sẵn)
+- `Input` (có sẵn)
+- Icon `Search` từ lucide-react (đã import)
