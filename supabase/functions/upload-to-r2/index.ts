@@ -19,7 +19,7 @@ const ALLOWED_CONTENT_TYPES = [
 
 // Max file size: 100MB for images, 2GB for videos
 const MAX_IMAGE_SIZE = 100 * 1024 * 1024;
-const MAX_VIDEO_SIZE = 2 * 1024 * 1024 * 1024;
+const MAX_VIDEO_SIZE = 4 * 1024 * 1024 * 1024;
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
