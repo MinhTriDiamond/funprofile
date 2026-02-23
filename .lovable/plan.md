@@ -1,32 +1,36 @@
 
-# Fix White Screen When Starting Live Stream
+# Đóng 4 Live Session Đang Bị Treo
 
-## Root Cause
-When `LiveHostPage` loads at `/live/new`, the initial `bootState` is `'idle'`. However, the `showLoader` condition only checks for `'auth' | 'creating' | 'loading' | 'starting'` -- it does NOT include `'idle'`. This means during the brief moment before `runBootstrap()` runs, the component falls through to the `!session` check and renders a "Live session not found" card. If the bootstrap then fails (e.g., due to exhausted Cloud balance, network error, or auth issues), it can result in a white screen or flash.
+## Tổng Quan
+Chạy SQL migration để đóng tất cả live session đang có `status = 'live'` nhưng thực tế đã không hoạt động.
 
-Additionally, the component lacks a top-level error boundary, so any uncaught error during render (e.g., from hooks like `useBlocker`, `useLiveSession`) will crash the entire page to white.
+## Chi Tiết
+Thực hiện một migration SQL đơn giản:
 
-## Fix (1 file)
-
-### File: `src/modules/live/pages/LiveHostPage.tsx`
-
-1. **Include `'idle'` in `showLoader` condition** so the page shows a loading spinner immediately instead of flashing "not found":
-
-```typescript
-// Before:
-const showLoader =
-  ['auth', 'creating', 'loading', 'starting'].includes(bootState) || ...
-
-// After:
-const showLoader =
-  ['idle', 'auth', 'creating', 'loading', 'starting'].includes(bootState) || ...
+```sql
+UPDATE live_sessions
+SET status = 'ended',
+    ended_at = now(),
+    updated_at = now()
+WHERE status = 'live';
 ```
 
-2. **Wrap the main component export with a try-catch error boundary** using a simple wrapper to prevent white screen on any uncaught render error:
+Đồng thời cập nhật metadata của các post liên quan:
 
-```typescript
-// Add a simple ErrorBoundary wrapper around the default export
-// If any error occurs, show the error UI instead of white screen
+```sql
+UPDATE posts
+SET metadata = jsonb_set(
+  jsonb_set(
+    COALESCE(metadata::jsonb, '{}'::jsonb),
+    '{live_status}', '"ended"'
+  ),
+  '{ended_at}', to_jsonb(now()::text)
+)
+WHERE id IN (
+  SELECT post_id FROM live_sessions
+  WHERE status = 'ended' AND post_id IS NOT NULL
+  AND ended_at >= now() - interval '1 second'
+);
 ```
 
-This is a minimal 2-line change in 1 file that prevents the white screen.
+Chỉ cần 1 migration SQL, không cần thay đổi code frontend hay Edge Function nào.
