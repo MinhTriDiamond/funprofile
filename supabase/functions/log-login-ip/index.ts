@@ -104,9 +104,16 @@ async function handleBlacklistedIp(supabaseAdmin: any, userId: string, ip: strin
 
   const { data: admins } = await supabaseAdmin.from("user_roles").select("user_id").eq("role", "admin");
   if (admins?.length) {
-    await supabaseAdmin.from("notifications").insert(
-      admins.map((a: { user_id: string }) => ({ user_id: a.user_id, actor_id: userId, type: "admin_blacklisted_ip", read: false }))
-    );
+      await supabaseAdmin.from("notifications").insert(
+        admins.map((a: { user_id: string }) => ({
+          user_id: a.user_id, actor_id: userId, type: "admin_blacklisted_ip", read: false,
+          metadata: {
+            ip_address: ip,
+            reason: blacklistedIp.reason,
+            known_usernames: blacklistedIp.associated_usernames?.slice(0, 5) || [],
+          },
+        }))
+      );
   }
 
   await supabaseAdmin.from("profiles").update({
@@ -188,10 +195,22 @@ async function handleDeviceFingerprint(supabaseAdmin: any, userId: string, devic
       source: "log-login-ip",
     });
 
+    // Fetch usernames for notification metadata
+    const { data: userProfiles } = await supabaseAdmin
+      .from("profiles").select("id, username").in("id", allUserIds);
+    const allUsernames = userProfiles?.map((p: any) => p.username).filter(Boolean) || [];
+
     const { data: admins } = await supabaseAdmin.from("user_roles").select("user_id").eq("role", "admin");
     if (admins?.length) {
       await supabaseAdmin.from("notifications").insert(
-        admins.map((a: any) => ({ user_id: a.user_id, actor_id: userId, type: "admin_shared_device", read: false }))
+        admins.map((a: any) => ({
+          user_id: a.user_id, actor_id: userId, type: "admin_shared_device", read: false,
+          metadata: {
+            device_hash: deviceHash.slice(0, 8),
+            user_count: allUserIds.length,
+            usernames: allUsernames.slice(0, 10),
+          },
+        }))
       );
     }
   }
@@ -253,7 +272,14 @@ async function detectEmailFarm(supabaseAdmin: any, userId: string, email: string
         const { data: admins } = await supabaseAdmin.from("user_roles").select("user_id").eq("role", "admin");
         if (admins?.length) {
           await supabaseAdmin.from("notifications").insert(
-            admins.map((a: any) => ({ user_id: a.user_id, actor_id: userId, type: "admin_email_farm", read: false }))
+            admins.map((a: any) => ({
+              user_id: a.user_id, actor_id: userId, type: "admin_email_farm", read: false,
+              metadata: {
+                email_base: emailBase,
+                count: matchingUsers.length,
+                emails: matchedEmails.slice(0, 5),
+              },
+            }))
           );
         }
 

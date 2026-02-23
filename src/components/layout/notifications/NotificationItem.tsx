@@ -18,7 +18,8 @@ export function NotificationItem({ notification, onClick }: NotificationItemProp
   const { main: notificationText, snippet } = getNotificationText(
     notification.type,
     notification.actor?.username || 'Người dùng',
-    notification.post?.content
+    notification.post?.content,
+    notification.metadata
   );
 
   return (
