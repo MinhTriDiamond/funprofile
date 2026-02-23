@@ -22,6 +22,7 @@ import {
 import { createRecorder, type RecorderController } from '../recording/clientRecorder';
 import { useLiveSession } from '../useLiveSession';
 import { useLiveRtc } from '../hooks/useLiveRtc';
+import { useLiveHeartbeat } from '../hooks/useLiveHeartbeat';
 import { LiveChatPanel } from '../components/LiveChatPanel';
 import { FloatingReactions } from '../components/FloatingReactions';
 
@@ -117,6 +118,32 @@ export default function LiveHostPage() {
   });
 
   const isHost = useMemo(() => !!session && !!userId && session.host_user_id === userId, [session, userId]);
+
+  // Heartbeat: keep session alive every 15s
+  useLiveHeartbeat(effectiveSessionId, isHost);
+
+  // Realtime force-stop: if another device starts live, this session gets ended
+  useEffect(() => {
+    if (!effectiveSessionId) return;
+
+    const channel = supabase
+      .channel(`live-force-stop-${effectiveSessionId}`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'live_sessions',
+        filter: `id=eq.${effectiveSessionId}`,
+      }, (payload: any) => {
+        if (payload.new.status === 'ended') {
+          toast.info('Phiên live đã kết thúc vì bạn bắt đầu live từ thiết bị khác.');
+          leave();
+          navigate('/');
+        }
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [effectiveSessionId, leave, navigate]);
 
   const runBootstrap = useCallback(async () => {
     setBootError(null);

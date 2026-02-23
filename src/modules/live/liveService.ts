@@ -153,6 +153,30 @@ export async function createLiveSession(input: CreateLiveSessionInput): Promise<
   const channelName = buildChannelName(userId);
   const visibility = input.privacy === 'friends' ? 'friends' : 'public';
 
+  // ── Single Active Host Rule (Facebook-style) ──
+  // Auto-end any existing live sessions before creating a new one
+  const { data: oldSessions } = await db
+    .from('live_sessions')
+    .select('id, post_id')
+    .eq('host_user_id', userId)
+    .eq('status', 'live');
+
+  if (oldSessions && oldSessions.length > 0) {
+    const nowIso = new Date().toISOString();
+    await db
+      .from('live_sessions')
+      .update({ status: 'ended', ended_at: nowIso, updated_at: nowIso })
+      .eq('host_user_id', userId)
+      .eq('status', 'live');
+
+    // Update old posts metadata to ended
+    for (const old of oldSessions) {
+      if (old.post_id) {
+        await mergeLivePostMetadata(old.post_id, { live_status: 'ended', ended_at: nowIso });
+      }
+    }
+  }
+
   let postId: string | null = null;
 
   try {
