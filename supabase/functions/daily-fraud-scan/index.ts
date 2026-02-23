@@ -12,7 +12,7 @@ function getEmailBase(email: string): string {
 }
 
 /** Email farm allowlist - verified admin clusters */
-const EMAIL_FARM_ALLOWLIST = ['hoangtydo'];
+const EMAIL_FARM_ALLOWLIST = ['hoangtydo', 'bongsieuoi'];
 
 /** Lookup usernames from profiles table */
 async function lookupUsernames(
