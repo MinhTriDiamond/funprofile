@@ -94,9 +94,9 @@ Deno.serve(async (req: Request) => {
 
     // Supabase client already created above for rate limiting
 
-    // Generate OTP and expiry (5 minutes)
+    // Generate OTP and expiry (10 minutes)
     const otp = generateOTP();
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
     // Delete any existing unused OTP for this identifier
     await supabase
@@ -147,8 +147,8 @@ Deno.serve(async (req: Request) => {
               <div style="padding: 40px 32px;">
                 <h2 style="color: #f1f5f9; margin: 0 0 16px 0; font-size: 22px;">Xin chào! 👋</h2>
                 <p style="color: #94a3b8; margin: 0 0 24px 0; font-size: 16px; line-height: 1.6;">
-                  Đây là mã OTP để xác thực tài khoản của bạn. Mã này sẽ hết hạn sau <strong style="color: #10b981;">5 phút</strong>.
-                </p>
+                   Đây là mã OTP để xác thực tài khoản của bạn. Mã này sẽ hết hạn sau <strong style="color: #10b981;">10 phút</strong>.
+                 </p>
                 
                 <div style="background: rgba(16, 185, 129, 0.1); border: 2px solid #10b981; border-radius: 12px; padding: 24px; text-align: center; margin: 24px 0;">
                   <span style="font-size: 36px; font-weight: 800; letter-spacing: 12px; color: #10b981; font-family: 'Courier New', monospace;">
@@ -193,7 +193,7 @@ Deno.serve(async (req: Request) => {
         success: true,
         message: emailSent ? `OTP sent to ${identifier}` : 'OTP generated (email delivery pending)',
         email_sent: emailSent,
-        expires_in_seconds: 300
+        expires_in_seconds: 600
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
