@@ -16,7 +16,7 @@ export function StartLiveDialog({ open, onOpenChange }: StartLiveDialogProps) {
 
   const handleStart = () => {
     onOpenChange(false);
-    navigate(mode === 'realtime' ? '/live/new' : '/live/stream');
+    navigate(mode === 'realtime' ? '/live/setup' : '/live/stream');
   };
 
   return (
