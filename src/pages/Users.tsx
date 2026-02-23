@@ -188,6 +188,8 @@ const Users = () => {
                       <TableCell>
                         {user.is_banned ? (
                           <Badge variant="destructive" className="text-[10px] px-1.5">Cấm</Badge>
+                        ) : user.reward_status === 'on_hold' ? (
+                          <Badge className="text-[10px] px-1.5 bg-orange-500/10 text-orange-600 border-orange-500/20">Đình chỉ</Badge>
                         ) : (
                           <Badge className="text-[10px] px-1.5 bg-emerald-500/10 text-emerald-600 border-emerald-500/20">Hoạt động</Badge>
                         )}

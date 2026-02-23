@@ -213,7 +213,7 @@ export const useUserDirectory = () => {
     else if (filters.withdrawn === 'no') result = result.filter(u => u.camly_claimed === 0);
 
     if (filters.status === 'active') result = result.filter(u => !u.is_banned && u.reward_status !== 'on_hold');
-    else if (filters.status === 'suspended') result = result.filter(u => u.reward_status === 'on_hold');
+    else if (filters.status === 'suspended') result = result.filter(u => u.reward_status === 'on_hold' && !u.is_banned);
     else if (filters.status === 'banned') result = result.filter(u => u.is_banned);
 
     if (filters.wallet === 'has') result = result.filter(u => !!u.wallet_address);
