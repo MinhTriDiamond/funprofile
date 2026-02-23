@@ -1,61 +1,42 @@
 
-# Hiển Thị Tên + Email Rõ Ràng Trên Tất Cả Thông Báo Cảnh Báo
+# Cập Nhật Hiển Thị Email Cho Tất Cả Thông Báo Cảnh Báo
 
 ## Vấn Đề
 
-Hiện tại 2 mục thông báo cũ (`admin_fraud_daily`) chỉ hiển thị số liệu tổng ("7 cảnh báo, 33 đình chỉ") mà không kèm theo danh sách tên user và email cụ thể. Mục mới nhất đã hiển thị username nhưng vẫn thiếu email.
+2 thông báo cảnh báo cũ (`admin_shared_device`) không hiển thị email vì chúng được tạo bởi hàm `log-login-ip` -- hàm này chỉ lưu `usernames` mà không lưu `flagged_emails` vào metadata. Ngoài ra, thông báo `admin_email_farm` từ `log-login-ip` cũng thiếu username + email mapping.
 
 ## Giải Pháp
 
-### 1. Cập nhật Edge Function `daily-fraud-scan/index.ts`
+### 1. Cập nhật `log-login-ip/index.ts` - Hàm `detectSharedDevice`
 
-- Thu thập **email** của tất cả user bị gắn cờ (từ `auth.admin.listUsers` cho email farm, và query thêm cho shared device/IP cluster)
-- Lưu thêm trường `flagged_emails` vào metadata (map username -> email)
-- Cập nhật alert text để bao gồm cả email, ví dụ:
-  - `"Thiết bị dfb4... có 3 TK: MINHCANH (minh@gmail.com), @Binhan2024 (binh@gmail.com)"`
+Thêm logic tra cứu email cho các user bị gắn cờ thiết bị chung:
+- Sử dụng `auth.admin.listUsers()` hoặc query `globalEmailMap` để lấy email
+- Thêm trường `flagged_emails` (map username -> email) vào metadata notification `admin_shared_device`
 
-Metadata mới:
-```text
-{
-  alerts_count: 7,
-  alerts: ["..."],
-  accounts_held: 33,
-  flagged_usernames: ["user1", "user2"],
-  flagged_emails: {"user1": "email1@gmail.com", "user2": "email2@gmail.com"}  // MỚI
-}
-```
+### 2. Cập nhật `log-login-ip/index.ts` - Hàm `detectEmailFarm`
 
-### 2. Cập nhật hiển thị `Notifications.tsx` (trang thông báo đầy đủ)
+Thêm username mapping và `flagged_emails` vào metadata notification `admin_email_farm`:
+- Tra cứu username từ profiles table cho các user khớp email farm
+- Thêm `usernames` và `flagged_emails` vào metadata
 
-- Case `admin_fraud_daily`: hiển thị danh sách `username (email)` thay vì chỉ username
-- Case `admin_shared_device`: hiển thị username kèm email
-- Case `admin_email_farm`: hiển thị username kèm email  
-- Case `admin_blacklisted_ip`: hiển thị username kèm email nếu có
+### 3. Dọn dẹp thông báo cũ thiếu email
 
-### 3. Cập nhật hiển thị `utils.ts` (dropdown notification)
+Xóa các thông báo `admin_shared_device` cũ không có `flagged_emails`, sau đó chạy lại scan để tạo mới với đầy đủ thông tin.
 
-- Tương tự cập nhật cho tất cả 4 case admin notification
+## Chi Tiết Kỹ Thuật
 
-### 4. Dọn dẹp thông báo trùng lặp
+**File 1: `supabase/functions/log-login-ip/index.ts`**
 
-- Xóa các thông báo `admin_fraud_daily` cũ (hiện có 8 bản trùng, chỉ giữ 4 bản mới nhất -- 1 cho mỗi admin)
-- Chạy lại scan để tạo thông báo mới với đầy đủ thông tin
+Hàm `detectSharedDevice` (dòng ~198-215):
+- Sau khi lấy `userProfiles`, thêm query `auth.admin.listUsers()` để lấy email
+- Build `flaggedEmails` map: `{ username: email }`  
+- Thêm `flagged_emails: flaggedEmails` vào metadata notification
 
-### Chi tiết kỹ thuật
+Hàm `detectEmailFarm` (dòng ~272-283):
+- Sau khi có `matchingUsers` (từ auth), tra cứu profiles để lấy username
+- Build `flaggedEmails` map và `usernames` array
+- Thêm `usernames` + `flagged_emails` vào metadata notification
 
-**`supabase/functions/daily-fraud-scan/index.ts`:**
-- Tạo hàm `lookupEmails()` truy vấn `auth.admin.listUsers` để lấy email theo user ID
-- Tái sử dụng data email đã có từ bước email farm detection
-- Thêm `flagged_emails` (object username -> email) vào metadata notification
-- Cập nhật alert strings: `"username (email)"` format
-
-**`src/pages/Notifications.tsx`:**
-- Cập nhật hàm `getNotificationText` cho 4 case admin: hiển thị `username (email)` thay vì chỉ username
-- Đọc `m.flagged_emails` để map username -> email
-
-**`src/components/layout/notifications/utils.ts`:**
-- Cập nhật hàm `getNotificationText` tương tự cho dropdown
-- Thêm `flagged_emails` vào `NotificationMetadata` type
-
-**`src/components/layout/notifications/types.ts`:**
-- Thêm `flagged_emails?: Record<string, string>` vào interface `NotificationMetadata`
+**File 2: Dọn dẹp database**
+- Xóa các `admin_shared_device` trùng lặp (giữ bản mới nhất cho mỗi device)
+- Chạy lại `daily-fraud-scan` để tạo notification mới có đầy đủ thông tin
