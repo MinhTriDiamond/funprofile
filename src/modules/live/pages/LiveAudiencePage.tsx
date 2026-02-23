@@ -6,6 +6,15 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+} from '@/components/ui/alert-dialog';
 import { useLiveSession } from '../useLiveSession';
 import { useLiveRtc } from '../hooks/useLiveRtc';
 import { incrementLiveViewerCount, decrementLiveViewerCount } from '../liveService';
@@ -17,6 +26,7 @@ export default function LiveAudiencePage() {
   const { liveSessionId } = useParams<{ liveSessionId: string }>();
   const { data: session, isLoading } = useLiveSession(liveSessionId);
   const [mobileTab, setMobileTab] = useState<'chat' | 'reactions'>('chat');
+  const [showEndedDialog, setShowEndedDialog] = useState(false);
 
   const {
     remoteContainerRef,
@@ -57,6 +67,7 @@ export default function LiveAudiencePage() {
   useEffect(() => {
     if (session?.status === 'ended') {
       leave().catch(() => undefined);
+      setShowEndedDialog(true);
     }
   }, [leave, session?.status]);
 
@@ -118,7 +129,7 @@ export default function LiveAudiencePage() {
                 <div ref={remoteContainerRef} className="h-full w-full" />
                 {!hasRemoteVideo && (
                   <div className="absolute inset-0 flex items-center justify-center text-white/90 bg-black/50 text-center px-4">
-                    {session.status === 'ended' ? 'This live has ended.' : statusText}
+                    {session.status === 'ended' ? 'Phiên Live Stream đã kết thúc' : statusText}
                   </div>
                 )}
 
@@ -169,6 +180,20 @@ export default function LiveAudiencePage() {
           </Button>
         </div>
       </main>
+
+      <AlertDialog open={showEndedDialog}>
+        <AlertDialogContent onEscapeKeyDown={(e) => e.preventDefault()}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Phiên Live Stream đã kết thúc</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cảm ơn bạn đã theo dõi phiên phát trực tiếp!
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => navigate('/')}>OK</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
