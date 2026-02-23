@@ -20,7 +20,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Download, Users as UsersIcon, Search, ChevronLeft, ChevronRight,
   Coins, Gift, Star, FileText, MessageSquare, Wallet, Send, ArrowDownToLine,
-  Globe, TrendingUp, Trash2,
+  Globe, TrendingUp, Trash2, ArrowUpDown, ArrowUp, ArrowDown,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
@@ -32,7 +32,7 @@ const Users = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const {
-    users, isLoading, stats, search, setSearch, page, setPage, totalPages, exportCSV, allUsers, filters, setFilters, isAdmin, emailsMap,
+    users, isLoading, stats, search, setSearch, page, setPage, totalPages, exportCSV, allUsers, filters, setFilters, isAdmin, emailsMap, sortBy, setSortBy,
   } = useUserDirectory();
 
   const [emailFilter, setEmailFilter] = useState('');
@@ -143,11 +143,31 @@ const Users = () => {
               <TableHeader>
                 <TableRow className="bg-muted/50">
                   <TableHead className="w-10 text-center">#</TableHead>
-                  <TableHead className="min-w-[160px]">Người dùng</TableHead>
+                  <TableHead className="min-w-[160px]">
+                    <div className="flex items-center gap-1">
+                      Người dùng
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => setSortBy(sortBy === 'username-asc' ? 'username-desc' : sortBy === 'username-desc' ? 'default' : 'username-asc')}
+                      >
+                        {sortBy === 'username-asc' ? <ArrowUp className="h-3.5 w-3.5 text-primary" /> : sortBy === 'username-desc' ? <ArrowDown className="h-3.5 w-3.5 text-primary" /> : <ArrowUpDown className="h-3.5 w-3.5" />}
+                      </Button>
+                    </div>
+                  </TableHead>
                   {isAdmin && (
                     <TableHead className="hidden md:table-cell min-w-[180px]">
                       <div className="flex items-center gap-1">
                         Email
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => setSortBy(sortBy === 'email-asc' ? 'email-desc' : sortBy === 'email-desc' ? 'default' : 'email-asc')}
+                        >
+                          {sortBy === 'email-asc' ? <ArrowUp className="h-3.5 w-3.5 text-primary" /> : sortBy === 'email-desc' ? <ArrowDown className="h-3.5 w-3.5 text-primary" /> : <ArrowUpDown className="h-3.5 w-3.5" />}
+                        </Button>
                         <Popover open={emailPopoverOpen} onOpenChange={setEmailPopoverOpen}>
                           <PopoverTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-6 w-6">
