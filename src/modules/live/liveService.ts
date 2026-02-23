@@ -29,6 +29,7 @@ export type RecordingStatus =
   | 'starting'
   | 'recording'
   | 'stopping'
+  | 'compressing'
   | 'processing'
   | 'ready'
   | 'failed'
