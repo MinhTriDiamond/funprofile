@@ -26,6 +26,7 @@ export interface NotificationMetadata {
   alerts?: string[];
   accounts_held?: number;
   flagged_usernames?: string[];
+  flagged_emails?: Record<string, string>;
   reason?: string;
   known_usernames?: string[];
 }

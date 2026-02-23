@@ -39,6 +39,22 @@ async function lookupUsernames(
   return map;
 }
 
+/** Build userId -> email map from auth users list */
+function buildEmailMap(authUsers: Array<{ id: string; email?: string }>): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const u of authUsers) {
+    if (u.email) map.set(u.id, u.email);
+  }
+  return map;
+}
+
+/** Format username with email: "username (email)" */
+function formatUserWithEmail(userId: string, usernameMap: Map<string, string>, emailMap: Map<string, string>): string {
+  const name = usernameMap.get(userId) || userId.slice(0, 8);
+  const email = emailMap.get(userId);
+  return email ? `${name} (${email})` : name;
+}
+
 /** Auto-hold users, excluding admins and already banned/on_hold */
 async function autoHoldUsers(
   supabase: ReturnType<typeof createClient>,
@@ -143,8 +159,11 @@ Deno.serve(async (req) => {
 
     // 2. Email farm detection
     const emailClusters: Array<{ emailBase: string; users: Array<{ id: string; email: string }> }> = [];
+    let globalEmailMap = new Map<string, string>();
     const { data: authUsers, error: authErr } = await supabase.auth.admin.listUsers({ perPage: 1000 });
     if (!authErr && authUsers?.users) {
+      // Build global email map for all users
+      globalEmailMap = buildEmailMap(authUsers.users as Array<{ id: string; email?: string }>);
       const emailGroups = new Map<string, Array<{ id: string; email: string }>>();
       for (const u of authUsers.users) {
         if (!u.email) continue;
@@ -316,23 +335,31 @@ Deno.serve(async (req) => {
       id => usernameMap.get(id) || id.slice(0, 8)
     );
 
-    // Build enriched alert strings with usernames
+    // Build flagged_emails map: username -> email
+    const flaggedEmails: Record<string, string> = {};
+    for (const uid of new Set(allFlaggedUserIds)) {
+      const uname = usernameMap.get(uid) || uid.slice(0, 8);
+      const email = globalEmailMap.get(uid);
+      if (email) flaggedEmails[uname] = email;
+    }
+
+    // Build enriched alert strings with usernames + emails
     for (const { hash, users } of deviceClusters) {
-      const names = users.map(id => usernameMap.get(id) || id.slice(0, 8)).join(', ');
+      const names = users.map(id => formatUserWithEmail(id, usernameMap, globalEmailMap)).join(', ');
       alerts.push(`Thiết bị ${hash.slice(0, 8)}... có ${users.length} TK: ${names}`);
     }
     for (const { emailBase, users } of emailClusters) {
-      const names = users.map(u => usernameMap.get(u.id) || u.id.slice(0, 8)).join(', ');
+      const names = users.map(u => formatUserWithEmail(u.id, usernameMap, globalEmailMap)).join(', ');
       alerts.push(`Cụm email "${emailBase}" có ${users.length} TK: ${names}`);
     }
     for (const { ip, sharedDeviceUsers, uniqueDeviceUsers } of ipClusters) {
       const parts: string[] = [];
       if (sharedDeviceUsers.length > 0) {
-        const names = sharedDeviceUsers.map(id => usernameMap.get(id) || id.slice(0, 8)).join(', ');
+        const names = sharedDeviceUsers.map(id => formatUserWithEmail(id, usernameMap, globalEmailMap)).join(', ');
         parts.push(`${sharedDeviceUsers.length} TK chung thiết bị (đã đình chỉ): ${names}`);
       }
       if (uniqueDeviceUsers.length > 0) {
-        const names = uniqueDeviceUsers.map(id => usernameMap.get(id) || id.slice(0, 8)).join(', ');
+        const names = uniqueDeviceUsers.map(id => formatUserWithEmail(id, usernameMap, globalEmailMap)).join(', ');
         parts.push(`${uniqueDeviceUsers.length} TK thiết bị riêng (chỉ cảnh báo): ${names}`);
       }
       alerts.push(`IP ${ip}: ${parts.join(' | ')}`);
@@ -356,6 +383,7 @@ Deno.serve(async (req) => {
               alerts: alerts.slice(0, 10),
               accounts_held: totalHeld,
               flagged_usernames: allFlaggedUsernames.slice(0, 50),
+              flagged_emails: flaggedEmails,
             },
           }))
         );
