@@ -305,7 +305,7 @@ Deno.serve(async (req) => {
           }
 
           if (uniqueDeviceUsers.length > 0 && sharedDeviceUsers.length === 0) {
-            // Low severity: same IP but all different devices = likely shared wifi, only warn
+            // Same IP but all different devices - still auto-hold for safety
             const { data: existing } = await supabase
               .from("pplp_fraud_signals")
               .select("id")
@@ -319,11 +319,16 @@ Deno.serve(async (req) => {
                 actor_id: uniqueDeviceUsers[0],
                 signal_type: "IP_CLUSTER",
                 severity: 2,
-                details: { ip_address: ip, user_count: users.size, user_ids: userArr, note: "Khác thiết bị - chỉ cảnh báo" },
+                details: { ip_address: ip, user_count: users.size, user_ids: userArr, note: "Khác thiết bị - đình chỉ để kiểm tra" },
                 source: "daily-fraud-scan",
               });
             }
-            // NO auto-hold for unique device users
+
+            const held = await autoHoldUsers(
+              supabase, uniqueDeviceUsers, adminIds,
+              `IP ${ip} có ${users.size} TK khác thiết bị - đình chỉ để xác minh.`,
+            );
+            totalHeld += held;
           }
         }
       }
