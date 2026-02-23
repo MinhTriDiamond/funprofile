@@ -55,7 +55,8 @@ const REC_BADGE: Record<RecordingStatus, { label: string; variant: 'default' | '
   starting: { label: '⏳ Đang bắt đầu...', variant: 'secondary' },
   recording: { label: '⏺ Đang ghi', variant: 'destructive' },
   stopping: { label: '⏳ Đang dừng...', variant: 'secondary' },
-  processing: { label: '⏳ Đang xử lý...', variant: 'secondary' },
+  compressing: { label: '🗜 Đang nén...', variant: 'secondary' },
+  processing: { label: '⏳ Đang tải lên...', variant: 'secondary' },
   ready: { label: '✓ Đã lưu', variant: 'default' },
   failed: { label: '✕ Lỗi ghi hình', variant: 'outline' },
   stopped: { label: '■ Đã dừng', variant: 'secondary' },
@@ -75,6 +76,7 @@ export default function LiveHostPage() {
   const [recordingState, setRecordingState] = useState<RecordingStatus>('idle');
   const [recordingError, setRecordingError] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [compressProgress, setCompressProgress] = useState<number>(0);
   const startedRef = useRef(false);
   const browserRecorderRef = useRef<RecorderController | null>(null);
   const lastSentViewerCountRef = useRef<number | null>(null);
@@ -299,12 +301,21 @@ const handleEndLive = async () => {
     try {
       if (browserRecorderRef.current?.getState() === 'recording') {
         setRecordingState('stopping');
-        const blob = await browserRecorderRef.current.stop();
-        if (blob.size > 0) {
+        const rawBlob = await browserRecorderRef.current.stop();
+        if (rawBlob.size > 0) {
+          // 1. Compress video before upload
+          setRecordingState('compressing');
+          setCompressProgress(0);
+          const { compressVideo } = await import('@/utils/videoCompression');
+          const blob = await compressVideo(rawBlob, {
+            onProgress: (p) => setCompressProgress(p),
+          });
+
+          // 2. Upload compressed video
           setRecordingState('processing');
           setUploadProgress(0);
 
-          // 1. Generate thumbnail from video blob (silent fail)
+          // 2a. Generate thumbnail from video blob (silent fail)
           try {
             const thumbBlob = await generateThumbnailFromBlob(blob);
             if (thumbBlob) {
@@ -314,7 +325,7 @@ const handleEndLive = async () => {
             // thumbnail failure won't block video upload
           }
 
-          // 2. Upload video to R2 with progress tracking
+          // 2b. Upload video to R2 with progress tracking
           const { url } = await uploadLiveRecording(
             blob,
             effectiveSessionId,
@@ -359,7 +370,7 @@ const handleEndLive = async () => {
     setRetryNonce((x) => x + 1);
   };
 
-  const isEnding = ['stopping', 'processing'].includes(recordingState);
+  const isEnding = ['stopping', 'compressing', 'processing'].includes(recordingState);
 
   const showLoader =
     ['auth', 'creating', 'loading', 'starting'].includes(bootState) ||
@@ -470,6 +481,24 @@ const handleEndLive = async () => {
               <Card className="p-3 text-sm border-primary/30 text-primary flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Đang dừng ghi hình...
+              </Card>
+            )}
+
+            {recordingState === 'compressing' && (
+              <Card className="p-4 border-primary/30">
+                <div className="flex items-center gap-2 mb-3">
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  <span className="text-sm font-medium text-primary">
+                    Đang nén video...
+                  </span>
+                  <span className="ml-auto text-sm font-mono font-bold text-primary">
+                    {compressProgress}%
+                  </span>
+                </div>
+                <Progress value={compressProgress} className="h-2.5" />
+                <p className="text-xs text-muted-foreground mt-2">
+                  ⚠️ Vui lòng không đóng tab — đang nén video để giảm dung lượng
+                </p>
               </Card>
             )}
 
