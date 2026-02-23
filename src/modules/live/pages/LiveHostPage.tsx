@@ -21,7 +21,6 @@ import {
 
 import { supabase } from '@/integrations/supabase/client';
 import {
-  createLiveSession,
   finalizeLiveSession,
   updateLiveViewerCount,
   uploadLiveRecording,
@@ -159,7 +158,6 @@ export default function LiveHostPage() {
   const runBootstrap = useCallback(async () => {
     setBootError(null);
     setBootState('auth');
-    setCreatedSessionId(null);
 
     const authResult = await withTimeout(supabase.auth.getSession(), 8000, 'auth timeout');
     const currentUserId = authResult.data.session?.user?.id;
@@ -168,23 +166,13 @@ export default function LiveHostPage() {
     }
     setUserId(currentUserId);
 
-    if (liveSessionId) {
-      setBootState('loading');
+    if (!liveSessionId) {
+      // No sessionId in URL — redirect to setup page
+      navigate('/live/setup', { replace: true });
       return;
     }
 
-    setBootState('creating');
-    const created = await withTimeout(
-      createLiveSession({
-        privacy: preLiveState?.privacy === 'friends' ? 'friends' : 'public',
-        title: preLiveState?.title,
-      }),
-      15000,
-      'create live session timeout'
-    );
-    setCreatedSessionId(created.id);
     setBootState('loading');
-    navigate(`/live/${created.id}/host`, { replace: true });
   }, [liveSessionId, navigate]);
 
   useEffect(() => {
