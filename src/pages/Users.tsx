@@ -21,6 +21,7 @@ import {
   Download, Users as UsersIcon, Search, ChevronLeft, ChevronRight,
   Coins, Gift, Star, FileText, MessageSquare, Wallet, Send, ArrowDownToLine,
   Globe, TrendingUp, Trash2, ArrowUpDown, ArrowUp, ArrowDown,
+  ShieldBan, Pause, Unlock,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
@@ -49,6 +50,11 @@ const Users = () => {
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; username: string } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Hover status action states
+  const [hoverUserId, setHoverUserId] = useState<string | null>(null);
+  const [actionTarget, setActionTarget] = useState<{ id: string; username: string; type: 'ban' | 'suspend' | 'unlock' } | null>(null);
+  const [isActioning, setIsActioning] = useState(false);
+
   const fmt = (n: number) => n.toLocaleString('vi-VN');
   const shortenAddr = (addr: string | null) => addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : '—';
   const fmtDate = (d: string | null) => d ? new Date(d).toLocaleDateString('vi-VN') : '—';
@@ -70,6 +76,38 @@ const Users = () => {
     } finally {
       setIsDeleting(false);
       setDeleteTarget(null);
+    }
+  };
+
+  const handleStatusAction = async () => {
+    if (!actionTarget) return;
+    setIsActioning(true);
+    try {
+      if (actionTarget.type === 'ban') {
+        const { data: { user: adminUser } } = await supabase.auth.getUser();
+        if (!adminUser) throw new Error('Không xác thực được admin');
+        const { error } = await supabase.rpc('ban_user_permanently', {
+          p_admin_id: adminUser.id,
+          p_user_id: actionTarget.id,
+          p_reason: 'Banned from user directory by admin',
+        });
+        if (error) throw error;
+        toast({ title: 'Đã cấm', description: `@${actionTarget.username} đã bị cấm vĩnh viễn.` });
+      } else if (actionTarget.type === 'suspend') {
+        const { error } = await supabase.from('profiles').update({ reward_status: 'on_hold' }).eq('id', actionTarget.id);
+        if (error) throw error;
+        toast({ title: 'Đã đình chỉ', description: `@${actionTarget.username} đã bị đình chỉ.` });
+      } else if (actionTarget.type === 'unlock') {
+        const { error } = await supabase.from('profiles').update({ reward_status: 'approved' }).eq('id', actionTarget.id);
+        if (error) throw error;
+        toast({ title: 'Đã mở khóa', description: `@${actionTarget.username} đã được mở khóa.` });
+      }
+      queryClient.invalidateQueries({ queryKey: ['user-directory'] });
+    } catch (err: any) {
+      toast({ title: 'Lỗi', description: err.message || 'Không thể thực hiện hành động', variant: 'destructive' });
+    } finally {
+      setIsActioning(false);
+      setActionTarget(null);
     }
   };
 
@@ -260,13 +298,54 @@ const Users = () => {
                         </TableCell>
                       )}
                       <TableCell>
-                        {user.is_banned ? (
-                          <Badge variant="destructive" className="text-[10px] px-1.5">Cấm</Badge>
-                        ) : user.reward_status === 'on_hold' ? (
-                          <Badge className="text-[10px] px-1.5 bg-orange-500/10 text-orange-600 border-orange-500/20">Đình chỉ</Badge>
-                        ) : (
-                          <Badge className="text-[10px] px-1.5 bg-emerald-500/10 text-emerald-600 border-emerald-500/20">Hoạt động</Badge>
-                        )}
+                        <div
+                          onMouseEnter={() => isAdmin && !user.is_banned && setHoverUserId(user.id)}
+                          onMouseLeave={() => setHoverUserId(null)}
+                          className="relative"
+                        >
+                          {isAdmin && hoverUserId === user.id && !user.is_banned ? (
+                            <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-red-600 hover:bg-red-500/10 hover:text-red-700"
+                                title="Cấm vĩnh viễn"
+                                onClick={() => setActionTarget({ id: user.id, username: user.username, type: 'ban' })}
+                              >
+                                <ShieldBan className="w-3.5 h-3.5" />
+                              </Button>
+                              {user.reward_status === 'on_hold' ? (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-700"
+                                  title="Mở khóa"
+                                  onClick={() => setActionTarget({ id: user.id, username: user.username, type: 'unlock' })}
+                                >
+                                  <Unlock className="w-3.5 h-3.5" />
+                                </Button>
+                              ) : (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 text-orange-600 hover:bg-orange-500/10 hover:text-orange-700"
+                                  title="Đình chỉ"
+                                  onClick={() => setActionTarget({ id: user.id, username: user.username, type: 'suspend' })}
+                                >
+                                  <Pause className="w-3.5 h-3.5" />
+                                </Button>
+                              )}
+                            </div>
+                          ) : (
+                            user.is_banned ? (
+                              <Badge variant="destructive" className="text-[10px] px-1.5">Cấm</Badge>
+                            ) : user.reward_status === 'on_hold' ? (
+                              <Badge className="text-[10px] px-1.5 bg-orange-500/10 text-orange-600 border-orange-500/20">Đình chỉ</Badge>
+                            ) : (
+                              <Badge className="text-[10px] px-1.5 bg-emerald-500/10 text-emerald-600 border-emerald-500/20">Hoạt động</Badge>
+                            )
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
                         {fmtDate(user.created_at)}
@@ -377,6 +456,38 @@ const Users = () => {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {isDeleting ? 'Đang xoá...' : 'Xoá vĩnh viễn'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Status Action Confirmation Dialog */}
+      <AlertDialog open={!!actionTarget} onOpenChange={(open) => !open && setActionTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {actionTarget?.type === 'ban' ? `Cấm vĩnh viễn @${actionTarget?.username}?` :
+               actionTarget?.type === 'suspend' ? `Đình chỉ @${actionTarget?.username}?` :
+               `Mở khóa @${actionTarget?.username}?`}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {actionTarget?.type === 'ban' ? 'Tài khoản sẽ bị cấm vĩnh viễn, ví sẽ bị blacklist. Không thể hoàn tác.' :
+               actionTarget?.type === 'suspend' ? 'Tài khoản sẽ bị đình chỉ, tạm dừng nhận thưởng.' :
+               'Tài khoản sẽ được mở khóa và có thể nhận thưởng trở lại.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isActioning}>Huỷ</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleStatusAction}
+              disabled={isActioning}
+              className={actionTarget?.type === 'ban' ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' :
+                         actionTarget?.type === 'suspend' ? 'bg-orange-600 text-white hover:bg-orange-700' :
+                         'bg-emerald-600 text-white hover:bg-emerald-700'}
+            >
+              {isActioning ? 'Đang xử lý...' :
+               actionTarget?.type === 'ban' ? 'Cấm vĩnh viễn' :
+               actionTarget?.type === 'suspend' ? 'Đình chỉ' : 'Mở khóa'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
