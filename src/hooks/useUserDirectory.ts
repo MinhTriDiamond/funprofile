@@ -224,7 +224,8 @@ export const useUserDirectory = () => {
     if (filters.wallet === 'has') result = result.filter(u => !!u.wallet_address);
     else if (filters.wallet === 'none') result = result.filter(u => !u.wallet_address);
 
-    // Sort
+    // Sort - create copy for new reference so React re-renders
+    if (sortBy !== 'default') result = [...result];
     if (sortBy === 'username-asc') result.sort((a, b) => a.username.localeCompare(b.username));
     else if (sortBy === 'username-desc') result.sort((a, b) => b.username.localeCompare(a.username));
     else if (sortBy === 'email-asc') result.sort((a, b) => (emailsMap.get(a.id) || '').localeCompare(emailsMap.get(b.id) || ''));
