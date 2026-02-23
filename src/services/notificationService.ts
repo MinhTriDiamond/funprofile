@@ -143,7 +143,7 @@ export function useNotificationService(userId: string | null) {
     const { data } = await supabase
       .from('notifications')
       .select(`
-        id, type, read, created_at, post_id,
+        id, type, read, created_at, post_id, metadata,
         actor:profiles!notifications_actor_id_fkey (
           id, username, avatar_url, full_name
         ),

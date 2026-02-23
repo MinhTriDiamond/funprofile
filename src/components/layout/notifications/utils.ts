@@ -2,7 +2,7 @@
  * Notification Utility Functions
  */
 
-import { NotificationWithDetails, NotificationGroups, REACTION_ICONS } from './types';
+import { NotificationWithDetails, NotificationGroups, NotificationMetadata, REACTION_ICONS } from './types';
 import { Bell, MessageCircle, Share2, Gift, Shield, UserPlus, UserCheck, UserX, Wallet, Radio } from 'lucide-react';
 import React from 'react';
 
@@ -109,7 +109,8 @@ export const truncateContent = (content: string | null | undefined, maxLength: n
 export const getNotificationText = (
   type: string, 
   username: string, 
-  postContent?: string | null
+  postContent?: string | null,
+  metadata?: NotificationMetadata | null
 ): { main: React.ReactNode; snippet?: string } => {
   const snippet = postContent ? truncateContent(postContent, 50) : undefined;
 
@@ -182,34 +183,54 @@ export const getNotificationText = (
         '⚠️ Tài khoản của bạn đã bị hạn chế'
       );
       break;
-    case 'admin_shared_device':
+    case 'admin_shared_device': {
+      const m = metadata;
+      const detail = m?.device_hash
+        ? ` Thiết bị ${m.device_hash}... có ${m.user_count || '?'} tài khoản${m.usernames?.length ? ': ' + m.usernames.slice(0, 5).join(', ') : ''}`
+        : ' Phát hiện thiết bị dùng chung nhiều tài khoản';
       main = React.createElement(React.Fragment, null,
         '🔴 ',
         React.createElement('strong', null, 'Cảnh báo:'),
-        ' Phát hiện thiết bị dùng chung nhiều tài khoản'
+        detail
       );
       break;
-    case 'admin_email_farm':
+    }
+    case 'admin_email_farm': {
+      const m = metadata;
+      const detail = m?.email_base
+        ? ` Cụm email "${m.email_base}" có ${m.count || '?'} tài khoản${m.emails?.length ? ': ' + m.emails.slice(0, 5).join(', ') : ''}`
+        : ' Phát hiện cụm email farm nghi ngờ';
       main = React.createElement(React.Fragment, null,
         '🔴 ',
         React.createElement('strong', null, 'Cảnh báo:'),
-        ' Phát hiện cụm email farm nghi ngờ'
+        detail
       );
       break;
-    case 'admin_blacklisted_ip':
+    }
+    case 'admin_blacklisted_ip': {
+      const m = metadata;
+      const detail = m?.ip_address
+        ? ` Đăng nhập từ IP bị chặn ${m.ip_address}${m.reason ? ' - ' + m.reason : ''}${m.known_usernames?.length ? ' (liên quan: ' + m.known_usernames.slice(0, 3).join(', ') + ')' : ''}`
+        : ' Đăng nhập từ IP bị chặn';
       main = React.createElement(React.Fragment, null,
         '🔴 ',
         React.createElement('strong', null, 'Cảnh báo:'),
-        ' Đăng nhập từ IP bị chặn'
+        detail
       );
       break;
-    case 'admin_fraud_daily':
+    }
+    case 'admin_fraud_daily': {
+      const m = metadata;
+      const detail = m?.alerts_count
+        ? ` ${m.alerts_count} cảnh báo${m.alerts?.length ? ' - ' + m.alerts.slice(0, 3).join(', ') : ''}`
+        : ' Có hoạt động đáng ngờ cần xử lý';
       main = React.createElement(React.Fragment, null,
         '📊 ',
-        React.createElement('strong', null, 'Báo cáo gian lận hàng ngày:'),
-        ' Có hoạt động đáng ngờ cần xử lý'
+        React.createElement('strong', null, 'Báo cáo gian lận:'),
+        detail
       );
       break;
+    }
     case 'claim_reward':
       main = React.createElement(React.Fragment, null,
         React.createElement('strong', null, 'FUN Profile Treasury'),

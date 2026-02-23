@@ -14,6 +14,20 @@ export interface NotificationPost {
   content: string;
 }
 
+export interface NotificationMetadata {
+  device_hash?: string;
+  user_count?: number;
+  usernames?: string[];
+  email_base?: string;
+  count?: number;
+  emails?: string[];
+  ip_address?: string;
+  alerts_count?: number;
+  alerts?: string[];
+  reason?: string;
+  known_usernames?: string[];
+}
+
 export interface NotificationWithDetails {
   id: string;
   type: string;
@@ -22,6 +36,7 @@ export interface NotificationWithDetails {
   post_id: string | null;
   actor: NotificationActor;
   post?: NotificationPost | null;
+  metadata?: NotificationMetadata | null;
 }
 
 export interface NotificationGroups {

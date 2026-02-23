@@ -1690,6 +1690,7 @@ export type Database = {
           actor_id: string
           created_at: string
           id: string
+          metadata: Json | null
           post_id: string | null
           read: boolean
           type: string
@@ -1699,6 +1700,7 @@ export type Database = {
           actor_id: string
           created_at?: string
           id?: string
+          metadata?: Json | null
           post_id?: string | null
           read?: boolean
           type: string
@@ -1708,6 +1710,7 @@ export type Database = {
           actor_id?: string
           created_at?: string
           id?: string
+          metadata?: Json | null
           post_id?: string | null
           read?: boolean
           type?: string

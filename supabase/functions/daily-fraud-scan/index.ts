@@ -171,6 +171,10 @@ Deno.serve(async (req) => {
             actor_id: systemActorId,
             type: "admin_fraud_daily",
             read: false,
+            metadata: {
+              alerts_count: alerts.length,
+              alerts: alerts.slice(0, 5),
+            },
           }))
         );
 
