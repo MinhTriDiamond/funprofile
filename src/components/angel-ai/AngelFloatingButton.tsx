@@ -1,15 +1,17 @@
 import { memo, useState, useRef, useCallback, useEffect } from 'react';
 import { Sparkles } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import { AngelChatWidget } from './AngelChatWidget';
 
 const STORAGE_KEY = 'angel-btn-pos';
-const BUTTON_SIZE = 56; // 14 * 4 = 56px (w-14)
+const BUTTON_SIZE = 56;
 const DRAG_THRESHOLD = 10;
+const CHAT_Y_THRESHOLD = 180; // clearance for bottom nav + chat input
 
 function getDefaultPosition() {
   return {
     x: window.innerWidth - BUTTON_SIZE - 16,
-    y: window.innerHeight - BUTTON_SIZE - 96,
+    y: window.innerHeight - BUTTON_SIZE - CHAT_Y_THRESHOLD,
   };
 }
 
@@ -34,6 +36,9 @@ interface AngelFloatingButtonProps {
 
 export const AngelFloatingButton = memo(({ showOnDesktop = false }: AngelFloatingButtonProps) => {
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const isFirstRender = useRef(!localStorage.getItem(STORAGE_KEY));
+  const [showHint, setShowHint] = useState(isFirstRender.current);
+  const location = useLocation();
   const [position, setPosition] = useState<{ x: number; y: number }>(() => loadPosition() || getDefaultPosition());
 
   const dragRef = useRef({
@@ -43,6 +48,31 @@ export const AngelFloatingButton = memo(({ showOnDesktop = false }: AngelFloatin
     offsetY: 0,
     moved: false,
   });
+
+  const isOnChat = location.pathname.startsWith('/chat');
+
+  // Auto-move up when on chat route to avoid blocking send button
+  useEffect(() => {
+    if (isOnChat) {
+      const maxY = window.innerHeight - BUTTON_SIZE - CHAT_Y_THRESHOLD;
+      setPosition((prev) => {
+        if (prev.y > maxY) {
+          const adjusted = { ...prev, y: maxY };
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(adjusted));
+          return adjusted;
+        }
+        return prev;
+      });
+    }
+  }, [isOnChat]);
+
+  // Hide hint animation after 3 seconds
+  useEffect(() => {
+    if (showHint) {
+      const timer = setTimeout(() => setShowHint(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [showHint]);
 
   // Recalculate on resize to keep in viewport
   useEffect(() => {
@@ -117,7 +147,7 @@ export const AngelFloatingButton = memo(({ showOnDesktop = false }: AngelFloatin
             // Desktop click fallback
             if (!('ontouchstart' in window)) setIsChatOpen(true);
           }}
-          className="relative group"
+          className={`relative group ${showHint ? 'animate-bounce' : ''}`}
           aria-label="ANGEL AI Chat"
         >
           <div className="absolute inset-0 w-14 h-14 rounded-full bg-gradient-to-br from-amber-400/50 to-yellow-500/50 blur-md animate-pulse" />
