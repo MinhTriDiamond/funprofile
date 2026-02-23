@@ -234,22 +234,21 @@ const FacebookPostCardComponent = ({
     setIsDeleting(true);
     
     try {
-      // Delete Stream/R2 videos
-      const videoUrls = extractPostStreamVideos(post);
-      if (videoUrls.length > 0) {
-        await deleteStreamVideos(videoUrls);
-      }
-      
-      // Delete Supabase Storage videos (live recordings)
-      if (post.video_url && isSupabaseStorageUrl(post.video_url)) {
-        await deleteStorageFile(post.video_url);
-      }
-      
+      // Delete DB record FIRST for instant UI update
       const { error: deleteError } = await supabase.from('posts').delete().eq('id', post.id);
       if (deleteError) throw deleteError;
       
       toast.success(t('postDeleted'));
       onPostDeleted();
+
+      // Background cleanup — don't block UI
+      const videoUrls = extractPostStreamVideos(post);
+      if (videoUrls.length > 0) {
+        deleteStreamVideos(videoUrls).catch(err => console.warn('[POST] Background video cleanup failed:', err));
+      }
+      if (post.video_url && isSupabaseStorageUrl(post.video_url)) {
+        deleteStorageFile(post.video_url).catch(err => console.warn('[POST] Background storage cleanup failed:', err));
+      }
     } catch (error: unknown) {
       toast.error(t('cannotDeletePost'));
     } finally {

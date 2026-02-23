@@ -645,7 +645,11 @@ export const UnifiedGiftSendDialog = ({
     queryClient.invalidateQueries({ queryKey: ['transaction-history'] });
     queryClient.invalidateQueries({ queryKey: ['reward-stats'] });
     queryClient.invalidateQueries({ queryKey: ['notifications'] });
-    queryClient.invalidateQueries({ queryKey: ['feed'] });
+    queryClient.invalidateQueries({ queryKey: ['feed-posts'] });
+    queryClient.invalidateQueries({ queryKey: ['admin-donation-history'] });
+    // Dispatch events so other open tabs/pages also refresh
+    window.dispatchEvent(new Event('invalidate-feed'));
+    window.dispatchEvent(new Event('invalidate-donations'));
   };
 
   const handleSaveTheme = async (themeId: string, bgIndex: number, soundId: string) => {
