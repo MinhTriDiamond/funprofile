@@ -131,10 +131,13 @@ const fetchTotals = async (): Promise<UserDirectoryStats> => {
   };
 };
 
+export type SortBy = 'default' | 'username-asc' | 'username-desc' | 'email-asc' | 'email-desc';
+
 export const useUserDirectory = () => {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
+  const [sortBy, setSortBy] = useState<SortBy>('default');
   const [filters, setFilters] = useState<UserDirectoryFilters>({
     scoreRange: 'all',
     funMoney: 'all',
@@ -221,8 +224,14 @@ export const useUserDirectory = () => {
     if (filters.wallet === 'has') result = result.filter(u => !!u.wallet_address);
     else if (filters.wallet === 'none') result = result.filter(u => !u.wallet_address);
 
+    // Sort
+    if (sortBy === 'username-asc') result.sort((a, b) => a.username.localeCompare(b.username));
+    else if (sortBy === 'username-desc') result.sort((a, b) => b.username.localeCompare(a.username));
+    else if (sortBy === 'email-asc') result.sort((a, b) => (emailsMap.get(a.id) || '').localeCompare(emailsMap.get(b.id) || ''));
+    else if (sortBy === 'email-desc') result.sort((a, b) => (emailsMap.get(b.id) || '').localeCompare(emailsMap.get(a.id) || ''));
+
     return result;
-  }, [allUsers, search, filters, isAdmin, emailsMap]);
+  }, [allUsers, search, filters, isAdmin, emailsMap, sortBy]);
 
   const paginated = useMemo(() => {
     const slice = filtered.slice(page * pageSize, (page + 1) * pageSize);
@@ -276,5 +285,7 @@ export const useUserDirectory = () => {
     setFilters,
     isAdmin,
     emailsMap,
+    sortBy,
+    setSortBy,
   };
 };
