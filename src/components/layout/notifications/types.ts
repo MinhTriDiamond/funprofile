@@ -24,6 +24,8 @@ export interface NotificationMetadata {
   ip_address?: string;
   alerts_count?: number;
   alerts?: string[];
+  accounts_held?: number;
+  flagged_usernames?: string[];
   reason?: string;
   known_usernames?: string[];
 }

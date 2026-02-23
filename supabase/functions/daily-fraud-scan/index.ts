@@ -14,6 +14,31 @@ function getEmailBase(email: string): string {
 /** Email farm allowlist - verified admin clusters */
 const EMAIL_FARM_ALLOWLIST = ['hoangtydo'];
 
+/** Lookup usernames from profiles table */
+async function lookupUsernames(
+  supabase: ReturnType<typeof createClient>,
+  userIds: string[],
+): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  if (userIds.length === 0) return map;
+
+  const uniqueIds = [...new Set(userIds)];
+  // Batch in chunks of 100
+  for (let i = 0; i < uniqueIds.length; i += 100) {
+    const chunk = uniqueIds.slice(i, i + 100);
+    const { data } = await supabase
+      .from("profiles")
+      .select("id, username")
+      .in("id", chunk);
+    if (data) {
+      for (const p of data) {
+        map.set(p.id, p.username || p.id.slice(0, 8));
+      }
+    }
+  }
+  return map;
+}
+
 /** Auto-hold users, excluding admins and already banned/on_hold */
 async function autoHoldUsers(
   supabase: ReturnType<typeof createClient>,
@@ -53,6 +78,7 @@ Deno.serve(async (req) => {
 
     const alerts: string[] = [];
     let totalHeld = 0;
+    const allFlaggedUserIds: string[] = [];
 
     // Pre-fetch admin IDs to exclude from auto-hold
     const { data: adminRoles } = await supabase
@@ -69,6 +95,9 @@ Deno.serve(async (req) => {
       .eq("is_flagged", false)
       .gte("fingerprint_version", 2);
 
+    // Collect device clusters for username enrichment
+    const deviceClusters: Array<{ hash: string; users: string[] }> = [];
+
     if (flaggedDevices) {
       const deviceMap = new Map<string, string[]>();
       for (const d of flaggedDevices) {
@@ -79,9 +108,9 @@ Deno.serve(async (req) => {
 
       for (const [hash, users] of deviceMap) {
         if (users.length > 2) {
-          alerts.push(`Thiết bị ${hash.slice(0, 8)}... có ${users.length} tài khoản`);
+          allFlaggedUserIds.push(...users);
+          deviceClusters.push({ hash, users });
 
-          // Check if signal already exists today
           const today = new Date();
           today.setHours(0, 0, 0, 0);
           const { data: existing } = await supabase
@@ -103,7 +132,6 @@ Deno.serve(async (req) => {
             });
           }
 
-          // Auto-hold
           const held = await autoHoldUsers(
             supabase, users, adminIds,
             `Thiết bị ${hash.slice(0, 8)} dùng chung ${users.length} tài khoản.`,
@@ -114,6 +142,7 @@ Deno.serve(async (req) => {
     }
 
     // 2. Email farm detection
+    const emailClusters: Array<{ emailBase: string; users: Array<{ id: string; email: string }> }> = [];
     const { data: authUsers, error: authErr } = await supabase.auth.admin.listUsers({ perPage: 1000 });
     if (!authErr && authUsers?.users) {
       const emailGroups = new Map<string, Array<{ id: string; email: string }>>();
@@ -132,13 +161,13 @@ Deno.serve(async (req) => {
         if (users.length >= 3) {
           const emailBase = key.split('@')[0];
 
-          // Skip allowlisted email clusters
           if (EMAIL_FARM_ALLOWLIST.some(allowed => emailBase.startsWith(allowed))) {
             console.log(`[Daily Fraud Scan] Skipping allowlisted email cluster: ${emailBase}`);
             continue;
           }
 
-          alerts.push(`Cụm email "${emailBase}" có ${users.length} tài khoản`);
+          allFlaggedUserIds.push(...users.map(u => u.id));
+          emailClusters.push({ emailBase, users });
 
           const today = new Date();
           today.setHours(0, 0, 0, 0);
@@ -160,7 +189,6 @@ Deno.serve(async (req) => {
             });
           }
 
-          // Auto-hold
           const userIds = users.map(u => u.id);
           const held = await autoHoldUsers(
             supabase, userIds, adminIds,
@@ -172,6 +200,7 @@ Deno.serve(async (req) => {
     }
 
     // 3. IP clustering: multiple accounts from same IP in last 24h
+    const ipClusters: Array<{ ip: string; users: string[] }> = [];
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const { data: recentLogins } = await supabase
       .from("login_ip_logs")
@@ -190,7 +219,8 @@ Deno.serve(async (req) => {
       for (const [ip, users] of ipMap) {
         if (users.size > 3) {
           const userArr = Array.from(users);
-          alerts.push(`IP ${ip} có ${users.size} tài khoản đăng nhập trong 24h`);
+          allFlaggedUserIds.push(...userArr);
+          ipClusters.push({ ip, users: userArr });
 
           const today = new Date();
           today.setHours(0, 0, 0, 0);
@@ -212,7 +242,6 @@ Deno.serve(async (req) => {
             });
           }
 
-          // Auto-hold
           const held = await autoHoldUsers(
             supabase, userArr, adminIds,
             `IP ${ip} có ${users.size} tài khoản đăng nhập trong 24h.`,
@@ -222,7 +251,27 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 4. Notify admins if any alerts found
+    // 4. Lookup usernames for all flagged users and build enriched alerts
+    const usernameMap = await lookupUsernames(supabase, allFlaggedUserIds);
+    const allFlaggedUsernames: string[] = [...new Set(allFlaggedUserIds)].map(
+      id => usernameMap.get(id) || id.slice(0, 8)
+    );
+
+    // Build enriched alert strings with usernames
+    for (const { hash, users } of deviceClusters) {
+      const names = users.map(id => usernameMap.get(id) || id.slice(0, 8)).join(', ');
+      alerts.push(`Thiết bị ${hash.slice(0, 8)}... có ${users.length} TK: ${names}`);
+    }
+    for (const { emailBase, users } of emailClusters) {
+      const names = users.map(u => usernameMap.get(u.id) || u.id.slice(0, 8)).join(', ');
+      alerts.push(`Cụm email "${emailBase}" có ${users.length} TK: ${names}`);
+    }
+    for (const { ip, users } of ipClusters) {
+      const names = users.map(id => usernameMap.get(id) || id.slice(0, 8)).join(', ');
+      alerts.push(`IP ${ip} có ${users.length} TK trong 24h: ${names}`);
+    }
+
+    // 5. Notify admins if any alerts found
     if (alerts.length > 0) {
       const admins = Array.from(adminIds);
 
@@ -237,8 +286,9 @@ Deno.serve(async (req) => {
             read: false,
             metadata: {
               alerts_count: alerts.length,
-              alerts: alerts.slice(0, 5),
+              alerts: alerts.slice(0, 10),
               accounts_held: totalHeld,
+              flagged_usernames: allFlaggedUsernames.slice(0, 50),
             },
           }))
         );

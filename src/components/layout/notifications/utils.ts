@@ -226,8 +226,11 @@ export const getNotificationText = (
     }
     case 'admin_fraud_daily': {
       const m = metadata;
+      const usernameList = m?.flagged_usernames?.length
+        ? ` | TK: ${m.flagged_usernames.slice(0, 8).join(', ')}`
+        : '';
       const detail = m?.alerts_count
-        ? ` ${m.alerts_count} cảnh báo${m.alerts?.length ? ' - ' + m.alerts.slice(0, 3).join(', ') : ''}`
+        ? ` ${m.alerts_count} cảnh báo, ${m?.accounts_held || 0} đình chỉ${usernameList}`
         : ' Có hoạt động đáng ngờ cần xử lý';
       main = React.createElement(React.Fragment, null,
         '📊 ',

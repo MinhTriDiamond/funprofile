@@ -219,14 +219,16 @@ const Notifications = () => {
       case "live_started":
         return `🔴 ${actorName} đang phát trực tiếp`;
       case "admin_shared_device": {
+        const usernames = m?.usernames?.length ? `: ${m.usernames.slice(0, 5).join(', ')}` : '';
         const detail = m?.device_hash
-          ? ` Thiết bị ${m.device_hash}... có ${m.user_count || '?'} tài khoản`
+          ? ` Thiết bị ${m.device_hash}... có ${m.user_count || '?'} tài khoản${usernames}`
           : ' Phát hiện thiết bị dùng chung nhiều tài khoản';
         return `🔴 Cảnh báo:${detail}`;
       }
       case "admin_email_farm": {
+        const usernames = m?.usernames?.length ? `: ${m.usernames.slice(0, 5).join(', ')}` : '';
         const detail = m?.email_base
-          ? ` Cụm email "${m.email_base}" có ${m.count || '?'} tài khoản`
+          ? ` Cụm email "${m.email_base}" có ${m.count || '?'} tài khoản${usernames}`
           : ' Phát hiện cụm email farm nghi ngờ';
         return `🔴 Cảnh báo:${detail}`;
       }
@@ -237,8 +239,11 @@ const Notifications = () => {
         return `🔴 Cảnh báo:${detail}`;
       }
       case "admin_fraud_daily": {
+        const usernameList = m?.flagged_usernames?.length
+          ? ` | TK: ${m.flagged_usernames.slice(0, 10).join(', ')}`
+          : '';
         const detail = m?.alerts_count
-          ? ` ${m.alerts_count} cảnh báo`
+          ? ` ${m.alerts_count} cảnh báo, ${m?.accounts_held || 0} TK bị đình chỉ${usernameList}`
           : ' Có hoạt động đáng ngờ cần xử lý';
         return `📊 Báo cáo gian lận:${detail}`;
       }
