@@ -1,30 +1,57 @@
 
-# Fix Social Links - Thêm/Xóa/Kéo thả không hoạt động
 
-## Nguyên nhân gốc
+# Nén Video Replay Livestream Trước Khi Upload
 
-Hiện tại `social_links` trong database của tài khoản `angelaivan` là mảng rỗng `[]`. Khi mảng rỗng, component `AvatarOrbit` hiển thị 9 icon mặc định (defaultLinks) để giao diện trông đẹp. Tuy nhiên, khi con nhấn vào icon để sửa/xóa/kéo, code thao tác trên mảng `localLinks` (vẫn là `[]` rỗng), không phải trên `defaultLinks` đang hiển thị.
+## Tình trạng hiện tại
 
-Cụ thể:
-- **Thêm link (pencil trên icon mặc định)**: Gọi `savePromptLink` -> map qua `localLinks` (rỗng) -> không tìm thấy platform -> lưu mảng rỗng
-- **Xóa link**: Gọi `removeLink` -> filter mảng rỗng -> không có gì thay đổi  
-- **Kéo thả**: Thao tác trên mảng rỗng -> không hiệu lực
+Video replay livestream được ghi bằng `MediaRecorder` (định dạng webm) và upload thẳng lên Cloudflare R2 mà **không qua bước nén nào**. Hệ thống chỉ có nén ảnh (`compressImage` trong `src/utils/imageCompression.ts`), chưa có nén video.
 
-## Giải pháp
+## Giải pháp: Nén video bằng WebCodecs API (trình duyệt)
 
-Sửa file `src/components/profile/AvatarOrbit.tsx`:
+Sử dụng **Canvas + WebCodecs API** để re-encode video ngay trên trình duyệt trước khi upload. Cách này không cần server xử lý, không cần thư viện ngoài (như FFmpeg.wasm nặng ~25MB).
 
-1. Khi owner nhấn vào icon mặc định (empty slot) để thêm URL, khởi tạo `localLinks` từ `defaultLinks` trước khi thao tác
-2. Cập nhật hàm `savePromptLink` để xử lý trường hợp platform chưa có trong `localLinks` (thêm mới thay vì chỉ map)
-3. Cập nhật drag-to-reorder để dùng `displayLinks` thay vì `localLinks` khi `localLinks` rỗng
+### Cơ chế hoạt động
+
+1. Khi host kết thúc live, blob video webm được tạo ra
+2. **Bước mới**: Decode video blob -> giảm resolution (nếu cần) -> re-encode với bitrate thấp hơn -> tạo blob mới nhỏ hơn
+3. Upload blob đã nén lên R2
+
+### Thông số nén
+
+- **Resolution tối đa**: 720p (1280x720) - đủ chất lượng cho replay
+- **Video bitrate**: ~1.5 Mbps (thay vì bitrate gốc thường 3-5 Mbps từ MediaRecorder)
+- **Audio bitrate**: 128 kbps
+- **Ước tính giảm**: 40-60% dung lượng file
+
+### Fallback
+
+WebCodecs API chưa được hỗ trợ trên tất cả trình duyệt (Safari cũ, Firefox cũ). Nếu không hỗ trợ, sẽ **bỏ qua bước nén** và upload video gốc như hiện tại.
 
 ## Chi tiết kỹ thuật
 
-**File: `src/components/profile/AvatarOrbit.tsx`**
+### File mới: `src/utils/videoCompression.ts`
 
-- Trong `savePromptLink`: Nếu platform không tồn tại trong `localLinks`, tạo entry mới từ PLATFORM_PRESETS rồi thêm vào mảng (giống logic `saveLink` với `isNew=true`)
-- Trong `removeLink`: Nếu `localLinks` rỗng nhưng đang hiển thị defaultLinks, không cần xóa vì link chưa được lưu
-- Trong `handleDragStart`/`handleDragOver`/`handleDragEnd`: Khi `localLinks` rỗng, khởi tạo từ `displayLinks` (defaultLinks) trước khi cho phép kéo thả, sau đó lưu thứ tự mới vào DB
-- Cập nhật `handlePickPlatform` (nút +): Khi chọn platform đã có trong defaultLinks nhưng chưa có trong localLinks, xử lý đúng
+Tạo utility function `compressVideo(blob, options)`:
+- Dùng `VideoDecoder` + `VideoEncoder` (WebCodecs API) để re-encode
+- Giảm resolution xuống 720p nếu video lớn hơn
+- Giảm bitrate xuống 1.5 Mbps
+- Callback `onProgress` để hiển thị tiến trình nén
+- Trả về blob đã nén hoặc blob gốc nếu WebCodecs không hỗ trợ
 
-Thay doi chi co 1 file frontend, khong thay doi database.
+### File sửa: `src/modules/live/liveService.ts`
+
+Cập nhật function `uploadLiveRecording`:
+- Import `compressVideo` 
+- Gọi `compressVideo(blob)` trước khi upload
+- Truyền `onProgress` để cập nhật UI
+
+### File sửa: `src/modules/live/pages/LiveHostPage.tsx`
+
+Cập nhật `handleEndLive`:
+- Thêm trạng thái "Đang nén video..." giữa bước ghi xong và upload
+- Hiển thị progress nén riêng biệt với progress upload
+
+### File sửa: `src/modules/live/liveService.ts` (RecordingStatus)
+
+Thêm trạng thái `'compressing'` vào `RecordingStatus` type để UI hiển thị đúng.
+
