@@ -94,12 +94,14 @@ const Users = () => {
         if (error) throw error;
         toast({ title: 'Đã cấm', description: `@${actionTarget.username} đã bị cấm vĩnh viễn.` });
       } else if (actionTarget.type === 'suspend') {
-        const { error } = await supabase.from('profiles').update({ reward_status: 'on_hold' }).eq('id', actionTarget.id);
+        const { data, error } = await supabase.from('profiles').update({ reward_status: 'on_hold' }).eq('id', actionTarget.id).select('id');
         if (error) throw error;
+        if (!data || data.length === 0) throw new Error('Không có quyền cập nhật trạng thái user này. Vui lòng kiểm tra quyền admin.');
         toast({ title: 'Đã đình chỉ', description: `@${actionTarget.username} đã bị đình chỉ.` });
       } else if (actionTarget.type === 'unlock') {
-        const { error } = await supabase.from('profiles').update({ reward_status: 'approved' }).eq('id', actionTarget.id);
+        const { data, error } = await supabase.from('profiles').update({ reward_status: 'approved' }).eq('id', actionTarget.id).select('id');
         if (error) throw error;
+        if (!data || data.length === 0) throw new Error('Không có quyền cập nhật trạng thái user này. Vui lòng kiểm tra quyền admin.');
         toast({ title: 'Đã mở khóa', description: `@${actionTarget.username} đã được mở khóa.` });
       }
       // Optimistic update cache ngay lập tức
