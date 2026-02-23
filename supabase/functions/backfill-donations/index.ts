@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
         .select("id, user_id, tx_hash, from_address, to_address, amount, token_symbol, token_address, chain_id, status, created_at")
         .eq("status", "confirmed")
         .order("created_at", { ascending: false })
-        .limit(500);
+        .limit(1000);
 
       if (txError) {
         throw new Error(`Failed to fetch transactions: ${txError.message}`);
@@ -106,17 +106,17 @@ Deno.serve(async (req) => {
       // Fetch profiles by wallet_address
       const { data: profiles } = await adminClient
         .from("profiles")
-        .select("id, username, avatar_url, wallet_address");
+        .select("id, username, avatar_url, wallet_address, public_wallet_address");
 
       // Build wallet -> profile map (case-insensitive)
       const walletMap = new Map<string, { id: string; username: string; avatar_url: string | null }>();
       for (const p of profiles || []) {
+        const profileData = { id: p.id, username: p.username, avatar_url: p.avatar_url };
         if (p.wallet_address) {
-          walletMap.set(p.wallet_address.toLowerCase(), {
-            id: p.id,
-            username: p.username,
-            avatar_url: p.avatar_url,
-          });
+          walletMap.set(p.wallet_address.toLowerCase(), profileData);
+        }
+        if (p.public_wallet_address) {
+          walletMap.set(p.public_wallet_address.toLowerCase(), profileData);
         }
       }
 
@@ -193,12 +193,15 @@ Deno.serve(async (req) => {
       // Get profiles for mapping
       const { data: profiles } = await adminClient
         .from("profiles")
-        .select("id, wallet_address");
+        .select("id, wallet_address, public_wallet_address");
 
       const walletMap = new Map<string, string>();
       for (const p of profiles || []) {
         if (p.wallet_address) {
           walletMap.set(p.wallet_address.toLowerCase(), p.id);
+        }
+        if (p.public_wallet_address) {
+          walletMap.set(p.public_wallet_address.toLowerCase(), p.id);
         }
       }
 

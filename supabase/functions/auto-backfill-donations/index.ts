@@ -22,7 +22,7 @@ Deno.serve(async (req) => {
       .select("id, user_id, tx_hash, from_address, to_address, amount, token_symbol, token_address, chain_id, created_at")
       .eq("status", "confirmed")
       .order("created_at", { ascending: false })
-      .limit(50);
+      .limit(1000);
 
     if (txError) throw new Error(`Failed to fetch transactions: ${txError.message}`);
     if (!allTx || allTx.length === 0) {
@@ -50,12 +50,15 @@ Deno.serve(async (req) => {
     // 3. Build wallet_address -> profile map
     const { data: profiles } = await adminClient
       .from("profiles")
-      .select("id, wallet_address");
+      .select("id, wallet_address, public_wallet_address");
 
     const walletMap = new Map<string, string>();
     for (const p of profiles || []) {
       if (p.wallet_address) {
         walletMap.set(p.wallet_address.toLowerCase(), p.id);
+      }
+      if (p.public_wallet_address) {
+        walletMap.set(p.public_wallet_address.toLowerCase(), p.id);
       }
     }
 
