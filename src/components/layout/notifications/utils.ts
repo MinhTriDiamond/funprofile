@@ -244,9 +244,9 @@ export const getNotificationText = (
     }
     case 'admin_fraud_daily': {
       const m = metadata;
-      const userList = formatUsernamesWithEmails(m?.flagged_usernames, m?.flagged_emails, 8);
+      const alertsList = m?.alerts?.length ? m.alerts.join(', ') : '';
       const detail = m?.alerts_count
-        ? ` ${m.alerts_count} cảnh báo, ${m?.accounts_held || 0} đình chỉ${userList ? ' | TK: ' + userList : ''}`
+        ? ` ${m.alerts_count} cảnh báo${alertsList ? ' - ' + alertsList : ''}`
         : ' Có hoạt động đáng ngờ cần xử lý';
       main = React.createElement(React.Fragment, null,
         '📊 ',

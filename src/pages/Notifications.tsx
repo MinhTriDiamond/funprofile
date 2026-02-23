@@ -248,9 +248,9 @@ const Notifications = () => {
         return `🔴 Cảnh báo:${detail}`;
       }
       case "admin_fraud_daily": {
-        const userList = formatWithEmails(m?.flagged_usernames, m?.flagged_emails, 10);
+        const alertsList = m?.alerts?.length ? m.alerts.join(', ') : '';
         const detail = m?.alerts_count
-          ? ` ${m.alerts_count} cảnh báo, ${m?.accounts_held || 0} TK bị đình chỉ${userList ? ' | TK: ' + userList : ''}`
+          ? ` ${m.alerts_count} cảnh báo${alertsList ? ' - ' + alertsList : ''}`
           : ' Có hoạt động đáng ngờ cần xử lý';
         return `📊 Báo cáo gian lận:${detail}`;
       }
