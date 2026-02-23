@@ -59,7 +59,10 @@ export function useDonationFlow(params: UseDonationFlowParams) {
     queryClient.invalidateQueries({ queryKey: ['transaction-history'] });
     queryClient.invalidateQueries({ queryKey: ['reward-stats'] });
     queryClient.invalidateQueries({ queryKey: ['notifications'] });
-    queryClient.invalidateQueries({ queryKey: ['feed'] });
+    queryClient.invalidateQueries({ queryKey: ['feed-posts'] });
+    queryClient.invalidateQueries({ queryKey: ['admin-donation-history'] });
+    window.dispatchEvent(new Event('invalidate-feed'));
+    window.dispatchEvent(new Event('invalidate-donations'));
   }, []);
 
   const recordDonationWithRetry = useCallback(async (
