@@ -275,12 +275,12 @@ const GiftCelebrationCardComponent = ({
                 {senderDisplayName[0]?.toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <div className="text-center mt-1">
-              <div className="text-xs font-semibold text-white/90 truncate max-w-[80px]">{senderDisplayName}</div>
+            <button className="text-center mt-1 cursor-pointer" onClick={() => senderNavigateId && navigate(`/profile/${senderNavigateId}`)}>
+              <div className="text-xs font-semibold text-white/90 truncate max-w-[80px] hover:underline">{senderDisplayName}</div>
               {senderUsername && senderUsername !== 'FUN Profile Treasury' && (
-                <div className="text-[10px] text-white/60 truncate max-w-[80px]">@{senderUsername}</div>
+                <div className="text-[10px] text-white/60 truncate max-w-[80px] hover:underline">@{senderUsername}</div>
               )}
-            </div>
+            </button>
           </div>
 
           <div className="flex items-center gap-1">
@@ -298,12 +298,12 @@ const GiftCelebrationCardComponent = ({
                 {recipientDisplayName[0]?.toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <div className="text-center mt-1">
-              <div className="text-xs font-semibold text-white/90 truncate max-w-[80px]">{recipientDisplayName}</div>
+            <button className="text-center mt-1 cursor-pointer" onClick={() => post.gift_recipient_id && navigate(`/profile/${post.gift_recipient_id}`)}>
+              <div className="text-xs font-semibold text-white/90 truncate max-w-[80px] hover:underline">{recipientDisplayName}</div>
               {recipientUsername && recipientUsername !== 'User' && (
-                <div className="text-[10px] text-white/60 truncate max-w-[80px]">@{recipientUsername}</div>
+                <div className="text-[10px] text-white/60 truncate max-w-[80px] hover:underline">@{recipientUsername}</div>
               )}
-            </div>
+            </button>
           </div>
         </div>
 
@@ -311,13 +311,13 @@ const GiftCelebrationCardComponent = ({
         <div className="text-center mb-3">
           <p className="text-lg font-bold text-white leading-snug" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.3)' }}>
             {isTreasurySender ? (
-              <>🎉 {recipientDisplayName} đã nhận thưởng{' '}
+              <>🎉 <span className="cursor-pointer hover:underline" onClick={() => post.gift_recipient_id && navigate(`/profile/${post.gift_recipient_id}`)}>{recipientDisplayName}</span> đã nhận thưởng{' '}
                 <span className="text-yellow-300">{amount} {token}</span>{' '}
-                từ {senderDisplayName} ❤️</>
+                từ <span className="cursor-pointer hover:underline" onClick={() => senderNavigateId && navigate(`/profile/${senderNavigateId}`)}>{senderDisplayName}</span> ❤️</>
             ) : (
-              <>🎉 {senderDisplayName} đã trao gửi{' '}
+              <>🎉 <span className="cursor-pointer hover:underline" onClick={() => senderNavigateId && navigate(`/profile/${senderNavigateId}`)}>{senderDisplayName}</span> đã trao gửi{' '}
                 <span className="text-yellow-300">{amount} {token}</span>{' '}
-                cho {recipientDisplayName} ❤️</>
+                cho <span className="cursor-pointer hover:underline" onClick={() => post.gift_recipient_id && navigate(`/profile/${post.gift_recipient_id}`)}>{recipientDisplayName}</span> ❤️</>
             )}
           </p>
         </div>
