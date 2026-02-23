@@ -1,30 +1,51 @@
 
-# Thêm Nút Mở Khóa Tài Khoản Đình Chỉ (on_hold)
+# Hiển Thị Tên User Trong Thông Báo Cảnh Báo Gian Lận
 
-## Tình trạng hiện tại
+## Vấn Đề
 
-Tab "Đang theo dõi - on_hold" trong mục Giám sát (SurveillanceTab) hiện chỉ có nút **Ban** để cấm vĩnh viễn. Thiếu nút **Mở khóa** để admin có thể khôi phục tài khoản hợp lệ sau khi kiểm tra.
+Hiện tại thông báo `admin_fraud_daily` chỉ hiển thị số liệu chung (ví dụ: "7 cảnh báo") và các alert text ngắn gọn. Không có tên user cụ thể nên admin phải tự tìm kiếm.
 
-## Thay đổi
+## Giải Pháp
 
-### File: `src/components/admin/SurveillanceTab.tsx`
+### 1. Cập nhật Edge Function `daily-fraud-scan/index.ts`
 
-1. **Thêm trường `admin_notes`** vào query on_hold để hiển thị lý do bị đình chỉ
-2. **Thêm nút "Mở khóa"** (icon Unlock, màu xanh) bên cạnh nút "Ban" cho mỗi user on_hold
-3. **Hàm `handleUnlock`**: Khi admin nhấn mở khóa:
-   - Cập nhật `reward_status = 'approved'` và xóa `admin_notes` (hoặc ghi chú mở khóa)
-   - Đánh dấu các fraud signals liên quan là `is_resolved = true`
-   - Ghi audit log
-   - Hiển thị thông báo thành công và refresh danh sách
-4. **Thêm cột "Lý do"** hiển thị `admin_notes` trong bảng on_hold để admin biết tại sao bị đình chỉ
+- Sau khi phát hiện các cụm gian lận, **truy vấn bảng `profiles`** để lấy `username` của tất cả user bị gắn cờ
+- Đưa danh sách username vào metadata của thông báo `admin_fraud_daily`
+- Cập nhật text alerts để bao gồm username, ví dụ:
+  - "Thiết bị dfb4ace9... có 3 tài khoản: user1, user2, user3"
+  - "Cụm email tacongminh có 3 tài khoản: tacongminh1, tacongminh2, tacongminh3"
+
+Metadata mới sẽ có thêm trường:
+```text
+{
+  alerts_count: 7,
+  alerts: ["Thiết bị dfb4... có 3 TK: user1, user2, user3", ...],
+  accounts_held: 33,
+  flagged_usernames: ["user1", "user2", "user3", ...]  // <-- MỚI
+}
+```
+
+### 2. Cập nhật hiển thị trong `Notifications.tsx`
+
+- Case `admin_fraud_daily`: hiển thị thêm danh sách username từ `m.flagged_usernames`
+- Case `admin_shared_device`: hiển thị username từ `m.usernames`
+- Case `admin_email_farm`: hiển thị username từ `m.usernames`
+
+### 3. Cập nhật hiển thị trong `utils.ts` (dropdown)
+
+- Tương tự, hiển thị danh sách username trong các case admin_fraud_daily
 
 ### Chi tiết kỹ thuật
 
-- Query on_hold: thêm `admin_notes` vào `.select()`
-- Interface `OnHoldUser`: thêm trường `admin_notes`
-- Hàm `handleUnlock(userId, username)`:
-  - `supabase.from("profiles").update({ reward_status: "approved", admin_notes: "Mở khóa bởi admin..." }).eq("id", userId)`
-  - `supabase.from("pplp_fraud_signals").update({ is_resolved: true }).eq("actor_id", userId)`
-  - `supabase.from("audit_logs").insert({ admin_id, target_user_id, action: "UNLOCK_USER", reason: "..." })`
-- State `unlocking` để disable nút trong khi xử lý
-- Nút mở khóa có confirm dialog để tránh nhầm lẫn
+**File `supabase/functions/daily-fraud-scan/index.ts`:**
+- Tạo mảng `allFlaggedUserIds` thu thập tất cả user ID bị phát hiện
+- Trước khi gửi notification, query `profiles` để lấy username theo IDs
+- Đưa username vào text alerts và thêm trường `flagged_usernames` vào metadata
+- Cập nhật alert text: thêm `: username1, username2, ...` vào cuối mỗi alert
+
+**File `src/pages/Notifications.tsx`:**
+- Case `admin_fraud_daily`: thêm hiển thị `m.flagged_usernames` nếu có
+- Case `admin_shared_device` và `admin_email_farm`: đã có `m.usernames` sẵn, thêm hiển thị
+
+**File `src/components/layout/notifications/utils.ts`:**
+- Case `admin_fraud_daily`: thêm hiển thị `flagged_usernames` trong detail text
