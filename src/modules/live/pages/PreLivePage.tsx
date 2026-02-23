@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Loader2, Mic, MicOff, SwitchCamera, Type } from 'lucide-react';
+import { ArrowLeft, Mic, MicOff, SwitchCamera, Type } from 'lucide-react';
 import { toast } from 'sonner';
-import { createLiveSession } from '../liveService';
 
 export default function PreLivePage() {
   const navigate = useNavigate();
@@ -15,7 +14,6 @@ export default function PreLivePage() {
   const [description, setDescription] = useState('');
   const [showDescription, setShowDescription] = useState(false);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
-  const [isCreating, setIsCreating] = useState(false);
 
   const startCamera = useCallback(async (facing: 'user' | 'environment') => {
     // Stop previous stream
@@ -76,21 +74,18 @@ export default function PreLivePage() {
     setTimeout(() => descriptionRef.current?.focus(), 100);
   };
 
-  const handleGoLive = async () => {
-    if (isCreating) return;
-    setIsCreating(true);
-    try {
-      const session = await createLiveSession({
-        privacy: 'public',
-        title: description.trim() || undefined,
-      });
-      // Do NOT stop camera tracks before navigating — preserves browser permission state
-      navigate(`/live/${session.id}/host`, { replace: true });
-    } catch (err: any) {
-      console.error('[PreLive] createLiveSession error:', err);
-      toast.error(err?.message || 'Không thể tạo phiên live. Vui lòng thử lại.');
-      setIsCreating(false);
+  const handleGoLive = () => {
+    // Stop preview stream before navigating
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop());
+      streamRef.current = null;
     }
+    navigate('/live/new', {
+      state: {
+        title: description.trim() || undefined,
+        privacy: 'public',
+      },
+    });
   };
 
   const handleBack = () => {
@@ -190,17 +185,10 @@ export default function PreLivePage() {
         {/* Go Live button */}
         <button
           onClick={handleGoLive}
-          disabled={hasPermission === false || isCreating}
-          className="w-full py-4 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold text-base transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2"
+          disabled={hasPermission === false}
+          className="w-full py-4 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold text-base transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-600/30"
         >
-          {isCreating ? (
-            <>
-              <Loader2 className="w-5 h-5 animate-spin" />
-              Đang tạo phiên live...
-            </>
-          ) : (
-            'Phát trực tiếp'
-          )}
+          Phát trực tiếp
         </button>
       </div>
 

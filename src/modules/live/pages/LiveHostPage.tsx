@@ -21,6 +21,7 @@ import {
 
 import { supabase } from '@/integrations/supabase/client';
 import {
+  createLiveSession,
   finalizeLiveSession,
   updateLiveViewerCount,
   uploadLiveRecording,
@@ -158,6 +159,7 @@ export default function LiveHostPage() {
   const runBootstrap = useCallback(async () => {
     setBootError(null);
     setBootState('auth');
+    setCreatedSessionId(null);
 
     const authResult = await withTimeout(supabase.auth.getSession(), 8000, 'auth timeout');
     const currentUserId = authResult.data.session?.user?.id;
@@ -166,13 +168,23 @@ export default function LiveHostPage() {
     }
     setUserId(currentUserId);
 
-    if (!liveSessionId) {
-      // No sessionId in URL — redirect to setup page
-      navigate('/live/setup', { replace: true });
+    if (liveSessionId) {
+      setBootState('loading');
       return;
     }
 
+    setBootState('creating');
+    const created = await withTimeout(
+      createLiveSession({
+        privacy: preLiveState?.privacy === 'friends' ? 'friends' : 'public',
+        title: preLiveState?.title,
+      }),
+      15000,
+      'create live session timeout'
+    );
+    setCreatedSessionId(created.id);
     setBootState('loading');
+    navigate(`/live/${created.id}/host`, { replace: true });
   }, [liveSessionId, navigate]);
 
   useEffect(() => {
@@ -212,47 +224,48 @@ export default function LiveHostPage() {
     }
   }, [bootState, effectiveSessionId, session, sessionQuery.isError, sessionQuery.isLoading]);
 
-  // Manual start: user must click "Bắt đầu phát sóng" to trigger Agora + recording
-  const handleStartBroadcast = useCallback(async () => {
-    if (startedRef.current) return;
+  // Start Agora RTC + Browser Recording
+  useEffect(() => {
+    if (!session || !isHost || session.status === 'ended' || startedRef.current) return;
     startedRef.current = true;
     setBootState('starting');
 
-    try {
-      await start();
-      setBootState('ready');
+    start()
+      .then(() => {
+        setBootState('ready');
 
-      // Start browser recording immediately after joining
-      try {
-        const tracks = getLocalTracks();
-        if (tracks.video && tracks.audio) {
-          const stream = new MediaStream();
-          const videoTrack = tracks.video.getMediaStreamTrack();
-          const audioTrack = tracks.audio.getMediaStreamTrack();
-          if (videoTrack) stream.addTrack(videoTrack);
-          if (audioTrack) stream.addTrack(audioTrack);
-          const recorder = createRecorder(stream);
-          recorder.start();
-          browserRecorderRef.current = recorder;
-          setRecordingState('recording');
-          setRecordingError(null);
-        } else {
+        // Start browser recording immediately after joining
+        try {
+          const tracks = getLocalTracks();
+          if (tracks.video && tracks.audio) {
+            const stream = new MediaStream();
+            const videoTrack = tracks.video.getMediaStreamTrack();
+            const audioTrack = tracks.audio.getMediaStreamTrack();
+            if (videoTrack) stream.addTrack(videoTrack);
+            if (audioTrack) stream.addTrack(audioTrack);
+            const recorder = createRecorder(stream);
+            recorder.start();
+            browserRecorderRef.current = recorder;
+            setRecordingState('recording');
+            setRecordingError(null);
+          } else {
+            setRecordingState('failed');
+            setRecordingError('Không lấy được track video/audio để ghi hình.');
+          }
+        } catch (recErr: any) {
           setRecordingState('failed');
-          setRecordingError('Không lấy được track video/audio để ghi hình.');
+          setRecordingError(recErr?.message || 'Không thể bắt đầu ghi hình.');
+          toast.error('Không thể bắt đầu ghi hình bằng trình duyệt.');
         }
-      } catch (recErr: any) {
-        setRecordingState('failed');
-        setRecordingError(recErr?.message || 'Không thể bắt đầu ghi hình.');
-        toast.error('Không thể bắt đầu ghi hình bằng trình duyệt.');
-      }
-    } catch (error) {
-      startedRef.current = false;
-      const message = toUserError(error);
-      setBootState('error');
-      setBootError(message);
-      toast.error(message);
-    }
-  }, [start, getLocalTracks]);
+      })
+      .catch((error) => {
+        startedRef.current = false;
+        const message = toUserError(error);
+        setBootState('error');
+        setBootError(message);
+        toast.error(message);
+      });
+  }, [effectiveSessionId, isHost, session, start, getLocalTracks]);
 
   useEffect(() => {
     if (session?.status === 'ended') {
@@ -573,24 +586,8 @@ const handleEndLive = async (skipNavigate = false) => {
             <Card className="overflow-hidden">
               <div className="aspect-video bg-black relative">
                 <div ref={setLocalContainerRef} className="h-full w-full" />
-                {!isJoined && !startedRef.current && bootState === 'ready' && isHost && session?.status !== 'ended' && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 gap-4">
-                    <p className="text-white/80 text-sm text-center px-4">
-                      Bấm nút bên dưới để bắt đầu phát sóng
-                    </p>
-                    <Button
-                      size="lg"
-                      className="bg-destructive hover:bg-destructive/90 text-destructive-foreground font-bold text-base px-8 py-6"
-                      onClick={handleStartBroadcast}
-                    >
-                      <Radio className="h-5 w-5 mr-2" />
-                      Bắt đầu phát sóng
-                    </Button>
-                  </div>
-                )}
-                {!isJoined && (startedRef.current || bootState === 'starting') && (
+                {!isJoined && (
                   <div className="absolute inset-0 flex items-center justify-center text-white/90 bg-black/50">
-                    <Loader2 className="h-5 w-5 animate-spin mr-2" />
                     {statusText}
                   </div>
                 )}

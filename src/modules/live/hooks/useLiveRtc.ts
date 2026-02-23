@@ -232,11 +232,7 @@ export function useLiveRtc({
       emitViewerCount(client);
 
       if (role === 'host') {
-        const [audioTrack, videoTrack] = await AgoraRTC.createMicrophoneAndCameraTracks()
-          .catch((err) => {
-            console.error('[useLiveRtc] createMicrophoneAndCameraTracks failed:', err?.name, err?.message, err);
-            throw err;
-          });
+        const [audioTrack, videoTrack] = await AgoraRTC.createMicrophoneAndCameraTracks();
         localAudioRef.current = audioTrack;
         localVideoRef.current = videoTrack;
         if (localContainerRef.current) {
