@@ -1,28 +1,33 @@
 
-# Them Hop Thoai Xac Nhan Khi Host Bam "End Live"
 
-## Van De
-Hien tai, khi host bam nut "End Live", buoi live ket thuc ngay lap tuc ma khong co xac nhan. Nguoi dung co the vo tinh bam ket thuc buoi live.
+# Thêm Cảnh Báo Khi Đóng Tab / Refresh Trang Trong Khi Đang Live
 
-## Giai Phap
-Them hop thoai xac nhan khi host bam "End Live":
-- Title: "Ban co chac ket thuc buoi Live Stream?"
-- Description: "Buoi live se ket thuc va video se duoc luu lai."
-- OK: Ket thuc live + luu video
-- Cancel: O lai tiep tuc live
+## Vấn Đề
+Hiện tại, nếu host đóng tab trình duyệt hoặc refresh trang (F5) trong khi đang live stream, trang sẽ đóng ngay lập tức mà không có cảnh báo nào. Video live có thể bị mất.
 
-## Thay Doi
+## Giải Pháp
+Sử dụng sự kiện `beforeunload` của trình duyệt để hiển thị cảnh báo mặc định của trình duyệt khi host cố đóng tab hoặc refresh trang trong khi đang live.
+
+## Thay Đổi
 
 ### File: `src/modules/live/pages/LiveHostPage.tsx`
 
-1. **Them state** `showEndConfirm` de quan ly hien/an hop thoai xac nhan End Live
+Thêm 1 `useEffect` mới sử dụng `beforeunload` event:
 
-2. **Sua nut "End Live"**: Thay vi goi `handleEndLive()` truc tiep, se set `showEndConfirm = true` de hien hop thoai
+```typescript
+useEffect(() => {
+  if (!shouldBlock) return;
 
-3. **Them AlertDialog moi** cho xac nhan End Live:
-   - Bam "Ket thuc" -> goi `handleEndLive()` roi dong dialog
-   - Bam "O lai" -> dong dialog, tiep tuc live
+  const handler = (e: BeforeUnloadEvent) => {
+    e.preventDefault();
+  };
 
-4. **Giu nguyen** hop thoai navigation guard (useBlocker) da co san -- do la hop thoai khi roi trang, con hop thoai nay la khi bam nut End Live
+  window.addEventListener('beforeunload', handler);
+  return () => window.removeEventListener('beforeunload', handler);
+}, [shouldBlock]);
+```
 
-Tong cong chi sua 1 file, them khoang 20 dong code.
+- Tận dụng biến `shouldBlock` đã có sẵn (= `isHost && session?.status === 'live' && isJoined && !isEnding`)
+- Khi điều kiện đúng, trình duyệt sẽ hiện hộp thoại mặc định: "Changes you made may not be saved" (do trình duyệt quyết định nội dung)
+- Chỉ thêm khoảng 10 dòng code vào 1 file duy nhất
+
