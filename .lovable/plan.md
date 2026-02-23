@@ -1,55 +1,61 @@
 
-# Kiểm Tra Chéo IP + Thiết Bị Để Tránh Nhầm Lẫn
+# Hiển Thị Tên + Email Rõ Ràng Trên Tất Cả Thông Báo Cảnh Báo
 
 ## Vấn Đề
 
-Hiện tại bước 3 (IP Clustering) trong `daily-fraud-scan` chỉ đếm số user trên cùng IP. Nếu >3 user cùng IP trong 24h thì tự động đình chỉ tất cả. Điều này gây **ban oan** trong các trường hợp:
+Hiện tại 2 mục thông báo cũ (`admin_fraud_daily`) chỉ hiển thị số liệu tổng ("7 cảnh báo, 33 đình chỉ") mà không kèm theo danh sách tên user và email cụ thể. Mục mới nhất đã hiển thị username nhưng vẫn thiếu email.
 
-- Quán cà phê / trường học / văn phòng: nhiều người dùng chung wifi nhưng **khác thiết bị** hoàn toàn
-- Mạng di động (CGNAT): hàng trăm người chung 1 IP nhưng khác nhau hoàn toàn
+## Giải Pháp
 
-Dữ liệu thực tế cho thấy: IP `175.141.176.174` có 10 user nhưng 7 thiết bị khác nhau -- có thể có người vô tội bị vạ lây.
+### 1. Cập nhật Edge Function `daily-fraud-scan/index.ts`
 
-## Giải Pháp: Kiểm Tra Chéo Đa Tầng
+- Thu thập **email** của tất cả user bị gắn cờ (từ `auth.admin.listUsers` cho email farm, và query thêm cho shared device/IP cluster)
+- Lưu thêm trường `flagged_emails` vào metadata (map username -> email)
+- Cập nhật alert text để bao gồm cả email, ví dụ:
+  - `"Thiết bị dfb4... có 3 TK: MINHCANH (minh@gmail.com), @Binhan2024 (binh@gmail.com)"`
 
-Thay đổi logic IP clustering để **kết hợp thêm dấu vân tay thiết bị** trước khi quyết định đình chỉ:
+Metadata mới:
+```text
+{
+  alerts_count: 7,
+  alerts: ["..."],
+  accounts_held: 33,
+  flagged_usernames: ["user1", "user2"],
+  flagged_emails: {"user1": "email1@gmail.com", "user2": "email2@gmail.com"}  // MỚI
+}
+```
 
-### Quy tắc mới
+### 2. Cập nhật hiển thị `Notifications.tsx` (trang thông báo đầy đủ)
 
-| Tình huống | Hành động |
-|---|---|
-| Cùng IP + Cùng thiết bị | Tự động đình chỉ (chắc chắn gian lận) |
-| Cùng IP + Khác thiết bị hoàn toàn | Chỉ cảnh báo, KHÔNG tự động đình chỉ |
-| Cùng IP + Một số chung thiết bị | Chỉ đình chỉ nhóm chung thiết bị, cảnh báo phần còn lại |
+- Case `admin_fraud_daily`: hiển thị danh sách `username (email)` thay vì chỉ username
+- Case `admin_shared_device`: hiển thị username kèm email
+- Case `admin_email_farm`: hiển thị username kèm email  
+- Case `admin_blacklisted_ip`: hiển thị username kèm email nếu có
+
+### 3. Cập nhật hiển thị `utils.ts` (dropdown notification)
+
+- Tương tự cập nhật cho tất cả 4 case admin notification
+
+### 4. Dọn dẹp thông báo trùng lặp
+
+- Xóa các thông báo `admin_fraud_daily` cũ (hiện có 8 bản trùng, chỉ giữ 4 bản mới nhất -- 1 cho mỗi admin)
+- Chạy lại scan để tạo thông báo mới với đầy đủ thông tin
 
 ### Chi tiết kỹ thuật
 
-**File sửa: `supabase/functions/daily-fraud-scan/index.ts`**
+**`supabase/functions/daily-fraud-scan/index.ts`:**
+- Tạo hàm `lookupEmails()` truy vấn `auth.admin.listUsers` để lấy email theo user ID
+- Tái sử dụng data email đã có từ bước email farm detection
+- Thêm `flagged_emails` (object username -> email) vào metadata notification
+- Cập nhật alert strings: `"username (email)"` format
 
-Cập nhật bước 3 (IP clustering) như sau:
+**`src/pages/Notifications.tsx`:**
+- Cập nhật hàm `getNotificationText` cho 4 case admin: hiển thị `username (email)` thay vì chỉ username
+- Đọc `m.flagged_emails` để map username -> email
 
-1. Sau khi tìm được IP có >3 user, truy vấn thêm `pplp_device_registry` để lấy `device_hash` (v2+) của từng user
-2. Phân nhóm:
-   - **Nhóm A**: Các user chia sẻ cùng `device_hash` (fraud chắc chắn) -- tự động đình chỉ
-   - **Nhóm B**: Các user có thiết bị riêng biệt (có thể hợp lệ) -- chỉ ghi cảnh báo, không đình chỉ
-3. Cập nhật alert text để ghi rõ:
-   - "IP x.x.x.x: 5 TK chung thiết bị (đã đình chỉ): user1, user2... | 3 TK thiết bị riêng (chỉ cảnh báo): user3, user4..."
-4. Severity cũng được điều chỉnh:
-   - Chung thiết bị: severity 4 (cao)
-   - Chỉ chung IP: severity 2 (thấp, chỉ theo dõi)
+**`src/components/layout/notifications/utils.ts`:**
+- Cập nhật hàm `getNotificationText` tương tự cho dropdown
+- Thêm `flagged_emails` vào `NotificationMetadata` type
 
-Logic cụ thể:
-
-```text
-// Bước 3 mới: IP clustering + cross-check thiết bị
-for mỗi IP có >3 users:
-  1. Lấy device_hash (v2+) của tất cả user trong cụm IP
-  2. Tạo map: device_hash -> [user_ids]
-  3. Tìm device_hash nào có >1 user (= shared device within IP)
-  4. sharedDeviceUsers = users chia sẻ thiết bị -> AUTO HOLD
-  5. uniqueDeviceUsers = users có thiết bị riêng -> CHỈ CẢNH BÁO
-  6. Nếu sharedDeviceUsers > 0: insert fraud signal severity 4, auto hold
-  7. Nếu chỉ có uniqueDeviceUsers: insert fraud signal severity 2, KHÔNG hold
-```
-
-Thay đổi này giúp giảm thiểu tối đa việc đình chỉ nhầm user vô tội trong khi vẫn bắt được các trường hợp gian lận thực sự (cùng IP + cùng thiết bị).
+**`src/components/layout/notifications/types.ts`:**
+- Thêm `flagged_emails?: Record<string, string>` vào interface `NotificationMetadata`
