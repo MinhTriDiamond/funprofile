@@ -60,6 +60,7 @@ export const NotificationDropdown = ({ centerNavStyle = false, isActiveRoute = f
         read,
         created_at,
         post_id,
+        metadata,
         actor:profiles!notifications_actor_id_fkey (
           id,
           username,
