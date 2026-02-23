@@ -187,8 +187,10 @@ export const NotificationDropdown = ({ centerNavStyle = false, isActiveRoute = f
       navigate(`/post/${notification.post_id}`);
     } else if (notification.type === 'friend_request' || notification.type === 'friend_accepted') {
       navigate(`/profile/${notification.actor?.id}`);
-    } else if (notification.type === 'reward_approved' || notification.type === 'reward_rejected') {
+    } else if (notification.type === 'reward_approved' || notification.type === 'reward_rejected' || notification.type === 'claim_reward') {
       navigate('/wallet');
+    } else if (notification.type === 'donation') {
+      navigate(`/profile/${notification.actor?.id}`);
     }
   };
 

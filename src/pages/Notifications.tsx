@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Bell, Heart, MessageCircle, Share2, Gift, UserPlus, UserX, Filter, Check, CheckCheck } from "lucide-react";
+import { ArrowLeft, Bell, Heart, MessageCircle, Share2, Gift, UserPlus, UserX, UserCheck, Filter, Check, CheckCheck, Shield, Radio, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +14,7 @@ import { useLanguage } from "@/i18n/LanguageContext";
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { PullToRefreshContainer } from "@/components/common/PullToRefreshContainer";
 
-type NotificationFilter = "all" | "reactions" | "comments" | "shares" | "friends" | "system";
+type NotificationFilter = "all" | "reactions" | "comments" | "shares" | "friends" | "donations" | "system";
 
 interface NotificationWithActor {
   id: string;
@@ -22,6 +22,7 @@ interface NotificationWithActor {
   read: boolean;
   created_at: string;
   post_id: string | null;
+  metadata: Record<string, any> | null;
   actor: {
     id: string;
     username: string;
@@ -62,6 +63,7 @@ const Notifications = () => {
           read,
           created_at,
           post_id,
+          metadata,
           actor:profiles!notifications_actor_id_fkey(id, username, avatar_url, full_name)
         `)
         .eq("user_id", userId)
@@ -113,9 +115,13 @@ const Notifications = () => {
         return notifs.filter(n => 
           ["friend_request", "friend_accepted", "friend_removed"].includes(n.type)
         );
+      case "donations":
+        return notifs.filter(n => 
+          ["donation", "claim_reward"].includes(n.type)
+        );
       case "system":
         return notifs.filter(n => 
-          ["reward_approved", "reward_rejected", "account_banned", "system"].includes(n.type)
+          ["reward_approved", "reward_rejected", "account_banned", "system", "admin_shared_device", "admin_email_farm", "admin_blacklisted_ip", "admin_fraud_daily"].includes(n.type)
         );
       default:
         return notifs;
@@ -126,17 +132,22 @@ const Notifications = () => {
     switch (type) {
       case "like":
       case "love":
+      case "care":
       case "comment_like":
         return <Heart className="h-4 w-4 text-red-500 fill-red-500" />;
       case "haha":
       case "wow":
       case "sad":
       case "angry":
+      case "pray":
         return <Heart className="h-4 w-4 text-yellow-500 fill-yellow-500" />;
       case "comment":
+      case "comment_reply":
         return <MessageCircle className="h-4 w-4 text-blue-500" />;
       case "share":
         return <Share2 className="h-4 w-4 text-green-500" />;
+      case "donation":
+        return <Gift className="h-4 w-4 text-green-500" />;
       case "friend_request":
       case "friend_accepted":
         return <UserPlus className="h-4 w-4 text-purple-500" />;
@@ -144,7 +155,17 @@ const Notifications = () => {
         return <UserX className="h-4 w-4 text-destructive" />;
       case "reward_approved":
       case "reward_rejected":
-        return <Gift className="h-4 w-4 text-amber-500" />;
+      case "claim_reward":
+        return <Wallet className="h-4 w-4 text-amber-500" />;
+      case "account_banned":
+        return <Shield className="h-4 w-4 text-destructive" />;
+      case "admin_shared_device":
+      case "admin_email_farm":
+      case "admin_blacklisted_ip":
+      case "admin_fraud_daily":
+        return <Shield className="h-4 w-4 text-orange-500" />;
+      case "live_started":
+        return <Radio className="h-4 w-4 text-destructive" />;
       default:
         return <Bell className="h-4 w-4 text-muted-foreground" />;
     }
@@ -152,12 +173,15 @@ const Notifications = () => {
 
   const getNotificationText = (notification: NotificationWithActor) => {
     const actorName = notification.actor?.username || t('anonymous');
+    const m = notification.metadata;
     
     switch (notification.type) {
       case "like":
         return `${actorName} đã thích bài viết của bạn`;
       case "love":
         return `${actorName} đã yêu thích bài viết của bạn`;
+      case "care":
+        return `${actorName} đã thương thương bài viết của bạn`;
       case "haha":
         return `${actorName} đã cười với bài viết của bạn`;
       case "wow":
@@ -166,12 +190,18 @@ const Notifications = () => {
         return `${actorName} đã buồn với bài viết của bạn`;
       case "angry":
         return `${actorName} đã phẫn nộ với bài viết của bạn`;
+      case "pray":
+        return `${actorName} đã gửi lời biết ơn với bài viết của bạn`;
       case "comment":
         return `${actorName} đã bình luận về bài viết của bạn`;
       case "comment_like":
         return `${actorName} đã thích bình luận của bạn`;
+      case "comment_reply":
+        return `${actorName} đã trả lời bình luận của bạn`;
       case "share":
         return `${actorName} đã chia sẻ bài viết của bạn`;
+      case "donation":
+        return `${actorName} đã tặng quà cho bạn`;
       case "friend_request":
         return `${actorName} đã gửi lời mời kết bạn`;
       case "friend_accepted":
@@ -179,11 +209,39 @@ const Notifications = () => {
       case "friend_removed":
         return `${actorName} đã hủy kết bạn với bạn`;
       case "reward_approved":
-        return "Phần thưởng của bạn đã được duyệt!";
+        return "🎉 Chúc mừng! Phần thưởng của bạn đã được duyệt";
       case "reward_rejected":
-        return "Phần thưởng của bạn không được duyệt";
+        return "📋 Yêu cầu nhận thưởng cần được xem xét lại";
+      case "claim_reward":
+        return "FUN Profile Treasury đã chuyển phần thưởng CAMLY về ví của bạn";
       case "account_banned":
-        return "Tài khoản của bạn đã bị hạn chế";
+        return "⚠️ Tài khoản của bạn đã bị hạn chế";
+      case "live_started":
+        return `🔴 ${actorName} đang phát trực tiếp`;
+      case "admin_shared_device": {
+        const detail = m?.device_hash
+          ? ` Thiết bị ${m.device_hash}... có ${m.user_count || '?'} tài khoản`
+          : ' Phát hiện thiết bị dùng chung nhiều tài khoản';
+        return `🔴 Cảnh báo:${detail}`;
+      }
+      case "admin_email_farm": {
+        const detail = m?.email_base
+          ? ` Cụm email "${m.email_base}" có ${m.count || '?'} tài khoản`
+          : ' Phát hiện cụm email farm nghi ngờ';
+        return `🔴 Cảnh báo:${detail}`;
+      }
+      case "admin_blacklisted_ip": {
+        const detail = m?.ip_address
+          ? ` Đăng nhập từ IP bị chặn ${m.ip_address}`
+          : ' Đăng nhập từ IP bị chặn';
+        return `🔴 Cảnh báo:${detail}`;
+      }
+      case "admin_fraud_daily": {
+        const detail = m?.alerts_count
+          ? ` ${m.alerts_count} cảnh báo`
+          : ' Có hoạt động đáng ngờ cần xử lý';
+        return `📊 Báo cáo gian lận:${detail}`;
+      }
       default:
         return "Bạn có thông báo mới";
     }
@@ -217,7 +275,13 @@ const Notifications = () => {
       await markAsRead(notification.id);
     }
     
-    if (notification.post_id) {
+    if (notification.type === 'donation') {
+      navigate(`/profile/${notification.actor?.id}`);
+    } else if (notification.type === 'claim_reward' || notification.type === 'reward_approved' || notification.type === 'reward_rejected') {
+      navigate('/wallet');
+    } else if (notification.type === 'live_started' && notification.post_id) {
+      navigate(`/post/${notification.post_id}`);
+    } else if (notification.post_id) {
       navigate(`/post/${notification.post_id}`);
     } else if (["friend_request", "friend_accepted", "friend_removed"].includes(notification.type)) {
       navigate(`/profile/${notification.actor?.id}`);
@@ -232,8 +296,9 @@ const Notifications = () => {
     { value: "reactions", label: "Reactions", icon: Heart },
     { value: "comments", label: "Bình luận", icon: MessageCircle },
     { value: "shares", label: "Chia sẻ", icon: Share2 },
+    { value: "donations", label: "Tặng thưởng", icon: Gift },
     { value: "friends", label: "Bạn bè", icon: UserPlus },
-    { value: "system", label: "Hệ thống", icon: Gift },
+    { value: "system", label: "Hệ thống", icon: Shield },
   ];
 
   const handlePullRefresh = useCallback(async () => {
