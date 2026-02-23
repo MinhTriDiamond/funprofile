@@ -18,6 +18,7 @@ import { EditPostDialog } from './EditPostDialog';
 import { ReactionButton } from './ReactionButton';
 import { ReactionSummary } from './ReactionSummary';
 import { MediaGrid } from './MediaGrid';
+import { LivePostEmbed } from './LivePostEmbed';
 import { ExpandableContent } from './ExpandableContent';
 import { extractPostStreamVideos, deleteStreamVideos, isSupabaseStorageUrl, deleteStorageFile } from '@/utils/streamHelpers';
 import {
@@ -445,7 +446,14 @@ const FacebookPostCardComponent = ({
         )}
 
         {/* Post Media */}
-        <MediaGrid media={mediaItems} />
+        {(post as any).post_type === 'live' && (post as any).metadata?.live_status === 'live' ? (
+          <LivePostEmbed
+            metadata={(post as any).metadata}
+            hostName={post.profiles?.display_name || post.profiles?.username || ''}
+          />
+        ) : (
+          <MediaGrid media={mediaItems} />
+        )}
 
         {/* Reactions Summary */}
         <ReactionSummary
