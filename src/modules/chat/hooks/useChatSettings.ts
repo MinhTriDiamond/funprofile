@@ -6,7 +6,7 @@ import type { ChatSettings } from '../types';
 export type { ChatSettings };
 
 const DEFAULT_SETTINGS: Omit<ChatSettings, 'id' | 'user_id' | 'created_at' | 'updated_at'> = {
-  who_can_message: 'friends',
+  who_can_message: 'everyone',
   show_read_receipts: true,
   show_typing_indicator: true,
 };
@@ -82,7 +82,7 @@ export async function canSendMessage(senderId: string, receiverId: string): Prom
     .eq('user_id', receiverId)
     .maybeSingle();
 
-  const whoCanMessage = settings?.who_can_message || 'friends';
+  const whoCanMessage = settings?.who_can_message || 'everyone';
 
   switch (whoCanMessage) {
     case 'everyone':
