@@ -1,31 +1,32 @@
 
+# Nâng Cao Trải Nghiệm Xem Ảnh Trong Chat
 
-# Sửa Lỗi Trùng Lặp Tên Người Dùng Trong Sidebar Chat
+## Vấn de
 
-## Nguyên nhân
-
-File `src/pages/Profile.tsx` đang import hook `useConversations` từ **đường dẫn cũ** (`@/hooks/useConversations`), trong khi trang Chat sử dụng hook từ **module chat** (`@/modules/chat/hooks/useConversations`).
-
-Hai hook này có logic tạo conversation khác nhau -- hook cũ thiếu kiểm tra block, thiếu unread count, và quan trọng nhất là khi tạo conversation từ Profile, dữ liệu trả về không đồng bộ với cache của hook mới, dẫn đến sidebar hiển thị **2 entry** cho cùng một người dùng.
+Hiện tại, ảnh trong tin nhắn chat chỉ hiển thị dạng thu nhỏ (thumbnail) mà không thể bấm vào để phóng to xem chi tiết. Dòng 206 trong `MessageBubble.tsx` render ảnh bằng thẻ `<img>` thuần, không có `onClick` handler.
 
 ## Giải pháp
 
-Chỉ cần sửa **1 dòng** trong `src/pages/Profile.tsx`:
-
-Thay đổi import từ:
-```
-import { useConversations } from '@/hooks/useConversations';
-```
-Sang:
-```
-import { useConversations } from '@/modules/chat/hooks/useConversations';
-```
-
-Điều này đảm bảo cả Profile và Chat đều dùng **cùng một hook**, chia sẻ cùng logic tạo conversation và cùng query cache, tránh trùng lặp.
+Thêm chức năng bấm vào ảnh để mở xem phóng to (fullscreen viewer) sử dụng Dialog component có sẵn.
 
 ## Chi tiết kỹ thuật
 
-- File cần sửa: `src/pages/Profile.tsx` (dòng 24)
-- Chỉ thay đổi đường dẫn import, không thay đổi logic
-- Hook mới đã có đầy đủ: kiểm tra conversation tồn tại, kiểm tra block, unread count
+### File cần sửa: `src/modules/chat/components/MessageBubble.tsx`
 
+1. Thêm state `selectedImage` (string | null) để theo dõi ảnh đang được xem
+2. Thêm `onClick` handler và `cursor-pointer` cho thẻ `<img>` tại dòng 206
+3. Thêm Dialog component hiển thị ảnh phóng to khi `selectedImage` có giá trị:
+   - Nền tối (bg-black/95) để dễ xem ảnh
+   - Ảnh hiển thị `object-contain` với `max-h-[90vh]` để vừa màn hình
+   - Nút X để đóng
+   - Bấm ngoài ảnh cũng đóng được (Dialog tự hỗ trợ)
+
+### Import thêm:
+- `Dialog, DialogContent` từ `@/components/ui/dialog`
+- `X` từ `lucide-react`
+
+### Thay đổi cụ thể:
+- Dòng 206: Thêm `onClick={() => setSelectedImage(url)}` và `cursor-pointer hover:opacity-90` cho thẻ img
+- Cuối component (trước return cuối): Thêm Dialog với ảnh phóng to
+
+Chỉ sửa 1 file duy nhất, không tạo file mới.
