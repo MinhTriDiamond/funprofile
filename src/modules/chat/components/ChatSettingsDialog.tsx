@@ -52,7 +52,7 @@ export function ChatSettingsDialog({ open, onOpenChange, userId }: ChatSettingsD
               <Label>Ai có thể nhắn tin cho bạn</Label>
             </div>
             <Select
-              value={settings?.who_can_message || 'friends'}
+              value={settings?.who_can_message || 'everyone'}
               onValueChange={(v) => handleUpdate({ who_can_message: v })}
               disabled={isLoading || updateSettings.isPending}
             >
