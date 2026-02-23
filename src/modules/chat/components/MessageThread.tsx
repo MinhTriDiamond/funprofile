@@ -1,5 +1,5 @@
 
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMessages } from '../hooks/useMessages';
 import { useTypingIndicator } from '../hooks/useTypingIndicator';
@@ -45,7 +45,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
-import { canSendMessage } from '../hooks/useChatSettings';
+import { canSendMessage, useChatSettings } from '../hooks/useChatSettings';
 
 interface MessageThreadProps {
   conversationId: string;
@@ -90,6 +90,12 @@ export function MessageThread({ conversationId, userId, username }: MessageThrea
   } = useMessages(conversationId, userId);
 
   const { typingUsers, sendTyping } = useTypingIndicator(conversationId, userId, username);
+  const { settings: chatSettings } = useChatSettings(userId);
+
+  const handleTyping = useCallback((isTyping: boolean) => {
+    if (chatSettings?.show_typing_indicator === false) return;
+    sendTyping(isTyping);
+  }, [chatSettings?.show_typing_indicator, sendTyping]);
 
   // Agora call hook
   const {
@@ -221,9 +227,10 @@ export function MessageThread({ conversationId, userId, username }: MessageThrea
     };
   }, []);
 
-  // Mark messages as read
+  // Mark messages as read (only if read receipts enabled)
   useEffect(() => {
     if (!userId || messages.length === 0) return;
+    if (chatSettings?.show_read_receipts === false) return;
 
     const unreadIds = messages
       .filter(
@@ -240,7 +247,7 @@ export function MessageThread({ conversationId, userId, username }: MessageThrea
       .finally(() => {
         unreadIds.forEach((id) => pendingReadIdsRef.current.delete(id));
       });
-  }, [messages, userId, markAsRead]);
+  }, [messages, userId, markAsRead, chatSettings?.show_read_receipts]);
 
   const handleSend = async (content: string, mediaUrls?: string[]) => {
     // Kiểm tra quyền gửi tin nhắn (chỉ cho hội thoại 1-1)
@@ -594,6 +601,7 @@ export function MessageThread({ conversationId, userId, username }: MessageThrea
                 }}
                 isPinned={!!message.pinned_at}
                 highlightId={highlightMessageId}
+                showReadStatus={chatSettings?.show_read_receipts !== false}
               />
               </div>
             );
@@ -621,7 +629,7 @@ export function MessageThread({ conversationId, userId, username }: MessageThrea
           onSend={handleSend}
           onSendSticker={handleSendSticker}
           onCreateRedEnvelope={handleCreateRedEnvelope}
-          onTyping={sendTyping}
+          onTyping={handleTyping}
           replyTo={replyTo}
           onCancelReply={() => setReplyTo(null)}
           isSending={sendMessage.isPending}

@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
-import { MoreHorizontal, Reply, Pin, Edit, Trash2, Flag, Copy, X } from 'lucide-react';
+import { MoreHorizontal, Reply, Pin, Edit, Trash2, Flag, Copy, X, Check, CheckCheck } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import type { Message, MessageReaction } from '../types';
@@ -34,6 +34,7 @@ interface MessageBubbleProps {
   onReport?: (message: Message) => void;
   isPinned?: boolean;
   highlightId?: string | null;
+  showReadStatus?: boolean;
 }
 
 const QUICK_EMOJIS = ['❤️', '👍', '😂', '😮', '😢', '🙏'];
@@ -51,6 +52,7 @@ export function MessageBubble({
   onReport,
   isPinned,
   highlightId,
+  showReadStatus,
 }: MessageBubbleProps) {
   const [showReactions, setShowReactions] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -225,6 +227,11 @@ export function MessageBubble({
                   ? formatDistanceToNow(new Date(message.created_at), { addSuffix: false, locale: vi })
                   : ''}
               </span>
+              {isOwn && showReadStatus && (
+                message.read_by && message.read_by.length > 0
+                  ? <CheckCheck className="h-3 w-3 text-primary" />
+                  : <Check className="h-3 w-3 opacity-60" />
+              )}
             </div>
           </div>
 
