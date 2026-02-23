@@ -65,28 +65,47 @@ async function getPresignedUrl(
 async function uploadWithPresignedUrl(
   file: File,
   uploadUrl: string,
+  onProgress?: (percent: number) => void,
   timeoutMs: number = 120000
 ): Promise<void> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    const timeoutId = setTimeout(() => {
+      xhr.abort();
+      reject(new Error('Upload timed out'));
+    }, timeoutMs);
 
-  try {
-    const response = await fetch(uploadUrl, {
-      method: 'PUT',
-      body: file,
-      headers: {
-        'Content-Type': file.type,
-        'Cache-Control': 'public, max-age=31536000, immutable',
-      },
-      signal: controller.signal,
-    });
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable && onProgress) {
+        const percent = Math.round((event.loaded / event.total) * 100);
+        onProgress(percent);
+      }
+    };
 
-    if (!response.ok) {
-      throw new Error(`Upload failed: HTTP ${response.status}`);
-    }
-  } finally {
-    clearTimeout(timeoutId);
-  }
+    xhr.onload = () => {
+      clearTimeout(timeoutId);
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve();
+      } else {
+        reject(new Error(`Upload failed: HTTP ${xhr.status}`));
+      }
+    };
+
+    xhr.onerror = () => {
+      clearTimeout(timeoutId);
+      reject(new Error('Upload network error'));
+    };
+
+    xhr.onabort = () => {
+      clearTimeout(timeoutId);
+      reject(new Error('Upload aborted'));
+    };
+
+    xhr.open('PUT', uploadUrl);
+    xhr.setRequestHeader('Content-Type', file.type);
+    xhr.setRequestHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    xhr.send(file);
+  });
 }
 
 /**
@@ -98,7 +117,8 @@ export async function uploadToR2(
   file: File,
   bucket: 'posts' | 'avatars' | 'videos' | 'comment-media',
   customPath?: string,
-  accessToken?: string
+  accessToken?: string,
+  onProgress?: (percent: number) => void
 ): Promise<R2UploadResult> {
   // Generate unique filename
   const timestamp = Date.now();
@@ -120,6 +140,7 @@ export async function uploadToR2(
   await uploadWithPresignedUrl(
     file,
     uploadUrl,
+    onProgress,
     180000 // 3 min timeout for upload (large files)
   );
 

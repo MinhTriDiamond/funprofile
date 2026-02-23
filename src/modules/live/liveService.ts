@@ -344,15 +344,9 @@ export async function uploadLiveRecording(
   const extension = baseMimeType.includes('webm') ? 'webm' : 'mp4';
   const customPath = `live/${liveSessionId}/recording-${Date.now()}.${extension}`;
 
-  onProgress?.(10);
-
   const file = new File([blob], `recording.${extension}`, { type: baseMimeType });
 
-  onProgress?.(30);
-
-  const result = await uploadToR2(file, 'videos', customPath);
-
-  onProgress?.(100);
+  const result = await uploadToR2(file, 'videos', customPath, undefined, onProgress);
 
   return { key: result.key, url: result.url };
 }
