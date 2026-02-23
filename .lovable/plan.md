@@ -1,51 +1,55 @@
 
-# Hiển Thị Tên User Trong Thông Báo Cảnh Báo Gian Lận
+# Kiểm Tra Chéo IP + Thiết Bị Để Tránh Nhầm Lẫn
 
 ## Vấn Đề
 
-Hiện tại thông báo `admin_fraud_daily` chỉ hiển thị số liệu chung (ví dụ: "7 cảnh báo") và các alert text ngắn gọn. Không có tên user cụ thể nên admin phải tự tìm kiếm.
+Hiện tại bước 3 (IP Clustering) trong `daily-fraud-scan` chỉ đếm số user trên cùng IP. Nếu >3 user cùng IP trong 24h thì tự động đình chỉ tất cả. Điều này gây **ban oan** trong các trường hợp:
 
-## Giải Pháp
+- Quán cà phê / trường học / văn phòng: nhiều người dùng chung wifi nhưng **khác thiết bị** hoàn toàn
+- Mạng di động (CGNAT): hàng trăm người chung 1 IP nhưng khác nhau hoàn toàn
 
-### 1. Cập nhật Edge Function `daily-fraud-scan/index.ts`
+Dữ liệu thực tế cho thấy: IP `175.141.176.174` có 10 user nhưng 7 thiết bị khác nhau -- có thể có người vô tội bị vạ lây.
 
-- Sau khi phát hiện các cụm gian lận, **truy vấn bảng `profiles`** để lấy `username` của tất cả user bị gắn cờ
-- Đưa danh sách username vào metadata của thông báo `admin_fraud_daily`
-- Cập nhật text alerts để bao gồm username, ví dụ:
-  - "Thiết bị dfb4ace9... có 3 tài khoản: user1, user2, user3"
-  - "Cụm email tacongminh có 3 tài khoản: tacongminh1, tacongminh2, tacongminh3"
+## Giải Pháp: Kiểm Tra Chéo Đa Tầng
 
-Metadata mới sẽ có thêm trường:
-```text
-{
-  alerts_count: 7,
-  alerts: ["Thiết bị dfb4... có 3 TK: user1, user2, user3", ...],
-  accounts_held: 33,
-  flagged_usernames: ["user1", "user2", "user3", ...]  // <-- MỚI
-}
-```
+Thay đổi logic IP clustering để **kết hợp thêm dấu vân tay thiết bị** trước khi quyết định đình chỉ:
 
-### 2. Cập nhật hiển thị trong `Notifications.tsx`
+### Quy tắc mới
 
-- Case `admin_fraud_daily`: hiển thị thêm danh sách username từ `m.flagged_usernames`
-- Case `admin_shared_device`: hiển thị username từ `m.usernames`
-- Case `admin_email_farm`: hiển thị username từ `m.usernames`
-
-### 3. Cập nhật hiển thị trong `utils.ts` (dropdown)
-
-- Tương tự, hiển thị danh sách username trong các case admin_fraud_daily
+| Tình huống | Hành động |
+|---|---|
+| Cùng IP + Cùng thiết bị | Tự động đình chỉ (chắc chắn gian lận) |
+| Cùng IP + Khác thiết bị hoàn toàn | Chỉ cảnh báo, KHÔNG tự động đình chỉ |
+| Cùng IP + Một số chung thiết bị | Chỉ đình chỉ nhóm chung thiết bị, cảnh báo phần còn lại |
 
 ### Chi tiết kỹ thuật
 
-**File `supabase/functions/daily-fraud-scan/index.ts`:**
-- Tạo mảng `allFlaggedUserIds` thu thập tất cả user ID bị phát hiện
-- Trước khi gửi notification, query `profiles` để lấy username theo IDs
-- Đưa username vào text alerts và thêm trường `flagged_usernames` vào metadata
-- Cập nhật alert text: thêm `: username1, username2, ...` vào cuối mỗi alert
+**File sửa: `supabase/functions/daily-fraud-scan/index.ts`**
 
-**File `src/pages/Notifications.tsx`:**
-- Case `admin_fraud_daily`: thêm hiển thị `m.flagged_usernames` nếu có
-- Case `admin_shared_device` và `admin_email_farm`: đã có `m.usernames` sẵn, thêm hiển thị
+Cập nhật bước 3 (IP clustering) như sau:
 
-**File `src/components/layout/notifications/utils.ts`:**
-- Case `admin_fraud_daily`: thêm hiển thị `flagged_usernames` trong detail text
+1. Sau khi tìm được IP có >3 user, truy vấn thêm `pplp_device_registry` để lấy `device_hash` (v2+) của từng user
+2. Phân nhóm:
+   - **Nhóm A**: Các user chia sẻ cùng `device_hash` (fraud chắc chắn) -- tự động đình chỉ
+   - **Nhóm B**: Các user có thiết bị riêng biệt (có thể hợp lệ) -- chỉ ghi cảnh báo, không đình chỉ
+3. Cập nhật alert text để ghi rõ:
+   - "IP x.x.x.x: 5 TK chung thiết bị (đã đình chỉ): user1, user2... | 3 TK thiết bị riêng (chỉ cảnh báo): user3, user4..."
+4. Severity cũng được điều chỉnh:
+   - Chung thiết bị: severity 4 (cao)
+   - Chỉ chung IP: severity 2 (thấp, chỉ theo dõi)
+
+Logic cụ thể:
+
+```text
+// Bước 3 mới: IP clustering + cross-check thiết bị
+for mỗi IP có >3 users:
+  1. Lấy device_hash (v2+) của tất cả user trong cụm IP
+  2. Tạo map: device_hash -> [user_ids]
+  3. Tìm device_hash nào có >1 user (= shared device within IP)
+  4. sharedDeviceUsers = users chia sẻ thiết bị -> AUTO HOLD
+  5. uniqueDeviceUsers = users có thiết bị riêng -> CHỈ CẢNH BÁO
+  6. Nếu sharedDeviceUsers > 0: insert fraud signal severity 4, auto hold
+  7. Nếu chỉ có uniqueDeviceUsers: insert fraud signal severity 2, KHÔNG hold
+```
+
+Thay đổi này giúp giảm thiểu tối đa việc đình chỉ nhầm user vô tội trong khi vẫn bắt được các trường hợp gian lận thực sự (cùng IP + cùng thiết bị).
