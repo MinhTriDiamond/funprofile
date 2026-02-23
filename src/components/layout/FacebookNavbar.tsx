@@ -229,7 +229,7 @@ export const FacebookNavbar = () => {
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="bg-gradient-to-r from-amber-500/10 to-yellow-500/10 border-amber-500/30">
-                <p className="text-amber-500 font-semibold">Mint</p>
+                <p className="text-amber-500 font-semibold">Mint FUN Money</p>
               </TooltipContent>
             </Tooltip>
 
