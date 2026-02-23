@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { useNavigate, useParams, useLocation, useBlocker } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Eye, Home, Loader2, Mic, MicOff, PhoneOff, Radio, RefreshCw, Video, VideoOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
@@ -414,10 +414,22 @@ const handleEndLive = async (skipNavigate = false) => {
 
   // Navigation guard: block leaving page while live
   const shouldBlock = isHost && session?.status === 'live' && isJoined && !isEnding;
-  const blocker = useBlocker(
-    ({ currentLocation, nextLocation }) =>
-      shouldBlock && currentLocation.pathname !== nextLocation.pathname
-  );
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false);
+  const pendingNavigationRef = useRef<string | null>(null);
+
+  // Intercept browser back/forward via popstate
+  useEffect(() => {
+    if (!shouldBlock) return;
+    const handler = (e: PopStateEvent) => {
+      // Push current state back to prevent navigation
+      window.history.pushState(null, '', window.location.href);
+      setShowLeaveDialog(true);
+    };
+    // Push an extra entry so we can intercept back
+    window.history.pushState(null, '', window.location.href);
+    window.addEventListener('popstate', handler);
+    return () => window.removeEventListener('popstate', handler);
+  }, [shouldBlock]);
 
   // Warn on tab close / refresh while live
   useEffect(() => {
@@ -429,9 +441,25 @@ const handleEndLive = async (skipNavigate = false) => {
     return () => window.removeEventListener('beforeunload', handler);
   }, [shouldBlock]);
 
+  // Intercept programmatic navigation via navigate()
+  const guardedNavigate = useCallback((to: string) => {
+    if (shouldBlock) {
+      pendingNavigationRef.current = to;
+      setShowLeaveDialog(true);
+    } else {
+      navigate(to);
+    }
+  }, [shouldBlock, navigate]);
+
   const handleConfirmLeave = async () => {
     await handleEndLive(true);
-    blocker.proceed?.();
+    setShowLeaveDialog(false);
+    if (pendingNavigationRef.current) {
+      navigate(pendingNavigationRef.current);
+      pendingNavigationRef.current = null;
+    } else {
+      navigate('/');
+    }
   };
 
   const showLoader =
@@ -615,7 +643,7 @@ const handleEndLive = async (skipNavigate = false) => {
         </div>
       </main>
       {/* Navigation guard dialog */}
-      <AlertDialog open={blocker.state === 'blocked'}>
+      <AlertDialog open={showLeaveDialog} onOpenChange={setShowLeaveDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Rời khỏi Live Stream?</AlertDialogTitle>
@@ -624,7 +652,7 @@ const handleEndLive = async (skipNavigate = false) => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => blocker.reset?.()}>Ở lại</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setShowLeaveDialog(false)}>Ở lại</AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirmLeave}>Kết thúc & Rời đi</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
