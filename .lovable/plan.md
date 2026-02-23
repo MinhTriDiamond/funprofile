@@ -1,43 +1,61 @@
 
+# Hợp Nhất Tính Năng Mint
 
-# Sửa Lỗi Edge Function Khi Xem Live Stream
+## Tổng quan
 
-## Nguyên nhân
+Hiện tại có 2 nơi hiển thị tính năng Mint FUN Money:
+1. **`/wallet/fun_money`** -- LightScoreDashboard (đầy đủ: Light Score, Pending Actions, On-chain Balance, Mint History)
+2. **`/mint`** -- Trang riêng với MintHeader, MintGuide, MintOnChainPanel, LightActionsList (trùng lặp)
 
-Trong edge function `live-token`, khi người xem (audience) yêu cầu token, trường `uid` được gửi là `undefined` (dòng 88):
+Giải pháp: Khi click nút Mint trên Navbar, navigate thẳng đến `/wallet/fun_money` thay vì `/mint`. Xóa route `/mint` và các component riêng của nó.
 
-```typescript
-uid: role === 'host' ? userId : undefined,
-```
+## Các thay đổi
 
-Agora Worker yêu cầu `uid` bắt buộc, nên trả về lỗi 400: `{"error":"uid is required"}`.
+### 1. Navbar: Đổi đích navigate từ `/mint` sang `/wallet/fun_money`
 
-## Giải pháp
+**File `src/components/layout/FacebookNavbar.tsx`:**
+- Thay `navigate('/mint')` thanh `navigate('/wallet/fun_money')`
+- Thay `isActive('/mint')` thanh `isActive('/wallet/fun_money')`
+- Giữ nguyên giao diện nút Mint (GIF logo, gold styling)
 
-Sửa 1 dòng trong file `supabase/functions/live-token/index.ts` (dòng 88): luôn gửi `uid` -- dùng `userId` cho cả host lẫn audience.
+### 2. Xóa route `/mint` khỏi App.tsx
 
-```typescript
-// Trước
-uid: role === 'host' ? userId : undefined,
+**File `src/App.tsx`:**
+- Xóa import `const Mint = lazy(...)`
+- Xóa `<Route path="/mint" ...>`
 
-// Sau
-uid: userId,
-```
+### 3. Xóa trang và component Mint không còn dùng
 
-Audience cũng cần có `uid` để Agora Worker tạo token hợp lệ. Việc dùng `userId` (UUID) cho cả hai vai trò là hoàn toàn an toàn vì Worker sẽ dùng `buildTokenWithUserAccount` để tạo token dựa trên UUID.
+Xóa 6 file:
+- `src/pages/Mint.tsx`
+- `src/components/mint/MintHeader.tsx`
+- `src/components/mint/MintGuide.tsx`
+- `src/components/mint/MintOnChainPanel.tsx`
+- `src/components/mint/LightActionsList.tsx`
+- `src/components/mint/LightActionCard.tsx`
 
-## Chi tiết kỹ thuật
+### 4. Cập nhật guest allowed paths
 
-### File: `supabase/functions/live-token/index.ts`
+**File `src/components/auth/LawOfLightGuard.tsx`:**
+- Xóa `'/mint'` khỏi danh sach `guestAllowedPaths` (vi trang wallet yeu cau dang nhap)
 
-Dòng 86-90, thay đổi body gửi đến Worker:
+## Tính năng giữ lại
 
-```typescript
-body: JSON.stringify({
-  channelName: channel,
-  uid: userId,
-  role: role === 'host' ? 'publisher' : 'subscriber',
-}),
-```
+Toàn bộ tính năng ở `/wallet/fun_money` được giữ nguyên 100%:
+- Light Score and Tier Status
+- Pending FUN Money (claim actions)
+- On-chain Balance (Locked/Activated)
+- Activate and Claim dialogs
+- Attester Signing Panel (cho GOV)
+- Mint History
 
-Chỉ sửa 1 dòng trong 1 file duy nhất.
+## Lý do không cần giữ lại các component ở `/mint`
+
+| Component `/mint` | Tương đương ở `/wallet/fun_money` |
+|---|---|
+| MintHeader (tiêu đề + testnet warning) | Không cần -- wallet đã có context rõ ràng |
+| MintGuide (4 bước hướng dẫn) | LightScoreDashboard đã có flow tự nhiên |
+| MintOnChainPanel (FunBalanceCard) | LightScoreDashboard Section 3: On-chain Balance |
+| LightActionsList (actions + claim) | LightScoreDashboard Section 2: Pending FUN Money |
+
+Tất cả đều đã có đầy đủ và chi tiết hơn trong LightScoreDashboard.
