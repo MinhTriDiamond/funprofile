@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Bell, Heart, MessageCircle, Share2, Gift, UserPlus, UserX, UserCheck, Filter, Check, CheckCheck, Shield, Radio, Wallet } from "lucide-react";
+import { ArrowLeft, Bell, Heart, MessageCircle, Share2, Gift, UserPlus, UserX, UserCheck, Filter, Check, CheckCheck, Shield, Radio, Wallet, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -31,12 +31,48 @@ interface NotificationWithActor {
   };
 }
 
+const FraudDetails = ({ type, metadata: m, formatWithEmails }: { type: string; metadata: Record<string, any>; formatWithEmails: (u: string[] | undefined, e: Record<string, string> | undefined, l?: number) => string }) => {
+  const items: string[] = [];
+  if (type === "admin_shared_device") {
+    const userList = formatWithEmails(m?.usernames, m?.flagged_emails, 10);
+    if (userList) items.push(`Tài khoản: ${userList}`);
+  } else if (type === "admin_email_farm") {
+    const userList = formatWithEmails(m?.usernames, m?.flagged_emails, 10);
+    const emails = m?.emails?.slice(0, 10)?.join(', ');
+    if (userList) items.push(`Tài khoản: ${userList}`);
+    else if (emails) items.push(`Emails: ${emails}`);
+  } else if (type === "admin_blacklisted_ip") {
+    const userList = formatWithEmails(m?.known_usernames, m?.flagged_emails, 10);
+    if (userList) items.push(`Liên quan: ${userList}`);
+  } else if (type === "admin_fraud_daily" && m?.alerts?.length) {
+    m.alerts.forEach((a: string) => items.push(a));
+  }
+  if (!items.length) return null;
+  return (
+    <div className="mt-1.5 space-y-1 text-xs text-muted-foreground bg-muted/50 rounded-md p-2">
+      {items.map((item, i) => (
+        <p key={i} className="break-words">• {item}</p>
+      ))}
+    </div>
+  );
+};
+
 const Notifications = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { t } = useLanguage();
   const [filter, setFilter] = useState<NotificationFilter>("all");
   const [userId, setUserId] = useState<string | null>(null);
+  const [expandedNotifications, setExpandedNotifications] = useState<Set<string>>(new Set());
+
+  const toggleExpand = useCallback((id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedNotifications(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     const getUser = async () => {
@@ -227,32 +263,28 @@ const Notifications = () => {
       case "live_started":
         return `🔴 ${actorName} đang phát trực tiếp`;
       case "admin_shared_device": {
-        const userList = formatWithEmails(m?.usernames, m?.flagged_emails, 5);
-        const detail = m?.device_hash
-          ? ` Thiết bị ${m.device_hash}... có ${m.user_count || '?'} tài khoản${userList ? ': ' + userList : ''}`
-          : ' Phát hiện thiết bị dùng chung nhiều tài khoản';
-        return `🔴 Cảnh báo:${detail}`;
+        const summary = m?.device_hash
+          ? `🔴 Cảnh báo: Thiết bị ${(m.device_hash as string).slice(0, 8)}... có ${m.user_count || '?'} TK`
+          : '🔴 Cảnh báo: Phát hiện thiết bị dùng chung';
+        return summary;
       }
       case "admin_email_farm": {
-        const userList = formatWithEmails(m?.usernames, m?.flagged_emails, 5);
-        const detail = m?.email_base
-          ? ` Cụm email "${m.email_base}" có ${m.count || '?'} tài khoản${userList ? ': ' + userList : m?.emails?.length ? ': ' + m.emails.slice(0, 5).join(', ') : ''}`
-          : ' Phát hiện cụm email farm nghi ngờ';
-        return `🔴 Cảnh báo:${detail}`;
+        const summary = m?.email_base
+          ? `🔴 Cảnh báo: Cụm email "${m.email_base}" có ${m.count || '?'} TK`
+          : '🔴 Cảnh báo: Phát hiện cụm email farm';
+        return summary;
       }
       case "admin_blacklisted_ip": {
-        const userList = formatWithEmails(m?.known_usernames, m?.flagged_emails, 3);
-        const detail = m?.ip_address
-          ? ` Đăng nhập từ IP bị chặn ${m.ip_address}${userList ? ' (liên quan: ' + userList + ')' : ''}`
-          : ' Đăng nhập từ IP bị chặn';
-        return `🔴 Cảnh báo:${detail}`;
+        const summary = m?.ip_address
+          ? `🔴 Cảnh báo: Đăng nhập từ IP bị chặn ${m.ip_address}`
+          : '🔴 Cảnh báo: Đăng nhập từ IP bị chặn';
+        return summary;
       }
       case "admin_fraud_daily": {
-        const alertsList = m?.alerts?.length ? m.alerts.join(', ') : '';
-        const detail = m?.alerts_count
-          ? ` ${m.alerts_count} cảnh báo${alertsList ? ' - ' + alertsList : ''}`
-          : ' Có hoạt động đáng ngờ cần xử lý';
-        return `📊 Báo cáo gian lận:${detail}`;
+        const summary = m?.alerts_count
+          ? `📊 Báo cáo gian lận: ${m.alerts_count} cảnh báo`
+          : '📊 Báo cáo gian lận';
+        return summary;
       }
       default:
         return "Bạn có thông báo mới";
@@ -438,6 +470,24 @@ const Notifications = () => {
                     )}>
                       {getNotificationText(notification)}
                     </p>
+                    {/* Expandable details for fraud notifications */}
+                    {["admin_fraud_daily", "admin_shared_device", "admin_email_farm", "admin_blacklisted_ip"].includes(notification.type) && notification.metadata && (
+                      <>
+                        <button
+                          onClick={(e) => toggleExpand(notification.id, e)}
+                          className="text-xs text-primary hover:underline mt-1 flex items-center gap-1"
+                        >
+                          {expandedNotifications.has(notification.id) ? (
+                            <>Thu gọn <ChevronUp className="h-3 w-3" /></>
+                          ) : (
+                            <>Xem chi tiết <ChevronDown className="h-3 w-3" /></>
+                          )}
+                        </button>
+                        {expandedNotifications.has(notification.id) && (
+                          <FraudDetails type={notification.type} metadata={notification.metadata as Record<string, any>} formatWithEmails={formatWithEmails} />
+                        )}
+                      </>
+                    )}
                     <p className="text-xs text-muted-foreground mt-1">
                       {formatDistanceToNow(new Date(notification.created_at), { 
                         addSuffix: true,
