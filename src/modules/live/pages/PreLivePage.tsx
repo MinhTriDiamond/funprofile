@@ -84,11 +84,7 @@ export default function PreLivePage() {
         privacy: 'public',
         title: description.trim() || undefined,
       });
-      // Stop preview stream before navigating
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(t => t.stop());
-        streamRef.current = null;
-      }
+      // Do NOT stop camera tracks before navigating — preserves browser permission state
       navigate(`/live/${session.id}/host`, { replace: true });
     } catch (err: any) {
       console.error('[PreLive] createLiveSession error:', err);
