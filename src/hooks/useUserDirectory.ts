@@ -59,7 +59,7 @@ export interface UserDirectoryFilters {
   scoreRange: 'all' | 'high' | 'medium' | 'low';
   funMoney: 'all' | 'has' | 'none';
   withdrawn: 'all' | 'yes' | 'no';
-  status: 'all' | 'active' | 'banned';
+  status: 'all' | 'active' | 'suspended' | 'banned';
   wallet: 'all' | 'has' | 'none';
 }
 
@@ -212,7 +212,8 @@ export const useUserDirectory = () => {
     if (filters.withdrawn === 'yes') result = result.filter(u => u.camly_claimed > 0);
     else if (filters.withdrawn === 'no') result = result.filter(u => u.camly_claimed === 0);
 
-    if (filters.status === 'active') result = result.filter(u => !u.is_banned);
+    if (filters.status === 'active') result = result.filter(u => !u.is_banned && u.reward_status !== 'on_hold');
+    else if (filters.status === 'suspended') result = result.filter(u => u.reward_status === 'on_hold');
     else if (filters.status === 'banned') result = result.filter(u => u.is_banned);
 
     if (filters.wallet === 'has') result = result.filter(u => !!u.wallet_address);
