@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { multipartUploadToR2 } from './multipartUpload';
 
 export interface R2UploadResult {
   url: string;
@@ -113,6 +114,8 @@ async function uploadWithPresignedUrl(
  * Much more efficient than base64 - supports large files
  * @param accessToken Optional access token to avoid multiple getSession calls
  */
+const MULTIPART_THRESHOLD = 50 * 1024 * 1024; // 50MB
+
 export async function uploadToR2(
   file: File,
   bucket: 'posts' | 'avatars' | 'videos' | 'comment-media',
@@ -127,21 +130,40 @@ export async function uploadToR2(
   const filename = customPath || `${timestamp}-${randomString}.${extension}`;
   const key = `${bucket}/${filename}`;
 
-  // Step 1: Get presigned URL from edge function
+  // Get access token if not provided
+  let token = accessToken;
+  if (!token) {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      throw new Error('Chưa đăng nhập');
+    }
+    token = session.access_token;
+  }
+
+  // Use multipart upload for large files
+  if (file.size >= MULTIPART_THRESHOLD) {
+    return await multipartUploadToR2(file, {
+      key,
+      contentType: file.type,
+      accessToken: token,
+      onProgress,
+    });
+  }
+
+  // Single presigned URL upload for smaller files
   const { uploadUrl, publicUrl } = await getPresignedUrl(
     key,
     file.type,
     file.size,
-    accessToken,
-    45000 // 45s timeout for getting URL (increased)
+    token,
+    45000
   );
 
-  // Step 2: Upload directly to R2 using presigned URL
   await uploadWithPresignedUrl(
     file,
     uploadUrl,
     onProgress,
-    180000 // 3 min timeout for upload (large files)
+    180000
   );
 
   return {
