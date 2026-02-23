@@ -1306,6 +1306,7 @@ export type Database = {
           agora_uid_host: number | null
           channel_name: string
           created_at: string
+          device_id: string | null
           ended_at: string | null
           host_user_id: string
           id: string
@@ -1336,6 +1337,7 @@ export type Database = {
           agora_uid_host?: number | null
           channel_name: string
           created_at?: string
+          device_id?: string | null
           ended_at?: string | null
           host_user_id: string
           id?: string
@@ -1366,6 +1368,7 @@ export type Database = {
           agora_uid_host?: number | null
           channel_name?: string
           created_at?: string
+          device_id?: string | null
           ended_at?: string | null
           host_user_id?: string
           id?: string
@@ -4229,6 +4232,7 @@ export type Database = {
           agora_uid_host: number | null
           channel_name: string
           created_at: string
+          device_id: string | null
           ended_at: string | null
           host_user_id: string
           id: string
@@ -4603,6 +4607,7 @@ export type Database = {
           agora_uid_host: number | null
           channel_name: string
           created_at: string
+          device_id: string | null
           ended_at: string | null
           host_user_id: string
           id: string
