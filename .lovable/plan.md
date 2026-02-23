@@ -1,38 +1,43 @@
 
-# Thêm Nút Ban/Đình Chỉ Khi Rê Chuột Vào Trạng Thái
 
-## Mô Tả
-Khi admin rê chuột (hover) vào ô trạng thái "Hoạt động" của một user, sẽ hiển thị 2 nút hành động nhanh: **Cấm** (Ban vĩnh viễn) và **Đình chỉ** (On Hold). Giúp admin xử lý user ảo ngay tại danh sách mà không cần vào trang khác.
+# Thu Gọn Thông Báo Gian Lận - Thêm Nút "Xem Chi Tiết"
 
-## Giao Diện
-- Ô trạng thái bình thường hiển thị Badge như hiện tại
-- Khi admin hover vào ô "Hoạt động": Badge ẩn đi, hiện 2 nút nhỏ:
-  - Nút **Cấm** (đỏ) - gọi RPC `ban_user_permanently`
-  - Nút **Đình chỉ** (cam) - cập nhật `reward_status = 'on_hold'`
-- Khi hover vào ô "Đình chỉ": hiện nút **Cấm** và nút **Mở khóa** (xanh, đổi về `approved`)
-- Ô "Cấm" không hiện nút gì thêm (đã bị ban rồi)
-- Có dialog xác nhận trước khi thực hiện hành động
+## Vấn Đề
+Thông báo báo cáo gian lận (`admin_fraud_daily`, `admin_shared_device`, `admin_email_farm`) hiển thị toàn bộ danh sách cảnh báo trực tiếp, làm nội dung rất dài và khó đọc.
 
-## Chi Tiết Kỹ Thuật
+## Giải Pháp
+Hiển thị tóm tắt ngắn gọn (ví dụ: "7 cảnh báo - 3 TK đình chỉ"), kèm nút **"Xem chi tiết"** để mở rộng xem danh sách đầy đủ.
 
-### File: `src/pages/Users.tsx`
+## Thay Đổi
 
-1. **Thêm state**: `hoverUserId` để theo dõi user đang được hover, `actionTarget` để quản lý dialog xác nhận, `actionType` ('ban' hoặc 'suspend' hoặc 'unlock').
+### File: `src/pages/Notifications.tsx`
 
-2. **Thay đổi cột Trạng thái**: Wrap nội dung trong div có `onMouseEnter`/`onMouseLeave`. Khi hover và user là admin:
-   - User "Hoạt động": hiện 2 icon button nhỏ (Shield-ban + Pause)
-   - User "Đình chỉ": hiện 2 icon button (Shield-ban + Unlock)
-   - User "Cấm": giữ nguyên badge
+1. **Rút gọn nội dung hiển thị mặc định** cho các loại thông báo fraud:
+   - `admin_fraud_daily`: Chỉ hiện "7 cảnh báo, 3 TK đình chỉ"
+   - `admin_shared_device`: Chỉ hiện "Thiết bị xxx có 3 TK"
+   - `admin_email_farm`: Chỉ hiện "Cụm email "abc" có 5 TK"
 
-3. **Thêm logic xử lý**:
-   - **Ban**: gọi `supabase.rpc('ban_user_permanently', { p_admin_id, p_user_id, p_reason })` (pattern đã có sẵn trong SurveillanceTab)
-   - **Đình chỉ**: gọi `supabase.from('profiles').update({ reward_status: 'on_hold' }).eq('id', userId)`
-   - **Mở khóa**: gọi `supabase.from('profiles').update({ reward_status: 'approved' }).eq('id', userId)`
-   - Sau mỗi hành động: invalidate query `user-directory` để refresh danh sách
+2. **Thêm state `expandedNotifications`** (Set) để theo dõi các thông báo đang mở rộng.
 
-4. **Dialog xác nhận**: Sử dụng `AlertDialog` hiện có, hiển thị tên hành động và username trước khi thực hiện.
+3. **Thêm nút "Xem chi tiết" / "Thu gọn"** bên dưới dòng tóm tắt. Khi bấm sẽ hiện danh sách đầy đủ (alerts, usernames, emails).
 
-5. **Lấy admin ID**: Dùng `supabase.auth.getSession()` để lấy user ID của admin (giống pattern trong SurveillanceTab).
+4. **Tách phần render** thông báo fraud thành một component con hoặc logic riêng trong cùng file, hiển thị:
+   - Dòng tóm tắt (luôn hiện)
+   - Nút toggle "Xem chi tiết" / "Thu gọn"
+   - Danh sách chi tiết (chỉ hiện khi expanded), mỗi alert trên 1 dòng riêng cho dễ đọc
 
-### Chỉ chạy khi `isAdmin = true`
-Các nút hover chỉ hiện cho admin, user thường không thấy gì khác biệt.
+### Giao Diện Khi Thu Gọn
+```
+📊 Báo cáo gian lận: 7 cảnh báo, 3 TK đình chỉ
+[Xem chi tiết ▼]
+```
+
+### Giao Diện Khi Mở Rộng
+```
+📊 Báo cáo gian lận: 7 cảnh báo, 3 TK đình chỉ
+[Thu gọn ▲]
+- Thiết bị dfb4ace9... có 3 TK: MINHCANH, @Binhan2024...
+- Cụm email "tacongminh" có 3 TK: vulongt4, hoyeu, long
+- Cụm email "congminhyvnh" có 18 TK: loannguyebn...
+```
+
