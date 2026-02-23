@@ -200,6 +200,20 @@ async function handleDeviceFingerprint(supabaseAdmin: any, userId: string, devic
       .from("profiles").select("id, username").in("id", allUserIds);
     const allUsernames = userProfiles?.map((p: any) => p.username).filter(Boolean) || [];
 
+    // Fetch emails for flagged users
+    const flaggedEmails: Record<string, string> = {};
+    try {
+      const { data: { users: authUsersList } } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
+      if (authUsersList) {
+        const emailMap = new Map(authUsersList.map((u: any) => [u.id, u.email]));
+        userProfiles?.forEach((p: any) => {
+          if (p.username && emailMap.has(p.id)) {
+            flaggedEmails[p.username] = emailMap.get(p.id) || '';
+          }
+        });
+      }
+    } catch (e) { console.error("Failed to fetch emails for shared device:", e); }
+
     const { data: admins } = await supabaseAdmin.from("user_roles").select("user_id").eq("role", "admin");
     if (admins?.length) {
       await supabaseAdmin.from("notifications").insert(
@@ -209,6 +223,7 @@ async function handleDeviceFingerprint(supabaseAdmin: any, userId: string, devic
             device_hash: deviceHash.slice(0, 8),
             user_count: allUserIds.length,
             usernames: allUsernames.slice(0, 10),
+            flagged_emails: flaggedEmails,
           },
         }))
       );
@@ -260,6 +275,18 @@ async function detectEmailFarm(supabaseAdmin: any, userId: string, email: string
         const matchedIds = matchingUsers.map((u: any) => u.id);
         const matchedEmails = matchingUsers.map((u: any) => u.email);
 
+        // Lookup usernames for matched users
+        const { data: matchedProfiles } = await supabaseAdmin
+          .from("profiles").select("id, username").in("id", matchedIds);
+        const matchedUsernames = matchedProfiles?.map((p: any) => p.username).filter(Boolean) || [];
+        const flaggedEmails: Record<string, string> = {};
+        matchedProfiles?.forEach((p: any) => {
+          const authUser = matchingUsers.find((u: any) => u.id === p.id);
+          if (p.username && authUser?.email) {
+            flaggedEmails[p.username] = authUser.email;
+          }
+        });
+
         await supabaseAdmin.from("pplp_fraud_signals").insert({
           actor_id: userId,
           signal_type: "EMAIL_FARM",
@@ -278,6 +305,8 @@ async function detectEmailFarm(supabaseAdmin: any, userId: string, email: string
                 email_base: emailBase,
                 count: matchingUsers.length,
                 emails: matchedEmails.slice(0, 5),
+                usernames: matchedUsernames,
+                flagged_emails: flaggedEmails,
               },
             }))
           );
