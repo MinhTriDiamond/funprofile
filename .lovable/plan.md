@@ -1,59 +1,50 @@
 
 
-# Cập Nhật Hiển Thị Thông Báo Tặng Thưởng & Các Loại Còn Thiếu
+# Tự Động Đình Chỉ Tài Khoản Khi Phát Hiện Gian Lận
 
-## Vấn đề
+## Giải thích cảnh báo
 
-Hiện tại có **540 thông báo loại `donation`** và **5 thông báo `claim_reward`** trong database nhưng cả hai nơi hiển thị đều không xử lý chúng:
+Thông báo "Báo cáo gian lận: 7 cảnh báo" là kết quả từ hệ thống quét gian lận tự động hàng ngày. Hệ thống phát hiện:
 
-1. **Dropdown thông báo** (`utils.ts`): Thiếu case `donation` -- hiển thị fallback "đã tương tác với bạn"
-2. **Trang Thông báo** (`Notifications.tsx`): Thiếu nhiều loại -- `donation`, `claim_reward`, `live_started`, `comment_reply`, `care`, `pray`, và các loại admin. Hiển thị "Bạn có thông báo mới"
-3. **Trang Thông báo** cũng không fetch `metadata` nên các thông báo admin cũng không hiển thị chi tiết
-4. **Bộ lọc** trên trang Thông báo không có mục cho tặng thưởng
+- **Thiết bị dùng chung**: Cùng 1 thiết bị (mã dfb4ace9...) đăng nhập 3 tài khoản khác nhau -- dấu hiệu multi-account
+- **Cụm email "tacongminh"**: 3 email chỉ khác nhau phần số cuối (ví dụ: tacongminh1@, tacongminh2@, tacongminh3@)
+- **Cụm email "congminhyvnh"**: 18 email cùng gốc -- đây là dấu hiệu email farm rất rõ ràng
+
+## Vấn đề hiện tại
+
+Hệ thống quét hàng ngày (`daily-fraud-scan`) **chỉ gửi cảnh báo** cho admin nhưng **KHÔNG tự động đình chỉ** các tài khoản bị gắn cờ. Trong khi đó, các hệ thống khác (đăng nhập IP đen, rút thưởng) thì đã tự động đặt `reward_status = 'on_hold'`.
 
 ## Giải pháp
 
-### 1. Thêm `donation` vào dropdown (`utils.ts`)
+Cập nhật edge function `daily-fraud-scan` để tự động đình chỉ (on_hold) các tài khoản bị phát hiện, với ngoại lệ cho admin.
 
-Thêm case vào `getNotificationIcon` và `getNotificationText`:
-- Icon: Gift (xanh lá)
-- Text: **"username đã tặng quà cho bạn"**
+### Luồng xử lý mới
 
-### 2. Cập nhật toàn bộ trang Thông báo (`Notifications.tsx`)
+1. Khi phát hiện thiết bị dùng chung (>2 users): Tự động `on_hold` tất cả user liên quan
+2. Khi phát hiện cụm email farm (>=3 accounts): Tự động `on_hold` tất cả user trong cụm
+3. Khi phát hiện IP cluster (>3 accounts): Tự động `on_hold` tất cả user liên quan
+4. **Ngoại lệ**: Bỏ qua các tài khoản admin (có role admin trong bảng `user_roles`) và tài khoản đã bị ban
 
-- Thêm `metadata` vào query `.select()`
-- Thêm tất cả các case còn thiếu vào `getNotificationIcon` và `getNotificationText`:
-  - `donation`: "username đã tặng quà cho bạn"
-  - `claim_reward`: "FUN Profile Treasury đã chuyển phần thưởng CAMLY về ví của bạn"
-  - `live_started`: "username đang phát trực tiếp"
-  - `comment_reply`: "username đã trả lời bình luận của bạn"
-  - `care`, `pray`: text tương ứng
-  - Admin types: hiển thị chi tiết từ metadata
-- Thêm bộ lọc "Tặng thưởng" (donations) vào filter tabs
-- Thêm navigation: khi click `donation` -> profile người tặng, `claim_reward` -> wallet, `live_started` -> live session
+### Chi tiết kỹ thuật
 
-### 3. Cập nhật navigation trong dropdown
+**File sửa: `supabase/functions/daily-fraud-scan/index.ts`**
 
-Thêm xử lý click cho `donation` -> navigate đến profile người tặng.
+Thêm logic sau mỗi bước phát hiện gian lận:
 
-## Chi tiết kỹ thuật
+```text
+1. Lấy danh sách admin IDs từ bảng user_roles (1 lần đầu function)
+2. Sau khi phát hiện shared device:
+   - Lọc bỏ admin khỏi danh sách users
+   - UPDATE profiles SET reward_status = 'on_hold', admin_notes = '...' 
+     WHERE id IN (user_ids) AND reward_status NOT IN ('banned', 'on_hold')
+3. Sau khi phát hiện email farm:
+   - Tương tự, on_hold tất cả user trong cụm (trừ admin)
+4. Sau khi phát hiện IP cluster:
+   - Tương tự, on_hold tất cả user liên quan (trừ admin)
+5. Thông báo admin ghi rõ số tài khoản đã bị đình chỉ
+```
 
-### File cần sửa
-
-**`src/components/layout/notifications/utils.ts`**:
-- Thêm case `donation` vào `getNotificationIcon` (Gift icon xanh lá)
-- Thêm case `donation` vào `getNotificationText`
-
-**`src/pages/Notifications.tsx`**:
-- Interface `NotificationWithActor`: thêm trường `metadata`
-- Query select: thêm `metadata`
-- `getNotificationIcon`: thêm `donation`, `claim_reward`, `live_started`, `comment_reply`, `care`, `pray`, admin types
-- `getNotificationText`: thêm tất cả case còn thiếu với metadata support
-- `filterNotifications`: thêm case `donations` filter
-- `filterOptions`: thêm tab "Tặng thưởng"
-- `handleNotificationClick`: thêm navigation cho `donation` (-> profile), `claim_reward` (-> wallet), `live_started` (-> live session)
-- Type `NotificationFilter`: thêm `"donations"`
-
-**`src/components/layout/NotificationDropdown.tsx`**:
-- `handleNotificationClick`: thêm navigation cho `donation` -> profile actor
+Ghi chú admin_notes sẽ ghi rõ lý do cụ thể, ví dụ:
+- "Thiết bị dfb4ace9 dùng chung 3 tài khoản. Tự động đình chỉ bởi hệ thống quét hàng ngày."
+- "Email farm: cụm congminhyvnh có 18 tài khoản. Tự động đình chỉ."
 
