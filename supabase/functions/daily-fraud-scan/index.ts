@@ -11,6 +11,36 @@ function getEmailBase(email: string): string {
   return local.replace(/\./g, '').replace(/\d+$/, '').toLowerCase();
 }
 
+/** Email farm allowlist - verified admin clusters */
+const EMAIL_FARM_ALLOWLIST = ['hoangtydo'];
+
+/** Auto-hold users, excluding admins and already banned/on_hold */
+async function autoHoldUsers(
+  supabase: ReturnType<typeof createClient>,
+  userIds: string[],
+  adminIds: Set<string>,
+  reason: string,
+): Promise<number> {
+  const toHold = userIds.filter(id => !adminIds.has(id));
+  if (toHold.length === 0) return 0;
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .update({
+      reward_status: "on_hold",
+      admin_notes: `${reason} Tự động đình chỉ bởi hệ thống quét hàng ngày ${new Date().toISOString().split('T')[0]}.`,
+    })
+    .in("id", toHold)
+    .not("reward_status", "in", '("banned","on_hold")')
+    .select("id");
+
+  if (error) {
+    console.error("[Daily Fraud Scan] Auto-hold error:", error);
+    return 0;
+  }
+  return data?.length || 0;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -22,6 +52,14 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, serviceKey);
 
     const alerts: string[] = [];
+    let totalHeld = 0;
+
+    // Pre-fetch admin IDs to exclude from auto-hold
+    const { data: adminRoles } = await supabase
+      .from("user_roles")
+      .select("user_id")
+      .eq("role", "admin");
+    const adminIds = new Set((adminRoles || []).map((r: { user_id: string }) => r.user_id));
 
     // 1. Shared device detection: devices with >2 users
     // Only scan v2+ fingerprints (v1 is unreliable and causes false positives)
@@ -64,6 +102,13 @@ Deno.serve(async (req) => {
               source: "daily-fraud-scan",
             });
           }
+
+          // Auto-hold
+          const held = await autoHoldUsers(
+            supabase, users, adminIds,
+            `Thiết bị ${hash.slice(0, 8)} dùng chung ${users.length} tài khoản.`,
+          );
+          totalHeld += held;
         }
       }
     }
@@ -85,7 +130,15 @@ Deno.serve(async (req) => {
 
       for (const [key, users] of emailGroups) {
         if (users.length >= 3) {
-          alerts.push(`Cụm email "${key.split('@')[0]}" có ${users.length} tài khoản`);
+          const emailBase = key.split('@')[0];
+
+          // Skip allowlisted email clusters
+          if (EMAIL_FARM_ALLOWLIST.some(allowed => emailBase.startsWith(allowed))) {
+            console.log(`[Daily Fraud Scan] Skipping allowlisted email cluster: ${emailBase}`);
+            continue;
+          }
+
+          alerts.push(`Cụm email "${emailBase}" có ${users.length} tài khoản`);
 
           const today = new Date();
           today.setHours(0, 0, 0, 0);
@@ -102,10 +155,18 @@ Deno.serve(async (req) => {
               actor_id: users[0].id,
               signal_type: "EMAIL_FARM",
               severity: 4,
-              details: { email_base: key.split('@')[0], count: users.length, emails: users.map(u => u.email) },
+              details: { email_base: emailBase, count: users.length, emails: users.map(u => u.email) },
               source: "daily-fraud-scan",
             });
           }
+
+          // Auto-hold
+          const userIds = users.map(u => u.id);
+          const held = await autoHoldUsers(
+            supabase, userIds, adminIds,
+            `Email farm: cụm "${emailBase}" có ${users.length} tài khoản.`,
+          );
+          totalHeld += held;
         }
       }
     }
@@ -150,41 +211,46 @@ Deno.serve(async (req) => {
               source: "daily-fraud-scan",
             });
           }
+
+          // Auto-hold
+          const held = await autoHoldUsers(
+            supabase, userArr, adminIds,
+            `IP ${ip} có ${users.size} tài khoản đăng nhập trong 24h.`,
+          );
+          totalHeld += held;
         }
       }
     }
 
     // 4. Notify admins if any alerts found
     if (alerts.length > 0) {
-      const { data: admins } = await supabase
-        .from("user_roles")
-        .select("user_id")
-        .eq("role", "admin");
+      const admins = Array.from(adminIds);
 
-      if (admins?.length) {
-        // Use first admin as actor_id (system notification)
-        const systemActorId = admins[0].user_id;
+      if (admins.length) {
+        const systemActorId = admins[0];
 
         await supabase.from("notifications").insert(
-          admins.map((a: { user_id: string }) => ({
-            user_id: a.user_id,
+          admins.map((userId: string) => ({
+            user_id: userId,
             actor_id: systemActorId,
             type: "admin_fraud_daily",
             read: false,
             metadata: {
               alerts_count: alerts.length,
               alerts: alerts.slice(0, 5),
+              accounts_held: totalHeld,
             },
           }))
         );
 
-        console.log(`[Daily Fraud Scan] Sent ${alerts.length} alerts to ${admins.length} admins`);
+        console.log(`[Daily Fraud Scan] Sent ${alerts.length} alerts to ${admins.length} admins. Auto-held ${totalHeld} accounts.`);
       }
     }
 
     return new Response(JSON.stringify({
       success: true,
       alerts_count: alerts.length,
+      accounts_held: totalHeld,
       alerts,
       scanned_at: new Date().toISOString(),
     }), {
