@@ -1,13 +1,58 @@
 /**
  * NotificationItem - Single notification display component
+ * Supports collapsible details for fraud notifications + red alert avatar
  */
 
+import { useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { Shield, ChevronDown, ChevronUp } from 'lucide-react';
 import type { NotificationWithDetails } from './types';
 import { getNotificationIcon, getNotificationText } from './utils';
+
+const FRAUD_TYPES = ['admin_shared_device', 'admin_email_farm', 'admin_blacklisted_ip', 'admin_fraud_daily'];
+
+/** Render detailed fraud info when expanded */
+function FraudDetails({ notification }: { notification: NotificationWithDetails }) {
+  const m = notification.metadata;
+  if (!m) return null;
+
+  const formatUser = (name: string) => {
+    const email = m.flagged_emails?.[name];
+    return email ? `${name} (${email})` : name;
+  };
+
+  const items: string[] = [];
+
+  if (notification.type === 'admin_shared_device' && m.usernames?.length) {
+    items.push(...m.usernames.map(u => `• ${formatUser(u)}`));
+  } else if (notification.type === 'admin_email_farm') {
+    if (m.usernames?.length) {
+      items.push(...m.usernames.map(u => `• ${formatUser(u)}`));
+    } else if (m.emails?.length) {
+      items.push(...m.emails.map(e => `• ${e}`));
+    }
+  } else if (notification.type === 'admin_blacklisted_ip') {
+    if (m.reason) items.push(`• Lý do: ${m.reason}`);
+    if (m.known_usernames?.length) {
+      items.push(...m.known_usernames.map(u => `• ${formatUser(u)}`));
+    }
+  } else if (notification.type === 'admin_fraud_daily' && m.alerts?.length) {
+    items.push(...m.alerts.map(a => `• ${a}`));
+  }
+
+  if (!items.length) return null;
+
+  return (
+    <div className="mt-1.5 text-xs text-muted-foreground space-y-0.5 max-h-32 overflow-y-auto">
+      {items.map((item, i) => (
+        <p key={i} className="leading-relaxed">{item}</p>
+      ))}
+    </div>
+  );
+}
 
 interface NotificationItemProps {
   notification: NotificationWithDetails;
@@ -15,12 +60,20 @@ interface NotificationItemProps {
 }
 
 export function NotificationItem({ notification, onClick }: NotificationItemProps) {
+  const [expanded, setExpanded] = useState(false);
+  const isFraud = FRAUD_TYPES.includes(notification.type);
+
   const { main: notificationText, snippet } = getNotificationText(
     notification.type,
     notification.actor?.username || 'Người dùng',
     notification.post?.content,
     notification.metadata
   );
+
+  const toggleExpand = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpanded(prev => !prev);
+  };
 
   return (
     <button
@@ -30,22 +83,34 @@ export function NotificationItem({ notification, onClick }: NotificationItemProp
         !notification.read && "bg-gradient-to-r from-gold/10 via-gold/5 to-transparent shadow-[inset_0_0_20px_hsl(var(--gold-glow)/0.1)]"
       )}
     >
-      {/* Avatar with icon badge */}
+      {/* Avatar: Red alert for fraud, normal for others */}
       <div className="relative flex-shrink-0">
-        <Avatar className={cn(
-          "w-10 h-10 sm:w-12 sm:h-12 border-2 transition-all",
-          !notification.read ? "border-gold/50 shadow-[0_0_10px_hsl(var(--gold-glow)/0.3)]" : "border-transparent"
-        )}>
-          {notification.actor?.avatar_url && (
-            <AvatarImage src={notification.actor.avatar_url} />
-          )}
-          <AvatarFallback className="bg-primary/20 text-primary">
-            {notification.actor?.username?.[0]?.toUpperCase() || 'U'}
-          </AvatarFallback>
-        </Avatar>
-        <div className="absolute -bottom-1 -right-1 w-5 h-5 sm:w-6 sm:h-6 bg-card rounded-full flex items-center justify-center border border-border shadow-sm">
-          {getNotificationIcon(notification.type)}
-        </div>
+        {isFraud ? (
+          <div className={cn(
+            "w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center",
+            "bg-gradient-to-br from-destructive to-destructive/80 border-2 border-destructive/60",
+            !notification.read && "animate-pulse shadow-[0_0_12px_hsl(0_84%_60%/0.5)]"
+          )}>
+            <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+          </div>
+        ) : (
+          <>
+            <Avatar className={cn(
+              "w-10 h-10 sm:w-12 sm:h-12 border-2 transition-all",
+              !notification.read ? "border-gold/50 shadow-[0_0_10px_hsl(var(--gold-glow)/0.3)]" : "border-transparent"
+            )}>
+              {notification.actor?.avatar_url && (
+                <AvatarImage src={notification.actor.avatar_url} />
+              )}
+              <AvatarFallback className="bg-primary/20 text-primary">
+                {notification.actor?.username?.[0]?.toUpperCase() || 'U'}
+              </AvatarFallback>
+            </Avatar>
+            <div className="absolute -bottom-1 -right-1 w-5 h-5 sm:w-6 sm:h-6 bg-card rounded-full flex items-center justify-center border border-border shadow-sm">
+              {getNotificationIcon(notification.type)}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Content */}
@@ -63,6 +128,23 @@ export function NotificationItem({ notification, onClick }: NotificationItemProp
             "{snippet}"
           </p>
         )}
+
+        {/* Fraud: toggle details button */}
+        {isFraud && (
+          <button
+            onClick={toggleExpand}
+            className="mt-1 text-xs text-primary hover:text-primary/80 flex items-center gap-1 font-medium"
+          >
+            {expanded ? (
+              <>Thu gọn <ChevronUp className="w-3 h-3" /></>
+            ) : (
+              <>Xem chi tiết <ChevronDown className="w-3 h-3" /></>
+            )}
+          </button>
+        )}
+
+        {/* Expanded fraud details */}
+        {isFraud && expanded && <FraudDetails notification={notification} />}
         
         <p className={cn(
           "text-xs mt-1",
