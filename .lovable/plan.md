@@ -1,96 +1,80 @@
 
-# Thông Báo Cảnh Báo Gian Lận Chi Tiết
+# Backfill Metadata Cho Thông Báo Cảnh Báo Cũ
 
-## Vấn đề hiện tại
+## Vấn đề
 
-Khi hệ thống phát hiện gian lận (thiết bị dùng chung, email farm, IP cluster...), thông báo gửi đến admin chỉ hiển thị dòng chung chung: "Phát hiện thiết bị dùng chung nhiều tài khoản" mà không có thông tin cụ thể (ai, bao nhiêu tài khoản, IP nào...).
+Code frontend và edge functions **đã hoạt động đúng** -- thông báo mới sẽ có metadata chi tiết. Tuy nhiên, các thông báo cũ (đã tạo trước khi thêm cột `metadata`) đang hiển thị text chung chung vì `metadata = null`.
 
-Nguyên nhân: Bảng `notifications` hiện chỉ có các cột `user_id`, `actor_id`, `type`, `read`, `post_id` -- không có cột nào để lưu dữ liệu chi tiết.
+Trong screenshot, ta thấy: *"Cảnh báo: Phát hiện thiết bị dùng chung nhiều tài khoản"* -- đây là fallback text khi không có metadata.
 
 ## Giải pháp
 
-### 1. Thêm cột `metadata` (JSONB) vào bảng `notifications`
+Chạy một migration SQL để backfill metadata cho tất cả thông báo admin cũ, dựa trên dữ liệu từ bảng `pplp_fraud_signals`:
 
-Cột này lưu thông tin chi tiết kèm theo thông báo, ví dụ:
-- Shared device: `{ device_hash: "abc123", user_count: 5, usernames: ["user1", "user2", ...] }`
-- Email farm: `{ email_base: "hoangtydo", count: 4, emails: ["hoangtydo@...", ...] }`  
-- IP cluster: `{ ip_address: "113.167.28.188", user_count: 6, usernames: ["user1", ...] }`
-- Daily fraud: `{ alerts_count: 3, alerts: ["...", "..."] }`
+### Bước 1: Backfill `admin_shared_device` notifications
 
-### 2. Cập nhật Edge Functions gửi metadata khi tạo thông báo
+Ghép thông báo cũ với fraud signals cùng `actor_id` và thời gian gần nhau, lấy `device_hash` + `user_count` + truy vấn `usernames` từ bảng `profiles`.
 
-Các file cần sửa:
-- `supabase/functions/log-login-ip/index.ts` -- Thêm metadata cho `admin_shared_device` và `admin_email_farm`
-- `supabase/functions/daily-fraud-scan/index.ts` -- Thêm metadata cho `admin_fraud_daily`
+### Bước 2: Backfill `admin_fraud_daily` notifications
 
-### 3. Cập nhật hiển thị thông báo
+Với các thông báo fraud daily cũ không có fraud signal tương ứng, set metadata mặc định để hiển thị tốt hơn.
 
-- `src/components/layout/notifications/types.ts` -- Thêm trường `metadata` vào interface `NotificationWithDetails`
-- `src/services/notificationService.ts` -- Thêm `metadata` vào query fetch notifications
-- `src/components/layout/notifications/utils.ts` -- Hàm `getNotificationText` nhận thêm `metadata` và hiển thị chi tiết
-- `src/components/layout/notifications/NotificationItem.tsx` -- Truyền metadata vào `getNotificationText`
+### Bước 3: Backfill `admin_email_farm` notifications (nếu có)
 
-### 4. Ví dụ nội dung thông báo sau khi sửa
-
-Thay vì:
-> "Cảnh báo: Phát hiện thiết bị dùng chung nhiều tài khoản"
-
-Sẽ hiển thị:
-> "Cảnh báo: Thiết bị abc123... có 5 tài khoản: user1, user2, user3..."
-
-Thay vì:
-> "Cảnh báo: Phát hiện cụm email farm nghi ngờ"
-
-Sẽ hiển thị:
-> "Cảnh báo: Cụm email "hoangtydo" có 4 tài khoản: hoangtydo@gmail.com, hoangtydo88@..."
-
-Thay vì:
-> "Báo cáo gian lận hàng ngày: Có hoạt động đáng ngờ cần xử lý"
-
-Sẽ hiển thị:
-> "Báo cáo gian lận: 3 cảnh báo - Thiết bị abc... có 5 TK, IP 113.167... có 6 TK..."
+Tương tự, lấy `email_base` và `count` từ fraud signals.
 
 ## Chi tiết kỹ thuật
 
 ### Database Migration
+
 ```sql
-ALTER TABLE notifications ADD COLUMN metadata JSONB DEFAULT NULL;
+-- Backfill admin_shared_device: lấy metadata từ pplp_fraud_signals
+UPDATE notifications n
+SET metadata = jsonb_build_object(
+  'device_hash', fs.details->>'device_hash',
+  'user_count', jsonb_array_length(fs.details->'all_user_ids'),
+  'usernames', (
+    SELECT jsonb_agg(p.username)
+    FROM profiles p
+    WHERE p.id::text = ANY(
+      SELECT jsonb_array_elements_text(fs.details->'all_user_ids')
+    )
+  )
+)
+FROM pplp_fraud_signals fs
+WHERE n.type = 'admin_shared_device'
+  AND n.metadata IS NULL
+  AND fs.actor_id = n.actor_id
+  AND fs.signal_type = 'SHARED_DEVICE'
+  AND ABS(EXTRACT(EPOCH FROM (n.created_at - fs.created_at))) < 120;
+
+-- Backfill admin_email_farm
+UPDATE notifications n
+SET metadata = jsonb_build_object(
+  'email_base', fs.details->>'email_base',
+  'count', (fs.details->>'count')::int,
+  'emails', fs.details->'emails'
+)
+FROM pplp_fraud_signals fs
+WHERE n.type = 'admin_email_farm'
+  AND n.metadata IS NULL
+  AND fs.actor_id = n.actor_id
+  AND fs.signal_type = 'EMAIL_FARM'
+  AND ABS(EXTRACT(EPOCH FROM (n.created_at - fs.created_at))) < 120;
+
+-- Backfill admin_blacklisted_ip
+UPDATE notifications n
+SET metadata = jsonb_build_object(
+  'ip_address', fs.details->>'ip_address',
+  'reason', fs.details->>'reason',
+  'known_usernames', fs.details->'known_usernames'
+)
+FROM pplp_fraud_signals fs
+WHERE n.type = 'admin_blacklisted_ip'
+  AND n.metadata IS NULL
+  AND fs.actor_id = n.actor_id
+  AND fs.signal_type = 'BLACKLISTED_IP_LOGIN'
+  AND ABS(EXTRACT(EPOCH FROM (n.created_at - fs.created_at))) < 120;
 ```
 
-### Edge Function Changes
-
-**log-login-ip** (admin_shared_device):
-```typescript
-admins.map((a) => ({
-  user_id: a.user_id,
-  actor_id: userId,
-  type: "admin_shared_device",
-  read: false,
-  metadata: {
-    device_hash: deviceHash.slice(0, 8),
-    user_count: allUserIds.length,
-    usernames: allUsernames  // truy vấn thêm từ profiles
-  }
-}))
-```
-
-**log-login-ip** (admin_email_farm):
-```typescript
-metadata: {
-  email_base: emailBase,
-  count: matchingUsers.length,
-  emails: matchedEmails.slice(0, 5)  // giới hạn 5
-}
-```
-
-**daily-fraud-scan** (admin_fraud_daily):
-```typescript
-metadata: {
-  alerts_count: alerts.length,
-  alerts: alerts.slice(0, 5)  // giới hạn 5 dòng
-}
-```
-
-### Frontend Changes
-
-Hàm `getNotificationText` sẽ kiểm tra `metadata` và xây dựng nội dung chi tiết cho từng loại cảnh báo fraud.
+Sau khi chạy migration, tất cả thông báo cảnh báo cũ sẽ hiển thị chi tiết cụ thể (device hash, số tài khoản, tên người dùng...) thay vì text chung chung.
