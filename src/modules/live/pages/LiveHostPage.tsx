@@ -419,6 +419,16 @@ const handleEndLive = async (skipNavigate = false) => {
       shouldBlock && currentLocation.pathname !== nextLocation.pathname
   );
 
+  // Warn on tab close / refresh while live
+  useEffect(() => {
+    if (!shouldBlock) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [shouldBlock]);
+
   const handleConfirmLeave = async () => {
     await handleEndLive(true);
     blocker.proceed?.();
