@@ -3,7 +3,7 @@
  */
 
 import { NotificationWithDetails, NotificationGroups, REACTION_ICONS } from './types';
-import { Bell, MessageCircle, Share2, Gift, Shield, UserPlus, UserCheck, UserX, Wallet } from 'lucide-react';
+import { Bell, MessageCircle, Share2, Gift, Shield, UserPlus, UserCheck, UserX, Wallet, Radio } from 'lucide-react';
 import React from 'react';
 
 /**
@@ -82,6 +82,8 @@ export const getNotificationIcon = (type: string): React.ReactNode => {
     case 'admin_blacklisted_ip':
     case 'admin_fraud_daily':
       return React.createElement(Shield, { className: 'w-4 h-4 text-orange-500' });
+    case 'live_started':
+      return React.createElement(Radio, { className: 'w-4 h-4 text-destructive' });
     case 'friend_request':
       return React.createElement(UserPlus, { className: 'w-4 h-4 text-purple-500' });
     case 'friend_accepted':
@@ -230,6 +232,13 @@ export const getNotificationText = (
       main = React.createElement(React.Fragment, null,
         React.createElement('strong', null, username),
         ' đã hủy kết bạn với bạn'
+      );
+      break;
+    case 'live_started':
+      main = React.createElement(React.Fragment, null,
+        '🔴 ',
+        React.createElement('strong', null, username),
+        ' đang phát trực tiếp'
       );
       break;
     default:
