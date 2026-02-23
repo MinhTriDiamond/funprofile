@@ -1,68 +1,51 @@
 
-# Sửa lỗi: Giao dịch hàng loạt không tự cập nhật + Xoá bài chậm/lỗi
+# Phục hồi tất cả giao dịch cũ bị thiếu trong lịch sử
 
 ## Nguyên nhân gốc
 
-### Vấn đề 1: Danh sách không tự cập nhật sau khi tặng hàng loạt
+Cả 2 Edge Function `auto-backfill-donations` và `backfill-donations` đều chỉ tìm người nhận qua trường `wallet_address` trong bảng profiles. Nhưng hệ thống FUN Profile còn dùng `public_wallet_address` (địa chỉ ví công khai) -- nhiều user chỉ có `public_wallet_address` mà không có `wallet_address`, nên các giao dịch gửi đến họ bị bỏ qua (unmappable).
 
-Có **2 lỗi** trong hàm `invalidateDonationCache`:
-
-1. **Sai query key**: Cả `UnifiedGiftSendDialog.tsx` (dòng 648) và `useDonationFlow.ts` (dòng 62) đều invalidate key `['feed']`, nhưng feed thực tế dùng key `['feed-posts']`. Nên feed **không bao giờ refresh** sau khi tặng.
-
-2. **Thiếu dispatch event**: Hook `useDonationHistory` lắng nghe sự kiện `'invalidate-donations'` và `useFeedPosts` lắng nghe `'invalidate-feed'`, nhưng **không có chỗ nào dispatch** những sự kiện này từ luồng tặng quà. Nên các trang khác đang mở sẽ không cập nhật.
-
-### Vấn đề 2: Xoá bài chậm / có lúc lỗi
-
-`FacebookPostCard` xoá video từ R2/Stream (gọi API mạng) **TRƯỚC** khi xoá record trong database. Nếu API xoá video chậm hoặc lỗi, UI bị block và có thể thất bại hoàn toàn dù bài viết vẫn còn trong DB.
+Thêm vào đó, `auto-backfill-donations` chỉ quét **50 giao dịch gần nhất**, nên các giao dịch cũ hơn không bao giờ được xử lý.
 
 ## Giải pháp
 
-### 1. Sửa query key và thêm dispatch event
+### 1. Sửa `auto-backfill-donations` (chạy tự động mỗi 5 phút)
+- Tăng limit từ 50 lên **1000** để quét được nhiều giao dịch hơn
+- Thêm `public_wallet_address` vào bản đồ ví để tìm được người nhận chính xác hơn
 
-**Files**: `src/components/donations/UnifiedGiftSendDialog.tsx` + `src/components/donations/gift-dialog/useDonationFlow.ts`
+### 2. Sửa `backfill-donations` (admin gọi thủ công)
+- Tăng limit scan từ 500 lên **1000**
+- Thêm `public_wallet_address` vào bản đồ ví cho cả mode `scan` và `backfill`
 
-- Đổi `['feed']` thanh `['feed-posts']`
-- Thêm `queryClient.invalidateQueries({ queryKey: ['admin-donation-history'] })` (cho trang Donations)
-- Thêm `window.dispatchEvent(new Event('invalidate-feed'))` và `window.dispatchEvent(new Event('invalidate-donations'))` để các trang đang mở cũng cập nhật
-
-### 2. Tối ưu xoá bài viết
-
-**File**: `src/components/feed/FacebookPostCard.tsx`
-
-- Xoá record DB **trước** (nhanh, cập nhật UI ngay)
-- Sau đó xoá video R2/Stream **trong background** (không block UI)
-- Nếu xoá video thất bại, bài đã bị xoá rồi nên không ảnh hưởng người dùng
+### 3. Tạo admin action chạy backfill toàn bộ một lần
+- Thêm nút trên trang Admin để gọi `auto-backfill-donations` ngay lập tức, phục hồi tất cả giao dịch cũ bị thiếu
 
 ## Chi tiết kỹ thuật
 
-### invalidateDonationCache (cả 2 file)
+### auto-backfill-donations/index.ts
 ```text
 Trước:
-  queryClient.invalidateQueries({ queryKey: ['feed'] });
+  .select("id, wallet_address")
+  .limit(50)
+  walletMap chỉ dùng wallet_address
 
 Sau:
-  queryClient.invalidateQueries({ queryKey: ['feed-posts'] });
-  queryClient.invalidateQueries({ queryKey: ['admin-donation-history'] });
-  window.dispatchEvent(new Event('invalidate-feed'));
-  window.dispatchEvent(new Event('invalidate-donations'));
+  .select("id, wallet_address, public_wallet_address")
+  .limit(1000)
+  walletMap dùng cả wallet_address VÀ public_wallet_address
 ```
 
-### FacebookPostCard delete flow
+### backfill-donations/index.ts (mode scan + backfill)
 ```text
 Trước:
-  1. deleteStreamVideos() -- chậm, có thể lỗi
-  2. deleteStorageFile() -- chậm  
-  3. supabase.from('posts').delete() -- nhanh
-  4. toast + onPostDeleted()
+  .select("id, wallet_address") hoặc .select("id, username, avatar_url, wallet_address")
+  walletMap chỉ dùng wallet_address
 
 Sau:
-  1. supabase.from('posts').delete() -- nhanh, UI cập nhật ngay
-  2. toast + onPostDeleted()
-  3. (background) deleteStreamVideos() -- không block
-  4. (background) deleteStorageFile() -- không block
+  Thêm public_wallet_address vào select
+  walletMap dùng cả wallet_address VÀ public_wallet_address
 ```
 
 ### Files thay đổi
-1. `src/components/donations/UnifiedGiftSendDialog.tsx` -- Sửa query key + thêm dispatch
-2. `src/components/donations/gift-dialog/useDonationFlow.ts` -- Sửa query key + thêm dispatch  
-3. `src/components/feed/FacebookPostCard.tsx` -- Đảo thứ tự xoá: DB trước, video sau (background)
+1. `supabase/functions/auto-backfill-donations/index.ts` -- Tăng limit + thêm public_wallet_address
+2. `supabase/functions/backfill-donations/index.ts` -- Thêm public_wallet_address cho cả scan và backfill mode
