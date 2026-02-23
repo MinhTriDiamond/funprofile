@@ -1,39 +1,68 @@
 
 
-# Thêm Progress Bar Upload Thật Cho Video Livestream
+# Multipart Upload cho Video Lớn
 
 ## Vấn đề hiện tại
 
-UI đã hiển thị progress bar khi upload video, nhưng phần trăm là **giả** - nhảy từ 10% -> 30% -> 100%. Lý do: hàm `uploadWithPresignedUrl` dùng `fetch()` API, không hỗ trợ theo dõi tiến trình upload thật.
+Video được upload bằng 1 request PUT duy nhất. Với file lớn (hàng trăm MB đến 2GB), điều này gây ra:
+- Upload chậm vì chỉ dùng 1 connection
+- Nếu mất kết nối giữa chừng, phải upload lại từ đầu
+- Timeout risk với file rất lớn
 
-## Giải pháp
+## Giải pháp: S3-compatible Multipart Upload
 
-Thay `fetch()` bằng `XMLHttpRequest` trong hàm upload presigned URL, vì XHR hỗ trợ event `upload.onprogress` để theo dõi phần trăm upload thật.
+Cloudflare R2 hỗ trợ đầy đủ S3 Multipart Upload API. Cơ chế:
+1. **Initiate** - Tạo multipart upload session trên R2
+2. **Upload Parts** - Chia file thành nhiều phần (10MB mỗi phần), upload song song (3 parts cùng lúc)
+3. **Complete** - Ghép tất cả parts thành 1 file hoàn chỉnh
+4. **Abort** - Hủy nếu có lỗi (dọn dẹp parts đã upload)
+
+### Ngưỡng kích hoạt
+
+- File nho hon 50MB: dùng single PUT như hiện tại (nhanh, đơn giản)
+- File lon hon hoac bang 50MB: dùng multipart upload (nhanh hơn, resume được)
 
 ## Chi tiết kỹ thuật
 
-### 1. File sửa: `src/utils/r2Upload.ts`
+### 1. Edge Function mới: `multipart-upload`
 
-**Thay đổi hàm `uploadWithPresignedUrl`**:
-- Thêm tham số `onProgress?: (percent: number) => void`
-- Thay `fetch()` bằng `XMLHttpRequest` để theo dõi `upload.onprogress`
-- Giữ nguyên timeout và error handling
+File: `supabase/functions/multipart-upload/index.ts`
 
-**Thay đổi hàm `uploadToR2`**:
-- Thêm tham số `onProgress?: (percent: number) => void` 
-- Truyền `onProgress` xuống `uploadWithPresignedUrl`
+Xử lý 4 action qua 1 endpoint:
+- `initiate` - Gọi R2 CreateMultipartUpload, trả về `uploadId`
+- `get-part-urls` - Tạo presigned URLs cho từng part (batch)
+- `complete` - Gọi R2 CompleteMultipartUpload với danh sách ETags
+- `abort` - Gọi R2 AbortMultipartUpload để dọn dẹp
 
-### 2. File sửa: `src/modules/live/liveService.ts`
+Tất cả action đều yêu cầu authentication. Dùng AWS Signature V4 để ký requests đến R2.
 
-**Thay đổi hàm `uploadLiveRecording`**:
-- Truyền `onProgress` callback trực tiếp xuống `uploadToR2` thay vì gọi giả `onProgress(10)`, `onProgress(30)`, `onProgress(100)`
+### 2. Client utility mới: `src/utils/multipartUpload.ts`
 
-### 3. Không thay đổi `LiveHostPage.tsx`
+Logic phía client:
+- Chia file thành chunks 10MB
+- Lấy presigned URLs cho tất cả parts (batch request)
+- Upload song song 3 parts cùng lúc bằng XHR (có progress tracking)
+- Retry tự động mỗi part tối đa 3 lần khi lỗi
+- Gọi complete khi tất cả parts xong
+- Gọi abort nếu có lỗi không recover được
+- Tính tổng progress từ tất cả parts
 
-UI progress bar đã có sẵn và hoạt động đúng - chỉ cần dữ liệu progress thật từ upload.
+### 3. Cập nhật `src/utils/r2Upload.ts`
 
-## Kết quả
+Thay đổi hàm `uploadToR2`:
+- Nếu `file.size >= 50MB` -> gọi `multipartUploadToR2()` 
+- Nếu `file.size < 50MB` -> giữ nguyên single presigned URL upload
+- Truyền `onProgress` callback cho cả 2 trường hợp
 
-- Progress bar sẽ hiển thị phần trăm upload **thật** dựa trên bytes đã gửi
-- Áp dụng cho tất cả upload qua `uploadToR2` (nếu truyền `onProgress`)
-- Không ảnh hưởng các chỗ khác đang dùng `uploadToR2` mà không truyền `onProgress`
+### 4. Không thay đổi UI
+
+`LiveHostPage.tsx` và `liveService.ts` không cần sửa vì progress callback đã có sẵn. Multipart upload tự động kích hoạt khi file đủ lớn.
+
+## Ưu điểm
+
+- Tốc độ nhanh hơn 2-3x nhờ upload song song
+- Resume được: nếu 1 part lỗi, chỉ retry part đó
+- Hỗ trợ file rất lớn (đến 2GB) ổn định hơn
+- Backward compatible: file nhỏ vẫn dùng single upload
+- Progress bar chính xác cho từng phần
+
