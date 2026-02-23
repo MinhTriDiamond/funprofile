@@ -170,7 +170,19 @@ export const NotificationDropdown = ({ centerNavStyle = false, isActiveRoute = f
     await markAsRead(notification.id);
     setOpen(false);
     
-    if (notification.post_id) {
+    if (notification.type === 'live_started' && notification.post_id) {
+      const { data: session } = await supabase
+        .from('live_sessions')
+        .select('id, status')
+        .eq('post_id', notification.post_id)
+        .single();
+      
+      if (session?.status === 'live') {
+        navigate(`/live/${session.id}`);
+      } else {
+        navigate(`/post/${notification.post_id}`);
+      }
+    } else if (notification.post_id) {
       navigate(`/post/${notification.post_id}`);
     } else if (notification.type === 'friend_request' || notification.type === 'friend_accepted') {
       navigate(`/profile/${notification.actor?.id}`);
