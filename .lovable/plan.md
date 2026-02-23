@@ -1,80 +1,59 @@
 
-# Backfill Metadata Cho Thông Báo Cảnh Báo Cũ
+
+# Cập Nhật Hiển Thị Thông Báo Tặng Thưởng & Các Loại Còn Thiếu
 
 ## Vấn đề
 
-Code frontend và edge functions **đã hoạt động đúng** -- thông báo mới sẽ có metadata chi tiết. Tuy nhiên, các thông báo cũ (đã tạo trước khi thêm cột `metadata`) đang hiển thị text chung chung vì `metadata = null`.
+Hiện tại có **540 thông báo loại `donation`** và **5 thông báo `claim_reward`** trong database nhưng cả hai nơi hiển thị đều không xử lý chúng:
 
-Trong screenshot, ta thấy: *"Cảnh báo: Phát hiện thiết bị dùng chung nhiều tài khoản"* -- đây là fallback text khi không có metadata.
+1. **Dropdown thông báo** (`utils.ts`): Thiếu case `donation` -- hiển thị fallback "đã tương tác với bạn"
+2. **Trang Thông báo** (`Notifications.tsx`): Thiếu nhiều loại -- `donation`, `claim_reward`, `live_started`, `comment_reply`, `care`, `pray`, và các loại admin. Hiển thị "Bạn có thông báo mới"
+3. **Trang Thông báo** cũng không fetch `metadata` nên các thông báo admin cũng không hiển thị chi tiết
+4. **Bộ lọc** trên trang Thông báo không có mục cho tặng thưởng
 
 ## Giải pháp
 
-Chạy một migration SQL để backfill metadata cho tất cả thông báo admin cũ, dựa trên dữ liệu từ bảng `pplp_fraud_signals`:
+### 1. Thêm `donation` vào dropdown (`utils.ts`)
 
-### Bước 1: Backfill `admin_shared_device` notifications
+Thêm case vào `getNotificationIcon` và `getNotificationText`:
+- Icon: Gift (xanh lá)
+- Text: **"username đã tặng quà cho bạn"**
 
-Ghép thông báo cũ với fraud signals cùng `actor_id` và thời gian gần nhau, lấy `device_hash` + `user_count` + truy vấn `usernames` từ bảng `profiles`.
+### 2. Cập nhật toàn bộ trang Thông báo (`Notifications.tsx`)
 
-### Bước 2: Backfill `admin_fraud_daily` notifications
+- Thêm `metadata` vào query `.select()`
+- Thêm tất cả các case còn thiếu vào `getNotificationIcon` và `getNotificationText`:
+  - `donation`: "username đã tặng quà cho bạn"
+  - `claim_reward`: "FUN Profile Treasury đã chuyển phần thưởng CAMLY về ví của bạn"
+  - `live_started`: "username đang phát trực tiếp"
+  - `comment_reply`: "username đã trả lời bình luận của bạn"
+  - `care`, `pray`: text tương ứng
+  - Admin types: hiển thị chi tiết từ metadata
+- Thêm bộ lọc "Tặng thưởng" (donations) vào filter tabs
+- Thêm navigation: khi click `donation` -> profile người tặng, `claim_reward` -> wallet, `live_started` -> live session
 
-Với các thông báo fraud daily cũ không có fraud signal tương ứng, set metadata mặc định để hiển thị tốt hơn.
+### 3. Cập nhật navigation trong dropdown
 
-### Bước 3: Backfill `admin_email_farm` notifications (nếu có)
-
-Tương tự, lấy `email_base` và `count` từ fraud signals.
+Thêm xử lý click cho `donation` -> navigate đến profile người tặng.
 
 ## Chi tiết kỹ thuật
 
-### Database Migration
+### File cần sửa
 
-```sql
--- Backfill admin_shared_device: lấy metadata từ pplp_fraud_signals
-UPDATE notifications n
-SET metadata = jsonb_build_object(
-  'device_hash', fs.details->>'device_hash',
-  'user_count', jsonb_array_length(fs.details->'all_user_ids'),
-  'usernames', (
-    SELECT jsonb_agg(p.username)
-    FROM profiles p
-    WHERE p.id::text = ANY(
-      SELECT jsonb_array_elements_text(fs.details->'all_user_ids')
-    )
-  )
-)
-FROM pplp_fraud_signals fs
-WHERE n.type = 'admin_shared_device'
-  AND n.metadata IS NULL
-  AND fs.actor_id = n.actor_id
-  AND fs.signal_type = 'SHARED_DEVICE'
-  AND ABS(EXTRACT(EPOCH FROM (n.created_at - fs.created_at))) < 120;
+**`src/components/layout/notifications/utils.ts`**:
+- Thêm case `donation` vào `getNotificationIcon` (Gift icon xanh lá)
+- Thêm case `donation` vào `getNotificationText`
 
--- Backfill admin_email_farm
-UPDATE notifications n
-SET metadata = jsonb_build_object(
-  'email_base', fs.details->>'email_base',
-  'count', (fs.details->>'count')::int,
-  'emails', fs.details->'emails'
-)
-FROM pplp_fraud_signals fs
-WHERE n.type = 'admin_email_farm'
-  AND n.metadata IS NULL
-  AND fs.actor_id = n.actor_id
-  AND fs.signal_type = 'EMAIL_FARM'
-  AND ABS(EXTRACT(EPOCH FROM (n.created_at - fs.created_at))) < 120;
+**`src/pages/Notifications.tsx`**:
+- Interface `NotificationWithActor`: thêm trường `metadata`
+- Query select: thêm `metadata`
+- `getNotificationIcon`: thêm `donation`, `claim_reward`, `live_started`, `comment_reply`, `care`, `pray`, admin types
+- `getNotificationText`: thêm tất cả case còn thiếu với metadata support
+- `filterNotifications`: thêm case `donations` filter
+- `filterOptions`: thêm tab "Tặng thưởng"
+- `handleNotificationClick`: thêm navigation cho `donation` (-> profile), `claim_reward` (-> wallet), `live_started` (-> live session)
+- Type `NotificationFilter`: thêm `"donations"`
 
--- Backfill admin_blacklisted_ip
-UPDATE notifications n
-SET metadata = jsonb_build_object(
-  'ip_address', fs.details->>'ip_address',
-  'reason', fs.details->>'reason',
-  'known_usernames', fs.details->'known_usernames'
-)
-FROM pplp_fraud_signals fs
-WHERE n.type = 'admin_blacklisted_ip'
-  AND n.metadata IS NULL
-  AND fs.actor_id = n.actor_id
-  AND fs.signal_type = 'BLACKLISTED_IP_LOGIN'
-  AND ABS(EXTRACT(EPOCH FROM (n.created_at - fs.created_at))) < 120;
-```
+**`src/components/layout/NotificationDropdown.tsx`**:
+- `handleNotificationClick`: thêm navigation cho `donation` -> profile actor
 
-Sau khi chạy migration, tất cả thông báo cảnh báo cũ sẽ hiển thị chi tiết cụ thể (device hash, số tài khoản, tên người dùng...) thay vì text chung chung.
