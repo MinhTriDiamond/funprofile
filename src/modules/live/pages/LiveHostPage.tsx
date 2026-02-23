@@ -435,7 +435,7 @@ const handleEndLive = async (skipNavigate = false) => {
   };
 
   const showLoader =
-    ['auth', 'creating', 'loading', 'starting'].includes(bootState) ||
+    ['idle', 'auth', 'creating', 'loading', 'starting'].includes(bootState) ||
     (!!effectiveSessionId && sessionQuery.isLoading);
 
   if (showLoader) {
