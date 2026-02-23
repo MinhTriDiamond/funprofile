@@ -1,32 +1,44 @@
 
-# Nâng Cao Trải Nghiệm Xem Ảnh Trong Chat
+# Sửa Lỗi "Profile not found" Khi Bấm Tên Trong Chat
 
-## Vấn de
+## Nguyên nhân gốc
 
-Hiện tại, ảnh trong tin nhắn chat chỉ hiển thị dạng thu nhỏ (thumbnail) mà không thể bấm vào để phóng to xem chi tiết. Dòng 206 trong `MessageBubble.tsx` render ảnh bằng thẻ `<img>` thuần, không có `onClick` handler.
+Trang Profile có logic tự động chuyển hướng (redirect) tại dòng 185-187 trong `src/pages/Profile.tsx`:
+
+```
+if (userId && data?.username) {
+  navigate(`/${data.username}`, { replace: true });
+}
+```
+
+Khi bấm vào tên "LƯU THỊ LIÊN" trong chat, trình duyệt điều hướng đến `/profile/2ef75f48-...` (đúng). Tuy nhiên, trang Profile tải xong hồ sơ thành công rồi lại **tự chuyển hướng** sang `/{username}`. Username của người dùng này là `"Angel  Liên Liên "` (có 2 dấu cách liên tiếp và dấu cách ở cuối), khiến URL bị lỗi. Khi route `/:username` nhận URL này, nó tìm kiếm lại bằng username nhưng không khớp chính xác do vấn đề mã hóa URL (URL encoding) với ký tự đặc biệt và dấu cách.
 
 ## Giải pháp
 
-Thêm chức năng bấm vào ảnh để mở xem phóng to (fullscreen viewer) sử dụng Dialog component có sẵn.
+Sửa **2 vấn đề**:
+
+### 1. Mã hóa username khi chuyển hướng (ngắn hạn)
+Trong `src/pages/Profile.tsx` dòng 186, thay:
+```
+navigate(`/${data.username}`, { replace: true });
+```
+Thành:
+```
+navigate(`/@${encodeURIComponent(data.username.trim())}`, { replace: true });
+```
+Thêm `encodeURIComponent` để xử lý ký tự đặc biệt, `.trim()` để loại bỏ khoảng trắng thừa, và tiền tố `@` để dùng route `/@:username` (rõ ràng hơn).
+
+### 2. Xử lý decode username khi tìm kiếm
+Tại dòng 90, thêm `decodeURIComponent` khi xử lý username từ URL:
+```
+const cleanUsername = decodeURIComponent(
+  username.startsWith('@') ? username.slice(1) : username
+).trim();
+```
 
 ## Chi tiết kỹ thuật
 
-### File cần sửa: `src/modules/chat/components/MessageBubble.tsx`
-
-1. Thêm state `selectedImage` (string | null) để theo dõi ảnh đang được xem
-2. Thêm `onClick` handler và `cursor-pointer` cho thẻ `<img>` tại dòng 206
-3. Thêm Dialog component hiển thị ảnh phóng to khi `selectedImage` có giá trị:
-   - Nền tối (bg-black/95) để dễ xem ảnh
-   - Ảnh hiển thị `object-contain` với `max-h-[90vh]` để vừa màn hình
-   - Nút X để đóng
-   - Bấm ngoài ảnh cũng đóng được (Dialog tự hỗ trợ)
-
-### Import thêm:
-- `Dialog, DialogContent` từ `@/components/ui/dialog`
-- `X` từ `lucide-react`
-
-### Thay đổi cụ thể:
-- Dòng 206: Thêm `onClick={() => setSelectedImage(url)}` và `cursor-pointer hover:opacity-90` cho thẻ img
-- Cuối component (trước return cuối): Thêm Dialog với ảnh phóng to
-
-Chỉ sửa 1 file duy nhất, không tạo file mới.
+- File cần sửa: `src/pages/Profile.tsx`
+- Dòng 90: Thêm `decodeURIComponent` + `.trim()` cho username
+- Dòng 186: Thêm `encodeURIComponent` + `.trim()` + tiền tố `@` cho redirect URL
+- Chỉ sửa 1 file, 2 dòng
