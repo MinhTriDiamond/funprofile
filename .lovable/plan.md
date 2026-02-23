@@ -1,25 +1,43 @@
 
-# Đổi Mặc Định "Ai Có Thể Nhắn Tin" Thành "Mọi Người"
 
-## Thay đổi
-Đổi giá trị mặc định của `who_can_message` từ `'friends'` (Chỉ bạn bè) sang `'everyone'` (Mọi người) ở tất cả các vị trí trong code.
+# Sửa Lỗi Edge Function Khi Xem Live Stream
+
+## Nguyên nhân
+
+Trong edge function `live-token`, khi người xem (audience) yêu cầu token, trường `uid` được gửi là `undefined` (dòng 88):
+
+```typescript
+uid: role === 'host' ? userId : undefined,
+```
+
+Agora Worker yêu cầu `uid` bắt buộc, nên trả về lỗi 400: `{"error":"uid is required"}`.
+
+## Giải pháp
+
+Sửa 1 dòng trong file `supabase/functions/live-token/index.ts` (dòng 88): luôn gửi `uid` -- dùng `userId` cho cả host lẫn audience.
+
+```typescript
+// Trước
+uid: role === 'host' ? userId : undefined,
+
+// Sau
+uid: userId,
+```
+
+Audience cũng cần có `uid` để Agora Worker tạo token hợp lệ. Việc dùng `userId` (UUID) cho cả hai vai trò là hoàn toàn an toàn vì Worker sẽ dùng `buildTokenWithUserAccount` để tạo token dựa trên UUID.
 
 ## Chi tiết kỹ thuật
 
-Thay `'friends'` thành `'everyone'` tại 6 vị trí trong 4 file:
+### File: `supabase/functions/live-token/index.ts`
 
-1. **`src/modules/chat/hooks/useChatSettings.ts`** (2 chỗ)
-   - Dòng 9: `DEFAULT_SETTINGS.who_can_message: 'everyone'`
-   - Dòng 85: `const whoCanMessage = settings?.who_can_message || 'everyone'`
+Dòng 86-90, thay đổi body gửi đến Worker:
 
-2. **`src/hooks/useChatSettings.ts`** (2 chỗ)
-   - Dòng 15: `DEFAULT_SETTINGS.who_can_message: 'everyone'`
-   - Dòng 91: `const whoCanMessage = settings?.who_can_message || 'everyone'`
+```typescript
+body: JSON.stringify({
+  channelName: channel,
+  uid: userId,
+  role: role === 'host' ? 'publisher' : 'subscriber',
+}),
+```
 
-3. **`src/modules/chat/components/ChatSettingsDialog.tsx`** (1 chỗ)
-   - Dòng 55: `value={settings?.who_can_message || 'everyone'}`
-
-4. **`src/components/chat/ChatSettingsDialog.tsx`** (1 chỗ)
-   - Dòng 62: `value={settings?.who_can_message || 'everyone'}`
-
-Chỉ thay đổi giá trị mặc định, không ảnh hưởng đến user đã tự chọn cài đặt trước đó.
+Chỉ sửa 1 dòng trong 1 file duy nhất.
