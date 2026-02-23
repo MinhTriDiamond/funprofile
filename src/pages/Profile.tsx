@@ -21,7 +21,7 @@ import { MoreHorizontal, MapPin, Briefcase, GraduationCap, Heart, Clock, Message
 import { DonationButton } from '@/components/donations/DonationButton';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { PullToRefreshContainer } from '@/components/common/PullToRefreshContainer';
-import { useConversations } from '@/hooks/useConversations';
+import { useConversations } from '@/modules/chat/hooks/useConversations';
 import { toast } from 'sonner';
 import { useLanguage } from '@/i18n/LanguageContext';
 
