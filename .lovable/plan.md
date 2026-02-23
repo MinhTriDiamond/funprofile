@@ -1,32 +1,68 @@
 
-# Sửa lỗi: Mở khóa / Đình chỉ user không cập nhật trạng thái
+# Sửa lỗi: Giao dịch hàng loạt không tự cập nhật + Xoá bài chậm/lỗi
 
-## Nguyên nhân
+## Nguyên nhân gốc
 
-Trang `/users` gọi trực tiếp `supabase.from('profiles').update({ reward_status: '...' })` để thay đổi trạng thái user. Tuy nhiên, chính sách bảo mật (RLS) trên bảng `profiles` chỉ cho phép **người dùng tự cập nhật hồ sơ của chính mình**:
+### Vấn đề 1: Danh sách không tự cập nhật sau khi tặng hàng loạt
 
-```
-"Users can update their own profile" -> USING (auth.uid() = id)
-```
+Có **2 lỗi** trong hàm `invalidateDonationCache`:
 
-Khi admin cố cập nhật hồ sơ của user khác, lệnh **không bị lỗi** nhưng **không cập nhật gì** (0 dòng bị ảnh hưởng). Đó là lý do toast "Thành công" hiện ra nhưng trạng thái không đổi.
+1. **Sai query key**: Cả `UnifiedGiftSendDialog.tsx` (dòng 648) và `useDonationFlow.ts` (dòng 62) đều invalidate key `['feed']`, nhưng feed thực tế dùng key `['feed-posts']`. Nên feed **không bao giờ refresh** sau khi tặng.
+
+2. **Thiếu dispatch event**: Hook `useDonationHistory` lắng nghe sự kiện `'invalidate-donations'` và `useFeedPosts` lắng nghe `'invalidate-feed'`, nhưng **không có chỗ nào dispatch** những sự kiện này từ luồng tặng quà. Nên các trang khác đang mở sẽ không cập nhật.
+
+### Vấn đề 2: Xoá bài chậm / có lúc lỗi
+
+`FacebookPostCard` xoá video từ R2/Stream (gọi API mạng) **TRƯỚC** khi xoá record trong database. Nếu API xoá video chậm hoặc lỗi, UI bị block và có thể thất bại hoàn toàn dù bài viết vẫn còn trong DB.
 
 ## Giải pháp
 
-Tạo thêm một chính sách RLS cho phép admin cập nhật hồ sơ người dùng khác:
+### 1. Sửa query key và thêm dispatch event
 
-1. **Thêm migration SQL** - Tạo policy mới:
-   ```sql
-   CREATE POLICY "Admins can update any profile"
-     ON public.profiles FOR UPDATE
-     USING (public.has_role(auth.uid(), 'admin'))
-     WITH CHECK (public.has_role(auth.uid(), 'admin'));
-   ```
+**Files**: `src/components/donations/UnifiedGiftSendDialog.tsx` + `src/components/donations/gift-dialog/useDonationFlow.ts`
 
-2. **Cập nhật code `src/pages/Users.tsx`** - Thêm kiểm tra kết quả update: nếu không có dòng nào bị thay đổi, hiển thị lỗi thay vì thông báo thành công.
+- Đổi `['feed']` thanh `['feed-posts']`
+- Thêm `queryClient.invalidateQueries({ queryKey: ['admin-donation-history'] })` (cho trang Donations)
+- Thêm `window.dispatchEvent(new Event('invalidate-feed'))` và `window.dispatchEvent(new Event('invalidate-donations'))` để các trang đang mở cũng cập nhật
+
+### 2. Tối ưu xoá bài viết
+
+**File**: `src/components/feed/FacebookPostCard.tsx`
+
+- Xoá record DB **trước** (nhanh, cập nhật UI ngay)
+- Sau đó xoá video R2/Stream **trong background** (không block UI)
+- Nếu xoá video thất bại, bài đã bị xoá rồi nên không ảnh hưởng người dùng
 
 ## Chi tiết kỹ thuật
 
-### File thay đổi
-- **Migration SQL mới**: Thêm RLS policy cho admin update profiles
-- **`src/pages/Users.tsx`**: Cải thiện xử lý lỗi bằng cách kiểm tra `.select()` sau `.update()` để xác nhận thay đổi thực sự xảy ra
+### invalidateDonationCache (cả 2 file)
+```text
+Trước:
+  queryClient.invalidateQueries({ queryKey: ['feed'] });
+
+Sau:
+  queryClient.invalidateQueries({ queryKey: ['feed-posts'] });
+  queryClient.invalidateQueries({ queryKey: ['admin-donation-history'] });
+  window.dispatchEvent(new Event('invalidate-feed'));
+  window.dispatchEvent(new Event('invalidate-donations'));
+```
+
+### FacebookPostCard delete flow
+```text
+Trước:
+  1. deleteStreamVideos() -- chậm, có thể lỗi
+  2. deleteStorageFile() -- chậm  
+  3. supabase.from('posts').delete() -- nhanh
+  4. toast + onPostDeleted()
+
+Sau:
+  1. supabase.from('posts').delete() -- nhanh, UI cập nhật ngay
+  2. toast + onPostDeleted()
+  3. (background) deleteStreamVideos() -- không block
+  4. (background) deleteStorageFile() -- không block
+```
+
+### Files thay đổi
+1. `src/components/donations/UnifiedGiftSendDialog.tsx` -- Sửa query key + thêm dispatch
+2. `src/components/donations/gift-dialog/useDonationFlow.ts` -- Sửa query key + thêm dispatch  
+3. `src/components/feed/FacebookPostCard.tsx` -- Đảo thứ tự xoá: DB trước, video sau (background)
