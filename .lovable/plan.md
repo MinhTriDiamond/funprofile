@@ -1,48 +1,37 @@
 
-# Hiển Thị Video Live và Nút Xem Live Trên Bài Đăng Feed
+
+# Sửa Nút Angel AI Bị Che Khuất Nút Gửi Tin Nhắn
 
 ## Vấn đề
 
-Khi bạn đang phát live, bài đăng trên feed chỉ hiển thị text (tiêu đề). Không có:
-- Video preview hoặc thumbnail của buổi live
-- Nút "Xem trực tiếp" để bạn bè bấm vào xem
-- Badge "LIVE" nổi bật trên bài đăng
+Nút Angel AI nổi (floating button) có vị trí mặc định quá thấp, nằm đè lên khu vực nhập tin nhắn và nút gửi khi người dùng ở trang Chat trên mobile.
 
-Nguyên nhân: Bài đăng live được tạo chỉ với `content` (text) và `metadata` (chứa thông tin channel, live_status). Không có `media_urls`, `image_url`, hay `video_url`. Component `FacebookPostCard` không có logic đặc biệt để render UI cho bài đăng đang live.
+Tính năng kéo thả đã có sẵn nhưng người dùng có thể không biết, và vị trí mặc định cần được điều chỉnh.
 
 ## Giải pháp
 
-Thêm một component `LivePostEmbed` hiển thị bên trong `FacebookPostCard` khi bài đăng có `post_type === 'live'` và `metadata.live_status === 'live'`.
+### 1. Điều chỉnh vị trí mặc định cao hơn
+
+File: `src/components/angel-ai/AngelFloatingButton.tsx`
+
+- Thay đổi vị trí Y mặc định từ `window.innerHeight - BUTTON_SIZE - 96` lên `window.innerHeight - BUTTON_SIZE - 180` (cao hơn ~84px) để tránh vùng bottom nav + chat input.
+
+### 2. Tự động dịch lên khi ở trang Chat
+
+File: `src/components/angel-ai/AngelFloatingButton.tsx`
+
+- Thêm logic detect khi đang ở route `/chat/*` bằng `useLocation()`
+- Khi ở trang chat, nếu nút đang ở vị trí quá thấp (gần vùng input), tự động dịch lên cao hơn để tránh che khuất
+- Giới hạn Y tối đa khi ở trang chat: `window.innerHeight - BUTTON_SIZE - 180` (trên cả bottom nav + input)
+
+### 3. Thêm hiệu ứng gợi ý kéo thả
+
+- Khi nút được render lần đầu (chưa có vị trí lưu trong localStorage), thêm animation nhẹ "bounce" hoặc "wiggle" ngắn để người dùng biết có thể kéo nút di chuyển
 
 ## Chi tiết kỹ thuật
 
-### 1. Tạo component mới: `src/components/feed/LivePostEmbed.tsx`
+- Sử dụng `useLocation()` từ react-router-dom để detect route `/chat`
+- Khi route thay đổi sang `/chat/*`, kiểm tra position.y, nếu > threshold thì setPosition lên cao hơn
+- Vẫn giữ nguyên toàn bộ logic drag/snap hiện tại
+- Chỉ sửa 1 file: `src/components/angel-ai/AngelFloatingButton.tsx`
 
-Component này sẽ hiển thị:
-- Khung preview với nền gradient tối (giống giao diện xem live)
-- Badge **LIVE** đỏ nhấp nháy (animated pulse) ở góc trên
-- Số người đang xem (`viewer_count` từ metadata)
-- Thumbnail nếu có (`metadata.thumbnail_url`), hoặc icon camera/video lớn nếu chưa có
-- Nút **"Xem trực tiếp"** nổi bật, khi bấm sẽ điều hướng đến `/live/[session_id]`
-
-Props:
-- `metadata`: chứa `live_session_id`, `live_status`, `channel_name`, `viewer_count`, `thumbnail_url`
-- `hostName`: tên người phát
-
-### 2. Cập nhật `src/components/feed/FacebookPostCard.tsx`
-
-Thêm logic render `LivePostEmbed` ngay trước `MediaGrid`:
-- Điều kiện: `post.post_type === 'live'` VÀ `post.metadata?.live_status === 'live'`
-- Khi live đã kết thúc (`live_status !== 'live'`), hiển thị media bình thường (video replay nếu có)
-
-### 3. Cập nhật `src/modules/live/liveService.ts`
-
-Đảm bảo khi tạo live session, `metadata` của post chứa `live_session_id` để component có thể tạo link xem live:
-- Sau khi insert live_session thành công, update post metadata thêm `live_session_id`
-
-## Kết quả mong đợi
-
-- Bạn bè thấy bài đăng live với badge LIVE đỏ nhấp nháy
-- Có nút "Xem trực tiếp" bấm vào sẽ đến trang xem live
-- Hiển thị số người đang xem
-- Khi live kết thúc, nếu có video replay thì hiển thị video bình thường
