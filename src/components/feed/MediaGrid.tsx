@@ -3,7 +3,7 @@ import { ImageViewer } from './ImageViewer';
 import { LazyImage } from '@/components/ui/LazyImage';
 import { LazyVideo } from '@/components/ui/LazyVideo';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { ChevronLeft, ChevronRight, X, Radio, Play } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Radio, Play, Download } from 'lucide-react';
 
 interface MediaItem {
   url: string;
@@ -67,9 +67,22 @@ export const MediaGrid = memo(({ media: initialMedia }: MediaGridProps) => {
               onError={() => handleMediaError(item.url)}
             />
             {item.isLiveReplay && (
-              <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-destructive/90 text-destructive-foreground px-2.5 py-1 rounded-full text-xs font-bold shadow-lg backdrop-blur-sm pointer-events-none">
-                <Radio className="w-3.5 h-3.5" />
-                LIVE Replay
+              <div className="absolute top-3 left-3 right-3 flex items-center justify-between pointer-events-none">
+                <div className="flex items-center gap-1.5 bg-destructive/90 text-destructive-foreground px-2.5 py-1 rounded-full text-xs font-bold shadow-lg backdrop-blur-sm">
+                  <Radio className="w-3.5 h-3.5" />
+                  LIVE Replay
+                </div>
+                <a
+                  href={item.url}
+                  download
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="pointer-events-auto w-9 h-9 bg-black/60 hover:bg-black/80 rounded-full flex items-center justify-center text-white transition-colors"
+                  title="Tải xuống"
+                >
+                  <Download className="w-4 h-4" />
+                </a>
               </div>
             )}
           </div>
@@ -328,13 +341,27 @@ const MediaGalleryViewer = memo(({ media, isOpen, onClose, currentIndex, onPrev,
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 bg-black/95 border-none">
         <div className="relative w-full h-[90vh] flex items-center justify-center">
-          {/* Close button */}
-          <button
-            onClick={onClose}
-            className="absolute top-4 right-4 z-50 w-10 h-10 bg-black/50 hover:bg-black/80 rounded-full flex items-center justify-center text-white transition-colors"
-          >
-            <X className="w-6 h-6" />
-          </button>
+          {/* Close + Download buttons */}
+          <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
+            {currentMedia.type === 'video' && (
+              <a
+                href={currentMedia.url}
+                download
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-10 h-10 bg-black/50 hover:bg-black/80 rounded-full flex items-center justify-center text-white transition-colors"
+                title="Tải xuống"
+              >
+                <Download className="w-5 h-5" />
+              </a>
+            )}
+            <button
+              onClick={onClose}
+              className="w-10 h-10 bg-black/50 hover:bg-black/80 rounded-full flex items-center justify-center text-white transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
 
           {/* Counter */}
           <div className="absolute top-4 left-4 z-50 bg-black/50 px-3 py-1 rounded-full text-white text-sm">
