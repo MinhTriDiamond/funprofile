@@ -404,13 +404,22 @@ export function MessageThread({ conversationId, userId, username }: MessageThrea
     <div className="relative flex-1 min-h-0 flex flex-col overflow-hidden">
       {/* Header */}
       <div className="p-4 border-b flex items-center justify-between bg-card">
-        <div className="flex items-center gap-3">
-          <Avatar className="h-10 w-10">
+        <div
+          className={`flex items-center gap-3 ${!isGroup && dmOtherUserId ? 'cursor-pointer group' : ''}`}
+          onClick={() => {
+            if (!isGroup && dmOtherUserId) {
+              navigate(`/profile/${dmOtherUserId}`);
+            } else if (isGroup) {
+              setShowGroupSettings(true);
+            }
+          }}
+        >
+          <Avatar className={`h-10 w-10 transition-all ${!isGroup && dmOtherUserId ? 'group-hover:ring-2 group-hover:ring-primary' : ''}`}>
             <AvatarImage src={headerAvatar || undefined} alt={headerName || ''} />
             <AvatarFallback>{(headerName || 'U')[0].toUpperCase()}</AvatarFallback>
           </Avatar>
           <div>
-            <p className="font-medium">{headerName}</p>
+            <p className={`font-medium ${!isGroup && dmOtherUserId ? 'group-hover:underline' : ''}`}>{headerName}</p>
             {isGroup ? (
               <p className="text-xs text-muted-foreground flex items-center gap-1">
                 <Users className="h-3 w-3" />
