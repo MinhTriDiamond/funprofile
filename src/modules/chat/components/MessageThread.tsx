@@ -45,6 +45,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import { canSendMessage } from '../hooks/useChatSettings';
 
 interface MessageThreadProps {
   conversationId: string;
@@ -242,6 +243,14 @@ export function MessageThread({ conversationId, userId, username }: MessageThrea
   }, [messages, userId, markAsRead]);
 
   const handleSend = async (content: string, mediaUrls?: string[]) => {
+    // Kiểm tra quyền gửi tin nhắn (chỉ cho hội thoại 1-1)
+    if (recipientUserId && userId) {
+      const allowed = await canSendMessage(userId, recipientUserId);
+      if (!allowed) {
+        toast.error('Bạn không thể gửi tin nhắn cho người này do cài đặt quyền riêng tư của họ');
+        return;
+      }
+    }
     const trimmed = (content || '').trim();
     await sendMessage.mutateAsync({
       content,
@@ -265,6 +274,13 @@ export function MessageThread({ conversationId, userId, username }: MessageThrea
   };
 
   const handleSendSticker = async (sticker: any) => {
+    if (recipientUserId && userId) {
+      const allowed = await canSendMessage(userId, recipientUserId);
+      if (!allowed) {
+        toast.error('Bạn không thể gửi tin nhắn cho người này do cài đặt quyền riêng tư của họ');
+        return;
+      }
+    }
     await sendMessage.mutateAsync({
       content: '[Sticker]',
       mediaUrls: [],
@@ -277,6 +293,13 @@ export function MessageThread({ conversationId, userId, username }: MessageThrea
 
   const handleCreateRedEnvelope = async (input: { token: 'CAMLY' | 'BNB'; totalAmount: number; totalCount: number }) => {
     if (!userId) throw new Error('Not authenticated');
+    if (recipientUserId) {
+      const allowed = await canSendMessage(userId, recipientUserId);
+      if (!allowed) {
+        toast.error('Bạn không thể gửi tin nhắn cho người này do cài đặt quyền riêng tư của họ');
+        return;
+      }
+    }
     // Create envelope row
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
     // Assuming supabase client is available globally or imported
