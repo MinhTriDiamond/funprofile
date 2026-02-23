@@ -102,7 +102,20 @@ const Users = () => {
         if (error) throw error;
         toast({ title: 'Đã mở khóa', description: `@${actionTarget.username} đã được mở khóa.` });
       }
-      queryClient.invalidateQueries({ queryKey: ['user-directory'] });
+      // Optimistic update cache ngay lập tức
+      queryClient.setQueryData(['user-directory'], (old: any[]) => {
+        if (!old) return old;
+        return old.map(u => {
+          if (u.id !== actionTarget.id) return u;
+          if (actionTarget.type === 'ban') return { ...u, is_banned: true, reward_status: 'banned' };
+          if (actionTarget.type === 'suspend') return { ...u, reward_status: 'on_hold' };
+          if (actionTarget.type === 'unlock') return { ...u, reward_status: 'approved' };
+          return u;
+        });
+      });
+
+      // Refetch để đồng bộ chính xác từ DB
+      await queryClient.refetchQueries({ queryKey: ['user-directory'] });
     } catch (err: any) {
       toast({ title: 'Lỗi', description: err.message || 'Không thể thực hiện hành động', variant: 'destructive' });
     } finally {
