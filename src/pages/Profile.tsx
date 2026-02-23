@@ -87,7 +87,7 @@ const Profile = () => {
       
       // If username is provided, look up by username
       if (username) {
-        const cleanUsername = username.startsWith('@') ? username.slice(1) : username;
+        const cleanUsername = decodeURIComponent(username.startsWith('@') ? username.slice(1) : username).trim();
         const { data: profileData } = await supabase
           .from('public_profiles')
           .select('id')
@@ -183,7 +183,7 @@ const Profile = () => {
       setProfile(data);
 
       if (userId && (data as any)?.username) {
-        navigate(`/${(data as any).username}`, { replace: true });
+        navigate(`/@${encodeURIComponent(((data as any).username || '').trim())}`, { replace: true });
       }
 
       // Map public_profiles to profiles key for component compatibility
