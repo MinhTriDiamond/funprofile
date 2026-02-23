@@ -2,13 +2,17 @@ import { useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
+  Dialog,
+  DialogContent,
+} from '@/components/ui/dialog';
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
-import { MoreHorizontal, Reply, Pin, Edit, Trash2, Flag, Copy } from 'lucide-react';
+import { MoreHorizontal, Reply, Pin, Edit, Trash2, Flag, Copy, X } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import type { Message, MessageReaction } from '../types';
@@ -49,6 +53,7 @@ export function MessageBubble({
   highlightId,
 }: MessageBubbleProps) {
   const [showReactions, setShowReactions] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   if (message.is_deleted) {
     return (
@@ -203,7 +208,7 @@ export function MessageBubble({
                 {(message.media_urls as string[]).map((url, i) => {
                   const fileType = getFileTypeFromUrl(url);
                   if (fileType === 'image') {
-                    return <img key={i} src={url} alt="" className="max-w-full rounded-lg max-h-60 object-cover" loading="lazy" />;
+                    return <img key={i} src={url} alt="" className="max-w-full rounded-lg max-h-60 object-cover cursor-pointer hover:opacity-90 transition-opacity" loading="lazy" onClick={() => setSelectedImage(url)} />;
                   }
                   if (fileType === 'video') {
                     return <video key={i} src={url} controls className="max-w-full rounded-lg max-h-60" />;
@@ -293,6 +298,27 @@ export function MessageBubble({
           </div>
         )}
       </div>
+
+      {/* Image viewer dialog */}
+      <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
+        <DialogContent className="max-w-[90vw] max-h-[90vh] p-0 overflow-hidden bg-black/95 border-none [&>button]:hidden">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute right-3 top-3 z-10 bg-white/10 hover:bg-white/20 text-white rounded-full"
+            onClick={() => setSelectedImage(null)}
+          >
+            <X className="h-5 w-5" />
+          </Button>
+          {selectedImage && (
+            <img
+              src={selectedImage}
+              alt="Xem ảnh phóng to"
+              className="w-full h-auto max-h-[90vh] object-contain"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
