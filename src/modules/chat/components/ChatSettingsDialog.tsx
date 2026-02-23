@@ -57,7 +57,7 @@ export function ChatSettingsDialog({ open, onOpenChange, userId }: ChatSettingsD
               disabled={isLoading || updateSettings.isPending}
             >
               <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
+              <SelectContent className="pointer-events-auto z-[9999]">
                 <SelectItem value="everyone">Mọi người</SelectItem>
                 <SelectItem value="friends">Chỉ bạn bè</SelectItem>
                 <SelectItem value="nobody">Không ai</SelectItem>
