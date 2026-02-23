@@ -70,6 +70,8 @@ export const getNotificationIcon = (type: string): React.ReactNode => {
       return React.createElement(MessageCircle, { className: 'w-4 h-4 text-primary' });
     case 'share':
       return React.createElement(Share2, { className: 'w-4 h-4 text-green-500' });
+    case 'donation':
+      return React.createElement(Gift, { className: 'w-4 h-4 text-green-500' });
     case 'reward_approved':
     case 'reward_rejected':
       return React.createElement(Gift, { className: 'w-4 h-4 text-gold' });
@@ -165,6 +167,9 @@ export const getNotificationText = (
       break;
     case 'share':
       main = createMainText('đã chia sẻ bài viết của bạn');
+      break;
+    case 'donation':
+      main = createMainText('đã tặng quà cho bạn');
       break;
     case 'reward_approved':
       main = React.createElement(React.Fragment, null,
