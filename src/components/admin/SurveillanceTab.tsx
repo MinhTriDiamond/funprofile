@@ -12,7 +12,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { toast } from "sonner";
 import {
   Shield, AlertTriangle, Search, Download, ExternalLink,
-  Users, TrendingDown, Eye, RefreshCw, Ban,
+  Users, TrendingDown, Eye, RefreshCw, Ban, Unlock,
 } from "lucide-react";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -71,6 +71,7 @@ interface OnHoldUser {
   username: string;
   full_name: string | null;
   wallet_address: string | null;
+  admin_notes: string | null;
   signal_type: string;
   severity: number;
   signal_at: string | null;
@@ -92,6 +93,7 @@ const SurveillanceTab = ({ adminId }: SurveillanceTabProps) => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [banning, setBanning] = useState<string | null>(null);
+  const [unlocking, setUnlocking] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -163,7 +165,7 @@ const SurveillanceTab = ({ adminId }: SurveillanceTabProps) => {
       // ── Query 2: on_hold accounts ─────────────────────────────────────────
       const { data: holdProfiles, error: e2 } = await supabase
         .from("profiles")
-        .select("id, username, full_name, wallet_address, pending_reward")
+        .select("id, username, full_name, wallet_address, pending_reward, admin_notes")
         .eq("reward_status", "on_hold")
         .eq("is_banned", false);
 
@@ -203,6 +205,7 @@ const SurveillanceTab = ({ adminId }: SurveillanceTabProps) => {
             username: p.username ?? "—",
             full_name: p.full_name,
             wallet_address: p.wallet_address,
+            admin_notes: p.admin_notes ?? null,
             signal_type: sig?.signal_type ?? "UNKNOWN",
             severity: sig?.severity ?? 0,
             signal_at: sig?.created_at ?? null,
@@ -226,6 +229,44 @@ const SurveillanceTab = ({ adminId }: SurveillanceTabProps) => {
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  const handleUnlock = async (userId: string, username: string) => {
+    if (!confirm(`Xác nhận MỞ KHÓA tài khoản "${username}"? Tài khoản sẽ được khôi phục trạng thái approved.`)) return;
+    setUnlocking(userId);
+    try {
+      const [profileRes, signalRes, auditRes] = await Promise.all([
+        supabase
+          .from("profiles")
+          .update({
+            reward_status: "approved",
+            admin_notes: `Mở khóa bởi admin vào ${new Date().toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" })}`,
+          })
+          .eq("id", userId),
+        supabase
+          .from("pplp_fraud_signals")
+          .update({ is_resolved: true })
+          .eq("actor_id", userId)
+          .eq("is_resolved", false),
+        supabase
+          .from("audit_logs")
+          .insert({
+            admin_id: adminId,
+            target_user_id: userId,
+            action: "UNLOCK_USER",
+            reason: `Mở khóa tài khoản ${username} từ trạng thái on_hold`,
+          }),
+      ]);
+      if (profileRes.error) throw profileRes.error;
+      if (auditRes.error) throw auditRes.error;
+      toast.success(`Đã mở khóa tài khoản ${username}`);
+      await fetchData();
+    } catch (err) {
+      console.error(err);
+      toast.error("Lỗi khi mở khóa tài khoản");
+    } finally {
+      setUnlocking(null);
+    }
+  };
 
   const handleBan = async (userId: string, username: string) => {
     if (!confirm(`Xác nhận BAN vĩnh viễn tài khoản ${username}?`)) return;
@@ -498,19 +539,20 @@ const SurveillanceTab = ({ adminId }: SurveillanceTabProps) => {
                         <TableHead className="text-center">Tài khoản LQ</TableHead>
                         <TableHead className="text-right">Tồn đọng</TableHead>
                         <TableHead>Ví</TableHead>
+                        <TableHead>Lý do đình chỉ</TableHead>
                         <TableHead>Hành động</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {loading ? (
                         <TableRow>
-                          <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                          <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
                             Đang tải…
                           </TableCell>
                         </TableRow>
                       ) : filteredHold.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                          <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
                             Không có dữ liệu
                           </TableCell>
                         </TableRow>
@@ -570,16 +612,44 @@ const SurveillanceTab = ({ adminId }: SurveillanceTabProps) => {
                             ) : "—"}
                           </TableCell>
                           <TableCell>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              className="text-xs h-7 px-2"
-                              disabled={banning === u.id}
-                              onClick={() => handleBan(u.id, u.username)}
-                            >
-                              <Ban className="w-3 h-3 mr-1" />
-                              {banning === u.id ? "…" : "Ban"}
-                            </Button>
+                            {u.admin_notes && u.admin_notes.length > 25 ? (
+                              <Tooltip>
+                                <TooltipTrigger>
+                                  <span className="text-xs text-muted-foreground cursor-help">
+                                    {truncate(u.admin_notes, 25)}
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-xs">
+                                  <p className="text-xs">{u.admin_notes}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">{u.admin_notes ?? "—"}</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-xs h-7 px-2 border-emerald-500 text-emerald-600 hover:bg-emerald-500/10"
+                                disabled={unlocking === u.id}
+                                onClick={() => handleUnlock(u.id, u.username)}
+                              >
+                                <Unlock className="w-3 h-3 mr-1" />
+                                {unlocking === u.id ? "…" : "Mở khóa"}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                className="text-xs h-7 px-2"
+                                disabled={banning === u.id}
+                                onClick={() => handleBan(u.id, u.username)}
+                              >
+                                <Ban className="w-3 h-3 mr-1" />
+                                {banning === u.id ? "…" : "Ban"}
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
