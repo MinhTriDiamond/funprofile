@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { useNavigate, useParams, useLocation, useBlocker } from 'react-router-dom';
 import { Eye, Home, Loader2, Mic, MicOff, PhoneOff, Radio, RefreshCw, Video, VideoOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
@@ -8,6 +8,16 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from '@/components/ui/alert-dialog';
 
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -314,7 +324,7 @@ async function generateThumbnailFromBlob(blob: Blob): Promise<Blob | null> {
   });
 }
 
-const handleEndLive = async () => {
+const handleEndLive = async (skipNavigate = false) => {
     if (!effectiveSessionId) return;
     if (viewerCountTimerRef.current) {
       clearTimeout(viewerCountTimerRef.current);
@@ -384,7 +394,9 @@ const handleEndLive = async () => {
 
       await leave();
       toast.success('Live đã kết thúc!');
-      navigate(`/live/${effectiveSessionId}`);
+      if (!skipNavigate) {
+        navigate(`/live/${effectiveSessionId}`);
+      }
     } catch (error: any) {
       toast.error(error?.message || 'Không thể kết thúc live');
     }
@@ -398,6 +410,18 @@ const handleEndLive = async () => {
   };
 
   const isEnding = ['stopping', 'compressing', 'processing'].includes(recordingState);
+
+  // Navigation guard: block leaving page while live
+  const shouldBlock = isHost && session?.status === 'live' && isJoined && !isEnding;
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      shouldBlock && currentLocation.pathname !== nextLocation.pathname
+  );
+
+  const handleConfirmLeave = async () => {
+    await handleEndLive(true);
+    blocker.proceed?.();
+  };
 
   const showLoader =
     ['auth', 'creating', 'loading', 'starting'].includes(bootState) ||
@@ -569,7 +593,7 @@ const handleEndLive = async () => {
                 {isCameraOff ? <VideoOff className="h-4 w-4 mr-2" /> : <Video className="h-4 w-4 mr-2" />}
                 {isCameraOff ? 'Camera On' : 'Camera Off'}
               </Button>
-              <Button variant="destructive" onClick={handleEndLive} disabled={isEnding}>
+              <Button variant="destructive" onClick={() => handleEndLive()} disabled={isEnding}>
                 {isEnding ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <PhoneOff className="h-4 w-4 mr-2" />}
                 {isEnding ? 'Đang xử lý...' : 'End Live'}
               </Button>
@@ -579,6 +603,21 @@ const handleEndLive = async () => {
           {effectiveSessionId && <LiveChatPanel sessionId={effectiveSessionId} className="h-[70vh] lg:h-[calc(100vh-120px)]" />}
         </div>
       </main>
+      {/* Navigation guard dialog */}
+      <AlertDialog open={blocker.state === 'blocked'}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Rời khỏi Live Stream?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn đang phát trực tiếp. Nếu rời đi, buổi live sẽ kết thúc và video sẽ được lưu lại.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => blocker.reset?.()}>Ở lại</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmLeave}>Kết thúc & Rời đi</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
