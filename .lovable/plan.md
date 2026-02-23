@@ -1,42 +1,37 @@
 
-# Cập Nhật Hiển Thị Email Cho Tất Cả Thông Báo Cảnh Báo
+# Hiển Thị Chi Tiết Cảnh Báo Trong Thông Báo Báo Cáo Gian Lận
 
 ## Vấn Đề
 
-2 thông báo cảnh báo cũ (`admin_shared_device`) không hiển thị email vì chúng được tạo bởi hàm `log-login-ip` -- hàm này chỉ lưu `usernames` mà không lưu `flagged_emails` vào metadata. Ngoài ra, thông báo `admin_email_farm` từ `log-login-ip` cũng thiếu username + email mapping.
+Thông báo `admin_fraud_daily` có đầy đủ dữ liệu chi tiết trong metadata (trường `alerts` chứa mảng các cảnh báo cụ thể), nhưng code hiển thị hiện tại chỉ tóm tắt thành "7 cảnh báo, 0 đình chỉ | TK: user1 (email)..." thay vì hiển thị nội dung chi tiết từng cảnh báo.
+
+Ảnh con chụp cho thấy hiển thị mong muốn: **"7 cảnh báo - Thiết bị dfb4ace9... có 3 tài khoản, Cụm email "tacongminh" có 3 tài khoản, Cụm email "congminhyvnh" có 18 tài khoản"**
 
 ## Giải Pháp
 
-### 1. Cập nhật `log-login-ip/index.ts` - Hàm `detectSharedDevice`
+Cập nhật case `admin_fraud_daily` trong cả 2 file hiển thị để sử dụng trường `alerts` (mảng) thay vì chỉ hiện số liệu tổng.
 
-Thêm logic tra cứu email cho các user bị gắn cờ thiết bị chung:
-- Sử dụng `auth.admin.listUsers()` hoặc query `globalEmailMap` để lấy email
-- Thêm trường `flagged_emails` (map username -> email) vào metadata notification `admin_shared_device`
-
-### 2. Cập nhật `log-login-ip/index.ts` - Hàm `detectEmailFarm`
-
-Thêm username mapping và `flagged_emails` vào metadata notification `admin_email_farm`:
-- Tra cứu username từ profiles table cho các user khớp email farm
-- Thêm `usernames` và `flagged_emails` vào metadata
-
-### 3. Dọn dẹp thông báo cũ thiếu email
-
-Xóa các thông báo `admin_shared_device` cũ không có `flagged_emails`, sau đó chạy lại scan để tạo mới với đầy đủ thông tin.
+### Format hiển thị mới:
+```
+📊 Báo cáo gian lận: 7 cảnh báo - Thiết bị dfb4ace9... có 3 TK: user1 (email1), user2 (email2), Cụm email "tacongminh" có 3 TK: user3 (email3)...
+```
 
 ## Chi Tiết Kỹ Thuật
 
-**File 1: `supabase/functions/log-login-ip/index.ts`**
+### File 1: `src/pages/Notifications.tsx`
 
-Hàm `detectSharedDevice` (dòng ~198-215):
-- Sau khi lấy `userProfiles`, thêm query `auth.admin.listUsers()` để lấy email
-- Build `flaggedEmails` map: `{ username: email }`  
-- Thêm `flagged_emails: flaggedEmails` vào metadata notification
+Cập nhật case `admin_fraud_daily` trong hàm `getNotificationText`:
+- Kiểm tra `m?.alerts` (mảng string)
+- Nếu có alerts: hiển thị `"{alerts_count} cảnh báo - {alerts.join(', ')}"`
+- Fallback: giữ nguyên logic cũ nếu không có alerts
 
-Hàm `detectEmailFarm` (dòng ~272-283):
-- Sau khi có `matchingUsers` (từ auth), tra cứu profiles để lấy username
-- Build `flaggedEmails` map và `usernames` array
-- Thêm `usernames` + `flagged_emails` vào metadata notification
+### File 2: `src/components/layout/notifications/utils.ts`
 
-**File 2: Dọn dẹp database**
-- Xóa các `admin_shared_device` trùng lặp (giữ bản mới nhất cho mỗi device)
-- Chạy lại `daily-fraud-scan` để tạo notification mới có đầy đủ thông tin
+Cập nhật case `admin_fraud_daily` trong hàm `getNotificationText` tương tự:
+- Ưu tiên hiển thị `alerts` array
+- Format: `"{alerts_count} cảnh báo - {alert1}, {alert2}, ..."`
+
+### File 3: `src/components/layout/notifications/types.ts`
+
+Thêm trường `alerts` vào interface `NotificationMetadata` (nếu chưa có):
+- `alerts?: string[]`
