@@ -216,6 +216,11 @@ export async function createLiveSession(input: CreateLiveSessionInput): Promise<
       })
       .eq('id', postId);
 
+    // Fire-and-forget: notify friends
+    notifyFriendsLiveStarted(data.id, postId!).catch((err) =>
+      console.warn('[liveService] notify-live-started failed:', err)
+    );
+
     return normalizeLiveSession(data);
   } catch (error) {
     if (postId) {
@@ -356,4 +361,27 @@ export async function saveLiveReplay(liveSessionId: string, playbackUrl?: string
     playbackUrl: playbackUrl || null,
     recordingStatus: playbackUrl ? 'ready' : 'failed',
   });
+}
+
+async function notifyFriendsLiveStarted(sessionId: string, postId: string): Promise<void> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return;
+
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+  const response = await fetch(`${supabaseUrl}/functions/v1/notify-live-started`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${session.access_token}`,
+      'apikey': supabaseKey,
+    },
+    body: JSON.stringify({ session_id: sessionId, post_id: postId }),
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || `HTTP ${response.status}`);
+  }
 }
