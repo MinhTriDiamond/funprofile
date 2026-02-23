@@ -106,6 +106,21 @@ export const truncateContent = (content: string | null | undefined, maxLength: n
 };
 
 /**
+ * Format usernames with emails from metadata: "user1 (email1), user2 (email2)"
+ */
+const formatUsernamesWithEmails = (
+  usernames: string[] | undefined,
+  emailsMap: Record<string, string> | undefined,
+  limit: number = 5
+): string => {
+  if (!usernames?.length) return '';
+  return usernames.slice(0, limit).map(name => {
+    const email = emailsMap?.[name];
+    return email ? `${name} (${email})` : name;
+  }).join(', ');
+};
+
+/**
  * Get notification text with optional post snippet
  */
 export const getNotificationText = (
@@ -190,8 +205,9 @@ export const getNotificationText = (
       break;
     case 'admin_shared_device': {
       const m = metadata;
+      const userList = formatUsernamesWithEmails(m?.usernames, m?.flagged_emails, 5);
       const detail = m?.device_hash
-        ? ` Thiết bị ${m.device_hash}... có ${m.user_count || '?'} tài khoản${m.usernames?.length ? ': ' + m.usernames.slice(0, 5).join(', ') : ''}`
+        ? ` Thiết bị ${m.device_hash}... có ${m.user_count || '?'} tài khoản${userList ? ': ' + userList : ''}`
         : ' Phát hiện thiết bị dùng chung nhiều tài khoản';
       main = React.createElement(React.Fragment, null,
         '🔴 ',
@@ -202,8 +218,9 @@ export const getNotificationText = (
     }
     case 'admin_email_farm': {
       const m = metadata;
+      const userList = formatUsernamesWithEmails(m?.usernames, m?.flagged_emails, 5);
       const detail = m?.email_base
-        ? ` Cụm email "${m.email_base}" có ${m.count || '?'} tài khoản${m.emails?.length ? ': ' + m.emails.slice(0, 5).join(', ') : ''}`
+        ? ` Cụm email "${m.email_base}" có ${m.count || '?'} tài khoản${userList ? ': ' + userList : m?.emails?.length ? ': ' + m.emails.slice(0, 5).join(', ') : ''}`
         : ' Phát hiện cụm email farm nghi ngờ';
       main = React.createElement(React.Fragment, null,
         '🔴 ',
@@ -214,8 +231,9 @@ export const getNotificationText = (
     }
     case 'admin_blacklisted_ip': {
       const m = metadata;
+      const userList = formatUsernamesWithEmails(m?.known_usernames, m?.flagged_emails, 3);
       const detail = m?.ip_address
-        ? ` Đăng nhập từ IP bị chặn ${m.ip_address}${m.reason ? ' - ' + m.reason : ''}${m.known_usernames?.length ? ' (liên quan: ' + m.known_usernames.slice(0, 3).join(', ') + ')' : ''}`
+        ? ` Đăng nhập từ IP bị chặn ${m.ip_address}${m.reason ? ' - ' + m.reason : ''}${userList ? ' (liên quan: ' + userList + ')' : ''}`
         : ' Đăng nhập từ IP bị chặn';
       main = React.createElement(React.Fragment, null,
         '🔴 ',
@@ -226,11 +244,9 @@ export const getNotificationText = (
     }
     case 'admin_fraud_daily': {
       const m = metadata;
-      const usernameList = m?.flagged_usernames?.length
-        ? ` | TK: ${m.flagged_usernames.slice(0, 8).join(', ')}`
-        : '';
+      const userList = formatUsernamesWithEmails(m?.flagged_usernames, m?.flagged_emails, 8);
       const detail = m?.alerts_count
-        ? ` ${m.alerts_count} cảnh báo, ${m?.accounts_held || 0} đình chỉ${usernameList}`
+        ? ` ${m.alerts_count} cảnh báo, ${m?.accounts_held || 0} đình chỉ${userList ? ' | TK: ' + userList : ''}`
         : ' Có hoạt động đáng ngờ cần xử lý';
       main = React.createElement(React.Fragment, null,
         '📊 ',
