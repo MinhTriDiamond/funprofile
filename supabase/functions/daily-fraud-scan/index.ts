@@ -199,8 +199,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 3. IP clustering: multiple accounts from same IP in last 24h
-    const ipClusters: Array<{ ip: string; users: string[] }> = [];
+    // 3. IP clustering + device cross-check to avoid false positives
+    const ipClusters: Array<{ ip: string; sharedDeviceUsers: string[]; uniqueDeviceUsers: string[] }> = [];
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const { data: recentLogins } = await supabase
       .from("login_ip_logs")
@@ -219,34 +219,93 @@ Deno.serve(async (req) => {
       for (const [ip, users] of ipMap) {
         if (users.size > 3) {
           const userArr = Array.from(users);
+
+          // Cross-check: query device_hash (v2+) for all users in this IP cluster
+          const { data: deviceData } = await supabase
+            .from("pplp_device_registry")
+            .select("user_id, device_hash")
+            .in("user_id", userArr)
+            .gte("fingerprint_version", 2);
+
+          // Build device_hash -> user_ids map
+          const deviceToUsers = new Map<string, string[]>();
+          const usersWithDevice = new Set<string>();
+          if (deviceData) {
+            for (const d of deviceData) {
+              usersWithDevice.add(d.user_id);
+              const list = deviceToUsers.get(d.device_hash) || [];
+              list.push(d.user_id);
+              deviceToUsers.set(d.device_hash, list);
+            }
+          }
+
+          // Shared device users: users who share a device_hash with another user in this IP
+          const sharedDeviceUserSet = new Set<string>();
+          for (const [, deviceUsers] of deviceToUsers) {
+            if (deviceUsers.length > 1) {
+              for (const uid of deviceUsers) sharedDeviceUserSet.add(uid);
+            }
+          }
+          const sharedDeviceUsers = Array.from(sharedDeviceUserSet);
+
+          // Unique device users: everyone else (unique device OR no device data)
+          const uniqueDeviceUsers = userArr.filter(id => !sharedDeviceUserSet.has(id));
+
           allFlaggedUserIds.push(...userArr);
-          ipClusters.push({ ip, users: userArr });
+          ipClusters.push({ ip, sharedDeviceUsers, uniqueDeviceUsers });
 
           const today = new Date();
           today.setHours(0, 0, 0, 0);
-          const { data: existing } = await supabase
-            .from("pplp_fraud_signals")
-            .select("id")
-            .eq("signal_type", "IP_CLUSTER")
-            .eq("source", "daily-fraud-scan")
-            .gte("created_at", today.toISOString())
-            .limit(1);
 
-          if (!existing?.length) {
-            await supabase.from("pplp_fraud_signals").insert({
-              actor_id: userArr[0],
-              signal_type: "IP_CLUSTER",
-              severity: 3,
-              details: { ip_address: ip, user_count: users.size, user_ids: userArr },
-              source: "daily-fraud-scan",
-            });
+          if (sharedDeviceUsers.length > 0) {
+            // High severity: same IP + same device = definite fraud
+            const { data: existing } = await supabase
+              .from("pplp_fraud_signals")
+              .select("id")
+              .eq("signal_type", "IP_DEVICE_CLUSTER")
+              .eq("source", "daily-fraud-scan")
+              .gte("created_at", today.toISOString())
+              .in("actor_id", sharedDeviceUsers)
+              .limit(1);
+
+            if (!existing?.length) {
+              await supabase.from("pplp_fraud_signals").insert({
+                actor_id: sharedDeviceUsers[0],
+                signal_type: "IP_DEVICE_CLUSTER",
+                severity: 4,
+                details: { ip_address: ip, shared_device_users: sharedDeviceUsers, unique_device_users: uniqueDeviceUsers },
+                source: "daily-fraud-scan",
+              });
+            }
+
+            const held = await autoHoldUsers(
+              supabase, sharedDeviceUsers, adminIds,
+              `IP ${ip} + cùng thiết bị: ${sharedDeviceUsers.length} TK chung device.`,
+            );
+            totalHeld += held;
           }
 
-          const held = await autoHoldUsers(
-            supabase, userArr, adminIds,
-            `IP ${ip} có ${users.size} tài khoản đăng nhập trong 24h.`,
-          );
-          totalHeld += held;
+          if (uniqueDeviceUsers.length > 0 && sharedDeviceUsers.length === 0) {
+            // Low severity: same IP but all different devices = likely shared wifi, only warn
+            const { data: existing } = await supabase
+              .from("pplp_fraud_signals")
+              .select("id")
+              .eq("signal_type", "IP_CLUSTER")
+              .eq("source", "daily-fraud-scan")
+              .gte("created_at", today.toISOString())
+              .limit(1);
+
+            if (!existing?.length) {
+              await supabase.from("pplp_fraud_signals").insert({
+                actor_id: uniqueDeviceUsers[0],
+                signal_type: "IP_CLUSTER",
+                severity: 2,
+                details: { ip_address: ip, user_count: users.size, user_ids: userArr, note: "Khác thiết bị - chỉ cảnh báo" },
+                source: "daily-fraud-scan",
+              });
+            }
+            // NO auto-hold for unique device users
+          }
         }
       }
     }
@@ -266,9 +325,17 @@ Deno.serve(async (req) => {
       const names = users.map(u => usernameMap.get(u.id) || u.id.slice(0, 8)).join(', ');
       alerts.push(`Cụm email "${emailBase}" có ${users.length} TK: ${names}`);
     }
-    for (const { ip, users } of ipClusters) {
-      const names = users.map(id => usernameMap.get(id) || id.slice(0, 8)).join(', ');
-      alerts.push(`IP ${ip} có ${users.length} TK trong 24h: ${names}`);
+    for (const { ip, sharedDeviceUsers, uniqueDeviceUsers } of ipClusters) {
+      const parts: string[] = [];
+      if (sharedDeviceUsers.length > 0) {
+        const names = sharedDeviceUsers.map(id => usernameMap.get(id) || id.slice(0, 8)).join(', ');
+        parts.push(`${sharedDeviceUsers.length} TK chung thiết bị (đã đình chỉ): ${names}`);
+      }
+      if (uniqueDeviceUsers.length > 0) {
+        const names = uniqueDeviceUsers.map(id => usernameMap.get(id) || id.slice(0, 8)).join(', ');
+        parts.push(`${uniqueDeviceUsers.length} TK thiết bị riêng (chỉ cảnh báo): ${names}`);
+      }
+      alerts.push(`IP ${ip}: ${parts.join(' | ')}`);
     }
 
     // 5. Notify admins if any alerts found
