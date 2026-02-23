@@ -210,10 +210,10 @@ export const FacebookNavbar = () => {
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
-                  onClick={() => navigate('/mint')}
+                 onClick={() => navigate('/wallet/fun_money')}
                   aria-label="Mint FUN Money"
                   className={`flex-1 h-full max-w-[100px] flex items-center justify-center relative transition-all duration-300 rounded-full border-[0.5px] group ${
-                    isActive('/mint')
+                    isActive('/wallet/fun_money') || location.pathname.startsWith('/wallet/fun_money')
                       ? 'text-primary-foreground bg-primary border-[#C9A84C]'
                       : 'text-foreground hover:bg-gradient-to-r hover:from-amber-500/10 hover:to-yellow-500/10 border-transparent hover:border-amber-500/50'
                   }`}
@@ -223,7 +223,7 @@ export const FacebookNavbar = () => {
                     alt="Mint"
                     className="w-7 h-7 rounded-full"
                   />
-                  {isActive('/mint') && (
+                  {(isActive('/wallet/fun_money') || location.pathname.startsWith('/wallet/fun_money')) && (
                     <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-400 rounded-t-full" />
                   )}
                 </button>
