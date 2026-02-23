@@ -39,7 +39,7 @@ const Benefactors = lazy(() => import("./pages/Benefactors"));
 const Donations = lazy(() => import("./pages/Donations"));
 const Users = lazy(() => import("./pages/Users"));
 const Reels = lazy(() => import("./pages/Reels"));
-const Mint = lazy(() => import("./pages/Mint"));
+
 const LiveDiscoveryPage = lazy(() => import("./pages/LiveDiscoveryPage"));
 const LiveHostPage = lazy(() => import("./modules/live/pages/LiveHostPage").then(m => ({ default: m.default })));
 const LiveAudiencePage = lazy(() => import("./modules/live/pages/LiveAudiencePage").then(m => ({ default: m.default })));
@@ -149,7 +149,7 @@ function App() {
                   <Route path="/users" element={<Users />} />
                   <Route path="/reels" element={<Reels />} />
                   <Route path="/reels/:reelId" element={<Reels />} />
-                  <Route path="/mint" element={<Mint />} />
+                  <Route path="/mint" element={<Navigate to="/wallet/fun_money" replace />} />
                   <Route path="/live" element={<LiveDiscoveryPage />} />
                   <Route path="/live/setup" element={<PreLivePage />} />
                   <Route path="/live/new" element={<LiveHostPage />} />
