@@ -88,6 +88,7 @@ export default function LiveHostPage() {
   const [recordingError, setRecordingError] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [compressProgress, setCompressProgress] = useState<number>(0);
+  const [showEndConfirm, setShowEndConfirm] = useState(false);
   const startedRef = useRef(false);
   const browserRecorderRef = useRef<RecorderController | null>(null);
   const lastSentViewerCountRef = useRef<number | null>(null);
@@ -593,7 +594,7 @@ const handleEndLive = async (skipNavigate = false) => {
                 {isCameraOff ? <VideoOff className="h-4 w-4 mr-2" /> : <Video className="h-4 w-4 mr-2" />}
                 {isCameraOff ? 'Camera On' : 'Camera Off'}
               </Button>
-              <Button variant="destructive" onClick={() => handleEndLive()} disabled={isEnding}>
+              <Button variant="destructive" onClick={() => setShowEndConfirm(true)} disabled={isEnding}>
                 {isEnding ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <PhoneOff className="h-4 w-4 mr-2" />}
                 {isEnding ? 'Đang xử lý...' : 'End Live'}
               </Button>
@@ -615,6 +616,21 @@ const handleEndLive = async (skipNavigate = false) => {
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => blocker.reset?.()}>Ở lại</AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirmLeave}>Kết thúc & Rời đi</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      {/* End Live confirmation dialog */}
+      <AlertDialog open={showEndConfirm} onOpenChange={setShowEndConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Bạn có chắc kết thúc buổi Live Stream?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Buổi live sẽ kết thúc và video sẽ được lưu lại.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Ở lại</AlertDialogCancel>
+            <AlertDialogAction onClick={() => handleEndLive()}>Kết thúc</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
