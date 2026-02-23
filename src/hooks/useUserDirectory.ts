@@ -195,11 +195,13 @@ export const useUserDirectory = () => {
 
     if (search.trim()) {
       const q = search.toLowerCase();
-      result = result.filter(u =>
-        u.username.toLowerCase().includes(q) ||
-        u.full_name?.toLowerCase().includes(q) ||
-        u.wallet_address?.toLowerCase().includes(q)
-      );
+      result = result.filter(u => {
+        const email = emailsMap.get(u.id);
+        return u.username.toLowerCase().includes(q) ||
+          u.full_name?.toLowerCase().includes(q) ||
+          u.wallet_address?.toLowerCase().includes(q) ||
+          (isAdmin && email?.toLowerCase().includes(q));
+      });
     }
 
     if (filters.scoreRange === 'high') result = result.filter(u => u.total_light_score >= 1000);
@@ -220,7 +222,7 @@ export const useUserDirectory = () => {
     else if (filters.wallet === 'none') result = result.filter(u => !u.wallet_address);
 
     return result;
-  }, [allUsers, search, filters]);
+  }, [allUsers, search, filters, isAdmin, emailsMap]);
 
   const paginated = useMemo(() => {
     const slice = filtered.slice(page * pageSize, (page + 1) * pageSize);
@@ -273,5 +275,6 @@ export const useUserDirectory = () => {
     filters,
     setFilters,
     isAdmin,
+    emailsMap,
   };
 };

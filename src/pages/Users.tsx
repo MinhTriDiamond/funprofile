@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { useUserDirectory, getTierName } from '@/hooks/useUserDirectory';
@@ -15,6 +15,8 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Download, Users as UsersIcon, Search, ChevronLeft, ChevronRight,
   Coins, Gift, Star, FileText, MessageSquare, Wallet, Send, ArrowDownToLine,
@@ -30,8 +32,19 @@ const Users = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const {
-    users, isLoading, stats, search, setSearch, page, setPage, totalPages, exportCSV, allUsers, filters, setFilters, isAdmin,
+    users, isLoading, stats, search, setSearch, page, setPage, totalPages, exportCSV, allUsers, filters, setFilters, isAdmin, emailsMap,
   } = useUserDirectory();
+
+  const [emailFilter, setEmailFilter] = useState('');
+  const [emailPopoverOpen, setEmailPopoverOpen] = useState(false);
+
+  const sortedEmails = useMemo(() => {
+    if (!emailsMap || emailsMap.size === 0) return [];
+    const emails = Array.from(new Set(emailsMap.values())).filter(Boolean).sort((a, b) => a.localeCompare(b));
+    if (!emailFilter.trim()) return emails;
+    const q = emailFilter.toLowerCase();
+    return emails.filter(e => e.toLowerCase().includes(q));
+  }, [emailsMap, emailFilter]);
 
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; username: string } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -131,7 +144,48 @@ const Users = () => {
                 <TableRow className="bg-muted/50">
                   <TableHead className="w-10 text-center">#</TableHead>
                   <TableHead className="min-w-[160px]">Người dùng</TableHead>
-                  {isAdmin && <TableHead className="hidden md:table-cell min-w-[180px]">Email</TableHead>}
+                  {isAdmin && (
+                    <TableHead className="hidden md:table-cell min-w-[180px]">
+                      <div className="flex items-center gap-1">
+                        Email
+                        <Popover open={emailPopoverOpen} onOpenChange={setEmailPopoverOpen}>
+                          <PopoverTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-6 w-6">
+                              <Search className="h-3.5 w-3.5" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-72 p-2" align="start">
+                            <Input
+                              placeholder="Tìm email..."
+                              value={emailFilter}
+                              onChange={(e) => setEmailFilter(e.target.value)}
+                              className="h-8 text-xs mb-2"
+                            />
+                            <ScrollArea className="h-64">
+                              {sortedEmails.length === 0 ? (
+                                <p className="text-xs text-muted-foreground text-center py-4">Không tìm thấy</p>
+                              ) : (
+                                sortedEmails.map((email) => (
+                                  <button
+                                    key={email}
+                                    className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-muted/50 truncate transition-colors"
+                                    onClick={() => {
+                                      setSearch(email);
+                                      setPage(0);
+                                      setEmailPopoverOpen(false);
+                                      setEmailFilter('');
+                                    }}
+                                  >
+                                    {email}
+                                  </button>
+                                ))
+                              )}
+                            </ScrollArea>
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                    </TableHead>
+                  )}
                   <TableHead className="w-20">Trạng thái</TableHead>
                   <TableHead className="hidden md:table-cell w-24">Tham gia</TableHead>
                   <TableHead className="hidden md:table-cell w-20">Bài/BL</TableHead>
