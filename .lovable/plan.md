@@ -1,50 +1,32 @@
 
+# Sửa lỗi: Mở khóa / Đình chỉ user không cập nhật trạng thái
 
-# Kích Hoạt Tua Video và Tải Xuống cho Live Replay
+## Nguyên nhân
 
-## Tình Trạng Hiện Tại
-- Video live replay lưu trên R2 (media.fun.rich) dưới dạng .webm
-- LazyVideo dùng native `<video controls>` cho R2 URLs -- thanh tua (seek bar) **da hoat dong**
-- Chua co nut **Tai xuong** (Download) cho nguoi dung
+Trang `/users` gọi trực tiếp `supabase.from('profiles').update({ reward_status: '...' })` để thay đổi trạng thái user. Tuy nhiên, chính sách bảo mật (RLS) trên bảng `profiles` chỉ cho phép **người dùng tự cập nhật hồ sơ của chính mình**:
 
-## Thay Doi Can Lam
-
-### 1. Them nut Download vao MediaGrid (cho live replay video)
-**File**: `src/components/feed/MediaGrid.tsx`
-
-- Khi video co `isLiveReplay = true`, hien thi them nut Download (icon Arrow Down) o goc phai phia tren video
-- Nut Download su dung `<a href={url} download>` de tai truc tiep file .webm tu R2
-- Dat canh badge "LIVE Replay" da co san
-
-### 2. Them nut Download vao MediaGalleryViewer
-**File**: `src/components/feed/MediaGrid.tsx` (phan MediaGalleryViewer)
-
-- Khi xem video trong gallery fullscreen, them nut Download o thanh toolbar (canh nut Close)
-- Chi hien thi cho video, khong hien cho anh
-
-### 3. Dam bao video seek hoat dong tot
-**File**: `src/components/ui/StreamPlayer.tsx`
-
-- Voi video direct (R2 .webm), native `<video controls>` da ho tro seek -- khong can thay doi
-- Kiem tra preload="metadata" de dam bao seek bar hien thi dung duration
-
-## Chi Tiet Ky Thuat
-
-### Download Logic
-```text
-- R2 URLs (media.fun.rich): Dung window.open(url) hoac <a download> 
-  (do CORS, co the can fetch + blob approach)
-- Cloudflare Stream URLs: Khong ho tro download truc tiep
-  (chi R2 videos moi co the tai)
+```
+"Users can update their own profile" -> USING (auth.uid() = id)
 ```
 
-### Cau truc nut Download
-- Icon: `Download` tu lucide-react
-- Vi tri: Goc tren ben phai video, canh badge LIVE Replay
-- Style: Nut tron voi nen ban trong `bg-black/60 hover:bg-black/80`
-- Click handler: `window.open(url, '_blank')` hoac tao `<a>` tag voi attribute `download`
+Khi admin cố cập nhật hồ sơ của user khác, lệnh **không bị lỗi** nhưng **không cập nhật gì** (0 dòng bị ảnh hưởng). Đó là lý do toast "Thành công" hiện ra nhưng trạng thái không đổi.
 
-### Files thay doi
-1. `src/components/feed/MediaGrid.tsx` -- Them nut Download vao ca inline video va gallery viewer
-2. Khong can thay doi backend hay database
+## Giải pháp
 
+Tạo thêm một chính sách RLS cho phép admin cập nhật hồ sơ người dùng khác:
+
+1. **Thêm migration SQL** - Tạo policy mới:
+   ```sql
+   CREATE POLICY "Admins can update any profile"
+     ON public.profiles FOR UPDATE
+     USING (public.has_role(auth.uid(), 'admin'))
+     WITH CHECK (public.has_role(auth.uid(), 'admin'));
+   ```
+
+2. **Cập nhật code `src/pages/Users.tsx`** - Thêm kiểm tra kết quả update: nếu không có dòng nào bị thay đổi, hiển thị lỗi thay vì thông báo thành công.
+
+## Chi tiết kỹ thuật
+
+### File thay đổi
+- **Migration SQL mới**: Thêm RLS policy cho admin update profiles
+- **`src/pages/Users.tsx`**: Cải thiện xử lý lỗi bằng cách kiểm tra `.select()` sau `.update()` để xác nhận thay đổi thực sự xảy ra
