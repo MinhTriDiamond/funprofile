@@ -1,44 +1,31 @@
 
-# Sửa Lỗi "Profile not found" Khi Bấm Tên Trong Chat
 
-## Nguyên nhân gốc
+# Thêm Liên Kết Hồ Sơ Cho Tên Người Dùng Trong Gift Celebration
 
-Trang Profile có logic tự động chuyển hướng (redirect) tại dòng 185-187 trong `src/pages/Profile.tsx`:
+## Mục tiêu
+Cho phép người dùng bấm vào tên người gửi/người nhận trong thẻ Gift Celebration trên Feed để xem hồ sơ cá nhân.
 
-```
-if (userId && data?.username) {
-  navigate(`/${data.username}`, { replace: true });
-}
-```
-
-Khi bấm vào tên "LƯU THỊ LIÊN" trong chat, trình duyệt điều hướng đến `/profile/2ef75f48-...` (đúng). Tuy nhiên, trang Profile tải xong hồ sơ thành công rồi lại **tự chuyển hướng** sang `/{username}`. Username của người dùng này là `"Angel  Liên Liên "` (có 2 dấu cách liên tiếp và dấu cách ở cuối), khiến URL bị lỗi. Khi route `/:username` nhận URL này, nó tìm kiếm lại bằng username nhưng không khớp chính xác do vấn đề mã hóa URL (URL encoding) với ký tự đặc biệt và dấu cách.
+## Hiện trạng
+- Avatar đã có thể bấm được (có `onClick` + `cursor-pointer`) nhưng **tên hiển thị** và **@username** bên dưới avatar chỉ là text thuần, không bấm được.
+- Tên trong dòng chính ("Tống Văn Làm đã trao gửi... cho Phương Loan") cũng là text thuần.
 
 ## Giải pháp
 
-Sửa **2 vấn đề**:
+Sửa file `src/components/feed/GiftCelebrationCard.tsx`:
 
-### 1. Mã hóa username khi chuyển hướng (ngắn hạn)
-Trong `src/pages/Profile.tsx` dòng 186, thay:
-```
-navigate(`/${data.username}`, { replace: true });
-```
-Thành:
-```
-navigate(`/@${encodeURIComponent(data.username.trim())}`, { replace: true });
-```
-Thêm `encodeURIComponent` để xử lý ký tự đặc biệt, `.trim()` để loại bỏ khoảng trắng thừa, và tiền tố `@` để dùng route `/@:username` (rõ ràng hơn).
+### 1. Tên + @username dưới avatar người gửi (dòng 278-283)
+Bọc tên và @username trong thẻ `button` có `onClick` điều hướng đến `/profile/{senderNavigateId}`, thêm `cursor-pointer` và hiệu ứng `hover:underline`.
 
-### 2. Xử lý decode username khi tìm kiếm
-Tại dòng 90, thêm `decodeURIComponent` khi xử lý username từ URL:
-```
-const cleanUsername = decodeURIComponent(
-  username.startsWith('@') ? username.slice(1) : username
-).trim();
-```
+### 2. Tên + @username dưới avatar người nhận (dòng 301-306)
+Tương tự, bọc trong `button` điều hướng đến `/profile/{gift_recipient_id}`.
+
+### 3. Tên trong dòng nội dung chính (dòng 312-322)
+Biến tên người gửi và người nhận trong câu "đã trao gửi... cho..." thành `span` có thể bấm được, điều hướng đến trang hồ sơ tương ứng.
 
 ## Chi tiết kỹ thuật
 
-- File cần sửa: `src/pages/Profile.tsx`
-- Dòng 90: Thêm `decodeURIComponent` + `.trim()` cho username
-- Dòng 186: Thêm `encodeURIComponent` + `.trim()` + tiền tố `@` cho redirect URL
-- Chỉ sửa 1 file, 2 dòng
+- File cần sửa: `src/components/feed/GiftCelebrationCard.tsx`
+- Sử dụng `navigate()` đã có sẵn trong component
+- Thêm style: `cursor-pointer hover:underline` cho các tên
+- Giữ nguyên logic hiện tại, chỉ bọc thêm element tương tác
+
