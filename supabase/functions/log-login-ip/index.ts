@@ -231,9 +231,16 @@ async function handleDeviceFingerprint(supabaseAdmin: any, userId: string, devic
   }
 }
 
+const EMAIL_FARM_ALLOWLIST = ['hoangtydo', 'bongsieuoi'];
+
 async function detectEmailFarm(supabaseAdmin: any, userId: string, email: string) {
   const emailBase = getEmailBase(email);
   if (!emailBase || emailBase.length < 3) return;
+
+  // Skip allowlisted email clusters
+  if (EMAIL_FARM_ALLOWLIST.some(allowed => emailBase.startsWith(allowed))) {
+    return;
+  }
 
   // Find accounts with similar email prefix
   const { data: allUsers } = await supabaseAdmin
