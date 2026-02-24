@@ -58,6 +58,20 @@ export function useSlugResolver({
         .maybeSingle();
 
       if (!profile) {
+        // Check username_history for old username → redirect
+        const { data: usernameHistory } = await supabase
+          .from('username_history')
+          .select('new_username')
+          .eq('old_username', username)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        
+        if (usernameHistory?.new_username) {
+          navigate(`/${usernameHistory.new_username}/${urlPrefix}/${slug}`, { replace: true });
+          return;
+        }
+        
         setResolvedId(undefined);
         setLoading(false);
         return;
