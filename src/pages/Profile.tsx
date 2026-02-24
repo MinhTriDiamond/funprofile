@@ -97,7 +97,7 @@ const Profile = () => {
         const { data: profileData } = await supabase
           .from('public_profiles')
           .select('id')
-          .eq('username', cleanUsername)
+          .eq('username_normalized', cleanUsername.toLowerCase())
           .single();
         
         if (profileData) {
@@ -299,7 +299,7 @@ const Profile = () => {
   }, [scrollToTabs]);
 
   const handlePostDeleted = () => {
-    const profileId = userId || currentUserId;
+    const profileId = profile?.id || userId || currentUserId;
     if (profileId) {
       fetchProfile(profileId);
     }
