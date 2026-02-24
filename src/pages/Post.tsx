@@ -29,7 +29,7 @@ const Post = () => {
     fetchSession();
   }, []);
 
-  const { resolvedId } = useSlugResolver({
+  const { resolvedId, loading: slugLoading } = useSlugResolver({
     contentType: 'post',
     table: 'posts',
     userIdColumn: 'user_id',
@@ -41,6 +41,8 @@ const Post = () => {
 
   useEffect(() => {
     const fetchPost = async () => {
+      // Wait for slug resolution before deciding "not found"
+      if (slugLoading) return;
       if (!resolvedId) {
         setPost(null);
         setLoading(false);
@@ -69,7 +71,7 @@ const Post = () => {
     };
 
     fetchPost();
-  }, [resolvedId]);
+  }, [resolvedId, slugLoading]);
 
   // SEO data
   const seoData = useMemo(() => {
