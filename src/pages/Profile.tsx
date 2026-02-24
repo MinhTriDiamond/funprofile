@@ -843,7 +843,7 @@ onClick={() => navigate(`/${friend.username}`)}
                                   className="text-center cursor-pointer hover:opacity-80 transition-opacity"
                                   onClick={() => navigate(`/${friend.username}`)}
                                 >
-                                  <Avatar className="w-full aspect-square rounded-xl mb-1 border border-border overflow-hidden">
+                                  <Avatar className="w-full h-auto aspect-square rounded-xl mb-1 border border-border overflow-hidden">
                                     <AvatarImage 
                                       src={friend.avatar_url || undefined} 
                                       sizeHint="lg"
