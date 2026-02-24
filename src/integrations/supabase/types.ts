@@ -2100,6 +2100,7 @@ export type Database = {
           metadata: Json
           moderation_status: string
           post_type: string
+          slug: string | null
           tx_hash: string | null
           updated_at: string
           user_id: string
@@ -2125,6 +2126,7 @@ export type Database = {
           metadata?: Json
           moderation_status?: string
           post_type?: string
+          slug?: string | null
           tx_hash?: string | null
           updated_at?: string
           user_id: string
@@ -2150,6 +2152,7 @@ export type Database = {
           metadata?: Json
           moderation_status?: string
           post_type?: string
+          slug?: string | null
           tx_hash?: string | null
           updated_at?: string
           user_id?: string
@@ -4308,6 +4311,10 @@ export type Database = {
       }
       end_livestream: { Args: { p_livestream_id: string }; Returns: boolean }
       expire_old_mint_requests_v2: { Args: never; Returns: number }
+      generate_post_slug: {
+        Args: { p_user_id: string; title: string }
+        Returns: string
+      }
       generate_secure_token: { Args: { length?: number }; Returns: string }
       get_app_stats: {
         Args: never
