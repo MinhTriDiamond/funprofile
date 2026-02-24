@@ -1,76 +1,32 @@
 
+# Tat nhac nen tren tat ca cac trang
 
-# Sua loi kiem tra vi khong tim thay dia chi
+## Muc tieu
+Loai bo nut nhac Valentine va tat nhac tu dong tren tat ca cac trang.
 
-## Nguyen nhan
+## Cac file can chinh sua
 
-Dia chi vi cua nguoi dung `0xb4dda24c245b2bfa85057a4b9559ef48407bafaa` duoc luu trong cot `public_wallet_address`, nhung ham kiem tra trong edge function `sso-web3-auth` (action: 'check') chi tim trong 2 cot:
-- `external_wallet_address`
-- `wallet_address`
+### 1. `src/components/layout/ValentineMusicButton.tsx`
+- Tat autoplay: dat `globalAutoplayDone = true` ngay tu dau de nhac khong tu dong phat
+- Xoa toan bo logic autoplay trong useEffect
 
-Tuong tu, phan xac thuc dang nhap (phan chinh) cung chi tim trong 2 cot nay.
-
-## Giai phap
-
-Sua edge function `supabase/functions/sso-web3-auth/index.ts` de them kiem tra cot `public_wallet_address` trong ca 2 phan:
-
-### 1. Phan check (action: 'check') -- dong ~80-100
-
-Them truy van thu 3 kiem tra `public_wallet_address` neu 2 truy van dau khong tim thay:
-
-```text
-Kiem tra external_wallet_address --> khong thay
-  --> Kiem tra wallet_address --> khong thay
-    --> Kiem tra public_wallet_address --> tim thay! --> registered: true
+### 2. `src/App.tsx` (dong 119-122)
+- Xoa nut nhac mobile floating:
+```
+<div className="fixed bottom-36 right-4 z-50 lg:hidden">
+  <ValentineMusicButton variant="mobile" />
+</div>
 ```
 
-### 2. Phan xac thuc dang nhap -- dong ~155-185
+### 3. `src/components/layout/FacebookNavbar.tsx`
+- Xoa tat ca `<ValentineMusicButton>` (dong 277, 312, 417) va import
 
-Tuong tu, them truy van `public_wallet_address` vao luong tim kiem user:
+### 4. `src/pages/Auth.tsx` (dong 97)
+- Xoa `<ValentineMusicButton variant="desktop" />` va import
 
-```text
-Tim theo external_wallet_address --> khong thay
-  --> Tim theo wallet_address --> khong thay
-    --> Tim theo public_wallet_address --> tim thay! --> cho dang nhap
-```
+### 5. `src/pages/LawOfLight.tsx` (dong 154)
+- Xoa `<ValentineMusicButton variant="desktop" />` va import
 
-## Chi tiet ky thuat
-
-### File: `supabase/functions/sso-web3-auth/index.ts`
-
-**Thay doi A -- Phan check:**
-
-Sau khi kiem tra `wallet_address` (byLegacy) ma khong thay, them:
-
-```typescript
-const { data: byPublic } = await sb
-  .from('profiles')
-  .select('id')
-  .eq('public_wallet_address', normalizedAddr)
-  .maybeSingle();
-
-return new Response(
-  JSON.stringify({ registered: !!byPublic }),
-  ...
-);
-```
-
-**Thay doi B -- Phan xac thuc:**
-
-Sau khi kiem tra `wallet_address` (profileByLegacy) ma khong thay, them:
-
-```typescript
-const { data: profileByPublic } = await supabase
-  .from('profiles')
-  .select('id, username, ...')
-  .eq('public_wallet_address', normalizedAddress)
-  .maybeSingle();
-
-if (profileByPublic) {
-  existingProfile = profileByPublic;
-}
-```
-
-## Ket qua mong doi
-
-Khi nguoi dung dan dia chi vi da luu trong `public_wallet_address`, he thong se nhan ra vi da duoc lien ket va cho phep dang nhap binh thuong.
+## Ket qua
+- Khong con nhac tu dong phat khi vao trang
+- Khong con nut nhac tren bat ky trang nao
