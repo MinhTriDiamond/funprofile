@@ -73,6 +73,10 @@ export function SEOHead({
     setMeta('property', 'og:type', ogType);
     setMeta('property', 'og:site_name', 'FUN Profile');
 
+    // Image dimensions for large preview
+    setMeta('property', 'og:image:width', '1200');
+    setMeta('property', 'og:image:height', '630');
+
     // Twitter Card
     setMeta('name', 'twitter:card', twitterCard);
     setMeta('name', 'twitter:title', fullTitle);
