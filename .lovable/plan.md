@@ -1,47 +1,57 @@
 
 
-# Cập nhật: Guest xem được tất cả + Avatar rõ nét trên điện thoại
+# Cập nhật logic IP Cluster: Chỉ đình chỉ khi đăng bài spam
 
-## 1. Guest (khách) xem được tất cả khi vào link
+## Vấn đề hiện tại
+Hiện tại trong `daily-fraud-scan`, khi phát hiện >3 tài khoản cùng IP, hệ thống tự động đình chỉ (auto-hold) tất cả -- kể cả trường hợp các bé Love House dùng chung WiFi nhưng không spam bài. Điều này gây đình chỉ nhầm.
 
-**Vấn đề hiện tại:** Trang `/friends` yêu cầu đăng nhập (redirect về `/auth` nếu chưa login). Trang `/live/*` cũng chưa được liệt kê trong `guestAllowedPaths` của `LawOfLightGuard`.
+## Giải pháp mới
 
-**Giải pháp:**
-- **File `src/components/auth/LawOfLightGuard.tsx`** (dòng 47): Thêm `/friends`, `/live`, `/wallet`, `/chat`, `/notifications`, `/admin` vào danh sách `guestAllowedPaths`, hoặc đơn giản hóa bằng cách cho phép tất cả các path khi là khách (fail-open cho viewing).
-- Cụ thể, thêm các path sau vào `guestAllowedPaths`:
-  - `/friends`
-  - `/live`
-  - `/wallet`
-  - `/chat`
-  - `/notifications`
-
-- **File `src/pages/Friends.tsx`** (dòng 26-31): Thay vì redirect về `/auth` khi chưa đăng nhập, cho phép guest xem danh sách bạn bè ở chế độ read-only (hiển thị suggestions, không hiển thị sent/received requests).
-
-## 2. Avatar/ảnh user hiện rõ nét trên điện thoại
-
-**Vấn đề hiện tại:** Trong phần "Bạn bè" trên Profile (dòng 846), Avatar dùng `sizeHint="md"` (128px). Trên màn hình retina mobile, avatar hiển thị mờ vì kích thước thực tế lớn hơn 128px nhưng ảnh chỉ được tải ở 128px.
-
-Trong `FriendCarousel.tsx`, ảnh dùng `LazyImage` không qua Cloudflare optimization nên có thể tải ảnh gốc quá lớn hoặc không đúng kích thước.
-
-**Giải pháp:**
-
-### File `src/pages/Profile.tsx` (dòng 846-851):
-- Tăng `sizeHint` từ `"md"` lên `"lg"` cho avatar bạn bè trong grid 3 cột để ảnh rõ nét hơn trên mobile retina.
-
-### File `src/components/friends/FriendCarousel.tsx` (dòng 186-191):
-- Thay `LazyImage` bằng Avatar component có `sizeHint="lg"` để ảnh được tối ưu qua Cloudflare với kích thước phù hợp (256px) cho card 160px trên retina.
-
-### File `src/components/friends/FriendsList.tsx` (dòng 288):
-- Thêm `sizeHint="md"` vào `AvatarImage` để đảm bảo ảnh avatar bạn bè trong danh sách cũng rõ nét.
+**Quy tắc:**
+- Cùng IP, tối đa **5 tài khoản** -- nếu không spam bài viết liên tục thì **KHÔNG đình chỉ**, chỉ ghi nhận cảnh báo (severity thấp).
+- Cùng IP + **đăng bài liên tục** (ví dụ: >5 bài/24h mỗi user hoặc tổng cụm >15 bài/24h) thì **đình chỉ + đưa vào theo dõi**.
+- Cùng IP + cùng thiết bị (shared device) vẫn giữ logic cũ: đình chỉ ngay.
 
 ---
 
 ## Chi tiết kỹ thuật
 
-### Tổng cộng 4 file cần sửa:
-1. `src/components/auth/LawOfLightGuard.tsx` - Mở rộng guest paths
-2. `src/pages/Friends.tsx` - Cho phép guest xem read-only
-3. `src/pages/Profile.tsx` - Avatar sizeHint "lg" cho friends grid
-4. `src/components/friends/FriendCarousel.tsx` - Dùng Avatar component thay LazyImage
-5. `src/components/friends/FriendsList.tsx` - Thêm sizeHint cho AvatarImage
+### File: `supabase/functions/daily-fraud-scan/index.ts`
+
+#### Thay đổi 1: Nâng ngưỡng IP cluster từ >3 lên >5
+- Dòng 239: `if (users.size > 3)` -> `if (users.size > 5)`
+
+#### Thay đổi 2: Thêm kiểm tra spam bài viết cho unique device users (dòng 307-332)
+Thay vì auto-hold ngay khi cùng IP + khác thiết bị, thêm bước kiểm tra:
+
+1. Query bảng `posts` để đếm số bài viết trong 24h của từng user trong cụm IP.
+2. Nếu có user nào đăng **>5 bài/24h** HOẶC tổng bài viết của cả cụm **>15 bài/24h**: đình chỉ những user spam + ghi fraud signal `IP_SPAM_CLUSTER` severity 3.
+3. Nếu không ai spam: chỉ ghi fraud signal `IP_CLUSTER` severity 1 (theo dõi), **KHÔNG auto-hold**.
+
+```text
+Logic mới cho unique device users cùng IP:
++-------------------------------+
+| Cùng IP, >5 TK, khác device  |
++-------------------------------+
+         |
+    Kiểm tra posts 24h
+         |
+   +-----+------+
+   |             |
+ Spam (>5/user  Không spam
+ hoặc >15 tổng)
+   |             |
+ Auto-hold    Chỉ cảnh báo
+ + signal      severity 1
+ severity 3    (không hold)
+```
+
+#### Thay đổi 3: Shared device vẫn giữ nguyên
+- Cùng IP + cùng device: vẫn auto-hold như cũ (dòng 279-305 không đổi).
+
+### Tổng kết
+- **1 file sửa**: `supabase/functions/daily-fraud-scan/index.ts`
+- Nâng ngưỡng IP từ 3 lên 5
+- Thêm kiểm tra spam posts trước khi auto-hold
+- Bảo vệ Love House khỏi bị đình chỉ nhầm khi dùng chung WiFi
 
