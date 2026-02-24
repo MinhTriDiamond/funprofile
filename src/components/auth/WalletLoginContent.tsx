@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Wallet, CheckCircle2, Loader2 } from 'lucide-react';
+import { Wallet, CheckCircle2, Loader2, LogIn } from 'lucide-react';
 interface WalletLoginContentProps {
   onSuccess: (userId: string, isNewUser: boolean) => void;
 }
@@ -65,19 +65,27 @@ export const WalletLoginContent = ({
       });
       setStep('verify');
 
-      // Call sso-web3-auth edge function
-      const {
-        data,
-        error
-      } = await supabase.functions.invoke('sso-web3-auth', {
-        body: {
-          wallet_address: address,
-          signature,
-          message,
-          nonce
+      // Call sso-web3-auth edge function via fetch for proper error handling
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sso-web3-auth`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({
+            wallet_address: address,
+            signature,
+            message,
+            nonce,
+          }),
         }
-      });
-      if (error) throw error;
+      );
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.error || data?.message || 'Authentication failed');
+      }
       if (data?.success && data?.token_hash) {
         // Verify OTP with token_hash to create session
         const {
@@ -158,7 +166,7 @@ export const WalletLoginContent = ({
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-900/30 mb-2">
               <CheckCircle2 className="text-emerald-600" size={28} />
             </div>
-            <p className="text-muted-foreground">{t('walletConnected')}</p>
+            <p className="text-muted-foreground">{t('walletConnected')} ✓</p>
             <p className="font-mono text-sm bg-muted px-3 py-2 rounded-lg inline-block">
               {shortenAddress(address)}
             </p>
@@ -170,9 +178,12 @@ export const WalletLoginContent = ({
       }}>
             <span className="relative z-10 flex items-center justify-center gap-2 text-white">
               {isLoading ? <>
-                  <Loader2 className="animate-spin" size={20} />
-                  {t('walletSigning')}
-                </> : t('walletSign')}
+                   <Loader2 className="animate-spin" size={20} />
+                   {t('walletLoggingIn')}
+                 </> : <>
+                   <LogIn size={20} />
+                   {t('walletLoginBtn')}
+                 </>}
             </span>
           </Button>
 
