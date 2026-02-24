@@ -115,7 +115,18 @@ function escHtml(s: string): string {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+    .replace(/"/g, "&quot;")
+    .replace(/[\r\n]+/g, " ")
+    .trim();
+}
+
+function extractPostImage(post: Record<string, any>): string | null {
+  if (post.image_url) return post.image_url;
+  if (Array.isArray(post.media_urls)) {
+    const img = post.media_urls.find((m: any) => m.type === 'image');
+    if (img?.url) return img.url;
+  }
+  return null;
 }
 
 // ─── Main handler ───
@@ -223,7 +234,7 @@ Deno.serve(async (req) => {
           title: `${authorName} - Post`,
           description: content || `Post by ${authorName}`,
           canonicalUrl,
-          image: post.image_url || post.media_url || post.profile?.avatar_url || DEFAULT_IMAGE,
+          image: extractPostImage(post) || post.profile?.avatar_url || DEFAULT_IMAGE,
           ogType: "article",
           jsonLd: {
             "@context": "https://schema.org",
