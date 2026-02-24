@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -11,6 +11,8 @@ export const LawOfLightGuard = ({ children }: LawOfLightGuardProps) => {
   const location = useLocation();
   const [isChecking, setIsChecking] = useState(true);
   const [isAllowed, setIsAllowed] = useState(false);
+  // Track whether user was actually authenticated during this app session
+  const wasAuthenticatedRef = useRef(false);
 
   useEffect(() => {
     // Skip re-check if already allowed (prevents false logout during token refresh)
@@ -70,6 +72,8 @@ export const LawOfLightGuard = ({ children }: LawOfLightGuardProps) => {
           return;
         }
 
+        // User is authenticated and accepted law of light
+        wasAuthenticatedRef.current = true;
         setIsAllowed(true);
       } catch (error) {
         console.error('[LawOfLightGuard] Error:', error);
@@ -91,15 +95,16 @@ export const LawOfLightGuard = ({ children }: LawOfLightGuardProps) => {
     // Listen for auth state changes - only re-check on SIGNED_IN, ignore token refreshes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session) {
+        wasAuthenticatedRef.current = true;
         // Delay to ensure auth state is fully stable before re-checking
         setTimeout(() => {
           checkLawOfLightAcceptance();
         }, 150);
       } else if (event === 'SIGNED_OUT') {
-        // Only redirect on explicit sign out (user was authenticated before)
-        // For guests who never signed in, SIGNED_OUT during init should be ignored
-        const hadSession = localStorage.getItem('law_of_light_accepted_pending');
-        if (hadSession) {
+        // Only redirect if user was actually authenticated in this app session
+        // Guests who never signed in will NOT be redirected
+        if (wasAuthenticatedRef.current) {
+          wasAuthenticatedRef.current = false;
           setIsAllowed(false);
           setIsChecking(false);
           navigate('/law-of-light', { replace: true });
