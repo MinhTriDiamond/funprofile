@@ -1,48 +1,50 @@
 
-# Xoá hàng loạt tất cả user bị ban
 
-## Mục tiêu
-Thêm nút trong mục **Hệ thống (SystemTab)** để admin có thể xoá vĩnh viễn tất cả tài khoản đã bị ban (`is_banned = true`) chỉ với 1 click.
+# Phục hồi bài đăng Gift Celebration bị thiếu
+
+## Vấn đề
+Khi chạy Backfill, hệ thống chỉ tạo bản ghi `donations` và `notifications`, nhưng **KHÔNG tạo bài đăng gift_celebration** (thẻ chúc mừng màu xanh hiển thị trên Feed và trang cá nhân). Điều này khiến nhiều giao dịch cũ có trong lịch sử nhưng không hiển thị hình ảnh chúc mừng trên bảng tin.
 
 ## Giải pháp
 
-### 1. Tạo Edge Function mới: `batch-delete-banned-users`
-- Xác thực admin qua JWT + bảng `user_roles`
-- Truy vấn tất cả profiles có `is_banned = true`
-- Lặp qua từng user, gọi lại logic xoá tuần tự giống `admin-delete-user` (xoá 34+ bảng con trước, rồi xoá profile + auth)
-- Bỏ qua admin đang thao tác (không tự xoá)
-- Trả về kết quả: tổng số user bị ban, số đã xoá thành công, số lỗi
+### 1. Nâng cấp Edge Function `auto-backfill-donations`
+- Sau khi tạo donations, kiểm tra thêm donations nào chưa có bài `gift_celebration` tương ứng (so khớp qua `tx_hash`)
+- Tự động tạo bài `gift_celebration` cho những donation thiếu post
+- Trả về thống kê chi tiết: số bài post đã tạo thêm
 
-### 2. Thêm UI trong SystemTab
-- Thêm 1 Card mới bên dưới card "Phục hồi giao dịch bị thiếu"
-- Hiển thị nút **"Xoá tất cả user bị ban"** với icon Trash2 màu đỏ
-- Có dialog xác nhận trước khi xoá (tránh bấm nhầm)
-- Hiển thị kết quả sau khi chạy xong (số user đã xoá, lỗi nếu có)
-- Invalidate danh sách admin users sau khi xoá xong
+### 2. Cập nhật UI trong SystemTab
+- Hiển thị thêm thống kê số bài gift_celebration đã được phục hồi
+- Hiển thị danh sách chi tiết các giao dịch được phục hồi (người gửi, người nhận, số tiền, token)
 
 ## Chi tiết kỹ thuật
 
-### Edge Function `batch-delete-banned-users`
+### auto-backfill-donations/index.ts - Thêm logic tạo gift_celebration posts
+
 ```text
-1. Xác thực admin (JWT + user_roles)
-2. Query: SELECT id FROM profiles WHERE is_banned = true
-3. Với mỗi banned user:
-   a. Xoá dữ liệu từ 34+ bảng con (cùng thứ tự như admin-delete-user)
-   b. Xoá profile
-   c. Xoá auth user
-   d. Ghi audit log
-4. Trả về: { total_banned, deleted, errors[] }
+Sau bước insert donations hiện tại, thêm:
+
+1. Query tất cả donations có status='confirmed'
+2. Query tất cả posts có post_type='gift_celebration' 
+3. Tìm donations có tx_hash KHÔNG khớp với bất kỳ post gift_celebration nào
+4. Lấy thông tin profile (username, display_name) của sender + recipient
+5. Tạo bài post gift_celebration cho mỗi donation thiếu:
+   - user_id = sender_id
+   - post_type = 'gift_celebration'
+   - tx_hash, gift_sender_id, gift_recipient_id, gift_token, gift_amount
+   - is_highlighted = true
+   - visibility = 'public', moderation_status = 'approved'
+6. Trả về số posts_created trong response
 ```
 
-### SystemTab UI
+### SystemTab.tsx - Cập nhật hiển thị kết quả
+
 ```text
-Card mới:
-  - Title: "Xoá tất cả user bị ban" (icon Trash2 đỏ)
-  - Mô tả: Xoá vĩnh viễn tất cả tài khoản đã bị cấm
-  - Nút: "Xoá tất cả" -> hiện AlertDialog xác nhận
-  - Kết quả: Hiển thị số liệu sau khi hoàn tất
+Thêm dòng thống kê:
+- "Bài chúc mừng đã tạo: X" 
+- Danh sách chi tiết từng giao dịch được phục hồi (sender -> recipient, amount, token)
 ```
 
 ### Files thay đổi
-1. **Tạo mới**: `supabase/functions/batch-delete-banned-users/index.ts` -- Edge function xoá hàng loạt
-2. **Sửa**: `src/components/admin/SystemTab.tsx` -- Thêm card + nút xoá hàng loạt user bị ban
+1. `supabase/functions/auto-backfill-donations/index.ts` -- Thêm logic tạo gift_celebration posts cho donations thiếu
+2. `src/components/admin/SystemTab.tsx` -- Hiển thị chi tiết kết quả phục hồi
+
