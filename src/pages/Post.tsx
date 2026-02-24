@@ -101,12 +101,12 @@ const Post = () => {
     };
   }, [post]);
 
-  if (loading) {
+  if (loading || slugLoading) {
     return (
-      <div className="min-h-screen bg-[#f0f2f5] overflow-hidden pb-20 lg:pb-0">
+      <div className="min-h-screen bg-background overflow-hidden pb-20 lg:pb-0">
         <FacebookNavbar />
         <main data-app-scroll className="fixed inset-x-0 top-[3cm] bottom-0 overflow-y-auto pb-20 lg:pb-0">
-          <div className="max-w-2xl mx-auto px-[2cm] py-6">
+          <div className="max-w-2xl mx-auto px-2 sm:px-4 lg:px-8 py-6">
             <Skeleton className="h-[400px] w-full rounded-xl" />
           </div>
         </main>
@@ -117,12 +117,12 @@ const Post = () => {
 
   if (!post) {
     return (
-      <div className="min-h-screen bg-[#f0f2f5] overflow-hidden pb-20 lg:pb-0">
+      <div className="min-h-screen bg-background overflow-hidden pb-20 lg:pb-0">
         <FacebookNavbar />
         <main data-app-scroll className="fixed inset-x-0 top-[3cm] bottom-0 overflow-y-auto pb-20 lg:pb-0">
-          <div className="max-w-2xl mx-auto px-[2cm] py-20">
-            <div className="bg-white rounded-xl shadow-sm p-12 text-center">
-              <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+          <div className="max-w-2xl mx-auto px-2 sm:px-4 lg:px-8 py-20">
+            <div className="bg-card rounded-xl shadow-sm p-8 sm:p-12 text-center">
+              <div className="w-24 h-24 bg-muted rounded-full flex items-center justify-center mx-auto mb-6">
                 <span className="text-5xl">😕</span>
               </div>
                <h2 className="text-2xl font-bold mb-3">{t('postNotFound')}</h2>
@@ -142,7 +142,7 @@ const Post = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#f0f2f5] overflow-hidden pb-20 lg:pb-0">
+    <div className="min-h-screen bg-background overflow-hidden pb-20 lg:pb-0">
       {seoData && (
         <SEOHead
           title={seoData.title}
@@ -155,7 +155,7 @@ const Post = () => {
       )}
       <FacebookNavbar />
       <main data-app-scroll className="fixed inset-x-0 top-[3cm] bottom-0 overflow-y-auto pb-20 lg:pb-0">
-        <div className="max-w-2xl mx-auto px-[2cm] py-6">
+        <div className="max-w-2xl mx-auto px-2 sm:px-4 lg:px-8 py-4 sm:py-6">
           <Button 
             variant="ghost" 
             onClick={() => navigate(-1)}
