@@ -13,6 +13,9 @@ export const LawOfLightGuard = ({ children }: LawOfLightGuardProps) => {
   const [isAllowed, setIsAllowed] = useState(false);
 
   useEffect(() => {
+    // Skip re-check if already allowed (prevents false logout during token refresh)
+    if (isAllowed) return;
+
     const checkLawOfLightAcceptance = async () => {
       try {
         // Skip check for public pages
@@ -121,7 +124,7 @@ export const LawOfLightGuard = ({ children }: LawOfLightGuardProps) => {
       clearTimeout(timeout);
       subscription.unsubscribe();
     };
-  }, [navigate, location.pathname]);
+  }, [navigate, location.pathname, isAllowed]);
 
   if (isChecking) {
     return (

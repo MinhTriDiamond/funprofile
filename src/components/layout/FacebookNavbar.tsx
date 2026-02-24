@@ -66,8 +66,14 @@ export const FacebookNavbar = () => {
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setIsLoggedIn(!!session);
-      setCurrentUserId(session?.user?.id ?? null);
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        setIsLoggedIn(true);
+        setCurrentUserId(session?.user?.id ?? null);
+      } else if (event === 'SIGNED_OUT') {
+        setIsLoggedIn(false);
+        setCurrentUserId(null);
+      }
+      // INITIAL_SESSION, USER_UPDATED → giữ nguyên state hiện tại
     });
 
     return () => subscription.unsubscribe();
