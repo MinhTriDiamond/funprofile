@@ -1,5 +1,38 @@
 {
   "rewrites": [
+    {
+      "source": "/:username/post/:slug",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(googlebot|bingbot|yandex|baiduspider|facebookexternalhit|twitterbot|linkedinbot|slackbot|whatsapp|telegram|discordbot|applebot).*"
+        }
+      ],
+      "destination": "https://bhtsnervqiwchluwuxki.supabase.co/functions/v1/seo-render?path=/:username/post/:slug"
+    },
+    {
+      "source": "/:username/video/:slug",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(googlebot|bingbot|yandex|baiduspider|facebookexternalhit|twitterbot|linkedinbot|slackbot|whatsapp|telegram|discordbot|applebot).*"
+        }
+      ],
+      "destination": "https://bhtsnervqiwchluwuxki.supabase.co/functions/v1/seo-render?path=/:username/video/:slug"
+    },
+    {
+      "source": "/:username/live/:slug",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(googlebot|bingbot|yandex|baiduspider|facebookexternalhit|twitterbot|linkedinbot|slackbot|whatsapp|telegram|discordbot|applebot).*"
+        }
+      ],
+      "destination": "https://bhtsnervqiwchluwuxki.supabase.co/functions/v1/seo-render?path=/:username/live/:slug"
+    },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [
