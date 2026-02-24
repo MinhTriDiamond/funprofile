@@ -285,7 +285,7 @@ export const FriendsList = ({ userId }: FriendsListProps) => {
         onClick={() => navigate(`/profile/${friend.id}`)}
       >
         {friend.avatar_url ? (
-          <AvatarImage src={friend.avatar_url} className="object-cover" />
+          <AvatarImage src={friend.avatar_url} sizeHint="md" className="object-cover" />
         ) : null}
         <AvatarFallback className="bg-muted text-lg">
           {friend.username?.[0]?.toUpperCase()}

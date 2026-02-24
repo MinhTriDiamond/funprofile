@@ -25,15 +25,15 @@ const Friends = () => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       
-      if (!session) {
-        navigate('/auth');
-        return;
+      if (session) {
+        setCurrentUserId(session.user.id);
+        fetchFriendRequests(session.user.id);
+        fetchSentRequests(session.user.id);
+        fetchSuggestions(session.user.id);
+      } else {
+        // Guest mode: only fetch suggestions
+        fetchSuggestionsForGuest();
       }
-      
-      setCurrentUserId(session.user.id);
-      fetchFriendRequests(session.user.id);
-      fetchSentRequests(session.user.id);
-      fetchSuggestions(session.user.id);
       setLoading(false);
     };
 
@@ -136,6 +136,15 @@ const Friends = () => {
     
     const filtered = (data || []).filter(p => !excludedUserIds.has(p.id!));
     setSuggestions(filtered);
+  };
+
+  const fetchSuggestionsForGuest = async () => {
+    const { data } = await supabase
+      .from('public_profiles')
+      .select('id, username, avatar_url, full_name')
+      .limit(20);
+    
+    setSuggestions(data || []);
   };
 
   const handleRequestAction = async (id: string, action: string) => {
