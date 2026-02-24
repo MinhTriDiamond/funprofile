@@ -17,7 +17,7 @@ interface LiveSharePanelProps {
 
 export function LiveSharePanel({ sessionId }: LiveSharePanelProps) {
   const [copied, setCopied] = useState(false);
-  const liveUrl = `${window.location.origin}/live/${sessionId}`;
+  const liveUrl = `https://fun.rich/live/${sessionId}`;
 
   const handleCopy = async () => {
     try {

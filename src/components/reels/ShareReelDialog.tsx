@@ -14,7 +14,7 @@ interface ShareReelDialogProps {
 export const ShareReelDialog = ({ reelId, open, onOpenChange }: ShareReelDialogProps) => {
   const { t } = useLanguage();
   const { shareReel } = useReels();
-  const reelUrl = `${window.location.origin}/reels/${reelId}`;
+  const reelUrl = `https://fun.rich/reels/${reelId}`;
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(reelUrl);

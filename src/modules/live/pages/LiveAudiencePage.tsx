@@ -20,11 +20,42 @@ import { useLiveRtc } from '../hooks/useLiveRtc';
 import { incrementLiveViewerCount, decrementLiveViewerCount } from '../liveService';
 import { LiveChatPanel } from '../components/LiveChatPanel';
 import { FloatingReactions } from '../components/FloatingReactions';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function LiveAudiencePage() {
   const navigate = useNavigate();
-  const { liveSessionId } = useParams<{ liveSessionId: string }>();
-  const { data: session, isLoading } = useLiveSession(liveSessionId);
+  const { liveSessionId, username, slug } = useParams<{ liveSessionId?: string; username?: string; slug?: string }>();
+  const [resolvedSessionId, setResolvedSessionId] = useState<string | undefined>(liveSessionId);
+
+  // Resolve slug to session ID
+  useEffect(() => {
+    if (liveSessionId) {
+      setResolvedSessionId(liveSessionId);
+      return;
+    }
+    if (!username || !slug) return;
+
+    const resolve = async () => {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('username', username)
+        .maybeSingle();
+      if (!profile) return;
+
+      const { data: session } = await supabase
+        .from('live_sessions')
+        .select('id')
+        .eq('owner_id', profile.id)
+        .eq('slug', slug)
+        .maybeSingle();
+
+      if (session) setResolvedSessionId(session.id);
+    };
+    resolve();
+  }, [liveSessionId, username, slug]);
+
+  const { data: session, isLoading } = useLiveSession(resolvedSessionId);
   const [mobileTab, setMobileTab] = useState<'chat' | 'reactions'>('chat');
   const [showEndedDialog, setShowEndedDialog] = useState(false);
 
@@ -37,32 +68,32 @@ export default function LiveAudiencePage() {
     leave,
     toggleRemoteAudio,
   } = useLiveRtc({
-    sessionId: liveSessionId,
+    sessionId: resolvedSessionId,
     role: 'audience',
-    enabled: !!liveSessionId && session?.status === 'live',
+    enabled: !!resolvedSessionId && session?.status === 'live',
   });
 
   useEffect(() => {
-    if (!liveSessionId || !session || session.status !== 'live') return;
+    if (!resolvedSessionId || !session || session.status !== 'live') return;
     start().catch(() => undefined);
-  }, [liveSessionId, session, start]);
+  }, [resolvedSessionId, session, start]);
 
   // Track viewer count via database
   useEffect(() => {
-    if (!liveSessionId || session?.status !== 'live') return;
+    if (!resolvedSessionId || session?.status !== 'live') return;
 
-    incrementLiveViewerCount(liveSessionId).catch(console.warn);
+    incrementLiveViewerCount(resolvedSessionId).catch(console.warn);
 
     const handleBeforeUnload = () => {
-      decrementLiveViewerCount(liveSessionId).catch(() => {});
+      decrementLiveViewerCount(resolvedSessionId).catch(() => {});
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
 
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      decrementLiveViewerCount(liveSessionId).catch(() => {});
+      decrementLiveViewerCount(resolvedSessionId).catch(() => {});
     };
-  }, [liveSessionId, session?.status]);
+  }, [resolvedSessionId, session?.status]);
 
   useEffect(() => {
     if (session?.status === 'ended') {
@@ -142,7 +173,7 @@ export default function LiveAudiencePage() {
                   {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
                 </Button>
 
-                {liveSessionId && <FloatingReactions sessionId={liveSessionId} />}
+                {resolvedSessionId && <FloatingReactions sessionId={resolvedSessionId} />}
               </div>
             </Card>
 
@@ -162,17 +193,17 @@ export default function LiveAudiencePage() {
                 </button>
               </div>
               <div className="p-2">
-                {mobileTab === 'chat' && liveSessionId && <LiveChatPanel sessionId={liveSessionId} className="h-[320px]" />}
-                {mobileTab === 'reactions' && liveSessionId && (
+                {mobileTab === 'chat' && resolvedSessionId && <LiveChatPanel sessionId={resolvedSessionId} className="h-[320px]" />}
+                {mobileTab === 'reactions' && resolvedSessionId && (
                   <div className="h-[120px] flex items-center justify-center relative">
-                    <FloatingReactions sessionId={liveSessionId} showPicker />
+                    <FloatingReactions sessionId={resolvedSessionId} showPicker />
                   </div>
                 )}
               </div>
             </div>
           </section>
 
-          {liveSessionId && <LiveChatPanel sessionId={liveSessionId} className="hidden lg:flex h-[calc(100vh-120px)]" />}
+          {resolvedSessionId && <LiveChatPanel sessionId={resolvedSessionId} className="hidden lg:flex h-[calc(100vh-120px)]" />}
         </div>
         <div className="max-w-7xl mx-auto mt-3 flex justify-end">
           <Button variant="outline" size="sm" onClick={() => navigate('/')}>
