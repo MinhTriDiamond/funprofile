@@ -203,3 +203,6 @@ verify_jwt = false
 
 [functions.notify-live-started]
 verify_jwt = false
+
+[functions.batch-delete-banned-users]
+verify_jwt = false
