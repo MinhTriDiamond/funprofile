@@ -123,6 +123,7 @@ Deno.serve(async (req) => {
       // Light system
       { table: 'fun_distribution_logs', column: 'actor_id' },
       { table: 'light_actions', column: 'user_id' },
+      { table: 'light_actions', column: 'actor_id' },
       { table: 'light_reputation', column: 'user_id' },
       { table: 'soul_nfts', column: 'user_id' },
       
@@ -143,6 +144,7 @@ Deno.serve(async (req) => {
       { table: 'search_logs', column: 'user_id' },
       { table: 'audit_logs', column: 'target_user_id' },
       { table: 'user_roles', column: 'user_id' },
+      { table: 'username_history', column: 'user_id' },
     ];
 
     for (const entry of tables) {

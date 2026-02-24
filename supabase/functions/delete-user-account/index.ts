@@ -44,70 +44,96 @@ Deno.serve(async (req) => {
     // Admin client to delete data and user
     const adminClient = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Delete data in order (avoid foreign key constraints)
+    // Delete data in order (respect foreign key constraints)
     const deletionResults: Record<string, string> = {};
 
-    // 1. Reactions (on posts and comments)
-    const { error: reactionsError } = await adminClient.from('reactions').delete().eq('user_id', userId);
-    deletionResults['reactions'] = reactionsError ? `Error: ${reactionsError.message}` : 'OK';
+    const tables = [
+      // Reactions & likes (leaf tables)
+      { table: 'reactions', column: 'user_id' },
+      { table: 'comment_likes', column: 'user_id' },
+      { table: 'message_reactions', column: 'user_id' },
+      { table: 'message_reads', column: 'user_id' },
+      { table: 'live_reactions', column: 'user_id' },
 
-    // 2. Comments
-    const { error: commentsError } = await adminClient.from('comments').delete().eq('user_id', userId);
-    deletionResults['comments'] = commentsError ? `Error: ${commentsError.message}` : 'OK';
+      // Comments & messages
+      { table: 'comments', column: 'user_id' },
+      { table: 'live_comments', column: 'user_id' },
+      { table: 'live_messages', column: 'user_id' },
 
-    // 3. Shared posts
-    const { error: sharedPostsError } = await adminClient.from('shared_posts').delete().eq('user_id', userId);
-    deletionResults['shared_posts'] = sharedPostsError ? `Error: ${sharedPostsError.message}` : 'OK';
+      // Posts & shares
+      { table: 'shared_posts', column: 'user_id' },
+      { table: 'posts', column: 'user_id' },
 
-    // 4. Posts
-    const { error: postsError } = await adminClient.from('posts').delete().eq('user_id', userId);
-    deletionResults['posts'] = postsError ? `Error: ${postsError.message}` : 'OK';
+      // Social
+      { table: 'friendships', column: 'user_id' },
+      { table: 'friendships', column: 'friend_id' },
+      { table: 'notifications', column: 'user_id' },
+      { table: 'notifications', column: 'actor_id' },
 
-    // 5. Friendships (both directions)
-    const { error: friendships1Error } = await adminClient.from('friendships').delete().eq('user_id', userId);
-    const { error: friendships2Error } = await adminClient.from('friendships').delete().eq('friend_id', userId);
-    deletionResults['friendships'] = (friendships1Error || friendships2Error) 
-      ? `Error: ${friendships1Error?.message || friendships2Error?.message}` : 'OK';
+      // Rewards & finance
+      { table: 'reward_claims', column: 'user_id' },
+      { table: 'reward_approvals', column: 'user_id' },
+      { table: 'reward_adjustments', column: 'user_id' },
+      { table: 'transactions', column: 'user_id' },
+      { table: 'financial_transactions', column: 'user_id' },
+      { table: 'platform_financial_data', column: 'user_id' },
+      { table: 'platform_user_data', column: 'user_id' },
 
-    // 6. Notifications (both as receiver and actor)
-    const { error: notifications1Error } = await adminClient.from('notifications').delete().eq('user_id', userId);
-    const { error: notifications2Error } = await adminClient.from('notifications').delete().eq('actor_id', userId);
-    deletionResults['notifications'] = (notifications1Error || notifications2Error)
-      ? `Error: ${notifications1Error?.message || notifications2Error?.message}` : 'OK';
+      // Donations (both sides)
+      { table: 'donations', column: 'sender_id' },
+      { table: 'donations', column: 'recipient_id' },
 
-    // 7. Reward claims
-    const { error: rewardClaimsError } = await adminClient.from('reward_claims').delete().eq('user_id', userId);
-    deletionResults['reward_claims'] = rewardClaimsError ? `Error: ${rewardClaimsError.message}` : 'OK';
+      // Crypto & wallets
+      { table: 'crypto_gifts', column: 'from_user_id' },
+      { table: 'crypto_gifts', column: 'to_user_id' },
+      { table: 'custodial_wallets', column: 'user_id' },
+      { table: 'blacklisted_wallets', column: 'user_id' },
 
-    // 8. Reward approvals
-    const { error: rewardApprovalsError } = await adminClient.from('reward_approvals').delete().eq('user_id', userId);
-    deletionResults['reward_approvals'] = rewardApprovalsError ? `Error: ${rewardApprovalsError.message}` : 'OK';
+      // Light system
+      { table: 'fun_distribution_logs', column: 'actor_id' },
+      { table: 'light_actions', column: 'user_id' },
+      { table: 'light_actions', column: 'actor_id' },
+      { table: 'light_reputation', column: 'user_id' },
+      { table: 'soul_nfts', column: 'user_id' },
 
-    // 9. Reward adjustments
-    const { error: rewardAdjustmentsError } = await adminClient.from('reward_adjustments').delete().eq('user_id', userId);
-    deletionResults['reward_adjustments'] = rewardAdjustmentsError ? `Error: ${rewardAdjustmentsError.message}` : 'OK';
+      // Live & calls
+      { table: 'call_participants', column: 'user_id' },
+      { table: 'live_sessions', column: 'host_user_id' },
+      { table: 'live_sessions', column: 'owner_id' },
+      { table: 'livestreams', column: 'user_id' },
 
-    // 10. Search logs
-    const { error: searchLogsError } = await adminClient.from('search_logs').delete().eq('user_id', userId);
-    deletionResults['search_logs'] = searchLogsError ? `Error: ${searchLogsError.message}` : 'OK';
+      // Chat
+      { table: 'chat_settings', column: 'user_id' },
+      { table: 'conversation_participants', column: 'user_id' },
 
-    // 11. Soul NFTs
-    const { error: soulNftsError } = await adminClient.from('soul_nfts').delete().eq('user_id', userId);
-    deletionResults['soul_nfts'] = soulNftsError ? `Error: ${soulNftsError.message}` : 'OK';
+      // Auth & security
+      { table: 'cross_platform_tokens', column: 'user_id' },
+      { table: 'login_ip_logs', column: 'user_id' },
+      { table: 'search_logs', column: 'user_id' },
+      { table: 'audit_logs', column: 'target_user_id' },
+      { table: 'user_roles', column: 'user_id' },
+      { table: 'username_history', column: 'user_id' },
+    ];
 
-    // 12. Custodial wallets
-    const { error: custodialWalletsError } = await adminClient.from('custodial_wallets').delete().eq('user_id', userId);
-    deletionResults['custodial_wallets'] = custodialWalletsError ? `Error: ${custodialWalletsError.message}` : 'OK';
+    for (const entry of tables) {
+      const key = `${entry.table}.${entry.column}`;
+      try {
+        const { error } = await adminClient.from(entry.table).delete().eq(entry.column, userId);
+        deletionResults[key] = error ? `Error: ${error.message}` : 'OK';
+      } catch (e) {
+        deletionResults[key] = `Skip: ${e instanceof Error ? e.message : 'unknown'}`;
+      }
+    }
 
-    // 13. Transactions
-    const { error: transactionsError } = await adminClient.from('transactions').delete().eq('user_id', userId);
-    deletionResults['transactions'] = transactionsError ? `Error: ${transactionsError.message}` : 'OK';
+    // Delete messages sent by user
+    try {
+      const { error } = await adminClient.from('messages').delete().eq('sender_id', userId);
+      deletionResults['messages.sender_id'] = error ? `Error: ${error.message}` : 'OK';
+    } catch (e) {
+      deletionResults['messages.sender_id'] = `Skip: ${e instanceof Error ? e.message : 'unknown'}`;
+    }
 
-    // 14. User roles
-    const { error: userRolesError } = await adminClient.from('user_roles').delete().eq('user_id', userId);
-    deletionResults['user_roles'] = userRolesError ? `Error: ${userRolesError.message}` : 'OK';
-
-    // 15. Profile (must be last before auth user)
+    // Profile (must be last before auth user)
     const { error: profilesError } = await adminClient.from('profiles').delete().eq('id', userId);
     deletionResults['profiles'] = profilesError ? `Error: ${profilesError.message}` : 'OK';
 
