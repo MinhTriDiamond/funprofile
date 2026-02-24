@@ -44,34 +44,11 @@ export const LawOfLightGuard = ({ children }: LawOfLightGuardProps) => {
         const { data: { session } } = await supabase.auth.getSession();
         
         if (!session) {
-        const guestAllowedPaths = ['/', '/feed', '/about', '/install', '/leaderboard', '/benefactors', '/donations', '/users', '/friends', '/live', '/wallet', '/chat', '/notifications'];
+          // Blacklist: only these paths require login
+          const protectedPrefixes = ['/admin', '/set-password', '/begin', '/connected-apps'];
+          const isProtectedPath = protectedPrefixes.some(p => location.pathname.startsWith(p));
 
-          // Danh sách các path tĩnh đã đăng ký trong router (không phải username)
-          const reservedPaths = ['auth', 'feed', 'friends', 'wallet', 'about', 'leaderboard',
-            'admin', 'notifications', 'docs', 'post', 'law-of-light', 'profile', 'chat',
-            'install', 'benefactors', 'donations', 'users', 'reels', 'set-password',
-            'begin', 'connected-apps', 'live', 'mint'];
-
-          // Kiểm tra xem path có phải là /:username (bare username) không
-          const pathSegments = location.pathname.split('/').filter(Boolean);
-          const isBareUsername = pathSegments.length === 1
-            && !reservedPaths.includes(pathSegments[0].toLowerCase());
-
-          // /:username/post/:slug, /:username/video/:slug, /:username/live/:slug
-          const isUsernameContentPath = pathSegments.length >= 2
-            && !reservedPaths.includes(pathSegments[0].toLowerCase())
-            && ['post', 'video', 'live'].includes(pathSegments[1]);
-
-          const isGuestPath = guestAllowedPaths.includes(location.pathname)
-            || location.pathname.startsWith('/profile/')
-            || location.pathname.startsWith('/@')
-            || location.pathname.startsWith('/post/')
-            || location.pathname.startsWith('/reels')
-            || location.pathname.startsWith('/live/')
-            || isBareUsername
-            || isUsernameContentPath;
-          
-          if (isGuestPath) {
+          if (!isProtectedPath) {
             setIsAllowed(true);
             setIsChecking(false);
             return;
