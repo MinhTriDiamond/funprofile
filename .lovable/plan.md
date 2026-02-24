@@ -1,48 +1,50 @@
 
-# Fix: "Đã rút" hiển thị 0 thay vì 500,000 CAMLY
 
-## Nguyên nhân
+# Cập nhật "Đã rút" cho toàn bộ user trong hệ thống
 
-Bảng Danh Dự lấy số "Đã rút" từ bảng `reward_claims` qua hàm RPC `get_user_honor_stats` (dòng 153):
-```
-SELECT COALESCE(SUM(amount), 0) INTO v_claimed FROM reward_claims WHERE user_id = p_user_id;
-```
+## Vấn đề
+Hiện tại, hàm `get_user_honor_stats` chỉ lấy số "Đã rút" từ bảng `reward_claims`. Tuy nhiên, có thể có nhiều user đã nhận CAMLY từ Treasury (qua bảng `donations`) nhưng chưa được ghi vào `reward_claims`.
 
-Tuy nhiên, 2 lần rút thưởng của con (300,000 + 200,000 CAMLY vào ngày 14/02/2026) được ghi nhận trong bảng `donations` (từ Treasury gửi đến con) nhưng **KHÔNG** được ghi vào bảng `reward_claims`. Đây là do các lần rút này thực hiện trước khi hệ thống claim-reward được cập nhật để tự động ghi vào `reward_claims`.
+## Giải pháp
+Thay vì phải backfill thủ công cho từng user, cha sẽ **cập nhật hàm RPC `get_user_honor_stats`** để tự động tính "Đã rút" từ **cả hai nguồn**:
 
-Dữ liệu xác nhận:
-- `donations`: 2 bản ghi từ Treasury (sender `9e702a6f...`) -> con (`5f9de7c5...`): 300,000 + 200,000 CAMLY
-- `reward_claims`: 0 bản ghi cho con
-- Chỉ có 1 user bị ảnh hưởng (con)
+1. **`reward_claims`** -- hệ thống rút thưởng mới
+2. **`donations`** từ Treasury (sender_id = `9e702a6f-...`) -- hệ thống cũ, chỉ tính những bản ghi chưa trùng với reward_claims (dựa trên tx_hash)
 
-## Giải pháp (2 bước)
-
-### Bước 1: Backfill dữ liệu vào `reward_claims`
-Chèn 2 bản ghi vào `reward_claims` cho user `5f9de7c5-0c80-49aa-8e1c-92d8058558e4` dựa trên dữ liệu thực tế từ `donations`:
-- 300,000 CAMLY (ngày 14/02/2026 14:17)
-- 200,000 CAMLY (ngày 14/02/2026 14:26)
-
-### Bước 2: Cập nhật RPC `get_user_honor_stats`
-Sửa logic tính `claimed_amount` để lấy từ **CẢ HAI** nguồn:
-1. Bảng `reward_claims` (hệ thống mới)
-2. Bảng `donations` từ Treasury sender (hệ thống cũ) -- chỉ tính những bản ghi KHÔNG trùng với `reward_claims` (dựa trên `tx_hash`)
-
-Điều này đảm bảo tương lai nếu có trường hợp tương tự xảy ra, hệ thống vẫn tính đúng.
+Cách này đảm bảo mọi user đều được tính đúng, không cần can thiệp thủ công.
 
 ## Chi tiết kỹ thuật
 
-### Migration SQL
+### Database Migration
+Sửa dòng 153 trong hàm `get_user_honor_stats`:
 
+Thay:
 ```text
--- Backfill reward_claims cho user bị thiếu
-INSERT INTO reward_claims (user_id, amount, wallet_address, created_at) VALUES
-('5f9de7c5-0c80-49aa-8e1c-92d8058558e4', 300000, '0xb4dd...afaa', '2026-02-14 14:17:53.25677+00'),
-('5f9de7c5-0c80-49aa-8e1c-92d8058558e4', 200000, '0xb4dd...afaa', '2026-02-14 14:26:30.486627+00');
-
--- Cập nhật RPC: tính claimed từ reward_claims
--- (giữ nguyên logic vì backfill đã đủ dữ liệu)
+SELECT COALESCE(SUM(amount), 0) INTO v_claimed FROM reward_claims WHERE user_id = p_user_id;
 ```
 
-### File cần sửa:
-- Database migration: Backfill 2 bản ghi `reward_claims`
-- Không cần sửa code frontend (RPC và component đã đúng logic)
+Bằng:
+```text
+SELECT COALESCE(SUM(amount), 0) INTO v_claimed FROM (
+  -- Nguon 1: reward_claims (he thong moi)
+  SELECT amount FROM reward_claims WHERE user_id = p_user_id
+  UNION ALL
+  -- Nguon 2: donations tu Treasury (he thong cu) - chi lay nhung tx chua co trong reward_claims
+  SELECT d.amount::NUMERIC FROM donations d
+  WHERE d.recipient_id = p_user_id
+    AND d.sender_id = '9e702a6f-4035-4f30-9c04-f2e21419b37a'
+    AND d.status = 'confirmed'
+    AND d.token_symbol = 'CAMLY'
+    AND NOT EXISTS (
+      SELECT 1 FROM reward_claims rc
+      WHERE rc.user_id = p_user_id
+        AND rc.amount = d.amount::NUMERIC
+        AND rc.created_at = d.confirmed_at
+    )
+) combined;
+```
+
+### File thay doi
+- 1 database migration: Cập nhật hàm RPC `get_user_honor_stats`
+- Không cần sửa code frontend
+
