@@ -1,82 +1,117 @@
 
-# Sửa lỗi giao dịch bị thiếu trong Donation và Gift
 
-## Van de
-Hien tai he thong co **1000/1000 giao dich** bi thieu ban ghi donation. Nguyen nhan chinh:
+# Sua loi giao dich bi thieu trong Lich su va tat ca cac muc
 
-1. **Backfill chi quet 1000 giao dich gan nhat** (`.limit(1000)`) -- cac giao dich cu hon se khong bao gio duoc phuc hoi
-2. **Anh xa nguoi nhan chua day du** -- chi kiem tra `wallet_address` va `public_wallet_address`, thieu `external_wallet_address` va `custodial_wallet_address`
-3. **record-donation** co the that bai do timeout mang hoac loi khac, va backfill khong du kha nang xu ly het
+## Nguyen nhan goc
+
+### 1. Gui bang Vi (useSendToken) KHONG tao donation record
+Khi nguoi dung gui token bang tab "Vi" (khong phai Gift), he thong chi tao ban ghi trong bang `transactions`. Edge function `record-donation` KHONG duoc goi. Do do, giao dich nay se khong xuat hien trong:
+- Lich su Gift/Donation (ca nhan va toan he thong)
+- Feed bai chuc mung
+- Trang /donations
+
+### 2. Backfill that bai hoan toan (Inserted: 0)
+Log cho thay: `Scanned: 1003, Missing: 1000, Inserted: 0, Skipped: 19`
+
+Nguyen nhan:
+- **Kiem tra trung lap bi gioi han 1000 dong**: Khi kiem tra xem tx_hash nao da co donation, truy van `.in("tx_hash", batch)` bi gioi han 1000 ket qua boi PostgREST. Ket qua la nhieu donation da ton tai KHONG duoc tim thay, khien he thong tuong la "thieu" va co insert lai -> loi `duplicate key`.
+- **Vi tu gui cho minh**: Mot so giao dich co `to_address` anh xa lai chinh nguoi gui, vi pham constraint `no_self_donation`.
+- **Batch insert that bai toan bo**: Khi 1 dong trong batch loi, toan bo batch 100 dong bi huy.
+
+### 3. Stats trang /donations gioi han 1000 dong
+`useAdminDonationHistory` stats query lay tat ca donations khong phan trang, bi cat o 1000 dong.
 
 ## Giai phap
 
-### 1. Nang cap `auto-backfill-donations` edge function
-- **Phan trang**: Thay vi `.limit(1000)`, su dung vong lap phan trang de quet **tat ca** giao dich confirmed
-- **Mo rong wallet map**: Them `external_wallet_address` va `custodial_wallet_address` vao ban do anh xa nguoi nhan
-- **Batch insert**: Chia nho cac ban ghi can insert de tranh timeout
+### Thay doi 1: `supabase/functions/auto-backfill-donations/index.ts`
+- **Phan trang kiem tra trung lap**: Khi kiem tra tx_hash da co donation, phan trang truy van de khong bi gioi han 1000 dong
+- **Bo qua self-donation**: Kiem tra sender_id != recipient_id truoc khi insert
+- **Insert tung dong thay vi batch**: Su dung vong lap insert tung dong voi `ON CONFLICT DO NOTHING` (thong qua upsert) de tranh 1 dong loi huy toan bo batch
+- **Ghi log chi tiet hon**: Log so dong thuc su duoc insert, skip va loi
 
-### 2. Cap nhat `backfill-donations` edge function
-- Cung cap nhat wallet mapping tuong tu
+### Thay doi 2: `src/hooks/useAdminDonationHistory.ts`
+- **Stats su dung RPC hoac phan trang**: Thay vi select tat ca donations (bi gioi han 1000), su dung aggregate query truc tiep trong database de tinh tong chinh xac
 
-### Chi tiet ky thuat
+### Thay doi 3: `supabase/functions/check-transaction/index.ts`
+- **Mo rong kiem tra wallet**: Them `external_wallet_address` va `custodial_wallet_address` vao truy van tim nguoi nhan
 
-#### File: `supabase/functions/auto-backfill-donations/index.ts`
+### Thay doi 4: Tao database function cho stats
+- Tao RPC function `get_donation_system_stats` de tinh tong truc tiep trong database, tranh gioi han 1000 dong
 
-**Thay doi 1 - Phan trang transactions (dong 29-34):**
-Thay `.limit(1000)` bang vong lap phan trang, moi lan lay 1000 ban ghi cho den khi het:
+## Chi tiet ky thuat
+
+### File 1: `supabase/functions/auto-backfill-donations/index.ts`
+
+**Sua kiem tra trung lap (dong 103-115):**
+Thay vi kiem tra 1 batch lon, phan trang kiem tra tung batch nho (100 tx_hash moi lan):
 ```typescript
-const PAGE_SIZE = 1000;
-let allTx: any[] = [];
-let offset = 0;
-let hasMore = true;
-while (hasMore) {
-  const { data: batch } = await adminClient
-    .from("transactions")
-    .select("id, user_id, tx_hash, from_address, to_address, amount, token_symbol, token_address, chain_id, created_at")
-    .eq("status", "confirmed")
-    .order("created_at", { ascending: false })
-    .range(offset, offset + PAGE_SIZE - 1);
-  if (!batch || batch.length === 0) { hasMore = false; break; }
-  allTx = allTx.concat(batch);
-  if (batch.length < PAGE_SIZE) hasMore = false;
-  else offset += PAGE_SIZE;
+const existingDonationSet = new Set<string>();
+const LOOKUP_BATCH = 100;
+for (let i = 0; i < txHashes.length; i += LOOKUP_BATCH) {
+  const batch = txHashes.slice(i, i + LOOKUP_BATCH);
+  const { data: existing } = await adminClient
+    .from("donations")
+    .select("tx_hash")
+    .in("tx_hash", batch);
+  for (const d of existing || []) {
+    if (d.tx_hash) existingDonationSet.add(d.tx_hash);
+  }
 }
 ```
 
-**Thay doi 2 - Mo rong wallet mapping (dong 49-59):**
-Them 2 truong dia chi vi bo sung:
+**Sua insert donations (dong 206-216):**
+Thay batch insert bang insert tung dong voi skip loi:
 ```typescript
-const { data: profiles } = await adminClient
-  .from("profiles")
-  .select("id, username, display_name, avatar_url, wallet_address, public_wallet_address, external_wallet_address, custodial_wallet_address");
-
-for (const p of profiles || []) {
-  profileMap.set(p.id, { username: p.username, display_name: p.display_name, avatar_url: p.avatar_url });
-  if (p.wallet_address) walletMap.set(p.wallet_address.toLowerCase(), p.id);
-  if (p.public_wallet_address) walletMap.set(p.public_wallet_address.toLowerCase(), p.id);
-  if (p.external_wallet_address) walletMap.set(p.external_wallet_address.toLowerCase(), p.id);
-  if (p.custodial_wallet_address) walletMap.set(p.custodial_wallet_address.toLowerCase(), p.id);
+let insertedCount = 0;
+let errorCount = 0;
+for (const record of toInsert) {
+  // Skip self-donation
+  if (record.sender_id === record.recipient_id) {
+    skipped.push(record.tx_hash);
+    continue;
+  }
+  const { error } = await adminClient
+    .from("donations")
+    .upsert(record, { onConflict: 'tx_hash', ignoreDuplicates: true });
+  if (error) {
+    errorCount++;
+    console.error(`Insert error for ${record.tx_hash}:`, error.message);
+  } else {
+    insertedCount++;
+  }
 }
 ```
 
-**Thay doi 3 - Phan trang donations (dong 62-67):**
-Tuong tu, phan trang khi lay donations de kiem tra posts thieu.
+### File 2: `src/hooks/useAdminDonationHistory.ts`
 
-**Thay doi 4 - Batch insert donations (dong 175-178):**
-Chia nho mang `toInsert` thanh cac batch 100 ban ghi de tranh timeout:
+**Sua stats query (dong 156-194):**
+Thay select tat ca bang truy van aggregate:
 ```typescript
-for (let i = 0; i < toInsert.length; i += 100) {
-  const batch = toInsert.slice(i, i + 100);
-  const { error } = await adminClient.from("donations").insert(batch);
-  if (error) console.error("Batch insert error:", error.message);
-  else insertedCount += batch.length;
-}
+// Count total
+const { count: totalCount } = await supabase
+  .from('donations')
+  .select('id', { count: 'exact', head: true });
+
+// Count by status  
+const { count: confirmedCount } = await supabase
+  .from('donations')
+  .select('id', { count: 'exact', head: true })
+  .eq('status', 'confirmed');
+
+// v.v. cho tung chi so
 ```
 
-#### File: `supabase/functions/backfill-donations/index.ts`
-- Ap dung cung cac thay doi wallet mapping mo rong
+### File 3: `supabase/functions/check-transaction/index.ts`
+
+**Mo rong wallet lookup (dong 72-76):**
+Them external_wallet_address va custodial_wallet_address:
+```typescript
+.or(`wallet_address.ilike.${addr},public_wallet_address.ilike.${addr},external_wallet_address.ilike.${addr},custodial_wallet_address.ilike.${addr}`)
+```
 
 ### Ket qua mong doi
-- Tat ca giao dich (khong gioi han 1000) se duoc quet va phuc hoi
-- Nhieu nguoi nhan hon se duoc xac dinh nho kiem tra 4 loai dia chi vi
-- Giao dich 20 USDT cua angelanhnguyet -> UtopiaThuy413 se duoc phuc hoi sau khi chay Backfill
+- Backfill se thuc su insert duoc cac donation bi thieu (khong con loi duplicate key hay self-donation)
+- Tat ca giao dich cu (bao gom 20 USDT cua angelanhnguyet -> UtopiaThuy413) se duoc phuc hoi sau khi chay Backfill
+- Stats trang /donations se hien thi so lieu chinh xac (khong bi gioi han 1000)
+- Cac giao dich da phuc hoi se tu dong xuat hien tren: Gift/Donations, Feed, Trang /donations, va ca muc Wallet (thong qua bang donations)
+
