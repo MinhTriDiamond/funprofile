@@ -135,8 +135,8 @@
   
   .fb-card {
     @apply bg-card/65 rounded-xl;
-    margin-left: 16px;
-    margin-right: 16px;
+    margin-left: 4px;
+    margin-right: 4px;
   }
   
   /* Navbar trong suốt hơn để thấy video Valentine */
@@ -149,8 +149,8 @@
 @media (max-width: 768px) and (orientation: landscape) {
   .fb-card {
     @apply bg-card/70 rounded-xl;
-    margin-left: 8px;
-    margin-right: 8px;
+    margin-left: 4px;
+    margin-right: 4px;
   }
 }
 
