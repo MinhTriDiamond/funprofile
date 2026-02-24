@@ -1,64 +1,70 @@
 
-# Cai thien trai nghiem dang nhap vi
 
-## Van de 1: Loi "Edge Function returned a non-2xx status code"
+# Cai thien luong dang nhap vi -- Kiem tra vi truoc khi dang nhap
 
-Khi vi chua duoc dang ky, edge function `sso-web3-auth` tra ve status 403 voi thong bao cu the. Nhung `supabase.functions.invoke` tu dong nem loi chung "Edge Function returned a non-2xx status code" thay vi doc noi dung response body. Ket qua la nguoi dung thay toast loi chung chung thay vi thong bao huong dan cu the.
+## Van de
 
-**Giai phap**: Thay doi cach goi edge function -- khong dung `supabase.functions.invoke` ma goi truc tiep bang `fetch` de kiem soat response status va doc body JSON cho moi truong hop. Hoac doc `error.context` tu FunctionsHttpError de lay response body.
+Hien tai khi nguoi dung ket noi vi, he thong hien nut "Dang Nhap bang Vi". Nguoi dung bam vao, phai ky message, roi moi nhan duoc loi "Vi chua duoc ket noi!" (WALLET_NOT_REGISTERED). Dieu nay gay nham lan vi:
 
-## Van de 2: Nut "Ky Xac Nhan" nen doi thanh "Dang Nhap"
+1. Thong bao "Vi chua duoc ket noi" nghe nhu loi ket noi, nhung thuc ra la vi chua duoc dang ky trong he thong
+2. Nguoi dung phai ky message (mat thoi gian) roi moi biet vi chua dang ky
+3. Thong bao toast hien ben duoi, de bi bo qua
 
-Khi vi da ket noi, nut hien tai hien "Ky Xac Nhan" khien nguoi dung hoang mang. Nen doi thanh "Dang Nhap bang Vi" de ro rang hon. Buoc ky van dien ra phia sau nhung UI thi hien thi than thien hon.
+## Giai phap
+
+Them buoc **kiem tra vi truoc** ngay sau khi ket noi thanh cong. Neu vi chua dang ky, hien thong bao ro rang ngay trong giao dien (khong phai toast) va an nut dang nhap.
+
+### Luong moi:
+
+```text
+Ket noi vi --> Kiem tra vi trong database
+  |
+  +-- Vi da dang ky --> Hien nut "Dang Nhap bang Vi" --> Ky & xac thuc --> Vao app
+  |
+  +-- Vi chua dang ky --> Hien thong bao huong dan inline (khong can ky)
+```
 
 ## Chi tiet ky thuat
 
-### File 1: `src/components/auth/WalletLoginContent.tsx`
+### File 1: `supabase/functions/sso-web3-auth/index.ts`
 
-**Thay doi A -- Xu ly loi edge function dung cach:**
+Them mode `check` de kiem tra vi nhanh ma khong can ky:
 
-Thay doi phan goi `supabase.functions.invoke` (dong 68-79) de xu ly response khong phai 2xx:
+- Khi nhan `action: "check"` va `wallet_address`, chi kiem tra xem vi co trong database khong
+- Tra ve `{ registered: true/false }` ma khong can signature
+- Van giu rate limiting
 
-```typescript
-// Goi edge function va xu ly response thu cong
-const response = await fetch(
-  `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sso-web3-auth`,
-  {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-    },
-    body: JSON.stringify({
-      wallet_address: address,
-      signature,
-      message,
-      nonce,
-    }),
-  }
-);
-const data = await response.json();
-if (!response.ok) {
-  throw new Error(data?.error || data?.message || 'Authentication failed');
-}
+### File 2: `src/components/auth/WalletLoginContent.tsx`
+
+- Them state `walletStatus`: `'checking' | 'registered' | 'not_registered' | null`
+- Sau khi vi ket noi (useEffect), goi API check de kiem tra vi
+- Neu `registered = true`: hien nut "Dang Nhap bang Vi" nhu binh thuong
+- Neu `registered = false`: hien thong bao inline voi huong dan cu the:
+  - "Vi nay chua duoc lien ket voi tai khoan nao"
+  - "Neu da co tai khoan: dang nhap bang email/Google va ket noi vi trong cai dat"
+  - "Neu chua co tai khoan: dang ky moi va dan dia chi vi khi dang ky"
+- Cap nhat thong bao loi toast tu "Vi chua duoc ket noi" thanh "Vi chua duoc lien ket voi tai khoan nao" (ro rang hon)
+
+### Giao dien khi vi chua dang ky:
+
+```text
+  [Check icon mau vang/cam]
+  Vi Chua Duoc Lien Ket
+
+  0x5102...a402
+
+  Vi nay chua duoc lien ket voi tai khoan nao tren FUN Profile.
+
+  - Neu ban da co tai khoan, hay dang nhap bang Email hoac Google,
+    sau do ket noi vi trong phan Cai Dat.
+  - Neu chua co tai khoan, hay dang ky moi.
+
+  [← Huy]
 ```
-
-Nhu vay khi vi chua dang ky, error.message se la "WALLET_NOT_REGISTERED" va catch block hien tai da xu ly truong hop nay voi toast huong dan cu the.
-
-**Thay doi B -- Doi nhan nut tu "Ky Xac Nhan" thanh "Dang Nhap":**
-
-Dong 175 va 161:
-- Doi text nut tu `t('walletSign')` thanh `t('walletLogin')` (hoac text truc tiep "Dang Nhap")
-- Doi text trang thai tu `t('walletSigning')` thanh "Dang dang nhap..."
-- Doi text "Vi Da Ket Noi" thanh cau than thien hon
-
-### File 2: `src/i18n/translations.ts`
-
-Them hoac cap nhat cac key dich:
-- `walletLoginBtn`: "Login with Wallet" / "Dang Nhap bang Vi" / tuong ung cac ngon ngu khac
-- `walletLoggingIn`: "Logging in..." / "Dang dang nhap..."
 
 ## Ket qua mong doi
 
-1. Khi vi chua dang ky: hien toast huong dan cu the "Vi chua duoc ket noi! Neu da co tai khoan..." thay vi loi chung "Edge Function returned a non-2xx status code"
-2. Khi vi da ket noi: nut hien "Dang Nhap bang Vi" thay vi "Ky Xac Nhan", trai nghiem than thien hon
+1. Nguoi dung khong phai ky message vo ich khi vi chua dang ky
+2. Thong bao huong dan hien ro rang ngay trong giao dien, khong bi mat trong toast
+3. Khi vi da dang ky, bam "Dang Nhap bang Vi" se ky va vao app nhu binh thuong
+
