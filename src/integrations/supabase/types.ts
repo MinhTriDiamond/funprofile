@@ -1326,6 +1326,7 @@ export type Database = {
           recording_uid: number | null
           resource_id: string | null
           sid: string | null
+          slug: string | null
           started_at: string
           status: string
           title: string | null
@@ -1357,6 +1358,7 @@ export type Database = {
           recording_uid?: number | null
           resource_id?: string | null
           sid?: string | null
+          slug?: string | null
           started_at?: string
           status?: string
           title?: string | null
@@ -1388,6 +1390,7 @@ export type Database = {
           recording_uid?: number | null
           resource_id?: string | null
           sid?: string | null
+          slug?: string | null
           started_at?: string
           status?: string
           title?: string | null
@@ -3449,6 +3452,7 @@ export type Database = {
           is_active: boolean
           like_count: number
           share_count: number
+          slug: string | null
           thumbnail_url: string | null
           updated_at: string
           user_id: string
@@ -3467,6 +3471,7 @@ export type Database = {
           is_active?: boolean
           like_count?: number
           share_count?: number
+          slug?: string | null
           thumbnail_url?: string | null
           updated_at?: string
           user_id: string
@@ -3485,6 +3490,7 @@ export type Database = {
           is_active?: boolean
           like_count?: number
           share_count?: number
+          slug?: string | null
           thumbnail_url?: string | null
           updated_at?: string
           user_id?: string
@@ -4255,6 +4261,7 @@ export type Database = {
           recording_uid: number | null
           resource_id: string | null
           sid: string | null
+          slug: string | null
           started_at: string
           status: string
           title: string | null
@@ -4311,6 +4318,10 @@ export type Database = {
       }
       end_livestream: { Args: { p_livestream_id: string }; Returns: boolean }
       expire_old_mint_requests_v2: { Args: never; Returns: number }
+      generate_content_slug: {
+        Args: { p_table_name: string; p_user_id: string; title: string }
+        Returns: string
+      }
       generate_post_slug: {
         Args: { p_user_id: string; title: string }
         Returns: string
@@ -4634,6 +4645,7 @@ export type Database = {
           recording_uid: number | null
           resource_id: string | null
           sid: string | null
+          slug: string | null
           started_at: string
           status: string
           title: string | null

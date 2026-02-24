@@ -26,8 +26,8 @@ function removeVietnameseAccents(str: string): string {
     .join('');
 }
 
-export function generateSlug(title: string): string {
-  if (!title || !title.trim()) return 'post';
+export function generateSlug(title: string, fallback = 'post'): string {
+  if (!title || !title.trim()) return fallback;
 
   let slug = removeVietnameseAccents(title);
   slug = slug.toLowerCase();
@@ -42,36 +42,50 @@ export function generateSlug(title: string): string {
     }
   }
 
-  return slug || 'post_auto';
+  return slug || `${fallback}_auto`;
 }
 
-/**
- * Build a post URL using the new slug-based format.
- * Falls back to UUID if slug or username is unavailable.
- */
-export function getPostUrl(post: {
+// ─── Content URL builders ───
+
+interface ContentWithSlug {
   id: string;
   slug?: string | null;
   profiles?: { username?: string } | null;
-}): string {
-  const username = post.profiles?.username;
-  const slug = post.slug;
+}
 
-  if (username && slug) {
-    return `/${username}/post/${slug}`;
-  }
-  // Fallback to UUID
+/** Build post URL: /{username}/post/{slug} or /post/{id} */
+export function getPostUrl(post: ContentWithSlug): string {
+  const username = post.profiles?.username;
+  if (username && post.slug) return `/${username}/post/${post.slug}`;
   return `/post/${post.id}`;
 }
 
-/**
- * Build absolute post URL for sharing (uses fun.rich domain).
- */
-export function getAbsolutePostUrl(post: {
-  id: string;
-  slug?: string | null;
-  profiles?: { username?: string } | null;
-}): string {
-  const path = getPostUrl(post);
-  return `https://fun.rich${path}`;
+/** Build video/reel URL: /{username}/video/{slug} or /reels/{id} */
+export function getVideoUrl(reel: ContentWithSlug): string {
+  const username = reel.profiles?.username;
+  if (username && reel.slug) return `/${username}/video/${reel.slug}`;
+  return `/reels/${reel.id}`;
+}
+
+/** Build live URL: /{username}/live/{slug} or /live/{id} */
+export function getLiveUrl(session: ContentWithSlug): string {
+  const username = session.profiles?.username;
+  if (username && session.slug) return `/${username}/live/${session.slug}`;
+  return `/live/${session.id}`;
+}
+
+// ─── Absolute URLs (for sharing) ───
+
+const PRODUCTION_DOMAIN = 'https://fun.rich';
+
+export function getAbsolutePostUrl(post: ContentWithSlug): string {
+  return `${PRODUCTION_DOMAIN}${getPostUrl(post)}`;
+}
+
+export function getAbsoluteVideoUrl(reel: ContentWithSlug): string {
+  return `${PRODUCTION_DOMAIN}${getVideoUrl(reel)}`;
+}
+
+export function getAbsoluteLiveUrl(session: ContentWithSlug): string {
+  return `${PRODUCTION_DOMAIN}${getLiveUrl(session)}`;
 }

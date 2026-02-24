@@ -150,6 +150,7 @@ function App() {
                   <Route path="/users" element={<Users />} />
                   <Route path="/reels" element={<Reels />} />
                   <Route path="/reels/:reelId" element={<Reels />} />
+                  <Route path="/:username/video/:slug" element={<Reels />} />
                   <Route path="/mint" element={<Navigate to="/wallet/fun_money" replace />} />
                   <Route path="/live" element={<LiveDiscoveryPage />} />
                   <Route path="/live/setup" element={<PreLivePage />} />
@@ -157,6 +158,7 @@ function App() {
                   <Route path="/live/stream" element={<LiveStream />} />
                   <Route path="/live/:liveSessionId" element={<LiveAudiencePage />} />
                   <Route path="/live/:liveSessionId/host" element={<LiveHostPage />} />
+                  <Route path="/:username/live/:slug" element={<LiveAudiencePage />} />
                   {/* Dynamic username route - must be AFTER static routes */}
                   <Route path="/:username" element={<Profile />} />
                   <Route path="*" element={<NotFound />} />
