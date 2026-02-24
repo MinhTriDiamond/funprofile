@@ -822,7 +822,7 @@ onClick={() => navigate(`/${friend.username}`)}
                         </div>
 
                         {/* Friends Card - Facebook style with real data */}
-                        <div className="bg-card/70 rounded-xl shadow-sm border border-border p-4">
+                        <div className="bg-card/70 rounded-xl shadow-sm border border-border p-3">
                           <div className="flex justify-between items-center mb-3">
                             <div>
                               <h3 className="font-bold text-lg text-foreground">{t('friends')}</h3>
@@ -835,7 +835,7 @@ onClick={() => navigate(`/${friend.username}`)}
                               {t('viewAllFriends')}
                             </button>
                           </div>
-                          <div className="grid grid-cols-3 gap-2">
+                          <div className="grid grid-cols-3 gap-1.5">
                             {friendsPreview.length > 0 ? (
                               friendsPreview.map((friend) => (
                                 <div 
@@ -843,17 +843,17 @@ onClick={() => navigate(`/${friend.username}`)}
                                   className="text-center cursor-pointer hover:opacity-80 transition-opacity"
                                   onClick={() => navigate(`/${friend.username}`)}
                                 >
-                                  <Avatar className="w-full aspect-square rounded-lg mb-1 border-2 border-border overflow-hidden">
+                                  <Avatar className="w-full aspect-square rounded-xl mb-1 border border-border overflow-hidden">
                                     <AvatarImage 
                                       src={friend.avatar_url || undefined} 
                                       sizeHint="lg"
                                       className="object-cover"
                                     />
-                                    <AvatarFallback className="rounded-lg text-lg bg-gradient-to-br from-primary/20 to-gold/20 text-foreground">
+                                    <AvatarFallback className="rounded-xl text-lg bg-gradient-to-br from-primary/20 to-gold/20 text-foreground">
                                       {(friend.full_name || friend.username)?.[0]?.toUpperCase() || 'U'}
                                     </AvatarFallback>
                                   </Avatar>
-                                  <p className="text-xs text-foreground truncate font-medium">
+                                  <p className="text-sm leading-tight text-foreground truncate font-medium">
                                     {friend.full_name || friend.username}
                                   </p>
                                 </div>
