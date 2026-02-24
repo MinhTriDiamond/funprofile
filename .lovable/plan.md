@@ -1,44 +1,71 @@
 
-# Sửa 2 vấn đề: URL bỏ dấu @ + Kiểm tra Honor Board
+# Thắt chặt bảo mật: Giới hạn rút 2 lần/24h, tổng tối đa 500.000 CAMLY + Bỏ tự tạo tài khoản ví + Thêm ô ví khi đăng ký
 
-## Vấn đề 1: URL hiển thị `/@angelaivan` thay vì `/angelaivan`
+## Tổng quan 4 thay đổi
 
-Hiện tại khi vào trang cá nhân qua route `/profile/:userId`, hệ thống tự động chuyển hướng sang `/@username`. Cần bỏ dấu `@` khỏi URL trên thanh địa chỉ.
+### 1. Giới hạn rút: Tối đa 2 lần/24h, tổng không quá 500.000 CAMLY
+- Nếu đã rút 2 lần trong 24h --> thông báo "Đã đạt giới hạn rút trong ngày, hẹn hôm sau"
+- Nếu tổng số đã rút trong 24h >= 500.000 --> thông báo tương tự
+- Lần rút thứ 3 trở đi mới bị on_hold (thay vì lần thứ 4 như hiện tại)
 
-**Lưu ý**: Route `/@:username` vẫn giữ lại để tương thích ngược (ai đã lưu link cũ vẫn vào được), nhưng sẽ tự động chuyển về `/:username`.
+### 2. Bỏ tự động tạo tài khoản khi đăng nhập ví
+- Ví chưa đăng ký --> trả lỗi 403, hiển thị thông báo yêu cầu đăng ký tài khoản trước
 
-## Vấn đề 2: Giao diện Honor Board chưa cập nhật
+### 3. Thêm ô "Wallet Address" vào form đăng ký (Classic Login)
+- Khi chọn Đăng ký, hiển thị thêm ô nhập ví (không bắt buộc)
+- Validate format `0x` + 40 ký tự hex
+- Lưu vào `external_wallet_address` trong profile sau khi đăng ký thành công
 
-Code frontend đã đúng công thức `claimable = total_reward - claimed`. Cần kiểm tra xem migration database đã chạy thành công chưa (thêm PPLP rewards vào tổng thu). Nếu migration chưa áp dụng, số liệu sẽ chưa thay đổi.
+### 4. Xử lý lỗi ví chưa đăng ký ở WalletLoginContent
+- Hiển thị toast nhắc nhở đăng ký tài khoản trước
 
 ---
 
 ## Chi tiết kỹ thuật
 
-### File 1: `src/pages/Profile.tsx`
+### File 1: `supabase/functions/claim-reward/index.ts`
 
-3 chỗ cần sửa - bỏ `@` khỏi navigate:
+**Dòng 429**: Đổi `recentClaimCount >= 3` thành `recentClaimCount >= 3` (giữ on_hold ở lần 3+)
 
-- **Dòng 208**: `navigate(\`/@\${...}\`)` thay thành `navigate(\`/\${...}\`)`
-- **Dòng 614**: `navigate(\`/@\${friend.username}\`)` thay thành `navigate(\`/\${friend.username}\`)`
-- **Dòng 844**: `navigate(\`/@\${friend.username}\`)` thay thành `navigate(\`/\${friend.username}\`)`
+**Thêm check MỚI trước dòng 429**: Kiểm tra nếu `recentClaimCount >= 2` thì trả lỗi 429 (không on_hold, chỉ thông báo):
+```
+if (recentClaimCount >= 2) {
+  return Response 429: "Bạn đã rút 2 lần trong 24 giờ. Vui lòng quay lại ngày mai!"
+}
+```
 
-### File 2: `src/App.tsx`
+**Giữ nguyên** check `recentClaimCount >= 3` phía sau để on_hold nếu user bypass (phòng trường hợp race condition).
 
-- **Dòng 135**: Giữ route `/@:username` nhưng thêm redirect tự động về `/:username` bằng cách thêm component Navigate, HOẶC đơn giản giữ nguyên vì Profile.tsx đã xử lý strip `@` ở dòng 96.
+**Dòng 488-498**: Giữ nguyên check `dailyRemaining <= 0` (tổng 500.000/ngày).
 
-Quyết định: Giữ nguyên route `/@:username` trong App.tsx để tương thích ngược. Profile.tsx đã tự strip `@` khi xử lý.
+### File 2: `supabase/functions/sso-web3-auth/index.ts`
 
-### File 3: `src/components/auth/LawOfLightGuard.tsx`
+**Dòng 168-220** (block `else` tạo user mới): Thay toàn bộ bằng response lỗi 403:
+```json
+{
+  "success": false,
+  "error": "WALLET_NOT_REGISTERED",
+  "message": "Ví này chưa được đăng ký. Vui lòng đăng ký tài khoản trước và dán mã ví vào khi đăng ký, sau đó mới đăng nhập bằng ví được."
+}
+```
 
-- **Dòng 62**: Giữ nguyên `startsWith('/@')` vì vẫn cần cho phép khách truy cập URL cũ có `@`.
+### File 3: `src/components/auth/ClassicEmailLogin.tsx`
 
-### Database: Kiểm tra migration PPLP
+- Thêm state `walletAddress` (string)
+- Trong form đăng ký (khi `!isLogin`), thêm ô Input "Wallet Address (không bắt buộc)" với placeholder `0x...`
+- Validate format nếu có nhập: regex `^0x[a-fA-F0-9]{40}$`
+- Truyền `wallet_address` vào `user_metadata` khi signup
+- Sau signup thành công (dòng 95-99), nếu có `walletAddress` thì update `external_wallet_address` trong profiles
 
-Chạy query kiểm tra xem migration đã áp dụng chưa. Nếu chưa, sẽ chạy lại migration để thêm PPLP rewards vào `get_user_honor_stats`.
+### File 4: `src/components/auth/WalletLoginContent.tsx`
+
+- Trong block catch (dòng 100-109), kiểm tra nếu error message chứa "WALLET_NOT_REGISTERED" hoặc tương tự:
+  - Hiển thị toast cảnh báo: "Ví chưa đăng ký! Vui lòng tạo tài khoản trước rồi dán mã ví khi đăng ký."
+  - Có thể thêm nút/link để chuyển sang tab đăng ký
 
 ### Tác động
-- 1 file frontend sửa: `src/pages/Profile.tsx` (3 dòng)
-- URL sẽ hiển thị sạch: `fun.rich/angelaivan` thay vì `fun.rich/@angelaivan`
-- Link cũ có `@` vẫn hoạt động bình thường (tương thích ngược)
-- Kiểm tra và đảm bảo migration database đã chạy đúng
+- 2 edge functions sửa: `claim-reward`, `sso-web3-auth`
+- 2 file frontend sửa: `ClassicEmailLogin.tsx`, `WalletLoginContent.tsx`
+- User rút tối đa 2 lần/24h, tổng không quá 500.000 CAMLY
+- Ví mới không tự tạo tài khoản nữa
+- Đăng ký có thêm ô dán ví (không bắt buộc)
