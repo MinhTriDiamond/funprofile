@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { Eye, EyeOff, Loader2, KeyRound } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
+import { validateUsername, normalizeUsername, USERNAME_MAX_LENGTH } from '@/lib/username-validation';
 interface ClassicEmailLoginProps {
   onSuccess: (userId: string, isNewUser: boolean) => void;
 }
@@ -26,19 +27,28 @@ export const ClassicEmailLogin = ({
   const getAuthSchema = () => z.object({
     email: z.string().email(t('authErrorInvalidEmail')),
     password: z.string().min(6, t('authErrorPasswordShort')),
-    username: z.string().min(3, t('authErrorUsernameShort')).max(30, t('authErrorUsernameLong')).refine(val => !['admin', 'administrator', 'system', 'root', 'moderator', 'mod', 'support', 'help'].includes(val.toLowerCase()), {
-      message: t('authErrorUsernameReserved')
-    }).optional()
+    username: z.string().optional()
   });
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
+      // Validate username with strict regex for signup
+      if (!isLogin) {
+        const normalized = normalizeUsername(username);
+        const usernameError = validateUsername(normalized);
+        if (usernameError) {
+          toast.error(t(usernameError as any));
+          setLoading(false);
+          return;
+        }
+      }
+
       const authSchema = getAuthSchema();
       const validation = authSchema.safeParse({
         email,
         password,
-        username: isLogin ? undefined : username
+        username: isLogin ? undefined : normalizeUsername(username)
       });
       if (!validation.success) {
         toast.error(validation.error.errors[0].message);
@@ -134,7 +144,7 @@ export const ClassicEmailLogin = ({
             <Label htmlFor="classic-username" className="text-slate-700 font-semibold text-sm uppercase tracking-wide">
               {t('authUsername')}
             </Label>
-            <Input id="classic-username" type="text" value={username} onChange={e => setUsername(e.target.value)} required={!isLogin} placeholder={t('authUsernamePlaceholder')} className="h-12 rounded-full border-2 border-slate-300 bg-gradient-to-br from-white to-slate-50 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/30 transition-all" />
+            <Input id="classic-username" type="text" value={username} onChange={e => setUsername(normalizeUsername(e.target.value).slice(0, USERNAME_MAX_LENGTH))} required={!isLogin} placeholder={t('authUsernamePlaceholder')} className="h-12 rounded-full border-2 border-slate-300 bg-gradient-to-br from-white to-slate-50 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/30 transition-all" />
           </div>}
         
         <div className="space-y-2">

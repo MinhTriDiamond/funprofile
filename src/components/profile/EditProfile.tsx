@@ -17,10 +17,13 @@ import { useLanguage } from '@/i18n/LanguageContext';
 import { SocialLinksEditor } from './SocialLinksEditor';
 import type { SocialLink } from './AvatarOrbit';
 
+import { validateUsername, normalizeUsername, USERNAME_MAX_LENGTH } from '@/lib/username-validation';
+
 const profileSchema = z.object({
   username: z.string()
     .min(3, 'Username phải có ít nhất 3 ký tự')
-    .max(50, 'Username tối đa 50 ký tự')
+    .max(USERNAME_MAX_LENGTH, `Username tối đa ${USERNAME_MAX_LENGTH} ký tự`)
+    .regex(/^[a-z0-9]+(?:_[a-z0-9]+)*$/, 'Username: chỉ a-z, 0-9, _ (không _ đầu/cuối, không __)')
     .trim(),
   full_name: z.string()
     .max(100, 'Name must be less than 100 characters')
@@ -413,7 +416,7 @@ export const EditProfile = () => {
               <Input
                 id="usernameHandle"
                 value={username}
-                onChange={(e) => setUsername(e.target.value.slice(0, 50))}
+                onChange={(e) => setUsername(normalizeUsername(e.target.value).slice(0, USERNAME_MAX_LENGTH))}
                 placeholder="Chọn @username duy nhất của bạn (giống Telegram)"
                 className="font-mono text-sm"
               />
