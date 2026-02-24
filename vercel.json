@@ -9,6 +9,50 @@
   ],
   "rewrites": [
     {
+      "source": "/",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(googlebot|bingbot|yandex|baiduspider|facebookexternalhit|twitterbot|linkedinbot|slackbot|whatsapp|telegram|discordbot|applebot).*"
+        }
+      ],
+      "destination": "https://bhtsnervqiwchluwuxki.supabase.co/functions/v1/seo-render?path=/"
+    },
+    {
+      "source": "/post/:id",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(googlebot|bingbot|yandex|baiduspider|facebookexternalhit|twitterbot|linkedinbot|slackbot|whatsapp|telegram|discordbot|applebot).*"
+        }
+      ],
+      "destination": "https://bhtsnervqiwchluwuxki.supabase.co/functions/v1/seo-render?path=/post/:id"
+    },
+    {
+      "source": "/reels/:id",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(googlebot|bingbot|yandex|baiduspider|facebookexternalhit|twitterbot|linkedinbot|slackbot|whatsapp|telegram|discordbot|applebot).*"
+        }
+      ],
+      "destination": "https://bhtsnervqiwchluwuxki.supabase.co/functions/v1/seo-render?path=/reels/:id"
+    },
+    {
+      "source": "/live/:id",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(googlebot|bingbot|yandex|baiduspider|facebookexternalhit|twitterbot|linkedinbot|slackbot|whatsapp|telegram|discordbot|applebot).*"
+        }
+      ],
+      "destination": "https://bhtsnervqiwchluwuxki.supabase.co/functions/v1/seo-render?path=/live/:id"
+    },
+    {
       "source": "/:username/post/:slug",
       "has": [
         {
@@ -40,6 +84,17 @@
         }
       ],
       "destination": "https://bhtsnervqiwchluwuxki.supabase.co/functions/v1/seo-render?path=/:username/live/:slug"
+    },
+    {
+      "source": "/:username",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(googlebot|bingbot|yandex|baiduspider|facebookexternalhit|twitterbot|linkedinbot|slackbot|whatsapp|telegram|discordbot|applebot).*"
+        }
+      ],
+      "destination": "https://bhtsnervqiwchluwuxki.supabase.co/functions/v1/seo-render?path=/:username"
     },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
