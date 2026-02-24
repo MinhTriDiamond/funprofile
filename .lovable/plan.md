@@ -1,50 +1,50 @@
 
 
-# Phục hồi bài đăng Gift Celebration bị thiếu
+# Hiển thị danh sách giao dịch bị thiếu trước khi phục hồi
 
-## Vấn đề
-Khi chạy Backfill, hệ thống chỉ tạo bản ghi `donations` và `notifications`, nhưng **KHÔNG tạo bài đăng gift_celebration** (thẻ chúc mừng màu xanh hiển thị trên Feed và trang cá nhân). Điều này khiến nhiều giao dịch cũ có trong lịch sử nhưng không hiển thị hình ảnh chúc mừng trên bảng tin.
+## Mục tiêu
+Thêm nút **"Quét kiểm tra"** riêng biệt để admin xem trước danh sách tất cả giao dịch bị thiếu (chưa có donation + chưa có bài gift_celebration) TRƯỚC KHI quyết định chạy phục hồi. Giúp con kiểm tra thủ công từng giao dịch.
 
 ## Giải pháp
 
-### 1. Nâng cấp Edge Function `auto-backfill-donations`
-- Sau khi tạo donations, kiểm tra thêm donations nào chưa có bài `gift_celebration` tương ứng (so khớp qua `tx_hash`)
-- Tự động tạo bài `gift_celebration` cho những donation thiếu post
-- Trả về thống kê chi tiết: số bài post đã tạo thêm
+### 1. Thêm chế độ `scan_only` cho Edge Function `auto-backfill-donations`
+- Nhận tham số `{ mode: "scan_only" }` từ request body
+- Khi `scan_only = true`: chỉ quét và trả về danh sách giao dịch bị thiếu, **KHÔNG insert** gì cả
+- Trả về chi tiết từng giao dịch: người gửi, người nhận, số tiền, token, tx_hash, thời gian, loại thiếu (thiếu donation / thiếu bài post / cả hai)
 
-### 2. Cập nhật UI trong SystemTab
-- Hiển thị thêm thống kê số bài gift_celebration đã được phục hồi
-- Hiển thị danh sách chi tiết các giao dịch được phục hồi (người gửi, người nhận, số tiền, token)
+### 2. Cập nhật UI SystemTab
+- Thêm nút **"Quét kiểm tra"** (màu xanh, icon Search) bên cạnh nút "Chạy Backfill ngay"
+- Khi nhấn "Quét kiểm tra": gọi edge function với `mode: "scan_only"`, hiển thị bảng danh sách giao dịch thiếu
+- Bảng hiển thị: STT, Người gửi, Người nhận, Số tiền, Token, TX Hash (rút gọn), Thời gian, Loại thiếu
+- Sau khi xem xong, admin nhấn "Chạy Backfill ngay" để phục hồi
 
 ## Chi tiết kỹ thuật
 
-### auto-backfill-donations/index.ts - Thêm logic tạo gift_celebration posts
-
+### auto-backfill-donations/index.ts
 ```text
-Sau bước insert donations hiện tại, thêm:
-
-1. Query tất cả donations có status='confirmed'
-2. Query tất cả posts có post_type='gift_celebration' 
-3. Tìm donations có tx_hash KHÔNG khớp với bất kỳ post gift_celebration nào
-4. Lấy thông tin profile (username, display_name) của sender + recipient
-5. Tạo bài post gift_celebration cho mỗi donation thiếu:
-   - user_id = sender_id
-   - post_type = 'gift_celebration'
-   - tx_hash, gift_sender_id, gift_recipient_id, gift_token, gift_amount
-   - is_highlighted = true
-   - visibility = 'public', moderation_status = 'approved'
-6. Trả về số posts_created trong response
+Thêm:
+1. Parse request body để lấy { mode }
+2. Nếu mode === "scan_only":
+   - Vẫn chạy logic quét như cũ (tìm missing donations + missing posts)
+   - KHÔNG gọi insert
+   - Trả về danh sách chi tiết: missing_donations[] và missing_posts[]
+   - Mỗi item gồm: tx_hash, from_address, to_address, amount, token, 
+     sender_username, recipient_username, created_at, missing_type
+3. Nếu không có mode hoặc mode khác: chạy backfill bình thường như hiện tại
 ```
 
-### SystemTab.tsx - Cập nhật hiển thị kết quả
-
+### SystemTab.tsx
 ```text
-Thêm dòng thống kê:
-- "Bài chúc mừng đã tạo: X" 
-- Danh sách chi tiết từng giao dịch được phục hồi (sender -> recipient, amount, token)
+Thêm:
+1. State: scanResult, scanning
+2. Nút "Quét kiểm tra" gọi edge function với { mode: "scan_only" }
+3. Bảng Table hiển thị kết quả scan:
+   - Cột: #, Người gửi, Người nhận, Số tiền, Token, TX Hash, Thời gian, Loại thiếu
+   - Scroll được nếu nhiều dòng
+   - Hiển thị tổng số giao dịch thiếu ở đầu bảng
 ```
 
 ### Files thay đổi
-1. `supabase/functions/auto-backfill-donations/index.ts` -- Thêm logic tạo gift_celebration posts cho donations thiếu
-2. `src/components/admin/SystemTab.tsx` -- Hiển thị chi tiết kết quả phục hồi
+1. `supabase/functions/auto-backfill-donations/index.ts` -- Thêm mode scan_only
+2. `src/components/admin/SystemTab.tsx` -- Thêm nút quét + bảng hiển thị chi tiết
 
