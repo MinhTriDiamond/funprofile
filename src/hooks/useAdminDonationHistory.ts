@@ -152,39 +152,49 @@ export function useAdminDonationHistory() {
     staleTime: 30000,
   });
 
-  // Stats query
+  // Stats query - use count queries to avoid 1000 row limit
   const { data: stats, isLoading: isStatsLoading } = useQuery({
     queryKey: ['admin-donation-stats'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('donations')
-        .select('amount, token_symbol, light_score_earned, status, created_at');
-
-      if (error) throw error;
-
-      const totalByToken: Record<string, number> = {};
-      let totalLightScore = 0;
-      let confirmedCount = 0;
-      let pendingCount = 0;
-      let totalValue = 0;
-      let todayCount = 0;
       const todayStr = new Date().toISOString().split('T')[0];
 
-      (data || []).forEach((d: any) => {
-        const amount = parseFloat(d.amount) || 0;
-        totalByToken[d.token_symbol] = (totalByToken[d.token_symbol] || 0) + amount;
-        totalLightScore += d.light_score_earned || 0;
-        totalValue += amount;
-        if (d.status === 'confirmed') confirmedCount++;
-        if (d.status === 'pending') pendingCount++;
-        if (d.created_at?.startsWith(todayStr)) todayCount++;
-      });
+      // Run all count queries in parallel
+      const [totalRes, confirmedRes, pendingRes, todayRes] = await Promise.all([
+        supabase.from('donations').select('id', { count: 'exact', head: true }),
+        supabase.from('donations').select('id', { count: 'exact', head: true }).eq('status', 'confirmed'),
+        supabase.from('donations').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+        supabase.from('donations').select('id', { count: 'exact', head: true }).gte('created_at', todayStr).lt('created_at', todayStr + 'T23:59:59.999Z'),
+      ]);
+
+      // Fetch all donations in pages for token aggregation
+      const totalByToken: Record<string, number> = {};
+      let totalLightScore = 0;
+      let totalValue = 0;
+      let offset = 0;
+      const PAGE = 1000;
+      let hasMore = true;
+      while (hasMore) {
+        const { data: batch, error } = await supabase
+          .from('donations')
+          .select('amount, token_symbol, light_score_earned')
+          .range(offset, offset + PAGE - 1);
+        if (error) throw error;
+        if (!batch || batch.length === 0) break;
+        for (const d of batch) {
+          const amount = parseFloat(d.amount) || 0;
+          totalByToken[d.token_symbol] = (totalByToken[d.token_symbol] || 0) + amount;
+          totalLightScore += d.light_score_earned || 0;
+          totalValue += amount;
+        }
+        if (batch.length < PAGE) hasMore = false;
+        else offset += PAGE;
+      }
 
       return {
-        totalCount: data?.length || 0,
-        confirmedCount,
-        pendingCount,
-        todayCount,
+        totalCount: totalRes.count || 0,
+        confirmedCount: confirmedRes.count || 0,
+        pendingCount: pendingRes.count || 0,
+        todayCount: todayRes.count || 0,
         totalValue,
         totalByToken,
         totalLightScore,

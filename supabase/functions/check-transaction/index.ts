@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
       const { data: walletProfile } = await adminClient
         .from("profiles")
         .select("id, username, display_name, wallet_address, public_wallet_address")
-        .or(`wallet_address.ilike.${addr},public_wallet_address.ilike.${addr}`)
+        .or(`wallet_address.ilike.${addr},public_wallet_address.ilike.${addr},external_wallet_address.ilike.${addr},custodial_wallet_address.ilike.${addr}`)
         .maybeSingle();
       if (walletProfile) {
         walletRecipient = { id: walletProfile.id, username: walletProfile.username, display_name: walletProfile.display_name };
