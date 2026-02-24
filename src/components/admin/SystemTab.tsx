@@ -8,6 +8,9 @@ import { supabase } from "@/integrations/supabase/client";
 import BlockchainTab from "./BlockchainTab";
 import MediaMigrationTab from "./MediaMigrationTab";
 import { MergeRequestsTab } from "./MergeRequestsTab";
+import TransactionLookup from "./TransactionLookup";
+import AllTransactions from "./AllTransactions";
+import ManualDonation from "./ManualDonation";
 import {
   Table,
   TableBody,
@@ -266,6 +269,15 @@ const SystemTab = ({ adminId }: SystemTabProps) => {
           )}
         </CardContent>
       </Card>
+
+      {/* Transaction Lookup */}
+      <TransactionLookup />
+
+      {/* All Transactions */}
+      <AllTransactions />
+
+      {/* Manual Donation */}
+      <ManualDonation />
 
       {/* Delete Banned Users Card */}
       <Card>
