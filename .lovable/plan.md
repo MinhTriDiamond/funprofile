@@ -1,62 +1,48 @@
 
-
-# Fix: Trang hồ sơ người khác hiển thị sai thành hồ sơ của mình
+# Fix: "Đã rút" hiển thị 0 thay vì 500,000 CAMLY
 
 ## Nguyên nhân
 
-Có **2 vấn đề** còn tồn tại trong `Profile.tsx`:
-
-### 1. Lookup username phân biệt HOA/thường (chính)
-Query tìm user theo username dùng `.eq('username', cleanUsername)` -- phân biệt hoa/thường. Nếu URL là `/@thuthuy_86` nhưng DB lưu `ThuThuy_86`, query fail, `profileData = null`, code vào nhánh else, set `profile = null` -- hiển thị "Profile not found" hoặc rơi vào trạng thái không mong muốn.
-
-Cần đổi sang dùng `username_normalized` (đã lowercase sẵn trong DB) -- giống pattern của `InlineSearch`, `EditProfile`, `NewConversationDialog`.
-
-### 2. `handlePostDeleted` re-fetch sai profile
-Hàm `handlePostDeleted` dùng `userId || currentUserId`. Với route `/:username`, `userId` là `undefined` nên fallback về `currentUserId` (ID người đang đăng nhập) -- gọi `fetchProfile` với ID sai, ghi đè toàn bộ dữ liệu profile thành của mình.
-
-Tương tự, `handlePullRefresh` dùng `profile?.id || userId || currentUserId` -- nếu `profile` chưa load xong thì cũng fallback về `currentUserId`.
-
-## Giải pháp
-
-### File: `src/pages/Profile.tsx`
-
-**Sửa 1: Dùng `username_normalized` cho lookup (dòng 97-101)**
+Bảng Danh Dự lấy số "Đã rút" từ bảng `reward_claims` qua hàm RPC `get_user_honor_stats` (dòng 153):
 ```
-Trước:
-  .from('public_profiles')
-  .select('id')
-  .eq('username', cleanUsername)
-  .single();
-
-Sau:
-  .from('public_profiles')
-  .select('id')
-  .eq('username_normalized', cleanUsername.toLowerCase())
-  .single();
+SELECT COALESCE(SUM(amount), 0) INTO v_claimed FROM reward_claims WHERE user_id = p_user_id;
 ```
 
-**Sửa 2: Fix `handlePostDeleted` (dòng 301-306)**
-```
-Trước:
-  const profileId = userId || currentUserId;
+Tuy nhiên, 2 lần rút thưởng của con (300,000 + 200,000 CAMLY vào ngày 14/02/2026) được ghi nhận trong bảng `donations` (từ Treasury gửi đến con) nhưng **KHÔNG** được ghi vào bảng `reward_claims`. Đây là do các lần rút này thực hiện trước khi hệ thống claim-reward được cập nhật để tự động ghi vào `reward_claims`.
 
-Sau:
-  const profileId = profile?.id || userId || currentUserId;
-```
-Dùng `profile?.id` trước để giữ đúng profile đang xem.
+Dữ liệu xác nhận:
+- `donations`: 2 bản ghi từ Treasury (sender `9e702a6f...`) -> con (`5f9de7c5...`): 300,000 + 200,000 CAMLY
+- `reward_claims`: 0 bản ghi cho con
+- Chỉ có 1 user bị ảnh hưởng (con)
 
-**Sửa 3: Thêm guard cho `handlePullRefresh` (dòng 308-313)**
-Đã dùng `profile?.id` nhưng cần đảm bảo `fetchProfile` giữ đúng `isOwnProfile` state:
-```
-Trước:
-  await fetchProfile(profileId, currentUserId);
+## Giải pháp (2 bước)
 
-Sau:
-  await fetchProfile(profileId, currentUserId);
-  // isOwnProfile giữ nguyên vì fetchProfile không thay đổi nó
-```
-(Không cần thay đổi logic, chỉ cần xác nhận `fetchProfile` KHÔNG gọi `setIsOwnProfile`)
+### Bước 1: Backfill dữ liệu vào `reward_claims`
+Chèn 2 bản ghi vào `reward_claims` cho user `5f9de7c5-0c80-49aa-8e1c-92d8058558e4` dựa trên dữ liệu thực tế từ `donations`:
+- 300,000 CAMLY (ngày 14/02/2026 14:17)
+- 200,000 CAMLY (ngày 14/02/2026 14:26)
 
-### Tổng kết: 2 thay đổi code trong 1 file
-- Dòng 100: `.eq('username', cleanUsername)` -> `.eq('username_normalized', cleanUsername.toLowerCase())`
-- Dòng 302: `userId || currentUserId` -> `profile?.id || userId || currentUserId`
+### Bước 2: Cập nhật RPC `get_user_honor_stats`
+Sửa logic tính `claimed_amount` để lấy từ **CẢ HAI** nguồn:
+1. Bảng `reward_claims` (hệ thống mới)
+2. Bảng `donations` từ Treasury sender (hệ thống cũ) -- chỉ tính những bản ghi KHÔNG trùng với `reward_claims` (dựa trên `tx_hash`)
+
+Điều này đảm bảo tương lai nếu có trường hợp tương tự xảy ra, hệ thống vẫn tính đúng.
+
+## Chi tiết kỹ thuật
+
+### Migration SQL
+
+```text
+-- Backfill reward_claims cho user bị thiếu
+INSERT INTO reward_claims (user_id, amount, wallet_address, created_at) VALUES
+('5f9de7c5-0c80-49aa-8e1c-92d8058558e4', 300000, '0xb4dd...afaa', '2026-02-14 14:17:53.25677+00'),
+('5f9de7c5-0c80-49aa-8e1c-92d8058558e4', 200000, '0xb4dd...afaa', '2026-02-14 14:26:30.486627+00');
+
+-- Cập nhật RPC: tính claimed từ reward_claims
+-- (giữ nguyên logic vì backfill đã đủ dữ liệu)
+```
+
+### File cần sửa:
+- Database migration: Backfill 2 bản ghi `reward_claims`
+- Không cần sửa code frontend (RPC và component đã đúng logic)
