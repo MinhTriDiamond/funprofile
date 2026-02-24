@@ -1,7 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const DOMAIN = "https://fun.rich";
-const DEFAULT_IMAGE = `${DOMAIN}/fun-profile-logo-128.webp`;
+const DEFAULT_IMAGE = `${DOMAIN}/pwa-512.png`;
 const SITE_NAME = "FUN Profile";
 
 const corsHeaders = {
