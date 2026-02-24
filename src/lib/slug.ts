@@ -1,48 +1,46 @@
 /**
  * Generate a URL-friendly slug from Vietnamese text.
+ * Uses Unicode NFD normalization for robust diacritics removal.
  * Follows the FUN.RICH URL design specification.
  */
 
-const VIETNAMESE_MAP: Record<string, string> = {
-  'á': 'a', 'à': 'a', 'ả': 'a', 'ã': 'a', 'ạ': 'a',
-  'ă': 'a', 'ắ': 'a', 'ằ': 'a', 'ẳ': 'a', 'ẵ': 'a', 'ặ': 'a',
-  'â': 'a', 'ấ': 'a', 'ầ': 'a', 'ẩ': 'a', 'ẫ': 'a', 'ậ': 'a',
-  'é': 'e', 'è': 'e', 'ẻ': 'e', 'ẽ': 'e', 'ẹ': 'e',
-  'ê': 'e', 'ế': 'e', 'ề': 'e', 'ể': 'e', 'ễ': 'e', 'ệ': 'e',
-  'í': 'i', 'ì': 'i', 'ỉ': 'i', 'ĩ': 'i', 'ị': 'i',
-  'ó': 'o', 'ò': 'o', 'ỏ': 'o', 'õ': 'o', 'ọ': 'o',
-  'ô': 'o', 'ố': 'o', 'ồ': 'o', 'ổ': 'o', 'ỗ': 'o', 'ộ': 'o',
-  'ơ': 'o', 'ớ': 'o', 'ờ': 'o', 'ở': 'o', 'ỡ': 'o', 'ợ': 'o',
-  'ú': 'u', 'ù': 'u', 'ủ': 'u', 'ũ': 'u', 'ụ': 'u',
-  'ư': 'u', 'ứ': 'u', 'ừ': 'u', 'ử': 'u', 'ữ': 'u', 'ự': 'u',
-  'ý': 'y', 'ỳ': 'y', 'ỷ': 'y', 'ỹ': 'y', 'ỵ': 'y',
-  'đ': 'd',
-};
-
-function removeVietnameseAccents(str: string): string {
-  return str
-    .split('')
-    .map((char) => VIETNAMESE_MAP[char] || VIETNAMESE_MAP[char.toLowerCase()]?.toUpperCase() || char)
-    .join('');
+/**
+ * Remove Vietnamese accents using Unicode NFD normalization.
+ * Handles all Vietnamese diacritics + đ/Đ.
+ */
+export function removeVietnameseAccents(input: string): string {
+  return input
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D');
 }
 
-export function generateSlug(title: string, fallback = 'post'): string {
+/**
+ * Slugify a title for URL usage.
+ * @param title - Original title (may contain Vietnamese)
+ * @param maxLen - Maximum slug length (default 60)
+ * @param fallback - Fallback if title is empty
+ */
+export function generateSlug(title: string, maxLen = 60, fallback = 'post'): string {
   if (!title || !title.trim()) return fallback;
 
-  let slug = removeVietnameseAccents(title);
-  slug = slug.toLowerCase();
-  slug = slug.replace(/[^a-z0-9]+/g, '_');
-  slug = slug.replace(/^_+|_+$/g, '');
+  const noAccent = removeVietnameseAccents(title);
+  let s = noAccent
+    .toLowerCase()
+    .replace(/[^a-z0-9\s_-]/g, '')  // keep alnum + space + _ + -
+    .replace(/[\s-]+/g, '_')         // space/hyphen -> _
+    .replace(/_+/g, '_')             // collapse __
+    .replace(/^_+|_+$/g, '');        // trim _
 
-  if (slug.length > 60) {
-    slug = slug.substring(0, 60);
-    const lastUnderscore = slug.lastIndexOf('_');
-    if (lastUnderscore > 20) {
-      slug = slug.substring(0, lastUnderscore);
-    }
+  if (!s) s = fallback;
+
+  if (s.length > maxLen) {
+    s = s.slice(0, maxLen);
+    s = s.replace(/_+$/g, '');
   }
 
-  return slug || `${fallback}_auto`;
+  return s || `${fallback}_auto`;
 }
 
 // ─── Content URL builders ───
