@@ -1,46 +1,44 @@
 
+# Sửa 2 vấn đề: URL bỏ dấu @ + Kiểm tra Honor Board
 
-# Cập nhật Bảng Danh Dự: Cộng thưởng PPLP + Sửa "Có thể rút"
+## Vấn đề 1: URL hiển thị `/@angelaivan` thay vì `/angelaivan`
 
-## Vấn đề hiện tại
-1. **Tổng thu** chưa bao gồm số CAMLY user được thưởng qua hệ thống chấm điểm PPLP (light_actions). Khi user đăng bài, comment, reaction... được Angel AI đánh giá và mint thưởng, số này chưa được cộng vào "Tổng thu".
-2. **Có thể rút** hiện chỉ hiển thị thưởng hôm nay, nhưng đúng ra phải là: **Tổng thu - Đã rút**.
+Hiện tại khi vào trang cá nhân qua route `/profile/:userId`, hệ thống tự động chuyển hướng sang `/@username`. Cần bỏ dấu `@` khỏi URL trên thanh địa chỉ.
 
-## Giải pháp
+**Lưu ý**: Route `/@:username` vẫn giữ lại để tương thích ngược (ai đã lưu link cũ vẫn vào được), nhưng sẽ tự động chuyển về `/:username`.
 
-### 1. Cộng thêm thưởng PPLP vào Tổng thu
-Trong hàm `get_user_honor_stats`, thêm truy vấn tổng `mint_amount` từ bảng `light_actions` (những action đã được approved/minted) và cộng vào `v_total_reward`.
+## Vấn đề 2: Giao diện Honor Board chưa cập nhật
 
-### 2. Sửa "Có thể rút" = Tổng thu - Đã rút
-Cập nhật frontend (CoverHonorBoard) để hiển thị `claimable = total_reward - claimed` thay vì chỉ dùng `today_reward`.
+Code frontend đã đúng công thức `claimable = total_reward - claimed`. Cần kiểm tra xem migration database đã chạy thành công chưa (thêm PPLP rewards vào tổng thu). Nếu migration chưa áp dụng, số liệu sẽ chưa thay đổi.
+
+---
 
 ## Chi tiết kỹ thuật
 
-### Database Migration
-Sửa hàm `get_user_honor_stats`:
+### File 1: `src/pages/Profile.tsx`
 
-```text
--- Thêm biến mới
-v_pplp_reward NUMERIC;
+3 chỗ cần sửa - bỏ `@` khỏi navigate:
 
--- Sau khi tính v_total_reward (dòng 113), thêm:
-SELECT COALESCE(SUM(mint_amount), 0) INTO v_pplp_reward
-FROM light_actions
-WHERE user_id = p_user_id
-  AND mint_status IN ('approved', 'minted')
-  AND mint_amount > 0;
+- **Dòng 208**: `navigate(\`/@\${...}\`)` thay thành `navigate(\`/\${...}\`)`
+- **Dòng 614**: `navigate(\`/@\${friend.username}\`)` thay thành `navigate(\`/\${friend.username}\`)`
+- **Dòng 844**: `navigate(\`/@\${friend.username}\`)` thay thành `navigate(\`/\${friend.username}\`)`
 
-v_total_reward := v_total_reward + v_pplp_reward;
-```
+### File 2: `src/App.tsx`
 
-Giữ nguyên dòng `v_total_reward := GREATEST(v_total_reward, v_claimed)`.
+- **Dòng 135**: Giữ route `/@:username` nhưng thêm redirect tự động về `/:username` bằng cách thêm component Navigate, HOẶC đơn giản giữ nguyên vì Profile.tsx đã xử lý strip `@` ở dòng 96.
 
-### Frontend (CoverHonorBoard.tsx)
-Sửa dòng 38:
-- **Trước**: `claimable: Math.max(0, Number(honorData?.today_reward) || 0)`
-- **Sau**: `claimable: Math.max(0, (Number(honorData?.total_reward) || 0) - (Number(honorData?.claimed_amount) || 0))`
+Quyết định: Giữ nguyên route `/@:username` trong App.tsx để tương thích ngược. Profile.tsx đã tự strip `@` khi xử lý.
+
+### File 3: `src/components/auth/LawOfLightGuard.tsx`
+
+- **Dòng 62**: Giữ nguyên `startsWith('/@')` vì vẫn cần cho phép khách truy cập URL cũ có `@`.
+
+### Database: Kiểm tra migration PPLP
+
+Chạy query kiểm tra xem migration đã áp dụng chưa. Nếu chưa, sẽ chạy lại migration để thêm PPLP rewards vào `get_user_honor_stats`.
 
 ### Tác động
-- 1 database migration: Cập nhật hàm RPC `get_user_honor_stats`
-- 1 file frontend: `src/components/profile/CoverHonorBoard.tsx` (dòng 38)
-- Tự động áp dụng cho tất cả user
+- 1 file frontend sửa: `src/pages/Profile.tsx` (3 dòng)
+- URL sẽ hiển thị sạch: `fun.rich/angelaivan` thay vì `fun.rich/@angelaivan`
+- Link cũ có `@` vẫn hoạt động bình thường (tương thích ngược)
+- Kiểm tra và đảm bảo migration database đã chạy đúng
