@@ -1,51 +1,60 @@
 
-# Fix: Tab chuyển đi quay lại bị thoát đăng nhập
+
+# Fix: Nút "Add Friend" và "Message" không hiển thị trên hồ sơ người khác
 
 ## Nguyên nhân gốc
 
-Khi con chuyển tab và quay lại, hệ thống `AuthSessionKeeper` gọi `refreshSession()`. Trong quá trình refresh token, sự kiện `TOKEN_REFRESHED` được phát ra. Tuy nhiên, **3 component** đang xử lý sự kiện auth sai cách — chúng đặt `isLoggedIn = !!session` cho MỌI sự kiện, kể cả khi `session` tạm thời là `null` trong lúc refresh. Điều này khiến giao diện hiển thị như chưa đăng nhập.
+Trong file `Profile.tsx`, hàm `checkAuth` có lỗi logic **thiếu `return`** sau khi xử lý route `/:username`. Luồng thực thi:
 
-Các file lỗi:
-1. **`FacebookNavbar.tsx`** (dòng 68-71): `setIsLoggedIn(!!session)` cho mọi event, không lọc
-2. **`FacebookLeftSidebar.tsx`** (dòng 62-63): Tương tự — `setIsLoggedIn(!!session)` cho mọi event
-3. **`LawOfLightGuard.tsx`**: Component này chạy lại `checkLawOfLightAcceptance()` khi `location.pathname` thay đổi, gọi `getSession()` — nếu đúng lúc token đang refresh thì session = null → redirect về `/law-of-light`
+1. Khi vào trang `/@NgocPhuong` (route `/:username`):
+   - Dòng 90-100: Tìm username trong database -- đúng, `setIsOwnProfile(false)`
+   - **NHƯNG** không có `return` -- code tiếp tục chạy xuống dưới!
+   - Dòng 122: `profileId = userId` -- `userId` là `undefined` (vì dùng route `/:username`, không phải `/profile/:userId`)
+   - Dòng 123-125: `if (!userId)` -- `true` -- `profileId = session.user.id` (ID của BẠN!)
+   - Dòng 133: `setIsOwnProfile(true)` -- **ghi đè thành `true`**!
+   - Dòng 134: `fetchProfile(session.user.id)` -- **tải lại hồ sơ CỦA BẠN**!
+
+2. Kết quả: Trang hiển thị hồ sơ của BẠN với nút "Edit Profile" thay vì hồ sơ người khác với nút "Add Friend" + "Message".
 
 ## Giải pháp
 
-### 1. Sửa `FacebookNavbar.tsx`
-Chỉ cập nhật state khi event rõ ràng:
-- `SIGNED_IN` / `TOKEN_REFRESHED` → đăng nhập
-- `SIGNED_OUT` → đăng xuất
-- Các event khác → bỏ qua (giữ nguyên state hiện tại)
+### 1. Thêm `return` sau block username (sửa chính)
+Thêm `return;` sau khi xử lý xong route `/:username` (dòng 120) để code không chạy tiếp xuống block `/profile/:userId`.
 
-### 2. Sửa `FacebookLeftSidebar.tsx`
-Áp dụng logic tương tự — chỉ phản ứng với `SIGNED_IN`, `TOKEN_REFRESHED`, `SIGNED_OUT`. Bọc async call (rpc `has_role`) trong `setTimeout(..., 0)` để tránh deadlock.
+### 2. Sửa auth listener (cùng pattern fix trước)
+Dòng 139-149: Áp dụng cùng logic lọc event đã sửa ở `FacebookNavbar` và `FacebookLeftSidebar` -- chỉ phản ứng với `SIGNED_IN`, `TOKEN_REFRESHED`, `SIGNED_OUT`.
 
-### 3. Sửa `LawOfLightGuard.tsx`
-Thêm kiểm tra: nếu đã `isAllowed = true` rồi thì không chạy lại check khi `location.pathname` thay đổi (tránh gọi `getSession()` lúc token đang refresh).
+### 3. Reset state khi chuyển profile
+Thêm reset `isOwnProfile`, `profile`, `loading` ở đầu useEffect để tránh hiển thị dữ liệu cũ khi chuyển giữa các profile.
 
 ## Chi tiết kỹ thuật
 
 ```text
+File: src/pages/Profile.tsx
+
 Trước (lỗi):
-  onAuthStateChange((event, session) => {
-    setIsLoggedIn(!!session);  // ← session có thể null tạm thời
-  })
+  if (username) {
+    // ... xử lý username lookup
+    fetchProfile(profileData.id, session?.user.id);
+  }                    // <-- THIẾU return, code chạy tiếp xuống!
+  
+  let profileId = userId;    // undefined cho /:username route
+  if (!userId) {
+    profileId = session.user.id;  // GHI ĐÈ bằng ID của bạn!
+  }
+  setIsOwnProfile(true);         // SAI!
 
 Sau (sửa):
-  onAuthStateChange((event, session) => {
-    if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-      setIsLoggedIn(true);
-      setCurrentUserId(session?.user?.id ?? null);
-    } else if (event === 'SIGNED_OUT') {
-      setIsLoggedIn(false);
-      setCurrentUserId(null);
-    }
-    // INITIAL_SESSION, USER_UPDATED → giữ nguyên state
-  })
+  if (username) {
+    // ... xử lý username lookup
+    fetchProfile(profileData.id, session?.user.id);
+    return;            // <-- THÊM return, dừng tại đây
+  }
+  
+  let profileId = userId;
+  // ... chỉ chạy cho route /profile/:userId
 ```
 
-### Các file cần sửa:
-- `src/components/layout/FacebookNavbar.tsx` — dòng 68-71
-- `src/components/feed/FacebookLeftSidebar.tsx` — dòng 62-74
-- `src/components/auth/LawOfLightGuard.tsx` — dòng 15-124 (thêm guard tránh re-check khi đã allowed)
+### File cần sửa:
+- `src/pages/Profile.tsx` -- 3 thay đổi: thêm return, sửa auth listener, reset state
+
