@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { LazyImage } from "@/components/ui/LazyImage";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ChevronLeft, ChevronRight, UserPlus, X, MoreHorizontal } from "lucide-react";
 import { format } from "date-fns";
 
@@ -182,24 +182,19 @@ export const FriendCarousel = ({
                   </button>
                 )}
 
-                {item.avatar_url ? (
-                  <LazyImage
-                    src={item.avatar_url}
-                    alt={item.username}
-                    className="w-full h-full object-cover cursor-pointer"
-                    onClick={() => navigate(`/profile/${item.id}`)}
-                    unloadOnExit
+                <Avatar 
+                  className="w-full h-full rounded-none cursor-pointer"
+                  onClick={() => navigate(`/profile/${item.id}`)}
+                >
+                  <AvatarImage 
+                    src={item.avatar_url || undefined} 
+                    sizeHint="lg"
+                    className="object-cover"
                   />
-                ) : (
-                  <div
-                    className={`w-full h-full flex items-center justify-center bg-gradient-to-br ${getGradient(index)} cursor-pointer`}
-                    onClick={() => navigate(`/profile/${item.id}`)}
-                  >
-                    <span className="text-4xl font-bold text-white/80">
-                      {(item.full_name || item.username)?.[0]?.toUpperCase()}
-                    </span>
-                  </div>
-                )}
+                  <AvatarFallback className={`rounded-none text-4xl font-bold text-white/80 bg-gradient-to-br ${getGradient(index)}`}>
+                    {(item.full_name || item.username)?.[0]?.toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
               </div>
 
               {/* Info Area */}

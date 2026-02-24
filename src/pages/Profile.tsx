@@ -846,7 +846,7 @@ onClick={() => navigate(`/${friend.username}`)}
                                   <Avatar className="w-full aspect-square rounded-lg mb-1 border-2 border-border overflow-hidden">
                                     <AvatarImage 
                                       src={friend.avatar_url || undefined} 
-                                      sizeHint="md"
+                                      sizeHint="lg"
                                       className="object-cover"
                                     />
                                     <AvatarFallback className="rounded-lg text-lg bg-gradient-to-br from-primary/20 to-gold/20 text-foreground">
