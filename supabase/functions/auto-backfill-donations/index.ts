@@ -16,7 +16,16 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const adminClient = createClient(supabaseUrl, supabaseServiceKey);
 
-    // 1. Get confirmed transactions that don't have matching donations
+    // Parse mode from request body
+    let mode = "backfill";
+    try {
+      const body = await req.json();
+      if (body?.mode) mode = body.mode;
+    } catch {
+      // No body or invalid JSON = default backfill mode
+    }
+
+    // 1. Get confirmed transactions
     const { data: allTx, error: txError } = await adminClient
       .from("transactions")
       .select("id, user_id, tx_hash, from_address, to_address, amount, token_symbol, token_address, chain_id, created_at")
@@ -25,93 +34,147 @@ Deno.serve(async (req) => {
       .limit(1000);
 
     if (txError) throw new Error(`Failed to fetch transactions: ${txError.message}`);
-    if (!allTx || allTx.length === 0) {
-      // Still check for missing gift_celebration posts even if no new transactions
-      const postsResult = await backfillGiftCelebrationPosts(adminClient);
-      return new Response(JSON.stringify({ 
-        message: "No transactions to check", 
-        inserted: 0,
-        ...postsResult,
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
 
     // 2. Check which tx_hashes already have donations
-    const txHashes = allTx.map((t) => t.tx_hash).filter(Boolean);
+    const txHashes = (allTx || []).map((t) => t.tx_hash).filter(Boolean);
     const { data: existingDonations } = await adminClient
       .from("donations")
       .select("tx_hash")
-      .in("tx_hash", txHashes);
+      .in("tx_hash", txHashes.length > 0 ? txHashes : ["__none__"]);
 
-    const existingSet = new Set((existingDonations || []).map((d) => d.tx_hash));
-    const missingTx = allTx.filter((t) => t.tx_hash && !existingSet.has(t.tx_hash));
+    const existingDonationSet = new Set((existingDonations || []).map((d) => d.tx_hash));
+    const missingDonationTx = (allTx || []).filter((t) => t.tx_hash && !existingDonationSet.has(t.tx_hash));
 
     // 3. Build wallet_address -> profile map
     const { data: profiles } = await adminClient
       .from("profiles")
-      .select("id, wallet_address, public_wallet_address");
+      .select("id, username, display_name, avatar_url, wallet_address, public_wallet_address");
 
     const walletMap = new Map<string, string>();
+    const profileMap = new Map<string, { username: string; display_name: string | null; avatar_url: string | null }>();
     for (const p of profiles || []) {
-      if (p.wallet_address) {
-        walletMap.set(p.wallet_address.toLowerCase(), p.id);
-      }
-      if (p.public_wallet_address) {
-        walletMap.set(p.public_wallet_address.toLowerCase(), p.id);
+      profileMap.set(p.id, { username: p.username, display_name: p.display_name, avatar_url: p.avatar_url });
+      if (p.wallet_address) walletMap.set(p.wallet_address.toLowerCase(), p.id);
+      if (p.public_wallet_address) walletMap.set(p.public_wallet_address.toLowerCase(), p.id);
+    }
+
+    // 4. Find missing gift_celebration posts
+    const { data: allDonations } = await adminClient
+      .from("donations")
+      .select("id, sender_id, recipient_id, amount, token_symbol, tx_hash, message, created_at")
+      .eq("status", "confirmed")
+      .order("created_at", { ascending: false })
+      .limit(1000);
+
+    const donationTxHashes = (allDonations || []).map((d) => d.tx_hash).filter(Boolean);
+    const existingPostTxHashes = new Set<string>();
+    const batchSize = 100;
+    for (let i = 0; i < donationTxHashes.length; i += batchSize) {
+      const batch = donationTxHashes.slice(i, i + batchSize);
+      const { data: existingPosts } = await adminClient
+        .from("posts")
+        .select("tx_hash")
+        .eq("post_type", "gift_celebration")
+        .in("tx_hash", batch);
+      for (const p of existingPosts || []) {
+        if (p.tx_hash) existingPostTxHashes.add(p.tx_hash);
       }
     }
 
-    // 4. Create donation records + notifications
+    const missingPostDonations = (allDonations || []).filter(
+      (d) => d.tx_hash && d.sender_id && d.recipient_id && !existingPostTxHashes.has(d.tx_hash)
+    );
+
+    // ============ SCAN_ONLY MODE ============
+    if (mode === "scan_only") {
+      // Build detailed missing donations list
+      const missingDonationsList = missingDonationTx.map((tx) => {
+        const recipientId = tx.to_address ? walletMap.get(tx.to_address.toLowerCase()) : null;
+        const senderInfo = profileMap.get(tx.user_id);
+        const recipientInfo = recipientId ? profileMap.get(recipientId) : null;
+        return {
+          tx_hash: tx.tx_hash,
+          from_address: tx.from_address,
+          to_address: tx.to_address,
+          amount: tx.amount,
+          token_symbol: tx.token_symbol,
+          chain_id: tx.chain_id,
+          created_at: tx.created_at,
+          sender_username: senderInfo?.username || "Unknown",
+          recipient_username: recipientInfo?.username || null,
+          recipient_id: recipientId || null,
+          missing_type: "donation",
+          can_recover: !!recipientId,
+        };
+      });
+
+      // Build detailed missing posts list
+      const missingPostsList = missingPostDonations.map((d) => {
+        const senderInfo = profileMap.get(d.sender_id);
+        const recipientInfo = profileMap.get(d.recipient_id);
+        return {
+          tx_hash: d.tx_hash,
+          amount: d.amount,
+          token_symbol: d.token_symbol,
+          created_at: d.created_at,
+          sender_username: senderInfo?.username || "Unknown",
+          recipient_username: recipientInfo?.username || "Unknown",
+          missing_type: "post",
+          can_recover: true,
+        };
+      });
+
+      return new Response(
+        JSON.stringify({
+          mode: "scan_only",
+          total_scanned: (allTx || []).length,
+          missing_donations: missingDonationsList,
+          missing_posts: missingPostsList,
+          summary: {
+            missing_donations_count: missingDonationsList.length,
+            recoverable_donations: missingDonationsList.filter((d) => d.can_recover).length,
+            unrecoverable_donations: missingDonationsList.filter((d) => !d.can_recover).length,
+            missing_posts_count: missingPostsList.length,
+          },
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ============ BACKFILL MODE (default) ============
+    if (!allTx || allTx.length === 0) {
+      const postsResult = await backfillGiftCelebrationPosts(adminClient, missingPostDonations, profileMap);
+      return new Response(JSON.stringify({ 
+        message: "No transactions to check", inserted: 0, ...postsResult,
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // Create donation records + notifications
     const toInsert: any[] = [];
     const notifications: any[] = [];
     const skipped: string[] = [];
 
-    for (const tx of missingTx) {
-      const recipientId = tx.to_address
-        ? walletMap.get(tx.to_address.toLowerCase())
-        : null;
-
-      if (!recipientId) {
-        skipped.push(tx.tx_hash);
-        continue;
-      }
+    for (const tx of missingDonationTx) {
+      const recipientId = tx.to_address ? walletMap.get(tx.to_address.toLowerCase()) : null;
+      if (!recipientId) { skipped.push(tx.tx_hash); continue; }
 
       toInsert.push({
-        sender_id: tx.user_id,
-        recipient_id: recipientId,
-        amount: tx.amount,
-        token_symbol: tx.token_symbol,
-        token_address: tx.token_address || null,
-        chain_id: tx.chain_id || 56,
-        tx_hash: tx.tx_hash,
-        status: "confirmed",
-        confirmed_at: tx.created_at,
-        card_theme: "celebration",
-        card_sound: "rich-1",
-        message: null,
-        light_score_earned: 0,
+        sender_id: tx.user_id, recipient_id: recipientId,
+        amount: tx.amount, token_symbol: tx.token_symbol,
+        token_address: tx.token_address || null, chain_id: tx.chain_id || 56,
+        tx_hash: tx.tx_hash, status: "confirmed", confirmed_at: tx.created_at,
+        card_theme: "celebration", card_sound: "rich-1", message: null, light_score_earned: 0,
       });
 
       if (tx.user_id && recipientId && tx.user_id !== recipientId) {
-        notifications.push({
-          user_id: recipientId,
-          actor_id: tx.user_id,
-          type: "donation",
-          read: false,
-        });
+        notifications.push({ user_id: recipientId, actor_id: tx.user_id, type: "donation", read: false });
       }
     }
 
     let insertedCount = 0;
     if (toInsert.length > 0) {
-      const { error: insertError } = await adminClient
-        .from("donations")
-        .insert(toInsert);
-
-      if (insertError) {
-        throw new Error(`Failed to insert donations: ${insertError.message}`);
-      }
+      const { error: insertError } = await adminClient.from("donations").insert(toInsert);
+      if (insertError) throw new Error(`Failed to insert donations: ${insertError.message}`);
       insertedCount = toInsert.length;
     }
 
@@ -119,18 +182,33 @@ Deno.serve(async (req) => {
       await adminClient.from("notifications").insert(notifications);
     }
 
-    // 5. Backfill missing gift_celebration posts
-    const postsResult = await backfillGiftCelebrationPosts(adminClient);
+    // Re-fetch missing posts after new donations inserted
+    const { data: updatedDonations } = await adminClient
+      .from("donations")
+      .select("id, sender_id, recipient_id, amount, token_symbol, tx_hash, message, created_at")
+      .eq("status", "confirmed")
+      .order("created_at", { ascending: false })
+      .limit(1000);
 
-    console.log(`[auto-backfill] Scanned: ${allTx.length}, Missing: ${missingTx.length}, Inserted: ${insertedCount}, Skipped: ${skipped.length}, Posts created: ${postsResult.posts_created}`);
+    const updatedDonTxHashes = (updatedDonations || []).map((d) => d.tx_hash).filter(Boolean);
+    const updatedPostTxSet = new Set<string>();
+    for (let i = 0; i < updatedDonTxHashes.length; i += batchSize) {
+      const batch = updatedDonTxHashes.slice(i, i + batchSize);
+      const { data: ep } = await adminClient.from("posts").select("tx_hash").eq("post_type", "gift_celebration").in("tx_hash", batch);
+      for (const p of ep || []) { if (p.tx_hash) updatedPostTxSet.add(p.tx_hash); }
+    }
+    const updatedMissingPosts = (updatedDonations || []).filter(
+      (d) => d.tx_hash && d.sender_id && d.recipient_id && !updatedPostTxSet.has(d.tx_hash)
+    );
+
+    const postsResult = await backfillGiftCelebrationPosts(adminClient, updatedMissingPosts, profileMap);
+
+    console.log(`[auto-backfill] Scanned: ${allTx.length}, Missing: ${missingDonationTx.length}, Inserted: ${insertedCount}, Skipped: ${skipped.length}, Posts created: ${postsResult.posts_created}`);
 
     return new Response(
       JSON.stringify({
-        inserted: insertedCount,
-        skipped: skipped.length,
-        scanned: allTx.length,
-        missing: missingTx.length,
-        ...postsResult,
+        inserted: insertedCount, skipped: skipped.length,
+        scanned: allTx.length, missing: missingDonationTx.length, ...postsResult,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
@@ -143,69 +221,15 @@ Deno.serve(async (req) => {
   }
 });
 
-/**
- * Find donations with status='confirmed' that don't have a matching gift_celebration post,
- * then create the missing posts.
- */
-async function backfillGiftCelebrationPosts(adminClient: any) {
-  // Get all confirmed donations
-  const { data: donations, error: donErr } = await adminClient
-    .from("donations")
-    .select("id, sender_id, recipient_id, amount, token_symbol, tx_hash, message, created_at")
-    .eq("status", "confirmed")
-    .order("created_at", { ascending: false })
-    .limit(1000);
-
-  if (donErr || !donations || donations.length === 0) {
+async function backfillGiftCelebrationPosts(
+  adminClient: any,
+  missingDonations: any[],
+  profileMap: Map<string, { username: string; display_name: string | null; avatar_url: string | null }>
+) {
+  if (!missingDonations || missingDonations.length === 0) {
     return { posts_created: 0, posts_details: [] };
   }
 
-  // Get existing gift_celebration posts by tx_hash
-  const donationTxHashes = donations.map((d: any) => d.tx_hash).filter(Boolean);
-  
-  // Query in batches to avoid URL length limits
-  const existingPostTxHashes = new Set<string>();
-  const batchSize = 100;
-  for (let i = 0; i < donationTxHashes.length; i += batchSize) {
-    const batch = donationTxHashes.slice(i, i + batchSize);
-    const { data: existingPosts } = await adminClient
-      .from("posts")
-      .select("tx_hash")
-      .eq("post_type", "gift_celebration")
-      .in("tx_hash", batch);
-    
-    for (const p of existingPosts || []) {
-      if (p.tx_hash) existingPostTxHashes.add(p.tx_hash);
-    }
-  }
-
-  // Find donations without matching posts
-  const missingDonations = donations.filter(
-    (d: any) => d.tx_hash && d.sender_id && d.recipient_id && !existingPostTxHashes.has(d.tx_hash)
-  );
-
-  if (missingDonations.length === 0) {
-    return { posts_created: 0, posts_details: [] };
-  }
-
-  // Fetch profiles for sender + recipient
-  const userIds = new Set<string>();
-  for (const d of missingDonations) {
-    userIds.add(d.sender_id);
-    userIds.add(d.recipient_id);
-  }
-
-  const { data: profilesData } = await adminClient
-    .from("profiles")
-    .select("id, username, display_name")
-    .in("id", Array.from(userIds));
-
-  const profileMap = new Map<string, { username: string; display_name: string | null }>();
-  for (const p of profilesData || []) {
-    profileMap.set(p.id, { username: p.username, display_name: p.display_name });
-  }
-
-  // Build posts to insert
   const postsToInsert: any[] = [];
   const postsDetails: any[] = [];
 
@@ -234,20 +258,14 @@ async function backfillGiftCelebrationPosts(adminClient: any) {
     });
 
     postsDetails.push({
-      tx_hash: d.tx_hash,
-      sender: sender.username,
-      recipient: recipient.username,
-      amount: d.amount,
-      token: d.token_symbol,
+      tx_hash: d.tx_hash, sender: sender.username, recipient: recipient.username,
+      amount: d.amount, token: d.token_symbol,
     });
   }
 
   let postsCreated = 0;
   if (postsToInsert.length > 0) {
-    const { error: postErr } = await adminClient
-      .from("posts")
-      .insert(postsToInsert);
-
+    const { error: postErr } = await adminClient.from("posts").insert(postsToInsert);
     if (postErr) {
       console.error("Failed to insert gift_celebration posts:", postErr.message);
     } else {

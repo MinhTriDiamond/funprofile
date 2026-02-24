@@ -2,12 +2,20 @@ import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Link2, CloudUpload, GitMerge, RefreshCw, Database, Trash2 } from "lucide-react";
+import { Link2, CloudUpload, GitMerge, RefreshCw, Database, Trash2, Search } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import BlockchainTab from "./BlockchainTab";
 import MediaMigrationTab from "./MediaMigrationTab";
 import { MergeRequestsTab } from "./MergeRequestsTab";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,6 +37,31 @@ const SystemTab = ({ adminId }: SystemTabProps) => {
   const [backfillResult, setBackfillResult] = useState<any>(null);
   const [deletingBanned, setDeletingBanned] = useState(false);
   const [deleteBannedResult, setDeleteBannedResult] = useState<any>(null);
+  const [scanning, setScanning] = useState(false);
+  const [scanResult, setScanResult] = useState<any>(null);
+
+  const handleScanOnly = async () => {
+    setScanning(true);
+    setScanResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("auto-backfill-donations", {
+        body: { mode: "scan_only" },
+      });
+      if (error) throw error;
+      setScanResult(data);
+      const totalMissing = (data?.summary?.missing_donations_count || 0) + (data?.summary?.missing_posts_count || 0);
+      if (totalMissing > 0) {
+        toast.info(`Tìm thấy ${totalMissing} bản ghi bị thiếu`);
+      } else {
+        toast.success("Không có giao dịch nào bị thiếu!");
+      }
+    } catch (err: any) {
+      console.error("Scan error:", err);
+      toast.error("Lỗi khi quét: " + (err.message || "Unknown"));
+    } finally {
+      setScanning(false);
+    }
+  };
 
   const handleBackfillDonations = async () => {
     setBackfilling(true);
@@ -37,6 +70,7 @@ const SystemTab = ({ adminId }: SystemTabProps) => {
       const { data, error } = await supabase.functions.invoke("auto-backfill-donations");
       if (error) throw error;
       setBackfillResult(data);
+      setScanResult(null); // Clear scan after backfill
       toast.success(`Backfill hoàn tất: ${data?.inserted || 0} giao dịch được phục hồi`);
     } catch (err: any) {
       console.error("Backfill error:", err);
@@ -66,6 +100,18 @@ const SystemTab = ({ adminId }: SystemTabProps) => {
     }
   };
 
+  const shortenTxHash = (hash: string) => {
+    if (!hash) return "—";
+    return `${hash.slice(0, 6)}...${hash.slice(-4)}`;
+  };
+
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return "—";
+    return new Date(dateStr).toLocaleDateString("vi-VN", {
+      day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit",
+    });
+  };
+
   return (
     <div className="space-y-6">
       {/* Backfill Donations Card */}
@@ -81,14 +127,121 @@ const SystemTab = ({ adminId }: SystemTabProps) => {
             Quét tất cả giao dịch đã xác nhận và tạo bản ghi donations cho những giao dịch bị thiếu. 
             Hỗ trợ tìm người nhận qua cả wallet_address và public_wallet_address.
           </p>
-          <Button 
-            onClick={handleBackfillDonations} 
-            disabled={backfilling}
-            className="gap-2"
-          >
-            <RefreshCw className={`w-4 h-4 ${backfilling ? 'animate-spin' : ''}`} />
-            {backfilling ? "Đang quét..." : "Chạy Backfill ngay"}
-          </Button>
+          <div className="flex gap-2 flex-wrap">
+            <Button 
+              onClick={handleScanOnly} 
+              disabled={scanning}
+              variant="outline"
+              className="gap-2"
+            >
+              <Search className={`w-4 h-4 ${scanning ? 'animate-spin' : ''}`} />
+              {scanning ? "Đang quét..." : "Quét kiểm tra"}
+            </Button>
+            <Button 
+              onClick={handleBackfillDonations} 
+              disabled={backfilling}
+              className="gap-2"
+            >
+              <RefreshCw className={`w-4 h-4 ${backfilling ? 'animate-spin' : ''}`} />
+              {backfilling ? "Đang phục hồi..." : "Chạy Backfill ngay"}
+            </Button>
+          </div>
+
+          {/* Scan Results */}
+          {scanResult && (
+            <div className="space-y-4">
+              <div className="bg-muted rounded-lg p-4 text-sm space-y-1">
+                <p>📊 Đã quét: <strong>{scanResult.total_scanned}</strong> giao dịch</p>
+                <p>🔴 Thiếu donation: <strong>{scanResult.summary?.missing_donations_count || 0}</strong> (phục hồi được: {scanResult.summary?.recoverable_donations || 0}, không xác định người nhận: {scanResult.summary?.unrecoverable_donations || 0})</p>
+                <p>🟡 Thiếu bài chúc mừng: <strong>{scanResult.summary?.missing_posts_count || 0}</strong></p>
+              </div>
+
+              {/* Missing Donations Table */}
+              {scanResult.missing_donations?.length > 0 && (
+                <div>
+                  <p className="font-medium text-sm mb-2">🔴 Giao dịch thiếu Donation ({scanResult.missing_donations.length})</p>
+                  <div className="max-h-80 overflow-auto border rounded-lg">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-10">#</TableHead>
+                          <TableHead>Người gửi</TableHead>
+                          <TableHead>Người nhận</TableHead>
+                          <TableHead>Số tiền</TableHead>
+                          <TableHead>Token</TableHead>
+                          <TableHead>TX Hash</TableHead>
+                          <TableHead>Thời gian</TableHead>
+                          <TableHead>Trạng thái</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {scanResult.missing_donations.map((item: any, i: number) => (
+                          <TableRow key={i}>
+                            <TableCell className="text-xs">{i + 1}</TableCell>
+                            <TableCell className="text-xs font-medium">@{item.sender_username}</TableCell>
+                            <TableCell className="text-xs font-medium">
+                              {item.recipient_username ? `@${item.recipient_username}` : <span className="text-destructive">Không xác định</span>}
+                            </TableCell>
+                            <TableCell className="text-xs">{item.amount}</TableCell>
+                            <TableCell className="text-xs">{item.token_symbol}</TableCell>
+                            <TableCell className="text-xs font-mono">{shortenTxHash(item.tx_hash)}</TableCell>
+                            <TableCell className="text-xs">{formatDate(item.created_at)}</TableCell>
+                            <TableCell className="text-xs">
+                              {item.can_recover 
+                                ? <span className="text-green-600">✅ Phục hồi được</span>
+                                : <span className="text-destructive">❌ Không thể</span>
+                              }
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              )}
+
+              {/* Missing Posts Table */}
+              {scanResult.missing_posts?.length > 0 && (
+                <div>
+                  <p className="font-medium text-sm mb-2">🟡 Donation thiếu bài chúc mừng ({scanResult.missing_posts.length})</p>
+                  <div className="max-h-80 overflow-auto border rounded-lg">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-10">#</TableHead>
+                          <TableHead>Người gửi</TableHead>
+                          <TableHead>Người nhận</TableHead>
+                          <TableHead>Số tiền</TableHead>
+                          <TableHead>Token</TableHead>
+                          <TableHead>TX Hash</TableHead>
+                          <TableHead>Thời gian</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {scanResult.missing_posts.map((item: any, i: number) => (
+                          <TableRow key={i}>
+                            <TableCell className="text-xs">{i + 1}</TableCell>
+                            <TableCell className="text-xs font-medium">@{item.sender_username}</TableCell>
+                            <TableCell className="text-xs font-medium">@{item.recipient_username}</TableCell>
+                            <TableCell className="text-xs">{item.amount}</TableCell>
+                            <TableCell className="text-xs">{item.token_symbol}</TableCell>
+                            <TableCell className="text-xs font-mono">{shortenTxHash(item.tx_hash)}</TableCell>
+                            <TableCell className="text-xs">{formatDate(item.created_at)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              )}
+
+              {scanResult.missing_donations?.length === 0 && scanResult.missing_posts?.length === 0 && (
+                <p className="text-sm text-green-600 font-medium">✅ Tất cả giao dịch đều đầy đủ, không cần phục hồi!</p>
+              )}
+            </div>
+          )}
+
+          {/* Backfill Results */}
           {backfillResult && (
             <div className="bg-muted rounded-lg p-4 text-sm space-y-2">
               <p>📊 Đã quét: <strong>{backfillResult.scanned}</strong> giao dịch</p>
