@@ -24,6 +24,7 @@ import { PullToRefreshContainer } from '@/components/common/PullToRefreshContain
 import { useConversations } from '@/modules/chat/hooks/useConversations';
 import { toast } from 'sonner';
 import { useLanguage } from '@/i18n/LanguageContext';
+import { SEOHead, buildPersonJsonLd } from '@/components/seo/SEOHead';
 
 interface FriendPreview {
   id: string;
@@ -380,6 +381,20 @@ const Profile = () => {
 
   return (
     <div className="min-h-screen overflow-hidden">
+      {profile && (
+        <SEOHead
+          title={profile.display_name || profile.username || 'Profile'}
+          description={profile.bio || `${profile.display_name || profile.username} on FUN Profile`}
+          canonicalPath={profile.username ? `/${profile.username}` : `/profile/${profile.id}`}
+          image={profile.avatar_url}
+          jsonLd={buildPersonJsonLd({
+            name: profile.display_name || profile.username || 'FUN User',
+            url: `https://fun.rich/${profile.username || profile.id}`,
+            image: profile.avatar_url,
+            description: profile.bio,
+          })}
+        />
+      )}
       <FacebookNavbar />
       
       {/* View As Banner */}
