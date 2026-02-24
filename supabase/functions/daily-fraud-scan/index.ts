@@ -236,7 +236,7 @@ Deno.serve(async (req) => {
       }
 
       for (const [ip, users] of ipMap) {
-        if (users.size > 3) {
+        if (users.size > 5) {
           const userArr = Array.from(users);
 
           // Cross-check: query device_hash (v2+) for all users in this IP cluster
@@ -305,30 +305,89 @@ Deno.serve(async (req) => {
           }
 
           if (uniqueDeviceUsers.length > 0 && sharedDeviceUsers.length === 0) {
-            // Same IP but all different devices - still auto-hold for safety
-            const { data: existing } = await supabase
-              .from("pplp_fraud_signals")
-              .select("id")
-              .eq("signal_type", "IP_CLUSTER")
-              .eq("source", "daily-fraud-scan")
-              .gte("created_at", today.toISOString())
-              .limit(1);
+            // Same IP but all different devices - check post spam before holding
+            // Query posts in last 24h for each user in this IP cluster
+            const { data: recentPosts } = await supabase
+              .from("posts")
+              .select("user_id")
+              .in("user_id", uniqueDeviceUsers)
+              .gte("created_at", oneDayAgo);
 
-            if (!existing?.length) {
-              await supabase.from("pplp_fraud_signals").insert({
-                actor_id: uniqueDeviceUsers[0],
-                signal_type: "IP_CLUSTER",
-                severity: 2,
-                details: { ip_address: ip, user_count: users.size, user_ids: userArr, note: "Khác thiết bị - đình chỉ để kiểm tra" },
-                source: "daily-fraud-scan",
-              });
+            const postCountByUser = new Map<string, number>();
+            let totalPosts = 0;
+            if (recentPosts) {
+              for (const p of recentPosts) {
+                postCountByUser.set(p.user_id, (postCountByUser.get(p.user_id) || 0) + 1);
+                totalPosts++;
+              }
             }
 
-            const held = await autoHoldUsers(
-              supabase, uniqueDeviceUsers, adminIds,
-              `IP ${ip} có ${users.size} TK khác thiết bị - đình chỉ để xác minh.`,
-            );
-            totalHeld += held;
+            // Identify spam users: >5 posts/24h per user
+            const spamUsers = uniqueDeviceUsers.filter(uid => (postCountByUser.get(uid) || 0) > 5);
+            const isClusterSpam = totalPosts > 15;
+
+            if (spamUsers.length > 0 || isClusterSpam) {
+              // Spam detected: auto-hold spammers + log IP_SPAM_CLUSTER
+              const usersToHold = isClusterSpam ? uniqueDeviceUsers : spamUsers;
+
+              const { data: existing } = await supabase
+                .from("pplp_fraud_signals")
+                .select("id")
+                .eq("signal_type", "IP_SPAM_CLUSTER")
+                .eq("source", "daily-fraud-scan")
+                .gte("created_at", today.toISOString())
+                .limit(1);
+
+              if (!existing?.length) {
+                await supabase.from("pplp_fraud_signals").insert({
+                  actor_id: usersToHold[0],
+                  signal_type: "IP_SPAM_CLUSTER",
+                  severity: 3,
+                  details: {
+                    ip_address: ip,
+                    user_count: users.size,
+                    user_ids: userArr,
+                    spam_users: spamUsers,
+                    total_posts_24h: totalPosts,
+                    post_counts: Object.fromEntries(postCountByUser),
+                    note: "Cùng IP + spam bài viết liên tục",
+                  },
+                  source: "daily-fraud-scan",
+                });
+              }
+
+              const held = await autoHoldUsers(
+                supabase, usersToHold, adminIds,
+                `IP ${ip} có ${users.size} TK spam bài (${totalPosts} bài/24h) - đình chỉ.`,
+              );
+              totalHeld += held;
+            } else {
+              // No spam: only log warning, do NOT auto-hold
+              const { data: existing } = await supabase
+                .from("pplp_fraud_signals")
+                .select("id")
+                .eq("signal_type", "IP_CLUSTER")
+                .eq("source", "daily-fraud-scan")
+                .gte("created_at", today.toISOString())
+                .limit(1);
+
+              if (!existing?.length) {
+                await supabase.from("pplp_fraud_signals").insert({
+                  actor_id: uniqueDeviceUsers[0],
+                  signal_type: "IP_CLUSTER",
+                  severity: 1,
+                  details: {
+                    ip_address: ip,
+                    user_count: users.size,
+                    user_ids: userArr,
+                    total_posts_24h: totalPosts,
+                    note: "Cùng IP, khác thiết bị, không spam - chỉ theo dõi",
+                  },
+                  source: "daily-fraud-scan",
+                });
+              }
+              // No auto-hold for non-spam IP clusters
+            }
           }
         }
       }
