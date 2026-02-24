@@ -9,6 +9,7 @@ export interface Reel {
   video_url: string;
   thumbnail_url: string | null;
   caption: string | null;
+  slug: string | null;
   audio_name: string | null;
   audio_artist: string | null;
   duration_seconds: number | null;
@@ -68,7 +69,7 @@ export function useReels(limit = 10) {
       if (error || !data) {
         const { data: directReels, error: directError } = await supabase
           .from('reels')
-          .select('*, profiles:user_id (id, username, avatar_url, full_name)')
+          .select('*, profiles:user_id (id, username, avatar_url, full_name), slug')
           .eq('visibility', 'public')
           .eq('is_active', true)
           .order('created_at', { ascending: false })

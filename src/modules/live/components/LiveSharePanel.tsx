@@ -10,14 +10,22 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
+import { getAbsoluteLiveUrl } from '@/lib/slug';
 
 interface LiveSharePanelProps {
   sessionId: string;
+  slug?: string | null;
+  username?: string | null;
 }
 
-export function LiveSharePanel({ sessionId }: LiveSharePanelProps) {
+export function LiveSharePanel({ sessionId, slug, username }: LiveSharePanelProps) {
   const [copied, setCopied] = useState(false);
-  const liveUrl = `https://fun.rich/live/${sessionId}`;
+
+  const liveUrl = getAbsoluteLiveUrl({
+    id: sessionId,
+    slug,
+    profiles: username ? { username } : null,
+  });
 
   const handleCopy = async () => {
     try {

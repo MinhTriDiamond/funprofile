@@ -70,9 +70,16 @@ function buildHTML(opts: {
   ogType: string;
   jsonLd?: Record<string, unknown>;
   redirectUrl?: string;
+  videoUrl?: string;
 }): string {
-  const { title, description, canonicalUrl, image, ogType, jsonLd, redirectUrl } = opts;
+  const { title, description, canonicalUrl, image, ogType, jsonLd, redirectUrl, videoUrl } = opts;
   const fullTitle = `${title} | ${SITE_NAME}`;
+
+  const videoTags = videoUrl ? `
+  <meta property="og:video" content="${escHtml(videoUrl)}">
+  <meta property="og:video:type" content="video/mp4">
+  <meta property="og:video:width" content="720">
+  <meta property="og:video:height" content="1280">` : "";
 
   return `<!DOCTYPE html>
 <html lang="vi">
@@ -92,7 +99,7 @@ function buildHTML(opts: {
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta property="og:type" content="${escHtml(ogType)}">
-  <meta property="og:site_name" content="${SITE_NAME}">
+  <meta property="og:site_name" content="${SITE_NAME}">${videoTags}
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image">
@@ -279,6 +286,7 @@ Deno.serve(async (req) => {
           canonicalUrl,
           image: reel.thumbnail_url || DEFAULT_IMAGE,
           ogType: "video.other",
+          videoUrl: reel.video_url || undefined,
           jsonLd: {
             "@context": "https://schema.org",
             "@type": "VideoObject",
