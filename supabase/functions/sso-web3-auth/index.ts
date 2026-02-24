@@ -172,7 +172,7 @@ Deno.serve(async (req: Request) => {
         JSON.stringify({
           success: false,
           error: 'WALLET_NOT_REGISTERED',
-          message: 'Ví này chưa được đăng ký. Vui lòng đăng ký tài khoản trước và dán mã ví vào khi đăng ký, sau đó mới đăng nhập bằng ví được.'
+          message: 'Ví này chưa được kết nối với tài khoản nào. Nếu bạn đã có tài khoản, hãy đăng nhập bằng email/Google và kết nối ví trong trang cá nhân. Nếu chưa có tài khoản, hãy đăng ký mới và dán mã ví khi đăng ký.'
         }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
