@@ -1,82 +1,38 @@
 
 
-# Công cụ kiểm tra và phục hồi giao dịch toàn diện
+# Fix: Lỗi xoá tài khoản do thiếu dọn dẹp bảng `light_actions`
 
-## Tổng quan
-Thêm 3 tính năng mới vào trang Admin (SystemTab) để kiểm tra và phục hồi giao dịch bị thiếu:
-1. Tìm theo TX Hash
-2. Xem toàn bộ transactions
-3. Thêm giao dịch thủ công
+## Nguyên nhân
 
----
+Khi xoá tài khoản, hệ thống báo lỗi vì bảng `light_actions` có cột `actor_id` tham chiếu (foreign key) đến bảng `profiles`. Hàm xoá chỉ dọn dẹp `light_actions.user_id` mà **bỏ sót** `light_actions.actor_id`, dẫn đến lỗi ràng buộc khoá ngoại khi xoá profile.
 
-## 1. Tìm theo TX Hash
+Ngoài ra, hàm tự xoá tài khoản (`delete-user-account`) cũng thiếu rất nhiều bảng so với hàm admin.
 
-Thêm ô nhập TX Hash vào SystemTab. Khi nhập, hệ thống sẽ truy vấn 3 bảng:
-- `transactions` -- giao dịch gốc
-- `donations` -- bản ghi donation  
-- `posts` (post_type = 'gift_celebration') -- bài chúc mừng
+## Giải pháp
 
-Hiển thị kết quả dạng checklist:
-- Có trong transactions? (trạng thái, thời gian)
-- Có trong donations? (người gửi, người nhận, số tiền)
-- Có bài gift_celebration? (link đến bài viết)
+### 1. Cập nhật `admin-delete-user/index.ts`
+- Thêm dòng xoá `light_actions.actor_id` (hiện chỉ có `light_actions.user_id`)
+- Thêm xoá `username_history` (bảng mới từ Bài 6)
 
-**Thực hiện:** Tạo edge function mới `check-transaction` nhận `tx_hash`, trả về trạng thái từ cả 3 bảng.
+### 2. Cập nhật `delete-user-account/index.ts`  
+- Thêm tất cả các bảng còn thiếu cho nhất quán với hàm admin, bao gồm:
+  - `light_actions` (cả `user_id` và `actor_id`)
+  - `light_reputation`
+  - `fun_distribution_logs`
+  - `username_history`
+  - `comment_likes`, `message_reactions`, `message_reads`, `live_reactions`
+  - Và các bảng khác đã có trong hàm admin
 
-## 2. Xem toàn bộ bảng transactions
+### Chi tiết kỹ thuật
 
-Thêm tab/section mới hiển thị toàn bộ dữ liệu từ bảng `transactions` (không chỉ những cái thiếu). Bao gồm:
-- Bảng phân trang với cột: Người gửi, Địa chỉ đích, Số tiền, Token, TX Hash, Trạng thái, Thời gian
-- Đánh dấu trực quan: dòng nào đã có donation (xanh), dòng nào thiếu (đỏ)
-- Bộ lọc: status, token
+Lỗi cụ thể trong Postgres logs:
+```
+update or delete on table "profiles" violates foreign key constraint 
+"light_actions_actor_id_fkey" on table "light_actions"
+```
 
-**Thực hiện:** Tạo edge function `list-all-transactions` trả về transactions kèm flag `has_donation` và `has_post`.
-
-## 3. Thêm giao dịch thủ công
-
-Form cho admin nhập:
-- TX Hash (bắt buộc)
-- Người gửi (chọn từ danh sách user hoặc nhập wallet address)
-- Người nhận (chọn từ danh sách user)
-- Số tiền + Token
-- Tin nhắn (tùy chọn)
-
-Khi submit: Tạo bản ghi trong `donations` + `posts` (gift_celebration) + `notifications`.
-
-**Thực hiện:** Tạo edge function `manual-create-donation` xử lý logic tạo đầy đủ 3 bản ghi.
-
----
-
-## Chi tiết kỹ thuật
-
-### Edge Functions mới
-
-**1. `supabase/functions/check-transaction/index.ts`**
-- Input: `{ tx_hash: string }`
-- Logic: Query `transactions`, `donations`, `posts` bằng tx_hash
-- Output: `{ in_transactions, in_donations, in_posts, details }`
-
-**2. `supabase/functions/list-all-transactions/index.ts`**
-- Input: `{ page, limit, status_filter, token_filter }`
-- Logic: Query `transactions` + left join check donations/posts
-- Output: `{ transactions[], total_count }`
-
-**3. `supabase/functions/manual-create-donation/index.ts`**
-- Input: `{ tx_hash, sender_id, recipient_id, amount, token_symbol, message }`
-- Logic: Insert vào `donations` + `posts` + `notifications`
-- Output: `{ success, donation_id, post_id }`
-
-### File UI cần sửa
-
-**`src/components/admin/SystemTab.tsx`**
-- Thêm section "Tra cứu giao dịch" với ô nhập TX Hash + kết quả
-- Thêm section "Toàn bộ Transactions" với bảng phân trang
-- Thêm section "Thêm giao dịch thủ công" với form nhập liệu
-
-### Files thay đổi
-1. `supabase/functions/check-transaction/index.ts` -- MỚI
-2. `supabase/functions/list-all-transactions/index.ts` -- MỚI
-3. `supabase/functions/manual-create-donation/index.ts` -- MỚI
-4. `src/components/admin/SystemTab.tsx` -- Cập nhật thêm 3 section mới
+Dòng cần thêm trong cả 2 function:
+```typescript
+{ table: 'light_actions', column: 'actor_id' },  // <-- THIẾU
+```
 
