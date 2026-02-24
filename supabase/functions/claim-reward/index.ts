@@ -426,50 +426,52 @@ Deno.serve(async (req) => {
       .eq('user_id', userId)
       .gte('created_at', last24h.toISOString());
 
-    if (recentClaimCount !== null && recentClaimCount >= 3) {
-      console.warn(`CLAIM_VELOCITY: User ${userId} đã rút ${recentClaimCount} lần trong 24h!`);
-      
-      // Tự động on_hold + ghi fraud signal
-      await supabaseAdmin.from('profiles').update({
-        reward_status: 'on_hold',
-        admin_notes: `CLAIM_VELOCITY: Rút ${recentClaimCount} lần trong 24 giờ. Nghi ngờ khai thác lỗ hổng timezone. Chờ Admin xác minh.`,
-      }).eq('id', userId);
+    // ===== CHECK 1: Giới hạn 2 lần/24h - thông báo friendly =====
+    if (recentClaimCount !== null && recentClaimCount >= 2) {
+      console.warn(`CLAIM_LIMIT: User ${userId} đã rút ${recentClaimCount} lần trong 24h`);
 
-      await supabaseAdmin.from('pplp_fraud_signals').insert({
-        actor_id: userId,
-        signal_type: 'CLAIM_VELOCITY',
-        severity: 4,
-        details: { 
-          claim_count_24h: recentClaimCount, 
-          today_claimed: todayClaimed,
-          daily_remaining: dailyRemaining,
-          window: '24h',
-          threshold: 3
-        },
-        source: 'claim-reward',
-      });
+      // Lần thứ 3+ → on_hold + fraud signal (phòng race condition)
+      if (recentClaimCount >= 3) {
+        await supabaseAdmin.from('profiles').update({
+          reward_status: 'on_hold',
+          admin_notes: `CLAIM_VELOCITY: Rút ${recentClaimCount} lần trong 24 giờ. Nghi ngờ khai thác lỗ hổng. Chờ Admin xác minh.`,
+        }).eq('id', userId);
 
-      // Thông báo tới admin
-      const { data: admins } = await supabaseAdmin
-        .from('user_roles')
-        .select('user_id')
-        .eq('role', 'admin');
-      if (admins && admins.length > 0) {
-        await supabaseAdmin.from('notifications').insert(
-          admins.map(a => ({
-            user_id: a.user_id,
-            actor_id: userId,
-            type: 'admin_claim_velocity',
-            read: false,
-          }))
-        );
+        await supabaseAdmin.from('pplp_fraud_signals').insert({
+          actor_id: userId,
+          signal_type: 'CLAIM_VELOCITY',
+          severity: 4,
+          details: { 
+            claim_count_24h: recentClaimCount, 
+            today_claimed: todayClaimed,
+            daily_remaining: dailyRemaining,
+            window: '24h',
+            threshold: 2
+          },
+          source: 'claim-reward',
+        });
+
+        const { data: admins } = await supabaseAdmin
+          .from('user_roles')
+          .select('user_id')
+          .eq('role', 'admin');
+        if (admins && admins.length > 0) {
+          await supabaseAdmin.from('notifications').insert(
+            admins.map(a => ({
+              user_id: a.user_id,
+              actor_id: userId,
+              type: 'admin_claim_velocity',
+              read: false,
+            }))
+          );
+        }
       }
 
       return new Response(JSON.stringify({
-        error: 'Account Review',
-        message: `Tài khoản của bạn đã rút thưởng ${recentClaimCount} lần trong 24 giờ và đang chờ Admin xác minh 🙏\n\nHệ thống phát hiện tần suất rút bất thường. Vui lòng liên hệ Admin để được hỗ trợ nhanh nhất. Cảm ơn bạn đã thấu hiểu 💛`,
+        error: 'Daily Limit Reached',
+        message: 'Bạn đã đạt giới hạn rút 2 lần trong 24 giờ. Vui lòng quay lại ngày mai! 🙏',
         claim_count_24h: recentClaimCount,
-      }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }), { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     console.log(`User ${userId}: total=${totalReward}, claimed=${claimedAmount}, claimable=${claimableAmount}, requested=${claimAmount}, todayClaimed=${todayClaimed}, dailyRemaining=${dailyRemaining}`);
