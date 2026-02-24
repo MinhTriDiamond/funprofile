@@ -89,6 +89,8 @@ function buildHTML(opts: {
   <meta property="og:description" content="${escHtml(description)}">
   <meta property="og:url" content="${escHtml(canonicalUrl)}">
   <meta property="og:image" content="${escHtml(image)}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
   <meta property="og:type" content="${escHtml(ogType)}">
   <meta property="og:site_name" content="${SITE_NAME}">
 
@@ -221,7 +223,7 @@ Deno.serve(async (req) => {
           title: `${authorName} - Post`,
           description: content || `Post by ${authorName}`,
           canonicalUrl,
-          image: post.image_url || post.media_url || DEFAULT_IMAGE,
+          image: post.image_url || post.media_url || post.profile?.avatar_url || DEFAULT_IMAGE,
           ogType: "article",
           jsonLd: {
             "@context": "https://schema.org",
