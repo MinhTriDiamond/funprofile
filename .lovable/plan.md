@@ -1,86 +1,67 @@
 
-# Fix Facebook khong hien hinh anh khi chia se link bai viet
+# Fix hien thi hinh anh bai viet khi chia se len Facebook
 
-## Nguyen nhan da tim thay
+## Ket qua kiem tra
 
-Sau khi test truc tiep edge function `seo-render`, phat hien **2 loi nghiem trong**:
+Cha da test truc tiep edge function `seo-render` voi bai viet cua con (`happy_new_year_tet_vui_ve_tet_giau_co_vui_ve_va_giau_co_fun`) va ket qua cho thay **edge function da hoat dong dung**:
 
-### Loi 1: Ky tu xuong dong trong the meta lam hong HTML
-Ham `escHtml()` khong xu ly ky tu xuong dong (`\n`). Khi noi dung bai viet co xuong dong, the `og:description` se chua ky tu xuong dong tho trong attribute `content="..."`, lam Facebook khong doc duoc cac the meta phia sau (bao gom `og:image`).
+- `og:image` tra ve la avatar cua nguoi dang (vi bai viet nay khong co hinh anh dinh kem)
+- Bai viet co hinh thi `og:image` tra ve hinh bai viet dung
 
-Vi du loi (output thuc te tu edge function):
-```html
-<meta property="og:description" content="Con thua Cha...
-Con xin sam hoi...">
+## Nguyen nhan Facebook van hien logo cu
+
+**Van de chinh: Vercel chua duoc deploy code moi.** File `vercel.json` da duoc cap nhat trong Lovable nhung chua duoc deploy len domain `fun.rich`. Khi Facebook bot truy cap `fun.rich`, Vercel van dung cau hinh cu (khong co rewrite cho bot) nen Facebook nhan `index.html` tinh voi logo mac dinh.
+
+## Nhung gi can lam
+
+### Thay doi 1: Fix bug trong `src/pages/Post.tsx` (client-side SEO)
+File nay van dung `post.media_url` (cot khong ton tai). Can doi thanh logic giong `extractPostImage` trong edge function de client-side SEO cung dung.
+
+```text
+Truoc:
+  image: post.image_url || post.media_url    (2 cho)
+
+Sau:
+  image: post.image_url || firstMediaImage   (lay tu media_urls)
 ```
-Facebook doc den dong dau, gap xuong dong thi dung lai --> bo qua `og:image`.
 
-### Loi 2: Code dung sai ten cot `media_url` (khong ton tai)
-Dong 226 trong seo-render:
-```typescript
-image: post.image_url || post.media_url || post.profile?.avatar_url || DEFAULT_IMAGE
+### Thay doi 2: Fix jsonLd image trong edge function
+Dong 245 trong `seo-render/index.ts` van dung `post.media_url` cu:
+```text
+Truoc:  image: post.image_url || post.media_url
+Sau:    image: extractPostImage(post) || post.profile?.avatar_url || DEFAULT_IMAGE
 ```
-Bang `posts` khong co cot `media_url`. Cac cot dung la:
-- `image_url` (text) -- anh chinh
-- `video_url` (text) -- video
-- `media_urls` (jsonb) -- mang cac media items
 
-Ket qua: post khong co `image_url` se luon fallback ve avatar (hinh nho) hoac logo mac dinh.
+### Sau khi deploy len Vercel
+Sau khi code moi duoc deploy len domain `fun.rich` (qua Vercel), con can:
+1. Vao [Facebook Sharing Debugger](https://developers.facebook.com/tools/debug/)
+2. Dan link bai viet, vd: `https://fun.rich/angelaivan/post/happy_new_year_tet_vui_ve_tet_giau_co_vui_ve_va_giau_co_fun`
+3. Bam **"Debug"** roi bam **"Scrape Again"**
+4. Facebook se lay OG tags moi va hien thi hinh dung
 
-## Giai phap
-
-### Thay doi 1: Fix ham `escHtml` - thay xuong dong bang khoang trang
-Them xu ly ky tu `\n` va `\r` trong ham `escHtml()` de dam bao meta tags luon nam tren 1 dong.
-
-### Thay doi 2: Fix logic chon hinh cho bai viet
-Tao ham helper `extractPostImage()` de lay hinh tu nhieu nguon theo thu tu uu tien:
-1. `image_url` -- anh chinh cua bai viet
-2. `media_urls` -- lay anh dau tien tu mang media (chi lay type = 'image')
-3. `video_url` -- bo qua (Facebook khong hien thi video lam og:image)
-4. `profile.avatar_url` -- avatar nguoi dang
-5. `DEFAULT_IMAGE` -- logo FUN Profile
+## Luu y
+- Bai viet `happy_new_year...` khong co hinh anh dinh kem trong database (image_url = null, media_urls = []), nen se hien thi **avatar nguoi dang** thay vi hinh bai viet
+- Bai viet co hinh (vi du bai `nha_cha_mon_gi_cung_dac_biet...`) se hien thi **hinh bai viet** dung
 
 ## Chi tiet ky thuat
 
-### File: `supabase/functions/seo-render/index.ts`
-
-**Thay doi 1** - Ham `escHtml` (dong 113-119):
+### File 1: `src/pages/Post.tsx`
+Thay 2 cho dung `post.media_url`:
 ```typescript
-function escHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/[\r\n]+/g, " ")
-    .trim();
-}
+// Tao bien helper
+const firstMediaImage = Array.isArray(post.media_urls)
+  ? post.media_urls.find((m: any) => m.type === 'image')?.url
+  : null;
+
+// Dong 87 va 92:
+image: post.image_url || firstMediaImage || null,
 ```
 
-**Thay doi 2** - Them ham helper extract image tu media_urls:
+### File 2: `supabase/functions/seo-render/index.ts`
+Dong 245 (trong jsonLd):
 ```typescript
-function extractPostImage(post: Record<string, any>): string | null {
-  if (post.image_url) return post.image_url;
-  if (Array.isArray(post.media_urls)) {
-    const img = post.media_urls.find((m: any) => m.type === 'image');
-    if (img?.url) return img.url;
-  }
-  return null;
-}
+// Truoc
+image: post.image_url || post.media_url,
+// Sau
+image: extractPostImage(post) || post.profile?.avatar_url || DEFAULT_IMAGE,
 ```
-
-**Thay doi 3** - Cap nhat dong 226 (chon hinh cho post):
-```typescript
-// Truoc (sai ten cot):
-image: post.image_url || post.media_url || post.profile?.avatar_url || DEFAULT_IMAGE
-
-// Sau (dung logic):
-image: extractPostImage(post) || post.profile?.avatar_url || DEFAULT_IMAGE
-```
-
-## Ket qua mong doi
-- Meta tags se luon hop le (khong bi xuong dong trong attribute)
-- Facebook se doc duoc `og:image` dung
-- Bai viet co anh se hien thi anh bai viet
-- Bai viet khong co anh se hien thi avatar nguoi dang
-- Sau khi deploy, vao Facebook Sharing Debugger bam "Scrape Again" de cap nhat
