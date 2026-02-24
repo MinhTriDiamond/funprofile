@@ -205,7 +205,7 @@ const Profile = () => {
       setProfile(data);
 
       if (userId && (data as any)?.username) {
-        navigate(`/@${encodeURIComponent(((data as any).username || '').trim())}`, { replace: true });
+        navigate(`/${encodeURIComponent(((data as any).username || '').trim())}`, { replace: true });
       }
 
       // Map public_profiles to profiles key for component compatibility
@@ -611,7 +611,7 @@ const Profile = () => {
                         <Avatar 
                           key={friend.id} 
                           className="w-8 h-8 border-2 border-card cursor-pointer hover:z-10 hover:scale-110 transition-transform"
-                          onClick={() => navigate(`/@${friend.username}`)}
+onClick={() => navigate(`/${friend.username}`)}
                         >
                           <AvatarImage src={friend.avatar_url || undefined} sizeHint="sm" />
                           <AvatarFallback className="bg-gradient-to-br from-primary/30 to-gold/30 text-foreground text-xs font-bold">
@@ -841,7 +841,7 @@ const Profile = () => {
                                 <div 
                                   key={friend.id} 
                                   className="text-center cursor-pointer hover:opacity-80 transition-opacity"
-                                  onClick={() => navigate(`/@${friend.username}`)}
+                                  onClick={() => navigate(`/${friend.username}`)}
                                 >
                                   <Avatar className="w-full aspect-square rounded-lg mb-1 border-2 border-border overflow-hidden">
                                     <AvatarImage 
