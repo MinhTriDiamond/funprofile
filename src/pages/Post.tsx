@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Home } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useSlugResolver } from '@/hooks/useSlugResolver';
+import { SEOHead, buildArticleJsonLd } from '@/components/seo/SEOHead';
 
 const Post = () => {
   const { postId, username, slug } = useParams();
@@ -70,6 +71,31 @@ const Post = () => {
     fetchPost();
   }, [resolvedId]);
 
+  // SEO data
+  const seoData = useMemo(() => {
+    if (!post) return null;
+    const authorName = post.profiles?.display_name || post.profiles?.username || 'FUN User';
+    const postContent = (post.content || '').slice(0, 155);
+    const postUsername = post.profiles?.username;
+    const canonicalPath = postUsername && post.slug
+      ? `/${postUsername}/post/${post.slug}`
+      : `/post/${post.id}`;
+    return {
+      title: `${authorName} - Post`,
+      description: postContent || `Post by ${authorName} on FUN Profile`,
+      canonicalPath,
+      image: post.image_url || post.media_url,
+      jsonLd: buildArticleJsonLd({
+        title: `Post by ${authorName}`,
+        description: postContent,
+        url: `https://fun.rich${canonicalPath}`,
+        image: post.image_url || post.media_url,
+        authorName,
+        datePublished: post.created_at,
+      }),
+    };
+  }, [post]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#f0f2f5] overflow-hidden pb-20 lg:pb-0">
@@ -112,6 +138,16 @@ const Post = () => {
 
   return (
     <div className="min-h-screen bg-[#f0f2f5] overflow-hidden pb-20 lg:pb-0">
+      {seoData && (
+        <SEOHead
+          title={seoData.title}
+          description={seoData.description}
+          canonicalPath={seoData.canonicalPath}
+          image={seoData.image}
+          ogType="article"
+          jsonLd={seoData.jsonLd}
+        />
+      )}
       <FacebookNavbar />
       <main data-app-scroll className="fixed inset-x-0 top-[3cm] bottom-0 overflow-y-auto pb-20 lg:pb-0">
         <div className="max-w-2xl mx-auto px-[2cm] py-6">
