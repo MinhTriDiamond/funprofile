@@ -90,11 +90,25 @@ const SystemTab = ({ adminId }: SystemTabProps) => {
             {backfilling ? "Đang quét..." : "Chạy Backfill ngay"}
           </Button>
           {backfillResult && (
-            <div className="bg-muted rounded-lg p-4 text-sm space-y-1">
+            <div className="bg-muted rounded-lg p-4 text-sm space-y-2">
               <p>📊 Đã quét: <strong>{backfillResult.scanned}</strong> giao dịch</p>
               <p>🔍 Thiếu donation: <strong>{backfillResult.missing}</strong></p>
-              <p>✅ Đã phục hồi: <strong>{backfillResult.inserted}</strong></p>
+              <p>✅ Đã phục hồi donation: <strong>{backfillResult.inserted}</strong></p>
+              <p>🎉 Bài chúc mừng đã tạo: <strong>{backfillResult.posts_created ?? 0}</strong></p>
               <p>⏭️ Bỏ qua (không tìm được người nhận): <strong>{backfillResult.skipped}</strong></p>
+              
+              {backfillResult.posts_details && backfillResult.posts_details.length > 0 && (
+                <div className="mt-3 border-t pt-3">
+                  <p className="font-medium mb-2">📋 Chi tiết bài chúc mừng đã phục hồi:</p>
+                  <div className="max-h-60 overflow-y-auto space-y-1">
+                    {backfillResult.posts_details.map((d: any, i: number) => (
+                      <p key={i} className="text-xs text-muted-foreground">
+                        • <strong>@{d.sender}</strong> → <strong>@{d.recipient}</strong>: {d.amount} {d.token}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
