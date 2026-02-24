@@ -20,40 +20,21 @@ import { useLiveRtc } from '../hooks/useLiveRtc';
 import { incrementLiveViewerCount, decrementLiveViewerCount } from '../liveService';
 import { LiveChatPanel } from '../components/LiveChatPanel';
 import { FloatingReactions } from '../components/FloatingReactions';
-import { supabase } from '@/integrations/supabase/client';
+import { useSlugResolver } from '@/hooks/useSlugResolver';
 
 export default function LiveAudiencePage() {
   const navigate = useNavigate();
   const { liveSessionId, username, slug } = useParams<{ liveSessionId?: string; username?: string; slug?: string }>();
-  const [resolvedSessionId, setResolvedSessionId] = useState<string | undefined>(liveSessionId);
 
-  // Resolve slug to session ID
-  useEffect(() => {
-    if (liveSessionId) {
-      setResolvedSessionId(liveSessionId);
-      return;
-    }
-    if (!username || !slug) return;
-
-    const resolve = async () => {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('username', username)
-        .maybeSingle();
-      if (!profile) return;
-
-      const { data: session } = await supabase
-        .from('live_sessions')
-        .select('id')
-        .eq('owner_id', profile.id)
-        .eq('slug', slug)
-        .maybeSingle();
-
-      if (session) setResolvedSessionId(session.id);
-    };
-    resolve();
-  }, [liveSessionId, username, slug]);
+  const { resolvedId: resolvedSessionId } = useSlugResolver({
+    contentType: 'live',
+    table: 'live_sessions',
+    userIdColumn: 'owner_id',
+    directId: liveSessionId,
+    username,
+    slug,
+    urlPrefix: 'live',
+  });
 
   const { data: session, isLoading } = useLiveSession(resolvedSessionId);
   const [mobileTab, setMobileTab] = useState<'chat' | 'reactions'>('chat');

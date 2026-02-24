@@ -3718,6 +3718,36 @@ export type Database = {
           },
         ]
       }
+      slug_history: {
+        Row: {
+          content_id: string
+          content_type: string
+          created_at: string | null
+          id: string
+          new_slug: string | null
+          old_slug: string
+          user_id: string
+        }
+        Insert: {
+          content_id: string
+          content_type: string
+          created_at?: string | null
+          id?: string
+          new_slug?: string | null
+          old_slug: string
+          user_id: string
+        }
+        Update: {
+          content_id?: string
+          content_type?: string
+          created_at?: string | null
+          id?: string
+          new_slug?: string | null
+          old_slug?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       soul_nfts: {
         Row: {
           chain_id: number
