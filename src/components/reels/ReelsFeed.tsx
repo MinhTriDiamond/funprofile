@@ -199,6 +199,8 @@ const ReelsFeed = ({ initialReelId }: ReelsFeedProps) => {
           />
           <ShareReelDialog
             reelId={currentReel.id}
+            reelSlug={currentReel.slug}
+            reelUsername={currentReel.profiles?.username}
             open={shareOpen}
             onOpenChange={setShareOpen}
           />
