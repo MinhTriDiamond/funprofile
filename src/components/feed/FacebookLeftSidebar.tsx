@@ -59,19 +59,25 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
     };
     fetchProfile();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setIsLoggedIn(!!session);
-      if (session) {
-        // Check admin role on auth change
-        const { data: hasAdminRole } = await supabase.rpc('has_role', {
-          _user_id: session.user.id,
-          _role: 'admin'
-        });
-        setIsAdmin(!!hasAdminRole);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        setIsLoggedIn(true);
+        if (session) {
+          // Wrap async call in setTimeout to avoid deadlock
+          setTimeout(async () => {
+            const { data: hasAdminRole } = await supabase.rpc('has_role', {
+              _user_id: session.user.id,
+              _role: 'admin'
+            });
+            setIsAdmin(!!hasAdminRole);
+          }, 0);
+        }
       } else if (event === 'SIGNED_OUT') {
+        setIsLoggedIn(false);
         setProfile(null);
         setIsAdmin(false);
       }
+      // INITIAL_SESSION, USER_UPDATED → giữ nguyên state
     });
 
     return () => subscription.unsubscribe();
