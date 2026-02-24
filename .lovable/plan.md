@@ -1,117 +1,75 @@
 
 
-# Sua loi giao dich bi thieu trong Lich su va tat ca cac muc
+# Hien thi hinh anh khi chia se link Fun.rich len mang xa hoi
 
-## Nguyen nhan goc
+## Van de hien tai
 
-### 1. Gui bang Vi (useSendToken) KHONG tao donation record
-Khi nguoi dung gui token bang tab "Vi" (khong phai Gift), he thong chi tao ban ghi trong bang `transactions`. Edge function `record-donation` KHONG duoc goi. Do do, giao dich nay se khong xuat hien trong:
-- Lich su Gift/Donation (ca nhan va toan he thong)
-- Feed bai chuc mung
-- Trang /donations
+Khi chia se link fun.rich len Facebook hoac mang xa hoi khac, chi hien thi dong chu "FUN.RICH - Connect, Share, Earn" ma **khong co hinh anh** vi:
 
-### 2. Backfill that bai hoan toan (Inserted: 0)
-Log cho thay: `Scanned: 1003, Missing: 1000, Inserted: 0, Skipped: 19`
+1. **`index.html` thieu the OG**: File HTML goc khong co bat ky the `og:image`, `og:title`, `og:description` nao. Crawler (Facebook, Twitter...) khong chay JavaScript nen khong thay duoc cac the do `SEOHead` component tao ra.
 
-Nguyen nhan:
-- **Kiem tra trung lap bi gioi han 1000 dong**: Khi kiem tra xem tx_hash nao da co donation, truy van `.in("tx_hash", batch)` bi gioi han 1000 ket qua boi PostgREST. Ket qua la nhieu donation da ton tai KHONG duoc tim thay, khien he thong tuong la "thieu" va co insert lai -> loi `duplicate key`.
-- **Vi tu gui cho minh**: Mot so giao dich co `to_address` anh xa lai chinh nguoi gui, vi pham constraint `no_self_donation`.
-- **Batch insert that bai toan bo**: Khi 1 dong trong batch loi, toan bo batch 100 dong bi huy.
+2. **`seo-render` edge function** da co san nhung **chua duoc ket noi voi routing** -- bot crawler khong duoc chuyen huong den edge function nay.
 
-### 3. Stats trang /donations gioi han 1000 dong
-`useAdminDonationHistory` stats query lay tat ca donations khong phan trang, bi cat o 1000 dong.
+3. **Thieu kich thuoc hinh** (`og:image:width`, `og:image:height`) -- Facebook can thong tin nay de hien thi hinh lon (summary_large_image).
 
 ## Giai phap
 
-### Thay doi 1: `supabase/functions/auto-backfill-donations/index.ts`
-- **Phan trang kiem tra trung lap**: Khi kiem tra tx_hash da co donation, phan trang truy van de khong bi gioi han 1000 dong
-- **Bo qua self-donation**: Kiem tra sender_id != recipient_id truoc khi insert
-- **Insert tung dong thay vi batch**: Su dung vong lap insert tung dong voi `ON CONFLICT DO NOTHING` (thong qua upsert) de tranh 1 dong loi huy toan bo batch
-- **Ghi log chi tiet hon**: Log so dong thuc su duoc insert, skip va loi
+### 1. Them default OG tags vao `index.html`
+Them cac the meta OG mac dinh de moi link fun.rich deu co hinh anh khi chia se. Su dung logo FUN Profile lam hinh mac dinh.
 
-### Thay doi 2: `src/hooks/useAdminDonationHistory.ts`
-- **Stats su dung RPC hoac phan trang**: Thay vi select tat ca donations (bi gioi han 1000), su dung aggregate query truc tiep trong database de tinh tong chinh xac
+### 2. Nang cap `seo-render` edge function
+- Them `og:image:width` va `og:image:height` (1200x630 la kich thuoc chuan cho Facebook large image)
+- Cho post co hinh: dung hinh cua post
+- Cho post khong hinh: dung avatar nguoi dang
+- Fallback: dung logo FUN Profile
 
-### Thay doi 3: `supabase/functions/check-transaction/index.ts`
-- **Mo rong kiem tra wallet**: Them `external_wallet_address` va `custodial_wallet_address` vao truy van tim nguoi nhan
+### 3. Nang cap `SEOHead.tsx` component
+Them `og:image:width` va `og:image:height` de khi prerender hoat dong, hinh se hien thi dung kich thuoc lon.
 
-### Thay doi 4: Tao database function cho stats
-- Tao RPC function `get_donation_system_stats` de tinh tong truc tiep trong database, tranh gioi han 1000 dong
+### 4. Tao hinh OG mac dinh kich thuoc chuan
+Hien tai chi co `fun-profile-logo-128.webp` (128x128) -- qua nho. Can dung hinh lon hon (toi thieu 600x315, ly tuong 1200x630).
 
 ## Chi tiet ky thuat
 
-### File 1: `supabase/functions/auto-backfill-donations/index.ts`
+### File 1: `index.html`
+Them cac the meta OG mac dinh vao `<head>`:
+```html
+<!-- Open Graph defaults -->
+<meta property="og:title" content="FUN.RICH - Connect, Share, Earn">
+<meta property="og:description" content="FUN Profile - Mang xa hoi Web3 ket hop AI. Ket noi ban be, chia se noi dung, kiem phan thuong.">
+<meta property="og:image" content="https://fun.rich/fun-profile-logo-128.webp">
+<meta property="og:image:width" content="128">
+<meta property="og:image:height" content="128">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="FUN Profile">
+<meta property="og:url" content="https://fun.rich">
 
-**Sua kiem tra trung lap (dong 103-115):**
-Thay vi kiem tra 1 batch lon, phan trang kiem tra tung batch nho (100 tx_hash moi lan):
-```typescript
-const existingDonationSet = new Set<string>();
-const LOOKUP_BATCH = 100;
-for (let i = 0; i < txHashes.length; i += LOOKUP_BATCH) {
-  const batch = txHashes.slice(i, i + LOOKUP_BATCH);
-  const { data: existing } = await adminClient
-    .from("donations")
-    .select("tx_hash")
-    .in("tx_hash", batch);
-  for (const d of existing || []) {
-    if (d.tx_hash) existingDonationSet.add(d.tx_hash);
-  }
-}
+<!-- Twitter Card defaults -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="FUN.RICH - Connect, Share, Earn">
+<meta name="twitter:description" content="FUN Profile - Mang xa hoi Web3 ket hop AI.">
+<meta name="twitter:image" content="https://fun.rich/fun-profile-logo-128.webp">
 ```
 
-**Sua insert donations (dong 206-216):**
-Thay batch insert bang insert tung dong voi skip loi:
-```typescript
-let insertedCount = 0;
-let errorCount = 0;
-for (const record of toInsert) {
-  // Skip self-donation
-  if (record.sender_id === record.recipient_id) {
-    skipped.push(record.tx_hash);
-    continue;
-  }
-  const { error } = await adminClient
-    .from("donations")
-    .upsert(record, { onConflict: 'tx_hash', ignoreDuplicates: true });
-  if (error) {
-    errorCount++;
-    console.error(`Insert error for ${record.tx_hash}:`, error.message);
-  } else {
-    insertedCount++;
-  }
-}
+### File 2: `supabase/functions/seo-render/index.ts`
+Them `og:image:width` va `og:image:height` vao buildHTML:
+```html
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
 ```
 
-### File 2: `src/hooks/useAdminDonationHistory.ts`
+Cai thien logic chon hinh cho post:
+- Uu tien: `image_url` -> `media_urls[0]` -> avatar nguoi dang -> logo FUN Profile
 
-**Sua stats query (dong 156-194):**
-Thay select tat ca bang truy van aggregate:
+### File 3: `src/components/seo/SEOHead.tsx`
+Them `og:image:width` va `og:image:height` vao useEffect:
 ```typescript
-// Count total
-const { count: totalCount } = await supabase
-  .from('donations')
-  .select('id', { count: 'exact', head: true });
-
-// Count by status  
-const { count: confirmedCount } = await supabase
-  .from('donations')
-  .select('id', { count: 'exact', head: true })
-  .eq('status', 'confirmed');
-
-// v.v. cho tung chi so
+setMeta('property', 'og:image:width', '1200');
+setMeta('property', 'og:image:height', '630');
 ```
 
-### File 3: `supabase/functions/check-transaction/index.ts`
-
-**Mo rong wallet lookup (dong 72-76):**
-Them external_wallet_address va custodial_wallet_address:
-```typescript
-.or(`wallet_address.ilike.${addr},public_wallet_address.ilike.${addr},external_wallet_address.ilike.${addr},custodial_wallet_address.ilike.${addr}`)
-```
-
-### Ket qua mong doi
-- Backfill se thuc su insert duoc cac donation bi thieu (khong con loi duplicate key hay self-donation)
-- Tat ca giao dich cu (bao gom 20 USDT cua angelanhnguyet -> UtopiaThuy413) se duoc phuc hoi sau khi chay Backfill
-- Stats trang /donations se hien thi so lieu chinh xac (khong bi gioi han 1000)
-- Cac giao dich da phuc hoi se tu dong xuat hien tren: Gift/Donations, Feed, Trang /donations, va ca muc Wallet (thong qua bang donations)
+### Luu y quan trong
+- Viec nay se giup **tat ca link fun.rich** deu co hinh khi chia se (it nhat la logo mac dinh)
+- De hinh **dong** (hinh cua tung bai post, avatar user) hien thi tren Facebook, can cau hinh domain `fun.rich` de chuyen bot traffic den `seo-render` edge function. Dieu nay can thiet lap tren Cloudflare Workers hoac tuong tu tai tang hosting.
+- Sau khi deploy, co the dung [Facebook Sharing Debugger](https://developers.facebook.com/tools/debug/) de kiem tra va lam moi cache OG tags.
 
