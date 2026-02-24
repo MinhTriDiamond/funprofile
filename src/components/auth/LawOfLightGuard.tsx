@@ -96,10 +96,14 @@ export const LawOfLightGuard = ({ children }: LawOfLightGuardProps) => {
           checkLawOfLightAcceptance();
         }, 150);
       } else if (event === 'SIGNED_OUT') {
-        // On explicit sign out, navigate to law-of-light
-        setIsAllowed(false);
-        setIsChecking(false);
-        navigate('/law-of-light', { replace: true });
+        // Only redirect on explicit sign out (user was authenticated before)
+        // For guests who never signed in, SIGNED_OUT during init should be ignored
+        const hadSession = localStorage.getItem('law_of_light_accepted_pending');
+        if (hadSession) {
+          setIsAllowed(false);
+          setIsChecking(false);
+          navigate('/law-of-light', { replace: true });
+        }
       }
       // TOKEN_REFRESHED and other events are intentionally ignored to prevent false logouts
     });
