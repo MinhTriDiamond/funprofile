@@ -100,11 +100,12 @@ Deno.serve(async (req) => {
     // 1. Get ALL confirmed transactions (paginated)
     const allTx = await fetchAllConfirmedTransactions(adminClient);
 
-    // 2. Check which tx_hashes already have donations
+    // 2. Check which tx_hashes already have donations (paginated in small batches to avoid 1000-row limit)
     const txHashes = allTx.map((t) => t.tx_hash).filter(Boolean);
     const existingDonationSet = new Set<string>();
-    for (let i = 0; i < txHashes.length; i += PAGE_SIZE) {
-      const batch = txHashes.slice(i, i + PAGE_SIZE);
+    const LOOKUP_BATCH = 100;
+    for (let i = 0; i < txHashes.length; i += LOOKUP_BATCH) {
+      const batch = txHashes.slice(i, i + LOOKUP_BATCH);
       const { data: existingDonations } = await adminClient
         .from("donations")
         .select("tx_hash")
@@ -203,15 +204,23 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Batch insert donations
+    // Insert donations one by one with upsert to avoid batch failures
     let insertedCount = 0;
-    for (let i = 0; i < toInsert.length; i += BATCH_INSERT_SIZE) {
-      const batch = toInsert.slice(i, i + BATCH_INSERT_SIZE);
-      const { error: insertError } = await adminClient.from("donations").insert(batch);
+    let errorCount = 0;
+    for (const record of toInsert) {
+      // Skip self-donation (violates no_self_donation constraint)
+      if (record.sender_id === record.recipient_id) {
+        skipped.push(record.tx_hash);
+        continue;
+      }
+      const { error: insertError } = await adminClient
+        .from("donations")
+        .upsert(record, { onConflict: 'tx_hash', ignoreDuplicates: true });
       if (insertError) {
-        console.error(`Batch insert error (offset ${i}):`, insertError.message);
+        errorCount++;
+        console.error(`Insert error for ${record.tx_hash}:`, insertError.message);
       } else {
-        insertedCount += batch.length;
+        insertedCount++;
       }
     }
 
@@ -233,11 +242,11 @@ Deno.serve(async (req) => {
 
     const postsResult = await backfillGiftCelebrationPosts(adminClient, updatedMissingPosts, profileMap);
 
-    console.log(`[auto-backfill] Scanned: ${allTx.length}, Missing: ${missingDonationTx.length}, Inserted: ${insertedCount}, Skipped: ${skipped.length}, Posts created: ${postsResult.posts_created}`);
+    console.log(`[auto-backfill] Scanned: ${allTx.length}, Missing: ${missingDonationTx.length}, Inserted: ${insertedCount}, Errors: ${errorCount}, Skipped: ${skipped.length}, Posts created: ${postsResult.posts_created}`);
 
     return new Response(
       JSON.stringify({
-        inserted: insertedCount, skipped: skipped.length,
+        inserted: insertedCount, errors: errorCount, skipped: skipped.length,
         scanned: allTx.length, missing: missingDonationTx.length, ...postsResult,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
