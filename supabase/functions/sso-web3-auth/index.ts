@@ -166,49 +166,16 @@ Deno.serve(async (req: Request) => {
       const { data: userData } = await supabase.auth.admin.getUserById(userId);
       userEmail = userData?.user?.email || '';
     } else {
-      console.log('[WEB3-AUTH] Creating new user');
-      isNewUser = true;
-
-      // Generate unique email and username for this wallet user
-      const shortAddr = normalizedAddress.slice(2, 10);
-      const timestamp = Date.now().toString(36).slice(-4);
-      userEmail = `${shortAddr}${timestamp}@wallet.fun.rich`;
-      const username = `wallet_${shortAddr}${timestamp}`;
-
-      // Create new user via Supabase Auth
-      const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
-        email: userEmail,
-        email_confirm: true,
-        user_metadata: {
-          username: username,
-          wallet_address: normalizedAddress,
-          registered_from: 'FUN Profile',
-          oauth_provider: 'Wallet'
-        }
-      });
-
-      if (createError) {
-        console.error('[WEB3-AUTH] Failed to create user:', createError);
-        return new Response(
-          JSON.stringify({ success: false, error: 'Failed to create user account' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      userId = newUser.user.id;
-
-      // Update profile with external wallet address (NO public_wallet_address - user will connect manually)
-      await supabase
-        .from('profiles')
-        .update({
-          external_wallet_address: normalizedAddress,
-          wallet_address: normalizedAddress,
-          default_wallet_type: 'external',
-          registered_from: 'FUN Profile',
-          oauth_provider: 'Wallet',
-          last_login_platform: 'FUN Profile'
-        })
-        .eq('id', userId);
+      // Ví chưa đăng ký → trả lỗi 403, yêu cầu đăng ký tài khoản trước
+      console.log('[WEB3-AUTH] Wallet not registered, rejecting:', normalizedAddress);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'WALLET_NOT_REGISTERED',
+          message: 'Ví này chưa được đăng ký. Vui lòng đăng ký tài khoản trước và dán mã ví vào khi đăng ký, sau đó mới đăng nhập bằng ví được.'
+        }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Update last login

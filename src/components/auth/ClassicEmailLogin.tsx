@@ -21,6 +21,7 @@ export const ClassicEmailLogin = ({
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
+  const [walletAddress, setWalletAddress] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
@@ -39,6 +40,12 @@ export const ClassicEmailLogin = ({
         const usernameError = validateUsername(normalized);
         if (usernameError) {
           toast.error(t(usernameError as any));
+          setLoading(false);
+          return;
+        }
+        // Validate wallet address format if provided
+        if (walletAddress && !/^0x[a-fA-F0-9]{40}$/.test(walletAddress)) {
+          toast.error('Địa chỉ ví không hợp lệ. Định dạng đúng: 0x... (42 ký tự)');
           setLoading(false);
           return;
         }
@@ -84,7 +91,7 @@ export const ClassicEmailLogin = ({
             email,
             password,
             options: {
-              data: { username },
+              data: { username, wallet_address: walletAddress || undefined },
               emailRedirectTo: `${window.location.origin}/`
             }
           }),
@@ -93,9 +100,13 @@ export const ClassicEmailLogin = ({
         if (error) throw error;
         if (data.user) {
           setTimeout(async () => {
-            await supabase.from('profiles').update({
+            const updateData: Record<string, string> = {
               last_login_platform: 'FUN Profile'
-            }).eq('id', data.user!.id);
+            };
+            if (walletAddress) {
+              updateData.external_wallet_address = walletAddress;
+            }
+            await supabase.from('profiles').update(updateData).eq('id', data.user!.id);
           }, 1000);
           toast.success(t('authSuccessSignUp'));
           onSuccess(data.user.id, true);
@@ -145,6 +156,14 @@ export const ClassicEmailLogin = ({
               {t('authUsername')}
             </Label>
             <Input id="classic-username" type="text" value={username} onChange={e => setUsername(normalizeUsername(e.target.value).slice(0, USERNAME_MAX_LENGTH))} required={!isLogin} placeholder={t('authUsernamePlaceholder')} className="h-12 rounded-full border-2 border-slate-300 bg-gradient-to-br from-white to-slate-50 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/30 transition-all" />
+          </div>}
+        
+        {!isLogin && <div className="space-y-2">
+            <Label htmlFor="classic-wallet" className="text-slate-700 font-semibold text-sm uppercase tracking-wide">
+              Wallet Address (không bắt buộc)
+            </Label>
+            <Input id="classic-wallet" type="text" value={walletAddress} onChange={e => setWalletAddress(e.target.value.trim())} placeholder="0x..." className="h-12 rounded-full border-2 border-slate-300 bg-gradient-to-br from-white to-slate-50 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/30 transition-all font-mono text-sm" />
+            <p className="text-xs text-muted-foreground">Dán mã ví để đăng nhập bằng ví sau này</p>
           </div>}
         
         <div className="space-y-2">
