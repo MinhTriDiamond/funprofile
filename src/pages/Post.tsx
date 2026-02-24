@@ -10,7 +10,7 @@ import { ArrowLeft, Home } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageContext';
 
 const Post = () => {
-  const { postId } = useParams();
+  const { postId, username, slug } = useParams();
   const navigate = useNavigate();
   const { t } = useLanguage();
   const [post, setPost] = useState<any>(null);
@@ -24,30 +24,52 @@ const Post = () => {
         setCurrentUserId(session.user.id);
       }
     };
-
     fetchSession();
   }, []);
 
   useEffect(() => {
     const fetchPost = async () => {
-      if (!postId) return;
-
       setLoading(true);
-      const { data, error } = await supabase
+
+      let query = supabase
         .from('posts')
         .select(`
           *,
           public_profiles!posts_user_id_fkey (username, display_name, avatar_url, full_name, public_wallet_address),
           reactions (id, user_id, type),
           comments (id)
-        `)
-        .eq('id', postId)
-        .single();
+        `);
 
-      if (error) {
-        // Error fetching post - silent fail
+      if (postId) {
+        // Legacy UUID route: /post/:postId
+        query = query.eq('id', postId);
+      } else if (username && slug) {
+        // New slug route: /:username/post/:slug
+        // First find user by username, then find post by slug
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('username', username)
+          .maybeSingle();
+
+        if (!profile) {
+          setPost(null);
+          setLoading(false);
+          return;
+        }
+
+        query = query.eq('user_id', profile.id).eq('slug', slug);
       } else {
-        // Map public_profiles to profiles for component compatibility
+        setPost(null);
+        setLoading(false);
+        return;
+      }
+
+      const { data, error } = await query.maybeSingle();
+
+      if (error || !data) {
+        setPost(null);
+      } else {
         const mappedData = { ...data, profiles: (data as any).public_profiles || (data as any).profiles };
         setPost(mappedData);
       }
@@ -55,7 +77,7 @@ const Post = () => {
     };
 
     fetchPost();
-  }, [postId]);
+  }, [postId, username, slug]);
 
   if (loading) {
     return (
@@ -102,7 +124,6 @@ const Post = () => {
       <FacebookNavbar />
       <main data-app-scroll className="fixed inset-x-0 top-[3cm] bottom-0 overflow-y-auto pb-20 lg:pb-0">
         <div className="max-w-2xl mx-auto px-[2cm] py-6">
-          {/* Back Button */}
           <Button 
             variant="ghost" 
             onClick={() => navigate(-1)}
@@ -112,14 +133,12 @@ const Post = () => {
             {t('goBack')}
           </Button>
 
-          {/* Post Card */}
           <FacebookPostCard
             post={post}
             currentUserId={currentUserId}
             onPostDeleted={() => navigate('/')}
           />
 
-          {/* Related Posts Section */}
           <div className="mt-6 bg-white rounded-xl shadow-sm p-4">
             <h3 className="font-semibold text-lg mb-4">{t('relatedPosts')}</h3>
             <div className="text-center py-8 text-muted-foreground">
@@ -128,8 +147,6 @@ const Post = () => {
           </div>
         </div>
       </main>
-      
-      {/* Mobile Bottom Navigation */}
       <MobileBottomNav />
     </div>
   );

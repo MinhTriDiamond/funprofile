@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getAbsolutePostUrl } from '@/lib/slug';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
@@ -380,7 +381,7 @@ const GiftCelebrationCardComponent = ({
           <button
             className="flex-1 flex items-center justify-center gap-1.5 py-3 min-h-[48px] rounded-lg transition-colors hover:bg-white/10 text-white/70"
             onClick={() => {
-              navigator.clipboard.writeText(`https://fun.rich/post/${post.id}`);
+              navigator.clipboard.writeText(getAbsolutePostUrl(post));
             }}
           >
             <Share2 className="w-5 h-5" />

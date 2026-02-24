@@ -201,7 +201,7 @@ Deno.serve(async (req) => {
         is_reward_eligible: isRewardEligible,
         moderation_status: moderationStatus,
       })
-      .select("id")
+      .select("id, slug")
       .single();
 
     const insertDuration = Date.now() - insertStart;

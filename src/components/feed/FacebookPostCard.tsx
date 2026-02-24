@@ -1,6 +1,7 @@
 import { useState, useEffect, memo, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { getAbsolutePostUrl } from '@/lib/slug';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -48,6 +49,7 @@ interface PostStats {
 interface FacebookPostCardProps {
   post: {
     id: string;
+    slug?: string | null;
     content: string;
     image_url: string | null;
     video_url?: string | null;
@@ -257,10 +259,10 @@ const FacebookPostCardComponent = ({
   }, [isDeleting, post, onPostDeleted, t]);
 
   const handleCopyLink = useCallback(() => {
-    const url = `https://fun.rich/post/${post.id}`;
+    const url = getAbsolutePostUrl(post);
     navigator.clipboard.writeText(url);
     toast.success(t('linkCopied'));
-  }, [post.id, t]);
+  }, [post, t]);
 
   const handleShareToProfile = useCallback(async () => {
     if (!currentUserId) {
