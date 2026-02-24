@@ -37,7 +37,7 @@ export function SEOHead({
     const fullTitle = title ? `${title} | FUN Profile` : 'FUN.RICH - Connect, Share, Earn';
     const canonicalUrl = canonicalPath ? `${PRODUCTION_DOMAIN}${canonicalPath}` : PRODUCTION_DOMAIN;
     const desc = description || 'FUN Profile - Mạng xã hội Web3 kết hợp AI. Kết nối bạn bè, chia sẻ nội dung, kiếm phần thưởng.';
-    const ogImage = image || `${PRODUCTION_DOMAIN}/fun-profile-logo-128.webp`;
+    const ogImage = image || `${PRODUCTION_DOMAIN}/pwa-512.png`;
 
     // Title
     document.title = fullTitle;
@@ -130,7 +130,7 @@ export function buildArticleJsonLd(opts: {
     publisher: {
       '@type': 'Organization',
       name: 'FUN Profile',
-      logo: { '@type': 'ImageObject', url: 'https://fun.rich/fun-profile-logo-128.webp' },
+      logo: { '@type': 'ImageObject', url: 'https://fun.rich/pwa-512.png' },
     },
     datePublished: opts.datePublished,
     dateModified: opts.dateModified || opts.datePublished,
