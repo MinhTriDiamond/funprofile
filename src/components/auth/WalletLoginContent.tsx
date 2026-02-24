@@ -103,8 +103,8 @@ export const WalletLoginContent = ({
       // Handle user rejection
       if (error.name === 'UserRejectedRequestError' || error.message?.includes('rejected')) {
         toast.error('Signature rejected');
-      } else if (error.message?.includes('WALLET_NOT_REGISTERED') || error.message?.includes('chưa được đăng ký')) {
-        toast.error('Ví chưa đăng ký! Vui lòng tạo tài khoản trước rồi dán mã ví khi đăng ký.', { duration: 6000 });
+      } else if (error.message?.includes('WALLET_NOT_REGISTERED') || error.message?.includes('chưa được kết nối')) {
+        toast.error('Ví chưa được kết nối! Nếu đã có tài khoản, hãy đăng nhập bằng email/Google và kết nối ví trong trang cá nhân. Nếu chưa, hãy đăng ký tài khoản mới.', { duration: 8000 });
       } else {
         toast.error(error.message || t('errorOccurred'));
       }
