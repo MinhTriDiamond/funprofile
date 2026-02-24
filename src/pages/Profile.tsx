@@ -98,10 +98,24 @@ const Profile = () => {
           setIsOwnProfile(session ? profileData.id === session.user.id : false);
           fetchProfile(profileData.id, session?.user.id);
         } else {
+          // Username not found - check username_history for old usernames (301 redirect)
+          const { data: history } = await supabase
+            .from('username_history')
+            .select('new_username')
+            .eq('old_username', cleanUsername)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          
+          if (history?.new_username) {
+            // Redirect to new username (client-side 301)
+            navigate(`/${history.new_username}`, { replace: true });
+            return;
+          }
+          
           setLoading(false);
           setProfile(null);
         }
-        return;
       }
       
       let profileId = userId;
