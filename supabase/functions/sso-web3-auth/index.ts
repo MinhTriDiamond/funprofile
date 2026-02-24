@@ -102,8 +102,21 @@ Deno.serve(async (req: Request) => {
         .eq('wallet_address', normalizedAddr)
         .maybeSingle();
 
+      if (byLegacy) {
+        return new Response(
+          JSON.stringify({ registered: true }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data: byPublic } = await sb
+        .from('profiles')
+        .select('id')
+        .eq('public_wallet_address', normalizedAddr)
+        .maybeSingle();
+
       return new Response(
-        JSON.stringify({ registered: !!byLegacy }),
+        JSON.stringify({ registered: !!byPublic }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -196,6 +209,18 @@ Deno.serve(async (req: Request) => {
           .update(legacyUpdate)
           .eq('id', profileByLegacy.id);
         console.log('[WEB3-AUTH] Migrated legacy wallet to external_wallet_address');
+      } else {
+        // Fallback: check public_wallet_address field
+        const { data: profileByPublic } = await supabase
+          .from('profiles')
+          .select('id, username, external_wallet_address, custodial_wallet_address, public_wallet_address')
+          .eq('public_wallet_address', normalizedAddress)
+          .maybeSingle();
+
+        if (profileByPublic) {
+          existingProfile = profileByPublic;
+          console.log('[WEB3-AUTH] Found user via public_wallet_address');
+        }
       }
     }
 
