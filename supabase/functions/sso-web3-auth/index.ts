@@ -61,9 +61,54 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { wallet_address, signature, message } = await req.json();
+    const body = await req.json();
+    const { wallet_address, signature, message, action } = body;
 
-    // Validate inputs
+    // Quick check mode: verify if wallet is registered (no signature needed)
+    if (action === 'check') {
+      if (!wallet_address) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'wallet_address is required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      const normalizedAddr = wallet_address.toLowerCase();
+      if (!checkRateLimit(`check:${normalizedAddr}`)) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Too many requests' }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+      const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+      const sb = createClient(supabaseUrl, supabaseServiceKey);
+
+      const { data: byExternal } = await sb
+        .from('profiles')
+        .select('id')
+        .eq('external_wallet_address', normalizedAddr)
+        .maybeSingle();
+
+      if (byExternal) {
+        return new Response(
+          JSON.stringify({ registered: true }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data: byLegacy } = await sb
+        .from('profiles')
+        .select('id')
+        .eq('wallet_address', normalizedAddr)
+        .maybeSingle();
+
+      return new Response(
+        JSON.stringify({ registered: !!byLegacy }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate inputs for login action
     if (!wallet_address || !signature || !message) {
       return new Response(
         JSON.stringify({ success: false, error: 'wallet_address, signature, and message are required' }),
