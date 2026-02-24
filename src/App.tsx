@@ -14,7 +14,7 @@ import { DonationReceivedNotification } from "@/components/donations/DonationRec
 import { CallProvider } from "@/contexts/CallContext";
 import { TetBackground } from "@/components/ui/TetBackground";
 import { TetFlowerOverlay } from "@/components/ui/TetFlowerOverlay";
-import { ValentineMusicButton } from "@/components/layout/ValentineMusicButton";
+
 import { TetBackgroundProvider } from "@/contexts/TetBackgroundContext";
 import { usePendingDonationRecovery } from "@/hooks/usePendingDonationRecovery";
 // Lazy load pages for code splitting
@@ -116,10 +116,6 @@ function App() {
             <CallProvider>
             <TetBackground />
             <TetFlowerOverlay />
-            {/* Global floating music button – visible on all pages including pre-login */}
-            <div className="fixed bottom-36 right-4 z-50 lg:hidden">
-              <ValentineMusicButton variant="mobile" />
-            </div>
             <Suspense fallback={<PageLoader />}>
               <LawOfLightGuard>
                 <Routes>

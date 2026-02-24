@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { AngelChatWidget } from '@/components/angel-ai';
 import { GiftNavButton } from '@/components/donations/GiftNavButton';
-import { ValentineMusicButton } from './ValentineMusicButton';
+
 import { TetBackgroundSelector } from './TetBackgroundSelector';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -274,7 +274,7 @@ export const FacebookNavbar = () => {
           </div>
 
           {isMobileOrTablet && <TetBackgroundSelector variant="desktop" />}
-          {isMobileOrTablet && <ValentineMusicButton variant="desktop" />}
+          
           {isMobileOrTablet && (
             <button 
               className="fun-icon-btn-gold group" 
@@ -309,7 +309,6 @@ export const FacebookNavbar = () => {
             <div className="flex items-center gap-3">
               <GiftNavButton variant="desktop" />
               <TetBackgroundSelector variant="desktop" />
-              <ValentineMusicButton variant="desktop" />
               <NotificationDropdown />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -414,7 +413,7 @@ export const FacebookNavbar = () => {
           {!isLoggedIn && (
             <>
               {!isMobileOrTablet && <TetBackgroundSelector variant="desktop" />}
-              {!isMobileOrTablet && <ValentineMusicButton variant="desktop" />}
+              
               <Button
                 onClick={() => navigate('/auth')}
                 className="bg-primary text-primary-foreground hover:bg-primary-hover"

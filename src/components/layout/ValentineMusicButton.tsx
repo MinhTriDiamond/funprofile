@@ -5,7 +5,7 @@ import { Slider } from '@/components/ui/slider';
 // ── Singleton state (persists across remounts / page navigations) ──
 let globalAudio: HTMLAudioElement | null = null;
 let globalVolume = 0.5;
-let globalAutoplayDone = false;
+let globalAutoplayDone = true;
 let globalUserStopped = false;
 let globalResumeListener: (() => void) | null = null;
 
