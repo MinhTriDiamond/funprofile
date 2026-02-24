@@ -70,6 +70,11 @@ const Profile = () => {
   const reservedPaths = ['auth', 'feed', 'friends', 'wallet', 'about', 'leaderboard', 'admin', 'notifications', 'docs', 'post', 'law-of-light', 'profile'];
 
   useEffect(() => {
+    // Reset state when switching between profiles
+    setIsOwnProfile(false);
+    setProfile(null);
+    setLoading(true);
+
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       
@@ -117,6 +122,7 @@ const Profile = () => {
           setLoading(false);
           setProfile(null);
         }
+        return; // Stop here — don't fall through to /profile/:userId logic
       }
       
       let profileId = userId;
@@ -137,15 +143,16 @@ const Profile = () => {
     checkAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session) {
-        setCurrentUserId(session.user.id);
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        setCurrentUserId(session?.user?.id ?? '');
         if (userId) {
-          setIsOwnProfile(session.user.id === userId);
+          setIsOwnProfile(session?.user?.id === userId);
         }
       } else if (event === 'SIGNED_OUT') {
         setCurrentUserId('');
         setIsOwnProfile(false);
       }
+      // INITIAL_SESSION, USER_UPDATED → giữ nguyên state hiện tại
     });
 
     return () => subscription.unsubscribe();
