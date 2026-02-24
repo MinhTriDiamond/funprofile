@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Home } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageContext';
+import { useSlugResolver } from '@/hooks/useSlugResolver';
 
 const Post = () => {
   const { postId, username, slug } = useParams();
@@ -27,45 +28,35 @@ const Post = () => {
     fetchSession();
   }, []);
 
+  const { resolvedId } = useSlugResolver({
+    contentType: 'post',
+    table: 'posts',
+    userIdColumn: 'user_id',
+    directId: postId,
+    username,
+    slug,
+    urlPrefix: 'post',
+  });
+
   useEffect(() => {
     const fetchPost = async () => {
+      if (!resolvedId) {
+        setPost(null);
+        setLoading(false);
+        return;
+      }
       setLoading(true);
 
-      let query = supabase
+      const { data, error } = await supabase
         .from('posts')
         .select(`
           *,
           public_profiles!posts_user_id_fkey (username, display_name, avatar_url, full_name, public_wallet_address),
           reactions (id, user_id, type),
           comments (id)
-        `);
-
-      if (postId) {
-        // Legacy UUID route: /post/:postId
-        query = query.eq('id', postId);
-      } else if (username && slug) {
-        // New slug route: /:username/post/:slug
-        // First find user by username, then find post by slug
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('username', username)
-          .maybeSingle();
-
-        if (!profile) {
-          setPost(null);
-          setLoading(false);
-          return;
-        }
-
-        query = query.eq('user_id', profile.id).eq('slug', slug);
-      } else {
-        setPost(null);
-        setLoading(false);
-        return;
-      }
-
-      const { data, error } = await query.maybeSingle();
+        `)
+        .eq('id', resolvedId)
+        .maybeSingle();
 
       if (error || !data) {
         setPost(null);
@@ -77,7 +68,7 @@ const Post = () => {
     };
 
     fetchPost();
-  }, [postId, username, slug]);
+  }, [resolvedId]);
 
   if (loading) {
     return (
