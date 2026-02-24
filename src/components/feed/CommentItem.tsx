@@ -131,8 +131,8 @@ export const CommentItem = ({
           </Avatar>
         </Link>
         
-        <div className="flex-1 space-y-1">
-          <div className="bg-muted/60 rounded-2xl px-4 py-2.5 transition-all duration-300 hover:bg-muted/80 group-hover:shadow-sm inline-block max-w-full">
+        <div className="flex-1 min-w-0 space-y-1">
+          <div className="bg-muted/60 rounded-2xl px-4 py-2.5 transition-all duration-300 hover:bg-muted/80 group-hover:shadow-sm">
             <div className="flex items-center gap-2 mb-0.5">
               <Link 
                 to={`/profile/${comment.user_id}`}
