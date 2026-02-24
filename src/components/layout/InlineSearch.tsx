@@ -109,6 +109,7 @@ export const InlineSearch = () => {
             .from('posts')
             .select(`
               id,
+              slug,
               content,
               created_at,
               public_profiles!posts_user_id_fkey (username, avatar_url)
@@ -137,10 +138,16 @@ export const InlineSearch = () => {
     navigate(`/profile/${userId}`);
   };
 
-  const handlePostClick = (postId: string) => {
+  const handlePostClick = (post: any) => {
     setIsExpanded(false);
     setSearchQuery('');
-    navigate(`/post/${postId}`);
+    const username = post.profiles?.username;
+    const slug = post.slug;
+    if (username && slug) {
+      navigate(`/${username}/post/${slug}`);
+    } else {
+      navigate(`/post/${post.id}`);
+    }
   };
 
   const handleClose = () => {
@@ -283,7 +290,7 @@ export const InlineSearch = () => {
                 {posts.map((post) => (
                   <button
                     key={post.id}
-                    onClick={() => handlePostClick(post.id)}
+                    onClick={() => handlePostClick(post)}
                     className="w-full p-3 flex items-start gap-3 hover:bg-secondary transition-colors"
                   >
                     <Avatar className="w-9 h-9 flex-shrink-0">

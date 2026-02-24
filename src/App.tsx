@@ -135,6 +135,7 @@ function App() {
                   <Route path="/@:username" element={<Profile />} />
                   <Route path="/wallet/*" element={<Wallet />} />
                   <Route path="/post/:postId" element={<Post />} />
+                  <Route path="/:username/post/:slug" element={<Post />} />
                   <Route path="/about" element={<About />} />
                   <Route path="/leaderboard" element={<Leaderboard />} />
                   <Route path="/admin/migration" element={<AdminMigration />} />
