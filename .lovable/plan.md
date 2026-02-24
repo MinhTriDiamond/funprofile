@@ -1,70 +1,67 @@
 
 
-# Cai thien luong dang nhap vi -- Kiem tra vi truoc khi dang nhap
+# Thay doi luong dang nhap vi: Dan dia chi vi thay vi ket noi RainbowKit
 
-## Van de
+## Hien tai
+Khi bam "Vi Dien Tu", he thong mo popup RainbowKit de ket noi vi, sau do kiem tra va dang nhap. Nguoi dung phai cai extension vi (MetaMask...) moi dung duoc.
 
-Hien tai khi nguoi dung ket noi vi, he thong hien nut "Dang Nhap bang Vi". Nguoi dung bam vao, phai ky message, roi moi nhan duoc loi "Vi chua duoc ket noi!" (WALLET_NOT_REGISTERED). Dieu nay gay nham lan vi:
-
-1. Thong bao "Vi chua duoc ket noi" nghe nhu loi ket noi, nhung thuc ra la vi chua duoc dang ky trong he thong
-2. Nguoi dung phai ky message (mat thoi gian) roi moi biet vi chua dang ky
-3. Thong bao toast hien ben duoi, de bi bo qua
-
-## Giai phap
-
-Them buoc **kiem tra vi truoc** ngay sau khi ket noi thanh cong. Neu vi chua dang ky, hien thong bao ro rang ngay trong giao dien (khong phai toast) va an nut dang nhap.
-
-### Luong moi:
+## Luong moi
 
 ```text
-Ket noi vi --> Kiem tra vi trong database
+Bam "Vi Dien Tu" --> Hien o nhap dia chi vi
   |
-  +-- Vi da dang ky --> Hien nut "Dang Nhap bang Vi" --> Ky & xac thuc --> Vao app
-  |
-  +-- Vi chua dang ky --> Hien thong bao huong dan inline (khong can ky)
+  +-- Dan dia chi vi --> Bam "Kiem tra"
+       |
+       +-- Vi da dang ky --> Ket noi vi (de xac minh chu so huu) --> Tu dong ky & dang nhap
+       |
+       +-- Vi chua dang ky --> Hien canh bao huong dan
 ```
+
+## Luu y bao mat quan trong
+
+Dia chi vi la thong tin **cong khai** (ai cung co the biet). Vi vay, chi dan dia chi vi **khong du** de dang nhap -- he thong van can nguoi dung **ket noi vi va ky tin nhan** de chung minh ho la chu so huu that su cua vi do. Neu bo buoc ky, bat ky ai biet dia chi vi cua ban deu co the dang nhap vao tai khoan cua ban.
+
+Luong moi se la:
+1. Dan dia chi vi vao o nhap (de kiem tra nhanh)
+2. Neu vi da dang ky: hien nut "Dang Nhap" -- khi bam se ket noi vi + ky tu dong
+3. Neu vi chua dang ky: hien canh bao inline
 
 ## Chi tiet ky thuat
 
-### File 1: `supabase/functions/sso-web3-auth/index.ts`
+### File: `src/components/auth/WalletLoginContent.tsx`
 
-Them mode `check` de kiem tra vi nhanh ma khong can ky:
+Thay doi chinh:
 
-- Khi nhan `action: "check"` va `wallet_address`, chi kiem tra xem vi co trong database khong
-- Tra ve `{ registered: true/false }` ma khong can signature
-- Van giu rate limiting
+1. **Them state `pastedAddress`** va **bo buoc 'connect' rieng biet**
+2. **Man hinh ban dau**: hien 1 input de dan dia chi vi (0x...) + nut "Kiem Tra"
+3. **Sau khi kiem tra**:
+   - Neu `registered`: hien nut "Dang Nhap bang Vi" -- khi bam se goi `openConnectModal()` de ket noi vi, sau do tu dong ky va xac thuc
+   - Neu `not_registered`: hien canh bao inline (giu nguyen UI hien tai)
+4. **Validation**: kiem tra dinh dang dia chi EVM (0x + 40 ky tu hex) truoc khi goi API
+5. **useEffect**: khi vi ket noi thanh cong va address trung voi `pastedAddress`, tu dong goi `handleSignAndVerify()`
 
-### File 2: `src/components/auth/WalletLoginContent.tsx`
-
-- Them state `walletStatus`: `'checking' | 'registered' | 'not_registered' | null`
-- Sau khi vi ket noi (useEffect), goi API check de kiem tra vi
-- Neu `registered = true`: hien nut "Dang Nhap bang Vi" nhu binh thuong
-- Neu `registered = false`: hien thong bao inline voi huong dan cu the:
-  - "Vi nay chua duoc lien ket voi tai khoan nao"
-  - "Neu da co tai khoan: dang nhap bang email/Google va ket noi vi trong cai dat"
-  - "Neu chua co tai khoan: dang ky moi va dan dia chi vi khi dang ky"
-- Cap nhat thong bao loi toast tu "Vi chua duoc ket noi" thanh "Vi chua duoc lien ket voi tai khoan nao" (ro rang hon)
-
-### Giao dien khi vi chua dang ky:
+### Luong UI cu the:
 
 ```text
-  [Check icon mau vang/cam]
-  Vi Chua Duoc Lien Ket
+Buoc 1 (mac dinh):
+  [Vu Dien Tu]
+  "Dan dia chi vi cua ban"
+  [ 0x_________________________ ]  [Kiem Tra]
 
+Buoc 2a (vi da dang ky):
+  [Check icon xanh]
+  Vi Da Xac Nhan ✓
   0x5102...a402
+  [ Dang Nhap bang Vi ]  <-- bam vao se ket noi + ky tu dong
+  [← Huy]
 
-  Vi nay chua duoc lien ket voi tai khoan nao tren FUN Profile.
-
-  - Neu ban da co tai khoan, hay dang nhap bang Email hoac Google,
-    sau do ket noi vi trong phan Cai Dat.
-  - Neu chua co tai khoan, hay dang ky moi.
-
+Buoc 2b (vi chua dang ky):
+  [Canh bao vang]
+  Vi chua duoc lien ket...
+  (giu nguyen noi dung hien tai)
   [← Huy]
 ```
 
-## Ket qua mong doi
-
-1. Nguoi dung khong phai ky message vo ich khi vi chua dang ky
-2. Thong bao huong dan hien ro rang ngay trong giao dien, khong bi mat trong toast
-3. Khi vi da dang ky, bam "Dang Nhap bang Vi" se ky va vao app nhu binh thuong
+### Khong thay doi file edge function
+Edge function `sso-web3-auth` da co `action: 'check'` va luong xac thuc day du, khong can sua.
 
