@@ -1,11 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAccount, useSignMessage, useDisconnect } from 'wagmi';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Wallet, CheckCircle2, Loader2, LogIn, AlertTriangle } from 'lucide-react';
+import { validateEvmAddress } from '@/utils/walletValidation';
+import { Wallet, CheckCircle2, Loader2, LogIn, AlertTriangle, Search } from 'lucide-react';
 
 interface WalletLoginContentProps {
   onSuccess: (userId: string, isNewUser: boolean) => void;
@@ -13,27 +15,35 @@ interface WalletLoginContentProps {
 
 export const WalletLoginContent = ({ onSuccess }: WalletLoginContentProps) => {
   const { t } = useLanguage();
-  const [step, setStep] = useState<'connect' | 'sign' | 'verify'>('connect');
+  const [step, setStep] = useState<'input' | 'checked' | 'sign' | 'verify'>('input');
   const [loading, setLoading] = useState(false);
   const [walletStatus, setWalletStatus] = useState<'checking' | 'registered' | 'not_registered' | null>(null);
+  const [pastedAddress, setPastedAddress] = useState('');
+  const autoSignRef = useRef(false);
 
   const { address, isConnected, isConnecting } = useAccount();
   const { openConnectModal } = useConnectModal();
   const { signMessageAsync, isPending: isSigning } = useSignMessage();
   const { disconnect } = useDisconnect();
 
-  // Auto-transition and check wallet registration
+  // Auto-sign when wallet connects and matches pasted address
   useEffect(() => {
-    if (isConnected && address) {
+    if (
+      isConnected &&
+      address &&
+      pastedAddress &&
+      address.toLowerCase() === pastedAddress.toLowerCase() &&
+      autoSignRef.current
+    ) {
+      autoSignRef.current = false;
       setStep('sign');
-      checkWalletRegistration(address);
-    } else {
-      setStep('connect');
-      setWalletStatus(null);
+      handleSignAndVerify();
     }
   }, [isConnected, address]);
 
   const checkWalletRegistration = async (addr: string) => {
+    if (!validateEvmAddress(addr)) return;
+    
     setWalletStatus('checking');
     try {
       const response = await fetch(
@@ -48,26 +58,39 @@ export const WalletLoginContent = ({ onSuccess }: WalletLoginContentProps) => {
         }
       );
       const data = await response.json();
-      setWalletStatus(data?.registered ? 'registered' : 'not_registered');
+      const status = data?.registered ? 'registered' : 'not_registered';
+      setWalletStatus(status);
+      setStep('checked');
     } catch {
-      // On error, allow login attempt anyway
       setWalletStatus('registered');
+      setStep('checked');
     }
   };
 
-  const handleConnect = () => {
-    if (openConnectModal) openConnectModal();
+  const handleLoginClick = () => {
+    autoSignRef.current = true;
+    // If already connected with matching address, sign immediately
+    if (isConnected && address?.toLowerCase() === pastedAddress.toLowerCase()) {
+      autoSignRef.current = false;
+      setStep('sign');
+      handleSignAndVerify();
+    } else {
+      // Disconnect any existing connection, then open modal
+      if (isConnected) disconnect();
+      if (openConnectModal) openConnectModal();
+    }
   };
 
   const handleSignAndVerify = async () => {
-    if (!address) return;
+    const walletAddr = pastedAddress;
+    if (!walletAddr) return;
     setLoading(true);
     try {
       const nonce = Math.random().toString(36).substring(2, 15);
       const timestamp = new Date().toISOString();
-      const message = `Welcome to FUN Profile!\n\nSign this message to authenticate.\n\nWallet: ${address}\nNonce: ${nonce}\nTimestamp: ${timestamp}`;
+      const message = `Welcome to FUN Profile!\n\nSign this message to authenticate.\n\nWallet: ${walletAddr}\nNonce: ${nonce}\nTimestamp: ${timestamp}`;
 
-      const signature = await signMessageAsync({ message, account: address });
+      const signature = await signMessageAsync({ message, account: walletAddr as `0x${string}` });
       setStep('verify');
 
       const response = await fetch(
@@ -78,7 +101,7 @@ export const WalletLoginContent = ({ onSuccess }: WalletLoginContentProps) => {
             'Content-Type': 'application/json',
             'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
           },
-          body: JSON.stringify({ wallet_address: address, signature, message, nonce }),
+          body: JSON.stringify({ wallet_address: walletAddr, signature, message, nonce }),
         }
       );
       const data = await response.json();
@@ -107,7 +130,7 @@ export const WalletLoginContent = ({ onSuccess }: WalletLoginContentProps) => {
       } else {
         toast.error(error.message || t('errorOccurred'));
       }
-      setStep('sign');
+      setStep('checked');
     } finally {
       setLoading(false);
     }
@@ -115,8 +138,10 @@ export const WalletLoginContent = ({ onSuccess }: WalletLoginContentProps) => {
 
   const handleCancel = () => {
     disconnect();
-    setStep('connect');
+    setStep('input');
+    setPastedAddress('');
     setWalletStatus(null);
+    autoSignRef.current = false;
   };
 
   const shortenAddress = (addr: string) => `${addr.slice(0, 6)}...${addr.slice(-4)}`;
@@ -125,60 +150,93 @@ export const WalletLoginContent = ({ onSuccess }: WalletLoginContentProps) => {
 
   return (
     <div className="space-y-6">
-      {step === 'connect' && (
+      {step === 'input' && (
         <>
           <div className="text-center space-y-2">
             <h3 className="text-lg font-bold text-foreground">{t('walletConnect')}</h3>
-            <p className="text-sm text-muted-foreground">{t('lightCloakDescription')}</p>
+            <p className="text-sm text-muted-foreground">Dán địa chỉ ví của bạn để đăng nhập</p>
           </div>
 
-          <Button
-            onClick={handleConnect}
-            disabled={isLoading}
-            className="w-full h-14 text-lg font-bold rounded-full relative overflow-hidden text-white"
-            style={{
-              background: 'linear-gradient(135deg, #166534 0%, #15803d 50%, #166534 100%)',
-              boxShadow: '0 4px 20px rgba(22, 101, 52, 0.4)',
-            }}
-          >
-            <span className="relative z-10 flex items-center justify-center gap-2 text-white">
-              {isLoading ? (
-                <>
-                  <Loader2 className="animate-spin" size={20} />
-                  {t('walletConnecting')}
-                </>
-              ) : (
-                <>
-                  <Wallet size={20} />
-                  Connect Wallet
-                </>
-              )}
-            </span>
-          </Button>
+          <div className="space-y-3">
+            <Input
+              placeholder="0x..."
+              value={pastedAddress}
+              onChange={(e) => setPastedAddress(e.target.value.trim())}
+              className="font-mono text-sm h-12"
+              disabled={walletStatus === 'checking'}
+            />
+            <Button
+              onClick={() => checkWalletRegistration(pastedAddress)}
+              disabled={!pastedAddress || walletStatus === 'checking'}
+              className="w-full h-14 text-lg font-bold rounded-full relative overflow-hidden text-white"
+              style={{
+                background: 'linear-gradient(135deg, #166534 0%, #15803d 50%, #166534 100%)',
+                boxShadow: '0 4px 20px rgba(22, 101, 52, 0.4)',
+              }}
+            >
+              <span className="relative z-10 flex items-center justify-center gap-2 text-white">
+                {walletStatus === 'checking' ? (
+                  <>
+                    <Loader2 className="animate-spin" size={20} />
+                    Đang kiểm tra...
+                  </>
+                ) : (
+                  <>
+                    <Search size={20} />
+                    Kiểm Tra Ví
+                  </>
+                )}
+              </span>
+            </Button>
+          </div>
 
           <p className="text-center text-xs text-muted-foreground">
-            MetaMask, Coinbase Wallet, WalletConnect & more
+            Dán địa chỉ ví EVM (0x...) để kiểm tra và đăng nhập
           </p>
         </>
       )}
 
-      {step === 'sign' && address && (
+      {step === 'checked' && (
         <>
           <div className="text-center space-y-2">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-900/30 mb-2">
-              <CheckCircle2 className="text-emerald-600" size={28} />
-            </div>
-            <p className="text-muted-foreground">{t('walletConnected')} ✓</p>
+            {walletStatus === 'registered' ? (
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-900/30 mb-2">
+                <CheckCircle2 className="text-emerald-600" size={28} />
+              </div>
+            ) : (
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-amber-100 dark:bg-amber-900/30 mb-2">
+                <AlertTriangle className="text-amber-500" size={28} />
+              </div>
+            )}
             <p className="font-mono text-sm bg-muted px-3 py-2 rounded-lg inline-block">
-              {shortenAddress(address)}
+              {shortenAddress(pastedAddress)}
             </p>
           </div>
 
-          {walletStatus === 'checking' && (
-            <div className="flex items-center justify-center gap-2 py-4">
-              <Loader2 className="animate-spin text-muted-foreground" size={20} />
-              <span className="text-sm text-muted-foreground">Đang kiểm tra ví...</span>
-            </div>
+          {walletStatus === 'registered' && (
+            <Button
+              onClick={handleLoginClick}
+              disabled={isLoading}
+              className="w-full h-14 text-lg font-bold rounded-full relative overflow-hidden text-white"
+              style={{
+                background: 'linear-gradient(135deg, #166534 0%, #15803d 50%, #166534 100%)',
+                boxShadow: '0 4px 20px rgba(22, 101, 52, 0.4)',
+              }}
+            >
+              <span className="relative z-10 flex items-center justify-center gap-2 text-white">
+                {isLoading ? (
+                  <>
+                    <Loader2 className="animate-spin" size={20} />
+                    {t('walletLoggingIn')}
+                  </>
+                ) : (
+                  <>
+                    <LogIn size={20} />
+                    {t('walletLoginBtn')}
+                  </>
+                )}
+              </span>
+            </Button>
           )}
 
           {walletStatus === 'not_registered' && (
@@ -203,32 +261,6 @@ export const WalletLoginContent = ({ onSuccess }: WalletLoginContentProps) => {
             </div>
           )}
 
-          {walletStatus === 'registered' && (
-            <Button
-              onClick={handleSignAndVerify}
-              disabled={isLoading}
-              className="w-full h-14 text-lg font-bold rounded-full relative overflow-hidden text-white"
-              style={{
-                background: 'linear-gradient(135deg, #166534 0%, #15803d 50%, #166534 100%)',
-                boxShadow: '0 4px 20px rgba(22, 101, 52, 0.4)',
-              }}
-            >
-              <span className="relative z-10 flex items-center justify-center gap-2 text-white">
-                {isLoading ? (
-                  <>
-                    <Loader2 className="animate-spin" size={20} />
-                    {t('walletLoggingIn')}
-                  </>
-                ) : (
-                  <>
-                    <LogIn size={20} />
-                    {t('walletLoginBtn')}
-                  </>
-                )}
-              </span>
-            </Button>
-          )}
-
           <button
             onClick={handleCancel}
             className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -238,10 +270,12 @@ export const WalletLoginContent = ({ onSuccess }: WalletLoginContentProps) => {
         </>
       )}
 
-      {step === 'verify' && (
+      {(step === 'sign' || step === 'verify') && (
         <div className="text-center space-y-4 py-8">
           <Loader2 className="animate-spin mx-auto text-emerald-500" size={48} />
-          <p className="text-muted-foreground font-medium">{t('walletVerifying')}</p>
+          <p className="text-muted-foreground font-medium">
+            {step === 'sign' ? 'Đang kết nối ví...' : t('walletVerifying')}
+          </p>
         </div>
       )}
     </div>
