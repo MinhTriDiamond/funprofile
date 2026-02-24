@@ -80,16 +80,19 @@ const Post = () => {
     const canonicalPath = postUsername && post.slug
       ? `/${postUsername}/post/${post.slug}`
       : `/post/${post.id}`;
+    const firstMediaImage = Array.isArray(post.media_urls)
+      ? post.media_urls.find((m: any) => m.type === 'image')?.url
+      : null;
     return {
       title: `${authorName} - Post`,
       description: postContent || `Post by ${authorName} on FUN Profile`,
       canonicalPath,
-      image: post.image_url || post.media_url,
+      image: post.image_url || firstMediaImage || null,
       jsonLd: buildArticleJsonLd({
         title: `Post by ${authorName}`,
         description: postContent,
         url: `https://fun.rich${canonicalPath}`,
-        image: post.image_url || post.media_url,
+        image: post.image_url || firstMediaImage || null,
         authorName,
         datePublished: post.created_at,
       }),

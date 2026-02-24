@@ -242,7 +242,7 @@ Deno.serve(async (req) => {
             headline: `Post by ${authorName}`,
             description: content,
             url: canonicalUrl,
-            image: post.image_url || post.media_url,
+            image: extractPostImage(post) || post.profile?.avatar_url || DEFAULT_IMAGE,
             author: { "@type": "Person", name: authorName },
             datePublished: post.created_at,
             publisher: { "@type": "Organization", name: SITE_NAME },
