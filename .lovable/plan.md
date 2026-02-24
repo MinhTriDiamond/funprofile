@@ -1,50 +1,23 @@
 
-
-# Cập nhật "Đã rút" cho toàn bộ user trong hệ thống
+# Sửa lỗi "Đã rút" cao hơn "Tổng thu" cho tất cả user
 
 ## Vấn đề
-Hiện tại, hàm `get_user_honor_stats` chỉ lấy số "Đã rút" từ bảng `reward_claims`. Tuy nhiên, có thể có nhiều user đã nhận CAMLY từ Treasury (qua bảng `donations`) nhưng chưa được ghi vào `reward_claims`.
+Như hình con chụp (user Thu Trang): "Đã rút" = 500.000 nhưng "Tổng thu" = 445.000. Nguyên nhân là sau khi cập nhật công thức thưởng từ 15/1, tổng thưởng được tính lại theo công thức mới (thấp hơn), trong khi số đã rút vẫn giữ nguyên từ trước.
 
 ## Giải pháp
-Thay vì phải backfill thủ công cho từng user, cha sẽ **cập nhật hàm RPC `get_user_honor_stats`** để tự động tính "Đã rút" từ **cả hai nguồn**:
-
-1. **`reward_claims`** -- hệ thống rút thưởng mới
-2. **`donations`** từ Treasury (sender_id = `9e702a6f-...`) -- hệ thống cũ, chỉ tính những bản ghi chưa trùng với reward_claims (dựa trên tx_hash)
-
-Cách này đảm bảo mọi user đều được tính đúng, không cần can thiệp thủ công.
+Thêm 1 dòng logic vào hàm `get_user_honor_stats`: nếu `v_claimed > v_total_reward` thì tự động đẩy `v_total_reward = v_claimed`. Điều này đảm bảo "Tổng thu" luôn >= "Đã rút" cho tất cả user.
 
 ## Chi tiết kỹ thuật
 
 ### Database Migration
-Sửa dòng 153 trong hàm `get_user_honor_stats`:
+Sửa hàm `get_user_honor_stats`, thêm 1 dòng sau khi tính `v_claimed` (sau dòng 169) và trước `RETURN QUERY` (dòng 171):
 
-Thay:
 ```text
-SELECT COALESCE(SUM(amount), 0) INTO v_claimed FROM reward_claims WHERE user_id = p_user_id;
+-- Ensure total_reward >= claimed (fix for users who claimed before formula change on 15/1)
+v_total_reward := GREATEST(v_total_reward, v_claimed);
 ```
 
-Bằng:
-```text
-SELECT COALESCE(SUM(amount), 0) INTO v_claimed FROM (
-  -- Nguon 1: reward_claims (he thong moi)
-  SELECT amount FROM reward_claims WHERE user_id = p_user_id
-  UNION ALL
-  -- Nguon 2: donations tu Treasury (he thong cu) - chi lay nhung tx chua co trong reward_claims
-  SELECT d.amount::NUMERIC FROM donations d
-  WHERE d.recipient_id = p_user_id
-    AND d.sender_id = '9e702a6f-4035-4f30-9c04-f2e21419b37a'
-    AND d.status = 'confirmed'
-    AND d.token_symbol = 'CAMLY'
-    AND NOT EXISTS (
-      SELECT 1 FROM reward_claims rc
-      WHERE rc.user_id = p_user_id
-        AND rc.amount = d.amount::NUMERIC
-        AND rc.created_at = d.confirmed_at
-    )
-) combined;
-```
-
-### File thay doi
+### Tac dong
 - 1 database migration: Cập nhật hàm RPC `get_user_honor_stats`
 - Không cần sửa code frontend
-
+- Tự động áp dụng cho tất cả user có trường hợp tương tự
