@@ -13,15 +13,15 @@ const AllTransactions = () => {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<any>(null);
   const [page, setPage] = useState(1);
-  const [statusFilter, setStatusFilter] = useState("");
-  const [tokenFilter, setTokenFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [tokenFilter, setTokenFilter] = useState("all");
   const limit = 30;
 
   const fetchData = async (p: number = page) => {
     setLoading(true);
     try {
       const { data: result, error } = await supabase.functions.invoke("list-all-transactions", {
-        body: { page: p, limit, status_filter: statusFilter, token_filter: tokenFilter },
+        body: { page: p, limit, status_filter: statusFilter === "all" ? "" : statusFilter, token_filter: tokenFilter === "all" ? "" : tokenFilter },
       });
       if (error) throw error;
       setData(result);
@@ -56,7 +56,7 @@ const AllTransactions = () => {
                 <SelectValue placeholder="Tất cả" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Tất cả</SelectItem>
+                <SelectItem value="all">Tất cả</SelectItem>
                 <SelectItem value="confirmed">Confirmed</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
                 <SelectItem value="failed">Failed</SelectItem>
@@ -70,7 +70,7 @@ const AllTransactions = () => {
                 <SelectValue placeholder="Tất cả" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Tất cả</SelectItem>
+                <SelectItem value="all">Tất cả</SelectItem>
                 <SelectItem value="BNB">BNB</SelectItem>
                 <SelectItem value="USDT">USDT</SelectItem>
                 <SelectItem value="BTCB">BTCB</SelectItem>
