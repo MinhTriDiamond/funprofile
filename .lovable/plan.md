@@ -1,49 +1,28 @@
 
 
-# Khắc phục: Video Replay dài phải tải 100% mới phát được
+# Sửa lỗi: Click tên người dùng trong dialog Cảm xúc → "Không tìm thấy trang cá nhân"
 
-## Nguyên nhân gốc
+## Nguyên nhân
 
-`ChunkedVideoPlayer` hiện tại tải **TẤT CẢ chunks** (ví dụ 483 chunks cho video 32 phút) rồi mới gộp thành 1 blob để phát. Người dùng phải chờ từ 0% → 100% trước khi xem được bất kỳ frame nào.
+Có **2 vấn đề** trong `ReactionViewerDialog.tsx`:
 
-```text
-Hiện tại:
-[Chunk 1] → [Chunk 2] → ... → [Chunk 483] → Gộp blob → Phát video
-                    ↑ Chờ 100% ↑
+### 1. Sai đường dẫn điều hướng
+Hàm `handleUserClick` điều hướng đến `/profile/${username}`, nhưng hệ thống route sử dụng `/:username` (không có prefix `/profile/`). Kết quả: URL `/profile/username` không khớp route nào → hiển thị trang NotFound.
 
-Sau khi sửa:
-[Chunk 1..3] → Phát ngay! → Tải thêm chunks nền → Phát liên tục
-   ↑ ~12 giây ↑
-```
+### 2. Query join sai bảng
+Query hiện tại join `reactions` với bảng `profiles` trực tiếp (`profiles:user_id`). Bảng `profiles` có RLS policies hạn chế SELECT, nên kết quả join có thể trả về null cho `item.profiles`. Khi đó username fallback thành `'Unknown'` → điều hướng đến `/Unknown` → không tìm thấy.
 
-## Giải pháp: MediaSource Extensions (MSE) - Streaming Progressive
+Hệ thống đã có view `public_profiles` (public, không bị RLS chặn) chứa đầy đủ thông tin cần thiết.
 
-Sử dụng `MediaSource API` để bắt đầu phát video ngay sau khi tải vài chunks đầu tiên, trong khi tiếp tục tải các chunks còn lại ở background.
-
-## File cần sửa
+## Giải pháp
 
 | File | Thay đổi |
 |------|----------|
-| `src/modules/live/components/ChunkedVideoPlayer.tsx` | Viết lại logic: dùng MediaSource API để append chunks vào SourceBuffer ngay khi tải xong, cho phép phát video progressive. Fallback về blob concatenation nếu MSE không hỗ trợ codec. |
+| `src/components/feed/ReactionViewerDialog.tsx` | (1) Đổi navigation từ `/profile/${username}` thành `/${username}`. (2) Đổi query join từ `profiles:user_id` sang `public_profiles:user_id` để tránh bị RLS chặn. |
 
 ## Chi tiết kỹ thuật
 
-### Luồng mới trong ChunkedVideoPlayer:
+**Dòng 66**: Đổi `profiles:user_id` → `public_profiles:user_id`
 
-1. Fetch `manifest.json` → parse danh sách chunks
-2. Tạo `MediaSource` object, gán `URL.createObjectURL(mediaSource)` vào video.src
-3. Khi `sourceopen` event:
-   - Tạo `SourceBuffer` với codec từ manifest (vd: `video/webm; codecs="vp8,opus"`)
-   - Bắt đầu tải chunk 1, append vào SourceBuffer
-   - Gọi `onReady` + `video.play()` ngay sau chunk đầu tiên
-   - Tiếp tục tải từng chunk tiếp theo, append vào buffer
-   - Khi hết chunks → gọi `mediaSource.endOfStream()`
-4. Fallback: Nếu `MediaSource.isTypeSupported()` trả false → dùng logic blob cũ (tải hết rồi phát)
-5. Hiển thị trạng thái: thay vì "Đang tải video... X%", chỉ hiển thị spinner nhỏ khi đang tải chunk đầu tiên, sau đó ẩn loading overlay
-
-### Xử lý edge cases:
-- **SourceBuffer busy**: Queue chunks và append khi `updateend` event fire
-- **Seeking**: Nếu user tua tới vùng chưa tải, hiển thị buffering spinner
-- **Lỗi mạng**: Retry tải chunk bị lỗi (tối đa 3 lần)
-- **Codec không hỗ trợ MSE**: Fallback về blob concatenation (giữ logic cũ)
+**Dòng 102**: Đổi `navigate('/profile/${username}')` → `navigate('/${username}')`
 
