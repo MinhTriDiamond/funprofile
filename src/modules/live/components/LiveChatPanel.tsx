@@ -7,7 +7,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useLiveMessages } from '../hooks/useLiveMessages';
 import { useLivePresence, type LiveViewer } from '../hooks/useLivePresence';
-import { useLiveCoHosts } from '../hooks/useLiveCoHosts';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -21,7 +20,6 @@ interface LiveChatPanelProps {
 export function LiveChatPanel({ sessionId, className, isHost = false, liveTitle }: LiveChatPanelProps) {
   const { messages, sendMessage, isLoading } = useLiveMessages(sessionId);
   const { viewers } = useLivePresence(sessionId);
-  const { coHosts, canInviteMore, inviteUser } = useLiveCoHosts(sessionId);
   const [text, setText] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -50,26 +48,19 @@ export function LiveChatPanel({ sessionId, className, isHost = false, liveTitle 
     setText('');
   };
 
-  const handleInviteViewer = async (viewer: LiveViewer) => {
+  const handleInvite = async (viewer: LiveViewer) => {
     if (!currentUserId) return;
-    await inviteUser(viewer.userId, currentUserId, liveTitle);
-  };
-
-  const handleInviteFromChat = async (userId: string) => {
-    if (!currentUserId) return;
-    await inviteUser(userId, currentUserId, liveTitle);
-  };
-
-  const isAlreadyInvited = (userId: string) => {
-    return coHosts.some((c) => c.userId === userId);
-  };
-
-  const getInviteStatus = (userId: string) => {
-    const ch = coHosts.find((c) => c.userId === userId);
-    if (!ch) return null;
-    if (ch.status === 'pending') return 'Đang chờ...';
-    if (ch.status === 'accepted') return 'Đang live cùng';
-    return null;
+    const { error } = await supabase.from('notifications').insert({
+      type: 'live_invite',
+      user_id: viewer.userId,
+      actor_id: currentUserId,
+      metadata: { session_id: sessionId, live_title: liveTitle || 'Live Stream' },
+    });
+    if (error) {
+      toast.error('Không thể gửi lời mời');
+    } else {
+      toast.success(`Đã gửi lời mời đến ${viewer.username}`);
+    }
   };
 
   return (
@@ -100,20 +91,15 @@ export function LiveChatPanel({ sessionId, className, isHost = false, liveTitle 
                     <Popover key={v.userId}>
                       <PopoverTrigger asChild>{chip}</PopoverTrigger>
                       <PopoverContent className="w-auto p-1" side="bottom" align="start">
-                        {isAlreadyInvited(v.userId) ? (
-                          <div className="px-2 py-1 text-xs text-muted-foreground">{getInviteStatus(v.userId)}</div>
-                        ) : (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="gap-1.5 text-xs"
-                            disabled={!canInviteMore}
-                            onClick={() => handleInviteViewer(v)}
-                          >
-                            <Video className="h-3.5 w-3.5" />
-                            Mời live cùng
-                          </Button>
-                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="gap-1.5 text-xs"
+                          onClick={() => handleInvite(v)}
+                        >
+                          <Video className="h-3.5 w-3.5" />
+                          Mời live cùng
+                        </Button>
                       </PopoverContent>
                     </Popover>
                   );
@@ -131,54 +117,20 @@ export function LiveChatPanel({ sessionId, className, isHost = false, liveTitle 
           <div className="space-y-3 py-3">
             {isLoading && <div className="text-xs text-muted-foreground">Loading chat...</div>}
             {!isLoading &&
-              messages.map((msg) => {
-              const msgUserId = msg.user_id;
-                const username = msg.profile?.username || 'User';
-                const canInviteThisUser = isHost && msgUserId && msgUserId !== currentUserId;
-
-                const nameElement = canInviteThisUser ? (
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <button className="text-xs font-semibold truncate hover:underline cursor-pointer text-left">
-                        {username}
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-1" side="top" align="start">
-                      {isAlreadyInvited(msgUserId) ? (
-                        <div className="px-2 py-1 text-xs text-muted-foreground">{getInviteStatus(msgUserId)}</div>
-                      ) : (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="gap-1.5 text-xs"
-                          disabled={!canInviteMore}
-                          onClick={() => handleInviteFromChat(msgUserId)}
-                        >
-                          <Video className="h-3.5 w-3.5" />
-                          Mời live cùng
-                        </Button>
-                      )}
-                    </PopoverContent>
-                  </Popover>
-                ) : (
-                  <div className="text-xs font-semibold truncate">{username}</div>
-                );
-
-                return (
-                  <div key={msg.id} className="flex gap-2">
-                    <Avatar className="h-7 w-7 mt-0.5">
-                      <AvatarImage src={msg.profile?.avatar_url || ''} />
-                      <AvatarFallback className="text-xs">
-                        {username.charAt(0)?.toUpperCase() || '?'}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0">
-                      {nameElement}
-                      <div className="text-sm break-words">{msg.content}</div>
-                    </div>
+              messages.map((msg) => (
+                <div key={msg.id} className="flex gap-2">
+                  <Avatar className="h-7 w-7 mt-0.5">
+                    <AvatarImage src={msg.profile?.avatar_url || ''} />
+                    <AvatarFallback className="text-xs">
+                      {msg.profile?.username?.charAt(0)?.toUpperCase() || '?'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <div className="text-xs font-semibold truncate">{msg.profile?.username || 'User'}</div>
+                    <div className="text-sm break-words">{msg.content}</div>
                   </div>
-                );
-              })}
+                </div>
+              ))}
             <div ref={endRef} />
           </div>
         </ScrollArea>

@@ -32,7 +32,6 @@ import {
 import { createRecorder, type RecorderController } from '../recording/clientRecorder';
 import { useLiveSession } from '../useLiveSession';
 import { useLiveRtc } from '../hooks/useLiveRtc';
-import { useLiveCoHosts } from '../hooks/useLiveCoHosts';
 import { useLiveHeartbeat } from '../hooks/useLiveHeartbeat';
 import { LiveChatPanel } from '../components/LiveChatPanel';
 import { FloatingReactions } from '../components/FloatingReactions';
@@ -106,7 +105,6 @@ export default function LiveHostPage() {
     isMuted,
     isCameraOff,
     statusText,
-    remoteUsers,
     start,
     leave,
     toggleMute,
@@ -132,7 +130,6 @@ export default function LiveHostPage() {
   });
 
   const liveDuration = useLiveDuration(session?.started_at, session?.status === 'live' && isJoined);
-  const { activeCoHosts } = useLiveCoHosts(effectiveSessionId);
 
   const isHost = useMemo(() => !!session && !!userId && session.host_user_id === userId, [session, userId]);
 
@@ -624,42 +621,13 @@ const handleEndLive = async (skipNavigate = false) => {
 
 
             <Card className="overflow-hidden">
-              <div className={`bg-black relative ${activeCoHosts.length > 0 ? 'grid gap-1' : ''}`}
-                style={activeCoHosts.length > 0 ? {
-                  gridTemplateColumns: activeCoHosts.length >= 2 ? '1fr 1fr' : '1fr 1fr',
-                  aspectRatio: '16/9',
-                } : { aspectRatio: '16/9' }}>
-                {/* Host video */}
-                <div className={`relative ${activeCoHosts.length === 0 ? 'h-full w-full' : ''}`}>
-                  <div ref={setLocalContainerRef} className="h-full w-full" />
-                  {!isJoined && (
-                    <div className="absolute inset-0 flex items-center justify-center text-white/90 bg-black/50">
-                      {statusText}
-                    </div>
-                  )}
-                  {activeCoHosts.length > 0 && (
-                    <div className="absolute bottom-1 left-1 bg-black/60 text-white text-xs px-1.5 py-0.5 rounded">
-                      Bạn (Host)
-                    </div>
-                  )}
-                </div>
-                {/* Co-host videos */}
-                {activeCoHosts.map((coHost) => {
-                  const remoteUser = Array.from(remoteUsers.entries()).find(([uid]) => {
-                    // Match by presence - just render available remote users
-                    return true;
-                  });
-                  return (
-                    <div key={coHost.id} className="relative bg-muted">
-                      <div className="h-full w-full flex items-center justify-center text-muted-foreground text-sm">
-                        {coHost.username}
-                      </div>
-                      <div className="absolute bottom-1 left-1 bg-black/60 text-white text-xs px-1.5 py-0.5 rounded">
-                        {coHost.username}
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className="aspect-video bg-black relative">
+                <div ref={setLocalContainerRef} className="h-full w-full" />
+                {!isJoined && (
+                  <div className="absolute inset-0 flex items-center justify-center text-white/90 bg-black/50">
+                    {statusText}
+                  </div>
+                )}
                 {effectiveSessionId && <FloatingReactions sessionId={effectiveSessionId} />}
               </div>
             </Card>

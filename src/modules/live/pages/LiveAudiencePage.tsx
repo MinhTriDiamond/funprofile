@@ -14,7 +14,6 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogAction,
-  AlertDialogCancel,
 } from '@/components/ui/alert-dialog';
 import { useLiveSession } from '../useLiveSession';
 import { useLiveRtc } from '../hooks/useLiveRtc';
@@ -23,8 +22,6 @@ import { LiveChatPanel } from '../components/LiveChatPanel';
 import { FloatingReactions } from '../components/FloatingReactions';
 import { useSlugResolver } from '@/hooks/useSlugResolver';
 import { useLiveDuration } from '../hooks/useLiveDuration';
-import { useLiveInviteListener } from '../hooks/useLiveInviteListener';
-import { toast } from 'sonner';
 
 export default function LiveAudiencePage() {
   const navigate = useNavigate();
@@ -44,28 +41,20 @@ export default function LiveAudiencePage() {
   const liveDuration = useLiveDuration(session?.started_at, session?.status === 'live');
   const [mobileTab, setMobileTab] = useState<'chat' | 'reactions'>('chat');
   const [showEndedDialog, setShowEndedDialog] = useState(false);
-  const [isCoHost, setIsCoHost] = useState(false);
 
   const {
-    setLocalContainerRef,
     remoteContainerRef,
     statusText,
     hasRemoteVideo,
     isMuted,
-    isCameraOff,
     start,
     leave,
     toggleRemoteAudio,
-    toggleMute,
-    toggleCamera,
-    promoteToHost,
   } = useLiveRtc({
     sessionId: resolvedSessionId,
     role: 'audience',
     enabled: !!resolvedSessionId && session?.status === 'live',
   });
-
-  const { pendingInvite, acceptInvite, declineInvite } = useLiveInviteListener(resolvedSessionId);
 
   useEffect(() => {
     if (!resolvedSessionId || !session || session.status !== 'live') return;
@@ -101,17 +90,6 @@ export default function LiveAudiencePage() {
       leave().catch(() => undefined);
     };
   }, [leave]);
-
-  const handleAcceptInvite = async () => {
-    try {
-      await acceptInvite();
-      await promoteToHost();
-      setIsCoHost(true);
-      toast.success('Bạn đã tham gia live cùng!');
-    } catch (err: any) {
-      toast.error(err?.message || 'Không thể tham gia live');
-    }
-  };
 
   if (isLoading) {
     return (
@@ -175,39 +153,18 @@ export default function LiveAudiencePage() {
                   </div>
                 )}
 
-                {/* Co-host local video preview */}
-                {isCoHost && (
-                  <div className="absolute top-3 right-3 w-32 h-24 rounded-lg overflow-hidden border-2 border-primary shadow-lg z-10">
-                    <div ref={setLocalContainerRef} className="h-full w-full bg-black" />
-                  </div>
-                )}
-
-                <div className="absolute bottom-3 left-3 z-10 flex gap-2">
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="bg-black/30 hover:bg-black/50 text-white rounded-full h-10 w-10"
-                    onClick={toggleRemoteAudio}
-                  >
-                    {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
-                  </Button>
-                </div>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="absolute bottom-3 left-3 z-10 bg-black/30 hover:bg-black/50 text-white rounded-full h-10 w-10"
+                  onClick={toggleRemoteAudio}
+                >
+                  {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+                </Button>
 
                 {resolvedSessionId && <FloatingReactions sessionId={resolvedSessionId} />}
               </div>
             </Card>
-
-            {/* Co-host controls */}
-            {isCoHost && (
-              <div className="flex flex-wrap gap-2">
-                <Button variant="outline" size="sm" onClick={toggleMute}>
-                  {isMuted ? 'Unmute' : 'Mute'}
-                </Button>
-                <Button variant="outline" size="sm" onClick={toggleCamera}>
-                  {isCameraOff ? 'Camera On' : 'Camera Off'}
-                </Button>
-              </div>
-            )}
 
             <div className="lg:hidden border rounded-xl bg-card overflow-hidden">
               <div className="grid grid-cols-2 border-b">
@@ -244,7 +201,6 @@ export default function LiveAudiencePage() {
         </div>
       </main>
 
-      {/* Ended dialog */}
       <AlertDialog open={showEndedDialog}>
         <AlertDialogContent onEscapeKeyDown={(e) => e.preventDefault()}>
           <AlertDialogHeader>
@@ -255,22 +211,6 @@ export default function LiveAudiencePage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogAction onClick={() => navigate('/')}>OK</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Co-host invite dialog */}
-      <AlertDialog open={!!pendingInvite}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Lời mời Live cùng</AlertDialogTitle>
-            <AlertDialogDescription>
-              <span className="font-semibold">{pendingInvite?.hostUsername}</span> muốn mời bạn phát Live cùng. Bạn có muốn tham gia?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={declineInvite}>Từ chối</AlertDialogCancel>
-            <AlertDialogAction onClick={handleAcceptInvite}>Tham gia</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
