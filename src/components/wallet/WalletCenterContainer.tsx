@@ -266,7 +266,7 @@ const WalletCenterContainer = () => {
         todayStart.setUTCHours(0, 0, 0, 0);
         const todayCl = claims?.filter(c => new Date(c.created_at) >= todayStart).reduce((sum, c) => sum + Number(c.amount), 0) || 0;
         setDailyClaimed(todayCl);
-        setClaimableReward(Math.max(0, todayReward - todayCl));
+        setClaimableReward(Math.max(0, totalReward - claimed));
       } else {
         setRewardStats({ posts_count: 0, reactions_on_posts: 0, comments_count: 0, shares_count: 0, friends_count: 0, livestreams_count: 0, total_reward: 50000, today_reward: 0 });
         setClaimableReward(50000);

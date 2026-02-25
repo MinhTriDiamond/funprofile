@@ -94,7 +94,7 @@ const fetchRewardStats = async (userId: string): Promise<UserRewardStats> => {
   
   const claimedAmount = claimsRes.data?.reduce((sum, c) => sum + Number(c.amount), 0) || 0;
   // Không cộng dồn: claimable chỉ dựa trên thưởng hôm nay
-  const claimableAmount = Math.max(0, todayReward);
+  const claimableAmount = Math.max(0, totalReward - claimedAmount);
   
   return {
     postsCount,
