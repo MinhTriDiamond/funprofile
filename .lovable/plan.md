@@ -1,52 +1,44 @@
 
 
-# Sửa lỗi: Video replay không hiển thị trên Feed sau live chunked recording
+# Phân tích: Chunked Recording hoạt động tốt, nhưng có 2 lỗi hiển thị trên Feed
 
-## Phân tích hiện trạng
+## Backend: HOẠT ĐỘNG ĐÚNG
 
-### Chunked recording ĐANG HOẠT ĐỘNG tốt ở backend:
-- Recording `7f88da85`: **done** — 5 chunks, manifest tạo thành công, post đã cập nhật
-- Recording `0901b642`: **done** — 483 chunks, manifest tạo thành công, post đã cập nhật
-- 2 recordings khác (`1cbca5f4`, `7ba68bd7`) đang stuck ở status `recording` (user rời trang mà không bấm End Live)
+| Recording | Status | Chunks | Manifest |
+|-----------|--------|--------|----------|
+| `74c1fe30` | done | 3 | Accessible, 12s video |
+| `7f88da85` | done | 5 | Accessible |
+| `0901b642` | done | 483 | Accessible, ~32 phút video |
 
-### Nguyên nhân gốc: Feed không biết phát manifest.json
+Posts đã được tạo đúng với `video_url` trỏ đến `manifest.json` và `metadata.playback_type = "chunked_manifest"`.
 
-Khi `recording-finalize` chạy xong, nó cập nhật post với:
+Manifest fetch thành công, 3 chunks có URL hợp lệ trên R2.
+
+## 2 lỗi còn lại cần sửa
+
+### Lỗi 1: ChunkedVideoPlayer bị ẩn do opacity-0
+
+Trong `LazyVideo.tsx`, `ChunkedVideoPlayer` được wrap với class `isLoaded ? 'opacity-100' : 'opacity-0'`. Nhưng `ChunkedVideoPlayer` **không gọi callback** để set `isLoaded = true`. Kết quả: player tải xong video nhưng vẫn bị `opacity-0` (vô hình).
+
+Timeout 3 giây có thể cứu, nhưng nếu video load nhanh hơn hoặc chậm hơn, UX không tốt.
+
+**Sửa**: Thêm `onReady` và `onError` callbacks vào `ChunkedVideoPlayer`, gọi chúng từ `LazyVideo`.
+
+### Lỗi 2: MediaGalleryViewer dùng raw `<video>` tag
+
+Khi user click vào video trong feed để mở gallery fullscreen, `MediaGalleryViewer` (trong `MediaGrid.tsx` dòng 393) render:
+```tsx
+<video src={currentMedia.url} controls autoPlay />
 ```
-video_url = "https://.../manifest.json"
-metadata.playback_type = "chunked_manifest"
-```
+Với manifest URL, trình duyệt cố phát JSON → lỗi.
 
-Nhưng trong feed (`FacebookPostCard.tsx` → `MediaGrid` → `LazyVideo`), URL `manifest.json` được truyền thẳng vào `<video src="...manifest.json">`. Trình duyệt không thể phát JSON file → `onError` → `hasError=true` → component return `null` → **video biến mất hoàn toàn**, chỉ còn bài post text "Dang LIVE tren FUN Profile".
+**Sửa**: Detect manifest URL trong gallery viewer → render `ChunkedVideoPlayer` thay vì `<video>`.
 
-Đây chính là lỗi trong screenshot: post hiển thị nhưng **không có video player**.
-
-## Giải pháp
-
-### 1. Tích hợp `ChunkedVideoPlayer` vào `LazyVideo.tsx`
-
-Thêm detection cho manifest URL và dùng `ChunkedVideoPlayer` (đã tạo sẵn) thay vì `<video>` tag:
-
-- Detect: URL kết thúc bằng `manifest.json` hoặc chứa `/recordings/` + `/manifest`
-- Lazy load `ChunkedVideoPlayer` component
-- Khi phát hiện manifest URL → render `ChunkedVideoPlayer` thay vì native video
-
-### 2. Fallback trong `FacebookPostCard.tsx`
-
-Kiểm tra `metadata.playback_type === 'chunked_manifest'` để đánh dấu media item đúng loại, truyền flag xuống `MediaGrid` → `LazyVideo`.
-
-### 3. Xử lý recordings stuck
-
-Hai recordings đang stuck ở status `recording` sẽ không tự finalize. Cần thêm logic để:
-- Khi user rời trang (unmount/beforeunload), gọi `stop()` trước khi destroy
-- Cho cleanup edge function xử lý recordings stuck > 2 giờ
-
-## Danh sách file cần sửa
+## File cần sửa
 
 | File | Thay đổi |
 |------|----------|
-| `src/components/ui/LazyVideo.tsx` | Detect manifest.json URL → lazy load ChunkedVideoPlayer |
-| `src/components/feed/FacebookPostCard.tsx` | Truyền `isChunkedManifest` flag khi metadata có `playback_type: chunked_manifest` |
-| `src/components/feed/MediaGrid.tsx` | Thêm prop `isChunkedManifest` vào MediaItem, truyền xuống LazyVideo |
-| `src/modules/live/components/ChunkedVideoPlayer.tsx` | Đảm bảo export đúng, thêm error handling cho fetch manifest |
+| `src/modules/live/components/ChunkedVideoPlayer.tsx` | Thêm `onReady` và `onError` callback props |
+| `src/components/ui/LazyVideo.tsx` | Truyền `handleStreamReady`/`handleStreamError` vào `ChunkedVideoPlayer` để cập nhật `isLoaded` |
+| `src/components/feed/MediaGrid.tsx` | Detect manifest URL trong `MediaGalleryViewer` → dùng `ChunkedVideoPlayer` thay vì raw `<video>` |
 
