@@ -24,6 +24,7 @@ import { AngelChatWidget } from '@/components/angel-ai';
 import { GiftNavButton } from '@/components/donations/GiftNavButton';
 
 import { TetBackgroundSelector } from './TetBackgroundSelector';
+import { ValentineMusicButton } from './ValentineMusicButton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Sheet,
@@ -274,6 +275,7 @@ export const FacebookNavbar = () => {
           </div>
 
           {isMobileOrTablet && <TetBackgroundSelector variant="desktop" />}
+          {isMobileOrTablet && <ValentineMusicButton variant="desktop" />}
           
           {isMobileOrTablet && (
             <button 
@@ -309,6 +311,7 @@ export const FacebookNavbar = () => {
             <div className="flex items-center gap-3">
               <GiftNavButton variant="desktop" />
               <TetBackgroundSelector variant="desktop" />
+              <ValentineMusicButton variant="desktop" />
               <NotificationDropdown />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -413,6 +416,7 @@ export const FacebookNavbar = () => {
           {!isLoggedIn && (
             <>
               {!isMobileOrTablet && <TetBackgroundSelector variant="desktop" />}
+              {!isMobileOrTablet && <ValentineMusicButton variant="desktop" />}
               
               <Button
                 onClick={() => navigate('/auth')}
