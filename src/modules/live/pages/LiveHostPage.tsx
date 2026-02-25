@@ -30,6 +30,7 @@ import {
   type RecordingStatus,
 } from '../liveService';
 import { createRecorder, type RecorderController } from '../recording/clientRecorder';
+import { ChunkedRecordingManager, type ChunkedRecordingStatus as ChunkedStatus } from '../recording/chunkedRecorder';
 import { useLiveSession } from '../useLiveSession';
 import { useLiveRtc } from '../hooks/useLiveRtc';
 import { useLiveHeartbeat } from '../hooks/useLiveHeartbeat';
@@ -39,6 +40,8 @@ import { useLiveDuration } from '../hooks/useLiveDuration';
 import { useLivePresence } from '../hooks/useLivePresence';
 
 type BootState = 'idle' | 'auth' | 'creating' | 'loading' | 'starting' | 'ready' | 'error';
+
+const CHUNKED_RECORDING_ENABLED = import.meta.env.VITE_RECORDING_CHUNKED === 'true';
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | null = null;
@@ -93,6 +96,8 @@ export default function LiveHostPage() {
   const [showEndConfirm, setShowEndConfirm] = useState(false);
   const startedRef = useRef(false);
   const browserRecorderRef = useRef<RecorderController | null>(null);
+  const chunkedRecorderRef = useRef<ChunkedRecordingManager | null>(null);
+  const [chunkedUploadProgress, setChunkedUploadProgress] = useState<{ uploaded: number; total: number }>({ uploaded: 0, total: 0 });
   const lastSentViewerCountRef = useRef<number | null>(null);
   const viewerCountTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -236,7 +241,7 @@ export default function LiveHostPage() {
     setBootState('starting');
 
     start()
-      .then(() => {
+      .then(async () => {
         setBootState('ready');
 
         // Start browser recording immediately after joining
@@ -248,11 +253,35 @@ export default function LiveHostPage() {
             const audioTrack = tracks.audio.getMediaStreamTrack();
             if (videoTrack) stream.addTrack(videoTrack);
             if (audioTrack) stream.addTrack(audioTrack);
-            const recorder = createRecorder(stream);
-            recorder.start();
-            browserRecorderRef.current = recorder;
-            setRecordingState('recording');
-            setRecordingError(null);
+
+            if (CHUNKED_RECORDING_ENABLED && effectiveSessionId) {
+              // Chunked recording mode
+              const manager = new ChunkedRecordingManager({
+                onStatusChange: (s) => {
+                  const statusMap: Record<string, RecordingStatus> = {
+                    recording: 'recording', uploading: 'processing',
+                    finalizing: 'processing', done: 'ready', failed: 'failed',
+                  };
+                  setRecordingState((statusMap[s] || 'idle') as RecordingStatus);
+                },
+                onProgress: (uploaded, total) => {
+                  setChunkedUploadProgress({ uploaded, total });
+                  if (total > 0) setUploadProgress(Math.round((uploaded / total) * 100));
+                },
+                onError: (err) => setRecordingError(err),
+              });
+              await manager.start(stream, effectiveSessionId);
+              chunkedRecorderRef.current = manager;
+              setRecordingState('recording');
+              setRecordingError(null);
+            } else {
+              // Legacy single-blob mode
+              const recorder = createRecorder(stream);
+              recorder.start();
+              browserRecorderRef.current = recorder;
+              setRecordingState('recording');
+              setRecordingError(null);
+            }
           } else {
             setRecordingState('failed');
             setRecordingError('Không lấy được track video/audio để ghi hình.');
@@ -283,6 +312,7 @@ export default function LiveHostPage() {
       if (viewerCountTimerRef.current) {
         clearTimeout(viewerCountTimerRef.current);
       }
+      chunkedRecorderRef.current?.destroy();
       leave().catch(() => undefined);
     };
   }, [leave]);
@@ -342,7 +372,23 @@ const handleEndLive = async (skipNavigate = false) => {
     let thumbnailUrl: string | null = null;
 
     try {
-      if (browserRecorderRef.current?.getState() === 'recording') {
+      // === CHUNKED RECORDING PATH ===
+      if (CHUNKED_RECORDING_ENABLED && chunkedRecorderRef.current) {
+        setRecordingState('stopping');
+        try {
+          const result = await chunkedRecorderRef.current.stop();
+          playbackUrl = result.manifestUrl || null;
+          recordingStatus = playbackUrl ? 'ready' : 'failed';
+          setRecordingState(playbackUrl ? 'ready' : 'failed');
+        } catch (chunkErr: any) {
+          setRecordingState('failed');
+          setRecordingError(chunkErr?.message || 'Chunked recording failed');
+        }
+        chunkedRecorderRef.current.destroy();
+        chunkedRecorderRef.current = null;
+      }
+      // === LEGACY SINGLE-BLOB PATH ===
+      else if (browserRecorderRef.current?.getState() === 'recording') {
         setRecordingState('stopping');
         const rawBlob = await browserRecorderRef.current.stop();
         if (rawBlob.size > 0) {
@@ -390,7 +436,7 @@ const handleEndLive = async (skipNavigate = false) => {
       // 3. Finalize session & attach replay with thumbnail
       await finalizeLiveSession(effectiveSessionId, { playbackUrl, recordingStatus });
 
-      if (playbackUrl) {
+      if (playbackUrl && !CHUNKED_RECORDING_ENABLED) {
         try {
           await attachLiveReplayToPost(effectiveSessionId, playbackUrl, undefined, thumbnailUrl);
         } catch (attachErr) {
@@ -563,6 +609,9 @@ const handleEndLive = async (skipNavigate = false) => {
                 )}
                 <Badge variant={recBadge.variant}>
                   {recBadge.label}
+                  {CHUNKED_RECORDING_ENABLED && recordingState === 'recording' && chunkedUploadProgress.total > 0
+                    ? ` (${chunkedUploadProgress.uploaded}/${chunkedUploadProgress.total})`
+                    : ''}
                 </Badge>
                 <Badge variant="secondary" className="gap-1">
                   <Eye className="h-3.5 w-3.5" />
@@ -603,7 +652,27 @@ const handleEndLive = async (skipNavigate = false) => {
               </Card>
             )}
 
-            {recordingState === 'processing' && (
+            {recordingState === 'processing' && CHUNKED_RECORDING_ENABLED && (
+              <Card className="p-4 border-primary/30">
+                <div className="flex items-center gap-2 mb-3">
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  <span className="text-sm font-medium text-primary">
+                    {chunkedUploadProgress.total > 0
+                      ? `Đang tải lên chunk ${chunkedUploadProgress.uploaded}/${chunkedUploadProgress.total}...`
+                      : 'Đang xử lý...'}
+                  </span>
+                  <span className="ml-auto text-sm font-mono font-bold text-primary">
+                    {uploadProgress}%
+                  </span>
+                </div>
+                <Progress value={uploadProgress} className="h-2.5" />
+                <p className="text-xs text-muted-foreground mt-2">
+                  ⚠️ Chunked upload — video sẽ được lưu an toàn từng phần
+                </p>
+              </Card>
+            )}
+
+            {recordingState === 'processing' && !CHUNKED_RECORDING_ENABLED && (
               <Card className="p-4 border-primary/30">
                 <div className="flex items-center gap-2 mb-3">
                   <Loader2 className="h-4 w-4 animate-spin text-primary" />

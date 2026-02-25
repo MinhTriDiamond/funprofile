@@ -297,6 +297,118 @@ export type Database = {
         }
         Relationships: []
       }
+      chunked_recording_chunks: {
+        Row: {
+          bytes: number | null
+          created_at: string
+          duration_ms: number | null
+          id: string
+          object_key: string | null
+          recording_id: string
+          seq: number
+          status: string
+          uploaded_at: string | null
+        }
+        Insert: {
+          bytes?: number | null
+          created_at?: string
+          duration_ms?: number | null
+          id?: string
+          object_key?: string | null
+          recording_id: string
+          seq: number
+          status?: string
+          uploaded_at?: string | null
+        }
+        Update: {
+          bytes?: number | null
+          created_at?: string
+          duration_ms?: number | null
+          id?: string
+          object_key?: string | null
+          recording_id?: string
+          seq?: number
+          status?: string
+          uploaded_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chunked_recording_chunks_recording_id_fkey"
+            columns: ["recording_id"]
+            isOneToOne: false
+            referencedRelation: "chunked_recordings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chunked_recordings: {
+        Row: {
+          channel_name: string | null
+          codec: string | null
+          created_at: string
+          ended_at: string | null
+          error_message: string | null
+          height: number | null
+          id: string
+          last_seq_uploaded: number | null
+          live_session_id: string | null
+          mime_type: string | null
+          output_object_key: string | null
+          output_url: string | null
+          started_at: string | null
+          status: string
+          total_chunks: number | null
+          user_id: string
+          width: number | null
+        }
+        Insert: {
+          channel_name?: string | null
+          codec?: string | null
+          created_at?: string
+          ended_at?: string | null
+          error_message?: string | null
+          height?: number | null
+          id?: string
+          last_seq_uploaded?: number | null
+          live_session_id?: string | null
+          mime_type?: string | null
+          output_object_key?: string | null
+          output_url?: string | null
+          started_at?: string | null
+          status?: string
+          total_chunks?: number | null
+          user_id: string
+          width?: number | null
+        }
+        Update: {
+          channel_name?: string | null
+          codec?: string | null
+          created_at?: string
+          ended_at?: string | null
+          error_message?: string | null
+          height?: number | null
+          id?: string
+          last_seq_uploaded?: number | null
+          live_session_id?: string | null
+          mime_type?: string | null
+          output_object_key?: string | null
+          output_url?: string | null
+          started_at?: string | null
+          status?: string
+          total_chunks?: number | null
+          user_id?: string
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chunked_recordings_live_session_id_fkey"
+            columns: ["live_session_id"]
+            isOneToOne: false
+            referencedRelation: "live_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       comments: {
         Row: {
           content: string
