@@ -104,6 +104,21 @@ Deno.serve(async (req) => {
     const userId = user.id;
     console.log("[create-post] User verified:", userId.substring(0, 8) + "...");
 
+    // Check if user is banned
+    const { data: userProfile } = await supabase
+      .from("profiles")
+      .select("is_banned")
+      .eq("id", userId)
+      .single();
+
+    if (userProfile?.is_banned) {
+      console.log("[create-post] User is banned:", userId.substring(0, 8));
+      return new Response(
+        JSON.stringify({ error: "Tài khoản đã bị cấm. Không thể đăng bài." }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Parse request body
     const body: CreatePostRequest = await req.json();
     console.log("[create-post] Body received:", {

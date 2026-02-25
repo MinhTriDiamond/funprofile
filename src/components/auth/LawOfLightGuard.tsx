@@ -11,6 +11,7 @@ export const LawOfLightGuard = ({ children }: LawOfLightGuardProps) => {
   const location = useLocation();
   const [isChecking, setIsChecking] = useState(true);
   const [isAllowed, setIsAllowed] = useState(false);
+  const [isBanned, setIsBanned] = useState(false);
   // Track whether user was actually authenticated during this app session
   const wasAuthenticatedRef = useRef(false);
 
@@ -62,9 +63,18 @@ export const LawOfLightGuard = ({ children }: LawOfLightGuardProps) => {
 
         const { data: profile } = await supabase
           .from('profiles')
-          .select('law_of_light_accepted')
+          .select('law_of_light_accepted, is_banned')
           .eq('id', session.user.id)
           .single();
+
+        // Check if user is permanently banned
+        if (profile?.is_banned) {
+          console.warn('[LawOfLightGuard] User is banned, signing out');
+          await supabase.auth.signOut();
+          setIsChecking(false);
+          setIsBanned(true);
+          return;
+        }
 
         if (profile && !profile.law_of_light_accepted) {
           setIsChecking(false);
@@ -125,6 +135,24 @@ export const LawOfLightGuard = ({ children }: LawOfLightGuardProps) => {
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
           <p className="text-muted-foreground">Đang kiểm tra...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isBanned) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <div className="flex flex-col items-center gap-4 max-w-md text-center">
+          <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center">
+            <span className="text-3xl">🚫</span>
+          </div>
+          <h1 className="text-2xl font-bold text-destructive">Tài khoản đã bị cấm vĩnh viễn</h1>
+          <p className="text-muted-foreground">
+            Tài khoản của bạn đã bị cấm do vi phạm quy định. Bạn không thể đăng nhập hoặc sử dụng hệ thống.
+            Nếu bạn cho rằng đây là nhầm lẫn, vui lòng liên hệ admin.
+          </p>
+          <a href="/" className="text-primary underline text-sm">Quay về trang chủ</a>
         </div>
       </div>
     );
