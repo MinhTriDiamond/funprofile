@@ -1,42 +1,38 @@
 
 
-# Sửa lỗi: Nút "Tải về" hiển thị nội dung manifest.json thay vì tải video
+# Hiển thị tên người dùng đã thả cảm xúc trên Feed
 
-## Nguyên nhân
+## Hiện trạng
 
-Nút "Tải về" trong feed và gallery viewer sử dụng thẻ `<a href={item.url} download>`. Với video chunked recording, `item.url` trỏ đến file `manifest.json`. Khi click, trình duyệt mở URL này và hiển thị nội dung JSON (danh sách chunks) thay vì tải video.
+Hệ thống **đã có** `ReactionViewerDialog` -- khi click vào số lượng cảm xúc (ví dụ "😊❤️ 2") sẽ mở dialog hiển thị danh sách user. Tuy nhiên, trải nghiệm hiện tại **không trực quan**: người dùng không biết có thể click vào đó, và không thấy ngay ai đã tương tác.
 
-Screenshot cho thấy đúng nội dung manifest.json với hàng trăm chunks được hiển thị trên màn hình.
+## Giải pháp: Thêm Tooltip hover hiển thị tên người dùng
 
-## Giải pháp
+Giống Facebook: khi rê chuột vào vùng reaction count ("😊❤️ 2"), hiển thị tooltip nhỏ liệt kê tên những người đã tương tác. Click vào vẫn mở dialog đầy đủ như cũ.
 
-Thay nút `<a>` download bằng nút `<button>` có logic:
-1. Detect nếu URL là manifest.json (chunked recording)
-2. Fetch manifest, tải tất cả chunks, gộp thành 1 blob video
-3. Tạo blob URL và trigger download file `.webm`
-4. Hiển thị progress khi đang tải
-
-Với video thường (không phải manifest), giữ nguyên hành vi download trực tiếp.
+```text
+  ┌──────────────────────┐
+  │ Vũ Lê Quang          │  ← Tooltip hiện khi hover
+  │ Nguyễn Văn A         │
+  │ và 3 người khác...   │
+  └──────────────────────┘
+       😊❤️ 5              ← Vùng reaction count trên feed
+```
 
 ## File cần sửa
 
 | File | Thay đổi |
 |------|----------|
-| `src/components/feed/MediaGrid.tsx` | Thay 2 nút `<a download>` (dòng 83-93 và 363-372) bằng button gọi hàm `handleChunkedDownload`. Thêm hàm download logic: fetch manifest → fetch chunks → concat blob → trigger download. Hiển thị trạng thái downloading. |
+| `src/components/feed/ReactionSummary.tsx` | Thêm HoverCard/Tooltip wrap quanh nút reaction count. Fetch danh sách user khi hover. Hiển thị tối đa 10 tên, nếu nhiều hơn thì ghi "và X người khác". |
 
 ## Chi tiết kỹ thuật
 
-Tạo hàm `downloadChunkedVideo(manifestUrl)` trong `MediaGrid.tsx`:
-
-```text
-1. Fetch manifest.json → parse JSON
-2. Lặp qua từng chunk, fetch blob
-3. Concat tất cả blobs thành 1 Blob({ type: mime_type })
-4. Tạo Object URL → tạo thẻ <a> ẩn → click() → revoke URL
-5. Hiển thị toast/spinner khi đang tải
-```
-
-Cả 2 vị trí download button (feed single video + gallery viewer) đều cần cập nhật:
-- Dòng 83-93: Nút download trên video đơn trong feed
-- Dòng 363-372: Nút download trong gallery fullscreen viewer
+1. Wrap nút reaction count bằng `HoverCard` (đã có sẵn trong project từ radix-ui)
+2. Khi hover trigger, fetch reactions kèm profiles (query tương tự `ReactionViewerDialog`)
+3. Hiển thị danh sách tên trong `HoverCardContent`:
+   - Emoji + tên hiển thị (full_name hoặc username)
+   - Tối đa 10 người
+   - Nếu totalCount > 10: hiển thị "và X người khác"
+4. Click vẫn mở `ReactionViewerDialog` như cũ
+5. Cache kết quả để không fetch lại mỗi lần hover
 
