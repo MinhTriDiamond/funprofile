@@ -41,7 +41,7 @@ import { useLivePresence } from '../hooks/useLivePresence';
 
 type BootState = 'idle' | 'auth' | 'creating' | 'loading' | 'starting' | 'ready' | 'error';
 
-const CHUNKED_RECORDING_ENABLED = import.meta.env.VITE_RECORDING_CHUNKED === 'true';
+const CHUNKED_RECORDING_ENABLED = true;
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | null = null;
