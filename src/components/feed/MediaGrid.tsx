@@ -3,7 +3,8 @@ import { ImageViewer } from './ImageViewer';
 import { LazyImage } from '@/components/ui/LazyImage';
 import { LazyVideo } from '@/components/ui/LazyVideo';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { ChevronLeft, ChevronRight, X, Radio, Play, Download, RotateCcw, RotateCw } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Radio, Play, Download, RotateCcw, RotateCw, Loader2 } from 'lucide-react';
+import { downloadChunkedVideo } from '@/utils/chunkedVideoDownload';
 
 // Lazy load ChunkedVideoPlayer for manifest URLs in gallery
 const ChunkedVideoPlayer = lazy(() => import('@/modules/live/components/ChunkedVideoPlayer').then(mod => ({ default: mod.ChunkedVideoPlayer })));
@@ -80,17 +81,27 @@ export const MediaGrid = memo(({ media: initialMedia }: MediaGridProps) => {
                   <Radio className="w-3.5 h-3.5" />
                   LIVE Replay
                 </div>
-                <a
-                  href={item.url}
-                  download
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                  className="pointer-events-auto w-9 h-9 bg-black/60 hover:bg-black/80 rounded-full flex items-center justify-center text-white transition-colors"
-                  title="Tải xuống"
-                >
-                  <Download className="w-4 h-4" />
-                </a>
+                {isChunkedManifestUrl(item.url) ? (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); downloadChunkedVideo(item.url); }}
+                    className="pointer-events-auto w-9 h-9 bg-black/60 hover:bg-black/80 rounded-full flex items-center justify-center text-white transition-colors"
+                    title="Tải xuống"
+                  >
+                    <Download className="w-4 h-4" />
+                  </button>
+                ) : (
+                  <a
+                    href={item.url}
+                    download
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="pointer-events-auto w-9 h-9 bg-black/60 hover:bg-black/80 rounded-full flex items-center justify-center text-white transition-colors"
+                    title="Tải xuống"
+                  >
+                    <Download className="w-4 h-4" />
+                  </a>
+                )}
               </div>
             )}
           </div>
@@ -360,16 +371,26 @@ const MediaGalleryViewer = memo(({ media, isOpen, onClose, currentIndex, onPrev,
           {/* Close + Download buttons */}
           <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
             {currentMedia.type === 'video' && (
-              <a
-                href={currentMedia.url}
-                download
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-10 h-10 bg-black/50 hover:bg-black/80 rounded-full flex items-center justify-center text-white transition-colors"
-                title="Tải xuống"
-              >
-                <Download className="w-5 h-5" />
-              </a>
+              isChunkedManifestUrl(currentMedia.url) ? (
+                <button
+                  onClick={() => downloadChunkedVideo(currentMedia.url)}
+                  className="w-10 h-10 bg-black/50 hover:bg-black/80 rounded-full flex items-center justify-center text-white transition-colors"
+                  title="Tải xuống"
+                >
+                  <Download className="w-5 h-5" />
+                </button>
+              ) : (
+                <a
+                  href={currentMedia.url}
+                  download
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-10 h-10 bg-black/50 hover:bg-black/80 rounded-full flex items-center justify-center text-white transition-colors"
+                  title="Tải xuống"
+                >
+                  <Download className="w-5 h-5" />
+                </a>
+              )
             )}
             <button
               onClick={onClose}
