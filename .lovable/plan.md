@@ -1,74 +1,83 @@
 
 
-# Kế hoạch: Hiển thị thời lượng phiên live + Nút tua 15s cho video replay
+# Tính năng: Mời bạn bè cùng Live (Viewer Presence + Invite)
 
 ## Tổng quan
-Có 3 yêu cầu:
-1. **Phiên live đang diễn ra**: Hiển thị thời gian đã phát (bao nhiêu phút)
-2. **Video replay**: Hiển thị thời lượng video
-3. **Nút tua tới/lui 15s** khi xem lại livestream replay
+
+Thêm 2 tính năng vào khung Live Chat:
+1. **Hiển thị danh sách người đang xem** phía trên khung chat (VD: "user1 đang xem, user2 đang xem...")
+2. **Host click vào tên viewer** → hiện menu "Mời live cùng" → gửi thông báo mời
 
 ---
 
-## Chi tiết kỹ thuật
+## Kiến trúc kỹ thuật
 
-### 1. Hiển thị thời gian phát live (Live Duration Timer)
+### 1. Theo dõi người đang xem (Presence) — Supabase Realtime Presence
 
-**Trang Host (`LiveHostPage.tsx`):**
-- Thêm state `liveDuration` với `useEffect` + `setInterval` mỗi 1 giây
-- Tính từ `session.started_at` đến hiện tại
-- Hiển thị dạng `HH:MM:SS` bên cạnh badge LIVE (dòng 549-559)
+Sử dụng **Supabase Realtime Presence** (không cần tạo bảng mới) để theo dõi ai đang xem live:
 
-**Trang Audience (`LiveAudiencePage.tsx`):**
-- Tương tự, thêm timer hiển thị thời gian phát từ `session.started_at`
-- Hiển thị bên cạnh badge LIVE (dòng 128-136)
+- Mỗi viewer khi vào trang Live sẽ `track()` presence với `{ userId, username, avatar_url }`
+- Khi rời đi, presence tự động bị xóa
+- LiveChatPanel lắng nghe sự kiện `sync` để cập nhật danh sách viewer
 
-**Trang Discovery (`LiveDiscoveryPage.tsx`):**
-- Đã có `formatDistanceToNow` hiển thị "X phút trước" — giữ nguyên, đủ rồi
+**Hook mới: `src/modules/live/hooks/useLivePresence.ts`**
+- Nhận `sessionId`, lấy user hiện tại từ `supabase.auth`
+- Tạo channel `live-presence:{sessionId}`, sử dụng `.track({ userId, username, avatar_url })`
+- Lắng nghe `presence.sync` để trả về danh sách `viewers: { userId, username, avatar_url }[]`
+- Cleanup: `untrack()` khi unmount
 
-### 2. Hiển thị thời lượng video replay trong feed
+### 2. Hiển thị danh sách viewer trong LiveChatPanel
 
-**`MediaGrid.tsx`:**
-- Khi video là `isLiveReplay`, thêm hiển thị thời lượng video
-- Lắng nghe sự kiện `onLoadedMetadata` của thẻ `<video>` để lấy `video.duration`
-- Hiển thị thời lượng (VD: `12:34`) ở góc dưới phải của video overlay
+**Cập nhật: `src/modules/live/components/LiveChatPanel.tsx`**
+- Thêm prop `isHost?: boolean` để phân biệt host/audience
+- Gọi `useLivePresence(sessionId)` để lấy danh sách viewers
+- Hiển thị phía trên khung chat: thanh ngang cuộn ngang với avatar + tên, kèm text "đang xem"
+- Nếu `isHost`, click vào tên viewer sẽ hiện Popover/DropdownMenu với tùy chọn "Mời live cùng"
 
-### 3. Nút tua 15s cho video replay
+### 3. Gửi lời mời live (Notification)
 
-**`MediaGrid.tsx` — `MediaGalleryViewer`:**
-- Khi video đang xem trong gallery viewer là live replay, thêm 2 nút:
-  - ⏪ Tua lùi 15s
-  - ⏩ Tua tới 15s
-- Sử dụng `useRef<HTMLVideoElement>` để điều khiển `video.currentTime += 15` / `-= 15`
-- Hiển thị 2 nút ở giữa video overlay (kiểu YouTube)
+Khi host click "Mời live cùng":
+- Insert vào bảng `notifications` với `type: 'live_invite'`, `metadata: { session_id, live_title }`
+- `user_id` = viewer được mời, `actor_id` = host
+- Hiển thị toast "Đã gửi lời mời" cho host
 
-**`MediaGrid.tsx` — Video đơn trong feed (single media):**
-- Khi `isLiveReplay`, thêm 2 nút tua 15s overlay lên video
-- Cần ref đến thẻ `<video>` bên trong `LazyVideo` — tuy nhiên `LazyVideo` không expose ref
-- **Giải pháp**: Thêm nút tua vào `MediaGalleryViewer` (khi mở xem toàn màn hình) — đây là nơi tốt nhất
+**Không cần thay đổi database** — bảng `notifications` đã có sẵn các cột `type`, `metadata`, `actor_id`, `user_id`.
 
-### Các file cần thay đổi
+### 4. Tích hợp vào trang Host & Audience
+
+**`LiveHostPage.tsx`**: Truyền `isHost={true}` vào `<LiveChatPanel>`
+**`LiveAudiencePage.tsx`**: Truyền `isHost={false}` (mặc định)
+
+---
+
+## Các file cần thay đổi/tạo mới
 
 | File | Thay đổi |
 |------|----------|
-| `src/modules/live/pages/LiveHostPage.tsx` | Thêm live duration timer |
-| `src/modules/live/pages/LiveAudiencePage.tsx` | Thêm live duration timer |
-| `src/components/feed/MediaGrid.tsx` | Thêm nút tua 15s vào `MediaGalleryViewer`, hiển thị duration cho live replay |
+| `src/modules/live/hooks/useLivePresence.ts` | **Tạo mới** — Hook presence tracking |
+| `src/modules/live/components/LiveChatPanel.tsx` | Thêm thanh viewer list, menu mời live cho host |
+| `src/modules/live/pages/LiveHostPage.tsx` | Truyền `isHost={true}` cho LiveChatPanel |
+| `src/modules/live/pages/LiveAudiencePage.tsx` | Gọi `useLivePresence` để track viewer |
 
-### UI chi tiết
+## UI chi tiết
 
-**Live Duration Timer:**
+**Thanh viewer phía trên chat:**
+```text
+┌─────────────────────────────────┐
+│ 👁 5 người đang xem             │
+│ [🟢 user1] [🟢 user2] [🟢 ...]  │  ← cuộn ngang
+├─────────────────────────────────┤
+│ Live Chat                       │
+│ ...messages...                  │
+└─────────────────────────────────┘
 ```
-🔴 LIVE  ⏱ 01:23:45
-```
-Badge `Clock` icon + thời gian format `HH:MM:SS`, cập nhật mỗi giây.
 
-**Nút tua trong MediaGalleryViewer:**
+**Menu khi host click vào viewer:**
+```text
+┌──────────────────┐
+│ 📹 Mời live cùng │
+└──────────────────┘
 ```
-     ⏪15      ▶      15⏩
-```
-2 nút tròn bán trong suốt ở 2 bên video, icon `RotateCcw` và `RotateCw` từ lucide-react, có text "15" nhỏ.
 
-**Thời lượng video replay:**
-Hiển thị ở góc dưới phải overlay: `12:34` trên nền đen mờ, chỉ cho `isLiveReplay`.
+Click → gửi notification → toast "Đã gửi lời mời đến {username}"
 
