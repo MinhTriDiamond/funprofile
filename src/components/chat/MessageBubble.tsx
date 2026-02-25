@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { LazyImage } from '@/components/ui/LazyImage';
 import { DonationMessage } from '@/components/donations/DonationMessage';
 import { cn } from '@/lib/utils';
+import { linkifyText } from '@/utils/linkifyText';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { Reply, SmilePlus, Check, CheckCheck } from 'lucide-react';
@@ -176,7 +177,7 @@ export const MessageBubble = memo(function MessageBubble({
         >
           {/* Text content */}
           {message.content && (
-            <p className="whitespace-pre-wrap break-words">{message.content}</p>
+            <p className="whitespace-pre-wrap break-words">{linkifyText(message.content)}</p>
           )}
 
           {/* Media */}

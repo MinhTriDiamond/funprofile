@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/i18n/LanguageContext';
+import { linkifyText } from '@/utils/linkifyText';
 
 interface ExpandableContentProps {
   content: string;
@@ -25,7 +26,7 @@ export const ExpandableContent = ({
   if (!isLongContent) {
     return (
       <p className={cn("whitespace-pre-wrap break-words text-[15px] leading-relaxed", className)}>
-        {content}
+        {linkifyText(content)}
       </p>
     );
   }
@@ -59,7 +60,7 @@ export const ExpandableContent = ({
         )}
       >
         <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed">
-          {isExpanded ? content : truncatedContent}
+          {isExpanded ? linkifyText(content) : linkifyText(truncatedContent)}
           {!isExpanded && (
             <span className="text-muted-foreground">...</span>
           )}
