@@ -11,6 +11,7 @@ import { Link } from 'react-router-dom';
 import { formatRelativeTime } from '@/lib/formatters';
 import { deleteVideoByUrl } from '@/utils/streamHelpers';
 import { useLanguage } from '@/i18n/LanguageContext';
+import { linkifyText } from '@/utils/linkifyText';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -142,7 +143,7 @@ export const CommentItem = ({
               </Link>
             </div>
             
-            <p className="text-sm break-words whitespace-pre-wrap">{comment.content}</p>
+            <p className="text-sm break-words whitespace-pre-wrap">{linkifyText(comment.content)}</p>
             
             {mediaUrl && (
               <div className="mt-2">
