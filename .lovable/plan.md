@@ -1,32 +1,21 @@
 
-# Tat nhac nen tren tat ca cac trang
 
-## Muc tieu
-Loai bo nut nhac Valentine va tat nhac tu dong tren tat ca cac trang.
+# Giu lai nut nhac, xoa bai nhac
 
-## Cac file can chinh sua
+## Thay doi
 
 ### 1. `src/components/layout/ValentineMusicButton.tsx`
-- Tat autoplay: dat `globalAutoplayDone = true` ngay tu dau de nhac khong tu dong phat
-- Xoa toan bo logic autoplay trong useEffect
+- Xoa toan bo logic audio (khong tao `HTMLAudioElement`, khong phat nhac)
+- Giu nguyen giao dien nut nhac (icon Music, animation spin, volume popover)
+- Khi nhan nut toggle chi thay doi trang thai visual (isPlaying) ma khong phat am thanh
 
-### 2. `src/App.tsx` (dong 119-122)
-- Xoa nut nhac mobile floating:
-```
-<div className="fixed bottom-36 right-4 z-50 lg:hidden">
-  <ValentineMusicButton variant="mobile" />
-</div>
-```
-
-### 3. `src/components/layout/FacebookNavbar.tsx`
-- Xoa tat ca `<ValentineMusicButton>` (dong 277, 312, 417) va import
-
-### 4. `src/pages/Auth.tsx` (dong 97)
-- Xoa `<ValentineMusicButton variant="desktop" />` va import
-
-### 5. `src/pages/LawOfLight.tsx` (dong 154)
-- Xoa `<ValentineMusicButton variant="desktop" />` va import
+### 2. Khoi phuc nut nhac tai cac trang da xoa
+- **`src/App.tsx`**: Them lai floating mobile music button
+- **`src/components/layout/FacebookNavbar.tsx`**: Them lai `<ValentineMusicButton>` o 3 vi tri (mobile, desktop logged in, desktop not logged in)
+- **`src/pages/Auth.tsx`**: Them lai nut nhac
+- **`src/pages/LawOfLight.tsx`**: Them lai nut nhac
 
 ## Ket qua
-- Khong con nhac tu dong phat khi vao trang
-- Khong con nut nhac tren bat ky trang nao
+- Nut nhac hien thi tren tat ca cac trang nhu truoc
+- Nhan nut van co animation (spin icon, dot pulse) nhung khong co am thanh phat ra
+
