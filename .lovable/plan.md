@@ -1,65 +1,58 @@
 
 
-# Chan hoan toan tai khoan bi ban
+# An bai viet cua user bi ban khoi feed va hien thi badge "Da bi cam" tren trang ca nhan
 
-## Muc tieu
-User bi ban (`is_banned = true`) se bi dang xuat va khong the dang nhap lai. Lich su bai viet, binh luan van giu nguyen trong he thong de kiem toan.
+## Tong quan
+- Bai viet cua user bi ban se bi loc khoi feed (khong xoa khoi database, chi an khoi giao dien)
+- Trang ca nhan cua user bi ban van truy cap duoc, nhung hien thi badge do "Da bi cam" ben canh ten
 
-## Giai phap: Chan tai tang xac thuc
+## Thay doi
 
-Thay vi chen kiem tra vao tung chuc nang (dang bai, binh luan, chat...), ta chan ngay tai lop xac thuc de user bi ban khong the su dung he thong.
+### 1. Database Migration - Them `is_banned` vao view `public_profiles`
+Cap nhat view `public_profiles` de bao gom truong `is_banned`, giup frontend biet user nao bi ban ma khong can truy van bang `profiles` truc tiep.
 
-### 1. Cap nhat `LawOfLightGuard.tsx` - Kiem tra ban khi co session
-Khi user dang nhap hoac co session, truy van `is_banned` tu `profiles`. Neu `is_banned = true`:
-- Goi `supabase.auth.signOut()` de dang xuat
-- Hien thi thong bao "Tai khoan da bi cam vinh vien"
-- Chuyen huong ve trang `/law-of-light`
-
-### 2. Cap nhat `SocialLogin.tsx` / `Auth.tsx` - Chan dang nhap
-Sau khi dang nhap thanh cong (`SIGNED_IN`), kiem tra `is_banned`. Neu bi ban:
-- Sign out ngay lap tuc
-- Hien thi toast "Tai khoan cua ban da bi cam vinh vien. Vui long lien he admin."
-
-### 3. Cap nhat Edge Function `create-post` - Chan phia server
-Them kiem tra `is_banned` sau khi xac thuc user (dong 104). Neu bi ban tra ve loi 403. Day la lop bao ve thu 2 phong truong hop client bi bypass.
-
-### 4. Cap nhat Edge Function `record-donation` - Chan phia server  
-Tuong tu, them kiem tra `is_banned` de chan user bi ban gui tien/tang qua.
-
-## Chi tiet ky thuat
-
-### LawOfLightGuard.tsx (thay doi chinh)
-Trong ham `checkLawOfLightAcceptance`, sau khi lay profile:
-```text
-profiles.select('law_of_light_accepted, is_banned')
-  |
-  v
-Neu is_banned = true:
-  -> supabase.auth.signOut()
-  -> Hien thi trang "Tai khoan da bi cam"
-  -> Khong cho vao bat ky trang nao
+```sql
+CREATE OR REPLACE VIEW public.public_profiles AS
+SELECT 
+  id, username, username_normalized, avatar_url, bio, cover_url, 
+  created_at, full_name, display_name, social_links, public_wallet_address,
+  is_banned
+FROM profiles;
 ```
 
-### Auth.tsx / SocialLogin.tsx
-Trong `onAuthStateChange` khi `SIGNED_IN`:
-```text
-Query profiles.is_banned
-  |
-  v
-Neu true -> signOut() + toast error
+### 2. `src/hooks/useFeedPosts.ts` - Loc bai viet cua user bi ban
+Them `is_banned` vao select cua ca 2 ham `fetchFeedPage` va `fetchHighlightedPosts`, sau do loc bo nhung bai viet co `profiles.is_banned = true`.
+
+- Trong `fetchFeedPage` (dong 174): Them `is_banned` vao select cua `public_profiles`
+- Trong `fetchHighlightedPosts` (dong 143): Tuong tu
+- Sau khi map du lieu, loc bo cac post co `profiles.is_banned === true`
+
+### 3. `src/hooks/useFeedPosts.ts` - Cap nhat interface `FeedPost`
+Them truong `is_banned` vao `profiles` trong interface `FeedPost`:
+```typescript
+profiles: {
+  username: string;
+  display_name?: string | null;
+  avatar_url: string | null;
+  public_wallet_address?: string | null;
+  is_banned?: boolean;
+};
 ```
 
-### create-post Edge Function
-Sau dong 104 (`const userId = user.id`):
-```text
-Query profiles.is_banned where id = userId
-  |
-  v  
-Neu true -> return 403 "Tai khoan da bi cam"
+### 4. `src/pages/Profile.tsx` - Hien thi badge "Da bi cam" ben canh ten
+Tai dong 527-528, them badge do "Da bi cam" sau ten hien thi khi `profile.is_banned === true`:
+```tsx
+<h1 className="text-lg sm:text-xl md:text-2xl font-bold text-green-700">
+  {profile?.display_name || profile?.username}
+  {profile?.is_banned && (
+    <Badge variant="destructive" className="ml-2 text-xs align-middle">Da bi cam</Badge>
+  )}
+</h1>
 ```
+
+Cap nhat query lay profile (dong 167-169) de bao gom `is_banned` trong select.
 
 ## Ket qua
-- User bi ban: Bi dang xuat, khong the dang nhap lai, khong the thuc hien bat ky hanh dong nao
-- Lich su: Bai viet, binh luan, giao dich van con trong database de admin kiem toan
-- Bao ve 2 lop: Frontend (LawOfLightGuard) + Backend (Edge Functions)
-
+- Feed: Bai viet cua user bi ban khong hien thi (du lieu van con trong database de kiem toan)
+- Trang ca nhan: Van truy cap duoc, hien thi badge do "Da bi cam" ben canh ten
+- So lieu: Khong thay doi, van giu nguyen trong he thong
