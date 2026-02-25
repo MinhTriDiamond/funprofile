@@ -1,118 +1,26 @@
-import { useState, useRef, useCallback, useEffect, memo } from 'react';
+import { useState, useRef, useCallback, memo } from 'react';
 import { Music, Volume2 } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 
-// ── Singleton state (persists across remounts / page navigations) ──
-let globalAudio: HTMLAudioElement | null = null;
-let globalVolume = 0.5;
-let globalAutoplayDone = true;
-let globalUserStopped = false;
-let globalResumeListener: (() => void) | null = null;
-
-function ensureAudio(): HTMLAudioElement {
-  if (!globalAudio) {
-    globalAudio = new Audio('/sounds/tet.mp3');
-    globalAudio.loop = true;
-    globalAudio.volume = globalVolume;
-  }
-  return globalAudio;
-}
-
-function isAudioPlaying(): boolean {
-  return !!globalAudio && !globalAudio.paused;
-}
-
-function cleanupResumeListener() {
-  if (globalResumeListener) {
-    document.removeEventListener('click', globalResumeListener);
-    document.removeEventListener('touchstart', globalResumeListener);
-    globalResumeListener = null;
-  }
-}
-
-// ── Component ──
+// ── Component (visual-only, no audio playback) ──
 interface ValentineMusicButtonProps {
   variant?: 'desktop' | 'mobile';
 }
 
 export const ValentineMusicButton = memo(({ variant = 'desktop' }: ValentineMusicButtonProps) => {
-  const [isPlaying, setIsPlaying] = useState(isAudioPlaying);
-  const [volume, setVolume] = useState(globalVolume);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [volume, setVolume] = useState(0.5);
   const [showVolume, setShowVolume] = useState(false);
   const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const volumePercent = Math.round(volume * 100);
 
-  // Sync UI via play/pause events on the singleton audio
-  useEffect(() => {
-    const audio = ensureAudio();
-    const onPlay = () => setIsPlaying(true);
-    const onPause = () => setIsPlaying(false);
-    audio.addEventListener('play', onPlay);
-    audio.addEventListener('pause', onPause);
-    setIsPlaying(!audio.paused);
-    return () => {
-      audio.removeEventListener('play', onPlay);
-      audio.removeEventListener('pause', onPause);
-    };
-  }, []);
-
-  // Autoplay – runs only once globally
-  useEffect(() => {
-    if (globalAutoplayDone || globalUserStopped) return;
-    globalAutoplayDone = true;
-
-    const audio = ensureAudio();
-    audio.volume = globalVolume;
-    audio.currentTime = 0;
-
-    const playPromise = audio.play();
-    if (playPromise) {
-      playPromise
-        .catch(() => {
-          const resumeOnInteraction = () => {
-            globalResumeListener = null;
-            if (globalUserStopped) return;
-            if (globalAudio && !globalAudio.paused) return;
-            const a = ensureAudio();
-            a.volume = globalVolume;
-            a.currentTime = 0;
-            a.play().catch(() => {});
-            document.removeEventListener('click', resumeOnInteraction);
-            document.removeEventListener('touchstart', resumeOnInteraction);
-          };
-          cleanupResumeListener();
-          globalResumeListener = resumeOnInteraction;
-          document.addEventListener('click', resumeOnInteraction, { once: true });
-          document.addEventListener('touchstart', resumeOnInteraction, { once: true });
-        });
-    }
-  }, []);
-
   const toggle = useCallback(() => {
-    cleanupResumeListener();
-    const audio = ensureAudio();
-
-    if (isPlaying) {
-      audio.pause();
-      globalUserStopped = true;
-      setIsPlaying(false);
-    } else {
-      audio.volume = globalVolume;
-      audio.currentTime = audio.currentTime || 0;
-      audio.play().catch(() => {});
-      globalUserStopped = false;
-      setIsPlaying(true);
-    }
-  }, [isPlaying]);
+    setIsPlaying(prev => !prev);
+  }, []);
 
   const handleVolumeChange = useCallback((val: number[]) => {
-    const v = val[0];
-    setVolume(v);
-    globalVolume = v;
-    if (globalAudio) {
-      globalAudio.volume = v;
-    }
+    setVolume(val[0]);
   }, []);
 
   const handleMouseEnter = useCallback(() => {
