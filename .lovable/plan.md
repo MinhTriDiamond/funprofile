@@ -1,46 +1,22 @@
 
 
-# Cap nhat cach tinh tien trong trang ca nhan va vi
-
-## Van de hien tai
-Hien tai co 2 cach tinh khac nhau:
-- **Bang Danh Du (Honor Board)**: Tinh dung: `Co the rut = Tong thu - Da rut` (tat ca thoi gian)
-- **Vi (Wallet/ClaimRewardsSection)**: Tinh sai theo y nguoi dung: `Co the rut = Thuong hom nay - Da rut hom nay` (chi tinh trong ngay)
-
-## Cach tinh moi (thong nhat)
-- **Tong thu**: Tat ca so tien thuong tu truoc den nay (bao gom PPLP rewards)
-- **Da rut**: Tong so tien da rut tu truoc den nay (tu bang reward_claims)
-- **Co the rut**: Tong thu - Da rut
+# Xoa nen trong trang Danh sach thanh vien
 
 ## Thay doi
 
-### 1. `src/components/wallet/WalletCenterContainer.tsx` (dong 269)
-Thay doi cong thuc tinh `claimableReward`:
+### `src/pages/Users.tsx` (dong 130)
+Thay `bg-background/80` thanh `bg-background` de nen trang tro nen do duc hoan toan, khong con thay nen video Tet phia sau.
 
 **Truoc:**
-```typescript
-setClaimableReward(Math.max(0, todayReward - todayCl));
+```
+<div className="min-h-screen bg-background/80 overflow-hidden">
 ```
 
 **Sau:**
-```typescript
-setClaimableReward(Math.max(0, totalReward - claimed));
 ```
-
-### 2. `src/hooks/useRewardCalculation.ts` (dong 100)
-Cap nhat cong thuc tinh `claimableAmount`:
-
-**Truoc:**
-```typescript
-const claimableAmount = Math.max(0, todayReward);
-```
-
-**Sau:**
-```typescript
-const claimableAmount = Math.max(0, totalReward - claimedAmount);
+<div className="min-h-screen bg-background overflow-hidden">
 ```
 
 ## Ket qua
-- Trang ca nhan (Honor Board): Giu nguyen (da dung)
-- Vi (Wallet): `Co the rut` = Tong thu - Da rut (thay vi chi tinh hom nay)
-- Hook `useRewardCalculation`: Thong nhat cong thuc voi Honor Board
+Trang Danh sach thanh vien se co nen trang do duc 100%, khong con hien thi nen hoa mai/video Tet phia sau nua.
+
