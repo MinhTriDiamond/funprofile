@@ -335,6 +335,8 @@ export function ChatInput({
         presetRecipient={{
           id: recipientUserId || undefined,
           username: recipientName || undefined,
+          displayName: recipientName || undefined,
+          avatarUrl: recipientAvatar || undefined,
           walletAddress: recipientWalletAddress || undefined,
         }}
       />
