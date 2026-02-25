@@ -4214,6 +4214,7 @@ export type Database = {
           display_name: string | null
           full_name: string | null
           id: string | null
+          is_banned: boolean | null
           public_wallet_address: string | null
           social_links: Json | null
           username: string | null
@@ -4227,6 +4228,7 @@ export type Database = {
           display_name?: string | null
           full_name?: string | null
           id?: string | null
+          is_banned?: boolean | null
           public_wallet_address?: string | null
           social_links?: Json | null
           username?: string | null
@@ -4240,6 +4242,7 @@ export type Database = {
           display_name?: string | null
           full_name?: string | null
           id?: string | null
+          is_banned?: boolean | null
           public_wallet_address?: string | null
           social_links?: Json | null
           username?: string | null
