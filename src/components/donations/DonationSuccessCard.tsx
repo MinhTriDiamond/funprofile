@@ -78,10 +78,14 @@ export const DonationSuccessCard = ({
   }, [isOpen]);
 
   const handleClose = () => {
-    setIsCelebrationActive(false);
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
+    try {
+      setIsCelebrationActive(false);
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    } catch (err) {
+      console.error('[DonationSuccessCard] cleanup error:', err);
     }
     onClose();
   };
@@ -128,7 +132,7 @@ export const DonationSuccessCard = ({
       <DonationCelebration isActive={isOpen && isCelebrationActive} showRichText={false} />
       {isOpen && <RichTextOverlay />}
 
-      <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
+      <Dialog open={isOpen} onOpenChange={() => { /* Block close on click outside / Escape — only close via X button */ }}>
         <DialogContent
           className="max-w-[400px] w-[92vw] p-0 border-0 shadow-2xl [&>button]:hidden !z-[10002] overflow-hidden"
           overlayClassName="!z-[10002]"

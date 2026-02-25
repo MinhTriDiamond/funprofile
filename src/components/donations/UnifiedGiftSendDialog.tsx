@@ -640,16 +640,18 @@ export const UnifiedGiftSendDialog = ({
 
   /** Invalidate donation-related queries */
   const invalidateDonationCache = () => {
-    // Invalidate React Query caches so UI auto-refreshes
-    queryClient.invalidateQueries({ queryKey: ['donation-history'] });
-    queryClient.invalidateQueries({ queryKey: ['transaction-history'] });
-    queryClient.invalidateQueries({ queryKey: ['reward-stats'] });
-    queryClient.invalidateQueries({ queryKey: ['notifications'] });
-    queryClient.invalidateQueries({ queryKey: ['feed-posts'] });
-    queryClient.invalidateQueries({ queryKey: ['admin-donation-history'] });
-    // Dispatch events so other open tabs/pages also refresh
-    window.dispatchEvent(new Event('invalidate-feed'));
-    window.dispatchEvent(new Event('invalidate-donations'));
+    try {
+      queryClient.invalidateQueries({ queryKey: ['donation-history'] }).catch(() => {});
+      queryClient.invalidateQueries({ queryKey: ['transaction-history'] }).catch(() => {});
+      queryClient.invalidateQueries({ queryKey: ['reward-stats'] }).catch(() => {});
+      queryClient.invalidateQueries({ queryKey: ['notifications'] }).catch(() => {});
+      queryClient.invalidateQueries({ queryKey: ['feed-posts'] }).catch(() => {});
+      queryClient.invalidateQueries({ queryKey: ['admin-donation-history'] }).catch(() => {});
+      window.dispatchEvent(new Event('invalidate-feed'));
+      window.dispatchEvent(new Event('invalidate-donations'));
+    } catch (err) {
+      console.error('[GIFT] invalidateDonationCache error (non-critical):', err);
+    }
   };
 
   const handleSaveTheme = async (themeId: string, bgIndex: number, soundId: string) => {
@@ -686,8 +688,12 @@ export const UnifiedGiftSendDialog = ({
   };
 
   const handleCloseCelebration = () => {
-    setShowCelebration(false);
-    setCelebrationData(null);
+    try {
+      setShowCelebration(false);
+      setCelebrationData(null);
+    } catch (err) {
+      console.error('[GIFT] handleCloseCelebration cleanup error:', err);
+    }
     onClose();
   };
 
