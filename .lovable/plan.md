@@ -1,38 +1,49 @@
 
 
-# Hiển thị tên người dùng đã thả cảm xúc trên Feed
+# Khắc phục: Video Replay dài phải tải 100% mới phát được
 
-## Hiện trạng
+## Nguyên nhân gốc
 
-Hệ thống **đã có** `ReactionViewerDialog` -- khi click vào số lượng cảm xúc (ví dụ "😊❤️ 2") sẽ mở dialog hiển thị danh sách user. Tuy nhiên, trải nghiệm hiện tại **không trực quan**: người dùng không biết có thể click vào đó, và không thấy ngay ai đã tương tác.
-
-## Giải pháp: Thêm Tooltip hover hiển thị tên người dùng
-
-Giống Facebook: khi rê chuột vào vùng reaction count ("😊❤️ 2"), hiển thị tooltip nhỏ liệt kê tên những người đã tương tác. Click vào vẫn mở dialog đầy đủ như cũ.
+`ChunkedVideoPlayer` hiện tại tải **TẤT CẢ chunks** (ví dụ 483 chunks cho video 32 phút) rồi mới gộp thành 1 blob để phát. Người dùng phải chờ từ 0% → 100% trước khi xem được bất kỳ frame nào.
 
 ```text
-  ┌──────────────────────┐
-  │ Vũ Lê Quang          │  ← Tooltip hiện khi hover
-  │ Nguyễn Văn A         │
-  │ và 3 người khác...   │
-  └──────────────────────┘
-       😊❤️ 5              ← Vùng reaction count trên feed
+Hiện tại:
+[Chunk 1] → [Chunk 2] → ... → [Chunk 483] → Gộp blob → Phát video
+                    ↑ Chờ 100% ↑
+
+Sau khi sửa:
+[Chunk 1..3] → Phát ngay! → Tải thêm chunks nền → Phát liên tục
+   ↑ ~12 giây ↑
 ```
+
+## Giải pháp: MediaSource Extensions (MSE) - Streaming Progressive
+
+Sử dụng `MediaSource API` để bắt đầu phát video ngay sau khi tải vài chunks đầu tiên, trong khi tiếp tục tải các chunks còn lại ở background.
 
 ## File cần sửa
 
 | File | Thay đổi |
 |------|----------|
-| `src/components/feed/ReactionSummary.tsx` | Thêm HoverCard/Tooltip wrap quanh nút reaction count. Fetch danh sách user khi hover. Hiển thị tối đa 10 tên, nếu nhiều hơn thì ghi "và X người khác". |
+| `src/modules/live/components/ChunkedVideoPlayer.tsx` | Viết lại logic: dùng MediaSource API để append chunks vào SourceBuffer ngay khi tải xong, cho phép phát video progressive. Fallback về blob concatenation nếu MSE không hỗ trợ codec. |
 
 ## Chi tiết kỹ thuật
 
-1. Wrap nút reaction count bằng `HoverCard` (đã có sẵn trong project từ radix-ui)
-2. Khi hover trigger, fetch reactions kèm profiles (query tương tự `ReactionViewerDialog`)
-3. Hiển thị danh sách tên trong `HoverCardContent`:
-   - Emoji + tên hiển thị (full_name hoặc username)
-   - Tối đa 10 người
-   - Nếu totalCount > 10: hiển thị "và X người khác"
-4. Click vẫn mở `ReactionViewerDialog` như cũ
-5. Cache kết quả để không fetch lại mỗi lần hover
+### Luồng mới trong ChunkedVideoPlayer:
+
+1. Fetch `manifest.json` → parse danh sách chunks
+2. Tạo `MediaSource` object, gán `URL.createObjectURL(mediaSource)` vào video.src
+3. Khi `sourceopen` event:
+   - Tạo `SourceBuffer` với codec từ manifest (vd: `video/webm; codecs="vp8,opus"`)
+   - Bắt đầu tải chunk 1, append vào SourceBuffer
+   - Gọi `onReady` + `video.play()` ngay sau chunk đầu tiên
+   - Tiếp tục tải từng chunk tiếp theo, append vào buffer
+   - Khi hết chunks → gọi `mediaSource.endOfStream()`
+4. Fallback: Nếu `MediaSource.isTypeSupported()` trả false → dùng logic blob cũ (tải hết rồi phát)
+5. Hiển thị trạng thái: thay vì "Đang tải video... X%", chỉ hiển thị spinner nhỏ khi đang tải chunk đầu tiên, sau đó ẩn loading overlay
+
+### Xử lý edge cases:
+- **SourceBuffer busy**: Queue chunks và append khi `updateend` event fire
+- **Seeking**: Nếu user tua tới vùng chưa tải, hiển thị buffering spinner
+- **Lỗi mạng**: Retry tải chunk bị lỗi (tối đa 3 lần)
+- **Codec không hỗ trợ MSE**: Fallback về blob concatenation (giữ logic cũ)
 
