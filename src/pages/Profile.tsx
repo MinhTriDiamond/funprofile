@@ -527,10 +527,13 @@ const Profile = () => {
                 <div className="flex-1 text-center md:text-left md:ml-4">
                 <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-green-700">
                     {profile?.display_name || profile?.username}
-                    {profile?.is_banned && (
-                      <Badge variant="destructive" className="ml-2 text-xs align-middle">Đã bị cấm</Badge>
-                    )}
                   </h1>
+                  {profile?.is_banned && (
+                    <div className="mt-2 border-2 border-red-500 rounded-lg px-4 py-3 bg-red-50">
+                      <p className="text-red-600 font-bold text-sm">Tài khoản bị cấm vĩnh viễn</p>
+                      <p className="text-red-500 text-xs mt-0.5">Tài khoản này đã vi phạm điều khoản sử dụng và bị cấm vĩnh viễn.</p>
+                    </div>
+                  )}
                    {/* Username handle and profile link */}
                    <div className="flex items-center gap-1.5 text-sm font-bold text-green-600 mt-0.5">
                      <span>@{profile?.username}</span>
