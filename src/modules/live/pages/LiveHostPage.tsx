@@ -648,7 +648,7 @@ const handleEndLive = async (skipNavigate = false) => {
             </div>
           </section>
 
-          {effectiveSessionId && <LiveChatPanel sessionId={effectiveSessionId} className="h-[70vh] lg:h-[calc(100vh-120px)]" />}
+          {effectiveSessionId && <LiveChatPanel sessionId={effectiveSessionId} isHost={true} liveTitle={session?.title || undefined} className="h-[70vh] lg:h-[calc(100vh-120px)]" />}
         </div>
       </main>
       {/* Navigation guard dialog */}
