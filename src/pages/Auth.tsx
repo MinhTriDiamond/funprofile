@@ -26,9 +26,24 @@ const Auth = () => {
       return;
     }
 
+    const checkBanStatus = async (userId: string): Promise<boolean> => {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('is_banned')
+        .eq('id', userId)
+        .single();
+      return profile?.is_banned === true;
+    };
+
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
+        // Check if user is banned
+        const banned = await checkBanStatus(session.user.id);
+        if (banned) {
+          await supabase.auth.signOut();
+          return; // LawOfLightGuard will show banned screen
+        }
         // If SSO flow, redirect back to authorize endpoint with token
         if (ssoFlow && returnTo) {
           handleSSORedirect(session.access_token);
@@ -39,8 +54,14 @@ const Auth = () => {
     };
     checkUser();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session) {
+        // Check if user is banned immediately after sign in
+        const banned = await checkBanStatus(session.user.id);
+        if (banned) {
+          await supabase.auth.signOut();
+          return; // LawOfLightGuard will show banned screen
+        }
         // If SSO flow, redirect back to authorize endpoint with token
         if (ssoFlow && returnTo) {
           handleSSORedirect(session.access_token);
