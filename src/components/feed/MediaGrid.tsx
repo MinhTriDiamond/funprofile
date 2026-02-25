@@ -1,9 +1,17 @@
-import { useState, memo, useCallback, useRef } from 'react';
+import { useState, memo, useCallback, useRef, lazy, Suspense } from 'react';
 import { ImageViewer } from './ImageViewer';
 import { LazyImage } from '@/components/ui/LazyImage';
 import { LazyVideo } from '@/components/ui/LazyVideo';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { ChevronLeft, ChevronRight, X, Radio, Play, Download, RotateCcw, RotateCw } from 'lucide-react';
+
+// Lazy load ChunkedVideoPlayer for manifest URLs in gallery
+const ChunkedVideoPlayer = lazy(() => import('@/modules/live/components/ChunkedVideoPlayer').then(mod => ({ default: mod.ChunkedVideoPlayer })));
+
+/** Detect if a URL points to a chunked recording manifest */
+function isChunkedManifestUrl(url: string): boolean {
+  return url.endsWith('manifest.json') || /\/recordings\/[^/]+\/manifest\.json/.test(url);
+}
 
 interface MediaItem {
   url: string;
@@ -389,33 +397,44 @@ const MediaGalleryViewer = memo(({ media, isOpen, onClose, currentIndex, onPrev,
           {/* Media content */}
           <div className="max-w-full max-h-full flex items-center justify-center p-4 relative">
             {currentMedia.type === 'video' ? (
-              <>
-                <video
-                  ref={videoRef}
-                  key={currentMedia.url}
-                  src={currentMedia.url}
-                  controls
-                  autoPlay
-                  className="max-w-full max-h-[85vh] object-contain"
-                />
-                {/* Skip buttons for video */}
-                <button
-                  onClick={() => skipVideo(-15)}
-                  className="absolute left-8 top-1/2 -translate-y-1/2 z-50 w-14 h-14 bg-black/40 hover:bg-black/70 rounded-full flex flex-col items-center justify-center text-white transition-colors"
-                  title="Tua lùi 15 giây"
-                >
-                  <RotateCcw className="w-6 h-6" />
-                  <span className="text-[10px] font-bold -mt-0.5">15</span>
-                </button>
-                <button
-                  onClick={() => skipVideo(15)}
-                  className="absolute right-8 top-1/2 -translate-y-1/2 z-50 w-14 h-14 bg-black/40 hover:bg-black/70 rounded-full flex flex-col items-center justify-center text-white transition-colors"
-                  title="Tua tới 15 giây"
-                >
-                  <RotateCw className="w-6 h-6" />
-                  <span className="text-[10px] font-bold -mt-0.5">15</span>
-                </button>
-              </>
+              isChunkedManifestUrl(currentMedia.url) ? (
+                <Suspense fallback={<div className="w-full h-[85vh] bg-muted animate-pulse" />}>
+                  <ChunkedVideoPlayer
+                    manifestUrl={currentMedia.url}
+                    className="max-w-full max-h-[85vh]"
+                    autoPlay
+                    controls
+                  />
+                </Suspense>
+              ) : (
+                <>
+                  <video
+                    ref={videoRef}
+                    key={currentMedia.url}
+                    src={currentMedia.url}
+                    controls
+                    autoPlay
+                    className="max-w-full max-h-[85vh] object-contain"
+                  />
+                  {/* Skip buttons for video */}
+                  <button
+                    onClick={() => skipVideo(-15)}
+                    className="absolute left-8 top-1/2 -translate-y-1/2 z-50 w-14 h-14 bg-black/40 hover:bg-black/70 rounded-full flex flex-col items-center justify-center text-white transition-colors"
+                    title="Tua lùi 15 giây"
+                  >
+                    <RotateCcw className="w-6 h-6" />
+                    <span className="text-[10px] font-bold -mt-0.5">15</span>
+                  </button>
+                  <button
+                    onClick={() => skipVideo(15)}
+                    className="absolute right-8 top-1/2 -translate-y-1/2 z-50 w-14 h-14 bg-black/40 hover:bg-black/70 rounded-full flex flex-col items-center justify-center text-white transition-colors"
+                    title="Tua tới 15 giây"
+                  >
+                    <RotateCw className="w-6 h-6" />
+                    <span className="text-[10px] font-bold -mt-0.5">15</span>
+                  </button>
+                </>
+              )
             ) : (
               <img
                 key={currentMedia.url}

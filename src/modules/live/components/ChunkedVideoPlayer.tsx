@@ -29,6 +29,8 @@ interface ChunkedVideoPlayerProps {
   className?: string;
   autoPlay?: boolean;
   controls?: boolean;
+  onReady?: () => void;
+  onError?: () => void;
 }
 
 export function ChunkedVideoPlayer({
@@ -36,6 +38,8 @@ export function ChunkedVideoPlayer({
   className = '',
   autoPlay = false,
   controls = true,
+  onReady,
+  onError: onErrorCallback,
 }: ChunkedVideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [loading, setLoading] = useState(true);
@@ -83,11 +87,13 @@ export function ChunkedVideoPlayer({
       }
 
       setLoading(false);
+      onReady?.();
     } catch (err: any) {
       setError(err.message || 'Failed to load video');
       setLoading(false);
+      onErrorCallback?.();
     }
-  }, [manifestUrl, autoPlay]);
+  }, [manifestUrl, autoPlay, onReady, onErrorCallback]);
 
   useEffect(() => {
     loadAndPlay();
