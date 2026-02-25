@@ -1,83 +1,73 @@
 
 
-# Tính năng: Mời bạn bè cùng Live (Viewer Presence + Invite)
+# Phân tích & Kế hoạch sửa lỗi: UID_CONFLICT + Số mắt viewer
 
-## Tổng quan
+## 1. Nguyên nhân lỗi `AgoraRTCError UID_CONFLICT`
 
-Thêm 2 tính năng vào khung Live Chat:
-1. **Hiển thị danh sách người đang xem** phía trên khung chat (VD: "user1 đang xem, user2 đang xem...")
-2. **Host click vào tên viewer** → hiện menu "Mời live cùng" → gửi thông báo mời
+**Root cause**: Edge function `live-token` gửi `uid: userId` (UUID string) tới Agora Worker. Worker trả về `uid` dạng số (thường là `0` khi không parse được UUID string). Kết quả: **tất cả users đều nhận cùng `uid = 0`**, gây conflict khi join cùng channel.
 
----
+Xem dòng 103 trong `live-token/index.ts`:
+```
+uid: String(workerData.uid || workerData.userAccount || 0)
+```
 
-## Kiến trúc kỹ thuật
+Nếu Worker không thể chuyển UUID string thành số, nó trả `uid: 0` → mọi viewer đều join với UID = 0 → UID_CONFLICT.
 
-### 1. Theo dõi người đang xem (Presence) — Supabase Realtime Presence
+**Giải pháp**: Sinh UID số duy nhất cho mỗi user bằng cách hash UUID thành số nguyên 32-bit trong edge function, trước khi gửi tới Worker. Mỗi user sẽ có một UID khác nhau.
 
-Sử dụng **Supabase Realtime Presence** (không cần tạo bảng mới) để theo dõi ai đang xem live:
+## 2. Nguyên nhân số mắt (viewer count) không chính xác trên Host
 
-- Mỗi viewer khi vào trang Live sẽ `track()` presence với `{ userId, username, avatar_url }`
-- Khi rời đi, presence tự động bị xóa
-- LiveChatPanel lắng nghe sự kiện `sync` để cập nhật danh sách viewer
+**Root cause**: Host page hiển thị `session.viewer_count` từ database (dòng 567 của `LiveHostPage.tsx`), được cập nhật qua `increment/decrement` RPC. Cơ chế này bị drift khi:
+- Viewer refresh trang → decrement không chạy
+- Viewer mất mạng → decrement không chạy
+- Nhiều tab → increment trùng
 
-**Hook mới: `src/modules/live/hooks/useLivePresence.ts`**
-- Nhận `sessionId`, lấy user hiện tại từ `supabase.auth`
-- Tạo channel `live-presence:{sessionId}`, sử dụng `.track({ userId, username, avatar_url })`
-- Lắng nghe `presence.sync` để trả về danh sách `viewers: { userId, username, avatar_url }[]`
-- Cleanup: `untrack()` khi unmount
+Trong khi đó, **Supabase Presence** trong `LiveChatPanel` (thanh "X người đang xem") là chính xác vì nó tự cleanup khi user disconnect.
 
-### 2. Hiển thị danh sách viewer trong LiveChatPanel
-
-**Cập nhật: `src/modules/live/components/LiveChatPanel.tsx`**
-- Thêm prop `isHost?: boolean` để phân biệt host/audience
-- Gọi `useLivePresence(sessionId)` để lấy danh sách viewers
-- Hiển thị phía trên khung chat: thanh ngang cuộn ngang với avatar + tên, kèm text "đang xem"
-- Nếu `isHost`, click vào tên viewer sẽ hiện Popover/DropdownMenu với tùy chọn "Mời live cùng"
-
-### 3. Gửi lời mời live (Notification)
-
-Khi host click "Mời live cùng":
-- Insert vào bảng `notifications` với `type: 'live_invite'`, `metadata: { session_id, live_title }`
-- `user_id` = viewer được mời, `actor_id` = host
-- Hiển thị toast "Đã gửi lời mời" cho host
-
-**Không cần thay đổi database** — bảng `notifications` đã có sẵn các cột `type`, `metadata`, `actor_id`, `user_id`.
-
-### 4. Tích hợp vào trang Host & Audience
-
-**`LiveHostPage.tsx`**: Truyền `isHost={true}` vào `<LiveChatPanel>`
-**`LiveAudiencePage.tsx`**: Truyền `isHost={false}` (mặc định)
+**Giải pháp**: Host page cũng dùng `useLivePresence` để lấy số viewer chính xác, đồng thời đồng bộ `viewer_count` trong database theo presence count.
 
 ---
 
-## Các file cần thay đổi/tạo mới
+## Chi tiết thay đổi
+
+### File 1: `supabase/functions/live-token/index.ts`
+
+Thêm hàm hash UUID → số nguyên 32-bit duy nhất:
+
+```typescript
+function uuidToNumericUid(uuid: string): number {
+  let hash = 0;
+  for (let i = 0; i < uuid.length; i++) {
+    const char = uuid.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & 0x7FFFFFFF; // ensure positive 31-bit int
+  }
+  return hash || 1; // avoid 0
+}
+```
+
+Sử dụng `uuidToNumericUid(userId)` thay vì `userId` khi gọi Worker, và trả về UID số này cho client.
+
+### File 2: `src/modules/live/pages/LiveHostPage.tsx`
+
+- Import `useLivePresence` 
+- Gọi `useLivePresence(effectiveSessionId)` để lấy `viewers`
+- Hiển thị `viewers.length` thay vì `session.viewer_count` cho badge số mắt
+- Đồng bộ `viewer_count` trong DB khi `viewers.length` thay đổi (debounced)
+
+### File 3: `src/modules/live/pages/LiveAudiencePage.tsx`
+
+- Import `useLivePresence`
+- Hiển thị `viewers.length` thay vì `session.viewer_count` cho badge số mắt
+- Giữ `increment/decrement` như fallback
+
+---
+
+## Các file cần thay đổi
 
 | File | Thay đổi |
 |------|----------|
-| `src/modules/live/hooks/useLivePresence.ts` | **Tạo mới** — Hook presence tracking |
-| `src/modules/live/components/LiveChatPanel.tsx` | Thêm thanh viewer list, menu mời live cho host |
-| `src/modules/live/pages/LiveHostPage.tsx` | Truyền `isHost={true}` cho LiveChatPanel |
-| `src/modules/live/pages/LiveAudiencePage.tsx` | Gọi `useLivePresence` để track viewer |
-
-## UI chi tiết
-
-**Thanh viewer phía trên chat:**
-```text
-┌─────────────────────────────────┐
-│ 👁 5 người đang xem             │
-│ [🟢 user1] [🟢 user2] [🟢 ...]  │  ← cuộn ngang
-├─────────────────────────────────┤
-│ Live Chat                       │
-│ ...messages...                  │
-└─────────────────────────────────┘
-```
-
-**Menu khi host click vào viewer:**
-```text
-┌──────────────────┐
-│ 📹 Mời live cùng │
-└──────────────────┘
-```
-
-Click → gửi notification → toast "Đã gửi lời mời đến {username}"
+| `supabase/functions/live-token/index.ts` | Thêm `uuidToNumericUid()`, dùng UID số duy nhất |
+| `src/modules/live/pages/LiveHostPage.tsx` | Dùng `useLivePresence` cho viewer count chính xác |
+| `src/modules/live/pages/LiveAudiencePage.tsx` | Dùng `useLivePresence` cho viewer count chính xác |
 
