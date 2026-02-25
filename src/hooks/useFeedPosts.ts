@@ -37,6 +37,7 @@ export interface FeedPost {
     display_name?: string | null;
     avatar_url: string | null;
     public_wallet_address?: string | null;
+    is_banned?: boolean;
   };
   // Pre-fetched gift profiles to avoid loading states
   recipientProfile?: GiftProfile | null;
@@ -140,7 +141,7 @@ const fetchHighlightedPosts = async (currentUserId: string | null): Promise<Feed
   const now = new Date().toISOString();
   let query = supabase
     .from('posts')
-    .select(`*, public_profiles!posts_user_id_fkey (username, display_name, avatar_url, public_wallet_address)`)
+    .select(`*, public_profiles!posts_user_id_fkey (username, display_name, avatar_url, public_wallet_address, is_banned)`)
     .eq('is_highlighted', true)
     .gt('highlight_expires_at', now)
     .order('created_at', { ascending: false })
@@ -163,7 +164,7 @@ const fetchHighlightedPosts = async (currentUserId: string | null): Promise<Feed
     profiles: post.public_profiles,
     media_urls: (post.media_urls as Array<{ url: string; type: 'image' | 'video' }>) || null,
     visibility: post.visibility || 'public',
-  }));
+  })).filter((post: FeedPost) => !post.profiles?.is_banned);
 
   return fetchGiftProfiles(posts);
 };
@@ -171,7 +172,7 @@ const fetchHighlightedPosts = async (currentUserId: string | null): Promise<Feed
 const fetchFeedPage = async (cursor: string | null, currentUserId: string | null): Promise<FeedPage> => {
   let query = supabase
     .from('posts')
-    .select(`*, public_profiles!posts_user_id_fkey (username, display_name, avatar_url, public_wallet_address)`)
+    .select(`*, public_profiles!posts_user_id_fkey (username, display_name, avatar_url, public_wallet_address, is_banned)`)
     .order('created_at', { ascending: false })
     .limit(POSTS_PER_PAGE + 1);
 
@@ -198,7 +199,7 @@ const fetchFeedPage = async (cursor: string | null, currentUserId: string | null
     profiles: post.public_profiles,
     media_urls: (post.media_urls as Array<{ url: string; type: 'image' | 'video' }>) || null,
     visibility: post.visibility || 'public',
-  }));
+  })).filter((post: FeedPost) => !post.profiles?.is_banned);
 
   // Pre-fetch recipient/sender profiles for gift posts
   postsData = await fetchGiftProfiles(postsData);

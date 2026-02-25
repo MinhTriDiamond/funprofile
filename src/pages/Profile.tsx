@@ -18,6 +18,7 @@ import { LazyImage } from '@/components/ui/LazyImage';
 import { CoverPhotoEditor } from '@/components/profile/CoverPhotoEditor';
 import { AvatarEditor } from '@/components/profile/AvatarEditor';
 import { MoreHorizontal, MapPin, Briefcase, GraduationCap, Heart, Clock, MessageCircle, Eye, X, Pin, PenSquare, Gift, Copy, Wallet, Shield } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { DonationButton } from '@/components/donations/DonationButton';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { PullToRefreshContainer } from '@/components/common/PullToRefreshContainer';
@@ -165,7 +166,7 @@ const Profile = () => {
       const profileQuery = isViewingOwnProfile
         ? supabase.from('profiles').select('*').eq('id', profileId).single()
         : supabase.from('public_profiles')
-            .select('id, username, display_name, avatar_url, full_name, bio, cover_url, created_at, public_wallet_address, social_links')
+            .select('id, username, display_name, avatar_url, full_name, bio, cover_url, created_at, public_wallet_address, social_links, is_banned')
             .eq('id', profileId).single();
 
       const postsQuery = supabase
@@ -526,6 +527,9 @@ const Profile = () => {
                 <div className="flex-1 text-center md:text-left md:ml-4">
                 <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-green-700">
                     {profile?.display_name || profile?.username}
+                    {profile?.is_banned && (
+                      <Badge variant="destructive" className="ml-2 text-xs align-middle">Đã bị cấm</Badge>
+                    )}
                   </h1>
                    {/* Username handle and profile link */}
                    <div className="flex items-center gap-1.5 text-sm font-bold text-green-600 mt-0.5">
