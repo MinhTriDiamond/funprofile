@@ -6,6 +6,14 @@ import { isStreamUrl } from '@/utils/streamUpload';
 // Lazy load StreamPlayer to reduce initial bundle size (~154KB savings)
 const StreamPlayer = lazy(() => import('./StreamPlayer').then(mod => ({ default: mod.StreamPlayer })));
 
+// Lazy load ChunkedVideoPlayer for manifest.json playback
+const ChunkedVideoPlayer = lazy(() => import('@/modules/live/components/ChunkedVideoPlayer').then(mod => ({ default: mod.ChunkedVideoPlayer })));
+
+/** Detect if a URL points to a chunked recording manifest */
+function isChunkedManifestUrl(url: string): boolean {
+  return url.endsWith('manifest.json') || /\/recordings\/[^/]+\/manifest\.json/.test(url);
+}
+
 interface LazyVideoProps extends VideoHTMLAttributes<HTMLVideoElement> {
   src: string;
   poster?: string;
@@ -42,8 +50,9 @@ export const LazyVideo = memo(({
   const containerRef = useRef<HTMLDivElement>(null);
   const placeholderTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Check if this is a Cloudflare Stream video
-  const isStream = isStreamUrl(src);
+  // Check if this is a chunked manifest or Cloudflare Stream video
+  const isManifest = isChunkedManifestUrl(src);
+  const isStream = !isManifest && isStreamUrl(src);
   
   // Auto-generate poster from Cloudflare Stream URL
   const generateStreamPoster = (videoUrl: string): string | undefined => {
@@ -169,7 +178,19 @@ export const LazyVideo = memo(({
 
       {/* Video element */}
       {isInView && (
-        isStream ? (
+        isManifest ? (
+          <Suspense fallback={<div className="w-full h-full bg-muted animate-pulse" />}>
+            <ChunkedVideoPlayer
+              manifestUrl={src}
+              className={cn(
+                'w-full h-full transition-opacity duration-300',
+                isLoaded ? 'opacity-100' : 'opacity-0'
+              )}
+              autoPlay={autoPlay && !reducedMotion}
+              controls={showControls}
+            />
+          </Suspense>
+        ) : isStream ? (
           <Suspense fallback={<div className="w-full h-full bg-muted animate-pulse" />}>
             <StreamPlayer
               src={src}
