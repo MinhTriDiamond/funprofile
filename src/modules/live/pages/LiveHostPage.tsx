@@ -36,6 +36,7 @@ import { useLiveHeartbeat } from '../hooks/useLiveHeartbeat';
 import { LiveChatPanel } from '../components/LiveChatPanel';
 import { FloatingReactions } from '../components/FloatingReactions';
 import { useLiveDuration } from '../hooks/useLiveDuration';
+import { useLivePresence } from '../hooks/useLivePresence';
 
 type BootState = 'idle' | 'auth' | 'creating' | 'loading' | 'starting' | 'ready' | 'error';
 
@@ -130,6 +131,7 @@ export default function LiveHostPage() {
   });
 
   const liveDuration = useLiveDuration(session?.started_at, session?.status === 'live' && isJoined);
+  const { viewers } = useLivePresence(effectiveSessionId);
 
   const isHost = useMemo(() => !!session && !!userId && session.host_user_id === userId, [session, userId]);
 
@@ -564,7 +566,7 @@ const handleEndLive = async (skipNavigate = false) => {
                 </Badge>
                 <Badge variant="secondary" className="gap-1">
                   <Eye className="h-3.5 w-3.5" />
-                  {session.viewer_count || 0}
+                  {viewers.length}
                 </Badge>
               </div>
             </div>

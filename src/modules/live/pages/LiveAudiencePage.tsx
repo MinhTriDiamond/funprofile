@@ -22,6 +22,7 @@ import { LiveChatPanel } from '../components/LiveChatPanel';
 import { FloatingReactions } from '../components/FloatingReactions';
 import { useSlugResolver } from '@/hooks/useSlugResolver';
 import { useLiveDuration } from '../hooks/useLiveDuration';
+import { useLivePresence } from '../hooks/useLivePresence';
 
 export default function LiveAudiencePage() {
   const navigate = useNavigate();
@@ -39,6 +40,7 @@ export default function LiveAudiencePage() {
 
   const { data: session, isLoading } = useLiveSession(resolvedSessionId);
   const liveDuration = useLiveDuration(session?.started_at, session?.status === 'live');
+  const { viewers } = useLivePresence(resolvedSessionId);
   const [mobileTab, setMobileTab] = useState<'chat' | 'reactions'>('chat');
   const [showEndedDialog, setShowEndedDialog] = useState(false);
 
@@ -139,7 +141,7 @@ export default function LiveAudiencePage() {
                 )}
                 <Badge variant="secondary" className="gap-1">
                   <Eye className="h-3.5 w-3.5" />
-                  {session.viewer_count || 0}
+                  {viewers.length}
                 </Badge>
               </div>
             </div>

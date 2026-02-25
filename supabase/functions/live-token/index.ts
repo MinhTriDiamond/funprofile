@@ -15,6 +15,16 @@ function getEnv(primary: string, ...fallbacks: string[]): string | undefined {
   return undefined
 }
 
+function uuidToNumericUid(uuid: string): number {
+  let hash = 0
+  for (let i = 0; i < uuid.length; i++) {
+    const char = uuid.charCodeAt(i)
+    hash = ((hash << 5) - hash) + char
+    hash = hash & 0x7FFFFFFF
+  }
+  return hash || 1
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -76,6 +86,8 @@ Deno.serve(async (req) => {
     const workerUrl = getEnv('LIVE_AGORA_WORKER_URL', 'AGORA_WORKER_URL', 'VITE_AGORA_WORKER_URL')
     const workerApiKey = getEnv('LIVE_AGORA_WORKER_API_KEY', 'AGORA_WORKER_API_KEY', 'VITE_AGORA_WORKER_API_KEY')
 
+    const numericUid = uuidToNumericUid(userId)
+
     if (workerUrl && workerApiKey) {
       const workerResp = await fetch(workerUrl, {
         method: 'POST',
@@ -85,7 +97,7 @@ Deno.serve(async (req) => {
         },
         body: JSON.stringify({
           channelName: channel,
-          uid: userId,
+          uid: numericUid,
           role: role === 'host' ? 'publisher' : 'subscriber',
         }),
       })
@@ -100,7 +112,7 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({
           token: workerData.token,
           channel,
-          uid: String(workerData.uid || workerData.userAccount || 0),
+          uid: String(numericUid),
           appId: workerData.app_id || workerData.appId,
           expiresAt: workerData.expires_at || Math.floor(Date.now() / 1000) + 86400,
         }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })

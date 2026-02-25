@@ -1136,6 +1136,47 @@ export type Database = {
           },
         ]
       }
+      live_co_hosts: {
+        Row: {
+          created_at: string | null
+          id: string
+          invited_by: string
+          joined_at: string | null
+          left_at: string | null
+          session_id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          invited_by: string
+          joined_at?: string | null
+          left_at?: string | null
+          session_id: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          invited_by?: string
+          joined_at?: string | null
+          left_at?: string | null
+          session_id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_co_hosts_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "live_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       live_comments: {
         Row: {
           created_at: string
