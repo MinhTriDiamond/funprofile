@@ -63,7 +63,7 @@ export const ReactionViewerDialog = ({
         .select(`
           type,
           user_id,
-          profiles:user_id (
+          public_profiles:user_id (
             id,
             username,
             avatar_url,
@@ -82,10 +82,10 @@ export const ReactionViewerDialog = ({
       if (error) throw error;
 
       const formattedUsers: ReactionUser[] = (data || []).map((item: any) => ({
-        id: item.profiles?.id || item.user_id,
-        username: item.profiles?.username || 'Unknown',
-        avatar_url: item.profiles?.avatar_url,
-        full_name: item.profiles?.full_name,
+      id: item.public_profiles?.id || item.user_id,
+      username: item.public_profiles?.username || 'Unknown',
+      avatar_url: item.public_profiles?.avatar_url,
+      full_name: item.public_profiles?.display_name,
         type: item.type,
       }));
 
@@ -99,7 +99,7 @@ export const ReactionViewerDialog = ({
 
   const handleUserClick = (username: string) => {
     onOpenChange(false);
-    navigate(`/profile/${username}`);
+    navigate(`/${username}`);
   };
 
   const sortedReactions = [...reactions]
