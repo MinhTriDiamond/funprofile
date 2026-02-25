@@ -188,6 +188,8 @@ export const LazyVideo = memo(({
               )}
               autoPlay={autoPlay && !reducedMotion}
               controls={showControls}
+              onReady={handleStreamReady}
+              onError={handleStreamError}
             />
           </Suspense>
         ) : isStream ? (
