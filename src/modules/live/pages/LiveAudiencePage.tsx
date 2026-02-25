@@ -182,7 +182,7 @@ export default function LiveAudiencePage() {
                 </button>
               </div>
               <div className="p-2">
-                {mobileTab === 'chat' && resolvedSessionId && <LiveChatPanel sessionId={resolvedSessionId} className="h-[320px]" />}
+                {mobileTab === 'chat' && resolvedSessionId && <LiveChatPanel sessionId={resolvedSessionId} className="h-[320px]" liveTitle={session.title || undefined} />}
                 {mobileTab === 'reactions' && resolvedSessionId && (
                   <div className="h-[120px] flex items-center justify-center relative">
                     <FloatingReactions sessionId={resolvedSessionId} showPicker />
@@ -192,7 +192,7 @@ export default function LiveAudiencePage() {
             </div>
           </section>
 
-          {resolvedSessionId && <LiveChatPanel sessionId={resolvedSessionId} className="hidden lg:flex h-[calc(100vh-120px)]" />}
+          {resolvedSessionId && <LiveChatPanel sessionId={resolvedSessionId} className="hidden lg:flex h-[calc(100vh-120px)]" liveTitle={session.title || undefined} />}
         </div>
         <div className="max-w-7xl mx-auto mt-3 flex justify-end">
           <Button variant="outline" size="sm" onClick={() => navigate('/')}>
