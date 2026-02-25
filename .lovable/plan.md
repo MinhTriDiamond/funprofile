@@ -1,44 +1,42 @@
 
 
-# Phân tích: Chunked Recording hoạt động tốt, nhưng có 2 lỗi hiển thị trên Feed
+# Sửa lỗi: Nút "Tải về" hiển thị nội dung manifest.json thay vì tải video
 
-## Backend: HOẠT ĐỘNG ĐÚNG
+## Nguyên nhân
 
-| Recording | Status | Chunks | Manifest |
-|-----------|--------|--------|----------|
-| `74c1fe30` | done | 3 | Accessible, 12s video |
-| `7f88da85` | done | 5 | Accessible |
-| `0901b642` | done | 483 | Accessible, ~32 phút video |
+Nút "Tải về" trong feed và gallery viewer sử dụng thẻ `<a href={item.url} download>`. Với video chunked recording, `item.url` trỏ đến file `manifest.json`. Khi click, trình duyệt mở URL này và hiển thị nội dung JSON (danh sách chunks) thay vì tải video.
 
-Posts đã được tạo đúng với `video_url` trỏ đến `manifest.json` và `metadata.playback_type = "chunked_manifest"`.
+Screenshot cho thấy đúng nội dung manifest.json với hàng trăm chunks được hiển thị trên màn hình.
 
-Manifest fetch thành công, 3 chunks có URL hợp lệ trên R2.
+## Giải pháp
 
-## 2 lỗi còn lại cần sửa
+Thay nút `<a>` download bằng nút `<button>` có logic:
+1. Detect nếu URL là manifest.json (chunked recording)
+2. Fetch manifest, tải tất cả chunks, gộp thành 1 blob video
+3. Tạo blob URL và trigger download file `.webm`
+4. Hiển thị progress khi đang tải
 
-### Lỗi 1: ChunkedVideoPlayer bị ẩn do opacity-0
-
-Trong `LazyVideo.tsx`, `ChunkedVideoPlayer` được wrap với class `isLoaded ? 'opacity-100' : 'opacity-0'`. Nhưng `ChunkedVideoPlayer` **không gọi callback** để set `isLoaded = true`. Kết quả: player tải xong video nhưng vẫn bị `opacity-0` (vô hình).
-
-Timeout 3 giây có thể cứu, nhưng nếu video load nhanh hơn hoặc chậm hơn, UX không tốt.
-
-**Sửa**: Thêm `onReady` và `onError` callbacks vào `ChunkedVideoPlayer`, gọi chúng từ `LazyVideo`.
-
-### Lỗi 2: MediaGalleryViewer dùng raw `<video>` tag
-
-Khi user click vào video trong feed để mở gallery fullscreen, `MediaGalleryViewer` (trong `MediaGrid.tsx` dòng 393) render:
-```tsx
-<video src={currentMedia.url} controls autoPlay />
-```
-Với manifest URL, trình duyệt cố phát JSON → lỗi.
-
-**Sửa**: Detect manifest URL trong gallery viewer → render `ChunkedVideoPlayer` thay vì `<video>`.
+Với video thường (không phải manifest), giữ nguyên hành vi download trực tiếp.
 
 ## File cần sửa
 
 | File | Thay đổi |
 |------|----------|
-| `src/modules/live/components/ChunkedVideoPlayer.tsx` | Thêm `onReady` và `onError` callback props |
-| `src/components/ui/LazyVideo.tsx` | Truyền `handleStreamReady`/`handleStreamError` vào `ChunkedVideoPlayer` để cập nhật `isLoaded` |
-| `src/components/feed/MediaGrid.tsx` | Detect manifest URL trong `MediaGalleryViewer` → dùng `ChunkedVideoPlayer` thay vì raw `<video>` |
+| `src/components/feed/MediaGrid.tsx` | Thay 2 nút `<a download>` (dòng 83-93 và 363-372) bằng button gọi hàm `handleChunkedDownload`. Thêm hàm download logic: fetch manifest → fetch chunks → concat blob → trigger download. Hiển thị trạng thái downloading. |
+
+## Chi tiết kỹ thuật
+
+Tạo hàm `downloadChunkedVideo(manifestUrl)` trong `MediaGrid.tsx`:
+
+```text
+1. Fetch manifest.json → parse JSON
+2. Lặp qua từng chunk, fetch blob
+3. Concat tất cả blobs thành 1 Blob({ type: mime_type })
+4. Tạo Object URL → tạo thẻ <a> ẩn → click() → revoke URL
+5. Hiển thị toast/spinner khi đang tải
+```
+
+Cả 2 vị trí download button (feed single video + gallery viewer) đều cần cập nhật:
+- Dòng 83-93: Nút download trên video đơn trong feed
+- Dòng 363-372: Nút download trong gallery fullscreen viewer
 
