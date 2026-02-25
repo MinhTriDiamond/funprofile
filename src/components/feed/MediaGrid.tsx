@@ -1,9 +1,9 @@
-import { useState, memo, useCallback } from 'react';
+import { useState, memo, useCallback, useRef } from 'react';
 import { ImageViewer } from './ImageViewer';
 import { LazyImage } from '@/components/ui/LazyImage';
 import { LazyVideo } from '@/components/ui/LazyVideo';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { ChevronLeft, ChevronRight, X, Radio, Play, Download } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Radio, Play, Download, RotateCcw, RotateCw } from 'lucide-react';
 
 interface MediaItem {
   url: string;
@@ -327,6 +327,8 @@ interface MediaGalleryViewerProps {
 }
 
 const MediaGalleryViewer = memo(({ media, isOpen, onClose, currentIndex, onPrev, onNext, setIndex }: MediaGalleryViewerProps) => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
   if (!isOpen || media.length === 0) return null;
 
   const currentMedia = media[currentIndex];
@@ -334,6 +336,12 @@ const MediaGalleryViewer = memo(({ media, isOpen, onClose, currentIndex, onPrev,
   const handleThumbnailClick = (index: number) => {
     if (setIndex) {
       setIndex(index);
+    }
+  };
+
+  const skipVideo = (seconds: number) => {
+    if (videoRef.current) {
+      videoRef.current.currentTime = Math.max(0, Math.min(videoRef.current.duration || 0, videoRef.current.currentTime + seconds));
     }
   };
 
@@ -379,15 +387,35 @@ const MediaGalleryViewer = memo(({ media, isOpen, onClose, currentIndex, onPrev,
           )}
 
           {/* Media content */}
-          <div className="max-w-full max-h-full flex items-center justify-center p-4">
+          <div className="max-w-full max-h-full flex items-center justify-center p-4 relative">
             {currentMedia.type === 'video' ? (
-              <video
-                key={currentMedia.url}
-                src={currentMedia.url}
-                controls
-                autoPlay
-                className="max-w-full max-h-[85vh] object-contain"
-              />
+              <>
+                <video
+                  ref={videoRef}
+                  key={currentMedia.url}
+                  src={currentMedia.url}
+                  controls
+                  autoPlay
+                  className="max-w-full max-h-[85vh] object-contain"
+                />
+                {/* Skip buttons for video */}
+                <button
+                  onClick={() => skipVideo(-15)}
+                  className="absolute left-8 top-1/2 -translate-y-1/2 z-50 w-14 h-14 bg-black/40 hover:bg-black/70 rounded-full flex flex-col items-center justify-center text-white transition-colors"
+                  title="Tua lùi 15 giây"
+                >
+                  <RotateCcw className="w-6 h-6" />
+                  <span className="text-[10px] font-bold -mt-0.5">15</span>
+                </button>
+                <button
+                  onClick={() => skipVideo(15)}
+                  className="absolute right-8 top-1/2 -translate-y-1/2 z-50 w-14 h-14 bg-black/40 hover:bg-black/70 rounded-full flex flex-col items-center justify-center text-white transition-colors"
+                  title="Tua tới 15 giây"
+                >
+                  <RotateCw className="w-6 h-6" />
+                  <span className="text-[10px] font-bold -mt-0.5">15</span>
+                </button>
+              </>
             ) : (
               <img
                 key={currentMedia.url}

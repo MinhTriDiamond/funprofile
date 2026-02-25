@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Eye, Loader2, Radio, Volume2, VolumeX } from 'lucide-react';
+import { Clock, Eye, Loader2, Radio, Volume2, VolumeX } from 'lucide-react';
 import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,7 @@ import { incrementLiveViewerCount, decrementLiveViewerCount } from '../liveServi
 import { LiveChatPanel } from '../components/LiveChatPanel';
 import { FloatingReactions } from '../components/FloatingReactions';
 import { useSlugResolver } from '@/hooks/useSlugResolver';
+import { useLiveDuration } from '../hooks/useLiveDuration';
 
 export default function LiveAudiencePage() {
   const navigate = useNavigate();
@@ -37,6 +38,7 @@ export default function LiveAudiencePage() {
   });
 
   const { data: session, isLoading } = useLiveSession(resolvedSessionId);
+  const liveDuration = useLiveDuration(session?.started_at, session?.status === 'live');
   const [mobileTab, setMobileTab] = useState<'chat' | 'reactions'>('chat');
   const [showEndedDialog, setShowEndedDialog] = useState(false);
 
@@ -129,6 +131,12 @@ export default function LiveAudiencePage() {
                   <Radio className="h-3.5 w-3.5" />
                   {session.status === 'live' ? 'LIVE' : 'ENDED'}
                 </Badge>
+                {session.status === 'live' && (
+                  <Badge variant="outline" className="gap-1 font-mono">
+                    <Clock className="h-3.5 w-3.5" />
+                    {liveDuration}
+                  </Badge>
+                )}
                 <Badge variant="secondary" className="gap-1">
                   <Eye className="h-3.5 w-3.5" />
                   {session.viewer_count || 0}
