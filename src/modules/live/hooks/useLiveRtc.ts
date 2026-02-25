@@ -42,6 +42,7 @@ export function useLiveRtc({
   const localAudioRef = useRef<IMicrophoneAudioTrack | null>(null);
   const localVideoRef = useRef<ICameraVideoTrack | null>(null);
   const remoteAudioRef = useRef<any>(null);
+  const [remoteUsers, setRemoteUsers] = useState<Map<string, { videoTrack: any; audioTrack: any }>>(new Map());
   const tokenExpiresAtRef = useRef<number | null>(null);
   const rejoinAttemptsRef = useRef(0);
   const renewFailuresRef = useRef(0);
@@ -84,6 +85,12 @@ export function useLiveRtc({
       remoteAudioRef.current = user.audioTrack;
       user.audioTrack.play();
     }
+    // Update remote users map
+    setRemoteUsers((prev) => {
+      const next = new Map(prev);
+      next.set(String(user.uid), { videoTrack: user.videoTrack || null, audioTrack: user.audioTrack || null });
+      return next;
+    });
   }, []);
 
   const refreshToken = useCallback(async () => {
@@ -179,8 +186,13 @@ export function useLiveRtc({
       }
     });
 
-    client.on('user-left', () => {
+    client.on('user-left', (user) => {
       emitViewerCount(client);
+      setRemoteUsers((prev) => {
+        const next = new Map(prev);
+        next.delete(String(user.uid));
+        return next;
+      });
       if (role === 'audience') {
         setHasRemoteVideo(false);
         setStatusText('Host đã rời phiên live');
@@ -310,6 +322,18 @@ export function useLiveRtc({
     video: localVideoRef.current,
   }), []);
 
+  const promoteToHost = useCallback(async () => {
+    if (!clientRef.current) return;
+    await clientRef.current.setClientRole('host');
+    const [audioTrack, videoTrack] = await AgoraRTC.createMicrophoneAndCameraTracks();
+    localAudioRef.current = audioTrack;
+    localVideoRef.current = videoTrack;
+    if (localContainerRef.current) {
+      videoTrack.play(localContainerRef.current);
+    }
+    await clientRef.current.publish([audioTrack, videoTrack]);
+  }, []);
+
   return {
     setLocalContainerRef,
     remoteContainerRef,
@@ -318,11 +342,13 @@ export function useLiveRtc({
     isCameraOff,
     hasRemoteVideo,
     statusText,
+    remoteUsers,
     start,
     leave,
     toggleMute,
     toggleCamera,
     toggleRemoteAudio,
     getLocalTracks,
+    promoteToHost,
   };
 }
