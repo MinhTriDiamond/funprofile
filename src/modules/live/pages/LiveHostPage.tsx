@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { Eye, Home, Loader2, Mic, MicOff, PhoneOff, Radio, RefreshCw, Video, VideoOff } from 'lucide-react';
+import { Clock, Eye, Home, Loader2, Mic, MicOff, PhoneOff, Radio, RefreshCw, Video, VideoOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
 import { Badge } from '@/components/ui/badge';
@@ -35,6 +35,7 @@ import { useLiveRtc } from '../hooks/useLiveRtc';
 import { useLiveHeartbeat } from '../hooks/useLiveHeartbeat';
 import { LiveChatPanel } from '../components/LiveChatPanel';
 import { FloatingReactions } from '../components/FloatingReactions';
+import { useLiveDuration } from '../hooks/useLiveDuration';
 
 type BootState = 'idle' | 'auth' | 'creating' | 'loading' | 'starting' | 'ready' | 'error';
 
@@ -127,6 +128,8 @@ export default function LiveHostPage() {
       }, 400);
     },
   });
+
+  const liveDuration = useLiveDuration(session?.started_at, session?.status === 'live' && isJoined);
 
   const isHost = useMemo(() => !!session && !!userId && session.host_user_id === userId, [session, userId]);
 
@@ -550,6 +553,12 @@ const handleEndLive = async (skipNavigate = false) => {
                   <Radio className="h-3.5 w-3.5" />
                   {session.status === 'ended' ? 'ENDED' : isJoined ? 'LIVE' : 'CONNECTING'}
                 </Badge>
+                {session.status === 'live' && isJoined && (
+                  <Badge variant="outline" className="gap-1 font-mono">
+                    <Clock className="h-3.5 w-3.5" />
+                    {liveDuration}
+                  </Badge>
+                )}
                 <Badge variant={recBadge.variant}>
                   {recBadge.label}
                 </Badge>
