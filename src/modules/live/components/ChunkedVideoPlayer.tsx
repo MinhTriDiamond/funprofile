@@ -1,7 +1,7 @@
 /**
  * ChunkedVideoPlayer
- * MVP player that fetches manifest.json and plays chunks sequentially
- * Uses blob concatenation as the primary strategy (most browser compatible)
+ * Progressive streaming player using MediaSource Extensions (MSE).
+ * Falls back to blob concatenation if MSE doesn't support the codec.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -33,6 +33,22 @@ interface ChunkedVideoPlayerProps {
   onError?: () => void;
 }
 
+const MAX_RETRY = 3;
+
+async function fetchWithRetry(url: string, retries = MAX_RETRY): Promise<ArrayBuffer> {
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.arrayBuffer();
+    } catch (err) {
+      if (attempt === retries - 1) throw err;
+      await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+    }
+  }
+  throw new Error('Unreachable');
+}
+
 export function ChunkedVideoPlayer({
   manifestUrl,
   className = '',
@@ -44,66 +60,152 @@ export function ChunkedVideoPlayer({
   const videoRef = useRef<HTMLVideoElement>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [progress, setProgress] = useState(0); // 0-100 loading progress
-  const blobUrlRef = useRef<string | null>(null);
+  const cleanupRef = useRef<(() => void) | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
-  const loadAndPlay = useCallback(async () => {
+  const loadWithMSE = useCallback(async (manifest: Manifest) => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const mediaSource = new MediaSource();
+    const msUrl = URL.createObjectURL(mediaSource);
+    video.src = msUrl;
+
+    await new Promise<void>((resolve) => {
+      mediaSource.addEventListener('sourceopen', () => resolve(), { once: true });
+    });
+
+    const mimeWithCodec = manifest.codec
+      ? `${manifest.mime_type}; codecs="${manifest.codec}"`
+      : manifest.mime_type;
+
+    const sourceBuffer = mediaSource.addSourceBuffer(mimeWithCodec);
+    const queue: ArrayBuffer[] = [];
+    let appending = false;
+
+    const processQueue = () => {
+      if (appending || queue.length === 0) return;
+      if (mediaSource.readyState !== 'open') return;
+      appending = true;
+      sourceBuffer.appendBuffer(queue.shift()!);
+    };
+
+    sourceBuffer.addEventListener('updateend', () => {
+      appending = false;
+      processQueue();
+    });
+
+    const appendData = (data: ArrayBuffer) => {
+      queue.push(data);
+      processQueue();
+    };
+
+    // Load chunks progressively
+    for (let i = 0; i < manifest.chunks.length; i++) {
+      if (abortRef.current?.signal.aborted) return;
+
+      const data = await fetchWithRetry(manifest.chunks[i].url);
+      if (abortRef.current?.signal.aborted) return;
+
+      appendData(data);
+
+      // After first chunk: start playback & hide loading
+      if (i === 0) {
+        setLoading(false);
+        onReady?.();
+        if (autoPlay) {
+          video.play().catch(() => {});
+        }
+      }
+    }
+
+    // Wait for queue to drain, then signal end of stream
+    const waitDrain = () => new Promise<void>((resolve) => {
+      const check = () => {
+        if (queue.length === 0 && !sourceBuffer.updating) {
+          resolve();
+        } else {
+          sourceBuffer.addEventListener('updateend', check, { once: true });
+        }
+      };
+      check();
+    });
+
+    await waitDrain();
+    if (mediaSource.readyState === 'open') {
+      mediaSource.endOfStream();
+    }
+
+    cleanupRef.current = () => {
+      URL.revokeObjectURL(msUrl);
+    };
+  }, [autoPlay, onReady]);
+
+  const loadWithBlob = useCallback(async (manifest: Manifest) => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const blobs: Blob[] = [];
+    for (let i = 0; i < manifest.chunks.length; i++) {
+      if (abortRef.current?.signal.aborted) return;
+      const data = await fetchWithRetry(manifest.chunks[i].url);
+      blobs.push(new Blob([data]));
+    }
+
+    const fullBlob = new Blob(blobs, { type: manifest.mime_type || 'video/webm' });
+    const url = URL.createObjectURL(fullBlob);
+    video.src = url;
+
+    setLoading(false);
+    onReady?.();
+    if (autoPlay) video.play().catch(() => {});
+
+    cleanupRef.current = () => URL.revokeObjectURL(url);
+  }, [autoPlay, onReady]);
+
+  const start = useCallback(async () => {
     setLoading(true);
     setError(null);
+    abortRef.current = new AbortController();
 
     try {
-      // 1. Fetch manifest
       const res = await fetch(manifestUrl);
       if (!res.ok) throw new Error(`Failed to fetch manifest: ${res.status}`);
       const manifest: Manifest = await res.json();
 
-      if (!manifest.chunks || manifest.chunks.length === 0) {
-        throw new Error('No chunks in manifest');
+      if (!manifest.chunks?.length) throw new Error('No chunks in manifest');
+
+      // Determine MSE support for this codec
+      const mimeWithCodec = manifest.codec
+        ? `${manifest.mime_type}; codecs="${manifest.codec}"`
+        : manifest.mime_type;
+
+      const useMSE =
+        typeof MediaSource !== 'undefined' &&
+        MediaSource.isTypeSupported(mimeWithCodec);
+
+      if (useMSE) {
+        await loadWithMSE(manifest);
+      } else {
+        console.warn('[ChunkedVideoPlayer] MSE not supported for', mimeWithCodec, '→ fallback to blob');
+        await loadWithBlob(manifest);
       }
-
-      // 2. Download all chunks and concatenate
-      const blobs: Blob[] = [];
-      for (let i = 0; i < manifest.chunks.length; i++) {
-        const chunk = manifest.chunks[i];
-        const chunkRes = await fetch(chunk.url);
-        if (!chunkRes.ok) throw new Error(`Failed to fetch chunk ${chunk.seq}`);
-        blobs.push(await chunkRes.blob());
-        setProgress(Math.round(((i + 1) / manifest.chunks.length) * 100));
-      }
-
-      // 3. Concatenate into single blob
-      const fullBlob = new Blob(blobs, { type: manifest.mime_type || 'video/webm' });
-
-      // 4. Create object URL and set on video
-      if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
-      const url = URL.createObjectURL(fullBlob);
-      blobUrlRef.current = url;
-
-      if (videoRef.current) {
-        videoRef.current.src = url;
-        if (autoPlay) {
-          videoRef.current.play().catch(() => {});
-        }
-      }
-
-      setLoading(false);
-      onReady?.();
     } catch (err: any) {
+      if (abortRef.current?.signal.aborted) return;
       setError(err.message || 'Failed to load video');
       setLoading(false);
       onErrorCallback?.();
     }
-  }, [manifestUrl, autoPlay, onReady, onErrorCallback]);
+  }, [manifestUrl, loadWithMSE, loadWithBlob, onErrorCallback]);
 
   useEffect(() => {
-    loadAndPlay();
+    start();
     return () => {
-      if (blobUrlRef.current) {
-        URL.revokeObjectURL(blobUrlRef.current);
-        blobUrlRef.current = null;
-      }
+      abortRef.current?.abort();
+      cleanupRef.current?.();
+      cleanupRef.current = null;
     };
-  }, [loadAndPlay]);
+  }, [start]);
 
   if (error) {
     return (
@@ -116,11 +218,8 @@ export function ChunkedVideoPlayer({
   return (
     <div className={`relative ${className}`}>
       {loading && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 z-10">
-          <Loader2 className="h-8 w-8 animate-spin text-white/70 mb-2" />
-          <span className="text-white/70 text-sm">
-            Đang tải video... {progress}%
-          </span>
+        <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-10">
+          <Loader2 className="h-8 w-8 animate-spin text-white/70" />
         </div>
       )}
       <video
@@ -132,3 +231,5 @@ export function ChunkedVideoPlayer({
     </div>
   );
 }
+
+export default ChunkedVideoPlayer;
