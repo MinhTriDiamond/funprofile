@@ -1005,7 +1005,7 @@ const AdminMigration = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#f0f2f5] overflow-hidden">
+      <div className="min-h-screen bg-background overflow-hidden">
         <FacebookNavbar />
         <main data-app-scroll className="fixed inset-x-0 top-[3cm] bottom-0 overflow-y-auto flex items-center justify-center">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -1017,7 +1017,7 @@ const AdminMigration = () => {
   if (!isAdmin) return null;
 
   return (
-    <div className="min-h-screen bg-[#f0f2f5] overflow-hidden">
+    <div className="min-h-screen bg-background overflow-hidden">
       <FacebookNavbar />
       <main data-app-scroll className="fixed inset-x-0 top-[3cm] bottom-0 overflow-y-auto pb-20 lg:pb-0">
         <div className="max-w-4xl mx-auto px-[2cm] py-4">
