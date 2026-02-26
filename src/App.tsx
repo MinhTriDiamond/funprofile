@@ -12,10 +12,8 @@ import { LawOfLightGuard } from "@/components/auth/LawOfLightGuard";
 import { Web3Provider } from "@/components/providers/Web3Provider";
 import { DonationReceivedNotification } from "@/components/donations/DonationReceivedNotification";
 import { CallProvider } from "@/contexts/CallContext";
-import { TetBackground } from "@/components/ui/TetBackground";
-import { TetFlowerOverlay } from "@/components/ui/TetFlowerOverlay";
 
-import { TetBackgroundProvider } from "@/contexts/TetBackgroundContext";
+
 import { usePendingDonationRecovery } from "@/hooks/usePendingDonationRecovery";
 // Lazy load pages for code splitting
 const Auth = lazy(() => import("./pages/Auth"));
@@ -106,7 +104,6 @@ function App() {
     <LanguageProvider>
       <QueryClientProvider client={queryClient}>
         <Web3Provider>
-          <TetBackgroundProvider>
           <TooltipProvider>
             <Toaster />
             <Sonner />
@@ -114,8 +111,6 @@ function App() {
             <PendingDonationRecovery />
           <BrowserRouter>
             <CallProvider>
-            <TetBackground />
-            <TetFlowerOverlay />
             <Suspense fallback={<PageLoader />}>
               <LawOfLightGuard>
                 <Routes>
@@ -165,7 +160,7 @@ function App() {
             </CallProvider>
           </BrowserRouter>
         </TooltipProvider>
-          </TetBackgroundProvider>
+          
         </Web3Provider>
       </QueryClientProvider>
     </LanguageProvider>
