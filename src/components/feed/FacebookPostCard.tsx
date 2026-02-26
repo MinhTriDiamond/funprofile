@@ -1,4 +1,4 @@
-import { useState, useEffect, memo, useCallback, useMemo } from 'react';
+import { useState, useEffect, memo, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { getAbsolutePostUrl } from '@/lib/slug';
@@ -21,6 +21,8 @@ import { ReactionSummary } from './ReactionSummary';
 import { MediaGrid } from './MediaGrid';
 import { LivePostEmbed } from './LivePostEmbed';
 import { ExpandableContent } from './ExpandableContent';
+import { HeartAnimation } from './HeartAnimation';
+import { ShareDialog } from './ShareDialog';
 import { extractPostStreamVideos, deleteStreamVideos, isSupabaseStorageUrl, deleteStorageFile } from '@/utils/streamHelpers';
 import {
   MessageCircle,
@@ -105,6 +107,9 @@ const FacebookPostCardComponent = ({
   const [reactionCounts, setReactionCounts] = useState<ReactionCount[]>([]);
   const [isStatsLoaded, setIsStatsLoaded] = useState(!!initialStats);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showShareDialog, setShowShareDialog] = useState(false);
+  const [showHeartAnimation, setShowHeartAnimation] = useState(false);
+  const lastTapRef = useRef<number>(0);
 
   // Helper function to process reactions data
   const processReactions = (reactions: { id: string; user_id: string; type: string }[]) => {
@@ -293,6 +298,19 @@ const FacebookPostCardComponent = ({
     setShowComments((prev) => !prev);
   }, []);
 
+  // Double-tap to like on media
+  const handleMediaDoubleTap = useCallback(() => {
+    const now = Date.now();
+    if (now - lastTapRef.current < 300) {
+      // Double tap detected
+      if (!currentReaction) {
+        // Trigger like
+        setShowHeartAnimation(true);
+      }
+    }
+    lastTapRef.current = now;
+  }, [currentReaction]);
+
   const openEditDialog = useCallback(() => {
     setShowEditDialog(true);
   }, []);
@@ -453,7 +471,10 @@ const FacebookPostCardComponent = ({
             hostName={post.profiles?.display_name || post.profiles?.username || ''}
           />
         ) : (
-          <MediaGrid media={mediaItems} />
+          <div className="relative" onClick={handleMediaDoubleTap}>
+            <MediaGrid media={mediaItems} />
+            <HeartAnimation show={showHeartAnimation} onComplete={() => setShowHeartAnimation(false)} />
+          </div>
         )}
 
         {/* Reactions Summary */}
@@ -485,22 +506,13 @@ const FacebookPostCardComponent = ({
               <span className="font-semibold text-xs sm:text-sm">{t('comment')}</span>
             </button>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-3 min-h-[48px] rounded-lg transition-colors hover:bg-secondary text-muted-foreground active:bg-secondary/80">
-                  <Share2 className="w-5 h-5 sm:w-5 sm:h-5" />
-                  <span className="font-semibold text-xs sm:text-sm">{t('share')}</span>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="center">
-                <DropdownMenuItem onClick={handleShareToProfile} className="cursor-pointer min-h-[44px]">
-                  {t('shareToProfile')}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleCopyLink} className="cursor-pointer min-h-[44px]">
-                  {t('copyLink')}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <button
+              onClick={() => setShowShareDialog(true)}
+              className="flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-3 min-h-[48px] rounded-lg transition-colors hover:bg-secondary text-muted-foreground active:bg-secondary/80"
+            >
+              <Share2 className="w-5 h-5 sm:w-5 sm:h-5" />
+              <span className="font-semibold text-xs sm:text-sm">{t('share')}</span>
+            </button>
 
             {/* Donation Button - only show for other users' posts */}
             {post.user_id !== currentUserId && (
@@ -544,6 +556,14 @@ const FacebookPostCardComponent = ({
         isOpen={showEditDialog}
         onClose={closeEditDialog}
         onPostUpdated={onPostDeleted}
+      />
+
+      <ShareDialog
+        open={showShareDialog}
+        onOpenChange={setShowShareDialog}
+        post={post}
+        currentUserId={currentUserId}
+        onShareComplete={() => setShareCount((prev) => prev + 1)}
       />
     </>
   );

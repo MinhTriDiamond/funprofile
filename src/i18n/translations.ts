@@ -417,6 +417,8 @@ export const translations = {
     reactionCare: 'Care',
     reactionWow: 'Wow',
     reactionGratitude: 'Gratitude',
+    reactionSad: 'Sad',
+    reactionAngry: 'Angry',
     
     // Profile wallet & friend actions
     publicWalletAddress: 'Public Wallet Address',
@@ -1054,6 +1056,8 @@ export const translations = {
     reactionCare: 'Thương thương',
     reactionWow: 'Ngạc nhiên',
     reactionGratitude: 'Biết ơn',
+    reactionSad: 'Buồn',
+    reactionAngry: 'Phẫn nộ',
     
     // Profile wallet & friend actions
     publicWalletAddress: 'Địa chỉ ví công khai',
@@ -1754,6 +1758,8 @@ export const translations = {
     reactionCare: '关心',
     reactionWow: '哇',
     reactionGratitude: '感恩',
+    reactionSad: '难过',
+    reactionAngry: '生气',
     // Unified Auth keys
     authMethodSocial: '社交登录',
     authMethodWallet: '钱包',
@@ -2447,6 +2453,8 @@ export const translations = {
     reactionCare: '気遣い',
     reactionWow: 'わお',
     reactionGratitude: '感謝',
+    reactionSad: '悲しい',
+    reactionAngry: '怒り',
     // Unified Auth keys
     authMethodSocial: 'ソーシャル',
     authMethodWallet: 'ウォレット',
@@ -3138,6 +3146,8 @@ export const translations = {
     reactionCare: '마음',
     reactionWow: '와우',
     reactionGratitude: '감사',
+    reactionSad: '슬퍼요',
+    reactionAngry: '화나요',
     // Unified Auth keys
     authMethodSocial: '소셜',
     authMethodWallet: '지갑',
@@ -3804,6 +3814,8 @@ export const translations = {
     reactionCare: 'ห่วงใย',
     reactionWow: 'ว้าว',
     reactionGratitude: 'ขอบคุณ',
+    reactionSad: 'เศร้า',
+    reactionAngry: 'โกรธ',
     // Unified Auth keys
     authMethodSocial: 'โซเชียล',
     authMethodWallet: 'กระเป๋า',
@@ -4399,6 +4411,8 @@ export const translations = {
     reactionCare: 'Peduli',
     reactionWow: 'Wow',
     reactionGratitude: 'Terima kasih',
+    reactionSad: 'Sedih',
+    reactionAngry: 'Marah',
     // Unified Auth keys
     authMethodSocial: 'Sosial',
     authMethodWallet: 'Dompet',
@@ -4869,6 +4883,8 @@ export const translations = {
     reactionCare: 'Prendre soin',
     reactionWow: 'Wow',
     reactionGratitude: 'Gratitude',
+    reactionSad: 'Triste',
+    reactionAngry: 'En colère',
     viewMoreReplies: 'Voir plus de réponses',
     hideReplies: 'Masquer les réponses',
     // New i18n keys
@@ -5234,6 +5250,8 @@ export const translations = {
     reactionCare: 'Me importa',
     reactionWow: 'Wow',
     reactionGratitude: 'Gratitud',
+    reactionSad: 'Triste',
+    reactionAngry: 'Enojado',
     viewMoreReplies: 'Ver más respuestas',
     loadingMorePosts: 'Cargando más publicaciones...',
     noMorePostsMessage: 'Has visto todas las publicaciones',
@@ -5595,6 +5613,8 @@ export const translations = {
     reactionCare: 'Fürsorge',
     reactionWow: 'Wow',
     reactionGratitude: 'Dankbarkeit',
+    reactionSad: 'Traurig',
+    reactionAngry: 'Wütend',
     viewMoreReplies: 'Mehr Antworten anzeigen',
     loadingMorePosts: 'Lade weitere Beiträge...',
     noMorePostsMessage: 'Du hast alle Beiträge gesehen',
@@ -5956,6 +5976,8 @@ export const translations = {
     reactionCare: 'Importo',
     reactionWow: 'Uau',
     reactionGratitude: 'Gratidão',
+    reactionSad: 'Triste',
+    reactionAngry: 'Com raiva',
     viewMoreReplies: 'Ver mais respostas',
     loadingMorePosts: 'Carregando mais publicações...',
     noMorePostsMessage: 'Você viu todas as publicações',
@@ -6317,6 +6339,8 @@ export const translations = {
     reactionCare: 'Забочусь',
     reactionWow: 'Ого',
     reactionGratitude: 'Благодарность',
+    reactionSad: 'Грустно',
+    reactionAngry: 'Злюсь',
     savePost: 'Сохранить',
     pinPost: 'Закрепить',
     unpinPost: 'Открепить',
@@ -6683,6 +6707,8 @@ export const translations = {
     reactionCare: 'أهتم',
     reactionWow: 'واو',
     reactionGratitude: 'امتنان',
+    reactionSad: 'حزين',
+    reactionAngry: 'غاضب',
     savePost: 'حفظ',
     pinPost: 'تثبيت',
     unpinPost: 'إلغاء التثبيت',
