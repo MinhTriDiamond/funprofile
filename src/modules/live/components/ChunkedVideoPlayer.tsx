@@ -1,8 +1,8 @@
 /**
  * ChunkedVideoPlayer
  * Progressive streaming player using MediaSource Extensions (MSE).
- * Features: buffer management, lazy chunk loading, QuotaExceeded recovery.
- * Falls back to blob concatenation if MSE doesn't support the codec.
+ * Features: ordered seq append, MIME sanitisation, buffer management,
+ *           QuotaExceeded recovery, auto-fallback to blob on repeated errors.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -43,12 +43,11 @@ interface ChunkedVideoPlayerProps {
 /* ------------------------------------------------------------------ */
 
 const MAX_RETRY = 3;
-/** How far ahead of currentTime to buffer (seconds) */
 const BUFFER_AHEAD_S = 30;
-/** How far behind currentTime to keep in SourceBuffer (seconds) */
 const BUFFER_BEHIND_S = 15;
-/** Interval to check if we need more chunks (ms) */
 const POLL_INTERVAL_MS = 1000;
+/** After this many SourceBuffer errors we fall back to blob */
+const MAX_SB_ERRORS = 3;
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -68,7 +67,14 @@ async function fetchWithRetry(url: string, retries = MAX_RETRY): Promise<ArrayBu
   throw new Error('Unreachable');
 }
 
-/** Build cumulative time offsets from chunk durations */
+/** Sanitise MIME: if mime_type already contains "codecs=", use it as-is */
+function buildMimeType(manifest: Manifest): string {
+  const mt = manifest.mime_type ?? '';
+  if (/codecs\s*=/i.test(mt)) return mt;
+  if (manifest.codec) return `${mt}; codecs="${manifest.codec}"`;
+  return mt;
+}
+
 function buildTimeMap(chunks: ManifestChunk[]): number[] {
   const offsets: number[] = [];
   let acc = 0;
@@ -79,7 +85,6 @@ function buildTimeMap(chunks: ManifestChunk[]): number[] {
   return offsets;
 }
 
-/** Find the chunk index that covers a given time (seconds) */
 function chunkIndexForTime(timeS: number, offsets: number[]): number {
   for (let i = offsets.length - 1; i >= 0; i--) {
     if (timeS >= offsets[i]) return i;
@@ -106,8 +111,8 @@ export function ChunkedVideoPlayer({
   const cleanupRef = useRef<(() => void) | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  /* ---- MSE path with buffer management ---- */
-  const loadWithMSE = useCallback(async (manifest: Manifest) => {
+  /* ---- MSE path with strict-seq append ---- */
+  const loadWithMSE = useCallback(async (manifest: Manifest, onFallback: () => void) => {
     const video = videoRef.current;
     if (!video) return;
 
@@ -119,79 +124,86 @@ export function ChunkedVideoPlayer({
       mediaSource.addEventListener('sourceopen', () => resolve(), { once: true });
     });
 
-    const mimeWithCodec = manifest.codec
-      ? `${manifest.mime_type}; codecs="${manifest.codec}"`
-      : manifest.mime_type;
+    const mimeWithCodec = buildMimeType(manifest);
+    console.log('[ChunkedVideoPlayer] Using MIME:', mimeWithCodec);
 
     const sourceBuffer = mediaSource.addSourceBuffer(mimeWithCodec);
-
     const offsets = buildTimeMap(manifest.chunks);
-    const totalDuration = manifest.total_duration_ms / 1000;
 
-    // Track which chunks have been fetched
+    // State
     const fetched = new Set<number>();
     const fetching = new Set<number>();
+    /** Chunk data waiting to be appended, keyed by seq */
+    const pendingData = new Map<number, ArrayBuffer>();
+    let nextAppendSeq = 0;
     let destroyed = false;
     let firstChunkAppended = false;
-
-    /* --- Queue for safe appendBuffer --- */
-    const queue: ArrayBuffer[] = [];
+    let sbErrorCount = 0;
     let appending = false;
 
+    /* --- Ordered append: only append nextAppendSeq --- */
     const processQueue = () => {
-      if (appending || queue.length === 0) return;
+      if (appending || destroyed) return;
       if (mediaSource.readyState !== 'open') return;
+      const data = pendingData.get(nextAppendSeq);
+      if (!data) return; // waiting for this seq to arrive
+      pendingData.delete(nextAppendSeq);
       appending = true;
       try {
-        sourceBuffer.appendBuffer(queue.shift()!);
+        sourceBuffer.appendBuffer(data);
       } catch (e: any) {
         appending = false;
         if (e.name === 'QuotaExceededError') {
-          console.warn('[ChunkedVideoPlayer] QuotaExceeded → evicting old buffer');
+          console.warn('[ChunkedVideoPlayer] QuotaExceeded → evicting');
           evictOldBuffer().then(() => processQueue());
         } else {
-          console.error('[ChunkedVideoPlayer] appendBuffer error:', e);
+          sbErrorCount++;
+          console.error('[ChunkedVideoPlayer] appendBuffer error:', e, `(count ${sbErrorCount})`);
+          if (sbErrorCount >= MAX_SB_ERRORS) {
+            console.warn('[ChunkedVideoPlayer] Too many SB errors → blob fallback');
+            onFallback();
+          }
         }
       }
     };
 
     sourceBuffer.addEventListener('updateend', () => {
       appending = false;
+      nextAppendSeq++;
+
+      if (!firstChunkAppended) {
+        firstChunkAppended = true;
+        setLoading(false);
+        onReady?.();
+        if (autoPlay) video.play().catch(() => {});
+      }
+
       processQueue();
     });
 
     sourceBuffer.addEventListener('error', () => {
-      console.error('[ChunkedVideoPlayer] SourceBuffer error');
+      sbErrorCount++;
+      console.error('[ChunkedVideoPlayer] SourceBuffer error event', `(count ${sbErrorCount})`);
+      if (sbErrorCount >= MAX_SB_ERRORS) {
+        console.warn('[ChunkedVideoPlayer] Too many SB errors → blob fallback');
+        onFallback();
+      }
     });
 
-    /* --- Buffer eviction: remove data well behind currentTime --- */
+    /* --- Eviction --- */
     const evictOldBuffer = (): Promise<void> => {
       return new Promise(resolve => {
-        if (sourceBuffer.updating || mediaSource.readyState !== 'open') {
-          resolve();
-          return;
-        }
-        const ct = video.currentTime;
-        const removeEnd = ct - BUFFER_BEHIND_S;
-        if (removeEnd <= 0 || sourceBuffer.buffered.length === 0) {
-          resolve();
-          return;
-        }
+        if (sourceBuffer.updating || mediaSource.readyState !== 'open') { resolve(); return; }
+        const removeEnd = video.currentTime - BUFFER_BEHIND_S;
+        if (removeEnd <= 0 || sourceBuffer.buffered.length === 0) { resolve(); return; }
         const bufStart = sourceBuffer.buffered.start(0);
-        if (bufStart >= removeEnd) {
-          resolve();
-          return;
-        }
+        if (bufStart >= removeEnd) { resolve(); return; }
         sourceBuffer.addEventListener('updateend', () => resolve(), { once: true });
-        try {
-          sourceBuffer.remove(bufStart, removeEnd);
-        } catch {
-          resolve();
-        }
+        try { sourceBuffer.remove(bufStart, removeEnd); } catch { resolve(); }
       });
     };
 
-    /* --- Fetch a single chunk and append --- */
+    /* --- Fetch a chunk → store in pendingData, then try append --- */
     const loadChunk = async (idx: number) => {
       if (destroyed || fetched.has(idx) || fetching.has(idx)) return;
       if (idx < 0 || idx >= manifest.chunks.length) return;
@@ -200,15 +212,8 @@ export function ChunkedVideoPlayer({
         const data = await fetchWithRetry(manifest.chunks[idx].url);
         if (destroyed) return;
         fetched.add(idx);
-        queue.push(data);
+        pendingData.set(idx, data);
         processQueue();
-
-        if (!firstChunkAppended) {
-          firstChunkAppended = true;
-          setLoading(false);
-          onReady?.();
-          if (autoPlay) video.play().catch(() => {});
-        }
       } catch (err) {
         console.error(`[ChunkedVideoPlayer] Failed to load chunk ${idx}:`, err);
       } finally {
@@ -216,59 +221,45 @@ export function ChunkedVideoPlayer({
       }
     };
 
-    /* --- Determine which chunks to load based on currentTime --- */
+    /* --- Determine which chunks to load --- */
     const ensureBuffered = async () => {
       if (destroyed || mediaSource.readyState !== 'open') return;
-
-      // Evict old data first
       await evictOldBuffer();
-
       const ct = video.currentTime;
       const startIdx = chunkIndexForTime(ct, offsets);
       const endTime = ct + BUFFER_AHEAD_S;
       const endIdx = Math.min(chunkIndexForTime(endTime, offsets) + 1, manifest.chunks.length - 1);
-
-      // Load chunks from startIdx to endIdx
+      // Also ensure we fetch from nextAppendSeq so ordered append isn't starved
+      const fetchFrom = Math.min(startIdx, nextAppendSeq);
       const promises: Promise<void>[] = [];
-      for (let i = startIdx; i <= endIdx; i++) {
-        if (!fetched.has(i) && !fetching.has(i)) {
-          promises.push(loadChunk(i));
-        }
+      for (let i = fetchFrom; i <= endIdx; i++) {
+        if (!fetched.has(i) && !fetching.has(i)) promises.push(loadChunk(i));
       }
       await Promise.all(promises);
     };
 
-    /* --- Video event listeners --- */
+    /* --- Video events --- */
     const onWaiting = () => setBuffering(true);
     const onPlaying = () => setBuffering(false);
     const onSeeked = () => ensureBuffered();
-
     video.addEventListener('waiting', onWaiting);
     video.addEventListener('playing', onPlaying);
     video.addEventListener('seeked', onSeeked);
 
-    /* --- Initial load: fetch first few chunks --- */
     await ensureBuffered();
 
-    /* --- Poll to keep buffer filled ahead --- */
-    const pollId = setInterval(() => {
-      if (!destroyed) ensureBuffered();
-    }, POLL_INTERVAL_MS);
+    const pollId = setInterval(() => { if (!destroyed) ensureBuffered(); }, POLL_INTERVAL_MS);
 
-    /* --- End of stream detection --- */
     const checkEnd = setInterval(() => {
       if (destroyed) return;
-      if (fetched.size === manifest.chunks.length && queue.length === 0 && !sourceBuffer.updating) {
+      if (fetched.size === manifest.chunks.length && pendingData.size === 0 && !sourceBuffer.updating) {
         if (mediaSource.readyState === 'open') {
-          try {
-            mediaSource.endOfStream();
-          } catch {}
+          try { mediaSource.endOfStream(); } catch {}
         }
         clearInterval(checkEnd);
       }
     }, 2000);
 
-    /* --- Cleanup --- */
     cleanupRef.current = () => {
       destroyed = true;
       clearInterval(pollId);
@@ -280,15 +271,22 @@ export function ChunkedVideoPlayer({
     };
   }, [autoPlay, onReady]);
 
-  /* ---- Blob fallback (unchanged, for non-MSE browsers) ---- */
+  /* ---- Blob fallback ---- */
   const loadWithBlob = useCallback(async (manifest: Manifest) => {
     const video = videoRef.current;
     if (!video) return;
 
+    // Clean up any previous MSE source
+    cleanupRef.current?.();
+    cleanupRef.current = null;
+
+    setLoading(true);
     const blobs: Blob[] = [];
-    for (let i = 0; i < manifest.chunks.length; i++) {
+    // Sort chunks by seq to guarantee order
+    const sorted = [...manifest.chunks].sort((a, b) => a.seq - b.seq);
+    for (let i = 0; i < sorted.length; i++) {
       if (abortRef.current?.signal.aborted) return;
-      const data = await fetchWithRetry(manifest.chunks[i].url);
+      const data = await fetchWithRetry(sorted[i].url);
       blobs.push(new Blob([data]));
     }
 
@@ -313,21 +311,22 @@ export function ChunkedVideoPlayer({
       const res = await fetch(manifestUrl);
       if (!res.ok) throw new Error(`Failed to fetch manifest: ${res.status}`);
       const manifest: Manifest = await res.json();
-
       if (!manifest.chunks?.length) throw new Error('No chunks in manifest');
 
-      const mimeWithCodec = manifest.codec
-        ? `${manifest.mime_type}; codecs="${manifest.codec}"`
-        : manifest.mime_type;
+      // Sort chunks by seq in manifest
+      manifest.chunks.sort((a, b) => a.seq - b.seq);
 
-      const useMSE =
-        typeof MediaSource !== 'undefined' &&
-        MediaSource.isTypeSupported(mimeWithCodec);
+      const mimeWithCodec = buildMimeType(manifest);
+      const useMSE = typeof MediaSource !== 'undefined' && MediaSource.isTypeSupported(mimeWithCodec);
 
       if (useMSE) {
-        await loadWithMSE(manifest);
+        await loadWithMSE(manifest, () => {
+          // Fallback triggered by repeated SourceBuffer errors
+          console.warn('[ChunkedVideoPlayer] Falling back to blob concatenation');
+          loadWithBlob(manifest);
+        });
       } else {
-        console.warn('[ChunkedVideoPlayer] MSE not supported for', mimeWithCodec, '→ fallback to blob');
+        console.warn('[ChunkedVideoPlayer] MSE not supported for', mimeWithCodec, '→ blob fallback');
         await loadWithBlob(manifest);
       }
     } catch (err: any) {
