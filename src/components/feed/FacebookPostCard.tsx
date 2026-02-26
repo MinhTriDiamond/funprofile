@@ -455,11 +455,18 @@ const FacebookPostCardComponent = ({
           <div className="relative" onClick={handleMediaDoubleTap}>
             {mediaItems.length > 0 ? (
               <MediaGrid media={mediaItems} />
-            ) : (post as any).post_type === 'live' && (post as any).metadata?.live_status === 'ended' ? (
-              <div className="flex items-center justify-center p-6 bg-muted/50 text-muted-foreground text-sm gap-2">
-                <Radio className="w-4 h-4 animate-pulse" />
-                <span>Đang xử lý bản ghi livestream...</span>
-              </div>
+        ) : (post as any).post_type === 'live' && (post as any).metadata?.live_status === 'ended' ? (
+              (post as any).metadata?.recording_failed ? (
+                <div className="flex items-center justify-center p-6 bg-muted/50 text-muted-foreground text-sm gap-2">
+                  <Radio className="w-4 h-4" />
+                  <span>Phiên live này không có bản ghi</span>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center p-6 bg-muted/50 text-muted-foreground text-sm gap-2">
+                  <Radio className="w-4 h-4 animate-pulse" />
+                  <span>Đang xử lý bản ghi livestream...</span>
+                </div>
+              )
             ) : null}
             <HeartAnimation show={showHeartAnimation} onComplete={() => setShowHeartAnimation(false)} />
           </div>
