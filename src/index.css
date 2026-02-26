@@ -98,13 +98,13 @@
 /* Safe-area aware for iPhone notch */
 /* ================================ */
 .app-shell-content {
-  top: calc(1cm + env(safe-area-inset-top, 0px));
+  top: calc(0.5cm + env(safe-area-inset-top, 0px));
 }
 
 /* Mobile: khoảng cách nhỏ hơn - 2cm */
 @media (max-width: 768px) {
   .app-shell-content {
-    top: calc(1cm + env(safe-area-inset-top, 0px));
+    top: calc(0.5cm + env(safe-area-inset-top, 0px));
   }
 }
 
