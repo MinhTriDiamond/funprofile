@@ -1,103 +1,113 @@
 
 
-# Nang cap Video Player cho FUN Profile
+# Fix Video Player Duration + Seek + Livestream Display
 
-## Tong quan
+## Van de hien tai
 
-Tao component `SocialVideoPlayer` moi, thay the native `controls` o tat ca cac player hien tai (LazyVideo, ChunkedVideoPlayer, Gallery viewer). Player moi se co giao dien chuyen nghiep kieu Facebook/YouTube mini player.
+### 1. Duration hien thi "--:--" (van de chinh - thay ro trong screenshot)
+- Voi video chunked (live replay qua MSE), `video.duration` chi duoc set sau khi `mediaSource.endOfStream()` — tuc la sau khi TAT CA chunk da tai xong
+- Truoc do, `video.duration = NaN` hoac `Infinity`, khien `SocialVideoPlayer` hien thi `--:--`
+- Manifest da co truong `total_duration_ms` nhung chua duoc su dung
 
-## Cac file thay doi
+### 2. Progress bar va Seek khong hoat dong voi chunked video
+- Vi `duration = 0` (chua co), `validDuration = false` nen progress bar luon o 0%
+- Seek bi vo hieu hoa vi khong co duration de tinh toan vi tri
 
-### 1. TAO MOI: `src/components/ui/SocialVideoPlayer.tsx`
+### 3. Livestream posts co the bi mat
+- Logic render dung: query khong filter sai, `moderation_status` default la `'approved'`
+- Van de tiem an: khi live ket thuc nhung `video_url` chua duoc cap nhat (recording chua xong), post se hien thi nhung khong co video => card bi an do `hasError` trong LazyVideo (return null khi loi)
 
-Component chinh — custom video controls overlay bao quanh mot `<video>` element (truyen vao qua ref hoac children).
+---
 
-**Chuc nang:**
-- **Progress bar**: thanh progress thuc dua tren `timeupdate` event, hien thi buffered range, ho tro click/drag de seek
-- **Thoi gian**: hien thi `currentTime / duration` (format mm:ss hoac hh:mm:ss), dung `formatDurationTime` tu `src/lib/formatters.ts`
-- **Controls overlay**: hien/an khi hover (desktop) hoac tap (mobile), tu dong an sau 3 giay
-- **Nut trung tam**: Play/Pause icon lon o giua video
-- **Thanh controls duoi**: play/pause, progress bar co seek, time display, volume slider (desktop), mute toggle, toc do phat (0.5x-2x), fullscreen, PiP
-- **Mobile UX**: tap 1 lan show controls, double-tap trai/phai tua +-10s, progress bar lon hon de de keo
-- **Ket thuc video**: hien nut Replay
-- **Skeleton loading**: hien skeleton khi video chua load xong
+## Ke hoach sua
 
-**Khong lam:**
-- Mini floating player (phuc tap, chua can thiet)
-- Double tap heart reaction (khong lien quan den player)
-- Adaptive streaming HLS (da co StreamPlayer xu ly rieng)
+### File 1: `src/modules/live/components/ChunkedVideoPlayer.tsx`
 
-### 2. CAP NHAT: `src/components/ui/LazyVideo.tsx`
-
-- Thay `controls={showControls}` native bang `SocialVideoPlayer` wrapper
-- Truyen videoRef vao SocialVideoPlayer de no dieu khien video element
-- Giu nguyen logic lazy load, IntersectionObserver, Stream/Chunked routing
-
-### 3. CAP NHAT: `src/modules/live/components/ChunkedVideoPlayer.tsx`
-
-- Thay `controls={controls}` native bang `SocialVideoPlayer` wrapper
-- Truyen videoRef de SocialVideoPlayer dieu khien
-
-### 4. CAP NHAT: `src/components/feed/MediaGrid.tsx`
-
-- Gallery viewer (dong 466-473): thay native `<video controls>` bang `SocialVideoPlayer`
-- FeedVideo component: khong can doi (da delegate xuong LazyVideo/ChunkedVideoPlayer)
-
-### 5. CAP NHAT: `src/components/reels/ReelPlayer.tsx`
-
-- Them SocialVideoPlayer wrapper cho reel playback (tuy chon, chi can progress + time)
-
-## Chi tiet ky thuat cua SocialVideoPlayer
+**Thay doi:** Set `mediaSource.duration` ngay sau `sourceopen` tu manifest data
 
 ```text
-Props:
-- videoRef: RefObject<HTMLVideoElement>  (bat buoc)
-- showControls?: boolean (default true)
-- autoHideMs?: number (default 3000)
-- className?: string
-- children?: ReactNode (video element)
-
-Internal state:
-- isPlaying, currentTime, duration, buffered, volume, isMuted
-- isFullscreen, playbackRate, showOverlay, isEnded
-- isSeeking (khi drag progress bar)
-
-Events lang nghe tren video element:
-- loadedmetadata -> set duration
-- timeupdate -> set currentTime, tinh progress %
-- progress -> set buffered ranges
-- play/pause -> set isPlaying
-- ended -> set isEnded, hien Replay
-- volumechange -> sync volume/muted state
-
-Progress bar:
-- progressPercent = (currentTime / duration) * 100
-- Chi render khi duration > 0 va !isNaN(duration)
-- Buffered: lay video.buffered.end(video.buffered.length - 1)
-- Click/drag: tinh vi tri % -> video.currentTime = % * duration
-
-Double-tap mobile:
-- Phat hien 2 tap trong 300ms
-- Tap nua trai: currentTime -= 10
-- Tap nua phai: currentTime += 10
-- Hien animation "+10s" / "-10s"
+// Sau dong: const sourceBuffer = mediaSource.addSourceBuffer(mimeWithCodec);
+// Them:
+const totalDurationSec = manifest.total_duration_ms / 1000;
+if (totalDurationSec > 0) {
+  mediaSource.duration = totalDurationSec;
+}
 ```
 
-## Thu tu trien khai
+Dieu nay lam cho `video.duration` co gia tri ngay lap tuc, SocialVideoPlayer se:
+- Hien thi duration dung (vd: `0:03 / 2:35`)
+- Progress bar tinh % chinh xac
+- Seek hoat dong (click/drag da co san trong SocialVideoPlayer)
 
-1. Tao `SocialVideoPlayer.tsx` (component doc lap, tu test duoc)
-2. Tich hop vao `LazyVideo.tsx` (anh huong tat ca video thuong trong feed)
-3. Tich hop vao `ChunkedVideoPlayer.tsx` (anh huong tat ca live replay)
-4. Cap nhat Gallery viewer trong `MediaGrid.tsx`
-5. (Tuy chon) Cap nhat `ReelPlayer.tsx`
+### File 2: `src/components/ui/SocialVideoPlayer.tsx`
+
+**Thay doi 1:** Them polling duration cho truong hop metadata cham
+
+Hien tai chi lang nghe `loadedmetadata` va `durationchange`. Them mot interval ngan (1s) de kiem tra lai `video.duration` trong 5 giay dau, phong truong hop event bi miss:
+
+```text
+// useEffect moi:
+// Neu sau 3s van chua co duration, thu doc lai video.duration
+// Giup voi truong hop MSE set duration muon
+```
+
+**Thay doi 2:** Xu ly truong hop LIVE (duration = Infinity)
+
+```text
+// Khi duration === Infinity:
+// - Hien thi "LIVE" thay vi "--:--"  
+// - Disable seek (cursor: not-allowed, khong cho click/drag)
+// - An toc do phat va mot so controls khong phu hop
+```
+
+### File 3: `src/components/ui/LazyVideo.tsx`
+
+**Thay doi:** Khong return null khi co loi — hien thi placeholder thay vi an card
+
+```text
+// Thay vi:
+if (hasError) { return null; }
+
+// Doi thanh:
+if (hasError) {
+  return (
+    <div className="relative overflow-hidden bg-muted flex items-center justify-center">
+      <AlertTriangle icon + "Video khong the tai duoc"
+    </div>
+  );
+}
+```
+
+Dieu nay dam bao post co video loi van hien thi card, khong "bien mat" khoi feed.
+
+### File 4: `src/components/feed/FacebookPostCard.tsx`
+
+**Thay doi:** Khi post la live da ket thuc nhung chua co video_url (recording dang xu ly), hien thi thong bao thay vi de trong:
+
+```text
+// Trong mediaItems useMemo:
+// Neu isLive && !post.video_url && metadata?.live_status === 'ended':
+//   => Khong them media item (dung)
+// Nhung o phan render, them truong hop:
+// Neu isLive && live_status === 'ended' && mediaItems.length === 0:
+//   => Hien thi "Dang xu ly ban ghi..." placeholder
+```
+
+---
+
+## Tong ket thay doi
+
+| File | Thay doi | Muc dich |
+|------|----------|----------|
+| ChunkedVideoPlayer.tsx | Set `mediaSource.duration` tu manifest | Fix duration + progress + seek cho live replay |
+| SocialVideoPlayer.tsx | Polling duration fallback + LIVE mode | Dam bao duration luon hien thi; xu ly live stream |
+| LazyVideo.tsx | Error placeholder thay vi return null | Khong mat post khi video loi |
+| FacebookPostCard.tsx | Placeholder cho live dang xu ly | Khong mat post live chua co recording |
 
 ## Ket qua ky vong
 
-- Progress bar chinh xac tu 0% den 100%
-- Hien thi currentTime / duration ro rang
-- Seek muot bang click hoac drag
-- Controls tu dong an, xuat hien khi tuong tac
-- Hoat dong tot tren mobile va desktop
-- Khong gay memory leak (cleanup event listeners)
-- Khong anh huong video upload hay livestream dang phat
+- Duration hien thi ngay khi video bat dau tai (vd: `0:00 / 2:35`)
+- Progress bar chinh xac, seek hoat dong bang click/drag
+- Post live khong bien mat du video loi hay chua xu ly xong
+- Khong anh huong video thuong (mp4/webm upload)
 
