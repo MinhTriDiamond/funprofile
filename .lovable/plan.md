@@ -1,30 +1,67 @@
 
-# Fix: Video Live Replay không phát được trong Feed
+Mình đã kiểm tra rất kỹ theo cả 3 lớp: dữ liệu backend, đường dẫn render ở feed, và log runtime phía client. Kết luận hiện tại:
 
-## Phạm vi ảnh hưởng
-Lỗi chung — ảnh hưởng TẤT CẢ phiên livestream đã kết thúc, không riêng 3 user.
+## Kết luận điều tra
 
-## Nguyên nhân
-Feed dùng thẻ `<video>` HTML cho mọi video URL. URL replay là file `manifest.json` (chứa danh sách các đoạn video) — thẻ `<video>` không đọc được JSON nên hiện màn đen/lỗi.
+1. Đây không phải lỗi dữ liệu của riêng 3 user.
+- Bản ghi live của `@leminhtri`, `@angeldieungoc`, `@AngelGiau` đều có trạng thái kết thúc bình thường.
+- Các post live đều trỏ đúng tới `manifest.json`.
+- Bảng chunk ghi nhận đủ dải `seq` (0..max), không thiếu chunk, request chunk trả `200`.
 
-Gallery viewer (popup phóng to) đã xử lý đúng bằng `ChunkedVideoPlayer`. Feed chính thì chưa.
+2. Fix trước đó ở feed đã có hiệu lực trong code.
+- `MediaGrid.tsx` đã dùng `FeedVideo` và đã route manifest URL sang `ChunkedVideoPlayer` ở tất cả layout.
 
-## Thay đổi: 1 file duy nhất
+3. Lỗi thực tế đang xảy ra ở tầng phát MSE (player runtime).
+- Console có lỗi lặp lại: `[ChunkedVideoPlayer] SourceBuffer error` (trong `ChunkedVideoPlayer.tsx`).
+- Tức là đã đi đúng vào player chunked, nhưng pipeline append vào `SourceBuffer` bị hỏng trong lúc phát.
 
-**`src/components/feed/MediaGrid.tsx`**
+## Nguyên nhân gốc có khả năng cao (đã xác nhận từ code)
 
-Tại 5 vị trí render `<LazyVideo>` (single media, grid 2, grid 3 x2 vị trí, grid 4+), thêm kiểm tra:
+### A) Append chunk không đảm bảo đúng thứ tự `seq`
+Trong `ChunkedVideoPlayer`, nhiều chunk được fetch song song, sau đó `queue.push(data)` theo thứ tự hoàn thành network, không theo `seq`.
+- Với WebM chunked stream, append sai thứ tự rất dễ gây `SourceBuffer error`.
+- Đây phù hợp với hiện tượng: dữ liệu có, request 200, nhưng không phát được.
 
-```text
-if isChunkedManifestUrl(url)
-  -> render <ChunkedVideoPlayer> (wrapped in Suspense)
-else
-  -> render <LazyVideo> (giữ nguyên như cũ)
-```
+### B) Chuỗi MIME có thể bị ghép sai
+Manifest hiện có:
+- `mime_type: "video/webm;codecs=vp8,opus"`
+- `codec: "vp8,opus"`
 
-Hàm `isChunkedManifestUrl()` và component `ChunkedVideoPlayer` đã tồn tại trong codebase — chỉ cần dùng chúng ở đúng chỗ.
+Nhưng player lại ghép:
+- `${mime_type}; codecs="${codec}"`  
+=> có thể thành chuỗi MIME không chuẩn (trùng codecs), làm nhánh MSE kém ổn định trên một số trình duyệt.
 
-## Kết quả sau sửa
-- Tất cả live replay trong feed sẽ phát được bình thường
-- Video upload thường không bị ảnh hưởng
-- Không cần xử lý lại dữ liệu cũ — manifest files trên storage vẫn hoạt động tốt
+## Kế hoạch sửa (đề xuất triển khai)
+
+### 1) Sửa `src/modules/live/components/ChunkedVideoPlayer.tsx` (trọng tâm)
+- Chuẩn hoá MIME:
+  - Nếu `mime_type` đã chứa `codecs`, dùng nguyên bản.
+  - Chỉ nối `; codecs="..."` khi `mime_type` chưa có codecs.
+- Đảm bảo append theo thứ tự `seq` tuyệt đối:
+  - Lưu dữ liệu chunk theo map `seq -> ArrayBuffer`.
+  - Dùng `nextAppendSeq` để chỉ append chunk kế tiếp; chunk đến sớm thì giữ chờ.
+  - Không append theo thứ tự trả về của network.
+- Giảm rủi ro race:
+  - Tách rõ `fetching` và `appending`.
+  - Chặn append khi `mediaSource/sourceBuffer` không còn open.
+- Cải thiện fallback:
+  - Khi gặp `SourceBuffer error` lặp lại, fallback an toàn sang blob path cho session đó (để user vẫn xem được).
+
+### 2) Giữ nguyên `MediaGrid.tsx`
+- Không cần đổi thêm ở feed route nữa (đã đúng).
+
+## Cách xác nhận sau khi sửa
+
+Kiểm tra end-to-end đúng luồng bạn yêu cầu:
+1. Vào bài viết live replay của 3 user trên.
+2. Bấm phát trực tiếp trong feed:
+   - Không còn `SourceBuffer error`.
+   - Video bắt đầu chạy, seek hoạt động.
+3. Mở viewer (popup) để đảm bảo cũng phát bình thường.
+4. So sánh 1 video thường (không manifest) để chắc không bị ảnh hưởng ngược.
+
+## Kết quả kỳ vọng sau fix
+
+- Replay live phát ổn định cho cả user cũ và mới.
+- Không còn tình trạng “có file/chunk nhưng không xem được”.
+- Không cần migrate dữ liệu hay xử lý lại recording đã lưu.
