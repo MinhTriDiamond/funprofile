@@ -1,28 +1,47 @@
 
 
-# Sửa lỗi: Click tên người dùng trong dialog Cảm xúc → "Không tìm thấy trang cá nhân"
+# Nguyên nhân và Giải pháp: Video Live Replay dừng phát sau một lúc
 
-## Nguyên nhân
+## Nguyên nhân gốc
 
-Có **2 vấn đề** trong `ReactionViewerDialog.tsx`:
+`ChunkedVideoPlayer` hiện tại sử dụng MSE (MediaSource Extensions) để phát progressive, nhưng có **2 lỗi nghiêm trọng**:
 
-### 1. Sai đường dẫn điều hướng
-Hàm `handleUserClick` điều hướng đến `/profile/${username}`, nhưng hệ thống route sử dụng `/:username` (không có prefix `/profile/`). Kết quả: URL `/profile/username` không khớp route nào → hiển thị trang NotFound.
+### 1. SourceBuffer QuotaExceededError (lỗi chính)
+Trình duyệt giới hạn dung lượng SourceBuffer (thường khoảng 100-150MB). Với video dài (30 phút = ~483 chunks), player cứ append tất cả chunks vào SourceBuffer mà **không bao giờ xóa dữ liệu cũ**. Khi buffer đầy → `appendBuffer()` throw `QuotaExceededError` → không có error handler → video dừng, không hiển thị hình.
 
-### 2. Query join sai bảng
-Query hiện tại join `reactions` với bảng `profiles` trực tiếp (`profiles:user_id`). Bảng `profiles` có RLS policies hạn chế SELECT, nên kết quả join có thể trả về null cho `item.profiles`. Khi đó username fallback thành `'Unknown'` → điều hướng đến `/Unknown` → không tìm thấy.
+```text
+[Chunk 1][Chunk 2]...[Chunk 100] → Buffer đầy → QuotaExceededError → ❌ Video chết
+```
 
-Hệ thống đã có view `public_profiles` (public, không bị RLS chặn) chứa đầy đủ thông tin cần thiết.
+### 2. Không có error listener trên SourceBuffer
+Khi SourceBuffer gặp lỗi (quota, decode error), không có `onerror` handler → lỗi bị nuốt, UI vẫn hiện video tag nhưng không còn frame nào → màn hình đen/trống.
 
-## Giải pháp
+## Giải pháp: Buffer Management + Error Recovery
+
+### File cần sửa
 
 | File | Thay đổi |
 |------|----------|
-| `src/components/feed/ReactionViewerDialog.tsx` | (1) Đổi navigation từ `/profile/${username}` thành `/${username}`. (2) Đổi query join từ `profiles:user_id` sang `public_profiles:user_id` để tránh bị RLS chặn. |
+| `src/modules/live/components/ChunkedVideoPlayer.tsx` | Thêm buffer management: tự động xóa dữ liệu cũ khi buffer lớn. Thêm error handling cho SourceBuffer. Thêm buffering indicator khi user tua. |
 
-## Chi tiết kỹ thuật
+### Chi tiết kỹ thuật
 
-**Dòng 66**: Đổi `profiles:user_id` → `public_profiles:user_id`
+1. **Buffer cleanup**: Trước khi append chunk mới, kiểm tra tổng buffered data. Nếu vượt ngưỡng (ví dụ 60MB hoặc 60 giây trước `currentTime`), gọi `sourceBuffer.remove(start, end)` để giải phóng vùng đã phát qua.
 
-**Dòng 102**: Đổi `navigate('/profile/${username}')` → `navigate('/${username}')`
+2. **QuotaExceededError handling**: Wrap `appendBuffer()` trong try-catch. Khi gặp QuotaExceeded:
+   - Xóa buffer cũ (trước currentTime - 30s)
+   - Retry append sau khi `updateend`
+
+3. **SourceBuffer error listener**: Thêm `sourceBuffer.addEventListener('error', ...)` để bắt decode errors, set trạng thái lỗi cho UI.
+
+4. **Buffering indicator**: Lắng nghe `video.waiting` event để hiện spinner khi video đang đợi data (ví dụ khi user tua tới vùng chưa tải).
+
+5. **Lazy chunk loading**: Chỉ tải chunks xung quanh vị trí phát hiện tại (buffer ahead ~30s). Khi user tua, tính lại chunk cần tải. Điều này giảm tải mạng và bộ nhớ đáng kể cho video dài.
+
+```text
+Sau khi sửa:
+Video 30 phút, user đang xem phút 15:
+[...đã xóa...][Chunk 220..230 trong buffer][đang tải Chunk 231..240]
+                     ↑ currentTime              ↑ buffer ahead ~30s
+```
 
