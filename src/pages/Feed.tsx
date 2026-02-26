@@ -112,7 +112,7 @@ const Feed = () => {
       
       <main data-app-scroll className="app-shell-content fixed inset-x-0 bottom-0 overflow-y-auto pb-20 lg:pb-4">
         <PullToRefreshContainer onRefresh={handlePullRefresh}>
-          <div className="max-w-screen-2xl mx-auto px-0 sm:px-6 lg:px-[2cm]">
+          <div className="max-w-screen-2xl mx-auto px-0 sm:px-6 lg:px-[0.5cm]">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 sm:gap-2 md:gap-4 py-2 md:py-4">
               {/* Left Sidebar - Hidden on mobile/tablet */}
               <aside className="hidden lg:block lg:col-span-3">
