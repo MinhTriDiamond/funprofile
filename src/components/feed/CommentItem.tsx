@@ -12,7 +12,7 @@ import { Link } from 'react-router-dom';
 import { formatRelativeTime } from '@/lib/formatters';
 import { deleteVideoByUrl } from '@/utils/streamHelpers';
 import { useLanguage } from '@/i18n/LanguageContext';
-import { linkifyText } from '@/utils/linkifyText';
+
 import {
   DropdownMenu,
   DropdownMenuContent,

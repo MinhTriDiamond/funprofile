@@ -15,6 +15,7 @@ export const HeartAnimation = ({ show, onComplete }: HeartAnimationProps) => {
   useEffect(() => {
     if (show) {
       setVisible(true);
+      navigator.vibrate?.(10);
       const timer = setTimeout(() => {
         setVisible(false);
         onComplete?.();
