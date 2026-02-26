@@ -1,45 +1,30 @@
 
+# Fix: Video Live Replay không phát được trong Feed
 
-# Plan: 3 nhiệm vụ — Test E2E + Giphy API + Lazy Loading
+## Phạm vi ảnh hưởng
+Lỗi chung — ảnh hưởng TẤT CẢ phiên livestream đã kết thúc, không riêng 3 user.
 
-## 1. Test End-to-End (thủ công)
+## Nguyên nhân
+Feed dùng thẻ `<video>` HTML cho mọi video URL. URL replay là file `manifest.json` (chứa danh sách các đoạn video) — thẻ `<video>` không đọc được JSON nên hiện màn đen/lỗi.
 
-Code hiện tại đã hoạt động đúng logic. Tôi sẽ dùng browser automation để kiểm tra luồng GIF/Sticker trong reply sau khi triển khai các thay đổi bên dưới.
+Gallery viewer (popup phóng to) đã xử lý đúng bằng `ChunkedVideoPlayer`. Feed chính thì chưa.
 
-## 2. Tích hợp Giphy API qua Edge Function
+## Thay đổi: 1 file duy nhất
 
-Hiện tại GifPicker chỉ tìm trong ~50 GIF curated. Cần thêm khả năng tìm kiếm từ Giphy API.
+**`src/components/feed/MediaGrid.tsx`**
 
-**Cần thêm secret:** `GIPHY_API_KEY` — user cần đăng ký tại [developers.giphy.com](https://developers.giphy.com) để lấy API key.
+Tại 5 vị trí render `<LazyVideo>` (single media, grid 2, grid 3 x2 vị trí, grid 4+), thêm kiểm tra:
 
-### Edge Function: `supabase/functions/giphy-search/index.ts`
-- Nhận query param `q` (search term) và `offset` (pagination)
-- Gọi Giphy Search API: `api.giphy.com/v1/gifs/search`
-- Trả về danh sách GIF URLs đã format (dùng `images.fixed_width.url`)
-- Nếu `q` rỗng, gọi Trending API thay thế
+```text
+if isChunkedManifestUrl(url)
+  -> render <ChunkedVideoPlayer> (wrapped in Suspense)
+else
+  -> render <LazyVideo> (giữ nguyên như cũ)
+```
 
-### Cập nhật `GifPicker.tsx`
-- Thêm state cho API results, loading, hasMore, offset
-- Khi user gõ search → debounce 400ms → gọi edge function
-- Khi search rỗng → hiển thị curated GIFs (fallback offline)
-- Merge kết quả API với curated khi cần
+Hàm `isChunkedManifestUrl()` và component `ChunkedVideoPlayer` đã tồn tại trong codebase — chỉ cần dùng chúng ở đúng chỗ.
 
-## 3. Lazy Loading + Infinite Scroll cho GIF Grid
-
-### Cập nhật `GifPicker.tsx`
-- Hiển thị ban đầu 20 GIF (từ API hoặc curated)
-- Thêm IntersectionObserver ở cuối grid → khi user cuộn đến → load thêm 20 GIF tiếp
-- Hiển thị skeleton loading khi đang fetch thêm
-- Dừng load khi hết kết quả (`hasMore = false`)
-
-## Tóm tắt thay đổi
-
-| File | Thay đổi |
-|------|----------|
-| `supabase/functions/giphy-search/index.ts` | **Tạo mới** — proxy Giphy API |
-| `src/components/feed/GifPicker.tsx` | Thêm API search + infinite scroll + debounce |
-| Secret `GIPHY_API_KEY` | **Cần user cung cấp** |
-
-## Điều kiện tiên quyết
-User cần cung cấp Giphy API key trước khi triển khai. Key miễn phí tại https://developers.giphy.com.
-
+## Kết quả sau sửa
+- Tất cả live replay trong feed sẽ phát được bình thường
+- Video upload thường không bị ảnh hưởng
+- Không cần xử lý lại dữ liệu cũ — manifest files trên storage vẫn hoạt động tốt
