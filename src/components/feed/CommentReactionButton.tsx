@@ -128,6 +128,7 @@ export const CommentReactionButton = ({ commentId, onReactionChange }: CommentRe
 
       if (!error) {
         setUserReaction(null);
+        navigator.vibrate?.(10);
         onReactionChange?.();
       }
     } else {
@@ -151,6 +152,7 @@ export const CommentReactionButton = ({ commentId, onReactionChange }: CommentRe
 
       if (!error) {
         setUserReaction(reactionType);
+        navigator.vibrate?.(10);
         onReactionChange?.();
       }
     }

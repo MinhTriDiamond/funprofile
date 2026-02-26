@@ -104,6 +104,44 @@ export const CommentMediaUpload = ({
 
   return (
     <div className="space-y-2">
+      {/* Backdrop overlay for pickers */}
+      {(showGifPicker || showStickerPicker) && (
+        <div
+          className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm"
+          onClick={() => { setShowGifPicker(false); setShowStickerPicker(false); }}
+        />
+      )}
+
+      {/* GIF Picker portal */}
+      {showGifPicker && (
+        <div className="fixed bottom-4 left-2 right-2 z-50 sm:absolute sm:bottom-full sm:left-auto sm:right-0 sm:mb-2 sm:w-80">
+          <Suspense fallback={<div className="w-full h-48 bg-card rounded-xl animate-pulse" />}>
+            <GifPicker
+              onSelect={(url) => {
+                onGifSelect?.(`g:${url}`);
+                setShowGifPicker(false);
+              }}
+              onClose={() => setShowGifPicker(false)}
+            />
+          </Suspense>
+        </div>
+      )}
+
+      {/* Sticker Picker portal */}
+      {showStickerPicker && (
+        <div className="fixed bottom-4 left-2 right-2 z-50 sm:absolute sm:bottom-full sm:left-auto sm:right-0 sm:mb-2 sm:w-80">
+          <Suspense fallback={<div className="w-full h-48 bg-card rounded-xl animate-pulse" />}>
+            <StickerPicker
+              onSelect={(url) => {
+                onStickerSelect?.(`s:${url}`);
+                setShowStickerPicker(false);
+              }}
+              onClose={() => setShowStickerPicker(false)}
+            />
+          </Suspense>
+        </div>
+      )}
+
       {!preview && (
         <div className="flex gap-2">
           <input
@@ -144,56 +182,26 @@ export const CommentMediaUpload = ({
           </Button>
 
           {/* GIF button */}
-          <div className="relative">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => { setShowGifPicker(!showGifPicker); setShowStickerPicker(false); }}
-              className="text-muted-foreground hover:text-foreground text-xs font-bold"
-            >
-              GIF
-            </Button>
-            {showGifPicker && (
-              <div className="absolute bottom-full left-0 mb-2 z-50">
-                <Suspense fallback={<div className="w-80 h-48 bg-card rounded-xl animate-pulse" />}>
-                  <GifPicker
-                    onSelect={(url) => {
-                      onGifSelect?.(`g:${url}`);
-                      setShowGifPicker(false);
-                    }}
-                    onClose={() => setShowGifPicker(false)}
-                  />
-                </Suspense>
-              </div>
-            )}
-          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => { setShowGifPicker(!showGifPicker); setShowStickerPicker(false); }}
+            className="text-muted-foreground hover:text-foreground text-xs font-bold"
+          >
+            GIF
+          </Button>
 
           {/* Sticker button */}
-          <div className="relative">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => { setShowStickerPicker(!showStickerPicker); setShowGifPicker(false); }}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <Sticker className="w-4 h-4" />
-            </Button>
-            {showStickerPicker && (
-              <div className="absolute bottom-full left-0 mb-2 z-50">
-                <Suspense fallback={<div className="w-80 h-48 bg-card rounded-xl animate-pulse" />}>
-                  <StickerPicker
-                    onSelect={(url) => {
-                      onStickerSelect?.(`s:${url}`);
-                      setShowStickerPicker(false);
-                    }}
-                    onClose={() => setShowStickerPicker(false)}
-                  />
-                </Suspense>
-              </div>
-            )}
-          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => { setShowStickerPicker(!showStickerPicker); setShowGifPicker(false); }}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <Sticker className="w-4 h-4" />
+          </Button>
         </div>
       )}
 

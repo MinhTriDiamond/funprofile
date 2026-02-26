@@ -362,6 +362,7 @@ export const ReactionButton = ({
             ref={reactionMenuRef}
             className="absolute bottom-full left-0 mb-2 bg-card rounded-full shadow-2xl border border-border p-2 flex gap-1 z-[9999] select-none"
             style={{ 
+              transform: `translateX(${menuOffset}px)`,
               WebkitTouchCallout: 'none',
               touchAction: 'none'
             }}
