@@ -1,97 +1,83 @@
 
 
-# Tích hợp Social Interactions Feature Pack v2.0
+# Sửa 5 Bug từ QA Report + Bổ sung Haptic Feedback
 
-## Tổng quan
+## Thay đổi
 
-Triển khai đầy đủ gói Like/Comment/Share v2.0 với các tối ưu theo yêu cầu: Twemoji SVG, GIF/Sticker picker lazy-loaded, ShareDialog với Web3 link, HeartAnimation GPU-accelerated, và chuẩn hóa 6 reaction types.
+### 1. `src/components/feed/CommentItem.tsx` — Bug 1
+- Xóa dòng 15: `import { linkifyText } from '@/utils/linkifyText';` (không sử dụng)
 
-## Danh sách thay đổi
+### 2. `src/components/feed/CommentMediaUpload.tsx` — Bug 2 & 3
+- Thêm backdrop overlay mờ (`fixed inset-0 bg-black/20 backdrop-blur-sm z-40`) khi GIF hoặc Sticker picker đang mở, click vào backdrop sẽ đóng picker
+- Đổi positioning picker từ `absolute bottom-full left-0` thành `fixed bottom-0 left-0 right-0` trên mobile (hoặc `absolute` với `max-w-[calc(100vw-2rem)]` và `right-0` thay vì `left-0`) để không bị tràn viền
 
-### Tạo mới: 9 files
+### 3. `src/components/feed/ReactionButton.tsx` — Bug 4
+- Dòng 363: Apply `menuOffset` vào style của reaction menu div: `style={{ transform: \`translateX(${menuOffset}px)\` }}`
+- `menuOffset` đã được tính toán dựa trên viewport width (dòng 59-81), chỉ cần gắn vào JSX
 
-| # | File | Mô tả |
-|---|------|-------|
-| 1 | `src/lib/emojiUtils.ts` | Utility: `toCodePoint()`, `getTwemojiUrl()`, `parseEmojiInText()` dùng Twemoji CDN |
-| 2 | `src/components/ui/TwemojiImage.tsx` | Component render emoji thành `<img>` SVG từ CDN |
-| 3 | `src/components/feed/TwemojiText.tsx` | `React.memo` — parse text, thay unicode emoji bằng Twemoji images |
-| 4 | `src/data/curatedGifs.ts` | 50+ GIF URL public từ Giphy (không cần API key) |
-| 5 | `src/data/curatedStickers.ts` | 90+ sticker Emoji Kitchen, 7 danh mục |
-| 6 | `src/components/feed/GifPicker.tsx` | GIF picker với search + grid, lazy loaded |
-| 7 | `src/components/feed/StickerPicker.tsx` | Sticker picker 7 danh mục, lazy loaded |
-| 8 | `src/components/feed/HeartAnimation.tsx` | Double-tap heart animation, CSS `transform: scale()` GPU-accelerated |
-| 9 | `src/components/feed/ShareDialog.tsx` | Dialog share: caption, privacy, Facebook/X/WhatsApp/Telegram/Email, Copy link, Copy Web3 Profile Link |
+### 4. `src/components/feed/ShareDialog.tsx` — Bug 5
+- Thêm `max-h-[80vh] overflow-y-auto` vào div chứa nội dung bên trong `DialogContent` để scroll được trên mobile nhỏ
 
-### Cập nhật: 6 files
+### 5. Haptic Feedback — Bổ sung mới
 
-| # | File | Thay đổi |
-|---|------|----------|
-| 10 | `src/components/feed/ReactionButton.tsx` | Đổi `care`→`sad`, `pray`→`angry`. Thêm micro-interaction `hover:scale-110` trên từng reaction icon |
-| 11 | `src/components/feed/ReactionSummary.tsx` | Cập nhật REACTION_ICONS: bỏ `care`/`pray`, thêm `sad`/`angry` |
-| 12 | `src/components/feed/EmojiPicker.tsx` | Render emoji bằng `TwemojiImage` thay vì unicode text thuần |
-| 13 | `src/components/feed/CommentMediaUpload.tsx` | Thêm nút GIF picker + Sticker picker (lazy import) |
-| 14 | `src/components/feed/CommentItem.tsx` | Xử lý `g:` và `s:` prefix trong `image_url`, dùng `TwemojiText` cho nội dung |
-| 15 | `src/components/feed/FacebookPostCard.tsx` | Thay share dropdown → `ShareDialog`. Thêm `HeartAnimation` double-tap trên `MediaGrid`. Chia sub-components: `PostHeader`, `PostActions` |
+**`src/components/feed/HeartAnimation.tsx`:**
+- Thêm `navigator.vibrate?.(10)` khi animation bắt đầu (trong `useEffect` khi `show` = true)
+
+**`src/components/feed/CommentReactionButton.tsx`:**
+- Thêm `navigator.vibrate?.(10)` trong `handleReaction()` khi reaction thành công
+
+**`src/components/feed/ReactionButton.tsx`:**
+- Đã có `triggerHaptic()` — xác nhận đang hoạt động đúng, không cần thay đổi thêm
 
 ## Chi tiết kỹ thuật
 
-### Data format (prefix ngắn)
-
-```text
-Database image_url column:
-  Normal image: https://r2.example.com/image.jpg
-  GIF:          g:https://media.giphy.com/xxx.gif
-  Sticker:      s:https://emojik.vercel.app/s/xxx
-```
-
-### Twemoji CDN
-
-```text
-Base: https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/svg
-"😀" → codepoint "1f600" → .../1f600.svg
-```
-
-### 6 Reaction types chuẩn
-
-```text
-like 👍  |  love ❤️  |  haha 😂  |  wow 😮  |  sad 😢  |  angry 😠
-```
-
-### HeartAnimation — GPU Acceleration
-
-```text
-Sử dụng CSS transform: scale(0) → scale(1.2) → scale(1)
-với will-change: transform, opacity
-Không dùng width/height animation → đảm bảo 60fps mobile
-```
-
-### Lazy Loading cho GIF/Sticker Pickers
-
+**Backdrop overlay pattern:**
 ```tsx
-const GifPicker = lazy(() => import('./GifPicker'));
-const StickerPicker = lazy(() => import('./StickerPicker'));
-// Wrapped in <Suspense> khi render
+{(showGifPicker || showStickerPicker) && (
+  <div
+    className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm"
+    onClick={() => { setShowGifPicker(false); setShowStickerPicker(false); }}
+  />
+)}
 ```
 
-### ShareDialog — Web3 Profile Link
-
-```text
-Nếu user có public_wallet_address hoặc ENS:
-  Copy link dạng: https://funprofile.lovable.app/profile/0x1234...abcd
-Nếu không có wallet:
-  Copy link thông thường: https://funprofile.lovable.app/profile/{user_id}
+**Picker responsive positioning:**
+```tsx
+<div className="fixed bottom-4 left-2 right-2 z-50 sm:absolute sm:bottom-full sm:left-auto sm:right-0 sm:mb-2 sm:w-80">
 ```
 
-### Sub-components trong FacebookPostCard
-
-```text
-FacebookPostCard.tsx sẽ tách logic share thành:
-  - ShareDialog (component riêng, file mới)
-  - HeartAnimation (component riêng, file mới)
-Giữ PostHeader, PostActions inline nhưng gọn hơn nhờ delegate logic ra ShareDialog
+**MenuOffset apply:**
+```tsx
+<div
+  ref={reactionMenuRef}
+  className="absolute bottom-full left-0 mb-2 ..."
+  style={{
+    transform: `translateX(${menuOffset}px)`,
+    WebkitTouchCallout: 'none',
+    touchAction: 'none',
+  }}
+>
 ```
 
-### Không cần thay đổi database
+**Haptic trong HeartAnimation:**
+```tsx
+useEffect(() => {
+  if (show) {
+    setVisible(true);
+    navigator.vibrate?.(10);
+    // ...
+  }
+}, [show, onComplete]);
+```
 
-Các bảng `comments`, `reactions`, `shared_posts` đã tồn tại. Prefix `g:` và `s:` chỉ là convention trong `image_url` column (TEXT), không cần migration.
+### Tổng kết: 6 files thay đổi
+
+| File | Thay đổi |
+|------|----------|
+| `CommentItem.tsx` | Xóa import thừa `linkifyText` |
+| `CommentMediaUpload.tsx` | Backdrop overlay + responsive picker positioning |
+| `ReactionButton.tsx` | Apply `menuOffset` vào `style.transform` |
+| `ShareDialog.tsx` | Thêm `max-h-[80vh] overflow-y-auto` |
+| `HeartAnimation.tsx` | Thêm `navigator.vibrate?.(10)` |
+| `CommentReactionButton.tsx` | Thêm `navigator.vibrate?.(10)` khi reaction thành công |
 
