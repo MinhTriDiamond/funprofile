@@ -23,8 +23,8 @@ const steps = [
   },
   {
     icon: Shield,
-    title: '4. Admin ký duyệt 🔐',
-    desc: '3 người ký xác nhận (WILL · WISDOM · LOVE) sẽ duyệt yêu cầu. Sau khi đủ chữ ký, FUN được gửi lên blockchain.',
+    title: '4. Attester ký duyệt 🔐',
+    desc: 'Một Attester sẽ xác nhận và ký duyệt yêu cầu của bạn. Sau khi có chữ ký, FUN được gửi lên blockchain.',
   },
   {
     icon: Wallet,
