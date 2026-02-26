@@ -1,27 +1,45 @@
 
 
-# Fix: GIF & Sticker Picker bị che bởi `overflow-hidden`
+# Plan: 3 nhiệm vụ — Test E2E + Giphy API + Lazy Loading
 
-## Nguyên nhân gốc
+## 1. Test End-to-End (thủ công)
 
-`CommentSection.tsx` dòng 216 có `overflow-hidden` trên container cha. Khi picker dùng `sm:absolute` positioning trên desktop, nó bị clip bởi `overflow-hidden` → user chỉ thấy backdrop xám mà không thấy picker.
+Code hiện tại đã hoạt động đúng logic. Tôi sẽ dùng browser automation để kiểm tra luồng GIF/Sticker trong reply sau khi triển khai các thay đổi bên dưới.
 
-Trên mobile, picker dùng `fixed` nên thoát được overflow, nhưng trên desktop (`sm:absolute`) thì bị ẩn hoàn toàn.
+## 2. Tích hợp Giphy API qua Edge Function
 
-## Fix — 1 file: `CommentMediaUpload.tsx`
+Hiện tại GifPicker chỉ tìm trong ~50 GIF curated. Cần thêm khả năng tìm kiếm từ Giphy API.
 
-Bỏ `sm:absolute` positioning, luôn dùng `fixed` cho cả mobile và desktop. Đặt picker ở giữa màn hình (centered) thay vì cố gắng neo vào button.
+**Cần thêm secret:** `GIPHY_API_KEY` — user cần đăng ký tại [developers.giphy.com](https://developers.giphy.com) để lấy API key.
 
-**Dòng 117** (GIF picker container):
-```
-// Trước:
-"fixed bottom-4 left-2 right-2 z-50 max-w-[calc(100vw-32px)] sm:absolute sm:bottom-full sm:left-auto sm:right-0 sm:mb-2 sm:w-80 sm:max-w-none"
+### Edge Function: `supabase/functions/giphy-search/index.ts`
+- Nhận query param `q` (search term) và `offset` (pagination)
+- Gọi Giphy Search API: `api.giphy.com/v1/gifs/search`
+- Trả về danh sách GIF URLs đã format (dùng `images.fixed_width.url`)
+- Nếu `q` rỗng, gọi Trending API thay thế
 
-// Sau:
-"fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-80 max-w-[calc(100vw-32px)]"
-```
+### Cập nhật `GifPicker.tsx`
+- Thêm state cho API results, loading, hasMore, offset
+- Khi user gõ search → debounce 400ms → gọi edge function
+- Khi search rỗng → hiển thị curated GIFs (fallback offline)
+- Merge kết quả API với curated khi cần
 
-**Dòng 132** (Sticker picker container) — same fix.
+## 3. Lazy Loading + Infinite Scroll cho GIF Grid
 
-Thay đổi này đảm bảo picker luôn hiển thị đúng trên cả web và mobile, không bị ảnh hưởng bởi `overflow-hidden` của cha.
+### Cập nhật `GifPicker.tsx`
+- Hiển thị ban đầu 20 GIF (từ API hoặc curated)
+- Thêm IntersectionObserver ở cuối grid → khi user cuộn đến → load thêm 20 GIF tiếp
+- Hiển thị skeleton loading khi đang fetch thêm
+- Dừng load khi hết kết quả (`hasMore = false`)
+
+## Tóm tắt thay đổi
+
+| File | Thay đổi |
+|------|----------|
+| `supabase/functions/giphy-search/index.ts` | **Tạo mới** — proxy Giphy API |
+| `src/components/feed/GifPicker.tsx` | Thêm API search + infinite scroll + debounce |
+| Secret `GIPHY_API_KEY` | **Cần user cung cấp** |
+
+## Điều kiện tiên quyết
+User cần cung cấp Giphy API key trước khi triển khai. Key miễn phí tại https://developers.giphy.com.
 
