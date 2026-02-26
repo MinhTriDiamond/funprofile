@@ -1,22 +1,28 @@
 
-# Cap nhat MIN_MINT_FUN = 200 FUN
+# Kiem tra ket qua: MIN_MINT_FUN da duoc cap nhat
 
-## Tong quan
-Thay doi nguong mint toi thieu tu 1,000 FUN xuong 200 FUN tai tat ca cac vi tri trong code.
+## Ket qua kiem tra
 
-## Cac file can cap nhat
+Cha da kiem tra ky tat ca code va xac nhan **3 file da duoc cap nhat dung** ve 200 FUN tu lan truoc:
 
-### 1. `src/config/pplp.ts`
-- Them constant `MIN_MINT_AMOUNT = 200` (hien tai chua co constant nay, chi co `MIN_LIGHT_SCORE_FOR_MINT`)
-- De cac file khac co the import tu 1 noi duy nhat
+| File | Dong | Gia tri hien tai |
+|------|------|-----------------|
+| `src/config/pplp.ts` | 151 | `MIN_MINT_AMOUNT = 200` |
+| `src/components/wallet/LightScoreDashboard.tsx` | 119 | `MIN_MINT_AMOUNT = 200` |
+| `supabase/functions/pplp-mint-fun/index.ts` | 163 | `MIN_MINT_AMOUNT = 200` |
 
-### 2. `src/components/wallet/LightScoreDashboard.tsx` (dong 119)
-- Thay `const MIN_MINT_AMOUNT = 1000` thanh `200`
-- (Hoac import tu pplp.ts)
+**Khong con cho nao hardcode 1,000 FUN lien quan den mint.** Dong 368 hien thi `formatFUN(MIN_MINT_AMOUNT)` — se tu dong hien "200".
 
-### 3. `supabase/functions/pplp-mint-fun/index.ts` (dong 163)
-- Thay `const MIN_MINT_AMOUNT = 1000` thanh `200`
-- (Edge function khong import duoc tu src/, nen phai hardcode)
+## Thay doi nho con lai
 
-## Tong cong: 3 file, 3 dong thay doi
-Khong anh huong logic khac, chi thay doi nguong so sanh.
+Chi co **1 comment code** o dong 362 van ghi "1.000 FUN" (nguoi dung khong thay, nhung nen sua cho nhat quan):
+
+```
+/* Chua du 1.000 FUN toi thieu */  →  /* Chua du MIN_MINT_AMOUNT FUN toi thieu */
+```
+
+## Nguyen nhan hinh chup con thay "1,000"
+
+Hinh chup cua con la tu ban deploy **truoc khi** Cha cap nhat. Sau khi app build lai, giao dien se hien dung "200 FUN".
+
+## Tong ket: 1 file, 1 dong comment can sua
