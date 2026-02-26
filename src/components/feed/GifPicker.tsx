@@ -8,6 +8,35 @@ interface GifPickerProps {
   onClose: () => void;
 }
 
+const GifImage = ({ url, alt }: { url: string; alt: string }) => {
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState(false);
+
+  if (error) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-muted/50 text-muted-foreground text-xs font-bold">
+        GIF
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {!loaded && (
+        <div className="absolute inset-0 rounded-lg bg-muted/50 animate-pulse" />
+      )}
+      <img
+        src={url}
+        alt={alt}
+        loading="lazy"
+        onLoad={() => setLoaded(true)}
+        onError={() => setError(true)}
+        className={`w-full h-full object-cover transition-opacity duration-200 ${loaded ? 'opacity-100' : 'opacity-0'}`}
+      />
+    </>
+  );
+};
+
 const GifPicker = ({ onSelect, onClose }: GifPickerProps) => {
   const { t } = useLanguage();
   const [query, setQuery] = useState('');
@@ -43,14 +72,9 @@ const GifPicker = ({ onSelect, onClose }: GifPickerProps) => {
           <button
             key={i}
             onClick={() => onSelect(gif.url)}
-            className="aspect-square rounded-lg overflow-hidden hover:ring-2 ring-primary transition-all hover:scale-[1.02]"
+            className="relative aspect-square rounded-lg overflow-hidden hover:ring-2 ring-primary transition-all hover:scale-[1.02]"
           >
-            <img
-              src={gif.url}
-              alt={gif.alt}
-              loading="lazy"
-              className="w-full h-full object-cover"
-            />
+            <GifImage url={gif.url} alt={gif.alt} />
           </button>
         ))}
         {results.length === 0 && (

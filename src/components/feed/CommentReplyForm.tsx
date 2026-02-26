@@ -140,9 +140,13 @@ export const CommentReplyForm = ({
 
         {/* Media Preview */}
         {mediaUrl && (
-          <div className="relative inline-block">
+          <div className="relative inline-block" data-media-preview>
             {mediaType === 'image' ? (
-              <img src={mediaUrl} alt="Preview" className="max-h-24 rounded-lg border-2 border-primary/20" />
+              <img 
+                src={mediaUrl.startsWith('g:') ? mediaUrl.slice(2) : mediaUrl.startsWith('s:') ? mediaUrl.slice(2) : mediaUrl} 
+                alt="Preview" 
+                className="max-h-24 rounded-lg border-2 border-primary/20" 
+              />
             ) : (
               <video src={mediaUrl} className="max-h-24 rounded-lg border-2 border-primary/20" />
             )}
@@ -166,6 +170,20 @@ export const CommentReplyForm = ({
               onMediaRemoved={() => {
                 setMediaUrl(null);
                 setMediaType(null);
+              }}
+              onGifSelect={(gifUrl) => {
+                setMediaUrl(gifUrl);
+                setMediaType('image');
+                setTimeout(() => {
+                  document.querySelector('[data-media-preview]')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }, 100);
+              }}
+              onStickerSelect={(stickerUrl) => {
+                setMediaUrl(stickerUrl);
+                setMediaType('image');
+                setTimeout(() => {
+                  document.querySelector('[data-media-preview]')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }, 100);
               }}
             />
             
