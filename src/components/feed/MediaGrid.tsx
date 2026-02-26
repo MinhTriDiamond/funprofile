@@ -14,6 +14,40 @@ function isChunkedManifestUrl(url: string): boolean {
   return url.endsWith('manifest.json') || /\/recordings\/[^/]+\/manifest\.json/.test(url);
 }
 
+/** Reusable feed video: auto-switches between LazyVideo and ChunkedVideoPlayer */
+const FeedVideo = memo(({ src, poster, className, showControls = false, muted = true, onError }: {
+  src: string;
+  poster?: string;
+  className?: string;
+  showControls?: boolean;
+  muted?: boolean;
+  onError?: () => void;
+}) => {
+  if (isChunkedManifestUrl(src)) {
+    return (
+      <Suspense fallback={<div className={`${className} bg-muted animate-pulse`} />}>
+        <ChunkedVideoPlayer
+          manifestUrl={src}
+          className={className || ''}
+          autoPlay={false}
+          controls={showControls}
+        />
+      </Suspense>
+    );
+  }
+  return (
+    <LazyVideo
+      src={src}
+      poster={poster}
+      className={className || ''}
+      showControls={showControls}
+      muted={muted}
+      onError={onError}
+    />
+  );
+});
+FeedVideo.displayName = 'FeedVideo';
+
 interface MediaItem {
   url: string;
   type: 'image' | 'video';
@@ -67,7 +101,7 @@ export const MediaGrid = memo(({ media: initialMedia }: MediaGridProps) => {
       <>
         {item.type === 'video' ? (
           <div className="relative">
-            <LazyVideo
+            <FeedVideo
               src={item.url}
               poster={item.poster}
               className="w-full max-h-[600px] bg-black"
@@ -142,7 +176,7 @@ export const MediaGrid = memo(({ media: initialMedia }: MediaGridProps) => {
             <div key={item.url} className="aspect-square overflow-hidden">
               {item.type === 'video' ? (
                 <div onClick={() => handleClick(index)} className="cursor-pointer h-full">
-                  <LazyVideo
+                <FeedVideo
                     src={item.url}
                     poster={item.poster}
                     className="w-full h-full object-cover"
@@ -188,7 +222,7 @@ export const MediaGrid = memo(({ media: initialMedia }: MediaGridProps) => {
           <div className="aspect-square overflow-hidden">
             {media[0].type === 'video' ? (
               <div onClick={() => handleClick(0)} className="cursor-pointer h-full">
-                <LazyVideo
+                <FeedVideo
                   src={media[0].url}
                   poster={media[0].poster}
                   className="w-full h-full object-cover"
@@ -214,7 +248,7 @@ export const MediaGrid = memo(({ media: initialMedia }: MediaGridProps) => {
           <div className="row-span-2 aspect-auto overflow-hidden">
             {media[1].type === 'video' ? (
               <div onClick={() => handleClick(1)} className="cursor-pointer h-full">
-                <LazyVideo
+                <FeedVideo
                   src={media[1].url}
                   poster={media[1].poster}
                   className="w-full h-full object-cover"
@@ -240,7 +274,7 @@ export const MediaGrid = memo(({ media: initialMedia }: MediaGridProps) => {
           <div className="aspect-square overflow-hidden">
             {media[2].type === 'video' ? (
               <div onClick={() => handleClick(2)} className="cursor-pointer h-full">
-                <LazyVideo
+                <FeedVideo
                   src={media[2].url}
                   poster={media[2].poster}
                   className="w-full h-full object-cover"
@@ -287,7 +321,7 @@ export const MediaGrid = memo(({ media: initialMedia }: MediaGridProps) => {
           >
             {item.type === 'video' ? (
               <div onClick={() => handleClick(index)} className="cursor-pointer h-full">
-                <LazyVideo
+                <FeedVideo
                   src={item.url}
                   poster={item.poster}
                   className="w-full h-full object-cover"
