@@ -4,16 +4,15 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useNavigate } from 'react-router-dom';
+import { TwemojiImage } from '@/components/ui/TwemojiImage';
 
 const REACTION_ICONS: Record<string, { icon: string; label: string; color: string }> = {
+  gratitude: { icon: '🙏', label: 'Biết ơn', color: '#a855f7' },
+  care: { icon: '🥰', label: 'Thương thương', color: '#f97316' },
   like: { icon: '👍', label: 'Thích', color: '#3b82f6' },
   love: { icon: '❤️', label: 'Yêu thương', color: '#ef4444' },
-  care: { icon: '🥰', label: 'Thương thương', color: '#f97316' },
-  wow: { icon: '😮', label: 'Ngạc nhiên', color: '#eab308' },
   haha: { icon: '😂', label: 'Haha', color: '#eab308' },
-  pray: { icon: '🙏', label: 'Biết ơn', color: '#a855f7' },
-  sad: { icon: '😢', label: 'Buồn', color: '#eab308' },
-  angry: { icon: '😠', label: 'Phẫn nộ', color: '#f97316' },
+  wow: { icon: '😮', label: 'Ngạc nhiên', color: '#eab308' },
 };
 
 interface ReactionUser {
@@ -141,7 +140,7 @@ export const ReactionViewerDialog = ({
                     : 'bg-secondary hover:bg-secondary/80 text-foreground'
                 }`}
               >
-                <span className="text-base">{info.icon}</span>
+                <TwemojiImage emoji={info.icon} size={18} />
                 <span className="text-xs opacity-70">{reaction.count}</span>
               </button>
             );
@@ -185,7 +184,7 @@ export const ReactionViewerDialog = ({
                         className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-xs border-2 border-card"
                         style={{ backgroundColor: reactionInfo.color }}
                       >
-                        {reactionInfo.icon}
+                        <TwemojiImage emoji={reactionInfo.icon} size={14} />
                       </span>
                     )}
                   </div>

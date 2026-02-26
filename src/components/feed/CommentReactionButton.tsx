@@ -10,15 +10,16 @@ import {
 } from '@/components/ui/hover-card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useLanguage } from '@/i18n/LanguageContext';
+import { TwemojiImage } from '@/components/ui/TwemojiImage';
 
 // Reaction type definitions - labels will be loaded from translations
 const REACTION_TYPES = [
+  { type: 'gratitude', emoji: '🙏', labelKey: 'reactionGratitude', color: 'text-purple-500' },
+  { type: 'care', emoji: '🥰', labelKey: 'reactionCare', color: 'text-orange-500' },
   { type: 'like', emoji: '👍', labelKey: 'like', color: 'text-blue-500' },
   { type: 'love', emoji: '❤️', labelKey: 'reactionLove', color: 'text-red-500' },
   { type: 'haha', emoji: '😂', labelKey: 'haha', color: 'text-yellow-500' },
   { type: 'wow', emoji: '😮', labelKey: 'reactionWow', color: 'text-yellow-600' },
-  { type: 'sad', emoji: '😢', labelKey: 'reactionSad', color: 'text-yellow-500' },
-  { type: 'angry', emoji: '😠', labelKey: 'reactionAngry', color: 'text-orange-500' },
 ];
 
 interface CommentReactionButtonProps {
@@ -214,7 +215,7 @@ export const CommentReactionButton = ({ commentId, onReactionChange }: CommentRe
               }`}
             >
               {currentReaction ? (
-                <span className="text-base animate-bounce-in">{currentReaction.emoji}</span>
+                <span className="animate-bounce-in"><TwemojiImage emoji={currentReaction.emoji} size={16} /></span>
               ) : (
                 <Heart className="w-3.5 h-3.5" />
               )}
@@ -232,7 +233,7 @@ export const CommentReactionButton = ({ commentId, onReactionChange }: CommentRe
                     className="text-sm"
                     style={{ zIndex: 3 - idx }}
                   >
-                    {reaction?.emoji}
+                    <TwemojiImage emoji={reaction?.emoji || ''} size={14} />
                   </span>
                 ))}
               </div>
@@ -249,7 +250,7 @@ export const CommentReactionButton = ({ commentId, onReactionChange }: CommentRe
                   const reactionInfo = CHAKRA_REACTIONS.find(r => r.type === reaction.type);
                   return (
                     <div key={reaction.id} className="flex items-center gap-2">
-                      <span className="text-sm">{reactionInfo?.emoji}</span>
+                      <TwemojiImage emoji={reactionInfo?.emoji || ''} size={16} />
                       <Avatar className="w-5 h-5">
                         <AvatarFallback className="text-xs bg-primary/10">
                           {reaction.profiles?.username?.[0]?.toUpperCase() || 'U'}
@@ -283,7 +284,7 @@ export const CommentReactionButton = ({ commentId, onReactionChange }: CommentRe
                 }`}
                 title={reaction.label}
               >
-                <span className="text-xl">{reaction.emoji}</span>
+                <TwemojiImage emoji={reaction.emoji} size={24} />
               </button>
             ))}
           </div>

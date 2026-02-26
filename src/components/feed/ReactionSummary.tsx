@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ReactionViewerDialog } from './ReactionViewerDialog';
 import { useLanguage } from '@/i18n/LanguageContext';
+import { TwemojiImage } from '@/components/ui/TwemojiImage';
 
 interface ReactionCount {
   type: string;
@@ -17,12 +18,12 @@ interface ReactionSummaryProps {
 }
 
 const REACTION_ICONS: Record<string, { icon: string; bgColor: string }> = {
+  gratitude: { icon: '🙏', bgColor: 'bg-purple-500' },
+  care: { icon: '🥰', bgColor: 'bg-orange-500' },
   like: { icon: '👍', bgColor: 'bg-blue-500' },
   love: { icon: '❤️', bgColor: 'bg-red-500' },
   haha: { icon: '😂', bgColor: 'bg-yellow-500' },
   wow: { icon: '😮', bgColor: 'bg-yellow-500' },
-  sad: { icon: '😢', bgColor: 'bg-yellow-500' },
-  angry: { icon: '😠', bgColor: 'bg-orange-500' },
 };
 
 export const ReactionSummary = ({
@@ -64,7 +65,7 @@ export const ReactionSummary = ({
                       className={`w-5 h-5 rounded-full ${reactionInfo.bgColor} flex items-center justify-center text-xs border-2 border-card`}
                       style={{ zIndex: 3 - index }}
                     >
-                      {reactionInfo.icon}
+                      <TwemojiImage emoji={reactionInfo.icon} size={14} />
                     </span>
                   );
                 })}
