@@ -1,15 +1,47 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { X } from 'lucide-react';
 import { STICKER_CATEGORIES } from '@/data/curatedStickers';
+import { TwemojiImage } from '@/components/ui/TwemojiImage';
 
 interface StickerPickerProps {
   onSelect: (stickerUrl: string) => void;
   onClose: () => void;
 }
 
+const StickerImage = ({ url, alt }: { url: string; alt: string }) => {
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState(false);
+
+  if (error) {
+    return (
+      <span className="text-3xl leading-none select-none">{alt}</span>
+    );
+  }
+
+  return (
+    <>
+      {!loaded && (
+        <div className="absolute inset-1.5 rounded-lg bg-muted/50 animate-pulse" />
+      )}
+      <img
+        src={url}
+        alt={alt}
+        loading="lazy"
+        onLoad={() => setLoaded(true)}
+        onError={() => setError(true)}
+        className={`w-full h-full object-contain transition-opacity duration-200 ${loaded ? 'opacity-100' : 'opacity-0'}`}
+      />
+    </>
+  );
+};
+
 const StickerPicker = ({ onSelect, onClose }: StickerPickerProps) => {
   const [activeCategory, setActiveCategory] = useState(0);
   const category = STICKER_CATEGORIES[activeCategory];
+
+  const handleSelect = useCallback((url: string) => {
+    onSelect(url);
+  }, [onSelect]);
 
   return (
     <div className="w-80 max-h-96 bg-card border border-border rounded-xl shadow-xl overflow-hidden flex flex-col">
@@ -27,30 +59,25 @@ const StickerPicker = ({ onSelect, onClose }: StickerPickerProps) => {
           <button
             key={cat.name}
             onClick={() => setActiveCategory(i)}
-            className={`flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center text-lg transition-colors ${
+            className={`flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${
               i === activeCategory ? 'bg-primary/10 ring-1 ring-primary/30' : 'hover:bg-secondary'
             }`}
             title={cat.name}
           >
-            {cat.icon}
+            <TwemojiImage emoji={cat.icon} size={20} />
           </button>
         ))}
       </div>
 
-      {/* Sticker grid */}
-      <div className="flex-1 overflow-y-auto p-2 grid grid-cols-4 gap-2">
+      {/* Sticker grid — responsive: 4 cols mobile, 5 cols desktop */}
+      <div className="flex-1 overflow-y-auto p-2 grid grid-cols-4 sm:grid-cols-5 gap-2">
         {category.stickers.map((sticker, i) => (
           <button
             key={i}
-            onClick={() => onSelect(sticker.url)}
-            className="aspect-square rounded-xl p-1.5 hover:bg-secondary transition-all hover:scale-110"
+            onClick={() => handleSelect(sticker.url)}
+            className="relative aspect-square rounded-xl p-1.5 hover:bg-secondary transition-all hover:scale-110 flex items-center justify-center"
           >
-            <img
-              src={sticker.url}
-              alt={sticker.alt}
-              loading="lazy"
-              className="w-full h-full object-contain"
-            />
+            <StickerImage url={sticker.url} alt={sticker.alt} />
           </button>
         ))}
       </div>
