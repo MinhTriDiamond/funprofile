@@ -195,11 +195,13 @@ export const ReactionButton = ({
   }, [clearTimeouts, showReactions, getReactionAtPosition, triggerHaptic]);
 
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    // Prevent ghost click on mobile — stop browser from firing onClick after touch
+    e.preventDefault();
+    e.stopPropagation();
     clearTimeouts();
     
     // If we were swiping and have a selected reaction, use it
     if (isLongPressRef.current && swipeSelectedReaction) {
-      e.preventDefault();
       triggerHaptic(20);
       handleReaction(swipeSelectedReaction);
       setShowReactions(false);
@@ -392,6 +394,7 @@ export const ReactionButton = ({
                   opacity: 0,
                   transform: 'scale(0) translateY(10px)',
                 }}
+                onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); handleReactionSelect(reaction.type); }}
                 onClick={() => handleReactionSelect(reaction.type)}
                 onMouseEnter={() => setHoveredReaction(reaction.type)}
                 onMouseLeave={() => setHoveredReaction(null)}
