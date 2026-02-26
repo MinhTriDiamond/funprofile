@@ -62,7 +62,6 @@ interface ResolvedRecipient {
   avatarUrl: string | null;
   walletAddress: string | null;
   hasVerifiedWallet?: boolean;
-  isBanned?: boolean;
 }
 
 interface MultiSendResult {
@@ -176,20 +175,6 @@ export const UnifiedGiftSendDialog = ({
   // Determine effective recipients
   const isPresetMode = mode === 'post' || ((mode === 'navbar' || mode === 'wallet') && !!presetRecipient?.id);
 
-  // Fetch is_banned for preset recipient
-  const [presetIsBanned, setPresetIsBanned] = useState<boolean>(false);
-  useEffect(() => {
-    if (!isOpen || !presetRecipient?.id) { setPresetIsBanned(false); return; }
-    (async () => {
-      const { data } = await supabase
-        .from('public_profiles')
-        .select('is_banned')
-        .eq('id', presetRecipient.id)
-        .single();
-      setPresetIsBanned(!!data?.is_banned);
-    })();
-  }, [isOpen, presetRecipient?.id]);
-
   const effectiveRecipients = useMemo(() => {
     if (presetRecipient?.id && presetRecipient?.username) {
       return [{
@@ -198,11 +183,10 @@ export const UnifiedGiftSendDialog = ({
         displayName: presetRecipient.displayName ?? null,
         avatarUrl: presetRecipient.avatarUrl ?? null,
         walletAddress: presetRecipient.walletAddress ?? null,
-        isBanned: presetIsBanned,
       }] as ResolvedRecipient[];
     }
     return resolvedRecipients;
-  }, [presetRecipient, resolvedRecipients, presetIsBanned]);
+  }, [presetRecipient, resolvedRecipients]);
 
   const recipientsWithWallet = effectiveRecipients.filter(r => !!r.walletAddress);
   const recipientsWithoutWallet = effectiveRecipients.filter(r => !r.walletAddress);
@@ -264,7 +248,7 @@ export const UnifiedGiftSendDialog = ({
     setIsSearching(true);
     setSearchError('');
     try {
-      const selectFields = 'id, username, display_name, avatar_url, wallet_address, public_wallet_address, external_wallet_address, is_banned';
+      const selectFields = 'id, username, display_name, avatar_url, wallet_address, public_wallet_address, external_wallet_address';
       if (tab === 'username') {
         const cleanQuery = query.replace(/^@/, '').toLowerCase().trim();
         if (cleanQuery.length < 2) { setSearchResults([]); setIsSearching(false); return; }
@@ -282,7 +266,6 @@ export const UnifiedGiftSendDialog = ({
             avatarUrl: p.avatar_url,
             walletAddress: resolveWalletAddress(p),
             hasVerifiedWallet: !!(p.public_wallet_address || p.external_wallet_address),
-            isBanned: !!p.is_banned,
           })));
         } else {
           setSearchResults([]);
@@ -310,7 +293,6 @@ export const UnifiedGiftSendDialog = ({
             avatarUrl: p.avatar_url,
             walletAddress: resolveWalletAddress(p),
             hasVerifiedWallet: !!(p.public_wallet_address || p.external_wallet_address),
-            isBanned: !!p.is_banned,
           })));
         } else {
           setSearchResults([]);
@@ -910,15 +892,6 @@ export const UnifiedGiftSendDialog = ({
                       )}
                     </div>
                   </div>
-                  {effectiveRecipients[0]?.isBanned && (
-                    <div className="mt-2 flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/30">
-                      <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
-                      <div>
-                        <p className="text-sm font-medium text-destructive">Tài khoản bị cấm vĩnh viễn</p>
-                        <p className="text-xs text-destructive/80">Tài khoản này đã vi phạm điều khoản sử dụng.</p>
-                      </div>
-                    </div>
-                  )}
                 </div>
               ) : (
                 /* Search & multi-select recipients */
@@ -933,18 +906,13 @@ export const UnifiedGiftSendDialog = ({
                       {resolvedRecipients.map((r) => (
                         <div
                           key={r.id}
-                          className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-sm ${
-                            r.isBanned
-                              ? 'bg-destructive/10 border border-destructive/30'
-                              : 'bg-primary/10 border border-primary/20'
-                          }`}
+                          className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-primary/10 border border-primary/20 text-sm"
                         >
                           <Avatar className="w-5 h-5">
                             <AvatarImage src={r.avatarUrl || ''} />
                             <AvatarFallback className="bg-primary/20 text-primary text-[10px]">{r.username[0]?.toUpperCase()}</AvatarFallback>
                           </Avatar>
                           <span className="font-medium truncate max-w-[100px]">{r.displayName || r.username}</span>
-                          {r.isBanned && <span className="text-[10px] text-destructive font-medium">Bị cấm</span>}
                           {!r.walletAddress && <AlertCircle className="w-3 h-3 text-destructive shrink-0" />}
                           <button
                             type="button"
@@ -999,12 +967,8 @@ export const UnifiedGiftSendDialog = ({
                               <div className="flex items-center gap-1">
                                 <p className="font-medium text-sm truncate">{result.displayName || result.username}</p>
                                 {result.hasVerifiedWallet && <Shield className="w-3 h-3 text-emerald-500 shrink-0" />}
-                                {result.isBanned && <AlertTriangle className="w-3 h-3 text-destructive shrink-0" />}
                               </div>
                               <p className="text-xs text-muted-foreground truncate">@{result.username}</p>
-                              {result.isBanned && (
-                                <p className="text-[10px] text-destructive font-medium">Tài khoản bị cấm vĩnh viễn</p>
-                              )}
                               {result.walletAddress && (
                                 <p className="text-[10px] text-muted-foreground/70 font-mono truncate">
                                   {result.walletAddress.slice(0, 6)}...{result.walletAddress.slice(-4)}

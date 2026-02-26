@@ -6,7 +6,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { AlertCircle, AlertTriangle, Loader2, Search, Shield, User, Wallet, X } from 'lucide-react';
+import { AlertCircle, Loader2, Search, Shield, User, Wallet, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { ResolvedRecipient } from './types';
@@ -42,7 +42,7 @@ export function RecipientSearch({
     setIsSearching(true);
     setSearchError('');
     try {
-      const selectFields = 'id, username, display_name, avatar_url, wallet_address, public_wallet_address, external_wallet_address, is_banned';
+      const selectFields = 'id, username, display_name, avatar_url, wallet_address, public_wallet_address, external_wallet_address';
       if (tab === 'username') {
         const cleanQuery = query.replace(/^@/, '').toLowerCase().trim();
         if (cleanQuery.length < 2) { setSearchResults([]); setIsSearching(false); return; }
@@ -60,7 +60,6 @@ export function RecipientSearch({
             avatarUrl: p.avatar_url,
             walletAddress: resolveWalletAddress(p as Record<string, unknown>),
             hasVerifiedWallet: !!(p.public_wallet_address || (p as Record<string, unknown>).external_wallet_address),
-            isBanned: !!(p as Record<string, unknown>).is_banned,
           })));
         } else {
           setSearchResults([]);
@@ -88,7 +87,6 @@ export function RecipientSearch({
             avatarUrl: p.avatar_url,
             walletAddress: resolveWalletAddress(p as Record<string, unknown>),
             hasVerifiedWallet: !!(p.public_wallet_address || (p as Record<string, unknown>).external_wallet_address),
-            isBanned: !!(p as Record<string, unknown>).is_banned,
           })));
         } else {
           setSearchResults([]);
@@ -119,18 +117,13 @@ export function RecipientSearch({
           {resolvedRecipients.map((r) => (
             <div
               key={r.id}
-              className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-sm ${
-                r.isBanned
-                  ? 'bg-destructive/10 border border-destructive/30'
-                  : 'bg-primary/10 border border-primary/20'
-              }`}
+              className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-primary/10 border border-primary/20 text-sm"
             >
               <Avatar className="w-5 h-5">
                 <AvatarImage src={r.avatarUrl || ''} />
                 <AvatarFallback className="bg-primary/20 text-primary text-[10px]">{r.username[0]?.toUpperCase()}</AvatarFallback>
               </Avatar>
               <span className="font-medium truncate max-w-[100px]">{r.displayName || r.username}</span>
-              {r.isBanned && <span className="text-[10px] text-destructive font-medium">Bị cấm</span>}
               {!r.walletAddress && <AlertCircle className="w-3 h-3 text-destructive shrink-0" />}
               <button
                 type="button"
@@ -204,22 +197,18 @@ export function RecipientSearch({
                     <AvatarImage src={result.avatarUrl || ''} />
                     <AvatarFallback className="bg-primary/20 text-primary text-xs">{result.username[0]?.toUpperCase()}</AvatarFallback>
                   </Avatar>
-                   <div className="flex-1 min-w-0">
-                     <div className="flex items-center gap-1">
-                       <p className="font-medium text-sm truncate">{result.displayName || result.username}</p>
-                       {result.hasVerifiedWallet && <Shield className="w-3 h-3 text-emerald-500 shrink-0" />}
-                       {result.isBanned && <AlertTriangle className="w-3 h-3 text-destructive shrink-0" />}
-                     </div>
-                     <p className="text-xs text-muted-foreground truncate">@{result.username}</p>
-                     {result.isBanned && (
-                       <p className="text-[10px] text-destructive font-medium">Tài khoản bị cấm vĩnh viễn</p>
-                     )}
-                     {result.walletAddress && (
-                       <p className="text-[10px] text-muted-foreground/70 font-mono truncate">
-                         {result.walletAddress.slice(0, 6)}...{result.walletAddress.slice(-4)}
-                       </p>
-                     )}
-                   </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1">
+                      <p className="font-medium text-sm truncate">{result.displayName || result.username}</p>
+                      {result.hasVerifiedWallet && <Shield className="w-3 h-3 text-emerald-500 shrink-0" />}
+                    </div>
+                    <p className="text-xs text-muted-foreground truncate">@{result.username}</p>
+                    {result.walletAddress && (
+                      <p className="text-[10px] text-muted-foreground/70 font-mono truncate">
+                        {result.walletAddress.slice(0, 6)}...{result.walletAddress.slice(-4)}
+                      </p>
+                    )}
+                  </div>
                 </button>
               ))}
           </div>
