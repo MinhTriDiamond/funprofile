@@ -102,8 +102,6 @@ export const ShareDialog = ({
       const { error } = await supabase.from('shared_posts').insert({
         user_id: currentUserId,
         original_post_id: post.id,
-        caption: caption || null,
-        visibility: privacy,
       });
       if (error) throw error;
       toast.success(t('sharedPost'));
@@ -117,11 +115,15 @@ export const ShareDialog = ({
     }
   };
 
-  const handleCopy = (text: string, label: string) => {
-    navigator.clipboard.writeText(text);
-    setCopied(label);
-    toast.success(t('linkCopied'));
-    setTimeout(() => setCopied(null), 2000);
+  const handleCopy = async (text: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(label);
+      toast.success(t('linkCopied'));
+      setTimeout(() => setCopied(null), 2000);
+    } catch {
+      toast.error('Cannot copy to clipboard');
+    }
   };
 
   const getWeb3ProfileLink = () => {

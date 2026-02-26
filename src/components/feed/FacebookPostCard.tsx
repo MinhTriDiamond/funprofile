@@ -269,25 +269,6 @@ const FacebookPostCardComponent = ({
     toast.success(t('linkCopied'));
   }, [post, t]);
 
-  const handleShareToProfile = useCallback(async () => {
-    if (!currentUserId) {
-      toast.error(t('pleaseLoginToShare'));
-      return;
-    }
-
-    try {
-      const { error } = await supabase.from('shared_posts').insert({
-        user_id: currentUserId,
-        original_post_id: post.id,
-      });
-
-      if (error) throw error;
-      setShareCount((prev) => prev + 1);
-      toast.success(t('sharedPost'));
-    } catch {
-      toast.error(t('cannotShare'));
-    }
-  }, [currentUserId, post.id, t]);
 
   const handleReactionChange = useCallback((newCount: number, newReaction: string | null) => {
     setLikeCount(newCount);

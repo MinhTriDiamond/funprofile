@@ -15,10 +15,10 @@ import { useLanguage } from '@/i18n/LanguageContext';
 const REACTION_TYPES = [
   { type: 'like', emoji: '👍', labelKey: 'like', color: 'text-blue-500' },
   { type: 'love', emoji: '❤️', labelKey: 'reactionLove', color: 'text-red-500' },
-  { type: 'care', emoji: '🥰', labelKey: 'reactionCare', color: 'text-orange-500' },
-  { type: 'wow', emoji: '😮', labelKey: 'wow', color: 'text-yellow-600' },
   { type: 'haha', emoji: '😂', labelKey: 'haha', color: 'text-yellow-500' },
-  { type: 'pray', emoji: '🙏', labelKey: 'gratitude', color: 'text-purple-500' },
+  { type: 'wow', emoji: '😮', labelKey: 'reactionWow', color: 'text-yellow-600' },
+  { type: 'sad', emoji: '😢', labelKey: 'reactionSad', color: 'text-yellow-500' },
+  { type: 'angry', emoji: '😠', labelKey: 'reactionAngry', color: 'text-orange-500' },
 ];
 
 interface CommentReactionButtonProps {
@@ -79,85 +79,93 @@ export const CommentReactionButton = ({ commentId, onReactionChange }: CommentRe
   }, [commentId]);
 
   const fetchReactions = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    const { data, error } = await supabase
-      .from('reactions')
-      .select(`
-        id,
-        user_id,
-        type,
-        profiles (username, avatar_url)
-      `)
-      .eq('comment_id', commentId);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      const { data, error } = await supabase
+        .from('reactions')
+        .select(`
+          id,
+          user_id,
+          type,
+          profiles (username, avatar_url)
+        `)
+        .eq('comment_id', commentId);
 
-    if (!error && data) {
-      setReactions(data as CommentReaction[]);
-      
-      // Count reactions by type
-      const counts: Record<string, number> = {};
-      data.forEach(r => {
-        counts[r.type] = (counts[r.type] || 0) + 1;
-      });
-      setReactionCounts(counts);
-      
-      // Find user's reaction
-      const userReact = user ? data.find(r => r.user_id === user.id) : null;
-      setUserReaction(userReact?.type || null);
+      if (!error && data) {
+        setReactions(data as CommentReaction[]);
+        
+        const counts: Record<string, number> = {};
+        data.forEach(r => {
+          counts[r.type] = (counts[r.type] || 0) + 1;
+        });
+        setReactionCounts(counts);
+        
+        const userReact = user ? data.find(r => r.user_id === user.id) : null;
+        setUserReaction(userReact?.type || null);
+      }
+    } catch (error) {
+      console.error('Error fetching comment reactions:', error);
     }
   };
 
   const handleReaction = async (reactionType: string) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      toast.error(t('pleaseLoginToReact'));
-      return;
-    }
-
-    setLoading(true);
-    setShowReactionPicker(false);
-
-    if (userReaction === reactionType) {
-      // Remove reaction
-      const { error } = await supabase
-        .from('reactions')
-        .delete()
-        .eq('comment_id', commentId)
-        .eq('user_id', user.id);
-
-      if (!error) {
-        setUserReaction(null);
-        navigator.vibrate?.(10);
-        onReactionChange?.();
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        toast.error(t('pleaseLoginToReact'));
+        return;
       }
-    } else {
-      // Update or insert reaction
-      if (userReaction) {
-        // Delete existing first
-        await supabase
+
+      setLoading(true);
+      setShowReactionPicker(false);
+
+      if (userReaction === reactionType) {
+        const { error } = await supabase
           .from('reactions')
           .delete()
           .eq('comment_id', commentId)
           .eq('user_id', user.id);
-      }
-      
-      const { error } = await supabase
-        .from('reactions')
-        .insert({
-          comment_id: commentId,
-          user_id: user.id,
-          type: reactionType,
-        });
 
-      if (!error) {
-        setUserReaction(reactionType);
-        navigator.vibrate?.(10);
-        onReactionChange?.();
+        if (!error) {
+          setUserReaction(null);
+          navigator.vibrate?.(10);
+          onReactionChange?.();
+        } else {
+          throw error;
+        }
+      } else {
+        if (userReaction) {
+          await supabase
+            .from('reactions')
+            .delete()
+            .eq('comment_id', commentId)
+            .eq('user_id', user.id);
+        }
+        
+        const { error } = await supabase
+          .from('reactions')
+          .insert({
+            comment_id: commentId,
+            user_id: user.id,
+            type: reactionType,
+          });
+
+        if (!error) {
+          setUserReaction(reactionType);
+          navigator.vibrate?.(10);
+          onReactionChange?.();
+        } else {
+          throw error;
+        }
       }
+    } catch (error) {
+      console.error('Comment reaction error:', error);
+      toast.error(t('cannotUpdateReaction'));
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   const handleMouseEnter = () => {

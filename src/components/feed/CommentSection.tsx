@@ -261,6 +261,14 @@ export const CommentSection = ({ postId, onCommentAdded }: CommentSectionProps) 
                     setMediaUrl(null);
                     setMediaType(null);
                   }}
+                  onGifSelect={(url) => {
+                    setMediaUrl(url);
+                    setMediaType('image');
+                  }}
+                  onStickerSelect={(url) => {
+                    setMediaUrl(url);
+                    setMediaType('image');
+                  }}
                 />
                 
                 <div className="relative">
