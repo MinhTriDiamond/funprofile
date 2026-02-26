@@ -1,89 +1,129 @@
 
 
-# Khoi phuc 5 video livestream mo coi va xu ly 37 posts live khong co recording
+# Tinh nang Goi y Tim kiem tu Lich su (Search History Suggestions)
 
-## Tong quan tinh hinh
+## Tong quan
 
-### 5 sessions mo coi (co recording `done`, khong co `post_id`)
+Nang cap InlineSearch hien tai de hien thi lich su tim kiem khi user focus vao o search (truoc khi go), va loc lich su theo prefix khi go. Ket hop localStorage (nhanh) voi bang `search_history` tren cloud (dong bo giua thiet bi).
 
-| # | Username | Session ID | Recording chunks | Output URL |
-|---|----------|-----------|-----------------|------------|
-| 1 | thuhuyen | 4ace544e... | 578 chunks | manifest.json |
-| 2 | angelthuongchieu | b25d7fd0... | 5 chunks | manifest.json |
-| 3 | Angellam | 060cf1a4... | 5 chunks | manifest.json |
-| 4 | angelthanhtien | f5a93e36... | 42 chunks | manifest.json |
-| 5 | angelquangvu | ffff7e4a... | 3 chunks | manifest.json |
+## Thay doi
 
-### 37 posts live khong co video_url
-- Phan lon co `recording_status = 'idle'` hoac khong co chunked_recording nao
-- Nghia la recording chua bao gio bat dau hoac da that bai
-- Khong co du lieu video de khoi phuc
+### 1. TAO BANG: `search_history` (DB migration)
 
-## Ke hoach thuc hien
+```sql
+CREATE TABLE search_history (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  query TEXT NOT NULL,
+  type TEXT NOT NULL DEFAULT 'text',  -- 'text' | 'user' | 'post'
+  metadata JSONB DEFAULT '{}',
+  use_count INTEGER DEFAULT 1,
+  last_used_at TIMESTAMPTZ DEFAULT now(),
+  created_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(user_id, query, type)
+);
 
-### Buoc 1: Tao edge function `recover-orphan-livestreams`
+-- RLS: user chi doc/ghi cua minh
+ALTER TABLE search_history ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users manage own history" ON search_history
+  FOR ALL USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
 
-Tao mot edge function chay 1 lan (one-shot) de:
-
-**A) Khoi phuc 5 session mo coi:**
-- Voi moi session co `post_id IS NULL` va `chunked_recordings.status = 'done'`:
-  1. Tao post moi trong bang `posts` voi:
-     - `user_id` = session.host_user_id
-     - `content` = session.title hoac "Phat lai livestream"
-     - `post_type` = 'live'
-     - `video_url` = recording.output_url (manifest.json URL)
-     - `visibility` = 'public'
-     - `created_at` = session.started_at (de hien dung vi tri thoi gian)
-     - `metadata` = `{ live_title, live_status: 'ended', channel_name, agora_channel, live_session_id, playback_url, ended_at }`
-  2. Cap nhat `live_sessions.post_id` = post.id moi tao
-
-**B) Cap nhat 37 posts khong co recording:**
-- Voi moi post co `post_type = 'live'` va `video_url IS NULL`:
-  - Kiem tra co chunked_recording `status = 'done'` lien ket khong
-  - Neu co: cap nhat `video_url` = recording.output_url
-  - Neu khong co: cap nhat `metadata` them truong `recording_failed: true` de UI biet hien thi thong bao phu hop
-
-### Buoc 2: Cap nhat UI trong `FacebookPostCard.tsx`
-
-- Khi `post_type = 'live'` va `metadata.recording_failed = true`:
-  - Hien thi thong bao "Phien live nay khong co ban ghi" thay vi placeholder "Dang xu ly..."
-  - Van giu post hien thi (khong an)
-
-### Buoc 3: Goi edge function 1 lan de chay recovery
-
-- Deploy va curl edge function de thuc hien khoi phuc
-- Kiem tra ket qua tra ve (so post tao, so post cap nhat)
-
-## Chi tiet ky thuat
-
-### Edge function `recover-orphan-livestreams/index.ts`
-
-```text
-Logic:
-1. Query live_sessions WHERE post_id IS NULL
-   JOIN chunked_recordings WHERE status = 'done'
-2. Cho moi row: INSERT posts, UPDATE live_sessions.post_id
-3. Query posts WHERE post_type = 'live' AND video_url IS NULL
-   LEFT JOIN live_sessions -> chunked_recordings
-4. Neu co recording done: UPDATE posts.video_url
-5. Neu khong co: UPDATE posts.metadata jsonb_set recording_failed = true
-6. Return summary JSON
+-- Index cho query nhanh
+CREATE INDEX idx_search_history_user_recent ON search_history(user_id, last_used_at DESC);
 ```
 
-Su dung supabase service role key de bypass RLS.
+### 2. TAO MOI: `src/lib/searchHistory.ts`
 
-### FacebookPostCard.tsx thay doi
+Service quan ly lich su tim kiem (localStorage + cloud sync):
+
+- **Cau truc item**: `{ id, query, type, metadata, useCount, lastUsedAt, createdAt }`
+- **localStorage key**: `fun_search_history_v1`
+- **Max items**: 30 (xoa cu nhat khi vuot)
+- **Cac ham chinh**:
+  - `getHistory()`: doc tu localStorage
+  - `addToHistory(query, type, metadata)`: upsert (neu trung thi update lastUsedAt + useCount++)
+  - `removeFromHistory(id)`: xoa 1 item
+  - `clearHistory()`: xoa tat ca
+  - `syncFromCloud(userId)`: fetch 20 item gan nhat tu bang `search_history`, merge voi local (dedupe theo query+type)
+  - `syncToCloud(userId, item)`: upsert len bang `search_history`
+  - `getFilteredHistory(prefix)`: loc theo prefix, sap xep theo lastUsedAt desc, tra ve toi da 10 item
+
+### 3. TAO MOI: `src/hooks/useSearchHistory.ts`
+
+Custom hook bao boc searchHistory service:
+
+- Load history khi mount (local + cloud merge 1 lan)
+- Expose: `history`, `filteredHistory(prefix)`, `addItem()`, `removeItem(id)`, `clearAll()`, `isEnabled` (setting toggle)
+- Doc setting `fun_search_history_enabled` tu localStorage (default: true)
+- Khi `isEnabled = false`: khong luu moi, van cho phep xoa
+
+### 4. CAP NHAT: `src/components/layout/InlineSearch.tsx`
+
+Thay doi chinh trong component hien tai:
+
+**A) Hien thi lich su khi focus (chua go gi):**
+- Khi `isExpanded = true` va `searchQuery === ''`:
+  - Hien dropdown "Tim kiem gan day" voi toi da 10 item
+  - Moi item co icon Clock (text) hoac Avatar (user), text query, nut X xoa
+  - Footer: "Xoa tat ca lich su" link
+
+**B) Hien thi goi y khi go:**
+- Khi `searchQuery.length >= 1`:
+  - Nhom 1: "Gan day" — loc history theo prefix (toi da 5 item)
+  - Nhom 2: "Goi y" — ket qua search tu server (giu nguyen logic hien tai, nhung chi hien khi query >= 2 ky tu)
+- Highlight phan text khop trong moi item
+
+**C) Luu lich su khi search:**
+- Khi user thuc hien search (debounced query >= 2):
+  - Goi `addItem(query, 'text')`
+  - Dong thoi sync len cloud
+- Khi user click vao profile result:
+  - Goi `addItem('@' + username, 'user', { userId, username, avatarUrl })`
+
+**D) Dropdown structure moi:**
 
 ```text
-// Trong phan render live post:
-// Thay vi chi kiem tra metadata?.live_status === 'ended' && mediaItems.length === 0
-// Them kiem tra metadata?.recording_failed === true
-// => Hien thi "Phien live nay khong co ban ghi" (thay vi "Dang xu ly...")
++------------------------------------+
+| [Clock] "minh anh"            [X]  |  <- History item
+| [Avatar] @thuhuyen             [X]  |  <- User history item  
+| [Clock] "livestream"          [X]  |
+|                                    |
+| Xoa tat ca lich su                 |
++------------------------------------+
 ```
+
+Khi go "mi":
+```text
+| --- Gan day ---                    |
+| [Clock] "minh anh"            [X]  |  <- filtered by "mi"
+| --- Goi y ---                      |
+| [Avatar] MinhDev                   |  <- server result
+| [Avatar] MinhAnh99                 |  <- server result
++------------------------------------+
+```
+
+### 5. (OPTIONAL) Setting toggle
+
+Them vao trang Settings hien co:
+- Toggle "Luu lich su tim kiem" (on/off)
+- Khi tat: ngung luu, hien nut "Xoa lich su hien tai"
+- Luu vao localStorage key `fun_search_history_enabled`
+
+## Thu tu trien khai
+
+1. Tao bang `search_history` (migration)
+2. Tao `src/lib/searchHistory.ts` (service doc lap)
+3. Tao `src/hooks/useSearchHistory.ts` (hook)
+4. Cap nhat `InlineSearch.tsx` (tich hop UI)
 
 ## Ket qua ky vong
 
-- 5 video livestream cua thuhuyen, angelthuongchieu, Angellam, angelthanhtien, angelquangvu duoc khoi phuc va hien thi trong feed voi player chuan
-- 37 posts live khong co recording se hien thi thong bao ro rang thay vi placeholder misleading
-- Khong anh huong den cac post/video khac
+- Focus o search => hien "Tim kiem gan day" ngay lap tuc (tu localStorage, khong doi server)
+- Go ky tu => loc lich su + goi y tu server
+- Click item lich su => dien vao o search va chay search
+- Xoa 1 item / xoa tat ca hoat dong muot
+- Lich su toi da 30 item, khong trung, moi nhat len dau
+- Dong bo giua thiet bi qua cloud (khi dang nhap)
+- Khong lam lag mobile (localStorage la chinh, cloud la background sync)
 
