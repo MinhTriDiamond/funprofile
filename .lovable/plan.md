@@ -1,47 +1,36 @@
 
 
-# Nguyên nhân và Giải pháp: Video Live Replay dừng phát sau một lúc
+# Xóa nền video Tết, ẩn nút Nhạc & nút Chọn hình nền
 
-## Nguyên nhân gốc
+## Tóm tắt
+Xóa toàn bộ video nền Tết (TetBackground), hiệu ứng Valentine glow (TetFlowerOverlay), nút chọn hình nền (TetBackgroundSelector), và nút nhạc (ValentineMusicButton) khỏi tất cả các trang. Nền sẽ trở về trắng mặc định.
 
-`ChunkedVideoPlayer` hiện tại sử dụng MSE (MediaSource Extensions) để phát progressive, nhưng có **2 lỗi nghiêm trọng**:
-
-### 1. SourceBuffer QuotaExceededError (lỗi chính)
-Trình duyệt giới hạn dung lượng SourceBuffer (thường khoảng 100-150MB). Với video dài (30 phút = ~483 chunks), player cứ append tất cả chunks vào SourceBuffer mà **không bao giờ xóa dữ liệu cũ**. Khi buffer đầy → `appendBuffer()` throw `QuotaExceededError` → không có error handler → video dừng, không hiển thị hình.
-
-```text
-[Chunk 1][Chunk 2]...[Chunk 100] → Buffer đầy → QuotaExceededError → ❌ Video chết
-```
-
-### 2. Không có error listener trên SourceBuffer
-Khi SourceBuffer gặp lỗi (quota, decode error), không có `onerror` handler → lỗi bị nuốt, UI vẫn hiện video tag nhưng không còn frame nào → màn hình đen/trống.
-
-## Giải pháp: Buffer Management + Error Recovery
-
-### File cần sửa
+## Các file cần sửa
 
 | File | Thay đổi |
 |------|----------|
-| `src/modules/live/components/ChunkedVideoPlayer.tsx` | Thêm buffer management: tự động xóa dữ liệu cũ khi buffer lớn. Thêm error handling cho SourceBuffer. Thêm buffering indicator khi user tua. |
+| `src/App.tsx` | Xóa import và render `TetBackground`, `TetFlowerOverlay`, `TetBackgroundProvider` |
+| `src/components/layout/FacebookNavbar.tsx` | Xóa import và tất cả render `TetBackgroundSelector`, `ValentineMusicButton` |
+| `src/pages/Auth.tsx` | Xóa import và render `TetBackgroundSelector`, `ValentineMusicButton` |
+| `src/pages/LawOfLight.tsx` | Xóa import và render `TetBackgroundSelector`, `ValentineMusicButton` |
 
-### Chi tiết kỹ thuật
+## Chi tiết
 
-1. **Buffer cleanup**: Trước khi append chunk mới, kiểm tra tổng buffered data. Nếu vượt ngưỡng (ví dụ 60MB hoặc 60 giây trước `currentTime`), gọi `sourceBuffer.remove(start, end)` để giải phóng vùng đã phát qua.
+### 1. `src/App.tsx`
+- Xóa 3 import: `TetBackground`, `TetFlowerOverlay`, `TetBackgroundProvider`
+- Xóa `<TetBackgroundProvider>` wrapper (giữ children)
+- Xóa `<TetBackground />` và `<TetFlowerOverlay />`
+- Nền sẽ trở về `bg-background` (trắng) từ CSS variables mặc định
 
-2. **QuotaExceededError handling**: Wrap `appendBuffer()` trong try-catch. Khi gặp QuotaExceeded:
-   - Xóa buffer cũ (trước currentTime - 30s)
-   - Retry append sau khi `updateend`
+### 2. `src/components/layout/FacebookNavbar.tsx`
+- Xóa import `TetBackgroundSelector` và `ValentineMusicButton`
+- Xóa 6 chỗ render: 2 cho mobile, 2 cho desktop logged-in, 2 cho desktop not-logged-in
 
-3. **SourceBuffer error listener**: Thêm `sourceBuffer.addEventListener('error', ...)` để bắt decode errors, set trạng thái lỗi cho UI.
+### 3. `src/pages/Auth.tsx`
+- Xóa import và render 2 nút trong `div.absolute.top-4.right-4`
 
-4. **Buffering indicator**: Lắng nghe `video.waiting` event để hiện spinner khi video đang đợi data (ví dụ khi user tua tới vùng chưa tải).
+### 4. `src/pages/LawOfLight.tsx`
+- Xóa import và render 2 nút trong `div.fixed.top-4.right-4`
 
-5. **Lazy chunk loading**: Chỉ tải chunks xung quanh vị trí phát hiện tại (buffer ahead ~30s). Khi user tua, tính lại chunk cần tải. Điều này giảm tải mạng và bộ nhớ đáng kể cho video dài.
-
-```text
-Sau khi sửa:
-Video 30 phút, user đang xem phút 15:
-[...đã xóa...][Chunk 220..230 trong buffer][đang tải Chunk 231..240]
-                     ↑ currentTime              ↑ buffer ahead ~30s
-```
+Sau khi sửa, nền sẽ là **trắng mặc định** (`hsl(45 30% 97%)` light theme), không còn video overlay hay glow effect nào.
 
