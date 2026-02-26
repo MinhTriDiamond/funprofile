@@ -2,6 +2,7 @@ import { useState, memo, useCallback, useRef, lazy, Suspense } from 'react';
 import { ImageViewer } from './ImageViewer';
 import { LazyImage } from '@/components/ui/LazyImage';
 import { LazyVideo } from '@/components/ui/LazyVideo';
+import { SocialVideoPlayer } from '@/components/ui/SocialVideoPlayer';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { ChevronLeft, ChevronRight, X, Radio, Play, Download, RotateCcw, RotateCw, Loader2 } from 'lucide-react';
 import { downloadChunkedVideo } from '@/utils/chunkedVideoDownload';
@@ -463,31 +464,20 @@ const MediaGalleryViewer = memo(({ media, isOpen, onClose, currentIndex, onPrev,
                 </Suspense>
               ) : (
                 <>
-                  <video
-                    ref={videoRef}
-                    key={currentMedia.url}
-                    src={currentMedia.url}
-                    controls
-                    autoPlay
-                    className="max-w-full max-h-[85vh] object-contain"
-                  />
-                  {/* Skip buttons for video */}
-                  <button
-                    onClick={() => skipVideo(-15)}
-                    className="absolute left-8 top-1/2 -translate-y-1/2 z-50 w-14 h-14 bg-black/40 hover:bg-black/70 rounded-full flex flex-col items-center justify-center text-white transition-colors"
-                    title="Tua lùi 15 giây"
+                  <SocialVideoPlayer
+                    videoRef={videoRef as React.RefObject<HTMLVideoElement>}
+                    showControls
+                    className="max-w-full max-h-[85vh]"
                   >
-                    <RotateCcw className="w-6 h-6" />
-                    <span className="text-[10px] font-bold -mt-0.5">15</span>
-                  </button>
-                  <button
-                    onClick={() => skipVideo(15)}
-                    className="absolute right-8 top-1/2 -translate-y-1/2 z-50 w-14 h-14 bg-black/40 hover:bg-black/70 rounded-full flex flex-col items-center justify-center text-white transition-colors"
-                    title="Tua tới 15 giây"
-                  >
-                    <RotateCw className="w-6 h-6" />
-                    <span className="text-[10px] font-bold -mt-0.5">15</span>
-                  </button>
+                    <video
+                      ref={videoRef}
+                      key={currentMedia.url}
+                      src={currentMedia.url}
+                      autoPlay
+                      playsInline
+                      className="max-w-full max-h-[85vh] object-contain"
+                    />
+                  </SocialVideoPlayer>
                 </>
               )
             ) : (

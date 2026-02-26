@@ -7,6 +7,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Loader2 } from 'lucide-react';
+import { SocialVideoPlayer } from '@/components/ui/SocialVideoPlayer';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -356,19 +357,24 @@ export function ChunkedVideoPlayer({
   }
 
   return (
-    <div className={`relative ${className}`}>
-      {(loading || buffering) && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-10">
-          <Loader2 className="h-8 w-8 animate-spin text-white/70" />
-        </div>
-      )}
-      <video
-        ref={videoRef}
-        controls={controls}
-        playsInline
-        className="w-full h-full object-contain"
-      />
-    </div>
+    <SocialVideoPlayer
+      videoRef={videoRef as React.RefObject<HTMLVideoElement>}
+      showControls={controls}
+      className={className}
+    >
+      <div className="relative w-full h-full">
+        {(loading || buffering) && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-10">
+            <Loader2 className="h-8 w-8 animate-spin text-white/70" />
+          </div>
+        )}
+        <video
+          ref={videoRef}
+          playsInline
+          className="w-full h-full object-contain"
+        />
+      </div>
+    </SocialVideoPlayer>
   );
 }
 

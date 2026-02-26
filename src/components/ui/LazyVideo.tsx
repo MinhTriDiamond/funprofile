@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, VideoHTMLAttributes, memo, lazy, Suspense 
 import { cn } from '@/lib/utils';
 import { isSlowConnection, prefersReducedMotion } from '@/utils/performanceOptimizer';
 import { isStreamUrl } from '@/utils/streamUpload';
+import { SocialVideoPlayer } from './SocialVideoPlayer';
 
 // Lazy load StreamPlayer to reduce initial bundle size (~154KB savings)
 const StreamPlayer = lazy(() => import('./StreamPlayer').then(mod => ({ default: mod.StreamPlayer })));
@@ -210,25 +211,30 @@ export const LazyVideo = memo(({
             />
           </Suspense>
         ) : (
-          <video
-            ref={videoRef}
-            src={src}
-            poster={effectivePoster}
-            controls={showControls}
-            muted={muted}
-            loop={loop}
-            playsInline
-            preload="metadata"
-            onLoadedData={handleLoadedData}
-            onLoadedMetadata={handleLoadedMetadata}
-            onCanPlay={handleCanPlay}
-            onError={handleError}
+          <SocialVideoPlayer
+            videoRef={videoRef as React.RefObject<HTMLVideoElement>}
+            showControls={showControls}
             className={cn(
-              'w-full h-full object-cover transition-opacity duration-300',
+              'w-full h-full transition-opacity duration-300',
               isLoaded ? 'opacity-100' : 'opacity-0'
             )}
-            {...props}
-          />
+          >
+            <video
+              ref={videoRef}
+              src={src}
+              poster={effectivePoster}
+              muted={muted}
+              loop={loop}
+              playsInline
+              preload="metadata"
+              onLoadedData={handleLoadedData}
+              onLoadedMetadata={handleLoadedMetadata}
+              onCanPlay={handleCanPlay}
+              onError={handleError}
+              className="w-full h-full object-cover"
+              {...props}
+            />
+          </SocialVideoPlayer>
         )
       )}
     </div>
