@@ -179,6 +179,7 @@ export const calculateLightScore = (
 
 // Mint eligibility threshold
 export const MIN_LIGHT_SCORE_FOR_MINT = 10; // Minimum score to be eligible
+export const MIN_MINT_AMOUNT = 200; // Minimum FUN to create a mint request
 export const MIN_INTEGRITY_SCORE = 0.3; // Below this = suspected bot/spam
 
 // Cooldown settings
