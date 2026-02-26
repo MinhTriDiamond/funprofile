@@ -19,10 +19,8 @@ interface ReactionSummaryProps {
 const REACTION_ICONS: Record<string, { icon: string; bgColor: string }> = {
   like: { icon: '👍', bgColor: 'bg-blue-500' },
   love: { icon: '❤️', bgColor: 'bg-red-500' },
-  care: { icon: '🥰', bgColor: 'bg-orange-500' },
   haha: { icon: '😂', bgColor: 'bg-yellow-500' },
   wow: { icon: '😮', bgColor: 'bg-yellow-500' },
-  pray: { icon: '🙏', bgColor: 'bg-purple-500' },
   sad: { icon: '😢', bgColor: 'bg-yellow-500' },
   angry: { icon: '😠', bgColor: 'bg-orange-500' },
 };

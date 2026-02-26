@@ -9,10 +9,10 @@ import { usePplpEvaluate } from '@/hooks/usePplpEvaluate';
 const REACTION_TYPES = [
   { type: 'like', icon: '👍', labelKey: 'like' as const, color: '#3b82f6' },
   { type: 'love', icon: '❤️', labelKey: 'reactionLove' as const, color: '#ef4444' },
-  { type: 'care', icon: '🥰', labelKey: 'reactionCare' as const, color: '#f97316' },
-  { type: 'wow', icon: '😮', labelKey: 'reactionWow' as const, color: '#eab308' },
   { type: 'haha', icon: '😂', labelKey: 'haha' as const, color: '#eab308' },
-  { type: 'pray', icon: '🙏', labelKey: 'reactionGratitude' as const, color: '#a855f7' },
+  { type: 'wow', icon: '😮', labelKey: 'reactionWow' as const, color: '#eab308' },
+  { type: 'sad', icon: '😢', labelKey: 'reactionSad' as const, color: '#eab308' },
+  { type: 'angry', icon: '😠', labelKey: 'reactionAngry' as const, color: '#f97316' },
 ];
 
 const VIEWPORT_PADDING = 12; // Safe padding from screen edges

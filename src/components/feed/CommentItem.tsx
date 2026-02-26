@@ -5,6 +5,7 @@ import { MessageCircle, Trash2, Share2, Flag, MoreHorizontal } from 'lucide-reac
 import { CommentReactionButton } from './CommentReactionButton';
 import { CommentReplyForm } from './CommentReplyForm';
 import { CommentMediaViewer } from './CommentMediaViewer';
+import { TwemojiText } from './TwemojiText';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
@@ -105,8 +106,18 @@ export const CommentItem = ({
     toast.info(t('reportSent'));
   };
 
-  const mediaUrl = comment.image_url || comment.video_url;
-  const mediaType = comment.image_url ? 'image' : 'video';
+  // Parse media URL with g: and s: prefix support
+  const rawMediaUrl = comment.image_url || comment.video_url;
+  let mediaUrl = rawMediaUrl;
+  let mediaType: 'image' | 'video' | 'gif' | 'sticker' = comment.image_url ? 'image' : 'video';
+
+  if (rawMediaUrl?.startsWith('g:')) {
+    mediaUrl = rawMediaUrl.slice(2);
+    mediaType = 'gif';
+  } else if (rawMediaUrl?.startsWith('s:')) {
+    mediaUrl = rawMediaUrl.slice(2);
+    mediaType = 'sticker';
+  }
 
   const visibleReplies = showAllReplies 
     ? comment.replies 
@@ -143,11 +154,23 @@ export const CommentItem = ({
               </Link>
             </div>
             
-            <p className="text-sm break-words whitespace-pre-wrap">{linkifyText(comment.content)}</p>
+            <p className="text-sm break-words whitespace-pre-wrap"><TwemojiText text={comment.content} emojiSize={18} /></p>
             
             {mediaUrl && (
               <div className="mt-2">
-                {mediaType === 'image' ? (
+                {mediaType === 'gif' ? (
+                  <img
+                    src={mediaUrl}
+                    alt="GIF"
+                    className="max-w-[280px] rounded-xl border border-border"
+                  />
+                ) : mediaType === 'sticker' ? (
+                  <img
+                    src={mediaUrl}
+                    alt="Sticker"
+                    className="w-24 h-24 object-contain"
+                  />
+                ) : mediaType === 'image' ? (
                   <img
                     src={mediaUrl}
                     alt="Comment media"
@@ -282,7 +305,7 @@ export const CommentItem = ({
         </div>
       </div>
 
-      {mediaUrl && (
+      {mediaUrl && (mediaType === 'image' || mediaType === 'video') && (
         <CommentMediaViewer
           mediaUrl={mediaUrl}
           mediaType={mediaType}

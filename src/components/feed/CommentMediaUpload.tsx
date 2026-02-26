@@ -1,22 +1,31 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, lazy, Suspense } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { uploadToR2 } from '@/utils/r2Upload';
 import { Button } from '@/components/ui/button';
-import { Image, Video, X } from 'lucide-react';
+import { Image, Video, X, Smile, Sticker } from 'lucide-react';
 import { toast } from 'sonner';
 import { compressImage, FILE_LIMITS, getVideoDuration } from '@/utils/imageCompression';
+
+const GifPicker = lazy(() => import('./GifPicker'));
+const StickerPicker = lazy(() => import('./StickerPicker'));
 
 interface CommentMediaUploadProps {
   onMediaUploaded: (url: string, type: 'image' | 'video') => void;
   onMediaRemoved: () => void;
+  onGifSelect?: (gifUrl: string) => void;
+  onStickerSelect?: (stickerUrl: string) => void;
 }
 
 export const CommentMediaUpload = ({ 
   onMediaUploaded, 
-  onMediaRemoved 
+  onMediaRemoved,
+  onGifSelect,
+  onStickerSelect,
 }: CommentMediaUploadProps) => {
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<{ url: string; type: 'image' | 'video' } | null>(null);
+  const [showGifPicker, setShowGifPicker] = useState(false);
+  const [showStickerPicker, setShowStickerPicker] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'video') => {
@@ -133,6 +142,58 @@ export const CommentMediaUpload = ({
           >
             <Video className="w-4 h-4" />
           </Button>
+
+          {/* GIF button */}
+          <div className="relative">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => { setShowGifPicker(!showGifPicker); setShowStickerPicker(false); }}
+              className="text-muted-foreground hover:text-foreground text-xs font-bold"
+            >
+              GIF
+            </Button>
+            {showGifPicker && (
+              <div className="absolute bottom-full left-0 mb-2 z-50">
+                <Suspense fallback={<div className="w-80 h-48 bg-card rounded-xl animate-pulse" />}>
+                  <GifPicker
+                    onSelect={(url) => {
+                      onGifSelect?.(`g:${url}`);
+                      setShowGifPicker(false);
+                    }}
+                    onClose={() => setShowGifPicker(false)}
+                  />
+                </Suspense>
+              </div>
+            )}
+          </div>
+
+          {/* Sticker button */}
+          <div className="relative">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => { setShowStickerPicker(!showStickerPicker); setShowGifPicker(false); }}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <Sticker className="w-4 h-4" />
+            </Button>
+            {showStickerPicker && (
+              <div className="absolute bottom-full left-0 mb-2 z-50">
+                <Suspense fallback={<div className="w-80 h-48 bg-card rounded-xl animate-pulse" />}>
+                  <StickerPicker
+                    onSelect={(url) => {
+                      onStickerSelect?.(`s:${url}`);
+                      setShowStickerPicker(false);
+                    }}
+                    onClose={() => setShowStickerPicker(false)}
+                  />
+                </Suspense>
+              </div>
+            )}
+          </div>
         </div>
       )}
 

@@ -6,6 +6,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Smile } from 'lucide-react';
+import { TwemojiImage } from '@/components/ui/TwemojiImage';
 
 const EMOJI_CATEGORIES = {
   'Cảm xúc': ['😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😙', '🥲', '😋', '😛', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐', '😑', '😶', '😏', '😒', '🙄', '😬', '😌', '😔', '😪', '🤤', '😴', '😷', '🤒', '🤕', '🤢', '🤮', '🤧', '🥵', '🥶', '🥴', '😵', '🤯', '🤠', '🥳', '🥸', '😎', '🤓', '🧐'],
@@ -58,9 +59,9 @@ export const EmojiPicker = ({ onEmojiSelect }: EmojiPickerProps) => {
             <button
               key={index}
               onClick={() => handleEmojiClick(emoji)}
-              className="w-8 h-8 flex items-center justify-center text-xl hover:bg-secondary rounded transition-colors"
+              className="w-8 h-8 flex items-center justify-center hover:bg-secondary rounded transition-all hover:scale-110"
             >
-              {emoji}
+              <TwemojiImage emoji={emoji} size={22} />
             </button>
           ))}
         </div>
