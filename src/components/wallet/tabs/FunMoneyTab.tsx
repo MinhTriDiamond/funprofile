@@ -1,6 +1,7 @@
 import { useCallback, Component, type ReactNode } from 'react';
 import { MemoizedLightScoreDashboard } from '../LightScoreDashboard';
 import { AttesterSigningPanel } from '../AttesterSigningPanel';
+import { FunMoneyGuide } from '../FunMoneyGuide';
 import { useAttesterSigning } from '@/hooks/useAttesterSigning';
 import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
@@ -78,6 +79,9 @@ function FunMoneyTabInner({
           onSign={signRequest}
         />
       )}
+
+      {/* Hướng dẫn Mint FUN Money */}
+      <FunMoneyGuide />
 
       {/* Light Score Dashboard */}
       <MemoizedLightScoreDashboard
