@@ -1,67 +1,103 @@
 
-Mình đã kiểm tra rất kỹ theo cả 3 lớp: dữ liệu backend, đường dẫn render ở feed, và log runtime phía client. Kết luận hiện tại:
 
-## Kết luận điều tra
+# Nang cap Video Player cho FUN Profile
 
-1. Đây không phải lỗi dữ liệu của riêng 3 user.
-- Bản ghi live của `@leminhtri`, `@angeldieungoc`, `@AngelGiau` đều có trạng thái kết thúc bình thường.
-- Các post live đều trỏ đúng tới `manifest.json`.
-- Bảng chunk ghi nhận đủ dải `seq` (0..max), không thiếu chunk, request chunk trả `200`.
+## Tong quan
 
-2. Fix trước đó ở feed đã có hiệu lực trong code.
-- `MediaGrid.tsx` đã dùng `FeedVideo` và đã route manifest URL sang `ChunkedVideoPlayer` ở tất cả layout.
+Tao component `SocialVideoPlayer` moi, thay the native `controls` o tat ca cac player hien tai (LazyVideo, ChunkedVideoPlayer, Gallery viewer). Player moi se co giao dien chuyen nghiep kieu Facebook/YouTube mini player.
 
-3. Lỗi thực tế đang xảy ra ở tầng phát MSE (player runtime).
-- Console có lỗi lặp lại: `[ChunkedVideoPlayer] SourceBuffer error` (trong `ChunkedVideoPlayer.tsx`).
-- Tức là đã đi đúng vào player chunked, nhưng pipeline append vào `SourceBuffer` bị hỏng trong lúc phát.
+## Cac file thay doi
 
-## Nguyên nhân gốc có khả năng cao (đã xác nhận từ code)
+### 1. TAO MOI: `src/components/ui/SocialVideoPlayer.tsx`
 
-### A) Append chunk không đảm bảo đúng thứ tự `seq`
-Trong `ChunkedVideoPlayer`, nhiều chunk được fetch song song, sau đó `queue.push(data)` theo thứ tự hoàn thành network, không theo `seq`.
-- Với WebM chunked stream, append sai thứ tự rất dễ gây `SourceBuffer error`.
-- Đây phù hợp với hiện tượng: dữ liệu có, request 200, nhưng không phát được.
+Component chinh — custom video controls overlay bao quanh mot `<video>` element (truyen vao qua ref hoac children).
 
-### B) Chuỗi MIME có thể bị ghép sai
-Manifest hiện có:
-- `mime_type: "video/webm;codecs=vp8,opus"`
-- `codec: "vp8,opus"`
+**Chuc nang:**
+- **Progress bar**: thanh progress thuc dua tren `timeupdate` event, hien thi buffered range, ho tro click/drag de seek
+- **Thoi gian**: hien thi `currentTime / duration` (format mm:ss hoac hh:mm:ss), dung `formatDurationTime` tu `src/lib/formatters.ts`
+- **Controls overlay**: hien/an khi hover (desktop) hoac tap (mobile), tu dong an sau 3 giay
+- **Nut trung tam**: Play/Pause icon lon o giua video
+- **Thanh controls duoi**: play/pause, progress bar co seek, time display, volume slider (desktop), mute toggle, toc do phat (0.5x-2x), fullscreen, PiP
+- **Mobile UX**: tap 1 lan show controls, double-tap trai/phai tua +-10s, progress bar lon hon de de keo
+- **Ket thuc video**: hien nut Replay
+- **Skeleton loading**: hien skeleton khi video chua load xong
 
-Nhưng player lại ghép:
-- `${mime_type}; codecs="${codec}"`  
-=> có thể thành chuỗi MIME không chuẩn (trùng codecs), làm nhánh MSE kém ổn định trên một số trình duyệt.
+**Khong lam:**
+- Mini floating player (phuc tap, chua can thiet)
+- Double tap heart reaction (khong lien quan den player)
+- Adaptive streaming HLS (da co StreamPlayer xu ly rieng)
 
-## Kế hoạch sửa (đề xuất triển khai)
+### 2. CAP NHAT: `src/components/ui/LazyVideo.tsx`
 
-### 1) Sửa `src/modules/live/components/ChunkedVideoPlayer.tsx` (trọng tâm)
-- Chuẩn hoá MIME:
-  - Nếu `mime_type` đã chứa `codecs`, dùng nguyên bản.
-  - Chỉ nối `; codecs="..."` khi `mime_type` chưa có codecs.
-- Đảm bảo append theo thứ tự `seq` tuyệt đối:
-  - Lưu dữ liệu chunk theo map `seq -> ArrayBuffer`.
-  - Dùng `nextAppendSeq` để chỉ append chunk kế tiếp; chunk đến sớm thì giữ chờ.
-  - Không append theo thứ tự trả về của network.
-- Giảm rủi ro race:
-  - Tách rõ `fetching` và `appending`.
-  - Chặn append khi `mediaSource/sourceBuffer` không còn open.
-- Cải thiện fallback:
-  - Khi gặp `SourceBuffer error` lặp lại, fallback an toàn sang blob path cho session đó (để user vẫn xem được).
+- Thay `controls={showControls}` native bang `SocialVideoPlayer` wrapper
+- Truyen videoRef vao SocialVideoPlayer de no dieu khien video element
+- Giu nguyen logic lazy load, IntersectionObserver, Stream/Chunked routing
 
-### 2) Giữ nguyên `MediaGrid.tsx`
-- Không cần đổi thêm ở feed route nữa (đã đúng).
+### 3. CAP NHAT: `src/modules/live/components/ChunkedVideoPlayer.tsx`
 
-## Cách xác nhận sau khi sửa
+- Thay `controls={controls}` native bang `SocialVideoPlayer` wrapper
+- Truyen videoRef de SocialVideoPlayer dieu khien
 
-Kiểm tra end-to-end đúng luồng bạn yêu cầu:
-1. Vào bài viết live replay của 3 user trên.
-2. Bấm phát trực tiếp trong feed:
-   - Không còn `SourceBuffer error`.
-   - Video bắt đầu chạy, seek hoạt động.
-3. Mở viewer (popup) để đảm bảo cũng phát bình thường.
-4. So sánh 1 video thường (không manifest) để chắc không bị ảnh hưởng ngược.
+### 4. CAP NHAT: `src/components/feed/MediaGrid.tsx`
 
-## Kết quả kỳ vọng sau fix
+- Gallery viewer (dong 466-473): thay native `<video controls>` bang `SocialVideoPlayer`
+- FeedVideo component: khong can doi (da delegate xuong LazyVideo/ChunkedVideoPlayer)
 
-- Replay live phát ổn định cho cả user cũ và mới.
-- Không còn tình trạng “có file/chunk nhưng không xem được”.
-- Không cần migrate dữ liệu hay xử lý lại recording đã lưu.
+### 5. CAP NHAT: `src/components/reels/ReelPlayer.tsx`
+
+- Them SocialVideoPlayer wrapper cho reel playback (tuy chon, chi can progress + time)
+
+## Chi tiet ky thuat cua SocialVideoPlayer
+
+```text
+Props:
+- videoRef: RefObject<HTMLVideoElement>  (bat buoc)
+- showControls?: boolean (default true)
+- autoHideMs?: number (default 3000)
+- className?: string
+- children?: ReactNode (video element)
+
+Internal state:
+- isPlaying, currentTime, duration, buffered, volume, isMuted
+- isFullscreen, playbackRate, showOverlay, isEnded
+- isSeeking (khi drag progress bar)
+
+Events lang nghe tren video element:
+- loadedmetadata -> set duration
+- timeupdate -> set currentTime, tinh progress %
+- progress -> set buffered ranges
+- play/pause -> set isPlaying
+- ended -> set isEnded, hien Replay
+- volumechange -> sync volume/muted state
+
+Progress bar:
+- progressPercent = (currentTime / duration) * 100
+- Chi render khi duration > 0 va !isNaN(duration)
+- Buffered: lay video.buffered.end(video.buffered.length - 1)
+- Click/drag: tinh vi tri % -> video.currentTime = % * duration
+
+Double-tap mobile:
+- Phat hien 2 tap trong 300ms
+- Tap nua trai: currentTime -= 10
+- Tap nua phai: currentTime += 10
+- Hien animation "+10s" / "-10s"
+```
+
+## Thu tu trien khai
+
+1. Tao `SocialVideoPlayer.tsx` (component doc lap, tu test duoc)
+2. Tich hop vao `LazyVideo.tsx` (anh huong tat ca video thuong trong feed)
+3. Tich hop vao `ChunkedVideoPlayer.tsx` (anh huong tat ca live replay)
+4. Cap nhat Gallery viewer trong `MediaGrid.tsx`
+5. (Tuy chon) Cap nhat `ReelPlayer.tsx`
+
+## Ket qua ky vong
+
+- Progress bar chinh xac tu 0% den 100%
+- Hien thi currentTime / duration ro rang
+- Seek muot bang click hoac drag
+- Controls tu dong an, xuat hien khi tuong tac
+- Hoat dong tot tren mobile va desktop
+- Khong gay memory leak (cleanup event listeners)
+- Khong anh huong video upload hay livestream dang phat
+
