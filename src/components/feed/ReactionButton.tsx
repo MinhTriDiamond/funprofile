@@ -5,14 +5,15 @@ import { toast } from 'sonner';
 import { ThumbsUp } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { usePplpEvaluate } from '@/hooks/usePplpEvaluate';
+import { TwemojiImage } from '@/components/ui/TwemojiImage';
 
 const REACTION_TYPES = [
+  { type: 'gratitude', icon: '🙏', labelKey: 'reactionGratitude' as const, color: '#a855f7' },
+  { type: 'care', icon: '🥰', labelKey: 'reactionCare' as const, color: '#f97316' },
   { type: 'like', icon: '👍', labelKey: 'like' as const, color: '#3b82f6' },
   { type: 'love', icon: '❤️', labelKey: 'reactionLove' as const, color: '#ef4444' },
   { type: 'haha', icon: '😂', labelKey: 'haha' as const, color: '#eab308' },
   { type: 'wow', icon: '😮', labelKey: 'reactionWow' as const, color: '#eab308' },
-  { type: 'sad', icon: '😢', labelKey: 'reactionSad' as const, color: '#eab308' },
-  { type: 'angry', icon: '😠', labelKey: 'reactionAngry' as const, color: '#f97316' },
 ];
 
 const VIEWPORT_PADDING = 12; // Safe padding from screen edges
@@ -342,7 +343,7 @@ export const ReactionButton = ({
       >
         {activeReaction ? (
           <>
-            <span className="text-lg sm:text-xl transition-transform duration-200 pointer-events-none">{activeReaction.icon}</span>
+            <span className="text-lg sm:text-xl transition-transform duration-200 pointer-events-none"><TwemojiImage emoji={activeReaction.icon} size={20} /></span>
             <span className="font-semibold text-xs sm:text-sm pointer-events-none" style={{ color: activeReaction.color }}>
               {activeReaction.label}
             </span>
@@ -404,7 +405,7 @@ export const ReactionButton = ({
                 {(hoveredReaction === reaction.type || swipeSelectedReaction === reaction.type) && (
                   <div className="absolute inset-0 rounded-full bg-gradient-to-t from-yellow-400/50 to-transparent animate-pulse" />
                 )}
-                <span className="relative z-10">{reaction.icon}</span>
+                <span className="relative z-10"><TwemojiImage emoji={reaction.icon} size={28} /></span>
                 
                 {/* Label tooltip on hover/swipe */}
                 {(hoveredReaction === reaction.type || swipeSelectedReaction === reaction.type) && (
