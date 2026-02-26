@@ -71,9 +71,7 @@
   }
 
   body {
-    @apply text-foreground;
-    /* Nền trong suốt để video Valentine hiển thị */
-    background: transparent;
+    @apply bg-background text-foreground;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     text-rendering: optimizeSpeed;
   }
@@ -87,7 +85,7 @@
 
 /* Facebook-style Card - Glass effect để hiển thị video Valentine */
 .fb-card {
-  @apply bg-card/80 rounded-lg shadow-sm border border-border;
+  @apply bg-card rounded-lg shadow-sm border border-border;
   contain: layout style paint;
   content-visibility: auto;
   contain-intrinsic-size: auto 300px;
@@ -134,21 +132,20 @@
 @media (max-width: 768px) and (orientation: portrait) {
   
   .fb-card {
-    @apply bg-card/65 rounded-xl;
+    @apply bg-card rounded-xl;
     margin-left: 4px;
     margin-right: 4px;
   }
   
-  /* Navbar trong suốt hơn để thấy video Valentine */
   .fb-header {
-    @apply bg-card/70;
+    @apply bg-card;
   }
 }
 
 /* Mobile Landscape */
 @media (max-width: 768px) and (orientation: landscape) {
   .fb-card {
-    @apply bg-card/70 rounded-xl;
+    @apply bg-card rounded-xl;
     margin-left: 4px;
     margin-right: 4px;
   }
@@ -159,9 +156,8 @@
   @apply hover:bg-muted/50 transition-colors cursor-pointer rounded-lg;
 }
 
-/* Facebook Header Style - Semi-transparent để video Valentine hiển thị */
 .fb-header {
-  @apply bg-card/85 shadow-sm border-b border-border;
+  @apply bg-card shadow-sm border-b border-border;
 }
 
 /* Facebook Icon Button */
@@ -623,21 +619,18 @@ html {
   animation: spin-slow 3s linear infinite;
 }
 
-/* Valentine-themed transparent cards for background visibility */
-/* KHÔNG dùng backdrop-blur để video Valentine hiển thị rõ nét 100% */
 .tet-card {
-  @apply bg-card/80 rounded-xl border border-border;
+  @apply bg-card rounded-xl border border-border;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .tet-card-strong {
-  @apply bg-card/90 rounded-xl border border-border;
+  @apply bg-card rounded-xl border border-border;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
-/* Semi-transparent fb-card for Valentine theme */
 .fb-card-tet {
-  @apply bg-card/80 rounded-lg shadow-sm border border-border;
+  @apply bg-card rounded-lg shadow-sm border border-border;
 }
 
 /* Mobile optimization for Valentine video background */

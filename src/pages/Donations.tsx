@@ -38,7 +38,7 @@ export default function Donations() {
   // isAuthenticated can be false (guest) or true (logged in) - both render the page
 
   return (
-    <div className="min-h-screen bg-muted/30">
+    <div className="min-h-screen bg-background">
       <FacebookNavbar />
       <main data-app-scroll className="fixed inset-x-0 top-[3cm] bottom-0 overflow-y-auto pb-20 lg:pb-0">
         <PullToRefreshContainer onRefresh={handlePullRefresh}>
