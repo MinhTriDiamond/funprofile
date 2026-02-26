@@ -127,7 +127,7 @@ export const CommentItem = ({
   return (
     <div 
       id={`comment-${comment.id}`}
-      className={`space-y-2 ${level > 0 ? 'ml-10 pl-3 border-l-2 border-yellow-400/30 hover:border-yellow-400/60 transition-colors duration-300' : ''}`}
+      className={`space-y-2 ${level > 0 ? `${level >= 2 ? 'ml-4 sm:ml-8' : 'ml-4 sm:ml-10'} pl-3 border-l-2 border-yellow-400/30 hover:border-yellow-400/60 transition-colors duration-300` : ''}`}
     >
       <div className="flex gap-3 group animate-fade-in">
         <Link to={`/profile/${comment.user_id}`}>
@@ -144,7 +144,7 @@ export const CommentItem = ({
         </Link>
         
         <div className="flex-1 min-w-0 space-y-1">
-          <div className="bg-muted/60 rounded-2xl px-4 py-2.5 transition-all duration-300 hover:bg-muted/80 group-hover:shadow-sm">
+          <div className="bg-muted/60 rounded-2xl px-4 py-2.5 transition-all duration-300 hover:bg-muted/80 group-hover:shadow-sm overflow-hidden">
             <div className="flex items-center gap-2 mb-0.5">
               <Link 
                 to={`/profile/${comment.user_id}`}
@@ -154,7 +154,7 @@ export const CommentItem = ({
               </Link>
             </div>
             
-            <p className="text-sm break-words whitespace-pre-wrap"><TwemojiText text={comment.content} emojiSize={18} /></p>
+            <p className="text-sm break-words overflow-hidden whitespace-pre-wrap"><TwemojiText text={comment.content} emojiSize={18} /></p>
             
             {mediaUrl && (
               <div className="mt-2">
@@ -162,7 +162,7 @@ export const CommentItem = ({
                   <img
                     src={mediaUrl}
                     alt="GIF"
-                    className="max-w-[280px] rounded-xl border border-border"
+                    className="max-w-full sm:max-w-[280px] rounded-xl border border-border overflow-hidden"
                   />
                 ) : mediaType === 'sticker' ? (
                   <img
@@ -174,14 +174,14 @@ export const CommentItem = ({
                   <img
                     src={mediaUrl}
                     alt="Comment media"
-                    className="max-w-[280px] rounded-xl border border-border cursor-pointer hover:opacity-90 transition-all duration-300 hover:shadow-md"
+                    className="max-w-full sm:max-w-[280px] rounded-xl border border-border cursor-pointer hover:opacity-90 transition-all duration-300 hover:shadow-md overflow-hidden"
                     onClick={() => setShowMediaViewer(true)}
                   />
                 ) : (
                   <video
                     src={mediaUrl}
                     controls
-                    className="max-w-[280px] rounded-xl border border-border"
+                    className="max-w-full sm:max-w-[280px] rounded-xl border border-border overflow-hidden"
                   />
                 )}
               </div>

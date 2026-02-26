@@ -114,7 +114,7 @@ export const CommentMediaUpload = ({
 
       {/* GIF Picker portal */}
       {showGifPicker && (
-        <div className="fixed bottom-4 left-2 right-2 z-50 sm:absolute sm:bottom-full sm:left-auto sm:right-0 sm:mb-2 sm:w-80">
+        <div className="fixed bottom-4 left-2 right-2 z-50 max-w-[calc(100vw-32px)] sm:absolute sm:bottom-full sm:left-auto sm:right-0 sm:mb-2 sm:w-80 sm:max-w-none">
           <Suspense fallback={<div className="w-full h-48 bg-card rounded-xl animate-pulse" />}>
             <GifPicker
               onSelect={(url) => {
@@ -129,7 +129,7 @@ export const CommentMediaUpload = ({
 
       {/* Sticker Picker portal */}
       {showStickerPicker && (
-        <div className="fixed bottom-4 left-2 right-2 z-50 sm:absolute sm:bottom-full sm:left-auto sm:right-0 sm:mb-2 sm:w-80">
+        <div className="fixed bottom-4 left-2 right-2 z-50 max-w-[calc(100vw-32px)] sm:absolute sm:bottom-full sm:left-auto sm:right-0 sm:mb-2 sm:w-80 sm:max-w-none">
           <Suspense fallback={<div className="w-full h-48 bg-card rounded-xl animate-pulse" />}>
             <StickerPicker
               onSelect={(url) => {

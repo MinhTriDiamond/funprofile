@@ -109,7 +109,7 @@ export const CommentReplyForm = ({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-2 items-start animate-scale-in">
+    <form onSubmit={handleSubmit} className="flex gap-2 items-start animate-scale-in overflow-hidden">
       <Avatar className="w-8 h-8 ring-2 ring-primary/20 shrink-0">
         <AvatarImage 
           src={currentUser?.avatar_url} 
@@ -156,7 +156,7 @@ export const CommentReplyForm = ({
           </div>
         )}
         
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-1">
             <CommentMediaUpload
               onMediaUploaded={(url, type) => {

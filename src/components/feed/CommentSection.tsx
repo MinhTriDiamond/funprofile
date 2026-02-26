@@ -213,7 +213,7 @@ export const CommentSection = ({ postId, onCommentAdded }: CommentSectionProps) 
   };
 
   return (
-    <div className="space-y-4 animate-fade-in">
+    <div className="space-y-4 animate-fade-in overflow-hidden">
       {/* Comment Input Box */}
       <form onSubmit={handleSubmit} className="space-y-3">
         <div className="flex gap-3 items-start">
@@ -234,7 +234,7 @@ export const CommentSection = ({ postId, onCommentAdded }: CommentSectionProps) 
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
                 placeholder={t('writeComment')}
-                className="w-full min-h-[60px] max-h-[200px] px-4 py-3 bg-white dark:bg-secondary border-2 border-primary/30 rounded-2xl resize-none focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-300 text-sm placeholder:text-muted-foreground/60"
+                className="w-full min-h-[48px] max-h-[200px] px-4 py-3 bg-white dark:bg-secondary border-2 border-primary/30 rounded-2xl resize-none focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-300 text-sm placeholder:text-muted-foreground/60"
                 disabled={loading}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
@@ -264,7 +264,7 @@ export const CommentSection = ({ postId, onCommentAdded }: CommentSectionProps) 
             )}
 
             {/* Action Bar */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-1">
                 <CommentMediaUpload
                   onMediaUploaded={(url, type) => {
