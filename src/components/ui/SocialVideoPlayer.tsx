@@ -82,6 +82,7 @@ export const SocialVideoPlayer = memo(({
   const lastTapRef = useRef<{ time: number; x: number }>({ time: 0, x: 0 });
   const animKeyRef = useRef(0);
 
+  const isLive = duration === Infinity;
   const validDuration = duration > 0 && isFinite(duration);
   const progressPct = validDuration ? (currentTime / duration) * 100 : 0;
   const bufferedPct = validDuration ? (buffered / duration) * 100 : 0;
@@ -105,7 +106,7 @@ export const SocialVideoPlayer = memo(({
     if (!v) return;
 
     const onLoadedMetadata = () => {
-      setDuration(v.duration);
+      if (v.duration) setDuration(v.duration);
       setIsVideoLoaded(true);
     };
     const onTimeUpdate = () => {
@@ -155,6 +156,22 @@ export const SocialVideoPlayer = memo(({
       v.removeEventListener('canplay', onCanPlay);
     };
   }, [videoRef, isSeeking]);
+
+  /* ---- duration polling fallback (for MSE where durationchange fires late) ---- */
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v || validDuration || isLive) return;
+    let attempts = 0;
+    const id = setInterval(() => {
+      attempts++;
+      if (v.duration && v.duration > 0) {
+        setDuration(v.duration);
+        clearInterval(id);
+      }
+      if (attempts >= 5) clearInterval(id);
+    }, 1000);
+    return () => clearInterval(id);
+  }, [videoRef, validDuration, isLive]);
 
   /* ---- cleanup hide timer ---- */
   useEffect(() => {
@@ -390,11 +407,15 @@ export const SocialVideoPlayer = memo(({
           {/* Progress bar */}
           <div
             ref={progressRef}
-            className="relative w-full h-1.5 md:h-1 group/progress cursor-pointer rounded-full mb-2 hover:h-2.5 transition-all"
-            onMouseDown={onProgressMouseDown}
-            onTouchStart={onProgressTouchStart}
-            onTouchMove={onProgressTouchMove}
-            onTouchEnd={onProgressTouchEnd}
+            className={cn(
+              "relative w-full h-1.5 md:h-1 group/progress rounded-full mb-2 hover:h-2.5 transition-all",
+              isLive ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
+            )}
+            onMouseDown={isLive ? undefined : onProgressMouseDown}
+            onTouchStart={isLive ? undefined : onProgressTouchStart}
+            onTouchMove={isLive ? undefined : onProgressTouchMove}
+            onTouchEnd={isLive ? undefined : onProgressTouchEnd}
+            title={isLive ? 'Livestream không hỗ trợ tua' : undefined}
           >
             {/* Track */}
             <div className="absolute inset-0 bg-white/20 rounded-full" />
@@ -433,7 +454,14 @@ export const SocialVideoPlayer = memo(({
 
             {/* Time */}
             <span className="tabular-nums whitespace-nowrap text-[11px]">
-              {formatDurationTime(currentTime)} / {formatDurationTime(duration)}
+              {isLive ? (
+                <span className="inline-flex items-center gap-1">
+                  <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                  <span className="font-bold text-red-400">LIVE</span>
+                </span>
+              ) : (
+                <>{formatDurationTime(currentTime)} / {validDuration ? formatDurationTime(duration) : '--:--'}</>
+              )}
             </span>
 
             <div className="flex-1" />

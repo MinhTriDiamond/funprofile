@@ -146,9 +146,18 @@ export const LazyVideo = memo(({
     return null;
   }
 
-  // Show nothing if there's an error (hide the broken video)
+  // Show error placeholder instead of hiding (prevents posts from disappearing)
   if (hasError) {
-    return null;
+    return (
+      <div className={cn('relative overflow-hidden bg-muted flex items-center justify-center text-muted-foreground', className)}>
+        <div className="flex flex-col items-center gap-2 p-4">
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 opacity-50" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/>
+          </svg>
+          <span className="text-xs">Video không thể tải được</span>
+        </div>
+      </div>
+    );
   }
 
   return (
