@@ -79,55 +79,64 @@ export const CommentSection = ({ postId, onCommentAdded }: CommentSectionProps) 
   }, [postId]);
 
   const fetchCurrentUser = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('avatar_url, username')
-        .eq('id', user.id)
-        .single();
-      
-      if (profile) {
-        setCurrentUser(profile);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('avatar_url, username')
+          .eq('id', user.id)
+          .single();
+        
+        if (profile) {
+          setCurrentUser(profile);
+        }
       }
+    } catch (error) {
+      console.error('fetchCurrentUser error:', error);
     }
   };
 
   const fetchComments = async () => {
-    const { data, error } = await supabase
-      .from('comments')
-      .select(`
-        *,
-        profiles (username, avatar_url)
-      `)
-      .eq('post_id', postId)
-      .is('parent_comment_id', null)
-      .order('created_at', { ascending: false });
+    try {
+      const { data, error } = await supabase
+        .from('comments')
+        .select(`
+          *,
+          profiles (username, avatar_url)
+        `)
+        .eq('post_id', postId)
+        .is('parent_comment_id', null)
+        .order('created_at', { ascending: false });
 
-    if (error) {
+      if (error) {
+        toast.error(t('cannotLoadComments'));
+        return;
+      }
+
+      const commentsWithReplies = await Promise.all(
+        (data || []).map(async (comment) => {
+          const { data: replies } = await supabase
+            .from('comments')
+            .select(`
+              *,
+              profiles (username, avatar_url)
+            `)
+            .eq('parent_comment_id', comment.id)
+            .order('created_at', { ascending: true });
+
+          return {
+            ...comment,
+            replies: replies || [],
+          };
+        })
+      );
+
+      setComments(commentsWithReplies);
+    } catch (error) {
+      console.error('fetchComments error:', error);
       toast.error(t('cannotLoadComments'));
-      return;
     }
-
-    const commentsWithReplies = await Promise.all(
-      (data || []).map(async (comment) => {
-        const { data: replies } = await supabase
-          .from('comments')
-          .select(`
-            *,
-            profiles (username, avatar_url)
-          `)
-          .eq('parent_comment_id', comment.id)
-          .order('created_at', { ascending: true });
-
-        return {
-          ...comment,
-          replies: replies || [],
-        };
-      })
-    );
-
-    setComments(commentsWithReplies);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -141,52 +150,57 @@ export const CommentSection = ({ postId, onCommentAdded }: CommentSectionProps) 
     }
 
     setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      toast.error(t('pleaseLoginToComment'), {
-        action: { label: t('login'), onClick: () => navigate('/auth') }
-      });
-      setLoading(false);
-      return;
-    }
-
-    const insertData: any = {
-      post_id: postId,
-      user_id: user.id,
-      content: newComment.trim() || '',
-    };
-
-    if (mediaUrl) {
-      if (mediaType === 'image') {
-        insertData.image_url = mediaUrl;
-      } else if (mediaType === 'video') {
-        insertData.video_url = mediaUrl;
-      }
-    }
-
-    const { error } = await supabase
-      .from('comments')
-      .insert(insertData);
-
-    if (error) {
-      toast.error(t('cannotPostComment'));
-    } else {
-      // PPLP: Evaluate comment action for Light Score (fire-and-forget)
-      evaluateAsync({
-        action_type: 'comment',
-        reference_id: postId,
-        content: newComment.trim(),
-      });
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
       
-      setNewComment('');
-      setMediaUrl(null);
-      setMediaType(null);
-      fetchComments();
-      onCommentAdded?.();
-      toast.success(t('commentPosted'));
+      if (!user) {
+        toast.error(t('pleaseLoginToComment'), {
+          action: { label: t('login'), onClick: () => navigate('/auth') }
+        });
+        return;
+      }
+
+      const insertData: any = {
+        post_id: postId,
+        user_id: user.id,
+        content: newComment.trim() || '',
+      };
+
+      if (mediaUrl) {
+        if (mediaType === 'image') {
+          insertData.image_url = mediaUrl;
+        } else if (mediaType === 'video') {
+          insertData.video_url = mediaUrl;
+        }
+      }
+
+      const { error } = await supabase
+        .from('comments')
+        .insert(insertData);
+
+      if (error) {
+        toast.error(t('cannotPostComment'));
+      } else {
+        evaluateAsync({
+          action_type: 'comment',
+          reference_id: postId,
+          content: newComment.trim(),
+        });
+        
+        setNewComment('');
+        setMediaUrl(null);
+        setMediaType(null);
+        fetchComments();
+        onCommentAdded?.();
+        toast.success(t('commentPosted'));
+        navigator.vibrate?.(10);
+      }
+    } catch (error) {
+      console.error('Comment submit error:', error);
+      toast.error(t('cannotPostComment'));
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleEmojiSelect = (emoji: string) => {
@@ -233,9 +247,9 @@ export const CommentSection = ({ postId, onCommentAdded }: CommentSectionProps) 
 
             {/* Media Preview */}
             {mediaUrl && (
-              <div className="relative inline-block">
+              <div className="relative inline-block" data-media-preview>
                 {mediaType === 'image' ? (
-                  <img src={mediaUrl} alt="Preview" className="max-h-32 rounded-xl border-2 border-primary/20" />
+                  <img src={mediaUrl.startsWith('g:') || mediaUrl.startsWith('s:') ? mediaUrl.slice(2) : mediaUrl} alt="Preview" className="max-h-32 rounded-xl border-2 border-primary/20" />
                 ) : (
                   <video src={mediaUrl} className="max-h-32 rounded-xl border-2 border-primary/20" />
                 )}
@@ -264,10 +278,16 @@ export const CommentSection = ({ postId, onCommentAdded }: CommentSectionProps) 
                   onGifSelect={(url) => {
                     setMediaUrl(url);
                     setMediaType('image');
+                    setTimeout(() => {
+                      document.querySelector('[data-media-preview]')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }, 100);
                   }}
                   onStickerSelect={(url) => {
                     setMediaUrl(url);
                     setMediaType('image');
+                    setTimeout(() => {
+                      document.querySelector('[data-media-preview]')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }, 100);
                   }}
                 />
                 
