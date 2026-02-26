@@ -359,7 +359,7 @@ export const LightScoreDashboard = ({ walletAddress, onActivate, onClaim }: Ligh
               </div>
             </div>
           ) : isBelowMinAmount ? (
-            /* Chưa đủ 1.000 FUN tối thiểu */
+            /* Chưa đủ MIN_MINT_AMOUNT FUN tối thiểu */
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Tiến độ đến ngưỡng mint</span>
