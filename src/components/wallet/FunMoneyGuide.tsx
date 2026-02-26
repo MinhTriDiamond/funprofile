@@ -52,7 +52,7 @@ export function FunMoneyGuide() {
       >
         <div className="flex items-center gap-2">
           <BookOpen className="w-5 h-5 text-[#DAA520]" />
-          <h3 className="font-semibold text-sm text-[#E8D5A3]">
+          <h3 className="font-semibold text-sm text-[#166534] dark:text-[#E8D5A3]">
             Hướng Dẫn Mint FUN Money
           </h3>
         </div>
@@ -72,7 +72,7 @@ export function FunMoneyGuide() {
                     <Icon className="w-4 h-4 text-[#DAA520]" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-[#E8D5A3]">{step.title}</p>
+                    <p className="text-sm font-medium text-[#B8860B] dark:text-[#E8D5A3]">{step.title}</p>
                     <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">{step.desc}</p>
                   </div>
                 </div>
