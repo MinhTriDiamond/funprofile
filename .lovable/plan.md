@@ -1,113 +1,89 @@
 
 
-# Fix Video Player Duration + Seek + Livestream Display
+# Khoi phuc 5 video livestream mo coi va xu ly 37 posts live khong co recording
 
-## Van de hien tai
+## Tong quan tinh hinh
 
-### 1. Duration hien thi "--:--" (van de chinh - thay ro trong screenshot)
-- Voi video chunked (live replay qua MSE), `video.duration` chi duoc set sau khi `mediaSource.endOfStream()` — tuc la sau khi TAT CA chunk da tai xong
-- Truoc do, `video.duration = NaN` hoac `Infinity`, khien `SocialVideoPlayer` hien thi `--:--`
-- Manifest da co truong `total_duration_ms` nhung chua duoc su dung
+### 5 sessions mo coi (co recording `done`, khong co `post_id`)
 
-### 2. Progress bar va Seek khong hoat dong voi chunked video
-- Vi `duration = 0` (chua co), `validDuration = false` nen progress bar luon o 0%
-- Seek bi vo hieu hoa vi khong co duration de tinh toan vi tri
+| # | Username | Session ID | Recording chunks | Output URL |
+|---|----------|-----------|-----------------|------------|
+| 1 | thuhuyen | 4ace544e... | 578 chunks | manifest.json |
+| 2 | angelthuongchieu | b25d7fd0... | 5 chunks | manifest.json |
+| 3 | Angellam | 060cf1a4... | 5 chunks | manifest.json |
+| 4 | angelthanhtien | f5a93e36... | 42 chunks | manifest.json |
+| 5 | angelquangvu | ffff7e4a... | 3 chunks | manifest.json |
 
-### 3. Livestream posts co the bi mat
-- Logic render dung: query khong filter sai, `moderation_status` default la `'approved'`
-- Van de tiem an: khi live ket thuc nhung `video_url` chua duoc cap nhat (recording chua xong), post se hien thi nhung khong co video => card bi an do `hasError` trong LazyVideo (return null khi loi)
+### 37 posts live khong co video_url
+- Phan lon co `recording_status = 'idle'` hoac khong co chunked_recording nao
+- Nghia la recording chua bao gio bat dau hoac da that bai
+- Khong co du lieu video de khoi phuc
 
----
+## Ke hoach thuc hien
 
-## Ke hoach sua
+### Buoc 1: Tao edge function `recover-orphan-livestreams`
 
-### File 1: `src/modules/live/components/ChunkedVideoPlayer.tsx`
+Tao mot edge function chay 1 lan (one-shot) de:
 
-**Thay doi:** Set `mediaSource.duration` ngay sau `sourceopen` tu manifest data
+**A) Khoi phuc 5 session mo coi:**
+- Voi moi session co `post_id IS NULL` va `chunked_recordings.status = 'done'`:
+  1. Tao post moi trong bang `posts` voi:
+     - `user_id` = session.host_user_id
+     - `content` = session.title hoac "Phat lai livestream"
+     - `post_type` = 'live'
+     - `video_url` = recording.output_url (manifest.json URL)
+     - `visibility` = 'public'
+     - `created_at` = session.started_at (de hien dung vi tri thoi gian)
+     - `metadata` = `{ live_title, live_status: 'ended', channel_name, agora_channel, live_session_id, playback_url, ended_at }`
+  2. Cap nhat `live_sessions.post_id` = post.id moi tao
 
-```text
-// Sau dong: const sourceBuffer = mediaSource.addSourceBuffer(mimeWithCodec);
-// Them:
-const totalDurationSec = manifest.total_duration_ms / 1000;
-if (totalDurationSec > 0) {
-  mediaSource.duration = totalDurationSec;
-}
-```
+**B) Cap nhat 37 posts khong co recording:**
+- Voi moi post co `post_type = 'live'` va `video_url IS NULL`:
+  - Kiem tra co chunked_recording `status = 'done'` lien ket khong
+  - Neu co: cap nhat `video_url` = recording.output_url
+  - Neu khong co: cap nhat `metadata` them truong `recording_failed: true` de UI biet hien thi thong bao phu hop
 
-Dieu nay lam cho `video.duration` co gia tri ngay lap tuc, SocialVideoPlayer se:
-- Hien thi duration dung (vd: `0:03 / 2:35`)
-- Progress bar tinh % chinh xac
-- Seek hoat dong (click/drag da co san trong SocialVideoPlayer)
+### Buoc 2: Cap nhat UI trong `FacebookPostCard.tsx`
 
-### File 2: `src/components/ui/SocialVideoPlayer.tsx`
+- Khi `post_type = 'live'` va `metadata.recording_failed = true`:
+  - Hien thi thong bao "Phien live nay khong co ban ghi" thay vi placeholder "Dang xu ly..."
+  - Van giu post hien thi (khong an)
 
-**Thay doi 1:** Them polling duration cho truong hop metadata cham
+### Buoc 3: Goi edge function 1 lan de chay recovery
 
-Hien tai chi lang nghe `loadedmetadata` va `durationchange`. Them mot interval ngan (1s) de kiem tra lai `video.duration` trong 5 giay dau, phong truong hop event bi miss:
+- Deploy va curl edge function de thuc hien khoi phuc
+- Kiem tra ket qua tra ve (so post tao, so post cap nhat)
 
-```text
-// useEffect moi:
-// Neu sau 3s van chua co duration, thu doc lai video.duration
-// Giup voi truong hop MSE set duration muon
-```
+## Chi tiet ky thuat
 
-**Thay doi 2:** Xu ly truong hop LIVE (duration = Infinity)
-
-```text
-// Khi duration === Infinity:
-// - Hien thi "LIVE" thay vi "--:--"  
-// - Disable seek (cursor: not-allowed, khong cho click/drag)
-// - An toc do phat va mot so controls khong phu hop
-```
-
-### File 3: `src/components/ui/LazyVideo.tsx`
-
-**Thay doi:** Khong return null khi co loi — hien thi placeholder thay vi an card
+### Edge function `recover-orphan-livestreams/index.ts`
 
 ```text
-// Thay vi:
-if (hasError) { return null; }
-
-// Doi thanh:
-if (hasError) {
-  return (
-    <div className="relative overflow-hidden bg-muted flex items-center justify-center">
-      <AlertTriangle icon + "Video khong the tai duoc"
-    </div>
-  );
-}
+Logic:
+1. Query live_sessions WHERE post_id IS NULL
+   JOIN chunked_recordings WHERE status = 'done'
+2. Cho moi row: INSERT posts, UPDATE live_sessions.post_id
+3. Query posts WHERE post_type = 'live' AND video_url IS NULL
+   LEFT JOIN live_sessions -> chunked_recordings
+4. Neu co recording done: UPDATE posts.video_url
+5. Neu khong co: UPDATE posts.metadata jsonb_set recording_failed = true
+6. Return summary JSON
 ```
 
-Dieu nay dam bao post co video loi van hien thi card, khong "bien mat" khoi feed.
+Su dung supabase service role key de bypass RLS.
 
-### File 4: `src/components/feed/FacebookPostCard.tsx`
-
-**Thay doi:** Khi post la live da ket thuc nhung chua co video_url (recording dang xu ly), hien thi thong bao thay vi de trong:
+### FacebookPostCard.tsx thay doi
 
 ```text
-// Trong mediaItems useMemo:
-// Neu isLive && !post.video_url && metadata?.live_status === 'ended':
-//   => Khong them media item (dung)
-// Nhung o phan render, them truong hop:
-// Neu isLive && live_status === 'ended' && mediaItems.length === 0:
-//   => Hien thi "Dang xu ly ban ghi..." placeholder
+// Trong phan render live post:
+// Thay vi chi kiem tra metadata?.live_status === 'ended' && mediaItems.length === 0
+// Them kiem tra metadata?.recording_failed === true
+// => Hien thi "Phien live nay khong co ban ghi" (thay vi "Dang xu ly...")
 ```
-
----
-
-## Tong ket thay doi
-
-| File | Thay doi | Muc dich |
-|------|----------|----------|
-| ChunkedVideoPlayer.tsx | Set `mediaSource.duration` tu manifest | Fix duration + progress + seek cho live replay |
-| SocialVideoPlayer.tsx | Polling duration fallback + LIVE mode | Dam bao duration luon hien thi; xu ly live stream |
-| LazyVideo.tsx | Error placeholder thay vi return null | Khong mat post khi video loi |
-| FacebookPostCard.tsx | Placeholder cho live dang xu ly | Khong mat post live chua co recording |
 
 ## Ket qua ky vong
 
-- Duration hien thi ngay khi video bat dau tai (vd: `0:00 / 2:35`)
-- Progress bar chinh xac, seek hoat dong bang click/drag
-- Post live khong bien mat du video loi hay chua xu ly xong
-- Khong anh huong video thuong (mp4/webm upload)
+- 5 video livestream cua thuhuyen, angelthuongchieu, Angellam, angelthanhtien, angelquangvu duoc khoi phuc va hien thi trong feed voi player chuan
+- 37 posts live khong co recording se hien thi thong bao ro rang thay vi placeholder misleading
+- Khong anh huong den cac post/video khac
 
