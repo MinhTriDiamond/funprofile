@@ -3821,6 +3821,39 @@ export type Database = {
         }
         Relationships: []
       }
+      search_history: {
+        Row: {
+          created_at: string | null
+          id: string
+          last_used_at: string | null
+          metadata: Json | null
+          query: string
+          type: string
+          use_count: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          last_used_at?: string | null
+          metadata?: Json | null
+          query: string
+          type?: string
+          use_count?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          last_used_at?: string | null
+          metadata?: Json | null
+          query?: string
+          type?: string
+          use_count?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       search_logs: {
         Row: {
           created_at: string
