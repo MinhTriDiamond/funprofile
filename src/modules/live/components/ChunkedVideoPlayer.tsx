@@ -129,6 +129,13 @@ export function ChunkedVideoPlayer({
     console.log('[ChunkedVideoPlayer] Using MIME:', mimeWithCodec);
 
     const sourceBuffer = mediaSource.addSourceBuffer(mimeWithCodec);
+
+    // Set duration from manifest immediately so SocialVideoPlayer can show it
+    const totalDurationSec = manifest.total_duration_ms / 1000;
+    if (totalDurationSec > 0 && isFinite(totalDurationSec)) {
+      try { mediaSource.duration = totalDurationSec; } catch {}
+    }
+
     const offsets = buildTimeMap(manifest.chunks);
 
     // State
