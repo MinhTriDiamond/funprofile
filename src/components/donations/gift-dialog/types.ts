@@ -9,6 +9,7 @@ export interface ResolvedRecipient {
   avatarUrl: string | null;
   walletAddress: string | null;
   hasVerifiedWallet?: boolean;
+  isBanned?: boolean;
 }
 
 export interface MultiSendResult {
