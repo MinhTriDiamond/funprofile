@@ -3877,18 +3877,21 @@ export type Database = {
       }
       shared_posts: {
         Row: {
+          caption: string | null
           created_at: string
           id: string
           original_post_id: string
           user_id: string
         }
         Insert: {
+          caption?: string | null
           created_at?: string
           id?: string
           original_post_id: string
           user_id: string
         }
         Update: {
+          caption?: string | null
           created_at?: string
           id?: string
           original_post_id?: string
