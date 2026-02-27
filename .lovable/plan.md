@@ -1,37 +1,26 @@
 
 
-# Facebook-style Comment GIF & Sticker — Implementation Plan
+# Cải tiến GIF Picker — dễ nhìn hơn
 
-## 1. CommentItem.tsx — Restructure media rendering
+## Vấn đề hiện tại
+Từ screenshot: GIF grid 2 cột quá chật, ảnh bị nén nhỏ khó nhìn. Picker chỉ rộng `w-80` (320px) và cao `max-h-96` (384px).
 
-**Current**: GIF/Sticker rendered inside `bg-muted` bubble (lines 147-189).
+## Thay đổi
 
-**Change**: Split rendering into 3 parts:
+### 1. GifPicker.tsx — Mở rộng & cải thiện grid
 
-- **Username-only header** (shown when content is empty + media is gif/sticker): Display username without bubble
-- **Text bubble** (lines 147-189): Conditionally render — hide entirely when `!comment.content.trim() && (mediaType === 'gif' || mediaType === 'sticker')`; for text+gif/sticker combos, render text in bubble but move media outside
-- **Standalone media** (new, after bubble): GIF with `max-w-[280px] rounded-2xl shadow-sm`, Sticker with `w-32 h-32 object-contain hover:scale-105 transition-transform`
-- Regular image/video stays inside bubble as before
+- **Tăng kích thước picker**: `w-80` → `w-[360px]`, `max-h-96` → `max-h-[480px]` để có nhiều không gian hơn
+- **Grid 2 cột giữ nguyên** nhưng tăng `gap-1.5` → `gap-2` để tách biệt rõ ràng hơn
+- **Thêm border nhẹ** cho từng ảnh GIF (`border border-border/50`) để phân biệt GIF với nền
+- **Tăng border-radius**: `rounded-lg` → `rounded-xl` cho mềm mại hơn
+- **Padding grid**: `p-2` → `p-3` thoáng hơn
 
-Lines affected: 146-189 (restructure the `flex-1 min-w-0` div content)
+### 2. CommentMediaUpload.tsx — Picker container responsive
 
-## 2. CommentReplyForm.tsx — Dark mode fix
+- Tăng container width: `w-80` → `w-[360px]` để khớp với picker mới
+- Đảm bảo `max-w-[calc(100vw-32px)]` vẫn giữ cho mobile không tràn
 
-**Line 130**: Add `dark:bg-secondary dark:text-white` to textarea className.
-
-## 3. StickerPicker.tsx — Haptic feedback
-
-**Line 78**: Change button className to add `active:scale-95 hover:bg-primary/5` (replace `hover:bg-secondary`).
-
-## 4. GifPicker.tsx — Natural aspect ratio
-
-**Line 75**: Change `aspect-square` to `aspect-video` on GIF buttons.
-
-## Files changed
-- `src/components/feed/CommentItem.tsx` (restructure media outside bubble)
-- `src/components/feed/CommentReplyForm.tsx` (1 line dark mode fix)
-- `src/components/feed/StickerPicker.tsx` (1 line hover effect)
-- `src/components/feed/GifPicker.tsx` (1 line aspect ratio)
-
-No database changes needed. Backward compatible — old comments with `g:`/`s:` prefixes parse identically.
+## Chi tiết kỹ thuật
+- 2 file thay đổi: `GifPicker.tsx`, `CommentMediaUpload.tsx`
+- Không thay đổi logic, chỉ styling
 
