@@ -114,7 +114,7 @@ export const CommentMediaUpload = ({
 
       {/* GIF Picker portal */}
       {showGifPicker && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-80 max-w-[calc(100vw-32px)]">
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-[360px] max-w-[calc(100vw-32px)]">
           <Suspense fallback={<div className="w-full h-48 bg-card rounded-xl animate-pulse" />}>
             <GifPicker
               onSelect={(url) => {
