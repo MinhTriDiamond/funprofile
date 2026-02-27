@@ -167,6 +167,11 @@ export const AttesterSigningPanel = memo(({
     return !sigs[attesterGroup] && r.status !== 'signed';
   });
 
+  const signed = requests.filter(r => r.status === 'signed');
+  const pending = requests.filter(r => r.status !== 'signed');
+  const totalFunPending = pending.reduce((sum, r) => sum + Number(r.amount_display ?? 0), 0);
+  const totalFunSigned = signed.reduce((sum, r) => sum + Number(r.amount_display ?? 0), 0);
+
   return (
     <Card className="border-0 shadow-lg bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-950/20 dark:to-purple-950/20 overflow-hidden">
       <CardHeader className="pb-2">
@@ -190,6 +195,20 @@ export const AttesterSigningPanel = memo(({
       </CardHeader>
 
       <CardContent className="space-y-3">
+        {/* Stats summary */}
+        {!isLoading && requests.length > 0 && (
+          <div className="grid grid-cols-2 gap-2">
+            <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 p-2.5 text-center">
+              <div className="text-lg font-bold text-amber-600">{formatFUN(totalFunPending)}</div>
+              <div className="text-[10px] text-muted-foreground font-medium">FUN chờ ký · {pending.length} lệnh</div>
+            </div>
+            <div className="rounded-lg border border-green-200 bg-green-50 dark:bg-green-950/30 dark:border-green-800 p-2.5 text-center">
+              <div className="text-lg font-bold text-green-600">{formatFUN(totalFunSigned)}</div>
+              <div className="text-[10px] text-muted-foreground font-medium">FUN đã ký · {signed.length} lệnh</div>
+            </div>
+          </div>
+        )}
+
         {isLoading ? (
           <div className="flex items-center justify-center py-6">
             <Loader2 className="w-6 h-6 animate-spin text-violet-500" />
@@ -200,8 +219,8 @@ export const AttesterSigningPanel = memo(({
             Không có mint request nào đang chờ ký
           </div>
         ) : (
-          <ScrollArea className="max-h-[500px]">
-            <div className="space-y-3">
+          <ScrollArea className="h-[500px]">
+            <div className="space-y-3 pr-3">
               {requests.map(req => (
                 <RequestCard
                   key={req.id}
