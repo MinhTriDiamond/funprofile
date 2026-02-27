@@ -327,7 +327,7 @@ const Users = () => {
                         <div
                           onMouseEnter={() => isAdmin && setHoverUserId(user.id)}
                           onMouseLeave={() => setHoverUserId(null)}
-                          className="relative"
+                          className="relative min-h-[28px] flex items-center"
                         >
                           {isAdmin && hoverUserId === user.id ? (
                             <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
@@ -337,7 +337,7 @@ const Users = () => {
                                   size="icon"
                                   className="h-6 w-6 text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-700"
                                   title="Mở khóa (bỏ cấm)"
-                                  onClick={() => setActionTarget({ id: user.id, username: user.username, type: 'unban' as any })}
+                                  onClick={() => setActionTarget({ id: user.id, username: user.username, type: 'unban' })}
                                 >
                                   <Unlock className="w-3.5 h-3.5" />
                                 </Button>
