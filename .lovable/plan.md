@@ -1,54 +1,45 @@
 
-# Dong bo trang thai banned voi danh sach cho mint FUN
 
-## Van de
-Khi admin ban user qua `ban_user_permanently`, cac mint request dang cho (pending_sig, signing) cua user do van ton tai trong danh sach. Admin phai tu tay tu choi tung request — de sot va gay nhap nhan.
+# Share with Caption — Implementation Plan
 
-## Giai phap 2 lop
-
-### 1. Backend: Cap nhat ham `ban_user_permanently` (Database migration)
-Them logic tu dong reject tat ca mint request dang cho cua user khi ban:
-
+## 1. Database Migration
+Add `caption` column to `shared_posts`:
 ```sql
--- Reject pending mint requests
-UPDATE pplp_mint_requests
-SET status = 'rejected',
-    error_message = 'User banned: ' || p_reason,
-    reviewed_by = p_admin_id,
-    reviewed_at = now()
-WHERE user_id = p_user_id
-  AND status IN ('pending', 'pending_sig', 'signing');
+ALTER TABLE shared_posts ADD COLUMN caption text DEFAULT NULL;
 ```
 
-Dieu nay dam bao: bat ky user nao bi ban tu bat ky dau (UserReviewTab, WalletAbuseTab, Users page, QuickDeleteTab...) deu tu dong xoa khoi hang doi mint.
+## 2. ShareDialog.tsx (2 changes)
 
-### 2. Frontend: Loc banned users khoi danh sach mint (`usePplpAdmin.ts`)
-Cap nhat `fetchMintRequests` de:
-- Fetch them truong `is_banned` tu profiles
-- Loc bo cac request cua user bi banned khoi danh sach hien thi
-- Hoac hien thi voi badge canh bao "Da cam" de admin biet
-
-Cu the: khi fetch profiles, them truong `is_banned`:
+**Line 102-105**: Add `caption` to insert:
 ```typescript
-.select('id, username, avatar_url, is_banned')
-```
-Sau do loc:
-```typescript
-const enrichedRequests = (requests || [])
-  .filter(req => {
-    const profile = profileMap.get(req.user_id);
-    return !profile?.is_banned;
-  })
-  .map(...)
+const { error } = await supabase.from('shared_posts').insert({
+  user_id: currentUserId,
+  original_post_id: post.id,
+  caption: caption.trim() || null,
+});
 ```
 
-## Chi tiet ky thuat
+**Line 144**: Add `onOpenAutoFocus` to prevent focus trap:
+```tsx
+<DialogContent className="sm:max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
+```
 
-### File thay doi:
-1. **Database migration** — Cap nhat ham `ban_user_permanently` them 1 lenh UPDATE reject mint requests
-2. **`src/hooks/usePplpAdmin.ts`** (dong 154-166) — Fetch `is_banned`, loc banned users khoi danh sach mint
+## 3. Profile.tsx (line 902-911)
+Display caption above the shared post:
+```tsx
+<div key={`shared-${item.id}`} className="space-y-2">
+  <div className="flex items-center gap-2 text-sm text-muted-foreground px-2">
+    <span className="font-semibold text-primary">{t('sharedLabel')}</span>
+  </div>
+  {item.caption && (
+    <p className="text-sm text-muted-foreground px-3 pb-1">{item.caption}</p>
+  )}
+  <FacebookPostCard .../>
+</div>
+```
 
-### Tac dong:
-- Cac user da bi ban truoc do: mint requests se bi an khoi danh sach (frontend filter)
-- Cac user bi ban tu bay gio: mint requests se bi reject tu dong (backend)
-- Khong anh huong den cac request da confirmed/minted
+## Files changed
+- 1 SQL migration (new)
+- `src/components/feed/ShareDialog.tsx` (2 edits)
+- `src/pages/Profile.tsx` (1 edit)
+
