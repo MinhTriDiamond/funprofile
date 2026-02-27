@@ -4923,6 +4923,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      unban_user: {
+        Args: { p_admin_id: string; p_reason?: string; p_user_id: string }
+        Returns: boolean
+      }
       unpin_message: { Args: { p_message_id: string }; Returns: undefined }
       upsert_live_recording_row: {
         Args: {

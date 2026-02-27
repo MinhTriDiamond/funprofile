@@ -52,7 +52,7 @@ const Users = () => {
 
   // Hover status action states
   const [hoverUserId, setHoverUserId] = useState<string | null>(null);
-  const [actionTarget, setActionTarget] = useState<{ id: string; username: string; type: 'ban' | 'suspend' | 'unlock' } | null>(null);
+  const [actionTarget, setActionTarget] = useState<{ id: string; username: string; type: 'ban' | 'suspend' | 'unlock' | 'unban' } | null>(null);
   const [isActioning, setIsActioning] = useState(false);
 
   const fmt = (n: number) => n.toLocaleString('vi-VN');
@@ -103,6 +103,16 @@ const Users = () => {
         if (error) throw error;
         if (!data || data.length === 0) throw new Error('Không có quyền cập nhật trạng thái user này. Vui lòng kiểm tra quyền admin.');
         toast({ title: 'Đã mở khóa', description: `@${actionTarget.username} đã được mở khóa.` });
+      } else if (actionTarget.type === 'unban') {
+        const { data: { user: adminUser } } = await supabase.auth.getUser();
+        if (!adminUser) throw new Error('Không xác thực được admin');
+        const { error } = await supabase.rpc('unban_user', {
+          p_admin_id: adminUser.id,
+          p_user_id: actionTarget.id,
+          p_reason: 'Unbanned from user directory by admin',
+        });
+        if (error) throw error;
+        toast({ title: 'Đã mở khóa', description: `@${actionTarget.username} đã được bỏ cấm thành công.` });
       }
       // Optimistic update cache ngay lập tức
       queryClient.setQueryData(['user-directory'], (old: any[]) => {
@@ -112,6 +122,7 @@ const Users = () => {
           if (actionTarget.type === 'ban') return { ...u, is_banned: true, reward_status: 'banned' };
           if (actionTarget.type === 'suspend') return { ...u, reward_status: 'on_hold' };
           if (actionTarget.type === 'unlock') return { ...u, reward_status: 'approved' };
+          if (actionTarget.type === 'unban') return { ...u, is_banned: false, reward_status: 'approved' };
           return u;
         });
       });
@@ -314,41 +325,55 @@ const Users = () => {
                       )}
                       <TableCell>
                         <div
-                          onMouseEnter={() => isAdmin && !user.is_banned && setHoverUserId(user.id)}
+                          onMouseEnter={() => isAdmin && setHoverUserId(user.id)}
                           onMouseLeave={() => setHoverUserId(null)}
                           className="relative"
                         >
-                          {isAdmin && hoverUserId === user.id && !user.is_banned ? (
+                          {isAdmin && hoverUserId === user.id ? (
                             <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6 text-red-600 hover:bg-red-500/10 hover:text-red-700"
-                                title="Cấm vĩnh viễn"
-                                onClick={() => setActionTarget({ id: user.id, username: user.username, type: 'ban' })}
-                              >
-                                <ShieldBan className="w-3.5 h-3.5" />
-                              </Button>
-                              {user.reward_status === 'on_hold' ? (
+                              {user.is_banned ? (
                                 <Button
                                   variant="ghost"
                                   size="icon"
                                   className="h-6 w-6 text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-700"
-                                  title="Mở khóa"
-                                  onClick={() => setActionTarget({ id: user.id, username: user.username, type: 'unlock' })}
+                                  title="Mở khóa (bỏ cấm)"
+                                  onClick={() => setActionTarget({ id: user.id, username: user.username, type: 'unban' as any })}
                                 >
                                   <Unlock className="w-3.5 h-3.5" />
                                 </Button>
                               ) : (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6 text-orange-600 hover:bg-orange-500/10 hover:text-orange-700"
-                                  title="Đình chỉ"
-                                  onClick={() => setActionTarget({ id: user.id, username: user.username, type: 'suspend' })}
-                                >
-                                  <Pause className="w-3.5 h-3.5" />
-                                </Button>
+                                <>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 text-red-600 hover:bg-red-500/10 hover:text-red-700"
+                                    title="Cấm vĩnh viễn"
+                                    onClick={() => setActionTarget({ id: user.id, username: user.username, type: 'ban' })}
+                                  >
+                                    <ShieldBan className="w-3.5 h-3.5" />
+                                  </Button>
+                                  {user.reward_status === 'on_hold' ? (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6 text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-700"
+                                      title="Mở khóa"
+                                      onClick={() => setActionTarget({ id: user.id, username: user.username, type: 'unlock' })}
+                                    >
+                                      <Unlock className="w-3.5 h-3.5" />
+                                    </Button>
+                                  ) : (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6 text-orange-600 hover:bg-orange-500/10 hover:text-orange-700"
+                                      title="Đình chỉ"
+                                      onClick={() => setActionTarget({ id: user.id, username: user.username, type: 'suspend' })}
+                                    >
+                                      <Pause className="w-3.5 h-3.5" />
+                                    </Button>
+                                  )}
+                                </>
                               )}
                             </div>
                           ) : (
@@ -483,11 +508,13 @@ const Users = () => {
             <AlertDialogTitle>
               {actionTarget?.type === 'ban' ? `Cấm vĩnh viễn @${actionTarget?.username}?` :
                actionTarget?.type === 'suspend' ? `Đình chỉ @${actionTarget?.username}?` :
+               actionTarget?.type === 'unban' ? `Bỏ cấm @${actionTarget?.username}?` :
                `Mở khóa @${actionTarget?.username}?`}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {actionTarget?.type === 'ban' ? 'Tài khoản sẽ bị cấm vĩnh viễn, ví sẽ bị blacklist. Không thể hoàn tác.' :
                actionTarget?.type === 'suspend' ? 'Tài khoản sẽ bị đình chỉ, tạm dừng nhận thưởng.' :
+               actionTarget?.type === 'unban' ? 'Tài khoản sẽ được bỏ cấm, ví sẽ được gỡ khỏi blacklist và có thể hoạt động trở lại.' :
                'Tài khoản sẽ được mở khóa và có thể nhận thưởng trở lại.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -502,7 +529,8 @@ const Users = () => {
             >
               {isActioning ? 'Đang xử lý...' :
                actionTarget?.type === 'ban' ? 'Cấm vĩnh viễn' :
-               actionTarget?.type === 'suspend' ? 'Đình chỉ' : 'Mở khóa'}
+               actionTarget?.type === 'suspend' ? 'Đình chỉ' :
+               actionTarget?.type === 'unban' ? 'Bỏ cấm' : 'Mở khóa'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
