@@ -67,7 +67,7 @@ const GifPicker = ({ onSelect, onClose }: GifPickerProps) => {
       </div>
 
       {/* Grid */}
-      <div className="flex-1 overflow-y-auto p-3 grid grid-cols-2 gap-2">
+      <div className="flex-1 overflow-y-auto p-3 grid grid-cols-1 gap-3">
         {results.map((gif, i) => (
           <button
             key={i}
@@ -78,7 +78,7 @@ const GifPicker = ({ onSelect, onClose }: GifPickerProps) => {
           </button>
         ))}
         {results.length === 0 && (
-          <p className="col-span-2 text-center text-sm text-muted-foreground py-8">
+          <p className="col-span-1 text-center text-sm text-muted-foreground py-8">
             No GIFs found
           </p>
         )}
