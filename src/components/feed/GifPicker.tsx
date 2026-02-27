@@ -43,7 +43,7 @@ const GifPicker = ({ onSelect, onClose }: GifPickerProps) => {
   const results = useMemo(() => searchGifs(query), [query]);
 
   return (
-    <div className="w-80 max-h-96 bg-card border border-border rounded-xl shadow-xl overflow-hidden flex flex-col">
+    <div className="w-[360px] max-h-[480px] bg-card border border-border rounded-xl shadow-xl overflow-hidden flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-border">
         <span className="font-semibold text-sm">GIF</span>
@@ -67,12 +67,12 @@ const GifPicker = ({ onSelect, onClose }: GifPickerProps) => {
       </div>
 
       {/* Grid */}
-      <div className="flex-1 overflow-y-auto p-2 grid grid-cols-2 gap-1.5">
+      <div className="flex-1 overflow-y-auto p-3 grid grid-cols-2 gap-2">
         {results.map((gif, i) => (
           <button
             key={i}
             onClick={() => onSelect(gif.url)}
-            className="relative aspect-video rounded-lg overflow-hidden hover:ring-2 ring-primary transition-all hover:scale-[1.02]"
+            className="relative aspect-video rounded-xl overflow-hidden border border-border/50 hover:ring-2 ring-primary transition-all hover:scale-[1.02]"
           >
             <GifImage url={gif.url} alt={gif.alt} />
           </button>
