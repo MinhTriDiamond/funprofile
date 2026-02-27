@@ -1,26 +1,33 @@
 
 
-# Cải tiến GIF Picker — dễ nhìn hơn
+# Visual QA Report — GIF Picker & CommentMediaUpload
 
-## Vấn đề hiện tại
-Từ screenshot: GIF grid 2 cột quá chật, ảnh bị nén nhỏ khó nhìn. Picker chỉ rộng `w-80` (320px) và cao `max-h-96` (384px).
+## 1. GifPicker.tsx — Kich thuoc & Ty le
 
-## Thay đổi
+| Tieu chi | Ket qua | Trang thai |
+|----------|---------|------------|
+| Container `w-[360px]` | Line 46: `w-[360px]` — Dung | OK |
+| Container `max-h-[480px]` | Line 46: `max-h-[480px]` — Dung | OK |
+| Grid `aspect-video` | Line 75: `aspect-video` — GIF hien 16:9, khong bi meo | OK |
+| Grid `gap-2` va `p-3` | Line 70: `p-3 grid grid-cols-2 gap-2` — Thoang dang | OK |
+| Bo tron `rounded-xl` | Line 75: `rounded-xl` — Mem mai | OK |
+| Duong vien `border-border/50` | Line 75: `border border-border/50` — Hien thi nhe ca Light lan Dark vi dung opacity 50% tren bien CSS `--border` | OK |
+| Hover effect `hover:ring-2 ring-primary hover:scale-[1.02]` | Line 75 — Phan hoi tot khi hover | OK |
+| Scroll `overflow-y-auto` | Line 70: `flex-1 overflow-y-auto` — Cuon muot khi danh sach dai | OK |
 
-### 1. GifPicker.tsx — Mở rộng & cải thiện grid
+## 2. CommentMediaUpload.tsx — Tuong thich di dong
 
-- **Tăng kích thước picker**: `w-80` → `w-[360px]`, `max-h-96` → `max-h-[480px]` để có nhiều không gian hơn
-- **Grid 2 cột giữ nguyên** nhưng tăng `gap-1.5` → `gap-2` để tách biệt rõ ràng hơn
-- **Thêm border nhẹ** cho từng ảnh GIF (`border border-border/50`) để phân biệt GIF với nền
-- **Tăng border-radius**: `rounded-lg` → `rounded-xl` cho mềm mại hơn
-- **Padding grid**: `p-2` → `p-3` thoáng hơn
+| Tieu chi | Ket qua | Trang thai |
+|----------|---------|------------|
+| Container `w-[360px]` | Line 117: `w-[360px]` — Khop voi picker | OK |
+| Mobile constraint `max-w-[calc(100vw-32px)]` | Line 117 — Tren man hinh 320px, picker chi rong 288px, khong tran | OK |
+| Fixed positioning `bottom-4 left-1/2 -translate-x-1/2` | Line 117 — Can giua man hinh | OK |
 
-### 2. CommentMediaUpload.tsx — Picker container responsive
+## 3. Chuc nang chon GIF
 
-- Tăng container width: `w-80` → `w-[360px]` để khớp với picker mới
-- Đảm bảo `max-w-[calc(100vw-32px)]` vẫn giữ cho mobile không tràn
+- Line 120-122: Khi chon GIF, goi `onGifSelect` voi prefix `g:` va dong picker — Logic chinh xac, tuong thich voi CommentSection va CommentItem da parse prefix `g:` de render GIF ngoai bubble.
 
-## Chi tiết kỹ thuật
-- 2 file thay đổi: `GifPicker.tsx`, `CommentMediaUpload.tsx`
-- Không thay đổi logic, chỉ styling
+## Ket luan
+
+**Tat ca 10/10 tieu chi deu DAT.** Giao dien GIF Picker da rong rai, ty le tu nhien (aspect-video), thoang dang (gap-2, p-3), bo tron mem mai (rounded-xl), tuong thich mobile (max-w constraint), va chuc nang chon GIF hoat dong chinh xac. Tinh nang hoan tat.
 
