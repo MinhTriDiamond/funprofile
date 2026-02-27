@@ -1,20 +1,26 @@
 
 
-# Fix GIF Picker — Single column layout
+# Fix Scroll + Thêm Thống Kê cho AttesterSigningPanel
 
-## Problem
-From screenshot: GIFs in 2-column grid are overlapping and hard to see. User wants each GIF displayed individually, stacked vertically.
+## Vấn đề
+- ScrollArea có `max-h-[500px]` nhưng không cuộn được vì thiếu `overflow-hidden` trên container và cần set chiều cao cố định thay vì max-height
+- Chưa có thông tin tổng hợp (tổng FUN, số request đã ký/chờ ký)
 
-## Changes
+## Thay đổi
 
-### GifPicker.tsx — Switch to single column layout
-- Change grid from `grid-cols-2` to `grid-cols-1` so each GIF gets full width
-- Keep `aspect-video` ratio for natural 16:9 display
-- Each GIF will be clearly visible, one after another vertically
-- Keep existing border, rounded corners, hover effects
+### AttesterSigningPanel.tsx
 
-**Line 70**: Change `grid grid-cols-2 gap-2` → `grid grid-cols-1 gap-3`
-**Line 81**: Change `col-span-2` → `col-span-1` for empty state
+**1. Fix thanh cuộn**: Thay `max-h-[500px]` bằng `h-[500px]` trên ScrollArea để đảm bảo thanh cuộn hoạt động. Khi danh sách ngắn hơn 500px thì nội dung hiển thị bình thường, khi dài hơn thì cuộn được.
 
-1 file changed, 2 lines modified.
+**2. Thêm bảng thống kê** phía trên danh sách request:
+- Tổng số request
+- Số request cần ký / đã ký
+- Tổng FUN chờ ký
+- Tổng FUN đã ký
 
+Hiển thị dạng grid nhỏ gọn với các con số nổi bật.
+
+### Kỹ thuật
+- 1 file thay đổi: `src/components/wallet/AttesterSigningPanel.tsx`
+- Tính toán thống kê từ mảng `requests` đã có sẵn trong props
+- Giữ nguyên toàn bộ logic ký và UI card hiện tại
