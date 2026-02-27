@@ -153,13 +153,18 @@ export const usePplpAdmin = () => {
       const userIds = [...new Set((requests || []).map(r => r.user_id))];
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, username, avatar_url')
+        .select('id, username, avatar_url, is_banned')
         .in('id', userIds);
 
       const profileMap = new Map((profiles || []).map(p => [p.id, p]));
 
-      // Merge data
-      const enrichedRequests: MintRequest[] = (requests || []).map(req => ({
+      // Merge data — filter out banned users
+      const enrichedRequests: MintRequest[] = (requests || [])
+        .filter(req => {
+          const profile = profileMap.get(req.user_id);
+          return !profile?.is_banned;
+        })
+        .map(req => ({
         ...req,
         multisig_signatures: (req.multisig_signatures as MultisigSignatures) ?? null,
         profiles: profileMap.get(req.user_id) || null,
