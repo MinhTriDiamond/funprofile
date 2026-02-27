@@ -102,6 +102,7 @@ export const ShareDialog = ({
       const { error } = await supabase.from('shared_posts').insert({
         user_id: currentUserId,
         original_post_id: post.id,
+        caption: caption.trim() || null,
       });
       if (error) throw error;
       toast.success(t('sharedPost'));
@@ -141,7 +142,7 @@ export const ShareDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Share2 className="w-5 h-5" />
