@@ -75,7 +75,7 @@ const StickerPicker = ({ onSelect, onClose }: StickerPickerProps) => {
           <button
             key={i}
             onClick={() => handleSelect(sticker.url)}
-            className="relative aspect-square rounded-xl p-1.5 hover:bg-secondary transition-all hover:scale-110 flex items-center justify-center"
+            className="relative aspect-square rounded-xl p-1.5 hover:bg-primary/5 active:scale-95 transition-all hover:scale-110 flex items-center justify-center"
           >
             <StickerImage url={sticker.url} alt={sticker.alt} />
           </button>

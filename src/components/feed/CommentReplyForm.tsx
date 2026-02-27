@@ -127,7 +127,7 @@ export const CommentReplyForm = ({
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder={t('writeReply')}
-            className="w-full min-h-[50px] max-h-[120px] px-3 py-2 bg-white border-2 border-primary/30 rounded-xl resize-none focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all duration-300 text-sm placeholder:text-muted-foreground/60"
+            className="w-full min-h-[50px] max-h-[120px] px-3 py-2 bg-white dark:bg-secondary dark:text-white border-2 border-primary/30 rounded-xl resize-none focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all duration-300 text-sm placeholder:text-muted-foreground/60"
             disabled={loading}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
