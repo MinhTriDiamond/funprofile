@@ -1,45 +1,37 @@
 
 
-# Share with Caption — Implementation Plan
+# Facebook-style Comment GIF & Sticker — Implementation Plan
 
-## 1. Database Migration
-Add `caption` column to `shared_posts`:
-```sql
-ALTER TABLE shared_posts ADD COLUMN caption text DEFAULT NULL;
-```
+## 1. CommentItem.tsx — Restructure media rendering
 
-## 2. ShareDialog.tsx (2 changes)
+**Current**: GIF/Sticker rendered inside `bg-muted` bubble (lines 147-189).
 
-**Line 102-105**: Add `caption` to insert:
-```typescript
-const { error } = await supabase.from('shared_posts').insert({
-  user_id: currentUserId,
-  original_post_id: post.id,
-  caption: caption.trim() || null,
-});
-```
+**Change**: Split rendering into 3 parts:
 
-**Line 144**: Add `onOpenAutoFocus` to prevent focus trap:
-```tsx
-<DialogContent className="sm:max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
-```
+- **Username-only header** (shown when content is empty + media is gif/sticker): Display username without bubble
+- **Text bubble** (lines 147-189): Conditionally render — hide entirely when `!comment.content.trim() && (mediaType === 'gif' || mediaType === 'sticker')`; for text+gif/sticker combos, render text in bubble but move media outside
+- **Standalone media** (new, after bubble): GIF with `max-w-[280px] rounded-2xl shadow-sm`, Sticker with `w-32 h-32 object-contain hover:scale-105 transition-transform`
+- Regular image/video stays inside bubble as before
 
-## 3. Profile.tsx (line 902-911)
-Display caption above the shared post:
-```tsx
-<div key={`shared-${item.id}`} className="space-y-2">
-  <div className="flex items-center gap-2 text-sm text-muted-foreground px-2">
-    <span className="font-semibold text-primary">{t('sharedLabel')}</span>
-  </div>
-  {item.caption && (
-    <p className="text-sm text-muted-foreground px-3 pb-1">{item.caption}</p>
-  )}
-  <FacebookPostCard .../>
-</div>
-```
+Lines affected: 146-189 (restructure the `flex-1 min-w-0` div content)
+
+## 2. CommentReplyForm.tsx — Dark mode fix
+
+**Line 130**: Add `dark:bg-secondary dark:text-white` to textarea className.
+
+## 3. StickerPicker.tsx — Haptic feedback
+
+**Line 78**: Change button className to add `active:scale-95 hover:bg-primary/5` (replace `hover:bg-secondary`).
+
+## 4. GifPicker.tsx — Natural aspect ratio
+
+**Line 75**: Change `aspect-square` to `aspect-video` on GIF buttons.
 
 ## Files changed
-- 1 SQL migration (new)
-- `src/components/feed/ShareDialog.tsx` (2 edits)
-- `src/pages/Profile.tsx` (1 edit)
+- `src/components/feed/CommentItem.tsx` (restructure media outside bubble)
+- `src/components/feed/CommentReplyForm.tsx` (1 line dark mode fix)
+- `src/components/feed/StickerPicker.tsx` (1 line hover effect)
+- `src/components/feed/GifPicker.tsx` (1 line aspect ratio)
+
+No database changes needed. Backward compatible — old comments with `g:`/`s:` prefixes parse identically.
 
