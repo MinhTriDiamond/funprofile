@@ -72,7 +72,7 @@ const GifPicker = ({ onSelect, onClose }: GifPickerProps) => {
           <button
             key={i}
             onClick={() => onSelect(gif.url)}
-            className="relative aspect-square rounded-lg overflow-hidden hover:ring-2 ring-primary transition-all hover:scale-[1.02]"
+            className="relative aspect-video rounded-lg overflow-hidden hover:ring-2 ring-primary transition-all hover:scale-[1.02]"
           >
             <GifImage url={gif.url} alt={gif.alt} />
           </button>

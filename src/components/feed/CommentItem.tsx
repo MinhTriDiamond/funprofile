@@ -144,8 +144,9 @@ export const CommentItem = ({
         </Link>
         
         <div className="flex-1 min-w-0 space-y-1">
-          <div className="bg-muted/60 rounded-2xl px-4 py-2.5 transition-all duration-300 hover:bg-muted/80 group-hover:shadow-sm overflow-hidden">
-            <div className="flex items-center gap-2 mb-0.5">
+          {/* Username-only header when content is empty + gif/sticker */}
+          {!comment.content.trim() && (mediaType === 'gif' || mediaType === 'sticker') && (
+            <div className="px-1">
               <Link 
                 to={`/profile/${comment.user_id}`}
                 className="font-semibold text-sm text-primary hover:underline cursor-pointer"
@@ -153,40 +154,67 @@ export const CommentItem = ({
                 {comment.profiles?.username || t('anonymous')}
               </Link>
             </div>
-            
-            <p className="text-sm break-words overflow-hidden whitespace-pre-wrap"><TwemojiText text={comment.content} emojiSize={18} /></p>
-            
-            {mediaUrl && (
-              <div className="mt-2">
-                {mediaType === 'gif' ? (
-                  <img
-                    src={mediaUrl}
-                    alt="GIF"
-                    className="max-w-full sm:max-w-[280px] rounded-xl border border-border overflow-hidden"
-                  />
-                ) : mediaType === 'sticker' ? (
-                  <img
-                    src={mediaUrl}
-                    alt="Sticker"
-                    className="w-24 h-24 object-contain"
-                  />
-                ) : mediaType === 'image' ? (
-                  <img
-                    src={mediaUrl}
-                    alt="Comment media"
-                    className="max-w-full sm:max-w-[280px] rounded-xl border border-border cursor-pointer hover:opacity-90 transition-all duration-300 hover:shadow-md overflow-hidden"
-                    onClick={() => setShowMediaViewer(true)}
-                  />
-                ) : (
-                  <video
-                    src={mediaUrl}
-                    controls
-                    className="max-w-full sm:max-w-[280px] rounded-xl border border-border overflow-hidden"
-                  />
-                )}
+          )}
+
+          {/* Text bubble — hidden when only gif/sticker without text */}
+          {(comment.content.trim() || (mediaType !== 'gif' && mediaType !== 'sticker')) && (
+            <div className="bg-muted/60 rounded-2xl px-4 py-2.5 transition-all duration-300 hover:bg-muted/80 group-hover:shadow-sm overflow-hidden">
+              <div className="flex items-center gap-2 mb-0.5">
+                <Link 
+                  to={`/profile/${comment.user_id}`}
+                  className="font-semibold text-sm text-primary hover:underline cursor-pointer"
+                >
+                  {comment.profiles?.username || t('anonymous')}
+                </Link>
               </div>
-            )}
-          </div>
+              
+              {comment.content.trim() && (
+                <p className="text-sm break-words overflow-hidden whitespace-pre-wrap"><TwemojiText text={comment.content} emojiSize={18} /></p>
+              )}
+              
+              {/* Regular image/video stays inside bubble */}
+              {mediaUrl && (mediaType === 'image' || mediaType === 'video') && (
+                <div className="mt-2">
+                  {mediaType === 'image' ? (
+                    <img
+                      src={mediaUrl}
+                      alt="Comment media"
+                      className="max-w-full sm:max-w-[280px] rounded-xl border border-border cursor-pointer hover:opacity-90 transition-all duration-300 hover:shadow-md overflow-hidden"
+                      onClick={() => setShowMediaViewer(true)}
+                    />
+                  ) : (
+                    <video
+                      src={mediaUrl}
+                      controls
+                      className="max-w-full sm:max-w-[280px] rounded-xl border border-border overflow-hidden"
+                    />
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* GIF — standalone outside bubble (Facebook-style) */}
+          {mediaUrl && mediaType === 'gif' && (
+            <div className="mt-1">
+              <img
+                src={mediaUrl}
+                alt="GIF"
+                className="max-w-full sm:max-w-[280px] rounded-2xl shadow-sm overflow-hidden"
+              />
+            </div>
+          )}
+
+          {/* Sticker — standalone outside bubble, larger size */}
+          {mediaUrl && mediaType === 'sticker' && (
+            <div className="mt-1">
+              <img
+                src={mediaUrl}
+                alt="Sticker"
+                className="w-32 h-32 object-contain hover:scale-105 transition-transform duration-200"
+              />
+            </div>
+          )}
 
           {/* Action buttons */}
           <div className="flex items-center gap-2 px-2 text-xs">
