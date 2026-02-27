@@ -904,7 +904,7 @@ onClick={() => navigate(`/${friend.username}`)}
                                   <span className="font-semibold text-primary">{t('sharedLabel')}</span>
                                 </div>
                                 {item.caption && (
-                                  <p className="text-sm text-muted-foreground px-3 pb-1">{item.caption}</p>
+                                  <p className="text-sm text-muted-foreground italic px-3 pb-1">{item.caption}</p>
                                 )}
                                 <FacebookPostCard 
                                   post={item.posts} 
