@@ -1,33 +1,40 @@
 
 
-# Chinh font chu va cai thien trang Light Community
+# Thiet ke lai trang Light Community theo mau moi
 
-## Thay doi 1: Font chu sang trong cho "Bang danh du" va "Cong dong anh sang"
+## Tong quan
+Thiet ke lai toan bo trang `/leaderboard` theo dung mau screenshot: header trang sang (khong nen xanh), tieu de gradient cau vong, moi thanh vien la 1 card rieng biet voi display_name + @username, va badge outlined ben phai.
 
-Hien tai ca hai dang dung font `Orbitron/Rajdhani` — font ky thuat so, khong sang trong. Se doi sang font serif/sans-serif sang trong hon.
+## Thay doi 1: Cap nhat RPC `get_light_community` (Database migration)
+Them truong `display_name` vao ket qua tra ve cua RPC de hien thi ten hien thi va @username rieng biet.
 
-### Cac file can sua:
-- **`src/components/feed/AppHonorBoard.tsx`** (dong 135): Doi fontFamily tu Orbitron sang font sang trong
-- **`src/components/profile/CoverHonorBoard.tsx`** (dong 116): Tuong tu
-- **`src/components/feed/TopRanking.tsx`** (dong 119): Doi fontFamily cho "LIGHT COMMUNITY" sidebar
-- **`src/pages/Leaderboard.tsx`** (dong 93): Doi fontFamily cho "LIGHT COMMUNITY" trang chinh
+## Thay doi 2: Thiet ke lai `src/pages/Leaderboard.tsx`
 
-Font moi se la: `'Playfair Display', 'Georgia', serif` — font sang trong, de doc, phu hop tinh than PPLP. Se them Google Font import vao `index.html`.
+### Header moi:
+- Bo gradient xanh la, thay bang nen trang/sang
+- Nut back (ArrowLeft) ben trai
+- Tieu de "LIGHT COMMUNITY" voi gradient cau vong (rainbow) giong mau, font Playfair Display
+- Them icon sparkle va people ben canh tieu de
+- Subtitle: "Nhung nguoi dong gop ben vung trong he sinh thai FUN Profile"
+- Nut "Cap nhat" (refresh) o goc phai tren
 
-## Thay doi 2: Bo gioi han so luong user tren trang Leaderboard
+### Danh sach thanh vien:
+- Moi thanh vien la 1 card rieng biet (border, rounded, padding) thay vi dong trong bang
+- Layout moi card: Light emoji icon (tron, ben trai) | Avatar | Ten hien thi (bold) + @username (nho, xam) | Light Level badge (ben phai, style outlined voi mau tuong ung)
+- Badge dung style outlined (border mau, text mau, nen trong suot hoac nhat) thay vi filled
+- Bo trend emoji/text ra khoi hien thi (thay vao do dung light emoji lam icon ben trai)
 
-- **`src/pages/Leaderboard.tsx`** (dong 51): Doi `p_limit: 100` thanh `p_limit: 1000` de hien thi toan bo danh sach user
+### Interface update:
+- Them `display_name` vao interface `LightCommunityMember`
 
-## Thay doi 3: Chuyen Light Level badge sang cot ben phai (trang Leaderboard)
+## Thay doi 3: Cap nhat mau badge
+- Light Guardian: border do/hong, text do/hong (theo mau screenshot)
+- Light Builder: border xanh la, text xanh la
+- Light Architect: border tim/xanh, text tim/xanh
+- Light Sprout: border xanh nhat, text xanh nhat
+- Style: `border rounded-full px-4 py-1` — outlined, khong filled
 
-Hien tai layout da dung `justify-between` nen badge da nam ben phai roi (nhu screenshot cho thay). Tuy nhien trend indicator hien o duoi ten user — can chuyen no sang ben phai cung voi badge, hoac giu nguyen vi tri hien tai da dung (trend o duoi ten, badge ben phai).
-
-Nhin lai screenshot user gui, layout hien tai da chinh xac: ten + trend ben trai, badge ben phai. Khong can thay doi layout — chi can dam bao no hoat dong nhat quan.
-
-### Tom tat file can sua:
-1. `index.html` — Them Google Font Playfair Display
-2. `src/components/feed/AppHonorBoard.tsx` — Doi font
-3. `src/components/profile/CoverHonorBoard.tsx` — Doi font
-4. `src/components/feed/TopRanking.tsx` — Doi font
-5. `src/pages/Leaderboard.tsx` — Doi font + bo gioi han p_limit
+## Tong ket file can sua:
+1. Database migration — Cap nhat RPC `get_light_community` them `display_name`
+2. `src/pages/Leaderboard.tsx` — Thiet ke lai toan bo giao dien
 
