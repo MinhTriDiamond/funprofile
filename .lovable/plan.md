@@ -1,25 +1,21 @@
 
 
-# Bo nen trong suot va nut tron tren trang Leaderboard
+# Bo nen va vong tron cua icon emoji
 
-## Thay doi
-Sua 2 nut (Back va Refresh) tren trang `src/pages/Leaderboard.tsx`:
-- Bo `variant="ghost"` (gay nen trong suot khi hover)
-- Bo `size="icon"` va `className="rounded-full"` (gay nut tron)
-- Chi giu lai icon voi style don gian, khong co nen, khong co vien
+## Yeu cau
+Bo nen (background) va vien tron (rounded-full border) cua tat ca cac icon emoji trong danh sach thanh vien. Chi hien thi icon/emoji truc tiep, khong co container bao quanh.
 
-## Chi tiet ky thuat
-Thay the `<Button variant="ghost" size="icon" ... className="rounded-full">` bang cac `<button>` hoac `<div>` don gian chi chua icon, voi cursor pointer va hover opacity nhe.
+## Thay doi trong 2 file
 
-```tsx
-// Truoc:
-<Button variant="ghost" size="icon" onClick={...} className="rounded-full">
-  <ArrowLeft className="w-5 h-5" />
-</Button>
+### `src/pages/Leaderboard.tsx` va `src/components/feed/TopRanking.tsx`
+- Xoa ham `getEmojiContainerStyle` (khong can nua)
+- Sua div chua emoji: bo cac class `rounded-full`, `bg-muted`, `bg-amber-100`, `border` -- chi giu lai kich thuoc va canh giua
+- Truoc: `<div className="w-10 h-10 rounded-full flex items-center justify-center ... bg-amber-100 border border-amber-400">`
+- Sau: `<div className="w-10 h-10 flex items-center justify-center text-lg shrink-0">`
+- Icon Landmark van giu mau xanh la (`text-emerald-600`)
 
-// Sau:
-<button onClick={...} className="p-1 hover:opacity-70 transition-opacity">
-  <ArrowLeft className="w-5 h-5" />
-</button>
-```
+## Ket qua
+- Khong con nen vang hay nen xam
+- Khong con vien tron bao quanh
+- Chi hien thi icon/emoji truc tiep
 
