@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback, memo } from 'react';
 import { cn } from '@/lib/utils';
-import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Loader2, Settings } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Loader2, Settings, PictureInPicture2 } from 'lucide-react';
 import Hls from 'hls.js';
 
 /* ------------------------------------------------------------------ */
@@ -86,6 +86,7 @@ export const FacebookVideoPlayer = memo(({
   const [showSettings, setShowSettings] = useState(false);
   const [speed, setSpeed] = useState(1);
   const [fitMode, setFitMode] = useState<'contain' | 'cover'>('contain');
+  const [pip, setPip] = useState(false);
   const [hasError, setHasError] = useState(false);
 
   const resolvedSrc = src || sources?.[0]?.src || '';
@@ -266,6 +267,18 @@ export const FacebookVideoPlayer = memo(({
     setShowSettings(false);
   }, []);
 
+  const togglePip = useCallback(async () => {
+    try {
+      if (document.pictureInPictureElement) {
+        await document.exitPictureInPicture();
+      } else if (videoRef.current) {
+        await videoRef.current.requestPictureInPicture();
+      }
+    } catch (e) {
+      console.error('PiP failed', e);
+    }
+  }, []);
+
   /* ---- Keyboard ---- */
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     const v = videoRef.current;
@@ -276,8 +289,9 @@ export const FacebookVideoPlayer = memo(({
       case 'ArrowRight': v.currentTime = Math.min(duration, v.currentTime + 5); break;
       case 'm': case 'M': toggleMute(); break;
       case 'f': case 'F': toggleFullscreen(); break;
+      case 'p': case 'P': togglePip(); break;
     }
-  }, [togglePlay, toggleMute, toggleFullscreen, duration]);
+  }, [togglePlay, toggleMute, toggleFullscreen, togglePip, duration]);
 
   /* ---- Mobile tap ---- */
   const handleContainerClick = useCallback((e: React.MouseEvent) => {
@@ -297,6 +311,20 @@ export const FacebookVideoPlayer = memo(({
     document.addEventListener('fullscreenchange', handler);
     return () => document.removeEventListener('fullscreenchange', handler);
   }, []);
+
+  /* ---- PiP change listener ---- */
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    const onEnterPip = () => setPip(true);
+    const onLeavePip = () => setPip(false);
+    v.addEventListener('enterpictureinpicture', onEnterPip);
+    v.addEventListener('leavepictureinpicture', onLeavePip);
+    return () => {
+      v.removeEventListener('enterpictureinpicture', onEnterPip);
+      v.removeEventListener('leavepictureinpicture', onLeavePip);
+    };
+  }, [resolvedSrc]);
 
   if (hasError) {
     return (
@@ -456,6 +484,18 @@ export const FacebookVideoPlayer = memo(({
               </button>
             )}
 
+            {/* PiP button (compact) */}
+            {compact && (
+              <button
+                onClick={(e) => { e.stopPropagation(); togglePip(); }}
+                className="w-8 h-8 flex items-center justify-center text-white hover:text-primary transition-colors"
+                aria-label={pip ? 'Exit Picture-in-Picture' : 'Picture-in-Picture'}
+                data-controls
+              >
+                <PictureInPicture2 className="w-4 h-4" />
+              </button>
+            )}
+
             {/* Settings (non-compact) */}
             {!compact && (
               <div className="relative" data-controls>
@@ -499,6 +539,18 @@ export const FacebookVideoPlayer = memo(({
                   </div>
                 )}
               </div>
+            )}
+
+            {/* PiP (non-compact) */}
+            {!compact && (
+              <button
+                onClick={(e) => { e.stopPropagation(); togglePip(); }}
+                className="w-8 h-8 flex items-center justify-center text-white hover:text-primary transition-colors"
+                aria-label={pip ? 'Exit Picture-in-Picture' : 'Picture-in-Picture'}
+                data-controls
+              >
+                <PictureInPicture2 className="w-4.5 h-4.5" />
+              </button>
             )}
 
             {/* Fullscreen */}
