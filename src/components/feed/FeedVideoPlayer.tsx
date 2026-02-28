@@ -57,6 +57,7 @@ export const FeedVideoPlayer = memo(({
 
   // Callback-based metadata detection from FacebookVideoPlayer
   const handleVideoMetadata = useCallback((meta: { width: number; height: number }) => {
+    console.log('[FeedVideoPlayer] onVideoMetadata fired:', meta, 'isPortrait currently:', isPortrait);
     if (isPortrait !== null) return;
     setIsPortrait(meta.height > meta.width);
   }, [isPortrait]);
@@ -89,7 +90,7 @@ export const FeedVideoPlayer = memo(({
     resolvedObjectFit = isPortrait === false ? 'cover' : 'contain';
   }
 
-  const showBackdrop = isSquare && resolvedObjectFit === 'contain';
+  const showBackdrop = resolvedObjectFit === 'contain' && isPortrait === true;
 
   const wrapperClass = cn(
     'relative overflow-hidden',
@@ -98,7 +99,9 @@ export const FeedVideoPlayer = memo(({
   );
 
   const arNum = aspectRatio ? aspectRatio.width / aspectRatio.height : undefined;
-  const wrapperStyle = !isSquare && arNum
+  const wrapperStyle = !isSquare && isPortrait
+    ? { aspectRatio: '9/16', maxHeight: '70vh' }
+    : !isSquare && arNum
     ? { aspectRatio: `${arNum}`, maxHeight: '70vh' }
     : !isSquare
     ? { maxHeight: '70vh' }
