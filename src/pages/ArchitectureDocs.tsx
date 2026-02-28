@@ -6,6 +6,7 @@ import { TableOfContents } from '@/components/docs/TableOfContents';
 import LightScoreActivities from '@/components/docs/LightScoreActivities';
 import PplpMintAndDbDocs from '@/components/docs/PplpMintAndDbDocs';
 import ScoringApiAndVersioningDocs from '@/components/docs/ScoringApiAndVersioningDocs';
+import ScoringConfigAndExampleDocs from '@/components/docs/ScoringConfigAndExampleDocs';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -41,6 +42,10 @@ const tocItems = [
   { id: 'mint-engine', title: 'Mint Engine Chi Tiết' },
   { id: 'transparency-dashboard', title: 'Transparency Dashboard' },
   { id: 'long-term-protection', title: 'Bảo Vệ Dài Hạn' },
+  { id: 'scoring-config', title: 'Scoring Config V1' },
+  { id: 'e2e-example', title: 'Ví Dụ Tính Điểm End-to-End' },
+  { id: 'unit-test-cases', title: 'Unit Test Cases' },
+  { id: 'system-guarantees', title: 'Đảm Bảo Hệ Thống' },
   { id: 'data-flow', title: 'Data Flow Summary' },
   { id: 'design-rules', title: 'Critical Design Rules' },
   { id: 'scalability', title: 'Scalability Plan' },
@@ -451,6 +456,9 @@ Voting Smart Contract`}
 
             {/* Scoring Versioning, API Endpoints & Reason Codes */}
             <ScoringApiAndVersioningDocs />
+
+            {/* Scoring Config V1, E2E Example & Unit Test Cases */}
+            <ScoringConfigAndExampleDocs />
 
             {/* Data Flow */}
             <DocSection id="data-flow" title="🔁 Data Flow Summary">
