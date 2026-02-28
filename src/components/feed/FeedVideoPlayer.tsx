@@ -65,14 +65,36 @@ export const FeedVideoPlayer = memo(({
   }, [coordId, isPortrait]);
 
   useEffect(() => {
-    const el = document.querySelector(`[data-feed-video-id="${coordId}"] video`) as HTMLVideoElement | null;
-    if (!el) return;
-    el.addEventListener('loadedmetadata', handleVideoMetadata);
-    // If already loaded
-    if (el.videoWidth && el.videoHeight && isPortrait === null) {
-      setIsPortrait(el.videoHeight > el.videoWidth);
-    }
-    return () => el.removeEventListener('loadedmetadata', handleVideoMetadata);
+    if (isPortrait !== null) return; // already determined
+
+    let cancelled = false;
+    let retryTimer: ReturnType<typeof setTimeout>;
+
+    const tryAttach = (attempt = 0) => {
+      if (cancelled) return;
+      const el = document.querySelector(`[data-feed-video-id="${coordId}"] video`) as HTMLVideoElement | null;
+      if (el) {
+        if (el.videoWidth && el.videoHeight) {
+          setIsPortrait(el.videoHeight > el.videoWidth);
+          return;
+        }
+        el.addEventListener('loadedmetadata', handleVideoMetadata);
+        return;
+      }
+      // Retry up to 10 times (2s total)
+      if (attempt < 10) {
+        retryTimer = setTimeout(() => tryAttach(attempt + 1), 200);
+      }
+    };
+
+    tryAttach();
+
+    return () => {
+      cancelled = true;
+      clearTimeout(retryTimer);
+      const el = document.querySelector(`[data-feed-video-id="${coordId}"] video`) as HTMLVideoElement | null;
+      if (el) el.removeEventListener('loadedmetadata', handleVideoMetadata);
+    };
   }, [coordId, src, handleVideoMetadata, isPortrait]);
 
   // Register with coordinator
