@@ -90,6 +90,11 @@ export const FacebookVideoPlayer = memo(({
   const [showSettings, setShowSettings] = useState(false);
   const [speed, setSpeed] = useState(1);
   const [fitMode, setFitMode] = useState<'contain' | 'cover'>(objectFitProp || 'contain');
+
+  // Sync fitMode when objectFitProp changes
+  useEffect(() => {
+    if (objectFitProp) setFitMode(objectFitProp);
+  }, [objectFitProp]);
   const [pip, setPip] = useState(false);
   const [hasError, setHasError] = useState(false);
 
