@@ -125,6 +125,9 @@ export const TopRanking = memo(() => {
               <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border whitespace-nowrap shrink-0 ${getLevelStyle(member.light_level)}`}>
                 {member.light_level}
               </span>
+              <span className="text-xs shrink-0" title={member.trend}>
+                {member.trend_emoji}
+              </span>
             </div>
           ))}
           {members.length === 0 && (
