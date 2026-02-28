@@ -104,7 +104,7 @@ export const FeedVideoPlayer = memo(({
 
   const arNum = aspectRatio ? aspectRatio.width / aspectRatio.height : undefined;
   const wrapperStyle = isPortraitRectangle
-    ? { maxHeight: '70vh', aspectRatio: '16/9' }
+    ? { maxHeight: '70vh', aspectRatio: '1/1' }
     : !isSquare && arNum
     ? { aspectRatio: `${arNum}`, maxHeight: '70vh' }
     : !isSquare
