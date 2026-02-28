@@ -5,6 +5,7 @@ import { DocSection, DocSubSection, DocParagraph, DocList, DocAlert, DocTable } 
 import { TableOfContents } from '@/components/docs/TableOfContents';
 import LightScoreActivities from '@/components/docs/LightScoreActivities';
 import PplpMintAndDbDocs from '@/components/docs/PplpMintAndDbDocs';
+import ScoringApiAndVersioningDocs from '@/components/docs/ScoringApiAndVersioningDocs';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -33,6 +34,9 @@ const tocItems = [
   { id: 'db-logic-design', title: 'Thiết Kế Logic DB' },
   { id: 'db-pipeline', title: 'Pipeline Xử Lý Điểm' },
   { id: 'ai-scoring-arch', title: 'Kiến Trúc AI Chấm Điểm' },
+  { id: 'scoring-versioning', title: 'Scoring Rule Versioning' },
+  { id: 'api-endpoints', title: 'API Endpoints' },
+  { id: 'reason-codes', title: 'Reason Codes Microcopy' },
   { id: 'data-flow', title: 'Data Flow Summary' },
   { id: 'design-rules', title: 'Critical Design Rules' },
   { id: 'scalability', title: 'Scalability Plan' },
@@ -440,6 +444,9 @@ Voting Smart Contract`}
 
             {/* PPLP Mint, DB Logic & AI Scoring Architecture */}
             <PplpMintAndDbDocs />
+
+            {/* Scoring Versioning, API Endpoints & Reason Codes */}
+            <ScoringApiAndVersioningDocs />
 
             {/* Data Flow */}
             <DocSection id="data-flow" title="🔁 Data Flow Summary">
