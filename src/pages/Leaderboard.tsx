@@ -22,7 +22,7 @@ interface LightCommunityMember {
 
 const getLevelStyle = (level: string) => {
   switch (level) {
-    case "Light Architect": return "border-amber-500 text-amber-700 bg-amber-50/50";
+    case "Light Architect": return "border-yellow-400 text-yellow-600 bg-yellow-50/60";
     case "Light Guardian": return "border-rose-400 text-rose-600 bg-rose-50/50";
     case "Light Builder": return "border-emerald-400 text-emerald-600 bg-emerald-50/50";
     case "Light Sprout": return "border-sky-400 text-sky-600 bg-sky-50/50";
