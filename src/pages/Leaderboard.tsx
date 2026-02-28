@@ -5,7 +5,7 @@ import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, RefreshCw, Sparkles, Users } from 'lucide-react';
+import { ArrowLeft, Landmark, RefreshCw, Sparkles, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface LightCommunityMember {
@@ -135,7 +135,11 @@ const Leaderboard = () => {
                 >
                   {/* Light emoji icon */}
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg shrink-0 ${getEmojiContainerStyle(member.light_level)}`}>
-                    {member.light_emoji}
+                    {member.light_level === "Light Architect" ? (
+                      <Landmark className="w-5 h-5 text-emerald-600" />
+                    ) : (
+                      member.light_emoji
+                    )}
                   </div>
 
                   {/* Avatar */}

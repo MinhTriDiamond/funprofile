@@ -4,7 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { ChevronRight, Sparkles, Users } from "lucide-react";
+import { ChevronRight, Landmark, Sparkles, Users } from "lucide-react";
 
 interface LightCommunityMember {
   user_id: string;
@@ -100,7 +100,11 @@ export const TopRanking = memo(() => {
             >
               {/* Light emoji */}
               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0 ${getEmojiContainerStyle(member.light_level)}`}>
-                {member.light_emoji}
+                {member.light_level === "Light Architect" ? (
+                  <Landmark className="w-4 h-4 text-emerald-600" />
+                ) : (
+                  member.light_emoji
+                )}
               </div>
 
               {/* Avatar */}
