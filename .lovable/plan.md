@@ -1,38 +1,66 @@
 
-
-# Them Trang Tai Lieu Kien Truc 7 Layers + Lo Trinh Trien Khai
+# Bo Sung Tai Lieu Hoat Dong & Chuoi Hanh Vi Tinh Light Score
 
 ## Tong Quan
-Luu toan bo kien truc "FUN Ecosystem Core Architecture (Digital Identity Bank + Light Score PPLP)" thanh trang tai lieu moi tai `/docs/architecture`, theo dung format cac trang docs hien co (EcosystemDocs, PplpDocs...).
+Them 6 phan moi vao trang Architecture Docs (`/docs/architecture`) de luu tru toan bo khung hoat dong tinh Light Score tu tai lieu cua Cha, bao gom 6 nhom hoat dong, chuoi hanh vi (Behavior Sequences), phan loai cap do, co che chong farm, va cong thuc tinh diem.
 
 ## Cac buoc thuc hien
 
-### 1. Tao trang `src/pages/ArchitectureDocs.tsx`
-Trang tai lieu moi bao gom:
-- **Table of Contents** voi 7 layers + phan ket luan
-- **Layer 0 - Infrastructure**: Cloud, CDN, API Gateway, Monitoring
-- **Layer 1 - Identity (DIB Core)**: Wallet Binding, DID Engine, Soulbound NFT, Identity Metadata Store
-- **Layer 2 - Activity & Event Engine**: Event types, validation rules
-- **Layer 3 - Light Score Engine (PPLP Core)**: Cong thuc, Weight Engine, Trust Multiplier, Time Decay, Score Snapshot
-- **Layer 4 - Reward & Token Engine**: Reward logic proportional
-- **Layer 5 - Protection & Anti-Manipulation**: Sybil detection, anomaly, velocity check
-- **Layer 6 - Governance**: Proposal engine, voting weight
-- **Layer 7 - Cross-Platform Integration**: API cho tat ca platforms
-- **Data Flow Summary**: So do tong quan
-- **Critical Design Rules**: 5 quy tac bat bien
-- **Scalability Plan**: Phase 1 (centralized) -> Phase 2 (hybrid) -> Phase 3 (full modular)
-- Su dung cac component co san: DocSection, DocSubSection, DocParagraph, DocList, DocAlert, TableOfContents
+### 1. Cap nhat Table of Contents
+Them cac muc moi vao `tocItems`:
+- `activities-personal` — I. Hoat Dong Ca Nhan
+- `activities-community` — II. Hoat Dong Tuong Tac Cong Dong
+- `activities-content` — III. Hoat Dong Tao Gia Tri Noi Dung
+- `activities-web3` — IV. Hoat Dong Kinh Te Web3
+- `activities-ecosystem` — V. Dong Gop He Sinh Thai
+- `behavior-sequences` — VI. Chuoi Hanh Dong (Behavior Sequences)
+- `light-tiers` — VII. Phan Loai Cap Do Light Score
+- `anti-farm` — VIII. Co Che Chong Farm Diem
+- `score-formula` — IX. Cong Thuc Co Ban
 
-### 2. Cap nhat `src/pages/DocsRouter.tsx`
-- Them import ArchitectureDocs
-- Them route `architecture` voi title va meta description phu hop
-- Them case render cho `first === "architecture"`
+Dat cac muc nay sau `layer-7` va truoc `data-flow`.
 
-### 3. Them link vao cac trang docs hien co
-- Them nut "Architecture" vao navigation cua cac trang docs khac de de truy cap
+### 2. Them noi dung cho tung section
 
-## Ket qua
-- Truy cap tai `/docs/architecture`
-- Hien thi day du 7 layers voi noi dung chi tiet, so do ASCII, cong thuc va lo trinh
-- Theo dung phong cach cac trang tai lieu hien co cua FUN Ecosystem
+**I. Hoat Dong Ca Nhan (Self Light Actions)**
+- Daily Presence: dang nhap, light check-in, xac nhan hanh dong tich cuc
+- Ho so chuan Light Identity: hoan thien 100%, KYC, ket noi vi
+- Thuc hanh PPLP: 5 tru cot, 5 loi hua, 8 cau than chu
 
+**II. Hoat Dong Tuong Tac Cong Dong**
+- Light Interaction: like, comment, share, loi biet on
+- Mentorship/Support: huong dan thanh vien moi, tra loi chuyen mon
+- Conflict Transformation: bao cao vi pham, hoa giai, de xuat giai phap
+
+**III. Hoat Dong Tao Gia Tri Noi Dung**
+- Content Creation: bai goc, video, phan tich, case study
+- Content Quality Signals: danh gia tich cuc, bookmark, trich dan
+- Knowledge Contribution: khoa Learn & Earn, tai lieu, de xuat cai tien
+
+**IV. Hoat Dong Kinh Te Web3**
+- On-chain Actions: mint NFT, giao dich, staking, governance vote
+- Earn & Give: Learn & Earn, Give & Gain, thuong lai nguoi khac
+- Value Flow Integrity: khong spam, khong thao tung, khong farm
+
+**V. Dong Gop He Sinh Thai FUN**
+- Cross-Platform Contribution: FUN Play, Academy, Legal, Earth
+- Builder Actions: phat hien bug, de xuat UX, dong gop code/chien luoc
+
+**VI. Chuoi Hanh Dong (Behavior Sequences)** — phan quan trong nhat
+- 5 chuoi: Light Growth Chain, Mentorship Chain, Value Creation Loop, Conflict-Harmony Sequence, Economic Integrity Sequence
+- Moi chuoi hien thi dang so do buoc (pre/code block) va giai thich tai sao diem cao hon hanh dong don le
+
+**VII. Phan Loai Cap Do Light Score** — 5 tang
+- Bang voi 5 cap: Light Presence, Light Contributor, Light Builder, Light Guardian, Light Architect
+
+**VIII. Co Che Chong Farm Diem**
+- Gioi han diem lap lai, AI phat hien spam, weight theo reputation, diem tang/giam cham, sequence multiplier co dieu kien
+
+**IX. Cong Thuc Co Ban**
+- Hien thi cong thuc: Light Score = (Positive Actions x Quality Weight) x (Sequence Multiplier) x (Community Validation Weight) - (Integrity Penalty)
+
+### 3. File can chinh sua
+- **`src/pages/ArchitectureDocs.tsx`**: Them 9 muc vao tocItems va them 9 DocSection tuong ung vao phan main content, dat giua Layer 7 va Data Flow Summary.
+
+### Ket qua
+- Trang `/docs/architecture` se co day du khung hoat dong, chuoi hanh vi, cap do, co che chong farm va cong thuc — lam tai lieu tham chieu cho doi dev.
