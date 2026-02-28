@@ -1,12 +1,17 @@
 /**
  * ChunkedVideoPlayer
- * Progressive streaming player using MediaSource Extensions (MSE).
- * Features: ordered seq append, MIME sanitisation, buffer management,
- *           QuotaExceeded recovery, auto-fallback to blob on repeated errors.
+ * Production-safe MSE streaming player with:
+ * - Adaptive windowed buffering (30-60s based on network speed)
+ * - LRU chunk cache with byte cap (80MB desktop / 30MB mobile)
+ * - Background prefetch up to 3 min ahead
+ * - Seek prioritization with cache hit detection
+ * - Debounced buffering indicator + progress bar
+ * - Robust error handling with retry button
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Loader2 } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
 import { SocialVideoPlayer } from '@/components/ui/SocialVideoPlayer';
 
 /* ------------------------------------------------------------------ */
@@ -44,23 +49,103 @@ interface ChunkedVideoPlayerProps {
 /* ------------------------------------------------------------------ */
 
 const MAX_RETRY = 3;
-const BUFFER_AHEAD_S = 30;
+const BUFFER_AHEAD_FAST_S = 60;
+const BUFFER_AHEAD_SLOW_S = 30;
 const BUFFER_BEHIND_S = 15;
-const POLL_INTERVAL_MS = 1000;
-/** After this many SourceBuffer errors we fall back to blob */
+const PREFETCH_CONCURRENCY = 5;
+const PREFETCH_HORIZON_S = 180;
+const PREFETCH_INTERVAL_MS = 2000;
+const APPEND_POLL_MS = 1000;
+const BUFFERING_DEBOUNCE_MS = 300;
 const MAX_SB_ERRORS = 3;
+const MAX_FAILED_CHUNKS = 3;
+const SLOW_NETWORK_BPS = 500 * 1024; // 500 KB/s
+
+const IS_MOBILE = typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0;
+const MAX_CACHE_BYTES = IS_MOBILE ? 30 * 1024 * 1024 : 80 * 1024 * 1024;
+
+/* ------------------------------------------------------------------ */
+/*  LRU Chunk Cache                                                    */
+/* ------------------------------------------------------------------ */
+
+class ChunkCache {
+  private data = new Map<number, ArrayBuffer>();
+  private accessOrder: number[] = [];
+  private _totalBytes = 0;
+  private maxBytes: number;
+
+  constructor(maxBytes: number) {
+    this.maxBytes = maxBytes;
+  }
+
+  get totalBytes() { return this._totalBytes; }
+  get size() { return this.data.size; }
+
+  has(seq: number): boolean { return this.data.has(seq); }
+
+  get(seq: number): ArrayBuffer | undefined {
+    const buf = this.data.get(seq);
+    if (buf) this.touch(seq);
+    return buf;
+  }
+
+  set(seq: number, buf: ArrayBuffer, currentSeq = 0): void {
+    if (this.data.has(seq)) return;
+    this._totalBytes += buf.byteLength;
+    this.data.set(seq, buf);
+    this.accessOrder.push(seq);
+    // Evict if over budget
+    while (this._totalBytes > this.maxBytes && this.data.size > 1) {
+      this.evictFarthest(currentSeq);
+    }
+  }
+
+  private touch(seq: number) {
+    const idx = this.accessOrder.indexOf(seq);
+    if (idx !== -1) {
+      this.accessOrder.splice(idx, 1);
+      this.accessOrder.push(seq);
+    }
+  }
+
+  private evictFarthest(currentSeq: number) {
+    if (this.accessOrder.length === 0) return;
+    // Find the chunk farthest from currentSeq
+    let farthestIdx = 0;
+    let farthestDist = -1;
+    for (let i = 0; i < this.accessOrder.length; i++) {
+      const dist = Math.abs(this.accessOrder[i] - currentSeq);
+      if (dist > farthestDist) {
+        farthestDist = dist;
+        farthestIdx = i;
+      }
+    }
+    const evictSeq = this.accessOrder[farthestIdx];
+    this.accessOrder.splice(farthestIdx, 1);
+    const buf = this.data.get(evictSeq);
+    if (buf) this._totalBytes -= buf.byteLength;
+    this.data.delete(evictSeq);
+  }
+
+  clear() {
+    this.data.clear();
+    this.accessOrder = [];
+    this._totalBytes = 0;
+  }
+}
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
 
-async function fetchWithRetry(url: string, retries = MAX_RETRY): Promise<ArrayBuffer> {
+async function fetchWithRetry(url: string, retries = MAX_RETRY, signal?: AbortSignal): Promise<ArrayBuffer> {
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
-      const res = await fetch(url);
+      const res = await fetch(url, { signal });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return await res.arrayBuffer();
-    } catch (err) {
+    } catch (err: any) {
+      if (err.name === 'AbortError') throw err;
       if (attempt === retries - 1) throw err;
       await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
     }
@@ -68,7 +153,6 @@ async function fetchWithRetry(url: string, retries = MAX_RETRY): Promise<ArrayBu
   throw new Error('Unreachable');
 }
 
-/** Sanitise MIME: if mime_type already contains "codecs=", use it as-is */
 function buildMimeType(manifest: Manifest): string {
   const mt = manifest.mime_type ?? '';
   if (/codecs\s*=/i.test(mt)) return mt;
@@ -107,12 +191,13 @@ export function ChunkedVideoPlayer({
 }: ChunkedVideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [loading, setLoading] = useState(true);
-  const [buffering, setBuffering] = useState(false);
+  const [loadProgress, setLoadProgress] = useState(0);
+  const [bufferingDebounced, setBufferingDebounced] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const cleanupRef = useRef<(() => void) | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  /* ---- MSE path with strict-seq append ---- */
+  /* ---- MSE path ---- */
   const loadWithMSE = useCallback(async (manifest: Manifest, onFallback: () => void) => {
     const video = videoRef.current;
     if (!video) return;
@@ -127,35 +212,59 @@ export function ChunkedVideoPlayer({
 
     const mimeWithCodec = buildMimeType(manifest);
     console.log('[ChunkedVideoPlayer] Using MIME:', mimeWithCodec);
-
     const sourceBuffer = mediaSource.addSourceBuffer(mimeWithCodec);
 
-    // Set duration from manifest immediately so SocialVideoPlayer can show it
     const totalDurationSec = manifest.total_duration_ms / 1000;
     if (totalDurationSec > 0 && isFinite(totalDurationSec)) {
       try { mediaSource.duration = totalDurationSec; } catch {}
     }
 
     const offsets = buildTimeMap(manifest.chunks);
+    const totalChunks = manifest.chunks.length;
+    const cache = new ChunkCache(MAX_CACHE_BYTES);
 
-    // State
+    // Mutable state
     const fetched = new Set<number>();
     const fetching = new Set<number>();
-    /** Chunk data waiting to be appended, keyed by seq */
-    const pendingData = new Map<number, ArrayBuffer>();
+    const failedChunks = new Set<number>();
     let nextAppendSeq = 0;
     let destroyed = false;
     let firstChunkAppended = false;
     let sbErrorCount = 0;
     let appending = false;
+    let bufferAheadS = BUFFER_AHEAD_FAST_S;
+    let seekGeneration = 0;
+    let bufferingTimer: ReturnType<typeof setTimeout> | null = null;
 
-    /* --- Ordered append: only append nextAppendSeq --- */
+    // Network speed estimation
+    const speedSamples: number[] = [];
+    const estimateSpeed = (bytes: number, ms: number) => {
+      if (ms <= 0) return;
+      const bps = (bytes / ms) * 1000;
+      speedSamples.push(bps);
+      if (speedSamples.length > 5) speedSamples.shift();
+      const avg = speedSamples.reduce((a, b) => a + b, 0) / speedSamples.length;
+      bufferAheadS = avg < SLOW_NETWORK_BPS ? BUFFER_AHEAD_SLOW_S : BUFFER_AHEAD_FAST_S;
+    };
+
+    const updateProgress = () => {
+      setLoadProgress(fetched.size / totalChunks);
+    };
+
+    /* --- Ordered append from cache --- */
     const processQueue = () => {
       if (appending || destroyed) return;
       if (mediaSource.readyState !== 'open') return;
-      const data = pendingData.get(nextAppendSeq);
-      if (!data) return; // waiting for this seq to arrive
-      pendingData.delete(nextAppendSeq);
+
+      // Skip failed chunks
+      while (failedChunks.has(nextAppendSeq) && nextAppendSeq < totalChunks) {
+        nextAppendSeq++;
+      }
+      if (nextAppendSeq >= totalChunks) return;
+
+      const data = cache.get(nextAppendSeq);
+      if (!data) return;
+
       appending = true;
       try {
         sourceBuffer.appendBuffer(data);
@@ -167,12 +276,12 @@ export function ChunkedVideoPlayer({
         } else {
           sbErrorCount++;
           console.error('[ChunkedVideoPlayer] appendBuffer error:', e, `(count ${sbErrorCount})`);
-          nextAppendSeq++; // Skip failed chunk to avoid deadlock
+          nextAppendSeq++;
           if (sbErrorCount >= MAX_SB_ERRORS) {
             console.warn('[ChunkedVideoPlayer] Too many SB errors → blob fallback');
             onFallback();
           } else {
-            processQueue(); // Continue with next chunk
+            processQueue();
           }
         }
       }
@@ -196,16 +305,15 @@ export function ChunkedVideoPlayer({
       sbErrorCount++;
       appending = false;
       console.error('[ChunkedVideoPlayer] SourceBuffer error event', `(count ${sbErrorCount})`);
-      nextAppendSeq++; // Skip stuck chunk
+      nextAppendSeq++;
       if (sbErrorCount >= MAX_SB_ERRORS) {
-        console.warn('[ChunkedVideoPlayer] Too many SB errors → blob fallback');
         onFallback();
       } else {
-        processQueue(); // Continue processing
+        processQueue();
       }
     });
 
-    /* --- Eviction --- */
+    /* --- Buffer eviction --- */
     const evictOldBuffer = (): Promise<void> => {
       return new Promise(resolve => {
         if (sourceBuffer.updating || mediaSource.readyState !== 'open') { resolve(); return; }
@@ -218,91 +326,199 @@ export function ChunkedVideoPlayer({
       });
     };
 
-    /* --- Fetch a chunk → store in pendingData, then try append --- */
-    const loadChunk = async (idx: number) => {
-      if (destroyed || fetched.has(idx) || fetching.has(idx)) return;
-      if (idx < 0 || idx >= manifest.chunks.length) return;
+    /* --- Fetch a chunk → store in cache --- */
+    const loadChunk = async (idx: number, gen?: number): Promise<boolean> => {
+      if (destroyed || fetched.has(idx) || fetching.has(idx) || failedChunks.has(idx)) return false;
+      if (idx < 0 || idx >= totalChunks) return false;
       fetching.add(idx);
+      const t0 = performance.now();
       try {
-        const data = await fetchWithRetry(manifest.chunks[idx].url);
-        if (destroyed) return;
+        const data = await fetchWithRetry(manifest.chunks[idx].url, MAX_RETRY, abortRef.current?.signal);
+        if (destroyed || (gen !== undefined && gen !== seekGeneration)) return false;
+        const elapsed = performance.now() - t0;
+        estimateSpeed(data.byteLength, elapsed);
         fetched.add(idx);
-        pendingData.set(idx, data);
+        cache.set(idx, data, chunkIndexForTime(video.currentTime, offsets));
+        updateProgress();
         processQueue();
-      } catch (err) {
-        console.error(`[ChunkedVideoPlayer] Failed to load chunk ${idx}:`, err);
+        return true;
+      } catch (err: any) {
+        if (err.name === 'AbortError') return false;
+        console.error(`[ChunkedVideoPlayer] Failed chunk ${idx} (${manifest.chunks[idx].url}):`, err);
+        failedChunks.add(idx);
+        updateProgress();
+        if (failedChunks.size > MAX_FAILED_CHUNKS) {
+          setError('Không thể tải video. Một số phân đoạn bị lỗi.');
+          onErrorCallback?.();
+        }
+        // Skip in append queue if it's the one we're waiting on
+        if (idx === nextAppendSeq) {
+          nextAppendSeq++;
+          processQueue();
+        }
+        return false;
       } finally {
         fetching.delete(idx);
       }
     };
 
-    /* --- Determine which chunks to load --- */
-    const ensureBuffered = async () => {
+    /* --- Concurrency-limited batch fetch --- */
+    const fetchBatch = async (indices: number[], gen?: number) => {
+      const queue = [...indices];
+      const run = async () => {
+        while (queue.length > 0) {
+          if (destroyed || (gen !== undefined && gen !== seekGeneration)) return;
+          const idx = queue.shift()!;
+          await loadChunk(idx, gen);
+        }
+      };
+      const workers = Array.from({ length: Math.min(PREFETCH_CONCURRENCY, queue.length) }, () => run());
+      await Promise.all(workers);
+    };
+
+    /* --- Tier 1: Append window (immediate playback) --- */
+    const ensureAppendWindow = async () => {
       if (destroyed || mediaSource.readyState !== 'open') return;
       await evictOldBuffer();
       const ct = video.currentTime;
-      const startIdx = chunkIndexForTime(ct, offsets);
-      const endTime = ct + BUFFER_AHEAD_S;
-      const endIdx = Math.min(chunkIndexForTime(endTime, offsets) + 1, manifest.chunks.length - 1);
-      // Also ensure we fetch from nextAppendSeq so ordered append isn't starved
-      const fetchFrom = Math.min(startIdx, nextAppendSeq);
-      const promises: Promise<void>[] = [];
-      for (let i = fetchFrom; i <= endIdx; i++) {
-        if (!fetched.has(i) && !fetching.has(i)) promises.push(loadChunk(i));
+      const startIdx = Math.min(nextAppendSeq, chunkIndexForTime(ct, offsets));
+      const endTime = ct + bufferAheadS;
+      const endIdx = Math.min(chunkIndexForTime(endTime, offsets) + 1, totalChunks - 1);
+      const needed: number[] = [];
+      for (let i = startIdx; i <= endIdx; i++) {
+        if (!fetched.has(i) && !fetching.has(i) && !failedChunks.has(i)) needed.push(i);
       }
-      await Promise.all(promises);
+      if (needed.length > 0) await fetchBatch(needed);
     };
 
-    /* --- Video events --- */
-    const onWaiting = () => setBuffering(true);
-    const onPlaying = () => setBuffering(false);
-    const onSeeked = () => ensureBuffered();
+    /* --- Tier 2: Background prefetch into cache only --- */
+    const backgroundPrefetch = async (gen: number) => {
+      if (destroyed || gen !== seekGeneration) return;
+      const ct = video.currentTime;
+      const windowEnd = ct + bufferAheadS;
+      const horizonEnd = ct + PREFETCH_HORIZON_S;
+      const startIdx = chunkIndexForTime(windowEnd, offsets) + 1;
+      const endIdx = Math.min(chunkIndexForTime(horizonEnd, offsets) + 1, totalChunks - 1);
+      const needed: number[] = [];
+      for (let i = startIdx; i <= endIdx; i++) {
+        if (!fetched.has(i) && !fetching.has(i) && !failedChunks.has(i)) {
+          if (cache.totalBytes >= MAX_CACHE_BYTES) break;
+          needed.push(i);
+        }
+      }
+      if (needed.length > 0) await fetchBatch(needed, gen);
+    };
+
+    /* --- Seek handler --- */
+    const onSeeked = async () => {
+      if (destroyed) return;
+      seekGeneration++;
+      const gen = seekGeneration;
+      const ct = video.currentTime;
+      const targetIdx = chunkIndexForTime(ct, offsets);
+
+      // Priority: target ±2
+      const priorityIndices: number[] = [];
+      for (let i = Math.max(0, targetIdx - 2); i <= Math.min(totalChunks - 1, targetIdx + 2); i++) {
+        if (!fetched.has(i) && !failedChunks.has(i)) priorityIndices.push(i);
+      }
+
+      // If target is cached, clear buffering immediately
+      if (cache.has(targetIdx)) {
+        clearBufferingTimer();
+        setBufferingDebounced(false);
+      }
+
+      if (priorityIndices.length > 0) {
+        await fetchBatch(priorityIndices, gen);
+      }
+
+      // Resume normal flow
+      if (gen === seekGeneration) {
+        await ensureAppendWindow();
+      }
+    };
+
+    /* --- Buffering debounce --- */
+    const clearBufferingTimer = () => {
+      if (bufferingTimer) { clearTimeout(bufferingTimer); bufferingTimer = null; }
+    };
+
+    const onWaiting = () => {
+      clearBufferingTimer();
+      bufferingTimer = setTimeout(() => {
+        if (!destroyed) setBufferingDebounced(true);
+      }, BUFFERING_DEBOUNCE_MS);
+    };
+
+    const onCanPlay = () => { clearBufferingTimer(); setBufferingDebounced(false); };
+    const onPlaying = () => { clearBufferingTimer(); setBufferingDebounced(false); };
+    const onTimeUpdate = () => { clearBufferingTimer(); setBufferingDebounced(false); };
+
     video.addEventListener('waiting', onWaiting);
+    video.addEventListener('canplay', onCanPlay);
     video.addEventListener('playing', onPlaying);
+    video.addEventListener('timeupdate', onTimeUpdate);
     video.addEventListener('seeked', onSeeked);
 
-    await ensureBuffered();
+    // Initial load
+    await ensureAppendWindow();
 
-    const pollId = setInterval(() => { if (!destroyed) ensureBuffered(); }, POLL_INTERVAL_MS);
+    // Polling for append window
+    const appendPollId = setInterval(() => {
+      if (!destroyed) ensureAppendWindow();
+    }, APPEND_POLL_MS);
 
-    const checkEnd = setInterval(() => {
+    // Background prefetch on slower interval
+    const prefetchPollId = setInterval(() => {
+      if (!destroyed) backgroundPrefetch(seekGeneration);
+    }, PREFETCH_INTERVAL_MS);
+
+    // End-of-stream check
+    const checkEndId = setInterval(() => {
       if (destroyed) return;
-      if (fetched.size === manifest.chunks.length && pendingData.size === 0 && !sourceBuffer.updating) {
+      const allFetchedOrFailed = fetched.size + failedChunks.size >= totalChunks;
+      if (allFetchedOrFailed && !sourceBuffer.updating && nextAppendSeq >= totalChunks) {
         if (mediaSource.readyState === 'open') {
           try { mediaSource.endOfStream(); } catch {}
         }
-        clearInterval(checkEnd);
+        clearInterval(checkEndId);
       }
     }, 2000);
 
     cleanupRef.current = () => {
       destroyed = true;
-      clearInterval(pollId);
-      clearInterval(checkEnd);
+      clearBufferingTimer();
+      clearInterval(appendPollId);
+      clearInterval(prefetchPollId);
+      clearInterval(checkEndId);
       video.removeEventListener('waiting', onWaiting);
+      video.removeEventListener('canplay', onCanPlay);
       video.removeEventListener('playing', onPlaying);
+      video.removeEventListener('timeupdate', onTimeUpdate);
       video.removeEventListener('seeked', onSeeked);
+      cache.clear();
       URL.revokeObjectURL(msUrl);
     };
-  }, [autoPlay, onReady]);
+  }, [autoPlay, onReady, onErrorCallback]);
 
   /* ---- Blob fallback ---- */
   const loadWithBlob = useCallback(async (manifest: Manifest) => {
     const video = videoRef.current;
     if (!video) return;
 
-    // Clean up any previous MSE source
     cleanupRef.current?.();
     cleanupRef.current = null;
 
     setLoading(true);
+    setLoadProgress(0);
     const blobs: Blob[] = [];
-    // Sort chunks by seq to guarantee order
     const sorted = [...manifest.chunks].sort((a, b) => a.seq - b.seq);
     for (let i = 0; i < sorted.length; i++) {
       if (abortRef.current?.signal.aborted) return;
-      const data = await fetchWithRetry(sorted[i].url);
+      const data = await fetchWithRetry(sorted[i].url, MAX_RETRY, abortRef.current?.signal);
       blobs.push(new Blob([data]));
+      setLoadProgress((i + 1) / sorted.length);
     }
 
     const fullBlob = new Blob(blobs, { type: manifest.mime_type || 'video/webm' });
@@ -320,6 +536,8 @@ export function ChunkedVideoPlayer({
   const start = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setLoadProgress(0);
+    setBufferingDebounced(false);
     abortRef.current = new AbortController();
 
     try {
@@ -328,7 +546,6 @@ export function ChunkedVideoPlayer({
       const manifest: Manifest = await res.json();
       if (!manifest.chunks?.length) throw new Error('No chunks in manifest');
 
-      // Sort chunks by seq in manifest
       manifest.chunks.sort((a, b) => a.seq - b.seq);
 
       const mimeWithCodec = buildMimeType(manifest);
@@ -336,7 +553,6 @@ export function ChunkedVideoPlayer({
 
       if (useMSE) {
         await loadWithMSE(manifest, () => {
-          // Fallback triggered by repeated SourceBuffer errors
           console.warn('[ChunkedVideoPlayer] Falling back to blob concatenation');
           loadWithBlob(manifest);
         });
@@ -364,8 +580,14 @@ export function ChunkedVideoPlayer({
   /* ---- Render ---- */
   if (error) {
     return (
-      <div className={`flex items-center justify-center bg-black/90 text-white/70 text-sm p-4 ${className}`}>
+      <div className={`flex flex-col items-center justify-center gap-3 bg-black/90 text-white/70 text-sm p-4 ${className}`}>
         <span>⚠️ {error}</span>
+        <button
+          onClick={() => { setError(null); start(); }}
+          className="px-4 py-2 rounded bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity"
+        >
+          Thử lại
+        </button>
       </div>
     );
   }
@@ -377,11 +599,24 @@ export function ChunkedVideoPlayer({
       className={className}
     >
       <div className="relative w-full h-full">
-        {(loading || buffering) && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-10">
+        {/* Initial loading: progress bar + small spinner */}
+        {loading && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 z-10 gap-3">
+            <Loader2 className="h-6 w-6 animate-spin text-white/70" />
+            <div className="w-3/4 max-w-xs">
+              <Progress value={loadProgress * 100} className="h-1.5 bg-white/20" />
+            </div>
+            <span className="text-white/50 text-xs">{Math.round(loadProgress * 100)}%</span>
+          </div>
+        )}
+
+        {/* Buffering stall (debounced) — only when not in initial loading */}
+        {!loading && bufferingDebounced && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-10">
             <Loader2 className="h-8 w-8 animate-spin text-white/70" />
           </div>
         )}
+
         <video
           ref={videoRef}
           playsInline
