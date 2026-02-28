@@ -6,7 +6,7 @@ import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft, Landmark, RefreshCw, Sparkles, Users } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+
 
 interface LightCommunityMember {
   user_id: string;
@@ -76,23 +76,12 @@ const Leaderboard = () => {
           {/* Header */}
           <div className="mb-6">
             <div className="flex items-center justify-between mb-4">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => navigate(-1)}
-                className="rounded-full"
-              >
+              <button onClick={() => navigate(-1)} className="p-1 hover:opacity-70 transition-opacity">
                 <ArrowLeft className="w-5 h-5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleRefresh}
-                disabled={refreshing}
-                className="rounded-full"
-              >
+              </button>
+              <button onClick={handleRefresh} disabled={refreshing} className="p-1 hover:opacity-70 transition-opacity disabled:opacity-50">
                 <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
-              </Button>
+              </button>
             </div>
 
             <div className="text-center">
