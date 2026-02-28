@@ -4664,6 +4664,7 @@ export type Database = {
         Args: { p_limit?: number }
         Returns: {
           avatar_url: string
+          display_name: string
           light_emoji: string
           light_level: string
           trend: string
