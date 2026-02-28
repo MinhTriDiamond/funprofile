@@ -1,29 +1,35 @@
 
 
-# Fix Light Community Badge Colors
+# Chuyen doi trang Leaderboard thanh Light Community
 
-## Problem
-The Light Level badges in the LIGHT COMMUNITY board use dark-theme colors (`text-emerald-300`, `bg-emerald-600/20`) that appear nearly invisible on the white/light background. The text is unreadable.
+## Muc tieu
+Khi nhan "Kham pha cong dong anh sang", trang Leaderboard hien tai van dung giao dien cu (xep hang canh tranh, diem so, podium vang). Can chuyen doi toan bo trang `/leaderboard` sang thiet ke Light Community — dong bo voi sidebar.
 
-## Solution
-Update the color scheme in `TopRanking.tsx` to use solid, visible green tones — matching the style shown in the screenshot reference (like the honorboard badges with clear green backgrounds and dark text).
+## Thay doi trong `src/pages/Leaderboard.tsx`
 
-### Changes to `src/components/feed/TopRanking.tsx`:
+### 1. Thay doi data source
+- Thay `get_user_rewards_v2` bang `get_light_community` (voi `p_limit: 100`)
+- Thay interface `LeaderboardUser` bang `LightCommunityMember` (giong TopRanking.tsx)
 
-**1. `getLevelColor` function** — Change from transparent dark colors to solid light-green badges with dark green text:
-- Light Architect: solid emerald background with dark emerald text
-- Light Guardian: solid teal background with dark teal text  
-- Light Builder: solid green background with dark green text
-- Light Sprout: solid lime background with dark lime text
-- Default: solid stone background
+### 2. Thay doi Header
+- Thay Trophy icon vang thanh logo Fun Profile + tieu de "LIGHT COMMUNITY" (gradient xanh la)
+- Thay subtitle thanh "Cong dong anh sang cua FUN Profile"
+- Doi mau header tu `from-primary to-gold` sang `from-emerald-600 to-emerald-800`
 
-**2. `getTrendColor` function** — Use darker shades visible on white:
-- Growing: dark emerald text
-- Reflecting: dark amber text
-- Default: gray text
+### 3. Bo category tabs
+- Xoa toan bo phan category tabs (Tong Thuong, Hom nay, Bai viet...) vi Light Community khong phan loai canh tranh
 
-**3. Username text** — Ensure `text-primary` is visible (already should be dark on light theme, no change needed)
+### 4. Bo podium Top 3
+- Xoa toan bo phan Top 3 podium (voi so thu tu 1, 2, 3 va diem so)
 
-### File modified:
-- `src/components/feed/TopRanking.tsx` — Update color classes in `getLevelColor` and `getTrendColor` functions only
+### 5. Thay doi danh sach thanh vien
+- Bo so thu tu xep hang va rank icons (Trophy, Medal, Award)
+- Moi dong hien thi: Avatar + Username + Trend indicator + Light Level badge
+- Dung cung style mau xanh la nhu TopRanking sidebar (emerald/teal/green/lime badges)
+- Bo hien thi diem so, thay bang Light Level badge ben phai
 
+### 6. Thay doi tieu de bang
+- "Bang xep hang day du" thanh "Thanh vien cong dong"
+
+### Ket qua
+Trang Leaderboard se co giao dien dong nhat voi bang Light Community tren sidebar — khong diem so, khong xep hang, chi hien thi Light Level va xu huong tang truong.
