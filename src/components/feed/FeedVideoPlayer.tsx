@@ -92,15 +92,19 @@ export const FeedVideoPlayer = memo(({
 
   const showBackdrop = resolvedObjectFit === 'contain' && isPortrait === true;
 
+  // For portrait in rectangle mode: full-width wrapper with centered video
+  const isPortraitRectangle = !isSquare && isPortrait === true;
+
   const wrapperClass = cn(
     'relative overflow-hidden',
     isSquare ? 'aspect-square' : '',
+    isPortraitRectangle ? 'bg-black flex items-center justify-center' : '',
     className
   );
 
   const arNum = aspectRatio ? aspectRatio.width / aspectRatio.height : undefined;
-  const wrapperStyle = !isSquare && isPortrait
-    ? { aspectRatio: '9/16', maxHeight: '70vh' }
+  const wrapperStyle = isPortraitRectangle
+    ? { maxHeight: '70vh', aspectRatio: '16/9' }
     : !isSquare && arNum
     ? { aspectRatio: `${arNum}`, maxHeight: '70vh' }
     : !isSquare
@@ -132,7 +136,10 @@ export const FeedVideoPlayer = memo(({
       )}
 
       {/* Foreground video */}
-      <div className={cn('w-full h-full', showBackdrop ? 'relative z-10' : '')}>
+      <div className={cn(
+        showBackdrop ? 'relative z-10' : 'w-full',
+        isPortraitRectangle ? 'h-full aspect-[9/16]' : 'w-full h-full'
+      )}>
         {isChunked ? (
           <Suspense fallback={<div className="w-full h-full bg-muted animate-pulse" />}>
             <ChunkedVideoPlayer
