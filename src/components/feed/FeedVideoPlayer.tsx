@@ -1,4 +1,4 @@
-import { memo, useEffect, useId, useCallback, lazy, Suspense } from 'react';
+import { memo, useEffect, useId, useCallback, useState, lazy, Suspense } from 'react';
 import { cn } from '@/lib/utils';
 import { FacebookVideoPlayer } from '@/components/ui/FacebookVideoPlayer';
 import { videoPlaybackCoordinator } from './videoPlaybackCoordinator';
@@ -17,7 +17,8 @@ export interface FeedVideoPlayerProps {
   src: string;
   poster?: string;
   displayMode?: 'square' | 'rectangle';
-  aspectRatio?: number; // w/h e.g. 16/9
+  aspectRatio?: { width: number; height: number };
+  fitStrategy?: 'smart' | 'cover' | 'contain';
   isLiveReplay?: boolean;
   itemId?: string;
   feedId?: string;
@@ -31,6 +32,7 @@ export const FeedVideoPlayer = memo(({
   poster,
   displayMode = 'square',
   aspectRatio,
+  fitStrategy = 'smart',
   isLiveReplay = false,
   itemId,
   feedId,
@@ -41,10 +43,40 @@ export const FeedVideoPlayer = memo(({
   const autoId = useId();
   const coordId = itemId || feedId || autoId;
 
+  // Detect portrait from props, fallback to video metadata
+  const [isPortrait, setIsPortrait] = useState<boolean | null>(
+    aspectRatio ? aspectRatio.height > aspectRatio.width : null
+  );
+
+  // Update portrait state when aspectRatio prop changes
+  useEffect(() => {
+    if (aspectRatio) {
+      setIsPortrait(aspectRatio.height > aspectRatio.width);
+    }
+  }, [aspectRatio?.width, aspectRatio?.height]);
+
+  // Fallback: detect from video element metadata
+  const handleVideoMetadata = useCallback(() => {
+    if (isPortrait !== null) return; // already determined
+    const el = document.querySelector(`[data-feed-video-id="${coordId}"] video`) as HTMLVideoElement | null;
+    if (el && el.videoWidth && el.videoHeight) {
+      setIsPortrait(el.videoHeight > el.videoWidth);
+    }
+  }, [coordId, isPortrait]);
+
+  useEffect(() => {
+    const el = document.querySelector(`[data-feed-video-id="${coordId}"] video`) as HTMLVideoElement | null;
+    if (!el) return;
+    el.addEventListener('loadedmetadata', handleVideoMetadata);
+    // If already loaded
+    if (el.videoWidth && el.videoHeight && isPortrait === null) {
+      setIsPortrait(el.videoHeight > el.videoWidth);
+    }
+    return () => el.removeEventListener('loadedmetadata', handleVideoMetadata);
+  }, [coordId, src, handleVideoMetadata, isPortrait]);
+
   // Register with coordinator
   useEffect(() => {
-    // We register a no-op initially; the real pause comes from onPause in FacebookVideoPlayer
-    // The coordinator will call this to pause video
     const el = document.querySelector(`[data-feed-video-id="${coordId}"] video`) as HTMLVideoElement | null;
     const pauseFn = () => { el?.pause(); };
     videoPlaybackCoordinator.register(coordId, pauseFn);
@@ -57,7 +89,21 @@ export const FeedVideoPlayer = memo(({
 
   const isChunked = isChunkedManifestUrl(src);
   const isSquare = displayMode === 'square';
-  const objectFit = isSquare ? 'cover' as const : 'contain' as const;
+
+  // Resolve object fit based on strategy and orientation
+  let resolvedObjectFit: 'cover' | 'contain';
+  if (!isSquare) {
+    resolvedObjectFit = 'contain';
+  } else if (fitStrategy === 'cover') {
+    resolvedObjectFit = 'cover';
+  } else if (fitStrategy === 'contain') {
+    resolvedObjectFit = 'contain';
+  } else {
+    // smart: portrait => contain, landscape/unknown => cover
+    resolvedObjectFit = isPortrait ? 'contain' : 'cover';
+  }
+
+  const showBackdrop = isSquare && resolvedObjectFit === 'contain';
 
   const wrapperClass = cn(
     'relative overflow-hidden',
@@ -65,36 +111,62 @@ export const FeedVideoPlayer = memo(({
     className
   );
 
-  const wrapperStyle = !isSquare && aspectRatio
-    ? { aspectRatio: `${aspectRatio}`, maxHeight: '70vh' }
+  const arNum = aspectRatio ? aspectRatio.width / aspectRatio.height : undefined;
+  const wrapperStyle = !isSquare && arNum
+    ? { aspectRatio: `${arNum}`, maxHeight: '70vh' }
     : !isSquare
     ? { maxHeight: '70vh' }
     : undefined;
 
   return (
     <div className={wrapperClass} style={wrapperStyle} data-feed-video-id={coordId}>
-      {isChunked ? (
-        <Suspense fallback={<div className="w-full h-full bg-muted animate-pulse" />}>
-          <ChunkedVideoPlayer
-            manifestUrl={src}
-            className="w-full h-full"
-            autoPlay={false}
-            controls
-          />
-        </Suspense>
-      ) : (
-        <FacebookVideoPlayer
-          src={src}
-          poster={poster}
-          className="w-full h-full"
-          compact={compact}
-          mutedByDefault
-          autoPlayInView
-          objectFit={objectFit}
-          onPlayStart={handlePlayStart}
-          onError={onError}
-        />
+      {/* Blurred backdrop layer */}
+      {showBackdrop && (
+        <div className="absolute inset-0 z-0 overflow-hidden">
+          {poster ? (
+            <img
+              src={poster}
+              alt=""
+              className="w-full h-full object-cover blur-xl opacity-40 scale-110"
+              aria-hidden="true"
+            />
+          ) : (
+            <video
+              src={src}
+              muted
+              playsInline
+              className="w-full h-full object-cover blur-xl opacity-40 scale-110"
+              aria-hidden="true"
+            />
+          )}
+        </div>
       )}
+
+      {/* Foreground video */}
+      <div className={cn('w-full h-full', showBackdrop ? 'relative z-10' : '')}>
+        {isChunked ? (
+          <Suspense fallback={<div className="w-full h-full bg-muted animate-pulse" />}>
+            <ChunkedVideoPlayer
+              manifestUrl={src}
+              className="w-full h-full"
+              autoPlay={false}
+              controls
+            />
+          </Suspense>
+        ) : (
+          <FacebookVideoPlayer
+            src={src}
+            poster={poster}
+            className="w-full h-full"
+            compact={compact}
+            mutedByDefault
+            autoPlayInView
+            objectFit={resolvedObjectFit}
+            onPlayStart={handlePlayStart}
+            onError={onError}
+          />
+        )}
+      </div>
 
       {/* LIVE Replay badge + download */}
       {isLiveReplay && (
