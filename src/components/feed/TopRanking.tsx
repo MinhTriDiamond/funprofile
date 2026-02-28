@@ -1,49 +1,40 @@
-import { useEffect, useState, memo, useMemo } from "react";
+import { useEffect, useState, memo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
-// Use direct paths for logos to ensure consistency across all environments
 
-interface LeaderboardUser {
-  id: string;
+interface LightCommunityMember {
+  user_id: string;
   username: string;
   avatar_url: string;
-  total_reward: number;
-  today_reward: number;
+  light_level: string;
+  light_emoji: string;
+  trend: string;
+  trend_emoji: string;
 }
 
 export const TopRanking = memo(() => {
   const navigate = useNavigate();
-  const [topRewards, setTopRewards] = useState<LeaderboardUser[]>([]);
+  const [members, setMembers] = useState<LightCommunityMember[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchLeaderboards();
+    fetchLightCommunity();
   }, []);
 
-  // Optimized: Single RPC call with daily limits (V2)
-  const fetchLeaderboards = async () => {
+  const fetchLightCommunity = async () => {
     try {
-      const { data, error } = await supabase.rpc("get_user_rewards_v2", { limit_count: 5 });
-
+      const { data, error } = await supabase.rpc("get_light_community", { p_limit: 10 });
       if (error) throw error;
-
       if (data) {
-        setTopRewards(
-          data.map((user: any) => ({
-            id: user.id,
-            username: user.username,
-            avatar_url: user.avatar_url,
-            total_reward: Number(user.total_reward),
-            today_reward: Number(user.today_reward) || 0,
-          })),
-        );
+        setMembers(data as LightCommunityMember[]);
       }
     } catch (error) {
-      console.error("Error fetching leaderboards:", error);
+      console.error("Error fetching light community:", error);
     } finally {
       setLoading(false);
     }
@@ -61,75 +52,100 @@ export const TopRanking = memo(() => {
     );
   }
 
-  const UserRow = ({ user, rank }: { user: LeaderboardUser; rank: number }) => (
+  const getLevelColor = (level: string) => {
+    switch (level) {
+      case "Light Architect": return "bg-emerald-600/20 text-emerald-300 border-emerald-500/40";
+      case "Light Guardian": return "bg-teal-600/20 text-teal-300 border-teal-500/40";
+      case "Light Builder": return "bg-green-600/20 text-green-300 border-green-500/40";
+      case "Light Sprout": return "bg-lime-600/20 text-lime-300 border-lime-500/40";
+      default: return "bg-stone-600/20 text-stone-300 border-stone-500/40";
+    }
+  };
+
+  const getTrendColor = (trend: string) => {
+    switch (trend) {
+      case "Growing": return "text-emerald-400";
+      case "Reflecting": return "text-amber-400";
+      default: return "text-muted-foreground";
+    }
+  };
+
+  const MemberRow = ({ member }: { member: LightCommunityMember }) => (
     <div
-      onClick={() => handleUserClick(user.id)}
-      className="relative border-b border-gold/20 last:border-b-0 py-2 first:pt-0 last:pb-0 bg-white/60 hover:bg-white/80 transition-all cursor-pointer"
+      onClick={() => handleUserClick(member.user_id)}
+      className="border-b border-emerald-500/20 last:border-b-0 py-2.5 first:pt-1 last:pb-1 bg-white/60 hover:bg-white/80 transition-all cursor-pointer px-3"
     >
-      <div className="flex items-center justify-between px-1">
-        <div className="flex items-center gap-3">
-          <span className="text-[#FFD700] font-bold text-lg w-5 text-center">{rank}</span>
-          <Avatar className="w-8 h-8 border-2 border-[#D4AF37]/60">
-            <AvatarImage src={user.avatar_url} />
-            <AvatarFallback className="text-xs bg-[#D4AF37]/10 text-primary">
-              {user.username?.[0]?.toUpperCase()}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <Avatar className="w-8 h-8 border-2 border-emerald-500/40">
+            <AvatarImage src={member.avatar_url} />
+            <AvatarFallback className="text-xs bg-emerald-500/10 text-primary">
+              {member.username?.[0]?.toUpperCase()}
             </AvatarFallback>
           </Avatar>
-          <span className="text-primary text-sm font-medium truncate max-w-[120px]">{user.username}</span>
+          <div className="flex flex-col min-w-0">
+            <span className="text-primary text-sm font-medium truncate max-w-[100px]">
+              {member.username}
+            </span>
+            <span className={`text-[11px] ${getTrendColor(member.trend)}`}>
+              {member.trend_emoji} {member.trend}
+            </span>
+          </div>
         </div>
-        <span className="text-[#FFD700] font-bold text-sm">{user.total_reward.toLocaleString("vi-VN")}</span>
+        <Badge className={`text-[10px] px-2 py-0.5 ${getLevelColor(member.light_level)}`}>
+          {member.light_emoji} {member.light_level}
+        </Badge>
       </div>
     </div>
   );
 
   return (
-    <div className="rounded-2xl overflow-hidden border-2 border-gold/60 bg-card/70 shadow-lg">
+    <div className="rounded-2xl overflow-hidden border-2 border-emerald-500/40 bg-card/70 shadow-lg">
       <div className="relative p-3 space-y-2">
-        {/* Header with logo */}
+        {/* Header */}
         <div className="text-center space-y-1">
           <div className="inline-block">
-            <div className="relative">
-              <img
-                src="/fun-profile-logo-40.webp"
-                alt="Fun Profile Web3"
-                width={48}
-                height={48}
-                className="w-12 h-12 mx-auto rounded-full border border-gold/50"
-              />
-            </div>
+            <img
+              src="/fun-profile-logo-40.webp"
+              alt="Fun Profile Web3"
+              width={48}
+              height={48}
+              className="w-12 h-12 mx-auto rounded-full border border-emerald-500/50"
+            />
           </div>
-
-          <h1 
-            className="text-[22px] font-black tracking-wider uppercase"
+          <h2
+            className="text-[20px] font-black tracking-wider uppercase"
             style={{
               fontFamily: "'Orbitron', 'Rajdhani', sans-serif",
-              background: 'linear-gradient(90deg, #FF6B9D 0%, #C44FE2 15%, #7B68EE 30%, #00CED1 50%, #98FB98 70%, #FFFF00 85%, #FFB347 100%)',
+              background: 'linear-gradient(90deg, #34d399 0%, #10b981 30%, #059669 60%, #047857 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
-              filter: 'drop-shadow(1px 1px 0px rgba(255,255,255,0.5)) drop-shadow(0 0 8px rgba(255, 182, 193, 0.5))',
+              filter: 'drop-shadow(1px 1px 0px rgba(255,255,255,0.3)) drop-shadow(0 0 8px rgba(52, 211, 153, 0.4))',
             }}
           >
-            TOP RANKING
-          </h1>
+            LIGHT COMMUNITY
+          </h2>
         </div>
 
-        {/* Top 5 Users - Single column layout */}
-        <div className="grid grid-cols-1 gap-0 rounded-lg border border-gold/30 overflow-hidden">
-          {topRewards.map((user, index) => (
-            <UserRow key={user.id} user={user} rank={index + 1} />
+        {/* Members list */}
+        <div className="grid grid-cols-1 gap-0 rounded-lg border border-emerald-500/20 overflow-hidden">
+          {members.map((member) => (
+            <MemberRow key={member.user_id} member={member} />
           ))}
-          {topRewards.length === 0 && (
-            <div className="text-center py-4 text-muted-foreground text-sm">No data available yet</div>
+          {members.length === 0 && (
+            <div className="text-center py-4 text-muted-foreground text-sm">
+              Chưa có dữ liệu cộng đồng
+            </div>
           )}
         </div>
 
-        {/* View All Button */}
+        {/* CTA Button */}
         <Button
           onClick={() => navigate("/leaderboard")}
-          className="w-full mt-3 bg-[#1a7d45] hover:bg-[#166534] text-white font-bold transition-all group border border-[#D4AF37]"
+          className="w-full mt-3 bg-emerald-700 hover:bg-emerald-800 text-white font-bold transition-all group border border-emerald-500/50"
         >
-          Xem bảng xếp hạng đầy đủ
+          Khám phá cộng đồng ánh sáng
           <ChevronRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
         </Button>
       </div>
