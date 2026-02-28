@@ -1,50 +1,49 @@
 
 
-# Bo Sung Tai Lieu PPLP Mint Flow, DB Logic & AI Scoring Architecture
+# Bo Sung Scoring Versioning, API Endpoints & Reason Codes vao Architecture Docs
 
 ## Tong Quan
-Them 3 phan tai lieu lon moi vao trang `/docs/architecture`, bo sung co che tinh thuong & mint FUN Money, thiet ke logic DB (event-based scoring model), va so do kien truc AI cham Light Score.
+Them 3 phan tai lieu ky thuat moi vao trang `/docs/architecture`, bao gom: Scoring Rule Versioning, API Endpoints chuan cho dev, va bo Reason Codes microcopy tich cuc.
 
 ## Cac buoc thuc hien
 
-### 1. Tao component moi: `src/components/docs/PplpMintAndDbDocs.tsx`
-Tach noi dung moi thanh component rieng (giong LightScoreActivities) de giu ArchitectureDocs.tsx gon gang. Component nay chua 3 phan chinh:
+### 1. Tao component moi: `src/components/docs/ScoringApiAndVersioningDocs.tsx`
+Component chua 3 phan chinh:
 
-**Phan A: Co che tinh thuong & Mint FUN Money (PPLP Bonus)**
-- Phan biet 3 lop: Light Score / Mint Eligibility / FUN Money Mint Flow
-- Cong thuc PPLP Score hoan chinh voi 4 lop nhan: Reputation Weight, Consistency Multiplier, Sequence Multiplier, Integrity Penalty
-- Co che Mint theo chu ky (epoch-based) voi FUN Mint Formula
-- Phan biet Light Score vs FUN Money (tranh nuoi Ego)
-- 3 lop bao ve chong Ego: khong leaderboard canh tranh, khong hien diem chi tiet, mint khong tuc thi
-- Ket noi FUN Money & Camly Coin (Mat Troi vs Dong Nuoc)
-- 8 Cau Than Chu Thieng Lieng
+**Phan A: Scoring Rule Versioning (v1, v2...)**
+- Bang version history: version, ngay ap dung, thay doi chinh
+- Co che migration an toan: dual-write (chay song song v_old va v_new), so sanh ket qua, chi chuyen khi delta < nguong
+- Rollback strategy: giu scoring model version trong light_score_ledger de co the tinh lai
+- Schema: bang `scoring_rule_versions` (version_id, formula_config_json, activated_at, status)
 
-**Phan B: Thiet ke Logic DB (Event-based Scoring Model)**
-- Nguyen tac thiet ke: event-sourcing, pipeline, audit-first, privacy/anti-ego
-- 11 bang/collection loi: users, profiles, content, events (trai tim), pplp_ratings, signals_anti_farm, features_user_day, light_score_ledger, score_explanations, mint_epochs, mint_allocations
-- Bang sequences cho Sequence Engine
-- Luong xu ly pipeline 6 buoc: Ingest -> Validate -> Feature -> Score -> Mint -> On-chain
+**Phan B: API Endpoints chuan cho Dev**
+- `POST /functions/v1/pplp-submit-action` — Event Ingest (da co san)
+- `POST /functions/v1/pplp-score-action` — Score Action (da co san)
+- `POST /functions/v1/pplp-rating-submit` — Rating Submit (5 tru cot, 0-2)
+- `GET /functions/v1/pplp-score-read` — Doc Light Score cua user
+- `GET /functions/v1/pplp-mint-status` — Trang thai mint epoch hien tai
+- Moi endpoint co bang: Method, Path, Auth, Request Body, Response, Error Codes
 
-**Phan C: Kien truc AI cham Light Score**
-- So do tong quan: Client -> Event API -> Event Store -> 4 dich vu chinh
-- 4 services: Policy & Integrity, Content & Pillar Analyzer (AI), Reputation & Weight, Scoring Engine (Deterministic)
-- Diem mau chot "Khong nuoi Ego" trong kien truc
-- 4 AI models/heuristics: Ego Risk Classifier, Pillar Support Scorer, Spam Detector, Sybil Signals
-- Event schema chuan cho dev implement
+**Phan C: Reason Codes Microcopy**
+- Bang reason codes voi ngon ngu tich cuc, khong phan xet:
+  - `QUALITY_HIGH` → "Noi dung cua ban duoc cong dong danh gia cao"
+  - `SEQUENCE_COMPLETE` → "Ban da hoan thanh chuoi hanh dong tich cuc"
+  - `CONSISTENCY_BONUS` → "Nhip dong gop deu dan cua ban duoc ghi nhan"
+  - `INTEGRITY_ADJUSTMENT` → "He thong dang can bang nang luong de bao ve cong dong"
+  - `MENTOR_IMPACT` → "Nguoi ban huong dan da tao ra gia tri"
+  - Va 10+ reason codes khac
+- Nguyen tac viet microcopy: khong dung tu "phat", "tru diem", "vi pham" — thay bang "can bang", "dieu chinh", "bao ve"
 
 ### 2. Cap nhat `src/pages/ArchitectureDocs.tsx`
-- Them 6 muc moi vao `tocItems` (dat sau `score-formula`, truoc `data-flow`):
-  - `pplp-mint-mechanism` — Co Che Tinh Thuong & Mint
-  - `pplp-ego-protection` — Bao Ve Chong Ego
-  - `pplp-mantras` — 8 Than Chu Thieng Lieng
-  - `db-logic-design` — Thiet Ke Logic DB
-  - `db-pipeline` — Pipeline Xu Ly Diem
-  - `ai-scoring-arch` — Kien Truc AI Cham Diem
-- Import va render `PplpMintAndDbDocs` component giua LightScoreActivities va Data Flow Summary
+- Them 3 muc moi vao `tocItems` (dat sau `ai-scoring-arch`, truoc `data-flow`):
+  - `scoring-versioning` — Scoring Rule Versioning
+  - `api-endpoints` — API Endpoints
+  - `reason-codes` — Reason Codes Microcopy
+- Import va render `ScoringApiAndVersioningDocs` component
 
 ### 3. Files can chinh sua
-- `src/components/docs/PplpMintAndDbDocs.tsx` (tao moi)
-- `src/pages/ArchitectureDocs.tsx` (them tocItems + import component)
+- `src/components/docs/ScoringApiAndVersioningDocs.tsx` (tao moi)
+- `src/pages/ArchitectureDocs.tsx` (them tocItems + import)
 
 ## Ket qua
-- Trang `/docs/architecture` se co day du: 7 layers + hoat dong + chuoi hanh vi + co che mint + DB design + AI architecture — tao thanh tai lieu ky thuat toan dien cho doi dev FUN Profile.
+Trang `/docs/architecture` se co them 3 phan ky thuat quan trong, giup doi dev co the: (1) quan ly version cong thuc tinh diem an toan, (2) implement API theo chuan, (3) hien thi thong bao bang ngon ngu tich cuc dung tinh than PPLP.
