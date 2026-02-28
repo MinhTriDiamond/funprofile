@@ -113,10 +113,11 @@ export const MediaGrid = memo(({ media: initialMedia, feedId }: MediaGridProps) 
             <div key={item.url} className="aspect-square overflow-hidden">
               {item.type === 'video' ? (
                 <div onClick={() => handleClick(index)} className="cursor-pointer h-full">
-                  <FeedVideoPlayer
+                <FeedVideoPlayer
                     src={item.url}
                     poster={item.poster}
                     displayMode="square"
+                    fitStrategy="smart"
                     isLiveReplay={item.isLiveReplay}
                     feedId={feedId}
                     compact
@@ -164,6 +165,7 @@ export const MediaGrid = memo(({ media: initialMedia, feedId }: MediaGridProps) 
                   src={media[0].url}
                   poster={media[0].poster}
                   displayMode="square"
+                  fitStrategy="smart"
                   isLiveReplay={media[0].isLiveReplay}
                   feedId={feedId}
                   compact
@@ -191,6 +193,7 @@ export const MediaGrid = memo(({ media: initialMedia, feedId }: MediaGridProps) 
                   src={media[1].url}
                   poster={media[1].poster}
                   displayMode="square"
+                  fitStrategy="smart"
                   isLiveReplay={media[1].isLiveReplay}
                   feedId={feedId}
                   compact
@@ -218,6 +221,7 @@ export const MediaGrid = memo(({ media: initialMedia, feedId }: MediaGridProps) 
                   src={media[2].url}
                   poster={media[2].poster}
                   displayMode="square"
+                  fitStrategy="smart"
                   isLiveReplay={media[2].isLiveReplay}
                   feedId={feedId}
                   compact
@@ -266,6 +270,7 @@ export const MediaGrid = memo(({ media: initialMedia, feedId }: MediaGridProps) 
                   src={item.url}
                   poster={item.poster}
                   displayMode="square"
+                  fitStrategy="smart"
                   isLiveReplay={item.isLiveReplay}
                   feedId={feedId}
                   compact
