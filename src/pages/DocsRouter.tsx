@@ -7,6 +7,7 @@ import IntegrationDocs from "@/pages/IntegrationDocs";
 import SdkRepositoryDocs from "@/pages/SdkRepositoryDocs";
 import MasterCharterDocs from "@/pages/MasterCharterDocs";
 import PplpDocs from "@/pages/PplpDocs";
+import ArchitectureDocs from "@/pages/ArchitectureDocs";
 
 const setCanonical = (href: string) => {
   let link = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
@@ -92,6 +93,15 @@ export default function DocsRouter() {
       return;
     }
 
+    if (first === "architecture") {
+      document.title = "Core Architecture | FUN Ecosystem";
+      ensureMetaDescription(
+        "Kiến trúc 7 layers của FUN Ecosystem: Digital Identity Bank, Light Score PPLP, Reward Engine, Governance."
+      );
+      setCanonical(`${origin}/docs/architecture`);
+      return;
+    }
+
     document.title = "FUN Ecosystem Documentation";
     ensureMetaDescription(
       "Tài liệu FUN Ecosystem: SSO, app architecture, wallet, feed, rewards, media và admin."
@@ -105,6 +115,7 @@ export default function DocsRouter() {
   if (first === "sdk-repository") return <SdkRepositoryDocs />;
   if (first === "master-charter") return <MasterCharterDocs />;
   if (first === "pplp") return <PplpDocs />;
+  if (first === "architecture") return <ArchitectureDocs />;
 
   return <Navigate to="/docs/ecosystem" replace />;
 }
