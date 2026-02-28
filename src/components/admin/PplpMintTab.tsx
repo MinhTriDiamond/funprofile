@@ -1059,7 +1059,7 @@ const MintRequestRow = ({
   const showCheckbox = request.status === MINT_REQUEST_STATUS.PENDING_SIG || request.status === 'signing' || request.status === MINT_REQUEST_STATUS.SIGNED;
   const showSubmit = request.status === MINT_REQUEST_STATUS.SIGNED;
   const showTxLink = request.tx_hash && !request.tx_hash.startsWith('pending_');
-  const showReset = request.status === MINT_REQUEST_STATUS.FAILED;
+  const showReset = ['signing', MINT_REQUEST_STATUS.SIGNED, MINT_REQUEST_STATUS.SUBMITTED, 'rejected', MINT_REQUEST_STATUS.FAILED].includes(request.status);
   const showReject = request.status === MINT_REQUEST_STATUS.PENDING_SIG || request.status === 'signing';
   const showDelete = request.status === 'rejected' || request.status === MINT_REQUEST_STATUS.FAILED;
 
@@ -1203,11 +1203,16 @@ const MintRequestRow = ({
             <Button
               size="sm"
               variant="outline"
-              onClick={onReset}
+              onClick={() => {
+                const label = request.status === MINT_REQUEST_STATUS.FAILED ? 'thử lại' : 'đưa về chờ ký';
+                if (confirm(`Bạn có chắc muốn ${label} request này?`)) {
+                  onReset();
+                }
+              }}
               className="gap-1"
             >
               <RotateCcw className="w-4 h-4" />
-              Thử lại
+              {request.status === MINT_REQUEST_STATUS.FAILED ? 'Thử lại' : 'Về chờ ký'}
             </Button>
           )}
 
