@@ -89,7 +89,13 @@ export const useAttesterSigning = (connectedAddress?: string): UseAttesterSignin
 
       const profileMap = new Map((profiles || []).map(p => [p.id, p]));
 
-      setRequests((data || []).map(r => ({
+      // Filter out requests with 0 signatures (legacy or stale data)
+      const validRequests = (data || []).filter(r => {
+        const completed = r.multisig_completed_groups as string[] | null;
+        return completed && completed.length > 0;
+      });
+
+      setRequests(validRequests.map(r => ({
         ...r,
         multisig_signatures: (r.multisig_signatures as MultisigSignatures) ?? null,
         profiles: profileMap.get(r.user_id) || null,
