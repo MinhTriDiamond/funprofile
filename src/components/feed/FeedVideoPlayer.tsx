@@ -55,47 +55,11 @@ export const FeedVideoPlayer = memo(({
     }
   }, [aspectRatio?.width, aspectRatio?.height]);
 
-  // Fallback: detect from video element metadata
-  const handleVideoMetadata = useCallback(() => {
-    if (isPortrait !== null) return; // already determined
-    const el = document.querySelector(`[data-feed-video-id="${coordId}"] video`) as HTMLVideoElement | null;
-    if (el && el.videoWidth && el.videoHeight) {
-      setIsPortrait(el.videoHeight > el.videoWidth);
-    }
-  }, [coordId, isPortrait]);
-
-  useEffect(() => {
-    if (isPortrait !== null) return; // already determined
-
-    let cancelled = false;
-    let retryTimer: ReturnType<typeof setTimeout>;
-
-    const tryAttach = (attempt = 0) => {
-      if (cancelled) return;
-      const el = document.querySelector(`[data-feed-video-id="${coordId}"] video`) as HTMLVideoElement | null;
-      if (el) {
-        if (el.videoWidth && el.videoHeight) {
-          setIsPortrait(el.videoHeight > el.videoWidth);
-          return;
-        }
-        el.addEventListener('loadedmetadata', handleVideoMetadata);
-        return;
-      }
-      // Retry up to 10 times (2s total)
-      if (attempt < 10) {
-        retryTimer = setTimeout(() => tryAttach(attempt + 1), 200);
-      }
-    };
-
-    tryAttach();
-
-    return () => {
-      cancelled = true;
-      clearTimeout(retryTimer);
-      const el = document.querySelector(`[data-feed-video-id="${coordId}"] video`) as HTMLVideoElement | null;
-      if (el) el.removeEventListener('loadedmetadata', handleVideoMetadata);
-    };
-  }, [coordId, src, handleVideoMetadata, isPortrait]);
+  // Callback-based metadata detection from FacebookVideoPlayer
+  const handleVideoMetadata = useCallback((meta: { width: number; height: number }) => {
+    if (isPortrait !== null) return;
+    setIsPortrait(meta.height > meta.width);
+  }, [isPortrait]);
 
   // Register with coordinator
   useEffect(() => {
@@ -121,8 +85,8 @@ export const FeedVideoPlayer = memo(({
   } else if (fitStrategy === 'contain') {
     resolvedObjectFit = 'contain';
   } else {
-    // smart: portrait => contain, landscape/unknown => cover
-    resolvedObjectFit = isPortrait ? 'contain' : 'cover';
+    // smart: portrait/unknown => contain (safe default), landscape => cover
+    resolvedObjectFit = isPortrait === false ? 'cover' : 'contain';
   }
 
   const showBackdrop = isSquare && resolvedObjectFit === 'contain';
@@ -185,6 +149,7 @@ export const FeedVideoPlayer = memo(({
             autoPlayInView
             objectFit={resolvedObjectFit}
             onPlayStart={handlePlayStart}
+            onVideoMetadata={handleVideoMetadata}
             onError={onError}
           />
         )}

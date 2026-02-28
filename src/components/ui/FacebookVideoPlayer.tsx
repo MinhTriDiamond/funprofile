@@ -29,6 +29,7 @@ export interface FacebookVideoPlayerProps {
   onPause?: () => void;
   onEnded?: () => void;
   onError?: () => void;
+  onVideoMetadata?: (meta: { width: number; height: number }) => void;
 }
 
 /* ------------------------------------------------------------------ */
@@ -69,6 +70,7 @@ export const FacebookVideoPlayer = memo(({
   onPause,
   onEnded,
   onError,
+  onVideoMetadata,
 }: FacebookVideoPlayerProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -158,7 +160,13 @@ export const FacebookVideoPlayer = memo(({
     const onWaiting = () => setLoading(true);
     const onCanPlay = () => setLoading(false);
     const onEndedEvt = () => { setPlaying(false); onEnded?.(); };
-    const onLoadedMeta = () => { if (v.duration && isFinite(v.duration)) setDuration(v.duration); setLoading(false); };
+    const onLoadedMeta = () => {
+      if (v.duration && isFinite(v.duration)) setDuration(v.duration);
+      setLoading(false);
+      if (v.videoWidth && v.videoHeight) {
+        onVideoMetadata?.({ width: v.videoWidth, height: v.videoHeight });
+      }
+    };
     const onErr = () => { setHasError(true); onError?.(); };
 
     v.addEventListener('playing', onPlaying);
