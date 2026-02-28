@@ -4660,6 +4660,18 @@ export type Database = {
           tx_hash: string
         }[]
       }
+      get_light_community: {
+        Args: { p_limit?: number }
+        Returns: {
+          avatar_url: string
+          light_emoji: string
+          light_level: string
+          trend: string
+          trend_emoji: string
+          user_id: string
+          username: string
+        }[]
+      }
       get_live_recording_context: {
         Args: { _session_id: string }
         Returns: {

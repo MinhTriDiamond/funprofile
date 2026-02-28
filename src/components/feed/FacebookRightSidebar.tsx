@@ -51,7 +51,7 @@ export const FacebookRightSidebar = memo(() => {
       {/* App-wide Honor Board (Statistics) */}
       <AppHonorBoard />
 
-      {/* Top Ranking - Top 6 Users */}
+      {/* Light Community - PPLP Spirit */}
       <TopRanking />
 
       {/* Sponsored */}
