@@ -1,69 +1,64 @@
 
 
-# Triển khai Facebook-like Feed Video Player theo plan đóng gói
+# Smart Portrait Fit + Blurred Backdrop
 
-## Phân tích hiện trạng
+## Tổng quan
 
-Dự án đã có `FacebookVideoPlayer` (autoplay, HLS, controls, PiP) và `FeedVideo` wrapper trong `MediaGrid.tsx`. Tuy nhiên, theo plan đóng gói, còn thiếu:
-
-1. **`videoPlaybackCoordinator.ts`** — singleton đảm bảo chỉ 1 video phát cùng lúc (chưa tồn tại)
-2. **`FeedVideoPlayer.tsx`** — component riêng với `displayMode` (square/rectangle), `aspectRatio`, `isLiveReplay`, `itemId` props, tích hợp coordinator (chưa tồn tại)
-3. **`videoMeta`** trong types — chưa có trong `Post` type
-4. **Tích hợp coordinator cho chunked manifest** — ChunkedVideoPlayer chưa được quản lý bởi one-active-video logic
+Video dọc (portrait) trong khung vuông 1:1 đang bị crop bởi `object-cover`. Cần detect orientation rồi chuyển sang `object-contain` cho portrait, kèm backdrop blur phía sau để lấp khoảng trống.
 
 ## Các file thay đổi
 
-### 1. TẠO: `src/components/feed/videoPlaybackCoordinator.ts`
+### 1. CẬP NHẬT: `src/components/feed/FeedVideoPlayer.tsx`
 
-Singleton module:
-- `register(id, pauseFn)` — đăng ký video với callback pause
-- `unregister(id)` — hủy đăng ký khi unmount
-- `requestPlay(id)` — pause video đang phát trước đó, đặt video mới làm current
-- `clearIfCurrent(id)` — xóa current nếu trùng id
+- **Thêm prop `fitStrategy`**: `'smart' | 'cover' | 'contain'` (default `'smart'`)
+- **Thêm prop `aspectRatio`** dạng object `{ width: number; height: number }` (thay vì number hiện tại) để detect orientation từ metadata
+- **Thêm state `isPortrait`**: khởi tạo từ `aspectRatio` props, fallback detect qua `video.videoWidth/videoHeight` khi `loadedmetadata`
+- **Tính `resolvedObjectFit`**:
+  - `displayMode='rectangle'` => luôn `contain`
+  - `displayMode='square'`:
+    - `fitStrategy='smart'`: portrait => `contain`, landscape => `cover`
+    - `fitStrategy='cover'`: luôn `cover`
+    - `fitStrategy='contain'`: luôn `contain`
+- **Thêm blurred backdrop** khi square + resolvedObjectFit === 'contain':
+  - Layer absolute, full size, `z-0`
+  - Nếu có `poster`: render `<img>` với `object-cover blur-xl opacity-40 scale-110`
+  - Nếu không poster: render `<video>` backdrop muted, mirror play/pause + sync currentTime (best-effort, lệch > 0.25s)
+  - Foreground `FacebookVideoPlayer` đặt `z-10 relative`
+- **Truyền `resolvedObjectFit`** xuống `FacebookVideoPlayer` qua prop `objectFit`
 
-### 2. TẠO: `src/components/feed/FeedVideoPlayer.tsx`
+### 2. CẬP NHẬT: `src/components/feed/MediaGrid.tsx`
 
-Component mới wrapping `FacebookVideoPlayer`, thêm:
-- Props: `src`, `poster`, `displayMode` (default `'square'`), `isLiveReplay`, `aspectRatio`, `itemId`, `feedId`, `className`, `onError`
-- **Square mode**: wrapper `aspect-square`, video `object-cover` (crop center kiểu Facebook)
-- **Rectangle mode**: aspect ratio từ props hoặc fallback 16:9, `max-h-[70vh]`, video `object-contain`
-- Tích hợp `videoPlaybackCoordinator`: register on mount, requestPlay khi play, unregister on unmount
-- Badge `LIVE REPLAY` khi `isLiveReplay=true`
-- IntersectionObserver threshold 0.6 (thay vì 0.5 hiện tại) theo plan
+- Truyền `fitStrategy="smart"` cho tất cả `FeedVideoPlayer` call sites (square mode)
+- Single video (rectangle) không cần fitStrategy (mặc định contain)
 
-### 3. CẬP NHẬT: `src/types/posts.ts`
+### 3. KHÔNG thay đổi
 
-Thêm vào `Post` interface:
-```typescript
-videoMeta?: {
-  width?: number;
-  height?: number;
-  duration?: number;
-  isLiveReplay?: boolean;
-  displayMode?: 'square' | 'rectangle';
-};
+- `FacebookVideoPlayer.tsx` — đã có prop `objectFit`, không cần sửa
+- `videoPlaybackCoordinator.ts` — giữ nguyên
+- Backend / types — không cần migration
+
+## Behavior Matrix
+
+```text
+displayMode  | fitStrategy | orientation | objectFit | backdrop
+-------------|-------------|-------------|-----------|--------
+square       | smart       | portrait    | contain   | YES (blur)
+square       | smart       | landscape   | cover     | NO
+square       | cover       | any         | cover     | NO
+square       | contain     | any         | contain   | YES (blur)
+rectangle    | any         | any         | contain   | NO
 ```
 
-### 4. CẬP NHẬT: `src/components/feed/MediaGrid.tsx`
+## Backdrop Strategy
 
-- Thay `FeedVideo` bằng `FeedVideoPlayer` từ file mới
-- Truyền `displayMode`, `aspectRatio`, `isLiveReplay`, `itemId` props
-- Tích hợp coordinator cho cả nhánh ChunkedVideoPlayer (wrap trong logic register/requestPlay)
-- Loại bỏ live replay badge trùng lặp trong MediaGrid (đã có trong FeedVideoPlayer)
-
-### 5. CẬP NHẬT: `src/components/feed/FacebookPostCard.tsx`
-
-- Truyền `post.id` làm `feedId` xuống `MediaGrid`
-- Map `videoMeta` từ post metadata vào media items để `MediaGrid` forward xuống `FeedVideoPlayer`
-
-### 6. CẬP NHẬT: `src/components/ui/FacebookVideoPlayer.tsx`
-
-- Thêm prop `objectFit?: 'contain' | 'cover'` để FeedVideoPlayer có thể điều khiển fit mode từ bên ngoài (square = cover, rectangle = contain)
-- Thêm callback `onPlayStart` để FeedVideoPlayer hook vào coordinator
-
-## Không thay đổi
-
-- `SocialVideoPlayer.tsx` — giữ nguyên cho gallery viewer
-- `LazyVideo.tsx` — giữ nguyên, không xóa
-- Backend / DB schema — không thay đổi
+```text
+┌─────────────────────────┐
+│  <img/video> backdrop   │  ← object-cover, blur-xl, opacity-40, scale-110
+│  ┌───────────────────┐  │
+│  │                   │  │
+│  │  video (contain)  │  │  ← sharp foreground, z-10
+│  │                   │  │
+│  └───────────────────┘  │
+└─────────────────────────┘
+```
 
