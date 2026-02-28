@@ -4,6 +4,7 @@ import { ArrowLeft, Home, Share2 } from 'lucide-react';
 import { DocSection, DocSubSection, DocParagraph, DocList, DocAlert, DocTable } from '@/components/docs/DocSection';
 import { TableOfContents } from '@/components/docs/TableOfContents';
 import LightScoreActivities from '@/components/docs/LightScoreActivities';
+import PplpMintAndDbDocs from '@/components/docs/PplpMintAndDbDocs';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -26,6 +27,12 @@ const tocItems = [
   { id: 'light-tiers', title: 'VII. Cấp Độ Light Score' },
   { id: 'anti-farm', title: 'VIII. Chống Farm Điểm' },
   { id: 'score-formula', title: 'IX. Công Thức Tính Điểm' },
+  { id: 'pplp-mint-mechanism', title: 'Cơ Chế Tính Thưởng & Mint' },
+  { id: 'pplp-ego-protection', title: 'Bảo Vệ Chống Ego' },
+  { id: 'pplp-mantras', title: '8 Thần Chú Thiêng Liêng' },
+  { id: 'db-logic-design', title: 'Thiết Kế Logic DB' },
+  { id: 'db-pipeline', title: 'Pipeline Xử Lý Điểm' },
+  { id: 'ai-scoring-arch', title: 'Kiến Trúc AI Chấm Điểm' },
   { id: 'data-flow', title: 'Data Flow Summary' },
   { id: 'design-rules', title: 'Critical Design Rules' },
   { id: 'scalability', title: 'Scalability Plan' },
@@ -430,6 +437,9 @@ Voting Smart Contract`}
 
             {/* Light Score Activities & Behavior Sequences */}
             <LightScoreActivities />
+
+            {/* PPLP Mint, DB Logic & AI Scoring Architecture */}
+            <PplpMintAndDbDocs />
 
             {/* Data Flow */}
             <DocSection id="data-flow" title="🔁 Data Flow Summary">
