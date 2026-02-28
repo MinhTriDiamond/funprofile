@@ -8,6 +8,7 @@ import SdkRepositoryDocs from "@/pages/SdkRepositoryDocs";
 import MasterCharterDocs from "@/pages/MasterCharterDocs";
 import PplpDocs from "@/pages/PplpDocs";
 import ArchitectureDocs from "@/pages/ArchitectureDocs";
+import DocsChangelog from "@/pages/DocsChangelog";
 
 const setCanonical = (href: string) => {
   let link = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
@@ -102,6 +103,15 @@ export default function DocsRouter() {
       return;
     }
 
+    if (first === "changelog") {
+      document.title = "Báo Cáo Tổng Hợp | FUN Ecosystem";
+      ensureMetaDescription(
+        "Báo cáo tổng hợp toàn bộ thay đổi FUN Profile sau 6 tài liệu kỹ thuật mới."
+      );
+      setCanonical(`${origin}/docs/changelog`);
+      return;
+    }
+
     document.title = "FUN Ecosystem Documentation";
     ensureMetaDescription(
       "Tài liệu FUN Ecosystem: SSO, app architecture, wallet, feed, rewards, media và admin."
@@ -116,6 +126,7 @@ export default function DocsRouter() {
   if (first === "master-charter") return <MasterCharterDocs />;
   if (first === "pplp") return <PplpDocs />;
   if (first === "architecture") return <ArchitectureDocs />;
+  if (first === "changelog") return <DocsChangelog />;
 
   return <Navigate to="/docs/ecosystem" replace />;
 }

@@ -114,6 +114,11 @@ const ArchitectureDocs = () => {
                   <span className="text-xs sm:text-sm">🌐 SSO</span>
                 </Button>
               </Link>
+              <Link to="/docs/changelog">
+                <Button variant="outline" size="sm" className="h-8 px-2 sm:px-3">
+                  <span className="text-xs sm:text-sm">📊 Báo Cáo</span>
+                </Button>
+              </Link>
               <Button variant="outline" size="sm" onClick={handleShare} className="h-8 px-2 sm:px-3">
                 <Share2 className="h-4 w-4" />
               </Button>
