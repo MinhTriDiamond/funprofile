@@ -1,38 +1,91 @@
 
 
-# Sửa lỗi Attester không thấy request signing
+# Tích hợp Facebook-Style Feed Video Player
 
-## Nguyên nhân gốc
+## Tổng quan
 
-Có 2 phiên bản hàm `is_gov_attester` trong database:
+Xây dựng component `FacebookVideoPlayer` mới để thay thế `LazyVideo`/`FeedVideo` trong feed, mang lại trải nghiệm xem video giống Facebook: autoplay muted khi cuộn vào viewport, pause khi ra khỏi, controls overlay hiện đại, hỗ trợ HLS + MP4.
 
-1. **Phiên bản `text` (wallet_addr)** - Đã được cập nhật đầy đủ 11 địa chỉ ở migration trước
-2. **Phiên bản `uuid` (check_user_id)** - Vẫn dùng danh sách cũ 9 địa chỉ, trong đó có một số địa chỉ sai (không khớp với config hiện tại)
+---
 
-RLS policy `"Attesters can view signing requests"` gọi `is_gov_attester(auth.uid())` => sử dụng phiên bản UUID => Minh Trí Test 1 và Test 2 không được nhận diện => không đọc được bất kỳ request nào.
+## Các file thay đổi
 
-Với Lê Minh Trí, ví của anh ấy nằm trong danh sách cũ nên RLS cho phép, nhưng RLS cũ vẫn cho phép status `pending_sig` nên các request chưa ai ký cũng hiển thị nếu code frontend chưa được cập nhật trên trình duyệt.
+### 1. TẠO: `src/components/ui/FacebookVideoPlayer.tsx`
 
-## Thay đổi
+Component chính, bao gồm:
 
-### 1. Database Migration - Cập nhật hàm `is_gov_attester(uuid)`
+- **Props**: `src`, `sources[]`, `poster`, `width`, `height`, `autoPlayInView` (default true), `mutedByDefault` (default true), `className`, `compact`, `onPlay/onPause/onEnded`
+- **IntersectionObserver** threshold 0.5: autoplay muted khi ≥50% visible, pause khi rời viewport
+- **Manual pause tracking**: Nếu user chủ động pause, không auto-resume khi scroll lại
+- **Overlay controls**: Play/Pause lớn ở giữa, seek scrubber, current time/duration, volume slider (desktop), settings menu (speed 0.5–2x, fit mode contain/cover), fullscreen toggle
+- **Auto-hide controls** sau ~2.5s không tương tác (desktop hover, mobile tap toggle)
+- **Compact mode**: Controls tối giản (play/mute/fullscreen) cho grid cells
+- **Keyboard shortcuts**: Space (play/pause), Left/Right (seek ±5s), M (mute), F (fullscreen)
+- **HLS support**: Dùng `hls.js` cho Chrome, native fallback cho Safari. Quality switching giữ currentTime
+- **Buffering spinner** khi waiting/stalled/seeking
+- **Aspect ratio**: Giữ nguyên tỷ lệ portrait/landscape/square, `object-contain` mặc định với letterbox tối, max-height ~70vh cho single video
+- **Cleanup**: Hủy tất cả listeners, observers, timers, RAF, HLS instance khi unmount
+- **Accessibility**: aria-label cho buttons, keyboard reachable, focus ring
 
-Cập nhật danh sách địa chỉ trong phiên bản UUID cho khớp với phiên bản text (11 địa chỉ):
+### 2. CẬP NHẬT: `src/components/feed/MediaGrid.tsx`
 
-- **Will (3):** Minh Trí, Ánh Nguyệt, Thu Trang
-- **Wisdom (4):** Bé Giàu, Bé Ngọc, Ái Vân, Minh Trí Test 1
-- **Love (4):** Thanh Tiên, Bé Kim, Bé Hà, Minh Trí Test 2
+- Thay `FeedVideo` bằng `FacebookVideoPlayer` trong feed
+- Single video (media.length === 1): dùng `FacebookVideoPlayer` với `className="w-full max-h-[70vh] bg-black"`
+- Grid cells (2/3/4+): dùng `FacebookVideoPlayer` với `compact` mode
+- Giữ nguyên logic cho chunked manifest URLs (LiveReplay)
+- Giữ nguyên `LazyImage` cho ảnh
+- Gallery viewer giữ nguyên `SocialVideoPlayer` (không thay đổi)
 
-Đồng thời cập nhật RLS policy SELECT để chỉ cho phép đọc request có status `signing` hoặc `signed` (loại bỏ `pending_sig`), đồng bộ với logic frontend.
+### 3. KHÔNG thay đổi
 
-### 2. Frontend đã đúng
+- `SocialVideoPlayer.tsx` — giữ nguyên cho gallery viewer và các nơi khác
+- `LazyVideo.tsx` — giữ nguyên file, không xóa (rollback dễ dàng)
+- `LivePostCard` / `StreamPlayer` — không ảnh hưởng
+- Backend / DB schema — không thay đổi
 
-Code trong `useAttesterSigning.ts` dòng 78 đã lọc `.in('status', ['signing', 'signed'])` - không cần sửa thêm.
+---
+
+## Chi tiết kỹ thuật
+
+### Aspect Ratio Strategy
+```text
+┌──────────────────────────┐
+│    dark letterbox fill    │
+│  ┌────────────────────┐  │
+│  │                    │  │
+│  │   video (contain)  │  │
+│  │                    │  │
+│  └────────────────────┘  │
+│                          │
+└──────────────────────────┘
+max-height: 70vh (single)
+object-fit: contain (default) | cover (toggle)
+```
+
+### HLS Flow
+```text
+src → is .m3u8? → YES → Safari native? → YES → video.src = url
+                                        → NO  → hls.js attach
+              → NO  → standard <video src={url}>
+```
+
+### Behavior Matrix
+
+| Scenario | Behavior |
+|---|---|
+| ≥50% visible | Autoplay muted (nếu chưa manual pause) |
+| Rời viewport | Pause |
+| User manual pause | Không auto-resume cho đến khi user bấm play |
+| Desktop hover | Hiện controls, auto-hide sau 2.5s |
+| Mobile tap | Toggle controls visibility |
+| Compact mode | Chỉ play/mute/fullscreen |
+
+---
 
 ## Tóm tắt
 
-| Thay đổi | Mục đích |
-|----------|----------|
-| Cập nhật `is_gov_attester(uuid)` với 11 địa chỉ chính xác | Cho phép Test 1 và Test 2 vượt qua RLS |
-| Sửa RLS SELECT policy: bỏ `pending_sig` | Chặn request chưa ai ký ở tầng database |
+| File | Hành động |
+|------|-----------|
+| `src/components/ui/FacebookVideoPlayer.tsx` | Tạo mới |
+| `src/components/feed/MediaGrid.tsx` | Cập nhật: dùng FacebookVideoPlayer thay FeedVideo |
 
