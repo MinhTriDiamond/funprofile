@@ -454,7 +454,7 @@ const FacebookPostCardComponent = ({
         ) : (
           <div className="relative" onClick={handleMediaDoubleTap}>
             {mediaItems.length > 0 ? (
-              <MediaGrid media={mediaItems} />
+              <MediaGrid media={mediaItems} feedId={post.id} />
         ) : (post as any).post_type === 'live' && (post as any).metadata?.live_status === 'ended' ? (
               (post as any).metadata?.recording_failed ? (
                 <div className="flex items-center justify-center p-6 bg-muted/50 text-muted-foreground text-sm gap-2">
