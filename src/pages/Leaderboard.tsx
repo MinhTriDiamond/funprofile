@@ -5,13 +5,13 @@ import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Badge } from '@/components/ui/badge';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Sparkles, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface LightCommunityMember {
   user_id: string;
   username: string;
+  display_name: string;
   avatar_url: string;
   light_level: string;
   light_emoji: string;
@@ -19,21 +19,13 @@ interface LightCommunityMember {
   trend_emoji: string;
 }
 
-const getLevelColor = (level: string) => {
+const getLevelStyle = (level: string) => {
   switch (level) {
-    case "Light Architect": return "bg-emerald-100 text-emerald-800 border-emerald-300";
-    case "Light Guardian": return "bg-teal-100 text-teal-800 border-teal-300";
-    case "Light Builder": return "bg-green-100 text-green-800 border-green-300";
-    case "Light Sprout": return "bg-lime-100 text-lime-800 border-lime-300";
-    default: return "bg-stone-100 text-stone-700 border-stone-300";
-  }
-};
-
-const getTrendColor = (trend: string) => {
-  switch (trend) {
-    case "Growing": return "text-emerald-700";
-    case "Reflecting": return "text-amber-700";
-    default: return "text-muted-foreground";
+    case "Light Architect": return "border-purple-400 text-purple-600 bg-purple-50/50";
+    case "Light Guardian": return "border-rose-400 text-rose-600 bg-rose-50/50";
+    case "Light Builder": return "border-emerald-400 text-emerald-600 bg-emerald-50/50";
+    case "Light Sprout": return "border-sky-400 text-sky-600 bg-sky-50/50";
+    default: return "border-stone-300 text-stone-500 bg-stone-50/50";
   }
 };
 
@@ -41,6 +33,7 @@ const Leaderboard = () => {
   const navigate = useNavigate();
   const [members, setMembers] = useState<LightCommunityMember[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     fetchLightCommunity();
@@ -57,7 +50,13 @@ const Leaderboard = () => {
       console.error('Error fetching light community:', error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  };
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    fetchLightCommunity();
   };
 
   const handleUserClick = (userId: string) => {
@@ -65,88 +64,106 @@ const Leaderboard = () => {
   };
 
   return (
-    <div className="min-h-screen overflow-hidden">
+    <div className="min-h-screen overflow-hidden bg-background">
       <FacebookNavbar />
       <main data-app-scroll className="fixed inset-x-0 top-[3cm] bottom-0 overflow-y-auto pb-20 lg:pb-0">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-[2cm] py-6">
+        <div className="max-w-2xl mx-auto px-4 py-6">
           {/* Header */}
-          <div className="bg-gradient-to-r from-emerald-600 to-emerald-800 rounded-2xl p-8 mb-6 text-white text-center relative">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate(-1)}
-              className="absolute top-4 left-4 text-white hover:bg-white/20 rounded-full"
-            >
-              <ArrowLeft className="w-6 h-6" />
-            </Button>
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => navigate(-1)}
+                className="rounded-full"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="rounded-full"
+              >
+                <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
 
-            <img
-              src="/fun-profile-logo-40.webp"
-              alt="Fun Profile Web3"
-              width={64}
-              height={64}
-              className="w-16 h-16 mx-auto mb-4 rounded-full border-2 border-emerald-300/50"
-            />
-            <h1
-              className="text-3xl font-black tracking-wider uppercase mb-2"
-              style={{
-                fontFamily: "'Playfair Display', Georgia, serif",
-                textShadow: '0 0 20px rgba(52, 211, 153, 0.5)',
-              }}
-            >
-              LIGHT COMMUNITY
-            </h1>
-            <p className="text-white/80">Cộng đồng ánh sáng của FUN Profile</p>
+            <div className="text-center">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <Sparkles className="w-5 h-5 text-amber-400" />
+                <h1
+                  className="text-2xl font-black tracking-wider uppercase"
+                  style={{
+                    fontFamily: "'Playfair Display', Georgia, serif",
+                    background: 'linear-gradient(90deg, #FF6B9D 0%, #C44FE2 15%, #7B68EE 30%, #00CED1 50%, #98FB98 70%, #FFFF00 85%, #FFB347 100%)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    backgroundClip: 'text',
+                  }}
+                >
+                  LIGHT COMMUNITY
+                </h1>
+                <Users className="w-5 h-5 text-emerald-500" />
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Những người đóng góp bền vững trong hệ sinh thái FUN Profile
+              </p>
+            </div>
           </div>
 
           {/* Members List */}
-          <div className="bg-white/80 rounded-xl shadow-sm overflow-hidden border border-emerald-500/20">
-            <div className="p-4 border-b border-emerald-500/20">
-              <h2 className="font-bold text-lg text-emerald-800">Thành viên cộng đồng</h2>
+          {loading ? (
+            <div className="space-y-3">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <Skeleton key={i} className="h-20 w-full rounded-xl" />
+              ))}
             </div>
-
-            {loading ? (
-              <div className="p-4 space-y-4">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <Skeleton key={i} className="h-16 w-full rounded-lg" />
-                ))}
-              </div>
-            ) : (
-              <div className="divide-y divide-emerald-500/10">
-                {members.map((member) => (
-                  <div
-                    key={member.user_id}
-                    onClick={() => handleUserClick(member.user_id)}
-                    className="flex items-center justify-between gap-4 p-4 hover:bg-emerald-50/50 transition-colors cursor-pointer"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <Avatar className="w-12 h-12 border-2 border-emerald-500/40">
-                        <AvatarImage src={member.avatar_url} />
-                        <AvatarFallback className="bg-emerald-500/10 text-emerald-800">
-                          {member.username?.[0]?.toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex flex-col min-w-0">
-                        <span className="font-semibold truncate">{member.username}</span>
-                        <span className={`text-xs ${getTrendColor(member.trend)}`}>
-                          {member.trend_emoji} {member.trend}
-                        </span>
-                      </div>
-                    </div>
-
-                    <Badge className={`text-xs px-2.5 py-1 whitespace-nowrap ${getLevelColor(member.light_level)}`}>
-                      {member.light_emoji} {member.light_level}
-                    </Badge>
+          ) : (
+            <div className="space-y-3">
+              {members.map((member) => (
+                <div
+                  key={member.user_id}
+                  onClick={() => handleUserClick(member.user_id)}
+                  className="flex items-center gap-3 p-4 bg-card rounded-xl border shadow-sm hover:shadow-md transition-all cursor-pointer"
+                >
+                  {/* Light emoji icon */}
+                  <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-lg shrink-0">
+                    {member.light_emoji}
                   </div>
-                ))}
-                {members.length === 0 && (
-                  <div className="text-center py-8 text-muted-foreground">
-                    Chưa có dữ liệu cộng đồng
+
+                  {/* Avatar */}
+                  <Avatar className="w-11 h-11 shrink-0">
+                    <AvatarImage src={member.avatar_url} />
+                    <AvatarFallback className="bg-muted">
+                      {member.username?.[0]?.toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+
+                  {/* Name + username */}
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <span className="font-semibold text-sm truncate">
+                      {member.display_name || member.username}
+                    </span>
+                    <span className="text-xs text-muted-foreground truncate">
+                      @{member.username}
+                    </span>
                   </div>
-                )}
-              </div>
-            )}
-          </div>
+
+                  {/* Light Level badge - outlined */}
+                  <span className={`text-[11px] font-medium px-3 py-1 rounded-full border whitespace-nowrap shrink-0 ${getLevelStyle(member.light_level)}`}>
+                    {member.light_level}
+                  </span>
+                </div>
+              ))}
+              {members.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  Chưa có dữ liệu cộng đồng
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </main>
 
