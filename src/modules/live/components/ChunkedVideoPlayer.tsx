@@ -167,9 +167,12 @@ export function ChunkedVideoPlayer({
         } else {
           sbErrorCount++;
           console.error('[ChunkedVideoPlayer] appendBuffer error:', e, `(count ${sbErrorCount})`);
+          nextAppendSeq++; // Skip failed chunk to avoid deadlock
           if (sbErrorCount >= MAX_SB_ERRORS) {
             console.warn('[ChunkedVideoPlayer] Too many SB errors → blob fallback');
             onFallback();
+          } else {
+            processQueue(); // Continue with next chunk
           }
         }
       }
@@ -191,10 +194,14 @@ export function ChunkedVideoPlayer({
 
     sourceBuffer.addEventListener('error', () => {
       sbErrorCount++;
+      appending = false;
       console.error('[ChunkedVideoPlayer] SourceBuffer error event', `(count ${sbErrorCount})`);
+      nextAppendSeq++; // Skip stuck chunk
       if (sbErrorCount >= MAX_SB_ERRORS) {
         console.warn('[ChunkedVideoPlayer] Too many SB errors → blob fallback');
         onFallback();
+      } else {
+        processQueue(); // Continue processing
       }
     });
 
