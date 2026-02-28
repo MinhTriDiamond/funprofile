@@ -169,6 +169,11 @@ export const FacebookVideoPlayer = memo(({
     };
     const onErr = () => { setHasError(true); onError?.(); };
 
+    // Immediately check if metadata already loaded (handles stale closure timing)
+    if (v.videoWidth && v.videoHeight) {
+      onVideoMetadata?.({ width: v.videoWidth, height: v.videoHeight });
+    }
+
     v.addEventListener('playing', onPlaying);
     v.addEventListener('pause', onPauseEvt);
     v.addEventListener('waiting', onWaiting);
@@ -186,7 +191,7 @@ export const FacebookVideoPlayer = memo(({
       v.removeEventListener('loadedmetadata', onLoadedMeta);
       v.removeEventListener('error', onErr);
     };
-  }, [resolvedSrc, onPlay, onPause, onEnded, onError]);
+  }, [resolvedSrc, onPlay, onPlayStart, onPause, onEnded, onError, onVideoMetadata]);
 
   /* ---- IntersectionObserver autoplay ---- */
   useEffect(() => {
