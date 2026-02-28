@@ -1,28 +1,18 @@
 
-# Cap nhat giao dien Light Community tren trang chu (sidebar)
 
-## Muc tieu
-Dong bo giao dien component `TopRanking` (sidebar ben phai trang chu) voi thiet ke moi cua trang Leaderboard: card-based, badge outlined, gradient cau vong, hien thi display_name.
+# Doi mau Light Architect thanh vang hoang kim
 
-## Thay doi trong `src/components/feed/TopRanking.tsx`
+## Thay doi
+Cap nhat ham `getLevelStyle` trong 2 file:
+- `src/components/feed/TopRanking.tsx`
+- `src/pages/Leaderboard.tsx`
 
-### 1. Cap nhat interface
-- Them truong `display_name` vao `LightCommunityMember` interface (giong Leaderboard)
+Doi style cua "Light Architect" tu **purple** sang **vang hoang kim dam** (amber/yellow tones):
+- Border: `border-amber-500`
+- Text: `text-amber-700`
+- Background: `bg-amber-50/50`
 
-### 2. Thay doi style tieu de
-- Doi gradient xanh la thanh gradient cau vong (rainbow) giong trang Leaderboard
-- Them icon Sparkles va Users ben canh tieu de
-- Bo logo FUN Profile phia tren (giu gon)
+## Chi tiet ky thuat
+- Thay dong `case "Light Architect"` trong ca 2 file
+- Tu `"border-purple-400 text-purple-600 bg-purple-50/50"` thanh `"border-amber-500 text-amber-700 bg-amber-50/50"`
 
-### 3. Cap nhat member card
-- Doi tu row xanh la sang card trang voi border, rounded, shadow (giong Leaderboard)
-- Them light emoji icon (tron, ben trai)
-- Hien thi `display_name || username` lam ten chinh, `@username` phia duoi
-- Badge outlined voi mau tuong ung (purple/rose/emerald/sky) thay vi badge filled xanh
-
-### 4. Cap nhat nut CTA
-- Doi mau nut tu xanh la sang style trung tinh/gradient phu hop
-
-### Tom tat ky thuat
-- Chi sua 1 file: `src/components/feed/TopRanking.tsx`
-- Khong can thay doi database (RPC da tra ve `display_name`)
