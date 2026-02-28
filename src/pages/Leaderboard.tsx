@@ -149,6 +149,9 @@ const Leaderboard = () => {
                   <span className={`text-[11px] font-medium px-3 py-1 rounded-full border whitespace-nowrap shrink-0 ${getLevelStyle(member.light_level)}`}>
                     {member.light_level}
                   </span>
+                  <span className="text-sm shrink-0" title={member.trend}>
+                    {member.trend_emoji}
+                  </span>
                 </div>
               ))}
               {members.length === 0 && (
