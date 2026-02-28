@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -35,11 +35,20 @@ export const ActivateDialog = ({
   const { address } = useAccount();
   const [amount, setAmount] = useState<number>(0);
   const [sliderValue, setSliderValue] = useState<number[]>([0]);
+  const lastToastedHash = useRef<string | null>(null);
 
   const { writeContractAsync, data: txHash, isPending } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash: txHash,
   });
+
+  // Reset khi dialog mở lại
+  useEffect(() => {
+    if (open) {
+      setAmount(0);
+      setSliderValue([0]);
+    }
+  }, [open]);
 
   // Sync slider with amount
   useEffect(() => {
@@ -49,9 +58,10 @@ export const ActivateDialog = ({
     }
   }, [amount, lockedBalance]);
 
-  // Handle success
+  // Handle success — chỉ toast 1 lần cho mỗi txHash
   useEffect(() => {
-    if (isSuccess && txHash) {
+    if (isSuccess && txHash && txHash !== lastToastedHash.current) {
+      lastToastedHash.current = txHash;
       toast.success('Activate thành công!', {
         description: 'FUN của bạn đã được kích hoạt.',
         action: {

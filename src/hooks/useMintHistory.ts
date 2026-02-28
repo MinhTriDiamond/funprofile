@@ -124,7 +124,7 @@ export const useMintHistory = (): UseMintHistoryResult => {
     };
   }, [fetchHistory]);
 
-  const activeStatuses = ['pending_sig', 'signed', 'submitted'];
+  const activeStatuses = ['pending_sig', 'signing', 'signed', 'submitted'];
   const activeRequests = allRequests.filter(r => activeStatuses.includes(r.status));
   const historyRequests = allRequests.filter(r => !activeStatuses.includes(r.status));
   const hasPendingRequests = activeRequests.length > 0;

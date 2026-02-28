@@ -75,7 +75,7 @@ export const useAttesterSigning = (connectedAddress?: string): UseAttesterSignin
       const { data, error } = await supabase
         .from('pplp_mint_requests')
         .select('*')
-        .in('status', ['pending_sig', 'signing', 'signed'])
+        .in('status', ['signing', 'signed'])
         .order('created_at', { ascending: false });
 
       if (error) throw error;
