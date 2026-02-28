@@ -62,6 +62,8 @@ const getMintStatusConfig = (status: string) => {
   switch (status) {
     case 'pending_sig':
       return { label: 'Chờ Admin ký', icon: <Loader2 className="w-3.5 h-3.5 animate-spin text-violet-500" />, badgeClass: 'bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-300' };
+    case 'signing':
+      return { label: 'Đang ký (chưa đủ 3/3)', icon: <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-500" />, badgeClass: 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300' };
     case 'signed':
       return { label: 'Đã ký, chờ Submit', icon: <CheckCircle2 className="w-3.5 h-3.5 text-blue-500" />, badgeClass: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' };
     case 'submitted':
