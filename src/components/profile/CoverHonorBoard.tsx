@@ -113,7 +113,7 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
                 <h1 
                   className="text-lg tracking-wider uppercase leading-none font-black"
                   style={{
-                    fontFamily: "'Orbitron', 'Rajdhani', sans-serif",
+                    fontFamily: "'Playfair Display', Georgia, serif",
                     background: 'linear-gradient(90deg, #FF6B9D 0%, #C44FE2 15%, #7B68EE 30%, #00CED1 50%, #98FB98 70%, #FFFF00 85%, #FFB347 100%)',
                     WebkitBackgroundClip: 'text',
                     WebkitTextFillColor: 'transparent',
