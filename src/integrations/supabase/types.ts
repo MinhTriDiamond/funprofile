@@ -4838,7 +4838,9 @@ export type Database = {
         Args: { check_user_id: string; conv_id: string }
         Returns: boolean
       }
-      is_gov_attester: { Args: { check_user_id: string }; Returns: boolean }
+      is_gov_attester:
+        | { Args: { check_user_id: string }; Returns: boolean }
+        | { Args: { wallet_addr: string }; Returns: boolean }
       normalize_username: { Args: { input_text: string }; Returns: string }
       pin_message: { Args: { p_message_id: string }; Returns: undefined }
       process_wallet_change: {
