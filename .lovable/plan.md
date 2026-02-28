@@ -1,21 +1,36 @@
 
 
-# Bo nen va vong tron cua icon emoji
+# Hien thi Trend (Xu huong 7 ngay) tren bang Light Community
 
-## Yeu cau
-Bo nen (background) va vien tron (rounded-full border) cua tat ca cac icon emoji trong danh sach thanh vien. Chi hien thi icon/emoji truc tiep, khong co container bao quanh.
+## Mo ta
+Them hien thi trend emoji (Growing/Stable/Reflecting) ben canh moi thanh vien trong bang Light Community. Du lieu `trend` va `trend_emoji` da co san tu RPC `get_light_community`, chi can hien thi len giao dien.
 
-## Thay doi trong 2 file
+## Thay doi
 
-### `src/pages/Leaderboard.tsx` va `src/components/feed/TopRanking.tsx`
-- Xoa ham `getEmojiContainerStyle` (khong can nua)
-- Sua div chua emoji: bo cac class `rounded-full`, `bg-muted`, `bg-amber-100`, `border` -- chi giu lai kich thuoc va canh giua
-- Truoc: `<div className="w-10 h-10 rounded-full flex items-center justify-center ... bg-amber-100 border border-amber-400">`
-- Sau: `<div className="w-10 h-10 flex items-center justify-center text-lg shrink-0">`
-- Icon Landmark van giu mau xanh la (`text-emerald-600`)
+### 1. `src/pages/Leaderboard.tsx` - Trang danh sach day du
+- Them trend emoji ngay sau badge Light Level trong moi dong thanh vien
+- Hien thi `member.trend_emoji` kem tooltip/text nho cho `member.trend`
+- Vi du: 📈 (Growing), 🔄 (Reflecting), 🌿 (Stable)
 
-## Ket qua
-- Khong con nen vang hay nen xam
-- Khong con vien tron bao quanh
-- Chi hien thi icon/emoji truc tiep
+### 2. `src/components/feed/TopRanking.tsx` - Widget trang chu
+- Tuong tu, them trend emoji ben canh badge Light Level
+- Kich thuoc nho hon de phu hop voi widget compact
+
+## Chi tiet ky thuat
+
+Trong moi member card, them mot phan tu hien thi trend emoji ngay sau badge:
+
+```tsx
+{/* Light Level badge */}
+<span className={`... ${getLevelStyle(member.light_level)}`}>
+  {member.light_level}
+</span>
+
+{/* Trend emoji */}
+<span className="text-sm shrink-0" title={member.trend}>
+  {member.trend_emoji}
+</span>
+```
+
+Khong can thay doi database hay RPC vi du lieu da co san.
 
