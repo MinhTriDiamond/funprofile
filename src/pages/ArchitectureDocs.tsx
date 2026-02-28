@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Home, Share2 } from 'lucide-react';
 import { DocSection, DocSubSection, DocParagraph, DocList, DocAlert, DocTable } from '@/components/docs/DocSection';
 import { TableOfContents } from '@/components/docs/TableOfContents';
+import LightScoreActivities from '@/components/docs/LightScoreActivities';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -16,6 +17,15 @@ const tocItems = [
   { id: 'layer-5', title: 'Layer 5 – Protection & Anti-Manipulation' },
   { id: 'layer-6', title: 'Layer 6 – Governance' },
   { id: 'layer-7', title: 'Layer 7 – Cross-Platform Integration' },
+  { id: 'activities-personal', title: 'I. Hoạt Động Cá Nhân' },
+  { id: 'activities-community', title: 'II. Tương Tác Cộng Đồng' },
+  { id: 'activities-content', title: 'III. Tạo Giá Trị Nội Dung' },
+  { id: 'activities-web3', title: 'IV. Kinh Tế Web3' },
+  { id: 'activities-ecosystem', title: 'V. Đóng Góp Hệ Sinh Thái' },
+  { id: 'behavior-sequences', title: 'VI. Chuỗi Hành Động' },
+  { id: 'light-tiers', title: 'VII. Cấp Độ Light Score' },
+  { id: 'anti-farm', title: 'VIII. Chống Farm Điểm' },
+  { id: 'score-formula', title: 'IX. Công Thức Tính Điểm' },
   { id: 'data-flow', title: 'Data Flow Summary' },
   { id: 'design-rules', title: 'Critical Design Rules' },
   { id: 'scalability', title: 'Scalability Plan' },
@@ -417,6 +427,9 @@ Voting Smart Contract`}
                 ]} />
               </DocSubSection>
             </DocSection>
+
+            {/* Light Score Activities & Behavior Sequences */}
+            <LightScoreActivities />
 
             {/* Data Flow */}
             <DocSection id="data-flow" title="🔁 Data Flow Summary">
