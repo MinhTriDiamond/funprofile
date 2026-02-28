@@ -1,74 +1,88 @@
 
-
-# Bao Cao Tong Hop: Toan Bo Thay Doi FUN Profile Sau 6 Tai Lieu Moi
+# Chuyen doi "TOP RANKING" thanh "Light Community" theo tinh than PPLP
 
 ## Tong Quan
-Tao mot trang bao cao tong hop moi tai `/docs/changelog` hien thi day du cac thay doi da thuc hien trong 6 tai lieu ky thuat vua bo sung vao FUN Profile.
+Thay doi bang "TOP RANKING" (hien thi xep hang canh tranh voi so thu diem) thanh "Light Community" — hien thi Light Level cua tung nguoi dung theo tinh than PPLP: khong canh tranh, khong nuoi Ego, chi the hien cap do anh sang va xu huong tang truong.
 
-## Noi Dung Bao Cao
+## Thay doi chinh
 
-Trang bao cao se tong hop **6 khoi tai lieu** da duoc them vao trang `/docs/architecture`:
+### 1. Tao RPC moi: `get_light_community`
+Tao mot database function moi de truy van light level cua cac thanh vien cong dong:
 
-### 1. LightScoreActivities (248 dong)
-- 9 muc (I-IX): Hoat dong ca nhan, tuong tac cong dong, noi dung, Web3, he sinh thai
-- Chuoi hanh dong (Sequence), cap do Light Score, chong farm diem, cong thuc tinh diem
+- Truy van bang `light_actions` de tinh `total_light_score` cho moi user
+- Join voi `profiles` de lay username, avatar
+- Xac dinh Light Level dua tren diem:
+  - 0-20: Light Seed
+  - 21-40: Light Sprout
+  - 41-60: Light Builder
+  - 61-80: Light Guardian
+  - 81+: Light Architect
+- Xac dinh xu huong (trend) dua tren hoat dong gan day
+- Sap xep theo `total_light_score` giam dan, gioi han 10 user
+- Loc bo user bi banned (`is_banned = false`)
+- **Khong tra ve diem so cu the** — chi tra level name va trend
 
-### 2. PplpMintAndDbDocs (384 dong)
-- Co che tinh thuong va Mint FUN Money (3 lop phan biet)
-- Cong thuc PPLP Score hoan chinh (5 tru cot x 4 multiplier - penalty)
-- Bao ve chong Ego (3 lop)
-- 8 Than Chu Thieng Lieng
-- Thiet ke Logic DB (11 bang: users, profiles, content, events, pplp_ratings, signals_anti_farm, features_user_day, light_score_ledger, score_explanations, mint_epochs, mint_allocations)
-- Pipeline xu ly diem (6 buoc)
-- Kien truc AI cham diem (4 dich vu chinh)
+**Schema tra ve:**
+```text
+user_id, username, avatar_url, light_level, light_emoji, trend, trend_emoji
+```
 
-### 3. ScoringApiAndVersioningDocs (455 dong)
-- Scoring Rule Versioning: schema, migration, rollback strategy
-- 5 API Endpoints chuan REST (Event Ingest, PPLP Rating, Light Summary, Private Score, Mint Epoch)
-- Reason Codes & Microcopy (10 positive + 8 adjustment codes)
-- Level System (5 cap do: Seed → Architect)
-- Mint Engine chi tiet (7 buoc Epoch Flow)
-- Transparency Dashboard
-- Bao ve dai han (3 lop: Model Drift, Council Review, Slow Mint Curve)
+### 2. Chuyen doi component `TopRanking.tsx` thanh `LightCommunity.tsx`
 
-### 4. ScoringConfigAndExampleDocs (204 dong)
-- Config V1 chuan YAML/JSON (7 nhom tham so)
-- Vi du tinh diem End-to-End (8 buoc tu raw → final = 8.67)
-- Mint Calculation (allocation = 86.7 FUN)
-- 4 Unit Test Cases (Spam, Viral Drama, Silent Contributor, Rating Ring)
-- 6 dam bao he thong
+**Thay doi giao dien:**
+- Tieu de: "TOP RANKING" -> "LIGHT COMMUNITY"
+- Bo so thu tu canh tranh (#1, #2, #3...)
+- Moi user hien thi:
+  - Avatar + Username (giu nguyen)
+  - Light Level badge (vd: "Light Builder") thay vi diem so
+  - Trend indicator (Growing / Stable / Reflecting) thay vi total_reward
+- Bo mau vang canh tranh (#FFD700 cho rank), thay bang mau xanh la nhe (green tones) phu hop tinh than anh sang
+- Nut "Xem bang xep hang day du" -> "Kham pha cong dong anh sang"
 
-## Cac Buoc Thuc Hien
+**Khong hien thi:**
+- So thu tu xep hang
+- Diem so cu the
+- Bat ky yeu to canh tranh nao
 
-### Buoc 1: Tao trang `src/pages/DocsChangelog.tsx`
-- Header voi tieu de "Bao Cao Tong Hop — 6 Tai Lieu Ky Thuat Moi"
-- Bang tong hop: ten tai lieu, so dong code, so section, noi dung chinh
-- Bang thong ke tong: tong so dong, tong so section, tong so bang DB, tong so API endpoint, tong so reason code
-- Timeline cac thay doi theo thu tu
-- Lien ket nhanh toi tung section trong `/docs/architecture`
+### 3. Cap nhat `FacebookRightSidebar.tsx`
+- Import `LightCommunity` thay vi `TopRanking`
 
-### Buoc 2: Them route vao `DocsRouter.tsx`
-- Them route `/docs/changelog` tro toi `DocsChangelog`
+### 4. Cap nhat Leaderboard link
+- Nut "Kham pha cong dong anh sang" van tro den `/leaderboard` (giu nguyen trang leaderboard hien tai, co the chuyen doi sau)
 
-### Buoc 3: Them nut lien ket
-- Them nut "Bao Cao" vao header cua `ArchitectureDocs.tsx` de truy cap nhanh
+## Chi tiet ky thuat
 
-## Chi Tiet Ky Thuat
-- Su dung cac component `DocSection`, `DocTable`, `DocList`, `DocAlert` da co san
-- Responsive design theo pattern cua cac trang docs hien tai
-- Khong can backend — chi la trang static hien thi thong tin tong hop
+### Database Migration
+```text
+CREATE FUNCTION get_light_community(p_limit int DEFAULT 10)
+RETURNS TABLE(
+  user_id uuid,
+  username text,
+  avatar_url text,
+  light_level text,
+  light_emoji text,
+  trend text,
+  trend_emoji text
+)
+```
 
-## Thong Ke Du Kien Hien Thi
+Logic:
+- Tinh SUM(light_score) tu light_actions GROUP BY user_id
+- Map score range -> level name + emoji
+- Tinh trend bang so sanh light_score 7 ngay gan nhat voi 7 ngay truoc do:
+  - Tang > 10%: "Growing" 
+  - Giam > 10%: "Reflecting"
+  - Con lai: "Stable"
+- Filter: profiles.is_banned = false
+- ORDER BY total_light_score DESC, LIMIT p_limit
 
-| Chi so | So luong |
-|--------|----------|
-| Tong file moi | 4 components |
-| Tong dong code docs | ~1,291 dong |
-| Tong section TOC | 40 muc |
-| Bang DB thiet ke | 11 bang + 1 bang sequence |
-| API Endpoints | 5 endpoint REST |
-| Reason Codes | 18 codes (10 positive + 8 adjustment) |
-| Unit Test Cases | 4 kich ban |
-| Level/Trend | 5 cap do + 4 xu huong |
-| Config tham so | 7 nhom, 20+ tham so |
+### Component thay doi
+- Rename file: `TopRanking.tsx` -> noi dung moi trong cung file (giu ten file de tranh anh huong import khac)
+- Thay doi interface `LeaderboardUser` thanh `LightCommunityMember`
+- Thay doi fetch tu `get_user_rewards_v2` sang `get_light_community`
+- UserRow: bo rank number, them Light Level badge va Trend indicator
 
+### Cac file can chinh sua
+1. **Database migration** — tao RPC `get_light_community`
+2. **`src/components/feed/TopRanking.tsx`** — chuyen doi thanh Light Community UI
+3. **`src/components/feed/FacebookRightSidebar.tsx`** — cap nhat comment/import neu can
