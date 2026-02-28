@@ -1,51 +1,38 @@
 
 
-# Sửa 3 lỗi trong luồng FUN Money
+# Sửa lỗi Attester không thấy request signing
 
-## Tổng quan
-Có 3 vấn đề cần sửa: (1) trạng thái `signing` chưa được hiển thị đúng trong lịch sử mint của user, (2) ActivateDialog hiện toast thành công giả lặp lại, (3) attester thấy các request chưa có chữ ký nào.
+## Nguyên nhân gốc
 
----
+Có 2 phiên bản hàm `is_gov_attester` trong database:
 
-## Lỗi 1: Hiển thị trạng thái `signing` trong Mint History
+1. **Phiên bản `text` (wallet_addr)** - Đã được cập nhật đầy đủ 11 địa chỉ ở migration trước
+2. **Phiên bản `uuid` (check_user_id)** - Vẫn dùng danh sách cũ 9 địa chỉ, trong đó có một số địa chỉ sai (không khớp với config hiện tại)
 
-**Nguyên nhân:** Khi 1 attester ký, request chuyển sang trạng thái `signing` nhưng trạng thái này chưa được xử lý trong UI. Trong `useMintHistory.ts`, mảng `activeStatuses` thiếu `signing`. Trong `LightScoreDashboard.tsx`, hàm `getMintStatusConfig` không có case `signing`.
+RLS policy `"Attesters can view signing requests"` gọi `is_gov_attester(auth.uid())` => sử dụng phiên bản UUID => Minh Trí Test 1 và Test 2 không được nhận diện => không đọc được bất kỳ request nào.
 
-Lưu ý: Số dư Locked/Activated on-chain đã đọc trực tiếp từ smart contract qua hàm `alloc()`, nên luôn chính xác. Vấn đề chỉ là hiển thị trạng thái request chưa rõ ràng.
+Với Lê Minh Trí, ví của anh ấy nằm trong danh sách cũ nên RLS cho phép, nhưng RLS cũ vẫn cho phép status `pending_sig` nên các request chưa ai ký cũng hiển thị nếu code frontend chưa được cập nhật trên trình duyệt.
 
-**Thay đổi:**
-- **`src/hooks/useMintHistory.ts`** (dòng 126): Thêm `'signing'` vào mảng `activeStatuses`
-- **`src/components/wallet/LightScoreDashboard.tsx`** (dòng 61-76): Thêm case `signing` vào `getMintStatusConfig` với nhãn "Đang ký (X/3)"
+## Thay đổi
 
----
+### 1. Database Migration - Cập nhật hàm `is_gov_attester(uuid)`
 
-## Lỗi 2: ActivateDialog hiện toast thành công liên tục
+Cập nhật danh sách địa chỉ trong phiên bản UUID cho khớp với phiên bản text (11 địa chỉ):
 
-**Nguyên nhân:** `useEffect` theo dõi `isSuccess` từ `useWaitForTransactionReceipt`. Khi dialog đóng rồi mở lại, `isSuccess` vẫn là `true` từ giao dịch trước, nên effect chạy lại và hiện toast thành công giả.
+- **Will (3):** Minh Trí, Ánh Nguyệt, Thu Trang
+- **Wisdom (4):** Bé Giàu, Bé Ngọc, Ái Vân, Minh Trí Test 1
+- **Love (4):** Thanh Tiên, Bé Kim, Bé Hà, Minh Trí Test 2
 
-**Thay đổi trong `src/components/wallet/ActivateDialog.tsx`:**
-- Thêm `useRef` để lưu `lastToastedHash` (txHash đã hiện toast)
-- Chỉ hiện toast khi `txHash` khác với `lastToastedHash`
-- Reset `amount` và `sliderValue` khi dialog mở lại
+Đồng thời cập nhật RLS policy SELECT để chỉ cho phép đọc request có status `signing` hoặc `signed` (loại bỏ `pending_sig`), đồng bộ với logic frontend.
 
----
+### 2. Frontend đã đúng
 
-## Lỗi 3: Attester thấy request chưa có chữ ký
+Code trong `useAttesterSigning.ts` dòng 78 đã lọc `.in('status', ['signing', 'signed'])` - không cần sửa thêm.
 
-**Nguyên nhân:** Trong `useAttesterSigning.ts`, truy vấn lấy tất cả request có status `pending_sig`, `signing`, `signed` mà không lọc theo số chữ ký. Yêu cầu là chỉ hiện request đã có ít nhất 1 chữ ký (không hiện request `pending_sig` chưa ai ký).
+## Tóm tắt
 
-**Thay đổi trong `src/hooks/useAttesterSigning.ts`** (dòng 75-79):
-- Bỏ status `pending_sig` khỏi filter, chỉ lấy `['signing', 'signed']`
-- Như vậy chỉ hiện request đã có ít nhất 1 nhóm GOV ký
-
----
-
-## Tóm tắt các file thay đổi
-
-| File | Thay đổi |
-|------|----------|
-| `src/hooks/useMintHistory.ts` | Thêm `signing` vào `activeStatuses` |
-| `src/components/wallet/LightScoreDashboard.tsx` | Thêm case `signing` vào `getMintStatusConfig` |
-| `src/components/wallet/ActivateDialog.tsx` | Sửa logic toast bằng `lastToastedHash` ref |
-| `src/hooks/useAttesterSigning.ts` | Lọc bỏ request `pending_sig` khỏi panel attester |
+| Thay đổi | Mục đích |
+|----------|----------|
+| Cập nhật `is_gov_attester(uuid)` với 11 địa chỉ chính xác | Cho phép Test 1 và Test 2 vượt qua RLS |
+| Sửa RLS SELECT policy: bỏ `pending_sig` | Chặn request chưa ai ký ở tầng database |
 
