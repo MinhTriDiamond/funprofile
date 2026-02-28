@@ -1,36 +1,30 @@
 
 
-# Hien thi Trend (Xu huong 7 ngay) tren bang Light Community
+# Them 2 attester moi vao he thong GOV
 
-## Mo ta
-Them hien thi trend emoji (Growing/Stable/Reflecting) ben canh moi thanh vien trong bang Light Community. Du lieu `trend` va `trend_emoji` da co san tu RPC `get_light_community`, chi can hien thi len giao dien.
+## Yeu cau
+- **Minh Tri Test 1** (`0xE3e97a95d3f61814473f6d1eEbBa8253286D65c5`) => nhom **Wisdom (Tri Tue)**
+- **Minh Tri Test 2** (`0x57a7943F2808Fc24b0403f25bb4670c5d84b3f2e`) => nhom **Love (Yeu Thuong)**
 
-## Thay doi
+## Cac file can cap nhat
 
-### 1. `src/pages/Leaderboard.tsx` - Trang danh sach day du
-- Them trend emoji ngay sau badge Light Level trong moi dong thanh vien
-- Hien thi `member.trend_emoji` kem tooltip/text nho cho `member.trend`
-- Vi du: 📈 (Growing), 🔄 (Reflecting), 🌿 (Stable)
+### 1. `src/config/pplp.ts` - Frontend config
+- Them Minh Tri Test 1 vao `GOV_GROUPS.wisdom.members`
+- Them Minh Tri Test 2 vao `GOV_GROUPS.love.members`
 
-### 2. `src/components/feed/TopRanking.tsx` - Widget trang chu
-- Tuong tu, them trend emoji ben canh badge Light Level
-- Kich thuoc nho hon de phu hop voi widget compact
+### 2. `supabase/functions/_shared/pplp-eip712.ts` - Edge function config
+- Them 2 dia chi vao mang `ATTESTER_ADDRESSES` (Wisdom va Love)
+
+### 3. Database function `is_gov_attester(wallet_addr)` - Migration SQL
+- Them 2 dia chi vi moi vao danh sach `lower(...)` trong ham kiem tra
 
 ## Chi tiet ky thuat
 
-Trong moi member card, them mot phan tu hien thi trend emoji ngay sau badge:
+**Wisdom group** se co 4 thanh vien:
+- Be Giau, Be Ngoc, Ai Van, **Minh Tri Test 1**
 
-```tsx
-{/* Light Level badge */}
-<span className={`... ${getLevelStyle(member.light_level)}`}>
-  {member.light_level}
-</span>
+**Love group** se co 4 thanh vien:
+- Thanh Tien, Be Kim, Be Ha, **Minh Tri Test 2**
 
-{/* Trend emoji */}
-<span className="text-sm shrink-0" title={member.trend}>
-  {member.trend_emoji}
-</span>
-```
-
-Khong can thay doi database hay RPC vi du lieu da co san.
+Tong cong attester tang tu 9 len 11 nguoi.
 
