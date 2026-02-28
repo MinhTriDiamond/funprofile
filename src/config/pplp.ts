@@ -38,7 +38,7 @@ export const GOV_GROUPS = {
     color: 'yellow',
     members: [
       { name: 'Bé Giàu', address: '0xCa319fBc39F519822385F2D0a0114B14fa89A301' },
-      { name: 'Bé Ngọc', address: '0x699CC96A8C4E3555f95Bd620EC4A218155641E09' },
+      { name: 'Bé Ngọc', address: '0xDf8249159BB67804D718bc8186f95B75CE5ECbe8' },
       { name: 'Ái Vân',  address: '0x5102Ecc4a458a1af76aFA50d23359a712658a402' },
     ],
   },
@@ -49,8 +49,8 @@ export const GOV_GROUPS = {
     description: 'Nhân ái & Chữa lành',
     color: 'rose',
     members: [
-      { name: 'Thanh Tiên', address: '0x0e1b399E4a88eB11dd0f77cc21E9B54835f6d385' },
-      { name: 'Bé Kim',     address: '0x38db3eC4e14946aE497992e6856216641D22c242' },
+      { name: 'Thanh Tiên', address: '0xE418a560611e80E4239F5513D41e583fC9AC2E6d' },
+      { name: 'Bé Kim',     address: '0x67464Df3082828b3Cf10C5Cb08FC24A28228EFd1' },
       { name: 'Bé Hà',      address: '0x9ec8C51175526BEbB1D04100256De71CF99B7CCC' },
     ],
   },
