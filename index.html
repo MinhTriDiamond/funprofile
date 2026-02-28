@@ -41,12 +41,8 @@
     <meta name="twitter:description" content="FUN Profile - Mạng xã hội Web3 kết hợp AI." />
     <meta name="twitter:image" content="https://fun.rich/pwa-512.png" />
     
-    <!-- PWA Meta Tags -->
+    <!-- Theme -->
     <meta name="theme-color" content="#22c55e" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="FUN Profile" />
-    <link rel="manifest" href="/manifest.webmanifest" />
     
     <!-- Preload LCP image - small optimized version -->
     <link rel="preload" as="image" href="https://media.fun.rich/cdn-cgi/image/width=64,height=64,quality=90,fit=cover,format=auto,gravity=auto/fun-profile-logo-40.webp" type="image/webp" fetchpriority="high" />
@@ -85,5 +81,8 @@
       </div>
     </div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+    if('serviceWorker'in navigator){navigator.serviceWorker.getRegistrations().then(function(r){for(var i of r)i.unregister()});if('caches'in window){caches.keys().then(function(n){for(var k of n)caches.delete(k)})}}
+    </script>
   </body>
 </html>
