@@ -70,14 +70,16 @@ const MultisigProgress = ({ signatures, completedGroups }: MultisigProgressProps
 interface RequestCardProps {
   request: AttesterMintRequest;
   attesterGroup: GovGroupKey | null;
-  isSigning: boolean;
+  signingRequestId: string | null;
   onSign: (id: string) => void;
 }
 
-const RequestCard = ({ request, attesterGroup, isSigning, onSign }: RequestCardProps) => {
+const RequestCard = ({ request, attesterGroup, signingRequestId, onSign }: RequestCardProps) => {
+  const isSigning = signingRequestId === request.id;
   const sigs = request.multisig_signatures ?? {};
   const myGroupSigned = attesterGroup ? !!sigs[attesterGroup] : false;
   const isFullySigned = request.status === 'signed';
+  const isAnySigning = !!signingRequestId;
   const canSign = attesterGroup && !myGroupSigned && !isFullySigned && request.status !== 'signed';
 
   return (
@@ -122,7 +124,7 @@ const RequestCard = ({ request, attesterGroup, isSigning, onSign }: RequestCardP
       {canSign && (
         <Button
           onClick={() => onSign(request.id)}
-          disabled={isSigning}
+          disabled={isAnySigning}
           className="w-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white"
           size="sm"
         >
@@ -149,7 +151,7 @@ interface AttesterSigningPanelProps {
   attesterName: string | null;
   requests: AttesterMintRequest[];
   isLoading: boolean;
-  isSigning: boolean;
+  signingRequestId: string | null;
   onSign: (id: string) => void;
 }
 
@@ -158,7 +160,7 @@ export const AttesterSigningPanel = memo(({
   attesterName,
   requests,
   isLoading,
-  isSigning,
+  signingRequestId,
   onSign,
 }: AttesterSigningPanelProps) => {
   const group = GOV_GROUPS[attesterGroup];
@@ -226,7 +228,7 @@ export const AttesterSigningPanel = memo(({
                   key={req.id}
                   request={req}
                   attesterGroup={attesterGroup}
-                  isSigning={isSigning}
+                  signingRequestId={signingRequestId}
                   onSign={onSign}
                 />
               ))}

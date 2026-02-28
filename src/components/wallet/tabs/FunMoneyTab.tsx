@@ -62,7 +62,7 @@ function FunMoneyTabInner({
     attesterName,
     requests,
     isLoading: isAttesterLoading,
-    isSigning,
+    signingRequestId,
     signRequest,
   } = useAttesterSigning(externalAddress);
 
@@ -75,7 +75,7 @@ function FunMoneyTabInner({
           attesterName={attesterName}
           requests={requests}
           isLoading={isAttesterLoading}
-          isSigning={isSigning}
+          signingRequestId={signingRequestId}
           onSign={signRequest}
         />
       )}
