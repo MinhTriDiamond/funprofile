@@ -2,6 +2,7 @@ import { useState, memo, useCallback, useRef, lazy, Suspense } from 'react';
 import { ImageViewer } from './ImageViewer';
 import { LazyImage } from '@/components/ui/LazyImage';
 import { LazyVideo } from '@/components/ui/LazyVideo';
+import { FacebookVideoPlayer } from '@/components/ui/FacebookVideoPlayer';
 import { SocialVideoPlayer } from '@/components/ui/SocialVideoPlayer';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { ChevronLeft, ChevronRight, X, Radio, Play, Download, RotateCcw, RotateCw, Loader2 } from 'lucide-react';
@@ -15,14 +16,15 @@ function isChunkedManifestUrl(url: string): boolean {
   return url.endsWith('manifest.json') || /\/recordings\/[^/]+\/manifest\.json/.test(url);
 }
 
-/** Reusable feed video: auto-switches between LazyVideo and ChunkedVideoPlayer */
-const FeedVideo = memo(({ src, poster, className, showControls = false, muted = true, onError }: {
+/** Reusable feed video: auto-switches between FacebookVideoPlayer and ChunkedVideoPlayer */
+const FeedVideo = memo(({ src, poster, className, showControls = false, muted = true, onError, compact = false }: {
   src: string;
   poster?: string;
   className?: string;
   showControls?: boolean;
   muted?: boolean;
   onError?: () => void;
+  compact?: boolean;
 }) => {
   if (isChunkedManifestUrl(src)) {
     return (
@@ -37,12 +39,13 @@ const FeedVideo = memo(({ src, poster, className, showControls = false, muted = 
     );
   }
   return (
-    <LazyVideo
+    <FacebookVideoPlayer
       src={src}
       poster={poster}
       className={className || ''}
-      showControls={showControls}
-      muted={muted}
+      compact={compact}
+      mutedByDefault={muted}
+      autoPlayInView
       onError={onError}
     />
   );
@@ -105,7 +108,7 @@ export const MediaGrid = memo(({ media: initialMedia }: MediaGridProps) => {
             <FeedVideo
               src={item.url}
               poster={item.poster}
-              className="w-full max-h-[600px] bg-black"
+              className="w-full max-h-[70vh] bg-black"
               showControls
               muted
               onError={() => handleMediaError(item.url)}
@@ -184,6 +187,7 @@ export const MediaGrid = memo(({ media: initialMedia }: MediaGridProps) => {
                     showControls
                     muted
                     onError={() => handleMediaError(item.url)}
+                    compact
                   />
                 </div>
               ) : (
@@ -230,6 +234,7 @@ export const MediaGrid = memo(({ media: initialMedia }: MediaGridProps) => {
                   showControls
                   muted
                   onError={() => handleMediaError(media[0].url)}
+                  compact
                 />
               </div>
             ) : (
@@ -256,6 +261,7 @@ export const MediaGrid = memo(({ media: initialMedia }: MediaGridProps) => {
                   showControls
                   muted
                   onError={() => handleMediaError(media[1].url)}
+                  compact
                 />
               </div>
             ) : (
@@ -282,6 +288,7 @@ export const MediaGrid = memo(({ media: initialMedia }: MediaGridProps) => {
                   showControls
                   muted
                   onError={() => handleMediaError(media[2].url)}
+                  compact
                 />
               </div>
             ) : (
@@ -329,6 +336,7 @@ export const MediaGrid = memo(({ media: initialMedia }: MediaGridProps) => {
                   showControls={false}
                   muted
                   onError={() => handleMediaError(item.url)}
+                  compact
                 />
               </div>
             ) : (
