@@ -1,45 +1,19 @@
 
 
-# Fix Smart Portrait Fit for Single Video Posts
+# Center Portrait Video with Blurred/Black Side Panels
 
-## Root Cause
+## Problem
+Portrait videos are left-aligned in the post container. The `aspect-ratio: 9/16` wrapper is narrower than the full post width, leaving empty space on the right side.
 
-The Smart Portrait Fit feature **only activates in square mode** (`displayMode="square"`), but single video posts in `MediaGrid.tsx` use `displayMode="rectangle"` (line 74). This means portrait videos posted alone never get the blurred backdrop treatment.
+## Fix: `src/components/feed/FeedVideoPlayer.tsx`
 
-The code at `FeedVideoPlayer.tsx` line 92:
-```typescript
-const showBackdrop = isSquare && resolvedObjectFit === 'contain';
-```
-`isSquare` is `false` for single videos → backdrop never shows.
+**Approach**: For rectangle mode with portrait video, use a full-width wrapper with black background and center the 9/16 video inside it. The blurred backdrop fills the full width behind.
 
-Additionally, there's no way to confirm if `onVideoMetadata` is even firing because there are no debug logs.
+1. Change wrapper to always be full-width with `bg-black` background
+2. Remove `aspectRatio: '9/16'` from wrapper style (keep `maxHeight: '70vh'`) — instead apply the 9/16 constraint to the inner foreground video container
+3. Add `flex items-center justify-center` to the wrapper to center the video
+4. The blurred backdrop layer already covers `absolute inset-0` so it fills the full width naturally
+5. The foreground video div gets constrained to `aspect-[9/16] h-full` so it sits centered within the full-width black/blurred container
 
-## Fix
-
-### File 1: `src/components/feed/FeedVideoPlayer.tsx`
-- Add `console.log` in `handleVideoMetadata` to confirm metadata detection is working
-- Change `showBackdrop` to also activate in rectangle mode when video is portrait: `showBackdrop = resolvedObjectFit === 'contain' && isPortrait === true`
-- For rectangle mode with portrait video, use `aspect-[9/16]` container with `max-h-[70vh]` instead of unconstrained height, so the blurred backdrop has a defined area
-
-### File 2: `src/components/feed/MediaGrid.tsx`
-- For single video posts, pass `fitStrategy="smart"` so the smart detection activates (currently no fitStrategy is passed, so it defaults to `'smart'`, which is fine)
-- No change needed here actually since the fix is in FeedVideoPlayer
-
-### Summary of logic change:
-```typescript
-// Before:
-const showBackdrop = isSquare && resolvedObjectFit === 'contain';
-
-// After: 
-const showBackdrop = resolvedObjectFit === 'contain' && isPortrait === true;
-```
-
-And for rectangle portrait video wrapper, add constrained height so backdrop is visible:
-```typescript
-const wrapperStyle = !isSquare && isPortrait
-  ? { aspectRatio: '9/16', maxHeight: '70vh' }
-  : !isSquare && arNum
-  ? { aspectRatio: `${arNum}`, maxHeight: '70vh' }
-  : ...
-```
+**Result**: Full-width container with blurred poster behind + centered portrait video on top — similar to how Facebook/Instagram display portrait videos.
 
