@@ -54,18 +54,18 @@ export const TopRanking = memo(() => {
 
   const getLevelColor = (level: string) => {
     switch (level) {
-      case "Light Architect": return "bg-emerald-600/20 text-emerald-300 border-emerald-500/40";
-      case "Light Guardian": return "bg-teal-600/20 text-teal-300 border-teal-500/40";
-      case "Light Builder": return "bg-green-600/20 text-green-300 border-green-500/40";
-      case "Light Sprout": return "bg-lime-600/20 text-lime-300 border-lime-500/40";
-      default: return "bg-stone-600/20 text-stone-300 border-stone-500/40";
+      case "Light Architect": return "bg-emerald-100 text-emerald-800 border-emerald-300";
+      case "Light Guardian": return "bg-teal-100 text-teal-800 border-teal-300";
+      case "Light Builder": return "bg-green-100 text-green-800 border-green-300";
+      case "Light Sprout": return "bg-lime-100 text-lime-800 border-lime-300";
+      default: return "bg-stone-100 text-stone-700 border-stone-300";
     }
   };
 
   const getTrendColor = (trend: string) => {
     switch (trend) {
-      case "Growing": return "text-emerald-400";
-      case "Reflecting": return "text-amber-400";
+      case "Growing": return "text-emerald-700";
+      case "Reflecting": return "text-amber-700";
       default: return "text-muted-foreground";
     }
   };
