@@ -1,21 +1,25 @@
 
 
-# Doi icon 🏛️ Light Architect thanh mau xanh la
+# Bo nen trong suot va nut tron tren trang Leaderboard
 
-## Van de
-Emoji Unicode (🏛️) khong the doi mau bang CSS `color`. Can thay the bang icon vector (Lucide) de co the tu do doi mau.
+## Thay doi
+Sua 2 nut (Back va Refresh) tren trang `src/pages/Leaderboard.tsx`:
+- Bo `variant="ghost"` (gay nen trong suot khi hover)
+- Bo `size="icon"` va `className="rounded-full"` (gay nut tron)
+- Chi giu lai icon voi style don gian, khong co nen, khong co vien
 
-## Giai phap
-Thay emoji 🏛️ bang icon `Landmark` tu Lucide (hinh tuong tu ngoi nha co cot) voi mau xanh la (`text-emerald-600`), chi ap dung cho level "Light Architect". Cac level khac van giu emoji tu database.
+## Chi tiet ky thuat
+Thay the `<Button variant="ghost" size="icon" ... className="rounded-full">` bang cac `<button>` hoac `<div>` don gian chi chua icon, voi cursor pointer va hover opacity nhe.
 
-## Thay doi trong 2 file
+```tsx
+// Truoc:
+<Button variant="ghost" size="icon" onClick={...} className="rounded-full">
+  <ArrowLeft className="w-5 h-5" />
+</Button>
 
-### `src/components/feed/TopRanking.tsx` va `src/pages/Leaderboard.tsx`
-- Import icon `Landmark` tu `lucide-react`
-- Trong phan render emoji, kiem tra neu `light_level === "Light Architect"` thi hien thi `<Landmark className="text-emerald-600" />` thay vi emoji
-- Nen vang (`bg-amber-100 border border-amber-400`) van giu nguyen
-
-## Ket qua
-- Nen vong tron: vang hoang kim (giu nguyen)
-- Icon ben trong: xanh la (Landmark icon) thay vi emoji den
+// Sau:
+<button onClick={...} className="p-1 hover:opacity-70 transition-opacity">
+  <ArrowLeft className="w-5 h-5" />
+</button>
+```
 
