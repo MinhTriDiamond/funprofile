@@ -21,33 +21,19 @@ const ScoringApiAndVersioningDocs = () => {
           />
         </DocSubSection>
 
-        <DocSubSection title="Cơ Chế Migration An Toàn (Dual-Write)">
+        <DocSubSection title="Migration Strategy (An Toàn)">
           <DocParagraph>
-            Khi nâng cấp từ v_old → v_new, hệ thống chạy song song cả hai công thức trong giai đoạn chuyển tiếp.
+            Khi chuyển V1 → V2, hệ thống tuân thủ nguyên tắc: không tính lại quá khứ, chỉ áp dụng từ epoch mới.
           </DocParagraph>
-          <pre className="bg-muted rounded-lg p-4 text-xs sm:text-sm overflow-x-auto my-4 text-foreground font-mono leading-relaxed">
-{`Event Ingest
-     ↓
-┌─────────────────────┐
-│  Scoring Engine      │
-│  ┌───────┐ ┌───────┐│
-│  │v_old  │ │v_new  ││
-│  │score  │ │score  ││
-│  └───┬───┘ └───┬───┘│
-│      ↓         ↓    │
-│  Compare Delta      │
-│  delta < threshold? │
-│      ↓              │
-│  YES → Switch       │
-│  NO  → Alert + Keep │
-└─────────────────────┘`}
-          </pre>
           <DocList ordered items={[
-            'Giai đoạn 1: Shadow Mode — v_new chạy nền, chỉ ghi log, không ảnh hưởng điểm thật',
-            'Giai đoạn 2: Compare — So sánh delta giữa v_old và v_new trên toàn bộ user base',
-            'Giai đoạn 3: Switch — Khi delta < ngưỡng cho phép (ví dụ < 5%), chuyển hoàn toàn sang v_new',
-            'Giai đoạn 4: Archive — Giữ v_old config để có thể rollback bất cứ lúc nào',
+            'Không tính lại điểm quá khứ — giữ nguyên kết quả đã ghi nhận',
+            'Chỉ áp dụng rule mới từ epoch tiếp theo',
+            'Hiển thị rõ cho cộng đồng: "Light Model Updated" khi có thay đổi',
+            'Giữ v_old config để rollback bất cứ lúc nào',
           ]} />
+          <DocAlert type="info">
+            Điều này bảo vệ: niềm tin cộng đồng, ổn định hệ thống, và không gây sốc tâm lý cho người dùng.
+          </DocAlert>
         </DocSubSection>
 
         <DocSubSection title="Rollback Strategy">
@@ -86,12 +72,12 @@ const ScoringApiAndVersioningDocs = () => {
           trừ khi ghi chú khác.
         </DocParagraph>
 
-        <DocSubSection title="1. Event Ingest — Submit Action">
+        <DocSubSection title="1. Event Ingest">
           <DocTable
             headers={['Thuộc tính', 'Chi tiết']}
             rows={[
               ['Method', 'POST'],
-              ['Path', '/functions/v1/pplp-submit-action'],
+              ['Path', '/api/v1/events'],
               ['Auth', 'Bearer Token (required)'],
               ['Mô tả', 'Ghi nhận một hành động của user vào Event Store'],
             ]}
@@ -99,14 +85,13 @@ const ScoringApiAndVersioningDocs = () => {
           <DocSubSection title="Request Body">
             <pre className="bg-muted rounded-lg p-4 text-xs sm:text-sm overflow-x-auto my-2 text-foreground font-mono">
 {`{
-  "action_type": "POST_CREATED",
-  "reference_type": "post",
-  "reference_id": "uuid-of-post",
-  "content_preview": "Bài viết về...",
-  "metadata": {
-    "word_count": 350,
-    "has_media": true,
-    "tags": ["healing", "community"]
+  "actor_user_id": "u123",
+  "event_type": "POST_CREATED",
+  "target_id": "content_456",
+  "context_id": "thread_789",
+  "payload": {
+    "length": 842,
+    "language": "vi"
   }
 }`}
             </pre>
@@ -114,21 +99,19 @@ const ScoringApiAndVersioningDocs = () => {
           <DocSubSection title="Response (200)">
             <pre className="bg-muted rounded-lg p-4 text-xs sm:text-sm overflow-x-auto my-2 text-foreground font-mono">
 {`{
-  "action_id": "uuid",
-  "light_score": 7.2,
-  "mint_status": "pending",
-  "message": "Hành động đã được ghi nhận"
+  "status": "accepted",
+  "event_id": "evt_abc123"
 }`}
             </pre>
           </DocSubSection>
         </DocSubSection>
 
-        <DocSubSection title="2. Rating Submit — Đánh Giá 5 Trụ Cột">
+        <DocSubSection title="2. Submit PPLP Rating">
           <DocTable
             headers={['Thuộc tính', 'Chi tiết']}
             rows={[
               ['Method', 'POST'],
-              ['Path', '/functions/v1/pplp-rating-submit'],
+              ['Path', '/api/v1/pplp/rate'],
               ['Auth', 'Bearer Token (required)'],
               ['Mô tả', 'Gửi đánh giá PPLP cho một nội dung (5 trụ cột, mỗi trụ 0-2)'],
             ]}
@@ -136,88 +119,87 @@ const ScoringApiAndVersioningDocs = () => {
           <DocSubSection title="Request Body">
             <pre className="bg-muted rounded-lg p-4 text-xs sm:text-sm overflow-x-auto my-2 text-foreground font-mono">
 {`{
-  "content_id": "uuid-of-content",
+  "content_id": "content_456",
   "pillar_truth": 2,
   "pillar_sustain": 1,
   "pillar_heal_love": 2,
   "pillar_life_service": 1,
   "pillar_unity_source": 2,
-  "comment": "Bài viết rất sâu sắc..."
-}`}
-            </pre>
-          </DocSubSection>
-          <DocSubSection title="Response (200)">
-            <pre className="bg-muted rounded-lg p-4 text-xs sm:text-sm overflow-x-auto my-2 text-foreground font-mono">
-{`{
-  "rating_id": "uuid",
-  "weight_applied": 1.3,
-  "message": "Đánh giá đã được ghi nhận"
+  "comment": "Rất rõ và có trách nhiệm"
 }`}
             </pre>
           </DocSubSection>
         </DocSubSection>
 
-        <DocSubSection title="3. Score Read — Đọc Light Score">
+        <DocSubSection title="3. Get Light Summary (Public-safe)">
           <DocTable
             headers={['Thuộc tính', 'Chi tiết']}
             rows={[
               ['Method', 'GET'],
-              ['Path', '/functions/v1/pplp-score-read?user_id={id}'],
+              ['Path', '/api/v1/light/profile/{user_id}'],
               ['Auth', 'Bearer Token (required)'],
-              ['Mô tả', 'Trả về Light Score hiện tại, level, và trend của user'],
+              ['Mô tả', 'Trả về Level và Trend của user — KHÔNG trả raw score'],
             ]}
           />
           <DocSubSection title="Response (200)">
             <pre className="bg-muted rounded-lg p-4 text-xs sm:text-sm overflow-x-auto my-2 text-foreground font-mono">
 {`{
-  "user_id": "uuid",
-  "total_light_score": 1250,
   "level": "Light Builder",
-  "trend": "growing",
-  "tier": 3,
-  "pillars": {
-    "truth": 85,
-    "sustain": 72,
-    "heal_love": 91,
-    "life_service": 68,
-    "unity_source": 77
-  },
-  "last_action_at": "2026-02-27T10:30:00Z"
+  "trend": "Growing",
+  "consistency_streak": 42,
+  "sequence_active": 2
 }`}
             </pre>
           </DocSubSection>
           <DocAlert type="warning">
-            Lưu ý: Response chỉ hiển thị <strong>level</strong> và <strong>trend</strong> cho public view. 
-            Chi tiết pillars chỉ dành cho chính user đó (self-read) hoặc admin.
+            ⚠ Không trả raw score cho public view. Chỉ hiển thị Level và Trend.
           </DocAlert>
         </DocSubSection>
 
-        <DocSubSection title="4. Mint Status — Trạng Thái Epoch">
+        <DocSubSection title="4. Get Private Score Detail (Self-only)">
           <DocTable
             headers={['Thuộc tính', 'Chi tiết']}
             rows={[
               ['Method', 'GET'],
-              ['Path', '/functions/v1/pplp-mint-status'],
-              ['Auth', 'Bearer Token (required)'],
-              ['Mô tả', 'Trạng thái mint epoch hiện tại và phân bổ của user'],
+              ['Path', '/api/v1/light/me'],
+              ['Auth', 'Bearer Token (required — chỉ xem được của chính mình)'],
+              ['Mô tả', 'Chi tiết điểm cá nhân — chỉ chính user mới thấy'],
             ]}
           />
           <DocSubSection title="Response (200)">
             <pre className="bg-muted rounded-lg p-4 text-xs sm:text-sm overflow-x-auto my-2 text-foreground font-mono">
 {`{
-  "current_epoch": {
-    "epoch_id": "uuid",
-    "period": "2026-02-24 → 2026-03-02",
-    "status": "active",
-    "mint_pool_amount": 50000,
-    "total_contributors": 1234
-  },
-  "my_allocation": {
-    "eligible": true,
-    "estimated_amount": 42.5,
-    "contribution_ratio": 0.00085,
-    "reason_codes": ["QUALITY_HIGH", "CONSISTENCY_BONUS"]
-  }
+  "period": "2026-W09",
+  "final_light_score": 87.4,
+  "reputation_weight": 1.3,
+  "sequence_multiplier": 1.2,
+  "integrity_penalty": 0.05,
+  "reason_codes": [
+    "CONSISTENCY_STRONG",
+    "MENTOR_CHAIN_COMPLETED"
+  ]
+}`}
+            </pre>
+          </DocSubSection>
+        </DocSubSection>
+
+        <DocSubSection title="5. Mint Epoch Summary">
+          <DocTable
+            headers={['Thuộc tính', 'Chi tiết']}
+            rows={[
+              ['Method', 'GET'],
+              ['Path', '/api/v1/mint/epoch/current'],
+              ['Auth', 'Bearer Token (required)'],
+              ['Mô tả', 'Trạng thái mint epoch hiện tại'],
+            ]}
+          />
+          <DocSubSection title="Response (200)">
+            <pre className="bg-muted rounded-lg p-4 text-xs sm:text-sm overflow-x-auto my-2 text-foreground font-mono">
+{`{
+  "epoch_id": "2026-M02",
+  "mint_pool": 125000,
+  "total_light": 847230,
+  "rule_version": "V1.2"
 }`}
             </pre>
           </DocSubSection>
@@ -308,6 +290,163 @@ const ScoringApiAndVersioningDocs = () => {
             ]}
           />
         </DocSubSection>
+      </DocSection>
+
+      {/* ====== LEVEL SYSTEM ====== */}
+      <DocSection id="level-system" title="🌟 Level System (Không Tạo Cạnh Tranh)">
+        <DocParagraph>
+          Hệ thống Level hiển thị mức độ đóng góp dưới dạng tên gọi ý nghĩa — không bao giờ hiển thị ranking hay thứ hạng.
+        </DocParagraph>
+
+        <DocSubSection title="Light Level Mapping">
+          <DocTable
+            headers={['Light Score Range', 'Level Name', 'Ý Nghĩa']}
+            rows={[
+              ['0 – 20', '🌱 Light Seed', 'Hạt giống ánh sáng — bắt đầu hành trình'],
+              ['21 – 40', '🌿 Light Sprout', 'Mầm non — đang nảy mầm giá trị'],
+              ['41 – 60', '🏗 Light Builder', 'Người xây dựng — tạo giá trị bền vững'],
+              ['61 – 80', '🛡 Light Guardian', 'Người bảo vệ — giữ gìn hệ sinh thái'],
+              ['81+', '🏛 Light Architect', 'Kiến trúc sư — định hình tầm nhìn'],
+            ]}
+          />
+        </DocSubSection>
+
+        <DocSubSection title="Hiển Thị Xu Hướng (Trend)">
+          <DocTable
+            headers={['Trend', 'Hiển thị', 'Ý Nghĩa']}
+            rows={[
+              ['Stable', '☀️ Stable', 'Nhịp đóng góp ổn định'],
+              ['Growing', '📈 Growing', 'Đang tăng trưởng tích cực'],
+              ['Reflecting', '🌙 Reflecting', 'Đang trong giai đoạn suy ngẫm'],
+              ['Rebalancing', '☯ Rebalancing', 'Năng lượng đang được điều hòa'],
+            ]}
+          />
+        </DocSubSection>
+
+        <DocAlert type="warning">
+          Quy tắc bất biến: Không hiển thị Top 10, Rank #, hay bất kỳ bảng xếp hạng cạnh tranh nào. 
+          Chỉ hiển thị Level cá nhân và Trend.
+        </DocAlert>
+      </DocSection>
+
+      {/* ====== MINT ENGINE CHI TIẾT ====== */}
+      <DocSection id="mint-engine" title="⚙️ Mint Engine Chi Tiết">
+        <DocParagraph>
+          Quy trình mint FUN Money theo epoch, đảm bảo công bằng và chống tập trung.
+        </DocParagraph>
+
+        <DocSubSection title="Epoch Flow (7 Bước)">
+          <pre className="bg-muted rounded-lg p-4 text-xs sm:text-sm overflow-x-auto my-4 text-foreground font-mono leading-relaxed">
+{`1. Freeze Score Snapshot
+        ↓
+2. Remove Flagged Allocations
+        ↓
+3. Calculate Proportional Share
+        ↓
+4. Apply Anti-Whale Cap (max 3% / user)
+        ↓
+5. Finalize Mint Pool
+        ↓
+6. Execute On-chain Batch Mint
+        ↓
+7. Publish Transparency Summary`}
+          </pre>
+          <DocList ordered items={[
+            'Freeze Score Snapshot — Chụp ảnh điểm toàn hệ tại thời điểm kết thúc epoch',
+            'Remove Flagged — Loại bỏ các allocation bị flag bởi anti-farm signals',
+            'Calculate Share — Tính tỷ lệ phân bổ theo đóng góp thực',
+            'Anti-Whale Cap — Giới hạn tối đa 3% mint pool cho mỗi user',
+            'Finalize — Xác nhận tổng mint pool cuối cùng',
+            'On-chain Mint — Thực thi batch mint trên blockchain',
+            'Transparency — Công bố tổng kết công khai (không hiện cá nhân)',
+          ]} />
+        </DocSubSection>
+
+        <DocSubSection title="Anti-Whale Protection">
+          <div className="bg-muted rounded-lg p-4 my-4 border-l-4 border-primary">
+            <p className="font-mono text-sm sm:text-base text-foreground font-semibold">
+              max_share_per_user = 3% of epoch_pool
+            </p>
+          </div>
+          <DocParagraph>
+            Bảo vệ hệ sinh thái khỏi tập trung quyền lực kinh tế. Không ai có thể chiếm phần lớn mint pool, 
+            dù Light Score rất cao.
+          </DocParagraph>
+        </DocSubSection>
+
+        <DocSubSection title="Slow Mint Curve">
+          <DocList items={[
+            'Total supply tăng từ từ — đúng nguyên tắc "FUN mint theo giá trị thật"',
+            'Mint pool mỗi epoch được giới hạn và tăng dần theo sức khỏe hệ sinh thái',
+            'Không có "big bang" mint — mọi thứ diễn ra chậm, bền, minh bạch',
+          ]} />
+        </DocSubSection>
+      </DocSection>
+
+      {/* ====== TRANSPARENCY DASHBOARD ====== */}
+      <DocSection id="transparency-dashboard" title="📊 Transparency Dashboard (Không Nuôi Ego)">
+        <DocParagraph>
+          Dashboard công khai hiển thị sức khỏe hệ sinh thái — không bao giờ hiển thị thông tin cá nhân cụ thể.
+        </DocParagraph>
+
+        <DocSubSection title="Public Hiển Thị">
+          <DocList items={[
+            '🌍 Tổng Light toàn hệ sinh thái',
+            '💰 Tổng FUN Minted kỳ này',
+            '📊 % phân bổ theo Level (Seed / Sprout / Builder / Guardian / Architect)',
+            '🔗 Tổng số Mentor Chain hoàn thành',
+            '🔄 Tổng số Value Loop đang hoạt động',
+            '📈 Xu hướng tăng trưởng hệ sinh thái theo tuần/tháng',
+          ]} />
+        </DocSubSection>
+
+        <DocSubSection title="Không Hiển Thị">
+          <DocAlert type="warning">
+            Tuyệt đối không hiển thị: điểm cá nhân cụ thể, bảng xếp hạng, số FUN minted của từng người, 
+            hay bất kỳ thông tin nào có thể tạo so sánh giữa các cá nhân.
+          </DocAlert>
+        </DocSubSection>
+      </DocSection>
+
+      {/* ====== BẢO VỆ DÀI HẠN ====== */}
+      <DocSection id="long-term-protection" title="🛡 Bảo Vệ Dài Hạn (3 Lớp Chiến Lược)">
+        <DocParagraph>
+          Ba lớp bảo vệ chiến lược đảm bảo hệ thống PPLP luôn đúng tinh thần "Không nuôi Ego" theo thời gian.
+        </DocParagraph>
+
+        <DocSubSection title="1️⃣ Model Drift Monitor">
+          <DocParagraph>
+            Theo dõi liên tục xem hành vi cộng đồng có đang lệch về hướng Ego hay không.
+          </DocParagraph>
+          <DocList items={[
+            'Phát hiện khi hành vi bắt đầu tập trung vào "chạy điểm" thay vì "tạo giá trị"',
+            'Tự động đề xuất cập nhật scoring rules khi phát hiện drift',
+            'Báo cáo định kỳ cho Guardian Council',
+          ]} />
+        </DocSubSection>
+
+        <DocSubSection title="2️⃣ Community Council Review">
+          <DocList items={[
+            'Light Guardian + Light Architect review định kỳ (hàng tháng)',
+            'Đánh giá sức khỏe hệ sinh thái qua Transparency Dashboard',
+            'Đề xuất điều chỉnh scoring rules nếu cần',
+            'Không có quyền can thiệp trực tiếp vào điểm cá nhân',
+          ]} />
+        </DocSubSection>
+
+        <DocSubSection title="3️⃣ Slow Mint Curve Protection">
+          <DocList items={[
+            'Total supply tăng từ từ — không bao giờ mint đột biến',
+            'Mint pool mỗi epoch có giới hạn cứng (hard cap)',
+            'Tốc độ tăng supply được kiểm soát bởi governance vote',
+          ]} />
+        </DocSubSection>
+
+        <DocAlert type="success">
+          Tổng kết: Hệ thống PPLP hoàn chỉnh = Event Engine → Feature Builder → A.I. Support → 
+          Deterministic Scoring → Epoch Mint → Transparency (Level-based, không ranking). 
+          Đây là hệ kinh tế thưởng cho nhịp sống tử tế, không thưởng cho ồn ào. 💎
+        </DocAlert>
       </DocSection>
     </>
   );
