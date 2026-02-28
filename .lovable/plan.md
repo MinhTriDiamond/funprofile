@@ -1,35 +1,33 @@
 
 
-# Chuyen doi trang Leaderboard thanh Light Community
+# Chinh font chu va cai thien trang Light Community
 
-## Muc tieu
-Khi nhan "Kham pha cong dong anh sang", trang Leaderboard hien tai van dung giao dien cu (xep hang canh tranh, diem so, podium vang). Can chuyen doi toan bo trang `/leaderboard` sang thiet ke Light Community — dong bo voi sidebar.
+## Thay doi 1: Font chu sang trong cho "Bang danh du" va "Cong dong anh sang"
 
-## Thay doi trong `src/pages/Leaderboard.tsx`
+Hien tai ca hai dang dung font `Orbitron/Rajdhani` — font ky thuat so, khong sang trong. Se doi sang font serif/sans-serif sang trong hon.
 
-### 1. Thay doi data source
-- Thay `get_user_rewards_v2` bang `get_light_community` (voi `p_limit: 100`)
-- Thay interface `LeaderboardUser` bang `LightCommunityMember` (giong TopRanking.tsx)
+### Cac file can sua:
+- **`src/components/feed/AppHonorBoard.tsx`** (dong 135): Doi fontFamily tu Orbitron sang font sang trong
+- **`src/components/profile/CoverHonorBoard.tsx`** (dong 116): Tuong tu
+- **`src/components/feed/TopRanking.tsx`** (dong 119): Doi fontFamily cho "LIGHT COMMUNITY" sidebar
+- **`src/pages/Leaderboard.tsx`** (dong 93): Doi fontFamily cho "LIGHT COMMUNITY" trang chinh
 
-### 2. Thay doi Header
-- Thay Trophy icon vang thanh logo Fun Profile + tieu de "LIGHT COMMUNITY" (gradient xanh la)
-- Thay subtitle thanh "Cong dong anh sang cua FUN Profile"
-- Doi mau header tu `from-primary to-gold` sang `from-emerald-600 to-emerald-800`
+Font moi se la: `'Playfair Display', 'Georgia', serif` — font sang trong, de doc, phu hop tinh than PPLP. Se them Google Font import vao `index.html`.
 
-### 3. Bo category tabs
-- Xoa toan bo phan category tabs (Tong Thuong, Hom nay, Bai viet...) vi Light Community khong phan loai canh tranh
+## Thay doi 2: Bo gioi han so luong user tren trang Leaderboard
 
-### 4. Bo podium Top 3
-- Xoa toan bo phan Top 3 podium (voi so thu tu 1, 2, 3 va diem so)
+- **`src/pages/Leaderboard.tsx`** (dong 51): Doi `p_limit: 100` thanh `p_limit: 1000` de hien thi toan bo danh sach user
 
-### 5. Thay doi danh sach thanh vien
-- Bo so thu tu xep hang va rank icons (Trophy, Medal, Award)
-- Moi dong hien thi: Avatar + Username + Trend indicator + Light Level badge
-- Dung cung style mau xanh la nhu TopRanking sidebar (emerald/teal/green/lime badges)
-- Bo hien thi diem so, thay bang Light Level badge ben phai
+## Thay doi 3: Chuyen Light Level badge sang cot ben phai (trang Leaderboard)
 
-### 6. Thay doi tieu de bang
-- "Bang xep hang day du" thanh "Thanh vien cong dong"
+Hien tai layout da dung `justify-between` nen badge da nam ben phai roi (nhu screenshot cho thay). Tuy nhien trend indicator hien o duoi ten user — can chuyen no sang ben phai cung voi badge, hoac giu nguyen vi tri hien tai da dung (trend o duoi ten, badge ben phai).
 
-### Ket qua
-Trang Leaderboard se co giao dien dong nhat voi bang Light Community tren sidebar — khong diem so, khong xep hang, chi hien thi Light Level va xu huong tang truong.
+Nhin lai screenshot user gui, layout hien tai da chinh xac: ten + trend ben trai, badge ben phai. Khong can thay doi layout — chi can dam bao no hoat dong nhat quan.
+
+### Tom tat file can sua:
+1. `index.html` — Them Google Font Playfair Display
+2. `src/components/feed/AppHonorBoard.tsx` — Doi font
+3. `src/components/profile/CoverHonorBoard.tsx` — Doi font
+4. `src/components/feed/TopRanking.tsx` — Doi font
+5. `src/pages/Leaderboard.tsx` — Doi font + bo gioi han p_limit
+
