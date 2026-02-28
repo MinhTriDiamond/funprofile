@@ -116,7 +116,7 @@ export const TopRanking = memo(() => {
           <h2
             className="text-[20px] font-black tracking-wider uppercase"
             style={{
-              fontFamily: "'Orbitron', 'Rajdhani', sans-serif",
+              fontFamily: "'Playfair Display', Georgia, serif",
               background: 'linear-gradient(90deg, #34d399 0%, #10b981 30%, #059669 60%, #047857 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',

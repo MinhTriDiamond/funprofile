@@ -48,7 +48,7 @@ const Leaderboard = () => {
 
   const fetchLightCommunity = async () => {
     try {
-      const { data, error } = await supabase.rpc('get_light_community', { p_limit: 100 });
+      const { data, error } = await supabase.rpc('get_light_community', { p_limit: 1000 });
       if (error) throw error;
       if (data) {
         setMembers(data as LightCommunityMember[]);
@@ -90,7 +90,7 @@ const Leaderboard = () => {
             <h1
               className="text-3xl font-black tracking-wider uppercase mb-2"
               style={{
-                fontFamily: "'Orbitron', 'Rajdhani', sans-serif",
+                fontFamily: "'Playfair Display', Georgia, serif",
                 textShadow: '0 0 20px rgba(52, 211, 153, 0.5)',
               }}
             >
