@@ -23,7 +23,9 @@ export interface FacebookVideoPlayerProps {
   mutedByDefault?: boolean;
   className?: string;
   compact?: boolean;
+  objectFit?: 'contain' | 'cover';
   onPlay?: () => void;
+  onPlayStart?: () => void;
   onPause?: () => void;
   onEnded?: () => void;
   onError?: () => void;
@@ -61,7 +63,9 @@ export const FacebookVideoPlayer = memo(({
   mutedByDefault = true,
   className,
   compact = false,
+  objectFit: objectFitProp,
   onPlay,
+  onPlayStart,
   onPause,
   onEnded,
   onError,
@@ -85,7 +89,7 @@ export const FacebookVideoPlayer = memo(({
   const [userPaused, setUserPaused] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [speed, setSpeed] = useState(1);
-  const [fitMode, setFitMode] = useState<'contain' | 'cover'>('contain');
+  const [fitMode, setFitMode] = useState<'contain' | 'cover'>(objectFitProp || 'contain');
   const [pip, setPip] = useState(false);
   const [hasError, setHasError] = useState(false);
 
@@ -144,7 +148,7 @@ export const FacebookVideoPlayer = memo(({
     const v = videoRef.current;
     if (!v) return;
 
-    const onPlaying = () => { setPlaying(true); setLoading(false); onPlay?.(); };
+    const onPlaying = () => { setPlaying(true); setLoading(false); onPlay?.(); onPlayStart?.(); };
     const onPauseEvt = () => { setPlaying(false); onPause?.(); };
     const onWaiting = () => setLoading(true);
     const onCanPlay = () => setLoading(false);

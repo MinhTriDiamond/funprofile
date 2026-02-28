@@ -24,6 +24,13 @@ export interface Post {
   user_id: string;
   visibility?: string;
   profiles: PostProfile;
+  videoMeta?: {
+    width?: number;
+    height?: number;
+    duration?: number;
+    isLiveReplay?: boolean;
+    displayMode?: 'square' | 'rectangle';
+  };
 }
 
 export interface PostReaction {

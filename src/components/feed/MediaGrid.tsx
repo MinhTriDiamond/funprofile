@@ -1,56 +1,19 @@
 import { useState, memo, useCallback, useRef, lazy, Suspense } from 'react';
 import { ImageViewer } from './ImageViewer';
 import { LazyImage } from '@/components/ui/LazyImage';
-import { LazyVideo } from '@/components/ui/LazyVideo';
-import { FacebookVideoPlayer } from '@/components/ui/FacebookVideoPlayer';
-import { SocialVideoPlayer } from '@/components/ui/SocialVideoPlayer';
+import { FeedVideoPlayer } from './FeedVideoPlayer';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { ChevronLeft, ChevronRight, X, Radio, Play, Download, RotateCcw, RotateCw, Loader2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Play, Download, Loader2 } from 'lucide-react';
+import { SocialVideoPlayer } from '@/components/ui/SocialVideoPlayer';
 import { downloadChunkedVideo } from '@/utils/chunkedVideoDownload';
 
-// Lazy load ChunkedVideoPlayer for manifest URLs in gallery
+// Lazy load ChunkedVideoPlayer for gallery
 const ChunkedVideoPlayer = lazy(() => import('@/modules/live/components/ChunkedVideoPlayer').then(mod => ({ default: mod.ChunkedVideoPlayer })));
 
 /** Detect if a URL points to a chunked recording manifest */
 function isChunkedManifestUrl(url: string): boolean {
   return url.endsWith('manifest.json') || /\/recordings\/[^/]+\/manifest\.json/.test(url);
 }
-
-/** Reusable feed video: auto-switches between FacebookVideoPlayer and ChunkedVideoPlayer */
-const FeedVideo = memo(({ src, poster, className, showControls = false, muted = true, onError, compact = false }: {
-  src: string;
-  poster?: string;
-  className?: string;
-  showControls?: boolean;
-  muted?: boolean;
-  onError?: () => void;
-  compact?: boolean;
-}) => {
-  if (isChunkedManifestUrl(src)) {
-    return (
-      <Suspense fallback={<div className={`${className} bg-muted animate-pulse`} />}>
-        <ChunkedVideoPlayer
-          manifestUrl={src}
-          className={className || ''}
-          autoPlay={false}
-          controls={showControls}
-        />
-      </Suspense>
-    );
-  }
-  return (
-    <FacebookVideoPlayer
-      src={src}
-      poster={poster}
-      className={className || ''}
-      compact={compact}
-      mutedByDefault={muted}
-      autoPlayInView
-      onError={onError}
-    />
-  );
-});
-FeedVideo.displayName = 'FeedVideo';
 
 interface MediaItem {
   url: string;
@@ -61,6 +24,7 @@ interface MediaItem {
 
 interface MediaGridProps {
   media: MediaItem[];
+  feedId?: string;
 }
 
 /**
@@ -69,7 +33,7 @@ interface MediaGridProps {
  * - Gallery viewer for browsing all media
  * - Automatically filters out broken media
  */
-export const MediaGrid = memo(({ media: initialMedia }: MediaGridProps) => {
+export const MediaGrid = memo(({ media: initialMedia, feedId }: MediaGridProps) => {
   const [showViewer, setShowViewer] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [brokenUrls, setBrokenUrls] = useState<Set<string>>(new Set());
@@ -104,45 +68,14 @@ export const MediaGrid = memo(({ media: initialMedia }: MediaGridProps) => {
     return (
       <>
         {item.type === 'video' ? (
-          <div className="relative">
-            <FeedVideo
+            <FeedVideoPlayer
               src={item.url}
               poster={item.poster}
-              className="w-full max-h-[70vh] bg-black"
-              showControls
-              muted
+              displayMode="rectangle"
+              isLiveReplay={item.isLiveReplay}
+              feedId={feedId}
               onError={() => handleMediaError(item.url)}
             />
-            {item.isLiveReplay && (
-              <div className="absolute top-3 left-3 right-3 flex items-center justify-between pointer-events-none">
-                <div className="flex items-center gap-1.5 bg-destructive/90 text-destructive-foreground px-2.5 py-1 rounded-full text-xs font-bold shadow-lg backdrop-blur-sm">
-                  <Radio className="w-3.5 h-3.5" />
-                  LIVE Replay
-                </div>
-                {isChunkedManifestUrl(item.url) ? (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); downloadChunkedVideo(item.url); }}
-                    className="pointer-events-auto w-9 h-9 bg-black/60 hover:bg-black/80 rounded-full flex items-center justify-center text-white transition-colors"
-                    title="Tải xuống"
-                  >
-                    <Download className="w-4 h-4" />
-                  </button>
-                ) : (
-                  <a
-                    href={item.url}
-                    download
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="pointer-events-auto w-9 h-9 bg-black/60 hover:bg-black/80 rounded-full flex items-center justify-center text-white transition-colors"
-                    title="Tải xuống"
-                  >
-                    <Download className="w-4 h-4" />
-                  </a>
-                )}
-              </div>
-            )}
-          </div>
         ) : (
           <div 
             className="cursor-pointer"
@@ -180,14 +113,14 @@ export const MediaGrid = memo(({ media: initialMedia }: MediaGridProps) => {
             <div key={item.url} className="aspect-square overflow-hidden">
               {item.type === 'video' ? (
                 <div onClick={() => handleClick(index)} className="cursor-pointer h-full">
-                <FeedVideo
+                  <FeedVideoPlayer
                     src={item.url}
                     poster={item.poster}
-                    className="w-full h-full object-cover"
-                    showControls
-                    muted
-                    onError={() => handleMediaError(item.url)}
+                    displayMode="square"
+                    isLiveReplay={item.isLiveReplay}
+                    feedId={feedId}
                     compact
+                    onError={() => handleMediaError(item.url)}
                   />
                 </div>
               ) : (
@@ -227,14 +160,14 @@ export const MediaGrid = memo(({ media: initialMedia }: MediaGridProps) => {
           <div className="aspect-square overflow-hidden">
             {media[0].type === 'video' ? (
               <div onClick={() => handleClick(0)} className="cursor-pointer h-full">
-                <FeedVideo
+                <FeedVideoPlayer
                   src={media[0].url}
                   poster={media[0].poster}
-                  className="w-full h-full object-cover"
-                  showControls
-                  muted
-                  onError={() => handleMediaError(media[0].url)}
+                  displayMode="square"
+                  isLiveReplay={media[0].isLiveReplay}
+                  feedId={feedId}
                   compact
+                  onError={() => handleMediaError(media[0].url)}
                 />
               </div>
             ) : (
@@ -254,14 +187,14 @@ export const MediaGrid = memo(({ media: initialMedia }: MediaGridProps) => {
           <div className="row-span-2 aspect-auto overflow-hidden">
             {media[1].type === 'video' ? (
               <div onClick={() => handleClick(1)} className="cursor-pointer h-full">
-                <FeedVideo
+                <FeedVideoPlayer
                   src={media[1].url}
                   poster={media[1].poster}
-                  className="w-full h-full object-cover"
-                  showControls
-                  muted
-                  onError={() => handleMediaError(media[1].url)}
+                  displayMode="square"
+                  isLiveReplay={media[1].isLiveReplay}
+                  feedId={feedId}
                   compact
+                  onError={() => handleMediaError(media[1].url)}
                 />
               </div>
             ) : (
@@ -281,14 +214,14 @@ export const MediaGrid = memo(({ media: initialMedia }: MediaGridProps) => {
           <div className="aspect-square overflow-hidden">
             {media[2].type === 'video' ? (
               <div onClick={() => handleClick(2)} className="cursor-pointer h-full">
-                <FeedVideo
+                <FeedVideoPlayer
                   src={media[2].url}
                   poster={media[2].poster}
-                  className="w-full h-full object-cover"
-                  showControls
-                  muted
-                  onError={() => handleMediaError(media[2].url)}
+                  displayMode="square"
+                  isLiveReplay={media[2].isLiveReplay}
+                  feedId={feedId}
                   compact
+                  onError={() => handleMediaError(media[2].url)}
                 />
               </div>
             ) : (
@@ -329,14 +262,14 @@ export const MediaGrid = memo(({ media: initialMedia }: MediaGridProps) => {
           >
             {item.type === 'video' ? (
               <div onClick={() => handleClick(index)} className="cursor-pointer h-full">
-                <FeedVideo
+                <FeedVideoPlayer
                   src={item.url}
                   poster={item.poster}
-                  className="w-full h-full object-cover"
-                  showControls={false}
-                  muted
-                  onError={() => handleMediaError(item.url)}
+                  displayMode="square"
+                  isLiveReplay={item.isLiveReplay}
+                  feedId={feedId}
                   compact
+                  onError={() => handleMediaError(item.url)}
                 />
               </div>
             ) : (
