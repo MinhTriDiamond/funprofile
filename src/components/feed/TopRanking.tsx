@@ -17,10 +17,6 @@ interface LightCommunityMember {
   trend_emoji: string;
 }
 
-const getEmojiContainerStyle = (level: string) => {
-  if (level === "Light Architect") return "bg-amber-100 border border-amber-400";
-  return "bg-muted";
-};
 
 const getLevelStyle = (level: string) => {
   switch (level) {
@@ -99,7 +95,7 @@ export const TopRanking = memo(() => {
               className="flex items-center gap-2.5 p-3 bg-card rounded-xl border shadow-sm hover:shadow-md transition-all cursor-pointer"
             >
               {/* Light emoji */}
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0 ${getEmojiContainerStyle(member.light_level)}`}>
+              <div className="w-8 h-8 flex items-center justify-center text-sm shrink-0">
                 {member.light_level === "Light Architect" ? (
                   <Landmark className="w-4 h-4 text-emerald-600" />
                 ) : (
