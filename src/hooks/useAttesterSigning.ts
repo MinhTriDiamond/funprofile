@@ -43,7 +43,7 @@ export interface UseAttesterSigningResult {
   attesterName: string | null;
   requests: AttesterMintRequest[];
   isLoading: boolean;
-  isSigning: boolean;
+  signingRequestId: string | null;
   // Actions
   signRequest: (requestId: string) => Promise<boolean>;
   refetch: () => Promise<void>;
@@ -64,7 +64,7 @@ export const useAttesterSigning = (connectedAddress?: string): UseAttesterSignin
 
   const [requests, setRequests] = useState<AttesterMintRequest[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isSigning, setIsSigning] = useState(false);
+  const [signingRequestId, setSigningRequestId] = useState<string | null>(null);
 
   // Fetch pending/signing requests
   const fetchRequests = useCallback(async () => {
@@ -157,7 +157,7 @@ export const useAttesterSigning = (connectedAddress?: string): UseAttesterSignin
       }
     }
 
-    setIsSigning(true);
+    setSigningRequestId(requestId);
     try {
       if (!request.action_hash) {
         toast.error('Request thiếu action_hash');
@@ -228,7 +228,7 @@ export const useAttesterSigning = (connectedAddress?: string): UseAttesterSignin
       }
       return false;
     } finally {
-      setIsSigning(false);
+      setSigningRequestId(null);
     }
   }, [isConnected, effectiveAddress, attesterGroup, attesterName, requests, chainId, switchChainAsync, signTypedDataAsync]);
 
@@ -238,7 +238,7 @@ export const useAttesterSigning = (connectedAddress?: string): UseAttesterSignin
     attesterName,
     requests,
     isLoading,
-    isSigning,
+    signingRequestId,
     signRequest,
     refetch: fetchRequests,
   };
