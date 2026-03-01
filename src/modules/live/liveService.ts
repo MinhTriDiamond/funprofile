@@ -387,6 +387,74 @@ export async function saveLiveReplay(liveSessionId: string, playbackUrl?: string
   });
 }
 
+// ─── Chunked Recording: Upload & Finalize ───────────────────────
+
+const WORKER_URL = import.meta.env.VITE_AGORA_WORKER_URL || '';
+
+function ensureWorkerUrl(): string {
+  if (!WORKER_URL) throw new Error('VITE_AGORA_WORKER_URL is missing');
+  return WORKER_URL.replace(/\/+$/, '');
+}
+
+export async function uploadLiveChunk(
+  blob: Blob,
+  sessionId: string,
+  chunkIndex: number,
+  mimeType: string
+): Promise<string> {
+  const workerUrl = ensureWorkerUrl();
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) throw new Error('Not authenticated');
+
+  const res = await fetch(`${workerUrl}/upload/live-chunk`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${session.access_token}`,
+      'Content-Type': mimeType || 'video/webm',
+      'X-Stream-Id': sessionId,
+      'X-Chunk-Index': String(chunkIndex),
+    },
+    body: blob,
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Upload chunk failed' }));
+    throw new Error((err as any).error || `Chunk upload failed: ${res.status}`);
+  }
+
+  const data = await res.json() as { ok: boolean; key: string; chunkIndex: number };
+  return data.key;
+}
+
+export async function finalizeLiveChunks(
+  sessionId: string,
+  chunkKeys: string[],
+  mimeType: string = 'video/webm'
+): Promise<{ key: string; url: string }> {
+  const workerUrl = ensureWorkerUrl();
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) throw new Error('Not authenticated');
+
+  const res = await fetch(`${workerUrl}/upload/live-finalize`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${session.access_token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ streamId: sessionId, chunkKeys, mimeType }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Finalize failed' }));
+    throw new Error((err as any).error || `Finalize failed: ${res.status}`);
+  }
+
+  const data = await res.json() as { ok: boolean; key: string; url: string };
+  return { key: data.key, url: data.url };
+}
+
+// ─── Notifications ──────────────────────────────────────────────
+
 async function notifyFriendsLiveStarted(sessionId: string, postId: string): Promise<void> {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) return;
