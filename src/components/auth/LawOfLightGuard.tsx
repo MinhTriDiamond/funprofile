@@ -22,25 +22,12 @@ export const LawOfLightGuard = ({ children }: LawOfLightGuardProps) => {
     const checkLawOfLightAcceptance = async () => {
       try {
         // Skip check for public pages
-        const publicPaths = ['/law-of-light', '/docs'];
+        const publicPaths = ['/law-of-light', '/docs', '/auth'];
         const isPublicPath = publicPaths.some(path => location.pathname.startsWith(path));
         
         if (isPublicPath) {
           setIsAllowed(true);
           setIsChecking(false);
-          return;
-        }
-
-        // Special handling for /auth - require Law of Light acceptance first
-        if (location.pathname.startsWith('/auth')) {
-          const pending = localStorage.getItem('law_of_light_accepted_pending');
-          if (pending === 'true') {
-            setIsAllowed(true);
-            setIsChecking(false);
-            return;
-          }
-          setIsChecking(false);
-          navigate('/law-of-light', { replace: true });
           return;
         }
 
@@ -57,7 +44,7 @@ export const LawOfLightGuard = ({ children }: LawOfLightGuardProps) => {
             return;
           }
           setIsChecking(false);
-          navigate('/law-of-light', { replace: true });
+          navigate('/auth', { replace: true });
           return;
         }
 
@@ -132,7 +119,7 @@ export const LawOfLightGuard = ({ children }: LawOfLightGuardProps) => {
           wasAuthenticatedRef.current = false;
           setIsAllowed(false);
           setIsChecking(false);
-          navigate('/law-of-light', { replace: true });
+          navigate('/auth', { replace: true });
         }
       }
       // TOKEN_REFRESHED and other events are intentionally ignored to prevent false logouts
