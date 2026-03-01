@@ -392,7 +392,10 @@ export async function saveLiveReplay(liveSessionId: string, playbackUrl?: string
 const WORKER_URL = import.meta.env.VITE_AGORA_WORKER_URL || '';
 
 function ensureWorkerUrl(): string {
-  if (!WORKER_URL) throw new Error('VITE_AGORA_WORKER_URL is missing');
+  if (!WORKER_URL) {
+    console.error('[liveService] VITE_AGORA_WORKER_URL is not configured! Chunk upload will fail.');
+    throw new Error('VITE_AGORA_WORKER_URL is missing — cần cấu hình Worker URL');
+  }
   return WORKER_URL.replace(/\/+$/, '');
 }
 
@@ -406,23 +409,33 @@ export async function uploadLiveChunk(
   const { data: { session } } = await supabase.auth.getSession();
   if (!session?.access_token) throw new Error('Not authenticated');
 
-  const res = await fetch(`${workerUrl}/upload/live-chunk`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${session.access_token}`,
-      'Content-Type': mimeType || 'video/webm',
-      'X-Stream-Id': sessionId,
-      'X-Chunk-Index': String(chunkIndex),
-    },
-    body: blob,
-  });
+  console.log(`[uploadLiveChunk] #${chunkIndex} size=${blob.size} → ${workerUrl}/upload/live-chunk`);
+
+  let res: Response;
+  try {
+    res = await fetch(`${workerUrl}/upload/live-chunk`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`,
+        'Content-Type': mimeType || 'video/webm',
+        'X-Stream-Id': sessionId,
+        'X-Chunk-Index': String(chunkIndex),
+      },
+      body: blob,
+    });
+  } catch (networkErr) {
+    console.error(`[uploadLiveChunk] #${chunkIndex} network error:`, networkErr);
+    throw new Error(`Chunk #${chunkIndex} network error: ${networkErr}`);
+  }
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: 'Upload chunk failed' }));
-    throw new Error((err as any).error || `Chunk upload failed: ${res.status}`);
+    const errBody = await res.text().catch(() => 'no body');
+    console.error(`[uploadLiveChunk] #${chunkIndex} failed: ${res.status} ${res.statusText}`, errBody);
+    throw new Error(`Chunk #${chunkIndex} upload failed: ${res.status} — ${errBody}`);
   }
 
   const data = await res.json() as { ok: boolean; key: string; chunkIndex: number };
+  console.log(`[uploadLiveChunk] #${chunkIndex} ✓ key=${data.key}`);
   return data.key;
 }
 
