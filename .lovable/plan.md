@@ -1,45 +1,45 @@
 
 
-# Sửa lỗi: Đăng xuất vẫn redirect về /law-of-light
+# Dọn dẹp dữ liệu FUN contract cũ (trước 14/02/2026)
 
-## Nguyên nhân
+## Vấn đề
 
-File `src/pages/Auth.tsx` (dòng 20-25) có đoạn code kiểm tra localStorage `law_of_light_accepted_pending` — nếu không tìm thấy flag này, nó **redirect ngay về `/law-of-light`** trước khi trang Auth kịp render. Khi user đăng xuất, Guard đã redirect đúng về `/auth`, nhưng Auth.tsx lại đá user ra `/law-of-light` ngay lập tức.
+Trước ngày 14/02, hệ thống đã chạy batch test tạo 102 mint requests cho nhiều user. Các records này:
+- Không đi qua quy trình multisig 3-of-3 đúng cách
+- Nhiều records bị stuck ở trạng thái `pending_sig`, `rejected`, `failed`, `legacy_signed`
+- Một số `confirmed` nhưng với số lượng FUN không khớp on-chain
+- Gây hiển thị sai lịch sử mint và số FUN cho user (ví dụ AngelKhaNhi thấy 6,774 FUN confirmed nhưng on-chain chỉ có 1,510 locked)
 
-Ngoài ra, `GuestSignupPrompt.tsx` (dòng 34) cũng navigate về `/law-of-light` thay vì `/auth`.
+## Giải pháp
 
-## Thay đổi
+Thực hiện 2 bước dọn dẹp database:
 
-### 1. `src/pages/Auth.tsx` — Xóa block chặn (dòng 20-25)
+### Bước 1: Giải phóng light_actions bị gắn với request cũ
 
-Xóa hoàn toàn đoạn kiểm tra localStorage:
+735 light_actions đang trỏ `mint_request_id` đến các request cũ. Cần reset về `NULL` để các actions này có thể được mint lại trong tương lai.
 
-```typescript
-// XÓA đoạn này:
-const pending = localStorage.getItem('law_of_light_accepted_pending');
-if (!pending) {
-  navigate('/law-of-light', { replace: true });
-  return;
-}
+```sql
+UPDATE light_actions
+SET mint_request_id = NULL
+WHERE mint_request_id IN (
+  SELECT id FROM pplp_mint_requests WHERE created_at < '2026-02-14T00:00:00Z'
+);
 ```
 
-Không cần kiểm tra ở đây nữa vì Luật Ánh Sáng chỉ được kiểm tra **sau khi đăng nhập thành công** trong `handleAuthSuccess` và `LawOfLightGuard`.
+### Bước 2: Xóa toàn bộ mint requests cũ
 
-### 2. `src/components/auth/GuestSignupPrompt.tsx` — Đổi navigate (dòng 34)
+Xóa 102 records trước ngày 14/02 — bao gồm tất cả trạng thái: pending_sig, rejected, failed, confirmed, legacy_signed.
 
-```typescript
-// Trước:
-navigate('/law-of-light');
-// Sau:
-navigate('/auth');
+```sql
+DELETE FROM pplp_mint_requests
+WHERE created_at < '2026-02-14T00:00:00Z';
 ```
 
-Guest bấm "Đăng ký ngay" sẽ đến thẳng trang đăng ký, không cần qua Luật Ánh Sáng trước.
+## Kết quả mong đợi
 
-## Tệp thay đổi
-
-| Tệp | Thay đổi |
-|------|----------|
-| `src/pages/Auth.tsx` | Xóa block redirect `/law-of-light` ở đầu useEffect |
-| `src/components/auth/GuestSignupPrompt.tsx` | Đổi navigate từ `/law-of-light` sang `/auth` |
+- **AngelKhaNhi**: Chỉ còn 1 request hợp lệ (1,459 FUN, signed, chờ submit). Record 6,774 FUN sai sẽ bị xóa.
+- **Tất cả user**: Không còn hiển thị lịch sử mint từ batch test cũ.
+- **735 light_actions**: Được giải phóng, user có thể mint lại bình thường.
+- **On-chain balance**: Không bị ảnh hưởng (dữ liệu on-chain vẫn đọc trực tiếp từ contract).
+- Không cần thay đổi code — chỉ dọn dẹp dữ liệu database.
 
