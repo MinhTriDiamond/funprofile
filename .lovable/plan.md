@@ -1,66 +1,46 @@
 
 
-# Viết lại Worker & Hướng dẫn Deploy
+# Kết quả kiểm tra tính năng Chunked Recording & R2
 
-## Phân tích
+## Trạng thái hiện tại
 
-Worker hiện tại (`fun-agora-rtc-token`) chỉ xử lý **tạo Agora RTC token**. Tuy nhiên, frontend (`liveService.ts`) đang gọi thêm 2 endpoint mới trên cùng Worker URL (`VITE_AGORA_WORKER_URL`):
+### Đã hoạt động:
+- `CHUNKED_RECORDING_ENABLED = true` — tính năng đã bật
+- `createChunkedRecorder` — ghi video theo chunk 2 giây, hoạt động đúng (UI hiển thị "Đang ghi")
+- `createChunkUploadQueue` — hàng đợi upload với retry và offline-aware đã được khởi tạo
+- `useLiveRecording` hook — tự động start khi tracks sẵn sàng, đã kết nối đúng trong `LiveHostPage`
 
-- `POST /upload/live-chunk` — upload từng chunk video binary
-- `POST /upload/live-finalize` — ghép chunks thành 1 file hoàn chỉnh
+### Vấn đề phát hiện — Upload chunk lên R2 bị lỗi (progress 0%):
 
-Worker cần được mở rộng thành **multi-route worker** với 3 chức năng:
-1. `POST /` — Tạo Agora RTC token (giữ nguyên logic hiện tại)
-2. `POST /upload/live-chunk` — Nhận chunk binary, lưu vào R2
-3. `POST /upload/live-finalize` — Ghép các chunks thành 1 file, trả về URL
+Từ screenshot, badge hiển thị "Đang tải lên..." nhưng progress = **0%**. Điều này cho thấy chunk upload đang **thất bại liên tục** (retry 3 lần rồi bỏ qua). Có **2 nguyên nhân có thể**:
 
-## Kế hoạch thay đổi
+#### Nguyên nhân 1: `VITE_AGORA_WORKER_URL` chưa được cấu hình trong Lovable
+- Frontend dùng `import.meta.env.VITE_AGORA_WORKER_URL` để gọi Worker
+- Nếu biến này trống, `ensureWorkerUrl()` sẽ throw error và mọi chunk upload đều fail
+- Cần kiểm tra xem biến này đã được set trong Lovable environment chưa
 
-### File 1: `fun-agora-rtc-token/wrangler.toml`
-- Thêm R2 bucket binding (`LIVE_CHUNKS`) để Worker có thể đọc/ghi R2
-- Thêm secrets cần thiết: `CLOUDFLARE_R2_PUBLIC_URL`
+#### Nguyên nhân 2: Worker chưa được deploy hoặc secrets chưa đủ
+- Worker cần các secrets: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `R2_PUBLIC_URL`
+- Nếu Worker chưa deploy, endpoint `/upload/live-chunk` sẽ trả về 404 hoặc không tồn tại
+- Nếu secrets thiếu, auth sẽ fail trả về 401
 
-### File 2: `fun-agora-rtc-token/src/cors.ts`
-- Mở rộng `Access-Control-Allow-Headers` để chấp nhận thêm `Authorization`, `X-Stream-Id`, `X-Chunk-Index`
-- Mở rộng `Access-Control-Allow-Methods` thêm `GET`
+#### Nguyên nhân 3: CORS — origin preview chưa được thêm vào `ALLOWED_ORIGINS`
+- `wrangler.toml` chỉ có 3 origins: `funprofile.lovable.app`, `id-preview--f06fbccb...lovable.app`, `localhost:5173`
+- Origin thực tế từ network requests là: `f06fbccb-088c-4170-8736-4f1a09d4d572.lovableproject.com`
+- Origin này **KHÔNG** nằm trong danh sách allowed → CORS bị chặn!
 
-### File 3: `fun-agora-rtc-token/src/index.ts`
-- Thêm router: phân luồng request theo pathname (`/`, `/upload/live-chunk`, `/upload/live-finalize`)
-- **Route `/upload/live-chunk`**: Xác thực qua `Authorization: Bearer <token>` (verify JWT với Supabase), nhận binary body, lưu vào R2 với key `live-chunks/{streamId}/chunk-{index}.webm`
-- **Route `/upload/live-finalize`**: Đọc tất cả chunks từ R2, ghép thành 1 file, lưu vào `videos/live/{streamId}/recording-{timestamp}.webm`, xóa chunks, trả về URL public
-- Giữ nguyên route `/` cho token generation
+## Kế hoạch sửa lỗi
 
-### File 4: `fun-agora-rtc-token/src/validate.ts`
-- Giữ nguyên, không thay đổi
+### 1. Thêm biến môi trường `VITE_AGORA_WORKER_URL`
+- Cần con cung cấp URL Worker đã deploy (ví dụ: `https://fun-agora-rtc-token.xxx.workers.dev`)
 
-### File 5: `fun-agora-rtc-token/src/auth.ts` (file mới)
-- Hàm `verifySupabaseToken(token, supabaseUrl, supabaseKey)`: gọi Supabase `/auth/v1/user` để xác thực JWT và lấy user ID
+### 2. Cập nhật `ALLOWED_ORIGINS` trong Worker
+- Thêm origin `https://f06fbccb-088c-4170-8736-4f1a09d4d572.lovableproject.com` vào `wrangler.toml`
+- Hoặc dùng wildcard pattern cho tất cả preview URLs
 
-### File 6: `fun-agora-rtc-token/package.json`
-- Không cần thêm dependency mới (R2 binding là native Cloudflare)
+### 3. Xác nhận Worker đã deploy với đầy đủ secrets
+- `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `R2_PUBLIC_URL` phải được set trên Cloudflare
 
-## Secrets cần thêm trên Cloudflare Worker
-
-Worker cần thêm 2 secrets mới (đã có trong backend):
-- `SUPABASE_URL` — để verify JWT token
-- `SUPABASE_ANON_KEY` — để gọi Supabase auth API
-
-## Cấu trúc R2
-
-```text
-R2 Bucket (fun-live-chunks hoặc bucket hiện có):
-├── live-chunks/{streamId}/
-│   ├── chunk-000.webm
-│   ├── chunk-001.webm
-│   └── ...
-└── videos/live/{streamId}/
-    └── recording-{timestamp}.webm  ← file ghép cuối cùng
-```
-
-## Hướng dẫn Deploy (sẽ viết trong README)
-
-1. Tạo R2 bucket trên Cloudflare Dashboard
-2. Cấu hình secrets mới (`SUPABASE_URL`, `SUPABASE_ANON_KEY`)
-3. `cd fun-agora-rtc-token && npm install && npm run deploy`
-4. Cập nhật `VITE_AGORA_WORKER_URL` nếu URL thay đổi
+### 4. Cải thiện logging lỗi trong frontend
+- Thêm `console.error` rõ ràng hơn khi chunk upload fail để dễ debug
 
