@@ -23,30 +23,27 @@ export const UnifiedAuthForm = () => {
     setIsSettingUp(true);
 
     try {
-      // Step 1: Update law_of_light_accepted if pending
-      const lawOfLightPending = localStorage.getItem('law_of_light_accepted_pending');
-      if (lawOfLightPending === 'true') {
-        console.log('[Setup] Updating law_of_light_accepted for user:', userId);
-        await supabase.from('profiles').update({
-          law_of_light_accepted: true,
-          law_of_light_accepted_at: new Date().toISOString()
-        }).eq('id', userId);
-        localStorage.removeItem('law_of_light_accepted_pending');
-      }
-
-      // Note: Custodial wallet auto-creation removed.
-      // Users set their own wallet address in Profile settings.
-      // Soul NFT minting will be done later when user meets conditions
-
+      // law_of_light đã được xử lý ở handleAuthSuccess
       setSetupStep('complete');
       toast.success(t('accountSetupComplete'));
       
       // Small delay to show completion state
       await new Promise(resolve => setTimeout(resolve, 800));
-      navigate('/');
+
+      // Kiểm tra lại trạng thái law_of_light
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('law_of_light_accepted')
+        .eq('id', userId)
+        .single();
+
+      if (profile?.law_of_light_accepted) {
+        navigate('/');
+      } else {
+        navigate('/law-of-light');
+      }
     } catch (error) {
       console.error('[Setup] Setup error:', error);
-      // Still navigate even if setup fails
       navigate('/');
     } finally {
       setIsSettingUp(false);
@@ -76,11 +73,34 @@ export const UnifiedAuthForm = () => {
       console.warn('[Auth] Failed to log IP:', e);
     }
 
+    // Đồng bộ law_of_light từ localStorage nếu có pending (cho MỌI lần đăng nhập)
+    const lawOfLightPending = localStorage.getItem('law_of_light_accepted_pending');
+    if (lawOfLightPending === 'true') {
+      console.log('[Auth] Syncing law_of_light_accepted for user:', userId);
+      await supabase.from('profiles').update({
+        law_of_light_accepted: true,
+        law_of_light_accepted_at: new Date().toISOString()
+      }).eq('id', userId);
+      localStorage.removeItem('law_of_light_accepted_pending');
+    }
+
     if (isNewUser) {
       await handleNewUserSetup(userId, hasExternalWallet);
     } else {
+      // Kiểm tra law_of_light_accepted từ DB trước khi navigate
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('law_of_light_accepted')
+        .eq('id', userId)
+        .single();
+
       toast.success(t('welcomeBack'));
-      navigate('/');
+
+      if (profile?.law_of_light_accepted) {
+        navigate('/');
+      } else {
+        navigate('/law-of-light');
+      }
     }
   };
 

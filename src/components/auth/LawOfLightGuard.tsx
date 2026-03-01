@@ -77,6 +77,19 @@ export const LawOfLightGuard = ({ children }: LawOfLightGuardProps) => {
         }
 
         if (profile && !profile.law_of_light_accepted) {
+          // Tự động đồng bộ nếu có pending flag trong localStorage
+          const pending = localStorage.getItem('law_of_light_accepted_pending');
+          if (pending === 'true') {
+            await supabase.from('profiles').update({
+              law_of_light_accepted: true,
+              law_of_light_accepted_at: new Date().toISOString()
+            }).eq('id', session.user.id);
+            localStorage.removeItem('law_of_light_accepted_pending');
+            wasAuthenticatedRef.current = true;
+            setIsAllowed(true);
+            setIsChecking(false);
+            return;
+          }
           setIsChecking(false);
           navigate('/law-of-light', { replace: true });
           return;
@@ -106,7 +119,9 @@ export const LawOfLightGuard = ({ children }: LawOfLightGuardProps) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session) {
         wasAuthenticatedRef.current = true;
-        // Delay to ensure auth state is fully stable before re-checking
+        // Reset isAllowed để buộc kiểm tra lại từ database
+        setIsAllowed(false);
+        setIsChecking(true);
         setTimeout(() => {
           checkLawOfLightAcceptance();
         }, 150);
