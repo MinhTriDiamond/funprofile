@@ -389,7 +389,7 @@ export async function saveLiveReplay(liveSessionId: string, playbackUrl?: string
 
 // ─── Chunked Recording: Upload & Finalize ───────────────────────
 
-const WORKER_URL = import.meta.env.VITE_AGORA_WORKER_URL || '';
+const WORKER_URL = import.meta.env.VITE_AGORA_WORKER_URL || 'https://fun-agora-rtc-token.trong-nguyen.workers.dev';
 
 function ensureWorkerUrl(): string {
   if (!WORKER_URL) {
