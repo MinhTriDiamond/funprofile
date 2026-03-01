@@ -1,163 +1,66 @@
 
-# Kiểm tra Luật Ánh Sáng trước khi cho phép truy cập
 
-## Vấn đề hiện tại
+# Bỏ yêu cầu Luật Ánh Sáng trước Đăng ký/Đăng nhập
 
-Hiện tại có 2 lỗ hổng chính:
+## Thay đổi
 
-1. **`handleAuthSuccess` trong `UnifiedAuthForm.tsx`**: Khi user cũ đăng nhập (bất kỳ phương thức nào: OTP, ví, Google, email+password), hệ thống navigate thẳng đến `/` mà **không kiểm tra** `law_of_light_accepted` trong database.
+Hiện tại, khi user truy cập `/auth`, Guard yêu cầu phải đồng ý Luật Ánh Sáng **trước** khi được phép đăng ký/đăng nhập. Cần sửa để:
 
-2. **`LawOfLightGuard`**: Guard đã kiểm tra `law_of_light_accepted` từ database, nhưng có vấn đề timing — khi `handleAuthSuccess` gọi `navigate('/')`, Guard có thể chưa kịp re-check vì `isAllowed` đã `true` từ trước (dòng 20: `if (isAllowed) return`).
+- `/auth` luôn được truy cập tự do (không cần đồng ý trước)
+- Kiểm tra Luật Ánh Sáng chỉ xảy ra **sau khi đăng nhập thành công**, trước khi navigate đến `/`
+- Khi user đăng xuất, redirect về `/auth` thay vì `/law-of-light`
+- Guest không đăng nhập truy cập các trang công khai bình thường
+- User chưa đăng nhập truy cập trang protected → redirect về `/auth`
 
-3. **localStorage `law_of_light_accepted_pending`**: Chỉ được lưu khi user đồng ý trên trang `/law-of-light` mà chưa đăng nhập. Nhưng nếu user đăng nhập mà chưa từng đồng ý, flag này không tồn tại → database không bao giờ được cập nhật.
-
-## Giải pháp
-
-Thêm **một bước kiểm tra duy nhất** trong `handleAuthSuccess` cho **tất cả phương thức đăng nhập**. Đây là điểm hội tụ chung — mọi phương thức (OTP, ví, Google, classic) đều gọi `handleAuthSuccess` sau khi xác thực thành công.
-
-### Luồng mới cho tất cả phương thức:
+## Luồng mới
 
 ```text
-User đăng nhập thành công (bất kỳ phương thức)
+User truy cập /auth → Đăng ký/Đăng nhập tự do
   |
-  +-- handleAuthSuccess()
+  +-- Đăng nhập thành công → handleAuthSuccess()
         |
         +-- Kiểm tra profiles.law_of_light_accepted
-        |
-        +-- Nếu TRUE  → navigate('/')
-        +-- Nếu FALSE → navigate('/law-of-light')
+        +-- TRUE  → navigate('/')
+        +-- FALSE → navigate('/law-of-light')
+
+User đã đăng nhập, hard refresh bất kỳ trang nào:
+  |
+  +-- LawOfLightGuard kiểm tra DB
+  +-- law_of_light_accepted = TRUE → cho phép
+  +-- law_of_light_accepted = FALSE → redirect /law-of-light
 ```
-
-### Tệp thay đổi
-
-| Tệp | Thay đổi |
-|------|----------|
-| `src/components/auth/UnifiedAuthForm.tsx` | Thêm kiểm tra `law_of_light_accepted` trong `handleAuthSuccess` trước khi navigate |
-| `src/components/auth/LawOfLightGuard.tsx` | Sửa logic để reset `isAllowed` khi auth state thay đổi (SIGNED_IN), đảm bảo re-check |
 
 ## Chi tiết kỹ thuật
 
-### 1. `UnifiedAuthForm.tsx` — `handleAuthSuccess` (dòng 56-85)
+### File: `src/components/auth/LawOfLightGuard.tsx`
 
-Thêm kiểm tra database sau khi xác nhận session, **trước khi** navigate:
-
-```typescript
-const handleAuthSuccess = async (userId: string, isNewUser: boolean, hasExternalWallet = false) => {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) { /* giữ nguyên */ return; }
-
-  // Log login IP (giữ nguyên)
-  // ...
-
-  // Đồng bộ law_of_light từ localStorage nếu có pending
-  const lawOfLightPending = localStorage.getItem('law_of_light_accepted_pending');
-  if (lawOfLightPending === 'true') {
-    await supabase.from('profiles').update({
-      law_of_light_accepted: true,
-      law_of_light_accepted_at: new Date().toISOString()
-    }).eq('id', userId);
-    localStorage.removeItem('law_of_light_accepted_pending');
-  }
-
-  if (isNewUser) {
-    await handleNewUserSetup(userId, hasExternalWallet);
-  } else {
-    // KIỂM TRA law_of_light_accepted CHO USER CŨ
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('law_of_light_accepted')
-      .eq('id', userId)
-      .single();
-
-    toast.success(t('welcomeBack'));
-
-    if (profile?.law_of_light_accepted) {
-      navigate('/');
-    } else {
-      navigate('/law-of-light');
-    }
-  }
-};
-```
-
-### 2. `UnifiedAuthForm.tsx` — `handleNewUserSetup` (dòng 22-54)
-
-Xóa đoạn check `law_of_light_accepted_pending` vì đã được di chuyển lên `handleAuthSuccess`. Sau khi setup xong, kiểm tra lại trạng thái:
+**Thay đổi 1** (dòng 34-45): Bỏ block chặn `/auth`. Thêm `/auth` vào danh sách public paths:
 
 ```typescript
-const handleNewUserSetup = async (userId: string, hasExternalWallet: boolean) => {
-  setIsSettingUp(true);
-  try {
-    // law_of_light đã được xử lý ở handleAuthSuccess
-    setSetupStep('complete');
-    toast.success(t('accountSetupComplete'));
-    await new Promise(resolve => setTimeout(resolve, 800));
-
-    // Kiểm tra lại (phòng trường hợp pending chưa được lưu)
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('law_of_light_accepted')
-      .eq('id', userId)
-      .single();
-
-    if (profile?.law_of_light_accepted) {
-      navigate('/');
-    } else {
-      navigate('/law-of-light');
-    }
-  } catch (error) {
-    navigate('/');
-  } finally {
-    setIsSettingUp(false);
-  }
-};
+const publicPaths = ['/law-of-light', '/docs', '/auth'];
 ```
 
-### 3. `LawOfLightGuard.tsx` — Sửa logic SIGNED_IN (dòng 107-112)
+Xóa toàn bộ block `if (location.pathname.startsWith('/auth'))`.
 
-Khi nhận event `SIGNED_IN`, reset `isAllowed` để buộc re-check từ database:
+**Thay đổi 2** (dòng 59-61): Khi user chưa đăng nhập truy cập trang protected, redirect về `/auth` thay vì `/law-of-light`:
 
 ```typescript
-if (event === 'SIGNED_IN' && session) {
-  wasAuthenticatedRef.current = true;
-  // Reset isAllowed để buộc kiểm tra lại từ database
-  setIsAllowed(false);
-  setIsChecking(true);
-  setTimeout(() => {
-    checkLawOfLightAcceptance();
-  }, 150);
-}
+navigate('/auth', { replace: true });
 ```
 
-### 4. `LawOfLightGuard.tsx` — Thêm auto-sync pending (dòng 79-83)
-
-Khi user đã đăng nhập nhưng `law_of_light_accepted = false`, kiểm tra localStorage để tự đồng bộ:
+**Thay đổi 3** (dòng 135): Khi user đăng xuất, redirect về `/auth` thay vì `/law-of-light`:
 
 ```typescript
-if (profile && !profile.law_of_light_accepted) {
-  // Tự động đồng bộ nếu có pending flag
-  const pending = localStorage.getItem('law_of_light_accepted_pending');
-  if (pending === 'true') {
-    await supabase.from('profiles').update({
-      law_of_light_accepted: true,
-      law_of_light_accepted_at: new Date().toISOString()
-    }).eq('id', session.user.id);
-    localStorage.removeItem('law_of_light_accepted_pending');
-    wasAuthenticatedRef.current = true;
-    setIsAllowed(true);
-    setIsChecking(false);
-    return;
-  }
-  setIsChecking(false);
-  navigate('/law-of-light', { replace: true });
-  return;
-}
+navigate('/auth', { replace: true });
 ```
 
-## Kết quả mong đợi
+### File: `src/components/auth/UnifiedAuthForm.tsx`
 
-- Mọi phương thức đăng nhập (OTP, ví, Google, email+password) đều kiểm tra `law_of_light_accepted` trước khi vào trang chính
-- User đã đồng ý rồi → vào thẳng `/`, không hỏi lại
-- User chưa đồng ý → chuyển đến `/law-of-light` để đồng ý
-- Guest (không đăng nhập) → truy cập bình thường, không bị chặn
-- Hard refresh → Guard kiểm tra từ database, không phụ thuộc localStorage
+Không cần thay đổi -- logic kiểm tra `law_of_light_accepted` trong `handleAuthSuccess` đã hoạt động đúng (kiểm tra DB sau khi đăng nhập, navigate `/` hoặc `/law-of-light`).
+
+## Tệp thay đổi
+
+| Tệp | Thay đổi |
+|------|----------|
+| `src/components/auth/LawOfLightGuard.tsx` | Cho phép `/auth` truy cập tự do, redirect về `/auth` thay vì `/law-of-light` khi chưa đăng nhập hoặc đăng xuất |
+
