@@ -36,14 +36,14 @@ Deno.serve(async (req) => {
     );
 
     const token = authHeader.replace('Bearer ', '');
-    const { data: claimsData, error: claimsError } = await supabaseAdmin.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
+    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
+    if (userError || !user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const userId = claimsData.claims.sub as string;
+    const userId = user.id;
 
     // Check admin role via user_roles table
     const { data: roleData } = await supabaseAdmin
@@ -220,21 +220,29 @@ function extractStreamUid(url: string | null): string | null {
 }
 
 async function getStreamDownloadUrl(accountId: string, apiToken: string, uid: string): Promise<string | null> {
-  // First enable downloads
+  // Enable downloads
   await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/stream/${uid}/downloads`, {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${apiToken}` },
   });
 
-  // Wait a moment then check
-  await new Promise(r => setTimeout(r, 2000));
+  // Polling: kiểm tra mỗi 3s, tối đa 10 lần (30s)
+  for (let attempt = 0; attempt < 10; attempt++) {
+    await new Promise(r => setTimeout(r, 3000));
 
-  const resp = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/stream/${uid}/downloads`, {
-    headers: { 'Authorization': `Bearer ${apiToken}` },
-  });
+    const resp = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/stream/${uid}/downloads`, {
+      headers: { 'Authorization': `Bearer ${apiToken}` },
+    });
 
-  const data = await resp.json();
-  return data?.result?.default?.url || null;
+    const data = await resp.json();
+    const url = data?.result?.default?.url;
+    const percent = data?.result?.default?.percentComplete;
+
+    if (url && percent === 100.0) return url;
+    console.log(`[migrate] UID ${uid}: download ${percent ?? 0}% (attempt ${attempt + 1}/10)`);
+  }
+
+  return null; // Timeout sau 30s
 }
 
 async function uploadToR2Direct(
