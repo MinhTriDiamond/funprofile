@@ -99,6 +99,13 @@ export const ClassicEmailLogin = ({
         ]);
         if (error) throw error;
         if (data.user) {
+          // Nếu không có session = email chưa xác thực, chỉ hiện thông báo
+          if (!data.session) {
+            toast.success(t('authSuccessSignUp'));
+            setLoading(false);
+            return;
+          }
+          // Nếu có session (auto-confirm), tiếp tục bình thường
           setTimeout(async () => {
             const updateData: Record<string, string> = {
               last_login_platform: 'FUN Profile'
@@ -108,11 +115,20 @@ export const ClassicEmailLogin = ({
             }
             await supabase.from('profiles').update(updateData).eq('id', data.user!.id);
           }, 1000);
-          toast.success(t('authSuccessSignUp'));
           onSuccess(data.user.id, true);
         }
       }
     } catch (error: any) {
+      // Xử lý lỗi trùng username
+      if (error.message?.includes('profiles_username_key') ||
+          error.message?.includes('unique_violation') ||
+          error.message?.includes('duplicate key')) {
+        const suggestion = username + '_' + Math.random().toString(36).substring(2, 6);
+        setUsername(suggestion);
+        toast.error(`Tên người dùng "${username}" đã được sử dụng. Hãy thử: ${suggestion}`);
+        setLoading(false);
+        return;
+      }
       toast.error(error.message || t('authErrorGeneric'));
     } finally {
       setLoading(false);
