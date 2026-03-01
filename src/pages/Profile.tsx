@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { LazyImage } from '@/components/ui/LazyImage';
 import { CoverPhotoEditor } from '@/components/profile/CoverPhotoEditor';
 import { AvatarEditor } from '@/components/profile/AvatarEditor';
+import { AvatarViewer } from '@/components/ui/AvatarViewer';
 import { MoreHorizontal, MapPin, Briefcase, GraduationCap, Heart, Clock, MessageCircle, Eye, X, Pin, PenSquare, Gift, Copy, Wallet, Shield } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { DonationButton } from '@/components/donations/DonationButton';
@@ -63,6 +64,7 @@ const Profile = () => {
     }
   };
   const [viewAsPublic, setViewAsPublic] = useState(false);
+  const [showAvatarViewer, setShowAvatarViewer] = useState(false);
 
   // Determine if we should show private elements (own profile AND not in View As mode)
   const showPrivateElements = isOwnProfile && !viewAsPublic;
@@ -504,11 +506,12 @@ const Profile = () => {
                         size="large"
                       />
                     ) : (
-                      <div 
-                        className="rounded-full p-1"
+                      <button 
+                        className="rounded-full p-1 cursor-pointer"
                         style={{
                           background: 'linear-gradient(135deg, #166534 0%, #22c55e 50%, #16a34a 100%)'
                         }}
+                        onClick={() => setShowAvatarViewer(true)}
                       >
                         <Avatar 
                           className="w-24 h-24 sm:w-28 sm:h-28 md:w-36 md:h-36 border-4 border-white"
@@ -518,7 +521,7 @@ const Profile = () => {
                             {profile?.username?.[0]?.toUpperCase() || 'U'}
                           </AvatarFallback>
                         </Avatar>
-                      </div>
+                      </button>
                     )}
                   </AvatarOrbit>
                 </div>
@@ -1088,6 +1091,12 @@ onClick={() => navigate(`/${friend.username}`)}
       
       {/* Mobile Bottom Navigation with Honor Board */}
       <MobileBottomNav />
+      <AvatarViewer
+        imageUrl={profile?.avatar_url}
+        isOpen={showAvatarViewer}
+        onClose={() => setShowAvatarViewer(false)}
+        fallbackText={profile?.username?.[0]?.toUpperCase() || 'U'}
+      />
     </div>
   );
 };
