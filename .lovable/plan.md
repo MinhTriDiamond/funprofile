@@ -1,45 +1,47 @@
 
+# Thêm tính năng click xem avatar phóng to
 
-# Dọn dẹp dữ liệu FUN contract cũ (trước 14/02/2026)
+## Mô tả
 
-## Vấn đề
+Tạo component `AvatarViewer` dùng Dialog để hiển thị avatar full-size khi user click vào. Áp dụng cho các vị trí chính hiển thị avatar.
 
-Trước ngày 14/02, hệ thống đã chạy batch test tạo 102 mint requests cho nhiều user. Các records này:
-- Không đi qua quy trình multisig 3-of-3 đúng cách
-- Nhiều records bị stuck ở trạng thái `pending_sig`, `rejected`, `failed`, `legacy_signed`
-- Một số `confirmed` nhưng với số lượng FUN không khớp on-chain
-- Gây hiển thị sai lịch sử mint và số FUN cho user (ví dụ AngelKhaNhi thấy 6,774 FUN confirmed nhưng on-chain chỉ có 1,510 locked)
+## Chi tiết kỹ thuật
 
-## Giải pháp
+### 1. Tạo component `src/components/ui/AvatarViewer.tsx`
 
-Thực hiện 2 bước dọn dẹp database:
+Component mới sử dụng Dialog (tương tự `ImageViewer` đã có trong feed) để hiển thị avatar phóng to:
+- Props: `imageUrl`, `isOpen`, `onClose`, `fallbackText`
+- Hiển thị ảnh full-size trong Dialog tối (dark background)
+- Nếu không có ảnh, hiển thị fallback text lớn
+- Nút X để đóng
 
-### Bước 1: Giải phóng light_actions bị gắn với request cũ
+### 2. Cập nhật `src/pages/Profile.tsx` - Avatar trên trang profile
 
-735 light_actions đang trỏ `mint_request_id` đến các request cũ. Cần reset về `NULL` để các actions này có thể được mint lại trong tương lai.
+Thêm click handler cho avatar khi xem profile người khác (block `else` ở dòng 507-521):
+- Wrap avatar trong button có cursor-pointer
+- Click mở AvatarViewer dialog hiển thị avatar full-size
+- Chỉ áp dụng khi xem profile người khác (không phải owner đang edit)
 
-```sql
-UPDATE light_actions
-SET mint_request_id = NULL
-WHERE mint_request_id IN (
-  SELECT id FROM pplp_mint_requests WHERE created_at < '2026-02-14T00:00:00Z'
-);
-```
+### 3. Cập nhật `src/components/reels/ReelInfo.tsx` - Avatar trong reels
 
-### Bước 2: Xóa toàn bộ mint requests cũ
+- Thêm long-press hoặc click riêng để xem avatar (giữ click navigate profile như cũ)
+- Hoặc đơn giản hơn: click avatar mở viewer, click username navigate profile
 
-Xóa 102 records trước ngày 14/02 — bao gồm tất cả trạng thái: pending_sig, rejected, failed, confirmed, legacy_signed.
+### 4. Cập nhật các vị trí phổ biến khác
 
-```sql
-DELETE FROM pplp_mint_requests
-WHERE created_at < '2026-02-14T00:00:00Z';
-```
+- `src/pages/Leaderboard.tsx` - Avatar trong bảng xếp hạng
+- `src/pages/Benefactors.tsx` - Avatar donor/recipient
+- `src/components/chat/MessageBubble.tsx` - Avatar trong chat
+- `src/components/wallet/DonationHistoryItem.tsx` - Avatar lịch sử donate
 
-## Kết quả mong đợi
+Ở các vị trí này, avatar nhỏ nên ưu tiên giữ hành vi navigate profile, không thêm viewer để tránh conflict UX.
 
-- **AngelKhaNhi**: Chỉ còn 1 request hợp lệ (1,459 FUN, signed, chờ submit). Record 6,774 FUN sai sẽ bị xóa.
-- **Tất cả user**: Không còn hiển thị lịch sử mint từ batch test cũ.
-- **735 light_actions**: Được giải phóng, user có thể mint lại bình thường.
-- **On-chain balance**: Không bị ảnh hưởng (dữ liệu on-chain vẫn đọc trực tiếp từ contract).
-- Không cần thay đổi code — chỉ dọn dẹp dữ liệu database.
+## Phạm vi thay đổi
 
+| Tệp | Thay đổi |
+|------|----------|
+| `src/components/ui/AvatarViewer.tsx` | Tạo mới - Dialog xem avatar phóng to |
+| `src/pages/Profile.tsx` | Thêm click xem avatar cho profile người khác |
+| `src/components/reels/ReelInfo.tsx` | Thêm click xem avatar trong reels |
+
+Giữ đơn giản: chỉ áp dụng ở Profile page (nơi avatar lớn, user muốn xem rõ) và Reels (nơi avatar nổi bật). Các vị trí khác avatar quá nhỏ, click đã navigate profile.
