@@ -1,66 +1,45 @@
 
 
-# Bỏ yêu cầu Luật Ánh Sáng trước Đăng ký/Đăng nhập
+# Sửa lỗi: Đăng xuất vẫn redirect về /law-of-light
+
+## Nguyên nhân
+
+File `src/pages/Auth.tsx` (dòng 20-25) có đoạn code kiểm tra localStorage `law_of_light_accepted_pending` — nếu không tìm thấy flag này, nó **redirect ngay về `/law-of-light`** trước khi trang Auth kịp render. Khi user đăng xuất, Guard đã redirect đúng về `/auth`, nhưng Auth.tsx lại đá user ra `/law-of-light` ngay lập tức.
+
+Ngoài ra, `GuestSignupPrompt.tsx` (dòng 34) cũng navigate về `/law-of-light` thay vì `/auth`.
 
 ## Thay đổi
 
-Hiện tại, khi user truy cập `/auth`, Guard yêu cầu phải đồng ý Luật Ánh Sáng **trước** khi được phép đăng ký/đăng nhập. Cần sửa để:
+### 1. `src/pages/Auth.tsx` — Xóa block chặn (dòng 20-25)
 
-- `/auth` luôn được truy cập tự do (không cần đồng ý trước)
-- Kiểm tra Luật Ánh Sáng chỉ xảy ra **sau khi đăng nhập thành công**, trước khi navigate đến `/`
-- Khi user đăng xuất, redirect về `/auth` thay vì `/law-of-light`
-- Guest không đăng nhập truy cập các trang công khai bình thường
-- User chưa đăng nhập truy cập trang protected → redirect về `/auth`
-
-## Luồng mới
-
-```text
-User truy cập /auth → Đăng ký/Đăng nhập tự do
-  |
-  +-- Đăng nhập thành công → handleAuthSuccess()
-        |
-        +-- Kiểm tra profiles.law_of_light_accepted
-        +-- TRUE  → navigate('/')
-        +-- FALSE → navigate('/law-of-light')
-
-User đã đăng nhập, hard refresh bất kỳ trang nào:
-  |
-  +-- LawOfLightGuard kiểm tra DB
-  +-- law_of_light_accepted = TRUE → cho phép
-  +-- law_of_light_accepted = FALSE → redirect /law-of-light
-```
-
-## Chi tiết kỹ thuật
-
-### File: `src/components/auth/LawOfLightGuard.tsx`
-
-**Thay đổi 1** (dòng 34-45): Bỏ block chặn `/auth`. Thêm `/auth` vào danh sách public paths:
+Xóa hoàn toàn đoạn kiểm tra localStorage:
 
 ```typescript
-const publicPaths = ['/law-of-light', '/docs', '/auth'];
+// XÓA đoạn này:
+const pending = localStorage.getItem('law_of_light_accepted_pending');
+if (!pending) {
+  navigate('/law-of-light', { replace: true });
+  return;
+}
 ```
 
-Xóa toàn bộ block `if (location.pathname.startsWith('/auth'))`.
+Không cần kiểm tra ở đây nữa vì Luật Ánh Sáng chỉ được kiểm tra **sau khi đăng nhập thành công** trong `handleAuthSuccess` và `LawOfLightGuard`.
 
-**Thay đổi 2** (dòng 59-61): Khi user chưa đăng nhập truy cập trang protected, redirect về `/auth` thay vì `/law-of-light`:
+### 2. `src/components/auth/GuestSignupPrompt.tsx` — Đổi navigate (dòng 34)
 
 ```typescript
-navigate('/auth', { replace: true });
+// Trước:
+navigate('/law-of-light');
+// Sau:
+navigate('/auth');
 ```
 
-**Thay đổi 3** (dòng 135): Khi user đăng xuất, redirect về `/auth` thay vì `/law-of-light`:
-
-```typescript
-navigate('/auth', { replace: true });
-```
-
-### File: `src/components/auth/UnifiedAuthForm.tsx`
-
-Không cần thay đổi -- logic kiểm tra `law_of_light_accepted` trong `handleAuthSuccess` đã hoạt động đúng (kiểm tra DB sau khi đăng nhập, navigate `/` hoặc `/law-of-light`).
+Guest bấm "Đăng ký ngay" sẽ đến thẳng trang đăng ký, không cần qua Luật Ánh Sáng trước.
 
 ## Tệp thay đổi
 
 | Tệp | Thay đổi |
 |------|----------|
-| `src/components/auth/LawOfLightGuard.tsx` | Cho phép `/auth` truy cập tự do, redirect về `/auth` thay vì `/law-of-light` khi chưa đăng nhập hoặc đăng xuất |
+| `src/pages/Auth.tsx` | Xóa block redirect `/law-of-light` ở đầu useEffect |
+| `src/components/auth/GuestSignupPrompt.tsx` | Đổi navigate từ `/law-of-light` sang `/auth` |
 
