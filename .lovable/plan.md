@@ -1,101 +1,127 @@
 
 
-# Optimize ChunkedVideoPlayer — Production-Safe
+# Sửa lỗi đăng ký tài khoản: Trùng tên người dùng & thông báo sau đăng ký
 
-## Overview
+## Vấn đề
 
-Rewrite the MSE loading logic in `ChunkedVideoPlayer.tsx` with adaptive windowed buffering, LRU chunk cache with byte cap, seek prioritization, and improved buffering UX. No changes to other files.
+1. **Trùng tên người dùng (username)**: Khi đăng ký với tên đã tồn tại, hệ thống hiển thị lỗi kỹ thuật thô ("duplicate key value violates unique constraint") thay vì thông báo dễ hiểu.
+2. **Thông báo sai sau đăng ký**: Sau khi đăng ký thành công, hệ thống hiển thị "Xác thực thất bại" vì nó cố gắng tạo phiên đăng nhập trong khi email chưa được xác thực.
 
-## Changes: `src/modules/live/components/ChunkedVideoPlayer.tsx`
+## Giải pháp
 
-### Constants
+### 1. Cập nhật trigger `handle_new_user()` trong cơ sở dữ liệu
 
-Replace current constants with:
-- `BUFFER_AHEAD_S = 60` (adaptive: reduced to 30 on slow networks)
-- `BUFFER_BEHIND_S = 15`
-- `PREFETCH_CONCURRENCY = 5`
-- `PREFETCH_HORIZON_S = 180` (background prefetch up to 3 min ahead)
-- `MAX_CACHE_BYTES = 80MB` desktop / `30MB` mobile (detect via `navigator.maxTouchPoints`)
-- `BUFFERING_DEBOUNCE_MS = 300`
-- Remove `POLL_INTERVAL_MS = 1000` (replace with smarter polling)
+Thêm logic thử lại (retry) khi gặp trùng username:
+- Lần đầu: dùng đúng tên người dùng yêu cầu
+- Nếu trùng: thêm hậu tố ngẫu nhiên 4 ký tự (ví dụ: `truongbien_a3f2`) và thử lại
+- Tối đa 5 lần thử
+- Làm sạch ký tự đặc biệt, đảm bảo tối thiểu 3 ký tự
 
-### New: LRU Chunk Cache
+### 2. Xử lý lỗi trùng username ở giao diện (`ClassicEmailLogin.tsx`)
 
-Add a class/object `ChunkCache` inside the component closure:
-- `Map<number, ArrayBuffer>` for data storage
-- `totalBytes` tracker
-- `accessOrder: number[]` (LRU queue)
-- `set(seq, data)`: add chunk, evict oldest if `totalBytes > MAX_CACHE_BYTES`
-- `get(seq)`: return data and bump in LRU order
-- `has(seq)`: check existence
-- `evictFarthest(currentSeq)`: remove chunks farthest from current playback position first
+- Trong khối `catch`, kiểm tra lỗi chứa `profiles_username_key`, `unique_violation`, hoặc `duplicate key`
+- Hiển thị thông báo thân thiện: "Tên người dùng đã được sử dụng. Hãy thử: [gợi ý]"
+- Tự động điền tên gợi ý vào ô nhập username để người dùng có thể chỉnh sửa hoặc dùng luôn
 
-### Adaptive Buffer Ahead
+### 3. Sửa luồng sau đăng ký (`ClassicEmailLogin.tsx`)
 
-Add network speed estimation:
-- Measure download time of first 2-3 chunks
-- Calculate `bytesPerSecond`
-- If `bytesPerSecond < 500KB/s` → use `BUFFER_AHEAD_S = 30`, else `60`
-- Store as mutable ref variable, re-estimate periodically
+- Khi `data.user` tồn tại nhưng `data.session` là `null` (tức email chưa xác thực): chỉ hiện thông báo thành công, **không** gọi `onSuccess()` để tránh lỗi "Xác thực thất bại"
+- Cập nhật thông báo thành: *"Đăng ký thành công, hãy truy cập vào email để xác thực tài khoản của bạn nhé! 💖"*
 
-### Fetch Logic Changes
+### 4. Thêm bản dịch mới (`translations.ts`)
 
-Replace `ensureBuffered()` with two-tier approach:
+- Thêm key `authErrorUsernameTaken` cho tất cả 13 ngôn ngữ
+- Cập nhật `authSuccessSignUp` tiếng Việt thành thông báo dài hơn, rõ ràng hơn
 
-1. **`ensureAppendWindow()`**: Fetches chunks from `nextAppendSeq` to `currentTime + bufferAheadS`. These are immediately appended to SourceBuffer. Concurrency-limited to `PREFETCH_CONCURRENCY`.
+---
 
-2. **`backgroundPrefetch()`**: Runs on a slower interval (2s). Fetches chunks from end of append window up to `currentTime + PREFETCH_HORIZON_S`, storing in LRU cache only (not appending). Stops when `MAX_CACHE_BYTES` reached.
+## Chi tiết kỹ thuật
 
-### Seek Priority
+### Tệp thay đổi
 
-On `seeked` event:
-1. Calculate target chunk index from `video.currentTime`
-2. Cancel/deprioritize background prefetch (set a `seekGeneration` counter; background tasks check and bail if stale)
-3. Check if target chunk ±2 are in cache → if yes, append immediately (no spinner)
-4. If not cached, fetch target chunk + neighbors with highest priority
-5. Resume background prefetch after seek chunks are appended
+| Tệp | Thay đổi |
+|------|----------|
+| Database migration (SQL) | Cập nhật hàm `handle_new_user()` với logic retry + hậu tố ngẫu nhiên |
+| `src/components/auth/ClassicEmailLogin.tsx` | Bắt lỗi trùng username, sửa luồng sau đăng ký |
+| `src/i18n/translations.ts` | Thêm `authErrorUsernameTaken`, cập nhật `authSuccessSignUp` tiếng Việt |
 
-### Buffering Indicator Improvements
+### Database migration
 
-New state variables:
-- `loadProgress: number` (0-1, tracks fetched chunks for append window / total chunks)
-- `bufferingDebounced: boolean` (actual display state)
+```sql
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE
+  base_username TEXT;
+  final_username TEXT;
+  attempt INT := 0;
+BEGIN
+  base_username := lower(trim(COALESCE(
+    NEW.raw_user_meta_data->>'username',
+    SPLIT_PART(NEW.email, '@', 1)
+  )));
+  base_username := regexp_replace(base_username, '[^a-z0-9_]', '', 'g');
+  IF length(base_username) < 3 THEN base_username := 'user'; END IF;
+  IF length(base_username) > 26 THEN base_username := left(base_username, 26); END IF;
+  final_username := base_username;
 
-Logic:
-- `waiting` event → start 300ms timer, only set `bufferingDebounced = true` if still waiting after timeout
-- `canplay`, `playing`, `timeupdate`, `seeked` → clear timer, set `bufferingDebounced = false`
-- Initial load: show thin progress bar (`<Progress>`) showing `fetchedCount / totalChunks` percentage
-- Full-screen spinner only on `bufferingDebounced === true` (actual stall)
+  LOOP
+    BEGIN
+      INSERT INTO public.profiles (id, username, full_name, avatar_url)
+      VALUES (NEW.id, final_username,
+        COALESCE(NEW.raw_user_meta_data->>'full_name', ''),
+        COALESCE(NEW.raw_user_meta_data->>'avatar_url', ''));
+      EXIT;
+    EXCEPTION WHEN unique_violation THEN
+      attempt := attempt + 1;
+      IF attempt >= 5 THEN RAISE; END IF;
+      final_username := base_username || '_' || substr(md5(random()::text), 1, 4);
+    END;
+  END LOOP;
 
-### Error Handling
-
-- `loadChunk` already has `fetchWithRetry` (3 retries with backoff) — keep as-is
-- After all retries fail: log `seq`, URL, status code
-- Add `failedChunks: Set<number>` — if a chunk permanently fails:
-  - Skip it in append queue (increment `nextAppendSeq`)
-  - If >3 chunks fail total → show error with "Retry" button that calls `start()` again
-  - Never spin forever — either play with gaps or show actionable error
-
-### Render Changes
-
-Replace the loading/buffering overlay:
-
-```text
-Before:  single overlay with Loader2 for both loading AND buffering
-
-After:
-  - Initial load (loading=true): thin progress bar at top + small centered spinner
-  - Buffering stall (bufferingDebounced=true): semi-transparent overlay with spinner
-  - Error state: error message + "Thử lại" (Retry) button
+  INSERT INTO public.user_roles (user_id, role) VALUES (NEW.id, 'user');
+  RETURN NEW;
+END;
+$$;
 ```
 
-### Cleanup
+### ClassicEmailLogin.tsx - Xử lý lỗi trùng username
 
-- Clear LRU cache on unmount
-- Clear all timers, abort all in-flight fetches via AbortController
-- Cancel background prefetch on destroy
+```typescript
+// Trong khối catch (dòng 115)
+if (error.message?.includes('profiles_username_key') ||
+    error.message?.includes('unique_violation') ||
+    error.message?.includes('duplicate key')) {
+  const suggestion = username + '_' + Math.random().toString(36).substring(2, 6);
+  setUsername(suggestion); // Tự động điền gợi ý
+  toast.error(`Tên người dùng "${username}" đã được sử dụng. Hãy thử: ${suggestion}`);
+  setLoading(false);
+  return;
+}
+```
 
-## Files Changed
+### ClassicEmailLogin.tsx - Sửa luồng sau đăng ký
 
-Only `src/modules/live/components/ChunkedVideoPlayer.tsx` — full rewrite of the MSE loading logic within the same component structure.
+```typescript
+// Sau signUp thành công (dòng 100-113)
+if (error) throw error;
+if (data.user) {
+  if (!data.session) {
+    // Email chưa xác thực - chỉ hiện thông báo, không gọi onSuccess
+    toast.success(t('authSuccessSignUp'));
+    setLoading(false);
+    return;
+  }
+  // Nếu có session (auto-confirm), tiếp tục bình thường
+  onSuccess(data.user.id, true);
+}
+```
+
+### Bản dịch mới (trích)
+
+- **Tiếng Việt**: `authSuccessSignUp`: *"Đăng ký thành công, hãy truy cập vào email để xác thực tài khoản của bạn nhé! 💖"*
+- **Tiếng Anh**: `authErrorUsernameTaken`: *"Username is already taken. Try: {suggestion}"*
+- **Tiếng Việt**: `authErrorUsernameTaken`: *"Tên người dùng đã được sử dụng. Hãy thử: {suggestion}"*
+- Tương tự cho 11 ngôn ngữ còn lại
 
