@@ -789,7 +789,7 @@ const AdminMigration = () => {
             'Authorization': `Bearer ${session.access_token}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ dryRun, batchSize: 5, deleteFromStream }),
+          body: JSON.stringify({ dryRun, batchSize: 1, deleteFromStream }),
         }
       );
 
