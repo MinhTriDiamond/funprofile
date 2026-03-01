@@ -8,6 +8,8 @@ export type RecorderState =
 
 export interface CreateRecorderOptions {
   timesliceMs?: number;
+  videoBitsPerSecond?: number;
+  audioBitsPerSecond?: number;
   onStateChange?: (state: RecorderState) => void;
   onError?: (error: unknown) => void;
 }
@@ -22,6 +24,8 @@ export interface RecorderController {
 }
 
 const DEFAULT_TIMESLICE_MS = 1500;
+const DEFAULT_VIDEO_BPS = 1_500_000;
+const DEFAULT_AUDIO_BPS = 64_000;
 const MIME_CANDIDATES = ['video/webm;codecs=vp8,opus', 'video/webm'];
 
 function resolveMimeType(): string {
@@ -44,6 +48,8 @@ export function createRecorder(
 ): RecorderController {
   const mimeType = resolveMimeType();
   const timesliceMs = opts.timesliceMs ?? DEFAULT_TIMESLICE_MS;
+  const videoBitsPerSecond = opts.videoBitsPerSecond ?? DEFAULT_VIDEO_BPS;
+  const audioBitsPerSecond = opts.audioBitsPerSecond ?? DEFAULT_AUDIO_BPS;
   const chunks: BlobPart[] = [];
   let blob: Blob | null = null;
   let size = 0;
@@ -56,7 +62,11 @@ export function createRecorder(
 
   let mediaRecorder: MediaRecorder;
   try {
-    mediaRecorder = new MediaRecorder(stream, { mimeType });
+    mediaRecorder = new MediaRecorder(stream, {
+      mimeType,
+      videoBitsPerSecond,
+      audioBitsPerSecond,
+    });
   } catch (error) {
     setState('failed');
     opts.onError?.(error);
