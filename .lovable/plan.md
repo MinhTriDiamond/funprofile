@@ -1,127 +1,163 @@
 
+# Kiểm tra Luật Ánh Sáng trước khi cho phép truy cập
 
-# Sửa lỗi đăng ký tài khoản: Trùng tên người dùng & thông báo sau đăng ký
+## Vấn đề hiện tại
 
-## Vấn đề
+Hiện tại có 2 lỗ hổng chính:
 
-1. **Trùng tên người dùng (username)**: Khi đăng ký với tên đã tồn tại, hệ thống hiển thị lỗi kỹ thuật thô ("duplicate key value violates unique constraint") thay vì thông báo dễ hiểu.
-2. **Thông báo sai sau đăng ký**: Sau khi đăng ký thành công, hệ thống hiển thị "Xác thực thất bại" vì nó cố gắng tạo phiên đăng nhập trong khi email chưa được xác thực.
+1. **`handleAuthSuccess` trong `UnifiedAuthForm.tsx`**: Khi user cũ đăng nhập (bất kỳ phương thức nào: OTP, ví, Google, email+password), hệ thống navigate thẳng đến `/` mà **không kiểm tra** `law_of_light_accepted` trong database.
+
+2. **`LawOfLightGuard`**: Guard đã kiểm tra `law_of_light_accepted` từ database, nhưng có vấn đề timing — khi `handleAuthSuccess` gọi `navigate('/')`, Guard có thể chưa kịp re-check vì `isAllowed` đã `true` từ trước (dòng 20: `if (isAllowed) return`).
+
+3. **localStorage `law_of_light_accepted_pending`**: Chỉ được lưu khi user đồng ý trên trang `/law-of-light` mà chưa đăng nhập. Nhưng nếu user đăng nhập mà chưa từng đồng ý, flag này không tồn tại → database không bao giờ được cập nhật.
 
 ## Giải pháp
 
-### 1. Cập nhật trigger `handle_new_user()` trong cơ sở dữ liệu
+Thêm **một bước kiểm tra duy nhất** trong `handleAuthSuccess` cho **tất cả phương thức đăng nhập**. Đây là điểm hội tụ chung — mọi phương thức (OTP, ví, Google, classic) đều gọi `handleAuthSuccess` sau khi xác thực thành công.
 
-Thêm logic thử lại (retry) khi gặp trùng username:
-- Lần đầu: dùng đúng tên người dùng yêu cầu
-- Nếu trùng: thêm hậu tố ngẫu nhiên 4 ký tự (ví dụ: `truongbien_a3f2`) và thử lại
-- Tối đa 5 lần thử
-- Làm sạch ký tự đặc biệt, đảm bảo tối thiểu 3 ký tự
+### Luồng mới cho tất cả phương thức:
 
-### 2. Xử lý lỗi trùng username ở giao diện (`ClassicEmailLogin.tsx`)
-
-- Trong khối `catch`, kiểm tra lỗi chứa `profiles_username_key`, `unique_violation`, hoặc `duplicate key`
-- Hiển thị thông báo thân thiện: "Tên người dùng đã được sử dụng. Hãy thử: [gợi ý]"
-- Tự động điền tên gợi ý vào ô nhập username để người dùng có thể chỉnh sửa hoặc dùng luôn
-
-### 3. Sửa luồng sau đăng ký (`ClassicEmailLogin.tsx`)
-
-- Khi `data.user` tồn tại nhưng `data.session` là `null` (tức email chưa xác thực): chỉ hiện thông báo thành công, **không** gọi `onSuccess()` để tránh lỗi "Xác thực thất bại"
-- Cập nhật thông báo thành: *"Đăng ký thành công, hãy truy cập vào email để xác thực tài khoản của bạn nhé! 💖"*
-
-### 4. Thêm bản dịch mới (`translations.ts`)
-
-- Thêm key `authErrorUsernameTaken` cho tất cả 13 ngôn ngữ
-- Cập nhật `authSuccessSignUp` tiếng Việt thành thông báo dài hơn, rõ ràng hơn
-
----
-
-## Chi tiết kỹ thuật
+```text
+User đăng nhập thành công (bất kỳ phương thức)
+  |
+  +-- handleAuthSuccess()
+        |
+        +-- Kiểm tra profiles.law_of_light_accepted
+        |
+        +-- Nếu TRUE  → navigate('/')
+        +-- Nếu FALSE → navigate('/law-of-light')
+```
 
 ### Tệp thay đổi
 
 | Tệp | Thay đổi |
 |------|----------|
-| Database migration (SQL) | Cập nhật hàm `handle_new_user()` với logic retry + hậu tố ngẫu nhiên |
-| `src/components/auth/ClassicEmailLogin.tsx` | Bắt lỗi trùng username, sửa luồng sau đăng ký |
-| `src/i18n/translations.ts` | Thêm `authErrorUsernameTaken`, cập nhật `authSuccessSignUp` tiếng Việt |
+| `src/components/auth/UnifiedAuthForm.tsx` | Thêm kiểm tra `law_of_light_accepted` trong `handleAuthSuccess` trước khi navigate |
+| `src/components/auth/LawOfLightGuard.tsx` | Sửa logic để reset `isAllowed` khi auth state thay đổi (SIGNED_IN), đảm bảo re-check |
 
-### Database migration
+## Chi tiết kỹ thuật
 
-```sql
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER LANGUAGE plpgsql
-SECURITY DEFINER SET search_path = public
-AS $$
-DECLARE
-  base_username TEXT;
-  final_username TEXT;
-  attempt INT := 0;
-BEGIN
-  base_username := lower(trim(COALESCE(
-    NEW.raw_user_meta_data->>'username',
-    SPLIT_PART(NEW.email, '@', 1)
-  )));
-  base_username := regexp_replace(base_username, '[^a-z0-9_]', '', 'g');
-  IF length(base_username) < 3 THEN base_username := 'user'; END IF;
-  IF length(base_username) > 26 THEN base_username := left(base_username, 26); END IF;
-  final_username := base_username;
+### 1. `UnifiedAuthForm.tsx` — `handleAuthSuccess` (dòng 56-85)
 
-  LOOP
-    BEGIN
-      INSERT INTO public.profiles (id, username, full_name, avatar_url)
-      VALUES (NEW.id, final_username,
-        COALESCE(NEW.raw_user_meta_data->>'full_name', ''),
-        COALESCE(NEW.raw_user_meta_data->>'avatar_url', ''));
-      EXIT;
-    EXCEPTION WHEN unique_violation THEN
-      attempt := attempt + 1;
-      IF attempt >= 5 THEN RAISE; END IF;
-      final_username := base_username || '_' || substr(md5(random()::text), 1, 4);
-    END;
-  END LOOP;
-
-  INSERT INTO public.user_roles (user_id, role) VALUES (NEW.id, 'user');
-  RETURN NEW;
-END;
-$$;
-```
-
-### ClassicEmailLogin.tsx - Xử lý lỗi trùng username
+Thêm kiểm tra database sau khi xác nhận session, **trước khi** navigate:
 
 ```typescript
-// Trong khối catch (dòng 115)
-if (error.message?.includes('profiles_username_key') ||
-    error.message?.includes('unique_violation') ||
-    error.message?.includes('duplicate key')) {
-  const suggestion = username + '_' + Math.random().toString(36).substring(2, 6);
-  setUsername(suggestion); // Tự động điền gợi ý
-  toast.error(`Tên người dùng "${username}" đã được sử dụng. Hãy thử: ${suggestion}`);
-  setLoading(false);
+const handleAuthSuccess = async (userId: string, isNewUser: boolean, hasExternalWallet = false) => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) { /* giữ nguyên */ return; }
+
+  // Log login IP (giữ nguyên)
+  // ...
+
+  // Đồng bộ law_of_light từ localStorage nếu có pending
+  const lawOfLightPending = localStorage.getItem('law_of_light_accepted_pending');
+  if (lawOfLightPending === 'true') {
+    await supabase.from('profiles').update({
+      law_of_light_accepted: true,
+      law_of_light_accepted_at: new Date().toISOString()
+    }).eq('id', userId);
+    localStorage.removeItem('law_of_light_accepted_pending');
+  }
+
+  if (isNewUser) {
+    await handleNewUserSetup(userId, hasExternalWallet);
+  } else {
+    // KIỂM TRA law_of_light_accepted CHO USER CŨ
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('law_of_light_accepted')
+      .eq('id', userId)
+      .single();
+
+    toast.success(t('welcomeBack'));
+
+    if (profile?.law_of_light_accepted) {
+      navigate('/');
+    } else {
+      navigate('/law-of-light');
+    }
+  }
+};
+```
+
+### 2. `UnifiedAuthForm.tsx` — `handleNewUserSetup` (dòng 22-54)
+
+Xóa đoạn check `law_of_light_accepted_pending` vì đã được di chuyển lên `handleAuthSuccess`. Sau khi setup xong, kiểm tra lại trạng thái:
+
+```typescript
+const handleNewUserSetup = async (userId: string, hasExternalWallet: boolean) => {
+  setIsSettingUp(true);
+  try {
+    // law_of_light đã được xử lý ở handleAuthSuccess
+    setSetupStep('complete');
+    toast.success(t('accountSetupComplete'));
+    await new Promise(resolve => setTimeout(resolve, 800));
+
+    // Kiểm tra lại (phòng trường hợp pending chưa được lưu)
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('law_of_light_accepted')
+      .eq('id', userId)
+      .single();
+
+    if (profile?.law_of_light_accepted) {
+      navigate('/');
+    } else {
+      navigate('/law-of-light');
+    }
+  } catch (error) {
+    navigate('/');
+  } finally {
+    setIsSettingUp(false);
+  }
+};
+```
+
+### 3. `LawOfLightGuard.tsx` — Sửa logic SIGNED_IN (dòng 107-112)
+
+Khi nhận event `SIGNED_IN`, reset `isAllowed` để buộc re-check từ database:
+
+```typescript
+if (event === 'SIGNED_IN' && session) {
+  wasAuthenticatedRef.current = true;
+  // Reset isAllowed để buộc kiểm tra lại từ database
+  setIsAllowed(false);
+  setIsChecking(true);
+  setTimeout(() => {
+    checkLawOfLightAcceptance();
+  }, 150);
+}
+```
+
+### 4. `LawOfLightGuard.tsx` — Thêm auto-sync pending (dòng 79-83)
+
+Khi user đã đăng nhập nhưng `law_of_light_accepted = false`, kiểm tra localStorage để tự đồng bộ:
+
+```typescript
+if (profile && !profile.law_of_light_accepted) {
+  // Tự động đồng bộ nếu có pending flag
+  const pending = localStorage.getItem('law_of_light_accepted_pending');
+  if (pending === 'true') {
+    await supabase.from('profiles').update({
+      law_of_light_accepted: true,
+      law_of_light_accepted_at: new Date().toISOString()
+    }).eq('id', session.user.id);
+    localStorage.removeItem('law_of_light_accepted_pending');
+    wasAuthenticatedRef.current = true;
+    setIsAllowed(true);
+    setIsChecking(false);
+    return;
+  }
+  setIsChecking(false);
+  navigate('/law-of-light', { replace: true });
   return;
 }
 ```
 
-### ClassicEmailLogin.tsx - Sửa luồng sau đăng ký
+## Kết quả mong đợi
 
-```typescript
-// Sau signUp thành công (dòng 100-113)
-if (error) throw error;
-if (data.user) {
-  if (!data.session) {
-    // Email chưa xác thực - chỉ hiện thông báo, không gọi onSuccess
-    toast.success(t('authSuccessSignUp'));
-    setLoading(false);
-    return;
-  }
-  // Nếu có session (auto-confirm), tiếp tục bình thường
-  onSuccess(data.user.id, true);
-}
-```
-
-### Bản dịch mới (trích)
-
-- **Tiếng Việt**: `authSuccessSignUp`: *"Đăng ký thành công, hãy truy cập vào email để xác thực tài khoản của bạn nhé! 💖"*
-- **Tiếng Anh**: `authErrorUsernameTaken`: *"Username is already taken. Try: {suggestion}"*
-- **Tiếng Việt**: `authErrorUsernameTaken`: *"Tên người dùng đã được sử dụng. Hãy thử: {suggestion}"*
-- Tương tự cho 11 ngôn ngữ còn lại
-
+- Mọi phương thức đăng nhập (OTP, ví, Google, email+password) đều kiểm tra `law_of_light_accepted` trước khi vào trang chính
+- User đã đồng ý rồi → vào thẳng `/`, không hỏi lại
+- User chưa đồng ý → chuyển đến `/law-of-light` để đồng ý
+- Guest (không đăng nhập) → truy cập bình thường, không bị chặn
+- Hard refresh → Guard kiểm tra từ database, không phụ thuộc localStorage
