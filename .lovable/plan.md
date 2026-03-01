@@ -1,63 +1,46 @@
 
 # Sửa lỗi Migrate Stream to R2
 
-## Vấn đề hiện tại
+## Nguyên nhân gốc
 
-Từ ảnh chụp màn hình, tất cả 5 video đều báo **"no download url"**. Có 2 nguyên nhân:
+Từ logs, tất cả video đều stuck ở **0% download** qua 10 lần polling. Có 2 nguyên nhân:
 
-### 1. Auth sai - `getClaims` không tồn tại
+### 1. Sai API Token (nguyên nhân chính)
+Function đang dùng `CLOUDFLARE_API_TOKEN` (dành cho Cloudflare Images), nhưng tất cả các function khác truy cập Cloudflare Stream đều dùng `CLOUDFLARE_STREAM_API_TOKEN`. Token sai nên API trả về 0% hoặc không có dữ liệu.
 
-Dòng 39 trong edge function dùng `supabaseAdmin.auth.getClaims(token)` - hàm này **không tồn tại** trong Supabase JS v2. Kết quả là auth luôn fail và trả về 401, nhưng frontend có thể đang hiển thị sai status.
+### 2. Timeout Edge Function
+Xử lý tuần tự 5 video, mỗi video polling 30s = **150 giây tổng cộng**. Edge Function timeout ~60s nên bị "Failed to fetch".
 
-**Sửa:** Đổi sang `supabaseAdmin.auth.getUser(token)`.
-
-### 2. Cloudflare Stream cần thời gian chuẩn bị download
-
-Hàm `getStreamDownloadUrl` chỉ chờ **2 giây** sau khi gọi POST enable downloads, rồi kiểm tra URL. Cloudflare Stream cần thời gian xử lý (có thể vài chục giây đến vài phút) tùy kích thước video.
-
-**Sửa:** Thêm polling - lặp kiểm tra mỗi 3 giây, tối đa 10 lần (30 giây), cho đến khi `percentComplete === 100.0` và URL có sẵn.
-
-## Chi tiết kỹ thuật
+## Giải pháp
 
 ### File: `supabase/functions/migrate-stream-to-r2/index.ts`
 
-**Thay đổi 1 - Auth (dòng 38-46):**
+**Thay doi 1 - Dung dung token:**
 ```typescript
-// CU:
-const { data: claimsData, error: claimsError } = await supabaseAdmin.auth.getClaims(token);
-const userId = claimsData.claims.sub;
+// CU (sai):
+const cfApiToken = Deno.env.get('CLOUDFLARE_API_TOKEN')!;
 
-// MOI:
-const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
-const userId = user.id;
+// MOI (dung):
+const cfApiToken = Deno.env.get('CLOUDFLARE_STREAM_API_TOKEN')!;
 ```
 
-**Thay đổi 2 - Download URL polling (dòng 222-238):**
-```typescript
-async function getStreamDownloadUrl(accountId, apiToken, uid) {
-  // Enable downloads
-  await fetch(...POST...);
+**Thay doi 2 - Xu ly 1 video moi batch thay vi 5:**
+Giam `batchSize` mac dinh tu 5 xuong 1 de tranh timeout. Frontend co the goi nhieu lan.
 
-  // Polling: kiểm tra mỗi 3s, tối đa 10 lần
-  for (let attempt = 0; attempt < 10; attempt++) {
-    await sleep(3000);
-    const resp = await fetch(...GET downloads...);
-    const data = await resp.json();
-    const url = data?.result?.default?.url;
-    const percent = data?.result?.default?.percentComplete;
+**Thay doi 3 - Log response de debug:**
+Them log response tu Cloudflare POST enable downloads va GET status de de debug neu van con loi.
 
-    if (url && percent === 100.0) return url;
-    console.log(`[migrate] UID ${uid}: download ${percent}% (attempt ${attempt+1}/10)`);
-  }
-  return null; // Timeout sau 30s
-}
-```
+**Thay doi 4 - Giam polling xuong 5 lan (15s):**
+Voi token dung, download thuong san sang nhanh. Giam tu 10 lan (30s) xuong 5 lan (15s) de vua trong timeout.
 
-## Tóm tắt
+### File: `src/pages/AdminMigration.tsx`
 
-| Sửa | Vấn đề | Giải pháp |
-|-----|--------|-----------|
-| Auth | `getClaims` không tồn tại | Dùng `getUser(token)` |
-| Download URL | Chờ 2s quá ngắn | Polling 10 lần x 3s = 30s |
+**Thay doi 5 - Giam batch size mac dinh:**
+Doi `batchSize: 5` thanh `batchSize: 1` trong frontend de xu ly tung video mot, dam bao khong timeout.
 
-Chỉ sửa 1 file: `supabase/functions/migrate-stream-to-r2/index.ts`
+## Tom tat
+
+| Van de | Nguyen nhan | Giai phap |
+|--------|------------|-----------|
+| 0% download | Sai token (`CLOUDFLARE_API_TOKEN` thay vi `CLOUDFLARE_STREAM_API_TOKEN`) | Doi sang dung token |
+| Failed to fetch | 5 video x 30s = 150s > timeout | Batch size = 1, polling = 5 lan |
