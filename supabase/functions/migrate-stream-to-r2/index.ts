@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { batchSize = 5, dryRun = false, deleteFromStream = false } = await req.json().catch(() => ({}));
+    const { batchSize = 1, dryRun = false, deleteFromStream = false } = await req.json().catch(() => ({}));
 
     // Scan limit: dry run scans all, migration uses batch
     const scanLimit = dryRun ? 1000 : batchSize;
@@ -123,7 +123,7 @@ Deno.serve(async (req) => {
 
     // R2 credentials
     const accountId = Deno.env.get('CLOUDFLARE_ACCOUNT_ID')!;
-    const cfApiToken = Deno.env.get('CLOUDFLARE_API_TOKEN')!;
+    const cfApiToken = Deno.env.get('CLOUDFLARE_STREAM_API_TOKEN')!;
     const accessKeyId = Deno.env.get('CLOUDFLARE_ACCESS_KEY_ID')!;
     const secretAccessKey = Deno.env.get('CLOUDFLARE_SECRET_ACCESS_KEY')!;
     const bucketName = Deno.env.get('CLOUDFLARE_R2_BUCKET_NAME')!;
@@ -221,13 +221,15 @@ function extractStreamUid(url: string | null): string | null {
 
 async function getStreamDownloadUrl(accountId: string, apiToken: string, uid: string): Promise<string | null> {
   // Enable downloads
-  await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/stream/${uid}/downloads`, {
+  const enableResp = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/stream/${uid}/downloads`, {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${apiToken}` },
   });
+  const enableData = await enableResp.json();
+  console.log(`[migrate] UID ${uid}: enable downloads response:`, JSON.stringify(enableData?.success ?? enableData?.errors));
 
-  // Polling: kiểm tra mỗi 3s, tối đa 10 lần (30s)
-  for (let attempt = 0; attempt < 10; attempt++) {
+  // Polling: kiểm tra mỗi 3s, tối đa 5 lần (15s)
+  for (let attempt = 0; attempt < 5; attempt++) {
     await new Promise(r => setTimeout(r, 3000));
 
     const resp = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/stream/${uid}/downloads`, {
@@ -238,11 +240,11 @@ async function getStreamDownloadUrl(accountId: string, apiToken: string, uid: st
     const url = data?.result?.default?.url;
     const percent = data?.result?.default?.percentComplete;
 
+    console.log(`[migrate] UID ${uid}: ${percent ?? 0}% (attempt ${attempt + 1}/5), url=${url ? 'yes' : 'no'}`);
     if (url && percent === 100.0) return url;
-    console.log(`[migrate] UID ${uid}: download ${percent ?? 0}% (attempt ${attempt + 1}/10)`);
   }
 
-  return null; // Timeout sau 30s
+  return null; // Timeout sau 15s
 }
 
 async function uploadToR2Direct(
