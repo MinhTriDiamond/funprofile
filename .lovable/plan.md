@@ -1,47 +1,63 @@
 
-# Thêm tính năng click xem avatar phóng to
+# Khắc phục request lỗi nonce cho AngelKhaNhi và kiểm tra toàn bộ hệ thống
 
-## Mô tả
+## Nguyên nhân lỗi
 
-Tạo component `AvatarViewer` dùng Dialog để hiển thị avatar full-size khi user click vào. Áp dụng cho các vị trí chính hiển thị avatar.
+Request `301cc5a1` của AngelKhaNhi đã **failed** vì:
+- Database lưu `nonce = 0`, nhưng on-chain `nonces() = 1`
+- AngelKhaNhi đã có 1 giao dịch `lockWithPPLP` thành công trước đó, nên nonce tăng lên 1
+- Chữ ký EIP-712 được tạo với nonce=0 nhưng contract kiểm tra nonce=1 --> sai hash --> `SIGS_LOW`
 
-## Chi tiết kỹ thuật
+## Kế hoạch thực hiện
 
-### 1. Tạo component `src/components/ui/AvatarViewer.tsx`
+### Bước 1: Reset request lỗi của AngelKhaNhi
 
-Component mới sử dụng Dialog (tương tự `ImageViewer` đã có trong feed) để hiển thị avatar phóng to:
-- Props: `imageUrl`, `isOpen`, `onClose`, `fallbackText`
-- Hiển thị ảnh full-size trong Dialog tối (dark background)
-- Nếu không có ảnh, hiển thị fallback text lớn
-- Nút X để đóng
+Giải phóng 36 light_actions đang gắn với request failed, rồi xóa request:
 
-### 2. Cập nhật `src/pages/Profile.tsx` - Avatar trên trang profile
+```sql
+-- Giải phóng 36 light_actions
+UPDATE light_actions 
+SET mint_request_id = NULL, mint_status = 'approved'
+WHERE mint_request_id = '301cc5a1-93b3-43fe-8822-4c902b763568';
 
-Thêm click handler cho avatar khi xem profile người khác (block `else` ở dòng 507-521):
-- Wrap avatar trong button có cursor-pointer
-- Click mở AvatarViewer dialog hiển thị avatar full-size
-- Chỉ áp dụng khi xem profile người khác (không phải owner đang edit)
+-- Xóa request failed
+DELETE FROM pplp_mint_requests 
+WHERE id = '301cc5a1-93b3-43fe-8822-4c902b763568';
+```
 
-### 3. Cập nhật `src/components/reels/ReelInfo.tsx` - Avatar trong reels
+### Bước 2: Tạo lại mint request với nonce đúng
 
-- Thêm long-press hoặc click riêng để xem avatar (giữ click navigate profile như cũ)
-- Hoặc đơn giản hơn: click avatar mở viewer, click username navigate profile
+Sau khi reset, chạy lại batch mint (edge function `admin-batch-mint-requests`) sẽ tự động:
+- Tìm 36 light_actions vừa được giải phóng
+- Gọi `nonces()` on-chain lấy nonce=1 (đúng)
+- Tạo request mới với nonce=1
 
-### 4. Cập nhật các vị trí phổ biến khác
+### Bước 3: Kiểm tra tất cả request khác
 
-- `src/pages/Leaderboard.tsx` - Avatar trong bảng xếp hạng
-- `src/pages/Benefactors.tsx` - Avatar donor/recipient
-- `src/components/chat/MessageBubble.tsx` - Avatar trong chat
-- `src/components/wallet/DonationHistoryItem.tsx` - Avatar lịch sử donate
+Hiện tại chỉ có **1 request failed** (của AngelKhaNhi). Các request khác đang ở `pending_sig`/`signing`/`signed` chưa bị submit nên chưa thể biết nonce có đúng không cho đến khi submit.
 
-Ở các vị trí này, avatar nhỏ nên ưu tiên giữ hành vi navigate profile, không thêm viewer để tránh conflict UX.
+Tuy nhiên, edge function `admin-batch-mint-requests` **đã có logic đọc nonce on-chain** khi tạo request mới (hàm `getNonceFromContract`). Vấn đề chỉ xảy ra với request cũ đã tạo trước khi user có giao dịch on-chain.
 
-## Phạm vi thay đổi
+**Giải pháp phòng ngừa**: Thêm kiểm tra nonce on-chain vào flow submit (trước khi gửi tx), nếu nonce DB khác nonce on-chain thì cảnh báo và yêu cầu tạo lại request.
+
+### Bước 4: Cải thiện code - Thêm nonce validation trước submit
+
+Cập nhật logic submit trong frontend (component xử lý `lockWithPPLP`):
+- Trước khi gửi transaction, đọc `nonces(recipient)` từ contract
+- So sánh với `nonce` trong database
+- Nếu khác nhau: hiển thị cảnh báo "Nonce không khớp, cần tạo lại request" thay vì submit và bị revert
+
+## Tóm tắt thay đổi
+
+| Hành động | Chi tiết |
+|-----------|----------|
+| Reset data AngelKhaNhi | Giải phóng 36 light_actions, xóa 1 request failed |
+| Tạo lại request | Chạy batch mint lấy nonce=1 đúng |
+| Cải thiện code | Thêm nonce check trước submit để phòng ngừa |
+
+## Tệp cần sửa
 
 | Tệp | Thay đổi |
 |------|----------|
-| `src/components/ui/AvatarViewer.tsx` | Tạo mới - Dialog xem avatar phóng to |
-| `src/pages/Profile.tsx` | Thêm click xem avatar cho profile người khác |
-| `src/components/reels/ReelInfo.tsx` | Thêm click xem avatar trong reels |
-
-Giữ đơn giản: chỉ áp dụng ở Profile page (nơi avatar lớn, user muốn xem rõ) và Reels (nơi avatar nổi bật). Các vị trí khác avatar quá nhỏ, click đã navigate profile.
+| Database | UPDATE + DELETE cho AngelKhaNhi |
+| Component submit lockWithPPLP | Thêm nonce validation trước khi gửi tx |
