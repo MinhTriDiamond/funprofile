@@ -1,3 +1,6 @@
+const ALLOWED_HEADERS = 'Content-Type, X-API-Key, Authorization, X-Stream-Id, X-Chunk-Index';
+const ALLOWED_METHODS = 'GET, POST, OPTIONS';
+
 export function handleCors(request: Request, allowedOriginsStr: string): Response | null {
   if (request.method !== 'OPTIONS') return null;
 
@@ -9,8 +12,8 @@ export function handleCors(request: Request, allowedOriginsStr: string): Respons
     status: 204,
     headers: {
       'Access-Control-Allow-Origin': isAllowed ? origin : allowedOrigins[0],
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, X-API-Key',
+      'Access-Control-Allow-Methods': ALLOWED_METHODS,
+      'Access-Control-Allow-Headers': ALLOWED_HEADERS,
       'Access-Control-Max-Age': '86400',
     },
   });
@@ -23,7 +26,7 @@ export function addCorsHeaders(response: Response, request: Request, allowedOrig
 
   const newResponse = new Response(response.body, response);
   newResponse.headers.set('Access-Control-Allow-Origin', isAllowed ? origin : allowedOrigins[0]);
-  newResponse.headers.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  newResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, X-API-Key');
+  newResponse.headers.set('Access-Control-Allow-Methods', ALLOWED_METHODS);
+  newResponse.headers.set('Access-Control-Allow-Headers', ALLOWED_HEADERS);
   return newResponse;
 }
