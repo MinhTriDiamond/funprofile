@@ -17,12 +17,6 @@ const Auth = () => {
   const ssoFlow = searchParams.get('sso_flow') === 'true';
 
   useEffect(() => {
-    // Check if Law of Light was accepted before allowing access to auth
-    const pending = localStorage.getItem('law_of_light_accepted_pending');
-    if (!pending) {
-      navigate('/law-of-light', { replace: true });
-      return;
-    }
 
     const checkBanStatus = async (userId: string): Promise<boolean> => {
       const { data: profile } = await supabase

@@ -31,7 +31,7 @@ export const GuestSignupPrompt = ({ open, onClose }: GuestSignupPromptProps) => 
 
   const handleRegister = () => {
     onClose();
-    navigate('/law-of-light');
+    navigate('/auth');
   };
 
   return (
