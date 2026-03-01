@@ -1,63 +1,63 @@
 
-# Khắc phục request lỗi nonce cho AngelKhaNhi và kiểm tra toàn bộ hệ thống
+# Sửa lỗi Migrate Stream to R2
 
-## Nguyên nhân lỗi
+## Vấn đề hiện tại
 
-Request `301cc5a1` của AngelKhaNhi đã **failed** vì:
-- Database lưu `nonce = 0`, nhưng on-chain `nonces() = 1`
-- AngelKhaNhi đã có 1 giao dịch `lockWithPPLP` thành công trước đó, nên nonce tăng lên 1
-- Chữ ký EIP-712 được tạo với nonce=0 nhưng contract kiểm tra nonce=1 --> sai hash --> `SIGS_LOW`
+Từ ảnh chụp màn hình, tất cả 5 video đều báo **"no download url"**. Có 2 nguyên nhân:
 
-## Kế hoạch thực hiện
+### 1. Auth sai - `getClaims` không tồn tại
 
-### Bước 1: Reset request lỗi của AngelKhaNhi
+Dòng 39 trong edge function dùng `supabaseAdmin.auth.getClaims(token)` - hàm này **không tồn tại** trong Supabase JS v2. Kết quả là auth luôn fail và trả về 401, nhưng frontend có thể đang hiển thị sai status.
 
-Giải phóng 36 light_actions đang gắn với request failed, rồi xóa request:
+**Sửa:** Đổi sang `supabaseAdmin.auth.getUser(token)`.
 
-```sql
--- Giải phóng 36 light_actions
-UPDATE light_actions 
-SET mint_request_id = NULL, mint_status = 'approved'
-WHERE mint_request_id = '301cc5a1-93b3-43fe-8822-4c902b763568';
+### 2. Cloudflare Stream cần thời gian chuẩn bị download
 
--- Xóa request failed
-DELETE FROM pplp_mint_requests 
-WHERE id = '301cc5a1-93b3-43fe-8822-4c902b763568';
+Hàm `getStreamDownloadUrl` chỉ chờ **2 giây** sau khi gọi POST enable downloads, rồi kiểm tra URL. Cloudflare Stream cần thời gian xử lý (có thể vài chục giây đến vài phút) tùy kích thước video.
+
+**Sửa:** Thêm polling - lặp kiểm tra mỗi 3 giây, tối đa 10 lần (30 giây), cho đến khi `percentComplete === 100.0` và URL có sẵn.
+
+## Chi tiết kỹ thuật
+
+### File: `supabase/functions/migrate-stream-to-r2/index.ts`
+
+**Thay đổi 1 - Auth (dòng 38-46):**
+```typescript
+// CU:
+const { data: claimsData, error: claimsError } = await supabaseAdmin.auth.getClaims(token);
+const userId = claimsData.claims.sub;
+
+// MOI:
+const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
+const userId = user.id;
 ```
 
-### Bước 2: Tạo lại mint request với nonce đúng
+**Thay đổi 2 - Download URL polling (dòng 222-238):**
+```typescript
+async function getStreamDownloadUrl(accountId, apiToken, uid) {
+  // Enable downloads
+  await fetch(...POST...);
 
-Sau khi reset, chạy lại batch mint (edge function `admin-batch-mint-requests`) sẽ tự động:
-- Tìm 36 light_actions vừa được giải phóng
-- Gọi `nonces()` on-chain lấy nonce=1 (đúng)
-- Tạo request mới với nonce=1
+  // Polling: kiểm tra mỗi 3s, tối đa 10 lần
+  for (let attempt = 0; attempt < 10; attempt++) {
+    await sleep(3000);
+    const resp = await fetch(...GET downloads...);
+    const data = await resp.json();
+    const url = data?.result?.default?.url;
+    const percent = data?.result?.default?.percentComplete;
 
-### Bước 3: Kiểm tra tất cả request khác
+    if (url && percent === 100.0) return url;
+    console.log(`[migrate] UID ${uid}: download ${percent}% (attempt ${attempt+1}/10)`);
+  }
+  return null; // Timeout sau 30s
+}
+```
 
-Hiện tại chỉ có **1 request failed** (của AngelKhaNhi). Các request khác đang ở `pending_sig`/`signing`/`signed` chưa bị submit nên chưa thể biết nonce có đúng không cho đến khi submit.
+## Tóm tắt
 
-Tuy nhiên, edge function `admin-batch-mint-requests` **đã có logic đọc nonce on-chain** khi tạo request mới (hàm `getNonceFromContract`). Vấn đề chỉ xảy ra với request cũ đã tạo trước khi user có giao dịch on-chain.
+| Sửa | Vấn đề | Giải pháp |
+|-----|--------|-----------|
+| Auth | `getClaims` không tồn tại | Dùng `getUser(token)` |
+| Download URL | Chờ 2s quá ngắn | Polling 10 lần x 3s = 30s |
 
-**Giải pháp phòng ngừa**: Thêm kiểm tra nonce on-chain vào flow submit (trước khi gửi tx), nếu nonce DB khác nonce on-chain thì cảnh báo và yêu cầu tạo lại request.
-
-### Bước 4: Cải thiện code - Thêm nonce validation trước submit
-
-Cập nhật logic submit trong frontend (component xử lý `lockWithPPLP`):
-- Trước khi gửi transaction, đọc `nonces(recipient)` từ contract
-- So sánh với `nonce` trong database
-- Nếu khác nhau: hiển thị cảnh báo "Nonce không khớp, cần tạo lại request" thay vì submit và bị revert
-
-## Tóm tắt thay đổi
-
-| Hành động | Chi tiết |
-|-----------|----------|
-| Reset data AngelKhaNhi | Giải phóng 36 light_actions, xóa 1 request failed |
-| Tạo lại request | Chạy batch mint lấy nonce=1 đúng |
-| Cải thiện code | Thêm nonce check trước submit để phòng ngừa |
-
-## Tệp cần sửa
-
-| Tệp | Thay đổi |
-|------|----------|
-| Database | UPDATE + DELETE cho AngelKhaNhi |
-| Component submit lockWithPPLP | Thêm nonce validation trước khi gửi tx |
+Chỉ sửa 1 file: `supabase/functions/migrate-stream-to-r2/index.ts`
