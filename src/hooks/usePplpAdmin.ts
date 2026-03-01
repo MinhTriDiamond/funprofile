@@ -437,6 +437,31 @@ export const usePplpAdmin = () => {
         return null;
       }
 
+      // Kiểm tra nonce on-chain trước khi submit để tránh lỗi SIGS_LOW
+      if (publicClient) {
+        try {
+          const onChainNonce = await publicClient.readContract({
+            address: FUN_MONEY_CONTRACT.address,
+            abi: FUN_MONEY_ABI,
+            functionName: 'nonces',
+            args: [request.recipient_address as `0x${string}`],
+          } as any) as bigint;
+
+          const dbNonce = BigInt(request.nonce);
+          if (onChainNonce !== dbNonce) {
+            console.error(`[usePplpAdmin] Nonce mismatch! On-chain: ${onChainNonce}, DB: ${dbNonce}`);
+            toast.error(
+              `Nonce không khớp! On-chain: ${onChainNonce}, DB: ${dbNonce}. Cần tạo lại request với nonce đúng.`,
+              { duration: 8000 }
+            );
+            return null;
+          }
+          console.log(`[usePplpAdmin] Nonce verified: ${onChainNonce}`);
+        } catch (nonceErr) {
+          console.warn('[usePplpAdmin] Could not verify nonce, proceeding anyway:', nonceErr);
+        }
+      }
+
       // Lấy 3 chữ ký theo thứ tự will → wisdom → love
       let orderedSigs: `0x${string}`[];
       if (isMultisigReady) {
