@@ -1,18 +1,9 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { RtcTokenBuilder, RtcRole } from 'npm:agora-token'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
-}
-
-function getEnv(primary: string, ...fallbacks: string[]): string | undefined {
-  const val = Deno.env.get(primary)
-  if (val) return val
-  for (const fb of fallbacks) {
-    const v = Deno.env.get(fb)
-    if (v) return v
-  }
-  return undefined
 }
 
 function uuidToNumericUid(uuid: string): number {
@@ -83,45 +74,38 @@ Deno.serve(async (req) => {
 
     const channel = session.agora_channel || session.channel_name
 
-    // Try Worker for token
-    const workerUrl = getEnv('LIVE_AGORA_WORKER_URL', 'AGORA_WORKER_URL', 'VITE_AGORA_WORKER_URL')
-    const workerApiKey = getEnv('LIVE_AGORA_WORKER_API_KEY', 'AGORA_WORKER_API_KEY', 'VITE_AGORA_WORKER_API_KEY')
+    // Generate Agora token directly
+    const appId = Deno.env.get('AGORA_APP_ID')
+    const appCertificate = Deno.env.get('AGORA_APP_CERTIFICATE')
 
-    const numericUid = uuidToNumericUid(userId)
-
-    if (workerUrl && workerApiKey) {
-      const workerResp = await fetch(workerUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-API-Key': workerApiKey,
-        },
-        body: JSON.stringify({
-          channelName: channel,
-          uid: numericUid,
-          role: role === 'host' ? 'publisher' : 'subscriber',
-        }),
-      })
-
-      if (!workerResp.ok) {
-        const errText = await workerResp.text()
-        console.error('Agora worker error:', workerResp.status, errText)
-      }
-
-      if (workerResp.ok) {
-        const workerData = await workerResp.json()
-        return new Response(JSON.stringify({
-          token: workerData.token,
-          channel,
-          uid: String(numericUid),
-          appId: workerData.app_id || workerData.appId,
-          expiresAt: workerData.expires_at || Math.floor(Date.now() / 1000) + 86400,
-        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-      }
+    if (!appId || !appCertificate) {
+      return new Response(JSON.stringify({ error: 'Agora not configured' }), { status: 500, headers: corsHeaders })
     }
 
-    return new Response(JSON.stringify({ error: 'Token generation failed' }), { status: 500, headers: corsHeaders })
+    const numericUid = uuidToNumericUid(userId)
+    const agoraRole = role === 'host' ? RtcRole.PUBLISHER : RtcRole.SUBSCRIBER
+    const expirationInSeconds = 86400
+
+    const token = RtcTokenBuilder.buildTokenWithUid(
+      appId,
+      appCertificate,
+      channel,
+      numericUid,
+      agoraRole,
+      expirationInSeconds,
+      expirationInSeconds
+    )
+
+    const currentTimestamp = Math.floor(Date.now() / 1000)
+    return new Response(JSON.stringify({
+      token,
+      channel,
+      uid: String(numericUid),
+      appId,
+      expiresAt: currentTimestamp + expirationInSeconds,
+    }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
   } catch (err) {
+    console.error('live-token error:', err)
     return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders })
   }
 })

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { RtcTokenBuilder, RtcRole } from "npm:agora-token";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -29,7 +30,6 @@ serve(async (req) => {
 
     const body = await req.json();
     const channelName = body.channelName || body.channel_name;
-    const callType = body.callType || body.call_type;
     if (!channelName) {
       return new Response(JSON.stringify({ error: "channelName required" }), { status: 400, headers: corsHeaders });
     }
@@ -64,35 +64,33 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Not a participant" }), { status: 403, headers: corsHeaders });
     }
 
-    // Call Cloudflare Worker for Agora token
-    const workerUrl = Deno.env.get("AGORA_WORKER_URL");
-    const workerApiKey = Deno.env.get("AGORA_WORKER_API_KEY");
+    // Generate Agora token directly
+    const appId = Deno.env.get("AGORA_APP_ID");
+    const appCertificate = Deno.env.get("AGORA_APP_CERTIFICATE");
 
-    if (!workerUrl || !workerApiKey) {
+    if (!appId || !appCertificate) {
       return new Response(JSON.stringify({ error: "Agora not configured" }), { status: 500, headers: corsHeaders });
     }
 
-    const tokenResp = await fetch(workerUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-API-Key": workerApiKey,
-      },
-      body: JSON.stringify({
-        channelName,
-        uid: userId,
-        role: "publisher",
-      }),
-    });
+    const expirationInSeconds = 86400;
+    const token = RtcTokenBuilder.buildTokenWithUserAccount(
+      appId,
+      appCertificate,
+      channelName,
+      userId,
+      RtcRole.PUBLISHER,
+      expirationInSeconds,
+      expirationInSeconds
+    );
 
-    if (!tokenResp.ok) {
-      const text = await tokenResp.text();
-      console.error("Agora worker error:", tokenResp.status, text);
-      return new Response(JSON.stringify({ error: "Failed to get token" }), { status: 500, headers: corsHeaders });
-    }
-
-    const tokenData = await tokenResp.json();
-    return new Response(JSON.stringify(tokenData), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    const currentTimestamp = Math.floor(Date.now() / 1000);
+    return new Response(JSON.stringify({
+      token,
+      app_id: appId,
+      uid: userId,
+      channel: channelName,
+      expires_at: currentTimestamp + expirationInSeconds,
+    }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     console.error("agora-token error:", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
