@@ -1,57 +1,43 @@
 
 
-# Cập nhật số liệu trang Danh sách thành viên
+# Cập nhật hệ thống Mint FUN theo đúng cơ chế
 
-## Vấn đề
+## Vấn đề phát hiện
 
-Các cột số liệu trên trang User Directory (`/users`) hiển thị sai:
-
-1. **Cột "Tổng thưởng"** (`camly_calculated`): Đang tính lại từ số lượng hoạt động (posts x 5000 + comments x 1000 + ...) thay vì dùng giá trị thực tế `profiles.total_rewards`. Ví dụ: `hongthienhanh68` hiển thị 8.384.000 nhưng thực tế là 12.320.000.
-
-2. **Cột "Số dư"**: Hiển thị `pending_reward / approved_reward` (luôn = 0/0) thay vì số dư thực tế (Tổng thưởng - Đã rút).
+1. **Mint Pool sai giá trị mặc định**: Hiện tại là 100,000 FUN, cần đổi thành 5,000,000 FUN
+2. **Không lọc user bị banned/fraud**: Epoch snapshot lấy tất cả user có light actions mà không kiểm tra `profiles.is_banned`
 
 ## Giải pháp
 
-### Bước 1: Cập nhật RPC `get_user_directory_summary`
+### File 1: `supabase/functions/pplp-epoch-snapshot/index.ts`
 
-Thay thế công thức tính `camly_calculated` bằng `profiles.total_rewards`:
-
-**Trước:**
-```sql
-(50000 + old_posts*5000 + ... + new_livestreams*20000)::bigint AS camly_calculated
+**Thay đổi 1** - Đổi DEFAULT_MINT_POOL:
+```
+const DEFAULT_MINT_POOL = 5000000; // 5M FUN
 ```
 
-**Sau:**
-```sql
-COALESCE(p.total_rewards, 0)::bigint AS camly_calculated
+**Thay đổi 2** - Lọc user bị banned:
+Sau khi tổng hợp `allScores` (sau dòng 95), thêm bước lọc:
+- Lấy danh sách tất cả user_id từ allScores
+- Query `profiles` để kiểm tra `is_banned = true`
+- Loại bỏ user bị banned khỏi allScores trước khi tính allocation
+- Thêm các user bị banned vào danh sách ineligible với reason_code `FRAUD_BANNED`
+
+### File 2: `src/components/admin/PplpMintTab.tsx`
+
+**Thay đổi** - Đổi giá trị mặc định mintPool trên UI:
+```
+const [mintPool, setMintPool] = useState(5000000);
 ```
 
-Loại bỏ các CTE `old_stats`, `new_daily_posts`, `new_daily_reactions`, `new_daily_comments`, `new_daily_shares`, `new_daily_friends`, `new_daily_livestreams`, `new_stats` vì không còn cần thiết.
+### Tóm tắt sau khi sửa
 
-### Bước 2: Cập nhật RPC `get_user_directory_totals`
-
-Cột `total_camly_calculated` đã đúng (dùng `SUM(p.total_rewards)`), không cần sửa.
-
-### Bước 3: Cập nhật UI cột "Số dư" (`src/pages/Users.tsx`)
-
-Hiển thị số dư thực tế = `camly_calculated - camly_claimed` thay vì `pending_reward / approved_reward`:
-
-**Trước (dòng 404-408):**
-```tsx
-<p className="text-amber-500 font-semibold">{fmt(user.pending_reward)}</p>
-<p className="text-emerald-500">{fmt(user.approved_reward)}</p>
-```
-
-**Sau:**
-```tsx
-<p className="text-amber-500 font-semibold">
-  {fmt(user.camly_calculated - user.camly_claimed)}
-</p>
-```
-
-### Tác động
-
-- "Tổng thưởng" hiển thị đúng giá trị tích lũy thực tế từ hệ thống
-- "Số dư" hiển thị số CAMLY còn lại có thể rút (tổng thưởng - đã rút)
-- RPC chạy nhanh hơn vì loại bỏ nhiều CTE phức tạp
+| Quy tắc | Trạng thái |
+|---------|-----------|
+| Pool = 5M FUN | Sửa (100K -> 5M) |
+| FUN = Pool x (LS/Total LS) | Da dung |
+| Anti-whale 3% = 150K | Da dung (cap tu dong theo pool) |
+| LS >= 10 | Da dung |
+| PPLP approved | Da dung |
+| Khong fraud | Them moi (loc is_banned) |
 
