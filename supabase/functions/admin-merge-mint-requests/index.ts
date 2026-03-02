@@ -43,6 +43,31 @@ function generateActionHash(actionName: string): string {
   return keccak256(toBytes(actionName));
 }
 
+// Query SUM(mint_amount) trực tiếp từ light_actions để tránh cộng dồn sai
+async function getActualAmountFromActions(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  actionIds: string[]
+): Promise<number> {
+  if (actionIds.length === 0) return 0;
+
+  // Phân trang để vượt giới hạn 1000 rows
+  let total = 0;
+  const PAGE_SIZE = 500;
+  for (let i = 0; i < actionIds.length; i += PAGE_SIZE) {
+    const batch = actionIds.slice(i, i + PAGE_SIZE);
+    const { data } = await supabaseAdmin
+      .from('light_actions')
+      .select('mint_amount')
+      .in('id', batch)
+      .eq('is_eligible', true);
+
+    if (data) {
+      total += data.reduce((sum, a) => sum + (a.mint_amount || 0), 0);
+    }
+  }
+  return total;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -147,48 +172,69 @@ serve(async (req) => {
       userRequestsMap[req.user_id].push(req);
     }
 
-    // Only process users with more than 1 request
-    const usersToMerge = Object.entries(userRequestsMap).filter(([_, reqs]) => reqs.length > 1);
+    // Process ALL users (merge multi-request users AND recalculate single-request users)
+    const allUserEntries = Object.entries(userRequestsMap);
 
-    if (usersToMerge.length === 0) {
+    if (allUserEntries.length === 0) {
       return new Response(JSON.stringify({
         success: true,
-        summary: { merged_users: 0, old_requests_removed: 0, new_requests_created: 0, total_pending: allRequests.length },
-        message: `Không có user nào có nhiều hơn 1 request. Hiện có ${allRequests.length} requests đơn lẻ.`
+        summary: { merged_users: 0, old_requests_removed: 0, new_requests_created: 0, recalculated: 0 },
+        message: 'Không có requests nào để xử lý.'
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    console.log(`[MERGE-MINT] Found ${usersToMerge.length} users with multiple requests to merge`);
+    console.log(`[MERGE-MINT] Processing ${allUserEntries.length} users total`);
 
     let mergedUsers = 0;
     let oldRequestsRemoved = 0;
     let newRequestsCreated = 0;
+    let recalculated = 0;
     const errors: string[] = [];
     const actionHash = generateActionHash(DEFAULT_ACTION_NAME);
     const now = Date.now();
 
-    for (const [userId, requests] of usersToMerge) {
+    for (const [userId, requests] of allUserEntries) {
       try {
-        // Compute merged values
         const walletAddress = requests[0].recipient_address;
-        const allActionIds = requests.flatMap(r => r.action_ids || []);
+
+        // Bug fix #3: Khử trùng action_ids
+        const allActionIds = [...new Set(requests.flatMap(r => r.action_ids || []))];
         const allActionTypes = [...new Set(requests.flatMap(r => r.action_types || []))];
-        
-        // Sum amounts
-        let totalDisplay = 0;
-        let totalWei = 0n;
-        for (const r of requests) {
-          totalDisplay += r.amount_display || 0;
-          totalWei += BigInt(r.amount_wei || '0');
+
+        // Bug fix #1: Query tổng thực tế từ light_actions thay vì cộng dồn amount_display
+        const totalDisplay = await getActualAmountFromActions(supabaseAdmin, allActionIds);
+
+        if (totalDisplay <= 0) {
+          console.log(`[MERGE-MINT] User ${userId}: totalDisplay=0, skipping`);
+          continue;
         }
 
-        if (totalDisplay <= 0) continue;
+        const totalWei = BigInt(Math.floor(totalDisplay * 1e18));
 
-        // Get fresh nonce from contract
+        if (requests.length === 1) {
+          // Single request: chỉ recalculate amount nếu sai
+          const existing = requests[0];
+          if (Math.abs(existing.amount_display - totalDisplay) < 0.01) continue; // Đã đúng
+
+          await supabaseAdmin
+            .from('pplp_mint_requests')
+            .update({
+              amount_display: totalDisplay,
+              amount_wei: totalWei.toString(),
+              action_ids: allActionIds,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', existing.id);
+
+          recalculated++;
+          console.log(`[MERGE-MINT] User ${userId}: recalculated ${existing.amount_display} -> ${totalDisplay} FUN`);
+          continue;
+        }
+
+        // Multiple requests: merge into one
         const nonce = await getNonceFromContract(walletAddress);
         const evidenceHash = generateEvidenceHash(allActionTypes, userId, now);
 
-        // Create new merged request
         const { data: newReq, error: insertError } = await supabaseAdmin
           .from('pplp_mint_requests')
           .insert({
@@ -215,10 +261,14 @@ serve(async (req) => {
 
         // Update all light_actions to point to new request
         if (allActionIds.length > 0) {
-          await supabaseAdmin
-            .from('light_actions')
-            .update({ mint_request_id: newReq.id })
-            .in('id', allActionIds);
+          // Batch update in chunks to avoid query limits
+          const CHUNK = 500;
+          for (let i = 0; i < allActionIds.length; i += CHUNK) {
+            await supabaseAdmin
+              .from('light_actions')
+              .update({ mint_request_id: newReq.id })
+              .in('id', allActionIds.slice(i, i + CHUNK));
+          }
         }
 
         // Delete old requests
@@ -244,7 +294,7 @@ serve(async (req) => {
       }
     }
 
-    console.log(`[MERGE-MINT] Complete: merged=${mergedUsers}, removed=${oldRequestsRemoved}, created=${newRequestsCreated}, errors=${errors.length}`);
+    console.log(`[MERGE-MINT] Complete: merged=${mergedUsers}, removed=${oldRequestsRemoved}, created=${newRequestsCreated}, recalculated=${recalculated}, errors=${errors.length}`);
 
     return new Response(JSON.stringify({
       success: true,
@@ -252,11 +302,12 @@ serve(async (req) => {
         merged_users: mergedUsers,
         old_requests_removed: oldRequestsRemoved,
         new_requests_created: newRequestsCreated,
+        recalculated,
         total_pending_before: allRequests.length,
         total_pending_after: allRequests.length - oldRequestsRemoved + newRequestsCreated,
         errors: errors.length > 0 ? errors.slice(0, 10) : undefined,
       },
-      message: `Đã gộp requests của ${mergedUsers} users: ${oldRequestsRemoved} requests cũ → ${newRequestsCreated} requests mới.`
+      message: `Đã gộp requests của ${mergedUsers} users: ${oldRequestsRemoved} requests cũ → ${newRequestsCreated} requests mới. Đã tính lại ${recalculated} requests đơn lẻ.`
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
   } catch (error: unknown) {
