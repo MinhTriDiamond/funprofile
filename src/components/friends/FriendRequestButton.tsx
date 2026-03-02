@@ -28,57 +28,37 @@ export const FriendRequestButton = ({ userId, currentUserId }: FriendRequestButt
   const [loading, setLoading] = useState(false);
   const [friendshipId, setFriendshipId] = useState<string | null>(null);
 
+  // Only check friendship status when both IDs are valid
   useEffect(() => {
+    if (!currentUserId || !userId || currentUserId === userId) return;
     checkFriendshipStatus();
-    
-    const channel = supabase
-      .channel('friendship-status-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'friendships',
-          filter: `user_id=eq.${currentUserId},friend_id=eq.${userId}`
-        },
-        () => { checkFriendshipStatus(); }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'friendships',
-          filter: `user_id=eq.${userId},friend_id=eq.${currentUserId}`
-        },
-        () => { checkFriendshipStatus(); }
-      )
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
   }, [userId, currentUserId]);
 
   const checkFriendshipStatus = async () => {
-    const { data, error } = await supabase
-      .from("friendships")
-      .select("id, user_id, friend_id, status")
-      .or(`and(user_id.eq.${currentUserId},friend_id.eq.${userId}),and(user_id.eq.${userId},friend_id.eq.${currentUserId})`)
-      .maybeSingle();
+    try {
+      const { data, error } = await supabase
+        .from("friendships")
+        .select("id, user_id, friend_id, status")
+        .or(`and(user_id.eq.${currentUserId},friend_id.eq.${userId}),and(user_id.eq.${userId},friend_id.eq.${currentUserId})`)
+        .maybeSingle();
 
-    if (error) return;
+      if (error) return;
 
-    if (!data) {
-      setStatus("none");
-      setFriendshipId(null);
-    } else {
-      setFriendshipId(data.id);
-      if (data.status === "accepted") {
-        setStatus("accepted");
-      } else if (data.user_id === currentUserId) {
-        setStatus("pending_sent");
+      if (!data) {
+        setStatus("none");
+        setFriendshipId(null);
       } else {
-        setStatus("pending_received");
+        setFriendshipId(data.id);
+        if (data.status === "accepted") {
+          setStatus("accepted");
+        } else if (data.user_id === currentUserId) {
+          setStatus("pending_sent");
+        } else {
+          setStatus("pending_received");
+        }
       }
+    } catch {
+      // Silent fail
     }
   };
 
@@ -90,52 +70,91 @@ export const FriendRequestButton = ({ userId, currentUserId }: FriendRequestButt
       return;
     }
     
+    // Optimistic update
+    setStatus("pending_sent");
     setLoading(true);
-    const { error } = await supabase
-      .from("friendships")
-      .insert({ user_id: currentUserId, friend_id: userId, status: "pending" });
+    
+    try {
+      const { data, error } = await supabase
+        .from("friendships")
+        .insert({ user_id: currentUserId, friend_id: userId, status: "pending" })
+        .select("id")
+        .single();
 
-    if (error) {
+      if (error) {
+        // Rollback
+        setStatus("none");
+        toast.error("Failed to send friend request");
+      } else {
+        setFriendshipId(data.id);
+        toast.success(t('requestSent') + '!');
+        evaluateAsync({ action_type: 'friend', reference_id: userId });
+      }
+    } catch {
+      setStatus("none");
       toast.error("Failed to send friend request");
-    } else {
-      toast.success(t('requestSent') + '!');
-      evaluateAsync({ action_type: 'friend', reference_id: userId });
-      checkFriendshipStatus();
     }
     setLoading(false);
   };
 
   const acceptFriendRequest = async () => {
     if (!friendshipId) return;
+    
+    // Optimistic update
+    setStatus("accepted");
     setLoading(true);
-    const { error } = await supabase
-      .from("friendships")
-      .update({ status: "accepted" })
-      .eq("id", friendshipId);
+    
+    try {
+      const { error } = await supabase
+        .from("friendships")
+        .update({ status: "accepted" })
+        .eq("id", friendshipId);
 
-    if (error) {
+      if (error) {
+        // Rollback
+        setStatus("pending_received");
+        toast.error("Failed to accept friend request");
+      } else {
+        toast.success(t('acceptRequest') + '!');
+        evaluateAsync({ action_type: 'friend', reference_id: userId });
+      }
+    } catch {
+      setStatus("pending_received");
       toast.error("Failed to accept friend request");
-    } else {
-      toast.success(t('acceptRequest') + '!');
-      evaluateAsync({ action_type: 'friend', reference_id: userId });
-      checkFriendshipStatus();
     }
     setLoading(false);
   };
 
   const removeFriend = async () => {
     if (!friendshipId) return;
+    
+    // Save previous state for rollback
+    const prevStatus = status;
+    const prevFriendshipId = friendshipId;
+    
+    // Optimistic update
+    setStatus("none");
+    setFriendshipId(null);
     setLoading(true);
-    const { error } = await supabase
-      .from("friendships")
-      .delete()
-      .eq("id", friendshipId);
+    
+    try {
+      const { error } = await supabase
+        .from("friendships")
+        .delete()
+        .eq("id", prevFriendshipId);
 
-    if (error) {
+      if (error) {
+        // Rollback
+        setStatus(prevStatus);
+        setFriendshipId(prevFriendshipId);
+        toast.error("Failed to remove friend");
+      } else {
+        toast.success(t('unfriend'));
+      }
+    } catch {
+      setStatus(prevStatus);
+      setFriendshipId(prevFriendshipId);
       toast.error("Failed to remove friend");
-    } else {
-      toast.success(t('unfriend'));
-      checkFriendshipStatus();
     }
     setLoading(false);
   };

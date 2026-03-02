@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
+import type { PostStats } from '@/hooks/useFeedPosts';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
@@ -49,6 +50,8 @@ const Profile = () => {
   const [friendsPreview, setFriendsPreview] = useState<FriendPreview[]>([]);
   const [activeTab, setActiveTab] = useState('posts'); // Controlled tabs state
   const [isAdmin, setIsAdmin] = useState(false);
+  const [displayedCount, setDisplayedCount] = useState(10);
+  const POSTS_PER_PAGE = 10;
   
   const { createDirectConversation } = useConversations(currentUserId);
   
@@ -364,6 +367,25 @@ const Profile = () => {
     
     return [pinnedPost, ...otherPosts];
   }, [allPosts, profile?.pinned_post_id]);
+
+  // Paginated posts
+  const displayedPosts = useMemo(() => sortedPosts.slice(0, displayedCount), [sortedPosts, displayedCount]);
+  const hasMorePosts = displayedCount < sortedPosts.length;
+
+  // Build initialStats from inline-fetched reactions/comments data
+  const buildInitialStats = useCallback((post: any): PostStats | undefined => {
+    if (!post.reactions && !post.comments) return undefined;
+    return {
+      reactions: (post.reactions || []).map((r: any) => ({ id: r.id, user_id: r.user_id, type: r.type })),
+      commentCount: (post.comments || []).length,
+      shareCount: 0, // shares not fetched inline, component will handle
+    };
+  }, []);
+
+  // Reset displayedCount when profile changes
+  useEffect(() => {
+    setDisplayedCount(POSTS_PER_PAGE);
+  }, [profile?.id]);
 
   if (loading) {
     return (
@@ -893,58 +915,75 @@ onClick={() => navigate(`/${friend.username}`)}
                           />
                         )}
                         
-                        {sortedPosts.length === 0 ? (
+                        {displayedPosts.length === 0 ? (
                           <div className="bg-card/70 rounded-xl shadow-sm border border-border p-8 text-center text-muted-foreground">
                             {t('noPostsYet')}
                           </div>
                         ) : (
-                          sortedPosts.map((item) => {
-                            const isPinned = item._type === 'original' && item.id === profile?.pinned_post_id;
-                            
-                            return item._type === 'shared' ? (
-                              <div key={`shared-${item.id}`} className="space-y-2">
-                                <div className="flex items-center gap-2 text-sm text-muted-foreground px-2">
-                                  <span className="font-semibold text-primary">{t('sharedLabel')}</span>
-                                </div>
-                                {item.caption && (
-                                  <p className="text-sm text-muted-foreground italic px-3 pb-1">{item.caption}</p>
-                                )}
-                                <FacebookPostCard 
-                                  post={item.posts} 
-                                  currentUserId={currentUserId}
-                                  onPostDeleted={handlePostDeleted}
-                                />
-                              </div>
-                            ) : (
-                              <div key={item.id} className="space-y-0">
-                                {/* Pinned Post Badge */}
-                                {isPinned && (
-                                  <div className="flex items-center gap-2 text-sm text-muted-foreground px-4 py-2 bg-secondary/50 rounded-t-xl border-b border-border">
-                                    <Pin className="w-4 h-4 text-primary" />
-                                    <span className="font-medium">{t('pinnedPost')}</span>
+                          <>
+                            {displayedPosts.map((item) => {
+                              const isPinned = item._type === 'original' && item.id === profile?.pinned_post_id;
+                              const stats = item._type === 'original' ? buildInitialStats(item) : undefined;
+                              const sharedStats = item._type === 'shared' && item.posts ? buildInitialStats(item.posts) : undefined;
+                              
+                              return item._type === 'shared' ? (
+                                <div key={`shared-${item.id}`} className="space-y-2">
+                                  <div className="flex items-center gap-2 text-sm text-muted-foreground px-2">
+                                    <span className="font-semibold text-primary">{t('sharedLabel')}</span>
                                   </div>
-                                )}
-                                {item.post_type === 'gift_celebration' ? (
-                                  <GiftCelebrationCard
-                                    post={item}
-                                    currentUserId={currentUserId}
-                                    onPostDeleted={handlePostDeleted}
-                                  />
-                                ) : (
+                                  {item.caption && (
+                                    <p className="text-sm text-muted-foreground italic px-3 pb-1">{item.caption}</p>
+                                  )}
                                   <FacebookPostCard 
-                                    post={item} 
+                                    post={item.posts} 
                                     currentUserId={currentUserId}
                                     onPostDeleted={handlePostDeleted}
-                                    isPinned={isPinned}
-                                    onPinPost={showPrivateElements ? handlePinPost : undefined}
-                                    onUnpinPost={showPrivateElements ? handleUnpinPost : undefined}
-                                    isOwnProfile={isOwnProfile}
-                                    viewAsPublic={viewAsPublic}
+                                    initialStats={sharedStats}
                                   />
-                                )}
+                                </div>
+                              ) : (
+                                <div key={item.id} className="space-y-0">
+                                  {isPinned && (
+                                    <div className="flex items-center gap-2 text-sm text-muted-foreground px-4 py-2 bg-secondary/50 rounded-t-xl border-b border-border">
+                                      <Pin className="w-4 h-4 text-primary" />
+                                      <span className="font-medium">{t('pinnedPost')}</span>
+                                    </div>
+                                  )}
+                                  {item.post_type === 'gift_celebration' ? (
+                                    <GiftCelebrationCard
+                                      post={item}
+                                      currentUserId={currentUserId}
+                                      onPostDeleted={handlePostDeleted}
+                                      initialStats={stats}
+                                    />
+                                  ) : (
+                                    <FacebookPostCard 
+                                      post={item} 
+                                      currentUserId={currentUserId}
+                                      onPostDeleted={handlePostDeleted}
+                                      initialStats={stats}
+                                      isPinned={isPinned}
+                                      onPinPost={showPrivateElements ? handlePinPost : undefined}
+                                      onUnpinPost={showPrivateElements ? handleUnpinPost : undefined}
+                                      isOwnProfile={isOwnProfile}
+                                      viewAsPublic={viewAsPublic}
+                                    />
+                                  )}
+                                </div>
+                              );
+                            })}
+                            {hasMorePosts && (
+                              <div className="flex justify-center py-4">
+                                <Button
+                                  variant="secondary"
+                                  onClick={() => setDisplayedCount(prev => prev + POSTS_PER_PAGE)}
+                                  className="w-full max-w-md"
+                                >
+                                  Xem thêm ({sortedPosts.length - displayedCount} bài còn lại)
+                                </Button>
                               </div>
-                            );
-                          })
+                            )}
+                          </>
                         )}
                       </TabsContent>
 
