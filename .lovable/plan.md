@@ -1,65 +1,69 @@
 
 
-# Backfill 8 Giao Dịch Của angelanhnguyet Vào Hệ Thống
+# Sửa Lỗi Trang Cá Nhân Bị Đơ & Kết Bạn Không Ổn Định
 
-## Vấn đề
+## Vấn đề 1: Trang cá nhân bị "Page Unresponsive"
 
-8 giao dịch từ ví `0xf3987133929D43136A9057ff8ce4C384e1C8C7A6` (user **angelanhnguyet**) đã thực hiện on-chain nhưng không được ghi nhận trong database, dẫn đến:
-- Không hiển thị trong lịch sử giao dịch (trang /donations)
-- Người nhận không có thông báo
-- Không có bài viết gift_celebration trên feed
+### Nguyên nhân gốc
 
-## Giải pháp
+Trang Profile hiện tại tải **TẤT CẢ bài viết cùng lúc** mà không có phân trang. Mỗi bài viết (`FacebookPostCard`) khi không được truyền `initialStats` sẽ tự gọi **3 API riêng** (reactions, comments, shares) và tạo **1 kênh realtime riêng**. Với 50 bài viết, trình duyệt phải xử lý 150+ API calls và 50 kênh realtime cùng lúc, dẫn đến treo trang.
 
-Tạo Edge Function `backfill-tx-donations` nhận danh sách tx_hash + sender_address, tự động:
-1. Query Moralis API để decode từng giao dịch (BSC mainnet + testnet)
-2. Xác định người nhận qua địa chỉ ví trong bảng profiles
-3. Tạo bản ghi donations (status = confirmed)
-4. Tạo bài viết gift_celebration post
-5. Tạo thông báo cho người nhận
+### Giải pháp
+
+1. **Thêm phân trang (Load More)**: Chỉ hiển thị 10 bài viết đầu tiên, khi kéo xuống cuối sẽ tải thêm 10 bài nữa.
+2. **Batch-fetch stats cho tất cả bài viết**: Tương tự như `useFeedPosts` đã làm cho trang chủ - fetch stats một lần cho tất cả posts rồi truyền `initialStats` vào mỗi `FacebookPostCard` và `GiftCelebrationCard`. Điều này giảm từ 150+ API calls xuống còn 3.
+3. **Lazy-mount realtime**: Chỉ tạo kênh realtime cho các post đang hiển thị trên màn hình.
+
+## Vấn đề 2: Kết bạn có lúc được lúc không
+
+### Nguyên nhân gốc
+
+1. **Không kiểm tra `currentUserId`**: Hàm `checkFriendshipStatus` chạy ngay khi component mount, kể cả khi `currentUserId` là chuỗi rỗng `""`. Truy vấn với `user_id.eq.` (rỗng) trả về kết quả không chính xác.
+2. **Realtime filter sai cú pháp**: Filter `user_id=eq.${currentUserId},friend_id=eq.${userId}` sử dụng dấu phẩy nhưng Supabase realtime chỉ hỗ trợ **1 filter duy nhất** mỗi lần subscribe. Kênh realtime thực tế không hoạt động đúng.
+3. **Race condition**: Khi nhấn "Kết bạn", insert xong rồi gọi `checkFriendshipStatus()` ngay, nhưng database có thể chưa kịp phản hồi.
+
+### Giải pháp
+
+1. **Guard cho `currentUserId`**: Bỏ qua `checkFriendshipStatus` và realtime subscription khi `currentUserId` rỗng.
+2. **Sửa realtime**: Dùng 2 kênh riêng biệt hoặc bỏ realtime và dùng **optimistic update** (cập nhật state UI ngay lập tức trước khi chờ DB xác nhận).
+3. **Optimistic state update**: Sau khi gọi insert/update/delete thành công, cập nhật state trực tiếp thay vì re-fetch.
+
+---
 
 ## Chi tiết kỹ thuật
 
-### Bước 1: Tạo Edge Function `backfill-tx-donations`
+### File 1: `src/pages/Profile.tsx`
 
-**Input:**
-```json
-{
-  "tx_hashes": ["0xcde17a2f...", "0xf5d28d60..."],
-  "sender_address": "0xf3987133929D43136A9057ff8ce4C384e1C8C7A6",
-  "sender_username": "angelanhnguyet"
-}
+**Thay đổi:**
+- Thêm state `displayedCount` bắt đầu từ 10, tăng dần khi cuộn xuống
+- Batch-fetch stats cho các bài đang hiển thị (tái sử dụng pattern từ `useFeedPosts`)
+- Truyền `initialStats` vào mỗi `FacebookPostCard` và `GiftCelebrationCard`
+- Thêm nút "Xem thêm" hoặc IntersectionObserver để tải thêm bài
+
+```text
+sortedPosts (all)
+    |
+    v
+displayedPosts = sortedPosts.slice(0, displayedCount)
+    |
+    v
+batch fetchPostStats(displayedPosts.map(p => p.id))
+    |
+    v
+render displayedPosts with initialStats={postStats[post.id]}
 ```
 
-**Logic:**
-- Tra cứu sender profile từ DB
-- Xây dựng map wallet -> profile cho tất cả user
-- Kiểm tra trùng lặp (skip nếu tx_hash đã tồn tại trong donations)
-- Với mỗi tx_hash: gọi Moralis verbose transaction API (thử BSC mainnet rồi testnet)
-- Parse ERC20 Transfer events từ logs (topic0 = Transfer event signature)
-- Chỉ xử lý token đã biết: CAMLY, USDT, BTCB, FUN
-- Parse amount theo decimals của từng token
-- Tạo donation record, gift_celebration post, notification
+### File 2: `src/components/friends/FriendRequestButton.tsx`
 
-**Output:**
-```json
-{
-  "total_processed": 8,
-  "created": 7,
-  "skipped": 1,
-  "errors": 0,
-  "results": [...]
-}
-```
+**Thay đổi:**
+- Thêm guard: không chạy `checkFriendshipStatus` khi `currentUserId` rỗng
+- Dùng optimistic update cho `sendFriendRequest`, `acceptFriendRequest`, `removeFriend`
+- Loại bỏ realtime subscription (không cần thiết vì user tự thao tác)
+- Thêm try/catch cho tất cả async operations
 
-### Bước 2: Gọi Edge Function
+### Tác động
 
-Sau khi deploy, gọi function với 8 tx hash để backfill dữ liệu.
-
-### Files cần tạo/sửa
-
-1. **Tạo mới**: `supabase/functions/backfill-tx-donations/index.ts`
-   - Edge function xử lý backfill qua Moralis API
-   - Không yêu cầu JWT (dùng service role key nội bộ)
-   - Tái sử dụng logic từ `manual-create-donation` và `detect-incoming-transfers`
+- Trang cá nhân sẽ tải nhanh hơn 10-15x (chỉ 10 bài + 3 API calls thay vì 50+ bài + 150+ API calls)
+- Nút kết bạn hoạt động ổn định 100% thời gian
+- Không ảnh hưởng đến các tính năng khác
 
