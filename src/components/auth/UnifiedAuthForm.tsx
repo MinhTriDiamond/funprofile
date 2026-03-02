@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -11,10 +11,12 @@ import { SocialLogin } from './SocialLogin';
 import { ClassicEmailLogin } from './ClassicEmailLogin';
 import { Mail, Wallet, Users, Loader2, Sparkles, KeyRound } from 'lucide-react';
 import { getDeviceHash, FINGERPRINT_VERSION } from '@/utils/deviceFingerprint';
+import { usePplpEvaluate } from '@/hooks/usePplpEvaluate';
 
 export const UnifiedAuthForm = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const { evaluateAsync } = usePplpEvaluate();
   const [activeTab, setActiveTab] = useState('email');
   const [isSettingUp, setIsSettingUp] = useState(false);
   const [setupStep, setSetupStep] = useState<'wallet' | 'complete' | null>(null);
@@ -85,6 +87,8 @@ export const UnifiedAuthForm = () => {
     }
 
     if (isNewUser) {
+      // PPLP: Award new user bonus Light Score (fire-and-forget)
+      evaluateAsync({ action_type: 'new_user_bonus', reference_id: userId });
       await handleNewUserSetup(userId, hasExternalWallet);
     } else {
       // Kiểm tra law_of_light_accepted từ DB trước khi navigate

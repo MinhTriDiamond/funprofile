@@ -21,6 +21,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { getAbsolutePostUrl } from '@/lib/slug';
+import { usePplpEvaluate } from '@/hooks/usePplpEvaluate';
 
 const PRODUCTION_DOMAIN = 'https://fun.rich';
 
@@ -88,6 +89,7 @@ export const ShareDialog = ({
   onShareComplete,
 }: ShareDialogProps) => {
   const { t } = useLanguage();
+  const { evaluateAsync } = usePplpEvaluate();
   const [caption, setCaption] = useState('');
   const [privacy, setPrivacy] = useState<Privacy>('public');
   const [isSharing, setIsSharing] = useState(false);
@@ -105,6 +107,8 @@ export const ShareDialog = ({
         caption: caption.trim() || null,
       });
       if (error) throw error;
+      // PPLP: Evaluate share action for Light Score
+      evaluateAsync({ action_type: 'share', reference_id: post.id, content: caption || undefined });
       toast.success(t('sharedPost'));
       onShareComplete?.();
       onOpenChange(false);
