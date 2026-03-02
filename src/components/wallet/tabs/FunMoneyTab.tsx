@@ -2,6 +2,7 @@ import { useCallback, Component, type ReactNode } from 'react';
 import { MemoizedLightScoreDashboard } from '../LightScoreDashboard';
 import { AttesterSigningPanel } from '../AttesterSigningPanel';
 import { FunMoneyGuide } from '../FunMoneyGuide';
+import { ClaimRewardsCard } from '../ClaimRewardsCard';
 import { useAttesterSigning } from '@/hooks/useAttesterSigning';
 import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
@@ -55,6 +56,7 @@ function FunMoneyTabInner({
   externalAddress,
   onActivate,
   onClaim,
+  onClaimSuccess,
 }: FunMoneyTabProps) {
   const {
     isAttester,
@@ -82,6 +84,9 @@ function FunMoneyTabInner({
 
       {/* Hướng dẫn Mint FUN Money */}
       <FunMoneyGuide />
+
+      {/* Epoch-based Claim Rewards */}
+      <ClaimRewardsCard onClaimSuccess={(requestId) => onClaimSuccess?.()} />
 
       {/* Light Score Dashboard */}
       <MemoizedLightScoreDashboard
