@@ -7,15 +7,14 @@ const corsHeaders = {
 };
 
 // Base Rewards configuration
-// FUN = CAMLY / 1000
 const BASE_REWARDS: Record<string, number> = {
-  post: 5,           // 5,000 CAMLY / 1000
-  comment: 1,        // 1,000 CAMLY / 1000
-  reaction: 1,       // 1,000 CAMLY / 1000
-  share: 1,          // 1,000 CAMLY / 1000
-  friend: 10,        // 10,000 CAMLY / 1000
-  livestream: 20,    // 20,000 CAMLY / 1000
-  new_user_bonus: 50, // 50,000 CAMLY / 1000
+  post: 5,
+  comment: 1,
+  reaction: 1,
+  share: 1,
+  friend: 10,
+  livestream: 20,
+  new_user_bonus: 50,
 };
 
 // Daily caps per action (per actor per day)
@@ -29,8 +28,14 @@ const DAILY_CAPS: Record<string, { maxActions: number }> = {
   new_user_bonus: { maxActions: 1 },
 };
 
+// LS-Math-v1.0 constants
+const LS_MATH = {
+  consistency: { beta: 0.6, lambda: 30 },
+  sequence: { eta: 0.5, kappa: 5 },
+  penalty: { theta: 0.8, max_penalty: 0.5 },
+};
+
 // Actions where beneficiary = post owner (not the actor)
-// actor performs action → post owner receives reward
 const BENEFICIARY_IS_POST_OWNER = new Set(['reaction', 'comment', 'share']);
 
 // Calculate Unity Multiplier from Unity Score
@@ -38,15 +43,40 @@ function calculateUnityMultiplier(unityScore: number): number {
   return Math.max(0.5, Math.min(2.5, 0.5 + (unityScore / 50)));
 }
 
-// Calculate Light Score
+// LS-Math-v1.0: Consistency Multiplier
+function calculateConsistencyMultiplier(streakDays: number): number {
+  const { beta, lambda } = LS_MATH.consistency;
+  return 1 + beta * (1 - Math.exp(-streakDays / lambda));
+}
+
+// LS-Math-v1.0: Sequence Multiplier
+function calculateSequenceMultiplier(bonus: number): number {
+  const { eta, kappa } = LS_MATH.sequence;
+  return 1 + eta * Math.tanh(bonus / kappa);
+}
+
+// LS-Math-v1.0: Integrity Penalty
+function calculateIntegrityPenalty(integrityScore: number): number {
+  const { theta, max_penalty } = LS_MATH.penalty;
+  const risk = 1 - integrityScore;
+  return 1 - Math.min(max_penalty, theta * risk);
+}
+
+// Calculate Light Score with LS-Math-v1.0 multipliers
 function calculateLightScore(
   baseReward: number,
   qualityScore: number,
   impactScore: number,
   integrityScore: number,
-  unityMultiplier: number
+  unityMultiplier: number,
+  consistencyMultiplier: number,
+  sequenceMultiplier: number,
+  integrityPenalty: number,
 ): number {
-  return Math.round(baseReward * qualityScore * impactScore * integrityScore * unityMultiplier * 100) / 100;
+  return Math.round(
+    baseReward * qualityScore * impactScore * integrityScore * unityMultiplier
+    * consistencyMultiplier * sequenceMultiplier * integrityPenalty * 100
+  ) / 100;
 }
 
 serve(async (req) => {
@@ -59,7 +89,7 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Get auth token — actor is the person performing the action
+    // Get auth token
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'No authorization header' }), {
@@ -78,8 +108,7 @@ serve(async (req) => {
       });
     }
 
-    const actorId = user.id; // Người thực hiện hành động
-
+    const actorId = user.id;
     const { action_type, reference_id, content } = await req.json();
 
     if (!action_type || !BASE_REWARDS[action_type]) {
@@ -91,11 +120,10 @@ serve(async (req) => {
 
     console.log(`[PPLP] Evaluating ${action_type} for actor ${actorId}`);
 
-    // === DETERMINE BENEFICIARY (người nhận thưởng) ===
-    let beneficiaryId = actorId; // Mặc định: actor tự nhận thưởng (post, friend, new_user_bonus)
+    // === DETERMINE BENEFICIARY ===
+    let beneficiaryId = actorId;
 
     if (BENEFICIARY_IS_POST_OWNER.has(action_type) && reference_id) {
-      // reaction/comment/share → chủ bài nhận thưởng
       const { data: postData } = await supabase
         .from('posts')
         .select('user_id, is_reward_eligible')
@@ -103,15 +131,12 @@ serve(async (req) => {
         .maybeSingle();
 
       if (!postData) {
-        console.log(`[PPLP] Post ${reference_id} not found. Skipping.`);
         return new Response(JSON.stringify({ success: true, skipped: true, reason: 'post_not_found' }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
-      // Kiểm tra bài có eligible không (duplicate post check)
       if (postData.is_reward_eligible === false) {
-        console.log(`[PPLP] Post ${reference_id} is not reward-eligible (duplicate). Skipping.`);
         return new Response(JSON.stringify({ success: true, skipped: true, reason: 'duplicate_content' }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -119,16 +144,12 @@ serve(async (req) => {
 
       beneficiaryId = postData.user_id;
 
-      // === SELF-ACTION CHECK: actor = chủ bài → không thưởng ===
       if (actorId === beneficiaryId) {
-        console.log(`[PPLP] Self-action detected: actor ${actorId} = post owner. Skipping.`);
         return new Response(JSON.stringify({ success: true, skipped: true, reason: 'self_action' }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
-      // === DUPLICATE CHECK: đã thưởng cho actor+post+action_type chưa? ===
-      // Đây là check theo cặp (actor, post, type) — không phải daily count
       const { count: existingCount } = await supabase
         .from('light_actions')
         .select('id', { count: 'exact', head: true })
@@ -137,14 +158,13 @@ serve(async (req) => {
         .eq('action_type', action_type);
 
       if (existingCount !== null && existingCount > 0) {
-        console.log(`[PPLP] Duplicate action: actor ${actorId} already rewarded for ${action_type} on post ${reference_id}`);
         return new Response(JSON.stringify({ success: true, skipped: true, reason: 'already_rewarded' }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
     }
 
-    // === DUPLICATE POST CHECK (for post action_type) ===
+    // === DUPLICATE POST CHECK ===
     if (action_type === 'post' && reference_id) {
       const { data: postData } = await supabase
         .from('posts')
@@ -153,28 +173,17 @@ serve(async (req) => {
         .maybeSingle();
 
       if (postData && postData.is_reward_eligible === false) {
-        console.log(`[PPLP] Post ${reference_id} is not reward-eligible (duplicate). Skipping.`);
         return new Response(JSON.stringify({
-          success: true,
-          skipped: true,
-          reason: 'duplicate_content',
+          success: true, skipped: true, reason: 'duplicate_content',
           light_action: {
-            action_type,
-            light_score: 0,
-            is_eligible: false,
-            mint_amount: 0,
-            evaluation: {
-              quality: 0, impact: 0, integrity: 0, unity: 0, unity_multiplier: 0,
-              reasoning: 'Bài viết trùng nội dung, không tính điểm.',
-            },
+            action_type, light_score: 0, is_eligible: false, mint_amount: 0,
+            evaluation: { quality: 0, impact: 0, integrity: 0, unity: 0, unity_multiplier: 0, reasoning: 'Bài viết trùng nội dung.' },
           },
-        }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
     }
 
-    // === DAILY CAP CHECK (per actor, per action_type) ===
+    // === DAILY CAP CHECK ===
     const today = new Date().toISOString().split('T')[0];
     const { count: todayCount } = await supabase
       .from('light_actions')
@@ -183,7 +192,6 @@ serve(async (req) => {
       .eq('action_type', action_type)
       .gte('created_at', `${today}T00:00:00Z`);
 
-    // Fallback: nếu actor_id chưa có data (actions cũ), dùng user_id
     const { count: todayCountFallback } = await supabase
       .from('light_actions')
       .select('id', { count: 'exact', head: true })
@@ -195,26 +203,30 @@ serve(async (req) => {
     const totalTodayCount = (todayCount || 0) + (todayCountFallback || 0);
 
     if (totalTodayCount >= DAILY_CAPS[action_type].maxActions) {
-      return new Response(JSON.stringify({ 
+      return new Response(JSON.stringify({
         error: 'Daily limit reached for this action type',
         limit: DAILY_CAPS[action_type].maxActions,
-        current: totalTodayCount
-      }), {
-        status: 429,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+        current: totalTodayCount,
+      }), { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // Get beneficiary stats for AI context
+    // === GET BENEFICIARY REPUTATION (including streak) ===
     const { data: userStats } = await supabase
       .from('light_reputation')
-      .select('*')
+      .select('*, consistency_streak, last_active_date, sequence_bonus')
       .eq('user_id', beneficiaryId)
       .single();
 
+    // === LS-Math-v1.0: COMPUTE MULTIPLIERS ===
+    const currentStreak = userStats?.consistency_streak ?? 0;
+    const sequenceBonus = userStats?.sequence_bonus ?? 0;
+
+    const consistencyMultiplier = calculateConsistencyMultiplier(currentStreak);
+    const sequenceMultiplier = calculateSequenceMultiplier(sequenceBonus);
+
     // === AI EVALUATION ===
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    
+
     let evaluation = {
       quality_score: 1.0,
       impact_score: 1.0,
@@ -260,6 +272,7 @@ CONTENT: ${content || 'N/A'}
 USER TIER: ${userStats?.tier || 0}
 USER ACTIONS COUNT: ${userStats?.actions_count || 0}
 USER AVG QUALITY: ${userStats?.avg_quality || 1.0}
+STREAK DAYS: ${currentStreak}
 
 Đánh giá hành động này.`
               }
@@ -272,7 +285,7 @@ USER AVG QUALITY: ${userStats?.avg_quality || 1.0}
         if (aiResponse.ok) {
           const aiData = await aiResponse.json();
           const aiContent = aiData.choices?.[0]?.message?.content;
-          
+
           if (aiContent) {
             const jsonMatch = aiContent.match(/\{[\s\S]*\}/);
             if (jsonMatch) {
@@ -295,7 +308,10 @@ USER AVG QUALITY: ${userStats?.avg_quality || 1.0}
       }
     }
 
-    // Calculate scores
+    // === LS-Math-v1.0: INTEGRITY PENALTY ===
+    const integrityPenalty = calculateIntegrityPenalty(evaluation.integrity_score);
+
+    // === CALCULATE FINAL SCORE ===
     const baseReward = BASE_REWARDS[action_type];
     const unityMultiplier = calculateUnityMultiplier(evaluation.unity_score);
     const lightScore = calculateLightScore(
@@ -303,21 +319,23 @@ USER AVG QUALITY: ${userStats?.avg_quality || 1.0}
       evaluation.quality_score,
       evaluation.impact_score,
       evaluation.integrity_score,
-      unityMultiplier
+      unityMultiplier,
+      consistencyMultiplier,
+      sequenceMultiplier,
+      integrityPenalty,
     );
 
-    // Determine eligibility
     const isEligible = lightScore >= 0.5 && evaluation.integrity_score >= 0.3;
     const mintAmount = isEligible ? Math.floor(lightScore) : 0;
 
-    // Insert light action record
-    // user_id = beneficiaryId (người nhận thưởng)
-    // actor_id = actorId (người thực hiện)
+    console.log(`[PPLP] LS-Math: streak=${currentStreak} M_cons=${consistencyMultiplier.toFixed(3)} M_seq=${sequenceMultiplier.toFixed(3)} penalty=${integrityPenalty.toFixed(3)} final=${lightScore}`);
+
+    // === INSERT LIGHT ACTION ===
     const { data: lightAction, error: insertError } = await supabase
       .from('light_actions')
       .insert({
-        user_id: beneficiaryId,         // Người nhận thưởng (chủ bài hoặc actor)
-        actor_id: actorId,              // Người thực hiện hành động
+        user_id: beneficiaryId,
+        actor_id: actorId,
         action_type,
         reference_id: reference_id || null,
         reference_type: action_type,
@@ -334,26 +352,49 @@ USER AVG QUALITY: ${userStats?.avg_quality || 1.0}
         mint_amount: mintAmount,
         angel_evaluation: evaluation,
         evaluated_at: new Date().toISOString(),
+        // LS-Math-v1.0 audit trail
+        consistency_multiplier: consistencyMultiplier,
+        sequence_multiplier: sequenceMultiplier,
+        integrity_penalty: integrityPenalty,
+        streak_days: currentStreak,
       })
       .select()
       .single();
 
     if (insertError) {
-      // Handle unique constraint violation (duplicate action)
       if (insertError.code === '23505') {
-        console.log(`[PPLP] Unique constraint: actor ${actorId} already has ${action_type} for ${reference_id}`);
         return new Response(JSON.stringify({ success: true, skipped: true, reason: 'already_rewarded' }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
       console.error('[PPLP] Insert error:', insertError);
       return new Response(JSON.stringify({ error: 'Failed to record action' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    console.log(`[PPLP] Action recorded: ${lightAction.id}, Beneficiary: ${beneficiaryId}, Score: ${lightScore}, Eligible: ${isEligible}`);
+    // === UPDATE STREAK in light_reputation ===
+    const todayDate = new Date().toISOString().split('T')[0];
+    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+    const lastActiveDate = userStats?.last_active_date;
+
+    let newStreak = 1;
+    if (lastActiveDate === todayDate) {
+      newStreak = currentStreak; // Already counted today
+    } else if (lastActiveDate === yesterday) {
+      newStreak = currentStreak + 1; // Consecutive day
+    }
+    // else: reset to 1
+
+    await supabase
+      .from('light_reputation')
+      .upsert({
+        user_id: beneficiaryId,
+        consistency_streak: newStreak,
+        last_active_date: todayDate,
+      }, { onConflict: 'user_id', ignoreDuplicates: false });
+
+    console.log(`[PPLP] Action recorded: ${lightAction.id}, Beneficiary: ${beneficiaryId}, Score: ${lightScore}, Streak: ${newStreak}`);
 
     return new Response(JSON.stringify({
       success: true,
@@ -371,6 +412,10 @@ USER AVG QUALITY: ${userStats?.avg_quality || 1.0}
           integrity: evaluation.integrity_score,
           unity: evaluation.unity_score,
           unity_multiplier: unityMultiplier,
+          consistency_multiplier: consistencyMultiplier,
+          sequence_multiplier: sequenceMultiplier,
+          integrity_penalty: integrityPenalty,
+          streak_days: newStreak,
           reasoning: evaluation.reasoning,
         },
       },

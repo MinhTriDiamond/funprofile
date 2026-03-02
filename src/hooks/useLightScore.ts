@@ -36,6 +36,8 @@ export interface LightScoreData {
     content_preview: string | null;
     created_at: string;
   }>;
+  consistency_streak: number;
+  sequence_bonus: number;
   last_action_at: string | null;
   last_mint_at: string | null;
   epoch?: {
