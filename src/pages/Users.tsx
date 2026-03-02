@@ -403,8 +403,9 @@ const Users = () => {
                       </TableCell>
                       <TableCell>
                         <div className="text-xs">
-                          <p className="text-amber-500 font-semibold">{fmt(user.pending_reward)}</p>
-                          <p className="text-emerald-500">{fmt(user.approved_reward)}</p>
+                          <p className="text-amber-500 font-semibold">
+                            {fmt(user.camly_calculated - user.camly_claimed)}
+                          </p>
                         </div>
                       </TableCell>
                       <TableCell className="hidden md:table-cell text-xs font-semibold text-amber-600">
