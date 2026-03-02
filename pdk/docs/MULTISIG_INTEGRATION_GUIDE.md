@@ -26,11 +26,11 @@
 
 Hệ thống **PPLP (Proof of Pure Love Protocol)** sử dụng cơ chế **Multisig 3-of-3** với 3 nhóm đại diện cộng đồng:
 
-| Nhóm | Tên tiếng Việt | Emoji | Vai trò |
-|------|---------------|-------|---------|
-| **WILL** | Ý Chí | 💪 | Kỹ thuật & Ý chí |
-| **WISDOM** | Trí Tuệ | 🌟 | Tầm nhìn chiến lược |
-| **LOVE** | Yêu Thương | ❤️ | Nhân ái & Chữa lành |
+| Nhóm       | Tên tiếng Việt | Emoji | Vai trò             |
+| ---------- | -------------- | ----- | ------------------- |
+| **WILL**   | Ý Chí          | 💪    | Kỹ thuật & Ý chí    |
+| **WISDOM** | Trí Tuệ        | 🌟    | Tầm nhìn chiến lược |
+| **LOVE**   | Yêu Thương     | ❤️    | Nhân ái & Chữa lành |
 
 **Quy tắc**: Mỗi yêu cầu mint FUN Money cần **1 chữ ký từ mỗi nhóm** (tổng 3 chữ ký).
 
@@ -63,12 +63,12 @@ Hệ thống **PPLP (Proof of Pure Love Protocol)** sử dụng cơ chế **Mult
 
 ## 2. Smart Contract
 
-| Thuộc tính | Giá trị |
-|-----------|---------|
-| **Tên contract** | FUNMoneyProductionV1_2_1 |
-| **Địa chỉ** | `0x39A1b047D5d143f8874888cfa1d30Fb2AE6F0CD6` |
-| **Chain** | BSC Testnet (Chain ID: 97) |
-| **Token** | FUN Money (FUN), 18 decimals |
+| Thuộc tính       | Giá trị                                      |
+| ---------------- | -------------------------------------------- |
+| **Tên contract** | FUNMoneyProductionV1_2_1                     |
+| **Địa chỉ**      | `0x39A1b047D5d143f8874888cfa1d30Fb2AE6F0CD6` |
+| **Chain**        | BSC Testnet (Chain ID: 97)                   |
+| **Token**        | FUN Money (FUN), 18 decimals                 |
 
 ### Contract ABI (các hàm cần dùng)
 
@@ -106,7 +106,7 @@ Bước 1: USER tạo yêu cầu mint
    ▼
 Bước 2: GOV ATTESTER ký (tuần tự, mỗi nhóm 1 người)
    │  2a. WILL member ký EIP-712 → status: signing
-   │  2b. WISDOM member ký EIP-712 → status: signing  
+   │  2b. WISDOM member ký EIP-712 → status: signing
    │  2c. LOVE member ký EIP-712 → status: signed (đủ 3/3)
    ▼
 Bước 3: ADMIN verify nonce on-chain
@@ -158,24 +158,24 @@ pdk/
 
 ### Bảng `pplp_mint_requests`
 
-| Cột | Kiểu | Mô tả |
-|-----|------|-------|
-| `id` | UUID | Primary key |
-| `user_id` | UUID | ID người dùng tạo request |
-| `recipient_address` | TEXT | Địa chỉ ví nhận FUN |
-| `action_ids` | UUID[] | Danh sách light action IDs |
-| `action_type` | TEXT | Loại action (POST_CREATE, etc.) |
-| `amount` | NUMERIC | Số FUN (human readable) |
-| `amount_wei` | TEXT | Số FUN dạng Wei (18 decimals) |
-| `action_hash` | TEXT | Keccak256 hash của action type |
-| `evidence_hash` | TEXT | SHA-256 hash của evidence |
-| `nonce` | TEXT | Nonce on-chain tại thời điểm tạo |
-| **`multisig_signatures`** | **JSONB** | `{ will: {...}, wisdom: {...}, love: {...} }` |
-| **`multisig_completed_groups`** | **TEXT[]** | `['will', 'wisdom']` |
-| **`multisig_required_groups`** | **TEXT[]** | `['will', 'wisdom', 'love']` |
-| `status` | TEXT | `pending_sig` → `signing` → `signed` → `submitted` → `confirmed` |
-| `tx_hash` | TEXT | Transaction hash on-chain |
-| `platform_id` | TEXT | `fun_profile`, `fun_play`, `angel_ai` |
+| Cột                             | Kiểu       | Mô tả                                                            |
+| ------------------------------- | ---------- | ---------------------------------------------------------------- |
+| `id`                            | UUID       | Primary key                                                      |
+| `user_id`                       | UUID       | ID người dùng tạo request                                        |
+| `recipient_address`             | TEXT       | Địa chỉ ví nhận FUN                                              |
+| `action_ids`                    | UUID[]     | Danh sách light action IDs                                       |
+| `action_type`                   | TEXT       | Loại action (POST_CREATE, etc.)                                  |
+| `amount`                        | NUMERIC    | Số FUN (human readable)                                          |
+| `amount_wei`                    | TEXT       | Số FUN dạng Wei (18 decimals)                                    |
+| `action_hash`                   | TEXT       | Keccak256 hash của action type                                   |
+| `evidence_hash`                 | TEXT       | SHA-256 hash của evidence                                        |
+| `nonce`                         | TEXT       | Nonce on-chain tại thời điểm tạo                                 |
+| **`multisig_signatures`**       | **JSONB**  | `{ will: {...}, wisdom: {...}, love: {...} }`                    |
+| **`multisig_completed_groups`** | **TEXT[]** | `['will', 'wisdom']`                                             |
+| **`multisig_required_groups`**  | **TEXT[]** | `['will', 'wisdom', 'love']`                                     |
+| `status`                        | TEXT       | `pending_sig` → `signing` → `signed` → `submitted` → `confirmed` |
+| `tx_hash`                       | TEXT       | Transaction hash on-chain                                        |
+| `platform_id`                   | TEXT       | `fun_profile`, `fun_play`, `angel_ai`                            |
 
 ### Cấu trúc `multisig_signatures` (JSONB)
 
@@ -243,29 +243,27 @@ PPLP_TYPEHASH = keccak256(
 
 ### WILL (Ý Chí) 💪 - 3 thành viên
 
-| Tên | Địa chỉ ví |
-|-----|-----------|
-| Minh Trí | `0xe32d50a0badE4cbD5B0d6120d3A5FD07f63694f1` |
+| Tên        | Địa chỉ ví                                   |
+| ---------- | -------------------------------------------- |
+| Minh Trí   | `0xe32d50a0badE4cbD5B0d6120d3A5FD07f63694f1` |
 | Ánh Nguyệt | `0xfd0Da7a744245e7aCECCd786d5a743Ef9291a557` |
-| Thu Trang | `0x02D5578173bd0DB25462BB32A254Cd4b2E6D9a0D` |
+| Thu Trang  | `0x02D5578173bd0DB25462BB32A254Cd4b2E6D9a0D` |
 
 ### WISDOM (Trí Tuệ) 🌟 - 4 thành viên
 
-| Tên | Địa chỉ ví |
-|-----|-----------|
+| Tên     | Địa chỉ ví                                   |
+| ------- | -------------------------------------------- |
 | Bé Giàu | `0xCa319fBc39F519822385F2D0a0114B14fa89A301` |
 | Bé Ngọc | `0xDf8249159BB67804D718bc8186f95B75CE5ECbe8` |
-| Ái Vân | `0x5102Ecc4a458a1af76aFA50d23359a712658a402` |
-| Minh Trí Test 1 | `0xE3e97a95d3f61814473f6d1eEbBa8253286D65c5` |
+| Ái Vân  | `0x5102Ecc4a458a1af76aFA50d23359a712658a402` |
 
 ### LOVE (Yêu Thương) ❤️ - 4 thành viên
 
-| Tên | Địa chỉ ví |
-|-----|-----------|
+| Tên        | Địa chỉ ví                                   |
+| ---------- | -------------------------------------------- |
 | Thanh Tiên | `0xE418a560611e80E4239F5513D41e583fC9AC2E6d` |
-| Bé Kim | `0x67464Df3082828b3Cf10C5Cb08FC24A28228EFd1` |
-| Bé Hà | `0x9ec8C51175526BEbB1D04100256De71CF99B7CCC` |
-| Minh Trí Test 2 | `0x57a7943F2808Fc24b0403f25bb4670c5d84b3f2e` |
+| Bé Kim     | `0x67464Df3082828b3Cf10C5Cb08FC24A28228EFd1` |
+| Bé Hà      | `0x9ec8C51175526BEbB1D04100256De71CF99B7CCC` |
 
 > **Lưu ý**: Tất cả 11 địa chỉ phải được đăng ký trên contract qua `govRegisterAttester()` trước khi ký.
 
@@ -349,12 +347,12 @@ supabase functions deploy pplp-mint-fun
 
 ### RLS Policies
 
-| Policy | Mô tả |
-|--------|-------|
-| User SELECT | User chỉ xem request của chính mình |
-| Attester SELECT | Attester chỉ xem request `signing` hoặc `signed` |
+| Policy          | Mô tả                                             |
+| --------------- | ------------------------------------------------- |
+| User SELECT     | User chỉ xem request của chính mình               |
+| Attester SELECT | Attester chỉ xem request `signing` hoặc `signed`  |
 | Attester UPDATE | Attester chỉ cập nhật chữ ký trên request đang ký |
-| User INSERT | User chỉ tạo request cho chính mình |
+| User INSERT     | User chỉ tạo request cho chính mình               |
 
 ### Anti-Fraud Checks
 
@@ -422,9 +420,10 @@ supabase functions deploy pplp-mint-fun
 ## 📞 Liên hệ hỗ trợ
 
 Nếu cần hỗ trợ triển khai, liên hệ team FUN Profile:
+
 - **Kỹ thuật**: Minh Trí (WILL group)
 - **Smart Contract**: Kiểm tra trên [BSC Testnet Explorer](https://testnet.bscscan.com/address/0x39A1b047D5d143f8874888cfa1d30Fb2AE6F0CD6)
 
 ---
 
-*Tài liệu này được tạo tự động từ mã nguồn FUN Profile. Vui lòng kiểm tra phiên bản mới nhất trước khi triển khai.*
+_Tài liệu này được tạo tự động từ mã nguồn FUN Profile. Vui lòng kiểm tra phiên bản mới nhất trước khi triển khai._
