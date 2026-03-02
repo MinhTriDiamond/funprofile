@@ -10,6 +10,7 @@ const corsHeaders = {
 const FUN_MONEY_CONTRACT = '0x39A1b047D5d143f8874888cfa1d30Fb2AE6F0CD6';
 const BSC_TESTNET_RPC = 'https://data-seed-prebsc-1-s1.binance.org:8545/';
 const DEFAULT_ACTION_NAME = 'light_action';
+const PAGE_SIZE = 1000;
 
 async function getNonceFromContract(address: string): Promise<bigint> {
   try {
@@ -41,6 +42,31 @@ function generateEvidenceHash(actionTypes: string[], userId: string, timestamp: 
 
 function generateActionHash(actionName: string): string {
   return keccak256(toBytes(actionName));
+}
+
+// Fetch tất cả eligible actions bằng phân trang để vượt giới hạn 1000 rows
+async function fetchAllEligibleActions(supabaseAdmin: ReturnType<typeof createClient>) {
+  const allActions: { id: string; user_id: string; action_type: string; mint_amount: number }[] = [];
+  let offset = 0;
+
+  while (true) {
+    const { data, error } = await supabaseAdmin
+      .from('light_actions')
+      .select('id, user_id, action_type, mint_amount')
+      .eq('mint_status', 'approved')
+      .eq('is_eligible', true)
+      .is('mint_request_id', null)
+      .range(offset, offset + PAGE_SIZE - 1);
+
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+
+    allActions.push(...data);
+    if (data.length < PAGE_SIZE) break;
+    offset += PAGE_SIZE;
+  }
+
+  return allActions;
 }
 
 serve(async (req) => {
@@ -111,10 +137,14 @@ serve(async (req) => {
     if (rejectedRequests && rejectedRequests.length > 0) {
       const allActionIds = rejectedRequests.flatMap(r => r.action_ids || []);
       if (allActionIds.length > 0) {
-        await supabaseAdmin
-          .from('light_actions')
-          .update({ mint_status: 'approved', mint_request_id: null })
-          .in('id', allActionIds);
+        // Batch update in chunks
+        const CHUNK = 500;
+        for (let i = 0; i < allActionIds.length; i += CHUNK) {
+          await supabaseAdmin
+            .from('light_actions')
+            .update({ mint_status: 'approved', mint_request_id: null })
+            .in('id', allActionIds.slice(i, i + CHUNK));
+        }
         console.log(`[BATCH-MINT] Reset ${allActionIds.length} light_actions from rejected requests`);
       }
 
@@ -133,13 +163,10 @@ serve(async (req) => {
       .update({ mint_status: 'approved', mint_request_id: null })
       .eq('mint_status', 'rejected');
 
-    // Step 4: Find all users with approved+eligible actions
-    const { data: eligibleActions, error: actionsError } = await supabaseAdmin
-      .from('light_actions')
-      .select('id, user_id, action_type, mint_amount')
-      .eq('mint_status', 'approved')
-      .eq('is_eligible', true)
-      .is('mint_request_id', null);
+    // Step 4: Find all users with approved+eligible actions (with pagination)
+    const eligibleActions = await fetchAllEligibleActions(supabaseAdmin);
+
+    console.log(`[BATCH-MINT] Fetched ${eligibleActions.length} total eligible actions (paginated)`);
 
     // Step 4b: Get banned user IDs to exclude
     const { data: bannedUsers } = await supabaseAdmin
@@ -148,7 +175,7 @@ serve(async (req) => {
       .eq('is_banned', true);
     const bannedUserIds = new Set((bannedUsers || []).map(u => u.id));
 
-    if (actionsError || !eligibleActions || eligibleActions.length === 0) {
+    if (eligibleActions.length === 0) {
       return new Response(JSON.stringify({
         success: true,
         summary: { rejected_cleaned: rejectedCount, created: 0, skipped_no_wallet: 0, total_actions_reset: 0 },
@@ -167,13 +194,18 @@ serve(async (req) => {
     const userIds = Object.keys(userActionsMap);
     console.log(`[BATCH-MINT] Found ${userIds.length} users with eligible actions`);
 
-    // Step 5: Get wallet addresses for all users
-    const { data: profiles } = await supabaseAdmin
-      .from('profiles')
-      .select('id, public_wallet_address, wallet_address')
-      .in('id', userIds);
+    // Step 5: Get wallet addresses for all users (paginated)
+    const profiles: { id: string; public_wallet_address: string | null; wallet_address: string | null }[] = [];
+    for (let i = 0; i < userIds.length; i += PAGE_SIZE) {
+      const batch = userIds.slice(i, i + PAGE_SIZE);
+      const { data } = await supabaseAdmin
+        .from('profiles')
+        .select('id, public_wallet_address, wallet_address')
+        .in('id', batch);
+      if (data) profiles.push(...data);
+    }
 
-    const profileMap = new Map((profiles || []).map(p => [p.id, p]));
+    const profileMap = new Map(profiles.map(p => [p.id, p]));
 
     let created = 0;
     let skippedNoWallet = 0;
@@ -225,11 +257,15 @@ serve(async (req) => {
           continue;
         }
 
-        // Update light_actions
-        await supabaseAdmin
-          .from('light_actions')
-          .update({ mint_status: 'pending_sig', mint_request_id: mintReq.id })
-          .in('id', actions.map(a => a.id));
+        // Update light_actions in chunks
+        const actionIds = actions.map(a => a.id);
+        const CHUNK = 500;
+        for (let i = 0; i < actionIds.length; i += CHUNK) {
+          await supabaseAdmin
+            .from('light_actions')
+            .update({ mint_status: 'pending_sig', mint_request_id: mintReq.id })
+            .in('id', actionIds.slice(i, i + CHUNK));
+        }
 
         created++;
       } catch (err: unknown) {
@@ -247,6 +283,7 @@ serve(async (req) => {
         created,
         skipped_no_wallet: skippedNoWallet,
         total_eligible_users: userIds.length,
+        total_eligible_actions: eligibleActions.length,
         errors: errors.length > 0 ? errors.slice(0, 10) : undefined,
       },
       message: `Đã tạo ${created} mint requests mới. ${skippedNoWallet} users bỏ qua (chưa có ví).`
