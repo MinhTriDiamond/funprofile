@@ -1,86 +1,104 @@
 
+# Sửa lỗi tính sai số lượng FUN trong Mint Requests
 
-# Loai bo CF Worker - Tao Agora token truc tiep trong Edge Function
+## Vấn đề phát hiện
 
-## Van de hien tai
+Số lượng FUN trên Admin Dashboard bị thổi phồng nghiêm trọng do 3 bug:
 
-Luong hien tai di qua 2 lop trung gian khong can thiet:
+### Bug 1: Merge function cộng dồn sai (NGHIÊM TRỌNG)
+File: `supabase/functions/admin-merge-mint-requests/index.ts` (dòng 178-183)
+
+Hiện tại merge tính tổng bằng `amount_display` từ request cũ thay vì tính lại từ `light_actions`.
+Mỗi lần admin bấm "Gộp Mint Requests", số FUN bị nhân đôi.
+
+Ví dụ cụ thể: User `hongthienhanh68` chỉ có 47 actions = 165 FUN thực tế, nhưng mint request hiển thị 74,856 FUN.
+
+### Bug 2: Batch create không phân trang
+File: `supabase/functions/admin-batch-mint-requests/index.ts` (dòng 137-142)
+
+Supabase mặc định giới hạn 1000 rows. Nếu có trên 1000 eligible actions, hàm chỉ xử lý 1000 dòng đầu -- bỏ sót phần còn lại.
+
+### Bug 3: Không khử trùng action_ids khi merge
+Hàm merge dùng `flatMap` gộp tất cả action_ids mà không loại bỏ ID trùng lặp.
+
+## Giải pháp
+
+### 1. Sửa merge function -- Tính lại từ light_actions
+
+Thay vì cộng `amount_display` từ request cũ:
 
 ```text
-Browser --> agora-token Edge Function --> CF Worker --> agora-token npm --> tra token
-Browser --> live-token Edge Function --> CF Worker --> agora-token npm --> tra token
+Trước (SAI):
+  totalDisplay = sum(request.amount_display)
+
+Sau (ĐÚNG):
+  1. Gom tất cả action_ids (đã khử trùng)
+  2. Query SUM(mint_amount) FROM light_actions WHERE id IN (action_ids)
+  3. Dùng tổng thực tế làm amount_display
+  4. Tính lại amount_wei = totalDisplay * 1e18
 ```
 
-CF Worker chi lam duy nhat 1 viec: goi thu vien `agora-token` (npm) de tao RTC token. Viec nay hoan toan co the lam truc tiep trong Edge Function.
+### 2. Sửa batch create -- Phân trang đầy đủ
 
-## Giai phap
+Thay query đơn lẻ bằng vòng lặp phân trang (mỗi lần 1000 dòng) để đảm bảo lấy hết tất cả eligible actions.
 
-Import `agora-token` qua `npm:agora-token` trong Deno va tao token truc tiep:
+### 3. Thêm validation safeguard
+
+Sau khi tạo/gộp request, so sánh `amount_display` với tổng thực tế từ `light_actions`. Nếu lệch nhau, dùng giá trị từ `light_actions`.
+
+### 4. Script sửa dữ liệu hiện tại
+
+Tất cả mint requests ở trạng thái `pending_sig` cần được tính lại `amount_display` và `amount_wei` từ `light_actions` thực tế.
+
+## Danh sách file thay đổi
+
+| File | Thay đổi |
+|---|---|
+| `supabase/functions/admin-merge-mint-requests/index.ts` | Tính lại amount từ light_actions thay vì cộng dồn; khử trùng action_ids |
+| `supabase/functions/admin-batch-mint-requests/index.ts` | Thêm phân trang khi fetch eligible actions (vượt giới hạn 1000 dòng) |
+
+## Chi tiết kỹ thuật
+
+### Sửa merge (admin-merge-mint-requests)
+
+Dòng 170-206: Thay đổi logic tính amount:
 
 ```text
-Browser --> agora-token Edge Function --> tra token (truc tiep)
-Browser --> live-token Edge Function --> tra token (truc tiep)
+// 1. Gom action_ids, khử trùng
+const allActionIds = [...new Set(requests.flatMap(r => r.action_ids || []))];
+
+// 2. Query tổng thực tế từ light_actions
+SELECT SUM(mint_amount) FROM light_actions WHERE id IN (allActionIds) AND is_eligible = true
+
+// 3. Dùng tổng thực tế
+totalDisplay = actualTotal từ query
+totalWei = BigInt(Math.floor(totalDisplay * 1e18))
 ```
 
-## Loi ich
+### Sửa batch create (admin-batch-mint-requests)
 
-| Truoc | Sau |
-|---|---|
-| 3 thanh phan (Browser, Edge Function, CF Worker) | 2 thanh phan (Browser, Edge Function) |
-| Can deploy CF Worker rieng | Khong can deploy gi them |
-| 4 secrets (APP_ID, CERTIFICATE, WORKER_URL, WORKER_API_KEY) | 2 secrets (APP_ID, CERTIFICATE) |
-| Do tre cao hon (Edge Function goi HTTP den Worker) | Nhanh hon ~100-200ms |
-| CF Worker co the down rieng | It diem loi hon |
+Dòng 137-142: Thêm phân trang:
 
-## Chi tiet thay doi
+```text
+let allActions = [];
+let offset = 0;
+const PAGE_SIZE = 1000;
 
-### 1. Cap nhat agora-token Edge Function
+while (true) {
+  const { data } = query.range(offset, offset + PAGE_SIZE - 1);
+  if (!data || data.length === 0) break;
+  allActions.push(...data);
+  if (data.length < PAGE_SIZE) break;
+  offset += PAGE_SIZE;
+}
+```
 
-File: `supabase/functions/agora-token/index.ts`
+### Sửa dữ liệu hiện có
 
-- Import `RtcTokenBuilder, RtcRole` tu `npm:agora-token`
-- Doc `AGORA_APP_ID` va `AGORA_APP_CERTIFICATE` tu `Deno.env`
-- Goi `RtcTokenBuilder.buildTokenWithUserAccount()` truc tiep
-- Bo toan bo logic goi CF Worker qua `fetch(workerUrl, ...)`
-- Giu nguyen logic xac thuc user va kiem tra participant
+Sau khi deploy code mới, chạy "Gộp Mint Requests" một lần -- hàm mới sẽ tự tính lại đúng amount từ light_actions. Hoặc có thể tạo script riêng để recalculate tất cả pending_sig requests.
 
-### 2. Cap nhat live-token Edge Function
+## Rủi ro
 
-File: `supabase/functions/live-token/index.ts`
-
-- Import `RtcTokenBuilder, RtcRole` tu `npm:agora-token`
-- Doc `AGORA_APP_ID` va `AGORA_APP_CERTIFICATE` tu `Deno.env`
-- Goi `RtcTokenBuilder.buildTokenWithUid()` voi `numericUid` (da co san ham `uuidToNumericUid`)
-- Bo toan bo logic goi CF Worker (`workerUrl`, `workerApiKey`, `fetch(workerUrl, ...)`)
-- Giu nguyen logic xac thuc user, kiem tra session, kiem tra host
-
-### 3. Them 2 secrets vao Lovable Cloud
-
-- `AGORA_APP_ID`: App ID tu Agora Console
-- `AGORA_APP_CERTIFICATE`: App Certificate tu Agora Console
-
-(Neu da co san thi khong can them)
-
-### 4. Don dep
-
-- Bo 3 secrets khong con can: `AGORA_WORKER_URL`, `AGORA_WORKER_API_KEY`, `LIVE_AGORA_WORKER_URL`
-- Thu muc `fun-agora-rtc-token/` co the luu tru hoac xoa -- khong con can deploy
-
-### 5. Cap nhat client code
-
-File: `src/lib/agoraRtc.ts`
-- Khong can thay doi gi -- client van goi `supabase.functions.invoke('agora-token')` va `supabase.functions.invoke('live-token')` nhu cu
-
-## Danh sach file thay doi
-
-| File | Thay doi |
-|---|---|
-| `supabase/functions/agora-token/index.ts` | Tao token truc tiep bang `agora-token` npm, bo goi CF Worker |
-| `supabase/functions/live-token/index.ts` | Tao token truc tiep bang `agora-token` npm, bo goi CF Worker |
-
-## Rui ro
-
-- **Rat thap**: Thu vien `agora-token` npm tuong thich Deno (chi dung Node.js crypto, Deno ho tro day du)
-- **Khong anh huong client**: Client code van goi cung Edge Function, response format giu nguyen
-- **Du lieu an toan**: Khong thay doi database hay storage
-
+- **Thấp**: Chỉ thay đổi logic tính toán, không thay đổi schema
+- **Quan trọng**: Sau khi deploy, CẦN chạy lại merge để sửa dữ liệu hiện tại
+- **Không ảnh hưởng**: Các request đã confirmed trên blockchain không bị ảnh hưởng
