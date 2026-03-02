@@ -1829,36 +1829,120 @@ export type Database = {
           },
         ]
       }
+      mint_allocations: {
+        Row: {
+          allocation_amount: number
+          allocation_amount_capped: number
+          created_at: string | null
+          epoch_id: string
+          id: string
+          is_eligible: boolean
+          light_score_total: number
+          mint_request_id: string | null
+          reason_codes: string[] | null
+          share_percent: number
+          status: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          allocation_amount?: number
+          allocation_amount_capped?: number
+          created_at?: string | null
+          epoch_id: string
+          id?: string
+          is_eligible?: boolean
+          light_score_total?: number
+          mint_request_id?: string | null
+          reason_codes?: string[] | null
+          share_percent?: number
+          status?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          allocation_amount?: number
+          allocation_amount_capped?: number
+          created_at?: string | null
+          epoch_id?: string
+          id?: string
+          is_eligible?: boolean
+          light_score_total?: number
+          mint_request_id?: string | null
+          reason_codes?: string[] | null
+          share_percent?: number
+          status?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mint_allocations_epoch_id_fkey"
+            columns: ["epoch_id"]
+            isOneToOne: false
+            referencedRelation: "mint_epochs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mint_allocations_mint_request_id_fkey"
+            columns: ["mint_request_id"]
+            isOneToOne: false
+            referencedRelation: "pplp_mint_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mint_epochs: {
         Row: {
           created_at: string
+          eligible_users: number | null
           epoch_date: string
+          epoch_month: string | null
           id: string
+          mint_pool: number | null
           platform_pool: Json
+          rules_version: string | null
+          snapshot_at: string | null
+          status: string | null
           total_actions: number
           total_cap: number
+          total_light_score: number | null
           total_minted: number
           unique_users: number
           updated_at: string
         }
         Insert: {
           created_at?: string
+          eligible_users?: number | null
           epoch_date: string
+          epoch_month?: string | null
           id?: string
+          mint_pool?: number | null
           platform_pool?: Json
+          rules_version?: string | null
+          snapshot_at?: string | null
+          status?: string | null
           total_actions?: number
           total_cap?: number
+          total_light_score?: number | null
           total_minted?: number
           unique_users?: number
           updated_at?: string
         }
         Update: {
           created_at?: string
+          eligible_users?: number | null
           epoch_date?: string
+          epoch_month?: string | null
           id?: string
+          mint_pool?: number | null
           platform_pool?: Json
+          rules_version?: string | null
+          snapshot_at?: string | null
+          status?: string | null
           total_actions?: number
           total_cap?: number
+          total_light_score?: number | null
           total_minted?: number
           unique_users?: number
           updated_at?: string

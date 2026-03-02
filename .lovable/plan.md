@@ -132,11 +132,11 @@ Thay doi giao dien:
 
 ## Thu tu thuc hien
 
-1. Migration DB (mint_allocations + cap nhat mint_epochs)
-2. Edge Function pplp-epoch-snapshot
-3. Cap nhat pplp-evaluate (bo mint_amount per-action)
-4. Cap nhat pplp-mint-fun (doc tu allocation)
-5. Hook useEpochAllocation
-6. Cap nhat ClaimRewardsCard UI
-7. Cap nhat Admin PplpMintTab
+1. ✅ Migration DB (mint_allocations + cap nhat mint_epochs)
+2. ✅ Edge Function pplp-epoch-snapshot
+3. ✅ Cap nhat pplp-evaluate (bo mint_amount per-action → set = 0)
+4. ✅ Cap nhat pplp-mint-fun (doc tu allocation_id)
+5. ✅ Hook useEpochAllocation
+6. ✅ Cap nhat ClaimRewardsCard UI (epoch-based)
+7. ✅ Cap nhat Admin PplpMintTab (nut Snapshot)
 
