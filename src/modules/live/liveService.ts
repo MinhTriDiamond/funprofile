@@ -154,7 +154,6 @@ export async function createLiveSession(input: CreateLiveSessionInput): Promise<
   const visibility = input.privacy === 'friends' ? 'friends' : 'public';
 
   // ── Single Active Host Rule (Facebook-style) ──
-  // Auto-end any existing live sessions before creating a new one
   const { data: oldSessions } = await db
     .from('live_sessions')
     .select('id, post_id')
@@ -169,7 +168,6 @@ export async function createLiveSession(input: CreateLiveSessionInput): Promise<
       .eq('host_user_id', userId)
       .eq('status', 'live');
 
-    // Update old posts metadata to ended
     for (const old of oldSessions) {
       if (old.post_id) {
         await mergeLivePostMetadata(old.post_id, { live_status: 'ended', ended_at: nowIso });
@@ -240,7 +238,6 @@ export async function createLiveSession(input: CreateLiveSessionInput): Promise<
       })
       .eq('id', postId);
 
-    // Fire-and-forget: notify friends
     notifyFriendsLiveStarted(data.id, postId!).catch((err) =>
       console.warn('[liveService] notify-live-started failed:', err)
     );
@@ -387,74 +384,95 @@ export async function saveLiveReplay(liveSessionId: string, playbackUrl?: string
   });
 }
 
-// ─── Chunked Recording: Upload & Finalize ───────────────────────
+// ─── Chunked Recording: Upload via Edge Function (Presigned URL) ─────
 
-const WORKER_URL = import.meta.env.VITE_AGORA_WORKER_URL || 'https://fun-agora-rtc-token.trong-nguyen.workers.dev';
-
-function ensureWorkerUrl(): string {
-  if (!WORKER_URL) {
-    console.error('[liveService] VITE_AGORA_WORKER_URL is not configured! Chunk upload will fail.');
-    throw new Error('VITE_AGORA_WORKER_URL is missing — cần cấu hình Worker URL');
-  }
-  return WORKER_URL.replace(/\/+$/, '');
-}
-
+/**
+ * Upload a single chunk via presigned URL from r2-signed-chunk-url Edge Function.
+ */
 export async function uploadLiveChunk(
   blob: Blob,
-  sessionId: string,
+  recordingId: string,
   chunkIndex: number,
   mimeType: string
 ): Promise<string> {
-  const workerUrl = ensureWorkerUrl();
   const { data: { session } } = await supabase.auth.getSession();
   if (!session?.access_token) throw new Error('Not authenticated');
 
-  console.log(`[uploadLiveChunk] #${chunkIndex} size=${blob.size} → ${workerUrl}/upload/live-chunk`);
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-  let res: Response;
-  try {
-    res = await fetch(`${workerUrl}/upload/live-chunk`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${session.access_token}`,
-        'Content-Type': mimeType || 'video/webm',
-        'X-Stream-Id': sessionId,
-        'X-Chunk-Index': String(chunkIndex),
-      },
-      body: blob,
-    });
-  } catch (networkErr) {
-    console.error(`[uploadLiveChunk] #${chunkIndex} network error:`, networkErr);
-    throw new Error(`Chunk #${chunkIndex} network error: ${networkErr}`);
-  }
-
-  if (!res.ok) {
-    const errBody = await res.text().catch(() => 'no body');
-    console.error(`[uploadLiveChunk] #${chunkIndex} failed: ${res.status} ${res.statusText}`, errBody);
-    throw new Error(`Chunk #${chunkIndex} upload failed: ${res.status} — ${errBody}`);
-  }
-
-  const data = await res.json() as { ok: boolean; key: string; chunkIndex: number };
-  console.log(`[uploadLiveChunk] #${chunkIndex} ✓ key=${data.key}`);
-  return data.key;
-}
-
-export async function finalizeLiveChunks(
-  sessionId: string,
-  chunkKeys: string[],
-  mimeType: string = 'video/webm'
-): Promise<{ key: string; url: string }> {
-  const workerUrl = ensureWorkerUrl();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.access_token) throw new Error('Not authenticated');
-
-  const res = await fetch(`${workerUrl}/upload/live-finalize`, {
+  // 1. Get presigned URL from Edge Function
+  const presignRes = await fetch(`${supabaseUrl}/functions/v1/r2-signed-chunk-url`, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${session.access_token}`,
       'Content-Type': 'application/json',
+      'Authorization': `Bearer ${session.access_token}`,
+      'apikey': supabaseKey,
     },
-    body: JSON.stringify({ streamId: sessionId, chunkKeys, mimeType }),
+    body: JSON.stringify({
+      recording_id: recordingId,
+      seq: chunkIndex,
+      contentType: mimeType || 'video/webm',
+      fileSize: blob.size,
+    }),
+  });
+
+  if (!presignRes.ok) {
+    const errBody = await presignRes.text().catch(() => 'no body');
+    throw new Error(`Presign chunk #${chunkIndex} failed: ${presignRes.status} — ${errBody}`);
+  }
+
+  const { uploadUrl, objectKey } = await presignRes.json() as { uploadUrl: string; objectKey: string };
+
+  // 2. Upload blob directly to R2 via presigned URL
+  const uploadRes = await fetch(uploadUrl, { method: 'PUT', body: blob });
+  if (!uploadRes.ok) {
+    throw new Error(`Chunk #${chunkIndex} R2 upload failed: ${uploadRes.status}`);
+  }
+
+  // 3. Record chunk in DB
+  await db
+    .from('chunked_recording_chunks')
+    .insert({
+      recording_id: recordingId,
+      seq: chunkIndex,
+      object_key: objectKey,
+      bytes: blob.size,
+      status: 'uploaded',
+      uploaded_at: new Date().toISOString(),
+    });
+
+  // 4. Update last_seq_uploaded
+  await db
+    .from('chunked_recordings')
+    .update({ last_seq_uploaded: chunkIndex })
+    .eq('id', recordingId);
+
+  console.log(`[uploadLiveChunk] #${chunkIndex} ✓ key=${objectKey}`);
+  return objectKey;
+}
+
+/**
+ * Finalize a chunked recording via recording-finalize Edge Function.
+ */
+export async function finalizeLiveChunks(
+  recordingId: string,
+  liveSessionId?: string
+): Promise<{ manifestUrl: string; totalChunks: number }> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) throw new Error('Not authenticated');
+
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+  const res = await fetch(`${supabaseUrl}/functions/v1/recording-finalize`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${session.access_token}`,
+      'apikey': supabaseKey,
+    },
+    body: JSON.stringify({ recording_id: recordingId, live_session_id: liveSessionId }),
   });
 
   if (!res.ok) {
@@ -462,8 +480,34 @@ export async function finalizeLiveChunks(
     throw new Error((err as any).error || `Finalize failed: ${res.status}`);
   }
 
-  const data = await res.json() as { ok: boolean; key: string; url: string };
-  return { key: data.key, url: data.url };
+  const data = await res.json() as { success: boolean; manifest_url: string; total_chunks: number };
+  return { manifestUrl: data.manifest_url, totalChunks: data.total_chunks };
+}
+
+/**
+ * Create a chunked_recordings row in DB to track the recording session.
+ */
+export async function createChunkedRecording(
+  userId: string,
+  liveSessionId: string,
+  channelName?: string,
+  mimeType: string = 'video/webm'
+): Promise<string> {
+  const { data, error } = await db
+    .from('chunked_recordings')
+    .insert({
+      user_id: userId,
+      live_session_id: liveSessionId,
+      channel_name: channelName,
+      mime_type: mimeType,
+      status: 'recording',
+      started_at: new Date().toISOString(),
+    })
+    .select('id')
+    .single();
+
+  if (error) throw error;
+  return data.id;
 }
 
 // ─── Notifications ──────────────────────────────────────────────
