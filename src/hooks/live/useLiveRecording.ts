@@ -11,10 +11,11 @@ interface UseLiveRecordingOptions {
   videoTrack: ICameraVideoTrack | null;
   audioTrack: IMicrophoneAudioTrack | null;
   sessionId?: string;
+  recordingId?: string;
   autoStart?: boolean;
 }
 
-export function useLiveRecording({ videoTrack, audioTrack, sessionId, autoStart = true }: UseLiveRecordingOptions) {
+export function useLiveRecording({ videoTrack, audioTrack, sessionId, recordingId, autoStart = true }: UseLiveRecordingOptions) {
   const recorderRef = useRef<ChunkedRecorderController | null>(null);
   const queueRef = useRef<ChunkUploadQueueController | null>(null);
   const chunkKeysRef = useRef<string[]>([]);
@@ -25,7 +26,7 @@ export function useLiveRecording({ videoTrack, audioTrack, sessionId, autoStart 
   const startedRef = useRef(false);
 
   const start = useCallback(() => {
-    if (!videoTrack || !audioTrack || !sessionId || recorderRef.current) return;
+    if (!videoTrack || !audioTrack || !sessionId || !recordingId || recorderRef.current) return;
 
     try {
       const videoMediaTrack = videoTrack.getMediaStreamTrack();
@@ -37,12 +38,13 @@ export function useLiveRecording({ videoTrack, audioTrack, sessionId, autoStart 
       // Init IndexedDB backup
       initRecoverySession(sessionId, 'video/webm').catch(() => {});
 
-      // Create upload queue
+      // Create upload queue — now uses presigned URL via Edge Function
+      const currentRecordingId = recordingId;
       const queue = createChunkUploadQueue({
         sessionId,
         maxRetries: 3,
         uploadFn: async (chunk) => {
-          const key = await uploadLiveChunk(chunk.blob, sessionId, chunk.index, chunk.mimeType);
+          const key = await uploadLiveChunk(chunk.blob, currentRecordingId, chunk.index, chunk.mimeType);
           chunkKeysRef.current.push(key);
           saveChunkKey(sessionId, key).catch(() => {});
           return key;
@@ -77,7 +79,7 @@ export function useLiveRecording({ videoTrack, audioTrack, sessionId, autoStart 
       console.error('[useLiveRecording] failed to start:', err);
       setPhase('error');
     }
-  }, [videoTrack, audioTrack, sessionId]);
+  }, [videoTrack, audioTrack, sessionId, recordingId]);
 
   const stop = useCallback(async (): Promise<{ blob: Blob; mimeType: string } | null> => {
     const recorder = recorderRef.current;
@@ -97,22 +99,16 @@ export function useLiveRecording({ videoTrack, audioTrack, sessionId, autoStart 
     }
   }, []);
 
-  const finalize = useCallback(async (): Promise<{ key: string; url: string } | null> => {
+  const finalize = useCallback(async (): Promise<{ manifestUrl: string; totalChunks: number } | null> => {
     const queue = queueRef.current;
-    if (!queue || !sessionId) return null;
+    if (!queue || !recordingId) return null;
 
     setPhase('uploading');
     try {
       await queue.flush();
 
-      const keys = [...chunkKeysRef.current];
-      if (keys.length === 0) {
-        console.warn('[useLiveRecording] no chunks uploaded, nothing to finalize');
-        setPhase('error');
-        return null;
-      }
-      const result = await finalizeLiveChunks(sessionId, keys, mimeTypeRef.current);
-      await clearRecovery(sessionId).catch(() => {});
+      const result = await finalizeLiveChunks(recordingId, sessionId);
+      await clearRecovery(sessionId!).catch(() => {});
       setPhase('done');
       return result;
     } catch (err) {
@@ -120,16 +116,16 @@ export function useLiveRecording({ videoTrack, audioTrack, sessionId, autoStart 
       setPhase('error');
       return null;
     }
-  }, [sessionId]);
+  }, [recordingId, sessionId]);
 
   // Auto-start when tracks are ready
   useEffect(() => {
-    if (autoStart && videoTrack && audioTrack && sessionId && !startedRef.current && phase === 'idle') {
+    if (autoStart && videoTrack && audioTrack && sessionId && recordingId && !startedRef.current && phase === 'idle') {
       startedRef.current = true;
       const timer = setTimeout(() => start(), 1000);
       return () => clearTimeout(timer);
     }
-  }, [autoStart, videoTrack, audioTrack, sessionId, phase, start]);
+  }, [autoStart, videoTrack, audioTrack, sessionId, recordingId, phase, start]);
 
   // beforeunload warning while recording
   useEffect(() => {

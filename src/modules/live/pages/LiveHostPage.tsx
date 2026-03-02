@@ -27,6 +27,7 @@ import {
   uploadLiveRecording,
   uploadLiveThumbnail,
   attachLiveReplayToPost,
+  createChunkedRecording,
   type RecordingStatus,
 } from '../liveService';
 import { createRecorder, type RecorderController } from '../recording/clientRecorder';
@@ -98,6 +99,7 @@ export default function LiveHostPage() {
   const preLiveState = (location.state as { title?: string; privacy?: string } | null);
 
   const [createdSessionId, setCreatedSessionId] = useState<string | null>(null);
+  const [recordingId, setRecordingId] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [bootState, setBootState] = useState<BootState>('idle');
   const [bootError, setBootError] = useState<string | null>(null);
@@ -154,6 +156,7 @@ export default function LiveHostPage() {
     videoTrack: CHUNKED_RECORDING_ENABLED ? (localTracks.video ?? null) : null,
     audioTrack: CHUNKED_RECORDING_ENABLED ? (localTracks.audio ?? null) : null,
     sessionId: CHUNKED_RECORDING_ENABLED ? effectiveSessionId : undefined,
+    recordingId: CHUNKED_RECORDING_ENABLED ? (recordingId ?? undefined) : undefined,
     autoStart: CHUNKED_RECORDING_ENABLED && isJoined,
   });
 
@@ -229,6 +232,22 @@ export default function LiveHostPage() {
       'create live session timeout'
     );
     setCreatedSessionId(created.id);
+
+    // Create chunked_recordings row for DB tracking
+    if (CHUNKED_RECORDING_ENABLED) {
+      try {
+        const recId = await createChunkedRecording(
+          currentUserId,
+          created.id,
+          created.channel_name,
+          'video/webm'
+        );
+        setRecordingId(recId);
+      } catch (err) {
+        console.warn('[LiveHost] createChunkedRecording failed:', err);
+      }
+    }
+
     setBootState('loading');
     navigate(`/live/${created.id}/host`, { replace: true });
   }, [liveSessionId, navigate]);
@@ -394,9 +413,9 @@ export default function LiveHostPage() {
           // 1. Stop MediaRecorder
           await recording.stop();
           
-          // 2. Flush queue + finalize (ghép chunks thành 1 file)
+          // 2. Flush queue + finalize (tạo manifest.json)
           const finalResult = await recording.finalize();
-          playbackUrl = finalResult?.url ?? null;
+          playbackUrl = finalResult?.manifestUrl ?? null;
           recordingStatus = playbackUrl ? 'ready' : 'failed';
           setRecordingState(playbackUrl ? 'ready' : 'failed');
         } catch (chunkErr: any) {
@@ -453,7 +472,7 @@ export default function LiveHostPage() {
       // 3. Finalize session & attach replay with thumbnail
       await finalizeLiveSession(effectiveSessionId, { playbackUrl, recordingStatus });
 
-      if (playbackUrl && !CHUNKED_RECORDING_ENABLED) {
+      if (playbackUrl) {
         try {
           await attachLiveReplayToPost(effectiveSessionId, playbackUrl, undefined, thumbnailUrl);
         } catch (attachErr) {

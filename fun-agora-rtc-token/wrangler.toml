@@ -5,8 +5,3 @@ compatibility_flags = ["nodejs_compat"]
 
 [vars]
 ALLOWED_ORIGINS = "https://funprofile.lovable.app,https://id-preview--f06fbccb-088c-4170-8736-4f1a09d4d572.lovable.app,https://f06fbccb-088c-4170-8736-4f1a09d4d572.lovableproject.com,http://localhost:5173"
-
-# R2 bucket binding for live video chunks
-[[r2_buckets]]
-binding = "LIVE_CHUNKS"
-bucket_name = "fun-live-chunks"
