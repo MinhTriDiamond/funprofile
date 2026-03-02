@@ -168,8 +168,8 @@ export const calculateUnityMultiplier = (unityScore: number): number => {
   return Math.max(0.5, Math.min(2.5, 0.5 + (unityScore / 50)));
 };
 
-// Light Score formula: BR × Q × I × K × Ux
-export const calculateLightScore = (
+// Legacy Light Score formula (without LS-Math multipliers): BR × Q × I × K × Ux
+export const calculateLightScoreLegacy = (
   baseReward: number,
   qualityScore: number,
   impactScore: number,
@@ -181,30 +181,89 @@ export const calculateLightScore = (
 
 // =============================================
 // LS-Math-v1.0 Configuration
+// Full spec: scoring_rules_v1.yaml
 // =============================================
 export const LS_MATH_CONFIG = {
+  version: 'LS-Math-v1.0' as const,
   weights: { base_action: 0.4, content: 0.6 },
+  reputation: {
+    alpha: 0.25,
+    w_min: 0.5,
+    w_max: 2.0,
+  },
+  content: {
+    gamma: 1.3,
+    type_multiplier: {
+      post: 1.0,
+      comment: 0.6,
+      video: 1.2,
+      course: 1.5,
+      bug_report: 1.1,
+      proposal: 1.3,
+    } as Record<string, number>,
+  },
   consistency: { beta: 0.6, lambda: 30 },
   sequence: { eta: 0.5, kappa: 5 },
   penalty: { theta: 0.8, max_penalty: 0.5 },
-  mint: { anti_whale_cap: 0.03, min_light_threshold: 10 },
+  mint: {
+    epoch_type: 'monthly' as const,
+    anti_whale_cap: 0.03,
+    min_light_threshold: 10,
+  },
 } as const;
 
-// LS-Math multiplier helpers
+// LS-Math-v1.0: Consistency Multiplier
+// M_cons = 1 + β(1 - e^(-streak/λ))
 export const calculateConsistencyMultiplier = (streakDays: number): number => {
   const { beta, lambda } = LS_MATH_CONFIG.consistency;
   return 1 + beta * (1 - Math.exp(-streakDays / lambda));
 };
 
+// LS-Math-v1.0: Sequence Multiplier
+// M_seq = 1 + η·tanh(bonus/κ)
 export const calculateSequenceMultiplier = (bonus: number): number => {
   const { eta, kappa } = LS_MATH_CONFIG.sequence;
   return 1 + eta * Math.tanh(bonus / kappa);
 };
 
+// LS-Math-v1.0: Integrity Penalty
+// Π = 1 - min(π_max, θ·risk)  where risk = 1 - integrity_score
 export const calculateIntegrityPenalty = (integrityScore: number): number => {
   const { theta, max_penalty } = LS_MATH_CONFIG.penalty;
   const risk = 1 - integrityScore;
   return 1 - Math.min(max_penalty, theta * risk);
+};
+
+// LS-Math-v1.0: Reputation Weight
+// w_u = clip(w_min, w_max, 1 + α·log(1 + R_u))
+export const calculateReputationWeight = (reputationScore: number): number => {
+  const { alpha, w_min, w_max } = LS_MATH_CONFIG.reputation;
+  return Math.max(w_min, Math.min(w_max, 1 + alpha * Math.log(1 + reputationScore)));
+};
+
+// LS-Math-v1.0: Content Normalization
+// h(P_c) = (P_c / 10)^γ
+export const normalizeContentScore = (pillarTotal: number): number => {
+  const { gamma } = LS_MATH_CONFIG.content;
+  return Math.pow(Math.max(0, Math.min(1, pillarTotal / 10)), gamma);
+};
+
+// LS-Math-v1.0: Full Light Score formula
+// L = BR × Q × I × K × Ux × M_cons × M_seq × Π
+export const calculateLightScore = (
+  baseReward: number,
+  qualityScore: number,
+  impactScore: number,
+  integrityScore: number,
+  unityMultiplier: number,
+  consistencyMultiplier: number = 1.0,
+  sequenceMultiplier: number = 1.0,
+  integrityPenalty: number = 1.0,
+): number => {
+  return Math.round(
+    baseReward * qualityScore * impactScore * integrityScore * unityMultiplier
+    * consistencyMultiplier * sequenceMultiplier * integrityPenalty * 100
+  ) / 100;
 };
 
 // Mint eligibility threshold
