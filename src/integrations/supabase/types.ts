@@ -1053,11 +1053,13 @@ export type Database = {
           actor_id: string | null
           angel_evaluation: Json | null
           base_reward: number
+          consistency_multiplier: number | null
           content_preview: string | null
           created_at: string
           evaluated_at: string | null
           id: string
           impact_score: number
+          integrity_penalty: number | null
           integrity_score: number
           is_eligible: boolean
           light_score: number
@@ -1068,6 +1070,8 @@ export type Database = {
           quality_score: number
           reference_id: string | null
           reference_type: string | null
+          sequence_multiplier: number | null
+          streak_days: number | null
           tx_hash: string | null
           unity_multiplier: number
           unity_score: number
@@ -1078,11 +1082,13 @@ export type Database = {
           actor_id?: string | null
           angel_evaluation?: Json | null
           base_reward?: number
+          consistency_multiplier?: number | null
           content_preview?: string | null
           created_at?: string
           evaluated_at?: string | null
           id?: string
           impact_score?: number
+          integrity_penalty?: number | null
           integrity_score?: number
           is_eligible?: boolean
           light_score?: number
@@ -1093,6 +1099,8 @@ export type Database = {
           quality_score?: number
           reference_id?: string | null
           reference_type?: string | null
+          sequence_multiplier?: number | null
+          streak_days?: number | null
           tx_hash?: string | null
           unity_multiplier?: number
           unity_score?: number
@@ -1103,11 +1111,13 @@ export type Database = {
           actor_id?: string | null
           angel_evaluation?: Json | null
           base_reward?: number
+          consistency_multiplier?: number | null
           content_preview?: string | null
           created_at?: string
           evaluated_at?: string | null
           id?: string
           impact_score?: number
+          integrity_penalty?: number | null
           integrity_score?: number
           is_eligible?: boolean
           light_score?: number
@@ -1118,6 +1128,8 @@ export type Database = {
           quality_score?: number
           reference_id?: string | null
           reference_type?: string | null
+          sequence_multiplier?: number | null
+          streak_days?: number | null
           tx_hash?: string | null
           unity_multiplier?: number
           unity_score?: number
@@ -1168,15 +1180,18 @@ export type Database = {
           avg_integrity: number
           avg_quality: number
           avg_unity: number
+          consistency_streak: number | null
           created_at: string
           daily_mint_cap: number
           last_action_at: string | null
+          last_active_date: string | null
           last_mint_at: string | null
           pillar_healing: number
           pillar_service: number
           pillar_truth: number
           pillar_unity: number
           pillar_value: number
+          sequence_bonus: number | null
           tier: number
           today_date: string
           today_minted: number
@@ -1191,15 +1206,18 @@ export type Database = {
           avg_integrity?: number
           avg_quality?: number
           avg_unity?: number
+          consistency_streak?: number | null
           created_at?: string
           daily_mint_cap?: number
           last_action_at?: string | null
+          last_active_date?: string | null
           last_mint_at?: string | null
           pillar_healing?: number
           pillar_service?: number
           pillar_truth?: number
           pillar_unity?: number
           pillar_value?: number
+          sequence_bonus?: number | null
           tier?: number
           today_date?: string
           today_minted?: number
@@ -1214,15 +1232,18 @@ export type Database = {
           avg_integrity?: number
           avg_quality?: number
           avg_unity?: number
+          consistency_streak?: number | null
           created_at?: string
           daily_mint_cap?: number
           last_action_at?: string | null
+          last_active_date?: string | null
           last_mint_at?: string | null
           pillar_healing?: number
           pillar_service?: number
           pillar_truth?: number
           pillar_unity?: number
           pillar_value?: number
+          sequence_bonus?: number | null
           tier?: number
           today_date?: string
           today_minted?: number

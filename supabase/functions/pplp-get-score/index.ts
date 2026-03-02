@@ -59,10 +59,19 @@
        .eq('epoch_date', today)
        .single();
  
+     // Get streak data from light_reputation
+     const { data: repData } = await supabase
+       .from('light_reputation')
+       .select('consistency_streak, last_active_date, sequence_bonus')
+       .eq('user_id', userId)
+       .single();
+
      return new Response(JSON.stringify({
        success: true,
        data: {
          ...data,
+         consistency_streak: repData?.consistency_streak ?? 0,
+         sequence_bonus: repData?.sequence_bonus ?? 0,
          epoch: epochData || {
            epoch_date: today,
            total_minted: 0,

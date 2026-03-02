@@ -179,6 +179,34 @@ export const calculateLightScore = (
   return Math.round(baseReward * qualityScore * impactScore * integrityScore * unityMultiplier * 100) / 100;
 };
 
+// =============================================
+// LS-Math-v1.0 Configuration
+// =============================================
+export const LS_MATH_CONFIG = {
+  weights: { base_action: 0.4, content: 0.6 },
+  consistency: { beta: 0.6, lambda: 30 },
+  sequence: { eta: 0.5, kappa: 5 },
+  penalty: { theta: 0.8, max_penalty: 0.5 },
+  mint: { anti_whale_cap: 0.03, min_light_threshold: 10 },
+} as const;
+
+// LS-Math multiplier helpers
+export const calculateConsistencyMultiplier = (streakDays: number): number => {
+  const { beta, lambda } = LS_MATH_CONFIG.consistency;
+  return 1 + beta * (1 - Math.exp(-streakDays / lambda));
+};
+
+export const calculateSequenceMultiplier = (bonus: number): number => {
+  const { eta, kappa } = LS_MATH_CONFIG.sequence;
+  return 1 + eta * Math.tanh(bonus / kappa);
+};
+
+export const calculateIntegrityPenalty = (integrityScore: number): number => {
+  const { theta, max_penalty } = LS_MATH_CONFIG.penalty;
+  const risk = 1 - integrityScore;
+  return 1 - Math.min(max_penalty, theta * risk);
+};
+
 // Mint eligibility threshold
 export const MIN_LIGHT_SCORE_FOR_MINT = 10; // Minimum score to be eligible
 export const MIN_MINT_AMOUNT = 200; // Minimum FUN to create a mint request
