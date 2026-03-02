@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Clock, Eye, Home, Loader2, Mic, MicOff, PhoneOff, Radio, RefreshCw, Video, VideoOff } from 'lucide-react';
 import { toast } from 'sonner';
+import { usePplpEvaluate } from '@/hooks/usePplpEvaluate';
 import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -95,6 +96,7 @@ const REC_BADGE: Record<RecordingStatus, { label: string; variant: 'default' | '
 export default function LiveHostPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { evaluateAsync } = usePplpEvaluate();
   const { liveSessionId } = useParams<{ liveSessionId: string }>();
   const preLiveState = (location.state as { title?: string; privacy?: string } | null);
 
@@ -481,6 +483,8 @@ export default function LiveHostPage() {
       }
 
       await leave();
+      // PPLP: Evaluate livestream action for Light Score
+      evaluateAsync({ action_type: 'livestream', reference_id: effectiveSessionId });
       toast.success('Live đã kết thúc!');
       if (!skipNavigate) {
         navigate(`/live/${effectiveSessionId}`);

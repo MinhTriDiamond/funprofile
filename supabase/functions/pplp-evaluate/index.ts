@@ -7,14 +7,15 @@ const corsHeaders = {
 };
 
 // Base Rewards configuration
+// Base Rewards synced with src/config/pplp.ts
 const BASE_REWARDS: Record<string, number> = {
-  post: 5,
-  comment: 1,
-  reaction: 1,
-  share: 1,
-  friend: 10,
-  livestream: 20,
-  new_user_bonus: 50,
+  post: 50,
+  comment: 10,
+  reaction: 10,
+  share: 10,
+  friend: 20,
+  livestream: 200,
+  new_user_bonus: 500,
 };
 
 // Daily caps per action (per actor per day)
