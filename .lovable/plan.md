@@ -1,124 +1,86 @@
 
 
-# Ke hoach hop nhat he thong Livestream Recording
+# Loai bo CF Worker - Tao Agora token truc tiep trong Edge Function
 
-## Hien trang
+## Van de hien tai
 
-Hien tai co 2 he thong recording song song:
+Luong hien tai di qua 2 lop trung gian khong can thiet:
 
 ```text
-He thong 1 (Edge Functions - DUNG bucket):
-  r2-signed-chunk-url --> presigned URL --> upload truc tiep len fun-rich-media
-  recording-finalize --> tao manifest.json tai recordings/{id}/
-  Tracking: DB tables chunked_recordings + chunked_recording_chunks
-  Bucket: fun-rich-media (account 6083e34a) --> media.fun.rich --> OK
-
-He thong 2 (CF Worker - SAI bucket, DANG ACTIVE):
-  LiveHostPage --> useLiveRecording --> uploadLiveChunk() --> CF Worker
-  CF Worker --> fun-live-chunks (account khac)
-  Worker ghep chunks trong RAM (gioi han 128MB)
-  URL tra ve: media.fun.rich/videos/live/... --> 404!
+Browser --> agora-token Edge Function --> CF Worker --> agora-token npm --> tra token
+Browser --> live-token Edge Function --> CF Worker --> agora-token npm --> tra token
 ```
 
-**Van de**: `CHUNKED_RECORDING_ENABLED = true` trong `LiveHostPage.tsx` (dong 44) nen hien tai dang dung He thong 2 (CF Worker) de upload chunks, nhung Worker luu vao bucket sai --> replay 404.
+CF Worker chi lam duy nhat 1 viec: goi thu vien `agora-token` (npm) de tao RTC token. Viec nay hoan toan co the lam truc tiep trong Edge Function.
 
-## Giai phap: Chuyen LiveHostPage sang dung Edge Functions
+## Giai phap
 
-Thay vi sua CF Worker, ta chuyen hoan toan sang dung Edge Functions (He thong 1) vi:
-- Da luu dung bucket `fun-rich-media`
-- Manifest-based: khong gioi han thoi luong
-- Co DB tracking
-- Da co san code (`r2-signed-chunk-url` + `recording-finalize`)
+Import `agora-token` qua `npm:agora-token` trong Deno va tao token truc tiep:
+
+```text
+Browser --> agora-token Edge Function --> tra token (truc tiep)
+Browser --> live-token Edge Function --> tra token (truc tiep)
+```
+
+## Loi ich
+
+| Truoc | Sau |
+|---|---|
+| 3 thanh phan (Browser, Edge Function, CF Worker) | 2 thanh phan (Browser, Edge Function) |
+| Can deploy CF Worker rieng | Khong can deploy gi them |
+| 4 secrets (APP_ID, CERTIFICATE, WORKER_URL, WORKER_API_KEY) | 2 secrets (APP_ID, CERTIFICATE) |
+| Do tre cao hon (Edge Function goi HTTP den Worker) | Nhanh hon ~100-200ms |
+| CF Worker co the down rieng | It diem loi hon |
 
 ## Chi tiet thay doi
 
-### 1. Tao ham upload chunk qua Edge Function (liveService.ts)
+### 1. Cap nhat agora-token Edge Function
 
-Thay `uploadLiveChunk()` (hien goi CF Worker) bang logic:
-- Goi Edge Function `r2-signed-chunk-url` de lay presigned URL
-- Upload blob truc tiep len R2 qua presigned URL
-- Ghi nhan chunk vao DB table `chunked_recording_chunks`
+File: `supabase/functions/agora-token/index.ts`
 
-Thay `finalizeLiveChunks()` (hien goi CF Worker) bang logic:
-- Goi Edge Function `recording-finalize` voi `recording_id` va `live_session_id`
-- Edge Function tao manifest.json va cap nhat post
+- Import `RtcTokenBuilder, RtcRole` tu `npm:agora-token`
+- Doc `AGORA_APP_ID` va `AGORA_APP_CERTIFICATE` tu `Deno.env`
+- Goi `RtcTokenBuilder.buildTokenWithUserAccount()` truc tiep
+- Bo toan bo logic goi CF Worker qua `fetch(workerUrl, ...)`
+- Giu nguyen logic xac thuc user va kiem tra participant
 
-### 2. Cap nhat useLiveRecording hook
+### 2. Cap nhat live-token Edge Function
 
-Thay doi tham so truyen vao hook:
-- Them `recordingId` (ID tu bang `chunked_recordings`)
-- Upload function moi goi presigned URL thay vi CF Worker
+File: `supabase/functions/live-token/index.ts`
 
-Luong moi:
-1. Khi bat dau live: tao row trong `chunked_recordings` (status = 'recording')
-2. Moi chunk: goi `r2-signed-chunk-url` --> upload truc tiep --> ghi `chunked_recording_chunks`
-3. Ket thuc: goi `recording-finalize` --> tao manifest --> cap nhat post
+- Import `RtcTokenBuilder, RtcRole` tu `npm:agora-token`
+- Doc `AGORA_APP_ID` va `AGORA_APP_CERTIFICATE` tu `Deno.env`
+- Goi `RtcTokenBuilder.buildTokenWithUid()` voi `numericUid` (da co san ham `uuidToNumericUid`)
+- Bo toan bo logic goi CF Worker (`workerUrl`, `workerApiKey`, `fetch(workerUrl, ...)`)
+- Giu nguyen logic xac thuc user, kiem tra session, kiem tra host
 
-### 3. Sua bug attachLiveReplayToPost (LiveHostPage.tsx dong 456)
+### 3. Them 2 secrets vao Lovable Cloud
 
-```typescript
-// Truoc (bug - khong bao gio chay vi CHUNKED_RECORDING_ENABLED = true):
-if (playbackUrl && !CHUNKED_RECORDING_ENABLED) {
+- `AGORA_APP_ID`: App ID tu Agora Console
+- `AGORA_APP_CERTIFICATE`: App Certificate tu Agora Console
 
-// Sau (luon chay khi co playbackUrl):
-if (playbackUrl) {
-```
+(Neu da co san thi khong can them)
 
-### 4. Cap nhat LiveHostPage.tsx - luong chunked
+### 4. Don dep
 
-Them buoc tao `chunked_recordings` row khi bat dau live:
-- Insert vao `chunked_recordings` voi `user_id`, `status: 'recording'`, `mime_type`
-- Truyen `recordingId` vao `useLiveRecording`
+- Bo 3 secrets khong con can: `AGORA_WORKER_URL`, `AGORA_WORKER_API_KEY`, `LIVE_AGORA_WORKER_URL`
+- Thu muc `fun-agora-rtc-token/` co the luu tru hoac xoa -- khong con can deploy
 
-Ket thuc live:
-- Goi `recording-finalize` Edge Function thay vi `finalizeLiveChunks` (CF Worker)
-- `recording-finalize` da tu dong cap nhat post voi manifest URL
+### 5. Cap nhat client code
 
-### 5. Don dep CF Worker (fun-agora-rtc-token)
-
-- Bo route `/upload/live-chunk` va `/upload/live-finalize` trong `src/index.ts`
-- Bo R2 binding `LIVE_CHUNKS` trong `wrangler.toml`
-- Chi giu route `POST /` cho Agora token generation
+File: `src/lib/agoraRtc.ts`
+- Khong can thay doi gi -- client van goi `supabase.functions.invoke('agora-token')` va `supabase.functions.invoke('live-token')` nhu cu
 
 ## Danh sach file thay doi
 
 | File | Thay doi |
 |---|---|
-| `src/modules/live/liveService.ts` | Thay `uploadLiveChunk` va `finalizeLiveChunks` bang logic presigned URL + Edge Function |
-| `src/hooks/live/useLiveRecording.ts` | Cap nhat upload function dung presigned URL, them recordingId |
-| `src/modules/live/pages/LiveHostPage.tsx` | Tao chunked_recordings row khi start, sua bug dong 456, goi recording-finalize |
-| `fun-agora-rtc-token/wrangler.toml` | Bo R2 binding |
-| `fun-agora-rtc-token/src/index.ts` | Bo route upload/finalize, chi giu token |
-
-## Luong moi sau khi hop nhat
-
-```text
-LiveHostPage
-  |-- Bat dau live --> tao live_session + tao chunked_recordings row
-  |-- useLiveRecording hook:
-  |     |-- Moi 2 giay: tao chunk blob
-  |     |-- Goi r2-signed-chunk-url Edge Function --> nhan presigned URL
-  |     |-- Upload blob truc tiep len R2 (fun-rich-media)
-  |     |-- Ghi row vao chunked_recording_chunks
-  |-- Ket thuc live:
-  |     |-- Stop recorder
-  |     |-- Goi recording-finalize Edge Function
-  |     |     |-- Tao manifest.json tai recordings/{id}/
-  |     |     |-- Cap nhat post voi manifest URL
-  |     |-- attachLiveReplayToPost
-  |     |-- finalizeLiveSession
-  |-- URL replay: media.fun.rich/recordings/{id}/manifest.json --> OK!
-```
-
-## Bao toan du lieu
-
-- Du lieu trong `fun-rich-media/recordings/`: van nguyen, truy cap binh thuong
-- Du lieu trong `fun-live-chunks` (neu co): con can kiem tra thu cong va copy sang
-- Sau khi deploy code moi, moi buoi live se luu dung bucket, khong con 404
+| `supabase/functions/agora-token/index.ts` | Tao token truc tiep bang `agora-token` npm, bo goi CF Worker |
+| `supabase/functions/live-token/index.ts` | Tao token truc tiep bang `agora-token` npm, bo goi CF Worker |
 
 ## Rui ro
 
-- **Thap**: Khong thay doi database schema, chi thay doi luong upload
-- **Thap**: Edge Functions `r2-signed-chunk-url` va `recording-finalize` da ton tai va hoat dong
-- **Can xac nhan**: Secrets `CLOUDFLARE_*` tren Lovable Cloud phai tro ve account `6083e34a` va bucket `fun-rich-media`
+- **Rat thap**: Thu vien `agora-token` npm tuong thich Deno (chi dung Node.js crypto, Deno ho tro day du)
+- **Khong anh huong client**: Client code van goi cung Edge Function, response format giu nguyen
+- **Du lieu an toan**: Khong thay doi database hay storage
 
