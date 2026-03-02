@@ -9,7 +9,7 @@ const corsHeaders = {
 // LS-Math-v1.0 config
 const ANTI_WHALE_CAP = 0.03; // 3%
 const MIN_LIGHT_THRESHOLD = 10;
-const DEFAULT_MINT_POOL = 100000;
+const DEFAULT_MINT_POOL = 5000000; // 5M FUN
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -95,6 +95,35 @@ serve(async (req) => {
     }
 
     console.log(`[EPOCH-SNAPSHOT] Found ${allScores.length} users with actions`);
+
+    // 1.5. Filter out banned/fraud users
+    if (allScores.length > 0) {
+      const userIds = allScores.map(s => s.user_id);
+      const bannedUserIds = new Set<string>();
+
+      // Query in batches of 500 to handle large sets
+      for (let i = 0; i < userIds.length; i += 500) {
+        const batch = userIds.slice(i, i + 500);
+        const { data: bannedProfiles } = await supabase
+          .from('profiles')
+          .select('id')
+          .in('id', batch)
+          .eq('is_banned', true);
+
+        if (bannedProfiles) {
+          for (const bp of bannedProfiles) {
+            bannedUserIds.add(bp.id);
+          }
+        }
+      }
+
+      if (bannedUserIds.size > 0) {
+        console.log(`[EPOCH-SNAPSHOT] Filtering out ${bannedUserIds.size} banned users`);
+        // Move banned users to a separate list for ineligible tracking
+        var bannedScores = allScores.filter(s => bannedUserIds.has(s.user_id));
+        allScores = allScores.filter(s => !bannedUserIds.has(s.user_id));
+      }
+    }
 
     // 2. Filter eligible users (light >= threshold)
     const eligibleUsers = allScores.filter(u => u.total_light >= MIN_LIGHT_THRESHOLD);
@@ -241,8 +270,21 @@ serve(async (req) => {
       status: 'pending',
     }));
 
+    // Also insert banned users as ineligible
+    const bannedRows = (typeof bannedScores !== 'undefined' ? bannedScores : []).map(u => ({
+      epoch_id: epochId,
+      user_id: u.user_id,
+      light_score_total: Math.round(u.total_light * 100) / 100,
+      share_percent: 0,
+      allocation_amount: 0,
+      allocation_amount_capped: 0,
+      is_eligible: false,
+      reason_codes: ['FRAUD_BANNED'],
+      status: 'pending',
+    }));
+
     // Insert in batches
-    const allRows = [...allocRows, ...ineligibleRows];
+    const allRows = [...allocRows, ...ineligibleRows, ...bannedRows];
     for (let i = 0; i < allRows.length; i += 500) {
       const batch = allRows.slice(i, i + 500);
       const { error: insertErr } = await supabase.from('mint_allocations').insert(batch);

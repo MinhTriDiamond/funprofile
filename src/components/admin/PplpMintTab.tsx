@@ -78,7 +78,7 @@ const EpochSnapshotButton = () => {
   const [isSnapshotting, setIsSnapshotting] = useState(false);
   const [snapshotResult, setSnapshotResult] = useState<any>(null);
   const [epochMonth, setEpochMonth] = useState(() => new Date().toISOString().slice(0, 7));
-  const [mintPool, setMintPool] = useState(100000);
+  const [mintPool, setMintPool] = useState(5000000);
 
   const handleSnapshot = useCallback(async () => {
     if (!confirm(`Chụp snapshot cho ${epochMonth} với Mint Pool = ${mintPool.toLocaleString()} FUN?`)) return;
