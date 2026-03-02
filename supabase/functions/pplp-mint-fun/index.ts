@@ -94,37 +94,47 @@ serve(async (req) => {
 
     const userId = user.id;
 
-    const { action_ids } = await req.json();
+    const body = await req.json();
+    
+    // === EPOCH-BASED FLOW: Accept allocation_id ===
+    const { allocation_id } = body;
 
-    if (!action_ids || !Array.isArray(action_ids) || action_ids.length === 0) {
-      return new Response(JSON.stringify({ error: 'action_ids required' }), {
+    if (!allocation_id) {
+      return new Response(JSON.stringify({ error: 'allocation_id required' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    console.log(`[PPLP-MINT] Processing mint request for user ${userId}, actions: ${action_ids.length}`);
+    console.log(`[PPLP-MINT] Processing epoch claim for user ${userId}, allocation: ${allocation_id}`);
 
-    // Anti-duplicate check: Block if action already linked to an active mint request
-    const { data: duplicateActions, error: dupError } = await supabase
-      .from('light_actions')
-      .select('id, mint_request_id, mint_status')
-      .in('id', action_ids)
-      .not('mint_request_id', 'is', null)
-      .in('mint_status', ['pending_sig', 'minted', 'confirmed']);
+    // Get allocation
+    const { data: allocation, error: allocErr } = await supabase
+      .from('mint_allocations')
+      .select('*')
+      .eq('id', allocation_id)
+      .eq('user_id', userId)
+      .eq('status', 'pending')
+      .eq('is_eligible', true)
+      .maybeSingle();
 
-    if (!dupError && duplicateActions && duplicateActions.length > 0) {
-      console.log(`[PPLP-MINT] Duplicate detected! Actions already linked:`, duplicateActions.map(a => a.id));
-      return new Response(JSON.stringify({ 
-        error: 'Một số actions đã được claim trước đó. Vui lòng refresh và thử lại.',
-        duplicate_action_ids: duplicateActions.map(a => a.id)
-      }), {
+    if (allocErr || !allocation) {
+      return new Response(JSON.stringify({ error: 'Không tìm thấy allocation hợp lệ hoặc đã được claim.' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Get user wallet address - ONLY use public_wallet_address from Profile
+    const totalAmount = allocation.allocation_amount_capped;
+
+    if (totalAmount <= 0) {
+      return new Response(JSON.stringify({ error: 'Allocation amount is 0' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Get user wallet address
     const { data: profile } = await supabase
       .from('profiles')
       .select('public_wallet_address')
@@ -143,103 +153,6 @@ serve(async (req) => {
       });
     }
 
-    // Get approved actions
-    const { data: actions, error: actionsError } = await supabase
-      .from('light_actions')
-      .select('*')
-      .in('id', action_ids)
-      .eq('user_id', userId)
-      .eq('mint_status', 'approved')
-      .eq('is_eligible', true);
-
-    if (actionsError || !actions || actions.length === 0) {
-      return new Response(JSON.stringify({ error: 'No eligible actions found' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // Constants
-    const MIN_MINT_AMOUNT = 200;
-    const MAX_DAILY_REQUESTS = 2;
-
-    // Check user daily cap
-    const { data: reputation } = await supabase
-      .from('light_reputation')
-      .select('*')
-      .eq('user_id', userId)
-      .single();
-
-    const today = new Date().toISOString().split('T')[0];
-    const todayMinted = reputation?.today_date === today ? (reputation?.today_minted || 0) : 0;
-    const dailyCap = reputation?.daily_mint_cap || 500;
-    const remainingCap = dailyCap - todayMinted;
-
-    // Calculate total amount to mint
-    let totalAmount = actions.reduce((sum, a) => sum + (a.mint_amount || 0), 0);
-    
-    if (totalAmount > remainingCap) {
-      totalAmount = remainingCap;
-      console.log(`[PPLP-MINT] Capping mint to ${totalAmount} due to daily limit`);
-    }
-
-    if (totalAmount <= 0) {
-      return new Response(JSON.stringify({ error: 'Daily mint cap reached' }), {
-        status: 429,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // Check minimum mint amount
-    if (totalAmount < MIN_MINT_AMOUNT) {
-      return new Response(JSON.stringify({
-        error: `Cần tối thiểu ${MIN_MINT_AMOUNT} FUN để mint. Hiện tại: ${totalAmount.toFixed(0)} FUN.`,
-        error_code: 'BELOW_MIN_MINT',
-        current_amount: totalAmount,
-        min_required: MIN_MINT_AMOUNT,
-      }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // Check max daily requests (excluding failed)
-    const { count: todayRequestCount } = await supabase
-      .from('pplp_mint_requests')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', userId)
-      .gte('created_at', `${today}T00:00:00.000Z`)
-      .neq('status', 'failed');
-
-    if ((todayRequestCount ?? 0) >= MAX_DAILY_REQUESTS) {
-      return new Response(JSON.stringify({
-        error: `Bạn đã tạo ${MAX_DAILY_REQUESTS} yêu cầu mint hôm nay. Giới hạn tối đa ${MAX_DAILY_REQUESTS} lần/ngày.`,
-        error_code: 'DAILY_REQUEST_LIMIT',
-        today_count: todayRequestCount,
-        max_daily: MAX_DAILY_REQUESTS,
-      }), {
-        status: 429,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // Check epoch cap
-    const { data: epoch } = await supabase
-      .from('mint_epochs')
-      .select('*')
-      .eq('epoch_date', today)
-      .single();
-
-    const epochMinted = epoch?.total_minted || 0;
-    const epochCap = epoch?.total_cap || 10000000;
-    
-    if (epochMinted + totalAmount > epochCap) {
-      return new Response(JSON.stringify({ error: 'Global epoch cap reached' }), {
-        status: 429,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
     // Get nonce from contract
     const nonce = await getNonceFromContract(walletAddress);
     console.log(`[PPLP-MINT] Contract nonce for ${walletAddress}: ${nonce}`);
@@ -248,26 +161,21 @@ serve(async (req) => {
     const amountWei = BigInt(Math.floor(totalAmount * 1e18)).toString();
 
     // Generate action_name and action_hash
-    // Contract will compute: h = keccak256(bytes(action)) and verify it's registered
     const actionName = DEFAULT_ACTION_NAME;
     const actionHash = generateActionHash(actionName);
 
-    // Generate evidence hash for additional data integrity
-    const actionTypes = [...new Set(actions.map(a => a.action_type))];
-    const evidenceHash = generateEvidenceHash(actionTypes, userId, Date.now());
+    // Generate evidence hash from allocation
+    const evidenceHash = generateEvidenceHash(['epoch_allocation'], userId, Date.now());
 
-    console.log(`[PPLP-MINT] Creating mint request:`, {
+    console.log(`[PPLP-MINT] Creating epoch mint request:`, {
       recipient: walletAddress,
       amount: totalAmount,
       amountWei,
-      actionName,
-      actionHash,
-      evidenceHash,
+      allocation_id,
       nonce: nonce.toString(),
-      actionTypes,
     });
 
-    // Create mint request in database (no deadline - contract v1.2.1 doesn't use it)
+    // Create mint request
     const { data: mintRequest, error: insertError } = await supabase
       .from('pplp_mint_requests')
       .insert({
@@ -278,11 +186,11 @@ serve(async (req) => {
         action_name: actionName,
         action_hash: actionHash,
         evidence_hash: evidenceHash,
-        action_types: actionTypes,
+        action_types: ['epoch_allocation'],
         nonce: Number(nonce),
-        deadline: null, // Not used in contract v1.2.1
+        deadline: null,
         status: 'pending_sig',
-        action_ids: actions.map(a => a.id),
+        action_ids: [],
       })
       .select()
       .single();
@@ -295,29 +203,29 @@ serve(async (req) => {
       });
     }
 
-    // Update light_actions with mint_request_id
-    const { error: updateActionsError } = await supabase
-      .from('light_actions')
+    // Update allocation status to claimed
+    const { error: updateAllocErr } = await supabase
+      .from('mint_allocations')
       .update({
-        mint_status: 'pending_sig',
+        status: 'claimed',
         mint_request_id: mintRequest.id,
+        updated_at: new Date().toISOString(),
       })
-      .in('id', actions.map(a => a.id));
+      .eq('id', allocation_id)
+      .eq('user_id', userId);
 
-    if (updateActionsError) {
-      console.error('[PPLP-MINT] CRITICAL: Update actions error - rolling back:', updateActionsError);
-      // Rollback: delete the mint request to avoid orphan records
+    if (updateAllocErr) {
+      console.error('[PPLP-MINT] Update allocation error - rolling back:', updateAllocErr);
       await supabase.from('pplp_mint_requests').delete().eq('id', mintRequest.id);
       return new Response(JSON.stringify({ 
-        error: 'Không thể khóa actions. Vui lòng thử lại.',
-        details: updateActionsError.message,
+        error: 'Không thể cập nhật allocation. Vui lòng thử lại.',
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    console.log(`[PPLP-MINT] Created mint request ${mintRequest.id} for ${totalAmount} FUN to ${walletAddress}`);
+    console.log(`[PPLP-MINT] Created epoch mint request ${mintRequest.id} for ${totalAmount} FUN to ${walletAddress}`);
 
     return new Response(JSON.stringify({
       success: true,
@@ -325,9 +233,8 @@ serve(async (req) => {
         id: mintRequest.id,
         amount: totalAmount,
         wallet: walletAddress,
-        actions_count: actions.length,
+        allocation_id,
         status: 'pending_sig',
-        // EIP-712 data for frontend display (matches contract PureLoveProof struct)
         eip712_data: {
           domain: {
             name: 'FUN Money',
@@ -341,12 +248,11 @@ serve(async (req) => {
           evidenceHash,
           nonce: nonce.toString(),
         },
-        // Contract call data
         contract_call: {
           action_name: actionName,
           action_hash: actionHash,
         },
-        message: 'Mint request created. Awaiting Attester signature in Admin Panel.',
+        message: 'Epoch mint request created. Awaiting Attester signature.',
       },
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

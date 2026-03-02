@@ -326,7 +326,8 @@ STREAK DAYS: ${currentStreak}
     );
 
     const isEligible = lightScore >= 0.5 && evaluation.integrity_score >= 0.3;
-    const mintAmount = isEligible ? Math.floor(lightScore) : 0;
+    // EPOCH-BASED: mint_amount is set to 0. User claims via mint_allocations after epoch snapshot.
+    const mintAmount = 0;
 
     console.log(`[PPLP] LS-Math: streak=${currentStreak} M_cons=${consistencyMultiplier.toFixed(3)} M_seq=${sequenceMultiplier.toFixed(3)} penalty=${integrityPenalty.toFixed(3)} final=${lightScore}`);
 

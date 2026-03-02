@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { useAccount, useDisconnect } from 'wagmi';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -70,6 +71,69 @@ const ACTION_LABELS: Record<string, string> = {
   friend: 'Kết bạn',
   livestream: 'Phát trực tiếp',
   new_user_bonus: 'Thưởng người mới',
+};
+
+// Epoch Snapshot Button Component
+const EpochSnapshotButton = () => {
+  const [isSnapshotting, setIsSnapshotting] = useState(false);
+  const [snapshotResult, setSnapshotResult] = useState<any>(null);
+  const [epochMonth, setEpochMonth] = useState(() => new Date().toISOString().slice(0, 7));
+  const [mintPool, setMintPool] = useState(100000);
+
+  const handleSnapshot = useCallback(async () => {
+    if (!confirm(`Chụp snapshot cho ${epochMonth} với Mint Pool = ${mintPool.toLocaleString()} FUN?`)) return;
+    setIsSnapshotting(true);
+    setSnapshotResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('pplp-epoch-snapshot', {
+        body: { epoch_month: epochMonth, mint_pool: mintPool },
+      });
+      if (error) throw error;
+      setSnapshotResult(data);
+    } catch (err: any) {
+      console.error('Snapshot error:', err);
+      setSnapshotResult({ error: err.message });
+    } finally {
+      setIsSnapshotting(false);
+    }
+  }, [epochMonth, mintPool]);
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <Input
+        type="month"
+        value={epochMonth}
+        onChange={(e) => setEpochMonth(e.target.value)}
+        className="w-40 h-9"
+      />
+      <Input
+        type="number"
+        value={mintPool}
+        onChange={(e) => setMintPool(Number(e.target.value))}
+        className="w-32 h-9"
+        placeholder="Mint Pool"
+      />
+      <Button
+        onClick={handleSnapshot}
+        disabled={isSnapshotting}
+        className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white gap-2"
+      >
+        {isSnapshotting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+        📸 Chụp Snapshot Tháng
+      </Button>
+      {snapshotResult && !snapshotResult.error && (
+        <div className="text-sm text-green-600 flex items-center gap-1">
+          <CheckCircle className="w-4 h-4" />
+          {snapshotResult.stats?.eligible_users} users, {snapshotResult.stats?.total_allocated?.toLocaleString()} FUN allocated, {snapshotResult.stats?.anti_whale_capped} capped
+        </div>
+      )}
+      {snapshotResult?.error && (
+        <div className="text-sm text-red-600 flex items-center gap-1">
+          <AlertCircle className="w-4 h-4" /> {snapshotResult.error}
+        </div>
+      )}
+    </div>
+  );
 };
 
 const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
@@ -348,8 +412,10 @@ const PplpMintTab = ({ adminId }: PplpMintTabProps) => {
               </div>
             </div>
 
-            {/* Batch Create & Merge Buttons */}
+            {/* Epoch Snapshot & Batch Create Buttons */}
             <div className="flex flex-wrap items-center gap-3">
+              <EpochSnapshotButton />
+
               <Button
                 onClick={() => setBatchCreateDialogOpen(true)}
                 disabled={isBatchCreating}

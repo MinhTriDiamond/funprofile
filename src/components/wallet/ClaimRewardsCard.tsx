@@ -2,40 +2,37 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Sparkles, Gift, FileText, Heart, MessageCircle, Users, Send, RefreshCw, Loader2, Rocket, ChevronDown, ChevronUp } from 'lucide-react';
-import { usePendingActions, GroupedActions } from '@/hooks/usePendingActions';
+import { Sparkles, Gift, Loader2, Rocket, RefreshCw, Calendar, TrendingUp, Users, Lock } from 'lucide-react';
+import { useEpochAllocation } from '@/hooks/useEpochAllocation';
 import { formatFUN } from '@/config/pplp';
 import funLogo from '@/assets/tokens/fun-logo.png';
 import { useLanguage } from '@/i18n/LanguageContext';
-
-const ACTION_ICONS: Record<string, React.ReactNode> = {
-  post: <FileText className="w-4 h-4 text-blue-500" />,
-  reaction: <Heart className="w-4 h-4 text-pink-500" />,
-  comment: <MessageCircle className="w-4 h-4 text-green-500" />,
-  share: <Send className="w-4 h-4 text-purple-500" />,
-  friend: <Users className="w-4 h-4 text-cyan-500" />,
-};
 
 interface ClaimRewardsCardProps {
   onClaimSuccess?: (requestId: string) => void;
 }
 
-export const ClaimRewardsCard = ({ onClaimSuccess }: ClaimRewardsCardProps) => {
-  const { actions, groupedByType, totalAmount, isLoading, refetch, claim, isClaiming } = usePendingActions();
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [expandedType, setExpandedType] = useState<string | null>(null);
-  const { t } = useLanguage();
+const getEpochStatusInfo = (status: string | undefined) => {
+  switch (status) {
+    case 'snapshot':
+      return { label: 'Sẵn sàng claim', color: 'bg-green-500/10 text-green-600 border-green-500/30', emoji: '✅' };
+    case 'finalized':
+      return { label: 'Đã hoàn tất', color: 'bg-blue-500/10 text-blue-600 border-blue-500/30', emoji: '🔒' };
+    default:
+      return { label: 'Đang tích lũy', color: 'bg-amber-500/10 text-amber-600 border-amber-500/30', emoji: '⏳' };
+  }
+};
 
-  const ACTION_LABELS: Record<string, string> = {
-    post: t('walletActionCreatePost'),
-    reaction: t('walletActionReaction'),
-    comment: t('walletActionComment'),
-    share: t('walletActionShare'),
-    friend: t('walletActionFriend'),
-    livestream: t('walletActionLivestream'),
-    new_user_bonus: t('walletActionNewUserBonus'),
-  };
+const formatMonth = (epochMonth: string) => {
+  if (!epochMonth) return '';
+  const [y, m] = epochMonth.split('-');
+  return `Tháng ${parseInt(m)}/${y}`;
+};
+
+export const ClaimRewardsCard = ({ onClaimSuccess }: ClaimRewardsCardProps) => {
+  const { currentMonth, latestEpoch, allocation, isLoading, refetch, claim, isClaiming } = useEpochAllocation();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const { t } = useLanguage();
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -43,35 +40,13 @@ export const ClaimRewardsCard = ({ onClaimSuccess }: ClaimRewardsCardProps) => {
     setTimeout(() => setIsRefreshing(false), 500);
   };
 
-  const handleClaimAll = async () => {
-    const actionIds = actions.map(a => a.id);
-    const result = await claim(actionIds);
+  const handleClaim = async () => {
+    if (!allocation) return;
+    const result = await claim(allocation.id);
     if (result.success && result.requestId && onClaimSuccess) {
       onClaimSuccess(result.requestId);
     }
   };
-
-  const toggleExpand = (type: string) => {
-    setExpandedType(expandedType === type ? null : type);
-  };
-
-  // ⚠️ MAINTENANCE MODE — đổi true → false khi mở lại hệ thống
-  const IS_MAINTENANCE = false;
-
-  if (IS_MAINTENANCE) {
-    return (
-      <Card>
-        <CardContent className="py-10 text-center">
-          <div className="text-4xl mb-3">🔧</div>
-          <p className="font-bold text-destructive text-base mb-2">Hệ thống tạm dừng bảo trì</p>
-          <p className="text-muted-foreground text-sm">
-            Chức năng đúc FUN đang tạm dừng để nâng cấp hệ thống.<br />
-            Vui lòng quay lại sau. Xin lỗi vì sự bất tiện! 🙏
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
 
   if (isLoading) {
     return (
@@ -84,13 +59,17 @@ export const ClaimRewardsCard = ({ onClaimSuccess }: ClaimRewardsCardProps) => {
     );
   }
 
+  const epochStatus = getEpochStatusInfo(latestEpoch?.status);
+  const canClaim = allocation && allocation.is_eligible && allocation.status === 'pending' && allocation.allocation_amount_capped > 0;
+  const isClaimed = allocation?.status === 'claimed' || allocation?.status === 'minted';
+
   return (
     <Card className="overflow-hidden">
       <CardHeader className="bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500 text-white pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-lg">
             <Sparkles className="w-5 h-5" />
-            {t('walletLightActionsWaiting')}
+            FUN Money — Epoch Minting
           </CardTitle>
           <Button variant="ghost" size="icon" className="h-8 w-8 text-white/80 hover:text-white hover:bg-white/20" onClick={handleRefresh} disabled={isLoading || isRefreshing}>
             <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
@@ -98,69 +77,125 @@ export const ClaimRewardsCard = ({ onClaimSuccess }: ClaimRewardsCardProps) => {
         </div>
       </CardHeader>
 
-      <CardContent className="pt-6">
-        {actions.length === 0 ? (
-          <div className="text-center py-8">
-            <Gift className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
-            <p className="text-muted-foreground">{t('walletNoActions')}</p>
-            <p className="text-sm text-muted-foreground mt-1">{t('walletNoActionsDesc')}</p>
+      <CardContent className="pt-6 space-y-5">
+        {/* Current Month Accumulation */}
+        <div className="border rounded-lg p-4 bg-gradient-to-br from-amber-500/5 to-transparent">
+          <div className="flex items-center gap-2 mb-3">
+            <Calendar className="w-4 h-4 text-amber-500" />
+            <span className="font-semibold text-sm">{formatMonth(currentMonth.epoch_month)} — Đang tích lũy</span>
+            <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30 text-xs">⏳ Đang mở</Badge>
           </div>
-        ) : (
-          <div className="space-y-4">
-            <ScrollArea className="max-h-[300px]">
-              <div className="space-y-2">
-                {groupedByType.map((group) => (
-                  <div key={group.action_type} className="border rounded-lg overflow-hidden">
-                    <button className="w-full flex items-center justify-between p-3 hover:bg-muted/50 transition-colors" onClick={() => toggleExpand(group.action_type)}>
-                      <div className="flex items-center gap-3">
-                        {ACTION_ICONS[group.action_type] || <Sparkles className="w-4 h-4 text-amber-500" />}
-                        <span className="font-medium">{ACTION_LABELS[group.action_type] || group.action_type}</span>
-                        <Badge variant="secondary" className="text-xs">{group.count}</Badge>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-amber-600">+{formatFUN(group.total_amount)} FUN</span>
-                        {expandedType === group.action_type ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-                      </div>
-                    </button>
-                    {expandedType === group.action_type && (
-                      <div className="border-t bg-muted/30 px-3 py-2 space-y-1">
-                        {group.items.slice(0, 5).map((item) => (
-                          <div key={item.id} className="flex items-center justify-between text-sm py-1">
-                            <span className="text-muted-foreground truncate max-w-[200px]">{item.content_preview || 'Light Action'}</span>
-                            <span className="text-amber-600 font-medium">+{formatFUN(item.mint_amount)} FUN</span>
-                          </div>
-                        ))}
-                        {group.items.length > 5 && (
-                          <p className="text-xs text-muted-foreground text-center pt-1">+{group.items.length - 5} {t('walletOtherActions')}</p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </ScrollArea>
-
-            <div className="border-t pt-4">
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-lg font-semibold">{t('walletTotalSum')}:</span>
-                <div className="flex items-center gap-2">
-                  <img src={funLogo} alt="FUN" className="w-6 h-6 rounded-full" />
-                  <span className="text-2xl font-bold text-amber-600">{formatFUN(totalAmount)} FUN</span>
-                </div>
-              </div>
-
-              <Button onClick={handleClaimAll} disabled={isClaiming || actions.length === 0} className="w-full bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:from-violet-600 hover:to-fuchsia-600 text-white font-bold py-6">
-                {isClaiming ? (
-                  <><Loader2 className="w-5 h-5 mr-2 animate-spin" />{t('walletProcessing')}</>
-                ) : (
-                  <><Rocket className="w-5 h-5 mr-2" />{t('walletClaimAmount')} {formatFUN(totalAmount)} FUN</>
-                )}
-              </Button>
-
-              <p className="text-xs text-muted-foreground text-center mt-3">💡 {t('walletAfterClaim')}</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <div className="text-xs text-muted-foreground">Light Score tích lũy</div>
+              <div className="text-xl font-bold text-amber-600">{formatFUN(currentMonth.total_light_score)}</div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Số actions</div>
+              <div className="text-xl font-bold">{currentMonth.actions_count}</div>
             </div>
           </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            💡 Light Score tích lũy trong tháng. Cuối tháng, Admin chụp snapshot và phân bổ FUN theo tỷ lệ đóng góp.
+          </p>
+        </div>
+
+        {/* Latest Epoch Allocation */}
+        {latestEpoch ? (
+          <div className="border rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <TrendingUp className="w-4 h-4 text-purple-500" />
+              <span className="font-semibold text-sm">{formatMonth(latestEpoch.epoch_month)} — Kết quả phân bổ</span>
+              <Badge variant="outline" className={`${epochStatus.color} text-xs`}>{epochStatus.emoji} {epochStatus.label}</Badge>
+            </div>
+
+            {/* Epoch Stats */}
+            <div className="grid grid-cols-3 gap-2 mb-3">
+              <div className="text-center p-2 bg-muted/30 rounded">
+                <div className="text-xs text-muted-foreground">Mint Pool</div>
+                <div className="font-bold text-sm">{formatFUN(latestEpoch.mint_pool)}</div>
+              </div>
+              <div className="text-center p-2 bg-muted/30 rounded">
+                <div className="text-xs text-muted-foreground">Tổng Light</div>
+                <div className="font-bold text-sm">{formatFUN(latestEpoch.total_light_score)}</div>
+              </div>
+              <div className="text-center p-2 bg-muted/30 rounded">
+                <div className="text-xs text-muted-foreground flex items-center justify-center gap-1"><Users className="w-3 h-3" /> Users</div>
+                <div className="font-bold text-sm">{latestEpoch.eligible_users}</div>
+              </div>
+            </div>
+
+            {/* User Allocation */}
+            {allocation ? (
+              <div className="border-t pt-3 space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <div className="text-xs text-muted-foreground">Light Score của bạn</div>
+                    <div className="text-lg font-bold">{formatFUN(allocation.light_score_total)}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground">Tỷ lệ (%)</div>
+                    <div className="text-lg font-bold">{allocation.share_percent.toFixed(2)}%</div>
+                  </div>
+                </div>
+
+                {!allocation.is_eligible && (
+                  <div className="bg-red-500/10 border border-red-500/20 rounded p-2 text-sm text-red-600">
+                    ⚠️ Không đủ điều kiện: {allocation.reason_codes.join(', ')}
+                  </div>
+                )}
+
+                {/* Allocation Amount */}
+                <div className="flex items-center justify-between bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10 rounded-lg p-3">
+                  <span className="font-semibold">FUN phân bổ cho bạn:</span>
+                  <div className="flex items-center gap-2">
+                    <img src={funLogo} alt="FUN" className="w-6 h-6 rounded-full" />
+                    <span className="text-2xl font-bold text-amber-600">{formatFUN(allocation.allocation_amount_capped)} FUN</span>
+                  </div>
+                </div>
+
+                {/* Status & Claim Button */}
+                {isClaimed ? (
+                  <div className="text-center py-3">
+                    <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30">
+                      <Lock className="w-3 h-3 mr-1" /> Đã claim — chờ Admin ký
+                    </Badge>
+                  </div>
+                ) : canClaim ? (
+                  <Button
+                    onClick={handleClaim}
+                    disabled={isClaiming}
+                    className="w-full bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:from-violet-600 hover:to-fuchsia-600 text-white font-bold py-6"
+                  >
+                    {isClaiming ? (
+                      <><Loader2 className="w-5 h-5 mr-2 animate-spin" />{t('walletProcessing')}</>
+                    ) : (
+                      <><Rocket className="w-5 h-5 mr-2" />Claim {formatFUN(allocation.allocation_amount_capped)} FUN</>
+                    )}
+                  </Button>
+                ) : (
+                  <div className="text-center py-3 text-sm text-muted-foreground">
+                    Không có FUN để claim trong epoch này.
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-4 text-sm text-muted-foreground">
+                Bạn không có allocation trong epoch này.
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <Gift className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
+            <p className="text-muted-foreground">Chưa có epoch nào được snapshot</p>
+            <p className="text-sm text-muted-foreground mt-1">Hãy tiếp tục tích lũy Light Score. Admin sẽ chụp snapshot cuối tháng.</p>
+          </div>
         )}
+
+        <p className="text-xs text-muted-foreground text-center">
+          💡 FUN được phân bổ theo tỷ lệ đóng góp Light Score trong epoch (LS-Math-v1.0). Anti-whale cap: 3%.
+        </p>
       </CardContent>
     </Card>
   );
