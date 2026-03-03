@@ -328,6 +328,7 @@ export function ChunkedVideoPlayer({
     cleanupRef.current = null;
 
     let destroyed = false;
+    let hasError = false;
     let schedulerId: ReturnType<typeof setInterval> | null = null;
     let seekDebounceTimer: ReturnType<typeof setTimeout> | null = null;
     let bufferingTimer: ReturnType<typeof setTimeout> | null = null;
@@ -703,6 +704,8 @@ export function ChunkedVideoPlayer({
         console.error(`[ChunkedVideoPlayer] Failed chunk ${seq}:`, err);
         updateProgress();
         if (failedSeqs.size > MAX_FAILED_CHUNKS) {
+          hasError = true;
+          if (schedulerId) { clearInterval(schedulerId); schedulerId = null; }
           setError('Failed to load video chunks.');
           setLoading(false);
           onErrorCallback?.();
@@ -717,7 +720,7 @@ export function ChunkedVideoPlayer({
     };
 
     const pumpFetchQueue = () => {
-      if (destroyed) return;
+      if (destroyed || hasError) return;
       while (fetchWorkersRunning < PREFETCH_CONCURRENCY) {
         const next = dequeueFetch();
         if (!next) break;
@@ -893,7 +896,10 @@ export function ChunkedVideoPlayer({
     };
 
     const schedulerTick = () => {
-      if (destroyed) return;
+      if (destroyed || hasError) {
+        if (hasError && schedulerId) { clearInterval(schedulerId); schedulerId = null; }
+        return;
+      }
       updateBufferingState();
 
       const ct = video.currentTime;
@@ -962,6 +968,7 @@ export function ChunkedVideoPlayer({
       video.removeEventListener('pause', onPlayOrCanPlay);
       cache.clear();
       URL.revokeObjectURL(msUrl);
+      try { video.src = ''; } catch {}
     };
 
     if (timeline.isEstimatedTimeline) {
@@ -1137,6 +1144,8 @@ export function ChunkedVideoPlayer({
         <video
           ref={videoRef}
           playsInline
+          muted
+          preload="metadata"
           className="w-full h-full object-contain"
         />
       </div>
