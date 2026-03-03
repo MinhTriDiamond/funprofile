@@ -1,42 +1,40 @@
 
 
-# Sửa lỗi BOOT_ERROR trong `sso-token`: bcryptjs import sai
+# Sửa lỗi `client_secret is required` trong `sso-token`
 
 ## Nguyên nhân
 
-Logs cho thấy rõ:
-```
-The requested module 'npm:bcryptjs@2.4.3' does not provide an export named 'compare'
-```
-
-Dòng 2 trong `sso-token/index.ts`:
+Dòng 109 trong `sso-token/index.ts`:
 ```typescript
-import { compare } from "npm:bcryptjs@2.4.3";  // Named import - KHÔNG hoạt động
+} else if (client.client_secret && !client_secret) {
+  // → Trả về lỗi "client_secret is required"
+}
 ```
 
-Package `bcryptjs` chỉ export **default**, không có named exports trong Deno edge runtime.
+Angel AI dùng PKCE flow (gửi `code_verifier` thay vì `client_secret`). Theo chuẩn OAuth 2.0 + PKCE, khi client gửi `code_verifier`, không cần `client_secret` vì PKCE đã chứng minh danh tính client.
 
 ## Giải pháp
 
-Sửa dòng 2 trong `supabase/functions/sso-token/index.ts`:
+Sửa logic xác thực client trong `supabase/functions/sso-token/index.ts` (dòng 100-114):
 
+**Trước:**
 ```typescript
-// Thay:
-import { compare } from "npm:bcryptjs@2.4.3";
-
-// Bằng:
-import bcrypt from "npm:bcryptjs@2.4.3";
+if (client.client_secret && client_secret) {
+  // verify bcrypt
+} else if (client.client_secret && !client_secret) {
+  return error "client_secret is required"  // ← BUG: block PKCE clients
+}
 ```
 
-Và sửa dòng 102 nơi sử dụng `compare`:
-
+**Sau:**
 ```typescript
-// Thay:
-const secretValid = await compare(client_secret, client.client_secret);
-
-// Bằng:
-const secretValid = await bcrypt.compare(client_secret, client.client_secret);
+if (client.client_secret && client_secret) {
+  // verify bcrypt - giữ nguyên
+} else if (client.client_secret && !client_secret && !code_verifier) {
+  // Chỉ yêu cầu client_secret khi KHÔNG có code_verifier (PKCE)
+  return error "client_secret is required"
+}
 ```
 
-Chỉ sửa 2 dòng, sau đó redeploy `sso-token`.
+Chỉ thêm `&& !code_verifier` vào điều kiện dòng 109. Khi có PKCE (`code_verifier`), bỏ qua yêu cầu `client_secret` — PKCE verification ở phía dưới sẽ xử lý.
 
