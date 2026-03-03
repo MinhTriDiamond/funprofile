@@ -89,6 +89,8 @@ export const SocialVideoPlayer = memo(({
 
   /* ---- auto-hide controls ---- */
   const scheduleHide = useCallback(() => {
+    // Never auto-hide controls when video is paused
+    if (!isPlaying) return;
     if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
     hideTimerRef.current = setTimeout(() => {
       if (isPlaying && !isSeeking) setShowOverlay(false);
@@ -178,9 +180,15 @@ export const SocialVideoPlayer = memo(({
     return () => { if (hideTimerRef.current) clearTimeout(hideTimerRef.current); };
   }, []);
 
-  /* ---- schedule hide when playing starts ---- */
+  /* ---- schedule hide when playing starts, show when paused ---- */
   useEffect(() => {
-    if (isPlaying) scheduleHide();
+    if (isPlaying) {
+      scheduleHide();
+    } else {
+      // Always show controls when paused
+      setShowOverlay(true);
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    }
   }, [isPlaying, scheduleHide]);
 
   /* ---- actions ---- */

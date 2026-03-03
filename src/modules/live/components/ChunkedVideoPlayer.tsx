@@ -542,7 +542,7 @@ export function ChunkedVideoPlayer({
     };
   }, [autoPlay, onReady, onErrorCallback]);
 
-  /* ---- Blob fallback ---- */
+  /* ---- Blob fallback (progressive: play after first chunk) ---- */
   const loadWithBlob = useCallback(async (manifest: Manifest) => {
     const video = videoRef.current;
     if (!video) return;
@@ -552,25 +552,47 @@ export function ChunkedVideoPlayer({
 
     setLoading(true);
     setLoadProgress(0);
-    const blobs: Blob[] = [];
+    const mimeType = manifest.mime_type || 'video/webm';
     const sorted = [...manifest.chunks].sort((a, b) => a.seq - b.seq);
+    const allBuffers: ArrayBuffer[] = [];
+    let partialUrl: string | null = null;
+
     for (let i = 0; i < sorted.length; i++) {
       if (abortRef.current?.signal.aborted) return;
       const data = await fetchWithRetry(sorted[i].url, MAX_RETRY, abortRef.current?.signal);
-      blobs.push(new Blob([data]));
+      allBuffers.push(data);
       setLoadProgress((i + 1) / sorted.length);
+
+      // After first chunk: create partial blob and start showing video immediately
+      if (i === 0) {
+        const partialBlob = new Blob([data], { type: mimeType });
+        partialUrl = URL.createObjectURL(partialBlob);
+        video.src = partialUrl;
+        video.load();
+        setLoading(false);
+        onReady?.();
+        // Don't autoplay yet — let user see controls and press play
+      }
     }
 
-    const fullBlob = new Blob(blobs, { type: manifest.mime_type || 'video/webm' });
-    const url = URL.createObjectURL(fullBlob);
-    video.src = url;
+    // All chunks loaded: create full blob and seamlessly replace src
+    const currentTime = video.currentTime;
+    const wasPaused = video.paused;
+    if (partialUrl) URL.revokeObjectURL(partialUrl);
 
-    setLoading(false);
-    onReady?.();
-    if (autoPlay) video.play().catch(() => {});
+    const fullBlob = new Blob(allBuffers.map(b => new Blob([b])), { type: mimeType });
+    const fullUrl = URL.createObjectURL(fullBlob);
+    video.src = fullUrl;
+    video.load();
 
-    cleanupRef.current = () => URL.revokeObjectURL(url);
-  }, [autoPlay, onReady]);
+    // Restore playback position
+    video.addEventListener('loadedmetadata', () => {
+      if (currentTime > 0) video.currentTime = currentTime;
+      if (!wasPaused) video.play().catch(() => {});
+    }, { once: true });
+
+    cleanupRef.current = () => URL.revokeObjectURL(fullUrl);
+  }, [onReady]);
 
   /* ---- Entry point ---- */
   const start = useCallback(async () => {
@@ -642,14 +664,22 @@ export function ChunkedVideoPlayer({
       className={className}
     >
       <div className="relative w-full h-full">
-        {/* Initial loading: progress bar + small spinner */}
+        {/* Initial loading overlay */}
         {loading && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 z-10 gap-3">
             <Loader2 className="h-6 w-6 animate-spin text-white/70" />
+            <span className="text-white/60 text-sm">Đang tải video...</span>
             <div className="w-3/4 max-w-xs">
               <Progress value={loadProgress * 100} className="h-1.5 bg-white/20" />
             </div>
-            <span className="text-white/50 text-xs">{Math.round(loadProgress * 100)}%</span>
+            <span className="text-white/40 text-xs">{Math.round(loadProgress * 100)}%</span>
+          </div>
+        )}
+
+        {/* Background loading progress bar (video visible but still loading remaining chunks) */}
+        {!loading && loadProgress > 0 && loadProgress < 1 && (
+          <div className="absolute top-0 left-0 right-0 z-10">
+            <Progress value={loadProgress * 100} className="h-1 bg-white/10 rounded-none" />
           </div>
         )}
 
