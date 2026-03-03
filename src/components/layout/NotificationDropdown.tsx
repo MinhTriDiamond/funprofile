@@ -23,6 +23,7 @@ import {
   groupNotificationsByTime,
 } from './notifications/utils';
 import { NotificationSection } from './notifications/NotificationSection';
+import { NotificationItem } from './notifications/NotificationItem';
 import { FriendRequestItem } from './notifications/FriendRequestItem';
 
 interface NotificationDropdownProps {
