@@ -1,11 +1,22 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { UnifiedAuthForm } from '@/components/auth/UnifiedAuthForm';
 import { useLanguage } from '@/i18n/LanguageContext';
 import LanguageSwitcher from '@/components/layout/LanguageSwitcher';
-// TetBackground removed - global version in App.tsx handles it
 import { Eye } from 'lucide-react';
+
+const ECOSYSTEM_PLATFORMS = [
+  { name: 'FUN Profile', emoji: '👤' },
+  { name: 'Angel AI', emoji: '😇' },
+  { name: 'FUN Play', emoji: '🎮' },
+  { name: 'FUN Academy', emoji: '🎓' },
+  { name: 'Green Earth', emoji: '🌍' },
+  { name: 'FUN Planet', emoji: '🪐' },
+  { name: 'FUN Farm', emoji: '🌾' },
+  { name: 'FUN Charity', emoji: '💝' },
+  { name: 'FUN Life', emoji: '✨' },
+];
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -13,13 +24,11 @@ const Auth = () => {
   const { t } = useLanguage();
   const [ssoRedirecting, setSsoRedirecting] = useState(false);
   
-  // SSO flow parameters
   const returnTo = searchParams.get('return_to');
   const ssoFlow = searchParams.get('sso_flow') === 'true';
   const isSsoMode = ssoFlow && !!returnTo;
 
   useEffect(() => {
-
     const checkBanStatus = async (userId: string): Promise<boolean> => {
       const { data: profile } = await supabase
         .from('profiles')
@@ -32,13 +41,11 @@ const Auth = () => {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        // Check if user is banned
         const banned = await checkBanStatus(session.user.id);
         if (banned) {
           await supabase.auth.signOut();
-          return; // LawOfLightGuard will show banned screen
+          return;
         }
-        // If SSO flow, redirect back to authorize endpoint with token
         if (ssoFlow && returnTo) {
           handleSSORedirect(session.access_token);
         } else {
@@ -50,33 +57,26 @@ const Auth = () => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session) {
-        // Check if user is banned immediately after sign in
         const banned = await checkBanStatus(session.user.id);
         if (banned) {
           await supabase.auth.signOut();
-          return; // LawOfLightGuard will show banned screen
+          return;
         }
-        // If SSO flow, redirect back to authorize endpoint with token
         if (ssoFlow && returnTo) {
           handleSSORedirect(session.access_token);
         }
-        // Otherwise handled by UnifiedAuthForm callbacks
       }
     });
 
     return () => subscription.unsubscribe();
   }, [navigate, ssoFlow, returnTo]);
 
-  // Handle SSO redirect back to authorize endpoint
   const handleSSORedirect = (accessToken: string) => {
     if (!returnTo) return;
-    
     setSsoRedirecting(true);
-    
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
-      
       fetch(returnTo, {
         method: 'GET',
         headers: {
@@ -109,7 +109,6 @@ const Auth = () => {
     }
   };
 
-  // SSO redirecting overlay
   if (ssoRedirecting) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
@@ -126,67 +125,69 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Video nền Valentine - handled by global TetBackground in App.tsx */}
-
-      {/* Language Switcher - Top Right with 13 languages */}
+      {/* Language Switcher */}
       <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
         <LanguageSwitcher variant="dropdown" />
       </div>
 
       <div className="w-full max-w-5xl grid md:grid-cols-2 gap-8 items-center relative z-10">
-        {/* Left Side - Branding */}
+        {/* Left Side - FUN Ecosystem Branding */}
         <div className="text-center md:text-left">
           <div className="flex items-center justify-center md:justify-start gap-3 mb-4">
-            {/* LCP Image - 256px with dark green metallic border */}
-            <img 
-              src="/fun-profile-logo-128.webp" 
-              alt="FUN Profile" 
-              width={256} 
-              height={256}
-              loading="eager"
-              fetchPriority="high"
-              decoding="sync"
-              className="w-64 h-64 rounded-full"
+            {/* Logo with hologram border */}
+            <div 
+              className="hologram-border p-[5px] rounded-full"
               style={{
-                border: '5px solid transparent',
-                background: 'linear-gradient(white, white) padding-box, linear-gradient(135deg, #166534 0%, #22c55e 25%, #15803d 50%, #22c55e 75%, #166534 100%) border-box',
-                boxShadow: '0 0 25px rgba(22, 101, 52, 0.5), 0 10px 40px rgba(0,0,0,0.15), inset 0 0 20px rgba(22, 101, 52, 0.1)'
+                boxShadow: '0 0 30px rgba(147, 51, 234, 0.3), 0 0 60px rgba(59, 130, 246, 0.2), 0 10px 40px rgba(0,0,0,0.15)'
               }}
-            />
+            >
+              <img 
+                src="/fun-ecosystem-logo.png" 
+                alt="FUN Ecosystem" 
+                width={256} 
+                height={256}
+                loading="eager"
+                fetchPriority="high"
+                decoding="sync"
+                className="w-64 h-64 rounded-full bg-white object-cover"
+              />
+            </div>
           </div>
-          {/* FUN Profile title - Metallic green 3D */}
-          <h1 
-            className="text-4xl md:text-5xl font-bold mb-4"
-            style={{
-              background: 'linear-gradient(135deg, #166534 0%, #22c55e 30%, #15803d 50%, #22c55e 70%, #166534 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
-              textShadow: '0 2px 4px rgba(22, 101, 52, 0.3)',
-              filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.1))'
-            }}
-          >
+
+          {/* Title - Hologram gradient */}
+          <h1 className="hologram-text text-4xl md:text-5xl font-bold mb-4">
             {t('authBrandTitle')}
           </h1>
           <p className="text-xl md:text-2xl text-muted-foreground">
             {t('authBrandDescription')}
           </p>
           
-          {/* Feature highlights - localized */}
-          <div className="mt-8 space-y-3 hidden md:block">
-            <FeatureItem icon="✉️" text={t('authFeatureOtp')} />
-            <FeatureItem icon="🦊" text={t('authFeatureMetamask')} />
-            <FeatureItem icon="🔐" text={t('authFeatureGoogle')} />
-            <FeatureItem icon="🔑" text={t('authFeatureClassic')} />
-            <FeatureItem icon="💎" text={t('authFeatureSoulNft')} />
+          {/* Ecosystem tagline */}
+          <p className="text-lg font-semibold mt-2 hologram-text">
+            {t('authEcosystemTagline')}
+          </p>
+          
+          {/* Platform Grid */}
+          <div className="mt-8 hidden md:block">
+            <div className="grid grid-cols-3 gap-3">
+              {ECOSYSTEM_PLATFORMS.map((platform) => (
+                <div 
+                  key={platform.name}
+                  className="flex items-center gap-2 p-2 rounded-xl bg-card/60 border border-border/50 hover:border-primary/30 transition-colors"
+                >
+                  <span className="text-xl">{platform.emoji}</span>
+                  <span className="text-sm font-medium text-muted-foreground">{platform.name}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* Right Side - Auth Form with fixed dimensions to prevent CLS */}
+        {/* Right Side - Auth Form */}
         <div className="w-full max-w-lg mx-auto min-h-[560px]">
           <UnifiedAuthForm ssoFlow={isSsoMode} />
           
-          {/* Guest Mode Option */}
+          {/* Guest Mode */}
           <div className="mt-6 text-center">
             <div className="relative flex items-center gap-4 py-2">
               <div className="flex-1 border-t border-muted" />
@@ -196,34 +197,25 @@ const Auth = () => {
               <div className="flex-1 border-t border-muted" />
             </div>
             
-            {/* View as Guest button with rainbow metallic border, white bg, metallic green text */}
+            {/* View as Guest - hologram border */}
             <div 
-              className="relative p-[3px] rounded-full mt-3"
+              className="relative hologram-border p-[3px] rounded-full mt-3"
               style={{
-                background: 'linear-gradient(90deg, #FF0000 0%, #FF7F00 14%, #FFFF00 28%, #00FF00 42%, #0000FF 57%, #4B0082 71%, #9400D3 85%, #FF0000 100%)',
-                boxShadow: '0 0 15px rgba(255, 0, 0, 0.2), 0 0 15px rgba(0, 255, 0, 0.2), 0 0 15px rgba(0, 0, 255, 0.2)'
+                boxShadow: '0 0 15px rgba(147, 51, 234, 0.15), 0 0 15px rgba(59, 130, 246, 0.15), 0 0 15px rgba(34, 197, 94, 0.15)'
               }}
             >
               <button
                 onClick={() => navigate('/')}
                 className="w-full flex items-center justify-center gap-3 font-bold text-xl h-14 bg-white hover:bg-slate-50 border-0 rounded-full transition-colors"
               >
-                <Eye size={24} className="text-emerald-600" />
-                <span
-                  style={{
-                    background: 'linear-gradient(135deg, #166534 0%, #22c55e 30%, #15803d 50%, #22c55e 70%, #166534 100%)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    backgroundClip: 'text',
-                  }}
-                >
+                <Eye size={24} className="text-purple-600" />
+                <span className="hologram-text">
                   {t('viewAsGuest')}
                 </span>
               </button>
             </div>
           </div>
           
-          {/* Last line - same size as left sidebar features */}
           <p className="text-center mt-4 text-base text-muted-foreground font-medium">
             {t('authCreatePage')}
           </p>
@@ -232,13 +224,5 @@ const Auth = () => {
     </div>
   );
 };
-
-// Feature highlight component - larger text
-const FeatureItem = ({ icon, text }: { icon: string; text: string }) => (
-  <div className="flex items-center gap-3 text-muted-foreground">
-    <span className="text-2xl">{icon}</span>
-    <span className="text-base font-medium">{text}</span>
-  </div>
-);
 
 export default Auth;

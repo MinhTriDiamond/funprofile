@@ -679,3 +679,25 @@ html {
 .sparkle-dot-6 { animation: sparkle-dot 2.4s ease-in-out infinite 0.84s; }
 .sparkle-dot-7 { animation: sparkle-dot 2.4s ease-in-out infinite 1.4s; }
 .sparkle-dot-8 { animation: sparkle-dot 2.4s ease-in-out infinite 1.96s; }
+
+/* Hologram shimmer effect for FUN Ecosystem auth */
+@keyframes hologram-shimmer {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.hologram-border {
+  background: linear-gradient(135deg, #9333ea, #3b82f6, #22c55e, #f97316, #ec4899, #9333ea);
+  background-size: 300% 300%;
+  animation: hologram-shimmer 6s ease infinite;
+}
+
+.hologram-text {
+  background: linear-gradient(135deg, #9333ea 0%, #3b82f6 25%, #22c55e 50%, #f97316 75%, #ec4899 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  background-size: 200% 200%;
+  animation: hologram-shimmer 4s ease infinite;
+}
