@@ -75,7 +75,7 @@ export const formatRelativeTime = (dateString: string): string => {
  * Used for video upload progress, media durations
  */
 export const formatDurationTime = (seconds: number): string => {
-  if (!isFinite(seconds) || seconds <= 0) return '--:--';
+  if (!isFinite(seconds) || seconds < 0) return '--:--';
   const hrs = Math.floor(seconds / 3600);
   const mins = Math.floor((seconds % 3600) / 60);
   const secs = Math.floor(seconds % 60);
