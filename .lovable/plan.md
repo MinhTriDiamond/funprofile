@@ -1,63 +1,57 @@
 
 
-# Sửa lỗi SSO Flow: Race Condition sau khi Login
+# Sửa lỗi SSO: `req.url` nội bộ trong `sso-authorize`
 
 ## Nguyên nhân gốc
 
-Khi user đăng nhập trên `fun.rich/auth` trong SSO flow, có **2 luồng chạy đồng thời**:
+Trong Supabase Edge Functions, `req.url` trả về URL **nội bộ** (ví dụ `http://localhost:8000/sso-authorize?...`), KHÔNG phải URL bên ngoài (`https://bhtsnervqiwchluwuxki.supabase.co/functions/v1/sso-authorize?...`).
 
-1. `Auth.tsx` `onAuthStateChange` -> gọi `handleSSORedirect()` -> fetch tới `sso-authorize` (bất đồng bộ, mất vài giây)
-2. `UnifiedAuthForm.handleAuthSuccess()` -> gọi `navigate('/')` **ngay lập tức**
+Dòng 111 trong `sso-authorize/index.ts`:
+```
+loginUrl.searchParams.set('return_to', req.url);
+```
 
-`navigate('/')` chạy trước khi fetch hoàn tất -> component Auth bị unmount -> fetch bị hủy -> user bị kẹt ở trang chủ FUN Profile thay vì redirect về Angel AI.
+Điều này khiến `return_to` chứa URL localhost. Khi Auth.tsx cố fetch URL này từ browser, fetch thất bại → catch block chạy `navigate('/')` → user bị đưa về trang chủ FUN Profile.
 
 ## Giải pháp
 
-Truyền trạng thái SSO flow vào `UnifiedAuthForm` để nó **không navigate** khi đang trong SSO mode. Auth.tsx sẽ chịu trách nhiệm redirect.
+### Sửa `supabase/functions/sso-authorize/index.ts`
 
-### Bước 1: Sửa `UnifiedAuthForm` nhận prop `ssoFlow`
+**Thay đổi 1**: Xây dựng URL bên ngoài từ `SUPABASE_URL` thay vì dùng `req.url`:
 
-Thêm prop `ssoFlow?: boolean` vào `UnifiedAuthForm`. Khi `ssoFlow = true`, `handleAuthSuccess` sẽ **không gọi navigate** mà chỉ hiển thị trạng thái "Đang chuyển hướng..." và để Auth.tsx xử lý redirect.
+```typescript
+// Dòng ~38-40: Sau khi parse req.url
+const url = new URL(req.url);
+const params = url.searchParams;
 
-### Bước 2: Sửa `Auth.tsx` truyền prop `ssoFlow`
-
-```text
-<UnifiedAuthForm ssoFlow={ssoFlow && !!returnTo} />
+// Thêm: Xây dựng external URL
+const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+const externalUrl = `${supabaseUrl}/functions/v1/sso-authorize?${params.toString()}`;
 ```
 
-### Bước 3: Cải thiện `handleSSORedirect` trong Auth.tsx
+**Thay đổi 2**: Dòng 111, thay `req.url` bằng `externalUrl`:
 
-Thêm loading state để user biết đang xử lý redirect, và thêm timeout phòng trường hợp fetch thất bại.
-
----
-
-## Chi tiết kỹ thuật
-
-### File 1: `src/components/auth/UnifiedAuthForm.tsx`
-
-- Thêm interface props: `{ ssoFlow?: boolean }`
-- Trong `handleAuthSuccess`: nếu `ssoFlow === true`, chỉ show toast "Đang chuyển hướng về ứng dụng..." và return (không navigate)
-- Vẫn chạy các logic khác (log IP, sync law_of_light, PPLP) bình thường
-
-### File 2: `src/pages/Auth.tsx`
-
-- Truyền `ssoFlow={ssoFlow && !!returnTo}` vào `<UnifiedAuthForm />`
-- Thêm state `ssoRedirecting` để hiển thị overlay loading khi đang fetch sso-authorize
-- Thêm timeout 10s cho fetch, nếu thất bại thì hiển thị lỗi và cho phép user thử lại hoặc về trang chủ
-
-### Luồng đã sửa
-
-```text
-User login tren fun.rich/auth (sso_flow=true)
-  |
-  | 1. onAuthStateChange fires SIGNED_IN
-  | 2. Auth.tsx: handleSSORedirect() -> fetch sso-authorize
-  |    (hien overlay "Dang chuyen huong...")
-  | 3. UnifiedAuthForm.handleAuthSuccess(): thay ssoFlow=true
-  |    -> KHONG navigate, chi show toast
-  | 4. fetch hoan tat -> window.location.href = redirect_uri
-  |
-  v
-User duoc redirect ve Angel AI callback
+```typescript
+loginUrl.searchParams.set('return_to', externalUrl);  // thay vì req.url
 ```
+
+**Thay đổi 3**: Cập nhật CORS headers cho đầy đủ (thêm các header Supabase client gửi):
+
+```typescript
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+};
+```
+
+**Thay đổi 4**: Thêm console.log để debug (tạm thời):
+
+```typescript
+console.log('SSO Authorize called, external URL:', externalUrl);
+console.log('Auth header present:', !!authHeader);
+```
+
+### Tổng kết
+
+Chỉ sửa 1 file: `supabase/functions/sso-authorize/index.ts`. Không thay đổi file client nào.
 
