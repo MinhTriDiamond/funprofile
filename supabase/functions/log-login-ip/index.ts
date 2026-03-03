@@ -151,17 +151,38 @@ async function handleDeviceFingerprint(supabaseAdmin: any, userId: string, devic
 
   if (otherUsers && otherUsers.length > 2) {
     const allUserIds = [userId, ...otherUsers.map((u: any) => u.user_id)];
-    console.warn(`[SHARED DEVICE] device_hash=${deviceHash.slice(0, 8)}... shared by ${allUserIds.length} users`);
 
-    // Check rapid registration
+    // Filter out banned users
+    const { data: activeProfiles } = await supabaseAdmin
+      .from("profiles").select("id, username, is_banned")
+      .in("id", allUserIds);
+
+    const bannedIds = new Set(activeProfiles?.filter((p: any) => p.is_banned).map((p: any) => p.id) || []);
+    const activeUserIds = allUserIds.filter(id => !bannedIds.has(id));
+
+    // Only alert if >2 active (non-banned) users share the device
+    if (activeUserIds.length <= 2) return;
+
+    console.warn(`[SHARED DEVICE] device_hash=${deviceHash.slice(0, 8)}... shared by ${activeUserIds.length} active users (${bannedIds.size} banned filtered)`);
+
+    // Dedup: check if similar notification was sent in last 1 hour
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const { data: existingNotif } = await supabaseAdmin
+      .from("notifications")
+      .select("id")
+      .eq("type", "admin_shared_device")
+      .gte("created_at", oneHourAgo)
+      .limit(1);
+
+    // Check rapid registration (only for active users)
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const { data: recentAccounts } = await supabaseAdmin
       .from("pplp_device_registry").select("user_id, created_at").eq("device_hash", deviceHash);
 
-    const recentUserIds = recentAccounts?.map((a: any) => a.user_id) || [];
+    const recentUserIds = recentAccounts?.map((a: any) => a.user_id).filter((id: string) => !bannedIds.has(id)) || [];
     const { data: recentProfiles } = await supabaseAdmin
       .from("profiles").select("id, created_at")
-      .in("id", recentUserIds).gte("created_at", oneDayAgo);
+      .in("id", recentUserIds).gte("created_at", oneDayAgo).eq("is_banned", false);
 
     const recentCount = recentProfiles?.length || 0;
 
@@ -179,54 +200,56 @@ async function handleDeviceFingerprint(supabaseAdmin: any, userId: string, devic
         source: "log-login-ip",
       });
     } else {
-      const holdMessage = `Hệ thống nhận thấy thiết bị này được dùng bởi ${allUserIds.length} tài khoản. Để bảo vệ quyền lợi mọi người, tài khoản chờ Admin xác minh 🙏`;
-      for (const uid of allUserIds) {
+      const holdMessage = `Hệ thống nhận thấy thiết bị này được dùng bởi ${activeUserIds.length} tài khoản. Để bảo vệ quyền lợi mọi người, tài khoản chờ Admin xác minh 🙏`;
+      for (const uid of activeUserIds) {
         await supabaseAdmin.from("profiles").update({ reward_status: "on_hold", admin_notes: holdMessage }).eq("id", uid);
       }
     }
 
     await supabaseAdmin.from("pplp_device_registry").update({
-      is_flagged: true, flag_reason: `Cùng thiết bị với ${allUserIds.length} tài khoản`,
+      is_flagged: true, flag_reason: `Cùng thiết bị với ${activeUserIds.length} tài khoản`,
     }).eq("device_hash", deviceHash);
 
     await supabaseAdmin.from("pplp_fraud_signals").insert({
       actor_id: userId, signal_type: "SHARED_DEVICE", severity: 3,
-      details: { device_hash: deviceHash.slice(0, 8), all_user_ids: allUserIds },
+      details: { device_hash: deviceHash.slice(0, 8), all_user_ids: activeUserIds, banned_filtered: bannedIds.size },
       source: "log-login-ip",
     });
 
-    // Fetch usernames for notification metadata
-    const { data: userProfiles } = await supabaseAdmin
-      .from("profiles").select("id, username").in("id", allUserIds);
-    const allUsernames = userProfiles?.map((p: any) => p.username).filter(Boolean) || [];
+    // Only send notification if no recent dedup
+    if (!existingNotif?.length) {
+      const activeProfilesList = activeProfiles?.filter((p: any) => !p.is_banned) || [];
+      const allUsernames = activeProfilesList.map((p: any) => p.username).filter(Boolean);
 
-    // Fetch emails for flagged users
-    const flaggedEmails: Record<string, string> = {};
-    try {
-      const { data: { users: authUsersList } } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
-      if (authUsersList) {
-        const emailMap = new Map(authUsersList.map((u: any) => [u.id, u.email]));
-        userProfiles?.forEach((p: any) => {
-          if (p.username && emailMap.has(p.id)) {
-            flaggedEmails[p.username] = emailMap.get(p.id) || '';
-          }
-        });
+      // Fetch emails for active flagged users only
+      const flaggedEmails: Record<string, string> = {};
+      try {
+        const { data: { users: authUsersList } } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
+        if (authUsersList) {
+          const emailMap = new Map(authUsersList.map((u: any) => [u.id, u.email]));
+          activeProfilesList.forEach((p: any) => {
+            if (p.username && emailMap.has(p.id)) {
+              flaggedEmails[p.username] = emailMap.get(p.id) || '';
+            }
+          });
+        }
+      } catch (e) { console.error("Failed to fetch emails for shared device:", e); }
+
+      const { data: admins } = await supabaseAdmin.from("user_roles").select("user_id").eq("role", "admin");
+      if (admins?.length) {
+        await supabaseAdmin.from("notifications").insert(
+          admins.map((a: any) => ({
+            user_id: a.user_id, actor_id: userId, type: "admin_shared_device", read: false,
+            metadata: {
+              device_hash: deviceHash.slice(0, 8),
+              user_count: activeUserIds.length,
+              usernames: allUsernames.slice(0, 10),
+              flagged_emails: flaggedEmails,
+              banned_filtered: bannedIds.size,
+            },
+          }))
+        );
       }
-    } catch (e) { console.error("Failed to fetch emails for shared device:", e); }
-
-    const { data: admins } = await supabaseAdmin.from("user_roles").select("user_id").eq("role", "admin");
-    if (admins?.length) {
-      await supabaseAdmin.from("notifications").insert(
-        admins.map((a: any) => ({
-          user_id: a.user_id, actor_id: userId, type: "admin_shared_device", read: false,
-          metadata: {
-            device_hash: deviceHash.slice(0, 8),
-            user_count: allUserIds.length,
-            usernames: allUsernames.slice(0, 10),
-            flagged_emails: flaggedEmails,
-          },
-        }))
-      );
     }
   }
 }
@@ -268,6 +291,18 @@ async function detectEmailFarm(supabaseAdmin: any, userId: string, email: string
     });
 
     if (matchingUsers.length >= 3) {
+      const matchedIds = matchingUsers.map((u: any) => u.id);
+
+      // Filter out banned users
+      const { data: matchedProfiles } = await supabaseAdmin
+        .from("profiles").select("id, username, is_banned").in("id", matchedIds);
+
+      const activeProfiles = matchedProfiles?.filter((p: any) => !p.is_banned) || [];
+      const activeMatchingUsers = matchingUsers.filter((u: any) => activeProfiles.some((p: any) => p.id === u.id));
+
+      // Only alert if >=3 active (non-banned) users
+      if (activeMatchingUsers.length < 3) return;
+
       // Check if signal already exists recently
       const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
       const { data: existingSignal } = await supabaseAdmin
@@ -279,26 +314,23 @@ async function detectEmailFarm(supabaseAdmin: any, userId: string, email: string
         .limit(1);
 
       if (!existingSignal?.length) {
-        const matchedIds = matchingUsers.map((u: any) => u.id);
-        const matchedEmails = matchingUsers.map((u: any) => u.email);
-
-        // Lookup usernames for matched users
-        const { data: matchedProfiles } = await supabaseAdmin
-          .from("profiles").select("id, username").in("id", matchedIds);
-        const matchedUsernames = matchedProfiles?.map((p: any) => p.username).filter(Boolean) || [];
+        const activeIds = activeMatchingUsers.map((u: any) => u.id);
+        const activeEmails = activeMatchingUsers.map((u: any) => u.email);
+        const activeUsernames = activeProfiles.map((p: any) => p.username).filter(Boolean);
         const flaggedEmails: Record<string, string> = {};
-        matchedProfiles?.forEach((p: any) => {
-          const authUser = matchingUsers.find((u: any) => u.id === p.id);
+        activeProfiles.forEach((p: any) => {
+          const authUser = activeMatchingUsers.find((u: any) => u.id === p.id);
           if (p.username && authUser?.email) {
             flaggedEmails[p.username] = authUser.email;
           }
         });
+        const bannedCount = matchedIds.length - activeMatchingUsers.length;
 
         await supabaseAdmin.from("pplp_fraud_signals").insert({
           actor_id: userId,
           signal_type: "EMAIL_FARM",
           severity: 4,
-          details: { email_base: emailBase, count: matchingUsers.length, user_ids: matchedIds, emails: matchedEmails },
+          details: { email_base: emailBase, count: activeMatchingUsers.length, user_ids: activeIds, emails: activeEmails, banned_filtered: bannedCount },
           source: "log-login-ip",
         });
 
@@ -310,16 +342,17 @@ async function detectEmailFarm(supabaseAdmin: any, userId: string, email: string
               user_id: a.user_id, actor_id: userId, type: "admin_email_farm", read: false,
               metadata: {
                 email_base: emailBase,
-                count: matchingUsers.length,
-                emails: matchedEmails.slice(0, 5),
-                usernames: matchedUsernames,
+                count: activeMatchingUsers.length,
+                emails: activeEmails.slice(0, 5),
+                usernames: activeUsernames,
                 flagged_emails: flaggedEmails,
+                banned_filtered: bannedCount,
               },
             }))
           );
         }
 
-        console.warn(`[EMAIL FARM] Detected ${matchingUsers.length} accounts with email base "${emailBase}"`);
+        console.warn(`[EMAIL FARM] Detected ${activeMatchingUsers.length} active accounts with email base "${emailBase}" (${bannedCount} banned filtered)`);
       }
     }
   }
