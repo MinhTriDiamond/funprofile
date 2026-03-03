@@ -1,5 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { compare } from "npm:bcryptjs@2.4.3";
+import bcrypt from "npm:bcryptjs@2.4.3";
 import { generateAccessToken, generateRefreshToken } from "../_shared/jwt.ts";
 
 const corsHeaders = {
@@ -99,7 +99,7 @@ Deno.serve(async (req: Request) => {
 
     // Verify client_secret using bcrypt hash comparison
     if (client.client_secret && client_secret) {
-      const secretValid = await compare(client_secret, client.client_secret);
+      const secretValid = await bcrypt.compare(client_secret, client.client_secret);
       if (!secretValid) {
         return new Response(
           JSON.stringify({ error: 'invalid_client', error_description: 'Invalid client credentials' }),
