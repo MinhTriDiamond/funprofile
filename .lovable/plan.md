@@ -1,39 +1,45 @@
 
 
-# Sửa lỗi tìm kiếm user + Hiển thị đầy đủ thông tin Giới thiệu + Kiểm tra mobile
+# Chuyển auth-email-hook sang dùng Resend API
 
-## Vấn đề phát hiện
+## Vấn đề hiện tại
 
-### 1. Flash "Không tìm thấy trang cá nhân" khi tìm kiếm user
-- `InlineSearch.tsx` navigate đến `/profile/${UUID}` (dòng 120, 147)
-- `Profile.tsx` khi nhận route `/profile/:userId` → fetch profile → nếu có username thì **redirect** sang `/${username}` (dòng 213-215)
-- Redirect này trigger lại `useEffect` → reset `profile = null`, `loading = true` → gây **flash trắng hoặc hiện "Không tìm thấy"** trong khoảnh khắc
+`auth-email-hook` đang dùng `sendLovableEmail` (hệ thống email managed của Lovable) để gửi tất cả email xác thực. Hệ thống này đang gặp lỗi (có thể do credit hoặc DNS `notify.fun.rich` chưa verify xong).
 
-### 2. Tab "Giới thiệu" thiếu thông tin
-- View `public_profiles` chỉ có: `id, username, avatar_url, bio, cover_url, created_at, full_name, display_name, social_links, public_wallet_address, is_banned`
-- **Thiếu**: `location`, `workplace`, `education`, `relationship_status`
-- Khi xem profile người khác, luôn query `public_profiles` → các trường này luôn trống
-
-### 3. Mobile chưa kiểm tra
-- Cần verify copy link, tabs, about section hoạt động mượt trên mobile
-
----
+Dự án đã có `RESEND_API_KEY` hoạt động tốt (đang dùng cho SSO OTP, merge request...) và domain `fun.rich` đã verify trên Resend.
 
 ## Giải pháp
 
-### A. File: `src/components/layout/InlineSearch.tsx`
-- `handleProfileClick` (dòng 116-121): Đổi navigate từ `/profile/${profile.id}` thành `/${profile.username}` — tránh redirect kép, profile load trực tiếp
-- `handleHistoryClick` (dòng 143-151): Tương tự, dùng `/${item.metadata.username}` thay vì `/profile/${item.metadata.userId}`
+Sửa `auth-email-hook/index.ts` để thay thế `sendLovableEmail` bằng Resend API trực tiếp, giữ nguyên:
+- Webhook verification (vẫn cần nhận auth events từ hệ thống)
+- Template rendering (giữ nguyên 6 template React Email đã style)
+- Preview endpoint (giữ nguyên)
 
-### B. Database Migration: Cập nhật view `public_profiles`
-- Thêm 4 cột: `location`, `workplace`, `education`, `relationship_status` vào view
-- View chỉ đọc từ `profiles` table, không ảnh hưởng RLS
+## Chi tiết thay đổi
 
-### C. File: `src/pages/Profile.tsx`
-- **About tab** (dòng 990-1057): Thêm hiển thị `bio`, `social_links`, `created_at`, `display_name` — tất cả thông tin có sẵn
-- **fetchProfile** (dòng 173-174): Cập nhật select query cho `public_profiles` thêm 4 cột mới
-- Thêm fallback hiển thị cho mỗi field: nếu chưa điền thì hiển thị text mờ thay vì ẩn hoàn toàn
+### File: `supabase/functions/auth-email-hook/index.ts`
 
-### D. Kiểm tra mobile
-- Sau khi sửa, verify trên viewport mobile: tìm kiếm → mở profile → tab Giới thiệu → copy link
+1. **Thay import**: Bỏ `sendLovableEmail` từ `@lovable.dev/email-js`, thêm `Resend` từ `esm.sh`
+2. **Sửa hàm `handleWebhook`**: Thay đoạn gọi `sendLovableEmail` bằng:
+   - Lấy `RESEND_API_KEY` từ env
+   - Gọi `resend.emails.send()` với `from: "FUN Ecosystem <noreply@fun.rich>"` 
+   - Vẫn gọi callback_url để báo cho hệ thống biết email đã gửi
+3. **From name**: Thống nhất `FUN Ecosystem <noreply@fun.rich>` cho tất cả 6 loại email
+
+### Cũng sửa From name trong 3 SSO functions
+
+- `sso-merge-approve`: `FUN Profile` → `FUN Ecosystem`
+- `sso-merge-request`: `FUN Profile` → `FUN Ecosystem`
+- `sso-resend-webhook`: `FUN Profile` → `FUN Ecosystem`
+
+### Deploy
+
+Deploy lại 4 edge functions: `auth-email-hook`, `sso-merge-approve`, `sso-merge-request`, `sso-resend-webhook`
+
+## Lưu ý quan trọng
+
+- `RESEND_API_KEY` đã có sẵn trong secrets
+- Domain `fun.rich` đã được verify trên Resend (các SSO function đang gửi thành công)
+- Không cần thay đổi template — chỉ thay đổi cách gửi email
+- Preview endpoint vẫn hoạt động bình thường (không liên quan đến sending)
 

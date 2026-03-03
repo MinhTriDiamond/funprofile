@@ -117,7 +117,7 @@ export const InlineSearch = () => {
     setIsExpanded(false);
     setSearchQuery('');
     addItem('@' + profile.username, 'user', { userId: profile.id, username: profile.username, avatarUrl: profile.avatar_url });
-    navigate(`/profile/${profile.id}`);
+    navigate(`/${profile.username}`);
   };
 
   const handlePostClick = (post: any) => {
@@ -141,10 +141,10 @@ export const InlineSearch = () => {
   };
 
   const handleHistoryClick = (item: SearchHistoryItem) => {
-    if (item.type === 'user' && item.metadata?.userId) {
+    if (item.type === 'user' && item.metadata?.username) {
       setIsExpanded(false);
       setSearchQuery('');
-      navigate(`/profile/${item.metadata.userId}`);
+      navigate(`/${item.metadata.username}`);
     } else {
       setSearchQuery(item.query);
     }
