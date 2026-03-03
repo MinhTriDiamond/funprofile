@@ -1,19 +1,20 @@
 
 
-# Sửa From name email: "FUN Profile" → "FUN Ecosystem"
+# Sửa lỗi auth-email-hook và From name
 
-## Phân tích
+## Vấn đề
 
-Code trong `auth-email-hook/index.ts` đã đúng:
-- `SITE_NAME = "FUN Ecosystem"` (dòng 38)
-- `from: \`${SITE_NAME} <noreply@${FROM_DOMAIN}>\`` (dòng 254)
+1. **Email preview lỗi "Failed to build preview"**: Edge function trả về 401 (Unauthorized) khi Cloud gọi endpoint `/preview`. Có thể do phiên bản deployed bị cũ hoặc `LOVABLE_API_KEY` không khớp giữa code deployed và secret hiện tại.
 
-Tuy nhiên screenshot cho thấy "FUN Profile" — nghĩa là edge function cần được **deploy lại** để cập nhật phiên bản mới nhất.
+2. **From name "FUN Profile"**: Mặc dù code đã có `SITE_NAME = "FUN Ecosystem"`, Cloud UI vẫn hiển thị "FUN Profile" — nghĩa là phiên bản deployed chưa phải phiên bản mới nhất.
 
-## Hành động
+## Giải pháp
 
-1. **Deploy lại** edge function `auth-email-hook` — không cần sửa code vì nội dung đã đúng
-2. Xác nhận email preview hiển thị "FUN Ecosystem" sau khi deploy
+Cả hai vấn đề đều giải quyết bằng **redeploy edge function `auth-email-hook`**:
 
-Không cần thay đổi file nào.
+1. Redeploy `auth-email-hook` để đồng bộ code mới nhất (đã có `SITE_NAME = "FUN Ecosystem"`) với môi trường production
+2. Sau khi deploy, Cloud preview sẽ có thể render email template thành công
+3. From name sẽ hiển thị "FUN Ecosystem" thay vì "FUN Profile"
+
+Không cần thay đổi code — chỉ cần deploy lại.
 
