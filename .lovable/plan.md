@@ -1,74 +1,64 @@
 
+# Sửa lỗi crash khi cuộn qua nhiều video trên Profile
 
-# Giảm 80-90% Video Elements trên trang Profile
+## Nguyên nhân gốc
 
-## Phân tích hiện tại
+Trong `FeedVideoPlayer.tsx` dòng 60, `obs.disconnect()` khiến video **chỉ mount mà không bao giờ unmount** khi rời viewport. Mỗi video đã cuộn qua vẫn giữ:
+- 1 `<video>` element (tải/buffer data)
+- 1 `requestAnimationFrame` loop chạy liên tục
+- 1 HLS instance (nếu có)
+- Nhiều event listeners
 
-Mỗi bài video trên trang profile tạo tối thiểu **2 video elements** (backdrop + player chính). Trang có 20 bài video = 40 video elements, tất cả đều tải đồng thời dù user chỉ nhìn thấy 2-3 bài trên màn hình.
+User cuộn qua 10+ video trên profile = 10+ video elements tích lũy trong bộ nhớ, dẫn đến crash.
 
-## Phương án tối ưu mạnh (3 lớp)
+## Giải pháp: Unmount video hai chiều
 
-### Lớp 1: Bỏ backdrop video (giảm ~50%)
-- Khi không có `poster`, thay `<video>` backdrop bằng CSS gradient tối
-- Khi có `poster`, giữ `<img>` (nhẹ, không tốn RAM)
+### File: `src/components/feed/FeedVideoPlayer.tsx`
 
-### Lớp 2: Lazy mount video - CHỈ tạo video element khi gần viewport (giảm thêm ~80%)
-**Đây là thay đổi lớn nhất.** Thay vì render `FacebookVideoPlayer` / `ChunkedVideoPlayer` cho MỌI bài post, chỉ render khi bài post nằm gần viewport (IntersectionObserver với `rootMargin: "200px"`).
-
-- Bài post **ngoài viewport**: hiển thị ảnh poster tĩnh + icon Play overlay (không tạo video element)
-- Bài post **trong/gần viewport**: mount video player thật
-
-Kết quả: Trang 20 video chỉ tạo **3-4 video elements** thay vì 40.
-
-### Lớp 3: Gallery thumbnails dùng poster/icon thay vì video (giảm thêm N elements)
-- Thumbnail 48x48 trong gallery viewer: dùng poster image hoặc icon Play trên nền tối
-- Không tải full video chỉ để hiện preview nhỏ
-
-## Chi tiết kỹ thuật
-
-### File 1: `src/components/feed/FeedVideoPlayer.tsx`
-
-Thêm IntersectionObserver vào component:
+Thay đổi IntersectionObserver từ "one-way mount" sang "bidirectional mount/unmount":
 
 ```text
-const [isNearViewport, setIsNearViewport] = useState(false)
-const containerRef = useRef<HTMLDivElement>(null)
-
-useEffect(() => {
-  const el = containerRef.current
-  if (!el) return
+Trước (dòng 56-67):
   const obs = new IntersectionObserver(
-    ([entry]) => setIsNearViewport(entry.isIntersecting),
+    ([entry]) => {
+      if (entry.isIntersecting) {
+        setIsNearViewport(true);
+        obs.disconnect(); // ← BUG: không bao giờ unmount
+      }
+    },
     { rootMargin: '200px' }
-  )
-  obs.observe(el)
-  return () => obs.disconnect()
-}, [])
+  );
+
+Sau:
+  const obs = new IntersectionObserver(
+    ([entry]) => {
+      setIsNearViewport(entry.isIntersecting);
+    },
+    { rootMargin: '400px' }  // mount sớm hơn, unmount muộn hơn
+  );
 ```
 
-Khi `!isNearViewport`:
-- Render poster image + Play icon (nhẹ, chỉ 1 img element)
-- Không mount FacebookVideoPlayer hay ChunkedVideoPlayer
+Khi `isNearViewport` chuyển `false`:
+- `FacebookVideoPlayer` / `ChunkedVideoPlayer` bị React unmount
+- Video element bị xóa khỏi DOM
+- RAF loop, HLS instance, event listeners tự cleanup qua useEffect return
+- Thay bằng placeholder poster + Play icon (nhẹ)
 
-Khi `isNearViewport`:
-- Mount video player thật (như hiện tại)
+Khi `isNearViewport` chuyển `true` lại:
+- Video player mount lại, bắt đầu từ đầu (chấp nhận được vì autoPlayInView sẽ xử lý)
 
-Backdrop layer: bỏ `<video>` fallback, thay bằng gradient.
+### rootMargin tăng lên 400px
 
-### File 2: `src/components/feed/MediaGrid.tsx`
-
-Gallery viewer thumbnails (dòng 450-454): thay `<video>` bằng poster hoặc icon Play.
+Tăng vùng đệm từ 200px lên 400px để:
+- Video mount sớm hơn khi user cuộn tới (trải nghiệm mượt)
+- Video unmount muộn hơn khi cuộn qua (tránh flicker khi cuộn chậm)
+- Nhưng video cách xa viewport 400px+ sẽ bị unmount hoàn toàn
 
 ## Kết quả mong đợi
 
-| Tình huống | Trước | Sau | Giảm |
-|---|---|---|---|
-| 20 bài video, không poster | 40 video elements | 3-4 elements | ~90% |
-| 20 bài video, có poster | 20 video elements | 3-4 elements | ~85% |
-| Gallery 10 video thumbnails | 10 video elements | 0 elements | 100% |
+- Tại mọi thời điểm chỉ có tối đa 3-5 video elements tồn tại (những cái trong viewport + vùng đệm 400px)
+- Cuộn qua 50 video cũng không crash vì các video cũ đã bị unmount
+- Không thay đổi backend hay component con (`FacebookVideoPlayer`, `ChunkedVideoPlayer`)
 
-## Không thay đổi
-- Backend, recording logic
-- FacebookVideoPlayer, SocialVideoPlayer, ChunkedVideoPlayer (internal)
-- Chất lượng phát video khi user thực sự xem
-
+## File thay đổi
+- `src/components/feed/FeedVideoPlayer.tsx` — Sửa IntersectionObserver thành bidirectional
