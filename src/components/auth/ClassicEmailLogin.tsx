@@ -101,7 +101,7 @@ export const ClassicEmailLogin = ({
         if (data.user) {
           // Nếu không có session = email chưa xác thực, chỉ hiện thông báo
           if (!data.session) {
-            toast.success(t('authSuccessSignUp'));
+            toast.success(t('authSuccessSignUp'), { duration: Infinity });
             setLoading(false);
             return;
           }
