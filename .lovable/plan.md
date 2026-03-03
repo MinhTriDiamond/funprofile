@@ -1,20 +1,45 @@
 
 
-# Sửa lỗi auth-email-hook và From name
+# Chuyển auth-email-hook sang dùng Resend API
 
-## Vấn đề
+## Vấn đề hiện tại
 
-1. **Email preview lỗi "Failed to build preview"**: Edge function trả về 401 (Unauthorized) khi Cloud gọi endpoint `/preview`. Có thể do phiên bản deployed bị cũ hoặc `LOVABLE_API_KEY` không khớp giữa code deployed và secret hiện tại.
+`auth-email-hook` đang dùng `sendLovableEmail` (hệ thống email managed của Lovable) để gửi tất cả email xác thực. Hệ thống này đang gặp lỗi (có thể do credit hoặc DNS `notify.fun.rich` chưa verify xong).
 
-2. **From name "FUN Profile"**: Mặc dù code đã có `SITE_NAME = "FUN Ecosystem"`, Cloud UI vẫn hiển thị "FUN Profile" — nghĩa là phiên bản deployed chưa phải phiên bản mới nhất.
+Dự án đã có `RESEND_API_KEY` hoạt động tốt (đang dùng cho SSO OTP, merge request...) và domain `fun.rich` đã verify trên Resend.
 
 ## Giải pháp
 
-Cả hai vấn đề đều giải quyết bằng **redeploy edge function `auth-email-hook`**:
+Sửa `auth-email-hook/index.ts` để thay thế `sendLovableEmail` bằng Resend API trực tiếp, giữ nguyên:
+- Webhook verification (vẫn cần nhận auth events từ hệ thống)
+- Template rendering (giữ nguyên 6 template React Email đã style)
+- Preview endpoint (giữ nguyên)
 
-1. Redeploy `auth-email-hook` để đồng bộ code mới nhất (đã có `SITE_NAME = "FUN Ecosystem"`) với môi trường production
-2. Sau khi deploy, Cloud preview sẽ có thể render email template thành công
-3. From name sẽ hiển thị "FUN Ecosystem" thay vì "FUN Profile"
+## Chi tiết thay đổi
 
-Không cần thay đổi code — chỉ cần deploy lại.
+### File: `supabase/functions/auth-email-hook/index.ts`
+
+1. **Thay import**: Bỏ `sendLovableEmail` từ `@lovable.dev/email-js`, thêm `Resend` từ `esm.sh`
+2. **Sửa hàm `handleWebhook`**: Thay đoạn gọi `sendLovableEmail` bằng:
+   - Lấy `RESEND_API_KEY` từ env
+   - Gọi `resend.emails.send()` với `from: "FUN Ecosystem <noreply@fun.rich>"` 
+   - Vẫn gọi callback_url để báo cho hệ thống biết email đã gửi
+3. **From name**: Thống nhất `FUN Ecosystem <noreply@fun.rich>` cho tất cả 6 loại email
+
+### Cũng sửa From name trong 3 SSO functions
+
+- `sso-merge-approve`: `FUN Profile` → `FUN Ecosystem`
+- `sso-merge-request`: `FUN Profile` → `FUN Ecosystem`
+- `sso-resend-webhook`: `FUN Profile` → `FUN Ecosystem`
+
+### Deploy
+
+Deploy lại 4 edge functions: `auth-email-hook`, `sso-merge-approve`, `sso-merge-request`, `sso-resend-webhook`
+
+## Lưu ý quan trọng
+
+- `RESEND_API_KEY` đã có sẵn trong secrets
+- Domain `fun.rich` đã được verify trên Resend (các SSO function đang gửi thành công)
+- Không cần thay đổi template — chỉ thay đổi cách gửi email
+- Preview endpoint vẫn hoạt động bình thường (không liên quan đến sending)
 
