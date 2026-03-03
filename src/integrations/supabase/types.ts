@@ -4506,13 +4506,17 @@ export type Database = {
           cover_url: string | null
           created_at: string | null
           display_name: string | null
+          education: string | null
           full_name: string | null
           id: string | null
           is_banned: boolean | null
+          location: string | null
           public_wallet_address: string | null
+          relationship_status: string | null
           social_links: Json | null
           username: string | null
           username_normalized: string | null
+          workplace: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -4520,13 +4524,17 @@ export type Database = {
           cover_url?: string | null
           created_at?: string | null
           display_name?: string | null
+          education?: string | null
           full_name?: string | null
           id?: string | null
           is_banned?: boolean | null
+          location?: string | null
           public_wallet_address?: string | null
+          relationship_status?: string | null
           social_links?: Json | null
           username?: string | null
           username_normalized?: string | null
+          workplace?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -4534,13 +4542,17 @@ export type Database = {
           cover_url?: string | null
           created_at?: string | null
           display_name?: string | null
+          education?: string | null
           full_name?: string | null
           id?: string | null
           is_banned?: boolean | null
+          location?: string | null
           public_wallet_address?: string | null
+          relationship_status?: string | null
           social_links?: Json | null
           username?: string | null
           username_normalized?: string | null
+          workplace?: string | null
         }
         Relationships: []
       }
