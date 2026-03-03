@@ -162,10 +162,32 @@ async function fetchWithRetry(url: string, retries = MAX_RETRY, signal?: AbortSi
 }
 
 function buildMimeType(manifest: Manifest): string {
-  const mt = manifest.mime_type ?? '';
+  const mt = manifest.mime_type ?? 'video/webm';
   if (/codecs\s*=/i.test(mt)) return mt;
   if (manifest.codec) return `${mt}; codecs="${manifest.codec}"`;
   return mt;
+}
+
+/** Try multiple MIME candidates to find one MSE supports */
+function findSupportedMime(manifest: Manifest): string | null {
+  const base = manifest.mime_type || 'video/webm';
+  const codec = manifest.codec || '';
+  const candidates: string[] = [];
+
+  // Original from manifest
+  if (codec) candidates.push(`${base}; codecs="${codec}"`);
+  // Try common WebM codec variants
+  if (!/vp9/i.test(codec)) candidates.push(`${base}; codecs="vp9,opus"`);
+  if (!/vp8/i.test(codec)) candidates.push(`${base}; codecs="vp8,opus"`);
+  candidates.push(`${base}; codecs="vp9"`);
+  candidates.push(`${base}; codecs="vp8"`);
+  // Generic fallback
+  candidates.push(base);
+
+  for (const mime of candidates) {
+    if (MediaSource.isTypeSupported(mime)) return mime;
+  }
+  return null;
 }
 
 function buildTimeMap(chunks: ManifestChunk[]): number[] {
@@ -218,7 +240,7 @@ export function ChunkedVideoPlayer({
       mediaSource.addEventListener('sourceopen', () => resolve(), { once: true });
     });
 
-    const mimeWithCodec = buildMimeType(manifest);
+    const mimeWithCodec = findSupportedMime(manifest) || buildMimeType(manifest);
     console.log('[ChunkedVideoPlayer] Using MIME:', mimeWithCodec);
     const sourceBuffer = mediaSource.addSourceBuffer(mimeWithCodec);
 
@@ -284,6 +306,11 @@ export function ChunkedVideoPlayer({
         } else {
           sbErrorCount++;
           console.error('[ChunkedVideoPlayer] appendBuffer error:', e, `(count ${sbErrorCount})`);
+          if (!firstChunkAppended) {
+            console.warn('[ChunkedVideoPlayer] First chunk failed → immediate blob fallback');
+            onFallback();
+            return;
+          }
           nextAppendSeq++;
           if (sbErrorCount >= MAX_SB_ERRORS) {
             console.warn('[ChunkedVideoPlayer] Too many SB errors → blob fallback');
@@ -313,6 +340,11 @@ export function ChunkedVideoPlayer({
       sbErrorCount++;
       appending = false;
       console.error('[ChunkedVideoPlayer] SourceBuffer error event', `(count ${sbErrorCount})`);
+      if (!firstChunkAppended) {
+        console.warn('[ChunkedVideoPlayer] First chunk SB error → immediate blob fallback');
+        onFallback();
+        return;
+      }
       nextAppendSeq++;
       if (sbErrorCount >= MAX_SB_ERRORS) {
         onFallback();
@@ -559,8 +591,8 @@ export function ChunkedVideoPlayer({
       manifest.chunks = manifest.chunks.map(c => ({ ...c, url: normalizeR2Url(c.url) }));
       manifest.chunks.sort((a, b) => a.seq - b.seq);
 
-      const mimeWithCodec = buildMimeType(manifest);
-      const useMSE = typeof MediaSource !== 'undefined' && MediaSource.isTypeSupported(mimeWithCodec);
+      const supportedMime = typeof MediaSource !== 'undefined' ? findSupportedMime(manifest) : null;
+      const useMSE = !!supportedMime;
 
       if (useMSE) {
         await loadWithMSE(manifest, () => {
@@ -568,7 +600,7 @@ export function ChunkedVideoPlayer({
           loadWithBlob(manifest);
         });
       } else {
-        console.warn('[ChunkedVideoPlayer] MSE not supported for', mimeWithCodec, '→ blob fallback');
+        console.warn('[ChunkedVideoPlayer] MSE not supported → blob fallback');
         await loadWithBlob(manifest);
       }
     } catch (err: any) {
