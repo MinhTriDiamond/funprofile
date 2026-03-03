@@ -1,45 +1,74 @@
 
 
-# Chỉnh UI Video trong Feed theo kiểu Facebook
+# Giảm 80-90% Video Elements trên trang Profile
 
 ## Phân tích hiện tại
 
-**FeedVideoPlayer** hiện có 2 mode:
-- `displayMode="square"` — dùng cho multi-media grid (2+ media), đã có `aspect-square`
-- `displayMode="rectangle"` — dùng cho single video post, **KHÔNG** có aspect-square → video tự co theo tỷ lệ gốc
+Mỗi bài video trên trang profile tạo tối thiểu **2 video elements** (backdrop + player chính). Trang có 20 bài video = 40 video elements, tất cả đều tải đồng thời dù user chỉ nhìn thấy 2-3 bài trên màn hình.
 
-**Vấn đề chính**: Single video (bao gồm live replay) dùng `displayMode="rectangle"` nên **không có khung 1:1**. Blur backdrop chỉ hiện khi `isPortrait === true AND resolvedObjectFit === 'contain'` — nhưng logic hiện tại cho rectangle mode luôn set `resolvedObjectFit = 'contain'` mà **không bật backdrop** vì `showBackdrop` chỉ check `isPortrait === true`.
+## Phương án tối ưu mạnh (3 lớp)
 
-**ChunkedVideoPlayer** (live replay) render trong `SocialVideoPlayer` wrapper — controls hoạt động nhưng video nằm trong khung rectangle, không phải 1:1.
+### Lớp 1: Bỏ backdrop video (giảm ~50%)
+- Khi không có `poster`, thay `<video>` backdrop bằng CSS gradient tối
+- Khi có `poster`, giữ `<img>` (nhẹ, không tốn RAM)
 
-## Thay đổi
+### Lớp 2: Lazy mount video - CHỈ tạo video element khi gần viewport (giảm thêm ~80%)
+**Đây là thay đổi lớn nhất.** Thay vì render `FacebookVideoPlayer` / `ChunkedVideoPlayer` cho MỌI bài post, chỉ render khi bài post nằm gần viewport (IntersectionObserver với `rootMargin: "200px"`).
+
+- Bài post **ngoài viewport**: hiển thị ảnh poster tĩnh + icon Play overlay (không tạo video element)
+- Bài post **trong/gần viewport**: mount video player thật
+
+Kết quả: Trang 20 video chỉ tạo **3-4 video elements** thay vì 40.
+
+### Lớp 3: Gallery thumbnails dùng poster/icon thay vì video (giảm thêm N elements)
+- Thumbnail 48x48 trong gallery viewer: dùng poster image hoặc icon Play trên nền tối
+- Không tải full video chỉ để hiện preview nhỏ
+
+## Chi tiết kỹ thuật
 
 ### File 1: `src/components/feed/FeedVideoPlayer.tsx`
 
-**Mục tiêu**: Mọi video trong feed luôn hiển thị trong khung 1:1 với blur backdrop kiểu Facebook.
+Thêm IntersectionObserver vào component:
 
-1. **Bỏ phân biệt square/rectangle cho wrapper**: Container luôn `aspect-square rounded-xl bg-black overflow-hidden`
-2. **Blur backdrop luôn hiện** cho cả portrait và landscape: 
-   - Layer 1: poster hoặc video duplicate, `object-cover scale-110 blur-2xl opacity-35`
-   - Layer 2: video chính, `object-contain` (luôn luôn)
-3. **Bỏ logic `fitStrategy`** phức tạp — luôn dùng `object-contain` để không crop
-4. **Giữ nguyên** LIVE Replay badge, download button, coordinator logic
-5. **Truyền `objectFit="contain"`** cố định cho cả `FacebookVideoPlayer` và `ChunkedVideoPlayer`
+```text
+const [isNearViewport, setIsNearViewport] = useState(false)
+const containerRef = useRef<HTMLDivElement>(null)
+
+useEffect(() => {
+  const el = containerRef.current
+  if (!el) return
+  const obs = new IntersectionObserver(
+    ([entry]) => setIsNearViewport(entry.isIntersecting),
+    { rootMargin: '200px' }
+  )
+  obs.observe(el)
+  return () => obs.disconnect()
+}, [])
+```
+
+Khi `!isNearViewport`:
+- Render poster image + Play icon (nhẹ, chỉ 1 img element)
+- Không mount FacebookVideoPlayer hay ChunkedVideoPlayer
+
+Khi `isNearViewport`:
+- Mount video player thật (như hiện tại)
+
+Backdrop layer: bỏ `<video>` fallback, thay bằng gradient.
 
 ### File 2: `src/components/feed/MediaGrid.tsx`
 
-- Single video: đổi `displayMode="rectangle"` → `displayMode="square"` (hoặc bỏ prop vì default đã là square)
-- Multi-media video: giữ nguyên `displayMode="square"`
-
-### Không sửa
-- `FacebookVideoPlayer.tsx` — giữ nguyên, chỉ nhận `objectFit` prop từ FeedVideoPlayer
-- `SocialVideoPlayer.tsx` — giữ nguyên (controls đã fix ở lần trước)
-- `ChunkedVideoPlayer.tsx` — giữ nguyên
-- Backend / recording logic — không đụng
+Gallery viewer thumbnails (dòng 450-454): thay `<video>` bằng poster hoặc icon Play.
 
 ## Kết quả mong đợi
-- Video dọc 9:16: hiện full trong khung 1:1, hai bên có blur backdrop
-- Video ngang 16:9: hiện full trong khung 1:1, trên dưới có blur backdrop  
-- Live replay: cùng khung 1:1 nhất quán, controls hiện rõ
-- Nhìn giống Facebook feed
+
+| Tình huống | Trước | Sau | Giảm |
+|---|---|---|---|
+| 20 bài video, không poster | 40 video elements | 3-4 elements | ~90% |
+| 20 bài video, có poster | 20 video elements | 3-4 elements | ~85% |
+| Gallery 10 video thumbnails | 10 video elements | 0 elements | 100% |
+
+## Không thay đổi
+- Backend, recording logic
+- FacebookVideoPlayer, SocialVideoPlayer, ChunkedVideoPlayer (internal)
+- Chất lượng phát video khi user thực sự xem
 
