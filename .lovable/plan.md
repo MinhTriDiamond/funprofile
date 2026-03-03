@@ -1,81 +1,63 @@
 
 
-# Phân tích lỗi "No email in FUN Profile identity" và hướng sửa
+# Nâng cấp trang Auth thành cổng đăng nhập chung FUN Ecosystem
 
-## Lỗi là gì?
+## Tổng quan
 
-Sau khi user đăng nhập FUN Profile và được redirect về Angel AI, Angel AI nhận được token response từ `sso-token` endpoint. Response này chứa object `user` nhưng **thiếu trường `email`**:
-
-```json
-{
-  "access_token": "eyJ...",
-  "user": {
-    "id": "uuid-xxx",
-    "fun_id": "username123",
-    "username": "Username123",
-    "full_name": "Tên người dùng",
-    "avatar_url": "https://..."
-  }
-}
-```
-
-Angel AI cần `email` để tạo/liên kết tài khoản nội bộ → không có email → báo lỗi **"No email in FUN Profile identity"**.
-
-## Tại sao thiếu email?
-
-Bảng `profiles` trong FUN Profile **không lưu email** — email nằm trong bảng `auth.users` (bảng hệ thống). Code hiện tại chỉ query `profiles`:
-
-```typescript
-// Dòng 178-182 trong sso-token/index.ts
-const { data: profile } = await supabase
-  .from('profiles')
-  .select('id, username, full_name, avatar_url, fun_id, custodial_wallet_address')
-  .eq('id', authCode.user_id)
-  .single();
-```
-
-Và response trả về (dòng 237-243) không có `email`.
+Chuyển đổi trang `/auth` từ branding "FUN Profile" sang **FUN Ecosystem** — cổng đăng nhập chung cho tất cả các nền tảng (FUN Profile, Angel AI, FUN Play, FUN Academy, v.v.). Thiết kế theo phong cách **hologram đa sắc** lấy cảm hứng từ logo Ecosystem.
 
 ---
 
-## FUN Profile cần sửa gì?
+## Thay đổi chi tiết
 
-Sửa **1 file duy nhất**: `supabase/functions/sso-token/index.ts`
+### 1. Copy logo FUN Ecosystem vào project
+- Copy `FUN_Ecosystem.png` → `public/fun-ecosystem-logo.webp` (logo chính)
+- Copy `FUN_ECO_LOGO.jpg` → `public/fun-eco-platforms.webp` (ảnh tham khảo, không hiển thị trực tiếp)
 
-### Bước 1: Lấy email từ auth.users (thêm sau dòng 182)
-```typescript
-// Dùng Admin API để lấy email từ auth.users
-const { data: { user: authUser } } = await supabase.auth.admin.getUserById(authCode.user_id);
-```
+### 2. Redesign Left Side — Auth.tsx
 
-### Bước 2: Thêm email vào response (sửa dòng 237-243)
-```typescript
-user: profile ? {
-  id: profile.id,
-  fun_id: profile.fun_id,
-  username: profile.username,
-  full_name: profile.full_name,
-  avatar_url: profile.avatar_url,
-  email: authUser?.email || null   // ← THÊM DÒNG NÀY
-} : null
-```
+**Thay thế hoàn toàn phần branding bên trái:**
 
-Sau đó redeploy `sso-token`.
+- **Logo**: Đổi từ `fun-profile-logo-128.webp` sang `fun-ecosystem-logo.webp` — viền hologram gradient nhiều màu (tím, xanh dương, cam, vàng) thay vì viền xanh lá metallic
+- **Tiêu đề**: "FUN Ecosystem" thay vì "FUN Profile" — gradient hologram (tím → xanh dương → xanh lá → cam → hồng)
+- **Mô tả**: Thay bằng mô tả hệ sinh thái ("Một tài khoản, mọi nền tảng FUN")
+- **Feature list**: Thay danh sách phương thức đăng nhập bằng **vòng tròn logo các platform** hiển thị dạng hàng ngang/lưới nhỏ gọn với tên platform:
+  - FUN Profile, Angel AI, FUN Play, FUN Academy, Green Earth, FUN Planet, FUN Farm, FUN Charity, FUN Life
+
+### 3. Redesign Auth Card Frame — UnifiedAuthForm.tsx
+
+- **Viền card**: Đổi từ gradient xanh lá metallic sang gradient hologram đa sắc (giống rainbow nhưng nhẹ nhàng, có hiệu ứng shimmer)
+- **Tiêu đề card**: Đổi màu từ xanh lá sang hologram gradient
+- **Tab bar**: Viền và text active đổi sang tông tím-xanh hologram
+- Giữ nguyên logic 4 tab (OTP, Wallet, Social, Classic)
+
+### 4. Nút "View as Guest" — Auth.tsx
+- Giữ viền rainbow (đã có sẵn, phù hợp style mới)
+- Đổi text gradient từ xanh lá metallic sang hologram gradient
+
+### 5. Hiệu ứng CSS hologram
+- Thêm CSS animation `hologram-shimmer` — gradient xoay chậm tạo hiệu ứng ánh sáng hologram trên viền card và logo
+- Màu sắc chủ đạo: `#9333ea` (tím), `#3b82f6` (xanh dương), `#22c55e` (xanh lá), `#f97316` (cam), `#ec4899` (hồng)
+
+### 6. Cập nhật translations (13 ngôn ngữ)
+- `authBrandTitle`: "FUN Profile" → "FUN Ecosystem"
+- `authBrandDescription`: Cập nhật mô tả hệ sinh thái
+- Thêm key mới: `authEcosystemTagline` — "Một tài khoản. Mọi nền tảng."
+- Thêm key: `authPlatformList` hoặc hardcode tên platform (vì tên platform không cần dịch)
+- Xóa các feature items cũ (OTP, MetaMask, Google, Classic, Soul NFT) — thay bằng platform grid
+
+### 7. SSO context awareness (tùy chọn)
+- Khi có `sso_flow=true` từ Angel AI, hiển thị dòng nhỏ: "Đăng nhập để tiếp tục với Angel AI" kèm logo Angel AI — giúp user biết mình đang đăng nhập cho platform nào
 
 ---
 
-## Angel AI cần sửa gì?
+## Cấu trúc file thay đổi
 
-**Không cần sửa gì** — Angel AI đã có logic đọc `email` từ response, chỉ là FUN Profile chưa gửi nó. Sau khi FUN Profile thêm `email` vào response, Angel AI sẽ hoạt động bình thường.
-
-*(Nếu Angel AI muốn an toàn hơn, có thể thêm fallback: dùng `fun_id@fun.rich` làm email tạm khi không có email thật — nhưng đây là phía Angel AI tự quyết định, FUN Profile không cần quan tâm.)*
-
----
-
-## Tóm tắt
-
-| Phía | Cần sửa? | Chi tiết |
-|------|----------|----------|
-| **FUN Profile** | ✅ Có | Thêm 2 dòng code trong `sso-token`: lấy email từ `auth.users` và trả về trong response |
-| **Angel AI** | ❌ Không | Đã có sẵn logic đọc email, chỉ cần FUN Profile gửi đúng |
+| File | Thay đổi |
+|------|----------|
+| `public/fun-ecosystem-logo.webp` | Thêm mới (copy từ upload) |
+| `src/pages/Auth.tsx` | Redesign left side: logo, title, platform grid |
+| `src/components/auth/UnifiedAuthForm.tsx` | Đổi viền card + tab sang hologram style |
+| `src/i18n/translations.ts` | Cập nhật brand text cho 13 ngôn ngữ |
+| `src/index.css` | Thêm `@keyframes hologram-shimmer` animation |
 
