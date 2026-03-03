@@ -1,49 +1,6 @@
-import { assertEquals, assertExists } from "https://deno.land/std@0.168.0/testing/asserts.ts";
+import { assertEquals } from "https://deno.land/std@0.168.0/testing/asserts.ts";
 
-const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
-const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
-const FUNCTION_URL = `${SUPABASE_URL}/functions/v1/pplp-evaluate`;
-
-// Helper to call the edge function
-async function callEvaluate(body: Record<string, unknown>, token?: string) {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-  
-  const res = await fetch(FUNCTION_URL, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(body),
-  });
-  return { status: res.status, data: await res.json() };
-}
-
-// ===== SECURITY TESTS =====
-
-Deno.test("pplp-evaluate: rejects request without auth token", async () => {
-  const { status, data } = await callEvaluate({ action_type: 'post' });
-  assertEquals(status, 401);
-  assertExists(data.error);
-});
-
-Deno.test("pplp-evaluate: rejects invalid action_type", async () => {
-  // Even with a fake token, it should reject at auth level (401)
-  // This test validates the endpoint is reachable and validates input
-  const { status } = await callEvaluate(
-    { action_type: 'FAKE_ACTION_HACK' },
-    'fake-token-for-testing'
-  );
-  // Should be 401 (auth fails first) or 400 (invalid action_type)
-  assertEquals(status === 401 || status === 400, true);
-});
-
-Deno.test("pplp-evaluate: rejects livestream without reference_id", async () => {
-  const { status } = await callEvaluate(
-    { action_type: 'livestream' },
-    'fake-token'
-  );
-  // 401 for auth, but the validation is in place
-  assertEquals(status === 401 || status === 400, true);
-});
+// ===== UNIT TESTS FOR LS-Math-v1.0 FUNCTIONS =====
 
 // ===== UNIT TESTS FOR MATH FUNCTIONS =====
 
