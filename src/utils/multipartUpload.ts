@@ -1,203 +1,95 @@
 import { supabase } from '@/integrations/supabase/client';
-import type { R2UploadResult } from './r2Upload';
 
-const PART_SIZE = 10 * 1024 * 1024; // 10MB per part
-const MAX_CONCURRENT = 3; // Upload 3 parts at a time
-const MAX_RETRIES = 3;
-
-interface MultipartConfig {
+interface MultipartUploadOptions {
   key: string;
   contentType: string;
-  accessToken: string;
+  accessToken?: string;
   onProgress?: (percent: number) => void;
+  partSize?: number;
 }
 
-/**
- * Call multipart-upload edge function
- */
-async function callMultipartAction(
-  action: string,
-  body: Record<string, unknown>,
-  accessToken: string
-): Promise<Record<string, unknown>> {
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-
-  const response = await fetch(`${supabaseUrl}/functions/v1/multipart-upload`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${accessToken}`,
-      'apikey': supabaseKey,
-    },
-    body: JSON.stringify({ action, ...body }),
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error || `Multipart action ${action} failed: HTTP ${response.status}`);
-  }
-
-  return await response.json();
+interface MultipartUploadResult {
+  url: string;
+  key: string;
 }
 
-/**
- * Upload a single part via presigned URL using XHR (supports progress)
- */
-function uploadPart(
-  partBlob: Blob,
-  uploadUrl: string,
-  onPartProgress?: (loaded: number) => void
-): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    const timeout = setTimeout(() => {
-      xhr.abort();
-      reject(new Error('Part upload timed out'));
-    }, 120000); // 2 min per part
-
-    xhr.upload.onprogress = (event) => {
-      if (event.lengthComputable && onPartProgress) {
-        onPartProgress(event.loaded);
-      }
-    };
-
-    xhr.onload = () => {
-      clearTimeout(timeout);
-      if (xhr.status >= 200 && xhr.status < 300) {
-        // Get ETag from response header
-        const etag = xhr.getResponseHeader('ETag');
-        if (!etag) {
-          reject(new Error('Missing ETag in response'));
-          return;
-        }
-        resolve(etag);
-      } else {
-        reject(new Error(`Part upload failed: HTTP ${xhr.status}`));
-      }
-    };
-
-    xhr.onerror = () => { clearTimeout(timeout); reject(new Error('Part upload network error')); };
-    xhr.onabort = () => { clearTimeout(timeout); reject(new Error('Part upload aborted')); };
-
-    xhr.open('PUT', uploadUrl);
-    xhr.send(partBlob);
-  });
-}
+const DEFAULT_PART_SIZE = 10 * 1024 * 1024; // 10MB per part
 
 /**
- * Upload a part with retry logic
- */
-async function uploadPartWithRetry(
-  partBlob: Blob,
-  uploadUrl: string,
-  partNumber: number,
-  onPartProgress?: (loaded: number) => void
-): Promise<string> {
-  let lastError: Error | null = null;
-  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-    try {
-      return await uploadPart(partBlob, uploadUrl, onPartProgress);
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
-      console.warn(`Part ${partNumber} attempt ${attempt + 1} failed:`, lastError.message);
-      if (attempt < MAX_RETRIES - 1) {
-        await new Promise(r => setTimeout(r, 1000 * (attempt + 1))); // Backoff
-      }
-    }
-  }
-  throw lastError || new Error(`Part ${partNumber} failed after ${MAX_RETRIES} retries`);
-}
-
-/**
- * Multipart upload to R2 for large files
+ * Multipart upload to R2 for large files (>50MB)
+ * Splits file into parts and uploads each via presigned URLs
  */
 export async function multipartUploadToR2(
   file: File,
-  config: MultipartConfig
-): Promise<R2UploadResult> {
-  const { key, contentType, accessToken, onProgress } = config;
-  const totalSize = file.size;
-  const totalParts = Math.ceil(totalSize / PART_SIZE);
+  options: MultipartUploadOptions
+): Promise<MultipartUploadResult> {
+  const { key, contentType, accessToken, onProgress, partSize = DEFAULT_PART_SIZE } = options;
 
-  // Track progress per part
-  const partProgress: number[] = new Array(totalParts).fill(0);
-  const reportProgress = () => {
-    if (!onProgress) return;
-    const totalLoaded = partProgress.reduce((sum, v) => sum + v, 0);
-    const percent = Math.min(Math.round((totalLoaded / totalSize) * 100), 99);
-    onProgress(percent);
+  let token = accessToken;
+  if (!token) {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error('Chưa đăng nhập');
+    token = session.access_token;
+  }
+
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`,
+    'apikey': supabaseKey,
   };
 
-  // Step 1: Initiate multipart upload
-  const initResult = await callMultipartAction('initiate', { key, contentType }, accessToken);
-  const uploadId = initResult.uploadId as string;
+  // 1. Initiate multipart upload
+  const initRes = await fetch(`${supabaseUrl}/functions/v1/multipart-upload`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ action: 'create', key, contentType }),
+  });
+  if (!initRes.ok) throw new Error(`Initiate multipart upload failed: ${initRes.status}`);
+  const { uploadId, publicUrl } = await initRes.json();
 
-  try {
-    // Step 2: Get presigned URLs for all parts
-    const partNumbers = Array.from({ length: totalParts }, (_, i) => i + 1);
-    const urlResult = await callMultipartAction('get-part-urls', {
-      key, uploadId, partNumbers,
-    }, accessToken);
-    const urls = urlResult.urls as Record<number, string>;
+  // 2. Upload parts
+  const totalParts = Math.ceil(file.size / partSize);
+  const etags: { partNumber: number; etag: string }[] = [];
+  let uploadedBytes = 0;
 
-    // Step 3: Upload parts with concurrency limit
-    const completedParts: { partNumber: number; etag: string }[] = [];
-    let partIndex = 0;
+  for (let i = 0; i < totalParts; i++) {
+    const start = i * partSize;
+    const end = Math.min(start + partSize, file.size);
+    const partBlob = file.slice(start, end);
+    const partNumber = i + 1;
 
-    const uploadNext = async (): Promise<void> => {
-      while (partIndex < totalParts) {
-        const currentIndex = partIndex++;
-        const partNumber = currentIndex + 1;
-        const start = currentIndex * PART_SIZE;
-        const end = Math.min(start + PART_SIZE, totalSize);
-        const partBlob = file.slice(start, end);
+    // Get presigned URL for this part
+    const partRes = await fetch(`${supabaseUrl}/functions/v1/multipart-upload`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ action: 'sign-part', key, uploadId, partNumber }),
+    });
+    if (!partRes.ok) throw new Error(`Sign part ${partNumber} failed`);
+    const { signedUrl } = await partRes.json();
 
-        const etag = await uploadPartWithRetry(
-          partBlob,
-          urls[partNumber],
-          partNumber,
-          (loaded) => {
-            partProgress[currentIndex] = loaded;
-            reportProgress();
-          }
-        );
+    // Upload part
+    const uploadRes = await fetch(signedUrl, {
+      method: 'PUT',
+      body: partBlob,
+    });
+    if (!uploadRes.ok) throw new Error(`Upload part ${partNumber} failed`);
 
-        // Mark part as fully uploaded
-        partProgress[currentIndex] = end - start;
-        reportProgress();
+    const etag = uploadRes.headers.get('ETag') || `"part-${partNumber}"`;
+    etags.push({ partNumber, etag });
 
-        completedParts.push({ partNumber, etag });
-      }
-    };
-
-    // Run concurrent workers
-    const workers = Array.from(
-      { length: Math.min(MAX_CONCURRENT, totalParts) },
-      () => uploadNext()
-    );
-    await Promise.all(workers);
-
-    // Step 4: Complete multipart upload
-    const completeResult = await callMultipartAction('complete', {
-      key, uploadId, parts: completedParts,
-    }, accessToken);
-
-    onProgress?.(100);
-
-    return {
-      url: completeResult.url as string,
-      key: completeResult.key as string,
-    };
-
-  } catch (error) {
-    // Abort on failure to clean up parts
-    console.error('Multipart upload failed, aborting:', error);
-    try {
-      await callMultipartAction('abort', { key, uploadId }, accessToken);
-    } catch (abortError) {
-      console.warn('Failed to abort multipart upload:', abortError);
-    }
-    throw error;
+    uploadedBytes += (end - start);
+    onProgress?.(Math.round((uploadedBytes / file.size) * 100));
   }
+
+  // 3. Complete multipart upload
+  const completeRes = await fetch(`${supabaseUrl}/functions/v1/multipart-upload`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ action: 'complete', key, uploadId, parts: etags }),
+  });
+  if (!completeRes.ok) throw new Error('Complete multipart upload failed');
+
+  return { url: publicUrl, key };
 }

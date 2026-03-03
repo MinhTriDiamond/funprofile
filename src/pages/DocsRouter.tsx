@@ -1,14 +1,14 @@
-import { useEffect } from "react";
+import { useEffect, lazy, Suspense } from "react";
 import { useLocation, Navigate } from "react-router-dom";
 
-import EcosystemDocs from "@/pages/EcosystemDocs";
-import PlatformDocs from "@/pages/PlatformDocs";
-import IntegrationDocs from "@/pages/IntegrationDocs";
-import SdkRepositoryDocs from "@/pages/SdkRepositoryDocs";
-import MasterCharterDocs from "@/pages/MasterCharterDocs";
-import PplpDocs from "@/pages/PplpDocs";
-import ArchitectureDocs from "@/pages/ArchitectureDocs";
-import DocsChangelog from "@/pages/DocsChangelog";
+const EcosystemDocs = lazy(() => import("@/pages/EcosystemDocs"));
+const PlatformDocs = lazy(() => import("@/pages/PlatformDocs"));
+const IntegrationDocs = lazy(() => import("@/pages/IntegrationDocs"));
+const SdkRepositoryDocs = lazy(() => import("@/pages/SdkRepositoryDocs"));
+const MasterCharterDocs = lazy(() => import("@/pages/MasterCharterDocs"));
+const PplpDocs = lazy(() => import("@/pages/PplpDocs"));
+const ArchitectureDocs = lazy(() => import("@/pages/ArchitectureDocs"));
+const DocsChangelog = lazy(() => import("@/pages/DocsChangelog"));
 
 const setCanonical = (href: string) => {
   let link = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
@@ -30,10 +30,15 @@ const ensureMetaDescription = (content: string) => {
   meta.content = content;
 };
 
+const DocsFallback = () => (
+  <div className="flex items-center justify-center min-h-[50vh]">
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+  </div>
+);
+
 export default function DocsRouter() {
   const location = useLocation();
 
-  // /docs/* fallback router (helps on hosts that don't preserve deep-link routing correctly)
   const subpath = location.pathname.replace(/^\/docs\/?/, "");
   const first = subpath.split("/").filter(Boolean)[0] ?? "";
 
@@ -42,91 +47,69 @@ export default function DocsRouter() {
 
     if (first === "platform") {
       document.title = "FUN Ecosystem Platform Documentation";
-      ensureMetaDescription(
-        "FUN Ecosystem platform documentation: kiến trúc, auth, wallet, feed, rewards, media, admin và bảo mật."
-      );
+      ensureMetaDescription("FUN Ecosystem platform documentation: kiến trúc, auth, wallet, feed, rewards, media, admin và bảo mật.");
       setCanonical(`${origin}/docs/platform`);
       return;
     }
-
     if (first === "ecosystem") {
       document.title = "FUN Ecosystem SSO Documentation";
-      ensureMetaDescription(
-        "FUN Ecosystem SSO documentation: Email OTP, Wallet login, Social login và Law of Light."
-      );
+      ensureMetaDescription("FUN Ecosystem SSO documentation: Email OTP, Wallet login, Social login và Law of Light.");
       setCanonical(`${origin}/docs/ecosystem`);
       return;
     }
-
     if (first === "integration") {
       document.title = "FUN Profile Integration Guide";
-      ensureMetaDescription(
-        "Hướng dẫn tích hợp FUN Profile SSO cho các platform: Fun Farm, Fun Play, Fun Planet."
-      );
+      ensureMetaDescription("Hướng dẫn tích hợp FUN Profile SSO cho các platform: Fun Farm, Fun Play, Fun Planet.");
       setCanonical(`${origin}/docs/integration`);
       return;
     }
-
     if (first === "sdk-repository") {
       document.title = "SDK Repository Setup | @fun-ecosystem/sso-sdk";
-      ensureMetaDescription(
-        "Hướng dẫn tạo GitHub Repository cho @fun-ecosystem/sso-sdk - npm package chính thức."
-      );
+      ensureMetaDescription("Hướng dẫn tạo GitHub Repository cho @fun-ecosystem/sso-sdk - npm package chính thức.");
       setCanonical(`${origin}/docs/sdk-repository`);
       return;
     }
-
     if (first === "master-charter") {
       document.title = "Hiến Pháp Gốc | Master Charter of FUN Ecosystem";
-      ensureMetaDescription(
-        "Hiến Pháp Gốc của FUN Ecosystem - Nền Kinh Tế Ánh Sáng 5D của Trái Đất Mới. 8 chương thiêng liêng."
-      );
+      ensureMetaDescription("Hiến Pháp Gốc của FUN Ecosystem - Nền Kinh Tế Ánh Sáng 5D của Trái Đất Mới. 8 chương thiêng liêng.");
       setCanonical(`${origin}/docs/master-charter`);
       return;
     }
-
     if (first === "pplp") {
       document.title = "Proof of Pure Love Protocol (PPLP) | FUN Ecosystem";
-      ensureMetaDescription(
-        "Giao Thức Bằng Chứng Tình Yêu Thuần Khiết - Nền tảng đồng thuận ánh sáng cho Trái Đất Mới."
-      );
+      ensureMetaDescription("Giao Thức Bằng Chứng Tình Yêu Thuần Khiết - Nền tảng đồng thuận ánh sáng cho Trái Đất Mới.");
       setCanonical(`${origin}/docs/pplp`);
       return;
     }
-
     if (first === "architecture") {
       document.title = "Core Architecture | FUN Ecosystem";
-      ensureMetaDescription(
-        "Kiến trúc 7 layers của FUN Ecosystem: Digital Identity Bank, Light Score PPLP, Reward Engine, Governance."
-      );
+      ensureMetaDescription("Kiến trúc 7 layers của FUN Ecosystem: Digital Identity Bank, Light Score PPLP, Reward Engine, Governance.");
       setCanonical(`${origin}/docs/architecture`);
       return;
     }
-
     if (first === "changelog") {
       document.title = "Báo Cáo Tổng Hợp | FUN Ecosystem";
-      ensureMetaDescription(
-        "Báo cáo tổng hợp toàn bộ thay đổi FUN Profile sau 6 tài liệu kỹ thuật mới."
-      );
+      ensureMetaDescription("Báo cáo tổng hợp toàn bộ thay đổi FUN Profile sau 6 tài liệu kỹ thuật mới.");
       setCanonical(`${origin}/docs/changelog`);
       return;
     }
 
     document.title = "FUN Ecosystem Documentation";
-    ensureMetaDescription(
-      "Tài liệu FUN Ecosystem: SSO, app architecture, wallet, feed, rewards, media và admin."
-    );
+    ensureMetaDescription("Tài liệu FUN Ecosystem: SSO, app architecture, wallet, feed, rewards, media và admin.");
     setCanonical(`${origin}/docs`);
   }, [first]);
 
-  if (first === "platform") return <PlatformDocs />;
-  if (first === "ecosystem") return <EcosystemDocs />;
-  if (first === "integration") return <IntegrationDocs />;
-  if (first === "sdk-repository") return <SdkRepositoryDocs />;
-  if (first === "master-charter") return <MasterCharterDocs />;
-  if (first === "pplp") return <PplpDocs />;
-  if (first === "architecture") return <ArchitectureDocs />;
-  if (first === "changelog") return <DocsChangelog />;
+  const page = (() => {
+    if (first === "platform") return <PlatformDocs />;
+    if (first === "ecosystem") return <EcosystemDocs />;
+    if (first === "integration") return <IntegrationDocs />;
+    if (first === "sdk-repository") return <SdkRepositoryDocs />;
+    if (first === "master-charter") return <MasterCharterDocs />;
+    if (first === "pplp") return <PplpDocs />;
+    if (first === "architecture") return <ArchitectureDocs />;
+    if (first === "changelog") return <DocsChangelog />;
+    return <Navigate to="/docs/ecosystem" replace />;
+  })();
 
-  return <Navigate to="/docs/ecosystem" replace />;
+  return <Suspense fallback={<DocsFallback />}>{page}</Suspense>;
 }

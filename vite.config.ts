@@ -76,7 +76,12 @@ export default defineConfig(({ mode }) => ({
   },
   // Performance hints
   esbuild: {
-    drop: mode === 'production' ? ['console', 'debugger'] : [],
+    drop: mode === 'production' ? ['debugger'] : [],
     legalComments: 'none',
+  },
+  define: {
+    'import.meta.env.VITE_BUILD_ID': JSON.stringify(
+      new Date().toISOString().slice(0, 19).replace(/[-:T]/g, '')
+    ),
   },
 }));
