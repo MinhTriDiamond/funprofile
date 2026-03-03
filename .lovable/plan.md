@@ -1,64 +1,51 @@
 
-# Kiểm tra & Sửa hệ thống Mint FUN theo mô hình Epoch
 
-## Kết quả kiểm tra
+# Sửa lỗi Live Replay không phát được video
 
-### Đã đúng (Backend)
+## Nguyên nhân gốc
 
-| Quy tắc | File | Status |
-|---------|------|--------|
-| Pool = 5M FUN | `pplp-epoch-snapshot` dòng 12 | OK |
-| FUN = Pool x (LS / Total LS) | `pplp-epoch-snapshot` dòng 144 | OK |
-| Anti-whale 3% (150K) | `pplp-epoch-snapshot` dòng 158 | OK |
-| LS >= 10 | `pplp-epoch-snapshot` dòng 129 | OK |
-| PPLP approved | `pplp-epoch-snapshot` dòng 76 | OK |
-| Không fraud (is_banned) | `pplp-epoch-snapshot` dòng 99-126 | OK |
-| mint_amount = 0 (epoch model) | `pplp-evaluate` dòng 331 | OK |
-| Epoch allocation hook | `useEpochAllocation.ts` | OK |
-| ClaimRewardsCard UI | `ClaimRewardsCard.tsx` | OK |
-| Admin Snapshot UI | `PplpMintTab.tsx` dòng 77-137 | OK |
+Manifest và tất cả chunk URLs đang trỏ tới domain `pub-e83e74b0726742fbb6a60bc08f95624b.r2.dev` (R2 dev URL). Domain này **không có CORS headers** nên trình duyệt chặn `fetch()` khi `ChunkedVideoPlayer` cố tải chunks. Video hiện duration (0:36) nhưng không bao giờ phát được.
 
-### Lỗi nghiêm trọng (Frontend)
+Nguyên nhân sâu: secret `CLOUDFLARE_R2_PUBLIC_URL` đang set giá trị `https://pub-e83e74b0726742fbb6a60bc08f95624b.r2.dev` thay vì `https://media.fun.rich` (custom domain đã có CORS đúng).
 
-**`ClaimRewardsCard` (Epoch-based) tồn tại nhưng KHÔNG được sử dụng trong app.**
+## Giải pháp (3 bước)
 
-Hiện tại `FunMoneyTab` chỉ render:
-1. `AttesterSigningPanel` (OK)
-2. `FunMoneyGuide` (OK)
-3. `LightScoreDashboard` — dùng `usePendingActions` cũ, nơi `mint_amount = 0` do epoch model
+### 1. Thêm URL normalizer trong ChunkedVideoPlayer
 
-Kết quả: Card "FUN Money Chờ Mint" luôn hiển thị **0 FUN**, nút Mint không bao giờ hoạt động vì `totalAmount` luôn = 0.
+Thêm function rewrite URL từ `pub-*.r2.dev` → `media.fun.rich` trước khi fetch manifest và chunks.
 
-## Giải pháp
+**File**: `src/modules/live/components/ChunkedVideoPlayer.tsx`
 
-### File: `src/components/wallet/tabs/FunMoneyTab.tsx`
+```typescript
+const R2_DEV_PATTERN = /https:\/\/pub-[a-f0-9]+\.r2\.dev/g;
+const R2_CUSTOM_DOMAIN = 'https://media.fun.rich';
 
-Thêm `ClaimRewardsCard` vào giữa `FunMoneyGuide` và `LightScoreDashboard`:
-
-```text
-AttesterSigningPanel (nếu là GOV attester)
-    |
-FunMoneyGuide
-    |
-ClaimRewardsCard  <-- THÊM MỚI (Epoch-based claiming)
-    |
-LightScoreDashboard (Light Score + On-chain balance)
+function normalizeR2Url(url: string): string {
+  return url.replace(R2_DEV_PATTERN, R2_CUSTOM_DOMAIN);
+}
 ```
 
-- Import `ClaimRewardsCard` từ `@/components/wallet/ClaimRewardsCard`
-- Truyền prop `onClaimSuccess` từ FunMoneyTab props
-- Card này hiển thị: Light Score tích lũy tháng hiện tại, Epoch allocation, nút Claim
+Áp dụng `normalizeR2Url()` tại:
+- `start()` khi fetch manifest URL (dòng 544)
+- Mỗi chunk URL trong manifest sau khi parse (normalize toàn bộ `manifest.chunks[].url`)
 
-### File: `src/components/wallet/LightScoreDashboard.tsx`
+Điều này sửa **tất cả bản ghi hiện tại** mà không cần cập nhật database.
 
-Xóa hoặc ẩn Card 2 ("FUN Money Chờ Mint") vì nó dùng `usePendingActions` cũ (luôn = 0 trong epoch model). Giữ lại:
-- Card 1: Light Score (5 Pillars)
-- Card 3: FUN On-chain Balance
+### 2. Cập nhật secret `CLOUDFLARE_R2_PUBLIC_URL`
 
-Loại bỏ import và sử dụng `usePendingActions`, `useMintHistory` vì không còn cần thiết trong LightScoreDashboard.
+Yêu cầu cập nhật secret thành `https://media.fun.rich` để tất cả recording mới sử dụng custom domain đúng. Điều này ảnh hưởng:
+- `r2-signed-chunk-url` Edge Function (trả `publicUrl`)
+- `recording-finalize` Edge Function (build manifest chunk URLs)
 
-### Tác động
+### 3. Thêm URL normalizer vào FeedVideoPlayer
 
-- User sẽ thấy **Light Score tích lũy trong tháng** và **FUN allocation từ epoch trước** (nếu có)
-- Nút "Claim" hoạt động đúng qua `useEpochAllocation` -> `pplp-mint-fun`
-- Không còn hiển thị "0 FUN chờ mint" gây nhầm lẫn
+**File**: `src/components/feed/FeedVideoPlayer.tsx`
+
+Normalize `src` prop trước khi truyền xuống `ChunkedVideoPlayer` hoặc `FacebookVideoPlayer`, đảm bảo mọi video URL legacy đều được chuyển đổi.
+
+## Tác động
+
+- Tất cả live replay cũ (dùng `r2.dev` URL) sẽ tự động phát được
+- Recording mới sẽ sử dụng `media.fun.rich` domain
+- Không cần migration database
+
