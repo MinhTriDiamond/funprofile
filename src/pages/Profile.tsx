@@ -171,7 +171,7 @@ const Profile = () => {
       const profileQuery = isViewingOwnProfile
         ? supabase.from('profiles').select('*').eq('id', profileId).single()
         : supabase.from('public_profiles')
-            .select('id, username, display_name, avatar_url, full_name, bio, cover_url, created_at, public_wallet_address, social_links, is_banned')
+            .select('id, username, display_name, avatar_url, full_name, bio, cover_url, created_at, public_wallet_address, social_links, is_banned, location, workplace, education, relationship_status')
             .eq('id', profileId).single();
 
       const postsQuery = supabase
@@ -991,11 +991,24 @@ onClick={() => navigate(`/${friend.username}`)}
                         <div className="bg-card/70 rounded-xl shadow-sm border border-border p-6">
                           <h3 className="font-bold text-xl mb-4 text-foreground">{t('about')}</h3>
                           <div className="space-y-4">
-                            {/* Public Wallet Address in About */}
+                            {/* Bio */}
+                            {profile?.bio ? (
+                              <div className="flex items-start gap-3 text-foreground">
+                                <PenSquare className="w-6 h-6 text-muted-foreground flex-shrink-0 mt-0.5" />
+                                <span className="whitespace-pre-wrap">{profile.bio}</span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-3">
+                                <PenSquare className="w-6 h-6 text-muted-foreground" />
+                                <span className="text-muted-foreground text-sm italic">{showPrivateElements ? t('addBio') || 'Thêm tiểu sử' : t('notUpdated')}</span>
+                              </div>
+                            )}
+
+                            {/* Wallet */}
                             <div className="flex items-center gap-3 text-foreground">
                               <Wallet className="w-6 h-6 text-muted-foreground" />
                               {profile?.public_wallet_address ? (
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 flex-wrap">
                                   <span className="font-mono text-sm">
                                     {profile.public_wallet_address.slice(0, 6)}...{profile.public_wallet_address.slice(-4)}
                                   </span>
@@ -1009,47 +1022,86 @@ onClick={() => navigate(`/${friend.username}`)}
                                     <Copy className="w-4 h-4 text-muted-foreground" />
                                   </button>
                                   {showPrivateElements && (
-                                    <button
-                                      onClick={() => navigateToTab('edit')}
-                                      className="text-xs text-primary hover:underline ml-1"
-                                    >
+                                    <button onClick={() => navigateToTab('edit')} className="text-xs text-primary hover:underline ml-1">
                                       {t('edit')}
                                     </button>
                                   )}
                                 </div>
                               ) : showPrivateElements ? (
-                                <button
-                                  onClick={() => navigateToTab('edit')}
-                                  className="text-primary hover:underline text-sm"
-                                >
+                                <button onClick={() => navigateToTab('edit')} className="text-primary hover:underline text-sm">
                                   {t('addPublicWallet')}
                                 </button>
                               ) : (
-                                <span className="text-muted-foreground text-sm">{t('notUpdated')}</span>
+                                <span className="text-muted-foreground text-sm italic">{t('notUpdated')}</span>
                               )}
                             </div>
-                            {profile?.workplace && (
-                              <div className="flex items-center gap-3 text-foreground">
-                                <Briefcase className="w-6 h-6 text-muted-foreground" />
+
+                            {/* Workplace */}
+                            <div className="flex items-center gap-3 text-foreground">
+                              <Briefcase className="w-6 h-6 text-muted-foreground" />
+                              {profile?.workplace ? (
                                 <span>{t('worksAt')} <strong>{profile.workplace}</strong></span>
-                              </div>
-                            )}
-                            {profile?.education && (
-                              <div className="flex items-center gap-3 text-foreground">
-                                <GraduationCap className="w-6 h-6 text-muted-foreground" />
+                              ) : (
+                                <span className="text-muted-foreground text-sm italic">{showPrivateElements ? 'Thêm nơi làm việc' : t('notUpdated')}</span>
+                              )}
+                            </div>
+
+                            {/* Education */}
+                            <div className="flex items-center gap-3 text-foreground">
+                              <GraduationCap className="w-6 h-6 text-muted-foreground" />
+                              {profile?.education ? (
                                 <span>{t('studiesAt')} <strong>{profile.education}</strong></span>
-                              </div>
-                            )}
-                            {profile?.location && (
-                              <div className="flex items-center gap-3 text-foreground">
-                                <MapPin className="w-6 h-6 text-muted-foreground" />
+                              ) : (
+                                <span className="text-muted-foreground text-sm italic">{showPrivateElements ? 'Thêm trường học' : t('notUpdated')}</span>
+                              )}
+                            </div>
+
+                            {/* Location */}
+                            <div className="flex items-center gap-3 text-foreground">
+                              <MapPin className="w-6 h-6 text-muted-foreground" />
+                              {profile?.location ? (
                                 <span>{t('livesIn')} <strong>{profile.location}</strong></span>
-                              </div>
-                            )}
-                            {profile?.relationship_status && (
-                              <div className="flex items-center gap-3 text-foreground">
-                                <Heart className="w-6 h-6 text-muted-foreground" />
+                              ) : (
+                                <span className="text-muted-foreground text-sm italic">{showPrivateElements ? 'Thêm nơi sống' : t('notUpdated')}</span>
+                              )}
+                            </div>
+
+                            {/* Relationship */}
+                            <div className="flex items-center gap-3 text-foreground">
+                              <Heart className="w-6 h-6 text-muted-foreground" />
+                              {profile?.relationship_status ? (
                                 <span>{profile.relationship_status}</span>
+                              ) : (
+                                <span className="text-muted-foreground text-sm italic">{showPrivateElements ? 'Thêm tình trạng' : t('notUpdated')}</span>
+                              )}
+                            </div>
+
+                            {/* Joined date */}
+                            <div className="flex items-center gap-3 text-foreground">
+                              <Clock className="w-6 h-6 text-muted-foreground" />
+                              <span className="text-sm">
+                                Tham gia từ {profile?.created_at ? new Date(profile.created_at).toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' }) : '...'}
+                              </span>
+                            </div>
+
+                            {/* Social Links */}
+                            {profile?.social_links && Array.isArray(profile.social_links) && profile.social_links.length > 0 && (
+                              <div className="pt-3 border-t border-border">
+                                <p className="text-sm font-semibold text-muted-foreground mb-2">Liên kết mạng xã hội</p>
+                                <div className="flex flex-wrap gap-2">
+                                  {(profile.social_links as any[]).map((link: any, idx: number) => (
+                                    <a
+                                      key={idx}
+                                      href={link.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary hover:bg-primary/10 text-sm transition-colors"
+                                    >
+                                      {link.favicon && <img src={link.favicon} alt="" className="w-4 h-4 rounded-full" />}
+                                      <span>{link.label || link.platform}</span>
+                                    </a>
+                                  ))}
+                                </div>
                               </div>
                             )}
                           </div>
