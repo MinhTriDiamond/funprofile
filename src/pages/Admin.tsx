@@ -20,10 +20,15 @@ import SystemTab from "@/components/admin/SystemTab";
 
 const Admin = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState(() => {
+    const tabParam = searchParams.get("tab");
+    const validTabs = ["overview", "pplp", "finance", "rewards", "users", "fraud", "moderation", "system"];
+    return tabParam && validTabs.includes(tabParam) ? tabParam : "overview";
+  });
 
   const { data: users = [], isLoading: usersLoading } = useAdminUsers();
 

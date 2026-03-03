@@ -332,7 +332,10 @@ const Notifications = () => {
     }
   };
 
-  const filteredNotifications = filterNotifications(notifications);
+  const FRAUD_TYPES = ["admin_shared_device", "admin_email_farm", "admin_blacklisted_ip", "admin_fraud_daily"];
+  const allFiltered = filterNotifications(notifications);
+  const fraudNotifications = allFiltered.filter(n => FRAUD_TYPES.includes(n.type));
+  const filteredNotifications = allFiltered.filter(n => !FRAUD_TYPES.includes(n.type));
   const unreadCount = notifications.filter(n => !n.read).length;
 
   const filterOptions = [

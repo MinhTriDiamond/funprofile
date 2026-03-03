@@ -3,7 +3,7 @@
  * Features: Time grouping, post snippets, friend request inline actions, tabs filter, expand/collapse
  */
 
-import { Bell, MoreHorizontal, Settings, Check, Users } from 'lucide-react';
+import { Bell, MoreHorizontal, Settings, Check, Users, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -251,14 +251,17 @@ export const NotificationDropdown = ({ centerNavStyle = false, isActiveRoute = f
   };
 
   // Filter and group notifications
-  const { friendRequests, otherNotifications } = useMemo(() => {
+  const FRAUD_TYPES_DD = ['admin_shared_device', 'admin_email_farm', 'admin_blacklisted_ip', 'admin_fraud_daily'];
+
+  const { friendRequests, fraudAlerts, otherNotifications } = useMemo(() => {
     const filtered = activeTab === 'unread' 
       ? notifications.filter(n => !n.read)
       : notifications;
     
     return {
       friendRequests: filtered.filter(n => n.type === 'friend_request' && !n.read),
-      otherNotifications: filtered.filter(n => n.type !== 'friend_request' || n.read)
+      fraudAlerts: filtered.filter(n => FRAUD_TYPES_DD.includes(n.type)),
+      otherNotifications: filtered.filter(n => (n.type !== 'friend_request' || n.read) && !FRAUD_TYPES_DD.includes(n.type))
     };
   }, [notifications, activeTab]);
 
