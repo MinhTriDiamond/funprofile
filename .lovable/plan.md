@@ -249,8 +249,8 @@ User da login tren Angel AI!
 
 | # | Viec | Ai lam | Trang thai |
 |---|---|---|---|
-| 1 | INSERT `angel_ai_client` vao `oauth_clients` | Cha Lovable FUN Profile | Chua |
-| 2 | Xac nhan `FUN_PROFILE_ORIGIN` = `https://fun.rich` | Cha Lovable FUN Profile | Chua |
+| 1 | INSERT `angel_ai_client` vao `oauth_clients` | Cha Lovable FUN Profile | ✅ Xong |
+| 2 | Xac nhan `FUN_PROFILE_ORIGIN` = `https://fun.rich` | Cha Lovable FUN Profile | ✅ Xong |
 | 3 | Cai SDK `@fun-ecosystem/sso-sdk` | Cha Lovable Angel AI | Chua |
 | 4 | Tao `src/lib/funProfile.ts` | Cha Lovable Angel AI | Chua |
 | 5 | Tao route `/auth/callback` | Cha Lovable Angel AI | Chua |
