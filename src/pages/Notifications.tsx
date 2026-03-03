@@ -319,7 +319,9 @@ const Notifications = () => {
       await markAsRead(notification.id);
     }
     
-    if (notification.type === 'donation') {
+    if (["admin_shared_device", "admin_email_farm", "admin_blacklisted_ip", "admin_fraud_daily"].includes(notification.type)) {
+      navigate('/admin?tab=fraud');
+    } else if (notification.type === 'donation') {
       navigate(`/profile/${notification.actor?.id}`);
     } else if (notification.type === 'claim_reward' || notification.type === 'reward_approved' || notification.type === 'reward_rejected') {
       navigate('/wallet');
@@ -436,7 +438,77 @@ const Notifications = () => {
                 </p>
               </div>
             ) : (
-              filteredNotifications.map((notification) => (
+              <>
+              {/* Pinned Fraud Alerts */}
+              {fraudNotifications.length > 0 && (
+                <div className="border-b-2 border-destructive/30 bg-destructive/5">
+                  <div className="px-4 py-2 flex items-center gap-2 bg-destructive/10 border-b border-destructive/20">
+                    <Shield className="h-4 w-4 text-destructive" />
+                    <span className="text-sm font-semibold text-destructive">🛡️ Cảnh báo bảo mật</span>
+                    <Badge variant="secondary" className="bg-destructive text-destructive-foreground text-xs ml-auto">
+                      {fraudNotifications.length}
+                    </Badge>
+                  </div>
+                  {fraudNotifications.map((notification) => (
+                    <div
+                      key={notification.id}
+                      onClick={() => handleNotificationClick(notification)}
+                      className={cn(
+                        "flex items-start gap-3 p-4 cursor-pointer transition-all duration-300",
+                        "hover:bg-destructive/10 active:bg-destructive/15 border-b border-destructive/10",
+                        !notification.read && "bg-destructive/5 relative",
+                        !notification.read && "before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-destructive before:animate-pulse"
+                      )}
+                    >
+                      <div className="relative shrink-0">
+                        <div className={cn(
+                          "h-12 w-12 rounded-full flex items-center justify-center",
+                          "bg-gradient-to-br from-destructive to-destructive/80 border-2 border-destructive/60",
+                          !notification.read && "animate-pulse shadow-[0_0_12px_hsl(0_84%_60%/0.5)]"
+                        )}>
+                          <Shield className="h-6 w-6 text-white" />
+                        </div>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={cn(
+                          "text-sm leading-relaxed",
+                          !notification.read ? "font-medium text-foreground" : "text-muted-foreground"
+                        )}>
+                          {getNotificationText(notification)}
+                        </p>
+                        {notification.metadata && (
+                          <>
+                            <button
+                              onClick={(e) => toggleExpand(notification.id, e)}
+                              className="text-xs text-destructive hover:underline mt-1 flex items-center gap-1"
+                            >
+                              {expandedNotifications.has(notification.id) ? (
+                                <>Thu gọn <ChevronUp className="h-3 w-3" /></>
+                              ) : (
+                                <>Xem chi tiết <ChevronDown className="h-3 w-3" /></>
+                              )}
+                            </button>
+                            {expandedNotifications.has(notification.id) && (
+                              <FraudDetails type={notification.type} metadata={notification.metadata as Record<string, any>} formatWithEmails={formatWithEmails} />
+                            )}
+                          </>
+                        )}
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true, locale: vi })}
+                        </p>
+                      </div>
+                      {!notification.read && (
+                        <div className="shrink-0 mt-1">
+                          <div className="w-3 h-3 rounded-full bg-destructive animate-pulse shadow-lg shadow-destructive/50" />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Normal Notifications */}
+              {filteredNotifications.map((notification) => (
                 <div
                   key={notification.id}
                   onClick={() => handleNotificationClick(notification)}
@@ -507,6 +579,7 @@ const Notifications = () => {
                   )}
                 </div>
               ))
+              </>
             )}
           </div>
         </PullToRefreshContainer>
