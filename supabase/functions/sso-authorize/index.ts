@@ -2,7 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 // Generate secure random code
@@ -38,6 +38,10 @@ Deno.serve(async (req: Request) => {
   try {
     const url = new URL(req.url);
     const params = url.searchParams;
+
+    // Build external URL from SUPABASE_URL (req.url returns internal localhost in Edge Functions)
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const externalUrl = `${supabaseUrl}/functions/v1/sso-authorize?${params.toString()}`;
 
     // Required OAuth 2.0 parameters
     const client_id = params.get('client_id');
@@ -103,12 +107,15 @@ Deno.serve(async (req: Request) => {
 
     // Get user from Authorization header (user must be logged in)
     const authHeader = req.headers.get('Authorization');
+    console.log('SSO Authorize called, external URL:', externalUrl);
+    console.log('Auth header present:', !!authHeader);
+    
     if (!authHeader) {
       // Redirect to FUN PROFILE login page (not client's login page!)
       // After login, user will be redirected back to complete the authorize flow
       const funProfileOrigin = Deno.env.get("FUN_PROFILE_ORIGIN") || "https://fun-profile.lovable.app";
       const loginUrl = new URL('/auth', funProfileOrigin);
-      loginUrl.searchParams.set('return_to', req.url);
+      loginUrl.searchParams.set('return_to', externalUrl);
       loginUrl.searchParams.set('sso_flow', 'true');
       
       return new Response(null, {
