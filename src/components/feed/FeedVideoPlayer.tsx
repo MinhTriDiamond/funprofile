@@ -55,12 +55,9 @@ export const FeedVideoPlayer = memo(({
     if (!el) return;
     const obs = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsNearViewport(true);
-          obs.disconnect(); // Once visible, keep mounted
-        }
+        setIsNearViewport(entry.isIntersecting);
       },
-      { rootMargin: '200px' }
+      { rootMargin: '400px' }
     );
     obs.observe(el);
     return () => obs.disconnect();
