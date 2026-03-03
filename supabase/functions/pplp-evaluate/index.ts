@@ -119,6 +119,35 @@ serve(async (req) => {
       });
     }
 
+    // === CROSS-VALIDATE ACTION TYPE ===
+    // Prevent fake livestream submissions (308 LS avg) - must have actual live_sessions record
+    if (action_type === 'livestream' && reference_id) {
+      const { data: liveSession } = await supabase
+        .from('live_sessions')
+        .select('id, status, host_user_id, started_at, ended_at')
+        .eq('id', reference_id)
+        .eq('host_user_id', actorId)
+        .maybeSingle();
+
+      if (!liveSession) {
+        console.warn(`[PPLP] BLOCKED fake livestream from ${actorId}, ref=${reference_id}`);
+        return new Response(JSON.stringify({ error: 'Invalid livestream reference', reason: 'no_live_session' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Must have ended (completed livestream)
+      if (!liveSession.ended_at) {
+        return new Response(JSON.stringify({ success: true, skipped: true, reason: 'livestream_not_ended' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    } else if (action_type === 'livestream' && !reference_id) {
+      return new Response(JSON.stringify({ error: 'Livestream requires reference_id (live_session id)' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     console.log(`[PPLP] Evaluating ${action_type} for actor ${actorId}`);
 
     // === DETERMINE BENEFICIARY ===
@@ -228,12 +257,13 @@ serve(async (req) => {
     // === AI EVALUATION ===
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
+    // SECURITY: Low defaults when AI is unavailable to prevent gaming
     let evaluation = {
-      quality_score: 1.0,
-      impact_score: 1.0,
-      integrity_score: 1.0,
-      unity_score: 50,
-      reasoning: 'Default evaluation - AI unavailable',
+      quality_score: 0.6,
+      impact_score: 0.6,
+      integrity_score: 0.7,
+      unity_score: 30,
+      reasoning: 'Default evaluation - AI unavailable (conservative defaults)',
     };
 
     if (LOVABLE_API_KEY && content) {
