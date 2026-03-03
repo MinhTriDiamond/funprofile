@@ -1,38 +1,44 @@
 
 
-# Hoàn thiện Platform Grid với logo chính thức
+# Sửa thông báo đăng ký và nội dung email xác nhận
 
-## Hiện trạng
-- Platform grid đang dùng **emoji** thay vì logo chính thức
-- Các logo 36px đã có sẵn trong `public/`: `angel-ai-logo-36.png`, `fun-play-logo-36.webp`, `fun-farm-logo-36.webp`, `fun-planet-logo-36.webp`, `fun-charity-logo-36.webp`, `fun-academy-logo-36.webp`, `green-earth-logo-36.webp`
-- **Thiếu**: logo FUN Life (user vừa upload) và logo FUN Profile dạng nhỏ
+## Vấn đề hiện tại
+1. **Toast thông báo**: Sau khi đăng ký thành công, toast hiển thị nhưng tự tắt — user muốn toast **không tự tắt** và có nút X
+2. **Nội dung email**: Hiển thị "FUN-Profile" và "Thanks for signing up for FUN Profile app!" — cần đổi thành "FUN Ecosystem" và "FUN ID"
 
 ## Thay đổi
 
-### 1. Copy logo FUN Life vào project
-- Copy `user-uploads://FUN_Life.webp` → `public/fun-life-logo-36.webp`
+### 1. Sửa toast trong `src/components/auth/ClassicEmailLogin.tsx` (dòng 104)
 
-### 2. Cập nhật `src/pages/Auth.tsx`
-Thay `ECOSYSTEM_PLATFORMS` từ dùng emoji sang dùng logo path:
+Thay `toast.success(t('authSuccessSignUp'))` bằng toast có `duration: Infinity` để không tự tắt:
 
 ```typescript
-const ECOSYSTEM_PLATFORMS = [
-  { name: 'FUN Profile', logo: '/fun-profile-logo-40.webp' },
-  { name: 'Angel AI', logo: '/angel-ai-logo-36.png' },
-  { name: 'FUN Play', logo: '/fun-play-logo-36.webp' },
-  { name: 'FUN Academy', logo: '/fun-academy-logo-36.webp' },
-  { name: 'Green Earth', logo: '/green-earth-logo-36.webp' },
-  { name: 'FUN Planet', logo: '/fun-planet-logo-36.webp' },
-  { name: 'FUN Farm', logo: '/fun-farm-logo-36.webp' },
-  { name: 'FUN Charity', logo: '/fun-charity-logo-36.webp' },
-  { name: 'FUN Life', logo: '/fun-life-logo-36.webp' },
-];
+toast.success(t('authSuccessSignUp'), { duration: Infinity });
 ```
 
-Thay phần render từ emoji sang `<img>`:
-```tsx
-<img src={platform.logo} alt={platform.name} className="w-7 h-7 rounded-full object-cover" />
-```
+### 2. Cập nhật nội dung thông báo trong `src/i18n/translations.ts`
 
-Chỉ sửa 1 file + copy 1 asset.
+Cập nhật key `authSuccessSignUp` cho tất cả 13 ngôn ngữ, ví dụ:
+- **VI**: `"Chúc mừng bạn Đăng ký FUN ID thành công! Hãy kiểm tra email để xác nhận tài khoản nhé. 💖"`
+- **EN**: `"Congratulations! Your FUN ID has been created! Please check your email to verify your account."`
+- Các ngôn ngữ khác: cập nhật tương tự với "FUN ID"
+
+### 3. Sửa nội dung email xác nhận
+
+Email hiện dùng template mặc định với tên project "FUN-Profile". Cần tạo **custom email templates** qua công cụ `scaffold_auth_email_templates` để:
+- Đổi tên hiển thị từ "FUN-Profile" sang "FUN Ecosystem"
+- Đổi nội dung từ "Thanks for signing up for FUN Profile app!" sang "Thanks for signing up for FUN ID!"
+- Áp dụng branding phù hợp với style hologram hiện tại
+
+**Lưu ý**: Để scaffold email templates, cần có email domain đã cấu hình. Nếu chưa có, sẽ cần thiết lập domain trước.
+
+---
+
+## File thay đổi
+
+| File | Thay đổi |
+|------|----------|
+| `src/components/auth/ClassicEmailLogin.tsx` | Toast duration: Infinity |
+| `src/i18n/translations.ts` | Cập nhật `authSuccessSignUp` cho 13 ngôn ngữ |
+| Email templates (scaffold) | Tạo custom templates với branding FUN Ecosystem / FUN ID |
 
