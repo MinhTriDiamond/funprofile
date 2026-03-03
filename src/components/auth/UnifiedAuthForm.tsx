@@ -13,7 +13,11 @@ import { Mail, Wallet, Users, Loader2, Sparkles, KeyRound } from 'lucide-react';
 import { getDeviceHash, FINGERPRINT_VERSION } from '@/utils/deviceFingerprint';
 import { usePplpEvaluate } from '@/hooks/usePplpEvaluate';
 
-export const UnifiedAuthForm = () => {
+interface UnifiedAuthFormProps {
+  ssoFlow?: boolean;
+}
+
+export const UnifiedAuthForm = ({ ssoFlow = false }: UnifiedAuthFormProps) => {
   const navigate = useNavigate();
   const { t } = useLanguage();
   const { evaluateAsync } = usePplpEvaluate();
@@ -89,6 +93,12 @@ export const UnifiedAuthForm = () => {
     if (isNewUser) {
       // PPLP: Award new user bonus Light Score (fire-and-forget)
       evaluateAsync({ action_type: 'new_user_bonus', reference_id: userId });
+      
+      if (ssoFlow) {
+        // SSO mode: don't navigate, Auth.tsx handles redirect
+        toast.success(t('welcomeNewUser'));
+        return;
+      }
       await handleNewUserSetup(userId, hasExternalWallet);
     } else {
       // Kiểm tra law_of_light_accepted từ DB trước khi navigate
@@ -99,6 +109,11 @@ export const UnifiedAuthForm = () => {
         .single();
 
       toast.success(t('welcomeBack'));
+
+      if (ssoFlow) {
+        // SSO mode: don't navigate, Auth.tsx handles redirect
+        return;
+      }
 
       if (profile?.law_of_light_accepted) {
         navigate('/');

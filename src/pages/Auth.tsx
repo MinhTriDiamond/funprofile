@@ -11,10 +11,12 @@ const Auth = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { t } = useLanguage();
+  const [ssoRedirecting, setSsoRedirecting] = useState(false);
   
   // SSO flow parameters
   const returnTo = searchParams.get('return_to');
   const ssoFlow = searchParams.get('sso_flow') === 'true';
+  const isSsoMode = ssoFlow && !!returnTo;
 
   useEffect(() => {
 
@@ -69,37 +71,58 @@ const Auth = () => {
   const handleSSORedirect = (accessToken: string) => {
     if (!returnTo) return;
     
+    setSsoRedirecting(true);
+    
     try {
-      // Parse the return_to URL and add authorization
-      const authorizeUrl = new URL(returnTo);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
       
-      // Redirect to authorize endpoint - browser will make the request
-      // We need to make a fetch call with the token, then redirect
       fetch(returnTo, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Accept': 'application/json'
-        }
+        },
+        signal: controller.signal
       })
         .then(res => res.json())
         .then(data => {
+          clearTimeout(timeoutId);
           if (data.redirect_uri) {
             window.location.href = data.redirect_uri;
           } else if (data.error) {
             console.error('SSO authorize error:', data);
+            setSsoRedirecting(false);
             navigate('/');
           }
         })
         .catch(err => {
+          clearTimeout(timeoutId);
           console.error('SSO redirect error:', err);
+          setSsoRedirecting(false);
           navigate('/');
         });
     } catch (err) {
       console.error('Invalid return_to URL:', err);
+      setSsoRedirecting(false);
       navigate('/');
     }
   };
+
+  // SSO redirecting overlay
+  if (ssoRedirecting) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+        <div className="text-center space-y-4 z-10">
+          <div className="w-16 h-16 mx-auto rounded-full bg-primary/20 flex items-center justify-center animate-pulse">
+            <Eye size={32} className="text-primary" />
+          </div>
+          <h2 className="text-xl font-bold text-foreground">Đang chuyển hướng...</h2>
+          <p className="text-muted-foreground">Vui lòng đợi trong giây lát</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
@@ -161,7 +184,7 @@ const Auth = () => {
 
         {/* Right Side - Auth Form with fixed dimensions to prevent CLS */}
         <div className="w-full max-w-lg mx-auto min-h-[560px]">
-          <UnifiedAuthForm />
+          <UnifiedAuthForm ssoFlow={isSsoMode} />
           
           {/* Guest Mode Option */}
           <div className="mt-6 text-center">
