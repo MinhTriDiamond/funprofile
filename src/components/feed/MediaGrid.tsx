@@ -71,7 +71,7 @@ export const MediaGrid = memo(({ media: initialMedia, feedId }: MediaGridProps) 
             <FeedVideoPlayer
               src={item.url}
               poster={item.poster}
-              displayMode="rectangle"
+              
               isLiveReplay={item.isLiveReplay}
               feedId={feedId}
               onError={() => handleMediaError(item.url)}
@@ -116,8 +116,6 @@ export const MediaGrid = memo(({ media: initialMedia, feedId }: MediaGridProps) 
                 <FeedVideoPlayer
                     src={item.url}
                     poster={item.poster}
-                    displayMode="square"
-                    fitStrategy="smart"
                     isLiveReplay={item.isLiveReplay}
                     feedId={feedId}
                     compact
@@ -164,8 +162,6 @@ export const MediaGrid = memo(({ media: initialMedia, feedId }: MediaGridProps) 
                 <FeedVideoPlayer
                   src={media[0].url}
                   poster={media[0].poster}
-                  displayMode="square"
-                  fitStrategy="smart"
                   isLiveReplay={media[0].isLiveReplay}
                   feedId={feedId}
                   compact
@@ -192,8 +188,6 @@ export const MediaGrid = memo(({ media: initialMedia, feedId }: MediaGridProps) 
                 <FeedVideoPlayer
                   src={media[1].url}
                   poster={media[1].poster}
-                  displayMode="square"
-                  fitStrategy="smart"
                   isLiveReplay={media[1].isLiveReplay}
                   feedId={feedId}
                   compact
@@ -220,8 +214,6 @@ export const MediaGrid = memo(({ media: initialMedia, feedId }: MediaGridProps) 
                 <FeedVideoPlayer
                   src={media[2].url}
                   poster={media[2].poster}
-                  displayMode="square"
-                  fitStrategy="smart"
                   isLiveReplay={media[2].isLiveReplay}
                   feedId={feedId}
                   compact
@@ -269,8 +261,6 @@ export const MediaGrid = memo(({ media: initialMedia, feedId }: MediaGridProps) 
                 <FeedVideoPlayer
                   src={item.url}
                   poster={item.poster}
-                  displayMode="square"
-                  fitStrategy="smart"
                   isLiveReplay={item.isLiveReplay}
                   feedId={feedId}
                   compact
