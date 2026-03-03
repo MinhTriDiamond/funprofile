@@ -1,42 +1,50 @@
 
-# Sửa lỗi Live Replay không phát được video (SourceBuffer Error)
 
-## Phát hiện qua Testing
+# Sửa lỗi Live Replay: Tải chậm và Controls bị ẩn
 
-Video player **hiển thị đúng** (badge LIVE Replay, thời lượng 0:36, nút download). URL normalization từ `r2.dev` → `media.fun.rich` **hoạt động tốt** — tất cả 9 chunks tải thành công (status 200, ~40ms mỗi chunk). Tuy nhiên video **không phát** vì `SourceBuffer error` khi append chunk đầu tiên.
+## Phân tích vấn đề
 
-## Nguyên nhân gốc
+### Vấn đề 1: Video tải quá lâu
+Khi MSE thất bại (SourceBuffer error ở chunk đầu tiên), hệ thống chuyển sang **blob fallback** — tải **TOÀN BỘ** chunks tuần tự rồi mới phát. Với 9 chunks (~36 giây video), user phải chờ tải xong 100% mới xem được. Đây là nguyên nhân chính gây chờ lâu.
 
-Khi `appendBuffer(chunk_0)` fail, flow hiện tại:
-1. `sbErrorCount = 1`, `nextAppendSeq` tăng lên 1
-2. `processQueue()` cố append chunk 1 — nhưng chunk 1 **không có WebM init segment** (EBML header + track info) vì chỉ chunk 0 mới có
-3. MediaSource có thể chuyển sang trạng thái `closed` sau error, khiến `processQueue` return sớm tại check `mediaSource.readyState !== 'open'`
-4. Player bị stuck — không bao giờ đạt `MAX_SB_ERRORS = 3` để trigger blob fallback
-
-Nguyên nhân SourceBuffer reject chunk 0: có thể do **codec mismatch** — manifest ghi `vp8,opus` nhưng MediaRecorder thực tế có thể encode bằng `vp9` hoặc codec khác tùy trình duyệt.
+### Vấn đề 2: Controls video không hiển thị
+`SocialVideoPlayer` có cơ chế auto-hide controls sau 3 giây khi video đang phát. Ngoài ra, khi blob fallback hoàn tất và `autoPlay` kích hoạt, video bắt đầu phát ngay → controls bị ẩn trước khi user kịp thấy. User cần tap/click vào video để hiện controls nhưng có thể không biết điều này.
 
 ## Giải pháp
 
-### Sửa ChunkedVideoPlayer.tsx — Fast blob fallback khi first chunk fails
+### 1. Blob fallback: Phát ngay khi có thể thay vì chờ tải hết
 
-**Nguyên tắc**: Nếu chunk đầu tiên (chứa init segment) bị reject bởi SourceBuffer, thì MSE sẽ **không bao giờ** hoạt động cho recording này. Phải fallback sang blob ngay lập tức thay vì chờ 3 errors.
+**File**: `src/modules/live/components/ChunkedVideoPlayer.tsx`
 
-**Thay đổi cụ thể**:
-1. Trong SourceBuffer `error` event handler (line 312-321): thêm check `if (!firstChunkAppended)` → gọi `onFallback()` ngay lập tức, không cần đợi `MAX_SB_ERRORS`
-2. Trong `appendBuffer` catch block (line 279-294): tương tự, nếu `!firstChunkAppended` → fallback ngay
+Thay đổi `loadWithBlob` để:
+- Sau khi tải xong chunk đầu tiên, tạo blob tạm và set làm `video.src` → video hiện frame đầu tiên ngay
+- Tiếp tục tải các chunk còn lại ở background
+- Khi tải xong tất cả, ghép thành blob hoàn chỉnh và thay thế src
+- Set `loading = false` sau chunk đầu tiên thay vì sau chunk cuối
 
-Blob fallback (line 514-541) sẽ download tất cả chunks, ghép thành 1 blob, dùng native `<video>` element — hoạt động với mọi codec mà trình duyệt hỗ trợ.
+Cụ thể:
+```
+- Tải chunk 0 → tạo partial blob → video.src = blobUrl → setLoading(false)
+- Tải chunk 1..N ở background, cập nhật progress
+- Khi xong hết → ghép full blob → video.src = fullBlobUrl (seamless)
+```
 
-### Cải thiện MIME detection (tùy chọn)
+### 2. Controls luôn hiện khi video pause
 
-Thêm logic thử nhiều MIME type: nếu `vp8,opus` không được support bởi `MediaSource.isTypeSupported()`, thử `vp9,opus`, rồi `video/webm` không có codec string. Điều này giúp MSE hoạt động đúng cho recordings từ các trình duyệt khác nhau.
+**File**: `src/components/ui/SocialVideoPlayer.tsx`
+
+- Khi video ở trạng thái pause (chưa play lần nào), giữ `showOverlay = true` và không schedule auto-hide
+- Thêm logic: nếu `!isPlaying && !isEnded` → luôn hiện controls (nút Play lớn ở giữa + bottom bar)
+- Đảm bảo sau khi blob fallback load xong, controls hiển thị rõ ràng cho user biết có thể nhấn Play
+
+### 3. Tối ưu UX loading
+
+**File**: `src/modules/live/components/ChunkedVideoPlayer.tsx`
+
+- Khi đang trong blob fallback, hiển thị text "Đang tải video..." thay vì chỉ spinner + %
+- Khi chunk đầu tiên đã load xong nhưng còn tải tiếp, hiện progress bar nhỏ ở top thay vì overlay toàn màn hình
 
 ## File thay đổi
+- `src/modules/live/components/ChunkedVideoPlayer.tsx` — Blob fallback phát sớm + UX loading
+- `src/components/ui/SocialVideoPlayer.tsx` — Controls luôn hiện khi pause
 
-- `src/modules/live/components/ChunkedVideoPlayer.tsx`
-
-## Tác động
-
-- Tất cả live replay hiện có sẽ phát được (qua blob fallback nếu MSE thất bại)
-- Không ảnh hưởng đến recordings mới nếu MSE hoạt động đúng
-- Blob fallback chỉ tốn thêm vài giây load (download toàn bộ trước khi phát)
