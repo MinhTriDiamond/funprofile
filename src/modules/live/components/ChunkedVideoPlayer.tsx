@@ -61,6 +61,14 @@ const MAX_SB_ERRORS = 3;
 const MAX_FAILED_CHUNKS = 3;
 const SLOW_NETWORK_BPS = 500 * 1024; // 500 KB/s
 
+/* --- R2 URL normalizer: rewrite legacy pub-*.r2.dev → media.fun.rich --- */
+const R2_DEV_PATTERN = /https:\/\/pub-[a-f0-9]+\.r2\.dev/g;
+const R2_CUSTOM_DOMAIN = 'https://media.fun.rich';
+
+function normalizeR2Url(url: string): string {
+  return url.replace(R2_DEV_PATTERN, R2_CUSTOM_DOMAIN);
+}
+
 const IS_MOBILE = typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0;
 const MAX_CACHE_BYTES = IS_MOBILE ? 30 * 1024 * 1024 : 80 * 1024 * 1024;
 
@@ -541,11 +549,14 @@ export function ChunkedVideoPlayer({
     abortRef.current = new AbortController();
 
     try {
-      const res = await fetch(manifestUrl);
+      const normalizedManifestUrl = normalizeR2Url(manifestUrl);
+      const res = await fetch(normalizedManifestUrl);
       if (!res.ok) throw new Error(`Failed to fetch manifest: ${res.status}`);
       const manifest: Manifest = await res.json();
       if (!manifest.chunks?.length) throw new Error('No chunks in manifest');
 
+      // Normalize all chunk URLs to use custom domain
+      manifest.chunks = manifest.chunks.map(c => ({ ...c, url: normalizeR2Url(c.url) }));
       manifest.chunks.sort((a, b) => a.seq - b.seq);
 
       const mimeWithCodec = buildMimeType(manifest);
