@@ -18,22 +18,24 @@ interface Story {
  * - Lazy loads story images
  * - Memoized for performance
  */
-export const StoriesBar = memo(() => {
+interface StoriesBarProps {
+  currentUserId?: string;
+}
+
+export const StoriesBar = memo(({ currentUserId }: StoriesBarProps) => {
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [stories, setStories] = useState<Story[]>([]);
 
   useEffect(() => {
     const fetchCurrentUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-        setCurrentUser(profile);
-      }
+      if (!currentUserId) return;
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', currentUserId)
+        .single();
+      setCurrentUser(profile);
     };
 
     const fetchStories = async () => {
