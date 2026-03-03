@@ -3,7 +3,7 @@
  * Features: Time grouping, post snippets, friend request inline actions, tabs filter, expand/collapse
  */
 
-import { Bell, MoreHorizontal, Settings, Check, Users } from 'lucide-react';
+import { Bell, MoreHorizontal, Settings, Check, Users, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -23,6 +23,7 @@ import {
   groupNotificationsByTime,
 } from './notifications/utils';
 import { NotificationSection } from './notifications/NotificationSection';
+import { NotificationItem } from './notifications/NotificationItem';
 import { FriendRequestItem } from './notifications/FriendRequestItem';
 
 interface NotificationDropdownProps {
@@ -191,6 +192,8 @@ export const NotificationDropdown = ({ centerNavStyle = false, isActiveRoute = f
       navigate('/wallet');
     } else if (notification.type === 'donation') {
       navigate(`/profile/${notification.actor?.id}`);
+    } else if (['admin_shared_device', 'admin_email_farm', 'admin_blacklisted_ip', 'admin_fraud_daily'].includes(notification.type)) {
+      navigate('/admin?tab=fraud');
     }
   };
 
@@ -251,14 +254,17 @@ export const NotificationDropdown = ({ centerNavStyle = false, isActiveRoute = f
   };
 
   // Filter and group notifications
-  const { friendRequests, otherNotifications } = useMemo(() => {
+  const FRAUD_TYPES_DD = ['admin_shared_device', 'admin_email_farm', 'admin_blacklisted_ip', 'admin_fraud_daily'];
+
+  const { friendRequests, fraudAlerts, otherNotifications } = useMemo(() => {
     const filtered = activeTab === 'unread' 
       ? notifications.filter(n => !n.read)
       : notifications;
     
     return {
       friendRequests: filtered.filter(n => n.type === 'friend_request' && !n.read),
-      otherNotifications: filtered.filter(n => n.type !== 'friend_request' || n.read)
+      fraudAlerts: filtered.filter(n => FRAUD_TYPES_DD.includes(n.type)),
+      otherNotifications: filtered.filter(n => (n.type !== 'friend_request' || n.read) && !FRAUD_TYPES_DD.includes(n.type))
     };
   }, [notifications, activeTab]);
 
@@ -349,6 +355,23 @@ export const NotificationDropdown = ({ centerNavStyle = false, isActiveRoute = f
           </div>
         ) : (
           <div className="py-2">
+            {/* Pinned Fraud Alerts */}
+            {fraudAlerts.length > 0 && (
+              <div className="border-b-2 border-destructive/30 bg-destructive/5">
+                <div className="px-4 py-2 flex items-center gap-2 bg-destructive/10 border-b border-destructive/20">
+                  <Shield className="w-4 h-4 text-destructive" />
+                  <span className="font-semibold text-sm text-destructive">🛡️ Cảnh báo bảo mật</span>
+                </div>
+                {fraudAlerts.slice(0, 5).map((notification) => (
+                  <NotificationItem
+                    key={notification.id}
+                    notification={notification}
+                    onClick={handleNotificationClick}
+                  />
+                ))}
+              </div>
+            )}
+
             {/* Friend Requests Section */}
             {friendRequests.length > 0 && (
               <div className="border-b border-border/30 pb-2">
