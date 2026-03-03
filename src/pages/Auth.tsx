@@ -7,15 +7,15 @@ import LanguageSwitcher from '@/components/layout/LanguageSwitcher';
 import { Eye } from 'lucide-react';
 
 const ECOSYSTEM_PLATFORMS = [
-  { name: 'FUN Profile', emoji: '👤' },
-  { name: 'Angel AI', emoji: '😇' },
-  { name: 'FUN Play', emoji: '🎮' },
-  { name: 'FUN Academy', emoji: '🎓' },
-  { name: 'Green Earth', emoji: '🌍' },
-  { name: 'FUN Planet', emoji: '🪐' },
-  { name: 'FUN Farm', emoji: '🌾' },
-  { name: 'FUN Charity', emoji: '💝' },
-  { name: 'FUN Life', emoji: '✨' },
+  { name: 'FUN Profile', logo: '/fun-profile-logo-40.webp' },
+  { name: 'Angel AI', logo: '/angel-ai-logo-36.png' },
+  { name: 'FUN Play', logo: '/fun-play-logo-36.webp' },
+  { name: 'FUN Academy', logo: '/fun-academy-logo-36.webp' },
+  { name: 'Green Earth', logo: '/green-earth-logo-36.webp' },
+  { name: 'FUN Planet', logo: '/fun-planet-logo-36.webp' },
+  { name: 'FUN Farm', logo: '/fun-farm-logo-36.webp' },
+  { name: 'FUN Charity', logo: '/fun-charity-logo-36.webp' },
+  { name: 'FUN Life', logo: '/fun-life-logo-36.webp' },
 ];
 
 const Auth = () => {
@@ -175,7 +175,7 @@ const Auth = () => {
                   key={platform.name}
                   className="flex items-center gap-2 p-2 rounded-xl bg-card/60 border border-border/50 hover:border-primary/30 transition-colors"
                 >
-                  <span className="text-xl">{platform.emoji}</span>
+                  <img src={platform.logo} alt={platform.name} className="w-7 h-7 rounded-full object-cover" />
                   <span className="text-sm font-medium text-muted-foreground">{platform.name}</span>
                 </div>
               ))}
