@@ -1,8 +1,8 @@
-import { memo, useEffect, useId, useCallback, useMemo, lazy, Suspense } from 'react';
+import { memo, useEffect, useId, useCallback, useMemo, useRef, useState, lazy, Suspense } from 'react';
 import { cn } from '@/lib/utils';
 import { FacebookVideoPlayer } from '@/components/ui/FacebookVideoPlayer';
 import { videoPlaybackCoordinator } from './videoPlaybackCoordinator';
-import { Radio, Download } from 'lucide-react';
+import { Radio, Download, Play } from 'lucide-react';
 import { downloadChunkedVideo } from '@/utils/chunkedVideoDownload';
 
 const ChunkedVideoPlayer = lazy(() =>
@@ -46,13 +46,34 @@ export const FeedVideoPlayer = memo(({
   const normalizedSrc = useMemo(() => normalizeR2Url(src), [src]);
   const isChunked = isChunkedManifestUrl(normalizedSrc);
 
-  // Register with coordinator
+  // Lazy mount: only create video element when near viewport
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isNearViewport, setIsNearViewport] = useState(false);
+
   useEffect(() => {
-    const el = document.querySelector(`[data-feed-video-id="${coordId}"] video`) as HTMLVideoElement | null;
+    const el = containerRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsNearViewport(true);
+          obs.disconnect(); // Once visible, keep mounted
+        }
+      },
+      { rootMargin: '200px' }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  // Register with coordinator (only when mounted)
+  useEffect(() => {
+    if (!isNearViewport) return;
+    const el = containerRef.current?.querySelector('video') as HTMLVideoElement | null;
     const pauseFn = () => { el?.pause(); };
     videoPlaybackCoordinator.register(coordId, pauseFn);
     return () => videoPlaybackCoordinator.unregister(coordId);
-  }, [coordId, src]);
+  }, [coordId, src, isNearViewport]);
 
   const handlePlayStart = useCallback(() => {
     videoPlaybackCoordinator.requestPlay(coordId);
@@ -60,13 +81,14 @@ export const FeedVideoPlayer = memo(({
 
   return (
     <div
+      ref={containerRef}
       className={cn(
         'relative w-full aspect-square overflow-hidden rounded-xl bg-black',
         className
       )}
       data-feed-video-id={coordId}
     >
-      {/* Layer 1: Blurred backdrop (always visible) */}
+      {/* Layer 1: Blurred backdrop — poster img or gradient (NEVER a <video>) */}
       <div className="absolute inset-0 z-0 overflow-hidden">
         {poster ? (
           <img
@@ -74,41 +96,54 @@ export const FeedVideoPlayer = memo(({
             alt=""
             className="w-full h-full object-cover blur-2xl opacity-35 scale-110"
             aria-hidden="true"
+            loading="lazy"
           />
         ) : (
-          <video
-            src={normalizedSrc}
-            muted
-            playsInline
-            className="w-full h-full object-cover blur-2xl opacity-35 scale-110"
-            aria-hidden="true"
-          />
+          <div className="w-full h-full bg-gradient-to-br from-gray-900 to-black" aria-hidden="true" />
         )}
       </div>
 
-      {/* Layer 2: Foreground video (object-contain, always) */}
+      {/* Layer 2: Foreground — lazy mounted video or static placeholder */}
       <div className="relative z-10 w-full h-full">
-        {isChunked ? (
-          <Suspense fallback={<div className="w-full h-full bg-muted animate-pulse" />}>
-            <ChunkedVideoPlayer
-              manifestUrl={normalizedSrc}
+        {isNearViewport ? (
+          // Near viewport: mount real player
+          isChunked ? (
+            <Suspense fallback={<div className="w-full h-full bg-muted animate-pulse" />}>
+              <ChunkedVideoPlayer
+                manifestUrl={normalizedSrc}
+                className="w-full h-full"
+                autoPlay={false}
+                controls
+              />
+            </Suspense>
+          ) : (
+            <FacebookVideoPlayer
+              src={normalizedSrc}
+              poster={poster}
               className="w-full h-full"
-              autoPlay={false}
-              controls
+              compact={compact}
+              mutedByDefault
+              autoPlayInView
+              objectFit="contain"
+              onPlayStart={handlePlayStart}
+              onError={onError}
             />
-          </Suspense>
+          )
         ) : (
-          <FacebookVideoPlayer
-            src={normalizedSrc}
-            poster={poster}
-            className="w-full h-full"
-            compact={compact}
-            mutedByDefault
-            autoPlayInView
-            objectFit="contain"
-            onPlayStart={handlePlayStart}
-            onError={onError}
-          />
+          // Off-screen placeholder: poster + play icon (zero video elements)
+          <div className="w-full h-full flex items-center justify-center">
+            {poster && (
+              <img
+                src={poster}
+                alt=""
+                className="absolute inset-0 w-full h-full object-contain"
+                loading="lazy"
+              />
+            )}
+            <div className="relative z-10 w-14 h-14 rounded-full bg-black/50 flex items-center justify-center">
+              <Play className="w-7 h-7 text-white fill-white" />
+            </div>
+          </div>
         )}
       </div>
 

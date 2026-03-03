@@ -447,8 +447,14 @@ const MediaGalleryViewer = memo(({ media, isOpen, onClose, currentIndex, onPrev,
                     index === currentIndex ? 'border-primary' : 'border-transparent opacity-60 hover:opacity-100'
                   }`}
                 >
-                  {item.type === 'video' ? (
-                    <video src={item.url} className="w-full h-full object-cover" muted />
+                {item.type === 'video' ? (
+                    item.poster ? (
+                      <img src={item.poster} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+                        <Play className="w-4 h-4 text-white/70" />
+                      </div>
+                    )
                   ) : (
                     <img src={item.url} alt="" className="w-full h-full object-cover" />
                   )}
