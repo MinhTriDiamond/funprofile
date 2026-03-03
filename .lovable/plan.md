@@ -1,30 +1,42 @@
 
 
-# Tích hợp Chunk-seekable MSE Scrubbing
+# Sửa Lỗi Live Replay Video Không Phát & Gây Chậm Máy
 
-## Tóm tắt
+## Nguyên nhân phát hiện
 
-Thay thế toàn bộ `src/modules/live/components/ChunkedVideoPlayer.tsx` bằng phiên bản mới từ file upload. Phiên bản mới nâng cấp đáng kể khả năng **tua video (seeking)** cho live replay.
+Sau khi kiểm tra kỹ `ChunkedVideoPlayer.tsx` và các component liên quan, tìm thấy **3 bug chính**:
 
-## Cải tiến chính so với phiên bản hiện tại
+### Bug 1: Scheduler không dừng khi lỗi → chậm máy
+Khi chunks fail (CORS, 404...), `setError(...)` được gọi nhưng `setInterval(schedulerTick, 350ms)` **vẫn chạy mãi**. Scheduler tiếp tục gọi `enqueueWindowByTime`, `pumpFetchQueue`, `evictBuffer`... mỗi 350ms, gây CPU waste nghiêm trọng.
 
-| Tính năng | Hiện tại | Mới |
-|---|---|---|
-| Seek | Fetch tuần tự, không clear buffer cũ | Debounced seek, clear buffer quanh target, fetch target-first |
-| Append queue | Tuần tự theo `nextAppendSeq` | Priority queue (high/normal/low) cho phép append bất kỳ chunk nào trước |
-| Timeline | Dựa vào `duration_ms` cố định | `normalizeTimeline()` với binary search, hỗ trợ `startMs/endMs`, fallback ước lượng |
-| Buffer eviction | Chỉ evict phía trước playhead | Sliding window: evict behind + far-ahead trim |
-| Recovery | Blob fallback | Blob fallback + MSE self-recovery (tái khởi tạo MSE 1 lần trước khi fallback blob) |
-| Seek UI | Không có | Hiển thị "Seeking..." overlay khi đang tua |
+### Bug 2: `formatDurationTime(0)` hiện "---:--" thay vì "0:00"
+Hàm kiểm tra `seconds <= 0` nên time=0 bị trả về "--:--". Gây UX khó hiểu trên progress bar.
+
+### Bug 3: Video `<video>` thiếu `muted` → browser chặn decode
+Một số browser chặn hoặc giới hạn media decoding khi video không có attribute `muted`. Dù `autoPlay=false`, việc thiếu `muted` có thể gây lỗi play trên mobile.
+
+---
 
 ## Thay đổi
 
-### File duy nhất: `src/modules/live/components/ChunkedVideoPlayer.tsx`
-- Thay toàn bộ nội dung bằng code từ file upload (dòng 7-1153)
-- Giữ nguyên export interface (`ChunkedVideoPlayerProps`) — không ảnh hưởng các component import nó (`FeedVideoPlayer`, lazy import)
+### File 1: `src/modules/live/components/ChunkedVideoPlayer.tsx`
+- Thêm biến `hasError` trong closure, set `true` khi gọi `setError`
+- `schedulerTick` kiểm tra `hasError` → `clearInterval` và return sớm
+- `pumpFetchQueue` kiểm tra `hasError` → return sớm
+- Thêm `clearInterval(schedulerId)` khi error xảy ra
+- Thêm `muted` và `preload="metadata"` cho `<video>` element
+- Cleanup: gán `video.src = ''` khi destroy để giải phóng bộ nhớ
 
-## Không thay đổi
-- `FeedVideoPlayer.tsx`, `SocialVideoPlayer`, `FacebookVideoPlayer`
-- Backend, edge functions, manifest format
-- Các component khác import `ChunkedVideoPlayer`
+### File 2: `src/lib/formatters.ts`
+- Sửa `seconds <= 0` thành `seconds < 0` để time=0 hiện "0:00"
+
+### File 3: `pdk/core/lib/formatters.ts`
+- Sửa tương tự (bản copy)
+
+---
+
+## Kết quả mong đợi
+- Video replay phát được bình thường
+- Không còn scheduler chạy vô hạn khi lỗi → máy không bị chậm
+- Progress bar hiện "0:00 / 0:40" thay vì "---:-- / 0:40"
 
