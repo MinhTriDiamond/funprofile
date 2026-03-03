@@ -1,4 +1,4 @@
-import { memo, useEffect, useId, useCallback, useState, useMemo, lazy, Suspense } from 'react';
+import { memo, useEffect, useId, useCallback, useMemo, lazy, Suspense } from 'react';
 import { cn } from '@/lib/utils';
 import { FacebookVideoPlayer } from '@/components/ui/FacebookVideoPlayer';
 import { videoPlaybackCoordinator } from './videoPlaybackCoordinator';
@@ -9,7 +9,7 @@ const ChunkedVideoPlayer = lazy(() =>
   import('@/modules/live/components/ChunkedVideoPlayer').then(mod => ({ default: mod.ChunkedVideoPlayer }))
 );
 
-/* R2 URL normalizer: rewrite legacy pub-*.r2.dev → media.fun.rich */
+/* R2 URL normalizer */
 const R2_DEV_PATTERN = /https:\/\/pub-[a-f0-9]+\.r2\.dev/g;
 const R2_CUSTOM_DOMAIN = 'https://media.fun.rich';
 function normalizeR2Url(url: string): string {
@@ -23,9 +23,6 @@ function isChunkedManifestUrl(url: string): boolean {
 export interface FeedVideoPlayerProps {
   src: string;
   poster?: string;
-  displayMode?: 'square' | 'rectangle';
-  aspectRatio?: { width: number; height: number };
-  fitStrategy?: 'smart' | 'cover' | 'contain';
   isLiveReplay?: boolean;
   itemId?: string;
   feedId?: string;
@@ -37,9 +34,6 @@ export interface FeedVideoPlayerProps {
 export const FeedVideoPlayer = memo(({
   src,
   poster,
-  displayMode = 'square',
-  aspectRatio,
-  fitStrategy = 'smart',
   isLiveReplay = false,
   itemId,
   feedId,
@@ -50,25 +44,7 @@ export const FeedVideoPlayer = memo(({
   const autoId = useId();
   const coordId = itemId || feedId || autoId;
   const normalizedSrc = useMemo(() => normalizeR2Url(src), [src]);
-
-  // Detect portrait from props, fallback to video metadata
-  const [isPortrait, setIsPortrait] = useState<boolean | null>(
-    aspectRatio ? aspectRatio.height > aspectRatio.width : null
-  );
-
-  // Update portrait state when aspectRatio prop changes
-  useEffect(() => {
-    if (aspectRatio) {
-      setIsPortrait(aspectRatio.height > aspectRatio.width);
-    }
-  }, [aspectRatio?.width, aspectRatio?.height]);
-
-  // Callback-based metadata detection from FacebookVideoPlayer
-  const handleVideoMetadata = useCallback((meta: { width: number; height: number }) => {
-    console.log('[FeedVideoPlayer] onVideoMetadata fired:', meta, 'isPortrait currently:', isPortrait);
-    if (isPortrait !== null) return;
-    setIsPortrait(meta.height > meta.width);
-  }, [isPortrait]);
+  const isChunked = isChunkedManifestUrl(normalizedSrc);
 
   // Register with coordinator
   useEffect(() => {
@@ -82,72 +58,36 @@ export const FeedVideoPlayer = memo(({
     videoPlaybackCoordinator.requestPlay(coordId);
   }, [coordId]);
 
-  const isChunked = isChunkedManifestUrl(normalizedSrc);
-  const isSquare = displayMode === 'square';
-
-  // Resolve object fit based on strategy and orientation
-  let resolvedObjectFit: 'cover' | 'contain';
-  if (!isSquare) {
-    resolvedObjectFit = 'contain';
-  } else if (fitStrategy === 'cover') {
-    resolvedObjectFit = 'cover';
-  } else if (fitStrategy === 'contain') {
-    resolvedObjectFit = 'contain';
-  } else {
-    // smart: portrait/unknown => contain (safe default), landscape => cover
-    resolvedObjectFit = isPortrait === false ? 'cover' : 'contain';
-  }
-
-  const showBackdrop = resolvedObjectFit === 'contain' && isPortrait === true;
-
-  // For portrait in rectangle mode: full-width wrapper with centered video
-  const isPortraitRectangle = !isSquare && isPortrait === true;
-
-  const wrapperClass = cn(
-    'relative overflow-hidden',
-    isSquare ? 'aspect-square' : '',
-    isPortraitRectangle ? 'bg-black flex items-center justify-center' : '',
-    className
-  );
-
-  const arNum = aspectRatio ? aspectRatio.width / aspectRatio.height : undefined;
-  const wrapperStyle = isPortraitRectangle
-    ? { maxHeight: '70vh', aspectRatio: '1/1' }
-    : !isSquare && arNum
-    ? { aspectRatio: `${arNum}`, maxHeight: '70vh' }
-    : !isSquare
-    ? { maxHeight: '70vh' }
-    : undefined;
-
   return (
-    <div className={wrapperClass} style={wrapperStyle} data-feed-video-id={coordId}>
-      {/* Blurred backdrop layer */}
-      {showBackdrop && (
-        <div className="absolute inset-0 z-0 overflow-hidden">
-          {poster ? (
-            <img
-              src={poster}
-              alt=""
-              className="w-full h-full object-cover blur-xl opacity-40 scale-110"
-              aria-hidden="true"
-            />
-          ) : (
-            <video
-              src={normalizedSrc}
-              muted
-              playsInline
-              className="w-full h-full object-cover blur-xl opacity-40 scale-110"
-              aria-hidden="true"
-            />
-          )}
-        </div>
+    <div
+      className={cn(
+        'relative w-full aspect-square overflow-hidden rounded-xl bg-black',
+        className
       )}
+      data-feed-video-id={coordId}
+    >
+      {/* Layer 1: Blurred backdrop (always visible) */}
+      <div className="absolute inset-0 z-0 overflow-hidden">
+        {poster ? (
+          <img
+            src={poster}
+            alt=""
+            className="w-full h-full object-cover blur-2xl opacity-35 scale-110"
+            aria-hidden="true"
+          />
+        ) : (
+          <video
+            src={normalizedSrc}
+            muted
+            playsInline
+            className="w-full h-full object-cover blur-2xl opacity-35 scale-110"
+            aria-hidden="true"
+          />
+        )}
+      </div>
 
-      {/* Foreground video */}
-      <div className={cn(
-        showBackdrop ? 'relative z-10' : 'w-full',
-        isPortraitRectangle ? 'h-full aspect-[9/16]' : 'w-full h-full'
-      )}>
+      {/* Layer 2: Foreground video (object-contain, always) */}
+      <div className="relative z-10 w-full h-full">
         {isChunked ? (
           <Suspense fallback={<div className="w-full h-full bg-muted animate-pulse" />}>
             <ChunkedVideoPlayer
@@ -165,9 +105,8 @@ export const FeedVideoPlayer = memo(({
             compact={compact}
             mutedByDefault
             autoPlayInView
-            objectFit={resolvedObjectFit}
+            objectFit="contain"
             onPlayStart={handlePlayStart}
-            onVideoMetadata={handleVideoMetadata}
             onError={onError}
           />
         )}
