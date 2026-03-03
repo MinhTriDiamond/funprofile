@@ -181,6 +181,9 @@ Deno.serve(async (req: Request) => {
       .eq('id', authCode.user_id)
       .single();
 
+    // Lấy email từ auth.users (profiles không lưu email)
+    const { data: { user: authUser } } = await supabase.auth.admin.getUserById(authCode.user_id);
+
     // Generate JWT access token with claims
     const access_token = await generateAccessToken({
       sub: authCode.user_id,
@@ -239,7 +242,8 @@ Deno.serve(async (req: Request) => {
           fun_id: profile.fun_id,
           username: profile.username,
           full_name: profile.full_name,
-          avatar_url: profile.avatar_url
+          avatar_url: profile.avatar_url,
+          email: authUser?.email || null
         } : null
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
