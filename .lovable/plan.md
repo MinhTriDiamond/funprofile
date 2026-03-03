@@ -1,45 +1,40 @@
 
 
-# Chuyển auth-email-hook sang dùng Resend API
+# Ghim cảnh báo gian lận lên đầu + Điều hướng đến danh sách user bị cảnh báo
 
 ## Vấn đề hiện tại
-
-`auth-email-hook` đang dùng `sendLovableEmail` (hệ thống email managed của Lovable) để gửi tất cả email xác thực. Hệ thống này đang gặp lỗi (có thể do credit hoặc DNS `notify.fun.rich` chưa verify xong).
-
-Dự án đã có `RESEND_API_KEY` hoạt động tốt (đang dùng cho SSO OTP, merge request...) và domain `fun.rich` đã verify trên Resend.
+- Cảnh báo gian lận (shared device, email farm, blacklisted IP, fraud daily) hiển thị xen lẫn với các thông báo thường, dễ bị trôi mất
+- Khi nhấp vào cảnh báo, không có hành động nào xảy ra (không navigate đi đâu)
 
 ## Giải pháp
 
-Sửa `auth-email-hook/index.ts` để thay thế `sendLovableEmail` bằng Resend API trực tiếp, giữ nguyên:
-- Webhook verification (vẫn cần nhận auth events từ hệ thống)
-- Template rendering (giữ nguyên 6 template React Email đã style)
-- Preview endpoint (giữ nguyên)
+### 1. Ghim cảnh báo gian lận lên đầu danh sách
 
-## Chi tiết thay đổi
+**File: `src/pages/Notifications.tsx`**
+- Tách `filteredNotifications` thành 2 nhóm: `fraudNotifications` (4 loại admin_*) và `normalNotifications`
+- Render `fraudNotifications` trong section riêng ở đầu với tiêu đề "🛡️ Cảnh báo bảo mật" và viền đỏ nổi bật
+- `normalNotifications` render phía dưới như bình thường
 
-### File: `supabase/functions/auth-email-hook/index.ts`
+**File: `src/components/layout/NotificationDropdown.tsx`**
+- Tương tự, tách fraud notifications ra khỏi `otherNotifications` và render trước các nhóm thời gian (new/today/yesterday...)
+- Hiển thị trong section ghim riêng với style cảnh báo đỏ
 
-1. **Thay import**: Bỏ `sendLovableEmail` từ `@lovable.dev/email-js`, thêm `Resend` từ `esm.sh`
-2. **Sửa hàm `handleWebhook`**: Thay đoạn gọi `sendLovableEmail` bằng:
-   - Lấy `RESEND_API_KEY` từ env
-   - Gọi `resend.emails.send()` với `from: "FUN Ecosystem <noreply@fun.rich>"` 
-   - Vẫn gọi callback_url để báo cho hệ thống biết email đã gửi
-3. **From name**: Thống nhất `FUN Ecosystem <noreply@fun.rich>` cho tất cả 6 loại email
+### 2. Nhấp vào cảnh báo → Navigate đến Admin Fraud Tab
 
-### Cũng sửa From name trong 3 SSO functions
+**File: `src/pages/Notifications.tsx` → `handleNotificationClick`**
+- Thêm case cho 4 loại fraud → `navigate('/admin?tab=fraud')` kèm theo metadata (device_hash, email_base, ip_address) qua query params hoặc state
 
-- `sso-merge-approve`: `FUN Profile` → `FUN Ecosystem`
-- `sso-merge-request`: `FUN Profile` → `FUN Ecosystem`
-- `sso-resend-webhook`: `FUN Profile` → `FUN Ecosystem`
+**File: `src/components/layout/NotificationDropdown.tsx` → `handleNotificationClick`**
+- Thêm case tương tự cho fraud notifications
 
-### Deploy
+**File: `src/pages/Admin.tsx`**
+- Đọc query param `tab` từ URL và set `activeTab` tương ứng khi mount
+- Ví dụ: `/admin?tab=fraud` sẽ tự động mở tab "Chống gian lận"
 
-Deploy lại 4 edge functions: `auth-email-hook`, `sso-merge-approve`, `sso-merge-request`, `sso-resend-webhook`
-
-## Lưu ý quan trọng
-
-- `RESEND_API_KEY` đã có sẵn trong secrets
-- Domain `fun.rich` đã được verify trên Resend (các SSO function đang gửi thành công)
-- Không cần thay đổi template — chỉ thay đổi cách gửi email
-- Preview endpoint vẫn hoạt động bình thường (không liên quan đến sending)
+### Tóm tắt thay đổi
+| File | Thay đổi |
+|---|---|
+| `src/pages/Notifications.tsx` | Tách + ghim fraud notifications lên đầu, thêm navigate khi click |
+| `src/components/layout/NotificationDropdown.tsx` | Tách + ghim fraud section, thêm navigate khi click |
+| `src/pages/Admin.tsx` | Đọc `?tab=` param để auto-select tab |
 
