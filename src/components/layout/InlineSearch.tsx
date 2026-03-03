@@ -141,10 +141,10 @@ export const InlineSearch = () => {
   };
 
   const handleHistoryClick = (item: SearchHistoryItem) => {
-    if (item.type === 'user' && item.metadata?.userId) {
+    if (item.type === 'user' && item.metadata?.username) {
       setIsExpanded(false);
       setSearchQuery('');
-      navigate(`/profile/${item.metadata.userId}`);
+      navigate(`/${item.metadata.username}`);
     } else {
       setSearchQuery(item.query);
     }
