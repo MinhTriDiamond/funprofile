@@ -40,8 +40,6 @@ interface ChunkedVideoPlayerProps {
   className?: string;
   autoPlay?: boolean;
   controls?: boolean;
-  /** When true, fetch manifest only — defer chunk loading until first play */
-  deferChunks?: boolean;
   onReady?: () => void;
   onError?: () => void;
 }
@@ -218,7 +216,6 @@ export function ChunkedVideoPlayer({
   className = '',
   autoPlay = false,
   controls = true,
-  deferChunks = false,
   onReady,
   onError: onErrorCallback,
 }: ChunkedVideoPlayerProps) {
@@ -227,11 +224,8 @@ export function ChunkedVideoPlayer({
   const [loadProgress, setLoadProgress] = useState(0);
   const [bufferingDebounced, setBufferingDebounced] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [deferred, setDeferred] = useState(deferChunks);
   const cleanupRef = useRef<(() => void) | null>(null);
   const abortRef = useRef<AbortController | null>(null);
-  const manifestRef = useRef<Manifest | null>(null);
-  const chunksStartedRef = useRef(false);
 
   /* ---- MSE path ---- */
   const loadWithMSE = useCallback(async (manifest: Manifest, onFallback: () => void) => {
@@ -600,33 +594,12 @@ export function ChunkedVideoPlayer({
     cleanupRef.current = () => URL.revokeObjectURL(fullUrl);
   }, [onReady]);
 
-  /* ---- Begin chunk loading (called immediately or deferred) ---- */
-  const startChunkLoading = useCallback(async (manifest: Manifest) => {
-    if (chunksStartedRef.current) return;
-    chunksStartedRef.current = true;
-    setLoading(true);
-
-    const supportedMime = typeof MediaSource !== 'undefined' ? findSupportedMime(manifest) : null;
-    const useMSE = !!supportedMime;
-
-    if (useMSE) {
-      await loadWithMSE(manifest, () => {
-        console.warn('[ChunkedVideoPlayer] Falling back to blob concatenation');
-        loadWithBlob(manifest);
-      });
-    } else {
-      console.warn('[ChunkedVideoPlayer] MSE not supported → blob fallback');
-      await loadWithBlob(manifest);
-    }
-  }, [loadWithMSE, loadWithBlob]);
-
-  /* ---- Entry point: fetch manifest (+ optionally start chunks) ---- */
+  /* ---- Entry point ---- */
   const start = useCallback(async () => {
     setLoading(true);
     setError(null);
     setLoadProgress(0);
     setBufferingDebounced(false);
-    chunksStartedRef.current = false;
     abortRef.current = new AbortController();
 
     try {
@@ -640,16 +613,17 @@ export function ChunkedVideoPlayer({
       manifest.chunks = manifest.chunks.map(c => ({ ...c, url: normalizeR2Url(c.url) }));
       manifest.chunks.sort((a, b) => a.seq - b.seq);
 
-      manifestRef.current = manifest;
+      const supportedMime = typeof MediaSource !== 'undefined' ? findSupportedMime(manifest) : null;
+      const useMSE = !!supportedMime;
 
-      if (deferChunks) {
-        // Defer mode: manifest loaded, show "ready to play" state
-        setLoading(false);
-        setDeferred(true);
-        onReady?.();
+      if (useMSE) {
+        await loadWithMSE(manifest, () => {
+          console.warn('[ChunkedVideoPlayer] Falling back to blob concatenation');
+          loadWithBlob(manifest);
+        });
       } else {
-        // Immediate mode: start chunk loading right away
-        await startChunkLoading(manifest);
+        console.warn('[ChunkedVideoPlayer] MSE not supported → blob fallback');
+        await loadWithBlob(manifest);
       }
     } catch (err: any) {
       if (abortRef.current?.signal.aborted) return;
@@ -657,14 +631,7 @@ export function ChunkedVideoPlayer({
       setLoading(false);
       onErrorCallback?.();
     }
-  }, [manifestUrl, deferChunks, startChunkLoading, onErrorCallback, onReady]);
-
-  /* ---- Handle deferred play: user clicks play → start loading chunks ---- */
-  const handleDeferredPlay = useCallback(() => {
-    if (!deferred || !manifestRef.current) return;
-    setDeferred(false);
-    startChunkLoading(manifestRef.current);
-  }, [deferred, startChunkLoading]);
+  }, [manifestUrl, loadWithMSE, loadWithBlob, onErrorCallback]);
 
   useEffect(() => {
     start();
@@ -686,22 +653,6 @@ export function ChunkedVideoPlayer({
         >
           Thử lại
         </button>
-      </div>
-    );
-  }
-
-  /* Deferred state: manifest loaded but chunks not started yet */
-  if (deferred) {
-    return (
-      <div
-        className={`relative flex items-center justify-center bg-black cursor-pointer ${className}`}
-        onClick={handleDeferredPlay}
-      >
-        <div className="w-16 h-16 rounded-full bg-black/60 flex items-center justify-center backdrop-blur-sm hover:bg-black/80 transition-colors">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="white" className="ml-1">
-            <polygon points="5,3 19,12 5,21" />
-          </svg>
-        </div>
       </div>
     );
   }

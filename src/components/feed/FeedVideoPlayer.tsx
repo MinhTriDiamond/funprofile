@@ -111,7 +111,6 @@ export const FeedVideoPlayer = memo(({
                 className="w-full h-full"
                 autoPlay={false}
                 controls
-                deferChunks
               />
             </Suspense>
           ) : (
