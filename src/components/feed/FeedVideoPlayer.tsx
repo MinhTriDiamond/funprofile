@@ -1,4 +1,4 @@
-import { memo, useEffect, useId, useCallback, useState, lazy, Suspense } from 'react';
+import { memo, useEffect, useId, useCallback, useState, useMemo, lazy, Suspense } from 'react';
 import { cn } from '@/lib/utils';
 import { FacebookVideoPlayer } from '@/components/ui/FacebookVideoPlayer';
 import { videoPlaybackCoordinator } from './videoPlaybackCoordinator';
@@ -8,6 +8,13 @@ import { downloadChunkedVideo } from '@/utils/chunkedVideoDownload';
 const ChunkedVideoPlayer = lazy(() =>
   import('@/modules/live/components/ChunkedVideoPlayer').then(mod => ({ default: mod.ChunkedVideoPlayer }))
 );
+
+/* R2 URL normalizer: rewrite legacy pub-*.r2.dev → media.fun.rich */
+const R2_DEV_PATTERN = /https:\/\/pub-[a-f0-9]+\.r2\.dev/g;
+const R2_CUSTOM_DOMAIN = 'https://media.fun.rich';
+function normalizeR2Url(url: string): string {
+  return url.replace(R2_DEV_PATTERN, R2_CUSTOM_DOMAIN);
+}
 
 function isChunkedManifestUrl(url: string): boolean {
   return url.endsWith('manifest.json') || /\/recordings\/[^/]+\/manifest\.json/.test(url);
@@ -42,6 +49,7 @@ export const FeedVideoPlayer = memo(({
 }: FeedVideoPlayerProps) => {
   const autoId = useId();
   const coordId = itemId || feedId || autoId;
+  const normalizedSrc = useMemo(() => normalizeR2Url(src), [src]);
 
   // Detect portrait from props, fallback to video metadata
   const [isPortrait, setIsPortrait] = useState<boolean | null>(
@@ -74,7 +82,7 @@ export const FeedVideoPlayer = memo(({
     videoPlaybackCoordinator.requestPlay(coordId);
   }, [coordId]);
 
-  const isChunked = isChunkedManifestUrl(src);
+  const isChunked = isChunkedManifestUrl(normalizedSrc);
   const isSquare = displayMode === 'square';
 
   // Resolve object fit based on strategy and orientation
@@ -125,7 +133,7 @@ export const FeedVideoPlayer = memo(({
             />
           ) : (
             <video
-              src={src}
+              src={normalizedSrc}
               muted
               playsInline
               className="w-full h-full object-cover blur-xl opacity-40 scale-110"
@@ -143,7 +151,7 @@ export const FeedVideoPlayer = memo(({
         {isChunked ? (
           <Suspense fallback={<div className="w-full h-full bg-muted animate-pulse" />}>
             <ChunkedVideoPlayer
-              manifestUrl={src}
+              manifestUrl={normalizedSrc}
               className="w-full h-full"
               autoPlay={false}
               controls
@@ -151,7 +159,7 @@ export const FeedVideoPlayer = memo(({
           </Suspense>
         ) : (
           <FacebookVideoPlayer
-            src={src}
+            src={normalizedSrc}
             poster={poster}
             className="w-full h-full"
             compact={compact}
