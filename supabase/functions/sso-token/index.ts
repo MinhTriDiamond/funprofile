@@ -106,7 +106,7 @@ Deno.serve(async (req: Request) => {
           { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-    } else if (client.client_secret && !client_secret) {
+    } else if (client.client_secret && !client_secret && !code_verifier) {
       return new Response(
         JSON.stringify({ error: 'invalid_client', error_description: 'client_secret is required' }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
