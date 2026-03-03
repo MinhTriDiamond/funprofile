@@ -1000,7 +1000,7 @@ onClick={() => navigate(`/${friend.username}`)}
                             ) : (
                               <div className="flex items-center gap-3">
                                 <PenSquare className="w-6 h-6 text-muted-foreground" />
-                                <span className="text-muted-foreground text-sm italic">{showPrivateElements ? t('addBio') || 'Thêm tiểu sử' : t('notUpdated')}</span>
+                                <span className="text-muted-foreground text-sm italic">{showPrivateElements ? 'Thêm tiểu sử' : t('notUpdated')}</span>
                               </div>
                             )}
 
