@@ -1,7 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Mic, MicOff, SwitchCamera, Type } from 'lucide-react';
+import { ArrowLeft, Mic, MicOff, Settings, SwitchCamera, Type } from 'lucide-react';
 import { toast } from 'sonner';
+
+type VideoQuality = '480p' | '720p' | '1080p';
+
+const QUALITY_LABELS: Record<VideoQuality, string> = {
+  '480p': '480p — Tiết kiệm data',
+  '720p': '720p — Mặc định',
+  '1080p': '1080p — HD',
+};
 
 export default function PreLivePage() {
   const navigate = useNavigate();
@@ -14,16 +22,24 @@ export default function PreLivePage() {
   const [description, setDescription] = useState('');
   const [showDescription, setShowDescription] = useState(false);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const [quality, setQuality] = useState<VideoQuality>('720p');
+  const [showQuality, setShowQuality] = useState(false);
+
+  const qualityConstraints: Record<VideoQuality, { width: number; height: number }> = {
+    '480p': { width: 854, height: 480 },
+    '720p': { width: 1280, height: 720 },
+    '1080p': { width: 1920, height: 1080 },
+  };
 
   const startCamera = useCallback(async (facing: 'user' | 'environment') => {
-    // Stop previous stream
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(t => t.stop());
     }
 
     try {
+      const q = qualityConstraints[quality];
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: facing, width: { ideal: 1280 }, height: { ideal: 720 } },
+        video: { facingMode: facing, width: { ideal: q.width }, height: { ideal: q.height } },
         audio: true,
       });
       streamRef.current = stream;
@@ -42,7 +58,7 @@ export default function PreLivePage() {
         toast.error('Không thể truy cập camera.');
       }
     }
-  }, []);
+  }, [quality]);
 
   useEffect(() => {
     startCamera(facingMode);
@@ -74,8 +90,14 @@ export default function PreLivePage() {
     setTimeout(() => descriptionRef.current?.focus(), 100);
   };
 
+  const handleQualityChange = (q: VideoQuality) => {
+    setQuality(q);
+    setShowQuality(false);
+    // Restart camera with new quality
+    startCamera(facingMode);
+  };
+
   const handleGoLive = () => {
-    // Stop preview stream before navigating
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(t => t.stop());
       streamRef.current = null;
@@ -84,6 +106,7 @@ export default function PreLivePage() {
       state: {
         title: description.trim() || undefined,
         privacy: 'public',
+        quality,
       },
     });
   };
@@ -98,7 +121,6 @@ export default function PreLivePage() {
 
   return (
     <div className="fixed inset-0 z-50 bg-black flex flex-col">
-      {/* Camera preview - full screen background */}
       <video
         ref={videoRef}
         autoPlay
@@ -108,7 +130,6 @@ export default function PreLivePage() {
         style={{ transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }}
       />
 
-      {/* Dark overlay for readability */}
       <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/70 pointer-events-none" />
 
       {/* Top bar */}
@@ -122,7 +143,7 @@ export default function PreLivePage() {
         <span className="text-white font-semibold text-lg drop-shadow-lg">
           Phát trực tiếp
         </span>
-        <div className="w-10" /> {/* spacer */}
+        <div className="w-10" />
       </div>
 
       {/* Right sidebar controls */}
@@ -154,11 +175,37 @@ export default function PreLivePage() {
         >
           <Type className="w-5 h-5" />
         </button>
+
+        <button
+          onClick={() => setShowQuality(!showQuality)}
+          className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-white hover:bg-white/30 transition-colors"
+          title="Chất lượng video"
+        >
+          <Settings className="w-5 h-5" />
+        </button>
       </div>
+
+      {/* Quality picker */}
+      {showQuality && (
+        <div className="absolute right-20 top-1/2 -translate-y-1/2 z-20 bg-black/80 backdrop-blur-md rounded-xl p-2 space-y-1 animate-fade-in">
+          {(Object.keys(QUALITY_LABELS) as VideoQuality[]).map(q => (
+            <button
+              key={q}
+              onClick={() => handleQualityChange(q)}
+              className={`w-full text-left px-4 py-2.5 rounded-lg text-sm transition-colors ${
+                quality === q
+                  ? 'bg-blue-600 text-white font-medium'
+                  : 'text-white/80 hover:bg-white/10'
+              }`}
+            >
+              {QUALITY_LABELS[q]}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Bottom section */}
       <div className="relative z-10 mt-auto p-4 pb-safe space-y-3">
-        {/* Description input */}
         {showDescription && (
           <div className="animate-fade-in">
             <textarea
@@ -182,7 +229,11 @@ export default function PreLivePage() {
           </button>
         )}
 
-        {/* Go Live button */}
+        {/* Quality indicator */}
+        <div className="flex items-center justify-center">
+          <span className="text-white/50 text-xs">{QUALITY_LABELS[quality]}</span>
+        </div>
+
         <button
           onClick={handleGoLive}
           disabled={hasPermission === false}
@@ -192,7 +243,6 @@ export default function PreLivePage() {
         </button>
       </div>
 
-      {/* No permission overlay */}
       {hasPermission === false && (
         <div className="absolute inset-0 z-20 bg-black/90 flex flex-col items-center justify-center p-6 text-center">
           <div className="text-white text-lg font-semibold mb-2">

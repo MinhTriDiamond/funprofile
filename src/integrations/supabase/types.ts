@@ -4810,6 +4810,23 @@ export type Database = {
           sid: string
         }[]
       }
+      get_livestream_stats: {
+        Args: never
+        Returns: {
+          active_sessions: number
+          avg_duration_minutes: number
+          ended_sessions: number
+          max_duration_minutes: number
+          recordings_done: number
+          recordings_failed: number
+          recordings_stuck: number
+          success_rate: number
+          total_chunks: number
+          total_recordings: number
+          total_sessions: number
+          total_viewers: number
+        }[]
+      }
       get_next_nonce: { Args: { _user_id: string }; Returns: number }
       get_pplp_admin_stats: { Args: never; Returns: Json }
       get_recipient_leaderboard: {
