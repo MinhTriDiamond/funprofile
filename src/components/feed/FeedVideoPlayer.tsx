@@ -1,6 +1,7 @@
 import { memo, useEffect, useId, useCallback, useMemo, useRef, useState, lazy, Suspense } from 'react';
 import { cn } from '@/lib/utils';
 import { FacebookVideoPlayer } from '@/components/ui/FacebookVideoPlayer';
+import { VideoErrorBoundary } from '@/components/ui/VideoErrorBoundary';
 import { videoPlaybackCoordinator } from './videoPlaybackCoordinator';
 import { Radio, Download, Play } from 'lucide-react';
 import { downloadChunkedVideo } from '@/utils/chunkedVideoDownload';
@@ -105,14 +106,16 @@ export const FeedVideoPlayer = memo(({
         {isNearViewport ? (
           // Near viewport: mount real player
           isChunked ? (
-            <Suspense fallback={<div className="w-full h-full bg-muted animate-pulse" />}>
-              <ChunkedVideoPlayer
-                manifestUrl={normalizedSrc}
-                className="w-full h-full"
-                autoPlay={false}
-                controls
-              />
-            </Suspense>
+            <VideoErrorBoundary>
+              <Suspense fallback={<div className="w-full h-full bg-muted animate-pulse" />}>
+                <ChunkedVideoPlayer
+                  manifestUrl={normalizedSrc}
+                  className="w-full h-full"
+                  autoPlay={false}
+                  controls
+                />
+              </Suspense>
+            </VideoErrorBoundary>
           ) : (
             <FacebookVideoPlayer
               src={normalizedSrc}

@@ -17,7 +17,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useLiveSession } from '../useLiveSession';
 import { useLiveRtc } from '../hooks/useLiveRtc';
-import { incrementLiveViewerCount, decrementLiveViewerCount } from '../liveService';
 import { LiveChatPanel } from '../components/LiveChatPanel';
 import { FloatingReactions } from '../components/FloatingReactions';
 import { useSlugResolver } from '@/hooks/useSlugResolver';
@@ -63,22 +62,8 @@ export default function LiveAudiencePage() {
     start().catch(() => undefined);
   }, [resolvedSessionId, session, start]);
 
-  // Track viewer count via database
-  useEffect(() => {
-    if (!resolvedSessionId || session?.status !== 'live') return;
-
-    incrementLiveViewerCount(resolvedSessionId).catch(console.warn);
-
-    const handleBeforeUnload = () => {
-      decrementLiveViewerCount(resolvedSessionId).catch(() => {});
-    };
-    window.addEventListener('beforeunload', handleBeforeUnload);
-
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      decrementLiveViewerCount(resolvedSessionId).catch(() => {});
-    };
-  }, [resolvedSessionId, session?.status]);
+  // Viewer count now handled entirely by useLivePresence (Realtime Presence)
+  // No more increment/decrement DB RPCs — Presence auto-cleans on disconnect
 
   useEffect(() => {
     if (session?.status === 'ended') {
@@ -93,6 +78,14 @@ export default function LiveAudiencePage() {
     };
   }, [leave]);
 
+  const handleReplay = () => {
+    if (session?.post_id) {
+      navigate(`/post/${session.post_id}`);
+    } else {
+      navigate('/');
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -104,7 +97,7 @@ export default function LiveAudiencePage() {
   if (!session) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Card className="p-6">Live session not found.</Card>
+        <Card className="p-6">Không tìm thấy phiên Live.</Card>
       </div>
     );
   }
@@ -131,7 +124,7 @@ export default function LiveAudiencePage() {
               <div className="flex items-center gap-2">
                 <Badge variant={session.status === 'live' ? 'destructive' : 'secondary'} className="gap-1">
                   <Radio className="h-3.5 w-3.5" />
-                  {session.status === 'live' ? 'LIVE' : 'ENDED'}
+                  {session.status === 'live' ? 'LIVE' : 'ĐÃ KẾT THÚC'}
                 </Badge>
                 {session.status === 'live' && (
                   <Badge variant="outline" className="gap-1 font-mono">
@@ -198,7 +191,7 @@ export default function LiveAudiencePage() {
         </div>
         <div className="max-w-7xl mx-auto mt-3 flex justify-end">
           <Button variant="outline" size="sm" onClick={() => navigate('/')}>
-            Back
+            Quay lại
           </Button>
         </div>
       </main>
@@ -211,8 +204,15 @@ export default function LiveAudiencePage() {
               Cảm ơn bạn đã theo dõi phiên phát trực tiếp!
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogAction onClick={() => navigate('/')}>OK</AlertDialogAction>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            {session?.post_id && (
+              <AlertDialogAction onClick={handleReplay} className="bg-primary">
+                Xem lại
+              </AlertDialogAction>
+            )}
+            <AlertDialogAction onClick={() => navigate('/')}>
+              Về trang chủ
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

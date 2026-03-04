@@ -63,15 +63,14 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: authHeader } }, auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    const token = authHeader.replace('Bearer ', '');
-    const { data: claimsData, error: claimsError } = await supabaseClient.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
+    const { data: { user }, error: userErr } = await supabaseClient.auth.getUser();
+    if (userErr || !user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    const userId = claimsData.claims.sub as string;
+    const userId = user.id;
 
     // Rate limit
     if (!checkRateLimit(userId)) {

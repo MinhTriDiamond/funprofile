@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
 
     const { data: session, error: sessionErr } = await supabaseAdmin
       .from('live_sessions')
-      .select('id, channel_name, agora_channel, status, host_user_id')
+      .select('id, channel_name, agora_channel, status, host_user_id, privacy')
       .eq('id', sessionId)
       .maybeSingle()
 
@@ -70,6 +70,19 @@ Deno.serve(async (req) => {
 
     if (role === 'host' && session.host_user_id !== userId) {
       return new Response(JSON.stringify({ error: 'Only host can get host token' }), { status: 403, headers: corsHeaders })
+    }
+
+    // Enforce friends-only privacy
+    if (session.privacy === 'friends' && role !== 'host') {
+      const { data: friendship } = await supabaseAdmin
+        .from('friendships')
+        .select('id')
+        .or(`and(user_id.eq.${userId},friend_id.eq.${session.host_user_id},status.eq.accepted),and(user_id.eq.${session.host_user_id},friend_id.eq.${userId},status.eq.accepted)`)
+        .limit(1)
+
+      if (!friendship || friendship.length === 0) {
+        return new Response(JSON.stringify({ error: 'Phiên live này chỉ dành cho bạn bè' }), { status: 403, headers: corsHeaders })
+      }
     }
 
     const channel = session.agora_channel || session.channel_name
