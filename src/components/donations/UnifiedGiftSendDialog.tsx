@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import {
+import logger from '@/lib/logger';
   Dialog,
   DialogContent,
   DialogHeader,
