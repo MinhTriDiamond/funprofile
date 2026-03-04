@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 const TransactionLookup = () => {
   const [txHash, setTxHash] = useState("");
   const [loading, setLoading] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic edge function response
   const [result, setResult] = useState<any>(null);
 
   const handleSearch = async () => {

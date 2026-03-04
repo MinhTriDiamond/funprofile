@@ -37,6 +37,7 @@ interface SystemTabProps {
 
 const SystemTab = ({ adminId }: SystemTabProps) => {
   const [backfilling, setBackfilling] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic API responses from edge functions
   const [backfillResult, setBackfillResult] = useState<any>(null);
   const [deletingBanned, setDeletingBanned] = useState(false);
   const [deleteBannedResult, setDeleteBannedResult] = useState<any>(null);

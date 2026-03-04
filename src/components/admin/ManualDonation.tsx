@@ -19,13 +19,15 @@ const ManualDonation = () => {
     token_symbol: "USDT",
     message: "",
   });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic edge function response
   const [result, setResult] = useState<any>(null);
 
   // Simple user search
+  interface UserSearchResult { id: string; username: string; display_name: string | null; }
   const [senderSearch, setSenderSearch] = useState("");
   const [recipientSearch, setRecipientSearch] = useState("");
-  const [senderResults, setSenderResults] = useState<any[]>([]);
-  const [recipientResults, setRecipientResults] = useState<any[]>([]);
+  const [senderResults, setSenderResults] = useState<UserSearchResult[]>([]);
+  const [recipientResults, setRecipientResults] = useState<UserSearchResult[]>([]);
 
   const searchUser = async (query: string, type: "sender" | "recipient") => {
     if (query.length < 2) return;
@@ -38,7 +40,7 @@ const ManualDonation = () => {
     else setRecipientResults(data || []);
   };
 
-  const selectUser = (user: any, type: "sender" | "recipient") => {
+  const selectUser = (user: UserSearchResult, type: "sender" | "recipient") => {
     if (type === "sender") {
       setForm(f => ({ ...f, sender_id: user.id }));
       setSenderSearch(`@${user.username}`);
