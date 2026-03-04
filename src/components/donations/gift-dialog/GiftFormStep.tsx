@@ -126,7 +126,7 @@ export function GiftFormStep(props: GiftFormStepProps) {
 
   return (
     <div className="space-y-5 py-2">
-      {/* Sender info */}
+      {/* 1. Sender info */}
       {senderProfile && (
         <div>
           <label className="text-sm font-medium text-muted-foreground mb-2 block">Người gửi:</label>
@@ -150,7 +150,6 @@ export function GiftFormStep(props: GiftFormStepProps) {
               )}
             </div>
           </div>
-          {/* Wallet mismatch warning */}
           {effectiveAddress && senderProfile.wallet_address && senderProfile.public_wallet_address &&
             effectiveAddress.toLowerCase() !== senderProfile.wallet_address?.toLowerCase() &&
             effectiveAddress.toLowerCase() !== senderProfile.public_wallet_address?.toLowerCase() && (
@@ -162,77 +161,7 @@ export function GiftFormStep(props: GiftFormStepProps) {
         </div>
       )}
 
-      {/* Token */}
-      <div>
-        <label className="text-sm font-medium text-muted-foreground mb-2 block">Chọn token:</label>
-        <TokenSelector selectedToken={selectedToken} onSelect={onSelectToken} disabledTokens={disabledTokens} />
-      </div>
-
-      {/* Network */}
-      <NetworkSelector
-        selectedChainId={selectedChainId}
-        onChainChange={onChainChange}
-        walletChainId={walletChainId}
-      />
-
-      {/* Amount */}
-      <div>
-        <label className="text-sm font-medium text-muted-foreground mb-2 block">
-          Số lượng {isMultiMode ? `(mỗi người)` : ''}:
-        </label>
-        <div className="relative">
-          <Input
-            type="text"
-            inputMode="decimal"
-            value={amount}
-            onChange={(e) => onAmountChange(e.target.value.replace(/[^0-9.]/g, ''))}
-            placeholder="0"
-            className="text-lg font-semibold pr-16 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
-          />
-          <div className="absolute right-3 top-1/2 -translate-y-1/2">
-            <span className="text-sm text-muted-foreground">{selectedToken.symbol}</span>
-          </div>
-        </div>
-        {isConnected && <p className="text-xs text-muted-foreground mt-1">Số dư: {formattedBalance.toLocaleString(undefined, { maximumFractionDigits: selectedToken.decimals })} {selectedToken.symbol}</p>}
-        {estimatedUsd > 0 && (
-          <p className="text-xs text-muted-foreground mt-1">
-            ≈ ${estimatedUsd.toFixed(4)} USD{isMultiMode ? ` × ${recipientsWithWallet.length} = $${totalEstimatedUsd.toFixed(4)} USD tổng` : ''}
-          </p>
-        )}
-        {isMultiMode && parsedAmountNum > 0 && (
-          <p className="text-xs font-medium text-amber-600 mt-1">
-            Tổng: {totalAmount.toLocaleString()} {selectedToken.symbol} cho {recipientsWithWallet.length} người
-          </p>
-        )}
-        {parsedAmountNum > 0 && !minSendCheck.valid && minSendCheck.message && <p className="text-xs text-destructive mt-1">{minSendCheck.message}</p>}
-        {parsedAmountNum > 0 && !hasEnoughBalance && (
-          <p className="text-xs text-destructive mt-1">Không đủ số dư (cần {totalAmount.toLocaleString()} {selectedToken.symbol})</p>
-        )}
-      </div>
-
-      {/* Wrong network */}
-      {isWrongNetwork && isConnected && (
-        <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-          <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
-          <p className="text-sm text-destructive flex-1">Ví đang ở chain khác. Vui lòng chuyển sang {getChainDisplayName(selectedChainId)}</p>
-          <Button size="sm" variant="outline" onClick={onSwitchChain}>Switch</Button>
-        </div>
-      )}
-
-      {/* Connect wallet */}
-      {!isConnected && (
-        <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-amber-500">
-              <Wallet className="w-5 h-5" />
-              <span className="font-medium">Kết nối ví để gửi</span>
-            </div>
-            <Button onClick={onConnectWallet} size="sm" className="bg-amber-500 hover:bg-amber-600">Kết nối</Button>
-          </div>
-        </div>
-      )}
-
-      {/* Recipient section */}
+      {/* 2. Recipient section */}
       {isPresetMode ? (
         <PresetRecipientDisplay recipient={effectiveRecipients[0]} onCopyAddress={onCopyAddress} />
       ) : (
@@ -280,14 +209,84 @@ export function GiftFormStep(props: GiftFormStepProps) {
         </div>
       )}
 
+      {/* Connect wallet */}
+      {!isConnected && (
+        <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-amber-500">
+              <Wallet className="w-5 h-5" />
+              <span className="font-medium">Kết nối ví để gửi</span>
+            </div>
+            <Button onClick={onConnectWallet} size="sm" className="bg-amber-500 hover:bg-amber-600">Kết nối</Button>
+          </div>
+        </div>
+      )}
+
+      {/* 3. Network */}
+      <NetworkSelector
+        selectedChainId={selectedChainId}
+        onChainChange={onChainChange}
+        walletChainId={walletChainId}
+      />
+
+      {/* 4. Token */}
+      <div>
+        <label className="text-sm font-medium text-muted-foreground mb-2 block">Chọn token:</label>
+        <TokenSelector selectedToken={selectedToken} onSelect={onSelectToken} disabledTokens={disabledTokens} />
+      </div>
+
+      {/* 5. Amount */}
+      <div>
+        <label className="text-sm font-medium text-muted-foreground mb-2 block">
+          Số lượng {isMultiMode ? `(mỗi người)` : ''}:
+        </label>
+        <div className="relative">
+          <Input
+            type="text"
+            inputMode="decimal"
+            value={amount}
+            onChange={(e) => onAmountChange(e.target.value.replace(/[^0-9.]/g, ''))}
+            placeholder="0"
+            className="text-lg font-semibold pr-16 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
+          />
+          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+            <span className="text-sm text-muted-foreground">{selectedToken.symbol}</span>
+          </div>
+        </div>
+        {isConnected && <p className="text-xs text-muted-foreground mt-1">Số dư: {formattedBalance.toLocaleString(undefined, { maximumFractionDigits: selectedToken.decimals })} {selectedToken.symbol}</p>}
+        {estimatedUsd > 0 && (
+          <p className="text-xs text-muted-foreground mt-1">
+            ≈ ${estimatedUsd.toFixed(4)} USD{isMultiMode ? ` × ${recipientsWithWallet.length} = $${totalEstimatedUsd.toFixed(4)} USD tổng` : ''}
+          </p>
+        )}
+        {isMultiMode && parsedAmountNum > 0 && (
+          <p className="text-xs font-medium text-amber-600 mt-1">
+            Tổng: {totalAmount.toLocaleString()} {selectedToken.symbol} cho {recipientsWithWallet.length} người
+          </p>
+        )}
+        {parsedAmountNum > 0 && !minSendCheck.valid && minSendCheck.message && <p className="text-xs text-destructive mt-1">{minSendCheck.message}</p>}
+        {parsedAmountNum > 0 && !hasEnoughBalance && (
+          <p className="text-xs text-destructive mt-1">Không đủ số dư (cần {totalAmount.toLocaleString()} {selectedToken.symbol})</p>
+        )}
+      </div>
+
+      {/* Wrong network */}
+      {isWrongNetwork && isConnected && (
+        <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+          <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
+          <p className="text-sm text-destructive flex-1">Ví đang ở chain khác. Vui lòng chuyển sang {getChainDisplayName(selectedChainId)}</p>
+          <Button size="sm" variant="outline" onClick={onSwitchChain}>Switch</Button>
+        </div>
+      )}
+
       {(recipientsWithWallet.length > 0 || !hasRecipients) && (
         <>
-          {/* Quick picks */}
+          {/* 6. Quick picks */}
           <div>
             <QuickGiftPicker selectedTemplate={selectedTemplate} onSelectTemplate={onSelectTemplate} onSelectAmount={onSelectQuickAmount} currentAmount={amount} tokenSymbol={selectedToken.symbol} />
           </div>
 
-          {/* Message */}
+          {/* 7-8. Message */}
           <div>
             <label className="text-sm font-medium text-muted-foreground mb-2 block">Lời nhắn:</label>
             <div className="relative">
