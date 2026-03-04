@@ -52,43 +52,33 @@ interface FeedPage {
 
 const POSTS_PER_PAGE = 10;
 
-// Batch fetch all post stats in parallel
+// Batch fetch all post stats via server-side aggregation
 const fetchPostStats = async (postIds: string[]): Promise<Record<string, PostStats>> => {
   if (postIds.length === 0) return {};
 
   try {
-    const [reactionsRes, commentsRes, sharesRes] = await Promise.all([
-      supabase
-        .from('reactions')
-        .select('id, user_id, type, post_id')
-        .in('post_id', postIds)
-        .is('comment_id', null),
-      supabase
-        .from('comments')
-        .select('post_id')
-        .in('post_id', postIds),
-      supabase
-        .from('shared_posts')
-        .select('original_post_id')
-        .in('original_post_id', postIds),
-    ]);
+    const { data, error } = await supabase.rpc('get_post_stats', { p_post_ids: postIds });
 
-    if (reactionsRes.error) console.error('Reactions fetch error:', reactionsRes.error);
-    if (commentsRes.error) console.error('Comments fetch error:', commentsRes.error);
-    if (sharesRes.error) console.error('Shares fetch error:', sharesRes.error);
+    if (error) {
+      console.error('Post stats RPC error:', error);
+      throw error;
+    }
 
     const stats: Record<string, PostStats> = {};
-
-    postIds.forEach(postId => {
-      const postReactions = reactionsRes.data?.filter(r => r.post_id === postId) || [];
-      const postComments = commentsRes.data?.filter(c => c.post_id === postId) || [];
-      const postShares = sharesRes.data?.filter(s => s.original_post_id === postId) || [];
-
-      stats[postId] = {
-        reactions: postReactions.map(r => ({ id: r.id, user_id: r.user_id, type: r.type })),
-        commentCount: postComments.length,
-        shareCount: postShares.length,
+    (data || []).forEach((row: any) => {
+      const reactions = Array.isArray(row.reactions) ? row.reactions : [];
+      stats[row.post_id] = {
+        reactions: reactions.map((r: any) => ({ id: r.id, user_id: r.user_id, type: r.type })),
+        commentCount: Number(row.comment_count) || 0,
+        shareCount: Number(row.share_count) || 0,
       };
+    });
+
+    // Fill missing post IDs with defaults
+    postIds.forEach(id => {
+      if (!stats[id]) {
+        stats[id] = { reactions: [], commentCount: 0, shareCount: 0 };
+      }
     });
 
     return stats;
