@@ -42,7 +42,7 @@ const Reels = lazy(() => import("./pages/Reels"));
 const LiveDiscoveryPage = lazy(() => import("./pages/LiveDiscoveryPage"));
 const LiveHostPage = lazy(() => import("./modules/live/pages/LiveHostPage").then(m => ({ default: m.default })));
 const LiveAudiencePage = lazy(() => import("./modules/live/pages/LiveAudiencePage").then(m => ({ default: m.default })));
-const LiveStream = lazy(() => import("./modules/live/pages/LiveStream").then(m => ({ default: m.default })));
+// LiveStream (legacy) removed — redirect handled below
 const PreLivePage = lazy(() => import("./modules/live/pages/PreLivePage"));
 
 // Keep auth session alive when user returns to tab
@@ -148,7 +148,7 @@ function App() {
                   <Route path="/live" element={<LiveDiscoveryPage />} />
                   <Route path="/live/setup" element={<PreLivePage />} />
                   <Route path="/live/new" element={<LiveHostPage />} />
-                  <Route path="/live/stream" element={<LiveStream />} />
+                  <Route path="/live/stream" element={<Navigate to="/live/new" replace />} />
                   <Route path="/live/:liveSessionId" element={<LiveAudiencePage />} />
                   <Route path="/live/:liveSessionId/host" element={<LiveHostPage />} />
                   <Route path="/:username/live/:slug" element={<LiveAudiencePage />} />
