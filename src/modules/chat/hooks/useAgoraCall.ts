@@ -270,7 +270,7 @@ export function useAgoraCall({ conversationId, userId }: UseAgoraCallOptions) {
       
       // Cleanup existing client before joining
       if (clientRef.current) {
-        try { await clientRef.current.leave(); } catch {}
+        try { await clientRef.current.leave(); } catch { /* cleanup — leave failure is non-critical */ }
         clientRef.current = null;
       }
       const client = initClient();
@@ -362,7 +362,7 @@ export function useAgoraCall({ conversationId, userId }: UseAgoraCallOptions) {
       
       // Cleanup existing client before joining
       if (clientRef.current) {
-        try { await clientRef.current.leave(); } catch {}
+        try { await clientRef.current.leave(); } catch { /* cleanup — leave failure is non-critical */ }
         clientRef.current = null;
       }
       const client = initClient();
@@ -651,7 +651,7 @@ export function useAgoraCall({ conversationId, userId }: UseAgoraCallOptions) {
             const tokenData = await getToken(typedSession.channel_name);
             // Cleanup existing client before joining
             if (clientRef.current) {
-              try { await clientRef.current.leave(); } catch {}
+              try { await clientRef.current.leave(); } catch { /* cleanup — leave failure is non-critical */ }
               clientRef.current = null;
             }
             const client = initClient();
