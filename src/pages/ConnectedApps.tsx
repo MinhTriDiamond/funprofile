@@ -80,6 +80,7 @@ const platformConfig: Record<string, {
 
 const ConnectedApps = () => {
   const navigate = useNavigate();
+  const { userId, isLoading: authLoading } = useCurrentUser();
   const [loading, setLoading] = useState(true);
   const [connectedApps, setConnectedApps] = useState<ConnectedApp[]>([]);
   const [crossPlatformData, setCrossPlatformData] = useState<CrossPlatformData | null>(null);
@@ -88,22 +89,18 @@ const ConnectedApps = () => {
   const [revoking, setRevoking] = useState(false);
 
   useEffect(() => {
-    fetchConnectedApps();
-  }, []);
+    if (!authLoading && !userId) { navigate('/auth'); return; }
+    if (userId) fetchConnectedApps();
+  }, [userId, authLoading]);
 
   const fetchConnectedApps = async () => {
+    if (!userId) return;
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        navigate('/auth');
-        return;
-      }
-
       // Fetch tokens (connected apps)
       const { data: tokens, error: tokensError } = await supabase
         .from('cross_platform_tokens')
         .select('id, client_id, scope, created_at, last_used_at, is_revoked')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .eq('is_revoked', false);
 
       if (tokensError) throw tokensError;
