@@ -275,7 +275,7 @@ export const EditPostDialog = ({ post, isOpen, onClose, onPostUpdated, currentUs
               {/* Content Input with Emoji */}
               <div className="relative">
                 <Textarea
-                  placeholder="Bạn đang nghĩ gì thế?"
+                  placeholder="Ánh sáng trong tim bạn đang muốn nói điều gì?"
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                   className="min-h-[120px] resize-none border-0 focus-visible:ring-0 text-lg placeholder:text-muted-foreground pr-10"
