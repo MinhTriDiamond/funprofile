@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import type { PostStats } from '@/hooks/useFeedPosts';
-import type { ProfilePostItem, OriginalProfilePost, SharedProfilePost, ProfilePostProfile, ProfilePostReaction, ProfilePostComment } from '@/types/profilePosts';
+import type { ProfilePostItem, OriginalProfilePost, SharedProfilePost, BasePostFields, ProfilePostProfile, ProfilePostReaction, ProfilePostComment } from '@/types/profilePosts';
 
 export interface FriendPreview {
   id: string;

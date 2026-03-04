@@ -25,7 +25,7 @@ export interface ProfilePostComment {
 }
 
 /** Base fields shared by all post rows — uses permissive types for Supabase compatibility */
-interface BasePostFields {
+export interface BasePostFields {
   id: string;
   content: string;
   image_url: string | null;
