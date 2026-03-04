@@ -1,6 +1,6 @@
 export { default as LiveStudioPage } from './pages/LiveStudio';
 export { default as LiveViewerPage } from './pages/LiveViewer';
-export { default as LiveStreamPage } from './pages/LiveStream';
+// LiveStream (legacy record & post) removed — use LiveHostPage with chunked recording instead
 export { default as LiveHostPage } from './pages/LiveHostPage';
 export { default as LiveAudiencePage } from './pages/LiveAudiencePage';
 export { default as HostLive } from './pages/HostLive';
