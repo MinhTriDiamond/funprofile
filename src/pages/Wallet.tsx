@@ -1,10 +1,10 @@
 import { lazy, Suspense, useEffect, useCallback } from 'react';
 import { useNavigate, Routes, Route, Navigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { PullToRefreshContainer } from '@/components/common/PullToRefreshContainer';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 // Lazy load ALL Web3 dependencies via wrapper
 const WalletProviders = lazy(() => import('@/components/wallet/WalletProviders'));
@@ -22,25 +22,14 @@ const WalletLoader = () => (
 const Wallet = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { isAuthenticated, isLoading } = useCurrentUser();
 
+  // Redirect to auth if not logged in (using centralized hook)
   useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        navigate('/auth');
-      }
-    };
-
-    checkAuth();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_OUT') {
-        navigate('/auth');
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate]);
+    if (!isLoading && !isAuthenticated) {
+      navigate('/auth');
+    }
+  }, [isLoading, isAuthenticated, navigate]);
 
   const handlePullRefresh = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: ['fun-balance'] });

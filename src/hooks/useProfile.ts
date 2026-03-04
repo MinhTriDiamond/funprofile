@@ -30,7 +30,19 @@ export interface ProfileData {
   education?: string | null;
   relationship_status?: string | null;
   pinned_post_id?: string | null;
-  [key: string]: any;
+  fun_id?: string | null;
+  display_name?: string | null;
+  admin_notes?: string | null;
+  reward_status?: string | null;
+  pending_reward?: number;
+  approved_reward?: number;
+  grand_total_deposit?: number;
+  grand_total_withdraw?: number;
+  grand_total_bet?: number;
+  grand_total_win?: number;
+  grand_total_loss?: number;
+  grand_total_profit?: number;
+  financial_updated_at?: string | null;
 }
 
 const POSTS_PER_PAGE = 10;
@@ -183,6 +195,7 @@ export const useProfile = () => {
     setLoading(true);
 
     const checkAuth = async () => {
+      // Use getSession (cached) — no extra network call
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session) {

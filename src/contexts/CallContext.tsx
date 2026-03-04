@@ -10,6 +10,7 @@ import { IncomingCallDialog } from '@/modules/chat/components/IncomingCallDialog
 import type { CallSession, CallType } from '@/modules/chat/types';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 interface CallContextValue {
   incomingCall: CallSession | null;
@@ -33,26 +34,11 @@ interface CallProviderProps {
 }
 
 export function CallProvider({ children, renderIncomingDialog = true }: CallProviderProps) {
-  const [userId, setUserId] = useState<string | null>(null);
+  // Use centralized auth hook instead of separate subscription
+  const { userId } = useCurrentUser();
   const [incomingCall, setIncomingCall] = useState<CallSession | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
-
-  // Get current user ID
-  useEffect(() => {
-    const getUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setUserId(session?.user?.id || null);
-    };
-    
-    getUser();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
-      setUserId(session?.user?.id || null);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
 
   // Handle answer call - navigate to chat and let the chat page handle the actual connection
   const answerCall = useCallback(() => {

@@ -2,61 +2,13 @@ import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
-export interface Reel {
-  id: string;
-  user_id: string;
-  video_url: string;
-  thumbnail_url: string | null;
-  caption: string | null;
-  slug: string | null;
-  audio_name: string | null;
-  audio_artist: string | null;
-  duration_seconds: number | null;
-  visibility: string;
-  view_count: number;
-  like_count: number;
-  comment_count: number;
-  share_count: number;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-  profiles: {
-    id: string;
-    username: string;
-    avatar_url: string | null;
-    full_name: string | null;
-  };
-  is_liked?: boolean;
-  is_bookmarked?: boolean;
-}
-
-export interface ReelComment {
-  id: string;
-  reel_id: string;
-  user_id: string;
-  parent_comment_id: string | null;
-  content: string;
-  like_count: number;
-  created_at: string;
-  profiles?: {
-    id: string;
-    username: string;
-    avatar_url: string | null;
-  };
-}
+// ... keep existing code (Reel and ReelComment interfaces)
 
 export function useReels(limit = 10) {
   const queryClient = useQueryClient();
-
-  const { data: currentUser } = useQuery({
-    queryKey: ['current-user-reels'],
-    queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      return user;
-    },
-    staleTime: 5 * 60 * 1000,
-  });
+  const { user: currentUser } = useCurrentUser();
 
   const { data: reels = [], isLoading, refetch } = useQuery({
     queryKey: ['reels', limit, currentUser?.id],

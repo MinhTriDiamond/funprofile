@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 export interface LiveViewer {
   userId: string;
@@ -10,25 +11,25 @@ export interface LiveViewer {
 export function useLivePresence(sessionId: string | undefined) {
   const [viewers, setViewers] = useState<LiveViewer[]>([]);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const { userId } = useCurrentUser();
 
   useEffect(() => {
-    if (!sessionId) return;
+    if (!sessionId || !userId) return;
 
     let cancelled = false;
 
     const setup = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user || cancelled) return;
+      if (cancelled) return;
 
       // Fetch profile
       const { data: profile } = await supabase
         .from('profiles')
         .select('username, avatar_url')
-        .eq('id', user.id)
+        .eq('id', userId)
         .single();
 
       const channel = supabase.channel(`live-presence:${sessionId}`, {
-        config: { presence: { key: user.id } },
+        config: { presence: { key: userId } },
       });
 
       channel
@@ -51,7 +52,7 @@ export function useLivePresence(sessionId: string | undefined) {
         .subscribe(async (status) => {
           if (status === 'SUBSCRIBED') {
             await channel.track({
-              userId: user.id,
+              userId: userId,
               username: profile?.username || 'User',
               avatar_url: profile?.avatar_url || '',
             });
@@ -71,7 +72,7 @@ export function useLivePresence(sessionId: string | undefined) {
         channelRef.current = null;
       }
     };
-  }, [sessionId]);
+  }, [sessionId, userId]);
 
   return { viewers };
 }

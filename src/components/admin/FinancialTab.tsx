@@ -223,16 +223,16 @@ const FinancialTab = () => {
   const [transactionDialogUser, setTransactionDialogUser] = useState<string | null>(null);
   const [currentAdminId, setCurrentAdminId] = useState<string | null>(null);
 
+  // Get admin ID from centralized hook — imported at top of file via prop or context
   useEffect(() => {
-    // Get current admin ID
-    const fetchAdminId = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setCurrentAdminId(user.id);
+    const init = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        setCurrentAdminId(session.user.id);
       }
+      loadData();
     };
-    fetchAdminId();
-    loadData();
+    init();
   }, []);
 
   // Get latest critical reconciliation issue

@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { usePublicClient } from 'wagmi';
 import { supabase } from '@/integrations/supabase/client';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 export interface Transaction {
   id: string;
@@ -15,14 +16,11 @@ export interface Transaction {
   created_at: string;
 }
 
-const fetchTransactions = async (): Promise<Transaction[]> => {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return [];
-
+const fetchTransactionsForUser = async (userId: string): Promise<Transaction[]> => {
   const { data, error } = await supabase
     .from('transactions')
     .select('*')
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .order('created_at', { ascending: false })
     .limit(20);
 
@@ -33,10 +31,12 @@ const fetchTransactions = async (): Promise<Transaction[]> => {
 export function useTransactionHistory() {
   const publicClient = usePublicClient();
   const queryClient = useQueryClient();
+  const { userId } = useCurrentUser();
 
   const { data: transactions = [], isLoading } = useQuery({
-    queryKey: ['transaction-history'],
-    queryFn: fetchTransactions,
+    queryKey: ['transaction-history', userId],
+    queryFn: () => fetchTransactionsForUser(userId!),
+    enabled: !!userId,
   });
 
   const refreshTxStatus = useCallback(async (txHash: string) => {

@@ -1,49 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
-import { Button } from '@/components/ui/button';
-import { InlineSearch } from './InlineSearch';
-import { NotificationDropdown } from './NotificationDropdown';
-import { useLanguage } from '@/i18n/LanguageContext';
-import { useIsMobileOrTablet } from '@/hooks/use-mobile';
-import {
-  Home,
-  Users,
-  MessageCircle,
-  Menu,
-  Wallet,
-  Film,
-  User,
-  LogOut,
-  Globe,
-  Sparkles,
-  Shield,
-} from 'lucide-react';
-import { AngelChatWidget } from '@/components/angel-ai';
-import { GiftNavButton } from '@/components/donations/GiftNavButton';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import {
-  Sheet,
-  SheetContent,
-  SheetTrigger,
-} from '@/components/ui/sheet';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { FacebookLeftSidebar } from '@/components/feed/FacebookLeftSidebar';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-// Use direct paths for logos to ensure consistency across all environments
+// ... keep existing code (imports from line 5-46)
 
 export const FacebookNavbar = () => {
   const navigate = useNavigate();
@@ -53,30 +14,8 @@ export const FacebookNavbar = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isAngelChatOpen, setIsAngelChatOpen] = useState(false);
 
-  // MED-5: Track userId via state updated only on auth change (not every render)
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-
-  // Sync auth state (lightweight — only sets userId, no extra DB calls)
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setIsLoggedIn(!!session);
-      setCurrentUserId(session?.user?.id ?? null);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        setIsLoggedIn(true);
-        setCurrentUserId(session?.user?.id ?? null);
-      } else if (event === 'SIGNED_OUT') {
-        setIsLoggedIn(false);
-        setCurrentUserId(null);
-      }
-      // INITIAL_SESSION, USER_UPDATED → giữ nguyên state hiện tại
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
+  // Use centralized auth hook instead of separate subscription
+  const { userId: currentUserId, isAuthenticated: isLoggedIn } = useCurrentUser();
 
   // MED-5: Profile cached via React Query — only re-fetches when userId changes or data is stale (5 min)
   const { data: profile } = useQuery({

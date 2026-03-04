@@ -2,7 +2,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { uploadToR2 } from '@/utils/r2Upload';
 import type { CreateLiveSessionInput, LiveSession } from './types';
 
-const db = supabase as any;
+// Use supabase client directly — avoid `as any` cast for type safety
+const db = supabase;
 
 const LIVE_POST_DEFAULT_CONTENT = 'Đang LIVE trên FUN Profile';
 

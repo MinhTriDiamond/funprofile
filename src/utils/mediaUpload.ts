@@ -120,9 +120,10 @@ export async function uploadMedia(
 ): Promise<MediaUploadResult> {
   const { bucket, compress = true, maxWidth, maxHeight, quality, preserveFilename = false } = options;
 
-  // Get current user
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Chưa đăng nhập');
+  // Get current user from session (cached, no network call)
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.user) throw new Error('Chưa đăng nhập');
+  const user = session.user;
 
   let processedFile = file;
 
