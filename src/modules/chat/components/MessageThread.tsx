@@ -2,7 +2,7 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMessages } from '../hooks/useMessages';
-import { useTypingIndicator } from '../hooks/useTypingIndicator';
+import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { useConversation } from '../hooks/useConversations';
 import { useAgoraCall } from '../hooks/useAgoraCall';
 import { CallRoom } from './CallRoom';

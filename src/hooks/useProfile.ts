@@ -24,7 +24,7 @@ export interface ProfileData {
   external_wallet_address?: string | null;
   custodial_wallet_address?: string | null;
   wallet_address?: string | null;
-  social_links?: any[];
+  social_links?: Array<{ platform: string; label: string; url: string; color: string; favicon: string; avatarUrl?: string }>;
   is_banned?: boolean;
   location?: string | null;
   workplace?: string | null;
@@ -55,6 +55,7 @@ export const useProfile = () => {
   const { userId: authUserId } = useCurrentUser();
   const currentUserId = authUserId || '';
   const [profile, setProfile] = useState<ProfileData | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- posts have dynamic shape from multiple queries (posts, shared_posts, gift_celebration)
   const [allPosts, setAllPosts] = useState<any[]>([]);
   const [originalPosts, setOriginalPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);

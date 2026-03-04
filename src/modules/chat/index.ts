@@ -31,7 +31,7 @@ export { CryptoGiftButton } from './components/CryptoGiftButton';
 export { useMessages } from './hooks/useMessages';
 export { useConversations, useConversation } from './hooks/useConversations';
 export { useGroupConversations } from './hooks/useGroupConversations';
-export { useTypingIndicator } from './hooks/useTypingIndicator';
+export { useTypingIndicator } from '@/hooks/useTypingIndicator';
 export { useAgoraCall } from './hooks/useAgoraCall';
 export { useMediaDevices } from './hooks/useMediaDevices';
 export { useBlocks } from './hooks/useBlocks';

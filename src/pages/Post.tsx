@@ -68,7 +68,7 @@ const Post = () => {
         .from('posts')
         .select(`
           *,
-          public_profiles!posts_user_id_fkey (username, display_name, avatar_url, full_name, public_wallet_address),
+          profiles:public_profiles!posts_user_id_fkey (username, display_name, avatar_url, full_name, public_wallet_address),
           reactions (id, user_id, type),
           comments (id)
         `)
@@ -78,8 +78,7 @@ const Post = () => {
       if (error || !data) {
         setPost(null);
       } else {
-        const profileData = (data as any).public_profiles || (data as any).profiles;
-        setPost({ ...data, profiles: profileData } as unknown as PostWithProfile);
+        setPost(data as unknown as PostWithProfile);
       }
       setLoading(false);
     };

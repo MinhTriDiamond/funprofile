@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
+import logger from '@/lib/logger';
 interface SocialLoginProps {
   onSuccess?: (userId: string, isNewUser: boolean) => void;
 }
@@ -32,14 +33,14 @@ export const SocialLogin = ({
               await supabase.from('profiles').update({
                 last_login_platform: 'FUN Profile'
               }).eq('id', session.user.id);
-              console.log('[SocialLogin] Updated last_login_platform to: FUN Profile');
+              logger.debug('[SocialLogin] Updated last_login_platform to: FUN Profile');
 
               // Check if user is new (created within last minute)
               const {
                 data: profile
               } = await supabase.from('profiles').select('created_at').eq('id', session.user.id).single();
               const isNewUser = profile && new Date().getTime() - new Date(profile.created_at).getTime() < 60000;
-              console.log('[SocialLogin] User isNew:', isNewUser);
+              logger.debug('[SocialLogin] User isNew:', isNewUser);
 
               // Call success callback if provided
               if (onSuccess) {
