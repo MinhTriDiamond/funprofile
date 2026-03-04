@@ -33,7 +33,7 @@ export const WalletSettingsDialog = ({ open, onOpenChange }: WalletSettingsDialo
         setCurrency(parsed.currency ?? 'USD');
         setAutoLock(parsed.autoLock ?? false);
         setNotifications(parsed.notifications ?? true);
-      } catch {}
+      } catch { /* localStorage parse — safe to ignore, use defaults */ }
     }
   }, []);
 
