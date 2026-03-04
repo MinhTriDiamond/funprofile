@@ -123,7 +123,7 @@ export const EmailOtpLogin = ({ onSuccess }: EmailOtpLoginProps) => {
           .update({ last_login_platform: 'FUN Profile' })
           .eq('id', data.user_id);
 
-        console.log('[OTP] Session established for user:', data.user_id);
+        logger.debug('[OTP] Session established for user:', data.user_id);
         toast.success(t('welcomeBack'));
         onSuccess(data.user_id, data.is_new_user);
       } else {

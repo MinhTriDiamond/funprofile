@@ -62,12 +62,12 @@ export const UnifiedAuthForm = ({ ssoFlow = false }: UnifiedAuthFormProps) => {
     const { data: { session } } = await supabase.auth.getSession();
     
     if (!session) {
-      console.error('[Auth] No session found after auth success');
+      logger.error('[Auth] No session found after auth success');
       toast.error(t('authErrorGeneric'));
       return;
     }
 
-    console.log('[Auth] Session verified for user:', userId, 'isNewUser:', isNewUser, 'hasExternalWallet:', hasExternalWallet);
+    logger.debug('[Auth] Session verified for user:', userId, 'isNewUser:', isNewUser, 'hasExternalWallet:', hasExternalWallet);
 
     // Log login IP + device fingerprint (fire-and-forget)
     try {
@@ -77,13 +77,13 @@ export const UnifiedAuthForm = ({ ssoFlow = false }: UnifiedAuthFormProps) => {
         body: { device_hash: deviceHash, fingerprint_version: FINGERPRINT_VERSION },
       });
     } catch (e) {
-      console.warn('[Auth] Failed to log IP:', e);
+      logger.warn('[Auth] Failed to log IP:', e);
     }
 
     // Đồng bộ law_of_light từ localStorage nếu có pending (cho MỌI lần đăng nhập)
     const lawOfLightPending = localStorage.getItem('law_of_light_accepted_pending');
     if (lawOfLightPending === 'true') {
-      console.log('[Auth] Syncing law_of_light_accepted for user:', userId);
+      logger.debug('[Auth] Syncing law_of_light_accepted for user:', userId);
       await supabase.from('profiles').update({
         law_of_light_accepted: true,
         law_of_light_accepted_at: new Date().toISOString()
