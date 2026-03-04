@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Shield, BarChart3, Gift, Users, DollarSign, Sparkles, FileText, ShieldAlert, Settings, LogOut } from "lucide-react";
+import { Shield, BarChart3, Gift, Users, DollarSign, Sparkles, FileText, ShieldAlert, Settings, LogOut, Radio } from "lucide-react";
 import { FacebookNavbar } from "@/components/layout/FacebookNavbar";
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { useAdminUsers, invalidateAdminData } from "@/hooks/useAdminUsers";
@@ -17,6 +17,7 @@ import UserManagementTab from "@/components/admin/UserManagementTab";
 import FraudTab from "@/components/admin/FraudTab";
 import PostModerationTab from "@/components/admin/PostModerationTab";
 import SystemTab from "@/components/admin/SystemTab";
+import LivestreamHealthTab from "@/components/admin/LivestreamHealthTab";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -26,7 +27,7 @@ const Admin = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(() => {
     const tabParam = searchParams.get("tab");
-    const validTabs = ["overview", "pplp", "finance", "rewards", "users", "fraud", "moderation", "system"];
+    const validTabs = ["overview", "pplp", "finance", "rewards", "users", "fraud", "moderation", "livestream", "system"];
     return tabParam && validTabs.includes(tabParam) ? tabParam : "overview";
   });
 
@@ -109,7 +110,7 @@ const Admin = () => {
 
           {/* 8 Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8 h-auto">
+            <TabsList className="grid w-full grid-cols-4 lg:grid-cols-9 h-auto">
               <TabsTrigger value="overview" className="gap-2 py-3">
                 <BarChart3 className="w-4 h-4" />
                 <span className="hidden sm:inline">📊 Tổng quan</span>
@@ -137,6 +138,10 @@ const Admin = () => {
               <TabsTrigger value="moderation" className="gap-2 py-3">
                 <FileText className="w-4 h-4" />
                 <span className="hidden sm:inline">📝 Duyệt bài</span>
+              </TabsTrigger>
+              <TabsTrigger value="livestream" className="gap-2 py-3">
+                <Radio className="w-4 h-4" />
+                <span className="hidden sm:inline">📡 Livestream</span>
               </TabsTrigger>
               <TabsTrigger value="system" className="gap-2 py-3">
                 <Settings className="w-4 h-4" />
@@ -170,6 +175,10 @@ const Admin = () => {
 
             <TabsContent value="moderation">
               <PostModerationTab />
+            </TabsContent>
+
+            <TabsContent value="livestream">
+              <LivestreamHealthTab />
             </TabsContent>
 
             <TabsContent value="system">

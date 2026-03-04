@@ -1,100 +1,78 @@
 
 
-# BÁO CÁO KIỂM TRA SAU CHỈNH SỬA — Tính năng Livestream
+# Phân tích: Tại sao Database hiển thị Livestream = 0
 
----
+## Phát hiện chính
 
-## TỔNG QUAN TÌNH TRẠNG SAU SỬA
+**Dữ liệu thực tế trong database:**
 
-| Hạng mục | Trước | Sau | Trạng thái |
-|----------|-------|-----|------------|
-| Stuck recordings | 28 | **2** (đang live, không phải stuck) | ✅ Đã sửa |
-| `getClaims()` deprecated | 3 files livestream | **0 files livestream** | ✅ Đã sửa |
-| Tiếng Việt không dấu | 6+ chuỗi | **0** | ✅ Đã sửa |
-| Auto-finalize cron | Không có | **Chạy mỗi 5 phút, status=succeeded** | ✅ Hoạt động |
-| Audience replay link | Chỉ "OK" | **Có nút "Xem lại"** | ✅ Đã thêm |
-| Viewer count thống nhất | DB RPC + Presence | **Chỉ Presence** | ✅ Đã sửa |
-| Friends-only enforcement | Không check | **Check friendship trong live-token** | ✅ Đã thêm |
-| Recording unmount flush | Không flush | **Flush queue khi unmount** | ✅ Đã thêm |
-| Safari/iOS fast path | Probe MSE trước | **Skip MSE, direct blob** | ✅ Đã thêm |
-| Quality settings | Không có | **480p/720p/1080p picker** | ✅ Đã thêm |
-| VideoErrorBoundary | Không có | **Wrap ChunkedVideoPlayer** | ✅ Đã thêm |
-| Monitoring SQL function | Không có | **`get_livestream_stats()`** | ✅ Đã tạo |
+| Bảng | Số lượng | Ghi chú |
+|------|----------|---------|
+| `live_sessions` | **600** (596 ended + 4 live) | Users livestream rất tích cực |
+| `chunked_recordings` | **342** (314 done, 28 stuck "recording") | Ghi hình hoạt động |
+| `posts` với `post_type = 'live'` | **519** | Bài đăng live |
+| `posts` có video URL chứa "live" | **581** | Video replay |
+| `recording_status = 'ready'` | **488** | Recordings thành công |
+| `recording_status = 'failed'` | **57** | Recordings thất bại (~9.5%) |
 
----
+**Kết luận: Users livestream RẤT NHIỀU — 600 phiên, 488 recordings thành công!**
 
-## CHẤM ĐIỂM CHI TIẾT
+## Nguyên nhân gốc: Hàm `get_app_stats` không đếm livestream
 
-### 1. Độ ổn định (Stability) — 9/10 ✅
-- **Trước:** 28 recordings stuck, không có auto-recovery → **Sau:** Chỉ 2 recordings đang `recording` nhưng cả 2 đều thuộc sessions đang `live` (không phải stuck)
-- pg_cron job chạy đúng lịch, `return_message: "1 row"`, `status: succeeded`
-- `getClaims()` đã loại bỏ khỏi tất cả Edge Functions livestream (vẫn còn 5 files khác không liên quan livestream)
-- Error boundary bao bọc ChunkedVideoPlayer → không white screen crash
+Hàm `get_app_stats()` hiện tại chỉ trả về:
+- `total_users`, `total_posts`, `total_photos`, `total_videos` (đếm từ `posts WHERE video_url IS NOT NULL`)
+- `total_rewards`, `treasury_camly_received`, `total_camly_claimed`
 
-### 2. Trải nghiệm User (UX) — 8.5/10 ✅
-- Audience thấy "Xem lại" khi live kết thúc (nếu có `post_id`)
-- Quality picker trực quan (480p/720p/1080p) trên PreLivePage
-- Error messages tiếng Việt có dấu đầy đủ
-- Safari/iOS skip MSE → giảm 200-500ms delay khi xem replay
+**Không có trường nào đếm `live_sessions`** hoặc `chunked_recordings`. Component `AppHonorBoard.tsx` hiển thị `total_videos = 897` — đó là tổng số posts có video (bao gồm cả live replay), nhưng **không có mục riêng cho "Livestream"**.
 
-### 3. Hiệu năng Replay (Performance) — 8.5/10 ✅
-- MSE streaming với LRU cache 80MB/30MB
-- Adaptive buffering (30-60s) dựa trên network speed
-- Blob fallback progressive (phát ngay chunk đầu tiên)
-- VideoErrorBoundary catch crash → retry thay vì white screen
+## Vấn đề phụ phát hiện thêm
 
-### 4. Bảo mật (Security) — 9/10 ✅
-- Friends-only enforcement hoạt động trong `live-token`
-- `getUser()` thay `getClaims()` trong recording-finalize và recover-orphan
-- Auto-finalize dùng service_role key (không cần user JWT)
+1. **28 recordings stuck ở trạng thái "recording"** — phiên live đã kết thúc nhưng `chunked_recordings.status` không chuyển sang `done`. Đây là những sessions mà host đóng trình duyệt đột ngột trước khi finalize.
 
-### 5. Khả năng vận hành (Observability) — 8/10 ✅
-- `get_livestream_stats()` trả về 12 metrics
-- pg_cron logs có thể query từ `cron.job_run_details`
+2. **57 sessions có `recording_status = 'failed'`** (~9.5%) — một số có `chunked_recordings.status = done` (recording thực ra thành công nhưng status ở `live_sessions` bị đánh failed sai).
 
----
+3. **`live_recordings` table hoàn toàn trống** (0 rows) — Table này được thiết kế cho Agora server-side recording nhưng chưa bao giờ được sử dụng thành công vì hệ thống đang dùng client-side chunked recording thay thế.
 
-## VẤN ĐỀ CÒN TỒN TẠI
+## Kế hoạch sửa
 
-### Trung bình (cần xem xét)
+### Task 1: Cập nhật `get_app_stats` thêm `total_livestreams`
 
-1. **`getClaims()` vẫn còn trong 5 Edge Functions khác** — `treasury-balance`, `stream-video`, `angel-inline`, `cleanup-orphan-videos`, `pplp-get-score`. Không liên quan trực tiếp livestream nhưng sẽ break khi Supabase deprecate hoàn toàn.
+Thêm trường `total_livestreams` vào hàm SQL:
 
-2. **Auto-finalize dùng anon key** — pg_cron gọi Edge Function với `anon` Bearer token, nhưng Edge Function dùng `SUPABASE_SERVICE_ROLE_KEY` bên trong → OK về bảo mật vì không cần user auth. Tuy nhiên, nếu cần rate-limit, token này có thể bị abuse nếu URL bị lộ.
+```sql
+DROP FUNCTION IF EXISTS public.get_app_stats();
+CREATE OR REPLACE FUNCTION public.get_app_stats()
+RETURNS TABLE(
+  total_users BIGINT,
+  total_posts BIGINT,
+  total_photos BIGINT,
+  total_videos BIGINT,
+  total_livestreams BIGINT,
+  total_rewards NUMERIC,
+  treasury_camly_received NUMERIC,
+  total_camly_claimed NUMERIC
+) ...
+-- Thêm:
+(SELECT COUNT(*) FROM live_sessions)::BIGINT AS total_livestreams,
+```
 
-3. **2 recordings vẫn ở `recording` status** — Đây là sessions đang live thực sự, không phải bug. Auto-finalize sẽ xử lý khi sessions kết thúc.
+### Task 2: Cập nhật `AppHonorBoard.tsx`
 
-4. **57 sessions với `recording_status = 'failed'`** — Tỷ lệ ~9.4% failure rate. Đa số là do host mất kết nối hoặc đóng tab sớm. Auto-finalize sẽ giảm con số này trong tương lai.
+- Thêm interface field `totalLivestreams`
+- Parse từ response `row.total_livestreams`
+- Thêm stat card với icon `Radio` và label "Livestreams"
 
-5. **Chưa có admin UI cho livestream monitoring** — `get_livestream_stats()` đã có nhưng chưa hiển thị trong Admin Dashboard.
+### Task 3: Dọn dẹp stuck recordings
 
----
+- Cập nhật 28 `chunked_recordings` stuck ở `status = 'recording'` mà `live_session` đã `ended` → chuyển sang `done` hoặc `failed`
+- Sửa inconsistency: sessions có `recording_status = 'failed'` nhưng `chunked_recordings.status = 'done'`
 
-## ĐIỂM TỔNG KẾT SAU SỬA
+### Technical Details
 
-| Hạng mục | Điểm trước | Điểm sau | Thay đổi |
-|----------|-----------|----------|----------|
-| Token & Auth | 9/10 | 9.5/10 | +0.5 (friends-only) |
-| Host UX | 8/10 | 9/10 | +1 (quality, Vietnamese) |
-| Audience UX | 7.5/10 | 8.5/10 | +1 (replay link, Presence) |
-| Recording | 7/10 | 9/10 | +2 (auto-finalize, unmount flush) |
-| Replay Player | 8.5/10 | 9/10 | +0.5 (Safari, ErrorBoundary) |
-| Bảo mật | 8/10 | 9/10 | +1 (getUser, friends-only) |
-| Observability | 5/10 | 8/10 | +3 (stats function, cron) |
-| **TỔNG** | **7.9/10** | **8.9/10** | **+1.0** |
+**Files cần sửa:**
+1. Migration SQL mới — `DROP FUNCTION + CREATE OR REPLACE` cho `get_app_stats`
+2. `src/components/feed/AppHonorBoard.tsx` — thêm livestream stat
+3. `src/integrations/supabase/types.ts` — tự động cập nhật sau migration
 
----
-
-## ĐỀ XUẤT CẢI THIỆN TIẾP
-
-### Ưu tiên cao
-1. **Fix `getClaims()` trong 5 Edge Functions còn lại** — Cùng pattern, thay bằng `getUser()` để tránh break khi Supabase deprecate
-2. **Thêm tab "Livestream Health" vào Admin Dashboard** — Hiển thị `get_livestream_stats()` với charts (đã có SQL, chỉ cần UI)
-3. **Auto-finalize: thêm auth check** — Thêm secret header hoặc API key riêng cho cron job thay vì dùng anon key
-
-### Ưu tiên trung bình
-4. **Live thumbnail tự động** — Capture frame từ video track mỗi 30s, upload cuối cùng khi end (điểm 11 trong kế hoạch gốc, chưa implement)
-5. **Consolidate Edge Functions** — Merge `agora-token` vào `live-token`, deprecate `live-recording-start/stop` (điểm 12, chưa implement)
-
-Kết luận: Hệ thống livestream đã cải thiện đáng kể từ 7.9 → 8.9/10. Các vấn đề critical đã được giải quyết. Còn lại chủ yếu là polish và optimization.
+**Không ảnh hưởng:** Các tính năng livestream hiện tại (start, join, record, replay) không bị ảnh hưởng. Đây chỉ là fix hiển thị thống kê.
 

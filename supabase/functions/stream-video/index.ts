@@ -121,19 +121,18 @@ Deno.serve(async (req: Request) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    // Extract token and validate using getClaims (required for Lovable Cloud ES256 signing)
-    const token = authHeader.replace('Bearer ', '');
-    const { data: claimsData, error: authError } = await supabaseClient.auth.getClaims(token);
+    // Validate user via getUser()
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
     
-    if (authError || !claimsData?.claims?.sub) {
-      console.error('[stream-video] Auth error:', authError?.message || 'No valid claims');
+    if (authError || !user) {
+      console.error('[stream-video] Auth error:', authError?.message || 'No user');
       return new Response(
         JSON.stringify({ error: 'Unauthorized', details: authError?.message || 'Invalid token' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const userId = claimsData.claims.sub as string;
+    const userId = user.id;
     console.log('[stream-video] User:', userId);
 
     switch (action) {

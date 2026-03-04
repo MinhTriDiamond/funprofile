@@ -21,11 +21,11 @@ serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    const { data: claims, error: claimsErr } = await supabase.auth.getClaims(authHeader.replace("Bearer ", ""));
-    if (claimsErr || !claims?.claims?.sub) {
+    const { data: { user }, error: userErr } = await supabase.auth.getUser();
+    if (userErr || !user) {
       return new Response(JSON.stringify({ error: "Invalid token" }), { status: 401, headers: corsHeaders });
     }
-    const userId = claims.claims.sub as string;
+    const userId = user.id;
 
     const { conversation_id, prompt } = await req.json();
     if (!conversation_id || !prompt) {

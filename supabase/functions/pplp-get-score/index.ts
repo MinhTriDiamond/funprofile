@@ -25,17 +25,20 @@
        });
      }
  
-     const token = authHeader.replace('Bearer ', '');
-    const { data: claimsData, error: authError } = await supabase.auth.getClaims(token);
-
-    if (authError || !claimsData?.claims?.sub) {
-       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-         status: 401,
-         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-       });
-     }
+      // Authenticate user with their token
+      const userSupabase = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, {
+        global: { headers: { Authorization: authHeader } }
+      });
+      const { data: { user }, error: authError } = await userSupabase.auth.getUser();
  
-    const userId = claimsData.claims.sub;
+     if (authError || !user) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+  
+     const userId = user.id;
     console.log(`[PPLP] Getting light score for user ${userId}`);
  
      // Call the RPC function to get user light score
