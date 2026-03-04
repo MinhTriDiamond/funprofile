@@ -200,15 +200,20 @@ export function MessageThread({ conversationId, userId, username }: MessageThrea
             );
 
             return (
-              <MessageBubble
+              <div
                 key={message.id}
-                message={message}
-                isOwn={isOwn}
-                showAvatar={showAvatar}
-                currentUserId={userId}
-                onReply={() => setReplyTo(message)}
-                onReaction={(emoji, hasReacted) => handleReaction(message.id, emoji, hasReacted)}
-              />
+                ref={(el) => setMessageRef(message.id, el)}
+                className={`transition-colors duration-500 ${highlightedMessageId === message.id ? 'bg-primary/10 rounded-lg' : ''}`}
+              >
+                <MessageBubble
+                  message={message}
+                  isOwn={isOwn}
+                  showAvatar={showAvatar}
+                  currentUserId={userId}
+                  onReply={() => setReplyTo(message)}
+                  onReaction={(emoji, hasReacted) => handleReaction(message.id, emoji, hasReacted)}
+                />
+              </div>
             );
           })}
 
