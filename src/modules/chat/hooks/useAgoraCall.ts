@@ -139,7 +139,7 @@ export function useAgoraCall({ conversationId, userId }: UseAgoraCallOptions) {
       });
 
       clientRef.current.on('user-left', (user, reason) => {
-        console.log('[Agora] Remote user left:', user.uid, 'reason:', reason);
+        logger.debug('[Agora] Remote user left:', user.uid, 'reason:', reason);
         
         setRemoteUsers(prev => {
           const newUsers = prev.filter(u => u.uid !== user.uid);
@@ -149,7 +149,7 @@ export function useAgoraCall({ conversationId, userId }: UseAgoraCallOptions) {
             // Use setTimeout to avoid state update during render
             setTimeout(() => {
               if (callStateRef.current === 'connected') {
-                console.log('[Agora] All remote users left, auto-ending call');
+                logger.debug('[Agora] All remote users left, auto-ending call');
                 endCallRef.current?.();
               }
             }, 100);
@@ -161,12 +161,12 @@ export function useAgoraCall({ conversationId, userId }: UseAgoraCallOptions) {
 
       // Listen for connection state changes
       clientRef.current.on('connection-state-change', (curState, prevState, reason) => {
-        console.log('[Agora] Connection state:', prevState, '->', curState, 'reason:', reason);
+        logger.debug('[Agora] Connection state:', prevState, '->', curState, 'reason:', reason);
         
         if (curState === 'DISCONNECTED' && reason === 'LEAVE') {
           // Already disconnected, ensure cleanup
           if (callStateRef.current !== 'idle') {
-            console.log('[Agora] Disconnected via LEAVE, cleaning up');
+            logger.debug('[Agora] Disconnected via LEAVE, cleaning up');
             endCallRef.current?.();
           }
         }
@@ -289,7 +289,7 @@ export function useAgoraCall({ conversationId, userId }: UseAgoraCallOptions) {
 
       // Set auto-timeout for missed call
       callTimeoutRef.current = setTimeout(async () => {
-        console.log('[Agora] Call timeout - marking as missed');
+        logger.debug('[Agora] Call timeout - marking as missed');
         try {
           await supabase
             .from('call_sessions')
@@ -520,7 +520,7 @@ export function useAgoraCall({ conversationId, userId }: UseAgoraCallOptions) {
 
   // Debug logging for callState changes
   useEffect(() => {
-    console.log('[Agora] callState changed:', callState, 'session:', currentSession?.id?.slice(0, 8));
+    logger.debug('[Agora] callState changed:', callState, 'session:', currentSession?.id?.slice(0, 8));
   }, [callState, currentSession]);
 
   // Toggle mute
@@ -588,7 +588,7 @@ export function useAgoraCall({ conversationId, userId }: UseAgoraCallOptions) {
     if (autoAnswerProcessedRef.current === answerCallId) return;
     if (callState !== 'idle') return;
 
-    console.log('[Agora] Auto-answer triggered for call:', answerCallId);
+    logger.debug('[Agora] Auto-answer triggered for call:', answerCallId);
     autoAnswerProcessedRef.current = answerCallId;
     
     const autoAnswerCall = async () => {
@@ -605,14 +605,14 @@ export function useAgoraCall({ conversationId, userId }: UseAgoraCallOptions) {
           .single();
 
         if (error || !session) {
-          console.log('[Agora] Call session not found or not ringing:', error?.message);
+          logger.debug('[Agora] Call session not found or not ringing:', error?.message);
           // Clear the URL parameter
           setSearchParams({}, { replace: true });
           setIsAutoAnswering(false);
           return;
         }
 
-        console.log('[Agora] Found call session, auto-answering:', session.id);
+        logger.debug('[Agora] Found call session, auto-answering:', session.id);
         
         // Set the incoming call and trigger answer
         const typedSession: CallSession = {
@@ -692,7 +692,7 @@ export function useAgoraCall({ conversationId, userId }: UseAgoraCallOptions) {
               setCallDuration(prev => prev + 1);
             }, 1000);
 
-            console.log('[Agora] Auto-answer successful, connected!');
+            logger.debug('[Agora] Auto-answer successful, connected!');
           } catch (err: any) {
             console.error('[Agora] Auto-answer failed:', err);
             toast({
@@ -739,7 +739,7 @@ export function useAgoraCall({ conversationId, userId }: UseAgoraCallOptions) {
   useEffect(() => {
     if (!userId || !conversationId) return;
 
-    console.log('[Agora] Setting up realtime subscription for:', conversationId);
+    logger.debug('[Agora] Setting up realtime subscription for:', conversationId);
 
     const channel = supabase
       .channel(`calls-${conversationId}-${userId}`)
@@ -777,13 +777,13 @@ export function useAgoraCall({ conversationId, userId }: UseAgoraCallOptions) {
           const curCallState = callStateRef.current;
           const curIncoming = incomingCallRef.current;
 
-          console.log('[Agora] Realtime session update:', session.id?.slice(0, 8), session.status, 
+          logger.debug('[Agora] Realtime session update:', session.id?.slice(0, 8), session.status, 
             'mySession:', curSession?.id?.slice(0, 8), 'myState:', curCallState);
           
           // If call became active and we're the caller, update state
           if (curSession?.id === session.id) {
             if (session.status === 'active' && curCallState === 'ringing') {
-              console.log('[Agora] Call answered! Transitioning to connected');
+              logger.debug('[Agora] Call answered! Transitioning to connected');
               // Clear the timeout since call was answered
               if (callTimeoutRef.current) {
                 clearTimeout(callTimeoutRef.current);
@@ -797,7 +797,7 @@ export function useAgoraCall({ conversationId, userId }: UseAgoraCallOptions) {
             }
             // If call was declined/missed/ended
             if (['declined', 'missed', 'ended'].includes(session.status) && curCallState !== 'idle') {
-              console.log('[Agora] Session ended via realtime, cleaning up');
+              logger.debug('[Agora] Session ended via realtime, cleaning up');
               // Clear the timeout
               if (callTimeoutRef.current) {
                 clearTimeout(callTimeoutRef.current);
@@ -816,7 +816,7 @@ export function useAgoraCall({ conversationId, userId }: UseAgoraCallOptions) {
       .subscribe();
 
     return () => {
-      console.log('[Agora] Cleaning up realtime subscription');
+      logger.debug('[Agora] Cleaning up realtime subscription');
       supabase.removeChannel(channel);
     };
   }, [userId, conversationId]);
@@ -872,7 +872,7 @@ export function useAgoraCall({ conversationId, userId }: UseAgoraCallOptions) {
 
         // Listen for browser's native "Stop sharing" button
         videoTrack.on('track-ended', async () => {
-          console.log('[Agora] Screen sharing ended by browser');
+          logger.debug('[Agora] Screen sharing ended by browser');
           if (screenTrackRef.current) {
             await clientRef.current?.unpublish(screenTrackRef.current);
             screenTrackRef.current.close();

@@ -179,7 +179,7 @@ export const ShareDialog = ({
                   }`}
                 >
                   <Icon className="w-3.5 h-3.5" />
-                  {t(opt.labelKey as any) || opt.value}
+                  {t(opt.labelKey as never /* dynamic i18n key */) || opt.value}
                 </button>
               );
             })}

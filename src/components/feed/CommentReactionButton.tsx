@@ -54,7 +54,7 @@ export const CommentReactionButton = ({ commentId, onReactionChange }: CommentRe
   // Build reactions with translated labels
   const CHAKRA_REACTIONS = REACTION_TYPES.map(r => ({
     ...r,
-    label: t(r.labelKey as any)
+    label: t(r.labelKey as keyof typeof import('@/i18n/translations/vi').default /* dynamic i18n key — not in static TranslationKeys */)
   }));
 
   useEffect(() => {
