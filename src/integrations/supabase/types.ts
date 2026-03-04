@@ -4828,6 +4828,16 @@ export type Database = {
         }[]
       }
       get_next_nonce: { Args: { _user_id: string }; Returns: number }
+      get_post_stats: {
+        Args: { p_post_ids: string[] }
+        Returns: {
+          comment_count: number
+          post_id: string
+          reaction_count: number
+          reactions: Json
+          share_count: number
+        }[]
+      }
       get_pplp_admin_stats: { Args: never; Returns: Json }
       get_recipient_leaderboard: {
         Args: { p_limit?: number; p_offset?: number; p_time_range?: string }
