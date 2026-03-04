@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useLiveMessages } from '../hooks/useLiveMessages';
-import { useLivePresence, type LiveViewer } from '../hooks/useLivePresence';
+import { type LiveViewer } from '../hooks/useLivePresence';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -15,20 +15,22 @@ interface LiveChatPanelProps {
   className?: string;
   isHost?: boolean;
   liveTitle?: string;
+  /** Pass viewers from parent to avoid duplicate Presence subscription */
+  viewers?: LiveViewer[];
 }
 
-export function LiveChatPanel({ sessionId, className, isHost = false, liveTitle }: LiveChatPanelProps) {
+export function LiveChatPanel({ sessionId, className, isHost = false, liveTitle, viewers = [] }: LiveChatPanelProps) {
   const { messages, sendMessage, isLoading } = useLiveMessages(sessionId);
-  const { viewers } = useLivePresence(sessionId);
   const [text, setText] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setIsAuthenticated(!!data.user);
-      setCurrentUserId(data.user?.id || null);
+    // Use getSession (local cache) instead of getUser (network call)
+    supabase.auth.getSession().then(({ data }) => {
+      setIsAuthenticated(!!data.session?.user);
+      setCurrentUserId(data.session?.user?.id || null);
     });
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setIsAuthenticated(!!session?.user);
@@ -44,8 +46,14 @@ export function LiveChatPanel({ sessionId, className, isHost = false, liveTitle 
   const handleSend = async () => {
     const value = text.trim();
     if (!value) return;
-    await sendMessage(value);
-    setText('');
+    try {
+      await sendMessage(value);
+      setText('');
+    } catch (err: any) {
+      if (err?.message?.includes('quá nhanh')) {
+        toast.error(err.message);
+      }
+    }
   };
 
   const handleInvite = async (viewer: LiveViewer) => {

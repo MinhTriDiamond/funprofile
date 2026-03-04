@@ -50,6 +50,9 @@ export const FeedVideoPlayer = memo(({
   // Lazy mount: only create video element when near viewport
   const containerRef = useRef<HTMLDivElement>(null);
   const [isNearViewport, setIsNearViewport] = useState(false);
+  // Debounced version to prevent rapid mount/unmount during fast scroll
+  const [debouncedNear, setDebouncedNear] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -58,20 +61,35 @@ export const FeedVideoPlayer = memo(({
       ([entry]) => {
         setIsNearViewport(entry.isIntersecting);
       },
-      { rootMargin: '400px' }
+      { rootMargin: '200px' } // reduced from 400px
     );
     obs.observe(el);
     return () => obs.disconnect();
   }, []);
 
+  // 300ms debounce for viewport detection to avoid jank on fast scroll
+  useEffect(() => {
+    if (isNearViewport) {
+      // Mount immediately when entering viewport
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      setDebouncedNear(true);
+    } else {
+      // Delay unmount by 300ms
+      debounceRef.current = setTimeout(() => setDebouncedNear(false), 300);
+    }
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [isNearViewport]);
+
   // Register with coordinator (only when mounted)
   useEffect(() => {
-    if (!isNearViewport) return;
+    if (!debouncedNear) return;
     const el = containerRef.current?.querySelector('video') as HTMLVideoElement | null;
     const pauseFn = () => { el?.pause(); };
     videoPlaybackCoordinator.register(coordId, pauseFn);
     return () => videoPlaybackCoordinator.unregister(coordId);
-  }, [coordId, src, isNearViewport]);
+  }, [coordId, src, debouncedNear]);
 
   const handlePlayStart = useCallback(() => {
     videoPlaybackCoordinator.requestPlay(coordId);
@@ -103,7 +121,7 @@ export const FeedVideoPlayer = memo(({
 
       {/* Layer 2: Foreground — lazy mounted video or static placeholder */}
       <div className="relative z-10 w-full h-full">
-        {isNearViewport ? (
+        {debouncedNear ? (
           // Near viewport: mount real player
           isChunked ? (
             <VideoErrorBoundary>
