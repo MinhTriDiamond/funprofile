@@ -760,7 +760,7 @@ export const translations = {
     
     // Posts
     createPost: 'Tạo Bài Viết',
-    whatsOnYourMind: 'Bạn đang nghĩ gì thế?',
+    whatsOnYourMind: 'Ánh sáng trong tim bạn đang muốn nói điều gì?',
     post: 'Đăng',
     share: 'Chia sẻ',
     comment: 'Bình luận',

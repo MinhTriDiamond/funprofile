@@ -636,7 +636,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
             className="flex-1 text-left px-4 py-2.5 bg-muted hover:bg-muted/80 rounded-full text-muted-foreground text-[15px] transition-colors"
           >
             {language === 'vi' 
-              ? `${profile.display_name || profile.username} ơi, bạn đang nghĩ gì thế?`
+              ? `${profile.display_name || profile.username} ơi, Ánh sáng trong tim bạn đang muốn nói điều gì?`
               : `What's on your mind, ${profile.display_name || profile.username}?`
             }
           </button>
@@ -750,7 +750,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
             {/* Content Input with Emoji */}
             <div className="relative">
               <Textarea
-                placeholder={`${profile.display_name || profile.username} ơi, bạn đang nghĩ gì thế?`}
+                placeholder={`${profile.display_name || profile.username} ơi, Ánh sáng trong tim bạn đang muốn nói điều gì?`}
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 className="min-h-[100px] resize-none border-0 focus-visible:ring-0 text-lg placeholder:text-muted-foreground pr-10"
