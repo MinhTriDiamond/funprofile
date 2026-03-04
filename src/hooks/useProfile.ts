@@ -55,8 +55,9 @@ export const useProfile = () => {
   const { userId: authUserId } = useCurrentUser();
   const currentUserId = authUserId || '';
   const [profile, setProfile] = useState<ProfileData | null>(null);
-  const [allPosts, setAllPosts] = useState<Record<string, unknown>[]>([]);
-  const [originalPosts, setOriginalPosts] = useState<Record<string, unknown>[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- posts have dynamic shape from multiple queries (posts, shared_posts, gift_celebration)
+  const [allPosts, setAllPosts] = useState<any[]>([]);
+  const [originalPosts, setOriginalPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isOwnProfile, setIsOwnProfile] = useState(false);
   const [friendsCount, setFriendsCount] = useState(0);
