@@ -216,6 +216,7 @@ export const UnifiedGiftSendDialog = ({
       setAmount(''); setSelectedTemplate(null); setCustomMessage('');
       setSelectedToken(defaultToken); setShowCelebration(false); setCelebrationData(null);
       setMultiSendProgress(null); setIsMultiSending(false); setFlowStep('form');
+      setSelectedChainId((chainId === BSC_TESTNET) ? BSC_TESTNET : BSC_MAINNET);
       search.resetSearch(); resetState();
     }
   }, [isOpen]);
@@ -258,8 +259,8 @@ export const UnifiedGiftSendDialog = ({
   const recordDonationWithRetry = useCallback(async (hash: string, recipient: ResolvedRecipient, session: { user: { id: string } }): Promise<boolean> => {
     const body = {
       sender_id: session.user.id, recipient_id: recipient.id, amount,
-      token_symbol: selectedToken.symbol, token_address: selectedToken.address,
-      chain_id: chainId || 56, tx_hash: hash, message: customMessage,
+      token_symbol: selectedToken.symbol, token_address: resolvedTokenAddress || null,
+      chain_id: selectedChainId, tx_hash: hash, message: customMessage,
       message_template: selectedTemplate?.id, post_id: postId,
       card_theme: 'celebration', card_sound: 'rich-1',
     };
