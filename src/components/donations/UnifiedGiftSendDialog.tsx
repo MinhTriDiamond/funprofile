@@ -582,13 +582,13 @@ export const UnifiedGiftSendDialog = ({
       try {
         const { data: donationData, error } = await supabase.functions.invoke('record-donation', { body });
         if (!error && donationData?.donation?.id) {
-          console.log(`[GIFT] record-donation OK (attempt ${attempt + 1}):`, donationData.donation.id);
+          logger.debug(`[GIFT] record-donation OK (attempt ${attempt + 1}):`, donationData.donation.id);
           localStorage.removeItem(`pending_donation_${hash}`);
           return true;
         }
         throw new Error(error?.message || 'Record failed');
       } catch (err: any) {
-        console.error(`[GIFT] record-donation attempt ${attempt + 1} failed:`, err?.message);
+        logger.error(`[GIFT] record-donation attempt ${attempt + 1} failed:`, err?.message);
         if (attempt === 0) await new Promise(r => setTimeout(r, 2000)); // wait 2s before retry
       }
     }
@@ -612,7 +612,7 @@ export const UnifiedGiftSendDialog = ({
         invalidateDonationCache();
       }
     } catch (err) {
-      console.error('[GIFT] recordDonationBackground outer error:', err);
+      logger.error('[GIFT] recordDonationBackground outer error:', err);
     }
   };
 
@@ -630,13 +630,13 @@ export const UnifiedGiftSendDialog = ({
         }
       }
 
-      console.log(`[GIFT] Recorded ${recorded}/${successResults.length} donations`);
+      logger.debug(`[GIFT] Recorded ${recorded}/${successResults.length} donations`);
       if (recorded > 0) invalidateDonationCache();
       if (recorded < successResults.length) {
         toast.warning(`${successResults.length - recorded} giao dịch chưa ghi nhận được. Admin sẽ xử lý sau.`, { duration: 10000 });
       }
     } catch (err) {
-      console.error('[GIFT] recordMultiDonationsSequential error:', err);
+      logger.error('[GIFT] recordMultiDonationsSequential error:', err);
     }
   };
 
@@ -652,7 +652,7 @@ export const UnifiedGiftSendDialog = ({
       window.dispatchEvent(new Event('invalidate-feed'));
       window.dispatchEvent(new Event('invalidate-donations'));
     } catch (err) {
-      console.error('[GIFT] invalidateDonationCache error (non-critical):', err);
+      logger.error('[GIFT] invalidateDonationCache error (non-critical):', err);
     }
   };
 
@@ -665,7 +665,7 @@ export const UnifiedGiftSendDialog = ({
         card_sound: soundId,
       } as any).eq('id', celebrationData.id);
     } catch (err) {
-      console.error('Save theme error:', err);
+      logger.error('[GIFT] Save theme error:', err);
     }
   };
 
@@ -682,7 +682,7 @@ export const UnifiedGiftSendDialog = ({
       if (error) throw error;
       toast.success(`Đã gửi hướng dẫn nhận quà cho @${noWalletRecipient.username}!`);
     } catch (error) {
-      console.error('Error sending reminder:', error);
+      logger.error('[GIFT] Error sending reminder:', error);
       toast.error('Không thể gửi hướng dẫn.');
     } finally {
       setIsSendingReminder(false);
@@ -694,7 +694,7 @@ export const UnifiedGiftSendDialog = ({
       setShowCelebration(false);
       setCelebrationData(null);
     } catch (err) {
-      console.error('[GIFT] handleCloseCelebration cleanup error:', err);
+      logger.error('[GIFT] handleCloseCelebration cleanup error:', err);
     }
     onClose();
   };
