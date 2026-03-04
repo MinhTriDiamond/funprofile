@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useConversations } from '../hooks/useConversations';
 import { useGroupConversations } from '../hooks/useGroupConversations';
 import { useChatNotifications } from '../hooks/useChatNotifications';
@@ -27,26 +28,25 @@ export default function ChatPage() {
   const { conversationId } = useParams<{ conversationId?: string }>();
   const navigate = useNavigate();
   const isMobileOrTablet = useIsMobileOrTablet();
-  const [userId, setUserId] = useState<string | null>(null);
+  const { userId, isLoading: authLoading } = useCurrentUser();
   const [username, setUsername] = useState<string | null>(null);
   const [showNewConversation, setShowNewConversation] = useState(false);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { navigate('/auth'); return; }
-      setUserId(user.id);
+    if (!authLoading && !userId) { navigate('/auth'); return; }
+    if (!userId) return;
+    const fetchUsername = async () => {
       const { data: profile } = await supabase
         .from('profiles')
         .select('username')
-        .eq('id', user.id)
+        .eq('id', userId)
         .single();
       setUsername(profile?.username || null);
     };
-    checkAuth();
-  }, [navigate]);
+    fetchUsername();
+  }, [userId, authLoading, navigate]);
 
   const { conversations, isLoading, createDirectConversation } = useConversations(userId);
   const { createGroupConversation } = useGroupConversations(userId);

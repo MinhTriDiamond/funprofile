@@ -1,30 +1,12 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { DonationReceivedCard, DonationReceivedData } from './DonationReceivedCard';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 export const DonationReceivedNotification = () => {
-  const [userId, setUserId] = useState<string | null>(null);
+  const { userId } = useCurrentUser();
   const [receivedDonation, setReceivedDonation] = useState<DonationReceivedData | null>(null);
   const [isOpen, setIsOpen] = useState(false);
-
-  // Get current user
-  useEffect(() => {
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUserId(user?.id || null);
-    };
-    getUser();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session) {
-        setUserId(session.user.id);
-      } else if (event === 'SIGNED_OUT') {
-        setUserId(null);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
 
   // Subscribe to donations
   useEffect(() => {

@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { toast } from 'sonner';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 interface FollowButtonProps {
   userId: string;
@@ -10,15 +11,7 @@ interface FollowButtonProps {
 export const FollowButton = ({ userId }: FollowButtonProps) => {
   const { t } = useLanguage();
   const queryClient = useQueryClient();
-
-  const { data: currentUser } = useQuery({
-    queryKey: ['current-user-follow'],
-    queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      return user;
-    },
-    staleTime: 5 * 60 * 1000,
-  });
+  const { user: currentUser } = useCurrentUser();
 
   const { data: friendshipStatus } = useQuery({
     queryKey: ['is-following', userId, currentUser?.id],
