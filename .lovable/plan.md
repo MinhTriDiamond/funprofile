@@ -1,78 +1,121 @@
 
 
-# Phân tích: Tại sao Database hiển thị Livestream = 0
+# AUDIT TOÀN DIỆN — VÒNG 9
 
-## Phát hiện chính
+---
 
-**Dữ liệu thực tế trong database:**
+## I. TỔNG KẾT HIỆN TRẠNG
 
-| Bảng | Số lượng | Ghi chú |
-|------|----------|---------|
-| `live_sessions` | **600** (596 ended + 4 live) | Users livestream rất tích cực |
-| `chunked_recordings` | **342** (314 done, 28 stuck "recording") | Ghi hình hoạt động |
-| `posts` với `post_type = 'live'` | **519** | Bài đăng live |
-| `posts` có video URL chứa "live" | **581** | Video replay |
-| `recording_status = 'ready'` | **488** | Recordings thành công |
-| `recording_status = 'failed'` | **57** | Recordings thất bại (~9.5%) |
+Sau các vòng cải thiện 7-8, codebase đã tiến bộ đáng kể. Dưới đây là các vấn đề **thực sự còn tồn đọng** được phân loại theo mức độ ưu tiên.
 
-**Kết luận: Users livestream RẤT NHIỀU — 600 phiên, 488 recordings thành công!**
+---
 
-## Nguyên nhân gốc: Hàm `get_app_stats` không đếm livestream
+## II. TỒN ĐỌNG CÒN LẠI
 
-Hàm `get_app_stats()` hiện tại chỉ trả về:
-- `total_users`, `total_posts`, `total_photos`, `total_videos` (đếm từ `posts WHERE video_url IS NOT NULL`)
-- `total_rewards`, `treasury_camly_received`, `total_camly_claimed`
+### A. `as any` — 177 matches / 20 files
 
-**Không có trường nào đếm `live_sessions`** hoặc `chunked_recordings`. Component `AppHonorBoard.tsx` hiển thị `total_videos = 897` — đó là tổng số posts có video (bao gồm cả live replay), nhưng **không có mục riêng cho "Livestream"**.
+| Nhóm | File | Vấn đề | Có thể fix? |
+|------|------|--------|-------------|
+| 1 | `Profile.tsx` (2) | `onSetProfile={setProfile as any}` — type mismatch giữa `useState` setter và prop `(updater: ...) => void` | ✅ Fix bằng wrapper function |
+| 2 | `EditProfile.tsx` (1) | `.update({...} as any)` — `social_links` cần `toJson()` | ✅ Đã có helper |
+| 3 | `DonationHistoryTab.tsx` (3) | `(selectedDonation as any).card_theme/card_background/card_sound` — columns không có trong generated types | ⚠️ Document hoặc extend type |
+| 4 | `useMessages.ts` (8) | `payload.new as any`, `(r: any)` trong realtime callbacks | ✅ Dùng typed rows |
+| 5 | `usePplpAdmin.ts` (5) | `multisig_signatures as any`, `receiptError: any`, `} as any) as bigint` | ⚠️ Phần lớn justified (wagmi/viem) |
+| 6 | `useEpochAllocation.ts` (2) | `epochs[0] as any`, `alloc as any` — RPC result untyped | ✅ Tạo interface |
+| 7 | `GiftCelebrationModal.tsx` (2) | `style={{ '--tw-ring-color': ... } as any}` — CSS custom property pattern | ⚠️ Chuẩn React pattern, chấp nhận |
+| 8 | `InlineSearch.tsx` (2) | `(postData as any)` + `(p: any)` | ✅ Type search result |
+| 9 | `useAttesterSigning.ts` (1) | `newSigs as any` — JSON column | ✅ Dùng `toJson()` |
+| 10 | `deviceFingerprint.ts` (1) | `(navigator as any).deviceMemory` — Web API gap | ⚠️ Document |
+| 11 | `searchHistory.ts` (1) | `(supabase as any).from('search_history')` — table not in codegen | ⚠️ Đã documented |
 
-## Vấn đề phụ phát hiện thêm
+### B. `catch (e: any)` — 325 matches / 36 files
 
-1. **28 recordings stuck ở trạng thái "recording"** — phiên live đã kết thúc nhưng `chunked_recordings.status` không chuyển sang `done`. Đây là những sessions mà host đóng trình duyệt đột ngột trước khi finalize.
+Đây là vấn đề **lớn nhất** còn lại. Tập trung ở:
+- `usePplpAdmin.ts`: 8 instances
+- `MessageThread.tsx`: 4 instances  
+- `WalletAbuseTab.tsx`: 8 instances
+- `QuickDeleteTab.tsx`: 2 instances
+- `Users.tsx`: 2 instances
+- `TransactionLookup.tsx`: 1 instance
+- `chunkedVideoDownload.ts`: 1 instance
+- Và ~20 file admin/utility khác
 
-2. **57 sessions có `recording_status = 'failed'`** (~9.5%) — một số có `chunked_recordings.status = done` (recording thực ra thành công nhưng status ở `live_sessions` bị đánh failed sai).
+Pattern cần fix: `catch (error: any) { toast.error(error.message) }` → `catch (error: unknown) { toast.error(error instanceof Error ? error.message : 'Lỗi') }`
 
-3. **`live_recordings` table hoàn toàn trống** (0 rows) — Table này được thiết kế cho Agora server-side recording nhưng chưa bao giờ được sử dụng thành công vì hệ thống đang dùng client-side chunked recording thay thế.
+### C. `console.log` — 168 matches / 11 files
 
-## Kế hoạch sửa
+| File | Số lượng | Loại |
+|------|----------|------|
+| `usePplpAdmin.ts` | ~12 | Blockchain debug — nên dùng `logger.debug` |
+| `streamHelpers.ts` | 6 | Storage ops — nên dùng `logger.debug` |
+| `IntegrationDocs.tsx` | ~15 | Doc examples — chấp nhận |
+| `useMediaDevices.ts` | 1 | Device enum — `logger.debug` |
+| `logger.ts` | 1 | Chính logger — OK |
 
-### Task 1: Cập nhật `get_app_stats` thêm `total_livestreams`
+### D. `useState<any>` — 4 files admin
 
-Thêm trường `total_livestreams` vào hàm SQL:
+Tất cả 4 đều đã có eslint comment `// eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic edge function response`. Đây là admin-only components nhận dynamic edge function responses — **chấp nhận** nhưng có thể cải thiện bằng generic response type.
 
-```sql
-DROP FUNCTION IF EXISTS public.get_app_stats();
-CREATE OR REPLACE FUNCTION public.get_app_stats()
-RETURNS TABLE(
-  total_users BIGINT,
-  total_posts BIGINT,
-  total_photos BIGINT,
-  total_videos BIGINT,
-  total_livestreams BIGINT,
-  total_rewards NUMERIC,
-  treasury_camly_received NUMERIC,
-  total_camly_claimed NUMERIC
-) ...
--- Thêm:
-(SELECT COUNT(*) FROM live_sessions)::BIGINT AS total_livestreams,
+### E. Realtime `payload.new as any` — 2 file còn lại
+
+- `useMessages.ts` dòng 188, 201, 236, 276: Vẫn còn `as any` cho messages, reactions, reads
+- Đã tạo `realtimeRows.ts` nhưng **chưa import** vào `useMessages.ts`
+
+---
+
+## III. KẾ HOẠCH CẢI THIỆN — 6 TASKS
+
+### Task 1: Fix `catch (error: any)` → `catch (error: unknown)` (TOP PRIORITY — 36 files)
+
+Áp dụng pattern chuẩn cho tất cả ~35 instances có thể fix:
+```typescript
+// TRƯỚC: catch (error: any) { toast.error(error.message) }
+// SAU:   catch (error: unknown) { toast.error(error instanceof Error ? error.message : 'Lỗi') }
 ```
 
-### Task 2: Cập nhật `AppHonorBoard.tsx`
+Files chính: `MessageThread.tsx` (4), `WalletAbuseTab.tsx` (8), `QuickDeleteTab.tsx` (2), `Users.tsx` (2), `usePplpAdmin.ts` (8), `TransactionLookup.tsx` (1), `chunkedVideoDownload.ts` (1), và các admin files khác.
 
-- Thêm interface field `totalLivestreams`
-- Parse từ response `row.total_livestreams`
-- Thêm stat card với icon `Radio` và label "Livestreams"
+### Task 2: Fix `useMessages.ts` — realtime typing hoàn chỉnh
 
-### Task 3: Dọn dẹp stuck recordings
+Import `MessageRow`, `MessageReactionRow`, `MessageReadRow` từ `realtimeRows.ts`:
+- Dòng 188: `payload.new as any` → `payload.new as MessageRow`
+- Dòng 201: `payload.old as any` → `payload.old as MessageRow`  
+- Dòng 236: `(payload.new || payload.old) as any` → typed `MessageReactionRow`
+- Dòng 243, 255, 266: `(r: any)` → `(r: MessageReactionRow)`
+- Dòng 217-219: `(p: any)` → typed page result
 
-- Cập nhật 28 `chunked_recordings` stuck ở `status = 'recording'` mà `live_session` đã `ended` → chuyển sang `done` hoặc `failed`
-- Sửa inconsistency: sessions có `recording_status = 'failed'` nhưng `chunked_recordings.status = 'done'`
+### Task 3: Fix `Profile.tsx` — `onSetProfile={setProfile as any}` (2 instances)
 
-### Technical Details
+`setProfile` là `Dispatch<SetStateAction<ProfileData | null>>` nhưng prop expect `(updater: (prev: ProfileData | null) => ProfileData | null) => void`. Fix: tạo wrapper callback hoặc widen prop type.
 
-**Files cần sửa:**
-1. Migration SQL mới — `DROP FUNCTION + CREATE OR REPLACE` cho `get_app_stats`
-2. `src/components/feed/AppHonorBoard.tsx` — thêm livestream stat
-3. `src/integrations/supabase/types.ts` — tự động cập nhật sau migration
+### Task 4: Migrate `console.log` → `logger` (2 files)
 
-**Không ảnh hưởng:** Các tính năng livestream hiện tại (start, join, record, replay) không bị ảnh hưởng. Đây chỉ là fix hiển thị thống kê.
+- `usePplpAdmin.ts`: ~12 `console.log` → `logger.debug`
+- `streamHelpers.ts`: 6 `console.log` → `logger.debug`
+- `useMediaDevices.ts`: 1 → `logger.debug`
+
+### Task 5: Fix `EditProfile.tsx` — `as any` cho update + `DonationHistoryTab.tsx`
+
+- `EditProfile.tsx` dòng 290: `.update({...} as any)` → dùng `toJson()` cho `social_links`
+- `DonationHistoryTab.tsx` (3): Tạo extended donation type với `card_theme`, `card_background`, `card_sound`
+
+### Task 6: Fix minor `as any` — `useEpochAllocation.ts`, `useAttesterSigning.ts`, `InlineSearch.tsx`
+
+- `useEpochAllocation.ts`: Tạo `EpochData` interface cho RPC result
+- `useAttesterSigning.ts`: `newSigs as any` → `toJson(newSigs)`
+- `InlineSearch.tsx`: Type search post result
+
+---
+
+## IV. ĐIỂM ĐÁNH GIÁ
+
+| Hạng mục | Hiện tại | Sau Task 1-6 | Ghi chú |
+|----------|----------|-------------|---------|
+| Auth/Session | 9.5 | 9.5 | Ổn định |
+| Type Safety | 8.5 | 9.5 | Loại bỏ ~60 `as any` + 35 `catch any` |
+| Hiệu năng | 9.0 | 9.0 | UnifiedGiftSendDialog đã refactor ✅ |
+| Bảo mật | 9.5 | 9.5 | RLS + admin checks OK |
+| Code Quality | 8.5 | 9.5 | Logger migration + error handling |
+| Architecture | 9.5 | 9.5 | Hooks + sub-components pattern ✅ |
+| **Tổng (weighted)** | **9.0** | **9.5** | |
 
