@@ -240,9 +240,47 @@ Deno.serve(async (req) => {
       }
     }
 
+    // === Keep-alive ping to live-token to prevent cold starts ===
+    try {
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+      await fetch(`${supabaseUrl}/functions/v1/live-token`, {
+        method: 'OPTIONS',
+        headers: { 'Content-Type': 'application/json' },
+      });
+    } catch {
+      // Ping failure is non-critical
+    }
+
+    // === Cleanup old live_messages (sessions ended > 7 days ago) ===
+    let messagesDeleted = 0;
+    try {
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const { data: oldSessions } = await supabaseAdmin
+        .from('live_sessions')
+        .select('id')
+        .eq('status', 'ended')
+        .lt('ended_at', sevenDaysAgo)
+        .limit(50);
+
+      if (oldSessions && oldSessions.length > 0) {
+        const sessionIds = oldSessions.map((s: any) => s.id);
+        const { count } = await supabaseAdmin
+          .from('live_messages')
+          .delete({ count: 'exact' })
+          .in('session_id', sessionIds);
+        messagesDeleted = count || 0;
+        if (messagesDeleted > 0) {
+          console.log(`[auto-finalize] Cleaned ${messagesDeleted} old live_messages from ${sessionIds.length} sessions`);
+        }
+      }
+    } catch (cleanErr: any) {
+      console.warn('[auto-finalize] Message cleanup error:', cleanErr.message);
+    }
+
     return new Response(JSON.stringify({
       processed: results.length,
       results,
+      messages_cleaned: messagesDeleted,
       timestamp: new Date().toISOString(),
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (err: any) {

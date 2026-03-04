@@ -13,17 +13,69 @@ export interface LiveMessage {
   };
 }
 
-async function enrichProfiles(rows: Array<{ user_id: string }>) {
-  const ids = [...new Set(rows.map((r) => r.user_id))];
-  if (ids.length === 0) return new Map<string, { username: string | null; avatar_url: string | null }>();
+// ── Module-level profile cache (shared across hook instances) ──
+const profileCache = new Map<string, { username: string | null; avatar_url: string | null }>();
+let pendingIds = new Set<string>();
+let batchTimer: ReturnType<typeof setTimeout> | null = null;
+const batchCallbacks: Array<() => void> = [];
 
-  const { data } = await supabase
-    .from('profiles')
-    .select('id, username, avatar_url')
-    .in('id', ids);
+function scheduleBatchFetch() {
+  if (batchTimer) return;
+  batchTimer = setTimeout(async () => {
+    const ids = [...pendingIds];
+    pendingIds = new Set();
+    batchTimer = null;
+    const cbs = batchCallbacks.splice(0);
 
-  return new Map((data || []).map((p: any) => [p.id, { username: p.username, avatar_url: p.avatar_url }]));
+    if (ids.length === 0) { cbs.forEach(cb => cb()); return; }
+
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, username, avatar_url')
+      .in('id', ids);
+
+    for (const p of data || []) {
+      profileCache.set(p.id, { username: p.username, avatar_url: p.avatar_url });
+    }
+    // Mark unfound ids so we don't re-fetch
+    for (const id of ids) {
+      if (!profileCache.has(id)) {
+        profileCache.set(id, { username: null, avatar_url: null });
+      }
+    }
+    cbs.forEach(cb => cb());
+  }, 500); // 500ms debounce to batch multiple profile requests
 }
+
+function getCachedProfile(userId: string) {
+  return profileCache.get(userId);
+}
+
+function requestProfile(userId: string): Promise<void> {
+  if (profileCache.has(userId)) return Promise.resolve();
+  return new Promise<void>((resolve) => {
+    pendingIds.add(userId);
+    batchCallbacks.push(resolve);
+    scheduleBatchFetch();
+  });
+}
+
+async function enrichProfiles(rows: Array<{ user_id: string }>) {
+  const uncached = [...new Set(rows.map((r) => r.user_id))].filter(id => !profileCache.has(id));
+  if (uncached.length > 0) {
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, username, avatar_url')
+      .in('id', uncached);
+    for (const p of data || []) {
+      profileCache.set(p.id, { username: p.username, avatar_url: p.avatar_url });
+    }
+  }
+  return profileCache;
+}
+
+// ── Rate limiter: 1 message per second ──
+const lastSendTimes = new Map<string, number>();
 
 export function useLiveMessages(sessionId?: string) {
   const [messages, setMessages] = useState<LiveMessage[]>([]);
@@ -41,7 +93,7 @@ export function useLiveMessages(sessionId?: string) {
         .select('*')
         .eq('session_id', sessionId)
         .order('created_at', { ascending: true })
-        .limit(200);
+        .limit(100); // reduced from 200
 
       if (!active) return;
       if (error || !data) {
@@ -50,7 +102,7 @@ export function useLiveMessages(sessionId?: string) {
         return;
       }
 
-      const profileMap = await enrichProfiles(data as any[]);
+      await enrichProfiles(data as any[]);
       if (!active) return;
 
       setMessages(
@@ -60,7 +112,7 @@ export function useLiveMessages(sessionId?: string) {
           user_id: row.user_id,
           content: row.content,
           created_at: row.created_at,
-          profile: profileMap.get(row.user_id),
+          profile: getCachedProfile(row.user_id),
         }))
       );
       setIsLoading(false);
@@ -89,11 +141,8 @@ export function useLiveMessages(sessionId?: string) {
         async (payload) => {
           const row = payload.new as any;
 
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('username, avatar_url')
-            .eq('id', row.user_id)
-            .maybeSingle();
+          // Use batched profile cache instead of individual query
+          await requestProfile(row.user_id);
 
           const newMsg: LiveMessage = {
             id: row.id,
@@ -101,7 +150,7 @@ export function useLiveMessages(sessionId?: string) {
             user_id: row.user_id,
             content: row.content,
             created_at: row.created_at,
-            profile: profile ?? undefined,
+            profile: getCachedProfile(row.user_id),
           };
 
           setMessages((prev) => {
@@ -124,10 +173,20 @@ export function useLiveMessages(sessionId?: string) {
     async (content: string) => {
       const value = content.trim();
       if (!sessionId || !value) return;
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+
+      // Rate limit: 1 message per second per session
+      const now = Date.now();
+      const lastSend = lastSendTimes.get(sessionId) || 0;
+      if (now - lastSend < 1000) {
+        throw new Error('Bạn đang gửi quá nhanh, vui lòng chờ 1 giây.');
+      }
+
+      // Use getSession (local cache) instead of getUser (network call)
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
       if (!user) return;
+
+      lastSendTimes.set(sessionId, now);
 
       const optimisticMsg: LiveMessage = {
         id: -Date.now(),
@@ -135,7 +194,7 @@ export function useLiveMessages(sessionId?: string) {
         user_id: user.id,
         content: value,
         created_at: new Date().toISOString(),
-        profile: undefined,
+        profile: getCachedProfile(user.id),
       };
       setMessages((prev) => [...prev, optimisticMsg]);
 
