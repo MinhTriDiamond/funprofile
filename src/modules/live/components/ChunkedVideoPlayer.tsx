@@ -70,6 +70,8 @@ function normalizeR2Url(url: string): string {
 }
 
 const IS_MOBILE = typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0;
+const IS_SAFARI = typeof navigator !== 'undefined' && /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+const IS_IOS = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent);
 const MAX_CACHE_BYTES = IS_MOBILE ? 30 * 1024 * 1024 : 80 * 1024 * 1024;
 
 /* ------------------------------------------------------------------ */
@@ -613,7 +615,9 @@ export function ChunkedVideoPlayer({
       manifest.chunks = manifest.chunks.map(c => ({ ...c, url: normalizeR2Url(c.url) }));
       manifest.chunks.sort((a, b) => a.seq - b.seq);
 
-      const supportedMime = typeof MediaSource !== 'undefined' ? findSupportedMime(manifest) : null;
+      // Safari/iOS: skip MSE entirely (no WebM MSE support) → direct blob fallback
+      const skipMSE = IS_SAFARI || IS_IOS;
+      const supportedMime = !skipMSE && typeof MediaSource !== 'undefined' ? findSupportedMime(manifest) : null;
       const useMSE = !!supportedMime;
 
       if (useMSE) {
@@ -622,7 +626,11 @@ export function ChunkedVideoPlayer({
           loadWithBlob(manifest);
         });
       } else {
-        console.warn('[ChunkedVideoPlayer] MSE not supported → blob fallback');
+        if (skipMSE) {
+          console.info('[ChunkedVideoPlayer] Safari/iOS detected → direct blob fallback');
+        } else {
+          console.warn('[ChunkedVideoPlayer] MSE not supported → blob fallback');
+        }
         await loadWithBlob(manifest);
       }
     } catch (err: any) {
