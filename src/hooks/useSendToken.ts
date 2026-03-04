@@ -106,7 +106,7 @@ export function useSendToken() {
 
     try {
       // Step 1: Signing
-      console.log('[SEND] SIGN_REQUESTED');
+      logger.debug('[SEND] SIGN_REQUESTED');
       setTxStep('signing');
 
       if (!token.address) {
@@ -125,7 +125,7 @@ export function useSendToken() {
       }
 
       // Step 2: Broadcasted — return hash IMMEDIATELY, run rest in background
-      console.log('[SEND] TX_HASH_RECEIVED:', hash);
+      logger.debug('[SEND] TX_HASH_RECEIVED:', hash);
       setTxHash(hash);
       setTxStep('broadcasted');
 
@@ -134,14 +134,14 @@ export function useSendToken() {
         let receiptOk = false;
         try {
           if (publicClient && hash) {
-            console.log('[SEND] WAIT_RECEIPT_START (background)');
+            logger.debug('[SEND] WAIT_RECEIPT_START (background)');
             setTxStep('confirming');
             const receipt = await withTimeout(
               publicClient.waitForTransactionReceipt({ hash: hash as `0x${string}`, confirmations: 1 }),
               RECEIPT_TIMEOUT_MS,
               'WAIT_RECEIPT',
             );
-            console.log('[SEND] RECEIPT_RECEIVED:', receipt.status);
+            logger.debug('[SEND] RECEIPT_RECEIVED:', receipt.status);
             if (receipt.status === 'reverted') {
               toast.error('Giao dịch chưa hoàn tất (reverted).');
               setTxStep('idle');
@@ -150,12 +150,12 @@ export function useSendToken() {
             receiptOk = true;
           }
         } catch (receiptErr: any) {
-          console.log('[SEND] RECEIPT_TIMEOUT_OR_ERROR:', receiptErr?.message);
+          logger.debug('[SEND] RECEIPT_TIMEOUT_OR_ERROR:', receiptErr?.message);
         }
 
         // DB insert
         try {
-          console.log('[SEND] DB_LOG_START (background)');
+          logger.debug('[SEND] DB_LOG_START (background)');
           setTxStep('finalizing');
           // Use getSession (cached) instead of getUser (network call)
           const { data: { session } } = await supabase.auth.getSession();
@@ -174,10 +174,10 @@ export function useSendToken() {
               DB_TIMEOUT_MS,
               'DB_INSERT',
             );
-            console.log('[SEND] DB_LOG_DONE');
+            logger.debug('[SEND] DB_LOG_DONE');
           }
         } catch (dbErr: any) {
-          console.log('[SEND] DB_LOG_SKIPPED:', dbErr?.message);
+          logger.debug('[SEND] DB_LOG_SKIPPED:', dbErr?.message);
         }
 
         if (receiptOk) {
@@ -198,7 +198,7 @@ export function useSendToken() {
 
       return hash;
     } catch (error: any) {
-      console.log('[SEND] ERROR:', error?.message);
+      logger.debug('[SEND] ERROR:', error?.message);
       if (error?.message?.includes('rejected') || error?.message?.includes('denied')) {
         toast.error('Bạn đã huỷ giao dịch');
       } else if (error?.message?.includes('insufficient')) {
@@ -209,7 +209,7 @@ export function useSendToken() {
       resetState();
       return null;
     } finally {
-      console.log('[SEND] FLOW_FINALLY');
+      logger.debug('[SEND] FLOW_FINALLY');
       setIsProcessing(false);
     }
   };
