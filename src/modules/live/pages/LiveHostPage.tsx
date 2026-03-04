@@ -179,6 +179,22 @@ export default function LiveHostPage() {
   const liveDuration = useLiveDuration(session?.started_at, session?.status === 'live' && isJoined);
   const { viewers } = useLivePresence(effectiveSessionId);
 
+  // Sync viewer count from Presence → DB every 10s
+  const viewerSyncRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => {
+    if (!effectiveSessionId || session?.status !== 'live') return;
+    viewerSyncRef.current = setInterval(() => {
+      const count = viewers.length;
+      if (lastSentViewerCountRef.current !== count) {
+        lastSentViewerCountRef.current = count;
+        updateLiveViewerCount(effectiveSessionId, count);
+      }
+    }, 10000);
+    return () => {
+      if (viewerSyncRef.current) clearInterval(viewerSyncRef.current);
+    };
+  }, [effectiveSessionId, session?.status, viewers.length]);
+
   const isHost = useMemo(() => !!session && !!userId && session.host_user_id === userId, [session, userId]);
 
   // Heartbeat: keep session alive every 15s
