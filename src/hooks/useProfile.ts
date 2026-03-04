@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 import type { PostStats } from '@/hooks/useFeedPosts';
 
 export interface FriendPreview {
@@ -51,11 +52,12 @@ const reservedPaths = ['auth', 'feed', 'friends', 'wallet', 'about', 'leaderboar
 export const useProfile = () => {
   const navigate = useNavigate();
   const { userId, username } = useParams();
+  const { userId: authUserId } = useCurrentUser();
+  const currentUserId = authUserId || '';
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [allPosts, setAllPosts] = useState<any[]>([]);
   const [originalPosts, setOriginalPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [currentUserId, setCurrentUserId] = useState<string>('');
   const [isOwnProfile, setIsOwnProfile] = useState(false);
   const [friendsCount, setFriendsCount] = useState(0);
   const [friendsPreview, setFriendsPreview] = useState<FriendPreview[]>([]);
@@ -193,82 +195,62 @@ export const useProfile = () => {
     setProfile(null);
     setLoading(true);
 
-    const checkAuth = async () => {
-      // Use getSession (cached) — no extra network call
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session) {
-        setCurrentUserId(session.user.id);
-        supabase.rpc('has_role', { _user_id: session.user.id, _role: 'admin' })
-          .then(({ data }) => setIsAdmin(!!data));
-      }
-      
-      if (username && reservedPaths.includes(username.toLowerCase())) {
-        navigate(`/${username}`);
-        return;
-      }
-      
-      if (username) {
-        const cleanUsername = decodeURIComponent(username.startsWith('@') ? username.slice(1) : username).trim();
-        const { data: profileData } = await supabase
-          .from('public_profiles')
-          .select('id')
-          .eq('username_normalized', cleanUsername.toLowerCase())
-          .single();
-        
-        if (profileData) {
-          setIsOwnProfile(session ? profileData.id === session.user.id : false);
-          fetchProfile(profileData.id, session?.user.id);
-        } else {
-          const { data: history } = await supabase
-            .from('username_history')
-            .select('new_username')
-            .eq('old_username', cleanUsername)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-          
-          if (history?.new_username) {
-            navigate(`/${history.new_username}`, { replace: true });
-            return;
+    // Check admin role when auth user available
+    if (currentUserId) {
+      supabase.rpc('has_role', { _user_id: currentUserId, _role: 'admin' })
+        .then(({ data }) => setIsAdmin(!!data));
+    }
+
+    if (username && reservedPaths.includes(username.toLowerCase())) {
+      navigate(`/${username}`);
+      return;
+    }
+    
+    if (username) {
+      const cleanUsername = decodeURIComponent(username.startsWith('@') ? username.slice(1) : username).trim();
+      supabase
+        .from('public_profiles')
+        .select('id')
+        .eq('username_normalized', cleanUsername.toLowerCase())
+        .single()
+        .then(({ data: profileData }) => {
+          if (profileData) {
+            setIsOwnProfile(currentUserId ? profileData.id === currentUserId : false);
+            fetchProfile(profileData.id, currentUserId || undefined);
+          } else {
+            supabase
+              .from('username_history')
+              .select('new_username')
+              .eq('old_username', cleanUsername)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle()
+              .then(({ data: history }) => {
+                if (history?.new_username) {
+                  navigate(`/${history.new_username}`, { replace: true });
+                } else {
+                  setLoading(false);
+                  setProfile(null);
+                }
+              });
           }
-          
-          setLoading(false);
-          setProfile(null);
-        }
+        });
+      return;
+    }
+    
+    let profileId = userId;
+    if (!userId) {
+      if (currentUserId) {
+        profileId = currentUserId;
+      } else {
+        navigate('/', { replace: true });
         return;
       }
-      
-      let profileId = userId;
-      if (!userId) {
-        if (session) {
-          profileId = session.user.id;
-        } else {
-          navigate('/', { replace: true });
-          return;
-        }
-      }
-      
-      setIsOwnProfile(session ? profileId === session.user.id : false);
-      fetchProfile(profileId!, session?.user.id);
-    };
-
-    checkAuth();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        setCurrentUserId(session?.user?.id ?? '');
-        if (userId) {
-          setIsOwnProfile(session?.user?.id === userId);
-        }
-      } else if (event === 'SIGNED_OUT') {
-        setCurrentUserId('');
-        setIsOwnProfile(false);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate, userId, username, fetchProfile]);
+    }
+    
+    setIsOwnProfile(currentUserId ? profileId === currentUserId : false);
+    fetchProfile(profileId!, currentUserId || undefined);
+  }, [navigate, userId, username, fetchProfile, currentUserId]);
 
   const scrollToTabs = useCallback(() => {
     setTimeout(() => {
