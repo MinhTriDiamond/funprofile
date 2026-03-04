@@ -220,7 +220,7 @@ const AdminMigration = () => {
         if (attempt < maxRetries) {
           // Exponential backoff: 1s, 2s, 4s
           const delay = Math.pow(2, attempt - 1) * 1000;
-          console.log(`Retrying in ${delay / 1000}s...`);
+          logger.debug(`Retrying in ${delay / 1000}s...`);
           await new Promise(resolve => setTimeout(resolve, delay));
         }
       }
@@ -352,7 +352,7 @@ const AdminMigration = () => {
       for (const path of possiblePaths) {
         // Check if skip was requested
         if (skipCurrentRef.current) {
-          console.log('⏭️ Skip requested during R2 check');
+          logger.debug('⏭️ Skip requested during R2 check');
           return null;
         }
         
@@ -360,7 +360,7 @@ const AdminMigration = () => {
         try {
           const response = await fetchWithTimeout(r2Url, 5000);
           if (response?.ok) {
-            console.log(`✅ Found existing file on R2: ${r2Url}`);
+            logger.debug(`✅ Found existing file on R2: ${r2Url}`);
             return r2Url;
           }
         } catch {
@@ -491,7 +491,7 @@ const AdminMigration = () => {
 
           // Check if skip was requested during R2 check
           if (skipCurrentRef.current) {
-            console.log(`⏭️ Skipped: ${fileName}`);
+            logger.debug(`⏭️ Skipped: ${fileName}`);
             repairResult.errors.push({
               url: item.url,
               error: 'Skipped by user',
@@ -506,7 +506,7 @@ const AdminMigration = () => {
             await updateMediaUrlViaEdgeFunction(item.table, item.id, item.field, existingR2Url);
 
             repairResult.alreadyOnR2++;
-            console.log(`✅ DB updated (file already on R2): ${fileName} -> ${existingR2Url}`);
+            logger.debug(`✅ DB updated (file already on R2): ${fileName} -> ${existingR2Url}`);
           } else {
             // File not on R2 - need to download and upload
             setCurrentFile(`${i + 1}/${urlsToProcess.length}: 📥 Download ${fileName}`);
@@ -515,7 +515,7 @@ const AdminMigration = () => {
             
             // Check if skip was requested during download
             if (skipCurrentRef.current) {
-              console.log(`⏭️ Skipped after download: ${fileName}`);
+              logger.debug(`⏭️ Skipped after download: ${fileName}`);
               repairResult.errors.push({
                 url: item.url,
                 error: 'Skipped by user',
@@ -525,7 +525,7 @@ const AdminMigration = () => {
             
             const fileSize = blob.size;
 
-            console.log(`📥 Downloaded: ${fileName}, size: ${(fileSize / 1024 / 1024).toFixed(2)}MB`);
+            logger.debug(`📥 Downloaded: ${fileName}, size: ${(fileSize / 1024 / 1024).toFixed(2)}MB`);
 
             // Generate unique key for R2
             const ext = getFileExtension(item.url, contentType);
@@ -549,7 +549,7 @@ const AdminMigration = () => {
             await updateMediaUrlViaEdgeFunction(item.table, item.id, item.field, publicUrl);
 
             repairResult.migrated++;
-            console.log(`✅ Uploaded & DB updated: ${fileName} -> ${publicUrl}`);
+            logger.debug(`✅ Uploaded & DB updated: ${fileName} -> ${publicUrl}`);
           }
 
           // Small delay
@@ -936,7 +936,7 @@ const AdminMigration = () => {
           
           // Check if skip was requested during download
           if (skipCurrentRef.current) {
-            console.log(`⏭️ Skipped: ${fileName}`);
+            logger.debug(`⏭️ Skipped: ${fileName}`);
             migrationResult.errors.push({
               url: item.url,
               error: 'Skipped by user',
@@ -946,7 +946,7 @@ const AdminMigration = () => {
           
           const fileSize = blob.size;
 
-          console.log(`📥 Migrating: ${fileName}, size: ${(fileSize / 1024 / 1024).toFixed(2)}MB`);
+          logger.debug(`📥 Migrating: ${fileName}, size: ${(fileSize / 1024 / 1024).toFixed(2)}MB`);
 
           // Generate unique key for R2
           const ext = getFileExtension(item.url, contentType);
@@ -965,12 +965,12 @@ const AdminMigration = () => {
           });
 
           // Update database with new R2 URL via edge function (bypasses RLS)
-          console.log(`📝 Updating DB: ${item.table}.${item.field} = ${publicUrl}`);
+          logger.debug(`📝 Updating DB: ${item.table}.${item.field} = ${publicUrl}`);
           
           await updateMediaUrlViaEdgeFunction(item.table, item.id, item.field, publicUrl);
 
           migrationResult.migrated++;
-          console.log(`✅ Migrated & verified: ${fileName} -> ${publicUrl}`);
+          logger.debug(`✅ Migrated & verified: ${fileName} -> ${publicUrl}`);
 
           // Small delay to avoid rate limits
           await new Promise(resolve => setTimeout(resolve, 100));
