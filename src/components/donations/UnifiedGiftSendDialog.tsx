@@ -311,7 +311,7 @@ export const UnifiedGiftSendDialog = ({
   // ── Send logic ──
   const walletToken = {
     symbol: selectedToken.symbol, name: selectedToken.name,
-    address: selectedToken.address as `0x${string}` | null,
+    address: (resolvedTokenAddress || null) as `0x${string}` | null,
     decimals: selectedToken.decimals, logo: selectedToken.logo, color: selectedToken.color,
   };
 
@@ -520,7 +520,7 @@ export const UnifiedGiftSendDialog = ({
                 bnbBalanceNum={bnbBalanceNum}
                 estimatedGasPerTx={estimatedGasPerTx}
                 onConnectWallet={() => openConnectModal?.()}
-                onSwitchChain={() => switchChain({ chainId: bsc.id })}
+                onSwitchChain={() => switchChain({ chainId: selectedChainId })}
                 canProceedToConfirm={canProceedToConfirm}
                 isInProgress={isInProgress}
                 onGoToConfirm={() => canProceedToConfirm && setFlowStep('confirm')}
@@ -542,6 +542,7 @@ export const UnifiedGiftSendDialog = ({
                 totalEstimatedUsd={totalEstimatedUsd}
                 selectedTokenPrice={selectedTokenPrice}
                 isMultiMode={isMultiMode}
+                selectedChainId={selectedChainId}
                 recipientsWithWallet={recipientsWithWallet}
                 customMessage={customMessage}
                 multiSendProgress={multiSendProgress}
