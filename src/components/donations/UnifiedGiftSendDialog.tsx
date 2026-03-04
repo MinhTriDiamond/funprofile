@@ -133,21 +133,28 @@ export const UnifiedGiftSendDialog = ({
   const hasRecipients = effectiveRecipients.length > 0;
   const isMultiMode = effectiveRecipients.length > 1;
 
-  // ── Balances ──
-  const { data: bnbBalance } = useBalance({ address: effectiveAddress as `0x${string}` | undefined, chainId: bsc.id });
+  // ── Balances — use selectedChainId ──
+  const resolvedTokenAddress = useMemo(() => {
+    if (selectedToken.symbol === 'BNB') return undefined;
+    const addr = getTokenAddress(selectedToken.symbol, selectedChainId);
+    return addr ? (addr as `0x${string}`) : undefined;
+  }, [selectedToken.symbol, selectedChainId]);
+
+  const { data: bnbBalance } = useBalance({ address: effectiveAddress as `0x${string}` | undefined, chainId: selectedChainId });
   const { data: tokenBalance } = useReadContract({
-    address: selectedToken.address as `0x${string}` | undefined,
+    address: resolvedTokenAddress,
     abi: ERC20_BALANCE_ABI,
     functionName: 'balanceOf',
     args: effectiveAddress ? [effectiveAddress as `0x${string}`] : undefined,
-    chainId: bsc.id,
+    chainId: selectedChainId,
   });
 
   const formattedBalance = useMemo(() => {
     if (selectedToken.symbol === 'BNB') return bnbBalance ? parseFloat(bnbBalance.formatted) : 0;
+    if (!isTokenAvailableOnChain(selectedToken.symbol, selectedChainId)) return 0;
     if (tokenBalance) return parseFloat(formatUnits(tokenBalance as bigint, selectedToken.decimals));
     return 0;
-  }, [selectedToken, bnbBalance, tokenBalance]);
+  }, [selectedToken, bnbBalance, tokenBalance, selectedChainId]);
 
   const bnbBalanceNum = useMemo(() => bnbBalance ? parseFloat(bnbBalance.formatted) : 0, [bnbBalance]);
 
@@ -166,13 +173,13 @@ export const UnifiedGiftSendDialog = ({
   const totalEstimatedUsd = estimatedUsd * recipientsWithWallet.length;
   const isValidAmount = minSendCheck.valid;
   const hasEnoughBalance = formattedBalance >= totalAmount;
-  const isWrongNetwork = chainId !== bsc.id;
+  const isWrongNetwork = chainId !== selectedChainId;
   const needsGasWarning = selectedToken.symbol !== 'BNB' && bnbBalanceNum < estimatedGasPerTx * recipientsWithWallet.length && parsedAmountNum > 0;
   const isLargeAmount = totalAmount > formattedBalance * 0.8 && totalAmount > 0;
   const isInProgress = ['signing', 'broadcasted', 'confirming', 'finalizing'].includes(txStep);
   const stepInfo = STEP_CONFIG[txStep] || STEP_CONFIG.idle;
   const canProceedToConfirm = isConnected && recipientsWithWallet.length > 0 && isValidAmount && hasEnoughBalance && !isWrongNetwork;
-  const scanUrl = txHash ? getBscScanTxUrl(txHash, selectedToken.symbol) : null;
+  const scanUrl = txHash ? getBscScanTxUrlByChain(txHash, selectedChainId) : null;
   const isSendDisabled = !isConnected || recipientsWithWallet.length === 0 || !isValidAmount || !hasEnoughBalance || isPending || isInProgress || isWrongNetwork || isMultiSending;
 
   // ── Effects ──
