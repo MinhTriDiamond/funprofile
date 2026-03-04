@@ -13,18 +13,20 @@ interface Story {
   image_url?: string;
 }
 
-/**
- * Optimized StoriesBar with lazy loading
- * - Lazy loads story images
- * - Memoized for performance
- */
+interface UserProfile {
+  id: string;
+  username: string;
+  display_name: string | null;
+  avatar_url: string | null;
+}
+
 interface StoriesBarProps {
   currentUserId?: string;
 }
 
 export const StoriesBar = memo(({ currentUserId }: StoriesBarProps) => {
   const navigate = useNavigate();
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [stories, setStories] = useState<Story[]>([]);
 
   useEffect(() => {
@@ -32,14 +34,13 @@ export const StoriesBar = memo(({ currentUserId }: StoriesBarProps) => {
       if (!currentUserId) return;
       const { data: profile } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id, username, display_name, avatar_url')
         .eq('id', currentUserId)
         .single();
       setCurrentUser(profile);
     };
 
     const fetchStories = async () => {
-      // Fetch recent users who posted as "stories" simulation
       const { data: recentPosts } = await supabase
         .from('posts')
         .select('user_id, public_profiles!posts_user_id_fkey(id, username, avatar_url)')
@@ -64,7 +65,7 @@ export const StoriesBar = memo(({ currentUserId }: StoriesBarProps) => {
 
     fetchCurrentUser();
     fetchStories();
-  }, []);
+  }, [currentUserId]);
 
   const gradientColors = [
     'from-primary to-gold',
@@ -114,7 +115,6 @@ export const StoriesBar = memo(({ currentUserId }: StoriesBarProps) => {
             <div className={`absolute inset-0 bg-gradient-to-b ${gradientColors[index % gradientColors.length]} opacity-80`} />
             <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors" />
             
-            {/* User Avatar */}
             <div className="absolute top-3 left-3">
               <Avatar className="w-10 h-10 ring-4 ring-primary">
                 <AvatarImage src={story.avatar_url || ''} alt={`Ảnh đại diện của ${story.username}`} />
@@ -124,7 +124,6 @@ export const StoriesBar = memo(({ currentUserId }: StoriesBarProps) => {
               </Avatar>
             </div>
 
-            {/* Username */}
             <div className="absolute bottom-3 left-3 right-3">
               <p className="text-xs font-semibold text-white truncate">
                 {story.username}
@@ -133,7 +132,6 @@ export const StoriesBar = memo(({ currentUserId }: StoriesBarProps) => {
           </div>
         ))}
 
-        {/* Placeholder stories if not enough */}
         {stories.length === 0 && !currentUser && (
           <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
             Đăng nhập để xem tin

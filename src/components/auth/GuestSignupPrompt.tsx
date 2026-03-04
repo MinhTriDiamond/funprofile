@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -11,11 +11,6 @@ import { X } from 'lucide-react';
  * 
  * Popup gợi ý đăng ký khi Khách muốn tương tác (comment, like, post).
  * Hiển thị giữa trang – không chặn trải nghiệm đọc/xem cơ bản.
- * 
- * Usage:
- *   const { promptGuest } = useGuestPrompt();
- *   // In any interaction handler:
- *   if (!currentUserId) { promptGuest(); return; }
  */
 
 interface GuestSignupPromptProps {
@@ -37,7 +32,6 @@ export const GuestSignupPrompt = ({ open, onClose }: GuestSignupPromptProps) => 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="sm:max-w-md border-2 border-primary/30 bg-background/95 backdrop-blur-sm">
-        {/* Close button */}
         <button
           onClick={onClose}
           className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100"
@@ -46,7 +40,6 @@ export const GuestSignupPrompt = ({ open, onClose }: GuestSignupPromptProps) => 
         </button>
 
         <div className="text-center py-4">
-          {/* Logo */}
           <div className="flex justify-center mb-4">
             <img
               src="/fun-profile-logo-128.webp"
@@ -59,7 +52,6 @@ export const GuestSignupPrompt = ({ open, onClose }: GuestSignupPromptProps) => 
             />
           </div>
 
-          {/* Title */}
           <h2
             className="text-2xl font-bold mb-6"
             style={{
@@ -72,7 +64,6 @@ export const GuestSignupPrompt = ({ open, onClose }: GuestSignupPromptProps) => 
             {isVietnamese ? 'VUI LÒNG ĐĂNG KÝ ĐỂ' : 'PLEASE REGISTER FOR'}
           </h2>
 
-          {/* Benefits list */}
           <div className="space-y-3 mb-8">
             {isVietnamese ? (
               <>
@@ -91,7 +82,6 @@ export const GuestSignupPrompt = ({ open, onClose }: GuestSignupPromptProps) => 
             )}
           </div>
 
-          {/* Register button with rainbow border */}
           <div
             className="relative p-[3px] rounded-full"
             style={{
@@ -116,7 +106,6 @@ export const GuestSignupPrompt = ({ open, onClose }: GuestSignupPromptProps) => 
             </Button>
           </div>
 
-          {/* Skip option */}
           <button
             onClick={onClose}
             className="mt-4 text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -138,35 +127,20 @@ const BenefitItem = ({ emoji, text }: { emoji: string; text: string }) => (
 
 /**
  * Hook for components to trigger the guest signup prompt.
- * Returns { isGuest, promptGuest, GuestPrompt }
+ * Uses useCurrentUser instead of creating its own auth subscription.
  */
 export function useGuestPrompt() {
-  const [isGuest, setIsGuest] = useState(true);
+  const { isAuthenticated } = useCurrentUser();
   const [showPrompt, setShowPrompt] = useState(false);
 
-  useEffect(() => {
-    const check = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setIsGuest(!session);
-    };
-    check();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session) {
-        setIsGuest(false);
-      } else if (event === 'SIGNED_OUT') {
-        setIsGuest(true);
-      }
-    });
-    return () => subscription.unsubscribe();
-  }, []);
+  const isGuest = !isAuthenticated;
 
   const promptGuest = () => {
     if (isGuest) {
       setShowPrompt(true);
-      return true; // was guest, prompt shown
+      return true;
     }
-    return false; // not guest, continue normally
+    return false;
   };
 
   const GuestPrompt = () => (

@@ -162,7 +162,13 @@ export const CommentSection = ({ postId, onCommentAdded }: CommentSectionProps) 
         return;
       }
 
-      const insertData: any = {
+      const insertData: {
+        post_id: string;
+        user_id: string;
+        content: string;
+        image_url?: string;
+        video_url?: string;
+      } = {
         post_id: postId,
         user_id: userId,
         content: newComment.trim() || '',
