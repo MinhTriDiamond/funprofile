@@ -107,7 +107,7 @@ export const useEpochAllocation = (): EpochAllocationResult => {
       if (epochErr) throw epochErr;
 
       if (epochs && epochs.length > 0) {
-        const epoch = epochs[0] as any;
+        const epoch = epochs[0];
         setLatestEpoch({
           id: epoch.id,
           epoch_month: epoch.epoch_month || '',
@@ -130,7 +130,7 @@ export const useEpochAllocation = (): EpochAllocationResult => {
         if (allocErr) throw allocErr;
 
         if (alloc) {
-          setAllocation(alloc as any);
+          setAllocation(alloc);
         } else {
           setAllocation(null);
         }
@@ -202,9 +202,9 @@ export const useEpochAllocation = (): EpochAllocationResult => {
 
       await fetchData();
       return { success: true, requestId: data.mint_request?.id };
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[useEpochAllocation] Claim error:', err);
-      toast.error(err.message || 'Không thể claim rewards');
+      toast.error(err instanceof Error ? err.message : 'Không thể claim rewards');
       return { success: false };
     } finally {
       setIsClaiming(false);

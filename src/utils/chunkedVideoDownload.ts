@@ -53,8 +53,8 @@ export async function downloadChunkedVideo(
     setTimeout(() => URL.revokeObjectURL(url), 5000);
 
     toast.success("Tải video thành công!", { id: toastId });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Download chunked video error:", err);
-    toast.error(err?.message || "Lỗi khi tải video", { id: toastId });
+    toast.error(err instanceof Error ? err.message : "Lỗi khi tải video", { id: toastId });
   }
 }

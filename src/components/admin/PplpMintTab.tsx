@@ -91,9 +91,9 @@ const EpochSnapshotButton = () => {
       });
       if (error) throw error;
       setSnapshotResult(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Snapshot error:', err);
-      setSnapshotResult({ error: err.message });
+      setSnapshotResult({ error: err instanceof Error ? err.message : 'Unknown error' });
     } finally {
       setIsSnapshotting(false);
     }

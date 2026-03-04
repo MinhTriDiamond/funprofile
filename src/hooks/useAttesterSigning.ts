@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAccount, useSignTypedData, useChainId, useSwitchChain } from 'wagmi';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { toJson } from '@/utils/supabaseJsonHelpers';
 import {
   EIP712_DOMAIN,
   EIP712_PPLP_TYPES,
@@ -208,7 +209,7 @@ export const useAttesterSigning = (connectedAddress?: string): UseAttesterSignin
       const { error: updateError } = await supabase
         .from('pplp_mint_requests')
         .update({
-          multisig_signatures: newSigs as any,
+          multisig_signatures: toJson(newSigs),
           multisig_completed_groups: completedGroups,
           signature: isFullySigned ? signature : (request.multisig_signatures?.will?.signature ?? null),
           signed_by: effectiveAddress,
@@ -226,11 +227,12 @@ export const useAttesterSigning = (connectedAddress?: string): UseAttesterSignin
       }
 
       return true;
-    } catch (err: any) {
-      if (err.message?.includes('User rejected')) {
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      if (msg.includes('User rejected')) {
         toast.error('Đã từ chối ký');
       } else {
-        toast.error(`Lỗi ký: ${err.message}`);
+        toast.error(`Lỗi ký: ${msg}`);
       }
       return false;
     } finally {

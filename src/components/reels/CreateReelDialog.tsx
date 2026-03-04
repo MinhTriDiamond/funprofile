@@ -72,8 +72,8 @@ export const CreateReelDialog = ({ open, onOpenChange }: CreateReelDialogProps) 
       setVideoFile(null);
       setVideoPreview(null);
       onOpenChange(false);
-    } catch (err: any) {
-      toast.error(err.message || t('uploadFailed'));
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : t('uploadFailed'));
     } finally {
       setUploading(false);
     }

@@ -192,15 +192,16 @@ export class UploadQueue {
       });
 
       this.options.onComplete?.(this.items.get(id)!);
-    } catch (error: any) {
-      if (error.name === 'AbortError' || item.status === 'cancelled') {
+    } catch (error: unknown) {
+      const errName = (error as { name?: string })?.name;
+      if (errName === 'AbortError' || item.status === 'cancelled') {
         this.updateItem(id, { status: 'cancelled' });
       } else {
         this.updateItem(id, {
           status: 'failed',
-          error: error.message || 'Upload thất bại',
+          error: error instanceof Error ? error.message : 'Upload thất bại',
         });
-        this.options.onError?.(this.items.get(id)!, error);
+        this.options.onError?.(this.items.get(id)!, error as Error);
       }
     } finally {
       this.activeUploads.delete(id);

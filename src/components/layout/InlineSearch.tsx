@@ -21,6 +21,7 @@ interface Post {
   id: string;
   content: string;
   created_at: string;
+  slug?: string;
   profiles: {
     username: string;
     avatar_url: string | null;
@@ -102,7 +103,7 @@ export const InlineSearch = () => {
         ]);
 
         setProfiles(profileData || []);
-        setPosts(((postData as any) || []).map((p: any) => ({ ...p, profiles: p.public_profiles || p.profiles })));
+        setPosts(((postData || []) as Array<Record<string, unknown>>).map((p) => ({ ...p, profiles: (p as Record<string, unknown>).public_profiles || (p as Record<string, unknown>).profiles })) as Post[]);
       } catch {
         setProfiles([]);
         setPosts([]);
@@ -120,7 +121,7 @@ export const InlineSearch = () => {
     navigate(`/${profile.username}`);
   };
 
-  const handlePostClick = (post: any) => {
+  const handlePostClick = (post: Post) => {
     setIsExpanded(false);
     setSearchQuery('');
     const username = post.profiles?.username;

@@ -204,8 +204,8 @@ const WalletAbuseTab = ({ users, adminId, onRefresh }: WalletAbuseTabProps) => {
       }
       toast.success(`Đã cấm ${cluster.accounts.length} tài khoản cụm "${cluster.emailBase}"`);
       onRefresh();
-    } catch (error: any) {
-      toast.error(error.message || "Lỗi khi cấm cụm email");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Lỗi khi cấm cụm email");
     } finally {
       setBanningCluster(null);
     }
@@ -347,8 +347,8 @@ const WalletAbuseTab = ({ users, adminId, onRefresh }: WalletAbuseTabProps) => {
       if (error) throw error;
       toast.success(`Đã cấm ${user.username}`);
       onRefresh();
-    } catch (error: any) {
-      toast.error(error.message || "Lỗi khi cấm user");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Lỗi khi cấm user");
     } finally {
       setLoading(null);
     }
@@ -380,8 +380,8 @@ const WalletAbuseTab = ({ users, adminId, onRefresh }: WalletAbuseTabProps) => {
 
       toast.success(`Đã xóa vĩnh viễn ${user.username}`);
       onRefresh();
-    } catch (error: any) {
-      toast.error(error.message || "Lỗi khi xóa user");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Lỗi khi xóa user");
     } finally {
       setLoading(null);
     }
@@ -404,8 +404,8 @@ const WalletAbuseTab = ({ users, adminId, onRefresh }: WalletAbuseTabProps) => {
 
       toast.success(`Đã duyệt lại ${user.username}`);
       onRefresh();
-    } catch (error: any) {
-      toast.error(error.message || "Lỗi khi duyệt lại");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Lỗi khi duyệt lại");
     } finally {
       setLoading(null);
     }
@@ -425,8 +425,8 @@ const WalletAbuseTab = ({ users, adminId, onRefresh }: WalletAbuseTabProps) => {
       }
       toast.success(`Đã duyệt lại ${group.users.length} tài khoản`);
       onRefresh();
-    } catch (error: any) {
-      toast.error(error.message || "Lỗi khi duyệt lại nhóm");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Lỗi khi duyệt lại nhóm");
     } finally {
       setLoading(null);
     }
@@ -444,8 +444,8 @@ const WalletAbuseTab = ({ users, adminId, onRefresh }: WalletAbuseTabProps) => {
       }
       toast.success(`Đã cấm ${walletGroup.users.length} tài khoản dùng chung ví`);
       onRefresh();
-    } catch (error: any) {
-      toast.error(error.message || "Lỗi khi cấm nhóm");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Lỗi khi cấm nhóm");
     } finally {
       setLoading(null);
     }
@@ -467,8 +467,8 @@ const WalletAbuseTab = ({ users, adminId, onRefresh }: WalletAbuseTabProps) => {
       }
       toast.success(`Đã cấm ${group.users.length} tài khoản`);
       onRefresh();
-    } catch (error: any) {
-      toast.error(error.message || "Lỗi khi cấm nhóm");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Lỗi khi cấm nhóm");
     } finally {
       setLoading(null);
     }
@@ -486,8 +486,8 @@ const WalletAbuseTab = ({ users, adminId, onRefresh }: WalletAbuseTabProps) => {
       }
       toast.success(`Đã cấm ${bioGroup.users.length} tài khoản trùng bio`);
       onRefresh();
-    } catch (error: any) {
-      toast.error(error.message || "Lỗi khi cấm nhóm");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Lỗi khi cấm nhóm");
     } finally {
       setLoading(null);
     }

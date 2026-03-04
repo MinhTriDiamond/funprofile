@@ -115,7 +115,7 @@ const Profile = () => {
             showPrivateElements={showPrivateElements}
             viewAsPublic={viewAsPublic}
             friendsPreview={friendsPreview}
-            onSetProfile={setProfile as any}
+            onSetProfile={(updater) => setProfile(updater)}
             onNavigateToTab={navigateToTab}
             onStartChat={handleStartChat}
             onSetViewAsPublic={setViewAsPublic}
@@ -252,7 +252,7 @@ const Profile = () => {
                           displayedCount={displayedCount}
                           POSTS_PER_PAGE={POSTS_PER_PAGE}
                           onSetDisplayedCount={setDisplayedCount}
-                          onSetProfile={setProfile as any}
+                          onSetProfile={(updater) => setProfile(updater)}
                           buildInitialStats={buildInitialStats}
                           onRefresh={handleRefresh}
                         />

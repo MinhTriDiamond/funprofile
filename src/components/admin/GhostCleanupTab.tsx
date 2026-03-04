@@ -147,9 +147,9 @@ const GhostCleanupTab = ({ adminId, onNavigate }: Props) => {
       toast.success(`Đã cấm ${data} tài khoản ảo thành công! 🎉`);
       setSelectedIds(new Set());
       await loadGhostUsers();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Batch ban error:", error);
-      toast.error(error.message || "Lỗi khi cấm hàng loạt");
+      toast.error(error instanceof Error ? error.message : "Lỗi khi cấm hàng loạt");
     } finally {
       setBanning(false);
     }

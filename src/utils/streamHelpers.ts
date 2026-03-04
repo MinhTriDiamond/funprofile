@@ -6,6 +6,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { extractStreamUid, isStreamUrl } from './streamUpload';
 import { deleteFromR2 } from './r2Upload';
+import logger from '@/lib/logger';
 
 /**
  * Check if URL is a Supabase Storage URL
@@ -40,13 +41,13 @@ export async function deleteStorageFile(url: string): Promise<boolean> {
   try {
     const { error } = await supabase.storage.from(info.bucket).remove([info.path]);
     if (error) {
-      console.error('[streamHelpers] Storage delete error:', error);
+      logger.error('[streamHelpers] Storage delete error:', error);
       return false;
     }
-    console.log('[streamHelpers] Storage file deleted:', info.bucket, info.path);
+    logger.debug('[streamHelpers] Storage file deleted:', info.bucket, info.path);
     return true;
   } catch (err) {
-    console.error('[streamHelpers] Storage delete failed:', err);
+    logger.error('[streamHelpers] Storage delete failed:', err);
     return false;
   }
 }
@@ -85,10 +86,10 @@ export async function deleteVideoByUrl(videoUrl: string): Promise<boolean> {
     if (!key) return false;
     try {
       await deleteFromR2(key);
-      console.log('[streamHelpers] R2 video deleted:', key);
+      logger.debug('[streamHelpers] R2 video deleted:', key);
       return true;
     } catch (err) {
-      console.error('[streamHelpers] R2 delete error:', err);
+      logger.error('[streamHelpers] R2 delete error:', err);
       return false;
     }
   }
@@ -106,7 +107,7 @@ export async function deleteVideoByUrl(videoUrl: string): Promise<boolean> {
 export async function deleteStreamVideoByUrl(videoUrl: string): Promise<boolean> {
   const uid = extractStreamUid(videoUrl);
   if (!uid) {
-    console.warn('[streamHelpers] Could not extract UID from URL:', videoUrl);
+    logger.warn('[streamHelpers] Could not extract UID from URL:', videoUrl);
     return false;
   }
   
@@ -121,20 +122,20 @@ export async function deleteStreamVideoByUrl(videoUrl: string): Promise<boolean>
  */
 export async function deleteStreamVideoByUid(uid: string): Promise<boolean> {
   try {
-    console.log('[streamHelpers] Deleting Stream video:', uid);
+    logger.debug('[streamHelpers] Deleting Stream video:', uid);
     const { data, error } = await supabase.functions.invoke('stream-video', {
       body: { action: 'delete', uid },
     });
     
     if (error) {
-      console.error('[streamHelpers] Stream video delete error:', error);
+      logger.error('[streamHelpers] Stream video delete error:', error);
       return false;
     }
     
-    console.log('[streamHelpers] Stream video deleted successfully:', uid, data);
+    logger.debug('[streamHelpers] Stream video deleted successfully:', uid, data);
     return true;
   } catch (error) {
-    console.error('[streamHelpers] Failed to delete Stream video:', error);
+    logger.error('[streamHelpers] Failed to delete Stream video:', error);
     return false;
   }
 }
@@ -153,10 +154,10 @@ export async function deleteStreamVideos(videoUrls: string[]): Promise<{
     return { successCount: 0, totalCount: 0 };
   }
   
-  console.log('[streamHelpers] Deleting', videoUrls.length, 'videos');
+  logger.debug('[streamHelpers] Deleting', videoUrls.length, 'videos');
   const results = await Promise.all(videoUrls.map(deleteStreamVideoByUrl));
   const successCount = results.filter(Boolean).length;
-  console.log('[streamHelpers] Deleted', successCount, 'of', videoUrls.length, 'videos');
+  logger.debug('[streamHelpers] Deleted', successCount, 'of', videoUrls.length, 'videos');
   
   return { successCount, totalCount: videoUrls.length };
 }

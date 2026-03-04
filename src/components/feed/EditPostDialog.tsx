@@ -230,9 +230,9 @@ export const EditPostDialog = ({ post, isOpen, onClose, onPostUpdated, currentUs
       toast.success('Post updated successfully');
       onPostUpdated();
       onClose();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating post:', error);
-      toast.error(error.message || 'Failed to update post');
+      toast.error(error instanceof Error ? error.message : 'Failed to update post');
     } finally {
       setLoading(false);
     }

@@ -155,8 +155,8 @@ async function fetchWithRetry(url: string, retries = MAX_RETRY, signal?: AbortSi
       const res = await fetch(url, { signal });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return await res.arrayBuffer();
-    } catch (err: any) {
-      if (err.name === 'AbortError') throw err;
+    } catch (err: unknown) {
+      if ((err as { name?: string })?.name === 'AbortError') throw err;
       if (attempt === retries - 1) throw err;
       await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
     }
@@ -301,9 +301,9 @@ export function ChunkedVideoPlayer({
       appending = true;
       try {
         sourceBuffer.appendBuffer(data);
-      } catch (e: any) {
+      } catch (e: unknown) {
         appending = false;
-        if (e.name === 'QuotaExceededError') {
+        if ((e as { name?: string })?.name === 'QuotaExceededError') {
           console.warn('[ChunkedVideoPlayer] QuotaExceeded → evicting');
           evictOldBuffer().then(() => processQueue());
         } else {
@@ -385,8 +385,8 @@ export function ChunkedVideoPlayer({
         updateProgress();
         processQueue();
         return true;
-      } catch (err: any) {
-        if (err.name === 'AbortError') return false;
+      } catch (err: unknown) {
+        if ((err as { name?: string })?.name === 'AbortError') return false;
         console.error(`[ChunkedVideoPlayer] Failed chunk ${idx} (${manifest.chunks[idx].url}):`, err);
         failedChunks.add(idx);
         updateProgress();
@@ -634,9 +634,9 @@ export function ChunkedVideoPlayer({
         }
         await loadWithBlob(manifest);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (abortRef.current?.signal.aborted) return;
-      setError(err.message || 'Failed to load video');
+      setError(err instanceof Error ? err.message : 'Failed to load video');
       setLoading(false);
       onErrorCallback?.();
     }

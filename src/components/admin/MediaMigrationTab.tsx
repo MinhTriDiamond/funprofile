@@ -80,7 +80,7 @@ const MediaMigrationTab = () => {
       } else {
         toast.error(result?.error || 'Không thể quét media');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Scan error:', error);
       toast.error('Lỗi khi quét media');
     } finally {
@@ -129,7 +129,7 @@ const MediaMigrationTab = () => {
       }
 
       toast.success(`Migrate hoàn thành: ${allResults.filter(r => r.status === 'success').length} thành công`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Migration error:', error);
       toast.error('Lỗi khi migrate ảnh');
     } finally {
@@ -177,7 +177,7 @@ const MediaMigrationTab = () => {
       }
 
       toast.success(`Migrate hoàn thành: ${allResults.filter(r => r.status === 'success').length} thành công`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Migration error:', error);
       toast.error('Lỗi khi migrate video');
     } finally {
@@ -217,7 +217,7 @@ const MediaMigrationTab = () => {
       } else {
         toast.error(result?.error || 'Lỗi khi cập nhật database');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Update URLs error:', error);
       toast.error('Lỗi khi cập nhật database URLs');
     } finally {

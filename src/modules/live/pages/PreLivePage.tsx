@@ -47,12 +47,13 @@ export default function PreLivePage() {
         videoRef.current.srcObject = stream;
       }
       setHasPermission(true);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[PreLive] Camera error:', err);
       setHasPermission(false);
-      if (err.name === 'NotAllowedError') {
+      const errName = (err as { name?: string })?.name;
+      if (errName === 'NotAllowedError') {
         toast.error('Bạn chưa cấp quyền camera/micro.');
-      } else if (err.name === 'NotFoundError') {
+      } else if (errName === 'NotFoundError') {
         toast.error('Không tìm thấy thiết bị camera/micro.');
       } else {
         toast.error('Không thể truy cập camera.');

@@ -27,8 +27,8 @@ const AllTransactions = () => {
       if (error) throw error;
       setData(result);
       setPage(p);
-    } catch (err: any) {
-      toast.error("Lỗi: " + (err.message || "Unknown"));
+    } catch (err: unknown) {
+      toast.error("Lỗi: " + (err instanceof Error ? err.message : "Unknown"));
     } finally {
       setLoading(false);
     }

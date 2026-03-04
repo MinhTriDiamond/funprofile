@@ -30,7 +30,7 @@ const LivestreamHealthTab = () => {
       const { data, error } = await supabase.rpc('get_livestream_stats');
       if (error) throw error;
       setStats(data as unknown as LivestreamStats);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error fetching livestream stats:", err);
       toast.error("Không thể tải thống kê livestream");
     } finally {
