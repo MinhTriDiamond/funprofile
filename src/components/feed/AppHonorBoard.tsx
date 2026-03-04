@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useLanguage } from '@/i18n/LanguageContext';
-import { Users, FileText, Image, Video, BadgeDollarSign, Wallet, Coins } from 'lucide-react';
+import { Users, FileText, Image, Video, BadgeDollarSign, Wallet, Coins, Radio } from 'lucide-react';
 import { formatNumber } from '@/lib/formatters';
 
 import camlyLogo from '@/assets/tokens/camly-logo.webp';
@@ -13,6 +13,7 @@ interface AppStats {
   totalPosts: number;
   totalPhotos: number;
   totalVideos: number;
+  totalLivestreams: number;
   totalRewards: number;
   treasuryReceived: number;
   totalCamlyClaimed: number;
@@ -32,11 +33,12 @@ export const AppHonorBoard = memo(() => {
       const totalPosts = Number(row.total_posts) || 0;
       const totalPhotos = Number(row.total_photos) || 0;
       const totalVideos = Number(row.total_videos) || 0;
+      const totalLivestreams = Number(row.total_livestreams) || 0;
       const totalRewards = Number(row.total_rewards) || 0;
       const treasuryReceived = Number(row.treasury_camly_received) || 0;
       const totalCamlyClaimed = Number(row.total_camly_claimed) || 0;
 
-      return { totalUsers, totalPosts, totalPhotos, totalVideos, totalRewards, treasuryReceived, totalCamlyClaimed };
+      return { totalUsers, totalPosts, totalPhotos, totalVideos, totalLivestreams, totalRewards, treasuryReceived, totalCamlyClaimed };
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
@@ -89,6 +91,13 @@ export const AppHonorBoard = memo(() => {
       value: stats?.totalVideos || 0,
       color: 'text-red-500',
       bgColor: 'bg-red-500/10',
+    },
+    {
+      icon: Radio,
+      label: t('totalLivestreams'),
+      value: stats?.totalLivestreams || 0,
+      color: 'text-pink-500',
+      bgColor: 'bg-pink-500/10',
     },
     {
       icon: BadgeDollarSign,

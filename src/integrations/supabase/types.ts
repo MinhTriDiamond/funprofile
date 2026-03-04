@@ -4712,6 +4712,7 @@ export type Database = {
         Args: never
         Returns: {
           total_camly_claimed: number
+          total_livestreams: number
           total_photos: number
           total_posts: number
           total_rewards: number
