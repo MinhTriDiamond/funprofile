@@ -25,7 +25,7 @@ interface PostWithProfile {
   content: string | null;
   image_url: string | null;
   video_url: string | null;
-  media_urls: Array<{ url: string; type: string }> | null;
+  media_urls: Array<{ url: string; type: 'image' | 'video' }> | null;
   created_at: string;
   updated_at: string | null;
   user_id: string;

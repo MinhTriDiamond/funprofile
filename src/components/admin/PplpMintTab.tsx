@@ -76,7 +76,7 @@ const ACTION_LABELS: Record<string, string> = {
 // Epoch Snapshot Button Component
 const EpochSnapshotButton = () => {
   const [isSnapshotting, setIsSnapshotting] = useState(false);
-  const [snapshotResult, setSnapshotResult] = useState<any>(null);
+  const [snapshotResult, setSnapshotResult] = useState<Record<string, unknown> | null>(null);
   const [epochMonth, setEpochMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [mintPool, setMintPool] = useState(5000000);
 

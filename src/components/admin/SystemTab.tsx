@@ -37,11 +37,11 @@ interface SystemTabProps {
 
 const SystemTab = ({ adminId }: SystemTabProps) => {
   const [backfilling, setBackfilling] = useState(false);
-  const [backfillResult, setBackfillResult] = useState<any>(null);
+  const [backfillResult, setBackfillResult] = useState<Record<string, unknown> | null>(null);
   const [deletingBanned, setDeletingBanned] = useState(false);
-  const [deleteBannedResult, setDeleteBannedResult] = useState<any>(null);
+  const [deleteBannedResult, setDeleteBannedResult] = useState<Record<string, unknown> | null>(null);
   const [scanning, setScanning] = useState(false);
-  const [scanResult, setScanResult] = useState<any>(null);
+  const [scanResult, setScanResult] = useState<Record<string, unknown> | null>(null);
 
   const handleScanOnly = async () => {
     setScanning(true);

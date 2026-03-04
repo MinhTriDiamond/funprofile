@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 const TransactionLookup = () => {
   const [txHash, setTxHash] = useState("");
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<Record<string, unknown> | null>(null);
 
   const handleSearch = async () => {
     if (!txHash.trim()) {

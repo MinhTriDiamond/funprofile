@@ -11,7 +11,7 @@ import {
 
 const AllTransactions = () => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<{ transactions: Record<string, unknown>[]; total_count: number } | null>(null);
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState("all");
   const [tokenFilter, setTokenFilter] = useState("all");
