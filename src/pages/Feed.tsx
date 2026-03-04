@@ -1,5 +1,4 @@
-import { useEffect, useState, memo, useRef, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useEffect, memo, useRef, useCallback } from 'react';
 import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
 import { FacebookCreatePost } from '@/components/feed/FacebookCreatePost';
 import { FacebookPostCard } from '@/components/feed/FacebookPostCard';
@@ -14,6 +13,7 @@ import ScrollToTopButton from '@/components/common/ScrollToTopButton';
 import { PullToRefreshContainer } from '@/components/common/PullToRefreshContainer';
 import { Loader2 } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageContext';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 // Lightweight skeleton components
 const SidebarSkeleton = memo(() => (
@@ -45,7 +45,7 @@ const PostSkeleton = memo(() => (
 PostSkeleton.displayName = 'PostSkeleton';
 
 const Feed = () => {
-  const [currentUserId, setCurrentUserId] = useState('');
+  const { userId: currentUserId } = useCurrentUser();
   const { t } = useLanguage();
   const { 
     posts, 
@@ -70,7 +70,7 @@ const Feed = () => {
   useEffect(() => {
     const observer = new IntersectionObserver(handleObserver, {
       root: null,
-      rootMargin: '200px', // Start loading before reaching the end
+      rootMargin: '200px',
       threshold: 0,
     });
 
@@ -80,27 +80,6 @@ const Feed = () => {
 
     return () => observer.disconnect();
   }, [handleObserver]);
-
-  useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) setCurrentUserId(session.user.id);
-    };
-
-    checkAuth();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session) {
-        setCurrentUserId(session.user.id);
-      } else if (event === 'SIGNED_OUT') {
-        setCurrentUserId('');
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
 
   const handlePullRefresh = useCallback(async () => {
     await refetch();
