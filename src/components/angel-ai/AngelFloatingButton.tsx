@@ -22,7 +22,7 @@ function loadPosition(): { x: number; y: number } | null {
       const pos = JSON.parse(raw);
       if (typeof pos.x === 'number' && typeof pos.y === 'number') return pos;
     }
-  } catch {}
+  } catch { /* localStorage parse — safe to ignore, use default position */ }
   return null;
 }
 

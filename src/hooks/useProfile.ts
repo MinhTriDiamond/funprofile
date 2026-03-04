@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import type { PostStats } from '@/hooks/useFeedPosts';
+import type { ProfilePostItem, OriginalProfilePost, SharedProfilePost, BasePostFields, ProfilePostProfile, ProfilePostReaction, ProfilePostComment } from '@/types/profilePosts';
 
 export interface FriendPreview {
   id: string;
@@ -55,9 +56,8 @@ export const useProfile = () => {
   const { userId: authUserId } = useCurrentUser();
   const currentUserId = authUserId || '';
   const [profile, setProfile] = useState<ProfileData | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- posts have dynamic shape from multiple queries (posts, shared_posts, gift_celebration)
-  const [allPosts, setAllPosts] = useState<any[]>([]);
-  const [originalPosts, setOriginalPosts] = useState<any[]>([]);
+  const [allPosts, setAllPosts] = useState<ProfilePostItem[]>([]);
+  const [originalPosts, setOriginalPosts] = useState<OriginalProfilePost[]>([]);
   const [loading, setLoading] = useState(true);
   const [isOwnProfile, setIsOwnProfile] = useState(false);
   const [friendsCount, setFriendsCount] = useState(0);
@@ -119,21 +119,21 @@ export const useProfile = () => {
         navigate(`/${encodeURIComponent((data.username || '').trim())}`, { replace: true });
       }
 
-      const mapProfiles = (posts: any[]) => (posts || []).map((p: any) => ({
-        ...p,
-        profiles: p.public_profiles || p.profiles,
-      }));
+      const mapProfiles = <T extends { public_profiles?: ProfilePostProfile; profiles?: ProfilePostProfile }>(posts: T[]): (T & { profiles: ProfilePostProfile })[] =>
+        (posts || []).map((p) => ({
+          ...p,
+          profiles: (p.public_profiles || p.profiles || { username: 'unknown', avatar_url: null }) as ProfilePostProfile,
+        }));
 
-      const postsData = postsRes.data;
-      const giftSenderPosts = giftSenderRes.data;
+      const postsData = postsRes.data || [];
+      const giftSenderPosts = giftSenderRes.data || [];
 
-      const existingPostIds = new Set((postsData || []).map((p: any) => p.id));
+      const existingPostIds = new Set(postsData.map((p) => p.id));
       const allUserPosts = [
-        ...mapProfiles(postsData || []),
-        ...mapProfiles(giftSenderPosts || []).filter((p: any) => !existingPostIds.has(p.id))
+        ...mapProfiles(postsData),
+        ...mapProfiles(giftSenderPosts).filter((p) => !existingPostIds.has(p.id))
       ];
-
-      setOriginalPosts(allUserPosts);
+      setOriginalPosts(allUserPosts as unknown as OriginalProfilePost[]);
 
       // Batch-fetch gift profiles
       const giftPostsInProfile = allUserPosts.filter(p => p.post_type === 'gift_celebration');
@@ -146,44 +146,57 @@ export const useProfile = () => {
       const friendsData = friendsRes.data;
       const friendIds = (friendsData || []).map(f => f.user_id === profileId ? f.friend_id : f.user_id);
 
+      type GiftProfile = { id: string; username: string; display_name?: string | null; avatar_url: string | null };
+      const emptyResult = { data: [] as GiftProfile[] };
+
       const [giftProfilesRes, friendProfilesRes] = await Promise.all([
         profileIdsToFetch.size > 0
           ? supabase.from('public_profiles').select('id, username, display_name, avatar_url').in('id', Array.from(profileIdsToFetch))
-          : Promise.resolve({ data: [] as any[] }),
+          : Promise.resolve(emptyResult),
         friendIds.length > 0
           ? supabase.from('public_profiles').select('id, username, full_name, avatar_url').in('id', friendIds).limit(6)
-          : Promise.resolve({ data: [] as any[] }),
+          : Promise.resolve({ data: [] as FriendPreview[] }),
       ]);
 
       const giftProfileMap = new Map<string, { username: string; display_name?: string | null; avatar_url: string | null }>();
-      ((giftProfilesRes as any).data || []).forEach((p: any) => giftProfileMap.set(p.id, p));
+      (giftProfilesRes.data || []).forEach((p) => giftProfileMap.set(p.id, p));
 
-      const allUserPostsWithGiftProfiles = allUserPosts.map(post => {
-        if (post.post_type !== 'gift_celebration') return post;
-        return {
+      const allUserPostsWithGiftProfiles: OriginalProfilePost[] = allUserPosts.map(post => {
+        const base = {
           ...post,
+          _type: 'original' as const,
+          _sortTime: new Date(post.created_at).getTime(),
+        } as OriginalProfilePost;
+        if (post.post_type !== 'gift_celebration') return base;
+        return {
+          ...base,
           recipientProfile: post.gift_recipient_id ? (giftProfileMap.get(post.gift_recipient_id) || null) : null,
           senderProfile: (post.gift_sender_id && post.gift_sender_id !== post.user_id)
             ? (giftProfileMap.get(post.gift_sender_id) || null) : null,
         };
       });
 
-      const combinedPosts: any[] = [];
-      allUserPostsWithGiftProfiles.forEach(post => {
-        combinedPosts.push({ ...post, _type: 'original', _sortTime: new Date(post.created_at).getTime() });
-      });
+      setOriginalPosts(allUserPostsWithGiftProfiles);
+
+      const combinedPosts: ProfilePostItem[] = [...allUserPostsWithGiftProfiles];
       const sharedPostsData = sharedRes.data;
-      (sharedPostsData || []).forEach((sharedPost: any) => {
+      (sharedPostsData || []).forEach((sharedPost) => {
         if (sharedPost.posts) {
-          const mappedPost = { ...sharedPost.posts, profiles: sharedPost.posts.public_profiles || sharedPost.posts.profiles };
-          combinedPosts.push({ ...sharedPost, posts: mappedPost, _type: 'shared', _sortTime: new Date(sharedPost.created_at).getTime() });
+          const raw = sharedPost.posts as unknown as { public_profiles?: ProfilePostProfile; profiles?: ProfilePostProfile };
+          const mappedPost = { ...(sharedPost.posts as object), profiles: raw.public_profiles || raw.profiles || { username: 'unknown', avatar_url: null } } as BasePostFields;
+          combinedPosts.push({
+            ...sharedPost,
+            posts: mappedPost,
+            _type: 'shared',
+            _sortTime: new Date(sharedPost.created_at).getTime(),
+          } as unknown as SharedProfilePost);
         }
       });
       combinedPosts.sort((a, b) => b._sortTime - a._sortTime);
       setAllPosts(combinedPosts);
 
       setFriendsCount(friendsRes.count || 0);
-      setFriendsPreview((friendProfilesRes as any).data || []);
+      setFriendsPreview((friendProfilesRes.data || []) as FriendPreview[]);
     } catch (error) {
       // Error fetching profile - silent fail
     } finally {
@@ -279,11 +292,13 @@ export const useProfile = () => {
   const displayedPosts = useMemo(() => sortedPosts.slice(0, displayedCount), [sortedPosts, displayedCount]);
   const hasMorePosts = displayedCount < sortedPosts.length;
 
-  const buildInitialStats = useCallback((post: any): PostStats | undefined => {
-    if (!post.reactions && !post.comments) return undefined;
+  const buildInitialStats = useCallback((post: ProfilePostItem): PostStats | undefined => {
+    if (post._type === 'shared') return undefined;
+    const orig = post as OriginalProfilePost;
+    if (!orig.reactions && !orig.comments) return undefined;
     return {
-      reactions: (post.reactions || []).map((r: any) => ({ id: r.id, user_id: r.user_id, type: r.type })),
-      commentCount: (post.comments || []).length,
+      reactions: (orig.reactions || []).map((r) => ({ id: r.id, user_id: r.user_id, type: r.type })),
+      commentCount: (orig.comments || []).length,
       shareCount: 0,
     };
   }, []);

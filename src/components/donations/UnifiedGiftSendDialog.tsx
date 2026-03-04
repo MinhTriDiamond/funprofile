@@ -485,8 +485,8 @@ export const UnifiedGiftSendDialog = ({
           results.push({ recipient, success: false, error: 'Giao dịch bị từ chối' });
           resetState();
         }
-      } catch (err: any) {
-        results.push({ recipient, success: false, error: err?.message || 'Lỗi gửi' });
+      } catch (err: unknown) {
+        results.push({ recipient, success: false, error: (err as Error)?.message || 'Lỗi gửi' });
         resetState();
       }
 
@@ -516,7 +516,7 @@ export const UnifiedGiftSendDialog = ({
           ? firstSuccess.recipient.username
           : successNames,
         recipientDisplayName: successCount === 1
-          ? ((firstSuccess.recipient as any).display_name || firstSuccess.recipient.username)
+          ? (firstSuccess.recipient.displayName || firstSuccess.recipient.username)
           : `${successCount} người nhận`,
         recipientAvatarUrl: successCount === 1 ? firstSuccess.recipient.avatarUrl : null,
         recipientId: firstSuccess.recipient.id,
@@ -587,8 +587,8 @@ export const UnifiedGiftSendDialog = ({
           return true;
         }
         throw new Error(error?.message || 'Record failed');
-      } catch (err: any) {
-        logger.error(`[GIFT] record-donation attempt ${attempt + 1} failed:`, err?.message);
+      } catch (err: unknown) {
+        logger.error(`[GIFT] record-donation attempt ${attempt + 1} failed:`, (err as Error)?.message);
         if (attempt === 0) await new Promise(r => setTimeout(r, 2000)); // wait 2s before retry
       }
     }

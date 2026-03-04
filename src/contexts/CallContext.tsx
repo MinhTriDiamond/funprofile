@@ -84,7 +84,7 @@ export function CallProvider({ children, renderIncomingDialog = true }: CallProv
 
       setIncomingCall(null);
     } catch (error) {
-      console.error('Failed to decline call:', error);
+      logger.error('[CallContext] Failed to decline call:', error);
     }
   }, [incomingCall]);
 
@@ -92,7 +92,7 @@ export function CallProvider({ children, renderIncomingDialog = true }: CallProv
   useEffect(() => {
     if (!userId) return;
 
-    console.log('[CallContext] Setting up global call listener for user:', userId);
+    logger.debug('[CallContext] Setting up global call listener for user:', userId);
 
     let channel: ReturnType<typeof supabase.channel> | null = null;
     let cancelled = false;
@@ -107,11 +107,11 @@ export function CallProvider({ children, renderIncomingDialog = true }: CallProv
 
       if (cancelled) return;
       if (error) {
-        console.error('[CallContext] Failed to load conversation ids:', error);
+        logger.error('[CallContext] Failed to load conversation ids:', error);
         return;
       }
 
-      const conversationIds = (rows || []).map((r: any) => r.conversation_id).filter(Boolean);
+      const conversationIds = (rows || []).map((r) => r.conversation_id).filter(Boolean);
       if (!conversationIds.length) return;
 
       const inFilter = `conversation_id=in.(${conversationIds.join(',')})`;
@@ -163,7 +163,7 @@ export function CallProvider({ children, renderIncomingDialog = true }: CallProv
     })();
 
     return () => {
-      console.log('[CallContext] Cleaning up global call listener');
+      logger.debug('[CallContext] Cleaning up global call listener');
       cancelled = true;
       if (channel) supabase.removeChannel(channel);
     };

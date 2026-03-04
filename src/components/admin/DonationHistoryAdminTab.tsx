@@ -27,6 +27,7 @@ import { useAdminDonationHistory, fetchAllDonationsForExport } from '@/hooks/use
 import { DonationRecord } from '@/hooks/useDonationHistory';
 import { DonationSuccessCard } from '@/components/donations/DonationSuccessCard';
 import { DonationReceivedCard } from '@/components/donations/DonationReceivedCard';
+import type { UnmappableTransaction } from '@/types/adminResponses';
 import { exportDonationsToCSV } from '@/utils/exportDonations';
 import { formatNumber, formatDate } from '@/lib/formatters';
 import { toast } from 'sonner';
@@ -68,7 +69,7 @@ export function DonationHistoryAdminTab() {
   const [isBackfilling, setIsBackfilling] = useState(false);
   const [viewMode, setViewMode] = useState<'donations' | 'scanResults'>('donations');
   const [missingTx, setMissingTx] = useState<MissingTransaction[]>([]);
-  const [unmappableTx, setUnmappableTx] = useState<any[]>([]);
+  const [unmappableTx, setUnmappableTx] = useState<UnmappableTransaction[]>([]);
   const [totalScanned, setTotalScanned] = useState(0);
 
   const handleDonationClick = (donation: DonationRecord) => {
@@ -97,9 +98,9 @@ export function DonationHistoryAdminTab() {
       if (data.missing?.length === 0) {
         toast.success('Không có giao dịch nào bị thiếu!');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Scan error:', error);
-      toast.error('Lỗi khi quét: ' + (error.message || 'Unknown'));
+      toast.error('Lỗi khi quét: ' + (error instanceof Error ? error.message : 'Unknown'));
     } finally {
       setIsScanning(false);
     }
@@ -117,9 +118,9 @@ export function DonationHistoryAdminTab() {
       setViewMode('donations');
       setMissingTx([]);
       refetch();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Backfill error:', error);
-      toast.error('Lỗi khi backfill: ' + (error.message || 'Unknown'));
+      toast.error('Lỗi khi backfill: ' + (error instanceof Error ? error.message : 'Unknown'));
     } finally {
       setIsBackfilling(false);
     }

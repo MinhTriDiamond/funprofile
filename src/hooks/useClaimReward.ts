@@ -54,7 +54,7 @@ export const useClaimReward = () => {
           if (errorBody?.message) {
             errorMsg = errorBody.message;
           }
-        } catch {}
+        } catch { /* response body parse — safe to ignore */ }
         setError(errorMsg);
         toast.error(errorMsg);
         return null;

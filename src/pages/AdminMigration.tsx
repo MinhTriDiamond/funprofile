@@ -296,7 +296,7 @@ const AdminMigration = () => {
       const urlPath = new URL(url).pathname;
       const urlExt = urlPath.split('.').pop()?.toLowerCase();
       if (urlExt && urlExt.length <= 5) return urlExt;
-    } catch {}
+    } catch { /* URL parsing — safe to ignore, fallback to MIME type */ }
 
     const typeMap: Record<string, string> = {
       'image/jpeg': 'jpg',

@@ -243,7 +243,7 @@ export const SocialVideoPlayer = memo(({
       } else {
         await v.requestPictureInPicture();
       }
-    } catch {}
+    } catch { /* PiP not supported on all browsers — safe to ignore */ }
   }, [videoRef]);
 
   /* ---- fullscreen state sync ---- */

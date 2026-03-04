@@ -23,7 +23,7 @@ Deno.serve(async (req) => {
       limit = Math.min(body.limit || 50, 100);
       status_filter = body.status_filter || "";
       token_filter = body.token_filter || "";
-    } catch {}
+    } catch { /* request body parse — safe to ignore, use defaults */ }
 
     const offset = (page - 1) * limit;
 
