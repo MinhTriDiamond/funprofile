@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -221,18 +222,10 @@ const FinancialTab = () => {
   const [selectedUserForRecalc, setSelectedUserForRecalc] = useState<{userId: string, clientId: string, username: string} | null>(null);
   const [activeTab, setActiveTab] = useState("users");
   const [transactionDialogUser, setTransactionDialogUser] = useState<string | null>(null);
-  const [currentAdminId, setCurrentAdminId] = useState<string | null>(null);
+  const { userId: currentAdminId } = useCurrentUser();
 
-  // Get admin ID from centralized hook — imported at top of file via prop or context
   useEffect(() => {
-    const init = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        setCurrentAdminId(session.user.id);
-      }
-      loadData();
-    };
-    init();
+    loadData();
   }, []);
 
   // Get latest critical reconciliation issue

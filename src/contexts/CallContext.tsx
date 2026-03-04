@@ -11,6 +11,22 @@ import type { CallSession, CallType } from '@/modules/chat/types';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import logger from '@/lib/logger';
+
+/** Shape of a call_sessions row from Supabase realtime payload */
+interface CallSessionPayload {
+  id: string;
+  initiator_id: string;
+  conversation_id: string | null;
+  channel_name: string;
+  call_type: string;
+  status: string;
+  started_at: string | null;
+  ended_at: string | null;
+  duration_seconds: number | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
 
 interface CallContextValue {
   incomingCall: CallSession | null;
@@ -106,7 +122,7 @@ export function CallProvider({ children, renderIncomingDialog = true }: CallProv
           'postgres_changes',
           { event: 'INSERT', schema: 'public', table: 'call_sessions', filter: inFilter },
           (payload) => {
-            const session = payload.new as any;
+            const session = payload.new as CallSessionPayload;
 
             // Skip if we're the initiator
             if (session.initiator_id === userId) return;
@@ -114,7 +130,7 @@ export function CallProvider({ children, renderIncomingDialog = true }: CallProv
             // Only show ringing calls
             if (session.status !== 'ringing') return;
 
-            console.log('[CallContext] Incoming call detected:', session.id);
+            logger.debug('[CallContext] Incoming call detected:', session.id);
 
             const typedSession: CallSession = {
               ...session,
@@ -127,11 +143,11 @@ export function CallProvider({ children, renderIncomingDialog = true }: CallProv
           'postgres_changes',
           { event: 'UPDATE', schema: 'public', table: 'call_sessions', filter: inFilter },
           (payload) => {
-            const session = payload.new as any;
+            const session = payload.new as CallSessionPayload;
 
             // If the incoming call was cancelled/ended by caller
             if (incomingCall?.id === session.id && ['ended', 'declined', 'missed'].includes(session.status)) {
-              console.log('[CallContext] Incoming call cancelled:', session.status);
+              logger.debug('[CallContext] Incoming call cancelled:', session.status);
               setIncomingCall(null);
 
               if (session.status === 'missed') {

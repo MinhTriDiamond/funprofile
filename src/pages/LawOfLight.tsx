@@ -6,6 +6,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { Sparkles, Eye, Home } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageContext';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+import logger from '@/lib/logger';
 
 
 const ANGEL_LOGO = '/angel-ai-logo-128.png';
@@ -14,6 +16,7 @@ const LawOfLight = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useLanguage();
+  const { userId, isAuthenticated } = useCurrentUser();
   const [checklist, setChecklist] = useState([false, false, false, false, false]);
   const [loading, setLoading] = useState(false);
   const [isReadOnly, setIsReadOnly] = useState(false);
@@ -27,23 +30,21 @@ const LawOfLight = () => {
     if (viewMode) return;
     
     // Check if user is already logged in and has accepted
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('law_of_light_accepted')
-          .eq('id', session.user.id)
-          .single();
-        
-        // If user is logged in and already accepted, redirect to feed
-        if (profile?.law_of_light_accepted) {
-          navigate('/');
-        }
+    if (!isAuthenticated || !userId) return;
+    
+    const checkAccepted = async () => {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('law_of_light_accepted')
+        .eq('id', userId)
+        .single();
+      
+      if (profile?.law_of_light_accepted) {
+        navigate('/');
       }
     };
-    checkAuth();
-  }, [location, navigate]);
+    checkAccepted();
+  }, [location, navigate, userId, isAuthenticated]);
 
   const allChecked = checklist.every(Boolean);
 
@@ -58,14 +59,12 @@ const LawOfLight = () => {
     setLoading(true);
     
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session) {
+      if (isAuthenticated && userId) {
         // User already logged in - update profile directly
         await supabase.from('profiles').update({
           law_of_light_accepted: true,
           law_of_light_accepted_at: new Date().toISOString()
-        }).eq('id', session.user.id);
+        }).eq('id', userId);
         
         toast.success('🌟 Con đã sẵn sàng bước vào Ánh Sáng!');
         navigate('/');
@@ -76,7 +75,7 @@ const LawOfLight = () => {
         navigate('/auth');
       }
     } catch (error) {
-      console.error('Error accepting law of light:', error);
+      logger.error('[LawOfLight] Error accepting:', error);
       toast.error('Có lỗi xảy ra, vui lòng thử lại');
     } finally {
       setLoading(false);

@@ -248,7 +248,7 @@ export function ChunkedVideoPlayer({
 
     const totalDurationSec = manifest.total_duration_ms / 1000;
     if (totalDurationSec > 0 && isFinite(totalDurationSec)) {
-      try { mediaSource.duration = totalDurationSec; } catch {}
+      try { mediaSource.duration = totalDurationSec; } catch { /* mediaSource may be closed — safe to ignore */ }
     }
 
     const offsets = buildTimeMap(manifest.chunks);
@@ -364,7 +364,7 @@ export function ChunkedVideoPlayer({
         const bufStart = sourceBuffer.buffered.start(0);
         if (bufStart >= removeEnd) { resolve(); return; }
         sourceBuffer.addEventListener('updateend', () => resolve(), { once: true });
-        try { sourceBuffer.remove(bufStart, removeEnd); } catch { resolve(); }
+        try { sourceBuffer.remove(bufStart, removeEnd); } catch { /* buffer busy — resolve immediately */ resolve(); }
       });
     };
 
@@ -522,7 +522,7 @@ export function ChunkedVideoPlayer({
       const allFetchedOrFailed = fetched.size + failedChunks.size >= totalChunks;
       if (allFetchedOrFailed && !sourceBuffer.updating && nextAppendSeq >= totalChunks) {
         if (mediaSource.readyState === 'open') {
-          try { mediaSource.endOfStream(); } catch {}
+          try { mediaSource.endOfStream(); } catch { /* mediaSource already closed — safe to ignore */ }
         }
         clearInterval(checkEndId);
       }

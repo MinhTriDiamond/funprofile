@@ -12,7 +12,7 @@ export interface SearchHistoryItem {
     userId?: string;
     username?: string;
     avatarUrl?: string | null;
-    [key: string]: any;
+    [key: string]: unknown;
   };
   useCount: number;
   lastUsedAt: string;
@@ -27,7 +27,7 @@ export function isHistoryEnabled(): boolean {
   try {
     const val = localStorage.getItem(ENABLED_KEY);
     return val === null ? true : val === 'true';
-  } catch {
+  } catch { /* localStorage unavailable — safe to ignore */
     return true;
   }
 }
@@ -35,7 +35,7 @@ export function isHistoryEnabled(): boolean {
 export function setHistoryEnabled(enabled: boolean): void {
   try {
     localStorage.setItem(ENABLED_KEY, String(enabled));
-  } catch { }
+  } catch { /* localStorage unavailable — safe to ignore */ }
 }
 
 export function getHistory(): SearchHistoryItem[] {
@@ -44,7 +44,7 @@ export function getHistory(): SearchHistoryItem[] {
     if (!raw) return [];
     const items: SearchHistoryItem[] = JSON.parse(raw);
     return items.sort((a, b) => new Date(b.lastUsedAt).getTime() - new Date(a.lastUsedAt).getTime());
-  } catch {
+  } catch { /* localStorage parse error — safe to ignore */
     return [];
   }
 }
@@ -52,7 +52,7 @@ export function getHistory(): SearchHistoryItem[] {
 function saveHistory(items: SearchHistoryItem[]): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-  } catch { }
+  } catch { /* localStorage full or unavailable — safe to ignore */ }
 }
 
 export function addToHistory(
@@ -103,13 +103,16 @@ export function getFilteredHistory(prefix: string, limit = 10): SearchHistoryIte
 }
 
 // ---- Cloud sync ----
+// search_history table is not in generated types — cast at call site
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const searchHistoryTable = () => (supabase as any).from('search_history');
 
 export async function syncToCloud(item: SearchHistoryItem): Promise<void> {
   try {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) return;
 
-    await (supabase as any).from('search_history').upsert(
+    await searchHistoryTable().upsert(
       {
         user_id: session.user.id,
         query: item.query,
@@ -120,7 +123,7 @@ export async function syncToCloud(item: SearchHistoryItem): Promise<void> {
       },
       { onConflict: 'user_id,query,type' }
     );
-  } catch { }
+  } catch { /* cloud sync failure — non-critical, local copy preserved */ }
 }
 
 export async function syncFromCloud(): Promise<SearchHistoryItem[]> {
@@ -128,8 +131,7 @@ export async function syncFromCloud(): Promise<SearchHistoryItem[]> {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) return getHistory();
 
-    const { data } = await (supabase as any)
-      .from('search_history')
+    const { data } = await searchHistoryTable()
       .select('*')
       .eq('user_id', session.user.id)
       .order('last_used_at', { ascending: false })
@@ -170,7 +172,7 @@ export async function syncFromCloud(): Promise<SearchHistoryItem[]> {
     if (merged.length > MAX_ITEMS) merged.length = MAX_ITEMS;
     saveHistory(merged);
     return merged;
-  } catch {
+  } catch { /* cloud sync failure — return local copy */
     return getHistory();
   }
 }
@@ -179,19 +181,18 @@ export async function clearCloudHistory(): Promise<void> {
   try {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) return;
-    await (supabase as any).from('search_history').delete().eq('user_id', session.user.id);
-  } catch { }
+    await searchHistoryTable().delete().eq('user_id', session.user.id);
+  } catch { /* cloud deletion failure — non-critical */ }
 }
 
 export async function removeCloudItem(query: string, type: string): Promise<void> {
   try {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) return;
-    await (supabase as any)
-      .from('search_history')
+    await searchHistoryTable()
       .delete()
       .eq('user_id', session.user.id)
       .eq('query', query)
       .eq('type', type);
-  } catch { }
+  } catch { /* cloud deletion failure — non-critical */ }
 }

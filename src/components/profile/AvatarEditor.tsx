@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { AvatarCropper } from './AvatarCropper';
+import logger from '@/lib/logger';
 
 interface AvatarEditorProps {
   userId: string;
@@ -58,10 +59,10 @@ export function AvatarEditor({
     setCropImage(null);
 
     try {
-      // Refresh session to ensure token is valid
+      // Need access_token for edge function call — getSession is correct here
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       if (sessionError || !session) {
-        console.error('Session error:', sessionError);
+        logger.error('[AvatarEditor] Session error:', sessionError);
         toast.error('Phiên đăng nhập hết hạn, vui lòng đăng nhập lại');
         setIsUploading(false);
         return;
@@ -88,12 +89,12 @@ export function AvatarEditor({
 
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
-        console.error('Upload edge function error:', response.status, errData);
+        logger.error('[AvatarEditor] Upload edge function error:', response.status, errData);
         throw new Error(errData.error || `Upload failed: HTTP ${response.status}`);
       }
 
       const result = await response.json();
-      console.log('Avatar uploaded to R2:', result.url);
+      logger.debug('[AvatarEditor] Avatar uploaded to R2:', result.url);
 
       const { error } = await supabase
         .from('profiles')
@@ -101,14 +102,14 @@ export function AvatarEditor({
         .eq('id', userId);
 
       if (error) {
-        console.error('Profile update error:', error);
+        logger.error('[AvatarEditor] Profile update error:', error);
         throw new Error(`Profile update failed: ${error.message}`);
       }
 
       onAvatarUpdated(result.url);
       toast.success('Đã cập nhật ảnh đại diện');
     } catch (error) {
-      console.error('Error uploading avatar:', error);
+      logger.error('[AvatarEditor] Error uploading avatar:', error);
       const msg = error instanceof Error ? error.message : 'Lỗi không xác định';
       toast.error(`Không thể tải lên ảnh đại diện: ${msg}`);
     } finally {
