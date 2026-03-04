@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { uploadStreamVideo, createStreamRecord } from '../streamService';
 
 type Phase = 'idle' | 'preview' | 'recording' | 'uploading';
@@ -35,6 +36,7 @@ export default function LiveStream() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
+  const { userId: authUserId } = useCurrentUser();
 
   const [phase, setPhase] = useState<Phase>('idle');
   const [title, setTitle] = useState(searchParams.get('title') || '');
@@ -133,17 +135,16 @@ export default function LiveStream() {
     busyRef.current = true;
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Chưa đăng nhập');
+      if (!authUserId) throw new Error('Chưa đăng nhập');
 
       const blob = new Blob(chunksRef.current, { type: 'video/webm' });
       if (blob.size === 0) throw new Error('Video rỗng');
 
       // 1. Upload to R2
-      const { publicUrl } = await uploadStreamVideo(blob, user.id);
+      const { publicUrl } = await uploadStreamVideo(blob, authUserId);
 
       // 2. Insert DB record
-      await createStreamRecord(user.id, title, publicUrl, seconds);
+      await createStreamRecord(authUserId, title, publicUrl, seconds);
 
       toast.success('Đã đăng video thành công!');
       queryClient.invalidateQueries({ queryKey: ['posts'] });

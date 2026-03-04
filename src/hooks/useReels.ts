@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 export interface Reel {
   id: string;
   user_id: string;
@@ -48,15 +48,7 @@ export interface ReelComment {
 
 export function useReels(limit = 10) {
   const queryClient = useQueryClient();
-
-  const { data: currentUser } = useQuery({
-    queryKey: ['current-user-reels'],
-    queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      return user;
-    },
-    staleTime: 5 * 60 * 1000,
-  });
+  const { user: currentUser } = useCurrentUser();
 
   const { data: reels = [], isLoading, refetch } = useQuery({
     queryKey: ['reels', limit, currentUser?.id],

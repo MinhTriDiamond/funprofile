@@ -2,7 +2,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { uploadToR2 } from '@/utils/r2Upload';
 import type { CreateLiveSessionInput, LiveSession } from './types';
 
-const db = supabase as any;
+const db = supabase as any; // Required: posts.metadata typed as Json, patch is partial object
 
 const LIVE_POST_DEFAULT_CONTENT = 'Đang LIVE trên FUN Profile';
 

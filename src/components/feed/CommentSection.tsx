@@ -99,6 +99,7 @@ export const CommentSection = ({ postId, onCommentAdded }: CommentSectionProps) 
 
   const fetchComments = async () => {
     try {
+      // Single query for ALL comments (parents + replies) — fixes N+1 problem
       const { data, error } = await supabase
         .from('comments')
         .select(`
@@ -106,33 +107,36 @@ export const CommentSection = ({ postId, onCommentAdded }: CommentSectionProps) 
           profiles (username, avatar_url)
         `)
         .eq('post_id', postId)
-        .is('parent_comment_id', null)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: true });
 
       if (error) {
         toast.error(t('cannotLoadComments'));
         return;
       }
 
-      const commentsWithReplies = await Promise.all(
-        (data || []).map(async (comment) => {
-          const { data: replies } = await supabase
-            .from('comments')
-            .select(`
-              *,
-              profiles (username, avatar_url)
-            `)
-            .eq('parent_comment_id', comment.id)
-            .order('created_at', { ascending: true });
+      // Group by parent_comment_id client-side
+      const allComments = data || [];
+      const parentComments: Comment[] = [];
+      const repliesMap = new Map<string, Comment[]>();
 
-          return {
-            ...comment,
-            replies: replies || [],
-          };
-        })
-      );
+      for (const c of allComments) {
+        if (c.parent_comment_id) {
+          const list = repliesMap.get(c.parent_comment_id) || [];
+          list.push(c);
+          repliesMap.set(c.parent_comment_id, list);
+        } else {
+          parentComments.push({ ...c, replies: [] });
+        }
+      }
 
-      setComments(commentsWithReplies);
+      // Attach replies to parents
+      for (const parent of parentComments) {
+        parent.replies = repliesMap.get(parent.id) || [];
+      }
+
+      // Reverse for newest-first display
+      parentComments.reverse();
+      setComments(parentComments);
     } catch (error) {
       console.error('fetchComments error:', error);
       toast.error(t('cannotLoadComments'));

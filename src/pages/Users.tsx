@@ -27,11 +27,13 @@ import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 const Users = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { userId: authUserId } = useCurrentUser();
   const {
     users, isLoading, stats, search, setSearch, page, setPage, totalPages, exportCSV, allUsers, filters, setFilters, isAdmin, emailsMap, sortBy, setSortBy,
   } = useUserDirectory();
@@ -84,10 +86,9 @@ const Users = () => {
     setIsActioning(true);
     try {
       if (actionTarget.type === 'ban') {
-        const { data: { user: adminUser } } = await supabase.auth.getUser();
-        if (!adminUser) throw new Error('Không xác thực được admin');
+        if (!authUserId) throw new Error('Không xác thực được admin');
         const { error } = await supabase.rpc('ban_user_permanently', {
-          p_admin_id: adminUser.id,
+          p_admin_id: authUserId,
           p_user_id: actionTarget.id,
           p_reason: 'Banned from user directory by admin',
         });
@@ -104,10 +105,9 @@ const Users = () => {
         if (!data || data.length === 0) throw new Error('Không có quyền cập nhật trạng thái user này. Vui lòng kiểm tra quyền admin.');
         toast({ title: 'Đã mở khóa', description: `@${actionTarget.username} đã được mở khóa.` });
       } else if (actionTarget.type === 'unban') {
-        const { data: { user: adminUser } } = await supabase.auth.getUser();
-        if (!adminUser) throw new Error('Không xác thực được admin');
+        if (!authUserId) throw new Error('Không xác thực được admin');
         const { error } = await supabase.rpc('unban_user', {
-          p_admin_id: adminUser.id,
+          p_admin_id: authUserId,
           p_user_id: actionTarget.id,
           p_reason: 'Unbanned from user directory by admin',
         });

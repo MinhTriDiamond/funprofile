@@ -156,11 +156,12 @@ export function useSendToken() {
         try {
           console.log('[SEND] DB_LOG_START (background)');
           setTxStep('finalizing');
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user && hash) {
+          // Use getSession (cached) instead of getUser (network call)
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user && hash) {
             await withTimeout(
               Promise.resolve(supabase.from('transactions').insert({
-                user_id: user.id,
+                user_id: session.user.id,
                 tx_hash: hash,
                 from_address: senderAddress,
                 to_address: recipient,

@@ -20,7 +20,7 @@ export interface AdminUserData {
   email?: string | null;
 }
 
-const fetchAdminUsers = async (): Promise<AdminUserData[]> => {
+const fetchAdminUsers = async (adminUserId: string | null): Promise<AdminUserData[]> => {
   const { data: profiles, error } = await supabase
     .from("profiles")
     .select("*")
@@ -32,11 +32,10 @@ const fetchAdminUsers = async (): Promise<AdminUserData[]> => {
   const { data: rewardsData } = await supabase.rpc("get_user_rewards", { limit_count: 500 });
   const rewardsMap = new Map(rewardsData?.map((r: any) => [r.id, r]) || []);
 
-  // Fetch emails for admin
-  const { data: { user: currentUser } } = await supabase.auth.getUser();
+  // Fetch emails for admin using passed-in userId
   let emailsMap = new Map<string, string>();
-  if (currentUser) {
-    const { data: emailsData } = await supabase.rpc("get_user_emails_for_admin", { p_admin_id: currentUser.id });
+  if (adminUserId) {
+    const { data: emailsData } = await supabase.rpc("get_user_emails_for_admin", { p_admin_id: adminUserId });
     if (emailsData) {
       emailsMap = new Map((emailsData as any[]).map((e: any) => [e.user_id, e.email]));
     }
@@ -60,11 +59,12 @@ const fetchAdminUsers = async (): Promise<AdminUserData[]> => {
 
 export const ADMIN_USERS_KEY = ["admin-users"];
 
-export const useAdminUsers = () => {
+export const useAdminUsers = (adminUserId?: string | null) => {
   return useQuery({
-    queryKey: ADMIN_USERS_KEY,
-    queryFn: fetchAdminUsers,
+    queryKey: [...ADMIN_USERS_KEY, adminUserId],
+    queryFn: () => fetchAdminUsers(adminUserId ?? null),
     staleTime: 2 * 60 * 1000,
+    enabled: !!adminUserId,
   });
 };
 

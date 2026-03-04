@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { uploadToR2, deleteFromR2 } from '@/utils/r2Upload';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -36,6 +37,7 @@ const profileSchema = z.object({
 });
 
 export const EditProfile = () => {
+  const { userId: authUserId } = useCurrentUser();
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
@@ -56,20 +58,19 @@ export const EditProfile = () => {
   const { t } = useLanguage();
 
   useEffect(() => {
-    fetchProfile();
-  }, []);
+    if (authUserId) fetchProfile();
+  }, [authUserId]);
 
   const fetchProfile = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!authUserId) return;
 
-      setUserId(user.id);
+      setUserId(authUserId);
 
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', user.id)
+        .eq('id', authUserId)
         .single();
 
       if (error) throw error;

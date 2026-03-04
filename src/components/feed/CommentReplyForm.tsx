@@ -8,6 +8,7 @@ import { CommentMediaUpload } from './CommentMediaUpload';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { EmojiPicker } from './EmojiPicker';
 import { useLanguage } from '@/i18n/LanguageContext';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 interface CommentReplyFormProps {
   postId: string;
@@ -23,6 +24,7 @@ export const CommentReplyForm = ({
   onCancel 
 }: CommentReplyFormProps) => {
   const { t } = useLanguage();
+  const { userId } = useCurrentUser();
   const [content, setContent] = useState('');
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
   const [mediaType, setMediaType] = useState<'image' | 'video' | null>(null);
@@ -35,21 +37,19 @@ export const CommentReplyForm = ({
   });
 
   useEffect(() => {
-    fetchCurrentUser();
-  }, []);
+    if (userId) fetchCurrentUserProfile();
+  }, [userId]);
 
-  const fetchCurrentUser = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('avatar_url, username')
-        .eq('id', user.id)
-        .single();
-      
-      if (profile) {
-        setCurrentUser(profile);
-      }
+  const fetchCurrentUserProfile = async () => {
+    if (!userId) return;
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('avatar_url, username')
+      .eq('id', userId)
+      .single();
+    
+    if (profile) {
+      setCurrentUser(profile);
     }
   };
 
@@ -64,17 +64,16 @@ export const CommentReplyForm = ({
     }
 
     setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
     
-    if (!user) {
+    if (!userId) {
       toast.error(t('pleaseLoginToReply'));
       setLoading(false);
       return;
     }
 
-    const insertData: any = {
+    const insertData: Record<string, string> & { post_id: string; user_id: string; content: string; parent_comment_id: string; image_url?: string; video_url?: string } = {
       post_id: postId,
-      user_id: user.id,
+      user_id: userId,
       content: content.trim() || '',
       parent_comment_id: parentCommentId,
     };

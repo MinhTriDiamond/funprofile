@@ -12,6 +12,7 @@ import { useQuery } from '@tanstack/react-query';
 import { AngelFloatingButton } from '@/components/angel-ai';
 import honorBoardIcon from '@/assets/honor-board-icon.png';
 import { UnifiedGiftSendDialog } from '@/components/donations/UnifiedGiftSendDialog';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 export const MobileBottomNav = memo(() => {
   const navigate = useNavigate();
@@ -25,15 +26,8 @@ export const MobileBottomNav = memo(() => {
   // Detect if we're on a profile page
   const isProfilePage = location.pathname.startsWith('/profile');
 
-  // Fetch current user
-  const { data: currentUser } = useQuery({
-    queryKey: ['current-user-nav'],
-    queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      return user;
-    },
-    staleTime: 5 * 60 * 1000,
-  });
+  // Use centralized auth hook
+  const { user: currentUser } = useCurrentUser();
 
   // Get the profile user ID (from URL params or current user)
   const profileUserId = userId || currentUser?.id;
