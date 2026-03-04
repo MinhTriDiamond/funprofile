@@ -483,7 +483,15 @@ export const UnifiedGiftSendDialog = ({
                 formattedBalance={formattedBalance}
                 disabledTokens={disabledTokens}
                 selectedChainId={selectedChainId}
-                onChainChange={(id) => { setSelectedChainId(id); setAmount(''); }}
+                onChainChange={(id) => {
+                  setSelectedChainId(id);
+                  setAmount('');
+                  // Auto-switch to BNB if current token is disabled on new chain
+                  if (!isTokenAvailableOnChain(selectedToken.symbol, id)) {
+                    const bnbToken = SUPPORTED_TOKENS.find(t => t.symbol === 'BNB');
+                    if (bnbToken) setSelectedToken(bnbToken);
+                  }
+                }}
                 walletChainId={chainId}
                 amount={amount}
                 onAmountChange={setAmount}
