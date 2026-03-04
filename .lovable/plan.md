@@ -1,45 +1,78 @@
 
 
-# Chuyển auth-email-hook sang dùng Resend API
+# Phân tích: Tại sao Database hiển thị Livestream = 0
 
-## Vấn đề hiện tại
+## Phát hiện chính
 
-`auth-email-hook` đang dùng `sendLovableEmail` (hệ thống email managed của Lovable) để gửi tất cả email xác thực. Hệ thống này đang gặp lỗi (có thể do credit hoặc DNS `notify.fun.rich` chưa verify xong).
+**Dữ liệu thực tế trong database:**
 
-Dự án đã có `RESEND_API_KEY` hoạt động tốt (đang dùng cho SSO OTP, merge request...) và domain `fun.rich` đã verify trên Resend.
+| Bảng | Số lượng | Ghi chú |
+|------|----------|---------|
+| `live_sessions` | **600** (596 ended + 4 live) | Users livestream rất tích cực |
+| `chunked_recordings` | **342** (314 done, 28 stuck "recording") | Ghi hình hoạt động |
+| `posts` với `post_type = 'live'` | **519** | Bài đăng live |
+| `posts` có video URL chứa "live" | **581** | Video replay |
+| `recording_status = 'ready'` | **488** | Recordings thành công |
+| `recording_status = 'failed'` | **57** | Recordings thất bại (~9.5%) |
 
-## Giải pháp
+**Kết luận: Users livestream RẤT NHIỀU — 600 phiên, 488 recordings thành công!**
 
-Sửa `auth-email-hook/index.ts` để thay thế `sendLovableEmail` bằng Resend API trực tiếp, giữ nguyên:
-- Webhook verification (vẫn cần nhận auth events từ hệ thống)
-- Template rendering (giữ nguyên 6 template React Email đã style)
-- Preview endpoint (giữ nguyên)
+## Nguyên nhân gốc: Hàm `get_app_stats` không đếm livestream
 
-## Chi tiết thay đổi
+Hàm `get_app_stats()` hiện tại chỉ trả về:
+- `total_users`, `total_posts`, `total_photos`, `total_videos` (đếm từ `posts WHERE video_url IS NOT NULL`)
+- `total_rewards`, `treasury_camly_received`, `total_camly_claimed`
 
-### File: `supabase/functions/auth-email-hook/index.ts`
+**Không có trường nào đếm `live_sessions`** hoặc `chunked_recordings`. Component `AppHonorBoard.tsx` hiển thị `total_videos = 897` — đó là tổng số posts có video (bao gồm cả live replay), nhưng **không có mục riêng cho "Livestream"**.
 
-1. **Thay import**: Bỏ `sendLovableEmail` từ `@lovable.dev/email-js`, thêm `Resend` từ `esm.sh`
-2. **Sửa hàm `handleWebhook`**: Thay đoạn gọi `sendLovableEmail` bằng:
-   - Lấy `RESEND_API_KEY` từ env
-   - Gọi `resend.emails.send()` với `from: "FUN Ecosystem <noreply@fun.rich>"` 
-   - Vẫn gọi callback_url để báo cho hệ thống biết email đã gửi
-3. **From name**: Thống nhất `FUN Ecosystem <noreply@fun.rich>` cho tất cả 6 loại email
+## Vấn đề phụ phát hiện thêm
 
-### Cũng sửa From name trong 3 SSO functions
+1. **28 recordings stuck ở trạng thái "recording"** — phiên live đã kết thúc nhưng `chunked_recordings.status` không chuyển sang `done`. Đây là những sessions mà host đóng trình duyệt đột ngột trước khi finalize.
 
-- `sso-merge-approve`: `FUN Profile` → `FUN Ecosystem`
-- `sso-merge-request`: `FUN Profile` → `FUN Ecosystem`
-- `sso-resend-webhook`: `FUN Profile` → `FUN Ecosystem`
+2. **57 sessions có `recording_status = 'failed'`** (~9.5%) — một số có `chunked_recordings.status = done` (recording thực ra thành công nhưng status ở `live_sessions` bị đánh failed sai).
 
-### Deploy
+3. **`live_recordings` table hoàn toàn trống** (0 rows) — Table này được thiết kế cho Agora server-side recording nhưng chưa bao giờ được sử dụng thành công vì hệ thống đang dùng client-side chunked recording thay thế.
 
-Deploy lại 4 edge functions: `auth-email-hook`, `sso-merge-approve`, `sso-merge-request`, `sso-resend-webhook`
+## Kế hoạch sửa
 
-## Lưu ý quan trọng
+### Task 1: Cập nhật `get_app_stats` thêm `total_livestreams`
 
-- `RESEND_API_KEY` đã có sẵn trong secrets
-- Domain `fun.rich` đã được verify trên Resend (các SSO function đang gửi thành công)
-- Không cần thay đổi template — chỉ thay đổi cách gửi email
-- Preview endpoint vẫn hoạt động bình thường (không liên quan đến sending)
+Thêm trường `total_livestreams` vào hàm SQL:
+
+```sql
+DROP FUNCTION IF EXISTS public.get_app_stats();
+CREATE OR REPLACE FUNCTION public.get_app_stats()
+RETURNS TABLE(
+  total_users BIGINT,
+  total_posts BIGINT,
+  total_photos BIGINT,
+  total_videos BIGINT,
+  total_livestreams BIGINT,
+  total_rewards NUMERIC,
+  treasury_camly_received NUMERIC,
+  total_camly_claimed NUMERIC
+) ...
+-- Thêm:
+(SELECT COUNT(*) FROM live_sessions)::BIGINT AS total_livestreams,
+```
+
+### Task 2: Cập nhật `AppHonorBoard.tsx`
+
+- Thêm interface field `totalLivestreams`
+- Parse từ response `row.total_livestreams`
+- Thêm stat card với icon `Radio` và label "Livestreams"
+
+### Task 3: Dọn dẹp stuck recordings
+
+- Cập nhật 28 `chunked_recordings` stuck ở `status = 'recording'` mà `live_session` đã `ended` → chuyển sang `done` hoặc `failed`
+- Sửa inconsistency: sessions có `recording_status = 'failed'` nhưng `chunked_recordings.status = 'done'`
+
+### Technical Details
+
+**Files cần sửa:**
+1. Migration SQL mới — `DROP FUNCTION + CREATE OR REPLACE` cho `get_app_stats`
+2. `src/components/feed/AppHonorBoard.tsx` — thêm livestream stat
+3. `src/integrations/supabase/types.ts` — tự động cập nhật sau migration
+
+**Không ảnh hưởng:** Các tính năng livestream hiện tại (start, join, record, replay) không bị ảnh hưởng. Đây chỉ là fix hiển thị thống kê.
 
