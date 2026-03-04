@@ -222,7 +222,7 @@ const SystemTab = ({ adminId }: SystemTabProps) => {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {scanResult.missing_posts.map((item: any, i: number) => (
+                        {scanResult.missing_posts.map((item, i: number) => (
                           <TableRow key={i}>
                             <TableCell className="text-xs">{i + 1}</TableCell>
                             <TableCell className="text-xs font-medium">@{item.sender_username}</TableCell>
@@ -258,7 +258,7 @@ const SystemTab = ({ adminId }: SystemTabProps) => {
                 <div className="mt-3 border-t pt-3">
                   <p className="font-medium mb-2">📋 Chi tiết bài chúc mừng đã phục hồi:</p>
                   <div className="max-h-60 overflow-y-auto space-y-1">
-                    {backfillResult.posts_details.map((d: any, i: number) => (
+                    {backfillResult.posts_details.map((d, i: number) => (
                       <p key={i} className="text-xs text-muted-foreground">
                         • <strong>@{d.sender}</strong> → <strong>@{d.recipient}</strong>: {d.amount} {d.token}
                       </p>
@@ -328,7 +328,7 @@ const SystemTab = ({ adminId }: SystemTabProps) => {
               {deleteBannedResult.errors?.length > 0 && (
                 <div>
                   <p className="text-destructive">❌ Lỗi: {deleteBannedResult.errors.length}</p>
-                  {deleteBannedResult.errors.map((e: any, i: number) => (
+                  {deleteBannedResult.errors.map((e, i: number) => (
                     <p key={i} className="text-xs text-muted-foreground ml-4">
                       • {e.username} ({e.userId.slice(0, 8)}...): {e.error}
                     </p>

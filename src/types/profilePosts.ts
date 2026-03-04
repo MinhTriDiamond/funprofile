@@ -24,13 +24,13 @@ export interface ProfilePostComment {
   id: string;
 }
 
-/** Base fields shared by all post rows */
+/** Base fields shared by all post rows — uses permissive types for Supabase compatibility */
 interface BasePostFields {
   id: string;
   content: string;
   image_url: string | null;
   video_url?: string | null;
-  media_urls?: Array<{ url: string; type: 'image' | 'video' }> | null;
+  media_urls?: unknown;
   created_at: string;
   user_id: string;
   visibility?: string;
@@ -38,7 +38,7 @@ interface BasePostFields {
   slug?: string | null;
   gift_sender_id?: string | null;
   gift_recipient_id?: string | null;
-  metadata?: Record<string, unknown> | null;
+  metadata?: unknown;
   profiles: ProfilePostProfile;
   /** Raw Supabase join alias — mapped to `profiles` in mapProfiles */
   public_profiles?: ProfilePostProfile;
@@ -46,6 +46,7 @@ interface BasePostFields {
   comments?: ProfilePostComment[];
   pinned_post_id?: string | null;
   is_reward_eligible?: boolean;
+  [key: string]: unknown;
 }
 
 /** An original post (including gift_celebration) on the profile timeline */
@@ -67,6 +68,7 @@ export interface SharedProfilePost {
   created_at: string;
   content?: string | null;
   posts: BasePostFields | null;
+  [key: string]: unknown;
 }
 
 /** Union type for all posts displayed on the profile page */

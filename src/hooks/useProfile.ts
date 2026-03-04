@@ -133,8 +133,7 @@ export const useProfile = () => {
         ...mapProfiles(postsData),
         ...mapProfiles(giftSenderPosts).filter((p) => !existingPostIds.has(p.id))
       ];
-
-      setOriginalPosts(allUserPosts);
+      setOriginalPosts(allUserPosts as unknown as OriginalProfilePost[]);
 
       // Batch-fetch gift profiles
       const giftPostsInProfile = allUserPosts.filter(p => p.post_type === 'gift_celebration');
@@ -163,11 +162,11 @@ export const useProfile = () => {
       (giftProfilesRes.data || []).forEach((p) => giftProfileMap.set(p.id, p));
 
       const allUserPostsWithGiftProfiles: OriginalProfilePost[] = allUserPosts.map(post => {
-        const base: OriginalProfilePost = {
+        const base = {
           ...post,
           _type: 'original' as const,
           _sortTime: new Date(post.created_at).getTime(),
-        };
+        } as OriginalProfilePost;
         if (post.post_type !== 'gift_celebration') return base;
         return {
           ...base,
@@ -184,13 +183,13 @@ export const useProfile = () => {
       (sharedPostsData || []).forEach((sharedPost) => {
         if (sharedPost.posts) {
           const raw = sharedPost.posts as unknown as { public_profiles?: ProfilePostProfile; profiles?: ProfilePostProfile };
-          const mappedPost = { ...(sharedPost.posts as object), profiles: raw.public_profiles || raw.profiles || { username: 'unknown', avatar_url: null } };
+          const mappedPost = { ...(sharedPost.posts as object), profiles: raw.public_profiles || raw.profiles || { username: 'unknown', avatar_url: null } } as BasePostFields;
           combinedPosts.push({
             ...sharedPost,
             posts: mappedPost,
-            _type: 'shared' as const,
+            _type: 'shared',
             _sortTime: new Date(sharedPost.created_at).getTime(),
-          } as SharedProfilePost);
+          } as unknown as SharedProfilePost);
         }
       });
       combinedPosts.sort((a, b) => b._sortTime - a._sortTime);
