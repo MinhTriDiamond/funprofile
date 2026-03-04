@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
 import { Loader2, Database, CheckCircle, XCircle, AlertTriangle, SkipForward, StopCircle, Wrench, Trash2, Video, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
+import logger from '@/lib/logger';
 
 interface MigrationResult {
   total: number;
