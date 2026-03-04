@@ -407,6 +407,13 @@ export type Database = {
             referencedRelation: "live_sessions"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "chunked_recordings_live_session_id_fkey"
+            columns: ["live_session_id"]
+            isOneToOne: false
+            referencedRelation: "public_live_sessions"
+            referencedColumns: ["id"]
+          },
         ]
       }
       comments: {
@@ -1308,6 +1315,13 @@ export type Database = {
             referencedRelation: "live_sessions"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "live_co_hosts_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "public_live_sessions"
+            referencedColumns: ["id"]
+          },
         ]
       }
       live_comments: {
@@ -1338,6 +1352,13 @@ export type Database = {
             columns: ["live_session_id"]
             isOneToOne: false
             referencedRelation: "live_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "live_comments_live_session_id_fkey"
+            columns: ["live_session_id"]
+            isOneToOne: false
+            referencedRelation: "public_live_sessions"
             referencedColumns: ["id"]
           },
         ]
@@ -1372,6 +1393,13 @@ export type Database = {
             referencedRelation: "live_sessions"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "live_messages_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "public_live_sessions"
+            referencedColumns: ["id"]
+          },
         ]
       }
       live_reactions: {
@@ -1402,6 +1430,13 @@ export type Database = {
             columns: ["session_id"]
             isOneToOne: false
             referencedRelation: "live_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "live_reactions_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "public_live_sessions"
             referencedColumns: ["id"]
           },
         ]
@@ -1470,6 +1505,13 @@ export type Database = {
             columns: ["live_id"]
             isOneToOne: false
             referencedRelation: "live_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "live_recordings_live_id_fkey"
+            columns: ["live_id"]
+            isOneToOne: false
+            referencedRelation: "public_live_sessions"
             referencedColumns: ["id"]
           },
         ]
@@ -4499,6 +4541,99 @@ export type Database = {
           },
         ]
       }
+      public_live_sessions: {
+        Row: {
+          channel_name: string | null
+          created_at: string | null
+          device_id: string | null
+          ended_at: string | null
+          host_user_id: string | null
+          id: string | null
+          owner_id: string | null
+          post_id: string | null
+          privacy: string | null
+          recording_status: string | null
+          slug: string | null
+          started_at: string | null
+          status: string | null
+          title: string | null
+          updated_at: string | null
+          viewer_count: number | null
+        }
+        Insert: {
+          channel_name?: string | null
+          created_at?: string | null
+          device_id?: string | null
+          ended_at?: string | null
+          host_user_id?: string | null
+          id?: string | null
+          owner_id?: string | null
+          post_id?: string | null
+          privacy?: string | null
+          recording_status?: string | null
+          slug?: string | null
+          started_at?: string | null
+          status?: string | null
+          title?: string | null
+          updated_at?: string | null
+          viewer_count?: number | null
+        }
+        Update: {
+          channel_name?: string | null
+          created_at?: string | null
+          device_id?: string | null
+          ended_at?: string | null
+          host_user_id?: string | null
+          id?: string | null
+          owner_id?: string | null
+          post_id?: string | null
+          privacy?: string | null
+          recording_status?: string | null
+          slug?: string | null
+          started_at?: string | null
+          status?: string | null
+          title?: string | null
+          updated_at?: string | null
+          viewer_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_sessions_host_user_id_fkey"
+            columns: ["host_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "live_sessions_host_user_id_fkey"
+            columns: ["host_user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "live_sessions_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "live_sessions_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "live_sessions_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       public_profiles: {
         Row: {
           avatar_url: string | null
@@ -4553,6 +4688,24 @@ export type Database = {
           username?: string | null
           username_normalized?: string | null
           workplace?: string | null
+        }
+        Relationships: []
+      }
+      public_system_config: {
+        Row: {
+          key: string | null
+          updated_at: string | null
+          value: Json | null
+        }
+        Insert: {
+          key?: string | null
+          updated_at?: string | null
+          value?: Json | null
+        }
+        Update: {
+          key?: string | null
+          updated_at?: string | null
+          value?: Json | null
         }
         Relationships: []
       }
