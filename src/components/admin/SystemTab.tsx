@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Link2, CloudUpload, GitMerge, RefreshCw, Database, Trash2, Search } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import type { BackfillScanResult, BackfillResult, DeleteBannedResult } from '@/types/adminResponses';
 import BlockchainTab from "./BlockchainTab";
 import MediaMigrationTab from "./MediaMigrationTab";
 import { MergeRequestsTab } from "./MergeRequestsTab";
@@ -37,12 +38,11 @@ interface SystemTabProps {
 
 const SystemTab = ({ adminId }: SystemTabProps) => {
   const [backfilling, setBackfilling] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic API responses from edge functions
-  const [backfillResult, setBackfillResult] = useState<any>(null);
+  const [backfillResult, setBackfillResult] = useState<BackfillResult | null>(null);
   const [deletingBanned, setDeletingBanned] = useState(false);
-  const [deleteBannedResult, setDeleteBannedResult] = useState<any>(null);
+  const [deleteBannedResult, setDeleteBannedResult] = useState<DeleteBannedResult | null>(null);
   const [scanning, setScanning] = useState(false);
-  const [scanResult, setScanResult] = useState<any>(null);
+  const [scanResult, setScanResult] = useState<BackfillScanResult | null>(null);
 
   const handleScanOnly = async () => {
     setScanning(true);

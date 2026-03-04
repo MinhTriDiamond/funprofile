@@ -27,6 +27,7 @@ import { useAdminDonationHistory, fetchAllDonationsForExport } from '@/hooks/use
 import { DonationRecord } from '@/hooks/useDonationHistory';
 import { DonationSuccessCard } from '@/components/donations/DonationSuccessCard';
 import { DonationReceivedCard } from '@/components/donations/DonationReceivedCard';
+import type { UnmappableTransaction } from '@/types/adminResponses';
 import { exportDonationsToCSV } from '@/utils/exportDonations';
 import { formatNumber, formatDate } from '@/lib/formatters';
 import { toast } from 'sonner';
@@ -68,7 +69,7 @@ export function DonationHistoryAdminTab() {
   const [isBackfilling, setIsBackfilling] = useState(false);
   const [viewMode, setViewMode] = useState<'donations' | 'scanResults'>('donations');
   const [missingTx, setMissingTx] = useState<MissingTransaction[]>([]);
-  const [unmappableTx, setUnmappableTx] = useState<any[]>([]);
+  const [unmappableTx, setUnmappableTx] = useState<UnmappableTransaction[]>([]);
   const [totalScanned, setTotalScanned] = useState(0);
 
   const handleDonationClick = (donation: DonationRecord) => {
