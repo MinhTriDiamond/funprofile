@@ -88,15 +88,10 @@ export function useFollowingLiveStatus() {
       )
       .subscribe();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(() => {
-      fetchLiveFriends();
-    });
-
     return () => {
       supabase.removeChannel(channel);
-      authListener.subscription.unsubscribe();
     };
-  }, []);
+  }, [userId]);
 
   return {
     liveFriends,
