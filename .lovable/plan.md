@@ -1,78 +1,110 @@
 
 
-# Phân tích: Tại sao Database hiển thị Livestream = 0
+# Kế hoạch: Thêm Network Selector (BNB Mainnet / Testnet) cho Gift Send Dialog
 
-## Phát hiện chính
+## Tổng quan
 
-**Dữ liệu thực tế trong database:**
+Thêm khả năng chọn mạng BSC Mainnet (56) hoặc BSC Testnet (97) ngay trong form gửi tiền. Hệ thống sẽ hiển thị đúng số dư theo mạng, gửi giao dịch đúng chain, và hiện explorer link chính xác.
 
-| Bảng | Số lượng | Ghi chú |
-|------|----------|---------|
-| `live_sessions` | **600** (596 ended + 4 live) | Users livestream rất tích cực |
-| `chunked_recordings` | **342** (314 done, 28 stuck "recording") | Ghi hình hoạt động |
-| `posts` với `post_type = 'live'` | **519** | Bài đăng live |
-| `posts` có video URL chứa "live" | **581** | Video replay |
-| `recording_status = 'ready'` | **488** | Recordings thành công |
-| `recording_status = 'failed'` | **57** | Recordings thất bại (~9.5%) |
+---
 
-**Kết luận: Users livestream RẤT NHIỀU — 600 phiên, 488 recordings thành công!**
+## Task 1: Tạo `src/lib/chainTokenMapping.ts` — Token address mapping theo chain
 
-## Nguyên nhân gốc: Hàm `get_app_stats` không đếm livestream
+Tạo file config tập trung:
 
-Hàm `get_app_stats()` hiện tại chỉ trả về:
-- `total_users`, `total_posts`, `total_photos`, `total_videos` (đếm từ `posts WHERE video_url IS NOT NULL`)
-- `total_rewards`, `treasury_camly_received`, `total_camly_claimed`
+```typescript
+// Chain IDs
+export const BSC_MAINNET = 56;
+export const BSC_TESTNET = 97;
 
-**Không có trường nào đếm `live_sessions`** hoặc `chunked_recordings`. Component `AppHonorBoard.tsx` hiển thị `total_videos = 897` — đó là tổng số posts có video (bao gồm cả live replay), nhưng **không có mục riêng cho "Livestream"**.
+// Token addresses per chain
+// Tokens chưa deploy trên testnet sẽ có address = null → bị disabled trong UI
+export const TOKEN_ADDRESS_BY_CHAIN: Record<number, Record<string, string | null>> = {
+  [BSC_MAINNET]: {
+    BNB: null, // native
+    USDT: '0x55d398326f99059fF775485246999027B3197955',
+    BTCB: '0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c',
+    FUN: '0x39A1b047D5d143f8874888cfa1d30Fb2AE6F0CD6',
+    CAMLY: '0x0910320181889feFDE0BB1Ca63962b0A8882e413',
+  },
+  [BSC_TESTNET]: {
+    BNB: null,
+    USDT: null,   // chưa deploy
+    BTCB: null,   // chưa deploy
+    FUN: '0x39A1b047D5d143f8874888cfa1d30Fb2AE6F0CD6', // giữ nguyên nếu đã deploy
+    CAMLY: null,  // chưa deploy
+  },
+};
 
-## Vấn đề phụ phát hiện thêm
-
-1. **28 recordings stuck ở trạng thái "recording"** — phiên live đã kết thúc nhưng `chunked_recordings.status` không chuyển sang `done`. Đây là những sessions mà host đóng trình duyệt đột ngột trước khi finalize.
-
-2. **57 sessions có `recording_status = 'failed'`** (~9.5%) — một số có `chunked_recordings.status = done` (recording thực ra thành công nhưng status ở `live_sessions` bị đánh failed sai).
-
-3. **`live_recordings` table hoàn toàn trống** (0 rows) — Table này được thiết kế cho Agora server-side recording nhưng chưa bao giờ được sử dụng thành công vì hệ thống đang dùng client-side chunked recording thay thế.
-
-## Kế hoạch sửa
-
-### Task 1: Cập nhật `get_app_stats` thêm `total_livestreams`
-
-Thêm trường `total_livestreams` vào hàm SQL:
-
-```sql
-DROP FUNCTION IF EXISTS public.get_app_stats();
-CREATE OR REPLACE FUNCTION public.get_app_stats()
-RETURNS TABLE(
-  total_users BIGINT,
-  total_posts BIGINT,
-  total_photos BIGINT,
-  total_videos BIGINT,
-  total_livestreams BIGINT,
-  total_rewards NUMERIC,
-  treasury_camly_received NUMERIC,
-  total_camly_claimed NUMERIC
-) ...
--- Thêm:
-(SELECT COUNT(*) FROM live_sessions)::BIGINT AS total_livestreams,
+// Helper: lấy address token theo chain
+export function getTokenAddress(symbol: string, chainId: number): string | null
+// Helper: kiểm tra token có sẵn trên chain không
+export function isTokenAvailableOnChain(symbol: string, chainId: number): boolean
+// Helper: lấy BscScan base URL theo chainId
+export function getBscScanBaseUrl(chainId: number): string
 ```
 
-### Task 2: Cập nhật `AppHonorBoard.tsx`
+## Task 2: Tạo component `NetworkSelector.tsx`
 
-- Thêm interface field `totalLivestreams`
-- Parse từ response `row.total_livestreams`
-- Thêm stat card với icon `Radio` và label "Livestreams"
+UI dạng pill/toggle giữa "BNB Mainnet" và "BNB Testnet":
+- Đặt ngay dưới phần "Chọn token"
+- Hiển thị icon BNB + tên chain đang chọn
+- Khi chọn Testnet: hint nhẹ "Testnet — chỉ để thử nghiệm"
+- Props: `selectedChainId`, `onChainChange`, `walletChainId`
 
-### Task 3: Dọn dẹp stuck recordings
+## Task 3: Cập nhật `UnifiedGiftSendDialog.tsx` — thêm state `selectedChainId`
 
-- Cập nhật 28 `chunked_recordings` stuck ở `status = 'recording'` mà `live_session` đã `ended` → chuyển sang `done` hoặc `failed`
-- Sửa inconsistency: sessions có `recording_status = 'failed'` nhưng `chunked_recordings.status = 'done'`
+Thay đổi chính:
+- Thêm `selectedChainId` state, default dựa trên wallet chainId (56 hoặc 97, khác thì default 56)
+- Balance queries dùng `selectedChainId` thay vì hardcode `bsc.id`
+- Token address lấy từ `getTokenAddress(symbol, selectedChainId)` thay vì `selectedToken.address`
+- Sửa `isWrongNetwork`: so sánh `chainId !== selectedChainId` (thay vì `!== bsc.id`)
+- Sửa `onSwitchChain`: switch sang `selectedChainId`
+- Khi chọn network mới: reset amount, refetch balance
+- Khi token không available trên chain đã chọn: disable token đó trong TokenSelector
+- BscScan URL dùng `getBscScanBaseUrl(selectedChainId)` thay vì logic cũ
+- Truyền `selectedChainId` xuống `GiftFormStep` và `GiftConfirmStep`
 
-### Technical Details
+## Task 4: Cập nhật `GiftFormStep.tsx` — tích hợp NetworkSelector + network warnings
 
-**Files cần sửa:**
-1. Migration SQL mới — `DROP FUNCTION + CREATE OR REPLACE` cho `get_app_stats`
-2. `src/components/feed/AppHonorBoard.tsx` — thêm livestream stat
-3. `src/integrations/supabase/types.ts` — tự động cập nhật sau migration
+- Render `NetworkSelector` giữa token selector và amount input
+- Sửa logic warning:
+  - Nếu `selectedChainId !== walletChainId` → "Ví đang ở [current], vui lòng chuyển sang [selected]" + Switch
+  - Nếu `selectedChainId === walletChainId` → không hiện warning
+  - Nếu `selectedChainId === 97` → hint: "Bạn đang dùng Testnet (thử nghiệm)"
+- Token chưa available trên chain: hiện "(chưa deploy trên Testnet)" dưới balance
 
-**Không ảnh hưởng:** Các tính năng livestream hiện tại (start, join, record, replay) không bị ảnh hưởng. Đây chỉ là fix hiển thị thống kê.
+## Task 5: Cập nhật `TokenSelector.tsx` — hỗ trợ disabled tokens
+
+- Thêm prop `disabledTokens?: string[]` — danh sách symbol bị disabled
+- Token disabled: opacity thấp, không click được, tooltip "Chưa deploy trên Testnet"
+
+## Task 6: Cập nhật `GiftConfirmStep.tsx` — hiển thị đúng chain info
+
+- Thay "Chain: BSC (BNB Smart Chain)" → hiển thị đúng chain name theo `selectedChainId`
+- BscScan link dùng đúng URL theo chain
+
+## Task 7: Cập nhật `bscScanHelpers.ts` — thêm overload theo chainId
+
+- Thêm function `getBscScanTxUrlByChain(txHash, chainId)` dùng chainId thay vì tokenSymbol
+- Gift dialog sẽ dùng version mới này
+
+## Task 8: Cập nhật `useSendToken.ts` — đảm bảo chain_id đúng
+
+- DB insert `chain_id` đã dùng `chainId || 56` → giữ nguyên (wagmi chainId sẽ đúng sau switchChain)
+- BscScan toast link cũng cần dùng chainId-based URL
+
+---
+
+## Files sẽ tạo/sửa
+
+| File | Hành động |
+|------|-----------|
+| `src/lib/chainTokenMapping.ts` | **Tạo mới** |
+| `src/components/donations/NetworkSelector.tsx` | **Tạo mới** |
+| `src/components/donations/UnifiedGiftSendDialog.tsx` | Sửa |
+| `src/components/donations/gift-dialog/GiftFormStep.tsx` | Sửa |
+| `src/components/donations/gift-dialog/GiftConfirmStep.tsx` | Sửa |
+| `src/components/donations/TokenSelector.tsx` | Sửa |
+| `src/lib/bscScanHelpers.ts` | Sửa |
 
