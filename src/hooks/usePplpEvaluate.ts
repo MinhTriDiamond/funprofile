@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import logger from '@/lib/logger';
 
 export type PplpActionType = 'post' | 'comment' | 'reaction' | 'share' | 'friend' | 'livestream' | 'new_user_bonus';
 
@@ -49,13 +50,13 @@ export const usePplpEvaluate = () => {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
-        console.log('[PPLP] No session, skipping evaluation');
+        logger.debug('[PPLP] No session, skipping evaluation');
         return null;
       }
 
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       
-      console.log(`[PPLP] Evaluating action: ${params.action_type}`, {
+      logger.debug(`[PPLP] Evaluating action: ${params.action_type}`, {
         reference_id: params.reference_id,
         content_length: params.content?.length || 0,
       });
@@ -74,17 +75,17 @@ export const usePplpEvaluate = () => {
         
         // 429 = daily limit reached, not an error
         if (response.status === 429) {
-          console.log('[PPLP] Daily limit reached for', params.action_type, errorData);
+          logger.debug('[PPLP] Daily limit reached for', params.action_type, errorData);
           return { success: false, error: 'daily_limit' };
         }
         
-        console.error('[PPLP] Evaluation failed:', response.status, errorData);
+        logger.error('[PPLP] Evaluation failed:', response.status, errorData);
         return { success: false, error: errorData.error || 'Unknown error' };
       }
 
       const result: PplpEvaluateResult = await response.json();
       
-      console.log('[PPLP] Evaluation success:', {
+      logger.debug('[PPLP] Evaluation success:', {
         action_type: params.action_type,
         light_score: result.light_action?.light_score,
         is_eligible: result.light_action?.is_eligible,
@@ -94,7 +95,7 @@ export const usePplpEvaluate = () => {
       return result;
     } catch (error) {
       // Silent fail - don't disrupt user experience
-      console.error('[PPLP] Evaluation error:', error);
+      logger.error('[PPLP] Evaluation error:', error);
       return null;
     }
   }, []);
@@ -106,7 +107,7 @@ export const usePplpEvaluate = () => {
   const evaluateAsync = useCallback((params: PplpEvaluateParams): void => {
     // Fire and forget - don't await
     evaluate(params).catch((err) => {
-      console.error('[PPLP] Async evaluation error:', err);
+      logger.error('[PPLP] Async evaluation error:', err);
     });
   }, [evaluate]);
 
