@@ -6,6 +6,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { Sparkles, Eye, Home } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageContext';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+import logger from '@/lib/logger';
 
 
 const ANGEL_LOGO = '/angel-ai-logo-128.png';

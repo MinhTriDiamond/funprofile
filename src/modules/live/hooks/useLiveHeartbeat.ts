@@ -11,10 +11,8 @@ export function useLiveHeartbeat(sessionId: string | undefined, isHost: boolean)
   useEffect(() => {
     if (!sessionId || !isHost) return;
 
-    const db = supabase as any;
-
     const interval = setInterval(async () => {
-      await db
+      await (supabase as any)
         .from('live_sessions')
         .update({ updated_at: new Date().toISOString() })
         .eq('id', sessionId)
