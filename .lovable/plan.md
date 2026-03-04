@@ -1,78 +1,76 @@
 
 
-# Phân tích: Tại sao Database hiển thị Livestream = 0
+# Đề xuất cải thiện Livestream cho 2.000 users
 
-## Phát hiện chính
+Sau khi kiểm tra toàn bộ codebase hiện tại (đã đạt 8.9/10), hệ thống đã khá ổn định. Dưới đây là các điểm cần cải thiện thêm để sẵn sàng scale.
 
-**Dữ liệu thực tế trong database:**
+---
 
-| Bảng | Số lượng | Ghi chú |
-|------|----------|---------|
-| `live_sessions` | **600** (596 ended + 4 live) | Users livestream rất tích cực |
-| `chunked_recordings` | **342** (314 done, 28 stuck "recording") | Ghi hình hoạt động |
-| `posts` với `post_type = 'live'` | **519** | Bài đăng live |
-| `posts` có video URL chứa "live" | **581** | Video replay |
-| `recording_status = 'ready'` | **488** | Recordings thành công |
-| `recording_status = 'failed'` | **57** | Recordings thất bại (~9.5%) |
+## 1. Chat Realtime — Bottleneck khi nhiều viewer
 
-**Kết luận: Users livestream RẤT NHIỀU — 600 phiên, 488 recordings thành công!**
+**Vấn đề:** `useLiveMessages.ts` fetch profile riêng lẻ cho MỖI tin nhắn mới (dòng 92-96). Nếu 200 viewer chat liên tục, mỗi tin nhắn = 1 query `profiles` → Supabase bị flood.
 
-## Nguyên nhân gốc: Hàm `get_app_stats` không đếm livestream
+**Sửa:**
+- Cache profile trong Map, chỉ fetch khi `user_id` chưa có
+- Batch profile fetch (debounce 500ms, gom nhiều user_id thành 1 query `.in()`)
+- Tăng `limit(200)` → `limit(100)` cho initial load (giảm payload)
 
-Hàm `get_app_stats()` hiện tại chỉ trả về:
-- `total_users`, `total_posts`, `total_photos`, `total_videos` (đếm từ `posts WHERE video_url IS NOT NULL`)
-- `total_rewards`, `treasury_camly_received`, `total_camly_claimed`
+## 2. Presence Channel — Duplicate subscription
 
-**Không có trường nào đếm `live_sessions`** hoặc `chunked_recordings`. Component `AppHonorBoard.tsx` hiển thị `total_videos = 897` — đó là tổng số posts có video (bao gồm cả live replay), nhưng **không có mục riêng cho "Livestream"**.
+**Vấn đề:** `LiveChatPanel` gọi `useLivePresence(sessionId)` riêng, trong khi `LiveAudiencePage` đã gọi `useLivePresence(resolvedSessionId)` → **2 Presence channels cùng session**. Mỗi viewer tạo 2 subscriptions = gấp đôi tải Realtime.
 
-## Vấn đề phụ phát hiện thêm
+**Sửa:** Truyền `viewers` từ page xuống `LiveChatPanel` qua props thay vì hook riêng. Tương tự ở `LiveHostPage`.
 
-1. **28 recordings stuck ở trạng thái "recording"** — phiên live đã kết thúc nhưng `chunked_recordings.status` không chuyển sang `done`. Đây là những sessions mà host đóng trình duyệt đột ngột trước khi finalize.
+## 3. Auth call optimization
 
-2. **57 sessions có `recording_status = 'failed'`** (~9.5%) — một số có `chunked_recordings.status = done` (recording thực ra thành công nhưng status ở `live_sessions` bị đánh failed sai).
+**Vấn đề:** `LiveChatPanel` gọi `supabase.auth.getUser()` (network call) khi mount. `sendMessage` cũng gọi `getUser()` mỗi lần gửi. Tổng cộng = N+1 network calls.
 
-3. **`live_recordings` table hoàn toàn trống** (0 rows) — Table này được thiết kế cho Agora server-side recording nhưng chưa bao giờ được sử dụng thành công vì hệ thống đang dùng client-side chunked recording thay thế.
+**Sửa:** Dùng `supabase.auth.getSession()` (local cache) cho UI check. Truyền `userId` từ parent hoặc dùng `useCurrentUser()` hook có sẵn.
 
-## Kế hoạch sửa
+## 4. Viewer count sync Host → DB
 
-### Task 1: Cập nhật `get_app_stats` thêm `total_livestreams`
+**Vấn đề:** `LiveHostPage` dòng 138-150 vẫn gọi `updateLiveViewerCount` qua `onViewerCountChange` callback từ Agora (hiện là no-op trong useLiveRtc). Tuy nhiên, `viewer_count` trong DB không được cập nhật từ Presence → khi query DB, viewer count = 0.
 
-Thêm trường `total_livestreams` vào hàm SQL:
+**Sửa:** Trong `LiveHostPage`, dùng `viewers.length` từ `useLivePresence` để cập nhật DB viewer count mỗi 10s (debounced), thay vì dựa vào Agora callback.
 
-```sql
-DROP FUNCTION IF EXISTS public.get_app_stats();
-CREATE OR REPLACE FUNCTION public.get_app_stats()
-RETURNS TABLE(
-  total_users BIGINT,
-  total_posts BIGINT,
-  total_photos BIGINT,
-  total_videos BIGINT,
-  total_livestreams BIGINT,
-  total_rewards NUMERIC,
-  treasury_camly_received NUMERIC,
-  total_camly_claimed NUMERIC
-) ...
--- Thêm:
-(SELECT COUNT(*) FROM live_sessions)::BIGINT AS total_livestreams,
-```
+## 5. Feed scroll — Video memory leak prevention
 
-### Task 2: Cập nhật `AppHonorBoard.tsx`
+**Vấn đề:** `FeedVideoPlayer` mount `ChunkedVideoPlayer` khi `isNearViewport = true` nhưng khi scroll đi (`false`), React unmount component → ChunkedVideoPlayer cleanup chạy. Tuy nhiên, nếu user scroll nhanh qua 20+ live replays, mỗi cái mount rồi unmount → GC pressure lớn, có thể gây jank.
 
-- Thêm interface field `totalLivestreams`
-- Parse từ response `row.total_livestreams`
-- Thêm stat card với icon `Radio` và label "Livestreams"
+**Sửa:** Thêm `rootMargin: '200px'` (giảm từ 400px) để giảm số video mount đồng thời. Thêm debounce cho `isNearViewport` (300ms) để tránh mount/unmount khi scroll nhanh.
 
-### Task 3: Dọn dẹp stuck recordings
+## 6. Edge Function cold start mitigation
 
-- Cập nhật 28 `chunked_recordings` stuck ở `status = 'recording'` mà `live_session` đã `ended` → chuyển sang `done` hoặc `failed`
-- Sửa inconsistency: sessions có `recording_status = 'failed'` nhưng `chunked_recordings.status = 'done'`
+**Vấn đề:** `live-token` Edge Function có thể cold start 2-3s. Với 200 audience join cùng lúc = 200 concurrent cold starts.
 
-### Technical Details
+**Sửa:** Thêm keep-alive ping từ `auto-finalize-recordings` cron (đã chạy 5 phút/lần) → import thêm call tới `live-token` với dummy request để giữ warm.
 
-**Files cần sửa:**
-1. Migration SQL mới — `DROP FUNCTION + CREATE OR REPLACE` cho `get_app_stats`
-2. `src/components/feed/AppHonorBoard.tsx` — thêm livestream stat
-3. `src/integrations/supabase/types.ts` — tự động cập nhật sau migration
+## 7. Rate limiting cho chat
 
-**Không ảnh hưởng:** Các tính năng livestream hiện tại (start, join, record, replay) không bị ảnh hưởng. Đây chỉ là fix hiển thị thống kê.
+**Vấn đề:** Không có rate limit cho `live_messages` insert. Một user có thể spam hàng trăm tin/phút.
+
+**Sửa:** Client-side throttle (1 tin/giây) trong `sendMessage`. Thêm RLS policy hoặc trigger check rate limit server-side.
+
+## 8. Cleanup live_messages khi session end
+
+**Vấn đề:** `live_messages` tích lũy vĩnh viễn. Với 600 sessions × 200 messages = 120K rows không bao giờ xóa.
+
+**Sửa:** Thêm vào `auto-finalize-recordings` cron: xóa `live_messages` cho sessions đã `ended` > 7 ngày.
+
+---
+
+## Tóm tắt ưu tiên
+
+| # | Task | Impact | Effort |
+|---|------|--------|--------|
+| 1 | Cache profile trong useLiveMessages | Cao — giảm 90% queries | Nhỏ |
+| 2 | Bỏ duplicate Presence subscription | Cao — giảm 50% Realtime load | Nhỏ |
+| 3 | Auth getSession thay getUser | Trung bình — giảm latency | Nhỏ |
+| 4 | Sync viewer count từ Presence → DB | Trung bình — data consistency | Nhỏ |
+| 5 | Debounce viewport mount | Trung bình — giảm jank | Nhỏ |
+| 6 | Keep-alive Edge Functions | Trung bình — giảm cold start | Nhỏ |
+| 7 | Rate limit chat | Cao — chống spam | Nhỏ |
+| 8 | Cleanup old live_messages | Thấp — long-term DB health | Nhỏ |
+
+Tất cả 8 điểm đều effort nhỏ (mỗi cái ~10-30 dòng code) nhưng tổng hợp lại sẽ giúp hệ thống chịu tải tốt hơn đáng kể khi scale lên 2.000 users đồng thời.
 
