@@ -117,7 +117,7 @@ const ConnectedApps = () => {
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('cross_platform_data')
-        .eq('id', user.id)
+        .eq('id', userId)
         .single();
 
       if (profileError) throw profileError;
