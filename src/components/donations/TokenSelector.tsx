@@ -63,33 +63,42 @@ export const SUPPORTED_TOKENS: TokenOption[] = [
 interface TokenSelectorProps {
   selectedToken: TokenOption;
   onSelect: (token: TokenOption) => void;
+  disabledTokens?: string[];
 }
 
-export const TokenSelector = ({ selectedToken, onSelect }: TokenSelectorProps) => {
+export const TokenSelector = ({ selectedToken, onSelect, disabledTokens = [] }: TokenSelectorProps) => {
   return (
     <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-      {SUPPORTED_TOKENS.map((token) => (
-        <button
-          key={token.symbol}
-          type="button"
-          onClick={() => onSelect(token)}
-          className={cn(
-            'flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all duration-200',
-            selectedToken.symbol === token.symbol
-              ? 'border-gold bg-gradient-to-br from-gold/20 to-amber-500/10 shadow-md'
-              : 'border-border hover:border-gold/50 hover:bg-muted/50'
-          )}
-        >
-          <div className="w-10 h-10 rounded-full flex items-center justify-center mb-1 overflow-hidden">
-            <img 
-              src={token.logo} 
-              alt={token.symbol} 
-              className="w-full h-full object-cover"
-            />
-          </div>
-          <span className="font-semibold text-sm">{token.symbol}</span>
-        </button>
-      ))}
+      {SUPPORTED_TOKENS.map((token) => {
+        const isDisabled = disabledTokens.includes(token.symbol);
+        return (
+          <button
+            key={token.symbol}
+            type="button"
+            onClick={() => !isDisabled && onSelect(token)}
+            disabled={isDisabled}
+            title={isDisabled ? 'Chưa deploy trên Testnet' : token.name}
+            className={cn(
+              'flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all duration-200',
+              isDisabled
+                ? 'border-border opacity-40 cursor-not-allowed'
+                : selectedToken.symbol === token.symbol
+                  ? 'border-gold bg-gradient-to-br from-gold/20 to-amber-500/10 shadow-md'
+                  : 'border-border hover:border-gold/50 hover:bg-muted/50'
+            )}
+          >
+            <div className="w-10 h-10 rounded-full flex items-center justify-center mb-1 overflow-hidden">
+              <img 
+                src={token.logo} 
+                alt={token.symbol} 
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <span className="font-semibold text-sm">{token.symbol}</span>
+            {isDisabled && <span className="text-[9px] text-muted-foreground leading-tight">Chưa có</span>}
+          </button>
+        );
+      })}
       <button
         type="button"
         disabled

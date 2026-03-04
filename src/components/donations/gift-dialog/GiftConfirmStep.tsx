@@ -10,6 +10,7 @@ import {
   Loader2, Copy, AlertTriangle, ExternalLink,
   CheckCircle2, RefreshCw, ArrowLeft, Shield, Users, AlertCircle,
 } from 'lucide-react';
+import { getChainDisplayName } from '@/lib/chainTokenMapping';
 import type { TokenOption } from '@/components/donations/TokenSelector';
 import type { ResolvedRecipient, MultiSendResult } from './types';
 
@@ -32,7 +33,7 @@ export interface GiftConfirmStepProps {
   totalEstimatedUsd: number;
   selectedTokenPrice: number | null;
   isMultiMode: boolean;
-
+  selectedChainId: number;
   // Recipients
   recipientsWithWallet: ResolvedRecipient[];
 
@@ -65,7 +66,7 @@ export function GiftConfirmStep(props: GiftConfirmStepProps) {
   const {
     senderProfile, address,
     selectedToken, amount, parsedAmountNum, totalAmount, totalEstimatedUsd, selectedTokenPrice,
-    isMultiMode, recipientsWithWallet,
+    isMultiMode, selectedChainId, recipientsWithWallet,
     customMessage,
     multiSendProgress, isMultiSending, currentSendingIndex,
     txStep, stepInfo, isInProgress, isPending, txHash, scanUrl,
@@ -163,7 +164,7 @@ export function GiftConfirmStep(props: GiftConfirmStepProps) {
         {/* Chain info */}
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Shield className="w-4 h-4" />
-          <span>Chain: BSC (BNB Smart Chain)</span>
+          <span>Chain: {getChainDisplayName(selectedChainId)}</span>
         </div>
       </div>
 

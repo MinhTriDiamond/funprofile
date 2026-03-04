@@ -9,12 +9,14 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TokenSelector } from '@/components/donations/TokenSelector';
+import { NetworkSelector } from '@/components/donations/NetworkSelector';
 import { QuickGiftPicker, MESSAGE_TEMPLATES } from '@/components/donations/QuickGiftPicker';
 import { EmojiPicker } from '@/components/feed/EmojiPicker';
 import {
   Loader2, Wallet, AlertCircle, Send, Copy, AlertTriangle,
   ArrowRight, Search, User, X, Shield,
 } from 'lucide-react';
+import { getChainDisplayName } from '@/lib/chainTokenMapping';
 import type { TokenOption } from '@/components/donations/TokenSelector';
 import type { MessageTemplate } from '@/components/donations/QuickGiftPicker';
 import type { ResolvedRecipient } from './types';
@@ -36,6 +38,12 @@ export interface GiftFormStepProps {
   selectedToken: TokenOption;
   onSelectToken: (t: TokenOption) => void;
   formattedBalance: number;
+  disabledTokens: string[];
+
+  // Network
+  selectedChainId: number;
+  onChainChange: (chainId: number) => void;
+  walletChainId: number;
 
   // Amount
   amount: string;
@@ -100,7 +108,8 @@ export interface GiftFormStepProps {
 export function GiftFormStep(props: GiftFormStepProps) {
   const {
     senderProfile, effectiveAddress,
-    selectedToken, onSelectToken, formattedBalance,
+    selectedToken, onSelectToken, formattedBalance, disabledTokens,
+    selectedChainId, onChainChange, walletChainId,
     amount, onAmountChange, onSelectQuickAmount,
     isMultiMode, parsedAmountNum, totalAmount, estimatedUsd, totalEstimatedUsd,
     minSendCheck, hasEnoughBalance, isLargeAmount,
@@ -156,8 +165,15 @@ export function GiftFormStep(props: GiftFormStepProps) {
       {/* Token */}
       <div>
         <label className="text-sm font-medium text-muted-foreground mb-2 block">Chọn token:</label>
-        <TokenSelector selectedToken={selectedToken} onSelect={onSelectToken} />
+        <TokenSelector selectedToken={selectedToken} onSelect={onSelectToken} disabledTokens={disabledTokens} />
       </div>
+
+      {/* Network */}
+      <NetworkSelector
+        selectedChainId={selectedChainId}
+        onChainChange={onChainChange}
+        walletChainId={walletChainId}
+      />
 
       {/* Amount */}
       <div>
@@ -198,7 +214,7 @@ export function GiftFormStep(props: GiftFormStepProps) {
       {isWrongNetwork && isConnected && (
         <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
           <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
-          <p className="text-sm text-destructive flex-1">Vui lòng chuyển sang BNB Smart Chain</p>
+          <p className="text-sm text-destructive flex-1">Ví đang ở chain khác. Vui lòng chuyển sang {getChainDisplayName(selectedChainId)}</p>
           <Button size="sm" variant="outline" onClick={onSwitchChain}>Switch</Button>
         </div>
       )}

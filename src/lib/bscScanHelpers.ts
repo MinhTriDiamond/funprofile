@@ -4,10 +4,17 @@
  * Logic động để xác định URL BscScan phù hợp:
  * - FUN Money → Testnet (testnet.bscscan.com)
  * - Các token khác (BNB, CAMLY, USDT...) → Mainnet (bscscan.com)
+ * 
+ * Cũng hỗ trợ overload theo chainId trực tiếp via getBscScanTxUrlByChain()
  */
+
+import { getBscScanTxUrlByChain as _getBscScanTxUrlByChain, getBscScanBaseUrl } from '@/lib/chainTokenMapping';
 
 const MAINNET_URL = 'https://bscscan.com';
 const TESTNET_URL = 'https://testnet.bscscan.com';
+
+// Re-export chainId-based helpers
+export { _getBscScanTxUrlByChain as getBscScanTxUrlByChain, getBscScanBaseUrl };
 
 /**
  * Kiểm tra xem token có phải FUN Money không

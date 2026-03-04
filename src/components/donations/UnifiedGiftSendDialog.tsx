@@ -24,8 +24,7 @@ import { toast } from 'sonner';
 import { formatUnits } from 'viem';
 import { supabase } from '@/integrations/supabase/client';
 import { queryClient } from '@/lib/queryClient';
-import { bsc } from 'wagmi/chains';
-import { getBscScanTxUrl } from '@/lib/bscScanHelpers';
+import { BSC_MAINNET, BSC_TESTNET, getTokenAddress, getDisabledTokens, getBscScanTxUrlByChain, isTokenAvailableOnChain } from '@/lib/chainTokenMapping';
 import { useActiveAccount } from '@/contexts/ActiveAccountContext';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useRecipientSearch } from './gift-dialog/useRecipientSearch';
@@ -103,6 +102,11 @@ export const UnifiedGiftSendDialog = ({
   const [multiSendProgress, setMultiSendProgress] = useState<{ current: number; total: number; results: MultiSendResult[] } | null>(null);
   const [isMultiSending, setIsMultiSending] = useState(false);
   const [currentSendingIndex, setCurrentSendingIndex] = useState(-1);
+  
+  // ── Network selection ──
+  const defaultChainId = (chainId === BSC_TESTNET) ? BSC_TESTNET : BSC_MAINNET;
+  const [selectedChainId, setSelectedChainId] = useState(defaultChainId);
+  const disabledTokens = useMemo(() => getDisabledTokens(selectedChainId), [selectedChainId]);
 
   const IS_MAINTENANCE = false;
 
@@ -129,21 +133,28 @@ export const UnifiedGiftSendDialog = ({
   const hasRecipients = effectiveRecipients.length > 0;
   const isMultiMode = effectiveRecipients.length > 1;
 
-  // ── Balances ──
-  const { data: bnbBalance } = useBalance({ address: effectiveAddress as `0x${string}` | undefined, chainId: bsc.id });
+  // ── Balances — use selectedChainId ──
+  const resolvedTokenAddress = useMemo(() => {
+    if (selectedToken.symbol === 'BNB') return undefined;
+    const addr = getTokenAddress(selectedToken.symbol, selectedChainId);
+    return addr ? (addr as `0x${string}`) : undefined;
+  }, [selectedToken.symbol, selectedChainId]);
+
+  const { data: bnbBalance } = useBalance({ address: effectiveAddress as `0x${string}` | undefined, chainId: selectedChainId });
   const { data: tokenBalance } = useReadContract({
-    address: selectedToken.address as `0x${string}` | undefined,
+    address: resolvedTokenAddress,
     abi: ERC20_BALANCE_ABI,
     functionName: 'balanceOf',
     args: effectiveAddress ? [effectiveAddress as `0x${string}`] : undefined,
-    chainId: bsc.id,
+    chainId: selectedChainId,
   });
 
   const formattedBalance = useMemo(() => {
     if (selectedToken.symbol === 'BNB') return bnbBalance ? parseFloat(bnbBalance.formatted) : 0;
+    if (!isTokenAvailableOnChain(selectedToken.symbol, selectedChainId)) return 0;
     if (tokenBalance) return parseFloat(formatUnits(tokenBalance as bigint, selectedToken.decimals));
     return 0;
-  }, [selectedToken, bnbBalance, tokenBalance]);
+  }, [selectedToken, bnbBalance, tokenBalance, selectedChainId]);
 
   const bnbBalanceNum = useMemo(() => bnbBalance ? parseFloat(bnbBalance.formatted) : 0, [bnbBalance]);
 
@@ -162,13 +173,13 @@ export const UnifiedGiftSendDialog = ({
   const totalEstimatedUsd = estimatedUsd * recipientsWithWallet.length;
   const isValidAmount = minSendCheck.valid;
   const hasEnoughBalance = formattedBalance >= totalAmount;
-  const isWrongNetwork = chainId !== bsc.id;
+  const isWrongNetwork = chainId !== selectedChainId;
   const needsGasWarning = selectedToken.symbol !== 'BNB' && bnbBalanceNum < estimatedGasPerTx * recipientsWithWallet.length && parsedAmountNum > 0;
   const isLargeAmount = totalAmount > formattedBalance * 0.8 && totalAmount > 0;
   const isInProgress = ['signing', 'broadcasted', 'confirming', 'finalizing'].includes(txStep);
   const stepInfo = STEP_CONFIG[txStep] || STEP_CONFIG.idle;
   const canProceedToConfirm = isConnected && recipientsWithWallet.length > 0 && isValidAmount && hasEnoughBalance && !isWrongNetwork;
-  const scanUrl = txHash ? getBscScanTxUrl(txHash, selectedToken.symbol) : null;
+  const scanUrl = txHash ? getBscScanTxUrlByChain(txHash, selectedChainId) : null;
   const isSendDisabled = !isConnected || recipientsWithWallet.length === 0 || !isValidAmount || !hasEnoughBalance || isPending || isInProgress || isWrongNetwork || isMultiSending;
 
   // ── Effects ──
@@ -205,6 +216,7 @@ export const UnifiedGiftSendDialog = ({
       setAmount(''); setSelectedTemplate(null); setCustomMessage('');
       setSelectedToken(defaultToken); setShowCelebration(false); setCelebrationData(null);
       setMultiSendProgress(null); setIsMultiSending(false); setFlowStep('form');
+      setSelectedChainId((chainId === BSC_TESTNET) ? BSC_TESTNET : BSC_MAINNET);
       search.resetSearch(); resetState();
     }
   }, [isOpen]);
@@ -247,8 +259,8 @@ export const UnifiedGiftSendDialog = ({
   const recordDonationWithRetry = useCallback(async (hash: string, recipient: ResolvedRecipient, session: { user: { id: string } }): Promise<boolean> => {
     const body = {
       sender_id: session.user.id, recipient_id: recipient.id, amount,
-      token_symbol: selectedToken.symbol, token_address: selectedToken.address,
-      chain_id: chainId || 56, tx_hash: hash, message: customMessage,
+      token_symbol: selectedToken.symbol, token_address: resolvedTokenAddress || null,
+      chain_id: selectedChainId, tx_hash: hash, message: customMessage,
       message_template: selectedTemplate?.id, post_id: postId,
       card_theme: 'celebration', card_sound: 'rich-1',
     };
@@ -299,7 +311,7 @@ export const UnifiedGiftSendDialog = ({
   // ── Send logic ──
   const walletToken = {
     symbol: selectedToken.symbol, name: selectedToken.name,
-    address: selectedToken.address as `0x${string}` | null,
+    address: (resolvedTokenAddress || null) as `0x${string}` | null,
     decimals: selectedToken.decimals, logo: selectedToken.logo, color: selectedToken.color,
   };
 
@@ -467,8 +479,20 @@ export const UnifiedGiftSendDialog = ({
                 senderProfile={senderProfile}
                 effectiveAddress={effectiveAddress}
                 selectedToken={selectedToken}
-                onSelectToken={setSelectedToken}
+                onSelectToken={(t) => { setSelectedToken(t); setAmount(''); }}
                 formattedBalance={formattedBalance}
+                disabledTokens={disabledTokens}
+                selectedChainId={selectedChainId}
+                onChainChange={(id) => {
+                  setSelectedChainId(id);
+                  setAmount('');
+                  // Auto-switch to BNB if current token is disabled on new chain
+                  if (!isTokenAvailableOnChain(selectedToken.symbol, id)) {
+                    const bnbToken = SUPPORTED_TOKENS.find(t => t.symbol === 'BNB');
+                    if (bnbToken) setSelectedToken(bnbToken);
+                  }
+                }}
+                walletChainId={chainId}
                 amount={amount}
                 onAmountChange={setAmount}
                 onMaxAmount={handleMaxAmount}
@@ -508,7 +532,7 @@ export const UnifiedGiftSendDialog = ({
                 bnbBalanceNum={bnbBalanceNum}
                 estimatedGasPerTx={estimatedGasPerTx}
                 onConnectWallet={() => openConnectModal?.()}
-                onSwitchChain={() => switchChain({ chainId: bsc.id })}
+                onSwitchChain={() => switchChain({ chainId: selectedChainId })}
                 canProceedToConfirm={canProceedToConfirm}
                 isInProgress={isInProgress}
                 onGoToConfirm={() => canProceedToConfirm && setFlowStep('confirm')}
@@ -530,6 +554,7 @@ export const UnifiedGiftSendDialog = ({
                 totalEstimatedUsd={totalEstimatedUsd}
                 selectedTokenPrice={selectedTokenPrice}
                 isMultiMode={isMultiMode}
+                selectedChainId={selectedChainId}
                 recipientsWithWallet={recipientsWithWallet}
                 customMessage={customMessage}
                 multiSendProgress={multiSendProgress}
