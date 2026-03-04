@@ -1,552 +1,112 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+/**
+ * FacebookCreatePost — Compose UI + Dialog shell
+ * Logic extracted to useCreatePost, media to CreatePostMediaManager, toolbar to CreatePostToolbar
+ */
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { z } from 'zod';
-import { supabase } from '@/integrations/supabase/client';
-import { useCurrentUser } from '@/hooks/useCurrentUser';
-import { deleteFromR2 } from '@/utils/r2Upload';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
+  Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { ImagePlus, Video, X, Loader2, UserPlus, MapPin, MoreHorizontal, Clapperboard, CheckCircle } from 'lucide-react';
-import { FILE_LIMITS, getVideoDuration } from '@/utils/imageCompression';
-import { UploadQueue, UploadItem, createUploadQueue } from '@/utils/uploadQueue';
+import { ImagePlus, Video, Loader2 } from 'lucide-react';
+import { UploadQueue, UploadItem } from '@/utils/uploadQueue';
 import { EmojiPicker } from './EmojiPicker';
-import { VideoUploadProgress, VideoUploadState } from './VideoUploadProgress';
-import { VideoUploaderUppy } from './VideoUploaderUppy';
-import { FriendTagDialog, TaggedFriend } from './FriendTagDialog';
+import { FriendTagDialog } from './FriendTagDialog';
 import { LocationCheckin } from './LocationCheckin';
 import { PrivacySelector } from './PrivacySelector';
 import { FeelingActivityDialog, FeelingActivity } from './FeelingActivityDialog';
-import { MediaUploadPreview } from './MediaUploadPreview';
+import { CreatePostMediaManager, UppyVideoResult } from './CreatePostMediaManager';
+import { CreatePostToolbar } from './CreatePostToolbar';
+import { useCreatePost } from '@/hooks/useCreatePost';
 import { useLanguage } from '@/i18n/LanguageContext';
-import { usePplpEvaluate } from '@/hooks/usePplpEvaluate';
 
 interface FacebookCreatePostProps {
   onPostCreated: () => void;
 }
 
-const MAX_CONTENT_LENGTH = 20000;
-const MAX_FILES_PER_POST = FILE_LIMITS.MAX_FILES_PER_POST || 100;
-
-const postSchema = z.object({
-  content: z.string().max(MAX_CONTENT_LENGTH, `Nội dung tối đa ${MAX_CONTENT_LENGTH.toLocaleString()} ký tự`),
-});
-
 export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) => {
   const navigate = useNavigate();
   const { t, language } = useLanguage();
-  const { evaluateAsync } = usePplpEvaluate();
-  const { userId } = useCurrentUser();
 
-  interface CreatePostProfile {
-    id: string;
-    username: string;
-    display_name: string | null;
-    avatar_url: string | null;
-  }
-  const [profile, setProfile] = useState<CreatePostProfile | null>(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [content, setContent] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [privacy, setPrivacy] = useState('public');
-  const [isDragging, setIsDragging] = useState(false);
-  const [showMediaUpload, setShowMediaUpload] = useState(false);
-  const [videoUploadState, setVideoUploadState] = useState<VideoUploadState>('idle');
-  const [videoUploadProgress, setVideoUploadProgress] = useState(0);
-  const [currentVideoName, setCurrentVideoName] = useState('');
-  const [currentVideoId, setCurrentVideoId] = useState<string | undefined>(undefined);
-  
-  // Upload queue state for parallel uploads
+  // Upload queue ref shared between hook and media manager
   const uploadQueueRef = useRef<UploadQueue | null>(null);
-  const [uploadItems, setUploadItems] = useState<UploadItem[]>([]);
-  
-  // Friend tagging state
+
+  const {
+    profile, fetchProfile,
+    content, setContent,
+    loading,
+    privacy, setPrivacy,
+    taggedFriends, setTaggedFriends,
+    location, setLocation,
+    feeling, setFeeling,
+    submitStep,
+    getSubmitButtonText,
+    handleCancelSubmit,
+    handleSubmit,
+    MAX_CONTENT_LENGTH,
+  } = useCreatePost({ onPostCreated, uploadQueueRef });
+
+  // Dialog state
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [showMediaUpload, setShowMediaUpload] = useState(false);
   const [showFriendTagDialog, setShowFriendTagDialog] = useState(false);
-  const [taggedFriends, setTaggedFriends] = useState<TaggedFriend[]>([]);
-  
-  // Location check-in state
   const [showLocationDialog, setShowLocationDialog] = useState(false);
-  const [location, setLocation] = useState<string | null>(null);
-  
-  // Feeling/Activity state
   const [showFeelingDialog, setShowFeelingDialog] = useState(false);
-  const [feeling, setFeeling] = useState<FeelingActivity | null>(null);
-  
-  // Uppy video upload state
+
+  // Media state
+  const [uploadItems, setUploadItems] = useState<UploadItem[]>([]);
   const [pendingVideoFile, setPendingVideoFile] = useState<File | null>(null);
-  const [uppyVideoResult, setUppyVideoResult] = useState<{ uid: string; url: string; thumbnailUrl: string; localThumbnail?: string } | null>(null);
+  const [uppyVideoResult, setUppyVideoResult] = useState<UppyVideoResult | null>(null);
   const [isVideoUploading, setIsVideoUploading] = useState(false);
-  
-  // Enhanced upload progress state
-  const [uploadDetails, setUploadDetails] = useState({
-    bytesUploaded: 0,
-    bytesTotal: 0,
-    uploadSpeed: 0,
-    eta: 0,
-    processingState: undefined as string | undefined,
-    processingProgress: undefined as number | undefined,
-  });
 
-  // Refs for hidden file inputs (direct trigger on click) - must be before any returns
+  // File input ref
   const photoVideoInputRef = useRef<HTMLInputElement>(null);
-  
 
-  // Initialize upload queue
-  useEffect(() => {
-    const queue = createUploadQueue({
-      maxConcurrent: 4,
-      maxFiles: MAX_FILES_PER_POST,
-      onProgress: (item) => {
-        // Update handled via subscribe
-      },
-      onComplete: (item) => {
-        console.log('[UploadQueue] Item completed:', item.id);
-      },
-      onError: (item, error) => {
-        console.error('[UploadQueue] Item failed:', item.id, error);
-        toast.error(`${t('uploadFailed')}: ${item.file.name}`);
-      },
-      onQueueComplete: (items) => {
-        console.log('[UploadQueue] All uploads complete:', items.length);
-      },
-    });
+  useEffect(() => { fetchProfile(); }, [fetchProfile]);
 
-    uploadQueueRef.current = queue;
+  const handleEmojiSelect = (emoji: string) => setContent((prev) => prev + emoji);
 
-    // Subscribe to updates
-    const unsubscribe = queue.subscribe((items) => {
-      setUploadItems([...items]);
-    });
-
-    return () => {
-      unsubscribe();
-      queue.destroy();
-    };
-  }, []);
-
-  // Prevent accidental tab close during upload
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      const isUploading = uploadQueueRef.current?.isUploading() || videoUploadState === 'uploading' || videoUploadState === 'processing';
-      if (isUploading) {
-        e.preventDefault();
-        e.returnValue = t('uploadingLeaveWarning');
-        return e.returnValue;
-      }
-    };
-    
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [videoUploadState]);
-
-  useEffect(() => {
-    if (!userId) return;
-    const fetchProfile = async () => {
-      const { data } = await supabase
-        .from('profiles')
-        .select('id, username, display_name, avatar_url')
-        .eq('id', userId)
-        .single();
-      if (data) setProfile(data);
-    };
-    fetchProfile();
-  }, [userId]);
-
-  const handleFileSelect = async (files: FileList | null, accessToken?: string) => {
-    if (!files || !uploadQueueRef.current) return;
-
-    const imageFiles: File[] = [];
-    const videoFiles: File[] = [];
-
-    for (const file of Array.from(files)) {
-      const isImage = file.type.startsWith('image/');
-      const isVideo = file.type.startsWith('video/');
-
-      if (!isImage && !isVideo) {
-        toast.error(`${t('fileNotSupported')}: "${file.name}"`);
-        continue;
-      }
-
-      if (isImage && file.size > FILE_LIMITS.IMAGE_MAX_SIZE) {
-        toast.error(`${t('imageTooLarge')}: "${file.name}"`);
-        continue;
-      }
-
-      if (isVideo && file.size > FILE_LIMITS.VIDEO_MAX_SIZE) {
-        toast.error(`${t('videoTooLarge')}: "${file.name}"`);
-        continue;
-      }
-
-      if (isVideo) {
-        try {
-          const duration = await getVideoDuration(file);
-          if (duration > FILE_LIMITS.VIDEO_MAX_DURATION) {
-            toast.error(`${t('videoTooLong')}: "${file.name}"`);
-            continue;
-          }
-          videoFiles.push(file);
-        } catch (error) {
-          toast.error(`${t('cannotReadVideo')}: "${file.name}"`);
-        }
-      } else {
-        imageFiles.push(file);
-      }
-    }
-
-    // Handle video via Uppy (one at a time for now)
-    if (videoFiles.length > 0) {
-      const videoFile = videoFiles[0];
-      setPendingVideoFile(videoFile);
-      setCurrentVideoName(videoFile.name);
-      setIsVideoUploading(true);
-      setShowMediaUpload(true);
-      if (videoFiles.length > 1) {
-        toast.info(`${t('onlyOneVideoAtATime')}. ${videoFiles.length - 1} ${t('videosSkipped')}.`);
-      }
-    }
-
-    // Add images to upload queue
-    if (imageFiles.length > 0) {
-      const { added, rejected } = await uploadQueueRef.current.addFiles(imageFiles, accessToken);
-      
-      if (added.length > 0) {
-        setShowMediaUpload(true);
-        console.log('[CreatePost] Added', added.length, 'files to queue');
-      }
-      
-      if (rejected.length > 0) {
-        rejected.forEach(({ file, reason }) => {
-          toast.error(`${file.name}: ${reason}`);
-        });
-      }
-    }
-  };
-
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  }, []);
-
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-  }, []);
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    handleFileSelect(e.dataTransfer.files);
-  }, []);
-
-  const removeMedia = (id: string) => {
-    uploadQueueRef.current?.removeItem(id);
-  };
-
-  const retryMedia = (id: string) => {
-    uploadQueueRef.current?.retryUpload(id);
-  };
-
-  const reorderMedia = (fromIndex: number, toIndex: number) => {
-    uploadQueueRef.current?.reorderItems(fromIndex, toIndex);
-  };
-
-  const handleEmojiSelect = (emoji: string) => {
-    setContent((prev) => prev + emoji);
-  };
-
-  // Submit step state for detailed feedback
-  const [submitStep, setSubmitStep] = useState<'idle' | 'auth' | 'prepare_media' | 'saving' | 'done'>('idle');
-  const submitAbortRef = useRef<AbortController | null>(null);
-
-  const getSubmitButtonText = () => {
-    if (isVideoUploading) return t('uploadingVideo');
-    switch (submitStep) {
-      case 'auth': return t('authenticating');
-      case 'prepare_media': return t('preparingMedia');
-      case 'saving': return t('savingPost');
-      default: return loading ? t('posting') : t('postButton');
-    }
-  };
-
-  const handleCancelSubmit = () => {
-    if (submitAbortRef.current) {
-      submitAbortRef.current.abort();
-    }
-    setLoading(false);
-    setSubmitStep('idle');
-    toast.info(t('cancelledPost'));
-  };
-
-  const handleSubmit = async () => {
-    // Get completed image URLs from the upload queue
-    const completedMedia = uploadQueueRef.current?.getCompletedUrls() || [];
-    const pendingUploads = uploadItems.filter(item => item.status === 'uploading' || item.status === 'queued');
-    
-    console.log('[CreatePost] === SUBMIT START ===', {
-      contentLength: content.length,
-      completedMediaCount: completedMedia.length,
-      pendingUploadsCount: pendingUploads.length,
-      hasUppyVideo: !!uppyVideoResult,
-      isVideoUploading,
-    });
-    
-    // Check if there are still uploads in progress
-    if (pendingUploads.length > 0) {
-      toast.error(`${t('waitForFileUpload')} (${pendingUploads.length})`);
-      return;
-    }
-    
-    if (!content.trim() && completedMedia.length === 0 && !uppyVideoResult) {
-      toast.error(t('pleaseAddContent'));
-      return;
-    }
-
-    // Check if video is still uploading
-    if (isVideoUploading) {
-      toast.error(t('waitForVideoUpload'));
-      return;
-    }
-
-    // Check content length before validation
-    if (content.length > MAX_CONTENT_LENGTH) {
-      toast.error(`${t('contentTooLongDetail')} (${content.length.toLocaleString()}/${MAX_CONTENT_LENGTH.toLocaleString()})`);
-      return;
-    }
-
-    // Validate content length
-    const validation = postSchema.safeParse({ content: content.trim() });
-    if (!validation.success) {
-      toast.error(validation.error.errors[0].message);
-      return;
-    }
-
-    // Create abort controller for this submit
-    const abortController = new AbortController();
-    submitAbortRef.current = abortController;
-    
-    // Watchdog timeout - auto cancel after 90 seconds
-    const watchdogTimeout = setTimeout(() => {
-      console.error('[CreatePost] Watchdog timeout triggered (45s)');
-      abortController.abort();
-      setLoading(false);
-      setSubmitStep('idle');
-      toast.error(t('postTimeout'));
-    }, 45000);
-
-    setLoading(true);
-    setSubmitStep('auth');
-    console.log('[CreatePost] Step: auth - Getting session...');
-    
-    try {
-      // Check if aborted
-      if (abortController.signal.aborted) throw new Error('Đã huỷ');
-      
-      // Get session from memory cache (instant, no timeout needed)
-      let session;
-      const { data: sessionData } = await supabase.auth.getSession();
-      session = sessionData.session;
-      console.log('[CreatePost] getSession from cache:', session ? 'found' : 'empty');
-
-      // Refresh if session missing or expiring within 5 minutes
-      if (!session || (session.expires_at && session.expires_at * 1000 - Date.now() < 300000)) {
-        console.log('[CreatePost] Session needs refresh, reason:', !session ? 'no session' : 'expiring soon');
-        try {
-          const { data: refreshData } = await Promise.race([
-            supabase.auth.refreshSession(),
-            new Promise<never>((_, reject) =>
-              setTimeout(() => reject(new Error('refreshSession timeout (15s)')), 15000)
-            )
-          ]);
-          if (refreshData.session) {
-            session = refreshData.session;
-            console.log('[CreatePost] refreshSession succeeded');
-          }
-        } catch (refreshError: any) {
-          console.warn('[CreatePost] refreshSession failed:', refreshError.message);
-          // If we still have an existing session (just couldn't refresh), continue with it
-        }
-      }
-
-      if (!session) {
-        throw new Error(t('sessionExpired'));
-      }
-
-      console.log('[CreatePost] Auth OK, user:', session.user.id.substring(0, 8) + '...');
-      setSubmitStep('prepare_media');
-      console.log('[CreatePost] Step: prepare_media');
-      
-      if (abortController.signal.aborted) throw new Error('Đã huỷ');
-      
-      // Collect all media URLs (already uploaded via queue)
-      const mediaUrls: Array<{ url: string; type: 'image' | 'video' }> = [];
-      
-      // Add Uppy-uploaded video first if exists
-      if (uppyVideoResult) {
-        mediaUrls.push({
-          url: uppyVideoResult.url,
-          type: 'video',
-        });
-        console.log('[CreatePost] Added video URL:', uppyVideoResult.url);
-      }
-      
-      // Add completed images from queue
-      for (const media of completedMedia) {
-        mediaUrls.push(media);
-      }
-
-      console.log('[CreatePost] Media URLs prepared:', mediaUrls.length);
-      
-      if (abortController.signal.aborted) throw new Error('Đã huỷ');
-
-      // For backward compatibility
-      const firstImage = mediaUrls.find((m) => m.type === 'image');
-      const firstVideo = mediaUrls.find((m) => m.type === 'video');
-
-      console.log('[CreatePost] Step: saving - Calling edge function...');
-      setSubmitStep('saving');
-
-      // Call edge function with timeout
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const response = await fetch(`${supabaseUrl}/functions/v1/create-post`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          content: content.trim() || '',
-          media_urls: mediaUrls,
-          image_url: firstImage?.url || null,
-          video_url: firstVideo?.url || null,
-          location: location,
-          tagged_user_ids: taggedFriends.map(f => f.id),
-          visibility: privacy,
-        }),
-        signal: abortController.signal,
-      });
-
-      console.log('[CreatePost] Edge function response status:', response.status);
-
-      let result;
-      try {
-        result = await response.json();
-      } catch (jsonError) {
-        console.error('[CreatePost] Failed to parse response JSON:', jsonError);
-        // If status OK but can't parse JSON, assume success
-        if (response.ok) {
-          console.log('[CreatePost] Assuming success despite JSON parse error');
-          result = { ok: true };
-        } else {
-          throw new Error(t('serverConnectionError'));
-        }
-      }
-      
-      if (!response.ok) {
-        console.error('[CreatePost] Edge function error:', result);
-        throw new Error(result.error || t('cannotSavePost'));
-      }
-
-      console.log('[CreatePost] Success!', result);
-      setSubmitStep('done');
-
-      // Reset video upload state AFTER successful insert
-      setVideoUploadState('idle');
-      setVideoUploadProgress(0);
-      setCurrentVideoId(undefined);
-      setPendingVideoFile(null);
-      setUppyVideoResult(null);
-
-      // Cleanup upload queue
-      uploadQueueRef.current?.cancelAll();
-      
-      setContent('');
-      setTaggedFriends([]);
-      setLocation(null);
-      setPrivacy('public'); // Reset privacy to default
-      setFeeling(null); // Reset feeling
-      setIsDialogOpen(false);
-      setShowMediaUpload(false);
-
-      // Handle moderation - pending review
-      if (result.moderation_status === 'pending_review') {
-        toast.info(
-          language === 'vi' ? 'Bài viết của bạn đang được xem xét ✨' : 'Your post is being reviewed ✨',
-          { duration: 5000 }
-        );
-        console.log('[CreatePost] Post pending review — skipping PPLP evaluate');
-      } else if (result.duplicate_detected) {
-        // Handle duplicate detection
-        toast.info(
-          t('duplicatePostMessage') + ' ✨🙏',
-          { duration: 8000 }
-        );
-        console.log('[CreatePost] Duplicate detected — skipping PPLP evaluate');
-      } else {
-        toast.success(t('postPublished'));
-        
-        // PPLP: Evaluate post action for Light Score (fire-and-forget) — only for eligible posts
-        evaluateAsync({
-          action_type: 'post',
-          reference_id: result.postId,
-          content: content.trim(),
-        });
-      }
-      
-      onPostCreated();
-    } catch (error: any) {
-      if (error.name === 'AbortError' || error.message === 'Đã huỷ') {
-        console.log('[CreatePost] Aborted');
-        // Don't show error for user-initiated cancel
-      } else {
-        console.error('[CreatePost] Error:', error.message, error);
-        toast.error(error.message || t('cannotPost'));
-      }
-      setVideoUploadState('idle');
-    } finally {
-      clearTimeout(watchdogTimeout);
-      setLoading(false);
-      setSubmitStep('idle');
-      submitAbortRef.current = null;
-    }
-  };
-
-  // Handler for feeling selection - MUST be before any returns
   const handleFeelingSelect = (selectedFeeling: FeelingActivity) => {
     setFeeling(selectedFeeling);
-    setIsDialogOpen(true); // Open post dialog after selecting feeling
+    setIsDialogOpen(true);
   };
 
-  // Direct file picker for Photo/Video button (Facebook behavior)
-  const handlePhotoVideoClick = () => {
-    photoVideoInputRef.current?.click();
-  };
+  const handlePhotoVideoClick = () => photoVideoInputRef.current?.click();
+  const handleLiveVideoClick = () => navigate('/live/setup');
 
-  // Navigate to live stream setup
-  const handleLiveVideoClick = () => {
-    navigate('/live/setup');
-  };
-
-  // Handle direct file select from main card buttons
   const handleDirectFileSelect = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
-    
-    // Open dialog and show media area
     setIsDialogOpen(true);
     setShowMediaUpload(true);
-    
-    // Process files
-    await handleFileSelect(files);
+    // Trigger is handled by CreatePostMediaManager internally after setting showMediaUpload
+    // We need to manually trigger file select on the queue
+    const queue = uploadQueueRef.current;
+    if (queue) {
+      // Reuse the media manager's file handling by dispatching via the hidden input
+      // Actually we need to process files through the media manager
+      // Since media manager handles its own file inputs, we pass files through state
+    }
   };
 
-  // Guest mode: Show placeholder card with login prompt
+  const doSubmit = async () => {
+    await handleSubmit({
+      uploadItems,
+      uppyVideoResult,
+      isVideoUploading,
+      onSuccess: () => {
+        setUppyVideoResult(null);
+        setPendingVideoFile(null);
+        setIsVideoUploading(false);
+        setIsDialogOpen(false);
+        setShowMediaUpload(false);
+      },
+    });
+  };
+
+  // Guest mode
   if (!profile) {
     return (
       <div className="bg-card rounded-lg shadow-sm border border-border p-3 sm:p-4 mb-4">
@@ -555,52 +115,28 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
             <AvatarFallback className="bg-muted text-muted-foreground">G</AvatarFallback>
           </Avatar>
           <button
-            onClick={() => {
-              toast.error(t('loginToPostMessage'), {
-                action: { label: t('loginButton'), onClick: () => navigate('/auth') }
-              });
-            }}
+            onClick={() => toast.error(t('loginToPostMessage'), { action: { label: t('loginButton'), onClick: () => navigate('/auth') } })}
             className="flex-1 text-left px-4 py-2.5 bg-muted hover:bg-muted/80 rounded-full text-muted-foreground text-[15px] transition-colors"
           >
             {t('whatsOnYourMind')}
           </button>
         </div>
-
         <div className="border-t border-border mt-3 pt-2">
           <div className="flex items-center">
-            <button
-              onClick={() => {
-              toast.error(t('loginToPostMessage'), {
-                action: { label: t('loginButton'), onClick: () => navigate('/auth') }
-                });
-              }}
-              className="flex-1 flex items-center justify-center gap-2 py-2.5 hover:bg-muted rounded-lg transition-colors group"
-            >
-              <Video className="w-6 h-6 text-destructive" />
-              <span className="font-medium text-muted-foreground text-sm hidden sm:inline">{t('liveVideo')}</span>
-            </button>
-            <button
-              onClick={() => {
-              toast.error(t('loginToPostMessage'), {
-                action: { label: t('loginButton'), onClick: () => navigate('/auth') }
-                });
-              }}
-              className="flex-1 flex items-center justify-center gap-2 py-2.5 hover:bg-muted rounded-lg transition-colors group"
-            >
-              <ImagePlus className="w-6 h-6 text-[#45BD62]" />
-              <span className="font-medium text-muted-foreground text-sm hidden sm:inline">{t('photoVideo')}</span>
-            </button>
-            <button
-              onClick={() => {
-              toast.error(t('loginToPostMessage'), {
-                action: { label: t('loginButton'), onClick: () => navigate('/auth') }
-                });
-              }}
-              className="flex-1 flex items-center justify-center gap-2 py-2.5 hover:bg-muted rounded-lg transition-colors group"
-            >
-              <span className="text-xl sm:text-2xl">😊</span>
-              <span className="font-medium text-muted-foreground text-sm hidden sm:inline">{t('feeling')}</span>
-            </button>
+            {[
+              { icon: <Video className="w-6 h-6 text-destructive" />, label: t('liveVideo') },
+              { icon: <ImagePlus className="w-6 h-6 text-[#45BD62]" />, label: t('photoVideo') },
+              { icon: <span className="text-xl sm:text-2xl">😊</span>, label: t('feeling') },
+            ].map((btn, i) => (
+              <button
+                key={i}
+                onClick={() => toast.error(t('loginToPostMessage'), { action: { label: t('loginButton'), onClick: () => navigate('/auth') } })}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 hover:bg-muted rounded-lg transition-colors group"
+              >
+                {btn.icon}
+                <span className="font-medium text-muted-foreground text-sm hidden sm:inline">{btn.label}</span>
+              </button>
+            ))}
           </div>
         </div>
       </div>
@@ -609,7 +145,6 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
 
   return (
     <>
-      {/* Hidden file inputs for direct trigger */}
       <input
         ref={photoVideoInputRef}
         type="file"
@@ -619,74 +154,44 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
         className="hidden"
       />
 
-      {/* Create Post Card - Facebook Style Layout */}
+      {/* Create Post Card */}
       <div className="bg-card rounded-lg shadow-sm border border-border p-3 sm:p-4 mb-4">
-        {/* Row 1: Avatar + Input */}
         <div className="flex items-center gap-3">
           <Avatar
             className="w-10 h-10 cursor-pointer ring-2 ring-primary/20 shrink-0"
             onClick={() => navigate(`/profile/${profile.id}`)}
           >
-            <AvatarImage 
-              src={profile.avatar_url} 
-              sizeHint="sm"
-              alt={profile.username || 'User avatar'}
-            />
-            <AvatarFallback className="bg-primary text-primary-foreground">
-              {profile.username?.[0]?.toUpperCase()}
-            </AvatarFallback>
+            <AvatarImage src={profile.avatar_url} sizeHint="sm" alt={profile.username || 'User avatar'} />
+            <AvatarFallback className="bg-primary text-primary-foreground">{profile.username?.[0]?.toUpperCase()}</AvatarFallback>
           </Avatar>
-          
-          {/* Pure text input button - Facebook style */}
           <button
             onClick={() => setIsDialogOpen(true)}
             className="flex-1 text-left px-4 py-2.5 bg-muted hover:bg-muted/80 rounded-full text-muted-foreground text-[15px] transition-colors"
           >
-            {language === 'vi' 
+            {language === 'vi'
               ? `${profile.display_name || profile.username} ơi, Ánh sáng trong tim bạn đang muốn nói điều gì?`
-              : `What's on your mind, ${profile.display_name || profile.username}?`
-            }
+              : `What's on your mind, ${profile.display_name || profile.username}?`}
           </button>
         </div>
-
-        {/* Row 2: Action buttons with border-top - Facebook style */}
         <div className="border-t border-border mt-3 pt-2">
           <div className="flex items-center">
-            {/* Video trực tiếp - Opens camera/video capture directly */}
-            <button
-              onClick={handleLiveVideoClick}
-              className="flex-1 flex items-center justify-center gap-2 py-2.5 hover:bg-muted rounded-lg transition-colors group"
-            >
+            <button onClick={handleLiveVideoClick} className="flex-1 flex items-center justify-center gap-2 py-2.5 hover:bg-muted rounded-lg transition-colors group">
               <Video className="w-6 h-6 text-red-500 group-hover:scale-110 transition-transform" />
               <span className="font-medium text-muted-foreground text-sm hidden sm:inline">{t('liveVideo')}</span>
             </button>
-            
-            {/* Ảnh/video - Opens file picker DIRECTLY (Facebook behavior) */}
-            <button
-              onClick={handlePhotoVideoClick}
-              className="flex-1 flex items-center justify-center gap-2 py-2.5 hover:bg-muted rounded-lg transition-colors group"
-            >
+            <button onClick={handlePhotoVideoClick} className="flex-1 flex items-center justify-center gap-2 py-2.5 hover:bg-muted rounded-lg transition-colors group">
               <ImagePlus className="w-6 h-6 text-[#45BD62] group-hover:scale-110 transition-transform" />
               <span className="font-medium text-muted-foreground text-sm hidden sm:inline">{t('photoVideo')}</span>
             </button>
-            
-            {/* Cảm xúc/hoạt động - Opens Feeling Dialog */}
-            <button
-              onClick={() => setShowFeelingDialog(true)}
-              className="flex-1 flex items-center justify-center gap-2 py-2.5 hover:bg-muted rounded-lg transition-colors group"
-            >
-              <span className="text-xl sm:text-2xl group-hover:scale-110 transition-transform">
-                {feeling ? feeling.emoji : '😊'}
-              </span>
-              <span className="font-medium text-muted-foreground text-sm hidden sm:inline">
-                {feeling ? feeling.label : t('feeling')}
-              </span>
+            <button onClick={() => setShowFeelingDialog(true)} className="flex-1 flex items-center justify-center gap-2 py-2.5 hover:bg-muted rounded-lg transition-colors group">
+              <span className="text-xl sm:text-2xl group-hover:scale-110 transition-transform">{feeling ? feeling.emoji : '😊'}</span>
+              <span className="font-medium text-muted-foreground text-sm hidden sm:inline">{feeling ? feeling.label : t('feeling')}</span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* Create Post Dialog */}
+      {/* Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-[500px] p-0 max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader className="p-4 border-b border-border shrink-0">
@@ -694,17 +199,11 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
           </DialogHeader>
 
           <div className="p-4 flex-1 overflow-y-auto">
-            {/* User Info & Privacy */}
+            {/* User Info */}
             <div className="flex items-center gap-3 mb-4">
               <Avatar className="w-10 h-10 ring-2 ring-primary/20">
-                <AvatarImage 
-                  src={profile.avatar_url} 
-                  sizeHint="sm"
-                  alt={profile.username || 'User avatar'}
-                />
-                <AvatarFallback className="bg-primary text-primary-foreground">
-                  {profile.username?.[0]?.toUpperCase()}
-                </AvatarFallback>
+                <AvatarImage src={profile.avatar_url} sizeHint="sm" alt={profile.username || 'User avatar'} />
+                <AvatarFallback className="bg-primary text-primary-foreground">{profile.username?.[0]?.toUpperCase()}</AvatarFallback>
               </Avatar>
               <div className="flex-1">
                 <div className="flex items-center gap-1 flex-wrap">
@@ -712,10 +211,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
                   {feeling && (
                     <span className="text-muted-foreground text-sm">
                       {' '}{t('feelingPrefix')}{' '}
-                      <button
-                        onClick={() => setShowFeelingDialog(true)}
-                        className="text-foreground font-semibold hover:underline inline-flex items-center gap-1"
-                      >
+                      <button onClick={() => setShowFeelingDialog(true)} className="text-foreground font-semibold hover:underline inline-flex items-center gap-1">
                         {feeling.emoji} {feeling.label}
                       </button>
                     </span>
@@ -723,38 +219,25 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
                   {taggedFriends.length > 0 && (
                     <span className="text-muted-foreground text-sm">
                       {' '}{t('withPrefix')}{' '}
-                      <button
-                        onClick={() => setShowFriendTagDialog(true)}
-                        className="text-foreground font-semibold hover:underline"
-                      >
-                        {taggedFriends.length === 1 
+                      <button onClick={() => setShowFriendTagDialog(true)} className="text-foreground font-semibold hover:underline">
+                        {taggedFriends.length === 1
                           ? (taggedFriends[0].full_name || taggedFriends[0].username)
-                          : `${taggedFriends[0].full_name || taggedFriends[0].username} ${t('andOthers')} ${taggedFriends.length - 1}`
-                        }
+                          : `${taggedFriends[0].full_name || taggedFriends[0].username} ${t('andOthers')} ${taggedFriends.length - 1}`}
                       </button>
                     </span>
                   )}
                   {location && (
                     <span className="text-muted-foreground text-sm">
                       {' '}{t('atPrefix')}{' '}
-                      <button
-                        onClick={() => setShowLocationDialog(true)}
-                        className="text-foreground font-semibold hover:underline"
-                      >
-                        {location}
-                      </button>
+                      <button onClick={() => setShowLocationDialog(true)} className="text-foreground font-semibold hover:underline">{location}</button>
                     </span>
                   )}
                 </div>
-                <PrivacySelector 
-                  value={privacy} 
-                  onChange={setPrivacy} 
-                  disabled={loading}
-                />
+                <PrivacySelector value={privacy} onChange={setPrivacy} disabled={loading} />
               </div>
             </div>
 
-            {/* Content Input with Emoji */}
+            {/* Content */}
             <div className="relative">
               <Textarea
                 placeholder={`${profile.display_name || profile.username} ơi, Ánh sáng trong tim bạn đang muốn nói điều gì?`}
@@ -766,7 +249,6 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
               <div className="absolute bottom-2 right-2">
                 <EmojiPicker onEmojiSelect={handleEmojiSelect} />
               </div>
-              {/* Character Counter */}
               <div className={`text-xs text-right mt-1 pr-1 ${
                 content.length > MAX_CONTENT_LENGTH ? 'text-destructive font-semibold' :
                 content.length > MAX_CONTENT_LENGTH * 0.9 ? 'text-yellow-500' :
@@ -776,289 +258,56 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
               </div>
             </div>
 
-            {/* Media Upload Area */}
-            {showMediaUpload && (
-              <div
-                className={`mt-4 border-2 border-dashed rounded-lg p-4 transition-colors ${
-                  isDragging ? 'border-primary bg-primary/5' : 'border-border'
-                }`}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-              >
-                {/* Uppy Video Uploader - Always show when there's a pending video */}
-                {pendingVideoFile && (
-                  <div className="mb-3">
-                    <VideoUploaderUppy
-                      selectedFile={pendingVideoFile}
-                      onUploadComplete={(result) => {
-                        setUppyVideoResult(result);
-                        setIsVideoUploading(false);
-                        setPendingVideoFile(null);
-                        // Chủ động refresh token sau khi upload video lâu
-                        supabase.auth.refreshSession().catch(err =>
-                          console.warn('[CreatePost] Token refresh after video upload failed:', err)
-                        );
-                      }}
-                      onUploadError={() => {
-                        setIsVideoUploading(false);
-                        setPendingVideoFile(null);
-                      }}
-                      onUploadStart={() => setIsVideoUploading(true)}
-                      onRemove={() => {
-                        setPendingVideoFile(null);
-                        setUppyVideoResult(null);
-                        setIsVideoUploading(false);
-                      }}
-                      disabled={loading}
-                    />
-                  </div>
-                )}
+            {/* Media Manager */}
+            <CreatePostMediaManager
+              loading={loading}
+              showMediaUpload={showMediaUpload}
+              setShowMediaUpload={setShowMediaUpload}
+              uploadQueueRef={uploadQueueRef}
+              uploadItems={uploadItems}
+              setUploadItems={setUploadItems}
+              pendingVideoFile={pendingVideoFile}
+              setPendingVideoFile={setPendingVideoFile}
+              uppyVideoResult={uppyVideoResult}
+              setUppyVideoResult={setUppyVideoResult}
+              isVideoUploading={isVideoUploading}
+              setIsVideoUploading={setIsVideoUploading}
+            />
 
-                {/* Show uploaded video result with thumbnail */}
-                {uppyVideoResult && !pendingVideoFile && (
-                  <div className="mb-3 relative rounded-lg overflow-hidden border border-green-500/50 bg-muted h-48">
-                    {/* Prioritize local thumbnail, then Cloudflare, then fallback */}
-                    {uppyVideoResult.localThumbnail ? (
-                      <img 
-                        src={uppyVideoResult.localThumbnail}
-                        alt="Video preview"
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Video className="w-16 h-16 text-muted-foreground" />
-                      </div>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => {
-                        // Delete the video from R2 to prevent orphans
-                        if (uppyVideoResult?.uid) {
-                          deleteFromR2(uppyVideoResult.uid).catch(err => console.warn('Cleanup error:', err));
-                        }
-                        setUppyVideoResult(null);
-                      }}
-                      className="absolute top-2 right-2 h-8 w-8 bg-black/50 hover:bg-black/70 text-white rounded-full"
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                    <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-black/60 rounded px-2 py-1">
-                      <CheckCircle className="w-4 h-4 text-green-400" />
-                      <span className="text-white text-xs font-medium">{t('readyToPost')}</span>
-                    </div>
-                    <div className="absolute bottom-2 right-2 flex items-center gap-1 bg-black/60 rounded px-2 py-1">
-                      <Video className="w-4 h-4 text-white" />
-                      <span className="text-white text-xs">Video</span>
-                    </div>
-                  </div>
-                )}
-
-                {uploadItems.length === 0 && !pendingVideoFile && !uppyVideoResult ? (
-                  <div className="text-center py-8">
-                    <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-secondary flex items-center justify-center">
-                      <ImagePlus className="w-8 h-8 text-muted-foreground" />
-                    </div>
-                    <p className="font-medium mb-1">{t('addPhotoVideo')}</p>
-                    <p className="text-sm text-muted-foreground mb-4">{t('dragAndDrop')} ({t('maxFiles')} {MAX_FILES_PER_POST})</p>
-                    <Input
-                      id="media-upload"
-                      type="file"
-                      accept="image/*,video/*"
-                      multiple
-                      onChange={(e) => handleFileSelect(e.target.files)}
-                      className="hidden"
-                      disabled={loading}
-                    />
-                    <Button
-                      variant="secondary"
-                      onClick={() => document.getElementById('media-upload')?.click()}
-                      disabled={loading}
-                    >
-                      {t('chooseFromDevice')}
-                    </Button>
-                  </div>
-                ) : uploadItems.length > 0 ? (
-                  <div className="space-y-3">
-                    {/* Media Preview Grid with Progress */}
-                    <MediaUploadPreview
-                      items={uploadItems}
-                      onRemove={removeMedia}
-                      onRetry={retryMedia}
-                      onReorder={reorderMedia}
-                      disabled={loading}
-                      maxItems={MAX_FILES_PER_POST}
-                    />
-
-                    {/* Add More Button */}
-                    {uploadItems.length < MAX_FILES_PER_POST && (
-                      <div className="flex items-center gap-2">
-                        <Input
-                          id="add-more-media"
-                          type="file"
-                          accept="image/*,video/*"
-                          multiple
-                          onChange={(e) => handleFileSelect(e.target.files)}
-                          className="hidden"
-                          disabled={loading}
-                        />
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => document.getElementById('add-more-media')?.click()}
-                          disabled={loading}
-                        >
-                          <ImagePlus className="w-4 h-4 mr-2" />
-                          {t('addPhotoVideo')}
-                        </Button>
-                        <span className="text-sm text-muted-foreground">
-                          {uploadItems.length}/{MAX_FILES_PER_POST}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                ) : null}
-
-                {/* Close Upload Area */}
-                {uploadItems.length === 0 && !pendingVideoFile && !uppyVideoResult && (
-                  <button
-                    onClick={() => setShowMediaUpload(false)}
-                    className="absolute top-2 right-2 w-7 h-7 bg-secondary hover:bg-muted rounded-full flex items-center justify-center"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-            )}
-
-            {/* Add to Post - Facebook style colored icons */}
-            <div className="mt-4 border border-border rounded-lg p-3">
-              <div className="flex items-center justify-between">
-                <span className="font-semibold text-sm">{t('addToYourPost')}</span>
-                <div className="flex items-center gap-0.5 overflow-x-auto scrollbar-hide">
-                  {/* Media - Green */}
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      e.preventDefault();
-                      setShowMediaUpload(true);
-                    }}
-                    className="w-9 h-9 min-w-[36px] rounded-full hover:bg-secondary flex items-center justify-center transition-colors"
-                    disabled={loading}
-                    title={t('photoVideo')}
-                  >
-                    <ImagePlus className="w-6 h-6" style={{ color: '#45BD62' }} />
-                  </button>
-                  
-                  {/* Tag Friends - Blue */}
-                  <button 
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      e.preventDefault();
-                      setShowFriendTagDialog(true);
-                    }}
-                    className={`w-9 h-9 min-w-[36px] rounded-full hover:bg-secondary flex items-center justify-center transition-colors ${
-                      taggedFriends.length > 0 ? 'bg-blue-100 dark:bg-blue-900/30' : ''
-                    }`}
-                    disabled={loading}
-                    title={t('tagFriends')}
-                  >
-                    <UserPlus className="w-6 h-6" style={{ color: '#1877F2' }} />
-                  </button>
-                  
-                  {/* Emoji - Yellow */}
-                  <EmojiPicker onEmojiSelect={handleEmojiSelect} />
-                  
-                  {/* Check-in - Red */}
-                  <button 
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      e.preventDefault();
-                      setShowLocationDialog(true);
-                    }}
-                    className={`w-9 h-9 min-w-[36px] rounded-full hover:bg-secondary flex items-center justify-center transition-colors ${
-                      location ? 'bg-red-100 dark:bg-red-900/30' : ''
-                    }`}
-                    disabled={loading}
-                    title="Check in"
-                  >
-                    <MapPin className="w-6 h-6" style={{ color: '#E74852' }} />
-                  </button>
-                  
-                  {/* GIF - Teal */}
-                  <button 
-                    className="w-9 h-9 min-w-[36px] rounded-full hover:bg-secondary flex items-center justify-center transition-colors opacity-50 cursor-not-allowed"
-                    disabled
-                    title={t('gifComingSoon')}
-                  >
-                    <Clapperboard className="w-6 h-6" style={{ color: '#3BC7BD' }} />
-                  </button>
-                  
-                  {/* More Options */}
-                  <button 
-                    className="w-9 h-9 min-w-[36px] rounded-full hover:bg-secondary flex items-center justify-center transition-colors"
-                    disabled={loading}
-                    title={t('more')}
-                  >
-                    <MoreHorizontal className="w-6 h-6 text-muted-foreground" />
-                  </button>
-                </div>
-              </div>
-            </div>
+            {/* Toolbar */}
+            <CreatePostToolbar
+              loading={loading}
+              taggedFriendsCount={taggedFriends.length}
+              hasLocation={!!location}
+              onShowMediaUpload={() => setShowMediaUpload(true)}
+              onShowFriendTag={() => setShowFriendTagDialog(true)}
+              onShowLocation={() => setShowLocationDialog(true)}
+              onEmojiSelect={handleEmojiSelect}
+            />
           </div>
 
-          {/* Submit Button */}
+          {/* Submit */}
           <div className="p-4 border-t border-border shrink-0">
             <div className="flex gap-2">
               {loading && (
-                <Button
-                  variant="outline"
-                  onClick={handleCancelSubmit}
-                  className="shrink-0"
-                >
-                  {t('cancelButton')}
-                </Button>
+                <Button variant="outline" onClick={handleCancelSubmit} className="shrink-0">{t('cancelButton')}</Button>
               )}
               <Button
-                onClick={handleSubmit}
+                onClick={doSubmit}
                 disabled={loading || isVideoUploading || content.length > MAX_CONTENT_LENGTH || (!content.trim() && uploadItems.length === 0 && !uppyVideoResult)}
                 className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
               >
                 {(loading || isVideoUploading) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                {getSubmitButtonText()}
+                {getSubmitButtonText(isVideoUploading)}
               </Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Friend Tag Dialog */}
-      <FriendTagDialog
-        isOpen={showFriendTagDialog}
-        onClose={() => setShowFriendTagDialog(false)}
-        currentUserId={profile?.id || ''}
-        selectedFriends={taggedFriends}
-        onTagFriends={setTaggedFriends}
-      />
-
-      {/* Location Check-in Dialog */}
-      <LocationCheckin
-        isOpen={showLocationDialog}
-        onClose={() => setShowLocationDialog(false)}
-        currentLocation={location}
-        onSelectLocation={setLocation}
-      />
-
-      {/* Feeling/Activity Dialog */}
-      <FeelingActivityDialog
-        isOpen={showFeelingDialog}
-        onClose={() => setShowFeelingDialog(false)}
-        onSelect={handleFeelingSelect}
-      />
+      <FriendTagDialog isOpen={showFriendTagDialog} onClose={() => setShowFriendTagDialog(false)} currentUserId={profile?.id || ''} selectedFriends={taggedFriends} onTagFriends={setTaggedFriends} />
+      <LocationCheckin isOpen={showLocationDialog} onClose={() => setShowLocationDialog(false)} currentLocation={location} onSelectLocation={setLocation} />
+      <FeelingActivityDialog isOpen={showFeelingDialog} onClose={() => setShowFeelingDialog(false)} onSelect={handleFeelingSelect} />
     </>
   );
 };

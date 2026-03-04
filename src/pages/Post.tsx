@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { FacebookPostCard } from '@/components/feed/FacebookPostCard';
@@ -11,23 +12,37 @@ import { useLanguage } from '@/i18n/LanguageContext';
 import { useSlugResolver } from '@/hooks/useSlugResolver';
 import { SEOHead, buildArticleJsonLd } from '@/components/seo/SEOHead';
 
+interface PostProfileData {
+  username: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  full_name: string | null;
+  public_wallet_address: string | null;
+}
+
+interface PostWithProfile {
+  id: string;
+  content: string | null;
+  image_url: string | null;
+  video_url: string | null;
+  media_urls: Array<{ url: string; type: string }> | null;
+  created_at: string;
+  updated_at: string | null;
+  user_id: string;
+  visibility: string | null;
+  slug: string | null;
+  profiles: PostProfileData;
+  reactions: Array<{ id: string; user_id: string; type: string }>;
+  comments: Array<{ id: string }>;
+}
+
 const Post = () => {
   const { postId, username, slug } = useParams();
   const navigate = useNavigate();
   const { t } = useLanguage();
-  const [post, setPost] = useState<any>(null);
+  const { userId } = useCurrentUser();
+  const [post, setPost] = useState<PostWithProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [currentUserId, setCurrentUserId] = useState<string>('');
-
-  useEffect(() => {
-    const fetchSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        setCurrentUserId(session.user.id);
-      }
-    };
-    fetchSession();
-  }, []);
 
   const { resolvedId, loading: slugLoading } = useSlugResolver({
     contentType: 'post',
@@ -41,7 +56,6 @@ const Post = () => {
 
   useEffect(() => {
     const fetchPost = async () => {
-      // Wait for slug resolution before deciding "not found"
       if (slugLoading) return;
       if (!resolvedId) {
         setPost(null);
@@ -64,8 +78,8 @@ const Post = () => {
       if (error || !data) {
         setPost(null);
       } else {
-        const mappedData = { ...data, profiles: (data as any).public_profiles || (data as any).profiles };
-        setPost(mappedData);
+        const profileData = (data as any).public_profiles || (data as any).profiles;
+        setPost({ ...data, profiles: profileData } as unknown as PostWithProfile);
       }
       setLoading(false);
     };
@@ -83,7 +97,7 @@ const Post = () => {
       ? `/${postUsername}/post/${post.slug}`
       : `/post/${post.id}`;
     const firstMediaImage = Array.isArray(post.media_urls)
-      ? post.media_urls.find((m: any) => m.type === 'image')?.url
+      ? post.media_urls.find((m) => m.type === 'image')?.url
       : null;
     return {
       title: `${authorName} - Post`,
@@ -126,9 +140,7 @@ const Post = () => {
                 <span className="text-5xl">😕</span>
               </div>
                <h2 className="text-2xl font-bold mb-3">{t('postNotFound')}</h2>
-              <p className="text-muted-foreground mb-6">
-                {t('postNotFoundDesc')}
-              </p>
+              <p className="text-muted-foreground mb-6">{t('postNotFoundDesc')}</p>
               <Button onClick={() => navigate('/')} className="bg-primary hover:bg-primary/90">
                 <Home className="w-4 h-4 mr-2" />
                 {t('backToHome')}
@@ -167,7 +179,7 @@ const Post = () => {
 
           <FacebookPostCard
             post={post}
-            currentUserId={currentUserId}
+            currentUserId={userId || ''}
             onPostDeleted={() => navigate('/')}
           />
 
