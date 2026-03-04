@@ -71,7 +71,7 @@ export const CommentReplyForm = ({
       return;
     }
 
-    const insertData: Record<string, string> = {
+    const insertData: Record<string, string> & { post_id: string; user_id: string; content: string; parent_comment_id: string; image_url?: string; video_url?: string } = {
       post_id: postId,
       user_id: userId,
       content: content.trim() || '',

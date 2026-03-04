@@ -31,7 +31,6 @@ export interface ProfileData {
   relationship_status?: string | null;
   pinned_post_id?: string | null;
   fun_id?: string | null;
-  display_name?: string | null;
   admin_notes?: string | null;
   reward_status?: string | null;
   pending_reward?: number;

@@ -2,9 +2,48 @@ import { useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import { InlineSearch } from './InlineSearch';
+import { NotificationDropdown } from './NotificationDropdown';
+import { useLanguage } from '@/i18n/LanguageContext';
+import { useIsMobileOrTablet } from '@/hooks/use-mobile';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import {
+  Home,
+  Users,
+  MessageCircle,
+  Menu,
+  Wallet,
+  Film,
+  User,
+  LogOut,
+  Globe,
+  Sparkles,
+  Shield,
+} from 'lucide-react';
+import { AngelChatWidget } from '@/components/angel-ai';
+import { GiftNavButton } from '@/components/donations/GiftNavButton';
 
-// ... keep existing code (imports from line 5-46)
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+} from '@/components/ui/sheet';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { FacebookLeftSidebar } from '@/components/feed/FacebookLeftSidebar';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 export const FacebookNavbar = () => {
   const navigate = useNavigate();

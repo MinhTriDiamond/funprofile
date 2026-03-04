@@ -135,8 +135,7 @@ export default function LiveStream() {
     busyRef.current = true;
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Chưa đăng nhập');
+      if (!authUserId) throw new Error('Chưa đăng nhập');
 
       const blob = new Blob(chunksRef.current, { type: 'video/webm' });
       if (blob.size === 0) throw new Error('Video rỗng');
