@@ -479,8 +479,12 @@ export const UnifiedGiftSendDialog = ({
                 senderProfile={senderProfile}
                 effectiveAddress={effectiveAddress}
                 selectedToken={selectedToken}
-                onSelectToken={setSelectedToken}
+                onSelectToken={(t) => { setSelectedToken(t); setAmount(''); }}
                 formattedBalance={formattedBalance}
+                disabledTokens={disabledTokens}
+                selectedChainId={selectedChainId}
+                onChainChange={(id) => { setSelectedChainId(id); setAmount(''); }}
+                walletChainId={chainId}
                 amount={amount}
                 onAmountChange={setAmount}
                 onMaxAmount={handleMaxAmount}

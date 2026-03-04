@@ -214,7 +214,7 @@ export function GiftFormStep(props: GiftFormStepProps) {
       {isWrongNetwork && isConnected && (
         <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
           <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
-          <p className="text-sm text-destructive flex-1">Vui lòng chuyển sang BNB Smart Chain</p>
+          <p className="text-sm text-destructive flex-1">Ví đang ở chain khác. Vui lòng chuyển sang {getChainDisplayName(selectedChainId)}</p>
           <Button size="sm" variant="outline" onClick={onSwitchChain}>Switch</Button>
         </div>
       )}
