@@ -210,7 +210,7 @@ export default function LiveAudiencePage() {
                 Xem lại
               </AlertDialogAction>
             )}
-            <AlertDialogAction onClick={() => navigate('/')} variant="outline">
+            <AlertDialogAction onClick={() => navigate('/')}>
               Về trang chủ
             </AlertDialogAction>
           </AlertDialogFooter>
