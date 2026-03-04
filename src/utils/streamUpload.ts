@@ -1,6 +1,7 @@
 import * as tus from 'tus-js-client';
 import { supabase } from '@/integrations/supabase/client';
 import { FILE_LIMITS } from './imageCompression';
+import logger from '@/lib/logger';
 
 export interface StreamUploadProgress {
   bytesUploaded: number;
@@ -54,7 +55,7 @@ async function callStreamVideo<T extends Record<string, any>, R = any>(
   });
 
   if (error) {
-    console.error('[streamUpload] stream-video invoke error:', error);
+    logger.error('[streamUpload] stream-video invoke error:', error);
     throw new Error(error.message || 'Failed to call stream-video');
   }
 
@@ -65,7 +66,7 @@ async function callStreamVideo<T extends Record<string, any>, R = any>(
  * Get a direct upload URL from Cloudflare Stream (for files < 200MB)
  */
 async function getDirectUploadUrl(): Promise<{ uploadUrl: string; uid: string }> {
-  console.log('[streamUpload] Getting direct upload URL...');
+  logger.debug('[streamUpload] Getting direct upload URL...');
   const result = await callStreamVideo<{ maxDurationSeconds: number }, { uploadUrl: string; uid: string }>(
     'direct-upload',
     { maxDurationSeconds: 7200 }
@@ -75,7 +76,7 @@ async function getDirectUploadUrl(): Promise<{ uploadUrl: string; uid: string }>
     throw new Error('Invalid direct upload response');
   }
 
-  console.log('[streamUpload] Got direct upload URL, uid:', result.uid);
+  logger.debug('[streamUpload] Got direct upload URL, uid:', result.uid);
   return result;
 }
 
@@ -87,7 +88,7 @@ async function getTusUploadUrl(
   fileName: string,
   fileType: string
 ): Promise<{ uploadUrl: string; uid: string }> {
-  console.log('[streamUpload] Getting TUS upload URL for file size:', formatBytes(fileSize));
+  logger.debug('[streamUpload] Getting TUS upload URL for file size:', formatBytes(fileSize));
 
   const result = await callStreamVideo<
     { fileSize: number; fileName: string; fileType: string },
@@ -102,7 +103,7 @@ async function getTusUploadUrl(
     throw new Error('Invalid TUS upload response');
   }
 
-  console.log('[streamUpload] Got TUS upload URL, uid:', result.uid);
+  logger.debug('[streamUpload] Got TUS upload URL, uid:', result.uid);
   return { uploadUrl: result.uploadUrl, uid: result.uid };
 }
 
@@ -117,7 +118,7 @@ export async function uploadToStream(
   const fileSize = file.size;
   const useTus = fileSize > (FILE_LIMITS.TUS_THRESHOLD || 100 * 1024 * 1024);
   
-  console.log('[streamUpload] Starting upload:', {
+  logger.debug('[streamUpload] Starting upload:', {
     fileName: file.name,
     fileSize: formatBytes(fileSize),
     useTus,
@@ -142,7 +143,7 @@ async function uploadDirect(
     try {
       const { uploadUrl, uid } = await getDirectUploadUrl();
 
-      console.log('[streamUpload] Starting direct upload, uid:', uid);
+      logger.debug('[streamUpload] Starting direct upload, uid:', uid);
 
       const formData = new FormData();
       formData.append('file', file);
@@ -175,7 +176,7 @@ async function uploadDirect(
 
       xhr.addEventListener('load', () => {
         if (xhr.status >= 200 && xhr.status < 300) {
-          console.log('[streamUpload] Direct upload complete, uid:', uid);
+          logger.debug('[streamUpload] Direct upload complete, uid:', uid);
           
           // Update video settings
           supabase.functions.invoke('stream-video', {
@@ -186,7 +187,7 @@ async function uploadDirect(
               allowedOrigins: ['*'],
             }
           }).catch((err) => {
-            console.warn('[streamUpload] Failed to update video settings:', err);
+            logger.warn('[streamUpload] Failed to update video settings:', err);
           });
           
           resolve({
@@ -211,7 +212,7 @@ async function uploadDirect(
       xhr.send(formData);
 
     } catch (error) {
-      console.error('[streamUpload] Direct upload error:', error);
+      logger.error('[streamUpload] Direct upload error:', error);
       onError?.(error as Error);
       reject(error);
     }
@@ -232,7 +233,7 @@ export async function uploadToStreamTus(
       // Step 1: Get Direct Upload URL from our backend
       const { uploadUrl, uid } = await getTusUploadUrl(file.size, file.name, file.type);
 
-      console.log('[streamUpload] Starting TUS upload:', { 
+      logger.debug('[streamUpload] Starting TUS upload:', { 
         uploadUrl: uploadUrl.substring(0, 80), 
         uid, 
         size: formatBytes(file.size) 
@@ -242,22 +243,19 @@ export async function uploadToStreamTus(
       let lastTime = Date.now();
 
       // Step 2: Upload directly to Cloudflare using tus-js-client
-      // NO AUTH HEADERS NEEDED - this is a pre-signed Direct Creator Upload URL
-      // Optimized for MAXIMUM SPEED with larger chunks
       const upload = new tus.Upload(file, {
         uploadUrl,
-        chunkSize: CHUNK_SIZE, // 150MB chunks for reduced HTTP overhead
-        retryDelays: [0, 500, 1000, 2000, 4000], // Faster retries
+        chunkSize: CHUNK_SIZE,
+        retryDelays: [0, 500, 1000, 2000, 4000],
         removeFingerprintOnSuccess: true,
-        // No headers needed for Direct Creator Upload!
         headers: {},
         metadata: {
           filename: file.name,
           filetype: file.type,
-          maxDuration: '36000', // 10 hours support
+          maxDuration: '36000',
         },
         onError: (error) => {
-          console.error('[streamUpload] TUS upload error:', error);
+          logger.error('[streamUpload] TUS upload error:', error);
           onError?.(error);
           reject(error);
         },
@@ -272,7 +270,7 @@ export async function uploadToStreamTus(
           lastLoaded = bytesUploaded;
           lastTime = now;
           
-          console.log('[streamUpload] TUS progress:', Math.round((bytesUploaded / bytesTotal) * 100) + '%');
+          logger.debug('[streamUpload] TUS progress:', Math.round((bytesUploaded / bytesTotal) * 100) + '%');
           
           onProgress?.({
             bytesUploaded,
@@ -283,7 +281,7 @@ export async function uploadToStreamTus(
           });
         },
         onSuccess: () => {
-          console.log('[streamUpload] TUS upload complete, uid:', uid);
+          logger.debug('[streamUpload] TUS upload complete, uid:', uid);
           
           // Update video settings
           supabase.functions.invoke('stream-video', {
@@ -294,7 +292,7 @@ export async function uploadToStreamTus(
               allowedOrigins: ['*'],
             }
           }).catch((err) => {
-            console.warn('[streamUpload] Failed to update video settings:', err);
+            logger.warn('[streamUpload] Failed to update video settings:', err);
           });
           
           resolve({
@@ -306,11 +304,11 @@ export async function uploadToStreamTus(
       });
 
       // Start upload
-      console.log('[streamUpload] Starting TUS upload to Cloudflare...');
+      logger.debug('[streamUpload] Starting TUS upload to Cloudflare...');
       upload.start();
 
     } catch (error) {
-      console.error('[streamUpload] TUS setup error:', error);
+      logger.error('[streamUpload] TUS setup error:', error);
       onError?.(error as Error);
       reject(error);
     }
@@ -380,9 +378,6 @@ export function isStreamUrl(url: string): boolean {
  * Extract video UID from Cloudflare Stream URL
  */
 export function extractStreamUid(url: string): string | null {
-  // iframe.videodelivery.net/{uid}
-  // videodelivery.net/{uid}/...
-  // customer-{xxx}.cloudflarestream.com/{uid}/...
   const patterns = [
     /videodelivery\.net\/([a-f0-9]{32})/i,
     /cloudflarestream\.com\/([a-f0-9]{32})/i,

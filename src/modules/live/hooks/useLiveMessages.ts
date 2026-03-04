@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import type { LiveMessageRow } from '@/types/realtimeRows';
 
 export interface LiveMessage {
   id: number;
@@ -102,11 +103,11 @@ export function useLiveMessages(sessionId?: string) {
         return;
       }
 
-      await enrichProfiles(data as any[]);
+      await enrichProfiles(data as Array<{ user_id: string }>);
       if (!active) return;
 
       setMessages(
-        (data as any[]).map((row) => ({
+        (data as Array<{ id: number; session_id: string; user_id: string; content: string; created_at: string }>).map((row) => ({
           id: row.id,
           session_id: row.session_id,
           user_id: row.user_id,
@@ -139,7 +140,7 @@ export function useLiveMessages(sessionId?: string) {
           filter: `session_id=eq.${sessionId}`,
         },
         async (payload) => {
-          const row = payload.new as any;
+          const row = payload.new as LiveMessageRow;
 
           // Use batched profile cache instead of individual query
           await requestProfile(row.user_id);

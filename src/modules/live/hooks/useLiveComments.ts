@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import type { LiveCommentRow } from '@/types/realtimeRows';
 
 export interface LiveComment {
   id: string;
@@ -31,17 +32,17 @@ export function useLiveComments(liveSessionId?: string) {
         .limit(200);
 
       if (!error && data) {
-        const userIds = [...new Set(data.map((d: any) => d.user_id))];
+        const userIds = [...new Set(data.map((d) => d.user_id))];
         const { data: profiles } = await supabase
           .from('profiles')
           .select('id, username, avatar_url')
           .in('id', userIds);
 
         const profileMap = new Map(
-          (profiles || []).map((p: any) => [p.id, { username: p.username, avatar_url: p.avatar_url }])
+          (profiles || []).map((p) => [p.id, { username: p.username, avatar_url: p.avatar_url }])
         );
         setComments(
-          data.map((d: any) => ({
+          data.map((d) => ({
             id: d.id,
             live_session_id: d.live_session_id,
             user_id: d.user_id,
@@ -71,7 +72,7 @@ export function useLiveComments(liveSessionId?: string) {
           filter: `live_session_id=eq.${liveSessionId}`,
         },
         async (payload) => {
-          const newRow = payload.new as any;
+          const newRow = payload.new as LiveCommentRow;
           const { data: profile } = await supabase
             .from('profiles')
             .select('username, avatar_url')

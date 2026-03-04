@@ -12,7 +12,7 @@ export function useLiveHeartbeat(sessionId: string | undefined, isHost: boolean)
     if (!sessionId || !isHost) return;
 
     const interval = setInterval(async () => {
-      await (supabase as any)
+      await supabase
         .from('live_sessions')
         .update({ updated_at: new Date().toISOString() })
         .eq('id', sessionId)

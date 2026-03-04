@@ -13,6 +13,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { SocialVideoPlayer } from '@/components/ui/SocialVideoPlayer';
+import logger from '@/lib/logger';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -243,7 +244,7 @@ export function ChunkedVideoPlayer({
     });
 
     const mimeWithCodec = findSupportedMime(manifest) || buildMimeType(manifest);
-    console.log('[ChunkedVideoPlayer] Using MIME:', mimeWithCodec);
+    logger.debug('[ChunkedVideoPlayer] Using MIME:', mimeWithCodec);
     const sourceBuffer = mediaSource.addSourceBuffer(mimeWithCodec);
 
     const totalDurationSec = manifest.total_duration_ms / 1000;

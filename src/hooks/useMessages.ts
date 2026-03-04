@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tansta
 import { supabase } from '@/integrations/supabase/client';
 import { useEffect, useCallback } from 'react';
 import { Json } from '@/integrations/supabase/types';
+import type { MessageRow } from '@/types/realtimeRows';
 
 export interface Message {
   id: string;
@@ -134,15 +135,16 @@ export function useMessages(conversationId: string | null, userId: string | null
           filter: `conversation_id=eq.${conversationId}`,
         },
         async (payload) => {
+          const newMsg = payload.new as MessageRow;
           // Fetch sender profile
           const { data: profile } = await supabase
             .from('profiles')
             .select('id, username, avatar_url, full_name')
-            .eq('id', payload.new.sender_id)
+            .eq('id', newMsg.sender_id)
             .single();
 
-          const newMessage = {
-            ...payload.new,
+          const enriched = {
+            ...newMsg,
             sender: profile,
             reactions: [],
             read_by: [],
@@ -157,7 +159,7 @@ export function useMessages(conversationId: string | null, userId: string | null
               pages: [
                 {
                   ...firstPage,
-                  messages: [...firstPage.messages, newMessage],
+                  messages: [...firstPage.messages, enriched],
                 },
                 ...old.pages.slice(1),
               ],

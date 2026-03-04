@@ -2,6 +2,7 @@
 import { useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import type { MessageRow } from '@/types/realtimeRows';
 
 interface NotificationOptions {
   enabled?: boolean;
@@ -61,7 +62,7 @@ export function useChatNotifications(
         return;
       }
 
-      const conversationIds = (rows || []).map((r: any) => r.conversation_id).filter(Boolean);
+      const conversationIds = (rows || []).map((r) => r.conversation_id).filter(Boolean);
       if (!conversationIds.length) return;
 
       const inFilter = `conversation_id=in.(${conversationIds.join(',')})`;
@@ -77,7 +78,7 @@ export function useChatNotifications(
             filter: inFilter,
           },
           async (payload) => {
-            const message = payload.new as any;
+            const message = payload.new as MessageRow;
 
             if (message.sender_id === userId) return;
             if (message.conversation_id === currentConversationId) return;

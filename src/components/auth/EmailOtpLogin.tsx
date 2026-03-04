@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { toast } from 'sonner';
+import logger from '@/lib/logger';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Mail, ArrowRight, CheckCircle2, Loader2, RefreshCw } from 'lucide-react';
@@ -123,7 +124,7 @@ export const EmailOtpLogin = ({ onSuccess }: EmailOtpLoginProps) => {
           .update({ last_login_platform: 'FUN Profile' })
           .eq('id', data.user_id);
 
-        console.log('[OTP] Session established for user:', data.user_id);
+        logger.debug('[OTP] Session established for user:', data.user_id);
         toast.success(t('welcomeBack'));
         onSuccess(data.user_id, data.is_new_user);
       } else {

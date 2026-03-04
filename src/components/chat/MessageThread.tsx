@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMessages, Message } from '@/hooks/useMessages';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
@@ -24,11 +24,21 @@ interface MessageThreadProps {
 
 export function MessageThread({ conversationId, userId, username }: MessageThreadProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [showSearch, setShowSearch] = useState(false);
   const [showGroupSettings, setShowGroupSettings] = useState(false);
+  const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
+
+  const setMessageRef = useCallback((id: string, el: HTMLDivElement | null) => {
+    if (el) {
+      messageRefs.current.set(id, el);
+    } else {
+      messageRefs.current.delete(id);
+    }
+  }, []);
 
   const { data: conversation, refetch: refetchConversation } = useConversation(conversationId);
   const {
@@ -128,8 +138,16 @@ export function MessageThread({ conversationId, userId, username }: MessageThrea
           conversationId={conversationId}
           onClose={() => setShowSearch(false)}
           onSelectMessage={(messageId) => {
-            // TODO: Scroll to message
             setShowSearch(false);
+            // Scroll to message after search closes
+            setTimeout(() => {
+              const el = messageRefs.current.get(messageId);
+              if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                setHighlightedMessageId(messageId);
+                setTimeout(() => setHighlightedMessageId(null), 2000);
+              }
+            }, 100);
           }}
         />
       </div>
@@ -182,15 +200,20 @@ export function MessageThread({ conversationId, userId, username }: MessageThrea
             );
 
             return (
-              <MessageBubble
+              <div
                 key={message.id}
-                message={message}
-                isOwn={isOwn}
-                showAvatar={showAvatar}
-                currentUserId={userId}
-                onReply={() => setReplyTo(message)}
-                onReaction={(emoji, hasReacted) => handleReaction(message.id, emoji, hasReacted)}
-              />
+                ref={(el) => setMessageRef(message.id, el)}
+                className={`transition-colors duration-500 ${highlightedMessageId === message.id ? 'bg-primary/10 rounded-lg' : ''}`}
+              >
+                <MessageBubble
+                  message={message}
+                  isOwn={isOwn}
+                  showAvatar={showAvatar}
+                  currentUserId={userId}
+                  onReply={() => setReplyTo(message)}
+                  onReaction={(emoji, hasReacted) => handleReaction(message.id, emoji, hasReacted)}
+                />
+              </div>
             );
           })}
 
