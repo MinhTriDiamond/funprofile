@@ -48,7 +48,7 @@ export function ConversationList({
   }
 
   return (
-    <ScrollArea className="flex-1">
+    <ScrollArea className="flex-1 min-h-0" style={{ WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
       <div className="p-2">
         {conversations.map((conversation) => {
           const isGroup = conversation.type === 'group';

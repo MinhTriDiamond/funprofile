@@ -107,9 +107,9 @@ export default function ChatPage() {
 
   if (isMobileOrTablet) {
     return (
-      <div className="min-h-screen overflow-hidden bg-background/80">
+      <div className="h-dvh flex flex-col bg-background/80">
         <FacebookNavbar />
-        <main className="fixed inset-x-0 top-[3cm] bottom-[72px] flex flex-col overflow-hidden bg-background/90">
+        <main className="flex-1 min-h-0 flex flex-col overflow-hidden bg-background/90">
           {conversationId ? (
             <div className="h-full flex flex-col">
               <div className="flex items-center gap-2 p-3 border-b bg-card/80">
