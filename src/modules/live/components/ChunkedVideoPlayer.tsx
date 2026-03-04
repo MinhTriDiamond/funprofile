@@ -13,6 +13,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { SocialVideoPlayer } from '@/components/ui/SocialVideoPlayer';
+import logger from '@/lib/logger';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
