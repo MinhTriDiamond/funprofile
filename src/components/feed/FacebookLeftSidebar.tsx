@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useLanguage } from '@/i18n/LanguageContext';
 import LanguageSwitcher from '@/components/layout/LanguageSwitcher';
@@ -15,8 +16,6 @@ import {
   Shield,
   Crown,
 } from 'lucide-react';
-// Use direct paths for logos to ensure consistency across all environments
-// Cloudflare Image Resizing only works on fun.rich domain
 
 interface Profile {
   id: string;
@@ -33,55 +32,33 @@ interface FacebookLeftSidebarProps {
 export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) => {
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const { userId, isAuthenticated } = useCurrentUser();
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
+    if (!userId) {
+      setProfile(null);
+      setIsAdmin(false);
+      return;
+    }
+
     const fetchProfile = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        setIsLoggedIn(true);
-        const { data } = await supabase
-          .from('profiles')
-          .select('id, username, display_name, avatar_url, full_name')
-          .eq('id', session.user.id)
-          .single();
-        setProfile(data);
-        
-        // Check admin role
-        const { data: hasAdminRole } = await supabase.rpc('has_role', {
-          _user_id: session.user.id,
-          _role: 'admin'
-        });
-        setIsAdmin(!!hasAdminRole);
-      }
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, username, display_name, avatar_url, full_name')
+        .eq('id', userId)
+        .single();
+      setProfile(data);
+      
+      const { data: hasAdminRole } = await supabase.rpc('has_role', {
+        _user_id: userId,
+        _role: 'admin'
+      });
+      setIsAdmin(!!hasAdminRole);
     };
     fetchProfile();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        setIsLoggedIn(true);
-        if (session) {
-          // Wrap async call in setTimeout to avoid deadlock
-          setTimeout(async () => {
-            const { data: hasAdminRole } = await supabase.rpc('has_role', {
-              _user_id: session.user.id,
-              _role: 'admin'
-            });
-            setIsAdmin(!!hasAdminRole);
-          }, 0);
-        }
-      } else if (event === 'SIGNED_OUT') {
-        setIsLoggedIn(false);
-        setProfile(null);
-        setIsAdmin(false);
-      }
-      // INITIAL_SESSION, USER_UPDATED → giữ nguyên state
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
+  }, [userId]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -253,13 +230,12 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
         </div>
       </div>
 
-      {/* Card 2: Your Shortcuts - Avatar + Name, Groups, Pages */}
+      {/* Card 2: Your Shortcuts */}
       <div className="bg-card/70 rounded-xl border-2 border-yellow-400/50 p-4 hover:border-yellow-400 hover:shadow-[0_0_20px_rgba(250,204,21,0.3)] transition-all duration-300">
         <h3 className="font-bold text-sm mb-3 text-muted-foreground">
           {t('yourShortcuts')}
         </h3>
         <div className="space-y-1">
-          {/* User Profile */}
           {profile && (
             <button
               onClick={() => { navigate(`/profile/${profile.id}`); onItemClick?.(); }}
@@ -275,7 +251,6 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
             </button>
           )}
 
-          {/* Shortcut Items - Groups, Pages */}
           {shortcutItems.map((item) => (
             <button
               key={item.label}
@@ -291,13 +266,12 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
         </div>
       </div>
 
-      {/* Card 3: Menu - Language Switcher & Logout */}
+      {/* Card 3: Menu */}
       <div className="bg-card/70 rounded-xl border-2 border-yellow-400/50 p-4 hover:border-yellow-400 hover:shadow-[0_0_20px_rgba(250,204,21,0.3)] transition-all duration-300">
         <h3 className="font-bold text-sm mb-3 text-muted-foreground">
           Menu
         </h3>
         <div className="space-y-1">
-          {/* Language Switcher */}
           <div className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-white hover:shadow-[0_0_12px_rgba(34,197,94,0.5)] transition-all duration-300">
             <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center text-blue-500">
               <Globe className="w-5 h-5" />
@@ -307,7 +281,6 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
             </div>
           </div>
 
-          {/* Admin Dashboard - Only show for admins */}
           {isAdmin && (
             <button
               onClick={() => { navigate('/admin'); onItemClick?.(); }}
@@ -320,8 +293,7 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
             </button>
           )}
 
-          {/* Logout Button */}
-          {isLoggedIn && (
+          {isAuthenticated && (
             <button
               onClick={handleLogout}
               className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-white hover:shadow-[0_0_12px_rgba(239,68,68,0.5)] transition-all duration-300 text-destructive"
@@ -334,7 +306,6 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
           )}
         </div>
 
-        {/* Footer */}
         <div className="pt-4 text-xs text-muted-foreground border-t border-border mt-3">
           <p>{t('privacyPolicy')} · {t('termsOfService')}</p>
           <p className="mt-1">FUN Profile © 2025</p>

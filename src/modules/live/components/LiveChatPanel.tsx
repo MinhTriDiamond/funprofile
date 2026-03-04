@@ -7,6 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useLiveMessages } from '../hooks/useLiveMessages';
 import { type LiveViewer } from '../hooks/useLivePresence';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -22,22 +23,8 @@ interface LiveChatPanelProps {
 export function LiveChatPanel({ sessionId, className, isHost = false, liveTitle, viewers = [] }: LiveChatPanelProps) {
   const { messages, sendMessage, isLoading } = useLiveMessages(sessionId);
   const [text, setText] = useState('');
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const { userId: currentUserId, isAuthenticated } = useCurrentUser();
   const endRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    // Use getSession (local cache) instead of getUser (network call)
-    supabase.auth.getSession().then(({ data }) => {
-      setIsAuthenticated(!!data.session?.user);
-      setCurrentUserId(data.session?.user?.id || null);
-    });
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setIsAuthenticated(!!session?.user);
-      setCurrentUserId(session?.user?.id || null);
-    });
-    return () => listener.subscription.unsubscribe();
-  }, []);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' });

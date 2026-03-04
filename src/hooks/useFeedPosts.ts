@@ -1,6 +1,7 @@
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 export interface PostStats {
   reactions: { id: string; user_id: string; type: string }[];
@@ -39,7 +40,6 @@ export interface FeedPost {
     public_wallet_address?: string | null;
     is_banned?: boolean;
   };
-  // Pre-fetched gift profiles to avoid loading states
   recipientProfile?: GiftProfile | null;
   senderProfile?: GiftProfile | null;
 }
@@ -74,7 +74,6 @@ const fetchPostStats = async (postIds: string[]): Promise<Record<string, PostSta
       };
     });
 
-    // Fill missing post IDs with defaults
     postIds.forEach(id => {
       if (!stats[id]) {
         stats[id] = { reactions: [], commentCount: 0, shareCount: 0 };
@@ -91,16 +90,14 @@ const fetchPostStats = async (postIds: string[]): Promise<Record<string, PostSta
   }
 };
 
-// Batch-fetch profiles for gift_celebration posts (recipients + senders)
+// Batch-fetch profiles for gift_celebration posts
 const fetchGiftProfiles = async (posts: FeedPost[]): Promise<FeedPost[]> => {
   const giftPosts = posts.filter(p => p.post_type === 'gift_celebration');
   if (giftPosts.length === 0) return posts;
 
-  // Collect all unique profile IDs needed
   const profileIds = new Set<string>();
   giftPosts.forEach(p => {
     if (p.gift_recipient_id) profileIds.add(p.gift_recipient_id);
-    // Fetch sender only if different from post author (treasury claim)
     if (p.gift_sender_id && p.gift_sender_id !== p.user_id) profileIds.add(p.gift_sender_id);
   });
 
@@ -125,7 +122,6 @@ const fetchGiftProfiles = async (posts: FeedPost[]): Promise<FeedPost[]> => {
   });
 };
 
-// Fetch a page of posts with cursor-based pagination
 // Fetch highlighted (pinned) gift celebration posts
 const fetchHighlightedPosts = async (currentUserId: string | null): Promise<FeedPost[]> => {
   const now = new Date().toISOString();
@@ -166,7 +162,6 @@ const fetchFeedPage = async (cursor: string | null, currentUserId: string | null
     .order('created_at', { ascending: false })
     .limit(POSTS_PER_PAGE + 1);
 
-  // Only show approved posts + own posts (so author doesn't know they're pending)
   if (currentUserId) {
     query = query.or(`moderation_status.eq.approved,user_id.eq.${currentUserId}`);
   } else {
@@ -191,7 +186,6 @@ const fetchFeedPage = async (cursor: string | null, currentUserId: string | null
     visibility: post.visibility || 'public',
   })).filter((post: FeedPost) => !post.profiles?.is_banned);
 
-  // Pre-fetch recipient/sender profiles for gift posts
   postsData = await fetchGiftProfiles(postsData);
   
   const postIds = postsData.map(p => p.id);
@@ -206,13 +200,7 @@ const fetchFeedPage = async (cursor: string | null, currentUserId: string | null
 
 export const useFeedPosts = () => {
   const queryClient = useQueryClient();
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setCurrentUserId(session?.user?.id ?? null);
-    });
-  }, []);
+  const { userId: currentUserId } = useCurrentUser();
 
   const query = useInfiniteQuery<FeedPage, Error>({
     queryKey: ['feed-posts', currentUserId],
@@ -223,14 +211,13 @@ export const useFeedPosts = () => {
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     retry: 2,
-    enabled: currentUserId !== undefined,
   });
 
   const refetch = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['feed-posts'] });
   }, [queryClient]);
 
-  // Listen for invalidate-feed event (dispatched after donation)
+  // Listen for invalidate-feed event
   useEffect(() => {
     const handler = () => {
       queryClient.invalidateQueries({ queryKey: ['feed-posts'] });
@@ -240,8 +227,7 @@ export const useFeedPosts = () => {
     return () => window.removeEventListener('invalidate-feed', handler);
   }, [queryClient]);
 
-  // Poll for new posts every 30s instead of realtime subscription on ALL inserts
-  // (Realtime on posts table invalidates cache for ALL users on every single post)
+  // Poll for new posts every 30s
   useEffect(() => {
     const interval = setInterval(() => {
       queryClient.invalidateQueries({ queryKey: ['feed-posts'] });
@@ -249,7 +235,7 @@ export const useFeedPosts = () => {
     return () => clearInterval(interval);
   }, [queryClient]);
 
-  // Fetch highlighted posts separately (only on first page)
+  // Fetch highlighted posts separately
   const highlightedQuery = useInfiniteQuery<{ posts: FeedPost[]; postStats: Record<string, PostStats> }, Error>({
     queryKey: ['highlighted-posts', currentUserId],
     queryFn: async () => {
@@ -263,7 +249,6 @@ export const useFeedPosts = () => {
     staleTime: 30 * 1000,
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
-    enabled: currentUserId !== undefined,
   });
 
   const highlightedPosts = highlightedQuery.data?.pages?.[0]?.posts || [];

@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { PullToRefreshContainer } from '@/components/common/PullToRefreshContainer';
@@ -11,45 +12,37 @@ import { Input } from '@/components/ui/input';
 import { Search, UserPlus, Users, UserCheck, Gift, Settings, ChevronLeft } from 'lucide-react';
 import { toast } from 'sonner';
 
+interface FriendProfile {
+  id: string;
+  username: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  friendship_id?: string;
+  created_at?: string;
+}
+
 const Friends = () => {
   const navigate = useNavigate();
-  const [currentUserId, setCurrentUserId] = useState<string>('');
+  const { userId: currentUserId, isAuthenticated, isLoading: authLoading } = useCurrentUser();
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
-  const [friendRequests, setFriendRequests] = useState<any[]>([]);
-  const [sentRequests, setSentRequests] = useState<any[]>([]);
-  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [friendRequests, setFriendRequests] = useState<FriendProfile[]>([]);
+  const [sentRequests, setSentRequests] = useState<FriendProfile[]>([]);
+  const [suggestions, setSuggestions] = useState<FriendProfile[]>([]);
   const [showSidebar, setShowSidebar] = useState(false);
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session) {
-        setCurrentUserId(session.user.id);
-        fetchFriendRequests(session.user.id);
-        fetchSentRequests(session.user.id);
-        fetchSuggestions(session.user.id);
-      } else {
-        // Guest mode: only fetch suggestions
-        fetchSuggestionsForGuest();
-      }
-      setLoading(false);
-    };
-
-    checkAuth();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session) {
-        setCurrentUserId(session.user.id);
-        setLoading(false);
-      } else if (event === 'SIGNED_OUT') {
-        navigate('/auth');
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate]);
+    if (authLoading) return;
+    
+    if (currentUserId) {
+      fetchFriendRequests(currentUserId);
+      fetchSentRequests(currentUserId);
+      fetchSuggestions(currentUserId);
+    } else {
+      fetchSuggestionsForGuest();
+    }
+    setLoading(false);
+  }, [currentUserId, authLoading]);
 
   const fetchFriendRequests = async (userId: string) => {
     const { data } = await supabase
@@ -74,8 +67,8 @@ const Friends = () => {
       return {
         id: profile?.id || item.user_id,
         username: profile?.username || 'Unknown',
-        full_name: profile?.full_name,
-        avatar_url: profile?.avatar_url,
+        full_name: profile?.full_name || null,
+        avatar_url: profile?.avatar_url || null,
         friendship_id: item.id,
         created_at: item.created_at,
       };
@@ -107,8 +100,8 @@ const Friends = () => {
       return {
         id: profile?.id || item.friend_id,
         username: profile?.username || 'Unknown',
-        full_name: profile?.full_name,
-        avatar_url: profile?.avatar_url,
+        full_name: profile?.full_name || null,
+        avatar_url: profile?.avatar_url || null,
         friendship_id: item.id,
         created_at: item.created_at,
       };
@@ -134,7 +127,7 @@ const Friends = () => {
       .select('id, username, avatar_url, full_name')
       .limit(20);
     
-    const filtered = (data || []).filter(p => !excludedUserIds.has(p.id!));
+    const filtered = (data || []).filter(p => !excludedUserIds.has(p.id!)) as FriendProfile[];
     setSuggestions(filtered);
   };
 
@@ -144,7 +137,7 @@ const Friends = () => {
       .select('id, username, avatar_url, full_name')
       .limit(20);
     
-    setSuggestions(data || []);
+    setSuggestions((data || []) as FriendProfile[]);
   };
 
   const handleRequestAction = async (id: string, action: string) => {
@@ -155,7 +148,7 @@ const Friends = () => {
         .eq('id', id);
       if (!error) {
         toast.success('Đã chấp nhận lời mời kết bạn!');
-        fetchFriendRequests(currentUserId);
+        if (currentUserId) fetchFriendRequests(currentUserId);
       }
     } else if (action === 'reject') {
       const { error } = await supabase
@@ -164,7 +157,7 @@ const Friends = () => {
         .eq('id', id);
       if (!error) {
         toast.success('Đã từ chối lời mời');
-        fetchFriendRequests(currentUserId);
+        if (currentUserId) fetchFriendRequests(currentUserId);
       }
     }
   };
@@ -177,13 +170,13 @@ const Friends = () => {
         .eq('id', id);
       if (!error) {
         toast.success('Đã hủy lời mời kết bạn');
-        fetchSentRequests(currentUserId);
+        if (currentUserId) fetchSentRequests(currentUserId);
       }
     }
   };
 
   const handleSuggestionAction = async (id: string, action: string) => {
-    if (action === 'add') {
+    if (action === 'add' && currentUserId) {
       const { error } = await supabase
         .from('friendships')
         .insert({
@@ -221,7 +214,7 @@ const Friends = () => {
     }
   }, [currentUserId]);
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <div className="min-h-screen overflow-hidden">
         <FacebookNavbar />
@@ -245,14 +238,13 @@ const Friends = () => {
       <main data-app-scroll className="fixed inset-x-0 top-[3cm] bottom-0 overflow-y-auto pb-20 md:pb-6 px-4 sm:px-6 lg:px-[2cm]">
         <PullToRefreshContainer onRefresh={handlePullRefresh}>
           <div className="flex">
-            {/* Left Sidebar - Hidden on mobile, shown on lg+ */}
+            {/* Left Sidebar */}
           <aside className={`
             fixed inset-y-0 left-0 z-40 w-[300px] lg:w-[360px] bg-card/80 shadow-lg 
             transform transition-transform duration-300 ease-in-out
             lg:translate-x-0 lg:top-[3cm] lg:h-[calc(100vh-3cm)]
             ${showSidebar ? 'translate-x-0' : '-translate-x-full'}
           `}>
-            {/* Mobile close button */}
             <button 
               className="lg:hidden absolute top-4 right-4 p-2 rounded-full hover:bg-muted"
               onClick={() => setShowSidebar(false)}
@@ -299,7 +291,6 @@ const Friends = () => {
             </div>
           </aside>
 
-          {/* Backdrop for mobile sidebar */}
           {showSidebar && (
             <div 
               className="fixed inset-0 bg-black/50 z-30 lg:hidden"
@@ -309,7 +300,6 @@ const Friends = () => {
 
           {/* Main Content */}
           <div className="flex-1 lg:ml-[360px] min-w-0">
-            {/* Mobile Header */}
             <div className="lg:hidden sticky top-0 z-20 bg-card/80 border-b border-border px-4 py-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -330,10 +320,8 @@ const Friends = () => {
             </div>
 
             <div className="py-4">
-              {/* Home/All Tab */}
               {activeTab === 'all' && (
                 <div className="space-y-6">
-                  {/* Sent Requests Carousel */}
                   {sentRequests.length > 0 && (
                     <FriendCarousel
                       title="Lời mời đã gửi"
@@ -344,7 +332,6 @@ const Friends = () => {
                     />
                   )}
 
-                  {/* Friend Requests Carousel */}
                   {friendRequests.length > 0 && (
                     <FriendCarousel
                       title="Lời mời kết bạn"
@@ -355,7 +342,6 @@ const Friends = () => {
                     />
                   )}
 
-                  {/* Suggestions Carousel */}
                   <FriendCarousel
                     title="Những người bạn có thể biết"
                     items={suggestions}
@@ -367,7 +353,6 @@ const Friends = () => {
                 </div>
               )}
 
-              {/* Friend Requests Tab */}
               {activeTab === 'requests' && (
                 <div className="px-4">
                   <h2 className="text-xl font-bold mb-4 hidden lg:block">Lời mời kết bạn</h2>
@@ -380,7 +365,6 @@ const Friends = () => {
                 </div>
               )}
 
-              {/* Suggestions Tab */}
               {activeTab === 'suggestions' && (
                 <div className="px-4">
                   <h2 className="text-xl font-bold mb-4 hidden lg:block">Những người bạn có thể biết</h2>
@@ -394,7 +378,6 @@ const Friends = () => {
                 </div>
               )}
 
-              {/* All Friends Tab */}
               {activeTab === 'friends' && (
                 <div className="px-4 lg:px-6">
                   <div className="flex items-center gap-3 mb-4">
@@ -408,12 +391,11 @@ const Friends = () => {
                     </div>
                   </div>
                   <div className="bg-card/70 rounded-xl shadow-sm">
-                    <FriendsList userId={currentUserId} />
+                    <FriendsList userId={currentUserId || ''} />
                   </div>
                 </div>
               )}
 
-              {/* Birthdays Tab */}
               {activeTab === 'birthdays' && (
                 <div className="px-4">
                   <h2 className="text-xl font-bold mb-4 hidden lg:block">Sinh nhật</h2>
@@ -429,7 +411,6 @@ const Friends = () => {
         </PullToRefreshContainer>
       </main>
       
-      {/* Mobile Bottom Navigation */}
       <MobileBottomNav />
     </div>
   );
