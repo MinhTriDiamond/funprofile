@@ -39,7 +39,7 @@ export function useFollowingLiveStatus() {
     }
 
     const friendIds = friendships.map((f) =>
-      f.user_id === user.id ? f.friend_id : f.user_id
+      f.user_id === userId ? f.friend_id : f.user_id
     );
 
     const { data: sessions } = await supabase
