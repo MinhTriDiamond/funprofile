@@ -87,6 +87,7 @@ export function PullToRefreshContainer({
 
       {/* Content with transform */}
       <div
+        className="h-full"
         style={{
           transform: `translateY(${pullDistance}px)`,
           transition: isPulling ? 'none' : 'transform 0.3s ease-out',
