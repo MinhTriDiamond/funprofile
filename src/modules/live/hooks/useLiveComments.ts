@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 export interface LiveComment {
   id: string;
@@ -16,7 +17,7 @@ export interface LiveComment {
 export function useLiveComments(liveSessionId?: string) {
   const [comments, setComments] = useState<LiveComment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
+  const { userId } = useCurrentUser();
   useEffect(() => {
     if (!liveSessionId) return;
 
@@ -98,20 +99,15 @@ export function useLiveComments(liveSessionId?: string) {
 
   const sendComment = useCallback(
     async (message: string) => {
-      if (!liveSessionId || !message.trim()) return;
-
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!liveSessionId || !message.trim() || !userId) return;
 
       await supabase.from('live_comments').insert({
         live_session_id: liveSessionId,
-        user_id: user.id,
+        user_id: userId,
         message: message.trim(),
       });
     },
-    [liveSessionId]
+    [liveSessionId, userId]
   );
 
   return { comments, isLoading, sendComment };

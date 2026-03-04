@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 export interface LiveReaction {
   id: number;
@@ -14,6 +15,7 @@ const THROTTLE_MS = 300;
 export function useLiveReactions(sessionId?: string) {
   const [reactions, setReactions] = useState<LiveReaction[]>([]);
   const lastSendAtRef = useRef(0);
+  const { userId } = useCurrentUser();
 
   useEffect(() => {
     if (!sessionId) return;
@@ -51,25 +53,20 @@ export function useLiveReactions(sessionId?: string) {
 
   const sendReaction = useCallback(
     async (emoji: string) => {
-      if (!sessionId) return false;
+      if (!sessionId || !userId) return false;
       const now = Date.now();
       if (now - lastSendAtRef.current < THROTTLE_MS) return false;
       lastSendAtRef.current = now;
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return false;
-
       const { error } = await supabase.from('live_reactions').insert({
         session_id: sessionId,
-        user_id: user.id,
+        user_id: userId,
         emoji,
       });
       if (error) throw error;
       return true;
     },
-    [sessionId]
+    [sessionId, userId]
   );
 
   return { reactions, sendReaction };
