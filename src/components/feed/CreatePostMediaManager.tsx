@@ -2,7 +2,7 @@
  * CreatePostMediaManager — upload queue, Uppy video, drag/drop, media preview
  * Extracted from FacebookCreatePost.tsx
  */
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { deleteFromR2 } from '@/utils/r2Upload';
 import { Button } from '@/components/ui/button';
@@ -39,7 +39,11 @@ interface CreatePostMediaManagerProps {
   setIsVideoUploading: (v: boolean) => void;
 }
 
-export const CreatePostMediaManager = ({
+export interface CreatePostMediaManagerHandle {
+  handleFileSelect: (files: FileList | null) => void;
+}
+
+export const CreatePostMediaManager = forwardRef<CreatePostMediaManagerHandle, CreatePostMediaManagerProps>(({
   loading,
   showMediaUpload,
   setShowMediaUpload,
@@ -52,26 +56,29 @@ export const CreatePostMediaManager = ({
   setUppyVideoResult,
   isVideoUploading,
   setIsVideoUploading,
-}: CreatePostMediaManagerProps) => {
+}, ref) => {
   const { t } = useLanguage();
   const [isDragging, setIsDragging] = useState(false);
+  const queueInitialized = useRef(false);
 
-  // Initialize upload queue
+  // Initialize upload queue (ref-guard pattern to run exactly once)
   useEffect(() => {
+    if (queueInitialized.current) return;
+    queueInitialized.current = true;
     const queue = createUploadQueue({
       maxConcurrent: 4,
       maxFiles: MAX_FILES_PER_POST,
       onProgress: () => {},
       onComplete: () => {},
-      onError: (item, error) => {
+      onError: (item) => {
         toast.error(`${t('uploadFailed')}: ${item.file.name}`);
       },
       onQueueComplete: () => {},
     });
     uploadQueueRef.current = queue;
     const unsubscribe = queue.subscribe((items) => setUploadItems([...items]));
-    return () => { unsubscribe(); queue.destroy(); };
-  }, []);
+    return () => { unsubscribe(); queue.destroy(); queueInitialized.current = false; };
+  }, [uploadQueueRef, setUploadItems, t]);
 
   // Prevent tab close during upload
   useEffect(() => {
@@ -130,6 +137,9 @@ export const CreatePostMediaManager = ({
   const removeMedia = (id: string) => uploadQueueRef.current?.removeItem(id);
   const retryMedia = (id: string) => uploadQueueRef.current?.retryUpload(id);
   const reorderMedia = (from: number, to: number) => uploadQueueRef.current?.reorderItems(from, to);
+
+  // Expose handleFileSelect to parent via ref
+  useImperativeHandle(ref, () => ({ handleFileSelect }), [handleFileSelect]);
 
   if (!showMediaUpload) return null;
 
@@ -239,9 +249,9 @@ export const CreatePostMediaManager = ({
       )}
     </div>
   );
+});
 
-  // Expose handleFileSelect for parent
-};
+CreatePostMediaManager.displayName = 'CreatePostMediaManager';
 
 // Export for parent component to call directly
 export { MAX_FILES_PER_POST };

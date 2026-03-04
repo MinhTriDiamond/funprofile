@@ -3,8 +3,8 @@ import { Gift } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
-import { useQuery } from '@tanstack/react-query';
 import { UnifiedGiftSendDialog } from './UnifiedGiftSendDialog';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 interface GiftNavButtonProps {
   variant: 'desktop' | 'mobile';
@@ -14,20 +14,12 @@ interface GiftNavButtonProps {
 export const GiftNavButton = memo(({ variant, className = '' }: GiftNavButtonProps) => {
   const { t } = useLanguage();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-
-  const { data: currentUser } = useQuery({
-    queryKey: ['current-user-gift'],
-    queryFn: async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      return session?.user ?? null;
-    },
-    staleTime: 5 * 60 * 1000,
-  });
+  const { userId } = useCurrentUser();
 
   const handleOpen = (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    if (!currentUser) {
+    if (!userId) {
       // Try refreshing session
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (session?.user) {

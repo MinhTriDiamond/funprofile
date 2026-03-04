@@ -2,7 +2,7 @@
  * FacebookCreatePost — Compose UI + Dialog shell
  * Logic extracted to useCreatePost, media to CreatePostMediaManager, toolbar to CreatePostToolbar
  */
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -77,18 +77,14 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
   const handlePhotoVideoClick = () => photoVideoInputRef.current?.click();
   const handleLiveVideoClick = () => navigate('/live/setup');
 
-  const handleDirectFileSelect = async (files: FileList | null) => {
+  const mediaManagerRef = useRef<{ handleFileSelect: (files: FileList | null) => void }>(null);
+
+  const handleDirectFileSelect = (files: FileList | null) => {
     if (!files || files.length === 0) return;
     setIsDialogOpen(true);
     setShowMediaUpload(true);
-    // Trigger is handled by CreatePostMediaManager internally after setting showMediaUpload
-    // We need to manually trigger file select on the queue
-    const queue = uploadQueueRef.current;
-    if (queue) {
-      // Reuse the media manager's file handling by dispatching via the hidden input
-      // Actually we need to process files through the media manager
-      // Since media manager handles its own file inputs, we pass files through state
-    }
+    // Forward files to the media manager's file handler
+    mediaManagerRef.current?.handleFileSelect(files);
   };
 
   const doSubmit = async () => {
@@ -260,6 +256,7 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
 
             {/* Media Manager */}
             <CreatePostMediaManager
+              ref={mediaManagerRef}
               loading={loading}
               showMediaUpload={showMediaUpload}
               setShowMediaUpload={setShowMediaUpload}

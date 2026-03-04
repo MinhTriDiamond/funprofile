@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import Cropper from 'react-easy-crop';
+import Cropper, { Point, Area } from 'react-easy-crop';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -11,20 +11,20 @@ interface AvatarCropperProps {
 }
 
 export const AvatarCropper = ({ image, onCropComplete, onCancel }: AvatarCropperProps) => {
-  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [crop, setCrop] = useState<Point>({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
-  const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
 
-  const onCropChange = (crop: any) => {
-    setCrop(crop);
+  const onCropChange = (newCrop: Point) => {
+    setCrop(newCrop);
   };
 
-  const onZoomChange = (zoom: number) => {
-    setZoom(zoom);
+  const onZoomChange = (newZoom: number) => {
+    setZoom(newZoom);
   };
 
-  const onCropAreaComplete = useCallback((croppedArea: any, croppedAreaPixels: any) => {
-    setCroppedAreaPixels(croppedAreaPixels);
+  const onCropAreaComplete = useCallback((_croppedArea: Area, croppedPixels: Area) => {
+    setCroppedAreaPixels(croppedPixels);
   }, []);
 
   const createImage = (url: string): Promise<HTMLImageElement> =>
@@ -35,7 +35,7 @@ export const AvatarCropper = ({ image, onCropComplete, onCancel }: AvatarCropper
       image.src = url;
     });
 
-  const getCroppedImg = async (imageSrc: string, pixelCrop: any): Promise<Blob> => {
+  const getCroppedImg = async (imageSrc: string, pixelCrop: Area): Promise<Blob> => {
     const image = await createImage(imageSrc);
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
