@@ -119,12 +119,13 @@ export const CommentReactionButton = ({ commentId, onReactionChange }: CommentRe
     setLoading(true);
     setShowReactionPicker(false);
 
-    if (userReaction === reactionType) {
-      const { error } = await supabase
-        .from('reactions')
-        .delete()
-        .eq('comment_id', commentId)
-        .eq('user_id', currentUserId);
+    try {
+      if (userReaction === reactionType) {
+        const { error } = await supabase
+          .from('reactions')
+          .delete()
+          .eq('comment_id', commentId)
+          .eq('user_id', currentUserId);
 
         if (!error) {
           setUserReaction(null);
@@ -139,14 +140,14 @@ export const CommentReactionButton = ({ commentId, onReactionChange }: CommentRe
             .from('reactions')
             .delete()
             .eq('comment_id', commentId)
-            .eq('user_id', user.id);
+            .eq('user_id', currentUserId);
         }
         
         const { error } = await supabase
           .from('reactions')
           .insert({
             comment_id: commentId,
-            user_id: user.id,
+            user_id: currentUserId,
             type: reactionType,
           });
 
