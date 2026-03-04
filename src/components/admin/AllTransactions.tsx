@@ -11,7 +11,8 @@ import {
 
 const AllTransactions = () => {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState<{ transactions: Record<string, unknown>[]; total_count: number } | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic edge function response
+  const [data, setData] = useState<any>(null);
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState("all");
   const [tokenFilter, setTokenFilter] = useState("all");

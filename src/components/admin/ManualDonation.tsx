@@ -19,7 +19,8 @@ const ManualDonation = () => {
     token_symbol: "USDT",
     message: "",
   });
-  const [result, setResult] = useState<Record<string, unknown> | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic edge function response
+  const [result, setResult] = useState<any>(null);
 
   // Simple user search
   interface UserSearchResult { id: string; username: string; display_name: string | null; }

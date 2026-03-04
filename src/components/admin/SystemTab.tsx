@@ -37,11 +37,12 @@ interface SystemTabProps {
 
 const SystemTab = ({ adminId }: SystemTabProps) => {
   const [backfilling, setBackfilling] = useState(false);
-  const [backfillResult, setBackfillResult] = useState<Record<string, unknown> | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic API responses from edge functions
+  const [backfillResult, setBackfillResult] = useState<any>(null);
   const [deletingBanned, setDeletingBanned] = useState(false);
-  const [deleteBannedResult, setDeleteBannedResult] = useState<Record<string, unknown> | null>(null);
+  const [deleteBannedResult, setDeleteBannedResult] = useState<any>(null);
   const [scanning, setScanning] = useState(false);
-  const [scanResult, setScanResult] = useState<Record<string, unknown> | null>(null);
+  const [scanResult, setScanResult] = useState<any>(null);
 
   const handleScanOnly = async () => {
     setScanning(true);
