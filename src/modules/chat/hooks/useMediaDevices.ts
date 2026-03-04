@@ -63,8 +63,8 @@ export function useMediaDevices({ videoTrack, audioTrack }: UseMediaDevicesOptio
             label: d.label || `Speaker ${d.deviceId.slice(0, 4)}`,
             kind: 'audiooutput' as const,
           }));
-      } catch (e) {
-        console.log('[MediaDevices] Speakers enumeration not supported');
+      } catch {
+        // Speakers enumeration not supported on some browsers
       }
 
       setDevices(prev => ({

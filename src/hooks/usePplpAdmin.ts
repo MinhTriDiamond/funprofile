@@ -3,6 +3,7 @@ import { useAccount, useSignTypedData, useWriteContract, useWaitForTransactionRe
 import { bscTestnet } from 'wagmi/chains';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import logger from '@/lib/logger';
 import {
   EIP712_DOMAIN,
   EIP712_PPLP_TYPES,
@@ -273,7 +274,7 @@ export const usePplpAdmin = () => {
     }
 
     try {
-      console.log(`[usePplpAdmin] Signing request ${request.id} as group: ${groupKey} (${getGovMemberName(address)})`);
+      logger.debug(`[usePplpAdmin] Signing request ${request.id} as group: ${groupKey} (${getGovMemberName(address)})`);
 
       // Validate action_hash exists
       if (!request.action_hash) {
@@ -290,7 +291,7 @@ export const usePplpAdmin = () => {
         nonce: BigInt(request.nonce),
       };
 
-      console.log('[usePplpAdmin] EIP-712 PureLoveProof message:', message);
+      logger.debug('[usePplpAdmin] EIP-712 PureLoveProof message:', message);
 
       // 3. Ký EIP-712 (gasless, off-chain)
       const signature = await signTypedDataAsync({
@@ -306,7 +307,7 @@ export const usePplpAdmin = () => {
         },
       });
 
-      console.log(`[usePplpAdmin] Signature from ${groupKey}:`, signature);
+      logger.debug(`[usePplpAdmin] Signature from ${groupKey}:`, signature);
 
       // 4. Cập nhật multisig_signatures trong DB
       const newSigs: MultisigSignatures = {
@@ -430,7 +431,7 @@ export const usePplpAdmin = () => {
     if (!isCorrectChain) return null;
 
     try {
-      console.log('[usePplpAdmin] Submitting to chain:', request.id);
+      logger.debug('[usePplpAdmin] Submitting to chain:', request.id);
 
       if (!request.action_name) {
         toast.error('Request thiếu action_name');
@@ -456,7 +457,7 @@ export const usePplpAdmin = () => {
             );
             return null;
           }
-          console.log(`[usePplpAdmin] Nonce verified: ${onChainNonce}`);
+          logger.debug(`[usePplpAdmin] Nonce verified: ${onChainNonce}`);
         } catch (nonceErr) {
           console.warn('[usePplpAdmin] Could not verify nonce, proceeding anyway:', nonceErr);
         }
@@ -468,11 +469,11 @@ export const usePplpAdmin = () => {
         orderedSigs = (['will', 'wisdom', 'love'] as GovGroupKey[])
           .map(group => multisig[group]?.signature)
           .filter(Boolean) as `0x${string}`[];
-        console.log(`[usePplpAdmin] Multisig: ${orderedSigs.length} signatures [WILL, WISDOM, LOVE]`);
+        logger.debug(`[usePplpAdmin] Multisig: ${orderedSigs.length} signatures [WILL, WISDOM, LOVE]`);
       } else {
         // Backward compat: dùng 1 chữ ký cũ
         orderedSigs = [request.signature as `0x${string}`];
-        console.log('[usePplpAdmin] Fallback: using single legacy signature');
+        logger.debug('[usePplpAdmin] Fallback: using single legacy signature');
       }
 
       const txHash = await writeContractAsync({
@@ -490,7 +491,7 @@ export const usePplpAdmin = () => {
         ],
       });
 
-      console.log('[usePplpAdmin] Transaction hash:', txHash);
+      logger.debug('[usePplpAdmin] Transaction hash:', txHash);
 
       const { error: updateError } = await supabase
         .from('pplp_mint_requests')
@@ -726,7 +727,7 @@ export const usePplpAdmin = () => {
 
       // Wait 3 seconds between transactions to avoid nonce race conditions
       if (i < requests.length - 1) {
-        console.log(`[usePplpAdmin] Waiting 3s before next TX (${i + 1}/${requests.length})...`);
+        logger.debug(`[usePplpAdmin] Waiting 3s before next TX (${i + 1}/${requests.length})...`);
         await new Promise(resolve => setTimeout(resolve, 3000));
       }
     }
@@ -800,11 +801,11 @@ export const usePplpAdmin = () => {
             }
 
             result.reconciled++;
-            console.log(`[Reconcile] ✅ Request ${req.id} was actually successful! Block #${receipt.blockNumber}`);
+            logger.debug(`[Reconcile] ✅ Request ${req.id} was actually successful! Block #${receipt.blockNumber}`);
           } else {
             // Genuinely reverted
             result.genuinelyFailed++;
-            console.log(`[Reconcile] ❌ Request ${req.id} genuinely reverted on-chain`);
+            logger.debug(`[Reconcile] ❌ Request ${req.id} genuinely reverted on-chain`);
           }
         } catch (receiptError: unknown) {
           // No receipt found (TX may not exist or was dropped)

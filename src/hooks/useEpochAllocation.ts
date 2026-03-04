@@ -107,7 +107,7 @@ export const useEpochAllocation = (): EpochAllocationResult => {
       if (epochErr) throw epochErr;
 
       if (epochs && epochs.length > 0) {
-        const epoch = epochs[0] as any;
+        const epoch = epochs[0];
         setLatestEpoch({
           id: epoch.id,
           epoch_month: epoch.epoch_month || '',
@@ -130,7 +130,7 @@ export const useEpochAllocation = (): EpochAllocationResult => {
         if (allocErr) throw allocErr;
 
         if (alloc) {
-          setAllocation(alloc as any);
+          setAllocation(alloc);
         } else {
           setAllocation(null);
         }

@@ -286,8 +286,8 @@ export const EditProfile = () => {
           workplace: workplace || null,
           education: education || null,
           relationship_status: relationshipStatus || null,
-          social_links: socialLinks,
-        } as any)
+          social_links: socialLinks as unknown as import('@/integrations/supabase/types').Json,
+        })
         .eq('id', userId);
 
       if (error) throw error;
