@@ -138,11 +138,15 @@ export function useLiveRecording({ videoTrack, audioTrack, sessionId, recordingI
     return () => window.removeEventListener('beforeunload', handler);
   }, [phase]);
 
-  // Cleanup on unmount
+  // Cleanup on unmount — stop recorder + flush queue (best-effort)
   useEffect(() => {
     return () => {
       if (recorderRef.current && recorderRef.current.getState() === 'recording') {
         recorderRef.current.stop().catch(() => {});
+      }
+      // Flush remaining chunks to R2 (non-blocking, auto-finalize will handle manifest)
+      if (queueRef.current) {
+        queueRef.current.flush().catch(() => {});
       }
     };
   }, []);
