@@ -20,6 +20,7 @@ import { RedEnvelopeCard } from './RedEnvelopeCard';
 import { FileAttachment } from './FileAttachment';
 import { getFileTypeFromUrl } from '../utils/fileUtils';
 import { toast } from 'sonner';
+import type { StickerMetadata, RedEnvelopeMetadata } from '@/types/realtimeRows';
 
 interface MessageBubbleProps {
   message: Message;
@@ -78,7 +79,7 @@ export function MessageBubble({
 
   // Sticker message
   if (message.message_type === 'sticker') {
-    const stickerMeta = message.metadata as any;
+    const stickerMeta = (message.metadata ?? {}) as StickerMetadata;
     const stickerUrl = stickerMeta?.sticker?.url;
     return (
       <div id={`msg-${message.id}`} className={cn('flex items-end gap-2', isOwn ? 'justify-end' : '')}>
@@ -100,7 +101,7 @@ export function MessageBubble({
 
   // Red envelope message
   if (message.message_type === 'red_envelope') {
-    const meta = message.metadata as any;
+    const meta = (message.metadata ?? {}) as RedEnvelopeMetadata;
     return (
       <div id={`msg-${message.id}`} className={cn('flex items-end gap-2', isOwn ? 'justify-end' : '')}>
         {!isOwn && showAvatar && (

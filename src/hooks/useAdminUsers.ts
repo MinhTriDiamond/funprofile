@@ -30,28 +30,28 @@ const fetchAdminUsers = async (adminUserId: string | null): Promise<AdminUserDat
   if (!profiles) return [];
 
   const { data: rewardsData } = await supabase.rpc("get_user_rewards", { limit_count: 500 });
-  const rewardsMap = new Map(rewardsData?.map((r: any) => [r.id, r]) || []);
+  const rewardsMap = new Map(rewardsData?.map((r: Record<string, unknown>) => [r.id as string, r]) || []);
 
   // Fetch emails for admin using passed-in userId
   let emailsMap = new Map<string, string>();
   if (adminUserId) {
     const { data: emailsData } = await supabase.rpc("get_user_emails_for_admin", { p_admin_id: adminUserId });
     if (emailsData) {
-      emailsMap = new Map((emailsData as any[]).map((e: any) => [e.user_id, e.email]));
+      emailsMap = new Map((emailsData as Array<{ user_id: string; email: string }>).map((e) => [e.user_id, e.email]));
     }
   }
 
   return profiles.map((profile) => {
-    const rewardInfo = rewardsMap.get(profile.id) as any;
+    const rewardInfo = rewardsMap.get(profile.id) as Record<string, unknown> | undefined;
     return {
       ...profile,
       pending_reward: profile.pending_reward || 0,
       approved_reward: profile.approved_reward || 0,
       wallet_address: profile.wallet_address || null,
       reward_status: profile.reward_status || "pending",
-      posts_count: rewardInfo?.posts_count || 0,
-      comments_count: rewardInfo?.comments_count || 0,
-      reactions_count: rewardInfo?.reactions_count || 0,
+      posts_count: Number(rewardInfo?.posts_count) || 0,
+      comments_count: Number(rewardInfo?.comments_count) || 0,
+      reactions_count: Number(rewardInfo?.reactions_count) || 0,
       email: emailsMap.get(profile.id) || null,
     };
   });

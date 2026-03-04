@@ -22,7 +22,7 @@ export function RedEnvelopeCard({ envelopeId, userId }: RedEnvelopeCardProps) {
         .eq('id', envelopeId)
         .maybeSingle();
       if (error) throw error;
-      return data as any as RedEnvelope | null;
+      return data as unknown as RedEnvelope | null;
     },
     enabled: !!envelopeId,
     staleTime: 5000,

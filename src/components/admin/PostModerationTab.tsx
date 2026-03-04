@@ -12,7 +12,7 @@ import { vi } from "date-fns/locale";
 interface PendingPost {
   id: string;
   content: string;
-  media_urls: any[];
+  media_urls: unknown[];
   created_at: string;
   user_id: string;
   profiles: {
@@ -39,7 +39,7 @@ const PostModerationTab = () => {
       console.error("Error fetching pending posts:", error);
       toast.error("Không thể tải danh sách bài viết");
     } else {
-      setPosts(((data as any) || []).map((p: any) => ({ ...p, profiles: p.public_profiles || p.profiles })));
+      setPosts((data || []).map((p: Record<string, unknown>) => ({ ...p, profiles: (p as Record<string, unknown>).public_profiles || (p as Record<string, unknown>).profiles })) as unknown as PendingPost[]);
     }
     setLoading(false);
   };

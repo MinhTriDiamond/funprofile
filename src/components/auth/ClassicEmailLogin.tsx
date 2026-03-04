@@ -39,7 +39,7 @@ export const ClassicEmailLogin = ({
         const normalized = normalizeUsername(username);
         const usernameError = validateUsername(normalized);
         if (usernameError) {
-          toast.error(t(usernameError as any));
+          toast.error(t(usernameError as never /* dynamic i18n key from validator */));
           setLoading(false);
           return;
         }

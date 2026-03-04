@@ -327,7 +327,8 @@ export const ClaimRewardDialog = ({
         className="mb-3 border-amber-300 text-amber-700 hover:bg-amber-50"
         onClick={async () => {
           try {
-            const provider = (window as any).ethereum;
+            /* EIP-1193 browser global — no typed declaration available */
+            const provider = (window as { ethereum?: { request: (args: unknown) => Promise<unknown> } }).ethereum;
             if (!provider) {
               toast.error('Vui lòng mở MetaMask');
               return;

@@ -21,9 +21,8 @@ interface UseLiveRtcOptions {
 const MAX_REJOIN_ATTEMPTS = 5;
 
 function mapRtcError(error: unknown): string {
-  const anyErr = error as any;
-  const name = String(anyErr?.name || '');
-  const msg = String(anyErr?.message || '');
+  const name = error instanceof Error ? error.name : '';
+  const msg = error instanceof Error ? error.message : String(error || '');
   if (name === 'NotAllowedError') return 'Bạn chưa cấp quyền camera/micro.';
   if (name === 'NotFoundError') return 'Không tìm thấy thiết bị camera/micro.';
   if (msg.toLowerCase().includes('network')) return 'Mạng không ổn định, đang thử kết nối lại...';
