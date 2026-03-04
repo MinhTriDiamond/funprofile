@@ -49,9 +49,9 @@ const fetchAdminUsers = async (adminUserId: string | null): Promise<AdminUserDat
       approved_reward: profile.approved_reward || 0,
       wallet_address: profile.wallet_address || null,
       reward_status: profile.reward_status || "pending",
-      posts_count: rewardInfo?.posts_count || 0,
-      comments_count: rewardInfo?.comments_count || 0,
-      reactions_count: rewardInfo?.reactions_count || 0,
+      posts_count: Number(rewardInfo?.posts_count) || 0,
+      comments_count: Number(rewardInfo?.comments_count) || 0,
+      reactions_count: Number(rewardInfo?.reactions_count) || 0,
       email: emailsMap.get(profile.id) || null,
     };
   });

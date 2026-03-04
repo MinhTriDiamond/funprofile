@@ -86,7 +86,7 @@ export const ActiveAccountProvider = ({ children }: { children: React.ReactNode 
         return;
       }
 
-      const rawAccounts: string[] = await provider.request({ method: 'eth_accounts' });
+      const rawAccounts = (await provider.request({ method: 'eth_accounts' })) as string[];
       const normalized = rawAccounts.map((a: string) => a.toLowerCase());
 
       if (normalized.length === 0 && providerAddress) {
