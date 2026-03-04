@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import type { LiveReactionRow } from '@/types/realtimeRows';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 export interface LiveReaction {
@@ -31,7 +32,7 @@ export function useLiveReactions(sessionId?: string) {
           filter: `session_id=eq.${sessionId}`,
         },
         (payload) => {
-          const row = payload.new as any;
+          const row = payload.new as LiveReactionRow;
           setReactions((prev) => [
             ...prev.slice(-120),
             {
