@@ -47,7 +47,7 @@ export const ProfileHeader = ({
   const navigate = useNavigate();
   const { t } = useLanguage();
 
-  const displayAddress = profile?.public_wallet_address || (profile as any)?.external_wallet_address || (profile as any)?.custodial_wallet_address;
+  const displayAddress = profile?.public_wallet_address || profile?.external_wallet_address || profile?.custodial_wallet_address;
 
   return (
     <>
@@ -218,7 +218,7 @@ export const ProfileHeader = ({
                         recipientId={profile.id}
                         recipientUsername={profile.username}
                         recipientDisplayName={profile.display_name}
-                        recipientWalletAddress={profile.public_wallet_address || (profile as any).external_wallet_address || (profile as any).wallet_address || (profile as any).custodial_wallet_address}
+                        recipientWalletAddress={profile.public_wallet_address || profile.external_wallet_address || profile.wallet_address || profile.custodial_wallet_address}
                         recipientAvatarUrl={profile.avatar_url}
                         variant="profile"
                       />

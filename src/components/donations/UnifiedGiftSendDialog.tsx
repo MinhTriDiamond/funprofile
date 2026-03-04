@@ -663,7 +663,7 @@ export const UnifiedGiftSendDialog = ({
         card_theme: themeId,
         card_background: bgIndex.toString(),
         card_sound: soundId,
-      } as any).eq('id', celebrationData.id);
+      }).eq('id', celebrationData.id);
     } catch (err) {
       logger.error('[GIFT] Save theme error:', err);
     }

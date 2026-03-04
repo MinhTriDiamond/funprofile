@@ -1,13 +1,12 @@
 import { supabase } from '@/integrations/supabase/client';
 import { uploadToR2 } from '@/utils/r2Upload';
+import { toJson, mergeJson } from '@/utils/supabaseJsonHelpers';
+import logger from '@/lib/logger';
 import type { CreateLiveSessionInput, LiveSession } from './types';
+import type { Database } from '@/integrations/supabase/types';
 
-/**
- * Typed as `any` because live_sessions and posts use Json columns (metadata)
- * that reject partial typed objects. Cast is scoped to this service file only.
- * TODO: Replace with supabaseJsonHelpers when available.
- */
-const db = supabase as any;
+type LiveSessionRow = Database['public']['Tables']['live_sessions']['Row'];
+type LiveSessionInsert = Database['public']['Tables']['live_sessions']['Insert'];
 
 const LIVE_POST_DEFAULT_CONTENT = 'Đang LIVE trên FUN Profile';
 
@@ -56,27 +55,32 @@ type LivePostMetadata = {
   playback_url?: string | null;
   [key: string]: unknown;
 };
+
 async function mergeLivePostMetadata(postId: string, patch: Partial<LivePostMetadata>): Promise<void> {
-  const { data: existingPost } = await db
+  const { data: existingPost } = await supabase
     .from('posts')
     .select('metadata')
     .eq('id', postId)
     .maybeSingle();
 
-  const existing = (existingPost?.metadata || {}) as LivePostMetadata;
+  const merged = mergeJson<LivePostMetadata>(existingPost?.metadata ?? null, patch);
 
-  await db
+  await supabase
     .from('posts')
-    .update({
-      metadata: {
-        ...existing,
-        ...patch,
-      },
-    })
+    .update({ metadata: merged })
     .eq('id', postId);
 }
 
-function normalizeLiveSession(row: any): LiveSession {
+/** Typed row from live_sessions query with joined profile */
+interface LiveSessionQueryRow extends Omit<LiveSessionRow, 'last_worker_response' | 'recording_files'> {
+  host_profile?: {
+    username: string | null;
+    full_name: string | null;
+    avatar_url: string | null;
+  } | null;
+}
+
+function normalizeLiveSession(row: LiveSessionQueryRow): LiveSession {
   return {
     id: row.id,
     host_user_id: row.host_user_id || row.owner_id,
@@ -117,13 +121,13 @@ export async function uploadLiveThumbnail(
         upsert: true,
       });
     if (error) {
-      console.warn('[liveService] uploadLiveThumbnail error:', error);
+      logger.warn('[liveService] uploadLiveThumbnail error:', error);
       return null;
     }
     const { data } = supabase.storage.from('live-thumbnails').getPublicUrl(path);
     return data.publicUrl;
   } catch (err) {
-    console.warn('[liveService] uploadLiveThumbnail exception:', err);
+    logger.warn('[liveService] uploadLiveThumbnail exception:', err);
     return null;
   }
 }
@@ -134,7 +138,7 @@ export async function attachLiveReplayToPost(
   durationSeconds?: number,
   thumbnailUrl?: string | null
 ): Promise<void> {
-  const { error } = await db.rpc('attach_live_replay_to_post', {
+  const { error } = await supabase.rpc('attach_live_replay_to_post' as any, {
     _session_id: sessionId,
     _playback_url: playbackUrl,
     _duration_seconds: durationSeconds,
@@ -159,7 +163,7 @@ export async function createLiveSession(input: CreateLiveSessionInput): Promise<
   const visibility = input.privacy === 'friends' ? 'friends' : 'public';
 
   // ── Single Active Host Rule (Facebook-style) ──
-  const { data: oldSessions } = await db
+  const { data: oldSessions } = await supabase
     .from('live_sessions')
     .select('id, post_id')
     .eq('host_user_id', userId)
@@ -167,7 +171,7 @@ export async function createLiveSession(input: CreateLiveSessionInput): Promise<
 
   if (oldSessions && oldSessions.length > 0) {
     const nowIso = new Date().toISOString();
-    await db
+    await supabase
       .from('live_sessions')
       .update({ status: 'ended', ended_at: nowIso, updated_at: nowIso })
       .eq('host_user_id', userId)
@@ -182,21 +186,23 @@ export async function createLiveSession(input: CreateLiveSessionInput): Promise<
 
   let postId: string | null = null;
 
+  const liveMetadata: LivePostMetadata = {
+    live_title: title,
+    live_status: 'live',
+    channel_name: channelName,
+    agora_channel: channelName,
+    viewer_count: 0,
+  };
+
   try {
-    const { data: post, error: postError } = await db
+    const { data: post, error: postError } = await supabase
       .from('posts')
       .insert({
         user_id: userId,
         content: title || LIVE_POST_DEFAULT_CONTENT,
         visibility,
         post_type: 'live',
-        metadata: {
-          live_title: title,
-          live_status: 'live',
-          channel_name: channelName,
-          agora_channel: channelName,
-          viewer_count: 0,
-        },
+        metadata: toJson(liveMetadata),
       })
       .select('id')
       .single();
@@ -204,7 +210,7 @@ export async function createLiveSession(input: CreateLiveSessionInput): Promise<
     if (postError) throw postError;
     postId = post.id;
 
-    const { data, error } = await db
+    const { data, error } = await supabase
       .from('live_sessions')
       .insert({
         host_user_id: userId,
@@ -217,7 +223,7 @@ export async function createLiveSession(input: CreateLiveSessionInput): Promise<
         status: 'live',
         recording_status: 'idle',
         post_id: postId,
-      })
+      } satisfies Partial<LiveSessionInsert>)
       .select(
         `
         id, host_user_id, agora_channel, channel_name, title, privacy, status, viewer_count,
@@ -229,35 +235,31 @@ export async function createLiveSession(input: CreateLiveSessionInput): Promise<
 
     if (error) throw error;
 
-    await db
+    const fullMetadata: LivePostMetadata = {
+      ...liveMetadata,
+      live_session_id: data.id,
+    };
+
+    await supabase
       .from('posts')
-      .update({
-        metadata: {
-          live_title: title,
-          live_status: 'live',
-          channel_name: channelName,
-          agora_channel: channelName,
-          live_session_id: data.id,
-          viewer_count: 0,
-        },
-      })
+      .update({ metadata: toJson(fullMetadata) })
       .eq('id', postId);
 
     notifyFriendsLiveStarted(data.id, postId!).catch((err) =>
-      console.warn('[liveService] notify-live-started failed:', err)
+      logger.warn('[liveService] notify-live-started failed:', err)
     );
 
-    return normalizeLiveSession(data);
+    return normalizeLiveSession(data as unknown as LiveSessionQueryRow);
   } catch (error) {
     if (postId) {
-      await db.from('posts').delete().eq('id', postId);
+      await supabase.from('posts').delete().eq('id', postId);
     }
     throw error;
   }
 }
 
 export async function getLiveSession(sessionId: string): Promise<LiveSession | null> {
-  const { data, error } = await db
+  const { data, error } = await supabase
     .from('live_sessions')
     .select(
       `
@@ -271,11 +273,11 @@ export async function getLiveSession(sessionId: string): Promise<LiveSession | n
 
   if (error) throw error;
   if (!data) return null;
-  return normalizeLiveSession(data);
+  return normalizeLiveSession(data as unknown as LiveSessionQueryRow);
 }
 
 export async function listActiveLiveSessions(): Promise<LiveSession[]> {
-  const { data, error } = await db
+  const { data, error } = await supabase
     .from('live_sessions')
     .select(
       `
@@ -288,7 +290,7 @@ export async function listActiveLiveSessions(): Promise<LiveSession[]> {
     .order('started_at', { ascending: false });
 
   if (error) throw error;
-  return (data || []).map(normalizeLiveSession);
+  return (data || []).map((row) => normalizeLiveSession(row as unknown as LiveSessionQueryRow));
 }
 
 export async function endLiveSession(sessionId: string): Promise<void> {
@@ -302,7 +304,7 @@ export async function finalizeLiveSession(
   const { playbackUrl = null, recordingStatus = playbackUrl ? 'ready' : 'failed' } = options;
   const nowIso = new Date().toISOString();
 
-  const { data, error } = await db
+  const { data, error } = await supabase
     .from('live_sessions')
     .update({
       status: 'ended',
@@ -324,7 +326,7 @@ export async function finalizeLiveSession(
     });
 
     if (playbackUrl) {
-      await db.from('posts')
+      await supabase.from('posts')
         .update({ video_url: playbackUrl })
         .eq('id', data.post_id);
     }
@@ -333,7 +335,7 @@ export async function finalizeLiveSession(
 
 export async function updateLiveViewerCount(sessionId: string, viewerCount: number): Promise<void> {
   const nextCount = Math.max(0, viewerCount);
-  const { data } = await db
+  const { data } = await supabase
     .from('live_sessions')
     .update({ viewer_count: nextCount })
     .eq('id', sessionId)
@@ -341,28 +343,28 @@ export async function updateLiveViewerCount(sessionId: string, viewerCount: numb
     .maybeSingle();
 
   if (data?.post_id) {
-    await db
+    const viewerMetadata: LivePostMetadata = {
+      live_title: data.title,
+      channel_name: data.agora_channel || data.channel_name,
+      agora_channel: data.agora_channel || data.channel_name,
+      live_status: 'live',
+      viewer_count: nextCount,
+      live_session_id: data.id,
+    };
+
+    await supabase
       .from('posts')
-      .update({
-        metadata: {
-          live_title: data.title,
-          channel_name: data.agora_channel || data.channel_name,
-          agora_channel: data.agora_channel || data.channel_name,
-          live_status: 'live',
-          viewer_count: nextCount,
-          live_session_id: data.id,
-        },
-      })
+      .update({ metadata: toJson(viewerMetadata) })
       .eq('id', data.post_id);
   }
 }
 
 export async function incrementLiveViewerCount(sessionId: string): Promise<void> {
-  await db.rpc('increment_live_viewer_count', { session_id: sessionId });
+  await supabase.rpc('increment_live_viewer_count' as any, { session_id: sessionId });
 }
 
 export async function decrementLiveViewerCount(sessionId: string): Promise<void> {
-  await db.rpc('decrement_live_viewer_count', { session_id: sessionId });
+  await supabase.rpc('decrement_live_viewer_count' as any, { session_id: sessionId });
 }
 
 export async function uploadLiveRecording(
@@ -436,7 +438,7 @@ export async function uploadLiveChunk(
   }
 
   // 3. Record chunk in DB
-  await db
+  await supabase
     .from('chunked_recording_chunks')
     .insert({
       recording_id: recordingId,
@@ -448,12 +450,12 @@ export async function uploadLiveChunk(
     });
 
   // 4. Update last_seq_uploaded
-  await db
+  await supabase
     .from('chunked_recordings')
     .update({ last_seq_uploaded: chunkIndex })
     .eq('id', recordingId);
 
-  console.log(`[uploadLiveChunk] #${chunkIndex} ✓ key=${objectKey}`);
+  logger.debug(`[uploadLiveChunk] #${chunkIndex} ✓ key=${objectKey}`);
   return objectKey;
 }
 
@@ -481,8 +483,8 @@ export async function finalizeLiveChunks(
   });
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: 'Finalize failed' }));
-    throw new Error((err as any).error || `Finalize failed: ${res.status}`);
+    const err = await res.json().catch(() => ({ error: 'Finalize failed' })) as { error?: string };
+    throw new Error(err.error || `Finalize failed: ${res.status}`);
   }
 
   const data = await res.json() as { success: boolean; manifest_url: string; total_chunks: number };
@@ -498,7 +500,7 @@ export async function createChunkedRecording(
   channelName?: string,
   mimeType: string = 'video/webm'
 ): Promise<string> {
-  const { data, error } = await db
+  const { data, error } = await supabase
     .from('chunked_recordings')
     .insert({
       user_id: userId,
@@ -536,6 +538,6 @@ async function notifyFriendsLiveStarted(sessionId: string, postId: string): Prom
 
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
-    throw new Error(err.error || `HTTP ${response.status}`);
+    throw new Error((err as { error?: string }).error || `HTTP ${response.status}`);
   }
 }
