@@ -2,7 +2,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { uploadToR2 } from '@/utils/r2Upload';
 import { toJson, mergeJson } from '@/utils/supabaseJsonHelpers';
 import logger from '@/lib/logger';
-import type { CreateLiveSessionInput, LiveSession } from './types';
+import type { CreateLiveSessionInput, LiveSession, LivePrivacy, LiveStatus } from './types';
 import type { Database } from '@/integrations/supabase/types';
 
 type LiveSessionRow = Database['public']['Tables']['live_sessions']['Row'];
