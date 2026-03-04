@@ -60,6 +60,8 @@ export const CommentSection = ({ postId, onCommentAdded }: CommentSectionProps) 
   useEffect(() => {
     fetchComments();
     
+    const cleanupRef = { current: () => {} };
+
     const channelTimer = setTimeout(() => {
       const channel = supabase
         .channel(`comments-${postId}`)
@@ -77,11 +79,8 @@ export const CommentSection = ({ postId, onCommentAdded }: CommentSectionProps) 
         )
         .subscribe();
 
-      // Store cleanup ref
       cleanupRef.current = () => supabase.removeChannel(channel);
     }, 500);
-
-    const cleanupRef = { current: () => {} };
 
     return () => {
       clearTimeout(channelTimer);

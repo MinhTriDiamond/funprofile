@@ -9,6 +9,7 @@ import { getBscScanTxUrl } from '@/lib/bscScanHelpers';
 import { validateEvmAddress } from '@/utils/walletValidation';
 import { useActiveAccount } from '@/contexts/ActiveAccountContext';
 import type { WalletToken } from '@/lib/tokens';
+import logger from '@/lib/logger';
 
 export type TxStep = 'idle' | 'signing' | 'broadcasted' | 'confirming' | 'finalizing' | 'success' | 'timeout';
 

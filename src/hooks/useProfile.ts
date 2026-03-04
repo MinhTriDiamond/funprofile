@@ -24,7 +24,7 @@ export interface ProfileData {
   external_wallet_address?: string | null;
   custodial_wallet_address?: string | null;
   wallet_address?: string | null;
-  social_links?: any[];
+  social_links?: Array<{ platform: string; label?: string; url: string; color?: string; favicon?: string }>;
   is_banned?: boolean;
   location?: string | null;
   workplace?: string | null;
