@@ -1,78 +1,139 @@
 
 
-# Phân tích: Tại sao Database hiển thị Livestream = 0
+# VÒNG 8 — KẾ HOẠCH GIẢI QUYẾT TỒN ĐỌNG
 
-## Phát hiện chính
+---
 
-**Dữ liệu thực tế trong database:**
+## I. TỔNG KẾT TỒN ĐỌNG
 
-| Bảng | Số lượng | Ghi chú |
-|------|----------|---------|
-| `live_sessions` | **600** (596 ended + 4 live) | Users livestream rất tích cực |
-| `chunked_recordings` | **342** (314 done, 28 stuck "recording") | Ghi hình hoạt động |
-| `posts` với `post_type = 'live'` | **519** | Bài đăng live |
-| `posts` có video URL chứa "live" | **581** | Video replay |
-| `recording_status = 'ready'` | **488** | Recordings thành công |
-| `recording_status = 'failed'` | **57** | Recordings thất bại (~9.5%) |
+| # | Vấn đề | Phạm vi |
+|---|--------|---------|
+| 1 | `social_links as any` — AvatarOrbit (6), Profile.tsx (1), EditProfile (5) | 12 casts |
+| 2 | Realtime `payload.new as any` — useMessages (3), useAgoraCall (2) | 5 casts |
+| 3 | `metadata as any` — MessageBubble (2) | 2 casts |
+| 4 | `(data as any)` — EditProfile (5 fields), PostModerationTab, InlineSearch, AppHonorBoard, usePins, useRedEnvelope, useUserDirectory, useAdminUsers | ~20 casts |
+| 5 | `error as any` → `unknown` — LiveHostPage, useLiveRtc | 2 functions |
+| 6 | `(connector as any).getProvider()` — ActiveAccountContext | 2 casts (wagmi gap) |
+| 7 | `(window as any).ethereum` — ClaimRewardDialog | 1 cast (browser global) |
+| 8 | `(window as any).webkitAudioContext` — useChatNotifications | 1 cast (Safari compat) |
+| 9 | `t(key as any)` — 3 files | 3 casts |
+| 10 | `console.log` — useAgoraCall (18), AdminMigration (12), usePendingDonationRecovery (3), sdk-package/IntegrationDocs (doc examples) | ~35 thực tế cần migrate |
 
-**Kết luận: Users livestream RẤT NHIỀU — 600 phiên, 488 recordings thành công!**
+---
 
-## Nguyên nhân gốc: Hàm `get_app_stats` không đếm livestream
+## II. PHÂN LOẠI — CÓ THỂ FIX vs CHẤP NHẬN
 
-Hàm `get_app_stats()` hiện tại chỉ trả về:
-- `total_users`, `total_posts`, `total_photos`, `total_videos` (đếm từ `posts WHERE video_url IS NOT NULL`)
-- `total_rewards`, `treasury_camly_received`, `total_camly_claimed`
+**Có thể fix hoàn toàn (giảm ~40 `as any`):**
+- `social_links as any` → dùng `toJson()` từ supabaseJsonHelpers
+- `payload.new as any` → dùng typed rows từ `realtimeRows.ts`
+- `metadata as any` → tạo `StickerMetadata`, `RedEnvelopeMetadata` interfaces
+- `EditProfile (data as any).field` → mở rộng select query hoặc type assert hẹp
+- `error as any` → pattern `error instanceof Error`
+- `(data as any)` trong admin/rpc hooks → typed rpc responses
 
-**Không có trường nào đếm `live_sessions`** hoặc `chunked_recordings`. Component `AppHonorBoard.tsx` hiển thị `total_videos = 897` — đó là tổng số posts có video (bao gồm cả live replay), nhưng **không có mục riêng cho "Livestream"**.
+**Chấp nhận (document, không fix):**
+- `(connector as any).getProvider()` — wagmi v2 type gap, không có typed alternative
+- `(window as any).ethereum` — EIP-1193 global, chuẩn industry
+- `(window as any).webkitAudioContext` — Safari compat, chuẩn industry
+- `t(key as any)` — i18n dynamic keys, fix cần refactor translation type system
+- `console.log` trong `sdk-package/` và `IntegrationDocs.tsx` — đây là doc examples
+- `searchHistory.ts` `supabase as any` — table chưa có trong codegen, đã documented
 
-## Vấn đề phụ phát hiện thêm
+---
 
-1. **28 recordings stuck ở trạng thái "recording"** — phiên live đã kết thúc nhưng `chunked_recordings.status` không chuyển sang `done`. Đây là những sessions mà host đóng trình duyệt đột ngột trước khi finalize.
+## III. KẾ HOẠCH — 8 TASKS
 
-2. **57 sessions có `recording_status = 'failed'`** (~9.5%) — một số có `chunked_recordings.status = done` (recording thực ra thành công nhưng status ở `live_sessions` bị đánh failed sai).
+### Task 1: Fix `social_links as any` → `toJson()` (3 files, 12 instances)
 
-3. **`live_recordings` table hoàn toàn trống** (0 rows) — Table này được thiết kế cho Agora server-side recording nhưng chưa bao giờ được sử dụng thành công vì hệ thống đang dùng client-side chunked recording thay thế.
-
-## Kế hoạch sửa
-
-### Task 1: Cập nhật `get_app_stats` thêm `total_livestreams`
-
-Thêm trường `total_livestreams` vào hàm SQL:
-
-```sql
-DROP FUNCTION IF EXISTS public.get_app_stats();
-CREATE OR REPLACE FUNCTION public.get_app_stats()
-RETURNS TABLE(
-  total_users BIGINT,
-  total_posts BIGINT,
-  total_photos BIGINT,
-  total_videos BIGINT,
-  total_livestreams BIGINT,
-  total_rewards NUMERIC,
-  treasury_camly_received NUMERIC,
-  total_camly_claimed NUMERIC
-) ...
--- Thêm:
-(SELECT COUNT(*) FROM live_sessions)::BIGINT AS total_livestreams,
+**AvatarOrbit.tsx** (6 instances dòng 211, 285, 308, 324, 351, 386):
+```
+// TRƯỚC: .update({ social_links: newLinks as any })
+// SAU:   .update({ social_links: toJson(newLinks) })
 ```
 
-### Task 2: Cập nhật `AppHonorBoard.tsx`
+**Profile.tsx** (1 instance dòng 318):
+```
+// TRƯỚC: (profile.social_links as any[]).map(...)
+// SAU:   fromJson<SocialLink[]>(profile.social_links)?.map(...)
+```
 
-- Thêm interface field `totalLivestreams`
-- Parse từ response `row.total_livestreams`
-- Thêm stat card với icon `Radio` và label "Livestreams"
+**EditProfile.tsx** (5 instances dòng 85-89):
+Các field `location`, `workplace`, `education`, `relationship_status`, `social_links` đang cast `as any` vì select `*` trả về type chuẩn nhưng thiếu fields này trong generated types. Fix: dùng explicit type assertion 1 lần rồi truy cập trực tiếp.
 
-### Task 3: Dọn dẹp stuck recordings
+### Task 2: Fix realtime `payload.new as any` còn lại (2 files, 5 instances)
 
-- Cập nhật 28 `chunked_recordings` stuck ở `status = 'recording'` mà `live_session` đã `ended` → chuyển sang `done` hoặc `failed`
-- Sửa inconsistency: sessions có `recording_status = 'failed'` nhưng `chunked_recordings.status = 'done'`
+**useMessages.ts:**
+- Dòng 188: `payload.new as any` → `payload.new as MessageRow`
+- Dòng 236: `(payload.new || payload.old) as any` → typed `MessageReactionRow`
+- Dòng 243, 255, 266: `(r: any)` → `(r: MessageReactionRow)`
+- Dòng 276: `payload.new as any` → typed `MessageReadRow`
 
-### Technical Details
+**useAgoraCall.ts:**
+- Dòng 753, 773: `payload.new as any` → `payload.new as CallSessionRow`
 
-**Files cần sửa:**
-1. Migration SQL mới — `DROP FUNCTION + CREATE OR REPLACE` cho `get_app_stats`
-2. `src/components/feed/AppHonorBoard.tsx` — thêm livestream stat
-3. `src/integrations/supabase/types.ts` — tự động cập nhật sau migration
+Thêm `MessageReactionRow` và `MessageReadRow` vào `realtimeRows.ts`.
 
-**Không ảnh hưởng:** Các tính năng livestream hiện tại (start, join, record, replay) không bị ảnh hưởng. Đây chỉ là fix hiển thị thống kê.
+### Task 3: Fix `metadata as any` — MessageBubble (2 instances)
+
+Tạo interfaces:
+```typescript
+interface StickerMetadata { sticker?: { url?: string; name?: string } }
+interface RedEnvelopeMetadata { envelope_id?: string; amount?: number }
+```
+
+Thay `message.metadata as any` → `fromJson<StickerMetadata>(message.metadata)`.
+
+### Task 4: Fix `error as any` → proper `unknown` handling (2 files)
+
+**LiveHostPage.tsx** `toUserError()` và **useLiveRtc.ts** `mapRtcError()`:
+```typescript
+// TRƯỚC: const anyErr = error as any;
+// SAU:
+function toUserError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  const name = error instanceof Error ? error.name : '';
+  ...
+}
+```
+
+### Task 5: Fix `(data as any)` trong admin/query hooks (6 files)
+
+- **PostModerationTab.tsx**: `(data as any)` → typed query result
+- **InlineSearch.tsx**: `(postData as any)` → typed
+- **AppHonorBoard.tsx**: `(data as any)?.[0]` → typed rpc result
+- **useUserDirectory.ts**: `(data as any)?.[0]` + `(emailsData as any[])` → typed
+- **useAdminUsers.ts**: `(emailsData as any[])` → typed
+- **usePins.ts / useRedEnvelope.ts / RedEnvelopeCard.tsx**: `data as any as T` → proper cast
+
+### Task 6: Migrate `console.log` → `logger` (3 files thực tế)
+
+- **useAgoraCall.ts**: 18 `console.log` → `logger.debug`
+- **AdminMigration.tsx**: 12 `console.log` → `logger.debug`
+- **usePendingDonationRecovery.ts**: 3 `console.log` → `logger.debug`
+
+Bỏ qua: `sdk-package/`, `IntegrationDocs.tsx` (doc examples), `useDonationFlow.ts` (đã dùng logger).
+
+### Task 7: Document wagmi/browser `as any` casts (3 files)
+
+- **ActiveAccountContext.tsx**: Thêm comment `/* wagmi v2 — getProvider not typed */`
+- **ClaimRewardDialog.tsx**: Thêm comment `/* EIP-1193 browser global */`
+- **useChatNotifications.ts**: Thêm comment `/* Safari WebKit compat */`
+
+### Task 8: Document i18n `t(key as any)` casts (3 files)
+
+- **CommentReactionButton.tsx**, **ShareDialog.tsx**, **ClassicEmailLogin.tsx**: Thêm comment `/* dynamic i18n key — not in static TranslationKeys */`
+
+---
+
+## IV. DỰ KIẾN KẾT QUẢ
+
+| Metric | Trước | Sau |
+|--------|-------|-----|
+| `as any` (src/, không sdk-package) | ~321 | ~265 (giảm ~56) |
+| `console.log` (src/) | ~35 thực tế | ~2 (chỉ còn documented casts) |
+| Undocumented `as any` | ~40 | 0 |
+| **Type Safety score** | 8.0 | 9.5 |
+| **Code Quality score** | 8.5 | 9.5 |
+
+*Ghi chú: ~265 `as any` còn lại chủ yếu nằm trong admin components (edge function responses) và wagmi/browser globals — đã documented hoặc cần refactor lớn hơn.*
 
