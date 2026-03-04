@@ -82,11 +82,19 @@ export const EditProfile = () => {
       setAvatarUrl(data.avatar_url || '');
       setCoverUrl(data.cover_url || '');
       setPublicWalletAddress(data.public_wallet_address || '');
-      setLocation((data as any).location || '');
-      setWorkplace((data as any).workplace || '');
-      setEducation((data as any).education || '');
-      setRelationshipStatus((data as any).relationship_status || '');
-      setSocialLinks(Array.isArray((data as any).social_links) ? (data as any).social_links : []);
+      /* Fields exist in DB but may not be in generated types — narrow cast once */
+      const profileData = data as typeof data & {
+        location?: string;
+        workplace?: string;
+        education?: string;
+        relationship_status?: string;
+        social_links?: SocialLink[];
+      };
+      setLocation(profileData.location || '');
+      setWorkplace(profileData.workplace || '');
+      setEducation(profileData.education || '');
+      setRelationshipStatus(profileData.relationship_status || '');
+      setSocialLinks(Array.isArray(profileData.social_links) ? profileData.social_links : []);
     } catch (error) {
       // Error fetching profile - silent fail for security
     }

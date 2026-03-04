@@ -315,7 +315,7 @@ const Profile = () => {
                               <div className="pt-3 border-t border-border">
                                 <p className="text-sm font-semibold text-muted-foreground mb-2">Liên kết mạng xã hội</p>
                                 <div className="flex flex-wrap gap-2">
-                                  {(profile.social_links as any[]).map((link: any, idx: number) => (
+                                  {(profile.social_links as Array<{ url?: string; favicon?: string; label?: string; platform?: string }>).map((link, idx) => (
                                     <a key={idx} href={link.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary hover:bg-primary/10 text-sm transition-colors">
                                       {link.favicon && <img src={link.favicon} alt="" className="w-4 h-4 rounded-full" />}
                                       <span>{link.label || link.platform}</span>

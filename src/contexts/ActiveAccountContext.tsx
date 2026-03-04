@@ -74,8 +74,8 @@ export const ActiveAccountProvider = ({ children }: { children: React.ReactNode 
     setIsLoadingAccounts(true);
 
     try {
-      // Lấy provider từ connector (wagmi v2)
-      const provider = await (connector as any).getProvider?.();
+      /* wagmi v2 — getProvider() is not exposed in typed connector interface */
+      const provider = await (connector as unknown as { getProvider?: () => Promise<{ request: (args: unknown) => Promise<unknown>; on?: (...args: unknown[]) => void }> }).getProvider?.();
       if (!provider?.request) {
         // Fallback: chỉ dùng providerAddress
         if (providerAddress) {
@@ -138,7 +138,8 @@ export const ActiveAccountProvider = ({ children }: { children: React.ReactNode 
 
     const setup = async () => {
       try {
-        provider = await (connector as any).getProvider?.();
+        /* wagmi v2 — getProvider() is not exposed in typed connector interface */
+        provider = await (connector as unknown as { getProvider?: () => Promise<{ on?: (event: string, handler: (accounts: string[]) => void) => void }> }).getProvider?.();
         if (!provider?.on) return;
 
         const handler = (rawAccounts: string[]) => {

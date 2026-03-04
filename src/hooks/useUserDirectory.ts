@@ -113,7 +113,8 @@ const fetchTotals = async (): Promise<UserDirectoryStats> => {
   const { data, error } = await supabase.rpc('get_user_directory_totals');
   if (error) throw error;
 
-  const row = (data as any)?.[0] || data;
+  /* RPC returns a single row or array — normalize */
+  const row = (Array.isArray(data) ? data[0] : data) as Record<string, unknown> | null ?? {};
   return {
     totalUsers: Number(row?.total_users) || 0,
     totalCamlyCalculated: Number(row?.total_camly_calculated) || 0,
@@ -167,7 +168,7 @@ export const useUserDirectory = () => {
       const { data: emailsData } = await supabase.rpc('get_user_emails_for_admin', { p_admin_id: userId });
       const emails = new Map<string, string>();
       if (emailsData) {
-        (emailsData as any[]).forEach((e: any) => emails.set(e.user_id, e.email));
+        (emailsData as Array<{ user_id: string; email: string }>).forEach((e) => emails.set(e.user_id, e.email));
       }
       return { isAdmin: true, emails };
     },

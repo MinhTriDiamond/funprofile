@@ -10,6 +10,8 @@ import AgoraRTC, {
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { createAgoraRtcClient, getAgoraRtcToken } from '@/lib/agoraRtc';
+import logger from '@/lib/logger';
+import type { CallSessionRow } from '@/types/realtimeRows';
 
 export type CallState = 'idle' | 'calling' | 'ringing' | 'connecting' | 'connected' | 'ended';
 export type CallType = 'voice' | 'video';
@@ -750,7 +752,7 @@ export function useAgoraCall({ conversationId, userId }: UseAgoraCallOptions) {
           filter: `conversation_id=eq.${conversationId}`,
         },
         (payload) => {
-          const session = payload.new as any;
+          const session = payload.new as CallSessionRow;
           // Don't show incoming call if we initiated it
           if (session.initiator_id !== userId && session.status === 'ringing') {
             const typedSession: CallSession = {
@@ -770,7 +772,7 @@ export function useAgoraCall({ conversationId, userId }: UseAgoraCallOptions) {
           filter: `conversation_id=eq.${conversationId}`,
         },
         (payload) => {
-          const session = payload.new as any;
+          const session = payload.new as CallSessionRow;
           const curSession = currentSessionRef.current;
           const curCallState = callStateRef.current;
           const curIncoming = incomingCallRef.current;

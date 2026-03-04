@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import logger from '@/lib/logger';
 
 const PENDING_PREFIX = 'pending_donation_';
 const MAX_AGE_DAYS = 7;
@@ -51,7 +52,7 @@ async function recoverPendingDonations(accessToken: string) {
 
   if (pendingKeys.length === 0) return;
 
-  console.log(`[DonationRecovery] Found ${pendingKeys.length} pending donations to retry`);
+  logger.info(`[DonationRecovery] Found ${pendingKeys.length} pending donations to retry`);
 
   const now = Date.now();
   
@@ -67,7 +68,7 @@ async function recoverPendingDonations(accessToken: string) {
 
       // Bỏ qua nếu quá 7 ngày (tránh retry vô hạn)
       if (now - payload.timestamp > MAX_AGE_MS) {
-        console.log(`[DonationRecovery] Removing stale pending donation: ${payload.txHash}`);
+        logger.info(`[DonationRecovery] Removing stale pending donation: ${payload.txHash}`);
         localStorage.removeItem(key);
         continue;
       }
@@ -91,7 +92,7 @@ async function recoverPendingDonations(accessToken: string) {
       });
 
       if (!error) {
-        console.log(`[DonationRecovery] Successfully recovered donation: ${payload.txHash}`);
+        logger.info(`[DonationRecovery] Successfully recovered donation: ${payload.txHash}`);
         localStorage.removeItem(key);
       } else {
         console.warn(`[DonationRecovery] Failed to recover donation ${payload.txHash}:`, error);

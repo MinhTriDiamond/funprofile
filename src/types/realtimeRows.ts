@@ -49,6 +49,23 @@ export interface MessageRow {
   edited_at: string | null;
 }
 
+/** message_reactions table row */
+export interface MessageReactionRow {
+  id: string;
+  message_id: string;
+  user_id: string;
+  emoji: string;
+  created_at: string | null;
+}
+
+/** message_reads table row */
+export interface MessageReadRow {
+  id: string;
+  message_id: string;
+  user_id: string;
+  read_at: string | null;
+}
+
 /** call_sessions table row */
 export interface CallSessionRow {
   id: string;
@@ -62,4 +79,15 @@ export interface CallSessionRow {
   duration_seconds: number | null;
   created_at: string | null;
   updated_at: string | null;
+}
+
+/** Chat message metadata interfaces */
+export interface StickerMetadata {
+  sticker?: { url?: string; name?: string };
+}
+
+export interface RedEnvelopeMetadata {
+  envelopeId?: string;
+  envelope_id?: string;
+  amount?: number;
 }

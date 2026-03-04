@@ -28,7 +28,8 @@ export const AppHonorBoard = memo(() => {
       const { data, error } = await supabase.rpc('get_app_stats');
       if (error) throw error;
 
-      const row = (data as any)?.[0] || {};
+      /* RPC returns a single row or array — normalize */
+      const row = (Array.isArray(data) ? data[0] : data) as Record<string, unknown> | null ?? {};
       const totalUsers = Number(row.total_users) || 0;
       const totalPosts = Number(row.total_posts) || 0;
       const totalPhotos = Number(row.total_photos) || 0;

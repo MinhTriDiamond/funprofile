@@ -58,9 +58,8 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string)
 }
 
 function toUserError(error: unknown): string {
-  const anyErr = error as any;
-  const message = String(anyErr?.message || '');
-  const name = String(anyErr?.name || '');
+  const message = error instanceof Error ? error.message : String(error || '');
+  const name = error instanceof Error ? error.name : '';
   if (name === 'NotAllowedError') return 'Bạn chưa cấp quyền camera/micro.';
   if (name === 'NotFoundError') return 'Không tìm thấy thiết bị camera/micro.';
   if (message.toLowerCase().includes('timeout')) return 'Kết nối quá chậm, vui lòng thử lại.';

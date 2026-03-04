@@ -4,6 +4,7 @@ import { X, Plus, Check, Pencil, GripVertical } from 'lucide-react';
 import { PLATFORM_PRESETS, PLATFORM_ORDER } from './SocialLinksEditor';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { toJson } from '@/utils/supabaseJsonHelpers';
 
 // Orbit rotation speed (degrees per second) — pause when hovering or dragging
 const ORBIT_SPEED = 8;
@@ -208,7 +209,7 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
         } catch { /* ignore */ }
       }
       if (updated) {
-        await supabase.from('profiles').update({ social_links: newLinks as any }).eq('id', userId);
+        await supabase.from('profiles').update({ social_links: toJson(newLinks as unknown as Record<string, unknown>) }).eq('id', userId);
         onLinksChanged?.(newLinks);
       }
     };
@@ -282,7 +283,7 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
       if (!preset) { setSaving(false); return; }
       newLinks = [...baseLinks, { platform, label: preset.label, url: normalized, color: preset.color, favicon: preset.favicon, avatarUrl: fetchedAvatarUrl || undefined }];
     }
-    const { error } = await supabase.from('profiles').update({ social_links: newLinks as any }).eq('id', userId);
+    const { error } = await supabase.from('profiles').update({ social_links: toJson(newLinks as unknown as Record<string, unknown>) }).eq('id', userId);
     setSaving(false);
     if (error) { toast.error('Không thể lưu link'); return; }
     toast.success('Đã lưu!');
@@ -305,7 +306,7 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
     } else {
       newLinks = localLinks.map((l) => l.platform === platform ? { ...l, url: normalized, avatarUrl: fetchedAvatarUrl || l.avatarUrl } : l);
     }
-    const { error } = await supabase.from('profiles').update({ social_links: newLinks as any }).eq('id', userId);
+    const { error } = await supabase.from('profiles').update({ social_links: toJson(newLinks as unknown as Record<string, unknown>) }).eq('id', userId);
     setSaving(false);
     if (error) { toast.error('Không thể lưu link'); return; }
     toast.success('Đã lưu!');
@@ -321,7 +322,7 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
     // If localLinks is empty (showing defaults), initialize from defaults then remove
     const baseLinks = localLinks.length === 0 ? defaultLinks : localLinks;
     const newLinks = baseLinks.filter((l) => l.platform !== platform);
-    const { error } = await supabase.from('profiles').update({ social_links: newLinks as any }).eq('id', userId);
+    const { error } = await supabase.from('profiles').update({ social_links: toJson(newLinks as unknown as Record<string, unknown>) }).eq('id', userId);
     if (error) { toast.error('Không thể xoá link'); return; }
     toast.success('Đã xoá!');
     setLocalLinks(newLinks);
@@ -348,7 +349,7 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
     }
     const newLink: SocialLink = { platform, label: preset.label, url: '', color: preset.color, favicon: preset.favicon };
     const newLinks = [...baseLinks, newLink];
-    await supabase.from('profiles').update({ social_links: newLinks as any }).eq('id', userId);
+    await supabase.from('profiles').update({ social_links: toJson(newLinks as unknown as Record<string, unknown>) }).eq('id', userId);
     setLocalLinks(newLinks);
     onLinksChanged?.(newLinks);
     // Open prompt to enter URL right away
@@ -383,7 +384,7 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
     dragIndexRef.current = null;
     if (!userId) return;
     // If localLinks was empty before drag started, it's now initialized from defaults
-    await supabase.from('profiles').update({ social_links: localLinks as any }).eq('id', userId);
+    await supabase.from('profiles').update({ social_links: toJson(localLinks as unknown as Record<string, unknown>) }).eq('id', userId);
     onLinksChanged?.(localLinks);
   }, [localLinks, userId, onLinksChanged]);
 
