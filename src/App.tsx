@@ -12,6 +12,7 @@ import { LawOfLightGuard } from "@/components/auth/LawOfLightGuard";
 import { Web3Provider } from "@/components/providers/Web3Provider";
 import { DonationReceivedNotification } from "@/components/donations/DonationReceivedNotification";
 import { CallProvider } from "@/contexts/CallContext";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 
 import { usePendingDonationRecovery } from "@/hooks/usePendingDonationRecovery";
@@ -101,6 +102,7 @@ const PageLoader = () => (
 
 function App() {
   return (
+    <ErrorBoundary>
     <LanguageProvider>
       <QueryClientProvider client={queryClient}>
         <Web3Provider>
@@ -164,6 +166,7 @@ function App() {
         </Web3Provider>
       </QueryClientProvider>
     </LanguageProvider>
+    </ErrorBoundary>
   );
 }
 

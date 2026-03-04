@@ -77,6 +77,7 @@ export default defineConfig(({ mode }) => ({
   // Performance hints
   esbuild: {
     drop: mode === 'production' ? ['debugger'] : [],
+    pure: mode === 'production' ? ['console.log', 'console.debug', 'console.info'] : [],
     legalComments: 'none',
   },
   define: {
