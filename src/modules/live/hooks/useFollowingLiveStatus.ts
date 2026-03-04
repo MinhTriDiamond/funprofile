@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 export interface LiveFriend {
   sessionId: string;
@@ -16,13 +17,10 @@ export interface LiveFriend {
 export function useFollowingLiveStatus() {
   const [liveFriends, setLiveFriends] = useState<LiveFriend[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { userId } = useCurrentUser();
 
   const fetchLiveFriends = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
+    if (!userId) {
       setLiveFriends([]);
       setIsLoading(false);
       return;
@@ -32,7 +30,7 @@ export function useFollowingLiveStatus() {
       .from('friendships')
       .select('user_id, friend_id')
       .eq('status', 'accepted')
-      .or(`user_id.eq.${user.id},friend_id.eq.${user.id}`);
+      .or(`user_id.eq.${userId},friend_id.eq.${userId}`);
 
     if (!friendships || friendships.length === 0) {
       setLiveFriends([]);
@@ -41,7 +39,7 @@ export function useFollowingLiveStatus() {
     }
 
     const friendIds = friendships.map((f) =>
-      f.user_id === user.id ? f.friend_id : f.user_id
+      f.user_id === userId ? f.friend_id : f.user_id
     );
 
     const { data: sessions } = await supabase
@@ -90,15 +88,10 @@ export function useFollowingLiveStatus() {
       )
       .subscribe();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(() => {
-      fetchLiveFriends();
-    });
-
     return () => {
       supabase.removeChannel(channel);
-      authListener.subscription.unsubscribe();
     };
-  }, []);
+  }, [userId]);
 
   return {
     liveFriends,

@@ -250,28 +250,13 @@ export const useFeedPosts = () => {
     return () => window.removeEventListener('invalidate-feed', handler);
   }, [queryClient]);
 
+  // Poll for new posts every 30s instead of realtime subscription on ALL inserts
+  // (Realtime on posts table invalidates cache for ALL users on every single post)
   useEffect(() => {
-    const channel = supabase
-      .channel('feed-posts-realtime')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'posts' },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['feed-posts'] });
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'DELETE', schema: 'public', table: 'posts' },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['feed-posts'] });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    const interval = setInterval(() => {
+      queryClient.invalidateQueries({ queryKey: ['feed-posts'] });
+    }, 30_000);
+    return () => clearInterval(interval);
   }, [queryClient]);
 
   // Fetch highlighted posts separately (only on first page)

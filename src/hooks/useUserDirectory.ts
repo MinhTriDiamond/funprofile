@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useState, useMemo } from 'react';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 export interface UserDirectoryEntry {
   id: string;
@@ -148,22 +149,22 @@ export const useUserDirectory = () => {
   const pageSize = 50;
 
   // Check admin status
+  const { userId } = useCurrentUser();
   const { data: adminData } = useQuery({
-    queryKey: ['user-directory-admin-check'],
+    queryKey: ['user-directory-admin-check', userId],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return { isAdmin: false, emails: new Map<string, string>() };
+      if (!userId) return { isAdmin: false, emails: new Map<string, string>() };
       
       const { data: roleData } = await supabase
         .from('user_roles')
         .select('role')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .eq('role', 'admin')
         .maybeSingle();
       
       if (!roleData) return { isAdmin: false, emails: new Map<string, string>() };
       
-      const { data: emailsData } = await supabase.rpc('get_user_emails_for_admin', { p_admin_id: user.id });
+      const { data: emailsData } = await supabase.rpc('get_user_emails_for_admin', { p_admin_id: userId });
       const emails = new Map<string, string>();
       if (emailsData) {
         (emailsData as any[]).forEach((e: any) => emails.set(e.user_id, e.email));
@@ -171,6 +172,7 @@ export const useUserDirectory = () => {
       return { isAdmin: true, emails };
     },
     staleTime: 5 * 60 * 1000,
+    enabled: !!userId,
   });
 
   const isAdmin = adminData?.isAdmin || false;

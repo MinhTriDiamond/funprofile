@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -40,6 +41,7 @@ export const CommentSection = ({ postId, onCommentAdded }: CommentSectionProps) 
   const navigate = useNavigate();
   const { t } = useLanguage();
   const { evaluateAsync } = usePplpEvaluate();
+  const { userId, user } = useCurrentUser();
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
@@ -50,8 +52,8 @@ export const CommentSection = ({ postId, onCommentAdded }: CommentSectionProps) 
   const [visibleComments, setVisibleComments] = useState(5);
 
   useEffect(() => {
-    fetchCurrentUser();
-  }, []);
+    if (userId) fetchCurrentUserProfile();
+  }, [userId]);
 
   // Fetch comments immediately when component mounts
   useEffect(() => {
@@ -78,22 +80,20 @@ export const CommentSection = ({ postId, onCommentAdded }: CommentSectionProps) 
     };
   }, [postId]);
 
-  const fetchCurrentUser = async () => {
+  const fetchCurrentUserProfile = async () => {
+    if (!userId) return;
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('avatar_url, username')
-          .eq('id', user.id)
-          .single();
-        
-        if (profile) {
-          setCurrentUser(profile);
-        }
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('avatar_url, username')
+        .eq('id', userId)
+        .single();
+      
+      if (profile) {
+        setCurrentUser(profile);
       }
     } catch (error) {
-      console.error('fetchCurrentUser error:', error);
+      console.error('fetchCurrentUserProfile error:', error);
     }
   };
 
@@ -151,9 +151,7 @@ export const CommentSection = ({ postId, onCommentAdded }: CommentSectionProps) 
 
     setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
+      if (!userId) {
         toast.error(t('pleaseLoginToComment'), {
           action: { label: t('login'), onClick: () => navigate('/auth') }
         });
@@ -162,7 +160,7 @@ export const CommentSection = ({ postId, onCommentAdded }: CommentSectionProps) 
 
       const insertData: any = {
         post_id: postId,
-        user_id: user.id,
+        user_id: userId,
         content: newComment.trim() || '',
       };
 

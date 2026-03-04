@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Heart } from 'lucide-react';
@@ -39,6 +40,7 @@ interface CommentReaction {
 
 export const CommentReactionButton = ({ commentId, onReactionChange }: CommentReactionButtonProps) => {
   const { t } = useLanguage();
+  const { userId: currentUserId } = useCurrentUser();
   const [userReaction, setUserReaction] = useState<string | null>(null);
   const [reactionCounts, setReactionCounts] = useState<Record<string, number>>({});
   const [reactions, setReactions] = useState<CommentReaction[]>([]);
@@ -81,8 +83,6 @@ export const CommentReactionButton = ({ commentId, onReactionChange }: CommentRe
 
   const fetchReactions = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
       const { data, error } = await supabase
         .from('reactions')
         .select(`
@@ -102,7 +102,7 @@ export const CommentReactionButton = ({ commentId, onReactionChange }: CommentRe
         });
         setReactionCounts(counts);
         
-        const userReact = user ? data.find(r => r.user_id === user.id) : null;
+        const userReact = currentUserId ? data.find(r => r.user_id === currentUserId) : null;
         setUserReaction(userReact?.type || null);
       }
     } catch (error) {
@@ -111,23 +111,21 @@ export const CommentReactionButton = ({ commentId, onReactionChange }: CommentRe
   };
 
   const handleReaction = async (reactionType: string) => {
+    if (!currentUserId) {
+      toast.error(t('pleaseLoginToReact'));
+      return;
+    }
+
+    setLoading(true);
+    setShowReactionPicker(false);
+
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        toast.error(t('pleaseLoginToReact'));
-        return;
-      }
-
-      setLoading(true);
-      setShowReactionPicker(false);
-
       if (userReaction === reactionType) {
         const { error } = await supabase
           .from('reactions')
           .delete()
           .eq('comment_id', commentId)
-          .eq('user_id', user.id);
+          .eq('user_id', currentUserId);
 
         if (!error) {
           setUserReaction(null);
@@ -142,14 +140,14 @@ export const CommentReactionButton = ({ commentId, onReactionChange }: CommentRe
             .from('reactions')
             .delete()
             .eq('comment_id', commentId)
-            .eq('user_id', user.id);
+            .eq('user_id', currentUserId);
         }
         
         const { error } = await supabase
           .from('reactions')
           .insert({
             comment_id: commentId,
-            user_id: user.id,
+            user_id: currentUserId,
             type: reactionType,
           });
 

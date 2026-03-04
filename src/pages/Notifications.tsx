@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Bell, Heart, MessageCircle, Share2, Gift, UserPlus, UserX, UserCheck, Filter, Check, CheckCheck, Shield, Radio, Wallet, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -61,8 +62,8 @@ const Notifications = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { t } = useLanguage();
+  const { userId, isLoading: authLoading } = useCurrentUser();
   const [filter, setFilter] = useState<NotificationFilter>("all");
-  const [userId, setUserId] = useState<string | null>(null);
   const [expandedNotifications, setExpandedNotifications] = useState<Set<string>>(new Set());
 
   const toggleExpand = useCallback((id: string, e: React.MouseEvent) => {
@@ -75,16 +76,8 @@ const Notifications = () => {
   }, []);
 
   useEffect(() => {
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setUserId(user.id);
-      } else {
-        navigate("/auth");
-      }
-    };
-    getUser();
-  }, [navigate]);
+    if (!authLoading && !userId) navigate("/auth");
+  }, [userId, authLoading, navigate]);
 
   const { data: notifications = [], isLoading } = useQuery({
     queryKey: ["notifications-page", userId],

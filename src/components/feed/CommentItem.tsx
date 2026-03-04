@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useState } from 'react';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { Button } from '@/components/ui/button';
 import { MessageCircle, Trash2, Share2, Flag, MoreHorizontal } from 'lucide-react';
 import { CommentReactionButton } from './CommentReactionButton';
 import { CommentReplyForm } from './CommentReplyForm';
 import { CommentMediaViewer } from './CommentMediaViewer';
 import { TwemojiText } from './TwemojiText';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
@@ -51,24 +52,14 @@ export const CommentItem = ({
   level = 0 
 }: CommentItemProps) => {
   const { t } = useLanguage();
+  const { userId: currentUserId } = useCurrentUser();
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [showMediaViewer, setShowMediaViewer] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [showAllReplies, setShowAllReplies] = useState(false);
 
-  useEffect(() => {
-    const fetchUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setCurrentUserId(user?.id || null);
-    };
-    fetchUser();
-  }, []);
-
   const handleDelete = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user || user.id !== comment.user_id) {
+    if (!currentUserId || currentUserId !== comment.user_id) {
       toast.error(t('canOnlyDeleteOwnComment'));
       return;
     }
