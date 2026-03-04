@@ -56,27 +56,36 @@ export const CommentSection = ({ postId, onCommentAdded }: CommentSectionProps) 
   }, [userId]);
 
   // Fetch comments immediately when component mounts
+  // Debounce realtime channel creation (500ms) to prevent scroll-through spam
   useEffect(() => {
     fetchComments();
     
-    const channel = supabase
-      .channel(`comments-${postId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'comments',
-          filter: `post_id=eq.${postId}`,
-        },
-        () => {
-          fetchComments();
-        }
-      )
-      .subscribe();
+    const channelTimer = setTimeout(() => {
+      const channel = supabase
+        .channel(`comments-${postId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'comments',
+            filter: `post_id=eq.${postId}`,
+          },
+          () => {
+            fetchComments();
+          }
+        )
+        .subscribe();
+
+      // Store cleanup ref
+      cleanupRef.current = () => supabase.removeChannel(channel);
+    }, 500);
+
+    const cleanupRef = { current: () => {} };
 
     return () => {
-      supabase.removeChannel(channel);
+      clearTimeout(channelTimer);
+      cleanupRef.current();
     };
   }, [postId]);
 
