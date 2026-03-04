@@ -101,15 +101,16 @@ export const ActivateDialog = ({
       });
 
       // Toast is handled by the success effect
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[ActivateDialog] Error:', error);
-      
-      if (error.message?.includes('User rejected')) {
+      const msg = error instanceof Error ? error.message : '';
+      const shortMsg = (error as { shortMessage?: string })?.shortMessage;
+      if (msg.includes('User rejected')) {
         toast.error('Đã hủy giao dịch');
-      } else if (error.message?.includes('insufficient funds')) {
+      } else if (msg.includes('insufficient funds')) {
         toast.error('Không đủ BNB để trả gas');
       } else {
-        toast.error(error.shortMessage || 'Không thể activate FUN');
+        toast.error(shortMsg || 'Không thể activate FUN');
       }
     }
   };

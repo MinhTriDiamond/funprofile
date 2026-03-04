@@ -202,9 +202,9 @@ export const useEpochAllocation = (): EpochAllocationResult => {
 
       await fetchData();
       return { success: true, requestId: data.mint_request?.id };
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[useEpochAllocation] Claim error:', err);
-      toast.error(err.message || 'Không thể claim rewards');
+      toast.error(err instanceof Error ? err.message : 'Không thể claim rewards');
       return { success: false };
     } finally {
       setIsClaiming(false);

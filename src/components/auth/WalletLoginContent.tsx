@@ -121,14 +121,16 @@ export const WalletLoginContent = ({ onSuccess }: WalletLoginContentProps) => {
       } else {
         throw new Error(data?.error || 'Verification failed');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Wallet auth error:', error);
-      if (error.name === 'UserRejectedRequestError' || error.message?.includes('rejected')) {
+      const err = error instanceof Error ? error : null;
+      const errName = (error as { name?: string })?.name;
+      if (errName === 'UserRejectedRequestError' || err?.message?.includes('rejected')) {
         toast.error('Signature rejected');
-      } else if (error.message?.includes('WALLET_NOT_REGISTERED')) {
+      } else if (err?.message?.includes('WALLET_NOT_REGISTERED')) {
         setWalletStatus('not_registered');
       } else {
-        toast.error(error.message || t('errorOccurred'));
+        toast.error(err?.message || t('errorOccurred'));
       }
       setStep('checked');
     } finally {

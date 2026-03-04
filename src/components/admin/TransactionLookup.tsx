@@ -25,8 +25,8 @@ const TransactionLookup = () => {
       });
       if (error) throw error;
       setResult(data);
-    } catch (err: any) {
-      toast.error("Lỗi: " + (err.message || "Unknown"));
+    } catch (err: unknown) {
+      toast.error("Lỗi: " + (err instanceof Error ? err.message : "Unknown"));
     } finally {
       setLoading(false);
     }

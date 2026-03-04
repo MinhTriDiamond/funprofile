@@ -36,9 +36,10 @@ export function LiveChatPanel({ sessionId, className, isHost = false, liveTitle,
     try {
       await sendMessage(value);
       setText('');
-    } catch (err: any) {
-      if (err?.message?.includes('quá nhanh')) {
-        toast.error(err.message);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : '';
+      if (msg.includes('quá nhanh')) {
+        toast.error(msg);
       }
     }
   };

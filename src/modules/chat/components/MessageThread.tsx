@@ -663,8 +663,8 @@ export function MessageThread({ conversationId, userId, username }: MessageThrea
             await editMessage.mutateAsync({ messageId: editingMessage.id, content: next });
             setEditingMessage(null);
             toast.success('Đã cập nhật');
-          } catch (e: any) {
-            toast.error(e?.message || 'Không thể sửa tin nhắn');
+          } catch (e: unknown) {
+            toast.error(e instanceof Error ? e.message : 'Không thể sửa tin nhắn');
           }
         }}
       />
@@ -687,8 +687,8 @@ export function MessageThread({ conversationId, userId, username }: MessageThrea
             });
             toast.success('Đã gửi phản hồi');
             setShowReport(false);
-          } catch (e: any) {
-            toast.error(e?.message || 'Gửi thất bại');
+          } catch (e: unknown) {
+            toast.error(e instanceof Error ? e.message : 'Gửi thất bại');
           }
         }}
       />
@@ -721,8 +721,8 @@ export function MessageThread({ conversationId, userId, username }: MessageThrea
                 toast.success('Đã tạm ngừng kết nối');
               }
               setShowBlockDialog(false);
-            } catch (e: any) {
-              toast.error(e?.message || 'Thao tác thất bại');
+            } catch (e: unknown) {
+              toast.error(e instanceof Error ? e.message : 'Thao tác thất bại');
             }
           }}
         />
@@ -753,8 +753,8 @@ export function MessageThread({ conversationId, userId, username }: MessageThrea
                   queryClient.invalidateQueries({ queryKey: ['conversations', userId] });
                   toast.success('Đã xóa cuộc trò chuyện');
                   navigate('/chat');
-                } catch (e: any) {
-                  toast.error(e?.message || 'Không thể xóa cuộc trò chuyện');
+                } catch (e: unknown) {
+                  toast.error(e instanceof Error ? e.message : 'Không thể xóa cuộc trò chuyện');
                 }
               }}
             >

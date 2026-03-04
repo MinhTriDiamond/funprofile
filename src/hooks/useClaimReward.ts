@@ -79,8 +79,8 @@ export const useClaimReward = () => {
       
       return data;
 
-    } catch (err: any) {
-      const message = err.message || 'Lỗi khi claim reward';
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Lỗi khi claim reward';
       setError(message);
       toast.error(message);
       return null;

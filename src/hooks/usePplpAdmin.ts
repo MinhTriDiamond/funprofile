@@ -233,10 +233,10 @@ export const usePplpAdmin = () => {
       await switchChainAsync({ chainId: targetChainId });
       toast.success('Đã chuyển sang BSC Testnet!');
       return true;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[usePplpAdmin] Switch chain error:', error);
-      
-      if (error.message?.includes('User rejected')) {
+      const msg = error instanceof Error ? error.message : '';
+      if (msg.includes('User rejected')) {
         toast.error('Bé đã từ chối chuyển mạng');
       } else {
         toast.error('Không thể chuyển sang BSC Testnet. Vui lòng chuyển thủ công trong ví.');
@@ -345,13 +345,13 @@ export const usePplpAdmin = () => {
         toast.success(`${GOV_GROUPS[groupKey].emoji} Nhóm ${GOV_GROUPS[groupKey].nameVi} đã ký! Cần thêm ${remaining} nhóm nữa.`);
       }
       return signature;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[usePplpAdmin] signMintRequest error:', error);
-      
-      if (error.message?.includes('User rejected')) {
+      const msg = error instanceof Error ? error.message : 'Unknown error';
+      if (msg.includes('User rejected')) {
         toast.error('Bạn đã từ chối ký');
       } else {
-        toast.error(`Lỗi ký: ${error.message}`);
+        toast.error(`Lỗi ký: ${msg}`);
       }
       return null;
     }
@@ -530,28 +530,30 @@ export const usePplpAdmin = () => {
             }).eq('id', request.id);
             toast.error('Transaction bị revert on-chain');
           }
-        } catch (receiptError: any) {
-          console.warn('[usePplpAdmin] Auto-confirm polling failed:', receiptError.message);
+        } catch (receiptError: unknown) {
+          console.warn('[usePplpAdmin] Auto-confirm polling failed:', receiptError instanceof Error ? receiptError.message : receiptError);
           toast.info('TX đã gửi nhưng chưa xác nhận tự động. Kiểm tra BSCScan.');
         }
       }
 
       return txHash;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[usePplpAdmin] submitToChain error:', error);
+      const msg = error instanceof Error ? error.message : 'Unknown error';
+      const shortMsg = (error as { shortMessage?: string })?.shortMessage;
 
       await supabase.from('pplp_mint_requests').update({
         status: MINT_REQUEST_STATUS.FAILED,
-        error_message: error.message,
+        error_message: msg,
         retry_count: (request.retry_count || 0) + 1,
       }).eq('id', request.id);
 
-      if (error.message?.includes('User rejected')) {
+      if (msg.includes('User rejected')) {
         toast.error('Bé đã từ chối giao dịch');
-      } else if (error.message?.includes('insufficient funds')) {
+      } else if (msg.includes('insufficient funds')) {
         toast.error('Ví không đủ BNB để trả gas');
       } else {
-        toast.error(`Lỗi gửi transaction: ${error.shortMessage || error.message}`);
+        toast.error(`Lỗi gửi transaction: ${shortMsg || msg}`);
       }
       return null;
     }
@@ -804,10 +806,10 @@ export const usePplpAdmin = () => {
             result.genuinelyFailed++;
             console.log(`[Reconcile] ❌ Request ${req.id} genuinely reverted on-chain`);
           }
-        } catch (receiptError: any) {
+        } catch (receiptError: unknown) {
           // No receipt found (TX may not exist or was dropped)
           result.noReceipt++;
-          console.log(`[Reconcile] ⚠️ No receipt for ${req.id}: ${receiptError.message}`);
+          logger.debug(`[Reconcile] ⚠️ No receipt for ${req.id}: ${receiptError instanceof Error ? receiptError.message : receiptError}`);
         }
       }
 
@@ -818,9 +820,9 @@ export const usePplpAdmin = () => {
       }
 
       return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[usePplpAdmin] reconcileFailedRequests error:', error);
-      toast.error(`Lỗi reconcile: ${error.message}`);
+      toast.error(`Lỗi reconcile: ${error instanceof Error ? error.message : 'Unknown error'}`);
       return result;
     }
   }, [publicClient]);
@@ -854,9 +856,9 @@ export const usePplpAdmin = () => {
 
       toast.success(result.message);
       return result.summary;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[usePplpAdmin] batchCreateMintRequests error:', error);
-      toast.error(`Lỗi: ${error.message}`);
+      toast.error(`Lỗi: ${error instanceof Error ? error.message : 'Unknown error'}`);
       return null;
     } finally {
       setIsBatchCreating(false);
@@ -892,9 +894,9 @@ export const usePplpAdmin = () => {
 
       toast.success(result.message);
       return result.summary;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[usePplpAdmin] mergeMintRequests error:', error);
-      toast.error(`Lỗi: ${error.message}`);
+      toast.error(`Lỗi: ${error instanceof Error ? error.message : 'Unknown error'}`);
       return null;
     } finally {
       setIsMergingRequests(false);

@@ -226,11 +226,12 @@ export const useAttesterSigning = (connectedAddress?: string): UseAttesterSignin
       }
 
       return true;
-    } catch (err: any) {
-      if (err.message?.includes('User rejected')) {
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      if (msg.includes('User rejected')) {
         toast.error('Đã từ chối ký');
       } else {
-        toast.error(`Lỗi ký: ${err.message}`);
+        toast.error(`Lỗi ký: ${msg}`);
       }
       return false;
     } finally {

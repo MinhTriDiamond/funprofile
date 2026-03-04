@@ -43,8 +43,8 @@ export function SendCryptoModal({
       // Placeholder - actual crypto send logic would go here via wagmi
       toast.info('Tính năng tặng crypto đang được phát triển');
       onOpenChange(false);
-    } catch (e: any) {
-      toast.error(e?.message || 'Gửi thất bại');
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Gửi thất bại');
     } finally {
       setIsSending(false);
     }

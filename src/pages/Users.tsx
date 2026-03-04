@@ -73,8 +73,8 @@ const Users = () => {
       toast({ title: 'Đã xoá tài khoản', description: `@${deleteTarget.username} đã bị xoá thành công.` });
       queryClient.invalidateQueries({ queryKey: ['user-directory'] });
       queryClient.invalidateQueries({ queryKey: ['user-directory-admin-check'] });
-    } catch (err: any) {
-      toast({ title: 'Lỗi', description: err.message || 'Không thể xoá tài khoản', variant: 'destructive' });
+    } catch (err: unknown) {
+      toast({ title: 'Lỗi', description: err instanceof Error ? err.message : 'Không thể xoá tài khoản', variant: 'destructive' });
     } finally {
       setIsDeleting(false);
       setDeleteTarget(null);
@@ -129,8 +129,8 @@ const Users = () => {
 
       // Refetch để đồng bộ chính xác từ DB
       await queryClient.refetchQueries({ queryKey: ['user-directory'] });
-    } catch (err: any) {
-      toast({ title: 'Lỗi', description: err.message || 'Không thể thực hiện hành động', variant: 'destructive' });
+    } catch (err: unknown) {
+      toast({ title: 'Lỗi', description: err instanceof Error ? err.message : 'Không thể thực hiện hành động', variant: 'destructive' });
     } finally {
       setIsActioning(false);
       setActionTarget(null);

@@ -73,8 +73,8 @@ const ManualDonation = () => {
       setForm({ tx_hash: "", sender_id: "", recipient_id: "", amount: "", token_symbol: "USDT", message: "" });
       setSenderSearch("");
       setRecipientSearch("");
-    } catch (err: any) {
-      toast.error("Lỗi: " + (err.message || "Unknown"));
+    } catch (err: unknown) {
+      toast.error("Lỗi: " + (err instanceof Error ? err.message : "Unknown"));
     } finally {
       setLoading(false);
     }

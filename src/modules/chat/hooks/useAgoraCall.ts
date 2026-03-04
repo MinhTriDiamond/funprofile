@@ -693,11 +693,11 @@ export function useAgoraCall({ conversationId, userId }: UseAgoraCallOptions) {
             }, 1000);
 
             logger.debug('[Agora] Auto-answer successful, connected!');
-          } catch (err: any) {
+          } catch (err: unknown) {
             console.error('[Agora] Auto-answer failed:', err);
             toast({
               title: 'Lỗi',
-              description: err.message || 'Không thể trả lời cuộc gọi',
+              description: err instanceof Error ? err.message : 'Không thể trả lời cuộc gọi',
               variant: 'destructive',
             });
             // Cleanup
