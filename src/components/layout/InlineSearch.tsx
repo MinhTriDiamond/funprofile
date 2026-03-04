@@ -21,6 +21,7 @@ interface Post {
   id: string;
   content: string;
   created_at: string;
+  slug?: string;
   profiles: {
     username: string;
     avatar_url: string | null;
