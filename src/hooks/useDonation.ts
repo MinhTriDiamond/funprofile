@@ -69,12 +69,14 @@ export function useDonation(options?: UseDonationOptions) {
       return null;
     }
 
-    // Check minimum USD value
-    const priceUSD = params.tokenPriceUSD ?? null;
-    const minCheck = validateMinSendValue(amount, priceUSD);
-    if (!minCheck.valid) {
-      toast.error(minCheck.message || `Giá trị gửi tối thiểu là ${MIN_SEND_USD} USD`);
-      return null;
+    // Check minimum USD value (skip on Testnet chainId 97)
+    if (chainId !== 97) {
+      const priceUSD = params.tokenPriceUSD ?? null;
+      const minCheck = validateMinSendValue(amount, priceUSD);
+      if (!minCheck.valid) {
+        toast.error(minCheck.message || `Giá trị gửi tối thiểu là ${MIN_SEND_USD} USD`);
+        return null;
+      }
     }
 
     setIsProcessing(true);

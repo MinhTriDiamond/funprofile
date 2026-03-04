@@ -167,7 +167,9 @@ export const UnifiedGiftSendDialog = ({
   const parsedAmountNum = parseFloat(amount) || 0;
   const totalAmount = parsedAmountNum * recipientsWithWallet.length;
   const minSendCheck = parsedAmountNum > 0
-    ? validateMinSendValue(parsedAmountNum, selectedTokenPrice)
+    ? (selectedChainId === BSC_TESTNET
+        ? { valid: true }
+        : validateMinSendValue(parsedAmountNum, selectedTokenPrice))
     : { valid: false } as { valid: boolean; message?: string };
   const estimatedUsd = parsedAmountNum * (selectedTokenPrice || 0);
   const totalEstimatedUsd = estimatedUsd * recipientsWithWallet.length;
