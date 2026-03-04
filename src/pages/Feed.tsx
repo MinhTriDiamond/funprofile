@@ -102,7 +102,7 @@ const Feed = () => {
 
               {/* Main Feed - Full width on mobile */}
               <div className="col-span-1 lg:col-span-6 w-full px-0">
-                <StoriesBar currentUserId={currentUserId} />
+                <StoriesBar currentUserId={currentUserId || ''} />
 
                 {currentUserId && <FacebookCreatePost onPostCreated={refetch} />}
 
@@ -127,7 +127,7 @@ const Feed = () => {
                         <GiftCelebrationCard
                           key={post.id}
                           post={post}
-                          currentUserId={currentUserId}
+                          currentUserId={currentUserId || ''}
                           onPostDeleted={refetch}
                           initialStats={postStats[post.id]}
                         />
@@ -135,7 +135,7 @@ const Feed = () => {
                         <FacebookPostCard
                           key={post.id}
                           post={post}
-                          currentUserId={currentUserId}
+                          currentUserId={currentUserId || ''}
                           onPostDeleted={refetch}
                           initialStats={postStats[post.id]}
                         />
