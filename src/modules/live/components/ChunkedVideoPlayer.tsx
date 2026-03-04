@@ -243,7 +243,7 @@ export function ChunkedVideoPlayer({
     });
 
     const mimeWithCodec = findSupportedMime(manifest) || buildMimeType(manifest);
-    console.log('[ChunkedVideoPlayer] Using MIME:', mimeWithCodec);
+    logger.debug('[ChunkedVideoPlayer] Using MIME:', mimeWithCodec);
     const sourceBuffer = mediaSource.addSourceBuffer(mimeWithCodec);
 
     const totalDurationSec = manifest.total_duration_ms / 1000;
