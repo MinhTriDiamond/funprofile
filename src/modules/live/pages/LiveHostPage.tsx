@@ -61,10 +61,10 @@ function toUserError(error: unknown): string {
   const anyErr = error as any;
   const message = String(anyErr?.message || '');
   const name = String(anyErr?.name || '');
-  if (name === 'NotAllowedError') return 'Ban chua cap quyen camera/micro.';
-  if (name === 'NotFoundError') return 'Khong tim thay thiet bi camera/micro.';
-  if (message.toLowerCase().includes('timeout')) return 'Ket noi qua cham, vui long thu lai.';
-  return message || 'Khong the bat dau phat truc tiep.';
+  if (name === 'NotAllowedError') return 'Bạn chưa cấp quyền camera/micro.';
+  if (name === 'NotFoundError') return 'Không tìm thấy thiết bị camera/micro.';
+  if (message.toLowerCase().includes('timeout')) return 'Kết nối quá chậm, vui lòng thử lại.';
+  return message || 'Không thể bắt đầu phát trực tiếp.';
 }
 
 /** Map recording phase to UI status */
@@ -215,7 +215,7 @@ export default function LiveHostPage() {
     const authResult = await withTimeout(supabase.auth.getSession(), 8000, 'auth timeout');
     const currentUserId = authResult.data.session?.user?.id;
     if (!currentUserId) {
-      throw new Error('Ban can dang nhap de phat truc tiep.');
+      throw new Error('Bạn cần đăng nhập để phát trực tiếp.');
     }
     setUserId(currentUserId);
 
@@ -278,12 +278,12 @@ export default function LiveHostPage() {
     if (sessionQuery.isLoading) return;
     if (sessionQuery.isError) {
       setBootState('error');
-      setBootError('Khong tai duoc phien LIVE. Vui long thu lai.');
+      setBootError('Không tải được phiên LIVE. Vui lòng thử lại.');
       return;
     }
     if (!session) {
       setBootState('error');
-      setBootError('Khong tim thay phien LIVE.');
+      setBootError('Không tìm thấy phiên LIVE.');
       return;
     }
     if (bootState !== 'starting') {
@@ -562,10 +562,10 @@ export default function LiveHostPage() {
           <Loader2 className="h-6 w-6 animate-spin" />
           <span>
             {bootState === 'creating'
-              ? 'Dang tao phien LIVE...'
+              ? 'Đang tạo phiên LIVE...'
               : bootState === 'starting'
-                ? 'Dang ket noi Agora...'
-                : 'Dang tai...'}
+                ? 'Đang kết nối...'
+                : 'Đang tải...'}
           </span>
         </div>
       </div>
@@ -578,16 +578,16 @@ export default function LiveHostPage() {
         <FacebookNavbar />
         <div className="pt-20 px-4 max-w-xl mx-auto">
           <Card className="p-6 space-y-4">
-            <div className="font-semibold text-lg">Khong the bat dau LIVE</div>
-            <div className="text-sm text-muted-foreground">{bootError || 'Da xay ra loi khong xac dinh.'}</div>
+            <div className="font-semibold text-lg">Không thể bắt đầu LIVE</div>
+            <div className="text-sm text-muted-foreground">{bootError || 'Đã xảy ra lỗi không xác định.'}</div>
             <div className="flex items-center gap-2">
               <Button onClick={handleRetry}>
                 <RefreshCw className="h-4 w-4 mr-2" />
-                Thu lai
+                Thử lại
               </Button>
               <Button variant="outline" onClick={() => navigate('/')}>
                 <Home className="h-4 w-4 mr-2" />
-                Quay ve trang chu
+                Quay về trang chủ
               </Button>
             </div>
           </Card>

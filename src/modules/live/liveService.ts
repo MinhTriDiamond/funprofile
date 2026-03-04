@@ -4,7 +4,7 @@ import type { CreateLiveSessionInput, LiveSession } from './types';
 
 const db = supabase as any;
 
-const LIVE_POST_DEFAULT_CONTENT = 'Dang LIVE tren FUN Profile';
+const LIVE_POST_DEFAULT_CONTENT = 'Đang LIVE trên FUN Profile';
 
 const buildChannelName = (userId: string) => `live_${userId}_${Date.now()}`;
 
@@ -144,7 +144,7 @@ export async function createLiveSession(input: CreateLiveSessionInput): Promise<
   } = await supabase.auth.getSession();
 
   if (!session?.user) {
-    throw new Error('Ban can dang nhap de bat dau live');
+    throw new Error('Bạn cần đăng nhập để bắt đầu live');
   }
 
   const userId = session.user.id;
