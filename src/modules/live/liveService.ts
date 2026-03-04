@@ -2,9 +2,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { uploadToR2 } from '@/utils/r2Upload';
 import type { CreateLiveSessionInput, LiveSession } from './types';
 
-// Helper: cast supabase for tables with Json columns that need partial object updates
-// Only used at call-site, not globally, to preserve type safety elsewhere
-const db = () => supabase as any;
+/**
+ * Typed as `any` because live_sessions and posts use Json columns (metadata)
+ * that reject partial typed objects. Cast is scoped to this service file only.
+ * TODO: Replace with supabaseJsonHelpers when available.
+ */
+const db = supabase as any;
 
 const LIVE_POST_DEFAULT_CONTENT = 'Đang LIVE trên FUN Profile';
 
