@@ -291,9 +291,9 @@ export function DonationHistoryTab() {
             txHash: selectedDonation.tx_hash,
             lightScoreEarned: selectedDonation.light_score_earned || 0,
             createdAt: selectedDonation.created_at,
-            cardTheme: (selectedDonation as any).card_theme,
-            cardBackground: (selectedDonation as any).card_background,
-            cardSound: (selectedDonation as any).card_sound,
+            cardTheme: selectedDonation.card_theme,
+            cardBackground: selectedDonation.card_background,
+            cardSound: selectedDonation.card_sound,
           }}
         />
       )}
