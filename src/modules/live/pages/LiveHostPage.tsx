@@ -757,7 +757,7 @@ export default function LiveHostPage() {
             </div>
           </section>
 
-          {effectiveSessionId && <LiveChatPanel sessionId={effectiveSessionId} isHost={true} liveTitle={session?.title || undefined} className="h-[70vh] lg:h-[calc(100vh-120px)]" />}
+          {effectiveSessionId && <LiveChatPanel sessionId={effectiveSessionId} isHost={true} liveTitle={session?.title || undefined} className="h-[70vh] lg:h-[calc(100vh-120px)]" viewers={viewers} />}
         </div>
       </main>
       {/* Navigation guard dialog */}
