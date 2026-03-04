@@ -24,8 +24,7 @@ import { toast } from 'sonner';
 import { formatUnits } from 'viem';
 import { supabase } from '@/integrations/supabase/client';
 import { queryClient } from '@/lib/queryClient';
-import { bsc } from 'wagmi/chains';
-import { getBscScanTxUrl } from '@/lib/bscScanHelpers';
+import { BSC_MAINNET, BSC_TESTNET, getTokenAddress, getDisabledTokens, getBscScanTxUrlByChain, isTokenAvailableOnChain } from '@/lib/chainTokenMapping';
 import { useActiveAccount } from '@/contexts/ActiveAccountContext';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useRecipientSearch } from './gift-dialog/useRecipientSearch';
@@ -103,6 +102,11 @@ export const UnifiedGiftSendDialog = ({
   const [multiSendProgress, setMultiSendProgress] = useState<{ current: number; total: number; results: MultiSendResult[] } | null>(null);
   const [isMultiSending, setIsMultiSending] = useState(false);
   const [currentSendingIndex, setCurrentSendingIndex] = useState(-1);
+  
+  // ── Network selection ──
+  const defaultChainId = (chainId === BSC_TESTNET) ? BSC_TESTNET : BSC_MAINNET;
+  const [selectedChainId, setSelectedChainId] = useState(defaultChainId);
+  const disabledTokens = useMemo(() => getDisabledTokens(selectedChainId), [selectedChainId]);
 
   const IS_MAINTENANCE = false;
 
