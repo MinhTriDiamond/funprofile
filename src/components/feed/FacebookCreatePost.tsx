@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { deleteFromR2 } from '@/utils/r2Upload';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -43,7 +44,15 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
   const navigate = useNavigate();
   const { t, language } = useLanguage();
   const { evaluateAsync } = usePplpEvaluate();
-  const [profile, setProfile] = useState<any>(null);
+  const { userId } = useCurrentUser();
+
+  interface CreatePostProfile {
+    id: string;
+    username: string;
+    display_name: string | null;
+    avatar_url: string | null;
+  }
+  const [profile, setProfile] = useState<CreatePostProfile | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(false);
@@ -139,19 +148,17 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
   }, [videoUploadState]);
 
   useEffect(() => {
+    if (!userId) return;
     const fetchProfile = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        const { data } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-        setProfile(data);
-      }
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, username, display_name, avatar_url')
+        .eq('id', userId)
+        .single();
+      if (data) setProfile(data);
     };
     fetchProfile();
-  }, []);
+  }, [userId]);
 
   const handleFileSelect = async (files: FileList | null, accessToken?: string) => {
     if (!files || !uploadQueueRef.current) return;
