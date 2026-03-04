@@ -59,9 +59,10 @@ const SystemTab = ({ adminId }: SystemTabProps) => {
       } else {
         toast.success("Không có giao dịch nào bị thiếu!");
       }
-    } catch (err: any) {
-      console.error("Scan error:", err);
-      toast.error("Lỗi khi quét: " + (err.message || "Unknown"));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Unknown';
+      console.error("Scan error:", msg);
+      toast.error("Lỗi khi quét: " + msg);
     } finally {
       setScanning(false);
     }
@@ -76,9 +77,10 @@ const SystemTab = ({ adminId }: SystemTabProps) => {
       setBackfillResult(data);
       setScanResult(null); // Clear scan after backfill
       toast.success(`Backfill hoàn tất: ${data?.inserted || 0} giao dịch được phục hồi`);
-    } catch (err: any) {
-      console.error("Backfill error:", err);
-      toast.error("Lỗi khi chạy backfill: " + (err.message || "Unknown"));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Unknown';
+      console.error("Backfill error:", msg);
+      toast.error("Lỗi khi chạy backfill: " + msg);
     } finally {
       setBackfilling(false);
     }
@@ -96,9 +98,10 @@ const SystemTab = ({ adminId }: SystemTabProps) => {
       } else {
         toast.info(data?.message || "Không có user bị ban nào để xoá");
       }
-    } catch (err: any) {
-      console.error("Delete banned users error:", err);
-      toast.error("Lỗi: " + (err.message || "Unknown"));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Unknown';
+      console.error("Delete banned users error:", msg);
+      toast.error("Lỗi: " + msg);
     } finally {
       setDeletingBanned(false);
     }

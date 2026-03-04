@@ -98,9 +98,9 @@ export function DonationHistoryAdminTab() {
       if (data.missing?.length === 0) {
         toast.success('Không có giao dịch nào bị thiếu!');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Scan error:', error);
-      toast.error('Lỗi khi quét: ' + (error.message || 'Unknown'));
+      toast.error('Lỗi khi quét: ' + (error instanceof Error ? error.message : 'Unknown'));
     } finally {
       setIsScanning(false);
     }
@@ -118,9 +118,9 @@ export function DonationHistoryAdminTab() {
       setViewMode('donations');
       setMissingTx([]);
       refetch();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Backfill error:', error);
-      toast.error('Lỗi khi backfill: ' + (error.message || 'Unknown'));
+      toast.error('Lỗi khi backfill: ' + (error instanceof Error ? error.message : 'Unknown'));
     } finally {
       setIsBackfilling(false);
     }
