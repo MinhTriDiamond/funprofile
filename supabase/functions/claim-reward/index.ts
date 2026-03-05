@@ -357,11 +357,13 @@ Deno.serve(async (req) => {
       }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const blockedStatuses = ['on_hold', 'rejected'];
+    const blockedStatuses = ['pending', 'on_hold', 'rejected', 'banned'];
     if (blockedStatuses.includes(profile.reward_status)) {
       const statusMessages: Record<string, string> = {
+        pending: 'Tài khoản đang chờ Admin xét duyệt trước khi claim.',
         on_hold: 'Phần thưởng đang bị treo. Vui lòng liên hệ Admin.',
         rejected: 'Phần thưởng đã bị từ chối. Vui lòng liên hệ Admin.',
+        banned: 'Tài khoản đã bị khóa. Vui lòng liên hệ Admin.',
       };
       return new Response(
         JSON.stringify({ 
