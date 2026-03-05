@@ -168,6 +168,31 @@ async function scrapePageMeta(url: string): Promise<{
       if (firstName) result.author = [firstName, lastName].filter(Boolean).join(' ');
     }
 
+    // Fallback 4: Facebook-specific patterns (mobile HTML)
+    if (!result.author && isFacebook) {
+      const fbPatterns = [
+        /"user_name"\s*:\s*"([^"]+)"/,
+        /"profileName"\s*:\s*"([^"]+)"/,
+        /"short_name"\s*:\s*"([^"]+)"/,
+        /"ownerName"\s*:\s*"([^"]+)"/,
+        /"actorName"\s*:\s*"([^"]+)"/,
+      ];
+      for (const pattern of fbPatterns) {
+        const m = html.match(pattern);
+        if (m?.[1] && m[1].length > 1 && m[1].length < 100) {
+          result.author = m[1];
+          break;
+        }
+      }
+    }
+
+    // Clean up Facebook engagement prefix from title: "24 reactions · 11 comments | Real title"
+    if (result.title) {
+      result.title = result.title.replace(/^\d+\s+reactions?\s*·\s*\d+\s+comments?\s*\|\s*/i, '');
+      // Vietnamese variant
+      result.title = result.title.replace(/^\d+\s+cảm xúc\s*·\s*\d+\s+bình luận\s*\|\s*/i, '');
+    }
+
     // Favicon
     const faviconMatch = html.match(/<link[^>]*rel=["'](?:shortcut )?icon["'][^>]*href=["']([^"']+)["']/i)
       || html.match(/<link[^>]*href=["']([^"']+)["'][^>]*rel=["'](?:shortcut )?icon["']/i);
