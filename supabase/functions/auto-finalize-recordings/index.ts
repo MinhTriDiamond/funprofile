@@ -1,7 +1,7 @@
 /**
  * auto-finalize-recordings Edge Function
- * Runs via pg_cron every 5 minutes to finalize stuck recordings
- * where host closed browser without completing finalization.
+ * Runs via pg_cron every 5 minutes to finalize stuck recordings.
+ * Concatenates chunks into a single replay.webm, verifies, and batch-deletes old chunks.
  */
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
@@ -11,96 +11,292 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// ─── R2 / S3 signing utilities ───────────────────────────────────────────────
+
 async function hmacSha256(key: ArrayBuffer, message: string): Promise<ArrayBuffer> {
   const cryptoKey = await crypto.subtle.importKey(
     'raw', key, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
   );
-  return await crypto.subtle.sign('HMAC', cryptoKey, new TextEncoder().encode(message));
+  return crypto.subtle.sign('HMAC', cryptoKey, new TextEncoder().encode(message));
 }
 
 async function getSignatureKey(key: string, dateStamp: string, region: string, service: string): Promise<ArrayBuffer> {
   const kDate = await hmacSha256(new TextEncoder().encode('AWS4' + key).buffer, dateStamp);
   const kRegion = await hmacSha256(kDate, region);
   const kService = await hmacSha256(kRegion, service);
-  return await hmacSha256(kService, 'aws4_request');
+  return hmacSha256(kService, 'aws4_request');
 }
 
 function toHex(buffer: ArrayBuffer): string {
   return Array.from(new Uint8Array(buffer)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-async function uploadJsonToR2(objectKey: string, data: Record<string, unknown>): Promise<string> {
-  const accountId = Deno.env.get('CLOUDFLARE_ACCOUNT_ID')!;
-  const accessKeyId = Deno.env.get('CLOUDFLARE_ACCESS_KEY_ID')!;
-  const secretAccessKey = Deno.env.get('CLOUDFLARE_SECRET_ACCESS_KEY')!;
-  const bucketName = Deno.env.get('CLOUDFLARE_R2_BUCKET_NAME')!;
-  const publicUrl = Deno.env.get('CLOUDFLARE_R2_PUBLIC_URL')!;
+function getR2Config() {
+  return {
+    accountId: Deno.env.get('CLOUDFLARE_ACCOUNT_ID')!,
+    accessKeyId: Deno.env.get('CLOUDFLARE_ACCESS_KEY_ID')!,
+    secretAccessKey: Deno.env.get('CLOUDFLARE_SECRET_ACCESS_KEY')!,
+    bucketName: Deno.env.get('CLOUDFLARE_R2_BUCKET_NAME')!,
+    publicUrl: Deno.env.get('CLOUDFLARE_R2_PUBLIC_URL')!,
+    region: 'auto',
+    service: 's3',
+    get host() { return `${this.accountId}.r2.cloudflarestorage.com`; },
+  };
+}
 
-  const region = 'auto';
-  const service = 's3';
-  const host = `${accountId}.r2.cloudflarestorage.com`;
+async function signedRequest(
+  method: string,
+  canonicalUri: string,
+  headers: Record<string, string>,
+  body: Uint8Array | string | null,
+  queryString = '',
+): Promise<Response> {
+  const r2 = getR2Config();
   const now = new Date();
   const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, '');
   const dateStamp = amzDate.slice(0, 8);
 
-  const body = JSON.stringify(data);
-  const bodyHash = toHex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(body)));
+  const bodyBytes = body instanceof Uint8Array ? body : (body ? new TextEncoder().encode(body) : new Uint8Array(0));
+  const bodyHash = toHex(await crypto.subtle.digest('SHA-256', bodyBytes));
 
-  const canonicalUri = `/${bucketName}/${objectKey}`;
-  const algorithm = 'AWS4-HMAC-SHA256';
-  const credentialScope = `${dateStamp}/${region}/${service}/aws4_request`;
-  const signedHeaders = 'content-type;host;x-amz-content-sha256;x-amz-date';
+  const allHeaders: Record<string, string> = {
+    ...headers,
+    'host': r2.host,
+    'x-amz-content-sha256': bodyHash,
+    'x-amz-date': amzDate,
+  };
 
-  const canonicalHeaders = [
-    `content-type:application/json`,
-    `host:${host}`,
-    `x-amz-content-sha256:${bodyHash}`,
-    `x-amz-date:${amzDate}`,
-  ].join('\n') + '\n';
+  const sortedHeaderKeys = Object.keys(allHeaders).sort();
+  const signedHeaders = sortedHeaderKeys.join(';');
+  const canonicalHeaders = sortedHeaderKeys.map(k => `${k}:${allHeaders[k]}`).join('\n') + '\n';
 
-  const canonicalRequest = ['PUT', canonicalUri, '', canonicalHeaders, signedHeaders, bodyHash].join('\n');
-  const canonicalRequestHash = toHex(
-    await crypto.subtle.digest('SHA-256', new TextEncoder().encode(canonicalRequest))
-  );
+  const canonicalRequest = [method, canonicalUri, queryString, canonicalHeaders, signedHeaders, bodyHash].join('\n');
+  const canonicalRequestHash = toHex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(canonicalRequest)));
 
-  const stringToSign = [algorithm, amzDate, credentialScope, canonicalRequestHash].join('\n');
-  const signingKey = await getSignatureKey(secretAccessKey, dateStamp, region, service);
+  const credentialScope = `${dateStamp}/${r2.region}/${r2.service}/aws4_request`;
+  const stringToSign = ['AWS4-HMAC-SHA256', amzDate, credentialScope, canonicalRequestHash].join('\n');
+  const signingKey = await getSignatureKey(r2.secretAccessKey, dateStamp, r2.region, r2.service);
   const signature = toHex(await hmacSha256(signingKey, stringToSign));
 
-  const authorization = `${algorithm} Credential=${accessKeyId}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+  const authorization = `AWS4-HMAC-SHA256 Credential=${r2.accessKeyId}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
 
-  const resp = await fetch(`https://${host}${canonicalUri}`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      'Host': host,
-      'x-amz-content-sha256': bodyHash,
-      'x-amz-date': amzDate,
-      'Authorization': authorization,
-    },
-    body,
+  const fetchHeaders: Record<string, string> = { ...allHeaders, Authorization: authorization };
+  const url = `https://${r2.host}${canonicalUri}${queryString ? '?' + queryString : ''}`;
+
+  return fetch(url, {
+    method,
+    headers: fetchHeaders,
+    body: body ? bodyBytes : undefined,
   });
+}
 
-  if (!resp.ok) {
-    const text = await resp.text();
-    throw new Error(`R2 upload failed: ${resp.status} ${text}`);
+// ─── R2 Multipart Upload ────────────────────────────────────────────────────
+
+async function initiateMultipartUpload(objectKey: string, contentType: string): Promise<string> {
+  const r2 = getR2Config();
+  const uri = `/${r2.bucketName}/${objectKey}`;
+  const resp = await signedRequest('POST', uri, { 'content-type': contentType }, null, 'uploads=');
+  if (!resp.ok) throw new Error(`Initiate multipart failed: ${resp.status} ${await resp.text()}`);
+  const xml = await resp.text();
+  const match = xml.match(/<UploadId>(.+?)<\/UploadId>/);
+  if (!match) throw new Error('No UploadId in response');
+  return match[1];
+}
+
+async function uploadPart(objectKey: string, uploadId: string, partNumber: number, data: Uint8Array): Promise<string> {
+  const r2 = getR2Config();
+  const uri = `/${r2.bucketName}/${objectKey}`;
+  const qs = `partNumber=${partNumber}&uploadId=${encodeURIComponent(uploadId)}`;
+  const resp = await signedRequest('PUT', uri, { 'content-type': 'application/octet-stream' }, data, qs);
+  if (!resp.ok) throw new Error(`Upload part ${partNumber} failed: ${resp.status}`);
+  await resp.text();
+  return resp.headers.get('ETag') || `"part-${partNumber}"`;
+}
+
+async function completeMultipartUpload(objectKey: string, uploadId: string, parts: { partNumber: number; etag: string }[]): Promise<void> {
+  const r2 = getR2Config();
+  const uri = `/${r2.bucketName}/${objectKey}`;
+  const qs = `uploadId=${encodeURIComponent(uploadId)}`;
+  const partsXml = parts.map(p => `<Part><PartNumber>${p.partNumber}</PartNumber><ETag>${p.etag}</ETag></Part>`).join('');
+  const body = `<CompleteMultipartUpload>${partsXml}</CompleteMultipartUpload>`;
+  const resp = await signedRequest('POST', uri, { 'content-type': 'application/xml' }, body, qs);
+  if (!resp.ok) throw new Error(`Complete multipart failed: ${resp.status} ${await resp.text()}`);
+  await resp.text();
+}
+
+async function abortMultipartUpload(objectKey: string, uploadId: string): Promise<void> {
+  const r2 = getR2Config();
+  const uri = `/${r2.bucketName}/${objectKey}`;
+  const qs = `uploadId=${encodeURIComponent(uploadId)}`;
+  try { const resp = await signedRequest('DELETE', uri, {}, null, qs); await resp.text(); } catch { /* best effort */ }
+}
+
+// ─── HEAD + Batch Delete ─────────────────────────────────────────────────────
+
+async function headR2Object(objectKey: string): Promise<number> {
+  const r2 = getR2Config();
+  const uri = `/${r2.bucketName}/${objectKey}`;
+  const resp = await signedRequest('HEAD', uri, {}, null);
+  if (!resp.ok) throw new Error(`HEAD failed: ${resp.status}`);
+  return parseInt(resp.headers.get('content-length') || '0', 10);
+}
+
+async function batchDeleteFromR2(keys: string[]): Promise<number> {
+  if (keys.length === 0) return 0;
+  const r2 = getR2Config();
+  let totalDeleted = 0;
+
+  for (let i = 0; i < keys.length; i += 1000) {
+    const batch = keys.slice(i, i + 1000);
+    const objectsXml = batch.map(k => `<Object><Key>${k}</Key></Object>`).join('');
+    const body = `<?xml version="1.0" encoding="UTF-8"?><Delete><Quiet>true</Quiet>${objectsXml}</Delete>`;
+    const bodyBytes = new TextEncoder().encode(body);
+
+    const uri = `/${r2.bucketName}`;
+    const resp = await signedRequest('POST', uri, {
+      'content-type': 'application/xml',
+      'content-md5': btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.digest('MD5', bodyBytes)))),
+    }, body, 'delete=');
+
+    if (!resp.ok) {
+      console.error(`Batch delete failed: ${resp.status} ${await resp.text()}`);
+    } else {
+      await resp.text();
+      totalDeleted += batch.length;
+    }
+  }
+  return totalDeleted;
+}
+
+// ─── Fetch chunk with retries ────────────────────────────────────────────────
+
+async function fetchChunkData(url: string, retries = 3): Promise<Uint8Array> {
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error(`Fetch failed: ${resp.status}`);
+      return new Uint8Array(await resp.arrayBuffer());
+    } catch (err) {
+      if (attempt === retries - 1) throw err;
+      await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+    }
+  }
+  throw new Error('Unreachable');
+}
+
+// ─── Concat + Upload + Verify + Delete for one recording ─────────────────────
+
+async function finalizeRecording(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  rec: any,
+  chunks: any[],
+  session: any,
+): Promise<{ action: string; replay_url?: string; error?: string }> {
+  const r2 = getR2Config();
+  const mimeType = rec.mime_type || 'video/webm';
+  const replayKey = `recordings/${rec.id}/replay.webm`;
+  const totalDurationMs = chunks.reduce((sum: number, c: any) => sum + (c.duration_ms || 4000), 0);
+
+  // Mark assembling
+  await supabaseAdmin.from('chunked_recordings').update({ status: 'assembling' }).eq('id', rec.id);
+
+  const uploadId = await initiateMultipartUpload(replayKey, mimeType);
+  const PART_SIZE = 5 * 1024 * 1024;
+  const etags: { partNumber: number; etag: string }[] = [];
+  let partNumber = 1;
+  let buffer = new Uint8Array(0);
+  let totalBytesProcessed = 0;
+
+  try {
+    for (const chunk of chunks) {
+      const chunkData = await fetchChunkData(`${r2.publicUrl}/${chunk.object_key}`);
+      totalBytesProcessed += chunkData.length;
+
+      const newBuffer = new Uint8Array(buffer.length + chunkData.length);
+      newBuffer.set(buffer);
+      newBuffer.set(chunkData, buffer.length);
+      buffer = newBuffer;
+
+      while (buffer.length >= PART_SIZE) {
+        const partData = buffer.slice(0, PART_SIZE);
+        buffer = buffer.slice(PART_SIZE);
+        const etag = await uploadPart(replayKey, uploadId, partNumber, partData);
+        etags.push({ partNumber, etag });
+        partNumber++;
+      }
+    }
+
+    if (buffer.length > 0) {
+      const etag = await uploadPart(replayKey, uploadId, partNumber, buffer);
+      etags.push({ partNumber, etag });
+    }
+
+    await completeMultipartUpload(replayKey, uploadId, etags);
+  } catch (err) {
+    await abortMultipartUpload(replayKey, uploadId);
+    throw err;
   }
 
-  return `${publicUrl}/${objectKey}`;
+  // Verify
+  const actualSize = await headR2Object(replayKey);
+  if (Math.abs(actualSize - totalBytesProcessed) > 1024) {
+    throw new Error(`Size verification failed: expected ${totalBytesProcessed}, got ${actualSize}`);
+  }
+
+  const replayUrl = `${r2.publicUrl}/${replayKey}`;
+
+  // Batch delete old chunks
+  const chunkKeys = chunks.map((c: any) => c.object_key).filter(Boolean);
+  const deletedCount = await batchDeleteFromR2(chunkKeys);
+
+  // Update recording as done
+  await supabaseAdmin.from('chunked_recordings').update({
+    status: 'done',
+    total_chunks: chunks.length,
+    output_object_key: replayKey,
+    output_url: replayUrl,
+    ended_at: new Date().toISOString(),
+  }).eq('id', rec.id);
+
+  // Update live session recording status
+  await supabaseAdmin.from('live_sessions')
+    .update({ recording_status: 'ready' })
+    .eq('id', rec.live_session_id);
+
+  // Update post with single-file replay URL
+  if (session?.post_id) {
+    await supabaseAdmin.from('posts').update({
+      video_url: replayUrl,
+      metadata: {
+        live_title: session.title,
+        live_status: 'ended',
+        live_session_id: rec.live_session_id,
+        playback_url: replayUrl,
+        playback_type: 'single_file',
+        chunked_recording_id: rec.id,
+        ended_at: session.ended_at,
+        auto_finalized: true,
+      },
+    }).eq('id', session.post_id);
+  }
+
+  console.log(`[auto-finalize] ✓ Recording ${rec.id} → replay.webm (${chunks.length} chunks, ${deletedCount} deleted)`);
+  return { action: 'finalized', replay_url: replayUrl };
 }
+
+// ─── Main handler ────────────────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Auth: accept service_role key via Authorization header OR cron secret
+  // Auth: accept service_role key, cron secret, or anon key
   const authHeader = req.headers.get('Authorization') || '';
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
   const isServiceRole = authHeader === `Bearer ${serviceRoleKey}`;
   const cronSecret = Deno.env.get('CRON_SECRET');
   const isCronAuth = cronSecret && req.headers.get('X-Cron-Secret') === cronSecret;
-  // Also accept anon key from pg_cron (backward compat)
   const anonKey = Deno.env.get('SUPABASE_ANON_KEY');
   const isAnonCron = authHeader === `Bearer ${anonKey}`;
 
@@ -134,18 +330,14 @@ Deno.serve(async (req) => {
       });
     }
 
-    const results: Array<{ recording_id: string; action: string; manifest_url?: string; error?: string }> = [];
+    const results: Array<{ recording_id: string; action: string; replay_url?: string; error?: string }> = [];
 
     for (const rec of stuckRecordings || []) {
       const session = (rec as any).live_sessions;
       if (!session || session.status !== 'ended') continue;
-
-      // Check if ended > 5 minutes ago
-      const endedAt = new Date(session.ended_at).getTime();
-      if (Date.now() - endedAt < 5 * 60 * 1000) continue;
+      if (Date.now() - new Date(session.ended_at).getTime() < 5 * 60 * 1000) continue;
 
       try {
-        // Get uploaded chunks
         const { data: chunks, error: chunkErr } = await supabaseAdmin
           .from('chunked_recording_chunks')
           .select('*')
@@ -154,7 +346,6 @@ Deno.serve(async (req) => {
           .order('seq', { ascending: true });
 
         if (chunkErr || !chunks || chunks.length === 0) {
-          // No chunks → mark as failed
           await supabaseAdmin.from('chunked_recordings')
             .update({ status: 'failed', error_message: 'Auto-finalize: no uploaded chunks', ended_at: new Date().toISOString() })
             .eq('id', rec.id);
@@ -162,75 +353,8 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        // Mark as assembling
-        await supabaseAdmin.from('chunked_recordings')
-          .update({ status: 'assembling' })
-          .eq('id', rec.id);
-
-        const publicUrl = Deno.env.get('CLOUDFLARE_R2_PUBLIC_URL')!;
-
-        // Build manifest
-        const totalDurationMs = chunks.reduce((sum: number, c: any) => sum + (c.duration_ms || 4000), 0);
-        const manifest = {
-          recording_id: rec.id,
-          version: 1,
-          codec: rec.codec || 'vp8,opus',
-          mime_type: rec.mime_type || 'video/webm',
-          width: rec.width,
-          height: rec.height,
-          total_duration_ms: totalDurationMs,
-          chunks: chunks.map((c: any) => ({
-            seq: c.seq,
-            key: c.object_key,
-            url: `${publicUrl}/${c.object_key}`,
-            bytes: c.bytes,
-            duration_ms: c.duration_ms || 4000,
-          })),
-          created_at: new Date().toISOString(),
-          auto_finalized: true,
-        };
-
-        // Upload manifest to R2
-        const manifestKey = `recordings/${rec.id}/manifest.json`;
-        const manifestUrl = await uploadJsonToR2(manifestKey, manifest);
-
-        // Update recording as done
-        await supabaseAdmin.from('chunked_recordings')
-          .update({
-            status: 'done',
-            total_chunks: chunks.length,
-            output_object_key: manifestKey,
-            output_url: manifestUrl,
-            ended_at: new Date().toISOString(),
-          })
-          .eq('id', rec.id);
-
-        // Update live session recording status
-        await supabaseAdmin.from('live_sessions')
-          .update({ recording_status: 'ready' })
-          .eq('id', rec.live_session_id);
-
-        // Update post with replay URL
-        if (session.post_id) {
-          await supabaseAdmin.from('posts')
-            .update({
-              video_url: manifestUrl,
-              metadata: {
-                live_title: session.title,
-                live_status: 'ended',
-                live_session_id: rec.live_session_id,
-                playback_url: manifestUrl,
-                playback_type: 'chunked_manifest',
-                chunked_recording_id: rec.id,
-                ended_at: session.ended_at,
-                auto_finalized: true,
-              },
-            })
-            .eq('id', session.post_id);
-        }
-
-        results.push({ recording_id: rec.id, action: 'finalized', manifest_url: manifestUrl });
-        console.log(`[auto-finalize] ✓ Recording ${rec.id} finalized with ${chunks.length} chunks`);
+        const result = await finalizeRecording(supabaseAdmin, rec, chunks, session);
+        results.push({ recording_id: rec.id, ...result });
       } catch (err: any) {
         console.error(`[auto-finalize] Error processing ${rec.id}:`, err);
         await supabaseAdmin.from('chunked_recordings')
@@ -247,11 +371,9 @@ Deno.serve(async (req) => {
         method: 'OPTIONS',
         headers: { 'Content-Type': 'application/json' },
       });
-    } catch {
-      // Ping failure is non-critical
-    }
+    } catch { /* non-critical */ }
 
-    // === Cleanup old live_messages (sessions ended > 7 days ago) ===
+    // Cleanup old live_messages (sessions ended > 7 days ago)
     let messagesDeleted = 0;
     try {
       const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
