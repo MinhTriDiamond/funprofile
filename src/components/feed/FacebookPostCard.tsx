@@ -14,6 +14,7 @@ import { ImageViewer } from './ImageViewer';
 import { EditPostDialog } from './EditPostDialog';
 import { ShareDialog } from './ShareDialog';
 import { LiveChatReplay } from '@/modules/live/components/LiveChatReplay';
+import { LinkPreviewCard, extractFirstUrl } from './LinkPreviewCard';
 import type { FacebookPostCardProps } from './types';
 
 const FacebookPostCardComponent = ({
