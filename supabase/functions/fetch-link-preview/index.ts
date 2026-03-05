@@ -87,7 +87,7 @@ async function scrapePageMeta(url: string): Promise<{
   siteName: string | null;
   favicon: string | null;
 }> {
-  const result = { title: null as string | null, description: null as string | null, image: null as string | null, video: null as string | null, siteName: null as string | null, favicon: null as string | null };
+  const result = { title: null as string | null, description: null as string | null, image: null as string | null, video: null as string | null, siteName: null as string | null, favicon: null as string | null, author: null as string | null };
   try {
     const res = await fetch(url, {
       headers: {
@@ -127,6 +127,7 @@ async function scrapePageMeta(url: string): Promise<{
     result.image = extract('og:image') || extractName('twitter:image');
     result.video = extract('og:video') || extract('og:video:url');
     result.siteName = extract('og:site_name');
+    result.author = extract('article:author') || extractName('author');
 
     // Favicon
     const faviconMatch = html.match(/<link[^>]*rel=["'](?:shortcut )?icon["'][^>]*href=["']([^"']+)["']/i)
@@ -244,6 +245,7 @@ serve(async (req) => {
         video: decodeHtmlEntities(meta.video),
         siteName: decodeHtmlEntities(meta.siteName),
         favicon: decodeHtmlEntities(meta.favicon),
+        author: decodeHtmlEntities(meta.author),
         url: normalizedUrl,
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

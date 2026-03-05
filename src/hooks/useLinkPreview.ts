@@ -8,6 +8,7 @@ export interface LinkPreviewData {
   video: string | null;
   siteName: string | null;
   favicon: string | null;
+  author: string | null;
   url: string;
 }
 
@@ -54,6 +55,7 @@ async function fetchPreview(url: string): Promise<LinkPreviewData | null> {
       video: data.video || null,
       siteName: data.siteName || null,
       favicon: data.favicon || null,
+      author: data.author || null,
       url: data.url || url,
     };
     // Only cache if we got something useful
