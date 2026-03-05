@@ -1,78 +1,55 @@
 
 
-# Phân tích: Tại sao Database hiển thị Livestream = 0
+# Tối ưu Profile: Tắt Realtime + Polling nhẹ thay thế
 
-## Phát hiện chính
+## Tóm tắt
 
-**Dữ liệu thực tế trong database:**
+- **Trang Feed**: Giữ nguyên Realtime — không thay đổi gì
+- **Trang Profile**: Tắt Realtime (WebSocket) → thay bằng **polling gộp** mỗi 30s cho các bài đang hiển thị trên viewport
 
-| Bảng | Số lượng | Ghi chú |
-|------|----------|---------|
-| `live_sessions` | **600** (596 ended + 4 live) | Users livestream rất tích cực |
-| `chunked_recordings` | **342** (314 done, 28 stuck "recording") | Ghi hình hoạt động |
-| `posts` với `post_type = 'live'` | **519** | Bài đăng live |
-| `posts` có video URL chứa "live" | **581** | Video replay |
-| `recording_status = 'ready'` | **488** | Recordings thành công |
-| `recording_status = 'failed'` | **57** | Recordings thất bại (~9.5%) |
+Như vậy user vẫn thấy reaction/comment cập nhật trên Profile, chỉ chậm tối đa 30 giây thay vì tức thì. Không mở hàng chục WebSocket channel.
 
-**Kết luận: Users livestream RẤT NHIỀU — 600 phiên, 488 recordings thành công!**
+## Thay đổi cụ thể
 
-## Nguyên nhân gốc: Hàm `get_app_stats` không đếm livestream
+### 1. `src/hooks/usePostStats.ts`
+- Thêm prop `disableRealtime?: boolean`
+- Khi `true`: bỏ qua subscription `supabase.channel(...)`, không tạo WebSocket
 
-Hàm `get_app_stats()` hiện tại chỉ trả về:
-- `total_users`, `total_posts`, `total_photos`, `total_videos` (đếm từ `posts WHERE video_url IS NOT NULL`)
-- `total_rewards`, `treasury_camly_received`, `total_camly_claimed`
+### 2. Tạo `src/hooks/useProfilePolling.ts` (file mới)
+- Nhận danh sách `postIds` đang hiển thị trên viewport
+- Mỗi 30 giây, fetch stats gộp cho tất cả bài trong 1-2 query (thay vì 1 query/bài):
+  - `reactions` WHERE `post_id IN (...)` 
+  - `comments` count grouped by `post_id`
+- Trả về map `postId → { likeCount, commentCount, reactionCounts }`
+- Dùng `IntersectionObserver` để chỉ poll cho bài đang visible
 
-**Không có trường nào đếm `live_sessions`** hoặc `chunked_recordings`. Component `AppHonorBoard.tsx` hiển thị `total_videos = 897` — đó là tổng số posts có video (bao gồm cả live replay), nhưng **không có mục riêng cho "Livestream"**.
+### 3. `src/components/feed/FacebookPostCard.tsx`
+- Thêm prop `disableRealtime?: boolean`, truyền xuống `usePostStats`
+- Thêm prop `polledStats?` để nhận stats từ polling hook
 
-## Vấn đề phụ phát hiện thêm
+### 4. `src/components/feed/GiftCelebrationCard.tsx`
+- Tương tự: thêm `disableRealtime` + `disableEffects` + `polledStats`
 
-1. **28 recordings stuck ở trạng thái "recording"** — phiên live đã kết thúc nhưng `chunked_recordings.status` không chuyển sang `done`. Đây là những sessions mà host đóng trình duyệt đột ngột trước khi finalize.
+### 5. `src/components/profile/ProfilePosts.tsx`
+- Truyền `disableRealtime={true}` cho tất cả post cards
+- Tích hợp `useProfilePolling` với danh sách `displayedPosts`
+- Truyền `polledStats` xuống từng card
 
-2. **57 sessions có `recording_status = 'failed'`** (~9.5%) — một số có `chunked_recordings.status = done` (recording thực ra thành công nhưng status ở `live_sessions` bị đánh failed sai).
+### 6. `src/hooks/useProfile.ts`
+- Dùng `useRef` cho `currentUserId` để ổn định dependency → tránh re-fetch khi token refresh
 
-3. **`live_recordings` table hoàn toàn trống** (0 rows) — Table này được thiết kế cho Agora server-side recording nhưng chưa bao giờ được sử dụng thành công vì hệ thống đang dùng client-side chunked recording thay thế.
+### 7. `src/components/feed/CommentSection.tsx`
+- Thêm prop `disableRealtime?: boolean`
+- Khi `true`: không tạo channel `comments-{postId}`, chỉ fetch comments khi mount
 
-## Kế hoạch sửa
+## So sánh
 
-### Task 1: Cập nhật `get_app_stats` thêm `total_livestreams`
+| | Trước | Sau |
+|---|---|---|
+| WebSocket channels/profile | 10-40 | 0 |
+| Cập nhật reaction/comment | Tức thì | Chậm tối đa 30s |
+| Query mỗi 30s | 0 (nhưng hàng trăm query realtime callback) | 2 query gộp |
+| Trang Feed | Realtime | Realtime (không đổi) |
 
-Thêm trường `total_livestreams` vào hàm SQL:
-
-```sql
-DROP FUNCTION IF EXISTS public.get_app_stats();
-CREATE OR REPLACE FUNCTION public.get_app_stats()
-RETURNS TABLE(
-  total_users BIGINT,
-  total_posts BIGINT,
-  total_photos BIGINT,
-  total_videos BIGINT,
-  total_livestreams BIGINT,
-  total_rewards NUMERIC,
-  treasury_camly_received NUMERIC,
-  total_camly_claimed NUMERIC
-) ...
--- Thêm:
-(SELECT COUNT(*) FROM live_sessions)::BIGINT AS total_livestreams,
-```
-
-### Task 2: Cập nhật `AppHonorBoard.tsx`
-
-- Thêm interface field `totalLivestreams`
-- Parse từ response `row.total_livestreams`
-- Thêm stat card với icon `Radio` và label "Livestreams"
-
-### Task 3: Dọn dẹp stuck recordings
-
-- Cập nhật 28 `chunked_recordings` stuck ở `status = 'recording'` mà `live_session` đã `ended` → chuyển sang `done` hoặc `failed`
-- Sửa inconsistency: sessions có `recording_status = 'failed'` nhưng `chunked_recordings.status = 'done'`
-
-### Technical Details
-
-**Files cần sửa:**
-1. Migration SQL mới — `DROP FUNCTION + CREATE OR REPLACE` cho `get_app_stats`
-2. `src/components/feed/AppHonorBoard.tsx` — thêm livestream stat
-3. `src/integrations/supabase/types.ts` — tự động cập nhật sau migration
-
-**Không ảnh hưởng:** Các tính năng livestream hiện tại (start, join, record, replay) không bị ảnh hưởng. Đây chỉ là fix hiển thị thống kê.
+Tổng: sửa **6 file**, tạo **1 file mới**. Không thay đổi database.
 
