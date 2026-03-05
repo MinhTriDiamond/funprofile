@@ -40,6 +40,17 @@ Deno.serve(async (req) => {
     }
     const userId = user.id
 
+    // Check banned status
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    )
+    const { data: banCheck } = await supabaseAdmin
+      .from('profiles').select('is_banned').eq('id', userId).single()
+    if (banCheck?.is_banned) {
+      return new Response(JSON.stringify({ error: 'Tài khoản đã bị cấm vĩnh viễn.' }), { status: 403, headers: corsHeaders })
+    }
+
     const body = await req.json().catch(() => ({}))
     const sessionId = body.session_id || body.sessionId
     const role = body.role || 'audience'
@@ -48,11 +59,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'session_id required' }), { status: 400, headers: corsHeaders })
     }
 
-    // Lookup live session
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    )
+    // Lookup live session (reuse supabaseAdmin from ban check)
 
     const { data: session, error: sessionErr } = await supabaseAdmin
       .from('live_sessions')

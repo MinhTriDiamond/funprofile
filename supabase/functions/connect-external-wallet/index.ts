@@ -34,6 +34,19 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Check banned status
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const banCheckClient = createClient(supabaseUrl, supabaseServiceKey);
+    const { data: banCheck } = await banCheckClient
+      .from('profiles').select('is_banned').eq('id', user.id).single();
+    if (banCheck?.is_banned) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Tài khoản đã bị cấm vĩnh viễn.' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const { wallet_address, signature, message } = await req.json();
     
     if (!wallet_address || !signature || !message) {

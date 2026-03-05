@@ -109,6 +109,15 @@ serve(async (req) => {
       });
     }
 
+    // Check banned status
+    const { data: banCheck } = await supabase
+      .from('profiles').select('is_banned').eq('id', user.id).single();
+    if (banCheck?.is_banned) {
+      return new Response(JSON.stringify({ error: 'Tài khoản đã bị cấm vĩnh viễn.' }), {
+        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const actorId = user.id;
     const { action_type, reference_id, content } = await req.json();
 
