@@ -1,43 +1,78 @@
 
 
-# Sửa lỗi Facebook video share link không trả về metadata
+# Phân tích: Tại sao Database hiển thị Livestream = 0
 
-## Vấn đề
+## Phát hiện chính
 
-Test API trực tiếp cho thấy Facebook **hoàn toàn chặn** UA `facebookexternalhit` với các link dạng `facebook.com/share/v/...` — trả về tất cả `null` (title, image, video, description, author đều rỗng).
+**Dữ liệu thực tế trong database:**
 
-Screenshot của con hiển thị dữ liệu cũ đã cache — thực tế API hiện tại không lấy được gì.
+| Bảng | Số lượng | Ghi chú |
+|------|----------|---------|
+| `live_sessions` | **600** (596 ended + 4 live) | Users livestream rất tích cực |
+| `chunked_recordings` | **342** (314 done, 28 stuck "recording") | Ghi hình hoạt động |
+| `posts` với `post_type = 'live'` | **519** | Bài đăng live |
+| `posts` có video URL chứa "live" | **581** | Video replay |
+| `recording_status = 'ready'` | **488** | Recordings thành công |
+| `recording_status = 'failed'` | **57** | Recordings thất bại (~9.5%) |
 
-## Giải pháp — Multi-UA Fallback
+**Kết luận: Users livestream RẤT NHIỀU — 600 phiên, 488 recordings thành công!**
 
-### File: `supabase/functions/fetch-link-preview/index.ts`
+## Nguyên nhân gốc: Hàm `get_app_stats` không đếm livestream
 
-Sửa hàm `scrapePageMeta` để thử nhiều User-Agent nếu UA đầu tiên thất bại:
+Hàm `get_app_stats()` hiện tại chỉ trả về:
+- `total_users`, `total_posts`, `total_photos`, `total_videos` (đếm từ `posts WHERE video_url IS NOT NULL`)
+- `total_rewards`, `treasury_camly_received`, `total_camly_claimed`
 
-1. **UA 1** (mặc định): `facebookexternalhit/1.1` — hoạt động tốt cho hầu hết link
-2. **UA 2** (fallback): `Googlebot/2.1` — Google crawler thường được Facebook tin tưởng hơn
-3. **UA 3** (fallback cuối): `Twitterbot/1.0` — Twitter crawler
+**Không có trường nào đếm `live_sessions`** hoặc `chunked_recordings`. Component `AppHonorBoard.tsx` hiển thị `total_videos = 897` — đó là tổng số posts có video (bao gồm cả live replay), nhưng **không có mục riêng cho "Livestream"**.
 
-Logic:
-```text
-scrapePageMeta(url):
-  for each UA in [facebookexternalhit, Googlebot, Twitterbot]:
-    fetch with UA
-    extract OG tags
-    if (title || image) → return result  // có data → dừng
-  return empty result  // tất cả UA đều thất bại
+## Vấn đề phụ phát hiện thêm
+
+1. **28 recordings stuck ở trạng thái "recording"** — phiên live đã kết thúc nhưng `chunked_recordings.status` không chuyển sang `done`. Đây là những sessions mà host đóng trình duyệt đột ngột trước khi finalize.
+
+2. **57 sessions có `recording_status = 'failed'`** (~9.5%) — một số có `chunked_recordings.status = done` (recording thực ra thành công nhưng status ở `live_sessions` bị đánh failed sai).
+
+3. **`live_recordings` table hoàn toàn trống** (0 rows) — Table này được thiết kế cho Agora server-side recording nhưng chưa bao giờ được sử dụng thành công vì hệ thống đang dùng client-side chunked recording thay thế.
+
+## Kế hoạch sửa
+
+### Task 1: Cập nhật `get_app_stats` thêm `total_livestreams`
+
+Thêm trường `total_livestreams` vào hàm SQL:
+
+```sql
+DROP FUNCTION IF EXISTS public.get_app_stats();
+CREATE OR REPLACE FUNCTION public.get_app_stats()
+RETURNS TABLE(
+  total_users BIGINT,
+  total_posts BIGINT,
+  total_photos BIGINT,
+  total_videos BIGINT,
+  total_livestreams BIGINT,
+  total_rewards NUMERIC,
+  treasury_camly_received NUMERIC,
+  total_camly_claimed NUMERIC
+) ...
+-- Thêm:
+(SELECT COUNT(*) FROM live_sessions)::BIGINT AS total_livestreams,
 ```
 
-**Chỉ áp dụng retry cho Facebook URLs** (isFacebook = true). Các URL khác vẫn dùng 1 UA duy nhất.
+### Task 2: Cập nhật `AppHonorBoard.tsx`
 
-### Xử lý thêm cho Facebook share/v/ links
+- Thêm interface field `totalLivestreams`
+- Parse từ response `row.total_livestreams`
+- Thêm stat card với icon `Radio` và label "Livestreams"
 
-Facebook `share/v/` thường redirect đến URL video thật. Thêm logic:
-- Nếu URL chứa `/share/v/` hoặc `/share/p/`, thử `fetch` với `redirect: 'manual'` trước để lấy URL đích thật, rồi scrape URL đích đó.
+### Task 3: Dọn dẹp stuck recordings
 
-### Tổng sửa
+- Cập nhật 28 `chunked_recordings` stuck ở `status = 'recording'` mà `live_session` đã `ended` → chuyển sang `done` hoặc `failed`
+- Sửa inconsistency: sessions có `recording_status = 'failed'` nhưng `chunked_recordings.status = 'done'`
 
-- 1 file: `supabase/functions/fetch-link-preview/index.ts`
-- Thêm ~30 dòng logic retry UA + redirect resolution
-- Deploy lại edge function
+### Technical Details
+
+**Files cần sửa:**
+1. Migration SQL mới — `DROP FUNCTION + CREATE OR REPLACE` cho `get_app_stats`
+2. `src/components/feed/AppHonorBoard.tsx` — thêm livestream stat
+3. `src/integrations/supabase/types.ts` — tự động cập nhật sau migration
+
+**Không ảnh hưởng:** Các tính năng livestream hiện tại (start, join, record, replay) không bị ảnh hưởng. Đây chỉ là fix hiển thị thống kê.
 
