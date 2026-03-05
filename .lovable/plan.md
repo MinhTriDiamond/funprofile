@@ -1,78 +1,53 @@
 
 
-# Phân tích: Tại sao Database hiển thị Livestream = 0
+# Xóa chunk hiệu quả: S3 Batch Delete thay vì gọi từng cái
 
-## Phát hiện chính
+## Vấn đề
 
-**Dữ liệu thực tế trong database:**
+Đúng rồi. Với timeslice 1.5s hiện tại:
+- 10 phút = ~400 chunk
+- 30 phút = ~1200 chunk
+- Xóa từng cái = 400-1200 lần gọi HTTP DELETE → **rất chậm và tốn tài nguyên**
 
-| Bảng | Số lượng | Ghi chú |
-|------|----------|---------|
-| `live_sessions` | **600** (596 ended + 4 live) | Users livestream rất tích cực |
-| `chunked_recordings` | **342** (314 done, 28 stuck "recording") | Ghi hình hoạt động |
-| `posts` với `post_type = 'live'` | **519** | Bài đăng live |
-| `posts` có video URL chứa "live" | **581** | Video replay |
-| `recording_status = 'ready'` | **488** | Recordings thành công |
-| `recording_status = 'failed'` | **57** | Recordings thất bại (~9.5%) |
+## Giải pháp: S3 DeleteObjects API (Batch Delete)
 
-**Kết luận: Users livestream RẤT NHIỀU — 600 phiên, 488 recordings thành công!**
+R2 tương thích S3, hỗ trợ API **DeleteObjects** — xóa tối đa **1000 object trong 1 request** duy nhất.
 
-## Nguyên nhân gốc: Hàm `get_app_stats` không đếm livestream
+Với video 10 phút (400 chunk) → chỉ cần **1 request**. Video 30 phút (1200 chunk) → **2 request**.
 
-Hàm `get_app_stats()` hiện tại chỉ trả về:
-- `total_users`, `total_posts`, `total_photos`, `total_videos` (đếm từ `posts WHERE video_url IS NOT NULL`)
-- `total_rewards`, `treasury_camly_received`, `total_camly_claimed`
+## Thay đổi cụ thể
 
-**Không có trường nào đếm `live_sessions`** hoặc `chunked_recordings`. Component `AppHonorBoard.tsx` hiển thị `total_videos = 897` — đó là tổng số posts có video (bao gồm cả live replay), nhưng **không có mục riêng cho "Livestream"**.
+### File: `supabase/functions/recording-finalize/index.ts`
 
-## Vấn đề phụ phát hiện thêm
+Thêm hàm `batchDeleteFromR2(keys: string[])`:
+- Gọi S3 `POST /{bucket}?delete` với body XML chứa danh sách key
+- Chia thành batch 1000 key nếu cần
+- Dùng AWS Signature V4 đã có sẵn trong file
 
-1. **28 recordings stuck ở trạng thái "recording"** — phiên live đã kết thúc nhưng `chunked_recordings.status` không chuyển sang `done`. Đây là những sessions mà host đóng trình duyệt đột ngột trước khi finalize.
+```text
+// Thay vì:
+for (const chunk of chunks) {
+  await deleteFromR2(chunk.key);  // 400 requests!
+}
 
-2. **57 sessions có `recording_status = 'failed'`** (~9.5%) — một số có `chunked_recordings.status = done` (recording thực ra thành công nhưng status ở `live_sessions` bị đánh failed sai).
-
-3. **`live_recordings` table hoàn toàn trống** (0 rows) — Table này được thiết kế cho Agora server-side recording nhưng chưa bao giờ được sử dụng thành công vì hệ thống đang dùng client-side chunked recording thay thế.
-
-## Kế hoạch sửa
-
-### Task 1: Cập nhật `get_app_stats` thêm `total_livestreams`
-
-Thêm trường `total_livestreams` vào hàm SQL:
-
-```sql
-DROP FUNCTION IF EXISTS public.get_app_stats();
-CREATE OR REPLACE FUNCTION public.get_app_stats()
-RETURNS TABLE(
-  total_users BIGINT,
-  total_posts BIGINT,
-  total_photos BIGINT,
-  total_videos BIGINT,
-  total_livestreams BIGINT,
-  total_rewards NUMERIC,
-  treasury_camly_received NUMERIC,
-  total_camly_claimed NUMERIC
-) ...
--- Thêm:
-(SELECT COUNT(*) FROM live_sessions)::BIGINT AS total_livestreams,
+// Sẽ dùng:
+await batchDeleteFromR2(chunks.map(c => c.key));  // 1 request!
 ```
 
-### Task 2: Cập nhật `AppHonorBoard.tsx`
+### File: `supabase/functions/auto-finalize-recordings/index.ts`
 
-- Thêm interface field `totalLivestreams`
-- Parse từ response `row.total_livestreams`
-- Thêm stat card với icon `Radio` và label "Livestreams"
+Áp dụng cùng hàm `batchDeleteFromR2` cho auto-finalize.
 
-### Task 3: Dọn dẹp stuck recordings
+### Quy trình hoàn chỉnh khi finalize
 
-- Cập nhật 28 `chunked_recordings` stuck ở `status = 'recording'` mà `live_session` đã `ended` → chuyển sang `done` hoặc `failed`
-- Sửa inconsistency: sessions có `recording_status = 'failed'` nhưng `chunked_recordings.status = 'done'`
+```text
+1. Fetch manifest chunks (có sẵn)
+2. Fetch từng chunk → nối thành replay.webm → upload lên R2
+3. Verify file nối (HEAD request kiểm tra size)
+4. Batch delete toàn bộ chunk cũ (1-2 request)
+5. Xóa manifest.json (không cần nữa)
+6. Update post.video_url = replay.webm
+```
 
-### Technical Details
-
-**Files cần sửa:**
-1. Migration SQL mới — `DROP FUNCTION + CREATE OR REPLACE` cho `get_app_stats`
-2. `src/components/feed/AppHonorBoard.tsx` — thêm livestream stat
-3. `src/integrations/supabase/types.ts` — tự động cập nhật sau migration
-
-**Không ảnh hưởng:** Các tính năng livestream hiện tại (start, join, record, replay) không bị ảnh hưởng. Đây chỉ là fix hiển thị thống kê.
+Tổng cộng sửa **2 file** Edge Function. Toàn bộ logic nối + xóa batch nằm trong cùng kế hoạch trước đó.
 
