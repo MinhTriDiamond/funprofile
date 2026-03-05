@@ -129,6 +129,41 @@ async function scrapePageMeta(url: string): Promise<{
     result.siteName = extract('og:site_name');
     result.author = extract('article:author') || extractName('author');
 
+    // Fallback 1: JSON-LD author
+    if (!result.author) {
+      const ldBlocks = html.match(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi);
+      if (ldBlocks) {
+        for (const block of ldBlocks) {
+          const jsonStr = block.replace(/<\/?script[^>]*>/gi, '');
+          try {
+            const ld = JSON.parse(jsonStr);
+            const authorObj = ld.author || ld.creator;
+            if (authorObj) {
+              result.author = typeof authorObj === 'string' ? authorObj : authorObj.name || null;
+              if (result.author) break;
+            }
+          } catch { /* ignore */ }
+        }
+      }
+    }
+
+    // Fallback 2: Facebook inline ownerName / actorName
+    if (!result.author) {
+      const ownerMatch = html.match(/"ownerName"\s*:\s*"([^"]+)"/);
+      if (ownerMatch?.[1]) result.author = ownerMatch[1];
+    }
+    if (!result.author) {
+      const actorMatch = html.match(/"actorName"\s*:\s*"([^"]+)"/);
+      if (actorMatch?.[1]) result.author = actorMatch[1];
+    }
+
+    // Fallback 3: profile:first_name + profile:last_name
+    if (!result.author) {
+      const firstName = extract('profile:first_name');
+      const lastName = extract('profile:last_name');
+      if (firstName) result.author = [firstName, lastName].filter(Boolean).join(' ');
+    }
+
     // Favicon
     const faviconMatch = html.match(/<link[^>]*rel=["'](?:shortcut )?icon["'][^>]*href=["']([^"']+)["']/i)
       || html.match(/<link[^>]*href=["']([^"']+)["'][^>]*rel=["'](?:shortcut )?icon["']/i);
