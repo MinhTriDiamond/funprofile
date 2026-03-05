@@ -14,6 +14,7 @@ import { ImageViewer } from './ImageViewer';
 import { EditPostDialog } from './EditPostDialog';
 import { ShareDialog } from './ShareDialog';
 import { LiveChatReplay } from '@/modules/live/components/LiveChatReplay';
+import { LinkPreviewCard, extractFirstUrl } from './LinkPreviewCard';
 import type { FacebookPostCardProps } from './types';
 
 const FacebookPostCardComponent = ({
@@ -24,6 +25,8 @@ const FacebookPostCardComponent = ({
 }: FacebookPostCardProps) => {
   const { t } = useLanguage();
   const canShowPinOption = isOwnProfile && !viewAsPublic && post.user_id === currentUserId;
+  const hasNativeMedia = !!(post.image_url || post.video_url || (post.media_urls && post.media_urls.length > 0));
+  const firstUrl = !hasNativeMedia && post.content ? extractFirstUrl(post.content) : null;
 
   const [showImageViewer, setShowImageViewer] = useState(false);
   const [showComments, setShowComments] = useState(false);
@@ -101,6 +104,8 @@ const FacebookPostCardComponent = ({
           onHeartComplete={() => setShowHeartAnimation(false)}
           onDoubleTap={handleMediaDoubleTap}
         />
+
+        {firstUrl && <LinkPreviewCard url={firstUrl} />}
 
         <PostFooter
           post={post}

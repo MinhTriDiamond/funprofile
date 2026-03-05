@@ -5,8 +5,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-// Platforms supported by unavatar.io for user profile pictures
-// NOTE: Facebook removed from unavatar — it returns placeholder, not real profile pic
 const UNAVATAR_MAP: Record<string, string> = {
   youtube: 'youtube',
   twitter: 'twitter',
@@ -16,14 +14,10 @@ const UNAVATAR_MAP: Record<string, string> = {
   github: 'github',
 };
 
-/**
- * Extract username/handle from social media URL
- */
 function extractUsername(url: string, platform: string): string | null {
   try {
     const u = new URL(url.startsWith('http') ? url : `https://${url}`);
     const pathname = u.pathname.replace(/\/$/, '');
-
     switch (platform) {
       case 'facebook': {
         const id = u.searchParams.get('id');
@@ -65,11 +59,16 @@ function extractUsername(url: string, platform: string): string | null {
   }
 }
 
-/**
- * Scrape og:image or twitter:image from a URL's HTML
- * Returns null if not found or not a valid user avatar
- */
-async function scrapeOgImage(url: string): Promise<string | null> {
+/** Scrape HTML and extract OG/meta tags */
+async function scrapePageMeta(url: string): Promise<{
+  title: string | null;
+  description: string | null;
+  image: string | null;
+  video: string | null;
+  siteName: string | null;
+  favicon: string | null;
+}> {
+  const result = { title: null as string | null, description: null as string | null, image: null as string | null, video: null as string | null, siteName: null as string | null, favicon: null as string | null };
   try {
     const res = await fetch(url, {
       headers: {
@@ -79,45 +78,72 @@ async function scrapeOgImage(url: string): Promise<string | null> {
       },
       signal: AbortSignal.timeout(8000),
     });
-
-    if (!res.ok) return null;
-
+    if (!res.ok) return result;
     const html = await res.text();
 
-    // Extract og:image
-    const ogMatch = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i)
-      || html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i);
+    const extract = (property: string): string | null => {
+      // property="..." content="..."
+      const m1 = html.match(new RegExp(`<meta[^>]*property=["']${property}["'][^>]*content=["']([^"']+)["']`, 'i'));
+      if (m1?.[1]) return m1[1].trim();
+      // content="..." property="..."
+      const m2 = html.match(new RegExp(`<meta[^>]*content=["']([^"']+)["'][^>]*property=["']${property}["']`, 'i'));
+      if (m2?.[1]) return m2[1].trim();
+      return null;
+    };
 
-    if (ogMatch?.[1]) {
-      const imgUrl = ogMatch[1].trim();
-      // Reject known bad/generic images
-      const BAD_PATTERNS = [
-        'stc-zlogin.zdn.vn',
-        'static.xx.fbcdn.net/rsrc.php',
-        '/og-image',
-        'default_',
-        '/placeholder',
-        'favicon',
-        'funplay-og-image',
-      ];
-      if (!BAD_PATTERNS.some(p => imgUrl.includes(p))) {
-        return imgUrl;
+    const extractName = (name: string): string | null => {
+      const m1 = html.match(new RegExp(`<meta[^>]*name=["']${name}["'][^>]*content=["']([^"']+)["']`, 'i'));
+      if (m1?.[1]) return m1[1].trim();
+      const m2 = html.match(new RegExp(`<meta[^>]*content=["']([^"']+)["'][^>]*name=["']${name}["']`, 'i'));
+      if (m2?.[1]) return m2[1].trim();
+      return null;
+    };
+
+    result.title = extract('og:title') || extractName('twitter:title') || (() => {
+      const t = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+      return t?.[1]?.trim() || null;
+    })();
+
+    result.description = extract('og:description') || extractName('twitter:description') || extractName('description');
+    result.image = extract('og:image') || extractName('twitter:image');
+    result.video = extract('og:video') || extract('og:video:url');
+    result.siteName = extract('og:site_name');
+
+    // Favicon
+    const faviconMatch = html.match(/<link[^>]*rel=["'](?:shortcut )?icon["'][^>]*href=["']([^"']+)["']/i)
+      || html.match(/<link[^>]*href=["']([^"']+)["'][^>]*rel=["'](?:shortcut )?icon["']/i);
+    if (faviconMatch?.[1]) {
+      const fav = faviconMatch[1].trim();
+      if (fav.startsWith('http')) {
+        result.favicon = fav;
+      } else {
+        const u = new URL(url);
+        result.favicon = `${u.origin}${fav.startsWith('/') ? '' : '/'}${fav}`;
       }
+    } else {
+      try {
+        const u = new URL(url);
+        result.favicon = `${u.origin}/favicon.ico`;
+      } catch { /* ignore */ }
     }
 
-    // Try twitter:image as fallback
-    const twMatch = html.match(/<meta[^>]*name=["']twitter:image["'][^>]*content=["']([^"']+)["']/i)
-      || html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*name=["']twitter:image["']/i);
-
-    if (twMatch?.[1]) {
-      return twMatch[1].trim();
+    // Filter out known bad images
+    if (result.image) {
+      const BAD = ['stc-zlogin.zdn.vn', 'static.xx.fbcdn.net/rsrc.php', '/og-image', 'default_', '/placeholder', 'favicon', 'funplay-og-image'];
+      if (BAD.some(p => result.image!.includes(p))) result.image = null;
     }
 
-    return null;
+    return result;
   } catch (e) {
-    console.log('scrapeOgImage error:', e);
-    return null;
+    console.log('scrapePageMeta error:', e);
+    return result;
   }
+}
+
+/** Legacy: scrape only og:image */
+async function scrapeOgImage(url: string): Promise<string | null> {
+  const meta = await scrapePageMeta(url);
+  return meta.image;
 }
 
 serve(async (req) => {
@@ -126,8 +152,7 @@ serve(async (req) => {
   }
 
   try {
-    // Proxy endpoint for images that have hotlink restrictions (e.g. Facebook CDN)
-    // Called as GET /fetch-link-preview?proxy=<encoded_url>
+    // Proxy endpoint (GET)
     const reqUrl = new URL(req.url);
     const proxyTarget = reqUrl.searchParams.get('proxy');
     if (proxyTarget && req.method === 'GET') {
@@ -138,38 +163,50 @@ serve(async (req) => {
         redirect: 'follow',
         signal: AbortSignal.timeout(8000),
       });
-      if (!res.ok) {
-        return new Response(null, { status: res.status, headers: corsHeaders });
-      }
+      if (!res.ok) return new Response(null, { status: res.status, headers: corsHeaders });
       const contentType = res.headers.get('content-type') || 'image/jpeg';
       const blob = await res.arrayBuffer();
       return new Response(blob, {
         status: 200,
-        headers: {
-          ...corsHeaders,
-          'Content-Type': contentType,
-          'Cache-Control': 'public, max-age=86400',
-        },
+        headers: { ...corsHeaders, 'Content-Type': contentType, 'Cache-Control': 'public, max-age=86400' },
       });
     }
 
-    // Avatar fetch endpoint: POST with { url, platform }
-    const { url, platform } = await req.json();
+    const body = await req.json();
+    const { url, platform, mode } = body;
+
     if (!url) {
       return new Response(JSON.stringify({ error: 'URL is required' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
     const normalizedUrl = url.startsWith('http') ? url : `https://${url}`;
+
+    // ===== MODE: PREVIEW (full OG metadata) =====
+    if (mode === 'preview') {
+      console.log(`Preview mode for: ${normalizedUrl}`);
+      const meta = await scrapePageMeta(normalizedUrl);
+      return new Response(JSON.stringify({
+        title: meta.title,
+        description: meta.description,
+        image: meta.image,
+        video: meta.video,
+        siteName: meta.siteName,
+        favicon: meta.favicon,
+        url: normalizedUrl,
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // ===== MODE: AVATAR (legacy, default) =====
     let avatarUrl: string | null = null;
 
     if (platform === 'facebook') {
       const username = extractUsername(normalizedUrl, 'facebook');
       console.log(`Facebook username: ${username}`);
       if (username) {
-        // Step 1: Call Graph API with redirect=false to get real image URL
         try {
           const metaRes = await fetch(
             `https://graph.facebook.com/${encodeURIComponent(username)}/picture?type=large&redirect=false`,
@@ -177,43 +214,26 @@ serve(async (req) => {
           );
           if (metaRes.ok) {
             const meta = await metaRes.json();
-            // Response: { data: { is_silhouette: bool, url: string } }
             if (meta?.data?.url && !meta?.data?.is_silhouette) {
               avatarUrl = meta.data.url;
-              console.log(`Facebook graph API real URL: ${avatarUrl}`);
             }
           }
-        } catch (e) {
-          console.log('Facebook graph API error:', e);
-        }
+        } catch (e) { console.log('Facebook graph API error:', e); }
 
-        // Step 2: Fallback — scrape og:image from profile page
         if (!avatarUrl) {
-          console.log(`Facebook fallback: scraping og:image from ${normalizedUrl}`);
           avatarUrl = await scrapeOgImage(normalizedUrl);
-          console.log(`Facebook og:image scraped: ${avatarUrl}`);
         }
-
-        // Step 3: Last fallback — return redirect URL (will be proxied by client)
         if (!avatarUrl) {
           avatarUrl = `https://graph.facebook.com/${encodeURIComponent(username)}/picture?type=large&redirect=true`;
-          console.log(`Facebook last fallback redirect URL: ${avatarUrl}`);
         }
       }
     } else if (platform && UNAVATAR_MAP[platform]) {
-      // Use unavatar.io for supported platforms (real user profile pictures)
       const username = extractUsername(normalizedUrl, platform);
-      console.log(`Platform: ${platform}, Username: ${username}`);
-
       if (username) {
         avatarUrl = `https://unavatar.io/${UNAVATAR_MAP[platform]}/${encodeURIComponent(username)}`;
-        console.log(`Built unavatar URL: ${avatarUrl}`);
       }
     } else {
-      // For other platforms (Angel, etc.): scrape og:image from page
-      console.log(`Platform ${platform} — scraping og:image from: ${normalizedUrl}`);
       avatarUrl = await scrapeOgImage(normalizedUrl);
-      console.log(`Scraped og:image: ${avatarUrl}`);
     }
 
     return new Response(JSON.stringify({ avatarUrl }), {

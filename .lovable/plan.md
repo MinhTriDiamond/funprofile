@@ -1,86 +1,78 @@
 
 
-# Link Preview (Unfurling) cho URL trong bài viết
+# Phân tích: Tại sao Database hiển thị Livestream = 0
 
-## Vấn đề hiện tại
+## Phát hiện chính
 
-Khi user dán link Facebook hoặc trang web khác vào nội dung bài viết, link chỉ hiển thị dạng text thuần. Không có hình ảnh, tiêu đề hay mô tả preview giống như Facebook/Telegram thường làm.
+**Dữ liệu thực tế trong database:**
 
-## Giải pháp
+| Bảng | Số lượng | Ghi chú |
+|------|----------|---------|
+| `live_sessions` | **600** (596 ended + 4 live) | Users livestream rất tích cực |
+| `chunked_recordings` | **342** (314 done, 28 stuck "recording") | Ghi hình hoạt động |
+| `posts` với `post_type = 'live'` | **519** | Bài đăng live |
+| `posts` có video URL chứa "live" | **581** | Video replay |
+| `recording_status = 'ready'` | **488** | Recordings thành công |
+| `recording_status = 'failed'` | **57** | Recordings thất bại (~9.5%) |
 
-### 1. Mở rộng Edge Function `fetch-link-preview` (sửa file hiện có)
+**Kết luận: Users livestream RẤT NHIỀU — 600 phiên, 488 recordings thành công!**
 
-Hiện tại function này chỉ trả về `avatarUrl`. Cần thêm endpoint mới (hoặc mode mới) để scrape **full OG metadata**:
+## Nguyên nhân gốc: Hàm `get_app_stats` không đếm livestream
 
-- `og:title` → tiêu đề
-- `og:description` → mô tả
-- `og:image` → hình ảnh preview
-- `og:video` → video (nếu có)
-- `og:site_name` → tên trang (Facebook, YouTube, TikTok...)
-- Favicon của trang
+Hàm `get_app_stats()` hiện tại chỉ trả về:
+- `total_users`, `total_posts`, `total_photos`, `total_videos` (đếm từ `posts WHERE video_url IS NOT NULL`)
+- `total_rewards`, `treasury_camly_received`, `total_camly_claimed`
 
-Request: `POST { url, mode: 'preview' }` (mode mặc định vẫn là avatar để không ảnh hưởng code cũ)
+**Không có trường nào đếm `live_sessions`** hoặc `chunked_recordings`. Component `AppHonorBoard.tsx` hiển thị `total_videos = 897` — đó là tổng số posts có video (bao gồm cả live replay), nhưng **không có mục riêng cho "Livestream"**.
 
-Response:
-```json
-{
-  "title": "Bài viết trên Facebook",
-  "description": "Cha bắn pháo hoa ăn mừng...",
-  "image": "https://...",
-  "video": null,
-  "siteName": "Facebook",
-  "favicon": "https://facebook.com/favicon.ico",
-  "url": "https://facebook.com/share/..."
-}
+## Vấn đề phụ phát hiện thêm
+
+1. **28 recordings stuck ở trạng thái "recording"** — phiên live đã kết thúc nhưng `chunked_recordings.status` không chuyển sang `done`. Đây là những sessions mà host đóng trình duyệt đột ngột trước khi finalize.
+
+2. **57 sessions có `recording_status = 'failed'`** (~9.5%) — một số có `chunked_recordings.status = done` (recording thực ra thành công nhưng status ở `live_sessions` bị đánh failed sai).
+
+3. **`live_recordings` table hoàn toàn trống** (0 rows) — Table này được thiết kế cho Agora server-side recording nhưng chưa bao giờ được sử dụng thành công vì hệ thống đang dùng client-side chunked recording thay thế.
+
+## Kế hoạch sửa
+
+### Task 1: Cập nhật `get_app_stats` thêm `total_livestreams`
+
+Thêm trường `total_livestreams` vào hàm SQL:
+
+```sql
+DROP FUNCTION IF EXISTS public.get_app_stats();
+CREATE OR REPLACE FUNCTION public.get_app_stats()
+RETURNS TABLE(
+  total_users BIGINT,
+  total_posts BIGINT,
+  total_photos BIGINT,
+  total_videos BIGINT,
+  total_livestreams BIGINT,
+  total_rewards NUMERIC,
+  treasury_camly_received NUMERIC,
+  total_camly_claimed NUMERIC
+) ...
+-- Thêm:
+(SELECT COUNT(*) FROM live_sessions)::BIGINT AS total_livestreams,
 ```
 
-### 2. Tạo component `LinkPreviewCard` (file mới)
+### Task 2: Cập nhật `AppHonorBoard.tsx`
 
-**File: `src/components/feed/LinkPreviewCard.tsx`**
+- Thêm interface field `totalLivestreams`
+- Parse từ response `row.total_livestreams`
+- Thêm stat card với icon `Radio` và label "Livestreams"
 
-- Nhận prop `url: string`
-- Gọi edge function với `mode: 'preview'` khi mount
-- Cache kết quả trong `Map` (tránh fetch lại cùng URL)
-- Hiển thị card preview giống Facebook:
-  - Hình ảnh lớn phía trên (hoặc bên trái nếu không có ảnh lớn)
-  - Tên trang (siteName) + favicon
-  - Tiêu đề (bold)
-  - Mô tả (1-2 dòng, cắt ngắn)
-  - Click vào card → mở link trong tab mới
-- Loading skeleton khi đang fetch
-- Fallback: nếu không scrape được → hiển thị URL domain + favicon đơn giản
+### Task 3: Dọn dẹp stuck recordings
 
-### 3. Tạo hook `useLinkPreview` (file mới)
+- Cập nhật 28 `chunked_recordings` stuck ở `status = 'recording'` mà `live_session` đã `ended` → chuyển sang `done` hoặc `failed`
+- Sửa inconsistency: sessions có `recording_status = 'failed'` nhưng `chunked_recordings.status = 'done'`
 
-**File: `src/hooks/useLinkPreview.ts`**
+### Technical Details
 
-- Quản lý cache global (module-level `Map<string, PreviewData>`)
-- Gọi edge function, xử lý loading/error state
-- Trả về `{ data, isLoading, error }`
+**Files cần sửa:**
+1. Migration SQL mới — `DROP FUNCTION + CREATE OR REPLACE` cho `get_app_stats`
+2. `src/components/feed/AppHonorBoard.tsx` — thêm livestream stat
+3. `src/integrations/supabase/types.ts` — tự động cập nhật sau migration
 
-### 4. Tích hợp vào `ExpandableContent` hoặc `FacebookPostCard`
-
-**File: `src/components/feed/FacebookPostCard.tsx`**
-
-- Trích xuất URL đầu tiên từ `post.content` bằng regex
-- Nếu post **không có** `image_url` và **không có** `video_url` (tức là bài chỉ có text + link) → render `<LinkPreviewCard url={firstUrl} />` ngay dưới content
-- Nếu post đã có media riêng → không hiển thị preview (tránh thừa)
-
-### 5. Giới hạn & Performance
-
-- Chỉ preview URL **đầu tiên** trong bài (không preview tất cả URL)
-- Cache ở client-side (memory) → cùng URL không fetch lại
-- Không preview URL nội bộ (fun.rich)
-- Edge function timeout 8 giây cho scraping
-
-## Tóm tắt file thay đổi
-
-| File | Hành động |
-|------|-----------|
-| `supabase/functions/fetch-link-preview/index.ts` | Thêm mode `preview` scrape full OG |
-| `src/components/feed/LinkPreviewCard.tsx` | **Mới** — UI card preview |
-| `src/hooks/useLinkPreview.ts` | **Mới** — hook fetch + cache |
-| `src/components/feed/FacebookPostCard.tsx` | Tích hợp LinkPreviewCard |
-
-Tổng: sửa **2 file**, tạo **2 file mới**. Không thay đổi database.
+**Không ảnh hưởng:** Các tính năng livestream hiện tại (start, join, record, replay) không bị ảnh hưởng. Đây chỉ là fix hiển thị thống kê.
 
