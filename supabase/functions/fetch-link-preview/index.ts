@@ -240,10 +240,10 @@ serve(async (req) => {
       return new Response(JSON.stringify({
         title: decodeHtmlEntities(meta.title),
         description: decodeHtmlEntities(meta.description),
-        image: meta.image,
-        video: meta.video,
+        image: decodeHtmlEntities(meta.image),
+        video: decodeHtmlEntities(meta.video),
         siteName: decodeHtmlEntities(meta.siteName),
-        favicon: meta.favicon,
+        favicon: decodeHtmlEntities(meta.favicon),
         url: normalizedUrl,
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
