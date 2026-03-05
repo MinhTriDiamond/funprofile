@@ -321,11 +321,16 @@ async function scrapePageMeta(url: string): Promise<{
       }
     }
 
-    // Clean up Facebook engagement prefix from title: "24 reactions · 11 comments | Real title"
+    // Clean up Facebook engagement prefix from title (handle multiple Unicode middle dot variants)
     if (result.title) {
-      result.title = result.title.replace(/^\d+\s+reactions?\s*·\s*\d+\s+comments?\s*\|\s*/i, '');
-      // Vietnamese variant
-      result.title = result.title.replace(/^\d+\s+cảm xúc\s*·\s*\d+\s+bình luận\s*\|\s*/i, '');
+      result.title = result.title.replace(/^\d+\s+(?:reactions?|cảm xúc)\s*[·•⋅\u00B7\u2027\u2022\u22C5]\s*\d+\s+(?:comments?|bình luận)\s*\|\s*/i, '');
+    }
+
+    // Remove author suffix from title: "Some title | Fath Uni" → "Some title"
+    if (isFacebook && result.author && result.title) {
+      const escapedAuthor = result.author.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const suffixPattern = new RegExp(`\\s*\\|\\s*${escapedAuthor}\\s*$`, 'i');
+      result.title = result.title.replace(suffixPattern, '').trim();
     }
 
     // Facebook: og:title is often the author name, not the post title
@@ -340,6 +345,15 @@ async function scrapePageMeta(url: string): Promise<{
         } else {
           result.title = null;
         }
+      }
+    }
+
+    // Deduplicate title ≈ description
+    if (result.title && result.description) {
+      const normT = result.title.substring(0, 80).toLowerCase().trim();
+      const normD = result.description.substring(0, 80).toLowerCase().trim();
+      if (normT === normD || normD.startsWith(normT) || normT.startsWith(normD)) {
+        result.title = null;
       }
     }
 
