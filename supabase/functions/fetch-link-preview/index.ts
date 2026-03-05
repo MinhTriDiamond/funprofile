@@ -200,7 +200,6 @@ async function scrapePageMeta(url: string): Promise<{
       const authorPatterns = [
         /"ownerName"\s*:\s*"([^"]+)"/,
         /"actorName"\s*:\s*"([^"]+)"/,
-        /"name"\s*:\s*"([^"]{2,50})"/,
       ];
       
       for (const p of authorPatterns) {
@@ -348,12 +347,23 @@ async function scrapePageMeta(url: string): Promise<{
           result.title = null;
         }
       } else if (t.includes(a)) {
-        // Title contains author (e.g. "Some content | Author Name") → strip author, keep title
-        const escapedA = result.author.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        result.title = result.title.replace(new RegExp(`\\s*\\|?\\s*${escapedA}\\s*$`, 'gi'), '').trim();
-        // Also strip tagged names (3+ capitalized names at the end)
-        result.title = result.title.replace(/\s+(?:[A-ZÀ-Ỹa-zà-ỹ]+\s+){2,}[A-ZÀ-Ỹa-zà-ỹ]+\s*$/u, '').trim();
-        if (!result.title) result.title = null;
+        // Title contains author name
+        if (result.title!.length < 60) {
+          // Short title = page name (e.g. "Fath Uni") → use as author, clear title
+          result.author = result.title!;
+          if (result.description) {
+            const firstLine = result.description.split('\n')[0].trim();
+            result.title = firstLine.length > 10 ? firstLine : null;
+          } else {
+            result.title = null;
+          }
+        } else {
+          // Long title = real content → strip author suffix
+          const escapedA = result.author.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          result.title = result.title.replace(new RegExp(`\\s*\\|?\\s*${escapedA}`, 'gi'), '').trim();
+          result.title = result.title.replace(/\s+(?:[A-ZÀ-Ỹa-zà-ỹ]+\s+){2,}[A-ZÀ-Ỹa-zà-ỹ]+\s*$/u, '').trim();
+          if (!result.title) result.title = null;
+        }
       } else if (a.includes(t)) {
         // Author contains title → author is more complete, use description as title
         result.author = result.author;
