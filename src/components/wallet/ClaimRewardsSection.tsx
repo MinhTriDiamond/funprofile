@@ -73,7 +73,7 @@ export const ClaimRewardsSection = ({
   const dailyRemaining = Math.max(0, DAILY_LIMIT - dailyClaimed);
 
   const statusConfig: Record<string, { label: string; color: string; disabled: boolean }> = {
-    pending: { label: `Claim ${formatNumber(claimableReward)} CAMLY`, color: 'text-green-600', disabled: false },
+    pending: { label: 'Chờ Admin duyệt', color: 'text-yellow-600', disabled: true },
     approved: { label: `Claim ${formatNumber(claimableReward)} CAMLY`, color: 'text-green-600', disabled: false },
     on_hold: { label: 'Tạm giữ', color: 'text-orange-600', disabled: true },
     rejected: { label: 'Từ chối', color: 'text-red-600', disabled: true },
@@ -97,7 +97,8 @@ export const ClaimRewardsSection = ({
       return;
     }
     if (config.disabled) {
-      if (rewardStatus === 'on_hold') toast.warning('Tài khoản đang bị tạm giữ, vui lòng liên hệ admin');
+      if (rewardStatus === 'pending') toast.info('Tài khoản cần được Admin xét duyệt trước khi claim. Vui lòng chờ.');
+      else if (rewardStatus === 'on_hold') toast.warning('Tài khoản đang bị tạm giữ, vui lòng liên hệ admin');
       else if (rewardStatus === 'rejected') toast.error('Phần thưởng đã bị từ chối, vui lòng liên hệ admin');
       return;
     }
@@ -277,6 +278,21 @@ export const ClaimRewardsSection = ({
           </div>
         </div>
 
+        {/* Pending Approval Alert */}
+        {rewardStatus === 'pending' && (
+          <div className="bg-yellow-50 border border-yellow-300 rounded-xl p-3.5">
+            <div className="flex items-start gap-2">
+              <Clock className="w-5 h-5 text-yellow-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-yellow-800">Chờ Admin xét duyệt ⏳</p>
+                <p className="text-xs text-yellow-700 mt-1">
+                  Tài khoản của bạn cần được Admin xét duyệt trước khi có thể claim phần thưởng. Vui lòng đảm bảo hồ sơ đầy đủ và chờ Admin duyệt.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* On Hold Alert */}
         {rewardStatus === 'on_hold' && adminNotes && (
           <div className="bg-amber-50 border border-amber-300 rounded-xl p-3.5">
@@ -329,7 +345,7 @@ export const ClaimRewardsSection = ({
         )}
 
         {/* Message Admin Section - shown when user can't claim */}
-        {(rewardStatus === 'on_hold' || rewardStatus === 'rejected' || walletSecurity?.isBlocked) && (
+        {(rewardStatus === 'pending' || rewardStatus === 'on_hold' || rewardStatus === 'rejected' || walletSecurity?.isBlocked) && (
           <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-xl p-3.5 space-y-3">
             <div className="flex items-center gap-2">
               <MessageCircle className="w-4 h-4 text-blue-600" />
@@ -382,6 +398,7 @@ export const ClaimRewardsSection = ({
             >
               {config.disabled ? (
                 <span className="flex items-center gap-2">
+                  {rewardStatus === 'pending' && <Clock className="w-5 h-5" />}
                   {rewardStatus === 'on_hold' && <AlertTriangle className="w-5 h-5" />}
                   {config.label}
                   {(rewardStatus === 'on_hold' || rewardStatus === 'rejected') && adminNotes && (
