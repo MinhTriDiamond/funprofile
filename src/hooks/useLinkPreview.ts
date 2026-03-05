@@ -16,6 +16,20 @@ const pending = new Map<string, Promise<LinkPreviewData | null>>();
 
 const INTERNAL_DOMAINS = ['funprofile.lovable.app', 'fun.rich', 'localhost'];
 
+const PROXY_DOMAINS = ['fbcdn.net', 'fbsbx.com', 'facebook.com', 'fb.com', 'cdninstagram.com'];
+
+function getProxiedImageUrl(imageUrl: string | null): string | null {
+  if (!imageUrl) return null;
+  try {
+    const host = new URL(imageUrl).hostname;
+    if (PROXY_DOMAINS.some(d => host.includes(d))) {
+      const base = import.meta.env.VITE_SUPABASE_URL;
+      return `${base}/functions/v1/fetch-link-preview?proxy=${encodeURIComponent(imageUrl)}`;
+    }
+  } catch { /* ignore */ }
+  return imageUrl;
+}
+
 export function extractFirstUrl(text: string): string | null {
   const match = text.match(/(https?:\/\/[^\s<>"']+)/);
   if (!match) return null;
