@@ -60,7 +60,7 @@ async function fetchPreview(url: string): Promise<LinkPreviewData | null> {
     if (result.title || result.image) {
       cache.set(url, result);
     }
-    return result.title || result.image ? result : null;
+    return result;
   } catch {
     return null;
   }
