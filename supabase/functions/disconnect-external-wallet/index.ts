@@ -38,6 +38,16 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Check banned status
+    const { data: banCheck } = await supabase
+      .from('profiles').select('is_banned').eq('id', user.id).single();
+    if (banCheck?.is_banned) {
+      return new Response(
+        JSON.stringify({ error: 'Tài khoản đã bị cấm vĩnh viễn.' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Check feature flag - block disconnect when wallet changes disabled
     const { data: config } = await supabase
       .from('system_config')

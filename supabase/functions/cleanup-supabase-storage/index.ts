@@ -47,6 +47,15 @@ Deno.serve(async (req: Request) => {
 
     // Check admin role using service key
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Check banned status
+    const { data: banCheck } = await supabaseAdmin
+      .from('profiles').select('is_banned').eq('id', user.id).single();
+    if (banCheck?.is_banned) {
+      return new Response(JSON.stringify({ error: 'Tài khoản đã bị cấm vĩnh viễn.' }), {
+        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
     const { data: hasRole } = await supabaseAdmin.rpc('has_role', {
       _user_id: user.id,
       _role: 'admin'

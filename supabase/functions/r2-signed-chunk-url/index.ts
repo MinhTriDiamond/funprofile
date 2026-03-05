@@ -72,6 +72,19 @@ Deno.serve(async (req) => {
 
     const userId = user.id;
 
+    // Check banned status
+    const supabaseAdminBan = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    );
+    const { data: banCheck } = await supabaseAdminBan
+      .from('profiles').select('is_banned').eq('id', userId).single();
+    if (banCheck?.is_banned) {
+      return new Response(JSON.stringify({ error: 'Tài khoản đã bị cấm vĩnh viễn.' }), {
+        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
     // Rate limit
     if (!checkRateLimit(userId)) {
       return new Response(JSON.stringify({ error: 'Too many requests' }), {
