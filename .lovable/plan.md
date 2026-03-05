@@ -1,78 +1,42 @@
 
 
-# Phân tích: Tại sao Database hiển thị Livestream = 0
+# Hiển thị video trong Link Preview Card
 
-## Phát hiện chính
+## Vấn đề
+Hiện tại edge function đã scrape `og:video` từ các link (bao gồm Facebook video), và hook `useLinkPreview` đã lưu trường `video` trong data. Tuy nhiên, `LinkPreviewCard` chỉ render ảnh tĩnh (`data.image`) mà **bỏ qua hoàn toàn** `data.video`.
 
-**Dữ liệu thực tế trong database:**
+## Giải pháp
 
-| Bảng | Số lượng | Ghi chú |
-|------|----------|---------|
-| `live_sessions` | **600** (596 ended + 4 live) | Users livestream rất tích cực |
-| `chunked_recordings` | **342** (314 done, 28 stuck "recording") | Ghi hình hoạt động |
-| `posts` với `post_type = 'live'` | **519** | Bài đăng live |
-| `posts` có video URL chứa "live" | **581** | Video replay |
-| `recording_status = 'ready'` | **488** | Recordings thành công |
-| `recording_status = 'failed'` | **57** | Recordings thất bại (~9.5%) |
+### File: `src/components/feed/LinkPreviewCard.tsx`
 
-**Kết luận: Users livestream RẤT NHIỀU — 600 phiên, 488 recordings thành công!**
+Thêm logic hiển thị video khi `data.video` tồn tại:
 
-## Nguyên nhân gốc: Hàm `get_app_stats` không đếm livestream
+1. **Phát hiện loại video URL**:
+   - Facebook `og:video` thường trả về URL dạng embed (`https://www.facebook.com/video/embed?video_id=...`) hoặc URL trực tiếp MP4
+   - YouTube trả về embed URL (`https://www.youtube.com/embed/...`)
+   - Các trang khác có thể trả về direct MP4/WebM
 
-Hàm `get_app_stats()` hiện tại chỉ trả về:
-- `total_users`, `total_posts`, `total_photos`, `total_videos` (đếm từ `posts WHERE video_url IS NOT NULL`)
-- `total_rewards`, `treasury_camly_received`, `total_camly_claimed`
+2. **Render video**:
+   - Nếu video URL là embed URL (chứa `facebook.com/video/embed`, `youtube.com/embed`, `player.vimeo.com`) → render `<iframe>` với aspect ratio 16:9
+   - Nếu video URL là direct file (`.mp4`, `.webm`, `.ogg` hoặc URL không phải embed) → render `<video>` tag với controls
+   - Video hiển thị **thay thế** ảnh tĩnh (ưu tiên video > image)
 
-**Không có trường nào đếm `live_sessions`** hoặc `chunked_recordings`. Component `AppHonorBoard.tsx` hiển thị `total_videos = 897` — đó là tổng số posts có video (bao gồm cả live replay), nhưng **không có mục riêng cho "Livestream"**.
+3. **Thay đổi wrapper**: Khi có video, chuyển wrapper từ `<a>` thành `<div>` để tránh conflict giữa click link và play video. Thêm link nhỏ bên dưới metadata để mở trang gốc.
 
-## Vấn đề phụ phát hiện thêm
+4. **Fallback**: Nếu video không load được (iframe error hoặc video error), fallback về hiển thị ảnh tĩnh như hiện tại.
 
-1. **28 recordings stuck ở trạng thái "recording"** — phiên live đã kết thúc nhưng `chunked_recordings.status` không chuyển sang `done`. Đây là những sessions mà host đóng trình duyệt đột ngột trước khi finalize.
+### Chi tiết kỹ thuật
 
-2. **57 sessions có `recording_status = 'failed'`** (~9.5%) — một số có `chunked_recordings.status = done` (recording thực ra thành công nhưng status ở `live_sessions` bị đánh failed sai).
-
-3. **`live_recordings` table hoàn toàn trống** (0 rows) — Table này được thiết kế cho Agora server-side recording nhưng chưa bao giờ được sử dụng thành công vì hệ thống đang dùng client-side chunked recording thay thế.
-
-## Kế hoạch sửa
-
-### Task 1: Cập nhật `get_app_stats` thêm `total_livestreams`
-
-Thêm trường `total_livestreams` vào hàm SQL:
-
-```sql
-DROP FUNCTION IF EXISTS public.get_app_stats();
-CREATE OR REPLACE FUNCTION public.get_app_stats()
-RETURNS TABLE(
-  total_users BIGINT,
-  total_posts BIGINT,
-  total_photos BIGINT,
-  total_videos BIGINT,
-  total_livestreams BIGINT,
-  total_rewards NUMERIC,
-  treasury_camly_received NUMERIC,
-  total_camly_claimed NUMERIC
-) ...
--- Thêm:
-(SELECT COUNT(*) FROM live_sessions)::BIGINT AS total_livestreams,
+```text
+┌─────────────────────────────┐
+│  [Video player / iframe]    │  ← og:video (ưu tiên)
+│  aspect-ratio 16:9          │     hoặc og:image (fallback)
+├─────────────────────────────┤
+│  FACEBOOK.COM               │
+│  Title of the post...       │
+│  Description...             │
+└─────────────────────────────┘
 ```
 
-### Task 2: Cập nhật `AppHonorBoard.tsx`
-
-- Thêm interface field `totalLivestreams`
-- Parse từ response `row.total_livestreams`
-- Thêm stat card với icon `Radio` và label "Livestreams"
-
-### Task 3: Dọn dẹp stuck recordings
-
-- Cập nhật 28 `chunked_recordings` stuck ở `status = 'recording'` mà `live_session` đã `ended` → chuyển sang `done` hoặc `failed`
-- Sửa inconsistency: sessions có `recording_status = 'failed'` nhưng `chunked_recordings.status = 'done'`
-
-### Technical Details
-
-**Files cần sửa:**
-1. Migration SQL mới — `DROP FUNCTION + CREATE OR REPLACE` cho `get_app_stats`
-2. `src/components/feed/AppHonorBoard.tsx` — thêm livestream stat
-3. `src/integrations/supabase/types.ts` — tự động cập nhật sau migration
-
-**Không ảnh hưởng:** Các tính năng livestream hiện tại (start, join, record, replay) không bị ảnh hưởng. Đây chỉ là fix hiển thị thống kê.
+Tổng: sửa **1 file** (`LinkPreviewCard.tsx`), không cần thay đổi edge function hay hook.
 
