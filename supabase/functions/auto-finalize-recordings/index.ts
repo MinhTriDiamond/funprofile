@@ -1,7 +1,11 @@
 /**
  * auto-finalize-recordings Edge Function
- * Runs via pg_cron every 5 minutes to finalize stuck recordings.
- * Concatenates chunks into a single replay.webm, verifies, and batch-deletes old chunks.
+ * Runs via pg_cron every 5 minutes.
+ * 1. Auto-close sessions stuck as 'live' for > 30 min
+ * 2. Reset recordings stuck in 'assembling' > 10 min
+ * 3. Finalize stuck recordings by creating manifest.json (fast, no timeout)
+ * 4. Optionally concat small recordings (< 50 chunks) into single file
+ * 5. Cleanup old live_messages
  */
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
@@ -90,7 +94,7 @@ async function signedRequest(
   });
 }
 
-// ─── R2 Multipart Upload ────────────────────────────────────────────────────
+// ─── R2 Multipart Upload (for small concat) ─────────────────────────────────
 
 async function initiateMultipartUpload(objectKey: string, contentType: string): Promise<string> {
   const r2 = getR2Config();
@@ -131,8 +135,6 @@ async function abortMultipartUpload(objectKey: string, uploadId: string): Promis
   try { const resp = await signedRequest('DELETE', uri, {}, null, qs); await resp.text(); } catch { /* best effort */ }
 }
 
-// ─── HEAD + Batch Delete ─────────────────────────────────────────────────────
-
 async function headR2Object(objectKey: string): Promise<number> {
   const r2 = getR2Config();
   const uri = `/${r2.bucketName}/${objectKey}`;
@@ -168,8 +170,6 @@ async function batchDeleteFromR2(keys: string[]): Promise<number> {
   return totalDeleted;
 }
 
-// ─── Fetch chunk with retries ────────────────────────────────────────────────
-
 async function fetchChunkData(url: string, retries = 3): Promise<Uint8Array> {
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
@@ -184,24 +184,109 @@ async function fetchChunkData(url: string, retries = 3): Promise<Uint8Array> {
   throw new Error('Unreachable');
 }
 
-// ─── Concat + Upload + Verify + Delete for one recording ─────────────────────
+// ─── Upload manifest.json to R2 ─────────────────────────────────────────────
 
-async function finalizeRecording(
+async function uploadManifestToR2(objectKey: string, manifestJson: string): Promise<void> {
+  const r2 = getR2Config();
+  const uri = `/${r2.bucketName}/${objectKey}`;
+  const resp = await signedRequest('PUT', uri, { 'content-type': 'application/json' }, manifestJson);
+  if (!resp.ok) throw new Error(`Upload manifest failed: ${resp.status}`);
+  await resp.text();
+}
+
+// ─── Create manifest for a recording ─────────────────────────────────────────
+
+async function createManifestForRecording(
   supabaseAdmin: ReturnType<typeof createClient>,
   rec: any,
   chunks: any[],
   session: any,
-): Promise<{ action: string; replay_url?: string; error?: string }> {
+): Promise<{ manifest_url: string }> {
+  const r2 = getR2Config();
+  const mimeType = rec.mime_type || 'video/webm';
+  const totalDurationMs = chunks.reduce((sum: number, c: any) => sum + (c.duration_ms || 2000), 0);
+  const totalBytes = chunks.reduce((sum: number, c: any) => sum + (c.bytes || 0), 0);
+
+  const manifest = {
+    version: 2,
+    recording_id: rec.id,
+    live_session_id: rec.live_session_id,
+    mime_type: mimeType,
+    codec: rec.codec || null,
+    total_chunks: chunks.length,
+    total_duration_ms: totalDurationMs,
+    total_bytes: totalBytes,
+    created_at: new Date().toISOString(),
+    auto_finalized: true,
+    chunks: chunks.map((c: any) => ({
+      seq: c.seq,
+      url: `${r2.publicUrl}/${c.object_key}`,
+      object_key: c.object_key,
+      bytes: c.bytes || 0,
+      duration_ms: c.duration_ms || 2000,
+    })),
+  };
+
+  const manifestKey = `recordings/${rec.id}/manifest.json`;
+  await uploadManifestToR2(manifestKey, JSON.stringify(manifest));
+  const manifestUrl = `${r2.publicUrl}/${manifestKey}`;
+
+  // Update recording
+  await supabaseAdmin.from('chunked_recordings').update({
+    status: 'done',
+    total_chunks: chunks.length,
+    output_object_key: manifestKey,
+    output_url: manifestUrl,
+    ended_at: new Date().toISOString(),
+  }).eq('id', rec.id);
+
+  // Update live session
+  await supabaseAdmin.from('live_sessions')
+    .update({ recording_status: 'ready' })
+    .eq('id', rec.live_session_id);
+
+  // Update post
+  if (session?.post_id) {
+    await supabaseAdmin.from('posts').update({
+      video_url: manifestUrl,
+      metadata: {
+        live_title: session.title,
+        live_status: 'ended',
+        live_session_id: rec.live_session_id,
+        playback_url: manifestUrl,
+        playback_type: 'chunked',
+        chunked_recording_id: rec.id,
+        ended_at: session.ended_at || new Date().toISOString(),
+        auto_finalized: true,
+      },
+    }).eq('id', session.post_id);
+  }
+
+  console.log(`[auto-finalize] ✓ manifest for ${rec.id} (${chunks.length} chunks)`);
+  return { manifest_url: manifestUrl };
+}
+
+// ─── Concat small recordings into single file ────────────────────────────────
+
+const MAX_CHUNKS_FOR_CONCAT = 50; // ~100s of video at 2s/chunk
+
+async function tryConcatRecording(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  rec: any,
+  chunks: any[],
+  session: any,
+): Promise<{ replay_url: string; chunks_deleted: number } | null> {
+  if (chunks.length > MAX_CHUNKS_FOR_CONCAT) {
+    console.log(`[auto-finalize] Skip concat for ${rec.id}: ${chunks.length} chunks > ${MAX_CHUNKS_FOR_CONCAT}`);
+    return null;
+  }
+
   const r2 = getR2Config();
   const mimeType = rec.mime_type || 'video/webm';
   const replayKey = `recordings/${rec.id}/replay.webm`;
-  const totalDurationMs = chunks.reduce((sum: number, c: any) => sum + (c.duration_ms || 4000), 0);
-
-  // Mark assembling
-  await supabaseAdmin.from('chunked_recordings').update({ status: 'assembling' }).eq('id', rec.id);
+  const PART_SIZE = 5 * 1024 * 1024;
 
   const uploadId = await initiateMultipartUpload(replayKey, mimeType);
-  const PART_SIZE = 5 * 1024 * 1024;
   const etags: { partNumber: number; etag: string }[] = [];
   let partNumber = 1;
   let buffer = new Uint8Array(0);
@@ -234,36 +319,34 @@ async function finalizeRecording(
     await completeMultipartUpload(replayKey, uploadId, etags);
   } catch (err) {
     await abortMultipartUpload(replayKey, uploadId);
-    throw err;
+    console.error(`[auto-finalize] Concat failed for ${rec.id}, keeping manifest:`, (err as Error).message);
+    return null; // Manifest still valid, just skip concat
   }
 
   // Verify
-  const actualSize = await headR2Object(replayKey);
-  if (Math.abs(actualSize - totalBytesProcessed) > 1024) {
-    throw new Error(`Size verification failed: expected ${totalBytesProcessed}, got ${actualSize}`);
+  try {
+    const actualSize = await headR2Object(replayKey);
+    if (Math.abs(actualSize - totalBytesProcessed) > 1024) {
+      console.error(`[auto-finalize] Size mismatch for ${rec.id}: ${totalBytesProcessed} vs ${actualSize}`);
+      return null;
+    }
+  } catch {
+    return null;
   }
 
   const replayUrl = `${r2.publicUrl}/${replayKey}`;
 
-  // Batch delete old chunks
+  // Batch delete chunks
   const chunkKeys = chunks.map((c: any) => c.object_key).filter(Boolean);
   const deletedCount = await batchDeleteFromR2(chunkKeys);
 
-  // Update recording as done
+  // Update recording to single file
   await supabaseAdmin.from('chunked_recordings').update({
-    status: 'done',
-    total_chunks: chunks.length,
     output_object_key: replayKey,
     output_url: replayUrl,
-    ended_at: new Date().toISOString(),
   }).eq('id', rec.id);
 
-  // Update live session recording status
-  await supabaseAdmin.from('live_sessions')
-    .update({ recording_status: 'ready' })
-    .eq('id', rec.live_session_id);
-
-  // Update post with single-file replay URL
+  // Update post to single file playback
   if (session?.post_id) {
     await supabaseAdmin.from('posts').update({
       video_url: replayUrl,
@@ -274,14 +357,14 @@ async function finalizeRecording(
         playback_url: replayUrl,
         playback_type: 'single_file',
         chunked_recording_id: rec.id,
-        ended_at: session.ended_at,
+        ended_at: session.ended_at || new Date().toISOString(),
         auto_finalized: true,
       },
     }).eq('id', session.post_id);
   }
 
-  console.log(`[auto-finalize] ✓ Recording ${rec.id} → replay.webm (${chunks.length} chunks, ${deletedCount} deleted)`);
-  return { action: 'finalized', replay_url: replayUrl };
+  console.log(`[auto-finalize] ✓ concat ${rec.id} → replay.webm (${chunks.length} chunks, ${deletedCount} deleted)`);
+  return { replay_url: replayUrl, chunks_deleted: deletedCount };
 }
 
 // ─── Main handler ────────────────────────────────────────────────────────────
@@ -313,7 +396,67 @@ Deno.serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    // Find stuck recordings: status='recording' but session ended > 5 min ago
+    const results: Array<{ recording_id?: string; session_id?: string; action: string; error?: string }> = [];
+    const nowIso = new Date().toISOString();
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // STEP 1: Auto-close sessions stuck as 'live' for > 30 minutes
+    // ══════════════════════════════════════════════════════════════════════════
+    const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+    const { data: stuckLiveSessions } = await supabaseAdmin
+      .from('live_sessions')
+      .select('id, post_id')
+      .eq('status', 'live')
+      .lt('started_at', thirtyMinAgo)
+      .limit(20);
+
+    if (stuckLiveSessions && stuckLiveSessions.length > 0) {
+      for (const session of stuckLiveSessions) {
+        await supabaseAdmin.from('live_sessions')
+          .update({ status: 'ended', ended_at: nowIso, updated_at: nowIso })
+          .eq('id', session.id);
+
+        if (session.post_id) {
+          await supabaseAdmin.from('posts')
+            .update({
+              metadata: {
+                live_status: 'ended',
+                ended_at: nowIso,
+                auto_closed: true,
+              },
+            })
+            .eq('id', session.post_id);
+        }
+
+        results.push({ session_id: session.id, action: 'auto_closed_stuck_live' });
+        console.log(`[auto-finalize] Auto-closed stuck live session ${session.id}`);
+      }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // STEP 2: Reset recordings stuck in 'assembling' for > 10 minutes
+    // ══════════════════════════════════════════════════════════════════════════
+    const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    const { data: stuckAssembling } = await supabaseAdmin
+      .from('chunked_recordings')
+      .select('id')
+      .eq('status', 'assembling')
+      .lt('created_at', tenMinAgo)
+      .limit(10);
+
+    if (stuckAssembling && stuckAssembling.length > 0) {
+      for (const rec of stuckAssembling) {
+        await supabaseAdmin.from('chunked_recordings')
+          .update({ status: 'recording', error_message: 'Reset from stuck assembling state' })
+          .eq('id', rec.id);
+        results.push({ recording_id: rec.id, action: 'reset_stuck_assembling' });
+        console.log(`[auto-finalize] Reset stuck assembling recording ${rec.id}`);
+      }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // STEP 3: Finalize stuck recordings (manifest first, then try concat)
+    // ══════════════════════════════════════════════════════════════════════════
     const { data: stuckRecordings, error: queryErr } = await supabaseAdmin
       .from('chunked_recordings')
       .select(`
@@ -321,21 +464,18 @@ Deno.serve(async (req) => {
         live_sessions!chunked_recordings_live_session_id_fkey(id, status, ended_at, post_id, title)
       `)
       .eq('status', 'recording')
-      .not('live_session_id', 'is', null);
+      .not('live_session_id', 'is', null)
+      .limit(10);
 
     if (queryErr) {
       console.error('auto-finalize query error:', queryErr);
-      return new Response(JSON.stringify({ error: queryErr.message }), {
-        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
     }
-
-    const results: Array<{ recording_id: string; action: string; replay_url?: string; error?: string }> = [];
 
     for (const rec of stuckRecordings || []) {
       const session = (rec as any).live_sessions;
       if (!session || session.status !== 'ended') continue;
-      if (Date.now() - new Date(session.ended_at).getTime() < 5 * 60 * 1000) continue;
+      // Wait at least 2 minutes after session ended
+      if (Date.now() - new Date(session.ended_at).getTime() < 2 * 60 * 1000) continue;
 
       try {
         const { data: chunks, error: chunkErr } = await supabaseAdmin
@@ -347,14 +487,21 @@ Deno.serve(async (req) => {
 
         if (chunkErr || !chunks || chunks.length === 0) {
           await supabaseAdmin.from('chunked_recordings')
-            .update({ status: 'failed', error_message: 'Auto-finalize: no uploaded chunks', ended_at: new Date().toISOString() })
+            .update({ status: 'failed', error_message: 'Auto-finalize: no uploaded chunks', ended_at: nowIso })
             .eq('id', rec.id);
           results.push({ recording_id: rec.id, action: 'marked_failed', error: 'No chunks' });
           continue;
         }
 
-        const result = await finalizeRecording(supabaseAdmin, rec, chunks, session);
-        results.push({ recording_id: rec.id, ...result });
+        // Step 3a: Create manifest (fast, always succeeds)
+        const { manifest_url } = await createManifestForRecording(supabaseAdmin, rec, chunks, session);
+        results.push({ recording_id: rec.id, action: 'manifest_created' });
+
+        // Step 3b: Try concat for small recordings (best-effort)
+        const concatResult = await tryConcatRecording(supabaseAdmin, rec, chunks, session);
+        if (concatResult) {
+          results.push({ recording_id: rec.id, action: 'concat_done' });
+        }
       } catch (err: any) {
         console.error(`[auto-finalize] Error processing ${rec.id}:`, err);
         await supabaseAdmin.from('chunked_recordings')
@@ -364,7 +511,9 @@ Deno.serve(async (req) => {
       }
     }
 
-    // === Keep-alive ping to live-token to prevent cold starts ===
+    // ══════════════════════════════════════════════════════════════════════════
+    // STEP 4: Keep-alive ping to live-token
+    // ══════════════════════════════════════════════════════════════════════════
     try {
       const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
       await fetch(`${supabaseUrl}/functions/v1/live-token`, {
@@ -373,7 +522,9 @@ Deno.serve(async (req) => {
       });
     } catch { /* non-critical */ }
 
-    // Cleanup old live_messages (sessions ended > 7 days ago)
+    // ══════════════════════════════════════════════════════════════════════════
+    // STEP 5: Cleanup old live_messages (> 7 days)
+    // ══════════════════════════════════════════════════════════════════════════
     let messagesDeleted = 0;
     try {
       const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -392,7 +543,7 @@ Deno.serve(async (req) => {
           .in('session_id', sessionIds);
         messagesDeleted = count || 0;
         if (messagesDeleted > 0) {
-          console.log(`[auto-finalize] Cleaned ${messagesDeleted} old live_messages from ${sessionIds.length} sessions`);
+          console.log(`[auto-finalize] Cleaned ${messagesDeleted} old live_messages`);
         }
       }
     } catch (cleanErr: any) {
@@ -402,8 +553,10 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({
       processed: results.length,
       results,
+      stuck_sessions_closed: stuckLiveSessions?.length || 0,
+      stuck_assembling_reset: stuckAssembling?.length || 0,
       messages_cleaned: messagesDeleted,
-      timestamp: new Date().toISOString(),
+      timestamp: nowIso,
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (err: any) {
     console.error('auto-finalize-recordings error:', err);

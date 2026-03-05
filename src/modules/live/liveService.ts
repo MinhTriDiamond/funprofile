@@ -487,8 +487,9 @@ export async function finalizeLiveChunks(
     throw new Error(err.error || `Finalize failed: ${res.status}`);
   }
 
-  const data = await res.json() as { success: boolean; manifest_url: string; total_chunks: number };
-  return { manifestUrl: data.manifest_url, totalChunks: data.total_chunks };
+  const data = await res.json() as { success: boolean; manifest_url?: string; replay_url?: string; total_chunks: number };
+  const url = data.manifest_url || data.replay_url || '';
+  return { manifestUrl: url, totalChunks: data.total_chunks };
 }
 
 /**
