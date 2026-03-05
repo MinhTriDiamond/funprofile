@@ -5,6 +5,25 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
+const NAMED_ENTITIES: Record<string, string> = {
+  '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&apos;': "'",
+  '&nbsp;': ' ', '&copy;': '©', '&reg;': '®', '&trade;': '™',
+};
+
+function decodeHtmlEntities(text: string | null): string | null {
+  if (!text) return text;
+  let result = text;
+  // Named entities
+  for (const [entity, char] of Object.entries(NAMED_ENTITIES)) {
+    result = result.replaceAll(entity, char);
+  }
+  // Hex numeric entities: &#xc0; &#x1af;
+  result = result.replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)));
+  // Decimal numeric entities: &#192;
+  result = result.replace(/&#(\d+);/g, (_, dec) => String.fromCodePoint(parseInt(dec, 10)));
+  return result;
+}
+
 const UNAVATAR_MAP: Record<string, string> = {
   youtube: 'youtube',
   twitter: 'twitter',
