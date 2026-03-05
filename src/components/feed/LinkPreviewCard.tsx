@@ -119,7 +119,7 @@ const LinkPreviewCardComponent = ({ url }: LinkPreviewCardProps) => {
             onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
           />
         )}
-        <span>{data.siteName || domain}</span>
+        <span>{(data.author && data.siteName && data.author.toLowerCase().includes(data.siteName.toLowerCase())) ? domain : (data.siteName || domain)}</span>
       </div>
 
       {data.author && (
