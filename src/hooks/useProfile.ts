@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -70,9 +70,13 @@ export const useProfile = () => {
 
   const showPrivateElements = isOwnProfile && !viewAsPublic;
 
+  // Use ref for currentUserId to stabilize fetchProfile dependency
+  const currentUserIdRef = useRef(currentUserId);
+  currentUserIdRef.current = currentUserId;
+
   const fetchProfile = useCallback(async (profileId: string, authUserId?: string) => {
     try {
-      const isViewingOwnProfile = authUserId ? profileId === authUserId : profileId === currentUserId;
+      const isViewingOwnProfile = authUserId ? profileId === authUserId : profileId === currentUserIdRef.current;
       
       const profileQuery = isViewingOwnProfile
         ? supabase.from('profiles').select('*').eq('id', profileId).single()
@@ -202,7 +206,7 @@ export const useProfile = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentUserId, navigate, userId]);
+  }, [navigate, userId]);
 
   useEffect(() => {
     setIsOwnProfile(false);

@@ -20,6 +20,7 @@ const FacebookPostCardComponent = ({
   post, currentUserId, onPostDeleted, initialStats,
   isPinned = false, onPinPost, onUnpinPost,
   isOwnProfile = false, viewAsPublic = false,
+  disableRealtime = false,
 }: FacebookPostCardProps) => {
   const { t } = useLanguage();
   const canShowPinOption = isOwnProfile && !viewAsPublic && post.user_id === currentUserId;
@@ -36,7 +37,7 @@ const FacebookPostCardComponent = ({
     likeCount, commentCount, shareCount,
     currentReaction, reactionCounts,
     handleReactionChange, incrementCommentCount, setShareCount,
-  } = usePostStats(post.id, currentUserId, initialStats);
+  } = usePostStats(post.id, currentUserId, initialStats, disableRealtime);
 
   const handleDelete = useCallback(async () => {
     if (isDeleting) return;
@@ -121,7 +122,7 @@ const FacebookPostCardComponent = ({
                 <LiveChatReplay sessionId={post.metadata.live_session_id} />
               </div>
             )}
-            <CommentSection postId={post.id} onCommentAdded={incrementCommentCount} />
+            <CommentSection postId={post.id} onCommentAdded={incrementCommentCount} disableRealtime={disableRealtime} />
           </div>
         )}
       </div>
@@ -148,5 +149,6 @@ export const FacebookPostCard = memo(FacebookPostCardComponent, (prev, next) => 
   prev.initialStats?.reactions?.length === next.initialStats?.reactions?.length &&
   prev.isPinned === next.isPinned &&
   prev.isOwnProfile === next.isOwnProfile &&
-  prev.viewAsPublic === next.viewAsPublic
+  prev.viewAsPublic === next.viewAsPublic &&
+  prev.disableRealtime === next.disableRealtime
 ));

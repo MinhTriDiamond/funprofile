@@ -35,9 +35,10 @@ interface Comment {
 interface CommentSectionProps {
   postId: string;
   onCommentAdded?: () => void;
+  disableRealtime?: boolean;
 }
 
-export const CommentSection = ({ postId, onCommentAdded }: CommentSectionProps) => {
+export const CommentSection = ({ postId, onCommentAdded, disableRealtime = false }: CommentSectionProps) => {
   const navigate = useNavigate();
   const { t } = useLanguage();
   const { evaluateAsync } = usePplpEvaluate();
@@ -60,6 +61,8 @@ export const CommentSection = ({ postId, onCommentAdded }: CommentSectionProps) 
   useEffect(() => {
     fetchComments();
     
+    if (disableRealtime) return;
+
     const cleanupRef = { current: () => {} };
 
     const channelTimer = setTimeout(() => {
@@ -86,7 +89,7 @@ export const CommentSection = ({ postId, onCommentAdded }: CommentSectionProps) 
       clearTimeout(channelTimer);
       cleanupRef.current();
     };
-  }, [postId]);
+  }, [postId, disableRealtime]);
 
   const fetchCurrentUserProfile = async () => {
     if (!userId) return;

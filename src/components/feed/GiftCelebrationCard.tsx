@@ -47,13 +47,14 @@ interface GiftCelebrationCardProps {
       display_name?: string | null;
       avatar_url: string | null;
     };
-    // Pre-fetched profiles passed from Feed hook
     recipientProfile?: GiftProfile | null;
     senderProfile?: GiftProfile | null;
   };
   currentUserId: string;
   onPostDeleted: () => void;
   initialStats?: PostStats;
+  disableRealtime?: boolean;
+  disableEffects?: boolean;
 }
 
 const GiftCelebrationCardComponent = ({
@@ -61,6 +62,8 @@ const GiftCelebrationCardComponent = ({
   currentUserId,
   onPostDeleted,
   initialStats,
+  disableRealtime = false,
+  disableEffects = false,
 }: GiftCelebrationCardProps) => {
   const navigate = useNavigate();
   const { t } = useLanguage();
@@ -117,9 +120,9 @@ const GiftCelebrationCardComponent = ({
     }
   }, [initialStats, currentUserId]);
 
-  // Sound + confetti on first appearance
+  // Sound + confetti on first appearance (skip on profile to save resources)
   useEffect(() => {
-    if (hasPlayedRef.current) return;
+    if (disableEffects || hasPlayedRef.current) return;
 
     const isMuted = localStorage.getItem('celebration_muted') === 'true';
 
@@ -127,7 +130,6 @@ const GiftCelebrationCardComponent = ({
       (entries) => {
         const [entry] = entries;
         if (entry.isIntersecting) {
-          // Play sound (only once on first view)
           if (!hasPlayedRef.current && !isMuted) {
             const audio = playCelebrationMusic('rich-1');
             if (audio) {
@@ -137,7 +139,6 @@ const GiftCelebrationCardComponent = ({
             hasPlayedRef.current = true;
           }
 
-          // Fire confetti once
           if (!hasConfettiFiredRef.current) {
             hasConfettiFiredRef.current = true;
             const rect = cardRef.current?.getBoundingClientRect();
@@ -161,11 +162,12 @@ const GiftCelebrationCardComponent = ({
 
     if (cardRef.current) observer.observe(cardRef.current);
     return () => observer.disconnect();
-  }, []);
+  }, [disableEffects]);
 
-  // Scroll-back sound (5s)
+  // Scroll-back sound (5s) — skip on profile
   useEffect(() => {
-    if (!hasPlayedRef.current) return; // only after first play
+    if (disableEffects) return;
+    if (!hasPlayedRef.current) return;
     const isMuted = localStorage.getItem('celebration_muted') === 'true';
     if (isMuted) return;
 
@@ -184,7 +186,6 @@ const GiftCelebrationCardComponent = ({
       { threshold: 0.5 }
     );
 
-    // Delay subscribing so first-view observer doesn't conflict
     const timer = setTimeout(() => {
       if (cardRef.current) observer.observe(cardRef.current);
     }, 12000);
@@ -194,7 +195,7 @@ const GiftCelebrationCardComponent = ({
       observer.disconnect();
       audioInstance?.pause();
     };
-  }, []);
+  }, [disableEffects]);
 
   const handleReactionChange = useCallback((newCount: number, newReaction: string | null) => {
     setLikeCount(newCount);
@@ -396,6 +397,7 @@ const GiftCelebrationCardComponent = ({
           <CommentSection
             postId={post.id}
             onCommentAdded={() => setCommentCount(prev => prev + 1)}
+            disableRealtime={disableRealtime}
           />
         </div>
       )}
