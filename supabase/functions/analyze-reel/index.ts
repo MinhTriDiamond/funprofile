@@ -11,6 +11,31 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Authenticate user
+    const authHeader = req.headers.get('Authorization');
+    if (authHeader) {
+      const supabaseUser = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_ANON_KEY")!,
+        { global: { headers: { Authorization: authHeader } } }
+      );
+      const { data: { user } } = await supabaseUser.auth.getUser();
+      if (user) {
+        const supabaseAdmin = createClient(
+          Deno.env.get("SUPABASE_URL")!,
+          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+        );
+        const { data: banCheck } = await supabaseAdmin
+          .from('profiles').select('is_banned').eq('id', user.id).single();
+        if (banCheck?.is_banned) {
+          return new Response(
+            JSON.stringify({ error: 'Tài khoản đã bị cấm vĩnh viễn.' }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      }
+    }
+
     const { reel_id } = await req.json();
 
     if (!reel_id) {

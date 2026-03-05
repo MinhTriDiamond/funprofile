@@ -36,6 +36,16 @@ serve(async (req) => {
       );
     }
 
+    // Check banned status
+    const { data: banCheck } = await supabase
+      .from('profiles').select('is_banned').eq('id', user.id).single();
+    if (banCheck?.is_banned) {
+      return new Response(
+        JSON.stringify({ error: 'Tài khoản đã bị cấm vĩnh viễn.' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const { recipientId, notificationType } = await req.json();
 
     if (!recipientId) {

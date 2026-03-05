@@ -38,6 +38,13 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
+    // Check banned status
+    const { data: banCheck } = await supabaseAdmin
+      .from('profiles').select('is_banned').eq('id', userId).single();
+    if (banCheck?.is_banned) {
+      return new Response(JSON.stringify({ error: 'Tài khoản đã bị cấm vĩnh viễn.' }), { status: 403, headers: corsHeaders });
+    }
+
     const rateCheck = await supabaseAdmin.rpc("check_rate_limit", {
       p_key: `angel_inline:${userId}`,
       p_limit: 1,

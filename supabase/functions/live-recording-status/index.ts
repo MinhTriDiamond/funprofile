@@ -25,6 +25,17 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders })
     }
 
+    // Check banned status
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    )
+    const { data: banCheck } = await supabaseAdmin
+      .from('profiles').select('is_banned').eq('id', user.id).single()
+    if (banCheck?.is_banned) {
+      return new Response(JSON.stringify({ error: 'Tài khoản đã bị cấm vĩnh viễn.' }), { status: 403, headers: corsHeaders })
+    }
+
     const body = await req.json()
     const session_id = body.session_id || body.sessionId
 
