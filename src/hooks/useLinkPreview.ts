@@ -50,7 +50,7 @@ async function fetchPreview(url: string): Promise<LinkPreviewData | null> {
     const result: LinkPreviewData = {
       title: data.title || null,
       description: data.description || null,
-      image: data.image || null,
+      image: getProxiedImageUrl(data.image || null),
       video: data.video || null,
       siteName: data.siteName || null,
       favicon: data.favicon || null,
