@@ -509,6 +509,7 @@ const WalletCenterContainer = () => {
         externalWallet={(isConnected ? (activeAddress || address) : null) || null}
         camlyPrice={camlyPrice}
         dailyClaimed={dailyClaimed}
+        rewardStatus={profile?.reward_status || 'pending'}
         onSuccess={() => { fetchClaimableReward(); refetchExternal(); }}
       />
 
