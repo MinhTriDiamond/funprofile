@@ -156,23 +156,86 @@ async function scrapePageMeta(url: string): Promise<{
       : [resolvedUrl];
 
     let html: string | null = null;
+    let rawHtml: string | null = null; // Keep the last non-null HTML even without OG
 
     for (const tryUrl of urlsToTry) {
       for (const ua of uasToTry) {
-        html = await fetchHtml(tryUrl, ua);
-        if (!html) continue;
+        const fetched = await fetchHtml(tryUrl, ua);
+        if (!fetched) continue;
+        if (!rawHtml) rawHtml = fetched; // save first successful response
 
         // Quick check: did we get useful OG data?
-        const hasOg = /property=["']og:title["']|property=["']og:image["']/i.test(html);
-        const isLoginWall = /log in or sign up|đăng nhập hoặc đăng ký/i.test(html);
+        const hasOg = /property=["']og:title["']|property=["']og:image["']/i.test(fetched);
+        const isLoginWall = /log in or sign up|đăng nhập hoặc đăng ký/i.test(fetched);
         if (hasOg && !isLoginWall) {
           console.log(`Got OG data with UA: ${ua.split('/')[0]} on ${tryUrl}`);
+          html = fetched;
           break;
         }
         console.log(`UA ${ua.split('/')[0]} on ${tryUrl} returned no useful OG data`);
-        html = null;
+        rawHtml = fetched; // keep updating with latest
       }
       if (html) break;
+    }
+
+    // If no OG data found, try extracting from Facebook inline JSON in rawHtml
+    if (!html && rawHtml && isFacebook) {
+      console.log('No OG data found, trying Facebook inline JSON extraction...');
+      html = rawHtml; // use raw HTML for inline extraction below
+      
+      // Try to extract from Facebook's inline data
+      const titlePatterns = [
+        /"title"\s*:\s*"([^"]{5,200})"/,
+        /"story_text"\s*:\s*"([^"]{5,200})"/,
+        /"message"\s*:\s*"([^"]{5,200})"/,
+      ];
+      const imagePatterns = [
+        /"playable_url(?:_quality_hd)?"\s*:\s*"([^"]+)"/,
+        /"thumbnail_url"\s*:\s*"([^"]+)"/,
+        /"preview_image_url"\s*:\s*"([^"]+)"/,
+        /"image"\s*:\s*\{[^}]*"uri"\s*:\s*"([^"]+)"/,
+      ];
+      const authorPatterns = [
+        /"ownerName"\s*:\s*"([^"]+)"/,
+        /"actorName"\s*:\s*"([^"]+)"/,
+        /"name"\s*:\s*"([^"]{2,50})"/,
+      ];
+      
+      for (const p of authorPatterns) {
+        const m = rawHtml.match(p);
+        if (m?.[1] && m[1].length > 1 && m[1].length < 80) {
+          result.author = m[1];
+          break;
+        }
+      }
+      for (const p of titlePatterns) {
+        const m = rawHtml.match(p);
+        if (m?.[1]) { result.title = m[1]; break; }
+      }
+      for (const p of imagePatterns) {
+        const m = rawHtml.match(p);
+        if (m?.[1]) {
+          const decoded = m[1].replace(/\\u0025/g, '%').replace(/\\\//g, '/');
+          if (decoded.includes('playable_url') || decoded.includes('.mp4')) {
+            result.video = decoded;
+          } else {
+            result.image = decoded;
+          }
+          break;
+        }
+      }
+      
+      // Extract favicon
+      try {
+        const u = new URL(url);
+        result.favicon = `${u.origin}/favicon.ico`;
+      } catch {}
+      result.siteName = 'Facebook';
+      
+      if (result.title || result.image || result.video || result.author) {
+        console.log(`Extracted from inline JSON: title=${result.title}, author=${result.author}, hasImage=${!!result.image}, hasVideo=${!!result.video}`);
+        return result;
+      }
     }
 
     if (!html) return result;
