@@ -27,6 +27,7 @@ interface ClaimRewardDialogProps {
   externalWallet: string | null;
   camlyPrice: number;
   dailyClaimed: number;
+  rewardStatus?: string;
   onSuccess: () => void;
 }
 
@@ -39,6 +40,7 @@ export const ClaimRewardDialog = ({
   externalWallet,
   camlyPrice,
   dailyClaimed,
+  rewardStatus = 'pending',
   onSuccess,
 }: ClaimRewardDialogProps) => {
   const [amount, setAmount] = useState('');
@@ -119,135 +121,122 @@ export const ClaimRewardDialog = ({
         </DialogDescription>
       </DialogHeader>
 
-      {/* ⚠️ MAINTENANCE BANNER — xóa block này khi mở lại hệ thống */}
-      <div className="bg-red-50 border-2 border-red-300 rounded-xl p-4 my-4 text-center">
-        <div className="text-3xl mb-2">🔧</div>
-        <p className="font-bold text-red-700 text-base mb-1">Hệ thống tạm dừng bảo trì</p>
-        <p className="text-red-600 text-sm">
-          Chức năng rút thưởng CAMLY đang tạm dừng để nâng cấp hệ thống.
-          Vui lòng quay lại sau. Xin lỗi vì sự bất tiện này! 🙏
-        </p>
-      </div>
-
-      <Button onClick={() => onOpenChange(false)} className="w-full" variant="outline">
-        Đóng
-      </Button>
-    </>
-  );
-
-  const _renderInputStep_DISABLED = () => (
-    <>
-      <DialogHeader>
-        <DialogTitle className="flex items-center gap-2 text-xl">
-          <Gift className="w-6 h-6 text-yellow-500" />
-          Claim CAMLY Rewards
-        </DialogTitle>
-        <DialogDescription>
-          Chuyển phần thưởng CAMLY vào ví của bạn
-        </DialogDescription>
-      </DialogHeader>
-
-      <div className="space-y-6 py-4">
-        {/* Available Balance */}
-        <div className="bg-gradient-to-r from-yellow-50 to-amber-50 border border-yellow-200 rounded-xl p-4">
-          <p className="text-sm text-yellow-700 mb-1">Số dư khả dụng</p>
-          <p className="text-2xl font-bold text-yellow-800">
-            {formatNumber(claimableAmount)} CAMLY
+      {/* Pending approval banner */}
+      {rewardStatus !== 'approved' && (
+        <div className="bg-yellow-50 border-2 border-yellow-300 rounded-xl p-4 my-4 text-center">
+          <div className="text-3xl mb-2">⏳</div>
+          <p className="font-bold text-yellow-700 text-base mb-1">Chờ Admin xét duyệt</p>
+          <p className="text-yellow-600 text-sm">
+            Tài khoản của bạn cần được Admin duyệt trước khi có thể claim phần thưởng. Vui lòng chờ hoặc liên hệ Admin.
           </p>
-          <p className="text-sm text-yellow-600">~{formatUsd(claimableAmount)}</p>
         </div>
+      )}
 
-        {/* Daily Claim Info */}
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4">
-          <div className="flex justify-between items-center mb-2">
-            <p className="text-sm text-blue-700">Đã claim hôm nay</p>
-            <p className="text-sm font-semibold text-blue-800">{formatNumber(dailyClaimed)} / {formatNumber(DAILY_CLAIM_CAP)}</p>
-          </div>
-          <div className="w-full bg-blue-100 rounded-full h-2 mb-2">
-            <div 
-              className="bg-blue-500 h-2 rounded-full transition-all" 
-              style={{ width: `${Math.min(100, (dailyClaimed / DAILY_CLAIM_CAP) * 100)}%` }} 
-            />
-          </div>
-          <p className="text-sm text-blue-600">
-            Còn được claim hôm nay: <span className="font-bold">{formatNumber(dailyRemaining)} CAMLY</span>
-          </p>
-          {dailyRemaining <= 0 && (
-            <p className="text-sm text-red-500 font-medium mt-1">⚠️ Đã hết giới hạn claim hôm nay, vui lòng quay lại ngày mai</p>
-          )}
-        </div>
-
-        {/* Amount Input */}
-        <div className="space-y-2">
-          <Label htmlFor="amount">Số lượng claim</Label>
-          <div className="relative">
-            <Input
-              id="amount"
-              type="text"
-              placeholder="Nhập số lượng CAMLY"
-              value={amount ? formatNumber(Number(amount)) : ''}
-              onChange={(e) => handleAmountChange(e.target.value.replace(/\./g, ''))}
-              className="pr-16 text-lg font-medium"
-            />
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={handleMaxClick}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-primary hover:text-primary/80"
-            >
-              MAX
-            </Button>
-          </div>
-          {amount && Number(amount) > 0 && (
-            <p className="text-sm text-muted-foreground">~{formatUsd(Number(amount))}</p>
-          )}
-          {amount && Number(amount) < 1 && (
-            <p className="text-sm text-red-500">Số lượng phải lớn hơn 0</p>
-          )}
-          {amount && Number(amount) > maxClaimable && (
-            <p className="text-sm text-red-500">
-              {Number(amount) > claimableAmount ? 'Vượt quá số dư khả dụng' : 'Vượt quá giới hạn claim hôm nay'}
+      {rewardStatus === 'approved' && (
+        <div className="space-y-6 py-4">
+          {/* Available Balance */}
+          <div className="bg-gradient-to-r from-yellow-50 to-amber-50 border border-yellow-200 rounded-xl p-4">
+            <p className="text-sm text-yellow-700 mb-1">Số dư khả dụng</p>
+            <p className="text-2xl font-bold text-yellow-800">
+              {formatNumber(claimableAmount)} CAMLY
             </p>
-          )}
-        </div>
+            <p className="text-sm text-yellow-600">~{formatUsd(claimableAmount)}</p>
+          </div>
 
-        {/* Wallet Info */}
-        {externalWallet ? (
-          <div className="space-y-2">
-            <Label>Ví nhận</Label>
-            <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border">
-              <Wallet className="w-5 h-5 text-amber-600" />
-              <span className="text-sm font-mono">
-                {externalWallet.slice(0, 6)}...{externalWallet.slice(-4)}
-              </span>
+          {/* Daily Claim Info */}
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4">
+            <div className="flex justify-between items-center mb-2">
+              <p className="text-sm text-blue-700">Đã claim hôm nay</p>
+              <p className="text-sm font-semibold text-blue-800">{formatNumber(dailyClaimed)} / {formatNumber(DAILY_CLAIM_CAP)}</p>
             </div>
+            <div className="w-full bg-blue-100 rounded-full h-2 mb-2">
+              <div 
+                className="bg-blue-500 h-2 rounded-full transition-all" 
+                style={{ width: `${Math.min(100, (dailyClaimed / DAILY_CLAIM_CAP) * 100)}%` }} 
+              />
+            </div>
+            <p className="text-sm text-blue-600">
+              Còn được claim hôm nay: <span className="font-bold">{formatNumber(dailyRemaining)} CAMLY</span>
+            </p>
+            {dailyRemaining <= 0 && (
+              <p className="text-sm text-red-500 font-medium mt-1">⚠️ Đã hết giới hạn claim hôm nay, vui lòng quay lại ngày mai</p>
+            )}
           </div>
-        ) : (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-center">
-            <p className="text-sm text-red-600">Vui lòng kết nối ví để claim reward</p>
-          </div>
-        )}
 
-        {/* Network Info */}
-        <div className="flex items-center gap-2 text-sm text-muted-foreground bg-gray-50 rounded-lg p-3">
-          <Wallet className="w-4 h-4" />
-          <span>Mạng: BNB Smart Chain (BSC)</span>
+          {/* Amount Input */}
+          <div className="space-y-2">
+            <Label htmlFor="amount">Số lượng claim</Label>
+            <div className="relative">
+              <Input
+                id="amount"
+                type="text"
+                placeholder="Nhập số lượng CAMLY"
+                value={amount ? formatNumber(Number(amount)) : ''}
+                onChange={(e) => handleAmountChange(e.target.value.replace(/\./g, ''))}
+                className="pr-16 text-lg font-medium"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleMaxClick}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-primary hover:text-primary/80"
+              >
+                MAX
+              </Button>
+            </div>
+            {amount && Number(amount) > 0 && (
+              <p className="text-sm text-muted-foreground">~{formatUsd(Number(amount))}</p>
+            )}
+            {amount && Number(amount) < 1 && (
+              <p className="text-sm text-red-500">Số lượng phải lớn hơn 0</p>
+            )}
+            {amount && Number(amount) > maxClaimable && (
+              <p className="text-sm text-red-500">
+                {Number(amount) > claimableAmount ? 'Vượt quá số dư khả dụng' : 'Vượt quá giới hạn claim hôm nay'}
+              </p>
+            )}
+          </div>
+
+          {/* Wallet Info */}
+          {externalWallet ? (
+            <div className="space-y-2">
+              <Label>Ví nhận</Label>
+              <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border">
+                <Wallet className="w-5 h-5 text-amber-600" />
+                <span className="text-sm font-mono">
+                  {externalWallet.slice(0, 6)}...{externalWallet.slice(-4)}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-center">
+              <p className="text-sm text-red-600">Vui lòng kết nối ví để claim reward</p>
+            </div>
+          )}
+
+          {/* Network Info */}
+          <div className="flex items-center gap-2 text-sm text-muted-foreground bg-gray-50 rounded-lg p-3">
+            <Wallet className="w-4 h-4" />
+            <span>Mạng: BNB Smart Chain (BSC)</span>
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="flex gap-3">
         <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
-          Hủy
+          {rewardStatus === 'approved' ? 'Hủy' : 'Đóng'}
         </Button>
-        <Button
-          onClick={handleClaim}
-          disabled={!isValidAmount() || !externalWallet}
-          className="flex-1 bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-white"
-        >
-          <Gift className="w-4 h-4 mr-2" />
-          Claim {amount ? formatNumber(Number(amount)) : ''} CAMLY
-        </Button>
+        {rewardStatus === 'approved' && (
+          <Button
+            onClick={handleClaim}
+            disabled={!isValidAmount() || !externalWallet}
+            className="flex-1 bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-white"
+          >
+            <Gift className="w-4 h-4 mr-2" />
+            Claim {amount ? formatNumber(Number(amount)) : ''} CAMLY
+          </Button>
+        )}
       </div>
     </>
   );
