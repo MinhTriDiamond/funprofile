@@ -232,10 +232,9 @@ async function scrapePageMeta(url: string): Promise<{
       } catch {}
       result.siteName = 'Facebook';
       
-      if (result.title || result.image || result.video || result.author) {
-        console.log(`Extracted from inline JSON: title=${result.title}, author=${result.author}, hasImage=${!!result.image}, hasVideo=${!!result.video}`);
-        return result;
-      }
+      console.log(`FB inline extraction: title=${result.title}, author=${result.author}, hasImage=${!!result.image}, hasVideo=${!!result.video}`);
+      // Always return for Facebook - at minimum we have siteName + favicon for a fallback card
+      return result;
     }
 
     if (!html) return result;
