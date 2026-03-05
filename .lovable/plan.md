@@ -1,56 +1,78 @@
 
 
-# Sửa lỗi dữ liệu thừa trong Facebook link preview
+# Phân tích: Tại sao Database hiển thị Livestream = 0
 
-## Vấn đề
+## Phát hiện chính
 
-Facebook trả về `og:title` chứa rất nhiều rác:
+**Dữ liệu thực tế trong database:**
+
+| Bảng | Số lượng | Ghi chú |
+|------|----------|---------|
+| `live_sessions` | **600** (596 ended + 4 live) | Users livestream rất tích cực |
+| `chunked_recordings` | **342** (314 done, 28 stuck "recording") | Ghi hình hoạt động |
+| `posts` với `post_type = 'live'` | **519** | Bài đăng live |
+| `posts` có video URL chứa "live" | **581** | Video replay |
+| `recording_status = 'ready'` | **488** | Recordings thành công |
+| `recording_status = 'failed'` | **57** | Recordings thất bại (~9.5%) |
+
+**Kết luận: Users livestream RẤT NHIỀU — 600 phiên, 488 recordings thành công!**
+
+## Nguyên nhân gốc: Hàm `get_app_stats` không đếm livestream
+
+Hàm `get_app_stats()` hiện tại chỉ trả về:
+- `total_users`, `total_posts`, `total_photos`, `total_videos` (đếm từ `posts WHERE video_url IS NOT NULL`)
+- `total_rewards`, `treasury_camly_received`, `total_camly_claimed`
+
+**Không có trường nào đếm `live_sessions`** hoặc `chunked_recordings`. Component `AppHonorBoard.tsx` hiển thị `total_videos = 897` — đó là tổng số posts có video (bao gồm cả live replay), nhưng **không có mục riêng cho "Livestream"**.
+
+## Vấn đề phụ phát hiện thêm
+
+1. **28 recordings stuck ở trạng thái "recording"** — phiên live đã kết thúc nhưng `chunked_recordings.status` không chuyển sang `done`. Đây là những sessions mà host đóng trình duyệt đột ngột trước khi finalize.
+
+2. **57 sessions có `recording_status = 'failed'`** (~9.5%) — một số có `chunked_recordings.status = done` (recording thực ra thành công nhưng status ở `live_sessions` bị đánh failed sai).
+
+3. **`live_recordings` table hoàn toàn trống** (0 rows) — Table này được thiết kế cho Agora server-side recording nhưng chưa bao giờ được sử dụng thành công vì hệ thống đang dùng client-side chunked recording thay thế.
+
+## Kế hoạch sửa
+
+### Task 1: Cập nhật `get_app_stats` thêm `total_livestreams`
+
+Thêm trường `total_livestreams` vào hàm SQL:
+
+```sql
+DROP FUNCTION IF EXISTS public.get_app_stats();
+CREATE OR REPLACE FUNCTION public.get_app_stats()
+RETURNS TABLE(
+  total_users BIGINT,
+  total_posts BIGINT,
+  total_photos BIGINT,
+  total_videos BIGINT,
+  total_livestreams BIGINT,
+  total_rewards NUMERIC,
+  treasury_camly_received NUMERIC,
+  total_camly_claimed NUMERIC
+) ...
+-- Thêm:
+(SELECT COUNT(*) FROM live_sessions)::BIGINT AS total_livestreams,
 ```
-26 reactions · 11 comments | Cha bắn pháo hoa ăn mừng... ĐÃ HÌNH THÀNH!!! Camly Duong Diệu Ngọc Nguyen Ai Van Trang Nguyễn... Lê Minh Trí | Fath Uni
-```
 
-Có 3 vấn đề cụ thể:
+### Task 2: Cập nhật `AppHonorBoard.tsx`
 
-1. **Regex xóa engagement prefix không hoạt động** — ký tự `·` (middle dot) trong HTML thực tế có thể khác với ký tự trong regex (Unicode variants: `·` U+00B7, `·` U+2027, `•` U+2022, `⋅` U+22C5)
-2. **Tên những người được tag** vẫn nằm trong title: "Camly Duong Diệu Ngọc Nguyen Ai Van Trang..."
-3. **Suffix `| Fath Uni`** (tên page) vẫn dính vào cuối title, trùng với `author`
+- Thêm interface field `totalLivestreams`
+- Parse từ response `row.total_livestreams`
+- Thêm stat card với icon `Radio` và label "Livestreams"
 
-## Giải pháp — sửa 1 file
+### Task 3: Dọn dẹp stuck recordings
 
-### File: `supabase/functions/fetch-link-preview/index.ts`
+- Cập nhật 28 `chunked_recordings` stuck ở `status = 'recording'` mà `live_session` đã `ended` → chuyển sang `done` hoặc `failed`
+- Sửa inconsistency: sessions có `recording_status = 'failed'` nhưng `chunked_recordings.status = 'done'`
 
-**1. Mở rộng regex engagement prefix** (dòng 326-328) để match nhiều dạng middle dot:
-```typescript
-// Match nhiều dạng ký tự dot/bullet Unicode
-result.title = result.title.replace(
-  /^\d+\s+(?:reactions?|cảm xúc)\s*[·•⋅]\s*\d+\s+(?:comments?|bình luận)\s*\|\s*/i, ''
-);
-```
+### Technical Details
 
-**2. Xóa suffix `| PageName`** ở cuối title (nếu trùng author):
-```typescript
-if (result.author && result.title) {
-  // Xóa "| Fath Uni" ở cuối
-  const suffixPattern = new RegExp(`\\s*\\|\\s*${result.author.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'i');
-  result.title = result.title.replace(suffixPattern, '');
-}
-```
+**Files cần sửa:**
+1. Migration SQL mới — `DROP FUNCTION + CREATE OR REPLACE` cho `get_app_stats`
+2. `src/components/feed/AppHonorBoard.tsx` — thêm livestream stat
+3. `src/integrations/supabase/types.ts` — tự động cập nhật sau migration
 
-**3. Nếu title ≈ description** (chứa cùng nội dung), set `title = null` để tránh hiển thị trùng:
-```typescript
-if (result.title && result.description) {
-  const normT = result.title.substring(0, 80).toLowerCase().trim();
-  const normD = result.description.substring(0, 80).toLowerCase().trim();
-  if (normT === normD || normD.startsWith(normT) || normT.startsWith(normD)) {
-    result.title = null; // Tránh hiển thị trùng
-  }
-}
-```
-
-**Kết quả mong đợi:**
-- Dòng site: `facebook.com`
-- Dòng author: **Fath Uni**
-- Dòng description: Cha bắn pháo hoa ăn mừng Quốc Gia 5D hạnh phúc...
-
-Sửa ~15 dòng, deploy lại edge function.
+**Không ảnh hưởng:** Các tính năng livestream hiện tại (start, join, record, replay) không bị ảnh hưởng. Đây chỉ là fix hiển thị thống kê.
 
