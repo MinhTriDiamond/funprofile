@@ -58,8 +58,8 @@ async function fetchPreview(url: string): Promise<LinkPreviewData | null> {
       author: data.author || null,
       url: data.url || url,
     };
-    // Only cache if we got something useful
-    if (result.title || result.image) {
+    // Cache if we got something useful
+    if (result.title || result.image || result.author || result.siteName) {
       cache.set(url, result);
     }
     return result;
