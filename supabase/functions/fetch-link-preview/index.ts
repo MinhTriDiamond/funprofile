@@ -245,6 +245,7 @@ serve(async (req) => {
         video: decodeHtmlEntities(meta.video),
         siteName: decodeHtmlEntities(meta.siteName),
         favicon: decodeHtmlEntities(meta.favicon),
+        author: decodeHtmlEntities(meta.author),
         url: normalizedUrl,
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
