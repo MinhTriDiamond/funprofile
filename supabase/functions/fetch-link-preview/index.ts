@@ -191,6 +191,21 @@ async function scrapePageMeta(url: string): Promise<{
       result.title = result.title.replace(/^\d+\s+cảm xúc\s*·\s*\d+\s+bình luận\s*\|\s*/i, '');
     }
 
+    // Facebook: og:title is often the author name, not the post title
+    if (isFacebook && result.title && result.author) {
+      const t = result.title.toLowerCase();
+      const a = result.author.toLowerCase();
+      if (t.includes(a) || a.includes(t)) {
+        result.author = result.title.length >= result.author.length ? result.title : result.author;
+        if (result.description) {
+          const firstLine = result.description.split('\n')[0].trim();
+          result.title = firstLine.length > 10 ? firstLine : null;
+        } else {
+          result.title = null;
+        }
+      }
+    }
+
     // Favicon
     const faviconMatch = html.match(/<link[^>]*rel=["'](?:shortcut )?icon["'][^>]*href=["']([^"']+)["']/i)
       || html.match(/<link[^>]*href=["']([^"']+)["'][^>]*rel=["'](?:shortcut )?icon["']/i);
