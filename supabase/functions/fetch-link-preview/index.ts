@@ -207,13 +207,14 @@ serve(async (req) => {
       console.log(`Preview mode for: ${normalizedUrl}`);
       const meta = await scrapePageMeta(normalizedUrl);
       return new Response(JSON.stringify({
-        title: meta.title,
-        description: meta.description,
+        title: decodeHtmlEntities(meta.title),
+        description: decodeHtmlEntities(meta.description),
         image: meta.image,
         video: meta.video,
-        siteName: meta.siteName,
+        siteName: decodeHtmlEntities(meta.siteName),
         favicon: meta.favicon,
         url: normalizedUrl,
+      }), {
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
