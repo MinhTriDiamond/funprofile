@@ -156,8 +156,6 @@ async function scrapePageMeta(url: string): Promise<{
     }
 
     if (!html) return result;
-    if (!res.ok) return result;
-    const html = await res.text();
 
     const extract = (property: string): string | null => {
       // property="..." content="..."
