@@ -259,16 +259,16 @@ async function scrapePageMeta(url: string): Promise<{
       return null;
     };
 
-    result.title = extract('og:title') || extractName('twitter:title') || (() => {
+    result.title = decodeHtmlEntities(extract('og:title') || extractName('twitter:title') || (() => {
       const t = html.match(/<title[^>]*>([^<]+)<\/title>/i);
       return t?.[1]?.trim() || null;
-    })();
+    })());
 
-    result.description = extract('og:description') || extractName('twitter:description') || extractName('description');
+    result.description = decodeHtmlEntities(extract('og:description') || extractName('twitter:description') || extractName('description'));
     result.image = extract('og:image') || extractName('twitter:image');
     result.video = extract('og:video') || extract('og:video:url');
     result.siteName = extract('og:site_name');
-    result.author = extract('article:author') || extractName('author');
+    result.author = decodeHtmlEntities(extract('article:author') || extractName('author'));
 
     // Fallback 1: JSON-LD author
     if (!result.author) {
@@ -337,10 +337,26 @@ async function scrapePageMeta(url: string): Promise<{
 
     // Facebook: og:title is often the author name, not the post title
     if (isFacebook && result.title && result.author) {
-      const t = result.title.toLowerCase();
-      const a = result.author.toLowerCase();
-      if (t.includes(a) || a.includes(t)) {
-        result.author = result.title.length >= result.author.length ? result.title : result.author;
+      const t = result.title.toLowerCase().trim();
+      const a = result.author.toLowerCase().trim();
+      if (t === a) {
+        // Title IS the author name → use description as title
+        if (result.description) {
+          const firstLine = result.description.split('\n')[0].trim();
+          result.title = firstLine.length > 10 ? firstLine : null;
+        } else {
+          result.title = null;
+        }
+      } else if (t.includes(a)) {
+        // Title contains author (e.g. "Some content | Author Name") → strip author, keep title
+        const escapedA = result.author.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        result.title = result.title.replace(new RegExp(`\\s*\\|?\\s*${escapedA}\\s*$`, 'gi'), '').trim();
+        // Also strip tagged names (3+ capitalized names at the end)
+        result.title = result.title.replace(/\s+(?:[A-ZÀ-Ỹa-zà-ỹ]+\s+){2,}[A-ZÀ-Ỹa-zà-ỹ]+\s*$/u, '').trim();
+        if (!result.title) result.title = null;
+      } else if (a.includes(t)) {
+        // Author contains title → author is more complete, use description as title
+        result.author = result.author;
         if (result.description) {
           const firstLine = result.description.split('\n')[0].trim();
           result.title = firstLine.length > 10 ? firstLine : null;
