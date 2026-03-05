@@ -32,6 +32,7 @@ interface UserWithReward {
   claimable_amount: number;
   last_claimed_at: string | null;
   reward_requested_at: string | null;
+  reward_status: string | null;
 }
 
 interface RewardApprovalTabProps {
@@ -140,6 +141,7 @@ const RewardApprovalTab = ({ adminId, onRefresh }: RewardApprovalTabProps) => {
           claimable_amount: Math.max(0, Number(r.total_reward) - claimed),
           last_claimed_at: lastClaimedMap.get(r.id) || null,
           reward_requested_at: profile?.updated_at || null,
+          reward_status: profile?.reward_status || null,
         };
       });
 
@@ -153,7 +155,7 @@ const RewardApprovalTab = ({ adminId, onRefresh }: RewardApprovalTabProps) => {
     }
   };
 
-  const pendingUsers = users.filter(u => u.claimable_amount > 0);
+  const pendingUsers = users.filter(u => u.reward_status === 'pending');
 
   const filteredUsers = pendingUsers
     .filter(u => {
