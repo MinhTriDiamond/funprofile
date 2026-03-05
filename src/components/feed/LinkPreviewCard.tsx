@@ -122,6 +122,12 @@ const LinkPreviewCardComponent = ({ url }: LinkPreviewCardProps) => {
         <span>{data.siteName || domain}</span>
       </div>
 
+      {data.author && (
+        <p className="font-semibold text-sm text-foreground">
+          {data.author}
+        </p>
+      )}
+
       {data.title && (
         <h4 className="font-semibold text-[15px] leading-snug text-foreground line-clamp-2">
           {data.title}
