@@ -26,7 +26,7 @@ const FacebookPostCardComponent = ({
   const { t } = useLanguage();
   const canShowPinOption = isOwnProfile && !viewAsPublic && post.user_id === currentUserId;
   const hasNativeMedia = !!(post.image_url || post.video_url || (post.media_urls && post.media_urls.length > 0));
-  const firstUrl = !hasNativeMedia && post.content ? extractFirstUrl(post.content) : null;
+  const firstUrl = post.content ? extractFirstUrl(post.content) : null;
 
   const [showImageViewer, setShowImageViewer] = useState(false);
   const [showComments, setShowComments] = useState(false);

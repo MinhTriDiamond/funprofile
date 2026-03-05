@@ -1,34 +1,78 @@
 
 
-# Chỉnh sửa giao diện Link Preview giống Facebook
+# Phân tích: Tại sao Database hiển thị Livestream = 0
 
-## Phân tích
+## Phát hiện chính
 
-Edge function **đang hoạt động tốt** — YouTube, Telegram, TikTok đều trả về đầy đủ metadata (title, image, description). Tuy nhiên, Facebook share link bị block (trả về "Log in or sign up to view") — đây là hạn chế của Facebook, không thể vượt qua.
+**Dữ liệu thực tế trong database:**
 
-**Vấn đề giao diện**: Card preview hiện tại chưa giống Facebook. Cần chỉnh:
+| Bảng | Số lượng | Ghi chú |
+|------|----------|---------|
+| `live_sessions` | **600** (596 ended + 4 live) | Users livestream rất tích cực |
+| `chunked_recordings` | **342** (314 done, 28 stuck "recording") | Ghi hình hoạt động |
+| `posts` với `post_type = 'live'` | **519** | Bài đăng live |
+| `posts` có video URL chứa "live" | **581** | Video replay |
+| `recording_status = 'ready'` | **488** | Recordings thành công |
+| `recording_status = 'failed'` | **57** | Recordings thất bại (~9.5%) |
 
-## Thay đổi
+**Kết luận: Users livestream RẤT NHIỀU — 600 phiên, 488 recordings thành công!**
 
-### File: `src/components/feed/LinkPreviewCard.tsx`
+## Nguyên nhân gốc: Hàm `get_app_stats` không đếm livestream
 
-Chỉnh style cho giống Facebook reference (images 651, 652):
-- Bỏ `mx-4` → card chiếm full width bài viết (không có margin 2 bên)
-- Bỏ `rounded-lg` → không bo góc (Facebook style)
-- Thêm nền xám nhạt `bg-muted/30` cho phần text
-- Domain hiển thị UPPERCASE (đã có `uppercase` class)
-- Title font lớn hơn, bỏ hover underline
-- Ảnh preview không giới hạn `max-h-[300px]` quá thấp, tăng lên phù hợp hơn
+Hàm `get_app_stats()` hiện tại chỉ trả về:
+- `total_users`, `total_posts`, `total_photos`, `total_videos` (đếm từ `posts WHERE video_url IS NOT NULL`)
+- `total_rewards`, `treasury_camly_received`, `total_camly_claimed`
 
-### File: `src/components/feed/FacebookPostCard.tsx`
+**Không có trường nào đếm `live_sessions`** hoặc `chunked_recordings`. Component `AppHonorBoard.tsx` hiển thị `total_videos = 897` — đó là tổng số posts có video (bao gồm cả live replay), nhưng **không có mục riêng cho "Livestream"**.
 
-- Cho phép hiển thị link preview **ngay cả khi bài có media** (vì user có thể đăng ảnh kèm link YouTube) — nhưng ưu tiên: nếu bài đã có media thì vẫn hiển thị preview bên dưới media
-- Sửa logic `firstUrl` để luôn extract URL từ content (không phụ thuộc `hasNativeMedia`)
+## Vấn đề phụ phát hiện thêm
 
-### File: `supabase/functions/fetch-link-preview/index.ts`
+1. **28 recordings stuck ở trạng thái "recording"** — phiên live đã kết thúc nhưng `chunked_recordings.status` không chuyển sang `done`. Đây là những sessions mà host đóng trình duyệt đột ngột trước khi finalize.
 
-- Thêm xử lý đặc biệt cho Facebook: nếu title = "Log in or sign up to view" → coi như không có data, fallback hiển thị domain + favicon đơn giản thay vì card sai nội dung
-- Proxy ảnh qua edge function nếu ảnh bị CORS block (dùng endpoint `?proxy=` đã có sẵn)
+2. **57 sessions có `recording_status = 'failed'`** (~9.5%) — một số có `chunked_recordings.status = done` (recording thực ra thành công nhưng status ở `live_sessions` bị đánh failed sai).
 
-Tổng: sửa **3 file**, không thay đổi database.
+3. **`live_recordings` table hoàn toàn trống** (0 rows) — Table này được thiết kế cho Agora server-side recording nhưng chưa bao giờ được sử dụng thành công vì hệ thống đang dùng client-side chunked recording thay thế.
+
+## Kế hoạch sửa
+
+### Task 1: Cập nhật `get_app_stats` thêm `total_livestreams`
+
+Thêm trường `total_livestreams` vào hàm SQL:
+
+```sql
+DROP FUNCTION IF EXISTS public.get_app_stats();
+CREATE OR REPLACE FUNCTION public.get_app_stats()
+RETURNS TABLE(
+  total_users BIGINT,
+  total_posts BIGINT,
+  total_photos BIGINT,
+  total_videos BIGINT,
+  total_livestreams BIGINT,
+  total_rewards NUMERIC,
+  treasury_camly_received NUMERIC,
+  total_camly_claimed NUMERIC
+) ...
+-- Thêm:
+(SELECT COUNT(*) FROM live_sessions)::BIGINT AS total_livestreams,
+```
+
+### Task 2: Cập nhật `AppHonorBoard.tsx`
+
+- Thêm interface field `totalLivestreams`
+- Parse từ response `row.total_livestreams`
+- Thêm stat card với icon `Radio` và label "Livestreams"
+
+### Task 3: Dọn dẹp stuck recordings
+
+- Cập nhật 28 `chunked_recordings` stuck ở `status = 'recording'` mà `live_session` đã `ended` → chuyển sang `done` hoặc `failed`
+- Sửa inconsistency: sessions có `recording_status = 'failed'` nhưng `chunked_recordings.status = 'done'`
+
+### Technical Details
+
+**Files cần sửa:**
+1. Migration SQL mới — `DROP FUNCTION + CREATE OR REPLACE` cho `get_app_stats`
+2. `src/components/feed/AppHonorBoard.tsx` — thêm livestream stat
+3. `src/integrations/supabase/types.ts` — tự động cập nhật sau migration
+
+**Không ảnh hưởng:** Các tính năng livestream hiện tại (start, join, record, replay) không bị ảnh hưởng. Đây chỉ là fix hiển thị thống kê.
 
