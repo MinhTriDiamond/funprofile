@@ -153,7 +153,7 @@ async function scrapePageMeta(url: string): Promise<{
     // For Facebook, also try m.facebook.com variant if www fails
     // Always include original URL (normalizedUrl) so we retry it with crawl UAs
     const urlsToTry = isFacebook 
-      ? [resolvedUrl, normalizedUrl, resolvedUrl.replace('www.facebook.com', 'm.facebook.com')]
+      ? [resolvedUrl, url, resolvedUrl.replace('www.facebook.com', 'm.facebook.com')]
         .filter((v, i, a) => a.indexOf(v) === i) // dedupe
       : [resolvedUrl];
 
