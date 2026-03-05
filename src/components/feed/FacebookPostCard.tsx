@@ -105,6 +105,8 @@ const FacebookPostCardComponent = ({
           onDoubleTap={handleMediaDoubleTap}
         />
 
+        {firstUrl && <LinkPreviewCard url={firstUrl} />}
+
         <PostFooter
           post={post}
           currentUserId={currentUserId}
