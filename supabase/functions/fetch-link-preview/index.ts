@@ -148,21 +148,31 @@ async function scrapePageMeta(url: string): Promise<{
   try {
     // For Facebook, try multiple UAs; for others, just one
     const uasToTry = isFacebook ? CRAWL_USER_AGENTS : [CRAWL_USER_AGENTS[0]];
+    
+    // For Facebook, also try m.facebook.com variant if www fails
+    const urlsToTry = isFacebook 
+      ? [resolvedUrl, resolvedUrl.replace('www.facebook.com', 'm.facebook.com')]
+        .filter((v, i, a) => a.indexOf(v) === i) // dedupe
+      : [resolvedUrl];
+
     let html: string | null = null;
 
-    for (const ua of uasToTry) {
-      html = await fetchHtml(resolvedUrl, ua);
-      if (!html) continue;
+    for (const tryUrl of urlsToTry) {
+      for (const ua of uasToTry) {
+        html = await fetchHtml(tryUrl, ua);
+        if (!html) continue;
 
-      // Quick check: did we get useful OG data?
-      const hasOg = /property=["']og:title["']|property=["']og:image["']/i.test(html);
-      const isLoginWall = /log in or sign up|đăng nhập hoặc đăng ký/i.test(html);
-      if (hasOg && !isLoginWall) {
-        console.log(`Got OG data with UA: ${ua.split('/')[0]}`);
-        break;
+        // Quick check: did we get useful OG data?
+        const hasOg = /property=["']og:title["']|property=["']og:image["']/i.test(html);
+        const isLoginWall = /log in or sign up|đăng nhập hoặc đăng ký/i.test(html);
+        if (hasOg && !isLoginWall) {
+          console.log(`Got OG data with UA: ${ua.split('/')[0]} on ${tryUrl}`);
+          break;
+        }
+        console.log(`UA ${ua.split('/')[0]} on ${tryUrl} returned no useful OG data`);
+        html = null;
       }
-      console.log(`UA ${ua.split('/')[0]} returned no useful OG data, trying next...`);
-      html = null; // reset so next UA is tried
+      if (html) break;
     }
 
     if (!html) return result;
