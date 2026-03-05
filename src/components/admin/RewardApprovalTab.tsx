@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -7,9 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { CheckCircle, XCircle, Search, ArrowUpDown, Coins, RefreshCw, TrendingUp, Wallet, User, Image, ShieldCheck, ShieldX, Filter } from "lucide-react";
+import { CheckCircle, XCircle, Search, ArrowUpDown, Coins, RefreshCw, TrendingUp, ShieldCheck, ShieldX, Filter, CheckCheck } from "lucide-react";
 
 interface UserWithReward {
   id: string;
@@ -30,6 +31,7 @@ interface UserWithReward {
   claimed_amount: number;
   claimable_amount: number;
   last_claimed_at: string | null;
+  reward_requested_at: string | null;
 }
 
 interface RewardApprovalTabProps {
@@ -64,14 +66,19 @@ const ProfileBadge = ({ ok, label }: { ok: boolean; label: string }) => (
   </Badge>
 );
 
+const formatDateTime = (dateStr: string) =>
+  new Date(dateStr).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
 const RewardApprovalTab = ({ adminId, onRefresh }: RewardApprovalTabProps) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState<"alpha_asc" | "claimable_desc" | "claimable_asc" | "total_desc">("alpha_asc");
   const [profileFilter, setProfileFilter] = useState<"all" | "ready" | "incomplete">("all");
   const [loading, setLoading] = useState<string | null>(null);
+  const [batchLoading, setBatchLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
   const [users, setUsers] = useState<UserWithReward[]>([]);
-  
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserWithReward | null>(null);
   const [rejectReason, setRejectReason] = useState("");
@@ -88,10 +95,9 @@ const RewardApprovalTab = ({ adminId, onRefresh }: RewardApprovalTabProps) => {
       });
       if (rewardsError) throw rewardsError;
 
-      // Fetch claims + profiles in parallel
       const [claimsRes, profilesRes] = await Promise.all([
         supabase.from('reward_claims').select('user_id, amount, created_at').order('created_at', { ascending: false }),
-        supabase.from('profiles').select('id, full_name, public_wallet_address, cover_url'),
+        supabase.from('profiles').select('id, full_name, public_wallet_address, cover_url, reward_status, updated_at'),
       ]);
 
       if (claimsRes.error) throw claimsRes.error;
@@ -101,15 +107,14 @@ const RewardApprovalTab = ({ adminId, onRefresh }: RewardApprovalTabProps) => {
       const lastClaimedMap = new Map<string, string>();
       claimsRes.data?.forEach(claim => {
         claimedMap.set(claim.user_id, (claimedMap.get(claim.user_id) || 0) + claim.amount);
-        // Since ordered desc, first occurrence is the latest
         if (!lastClaimedMap.has(claim.user_id)) {
           lastClaimedMap.set(claim.user_id, claim.created_at);
         }
       });
 
-      const profileMap = new Map<string, { full_name: string | null; public_wallet_address: string | null; cover_url: string | null }>();
+      const profileMap = new Map<string, { full_name: string | null; public_wallet_address: string | null; cover_url: string | null; reward_status: string | null; updated_at: string | null }>();
       profilesRes.data?.forEach(p => {
-        profileMap.set(p.id, { full_name: p.full_name, public_wallet_address: p.public_wallet_address, cover_url: p.cover_url });
+        profileMap.set(p.id, { full_name: p.full_name, public_wallet_address: p.public_wallet_address, cover_url: p.cover_url, reward_status: p.reward_status, updated_at: p.updated_at });
       });
 
       const combinedUsers: UserWithReward[] = (rewardsData || []).map((r: any) => {
@@ -134,10 +139,12 @@ const RewardApprovalTab = ({ adminId, onRefresh }: RewardApprovalTabProps) => {
           claimed_amount: claimed,
           claimable_amount: Math.max(0, Number(r.total_reward) - claimed),
           last_claimed_at: lastClaimedMap.get(r.id) || null,
+          reward_requested_at: profile?.updated_at || null,
         };
       });
 
       setUsers(combinedUsers);
+      setSelectedIds(new Set());
     } catch (error) {
       console.error("Error loading reward data:", error);
       toast.error("Lỗi khi tải dữ liệu thưởng");
@@ -168,6 +175,25 @@ const RewardApprovalTab = ({ adminId, onRefresh }: RewardApprovalTabProps) => {
       }
     });
 
+  const eligibleFilteredUsers = filteredUsers.filter(isProfileComplete);
+  const allEligibleSelected = eligibleFilteredUsers.length > 0 && eligibleFilteredUsers.every(u => selectedIds.has(u.id));
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (allEligibleSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(eligibleFilteredUsers.map(u => u.id)));
+    }
+  };
+
   const handleApprove = async (user: UserWithReward) => {
     setLoading(user.id);
     try {
@@ -188,14 +214,35 @@ const RewardApprovalTab = ({ adminId, onRefresh }: RewardApprovalTabProps) => {
       });
 
       toast.success(`Đã duyệt ${formatNumber(user.claimable_amount)} CAMLY cho ${user.username}`);
-      loadRewardData();
-      onRefresh();
+      return true;
     } catch (error: any) {
       console.error("Error approving reward:", error);
       toast.error(error.message || "Lỗi khi duyệt thưởng");
+      return false;
     } finally {
       setLoading(null);
     }
+  };
+
+  const handleBatchApprove = async () => {
+    const ids = Array.from(selectedIds);
+    const usersToApprove = filteredUsers.filter(u => ids.includes(u.id) && isProfileComplete(u));
+    if (usersToApprove.length === 0) return;
+
+    setBatchLoading(true);
+    let success = 0;
+    let fail = 0;
+
+    for (const user of usersToApprove) {
+      const ok = await handleApprove(user);
+      if (ok) success++; else fail++;
+    }
+
+    toast.success(`Đã duyệt hàng loạt: ${success} thành công${fail > 0 ? `, ${fail} thất bại` : ''}`);
+    setSelectedIds(new Set());
+    setBatchLoading(false);
+    loadRewardData();
+    onRefresh();
   };
 
   const openRejectDialog = (user: UserWithReward) => {
@@ -295,15 +342,28 @@ const RewardApprovalTab = ({ adminId, onRefresh }: RewardApprovalTabProps) => {
               <Coins className="w-5 h-5 text-yellow-500" />
               Duyệt thưởng V2 ({filteredUsers.length} users)
             </CardTitle>
-            <Button variant="outline" size="sm" onClick={loadRewardData} disabled={dataLoading} className="gap-2">
-              <RefreshCw className={`w-4 h-4 ${dataLoading ? 'animate-spin' : ''}`} />
-              Làm mới
-            </Button>
+            <div className="flex gap-2">
+              {selectedIds.size > 0 && (
+                <Button
+                  size="sm"
+                  className="bg-green-500 hover:bg-green-600 text-white gap-1"
+                  onClick={handleBatchApprove}
+                  disabled={batchLoading}
+                >
+                  <CheckCheck className="w-4 h-4" />
+                  Duyệt hàng loạt ({selectedIds.size})
+                </Button>
+              )}
+              <Button variant="outline" size="sm" onClick={loadRewardData} disabled={dataLoading} className="gap-2">
+                <RefreshCw className={`w-4 h-4 ${dataLoading ? 'animate-spin' : ''}`} />
+                Làm mới
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Search, Filter, Sort */}
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-2 flex-wrap items-center">
             <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
@@ -350,6 +410,19 @@ const RewardApprovalTab = ({ adminId, onRefresh }: RewardApprovalTabProps) => {
             </Button>
           </div>
 
+          {/* Select all header */}
+          {eligibleFilteredUsers.length > 0 && (
+            <div className="flex items-center gap-2 px-4 py-2 bg-muted/50 rounded-md">
+              <Checkbox
+                checked={allEligibleSelected}
+                onCheckedChange={toggleSelectAll}
+              />
+              <span className="text-sm text-muted-foreground">
+                Chọn tất cả đủ điều kiện ({eligibleFilteredUsers.length})
+              </span>
+            </div>
+          )}
+
           {/* User List */}
           {dataLoading ? (
             <div className="flex items-center justify-center py-12">
@@ -370,14 +443,28 @@ const RewardApprovalTab = ({ adminId, onRefresh }: RewardApprovalTabProps) => {
                       key={user.id}
                       className={`flex items-center gap-4 p-4 border rounded-lg hover:shadow-sm transition-shadow ${complete ? 'bg-background' : 'bg-amber-50/50 border-amber-200'}`}
                     >
-                      <Avatar className="w-12 h-12">
-                        <AvatarImage src={user.avatar_url || ""} />
-                        <AvatarFallback>{user.username[0]?.toUpperCase()}</AvatarFallback>
-                      </Avatar>
+                      {/* Checkbox */}
+                      {complete && (
+                        <Checkbox
+                          checked={selectedIds.has(user.id)}
+                          onCheckedChange={() => toggleSelect(user.id)}
+                        />
+                      )}
+                      {!complete && <div className="w-4" />}
+
+                      {/* Avatar — click to profile */}
+                      <a href={`/${user.username}`} target="_blank" rel="noopener noreferrer" className="shrink-0">
+                        <Avatar className="w-12 h-12 cursor-pointer ring-2 ring-transparent hover:ring-primary/40 transition-all">
+                          <AvatarImage src={user.avatar_url || ""} />
+                          <AvatarFallback>{user.username[0]?.toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                      </a>
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <p className="font-semibold truncate">{user.username}</p>
+                          <a href={`/${user.username}`} target="_blank" rel="noopener noreferrer" className="font-semibold truncate hover:underline hover:text-primary transition-colors">
+                            {user.username}
+                          </a>
                           {user.full_name && <span className="text-xs text-muted-foreground">({user.full_name})</span>}
                           {user.today_reward > 0 && (
                             <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
@@ -408,9 +495,14 @@ const RewardApprovalTab = ({ adminId, onRefresh }: RewardApprovalTabProps) => {
                         </p>
                         <p className="text-xs text-muted-foreground">Total: {formatNumber(user.total_reward)}</p>
                         <p className="text-xs text-green-600">Claimed: {formatNumber(user.claimed_amount)}</p>
+                        {user.reward_requested_at && (
+                          <p className="text-[10px] text-blue-600">
+                            📋 Yêu cầu: {formatDateTime(user.reward_requested_at)}
+                          </p>
+                        )}
                         {user.last_claimed_at && (
                           <p className="text-[10px] text-muted-foreground">
-                            🕐 {new Date(user.last_claimed_at).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            🕐 Claim: {formatDateTime(user.last_claimed_at)}
                           </p>
                         )}
                       </div>
@@ -423,7 +515,7 @@ const RewardApprovalTab = ({ adminId, onRefresh }: RewardApprovalTabProps) => {
                                 <Button
                                   size="sm"
                                   className="bg-green-500 hover:bg-green-600 text-white gap-1"
-                                  onClick={() => handleApprove(user)}
+                                  onClick={() => { handleApprove(user).then(() => { loadRewardData(); onRefresh(); }); }}
                                   disabled={loading === user.id || !complete}
                                 >
                                   <CheckCircle className="w-4 h-4" />
