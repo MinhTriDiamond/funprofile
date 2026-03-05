@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import { ExternalLink } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useLinkPreview, extractFirstUrl } from '@/hooks/useLinkPreview';
@@ -9,6 +9,7 @@ interface LinkPreviewCardProps {
 
 const LinkPreviewCardComponent = ({ url }: LinkPreviewCardProps) => {
   const { data, isLoading } = useLinkPreview(url);
+  const [imageError, setImageError] = useState(false);
 
   if (isLoading) {
     return (
@@ -29,6 +30,8 @@ const LinkPreviewCardComponent = ({ url }: LinkPreviewCardProps) => {
     try { return new URL(data.url).hostname.replace('www.', ''); } catch { return ''; }
   })();
 
+  const showImage = data.image && !imageError;
+
   return (
     <a
       href={data.url}
@@ -37,14 +40,14 @@ const LinkPreviewCardComponent = ({ url }: LinkPreviewCardProps) => {
       className="block mb-3 border-y border-border overflow-hidden group"
       onClick={(e) => e.stopPropagation()}
     >
-      {data.image && (
+      {showImage && (
         <div className="w-full bg-muted">
           <img
-            src={data.image}
+            src={data.image!}
             alt={data.title || ''}
             className="w-full max-h-[400px] object-cover"
             loading="lazy"
-            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            onError={() => setImageError(true)}
           />
         </div>
       )}
