@@ -80,19 +80,29 @@ function extractUsername(url: string, platform: string): string | null {
 
 /** Resolve Facebook share short-links to their real destination */
 async function resolveFacebookRedirect(url: string): Promise<string> {
-  if (!/\/share\/[vp]\//i.test(url)) return url;
-  try {
-    const res = await fetch(url, {
-      headers: { 'User-Agent': 'facebookexternalhit/1.1' },
-      redirect: 'manual',
-      signal: AbortSignal.timeout(5000),
-    });
-    const location = res.headers.get('location');
-    if (location && location.startsWith('http')) {
-      console.log(`Resolved FB share redirect: ${url} → ${location}`);
-      return location;
-    }
-  } catch (e) { console.log('FB redirect resolve error:', e); }
+  if (!/\/share\/[vpr]\//i.test(url)) return url;
+  // Try multiple UAs to resolve redirect - some share types only redirect for specific crawlers
+  const resolveUAs = [
+    'facebookexternalhit/1.1',
+    'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+    'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+  ];
+  for (const ua of resolveUAs) {
+    try {
+      const res = await fetch(url, {
+        headers: { 'User-Agent': ua },
+        redirect: 'manual',
+        signal: AbortSignal.timeout(5000),
+      });
+      const location = res.headers.get('location');
+      if (location && location.startsWith('http') && !location.includes('/login')) {
+        console.log(`Resolved FB share redirect with UA ${ua.split('/')[0]}: ${url} → ${location}`);
+        return location;
+      }
+      // Consume body
+      try { await res.text(); } catch {}
+    } catch (e) { console.log('FB redirect resolve error:', e); }
+  }
   return url;
 }
 
