@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { FacebookPostCard } from '@/components/feed/FacebookPostCard';
 import { GiftCelebrationCard } from '@/components/feed/GiftCelebrationCard';
 import { FacebookCreatePost } from '@/components/feed/FacebookCreatePost';
@@ -7,6 +7,7 @@ import { Pin } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useLanguage } from '@/i18n/LanguageContext';
+import { useProfilePolling } from '@/hooks/useProfilePolling';
 import type { PostStats } from '@/hooks/useFeedPosts';
 import type { ProfileData } from '@/hooks/useProfile';
 
@@ -44,6 +45,15 @@ export const ProfilePosts = ({
   onRefresh,
 }: ProfilePostsProps) => {
   const { t } = useLanguage();
+
+  // Collect post IDs for batch polling (replaces per-post Realtime)
+  const postIds = useMemo(() => {
+    return displayedPosts
+      .filter((item) => item._type === 'original')
+      .map((item) => item.id);
+  }, [displayedPosts]);
+
+  const polledStats = useProfilePolling(postIds);
 
   const handlePinPost = useCallback(async (postId: string) => {
     try {
@@ -90,7 +100,7 @@ export const ProfilePosts = ({
                   <span className="font-semibold text-primary">{t('sharedLabel')}</span>
                 </div>
                 {item.caption && <p className="text-sm text-muted-foreground italic px-3 pb-1">{item.caption}</p>}
-                <FacebookPostCard post={item.posts} currentUserId={currentUserId} onPostDeleted={onRefresh} initialStats={sharedStats} />
+                <FacebookPostCard post={item.posts} currentUserId={currentUserId} onPostDeleted={onRefresh} initialStats={sharedStats} disableRealtime />
               </div>
             ) : (
               <div key={item.id} className="space-y-0">
@@ -100,7 +110,7 @@ export const ProfilePosts = ({
                   </div>
                 )}
                 {item.post_type === 'gift_celebration' ? (
-                  <GiftCelebrationCard post={item} currentUserId={currentUserId} onPostDeleted={onRefresh} initialStats={stats} />
+                  <GiftCelebrationCard post={item} currentUserId={currentUserId} onPostDeleted={onRefresh} initialStats={stats} disableRealtime disableEffects />
                 ) : (
                   <FacebookPostCard
                     post={item}
@@ -112,6 +122,7 @@ export const ProfilePosts = ({
                     onUnpinPost={showPrivateElements ? handleUnpinPost : undefined}
                     isOwnProfile={isOwnProfile}
                     viewAsPublic={viewAsPublic}
+                    disableRealtime
                   />
                 )}
               </div>

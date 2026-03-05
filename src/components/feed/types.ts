@@ -47,4 +47,5 @@ export interface FacebookPostCardProps {
   onUnpinPost?: () => void;
   isOwnProfile?: boolean;
   viewAsPublic?: boolean;
+  disableRealtime?: boolean;
 }
