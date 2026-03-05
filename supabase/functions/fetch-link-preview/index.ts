@@ -215,7 +215,6 @@ serve(async (req) => {
         favicon: meta.favicon,
         url: normalizedUrl,
       }), {
-      }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
