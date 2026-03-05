@@ -95,7 +95,8 @@ async function resolveFacebookRedirect(url: string): Promise<string> {
         signal: AbortSignal.timeout(5000),
       });
       const location = res.headers.get('location');
-      if (location && location.startsWith('http') && !location.includes('/login')) {
+      if (location && location.startsWith('http') && !location.includes('/login')
+          && !/m\.facebook\.com\/share\//i.test(location)) {
         console.log(`Resolved FB share redirect with UA ${ua.split('/')[0]}: ${url} → ${location}`);
         return location;
       }
@@ -150,8 +151,9 @@ async function scrapePageMeta(url: string): Promise<{
     const uasToTry = isFacebook ? CRAWL_USER_AGENTS : [CRAWL_USER_AGENTS[0]];
     
     // For Facebook, also try m.facebook.com variant if www fails
+    // Always include original URL (normalizedUrl) so we retry it with crawl UAs
     const urlsToTry = isFacebook 
-      ? [resolvedUrl, resolvedUrl.replace('www.facebook.com', 'm.facebook.com')]
+      ? [resolvedUrl, url, resolvedUrl.replace('www.facebook.com', 'm.facebook.com')]
         .filter((v, i, a) => a.indexOf(v) === i) // dedupe
       : [resolvedUrl];
 
