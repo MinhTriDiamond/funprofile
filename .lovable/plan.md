@@ -1,32 +1,53 @@
 
 
-# Sửa "Đã rút" = 0 cho angelthutrang
+# Backfill "Đã rút" cho toàn bộ user từ bảng donations
 
-## Phân tích dữ liệu
+## Phân tích hiện trạng
 
-Sau khi kiểm tra toàn bộ database:
+- **`reward_claims`**: Chỉ có 2 bản ghi (angelaivan: 200.000 + 300.000 = 500.000 CAMLY)
+- **`donations` từ Treasury**: 241 bản ghi, 126 user, tổng **91.320.999 CAMLY** đã được gửi từ Treasury (`9e702a6f...`) đến các user
+- **Kết quả**: Tất cả user (kể cả angelthutrang với 500.000 CAMLY) đều hiển thị "Đã rút = 0" vì `reward_claims` trống
 
-- **User:** angelthutrang (`b7856e97-9bff-4e2d-8448-c4395bf0548b`)
-- **Ví:** `0x80041CAA8FE788AfEa5ceD2bC3b5a0B7047F6966`
-- **total_rewards:** 626.000 (nhưng ảnh hiện 907.348 — có thể đã cập nhật sau)
-- **reward_claims:** Trống (0 bản ghi)
-- **Transactions từ Treasury → ví angelthutrang:** Không tìm thấy bản ghi nào
+Nguồn dữ liệu chính xác nhất là bảng `donations` vì đã được backfill từ on-chain (Moralis API) trước đó.
 
-## Vấn đề
+## Kế hoạch thực hiện
 
-Không có bất kỳ giao dịch nào từ địa chỉ Treasury (`0x5102...a402`) đến ví `0x8004...6966` trong database. Điều này có nghĩa:
-1. Giao dịch claim chưa được ghi nhận vào database, HOẶC
-2. Giao dịch được gửi từ một địa chỉ treasury khác
+### 1. Xóa dữ liệu cũ trong `reward_claims`
+Xóa 2 bản ghi hiện tại của angelaivan để tránh trùng lặp khi backfill.
 
-## Cần thông tin từ con
+### 2. Backfill `reward_claims` từ `donations`
+Chèn từng giao dịch từ Treasury vào `reward_claims`, ánh xạ:
+- `user_id` = `recipient_id` từ donations
+- `amount` = `amount` từ donations  
+- `wallet_address` = lấy từ donations metadata hoặc profiles
+- `created_at` = `confirmed_at` hoặc `created_at` từ donations
 
-Để chèn đúng bản ghi `reward_claims` và đảm bảo kiểm toán chính xác, Cha cần:
+```sql
+INSERT INTO reward_claims (user_id, amount, wallet_address, created_at)
+SELECT 
+  d.recipient_id,
+  d.amount::bigint,
+  COALESCE(
+    p.wallet_address, 
+    p.public_wallet_address, 
+    p.custodial_wallet_address, 
+    'unknown'
+  ),
+  COALESCE(d.confirmed_at, d.created_at)
+FROM donations d
+LEFT JOIN profiles p ON p.id = d.recipient_id
+WHERE d.sender_id = '9e702a6f-4035-4f30-9c04-f2e21419b37a'
+  AND d.status = 'confirmed'
+  AND d.recipient_id IS NOT NULL;
+```
 
-1. **Transaction hash (tx hash)** của 2 lệnh rút (200.000 và 300.000 CAMLY) — hoặc nếu là 1 lệnh 500.000
-2. **Địa chỉ gửi** — có phải từ Treasury `0x5102...a402` không, hay từ ví khác?
+### 3. Không thay đổi code
+Hàm `get_user_honor_stats` đã đọc từ `reward_claims` → chỉ cần dữ liệu có mặt là hiển thị đúng cho tất cả user, kể cả user bị ban.
 
-Sau khi có thông tin, Cha sẽ:
-- Chèn đúng bản ghi vào `reward_claims` cho angelthutrang
-- Đồng bộ bảng `transactions` nếu cần
-- "Đã rút" sẽ hiển thị đúng 500.000 CAMLY
+### Kết quả mong đợi
+- **126 user** sẽ có "Đã rút" hiển thị chính xác
+- Tổng "Đã rút" toàn hệ thống = **91.320.999 CAMLY**
+- User bị ban vẫn giữ nguyên dữ liệu để kiểm toán
+- angelthutrang: Đã rút = 500.000
+- angelaivan: Đã rút = 500.000 (từ donations, không phải từ 2 bản ghi cũ)
 
