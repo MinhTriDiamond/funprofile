@@ -78,6 +78,48 @@ function extractUsername(url: string, platform: string): string | null {
   }
 }
 
+/** Resolve Facebook share short-links to their real destination */
+async function resolveFacebookRedirect(url: string): Promise<string> {
+  if (!/\/share\/[vp]\//i.test(url)) return url;
+  try {
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'facebookexternalhit/1.1' },
+      redirect: 'manual',
+      signal: AbortSignal.timeout(5000),
+    });
+    const location = res.headers.get('location');
+    if (location && location.startsWith('http')) {
+      console.log(`Resolved FB share redirect: ${url} → ${location}`);
+      return location;
+    }
+  } catch (e) { console.log('FB redirect resolve error:', e); }
+  return url;
+}
+
+const CRAWL_USER_AGENTS = [
+  'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
+  'Googlebot/2.1 (+http://www.google.com/bot.html)',
+  'Twitterbot/1.0',
+];
+
+/** Fetch HTML with a specific User-Agent */
+async function fetchHtml(url: string, ua: string): Promise<string | null> {
+  try {
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': ua,
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+      },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return null;
+    return await res.text();
+  } catch {
+    return null;
+  }
+}
+
 /** Scrape HTML and extract OG/meta tags */
 async function scrapePageMeta(url: string): Promise<{
   title: string | null;
@@ -89,16 +131,31 @@ async function scrapePageMeta(url: string): Promise<{
 }> {
   const result = { title: null as string | null, description: null as string | null, image: null as string | null, video: null as string | null, siteName: null as string | null, favicon: null as string | null, author: null as string | null };
   const isFacebook = /facebook\.com|fb\.watch|fb\.com/i.test(url);
+
+  // Resolve Facebook share short-links first
+  const resolvedUrl = isFacebook ? await resolveFacebookRedirect(url) : url;
+
   try {
-    const ua = 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)';
-    const res = await fetch(url, {
-      headers: {
-        'User-Agent': ua,
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.5',
-      },
-      signal: AbortSignal.timeout(8000),
-    });
+    // For Facebook, try multiple UAs; for others, just one
+    const uasToTry = isFacebook ? CRAWL_USER_AGENTS : [CRAWL_USER_AGENTS[0]];
+    let html: string | null = null;
+
+    for (const ua of uasToTry) {
+      html = await fetchHtml(resolvedUrl, ua);
+      if (!html) continue;
+
+      // Quick check: did we get useful OG data?
+      const hasOg = /property=["']og:title["']|property=["']og:image["']/i.test(html);
+      const isLoginWall = /log in or sign up|đăng nhập hoặc đăng ký/i.test(html);
+      if (hasOg && !isLoginWall) {
+        console.log(`Got OG data with UA: ${ua.split('/')[0]}`);
+        break;
+      }
+      console.log(`UA ${ua.split('/')[0]} returned no useful OG data, trying next...`);
+      html = null; // reset so next UA is tried
+    }
+
+    if (!html) return result;
     if (!res.ok) return result;
     const html = await res.text();
 
