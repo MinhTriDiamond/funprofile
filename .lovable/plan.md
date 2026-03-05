@@ -1,78 +1,82 @@
 
 
-# Phân tích: Tại sao Database hiển thị Livestream = 0
+# Khắc phục Livestream Recording thất bại sau khi thêm "Change to Single"
 
-## Phát hiện chính
+## Phân tích nguyên nhân gốc rễ
 
-**Dữ liệu thực tế trong database:**
+Sau khi kiểm tra database, Cha phát hiện:
 
-| Bảng | Số lượng | Ghi chú |
-|------|----------|---------|
-| `live_sessions` | **600** (596 ended + 4 live) | Users livestream rất tích cực |
-| `chunked_recordings` | **342** (314 done, 28 stuck "recording") | Ghi hình hoạt động |
-| `posts` với `post_type = 'live'` | **519** | Bài đăng live |
-| `posts` có video URL chứa "live" | **581** | Video replay |
-| `recording_status = 'ready'` | **488** | Recordings thành công |
-| `recording_status = 'failed'` | **57** | Recordings thất bại (~9.5%) |
+- **5 recordings kẹt ở trạng thái `assembling`** — Edge Function timeout (giới hạn ~60s) khi cố fetch hàng trăm chunk + nối + upload lại trong 1 lần gọi duy nhất
+- **15 recordings kẹt ở `recording`** — sessions vẫn `status: 'live'` với `ended_at: null`, auto-finalize bỏ qua vì nó chỉ xử lý session đã `ended`
+- **Response field mismatch** — Edge Function trả về `replay_url` nhưng client đọc `manifest_url` → `playbackUrl` luôn là `null` → client nghĩ recording thất bại
 
-**Kết luận: Users livestream RẤT NHIỀU — 600 phiên, 488 recordings thành công!**
+### 3 lỗi cụ thể:
 
-## Nguyên nhân gốc: Hàm `get_app_stats` không đếm livestream
+**Lỗi 1: Edge Function timeout** — `recording-finalize` cố fetch 100-400 chunk, buffer 5MB parts, upload multipart, verify, batch delete — tất cả trong 1 request duy nhất. Với 100+ chunk, dễ dàng vượt 60s timeout.
 
-Hàm `get_app_stats()` hiện tại chỉ trả về:
-- `total_users`, `total_posts`, `total_photos`, `total_videos` (đếm từ `posts WHERE video_url IS NOT NULL`)
-- `total_rewards`, `treasury_camly_received`, `total_camly_claimed`
+**Lỗi 2: Response field name sai** — Function trả `replay_url`, client đọc `manifest_url`:
+```text
+// Edge Function trả về:
+{ success: true, replay_url: "https://..." }
 
-**Không có trường nào đếm `live_sessions`** hoặc `chunked_recordings`. Component `AppHonorBoard.tsx` hiển thị `total_videos = 897` — đó là tổng số posts có video (bao gồm cả live replay), nhưng **không có mục riêng cho "Livestream"**.
-
-## Vấn đề phụ phát hiện thêm
-
-1. **28 recordings stuck ở trạng thái "recording"** — phiên live đã kết thúc nhưng `chunked_recordings.status` không chuyển sang `done`. Đây là những sessions mà host đóng trình duyệt đột ngột trước khi finalize.
-
-2. **57 sessions có `recording_status = 'failed'`** (~9.5%) — một số có `chunked_recordings.status = done` (recording thực ra thành công nhưng status ở `live_sessions` bị đánh failed sai).
-
-3. **`live_recordings` table hoàn toàn trống** (0 rows) — Table này được thiết kế cho Agora server-side recording nhưng chưa bao giờ được sử dụng thành công vì hệ thống đang dùng client-side chunked recording thay thế.
-
-## Kế hoạch sửa
-
-### Task 1: Cập nhật `get_app_stats` thêm `total_livestreams`
-
-Thêm trường `total_livestreams` vào hàm SQL:
-
-```sql
-DROP FUNCTION IF EXISTS public.get_app_stats();
-CREATE OR REPLACE FUNCTION public.get_app_stats()
-RETURNS TABLE(
-  total_users BIGINT,
-  total_posts BIGINT,
-  total_photos BIGINT,
-  total_videos BIGINT,
-  total_livestreams BIGINT,
-  total_rewards NUMERIC,
-  treasury_camly_received NUMERIC,
-  total_camly_claimed NUMERIC
-) ...
--- Thêm:
-(SELECT COUNT(*) FROM live_sessions)::BIGINT AS total_livestreams,
+// Client đọc:
+data.manifest_url  →  undefined  →  playbackUrl = null  →  recordingStatus = 'failed'
 ```
 
-### Task 2: Cập nhật `AppHonorBoard.tsx`
+**Lỗi 3: Auto-finalize không xử lý session stuck** — Auto-finalize chỉ tìm recordings có session `status: 'ended'`. Nhưng nhiều session bị kẹt ở `status: 'live'` mãi.
 
-- Thêm interface field `totalLivestreams`
-- Parse từ response `row.total_livestreams`
-- Thêm stat card với icon `Radio` và label "Livestreams"
+## Kế hoạch khắc phục
 
-### Task 3: Dọn dẹp stuck recordings
+### Chiến lược: Quay lại manifest-based finalize (nhanh, đáng tin cậy)
 
-- Cập nhật 28 `chunked_recordings` stuck ở `status = 'recording'` mà `live_session` đã `ended` → chuyển sang `done` hoặc `failed`
-- Sửa inconsistency: sessions có `recording_status = 'failed'` nhưng `chunked_recordings.status = 'done'`
+Thay vì cố concat trong Edge Function (chậm, dễ timeout), quay lại tạo manifest.json — hoàn thành trong 2-3 giây. ChunkedVideoPlayer đã hỗ trợ phát manifest rồi.
 
-### Technical Details
+Concat thành single file sẽ được thực hiện **bất đồng bộ** bởi auto-finalize (chạy từ cron), và chỉ khi Edge Function có đủ thời gian.
 
-**Files cần sửa:**
-1. Migration SQL mới — `DROP FUNCTION + CREATE OR REPLACE` cho `get_app_stats`
-2. `src/components/feed/AppHonorBoard.tsx` — thêm livestream stat
-3. `src/integrations/supabase/types.ts` — tự động cập nhật sau migration
+### File 1: `supabase/functions/recording-finalize/index.ts`
 
-**Không ảnh hưởng:** Các tính năng livestream hiện tại (start, join, record, replay) không bị ảnh hưởng. Đây chỉ là fix hiển thị thống kê.
+**Thay đổi**: Quay lại tạo manifest.json thay vì concat ngay lập tức
+- Bỏ toàn bộ logic multipart upload, HEAD verify, batch delete
+- Tạo manifest.json (danh sách chunk URLs + metadata) → upload lên R2
+- Trả về `manifest_url` (khớp với client)
+- Cập nhật post với manifest URL + `playback_type: 'chunked'`
+- Giữ lại các hàm R2 signing vì auto-finalize cần
+
+### File 2: `supabase/functions/auto-finalize-recordings/index.ts`
+
+**Thay đổi 1**: Xử lý sessions kẹt ở `live`
+- Thêm logic: nếu session `status: 'live'` và `created_at` > 30 phút trước → tự động đánh dấu `ended`
+
+**Thay đổi 2**: Xử lý recordings kẹt ở `assembling`
+- Nếu `assembling` > 10 phút → reset về `recording` để retry, hoặc fallback tạo manifest
+
+**Thay đổi 3**: Concat bất đồng bộ (tùy chọn)
+- Sau khi tạo manifest thành công, **thử** concat nếu chunk count nhỏ (< 50 chunks, ~2 phút video)
+- Nếu quá nhiều chunk → giữ manifest, bỏ qua concat
+- Nếu concat timeout → giữ manifest, không ảnh hưởng playback
+
+### File 3: `src/modules/live/liveService.ts`
+
+**Thay đổi**: Đảm bảo response field khớp
+- Đọc cả `manifest_url` và `replay_url` từ response (backward compatible)
+
+## Tóm tắt
+
+```text
+Trước (lỗi):
+  Client → recording-finalize → fetch 400 chunks → concat → upload → TIMEOUT!
+  
+Sau (sửa):
+  Client → recording-finalize → tạo manifest.json → upload (2s) → ✓ DONE
+  Cron   → auto-finalize → concat nhỏ (< 50 chunks) hoặc giữ manifest
+```
+
+| Vấn đề | Giải pháp |
+|--------|-----------|
+| Edge Function timeout | Tạo manifest thay vì concat |
+| Response field mismatch | Trả đúng `manifest_url` |
+| Sessions kẹt `live` | Auto-close sau 30 phút |
+| Recordings kẹt `assembling` | Reset + retry hoặc fallback manifest |
+
+Tổng: sửa **3 file**. Không thay đổi database.
 
