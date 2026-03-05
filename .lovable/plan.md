@@ -1,26 +1,69 @@
 
 
-# Reset lệnh rút dưới 200.000 CAMLY và từ chối lệnh từ user bị ban
+# Reset lệnh rút thưởng & rà soát chặn user bị ban
 
 ## Tình trạng hiện tại
 
-Qua kiểm tra database:
-- **13 lệnh rút dưới 200.000 CAMLY** từ 2 user không bị ban (`nhung95hd` — 11 lệnh, `quyenhd69` — 2 lệnh)
-- **186 lệnh rút từ user đã bị ban** — cần xóa toàn bộ
+- **41 lệnh rút** trong `reward_claims` — tất cả từ user không bị ban (đã dọn lệnh banned trước đó)
+- **0 lệnh dưới 200.000** hoặc trên 500.000 — dữ liệu claim hiện tại đã hợp lệ
+- **134 user bị ban** trong hệ thống
 
-## Thao tác cần thực hiện
+## Phần 1: Reset lệnh rút thưởng
 
-### 1. Xóa 13 lệnh rút dưới 200.000 CAMLY (user không bị ban)
-- Xóa các record trong `reward_claims` có `amount < 200000` từ user không bị ban
-- Số dư khả dụng của user sẽ tự động tăng lại (vì hệ thống tính "Có thể rút = Tổng thu − Đã rút")
-- User có thể làm lại lệnh rút đúng công thức tối thiểu 200.000 CAMLY
+Xóa toàn bộ 41 record trong `reward_claims` để user claim lại từ đầu. Đồng thời reset `reward_status` của user không bị ban về `approved` để họ có thể claim lại.
 
-### 2. Xóa 186 lệnh rút từ user bị ban
-- Xóa toàn bộ record trong `reward_claims` của user có `is_banned = true`
-- Đây là các lệnh đã thực hiện trước khi bị ban, cần dọn sạch
+**Thao tác dữ liệu:**
+- `DELETE FROM reward_claims` (toàn bộ 41 record)
+- `UPDATE profiles SET reward_status = 'approved' WHERE is_banned = false AND reward_status IN ('claimed', 'pending')`
+
+## Phần 2: Rà soát chặn user bị ban — LỖ HỔNG TÌM THẤY
+
+Đã rà soát toàn bộ Edge Functions. Các function **THIẾU kiểm tra `is_banned`**:
+
+| Edge Function | Chức năng | Rủi ro |
+|---|---|---|
+| `claim-reward` | Rút thưởng | ✅ Đã có (blockedStatuses) |
+| `create-post` | Đăng bài | ✅ Đã có |
+| `record-donation` | Tặng quà | ✅ Đã có |
+| **`connect-external-wallet`** | Kết nối ví ngoài | ❌ **THIẾU** |
+| **`mint-soul-nft`** | Mint NFT | ❌ **THIẾU** |
+| **`pplp-submit-action`** | Ghi nhận hành động PPLP | ❌ **THIẾU** |
+| **`pplp-score-action`** | Chấm điểm Light | ❌ **THIẾU** |
+| **`pplp-evaluate`** | Đánh giá PPLP | ❌ **THIẾU** |
+| **`live-token`** | Lấy token livestream | ❌ **THIẾU** |
+| **`manual-create-donation`** | Tạo donation thủ công | ❌ **THIẾU** |
+
+## Kế hoạch thực hiện
+
+### A. Dữ liệu (không thay đổi code)
+1. Xóa toàn bộ `reward_claims`
+2. Reset `reward_status = 'approved'` cho user không bị ban đang ở trạng thái `claimed`/`pending`
+
+### B. Thêm kiểm tra `is_banned` vào 7 Edge Functions
+Thêm đoạn code chuẩn vào mỗi function sau khi xác thực user:
+
+```typescript
+// Check banned status
+const { data: banCheck } = await supabaseAdmin
+  .from('profiles').select('is_banned').eq('id', user.id).single();
+if (banCheck?.is_banned) {
+  return new Response(
+    JSON.stringify({ error: 'Tài khoản đã bị cấm vĩnh viễn.' }),
+    { status: 403, headers: corsHeaders }
+  );
+}
+```
+
+**Files sửa:**
+- `supabase/functions/connect-external-wallet/index.ts`
+- `supabase/functions/mint-soul-nft/index.ts`
+- `supabase/functions/pplp-submit-action/index.ts`
+- `supabase/functions/pplp-score-action/index.ts`
+- `supabase/functions/pplp-evaluate/index.ts`
+- `supabase/functions/live-token/index.ts`
+- `supabase/functions/manual-create-donation/index.ts`
 
 ### Tóm tắt
-- Tổng: **199 record** sẽ bị xóa từ bảng `reward_claims`
-- Không cần thay đổi code hay schema — chỉ là thao tác dữ liệu
-- Sử dụng SQL DELETE trực tiếp qua data tool
+- 2 thao tác dữ liệu (DELETE + UPDATE)
+- 7 Edge Functions được vá lỗ hổng bảo mật
 
