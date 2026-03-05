@@ -152,6 +152,14 @@ async function scrapePageMeta(url: string): Promise<{
       if (BAD.some(p => result.image!.includes(p))) result.image = null;
     }
 
+    // Filter out Facebook login wall responses
+    const BAD_TITLES = ['log in or sign up', 'đăng nhập hoặc đăng ký', 'facebook – log in or sign up'];
+    if (result.title && BAD_TITLES.some(t => result.title!.toLowerCase().includes(t))) {
+      result.title = null;
+      result.description = null;
+      result.image = null;
+    }
+
     return result;
   } catch (e) {
     console.log('scrapePageMeta error:', e);
