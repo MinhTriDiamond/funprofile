@@ -1,78 +1,76 @@
 
 
-# Phân tích: Tại sao Database hiển thị Livestream = 0
+# Rà soát & chặn toàn bộ user bị ban — Kết quả kiểm tra
 
-## Phát hiện chính
+## Tình trạng hiện tại
 
-**Dữ liệu thực tế trong database:**
+### Đã có kiểm tra `is_banned` (9 functions)
+| Function | Trạng thái |
+|---|---|
+| `claim-reward` | ✅ Đã có |
+| `create-post` | ✅ Đã có |
+| `record-donation` | ✅ Đã có |
+| `connect-external-wallet` | ✅ Đã có |
+| `mint-soul-nft` | ✅ Đã có |
+| `pplp-submit-action` | ✅ Đã có |
+| `pplp-score-action` | ✅ Đã có |
+| `pplp-evaluate` | ✅ Đã có |
+| `live-token` | ✅ Đã có |
+| `manual-create-donation` | ✅ Đã có |
+| `log-login-ip` | ✅ Đã có |
 
-| Bảng | Số lượng | Ghi chú |
-|------|----------|---------|
-| `live_sessions` | **600** (596 ended + 4 live) | Users livestream rất tích cực |
-| `chunked_recordings` | **342** (314 done, 28 stuck "recording") | Ghi hình hoạt động |
-| `posts` với `post_type = 'live'` | **519** | Bài đăng live |
-| `posts` có video URL chứa "live" | **581** | Video replay |
-| `recording_status = 'ready'` | **488** | Recordings thành công |
-| `recording_status = 'failed'` | **57** | Recordings thất bại (~9.5%) |
+### THIẾU kiểm tra `is_banned` — 13 functions có xác thực user
 
-**Kết luận: Users livestream RẤT NHIỀU — 600 phiên, 488 recordings thành công!**
+| Function | Chức năng | Mức độ rủi ro |
+|---|---|---|
+| **`disconnect-external-wallet`** | Ngắt ví ngoài | Cao — thao tác ví |
+| **`angel-chat`** | Chat AI | Trung bình — dùng tài nguyên AI |
+| **`angel-inline`** | AI inline | Trung bình — dùng tài nguyên AI |
+| **`upload-to-r2`** | Upload file R2 | Cao — upload nội dung |
+| **`upload-to-cf-images`** | Upload ảnh CF | Cao — upload nội dung |
+| **`get-upload-url`** | Lấy URL upload | Cao — chuẩn bị upload |
+| **`multipart-upload`** | Upload video lớn | Cao — upload nội dung |
+| **`r2-signed-chunk-url`** | Chunk upload URL | Cao — upload nội dung |
+| **`recording-finalize`** | Hoàn tất ghi hình | Trung bình |
+| **`live-recording-status`** | Trạng thái ghi hình | Thấp — chỉ đọc |
+| **`analyze-reel`** | Phân tích reel | Trung bình |
+| **`cleanup-supabase-storage`** | Dọn storage | Thấp |
+| **`notify-gift-ready`** | Gửi thông báo quà | Thấp |
 
-## Nguyên nhân gốc: Hàm `get_app_stats` không đếm livestream
+Ngoài ra, các SSO functions (`sso-token`, `sso-authorize`, `sso-register`, `sso-sync-data`, `sso-web3-auth`) cũng thiếu nhưng không cần chặn vì chúng phục vụ cross-platform auth — hệ thống đã cưỡng chế đăng xuất khi bị ban.
 
-Hàm `get_app_stats()` hiện tại chỉ trả về:
-- `total_users`, `total_posts`, `total_photos`, `total_videos` (đếm từ `posts WHERE video_url IS NOT NULL`)
-- `total_rewards`, `treasury_camly_received`, `total_camly_claimed`
+## Kế hoạch
 
-**Không có trường nào đếm `live_sessions`** hoặc `chunked_recordings`. Component `AppHonorBoard.tsx` hiển thị `total_videos = 897` — đó là tổng số posts có video (bao gồm cả live replay), nhưng **không có mục riêng cho "Livestream"**.
+### Thêm kiểm tra `is_banned` vào 13 Edge Functions
 
-## Vấn đề phụ phát hiện thêm
-
-1. **28 recordings stuck ở trạng thái "recording"** — phiên live đã kết thúc nhưng `chunked_recordings.status` không chuyển sang `done`. Đây là những sessions mà host đóng trình duyệt đột ngột trước khi finalize.
-
-2. **57 sessions có `recording_status = 'failed'`** (~9.5%) — một số có `chunked_recordings.status = done` (recording thực ra thành công nhưng status ở `live_sessions` bị đánh failed sai).
-
-3. **`live_recordings` table hoàn toàn trống** (0 rows) — Table này được thiết kế cho Agora server-side recording nhưng chưa bao giờ được sử dụng thành công vì hệ thống đang dùng client-side chunked recording thay thế.
-
-## Kế hoạch sửa
-
-### Task 1: Cập nhật `get_app_stats` thêm `total_livestreams`
-
-Thêm trường `total_livestreams` vào hàm SQL:
-
-```sql
-DROP FUNCTION IF EXISTS public.get_app_stats();
-CREATE OR REPLACE FUNCTION public.get_app_stats()
-RETURNS TABLE(
-  total_users BIGINT,
-  total_posts BIGINT,
-  total_photos BIGINT,
-  total_videos BIGINT,
-  total_livestreams BIGINT,
-  total_rewards NUMERIC,
-  treasury_camly_received NUMERIC,
-  total_camly_claimed NUMERIC
-) ...
--- Thêm:
-(SELECT COUNT(*) FROM live_sessions)::BIGINT AS total_livestreams,
+Thêm đoạn code chuẩn sau khi xác thực user:
+```typescript
+const { data: banCheck } = await supabaseAdmin
+  .from('profiles').select('is_banned').eq('id', user.id).single();
+if (banCheck?.is_banned) {
+  return new Response(
+    JSON.stringify({ error: 'Tài khoản đã bị cấm vĩnh viễn.' }),
+    { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
+}
 ```
 
-### Task 2: Cập nhật `AppHonorBoard.tsx`
+### Files sửa (13 files)
+- `supabase/functions/disconnect-external-wallet/index.ts`
+- `supabase/functions/angel-chat/index.ts`
+- `supabase/functions/angel-inline/index.ts`
+- `supabase/functions/upload-to-r2/index.ts`
+- `supabase/functions/upload-to-cf-images/index.ts`
+- `supabase/functions/get-upload-url/index.ts`
+- `supabase/functions/multipart-upload/index.ts`
+- `supabase/functions/r2-signed-chunk-url/index.ts`
+- `supabase/functions/recording-finalize/index.ts`
+- `supabase/functions/live-recording-status/index.ts`
+- `supabase/functions/analyze-reel/index.ts`
+- `supabase/functions/cleanup-supabase-storage/index.ts`
+- `supabase/functions/notify-gift-ready/index.ts`
 
-- Thêm interface field `totalLivestreams`
-- Parse từ response `row.total_livestreams`
-- Thêm stat card với icon `Radio` và label "Livestreams"
-
-### Task 3: Dọn dẹp stuck recordings
-
-- Cập nhật 28 `chunked_recordings` stuck ở `status = 'recording'` mà `live_session` đã `ended` → chuyển sang `done` hoặc `failed`
-- Sửa inconsistency: sessions có `recording_status = 'failed'` nhưng `chunked_recordings.status = 'done'`
-
-### Technical Details
-
-**Files cần sửa:**
-1. Migration SQL mới — `DROP FUNCTION + CREATE OR REPLACE` cho `get_app_stats`
-2. `src/components/feed/AppHonorBoard.tsx` — thêm livestream stat
-3. `src/integrations/supabase/types.ts` — tự động cập nhật sau migration
-
-**Không ảnh hưởng:** Các tính năng livestream hiện tại (start, join, record, replay) không bị ảnh hưởng. Đây chỉ là fix hiển thị thống kê.
+### Ghi chú
+- Số liệu kiểm toán (profiles, reward_claims, audit_logs, donations, posts...) được **giữ nguyên** — chỉ chặn tương tác mới
+- Không thay đổi database schema, chỉ sửa code Edge Functions
 
