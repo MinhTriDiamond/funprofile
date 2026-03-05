@@ -1,35 +1,32 @@
 
 
-# Sửa số liệu "Đã rút" cho angelaivan
+# Sửa "Đã rút" = 0 cho angelthutrang
 
-## Nguyên nhân
-Khi backfill từ bảng `transactions`, hệ thống ghi nhận 4 giao dịch x 99.999 = 399.996 CAMLY. Tuy nhiên số thực tế là 2 lệnh claim: 200.000 + 300.000 = 500.000 CAMLY. Sai lệch 100.004 CAMLY.
+## Phân tích dữ liệu
 
-## Kế hoạch
+Sau khi kiểm tra toàn bộ database:
 
-### 1. Xóa 4 bản ghi reward_claims sai của angelaivan
-```sql
-DELETE FROM reward_claims 
-WHERE user_id = '5f9de7c5-0c80-49aa-8e1c-92d8058558e4';
-```
+- **User:** angelthutrang (`b7856e97-9bff-4e2d-8448-c4395bf0548b`)
+- **Ví:** `0x80041CAA8FE788AfEa5ceD2bC3b5a0B7047F6966`
+- **total_rewards:** 626.000 (nhưng ảnh hiện 907.348 — có thể đã cập nhật sau)
+- **reward_claims:** Trống (0 bản ghi)
+- **Transactions từ Treasury → ví angelthutrang:** Không tìm thấy bản ghi nào
 
-### 2. Chèn 2 bản ghi đúng
-```sql
-INSERT INTO reward_claims (user_id, amount, wallet_address, created_at)
-VALUES 
-  ('5f9de7c5-0c80-49aa-8e1c-92d8058558e4', 200000, '0xb4dd...afaa', timestamp_lệnh_1),
-  ('5f9de7c5-0c80-49aa-8e1c-92d8058558e4', 300000, '0xb4dd...afaa', timestamp_lệnh_2);
-```
-*(Sẽ dùng wallet address và timestamp chính xác từ on-chain)*
+## Vấn đề
 
-### 3. Cập nhật 4 bản ghi transactions nếu cần
-Kiểm tra xem có cần sửa amount trong bảng `transactions` không để đồng bộ với thực tế on-chain.
+Không có bất kỳ giao dịch nào từ địa chỉ Treasury (`0x5102...a402`) đến ví `0x8004...6966` trong database. Điều này có nghĩa:
+1. Giao dịch claim chưa được ghi nhận vào database, HOẶC
+2. Giao dịch được gửi từ một địa chỉ treasury khác
 
-### Kết quả mong đợi
-- "Đã rút" = **500.000** (thay vì 399.996)
-- "Có thể rút" giảm tương ứng 100.004
-- Số liệu kiểm toán Treasury chính xác
+## Cần thông tin từ con
 
-### Không thay đổi code
-Chỉ sửa dữ liệu, không cần sửa frontend hay Edge Functions.
+Để chèn đúng bản ghi `reward_claims` và đảm bảo kiểm toán chính xác, Cha cần:
+
+1. **Transaction hash (tx hash)** của 2 lệnh rút (200.000 và 300.000 CAMLY) — hoặc nếu là 1 lệnh 500.000
+2. **Địa chỉ gửi** — có phải từ Treasury `0x5102...a402` không, hay từ ví khác?
+
+Sau khi có thông tin, Cha sẽ:
+- Chèn đúng bản ghi vào `reward_claims` cho angelthutrang
+- Đồng bộ bảng `transactions` nếu cần
+- "Đã rút" sẽ hiển thị đúng 500.000 CAMLY
 
