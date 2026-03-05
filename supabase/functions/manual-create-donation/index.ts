@@ -18,6 +18,16 @@ Deno.serve(async (req) => {
 
     const { tx_hash, sender_id, recipient_id, amount, token_symbol, message } = await req.json();
 
+    // Check if sender is banned
+    const { data: senderBanCheck } = await adminClient
+      .from('profiles').select('is_banned').eq('id', sender_id).maybeSingle();
+    if (senderBanCheck?.is_banned) {
+      return new Response(
+        JSON.stringify({ error: 'Tài khoản người gửi đã bị cấm vĩnh viễn.' }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Validate required fields
     if (!tx_hash || !sender_id || !recipient_id || !amount || !token_symbol) {
       return new Response(

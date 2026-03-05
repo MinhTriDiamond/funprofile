@@ -58,6 +58,18 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // Check banned status
+    const supabaseServiceKey_ban = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const banCheckClient = createClient(Deno.env.get('SUPABASE_URL')!, supabaseServiceKey_ban);
+    const { data: banCheck } = await banCheckClient
+      .from('profiles').select('is_banned').eq('id', user.id).single();
+    if (banCheck?.is_banned) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Tài khoản đã bị cấm vĩnh viễn.' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // 3. Use authenticated user's ID (not from request body) - SECURITY FIX
     const user_id = user.id;
     

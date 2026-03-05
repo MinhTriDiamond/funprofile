@@ -123,6 +123,17 @@ serve(async (req) => {
       .eq('id', action_id)
       .single();
 
+    // Check if actor is banned
+    if (action?.actor_id) {
+      const { data: banCheck } = await supabase
+        .from('profiles').select('is_banned').eq('id', action.actor_id).single();
+      if (banCheck?.is_banned) {
+        return new Response(JSON.stringify({ error: 'Tài khoản đã bị cấm vĩnh viễn.' }), {
+          status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
     if (fetchErr || !action) {
       return new Response(JSON.stringify({ error: 'Action not found' }), {
         status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
