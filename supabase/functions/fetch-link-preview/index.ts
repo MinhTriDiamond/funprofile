@@ -185,13 +185,36 @@ serve(async (req) => {
     if (proxyTarget && req.method === 'GET') {
       const targetUrl = decodeURIComponent(proxyTarget);
       console.log(`Proxying image: ${targetUrl}`);
+
+      let host = '';
+      try { host = new URL(targetUrl).hostname; } catch { /* ignore */ }
+      const isFbDomain = host.includes('fbcdn.net') || host.includes('fbsbx.com') || host.includes('facebook.com') || host.includes('fb.com');
+
+      const ua = isFbDomain
+        ? 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)'
+        : 'Mozilla/5.0 (compatible; FunProfile/1.0)';
+
       const res = await fetch(targetUrl, {
-        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; FunProfile/1.0)' },
-        redirect: 'follow',
+        headers: { 'User-Agent': ua },
+        redirect: isFbDomain ? 'manual' : 'follow',
         signal: AbortSignal.timeout(8000),
       });
+
+      // For Facebook: if redirected (3xx) or got HTML instead of image, return 404
+      if (isFbDomain && (res.status >= 300 && res.status < 400)) {
+        console.log(`Facebook redirect detected for: ${targetUrl}`);
+        return new Response(null, { status: 404, headers: corsHeaders });
+      }
+
       if (!res.ok) return new Response(null, { status: res.status, headers: corsHeaders });
+
       const contentType = res.headers.get('content-type') || 'image/jpeg';
+      // If we got HTML back instead of an image, it's a login wall
+      if (contentType.includes('text/html')) {
+        console.log(`Got HTML instead of image for: ${targetUrl}`);
+        return new Response(null, { status: 404, headers: corsHeaders });
+      }
+
       const blob = await res.arrayBuffer();
       return new Response(blob, {
         status: 200,
