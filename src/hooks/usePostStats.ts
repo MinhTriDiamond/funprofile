@@ -10,7 +10,7 @@ function computeReactionCounts(reactions: { id: string; user_id: string; type: s
   return Object.entries(counts).map(([type, count]) => ({ type, count }));
 }
 
-export function usePostStats(postId: string, currentUserId: string, initialStats?: PostStats) {
+export function usePostStats(postId: string, currentUserId: string, initialStats?: PostStats, disableRealtime?: boolean) {
   const [likeCount, setLikeCount] = useState(initialStats?.reactions?.length || 0);
   const [commentCount, setCommentCount] = useState(initialStats?.commentCount || 0);
   const [shareCount, setShareCount] = useState(initialStats?.shareCount || 0);
@@ -52,8 +52,10 @@ export function usePostStats(postId: string, currentUserId: string, initialStats
     }
   }, [initialStats, postId, processReactions]);
 
-  // Realtime subscription
+  // Realtime subscription (skipped on profile page)
   useEffect(() => {
+    if (disableRealtime) return;
+
     const handleRealtimeUpdate = async () => {
       const { data: reactions } = await supabase
         .from('reactions').select('id, user_id, type').eq('post_id', postId).is('comment_id', null);
@@ -75,7 +77,7 @@ export function usePostStats(postId: string, currentUserId: string, initialStats
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [postId, processReactions]);
+  }, [postId, processReactions, disableRealtime]);
 
   const handleReactionChange = useCallback((newCount: number, newReaction: string | null) => {
     setLikeCount(newCount);
