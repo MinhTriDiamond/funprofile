@@ -1,78 +1,61 @@
 
 
-# Phân tích: Tại sao Database hiển thị Livestream = 0
+# Sửa 2 lỗi hiển thị tên trong Facebook link preview
 
-## Phát hiện chính
+## Phân tích gốc rễ
 
-**Dữ liệu thực tế trong database:**
+### Lỗi 1: Hiển thị "Camly" sai (screenshot 670)
+URL `/share/v/15XW1dHNKv/` không redirect được → tất cả UA đều thất bại → vào nhánh inline JSON extraction. Pattern cuối cùng trong `authorPatterns` là:
+```javascript
+/"name"\s*:\s*"([^"]{2,50})"/
+```
+Pattern này **quá generic** — match bất kỳ `"name": "..."` nào trong JavaScript của Facebook login wall, kể cả tên ngẫu nhiên như "Camly" từ suggested posts. Kết quả: `author = "Camly"` (sai hoàn toàn).
 
-| Bảng | Số lượng | Ghi chú |
-|------|----------|---------|
-| `live_sessions` | **600** (596 ended + 4 live) | Users livestream rất tích cực |
-| `chunked_recordings` | **342** (314 done, 28 stuck "recording") | Ghi hình hoạt động |
-| `posts` với `post_type = 'live'` | **519** | Bài đăng live |
-| `posts` có video URL chứa "live" | **581** | Video replay |
-| `recording_status = 'ready'` | **488** | Recordings thành công |
-| `recording_status = 'failed'` | **57** | Recordings thất bại (~9.5%) |
+### Lỗi 2: Hiển thị 2 tên "Fath" + "Fath Uni" (screenshot 671)
+URL `/share/p/1DV77HExB5/` redirect thành công, API trả về:
+- `author: "Fath"` (từ `article:author` hoặc inline)
+- `title: "Fath Uni"` (từ `og:title` — Facebook đặt og:title = tên page)
 
-**Kết luận: Users livestream RẤT NHIỀU — 600 phiên, 488 recordings thành công!**
+Logic swap (dòng 350): `"fath uni".includes("fath")` → TRUE → cố strip "Fath" khỏi title bằng regex `\s*\|?\s*Fath\s*$`. Nhưng "Fath" nằm ở ĐẦU title, không phải cuối → regex không match → title vẫn là "Fath Uni" → UI hiện cả hai.
 
-## Nguyên nhân gốc: Hàm `get_app_stats` không đếm livestream
+## Giải pháp — sửa 1 file
 
-Hàm `get_app_stats()` hiện tại chỉ trả về:
-- `total_users`, `total_posts`, `total_photos`, `total_videos` (đếm từ `posts WHERE video_url IS NOT NULL`)
-- `total_rewards`, `treasury_camly_received`, `total_camly_claimed`
+### File: `supabase/functions/fetch-link-preview/index.ts`
 
-**Không có trường nào đếm `live_sessions`** hoặc `chunked_recordings`. Component `AppHonorBoard.tsx` hiển thị `total_videos = 897` — đó là tổng số posts có video (bao gồm cả live replay), nhưng **không có mục riêng cho "Livestream"**.
-
-## Vấn đề phụ phát hiện thêm
-
-1. **28 recordings stuck ở trạng thái "recording"** — phiên live đã kết thúc nhưng `chunked_recordings.status` không chuyển sang `done`. Đây là những sessions mà host đóng trình duyệt đột ngột trước khi finalize.
-
-2. **57 sessions có `recording_status = 'failed'`** (~9.5%) — một số có `chunked_recordings.status = done` (recording thực ra thành công nhưng status ở `live_sessions` bị đánh failed sai).
-
-3. **`live_recordings` table hoàn toàn trống** (0 rows) — Table này được thiết kế cho Agora server-side recording nhưng chưa bao giờ được sử dụng thành công vì hệ thống đang dùng client-side chunked recording thay thế.
-
-## Kế hoạch sửa
-
-### Task 1: Cập nhật `get_app_stats` thêm `total_livestreams`
-
-Thêm trường `total_livestreams` vào hàm SQL:
-
-```sql
-DROP FUNCTION IF EXISTS public.get_app_stats();
-CREATE OR REPLACE FUNCTION public.get_app_stats()
-RETURNS TABLE(
-  total_users BIGINT,
-  total_posts BIGINT,
-  total_photos BIGINT,
-  total_videos BIGINT,
-  total_livestreams BIGINT,
-  total_rewards NUMERIC,
-  treasury_camly_received NUMERIC,
-  total_camly_claimed NUMERIC
-) ...
--- Thêm:
-(SELECT COUNT(*) FROM live_sessions)::BIGINT AS total_livestreams,
+**1. Xóa pattern `"name"` quá generic** khỏi `authorPatterns` trong inline extraction (dòng 203):
+```typescript
+const authorPatterns = [
+  /"ownerName"\s*:\s*"([^"]+)"/,
+  /"actorName"\s*:\s*"([^"]+)"/,
+  // BỎ: /"name"\s*:\s*"([^"]{2,50})"/ — quá generic, match tên ngẫu nhiên
+];
 ```
 
-### Task 2: Cập nhật `AppHonorBoard.tsx`
+**2. Sửa logic title↔author swap** (dòng 350-356): Khi title ngắn (< 60 ký tự) và chứa author → title là tên page đầy đủ hơn → dùng title làm author, clear title:
+```typescript
+} else if (t.includes(a)) {
+  // Title chứa author & ngắn → title là tên page đầy đủ hơn
+  if (result.title!.length < 60) {
+    result.author = result.title; // "Fath Uni" (đầy đủ hơn "Fath")
+    // Dùng description làm title
+    if (result.description) {
+      const firstLine = result.description.split('\n')[0].trim();
+      result.title = firstLine.length > 10 ? firstLine : null;
+    } else {
+      result.title = null;
+    }
+  } else {
+    // Title dài → là nội dung thực, chỉ strip author
+    const escapedA = result.author.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    result.title = result.title.replace(new RegExp(`\\s*\\|?\\s*${escapedA}\\s*$`, 'gi'), '').trim();
+    result.title = result.title.replace(/\s+(?:[A-ZÀ-Ỹa-zà-ỹ]+\s+){2,}[A-ZÀ-Ỹa-zà-ỹ]+\s*$/u, '').trim();
+    if (!result.title) result.title = null;
+  }
+```
 
-- Thêm interface field `totalLivestreams`
-- Parse từ response `row.total_livestreams`
-- Thêm stat card với icon `Radio` và label "Livestreams"
+### Kết quả mong đợi
+- Bài có hình (1DV77HExB5): author = **Fath Uni**, title = null (trùng description), description hiển thị bình thường
+- Bài video không resolve (15XW1dHNKv): author = null (không còn "Camly" sai), chỉ hiện fallback card
 
-### Task 3: Dọn dẹp stuck recordings
-
-- Cập nhật 28 `chunked_recordings` stuck ở `status = 'recording'` mà `live_session` đã `ended` → chuyển sang `done` hoặc `failed`
-- Sửa inconsistency: sessions có `recording_status = 'failed'` nhưng `chunked_recordings.status = 'done'`
-
-### Technical Details
-
-**Files cần sửa:**
-1. Migration SQL mới — `DROP FUNCTION + CREATE OR REPLACE` cho `get_app_stats`
-2. `src/components/feed/AppHonorBoard.tsx` — thêm livestream stat
-3. `src/integrations/supabase/types.ts` — tự động cập nhật sau migration
-
-**Không ảnh hưởng:** Các tính năng livestream hiện tại (start, join, record, replay) không bị ảnh hưởng. Đây chỉ là fix hiển thị thống kê.
+Sửa ~15 dòng, deploy lại edge function.
 
