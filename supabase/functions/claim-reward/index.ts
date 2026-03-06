@@ -250,111 +250,112 @@ Deno.serve(async (req) => {
       }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // 7f. Auto fraud detection - CHỈ dựa trên device fingerprint (KHÔNG dựa trên IP)
-    // Vì nhiều người có thể dùng chung mạng (Love House, văn phòng, quán cafe...)
-    // Chỉ cùng device_hash (cùng thiết bị vật lý) mới là dấu hiệu đa tài khoản
-    const fraudReasons: string[] = [];
-    const relatedUserIds: string[] = [];
+    // 7f. Auto fraud detection - BỎ QUA nếu admin đã duyệt (approved)
+    // Admin đã xác minh → không ghi đè quyết định admin
+    if (profile.reward_status !== 'approved') {
+      const fraudReasons: string[] = [];
+      const relatedUserIds: string[] = [];
 
-    // Check shared device fingerprint - cùng thiết bị = cùng người tạo nhiều tài khoản
-    const { data: userDevices } = await supabaseAdmin
-      .from('pplp_device_registry')
-      .select('device_hash')
-      .eq('user_id', userId);
+      // Check shared device fingerprint - cùng thiết bị = cùng người tạo nhiều tài khoản
+      const { data: userDevices } = await supabaseAdmin
+        .from('pplp_device_registry')
+        .select('device_hash')
+        .eq('user_id', userId);
 
-    if (userDevices && userDevices.length > 0) {
-      for (const dev of userDevices) {
-        const { data: otherDeviceUsers } = await supabaseAdmin
-          .from('pplp_device_registry')
-          .select('user_id')
-          .eq('device_hash', dev.device_hash)
-          .neq('user_id', userId);
+      if (userDevices && userDevices.length > 0) {
+        for (const dev of userDevices) {
+          const { data: otherDeviceUsers } = await supabaseAdmin
+            .from('pplp_device_registry')
+            .select('user_id')
+            .eq('device_hash', dev.device_hash)
+            .neq('user_id', userId);
 
-        if (otherDeviceUsers && otherDeviceUsers.length > 0) {
-          const otherIds = otherDeviceUsers.map(u => u.user_id);
-          relatedUserIds.push(...otherIds);
-          fraudReasons.push(`Thiết bị này đang được dùng bởi ${otherIds.length + 1} tài khoản. Để đảm bảo tính minh bạch, hệ thống cần Admin xác minh 🙏`);
-          break;
-        }
-      }
-    }
-
-    // Check duplicate avatar
-    if (profile.avatar_url) {
-      const { count: avatarDups } = await supabaseAdmin
-        .from('profiles')
-        .select('id', { count: 'exact', head: true })
-        .eq('avatar_url', profile.avatar_url)
-        .neq('id', userId);
-      if (avatarDups && avatarDups > 0) {
-        fraudReasons.push('Ảnh đại diện trùng với tài khoản khác. Vui lòng sử dụng ảnh cá nhân của riêng bạn 🌸');
-      }
-    }
-
-    // Check duplicate wallet
-    if (profile.public_wallet_address) {
-      const { count: walletDups } = await supabaseAdmin
-        .from('profiles')
-        .select('id', { count: 'exact', head: true })
-        .eq('public_wallet_address', profile.public_wallet_address)
-        .neq('id', userId);
-      if (walletDups && walletDups > 0) {
-        fraudReasons.push('Địa chỉ ví đang được sử dụng bởi tài khoản khác. Mỗi người nên có ví riêng để bảo vệ quyền lợi 💛');
-      }
-    }
-
-    // If fraud detected -> freeze ALL related accounts + current user, send to admin
-    if (fraudReasons.length > 0) {
-      const holdNote = fraudReasons.join('; ');
-      console.warn(`Integrity check for user ${userId}: ${holdNote}`);
-
-      // Freeze current user
-      await supabaseAdmin.from('profiles').update({
-        reward_status: 'on_hold',
-        admin_notes: holdNote,
-      }).eq('id', userId);
-
-      // Freeze all related users on same device
-      const uniqueRelated = [...new Set(relatedUserIds)];
-      if (uniqueRelated.length > 0) {
-        for (const relatedId of uniqueRelated) {
-          await supabaseAdmin.from('profiles').update({
-            reward_status: 'on_hold',
-            admin_notes: `Liên quan đến tài khoản ${userId.slice(0, 8)}... - cùng thiết bị. Chờ Admin xác minh 🙏`,
-          }).eq('id', relatedId);
+          if (otherDeviceUsers && otherDeviceUsers.length > 0) {
+            const otherIds = otherDeviceUsers.map(u => u.user_id);
+            relatedUserIds.push(...otherIds);
+            fraudReasons.push(`Thiết bị này đang được dùng bởi ${otherIds.length + 1} tài khoản. Để đảm bảo tính minh bạch, hệ thống cần Admin xác minh 🙏`);
+            break;
+          }
         }
       }
 
-      // Record integrity signal
-      await supabaseAdmin.from('pplp_fraud_signals').insert({
-        actor_id: userId,
-        signal_type: 'SHARED_DEVICE',
-        severity: 3,
-        details: { reasons: fraudReasons, related_users: uniqueRelated },
-        source: 'claim-reward',
-      });
+      // Check duplicate avatar
+      if (profile.avatar_url) {
+        const { count: avatarDups } = await supabaseAdmin
+          .from('profiles')
+          .select('id', { count: 'exact', head: true })
+          .eq('avatar_url', profile.avatar_url)
+          .neq('id', userId);
+        if (avatarDups && avatarDups > 0) {
+          fraudReasons.push('Ảnh đại diện trùng với tài khoản khác. Vui lòng sử dụng ảnh cá nhân của riêng bạn 🌸');
+        }
+      }
 
-      // Notify admins
-      const { data: admins } = await supabaseAdmin
-        .from('user_roles')
-        .select('user_id')
-        .eq('role', 'admin');
+      // Check duplicate wallet
+      if (profile.public_wallet_address) {
+        const { count: walletDups } = await supabaseAdmin
+          .from('profiles')
+          .select('id', { count: 'exact', head: true })
+          .eq('public_wallet_address', profile.public_wallet_address)
+          .neq('id', userId);
+        if (walletDups && walletDups > 0) {
+          fraudReasons.push('Địa chỉ ví đang được sử dụng bởi tài khoản khác. Mỗi người nên có ví riêng để bảo vệ quyền lợi 💛');
+        }
+      }
 
-      if (admins && admins.length > 0) {
-        const notifications = admins.map(a => ({
-          user_id: a.user_id,
+      // If fraud detected -> freeze ALL related accounts + current user, send to admin
+      if (fraudReasons.length > 0) {
+        const holdNote = fraudReasons.join('; ');
+        console.warn(`Integrity check for user ${userId}: ${holdNote}`);
+
+        // Freeze current user
+        await supabaseAdmin.from('profiles').update({
+          reward_status: 'on_hold',
+          admin_notes: holdNote,
+        }).eq('id', userId);
+
+        // Freeze all related users on same device
+        const uniqueRelated = [...new Set(relatedUserIds)];
+        if (uniqueRelated.length > 0) {
+          for (const relatedId of uniqueRelated) {
+            await supabaseAdmin.from('profiles').update({
+              reward_status: 'on_hold',
+              admin_notes: `Liên quan đến tài khoản ${userId.slice(0, 8)}... - cùng thiết bị. Chờ Admin xác minh 🙏`,
+            }).eq('id', relatedId);
+          }
+        }
+
+        // Record integrity signal
+        await supabaseAdmin.from('pplp_fraud_signals').insert({
           actor_id: userId,
-          type: 'admin_shared_device',
-          read: false,
-        }));
-        await supabaseAdmin.from('notifications').insert(notifications);
-      }
+          signal_type: 'SHARED_DEVICE',
+          severity: 3,
+          details: { reasons: fraudReasons, related_users: uniqueRelated },
+          source: 'claim-reward',
+        });
 
-      return new Response(JSON.stringify({
-        error: 'Account Review',
-        message: `Tài khoản của bạn đang chờ xác minh từ Admin 🙏\n\nĐể bảo vệ quyền lợi cho tất cả mọi người, hệ thống cần xác minh khi phát hiện các tài khoản có liên quan. Xin vui lòng liên hệ Admin để được hỗ trợ nhanh nhất. Cảm ơn bạn đã thấu hiểu 💛`,
-        reasons: fraudReasons,
-      }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        // Notify admins
+        const { data: admins } = await supabaseAdmin
+          .from('user_roles')
+          .select('user_id')
+          .eq('role', 'admin');
+
+        if (admins && admins.length > 0) {
+          const notifications = admins.map(a => ({
+            user_id: a.user_id,
+            actor_id: userId,
+            type: 'admin_shared_device',
+            read: false,
+          }));
+          await supabaseAdmin.from('notifications').insert(notifications);
+        }
+
+        return new Response(JSON.stringify({
+          error: 'Account Review',
+          message: `Tài khoản của bạn đang chờ xác minh từ Admin 🙏\n\nĐể bảo vệ quyền lợi cho tất cả mọi người, hệ thống cần xác minh khi phát hiện các tài khoản có liên quan. Xin vui lòng liên hệ Admin để được hỗ trợ nhanh nhất. Cảm ơn bạn đã thấu hiểu 💛`,
+          reasons: fraudReasons,
+        }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
     }
 
     const blockedStatuses = ['pending', 'on_hold', 'rejected', 'banned'];
