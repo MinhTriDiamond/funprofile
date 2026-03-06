@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useLanguage } from '@/i18n/LanguageContext';
-import { Search } from 'lucide-react';
+import { Search, Wallet } from 'lucide-react';
 import camlyLogo from '@/assets/tokens/camly-logo.webp';
 
 interface ClaimHistoryModalProps {
@@ -16,13 +16,14 @@ interface ClaimHistoryModalProps {
 
 interface ClaimRecord {
   id: string;
-  user_id: string;
+  user_id: string | null;
   amount: number;
   wallet_address: string;
   created_at: string;
   username: string;
   full_name: string | null;
   avatar_url: string | null;
+  is_external: boolean;
 }
 
 export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps) => {
