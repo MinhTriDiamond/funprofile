@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useLanguage } from '@/i18n/LanguageContext';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { Search, Wallet } from 'lucide-react';
 import camlyLogo from '@/assets/tokens/camly-logo.webp';
 
@@ -24,11 +25,43 @@ interface ClaimRecord {
   full_name: string | null;
   avatar_url: string | null;
   is_external: boolean;
+  email?: string | null;
 }
 
 export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps) => {
   const { t, language } = useLanguage();
+  const { userId } = useCurrentUser();
   const [search, setSearch] = useState('');
+
+  // Check if current user is admin
+  const { data: isAdmin } = useQuery({
+    queryKey: ['is-admin', userId],
+    queryFn: async () => {
+      if (!userId) return false;
+      const { data } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId)
+        .eq('role', 'admin')
+        .maybeSingle();
+      return !!data;
+    },
+    enabled: open && !!userId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Fetch emails for admin
+  const { data: emailsMap } = useQuery({
+    queryKey: ['admin-emails-for-claims'],
+    queryFn: async () => {
+      if (!userId) return new Map<string, string>();
+      const { data } = await supabase.rpc('get_user_emails_for_admin', { p_admin_id: userId });
+      if (!data) return new Map<string, string>();
+      return new Map((data as Array<{ user_id: string; email: string }>).map(e => [e.user_id, e.email]));
+    },
+    enabled: open && !!isAdmin && !!userId,
+    staleTime: 5 * 60 * 1000,
+  });
 
   const { data: claims, isLoading } = useQuery({
     queryKey: ['claim-history-all'],
@@ -65,16 +98,31 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
     staleTime: 5 * 60 * 1000,
   });
 
-  const filtered = useMemo(() => {
+  // Enrich claims with emails for admin
+  const enrichedClaims = useMemo(() => {
     if (!claims) return [];
-    if (!search.trim()) return claims;
+    if (!isAdmin || !emailsMap) return claims;
+    return claims.map(c => ({
+      ...c,
+      email: c.user_id ? (emailsMap.get(c.user_id) || null) : null,
+    }));
+  }, [claims, isAdmin, emailsMap]);
+
+  const filtered = useMemo(() => {
+    if (!enrichedClaims.length) return [];
+    if (!search.trim()) return enrichedClaims;
     const q = search.toLowerCase();
-    return claims.filter(c =>
+    return enrichedClaims.filter(c =>
       c.username.toLowerCase().includes(q) ||
       (c.full_name && c.full_name.toLowerCase().includes(q)) ||
-      c.wallet_address.toLowerCase().includes(q)
+      c.wallet_address.toLowerCase().includes(q) ||
+      (isAdmin && c.email && c.email.toLowerCase().includes(q))
     );
-  }, [claims, search]);
+  }, [enrichedClaims, search, isAdmin]);
+
+  const totalAmount = useMemo(() => {
+    return filtered.reduce((sum, c) => sum + c.amount, 0);
+  }, [filtered]);
 
   const formatDate = (iso: string) => {
     const d = new Date(iso);
@@ -127,6 +175,7 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
                 <tr>
                   <th className="text-left p-2 w-10">#</th>
                   <th className="text-left p-2">{t('user')}</th>
+                  {isAdmin && <th className="text-left p-2 hidden sm:table-cell">Email</th>}
                   <th className="text-left p-2 hidden sm:table-cell">{t('claimFullName')}</th>
                   <th className="text-left p-2">{t('claimWalletAddress')}</th>
                   <th className="text-right p-2">{t('claimAmount')}</th>
@@ -152,7 +201,8 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
                         </Avatar>
                         <span className={`font-medium truncate max-w-[100px] ${c.is_external ? 'italic text-muted-foreground' : ''}`}>{c.username}</span>
                       </div>
-                    </td>
+                     </td>
+                    {isAdmin && <td className="p-2 text-muted-foreground truncate max-w-[140px] hidden sm:table-cell text-xs">{c.email || '—'}</td>}
                     <td className="p-2 text-muted-foreground truncate max-w-[120px] hidden sm:table-cell">{c.full_name || '—'}</td>
                     <td className="p-2 font-mono text-xs text-muted-foreground">{truncateWallet(c.wallet_address)}</td>
                     <td className="p-2 text-right font-bold text-[#FFD700]">
@@ -170,8 +220,13 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
           )}
         </div>
 
-        <div className="text-xs text-muted-foreground text-center pt-1">
-          {filtered.length} {language === 'vi' ? 'bản ghi' : 'records'}
+        <div className="text-xs text-muted-foreground text-center pt-1 flex items-center justify-center gap-2">
+          <span>{filtered.length} {language === 'vi' ? 'bản ghi' : 'records'}</span>
+          <span>|</span>
+          <span className="flex items-center gap-1 font-semibold text-[#FFD700]">
+            {language === 'vi' ? 'Tổng' : 'Total'}: {formatAmount(totalAmount)}
+            <img src={camlyLogo} alt="CAMLY" className="w-4 h-4 inline-block" />
+          </span>
         </div>
       </DialogContent>
     </Dialog>
