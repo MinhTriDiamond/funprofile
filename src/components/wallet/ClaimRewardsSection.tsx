@@ -52,6 +52,7 @@ export const ClaimRewardsSection = ({
   hasCover,
   hasTodayPost,
   hasFullName,
+  accountAgeDays,
   onClaimClick,
   onConnectClick,
 }: ClaimRewardsSectionProps) => {
