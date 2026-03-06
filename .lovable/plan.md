@@ -1,78 +1,69 @@
 
 
-# Phân tích: Tại sao Database hiển thị Livestream = 0
+## Kế hoạch: Dọn dẹp hàng đợi duyệt thưởng & tăng cường kiểm soát điều kiện claim
 
-## Phát hiện chính
+### Phát hiện hiện tại
 
-**Dữ liệu thực tế trong database:**
+**6 user bị ban nhưng vẫn `reward_status = 'pending'`:**
 
-| Bảng | Số lượng | Ghi chú |
-|------|----------|---------|
-| `live_sessions` | **600** (596 ended + 4 live) | Users livestream rất tích cực |
-| `chunked_recordings` | **342** (314 done, 28 stuck "recording") | Ghi hình hoạt động |
-| `posts` với `post_type = 'live'` | **519** | Bài đăng live |
-| `posts` có video URL chứa "live" | **581** | Video replay |
-| `recording_status = 'ready'` | **488** | Recordings thành công |
-| `recording_status = 'failed'` | **57** | Recordings thất bại (~9.5%) |
+| Username | ID |
+|---|---|
+| abdalmalika166v4w3m | 39f9ba22... |
+| FU.Torykun | 7ce4b31a... |
+| futorykun0274m425 | e90bc9ec... |
+| jasminelasper902v3o4n | d4725b76... |
+| van | be70b5f3... |
+| wantai | f37e92da... |
 
-**Kết luận: Users livestream RẤT NHIỀU — 600 phiên, 488 recordings thành công!**
+**21 user active pending** — kiểm tra điều kiện claim:
+- Chỉ **5 user** đáp ứng đủ điều kiện cơ bản (avatar + cover + fullname + ví + bài hôm nay): `binhtran568`, `loan01111956`, `mai60hd`, `thuongnguyen369`, `yenhanhphuc`
+- **16 user còn lại** thiếu ít nhất 1 điều kiện (cover, ví, tên, hoặc chưa đăng bài hôm nay)
 
-## Nguyên nhân gốc: Hàm `get_app_stats` không đếm livestream
+**Backend edge function `claim-reward`** đã kiểm tra đầy đủ tất cả điều kiện (avatar, cover, today_post, full_name ≥ 4 ký tự, ví, tuổi tài khoản ≥ 7 ngày). Nên dù admin duyệt nhầm, user vẫn không claim được nếu chưa đủ điều kiện.
 
-Hàm `get_app_stats()` hiện tại chỉ trả về:
-- `total_users`, `total_posts`, `total_photos`, `total_videos` (đếm từ `posts WHERE video_url IS NOT NULL`)
-- `total_rewards`, `treasury_camly_received`, `total_camly_claimed`
+### Thay đổi
 
-**Không có trường nào đếm `live_sessions`** hoặc `chunked_recordings`. Component `AppHonorBoard.tsx` hiển thị `total_videos = 897` — đó là tổng số posts có video (bao gồm cả live replay), nhưng **không có mục riêng cho "Livestream"**.
-
-## Vấn đề phụ phát hiện thêm
-
-1. **28 recordings stuck ở trạng thái "recording"** — phiên live đã kết thúc nhưng `chunked_recordings.status` không chuyển sang `done`. Đây là những sessions mà host đóng trình duyệt đột ngột trước khi finalize.
-
-2. **57 sessions có `recording_status = 'failed'`** (~9.5%) — một số có `chunked_recordings.status = done` (recording thực ra thành công nhưng status ở `live_sessions` bị đánh failed sai).
-
-3. **`live_recordings` table hoàn toàn trống** (0 rows) — Table này được thiết kế cho Agora server-side recording nhưng chưa bao giờ được sử dụng thành công vì hệ thống đang dùng client-side chunked recording thay thế.
-
-## Kế hoạch sửa
-
-### Task 1: Cập nhật `get_app_stats` thêm `total_livestreams`
-
-Thêm trường `total_livestreams` vào hàm SQL:
-
+#### 1. SQL Data Update — Đặt `reward_status = 'banned'` cho 6 user bị ban
+Dùng công cụ insert/update (không phải migration):
 ```sql
-DROP FUNCTION IF EXISTS public.get_app_stats();
-CREATE OR REPLACE FUNCTION public.get_app_stats()
-RETURNS TABLE(
-  total_users BIGINT,
-  total_posts BIGINT,
-  total_photos BIGINT,
-  total_videos BIGINT,
-  total_livestreams BIGINT,
-  total_rewards NUMERIC,
-  treasury_camly_received NUMERIC,
-  total_camly_claimed NUMERIC
-) ...
--- Thêm:
-(SELECT COUNT(*) FROM live_sessions)::BIGINT AS total_livestreams,
+UPDATE profiles 
+SET reward_status = 'banned' 
+WHERE is_banned = true AND reward_status = 'pending';
 ```
 
-### Task 2: Cập nhật `AppHonorBoard.tsx`
+#### 2. SQL Migration — Tạo trigger tự động đồng bộ `reward_status` khi ban/unban
+```sql
+CREATE OR REPLACE FUNCTION sync_reward_status_on_ban()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public' AS $$
+BEGIN
+  IF NEW.is_banned = true AND OLD.is_banned = false THEN
+    NEW.reward_status := 'banned';
+  END IF;
+  RETURN NEW;
+END;
+$$;
 
-- Thêm interface field `totalLivestreams`
-- Parse từ response `row.total_livestreams`
-- Thêm stat card với icon `Radio` và label "Livestreams"
+CREATE TRIGGER trg_sync_reward_on_ban
+BEFORE UPDATE ON profiles
+FOR EACH ROW
+WHEN (OLD.is_banned IS DISTINCT FROM NEW.is_banned)
+EXECUTE FUNCTION sync_reward_status_on_ban();
+```
 
-### Task 3: Dọn dẹp stuck recordings
+#### 3. Cập nhật Admin UI — Thêm badge điều kiện `cover` và `bài hôm nay` trong `RewardApprovalTab.tsx`
 
-- Cập nhật 28 `chunked_recordings` stuck ở `status = 'recording'` mà `live_session` đã `ended` → chuyển sang `done` hoặc `failed`
-- Sửa inconsistency: sessions có `recording_status = 'failed'` nhưng `chunked_recordings.status = 'done'`
+Hiện tại admin UI chỉ hiển thị 3 badge: Avatar, Tên, Ví. Cần thêm:
+- **Badge "Bìa"**: kiểm tra `cover_url`
+- **Badge "Bài hôm nay"**: kiểm tra `today_reward > 0` (proxy cho có hoạt động hôm nay)
+- Cập nhật `isProfileComplete` và `isEligibleForApproval` để bao gồm `cover_url` và `today_reward > 0`
+- Cập nhật `getMissingItems` tương ứng
 
-### Technical Details
+**Cụ thể trong `RewardApprovalTab.tsx`:**
 
-**Files cần sửa:**
-1. Migration SQL mới — `DROP FUNCTION + CREATE OR REPLACE` cho `get_app_stats`
-2. `src/components/feed/AppHonorBoard.tsx` — thêm livestream stat
-3. `src/integrations/supabase/types.ts` — tự động cập nhật sau migration
+- Dòng 51-54: Thêm `!!user.cover_url` và `user.today_reward > 0` vào `isProfileComplete`
+- Dòng 59-65: Thêm kiểm tra thiếu "Ảnh bìa" và "Bài đăng hôm nay" vào `getMissingItems`
+- Dòng 490-494: Thêm 2 `ProfileBadge` mới cho Cover và Today Post
+- Dòng 556-558: Thêm 2 điều kiện mới vào tooltip "Chưa đủ điều kiện"
 
-**Không ảnh hưởng:** Các tính năng livestream hiện tại (start, join, record, replay) không bị ảnh hưởng. Đây chỉ là fix hiển thị thống kê.
+Tổng: **1 file code sửa**, **1 data update SQL**, **1 migration SQL**.
 
