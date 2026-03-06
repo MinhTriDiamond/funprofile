@@ -58,17 +58,16 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 1. Fetch ALL confirmed donations from Treasury (paginated)
+    // 1. Fetch ALL confirmed donations from Treasury (paginated) - INCLUDING unmapped (recipient_id IS NULL)
     const allDonations: any[] = [];
     let offset = 0;
     const PAGE_SIZE = 1000;
     while (true) {
       const { data: batch, error } = await adminClient
         .from("donations")
-        .select("id, recipient_id, amount, token_symbol, tx_hash, confirmed_at, created_at")
+        .select("id, recipient_id, amount, token_symbol, tx_hash, confirmed_at, created_at, metadata")
         .eq("sender_id", TREASURY_ID)
         .eq("status", "confirmed")
-        .not("recipient_id", "is", null)
         .order("created_at", { ascending: true })
         .range(offset, offset + PAGE_SIZE - 1);
 
@@ -86,8 +85,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 2. Get wallet addresses for all recipients
-    const recipientIds = [...new Set(allDonations.map((d) => d.recipient_id))];
+    // 2. Get wallet addresses for all recipients (only mapped ones)
+    const recipientIds = [...new Set(allDonations.filter((d) => d.recipient_id).map((d) => d.recipient_id))];
     const { data: profiles } = await adminClient
       .from("profiles")
       .select("id, wallet_address, public_wallet_address, external_wallet_address, custodial_wallet_address")
@@ -109,13 +108,19 @@ Deno.serve(async (req) => {
       console.error("Delete error:", deleteError.message);
     }
 
-    // 4. Build and insert reward_claims records
-    const records = allDonations.map((d) => ({
-      user_id: d.recipient_id,
-      amount: Math.round(Number(d.amount)),
-      wallet_address: walletMap.get(d.recipient_id) || "unknown",
-      created_at: d.confirmed_at || d.created_at,
-    }));
+    // 4. Build and insert reward_claims records (including unmapped with user_id = null)
+    const records = allDonations.map((d) => {
+      const meta = d.metadata as Record<string, any> | null;
+      const toAddress = meta?.to_address || meta?.toAddress || null;
+      return {
+        user_id: d.recipient_id || null,
+        amount: Math.round(Number(d.amount)),
+        wallet_address: d.recipient_id
+          ? (walletMap.get(d.recipient_id) || "unknown")
+          : (toAddress || "unknown"),
+        created_at: d.confirmed_at || d.created_at,
+      };
+    });
 
     let insertedCount = 0;
     let errorCount = 0;

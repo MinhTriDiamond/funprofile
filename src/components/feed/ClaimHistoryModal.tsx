@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useLanguage } from '@/i18n/LanguageContext';
-import { Search } from 'lucide-react';
+import { Search, Wallet } from 'lucide-react';
 import camlyLogo from '@/assets/tokens/camly-logo.webp';
 
 interface ClaimHistoryModalProps {
@@ -16,13 +16,14 @@ interface ClaimHistoryModalProps {
 
 interface ClaimRecord {
   id: string;
-  user_id: string;
+  user_id: string | null;
   amount: number;
   wallet_address: string;
   created_at: string;
   username: string;
   full_name: string | null;
   avatar_url: string | null;
+  is_external: boolean;
 }
 
 export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps) => {
@@ -38,21 +39,25 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
         .order('created_at', { ascending: false });
       if (error) throw error;
 
-      const userIds = [...new Set((data || []).map(d => d.user_id))];
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, username, full_name, avatar_url')
-        .in('id', userIds);
-
-      const profileMap = new Map((profiles || []).map(p => [p.id, p]));
+      const userIds = [...new Set((data || []).filter(d => d.user_id).map(d => d.user_id))];
+      let profileMap = new Map<string, any>();
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, username, full_name, avatar_url')
+          .in('id', userIds);
+        profileMap = new Map((profiles || []).map(p => [p.id, p]));
+      }
 
       return (data || []).map(d => {
-        const p = profileMap.get(d.user_id);
+        const isExternal = !d.user_id;
+        const p = d.user_id ? profileMap.get(d.user_id) : null;
         return {
           ...d,
-          username: p?.username || 'unknown',
+          username: p?.username || (isExternal ? (language === 'vi' ? 'Ví ngoài hệ thống' : 'External Wallet') : 'unknown'),
           full_name: p?.full_name || null,
           avatar_url: p?.avatar_url || null,
+          is_external: isExternal,
         };
       });
     },
@@ -136,10 +141,16 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
                     <td className="p-2">
                       <div className="flex items-center gap-2">
                         <Avatar className="w-6 h-6">
-                          <AvatarImage src={c.avatar_url || undefined} />
-                          <AvatarFallback className="text-[10px] bg-primary/10">{c.username[0]?.toUpperCase()}</AvatarFallback>
+                          {c.is_external ? (
+                            <AvatarFallback className="text-[10px] bg-accent"><Wallet className="w-3 h-3" /></AvatarFallback>
+                          ) : (
+                            <>
+                              <AvatarImage src={c.avatar_url || undefined} />
+                              <AvatarFallback className="text-[10px] bg-primary/10">{c.username[0]?.toUpperCase()}</AvatarFallback>
+                            </>
+                          )}
                         </Avatar>
-                        <span className="font-medium truncate max-w-[100px]">{c.username}</span>
+                        <span className={`font-medium truncate max-w-[100px] ${c.is_external ? 'italic text-muted-foreground' : ''}`}>{c.username}</span>
                       </div>
                     </td>
                     <td className="p-2 text-muted-foreground truncate max-w-[120px] hidden sm:table-cell">{c.full_name || '—'}</td>
