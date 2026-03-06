@@ -8,6 +8,7 @@ import { formatNumber } from '@/lib/formatters';
 
 import camlyLogo from '@/assets/tokens/camly-logo.webp';
 import { ClaimHistoryModal } from './ClaimHistoryModal';
+import { RewardBreakdownModal } from './RewardBreakdownModal';
 
 interface AppStats {
   totalUsers: number;
@@ -23,6 +24,7 @@ interface AppStats {
 export const AppHonorBoard = memo(() => {
   const { t } = useLanguage();
   const [showClaimHistory, setShowClaimHistory] = useState(false);
+  const [showRewardBreakdown, setShowRewardBreakdown] = useState(false);
   
   const { data: stats, isLoading } = useQuery({
     queryKey: ['app-honor-board-stats'],
@@ -109,6 +111,7 @@ export const AppHonorBoard = memo(() => {
       color: 'text-gold',
       bgColor: 'bg-gold/10',
       showCamlyLogo: true,
+      clickAction: 'rewardBreakdown',
     },
     {
       icon: Wallet,
