@@ -1,40 +1,78 @@
 
 
-# Kiểm tra số liệu "Tổng Phần Thưởng" = 124.977.999
+# Phân tích: Tại sao Database hiển thị Livestream = 0
 
-## Phân tích dữ liệu thực tế
+## Phát hiện chính
 
-Đã truy vấn database:
+**Dữ liệu thực tế trong database:**
 
-| Chỉ số | Giá trị |
-|--------|---------|
-| `SUM(reward_claims)` (đã claim) | 98.238.999 |
-| `SUM(pending_reward + approved_reward)` từ profiles (tĩnh) | 26.739.000 |
-| **Tổng hiện tại (tĩnh)** | **124.977.999** |
-| Tính động từ `get_user_rewards_v2` (chỉ user chưa ban) | **157.707.000** |
-| User bị ban đã claim | 74.931.000 |
+| Bảng | Số lượng | Ghi chú |
+|------|----------|---------|
+| `live_sessions` | **600** (596 ended + 4 live) | Users livestream rất tích cực |
+| `chunked_recordings` | **342** (314 done, 28 stuck "recording") | Ghi hình hoạt động |
+| `posts` với `post_type = 'live'` | **519** | Bài đăng live |
+| `posts` có video URL chứa "live" | **581** | Video replay |
+| `recording_status = 'ready'` | **488** | Recordings thành công |
+| `recording_status = 'failed'` | **57** | Recordings thất bại (~9.5%) |
 
-## Vấn đề
+**Kết luận: Users livestream RẤT NHIỀU — 600 phiên, 488 recordings thành công!**
 
-`total_rewards` đang dùng `pending_reward + approved_reward` từ bảng `profiles` — đây là giá trị **tĩnh**, không cập nhật theo hoạt động hàng ngày. Tổng thực tế phải cao hơn nhiều vì hoạt động mới mỗi ngày không được phản ánh.
+## Nguyên nhân gốc: Hàm `get_app_stats` không đếm livestream
 
-## Giải pháp
+Hàm `get_app_stats()` hiện tại chỉ trả về:
+- `total_users`, `total_posts`, `total_photos`, `total_videos` (đếm từ `posts WHERE video_url IS NOT NULL`)
+- `total_rewards`, `treasury_camly_received`, `total_camly_claimed`
 
-Cập nhật `get_app_stats()` để tính `total_rewards` **động** bằng cùng công thức `get_user_rewards_v2`, nhưng cho **TẤT CẢ user** (kể cả banned):
+**Không có trường nào đếm `live_sessions`** hoặc `chunked_recordings`. Component `AppHonorBoard.tsx` hiển thị `total_videos = 897` — đó là tổng số posts có video (bao gồm cả live replay), nhưng **không có mục riêng cho "Livestream"**.
+
+## Vấn đề phụ phát hiện thêm
+
+1. **28 recordings stuck ở trạng thái "recording"** — phiên live đã kết thúc nhưng `chunked_recordings.status` không chuyển sang `done`. Đây là những sessions mà host đóng trình duyệt đột ngột trước khi finalize.
+
+2. **57 sessions có `recording_status = 'failed'`** (~9.5%) — một số có `chunked_recordings.status = done` (recording thực ra thành công nhưng status ở `live_sessions` bị đánh failed sai).
+
+3. **`live_recordings` table hoàn toàn trống** (0 rows) — Table này được thiết kế cho Agora server-side recording nhưng chưa bao giờ được sử dụng thành công vì hệ thống đang dùng client-side chunked recording thay thế.
+
+## Kế hoạch sửa
+
+### Task 1: Cập nhật `get_app_stats` thêm `total_livestreams`
+
+Thêm trường `total_livestreams` vào hàm SQL:
 
 ```sql
-total_rewards = SUM(dynamic_total_reward cho mỗi user, bao gồm banned)
+DROP FUNCTION IF EXISTS public.get_app_stats();
+CREATE OR REPLACE FUNCTION public.get_app_stats()
+RETURNS TABLE(
+  total_users BIGINT,
+  total_posts BIGINT,
+  total_photos BIGINT,
+  total_videos BIGINT,
+  total_livestreams BIGINT,
+  total_rewards NUMERIC,
+  treasury_camly_received NUMERIC,
+  total_camly_claimed NUMERIC
+) ...
+-- Thêm:
+(SELECT COUNT(*) FROM live_sessions)::BIGINT AS total_livestreams,
 ```
 
-Logic tính:
-- **Trước 15/01/2026**: posts×10K, reactions×1K, comments×2K, shares×10K, friends×10K
-- **Sau 15/01/2026**: posts×5K (max 10/ngày), reactions×1K (max 50/ngày), comments×1K (max 50/ngày), shares×1K (max 10/ngày), friends×10K (max 10/ngày), livestreams×20K (max 5/ngày)  
-- **Bonus**: 50K/user
+### Task 2: Cập nhật `AppHonorBoard.tsx`
 
-### Thay đổi
-1. **Migration SQL**: Tạo lại `get_app_stats()` với logic tính `total_rewards` động, sao chép logic CTEs từ `get_user_rewards_v2` nhưng bỏ filter `is_banned = false`
-2. **Không cần thay đổi frontend** — field name giữ nguyên
+- Thêm interface field `totalLivestreams`
+- Parse từ response `row.total_livestreams`
+- Thêm stat card với icon `Radio` và label "Livestreams"
 
-### Lưu ý hiệu năng
-Query sẽ nặng hơn vì phải tính cho ~656 users. Tuy nhiên, frontend đã cache 5 phút (`staleTime: 5 * 60 * 1000`), nên không ảnh hưởng đáng kể.
+### Task 3: Dọn dẹp stuck recordings
+
+- Cập nhật 28 `chunked_recordings` stuck ở `status = 'recording'` mà `live_session` đã `ended` → chuyển sang `done` hoặc `failed`
+- Sửa inconsistency: sessions có `recording_status = 'failed'` nhưng `chunked_recordings.status = 'done'`
+
+### Technical Details
+
+**Files cần sửa:**
+1. Migration SQL mới — `DROP FUNCTION + CREATE OR REPLACE` cho `get_app_stats`
+2. `src/components/feed/AppHonorBoard.tsx` — thêm livestream stat
+3. `src/integrations/supabase/types.ts` — tự động cập nhật sau migration
+
+**Không ảnh hưởng:** Các tính năng livestream hiện tại (start, join, record, replay) không bị ảnh hưởng. Đây chỉ là fix hiển thị thống kê.
 
