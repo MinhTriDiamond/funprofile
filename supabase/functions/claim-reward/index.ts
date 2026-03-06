@@ -539,282 +539,70 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 10. Get Treasury wallet credentials
-    const treasuryAddress = Deno.env.get('TREASURY_WALLET_ADDRESS')?.trim();
-    const treasuryPrivateKey = Deno.env.get('TREASURY_PRIVATE_KEY')?.trim();
+    // 10. Instead of sending on-chain immediately, create a pending_claim for admin approval
+    console.log(`Creating pending claim: ${effectiveAmount} CAMLY for user ${userId} to wallet ${wallet_address}`);
 
-    if (!treasuryAddress || !treasuryPrivateKey) {
-      console.error('Treasury wallet not configured');
-      return new Response(
-        JSON.stringify({ error: 'Server Error', message: 'Hệ thống chưa được cấu hình đầy đủ' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // 11. Create viem clients
-    let pk = treasuryPrivateKey;
-    if (!pk.startsWith('0x')) {
-      pk = '0x' + pk;
-    }
-    const account = privateKeyToAccount(pk as `0x${string}`);
-    
-    const publicClient = createPublicClient({
-      chain: bsc,
-      transport: http('https://bsc-dataseed1.binance.org'),
-    });
-
-    const walletClient = createWalletClient({
-      account,
-      chain: bsc,
-      transport: http('https://bsc-dataseed1.binance.org'),
-    });
-
-    // 12. Check Treasury CAMLY balance
-    const treasuryBalance = await publicClient.readContract({
-      address: CAMLY_CONTRACT as `0x${string}`,
-      abi: ERC20_ABI,
-      functionName: 'balanceOf',
-      args: [treasuryAddress as `0x${string}`],
-    });
-
-    const requiredAmount = parseUnits(effectiveAmount.toString(), CAMLY_DECIMALS);
-    
-    if (treasuryBalance < requiredAmount) {
-      console.error(`Treasury insufficient: has ${treasuryBalance}, needs ${requiredAmount}`);
-      return new Response(
-        JSON.stringify({ 
-          error: 'Service Unavailable', 
-          message: 'Treasury không đủ token, vui lòng liên hệ Admin' 
-        }),
-        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // 13. Send CAMLY transfer transaction
-    console.log(`Sending ${effectiveAmount} CAMLY to ${wallet_address}...`);
-    
-    const data = encodeFunctionData({
-      abi: ERC20_ABI,
-      functionName: 'transfer',
-      args: [wallet_address as `0x${string}`, requiredAmount],
-    });
-
-    const txHash = await walletClient.sendTransaction({
-      to: CAMLY_CONTRACT as `0x${string}`,
-      data,
-      chain: bsc,
-    });
-
-    console.log(`Transaction sent: ${txHash}`);
-
-    // 14. Wait for transaction confirmation
-    const receipt = await publicClient.waitForTransactionReceipt({
-      hash: txHash,
-      timeout: 60_000,
-    });
-
-    if (receipt.status !== 'success') {
-      console.error('Transaction failed:', receipt);
-      return new Response(
-        JSON.stringify({ error: 'Transaction Failed', message: 'Giao dịch blockchain thất bại' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log(`Transaction confirmed in block ${receipt.blockNumber}`);
-
-    // 15. Record in reward_claims table
-    const { error: claimInsertError } = await supabaseAdmin
-      .from('reward_claims')
+    const { data: pendingClaim, error: pendingError } = await supabaseAdmin
+      .from('pending_claims')
       .insert({
         user_id: userId,
         amount: effectiveAmount,
         wallet_address: wallet_address.toLowerCase(),
-      });
+        status: 'pending',
+      })
+      .select('id')
+      .single();
 
-    if (claimInsertError) {
-      console.error('Failed to insert reward_claims:', claimInsertError);
+    if (pendingError) {
+      console.error('Failed to create pending claim:', pendingError);
+      return new Response(
+        JSON.stringify({ error: 'Internal Error', message: 'Lỗi khi tạo lệnh claim' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    // 16. Record in transactions table
-    const { error: txInsertError } = await supabaseAdmin
-      .from('transactions')
-      .insert({
-        user_id: userId,
-        tx_hash: txHash,
-        from_address: treasuryAddress.toLowerCase(),
-        to_address: wallet_address.toLowerCase(),
-        amount: effectiveAmount.toString(),
-        token_symbol: 'CAMLY',
-        token_address: CAMLY_CONTRACT.toLowerCase(),
-        chain_id: 56,
-        status: 'confirmed',
-      });
+    // Notify admins about new pending claim
+    const { data: admins } = await supabaseAdmin
+      .from('user_roles')
+      .select('user_id')
+      .eq('role', 'admin');
 
-    if (txInsertError) {
-      console.error('Failed to insert transaction:', txInsertError);
+    if (admins && admins.length > 0) {
+      await supabaseAdmin.from('notifications').insert(
+        admins.map(a => ({
+          user_id: a.user_id,
+          actor_id: userId,
+          type: 'pending_claim',
+          read: false,
+        }))
+      );
     }
 
-    // 16b. Record in donations table for history visibility
-    const TREASURY_SENDER_ID = '9e702a6f-4035-4f30-9c04-f2e21419b37a';
-    const { error: donationInsertError } = await supabaseAdmin
-      .from('donations')
-      .insert({
-        sender_id: TREASURY_SENDER_ID,
-        recipient_id: userId,
-        amount: effectiveAmount.toString(),
-        token_symbol: 'CAMLY',
-        token_address: CAMLY_CONTRACT.toLowerCase(),
-        chain_id: 56,
-        tx_hash: txHash,
-        status: 'confirmed',
-        block_number: Number(receipt.blockNumber),
-        message: `Claim ${effectiveAmount.toLocaleString()} CAMLY từ phần thưởng`,
-        light_score_earned: 0,
-        confirmed_at: new Date().toISOString(),
-        metadata: { type: 'claim_reward' },
-      });
-
-    if (donationInsertError) {
-      console.error('Failed to insert donation record:', donationInsertError);
-    }
-
-    // 16c. Update reward_status to 'claimed'
-    await supabaseAdmin.from('profiles').update({
-      reward_status: 'claimed',
-    }).eq('id', userId);
-
-    // 16d. Create chat message for claim notification
-    let conversationId: string | null = null;
-    let chatMessageId: string | null = null;
-
-    try {
-      // Find existing direct conversation between Treasury and user
-      const { data: recipientConvs } = await supabaseAdmin
-        .from('conversation_participants')
-        .select('conversation_id')
-        .eq('user_id', userId);
-
-      const recipientConvIds = (recipientConvs || []).map((r: any) => r.conversation_id);
-
-      if (recipientConvIds.length > 0) {
-        const { data: existingConv } = await supabaseAdmin
-          .from('conversation_participants')
-          .select('conversation_id')
-          .eq('user_id', TREASURY_SENDER_ID)
-          .in('conversation_id', recipientConvIds);
-
-        for (const conv of existingConv || []) {
-          const { data: convData } = await supabaseAdmin
-            .from('conversations')
-            .select('id, type')
-            .eq('id', conv.conversation_id)
-            .eq('type', 'direct')
-            .single();
-          if (convData) { conversationId = convData.id; break; }
-        }
-      }
-
-      if (!conversationId) {
-        const { data: newConv } = await supabaseAdmin
-          .from('conversations')
-          .insert({ type: 'direct' })
-          .select('id')
-          .single();
-        if (newConv) {
-          conversationId = newConv.id;
-          await supabaseAdmin.from('conversation_participants').insert([
-            { conversation_id: conversationId, user_id: TREASURY_SENDER_ID, role: 'member' },
-            { conversation_id: conversationId, user_id: userId, role: 'member' },
-          ]);
-        }
-      }
-
-      if (conversationId) {
-        const messageContent = `🎁 FUN Profile Treasury đã chuyển ${effectiveAmount.toLocaleString()} CAMLY về ví của bạn!\n\nTX: ${txHash.slice(0, 18)}...\nXem chi tiết: https://bscscan.com/tx/${txHash}`;
-
-        const { data: chatMsg } = await supabaseAdmin
-          .from('messages')
-          .insert({
-            conversation_id: conversationId,
-            sender_id: TREASURY_SENDER_ID,
-            content: messageContent,
-          })
-          .select('id')
-          .single();
-
-        if (chatMsg) {
-          chatMessageId = chatMsg.id;
-          // Update donation with conversation link
-          await supabaseAdmin
-            .from('donations')
-            .update({ conversation_id: conversationId, message_id: chatMessageId })
-            .eq('tx_hash', txHash);
-        }
-      }
-    } catch (chatError) {
-      console.error('Failed to create chat message (non-blocking):', chatError);
-    }
-
-    // 17. Log to audit_logs
+    // Log to audit
     await supabaseAdmin.from('audit_logs').insert({
       admin_id: userId,
       target_user_id: userId,
-      action: 'CLAIM_REWARD',
+      action: 'CLAIM_REQUEST',
       details: {
         amount: effectiveAmount,
         wallet_address,
-        tx_hash: txHash,
-        block_number: receipt.blockNumber?.toString(),
+        pending_claim_id: pendingClaim.id,
       },
-      reason: `Claimed ${effectiveAmount.toLocaleString()} CAMLY to ${wallet_address}`,
+      reason: `Requested claim ${effectiveAmount.toLocaleString()} CAMLY to ${wallet_address}`,
     });
-
-    // 17b. Create notification for the user
-    const TREASURY_ACTOR_ID = '9e702a6f-4035-4f30-9c04-f2e21419b37a';
-    await supabaseAdmin.from('notifications').insert({
-      user_id: userId,
-      actor_id: TREASURY_ACTOR_ID,
-      type: 'claim_reward',
-    });
-
-    // 17c. Create celebration post on feed
-    try {
-      const claimUsername = profile.username || profile.full_name || 'Nguoi dung';
-      const celebrationContent = `🎉 @${claimUsername} da nhan thuong ${effectiveAmount.toLocaleString()} CAMLY tu FUN Profile Treasury! ❤️`;
-
-      await supabaseAdmin.from('posts').insert({
-        user_id: userId,
-        content: celebrationContent,
-        post_type: 'gift_celebration',
-        tx_hash: txHash,
-        gift_sender_id: TREASURY_ACTOR_ID,
-        gift_recipient_id: userId,
-        gift_token: 'CAMLY',
-        gift_amount: effectiveAmount.toString(),
-        gift_message: `Claim ${effectiveAmount.toLocaleString()} CAMLY`,
-        is_highlighted: true,
-        highlight_expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-        visibility: 'public',
-        moderation_status: 'approved',
-      });
-    } catch (postError) {
-      console.error('Failed to create celebration post (non-blocking):', postError);
-    }
 
     const newDailyClaimed = todayClaimed + effectiveAmount;
-    console.log(`Successfully claimed ${effectiveAmount} CAMLY for user ${userId}`);
+    console.log(`Pending claim created: ${pendingClaim.id} for ${effectiveAmount} CAMLY`);
 
-    // 18. Return success response
+    // Return pending response (NOT success with tx_hash)
     return new Response(
       JSON.stringify({
         success: true,
-        tx_hash: txHash,
+        pending: true,
+        pending_claim_id: pendingClaim.id,
         amount: effectiveAmount,
         wallet_address,
-        block_number: receipt.blockNumber?.toString(),
-        message: `Đã chuyển ${effectiveAmount.toLocaleString()} CAMLY thành công!`,
-        bscscan_url: `https://bscscan.com/tx/${txHash}`,
+        message: `Lệnh claim ${effectiveAmount.toLocaleString()} CAMLY đã được gửi, chờ Admin duyệt ⏳`,
         daily_claimed: newDailyClaimed,
         daily_remaining: Math.max(0, DAILY_CLAIM_CAP - newDailyClaimed),
       }),

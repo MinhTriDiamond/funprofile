@@ -5,12 +5,14 @@ import { toast } from 'sonner';
 
 interface ClaimResult {
   success: boolean;
-  tx_hash: string;
+  pending?: boolean;
+  pending_claim_id?: string;
+  tx_hash?: string;
   amount: number;
   wallet_address: string;
-  block_number: string;
+  block_number?: string;
   message: string;
-  bscscan_url: string;
+  bscscan_url?: string;
   daily_claimed: number;
   daily_remaining: number;
 }
@@ -68,14 +70,17 @@ export const useClaimReward = () => {
         return null;
       }
 
-      // Success!
-      setTxHash(data.tx_hash);
+      // Success (pending or completed)
+      if (data.tx_hash) {
+        setTxHash(data.tx_hash);
+      }
       setResult(data);
       
       // Invalidate caches to refresh UI
       queryClient.invalidateQueries({ queryKey: ['reward-stats'] });
       queryClient.invalidateQueries({ queryKey: ['transaction-history'] });
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['pending-claims'] });
       
       return data;
 
