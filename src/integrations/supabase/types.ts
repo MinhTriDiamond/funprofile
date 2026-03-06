@@ -4980,6 +4980,18 @@ export type Database = {
           total_viewers: number
         }[]
       }
+      get_member_reward_breakdown: {
+        Args: never
+        Returns: {
+          avatar_url: string
+          full_name: string
+          remaining: number
+          total_claimed: number
+          total_earned: number
+          user_id: string
+          username: string
+        }[]
+      }
       get_next_nonce: { Args: { _user_id: string }; Returns: number }
       get_post_stats: {
         Args: { p_post_ids: string[] }
