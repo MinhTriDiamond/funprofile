@@ -39,6 +39,13 @@ const Auth = () => {
     };
 
     const checkUser = async () => {
+      // If URL hash contains type=recovery, don't auto-redirect — let ResetPassword page handle it
+      const hash = window.location.hash;
+      if (hash.includes('type=recovery')) {
+        navigate('/reset-password', { replace: true });
+        return;
+      }
+
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         const banned = await checkBanStatus(session.user.id);
@@ -56,6 +63,10 @@ const Auth = () => {
     checkUser();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        navigate('/reset-password', { replace: true });
+        return;
+      }
       if (event === 'SIGNED_IN' && session) {
         const banned = await checkBanStatus(session.user.id);
         if (banned) {

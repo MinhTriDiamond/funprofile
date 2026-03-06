@@ -32,6 +32,7 @@ const Notifications = lazy(() => import("./pages/Notifications"));
 const DocsRouter = lazy(() => import("./pages/DocsRouter"));
 const ConnectedApps = lazy(() => import("./pages/ConnectedApps"));
 const SetPassword = lazy(() => import("./pages/SetPassword"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Chat = lazy(() => import("./pages/Chat"));
 const Install = lazy(() => import("./pages/Install"));
 const Benefactors = lazy(() => import("./pages/Benefactors"));
@@ -119,6 +120,7 @@ function App() {
                   <Route path="/begin" element={<Navigate to="/law-of-light" replace />} />
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/set-password" element={<SetPassword />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/law-of-light" element={<LawOfLight />} />
                   <Route path="/" element={<Feed />} />
                   <Route path="/friends" element={<Friends />} />

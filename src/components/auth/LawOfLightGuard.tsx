@@ -22,7 +22,7 @@ export const LawOfLightGuard = ({ children }: LawOfLightGuardProps) => {
     const checkLawOfLightAcceptance = async () => {
       try {
         // Skip check for public pages
-        const publicPaths = ['/law-of-light', '/docs', '/auth'];
+        const publicPaths = ['/law-of-light', '/docs', '/auth', '/reset-password'];
         const isPublicPath = publicPaths.some(path => location.pathname.startsWith(path));
         
         if (isPublicPath) {
