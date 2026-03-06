@@ -1,78 +1,60 @@
 
 
-# Phân tích: Tại sao Database hiển thị Livestream = 0
+## Kế hoạch: Thêm bảng điều kiện claim thưởng trong Fun Profile
 
-## Phát hiện chính
+### Mục tiêu
+Thay thế phần "Profile Completion Reminders" hiện tại (chỉ hiện khi chưa đủ điều kiện) bằng một **bảng điều kiện luôn hiển thị**, liệt kê đầy đủ tất cả yêu cầu để claim — khớp với backend edge function `claim-reward`.
 
-**Dữ liệu thực tế trong database:**
+### Điều kiện hiện tại (từ backend)
+1. ✅ Họ tên đầy đủ (≥ 4 ký tự, có chữ cái)
+2. ✅ Ảnh đại diện (hình người thật)
+3. ✅ Ảnh bìa trang cá nhân
+4. ✅ Đăng ít nhất 1 bài hôm nay
+5. ✅ Kết nối ví (địa chỉ hợp lệ 0x...)
+6. ✅ Tài khoản ≥ 7 ngày
+7. ✅ Admin đã duyệt (reward_status = approved)
+8. ✅ Tối thiểu 200.000 CAMLY
+9. ✅ Giới hạn 500.000 CAMLY/ngày
 
-| Bảng | Số lượng | Ghi chú |
-|------|----------|---------|
-| `live_sessions` | **600** (596 ended + 4 live) | Users livestream rất tích cực |
-| `chunked_recordings` | **342** (314 done, 28 stuck "recording") | Ghi hình hoạt động |
-| `posts` với `post_type = 'live'` | **519** | Bài đăng live |
-| `posts` có video URL chứa "live" | **581** | Video replay |
-| `recording_status = 'ready'` | **488** | Recordings thành công |
-| `recording_status = 'failed'` | **57** | Recordings thất bại (~9.5%) |
+### Thay đổi
 
-**Kết luận: Users livestream RẤT NHIỀU — 600 phiên, 488 recordings thành công!**
+**File: `src/components/wallet/ClaimRewardsSection.tsx`**
 
-## Nguyên nhân gốc: Hàm `get_app_stats` không đếm livestream
+1. **Thêm prop `accountAgeDays`** (number) — truyền từ parent để hiển thị điều kiện tuổi tài khoản ≥ 7 ngày.
 
-Hàm `get_app_stats()` hiện tại chỉ trả về:
-- `total_users`, `total_posts`, `total_photos`, `total_videos` (đếm từ `posts WHERE video_url IS NOT NULL`)
-- `total_rewards`, `treasury_camly_received`, `total_camly_claimed`
+2. **Thay thế phần "Profile Completion Reminders" (dòng 462-511)** bằng bảng điều kiện **luôn hiển thị**:
+   - Card với header "Điều kiện Claim Thưởng" + icon ClipboardCheck
+   - Danh sách dạng bảng 2 cột: Điều kiện | Trạng thái (✅/❌)
+   - 9 điều kiện đầy đủ theo thứ tự trên
+   - Đếm số điều kiện đã đạt / tổng (VD: "7/9 điều kiện")
+   - Progress bar nhỏ hiển thị % hoàn thành
+   - Nút "Cập nhật trang cá nhân" khi thiếu avatar/cover/tên
+   - Khi đủ tất cả → hiện badge xanh "Sẵn sàng claim! 🎉"
 
-**Không có trường nào đếm `live_sessions`** hoặc `chunked_recordings`. Component `AppHonorBoard.tsx` hiển thị `total_videos = 897` — đó là tổng số posts có video (bao gồm cả live replay), nhưng **không có mục riêng cho "Livestream"**.
+3. **Cập nhật parent component** truyền `accountAgeDays` (tính từ `user.created_at`).
 
-## Vấn đề phụ phát hiện thêm
+**File cần kiểm tra parent**: Tìm nơi render `ClaimRewardsSection` để thêm prop.
 
-1. **28 recordings stuck ở trạng thái "recording"** — phiên live đã kết thúc nhưng `chunked_recordings.status` không chuyển sang `done`. Đây là những sessions mà host đóng trình duyệt đột ngột trước khi finalize.
+### Giao diện mẫu
 
-2. **57 sessions có `recording_status = 'failed'`** (~9.5%) — một số có `chunked_recordings.status = done` (recording thực ra thành công nhưng status ở `live_sessions` bị đánh failed sai).
-
-3. **`live_recordings` table hoàn toàn trống** (0 rows) — Table này được thiết kế cho Agora server-side recording nhưng chưa bao giờ được sử dụng thành công vì hệ thống đang dùng client-side chunked recording thay thế.
-
-## Kế hoạch sửa
-
-### Task 1: Cập nhật `get_app_stats` thêm `total_livestreams`
-
-Thêm trường `total_livestreams` vào hàm SQL:
-
-```sql
-DROP FUNCTION IF EXISTS public.get_app_stats();
-CREATE OR REPLACE FUNCTION public.get_app_stats()
-RETURNS TABLE(
-  total_users BIGINT,
-  total_posts BIGINT,
-  total_photos BIGINT,
-  total_videos BIGINT,
-  total_livestreams BIGINT,
-  total_rewards NUMERIC,
-  treasury_camly_received NUMERIC,
-  total_camly_claimed NUMERIC
-) ...
--- Thêm:
-(SELECT COUNT(*) FROM live_sessions)::BIGINT AS total_livestreams,
+```text
+┌─────────────────────────────────────┐
+│ 📋 Điều kiện Claim Thưởng  [7/9]   │
+│ ████████████░░░░  78%               │
+├─────────────────────────────────────┤
+│ ✅ Họ tên đầy đủ (≥4 ký tự)        │
+│ ✅ Ảnh đại diện                     │
+│ ❌ Ảnh bìa trang cá nhân           │
+│ ✅ Đăng bài hôm nay                │
+│ ✅ Kết nối ví                       │
+│ ✅ Tài khoản ≥ 7 ngày              │
+│ ✅ Admin đã duyệt                  │
+│ ❌ Tối thiểu 200.000 CAMLY         │
+│ ✅ Chưa vượt 500.000/ngày          │
+├─────────────────────────────────────┤
+│ [  Cập nhật trang cá nhân  ]       │
+└─────────────────────────────────────┘
 ```
 
-### Task 2: Cập nhật `AppHonorBoard.tsx`
-
-- Thêm interface field `totalLivestreams`
-- Parse từ response `row.total_livestreams`
-- Thêm stat card với icon `Radio` và label "Livestreams"
-
-### Task 3: Dọn dẹp stuck recordings
-
-- Cập nhật 28 `chunked_recordings` stuck ở `status = 'recording'` mà `live_session` đã `ended` → chuyển sang `done` hoặc `failed`
-- Sửa inconsistency: sessions có `recording_status = 'failed'` nhưng `chunked_recordings.status = 'done'`
-
-### Technical Details
-
-**Files cần sửa:**
-1. Migration SQL mới — `DROP FUNCTION + CREATE OR REPLACE` cho `get_app_stats`
-2. `src/components/feed/AppHonorBoard.tsx` — thêm livestream stat
-3. `src/integrations/supabase/types.ts` — tự động cập nhật sau migration
-
-**Không ảnh hưởng:** Các tính năng livestream hiện tại (start, join, record, replay) không bị ảnh hưởng. Đây chỉ là fix hiển thị thống kê.
+Tổng: sửa **1–2 file** (ClaimRewardsSection + parent), không thay đổi backend.
 
