@@ -2211,6 +2211,80 @@ export type Database = {
         }
         Relationships: []
       }
+      pending_claims: {
+        Row: {
+          admin_id: string | null
+          admin_note: string | null
+          amount: number
+          bscscan_url: string | null
+          created_at: string | null
+          id: string
+          reviewed_at: string | null
+          status: string
+          tx_hash: string | null
+          updated_at: string | null
+          user_id: string
+          wallet_address: string
+        }
+        Insert: {
+          admin_id?: string | null
+          admin_note?: string | null
+          amount: number
+          bscscan_url?: string | null
+          created_at?: string | null
+          id?: string
+          reviewed_at?: string | null
+          status?: string
+          tx_hash?: string | null
+          updated_at?: string | null
+          user_id: string
+          wallet_address: string
+        }
+        Update: {
+          admin_id?: string | null
+          admin_note?: string | null
+          amount?: number
+          bscscan_url?: string | null
+          created_at?: string | null
+          id?: string
+          reviewed_at?: string | null
+          status?: string
+          tx_hash?: string | null
+          updated_at?: string | null
+          user_id?: string
+          wallet_address?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pending_claims_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pending_claims_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pending_claims_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pending_claims_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pending_provisions: {
         Row: {
           completed_at: string | null
