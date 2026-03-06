@@ -220,8 +220,13 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
           )}
         </div>
 
-        <div className="text-xs text-muted-foreground text-center pt-1">
-          {filtered.length} {language === 'vi' ? 'bản ghi' : 'records'}
+        <div className="text-xs text-muted-foreground text-center pt-1 flex items-center justify-center gap-2">
+          <span>{filtered.length} {language === 'vi' ? 'bản ghi' : 'records'}</span>
+          <span>|</span>
+          <span className="flex items-center gap-1 font-semibold text-[#FFD700]">
+            {language === 'vi' ? 'Tổng' : 'Total'}: {formatAmount(totalAmount)}
+            <img src={camlyLogo} alt="CAMLY" className="w-4 h-4 inline-block" />
+          </span>
         </div>
       </DialogContent>
     </Dialog>
