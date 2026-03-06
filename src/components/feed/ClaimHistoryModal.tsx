@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useLanguage } from '@/i18n/LanguageContext';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { Search, Wallet } from 'lucide-react';
 import camlyLogo from '@/assets/tokens/camly-logo.webp';
 
@@ -24,11 +25,43 @@ interface ClaimRecord {
   full_name: string | null;
   avatar_url: string | null;
   is_external: boolean;
+  email?: string | null;
 }
 
 export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps) => {
   const { t, language } = useLanguage();
+  const { userId } = useCurrentUser();
   const [search, setSearch] = useState('');
+
+  // Check if current user is admin
+  const { data: isAdmin } = useQuery({
+    queryKey: ['is-admin', userId],
+    queryFn: async () => {
+      if (!userId) return false;
+      const { data } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId)
+        .eq('role', 'admin')
+        .maybeSingle();
+      return !!data;
+    },
+    enabled: open && !!userId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Fetch emails for admin
+  const { data: emailsMap } = useQuery({
+    queryKey: ['admin-emails-for-claims'],
+    queryFn: async () => {
+      if (!userId) return new Map<string, string>();
+      const { data } = await supabase.rpc('get_user_emails_for_admin', { p_admin_id: userId });
+      if (!data) return new Map<string, string>();
+      return new Map((data as Array<{ user_id: string; email: string }>).map(e => [e.user_id, e.email]));
+    },
+    enabled: open && !!isAdmin && !!userId,
+    staleTime: 5 * 60 * 1000,
+  });
 
   const { data: claims, isLoading } = useQuery({
     queryKey: ['claim-history-all'],
@@ -65,16 +98,31 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
     staleTime: 5 * 60 * 1000,
   });
 
-  const filtered = useMemo(() => {
+  // Enrich claims with emails for admin
+  const enrichedClaims = useMemo(() => {
     if (!claims) return [];
-    if (!search.trim()) return claims;
+    if (!isAdmin || !emailsMap) return claims;
+    return claims.map(c => ({
+      ...c,
+      email: c.user_id ? (emailsMap.get(c.user_id) || null) : null,
+    }));
+  }, [claims, isAdmin, emailsMap]);
+
+  const filtered = useMemo(() => {
+    if (!enrichedClaims.length) return [];
+    if (!search.trim()) return enrichedClaims;
     const q = search.toLowerCase();
-    return claims.filter(c =>
+    return enrichedClaims.filter(c =>
       c.username.toLowerCase().includes(q) ||
       (c.full_name && c.full_name.toLowerCase().includes(q)) ||
-      c.wallet_address.toLowerCase().includes(q)
+      c.wallet_address.toLowerCase().includes(q) ||
+      (isAdmin && c.email && c.email.toLowerCase().includes(q))
     );
-  }, [claims, search]);
+  }, [enrichedClaims, search, isAdmin]);
+
+  const totalAmount = useMemo(() => {
+    return filtered.reduce((sum, c) => sum + c.amount, 0);
+  }, [filtered]);
 
   const formatDate = (iso: string) => {
     const d = new Date(iso);
