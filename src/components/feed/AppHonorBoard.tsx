@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -7,6 +7,7 @@ import { Users, FileText, Image, Video, BadgeDollarSign, Wallet, Coins, Radio } 
 import { formatNumber } from '@/lib/formatters';
 
 import camlyLogo from '@/assets/tokens/camly-logo.webp';
+import { ClaimHistoryModal } from './ClaimHistoryModal';
 
 interface AppStats {
   totalUsers: number;
