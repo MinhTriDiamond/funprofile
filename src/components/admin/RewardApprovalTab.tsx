@@ -95,8 +95,19 @@ const RewardApprovalTab = ({ adminId, onRefresh }: RewardApprovalTabProps) => {
   const [selectedUser, setSelectedUser] = useState<UserWithReward | null>(null);
   const [rejectReason, setRejectReason] = useState("");
 
+  // Pending claims state
+  const [pendingClaims, setPendingClaims] = useState<any[]>([]);
+  const [pendingClaimsLoading, setPendingClaimsLoading] = useState(true);
+  const [claimActionLoading, setClaimActionLoading] = useState<string | null>(null);
+  const [rejectClaimDialogOpen, setRejectClaimDialogOpen] = useState(false);
+  const [selectedClaim, setSelectedClaim] = useState<any | null>(null);
+  const [rejectClaimReason, setRejectClaimReason] = useState("");
+
+  const [activeTab, setActiveTab] = useState("pending-claims");
+
   useEffect(() => {
     loadRewardData();
+    loadPendingClaims();
   }, []);
 
   const loadRewardData = async () => {
