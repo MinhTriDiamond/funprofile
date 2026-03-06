@@ -8,9 +8,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { CheckCircle, XCircle, Search, ArrowUpDown, Coins, RefreshCw, TrendingUp, ShieldCheck, ShieldX, Filter, CheckCheck } from "lucide-react";
+import { CheckCircle, XCircle, Search, ArrowUpDown, Coins, RefreshCw, TrendingUp, ShieldCheck, ShieldX, Filter, CheckCheck, Clock, Loader2, ExternalLink } from "lucide-react";
 
 interface UserWithReward {
   id: string;
@@ -94,8 +95,19 @@ const RewardApprovalTab = ({ adminId, onRefresh }: RewardApprovalTabProps) => {
   const [selectedUser, setSelectedUser] = useState<UserWithReward | null>(null);
   const [rejectReason, setRejectReason] = useState("");
 
+  // Pending claims state
+  const [pendingClaims, setPendingClaims] = useState<any[]>([]);
+  const [pendingClaimsLoading, setPendingClaimsLoading] = useState(true);
+  const [claimActionLoading, setClaimActionLoading] = useState<string | null>(null);
+  const [rejectClaimDialogOpen, setRejectClaimDialogOpen] = useState(false);
+  const [selectedClaim, setSelectedClaim] = useState<any | null>(null);
+  const [rejectClaimReason, setRejectClaimReason] = useState("");
+
+  const [activeTab, setActiveTab] = useState("pending-claims");
+
   useEffect(() => {
     loadRewardData();
+    loadPendingClaims();
   }, []);
 
   const loadRewardData = async () => {
@@ -162,6 +174,94 @@ const RewardApprovalTab = ({ adminId, onRefresh }: RewardApprovalTabProps) => {
       toast.error("Lỗi khi tải dữ liệu thưởng");
     } finally {
       setDataLoading(false);
+    }
+  };
+
+  const loadPendingClaims = async () => {
+    setPendingClaimsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('pending_claims')
+        .select('*')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+
+      // Fetch profiles for these claims
+      const userIds = [...new Set((data || []).map(c => c.user_id))];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, username, avatar_url, full_name')
+        .in('id', userIds.length > 0 ? userIds : ['00000000-0000-0000-0000-000000000000']);
+
+      const profileMap = new Map((profiles || []).map(p => [p.id, p]));
+
+      setPendingClaims((data || []).map(c => ({
+        ...c,
+        profile: profileMap.get(c.user_id) || null,
+      })));
+    } catch (error) {
+      console.error("Error loading pending claims:", error);
+      toast.error("Lỗi khi tải danh sách claim");
+    } finally {
+      setPendingClaimsLoading(false);
+    }
+  };
+
+  const handleApproveClaim = async (claimId: string) => {
+    setClaimActionLoading(claimId);
+    try {
+      const response = await supabase.functions.invoke('approve-claim', {
+        body: { claim_id: claimId, action: 'approve' },
+      });
+
+      if (response.error) {
+        let msg = response.error.message;
+        try { const b = await response.error.context?.json(); if (b?.message) msg = b.message; } catch {}
+        throw new Error(msg);
+      }
+
+      const data = response.data;
+      if (data?.error) throw new Error(data.message);
+
+      toast.success(`✅ Đã duyệt và gửi ${Number(data.amount).toLocaleString('vi-VN')} CAMLY on-chain!`);
+      loadPendingClaims();
+      loadRewardData();
+      onRefresh();
+    } catch (error: any) {
+      console.error("Error approving claim:", error);
+      toast.error(error.message || "Lỗi khi duyệt claim");
+    } finally {
+      setClaimActionLoading(null);
+    }
+  };
+
+  const handleRejectClaim = async () => {
+    if (!selectedClaim) return;
+    if (!rejectClaimReason.trim()) { toast.error("Vui lòng nhập lý do từ chối"); return; }
+
+    setClaimActionLoading(selectedClaim.id);
+    try {
+      const response = await supabase.functions.invoke('approve-claim', {
+        body: { claim_id: selectedClaim.id, action: 'reject', admin_note: rejectClaimReason },
+      });
+
+      if (response.error) {
+        let msg = response.error.message;
+        try { const b = await response.error.context?.json(); if (b?.message) msg = b.message; } catch {}
+        throw new Error(msg);
+      }
+
+      toast.success(`Đã từ chối claim của ${selectedClaim.profile?.username || 'user'}`);
+      setRejectClaimDialogOpen(false);
+      setSelectedClaim(null);
+      loadPendingClaims();
+    } catch (error: any) {
+      console.error("Error rejecting claim:", error);
+      toast.error(error.message || "Lỗi khi từ chối claim");
+    } finally {
+      setClaimActionLoading(null);
     }
   };
 
@@ -305,7 +405,18 @@ const RewardApprovalTab = ({ adminId, onRefresh }: RewardApprovalTabProps) => {
   return (
     <div className="space-y-4">
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <Card className="bg-gradient-to-br from-orange-50 to-red-50 border-orange-200">
+          <CardContent className="pt-4">
+            <div className="flex items-center gap-3">
+              <Clock className="w-7 h-7 text-orange-600" />
+              <div>
+                <p className="text-xs text-muted-foreground">Chờ duyệt claim</p>
+                <p className="text-lg font-bold text-orange-700">{pendingClaims.length} lệnh</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
         <Card className="bg-gradient-to-br from-yellow-50 to-orange-50 border-yellow-200">
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
@@ -344,7 +455,7 @@ const RewardApprovalTab = ({ adminId, onRefresh }: RewardApprovalTabProps) => {
             <div className="flex items-center gap-3">
               <ShieldX className="w-7 h-7 text-amber-600" />
               <div>
-                <p className="text-xs text-muted-foreground">Chưa đủ điều kiện</p>
+                <p className="text-xs text-muted-foreground">Chưa đủ ĐK</p>
                 <p className="text-lg font-bold text-amber-700">{incompleteCount} users</p>
               </div>
             </div>
@@ -352,243 +463,339 @@ const RewardApprovalTab = ({ adminId, onRefresh }: RewardApprovalTabProps) => {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <Coins className="w-5 h-5 text-yellow-500" />
-              Duyệt thưởng V2 ({filteredUsers.length} users)
-            </CardTitle>
-            <div className="flex gap-2">
-              {selectedIds.size > 0 && (
-                <Button
-                  size="sm"
-                  className="bg-green-500 hover:bg-green-600 text-white gap-1"
-                  onClick={handleBatchApprove}
-                  disabled={batchLoading}
-                >
-                  <CheckCheck className="w-4 h-4" />
-                  Duyệt hàng loạt ({selectedIds.size})
-                </Button>
-              )}
-              <Button variant="outline" size="sm" onClick={loadRewardData} disabled={dataLoading} className="gap-2">
-                <RefreshCw className={`w-4 h-4 ${dataLoading ? 'animate-spin' : ''}`} />
-                Làm mới
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Search, Filter, Sort */}
-          <div className="flex gap-2 flex-wrap items-center">
-            <div className="relative flex-1 min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Tìm theo username hoặc ID..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <div className="flex gap-1">
-              {([
-                { key: 'all', label: 'Tất cả', icon: Filter },
-                { key: 'ready', label: 'Sẵn sàng', icon: ShieldCheck },
-                { key: 'incomplete', label: 'Chưa đủ', icon: ShieldX },
-              ] as const).map(f => (
-                <Button
-                  key={f.key}
-                  size="sm"
-                  variant={profileFilter === f.key ? "default" : "outline"}
-                  onClick={() => setProfileFilter(f.key)}
-                  className="gap-1 text-xs"
-                >
-                  <f.icon className="w-3 h-3" />
-                  {f.label}
-                </Button>
-              ))}
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setSortBy(prev => {
-                if (prev === "alpha_asc") return "claimable_desc";
-                if (prev === "claimable_desc") return "claimable_asc";
-                if (prev === "claimable_asc") return "total_desc";
-                return "alpha_asc";
-              })}
-              className="gap-1"
-            >
-              <ArrowUpDown className="w-4 h-4" />
-              {sortBy === "alpha_asc" && "A-Z"}
-              {sortBy === "claimable_desc" && "Claimable ↓"}
-              {sortBy === "claimable_asc" && "Claimable ↑"}
-              {sortBy === "total_desc" && "Total ↓"}
-            </Button>
-          </div>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="pending-claims" className="gap-2">
+            <Clock className="w-4 h-4" />
+            Duyệt Claim ({pendingClaims.length})
+          </TabsTrigger>
+          <TabsTrigger value="approve-users" className="gap-2">
+            <ShieldCheck className="w-4 h-4" />
+            Duyệt User ({pendingUsers.length})
+          </TabsTrigger>
+        </TabsList>
 
-          {/* Select all header */}
-          {eligibleFilteredUsers.length > 0 && (
-            <div className="flex items-center gap-2 px-4 py-2 bg-muted/50 rounded-md">
-              <Checkbox
-                checked={allEligibleSelected}
-                onCheckedChange={toggleSelectAll}
-              />
-              <span className="text-sm text-muted-foreground">
-                Chọn tất cả đủ điều kiện ({eligibleFilteredUsers.length})
-              </span>
-            </div>
-          )}
-
-          {/* User List */}
-          {dataLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <RefreshCw className="w-8 h-8 animate-spin text-muted-foreground" />
-            </div>
-          ) : (
-            <div className="max-h-[500px] overflow-y-auto space-y-3">
-              {filteredUsers.length === 0 ? (
+        {/* ===== TAB 1: PENDING CLAIMS ===== */}
+        <TabsContent value="pending-claims">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-orange-500" />
+                  Lệnh Claim chờ duyệt
+                </CardTitle>
+                <Button variant="outline" size="sm" onClick={loadPendingClaims} disabled={pendingClaimsLoading} className="gap-2">
+                  <RefreshCw className={`w-4 h-4 ${pendingClaimsLoading ? 'animate-spin' : ''}`} />
+                  Làm mới
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {pendingClaimsLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <RefreshCw className="w-8 h-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : pendingClaims.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8">
-                  Không có user nào {profileFilter === 'ready' ? 'sẵn sàng duyệt' : profileFilter === 'incomplete' ? 'chưa đủ điều kiện' : 'đang chờ duyệt thưởng'}
+                  ✅ Không có lệnh claim nào đang chờ duyệt
                 </p>
               ) : (
-                filteredUsers.map((user) => {
-                  const complete = isProfileComplete(user);
-                  const missing = getMissingItems(user);
-                  return (
-                    <div
-                      key={user.id}
-                      className={`flex items-center gap-4 p-4 border rounded-lg hover:shadow-sm transition-shadow ${complete ? 'bg-background' : 'bg-amber-50/50 border-amber-200'}`}
-                    >
-                      {/* Checkbox */}
-                      {isEligibleForApproval(user) ? (
-                        <Checkbox
-                          checked={selectedIds.has(user.id)}
-                          onCheckedChange={() => toggleSelect(user.id)}
-                        />
-                      ) : (
-                        <div className="w-4" />
-                      )}
-
-                      {/* Avatar — click to profile */}
-                      <a href={`/${user.username}`} target="_blank" rel="noopener noreferrer" className="shrink-0">
+                <div className="space-y-3">
+                  {pendingClaims.map((claim) => (
+                    <div key={claim.id} className="flex items-center gap-4 p-4 border rounded-lg bg-orange-50/50 border-orange-200">
+                      <a href={`/${claim.profile?.username}`} target="_blank" rel="noopener noreferrer" className="shrink-0">
                         <Avatar className="w-12 h-12 cursor-pointer ring-2 ring-transparent hover:ring-primary/40 transition-all">
-                          <AvatarImage src={user.avatar_url || ""} />
-                          <AvatarFallback>{user.username[0]?.toUpperCase()}</AvatarFallback>
+                          <AvatarImage src={claim.profile?.avatar_url || ""} />
+                          <AvatarFallback>{(claim.profile?.username || '?')[0]?.toUpperCase()}</AvatarFallback>
                         </Avatar>
                       </a>
 
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <a href={`/${user.username}`} target="_blank" rel="noopener noreferrer" className="font-semibold truncate hover:underline hover:text-primary transition-colors">
-                            {user.username}
+                        <div className="flex items-center gap-2">
+                          <a href={`/${claim.profile?.username}`} target="_blank" rel="noopener noreferrer" className="font-semibold hover:underline hover:text-primary">
+                            {claim.profile?.username || 'Unknown'}
                           </a>
-                          {user.full_name && <span className="text-xs text-muted-foreground">({user.full_name})</span>}
-                          {user.today_reward > 0 && (
-                            <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
-                              +{formatNumber(user.today_reward)} hôm nay
-                            </Badge>
-                          )}
+                          {claim.profile?.full_name && <span className="text-xs text-muted-foreground">({claim.profile.full_name})</span>}
                         </div>
-                        <p className="text-xs text-muted-foreground font-mono truncate">{user.id}</p>
-                        {/* Profile readiness badges */}
-                        <div className="flex gap-1.5 mt-1 flex-wrap">
-                          <ProfileBadge ok={!!user.avatar_url} label="Avatar" />
-                          <ProfileBadge ok={!!user.cover_url} label="Bìa" />
-                          <ProfileBadge ok={!!(user.full_name && user.full_name.trim().length >= 2)} label="Tên" />
-                          <ProfileBadge ok={isValidWallet(user.public_wallet_address)} label="Ví" />
-                          <ProfileBadge ok={user.today_reward > 0} label="Hôm nay" />
-                        </div>
-                        <div className="flex gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
-                          <span>📝 {user.posts_count}</span>
-                          <span>❤️ {user.reactions_on_posts}</span>
-                          <span>💬 {user.comments_count}</span>
-                          <span>🔄 {user.shares_count}</span>
-                          <span>👥 {user.friends_count}</span>
-                          {user.livestreams_count > 0 && <span>📺 {user.livestreams_count}</span>}
-                        </div>
+                        <p className="text-xs text-muted-foreground font-mono truncate">{claim.user_id}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Ví: <span className="font-mono">{claim.wallet_address.slice(0, 8)}...{claim.wallet_address.slice(-6)}</span>
+                        </p>
+                        <p className="text-xs text-blue-600 mt-0.5">
+                          📋 Yêu cầu: {formatDateTime(claim.created_at)}
+                        </p>
                       </div>
 
-                      <div className="text-right min-w-[140px]">
-                        <div className="flex items-center justify-end gap-1.5 flex-wrap">
-                          <p className="text-lg font-bold text-yellow-600">
-                            {formatNumber(user.claimable_amount)} CAMLY
-                          </p>
-                          {user.claimable_amount < MINIMUM_CLAIM && (
-                            <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
-                              Chưa đủ 200K
-                            </Badge>
-                          )}
-                          {user.claimable_amount > MAX_DAILY_CLAIM && (
-                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-amber-50 text-amber-700 border-amber-300">
-                              Vượt 500K/ngày
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-xs text-muted-foreground">Total: {formatNumber(user.total_reward)}</p>
-                        <p className="text-xs text-green-600">Claimed: {formatNumber(user.claimed_amount)}</p>
-                        {user.reward_requested_at && (
-                          <p className="text-[10px] text-blue-600">
-                            📋 Yêu cầu: {formatDateTime(user.reward_requested_at)}
-                          </p>
-                        )}
-                        {user.last_claimed_at && (
-                          <p className="text-[10px] text-muted-foreground">
-                            🕐 Claim: {formatDateTime(user.last_claimed_at)}
-                          </p>
-                        )}
+                      <div className="text-right min-w-[120px]">
+                        <p className="text-xl font-bold text-orange-700">{formatNumber(Number(claim.amount))}</p>
+                        <p className="text-xs text-muted-foreground">CAMLY</p>
                       </div>
 
                       <div className="flex gap-2">
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span>
-                                 <Button
-                                  size="sm"
-                                  className="bg-green-500 hover:bg-green-600 text-white gap-1"
-                                  onClick={() => { handleApprove(user).then(() => { loadRewardData(); onRefresh(); }); }}
-                                  disabled={loading === user.id || !isEligibleForApproval(user)}
-                                >
-                                  <CheckCircle className="w-4 h-4" />
-                                  Duyệt
-                                </Button>
-                              </span>
-                            </TooltipTrigger>
-                            {!isEligibleForApproval(user) && (
-                              <TooltipContent side="left" className="max-w-xs">
-                                <p className="text-sm font-medium">Chưa đủ điều kiện:</p>
-                                <ul className="text-xs list-disc pl-4">
-                                  {missing.map(m => <li key={m}>{m}</li>)}
-                                  {user.claimable_amount < MINIMUM_CLAIM && (
-                                    <li>Chưa đủ tối thiểu {formatNumber(MINIMUM_CLAIM)} CAMLY</li>
-                                  )}
-                                </ul>
-                              </TooltipContent>
-                            )}
-                          </Tooltip>
-                        </TooltipProvider>
+                        <Button
+                          size="sm"
+                          className="bg-green-500 hover:bg-green-600 text-white gap-1"
+                          onClick={() => handleApproveClaim(claim.id)}
+                          disabled={claimActionLoading === claim.id}
+                        >
+                          {claimActionLoading === claim.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <CheckCircle className="w-4 h-4" />
+                          )}
+                          Duyệt & Gửi
+                        </Button>
                         <Button
                           size="sm"
                           variant="destructive"
                           className="gap-1"
-                          onClick={() => openRejectDialog(user)}
-                          disabled={loading === user.id}
+                          onClick={() => {
+                            setSelectedClaim(claim);
+                            setRejectClaimReason("");
+                            setRejectClaimDialogOpen(true);
+                          }}
+                          disabled={claimActionLoading === claim.id}
                         >
                           <XCircle className="w-4 h-4" />
                           Từ chối
                         </Button>
                       </div>
                     </div>
-                  );
-                })
+                  ))}
+                </div>
               )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-      {/* Reject Dialog */}
+        {/* ===== TAB 2: APPROVE USERS ===== */}
+        <TabsContent value="approve-users">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Coins className="w-5 h-5 text-yellow-500" />
+                  Duyệt thưởng V2 ({filteredUsers.length} users)
+                </CardTitle>
+                <div className="flex gap-2">
+                  {selectedIds.size > 0 && (
+                    <Button
+                      size="sm"
+                      className="bg-green-500 hover:bg-green-600 text-white gap-1"
+                      onClick={handleBatchApprove}
+                      disabled={batchLoading}
+                    >
+                      <CheckCheck className="w-4 h-4" />
+                      Duyệt hàng loạt ({selectedIds.size})
+                    </Button>
+                  )}
+                  <Button variant="outline" size="sm" onClick={loadRewardData} disabled={dataLoading} className="gap-2">
+                    <RefreshCw className={`w-4 h-4 ${dataLoading ? 'animate-spin' : ''}`} />
+                    Làm mới
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Search, Filter, Sort */}
+              <div className="flex gap-2 flex-wrap items-center">
+                <div className="relative flex-1 min-w-[200px]">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Tìm theo username hoặc ID..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <div className="flex gap-1">
+                  {([
+                    { key: 'all', label: 'Tất cả', icon: Filter },
+                    { key: 'ready', label: 'Sẵn sàng', icon: ShieldCheck },
+                    { key: 'incomplete', label: 'Chưa đủ', icon: ShieldX },
+                  ] as const).map(f => (
+                    <Button
+                      key={f.key}
+                      size="sm"
+                      variant={profileFilter === f.key ? "default" : "outline"}
+                      onClick={() => setProfileFilter(f.key)}
+                      className="gap-1 text-xs"
+                    >
+                      <f.icon className="w-3 h-3" />
+                      {f.label}
+                    </Button>
+                  ))}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSortBy(prev => {
+                    if (prev === "alpha_asc") return "claimable_desc";
+                    if (prev === "claimable_desc") return "claimable_asc";
+                    if (prev === "claimable_asc") return "total_desc";
+                    return "alpha_asc";
+                  })}
+                  className="gap-1"
+                >
+                  <ArrowUpDown className="w-4 h-4" />
+                  {sortBy === "alpha_asc" && "A-Z"}
+                  {sortBy === "claimable_desc" && "Claimable ↓"}
+                  {sortBy === "claimable_asc" && "Claimable ↑"}
+                  {sortBy === "total_desc" && "Total ↓"}
+                </Button>
+              </div>
+
+              {/* Select all header */}
+              {eligibleFilteredUsers.length > 0 && (
+                <div className="flex items-center gap-2 px-4 py-2 bg-muted/50 rounded-md">
+                  <Checkbox
+                    checked={allEligibleSelected}
+                    onCheckedChange={toggleSelectAll}
+                  />
+                  <span className="text-sm text-muted-foreground">
+                    Chọn tất cả đủ điều kiện ({eligibleFilteredUsers.length})
+                  </span>
+                </div>
+              )}
+
+              {/* User List */}
+              {dataLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <RefreshCw className="w-8 h-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <div className="max-h-[500px] overflow-y-auto space-y-3">
+                  {filteredUsers.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-8">
+                      Không có user nào đang chờ duyệt thưởng
+                    </p>
+                  ) : (
+                    filteredUsers.map((user) => {
+                      const complete = isProfileComplete(user);
+                      const missing = getMissingItems(user);
+                      return (
+                        <div
+                          key={user.id}
+                          className={`flex items-center gap-4 p-4 border rounded-lg hover:shadow-sm transition-shadow ${complete ? 'bg-background' : 'bg-amber-50/50 border-amber-200'}`}
+                        >
+                          {isEligibleForApproval(user) ? (
+                            <Checkbox
+                              checked={selectedIds.has(user.id)}
+                              onCheckedChange={() => toggleSelect(user.id)}
+                            />
+                          ) : (
+                            <div className="w-4" />
+                          )}
+
+                          <a href={`/${user.username}`} target="_blank" rel="noopener noreferrer" className="shrink-0">
+                            <Avatar className="w-12 h-12 cursor-pointer ring-2 ring-transparent hover:ring-primary/40 transition-all">
+                              <AvatarImage src={user.avatar_url || ""} />
+                              <AvatarFallback>{user.username[0]?.toUpperCase()}</AvatarFallback>
+                            </Avatar>
+                          </a>
+
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <a href={`/${user.username}`} target="_blank" rel="noopener noreferrer" className="font-semibold truncate hover:underline hover:text-primary transition-colors">
+                                {user.username}
+                              </a>
+                              {user.full_name && <span className="text-xs text-muted-foreground">({user.full_name})</span>}
+                              {user.today_reward > 0 && (
+                                <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                                  +{formatNumber(user.today_reward)} hôm nay
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground font-mono truncate">{user.id}</p>
+                            <div className="flex gap-1.5 mt-1 flex-wrap">
+                              <ProfileBadge ok={!!user.avatar_url} label="Avatar" />
+                              <ProfileBadge ok={!!user.cover_url} label="Bìa" />
+                              <ProfileBadge ok={!!(user.full_name && user.full_name.trim().length >= 2)} label="Tên" />
+                              <ProfileBadge ok={isValidWallet(user.public_wallet_address)} label="Ví" />
+                              <ProfileBadge ok={user.today_reward > 0} label="Hôm nay" />
+                            </div>
+                            <div className="flex gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
+                              <span>📝 {user.posts_count}</span>
+                              <span>❤️ {user.reactions_on_posts}</span>
+                              <span>💬 {user.comments_count}</span>
+                              <span>🔄 {user.shares_count}</span>
+                              <span>👥 {user.friends_count}</span>
+                              {user.livestreams_count > 0 && <span>📺 {user.livestreams_count}</span>}
+                            </div>
+                          </div>
+
+                          <div className="text-right min-w-[140px]">
+                            <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                              <p className="text-lg font-bold text-yellow-600">
+                                {formatNumber(user.claimable_amount)} CAMLY
+                              </p>
+                              {user.claimable_amount < MINIMUM_CLAIM && (
+                                <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+                                  Chưa đủ 200K
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground">Total: {formatNumber(user.total_reward)}</p>
+                            <p className="text-xs text-green-600">Claimed: {formatNumber(user.claimed_amount)}</p>
+                            {user.reward_requested_at && (
+                              <p className="text-[10px] text-blue-600">
+                                📋 Yêu cầu: {formatDateTime(user.reward_requested_at)}
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="flex gap-2">
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span>
+                                    <Button
+                                      size="sm"
+                                      className="bg-green-500 hover:bg-green-600 text-white gap-1"
+                                      onClick={() => { handleApprove(user).then(() => { loadRewardData(); onRefresh(); }); }}
+                                      disabled={loading === user.id || !isEligibleForApproval(user)}
+                                    >
+                                      <CheckCircle className="w-4 h-4" />
+                                      Duyệt
+                                    </Button>
+                                  </span>
+                                </TooltipTrigger>
+                                {!isEligibleForApproval(user) && (
+                                  <TooltipContent side="left" className="max-w-xs">
+                                    <p className="text-sm font-medium">Chưa đủ điều kiện:</p>
+                                    <ul className="text-xs list-disc pl-4">
+                                      {missing.map(m => <li key={m}>{m}</li>)}
+                                      {user.claimable_amount < MINIMUM_CLAIM && (
+                                        <li>Chưa đủ tối thiểu {formatNumber(MINIMUM_CLAIM)} CAMLY</li>
+                                      )}
+                                    </ul>
+                                  </TooltipContent>
+                                )}
+                              </Tooltip>
+                            </TooltipProvider>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              className="gap-1"
+                              onClick={() => openRejectDialog(user)}
+                              disabled={loading === user.id}
+                            >
+                              <XCircle className="w-4 h-4" />
+                              Từ chối
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      {/* Reject User Dialog */}
       <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -608,6 +815,30 @@ const RewardApprovalTab = ({ adminId, onRefresh }: RewardApprovalTabProps) => {
           <DialogFooter>
             <Button variant="outline" onClick={() => setRejectDialogOpen(false)}>Hủy</Button>
             <Button variant="destructive" onClick={handleReject} disabled={loading !== null}>Xác nhận từ chối</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reject Claim Dialog */}
+      <Dialog open={rejectClaimDialogOpen} onOpenChange={setRejectClaimDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Từ chối lệnh Claim</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Từ chối claim <strong>{formatNumber(Number(selectedClaim?.amount) || 0)} CAMLY</strong> của <strong>{selectedClaim?.profile?.username}</strong>
+            </p>
+            <Textarea
+              placeholder="Nhập lý do từ chối..."
+              value={rejectClaimReason}
+              onChange={(e) => setRejectClaimReason(e.target.value)}
+              rows={3}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRejectClaimDialogOpen(false)}>Hủy</Button>
+            <Button variant="destructive" onClick={handleRejectClaim} disabled={claimActionLoading !== null}>Xác nhận từ chối</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -1,104 +1,78 @@
 
 
-## Phân tích nguyên nhân
+# Phân tích: Tại sao Database hiển thị Livestream = 0
 
-### Vấn đề cốt lõi
+## Phát hiện chính
 
-Hiện tại, flow claim hoạt động như sau:
+**Dữ liệu thực tế trong database:**
 
-```text
-Admin duyệt USER (reward_status → 'approved')
-    ↓
-User bấm Claim → Edge function gửi token ON-CHAIN NGAY LẬP TỨC
-    ↓
-Giao dịch hoàn thành → Không cần admin duyệt từng lệnh claim
-```
+| Bảng | Số lượng | Ghi chú |
+|------|----------|---------|
+| `live_sessions` | **600** (596 ended + 4 live) | Users livestream rất tích cực |
+| `chunked_recordings` | **342** (314 done, 28 stuck "recording") | Ghi hình hoạt động |
+| `posts` với `post_type = 'live'` | **519** | Bài đăng live |
+| `posts` có video URL chứa "live" | **581** | Video replay |
+| `recording_status = 'ready'` | **488** | Recordings thành công |
+| `recording_status = 'failed'` | **57** | Recordings thất bại (~9.5%) |
 
-**Đây là thiết kế hiện tại**: Khi admin đã duyệt tài khoản (`approved`), user tự do claim mà KHÔNG cần admin duyệt từng lần. Admin không thấy lệnh claim trong tab "Duyệt thưởng" vì tab đó chỉ hiển thị user có `reward_status = 'pending'`.
+**Kết luận: Users livestream RẤT NHIỀU — 600 phiên, 488 recordings thành công!**
 
-### Tại sao admin không thấy lệnh claim?
+## Nguyên nhân gốc: Hàm `get_app_stats` không đếm livestream
 
-- Tab "Duyệt thưởng" lọc: `reward_status === 'pending'` (dòng 169 RewardApprovalTab)
-- User đã được duyệt (`approved`) → claim trực tiếp → edge function gửi token on-chain ngay
-- Sau khi claim xong, edge function đặt `reward_status = 'claimed'` (dòng 683-685)
-- Không có bước trung gian nào để admin xem/duyệt từng lệnh claim
+Hàm `get_app_stats()` hiện tại chỉ trả về:
+- `total_users`, `total_posts`, `total_photos`, `total_videos` (đếm từ `posts WHERE video_url IS NOT NULL`)
+- `total_rewards`, `treasury_camly_received`, `total_camly_claimed`
 
-### Giải pháp đề xuất
+**Không có trường nào đếm `live_sessions`** hoặc `chunked_recordings`. Component `AppHonorBoard.tsx` hiển thị `total_videos = 897` — đó là tổng số posts có video (bao gồm cả live replay), nhưng **không có mục riêng cho "Livestream"**.
 
-Thay đổi flow để **mỗi lần claim cần admin duyệt** (2-step approval):
+## Vấn đề phụ phát hiện thêm
 
-```text
-FLOW MỚI:
-User bấm Claim → Tạo bản ghi "pending_claim" trong DB → Admin thấy trong tab duyệt
-    ↓
-Admin duyệt → Edge function gửi token on-chain
-Admin từ chối → Hoàn lại số dư, thông báo user
-```
+1. **28 recordings stuck ở trạng thái "recording"** — phiên live đã kết thúc nhưng `chunked_recordings.status` không chuyển sang `done`. Đây là những sessions mà host đóng trình duyệt đột ngột trước khi finalize.
 
-### Chi tiết thay đổi
+2. **57 sessions có `recording_status = 'failed'`** (~9.5%) — một số có `chunked_recordings.status = done` (recording thực ra thành công nhưng status ở `live_sessions` bị đánh failed sai).
 
-**1. Tạo bảng `pending_claims` (migration SQL)**
+3. **`live_recordings` table hoàn toàn trống** (0 rows) — Table này được thiết kế cho Agora server-side recording nhưng chưa bao giờ được sử dụng thành công vì hệ thống đang dùng client-side chunked recording thay thế.
+
+## Kế hoạch sửa
+
+### Task 1: Cập nhật `get_app_stats` thêm `total_livestreams`
+
+Thêm trường `total_livestreams` vào hàm SQL:
 
 ```sql
-CREATE TABLE public.pending_claims (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  amount BIGINT NOT NULL,
-  wallet_address TEXT NOT NULL,
-  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'processing', 'completed', 'failed')),
-  admin_id UUID REFERENCES profiles(id),
-  admin_note TEXT,
-  tx_hash TEXT,
-  reviewed_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-
-ALTER TABLE public.pending_claims ENABLE ROW LEVEL SECURITY;
-
--- User có thể xem claim của mình
-CREATE POLICY "Users can view own claims" ON public.pending_claims
-  FOR SELECT TO authenticated
-  USING (user_id = auth.uid());
-
--- User có thể tạo claim mới
-CREATE POLICY "Users can insert own claims" ON public.pending_claims
-  FOR INSERT TO authenticated
-  WITH CHECK (user_id = auth.uid());
-
--- Admin có thể xem và cập nhật tất cả
-CREATE POLICY "Admins can view all claims" ON public.pending_claims
-  FOR SELECT TO authenticated
-  USING (public.has_role(auth.uid(), 'admin'));
-
-CREATE POLICY "Admins can update claims" ON public.pending_claims
-  FOR UPDATE TO authenticated
-  USING (public.has_role(auth.uid(), 'admin'));
+DROP FUNCTION IF EXISTS public.get_app_stats();
+CREATE OR REPLACE FUNCTION public.get_app_stats()
+RETURNS TABLE(
+  total_users BIGINT,
+  total_posts BIGINT,
+  total_photos BIGINT,
+  total_videos BIGINT,
+  total_livestreams BIGINT,
+  total_rewards NUMERIC,
+  treasury_camly_received NUMERIC,
+  total_camly_claimed NUMERIC
+) ...
+-- Thêm:
+(SELECT COUNT(*) FROM live_sessions)::BIGINT AS total_livestreams,
 ```
 
-**2. Sửa `claim-reward` edge function** — Thay vì gửi on-chain ngay, chỉ tạo bản ghi `pending_claims` với `status = 'pending'` và trả về thông báo "Lệnh claim đã được gửi, chờ Admin duyệt".
+### Task 2: Cập nhật `AppHonorBoard.tsx`
 
-**3. Tạo edge function mới `approve-claim`** — Admin gọi function này để duyệt. Function sẽ:
-- Kiểm tra admin role
-- Lấy pending_claim → gửi token on-chain
-- Cập nhật `pending_claims.status = 'completed'` + ghi `tx_hash`
-- Ghi vào `reward_claims`, `transactions`, `donations` như cũ
-- Thông báo user
+- Thêm interface field `totalLivestreams`
+- Parse từ response `row.total_livestreams`
+- Thêm stat card với icon `Radio` và label "Livestreams"
 
-**4. Sửa `RewardApprovalTab`** — Thêm section hiển thị danh sách `pending_claims` với nút Duyệt/Từ chối cho từng lệnh claim.
+### Task 3: Dọn dẹp stuck recordings
 
-**5. Sửa `ClaimRewardDialog`** — Thay đổi UI success từ "Giao dịch hoàn thành" sang "Lệnh claim đã được gửi, chờ Admin duyệt ⏳". Hiển thị trạng thái pending.
+- Cập nhật 28 `chunked_recordings` stuck ở `status = 'recording'` mà `live_session` đã `ended` → chuyển sang `done` hoặc `failed`
+- Sửa inconsistency: sessions có `recording_status = 'failed'` nhưng `chunked_recordings.status = 'done'`
 
-**6. Sửa `useClaimReward` hook** — Cập nhật response handling cho flow mới (không còn nhận `tx_hash` ngay).
+### Technical Details
 
-### Tổng kết
+**Files cần sửa:**
+1. Migration SQL mới — `DROP FUNCTION + CREATE OR REPLACE` cho `get_app_stats`
+2. `src/components/feed/AppHonorBoard.tsx` — thêm livestream stat
+3. `src/integrations/supabase/types.ts` — tự động cập nhật sau migration
 
-| Thay đổi | File |
-|---|---|
-| Tạo bảng `pending_claims` | Migration SQL |
-| Sửa edge function claim → chỉ tạo pending | `supabase/functions/claim-reward/index.ts` |
-| Tạo edge function admin duyệt claim | `supabase/functions/approve-claim/index.ts` |
-| Cập nhật UI admin hiển thị pending claims | `src/components/admin/RewardApprovalTab.tsx` |
-| Cập nhật dialog claim → hiện trạng thái chờ | `src/components/wallet/ClaimRewardDialog.tsx` |
-| Cập nhật hook claim | `src/hooks/useClaimReward.ts` |
+**Không ảnh hưởng:** Các tính năng livestream hiện tại (start, join, record, replay) không bị ảnh hưởng. Đây chỉ là fix hiển thị thống kê.
 
