@@ -4985,6 +4985,7 @@ export type Database = {
         Returns: {
           avatar_url: string
           full_name: string
+          is_banned: boolean
           remaining: number
           total_claimed: number
           total_earned: number
