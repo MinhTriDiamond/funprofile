@@ -1,78 +1,54 @@
 
 
-# Phân tích: Tại sao Database hiển thị Livestream = 0
+## Kết quả kiểm tra Flow Claim Rewards — ĐẢM BẢO HOẠT ĐỘNG ĐÚNG ✅
 
-## Phát hiện chính
+### Tóm tắt: Flow đang hoạt động chính xác
 
-**Dữ liệu thực tế trong database:**
+Toàn bộ logic từ Frontend → Dialog → Backend edge function đã đồng bộ và đúng quy tắc.
 
-| Bảng | Số lượng | Ghi chú |
-|------|----------|---------|
-| `live_sessions` | **600** (596 ended + 4 live) | Users livestream rất tích cực |
-| `chunked_recordings` | **342** (314 done, 28 stuck "recording") | Ghi hình hoạt động |
-| `posts` với `post_type = 'live'` | **519** | Bài đăng live |
-| `posts` có video URL chứa "live" | **581** | Video replay |
-| `recording_status = 'ready'` | **488** | Recordings thành công |
-| `recording_status = 'failed'` | **57** | Recordings thất bại (~9.5%) |
+---
 
-**Kết luận: Users livestream RẤT NHIỀU — 600 phiên, 488 recordings thành công!**
+### Chi tiết kiểm tra
 
-## Nguyên nhân gốc: Hàm `get_app_stats` không đếm livestream
+| Quy tắc | Frontend | Backend | Kết quả |
+|---|---|---|---|
+| **Tối thiểu 200.000 CAMLY** | `MINIMUM_CLAIM = 200000` (ClaimRewardDialog dòng 20) | `MINIMUM_CLAIM = 200000` (edge fn dòng 14, check dòng 482) | ✅ Đồng bộ |
+| **Tối đa 500.000/ngày** | `DAILY_CLAIM_CAP = 500000` (ClaimRewardDialog dòng 21) | `DAILY_CLAIM_CAP = 500000` (edge fn dòng 15, check dòng 492) | ✅ Đồng bộ |
+| **Giới hạn 2 lần/24h** | Không check ở FE (đúng, để backend handle) | Check dòng 422-477, lần 3+ → on_hold + fraud signal | ✅ Backend enforce |
+| **Auto-cap số tiền** | FE: `maxClaimable = min(claimableAmount, dailyRemaining)` | BE: `effectiveAmount = min(claimAmount, claimableAmount, dailyRemaining)` dòng 505 | ✅ Cả hai cap đúng |
+| **Claimable = tổng tích lũy - đã claim** | FE: `claimableReward = totalReward - claimed` | BE: `claimableAmount = max(0, totalReward - claimedAmount)` dòng 420 | ✅ Đồng bộ |
+| **Chỉ approved mới claim được** | FE: `config.disabled = true` cho pending/on_hold/rejected/inactive | BE: `blockedStatuses = ['pending', 'on_hold', 'rejected', 'banned']` dòng 360 | ✅ Đồng bộ |
+| **Daily claimed tính theo giờ VN** | FE: truyền `dailyClaimed` từ WalletCenterContainer | BE: tính theo UTC+7, reset 00:00 VN (dòng 404-417) | ✅ |
+| **Rate limit 1 lần/phút** | — | `check_rate_limit` 60s (dòng 106) | ✅ |
 
-Hàm `get_app_stats()` hiện tại chỉ trả về:
-- `total_users`, `total_posts`, `total_photos`, `total_videos` (đếm từ `posts WHERE video_url IS NOT NULL`)
-- `total_rewards`, `treasury_camly_received`, `total_camly_claimed`
+### Validation chain Backend (claim-reward edge function)
 
-**Không có trường nào đếm `live_sessions`** hoặc `chunked_recordings`. Component `AppHonorBoard.tsx` hiển thị `total_videos = 897` — đó là tổng số posts có video (bao gồm cả live replay), nhưng **không có mục riêng cho "Livestream"**.
-
-## Vấn đề phụ phát hiện thêm
-
-1. **28 recordings stuck ở trạng thái "recording"** — phiên live đã kết thúc nhưng `chunked_recordings.status` không chuyển sang `done`. Đây là những sessions mà host đóng trình duyệt đột ngột trước khi finalize.
-
-2. **57 sessions có `recording_status = 'failed'`** (~9.5%) — một số có `chunked_recordings.status = done` (recording thực ra thành công nhưng status ở `live_sessions` bị đánh failed sai).
-
-3. **`live_recordings` table hoàn toàn trống** (0 rows) — Table này được thiết kế cho Agora server-side recording nhưng chưa bao giờ được sử dụng thành công vì hệ thống đang dùng client-side chunked recording thay thế.
-
-## Kế hoạch sửa
-
-### Task 1: Cập nhật `get_app_stats` thêm `total_livestreams`
-
-Thêm trường `total_livestreams` vào hàm SQL:
-
-```sql
-DROP FUNCTION IF EXISTS public.get_app_stats();
-CREATE OR REPLACE FUNCTION public.get_app_stats()
-RETURNS TABLE(
-  total_users BIGINT,
-  total_posts BIGINT,
-  total_photos BIGINT,
-  total_videos BIGINT,
-  total_livestreams BIGINT,
-  total_rewards NUMERIC,
-  treasury_camly_received NUMERIC,
-  total_camly_claimed NUMERIC
-) ...
--- Thêm:
-(SELECT COUNT(*) FROM live_sessions)::BIGINT AS total_livestreams,
+```text
+1. JWT Auth → 2. Rate limit 1/min → 3. Profile checks:
+   ├─ Wallet blocked? → 403
+   ├─ Claim frozen? → 403
+   ├─ Avatar? → 403
+   ├─ Wallet address? → 403
+   ├─ Cover photo? → 403
+   ├─ Today post? → 403
+   ├─ Full name ≥4 chars? → on_hold
+   └─ Account ≥ 7 days? → 403
+4. Fraud detection (device, avatar trùng, ví trùng) → on_hold
+5. reward_status ∈ {pending, on_hold, rejected, banned} → 403
+6. Calculate claimable = totalReward - totalClaimed
+7. Velocity check: ≥2 lần/24h → 429
+8. amount < 200K → 400
+9. dailyRemaining ≤ 0 → 429
+10. effectiveAmount = min(amount, claimable, dailyRemaining)
+11. effectiveAmount < 200K → 400
+12. → Gửi on-chain transaction
 ```
 
-### Task 2: Cập nhật `AppHonorBoard.tsx`
+### Kết luận
 
-- Thêm interface field `totalLivestreams`
-- Parse từ response `row.total_livestreams`
-- Thêm stat card với icon `Radio` và label "Livestreams"
-
-### Task 3: Dọn dẹp stuck recordings
-
-- Cập nhật 28 `chunked_recordings` stuck ở `status = 'recording'` mà `live_session` đã `ended` → chuyển sang `done` hoặc `failed`
-- Sửa inconsistency: sessions có `recording_status = 'failed'` nhưng `chunked_recordings.status = 'done'`
-
-### Technical Details
-
-**Files cần sửa:**
-1. Migration SQL mới — `DROP FUNCTION + CREATE OR REPLACE` cho `get_app_stats`
-2. `src/components/feed/AppHonorBoard.tsx` — thêm livestream stat
-3. `src/integrations/supabase/types.ts` — tự động cập nhật sau migration
-
-**Không ảnh hưởng:** Các tính năng livestream hiện tại (start, join, record, replay) không bị ảnh hưởng. Đây chỉ là fix hiển thị thống kê.
+**Không cần sửa gì.** Flow claim đang hoạt động đúng:
+- User nhập tối thiểu 200.000, tối đa bị cap bởi min(số dư, 500K - đã claim hôm nay)
+- Backend validate đầy đủ trước khi gửi giao dịch on-chain
+- Chỉ user có `reward_status = 'approved'` mới claim được
+- Admin duyệt qua tab "Duyệt thưởng" → chuyển từ `pending` sang `approved`
 
