@@ -416,8 +416,8 @@ Deno.serve(async (req) => {
 
     const todayClaimed = todayClaims?.reduce((sum, c) => sum + Number(c.amount), 0) || 0;
     const dailyRemaining = Math.max(0, DAILY_CLAIM_CAP - todayClaimed);
-    // Không cộng dồn: claimable chỉ dựa trên thưởng hôm nay trừ đã claim hôm nay
-    const claimableAmount = Math.max(0, todayReward - todayClaimed);
+    // Cho phép claim từ tổng tích lũy (totalReward - claimedAmount), giới hạn bởi daily cap
+    const claimableAmount = Math.max(0, totalReward - claimedAmount);
 
     // ===== CLAIM VELOCITY CHECK: Phát hiện sớm hành vi farm =====
     // Kiểm tra số lần rút trong 24 giờ thực (không phụ thuộc ngày UTC)
