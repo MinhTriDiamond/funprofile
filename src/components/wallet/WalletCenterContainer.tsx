@@ -211,7 +211,7 @@ const WalletCenterContainer = () => {
     if (session?.user) {
       const { data } = await supabase
         .from('profiles')
-        .select('username, display_name, avatar_url, cover_url, full_name, reward_status, admin_notes')
+        .select('username, display_name, avatar_url, cover_url, full_name, reward_status, admin_notes, created_at')
         .eq('id', session.user.id)
         .single();
       if (data) setProfile(data as Profile);
@@ -404,6 +404,7 @@ const WalletCenterContainer = () => {
               const fn = (profile?.full_name || '').trim();
               return fn.length >= 4 && !/^\d+$/.test(fn) && /[a-zA-ZÀ-ỹ]/.test(fn);
             })()}
+            accountAgeDays={profile?.created_at ? Math.floor((Date.now() - new Date(profile.created_at).getTime()) / (1000 * 60 * 60 * 24)) : 0}
             onClaimClick={() => setShowClaimDialog(true)}
             onConnectClick={handleConnect}
           />
