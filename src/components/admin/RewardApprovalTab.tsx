@@ -50,8 +50,10 @@ const isValidWallet = (addr: string | null) =>
 
 const isProfileComplete = (user: UserWithReward) =>
   !!user.avatar_url &&
+  !!user.cover_url &&
   !!(user.full_name && user.full_name.trim().length >= 2) &&
-  isValidWallet(user.public_wallet_address);
+  isValidWallet(user.public_wallet_address) &&
+  user.today_reward > 0;
 
 const isEligibleForApproval = (u: UserWithReward) =>
   isProfileComplete(u) && u.claimable_amount >= MINIMUM_CLAIM;
@@ -59,8 +61,10 @@ const isEligibleForApproval = (u: UserWithReward) =>
 const getMissingItems = (user: UserWithReward): string[] => {
   const missing: string[] = [];
   if (!user.avatar_url) missing.push("Ảnh đại diện");
+  if (!user.cover_url) missing.push("Ảnh bìa");
   if (!user.full_name || user.full_name.trim().length < 2) missing.push("Tên đầy đủ");
   if (!isValidWallet(user.public_wallet_address)) missing.push("Ví công khai");
+  if (user.today_reward <= 0) missing.push("Bài đăng hôm nay");
   return missing;
 };
 
@@ -489,8 +493,10 @@ const RewardApprovalTab = ({ adminId, onRefresh }: RewardApprovalTabProps) => {
                         {/* Profile readiness badges */}
                         <div className="flex gap-1.5 mt-1 flex-wrap">
                           <ProfileBadge ok={!!user.avatar_url} label="Avatar" />
+                          <ProfileBadge ok={!!user.cover_url} label="Bìa" />
                           <ProfileBadge ok={!!(user.full_name && user.full_name.trim().length >= 2)} label="Tên" />
                           <ProfileBadge ok={isValidWallet(user.public_wallet_address)} label="Ví" />
+                          <ProfileBadge ok={user.today_reward > 0} label="Hôm nay" />
                         </div>
                         <div className="flex gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
                           <span>📝 {user.posts_count}</span>
