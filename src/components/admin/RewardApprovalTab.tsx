@@ -8,9 +8,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { CheckCircle, XCircle, Search, ArrowUpDown, Coins, RefreshCw, TrendingUp, ShieldCheck, ShieldX, Filter, CheckCheck } from "lucide-react";
+import { CheckCircle, XCircle, Search, ArrowUpDown, Coins, RefreshCw, TrendingUp, ShieldCheck, ShieldX, Filter, CheckCheck, Clock, Loader2, ExternalLink } from "lucide-react";
 
 interface UserWithReward {
   id: string;
