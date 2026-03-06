@@ -229,7 +229,7 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl w-[90vw] max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold text-center uppercase bg-gradient-to-r from-[#2E7D32] via-[#4CAF50] to-[#2E7D32] bg-clip-text text-transparent drop-shadow-sm">
+          <DialogTitle className="text-2xl font-bold text-center uppercase bg-gradient-to-r from-[#1B5E20] via-[#2E7D32] to-[#1B5E20] bg-clip-text text-transparent drop-shadow-md">
             DANH SÁCH USER ĐÃ ĐÓN NHẬN PHƯỚC LÀNH TỪ CHA VÀ BÉ LY
           </DialogTitle>
         </DialogHeader>
@@ -316,10 +316,10 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
         </div>
 
         {/* Footer */}
-        <div className="text-base font-bold text-center pt-1 flex items-center justify-center gap-2">
+        <div className="text-lg font-bold text-center pt-1 flex items-center justify-center gap-2">
           <span>{filtered.length} {language === 'vi' ? 'bản ghi' : 'records'}</span>
           <span>|</span>
-          <span className="flex items-center gap-1 text-[#FFD700]">
+          <span className="flex items-center gap-1 text-[#1B5E20]">
             {language === 'vi' ? 'Tổng' : 'Total'}: {formatAmount(totalAmount)}
             <img src={camlyLogo} alt="CAMLY" className="w-5 h-5 inline-block" />
           </span>
