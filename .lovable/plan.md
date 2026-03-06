@@ -1,77 +1,78 @@
 
 
-## Kế hoạch sửa flow "Quên mật khẩu / Reset Password"
+# Phân tích: Tại sao Database hiển thị Livestream = 0
 
-### Root Cause
+## Phát hiện chính
 
-1. **`redirectTo` sai** — `ClassicEmailLogin.tsx` dòng 147 redirect về `/auth` thay vì route reset password
-2. **`Auth.tsx` không xử lý `PASSWORD_RECOVERY`** — `onAuthStateChange` chỉ check `SIGNED_IN`, coi recovery session như login bình thường → redirect homepage
-3. **Không có trang `/reset-password`** — chỉ có `/set-password` (dùng cho SSO flow, dùng edge function + token query param, không phù hợp cho recovery flow)
+**Dữ liệu thực tế trong database:**
 
-### Các thay đổi
+| Bảng | Số lượng | Ghi chú |
+|------|----------|---------|
+| `live_sessions` | **600** (596 ended + 4 live) | Users livestream rất tích cực |
+| `chunked_recordings` | **342** (314 done, 28 stuck "recording") | Ghi hình hoạt động |
+| `posts` với `post_type = 'live'` | **519** | Bài đăng live |
+| `posts` có video URL chứa "live" | **581** | Video replay |
+| `recording_status = 'ready'` | **488** | Recordings thành công |
+| `recording_status = 'failed'` | **57** | Recordings thất bại (~9.5%) |
 
-#### 1. Tạo `src/pages/ResetPassword.tsx`
+**Kết luận: Users livestream RẤT NHIỀU — 600 phiên, 488 recordings thành công!**
 
-Trang mới cho flow recovery, bao gồm:
-- Kiểm tra recovery context khi mount (check session có `type=recovery` hoặc URL hash chứa `type=recovery`)
-- Nếu không hợp lệ: hiện thông báo "Liên kết không hợp lệ hoặc đã hết hạn" + nút quay lại `/auth`
-- Nếu hợp lệ: form gồm **mật khẩu mới** + **xác nhận mật khẩu**, show/hide toggle
-- Validation: tối thiểu 6 ký tự, 2 trường khớp nhau
-- Submit: `supabase.auth.updateUser({ password })` 
-- Thành công: toast → `supabase.auth.signOut()` → redirect `/auth` sau 2s
-- Lỗi: hiện error message rõ ràng (token hết hạn, link đã dùng...)
-- UI theo phong cách FUN Ecosystem (green theme, hologram border) đồng bộ với `/auth`
+## Nguyên nhân gốc: Hàm `get_app_stats` không đếm livestream
 
-#### 2. Sửa `src/components/auth/ClassicEmailLogin.tsx` (dòng 147)
+Hàm `get_app_stats()` hiện tại chỉ trả về:
+- `total_users`, `total_posts`, `total_photos`, `total_videos` (đếm từ `posts WHERE video_url IS NOT NULL`)
+- `total_rewards`, `treasury_camly_received`, `total_camly_claimed`
 
-```
-redirectTo: `${window.location.origin}/auth`
-→
-redirectTo: `${window.location.origin}/reset-password`
-```
+**Không có trường nào đếm `live_sessions`** hoặc `chunked_recordings`. Component `AppHonorBoard.tsx` hiển thị `total_videos = 897` — đó là tổng số posts có video (bao gồm cả live replay), nhưng **không có mục riêng cho "Livestream"**.
 
-#### 3. Sửa `src/pages/Auth.tsx`
+## Vấn đề phụ phát hiện thêm
 
-- Trong `onAuthStateChange`: thêm check `event === 'PASSWORD_RECOVERY'` → `navigate('/reset-password')` và `return` trước khi xử lý `SIGNED_IN`
-- Trong `checkUser`: kiểm tra URL hash có chứa `type=recovery` → nếu có, không redirect về `/`
+1. **28 recordings stuck ở trạng thái "recording"** — phiên live đã kết thúc nhưng `chunked_recordings.status` không chuyển sang `done`. Đây là những sessions mà host đóng trình duyệt đột ngột trước khi finalize.
 
-#### 4. Thêm route trong `src/App.tsx`
+2. **57 sessions có `recording_status = 'failed'`** (~9.5%) — một số có `chunked_recordings.status = done` (recording thực ra thành công nhưng status ở `live_sessions` bị đánh failed sai).
 
-```tsx
-const ResetPassword = lazy(() => import("./pages/ResetPassword"));
-// ...
-<Route path="/reset-password" element={<ResetPassword />} />
-```
+3. **`live_recordings` table hoàn toàn trống** (0 rows) — Table này được thiết kế cho Agora server-side recording nhưng chưa bao giờ được sử dụng thành công vì hệ thống đang dùng client-side chunked recording thay thế.
 
-#### 5. Cập nhật `src/components/auth/LawOfLightGuard.tsx`
+## Kế hoạch sửa
 
-Thêm `/reset-password` vào `publicPaths`:
-```ts
-const publicPaths = ['/law-of-light', '/docs', '/auth', '/reset-password'];
-```
+### Task 1: Cập nhật `get_app_stats` thêm `total_livestreams`
 
-### Flow hoàn chỉnh sau khi fix
+Thêm trường `total_livestreams` vào hàm SQL:
 
-```text
-User bấm "Quên mật khẩu" ở /auth
-  → resetPasswordForEmail gửi email với redirectTo = /reset-password
-  → User click link trong email
-  → Supabase verify token, tạo recovery session
-  → Redirect về /reset-password#access_token=...&type=recovery
-  → Auth.tsx onAuthStateChange nhận PASSWORD_RECOVERY → navigate('/reset-password')
-  → ResetPassword page kiểm tra recovery context → hiện form
-  → User nhập mật khẩu mới + xác nhận
-  → Submit → updateUser({ password })
-  → Toast thành công → signOut() → redirect /auth
+```sql
+DROP FUNCTION IF EXISTS public.get_app_stats();
+CREATE OR REPLACE FUNCTION public.get_app_stats()
+RETURNS TABLE(
+  total_users BIGINT,
+  total_posts BIGINT,
+  total_photos BIGINT,
+  total_videos BIGINT,
+  total_livestreams BIGINT,
+  total_rewards NUMERIC,
+  treasury_camly_received NUMERIC,
+  total_camly_claimed NUMERIC
+) ...
+-- Thêm:
+(SELECT COUNT(*) FROM live_sessions)::BIGINT AS total_livestreams,
 ```
 
-### Files thay đổi
+### Task 2: Cập nhật `AppHonorBoard.tsx`
 
-| File | Thay đổi |
-|------|----------|
-| `src/pages/ResetPassword.tsx` | Tạo mới |
-| `src/components/auth/ClassicEmailLogin.tsx` | Sửa `redirectTo` |
-| `src/pages/Auth.tsx` | Thêm xử lý `PASSWORD_RECOVERY` |
-| `src/App.tsx` | Thêm route + lazy import |
-| `src/components/auth/LawOfLightGuard.tsx` | Thêm public path |
+- Thêm interface field `totalLivestreams`
+- Parse từ response `row.total_livestreams`
+- Thêm stat card với icon `Radio` và label "Livestreams"
+
+### Task 3: Dọn dẹp stuck recordings
+
+- Cập nhật 28 `chunked_recordings` stuck ở `status = 'recording'` mà `live_session` đã `ended` → chuyển sang `done` hoặc `failed`
+- Sửa inconsistency: sessions có `recording_status = 'failed'` nhưng `chunked_recordings.status = 'done'`
+
+### Technical Details
+
+**Files cần sửa:**
+1. Migration SQL mới — `DROP FUNCTION + CREATE OR REPLACE` cho `get_app_stats`
+2. `src/components/feed/AppHonorBoard.tsx` — thêm livestream stat
+3. `src/integrations/supabase/types.ts` — tự động cập nhật sau migration
+
+**Không ảnh hưởng:** Các tính năng livestream hiện tại (start, join, record, replay) không bị ảnh hưởng. Đây chỉ là fix hiển thị thống kê.
 
