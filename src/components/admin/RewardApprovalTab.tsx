@@ -177,6 +177,94 @@ const RewardApprovalTab = ({ adminId, onRefresh }: RewardApprovalTabProps) => {
     }
   };
 
+  const loadPendingClaims = async () => {
+    setPendingClaimsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('pending_claims')
+        .select('*')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+
+      // Fetch profiles for these claims
+      const userIds = [...new Set((data || []).map(c => c.user_id))];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, username, avatar_url, full_name')
+        .in('id', userIds.length > 0 ? userIds : ['00000000-0000-0000-0000-000000000000']);
+
+      const profileMap = new Map((profiles || []).map(p => [p.id, p]));
+
+      setPendingClaims((data || []).map(c => ({
+        ...c,
+        profile: profileMap.get(c.user_id) || null,
+      })));
+    } catch (error) {
+      console.error("Error loading pending claims:", error);
+      toast.error("Lỗi khi tải danh sách claim");
+    } finally {
+      setPendingClaimsLoading(false);
+    }
+  };
+
+  const handleApproveClaim = async (claimId: string) => {
+    setClaimActionLoading(claimId);
+    try {
+      const response = await supabase.functions.invoke('approve-claim', {
+        body: { claim_id: claimId, action: 'approve' },
+      });
+
+      if (response.error) {
+        let msg = response.error.message;
+        try { const b = await response.error.context?.json(); if (b?.message) msg = b.message; } catch {}
+        throw new Error(msg);
+      }
+
+      const data = response.data;
+      if (data?.error) throw new Error(data.message);
+
+      toast.success(`✅ Đã duyệt và gửi ${Number(data.amount).toLocaleString('vi-VN')} CAMLY on-chain!`);
+      loadPendingClaims();
+      loadRewardData();
+      onRefresh();
+    } catch (error: any) {
+      console.error("Error approving claim:", error);
+      toast.error(error.message || "Lỗi khi duyệt claim");
+    } finally {
+      setClaimActionLoading(null);
+    }
+  };
+
+  const handleRejectClaim = async () => {
+    if (!selectedClaim) return;
+    if (!rejectClaimReason.trim()) { toast.error("Vui lòng nhập lý do từ chối"); return; }
+
+    setClaimActionLoading(selectedClaim.id);
+    try {
+      const response = await supabase.functions.invoke('approve-claim', {
+        body: { claim_id: selectedClaim.id, action: 'reject', admin_note: rejectClaimReason },
+      });
+
+      if (response.error) {
+        let msg = response.error.message;
+        try { const b = await response.error.context?.json(); if (b?.message) msg = b.message; } catch {}
+        throw new Error(msg);
+      }
+
+      toast.success(`Đã từ chối claim của ${selectedClaim.profile?.username || 'user'}`);
+      setRejectClaimDialogOpen(false);
+      setSelectedClaim(null);
+      loadPendingClaims();
+    } catch (error: any) {
+      console.error("Error rejecting claim:", error);
+      toast.error(error.message || "Lỗi khi từ chối claim");
+    } finally {
+      setClaimActionLoading(null);
+    }
+  };
+
   // Only show users who actively requested approval (pending), exclude inactive
   const pendingUsers = users.filter(u => u.reward_status === 'pending');
 
