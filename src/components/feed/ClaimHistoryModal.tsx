@@ -141,10 +141,16 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
                     <td className="p-2">
                       <div className="flex items-center gap-2">
                         <Avatar className="w-6 h-6">
-                          <AvatarImage src={c.avatar_url || undefined} />
-                          <AvatarFallback className="text-[10px] bg-primary/10">{c.username[0]?.toUpperCase()}</AvatarFallback>
+                          {c.is_external ? (
+                            <AvatarFallback className="text-[10px] bg-accent"><Wallet className="w-3 h-3" /></AvatarFallback>
+                          ) : (
+                            <>
+                              <AvatarImage src={c.avatar_url || undefined} />
+                              <AvatarFallback className="text-[10px] bg-primary/10">{c.username[0]?.toUpperCase()}</AvatarFallback>
+                            </>
+                          )}
                         </Avatar>
-                        <span className="font-medium truncate max-w-[100px]">{c.username}</span>
+                        <span className={`font-medium truncate max-w-[100px] ${c.is_external ? 'italic text-muted-foreground' : ''}`}>{c.username}</span>
                       </div>
                     </td>
                     <td className="p-2 text-muted-foreground truncate max-w-[120px] hidden sm:table-cell">{c.full_name || '—'}</td>
