@@ -40,6 +40,9 @@ interface RewardApprovalTabProps {
   onRefresh: () => void;
 }
 
+const MINIMUM_CLAIM = 200000;
+const MAX_DAILY_CLAIM = 500000;
+
 const formatNumber = (num: number) => num.toLocaleString('vi-VN');
 
 const isValidWallet = (addr: string | null) =>
@@ -49,6 +52,9 @@ const isProfileComplete = (user: UserWithReward) =>
   !!user.avatar_url &&
   !!(user.full_name && user.full_name.trim().length >= 2) &&
   isValidWallet(user.public_wallet_address);
+
+const isEligibleForApproval = (u: UserWithReward) =>
+  isProfileComplete(u) && u.claimable_amount >= MINIMUM_CLAIM;
 
 const getMissingItems = (user: UserWithReward): string[] => {
   const missing: string[] = [];
@@ -177,7 +183,7 @@ const RewardApprovalTab = ({ adminId, onRefresh }: RewardApprovalTabProps) => {
       }
     });
 
-  const eligibleFilteredUsers = filteredUsers.filter(isProfileComplete);
+  const eligibleFilteredUsers = filteredUsers.filter(isEligibleForApproval);
   const allEligibleSelected = eligibleFilteredUsers.length > 0 && eligibleFilteredUsers.every(u => selectedIds.has(u.id));
 
   const toggleSelect = (id: string) => {
@@ -197,6 +203,10 @@ const RewardApprovalTab = ({ adminId, onRefresh }: RewardApprovalTabProps) => {
   };
 
   const handleApprove = async (user: UserWithReward) => {
+    if (user.claimable_amount < MINIMUM_CLAIM) {
+      toast.error(`Chưa đủ tối thiểu ${formatNumber(MINIMUM_CLAIM)} CAMLY để duyệt`);
+      return false;
+    }
     setLoading(user.id);
     try {
       const { error } = await supabase
@@ -228,7 +238,7 @@ const RewardApprovalTab = ({ adminId, onRefresh }: RewardApprovalTabProps) => {
 
   const handleBatchApprove = async () => {
     const ids = Array.from(selectedIds);
-    const usersToApprove = filteredUsers.filter(u => ids.includes(u.id) && isProfileComplete(u));
+    const usersToApprove = filteredUsers.filter(u => ids.includes(u.id) && isEligibleForApproval(u));
     if (usersToApprove.length === 0) return;
 
     setBatchLoading(true);
@@ -282,7 +292,7 @@ const RewardApprovalTab = ({ adminId, onRefresh }: RewardApprovalTabProps) => {
     }
   };
 
-  const readyCount = pendingUsers.filter(isProfileComplete).length;
+  const readyCount = pendingUsers.filter(isEligibleForApproval).length;
   const incompleteCount = pendingUsers.length - readyCount;
   const totalClaimable = pendingUsers.reduce((s, u) => s + u.claimable_amount, 0);
   const totalRewardAll = users.reduce((s, u) => s + u.total_reward, 0);
@@ -446,13 +456,14 @@ const RewardApprovalTab = ({ adminId, onRefresh }: RewardApprovalTabProps) => {
                       className={`flex items-center gap-4 p-4 border rounded-lg hover:shadow-sm transition-shadow ${complete ? 'bg-background' : 'bg-amber-50/50 border-amber-200'}`}
                     >
                       {/* Checkbox */}
-                      {complete && (
+                      {isEligibleForApproval(user) ? (
                         <Checkbox
                           checked={selectedIds.has(user.id)}
                           onCheckedChange={() => toggleSelect(user.id)}
                         />
+                      ) : (
+                        <div className="w-4" />
                       )}
-                      {!complete && <div className="w-4" />}
 
                       {/* Avatar — click to profile */}
                       <a href={`/${user.username}`} target="_blank" rel="noopener noreferrer" className="shrink-0">
@@ -492,9 +503,21 @@ const RewardApprovalTab = ({ adminId, onRefresh }: RewardApprovalTabProps) => {
                       </div>
 
                       <div className="text-right min-w-[140px]">
-                        <p className="text-lg font-bold text-yellow-600">
-                          {formatNumber(user.claimable_amount)} CAMLY
-                        </p>
+                        <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                          <p className="text-lg font-bold text-yellow-600">
+                            {formatNumber(user.claimable_amount)} CAMLY
+                          </p>
+                          {user.claimable_amount < MINIMUM_CLAIM && (
+                            <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+                              Chưa đủ 200K
+                            </Badge>
+                          )}
+                          {user.claimable_amount > MAX_DAILY_CLAIM && (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-amber-50 text-amber-700 border-amber-300">
+                              Vượt 500K/ngày
+                            </Badge>
+                          )}
+                        </div>
                         <p className="text-xs text-muted-foreground">Total: {formatNumber(user.total_reward)}</p>
                         <p className="text-xs text-green-600">Claimed: {formatNumber(user.claimed_amount)}</p>
                         {user.reward_requested_at && (
@@ -514,22 +537,25 @@ const RewardApprovalTab = ({ adminId, onRefresh }: RewardApprovalTabProps) => {
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <span>
-                                <Button
+                                 <Button
                                   size="sm"
                                   className="bg-green-500 hover:bg-green-600 text-white gap-1"
                                   onClick={() => { handleApprove(user).then(() => { loadRewardData(); onRefresh(); }); }}
-                                  disabled={loading === user.id || !complete}
+                                  disabled={loading === user.id || !isEligibleForApproval(user)}
                                 >
                                   <CheckCircle className="w-4 h-4" />
                                   Duyệt
                                 </Button>
                               </span>
                             </TooltipTrigger>
-                            {!complete && (
+                            {!isEligibleForApproval(user) && (
                               <TooltipContent side="left" className="max-w-xs">
                                 <p className="text-sm font-medium">Chưa đủ điều kiện:</p>
                                 <ul className="text-xs list-disc pl-4">
                                   {missing.map(m => <li key={m}>{m}</li>)}
+                                  {user.claimable_amount < MINIMUM_CLAIM && (
+                                    <li>Chưa đủ tối thiểu {formatNumber(MINIMUM_CLAIM)} CAMLY</li>
+                                  )}
                                 </ul>
                               </TooltipContent>
                             )}
