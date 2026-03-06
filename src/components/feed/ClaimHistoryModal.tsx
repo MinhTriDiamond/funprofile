@@ -175,6 +175,7 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
                 <tr>
                   <th className="text-left p-2 w-10">#</th>
                   <th className="text-left p-2">{t('user')}</th>
+                  {isAdmin && <th className="text-left p-2 hidden sm:table-cell">Email</th>}
                   <th className="text-left p-2 hidden sm:table-cell">{t('claimFullName')}</th>
                   <th className="text-left p-2">{t('claimWalletAddress')}</th>
                   <th className="text-right p-2">{t('claimAmount')}</th>
