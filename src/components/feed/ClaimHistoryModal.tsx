@@ -201,7 +201,8 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
                         </Avatar>
                         <span className={`font-medium truncate max-w-[100px] ${c.is_external ? 'italic text-muted-foreground' : ''}`}>{c.username}</span>
                       </div>
-                    </td>
+                     </td>
+                    {isAdmin && <td className="p-2 text-muted-foreground truncate max-w-[140px] hidden sm:table-cell text-xs">{c.email || '—'}</td>}
                     <td className="p-2 text-muted-foreground truncate max-w-[120px] hidden sm:table-cell">{c.full_name || '—'}</td>
                     <td className="p-2 font-mono text-xs text-muted-foreground">{truncateWallet(c.wallet_address)}</td>
                     <td className="p-2 text-right font-bold text-[#FFD700]">
