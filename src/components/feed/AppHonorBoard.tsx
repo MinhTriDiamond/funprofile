@@ -22,6 +22,7 @@ interface AppStats {
 
 export const AppHonorBoard = memo(() => {
   const { t } = useLanguage();
+  const [showClaimHistory, setShowClaimHistory] = useState(false);
   
   const { data: stats, isLoading } = useQuery({
     queryKey: ['app-honor-board-stats'],
@@ -158,33 +159,38 @@ export const AppHonorBoard = memo(() => {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 gap-2">
-          {statItems.map((item, index) => (
-            <div 
-              key={index} 
-              className="flex items-center gap-3 py-2.5 px-4 rounded-full bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] border-[3px] border-[#D4AF37] transition-all duration-300 hover:scale-[1.02] cursor-pointer"
-            >
-              <div className="p-1.5 rounded-full bg-white/10 shrink-0">
-                <item.icon className="w-4 h-4 text-[#F5E6C8]" />
+          {statItems.map((item, index) => {
+            const isClaimItem = item.label === t('totalCamlyClaimed');
+            return (
+              <div 
+                key={index} 
+                className={`flex items-center gap-3 py-2.5 px-4 rounded-full bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] border-[3px] border-[#D4AF37] transition-all duration-300 hover:scale-[1.02] cursor-pointer ${isClaimItem ? 'ring-2 ring-[#FFD700]/40 hover:ring-[#FFD700]/70' : ''}`}
+                onClick={isClaimItem ? () => setShowClaimHistory(true) : undefined}
+              >
+                <div className="p-1.5 rounded-full bg-white/10 shrink-0">
+                  <item.icon className="w-4 h-4 text-[#F5E6C8]" />
+                </div>
+                <div className="flex-1 flex items-center justify-between gap-2 min-w-0 overflow-hidden">
+                  <span className={`text-[#F5E6C8] text-[10px] sm:text-xs uppercase font-semibold truncate flex-shrink min-w-0 ${isClaimItem ? 'underline decoration-dotted underline-offset-2' : ''}`}>
+                    {item.label}
+                  </span>
+                  <span className="text-[#FFD700] font-bold text-[11px] sm:text-sm flex items-center gap-1 flex-shrink-0">
+                    <span className="tabular-nums">{formatNumber(item.value)}</span>
+                    {item.showCamlyLogo && (
+                      <img 
+                        src={camlyLogo} 
+                        alt="CAMLY" 
+                        className="w-4 h-4 inline-block flex-shrink-0" 
+                      />
+                    )}
+                  </span>
+                </div>
               </div>
-              <div className="flex-1 flex items-center justify-between gap-2 min-w-0 overflow-hidden">
-                <span className="text-[#F5E6C8] text-[10px] sm:text-xs uppercase font-semibold truncate flex-shrink min-w-0">
-                  {item.label}
-                </span>
-                <span className="text-[#FFD700] font-bold text-[11px] sm:text-sm flex items-center gap-1 flex-shrink-0">
-                  <span className="tabular-nums">{formatNumber(item.value)}</span>
-                  {item.showCamlyLogo && (
-                    <img 
-                      src={camlyLogo} 
-                      alt="CAMLY" 
-                      className="w-4 h-4 inline-block flex-shrink-0" 
-                    />
-                  )}
-                </span>
-              </div>
-            </div>
-          ))}
-
+            );
+          })}
         </div>
+
+        <ClaimHistoryModal open={showClaimHistory} onOpenChange={setShowClaimHistory} />
       </div>
     </div>
   );
