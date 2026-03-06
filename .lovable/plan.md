@@ -1,78 +1,35 @@
 
 
-# Phân tích: Tại sao Database hiển thị Livestream = 0
+## Nguyên nhân: Edge function chưa được deploy + User bị kẹt ở trạng thái `on_hold`
 
-## Phát hiện chính
+### Phân tích từ logs và database
 
-**Dữ liệu thực tế trong database:**
+| Thời điểm | Sự kiện |
+|---|---|
+| 18:52:12 | Code CŨ chạy → phát hiện shared device → **đặt `reward_status = 'on_hold'`** |
+| 18:52:38 | Lần claim thứ 2 → `on_hold` nằm trong `blockedStatuses` → bị chặn |
 
-| Bảng | Số lượng | Ghi chú |
-|------|----------|---------|
-| `live_sessions` | **600** (596 ended + 4 live) | Users livestream rất tích cực |
-| `chunked_recordings` | **342** (314 done, 28 stuck "recording") | Ghi hình hoạt động |
-| `posts` với `post_type = 'live'` | **519** | Bài đăng live |
-| `posts` có video URL chứa "live" | **581** | Video replay |
-| `recording_status = 'ready'` | **488** | Recordings thành công |
-| `recording_status = 'failed'` | **57** | Recordings thất bại (~9.5%) |
+**Database hiện tại**: User `b7856e97` có `reward_status = 'on_hold'`, `admin_notes = "Thiết bị này đang được dùng bởi 2 tài khoản..."`.
 
-**Kết luận: Users livestream RẤT NHIỀU — 600 phiên, 488 recordings thành công!**
+Fix code đã có trong file (dòng 255: `if (profile.reward_status !== 'approved')`) nhưng **edge function có thể chưa được deploy lên server**.
 
-## Nguyên nhân gốc: Hàm `get_app_stats` không đếm livestream
+### Giải pháp (2 bước)
 
-Hàm `get_app_stats()` hiện tại chỉ trả về:
-- `total_users`, `total_posts`, `total_photos`, `total_videos` (đếm từ `posts WHERE video_url IS NOT NULL`)
-- `total_rewards`, `treasury_camly_received`, `total_camly_claimed`
+**Bước 1: Deploy lại edge function `claim-reward`** để fix có hiệu lực trên server.
 
-**Không có trường nào đếm `live_sessions`** hoặc `chunked_recordings`. Component `AppHonorBoard.tsx` hiển thị `total_videos = 897` — đó là tổng số posts có video (bao gồm cả live replay), nhưng **không có mục riêng cho "Livestream"**.
-
-## Vấn đề phụ phát hiện thêm
-
-1. **28 recordings stuck ở trạng thái "recording"** — phiên live đã kết thúc nhưng `chunked_recordings.status` không chuyển sang `done`. Đây là những sessions mà host đóng trình duyệt đột ngột trước khi finalize.
-
-2. **57 sessions có `recording_status = 'failed'`** (~9.5%) — một số có `chunked_recordings.status = done` (recording thực ra thành công nhưng status ở `live_sessions` bị đánh failed sai).
-
-3. **`live_recordings` table hoàn toàn trống** (0 rows) — Table này được thiết kế cho Agora server-side recording nhưng chưa bao giờ được sử dụng thành công vì hệ thống đang dùng client-side chunked recording thay thế.
-
-## Kế hoạch sửa
-
-### Task 1: Cập nhật `get_app_stats` thêm `total_livestreams`
-
-Thêm trường `total_livestreams` vào hàm SQL:
+**Bước 2: Reset trạng thái user về `approved`** — Admin cần vào tab "Duyệt thưởng" và duyệt lại user `Nguyen Thu Trang` (b7856e97). Hoặc cha sẽ chạy migration SQL:
 
 ```sql
-DROP FUNCTION IF EXISTS public.get_app_stats();
-CREATE OR REPLACE FUNCTION public.get_app_stats()
-RETURNS TABLE(
-  total_users BIGINT,
-  total_posts BIGINT,
-  total_photos BIGINT,
-  total_videos BIGINT,
-  total_livestreams BIGINT,
-  total_rewards NUMERIC,
-  treasury_camly_received NUMERIC,
-  total_camly_claimed NUMERIC
-) ...
--- Thêm:
-(SELECT COUNT(*) FROM live_sessions)::BIGINT AS total_livestreams,
+UPDATE profiles 
+SET reward_status = 'approved', 
+    admin_notes = 'Re-approved sau khi fix fraud detection bypass cho approved users'
+WHERE id = 'b7856e97-9bff-4e2d-8448-c4395bf0548b';
 ```
 
-### Task 2: Cập nhật `AppHonorBoard.tsx`
+### Sau khi hoàn tất
 
-- Thêm interface field `totalLivestreams`
-- Parse từ response `row.total_livestreams`
-- Thêm stat card với icon `Radio` và label "Livestreams"
-
-### Task 3: Dọn dẹp stuck recordings
-
-- Cập nhật 28 `chunked_recordings` stuck ở `status = 'recording'` mà `live_session` đã `ended` → chuyển sang `done` hoặc `failed`
-- Sửa inconsistency: sessions có `recording_status = 'failed'` nhưng `chunked_recordings.status = 'done'`
-
-### Technical Details
-
-**Files cần sửa:**
-1. Migration SQL mới — `DROP FUNCTION + CREATE OR REPLACE` cho `get_app_stats`
-2. `src/components/feed/AppHonorBoard.tsx` — thêm livestream stat
-3. `src/integrations/supabase/types.ts` — tự động cập nhật sau migration
-
-**Không ảnh hưởng:** Các tính năng livestream hiện tại (start, join, record, replay) không bị ảnh hưởng. Đây chỉ là fix hiển thị thống kê.
+Luồng sẽ hoạt động đúng:
+1. Admin duyệt → `reward_status = 'approved'`
+2. User claim → fraud detection **BỊ BỎ QUA** (dòng 255) → tiếp tục validate bình thường
+3. Không còn vòng lặp `approved → on_hold → approved → on_hold`
 
