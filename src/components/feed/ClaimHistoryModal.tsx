@@ -143,7 +143,7 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-5xl w-[90vw] max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="text-lg font-bold text-center">
             📋 {t('claimHistoryTitle')}
@@ -175,12 +175,12 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
                 <tr>
                   <th className="text-left p-2 w-10">#</th>
                   <th className="text-left p-2">{t('user')}</th>
-                  {isAdmin && <th className="text-left p-2 hidden sm:table-cell">Email</th>}
-                  <th className="text-left p-2 hidden sm:table-cell">{t('claimFullName')}</th>
-                  <th className="text-left p-2">{t('claimWalletAddress')}</th>
-                  <th className="text-right p-2">{t('claimAmount')}</th>
-                  <th className="text-right p-2 hidden sm:table-cell">{t('claimDate')}</th>
-                  <th className="text-right p-2 hidden sm:table-cell">{t('claimTime')}</th>
+                   {isAdmin && <th className="text-left p-2 whitespace-nowrap">Email</th>}
+                    <th className="text-left p-2 whitespace-nowrap">{t('claimFullName')}</th>
+                    <th className="text-left p-2 whitespace-nowrap">{t('claimWalletAddress')}</th>
+                    <th className="text-right p-2 whitespace-nowrap">{t('claimAmount')}</th>
+                    <th className="text-right p-2 whitespace-nowrap">{t('claimDate')}</th>
+                    <th className="text-right p-2 whitespace-nowrap">{t('claimTime')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -199,11 +199,11 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
                             </>
                           )}
                         </Avatar>
-                        <span className={`font-medium truncate max-w-[100px] ${c.is_external ? 'italic text-muted-foreground' : ''}`}>{c.username}</span>
+                        <span className={`font-medium truncate max-w-[150px] ${c.is_external ? 'italic text-muted-foreground' : ''}`}>{c.username}</span>
                       </div>
                      </td>
-                    {isAdmin && <td className="p-2 text-muted-foreground truncate max-w-[140px] hidden sm:table-cell text-xs">{c.email || '—'}</td>}
-                    <td className="p-2 text-muted-foreground truncate max-w-[120px] hidden sm:table-cell">{c.full_name || '—'}</td>
+                    {isAdmin && <td className="p-2 text-muted-foreground truncate max-w-[200px] text-xs">{c.email || '—'}</td>}
+                    <td className="p-2 text-muted-foreground truncate max-w-[160px]">{c.full_name || '—'}</td>
                     <td className="p-2 font-mono text-xs text-muted-foreground">{truncateWallet(c.wallet_address)}</td>
                     <td className="p-2 text-right font-bold text-[#FFD700]">
                       <span className="flex items-center justify-end gap-1">
@@ -211,8 +211,8 @@ export const ClaimHistoryModal = ({ open, onOpenChange }: ClaimHistoryModalProps
                         <img src={camlyLogo} alt="CAMLY" className="w-4 h-4 inline-block" />
                       </span>
                     </td>
-                    <td className="p-2 text-right text-muted-foreground hidden sm:table-cell">{formatDate(c.created_at)}</td>
-                    <td className="p-2 text-right text-muted-foreground hidden sm:table-cell">{formatTime(c.created_at)}</td>
+                    <td className="p-2 text-right text-muted-foreground whitespace-nowrap">{formatDate(c.created_at)}</td>
+                    <td className="p-2 text-right text-muted-foreground whitespace-nowrap">{formatTime(c.created_at)}</td>
                   </tr>
                 ))}
               </tbody>
