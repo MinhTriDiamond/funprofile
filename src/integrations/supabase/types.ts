@@ -3949,21 +3949,21 @@ export type Database = {
           amount: number
           created_at: string
           id: string
-          user_id: string
+          user_id: string | null
           wallet_address: string
         }
         Insert: {
           amount: number
           created_at?: string
           id?: string
-          user_id: string
+          user_id?: string | null
           wallet_address: string
         }
         Update: {
           amount?: number
           created_at?: string
           id?: string
-          user_id?: string
+          user_id?: string | null
           wallet_address?: string
         }
         Relationships: []
