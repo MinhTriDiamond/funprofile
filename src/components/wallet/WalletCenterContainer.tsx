@@ -45,6 +45,7 @@ interface Profile {
   full_name: string | null;
   reward_status?: string;
   admin_notes?: string | null;
+  created_at?: string;
 }
 
 // Tab configuration

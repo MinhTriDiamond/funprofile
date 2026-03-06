@@ -29,6 +29,7 @@ interface ClaimRewardsSectionProps {
   hasCover: boolean;
   hasTodayPost: boolean;
   hasFullName: boolean;
+  accountAgeDays: number;
   onClaimClick: () => void;
   onConnectClick: () => void;
 }
