@@ -1,45 +1,78 @@
 
 
-## Phân tích: Vì sao 15 user chưa đủ điều kiện vẫn tạo được lệnh rút thưởng
+# Phân tích: Tại sao Database hiển thị Livestream = 0
 
-### Nguyên nhân gốc
+## Phát hiện chính
 
-**Cột `reward_status` có giá trị mặc định là `'pending'`.**
+**Dữ liệu thực tế trong database:**
+
+| Bảng | Số lượng | Ghi chú |
+|------|----------|---------|
+| `live_sessions` | **600** (596 ended + 4 live) | Users livestream rất tích cực |
+| `chunked_recordings` | **342** (314 done, 28 stuck "recording") | Ghi hình hoạt động |
+| `posts` với `post_type = 'live'` | **519** | Bài đăng live |
+| `posts` có video URL chứa "live" | **581** | Video replay |
+| `recording_status = 'ready'` | **488** | Recordings thành công |
+| `recording_status = 'failed'` | **57** | Recordings thất bại (~9.5%) |
+
+**Kết luận: Users livestream RẤT NHIỀU — 600 phiên, 488 recordings thành công!**
+
+## Nguyên nhân gốc: Hàm `get_app_stats` không đếm livestream
+
+Hàm `get_app_stats()` hiện tại chỉ trả về:
+- `total_users`, `total_posts`, `total_photos`, `total_videos` (đếm từ `posts WHERE video_url IS NOT NULL`)
+- `total_rewards`, `treasury_camly_received`, `total_camly_claimed`
+
+**Không có trường nào đếm `live_sessions`** hoặc `chunked_recordings`. Component `AppHonorBoard.tsx` hiển thị `total_videos = 897` — đó là tổng số posts có video (bao gồm cả live replay), nhưng **không có mục riêng cho "Livestream"**.
+
+## Vấn đề phụ phát hiện thêm
+
+1. **28 recordings stuck ở trạng thái "recording"** — phiên live đã kết thúc nhưng `chunked_recordings.status` không chuyển sang `done`. Đây là những sessions mà host đóng trình duyệt đột ngột trước khi finalize.
+
+2. **57 sessions có `recording_status = 'failed'`** (~9.5%) — một số có `chunked_recordings.status = done` (recording thực ra thành công nhưng status ở `live_sessions` bị đánh failed sai).
+
+3. **`live_recordings` table hoàn toàn trống** (0 rows) — Table này được thiết kế cho Agora server-side recording nhưng chưa bao giờ được sử dụng thành công vì hệ thống đang dùng client-side chunked recording thay thế.
+
+## Kế hoạch sửa
+
+### Task 1: Cập nhật `get_app_stats` thêm `total_livestreams`
+
+Thêm trường `total_livestreams` vào hàm SQL:
 
 ```sql
--- Migration 20251217184114
-ALTER TABLE public.profiles 
-ADD COLUMN IF NOT EXISTS reward_status text NOT NULL DEFAULT 'pending';
+DROP FUNCTION IF EXISTS public.get_app_stats();
+CREATE OR REPLACE FUNCTION public.get_app_stats()
+RETURNS TABLE(
+  total_users BIGINT,
+  total_posts BIGINT,
+  total_photos BIGINT,
+  total_videos BIGINT,
+  total_livestreams BIGINT,
+  total_rewards NUMERIC,
+  treasury_camly_received NUMERIC,
+  total_camly_claimed NUMERIC
+) ...
+-- Thêm:
+(SELECT COUNT(*) FROM live_sessions)::BIGINT AS total_livestreams,
 ```
 
-Khi bất kỳ user nào đăng ký tài khoản, `reward_status` tự động được gán = `'pending'`. Điều này có nghĩa **mọi user mới đều tự động xuất hiện trong hàng đợi duyệt thưởng** mà KHÔNG cần chủ động yêu cầu rút tiền.
+### Task 2: Cập nhật `AppHonorBoard.tsx`
 
-### Vấn đề cụ thể
+- Thêm interface field `totalLivestreams`
+- Parse từ response `row.total_livestreams`
+- Thêm stat card với icon `Radio` và label "Livestreams"
 
-1. **Không có hành động "Yêu cầu rút"**: Hệ thống hiện tại KHÔNG có nút hay flow để user chủ động gửi yêu cầu rút thưởng. Trạng thái `pending` được gán tự động khi tạo tài khoản.
-2. **15 user đó chưa bao giờ yêu cầu rút**: Họ chỉ đơn giản là user mới đăng ký, chưa đủ điều kiện (thiếu cover, ví, bài đăng...) nhưng vẫn hiện trong tab "Duyệt thưởng" vì `reward_status = 'pending'` là mặc định.
-3. **Admin UI lọc theo `reward_status = 'pending'`** → hiển thị toàn bộ user mới, kể cả người chưa có ý định claim.
+### Task 3: Dọn dẹp stuck recordings
 
-### Giải pháp đề xuất
+- Cập nhật 28 `chunked_recordings` stuck ở `status = 'recording'` mà `live_session` đã `ended` → chuyển sang `done` hoặc `failed`
+- Sửa inconsistency: sessions có `recording_status = 'failed'` nhưng `chunked_recordings.status = 'done'`
 
-Thay đổi giá trị mặc định từ `'pending'` → `'inactive'` và thêm flow yêu cầu rút:
+### Technical Details
 
-#### 1. Database Migration
-- Đổi default `reward_status` từ `'pending'` sang `'inactive'`
-- Cập nhật 21 user hiện tại đang `pending` nhưng chưa đủ điều kiện → `'inactive'`
-- Giữ nguyên user `pending` đã đủ điều kiện (nếu có)
+**Files cần sửa:**
+1. Migration SQL mới — `DROP FUNCTION + CREATE OR REPLACE` cho `get_app_stats`
+2. `src/components/feed/AppHonorBoard.tsx` — thêm livestream stat
+3. `src/integrations/supabase/types.ts` — tự động cập nhật sau migration
 
-#### 2. Thêm nút "Yêu cầu duyệt" trong ClaimRewardsSection
-- Chỉ hiện khi `reward_status = 'inactive'` hoặc `'rejected'`
-- Khi click: kiểm tra đủ 6 điều kiện cơ bản (tên, avatar, cover, bài hôm nay, ví, tuổi TK ≥ 7 ngày) → nếu đủ mới cho update `reward_status = 'pending'`
-- Nếu thiếu điều kiện → hiện toast lỗi chi tiết
-
-#### 3. Cập nhật Admin UI (RewardApprovalTab)
-- Lọc bỏ user `'inactive'` khỏi danh sách
-- Chỉ hiện user thực sự đã gửi yêu cầu (`pending`)
-
-#### Tổng thay đổi
-- **1 SQL migration**: đổi default + cleanup data
-- **1 file sửa**: `ClaimRewardsSection.tsx` — thêm nút "Yêu cầu duyệt" + validation
-- **1 file sửa**: `RewardApprovalTab.tsx` — cập nhật `statusConfig` thêm `inactive`
+**Không ảnh hưởng:** Các tính năng livestream hiện tại (start, join, record, replay) không bị ảnh hưởng. Đây chỉ là fix hiển thị thống kê.
 

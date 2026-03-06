@@ -165,6 +165,7 @@ const RewardApprovalTab = ({ adminId, onRefresh }: RewardApprovalTabProps) => {
     }
   };
 
+  // Only show users who actively requested approval (pending), exclude inactive
   const pendingUsers = users.filter(u => u.reward_status === 'pending');
 
   const filteredUsers = pendingUsers

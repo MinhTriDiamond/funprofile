@@ -74,14 +74,58 @@ export const ClaimRewardsSection = ({
   const pendingAmount = Math.max(0, totalReward - claimedAmount - claimableReward);
   const dailyRemaining = Math.max(0, DAILY_LIMIT - dailyClaimed);
 
+  const [isRequestingApproval, setIsRequestingApproval] = useState(false);
+
   const statusConfig: Record<string, { label: string; color: string; disabled: boolean }> = {
+    inactive: { label: 'Chưa yêu cầu duyệt', color: 'text-gray-600', disabled: true },
     pending: { label: 'Chờ Admin duyệt', color: 'text-yellow-600', disabled: true },
     approved: { label: `Claim ${formatNumber(claimableReward)} CAMLY`, color: 'text-green-600', disabled: false },
     on_hold: { label: 'Tạm giữ', color: 'text-orange-600', disabled: true },
     rejected: { label: 'Từ chối', color: 'text-red-600', disabled: true },
   };
 
-  const config = statusConfig[rewardStatus] || statusConfig.pending;
+  const config = statusConfig[rewardStatus] || statusConfig.inactive;
+
+  const handleRequestApproval = async () => {
+    const missing: string[] = [];
+    if (!hasFullName) missing.push('Họ tên đầy đủ (≥4 ký tự)');
+    if (!hasAvatar) missing.push('Ảnh đại diện');
+    if (!hasCover) missing.push('Ảnh bìa trang cá nhân');
+    if (!hasTodayPost) missing.push('Đăng ít nhất 1 bài hôm nay');
+    if (!isConnected) missing.push('Kết nối ví');
+    if (accountAgeDays < 7) missing.push(`Tài khoản ≥ 7 ngày (hiện ${accountAgeDays} ngày)`);
+    
+    if (missing.length > 0) {
+      toast.error('Chưa đủ điều kiện gửi yêu cầu', {
+        description: missing.map(m => `• ${m}`).join('\n'),
+        duration: 6000,
+      });
+      return;
+    }
+
+    setIsRequestingApproval(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) { toast.error('Vui lòng đăng nhập'); return; }
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({ reward_status: 'pending' })
+        .eq('id', session.user.id);
+      
+      if (error) throw error;
+      toast.success('Đã gửi yêu cầu duyệt thành công! ✅', {
+        description: 'Admin sẽ xét duyệt trong thời gian sớm nhất.',
+      });
+      // Force page reload to reflect new status
+      window.location.reload();
+    } catch (err) {
+      console.error('Error requesting approval:', err);
+      toast.error('Gửi yêu cầu thất bại, vui lòng thử lại');
+    } finally {
+      setIsRequestingApproval(false);
+    }
+  };
 
   const allConditionsMet = hasAvatar && hasCover && hasTodayPost && hasFullName && isConnected;
 
@@ -280,6 +324,38 @@ export const ClaimRewardsSection = ({
           </div>
         </div>
 
+        {/* Inactive / Request Approval */}
+        {(rewardStatus === 'inactive' || rewardStatus === 'rejected') && (
+          <div className="bg-blue-50 border border-blue-300 rounded-xl p-3.5">
+            <div className="flex items-start gap-2">
+              <ClipboardCheck className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-blue-800">
+                  {rewardStatus === 'rejected' ? 'Yêu cầu bị từ chối — Gửi lại?' : 'Gửi yêu cầu duyệt để claim thưởng'}
+                </p>
+                <p className="text-xs text-blue-700 mt-1">
+                  Hoàn thành đủ 6 điều kiện cơ bản bên dưới rồi bấm nút gửi yêu cầu. Admin sẽ xét duyệt để bạn có thể claim CAMLY.
+                </p>
+                {rewardStatus === 'rejected' && adminNotes && (
+                  <p className="text-xs text-red-600 mt-1">Lý do từ chối: {adminNotes}</p>
+                )}
+                <Button
+                  onClick={handleRequestApproval}
+                  disabled={isRequestingApproval}
+                  size="sm"
+                  className="mt-2 bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  {isRequestingApproval ? (
+                    <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" />Đang gửi...</>
+                  ) : (
+                    <><Send className="w-4 h-4 mr-1.5" />Gửi yêu cầu duyệt</>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Pending Approval Alert */}
         {rewardStatus === 'pending' && (
           <div className="bg-yellow-50 border border-yellow-300 rounded-xl p-3.5">
@@ -288,7 +364,7 @@ export const ClaimRewardsSection = ({
               <div>
                 <p className="text-sm font-semibold text-yellow-800">Chờ Admin xét duyệt ⏳</p>
                 <p className="text-xs text-yellow-700 mt-1">
-                  Tài khoản của bạn cần được Admin xét duyệt trước khi có thể claim phần thưởng. Vui lòng đảm bảo hồ sơ đầy đủ và chờ Admin duyệt.
+                  Yêu cầu của bạn đã được gửi. Vui lòng chờ Admin duyệt để claim phần thưởng.
                 </p>
               </div>
             </div>
@@ -347,7 +423,7 @@ export const ClaimRewardsSection = ({
         )}
 
         {/* Message Admin Section - shown when user can't claim */}
-        {(rewardStatus === 'pending' || rewardStatus === 'on_hold' || rewardStatus === 'rejected' || walletSecurity?.isBlocked) && (
+        {(rewardStatus === 'pending' || rewardStatus === 'on_hold' || walletSecurity?.isBlocked) && (
           <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-xl p-3.5 space-y-3">
             <div className="flex items-center gap-2">
               <MessageCircle className="w-4 h-4 text-blue-600" />
