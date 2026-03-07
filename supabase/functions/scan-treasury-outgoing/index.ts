@@ -168,8 +168,6 @@ Deno.serve(async (req) => {
       }
     }
 
-    }
-
     // Also map reward_claims wallet addresses
     const { data: claimWallets } = await adminClient
       .from("reward_claims")
