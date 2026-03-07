@@ -1,8 +1,7 @@
-import { useState, useEffect, memo } from 'react';
+import { useState, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLightScore } from '@/hooks/useLightScore';
 import { useFunBalance } from '@/hooks/useFunBalance';
-import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -15,6 +14,7 @@ import {
 import { formatFUN, getAddressUrl, FUN_MONEY_CONTRACT } from '@/config/pplp';
 import funLogo from '@/assets/tokens/fun-logo.png';
 import { useLanguage } from '@/i18n/LanguageContext';
+import { DimensionScoreCard } from './DimensionScoreCard';
 
 const PILLAR_ICONS = {
   service: '☀️',
@@ -89,6 +89,8 @@ export const LightScoreDashboard = ({ walletAddress, onActivate, onClaim }: Ligh
 
   return (
     <div className="space-y-4">
+      {/* ===== CARD 0: 5 DIMENSION SCORES ===== */}
+      <DimensionScoreCard />
 
       {/* ===== CARD 1: LIGHT SCORE ===== */}
       <Card className="border-0 shadow-lg bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 overflow-hidden">
