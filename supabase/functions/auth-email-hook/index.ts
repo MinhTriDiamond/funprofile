@@ -16,12 +16,12 @@ const corsHeaders = {
 }
 
 const EMAIL_SUBJECTS: Record<string, string> = {
-  signup: 'Confirm your email',
-  invite: "You've been invited",
-  magiclink: 'Your login link',
-  recovery: 'Reset your password',
-  email_change: 'Confirm your new email',
-  reauthentication: 'Your verification code',
+  signup: 'Xác nhận FUN ID của bạn 💖',
+  invite: 'Bạn được mời tham gia FUN Ecosystem! 🌟',
+  magiclink: 'Link đăng nhập FUN ID ✨',
+  recovery: 'Đặt lại mật khẩu FUN ID 🔐',
+  email_change: 'Xác nhận thay đổi email FUN ID 📧',
+  reauthentication: 'Mã xác thực FUN ID 🔐',
 }
 
 // Template mapping
@@ -35,7 +35,7 @@ const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
 }
 
 // Configuration
-const SITE_NAME = "funprofile"
+const SITE_NAME = "FUN Ecosystem"
 const SENDER_DOMAIN = "notify.fun.rich"
 const ROOT_DOMAIN = "fun.rich"
 const FROM_DOMAIN = "fun.rich" // Domain shown in From address (may be root or sender subdomain)
