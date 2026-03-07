@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -14,6 +14,8 @@ import { Loader2, Wallet, ShieldCheck } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useQueryClient } from '@tanstack/react-query';
+import { useAccount, useSignMessage, useDisconnect } from 'wagmi';
+import { useConnectModal } from '@rainbow-me/rainbowkit';
 
 interface LinkWalletDialogProps {
   open: boolean;
@@ -26,13 +28,31 @@ export function LinkWalletDialog({ open, onOpenChange }: LinkWalletDialogProps) 
   const [walletAddress, setWalletAddress] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const autoSignRef = useRef(false);
+
+  const { address, isConnected } = useAccount();
+  const { openConnectModal } = useConnectModal();
+  const { signMessageAsync, isPending: isSigning } = useSignMessage();
+  const { disconnect } = useDisconnect();
 
   const isValidAddress = /^0x[a-fA-F0-9]{40}$/.test(walletAddress);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!userId || !isValidAddress) return;
+  // Auto-sign when wallet connects and matches pasted address
+  useEffect(() => {
+    if (
+      isConnected &&
+      address &&
+      walletAddress &&
+      address.toLowerCase() === walletAddress.toLowerCase() &&
+      autoSignRef.current
+    ) {
+      autoSignRef.current = false;
+      handleSignAndLink();
+    }
+  }, [isConnected, address]);
 
+  const handleSignAndLink = async () => {
+    if (!userId || !walletAddress) return;
     setLoading(true);
     try {
       // Log start (client-safe)
@@ -42,13 +62,22 @@ export function LinkWalletDialog({ open, onOpenChange }: LinkWalletDialogProps) 
         details: { wallet_address: walletAddress },
       });
 
-      // Call existing connect-external-wallet edge function
+      // Create message and sign
+      const nonce = Math.random().toString(36).substring(2, 15);
+      const timestamp = new Date().toISOString();
+      const message = `Link wallet to FUN Profile\n\nWallet: ${walletAddress}\nNonce: ${nonce}\nTimestamp: ${timestamp}`;
+
+      const signature = await signMessageAsync({
+        message,
+        account: walletAddress as `0x${string}`,
+      });
+
+      // Call edge function with signature
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Chưa đăng nhập');
 
-      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
       const res = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/connect-external-wallet`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/connect-external-wallet`,
         {
           method: 'POST',
           headers: {
@@ -56,7 +85,7 @@ export function LinkWalletDialog({ open, onOpenChange }: LinkWalletDialogProps) 
             Authorization: `Bearer ${session.access_token}`,
             apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
           },
-          body: JSON.stringify({ wallet_address: walletAddress }),
+          body: JSON.stringify({ wallet_address: walletAddress, signature, message }),
         }
       );
 
@@ -69,9 +98,31 @@ export function LinkWalletDialog({ open, onOpenChange }: LinkWalletDialogProps) 
       setSuccess(true);
       toast.success('Liên kết ví thành công!');
     } catch (err: any) {
-      toast.error(err.message || 'Có lỗi xảy ra');
+      const errName = (err as { name?: string })?.name;
+      if (errName === 'UserRejectedRequestError' || err?.message?.includes('rejected')) {
+        toast.error('Bạn đã từ chối ký xác thực');
+      } else {
+        toast.error(err.message || 'Có lỗi xảy ra');
+      }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userId || !isValidAddress) return;
+
+    autoSignRef.current = true;
+
+    // If already connected with matching address, sign immediately
+    if (isConnected && address?.toLowerCase() === walletAddress.toLowerCase()) {
+      autoSignRef.current = false;
+      handleSignAndLink();
+    } else {
+      // Disconnect any existing connection, then open modal
+      if (isConnected) disconnect();
+      if (openConnectModal) openConnectModal();
     }
   };
 
@@ -111,7 +162,7 @@ export function LinkWalletDialog({ open, onOpenChange }: LinkWalletDialogProps) 
             Liên kết ví
           </DialogTitle>
           <DialogDescription>
-            Dán địa chỉ ví Web3 để đăng nhập bằng ví
+            Dán địa chỉ ví Web3, sau đó ký xác thực để liên kết
           </DialogDescription>
         </DialogHeader>
 
@@ -133,16 +184,20 @@ export function LinkWalletDialog({ open, onOpenChange }: LinkWalletDialogProps) 
             )}
           </div>
 
-          <Button type="submit" className="w-full" disabled={!isValidAddress || loading}>
-            {loading ? (
+          <Button type="submit" className="w-full" disabled={!isValidAddress || loading || isSigning}>
+            {loading || isSigning ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Đang liên kết...
+                {isSigning ? 'Đang ký xác thực...' : 'Đang liên kết...'}
               </>
             ) : (
-              'Liên kết ví'
+              'Kết nối ví & Ký xác thực'
             )}
           </Button>
+
+          <p className="text-xs text-muted-foreground text-center">
+            Bạn sẽ cần kết nối ví và ký một tin nhắn để xác thực quyền sở hữu.
+          </p>
         </form>
       </DialogContent>
     </Dialog>

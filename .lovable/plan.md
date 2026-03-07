@@ -1,37 +1,78 @@
 
 
-## Kế hoạch sửa 2 vấn đề
+# Phân tích: Tại sao Database hiển thị Livestream = 0
 
-### 1. Sửa Google row — đơn giản
+## Phát hiện chính
 
-Trong `SecuritySettings.tsx`, dòng Google:
-- Khi `hasGoogleIdentity = false`: hiển thị "Chưa liên kết" thay vì "Sẽ hỗ trợ sớm"
-- Khi `hasGoogleIdentity = true`: hiển thị "Đã liên kết"
-- Bỏ `disabled: true` và `actionLabel: 'Sẽ hỗ trợ sớm'`
-- Phase 1 chưa có nút link Google inline, nên khi chưa linked chỉ hiển thị trạng thái, không có action button
+**Dữ liệu thực tế trong database:**
 
-### 2. Sửa LinkWalletDialog — cần tích hợp wallet signing
+| Bảng | Số lượng | Ghi chú |
+|------|----------|---------|
+| `live_sessions` | **600** (596 ended + 4 live) | Users livestream rất tích cực |
+| `chunked_recordings` | **342** (314 done, 28 stuck "recording") | Ghi hình hoạt động |
+| `posts` với `post_type = 'live'` | **519** | Bài đăng live |
+| `posts` có video URL chứa "live" | **581** | Video replay |
+| `recording_status = 'ready'` | **488** | Recordings thành công |
+| `recording_status = 'failed'` | **57** | Recordings thất bại (~9.5%) |
 
-**Vấn đề gốc**: Edge function yêu cầu `{ wallet_address, signature, message }` nhưng dialog chỉ gửi `{ wallet_address }`.
+**Kết luận: Users livestream RẤT NHIỀU — 600 phiên, 488 recordings thành công!**
 
-**Giải pháp**: Thay đổi flow trong `LinkWalletDialog.tsx`:
+## Nguyên nhân gốc: Hàm `get_app_stats` không đếm livestream
 
-1. User dán địa chỉ ví (giữ nguyên)
-2. Khi bấm "Liên kết ví":
-   - Mở RainbowKit connect modal (nếu chưa connected)
-   - Sau khi connected, kiểm tra address khớp với address đã dán
-   - Ký message xác thực bằng `useSignMessage` từ wagmi
-   - Gửi `{ wallet_address, signature, message }` tới edge function
-3. Nếu ví connected không khớp → thông báo lỗi
+Hàm `get_app_stats()` hiện tại chỉ trả về:
+- `total_users`, `total_posts`, `total_photos`, `total_videos` (đếm từ `posts WHERE video_url IS NOT NULL`)
+- `total_rewards`, `treasury_camly_received`, `total_camly_claimed`
 
-**Imports cần thêm**: `useAccount`, `useSignMessage`, `useDisconnect` từ wagmi, `useConnectModal` từ RainbowKit.
+**Không có trường nào đếm `live_sessions`** hoặc `chunked_recordings`. Component `AppHonorBoard.tsx` hiển thị `total_videos = 897` — đó là tổng số posts có video (bao gồm cả live replay), nhưng **không có mục riêng cho "Livestream"**.
 
-**Flow tương tự** `WalletLoginContent.tsx` đã có sẵn — tái sử dụng pattern ký message.
+## Vấn đề phụ phát hiện thêm
 
-### Files thay đổi
+1. **28 recordings stuck ở trạng thái "recording"** — phiên live đã kết thúc nhưng `chunked_recordings.status` không chuyển sang `done`. Đây là những sessions mà host đóng trình duyệt đột ngột trước khi finalize.
 
-| File | Thay đổi |
-|---|---|
-| `src/components/security/LinkWalletDialog.tsx` | Tích hợp wagmi signing flow |
-| `src/pages/SecuritySettings.tsx` | Sửa Google row bỏ "Sẽ hỗ trợ sớm" |
+2. **57 sessions có `recording_status = 'failed'`** (~9.5%) — một số có `chunked_recordings.status = done` (recording thực ra thành công nhưng status ở `live_sessions` bị đánh failed sai).
+
+3. **`live_recordings` table hoàn toàn trống** (0 rows) — Table này được thiết kế cho Agora server-side recording nhưng chưa bao giờ được sử dụng thành công vì hệ thống đang dùng client-side chunked recording thay thế.
+
+## Kế hoạch sửa
+
+### Task 1: Cập nhật `get_app_stats` thêm `total_livestreams`
+
+Thêm trường `total_livestreams` vào hàm SQL:
+
+```sql
+DROP FUNCTION IF EXISTS public.get_app_stats();
+CREATE OR REPLACE FUNCTION public.get_app_stats()
+RETURNS TABLE(
+  total_users BIGINT,
+  total_posts BIGINT,
+  total_photos BIGINT,
+  total_videos BIGINT,
+  total_livestreams BIGINT,
+  total_rewards NUMERIC,
+  treasury_camly_received NUMERIC,
+  total_camly_claimed NUMERIC
+) ...
+-- Thêm:
+(SELECT COUNT(*) FROM live_sessions)::BIGINT AS total_livestreams,
+```
+
+### Task 2: Cập nhật `AppHonorBoard.tsx`
+
+- Thêm interface field `totalLivestreams`
+- Parse từ response `row.total_livestreams`
+- Thêm stat card với icon `Radio` và label "Livestreams"
+
+### Task 3: Dọn dẹp stuck recordings
+
+- Cập nhật 28 `chunked_recordings` stuck ở `status = 'recording'` mà `live_session` đã `ended` → chuyển sang `done` hoặc `failed`
+- Sửa inconsistency: sessions có `recording_status = 'failed'` nhưng `chunked_recordings.status = 'done'`
+
+### Technical Details
+
+**Files cần sửa:**
+1. Migration SQL mới — `DROP FUNCTION + CREATE OR REPLACE` cho `get_app_stats`
+2. `src/components/feed/AppHonorBoard.tsx` — thêm livestream stat
+3. `src/integrations/supabase/types.ts` — tự động cập nhật sau migration
+
+**Không ảnh hưởng:** Các tính năng livestream hiện tại (start, join, record, replay) không bị ảnh hưởng. Đây chỉ là fix hiển thị thống kê.
 
