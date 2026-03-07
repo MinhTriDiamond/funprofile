@@ -115,10 +115,12 @@ const SecuritySettingsContent = () => {
     },
     {
       icon: Key, label: 'Mật khẩu',
-      description: 'Đăng nhập nhanh bằng email + mật khẩu',
+      description: hasEmailLoginMethod
+        ? 'Đăng nhập nhanh bằng email + mật khẩu'
+        : 'Bạn cần liên kết email để đặt mật khẩu',
       status: hasPassword ? 'connected' : 'disconnected',
       statusLabel: hasPassword ? 'Đã đặt' : 'Chưa đặt',
-      action: !hasPassword ? () => setShowSetPassword(true) : undefined,
+      action: !hasPassword && hasEmailLoginMethod ? () => setShowSetPassword(true) : undefined,
       actionLabel: 'Đặt mật khẩu',
     },
     {
