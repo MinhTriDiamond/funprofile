@@ -251,7 +251,7 @@ const SecuritySettings = () => {
                       {method.statusLabel}
                     </span>
                   </div>
-                  {method.action && !method.disabled ? (
+                  {method.action ? (
                     <Button
                       size="sm"
                       variant="outline"
@@ -261,10 +261,6 @@ const SecuritySettings = () => {
                       {method.actionLabel}
                       <ChevronRight className="w-3 h-3 ml-1" />
                     </Button>
-                  ) : method.disabled ? (
-                    <span className="text-xs text-muted-foreground italic flex-shrink-0">
-                      {method.actionLabel}
-                    </span>
                   ) : null}
                 </div>
               ))}
