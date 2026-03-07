@@ -144,7 +144,6 @@ function App() {
                   <Route path="/install" element={<Install />} />
                   <Route path="/settings" element={<Settings />} />
                   <Route path="/settings/:tab" element={<Settings />} />
-                  <Route path="/settings/security" element={<SecuritySettings />} />
                   <Route path="/benefactors" element={<Benefactors />} />
                   <Route path="/donations" element={<Donations />} />
                   <Route path="/users" element={<Users />} />
