@@ -18,6 +18,8 @@ interface ProfileSecurityData {
   public_wallet_address: string | null;
 }
 
+export const TOTAL_METHODS = 4;
+
 export type SecurityLevel = 'basic' | 'good' | 'strong';
 
 export type RecommendedAction =
@@ -118,7 +120,7 @@ export function useLoginMethods(): LoginMethodsResult {
   }
 
   const isFullySecured =
-    hasEmailLoginMethod && hasPassword && hasWalletLoginMethod;
+    hasEmailLoginMethod && hasPassword && hasWalletLoginMethod && hasGoogleIdentity;
 
   return {
     emailExists,
