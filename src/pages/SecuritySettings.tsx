@@ -124,8 +124,7 @@ const SecuritySettings = () => {
       status: hasGoogleIdentity ? 'connected' : 'disconnected',
       statusLabel: hasGoogleIdentity ? 'Đã liên kết' : 'Chưa liên kết',
       action: undefined,
-      actionLabel: 'Sẽ hỗ trợ sớm',
-      disabled: true,
+      actionLabel: undefined,
     },
     {
       icon: Key,
