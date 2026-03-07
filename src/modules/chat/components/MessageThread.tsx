@@ -146,7 +146,6 @@ export function MessageThread({ conversationId, userId, username }: MessageThrea
     ? (headerProfile?.public_wallet_address
       || headerProfile?.external_wallet_address
       || headerProfile?.wallet_address
-      || headerProfile?.custodial_wallet_address
       || null)
     : null;
 

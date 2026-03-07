@@ -89,12 +89,12 @@ Deno.serve(async (req) => {
     const recipientIds = [...new Set(allDonations.filter((d) => d.recipient_id).map((d) => d.recipient_id))];
     const { data: profiles } = await adminClient
       .from("profiles")
-      .select("id, wallet_address, public_wallet_address, external_wallet_address, custodial_wallet_address")
+      .select("id, wallet_address, public_wallet_address, external_wallet_address")
       .in("id", recipientIds);
 
     const walletMap = new Map<string, string>();
     for (const p of profiles || []) {
-      const addr = p.custodial_wallet_address || p.wallet_address || p.public_wallet_address || p.external_wallet_address || "unknown";
+      const addr = p.wallet_address || p.public_wallet_address || p.external_wallet_address || "unknown";
       walletMap.set(p.id, addr);
     }
 

@@ -179,7 +179,7 @@ Deno.serve(async (req: Request) => {
     // First check external_wallet_address (new field)
     const { data: profileByExternal } = await supabase
       .from('profiles')
-      .select('id, username, external_wallet_address, custodial_wallet_address, public_wallet_address')
+      .select('id, username, external_wallet_address, public_wallet_address')
       .eq('external_wallet_address', normalizedAddress)
       .maybeSingle();
     
@@ -189,7 +189,7 @@ Deno.serve(async (req: Request) => {
       // Fallback: check legacy wallet_address field
       const { data: profileByLegacy } = await supabase
         .from('profiles')
-        .select('id, username, wallet_address, external_wallet_address, custodial_wallet_address, public_wallet_address')
+        .select('id, username, wallet_address, external_wallet_address, public_wallet_address')
         .eq('wallet_address', normalizedAddress)
         .maybeSingle();
       
@@ -213,7 +213,7 @@ Deno.serve(async (req: Request) => {
         // Fallback: check public_wallet_address field
         const { data: profileByPublic } = await supabase
           .from('profiles')
-          .select('id, username, external_wallet_address, custodial_wallet_address, public_wallet_address')
+          .select('id, username, external_wallet_address, public_wallet_address')
           .eq('public_wallet_address', normalizedAddress)
           .maybeSingle();
 

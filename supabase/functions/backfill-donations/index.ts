@@ -106,7 +106,7 @@ Deno.serve(async (req) => {
       // Fetch profiles by wallet_address
       const { data: profiles } = await adminClient
         .from("profiles")
-        .select("id, username, avatar_url, wallet_address, public_wallet_address, external_wallet_address, custodial_wallet_address");
+        .select("id, username, avatar_url, wallet_address, public_wallet_address, external_wallet_address");
 
       // Build wallet -> profile map (case-insensitive)
       const walletMap = new Map<string, { id: string; username: string; avatar_url: string | null }>();
@@ -115,7 +115,6 @@ Deno.serve(async (req) => {
         if (p.wallet_address) walletMap.set(p.wallet_address.toLowerCase(), profileData);
         if (p.public_wallet_address) walletMap.set(p.public_wallet_address.toLowerCase(), profileData);
         if (p.external_wallet_address) walletMap.set(p.external_wallet_address.toLowerCase(), profileData);
-        if (p.custodial_wallet_address) walletMap.set(p.custodial_wallet_address.toLowerCase(), profileData);
       }
 
       // Also build user_id -> profile map for sender info
@@ -191,14 +190,13 @@ Deno.serve(async (req) => {
       // Get profiles for mapping
       const { data: profiles } = await adminClient
         .from("profiles")
-        .select("id, wallet_address, public_wallet_address, external_wallet_address, custodial_wallet_address");
+        .select("id, wallet_address, public_wallet_address, external_wallet_address");
 
       const walletMap = new Map<string, string>();
       for (const p of profiles || []) {
         if (p.wallet_address) walletMap.set(p.wallet_address.toLowerCase(), p.id);
         if (p.public_wallet_address) walletMap.set(p.public_wallet_address.toLowerCase(), p.id);
         if (p.external_wallet_address) walletMap.set(p.external_wallet_address.toLowerCase(), p.id);
-        if (p.custodial_wallet_address) walletMap.set(p.custodial_wallet_address.toLowerCase(), p.id);
       }
 
       // Check existing donations to avoid duplicates

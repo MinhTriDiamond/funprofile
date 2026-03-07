@@ -176,23 +176,6 @@ Deno.serve(async (req: Request) => {
           });
       }
 
-      // Create custodial wallet for new user
-      try {
-        const walletResponse = await fetch(`${supabaseUrl}/functions/v1/create-custodial-wallet`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${supabaseServiceKey}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ user_id: userId })
-        });
-
-        if (!walletResponse.ok) {
-          console.error('Failed to create custodial wallet');
-        }
-      } catch (walletError) {
-        console.error('Wallet creation error:', walletError);
-      }
     }
 
     // Parse scopes
@@ -201,7 +184,7 @@ Deno.serve(async (req: Request) => {
     // Get user profile for JWT claims
     const { data: profile } = await supabase
       .from('profiles')
-      .select('id, username, full_name, avatar_url, fun_id, custodial_wallet_address, wallet_address')
+      .select('id, username, full_name, avatar_url, fun_id, wallet_address')
       .eq('id', userId)
       .single();
 
@@ -210,7 +193,6 @@ Deno.serve(async (req: Request) => {
       sub: userId,
       fun_id: profile?.fun_id || '',
       username: profile?.username || '',
-      custodial_wallet: profile?.custodial_wallet_address || null,
       scope: scopes
     });
 

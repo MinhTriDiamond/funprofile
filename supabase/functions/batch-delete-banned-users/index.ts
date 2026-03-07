@@ -39,7 +39,7 @@ async function deleteUserData(adminClient: any, userId: string): Promise<Record<
     { table: 'crypto_gifts', column: 'to_user_id' },
     { table: 'conversation_participants', column: 'user_id' },
     { table: 'messages', column: 'sender_id' },
-    { table: 'custodial_wallets', column: 'user_id' },
+    
     { table: 'transactions', column: 'user_id' },
     { table: 'cross_platform_tokens', column: 'user_id' },
     { table: 'login_ip_logs', column: 'user_id' },
