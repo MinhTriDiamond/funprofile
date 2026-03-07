@@ -4475,6 +4475,57 @@ export type Database = {
         }
         Relationships: []
       }
+      user_dimension_scores: {
+        Row: {
+          activity_score: number | null
+          computed_at: string | null
+          created_at: string | null
+          decay_applied: boolean | null
+          ecosystem_score: number | null
+          identity_score: number | null
+          inactive_days: number | null
+          level_name: string | null
+          onchain_score: number | null
+          risk_penalty: number | null
+          streak_bonus_pct: number | null
+          total_light_score: number | null
+          transparency_score: number | null
+          user_id: string
+        }
+        Insert: {
+          activity_score?: number | null
+          computed_at?: string | null
+          created_at?: string | null
+          decay_applied?: boolean | null
+          ecosystem_score?: number | null
+          identity_score?: number | null
+          inactive_days?: number | null
+          level_name?: string | null
+          onchain_score?: number | null
+          risk_penalty?: number | null
+          streak_bonus_pct?: number | null
+          total_light_score?: number | null
+          transparency_score?: number | null
+          user_id: string
+        }
+        Update: {
+          activity_score?: number | null
+          computed_at?: string | null
+          created_at?: string | null
+          decay_applied?: boolean | null
+          ecosystem_score?: number | null
+          identity_score?: number | null
+          inactive_days?: number | null
+          level_name?: string | null
+          onchain_score?: number | null
+          risk_penalty?: number | null
+          streak_bonus_pct?: number | null
+          total_light_score?: number | null
+          transparency_score?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_reel_preferences: {
         Row: {
           engagement_score: number | null
