@@ -1,78 +1,47 @@
 
 
-# Phân tích: Tại sao Database hiển thị Livestream = 0
+## Kết quả rà soát — 4 lỗi cần sửa
 
-## Phát hiện chính
+### Lỗi 1 (Nghiêm trọng): `connect-external-wallet/index.ts` — Duplicate variable declarations
 
-**Dữ liệu thực tế trong database:**
+Edge function khai báo `const supabaseUrl` 2 lần (dòng 23 và 38) và `const supabaseServiceKey` 2 lần (dòng 39 và 79). Deno sẽ crash ngay với `SyntaxError: Identifier already declared`.
 
-| Bảng | Số lượng | Ghi chú |
-|------|----------|---------|
-| `live_sessions` | **600** (596 ended + 4 live) | Users livestream rất tích cực |
-| `chunked_recordings` | **342** (314 done, 28 stuck "recording") | Ghi hình hoạt động |
-| `posts` với `post_type = 'live'` | **519** | Bài đăng live |
-| `posts` có video URL chứa "live" | **581** | Video replay |
-| `recording_status = 'ready'` | **488** | Recordings thành công |
-| `recording_status = 'failed'` | **57** | Recordings thất bại (~9.5%) |
+**Sửa**: Xóa khai báo trùng ở dòng 38-40. Dòng 79 cũng phải xóa, dùng lại biến đã khai báo.
 
-**Kết luận: Users livestream RẤT NHIỀU — 600 phiên, 488 recordings thành công!**
+---
 
-## Nguyên nhân gốc: Hàm `get_app_stats` không đếm livestream
+### Lỗi 2 (Nghiêm trọng): `check-email-exists/index.ts` — Chỉ kiểm tra 50 users
 
-Hàm `get_app_stats()` hiện tại chỉ trả về:
-- `total_users`, `total_posts`, `total_photos`, `total_videos` (đếm từ `posts WHERE video_url IS NOT NULL`)
-- `total_rewards`, `treasury_camly_received`, `total_camly_claimed`
+Hiện tại dùng `adminClient.auth.admin.listUsers({ perPage: 50 })` rồi filter in-memory. Với hơn 500 users trong hệ thống, function sẽ **bỏ sót collision** nếu email thuộc user ngoài top 50.
 
-**Không có trường nào đếm `live_sessions`** hoặc `chunked_recordings`. Component `AppHonorBoard.tsx` hiển thị `total_videos = 897` — đó là tổng số posts có video (bao gồm cả live replay), nhưng **không có mục riêng cho "Livestream"**.
+Ngoài ra có dead code (dòng 52-61) không làm gì.
 
-## Vấn đề phụ phát hiện thêm
+**Sửa**: Tạo một DB function (`check_email_collision`) dùng `SECURITY DEFINER` để query trực tiếp `auth.users` theo email, thay vì list toàn bộ users. Xóa dead code.
 
-1. **28 recordings stuck ở trạng thái "recording"** — phiên live đã kết thúc nhưng `chunked_recordings.status` không chuyển sang `done`. Đây là những sessions mà host đóng trình duyệt đột ngột trước khi finalize.
+---
 
-2. **57 sessions có `recording_status = 'failed'`** (~9.5%) — một số có `chunked_recordings.status = done` (recording thực ra thành công nhưng status ở `live_sessions` bị đánh failed sai).
+### Lỗi 3 (Nhỏ): `LinkEmailDialog.tsx` — URL construction
 
-3. **`live_recordings` table hoàn toàn trống** (0 rows) — Table này được thiết kế cho Agora server-side recording nhưng chưa bao giờ được sử dụng thành công vì hệ thống đang dùng client-side chunked recording thay thế.
+Dùng `VITE_SUPABASE_PROJECT_ID` để tự build URL (`https://${projectId}.supabase.co/...`). Nên dùng `VITE_SUPABASE_URL` cho nhất quán và đúng pattern với phần còn lại của project.
 
-## Kế hoạch sửa
+**Sửa**: Đổi sang `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/check-email-exists`.
 
-### Task 1: Cập nhật `get_app_stats` thêm `total_livestreams`
+---
 
-Thêm trường `total_livestreams` vào hàm SQL:
+### Lỗi 4 (Nhỏ): `connect-external-wallet` — Không ghi activity log
 
-```sql
-DROP FUNCTION IF EXISTS public.get_app_stats();
-CREATE OR REPLACE FUNCTION public.get_app_stats()
-RETURNS TABLE(
-  total_users BIGINT,
-  total_posts BIGINT,
-  total_photos BIGINT,
-  total_videos BIGINT,
-  total_livestreams BIGINT,
-  total_rewards NUMERIC,
-  treasury_camly_received NUMERIC,
-  total_camly_claimed NUMERIC
-) ...
--- Thêm:
-(SELECT COUNT(*) FROM live_sessions)::BIGINT AS total_livestreams,
-```
+Theo plan, edge function nên ghi `wallet_link_succeeded` / `wallet_link_failed` vào `account_activity_logs` (trusted path). Hiện tại function không ghi.
 
-### Task 2: Cập nhật `AppHonorBoard.tsx`
+**Sửa**: Thêm insert vào `account_activity_logs` sau khi link thành công/thất bại, dùng service role client.
 
-- Thêm interface field `totalLivestreams`
-- Parse từ response `row.total_livestreams`
-- Thêm stat card với icon `Radio` và label "Livestreams"
+---
 
-### Task 3: Dọn dẹp stuck recordings
+### Tổng kết files cần sửa
 
-- Cập nhật 28 `chunked_recordings` stuck ở `status = 'recording'` mà `live_session` đã `ended` → chuyển sang `done` hoặc `failed`
-- Sửa inconsistency: sessions có `recording_status = 'failed'` nhưng `chunked_recordings.status = 'done'`
-
-### Technical Details
-
-**Files cần sửa:**
-1. Migration SQL mới — `DROP FUNCTION + CREATE OR REPLACE` cho `get_app_stats`
-2. `src/components/feed/AppHonorBoard.tsx` — thêm livestream stat
-3. `src/integrations/supabase/types.ts` — tự động cập nhật sau migration
-
-**Không ảnh hưởng:** Các tính năng livestream hiện tại (start, join, record, replay) không bị ảnh hưởng. Đây chỉ là fix hiển thị thống kê.
+| File | Thay đổi |
+|---|---|
+| `supabase/functions/connect-external-wallet/index.ts` | Xóa duplicate declarations + thêm activity log |
+| `supabase/functions/check-email-exists/index.ts` | Thay listUsers bằng DB function, xóa dead code |
+| `src/components/security/LinkEmailDialog.tsx` | Sửa URL construction |
+| Migration SQL mới | Tạo `check_email_collision` function |
 
