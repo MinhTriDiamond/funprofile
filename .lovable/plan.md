@@ -1,78 +1,141 @@
 
 
-# Phân tích: Tại sao Database hiển thị Livestream = 0
+# Kế hoạch chi tiết: Nâng cấp Light Score 5 Trụ Cột (Phase 1)
 
-## Phát hiện chính
+## Hiện trạng đã xác nhận
 
-**Dữ liệu thực tế trong database:**
+**Có sẵn:**
+- Bảng `light_reputation`: lưu action-level PPLP scores (pillar_service/truth/healing/value/unity), streak, tier, tổng điểm
+- Bảng `pplp_fraud_signals`: severity, is_resolved — dùng cho Transparency & Risk Penalty
+- Bảng `donations`: sender_id, recipient_id, amount, status — dùng cho OnChain & Ecosystem
+- Bảng `profiles`: avatar_url, bio, display_name, location, wallet_address, law_of_light_accepted, created_at, education, workplace — dùng cho Identity
+- Config `TIERS` trong `pplp.ts`: 4 cấp (0/1000/10000/100000) — cần cập nhật theo whitepaper
+- Edge function `pplp-get-score` trả dữ liệu từ RPC `get_user_light_score` + `light_reputation`
+- **Không có** bảng `user_dimension_scores`, `pplp_light_levels`, hay `user_wallet_addresses`
 
-| Bảng | Số lượng | Ghi chú |
-|------|----------|---------|
-| `live_sessions` | **600** (596 ended + 4 live) | Users livestream rất tích cực |
-| `chunked_recordings` | **342** (314 done, 28 stuck "recording") | Ghi hình hoạt động |
-| `posts` với `post_type = 'live'` | **519** | Bài đăng live |
-| `posts` có video URL chứa "live" | **581** | Video replay |
-| `recording_status = 'ready'` | **488** | Recordings thành công |
-| `recording_status = 'failed'` | **57** | Recordings thất bại (~9.5%) |
+---
 
-**Kết luận: Users livestream RẤT NHIỀU — 600 phiên, 488 recordings thành công!**
+## Thay đổi cụ thể
 
-## Nguyên nhân gốc: Hàm `get_app_stats` không đếm livestream
-
-Hàm `get_app_stats()` hiện tại chỉ trả về:
-- `total_users`, `total_posts`, `total_photos`, `total_videos` (đếm từ `posts WHERE video_url IS NOT NULL`)
-- `total_rewards`, `treasury_camly_received`, `total_camly_claimed`
-
-**Không có trường nào đếm `live_sessions`** hoặc `chunked_recordings`. Component `AppHonorBoard.tsx` hiển thị `total_videos = 897` — đó là tổng số posts có video (bao gồm cả live replay), nhưng **không có mục riêng cho "Livestream"**.
-
-## Vấn đề phụ phát hiện thêm
-
-1. **28 recordings stuck ở trạng thái "recording"** — phiên live đã kết thúc nhưng `chunked_recordings.status` không chuyển sang `done`. Đây là những sessions mà host đóng trình duyệt đột ngột trước khi finalize.
-
-2. **57 sessions có `recording_status = 'failed'`** (~9.5%) — một số có `chunked_recordings.status = done` (recording thực ra thành công nhưng status ở `live_sessions` bị đánh failed sai).
-
-3. **`live_recordings` table hoàn toàn trống** (0 rows) — Table này được thiết kế cho Agora server-side recording nhưng chưa bao giờ được sử dụng thành công vì hệ thống đang dùng client-side chunked recording thay thế.
-
-## Kế hoạch sửa
-
-### Task 1: Cập nhật `get_app_stats` thêm `total_livestreams`
-
-Thêm trường `total_livestreams` vào hàm SQL:
+### 1. Database Migration — Tạo bảng `user_dimension_scores`
 
 ```sql
-DROP FUNCTION IF EXISTS public.get_app_stats();
-CREATE OR REPLACE FUNCTION public.get_app_stats()
-RETURNS TABLE(
-  total_users BIGINT,
-  total_posts BIGINT,
-  total_photos BIGINT,
-  total_videos BIGINT,
-  total_livestreams BIGINT,
-  total_rewards NUMERIC,
-  treasury_camly_received NUMERIC,
-  total_camly_claimed NUMERIC
-) ...
--- Thêm:
-(SELECT COUNT(*) FROM live_sessions)::BIGINT AS total_livestreams,
+CREATE TABLE public.user_dimension_scores (
+  user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  identity_score NUMERIC DEFAULT 0,
+  activity_score NUMERIC DEFAULT 0,
+  onchain_score NUMERIC DEFAULT 0,
+  transparency_score NUMERIC DEFAULT 100,
+  ecosystem_score NUMERIC DEFAULT 0,
+  risk_penalty NUMERIC DEFAULT 0,
+  streak_bonus_pct NUMERIC DEFAULT 0,
+  inactive_days INTEGER DEFAULT 0,
+  decay_applied BOOLEAN DEFAULT FALSE,
+  total_light_score NUMERIC DEFAULT 0,
+  level_name TEXT DEFAULT 'Light Seed',
+  computed_at TIMESTAMPTZ DEFAULT now(),
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- RLS: user đọc dữ liệu của mình
+ALTER TABLE public.user_dimension_scores ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users read own scores" ON public.user_dimension_scores
+  FOR SELECT TO authenticated USING (auth.uid() = user_id);
 ```
 
-### Task 2: Cập nhật `AppHonorBoard.tsx`
+### 2. Edge Function mới — `pplp-compute-dimensions/index.ts`
 
-- Thêm interface field `totalLivestreams`
-- Parse từ response `row.total_livestreams`
-- Thêm stat card với icon `Radio` và label "Livestreams"
+Tính 5 dimension cho 1 user (gọi qua cron hoặc on-demand):
 
-### Task 3: Dọn dẹp stuck recordings
+| Dimension | Max | Nguồn dữ liệu | Công thức |
+|-----------|-----|---------------|-----------|
+| **Identity** | 100 | `profiles` | display_name (10) + avatar_url (10) + bio (5) + location (5) + wallet_address (30) + law_of_light_accepted (20) + account_age >30d (20) |
+| **Activity** | 100 | `light_reputation` | Normalize `total_light_score` về 0-100 (log scale, cap) |
+| **OnChain** | 100 | `profiles.wallet_address` + `donations` | wallet linked (30) + has donations sent (30) + has donations received (20) + first donation >30d ago (20) |
+| **Transparency** | 100 | `pplp_fraud_signals` | Start 100, trừ per unresolved signal: sev 1-3 → -5, sev 4-6 → -15, sev 7-10 → -30. Min 0 |
+| **Ecosystem** | 100 | `posts`, `comments`, `donations`, `light_reputation` | posts >0 (15) + comments >0 (15) + donations sent (20) + donations received (15) + streak >7d (15) + law_of_light (20) |
 
-- Cập nhật 28 `chunked_recordings` stuck ở `status = 'recording'` mà `live_session` đã `ended` → chuyển sang `done` hoặc `failed`
-- Sửa inconsistency: sessions có `recording_status = 'failed'` nhưng `chunked_recordings.status = 'done'`
+**Risk Penalty** = tổng severity unresolved fraud signals, cap 80
+**Streak Bonus** = streak 7d: +2%, 30d: +5%, 90d: +10%
+**Time Decay** = inactive 30d: activity×0.85, 60d: ×0.6, 90d: ×0.3, 180d: ×0
 
-### Technical Details
+**Total** = `(identity + activity + onchain + transparency + ecosystem) × 0.2 × (1 + streak_bonus) - risk_penalty`. Clamp 0-1000.
 
-**Files cần sửa:**
-1. Migration SQL mới — `DROP FUNCTION + CREATE OR REPLACE` cho `get_app_stats`
-2. `src/components/feed/AppHonorBoard.tsx` — thêm livestream stat
-3. `src/integrations/supabase/types.ts` — tự động cập nhật sau migration
+**Level**: 0-99 Seed, 100-249 Builder, 250-499 Guardian, 500-799 Leader, 800+ Cosmic
 
-**Không ảnh hưởng:** Các tính năng livestream hiện tại (start, join, record, replay) không bị ảnh hưởng. Đây chỉ là fix hiển thị thống kê.
+### 3. Cập nhật `pplp-get-score/index.ts`
+
+Thêm query `user_dimension_scores` cho user, trả thêm field `dimensions` trong response:
+
+```json
+{
+  "dimensions": {
+    "identity": 75, "activity": 60, "onchain": 40,
+    "transparency": 95, "ecosystem": 50
+  },
+  "dimension_total": 320,
+  "dimension_level": "Guardian",
+  "risk_penalty": 5,
+  "streak_bonus_pct": 2,
+  "inactive_days": 0
+}
+```
+
+### 4. Cập nhật `src/config/pplp.ts`
+
+Thêm constants:
+
+```typescript
+export const DIMENSION_WEIGHTS = { identity: 0.2, activity: 0.2, onchain: 0.2, transparency: 0.2, ecosystem: 0.2 };
+
+export const DIMENSION_LEVELS = {
+  0: { name: 'Light Seed', minScore: 0, emoji: '🌱' },
+  1: { name: 'Light Builder', minScore: 100, emoji: '🔨' },
+  2: { name: 'Light Guardian', minScore: 250, emoji: '🛡️' },
+  3: { name: 'Light Leader', minScore: 500, emoji: '👑' },
+  4: { name: 'Cosmic Contributor', minScore: 800, emoji: '🌌' },
+};
+
+export const DIMENSIONS = {
+  identity: { name: 'Identity', nameVi: 'Danh tính', emoji: '🪪', color: 'blue' },
+  activity: { name: 'Activity', nameVi: 'Hoạt động', emoji: '⚡', color: 'amber' },
+  onchain: { name: 'On-Chain', nameVi: 'On-Chain', emoji: '⛓️', color: 'purple' },
+  transparency: { name: 'Transparency', nameVi: 'Minh bạch', emoji: '🔍', color: 'green' },
+  ecosystem: { name: 'Ecosystem', nameVi: 'Hệ sinh thái', emoji: '🌐', color: 'rose' },
+};
+```
+
+### 5. Hook mới — `src/hooks/useDimensionScores.ts`
+
+Đọc dimension data từ response `pplp-get-score` (đã bổ sung ở bước 3), extend `LightScoreData` interface.
+
+### 6. UI — Nâng cấp `LightScoreDashboard.tsx`
+
+Thêm section **5 Trụ Cột Danh Tiếng** phía trên phần PPLP pillars hiện tại:
+
+- 5 dimension cards (icon + tên + progress bar 0-100 + điểm)
+- Radar chart 5 chiều (Recharts — đã cài)
+- Level badge mới (Seed/Builder/Guardian/Leader/Cosmic)
+- Risk Penalty + Streak indicator
+- Giữ nguyên phần PPLP pillars bên dưới (Service/Truth/Healing/Value/Unity)
+
+### 7. Tài liệu — `docs/LIGHT_SCORE_MATH_SPEC.md`
+
+Tạo file spec mô tả 5 dimension, công thức, decay, streak, risk penalty.
+
+---
+
+## Tổng kết
+
+| # | Loại | Resource |
+|---|------|----------|
+| 1 | DB Migration | Tạo `user_dimension_scores` + RLS |
+| 2 | Edge Function mới | `pplp-compute-dimensions/index.ts` |
+| 3 | Edge Function sửa | `pplp-get-score/index.ts` thêm dimension query |
+| 4 | Config sửa | `src/config/pplp.ts` thêm DIMENSION constants |
+| 5 | Hook mới | `src/hooks/useDimensionScores.ts` |
+| 6 | UI sửa | `LightScoreDashboard.tsx` thêm 5 trụ cột + radar chart |
+| 7 | Docs mới | `docs/LIGHT_SCORE_MATH_SPEC.md` |
+
+**Giữ nguyên**: LS-Math v1.0 scoring engine, PPLP action-level pillars, anti-fraud, mint engine, behavior sequences — tất cả được tái sử dụng làm data source cho Activity dimension.
 
