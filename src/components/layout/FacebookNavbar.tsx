@@ -20,6 +20,7 @@ import {
   Globe,
   Sparkles,
   Shield,
+  Settings,
 } from 'lucide-react';
 import { AngelChatWidget } from '@/components/angel-ai';
 import { GiftNavButton } from '@/components/donations/GiftNavButton';
@@ -356,6 +357,15 @@ export const FacebookNavbar = () => {
                   
                   <DropdownMenuSeparator />
                   
+                  {/* Settings */}
+                  <DropdownMenuItem
+                    onClick={() => navigate('/settings')}
+                    className="cursor-pointer gap-2"
+                  >
+                    <Settings className="w-4 h-4" />
+                    <span>Cài đặt</span>
+                  </DropdownMenuItem>
+
                   {/* Admin Dashboard - Only show for admins */}
                   {isAdmin && (
                     <DropdownMenuItem 
