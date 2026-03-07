@@ -4955,6 +4955,10 @@ export type Database = {
         Args: { unity_score: number }
         Returns: number
       }
+      check_email_collision: {
+        Args: { p_email: string; p_exclude_user_id: string }
+        Returns: boolean
+      }
       check_rate_limit: {
         Args: { p_key: string; p_limit: number; p_window_ms?: number }
         Returns: Json

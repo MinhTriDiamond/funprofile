@@ -12,7 +12,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Verify authenticated user
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Missing authorization" }), {
@@ -22,10 +21,11 @@ Deno.serve(async (req) => {
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
     // Verify the calling user
-    const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
+    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
     });
     const { data: { user }, error: userError } = await userClient.auth.getUser();
@@ -44,42 +44,24 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Normalize email
     const normalizedEmail = email.trim().toLowerCase();
 
-    // Check if email exists for a DIFFERENT user
+    // Use DB function to check collision efficiently
     const adminClient = createClient(supabaseUrl, supabaseServiceKey);
-    const { data, error } = await adminClient.auth.admin.listUsers({
-      page: 1,
-      perPage: 1,
+    const { data, error } = await adminClient.rpc("check_email_collision", {
+      p_email: normalizedEmail,
+      p_exclude_user_id: user.id,
     });
 
-    // Use a direct query approach since listUsers doesn't filter by email
-    const { data: matchingUsers, error: queryError } = await adminClient
-      .from("profiles")
-      .select("id")
-      .limit(1);
-
-    // Query auth.users via SQL function for email check
-    // Since we can't query auth.users directly via client, use admin API
-    const { data: { users }, error: listError } = await adminClient.auth.admin.listUsers({
-      page: 1,
-      perPage: 50,
-    });
-
-    if (listError) {
-      console.error("Error listing users:", listError);
+    if (error) {
+      console.error("check_email_collision error:", error);
       return new Response(JSON.stringify({ error: "Internal error" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const exists = users.some(
-      (u) => u.email?.toLowerCase() === normalizedEmail && u.id !== user.id
-    );
-
-    return new Response(JSON.stringify({ exists }), {
+    return new Response(JSON.stringify({ exists: data === true }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
