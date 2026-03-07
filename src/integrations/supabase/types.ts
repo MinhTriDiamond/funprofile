@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_activity_logs: {
+        Row: {
+          action: string
+          created_at: string | null
+          details: Json | null
+          id: string
+          ip_address: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "account_activity_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "account_activity_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       account_merge_requests: {
         Row: {
           admin_note: string | null
@@ -3182,6 +3224,7 @@ export type Database = {
           grand_total_profit: number
           grand_total_win: number
           grand_total_withdraw: number
+          has_password: boolean | null
           id: string
           is_banned: boolean
           is_restricted: boolean
@@ -3233,6 +3276,7 @@ export type Database = {
           grand_total_profit?: number
           grand_total_win?: number
           grand_total_withdraw?: number
+          has_password?: boolean | null
           id: string
           is_banned?: boolean
           is_restricted?: boolean
@@ -3284,6 +3328,7 @@ export type Database = {
           grand_total_profit?: number
           grand_total_win?: number
           grand_total_withdraw?: number
+          has_password?: boolean | null
           id?: string
           is_banned?: boolean
           is_restricted?: boolean
@@ -4910,6 +4955,10 @@ export type Database = {
         Args: { unity_score: number }
         Returns: number
       }
+      check_email_collision: {
+        Args: { p_email: string; p_exclude_user_id: string }
+        Returns: boolean
+      }
       check_rate_limit: {
         Args: { p_key: string; p_limit: number; p_window_ms?: number }
         Returns: Json
@@ -5239,6 +5288,10 @@ export type Database = {
       is_gov_attester:
         | { Args: { check_user_id: string }; Returns: boolean }
         | { Args: { wallet_addr: string }; Returns: boolean }
+      log_security_action: {
+        Args: { p_action: string; p_details?: Json; p_user_id: string }
+        Returns: undefined
+      }
       normalize_username: { Args: { input_text: string }; Returns: string }
       pin_message: { Args: { p_message_id: string }; Returns: undefined }
       process_wallet_change: {

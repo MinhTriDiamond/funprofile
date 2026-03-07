@@ -14,6 +14,7 @@ import { PullToRefreshContainer } from '@/components/common/PullToRefreshContain
 import { Loader2 } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { AccountUpgradeBanner } from '@/components/security/AccountUpgradeBanner';
 
 // Lightweight skeleton components
 const SidebarSkeleton = memo(() => (
@@ -104,6 +105,7 @@ const Feed = () => {
               <div className="col-span-1 lg:col-span-6 w-full px-0">
                 <StoriesBar currentUserId={currentUserId || ''} />
 
+                {currentUserId && <AccountUpgradeBanner />}
                 {currentUserId && <FacebookCreatePost onPostCreated={refetch} />}
 
                 {!currentUserId && (
