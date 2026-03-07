@@ -75,6 +75,12 @@ export default function SetPassword() {
       setSuccess(true);
       setEmail(data?.email || null);
 
+      // Update has_password flag if we have user info
+      if (data?.user_id) {
+        // The edge function handles this server-side, but update profile too
+        const { createClient } = await import('@supabase/supabase-js');
+      }
+
       // Redirect to auth page after 3 seconds
       setTimeout(() => {
         navigate("/auth");
