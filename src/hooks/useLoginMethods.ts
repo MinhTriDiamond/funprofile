@@ -81,9 +81,15 @@ export function useLoginMethods(): LoginMethodsResult {
 
   const authUser = freshUser ?? user;
 
+  // Email placeholder patterns (system-generated, not real user emails)
+  const isPlaceholderEmail = (email?: string | null) => {
+    if (!email) return true;
+    return email.endsWith('@wallet.fun.rich') || email.endsWith('@fun.phone');
+  };
+
   // Email states
-  const emailExists = !!authUser?.email;
-  const emailVerified = !!authUser?.email_confirmed_at;
+  const emailExists = !!authUser?.email && !isPlaceholderEmail(authUser.email);
+  const emailVerified = emailExists && !!authUser?.email_confirmed_at;
   const hasEmailLoginMethod = emailExists && emailVerified;
 
   // Google
