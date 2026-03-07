@@ -188,7 +188,7 @@ const PlatformDocs: React.FC = () => {
                   <DocSubSection title="Tính năng chính">
                     <DocList items={[
                       "🔐 Light Cloak SSO - Xác thực đa phương thức (Email OTP, Wallet, Social)",
-                      "💳 Custodial & External Wallet - Hỗ trợ cả người mới và expert",
+                      "💳 External Wallet - Kết nối ví MetaMask, WalletConnect",
                       "🎭 Soul NFT - Danh tính linh hồn không thể chuyển nhượng (Soulbound Token)",
                       "📝 Social Feed - Đăng bài, reactions, comments với multi-media support",
                       "🎁 Token Rewards - Hệ thống thưởng CAMLY token cho hoạt động",
@@ -372,35 +372,10 @@ const { data } = await supabase.functions.invoke('sso-web3-auth', {
                 {/* Section 5: Wallet & Blockchain */}
                 <DocSection id="wallet-blockchain" title="5. Wallet & Blockchain">
                   <DocParagraph>
-                    FUN Profile hỗ trợ hai loại wallet: Custodial (hệ thống quản lý) và External (user tự quản lý). 
-                    Cả hai đều có thể nhận rewards và tương tác với blockchain.
+                    FUN Profile hỗ trợ External Wallet — user tự quản lý ví và kết nối với tài khoản.
                   </DocParagraph>
 
                   <WalletSystemDiagram />
-
-                  <DocSubSection title="Custodial Wallet">
-                    <DocParagraph>
-                      Wallet được tạo tự động khi user đăng ký bằng Email/Social. Private key được mã hóa 
-                      AES-GCM và lưu trong database.
-                    </DocParagraph>
-                    <CodeBlock 
-                      title="Tạo Custodial Wallet"
-                      language="typescript"
-                      code={`// Edge Function: create-custodial-wallet
-const wallet = Wallet.createRandom();
-
-// Mã hóa private key với AES-GCM
-const encrypted = await encryptPrivateKey(wallet.privateKey, WALLET_ENCRYPTION_KEY);
-
-// Lưu vào database
-await supabase.from('custodial_wallets').insert({
-  user_id: userId,
-  wallet_address: wallet.address,
-  encrypted_private_key: encrypted,
-  chain_id: 56 // BNB Smart Chain
-});`}
-                    />
-                  </DocSubSection>
 
                   <DocSubSection title="Token Operations">
                     <DocTable 
@@ -708,7 +683,7 @@ SELECT * FROM get_user_rewards_v2(100);`}
                     <DocTable 
                       headers={['Table', 'Mô tả', 'RLS']}
                       rows={[
-                        ['custodial_wallets', 'Wallet được quản lý bởi hệ thống (encrypted private key)', 'Yes'],
+                        ['soul_nfts', 'Thông tin Soul NFT (element, level, XP)', 'Yes'],
                         ['soul_nfts', 'Thông tin Soul NFT (element, level, XP)', 'Yes'],
                         ['transactions', 'Lịch sử giao dịch blockchain', 'Yes'],
                         ['blacklisted_wallets', 'Danh sách wallet bị cấm', 'Admin only'],
@@ -797,11 +772,10 @@ SELECT * FROM get_user_rewards_v2(100);`}
                     />
                   </DocSubSection>
 
-                  <DocSubSection title="Wallet & Blockchain (3 functions)">
+                  <DocSubSection title="Wallet & Blockchain (2 functions)">
                     <DocTable 
                       headers={['Function', 'Mô tả']}
                       rows={[
-                        ['create-custodial-wallet', 'Tạo wallet mới với encrypted private key'],
                         ['connect-external-wallet', 'Kết nối MetaMask/external wallet'],
                         ['mint-soul-nft', 'Mint Soul NFT on BSC'],
                       ]}
@@ -921,7 +895,7 @@ USING (true);`}
                     <DocTable 
                       headers={['Secret', 'Mục đích', 'Used By']}
                       rows={[
-                        ['WALLET_ENCRYPTION_KEY', 'Mã hóa custodial wallet private keys', 'create-custodial-wallet'],
+                        ['TREASURY_WALLET_ADDRESS', 'Địa chỉ ví treasury cho rewards', 'claim-reward'],
                         ['TREASURY_WALLET_ADDRESS', 'Địa chỉ ví treasury cho rewards', 'claim-reward'],
                         ['TREASURY_PRIVATE_KEY', 'Private key treasury wallet', 'claim-reward'],
                         ['RESEND_API_KEY', 'Gửi email OTP', 'sso-otp-request'],

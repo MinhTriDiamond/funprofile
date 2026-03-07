@@ -12,7 +12,6 @@ interface JWTPayload {
   sub: string;                    // user_id (UUID)
   fun_id: string;                 // FUN ID (username-based identifier)
   username: string;               // Display username
-  custodial_wallet: string | null; // Custodial wallet address
   scope: string[];                // Granted scopes/permissions
 }
 

@@ -261,12 +261,8 @@ serve(async (req) => {
     user_metadata: { username }
   });
   
-  // 3. Auto-create Custodial Wallet
-  const { wallet_address, encrypted_private_key } = await createCustodialWallet(authData.user.id);
-  
-  // 4. Update profile with wallet
+  // 3. Update profile
   await supabase.from('profiles').update({
-    wallet_address,
     username
   }).eq('id', authData.user.id);
   
@@ -654,82 +650,24 @@ serve(async (req) => {
                 <CodeBlock 
                   title="wallet_tables.sql"
                   language="sql"
-                  code={`-- Bảng custodial_wallets: Ví tạo tự động cho Web2 users
-CREATE TABLE public.custodial_wallets (
-  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-  wallet_address TEXT NOT NULL UNIQUE,
-  encrypted_private_key TEXT NOT NULL, -- Mã hóa bằng KMS
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
--- Unique: 1 user = 1 custodial wallet
-CREATE UNIQUE INDEX idx_custodial_wallets_user ON public.custodial_wallets(user_id);
-
--- Bảng wallet_connections: Ví external đã kết nối
+                  code={`-- Bảng wallet_connections: Ví external đã kết nối
 CREATE TABLE public.wallet_connections (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   wallet_address TEXT NOT NULL,
-  wallet_type TEXT NOT NULL DEFAULT 'external', -- metamask, walletconnect, coinbase
+  wallet_type TEXT NOT NULL DEFAULT 'external',
   is_primary BOOLEAN NOT NULL DEFAULT false,
   connected_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Index for lookup
-CREATE INDEX idx_wallet_connections_address ON public.wallet_connections(wallet_address);
-CREATE INDEX idx_wallet_connections_user ON public.wallet_connections(user_id);
-
 -- RLS
-ALTER TABLE public.custodial_wallets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.wallet_connections ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users can view own custodial wallet"
-  ON public.custodial_wallets FOR SELECT
-  USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can manage own wallet connections"
   ON public.wallet_connections FOR ALL
   USING (auth.uid() = user_id);`}
                 />
               </DocSubSection>
-
-              <CodeBlock 
-                title="create-custodial-wallet/index.ts"
-                language="typescript"
-                code={`// Edge Function: Tạo Custodial Wallet
-import { ethers } from 'https://esm.sh/ethers@6';
-
-async function createCustodialWallet(userId: string) {
-  // 1. Generate random wallet
-  const wallet = ethers.Wallet.createRandom();
-  
-  // 2. Encrypt private key with KMS
-  const encrypted = await encryptWithKMS(wallet.privateKey);
-  
-  // 3. Store in database
-  await supabase.from('custodial_wallets').insert({
-    user_id: userId,
-    wallet_address: wallet.address.toLowerCase(),
-    encrypted_private_key: encrypted
-  });
-  
-  return {
-    wallet_address: wallet.address.toLowerCase(),
-    encrypted_private_key: encrypted
-  };
-}
-
-// KMS encryption (use Supabase Vault or external KMS)
-async function encryptWithKMS(privateKey: string) {
-  // Implementation depends on chosen KMS
-  // Options: Supabase Vault, AWS KMS, Google Cloud KMS
-  const { data } = await supabase.rpc('encrypt_secret', {
-    secret: privateKey
-  });
-  return data;
-}`}
-              />
             </DocSection>
 
             {/* Section 7: Kế Hoạch Fun Profile */}
@@ -753,7 +691,7 @@ async function encryptWithKMS(privateKey: string) {
                       ['oauth_codes', 'Authorization codes tạm thời (5 phút)', 'FK → profiles, oauth_clients'],
                       ['cross_platform_tokens', 'Access & refresh tokens', 'FK → profiles, oauth_clients'],
                       ['otp_codes', 'OTP cho đăng ký Web2', 'Standalone'],
-                      ['custodial_wallets', 'Ví tạo tự động cho Web2 users', 'FK → profiles'],
+                      ['wallet_connections', 'Ví external đã kết nối', 'FK → profiles'],
                       ['wallet_connections', 'Ví external đã kết nối', 'FK → profiles'],
                       ['soul_nfts', 'NFT định danh linh hồn', 'FK → profiles'],
                       ['webhook_endpoints', 'URLs nhận webhook', 'FK → oauth_clients'],

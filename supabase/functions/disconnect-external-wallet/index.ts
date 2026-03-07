@@ -67,7 +67,7 @@ Deno.serve(async (req) => {
 
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('external_wallet_address, custodial_wallet_address, claim_freeze_until, wallet_risk_status')
+      .select('external_wallet_address, claim_freeze_until, wallet_risk_status')
       .eq('id', user.id)
       .single();
 
@@ -106,8 +106,8 @@ Deno.serve(async (req) => {
       .from('profiles')
       .update({
         external_wallet_address: null,
-        wallet_address: profile.custodial_wallet_address || null,
-        default_wallet_type: 'custodial',
+        wallet_address: null,
+        default_wallet_type: 'none',
       })
       .eq('id', user.id);
 

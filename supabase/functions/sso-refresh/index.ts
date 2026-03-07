@@ -103,7 +103,7 @@ Deno.serve(async (req: Request) => {
     // Get user profile for JWT claims
     const { data: profile } = await supabase
       .from('profiles')
-      .select('id, username, fun_id, custodial_wallet_address')
+      .select('id, username, fun_id')
       .eq('id', tokenData.user_id)
       .single();
 
@@ -119,7 +119,6 @@ Deno.serve(async (req: Request) => {
       sub: tokenData.user_id,
       fun_id: profile.fun_id || '',
       username: profile.username || '',
-      custodial_wallet: profile.custodial_wallet_address || null,
       scope: tokenData.scope
     });
 

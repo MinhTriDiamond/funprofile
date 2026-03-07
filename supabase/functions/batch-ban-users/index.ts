@@ -104,13 +104,6 @@ Deno.serve(async (req) => {
         if (profile?.wallet_address) walletsToBlacklist.add(profile.wallet_address.toLowerCase());
         if (profile?.public_wallet_address) walletsToBlacklist.add(profile.public_wallet_address.toLowerCase());
 
-        // From custodial_wallets
-        const { data: custodial } = await supabaseAdmin
-          .from("custodial_wallets")
-          .select("wallet_address")
-          .eq("user_id", uid);
-
-        custodial?.forEach((w) => walletsToBlacklist.add(w.wallet_address.toLowerCase()));
 
         // From reward_claims
         const { data: claims } = await supabaseAdmin

@@ -86,7 +86,7 @@ Deno.serve(async (req) => {
       // Crypto & wallets
       { table: 'crypto_gifts', column: 'from_user_id' },
       { table: 'crypto_gifts', column: 'to_user_id' },
-      { table: 'custodial_wallets', column: 'user_id' },
+      
       { table: 'blacklisted_wallets', column: 'user_id' },
 
       // Light system

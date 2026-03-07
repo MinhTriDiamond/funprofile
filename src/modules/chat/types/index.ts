@@ -8,7 +8,7 @@ export interface UserProfile {
   avatar_url?: string | null;
   wallet_address?: string | null;
   external_wallet_address?: string | null;
-  custodial_wallet_address?: string | null;
+  
 }
 
 // Conversation types

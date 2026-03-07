@@ -1,75 +1,78 @@
 
 
-## Kế hoạch: Xóa bỏ hoàn toàn tính năng Custodial Wallet
+# Phân tích: Tại sao Database hiển thị Livestream = 0
 
-Tính năng custodial wallet đã không hoạt động (edge function không tồn tại). Cần dọn sạch tất cả references trong code.
+## Phát hiện chính
 
----
+**Dữ liệu thực tế trong database:**
 
-### Phạm vi thay đổi
+| Bảng | Số lượng | Ghi chú |
+|------|----------|---------|
+| `live_sessions` | **600** (596 ended + 4 live) | Users livestream rất tích cực |
+| `chunked_recordings` | **342** (314 done, 28 stuck "recording") | Ghi hình hoạt động |
+| `posts` với `post_type = 'live'` | **519** | Bài đăng live |
+| `posts` có video URL chứa "live" | **581** | Video replay |
+| `recording_status = 'ready'` | **488** | Recordings thành công |
+| `recording_status = 'failed'` | **57** | Recordings thất bại (~9.5%) |
 
-**Frontend (UI) — 5 files:**
+**Kết luận: Users livestream RẤT NHIỀU — 600 phiên, 488 recordings thành công!**
 
-| File | Thay đổi |
-|---|---|
-| `src/components/profile/ProfileHeader.tsx` | Xóa `custodial_wallet_address` khỏi fallback chain (dòng 50, 221) |
-| `src/modules/chat/components/MessageThread.tsx` | Xóa `custodial_wallet_address` khỏi fallback (dòng 149) |
-| `src/modules/chat/hooks/useConversations.ts` | Xóa `custodial_wallet_address` khỏi select query (dòng 55, 278) |
-| `src/modules/chat/types/index.ts` | Xóa field `custodial_wallet_address` (dòng 11) |
-| `src/hooks/useProfile.ts` | Xóa field `custodial_wallet_address` (dòng 26) |
+## Nguyên nhân gốc: Hàm `get_app_stats` không đếm livestream
 
-**Docs (UI) — 3 files:**
+Hàm `get_app_stats()` hiện tại chỉ trả về:
+- `total_users`, `total_posts`, `total_photos`, `total_videos` (đếm từ `posts WHERE video_url IS NOT NULL`)
+- `total_rewards`, `treasury_camly_received`, `total_camly_claimed`
 
-| File | Thay đổi |
-|---|---|
-| `src/pages/EcosystemDocs.tsx` | Xóa/sửa toàn bộ section về Custodial Wallet, xóa references đến `create-custodial-wallet`, `custodial_wallets` table |
-| `src/pages/PlatformDocs.tsx` | Xóa section tạo custodial wallet, xóa row trong bảng tables/functions |
-| `src/components/docs/AppDiagrams.tsx` | Xóa box "Tạo Custodial Wallet" và `create-custodial-wallet` trong diagram |
+**Không có trường nào đếm `live_sessions`** hoặc `chunked_recordings`. Component `AppHonorBoard.tsx` hiển thị `total_videos = 897` — đó là tổng số posts có video (bao gồm cả live replay), nhưng **không có mục riêng cho "Livestream"**.
 
-**Edge Functions — 10 files:**
+## Vấn đề phụ phát hiện thêm
 
-| File | Thay đổi |
-|---|---|
-| `sso-register/index.ts` | Xóa block gọi `create-custodial-wallet` (dòng 179-195), xóa `custodial_wallet_address` từ select |
-| `sso-refresh/index.ts` | Xóa `custodial_wallet_address` từ select, set `custodial_wallet: null` |
-| `sso-verify/index.ts` | Xóa `custodial_wallet_address` từ select và response |
-| `sso-web3-auth/index.ts` | Xóa `custodial_wallet_address` từ select queries |
-| `backfill-donations/index.ts` | Xóa `custodial_wallet_address` từ select và walletMap |
-| `auto-backfill-donations/index.ts` | Xóa `custodial_wallet_address` từ select và walletMap |
-| `backfill-tx-donations/index.ts` | Xóa `custodial_wallet_address` từ select và addrs array |
-| `backfill-reward-claims/index.ts` | Xóa `custodial_wallet_address` từ fallback chain |
-| `check-transaction/index.ts` | Xóa `custodial_wallet_address` từ `.or()` filter |
-| `batch-ban-users/index.ts` | Xóa block query `custodial_wallets` table |
-| `admin-delete-user/index.ts` | Xóa `custodial_wallets` từ cleanup tables list |
-| `delete-user-account/index.ts` | Xóa `custodial_wallets` từ cleanup tables list |
-| `batch-delete-banned-users/index.ts` | Xóa `custodial_wallets` từ cleanup tables list |
+1. **28 recordings stuck ở trạng thái "recording"** — phiên live đã kết thúc nhưng `chunked_recordings.status` không chuyển sang `done`. Đây là những sessions mà host đóng trình duyệt đột ngột trước khi finalize.
 
-**Shared — 1 file:**
+2. **57 sessions có `recording_status = 'failed'`** (~9.5%) — một số có `chunked_recordings.status = done` (recording thực ra thành công nhưng status ở `live_sessions` bị đánh failed sai).
 
-| File | Thay đổi |
-|---|---|
-| `supabase/functions/_shared/jwt.ts` | Xóa `custodial_wallet` field từ `AccessTokenClaims` interface và JWT payload |
+3. **`live_recordings` table hoàn toàn trống** (0 rows) — Table này được thiết kế cho Agora server-side recording nhưng chưa bao giờ được sử dụng thành công vì hệ thống đang dùng client-side chunked recording thay thế.
 
-**SDK — 1 file:**
+## Kế hoạch sửa
 
-| File | Thay đổi |
-|---|---|
-| `sdk-package/src/FunProfileClient.ts` | Xóa `custodialWalletAddress` mapping |
+### Task 1: Cập nhật `get_app_stats` thêm `total_livestreams`
 
----
+Thêm trường `total_livestreams` vào hàm SQL:
 
-### KHÔNG xóa
+```sql
+DROP FUNCTION IF EXISTS public.get_app_stats();
+CREATE OR REPLACE FUNCTION public.get_app_stats()
+RETURNS TABLE(
+  total_users BIGINT,
+  total_posts BIGINT,
+  total_photos BIGINT,
+  total_videos BIGINT,
+  total_livestreams BIGINT,
+  total_rewards NUMERIC,
+  treasury_camly_received NUMERIC,
+  total_camly_claimed NUMERIC
+) ...
+-- Thêm:
+(SELECT COUNT(*) FROM live_sessions)::BIGINT AS total_livestreams,
+```
 
-- **Bảng `custodial_wallets` trong DB**: Giữ lại dữ liệu 241 ví hiện có cho mục đích archive. Không tạo migration xóa table.
-- **Cột `custodial_wallet_address` trong profiles**: Giữ lại trong DB (có dữ liệu), chỉ xóa references trong code. Nếu cần xóa cột sau này sẽ làm riêng.
-- **File `types.ts`**: Không sửa (auto-generated).
+### Task 2: Cập nhật `AppHonorBoard.tsx`
 
----
+- Thêm interface field `totalLivestreams`
+- Parse từ response `row.total_livestreams`
+- Thêm stat card với icon `Radio` và label "Livestreams"
 
-### Tóm tắt
+### Task 3: Dọn dẹp stuck recordings
 
-Tổng cộng ~20 files cần sửa, phần lớn là xóa vài dòng reference. Không có thay đổi DB schema. Tập trung vào:
-1. Xóa tất cả logic tạo/đọc custodial wallet trên UI
-2. Xóa references trong edge functions (giữ functions hoạt động bình thường)
-3. Cập nhật docs cho chính xác
+- Cập nhật 28 `chunked_recordings` stuck ở `status = 'recording'` mà `live_session` đã `ended` → chuyển sang `done` hoặc `failed`
+- Sửa inconsistency: sessions có `recording_status = 'failed'` nhưng `chunked_recordings.status = 'done'`
+
+### Technical Details
+
+**Files cần sửa:**
+1. Migration SQL mới — `DROP FUNCTION + CREATE OR REPLACE` cho `get_app_stats`
+2. `src/components/feed/AppHonorBoard.tsx` — thêm livestream stat
+3. `src/integrations/supabase/types.ts` — tự động cập nhật sau migration
+
+**Không ảnh hưởng:** Các tính năng livestream hiện tại (start, join, record, replay) không bị ảnh hưởng. Đây chỉ là fix hiển thị thống kê.
 

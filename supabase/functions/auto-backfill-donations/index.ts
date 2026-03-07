@@ -57,7 +57,6 @@ function buildWalletAndProfileMaps(profiles: any[]) {
     if (p.wallet_address) walletMap.set(p.wallet_address.toLowerCase(), p.id);
     if (p.public_wallet_address) walletMap.set(p.public_wallet_address.toLowerCase(), p.id);
     if (p.external_wallet_address) walletMap.set(p.external_wallet_address.toLowerCase(), p.id);
-    if (p.custodial_wallet_address) walletMap.set(p.custodial_wallet_address.toLowerCase(), p.id);
   }
   return { walletMap, profileMap };
 }
@@ -120,7 +119,7 @@ Deno.serve(async (req) => {
     // 3. Build wallet_address -> profile map (expanded)
     const { data: profiles } = await adminClient
       .from("profiles")
-      .select("id, username, display_name, avatar_url, wallet_address, public_wallet_address, external_wallet_address, custodial_wallet_address");
+      .select("id, username, display_name, avatar_url, wallet_address, public_wallet_address, external_wallet_address");
 
     const { walletMap, profileMap } = buildWalletAndProfileMaps(profiles || []);
 

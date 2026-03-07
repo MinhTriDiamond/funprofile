@@ -37,7 +37,7 @@ Deno.serve(async (req: Request) => {
         sub: jwtPayload.sub,
         fun_id: jwtPayload.fun_id,
         username: jwtPayload.username,
-        custodial_wallet: jwtPayload.custodial_wallet,
+        
         active: true,
         token_type: 'jwt'
       };
@@ -79,7 +79,7 @@ Deno.serve(async (req: Request) => {
           .from('profiles')
           .select(`
             id, username, full_name, avatar_url, fun_id, bio, created_at,
-            wallet_address, external_wallet_address, custodial_wallet_address
+            wallet_address, external_wallet_address
           `)
           .eq('id', jwtPayload.sub)
           .single();
@@ -97,7 +97,6 @@ Deno.serve(async (req: Request) => {
           if (scopes.includes('wallet')) {
             userInfo.wallet_address = profile.wallet_address;
             userInfo.external_wallet_address = profile.external_wallet_address;
-            userInfo.custodial_wallet_address = profile.custodial_wallet_address;
           }
 
           // Soul scope - NFT/spiritual data
@@ -178,7 +177,6 @@ Deno.serve(async (req: Request) => {
           bio,
           wallet_address,
           external_wallet_address,
-          custodial_wallet_address,
           created_at
         )
       `)
@@ -230,7 +228,6 @@ Deno.serve(async (req: Request) => {
     if (scopes.includes('wallet')) {
       userInfo.wallet_address = profile.wallet_address;
       userInfo.external_wallet_address = profile.external_wallet_address;
-      userInfo.custodial_wallet_address = profile.custodial_wallet_address;
     }
 
     if (scopes.includes('soul')) {

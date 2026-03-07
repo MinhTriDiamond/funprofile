@@ -128,13 +128,6 @@ export const AuthFlowDiagram: React.FC = () => (
         
         <div className="text-muted-foreground text-sm sm:text-base">↓</div>
         
-        {/* Custodial Wallet */}
-        <div className="bg-emerald-500/20 rounded-xl px-4 sm:px-6 py-2 sm:py-3 border border-emerald-500/50">
-          <span className="text-emerald-400 font-medium text-xs sm:text-sm">💳 Tạo Custodial Wallet (nếu chưa có)</span>
-        </div>
-        
-        <div className="text-muted-foreground text-sm sm:text-base">↓</div>
-        
         {/* Success */}
         <div className="bg-primary/20 rounded-full px-4 sm:px-6 py-2 border border-primary/50">
           <span className="text-primary font-medium text-sm sm:text-base">✅ Đăng nhập thành công → Feed</span>
@@ -149,24 +142,7 @@ export const WalletSystemDiagram: React.FC = () => (
   <DiagramWrapper title="Hệ Thống Wallet">
     <div className="w-full max-w-4xl px-2 sm:px-0">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-        {/* Custodial Wallet */}
-        <div className="bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 rounded-xl p-4 sm:p-5 border border-emerald-500/30">
-          <h5 className="text-emerald-400 font-bold text-center mb-3 sm:mb-4 text-sm sm:text-base">💳 Custodial Wallet</h5>
-          <div className="space-y-2 sm:space-y-3 text-xs sm:text-sm">
-            <div className="bg-background/50 rounded-lg p-2 sm:p-3">
-              <span className="text-emerald-400 font-medium">Tự động tạo</span>
-              <p className="text-muted-foreground text-xs mt-1">Được tạo khi user đăng ký bằng Email/Social</p>
-            </div>
-            <div className="bg-background/50 rounded-lg p-2 sm:p-3">
-              <span className="text-emerald-400 font-medium">Mã hóa AES-GCM</span>
-              <p className="text-muted-foreground text-xs mt-1">Private key được mã hóa với WALLET_ENCRYPTION_KEY</p>
-            </div>
-            <div className="bg-background/50 rounded-lg p-2 sm:p-3">
-              <span className="text-emerald-400 font-medium">Quản lý bởi hệ thống</span>
-              <p className="text-muted-foreground text-xs mt-1">User không cần quản lý seed phrase</p>
-            </div>
-          </div>
-        </div>
+        {/* External Wallet */}
         
         {/* External Wallet */}
         <div className="bg-gradient-to-br from-amber-500/20 to-amber-600/10 rounded-xl p-4 sm:p-5 border border-amber-500/30">
@@ -488,9 +464,8 @@ export const DatabaseSchemaDiagram: React.FC = () => (
         
         {/* Wallet Tables */}
         <div className="col-span-2 md:col-span-1 bg-amber-500/10 rounded-xl p-3 border border-amber-500/30">
-          <h6 className="text-amber-400 font-bold text-sm mb-2">💳 Wallet (4)</h6>
+          <h6 className="text-amber-400 font-bold text-sm mb-2">💳 Wallet (3)</h6>
           <div className="space-y-1 text-xs">
-            <div className="bg-background/50 rounded px-2 py-1 text-muted-foreground">custodial_wallets</div>
             <div className="bg-background/50 rounded px-2 py-1 text-muted-foreground">soul_nfts</div>
             <div className="bg-background/50 rounded px-2 py-1 text-muted-foreground">transactions</div>
             <div className="bg-background/50 rounded px-2 py-1 text-muted-foreground">blacklisted_wallets</div>
@@ -587,9 +562,8 @@ export const EdgeFunctionsDiagram: React.FC = () => (
         
         {/* Wallet */}
         <div className="bg-amber-500/10 rounded-xl p-4 border border-amber-500/30">
-          <h6 className="text-amber-400 font-bold text-sm mb-3">💳 Wallet (3)</h6>
+          <h6 className="text-amber-400 font-bold text-sm mb-3">💳 Wallet (2)</h6>
           <div className="space-y-2 text-xs">
-            <div className="bg-background/50 rounded px-2 py-1.5 text-muted-foreground">create-custodial-wallet</div>
             <div className="bg-background/50 rounded px-2 py-1.5 text-muted-foreground">connect-external-wallet</div>
             <div className="bg-background/50 rounded px-2 py-1.5 text-muted-foreground">mint-soul-nft</div>
           </div>

@@ -101,7 +101,7 @@ Deno.serve(async (req) => {
     const senderLower = sender_address.toLowerCase();
     const { data: allProfiles } = await adminClient
       .from("profiles")
-      .select("id, username, display_name, avatar_url, wallet_address, public_wallet_address, external_wallet_address, custodial_wallet_address");
+      .select("id, username, display_name, avatar_url, wallet_address, public_wallet_address, external_wallet_address");
 
     if (!allProfiles) throw new Error("Failed to fetch profiles");
 
@@ -111,7 +111,7 @@ Deno.serve(async (req) => {
 
     for (const p of allProfiles) {
       const info = { id: p.id, username: p.username, display_name: p.display_name };
-      const addrs = [p.wallet_address, p.public_wallet_address, p.external_wallet_address, p.custodial_wallet_address];
+      const addrs = [p.wallet_address, p.public_wallet_address, p.external_wallet_address];
       for (const addr of addrs) {
         if (addr) {
           const lower = addr.toLowerCase();

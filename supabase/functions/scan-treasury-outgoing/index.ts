@@ -155,12 +155,12 @@ Deno.serve(async (req) => {
     // Get profiles for wallet mapping (all wallet fields)
     const { data: profiles } = await adminClient
       .from("profiles")
-      .select("id, username, wallet_address, public_wallet_address, external_wallet_address, custodial_wallet_address, avatar_url");
+      .select("id, username, wallet_address, public_wallet_address, external_wallet_address, avatar_url");
 
     const walletMap = new Map<string, { id: string; username: string; avatar_url: string | null }>();
     for (const p of profiles || []) {
       const info = { id: p.id, username: p.username, avatar_url: p.avatar_url };
-      const addrs = [p.wallet_address, p.public_wallet_address, p.external_wallet_address, p.custodial_wallet_address];
+      const addrs = [p.wallet_address, p.public_wallet_address, p.external_wallet_address];
       for (const addr of addrs) {
         if (addr && !walletMap.has(addr.toLowerCase())) {
           walletMap.set(addr.toLowerCase(), info);
@@ -168,21 +168,6 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Also map custodial wallets table
-    const { data: custodialWallets } = await adminClient
-      .from("custodial_wallets")
-      .select("user_id, wallet_address");
-    for (const cw of custodialWallets || []) {
-      if (cw.wallet_address && !walletMap.has(cw.wallet_address.toLowerCase())) {
-        const profile = (profiles || []).find((p: any) => p.id === cw.user_id);
-        if (profile) {
-          walletMap.set(cw.wallet_address.toLowerCase(), {
-            id: profile.id,
-            username: profile.username,
-            avatar_url: profile.avatar_url,
-          });
-        }
-      }
     }
 
     // Also map reward_claims wallet addresses
