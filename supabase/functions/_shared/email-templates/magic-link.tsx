@@ -8,7 +8,6 @@ import {
   Container,
   Head,
   Heading,
-  Hr,
   Html,
   Preview,
   Text,
@@ -23,23 +22,21 @@ export const MagicLinkEmail = ({
   siteName,
   confirmationUrl,
 }: MagicLinkEmailProps) => (
-  <Html lang="vi" dir="ltr">
+  <Html lang="en" dir="ltr">
     <Head />
-    <Preview>Link đăng nhập FUN ID của bạn ✨</Preview>
+    <Preview>Your login link for {siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Text style={brand}>✦ FUN Ecosystem ✦</Text>
-        <Hr style={goldLine} />
-        <Heading style={h1}>Link đăng nhập của bạn ✨</Heading>
+        <Heading style={h1}>Your login link</Heading>
         <Text style={text}>
-          Nhấn nút bên dưới để đăng nhập vào FUN Ecosystem. Link này sẽ hết hạn trong thời gian ngắn.
+          Click the button below to log in to {siteName}. This link will expire
+          shortly.
         </Text>
         <Button style={button} href={confirmationUrl}>
-          Đăng Nhập
+          Log In
         </Button>
-        <Hr style={goldLine} />
         <Text style={footer}>
-          Nếu bạn không yêu cầu link này, hãy bỏ qua email này nhé. 💖
+          If you didn't request this link, you can safely ignore this email.
         </Text>
       </Container>
     </Body>
@@ -48,42 +45,26 @@ export const MagicLinkEmail = ({
 
 export default MagicLinkEmail
 
-const main = {
-  backgroundColor: '#ffffff',
-  fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-}
-const container = { padding: '32px 28px', maxWidth: '480px', margin: '0 auto' }
-const brand = {
-  fontSize: '14px',
-  fontWeight: 'bold' as const,
-  color: '#C9A84C',
-  textAlign: 'center' as const,
-  letterSpacing: '2px',
-  margin: '0 0 16px',
-}
-const goldLine = { borderColor: 'rgba(201, 168, 76, 0.4)', margin: '16px 0' }
+const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
+const container = { padding: '20px 25px' }
 const h1 = {
   fontSize: '22px',
   fontWeight: 'bold' as const,
-  color: '#166534',
-  margin: '20px 0 16px',
+  color: '#000000',
+  margin: '0 0 20px',
 }
 const text = {
   fontSize: '14px',
-  color: '#3d5a3d',
-  lineHeight: '1.6',
-  margin: '0 0 24px',
+  color: '#55575d',
+  lineHeight: '1.5',
+  margin: '0 0 25px',
 }
 const button = {
-  backgroundColor: '#166534',
+  backgroundColor: '#000000',
   color: '#ffffff',
-  fontSize: '15px',
-  fontWeight: 'bold' as const,
+  fontSize: '14px',
   borderRadius: '8px',
-  padding: '14px 28px',
+  padding: '12px 20px',
   textDecoration: 'none',
-  border: '1px solid rgba(201, 168, 76, 0.5)',
-  display: 'block' as const,
-  textAlign: 'center' as const,
 }
-const footer = { fontSize: '12px', color: '#999999', margin: '24px 0 0' }
+const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }

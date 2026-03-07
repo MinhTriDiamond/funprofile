@@ -1,7 +1,6 @@
 import * as React from 'npm:react@18.3.1'
 import { renderAsync } from 'npm:@react-email/components@0.0.22'
-import { parseEmailWebhookPayload } from 'npm:@lovable.dev/email-js'
-import { Resend } from 'https://esm.sh/resend@2.0.0'
+import { sendLovableEmail, parseEmailWebhookPayload } from 'npm:@lovable.dev/email-js'
 import { WebhookError, verifyWebhookRequest } from 'npm:@lovable.dev/webhooks-js'
 import { SignupEmail } from '../_shared/email-templates/signup.tsx'
 import { InviteEmail } from '../_shared/email-templates/invite.tsx'
@@ -17,12 +16,12 @@ const corsHeaders = {
 }
 
 const EMAIL_SUBJECTS: Record<string, string> = {
-  signup: 'Xác nhận FUN ID của bạn 💖',
-  invite: 'Bạn được mời tham gia FUN Ecosystem! 🌟',
-  magiclink: 'Link đăng nhập FUN ID ✨',
-  recovery: 'Đặt lại mật khẩu FUN ID 🔐',
-  email_change: 'Xác nhận thay đổi email FUN ID 📧',
-  reauthentication: 'Mã xác thực FUN ID 🔐',
+  signup: 'Confirm your email',
+  invite: "You've been invited",
+  magiclink: 'Your login link',
+  recovery: 'Reset your password',
+  email_change: 'Confirm your new email',
+  reauthentication: 'Your verification code',
 }
 
 // Template mapping
@@ -36,7 +35,7 @@ const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
 }
 
 // Configuration
-const SITE_NAME = "FUN Ecosystem"
+const SITE_NAME = "funprofile"
 const SENDER_DOMAIN = "notify.fun.rich"
 const ROOT_DOMAIN = "fun.rich"
 const FROM_DOMAIN = "fun.rich" // Domain shown in From address (may be root or sender subdomain)
@@ -234,53 +233,46 @@ async function handleWebhook(req: Request): Promise<Response> {
     plainText: true,
   })
 
-  // Send email via Resend API
-  const resendApiKey = Deno.env.get('RESEND_API_KEY')
-  if (!resendApiKey) {
-    console.error('RESEND_API_KEY not configured', { run_id })
-    return new Response(
-      JSON.stringify({ error: 'RESEND_API_KEY not configured' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+  // Send email via Lovable Email API
+  // The callback URL is provided in the payload by Lovable, ensuring correct routing
+  // for both production and local development
+  const callbackUrl = payload.data.callback_url
+  if (!callbackUrl) {
+    console.error('No callback_url in payload', { run_id })
+    return new Response(JSON.stringify({ error: 'Missing callback_url in payload' }), {
+      status: 400,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
   }
 
-  const resend = new Resend(resendApiKey)
-
-  let result: { id?: string }
+  let result: { message_id?: string }
   try {
-    const { data, error: sendError } = await resend.emails.send({
-      from: `${SITE_NAME} <noreply@${FROM_DOMAIN}>`,
-      to: [payload.data.email],
-      subject: EMAIL_SUBJECTS[emailType] || 'Notification',
-      html,
-      text,
-      headers: {
-        'X-Entity-Ref-ID': run_id,
+    result = await sendLovableEmail(
+      {
+        run_id,
+        to: payload.data.email,
+        from: `${SITE_NAME} <noreply@${FROM_DOMAIN}>`,
+        sender_domain: SENDER_DOMAIN,
+        subject: EMAIL_SUBJECTS[emailType] || 'Notification',
+        html,
+        text,
+        purpose: 'transactional',
       },
-      tags: [
-        { name: 'category', value: 'transactional' },
-        { name: 'type', value: emailType },
-      ],
-    })
-
-    if (sendError) {
-      throw new Error(sendError.message || 'Resend API error')
-    }
-
-    result = data || {}
+      { apiKey, sendUrl: callbackUrl }
+    )
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to send email'
-    console.error('Resend API error', { error: message, run_id })
+    console.error('Email API error', { error: message, run_id })
     return new Response(JSON.stringify({ error: 'Failed to send email' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }
 
-  console.log('Email sent successfully via Resend', { message_id: result.id, run_id })
+  console.log('Email sent successfully', { message_id: result.message_id, run_id })
 
   return new Response(
-    JSON.stringify({ success: true, message_id: result.id }),
+    JSON.stringify({ success: true, message_id: result.message_id }),
     { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
   )
 }
