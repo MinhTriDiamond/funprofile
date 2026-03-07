@@ -688,44 +688,6 @@ CREATE POLICY "Users can manage own wallet connections"
   ON public.wallet_connections FOR ALL
   USING (auth.uid() = user_id);`}
                 />
-              </DocSubSection>
-
-              <CodeBlock 
-                title="create-custodial-wallet/index.ts"
-                language="typescript"
-                code={`// Edge Function: Tạo Custodial Wallet
-import { ethers } from 'https://esm.sh/ethers@6';
-
-async function createCustodialWallet(userId: string) {
-  // 1. Generate random wallet
-  const wallet = ethers.Wallet.createRandom();
-  
-  // 2. Encrypt private key with KMS
-  const encrypted = await encryptWithKMS(wallet.privateKey);
-  
-  // 3. Store in database
-  await supabase.from('custodial_wallets').insert({
-    user_id: userId,
-    wallet_address: wallet.address.toLowerCase(),
-    encrypted_private_key: encrypted
-  });
-  
-  return {
-    wallet_address: wallet.address.toLowerCase(),
-    encrypted_private_key: encrypted
-  };
-}
-
-// KMS encryption (use Supabase Vault or external KMS)
-async function encryptWithKMS(privateKey: string) {
-  // Implementation depends on chosen KMS
-  // Options: Supabase Vault, AWS KMS, Google Cloud KMS
-  const { data } = await supabase.rpc('encrypt_secret', {
-    secret: privateKey
-  });
-  return data;
-}`}
-              />
             </DocSection>
 
             {/* Section 7: Kế Hoạch Fun Profile */}
