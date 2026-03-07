@@ -33,9 +33,8 @@ export function LinkEmailDialog({ open, onOpenChange }: LinkEmailDialogProps) {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return false;
 
-      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
       const res = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/check-email-exists`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/check-email-exists`,
         {
           method: 'POST',
           headers: {

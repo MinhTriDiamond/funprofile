@@ -22,6 +22,8 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
     const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } }
     });
@@ -34,11 +36,11 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Service role client (used throughout)
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
     // Check banned status
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const banCheckClient = createClient(supabaseUrl, supabaseServiceKey);
-    const { data: banCheck } = await banCheckClient
+    const { data: banCheck } = await supabase
       .from('profiles').select('is_banned').eq('id', user.id).single();
     if (banCheck?.is_banned) {
       return new Response(
@@ -63,21 +65,27 @@ Deno.serve(async (req) => {
     try {
       const recoveredAddress = verifyMessage(message, signature) as string;
       if (!recoveredAddress || recoveredAddress.toLowerCase() !== normalizedAddress) {
+        await supabase.from('account_activity_logs').insert({
+          user_id: user.id,
+          action: 'wallet_link_failed',
+          details: { wallet: normalizedAddress, reason: 'signature_mismatch' },
+        });
         return new Response(
           JSON.stringify({ success: false, error: 'Invalid signature' }),
           { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
     } catch {
+      await supabase.from('account_activity_logs').insert({
+        user_id: user.id,
+        action: 'wallet_link_failed',
+        details: { wallet: normalizedAddress, reason: 'invalid_signature_format' },
+      });
       return new Response(
         JSON.stringify({ success: false, error: 'Invalid signature format' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    // Service role client
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Get current profile for old wallet
     const { data: currentProfile } = await supabase
@@ -91,7 +99,6 @@ Deno.serve(async (req) => {
 
     // If this is the FIRST wallet connection (no existing wallet), allow freely
     if (isFirstWallet) {
-      // First-time wallet: just set it directly, no cooldown/freeze
       const { error: updateError } = await supabase
         .from('profiles')
         .update({
@@ -103,21 +110,33 @@ Deno.serve(async (req) => {
         .eq('id', user.id);
 
       if (updateError) {
+        await supabase.from('account_activity_logs').insert({
+          user_id: user.id,
+          action: 'wallet_link_failed',
+          details: { wallet: normalizedAddress, reason: 'db_error' },
+        });
         return new Response(
           JSON.stringify({ success: false, error: 'Failed to connect wallet' }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
-      // Record in wallet history
-      await supabase.from('wallet_history').insert({
-        user_id: user.id,
-        wallet_address: normalizedAddress,
-        is_active: true,
-        change_reason: 'first_connect',
-        ip_address: req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip'),
-        user_agent: req.headers.get('user-agent'),
-      });
+      // Record in wallet history + activity log
+      await Promise.all([
+        supabase.from('wallet_history').insert({
+          user_id: user.id,
+          wallet_address: normalizedAddress,
+          is_active: true,
+          change_reason: 'first_connect',
+          ip_address: req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip'),
+          user_agent: req.headers.get('user-agent'),
+        }),
+        supabase.from('account_activity_logs').insert({
+          user_id: user.id,
+          action: 'wallet_link_succeeded',
+          details: { wallet: normalizedAddress, type: 'first_connect' },
+        }),
+      ]);
 
       console.log('[CONNECT-WALLET] First wallet connected:', normalizedAddress);
       return new Response(
@@ -146,6 +165,11 @@ Deno.serve(async (req) => {
 
     if (rpcError) {
       console.error('[CONNECT-WALLET] RPC error:', rpcError);
+      await supabase.from('account_activity_logs').insert({
+        user_id: user.id,
+        action: 'wallet_link_failed',
+        details: { wallet: normalizedAddress, old_wallet: oldWallet, reason: 'rpc_error' },
+      });
       return new Response(
         JSON.stringify({ success: false, error: 'Failed to process wallet change' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -153,7 +177,6 @@ Deno.serve(async (req) => {
     }
 
     if (!result?.success) {
-      // Handle specific errors
       const statusMap: Record<string, number> = {
         'WALLET_CHANGE_DISABLED': 403,
         'COOLDOWN_ACTIVE': 429,
@@ -161,6 +184,12 @@ Deno.serve(async (req) => {
         'WALLET_IN_USE': 409,
       };
       const status = statusMap[result?.error] || 400;
+
+      await supabase.from('account_activity_logs').insert({
+        user_id: user.id,
+        action: 'wallet_link_failed',
+        details: { wallet: normalizedAddress, old_wallet: oldWallet, error_code: result?.error },
+      });
 
       return new Response(
         JSON.stringify({
@@ -173,6 +202,13 @@ Deno.serve(async (req) => {
         { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Log success
+    await supabase.from('account_activity_logs').insert({
+      user_id: user.id,
+      action: 'wallet_link_succeeded',
+      details: { wallet: normalizedAddress, old_wallet: oldWallet, risk_status: result.risk_status },
+    });
 
     // Notify admins if risk elevated
     if (result.risk_status && result.risk_status !== 'normal' && result.risk_status !== 'watch') {
