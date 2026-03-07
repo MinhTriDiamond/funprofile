@@ -261,12 +261,8 @@ serve(async (req) => {
     user_metadata: { username }
   });
   
-  // 3. Auto-create Custodial Wallet
-  const { wallet_address, encrypted_private_key } = await createCustodialWallet(authData.user.id);
-  
-  // 4. Update profile with wallet
+  // 3. Update profile
   await supabase.from('profiles').update({
-    wallet_address,
     username
   }).eq('id', authData.user.id);
   
@@ -753,7 +749,7 @@ async function encryptWithKMS(privateKey: string) {
                       ['oauth_codes', 'Authorization codes tạm thời (5 phút)', 'FK → profiles, oauth_clients'],
                       ['cross_platform_tokens', 'Access & refresh tokens', 'FK → profiles, oauth_clients'],
                       ['otp_codes', 'OTP cho đăng ký Web2', 'Standalone'],
-                      ['custodial_wallets', 'Ví tạo tự động cho Web2 users', 'FK → profiles'],
+                      ['wallet_connections', 'Ví external đã kết nối', 'FK → profiles'],
                       ['wallet_connections', 'Ví external đã kết nối', 'FK → profiles'],
                       ['soul_nfts', 'NFT định danh linh hồn', 'FK → profiles'],
                       ['webhook_endpoints', 'URLs nhận webhook', 'FK → oauth_clients'],
