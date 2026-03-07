@@ -8,6 +8,7 @@ import {
   Container,
   Head,
   Heading,
+  Hr,
   Html,
   Link,
   Preview,
@@ -27,32 +28,29 @@ export const EmailChangeEmail = ({
   newEmail,
   confirmationUrl,
 }: EmailChangeEmailProps) => (
-  <Html lang="en" dir="ltr">
+  <Html lang="vi" dir="ltr">
     <Head />
-    <Preview>Confirm your email change for {siteName}</Preview>
+    <Preview>Xác nhận thay đổi email FUN ID</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Heading style={h1}>Confirm your email change</Heading>
+        <Text style={brand}>✦ FUN Ecosystem ✦</Text>
+        <Hr style={goldLine} />
+        <Heading style={h1}>Xác nhận thay đổi email 📧</Heading>
         <Text style={text}>
-          You requested to change your email address for {siteName} from{' '}
-          <Link href={`mailto:${email}`} style={link}>
-            {email}
-          </Link>{' '}
-          to{' '}
-          <Link href={`mailto:${newEmail}`} style={link}>
-            {newEmail}
-          </Link>
-          .
+          Bạn đã yêu cầu thay đổi email FUN ID từ{' '}
+          <Link href={`mailto:${email}`} style={link}>{email}</Link>{' '}
+          sang{' '}
+          <Link href={`mailto:${newEmail}`} style={link}>{newEmail}</Link>.
         </Text>
         <Text style={text}>
-          Click the button below to confirm this change:
+          Nhấn nút bên dưới để xác nhận thay đổi này:
         </Text>
         <Button style={button} href={confirmationUrl}>
-          Confirm Email Change
+          Xác Nhận Thay Đổi Email
         </Button>
+        <Hr style={goldLine} />
         <Text style={footer}>
-          If you didn't request this change, please secure your account
-          immediately.
+          Nếu bạn không yêu cầu thay đổi này, hãy bảo mật tài khoản ngay lập tức. 💖
         </Text>
       </Container>
     </Body>
@@ -61,27 +59,43 @@ export const EmailChangeEmail = ({
 
 export default EmailChangeEmail
 
-const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
-const container = { padding: '20px 25px' }
+const main = {
+  backgroundColor: '#ffffff',
+  fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+}
+const container = { padding: '32px 28px', maxWidth: '480px', margin: '0 auto' }
+const brand = {
+  fontSize: '14px',
+  fontWeight: 'bold' as const,
+  color: '#C9A84C',
+  textAlign: 'center' as const,
+  letterSpacing: '2px',
+  margin: '0 0 16px',
+}
+const goldLine = { borderColor: 'rgba(201, 168, 76, 0.4)', margin: '16px 0' }
 const h1 = {
   fontSize: '22px',
   fontWeight: 'bold' as const,
-  color: '#000000',
-  margin: '0 0 20px',
+  color: '#166534',
+  margin: '20px 0 16px',
 }
 const text = {
   fontSize: '14px',
-  color: '#55575d',
-  lineHeight: '1.5',
-  margin: '0 0 25px',
+  color: '#3d5a3d',
+  lineHeight: '1.6',
+  margin: '0 0 24px',
 }
-const link = { color: 'inherit', textDecoration: 'underline' }
+const link = { color: '#166534', textDecoration: 'underline' }
 const button = {
-  backgroundColor: '#000000',
+  backgroundColor: '#166534',
   color: '#ffffff',
-  fontSize: '14px',
+  fontSize: '15px',
+  fontWeight: 'bold' as const,
   borderRadius: '8px',
-  padding: '12px 20px',
+  padding: '14px 28px',
   textDecoration: 'none',
+  border: '1px solid rgba(201, 168, 76, 0.5)',
+  display: 'block' as const,
+  textAlign: 'center' as const,
 }
-const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }
+const footer = { fontSize: '12px', color: '#999999', margin: '24px 0 0' }

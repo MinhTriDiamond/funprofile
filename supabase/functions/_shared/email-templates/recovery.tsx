@@ -8,6 +8,7 @@ import {
   Container,
   Head,
   Heading,
+  Hr,
   Html,
   Preview,
   Text,
@@ -22,22 +23,24 @@ export const RecoveryEmail = ({
   siteName,
   confirmationUrl,
 }: RecoveryEmailProps) => (
-  <Html lang="en" dir="ltr">
+  <Html lang="vi" dir="ltr">
     <Head />
-    <Preview>Reset your password for {siteName}</Preview>
+    <Preview>Đặt lại mật khẩu FUN ID của bạn</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Heading style={h1}>Reset your password</Heading>
+        <Text style={brand}>✦ FUN Ecosystem ✦</Text>
+        <Hr style={goldLine} />
+        <Heading style={h1}>Đặt lại mật khẩu 🔐</Heading>
         <Text style={text}>
-          We received a request to reset your password for {siteName}. Click
-          the button below to choose a new password.
+          Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản FUN ID của bạn.
+          Nhấn nút bên dưới để chọn mật khẩu mới nhé.
         </Text>
         <Button style={button} href={confirmationUrl}>
-          Reset Password
+          Đặt Lại Mật Khẩu
         </Button>
+        <Hr style={goldLine} />
         <Text style={footer}>
-          If you didn't request a password reset, you can safely ignore this
-          email. Your password will not be changed.
+          Nếu bạn không yêu cầu đặt lại mật khẩu, hãy bỏ qua email này. Mật khẩu của bạn sẽ không thay đổi. 💖
         </Text>
       </Container>
     </Body>
@@ -46,26 +49,42 @@ export const RecoveryEmail = ({
 
 export default RecoveryEmail
 
-const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
-const container = { padding: '20px 25px' }
+const main = {
+  backgroundColor: '#ffffff',
+  fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+}
+const container = { padding: '32px 28px', maxWidth: '480px', margin: '0 auto' }
+const brand = {
+  fontSize: '14px',
+  fontWeight: 'bold' as const,
+  color: '#C9A84C',
+  textAlign: 'center' as const,
+  letterSpacing: '2px',
+  margin: '0 0 16px',
+}
+const goldLine = { borderColor: 'rgba(201, 168, 76, 0.4)', margin: '16px 0' }
 const h1 = {
   fontSize: '22px',
   fontWeight: 'bold' as const,
-  color: '#000000',
-  margin: '0 0 20px',
+  color: '#166534',
+  margin: '20px 0 16px',
 }
 const text = {
   fontSize: '14px',
-  color: '#55575d',
-  lineHeight: '1.5',
-  margin: '0 0 25px',
+  color: '#3d5a3d',
+  lineHeight: '1.6',
+  margin: '0 0 24px',
 }
 const button = {
-  backgroundColor: '#000000',
+  backgroundColor: '#166534',
   color: '#ffffff',
-  fontSize: '14px',
+  fontSize: '15px',
+  fontWeight: 'bold' as const,
   borderRadius: '8px',
-  padding: '12px 20px',
+  padding: '14px 28px',
   textDecoration: 'none',
+  border: '1px solid rgba(201, 168, 76, 0.5)',
+  display: 'block' as const,
+  textAlign: 'center' as const,
 }
-const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }
+const footer = { fontSize: '12px', color: '#999999', margin: '24px 0 0' }
