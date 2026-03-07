@@ -650,44 +650,24 @@ serve(async (req) => {
                 <CodeBlock 
                   title="wallet_tables.sql"
                   language="sql"
-                  code={`-- Bảng custodial_wallets: Ví tạo tự động cho Web2 users
-CREATE TABLE public.custodial_wallets (
-  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-  wallet_address TEXT NOT NULL UNIQUE,
-  encrypted_private_key TEXT NOT NULL, -- Mã hóa bằng KMS
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
--- Unique: 1 user = 1 custodial wallet
-CREATE UNIQUE INDEX idx_custodial_wallets_user ON public.custodial_wallets(user_id);
-
--- Bảng wallet_connections: Ví external đã kết nối
+                  code={`-- Bảng wallet_connections: Ví external đã kết nối
 CREATE TABLE public.wallet_connections (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   wallet_address TEXT NOT NULL,
-  wallet_type TEXT NOT NULL DEFAULT 'external', -- metamask, walletconnect, coinbase
+  wallet_type TEXT NOT NULL DEFAULT 'external',
   is_primary BOOLEAN NOT NULL DEFAULT false,
   connected_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Index for lookup
-CREATE INDEX idx_wallet_connections_address ON public.wallet_connections(wallet_address);
-CREATE INDEX idx_wallet_connections_user ON public.wallet_connections(user_id);
-
 -- RLS
-ALTER TABLE public.custodial_wallets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.wallet_connections ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users can view own custodial wallet"
-  ON public.custodial_wallets FOR SELECT
-  USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can manage own wallet connections"
   ON public.wallet_connections FOR ALL
   USING (auth.uid() = user_id);`}
                 />
+              </DocSubSection>
             </DocSection>
 
             {/* Section 7: Kế Hoạch Fun Profile */}
