@@ -9,6 +9,8 @@ export interface DimensionScores {
   ecosystem: number;
 }
 
+type LevelInfo = { name: string; minScore: number; emoji: string };
+
 export interface DimensionData {
   dimensions: DimensionScores | null;
   dimensionTotal: number | null;
@@ -18,9 +20,11 @@ export interface DimensionData {
   inactiveDays: number;
   decayApplied: boolean;
   isLoading: boolean;
-  getLevelInfo: () => typeof DIMENSION_LEVELS[0];
-  getNextLevelProgress: () => { progress: number; nextLevel: typeof DIMENSION_LEVELS[0]; remaining: number };
+  getLevelInfo: () => LevelInfo;
+  getNextLevelProgress: () => { progress: number; nextLevel: LevelInfo; remaining: number };
 }
+
+const LEVELS_ARRAY: LevelInfo[] = Object.values(DIMENSION_LEVELS);
 
 export const useDimensionScores = (): DimensionData => {
   const { data, isLoading } = useLightScore();
@@ -33,31 +37,29 @@ export const useDimensionScores = (): DimensionData => {
   const inactiveDays = (data as any)?.inactive_days ?? 0;
   const decayApplied = (data as any)?.decay_applied ?? false;
 
-  const getLevelInfo = () => {
-    if (!dimensionTotal) return DIMENSION_LEVELS[0];
-    if (dimensionTotal >= 800) return DIMENSION_LEVELS[4];
-    if (dimensionTotal >= 500) return DIMENSION_LEVELS[3];
-    if (dimensionTotal >= 250) return DIMENSION_LEVELS[2];
-    if (dimensionTotal >= 100) return DIMENSION_LEVELS[1];
-    return DIMENSION_LEVELS[0];
+  const getLevelInfo = (): LevelInfo => {
+    if (!dimensionTotal) return LEVELS_ARRAY[0];
+    if (dimensionTotal >= 800) return LEVELS_ARRAY[4];
+    if (dimensionTotal >= 500) return LEVELS_ARRAY[3];
+    if (dimensionTotal >= 250) return LEVELS_ARRAY[2];
+    if (dimensionTotal >= 100) return LEVELS_ARRAY[1];
+    return LEVELS_ARRAY[0];
   };
 
   const getNextLevelProgress = () => {
     const score = dimensionTotal ?? 0;
-    const levels = Object.values(DIMENSION_LEVELS);
     
-    // Find current and next level
     let currentIdx = 0;
-    for (let i = levels.length - 1; i >= 0; i--) {
-      if (score >= levels[i].minScore) { currentIdx = i; break; }
+    for (let i = LEVELS_ARRAY.length - 1; i >= 0; i--) {
+      if (score >= LEVELS_ARRAY[i].minScore) { currentIdx = i; break; }
     }
     
-    if (currentIdx >= levels.length - 1) {
-      return { progress: 100, nextLevel: levels[levels.length - 1], remaining: 0 };
+    if (currentIdx >= LEVELS_ARRAY.length - 1) {
+      return { progress: 100, nextLevel: LEVELS_ARRAY[LEVELS_ARRAY.length - 1], remaining: 0 };
     }
     
-    const current = levels[currentIdx];
-    const next = levels[currentIdx + 1];
+    const current = LEVELS_ARRAY[currentIdx];
+    const next = LEVELS_ARRAY[currentIdx + 1];
     const range = next.minScore - current.minScore;
     const progress = range > 0 ? ((score - current.minScore) / range) * 100 : 0;
     
