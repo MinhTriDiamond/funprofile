@@ -146,7 +146,7 @@ export const TIERS = {
   3: { name: 'Light Guardian', minScore: 100000, dailyCap: 5000, emoji: '👼' },
 } as const;
 
-// 5 Pillars of Light
+// 5 Pillars of Light (Action-level PPLP evaluation)
 export const PILLARS = {
   service: { name: 'Service to Life', nameVi: 'Phụng sự sự sống', emoji: '☀️' },
   truth: { name: 'Transparent Truth', nameVi: 'Chân thật minh bạch', emoji: '🔍' },
@@ -154,6 +154,36 @@ export const PILLARS = {
   value: { name: 'Long-term Value', nameVi: 'Đóng góp bền vững', emoji: '🌱' },
   unity: { name: 'Unity', nameVi: 'Hợp Nhất', emoji: '🤝' },
 } as const;
+
+// =============================================
+// 5 Dimension Scores (User-level Reputation — Whitepaper v1)
+// =============================================
+
+export const DIMENSION_WEIGHTS = {
+  identity: 0.2,
+  activity: 0.2,
+  onchain: 0.2,
+  transparency: 0.2,
+  ecosystem: 0.2,
+} as const;
+
+export const DIMENSION_LEVELS = {
+  0: { name: 'Light Seed', minScore: 0, emoji: '🌱' },
+  1: { name: 'Light Builder', minScore: 100, emoji: '🔨' },
+  2: { name: 'Light Guardian', minScore: 250, emoji: '🛡️' },
+  3: { name: 'Light Leader', minScore: 500, emoji: '👑' },
+  4: { name: 'Cosmic Contributor', minScore: 800, emoji: '🌌' },
+} as const;
+
+export const DIMENSIONS = {
+  identity: { name: 'Identity', nameVi: 'Danh tính', emoji: '🪪', color: 'blue' },
+  activity: { name: 'Activity', nameVi: 'Hoạt động', emoji: '⚡', color: 'amber' },
+  onchain: { name: 'On-Chain', nameVi: 'On-Chain', emoji: '⛓️', color: 'purple' },
+  transparency: { name: 'Transparency', nameVi: 'Minh bạch', emoji: '🔍', color: 'green' },
+  ecosystem: { name: 'Ecosystem', nameVi: 'Hệ sinh thái', emoji: '🌐', color: 'rose' },
+} as const;
+
+export type DimensionKey = keyof typeof DIMENSIONS;
 
 // Score ranges for ANGEL AI evaluation
 export const SCORE_RANGES = {
