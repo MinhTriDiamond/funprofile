@@ -107,8 +107,9 @@ export const ClassicEmailLogin = ({
           }
           // Nếu có session (auto-confirm), tiếp tục bình thường
           setTimeout(async () => {
-            const updateData: Record<string, string> = {
-              last_login_platform: 'FUN Profile'
+            const updateData: Record<string, any> = {
+              last_login_platform: 'FUN Profile',
+              has_password: true,
             };
             if (walletAddress) {
               updateData.external_wallet_address = walletAddress;

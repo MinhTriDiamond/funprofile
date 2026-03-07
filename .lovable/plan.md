@@ -1,174 +1,78 @@
 
 
-## Kế hoạch triển khai: Account Linking / Login Methods Upgrade Flow — Phase 1 (Bản chốt cuối)
+# Phân tích: Tại sao Database hiển thị Livestream = 0
 
-Đã tích hợp 4 điểm bổ sung cuối cùng từ con.
+## Phát hiện chính
 
----
+**Dữ liệu thực tế trong database:**
 
-### Bước 1: Database Migration
+| Bảng | Số lượng | Ghi chú |
+|------|----------|---------|
+| `live_sessions` | **600** (596 ended + 4 live) | Users livestream rất tích cực |
+| `chunked_recordings` | **342** (314 done, 28 stuck "recording") | Ghi hình hoạt động |
+| `posts` với `post_type = 'live'` | **519** | Bài đăng live |
+| `posts` có video URL chứa "live" | **581** | Video replay |
+| `recording_status = 'ready'` | **488** | Recordings thành công |
+| `recording_status = 'failed'` | **57** | Recordings thất bại (~9.5%) |
 
-**A) Thêm cột `has_password`:**
+**Kết luận: Users livestream RẤT NHIỀU — 600 phiên, 488 recordings thành công!**
+
+## Nguyên nhân gốc: Hàm `get_app_stats` không đếm livestream
+
+Hàm `get_app_stats()` hiện tại chỉ trả về:
+- `total_users`, `total_posts`, `total_photos`, `total_videos` (đếm từ `posts WHERE video_url IS NOT NULL`)
+- `total_rewards`, `treasury_camly_received`, `total_camly_claimed`
+
+**Không có trường nào đếm `live_sessions`** hoặc `chunked_recordings`. Component `AppHonorBoard.tsx` hiển thị `total_videos = 897` — đó là tổng số posts có video (bao gồm cả live replay), nhưng **không có mục riêng cho "Livestream"**.
+
+## Vấn đề phụ phát hiện thêm
+
+1. **28 recordings stuck ở trạng thái "recording"** — phiên live đã kết thúc nhưng `chunked_recordings.status` không chuyển sang `done`. Đây là những sessions mà host đóng trình duyệt đột ngột trước khi finalize.
+
+2. **57 sessions có `recording_status = 'failed'`** (~9.5%) — một số có `chunked_recordings.status = done` (recording thực ra thành công nhưng status ở `live_sessions` bị đánh failed sai).
+
+3. **`live_recordings` table hoàn toàn trống** (0 rows) — Table này được thiết kế cho Agora server-side recording nhưng chưa bao giờ được sử dụng thành công vì hệ thống đang dùng client-side chunked recording thay thế.
+
+## Kế hoạch sửa
+
+### Task 1: Cập nhật `get_app_stats` thêm `total_livestreams`
+
+Thêm trường `total_livestreams` vào hàm SQL:
+
 ```sql
-ALTER TABLE profiles ADD COLUMN IF NOT EXISTS has_password boolean DEFAULT false;
+DROP FUNCTION IF EXISTS public.get_app_stats();
+CREATE OR REPLACE FUNCTION public.get_app_stats()
+RETURNS TABLE(
+  total_users BIGINT,
+  total_posts BIGINT,
+  total_photos BIGINT,
+  total_videos BIGINT,
+  total_livestreams BIGINT,
+  total_rewards NUMERIC,
+  treasury_camly_received NUMERIC,
+  total_camly_claimed NUMERIC
+) ...
+-- Thêm:
+(SELECT COUNT(*) FROM live_sessions)::BIGINT AS total_livestreams,
 ```
 
-**B) Tạo bảng `account_activity_logs`:**
-```sql
-CREATE TABLE public.account_activity_logs (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  action TEXT NOT NULL,
-  details JSONB,
-  ip_address TEXT,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-ALTER TABLE public.account_activity_logs ENABLE ROW LEVEL SECURITY;
-```
+### Task 2: Cập nhật `AppHonorBoard.tsx`
 
-**Phân loại quyền insert theo action (điểm bổ sung #1):**
+- Thêm interface field `totalLivestreams`
+- Parse từ response `row.total_livestreams`
+- Thêm stat card với icon `Radio` và label "Livestreams"
 
-- **Client insert được** (action ít nhạy cảm — user chỉ báo "đã bắt đầu"):
-  - `email_link_started`, `email_link_verification_sent`, `wallet_link_started`
+### Task 3: Dọn dẹp stuck recordings
 
-- **Server/trusted path insert** (action kết quả thật):
-  - `wallet_link_succeeded`, `wallet_link_failed` → ghi từ edge function `connect-external-wallet`
-  - `email_link_verified` → ghi từ server-side detect (hoặc RPC)
-  - `password_set` → ghi từ DB trigger hoặc RPC sau `updateUser`
+- Cập nhật 28 `chunked_recordings` stuck ở `status = 'recording'` mà `live_session` đã `ended` → chuyển sang `done` hoặc `failed`
+- Sửa inconsistency: sessions có `recording_status = 'failed'` nhưng `chunked_recordings.status = 'done'`
 
-RLS policies:
-```sql
--- User xem log của mình
-CREATE POLICY "Users view own logs" ON account_activity_logs
-  FOR SELECT TO authenticated USING (user_id = auth.uid());
+### Technical Details
 
--- Client insert CHỈ cho action ít nhạy cảm
-CREATE POLICY "Users insert safe actions" ON account_activity_logs
-  FOR INSERT TO authenticated 
-  WITH CHECK (
-    user_id = auth.uid() 
-    AND action IN ('email_link_started', 'email_link_verification_sent', 'wallet_link_started')
-  );
+**Files cần sửa:**
+1. Migration SQL mới — `DROP FUNCTION + CREATE OR REPLACE` cho `get_app_stats`
+2. `src/components/feed/AppHonorBoard.tsx` — thêm livestream stat
+3. `src/integrations/supabase/types.ts` — tự động cập nhật sau migration
 
--- Admin xem tất cả
-CREATE POLICY "Admins view all" ON account_activity_logs
-  FOR SELECT TO authenticated USING (public.has_role(auth.uid(), 'admin'));
-```
-
-Các action nhạy cảm (`password_set`, `wallet_link_succeeded/failed`, `email_link_verified`) sẽ được insert từ edge function hoặc SECURITY DEFINER RPC.
-
----
-
-### Bước 2: Edge Function `check-email-exists`
-
-**File**: `supabase/functions/check-email-exists/index.ts`
-
-- Authenticated only (verify JWT từ header)
-- **Normalize email**: `trim().toLowerCase()` trước khi query
-- Service role query `auth.users` theo email, loại trừ current user
-- Trả `{ exists: true/false }`
-
----
-
-### Bước 3: Hook `useLoginMethods`
-
-**File**: `src/hooks/useLoginMethods.ts`
-
-Dùng `useCurrentUser` + query `profiles` (has_password, external_wallet_address, public_wallet_address).
-
-| Field | Logic |
-|---|---|
-| `emailExists` | `!!user.email` |
-| `emailVerified` | `!!user.email_confirmed_at` |
-| `hasEmailLoginMethod` | `emailExists && emailVerified` |
-| `hasGoogleIdentity` | `user.app_metadata.providers` chứa 'google' |
-| `hasPassword` | `profiles.has_password` |
-| `hasWalletLoginMethod` | `!!profile.external_wallet_address` |
-| `securityLevel` | Chỉ đếm methods hoạt động thật (verified email, password, wallet linked, google linked) → 1=basic, 2=good, 3+=strong |
-| `recommendedAction` | 1 action duy nhất theo priority |
-| `isFullySecured` | Tất cả methods khả dụng đã được kích hoạt |
-
-Source of truth: `supabase.auth.getUser()` force refetch khi mount.
-
----
-
-### Bước 4: Trang `/settings/security`
-
-**File**: `src/pages/SecuritySettings.tsx`
-
-**Card "Mức độ bảo mật"** — Cơ bản/Tốt/Mạnh + progress bar.
-
-**Success state (điểm bổ sung #2)**: Khi `isFullySecured = true`:
-- Badge "Mức bảo mật: Mạnh" nổi bật
-- Text: "Tài khoản của bạn đang được bảo vệ tốt." ✅
-- Tone premium, cảm giác hoàn thiện
-
-**Card "Bước tiếp theo"** — chỉ hiện khi chưa hoàn thiện, 1 CTA chính.
-
-**4 dòng Login Method** — mỗi dòng có mô tả ngắn (điểm bổ sung #3):
-
-| Method | Mô tả | Trạng thái | Action |
-|---|---|---|---|
-| Email OTP | "Dùng email để nhận mã đăng nhập" | Chưa liên kết / Chờ xác thực / Đã liên kết | Link Email |
-| Google | "Đăng nhập nhanh bằng tài khoản Google" | Đã liên kết / Chưa liên kết | "Sẽ hỗ trợ sớm" |
-| Mật khẩu | "Đăng nhập nhanh bằng email + mật khẩu" | Đã đặt / Chưa đặt | Set Password |
-| Ví | "Đăng nhập bằng ví Web3 của bạn" | Đã liên kết / Chưa liên kết | Link Wallet |
-
-Safety rule: Không cho gỡ phương thức đăng nhập cuối cùng.
-
-Detect email verified: Force `getUser()` khi mount + `onAuthStateChange` `USER_UPDATED`.
-
-Thêm route `/settings/security` vào `App.tsx`. Thêm link "Bảo mật" vào `FacebookLeftSidebar` (shortcutItems, icon `Shield`).
-
----
-
-### Bước 5: Security Dialogs
-
-**`SetPasswordDialog.tsx`** — `updateUser({ password })` → update `has_password = true` → log `password_set` (server-side) → auto gợi ý bước tiếp.
-
-**`LinkEmailDialog.tsx`** — Normalize email → `check-email-exists` → `updateUser({ email })` → UI "Chờ xác thực" + **nút "Gửi lại email xác thực"** + text "Kiểm tra spam nếu chưa thấy email".
-
-**`LinkWalletDialog.tsx`** — Connect → ký message → `connect-external-wallet` → log từ edge function.
-
----
-
-### Bước 6: `AccountUpgradeBanner`
-
-**File**: `src/components/security/AccountUpgradeBanner.tsx`
-
-Hiển thị ở Feed + Profile (own). Text cụ thể theo nhóm user.
-
-**Cooldown riêng theo action (điểm bổ sung #4)**:
-- localStorage key: `dismiss_security_{action}_{timestamp}`
-- Mỗi action dismiss riêng biệt, nhắc lại sau 7 ngày
-- Ví dụ: dismiss `set_password` không ảnh hưởng hiển thị `link_wallet`
-
----
-
-### Bước 7: Cập nhật `has_password` ở flow hiện có
-
-- `ResetPassword.tsx`: sau reset → `has_password = true`
-- `ClassicEmailLogin.tsx`: sau signup email+password → `has_password = true`
-- `SetPassword.tsx`: sau set → `has_password = true`
-
----
-
-### Tổng kết files
-
-| Loại | File |
-|---|---|
-| **Migration** | `has_password` column + `account_activity_logs` table |
-| **Tạo mới** | `src/hooks/useLoginMethods.ts` |
-| | `src/pages/SecuritySettings.tsx` |
-| | `src/components/security/SetPasswordDialog.tsx` |
-| | `src/components/security/LinkEmailDialog.tsx` |
-| | `src/components/security/LinkWalletDialog.tsx` |
-| | `src/components/security/AccountUpgradeBanner.tsx` |
-| | `supabase/functions/check-email-exists/index.ts` |
-| **Sửa** | `src/App.tsx` — thêm route `/settings/security` |
-| | `src/pages/Feed.tsx` — thêm banner |
-| | `src/pages/Profile.tsx` — thêm banner own profile |
-| | `src/pages/ResetPassword.tsx` — update `has_password` |
-| | `src/components/auth/ClassicEmailLogin.tsx` — update `has_password` |
-| | `src/components/feed/FacebookLeftSidebar.tsx` — thêm link Bảo mật |
+**Không ảnh hưởng:** Các tính năng livestream hiện tại (start, join, record, replay) không bị ảnh hưởng. Đây chỉ là fix hiển thị thống kê.
 

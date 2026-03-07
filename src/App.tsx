@@ -35,6 +35,7 @@ const SetPassword = lazy(() => import("./pages/SetPassword"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Chat = lazy(() => import("./pages/Chat"));
 const Install = lazy(() => import("./pages/Install"));
+const SecuritySettings = lazy(() => import("./pages/SecuritySettings"));
 const Benefactors = lazy(() => import("./pages/Benefactors"));
 const Donations = lazy(() => import("./pages/Donations"));
 const Users = lazy(() => import("./pages/Users"));
@@ -140,6 +141,7 @@ function App() {
                   <Route path="/chat/:conversationId" element={<Chat />} />
                   <Route path="/docs/*" element={<DocsRouter />} />
                   <Route path="/install" element={<Install />} />
+                  <Route path="/settings/security" element={<SecuritySettings />} />
                   <Route path="/benefactors" element={<Benefactors />} />
                   <Route path="/donations" element={<Donations />} />
                   <Route path="/users" element={<Users />} />
