@@ -14,6 +14,7 @@ interface RewardTabProps {
   hasCover: boolean;
   hasTodayPost: boolean;
   hasFullName: boolean;
+  accountAgeDays: number;
   onClaimClick: () => void;
   onConnectClick: () => void;
 }
@@ -32,6 +33,7 @@ export function RewardTab({
   hasCover,
   hasTodayPost,
   hasFullName,
+  accountAgeDays,
   onClaimClick,
   onConnectClick,
 }: RewardTabProps) {
@@ -51,6 +53,7 @@ export function RewardTab({
         hasCover={hasCover}
         hasTodayPost={hasTodayPost}
         hasFullName={hasFullName}
+        accountAgeDays={accountAgeDays}
         onClaimClick={onClaimClick}
         onConnectClick={onConnectClick}
       />

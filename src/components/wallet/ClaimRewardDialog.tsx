@@ -9,13 +9,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Gift, Wallet, ExternalLink, Loader2, AlertCircle, Sparkles } from 'lucide-react';
-import { toast } from 'sonner';
+import { Gift, Wallet, Loader2, AlertCircle, Clock } from 'lucide-react';
 import { useClaimReward } from '@/hooks/useClaimReward';
-import { DonationCelebration } from '@/components/donations/DonationCelebration';
-import { RichTextOverlay } from '@/components/donations/RichTextOverlay';
-import { playCelebrationMusicLoop } from '@/lib/celebrationSounds';
-import funEcosystemLogo from '@/assets/tokens/fun-ecosystem-logo.gif';
 
 const MINIMUM_CLAIM = 200000;
 const DAILY_CLAIM_CAP = 500000;
@@ -31,7 +26,7 @@ interface ClaimRewardDialogProps {
   onSuccess: () => void;
 }
 
-type ClaimStep = 'input' | 'confirming' | 'success' | 'error';
+type ClaimStep = 'input' | 'confirming' | 'pending' | 'error';
 
 export const ClaimRewardDialog = ({
   open,
@@ -45,8 +40,6 @@ export const ClaimRewardDialog = ({
 }: ClaimRewardDialogProps) => {
   const [amount, setAmount] = useState('');
   const [step, setStep] = useState<ClaimStep>('input');
-  const [showCelebration, setShowCelebration] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const { claimReward, isLoading, error, result, reset } = useClaimReward();
 
@@ -54,20 +47,9 @@ export const ClaimRewardDialog = ({
     if (open) {
       setAmount('');
       setStep('input');
-      setShowCelebration(false);
       reset();
     }
   }, [open, reset]);
-
-  // Cleanup audio on unmount or dialog close
-  useEffect(() => {
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
-    };
-  }, []);
 
   const formatNumber = (num: number) => num.toLocaleString('vi-VN');
   const formatUsd = (num: number) => `$${(num * camlyPrice).toFixed(2)}`;
@@ -91,9 +73,7 @@ export const ClaimRewardDialog = ({
     setStep('confirming');
     const claimResult = await claimReward(Number(amount), externalWallet);
     if (claimResult) {
-      setStep('success');
-      setShowCelebration(true);
-      audioRef.current = playCelebrationMusicLoop('rich-3');
+      setStep('pending');
       onSuccess();
     } else {
       setStep('error');
@@ -101,11 +81,6 @@ export const ClaimRewardDialog = ({
   };
 
   const handleClose = () => {
-    setShowCelebration(false);
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
     onOpenChange(false);
   };
 
@@ -117,11 +92,10 @@ export const ClaimRewardDialog = ({
           Claim CAMLY Rewards
         </DialogTitle>
         <DialogDescription>
-          Chuyển phần thưởng CAMLY vào ví của bạn
+          Gửi yêu cầu rút thưởng CAMLY — Admin sẽ duyệt và chuyển token vào ví bạn
         </DialogDescription>
       </DialogHeader>
 
-      {/* Pending approval banner */}
       {rewardStatus !== 'approved' && (
         <div className="bg-yellow-50 border-2 border-yellow-300 rounded-xl p-4 my-4 text-center">
           <div className="text-3xl mb-2">⏳</div>
@@ -134,7 +108,6 @@ export const ClaimRewardDialog = ({
 
       {rewardStatus === 'approved' && (
         <div className="space-y-6 py-4">
-          {/* Available Balance */}
           <div className="bg-gradient-to-r from-yellow-50 to-amber-50 border border-yellow-200 rounded-xl p-4">
             <p className="text-sm text-yellow-700 mb-1">Số dư khả dụng</p>
             <p className="text-2xl font-bold text-yellow-800">
@@ -143,27 +116,25 @@ export const ClaimRewardDialog = ({
             <p className="text-sm text-yellow-600">~{formatUsd(claimableAmount)}</p>
           </div>
 
-          {/* Daily Claim Info */}
           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4">
             <div className="flex justify-between items-center mb-2">
               <p className="text-sm text-blue-700">Đã claim hôm nay</p>
               <p className="text-sm font-semibold text-blue-800">{formatNumber(dailyClaimed)} / {formatNumber(DAILY_CLAIM_CAP)}</p>
             </div>
             <div className="w-full bg-blue-100 rounded-full h-2 mb-2">
-              <div 
-                className="bg-blue-500 h-2 rounded-full transition-all" 
-                style={{ width: `${Math.min(100, (dailyClaimed / DAILY_CLAIM_CAP) * 100)}%` }} 
+              <div
+                className="bg-blue-500 h-2 rounded-full transition-all"
+                style={{ width: `${Math.min(100, (dailyClaimed / DAILY_CLAIM_CAP) * 100)}%` }}
               />
             </div>
             <p className="text-sm text-blue-600">
               Còn được claim hôm nay: <span className="font-bold">{formatNumber(dailyRemaining)} CAMLY</span>
             </p>
             {dailyRemaining <= 0 && (
-              <p className="text-sm text-red-500 font-medium mt-1">⚠️ Đã hết giới hạn claim hôm nay, vui lòng quay lại ngày mai</p>
+              <p className="text-sm text-red-500 font-medium mt-1">⚠️ Đã hết giới hạn claim hôm nay</p>
             )}
           </div>
 
-          {/* Amount Input */}
           <div className="space-y-2">
             <Label htmlFor="amount">Số lượng claim</Label>
             <div className="relative">
@@ -188,9 +159,6 @@ export const ClaimRewardDialog = ({
             {amount && Number(amount) > 0 && (
               <p className="text-sm text-muted-foreground">~{formatUsd(Number(amount))}</p>
             )}
-            {amount && Number(amount) < 1 && (
-              <p className="text-sm text-red-500">Số lượng phải lớn hơn 0</p>
-            )}
             {amount && Number(amount) > maxClaimable && (
               <p className="text-sm text-red-500">
                 {Number(amount) > claimableAmount ? 'Vượt quá số dư khả dụng' : 'Vượt quá giới hạn claim hôm nay'}
@@ -198,7 +166,6 @@ export const ClaimRewardDialog = ({
             )}
           </div>
 
-          {/* Wallet Info */}
           {externalWallet ? (
             <div className="space-y-2">
               <Label>Ví nhận</Label>
@@ -215,7 +182,6 @@ export const ClaimRewardDialog = ({
             </div>
           )}
 
-          {/* Network Info */}
           <div className="flex items-center gap-2 text-sm text-muted-foreground bg-gray-50 rounded-lg p-3">
             <Wallet className="w-4 h-4" />
             <span>Mạng: BNB Smart Chain (BSC)</span>
@@ -234,7 +200,7 @@ export const ClaimRewardDialog = ({
             className="flex-1 bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-white"
           >
             <Gift className="w-4 h-4 mr-2" />
-            Claim {amount ? formatNumber(Number(amount)) : ''} CAMLY
+            Gửi yêu cầu Claim
           </Button>
         )}
       </div>
@@ -246,9 +212,9 @@ export const ClaimRewardDialog = ({
       <div className="w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-6 animate-pulse">
         <Loader2 className="w-10 h-10 text-yellow-600 animate-spin" />
       </div>
-      <h3 className="text-xl font-semibold mb-2">Đang xử lý giao dịch...</h3>
+      <h3 className="text-xl font-semibold mb-2">Đang gửi yêu cầu...</h3>
       <p className="text-muted-foreground mb-4">
-        Vui lòng chờ trong khi giao dịch được xác nhận trên blockchain
+        Vui lòng chờ trong khi hệ thống xử lý yêu cầu claim của bạn
       </p>
       <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
         <div className="w-2 h-2 bg-yellow-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
@@ -258,104 +224,28 @@ export const ClaimRewardDialog = ({
     </div>
   );
 
-  const renderSuccessStep = () => (
-    <div className="relative py-6 text-center">
-      {/* CAMLY Coin Rainbow Logo */}
-      <div className="flex justify-center mb-4">
-        <img
-          src={funEcosystemLogo}
-          alt="FUN Ecosystem"
-          className="w-24 h-24"
-          style={{ filter: 'drop-shadow(0 0 12px rgba(255, 215, 0, 0.6))' }}
-        />
+  const renderPendingStep = () => (
+    <div className="py-8 text-center">
+      <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-6">
+        <Clock className="w-12 h-12 text-amber-600" />
       </div>
-
-      {/* Golden Title */}
-      <h3
-        className="text-2xl font-extrabold mb-4 px-2"
-        style={{
-          color: '#FFD700',
-          textShadow: '0 0 10px rgba(255, 215, 0, 0.5), 0 0 20px rgba(255, 215, 0, 0.3), 0 2px 4px rgba(0,0,0,0.4)',
-        }}
-      >
-        🎉✨ Chúc Mừng Bạn Vừa Được Đón Nhận Phước Lành Của Cha Và Bé Angel CamLy ! ✨🎉
-      </h3>
-
-      {/* Amount Card */}
-      <div className="bg-gradient-to-r from-emerald-400 to-green-500 rounded-xl p-4 mx-2 mb-4 shadow-lg">
-        <div className="flex items-center justify-center gap-2 mb-1">
-          <Sparkles className="w-5 h-5 text-yellow-200" />
-          <span className="text-white/80 text-sm">Đã nhận thành công</span>
-          <Sparkles className="w-5 h-5 text-yellow-200" />
-        </div>
-        <p className="text-3xl font-extrabold text-white" style={{ textShadow: '0 0 10px rgba(255,255,255,0.5)' }}>
-          {formatNumber(result?.amount || 0)} CAMLY
-        </p>
-        <p className="text-white/70 text-xs mt-1">
-          vào ví {result?.wallet_address?.slice(0, 8)}...{result?.wallet_address?.slice(-6)}
-        </p>
-      </div>
-
-      {/* BscScan Link */}
-      {result?.bscscan_url && (
-        <a
-          href={result.bscscan_url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 text-emerald-600 hover:underline mb-4 text-sm"
-        >
-          <ExternalLink className="w-4 h-4" />
-          Xem trên BscScan
-        </a>
-      )}
-
-      {/* Add CAMLY to MetaMask */}
-      <Button
-        variant="outline"
-        size="sm"
-        className="mb-3 border-amber-300 text-amber-700 hover:bg-amber-50"
-        onClick={async () => {
-          try {
-            /* EIP-1193 browser global — no typed declaration available */
-            const provider = (window as { ethereum?: { request: (args: unknown) => Promise<unknown> } }).ethereum;
-            if (!provider) {
-              toast.error('Vui lòng mở MetaMask');
-              return;
-            }
-            await provider.request({
-              method: 'wallet_watchAsset',
-              params: {
-                type: 'ERC20',
-                options: {
-                  address: '0x0910320181889feFDE0BB1Ca63962b0A8882e413',
-                  symbol: 'CAMLY',
-                  decimals: 3,
-                },
-              },
-            });
-            toast.success('Đã thêm CAMLY vào ví!');
-          } catch {
-            toast.error('Không thể thêm token. Vui lòng thêm thủ công.');
-          }
-        }}
-      >
-        <Wallet className="w-4 h-4 mr-2" />
-        Thêm CAMLY vào ví MetaMask
-      </Button>
-
-      <p className="text-[10px] text-white/60 mb-3">
-        Nếu không thấy số dư CAMLY, hãy bấm nút trên hoặc thêm thủ công token:<br />
-        Contract: 0x0910...e413 | Symbol: CAMLY | Decimals: 3
+      <h3 className="text-xl font-semibold text-amber-700 mb-2">⏳ Chờ Admin Duyệt</h3>
+      <p className="text-muted-foreground mb-4">
+        Yêu cầu claim <span className="font-bold text-amber-700">{formatNumber(result?.amount || 0)} CAMLY</span> đã được gửi thành công!
       </p>
-
-      {/* Footer */}
-      <p className="text-xs text-emerald-600 mb-4 font-medium">FUN Profile — Mạnh Thương Quân 💚</p>
-
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mx-4 mb-6 text-left">
+        <p className="text-sm text-amber-800 mb-2">📋 <strong>Tiếp theo:</strong></p>
+        <ul className="text-sm text-amber-700 space-y-1">
+          <li>• Admin sẽ xem xét và duyệt yêu cầu của bạn</li>
+          <li>• Sau khi được duyệt, CAMLY sẽ được gửi vào ví của bạn</li>
+          <li>• Bạn sẽ nhận thông báo khi giao dịch hoàn tất</li>
+        </ul>
+      </div>
       <Button
         onClick={handleClose}
-        className="w-full bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white font-bold"
+        className="w-full bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white font-bold"
       >
-        Đóng
+        Đã hiểu, đóng
       </Button>
     </div>
   );
@@ -365,7 +255,7 @@ export const ClaimRewardDialog = ({
       <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
         <AlertCircle className="w-12 h-12 text-red-600" />
       </div>
-      <h3 className="text-xl font-semibold text-red-700 mb-2">Claim Chưa Thành Công</h3>
+      <h3 className="text-xl font-semibold text-red-700 mb-2">Gửi yêu cầu chưa thành công</h3>
       <p className="text-muted-foreground mb-6">
         {error || 'Đã xảy ra sự cố, vui lòng thử lại sau'}
       </p>
@@ -377,24 +267,14 @@ export const ClaimRewardDialog = ({
   );
 
   return (
-    <>
-      <DonationCelebration isActive={showCelebration} showRichText={true} />
-      {showCelebration && <RichTextOverlay />}
-      <Dialog open={open} onOpenChange={handleClose}>
-        <DialogContent
-          className="sm:max-w-md max-h-[90vh] overflow-y-auto"
-          style={step === 'success' ? {
-            background: 'linear-gradient(135deg, #34d399, #10b981)',
-            border: 'none',
-          } : undefined}
-        >
-          {step === 'input' && renderInputStep()}
-          {step === 'confirming' && renderConfirmingStep()}
-          {step === 'success' && renderSuccessStep()}
-          {step === 'error' && renderErrorStep()}
-        </DialogContent>
-      </Dialog>
-    </>
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+        {step === 'input' && renderInputStep()}
+        {step === 'confirming' && renderConfirmingStep()}
+        {step === 'pending' && renderPendingStep()}
+        {step === 'error' && renderErrorStep()}
+      </DialogContent>
+    </Dialog>
   );
 };
 

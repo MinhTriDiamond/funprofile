@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/select';
 import { useDonationHistory, useDonationStats, DonationRecord } from '@/hooks/useDonationHistory';
 import { exportDonationsToCSV } from '@/utils/exportDonations';
-import { GiftCelebrationModal } from '@/components/donations/GiftCelebrationModal';
+import { DonationSuccessCard } from '@/components/donations/DonationSuccessCard';
 import { DonationReceivedCard } from '@/components/donations/DonationReceivedCard';
 import { formatNumber, formatDate, shortenAddress } from '@/lib/formatters';
 import { getBscScanTxUrl } from '@/lib/bscScanHelpers';
@@ -273,10 +273,9 @@ export function DonationHistoryTab() {
 
       {/* Celebration modals */}
       {selectedDonation && selectedType === 'sent' && (
-        <GiftCelebrationModal
+        <DonationSuccessCard
           isOpen={isCelebrationOpen}
           onClose={() => { setIsCelebrationOpen(false); setSelectedDonation(null); }}
-          editable={false}
           data={{
             id: selectedDonation.id,
             amount: selectedDonation.amount,
@@ -291,9 +290,6 @@ export function DonationHistoryTab() {
             txHash: selectedDonation.tx_hash,
             lightScoreEarned: selectedDonation.light_score_earned || 0,
             createdAt: selectedDonation.created_at,
-            cardTheme: selectedDonation.card_theme,
-            cardBackground: selectedDonation.card_background,
-            cardSound: selectedDonation.card_sound,
           }}
         />
       )}

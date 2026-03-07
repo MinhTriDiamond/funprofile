@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
-import { Gift, Wallet, AlertTriangle, Info, Clock, CheckCircle2, TrendingUp, MessageCircle, Send, Loader2, ShieldAlert, Lock } from 'lucide-react';
+import { Gift, Wallet, AlertTriangle, Info, Clock, CheckCircle2, TrendingUp, MessageCircle, Send, Loader2, ShieldAlert, Lock, ClipboardCheck, PartyPopper } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { RewardStats } from './RewardBreakdown';
@@ -29,6 +29,7 @@ interface ClaimRewardsSectionProps {
   hasCover: boolean;
   hasTodayPost: boolean;
   hasFullName: boolean;
+  accountAgeDays: number;
   onClaimClick: () => void;
   onConnectClick: () => void;
 }
@@ -51,6 +52,7 @@ export const ClaimRewardsSection = ({
   hasCover,
   hasTodayPost,
   hasFullName,
+  accountAgeDays,
   onClaimClick,
   onConnectClick,
 }: ClaimRewardsSectionProps) => {
@@ -72,14 +74,58 @@ export const ClaimRewardsSection = ({
   const pendingAmount = Math.max(0, totalReward - claimedAmount - claimableReward);
   const dailyRemaining = Math.max(0, DAILY_LIMIT - dailyClaimed);
 
+  const [isRequestingApproval, setIsRequestingApproval] = useState(false);
+
   const statusConfig: Record<string, { label: string; color: string; disabled: boolean }> = {
+    inactive: { label: 'Chưa yêu cầu duyệt', color: 'text-gray-600', disabled: true },
     pending: { label: 'Chờ Admin duyệt', color: 'text-yellow-600', disabled: true },
     approved: { label: `Claim ${formatNumber(claimableReward)} CAMLY`, color: 'text-green-600', disabled: false },
     on_hold: { label: 'Tạm giữ', color: 'text-orange-600', disabled: true },
     rejected: { label: 'Từ chối', color: 'text-red-600', disabled: true },
   };
 
-  const config = statusConfig[rewardStatus] || statusConfig.pending;
+  const config = statusConfig[rewardStatus] || statusConfig.inactive;
+
+  const handleRequestApproval = async () => {
+    const missing: string[] = [];
+    if (!hasFullName) missing.push('Họ tên đầy đủ (≥4 ký tự)');
+    if (!hasAvatar) missing.push('Ảnh đại diện');
+    if (!hasCover) missing.push('Ảnh bìa trang cá nhân');
+    if (!hasTodayPost) missing.push('Đăng ít nhất 1 bài hôm nay');
+    if (!isConnected) missing.push('Kết nối ví');
+    if (accountAgeDays < 7) missing.push(`Tài khoản ≥ 7 ngày (hiện ${accountAgeDays} ngày)`);
+    
+    if (missing.length > 0) {
+      toast.error('Chưa đủ điều kiện gửi yêu cầu', {
+        description: missing.map(m => `• ${m}`).join('\n'),
+        duration: 6000,
+      });
+      return;
+    }
+
+    setIsRequestingApproval(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) { toast.error('Vui lòng đăng nhập'); return; }
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({ reward_status: 'pending' })
+        .eq('id', session.user.id);
+      
+      if (error) throw error;
+      toast.success('Đã gửi yêu cầu duyệt thành công! ✅', {
+        description: 'Admin sẽ xét duyệt trong thời gian sớm nhất.',
+      });
+      // Force page reload to reflect new status
+      window.location.reload();
+    } catch (err) {
+      console.error('Error requesting approval:', err);
+      toast.error('Gửi yêu cầu thất bại, vui lòng thử lại');
+    } finally {
+      setIsRequestingApproval(false);
+    }
+  };
 
   const allConditionsMet = hasAvatar && hasCover && hasTodayPost && hasFullName && isConnected;
 
@@ -278,6 +324,38 @@ export const ClaimRewardsSection = ({
           </div>
         </div>
 
+        {/* Inactive / Request Approval */}
+        {(rewardStatus === 'inactive' || rewardStatus === 'rejected') && (
+          <div className="bg-blue-50 border border-blue-300 rounded-xl p-3.5">
+            <div className="flex items-start gap-2">
+              <ClipboardCheck className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-blue-800">
+                  {rewardStatus === 'rejected' ? 'Yêu cầu bị từ chối — Gửi lại?' : 'Gửi yêu cầu duyệt để claim thưởng'}
+                </p>
+                <p className="text-xs text-blue-700 mt-1">
+                  Hoàn thành đủ 6 điều kiện cơ bản bên dưới rồi bấm nút gửi yêu cầu. Admin sẽ xét duyệt để bạn có thể claim CAMLY.
+                </p>
+                {rewardStatus === 'rejected' && adminNotes && (
+                  <p className="text-xs text-red-600 mt-1">Lý do từ chối: {adminNotes}</p>
+                )}
+                <Button
+                  onClick={handleRequestApproval}
+                  disabled={isRequestingApproval}
+                  size="sm"
+                  className="mt-2 bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  {isRequestingApproval ? (
+                    <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" />Đang gửi...</>
+                  ) : (
+                    <><Send className="w-4 h-4 mr-1.5" />Gửi yêu cầu duyệt</>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Pending Approval Alert */}
         {rewardStatus === 'pending' && (
           <div className="bg-yellow-50 border border-yellow-300 rounded-xl p-3.5">
@@ -286,7 +364,7 @@ export const ClaimRewardsSection = ({
               <div>
                 <p className="text-sm font-semibold text-yellow-800">Chờ Admin xét duyệt ⏳</p>
                 <p className="text-xs text-yellow-700 mt-1">
-                  Tài khoản của bạn cần được Admin xét duyệt trước khi có thể claim phần thưởng. Vui lòng đảm bảo hồ sơ đầy đủ và chờ Admin duyệt.
+                  Yêu cầu của bạn đã được gửi. Vui lòng chờ Admin duyệt để claim phần thưởng.
                 </p>
               </div>
             </div>
@@ -345,7 +423,7 @@ export const ClaimRewardsSection = ({
         )}
 
         {/* Message Admin Section - shown when user can't claim */}
-        {(rewardStatus === 'pending' || rewardStatus === 'on_hold' || rewardStatus === 'rejected' || walletSecurity?.isBlocked) && (
+        {(rewardStatus === 'pending' || rewardStatus === 'on_hold' || walletSecurity?.isBlocked) && (
           <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-xl p-3.5 space-y-3">
             <div className="flex items-center gap-2">
               <MessageCircle className="w-4 h-4 text-blue-600" />
@@ -459,69 +537,77 @@ export const ClaimRewardsSection = ({
           </div>
         </div>
 
-        {/* Profile Completion Reminders */}
-        {!allConditionsMet && (
-          <div className="bg-orange-50 border border-orange-200 rounded-xl p-3.5 space-y-2">
-            <p className="text-sm font-semibold text-orange-800 flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4" />
-              Cập nhật hồ sơ để rút tiền
-            </p>
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-2 text-xs">
-                <span className={hasFullName ? 'text-green-600' : 'text-red-500'}>{hasFullName ? '✅' : '❌'}</span>
-                <span className={hasFullName ? 'text-green-700' : 'text-orange-700'}>
-                  Họ tên đầy đủ (tối thiểu 4 ký tự)
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-xs">
-                <span className={hasAvatar ? 'text-green-600' : 'text-red-500'}>{hasAvatar ? '✅' : '❌'}</span>
-                <span className={hasAvatar ? 'text-green-700' : 'text-orange-700'}>
-                  Ảnh đại diện (hình người thật)
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-xs">
-                <span className={hasCover ? 'text-green-600' : 'text-red-500'}>{hasCover ? '✅' : '❌'}</span>
-                <span className={hasCover ? 'text-green-700' : 'text-orange-700'}>
-                  Ảnh bìa trang cá nhân
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-xs">
-                <span className={hasTodayPost ? 'text-green-600' : 'text-red-500'}>{hasTodayPost ? '✅' : '❌'}</span>
-                <span className={hasTodayPost ? 'text-green-700' : 'text-orange-700'}>
-                  Đăng ít nhất 1 bài hôm nay
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-xs">
-                <span className={isConnected ? 'text-green-600' : 'text-red-500'}>{isConnected ? '✅' : '❌'}</span>
-                <span className={isConnected ? 'text-green-700' : 'text-orange-700'}>
-                  Kết nối ví
-                </span>
-              </div>
-            </div>
-            {!hasFullName || !hasAvatar || !hasCover ? (
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full mt-2 border-orange-300 text-orange-700 hover:bg-orange-100"
-                onClick={() => navigate('/profile')}
-              >
-                Cập nhật trang cá nhân
-              </Button>
-            ) : null}
-          </div>
-        )}
+        {/* Bảng Điều Kiện Claim Thưởng */}
+        {(() => {
+          const conditions = [
+            { label: 'Họ tên đầy đủ (≥4 ký tự)', met: hasFullName },
+            { label: 'Ảnh đại diện (hình người thật)', met: hasAvatar },
+            { label: 'Ảnh bìa trang cá nhân', met: hasCover },
+            { label: 'Đăng ít nhất 1 bài hôm nay', met: hasTodayPost },
+            { label: 'Kết nối ví (địa chỉ 0x...)', met: isConnected },
+            { label: 'Tài khoản ≥ 7 ngày', met: accountAgeDays >= 7 },
+            { label: 'Admin đã duyệt', met: rewardStatus === 'approved' },
+            { label: `Tối thiểu ${formatNumber(MINIMUM_THRESHOLD)} CAMLY`, met: claimableReward >= MINIMUM_THRESHOLD },
+            { label: `Chưa vượt ${formatNumber(DAILY_LIMIT)}/ngày`, met: dailyClaimed < DAILY_LIMIT },
+          ];
+          const metCount = conditions.filter(c => c.met).length;
+          const total = conditions.length;
+          const allMet = metCount === total;
+          const progressPercent = Math.round((metCount / total) * 100);
+          const needsProfileUpdate = !hasFullName || !hasAvatar || !hasCover;
 
-        {/* Info Footer */}
-        <div className="bg-gray-50 rounded-xl p-3.5 space-y-1.5">
-          <p className="text-xs text-muted-foreground flex items-start gap-2">
-            <span className="shrink-0">📌</span>
-            <span>Ngưỡng tối thiểu: {formatNumber(MINIMUM_THRESHOLD)} CAMLY mỗi lần claim</span>
-          </p>
-          <p className="text-xs text-muted-foreground flex items-start gap-2">
-            <span className="shrink-0">✅</span>
-            <span>Admin duyệt trước khi cho phép claim</span>
-          </p>
-        </div>
+          return (
+            <div className={`border rounded-xl overflow-hidden ${allMet ? 'border-green-300 bg-green-50/50' : 'border-orange-200 bg-orange-50/30'}`}>
+              <div className={`px-3.5 py-2.5 flex items-center justify-between ${allMet ? 'bg-green-100/60' : 'bg-orange-100/60'}`}>
+                <div className="flex items-center gap-2">
+                  <ClipboardCheck className={`w-4 h-4 ${allMet ? 'text-green-600' : 'text-orange-600'}`} />
+                  <span className={`text-sm font-semibold ${allMet ? 'text-green-800' : 'text-orange-800'}`}>
+                    Điều kiện Claim Thưởng
+                  </span>
+                </div>
+                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${allMet ? 'bg-green-200 text-green-800' : 'bg-orange-200 text-orange-800'}`}>
+                  {metCount}/{total}
+                </span>
+              </div>
+
+              <div className="px-3.5 pt-2 pb-1">
+                <Progress value={progressPercent} className={`h-1.5 ${allMet ? 'bg-green-100' : 'bg-orange-100'}`} />
+                <p className={`text-[10px] mt-1 text-right ${allMet ? 'text-green-600' : 'text-orange-500'}`}>{progressPercent}%</p>
+              </div>
+
+              <div className="px-3.5 pb-3 space-y-1.5">
+                {conditions.map((c, i) => (
+                  <div key={i} className="flex items-center gap-2 text-xs">
+                    <span className={c.met ? 'text-green-600' : 'text-red-500'}>{c.met ? '✅' : '❌'}</span>
+                    <span className={c.met ? 'text-green-700' : 'text-orange-700'}>{c.label}</span>
+                  </div>
+                ))}
+              </div>
+
+              {allMet && (
+                <div className="px-3.5 pb-3">
+                  <div className="flex items-center gap-2 bg-green-100 rounded-lg px-3 py-2">
+                    <PartyPopper className="w-4 h-4 text-green-600" />
+                    <span className="text-sm font-semibold text-green-800">Sẵn sàng claim! 🎉</span>
+                  </div>
+                </div>
+              )}
+
+              {needsProfileUpdate && (
+                <div className="px-3.5 pb-3">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full border-orange-300 text-orange-700 hover:bg-orange-100"
+                    onClick={() => navigate('/profile')}
+                  >
+                    Cập nhật trang cá nhân
+                  </Button>
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </CardContent>
     </Card>
   );
