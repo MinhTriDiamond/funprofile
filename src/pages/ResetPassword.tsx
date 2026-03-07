@@ -76,6 +76,12 @@ const ResetPassword = () => {
 
       if (updateError) throw updateError;
 
+      // Update has_password flag
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (currentUser) {
+        await supabase.from('profiles').update({ has_password: true }).eq('id', currentUser.id);
+      }
+
       setPageState('success');
       toast.success('Đặt lại mật khẩu thành công!');
 

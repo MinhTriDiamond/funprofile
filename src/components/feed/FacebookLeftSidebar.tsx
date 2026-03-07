@@ -68,6 +68,7 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
 
   // Shortcuts for "Lối tắt của bạn" section
   const shortcutItems = [
+    { icon: Shield, label: 'Bảo mật', path: '/settings/security', color: 'text-emerald-600' },
     { icon: Crown, label: 'Mạnh Thường Quân', path: '/benefactors', color: 'text-gold' },
     { icon: Globe, label: 'Lịch Sử Giao Dịch', path: '/donations', color: 'text-emerald-500' },
     { icon: UsersRound, label: 'Danh Sách Thành Viên', path: '/users', color: 'text-red-500' },
