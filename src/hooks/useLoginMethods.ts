@@ -91,7 +91,7 @@ export function useLoginMethods(): LoginMethodsResult {
   // Email placeholder patterns (system-generated, not real user emails)
   const isPlaceholderEmail = (email?: string | null) => {
     if (!email) return true;
-    return email.endsWith('@wallet.fun.rich') || email.endsWith('@fun.phone');
+    return email.endsWith('@wallet.fun.rich') || email.endsWith('@fun.phone') || email.endsWith('@internal.fun.local');
   };
 
   // Email states
