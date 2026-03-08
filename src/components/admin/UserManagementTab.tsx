@@ -1,9 +1,10 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Ghost, Trash2, Share2 } from "lucide-react";
+import { Users, Ghost, Trash2, Share2, Trophy } from "lucide-react";
 import UserReviewTab from "./UserReviewTab";
 import GhostCleanupTab from "./GhostCleanupTab";
 import QuickDeleteTab from "./QuickDeleteTab";
 import SocialLinksTab from "./SocialLinksTab";
+import QualifiedUsersTab from "./QualifiedUsersTab";
 import type { AdminUserData } from "@/hooks/useAdminUsers";
 
 interface UserManagementTabProps {
