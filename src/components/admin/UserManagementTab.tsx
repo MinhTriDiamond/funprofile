@@ -16,10 +16,14 @@ interface UserManagementTabProps {
 const UserManagementTab = ({ users, adminId, onRefresh }: UserManagementTabProps) => {
   return (
     <Tabs defaultValue="review" className="space-y-4">
-      <TabsList className="grid w-full grid-cols-4 h-auto">
+      <TabsList className="grid w-full grid-cols-5 h-auto">
         <TabsTrigger value="review" className="gap-2 py-2">
           <Users className="w-4 h-4" />
           <span className="hidden sm:inline">Rà soát</span>
+        </TabsTrigger>
+        <TabsTrigger value="qualified" className="gap-2 py-2">
+          <Trophy className="w-4 h-4" />
+          <span className="hidden sm:inline">Đủ tiêu chí</span>
         </TabsTrigger>
         <TabsTrigger value="ghost" className="gap-2 py-2">
           <Ghost className="w-4 h-4" />
@@ -37,6 +41,9 @@ const UserManagementTab = ({ users, adminId, onRefresh }: UserManagementTabProps
 
       <TabsContent value="review">
         <UserReviewTab users={users} adminId={adminId} onRefresh={onRefresh} />
+      </TabsContent>
+      <TabsContent value="qualified">
+        <QualifiedUsersTab adminId={adminId} />
       </TabsContent>
       <TabsContent value="ghost">
         <GhostCleanupTab adminId={adminId} onNavigate={() => {}} />
