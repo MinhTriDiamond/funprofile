@@ -102,6 +102,19 @@ Deno.serve(async (req: Request) => {
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    // Check reward_locked (wallet-first accounts before email verification)
+    if (profile.reward_locked === true) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Reward Locked',
+          message: 'Vui lòng liên kết và xác thực email để mở khóa tính năng mint.',
+          action: 'link_email',
+          redirect: '/settings/security'
+        }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Check if user has a wallet
     if (!profile.wallet_address) {
