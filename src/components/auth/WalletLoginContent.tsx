@@ -51,12 +51,10 @@ export const WalletLoginContent = ({ onSuccess }: WalletLoginContentProps) => {
     if (!validateEvmAddress(addr)) return;
     setWalletStatus('checking');
     try {
-      const response = await fetch(`${SUPABASE_URL}/functions/v1/sso-web3-auth`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
-        body: JSON.stringify({ action: 'check', wallet_address: addr }),
+      const { data, error } = await supabase.functions.invoke('sso-web3-auth', {
+        body: { action: 'check', wallet_address: addr },
       });
-      const data = await response.json();
+      if (error) throw error;
       setWalletStatus(data?.registered ? 'registered' : 'not_registered');
       setStep('checked');
     } catch {
