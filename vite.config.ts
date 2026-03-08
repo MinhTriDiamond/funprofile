@@ -27,7 +27,8 @@ export default defineConfig(({ mode }) => ({
           if (id.includes('wagmi') || id.includes('viem') || id.includes('rainbowkit') || id.includes('@walletconnect')) {
             return 'vendor-web3';
           }
-          if (id.includes('react-dom') || (id.includes('node_modules/react') && !id.includes('react-'))) {
+          // Gộp recharts + react vào cùng chunk để tránh circular dependency
+          if (id.includes('recharts') || id.includes('react-dom') || (id.includes('node_modules/react') && !id.includes('react-'))) {
             return 'vendor-react';
           }
           if (id.includes('react-router-dom')) {
@@ -41,9 +42,6 @@ export default defineConfig(({ mode }) => ({
           }
           if (id.includes('@radix-ui')) {
             return 'vendor-ui';
-          }
-          if (id.includes('recharts')) {
-            return 'vendor-charts';
           }
           if (id.includes('date-fns') || id.includes('clsx') || id.includes('tailwind-merge')) {
             return 'vendor-utils';
