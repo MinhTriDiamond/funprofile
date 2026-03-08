@@ -32,9 +32,6 @@ export const WalletLoginContent = ({ onSuccess }: WalletLoginContentProps) => {
   const { signMessageAsync, isPending: isSigning } = useSignMessage();
   const { disconnect } = useDisconnect();
 
-  const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-  const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-
   // Auto-sign when wallet connects and matches pasted address
   useEffect(() => {
     if (
