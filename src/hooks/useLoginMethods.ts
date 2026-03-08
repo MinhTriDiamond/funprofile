@@ -16,6 +16,9 @@ interface ProfileSecurityData {
   has_password: boolean | null;
   external_wallet_address: string | null;
   public_wallet_address: string | null;
+  signup_method: string | null;
+  reward_locked: boolean | null;
+  account_status: string | null;
 }
 
 export const TOTAL_METHODS = 4;
