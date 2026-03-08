@@ -77,7 +77,7 @@ export function useLoginMethods(): LoginMethodsResult {
     queryFn: async () => {
       const { data } = await supabase
         .from('profiles')
-        .select('has_password, external_wallet_address, public_wallet_address')
+        .select('has_password, external_wallet_address, public_wallet_address, signup_method, reward_locked, account_status')
         .eq('id', userId!)
         .single();
       return data as ProfileSecurityData | null;
