@@ -234,4 +234,3 @@ Nếu cần hỗ trợ:
 ---
 
 **Chúc bạn phát triển vui vẻ! 🎉**
-Trigger deplot 08/03/2026
