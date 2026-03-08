@@ -44,6 +44,10 @@ export interface LoginMethodsResult {
   // Wallet
   hasWalletLoginMethod: boolean;
   hasPublicWalletAddress: boolean;
+  // Wallet-first account fields
+  rewardLocked: boolean;
+  signupMethod: string;
+  accountStatus: string;
   // Aggregated
   activeMethodCount: number;
   securityLevel: SecurityLevel;
