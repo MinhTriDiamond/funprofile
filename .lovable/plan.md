@@ -1,31 +1,39 @@
 
+# Light Score 5 Trụ Cột — Phase 1 ✅ HOÀN THÀNH
 
-## Vấn đề
+## Đã triển khai
 
-Edge function `sso-web3-auth` trả 401 "Missing authorization header" từ Supabase gateway — không phải từ code function.
+| # | Resource | Trạng thái |
+|---|----------|-----------|
+| 1 | DB: Bảng `user_dimension_scores` + RLS | ✅ Done |
+| 2 | Edge Function: `pplp-compute-dimensions/index.ts` | ✅ Done |
+| 3 | Edge Function: `pplp-get-score/index.ts` (thêm dimension data) | ✅ Done |
+| 4 | Config: `src/config/pplp.ts` (DIMENSIONS, DIMENSION_LEVELS, DIMENSION_WEIGHTS) | ✅ Done |
+| 5 | Hook: `src/hooks/useDimensionScores.ts` | ✅ Done |
+| 6 | UI: `src/components/wallet/DimensionScoreCard.tsx` + tích hợp vào LightScoreDashboard | ✅ Done |
+| 7 | Docs: `docs/LIGHT_SCORE_MATH_SPEC.md` | ✅ Done |
 
-Client (`WalletLoginContent.tsx` dòng 57-59) gửi:
-```
-headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY }
-```
+## 5 Trụ Cột
 
-Thiếu `Authorization` header → gateway chặn trước khi request đến function code.
+- 🪪 Identity (Danh tính) — profile, wallet, account age
+- ⚡ Activity (Hoạt động) — normalized light score + time decay
+- ⛓️ On-Chain — wallet, donations sent/received
+- 🔍 Transparency (Minh bạch) — fraud signals penalty
+- 🌐 Ecosystem (Hệ sinh thái) — posts, comments, donations, streak
 
-**Tài khoản "Minh Trí Test 1" vẫn tồn tại trong DB** — không mất. Server trả `registered: true` khi test trực tiếp với Authorization header đúng.
+## Cấp độ mới
 
-## Giải pháp
+| Level | Tên | Điểm |
+|-------|-----|------|
+| 🌱 | Light Seed | 0-99 |
+| 🔨 | Light Builder | 100-249 |
+| 🛡️ | Light Guardian | 250-499 |
+| 👑 | Light Leader | 500-799 |
+| 🌌 | Cosmic Contributor | 800+ |
 
-Thay tất cả `fetch()` thủ công trong `WalletLoginContent.tsx` bằng `supabase.functions.invoke()` — tự động gửi đúng headers (apikey + Authorization).
+## Bước tiếp theo
 
-### Thay đổi: `src/components/auth/WalletLoginContent.tsx`
-
-**3 chỗ fetch cần thay:**
-
-1. **Check wallet** (dòng 57-61) → `supabase.functions.invoke('sso-web3-auth', { body: { action: 'check', wallet_address: addr } })`
-
-2. **Challenge** (dòng 89-93) → `supabase.functions.invoke('sso-web3-auth', { body: { action: 'challenge', wallet_address: walletAddr } })`
-
-3. **Verify signature** (dòng 107-116) → `supabase.functions.invoke('sso-web3-auth', { body: { wallet_address, signature, message, nonce } })`
-
-Xóa 2 biến `SUPABASE_URL` và `SUPABASE_KEY` không còn cần thiết (dòng 35-36).
-
+- Chạy `pplp-compute-dimensions` lần đầu để tính dimension scores cho tất cả users
+- Thiết lập cron job daily để tự động cập nhật
+- Phase 2: Dump Penalty, nâng chuẩn mint eligibility
+- Phase 3: Reputation NFT, Digital Identity Bank
