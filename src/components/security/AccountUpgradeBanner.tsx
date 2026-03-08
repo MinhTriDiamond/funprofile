@@ -31,6 +31,10 @@ function dismissAction(action: string) {
 }
 
 const ACTION_CONFIG: Record<string, { text: string; cta: string }> = {
+  reward_locked: {
+    text: 'Liên kết email để mở khóa các hoạt động có thưởng',
+    cta: 'Liên kết email ngay',
+  },
   set_password: {
     text: 'Đặt mật khẩu để đăng nhập nhanh hơn và tăng bảo mật',
     cta: 'Đặt mật khẩu',
@@ -56,24 +60,32 @@ interface AccountUpgradeBannerProps {
 export function AccountUpgradeBanner({ className }: AccountUpgradeBannerProps) {
   const navigate = useNavigate();
   const { isAuthenticated } = useCurrentUser();
-  const { recommendedAction, isFullySecured, isLoading } = useLoginMethods();
+  const { recommendedAction, isFullySecured, isLoading, rewardLocked } = useLoginMethods();
   const [dismissed, setDismissed] = useState<string | null>(null);
 
+  // reward_locked takes highest priority
+  const effectiveAction = useMemo(() => {
+    if (rewardLocked) return 'reward_locked';
+    return recommendedAction;
+  }, [rewardLocked, recommendedAction]);
+
   const shouldShow = useMemo(() => {
-    if (!isAuthenticated || isLoading || isFullySecured || !recommendedAction) return false;
-    if (isDismissed(recommendedAction)) return false;
-    if (dismissed === recommendedAction) return false;
+    if (!isAuthenticated || isLoading) return false;
+    if (!rewardLocked && isFullySecured) return false;
+    if (!effectiveAction) return false;
+    if (isDismissed(effectiveAction)) return false;
+    if (dismissed === effectiveAction) return false;
     return true;
-  }, [isAuthenticated, isLoading, isFullySecured, recommendedAction, dismissed]);
+  }, [isAuthenticated, isLoading, isFullySecured, effectiveAction, dismissed, rewardLocked]);
 
-  if (!shouldShow || !recommendedAction) return null;
+  if (!shouldShow || !effectiveAction) return null;
 
-  const config = ACTION_CONFIG[recommendedAction];
+  const config = ACTION_CONFIG[effectiveAction];
   if (!config) return null;
 
   const handleDismiss = () => {
-    dismissAction(recommendedAction);
-    setDismissed(recommendedAction);
+    dismissAction(effectiveAction);
+    setDismissed(effectiveAction);
   };
 
   return (

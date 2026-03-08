@@ -3200,6 +3200,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          account_status: string
           admin_notes: string | null
           approved_reward: number
           avatar_url: string | null
@@ -3214,6 +3215,7 @@ export type Database = {
           default_wallet_type: string | null
           display_name: string | null
           education: string | null
+          email_verified_at: string | null
           external_wallet_address: string | null
           financial_updated_at: string | null
           full_name: string | null
@@ -3239,7 +3241,9 @@ export type Database = {
           public_wallet_address: string | null
           registered_from: string | null
           relationship_status: string | null
+          reward_locked: boolean
           reward_status: string
+          signup_method: string
           social_links: Json | null
           soul_level: number
           total_rewards: number
@@ -3252,6 +3256,7 @@ export type Database = {
           workplace: string | null
         }
         Insert: {
+          account_status?: string
           admin_notes?: string | null
           approved_reward?: number
           avatar_url?: string | null
@@ -3266,6 +3271,7 @@ export type Database = {
           default_wallet_type?: string | null
           display_name?: string | null
           education?: string | null
+          email_verified_at?: string | null
           external_wallet_address?: string | null
           financial_updated_at?: string | null
           full_name?: string | null
@@ -3291,7 +3297,9 @@ export type Database = {
           public_wallet_address?: string | null
           registered_from?: string | null
           relationship_status?: string | null
+          reward_locked?: boolean
           reward_status?: string
+          signup_method?: string
           social_links?: Json | null
           soul_level?: number
           total_rewards?: number
@@ -3304,6 +3312,7 @@ export type Database = {
           workplace?: string | null
         }
         Update: {
+          account_status?: string
           admin_notes?: string | null
           approved_reward?: number
           avatar_url?: string | null
@@ -3318,6 +3327,7 @@ export type Database = {
           default_wallet_type?: string | null
           display_name?: string | null
           education?: string | null
+          email_verified_at?: string | null
           external_wallet_address?: string | null
           financial_updated_at?: string | null
           full_name?: string | null
@@ -3343,7 +3353,9 @@ export type Database = {
           public_wallet_address?: string | null
           registered_from?: string | null
           relationship_status?: string | null
+          reward_locked?: boolean
           reward_status?: string
+          signup_method?: string
           social_links?: Json | null
           soul_level?: number
           total_rewards?: number
@@ -4610,6 +4622,39 @@ export type Database = {
         }
         Relationships: []
       }
+      wallet_challenges: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          ip_address: string | null
+          message: string
+          nonce: string
+          used_at: string | null
+          wallet_address: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          id?: string
+          ip_address?: string | null
+          message: string
+          nonce: string
+          used_at?: string | null
+          wallet_address: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          ip_address?: string | null
+          message?: string
+          nonce?: string
+          used_at?: string | null
+          wallet_address?: string
+        }
+        Relationships: []
+      }
       wallet_history: {
         Row: {
           change_reason: string | null
@@ -5431,6 +5476,7 @@ export type Database = {
         Args: { p_admin_id: string; p_reason?: string; p_user_id: string }
         Returns: boolean
       }
+      unlock_wallet_reward: { Args: { p_user_id: string }; Returns: boolean }
       unpin_message: { Args: { p_message_id: string }; Returns: undefined }
       upsert_live_recording_row: {
         Args: {

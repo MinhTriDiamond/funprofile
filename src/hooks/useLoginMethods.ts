@@ -16,6 +16,9 @@ interface ProfileSecurityData {
   has_password: boolean | null;
   external_wallet_address: string | null;
   public_wallet_address: string | null;
+  signup_method: string | null;
+  reward_locked: boolean | null;
+  account_status: string | null;
 }
 
 export const TOTAL_METHODS = 4;
@@ -41,6 +44,10 @@ export interface LoginMethodsResult {
   // Wallet
   hasWalletLoginMethod: boolean;
   hasPublicWalletAddress: boolean;
+  // Wallet-first account fields
+  rewardLocked: boolean;
+  signupMethod: string;
+  accountStatus: string;
   // Aggregated
   activeMethodCount: number;
   securityLevel: SecurityLevel;
@@ -70,7 +77,7 @@ export function useLoginMethods(): LoginMethodsResult {
     queryFn: async () => {
       const { data } = await supabase
         .from('profiles')
-        .select('has_password, external_wallet_address, public_wallet_address')
+        .select('has_password, external_wallet_address, public_wallet_address, signup_method, reward_locked, account_status')
         .eq('id', userId!)
         .single();
       return data as ProfileSecurityData | null;
@@ -84,7 +91,7 @@ export function useLoginMethods(): LoginMethodsResult {
   // Email placeholder patterns (system-generated, not real user emails)
   const isPlaceholderEmail = (email?: string | null) => {
     if (!email) return true;
-    return email.endsWith('@wallet.fun.rich') || email.endsWith('@fun.phone');
+    return email.endsWith('@wallet.fun.rich') || email.endsWith('@fun.phone') || email.endsWith('@internal.fun.local');
   };
 
   // Email states
@@ -102,6 +109,11 @@ export function useLoginMethods(): LoginMethodsResult {
   // Wallet
   const hasWalletLoginMethod = !!profileData?.external_wallet_address;
   const hasPublicWalletAddress = !!profileData?.public_wallet_address;
+
+  // Wallet-first account fields
+  const rewardLocked = profileData?.reward_locked ?? false;
+  const signupMethod = profileData?.signup_method ?? 'email';
+  const accountStatus = profileData?.account_status ?? 'active';
 
   // Security level — only count ACTIVE methods
   let activeMethodCount = 0;
@@ -136,6 +148,9 @@ export function useLoginMethods(): LoginMethodsResult {
     hasPassword,
     hasWalletLoginMethod,
     hasPublicWalletAddress,
+    rewardLocked,
+    signupMethod,
+    accountStatus,
     activeMethodCount,
     securityLevel,
     recommendedAction,

@@ -122,7 +122,7 @@ Deno.serve(async (req) => {
     // 7. Check user profile and reward_status
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('reward_status, username, full_name, avatar_url, cover_url, public_wallet_address, claim_freeze_until, wallet_risk_status')
+      .select('reward_status, username, full_name, avatar_url, cover_url, public_wallet_address, claim_freeze_until, wallet_risk_status, reward_locked')
       .eq('id', userId)
       .single();
 
@@ -131,6 +131,18 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({ error: 'Not Found', message: 'Không tìm thấy hồ sơ người dùng' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    // 7a. Check reward_locked (wallet-first accounts before email verification)
+    if (profile.reward_locked === true) {
+      return new Response(
+        JSON.stringify({
+          error: 'Reward Locked',
+          message: 'Vui lòng liên kết và xác thực email để mở khóa tính năng rút thưởng.',
+          action: 'link_email',
+          redirect: '/settings/security'
+        }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 

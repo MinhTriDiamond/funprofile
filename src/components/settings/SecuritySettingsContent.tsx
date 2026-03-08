@@ -79,6 +79,7 @@ const SecuritySettingsContent = () => {
     securityLevel,
     recommendedAction,
     isFullySecured,
+    accountStatus,
   } = loginMethods;
 
   const securityProgress = Math.min(100, Math.round((activeMethodCount / TOTAL_METHODS) * 100));
@@ -155,6 +156,21 @@ const SecuritySettingsContent = () => {
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold text-foreground">Bảo mật tài khoản</h1>
+
+      {/* Limited Account Badge for wallet-first users */}
+      {accountStatus === 'limited' && (
+        <div className="rounded-xl p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800">
+          <div className="flex items-center gap-2 mb-1">
+            <ShieldAlert className="w-5 h-5 text-amber-600" />
+            <Badge variant="secondary" className="text-xs bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400">
+              Tài khoản giới hạn
+            </Badge>
+          </div>
+          <p className="text-sm text-amber-700 dark:text-amber-400">
+            Mở khóa thưởng bằng cách xác thực email
+          </p>
+        </div>
+      )}
 
       {/* Security Level Card */}
       <div className={`rounded-xl p-5 ${sc.bg} border`}>
