@@ -71,11 +71,11 @@ next-themes
 
 Copy các file config từ `pdk/config/` vào đúng vị trí:
 
-| File nguồn | Vị trí đích |
-|------------|-------------|
+| File nguồn                      | Vị trí đích                 |
+| ------------------------------- | --------------------------- |
 | `pdk/config/tailwind.config.ts` | `tailwind.config.ts` (root) |
-| `pdk/config/index.css` | `src/index.css` |
-| `pdk/config/components.json` | `components.json` (root) |
+| `pdk/config/index.css`          | `src/index.css`             |
+| `pdk/config/components.json`    | `components.json` (root)    |
 
 ### Bước 5: Bắt Đầu Code!
 
@@ -179,11 +179,11 @@ export function ReferralCard({ code, referrals }: ReferralCardProps) {
 
 ## 📚 Documentation
 
-| File | Nội dung |
-|------|----------|
-| [CONVENTIONS.md](./CONVENTIONS.md) | Quy ước đặt tên files, components, database |
-| [API_CONTRACT.md](./API_CONTRACT.md) | Database schema, API endpoints có sẵn |
-| [MERGE_GUIDE.md](./MERGE_GUIDE.md) | Hướng dẫn submit code và quy trình review |
+| File                                 | Nội dung                                    |
+| ------------------------------------ | ------------------------------------------- |
+| [CONVENTIONS.md](./CONVENTIONS.md)   | Quy ước đặt tên files, components, database |
+| [API_CONTRACT.md](./API_CONTRACT.md) | Database schema, API endpoints có sẵn       |
+| [MERGE_GUIDE.md](./MERGE_GUIDE.md)   | Hướng dẫn submit code và quy trình review   |
 
 ---
 
@@ -234,3 +234,4 @@ Nếu cần hỗ trợ:
 ---
 
 **Chúc bạn phát triển vui vẻ! 🎉**
+Trigger deplot 08/03/2026
