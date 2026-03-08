@@ -122,7 +122,7 @@ Deno.serve(async (req) => {
     // 7. Check user profile and reward_status
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('reward_status, username, full_name, avatar_url, cover_url, public_wallet_address, claim_freeze_until, wallet_risk_status')
+      .select('reward_status, username, full_name, avatar_url, cover_url, public_wallet_address, claim_freeze_until, wallet_risk_status, reward_locked')
       .eq('id', userId)
       .single();
 

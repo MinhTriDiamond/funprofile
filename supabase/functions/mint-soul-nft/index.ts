@@ -91,7 +91,7 @@ Deno.serve(async (req: Request) => {
     // Get user profile and existing soul NFT
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('id, username, fun_id, wallet_address')
+      .select('id, username, fun_id, wallet_address, reward_locked')
       .eq('id', user_id)
       .single();
 
