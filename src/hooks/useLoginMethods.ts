@@ -110,6 +110,11 @@ export function useLoginMethods(): LoginMethodsResult {
   const hasWalletLoginMethod = !!profileData?.external_wallet_address;
   const hasPublicWalletAddress = !!profileData?.public_wallet_address;
 
+  // Wallet-first account fields
+  const rewardLocked = profileData?.reward_locked ?? false;
+  const signupMethod = profileData?.signup_method ?? 'email';
+  const accountStatus = profileData?.account_status ?? 'active';
+
   // Security level — only count ACTIVE methods
   let activeMethodCount = 0;
   if (hasEmailLoginMethod) activeMethodCount++;
