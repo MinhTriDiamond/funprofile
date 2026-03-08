@@ -1,13 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAccount, useSignMessage, useDisconnect } from 'wagmi';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { validateEvmAddress } from '@/utils/walletValidation';
-import { Wallet, CheckCircle2, Loader2, LogIn, AlertTriangle, Search } from 'lucide-react';
+import { Wallet, CheckCircle2, Loader2, LogIn, Search, Sparkles, Mail, ShieldAlert } from 'lucide-react';
 
 interface WalletLoginContentProps {
   onSuccess: (userId: string, isNewUser: boolean) => void;
@@ -15,16 +18,22 @@ interface WalletLoginContentProps {
 
 export const WalletLoginContent = ({ onSuccess }: WalletLoginContentProps) => {
   const { t } = useLanguage();
+  const navigate = useNavigate();
   const [step, setStep] = useState<'input' | 'checked' | 'sign' | 'verify'>('input');
   const [loading, setLoading] = useState(false);
   const [walletStatus, setWalletStatus] = useState<'checking' | 'registered' | 'not_registered' | null>(null);
   const [pastedAddress, setPastedAddress] = useState('');
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [newUserId, setNewUserId] = useState<string | null>(null);
   const autoSignRef = useRef(false);
 
   const { address, isConnected, isConnecting } = useAccount();
   const { openConnectModal } = useConnectModal();
   const { signMessageAsync, isPending: isSigning } = useSignMessage();
   const { disconnect } = useDisconnect();
+
+  const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+  const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
   // Auto-sign when wallet connects and matches pasted address
   useEffect(() => {
@@ -43,23 +52,15 @@ export const WalletLoginContent = ({ onSuccess }: WalletLoginContentProps) => {
 
   const checkWalletRegistration = async (addr: string) => {
     if (!validateEvmAddress(addr)) return;
-    
     setWalletStatus('checking');
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sso-web3-auth`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-          },
-          body: JSON.stringify({ action: 'check', wallet_address: addr }),
-        }
-      );
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/sso-web3-auth`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
+        body: JSON.stringify({ action: 'check', wallet_address: addr }),
+      });
       const data = await response.json();
-      const status = data?.registered ? 'registered' : 'not_registered';
-      setWalletStatus(status);
+      setWalletStatus(data?.registered ? 'registered' : 'not_registered');
       setStep('checked');
     } catch {
       setWalletStatus('registered');
@@ -69,13 +70,11 @@ export const WalletLoginContent = ({ onSuccess }: WalletLoginContentProps) => {
 
   const handleLoginClick = () => {
     autoSignRef.current = true;
-    // If already connected with matching address, sign immediately
     if (isConnected && address?.toLowerCase() === pastedAddress.toLowerCase()) {
       autoSignRef.current = false;
       setStep('sign');
       handleSignAndVerify();
     } else {
-      // Disconnect any existing connection, then open modal
       if (isConnected) disconnect();
       if (openConnectModal) openConnectModal();
     }
@@ -86,28 +85,40 @@ export const WalletLoginContent = ({ onSuccess }: WalletLoginContentProps) => {
     if (!walletAddr) return;
     setLoading(true);
     try {
-      const nonce = Math.random().toString(36).substring(2, 15);
-      const timestamp = new Date().toISOString();
-      const message = `Welcome to FUN Profile!\n\nSign this message to authenticate.\n\nWallet: ${walletAddr}\nNonce: ${nonce}\nTimestamp: ${timestamp}`;
+      // Step 1: Request challenge from server
+      const challengeRes = await fetch(`${SUPABASE_URL}/functions/v1/sso-web3-auth`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
+        body: JSON.stringify({ action: 'challenge', wallet_address: walletAddr }),
+      });
+      const challengeData = await challengeRes.json();
+      if (!challengeRes.ok || !challengeData?.nonce) {
+        throw new Error(challengeData?.error || 'Failed to get challenge');
+      }
 
-      const signature = await signMessageAsync({ message, account: walletAddr as `0x${string}` });
+      // Step 2: Sign server-provided message
+      const signature = await signMessageAsync({
+        message: challengeData.message,
+        account: walletAddr as `0x${string}`,
+      });
       setStep('verify');
 
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sso-web3-auth`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-          },
-          body: JSON.stringify({ wallet_address: walletAddr, signature, message, nonce }),
-        }
-      );
+      // Step 3: Send signature + nonce for verification
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/sso-web3-auth`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
+        body: JSON.stringify({
+          wallet_address: walletAddr,
+          signature,
+          message: challengeData.message,
+          nonce: challengeData.nonce,
+        }),
+      });
       const data = await response.json();
       if (!response.ok) {
         throw new Error(data?.error || data?.message || 'Authentication failed');
       }
+
       if (data?.success && data?.token_hash) {
         const { error: verifyError } = await supabase.auth.verifyOtp({
           token_hash: data.token_hash,
@@ -116,7 +127,14 @@ export const WalletLoginContent = ({ onSuccess }: WalletLoginContentProps) => {
         if (verifyError) throw verifyError;
 
         await supabase.from('profiles').update({ last_login_platform: 'FUN Profile' }).eq('id', data.user_id);
-        toast.success(data.is_new_user ? t('welcomeNewUser') : t('welcomeBack'));
+
+        if (data.is_new_user) {
+          // Show onboarding dialog for wallet-first signup
+          setNewUserId(data.user_id);
+          setShowOnboarding(true);
+        } else {
+          toast.success(t('welcomeBack'));
+        }
         onSuccess(data.user_id, data.is_new_user);
       } else {
         throw new Error(data?.error || 'Verification failed');
@@ -126,11 +144,10 @@ export const WalletLoginContent = ({ onSuccess }: WalletLoginContentProps) => {
       const err = error instanceof Error ? error : null;
       const errName = (error as { name?: string })?.name;
       if (errName === 'UserRejectedRequestError' || err?.message?.includes('rejected')) {
-        toast.error('Signature rejected');
-      } else if (err?.message?.includes('WALLET_NOT_REGISTERED')) {
-        setWalletStatus('not_registered');
+        toast.error('Đã hủy ký xác nhận');
       } else {
-        toast.error(err?.message || t('errorOccurred'));
+        // Soft error UX
+        toast.error('Không thể xác minh chữ ký ví. Vui lòng thử lại.');
       }
       setStep('checked');
     } finally {
@@ -178,15 +195,9 @@ export const WalletLoginContent = ({ onSuccess }: WalletLoginContentProps) => {
             >
               <span className="relative z-10 flex items-center justify-center gap-2 text-white">
                 {walletStatus === 'checking' ? (
-                  <>
-                    <Loader2 className="animate-spin" size={20} />
-                    Đang kiểm tra...
-                  </>
+                  <><Loader2 className="animate-spin" size={20} /> Đang kiểm tra...</>
                 ) : (
-                  <>
-                    <Search size={20} />
-                    Kiểm Tra Ví
-                  </>
+                  <><Search size={20} /> Kiểm Tra Ví</>
                 )}
               </span>
             </Button>
@@ -206,8 +217,8 @@ export const WalletLoginContent = ({ onSuccess }: WalletLoginContentProps) => {
                 <CheckCircle2 className="text-emerald-600" size={28} />
               </div>
             ) : (
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-amber-100 dark:bg-amber-900/30 mb-2">
-                <AlertTriangle className="text-amber-500" size={28} />
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-2">
+                <Sparkles className="text-primary" size={28} />
               </div>
             )}
             <p className="font-mono text-sm bg-muted px-3 py-2 rounded-lg inline-block">
@@ -227,39 +238,39 @@ export const WalletLoginContent = ({ onSuccess }: WalletLoginContentProps) => {
             >
               <span className="relative z-10 flex items-center justify-center gap-2 text-white">
                 {isLoading ? (
-                  <>
-                    <Loader2 className="animate-spin" size={20} />
-                    {t('walletLoggingIn')}
-                  </>
+                  <><Loader2 className="animate-spin" size={20} /> {t('walletLoggingIn')}</>
                 ) : (
-                  <>
-                    <LogIn size={20} />
-                    {t('walletLoginBtn')}
-                  </>
+                  <><LogIn size={20} /> {t('walletLoginBtn')}</>
                 )}
               </span>
             </Button>
           )}
 
           {walletStatus === 'not_registered' && (
-            <div className="rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 p-4 space-y-3">
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="text-amber-500 shrink-0" size={20} />
-                <h4 className="font-semibold text-amber-700 dark:text-amber-400">
-                  Ví chưa được liên kết
-                </h4>
+            <div className="space-y-3">
+              <div className="text-center space-y-1">
+                <h4 className="font-semibold text-foreground">Tạo tài khoản nhanh bằng ví</h4>
+                <p className="text-sm text-muted-foreground">
+                  Ký xác nhận để bắt đầu với FUN Profile
+                </p>
               </div>
-              <p className="text-sm text-amber-700 dark:text-amber-300">
-                Ví này chưa được liên kết với tài khoản nào trên FUN Profile.
-              </p>
-              <ul className="text-sm text-amber-700 dark:text-amber-300 space-y-1.5 list-disc pl-4">
-                <li>
-                  Nếu bạn đã có tài khoản, hãy đăng nhập bằng <strong>Email</strong> hoặc <strong>Google</strong>, sau đó kết nối ví trong phần <strong>Cài Đặt</strong>.
-                </li>
-                <li>
-                  Nếu chưa có tài khoản, hãy <strong>đăng ký mới</strong> và dán địa chỉ ví khi đăng ký.
-                </li>
-              </ul>
+              <Button
+                onClick={handleLoginClick}
+                disabled={isLoading}
+                className="w-full h-14 text-lg font-bold rounded-full relative overflow-hidden text-white"
+                style={{
+                  background: 'linear-gradient(135deg, #166534 0%, #15803d 50%, #166534 100%)',
+                  boxShadow: '0 4px 20px rgba(22, 101, 52, 0.4)',
+                }}
+              >
+                <span className="relative z-10 flex items-center justify-center gap-2 text-white">
+                  {isLoading ? (
+                    <><Loader2 className="animate-spin" size={20} /> Đang tạo tài khoản...</>
+                  ) : (
+                    <><Wallet size={20} /> Tạo tài khoản bằng ví</>
+                  )}
+                </span>
+              </Button>
             </div>
           )}
 
@@ -280,6 +291,49 @@ export const WalletLoginContent = ({ onSuccess }: WalletLoginContentProps) => {
           </p>
         </div>
       )}
+
+      {/* Wallet-First Onboarding Dialog */}
+      <Dialog open={showOnboarding} onOpenChange={setShowOnboarding}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader className="text-center space-y-3">
+            <div className="flex justify-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-900/30">
+                <CheckCircle2 className="text-emerald-600" size={32} />
+              </div>
+            </div>
+            <DialogTitle className="text-xl">Chào mừng đến FUN Profile! 🎉</DialogTitle>
+            <Badge variant="secondary" className="mx-auto w-fit">
+              <ShieldAlert className="w-3 h-3 mr-1" />
+              Tài khoản giới hạn
+            </Badge>
+            <DialogDescription className="text-sm space-y-2">
+              <span className="block">Bạn có thể khám phá FUN Profile ngay bây giờ.</span>
+              <span className="block font-medium text-foreground">
+                Liên kết email để mở khóa thưởng và tăng khả năng khôi phục tài khoản.
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex flex-col gap-2 sm:flex-col">
+            <Button
+              onClick={() => {
+                setShowOnboarding(false);
+                navigate('/settings/security');
+              }}
+              className="w-full"
+            >
+              <Mail className="w-4 h-4 mr-2" />
+              Liên kết email ngay
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => setShowOnboarding(false)}
+              className="w-full text-muted-foreground"
+            >
+              Để sau
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

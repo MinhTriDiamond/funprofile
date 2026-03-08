@@ -79,6 +79,7 @@ const SecuritySettingsContent = () => {
     securityLevel,
     recommendedAction,
     isFullySecured,
+    accountStatus,
   } = loginMethods;
 
   const securityProgress = Math.min(100, Math.round((activeMethodCount / TOTAL_METHODS) * 100));
