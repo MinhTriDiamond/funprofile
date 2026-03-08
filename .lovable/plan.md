@@ -1,39 +1,39 @@
 
+# Light Score 5 Trụ Cột — Phase 1 ✅ HOÀN THÀNH
 
-## Kế hoạch: Tạo trang admin duyệt nhanh danh sách user đủ tiêu chí nhận quà
+## Đã triển khai
 
-### Mục tiêu
-Thêm một tab mới "Đủ tiêu chí" vào trong `UserManagementTab`, hiển thị danh sách user đáp ứng đủ 5 tiêu chí (≥2 social links thật, ≥10 ngày hoạt động, có donation on-chain, có ví BSC, light score cao). Admin có thể Approve/Reject từng user và xuất CSV.
+| # | Resource | Trạng thái |
+|---|----------|-----------|
+| 1 | DB: Bảng `user_dimension_scores` + RLS | ✅ Done |
+| 2 | Edge Function: `pplp-compute-dimensions/index.ts` | ✅ Done |
+| 3 | Edge Function: `pplp-get-score/index.ts` (thêm dimension data) | ✅ Done |
+| 4 | Config: `src/config/pplp.ts` (DIMENSIONS, DIMENSION_LEVELS, DIMENSION_WEIGHTS) | ✅ Done |
+| 5 | Hook: `src/hooks/useDimensionScores.ts` | ✅ Done |
+| 6 | UI: `src/components/wallet/DimensionScoreCard.tsx` + tích hợp vào LightScoreDashboard | ✅ Done |
+| 7 | Docs: `docs/LIGHT_SCORE_MATH_SPEC.md` | ✅ Done |
 
-### Kiến trúc
+## 5 Trụ Cột
 
-**1. Tạo RPC function mới trong database**
-- Tạo function `get_qualified_reward_users(p_admin_id UUID)` trả về danh sách user đủ tiêu chí
-- Logic: JOIN `profiles`, `posts`, `donations`, `light_reputation`, `social_links` JSONB
-- Điều kiện: `is_banned = false`, real social links ≥ 2, active days ≥ 10, confirmed donations ≥ 1, light score > 0
-- Trả về: username, avatar, full_name, real_links count, days_active, donation_count, total_donated, light_score, tier, wallet_address, reward_status
-- Yêu cầu admin role (security definer)
+- 🪪 Identity (Danh tính) — profile, wallet, account age
+- ⚡ Activity (Hoạt động) — normalized light score + time decay
+- ⛓️ On-Chain — wallet, donations sent/received
+- 🔍 Transparency (Minh bạch) — fraud signals penalty
+- 🌐 Ecosystem (Hệ sinh thái) — posts, comments, donations, streak
 
-**2. Tạo component `QualifiedUsersTab.tsx`**
-- File: `src/components/admin/QualifiedUsersTab.tsx`
-- Hiển thị bảng danh sách user đủ tiêu chí với các cột: Username, Social Links, Ngày hoạt động, Donations, Light Score, Ví BSC, Trạng thái, Actions
-- Summary cards: Tổng đủ tiêu chí, Đã Approved, Đang On Hold, Chưa có ví
-- Nút **Approve** (chuyển reward_status → approved) và **Reject** (chuyển → rejected) cho từng user
-- Batch approve cho nhiều user cùng lúc
-- Nút **Xuất CSV** export toàn bộ danh sách
-- Tìm kiếm theo username
-- Sắp xếp theo light score, số social links, ngày hoạt động
+## Cấp độ mới
 
-**3. Cập nhật `UserManagementTab.tsx`**
-- Thêm tab thứ 5 "Đủ tiêu chí" với icon Trophy
-- Import và render `QualifiedUsersTab`
+| Level | Tên | Điểm |
+|-------|-----|------|
+| 🌱 | Light Seed | 0-99 |
+| 🔨 | Light Builder | 100-249 |
+| 🛡️ | Light Guardian | 250-499 |
+| 👑 | Light Leader | 500-799 |
+| 🌌 | Cosmic Contributor | 800+ |
 
-### Chi tiết kỹ thuật
+## Bước tiếp theo
 
-- RPC function sử dụng `SECURITY DEFINER` và kiểm tra `has_role(p_admin_id, 'admin')`
-- Social links đếm bằng `jsonb_array_elements` lọc URL không rỗng
-- Active days đếm `DISTINCT (created_at AT TIME ZONE 'UTC')::DATE` từ bảng `posts`
-- Donations đếm từ bảng `donations` có `status = 'confirmed'` và `tx_hash IS NOT NULL`
-- Approve/Reject gọi trực tiếp update `profiles.reward_status` + insert `audit_logs`
-- CSV xuất với BOM UTF-8 để hỗ trợ tiếng Việt trong Excel
-
+- Chạy `pplp-compute-dimensions` lần đầu để tính dimension scores cho tất cả users
+- Thiết lập cron job daily để tự động cập nhật
+- Phase 2: Dump Penalty, nâng chuẩn mint eligibility
+- Phase 3: Reputation NFT, Digital Identity Bank

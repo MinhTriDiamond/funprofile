@@ -5224,6 +5224,24 @@ export type Database = {
         }[]
       }
       get_pplp_admin_stats: { Args: never; Returns: Json }
+      get_qualified_reward_users: {
+        Args: { p_admin_id: string }
+        Returns: {
+          avatar_url: string
+          created_at: string
+          days_active: number
+          donation_count: number
+          full_name: string
+          light_score: number
+          real_links_count: number
+          reward_status: string
+          tier: number
+          total_donated: number
+          user_id: string
+          username: string
+          wallet_address: string
+        }[]
+      }
       get_recipient_leaderboard: {
         Args: { p_limit?: number; p_offset?: number; p_time_range?: string }
         Returns: {
