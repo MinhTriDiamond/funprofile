@@ -96,19 +96,16 @@ export const WalletLoginContent = ({ onSuccess }: WalletLoginContentProps) => {
       setStep('verify');
 
       // Step 3: Send signature + nonce for verification
-      const response = await fetch(`${SUPABASE_URL}/functions/v1/sso-web3-auth`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
-        body: JSON.stringify({
+      const { data, error: verifyErr } = await supabase.functions.invoke('sso-web3-auth', {
+        body: {
           wallet_address: walletAddr,
           signature,
           message: challengeData.message,
           nonce: challengeData.nonce,
-        }),
+        },
       });
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data?.error || data?.message || 'Authentication failed');
+      if (verifyErr) {
+        throw new Error(data?.error || verifyErr.message || 'Authentication failed');
       }
 
       if (data?.success && data?.token_hash) {
