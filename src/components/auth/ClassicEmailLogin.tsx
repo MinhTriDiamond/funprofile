@@ -77,7 +77,8 @@ export const ClassicEmailLogin = ({
         if (error) throw error;
         if (data.user) {
           await supabase.from('profiles').update({
-            last_login_platform: 'FUN Profile'
+            last_login_platform: 'FUN Profile',
+            has_password: true,
           }).eq('id', data.user.id);
           toast.success(t('welcomeBack'));
           onSuccess(data.user.id, false);
