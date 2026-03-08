@@ -3,11 +3,10 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 
-console.info(`[FUN Profile] Build: ${import.meta.env.VITE_BUILD_ID || 'dev'} | ${new Date().toISOString()}`);
+console.info(`[FUN Profile] Build: ${import.meta.env.VITE_BUILD_ID || "dev"} | ${new Date().toISOString()}`);
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <App />
-  </StrictMode>
+  </StrictMode>,
 );
-# Trigger build
