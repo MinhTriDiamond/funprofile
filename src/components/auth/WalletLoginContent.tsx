@@ -81,14 +81,11 @@ export const WalletLoginContent = ({ onSuccess }: WalletLoginContentProps) => {
     setLoading(true);
     try {
       // Step 1: Request challenge from server
-      const challengeRes = await fetch(`${SUPABASE_URL}/functions/v1/sso-web3-auth`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
-        body: JSON.stringify({ action: 'challenge', wallet_address: walletAddr }),
+      const { data: challengeData, error: challengeError } = await supabase.functions.invoke('sso-web3-auth', {
+        body: { action: 'challenge', wallet_address: walletAddr },
       });
-      const challengeData = await challengeRes.json();
-      if (!challengeRes.ok || !challengeData?.nonce) {
-        throw new Error(challengeData?.error || 'Failed to get challenge');
+      if (challengeError || !challengeData?.nonce) {
+        throw new Error(challengeData?.error || challengeError?.message || 'Failed to get challenge');
       }
 
       // Step 2: Sign server-provided message
