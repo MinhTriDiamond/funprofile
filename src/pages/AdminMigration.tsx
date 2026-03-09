@@ -83,37 +83,15 @@ const AdminMigration = () => {
   const skipCurrentRef = useRef(false);
   const stopProcessRef = useRef(false);
 
+  // Redirect non-admin users
   useEffect(() => {
-    checkAdminAccess();
-  }, []);
-
-  const checkAdminAccess = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        navigate('/auth');
-        return;
-      }
-
-      const { data: hasRole } = await supabase.rpc('has_role', {
-        _user_id: session.user.id,
-        _role: 'admin'
-      });
-
-      if (!hasRole) {
-        toast.error('Bạn không có quyền truy cập trang này');
-        navigate('/');
-        return;
-      }
-
-      setIsAdmin(true);
-    } catch (error) {
-      console.error('Error checking admin access:', error);
+    if (!adminLoading && !isAdmin) {
+      toast.error('Bạn không có quyền truy cập trang này');
       navigate('/');
-    } finally {
-      setLoading(false);
     }
+  }, [isAdmin, adminLoading, navigate]);
+
+  const [loading] = useState(false);
   };
 
   const getPresignedUrl = async (key: string, contentType: string, fileSize: number) => {
