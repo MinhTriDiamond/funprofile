@@ -453,7 +453,7 @@ export const UnifiedGiftSendDialog = ({
   return (
     <>
       <Dialog open={showMainDialog} onOpenChange={(open) => !open && handleDialogClose()}>
-        <DialogContent className="w-full sm:w-[95vw] max-w-md lg:max-w-[720px] max-h-[85vh] overflow-y-auto overflow-x-hidden">
+        <DialogContent className="w-full sm:w-[95vw] max-w-md lg:max-w-[720px] max-h-[85vh] overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base">
               <Gift className="w-5 h-5 text-gold shrink-0" />
