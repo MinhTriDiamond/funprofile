@@ -124,14 +124,10 @@ Deno.serve(async (req) => {
       testnetTransfers = testnetData.result || [];
     }
 
-    // Filter: only INCOMING to my wallet, FROM external wallets (not Fun Profile users)
-    const incomingExternal = [...mainnetTransfers, ...testnetTransfers].filter((t) => {
+    // Filter: only INCOMING to my wallet, known tokens
+    const incomingAll = [...mainnetTransfers, ...testnetTransfers].filter((t) => {
       const to = t.to_address?.toLowerCase();
-      const from = t.from_address?.toLowerCase();
       if (to !== myWallet) return false;
-      // Skip if sender is a Fun Profile user (already handled by record-donation)
-      if (funProfileWallets.has(from)) return false;
-      // Only known tokens
       const contract = t.address?.toLowerCase() || "";
       return !!KNOWN_TOKENS[contract] || contract === FUN_TOKEN_ADDRESS;
     });
