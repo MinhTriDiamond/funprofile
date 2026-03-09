@@ -574,7 +574,7 @@ export const usePplpAdmin = () => {
           tx_hash: null,
           submitted_at: null,
           error_message: null,
-          multisig_signatures: {} as unknown as Record<string, unknown>,
+          multisig_signatures: {} as unknown as import('@/integrations/supabase/types').Json,
           multisig_completed_groups: [],
         })
         .eq('id', requestId);
