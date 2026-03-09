@@ -12,6 +12,14 @@ const KNOWN_TOKENS: Record<string, { symbol: string; decimals: number }> = {
 // FUN token on BSC Testnet
 const FUN_TOKEN_ADDRESS = "0x39a1b047d5d143f8874888cfa1d30fb2ae6f0cd6";
 
+// Minimum amounts to filter spam/dust attacks
+const MIN_AMOUNTS: Record<string, number> = {
+  USDT: 0.01,
+  BTCB: 0.01,
+  CAMLY: 1,
+  FUN: 1,
+};
+
 interface MoralisTransfer {
   transaction_hash: string;
   from_address: string;
@@ -183,6 +191,12 @@ Deno.serve(async (req) => {
       const fracPart = rawValue % divisor;
       const amount =
         `${intPart}.${fracPart.toString().padStart(tokenDecimals, "0")}`.replace(/\.?0+$/, "") || "0";
+
+      const numAmount = parseFloat(amount);
+
+      // Skip zero-amount and dust/spam transactions
+      const minAmount = MIN_AMOUNTS[tokenSymbol] ?? 0.01;
+      if (numAmount <= 0 || numAmount < minAmount) continue;
 
       const senderAddr = transfer.from_address.toLowerCase();
       const senderProfile = walletToProfile.get(senderAddr);
