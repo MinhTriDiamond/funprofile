@@ -125,8 +125,10 @@ const SecuritySettingsContent = () => {
         : 'Bạn cần liên kết email để đặt mật khẩu',
       status: hasPassword ? 'connected' : 'disconnected',
       statusLabel: hasPassword ? 'Đã đặt' : 'Chưa đặt',
-      action: !hasPassword && hasEmailLoginMethod ? () => setShowSetPassword(true) : undefined,
-      actionLabel: 'Đặt mật khẩu',
+      action: hasPassword
+        ? () => setShowChangePassword(true)
+        : (hasEmailLoginMethod ? () => setShowSetPassword(true) : undefined),
+      actionLabel: hasPassword ? 'Đổi mật khẩu' : 'Đặt mật khẩu',
     },
     {
       icon: Wallet, label: 'Ví Web3',
