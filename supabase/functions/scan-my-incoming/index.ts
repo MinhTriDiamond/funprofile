@@ -80,17 +80,22 @@ Deno.serve(async (req) => {
 
     const myWallet = profile.public_wallet_address.toLowerCase();
 
-    // Get all Fun Profile wallet addresses to exclude internal transfers
+    // Get all Fun Profile wallet addresses to map sender_id
     const { data: allProfiles } = await adminClient
       .from("profiles")
-      .select("public_wallet_address")
+      .select("id, public_wallet_address, username, display_name")
       .not("public_wallet_address", "is", null);
 
-    const funProfileWallets = new Set(
-      (allProfiles || [])
-        .map((p) => p.public_wallet_address?.toLowerCase())
-        .filter(Boolean) as string[]
-    );
+    const walletToProfile = new Map<string, { id: string; username: string; display_name: string | null }>();
+    for (const p of allProfiles || []) {
+      if (p.public_wallet_address) {
+        walletToProfile.set(p.public_wallet_address.toLowerCase(), {
+          id: p.id,
+          username: p.username,
+          display_name: p.display_name,
+        });
+      }
+    }
 
     // Fetch ERC20 transfers TO user's wallet
     const moralisHeaders = { "X-API-Key": moralisApiKey, Accept: "application/json" };
