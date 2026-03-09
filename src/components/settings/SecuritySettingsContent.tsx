@@ -250,6 +250,7 @@ const SecuritySettingsContent = () => {
 
       {/* Dialogs */}
       <SetPasswordDialog open={showSetPassword} onOpenChange={setShowSetPassword} nextAction={getNextAction()} onNextAction={handleNextAction} />
+      <ChangePasswordDialog open={showChangePassword} onOpenChange={setShowChangePassword} />
       <LinkEmailDialog open={showLinkEmail} onOpenChange={setShowLinkEmail} />
       <LinkWalletDialog open={showLinkWallet} onOpenChange={setShowLinkWallet} />
     </div>
