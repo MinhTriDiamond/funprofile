@@ -37,26 +37,22 @@ export const LeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) => {
   const navigate = useNavigate();
   const { t } = useLanguage();
   const { userId, isAuthenticated } = useCurrentUser();
-  const [profile, setProfile] = useState<Profile | null>(null);
   const { isAdmin } = useAdminRole();
-  // Profile state kept local — will move to React Query in PR4
 
-  useEffect(() => {
-    if (!userId) {
-      setProfile(null);
-      return;
-    }
-
-    const fetchProfile = async () => {
+  const { data: profile = null } = useQuery({
+    queryKey: ['sidebar-profile', userId],
+    queryFn: async () => {
       const { data } = await supabase
         .from('profiles')
         .select('id, username, display_name, avatar_url, full_name')
-        .eq('id', userId)
+        .eq('id', userId!)
         .single();
-      setProfile(data);
-    };
-    fetchProfile();
-  }, [userId]);
+      return data as Profile | null;
+    },
+    enabled: !!userId,
+    staleTime: 5 * 60_000,
+    gcTime: 10 * 60_000,
+  });
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
