@@ -28,7 +28,7 @@ interface FacebookCreatePostProps {
   onPostCreated: () => void;
 }
 
-export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) => {
+export const CreatePost = ({ onPostCreated }: FacebookCreatePostProps) => {
   const navigate = useNavigate();
   const { t, language } = useLanguage();
   const { canCreatePost, isLimitedAccount, isLoading: capLoading } = useAccountCapabilities();
