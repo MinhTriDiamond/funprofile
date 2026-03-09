@@ -184,9 +184,13 @@ Deno.serve(async (req) => {
       const amount =
         `${intPart}.${fracPart.toString().padStart(tokenDecimals, "0")}`.replace(/\.?0+$/, "") || "0";
 
+      const senderAddr = transfer.from_address.toLowerCase();
+      const senderProfile = walletToProfile.get(senderAddr);
+      const isInternal = !!senderProfile;
+
       donationsToInsert.push({
-        sender_id: null,
-        sender_address: transfer.from_address.toLowerCase(),
+        sender_id: senderProfile?.id || null,
+        sender_address: senderAddr,
         recipient_id: userId,
         amount,
         token_symbol: tokenSymbol,
@@ -196,12 +200,14 @@ Deno.serve(async (req) => {
         status: "confirmed",
         confirmed_at: transfer.block_timestamp,
         created_at: transfer.block_timestamp,
-        is_external: true,
+        is_external: !isInternal,
         card_theme: "celebration",
         card_sound: "rich-1",
         message: null,
         light_score_earned: 0,
-        metadata: { sender_name: "Ví ngoài" },
+        metadata: {
+          sender_name: senderProfile?.display_name || senderProfile?.username || "Ví ngoài",
+        },
       });
     }
 
