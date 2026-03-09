@@ -13,15 +13,24 @@ Deno.serve(async (req) => {
   try {
     const adminClient = createAdminClient();
 
-    // Get auto-scanned internal donations (only from Father for now since that's the main case)
-    const { data: donations } = await adminClient
+    // Get internal donations - process in smaller batches
+    const url = new URL(req.url);
+    const senderFilter = url.searchParams.get("sender_id") || null;
+    
+    let query = adminClient
       .from("donations")
       .select("id, sender_id, recipient_id, amount, token_symbol, tx_hash, created_at")
       .not("sender_id", "is", null)
       .not("recipient_id", "is", null)
       .eq("status", "confirmed")
       .order("created_at", { ascending: true })
-      .limit(1000);
+      .limit(500);
+    
+    if (senderFilter) {
+      query = query.eq("sender_id", senderFilter);
+    }
+    
+    const { data: donations } = await query;
 
     if (!donations || donations.length === 0) {
       return new Response(JSON.stringify({ message: "No donations", count: 0 }), {
