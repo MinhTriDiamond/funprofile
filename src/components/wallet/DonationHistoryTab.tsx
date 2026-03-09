@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/select';
 import { useDonationHistory, useDonationStats, DonationRecord } from '@/hooks/useDonationHistory';
 import { exportDonationsToCSV } from '@/utils/exportDonations';
+import { useScanIncoming } from '@/hooks/useScanIncoming';
 import { DonationSuccessCard } from '@/components/donations/DonationSuccessCard';
 import { DonationReceivedCard } from '@/components/donations/DonationReceivedCard';
 import { formatNumber, formatDate, shortenAddress } from '@/lib/formatters';
