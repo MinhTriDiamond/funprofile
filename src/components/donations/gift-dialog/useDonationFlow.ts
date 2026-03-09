@@ -89,7 +89,7 @@ export function useDonationFlow(params: UseDonationFlowParams) {
       try {
         const { data: donationData, error } = await supabase.functions.invoke('record-donation', { body });
         if (!error && donationData?.donation?.id) {
-          console.log(`[GIFT] record-donation OK (attempt ${attempt + 1}):`, donationData.donation.id);
+          logger.debug(`[GIFT] record-donation OK (attempt ${attempt + 1}):`, donationData.donation.id);
           localStorage.removeItem(`pending_donation_${hash}`);
           return true;
         }
