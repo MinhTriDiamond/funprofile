@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { Phone, Video, PhoneOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import logger from '@/lib/logger';
 import type { CallSession } from '../types';
 
 interface IncomingCallDialogProps {

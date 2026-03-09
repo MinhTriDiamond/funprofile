@@ -9,6 +9,7 @@ import { useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { queryClient } from '@/lib/queryClient';
 import { toast } from 'sonner';
+import logger from '@/lib/logger';
 import type { ResolvedRecipient, MultiSendResult } from './types';
 import type { TokenOption } from '@/components/donations/TokenSelector';
 import type { MessageTemplate } from '@/components/donations/QuickGiftPicker';

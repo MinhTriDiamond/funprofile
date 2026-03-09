@@ -5,6 +5,7 @@ import { Progress } from '@/components/ui/progress';
 import { Video, X, Loader2, CheckCircle, AlertCircle, Clock, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { deleteFromR2 } from '@/utils/r2Upload';
+import logger from '@/lib/logger';
 
 interface VideoUploaderUppyProps {
   onUploadComplete: (result: { uid: string; url: string; thumbnailUrl: string; localThumbnail?: string }) => void;

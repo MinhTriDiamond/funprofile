@@ -5,6 +5,7 @@ import { Play, Pause, Volume2, VolumeX, Maximize, Loader2 } from 'lucide-react';
 import { checkVideoStatus, extractStreamUid } from '@/utils/streamUpload';
 import { VideoProcessingState } from './VideoProcessingState';
 import { VideoErrorState } from './VideoErrorState';
+import logger from '@/lib/logger';
 
 interface StreamPlayerProps {
   src: string; // HLS manifest URL, Stream UID, or iframe embed URL
