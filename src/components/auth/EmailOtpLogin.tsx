@@ -114,15 +114,13 @@ export const EmailOtpLogin = ({ onSuccess }: EmailOtpLoginProps) => {
           throw new Error('Failed to establish session');
         }
 
-        const { data: sessionCheck } = await supabase.auth.getSession();
-        if (!sessionCheck.session) {
-          throw new Error('Session not established');
-        }
-
-        await supabase
+        // Fire-and-forget profile update — don't block navigation
+        supabase
           .from('profiles')
           .update({ last_login_platform: 'FUN Profile' })
-          .eq('id', data.user_id);
+          .eq('id', data.user_id)
+          .then(() => logger.debug('[OTP] Profile updated for:', data.user_id))
+          .catch((e) => logger.warn('[OTP] Profile update failed:', e));
 
         logger.debug('[OTP] Session established for user:', data.user_id);
         toast.success(t('welcomeBack'));
