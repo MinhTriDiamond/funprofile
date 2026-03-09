@@ -132,9 +132,9 @@ Deno.serve(async (req) => {
       return !!KNOWN_TOKENS[contract] || contract === FUN_TOKEN_ADDRESS;
     });
 
-    if (incomingExternal.length === 0) {
+    if (incomingAll.length === 0) {
       return new Response(
-        JSON.stringify({ newTransfers: 0, message: "Không tìm thấy giao dịch mới từ ví ngoài" }),
+        JSON.stringify({ newTransfers: 0, message: "Không tìm thấy giao dịch mới" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
