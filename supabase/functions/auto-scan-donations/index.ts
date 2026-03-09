@@ -209,9 +209,10 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Insert all new donations
+    // Insert all new donations + create gift_celebration posts
     if (allDonationsToInsert.length > 0) {
-      // Insert in batches of 50
+      const postsToInsert: Record<string, unknown>[] = [];
+
       for (let i = 0; i < allDonationsToInsert.length; i += 50) {
         const batch = allDonationsToInsert.slice(i, i + 50);
         const { error: insertError } = await adminClient
@@ -221,6 +222,58 @@ Deno.serve(async (req) => {
           console.error("Insert error:", insertError);
         } else {
           totalNewTransfers += batch.length;
+
+          // Create gift_celebration posts for internal (user-to-user) donations
+          for (const d of batch) {
+            const senderId = d.sender_id as string | null;
+            const recipientId = d.recipient_id as string | null;
+            if (!senderId || !recipientId) continue;
+
+            const senderProfile = walletToProfile.get((d.sender_address as string) || "");
+            const recipientProfile = walletToProfile.get(
+              allWalletAddresses.find(w => walletToProfile.get(w)?.id === recipientId) || ""
+            );
+
+            const senderName = senderProfile?.display_name || senderProfile?.username || "Unknown";
+            const recipientName = recipientProfile?.display_name || recipientProfile?.username || "Unknown";
+
+            postsToInsert.push({
+              user_id: senderId,
+              content: `${senderName} đã tặng ${d.amount} ${d.token_symbol} cho ${recipientName}`,
+              post_type: "gift_celebration",
+              tx_hash: d.tx_hash,
+              gift_sender_id: senderId,
+              gift_recipient_id: recipientId,
+              gift_token: d.token_symbol,
+              gift_amount: String(d.amount),
+              gift_message: null,
+              is_highlighted: true,
+              highlight_expires_at: null,
+              visibility: "public",
+              moderation_status: "approved",
+              created_at: d.created_at,
+            });
+          }
+        }
+      }
+
+      // Check existing posts to avoid duplicates
+      if (postsToInsert.length > 0) {
+        const postTxHashes = postsToInsert.map(p => p.tx_hash as string).filter(Boolean);
+        const { data: existingPosts } = await adminClient
+          .from("posts")
+          .select("tx_hash")
+          .eq("post_type", "gift_celebration")
+          .in("tx_hash", postTxHashes);
+
+        const existingPostSet = new Set((existingPosts || []).map(p => p.tx_hash));
+        const newPosts = postsToInsert.filter(p => !existingPostSet.has(p.tx_hash as string));
+
+        for (let i = 0; i < newPosts.length; i += 50) {
+          const batch = newPosts.slice(i, i + 50);
+          const { error: postErr } = await adminClient.from("posts").insert(batch);
+          if (postErr) console.error("Post insert error:", postErr);
+          else console.log(`Created ${batch.length} gift_celebration posts`);
         }
       }
     }
