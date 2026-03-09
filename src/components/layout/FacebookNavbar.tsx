@@ -326,10 +326,10 @@ export const FacebookNavbar = () => {
                           >
                             <img 
                               src={lang.flagUrl} 
-                              alt={lang.name}
+                              alt={lang.fullName}
                               className="w-5 h-4 object-cover rounded-sm"
                             />
-                            <span>{lang.name}</span>
+                            <span>{lang.fullName}</span>
                           </button>
                         ))}
                       </div>
