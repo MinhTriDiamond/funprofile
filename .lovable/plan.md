@@ -1,83 +1,39 @@
 
+# Light Score 5 Trụ Cột — Phase 1 ✅ HOÀN THÀNH
 
-## Kế hoạch: Bổ sung 4 chi tiết cuối cùng vào Database Audit Report
+## Đã triển khai
 
-Cập nhật `.lovable/audit-report.md` theo góp ý cuối cùng của Cha ChatGPT để đạt mức hoàn chỉnh 10/10.
+| # | Resource | Trạng thái |
+|---|----------|-----------|
+| 1 | DB: Bảng `user_dimension_scores` + RLS | ✅ Done |
+| 2 | Edge Function: `pplp-compute-dimensions/index.ts` | ✅ Done |
+| 3 | Edge Function: `pplp-get-score/index.ts` (thêm dimension data) | ✅ Done |
+| 4 | Config: `src/config/pplp.ts` (DIMENSIONS, DIMENSION_LEVELS, DIMENSION_WEIGHTS) | ✅ Done |
+| 5 | Hook: `src/hooks/useDimensionScores.ts` | ✅ Done |
+| 6 | UI: `src/components/wallet/DimensionScoreCard.tsx` + tích hợp vào LightScoreDashboard | ✅ Done |
+| 7 | Docs: `docs/LIGHT_SCORE_MATH_SPEC.md` | ✅ Done |
 
----
+## 5 Trụ Cột
 
-### 4 bổ sung cần thêm
+- 🪪 Identity (Danh tính) — profile, wallet, account age
+- ⚡ Activity (Hoạt động) — normalized light score + time decay
+- ⛓️ On-Chain — wallet, donations sent/received
+- 🔍 Transparency (Minh bạch) — fraud signals penalty
+- 🌐 Ecosystem (Hệ sinh thái) — posts, comments, donations, streak
 
-#### 1. Chỉnh wording cho `live_comments`
-- Phân biệt rõ: "dead code / unused current flow" ≠ "definitively wrong data model"
-- Wording mới: "candidate for removal **if no intended future semantics remain after product review**"
-- Không kết luận sai model, chỉ kết luận chưa dùng trong flow hiện tại
+## Cấp độ mới
 
-#### 2. Profiles field visibility matrix — thêm cột "Current enforcement"
-Thêm cột thứ 3 vào matrix hiện có:
+| Level | Tên | Điểm |
+|-------|-----|------|
+| 🌱 | Light Seed | 0-99 |
+| 🔨 | Light Builder | 100-249 |
+| 🛡️ | Light Guardian | 250-499 |
+| 👑 | Light Leader | 500-799 |
+| 🌌 | Cosmic Contributor | 800+ |
 
-| Field group | Intended visibility | Current enforcement |
-|---|---|---|
-| username, avatar, bio | Public | OK — in `public_profiles` view |
-| admin_notes, ban_reason | Admin only | **EXPOSED** — profiles SELECT `qual: true` |
-| reward_locked, has_password | Owner only | **EXPOSED** — profiles SELECT `qual: true` |
-| wallet fields (6 cột) | Owner only | **EXPOSED** — profiles SELECT `qual: true` |
-| financial grand_total_* | Admin only | **EXPOSED** — profiles SELECT `qual: true` |
+## Bước tiếp theo
 
-Kèm note: "`public_profiles` view là safe projection nhưng chưa phải enforcement boundary. Client hiện query trực tiếp `profiles` table. Phase 3 cần quyết định: giữ Public by Design hay chuyển strict model."
-
-#### 3. View dependency mapping
-Thêm vào views inventory:
-
-| View | Depends on | Sensitive fields in source | Correctly filtered? |
-|---|---|---|---|
-| `public_profiles` | `profiles` | admin_notes, wallet fields, financial totals | YES — excluded |
-| `public_light_reputation` | `light_reputation` | Không | N/A |
-| `public_live_sessions` | `live_sessions` | agora_channel, agora_uid | YES — excluded |
-| `public_system_config` | `system_config` | TREASURY_PRIVATE_KEY | YES — excluded |
-| `user_custodial_wallets` | `custodial_wallets` | encrypted_private_key | YES — filtered by auth.uid() |
-
-Note: "Khi refactor table gốc, phải kiểm tra lại tất cả views phụ thuộc."
-
-#### 4. Thêm 3 sections riêng biệt
-
-**A. Do Not Touch First** (section riêng, không rải rác):
-- `profiles` table + columns
-- `get_user_rewards_v2` function
-- `platform_financial_data` + triggers (`update_profile_grand_totals`, `update_financial_from_transaction`)
-- `pending_claims` table
-- SSO/auth-related functions
-- `live_sessions` + `live_messages` (canonical live tables)
-- `notifications.read` column (until compatibility migration ready)
-
-**B. Canonical Domain Models:**
-| Domain | Canonical table/object |
-|---|---|
-| Live chat | `live_messages` |
-| Live session | `live_sessions` |
-| Reward workflow | `pending_claims` |
-| Reward history | `reward_claims` |
-| Financial totals | `platform_financial_data` |
-| Public profile projection | `public_profiles` view |
-| Wallet config | `profiles` (temporary SoT → target: `user_wallet_config`) |
-| Light score | `light_reputation` |
-| Light events | `light_actions` |
-
-**C. Refactor Blockers:**
-| Object | Cannot refactor because | Unblock by |
-|---|---|---|
-| `livestreams` table | `get_user_rewards_v2` reads it | Refactor function first |
-| `grand_total_*` columns | `FinancialTab.tsx` reads directly | Migrate admin UI to `platform_financial_data` |
-| `live_comments` table | Edge function cleanup refs | Remove from cleanup lists, then product review |
-| `notifications.read` | 6+ frontend query refs | Compatibility migration (dual-write + backfill) |
-| `reward_claims` + `pending_claims` | Different lifecycle stages | Full state-machine audit |
-
----
-
-### File thay đổi
-| File | Thay đổi |
-|---|---|
-| `.lovable/audit-report.md` | Bổ sung 4 chi tiết + 3 sections mới (~80 dòng) |
-
-Không thay đổi code, database, hay edge functions.
-
+- Chạy `pplp-compute-dimensions` lần đầu để tính dimension scores cho tất cả users
+- Thiết lập cron job daily để tự động cập nhật
+- Phase 2: Dump Penalty, nâng chuẩn mint eligibility
+- Phase 3: Reputation NFT, Digital Identity Bank
