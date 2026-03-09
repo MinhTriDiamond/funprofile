@@ -164,6 +164,10 @@ export function DonationHistoryTab() {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="outline" size="sm" onClick={scan} disabled={isScanning || isLoading} className="gap-2 border-primary/30 text-primary hover:bg-primary/5">
+            <Radar className={`w-4 h-4 ${isScanning ? 'animate-spin' : ''}`} />
+            {isScanning ? 'Đang quét...' : 'Quét ví ngoài'}
+          </Button>
           <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isLoading} className="gap-2">
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
             Làm mới
