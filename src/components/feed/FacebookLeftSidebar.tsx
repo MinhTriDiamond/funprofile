@@ -32,7 +32,7 @@ interface FacebookLeftSidebarProps {
   onItemClick?: () => void;
 }
 
-export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) => {
+export const LeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) => {
   const navigate = useNavigate();
   const { t } = useLanguage();
   const { userId, isAuthenticated } = useCurrentUser();
