@@ -33,6 +33,7 @@ const SecuritySettingsContent = () => {
   const loginMethods = useLoginMethods();
 
   const [showSetPassword, setShowSetPassword] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
   const [showLinkEmail, setShowLinkEmail] = useState(false);
   const [showLinkWallet, setShowLinkWallet] = useState(false);
 
