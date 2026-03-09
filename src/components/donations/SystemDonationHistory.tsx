@@ -548,14 +548,8 @@ export function SystemDonationHistory() {
                   );
                 })}
               </div>
-                          </Avatar>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-1.5">
-                              <p className="font-semibold text-sm truncate">
-                                {donation.sender?.username 
-                                  ? `@${donation.sender.username}`
-                                  : (donation.sender_address ? shortenAddress(donation.sender_address) : '@Unknown')}
-                              </p>
+
+
                               {donation.is_external && (
                                 <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-100 text-[10px] px-1 py-0 shrink-0">Ví ngoài</Badge>
                               )}
