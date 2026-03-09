@@ -223,9 +223,11 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Insert all new donations + create gift_celebration posts
+    // Insert all new donations + create gift_celebration posts + notifications + chat messages
     if (allDonationsToInsert.length > 0) {
       const postsToInsert: Record<string, unknown>[] = [];
+      // Track internal donations for notification & chat
+      const internalDonations: Record<string, unknown>[] = [];
 
       for (let i = 0; i < allDonationsToInsert.length; i += 50) {
         const batch = allDonationsToInsert.slice(i, i + 50);
@@ -237,7 +239,6 @@ Deno.serve(async (req) => {
         } else {
           totalNewTransfers += batch.length;
 
-          // Create gift_celebration posts for internal (user-to-user) donations
           for (const d of batch) {
             const senderId = d.sender_id as string | null;
             const recipientId = d.recipient_id as string | null;
@@ -267,11 +268,13 @@ Deno.serve(async (req) => {
               moderation_status: "approved",
               created_at: d.created_at,
             });
+
+            internalDonations.push(d);
           }
         }
       }
 
-      // Check existing posts to avoid duplicates
+      // Check existing posts to avoid duplicates, then insert
       if (postsToInsert.length > 0) {
         const postTxHashes = postsToInsert.map(p => p.tx_hash as string).filter(Boolean);
         const { data: existingPosts } = await adminClient
@@ -283,11 +286,103 @@ Deno.serve(async (req) => {
         const existingPostSet = new Set((existingPosts || []).map(p => p.tx_hash));
         const newPosts = postsToInsert.filter(p => !existingPostSet.has(p.tx_hash as string));
 
+        // Insert posts and collect IDs for notifications
+        const insertedPostsByTx = new Map<string, string>();
         for (let i = 0; i < newPosts.length; i += 50) {
           const batch = newPosts.slice(i, i + 50);
-          const { error: postErr } = await adminClient.from("posts").insert(batch);
+          const { data: inserted, error: postErr } = await adminClient
+            .from("posts")
+            .insert(batch)
+            .select("id, tx_hash");
           if (postErr) console.error("Post insert error:", postErr);
-          else console.log(`Created ${batch.length} gift_celebration posts`);
+          else {
+            console.log(`Created ${batch.length} gift_celebration posts`);
+            for (const p of inserted || []) {
+              insertedPostsByTx.set(p.tx_hash, p.id);
+            }
+          }
+        }
+
+        // --- Create notifications for internal donations ---
+        const notificationsToInsert = internalDonations
+          .filter(d => !existingPostSet.has(d.tx_hash as string))
+          .map(d => ({
+            user_id: d.recipient_id as string,
+            actor_id: d.sender_id as string,
+            post_id: insertedPostsByTx.get(d.tx_hash as string) || null,
+            type: "donation",
+            read: false,
+          }));
+
+        if (notificationsToInsert.length > 0) {
+          for (let i = 0; i < notificationsToInsert.length; i += 50) {
+            const batch = notificationsToInsert.slice(i, i + 50);
+            const { error: notifErr } = await adminClient.from("notifications").insert(batch);
+            if (notifErr) console.error("Notification insert error:", notifErr);
+            else console.log(`Created ${batch.length} donation notifications`);
+          }
+        }
+
+        // --- Send chat messages for internal donations ---
+        for (const d of internalDonations) {
+          if (existingPostSet.has(d.tx_hash as string)) continue;
+          const senderId = d.sender_id as string;
+          const recipientId = d.recipient_id as string;
+          if (senderId === recipientId) continue;
+
+          try {
+            const senderProfile = walletToProfile.get((d.sender_address as string) || "");
+            const senderName = senderProfile?.display_name || senderProfile?.username || "Unknown";
+            const txHashShort = (d.tx_hash as string).substring(0, 10) + "...";
+
+            // Find existing direct conversation
+            const { data: existingConvs } = await adminClient
+              .from("conversations")
+              .select("id, conversation_participants!inner(user_id)")
+              .eq("type", "direct");
+
+            let conversationId: string | null = null;
+            if (existingConvs) {
+              for (const conv of existingConvs) {
+                const parts = (conv.conversation_participants as { user_id: string }[]).map(p => p.user_id);
+                if (parts.length === 2 && parts.includes(senderId) && parts.includes(recipientId)) {
+                  conversationId = conv.id;
+                  break;
+                }
+              }
+            }
+
+            // Create conversation if not exists
+            if (!conversationId) {
+              const { data: newConv } = await adminClient
+                .from("conversations")
+                .insert({ type: "direct", created_by: senderId })
+                .select("id")
+                .single();
+              if (newConv) {
+                conversationId = newConv.id;
+                await adminClient.from("conversation_participants").insert([
+                  { conversation_id: conversationId, user_id: senderId, role: "member" },
+                  { conversation_id: conversationId, user_id: recipientId, role: "member" },
+                ]);
+              }
+            }
+
+            if (conversationId) {
+              const msgContent = `🎁 ${senderName} đã tặng bạn ${d.amount} ${d.token_symbol}!\n💰 TX: ${txHashShort}`;
+              await adminClient.from("messages").insert({
+                conversation_id: conversationId,
+                sender_id: senderId,
+                content: msgContent,
+              });
+              await adminClient.from("conversations").update({
+                last_message_at: new Date().toISOString(),
+                last_message_preview: msgContent.substring(0, 100),
+              }).eq("id", conversationId);
+            }
+          } catch (chatErr) {
+            console.error(`Chat message error for tx ${d.tx_hash}:`, chatErr);
+          }
         }
       }
     }
