@@ -234,7 +234,7 @@ export const StreamPlayer = memo(({
           } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
             hls.recoverMediaError();
           } else {
-            console.log('[StreamPlayer] Falling back to iframe embed');
+            logger.debug('[StreamPlayer] Falling back to iframe embed');
             setUseIframeFallback(true);
           }
         }

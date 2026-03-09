@@ -43,7 +43,7 @@ export function IncomingCallDialog({ callSession, onAnswer, onDecline }: Incomin
     
     // Try to play (may fail if no user interaction yet)
     ringtone.play().catch(err => {
-      console.log('[Ringtone] Autoplay blocked:', err.message);
+      logger.debug('[Ringtone] Autoplay blocked:', err.message);
     });
 
     return () => {

@@ -138,7 +138,7 @@ export function useDonationFlow(params: UseDonationFlowParams) {
         }
       }
 
-      console.log(`[GIFT] Recorded ${recorded}/${successResults.length} donations`);
+      logger.debug(`[GIFT] Recorded ${recorded}/${successResults.length} donations`);
       if (recorded > 0) invalidateDonationCache();
       if (recorded < successResults.length) {
         toast.warning(

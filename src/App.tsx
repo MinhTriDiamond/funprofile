@@ -13,6 +13,7 @@ import { Web3Provider } from "@/components/providers/Web3Provider";
 import { DonationReceivedNotification } from "@/components/donations/DonationReceivedNotification";
 import { CallProvider } from "@/contexts/CallContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import logger from "@/lib/logger";
 
 
 import { usePendingDonationRecovery } from "@/hooks/usePendingDonationRecovery";

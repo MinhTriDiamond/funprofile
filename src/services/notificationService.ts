@@ -73,7 +73,7 @@ async function ensureChannel(userId: string) {
     )
     .subscribe((status) => {
       if (process.env.NODE_ENV === 'development') {
-        console.log('[NotifService] channel status:', status);
+        logger.debug('[NotifService] channel status:', status);
       }
     });
 }

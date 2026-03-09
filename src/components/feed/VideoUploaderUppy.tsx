@@ -347,7 +347,7 @@ export const VideoUploaderUppy = ({
     // Clean up uploaded file from R2
     const keyToDelete = uploadState.videoKey;
     if (keyToDelete) {
-      console.log('[VideoUploader] Cleaning up cancelled upload:', keyToDelete);
+      logger.debug('[VideoUploader] Cleaning up cancelled upload:', keyToDelete);
       deleteFromR2(keyToDelete).catch(err => console.warn('[VideoUploader] Cleanup error:', err));
     }
 
