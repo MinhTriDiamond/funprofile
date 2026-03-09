@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useAdminRole } from '@/hooks/useAdminRole';
 import type { PostStats } from '@/hooks/useFeedPosts';
 import type { ProfilePostItem, OriginalProfilePost, SharedProfilePost, BasePostFields, ProfilePostProfile, ProfilePostReaction, ProfilePostComment } from '@/types/profilePosts';
 
