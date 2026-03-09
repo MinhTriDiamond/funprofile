@@ -92,32 +92,12 @@ export const FacebookNavbar = () => {
 
   const isActive = (path: string) => location.pathname === path;
 
-  // Language options with country flag images (using flagcdn.com for consistent display)
-  const languageOptions = [
-    { code: 'vi' as const, name: 'Tiếng Việt', flagUrl: 'https://flagcdn.com/w40/vn.png' },
-    { code: 'en' as const, name: 'English', flagUrl: 'https://flagcdn.com/w40/us.png' },
-    { code: 'zh' as const, name: '中文', flagUrl: 'https://flagcdn.com/w40/cn.png' },
-    { code: 'ja' as const, name: '日本語', flagUrl: 'https://flagcdn.com/w40/jp.png' },
-    { code: 'ko' as const, name: '한국어', flagUrl: 'https://flagcdn.com/w40/kr.png' },
-    { code: 'th' as const, name: 'ไทย', flagUrl: 'https://flagcdn.com/w40/th.png' },
-    { code: 'id' as const, name: 'Indonesia', flagUrl: 'https://flagcdn.com/w40/id.png' },
-    { code: 'fr' as const, name: 'Français', flagUrl: 'https://flagcdn.com/w40/fr.png' },
-    { code: 'es' as const, name: 'Español', flagUrl: 'https://flagcdn.com/w40/es.png' },
-    { code: 'de' as const, name: 'Deutsch', flagUrl: 'https://flagcdn.com/w40/de.png' },
-    { code: 'pt' as const, name: 'Português', flagUrl: 'https://flagcdn.com/w40/br.png' },
-    { code: 'ru' as const, name: 'Русский', flagUrl: 'https://flagcdn.com/w40/ru.png' },
-    { code: 'ar' as const, name: 'العربية', flagUrl: 'https://flagcdn.com/w40/sa.png' },
-  ];
-
-  // Navigation items for center nav (Desktop only)
-  const iconNavItems = [
-    { icon: Home, path: '/', label: t('home') },
-    { icon: Users, path: '/friends', label: t('friends') },
-    { icon: Film, path: '/reels', label: 'Reels' },
-    { icon: MessageCircle, path: '/chat', label: 'Chat' },
-    // Bell (Notification) is handled separately with NotificationDropdown component
-    { icon: Wallet, path: '/wallet', label: 'Wallet' },
-  ];
+  // Navigation items from central config
+  const iconNavItems = topNavItems.map(item => ({
+    icon: { Home, Users, Film, MessageCircle, Wallet }[item.iconName!] || Home,
+    path: item.route,
+    label: t(item.labelKey as any) || item.labelKey,
+  }));
 
   // Mint nav item with GIF logo (inserted after iconNavItems in render)
 
