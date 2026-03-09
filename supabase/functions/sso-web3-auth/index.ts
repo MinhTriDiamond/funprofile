@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { verifyMessage as ethersVerifyMessage } from "npm:ethers@6/utils";
+import { ethers } from "npm:ethers@6";
+const ethersVerifyMessage = ethers.verifyMessage;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
