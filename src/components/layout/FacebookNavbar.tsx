@@ -40,7 +40,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { FacebookLeftSidebar } from '@/components/feed/FacebookLeftSidebar';
+import { LeftSidebar } from '@/components/feed/FacebookLeftSidebar';
 import {
   Tooltip,
   TooltipContent,
