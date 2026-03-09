@@ -13,8 +13,6 @@ import { AngelFloatingButton } from '@/components/angel-ai';
 import honorBoardIcon from '@/assets/honor-board-icon.png';
 import { UnifiedGiftSendDialog } from '@/components/donations/UnifiedGiftSendDialog';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
-import { mobileBottomNavItems } from '@/config/navigation';
-import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 export const MobileBottomNav = memo(() => {
   const navigate = useNavigate();
