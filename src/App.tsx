@@ -41,6 +41,7 @@ const Benefactors = lazy(() => import("./pages/Benefactors"));
 const Donations = lazy(() => import("./pages/Donations"));
 const Users = lazy(() => import("./pages/Users"));
 const Reels = lazy(() => import("./pages/Reels"));
+const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
 
 const LiveDiscoveryPage = lazy(() => import("./pages/LiveDiscoveryPage"));
 const LiveHostPage = lazy(() => import("./modules/live/pages/LiveHostPage").then(m => ({ default: m.default })));
@@ -123,6 +124,7 @@ function App() {
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/set-password" element={<SetPassword />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
+                  <Route path="/verify-email" element={<VerifyEmail />} />
                   <Route path="/law-of-light" element={<LawOfLight />} />
                   <Route path="/" element={<Feed />} />
                   <Route path="/friends" element={<Friends />} />
