@@ -1,5 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { verifyMessage as ethersVerifyMessage } from "https://cdn.jsdelivr.net/npm/ethers@6.13.4/+esm";
+import { verifyMessage as ethersVerifyMessage } from "npm:ethers@6/utils";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -53,6 +53,26 @@ function getSupabase() {
 /** Build the internal placeholder email for a wallet address */
 function walletEmail(addr: string): string {
   return `wallet_${addr.toLowerCase()}@internal.fun.local`;
+}
+
+/** Log security-relevant events (fire-and-forget) */
+async function logSecurityEvent(
+  supabase: ReturnType<typeof getSupabase>,
+  action: string,
+  details: Record<string, unknown>,
+  ipAddress: string | null,
+  userId?: string,
+) {
+  try {
+    await supabase.from('account_activity_logs').insert({
+      user_id: userId || '00000000-0000-0000-0000-000000000000',
+      action,
+      details,
+      ip_address: ipAddress,
+    });
+  } catch (e) {
+    console.error('[WEB3-AUTH] Failed to log security event:', e);
+  }
 }
 
 /** Find existing profile by wallet address across all wallet columns + email fallback */
@@ -110,6 +130,8 @@ Deno.serve(async (req: Request) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const ipAddress = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('cf-connecting-ip') || null;
+
   try {
     const body = await req.json();
     const { wallet_address, signature, message, action, nonce } = body;
@@ -146,8 +168,6 @@ Deno.serve(async (req: Request) => {
 
       const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
       const challengeMessage = `Welcome to FUN Profile!\n\nSign this message to authenticate.\n\nWallet: ${normalizedAddr}\nNonce: ${challengeNonce}\nTimestamp: ${new Date().toISOString()}`;
-
-      const ipAddress = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('cf-connecting-ip') || null;
 
       const { error: insertError } = await sb.from('wallet_challenges').insert({
         wallet_address: normalizedAddr,
@@ -192,15 +212,45 @@ Deno.serve(async (req: Request) => {
 
     if (challengeError || !challenge) {
       console.warn('[WEB3-AUTH] Invalid or expired nonce');
+      await logSecurityEvent(supabase, 'wallet_login_failed_invalid_nonce', {
+        wallet_address: normalizedAddress,
+        nonce_provided: nonce?.substring(0, 8) + '...',
+      }, ipAddress);
       return jsonResponse({ success: false, error: 'Invalid or expired nonce. Please request a new challenge.' }, 401);
     }
 
-    // Mark nonce as used
+    // Mark nonce as used IMMEDIATELY (before any further checks)
     await supabase.from('wallet_challenges').update({ used_at: new Date().toISOString() }).eq('id', challenge.id);
+
+    // SECURITY HARDENING: Verify challenge was issued for THIS wallet address
+    if (challenge.wallet_address !== normalizedAddress) {
+      console.warn('[WEB3-AUTH] Challenge wallet mismatch!', {
+        challenge_wallet: challenge.wallet_address,
+        request_wallet: normalizedAddress,
+      });
+      await logSecurityEvent(supabase, 'suspicious_wallet_login_attempt', {
+        challenge_wallet: challenge.wallet_address,
+        claimed_wallet: normalizedAddress,
+        nonce: nonce?.substring(0, 8) + '...',
+      }, ipAddress);
+      return jsonResponse({ success: false, error: 'Challenge wallet mismatch' }, 401);
+    }
+
+    // SECURITY HARDENING: Verify message integrity (client didn't tamper)
+    if (challenge.message !== message) {
+      console.warn('[WEB3-AUTH] Message integrity check failed');
+      await logSecurityEvent(supabase, 'wallet_login_failed_challenge_mismatch', {
+        wallet_address: normalizedAddress,
+      }, ipAddress);
+      return jsonResponse({ success: false, error: 'Message integrity check failed' }, 401);
+    }
 
     // Step 2: Verify signature cryptographically
     if (!verifySignature(message, signature, normalizedAddress)) {
       console.warn('[WEB3-AUTH] Signature verification failed');
+      await logSecurityEvent(supabase, 'wallet_login_failed_invalid_signature', {
+        wallet_address: normalizedAddress,
+      }, ipAddress);
       return jsonResponse({ success: false, error: 'Invalid signature' }, 401);
     }
 
@@ -276,7 +326,6 @@ Deno.serve(async (req: Request) => {
       userEmail = placeholderEmail;
 
       // Wait for handle_new_user trigger to create profile row, then UPDATE it
-      // The trigger fires on auth.users INSERT and creates a default profile
       const profileData = {
         signup_method: 'wallet',
         reward_locked: true,
@@ -294,7 +343,6 @@ Deno.serve(async (req: Request) => {
 
       if (profileError) {
         console.warn('[WEB3-AUTH] Profile update attempt 1 failed, retrying...', profileError);
-        // Retry after longer delay
         await new Promise(r => setTimeout(r, 700));
         const { error: retryError } = await supabase.from('profiles')
           .update(profileData)
@@ -302,17 +350,14 @@ Deno.serve(async (req: Request) => {
 
         if (retryError) {
           console.error('[WEB3-AUTH] Profile update failed after retry:', retryError);
-          // Don't fail the whole signup — auth user exists, profile will need manual fix
         }
       }
 
       // Audit log
-      await supabase.from('account_activity_logs').insert({
-        user_id: userId,
-        action: 'wallet_signup_created',
-        details: { wallet_address: normalizedAddress, signup_method: 'wallet' },
-        ip_address: challenge.ip_address,
-      }).then(() => {}).catch(() => {});
+      await logSecurityEvent(supabase, 'wallet_signup_created', {
+        wallet_address: normalizedAddress,
+        signup_method: 'wallet',
+      }, ipAddress, userId);
 
       console.log('[WEB3-AUTH] Wallet-first account created:', userId);
     }
@@ -342,12 +387,9 @@ Deno.serve(async (req: Request) => {
 
     // Audit log for login
     if (!isNewUser) {
-      await supabase.from('account_activity_logs').insert({
-        user_id: userId,
-        action: 'wallet_login_succeeded',
-        details: { wallet_address: normalizedAddress },
-        ip_address: challenge.ip_address,
-      }).then(() => {}).catch(() => {});
+      await logSecurityEvent(supabase, 'wallet_login_succeeded', {
+        wallet_address: normalizedAddress,
+      }, ipAddress, userId);
     }
 
     console.log('[WEB3-AUTH] Auth successful for:', userId);
