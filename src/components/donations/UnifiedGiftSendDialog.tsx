@@ -368,7 +368,7 @@ export const UnifiedGiftSendDialog = ({
         if (results.some(r => !r.success)) {
           toast.warning(`Không gửi được cho: ${results.filter(r => !r.success).map(r => `@${r.recipient.username}`).join(', ')}`, { duration: 8000 });
         }
-        recordMultiDonationsSequential(successResults);
+        await recordMultiDonationsSequential(successResults);
       } else {
         toast.error('Không gửi được cho bất kỳ người nhận nào');
       }

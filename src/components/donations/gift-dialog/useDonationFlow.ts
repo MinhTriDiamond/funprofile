@@ -276,7 +276,7 @@ export function useDonationFlow(params: UseDonationFlowParams) {
       toast.warning(`Không gửi được cho: ${failedNames}`, { duration: 8000 });
     }
 
-    recordMultiDonationsSequential(successResults);
+    await recordMultiDonationsSequential(successResults);
     return { cardData, results };
   }, [
     sendToken, walletToken, amount, resetState, selectedToken.symbol,
