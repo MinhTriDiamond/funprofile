@@ -15,6 +15,7 @@ import {
   BookOpen,
   Shield,
   Crown,
+  Settings,
 } from 'lucide-react';
 
 interface Profile {
@@ -68,7 +69,7 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
 
   // Shortcuts for "Lối tắt của bạn" section
   const shortcutItems = [
-    { icon: Shield, label: 'Bảo mật', path: '/settings/security', color: 'text-emerald-600' },
+    
     { icon: Crown, label: 'Mạnh Thường Quân', path: '/benefactors', color: 'text-gold' },
     { icon: Globe, label: 'Lịch Sử Giao Dịch', path: '/donations', color: 'text-emerald-500' },
     { icon: UsersRound, label: 'Danh Sách Thành Viên', path: '/users', color: 'text-red-500' },
@@ -278,9 +279,19 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
               <Globe className="w-5 h-5" />
             </div>
             <div className="flex-1">
-              <LanguageSwitcher variant="full" />
+              <LanguageSwitcher variant="dropdown" />
             </div>
           </div>
+
+          <button
+            onClick={() => { navigate('/settings'); onItemClick?.(); }}
+            className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-white hover:shadow-[0_0_12px_rgba(34,197,94,0.5)] transition-all duration-300"
+          >
+            <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center text-gray-600">
+              <Settings className="w-5 h-5" />
+            </div>
+            <span className="font-medium text-sm">Cài đặt</span>
+          </button>
 
           {isAdmin && (
             <button

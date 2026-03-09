@@ -104,10 +104,10 @@ Deno.serve(async (req) => {
     const userId = user.id;
     console.log("[create-post] User verified:", userId.substring(0, 8) + "...");
 
-    // Check if user is banned
+    // Check if user is banned or limited
     const { data: userProfile } = await supabase
       .from("profiles")
-      .select("is_banned")
+      .select("is_banned, account_status")
       .eq("id", userId)
       .single();
 
@@ -115,6 +115,14 @@ Deno.serve(async (req) => {
       console.log("[create-post] User is banned:", userId.substring(0, 8));
       return new Response(
         JSON.stringify({ error: "Tài khoản đã bị cấm. Không thể đăng bài." }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (userProfile?.account_status === 'limited') {
+      console.log("[create-post] User account is limited:", userId.substring(0, 8));
+      return new Response(
+        JSON.stringify({ error: "Vui lòng xác thực email trước khi đăng bài.", code: "ACCOUNT_LIMITED" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
