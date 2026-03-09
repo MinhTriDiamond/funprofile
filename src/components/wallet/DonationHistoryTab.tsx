@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Download, Loader2, RefreshCw, Search, ExternalLink,
   Copy, ArrowRight, Sparkles, CheckCircle, Clock,
-  Hash, TrendingUp, Calendar, Activity, Flame
+  Hash, TrendingUp, Calendar, Activity, Flame, Radar
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/select';
 import { useDonationHistory, useDonationStats, DonationRecord } from '@/hooks/useDonationHistory';
 import { exportDonationsToCSV } from '@/utils/exportDonations';
+import { useScanIncoming } from '@/hooks/useScanIncoming';
 import { DonationSuccessCard } from '@/components/donations/DonationSuccessCard';
 import { DonationReceivedCard } from '@/components/donations/DonationReceivedCard';
 import { formatNumber, formatDate, shortenAddress } from '@/lib/formatters';
@@ -47,6 +48,7 @@ export function DonationHistoryTab() {
   const { data: sentDonations = [], isLoading: isSentLoading, refetch: refetchSent } = useDonationHistory('sent');
   const { data: receivedDonations = [], isLoading: isReceivedLoading, refetch: refetchReceived } = useDonationHistory('received');
   const { data: stats } = useDonationStats();
+  const { scan, isScanning } = useScanIncoming();
 
   const isLoading = isSentLoading || isReceivedLoading;
 
@@ -162,6 +164,10 @@ export function DonationHistoryTab() {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="outline" size="sm" onClick={scan} disabled={isScanning || isLoading} className="gap-2 border-primary/30 text-primary hover:bg-primary/5">
+            <Radar className={`w-4 h-4 ${isScanning ? 'animate-spin' : ''}`} />
+            {isScanning ? 'Đang quét...' : 'Quét ví ngoài'}
+          </Button>
           <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isLoading} className="gap-2">
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
             Làm mới

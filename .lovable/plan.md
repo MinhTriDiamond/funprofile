@@ -1,54 +1,83 @@
 
+# Database & Codebase Audit — Implementation Roadmap
 
-## Kế hoạch: Tự động phát hiện giao dịch từ ví ngoài gửi đến Fun Profile
+## Tài liệu tham chiếu
+- `.lovable/audit-report.md` — Audit report đầy đủ (633 dòng, 20 phần)
 
-### Vấn đề hiện tại
-- `detect-incoming-transfers` chỉ hoạt động cho **admin** và yêu cầu nhập **sender_address cụ thể**
-- Khi một user bất kỳ gửi crypto từ ví ngoài (MetaMask, Trust Wallet...) đến ví của user Fun Profile → giao dịch **không tự động hiển thị**
+---
 
-### Giải pháp
+## ĐÃ HOÀN THÀNH
 
-Tạo edge function `scan-my-incoming` cho phép **mỗi user tự quét ví của mình** để phát hiện các giao dịch đến từ bên ngoài chưa được ghi nhận.
+### Phase 0 — Audit & Documentation ✅
+| # | Công việc | Trạng thái |
+|---|----------|-----------|
+| 0A | Viết audit report 20 phần | ✅ Done |
+| 0B | Xác định Canonical Domain Models | ✅ Done |
+| 0C | Xác định Do Not Touch First list | ✅ Done |
+| 0D | Xác định Refactor Blockers | ✅ Done |
 
-#### Flow hoạt động:
+### Phase 1A — Performance Indexes ✅
+| Index | Table | Columns | Mục đích |
+|-------|-------|---------|----------|
+| `idx_notifications_user_read` | notifications | user_id, read | Badge count + dropdown |
+| `idx_reactions_post_type` | reactions | post_id, type | Reaction counts per post |
+| `idx_light_actions_user_created` | light_actions | user_id, created_at DESC | Light Score history |
+| `idx_posts_user_created` | posts | user_id, created_at DESC | Profile feed |
+| `idx_chunked_chunks_status` | chunked_recording_chunks | status | Cleanup queries |
+| `idx_donations_sender_status` | donations | sender_id, status | Benefactor leaderboard |
+| `idx_donations_recipient_status` | donations | recipient_id, status | Recipient leaderboard |
+| `idx_comments_post_created` | comments | post_id, created_at | Comment thread load |
+| `idx_friendships_user_status` | friendships | user_id, status | Friend lookup |
+| `idx_friendships_friend_status` | friendships | friend_id, status | Friend lookup |
 
-```text
-User mở Lịch sử giao dịch
-  → Nhấn nút "Quét giao dịch từ ví ngoài"
-  → Edge function lấy public_wallet_address của user
-  → Gọi Moralis API: lấy ERC20 transfers ĐẾN ví đó
-  → Lọc: chỉ giữ token đã biết (CAMLY, USDT, BTCB, FUN)
-  → Lọc: bỏ các tx_hash đã có trong donations
-  → Insert donations mới với is_external = true
-  → UI tự refresh hiển thị giao dịch mới
-```
+### Phase 1B — SQL Comments Documentation ✅
+- COMMENT ON TABLE cho tất cả 93 tables
+- COMMENT ON VIEW cho tất cả 5 views
+- Phân loại theo domain: Core, Social, Messaging, Live, Recording, Light Score, Rewards, Wallet, Auth, OAuth, Search, Content, System, PPLP
 
-#### Thay đổi cần thực hiện
+---
 
-| Thay đổi | File |
-|---|---|
-| Tạo edge function `scan-my-incoming` | `supabase/functions/scan-my-incoming/index.ts` |
-| Thêm nút "Quét ví ngoài" vào lịch sử | `src/components/wallet/DonationHistoryTab.tsx` |
-| Thêm hook gọi scan | `src/hooks/useScanIncoming.ts` |
+## CHƯA LÀM — KẾ HOẠCH TIẾP THEO
 
-#### Chi tiết kỹ thuật
+### Phase 1C-F — Safe Cleanup (rủi ro THẤP)
 
-**Edge function `scan-my-incoming`:**
-- Auth: user tự xác thực (không cần admin)
-- Lấy `public_wallet_address` từ profiles theo `auth.uid()`
-- Gọi Moralis API quét ERC20 transfers TO ví đó (BSC mainnet + testnet)
-- Lọc token đã biết, bỏ duplicate, kiểm tra sender có phải Fun Profile user không
-- Nếu sender là Fun Profile user → bỏ qua (đã được `record-donation` xử lý)
-- Nếu sender là ví ngoài → insert vào `donations` với `is_external: true`, `sender_id: null`, `sender_address: from_address`
-- Rate limit: mỗi user chỉ quét tối đa 1 lần / 5 phút
+| # | Công việc | Chi tiết |
+|---|----------|---------|
+| 1C | Phân loại empty tables | 35 tables 0-rows → Active/Planned/Legacy/Deletable |
+| 1D | console.log → logger | 77 instances cần thay thế |
+| 1E | useAdminRole shared hook | Đã tạo, cần migrate các component dùng trực tiếp `has_role` |
+| 1F | Edge function _shared helpers | cors, auth, response — đã tạo ✅ |
 
-**UI:**
-- Thêm nút "Quét giao dịch ví ngoài" cạnh nút "Làm mới" trong DonationHistoryTab
-- Hiển thị loading state khi đang quét
-- Toast kết quả: "Tìm thấy X giao dịch mới" hoặc "Không có giao dịch mới"
+### Phase 2 — Structural Improvements (rủi ro TRUNG BÌNH)
 
-**Không thay đổi:**
-- Database schema (dùng bảng `donations` hiện có)
-- RLS policies
-- Các hook hiện có (`useDonationHistory` đã hỗ trợ `is_external`)
+| # | Công việc | Chi tiết |
+|---|----------|---------|
+| 2A | State enum documentation | Document các status/type enums trong DB |
+| 2B | Merge search_logs → search_history | Consolidate duplicate search tracking |
+| 2C | notifications.read → is_read | Compatibility migration (backfill + dual-write) |
+| 2D | Xóa useLiveComments | Dead code cleanup |
+| 2E | Module hóa hooks/ | Nhóm theo domain (social, chat, live, wallet, etc.) |
+| 2F | Tách components/feed/ | Sub-domains cho feed components |
+| 2G | useCapabilities layer | Đã tạo ✅, cần migrate consumers |
 
+### Phase 3 — Deep Refactor (rủi ro CAO)
+
+| # | Công việc | Blocker |
+|---|----------|---------|
+| 3A | Tách profiles → user_wallet_config | Nhiều component đọc trực tiếp profiles |
+| 3B | Claims lifecycle audit | reward_claims + pending_claims khác lifecycle |
+| 3C | FinancialTab → platform_financial_data | Admin UI đang đọc grand_total_* từ profiles |
+| 3D | get_user_rewards_v2 refactor | Đang dùng livestreams table, cần chuyển live_sessions |
+| 3E | live_comments product review | Quyết định drop hoặc giữ |
+| 3F | Profiles RLS tightening | Public by Design → quyết định enforcement model |
+| 3G | Gộp 15 media edge functions | Router pattern |
+
+---
+
+## Linter Warnings (có sẵn, chưa xử lý)
+- **RLS Enabled No Policy**: Một số tables có RLS enabled nhưng chưa có policy
+- **RLS Policy Always True**: Một số policies dùng `USING (true)` cho INSERT/UPDATE/DELETE
+- Sẽ xử lý trong Phase 2-3 khi refactor từng domain
+
+## Light Score 5 Trụ Cột — Phase 1 ✅ HOÀN THÀNH
+(Chi tiết xem phiên bản trước của plan)
