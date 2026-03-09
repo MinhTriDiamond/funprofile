@@ -22,6 +22,7 @@ import {
   Shield,
   Settings,
 } from 'lucide-react';
+import { topNavItems, languageOptions } from '@/config/navigation';
 import { AngelChatWidget } from '@/components/angel-ai';
 import { GiftNavButton } from '@/components/donations/GiftNavButton';
 
