@@ -20,6 +20,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { SetPasswordDialog } from '@/components/security/SetPasswordDialog';
+import { ChangePasswordDialog } from '@/components/security/ChangePasswordDialog';
 import { LinkEmailDialog } from '@/components/security/LinkEmailDialog';
 import { LinkWalletDialog } from '@/components/security/LinkWalletDialog';
 import { toast } from 'sonner';
