@@ -175,7 +175,7 @@ export const StreamPlayer = memo(({
   // Start/stop polling based on processing state
   useEffect(() => {
     if (isProcessing && !pollingRef.current) {
-      console.log('[StreamPlayer] Starting status polling...');
+      logger.debug('[StreamPlayer] Starting status polling...');
       pollingRef.current = setInterval(pollVideoStatus, 5000);
     }
     
