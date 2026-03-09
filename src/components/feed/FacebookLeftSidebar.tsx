@@ -104,7 +104,7 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
           </h3>
         </div>
         <div className="space-y-1">
-          {ecosystemShortcuts.map((shortcut) => (
+          {ecosystemItems.map((shortcut) => (
             <button
               key={shortcut.name}
               onClick={() => {
