@@ -15,6 +15,7 @@ import {
   BookOpen,
   Shield,
   Crown,
+  Settings,
 } from 'lucide-react';
 
 interface Profile {
