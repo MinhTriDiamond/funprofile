@@ -115,10 +115,12 @@ export const EmailOtpLogin = ({ onSuccess }: EmailOtpLoginProps) => {
         }
 
         // Fire-and-forget profile update — don't block navigation
-        supabase
-          .from('profiles')
-          .update({ last_login_platform: 'FUN Profile' })
-          .eq('id', data.user_id)
+        Promise.resolve(
+          supabase
+            .from('profiles')
+            .update({ last_login_platform: 'FUN Profile' })
+            .eq('id', data.user_id)
+        )
           .then(() => logger.debug('[OTP] Profile updated for:', data.user_id))
           .catch((e) => logger.warn('[OTP] Profile update failed:', e));
 

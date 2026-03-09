@@ -83,10 +83,12 @@ export const UnifiedAuthForm = ({ ssoFlow = false }: UnifiedAuthFormProps) => {
     const lawOfLightPending = localStorage.getItem('law_of_light_accepted_pending');
     if (lawOfLightPending === 'true') {
       localStorage.removeItem('law_of_light_accepted_pending');
-      supabase.from('profiles').update({
-        law_of_light_accepted: true,
-        law_of_light_accepted_at: new Date().toISOString()
-      }).eq('id', userId)
+      Promise.resolve(
+        supabase.from('profiles').update({
+          law_of_light_accepted: true,
+          law_of_light_accepted_at: new Date().toISOString()
+        }).eq('id', userId)
+      )
         .then(() => logger.debug('[Auth] law_of_light synced'))
         .catch(e => logger.warn('[Auth] law_of_light sync failed:', e));
     }
