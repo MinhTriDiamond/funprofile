@@ -189,7 +189,7 @@ Deno.serve(async (req: Request) => {
       sub: authCode.user_id,
       fun_id: profile?.fun_id || '',
       username: profile?.username || '',
-      custodial_wallet: profile?.custodial_wallet_address || null,
+      custodial_wallet: null,
       scope: authCode.scope
     });
 
