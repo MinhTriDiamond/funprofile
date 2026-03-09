@@ -41,6 +41,7 @@ const Benefactors = lazy(() => import("./pages/Benefactors"));
 const Donations = lazy(() => import("./pages/Donations"));
 const Users = lazy(() => import("./pages/Users"));
 const Reels = lazy(() => import("./pages/Reels"));
+const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
 
 const LiveDiscoveryPage = lazy(() => import("./pages/LiveDiscoveryPage"));
 const LiveHostPage = lazy(() => import("./modules/live/pages/LiveHostPage").then(m => ({ default: m.default })));
