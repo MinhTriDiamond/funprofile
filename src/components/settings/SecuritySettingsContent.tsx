@@ -20,6 +20,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { SetPasswordDialog } from '@/components/security/SetPasswordDialog';
+import { ChangePasswordDialog } from '@/components/security/ChangePasswordDialog';
 import { LinkEmailDialog } from '@/components/security/LinkEmailDialog';
 import { LinkWalletDialog } from '@/components/security/LinkWalletDialog';
 import { toast } from 'sonner';
@@ -32,6 +33,7 @@ const SecuritySettingsContent = () => {
   const loginMethods = useLoginMethods();
 
   const [showSetPassword, setShowSetPassword] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
   const [showLinkEmail, setShowLinkEmail] = useState(false);
   const [showLinkWallet, setShowLinkWallet] = useState(false);
 
@@ -123,8 +125,10 @@ const SecuritySettingsContent = () => {
         : 'Bạn cần liên kết email để đặt mật khẩu',
       status: hasPassword ? 'connected' : 'disconnected',
       statusLabel: hasPassword ? 'Đã đặt' : 'Chưa đặt',
-      action: !hasPassword && hasEmailLoginMethod ? () => setShowSetPassword(true) : undefined,
-      actionLabel: 'Đặt mật khẩu',
+      action: hasPassword
+        ? () => setShowChangePassword(true)
+        : (hasEmailLoginMethod ? () => setShowSetPassword(true) : undefined),
+      actionLabel: hasPassword ? 'Đổi mật khẩu' : 'Đặt mật khẩu',
     },
     {
       icon: Wallet, label: 'Ví Web3',
@@ -246,6 +250,7 @@ const SecuritySettingsContent = () => {
 
       {/* Dialogs */}
       <SetPasswordDialog open={showSetPassword} onOpenChange={setShowSetPassword} nextAction={getNextAction()} onNextAction={handleNextAction} />
+      <ChangePasswordDialog open={showChangePassword} onOpenChange={setShowChangePassword} />
       <LinkEmailDialog open={showLinkEmail} onOpenChange={setShowLinkEmail} />
       <LinkWalletDialog open={showLinkWallet} onOpenChange={setShowLinkWallet} />
     </div>
