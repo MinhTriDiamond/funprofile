@@ -248,6 +248,7 @@ Deno.serve(async (req) => {
               gift_amount: String(d.amount),
               gift_message: null,
               is_highlighted: true,
+              highlight_expires_at: null,
               visibility: "public",
               moderation_status: "approved",
               created_at: d.created_at,
