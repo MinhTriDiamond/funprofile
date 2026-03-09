@@ -591,6 +591,7 @@ export const UnifiedGiftSendDialog = ({
               />
             )}
           </>)}
+          </div>
         </DialogContent>
       </Dialog>
 
