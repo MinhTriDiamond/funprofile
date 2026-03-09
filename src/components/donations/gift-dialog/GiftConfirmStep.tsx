@@ -224,7 +224,7 @@ export function GiftConfirmStep(props: GiftConfirmStepProps) {
       )}
 
       {/* Actions */}
-      <div className="flex gap-3 pt-2">
+      <div className="flex gap-3 pt-2 pb-4">
         {txStep === 'timeout' && !isMultiMode ? (
           <>
             <Button variant="outline" onClick={onClose} className="flex-1">Đóng</Button>

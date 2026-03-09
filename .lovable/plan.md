@@ -1,32 +1,83 @@
 
+# Database & Codebase Audit — Implementation Roadmap
 
-## Sửa lỗi giao diện điện thoại & tính năng tặng tiền
+## Tài liệu tham chiếu
+- `.lovable/audit-report.md` — Audit report đầy đủ (633 dòng, 20 phần)
 
-### Vấn đề phát hiện
+---
 
-1. **Gift Dialog bị che bởi bottom nav trên mobile**: `DialogContent` có `max-h-[90vh]` nhưng bottom nav cao 72px + safe-area, khiến nội dung bị cắt ở dưới cùng. Trên ảnh screenshot thấy rõ buttons "Quay lại" / "Đang xử lý" bị sát mép dưới.
+## ĐÃ HOÀN THÀNH
 
-2. **SendCryptoModal trong Chat chỉ là placeholder**: File `src/modules/chat/components/SendCryptoModal.tsx` hiện chỉ hiện toast "Tính năng đang được phát triển" — chưa kết nối với hệ thống tặng thật (`UnifiedGiftSendDialog`).
+### Phase 0 — Audit & Documentation ✅
+| # | Công việc | Trạng thái |
+|---|----------|-----------|
+| 0A | Viết audit report 20 phần | ✅ Done |
+| 0B | Xác định Canonical Domain Models | ✅ Done |
+| 0C | Xác định Do Not Touch First list | ✅ Done |
+| 0D | Xác định Refactor Blockers | ✅ Done |
 
-3. **Dialog trên mobile thiếu safe-area padding**: Khi mở dialog trên iPhone, không có padding cho notch/home indicator.
+### Phase 1A — Performance Indexes ✅
+| Index | Table | Columns | Mục đích |
+|-------|-------|---------|----------|
+| `idx_notifications_user_read` | notifications | user_id, read | Badge count + dropdown |
+| `idx_reactions_post_type` | reactions | post_id, type | Reaction counts per post |
+| `idx_light_actions_user_created` | light_actions | user_id, created_at DESC | Light Score history |
+| `idx_posts_user_created` | posts | user_id, created_at DESC | Profile feed |
+| `idx_chunked_chunks_status` | chunked_recording_chunks | status | Cleanup queries |
+| `idx_donations_sender_status` | donations | sender_id, status | Benefactor leaderboard |
+| `idx_donations_recipient_status` | donations | recipient_id, status | Recipient leaderboard |
+| `idx_comments_post_created` | comments | post_id, created_at | Comment thread load |
+| `idx_friendships_user_status` | friendships | user_id, status | Friend lookup |
+| `idx_friendships_friend_status` | friendships | friend_id, status | Friend lookup |
 
-### Giải pháp
+### Phase 1B — SQL Comments Documentation ✅
+- COMMENT ON TABLE cho tất cả 93 tables
+- COMMENT ON VIEW cho tất cả 5 views
+- Phân loại theo domain: Core, Social, Messaging, Live, Recording, Light Score, Rewards, Wallet, Auth, OAuth, Search, Content, System, PPLP
 
-| File | Thay đổi |
-|---|---|
-| `src/components/donations/UnifiedGiftSendDialog.tsx` | Thay `max-h-[90vh]` → `max-h-[85vh]` trên mobile, thêm `pb-safe` padding |
-| `src/components/ui/dialog.tsx` | Thêm mobile-friendly styles: trên mobile dialog full-width, rounded-top, slide-up từ dưới |
-| `src/modules/chat/components/SendCryptoModal.tsx` | Thay placeholder bằng `UnifiedGiftSendDialog` thật |
-| `src/modules/chat/components/CryptoGiftButton.tsx` | Truyền đúng props cho UnifiedGiftSendDialog thay vì SendCryptoModal |
-| `src/components/donations/gift-dialog/GiftConfirmStep.tsx` | Thêm `pb-4` cho buttons container để tránh bị cắt |
-| `src/components/donations/gift-dialog/GiftFormStep.tsx` | Thêm `pb-4` cho buttons container |
+---
 
-### Chi tiết kỹ thuật
+## CHƯA LÀM — KẾ HOẠCH TIẾP THEO
 
-**Dialog mobile-first**: Trên mobile (`< 640px`), dialog sẽ:
-- Chiếm full width, bo góc trên, trượt lên từ dưới
-- `max-h-[85vh]` thay vì `90vh` để tránh bị bottom nav che
-- Thêm `pb-[env(safe-area-inset-bottom)]` cho iPhone
+### Phase 1C-F — Safe Cleanup (rủi ro THẤP)
 
-**Chat SendCryptoModal → UnifiedGiftSendDialog**: Thay thế hoàn toàn modal placeholder bằng `UnifiedGiftSendDialog` với `mode="wallet"` và `presetRecipient` từ thông tin người nhận trong chat.
+| # | Công việc | Chi tiết |
+|---|----------|---------|
+| 1C | Phân loại empty tables | 35 tables 0-rows → Active/Planned/Legacy/Deletable |
+| 1D | console.log → logger | 77 instances cần thay thế |
+| 1E | useAdminRole shared hook | Đã tạo, cần migrate các component dùng trực tiếp `has_role` |
+| 1F | Edge function _shared helpers | cors, auth, response — đã tạo ✅ |
 
+### Phase 2 — Structural Improvements (rủi ro TRUNG BÌNH)
+
+| # | Công việc | Chi tiết |
+|---|----------|---------|
+| 2A | State enum documentation | Document các status/type enums trong DB |
+| 2B | Merge search_logs → search_history | Consolidate duplicate search tracking |
+| 2C | notifications.read → is_read | Compatibility migration (backfill + dual-write) |
+| 2D | Xóa useLiveComments | Dead code cleanup |
+| 2E | Module hóa hooks/ | Nhóm theo domain (social, chat, live, wallet, etc.) |
+| 2F | Tách components/feed/ | Sub-domains cho feed components |
+| 2G | useCapabilities layer | Đã tạo ✅, cần migrate consumers |
+
+### Phase 3 — Deep Refactor (rủi ro CAO)
+
+| # | Công việc | Blocker |
+|---|----------|---------|
+| 3A | Tách profiles → user_wallet_config | Nhiều component đọc trực tiếp profiles |
+| 3B | Claims lifecycle audit | reward_claims + pending_claims khác lifecycle |
+| 3C | FinancialTab → platform_financial_data | Admin UI đang đọc grand_total_* từ profiles |
+| 3D | get_user_rewards_v2 refactor | Đang dùng livestreams table, cần chuyển live_sessions |
+| 3E | live_comments product review | Quyết định drop hoặc giữ |
+| 3F | Profiles RLS tightening | Public by Design → quyết định enforcement model |
+| 3G | Gộp 15 media edge functions | Router pattern |
+
+---
+
+## Linter Warnings (có sẵn, chưa xử lý)
+- **RLS Enabled No Policy**: Một số tables có RLS enabled nhưng chưa có policy
+- **RLS Policy Always True**: Một số policies dùng `USING (true)` cho INSERT/UPDATE/DELETE
+- Sẽ xử lý trong Phase 2-3 khi refactor từng domain
+
+## Light Score 5 Trụ Cột — Phase 1 ✅ HOÀN THÀNH
+(Chi tiết xem phiên bản trước của plan)
