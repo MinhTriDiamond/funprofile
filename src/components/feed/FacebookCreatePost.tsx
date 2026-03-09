@@ -141,6 +141,42 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
     );
   }
 
+  // Limited account — cannot create posts
+  if (!canCreatePost && !capLoading) {
+    return (
+      <div className="bg-card rounded-lg shadow-sm border border-border p-3 sm:p-4 mb-4">
+        <div className="flex items-center gap-3">
+          <Avatar className="w-10 h-10 ring-2 ring-primary/20 shrink-0">
+            <AvatarImage src={profile.avatar_url} sizeHint="sm" alt={profile.username || 'User avatar'} />
+            <AvatarFallback className="bg-primary text-primary-foreground">{profile.username?.[0]?.toUpperCase()}</AvatarFallback>
+          </Avatar>
+          <div className="flex-1 px-4 py-2.5 bg-muted rounded-full text-muted-foreground text-[15px]">
+            {language === 'vi'
+              ? 'Liên kết và xác thực email để đăng bài'
+              : 'Verify your email to start posting'}
+          </div>
+        </div>
+        <div className="border-t border-border mt-3 pt-3">
+          <div className="flex items-center gap-2 px-2">
+            <ShieldAlert className="w-5 h-5 text-yellow-500 shrink-0" />
+            <p className="text-sm text-muted-foreground flex-1">
+              {language === 'vi'
+                ? 'Tài khoản của bạn cần xác thực email để mở khóa quyền đăng bài, bình luận và tương tác.'
+                : 'Your account needs email verification to unlock posting, commenting and interactions.'}
+            </p>
+            <Button
+              size="sm"
+              onClick={() => navigate('/settings/security')}
+              className="shrink-0"
+            >
+              {language === 'vi' ? 'Liên kết email' : 'Verify Email'}
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <input
