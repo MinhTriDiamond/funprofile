@@ -140,14 +140,14 @@ Deno.serve(async (req) => {
     }
 
     // Check existing tx_hashes
-    const txHashes = incomingExternal.map((t) => t.transaction_hash).filter(Boolean);
+    const txHashes = incomingAll.map((t) => t.transaction_hash).filter(Boolean);
     const { data: existingDonations } = await adminClient
       .from("donations")
       .select("tx_hash")
       .in("tx_hash", txHashes);
 
     const existingSet = new Set((existingDonations || []).map((d) => d.tx_hash));
-    const newTransfers = incomingExternal.filter(
+    const newTransfers = incomingAll.filter(
       (t) => t.transaction_hash && !existingSet.has(t.transaction_hash)
     );
 
