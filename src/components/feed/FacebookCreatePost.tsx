@@ -1,5 +1,5 @@
 /**
- * FacebookCreatePost — Compose UI + Dialog shell
+ * CreatePost — Compose UI + Dialog shell
  * Logic extracted to useCreatePost, media to CreatePostMediaManager, toolbar to CreatePostToolbar
  */
 import { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
