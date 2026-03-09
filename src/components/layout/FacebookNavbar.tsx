@@ -107,7 +107,7 @@ export const AppNavbar = () => {
                 </button>
               </SheetTrigger>
               <SheetContent side="left" className="w-[300px] p-4 overflow-y-auto">
-                <FacebookLeftSidebar onItemClick={() => setIsSidebarOpen(false)} />
+                <LeftSidebar onItemClick={() => setIsSidebarOpen(false)} />
               </SheetContent>
             </Sheet>
           )}
