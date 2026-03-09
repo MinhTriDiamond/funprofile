@@ -11,7 +11,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { ImagePlus, Video, Loader2 } from 'lucide-react';
+import { ImagePlus, Video, Loader2, ShieldAlert } from 'lucide-react';
 import { UploadQueue, UploadItem } from '@/utils/uploadQueue';
 import { EmojiPicker } from './EmojiPicker';
 import { FriendTagDialog } from './FriendTagDialog';
@@ -22,6 +22,7 @@ import { CreatePostMediaManager, UppyVideoResult } from './CreatePostMediaManage
 import { CreatePostToolbar } from './CreatePostToolbar';
 import { useCreatePost } from '@/hooks/useCreatePost';
 import { useLanguage } from '@/i18n/LanguageContext';
+import { useAccountCapabilities } from '@/hooks/useAccountCapabilities';
 
 interface FacebookCreatePostProps {
   onPostCreated: () => void;
