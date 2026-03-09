@@ -124,6 +124,7 @@ function App() {
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/set-password" element={<SetPassword />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
+                  <Route path="/verify-email" element={<VerifyEmail />} />
                   <Route path="/law-of-light" element={<LawOfLight />} />
                   <Route path="/" element={<Feed />} />
                   <Route path="/friends" element={<Friends />} />

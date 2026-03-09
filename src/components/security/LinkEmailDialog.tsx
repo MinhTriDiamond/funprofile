@@ -107,9 +107,32 @@ export function LinkEmailDialog({ open, onOpenChange }: LinkEmailDialogProps) {
     if (!email) return;
     setResending(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('Phiên đăng nhập hết hạn.');
+        setResending(false);
+        return;
+      }
+
       const normalized = normalizeEmail(email);
-      const { error } = await supabase.auth.updateUser({ email: normalized });
-      if (error) throw error;
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email-link-verification`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({ email: normalized }),
+        }
+      );
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Không thể gửi lại');
+      }
+
       toast.success('Đã gửi lại email xác thực.');
     } catch (err: any) {
       toast.error(err.message || 'Không thể gửi lại');
