@@ -446,7 +446,7 @@ export const usePplpAdmin = () => {
             abi: FUN_MONEY_ABI,
             functionName: 'nonces',
             args: [request.recipient_address as `0x${string}`],
-          } as any) as bigint;
+          }) as bigint;
 
           const dbNonce = BigInt(request.nonce);
           if (onChainNonce !== dbNonce) {
