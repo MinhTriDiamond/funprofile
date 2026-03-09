@@ -233,7 +233,7 @@ export const VideoUploaderUppy = ({
         const { uploadUrl, publicUrl } = await presignResponse.json();
         if (!uploadUrl || !publicUrl) throw new Error('Không nhận được URL upload từ server');
 
-        console.log('[VideoUploader] Got presigned URL for R2, key:', key);
+        logger.debug('[VideoUploader] Got presigned URL for R2, key:', key);
 
         // Step 2: Upload directly to R2 via XMLHttpRequest (for progress tracking)
         setUploadState(prev => ({
