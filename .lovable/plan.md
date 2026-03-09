@@ -1,39 +1,33 @@
 
-# Light Score 5 Trụ Cột — Phase 1 ✅ HOÀN THÀNH
 
-## Đã triển khai
+## Kế hoạch: Thêm tính năng Đổi mật khẩu trong Settings
 
-| # | Resource | Trạng thái |
-|---|----------|-----------|
-| 1 | DB: Bảng `user_dimension_scores` + RLS | ✅ Done |
-| 2 | Edge Function: `pplp-compute-dimensions/index.ts` | ✅ Done |
-| 3 | Edge Function: `pplp-get-score/index.ts` (thêm dimension data) | ✅ Done |
-| 4 | Config: `src/config/pplp.ts` (DIMENSIONS, DIMENSION_LEVELS, DIMENSION_WEIGHTS) | ✅ Done |
-| 5 | Hook: `src/hooks/useDimensionScores.ts` | ✅ Done |
-| 6 | UI: `src/components/wallet/DimensionScoreCard.tsx` + tích hợp vào LightScoreDashboard | ✅ Done |
-| 7 | Docs: `docs/LIGHT_SCORE_MATH_SPEC.md` | ✅ Done |
+### Phân tích hiện trạng
+- Đã có `SetPasswordDialog` — dùng cho lần đầu đặt mật khẩu (không yêu cầu mật khẩu cũ)
+- Đã có `hasPassword` flag từ `useLoginMethods` để biết user đã có mật khẩu chưa
+- Trong phần "Mật khẩu" của SecuritySettings, khi `hasPassword = true` → hiện tại không có action nào (không có nút "Đổi mật khẩu")
 
-## 5 Trụ Cột
+### Thực hiện
 
-- 🪪 Identity (Danh tính) — profile, wallet, account age
-- ⚡ Activity (Hoạt động) — normalized light score + time decay
-- ⛓️ On-Chain — wallet, donations sent/received
-- 🔍 Transparency (Minh bạch) — fraud signals penalty
-- 🌐 Ecosystem (Hệ sinh thái) — posts, comments, donations, streak
+#### 1. Tạo `ChangePasswordDialog` (`src/components/security/ChangePasswordDialog.tsx`)
+- Form gồm 3 trường: **Mật khẩu hiện tại**, **Mật khẩu mới**, **Xác nhận mật khẩu mới**
+- Xác thực mật khẩu hiện tại bằng `supabase.auth.signInWithPassword({ email, password: currentPassword })` trước khi cho đổi
+- Đổi mật khẩu bằng `supabase.auth.updateUser({ password: newPassword })`
+- Validation giống SetPasswordDialog (≥8 ký tự, 1 chữ hoa, 1 số)
+- Log action `password_changed` qua RPC `log_security_action`
+- Hiển thị màn hình thành công sau khi đổi xong
 
-## Cấp độ mới
+#### 2. Cập nhật `SecuritySettingsContent.tsx`
+- Import `ChangePasswordDialog`
+- Thêm state `showChangePassword`
+- Khi `hasPassword = true`: hiển thị nút **"Đổi mật khẩu"** thay vì không có action
+- Cập nhật mục Mật khẩu trong danh sách methods:
+  ```
+  action: hasPassword ? () => setShowChangePassword(true) : (hasEmailLoginMethod ? () => setShowSetPassword(true) : undefined)
+  actionLabel: hasPassword ? 'Đổi mật khẩu' : 'Đặt mật khẩu'
+  ```
 
-| Level | Tên | Điểm |
-|-------|-----|------|
-| 🌱 | Light Seed | 0-99 |
-| 🔨 | Light Builder | 100-249 |
-| 🛡️ | Light Guardian | 250-499 |
-| 👑 | Light Leader | 500-799 |
-| 🌌 | Cosmic Contributor | 800+ |
+### Files cần tạo/sửa
+1. **Tạo mới**: `src/components/security/ChangePasswordDialog.tsx`
+2. **Sửa**: `src/components/settings/SecuritySettingsContent.tsx` — thêm import, state và nút đổi mật khẩu
 
-## Bước tiếp theo
-
-- Chạy `pplp-compute-dimensions` lần đầu để tính dimension scores cho tất cả users
-- Thiết lập cron job daily để tự động cập nhật
-- Phase 2: Dump Penalty, nâng chuẩn mint eligibility
-- Phase 3: Reputation NFT, Digital Identity Bank
