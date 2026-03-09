@@ -453,13 +453,16 @@ export const UnifiedGiftSendDialog = ({
   return (
     <>
       <Dialog open={showMainDialog} onOpenChange={(open) => !open && handleDialogClose()}>
-        <DialogContent className="w-full sm:w-[95vw] max-w-md lg:max-w-[720px] max-h-[85vh] overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-base">
-              <Gift className="w-5 h-5 text-gold shrink-0" />
-              <span className="break-words">{dialogTitle}</span>
-            </DialogTitle>
-          </DialogHeader>
+        <DialogContent className="w-full sm:w-[95vw] max-w-md lg:max-w-[720px] max-h-[85vh] flex flex-col p-0 sm:p-0 overflow-hidden">
+          <div className="px-4 pt-4 sm:px-6 sm:pt-6 pb-2">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-base">
+                <Gift className="w-5 h-5 text-gold shrink-0" />
+                <span className="break-words">{dialogTitle}</span>
+              </DialogTitle>
+            </DialogHeader>
+          </div>
+          <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 pb-4 sm:px-6 sm:pb-6 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
 
           {IS_MAINTENANCE && (
             <div className="py-4 space-y-4">
@@ -588,6 +591,7 @@ export const UnifiedGiftSendDialog = ({
               />
             )}
           </>)}
+          </div>
         </DialogContent>
       </Dialog>
 
