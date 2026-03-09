@@ -31,6 +31,7 @@ interface FacebookCreatePostProps {
 export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) => {
   const navigate = useNavigate();
   const { t, language } = useLanguage();
+  const { canCreatePost, isLimitedAccount, isLoading: capLoading } = useAccountCapabilities();
 
   // Upload queue ref shared between hook and media manager
   const uploadQueueRef = useRef<UploadQueue | null>(null);
