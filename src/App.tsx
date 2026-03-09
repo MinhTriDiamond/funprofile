@@ -71,7 +71,7 @@ function AuthSessionKeeper() {
               // Retry once on failure
               await tryRefresh();
             }
-            console.log('[AuthKeeper] Token refreshed after', Math.round(hiddenDuration / 1000), 's hidden');
+            logger.debug('[AuthKeeper] Token refreshed after', Math.round(hiddenDuration / 1000), 's hidden');
           } catch (err) {
             console.warn('[AuthKeeper] Token refresh failed:', err);
           }
