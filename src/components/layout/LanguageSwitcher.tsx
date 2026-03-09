@@ -2,29 +2,12 @@ import React, { memo, useState } from 'react';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { Globe, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Language } from '@/i18n/translations';
+import { languageOptions } from '@/config/navigation';
 
 interface LanguageSwitcherProps {
   className?: string;
   variant?: 'pill' | 'icon' | 'full' | 'dropdown';
 }
-
-// 13 language options with flags
-const languageOptions = [
-  { code: 'vi' as Language, name: 'VI', fullName: 'Tiếng Việt', flagUrl: 'https://flagcdn.com/w40/vn.png' },
-  { code: 'en' as Language, name: 'EN', fullName: 'English', flagUrl: 'https://flagcdn.com/w40/us.png' },
-  { code: 'zh' as Language, name: 'ZH', fullName: '中文', flagUrl: 'https://flagcdn.com/w40/cn.png' },
-  { code: 'ja' as Language, name: 'JA', fullName: '日本語', flagUrl: 'https://flagcdn.com/w40/jp.png' },
-  { code: 'ko' as Language, name: 'KO', fullName: '한국어', flagUrl: 'https://flagcdn.com/w40/kr.png' },
-  { code: 'th' as Language, name: 'TH', fullName: 'ไทย', flagUrl: 'https://flagcdn.com/w40/th.png' },
-  { code: 'id' as Language, name: 'ID', fullName: 'Indonesia', flagUrl: 'https://flagcdn.com/w40/id.png' },
-  { code: 'fr' as Language, name: 'FR', fullName: 'Français', flagUrl: 'https://flagcdn.com/w40/fr.png' },
-  { code: 'es' as Language, name: 'ES', fullName: 'Español', flagUrl: 'https://flagcdn.com/w40/es.png' },
-  { code: 'de' as Language, name: 'DE', fullName: 'Deutsch', flagUrl: 'https://flagcdn.com/w40/de.png' },
-  { code: 'pt' as Language, name: 'PT', fullName: 'Português', flagUrl: 'https://flagcdn.com/w40/br.png' },
-  { code: 'ru' as Language, name: 'RU', fullName: 'Русский', flagUrl: 'https://flagcdn.com/w40/ru.png' },
-  { code: 'ar' as Language, name: 'AR', fullName: 'العربية', flagUrl: 'https://flagcdn.com/w40/sa.png' },
-];
 
 const LanguageSwitcher = memo(({
   className,

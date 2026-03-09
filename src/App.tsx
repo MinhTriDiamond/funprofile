@@ -13,6 +13,7 @@ import { Web3Provider } from "@/components/providers/Web3Provider";
 import { DonationReceivedNotification } from "@/components/donations/DonationReceivedNotification";
 import { CallProvider } from "@/contexts/CallContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import logger from "@/lib/logger";
 
 
 import { usePendingDonationRecovery } from "@/hooks/usePendingDonationRecovery";
@@ -71,7 +72,7 @@ function AuthSessionKeeper() {
               // Retry once on failure
               await tryRefresh();
             }
-            console.log('[AuthKeeper] Token refreshed after', Math.round(hiddenDuration / 1000), 's hidden');
+            logger.debug('[AuthKeeper] Token refreshed after', Math.round(hiddenDuration / 1000), 's hidden');
           } catch (err) {
             console.warn('[AuthKeeper] Token refresh failed:', err);
           }

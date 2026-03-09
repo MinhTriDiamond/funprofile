@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { Phone, Video, PhoneOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import logger from '@/lib/logger';
 import type { CallSession } from '../types';
 
 interface IncomingCallDialogProps {
@@ -43,7 +44,7 @@ export function IncomingCallDialog({ callSession, onAnswer, onDecline }: Incomin
     
     // Try to play (may fail if no user interaction yet)
     ringtone.play().catch(err => {
-      console.log('[Ringtone] Autoplay blocked:', err.message);
+      logger.debug('[Ringtone] Autoplay blocked:', err.message);
     });
 
     return () => {

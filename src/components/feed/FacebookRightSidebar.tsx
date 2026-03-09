@@ -14,7 +14,7 @@ interface OnlineContact {
   avatar_url: string | null;
 }
 
-export const FacebookRightSidebar = memo(() => {
+export const RightSidebar = memo(() => {
   const navigate = useNavigate();
   const { t } = useLanguage();
   const { userId } = useCurrentUser();
@@ -98,4 +98,7 @@ export const FacebookRightSidebar = memo(() => {
   );
 });
 
-FacebookRightSidebar.displayName = 'FacebookRightSidebar';
+RightSidebar.displayName = 'RightSidebar';
+
+/** @deprecated Use RightSidebar instead */
+export const FacebookRightSidebar = RightSidebar;

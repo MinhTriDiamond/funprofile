@@ -1,5 +1,5 @@
 /**
- * FacebookCreatePost — Compose UI + Dialog shell
+ * CreatePost — Compose UI + Dialog shell
  * Logic extracted to useCreatePost, media to CreatePostMediaManager, toolbar to CreatePostToolbar
  */
 import { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
@@ -28,7 +28,7 @@ interface FacebookCreatePostProps {
   onPostCreated: () => void;
 }
 
-export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) => {
+export const CreatePost = ({ onPostCreated }: FacebookCreatePostProps) => {
   const navigate = useNavigate();
   const { t, language } = useLanguage();
   const { canCreatePost, isLimitedAccount, isLoading: capLoading } = useAccountCapabilities();
@@ -346,3 +346,6 @@ export const FacebookCreatePost = ({ onPostCreated }: FacebookCreatePostProps) =
     </>
   );
 };
+
+/** @deprecated Use CreatePost instead */
+export const FacebookCreatePost = CreatePost;

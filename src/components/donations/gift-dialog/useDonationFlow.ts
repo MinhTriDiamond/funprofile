@@ -9,6 +9,7 @@ import { useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { queryClient } from '@/lib/queryClient';
 import { toast } from 'sonner';
+import logger from '@/lib/logger';
 import type { ResolvedRecipient, MultiSendResult } from './types';
 import type { TokenOption } from '@/components/donations/TokenSelector';
 import type { MessageTemplate } from '@/components/donations/QuickGiftPicker';
@@ -89,7 +90,7 @@ export function useDonationFlow(params: UseDonationFlowParams) {
       try {
         const { data: donationData, error } = await supabase.functions.invoke('record-donation', { body });
         if (!error && donationData?.donation?.id) {
-          console.log(`[GIFT] record-donation OK (attempt ${attempt + 1}):`, donationData.donation.id);
+          logger.debug(`[GIFT] record-donation OK (attempt ${attempt + 1}):`, donationData.donation.id);
           localStorage.removeItem(`pending_donation_${hash}`);
           return true;
         }
@@ -138,7 +139,7 @@ export function useDonationFlow(params: UseDonationFlowParams) {
         }
       }
 
-      console.log(`[GIFT] Recorded ${recorded}/${successResults.length} donations`);
+      logger.debug(`[GIFT] Recorded ${recorded}/${successResults.length} donations`);
       if (recorded > 0) invalidateDonationCache();
       if (recorded < successResults.length) {
         toast.warning(

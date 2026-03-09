@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
+import { useAdminRole } from '@/hooks/useAdminRole';
 import { Button } from '@/components/ui/button';
 import { InlineSearch } from './InlineSearch';
 import { NotificationDropdown } from './NotificationDropdown';
@@ -22,6 +23,7 @@ import {
   Shield,
   Settings,
 } from 'lucide-react';
+import { topNavItems, languageOptions } from '@/config/navigation';
 import { AngelChatWidget } from '@/components/angel-ai';
 import { GiftNavButton } from '@/components/donations/GiftNavButton';
 
@@ -38,7 +40,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { FacebookLeftSidebar } from '@/components/feed/FacebookLeftSidebar';
+import { LeftSidebar } from '@/components/feed/FacebookLeftSidebar';
 import {
   Tooltip,
   TooltipContent,
@@ -46,7 +48,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
-export const FacebookNavbar = () => {
+export const AppNavbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { t, language, setLanguage } = useLanguage();
@@ -74,50 +76,17 @@ export const FacebookNavbar = () => {
     gcTime: 10 * 60_000,
   });
 
-  // MED-5: Admin check also cached — admin role rarely changes
-  const { data: isAdmin } = useQuery({
-    queryKey: ['navbar-admin', currentUserId],
-    queryFn: async () => {
-      if (!currentUserId) return false;
-      const { data } = await supabase.rpc('has_role', {
-        _user_id: currentUserId,
-        _role: 'admin'
-      });
-      return !!data;
-    },
-    enabled: !!currentUserId,
-    staleTime: 10 * 60_000, // 10 minutes — admin role rarely changes
-    gcTime: 15 * 60_000,
-  });
+  // MED-5: Admin check — centralized via useAdminRole
+  const { isAdmin } = useAdminRole();
 
   const isActive = (path: string) => location.pathname === path;
 
-  // Language options with country flag images (using flagcdn.com for consistent display)
-  const languageOptions = [
-    { code: 'vi' as const, name: 'Tiếng Việt', flagUrl: 'https://flagcdn.com/w40/vn.png' },
-    { code: 'en' as const, name: 'English', flagUrl: 'https://flagcdn.com/w40/us.png' },
-    { code: 'zh' as const, name: '中文', flagUrl: 'https://flagcdn.com/w40/cn.png' },
-    { code: 'ja' as const, name: '日本語', flagUrl: 'https://flagcdn.com/w40/jp.png' },
-    { code: 'ko' as const, name: '한국어', flagUrl: 'https://flagcdn.com/w40/kr.png' },
-    { code: 'th' as const, name: 'ไทย', flagUrl: 'https://flagcdn.com/w40/th.png' },
-    { code: 'id' as const, name: 'Indonesia', flagUrl: 'https://flagcdn.com/w40/id.png' },
-    { code: 'fr' as const, name: 'Français', flagUrl: 'https://flagcdn.com/w40/fr.png' },
-    { code: 'es' as const, name: 'Español', flagUrl: 'https://flagcdn.com/w40/es.png' },
-    { code: 'de' as const, name: 'Deutsch', flagUrl: 'https://flagcdn.com/w40/de.png' },
-    { code: 'pt' as const, name: 'Português', flagUrl: 'https://flagcdn.com/w40/br.png' },
-    { code: 'ru' as const, name: 'Русский', flagUrl: 'https://flagcdn.com/w40/ru.png' },
-    { code: 'ar' as const, name: 'العربية', flagUrl: 'https://flagcdn.com/w40/sa.png' },
-  ];
-
-  // Navigation items for center nav (Desktop only)
-  const iconNavItems = [
-    { icon: Home, path: '/', label: t('home') },
-    { icon: Users, path: '/friends', label: t('friends') },
-    { icon: Film, path: '/reels', label: 'Reels' },
-    { icon: MessageCircle, path: '/chat', label: 'Chat' },
-    // Bell (Notification) is handled separately with NotificationDropdown component
-    { icon: Wallet, path: '/wallet', label: 'Wallet' },
-  ];
+  // Navigation items from central config
+  const iconNavItems = topNavItems.map(item => ({
+    icon: { Home, Users, Film, MessageCircle, Wallet }[item.iconName!] || Home,
+    path: item.route,
+    label: t(item.labelKey as any) || item.labelKey,
+  }));
 
   // Mint nav item with GIF logo (inserted after iconNavItems in render)
 
@@ -138,7 +107,7 @@ export const FacebookNavbar = () => {
                 </button>
               </SheetTrigger>
               <SheetContent side="left" className="w-[300px] p-4 overflow-y-auto">
-                <FacebookLeftSidebar onItemClick={() => setIsSidebarOpen(false)} />
+                <LeftSidebar onItemClick={() => setIsSidebarOpen(false)} />
               </SheetContent>
             </Sheet>
           )}
@@ -345,10 +314,10 @@ export const FacebookNavbar = () => {
                           >
                             <img 
                               src={lang.flagUrl} 
-                              alt={lang.name}
+                              alt={lang.fullName}
                               className="w-5 h-4 object-cover rounded-sm"
                             />
-                            <span>{lang.name}</span>
+                            <span>{lang.fullName}</span>
                           </button>
                         ))}
                       </div>
@@ -412,3 +381,6 @@ export const FacebookNavbar = () => {
     </header>
   );
 };
+
+/** @deprecated Use AppNavbar instead */
+export const FacebookNavbar = AppNavbar;

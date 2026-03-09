@@ -5,6 +5,7 @@ import { Play, Pause, Volume2, VolumeX, Maximize, Loader2 } from 'lucide-react';
 import { checkVideoStatus, extractStreamUid } from '@/utils/streamUpload';
 import { VideoProcessingState } from './VideoProcessingState';
 import { VideoErrorState } from './VideoErrorState';
+import logger from '@/lib/logger';
 
 interface StreamPlayerProps {
   src: string; // HLS manifest URL, Stream UID, or iframe embed URL
@@ -108,7 +109,7 @@ export const StreamPlayer = memo(({
 
     try {
       const status = await checkVideoStatus(videoUid);
-      console.log('[StreamPlayer] Video status:', status);
+      logger.debug('[StreamPlayer] Video status:', status);
       
       if (status.readyToStream) {
         setIsVideoReady(true);
@@ -175,7 +176,7 @@ export const StreamPlayer = memo(({
   // Start/stop polling based on processing state
   useEffect(() => {
     if (isProcessing && !pollingRef.current) {
-      console.log('[StreamPlayer] Starting status polling...');
+      logger.debug('[StreamPlayer] Starting status polling...');
       pollingRef.current = setInterval(pollVideoStatus, 5000);
     }
     
@@ -234,7 +235,7 @@ export const StreamPlayer = memo(({
           } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
             hls.recoverMediaError();
           } else {
-            console.log('[StreamPlayer] Falling back to iframe embed');
+            logger.debug('[StreamPlayer] Falling back to iframe embed');
             setUseIframeFallback(true);
           }
         }

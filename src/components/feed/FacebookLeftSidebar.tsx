@@ -1,6 +1,8 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAdminRole } from '@/hooks/useAdminRole';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useLanguage } from '@/i18n/LanguageContext';
@@ -17,6 +19,7 @@ import {
   Crown,
   Settings,
 } from 'lucide-react';
+import { ecosystemItems, shortcutItems as shortcutConfig, userMenuItems } from '@/config/navigation';
 
 interface Profile {
   id: string;
@@ -30,36 +33,26 @@ interface FacebookLeftSidebarProps {
   onItemClick?: () => void;
 }
 
-export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) => {
+export const LeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) => {
   const navigate = useNavigate();
   const { t } = useLanguage();
   const { userId, isAuthenticated } = useCurrentUser();
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const { isAdmin } = useAdminRole();
 
-  useEffect(() => {
-    if (!userId) {
-      setProfile(null);
-      setIsAdmin(false);
-      return;
-    }
-
-    const fetchProfile = async () => {
+  const { data: profile = null } = useQuery({
+    queryKey: ['sidebar-profile', userId],
+    queryFn: async () => {
       const { data } = await supabase
         .from('profiles')
         .select('id, username, display_name, avatar_url, full_name')
-        .eq('id', userId)
+        .eq('id', userId!)
         .single();
-      setProfile(data);
-      
-      const { data: hasAdminRole } = await supabase.rpc('has_role', {
-        _user_id: userId,
-        _role: 'admin'
-      });
-      setIsAdmin(!!hasAdminRole);
-    };
-    fetchProfile();
-  }, [userId]);
+      return data as Profile | null;
+    },
+    enabled: !!userId,
+    staleTime: 5 * 60_000,
+    gcTime: 10 * 60_000,
+  });
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -67,98 +60,16 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
     onItemClick?.();
   };
 
-  // Shortcuts for "Lối tắt của bạn" section
-  const shortcutItems = [
-    
-    { icon: Crown, label: 'Mạnh Thường Quân', path: '/benefactors', color: 'text-gold' },
-    { icon: Globe, label: 'Lịch Sử Giao Dịch', path: '/donations', color: 'text-emerald-500' },
-    { icon: UsersRound, label: 'Danh Sách Thành Viên', path: '/users', color: 'text-red-500' },
-    { icon: UsersRound, label: t('groups'), path: '/groups', color: 'text-blue-500' },
-    { icon: Flag, label: t('pages') || 'Trang', path: '/pages', color: 'text-orange-500' },
-    { icon: Link2, label: 'Connected Apps', path: '/profile/connected-apps', color: 'text-purple-500' },
-    { icon: BookOpen, label: 'SSO Docs', path: '/docs/ecosystem', color: 'text-green-500' },
-  ];
+  // Icon map for shortcut items from config
+  const iconMap: Record<string, any> = { Crown, Globe, UsersRound, Flag, Link2, BookOpen };
 
-  // FUN Ecosystem shortcuts - use direct paths for consistency across all environments
-  const ecosystemShortcuts = useMemo(() => [
-    { 
-      name: 'Law of Light', 
-      avatar: '/fun-profile-logo-40.webp',
-      path: '/law-of-light?view=true',
-      isExternal: false,
-      isSpecial: true
-    },
-    { 
-      name: 'Angel AI', 
-      avatar: '/angel-ai-logo-36.png',
-      path: 'https://angel.fun.rich',
-      isExternal: true,
-      isSpecial: false
-    },
-    { 
-      name: 'About FUN Profile', 
-      avatar: '/fun-profile-logo-40.webp',
-      path: '/about',
-      isExternal: false,
-      isSpecial: false
-    },
-    { 
-      name: 'FUN Play', 
-      avatar: '/fun-play-logo-36.webp',
-      path: 'https://play.fun.rich',
-      isExternal: true,
-      isSpecial: false
-    },
-    { 
-      name: 'FUN Farm', 
-      avatar: '/fun-farm-logo-36.webp',
-      path: 'https://farm.fun.rich',
-      isExternal: true,
-      isSpecial: false
-    },
-    { 
-      name: 'FUN Planet', 
-      avatar: '/fun-planet-logo-36.webp',
-      path: 'https://planet.fun.rich',
-      isExternal: true,
-      isSpecial: false
-    },
-    { 
-      name: 'FUN Wallet', 
-      avatar: '/fun-wallet-logo-36.webp',
-      path: 'https://wallet.fun.rich',
-      isExternal: true,
-      isSpecial: false
-    },
-    { 
-      name: 'FUN Charity', 
-      avatar: '/fun-charity-logo-36.webp',
-      path: 'https://charity.fun.rich',
-      isExternal: true,
-      isSpecial: false
-    },
-    { 
-      name: 'FUN Academy', 
-      avatar: '/fun-academy-logo-36.webp',
-      path: 'https://academy.fun.rich',
-      isExternal: true,
-      isSpecial: false
-    },
-    { 
-      name: 'FUN Treasury', 
-      avatar: '/fun-treasury-logo-36.webp',
-      path: 'https://treasury.fun.rich',
-      isExternal: true,
-      isSpecial: false
-    },
-    { 
-      name: 'Green Earth', 
-      avatar: '/green-earth-logo-36.webp',
-      path: 'https://greenearth-fun.lovable.app',
-      isExternal: true,
-      isSpecial: false
-    },
-  ], []);
+  // Shortcuts from central config
+  const shortcutItems = shortcutConfig.map(item => ({
+    icon: iconMap[item.iconName] || Globe,
+    label: t(item.labelKey as any) || item.labelKey,
+    path: item.route,
+    color: item.color,
+  }));
 
   return (
     <div className="space-y-3">
@@ -185,7 +96,7 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
           </h3>
         </div>
         <div className="space-y-1">
-          {ecosystemShortcuts.map((shortcut) => (
+          {ecosystemItems.map((shortcut) => (
             <button
               key={shortcut.name}
               onClick={() => {
@@ -326,3 +237,6 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
     </div>
   );
 };
+
+/** @deprecated Use LeftSidebar instead */
+export const FacebookLeftSidebar = LeftSidebar;
