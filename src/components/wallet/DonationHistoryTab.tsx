@@ -48,6 +48,7 @@ export function DonationHistoryTab() {
   const { data: sentDonations = [], isLoading: isSentLoading, refetch: refetchSent } = useDonationHistory('sent');
   const { data: receivedDonations = [], isLoading: isReceivedLoading, refetch: refetchReceived } = useDonationHistory('received');
   const { data: stats } = useDonationStats();
+  const { scan, isScanning } = useScanIncoming();
 
   const isLoading = isSentLoading || isReceivedLoading;
 
