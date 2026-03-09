@@ -521,3 +521,113 @@ _shared/
 
 ### Kết luận:
 FUN Profile đã có nền tảng tốt (React Query, useCurrentUser, module pattern cho chat/live, navigation config). Cần tiếp tục mở rộng pattern tốt này cho các domain còn lại, đồng thời dọn dẹp technical debt (console.log, as any, component naming, edge function consolidation).
+
+---
+
+## PHẦN 15 — LIVE MESSAGING SEMANTICS AUDIT
+
+### Kết luận: `live_messages` là canonical source cho live chat
+
+| | `live_comments` | `live_messages` |
+|---|---|---|
+| **Rows** | 0 | 273 |
+| **FK column** | `live_session_id` | `session_id` |
+| **Content column** | `message` | `content` |
+| **ID type** | UUID | bigint |
+| **Hook** | `useLiveComments` (dead code — exported nhưng không import) | `useLiveMessages` (active) |
+| **UI usage** | Không | `LiveChatPanel`, `LiveChatReplay` |
+| **Edge function refs** | Chỉ trong cleanup lists (delete-user, batch-delete) | Cleanup + `auto-finalize-recordings` |
+
+**Wording chuẩn:**
+- `useLiveComments` = **dead code** (hook tồn tại nhưng không component nào import)
+- `live_comments` table = **unused in current flow**, nhưng **chưa kết luận là sai data model**
+- Candidate for removal **chỉ nếu sau product review không còn intended future semantics** (ví dụ: overlay comments vs chat room)
+- Phase 2: xóa `useLiveComments` hook
+- Phase 3: sau khi gỡ edge function cleanup refs + product review → quyết định drop hoặc giữ
+
+---
+
+## PHẦN 16 — PROFILES FIELD VISIBILITY MATRIX
+
+### Enforcement Gap Warning
+
+> ⚠️ `public_profiles` view là **safe projection** nhưng **chưa phải enforcement boundary**.
+> Client hiện query trực tiếp `profiles` table với RLS SELECT `qual: true`.
+> Phase 3 cần quyết định dứt khoát: giữ **Public by Design** hay chuyển sang **strict profile exposure model**.
+
+### Matrix
+
+| Field group | Intended visibility | Current enforcement |
+|---|---|---|
+| `username, avatar_url, bio, cover_url, display_name, full_name, social_links, location, workplace, education, relationship_status` | **Public** | ✅ OK — có trong `public_profiles` view |
+| `public_wallet_address` | **Public** (nếu user bật) | ✅ OK — có trong `public_profiles` view |
+| `is_banned` | **Public** | ✅ OK — có trong `public_profiles` view |
+| `email, email_verified_at, has_password, signup_method` | **Owner only** | ⚠️ **EXPOSED** — profiles SELECT `qual: true` |
+| `reward_locked, reward_status, account_status, pending_reward, approved_reward, total_rewards, claim_freeze_until, wallet_risk_status` | **Owner only** | ⚠️ **EXPOSED** — profiles SELECT `qual: true` |
+| `login_wallet_address, custodial_wallet_address, external_wallet_address, default_wallet_type, wallet_address (legacy), wallet_change_count_30d, last_wallet_change_at` | **Owner only** | ⚠️ **EXPOSED** — profiles SELECT `qual: true` |
+| `oauth_provider, last_login_platform, registered_from, cross_platform_data` | **Owner only** | ⚠️ **EXPOSED** — profiles SELECT `qual: true` |
+| `law_of_light_accepted, law_of_light_accepted_at, fun_id, pinned_post_id, soul_level` | **Owner only** | ⚠️ **EXPOSED** — profiles SELECT `qual: true` |
+| `admin_notes, ban_reason, banned_at, is_restricted` | **Admin only** | ⚠️ **EXPOSED** — profiles SELECT `qual: true` |
+| `grand_total_deposit, grand_total_withdraw, grand_total_bet, grand_total_win, grand_total_loss, grand_total_profit, financial_updated_at` | **Admin only** | ⚠️ **EXPOSED** — profiles SELECT `qual: true` |
+
+---
+
+## PHẦN 17 — VIEW DEPENDENCY MAPPING
+
+| View | Depends on | Sensitive fields in source table | Correctly filtered? |
+|---|---|---|---|
+| `public_profiles` | `profiles` | admin_notes, ban_reason, wallet fields (6), financial grand_total_* (7), has_password, signup_method | ✅ YES — all excluded |
+| `public_light_reputation` | `light_reputation` | Không có fields nhạy cảm | N/A |
+| `public_live_sessions` | `live_sessions` | agora_channel, agora_uid_host, recording_resource_id, recording_sid | ✅ YES — excluded |
+| `public_system_config` | `system_config` | TREASURY_PRIVATE_KEY (nếu lưu trong config) | ✅ YES — excluded |
+| `user_custodial_wallets` | `custodial_wallets` | encrypted_private_key | ✅ YES — filtered by `auth.uid()` |
+
+> ⚠️ **Khi refactor table gốc, phải kiểm tra lại TẤT CẢ views phụ thuộc** để đảm bảo không vô tình expose fields mới.
+
+---
+
+## PHẦN 18 — DO NOT TOUCH FIRST
+
+> Danh sách các objects **KHÔNG ĐƯỢC refactor** cho đến khi có audit đầy đủ và migration plan rõ ràng.
+
+| Object | Domain | Lý do |
+|---|---|---|
+| `profiles` table + columns | Identity | God table — mọi thay đổi ảnh hưởng toàn hệ thống |
+| `get_user_rewards_v2` function | Rewards | Đọc nhiều bảng (posts, comments, reactions, friendships, livestreams) |
+| `platform_financial_data` + triggers | Finance | `update_profile_grand_totals` và `update_financial_from_transaction` sync data |
+| `pending_claims` table | Rewards | Workflow queue — admin approve flow phụ thuộc |
+| SSO/auth-related functions (18 functions) | Auth | Sensitive — bất kỳ bug nào = mất access |
+| `live_sessions` + `live_messages` | Live | Canonical live tables đang active |
+| `notifications.read` column | Notifications | 6+ frontend query refs — cần compatibility migration trước |
+
+---
+
+## PHẦN 19 — CANONICAL DOMAIN MODELS
+
+| Domain | Canonical table/object | Status |
+|---|---|---|
+| Live chat | `live_messages` | Active |
+| Live session | `live_sessions` | Active |
+| Live overlay comments | `live_comments` | Unused — pending product review |
+| Reward workflow | `pending_claims` | Active |
+| Reward history | `reward_claims` | Active |
+| Financial totals | `platform_financial_data` | Active (SoT) |
+| Financial cache | `profiles.grand_total_*` | Derived/Cache (trigger-synced) |
+| Public profile projection | `public_profiles` view | Active |
+| Wallet config | `profiles` (6 wallet fields) | **Temporary SoT** → target: `user_wallet_config` |
+| Light score | `light_reputation` | Active |
+| Light events | `light_actions` | Active |
+| User identity | `profiles` | Active (God table — decomposition planned) |
+
+---
+
+## PHẦN 20 — REFACTOR BLOCKERS
+
+| Object | Cannot refactor because | Unblock by |
+|---|---|---|
+| `livestreams` table | `get_user_rewards_v2` function reads it | Refactor function to use `live_sessions` first |
+| `grand_total_*` columns in profiles | `FinancialTab.tsx` reads directly (2 queries) | Migrate admin UI to read from `platform_financial_data` |
+| `live_comments` table | Edge function cleanup refs (delete-user, batch-delete) | Remove from cleanup lists, then product review |
+| `notifications.read` column | 6+ frontend query refs + UI styling logic | Compatibility migration: backfill `is_read`, dual-write, migrate queries |
+| `reward_claims` + `pending_claims` | Different lifecycle stages (history vs workflow) | Full state-machine audit before any merge decision |
+| `profiles` wallet fields | Used everywhere for wallet display/auth | Create `user_wallet_config` + migrate reads first |
