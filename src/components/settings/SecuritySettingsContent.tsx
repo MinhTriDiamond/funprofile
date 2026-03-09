@@ -109,7 +109,9 @@ const SecuritySettingsContent = () => {
     },
     {
       icon: Chrome, label: 'Google',
-      description: 'Đăng nhập nhanh bằng tài khoản Google',
+      description: hasEmailLoginMethod
+        ? 'Bạn đã liên kết email nên có thể đăng nhập vào tài khoản này bằng Google nhé'
+        : 'Đăng nhập nhanh bằng tài khoản Google',
       status: hasGoogleIdentity ? 'connected' : 'disconnected',
       statusLabel: hasGoogleIdentity ? 'Đã liên kết' : 'Chưa liên kết',
       action: undefined, actionLabel: undefined,
