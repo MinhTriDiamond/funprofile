@@ -192,6 +192,12 @@ Deno.serve(async (req) => {
       const amount =
         `${intPart}.${fracPart.toString().padStart(tokenDecimals, "0")}`.replace(/\.?0+$/, "") || "0";
 
+      const numAmount = parseFloat(amount);
+
+      // Skip zero-amount and dust/spam transactions
+      const minAmount = MIN_AMOUNTS[tokenSymbol] ?? 0.01;
+      if (numAmount <= 0 || numAmount < minAmount) continue;
+
       const senderAddr = transfer.from_address.toLowerCase();
       const senderProfile = walletToProfile.get(senderAddr);
       const isInternal = !!senderProfile;

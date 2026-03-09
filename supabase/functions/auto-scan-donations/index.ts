@@ -185,6 +185,12 @@ Deno.serve(async (req) => {
           }
 
           const amount = parseAmount(transfer.value, tokenDecimals);
+          const numAmount = parseFloat(amount);
+
+          // Skip zero-amount and dust/spam transactions
+          const minAmount = MIN_AMOUNTS[tokenSymbol] ?? 0.01;
+          if (numAmount <= 0 || numAmount < minAmount) continue;
+
           const senderAddr = transfer.from_address.toLowerCase();
           const senderProfile = walletToProfile.get(senderAddr);
 
