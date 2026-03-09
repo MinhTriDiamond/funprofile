@@ -27,12 +27,11 @@ export class AppError extends Error {
   readonly statusCode: number;
 
   constructor(code: ErrorCode, userMessage: string, options?: { cause?: unknown; statusCode?: number }) {
-    super(userMessage);
+    super(userMessage, { cause: options?.cause });
     this.name = 'AppError';
     this.code = code;
     this.userMessage = userMessage;
     this.statusCode = options?.statusCode ?? ERROR_STATUS_MAP[code] ?? 500;
-    if (options?.cause) this.cause = options.cause;
   }
 }
 
