@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
@@ -8,6 +7,8 @@ import { Shield, BarChart3, Gift, Users, DollarSign, Sparkles, FileText, ShieldA
 import { FacebookNavbar } from "@/components/layout/FacebookNavbar";
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { useAdminUsers, invalidateAdminData } from "@/hooks/useAdminUsers";
+import { useAdminRole } from "@/hooks/useAdminRole";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 
 import OverviewTab from "@/components/admin/OverviewTab";
 import PplpMintTab from "@/components/admin/PplpMintTab";
