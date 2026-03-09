@@ -23,9 +23,8 @@ import LivestreamHealthTab from "@/components/admin/LivestreamHealthTab";
 const Admin = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { isAdmin, isLoading: adminLoading } = useAdminRole();
+  const { userId: currentUserId } = useCurrentUser();
   const [activeTab, setActiveTab] = useState(() => {
     const tabParam = searchParams.get("tab");
     const validTabs = ["overview", "pplp", "finance", "rewards", "users", "fraud", "moderation", "livestream", "system"];
@@ -34,36 +33,13 @@ const Admin = () => {
 
   const { data: users = [], isLoading: usersLoading } = useAdminUsers();
 
+  // Redirect non-admin users
   useEffect(() => {
-    checkAdminStatus();
-  }, []);
-
-  const checkAdminStatus = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { navigate("/feed"); return; }
-
-      setCurrentUserId(session.user.id);
-
-      const { data: hasRole, error } = await supabase.rpc('has_role', {
-        _user_id: session.user.id,
-        _role: 'admin'
-      });
-
-      if (error || !hasRole) {
-        toast.error("Bạn không có quyền truy cập trang này");
-        navigate("/feed");
-        return;
-      }
-
-      setIsAdmin(true);
-    } catch (error) {
-      console.error("Error checking admin status:", error);
+    if (!adminLoading && !isAdmin) {
+      toast.error("Bạn không có quyền truy cập trang này");
       navigate("/feed");
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [isAdmin, adminLoading, navigate]);
 
   const stats = {
     totalUsers: users.filter(u => !u.is_banned).length,
