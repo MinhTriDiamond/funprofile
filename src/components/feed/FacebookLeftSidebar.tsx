@@ -37,7 +37,8 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
   const { t } = useLanguage();
   const { userId, isAuthenticated } = useCurrentUser();
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const { isAdmin } = useAdminRole();
+  // Profile state kept local — will move to React Query in PR4
 
   useEffect(() => {
     if (!userId) {
