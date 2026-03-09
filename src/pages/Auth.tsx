@@ -62,19 +62,30 @@ const Auth = () => {
     };
     checkUser();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY') {
         navigate('/reset-password', { replace: true });
         return;
       }
       if (event === 'SIGNED_IN' && session) {
-        const banned = await checkBanStatus(session.user.id);
-        if (banned) {
-          await supabase.auth.signOut();
-          return;
-        }
+        // Fire-and-forget ban check — NEVER await inside onAuthStateChange
+        setTimeout(async () => {
+          try {
+            const banned = await checkBanStatus(session.user.id);
+            if (banned) {
+              await supabase.auth.signOut();
+              return;
+            }
+          } catch (e) {
+            console.error('[Auth] Ban check error:', e);
+          }
+        }, 0);
+
         if (ssoFlow && returnTo) {
           handleSSORedirect(session.access_token);
+        } else if (!ssoFlow) {
+          // Backup navigation — UnifiedAuthForm handles primary nav
+          // This ensures UI doesn't stay stuck if handleAuthSuccess is slow
         }
       }
     });

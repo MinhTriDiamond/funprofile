@@ -220,11 +220,17 @@ export function LinkEmailDialog({ open, onOpenChange }: LinkEmailDialogProps) {
             </p>
           </div>
 
+          {loading && (
+            <p className="text-xs text-muted-foreground text-center animate-pulse">
+              ⏳ Quá trình gửi email có thể mất 5-10 giây...
+            </p>
+          )}
+
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Đang kiểm tra...
+                Đang gửi email xác thực...
               </>
             ) : (
               'Gửi email xác thực'

@@ -67,54 +67,51 @@ export const UnifiedAuthForm = ({ ssoFlow = false }: UnifiedAuthFormProps) => {
       return;
     }
 
-    logger.debug('[Auth] Session verified for user:', userId, 'isNewUser:', isNewUser, 'hasExternalWallet:', hasExternalWallet);
+    logger.debug('[Auth] Session verified for user:', userId, 'isNewUser:', isNewUser);
 
-    // Log login IP + device fingerprint (fire-and-forget)
-    try {
-      const deviceHash = await getDeviceHash();
-      supabase.functions.invoke('log-login-ip', {
-        headers: { Authorization: `Bearer ${session.access_token}` },
-        body: { device_hash: deviceHash, fingerprint_version: FINGERPRINT_VERSION },
-      });
-    } catch (e) {
-      logger.warn('[Auth] Failed to log IP:', e);
-    }
+    // Fire-and-forget: Log login IP + device fingerprint
+    getDeviceHash()
+      .then(deviceHash => {
+        supabase.functions.invoke('log-login-ip', {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+          body: { device_hash: deviceHash, fingerprint_version: FINGERPRINT_VERSION },
+        });
+      })
+      .catch(e => logger.warn('[Auth] Failed to log IP:', e));
 
-    // Đồng bộ law_of_light từ localStorage nếu có pending (cho MỌI lần đăng nhập)
+    // Fire-and-forget: Sync law_of_light from localStorage
     const lawOfLightPending = localStorage.getItem('law_of_light_accepted_pending');
     if (lawOfLightPending === 'true') {
-      logger.debug('[Auth] Syncing law_of_light_accepted for user:', userId);
-      await supabase.from('profiles').update({
-        law_of_light_accepted: true,
-        law_of_light_accepted_at: new Date().toISOString()
-      }).eq('id', userId);
       localStorage.removeItem('law_of_light_accepted_pending');
+      Promise.resolve(
+        supabase.from('profiles').update({
+          law_of_light_accepted: true,
+          law_of_light_accepted_at: new Date().toISOString()
+        }).eq('id', userId)
+      )
+        .then(() => logger.debug('[Auth] law_of_light synced'))
+        .catch(e => logger.warn('[Auth] law_of_light sync failed:', e));
     }
 
     if (isNewUser) {
-      // PPLP: Award new user bonus Light Score (fire-and-forget)
       evaluateAsync({ action_type: 'new_user_bonus', reference_id: userId });
       
       if (ssoFlow) {
-        // SSO mode: don't navigate, Auth.tsx handles redirect
         toast.success(t('welcomeNewUser'));
         return;
       }
       await handleNewUserSetup(userId, hasExternalWallet);
     } else {
-      // Kiểm tra law_of_light_accepted từ DB trước khi navigate
+      if (ssoFlow) {
+        return;
+      }
+
+      // Navigate immediately, check law_of_light in parallel
       const { data: profile } = await supabase
         .from('profiles')
         .select('law_of_light_accepted')
         .eq('id', userId)
         .single();
-
-      toast.success(t('welcomeBack'));
-
-      if (ssoFlow) {
-        // SSO mode: don't navigate, Auth.tsx handles redirect
-        return;
-      }
 
       if (profile?.law_of_light_accepted) {
         navigate('/');
