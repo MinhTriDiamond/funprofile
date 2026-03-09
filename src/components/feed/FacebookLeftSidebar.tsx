@@ -17,6 +17,7 @@ import {
   Crown,
   Settings,
 } from 'lucide-react';
+import { ecosystemItems, shortcutItems as shortcutConfig, userMenuItems } from '@/config/navigation';
 
 interface Profile {
   id: string;
