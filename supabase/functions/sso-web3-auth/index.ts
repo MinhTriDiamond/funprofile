@@ -7,7 +7,6 @@ const corsHeaders = {
 };
 
 // Best-effort in-memory rate limiting (resets on cold start)
-// Phase 2: migrate to DB-backed or Upstash Redis
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 const RATE_LIMIT = 10;
 const RATE_WINDOW = 60 * 1000;
@@ -51,6 +50,61 @@ function getSupabase() {
   return createClient(url, key);
 }
 
+/** Build the internal placeholder email for a wallet address */
+function walletEmail(addr: string): string {
+  return `wallet_${addr.toLowerCase()}@internal.fun.local`;
+}
+
+/** Find existing profile by wallet address across all wallet columns + email fallback */
+async function findProfileByWallet(supabase: ReturnType<typeof getSupabase>, normalizedAddr: string) {
+  // 1. external_wallet_address
+  const { data: byExternal } = await supabase
+    .from('profiles')
+    .select('id, username, external_wallet_address, public_wallet_address, login_wallet_address')
+    .eq('external_wallet_address', normalizedAddr)
+    .maybeSingle();
+  if (byExternal) return { profile: byExternal, source: 'external' };
+
+  // 2. login_wallet_address
+  const { data: byLogin } = await supabase
+    .from('profiles')
+    .select('id, username, external_wallet_address, public_wallet_address, login_wallet_address')
+    .eq('login_wallet_address', normalizedAddr)
+    .maybeSingle();
+  if (byLogin) return { profile: byLogin, source: 'login' };
+
+  // 3. Legacy wallet_address
+  const { data: byLegacy } = await supabase
+    .from('profiles')
+    .select('id, username, wallet_address, external_wallet_address, public_wallet_address, login_wallet_address')
+    .eq('wallet_address', normalizedAddr)
+    .maybeSingle();
+  if (byLegacy) return { profile: byLegacy, source: 'legacy' };
+
+  // 4. public_wallet_address
+  const { data: byPublic } = await supabase
+    .from('profiles')
+    .select('id, username, external_wallet_address, public_wallet_address, login_wallet_address')
+    .eq('public_wallet_address', normalizedAddr)
+    .maybeSingle();
+  if (byPublic) return { profile: byPublic, source: 'public' };
+
+  // 5. Fallback: check auth.users by placeholder email
+  const placeholder = walletEmail(normalizedAddr);
+  const { data: listData } = await supabase.auth.admin.listUsers({ filter: placeholder, page: 1, perPage: 1 });
+  if (listData?.users?.length) {
+    const authUser = listData.users[0];
+    const { data: byId } = await supabase
+      .from('profiles')
+      .select('id, username, external_wallet_address, public_wallet_address, login_wallet_address')
+      .eq('id', authUser.id)
+      .maybeSingle();
+    if (byId) return { profile: byId, source: 'email_fallback' };
+  }
+
+  return null;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -67,14 +121,8 @@ Deno.serve(async (req: Request) => {
       if (!checkRateLimit(`check:${normalizedAddr}`)) return jsonResponse({ success: false, error: 'Too many requests' }, 429);
 
       const sb = getSupabase();
-      const { data: byExternal } = await sb.from('profiles').select('id').eq('external_wallet_address', normalizedAddr).maybeSingle();
-      if (byExternal) return jsonResponse({ registered: true });
-
-      const { data: byLegacy } = await sb.from('profiles').select('id').eq('wallet_address', normalizedAddr).maybeSingle();
-      if (byLegacy) return jsonResponse({ registered: true });
-
-      const { data: byPublic } = await sb.from('profiles').select('id').eq('public_wallet_address', normalizedAddr).maybeSingle();
-      return jsonResponse({ registered: !!byPublic });
+      const result = await findProfileByWallet(sb, normalizedAddr);
+      return jsonResponse({ registered: !!result });
     }
 
     // ========== ACTION: CHALLENGE (generate nonce for signing) ==========
@@ -96,7 +144,7 @@ Deno.serve(async (req: Request) => {
       crypto.getRandomValues(nonceBytes);
       const challengeNonce = Array.from(nonceBytes).map(b => b.toString(16).padStart(2, '0')).join('');
 
-      const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString(); // 5 min TTL
+      const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
       const challengeMessage = `Welcome to FUN Profile!\n\nSign this message to authenticate.\n\nWallet: ${normalizedAddr}\nNonce: ${challengeNonce}\nTimestamp: ${new Date().toISOString()}`;
 
       const ipAddress = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('cf-connecting-ip') || null;
@@ -171,56 +219,34 @@ Deno.serve(async (req: Request) => {
     }
 
     // Step 4: Server re-lookup wallet (don't trust client 'check')
-    let existingProfile = null;
-
-    const { data: profileByExternal } = await supabase
-      .from('profiles')
-      .select('id, username, external_wallet_address, public_wallet_address')
-      .eq('external_wallet_address', normalizedAddress)
-      .maybeSingle();
-
-    if (profileByExternal) {
-      existingProfile = profileByExternal;
-    } else {
-      const { data: profileByLegacy } = await supabase
-        .from('profiles')
-        .select('id, username, wallet_address, external_wallet_address, public_wallet_address')
-        .eq('wallet_address', normalizedAddress)
-        .maybeSingle();
-
-      if (profileByLegacy) {
-        existingProfile = profileByLegacy;
-        const legacyUpdate: Record<string, string> = {
-          external_wallet_address: normalizedAddress,
-          default_wallet_type: 'external',
-        };
-        if (!profileByLegacy.public_wallet_address) {
-          legacyUpdate.public_wallet_address = normalizedAddress;
-        }
-        await supabase.from('profiles').update(legacyUpdate).eq('id', profileByLegacy.id);
-        console.log('[WEB3-AUTH] Migrated legacy wallet to external_wallet_address');
-      } else {
-        const { data: profileByPublic } = await supabase
-          .from('profiles')
-          .select('id, username, external_wallet_address, public_wallet_address')
-          .eq('public_wallet_address', normalizedAddress)
-          .maybeSingle();
-
-        if (profileByPublic) {
-          existingProfile = profileByPublic;
-          console.log('[WEB3-AUTH] Found user via public_wallet_address');
-        }
-      }
-    }
+    const lookupResult = await findProfileByWallet(supabase, normalizedAddress);
 
     let userId: string;
     let isNewUser = false;
     let userEmail = '';
 
-    if (existingProfile) {
+    if (lookupResult) {
       // ===== EXISTING USER LOGIN =====
-      console.log('[WEB3-AUTH] Existing user found:', existingProfile.id);
+      const existingProfile = lookupResult.profile;
+      console.log(`[WEB3-AUTH] Existing user found (via ${lookupResult.source}):`, existingProfile.id);
       userId = existingProfile.id;
+
+      // Migrate legacy wallet if needed
+      if (lookupResult.source === 'legacy') {
+        const legacyUpdate: Record<string, string> = {
+          external_wallet_address: normalizedAddress,
+          default_wallet_type: 'external',
+        };
+        if (!existingProfile.public_wallet_address) {
+          legacyUpdate.public_wallet_address = normalizedAddress;
+        }
+        if (!existingProfile.login_wallet_address) {
+          legacyUpdate.login_wallet_address = normalizedAddress;
+        }
+        await supabase.from('profiles').update(legacyUpdate).eq('id', existingProfile.id);
+        console.log('[WEB3-AUTH] Migrated legacy wallet to external_wallet_address');
+      }
+
       const { data: userData } = await supabase.auth.admin.getUserById(userId);
       userEmail = userData?.user?.email || '';
     } else {
@@ -228,9 +254,7 @@ Deno.serve(async (req: Request) => {
       console.log('[WEB3-AUTH] New wallet, creating wallet-first account:', normalizedAddress);
       isNewUser = true;
 
-      // Internal placeholder email — technical compromise Phase 1 only
-      // NOT a real email, NOT a login method, NOT shown to user
-      const placeholderEmail = `wallet_${normalizedAddress}@internal.fun.local`;
+      const placeholderEmail = walletEmail(normalizedAddress);
 
       // Create auth user with system email
       const { data: newAuthUser, error: createError } = await supabase.auth.admin.createUser({
@@ -251,22 +275,35 @@ Deno.serve(async (req: Request) => {
       userId = newAuthUser.user.id;
       userEmail = placeholderEmail;
 
-      // Create profile: wallet-first defaults
-      // IMPORTANT: only set external_wallet_address, NOT public_wallet_address (privacy)
-      // login_wallet_address: the wallet used for initial sign-in/authentication
-      const { error: profileError } = await supabase.from('profiles').upsert({
-        id: userId,
+      // Wait for handle_new_user trigger to create profile row, then UPDATE it
+      // The trigger fires on auth.users INSERT and creates a default profile
+      const profileData = {
         signup_method: 'wallet',
         reward_locked: true,
         account_status: 'limited',
         external_wallet_address: normalizedAddress,
         login_wallet_address: normalizedAddress,
         default_wallet_type: 'external',
-      }, { onConflict: 'id' });
+      };
+
+      // First attempt
+      await new Promise(r => setTimeout(r, 300));
+      const { error: profileError } = await supabase.from('profiles')
+        .update(profileData)
+        .eq('id', userId);
 
       if (profileError) {
-        console.error('[WEB3-AUTH] Profile creation error:', profileError);
-        // Auth user was created but profile failed — log but continue
+        console.warn('[WEB3-AUTH] Profile update attempt 1 failed, retrying...', profileError);
+        // Retry after longer delay
+        await new Promise(r => setTimeout(r, 700));
+        const { error: retryError } = await supabase.from('profiles')
+          .update(profileData)
+          .eq('id', userId);
+
+        if (retryError) {
+          console.error('[WEB3-AUTH] Profile update failed after retry:', retryError);
+          // Don't fail the whole signup — auth user exists, profile will need manual fix
+        }
       }
 
       // Audit log
