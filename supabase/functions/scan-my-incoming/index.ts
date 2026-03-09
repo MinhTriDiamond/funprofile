@@ -80,17 +80,22 @@ Deno.serve(async (req) => {
 
     const myWallet = profile.public_wallet_address.toLowerCase();
 
-    // Get all Fun Profile wallet addresses to exclude internal transfers
+    // Get all Fun Profile wallet addresses to map sender_id
     const { data: allProfiles } = await adminClient
       .from("profiles")
-      .select("public_wallet_address")
+      .select("id, public_wallet_address, username, display_name")
       .not("public_wallet_address", "is", null);
 
-    const funProfileWallets = new Set(
-      (allProfiles || [])
-        .map((p) => p.public_wallet_address?.toLowerCase())
-        .filter(Boolean) as string[]
-    );
+    const walletToProfile = new Map<string, { id: string; username: string; display_name: string | null }>();
+    for (const p of allProfiles || []) {
+      if (p.public_wallet_address) {
+        walletToProfile.set(p.public_wallet_address.toLowerCase(), {
+          id: p.id,
+          username: p.username,
+          display_name: p.display_name,
+        });
+      }
+    }
 
     // Fetch ERC20 transfers TO user's wallet
     const moralisHeaders = { "X-API-Key": moralisApiKey, Accept: "application/json" };
@@ -119,34 +124,30 @@ Deno.serve(async (req) => {
       testnetTransfers = testnetData.result || [];
     }
 
-    // Filter: only INCOMING to my wallet, FROM external wallets (not Fun Profile users)
-    const incomingExternal = [...mainnetTransfers, ...testnetTransfers].filter((t) => {
+    // Filter: only INCOMING to my wallet, known tokens
+    const incomingAll = [...mainnetTransfers, ...testnetTransfers].filter((t) => {
       const to = t.to_address?.toLowerCase();
-      const from = t.from_address?.toLowerCase();
       if (to !== myWallet) return false;
-      // Skip if sender is a Fun Profile user (already handled by record-donation)
-      if (funProfileWallets.has(from)) return false;
-      // Only known tokens
       const contract = t.address?.toLowerCase() || "";
       return !!KNOWN_TOKENS[contract] || contract === FUN_TOKEN_ADDRESS;
     });
 
-    if (incomingExternal.length === 0) {
+    if (incomingAll.length === 0) {
       return new Response(
-        JSON.stringify({ newTransfers: 0, message: "Không tìm thấy giao dịch mới từ ví ngoài" }),
+        JSON.stringify({ newTransfers: 0, message: "Không tìm thấy giao dịch mới" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     // Check existing tx_hashes
-    const txHashes = incomingExternal.map((t) => t.transaction_hash).filter(Boolean);
+    const txHashes = incomingAll.map((t) => t.transaction_hash).filter(Boolean);
     const { data: existingDonations } = await adminClient
       .from("donations")
       .select("tx_hash")
       .in("tx_hash", txHashes);
 
     const existingSet = new Set((existingDonations || []).map((d) => d.tx_hash));
-    const newTransfers = incomingExternal.filter(
+    const newTransfers = incomingAll.filter(
       (t) => t.transaction_hash && !existingSet.has(t.transaction_hash)
     );
 
@@ -183,9 +184,13 @@ Deno.serve(async (req) => {
       const amount =
         `${intPart}.${fracPart.toString().padStart(tokenDecimals, "0")}`.replace(/\.?0+$/, "") || "0";
 
+      const senderAddr = transfer.from_address.toLowerCase();
+      const senderProfile = walletToProfile.get(senderAddr);
+      const isInternal = !!senderProfile;
+
       donationsToInsert.push({
-        sender_id: null,
-        sender_address: transfer.from_address.toLowerCase(),
+        sender_id: senderProfile?.id || null,
+        sender_address: senderAddr,
         recipient_id: userId,
         amount,
         token_symbol: tokenSymbol,
@@ -195,12 +200,14 @@ Deno.serve(async (req) => {
         status: "confirmed",
         confirmed_at: transfer.block_timestamp,
         created_at: transfer.block_timestamp,
-        is_external: true,
+        is_external: !isInternal,
         card_theme: "celebration",
         card_sound: "rich-1",
         message: null,
         light_score_earned: 0,
-        metadata: { sender_name: "Ví ngoài" },
+        metadata: {
+          sender_name: senderProfile?.display_name || senderProfile?.username || "Ví ngoài",
+        },
       });
     }
 
@@ -223,7 +230,7 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         newTransfers: donationsToInsert.length,
-        message: `Tìm thấy ${donationsToInsert.length} giao dịch mới từ ví ngoài`,
+        message: `Tìm thấy ${donationsToInsert.length} giao dịch mới`,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
