@@ -1,39 +1,38 @@
 
-# Light Score 5 Trụ Cột — Phase 1 ✅ HOÀN THÀNH
 
-## Đã triển khai
+## Phân tích nguyên nhân
 
-| # | Resource | Trạng thái |
-|---|----------|-----------|
-| 1 | DB: Bảng `user_dimension_scores` + RLS | ✅ Done |
-| 2 | Edge Function: `pplp-compute-dimensions/index.ts` | ✅ Done |
-| 3 | Edge Function: `pplp-get-score/index.ts` (thêm dimension data) | ✅ Done |
-| 4 | Config: `src/config/pplp.ts` (DIMENSIONS, DIMENSION_LEVELS, DIMENSION_WEIGHTS) | ✅ Done |
-| 5 | Hook: `src/hooks/useDimensionScores.ts` | ✅ Done |
-| 6 | UI: `src/components/wallet/DimensionScoreCard.tsx` + tích hợp vào LightScoreDashboard | ✅ Done |
-| 7 | Docs: `docs/LIGHT_SCORE_MATH_SPEC.md` | ✅ Done |
+### Vấn đề 1: OTP spinner bị kẹt
+**Nguyên nhân gốc**: Trong `Auth.tsx`, callback `onAuthStateChange` sử dụng `async/await` để gọi `checkBanStatus()`. Theo tài liệu Supabase, **không được `await` bên trong `onAuthStateChange`** vì nó chặn xử lý auth state, khiến `setSession()` trong `EmailOtpLogin` bị treo hoặc không hoàn tất đúng cách → UI kẹt ở spinner.
 
-## 5 Trụ Cột
+Ngoài ra, `handleAuthSuccess` trong `UnifiedAuthForm.tsx` cũng thực hiện nhiều `await` tuần tự (getSession, getDeviceHash, DB queries) trước khi navigate, gây chậm.
 
-- 🪪 Identity (Danh tính) — profile, wallet, account age
-- ⚡ Activity (Hoạt động) — normalized light score + time decay
-- ⛓️ On-Chain — wallet, donations sent/received
-- 🔍 Transparency (Minh bạch) — fraud signals penalty
-- 🌐 Ecosystem (Hệ sinh thái) — posts, comments, donations, streak
+### Vấn đề 2: Email verification chậm
+Đây chủ yếu do cold start của Edge Function. Không có bug logic, nhưng có thể tối ưu UX bằng cách hiện trạng thái rõ ràng hơn.
 
-## Cấp độ mới
+## Kế hoạch sửa
 
-| Level | Tên | Điểm |
-|-------|-----|------|
-| 🌱 | Light Seed | 0-99 |
-| 🔨 | Light Builder | 100-249 |
-| 🛡️ | Light Guardian | 250-499 |
-| 👑 | Light Leader | 500-799 |
-| 🌌 | Cosmic Contributor | 800+ |
+### 1. Sửa `Auth.tsx` - Không await trong onAuthStateChange
+- Chuyển `checkBanStatus` thành fire-and-forget bên trong `setTimeout(..., 0)`
+- Xóa `async` khỏi callback `onAuthStateChange`
+- Thêm navigate `/` cho trường hợp SIGNED_IN không phải SSO (backup navigation)
 
-## Bước tiếp theo
+### 2. Sửa `EmailOtpLogin.tsx` - Giảm blocking trước onSuccess
+- Sau `setSession` thành công, gọi `onSuccess` ngay lập tức
+- Chuyển profile update (`last_login_platform`) thành fire-and-forget
+- Bỏ `getSession` check dư thừa (setSession đã đảm bảo session)
 
-- Chạy `pplp-compute-dimensions` lần đầu để tính dimension scores cho tất cả users
-- Thiết lập cron job daily để tự động cập nhật
-- Phase 2: Dump Penalty, nâng chuẩn mint eligibility
-- Phase 3: Reputation NFT, Digital Identity Bank
+### 3. Sửa `UnifiedAuthForm.tsx` - Tối ưu handleAuthSuccess
+- `getDeviceHash` + `log-login-ip` đã là fire-and-forget → giữ nguyên
+- Chuyển law_of_light sync thành non-blocking
+- Navigate ngay sau khi verify session, không chờ DB queries phụ
+
+### 4. Sửa `LinkEmailDialog.tsx` - Thêm UX cho cold start
+- Hiện thông báo "Có thể mất 5-10 giây..." khi đang gửi
+
+### Tóm tắt files cần sửa
+- `src/pages/Auth.tsx` - Fix async trong onAuthStateChange
+- `src/components/auth/EmailOtpLogin.tsx` - Giảm blocking
+- `src/components/auth/UnifiedAuthForm.tsx` - Tối ưu handleAuthSuccess
+- `src/components/security/LinkEmailDialog.tsx` - UX improvement
+
