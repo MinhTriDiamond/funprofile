@@ -63,7 +63,7 @@ interface StreamMigrationResult {
 const AdminMigration = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const { isAdmin, isLoading: adminLoading } = useAdminRole();
   const [migrating, setMigrating] = useState(false);
   const [repairing, setRepairing] = useState(false);
   const [fixingUrls, setFixingUrls] = useState(false);
