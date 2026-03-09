@@ -73,19 +73,25 @@ Deno.serve(async (req: Request) => {
       .update({ is_used: true })
       .eq('id', tokenData.id);
 
-    // Update profile account_status if needed (unlock from limited)
+    // Update profile: sync email and unlock account_status if needed
     const { data: profile } = await adminClient
       .from('profiles')
       .select('account_status')
       .eq('id', tokenData.user_id)
       .single();
 
+    // Prepare update payload
+    const profileUpdate: Record<string, string> = {
+      email: tokenData.email, // Sync email to profiles table
+    };
     if (profile?.account_status === 'limited') {
-      await adminClient
-        .from('profiles')
-        .update({ account_status: 'active' })
-        .eq('id', tokenData.user_id);
+      profileUpdate.account_status = 'active';
     }
+
+    await adminClient
+      .from('profiles')
+      .update(profileUpdate)
+      .eq('id', tokenData.user_id);
 
     // Log activity
     await adminClient.from('account_activity_logs').insert({

@@ -253,12 +253,14 @@ Deno.serve(async (req: Request) => {
 
       // Create profile: wallet-first defaults
       // IMPORTANT: only set external_wallet_address, NOT public_wallet_address (privacy)
+      // login_wallet_address: the wallet used for initial sign-in/authentication
       const { error: profileError } = await supabase.from('profiles').upsert({
         id: userId,
         signup_method: 'wallet',
         reward_locked: true,
         account_status: 'limited',
         external_wallet_address: normalizedAddress,
+        login_wallet_address: normalizedAddress,
         default_wallet_type: 'external',
       }, { onConflict: 'id' });
 
