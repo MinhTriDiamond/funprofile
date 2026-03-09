@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { 
   Globe, Search, Download, RefreshCw, Loader2,
   ChevronLeft, ChevronRight, Sparkles, ArrowUpDown, ArrowLeft,
-  Copy, ExternalLink, Eye, CheckCircle, Clock, TrendingUp, Activity
+  Copy, ExternalLink, CheckCircle, Clock, TrendingUp, Activity
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
