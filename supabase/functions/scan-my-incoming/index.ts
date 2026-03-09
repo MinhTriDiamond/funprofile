@@ -230,7 +230,7 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         newTransfers: donationsToInsert.length,
-        message: `Tìm thấy ${donationsToInsert.length} giao dịch mới từ ví ngoài`,
+        message: `Tìm thấy ${donationsToInsert.length} giao dịch mới`,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
