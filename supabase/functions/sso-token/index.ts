@@ -177,7 +177,7 @@ Deno.serve(async (req: Request) => {
     // Get user profile with wallet info for JWT claims
     const { data: profile } = await supabase
       .from('profiles')
-      .select('id, username, full_name, avatar_url, fun_id, custodial_wallet_address')
+      .select('id, username, full_name, avatar_url, fun_id')
       .eq('id', authCode.user_id)
       .single();
 
