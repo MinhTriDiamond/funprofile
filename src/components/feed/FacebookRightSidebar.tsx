@@ -98,4 +98,7 @@ export const RightSidebar = memo(() => {
   );
 });
 
-FacebookRightSidebar.displayName = 'FacebookRightSidebar';
+RightSidebar.displayName = 'RightSidebar';
+
+/** @deprecated Use RightSidebar instead */
+export const FacebookRightSidebar = RightSidebar;

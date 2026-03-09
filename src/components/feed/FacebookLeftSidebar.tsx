@@ -240,3 +240,6 @@ export const LeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) => {
     </div>
   );
 };
+
+/** @deprecated Use LeftSidebar instead */
+export const FacebookLeftSidebar = LeftSidebar;

@@ -381,3 +381,6 @@ export const AppNavbar = () => {
     </header>
   );
 };
+
+/** @deprecated Use AppNavbar instead */
+export const FacebookNavbar = AppNavbar;
