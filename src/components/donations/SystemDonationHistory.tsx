@@ -430,7 +430,7 @@ export function SystemDonationHistory() {
             <>
               {/* Desktop Table */}
               {/* Desktop Card Layout */}
-              <div className="hidden md:block space-y-3 p-4">
+              <div className="space-y-3 p-3 sm:p-4">
                 {donations.map((donation) => {
                   const senderWallet = getWalletAddress(donation.sender) || donation.sender_address || null;
                   const recipientWallet = getWalletAddress(donation.recipient);
@@ -438,17 +438,116 @@ export function SystemDonationHistory() {
                   return (
                     <div
                       key={donation.id}
-                      className="bg-white/95 border border-green-200 rounded-xl p-4 hover:shadow-lg transition-shadow"
+                      className="bg-white/95 border border-green-200 rounded-xl p-3 sm:p-4 hover:shadow-lg transition-shadow"
                     >
                       {/* Row 1: Sender → Recipient */}
-                      <div className="flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-2 min-w-0">
+                      <div className="flex items-center justify-between gap-2 sm:gap-4">
+                        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
                           <Avatar
-                            className="w-10 h-10 shrink-0 cursor-pointer hover:ring-2 hover:ring-green-400 transition-all"
+                            className="w-8 h-8 sm:w-10 sm:h-10 shrink-0 cursor-pointer hover:ring-2 hover:ring-green-400 transition-all"
                             onClick={(e) => { e.stopPropagation(); if (donation.sender?.id) navigate(`/profile/${donation.sender.id}`); }}
                           >
                             <AvatarImage src={donation.sender?.avatar_url || undefined} />
-                            <AvatarFallback>{donation.sender?.username?.charAt(0).toUpperCase() || '🌐'}</AvatarFallback>
+                            <AvatarFallback className="text-xs sm:text-sm">{donation.sender?.username?.charAt(0).toUpperCase() || '🌐'}</AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1">
+                              <p className="font-semibold text-xs sm:text-sm truncate max-w-[80px] sm:max-w-none">
+                                {donation.sender?.username 
+                                  ? `@${donation.sender.username}`
+                                  : (donation.sender_address ? shortenAddress(donation.sender_address) : '@Unknown')}
+                              </p>
+                              {donation.is_external && (
+                                <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-100 text-[10px] px-1 py-0 shrink-0">Ví ngoài</Badge>
+                              )}
+                            </div>
+                            <div className="hidden sm:block">
+                              {senderWallet && (
+                                <div className="flex items-center gap-1 mt-0.5">
+                                  <a href={getBscScanAddressUrl(senderWallet, donation.token_symbol)} target="_blank" rel="noopener noreferrer" className="font-mono text-[10px] text-blue-600 hover:underline" onClick={(e) => e.stopPropagation()}>
+                                    {shortenAddress(senderWallet)}
+                                  </a>
+                                  <button onClick={(e) => { e.stopPropagation(); copyToClipboard(senderWallet); }} className="text-gray-400 hover:text-gray-600"><Copy className="w-2.5 h-2.5" /></button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col items-center gap-0.5 shrink-0">
+                          <div className="text-green-600 font-bold text-sm sm:text-lg">→</div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1 justify-end">
+                          <div className="min-w-0 text-right">
+                            <p className="font-semibold text-xs sm:text-sm truncate max-w-[80px] sm:max-w-none">@{donation.recipient?.username || 'Unknown'}</p>
+                            <div className="hidden sm:block">
+                              {recipientWallet && (
+                                <div className="flex items-center gap-1 mt-0.5 justify-end">
+                                  <a href={getBscScanAddressUrl(recipientWallet, donation.token_symbol)} target="_blank" rel="noopener noreferrer" className="font-mono text-[10px] text-blue-600 hover:underline" onClick={(e) => e.stopPropagation()}>
+                                    {shortenAddress(recipientWallet)}
+                                  </a>
+                                  <button onClick={(e) => { e.stopPropagation(); copyToClipboard(recipientWallet); }} className="text-gray-400 hover:text-gray-600"><Copy className="w-2.5 h-2.5" /></button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <Avatar
+                            className="w-8 h-8 sm:w-10 sm:h-10 shrink-0 cursor-pointer hover:ring-2 hover:ring-green-400 transition-all"
+                            onClick={(e) => { e.stopPropagation(); if (donation.recipient?.id) navigate(`/profile/${donation.recipient.id}`); }}
+                          >
+                            <AvatarImage src={donation.recipient?.avatar_url || undefined} />
+                            <AvatarFallback className="text-xs sm:text-sm">{donation.recipient?.username?.charAt(0).toUpperCase() || '?'}</AvatarFallback>
+                          </Avatar>
+                        </div>
+                      </div>
+
+                      {/* Row 2: Badges + Amount */}
+                      <div className="flex items-center justify-between mt-2 sm:mt-3">
+                        <div className="flex gap-1 sm:gap-1.5">
+                          <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 text-[10px] sm:text-xs">Tặng thưởng</Badge>
+                          {donation.tx_hash && (
+                            <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 text-[10px] sm:text-xs">Onchain</Badge>
+                          )}
+                        </div>
+                        <p className={`font-mono font-bold text-base sm:text-xl ${tokenColor}`}>
+                          {formatNumber(parseFloat(donation.amount))} {donation.token_symbol}
+                        </p>
+                      </div>
+
+                      {/* Row 3: Message */}
+                      {donation.message && (
+                        <p className="text-yellow-500 font-semibold italic text-sm sm:text-base mt-2 truncate sm:whitespace-normal">"{donation.message}"</p>
+                      )}
+
+                      {/* Row 4: Footer */}
+                      <div className="flex items-center justify-between mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-green-100">
+                        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap text-[10px] sm:text-xs text-gray-500">
+                          {getStatusBadge(donation.status)}
+                          <span>·</span>
+                          <span>{formatDate(donation.created_at)}</span>
+                          {donation.tx_hash && (
+                            <>
+                              <span className="hidden sm:inline">·</span>
+                              <span className="hidden sm:inline font-medium">BSC</span>
+                              <span>·</span>
+                              <span className="text-gray-400">TX:</span>
+                              <a href={getBscScanTxUrl(donation.tx_hash, donation.token_symbol)} target="_blank" rel="noopener noreferrer" className="font-mono text-blue-600 hover:underline" onClick={(e) => e.stopPropagation()}>
+                                {shortenAddress(donation.tx_hash)}
+                              </a>
+                              <button onClick={(e) => { e.stopPropagation(); copyToClipboard(donation.tx_hash); }} className="text-gray-400 hover:text-gray-600"><Copy className="w-3 h-3" /></button>
+                            </>
+                          )}
+                        </div>
+                        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleDonationClick(donation); }} className="text-[10px] sm:text-xs h-6 sm:h-7 px-2">
+                          <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1 text-amber-500" />
+                          Xem Card
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
                           </Avatar>
                           <div className="min-w-0">
                             <div className="flex items-center gap-1.5">
