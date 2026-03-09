@@ -14,7 +14,7 @@ interface OnlineContact {
   avatar_url: string | null;
 }
 
-export const FacebookRightSidebar = memo(() => {
+export const RightSidebar = memo(() => {
   const navigate = useNavigate();
   const { t } = useLanguage();
   const { userId } = useCurrentUser();
