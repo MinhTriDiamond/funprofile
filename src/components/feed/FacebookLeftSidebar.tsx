@@ -43,7 +43,6 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
   useEffect(() => {
     if (!userId) {
       setProfile(null);
-      setIsAdmin(false);
       return;
     }
 
@@ -54,12 +53,6 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
         .eq('id', userId)
         .single();
       setProfile(data);
-      
-      const { data: hasAdminRole } = await supabase.rpc('has_role', {
-        _user_id: userId,
-        _role: 'admin'
-      });
-      setIsAdmin(!!hasAdminRole);
     };
     fetchProfile();
   }, [userId]);

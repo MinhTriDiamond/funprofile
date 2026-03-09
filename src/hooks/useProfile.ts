@@ -214,11 +214,7 @@ export const useProfile = () => {
     setProfile(null);
     setLoading(true);
 
-    // Check admin role when auth user available
-    if (currentUserId) {
-      supabase.rpc('has_role', { _user_id: currentUserId, _role: 'admin' })
-        .then(({ data }) => setIsAdmin(!!data));
-    }
+    // Admin role now handled by useAdminRole hook
 
     if (username && reservedPaths.includes(username.toLowerCase())) {
       navigate(`/${username}`);
