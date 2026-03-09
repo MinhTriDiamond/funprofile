@@ -92,7 +92,6 @@ const AdminMigration = () => {
   }, [isAdmin, adminLoading, navigate]);
 
   const [loading] = useState(false);
-  };
 
   const getPresignedUrl = async (key: string, contentType: string, fileSize: number) => {
     const { data: { session } } = await supabase.auth.getSession();
