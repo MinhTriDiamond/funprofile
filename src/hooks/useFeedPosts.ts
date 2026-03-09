@@ -129,7 +129,7 @@ const fetchHighlightedPosts = async (currentUserId: string | null): Promise<Feed
     .from('posts')
     .select(`*, public_profiles!posts_user_id_fkey (username, display_name, avatar_url, public_wallet_address, is_banned)`)
     .eq('is_highlighted', true)
-    .gt('highlight_expires_at', now)
+    .or(`highlight_expires_at.gt.${now},highlight_expires_at.is.null`)
     .order('created_at', { ascending: false })
     .limit(10);
 
