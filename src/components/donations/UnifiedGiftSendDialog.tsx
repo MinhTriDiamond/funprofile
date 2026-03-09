@@ -301,11 +301,22 @@ export const UnifiedGiftSendDialog = ({
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
       let recorded = 0;
-      for (const result of successResults) {
-        if (result.txHash) { const ok = await recordDonationWithRetry(result.txHash, result.recipient, session); if (ok) recorded++; }
+      for (let i = 0; i < successResults.length; i++) {
+        const result = successResults[i];
+        if (result.txHash) {
+          const ok = await recordDonationWithRetry(result.txHash, result.recipient, session);
+          if (ok) {
+            recorded++;
+            invalidateDonationCache();
+            logger.debug(`[GIFT] Recorded ${recorded}/${successResults.length} donations`);
+          }
+          // Delay 1.5s giữa mỗi lần gọi để tránh race condition
+          if (i < successResults.length - 1) {
+            await new Promise(r => setTimeout(r, 1500));
+          }
+        }
       }
-      logger.debug(`[GIFT] Recorded ${recorded}/${successResults.length} donations`);
-      if (recorded > 0) invalidateDonationCache();
+      logger.debug(`[GIFT] Final: Recorded ${recorded}/${successResults.length} donations`);
       if (recorded < successResults.length) toast.warning(`${successResults.length - recorded} giao dịch chưa ghi nhận được. Admin sẽ xử lý sau.`, { duration: 10000 });
     } catch (err) { logger.error('[GIFT] recordMultiDonationsSequential error:', err); }
   }, [recordDonationWithRetry, invalidateDonationCache]);
@@ -357,7 +368,7 @@ export const UnifiedGiftSendDialog = ({
         if (results.some(r => !r.success)) {
           toast.warning(`Không gửi được cho: ${results.filter(r => !r.success).map(r => `@${r.recipient.username}`).join(', ')}`, { duration: 8000 });
         }
-        recordMultiDonationsSequential(successResults);
+        await recordMultiDonationsSequential(successResults);
       } else {
         toast.error('Không gửi được cho bất kỳ người nhận nào');
       }
