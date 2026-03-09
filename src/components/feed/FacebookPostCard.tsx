@@ -143,7 +143,7 @@ const FacebookPostCardComponent = ({
   );
 };
 
-export const FacebookPostCard = memo(FacebookPostCardComponent, (prev, next) => (
+export const PostCard = memo(FacebookPostCardComponent, (prev, next) => (
   prev.post.id === next.post.id &&
   prev.post.content === next.post.content &&
   prev.post.image_url === next.post.image_url &&
@@ -157,3 +157,6 @@ export const FacebookPostCard = memo(FacebookPostCardComponent, (prev, next) => 
   prev.viewAsPublic === next.viewAsPublic &&
   prev.disableRealtime === next.disableRealtime
 ));
+
+/** @deprecated Use PostCard instead */
+export const FacebookPostCard = PostCard;

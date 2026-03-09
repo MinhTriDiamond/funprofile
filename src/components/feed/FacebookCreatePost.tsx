@@ -346,3 +346,6 @@ export const CreatePost = ({ onPostCreated }: FacebookCreatePostProps) => {
     </>
   );
 };
+
+/** @deprecated Use CreatePost instead */
+export const FacebookCreatePost = CreatePost;
