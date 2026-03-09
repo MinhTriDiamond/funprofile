@@ -573,7 +573,7 @@ export const usePplpAdmin = () => {
           tx_hash: null,
           submitted_at: null,
           error_message: null,
-          multisig_signatures: {} as any,
+          multisig_signatures: {} as unknown as Record<string, unknown>,
           multisig_completed_groups: [],
         })
         .eq('id', requestId);
