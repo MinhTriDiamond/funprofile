@@ -1,91 +1,39 @@
 
+# Light Score 5 Trụ Cột — Phase 1 ✅ HOÀN THÀNH
 
-## Kế hoạch: Thêm cột email, login_wallet_address và dọn dẹp bảng profiles
+## Đã triển khai
 
-### Phân tích hiện trạng bảng profiles (55 cột)
+| # | Resource | Trạng thái |
+|---|----------|-----------|
+| 1 | DB: Bảng `user_dimension_scores` + RLS | ✅ Done |
+| 2 | Edge Function: `pplp-compute-dimensions/index.ts` | ✅ Done |
+| 3 | Edge Function: `pplp-get-score/index.ts` (thêm dimension data) | ✅ Done |
+| 4 | Config: `src/config/pplp.ts` (DIMENSIONS, DIMENSION_LEVELS, DIMENSION_WEIGHTS) | ✅ Done |
+| 5 | Hook: `src/hooks/useDimensionScores.ts` | ✅ Done |
+| 6 | UI: `src/components/wallet/DimensionScoreCard.tsx` + tích hợp vào LightScoreDashboard | ✅ Done |
+| 7 | Docs: `docs/LIGHT_SCORE_MATH_SPEC.md` | ✅ Done |
 
-**Các cột wallet hiện có:**
-| Cột | Mục đích | Trạng thái |
-|-----|---------|-----------|
-| `wallet_address` | Địa chỉ ví cũ (legacy từ signup) | **DEPRECATED** - chỉ giữ data cũ |
-| `external_wallet_address` | Ví MetaMask đã connect | Đang hoạt động |
-| `public_wallet_address` | Ví hiển thị công khai | Đang hoạt động |
-| `custodial_wallet_address` | Ví custodial (đã gỡ) | **DEPRECATED** - đã xóa data |
-| `default_wallet_type` | Loại ví mặc định | Đang hoạt động |
+## 5 Trụ Cột
 
-**Chưa có cột:**
-- `email` — email của user (hiện chỉ lưu trong auth.users)
-- `login_wallet_address` — ví mà user dùng để đăng nhập (hiện `external_wallet_address` kiêm cả vai trò này, không rõ ràng)
+- 🪪 Identity (Danh tính) — profile, wallet, account age
+- ⚡ Activity (Hoạt động) — normalized light score + time decay
+- ⛓️ On-Chain — wallet, donations sent/received
+- 🔍 Transparency (Minh bạch) — fraud signals penalty
+- 🌐 Ecosystem (Hệ sinh thái) — posts, comments, donations, streak
 
----
+## Cấp độ mới
 
-### Về việc xóa cột deprecated
+| Level | Tên | Điểm |
+|-------|-----|------|
+| 🌱 | Light Seed | 0-99 |
+| 🔨 | Light Builder | 100-249 |
+| 🛡️ | Light Guardian | 250-499 |
+| 👑 | Light Leader | 500-799 |
+| 🌌 | Cosmic Contributor | 800+ |
 
-**Cha khuyên KHÔNG xóa** vì:
-- PostgreSQL **không hỗ trợ sắp xếp lại thứ tự cột** — thứ tự cột là cố định khi tạo, không thể di chuyển
-- Xóa cột có dữ liệu lịch sử → mất khả năng audit nếu cần
-- Cột NULL không tốn storage đáng kể
+## Bước tiếp theo
 
-Thay vào đó, Cha sẽ **thêm comment** đánh dấu các cột deprecated để dễ nhận biết.
-
----
-
-### Kế hoạch thực hiện
-
-#### 1. Migration SQL
-```sql
--- Thêm cột email (sync từ auth.users)
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS email TEXT;
-
--- Thêm cột login_wallet_address (ví dùng để đăng nhập)
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS login_wallet_address TEXT;
-
--- Sync email từ auth.users cho tất cả user hiện có
-UPDATE public.profiles p
-SET email = u.email
-FROM auth.users u
-WHERE p.id = u.id AND u.email IS NOT NULL;
-
--- Sync login_wallet_address từ user_metadata cho wallet-first accounts
-UPDATE public.profiles p
-SET login_wallet_address = u.raw_user_meta_data->>'wallet_address'
-FROM auth.users u
-WHERE p.id = u.id 
-  AND p.signup_method = 'wallet'
-  AND u.raw_user_meta_data->>'wallet_address' IS NOT NULL;
-
--- Đánh dấu deprecated columns
-COMMENT ON COLUMN public.profiles.wallet_address IS 'DEPRECATED: Legacy wallet address from early signup. Do not use in new code.';
-COMMENT ON COLUMN public.profiles.custodial_wallet_address IS 'DEPRECATED: Custodial wallet removed. Data cleared.';
-```
-
-#### 2. Cập nhật edge function `sso-web3-auth`
-- Khi tạo profile mới: ghi thêm `login_wallet_address` = wallet address dùng để sign in
-
-#### 3. Cập nhật edge function `verify-email-link`
-- Khi xác thực email thành công: cập nhật `profiles.email` = email mới
-
-#### 4. Cập nhật trigger/function cho profile mới
-- Khi user signup bằng email: trigger tự đồng bộ email từ auth.users vào profiles.email
-
-#### 5. Cập nhật `public_profiles` view
-- Không thêm email vào view (giữ private)
-
----
-
-### Tóm tắt ý nghĩa các cột wallet sau khi dọn dẹp
-
-| Cột | Ý nghĩa rõ ràng |
-|-----|-----------------|
-| `login_wallet_address` | **MỚI** — Ví dùng để đăng nhập/xác thực |
-| `external_wallet_address` | Ví ngoài đã kết nối (MetaMask) — dùng cho giao dịch |
-| `public_wallet_address` | Ví hiển thị công khai trên profile |
-| `wallet_address` | ⚠️ DEPRECATED — giữ data cũ |
-| `custodial_wallet_address` | ⚠️ DEPRECATED — đã xóa data |
-
-### Files cần sửa
-1. **Migration SQL** — thêm cột + sync data
-2. `supabase/functions/sso-web3-auth/index.ts` — ghi `login_wallet_address`
-3. `supabase/functions/verify-email-link/index.ts` — sync `email` vào profiles
-4. `supabase/functions/send-email-link-verification/index.ts` — sync `email` khi cần
-
+- Chạy `pplp-compute-dimensions` lần đầu để tính dimension scores cho tất cả users
+- Thiết lập cron job daily để tự động cập nhật
+- Phase 2: Dump Penalty, nâng chuẩn mint eligibility
+- Phase 3: Reputation NFT, Digital Identity Bank

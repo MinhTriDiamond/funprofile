@@ -3245,6 +3245,7 @@ export type Database = {
           default_wallet_type: string | null
           display_name: string | null
           education: string | null
+          email: string | null
           email_verified_at: string | null
           external_wallet_address: string | null
           financial_updated_at: string | null
@@ -3265,6 +3266,7 @@ export type Database = {
           law_of_light_accepted: boolean
           law_of_light_accepted_at: string | null
           location: string | null
+          login_wallet_address: string | null
           oauth_provider: string | null
           pending_reward: number
           pinned_post_id: string | null
@@ -3301,6 +3303,7 @@ export type Database = {
           default_wallet_type?: string | null
           display_name?: string | null
           education?: string | null
+          email?: string | null
           email_verified_at?: string | null
           external_wallet_address?: string | null
           financial_updated_at?: string | null
@@ -3321,6 +3324,7 @@ export type Database = {
           law_of_light_accepted?: boolean
           law_of_light_accepted_at?: string | null
           location?: string | null
+          login_wallet_address?: string | null
           oauth_provider?: string | null
           pending_reward?: number
           pinned_post_id?: string | null
@@ -3357,6 +3361,7 @@ export type Database = {
           default_wallet_type?: string | null
           display_name?: string | null
           education?: string | null
+          email?: string | null
           email_verified_at?: string | null
           external_wallet_address?: string | null
           financial_updated_at?: string | null
@@ -3377,6 +3382,7 @@ export type Database = {
           law_of_light_accepted?: boolean
           law_of_light_accepted_at?: string | null
           location?: string | null
+          login_wallet_address?: string | null
           oauth_provider?: string | null
           pending_reward?: number
           pinned_post_id?: string | null
