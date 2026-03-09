@@ -108,7 +108,7 @@ export const StreamPlayer = memo(({
 
     try {
       const status = await checkVideoStatus(videoUid);
-      console.log('[StreamPlayer] Video status:', status);
+      logger.debug('[StreamPlayer] Video status:', status);
       
       if (status.readyToStream) {
         setIsVideoReady(true);
