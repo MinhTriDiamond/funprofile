@@ -66,34 +66,36 @@ export function LinkEmailDialog({ open, onOpenChange }: LinkEmailDialogProps) {
 
     setLoading(true);
     try {
-      // Log start action (client-safe)
-      await supabase.from('account_activity_logs').insert({
-        user_id: userId,
-        action: 'email_link_started',
-        details: { email: normalized },
-      });
-
-      // Check collision
-      const exists = await checkEmailExists(normalized);
-      if (exists) {
-        toast.error('Email này đã được dùng cho tài khoản khác.');
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
         setLoading(false);
         return;
       }
 
-      // Update user email — Supabase will send verification
-      const { error } = await supabase.auth.updateUser({ email: normalized });
-      if (error) throw error;
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email-link-verification`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({ email: normalized }),
+        }
+      );
 
-      // Log verification sent
-      await supabase.from('account_activity_logs').insert({
-        user_id: userId,
-        action: 'email_link_verification_sent',
-        details: { email: normalized },
-      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast.error(data.error || 'Có lỗi xảy ra');
+        setLoading(false);
+        return;
+      }
 
       setSent(true);
-      toast.success('Đã gửi email xác thực. Vui lòng kiểm tra hộp thư.');
+      toast.success('Đã gửi email xác thực qua Resend. Vui lòng kiểm tra hộp thư.');
     } catch (err: any) {
       toast.error(err.message || 'Có lỗi xảy ra');
     } finally {
