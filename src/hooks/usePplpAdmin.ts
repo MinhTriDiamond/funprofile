@@ -326,7 +326,7 @@ export const usePplpAdmin = () => {
       const { error: updateError } = await supabase
         .from('pplp_mint_requests')
         .update({
-          multisig_signatures: newSigs as any,
+          multisig_signatures: newSigs as unknown as Record<string, unknown>,
           multisig_completed_groups: completedGroups,
           // Backward compat: lưu chữ ký cuối cùng vào cột signature cũ
           signature: isFullySigned ? signature : (request.signature ?? null),
