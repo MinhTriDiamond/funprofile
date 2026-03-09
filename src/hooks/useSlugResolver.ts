@@ -77,13 +77,13 @@ export function useSlugResolver({
         return;
       }
 
-      // Step 2: find content by (user_id, slug)
+      // Dynamic table query — type cast needed for dynamic table name
       const { data: content } = await (supabase
-        .from(table as any)
+        .from(table as 'posts')
         .select('id')
-        .eq(userIdColumn, profile.id)
-        .eq('slug', slug)
-        .maybeSingle() as any);
+        .eq(userIdColumn as 'user_id', profile.id)
+        .eq('slug' as 'slug', slug)
+        .maybeSingle());
 
       if (content?.id) {
         setResolvedId(content.id);

@@ -5,6 +5,7 @@ import { Progress } from '@/components/ui/progress';
 import { Video, X, Loader2, CheckCircle, AlertCircle, Clock, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { deleteFromR2 } from '@/utils/r2Upload';
+import logger from '@/lib/logger';
 
 interface VideoUploaderUppyProps {
   onUploadComplete: (result: { uid: string; url: string; thumbnailUrl: string; localThumbnail?: string }) => void;
@@ -233,7 +234,7 @@ export const VideoUploaderUppy = ({
         const { uploadUrl, publicUrl } = await presignResponse.json();
         if (!uploadUrl || !publicUrl) throw new Error('Không nhận được URL upload từ server');
 
-        console.log('[VideoUploader] Got presigned URL for R2, key:', key);
+        logger.debug('[VideoUploader] Got presigned URL for R2, key:', key);
 
         // Step 2: Upload directly to R2 via XMLHttpRequest (for progress tracking)
         setUploadState(prev => ({
@@ -347,7 +348,7 @@ export const VideoUploaderUppy = ({
     // Clean up uploaded file from R2
     const keyToDelete = uploadState.videoKey;
     if (keyToDelete) {
-      console.log('[VideoUploader] Cleaning up cancelled upload:', keyToDelete);
+      logger.debug('[VideoUploader] Cleaning up cancelled upload:', keyToDelete);
       deleteFromR2(keyToDelete).catch(err => console.warn('[VideoUploader] Cleanup error:', err));
     }
 

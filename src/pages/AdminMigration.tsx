@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useAdminRole } from '@/hooks/useAdminRole';
 import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { Button } from '@/components/ui/button';
@@ -61,8 +62,8 @@ interface StreamMigrationResult {
 
 const AdminMigration = () => {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const { isAdmin, isLoading: adminLoading } = useAdminRole();
+  const loading = adminLoading;
   const [migrating, setMigrating] = useState(false);
   const [repairing, setRepairing] = useState(false);
   const [fixingUrls, setFixingUrls] = useState(false);
@@ -82,38 +83,15 @@ const AdminMigration = () => {
   const skipCurrentRef = useRef(false);
   const stopProcessRef = useRef(false);
 
+  // Redirect non-admin users
   useEffect(() => {
-    checkAdminAccess();
-  }, []);
-
-  const checkAdminAccess = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        navigate('/auth');
-        return;
-      }
-
-      const { data: hasRole } = await supabase.rpc('has_role', {
-        _user_id: session.user.id,
-        _role: 'admin'
-      });
-
-      if (!hasRole) {
-        toast.error('Bạn không có quyền truy cập trang này');
-        navigate('/');
-        return;
-      }
-
-      setIsAdmin(true);
-    } catch (error) {
-      console.error('Error checking admin access:', error);
+    if (!adminLoading && !isAdmin) {
+      toast.error('Bạn không có quyền truy cập trang này');
       navigate('/');
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [isAdmin, adminLoading, navigate]);
+
+  
 
   const getPresignedUrl = async (key: string, contentType: string, fileSize: number) => {
     const { data: { session } } = await supabase.auth.getSession();

@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
+import { useAdminRole } from '@/hooks/useAdminRole';
 import { Button } from '@/components/ui/button';
 import { InlineSearch } from './InlineSearch';
 import { NotificationDropdown } from './NotificationDropdown';
@@ -39,7 +40,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { FacebookLeftSidebar } from '@/components/feed/FacebookLeftSidebar';
+import { LeftSidebar } from '@/components/feed/FacebookLeftSidebar';
 import {
   Tooltip,
   TooltipContent,
@@ -47,7 +48,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
-export const FacebookNavbar = () => {
+export const AppNavbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { t, language, setLanguage } = useLanguage();
@@ -75,21 +76,8 @@ export const FacebookNavbar = () => {
     gcTime: 10 * 60_000,
   });
 
-  // MED-5: Admin check also cached — admin role rarely changes
-  const { data: isAdmin } = useQuery({
-    queryKey: ['navbar-admin', currentUserId],
-    queryFn: async () => {
-      if (!currentUserId) return false;
-      const { data } = await supabase.rpc('has_role', {
-        _user_id: currentUserId,
-        _role: 'admin'
-      });
-      return !!data;
-    },
-    enabled: !!currentUserId,
-    staleTime: 10 * 60_000, // 10 minutes — admin role rarely changes
-    gcTime: 15 * 60_000,
-  });
+  // MED-5: Admin check — centralized via useAdminRole
+  const { isAdmin } = useAdminRole();
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -119,7 +107,7 @@ export const FacebookNavbar = () => {
                 </button>
               </SheetTrigger>
               <SheetContent side="left" className="w-[300px] p-4 overflow-y-auto">
-                <FacebookLeftSidebar onItemClick={() => setIsSidebarOpen(false)} />
+                <LeftSidebar onItemClick={() => setIsSidebarOpen(false)} />
               </SheetContent>
             </Sheet>
           )}
@@ -393,3 +381,6 @@ export const FacebookNavbar = () => {
     </header>
   );
 };
+
+/** @deprecated Use AppNavbar instead */
+export const FacebookNavbar = AppNavbar;

@@ -29,13 +29,13 @@ const LEVELS_ARRAY: LevelInfo[] = Object.values(DIMENSION_LEVELS);
 export const useDimensionScores = (): DimensionData => {
   const { data, isLoading } = useLightScore();
 
-  const dimensions = (data as any)?.dimensions ?? null;
-  const dimensionTotal = (data as any)?.dimension_total ?? null;
-  const dimensionLevel = (data as any)?.dimension_level ?? null;
-  const riskPenalty = (data as any)?.risk_penalty ?? 0;
-  const streakBonusPct = (data as any)?.streak_bonus_pct ?? 0;
-  const inactiveDays = (data as any)?.inactive_days ?? 0;
-  const decayApplied = (data as any)?.decay_applied ?? false;
+  const dimensions = data?.dimensions ?? null;
+  const dimensionTotal = data?.dimension_total ?? null;
+  const dimensionLevel = data?.dimension_level ?? null;
+  const riskPenalty = data?.risk_penalty ?? 0;
+  const streakBonusPct = data?.streak_bonus_pct ?? 0;
+  const inactiveDays = data?.inactive_days ?? 0;
+  const decayApplied = data?.decay_applied ?? false;
 
   const getLevelInfo = (): LevelInfo => {
     if (!dimensionTotal) return LEVELS_ARRAY[0];

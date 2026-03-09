@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useAdminRole } from '@/hooks/useAdminRole';
 import type { PostStats } from '@/hooks/useFeedPosts';
 import type { ProfilePostItem, OriginalProfilePost, SharedProfilePost, BasePostFields, ProfilePostProfile, ProfilePostReaction, ProfilePostComment } from '@/types/profilePosts';
 
@@ -63,7 +64,7 @@ export const useProfile = () => {
   const [friendsCount, setFriendsCount] = useState(0);
   const [friendsPreview, setFriendsPreview] = useState<FriendPreview[]>([]);
   const [activeTab, setActiveTab] = useState('posts');
-  const [isAdmin, setIsAdmin] = useState(false);
+  const { isAdmin } = useAdminRole();
   const [displayedCount, setDisplayedCount] = useState(POSTS_PER_PAGE);
   const [viewAsPublic, setViewAsPublic] = useState(false);
   const [showAvatarViewer, setShowAvatarViewer] = useState(false);
@@ -213,11 +214,7 @@ export const useProfile = () => {
     setProfile(null);
     setLoading(true);
 
-    // Check admin role when auth user available
-    if (currentUserId) {
-      supabase.rpc('has_role', { _user_id: currentUserId, _role: 'admin' })
-        .then(({ data }) => setIsAdmin(!!data));
-    }
+    // Admin role now handled by useAdminRole hook
 
     if (username && reservedPaths.includes(username.toLowerCase())) {
       navigate(`/${username}`);

@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAdminRole } from '@/hooks/useAdminRole';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useLanguage } from '@/i18n/LanguageContext';
@@ -31,36 +33,26 @@ interface FacebookLeftSidebarProps {
   onItemClick?: () => void;
 }
 
-export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) => {
+export const LeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) => {
   const navigate = useNavigate();
   const { t } = useLanguage();
   const { userId, isAuthenticated } = useCurrentUser();
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const { isAdmin } = useAdminRole();
 
-  useEffect(() => {
-    if (!userId) {
-      setProfile(null);
-      setIsAdmin(false);
-      return;
-    }
-
-    const fetchProfile = async () => {
+  const { data: profile = null } = useQuery({
+    queryKey: ['sidebar-profile', userId],
+    queryFn: async () => {
       const { data } = await supabase
         .from('profiles')
         .select('id, username, display_name, avatar_url, full_name')
-        .eq('id', userId)
+        .eq('id', userId!)
         .single();
-      setProfile(data);
-      
-      const { data: hasAdminRole } = await supabase.rpc('has_role', {
-        _user_id: userId,
-        _role: 'admin'
-      });
-      setIsAdmin(!!hasAdminRole);
-    };
-    fetchProfile();
-  }, [userId]);
+      return data as Profile | null;
+    },
+    enabled: !!userId,
+    staleTime: 5 * 60_000,
+    gcTime: 10 * 60_000,
+  });
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -245,3 +237,6 @@ export const FacebookLeftSidebar = ({ onItemClick }: FacebookLeftSidebarProps) =
     </div>
   );
 };
+
+/** @deprecated Use LeftSidebar instead */
+export const FacebookLeftSidebar = LeftSidebar;

@@ -326,7 +326,7 @@ export const usePplpAdmin = () => {
       const { error: updateError } = await supabase
         .from('pplp_mint_requests')
         .update({
-          multisig_signatures: newSigs as any,
+          multisig_signatures: newSigs as unknown as import('@/integrations/supabase/types').Json,
           multisig_completed_groups: completedGroups,
           // Backward compat: lưu chữ ký cuối cùng vào cột signature cũ
           signature: isFullySigned ? signature : (request.signature ?? null),
@@ -446,6 +446,7 @@ export const usePplpAdmin = () => {
             abi: FUN_MONEY_ABI,
             functionName: 'nonces',
             args: [request.recipient_address as `0x${string}`],
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           } as any) as bigint;
 
           const dbNonce = BigInt(request.nonce);
@@ -573,7 +574,7 @@ export const usePplpAdmin = () => {
           tx_hash: null,
           submitted_at: null,
           error_message: null,
-          multisig_signatures: {} as any,
+          multisig_signatures: {} as unknown as import('@/integrations/supabase/types').Json,
           multisig_completed_groups: [],
         })
         .eq('id', requestId);

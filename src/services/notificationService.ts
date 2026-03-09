@@ -18,6 +18,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import type { NotificationWithDetails } from '@/components/layout/notifications/types';
+import logger from '@/lib/logger';
 
 type NotifEvent = 'insert' | 'update';
 type Listener = (notification: Partial<NotificationWithDetails>) => void;
@@ -73,7 +74,7 @@ async function ensureChannel(userId: string) {
     )
     .subscribe((status) => {
       if (process.env.NODE_ENV === 'development') {
-        console.log('[NotifService] channel status:', status);
+        logger.debug('[NotifService] channel status:', status);
       }
     });
 }

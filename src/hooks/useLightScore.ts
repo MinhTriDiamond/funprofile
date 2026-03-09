@@ -45,6 +45,20 @@ export interface LightScoreData {
     total_minted: number;
     total_cap: number;
   };
+  // Dimension scoring (returned by pplp-get-score)
+  dimensions?: {
+    identity: number;
+    activity: number;
+    onchain: number;
+    transparency: number;
+    ecosystem: number;
+  };
+  dimension_total?: number;
+  dimension_level?: string;
+  risk_penalty?: number;
+  streak_bonus_pct?: number;
+  inactive_days?: number;
+  decay_applied?: boolean;
 }
 
 // Fetcher separated so it can be called standalone (e.g. invalidation)
