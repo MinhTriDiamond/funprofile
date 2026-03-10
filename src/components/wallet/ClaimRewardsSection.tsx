@@ -70,6 +70,9 @@ export const ClaimRewardsSection = ({
   }, []);
   
   const { data: walletSecurity } = useWalletSecurity(userId);
+  const { data: activePendingClaims } = usePendingClaims(userId);
+  const hasPendingClaim = (activePendingClaims?.length ?? 0) > 0;
+  const pendingClaimTotal = activePendingClaims?.reduce((sum, c) => sum + Number(c.amount), 0) || 0;
   
   const totalReward = rewardStats?.total_reward || 0;
   const pendingAmount = Math.max(0, totalReward - claimedAmount - claimableReward);
