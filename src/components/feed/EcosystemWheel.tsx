@@ -97,7 +97,7 @@ export default function EcosystemWheel({ onItemClick }: { onItemClick?: () => vo
           />
 
           {/* Rotating orbit */}
-          <div className="absolute inset-0 animate-[spin_40s_linear_infinite]">
+          <div className="absolute inset-0 animate-[spin_40s_linear_infinite] group/wheel hover:[animation-play-state:paused]">
             {orbitItems.map((item, idx) => {
               const angle = (360 / orbitItems.length) * idx - 90;
               const rad = (angle * Math.PI) / 180;
@@ -105,58 +105,63 @@ export default function EcosystemWheel({ onItemClick }: { onItemClick?: () => vo
               const y = Math.sin(rad) * orbitRadius;
 
               return (
-                <HoverCard openDelay={200} closeDelay={100} key={item.id}>
-                  <HoverCardTrigger asChild>
-                    <button
-                      onClick={() => handleClick(item)}
-                      className="absolute group"
-                      style={{
-                        left: `calc(50% + ${x}px - ${halfLogo}px)`,
-                        top: `calc(50% + ${y}px - ${halfLogo}px)`,
-                      }}
-                    >
-                      {/* Counter-rotate to stay upright */}
-                      <div className="animate-[spin_40s_linear_infinite_reverse]">
-                        <div
-                          className="rounded-full p-[3px] group-hover:scale-110 transition-all duration-300"
-                          style={{
-                            background: 'linear-gradient(135deg, rgba(255,215,0,0.6), rgba(255,180,0,0.3), rgba(255,215,0,0.6))',
-                            boxShadow: '0 0 10px rgba(255,215,0,0.35), 0 0 3px rgba(255,215,0,0.2)',
-                          }}
+                <div
+                  key={item.id}
+                  className="absolute"
+                  style={{
+                    left: `calc(50% + ${x}px - ${halfLogo}px)`,
+                    top: `calc(50% + ${y}px - ${halfLogo}px)`,
+                  }}
+                >
+                  {/* Counter-rotate to stay upright */}
+                  <div className="animate-[spin_40s_linear_infinite_reverse] group-hover/wheel:[animation-play-state:paused]">
+                    <HoverCard openDelay={200} closeDelay={100}>
+                      <HoverCardTrigger asChild>
+                        <button
+                          onClick={() => handleClick(item)}
+                          className="group/item"
                         >
-                          <img
-                            src={item.avatar}
-                            alt={item.name}
-                            width={logoSize}
-                            height={logoSize}
-                            loading="lazy"
-                            className="rounded-full object-cover bg-card cursor-pointer"
-                            style={{ width: logoSize, height: logoSize }}
-                          />
-                        </div>
-                      </div>
-                    </button>
-                  </HoverCardTrigger>
-                  {ecosystemDescriptions[item.id] && (
-                    <HoverCardContent
-                      side="right"
-                      align="center"
-                      sideOffset={8}
-                      className="w-64 z-[60] rounded-xl border border-yellow-300/40 bg-card/95 backdrop-blur-sm shadow-lg p-3"
-                    >
-                      <div className="flex items-center gap-2 mb-1.5">
-                        <img src={item.avatar} alt={item.name} className="w-8 h-8 rounded-full object-cover" />
-                        <div>
-                          <p className="font-bold text-sm text-foreground">{item.name}</p>
-                          <p className="text-xs text-primary italic">{ecosystemDescriptions[item.id].subtitle}</p>
-                        </div>
-                      </div>
-                      <p className="text-xs text-muted-foreground leading-relaxed">
-                        {ecosystemDescriptions[item.id].description}
-                      </p>
-                    </HoverCardContent>
-                  )}
-                </HoverCard>
+                          <div
+                            className="rounded-full p-[3px] group-hover/item:scale-110 transition-all duration-300"
+                            style={{
+                              background: 'linear-gradient(135deg, rgba(255,215,0,0.6), rgba(255,180,0,0.3), rgba(255,215,0,0.6))',
+                              boxShadow: '0 0 10px rgba(255,215,0,0.35), 0 0 3px rgba(255,215,0,0.2)',
+                            }}
+                          >
+                            <img
+                              src={item.avatar}
+                              alt={item.name}
+                              width={logoSize}
+                              height={logoSize}
+                              loading="lazy"
+                              className="rounded-full object-cover bg-card cursor-pointer"
+                              style={{ width: logoSize, height: logoSize }}
+                            />
+                          </div>
+                        </button>
+                      </HoverCardTrigger>
+                      {ecosystemDescriptions[item.id] && (
+                        <HoverCardContent
+                          side="right"
+                          align="center"
+                          sideOffset={8}
+                          className="w-64 z-[60] rounded-xl border border-yellow-300/40 bg-card/95 backdrop-blur-sm shadow-lg p-3"
+                        >
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <img src={item.avatar} alt={item.name} className="w-8 h-8 rounded-full object-cover" />
+                            <div>
+                              <p className="font-bold text-sm text-foreground">{item.name}</p>
+                              <p className="text-xs text-primary italic">{ecosystemDescriptions[item.id].subtitle}</p>
+                            </div>
+                          </div>
+                          <p className="text-xs text-muted-foreground leading-relaxed">
+                            {ecosystemDescriptions[item.id].description}
+                          </p>
+                        </HoverCardContent>
+                      )}
+                    </HoverCard>
+                  </div>
+                </div>
               );
             })}
           </div>
