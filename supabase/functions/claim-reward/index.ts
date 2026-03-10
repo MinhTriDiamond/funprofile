@@ -387,6 +387,24 @@ Deno.serve(async (req) => {
       );
     }
 
+    // === FIX: Check existing pending claims - block duplicate submissions ===
+    const { data: existingPending } = await supabaseAdmin
+      .from('pending_claims')
+      .select('id, amount')
+      .eq('user_id', userId)
+      .in('status', ['pending', 'processing']);
+
+    if (existingPending && existingPending.length > 0) {
+      const existingTotal = existingPending.reduce((sum, c) => sum + Number(c.amount), 0);
+      console.warn(`DUPLICATE_PENDING: User ${userId} already has ${existingPending.length} pending claims totaling ${existingTotal}`);
+      return new Response(JSON.stringify({
+        error: 'Pending Exists',
+        message: `Bạn đang có ${existingPending.length} lệnh claim chờ duyệt (${existingTotal.toLocaleString()} CAMLY). Vui lòng đợi Admin xử lý trước khi tạo lệnh mới.`,
+        existing_claims: existingPending.length,
+        existing_total: existingTotal,
+      }), { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     // 8. Calculate claimable amount using RPC function
     const { data: rewardsData, error: rewardsError } = await supabase.rpc('get_user_rewards_v2', {
       limit_count: 10000,
@@ -411,8 +429,15 @@ Deno.serve(async (req) => {
       .eq('user_id', userId);
 
     const claimedAmount = claims?.reduce((sum, c) => sum + Number(c.amount), 0) || 0;
-    // Không cộng dồn: claimable chỉ dựa trên thưởng hôm nay trừ đã claim hôm nay
-    // todayClaimed sẽ được tính phía dưới
+
+    // === FIX: Get pending claims amounts to subtract from claimable ===
+    const { data: pendingClaimsData } = await supabaseAdmin
+      .from('pending_claims')
+      .select('amount')
+      .eq('user_id', userId)
+      .in('status', ['pending', 'processing']);
+
+    const pendingAmount = pendingClaimsData?.reduce((sum, c) => sum + Number(c.amount), 0) || 0;
 
     // Calculate daily claimed amount (Giờ Việt Nam UTC+7 - reset lúc 00:00 VN thay vì 07:00 VN)
     const VN_OFFSET_MS_DAILY = 7 * 60 * 60 * 1000;
@@ -427,10 +452,20 @@ Deno.serve(async (req) => {
       .eq('user_id', userId)
       .gte('created_at', todayStart.toISOString());
 
-    const todayClaimed = todayClaims?.reduce((sum, c) => sum + Number(c.amount), 0) || 0;
+    // === FIX: Include pending claims in daily total ===
+    const { data: todayPendingClaims } = await supabaseAdmin
+      .from('pending_claims')
+      .select('amount')
+      .eq('user_id', userId)
+      .in('status', ['pending', 'processing'])
+      .gte('created_at', todayStart.toISOString());
+
+    const todayPendingAmount = todayPendingClaims?.reduce((sum, c) => sum + Number(c.amount), 0) || 0;
+
+    const todayClaimed = (todayClaims?.reduce((sum, c) => sum + Number(c.amount), 0) || 0) + todayPendingAmount;
     const dailyRemaining = Math.max(0, DAILY_CLAIM_CAP - todayClaimed);
-    // Cho phép claim từ tổng tích lũy (totalReward - claimedAmount), giới hạn bởi daily cap
-    const claimableAmount = Math.max(0, totalReward - claimedAmount);
+    // === FIX: Subtract pending amount from claimable ===
+    const claimableAmount = Math.max(0, totalReward - claimedAmount - pendingAmount);
 
     // ===== CLAIM VELOCITY CHECK: Phát hiện sớm hành vi farm =====
     // Kiểm tra số lần rút trong 24 giờ thực (không phụ thuộc ngày UTC)
@@ -441,15 +476,25 @@ Deno.serve(async (req) => {
       .eq('user_id', userId)
       .gte('created_at', last24h.toISOString());
 
+    // === FIX: Count pending claims in velocity check too ===
+    const { count: recentPendingCount } = await supabaseAdmin
+      .from('pending_claims')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .in('status', ['pending', 'processing', 'completed'])
+      .gte('created_at', last24h.toISOString());
+
+    const totalRecentClaims = (recentClaimCount || 0) + (recentPendingCount || 0);
+
     // ===== CHECK 1: Giới hạn 2 lần/24h - thông báo friendly =====
-    if (recentClaimCount !== null && recentClaimCount >= 2) {
-      console.warn(`CLAIM_LIMIT: User ${userId} đã rút ${recentClaimCount} lần trong 24h`);
+    if (totalRecentClaims >= 2) {
+      console.warn(`CLAIM_LIMIT: User ${userId} đã rút ${totalRecentClaims} lần trong 24h (claims: ${recentClaimCount}, pending: ${recentPendingCount})`);
 
       // Lần thứ 3+ → on_hold + fraud signal (phòng race condition)
-      if (recentClaimCount >= 3) {
+      if (totalRecentClaims >= 3) {
         await supabaseAdmin.from('profiles').update({
           reward_status: 'on_hold',
-          admin_notes: `CLAIM_VELOCITY: Rút ${recentClaimCount} lần trong 24 giờ. Nghi ngờ khai thác lỗ hổng. Chờ Admin xác minh.`,
+          admin_notes: `CLAIM_VELOCITY: Rút ${totalRecentClaims} lần trong 24 giờ (claims: ${recentClaimCount}, pending: ${recentPendingCount}). Nghi ngờ khai thác lỗ hổng. Chờ Admin xác minh.`,
         }).eq('id', userId);
 
         await supabaseAdmin.from('pplp_fraud_signals').insert({
@@ -457,7 +502,9 @@ Deno.serve(async (req) => {
           signal_type: 'CLAIM_VELOCITY',
           severity: 4,
           details: { 
-            claim_count_24h: recentClaimCount, 
+            claim_count_24h: totalRecentClaims,
+            reward_claims_count: recentClaimCount,
+            pending_claims_count: recentPendingCount,
             today_claimed: todayClaimed,
             daily_remaining: dailyRemaining,
             window: '24h',
@@ -485,7 +532,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({
         error: 'Daily Limit Reached',
         message: 'Bạn đã đạt giới hạn rút 2 lần trong 24 giờ. Vui lòng quay lại ngày mai! 🙏',
-        claim_count_24h: recentClaimCount,
+        claim_count_24h: totalRecentClaims,
       }), { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 

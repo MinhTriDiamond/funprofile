@@ -11,6 +11,7 @@ import camlyLogo from '@/assets/tokens/camly-logo.webp';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useWalletSecurity } from '@/hooks/useWalletSecurity';
+import { usePendingClaims } from '@/hooks/usePendingClaims';
 
 const MINIMUM_THRESHOLD = 200000;
 const DAILY_LIMIT = 500000;
@@ -69,6 +70,9 @@ export const ClaimRewardsSection = ({
   }, []);
   
   const { data: walletSecurity } = useWalletSecurity(userId);
+  const { data: activePendingClaims } = usePendingClaims(userId);
+  const hasPendingClaim = (activePendingClaims?.length ?? 0) > 0;
+  const pendingClaimTotal = activePendingClaims?.reduce((sum, c) => sum + Number(c.amount), 0) || 0;
   
   const totalReward = rewardStats?.total_reward || 0;
   const pendingAmount = Math.max(0, totalReward - claimedAmount - claimableReward);
@@ -127,11 +131,15 @@ export const ClaimRewardsSection = ({
     }
   };
 
-  const allConditionsMet = hasAvatar && hasCover && hasTodayPost && hasFullName && isConnected;
+  const allConditionsMet = hasAvatar && hasCover && hasTodayPost && hasFullName && isConnected && !hasPendingClaim;
 
   const handleClaimClick = () => {
     if (!isConnected) {
       onConnectClick();
+      return;
+    }
+    if (hasPendingClaim) {
+      toast.info(`Bạn đang có ${activePendingClaims?.length} lệnh claim chờ duyệt. Vui lòng đợi Admin xử lý.`);
       return;
     }
     if (walletSecurity?.isBlocked) {
@@ -454,6 +462,21 @@ export const ClaimRewardsSection = ({
           </div>
         )}
 
+        {/* Pending Claims Banner */}
+        {hasPendingClaim && (
+          <div className="bg-amber-50 border border-amber-300 rounded-xl p-3.5">
+            <div className="flex items-start gap-2">
+              <Clock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-amber-800">Đang có lệnh claim chờ duyệt ⏳</p>
+                <p className="text-xs text-amber-700 mt-1">
+                  Bạn có {activePendingClaims?.length} lệnh claim ({formatNumber(pendingClaimTotal)} CAMLY) đang chờ Admin duyệt. Không thể tạo lệnh mới cho đến khi được xử lý.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Claim Button */}
         <div>
           {!isConnected ? (
@@ -467,9 +490,9 @@ export const ClaimRewardsSection = ({
           ) : (
             <Button
               onClick={handleClaimClick}
-              disabled={config.disabled || claimableReward <= 0 || walletSecurity?.isFrozen || walletSecurity?.isBlocked}
+              disabled={config.disabled || claimableReward <= 0 || walletSecurity?.isFrozen || walletSecurity?.isBlocked || hasPendingClaim}
               className={`w-full py-6 text-base rounded-xl font-bold shadow-lg transition-all ${
-                config.disabled || claimableReward <= 0 || walletSecurity?.isFrozen || walletSecurity?.isBlocked
+                config.disabled || claimableReward <= 0 || walletSecurity?.isFrozen || walletSecurity?.isBlocked || hasPendingClaim
                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   : 'bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-white hover:shadow-xl hover:scale-[1.01]'
               }`}

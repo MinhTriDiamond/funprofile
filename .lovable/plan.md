@@ -1,78 +1,83 @@
 
+# Database & Codebase Audit — Implementation Roadmap
 
-## Phân tích lỗi trong hệ thống Duyệt Thưởng (Claim Reward)
+## Tài liệu tham chiếu
+- `.lovable/audit-report.md` — Audit report đầy đủ (633 dòng, 20 phần)
 
-### Vấn đề phát hiện
+---
 
-Từ screenshot, user **huyhuongphat** có **4 lệnh pending** (mỗi lệnh 500.000 CAMLY) và **Ngocphuong** có **2 lệnh pending**. Đây là lỗi nghiêm trọng.
+## ĐÃ HOÀN THÀNH
 
-**Nguyên nhân gốc**: Edge Function `claim-reward` có 2 bug bảo mật:
+### Phase 0 — Audit & Documentation ✅
+| # | Công việc | Trạng thái |
+|---|----------|-----------|
+| 0A | Viết audit report 20 phần | ✅ Done |
+| 0B | Xác định Canonical Domain Models | ✅ Done |
+| 0C | Xác định Do Not Touch First list | ✅ Done |
+| 0D | Xác định Refactor Blockers | ✅ Done |
 
-1. **Không kiểm tra pending claims trùng lặp**: Trước khi tạo `pending_claims` mới, hệ thống không kiểm tra xem user đã có lệnh pending nào chưa. User có thể spam nút Claim nhiều lần.
+### Phase 1A — Performance Indexes ✅
+| Index | Table | Columns | Mục đích |
+|-------|-------|---------|----------|
+| `idx_notifications_user_read` | notifications | user_id, read | Badge count + dropdown |
+| `idx_reactions_post_type` | reactions | post_id, type | Reaction counts per post |
+| `idx_light_actions_user_created` | light_actions | user_id, created_at DESC | Light Score history |
+| `idx_posts_user_created` | posts | user_id, created_at DESC | Profile feed |
+| `idx_chunked_chunks_status` | chunked_recording_chunks | status | Cleanup queries |
+| `idx_donations_sender_status` | donations | sender_id, status | Benefactor leaderboard |
+| `idx_donations_recipient_status` | donations | recipient_id, status | Recipient leaderboard |
+| `idx_comments_post_created` | comments | post_id, created_at | Comment thread load |
+| `idx_friendships_user_status` | friendships | user_id, status | Friend lookup |
+| `idx_friendships_friend_status` | friendships | friend_id, status | Friend lookup |
 
-2. **Không trừ pending claims khỏi số dư khả dụng**: Khi tính `claimableAmount = totalReward - claimedAmount`, hệ thống chỉ trừ `reward_claims` (đã hoàn thành), không trừ `pending_claims` đang chờ. Nên user có 500k claimable → submit 4 lệnh 500k = 2 triệu CAMLY chờ duyệt.
+### Phase 1B — SQL Comments Documentation ✅
+- COMMENT ON TABLE cho tất cả 93 tables
+- COMMENT ON VIEW cho tất cả 5 views
+- Phân loại theo domain: Core, Social, Messaging, Live, Recording, Light Score, Rewards, Wallet, Auth, OAuth, Search, Content, System, PPLP
 
-3. **Velocity check chỉ đếm reward_claims**: Giới hạn 2 lần/24h chỉ kiểm tra bảng `reward_claims` (completed), không đếm `pending_claims`. Nên trước khi admin duyệt lệnh nào, user có thể submit vô hạn.
+---
 
-### Kế hoạch sửa
+## CHƯA LÀM — KẾ HOẠCH TIẾP THEO
 
-#### 1. Sửa Edge Function `claim-reward/index.ts`
+### Phase 1C-F — Safe Cleanup (rủi ro THẤP)
 
-Thêm 2 kiểm tra trước khi tạo pending claim:
+| # | Công việc | Chi tiết |
+|---|----------|---------|
+| 1C | Phân loại empty tables | 35 tables 0-rows → Active/Planned/Legacy/Deletable |
+| 1D | console.log → logger | 77 instances cần thay thế |
+| 1E | useAdminRole shared hook | Đã tạo, cần migrate các component dùng trực tiếp `has_role` |
+| 1F | Edge function _shared helpers | cors, auth, response — đã tạo ✅ |
 
-**a) Kiểm tra pending claims đang tồn tại** (sau bước 7g, trước bước 8):
-```typescript
-// Check existing pending claims - block if any exist
-const { data: existingPending, error: existingError } = await supabaseAdmin
-  .from('pending_claims')
-  .select('id, amount')
-  .eq('user_id', userId)
-  .in('status', ['pending', 'processing']);
+### Phase 2 — Structural Improvements (rủi ro TRUNG BÌNH)
 
-if (existingPending && existingPending.length > 0) {
-  return new Response(JSON.stringify({
-    error: 'Pending Exists',
-    message: 'Bạn đang có lệnh claim chờ duyệt. Vui lòng đợi Admin xử lý trước khi tạo lệnh mới.',
-    existing_claims: existingPending.length,
-  }), { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-}
-```
+| # | Công việc | Chi tiết |
+|---|----------|---------|
+| 2A | State enum documentation | Document các status/type enums trong DB |
+| 2B | Merge search_logs → search_history | Consolidate duplicate search tracking |
+| 2C | notifications.read → is_read | Compatibility migration (backfill + dual-write) |
+| 2D | Xóa useLiveComments | Dead code cleanup |
+| 2E | Module hóa hooks/ | Nhóm theo domain (social, chat, live, wallet, etc.) |
+| 2F | Tách components/feed/ | Sub-domains cho feed components |
+| 2G | useCapabilities layer | Đã tạo ✅, cần migrate consumers |
 
-**b) Trừ pending claims khỏi claimable** (tại bước 8):
-```typescript
-// Get pending claims amounts (not yet in reward_claims)
-const { data: pendingClaimsData } = await supabaseAdmin
-  .from('pending_claims')
-  .select('amount')
-  .eq('user_id', userId)
-  .in('status', ['pending', 'processing']);
+### Phase 3 — Deep Refactor (rủi ro CAO)
 
-const pendingAmount = pendingClaimsData?.reduce((sum, c) => sum + Number(c.amount), 0) || 0;
-const claimableAmount = Math.max(0, totalReward - claimedAmount - pendingAmount);
-```
+| # | Công việc | Blocker |
+|---|----------|---------|
+| 3A | Tách profiles → user_wallet_config | Nhiều component đọc trực tiếp profiles |
+| 3B | Claims lifecycle audit | reward_claims + pending_claims khác lifecycle |
+| 3C | FinancialTab → platform_financial_data | Admin UI đang đọc grand_total_* từ profiles |
+| 3D | get_user_rewards_v2 refactor | Đang dùng livestreams table, cần chuyển live_sessions |
+| 3E | live_comments product review | Quyết định drop hoặc giữ |
+| 3F | Profiles RLS tightening | Public by Design → quyết định enforcement model |
+| 3G | Gộp 15 media edge functions | Router pattern |
 
-**c) Velocity check bao gồm pending claims** (tại bước velocity):
-```typescript
-// Count pending_claims in last 24h too
-const { count: recentPendingCount } = await supabaseAdmin
-  .from('pending_claims')
-  .select('id', { count: 'exact', head: true })
-  .eq('user_id', userId)
-  .gte('created_at', last24h.toISOString())
-  .in('status', ['pending', 'processing', 'completed']);
+---
 
-const totalRecentClaims = (recentClaimCount || 0) + (recentPendingCount || 0);
-```
+## Linter Warnings (có sẵn, chưa xử lý)
+- **RLS Enabled No Policy**: Một số tables có RLS enabled nhưng chưa có policy
+- **RLS Policy Always True**: Một số policies dùng `USING (true)` cho INSERT/UPDATE/DELETE
+- Sẽ xử lý trong Phase 2-3 khi refactor từng domain
 
-#### 2. Frontend - Disable nút Claim khi có pending
-
-Trong `ClaimRewardsSection.tsx` hoặc `ClaimRewardDialog.tsx`, kiểm tra nếu đang có pending claim → hiển thị trạng thái "Đang chờ duyệt" thay vì cho phép claim lại.
-
-### Tóm tắt
-
-| Bug | Mức độ | Sửa |
-|-----|--------|-----|
-| Không chặn duplicate pending | Nghiêm trọng | Block nếu đã có pending/processing |
-| Không trừ pending khỏi balance | Nghiêm trọng | Trừ pending amount khi tính claimable |
-| Velocity chỉ đếm completed | Trung bình | Đếm cả pending_claims |
-
+## Light Score 5 Trụ Cột — Phase 1 ✅ HOÀN THÀNH
+(Chi tiết xem phiên bản trước của plan)
