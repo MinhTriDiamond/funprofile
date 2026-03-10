@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/hover-card';
 
 // Items excluded from orbit — rendered as list below
-const BELOW_IDS = ['law-of-light', 'about', 'angel-ai'];
+const BELOW_IDS = ['law-of-light', 'about'];
 
 // Ecosystem item descriptions (Vietnamese)
 const ecosystemDescriptions: Record<string, { subtitle: string; description: string }> = {
@@ -106,8 +106,8 @@ export default function EcosystemWheel({ onItemClick }: { onItemClick?: () => vo
       {/* Rotating wheel */}
       <div className="flex justify-center py-1">
         <div
-          className="relative"
-          style={{ width: size, height: size }}
+          className="relative overflow-visible"
+          style={{ width: size, height: size, zIndex: 20 }}
           onMouseEnter={() => setPaused(true)}
           onMouseLeave={() => setPaused(false)}
         >
