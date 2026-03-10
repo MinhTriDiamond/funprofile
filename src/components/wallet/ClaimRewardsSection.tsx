@@ -131,7 +131,7 @@ export const ClaimRewardsSection = ({
     }
   };
 
-  const allConditionsMet = hasAvatar && hasCover && hasTodayPost && hasFullName && isConnected;
+  const allConditionsMet = hasAvatar && hasCover && hasTodayPost && hasFullName && isConnected && !hasPendingClaim;
 
   const handleClaimClick = () => {
     if (!isConnected) {
