@@ -486,9 +486,9 @@ export const ClaimRewardsSection = ({
           ) : (
             <Button
               onClick={handleClaimClick}
-              disabled={config.disabled || claimableReward <= 0 || walletSecurity?.isFrozen || walletSecurity?.isBlocked}
+              disabled={config.disabled || claimableReward <= 0 || walletSecurity?.isFrozen || walletSecurity?.isBlocked || hasPendingClaim}
               className={`w-full py-6 text-base rounded-xl font-bold shadow-lg transition-all ${
-                config.disabled || claimableReward <= 0 || walletSecurity?.isFrozen || walletSecurity?.isBlocked
+                config.disabled || claimableReward <= 0 || walletSecurity?.isFrozen || walletSecurity?.isBlocked || hasPendingClaim
                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   : 'bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-white hover:shadow-xl hover:scale-[1.01]'
               }`}
