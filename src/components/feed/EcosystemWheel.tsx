@@ -258,7 +258,6 @@ export default function EcosystemWheel({ onItemClick }: { onItemClick?: () => vo
             </HoverCard>
           ))}
         </div>
-      </div>
     </div>
   );
 }
