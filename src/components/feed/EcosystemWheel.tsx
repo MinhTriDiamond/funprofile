@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/hover-card';
 
 // Items excluded from orbit — rendered as list below
-const BELOW_IDS = ['law-of-light', 'about', 'angel-ai'];
+const BELOW_IDS = ['law-of-light', 'about'];
 
 // Ecosystem item descriptions (Vietnamese)
 const ecosystemDescriptions: Record<string, { subtitle: string; description: string }> = {
