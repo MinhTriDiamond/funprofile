@@ -167,15 +167,17 @@ export default function EcosystemWheel({ onItemClick }: { onItemClick?: () => vo
                 {ecosystemDescriptions[item.id] && (
                   <HoverCardContent
                     side="right"
-                    align="center"
-                    sideOffset={8}
-                    className="w-64 z-[60] rounded-xl border border-yellow-300/40 bg-card/95 backdrop-blur-sm shadow-lg p-3"
+                    align="start"
+                    sideOffset={12}
+                    collisionPadding={16}
+                    className="w-60 z-[100] rounded-xl border border-yellow-300/30 bg-card shadow-xl p-3"
+                    style={{ pointerEvents: 'auto' }}
                   >
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <img src={item.avatar} alt={item.name} className="w-8 h-8 rounded-full object-cover" />
-                      <div>
-                        <p className="font-bold text-sm text-foreground">{item.name}</p>
-                        <p className="text-xs text-primary italic">{ecosystemDescriptions[item.id].subtitle}</p>
+                    <div className="flex items-center gap-2.5 mb-2">
+                      <img src={item.avatar} alt={item.name} className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
+                      <div className="min-w-0">
+                        <p className="font-bold text-sm text-foreground leading-tight">{item.name}</p>
+                        <p className="text-[11px] text-primary italic leading-tight">{ecosystemDescriptions[item.id].subtitle}</p>
                       </div>
                     </div>
                     <p className="text-xs text-muted-foreground leading-relaxed">
