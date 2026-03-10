@@ -491,10 +491,10 @@ Deno.serve(async (req) => {
       console.warn(`CLAIM_LIMIT: User ${userId} đã rút ${totalRecentClaims} lần trong 24h (claims: ${recentClaimCount}, pending: ${recentPendingCount})`);
 
       // Lần thứ 3+ → on_hold + fraud signal (phòng race condition)
-      if (recentClaimCount >= 3) {
+      if (totalRecentClaims >= 3) {
         await supabaseAdmin.from('profiles').update({
           reward_status: 'on_hold',
-          admin_notes: `CLAIM_VELOCITY: Rút ${recentClaimCount} lần trong 24 giờ. Nghi ngờ khai thác lỗ hổng. Chờ Admin xác minh.`,
+          admin_notes: `CLAIM_VELOCITY: Rút ${totalRecentClaims} lần trong 24 giờ (claims: ${recentClaimCount}, pending: ${recentPendingCount}). Nghi ngờ khai thác lỗ hổng. Chờ Admin xác minh.`,
         }).eq('id', userId);
 
         await supabaseAdmin.from('pplp_fraud_signals').insert({
@@ -502,7 +502,9 @@ Deno.serve(async (req) => {
           signal_type: 'CLAIM_VELOCITY',
           severity: 4,
           details: { 
-            claim_count_24h: recentClaimCount, 
+            claim_count_24h: totalRecentClaims,
+            reward_claims_count: recentClaimCount,
+            pending_claims_count: recentPendingCount,
             today_claimed: todayClaimed,
             daily_remaining: dailyRemaining,
             window: '24h',
