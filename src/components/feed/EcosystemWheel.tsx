@@ -135,8 +135,8 @@ export default function EcosystemWheel({ onItemClick }: { onItemClick?: () => vo
           <div
             className="absolute rounded-full"
             style={{
-              width: orbitRadius * 2,
-              height: orbitRadius * 2,
+              width: dims.orbitRadius * 2,
+              height: dims.orbitRadius * 2,
               top: '50%',
               left: '50%',
               transform: 'translate(-50%, -50%)',
