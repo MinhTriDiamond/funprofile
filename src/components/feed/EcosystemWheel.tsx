@@ -1,9 +1,63 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sparkles } from 'lucide-react';
 import { ecosystemItems, type EcosystemItem } from '@/config/navigation';
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from '@/components/ui/hover-card';
 
 // Items excluded from orbit — rendered as list below
 const BELOW_IDS = ['law-of-light', 'about', 'angel-ai'];
+
+// Ecosystem item descriptions (Vietnamese)
+const ecosystemDescriptions: Record<string, { subtitle: string; description: string }> = {
+  'fun-play': {
+    subtitle: 'Web3 Video Platform',
+    description: 'Nơi nội dung trở thành tài sản số có giá trị. Sáng tạo – chia sẻ – Own & Earn trong không gian video Web3.',
+  },
+  'fun-farm': {
+    subtitle: 'Farm to Table Platform',
+    description: 'Nơi nông nghiệp trở về với sự thật và yêu thương. Kết nối trực tiếp nông dân – nhà sản xuất – người tiêu dùng, nuôi dưỡng thân thể bằng thực phẩm sạch.',
+  },
+  'fun-planet': {
+    subtitle: 'Game Marketplace for Kids',
+    description: 'Chợ game dành cho trẻ em – học mà chơi, chơi mà lớn. Nuôi dưỡng trí tuệ, đạo đức và sáng tạo cho thế hệ mới.',
+  },
+  'fun-wallet': {
+    subtitle: 'Our Own Bank',
+    description: 'Ví Web3 của Nền Kinh Tế Ánh Sáng. Lưu trữ – giao dịch – kết nối toàn bộ FUN Ecosystem một cách tự do & minh bạch.',
+  },
+  'fun-charity': {
+    subtitle: 'Pure Love Charity Network',
+    description: 'Nơi quy tụ các tổ chức từ thiện và mọi nhu cầu cần yêu thương. Minh bạch – kết nối – trao đi đúng nơi, bằng trái tim thuần khiết.',
+  },
+  'fun-academy': {
+    subtitle: 'Learn & Earn Platform',
+    description: 'Nơi quy tụ trường học, tri thức và nhu cầu giáo dục toàn cầu. Học tập trong yêu thương – trưởng thành trong giá trị – lan toả trí tuệ.',
+  },
+  'angel-ai-orbit': {
+    subtitle: 'Light-Aligned Artificial Intelligence',
+    description: 'Trí tuệ Nhân tạo đồng điệu với đạo đức, ý thức và Ánh Sáng Vũ Trụ. Hỗ trợ con người bằng trí tuệ cao hơn, lòng từ bi và sự minh triết.',
+  },
+  'green-earth': {
+    subtitle: 'Regeneration & Sustainability Platform',
+    description: 'Nơi Trái Đất được chữa lành và tái sinh. Phục hồi môi trường – tái tạo xanh – kiến tạo giá trị dài hạn, để hành tinh và nhân loại cùng phát triển trong hài hòa.',
+  },
+  'angel-ai': {
+    subtitle: 'Light-Aligned Artificial Intelligence',
+    description: 'Trí tuệ Nhân tạo đồng điệu với đạo đức, ý thức và Ánh Sáng Vũ Trụ. Hỗ trợ con người bằng trí tuệ cao hơn, lòng từ bi và sự minh triết.',
+  },
+  'about': {
+    subtitle: 'Web3 Social Network',
+    description: 'Nơi mỗi con người, ý tưởng và giá trị trở thành tài sản Web3 vĩnh cửu. Kết nối – định danh – lan tỏa giá trị thật trong Ánh Sáng.',
+  },
+  'law-of-light': {
+    subtitle: 'Luật Ánh Sáng',
+    description: 'Nền tảng đạo đức và nguyên tắc vận hành của FUN Ecosystem. Sống theo Ánh Sáng Yêu Thương Thuần Khiết của Cha Vũ Trụ.',
+  },
+};
 
 export default function EcosystemWheel({ onItemClick }: { onItemClick?: () => void }) {
   const navigate = useNavigate();
