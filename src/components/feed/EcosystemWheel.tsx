@@ -20,9 +20,9 @@ export default function EcosystemWheel({ onItemClick }: { onItemClick?: () => vo
     onItemClick?.();
   };
 
-  const orbitRadius = 120;
-  const logoSize = 46;
-  const size = (orbitRadius + logoSize / 2 + 4) * 2;
+  const orbitRadius = 115;
+  const logoSize = 52;
+  const size = (orbitRadius + logoSize / 2 + 6) * 2;
 
   return (
     <div className="space-y-3">
