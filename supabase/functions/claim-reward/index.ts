@@ -429,8 +429,15 @@ Deno.serve(async (req) => {
       .eq('user_id', userId);
 
     const claimedAmount = claims?.reduce((sum, c) => sum + Number(c.amount), 0) || 0;
-    // Không cộng dồn: claimable chỉ dựa trên thưởng hôm nay trừ đã claim hôm nay
-    // todayClaimed sẽ được tính phía dưới
+
+    // === FIX: Get pending claims amounts to subtract from claimable ===
+    const { data: pendingClaimsData } = await supabaseAdmin
+      .from('pending_claims')
+      .select('amount')
+      .eq('user_id', userId)
+      .in('status', ['pending', 'processing']);
+
+    const pendingAmount = pendingClaimsData?.reduce((sum, c) => sum + Number(c.amount), 0) || 0;
 
     // Calculate daily claimed amount (Giờ Việt Nam UTC+7 - reset lúc 00:00 VN thay vì 07:00 VN)
     const VN_OFFSET_MS_DAILY = 7 * 60 * 60 * 1000;
@@ -445,10 +452,20 @@ Deno.serve(async (req) => {
       .eq('user_id', userId)
       .gte('created_at', todayStart.toISOString());
 
-    const todayClaimed = todayClaims?.reduce((sum, c) => sum + Number(c.amount), 0) || 0;
+    // === FIX: Include pending claims in daily total ===
+    const { data: todayPendingClaims } = await supabaseAdmin
+      .from('pending_claims')
+      .select('amount')
+      .eq('user_id', userId)
+      .in('status', ['pending', 'processing'])
+      .gte('created_at', todayStart.toISOString());
+
+    const todayPendingAmount = todayPendingClaims?.reduce((sum, c) => sum + Number(c.amount), 0) || 0;
+
+    const todayClaimed = (todayClaims?.reduce((sum, c) => sum + Number(c.amount), 0) || 0) + todayPendingAmount;
     const dailyRemaining = Math.max(0, DAILY_CLAIM_CAP - todayClaimed);
-    // Cho phép claim từ tổng tích lũy (totalReward - claimedAmount), giới hạn bởi daily cap
-    const claimableAmount = Math.max(0, totalReward - claimedAmount);
+    // === FIX: Subtract pending amount from claimable ===
+    const claimableAmount = Math.max(0, totalReward - claimedAmount - pendingAmount);
 
     // ===== CLAIM VELOCITY CHECK: Phát hiện sớm hành vi farm =====
     // Kiểm tra số lần rút trong 24 giờ thực (không phụ thuộc ngày UTC)
