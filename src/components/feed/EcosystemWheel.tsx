@@ -161,8 +161,8 @@ export default function EcosystemWheel({ onItemClick }: { onItemClick?: () => vo
                     style={{
                       left: cx,
                       top: cy,
-                      width: itemSize,
-                      height: itemSize,
+                      width: dims.itemSize,
+                      height: dims.itemSize,
                     }}
                   >
                     <div
