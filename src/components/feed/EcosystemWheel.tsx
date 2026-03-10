@@ -92,18 +92,21 @@ export default function EcosystemWheel({ onItemClick }: { onItemClick?: () => vo
             <div
               className="rounded-full p-[3px]"
               style={{
-                background: 'linear-gradient(135deg, rgba(255,215,0,0.6), rgba(255,180,0,0.3), rgba(255,215,0,0.6))',
-                boxShadow: '0 0 16px rgba(255,215,0,0.4)',
+                background: 'linear-gradient(135deg, rgba(255,215,0,0.7), rgba(255,180,0,0.4), rgba(255,215,0,0.7))',
+                boxShadow: '0 0 20px rgba(255,215,0,0.45)',
               }}
             >
-              <div className="rounded-full bg-card p-2 flex items-center justify-center" style={{ width: 86, height: 86 }}>
+              <div
+                className="rounded-full flex items-center justify-center overflow-hidden"
+                style={{ width: 96, height: 96, background: 'rgba(255,255,255,0.92)' }}
+              >
                 <img
                   src="/fun-ecosystem-center.png"
                   alt="FUN Ecosystem"
-                  width={78}
-                  height={78}
+                  width={88}
+                  height={88}
                   loading="lazy"
-                  className="object-contain"
+                  className="object-contain rounded-full"
                 />
               </div>
             </div>
