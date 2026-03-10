@@ -20,6 +20,7 @@ import {
   Settings,
 } from 'lucide-react';
 import { ecosystemItems, shortcutItems as shortcutConfig, userMenuItems } from '@/config/navigation';
+import EcosystemWheel from './EcosystemWheel';
 
 interface Profile {
   id: string;
