@@ -14,7 +14,15 @@ const ecosystemItems = [
 
 const FunEcosystemOrbit = () => {
   const [rotation, setRotation] = useState(0);
+  const [radius, setRadius] = useState(120);
   const rafRef = useRef(0);
+
+  useEffect(() => {
+    const updateRadius = () => setRadius(window.innerWidth >= 640 ? 170 : 120);
+    updateRadius();
+    window.addEventListener('resize', updateRadius);
+    return () => window.removeEventListener('resize', updateRadius);
+  }, []);
 
   useEffect(() => {
     let lastTime = performance.now();
