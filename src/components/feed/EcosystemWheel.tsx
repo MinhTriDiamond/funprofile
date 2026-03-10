@@ -56,8 +56,8 @@ export default function EcosystemWheel({ onItemClick }: { onItemClick?: () => vo
                   title={item.name}
                   className="absolute group"
                   style={{
-                    left: `calc(50% + ${x}px - 20px)`,
-                    top: `calc(50% + ${y}px - 20px)`,
+                    left: `calc(50% + ${x}px - ${logoSize / 2}px)`,
+                    top: `calc(50% + ${y}px - ${logoSize / 2}px)`,
                   }}
                 >
                   <div className="animate-[spin_40s_linear_infinite_reverse]">
