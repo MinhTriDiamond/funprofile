@@ -37,10 +37,6 @@ const ecosystemDescriptions: Record<string, { subtitle: string; description: str
     subtitle: 'Learn & Earn Platform',
     description: 'Nơi quy tụ trường học, tri thức và nhu cầu giáo dục toàn cầu. Học tập trong yêu thương – trưởng thành trong giá trị – lan toả trí tuệ.',
   },
-  'angel-ai-orbit': {
-    subtitle: 'Light-Aligned Artificial Intelligence',
-    description: 'Trí tuệ Nhân tạo đồng điệu với đạo đức, ý thức và Ánh Sáng Vũ Trụ. Hỗ trợ con người bằng trí tuệ cao hơn, lòng từ bi và sự minh triết.',
-  },
   'green-earth': {
     subtitle: 'Regeneration & Sustainability Platform',
     description: 'Nơi Trái Đất được chữa lành và tái sinh. Phục hồi môi trường – tái tạo xanh – kiến tạo giá trị dài hạn, để hành tinh và nhân loại cùng phát triển trong hài hòa.',
