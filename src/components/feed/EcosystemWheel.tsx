@@ -20,8 +20,9 @@ export default function EcosystemWheel({ onItemClick }: { onItemClick?: () => vo
     onItemClick?.();
   };
 
-  const orbitRadius = 110;
-  const size = (orbitRadius + 30) * 2;
+  const orbitRadius = 120;
+  const logoSize = 46;
+  const size = (orbitRadius + logoSize / 2 + 4) * 2;
 
   return (
     <div className="space-y-3">
@@ -55,18 +56,18 @@ export default function EcosystemWheel({ onItemClick }: { onItemClick?: () => vo
                   title={item.name}
                   className="absolute group"
                   style={{
-                    left: `calc(50% + ${x}px - 20px)`,
-                    top: `calc(50% + ${y}px - 20px)`,
+                    left: `calc(50% + ${x}px - ${logoSize / 2}px)`,
+                    top: `calc(50% + ${y}px - ${logoSize / 2}px)`,
                   }}
                 >
                   <div className="animate-[spin_40s_linear_infinite_reverse]">
                     <img
                       src={item.avatar}
                       alt={item.name}
-                      width={40}
-                      height={40}
+                      width={logoSize}
+                      height={logoSize}
                       loading="lazy"
-                      className="w-10 h-10 rounded-full object-cover ring-2 ring-yellow-400/30 group-hover:ring-yellow-400 group-hover:scale-125 group-hover:shadow-[0_0_16px_rgba(250,204,21,0.6)] transition-all duration-300 cursor-pointer"
+                      className="w-[46px] h-[46px] rounded-full object-cover ring-2 ring-yellow-400/30 group-hover:ring-yellow-400 group-hover:scale-125 group-hover:shadow-[0_0_16px_rgba(250,204,21,0.6)] transition-all duration-300 cursor-pointer"
                     />
                   </div>
                 </button>
