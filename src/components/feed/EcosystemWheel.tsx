@@ -80,8 +80,9 @@ export default function EcosystemWheel({ onItemClick }: { onItemClick?: () => vo
 
   const orbitRadius = 130;
   const logoSize = 58;
-  const halfLogo = logoSize / 2;
-  const size = (orbitRadius + halfLogo + 8) * 2;
+  const itemSize = logoSize + 6; // includes 3px padding on each side
+  const halfItem = itemSize / 2;
+  const size = (orbitRadius + halfItem + 8) * 2;
 
   // JS-based rotation — pauses on hover so images stay upright
   const animate = useCallback((time: number) => {
@@ -129,8 +130,8 @@ export default function EcosystemWheel({ onItemClick }: { onItemClick?: () => vo
             const baseAngle = (360 / orbitItems.length) * idx - 90;
             const angle = baseAngle + rotation;
             const rad = (angle * Math.PI) / 180;
-            const cx = size / 2 + Math.cos(rad) * orbitRadius - halfLogo;
-            const cy = size / 2 + Math.sin(rad) * orbitRadius - halfLogo;
+            const cx = size / 2 + Math.cos(rad) * orbitRadius - halfItem;
+            const cy = size / 2 + Math.sin(rad) * orbitRadius - halfItem;
 
             return (
               <HoverCard openDelay={200} closeDelay={100} key={item.id}>
