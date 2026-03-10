@@ -3,6 +3,7 @@ import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Sparkles, Shield, Users, Coins, Palette, Globe, Rocket } from 'lucide-react';
+import FunEcosystemOrbit from '@/components/about/FunEcosystemOrbit';
 
 const About = () => {
   const navigate = useNavigate();
