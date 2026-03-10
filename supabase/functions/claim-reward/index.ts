@@ -532,7 +532,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({
         error: 'Daily Limit Reached',
         message: 'Bạn đã đạt giới hạn rút 2 lần trong 24 giờ. Vui lòng quay lại ngày mai! 🙏',
-        claim_count_24h: recentClaimCount,
+        claim_count_24h: totalRecentClaims,
       }), { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
