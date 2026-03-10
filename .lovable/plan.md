@@ -1,83 +1,56 @@
 
-# Database & Codebase Audit — Implementation Roadmap
 
-## Tài liệu tham chiếu
-- `.lovable/audit-report.md` — Audit report đầy đủ (633 dòng, 20 phần)
+## Fix lỗi bảo mật nghiêm trọng: Đăng nhập ví bị nhầm tài khoản
 
----
+### Nguyên nhân gốc
 
-## ĐÃ HOÀN THÀNH
+Hai lỗi kết hợp gây ra việc đăng nhập ví của @leminhtri nhưng vào tài khoản @gioi89:
 
-### Phase 0 — Audit & Documentation ✅
-| # | Công việc | Trạng thái |
-|---|----------|-----------|
-| 0A | Viết audit report 20 phần | ✅ Done |
-| 0B | Xác định Canonical Domain Models | ✅ Done |
-| 0C | Xác định Do Not Touch First list | ✅ Done |
-| 0D | Xác định Refactor Blockers | ✅ Done |
+1. **Case-sensitive lookup**: DB lưu ví dạng mixed-case (`0x847B5b...`), nhưng Edge Function normalize thành lowercase (`0x847b5b...`). PostgreSQL so sánh `=` phân biệt hoa/thường → tất cả 4 bước lookup đều MISS.
 
-### Phase 1A — Performance Indexes ✅
-| Index | Table | Columns | Mục đích |
-|-------|-------|---------|----------|
-| `idx_notifications_user_read` | notifications | user_id, read | Badge count + dropdown |
-| `idx_reactions_post_type` | reactions | post_id, type | Reaction counts per post |
-| `idx_light_actions_user_created` | light_actions | user_id, created_at DESC | Light Score history |
-| `idx_posts_user_created` | posts | user_id, created_at DESC | Profile feed |
-| `idx_chunked_chunks_status` | chunked_recording_chunks | status | Cleanup queries |
-| `idx_donations_sender_status` | donations | sender_id, status | Benefactor leaderboard |
-| `idx_donations_recipient_status` | donations | recipient_id, status | Recipient leaderboard |
-| `idx_comments_post_created` | comments | post_id, created_at | Comment thread load |
-| `idx_friendships_user_status` | friendships | user_id, status | Friend lookup |
-| `idx_friendships_friend_status` | friendships | friend_id, status | Friend lookup |
+2. **Fallback nguy hiểm**: Khi lookup thất bại, code rơi vào bước 5 dùng `listUsers({ filter: email })` — hàm này match không chính xác → trả về user sai (@gioi89) → cấp session cho tài khoản sai.
 
-### Phase 1B — SQL Comments Documentation ✅
-- COMMENT ON TABLE cho tất cả 93 tables
-- COMMENT ON VIEW cho tất cả 5 views
-- Phân loại theo domain: Core, Social, Messaging, Live, Recording, Light Score, Rewards, Wallet, Auth, OAuth, Search, Content, System, PPLP
+### Kế hoạch fix
 
----
+**1. Edge Function `sso-web3-auth/index.ts`**
+- **Xóa hoàn toàn** bước 5 `email_fallback` (dòng 113-124) — đây là nguyên nhân trực tiếp gây nhầm tài khoản
+- **Đổi `.eq()` thành `.ilike()`** cho tất cả 4 bước lookup wallet để so sánh không phân biệt hoa/thường
 
-## CHƯA LÀM — KẾ HOẠCH TIẾP THEO
+**2. Database migration — Chuẩn hóa dữ liệu hiện tại**
+```sql
+-- Lowercase tất cả wallet address trong profiles
+UPDATE profiles SET wallet_address = LOWER(wallet_address) WHERE wallet_address IS NOT NULL AND wallet_address != LOWER(wallet_address);
+UPDATE profiles SET external_wallet_address = LOWER(external_wallet_address) WHERE external_wallet_address IS NOT NULL AND external_wallet_address != LOWER(external_wallet_address);
+UPDATE profiles SET public_wallet_address = LOWER(public_wallet_address) WHERE public_wallet_address IS NOT NULL AND public_wallet_address != LOWER(public_wallet_address);
+UPDATE profiles SET login_wallet_address = LOWER(login_wallet_address) WHERE login_wallet_address IS NOT NULL AND login_wallet_address != LOWER(login_wallet_address);
 
-### Phase 1C-F — Safe Cleanup (rủi ro THẤP)
+-- Lowercase wallet_history
+UPDATE wallet_history SET wallet_address = LOWER(wallet_address) WHERE wallet_address IS NOT NULL AND wallet_address != LOWER(wallet_address);
 
-| # | Công việc | Chi tiết |
-|---|----------|---------|
-| 1C | Phân loại empty tables | 35 tables 0-rows → Active/Planned/Legacy/Deletable |
-| 1D | console.log → logger | 77 instances cần thay thế |
-| 1E | useAdminRole shared hook | Đã tạo, cần migrate các component dùng trực tiếp `has_role` |
-| 1F | Edge function _shared helpers | cors, auth, response — đã tạo ✅ |
+-- Trigger tự động lowercase khi INSERT/UPDATE
+CREATE OR REPLACE FUNCTION normalize_wallet_addresses()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.wallet_address := LOWER(NEW.wallet_address);
+  NEW.external_wallet_address := LOWER(NEW.external_wallet_address);
+  NEW.public_wallet_address := LOWER(NEW.public_wallet_address);
+  NEW.login_wallet_address := LOWER(NEW.login_wallet_address);
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
-### Phase 2 — Structural Improvements (rủi ro TRUNG BÌNH)
+CREATE TRIGGER trg_normalize_wallet_addresses
+BEFORE INSERT OR UPDATE ON profiles
+FOR EACH ROW EXECUTE FUNCTION normalize_wallet_addresses();
+```
 
-| # | Công việc | Chi tiết |
-|---|----------|---------|
-| 2A | State enum documentation | Document các status/type enums trong DB |
-| 2B | Merge search_logs → search_history | Consolidate duplicate search tracking |
-| 2C | notifications.read → is_read | Compatibility migration (backfill + dual-write) |
-| 2D | Xóa useLiveComments | Dead code cleanup |
-| 2E | Module hóa hooks/ | Nhóm theo domain (social, chat, live, wallet, etc.) |
-| 2F | Tách components/feed/ | Sub-domains cho feed components |
-| 2G | useCapabilities layer | Đã tạo ✅, cần migrate consumers |
+**3. Không cần sửa `connect-external-wallet`** — function này đã normalize lowercase trước khi lưu.
 
-### Phase 3 — Deep Refactor (rủi ro CAO)
+### Tóm tắt
 
-| # | Công việc | Blocker |
-|---|----------|---------|
-| 3A | Tách profiles → user_wallet_config | Nhiều component đọc trực tiếp profiles |
-| 3B | Claims lifecycle audit | reward_claims + pending_claims khác lifecycle |
-| 3C | FinancialTab → platform_financial_data | Admin UI đang đọc grand_total_* từ profiles |
-| 3D | get_user_rewards_v2 refactor | Đang dùng livestreams table, cần chuyển live_sessions |
-| 3E | live_comments product review | Quyết định drop hoặc giữ |
-| 3F | Profiles RLS tightening | Public by Design → quyết định enforcement model |
-| 3G | Gộp 15 media edge functions | Router pattern |
+| Vấn đề | Trước fix | Sau fix |
+|---|---|---|
+| Wallet lookup | Case-sensitive, miss 236 profiles | Case-insensitive (`.ilike()`) |
+| Email fallback | Trả user sai → nhầm tài khoản | Xóa hoàn toàn |
+| Dữ liệu DB | Mixed-case | Tất cả lowercase + trigger tự động |
 
----
-
-## Linter Warnings (có sẵn, chưa xử lý)
-- **RLS Enabled No Policy**: Một số tables có RLS enabled nhưng chưa có policy
-- **RLS Policy Always True**: Một số policies dùng `USING (true)` cho INSERT/UPDATE/DELETE
-- Sẽ xử lý trong Phase 2-3 khi refactor từng domain
-
-## Light Score 5 Trụ Cột — Phase 1 ✅ HOÀN THÀNH
-(Chi tiết xem phiên bản trước của plan)
