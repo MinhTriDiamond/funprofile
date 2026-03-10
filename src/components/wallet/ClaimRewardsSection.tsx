@@ -11,6 +11,7 @@ import camlyLogo from '@/assets/tokens/camly-logo.webp';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useWalletSecurity } from '@/hooks/useWalletSecurity';
+import { usePendingClaims } from '@/hooks/usePendingClaims';
 
 const MINIMUM_THRESHOLD = 200000;
 const DAILY_LIMIT = 500000;
