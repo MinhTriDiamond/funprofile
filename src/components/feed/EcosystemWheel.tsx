@@ -149,8 +149,8 @@ export default function EcosystemWheel({ onItemClick }: { onItemClick?: () => vo
             const baseAngle = (360 / orbitItems.length) * idx - 90;
             const angle = baseAngle + rotation;
             const rad = (angle * Math.PI) / 180;
-            const cx = size / 2 + Math.cos(rad) * orbitRadius - halfItem;
-            const cy = size / 2 + Math.sin(rad) * orbitRadius - halfItem;
+            const cx = dims.size / 2 + Math.cos(rad) * dims.orbitRadius - dims.halfItem;
+            const cy = dims.size / 2 + Math.sin(rad) * dims.orbitRadius - dims.halfItem;
 
             return (
               <HoverCard openDelay={200} closeDelay={100} key={item.id}>
