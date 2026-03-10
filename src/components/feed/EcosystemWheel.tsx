@@ -78,11 +78,11 @@ export default function EcosystemWheel({ onItemClick }: { onItemClick?: () => vo
     onItemClick?.();
   };
 
-  const orbitRadius = 130;
-  const logoSize = 58;
+  const orbitRadius = 110;
+  const logoSize = 48;
   const itemSize = logoSize + 6; // includes 3px padding on each side
   const halfItem = itemSize / 2;
-  const size = (orbitRadius + halfItem + 8) * 2;
+  const size = (orbitRadius + halfItem) * 2;
 
   // JS-based rotation — pauses on hover so images stay upright
   const animate = useCallback((time: number) => {
