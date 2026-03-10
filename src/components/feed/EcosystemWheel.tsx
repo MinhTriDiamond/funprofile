@@ -78,8 +78,8 @@ export default function EcosystemWheel({ onItemClick }: { onItemClick?: () => vo
     onItemClick?.();
   };
 
-  const orbitRadius = 105;
-  const logoSize = 50;
+  const orbitRadius = 130;
+  const logoSize = 58;
   const halfLogo = logoSize / 2;
   const size = (orbitRadius + halfLogo + 8) * 2;
 
