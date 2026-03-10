@@ -138,16 +138,16 @@ export default function EcosystemWheel({ onItemClick }: { onItemClick?: () => vo
                 <HoverCardTrigger asChild>
                   <button
                     onClick={() => handleClick(item)}
-                    className="absolute group/item"
+                    className="absolute flex items-center justify-center group/item"
                     style={{
                       left: cx,
                       top: cy,
-                      width: logoSize + 6,
-                      height: logoSize + 6,
+                      width: itemSize,
+                      height: itemSize,
                     }}
                   >
                     <div
-                      className="rounded-full p-[3px] group-hover/item:scale-110 transition-transform duration-300"
+                      className="w-full h-full rounded-full p-[3px] flex items-center justify-center group-hover/item:scale-110 transition-transform duration-300"
                       style={{
                         background: 'linear-gradient(135deg, rgba(255,215,0,0.6), rgba(255,180,0,0.3), rgba(255,215,0,0.6))',
                         boxShadow: '0 0 10px rgba(255,215,0,0.35), 0 0 3px rgba(255,215,0,0.2)',
