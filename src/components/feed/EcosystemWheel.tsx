@@ -156,11 +156,9 @@ export default function EcosystemWheel({ onItemClick }: { onItemClick?: () => vo
                       <img
                         src={item.avatar}
                         alt={item.name}
-                        width={logoSize}
-                        height={logoSize}
                         loading="lazy"
-                        className="rounded-full object-cover bg-card cursor-pointer"
-                        style={{ width: logoSize, height: logoSize }}
+                        className="block rounded-full object-cover bg-card cursor-pointer flex-shrink-0"
+                        style={{ width: logoSize, height: logoSize, minWidth: logoSize, minHeight: logoSize }}
                       />
                     </div>
                   </button>
