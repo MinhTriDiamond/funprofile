@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sparkles } from 'lucide-react';
 import { ecosystemItems, type EcosystemItem } from '@/config/navigation';
@@ -61,6 +61,8 @@ export default function EcosystemWheel({ onItemClick }: { onItemClick?: () => vo
   const [paused, setPaused] = useState(false);
   const rafRef = useRef<number>(0);
   const lastTimeRef = useRef<number>(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState(0);
 
   const orbitItems = ecosystemItems.filter(i => !BELOW_IDS.includes(i.id));
   const belowItems = ecosystemItems.filter(i => BELOW_IDS.includes(i.id));
@@ -74,11 +76,32 @@ export default function EcosystemWheel({ onItemClick }: { onItemClick?: () => vo
     onItemClick?.();
   };
 
-  const orbitRadius = 120;
-  const logoSize = 60;
-  const itemSize = logoSize + 6; // includes 3px padding on each side
-  const halfItem = itemSize / 2;
-  const size = (orbitRadius + halfItem) * 2;
+  // Measure container and recalculate on resize/zoom
+  useEffect(() => {
+    const measure = () => {
+      if (containerRef.current) {
+        setContainerWidth(containerRef.current.clientWidth);
+      }
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    if (containerRef.current) ro.observe(containerRef.current);
+    return () => ro.disconnect();
+  }, []);
+
+  // Responsive sizing: fit wheel within container width with padding
+  const dims = useMemo(() => {
+    const availableWidth = containerWidth > 0 ? containerWidth - 16 : 300; // 8px padding each side
+    const maxWheelSize = Math.min(availableWidth, 340); // cap at 340px
+    const orbitRadius = maxWheelSize * 0.36;
+    const logoSize = maxWheelSize * 0.17;
+    const itemSize = logoSize + 6;
+    const halfItem = itemSize / 2;
+    const size = (orbitRadius + halfItem) * 2;
+    const centerSize = maxWheelSize * 0.28;
+    const centerImgSize = centerSize - 8;
+    return { orbitRadius, logoSize, itemSize, halfItem, size, centerSize, centerImgSize };
+  }, [containerWidth]);
 
   // JS-based rotation — pauses on hover so images stay upright
   const animate = useCallback((time: number) => {
@@ -99,12 +122,12 @@ export default function EcosystemWheel({ onItemClick }: { onItemClick?: () => vo
   }, [paused, animate]);
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" ref={containerRef}>
       {/* Rotating wheel */}
       <div className="flex justify-center py-1">
         <div
           className="relative overflow-visible"
-          style={{ width: size, height: size, zIndex: 20 }}
+          style={{ width: dims.size, height: dims.size, zIndex: 20 }}
           onMouseEnter={() => setPaused(true)}
           onMouseLeave={() => setPaused(false)}
         >
@@ -112,8 +135,8 @@ export default function EcosystemWheel({ onItemClick }: { onItemClick?: () => vo
           <div
             className="absolute rounded-full"
             style={{
-              width: orbitRadius * 2,
-              height: orbitRadius * 2,
+              width: dims.orbitRadius * 2,
+              height: dims.orbitRadius * 2,
               top: '50%',
               left: '50%',
               transform: 'translate(-50%, -50%)',
@@ -126,8 +149,8 @@ export default function EcosystemWheel({ onItemClick }: { onItemClick?: () => vo
             const baseAngle = (360 / orbitItems.length) * idx - 90;
             const angle = baseAngle + rotation;
             const rad = (angle * Math.PI) / 180;
-            const cx = size / 2 + Math.cos(rad) * orbitRadius - halfItem;
-            const cy = size / 2 + Math.sin(rad) * orbitRadius - halfItem;
+            const cx = dims.size / 2 + Math.cos(rad) * dims.orbitRadius - dims.halfItem;
+            const cy = dims.size / 2 + Math.sin(rad) * dims.orbitRadius - dims.halfItem;
 
             return (
               <HoverCard openDelay={200} closeDelay={100} key={item.id}>
@@ -138,8 +161,8 @@ export default function EcosystemWheel({ onItemClick }: { onItemClick?: () => vo
                     style={{
                       left: cx,
                       top: cy,
-                      width: itemSize,
-                      height: itemSize,
+                      width: dims.itemSize,
+                      height: dims.itemSize,
                     }}
                   >
                     <div
@@ -154,7 +177,7 @@ export default function EcosystemWheel({ onItemClick }: { onItemClick?: () => vo
                         alt={item.name}
                         loading="lazy"
                         className="block rounded-full object-cover bg-card cursor-pointer flex-shrink-0"
-                        style={{ width: logoSize, height: logoSize, minWidth: logoSize, minHeight: logoSize }}
+                        style={{ width: dims.logoSize, height: dims.logoSize, minWidth: dims.logoSize, minHeight: dims.logoSize }}
                       />
                     </div>
                   </button>
@@ -195,13 +218,12 @@ export default function EcosystemWheel({ onItemClick }: { onItemClick?: () => vo
             >
               <div
                 className="rounded-full flex items-center justify-center overflow-hidden"
-                style={{ width: 96, height: 96, background: 'rgba(255,255,255,0.92)' }}
+                style={{ width: dims.centerSize, height: dims.centerSize, background: 'rgba(255,255,255,0.92)' }}
               >
                 <img
                   src="/fun-ecosystem-center.png"
                   alt="FUN Ecosystem"
-                  width={88}
-                  height={88}
+                  style={{ width: dims.centerImgSize, height: dims.centerImgSize }}
                   loading="lazy"
                   className="object-contain rounded-full"
                 />
