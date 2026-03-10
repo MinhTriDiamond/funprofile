@@ -177,7 +177,7 @@ export default function EcosystemWheel({ onItemClick }: { onItemClick?: () => vo
                         alt={item.name}
                         loading="lazy"
                         className="block rounded-full object-cover bg-card cursor-pointer flex-shrink-0"
-                        style={{ width: logoSize, height: logoSize, minWidth: logoSize, minHeight: logoSize }}
+                        style={{ width: dims.logoSize, height: dims.logoSize, minWidth: dims.logoSize, minHeight: dims.logoSize }}
                       />
                     </div>
                   </button>
