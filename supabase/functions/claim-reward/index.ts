@@ -476,9 +476,19 @@ Deno.serve(async (req) => {
       .eq('user_id', userId)
       .gte('created_at', last24h.toISOString());
 
+    // === FIX: Count pending claims in velocity check too ===
+    const { count: recentPendingCount } = await supabaseAdmin
+      .from('pending_claims')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .in('status', ['pending', 'processing', 'completed'])
+      .gte('created_at', last24h.toISOString());
+
+    const totalRecentClaims = (recentClaimCount || 0) + (recentPendingCount || 0);
+
     // ===== CHECK 1: Giới hạn 2 lần/24h - thông báo friendly =====
-    if (recentClaimCount !== null && recentClaimCount >= 2) {
-      console.warn(`CLAIM_LIMIT: User ${userId} đã rút ${recentClaimCount} lần trong 24h`);
+    if (totalRecentClaims >= 2) {
+      console.warn(`CLAIM_LIMIT: User ${userId} đã rút ${totalRecentClaims} lần trong 24h (claims: ${recentClaimCount}, pending: ${recentPendingCount})`);
 
       // Lần thứ 3+ → on_hold + fraud signal (phòng race condition)
       if (recentClaimCount >= 3) {
