@@ -140,12 +140,12 @@ export const ecosystemItems: EcosystemItem[] = [
     feature: 'fun_academy',
   },
   {
-    id: 'fun-treasury',
-    name: 'FUN Treasury',
-    avatar: '/fun-treasury-logo-36.webp',
-    path: 'https://treasury.fun.rich',
+    id: 'angel-ai-orbit',
+    name: 'Angel AI',
+    avatar: '/angel-ai-logo-36.png',
+    path: 'https://angel.fun.rich',
     isExternal: true,
-    feature: 'fun_treasury',
+    feature: 'angel_ai',
   },
   {
     id: 'green-earth',
