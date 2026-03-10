@@ -387,6 +387,24 @@ Deno.serve(async (req) => {
       );
     }
 
+    // === FIX: Check existing pending claims - block duplicate submissions ===
+    const { data: existingPending } = await supabaseAdmin
+      .from('pending_claims')
+      .select('id, amount')
+      .eq('user_id', userId)
+      .in('status', ['pending', 'processing']);
+
+    if (existingPending && existingPending.length > 0) {
+      const existingTotal = existingPending.reduce((sum, c) => sum + Number(c.amount), 0);
+      console.warn(`DUPLICATE_PENDING: User ${userId} already has ${existingPending.length} pending claims totaling ${existingTotal}`);
+      return new Response(JSON.stringify({
+        error: 'Pending Exists',
+        message: `Bạn đang có ${existingPending.length} lệnh claim chờ duyệt (${existingTotal.toLocaleString()} CAMLY). Vui lòng đợi Admin xử lý trước khi tạo lệnh mới.`,
+        existing_claims: existingPending.length,
+        existing_total: existingTotal,
+      }), { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     // 8. Calculate claimable amount using RPC function
     const { data: rewardsData, error: rewardsError } = await supabase.rpc('get_user_rewards_v2', {
       limit_count: 10000,
