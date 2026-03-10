@@ -78,50 +78,40 @@ async function logSecurityEvent(
 
 /** Find existing profile by wallet address across all wallet columns + email fallback */
 async function findProfileByWallet(supabase: ReturnType<typeof getSupabase>, normalizedAddr: string) {
-  // 1. external_wallet_address
+  // 1. external_wallet_address (case-insensitive)
   const { data: byExternal } = await supabase
     .from('profiles')
     .select('id, username, external_wallet_address, public_wallet_address, login_wallet_address')
-    .eq('external_wallet_address', normalizedAddr)
+    .ilike('external_wallet_address', normalizedAddr)
     .maybeSingle();
   if (byExternal) return { profile: byExternal, source: 'external' };
 
-  // 2. login_wallet_address
+  // 2. login_wallet_address (case-insensitive)
   const { data: byLogin } = await supabase
     .from('profiles')
     .select('id, username, external_wallet_address, public_wallet_address, login_wallet_address')
-    .eq('login_wallet_address', normalizedAddr)
+    .ilike('login_wallet_address', normalizedAddr)
     .maybeSingle();
   if (byLogin) return { profile: byLogin, source: 'login' };
 
-  // 3. Legacy wallet_address
+  // 3. Legacy wallet_address (case-insensitive)
   const { data: byLegacy } = await supabase
     .from('profiles')
     .select('id, username, wallet_address, external_wallet_address, public_wallet_address, login_wallet_address')
-    .eq('wallet_address', normalizedAddr)
+    .ilike('wallet_address', normalizedAddr)
     .maybeSingle();
   if (byLegacy) return { profile: byLegacy, source: 'legacy' };
 
-  // 4. public_wallet_address
+  // 4. public_wallet_address (case-insensitive)
   const { data: byPublic } = await supabase
     .from('profiles')
     .select('id, username, external_wallet_address, public_wallet_address, login_wallet_address')
-    .eq('public_wallet_address', normalizedAddr)
+    .ilike('public_wallet_address', normalizedAddr)
     .maybeSingle();
   if (byPublic) return { profile: byPublic, source: 'public' };
 
-  // 5. Fallback: check auth.users by placeholder email
-  const placeholder = walletEmail(normalizedAddr);
-  const { data: listData } = await supabase.auth.admin.listUsers({ filter: placeholder, page: 1, perPage: 1 });
-  if (listData?.users?.length) {
-    const authUser = listData.users[0];
-    const { data: byId } = await supabase
-      .from('profiles')
-      .select('id, username, external_wallet_address, public_wallet_address, login_wallet_address')
-      .eq('id', authUser.id)
-      .maybeSingle();
-    if (byId) return { profile: byId, source: 'email_fallback' };
-  }
+  // NOTE: email_fallback đã bị XÓA vĩnh viễn vì gây lỗi cross-account login
+  // (listUsers filter match không chính xác → trả user sai)
 
   return null;
 }
