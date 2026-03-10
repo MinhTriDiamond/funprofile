@@ -458,6 +458,21 @@ export const ClaimRewardsSection = ({
           </div>
         )}
 
+        {/* Pending Claims Banner */}
+        {hasPendingClaim && (
+          <div className="bg-amber-50 border border-amber-300 rounded-xl p-3.5">
+            <div className="flex items-start gap-2">
+              <Clock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-amber-800">Đang có lệnh claim chờ duyệt ⏳</p>
+                <p className="text-xs text-amber-700 mt-1">
+                  Bạn có {activePendingClaims?.length} lệnh claim ({formatNumber(pendingClaimTotal)} CAMLY) đang chờ Admin duyệt. Không thể tạo lệnh mới cho đến khi được xử lý.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Claim Button */}
         <div>
           {!isConnected ? (
