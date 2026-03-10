@@ -20,24 +20,26 @@ export default function EcosystemWheel({ onItemClick }: { onItemClick?: () => vo
     onItemClick?.();
   };
 
-  const orbitRadius = 115;
-  const logoSize = 52;
-  const size = (orbitRadius + logoSize / 2 + 6) * 2;
+  const orbitRadius = 105;
+  const logoSize = 50;
+  const halfLogo = logoSize / 2;
+  const size = (orbitRadius + halfLogo + 8) * 2;
 
   return (
     <div className="space-y-3">
       {/* Rotating wheel */}
-      <div className="flex justify-center py-2">
+      <div className="flex justify-center py-1">
         <div className="relative" style={{ width: size, height: size }}>
-          {/* Orbit ring */}
+          {/* Orbit ring — thin golden dashed circle */}
           <div
-            className="absolute rounded-full border border-yellow-400/20"
+            className="absolute rounded-full"
             style={{
               width: orbitRadius * 2,
               height: orbitRadius * 2,
               top: '50%',
               left: '50%',
               transform: 'translate(-50%, -50%)',
+              border: '1.5px solid rgba(212,175,55,0.25)',
             }}
           />
 
@@ -56,19 +58,27 @@ export default function EcosystemWheel({ onItemClick }: { onItemClick?: () => vo
                   title={item.name}
                   className="absolute group"
                   style={{
-                    left: `calc(50% + ${x}px - ${logoSize / 2}px)`,
-                    top: `calc(50% + ${y}px - ${logoSize / 2}px)`,
+                    left: `calc(50% + ${x}px - ${halfLogo}px)`,
+                    top: `calc(50% + ${y}px - ${halfLogo}px)`,
                   }}
                 >
+                  {/* Counter-rotate to stay upright */}
                   <div className="animate-[spin_40s_linear_infinite_reverse]">
-                    <div className="rounded-full shadow-[0_0_14px_rgba(250,204,21,0.5)] group-hover:shadow-[0_0_24px_rgba(250,204,21,0.8)] transition-all duration-300">
+                    <div
+                      className="rounded-full p-[3px] group-hover:scale-110 transition-all duration-300"
+                      style={{
+                        background: 'linear-gradient(135deg, rgba(255,215,0,0.6), rgba(255,180,0,0.3), rgba(255,215,0,0.6))',
+                        boxShadow: '0 0 10px rgba(255,215,0,0.35), 0 0 3px rgba(255,215,0,0.2)',
+                      }}
+                    >
                       <img
                         src={item.avatar}
                         alt={item.name}
                         width={logoSize}
                         height={logoSize}
                         loading="lazy"
-                        className="w-[52px] h-[52px] rounded-full object-cover bg-transparent group-hover:scale-110 transition-transform duration-300 cursor-pointer"
+                        className="rounded-full object-cover bg-card cursor-pointer"
+                        style={{ width: logoSize, height: logoSize }}
                       />
                     </div>
                   </div>
@@ -77,16 +87,26 @@ export default function EcosystemWheel({ onItemClick }: { onItemClick?: () => vo
             })}
           </div>
 
-          {/* Center: FUN Ecosystem logo */}
+          {/* Center: FUN Ecosystem logo with gold ring */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
-            <img
-              src="/fun-ecosystem-center.png"
-              alt="FUN Ecosystem"
-              width={90}
-              height={90}
-              loading="lazy"
-              className="w-[90px] h-[90px] object-contain drop-shadow-lg"
-            />
+            <div
+              className="rounded-full p-[3px]"
+              style={{
+                background: 'linear-gradient(135deg, rgba(255,215,0,0.6), rgba(255,180,0,0.3), rgba(255,215,0,0.6))',
+                boxShadow: '0 0 16px rgba(255,215,0,0.4)',
+              }}
+            >
+              <div className="rounded-full bg-card p-2 flex items-center justify-center" style={{ width: 86, height: 86 }}>
+                <img
+                  src="/fun-ecosystem-center.png"
+                  alt="FUN Ecosystem"
+                  width={78}
+                  height={78}
+                  loading="lazy"
+                  className="object-contain"
+                />
+              </div>
+            </div>
           </div>
         </div>
       </div>
