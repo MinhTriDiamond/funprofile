@@ -218,13 +218,12 @@ export default function EcosystemWheel({ onItemClick }: { onItemClick?: () => vo
             >
               <div
                 className="rounded-full flex items-center justify-center overflow-hidden"
-                style={{ width: 96, height: 96, background: 'rgba(255,255,255,0.92)' }}
+                style={{ width: dims.centerSize, height: dims.centerSize, background: 'rgba(255,255,255,0.92)' }}
               >
                 <img
                   src="/fun-ecosystem-center.png"
                   alt="FUN Ecosystem"
-                  width={88}
-                  height={88}
+                  style={{ width: dims.centerImgSize, height: dims.centerImgSize }}
                   loading="lazy"
                   className="object-contain rounded-full"
                 />
