@@ -3,7 +3,6 @@ import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Sparkles, Shield, Users, Coins, Palette, Globe, Rocket } from 'lucide-react';
-import FunEcosystemOrbit from '@/components/about/FunEcosystemOrbit';
 
 const About = () => {
   const navigate = useNavigate();
@@ -144,13 +143,6 @@ const About = () => {
             <p className="text-muted-foreground leading-relaxed mb-8">
               Camly định vị FUN Ecosystem không chỉ là một dự án công nghệ, mà là một hệ thống kinh tế – xã hội – tinh thần có khả năng vận hành bền vững ở quy mô toàn cầu, nơi con người được khuyến khích tạo giá trị, sống tử tế, và cùng nhau thịnh vượng thông qua cơ chế phân phối công bằng, minh bạch và có thể kiểm chứng.
             </p>
-
-            {/* FUN Ecosystem Orbit */}
-            <div className="my-8">
-              <h3 className="text-xl font-bold text-center mb-2">🌐 FUN Ecosystem</h3>
-              <p className="text-sm text-muted-foreground text-center mb-4">Nhấp vào từng nền tảng để khám phá</p>
-              <FunEcosystemOrbit />
-            </div>
 
             {/* Section 1 */}
             <div className="mb-8">
