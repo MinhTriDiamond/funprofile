@@ -138,6 +138,10 @@ export const ClaimRewardsSection = ({
       onConnectClick();
       return;
     }
+    if (hasPendingClaim) {
+      toast.info(`Bạn đang có ${activePendingClaims?.length} lệnh claim chờ duyệt. Vui lòng đợi Admin xử lý.`);
+      return;
+    }
     if (walletSecurity?.isBlocked) {
       toast.error('Tài khoản bị khóa do thay đổi ví quá nhiều. Vui lòng liên hệ Admin.');
       return;
