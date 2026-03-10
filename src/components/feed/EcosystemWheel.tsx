@@ -61,6 +61,8 @@ export default function EcosystemWheel({ onItemClick }: { onItemClick?: () => vo
   const [paused, setPaused] = useState(false);
   const rafRef = useRef<number>(0);
   const lastTimeRef = useRef<number>(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState(0);
 
   const orbitItems = ecosystemItems.filter(i => !BELOW_IDS.includes(i.id));
   const belowItems = ecosystemItems.filter(i => BELOW_IDS.includes(i.id));
@@ -74,11 +76,32 @@ export default function EcosystemWheel({ onItemClick }: { onItemClick?: () => vo
     onItemClick?.();
   };
 
-  const orbitRadius = 120;
-  const logoSize = 60;
-  const itemSize = logoSize + 6; // includes 3px padding on each side
-  const halfItem = itemSize / 2;
-  const size = (orbitRadius + halfItem) * 2;
+  // Measure container and recalculate on resize/zoom
+  useEffect(() => {
+    const measure = () => {
+      if (containerRef.current) {
+        setContainerWidth(containerRef.current.clientWidth);
+      }
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    if (containerRef.current) ro.observe(containerRef.current);
+    return () => ro.disconnect();
+  }, []);
+
+  // Responsive sizing: fit wheel within container width with padding
+  const dims = useMemo(() => {
+    const availableWidth = containerWidth > 0 ? containerWidth - 16 : 300; // 8px padding each side
+    const maxWheelSize = Math.min(availableWidth, 340); // cap at 340px
+    const orbitRadius = maxWheelSize * 0.36;
+    const logoSize = maxWheelSize * 0.17;
+    const itemSize = logoSize + 6;
+    const halfItem = itemSize / 2;
+    const size = (orbitRadius + halfItem) * 2;
+    const centerSize = maxWheelSize * 0.28;
+    const centerImgSize = centerSize - 8;
+    return { orbitRadius, logoSize, itemSize, halfItem, size, centerSize, centerImgSize };
+  }, [containerWidth]);
 
   // JS-based rotation — pauses on hover so images stay upright
   const animate = useCallback((time: number) => {
@@ -99,12 +122,12 @@ export default function EcosystemWheel({ onItemClick }: { onItemClick?: () => vo
   }, [paused, animate]);
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" ref={containerRef}>
       {/* Rotating wheel */}
       <div className="flex justify-center py-1">
         <div
           className="relative overflow-visible"
-          style={{ width: size, height: size, zIndex: 20 }}
+          style={{ width: dims.size, height: dims.size, zIndex: 20 }}
           onMouseEnter={() => setPaused(true)}
           onMouseLeave={() => setPaused(false)}
         >
