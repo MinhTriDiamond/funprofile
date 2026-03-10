@@ -74,7 +74,7 @@ const FunEcosystemOrbit = () => {
             rel="noopener noreferrer"
             className="absolute left-1/2 top-1/2 z-20 group will-change-transform"
             style={{
-              transform: `translate(calc(-50% + ${Math.cos(rad) * 120}px), calc(-50% + ${Math.sin(rad) * 120}px))`,
+              transform: `translate(calc(-50% + ${Math.cos(rad) * radius}px), calc(-50% + ${Math.sin(rad) * radius}px))`,
             }}
             title={item.name}
           >
