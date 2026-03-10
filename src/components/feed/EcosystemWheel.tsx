@@ -61,14 +61,16 @@ export default function EcosystemWheel({ onItemClick }: { onItemClick?: () => vo
                   }}
                 >
                   <div className="animate-[spin_40s_linear_infinite_reverse]">
-                    <img
-                      src={item.avatar}
-                      alt={item.name}
-                      width={logoSize}
-                      height={logoSize}
-                      loading="lazy"
-                      className="w-[46px] h-[46px] rounded-full object-cover ring-2 ring-yellow-400/30 group-hover:ring-yellow-400 group-hover:scale-125 group-hover:shadow-[0_0_16px_rgba(250,204,21,0.6)] transition-all duration-300 cursor-pointer"
-                    />
+                    <div className="rounded-full shadow-[0_0_14px_rgba(250,204,21,0.5)] group-hover:shadow-[0_0_24px_rgba(250,204,21,0.8)] transition-all duration-300">
+                      <img
+                        src={item.avatar}
+                        alt={item.name}
+                        width={logoSize}
+                        height={logoSize}
+                        loading="lazy"
+                        className="w-[52px] h-[52px] rounded-full object-cover bg-transparent group-hover:scale-110 transition-transform duration-300 cursor-pointer"
+                      />
+                    </div>
                   </div>
                 </button>
               );
