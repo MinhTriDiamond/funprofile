@@ -1,7 +1,21 @@
 /**
- * Device Fingerprint v2
- * Enhanced signals: Canvas, WebGL, Hardware + v1 basics
+ * Device Fingerprint v3
+ * Enhanced signals: Canvas, WebGL, Hardware + v1 basics + persistent browser ID
  */
+
+function getOrCreateBrowserId(): string {
+  const key = 'fp_browser_id';
+  try {
+    let id = localStorage.getItem(key);
+    if (!id) {
+      id = crypto.randomUUID();
+      localStorage.setItem(key, id);
+    }
+    return id;
+  } catch {
+    return 'no-storage';
+  }
+}
 
 function getCanvasFingerprint(): string {
   try {
