@@ -104,6 +104,33 @@ const fetchPostStats = async (postIds: string[]): Promise<Record<string, PostSta
   }
 };
 
+// Batch fetch attachments for posts
+const fetchPostAttachments = async (postIds: string[]): Promise<Record<string, PostAttachmentData[]>> => {
+  if (postIds.length === 0) return {};
+  try {
+    const { data, error } = await supabase
+      .from('post_attachments')
+      .select('id, post_id, file_url, storage_key, file_type, mime_type, width, height, size_bytes, sort_order, alt_text')
+      .in('post_id', postIds)
+      .order('sort_order', { ascending: true });
+
+    if (error) {
+      console.error('Post attachments fetch error:', error);
+      return {};
+    }
+
+    const map: Record<string, PostAttachmentData[]> = {};
+    (data || []).forEach((row: any) => {
+      if (!map[row.post_id]) map[row.post_id] = [];
+      map[row.post_id].push(row);
+    });
+    return map;
+  } catch (error) {
+    console.error('Error fetching post attachments:', error);
+    return {};
+  }
+};
+
 // Batch-fetch profiles for gift_celebration posts
 const fetchGiftProfiles = async (posts: FeedPost[]): Promise<FeedPost[]> => {
   const giftPosts = posts.filter(p => p.post_type === 'gift_celebration');
