@@ -279,6 +279,33 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Insert attachments if any
+    if (post?.id && body.attachments && body.attachments.length > 0) {
+      const attachmentsToInsert = body.attachments.map((att: AttachmentInput) => ({
+        post_id: post.id,
+        file_url: att.file_url,
+        storage_key: att.storage_key || null,
+        file_type: att.file_type || 'image',
+        mime_type: att.mime_type || null,
+        width: att.width || null,
+        height: att.height || null,
+        size_bytes: att.size_bytes || null,
+        sort_order: att.sort_order ?? 0,
+        alt_text: att.alt_text || null,
+        transform_meta: att.transform_meta || null,
+      }));
+
+      const { error: attachError } = await supabase
+        .from("post_attachments")
+        .insert(attachmentsToInsert);
+
+      if (attachError) {
+        console.warn("[create-post] Attachment insert error (non-fatal):", attachError.message);
+      } else {
+        console.log("[create-post] Inserted", attachmentsToInsert.length, "attachments");
+      }
+    }
+
     const totalDuration = Date.now() - startTime;
     console.log("[create-post] Success!", {
       postId: post?.id,
