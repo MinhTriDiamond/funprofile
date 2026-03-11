@@ -4460,6 +4460,57 @@ export type Database = {
           },
         ]
       }
+      sybil_clusters: {
+        Row: {
+          admin_notes: string | null
+          ai_analysis: Json | null
+          cluster_key: string
+          cluster_type: string
+          confidence_score: number
+          created_at: string | null
+          detection_signals: Json | null
+          id: string
+          last_scanned_at: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          risk_level: number
+          updated_at: string | null
+          user_ids: string[]
+        }
+        Insert: {
+          admin_notes?: string | null
+          ai_analysis?: Json | null
+          cluster_key: string
+          cluster_type: string
+          confidence_score?: number
+          created_at?: string | null
+          detection_signals?: Json | null
+          id?: string
+          last_scanned_at?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          risk_level?: number
+          updated_at?: string | null
+          user_ids?: string[]
+        }
+        Update: {
+          admin_notes?: string | null
+          ai_analysis?: Json | null
+          cluster_key?: string
+          cluster_type?: string
+          confidence_score?: number
+          created_at?: string | null
+          detection_signals?: Json | null
+          id?: string
+          last_scanned_at?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          risk_level?: number
+          updated_at?: string | null
+          user_ids?: string[]
+        }
+        Relationships: []
+      }
       system_config: {
         Row: {
           description: string | null
