@@ -187,33 +187,17 @@ async function handleDeviceFingerprint(supabaseAdmin: any, userId: string, devic
     const recentCount = recentProfiles?.length || 0;
 
     if (recentCount > 3) {
+      // CHỈ GHI LOG + CẢNH BÁO — KHÔNG tự động ban/hold
+      // Người dùng tại sự kiện cộng đồng có thể đăng ký hàng loạt trên cùng WiFi
       const newAccountIds = recentProfiles?.map((p: any) => p.id) || [];
-      for (const uid of newAccountIds) {
-        await supabaseAdmin.from("profiles").update({
-          is_banned: true, reward_status: "banned",
-          admin_notes: `Tự động cấm: ${recentCount} tài khoản tạo trên cùng thiết bị trong 24 giờ`,
-        }).eq("id", uid);
-      }
       await supabaseAdmin.from("pplp_fraud_signals").insert({
-        actor_id: userId, signal_type: "RAPID_REGISTRATION", severity: 5,
-        details: { device_hash: deviceHash.slice(0, 8), recent_count: recentCount, auto_banned: newAccountIds },
+        actor_id: userId, signal_type: "RAPID_REGISTRATION", severity: 3,
+        details: { device_hash: deviceHash.slice(0, 8), recent_count: recentCount, flagged_ids: newAccountIds, note: "Chỉ cảnh báo - không tự động ban" },
         source: "log-login-ip",
       });
-    } else {
-      // Only hold users that haven't been approved by admin yet
-      const { data: profilesToHold } = await supabaseAdmin
-        .from("profiles").select("id, reward_status")
-        .in("id", activeUserIds)
-        .not("reward_status", "eq", "approved");
-
-      const idsToHold = profilesToHold?.map((p: any) => p.id) || [];
-      if (idsToHold.length > 0) {
-        const holdMessage = `Hệ thống nhận thấy thiết bị này được dùng bởi ${activeUserIds.length} tài khoản. Để bảo vệ quyền lợi mọi người, tài khoản chờ Admin xác minh 🙏`;
-        for (const uid of idsToHold) {
-          await supabaseAdmin.from("profiles").update({ reward_status: "on_hold", admin_notes: holdMessage }).eq("id", uid);
-        }
-      }
+      console.warn(`[RAPID_REG] ${recentCount} accounts on device ${deviceHash.slice(0, 8)} in 24h — logged only, no auto-ban`);
     }
+    // KHÔNG auto-hold cho shared device nữa — chỉ ghi signal phía dưới
 
     await supabaseAdmin.from("pplp_device_registry").update({
       is_flagged: true, flag_reason: `Cùng thiết bị với ${activeUserIds.length} tài khoản`,
