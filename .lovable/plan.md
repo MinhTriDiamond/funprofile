@@ -1,83 +1,56 @@
 
-# Database & Codebase Audit — Implementation Roadmap
 
-## Tài liệu tham chiếu
-- `.lovable/audit-report.md` — Audit report đầy đủ (633 dòng, 20 phần)
+## Kiểm tra Multi-Send Gift — Phát hiện & Kế hoạch sửa
 
----
+### Vấn đề phát hiện
 
-## ĐÃ HOÀN THÀNH
-
-### Phase 0 — Audit & Documentation ✅
-| # | Công việc | Trạng thái |
-|---|----------|-----------|
-| 0A | Viết audit report 20 phần | ✅ Done |
-| 0B | Xác định Canonical Domain Models | ✅ Done |
-| 0C | Xác định Do Not Touch First list | ✅ Done |
-| 0D | Xác định Refactor Blockers | ✅ Done |
-
-### Phase 1A — Performance Indexes ✅
-| Index | Table | Columns | Mục đích |
-|-------|-------|---------|----------|
-| `idx_notifications_user_read` | notifications | user_id, read | Badge count + dropdown |
-| `idx_reactions_post_type` | reactions | post_id, type | Reaction counts per post |
-| `idx_light_actions_user_created` | light_actions | user_id, created_at DESC | Light Score history |
-| `idx_posts_user_created` | posts | user_id, created_at DESC | Profile feed |
-| `idx_chunked_chunks_status` | chunked_recording_chunks | status | Cleanup queries |
-| `idx_donations_sender_status` | donations | sender_id, status | Benefactor leaderboard |
-| `idx_donations_recipient_status` | donations | recipient_id, status | Recipient leaderboard |
-| `idx_comments_post_created` | comments | post_id, created_at | Comment thread load |
-| `idx_friendships_user_status` | friendships | user_id, status | Friend lookup |
-| `idx_friendships_friend_status` | friendships | friend_id, status | Friend lookup |
-
-### Phase 1B — SQL Comments Documentation ✅
-- COMMENT ON TABLE cho tất cả 93 tables
-- COMMENT ON VIEW cho tất cả 5 views
-- Phân loại theo domain: Core, Social, Messaging, Live, Recording, Light Score, Rewards, Wallet, Auth, OAuth, Search, Content, System, PPLP
+Sau khi đọc kỹ `UnifiedGiftSendDialog.tsx`, `useSendToken.ts`, và `useDonationFlow.ts`, phát hiện **3 bug** trong luồng tặng tiền hàng loạt:
 
 ---
 
-## CHƯA LÀM — KẾ HOẠCH TIẾP THEO
+### Bug 1: Race condition — Background tasks xung đột (Nghiêm trọng)
 
-### Phase 1C-F — Safe Cleanup (rủi ro THẤP)
+`useSendToken.sendToken()` sau khi nhận hash sẽ chạy một **background async task** để polling receipt và ghi DB. Trong multi-send:
 
-| # | Công việc | Chi tiết |
-|---|----------|---------|
-| 1C | Phân loại empty tables | 35 tables 0-rows → Active/Planned/Legacy/Deletable |
-| 1D | console.log → logger | 77 instances cần thay thế |
-| 1E | useAdminRole shared hook | Đã tạo, cần migrate các component dùng trực tiếp `has_role` |
-| 1F | Edge function _shared helpers | cors, auth, response — đã tạo ✅ |
+```text
+Send #1 → hash → background task #1 chạy (setTxStep, toast...)
+  resetState() → Send #2 → hash → background task #2 chạy
+    resetState() → Send #3 → hash → background task #3 chạy
+```
 
-### Phase 2 — Structural Improvements (rủi ro TRUNG BÌNH)
+3 background tasks chạy đồng thời, mỗi cái gọi `setTxStep('confirming')`, `setTxStep('success')`, và hiện toast **"Giao dịch đã được xác nhận thành công!"** riêng biệt. User sẽ thấy 3 toast success lẫn lộn và state `txStep` bị ghi đè liên tục.
 
-| # | Công việc | Chi tiết |
-|---|----------|---------|
-| 2A | State enum documentation | Document các status/type enums trong DB |
-| 2B | Merge search_logs → search_history | Consolidate duplicate search tracking |
-| 2C | notifications.read → is_read | Compatibility migration (backfill + dual-write) |
-| 2D | Xóa useLiveComments | Dead code cleanup |
-| 2E | Module hóa hooks/ | Nhóm theo domain (social, chat, live, wallet, etc.) |
-| 2F | Tách components/feed/ | Sub-domains cho feed components |
-| 2G | useCapabilities layer | Đã tạo ✅, cần migrate consumers |
-
-### Phase 3 — Deep Refactor (rủi ro CAO)
-
-| # | Công việc | Blocker |
-|---|----------|---------|
-| 3A | Tách profiles → user_wallet_config | Nhiều component đọc trực tiếp profiles |
-| 3B | Claims lifecycle audit | reward_claims + pending_claims khác lifecycle |
-| 3C | FinancialTab → platform_financial_data | Admin UI đang đọc grand_total_* từ profiles |
-| 3D | get_user_rewards_v2 refactor | Đang dùng livestreams table, cần chuyển live_sessions |
-| 3E | live_comments product review | Quyết định drop hoặc giữ |
-| 3F | Profiles RLS tightening | Public by Design → quyết định enforcement model |
-| 3G | Gộp 15 media edge functions | Router pattern |
+**Sửa**: Thêm cơ chế `abortController` hoặc flag `skipBackground` vào `useSendToken`. Khi gọi từ multi-send, suppress background toast và receipt polling (vì `recordMultiDonationsSequential` đã xử lý riêng).
 
 ---
 
-## Linter Warnings (có sẵn, chưa xử lý)
-- **RLS Enabled No Policy**: Một số tables có RLS enabled nhưng chưa có policy
-- **RLS Policy Always True**: Một số policies dùng `USING (true)` cho INSERT/UPDATE/DELETE
-- Sẽ xử lý trong Phase 2-3 khi refactor từng domain
+### Bug 2: Stale closure trong `recordDonationWithRetry` (Trung bình)
 
-## Light Score 5 Trụ Cột — Phase 1 ✅ HOÀN THÀNH
-(Chi tiết xem phiên bản trước của plan)
+Dependency array: `[amount, chainId, customMessage, ...]`
+Nhưng body sử dụng `selectedChainId` (UI chain) và `resolvedTokenAddress` — **không có trong deps**. Nếu user đổi chain trước khi ghi nhận hoàn tất, callback sử dụng giá trị cũ.
+
+**Sửa**: Đổi `chainId` thành `selectedChainId` và thêm `resolvedTokenAddress` vào dependency array.
+
+---
+
+### Bug 3: Dead code `useDonationFlow.ts` (Nhẹ)
+
+File `useDonationFlow.ts` chứa logic `sendMulti`, `recordMultiDonationsSequential` duplicate nhưng **không được import ở đâu**. Logic thực tế nằm inline trong `UnifiedGiftSendDialog.tsx`.
+
+**Sửa**: Xóa file dead code để tránh nhầm lẫn khi maintain.
+
+---
+
+### Kế hoạch sửa chi tiết
+
+#### File 1: `src/hooks/useSendToken.ts`
+- Thêm option `skipBackground?: boolean` vào `SendTokenParams`
+- Khi `skipBackground = true`: return hash ngay, **không** chạy background receipt polling và DB insert, **không** hiện toast success/timeout
+- Multi-send sẽ truyền `skipBackground: true`
+
+#### File 2: `src/components/donations/UnifiedGiftSendDialog.tsx`
+- Trong `handleSend` multi-send loop: gọi `sendToken` với `skipBackground: true` (nếu implement option) hoặc suppress bằng cách wrap `sendToken` call
+- Sửa dependency array của `recordDonationWithRetry`: thay `chainId` → `selectedChainId`, thêm `resolvedTokenAddress`
+
+#### File 3: Xóa `src/components/donations/gift-dialog/useDonationFlow.ts`
+
