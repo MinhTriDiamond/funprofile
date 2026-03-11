@@ -1,83 +1,51 @@
 
-# Database & Codebase Audit — Implementation Roadmap
 
-## Tài liệu tham chiếu
-- `.lovable/audit-report.md` — Audit report đầy đủ (633 dòng, 20 phần)
+## Kiểm tra tính năng Tặng tiền trên Mobile — Các vấn đề phát hiện & Kế hoạch sửa
 
----
-
-## ĐÃ HOÀN THÀNH
-
-### Phase 0 — Audit & Documentation ✅
-| # | Công việc | Trạng thái |
-|---|----------|-----------|
-| 0A | Viết audit report 20 phần | ✅ Done |
-| 0B | Xác định Canonical Domain Models | ✅ Done |
-| 0C | Xác định Do Not Touch First list | ✅ Done |
-| 0D | Xác định Refactor Blockers | ✅ Done |
-
-### Phase 1A — Performance Indexes ✅
-| Index | Table | Columns | Mục đích |
-|-------|-------|---------|----------|
-| `idx_notifications_user_read` | notifications | user_id, read | Badge count + dropdown |
-| `idx_reactions_post_type` | reactions | post_id, type | Reaction counts per post |
-| `idx_light_actions_user_created` | light_actions | user_id, created_at DESC | Light Score history |
-| `idx_posts_user_created` | posts | user_id, created_at DESC | Profile feed |
-| `idx_chunked_chunks_status` | chunked_recording_chunks | status | Cleanup queries |
-| `idx_donations_sender_status` | donations | sender_id, status | Benefactor leaderboard |
-| `idx_donations_recipient_status` | donations | recipient_id, status | Recipient leaderboard |
-| `idx_comments_post_created` | comments | post_id, created_at | Comment thread load |
-| `idx_friendships_user_status` | friendships | user_id, status | Friend lookup |
-| `idx_friendships_friend_status` | friendships | friend_id, status | Friend lookup |
-
-### Phase 1B — SQL Comments Documentation ✅
-- COMMENT ON TABLE cho tất cả 93 tables
-- COMMENT ON VIEW cho tất cả 5 views
-- Phân loại theo domain: Core, Social, Messaging, Live, Recording, Light Score, Rewards, Wallet, Auth, OAuth, Search, Content, System, PPLP
+Sau khi đọc kỹ code của `UnifiedGiftSendDialog`, `GiftFormStep`, `GiftConfirmStep`, và `MobileBottomNav`, phát hiện **3 vấn đề** trên giao diện điện thoại:
 
 ---
 
-## CHƯA LÀM — KẾ HOẠCH TIẾP THEO
+### Vấn đề 1: Nút bấm bị che bởi thanh Home trên iPhone
 
-### Phase 1C-F — Safe Cleanup (rủi ro THẤP)
+**Nguyên nhân**: DialogContent base có `pb-[calc(1rem+env(safe-area-inset-bottom))]` cho mobile, nhưng `UnifiedGiftSendDialog` ghi đè bằng `p-0 sm:p-0` → mất hoàn toàn safe area padding. Các nút "Hủy" / "Xem lại & Xác nhận" ở cuối form chỉ có `pb-4`, không đủ trên iPhone có thanh home.
 
-| # | Công việc | Chi tiết |
-|---|----------|---------|
-| 1C | Phân loại empty tables | 35 tables 0-rows → Active/Planned/Legacy/Deletable |
-| 1D | console.log → logger | 77 instances cần thay thế |
-| 1E | useAdminRole shared hook | Đã tạo, cần migrate các component dùng trực tiếp `has_role` |
-| 1F | Edge function _shared helpers | cors, auth, response — đã tạo ✅ |
-
-### Phase 2 — Structural Improvements (rủi ro TRUNG BÌNH)
-
-| # | Công việc | Chi tiết |
-|---|----------|---------|
-| 2A | State enum documentation | Document các status/type enums trong DB |
-| 2B | Merge search_logs → search_history | Consolidate duplicate search tracking |
-| 2C | notifications.read → is_read | Compatibility migration (backfill + dual-write) |
-| 2D | Xóa useLiveComments | Dead code cleanup |
-| 2E | Module hóa hooks/ | Nhóm theo domain (social, chat, live, wallet, etc.) |
-| 2F | Tách components/feed/ | Sub-domains cho feed components |
-| 2G | useCapabilities layer | Đã tạo ✅, cần migrate consumers |
-
-### Phase 3 — Deep Refactor (rủi ro CAO)
-
-| # | Công việc | Blocker |
-|---|----------|---------|
-| 3A | Tách profiles → user_wallet_config | Nhiều component đọc trực tiếp profiles |
-| 3B | Claims lifecycle audit | reward_claims + pending_claims khác lifecycle |
-| 3C | FinancialTab → platform_financial_data | Admin UI đang đọc grand_total_* từ profiles |
-| 3D | get_user_rewards_v2 refactor | Đang dùng livestreams table, cần chuyển live_sessions |
-| 3E | live_comments product review | Quyết định drop hoặc giữ |
-| 3F | Profiles RLS tightening | Public by Design → quyết định enforcement model |
-| 3G | Gộp 15 media edge functions | Router pattern |
+**Sửa**: Thêm `pb-safe` (hoặc `pb-[calc(1rem+env(safe-area-inset-bottom))]`) vào phần scroll area bên trong, tại cả `GiftFormStep` và `GiftConfirmStep`.
 
 ---
 
-## Linter Warnings (có sẵn, chưa xử lý)
-- **RLS Enabled No Policy**: Một số tables có RLS enabled nhưng chưa có policy
-- **RLS Policy Always True**: Một số policies dùng `USING (true)` cho INSERT/UPDATE/DELETE
-- Sẽ xử lý trong Phase 2-3 khi refactor từng domain
+### Vấn đề 2: Form quá dài trên màn hình nhỏ, khó cuộn
 
-## Light Score 5 Trụ Cột — Phase 1 ✅ HOÀN THÀNH
-(Chi tiết xem phiên bản trước của plan)
+Form gồm ~9 section: Người gửi → Người nhận → Mạng → Token (2 hàng) → Số lượng → Số lượng nhanh → Lời nhắn mẫu → Textarea → Cảnh báo → Nút bấm. Trên màn hình 85vh, user phải cuộn rất nhiều.
+
+**Sửa**: 
+- Thu gọn section "Người gửi" trên mobile (ẩn wallet address, chỉ hiện tên + avatar nhỏ hơn)
+- Giảm `space-y-5` thành `space-y-3` trên mobile trong `GiftFormStep`
+
+---
+
+### Vấn đề 3: Nút X đóng dialog có thể chồng lên tiêu đề dài
+
+Tiêu đề dialog dạng "Trao gửi yêu thương cho @username 🎁❤️🎉" khá dài. Nút X ở `absolute right-4 top-4` có thể bị chồng lên text trên màn hình nhỏ.
+
+**Sửa**: Thêm `pr-10` vào DialogTitle để đảm bảo text không chồng nút X.
+
+---
+
+### Chi tiết kỹ thuật
+
+**File: `src/components/donations/UnifiedGiftSendDialog.tsx`**
+- Line 456: Thêm safe area padding cho scroll container
+- Line 465: Thêm `pb-safe` vào scroll area div
+
+**File: `src/components/donations/gift-dialog/GiftFormStep.tsx`**
+- Line 128: Đổi `space-y-5` → `space-y-3 sm:space-y-5`
+- Line 322: Đổi `pb-4` → `pb-[calc(1rem+env(safe-area-inset-bottom))]`
+- Thu gọn sender info trên mobile
+
+**File: `src/components/donations/gift-dialog/GiftConfirmStep.tsx`**
+- Line 227: Đổi `pb-4` → `pb-[calc(1rem+env(safe-area-inset-bottom))]`
+
+**File: `src/components/donations/UnifiedGiftSendDialog.tsx`**
+- DialogTitle: Thêm `pr-10` để tránh chồng nút X
+
