@@ -285,7 +285,7 @@ export const UnifiedGiftSendDialog = ({
       amount, tokenSymbol: selectedToken.symbol, message: customMessage, timestamp: Date.now(),
     }));
     return false;
-  }, [amount, chainId, customMessage, postId, selectedTemplate?.id, selectedToken]);
+  }, [amount, selectedChainId, resolvedTokenAddress, customMessage, postId, selectedTemplate?.id, selectedToken]);
 
   const recordDonationBackground = useCallback(async (hash: string, recipient: ResolvedRecipient) => {
     try {
@@ -351,7 +351,7 @@ export const UnifiedGiftSendDialog = ({
         setMultiSendProgress(prev => prev ? { ...prev, current: i + 1 } : prev);
         if (i > 0) await new Promise(r => setTimeout(r, 500));
         try {
-          const hash = await sendToken({ token: walletToken, recipient: recipient.walletAddress!, amount });
+          const hash = await sendToken({ token: walletToken, recipient: recipient.walletAddress!, amount, skipBackground: true });
           results.push(hash ? { recipient, success: true, txHash: hash } : { recipient, success: false, error: 'Giao dịch bị từ chối' });
           resetState();
         } catch (err: unknown) {
