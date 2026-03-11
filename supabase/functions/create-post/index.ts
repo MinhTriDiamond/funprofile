@@ -33,6 +33,19 @@ function detectLowQuality(content: string, mediaCount: number): boolean {
   return false;
 }
 
+interface AttachmentInput {
+  file_url: string;
+  storage_key: string | null;
+  file_type: 'image' | 'video';
+  mime_type: string;
+  width?: number | null;
+  height?: number | null;
+  size_bytes?: number | null;
+  sort_order: number;
+  alt_text?: string | null;
+  transform_meta?: Record<string, unknown> | null;
+}
+
 interface CreatePostRequest {
   content: string;
   media_urls: MediaUrl[];
@@ -41,6 +54,7 @@ interface CreatePostRequest {
   location?: string | null;
   tagged_user_ids?: string[];
   visibility?: string;
+  attachments?: AttachmentInput[];
 }
 
 // Normalize content for duplicate detection
@@ -262,6 +276,33 @@ Deno.serve(async (req) => {
         console.warn("[create-post] Tag insert error (non-fatal):", tagError.message);
       } else {
         console.log("[create-post] Tagged", tagsToInsert.length, "users");
+      }
+    }
+
+    // Insert attachments if any
+    if (post?.id && body.attachments && body.attachments.length > 0) {
+      const attachmentsToInsert = body.attachments.map((att: AttachmentInput) => ({
+        post_id: post.id,
+        file_url: att.file_url,
+        storage_key: att.storage_key || null,
+        file_type: att.file_type || 'image',
+        mime_type: att.mime_type || null,
+        width: att.width || null,
+        height: att.height || null,
+        size_bytes: att.size_bytes || null,
+        sort_order: att.sort_order ?? 0,
+        alt_text: att.alt_text || null,
+        transform_meta: att.transform_meta || null,
+      }));
+
+      const { error: attachError } = await supabase
+        .from("post_attachments")
+        .insert(attachmentsToInsert);
+
+      if (attachError) {
+        console.warn("[create-post] Attachment insert error (non-fatal):", attachError.message);
+      } else {
+        console.log("[create-post] Inserted", attachmentsToInsert.length, "attachments");
       }
     }
 

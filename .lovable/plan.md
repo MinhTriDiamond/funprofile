@@ -1,73 +1,83 @@
 
+# Database & Codebase Audit — Implementation Roadmap
 
-## Tích hợp Facebook Composer UX: Clipboard Paste, Drag-Drop, Image Editor
+## Tài liệu tham chiếu
+- `.lovable/audit-report.md` — Audit report đầy đủ (633 dòng, 20 phần)
 
-### Phân tích hiện trạng
+---
 
-Dự án **đã có** hệ thống composer (`src/components/feed/FacebookCreatePost.tsx`) sử dụng `UploadQueue` + `CreatePostMediaManager`. Bundle mới muốn thay thế bằng hệ thống **DraftAttachment** hỗ trợ paste ảnh Ctrl+V, drag-drop, image editor, và lưu vào bảng `post_attachments`.
+## ĐÃ HOÀN THÀNH
 
-**Khác biệt quan trọng:**
-- Composer hiện tại: `UploadQueue` (upload ngay khi chọn file) → Composer mới: `DraftAttachment` (giữ local, upload khi submit)
-- PostCard hiện tại: đã được tách thành `PostHeader`, `PostMedia`, `PostFooter` (tốt hơn bundle) → **giữ nguyên**
-- Edge function hiện tại: có duplicate detection, low-quality filter, rate limit → **giữ nguyên + thêm attachments**
-- `useFeedPosts` hiện tại: đã hoạt động tốt → **chỉ thêm join post_attachments**
+### Phase 0 — Audit & Documentation ✅
+| # | Công việc | Trạng thái |
+|---|----------|-----------|
+| 0A | Viết audit report 20 phần | ✅ Done |
+| 0B | Xác định Canonical Domain Models | ✅ Done |
+| 0C | Xác định Do Not Touch First list | ✅ Done |
+| 0D | Xác định Refactor Blockers | ✅ Done |
 
-### Kế hoạch — Tích hợp có chọn lọc (không thay thế toàn bộ)
+### Phase 1A — Performance Indexes ✅
+| Index | Table | Columns | Mục đích |
+|-------|-------|---------|----------|
+| `idx_notifications_user_read` | notifications | user_id, read | Badge count + dropdown |
+| `idx_reactions_post_type` | reactions | post_id, type | Reaction counts per post |
+| `idx_light_actions_user_created` | light_actions | user_id, created_at DESC | Light Score history |
+| `idx_posts_user_created` | posts | user_id, created_at DESC | Profile feed |
+| `idx_chunked_chunks_status` | chunked_recording_chunks | status | Cleanup queries |
+| `idx_donations_sender_status` | donations | sender_id, status | Benefactor leaderboard |
+| `idx_donations_recipient_status` | donations | recipient_id, status | Recipient leaderboard |
+| `idx_comments_post_created` | comments | post_id, created_at | Comment thread load |
+| `idx_friendships_user_status` | friendships | user_id, status | Friend lookup |
+| `idx_friendships_friend_status` | friendships | friend_id, status | Friend lookup |
 
-#### 1. Database Migration — Tạo bảng `post_attachments`
-Chạy migration SQL từ bundle để tạo bảng với RLS policies.
+### Phase 1B — SQL Comments Documentation ✅
+- COMMENT ON TABLE cho tất cả 93 tables
+- COMMENT ON VIEW cho tất cả 5 views
+- Phân loại theo domain: Core, Social, Messaging, Live, Recording, Light Score, Rewards, Wallet, Auth, OAuth, Search, Content, System, PPLP
 
-#### 2. Cài dependencies mới
-```
-react-filerobot-image-editor, styled-components, react-konva, konva
-```
+---
 
-#### 3. Tạo module types — `src/modules/feed/types/index.ts`
-Chứa `DraftAttachment`, `PostAttachment`, và các types dùng chung. Giữ lại types hiện có trong `src/components/feed/types.ts`.
+## CHƯA LÀM — KẾ HOẠCH TIẾP THEO
 
-#### 4. Tạo components mới (3 files)
-- `src/modules/feed/components/post/AttachmentPreviewGrid.tsx` — Grid preview với edit/remove/reorder
-- `src/modules/feed/components/post/ImageEditorModal.tsx` — Lazy-load Filerobot editor với crop, rotate, text, alt text
+### Phase 1C-F — Safe Cleanup (rủi ro THẤP)
 
-#### 5. Nâng cấp FacebookCreatePost — Thêm paste + drag-drop + attachments
-Sửa `src/components/feed/FacebookCreatePost.tsx` hiện tại để:
-- Thêm `DraftAttachment[]` state thay thế `UploadQueue` cho images
-- Thêm `onPasteCapture` handler trên dialog content → paste ảnh từ clipboard
-- Thêm `onDragOver/onDragLeave/onDrop` handlers → drag-drop files
-- Tích hợp `AttachmentPreviewGrid` + `ImageEditorModal`
-- Khi submit: compress + upload images → build `AttachmentPayload[]` → gửi trong body
-- Giữ nguyên video upload qua Uppy (không đổi)
-- Giữ nguyên guest mode, limited account, feeling, location, friend tag
+| # | Công việc | Chi tiết |
+|---|----------|---------|
+| 1C | Phân loại empty tables | 35 tables 0-rows → Active/Planned/Legacy/Deletable |
+| 1D | console.log → logger | 77 instances cần thay thế |
+| 1E | useAdminRole shared hook | Đã tạo, cần migrate các component dùng trực tiếp `has_role` |
+| 1F | Edge function _shared helpers | cors, auth, response — đã tạo ✅ |
 
-#### 6. Cập nhật Edge Function `create-post/index.ts`
-- Thêm `AttachmentInput` interface
-- Parse `attachments` array từ request body
-- Insert vào `post_attachments` sau khi tạo post
-- Giữ nguyên duplicate detection, rate limit, low-quality filter
+### Phase 2 — Structural Improvements (rủi ro TRUNG BÌNH)
 
-#### 7. Cập nhật `useFeedPosts.ts`
-- Sau khi fetch posts, query `post_attachments` theo `post_id` IN (...)
-- Map attachments vào mỗi post object
-- Giữ nguyên cursor pagination + realtime
+| # | Công việc | Chi tiết |
+|---|----------|---------|
+| 2A | State enum documentation | Document các status/type enums trong DB |
+| 2B | Merge search_logs → search_history | Consolidate duplicate search tracking |
+| 2C | notifications.read → is_read | Compatibility migration (backfill + dual-write) |
+| 2D | Xóa useLiveComments | Dead code cleanup |
+| 2E | Module hóa hooks/ | Nhóm theo domain (social, chat, live, wallet, etc.) |
+| 2F | Tách components/feed/ | Sub-domains cho feed components |
+| 2G | useCapabilities layer | Đã tạo ✅, cần migrate consumers |
 
-#### 8. Cập nhật `EditPostDialog`
-- Hỗ trợ hiển thị và xóa attachments khi edit
-- Đồng bộ `post_attachments` khi save
+### Phase 3 — Deep Refactor (rủi ro CAO)
 
-#### 9. PostCard — Không thay thế
-Giữ nguyên `src/components/feed/FacebookPostCard.tsx` hiện tại (đã tách component tốt). Chỉ cần `PostMedia` đã hỗ trợ `media_urls` array → attachments sẽ được map thành `media_urls` format tương thích.
+| # | Công việc | Blocker |
+|---|----------|---------|
+| 3A | Tách profiles → user_wallet_config | Nhiều component đọc trực tiếp profiles |
+| 3B | Claims lifecycle audit | reward_claims + pending_claims khác lifecycle |
+| 3C | FinancialTab → platform_financial_data | Admin UI đang đọc grand_total_* từ profiles |
+| 3D | get_user_rewards_v2 refactor | Đang dùng livestreams table, cần chuyển live_sessions |
+| 3E | live_comments product review | Quyết định drop hoặc giữ |
+| 3F | Profiles RLS tightening | Public by Design → quyết định enforcement model |
+| 3G | Gộp 15 media edge functions | Router pattern |
 
-### Tổng kết files thay đổi
+---
 
-| File | Action |
-|------|--------|
-| DB migration `post_attachments` | Tạo mới |
-| `src/modules/feed/types/index.ts` | Tạo mới |
-| `src/modules/feed/components/post/AttachmentPreviewGrid.tsx` | Tạo mới |
-| `src/modules/feed/components/post/ImageEditorModal.tsx` | Tạo mới |
-| `src/components/feed/FacebookCreatePost.tsx` | Sửa lớn |
-| `src/hooks/useCreatePost.ts` | Sửa (thêm attachments flow) |
-| `src/hooks/useFeedPosts.ts` | Sửa (join post_attachments) |
-| `src/components/feed/EditPostDialog.tsx` | Sửa (sync attachments) |
-| `supabase/functions/create-post/index.ts` | Sửa (insert attachments) |
+## Linter Warnings (có sẵn, chưa xử lý)
+- **RLS Enabled No Policy**: Một số tables có RLS enabled nhưng chưa có policy
+- **RLS Policy Always True**: Một số policies dùng `USING (true)` cho INSERT/UPDATE/DELETE
+- Sẽ xử lý trong Phase 2-3 khi refactor từng domain
 
+## Light Score 5 Trụ Cột — Phase 1 ✅ HOÀN THÀNH
+(Chi tiết xem phiên bản trước của plan)
