@@ -74,8 +74,8 @@ export function GiftConfirmStep(props: GiftConfirmStepProps) {
   } = props;
 
   return (
-    <div className="space-y-4 py-2">
-      <div className="bg-muted/30 rounded-xl p-4 space-y-4 border">
+    <div className="space-y-3 sm:space-y-4 py-2">
+      <div className="bg-muted/30 rounded-xl p-3 sm:p-4 space-y-3 sm:space-y-4 border">
         {/* Sender */}
         <div className="flex items-center gap-3">
           <Avatar className="w-10 h-10 border-2 border-primary/30">
