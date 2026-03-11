@@ -125,7 +125,7 @@ export function GiftFormStep(props: GiftFormStepProps) {
   } = props;
 
   return (
-    <div className="space-y-5 py-2">
+    <div className="space-y-3 sm:space-y-5 py-2">
       {/* 1. Sender info */}
       {senderProfile && (
         <div>
@@ -141,7 +141,7 @@ export function GiftFormStep(props: GiftFormStepProps) {
               <p className="font-medium truncate">{senderProfile.display_name || senderProfile.username}</p>
               <p className="text-xs text-muted-foreground truncate">@{senderProfile.username}</p>
               {effectiveAddress && (
-                <div className="flex items-center gap-1">
+                <div className="hidden sm:flex items-center gap-1">
                   <p className="text-xs text-muted-foreground font-mono truncate">{effectiveAddress.slice(0, 8)}...{effectiveAddress.slice(-6)}</p>
                   <button type="button" onClick={() => onCopyAddress(effectiveAddress)} className="p-0.5 hover:bg-muted rounded">
                     <Copy className="w-3 h-3 text-muted-foreground" />
@@ -319,7 +319,7 @@ export function GiftFormStep(props: GiftFormStepProps) {
           )}
 
           {/* Next button */}
-          <div className="flex gap-3 pt-2 pb-4">
+          <div className="flex gap-3 pt-2 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-4">
             <Button variant="outline" onClick={onClose} className="flex-1" disabled={isInProgress}>Hủy</Button>
             <Button onClick={onGoToConfirm} disabled={!canProceedToConfirm} className="flex-1 bg-gradient-to-r from-gold to-amber-500 hover:from-gold/90 hover:to-amber-500/90 text-primary-foreground gap-2">
               Xem lại & Xác nhận <ArrowRight className="w-4 h-4" />
