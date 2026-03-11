@@ -20,6 +20,7 @@ import { useTokenBalances } from '@/hooks/useTokenBalances';
 import { validateMinSendValue } from '@/lib/minSendValidation';
 import { useAccount, useBalance, useReadContract, useChainId, useSwitchChain, usePublicClient } from 'wagmi';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
+import { useAutoChainSwitch } from '@/hooks/useAutoChainSwitch';
 import { toast } from 'sonner';
 import { formatUnits } from 'viem';
 import { supabase } from '@/integrations/supabase/client';
