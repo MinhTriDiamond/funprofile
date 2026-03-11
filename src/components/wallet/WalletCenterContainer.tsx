@@ -187,13 +187,8 @@ const WalletCenterContainer = () => {
     );
   }, [switchChain]);
 
-  useEffect(() => {
-    if (isConnected && chainId && chainId !== bsc.id && chainId !== bscTestnet.id) {
-      toast.warning(t('walletPleaseSwitch'), {
-        action: { label: 'Switch to Mainnet', onClick: handleSwitchToMainnet },
-      });
-    }
-  }, [isConnected, chainId, handleSwitchToMainnet]);
+  // Auto chain switch is now handled by useAutoChainSwitch hook
+  // It auto-requests switch on connect and only warns if user rejects
 
   useEffect(() => {
     fetchProfile();
