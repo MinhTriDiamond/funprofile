@@ -17,6 +17,8 @@ interface SendTokenParams {
   token: WalletToken;
   recipient: string;
   amount: string;
+  /** Khi true: return hash ngay, không chạy background polling/DB/toast. Dùng cho multi-send. */
+  skipBackground?: boolean;
 }
 
 const DB_TIMEOUT_MS = 8_000;
