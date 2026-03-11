@@ -175,6 +175,23 @@ Deno.serve(async (req) => {
       }
     }
 
+    // 7ac. Check claim speed limit (Step 2 of anti-farm progressive system)
+    if (profile.claim_speed_limit_until) {
+      const speedLimitUntil = new Date(profile.claim_speed_limit_until);
+      if (speedLimitUntil > new Date()) {
+        const hoursLeft = Math.ceil((speedLimitUntil.getTime() - Date.now()) / (1000 * 60 * 60));
+        return new Response(
+          JSON.stringify({ 
+            error: 'Claim Speed Limited', 
+            message: `⚠️ Hệ thống phát hiện hoạt động bất thường. Tốc độ claim bị giới hạn tạm thời. Vui lòng thử lại sau ${hoursLeft} giờ.`,
+            speed_limit_until: profile.claim_speed_limit_until,
+            fraud_risk_level: profile.fraud_risk_level,
+          }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
     // 7b. Check profile completeness (avatar + wallet)
     if (!profile.avatar_url) {
       return new Response(
