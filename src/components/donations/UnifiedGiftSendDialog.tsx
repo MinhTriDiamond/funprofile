@@ -462,7 +462,7 @@ export const UnifiedGiftSendDialog = ({
               </DialogTitle>
             </DialogHeader>
           </div>
-          <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 pb-4 sm:px-6 sm:pb-6 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 pb-6 sm:px-6 sm:pb-6 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
 
           {IS_MAINTENANCE && (
             <div className="py-4 space-y-4">
