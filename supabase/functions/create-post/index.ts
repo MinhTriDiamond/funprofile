@@ -33,6 +33,19 @@ function detectLowQuality(content: string, mediaCount: number): boolean {
   return false;
 }
 
+interface AttachmentInput {
+  file_url: string;
+  storage_key: string | null;
+  file_type: 'image' | 'video';
+  mime_type: string;
+  width?: number | null;
+  height?: number | null;
+  size_bytes?: number | null;
+  sort_order: number;
+  alt_text?: string | null;
+  transform_meta?: Record<string, unknown> | null;
+}
+
 interface CreatePostRequest {
   content: string;
   media_urls: MediaUrl[];
@@ -41,6 +54,7 @@ interface CreatePostRequest {
   location?: string | null;
   tagged_user_ids?: string[];
   visibility?: string;
+  attachments?: AttachmentInput[];
 }
 
 // Normalize content for duplicate detection
