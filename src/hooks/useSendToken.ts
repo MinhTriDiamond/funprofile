@@ -74,7 +74,7 @@ export function useSendToken() {
   }, [txHash, publicClient, resetState]);
 
   const sendToken = async (params: SendTokenParams): Promise<string | null> => {
-    const { token, recipient, amount } = params;
+    const { token, recipient, amount, skipBackground = false } = params;
     const senderAddress = activeAddress || providerAddress;
 
     // --- Validation ---
