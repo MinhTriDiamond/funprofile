@@ -74,6 +74,8 @@ export async function getDeviceHash(): Promise<string> {
     (navigator as any).deviceMemory || 'unknown',
     navigator.maxTouchPoints,
     window.devicePixelRatio,
+    // v3: persistent browser-unique ID to avoid same-model collisions
+    getOrCreateBrowserId(),
   ].join('|');
 
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
