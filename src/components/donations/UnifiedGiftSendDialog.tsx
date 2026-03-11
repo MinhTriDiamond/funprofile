@@ -285,7 +285,7 @@ export const UnifiedGiftSendDialog = ({
       amount, tokenSymbol: selectedToken.symbol, message: customMessage, timestamp: Date.now(),
     }));
     return false;
-  }, [amount, chainId, customMessage, postId, selectedTemplate?.id, selectedToken]);
+  }, [amount, selectedChainId, resolvedTokenAddress, customMessage, postId, selectedTemplate?.id, selectedToken]);
 
   const recordDonationBackground = useCallback(async (hash: string, recipient: ResolvedRecipient) => {
     try {
