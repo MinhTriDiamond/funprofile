@@ -122,7 +122,7 @@ Deno.serve(async (req) => {
     // 7. Check user profile and reward_status
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('reward_status, username, full_name, avatar_url, cover_url, public_wallet_address, claim_freeze_until, wallet_risk_status, reward_locked')
+      .select('reward_status, username, full_name, avatar_url, cover_url, public_wallet_address, claim_freeze_until, wallet_risk_status, reward_locked, fraud_risk_level, claim_speed_limit_until')
       .eq('id', userId)
       .single();
 
@@ -171,6 +171,23 @@ Deno.serve(async (req) => {
             wallet_risk_status: profile.wallet_risk_status
           }),
           { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // 7ac. Check claim speed limit (Step 2 of anti-farm progressive system)
+    if (profile.claim_speed_limit_until) {
+      const speedLimitUntil = new Date(profile.claim_speed_limit_until);
+      if (speedLimitUntil > new Date()) {
+        const hoursLeft = Math.ceil((speedLimitUntil.getTime() - Date.now()) / (1000 * 60 * 60));
+        return new Response(
+          JSON.stringify({ 
+            error: 'Claim Speed Limited', 
+            message: `⚠️ Hệ thống phát hiện hoạt động bất thường. Tốc độ claim bị giới hạn tạm thời. Vui lòng thử lại sau ${hoursLeft} giờ.`,
+            speed_limit_until: profile.claim_speed_limit_until,
+            fraud_risk_level: profile.fraud_risk_level,
+          }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
     }
@@ -262,14 +279,12 @@ Deno.serve(async (req) => {
       }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // 7f. Auto fraud detection - BỎ QUA nếu admin đã duyệt (approved)
-    // Admin đã xác minh → không ghi đè quyết định admin
+    // 7f. Auto fraud detection — 3-step progressive system
+    // Skip if admin already approved
     if (profile.reward_status !== 'approved') {
-      const fraudReasons: string[] = [];
-      const relatedUserIds: string[] = [];
+      const fraudWarnings: string[] = [];
 
-      // === CLAIM SYNC CHECK: Phát hiện farm claim đồng bộ từ cùng IP ===
-      // Chỉ phát hiện khi nhiều TK claim cùng lúc từ cùng IP (hành vi bot)
+      // === CLAIM SYNC CHECK: Detect synchronized claims from same IP ===
       const claimIp = req.headers.get("cf-connecting-ip") 
         || req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
         || req.headers.get("x-real-ip")
@@ -278,14 +293,12 @@ Deno.serve(async (req) => {
       if (claimIp !== "unknown") {
         const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
         
-        // Find other users who claimed from same IP in last 30 min
         const { data: recentIpClaims } = await supabaseAdmin
           .from('pending_claims')
           .select('user_id, amount, created_at')
           .neq('user_id', userId)
           .gte('created_at', thirtyMinAgo);
 
-        // Cross-check with login_ip_logs to find claims from same IP
         if (recentIpClaims && recentIpClaims.length > 0) {
           const claimUserIds = [...new Set(recentIpClaims.map(c => c.user_id))];
           
@@ -298,90 +311,112 @@ Deno.serve(async (req) => {
 
           const sameIpClaimUsers = [...new Set(sameIpUsers?.map(u => u.user_id) || [])];
 
-          // ≥3 accounts claiming from same IP in 30 min → suspicious
+          // ≥3 accounts claiming from same IP in 30 min → progressive escalation
           if (sameIpClaimUsers.length >= 3) {
             const allSuspect = [userId, ...sameIpClaimUsers];
             
-            // Check if most claim max amount (bot-like)
             const suspectClaims = recentIpClaims.filter(c => sameIpClaimUsers.includes(c.user_id));
             const maxClaimCount = suspectClaims.filter(c => Number(c.amount) >= DAILY_CLAIM_CAP * 0.8).length;
             const maxClaimRatio = suspectClaims.length > 0 ? maxClaimCount / suspectClaims.length : 0;
 
-            // Hold + signal
-            for (const uid of allSuspect) {
-              await supabaseAdmin.from('profiles').update({
-                reward_status: 'on_hold',
-                admin_notes: `CLAIM_SYNC: ${allSuspect.length} TK claim từ cùng IP ${claimIp} trong 30 phút. Tỷ lệ claim max: ${Math.round(maxClaimRatio * 100)}%. Chờ Admin xác minh.`,
-              }).eq('id', uid).not('reward_status', 'in', '("banned","approved")');
-            }
-
             await supabaseAdmin.from('pplp_fraud_signals').insert({
-              actor_id: userId,
-              signal_type: 'CLAIM_SYNC_SUSPICIOUS',
-              severity: 4,
-              details: { 
-                ip_address: claimIp, 
-                user_ids: allSuspect, 
-                claim_count: sameIpClaimUsers.length + 1,
-                max_claim_ratio: maxClaimRatio,
-                window: '30min' 
-              },
+              actor_id: userId, signal_type: 'CLAIM_SYNC_SUSPICIOUS', severity: 3,
+              details: { ip_address: claimIp, user_ids: allSuspect, claim_count: sameIpClaimUsers.length + 1, max_claim_ratio: maxClaimRatio, window: '30min' },
               source: 'claim-reward',
             });
 
-            // Notify admins
-            const { data: admins } = await supabaseAdmin
-              .from('user_roles').select('user_id').eq('role', 'admin');
-            if (admins?.length) {
-              await supabaseAdmin.from('notifications').insert(
-                admins.map(a => ({
-                  user_id: a.user_id, actor_id: userId,
-                  type: 'admin_claim_sync', read: false,
-                  metadata: { ip: claimIp, count: allSuspect.length, max_ratio: maxClaimRatio },
-                }))
-              );
-            }
+            // Get current risk level to determine action
+            const currentRisk = profile.fraud_risk_level || 0;
 
-            return new Response(JSON.stringify({
-              error: 'Account Review',
-              message: 'Hệ thống phát hiện nhiều tài khoản claim cùng lúc từ cùng mạng. Tài khoản đang chờ Admin xác minh 🙏',
-            }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+            if (currentRisk === 0) {
+              // STEP 1: Flag internally — allow this claim to proceed
+              await supabaseAdmin.from('profiles').update({
+                fraud_risk_level: 1,
+                admin_notes: `[Step 1] Claim sync: ${allSuspect.length} TK từ cùng IP ${claimIp}. Chỉ đánh dấu.`,
+              }).eq('id', userId);
+              console.log(`[CLAIM SYNC Step 1] User ${userId} flagged — claim allowed`);
+              // Continue — don't block
+
+            } else if (currentRisk === 1) {
+              // STEP 2: Soft warning + speed limit
+              const cooldownUntil = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+              for (const uid of allSuspect) {
+                await supabaseAdmin.from('profiles').update({
+                  fraud_risk_level: 2,
+                  claim_speed_limit_until: cooldownUntil,
+                  admin_notes: `[Step 2] Claim sync lặp lại: ${allSuspect.length} TK từ IP ${claimIp}. Giới hạn claim 48h.`,
+                }).eq('id', uid).not('reward_status', 'in', '("banned","approved")');
+              }
+
+              // Notify admins
+              const { data: admins } = await supabaseAdmin
+                .from('user_roles').select('user_id').eq('role', 'admin');
+              if (admins?.length) {
+                await supabaseAdmin.from('notifications').insert(
+                  admins.map(a => ({
+                    user_id: a.user_id, actor_id: userId,
+                    type: 'admin_claim_sync', read: false,
+                    metadata: { ip: claimIp, count: allSuspect.length, step: 2, max_ratio: maxClaimRatio },
+                  }))
+                );
+              }
+
+              return new Response(JSON.stringify({
+                error: 'Claim Speed Limited',
+                message: '⚠️ Hệ thống phát hiện hoạt động bất thường từ cùng mạng. Tốc độ claim bị giới hạn tạm thời 48 giờ. Nếu bạn là người dùng thật, vui lòng thử lại sau.',
+                fraud_risk_level: 2,
+              }), { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+
+            } else {
+              // STEP 3: Suspend for manual review
+              for (const uid of allSuspect) {
+                await supabaseAdmin.from('profiles').update({
+                  fraud_risk_level: 3,
+                  reward_status: 'on_hold',
+                  admin_notes: `[Step 3] Claim sync lặp lại nhiều lần: ${allSuspect.length} TK từ IP ${claimIp}. Đình chỉ chờ Admin.`,
+                }).eq('id', uid).not('reward_status', 'in', '("banned","approved")');
+              }
+
+              const { data: admins } = await supabaseAdmin
+                .from('user_roles').select('user_id').eq('role', 'admin');
+              if (admins?.length) {
+                await supabaseAdmin.from('notifications').insert(
+                  admins.map(a => ({
+                    user_id: a.user_id, actor_id: userId,
+                    type: 'admin_claim_sync', read: false,
+                    metadata: { ip: claimIp, count: allSuspect.length, step: 3, max_ratio: maxClaimRatio },
+                  }))
+                );
+              }
+
+              return new Response(JSON.stringify({
+                error: 'Account Review',
+                message: 'Tài khoản đang chờ Admin xác minh do hoạt động bất thường lặp lại 🙏',
+              }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+            }
           }
         }
       }
 
-      // Check duplicate avatar — chỉ ghi warning, KHÔNG hold
+      // Check duplicate avatar/wallet — warning only, no hold
       if (profile.avatar_url) {
         const { count: avatarDups } = await supabaseAdmin
-          .from('profiles')
-          .select('id', { count: 'exact', head: true })
-          .eq('avatar_url', profile.avatar_url)
-          .neq('id', userId);
-        if (avatarDups && avatarDups > 0) {
-          fraudReasons.push('Ảnh đại diện trùng với tài khoản khác');
-        }
+          .from('profiles').select('id', { count: 'exact', head: true })
+          .eq('avatar_url', profile.avatar_url).neq('id', userId);
+        if (avatarDups && avatarDups > 0) fraudWarnings.push('Ảnh đại diện trùng');
       }
-
-      // Check duplicate wallet — chỉ ghi warning, KHÔNG hold
       if (profile.public_wallet_address) {
         const { count: walletDups } = await supabaseAdmin
-          .from('profiles')
-          .select('id', { count: 'exact', head: true })
-          .eq('public_wallet_address', profile.public_wallet_address)
-          .neq('id', userId);
-        if (walletDups && walletDups > 0) {
-          fraudReasons.push('Địa chỉ ví đang được sử dụng bởi tài khoản khác');
-        }
+          .from('profiles').select('id', { count: 'exact', head: true })
+          .eq('public_wallet_address', profile.public_wallet_address).neq('id', userId);
+        if (walletDups && walletDups > 0) fraudWarnings.push('Ví trùng TK khác');
       }
 
-      // Duplicate avatar/wallet → chỉ ghi signal cảnh báo, KHÔNG hold/block
-      if (fraudReasons.length > 0) {
-        console.warn(`Integrity warning for user ${userId}: ${fraudReasons.join('; ')}`);
+      if (fraudWarnings.length > 0) {
+        console.warn(`Integrity warning for ${userId}: ${fraudWarnings.join('; ')}`);
         await supabaseAdmin.from('pplp_fraud_signals').insert({
-          actor_id: userId,
-          signal_type: 'CLAIM_INTEGRITY_WARNING',
-          severity: 2,
-          details: { reasons: fraudReasons, note: 'Chỉ cảnh báo - không tự động hold' },
+          actor_id: userId, signal_type: 'CLAIM_INTEGRITY_WARNING', severity: 2,
+          details: { reasons: fraudWarnings, note: 'Chỉ cảnh báo - không hold' },
           source: 'claim-reward',
         });
       }
