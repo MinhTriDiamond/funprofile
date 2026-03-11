@@ -155,7 +155,7 @@ export function GiftConfirmStep(props: GiftConfirmStepProps) {
 
         {/* Message */}
         {customMessage && (
-          <div className="bg-white/80 rounded-lg p-3 border">
+          <div className="bg-white/80 rounded-lg p-2 sm:p-3 border">
             <p className="text-sm text-muted-foreground mb-1">Lời nhắn:</p>
             <p className="text-sm italic">"{customMessage}"</p>
           </div>
