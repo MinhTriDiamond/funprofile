@@ -95,7 +95,7 @@ export function GiftConfirmStep(props: GiftConfirmStepProps) {
         </div>
 
         {/* Arrow + Amount */}
-        <div className="flex items-center justify-center gap-3 py-2">
+        <div className="flex items-center justify-center gap-2 py-1.5">
           <div className="h-px flex-1 bg-border" />
           <div className="flex flex-col items-center gap-1 px-4 py-2 rounded-full bg-gradient-to-r from-gold/20 to-amber-500/20 border border-gold/50">
             <span className="text-lg font-bold text-amber-800">
