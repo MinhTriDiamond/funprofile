@@ -475,7 +475,9 @@ Deno.serve(async (req) => {
               accounts_held: totalHeld,
               flagged_usernames: allFlaggedUsernames.slice(0, 50),
               flagged_emails: flaggedEmails,
-              note: "Hệ thống 3 bước: Step 1 (flag) → Step 2 (giới hạn claim) → Step 3 (đình chỉ). Chỉ escalate khi phát hiện claim farm.",
+              note: "Hệ thống 3 bước + AI Sybil Detection. Chỉ escalate khi phát hiện claim farm hoặc AI phát hiện Sybil cluster.",
+              ai_summary: aiResults?.summary || "AI không chạy hoặc không có kết quả",
+              ai_clusters_found: aiResults?.clusters_actioned || 0,
             },
           }))
         );
