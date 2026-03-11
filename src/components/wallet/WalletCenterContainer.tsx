@@ -65,6 +65,7 @@ const WalletCenterContainer = () => {
   const { openConnectModal } = useConnectModal();
   const { disconnect } = useDisconnect();
   const { switchChain } = useSwitchChain();
+  const { isWrongChain } = useAutoChainSwitch();
   const { t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
