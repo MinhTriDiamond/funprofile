@@ -1,8 +1,10 @@
 /**
- * ImageEditorModal — Lazy-loads Filerobot image editor with crop, rotate, text, alt text
+ * ImageEditorModal — Crop (react-easy-crop), Rotate (Canvas API), Alt Text
  */
-import { useEffect, useState, lazy, Suspense } from 'react';
-import { Crop, RotateCw, Tag, Type, Captions, Sparkles } from 'lucide-react';
+import { useEffect, useState, useCallback } from 'react';
+import { Crop, RotateCw, Captions } from 'lucide-react';
+import Cropper from 'react-easy-crop';
+import type { Area } from 'react-easy-crop';
 import {
   Dialog,
   DialogContent,
@@ -28,46 +30,67 @@ interface ImageEditorModalProps {
   }) => void;
 }
 
-type EditorMenuItem = 'crop' | 'rotate' | 'tag' | 'text' | 'alt' | 'filters';
+type EditorTab = 'crop' | 'rotate' | 'alt';
 
-const MENU_ITEMS: Array<{
-  id: EditorMenuItem;
-  label: string;
-  icon: typeof Crop;
-  disabled?: boolean;
-}> = [
-  { id: 'crop', label: 'Cắt', icon: Crop },
-  { id: 'rotate', label: 'Xoay', icon: RotateCw },
-  { id: 'tag', label: 'Gắn thẻ', icon: Tag, disabled: true },
-  { id: 'text', label: 'Chữ', icon: Type },
-  { id: 'alt', label: 'Alt Text', icon: Captions },
-  { id: 'filters', label: 'Bộ lọc', icon: Sparkles, disabled: true },
-];
+const ASPECT_OPTIONS = [
+  { label: 'Tự do', value: 0 },
+  { label: '1:1', value: 1 },
+  { label: '4:3', value: 4 / 3 },
+  { label: '16:9', value: 16 / 9 },
+] as const;
 
-function dataUrlToFile(dataUrl: string, originalName: string): File {
-  const [meta, base64] = dataUrl.split(',');
-  const mimeMatch = /data:(.*?);base64/.exec(meta || '');
-  const mimeType = mimeMatch?.[1] || 'image/png';
-  const binary = atob(base64 || '');
-  const bytes = new Uint8Array(binary.length);
+/** Create a cropped+rotated image via Canvas API */
+async function getCroppedImg(
+  imageSrc: string,
+  cropArea: Area,
+  rotation: number,
+): Promise<{ file: File; url: string; width: number; height: number }> {
+  const image = await createImage(imageSrc);
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d')!;
 
-  for (let i = 0; i < binary.length; i += 1) {
-    bytes[i] = binary.charCodeAt(i);
-  }
+  const radians = (rotation * Math.PI) / 180;
+  const sin = Math.abs(Math.sin(radians));
+  const cos = Math.abs(Math.cos(radians));
 
-  const ext = mimeType.split('/')[1] || 'png';
-  const safeName = originalName.replace(/\.[^/.]+$/, '') || 'edited-image';
-  return new File([bytes], `${safeName}.${ext}`, { type: mimeType });
+  // Rotated bounding box of the full image
+  const rotW = image.width * cos + image.height * sin;
+  const rotH = image.width * sin + image.height * cos;
+
+  canvas.width = cropArea.width;
+  canvas.height = cropArea.height;
+
+  ctx.translate(-cropArea.x, -cropArea.y);
+  ctx.translate(rotW / 2, rotH / 2);
+  ctx.rotate(radians);
+  ctx.translate(-image.width / 2, -image.height / 2);
+  ctx.drawImage(image, 0, 0);
+
+  return new Promise((resolve) => {
+    canvas.toBlob(
+      (blob) => {
+        const file = new File([blob!], 'edited.webp', { type: 'image/webp' });
+        resolve({
+          file,
+          url: URL.createObjectURL(file),
+          width: cropArea.width,
+          height: cropArea.height,
+        });
+      },
+      'image/webp',
+      0.92,
+    );
+  });
 }
 
-function getEditedImageBase64(editedImageObject: any): string | null {
-  return (
-    editedImageObject?.imageBase64 ||
-    editedImageObject?.fullName ||
-    editedImageObject?.fullResImageBase64 ||
-    editedImageObject?.canvas?.toDataURL?.('image/png') ||
-    null
-  );
+function createImage(url: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = url;
+  });
 }
 
 export function ImageEditorModal({
@@ -76,67 +99,57 @@ export function ImageEditorModal({
   onClose,
   onSave,
 }: ImageEditorModalProps) {
-  const [selectedMenu, setSelectedMenu] = useState<EditorMenuItem>('crop');
+  const [tab, setTab] = useState<EditorTab>('crop');
   const [altText, setAltText] = useState('');
-  const [editorModule, setEditorModule] = useState<{
-    Editor: any;
-    TABS: Record<string, any>;
-    TOOLS: Record<string, any>;
-  } | null>(null);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [rotation, setRotation] = useState(0);
+  const [croppedArea, setCroppedArea] = useState<Area | null>(null);
+  const [aspectIdx, setAspectIdx] = useState(0);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setAltText(attachment?.altText || '');
-    setSelectedMenu('crop');
+    if (!attachment) return;
+    setAltText(attachment.altText || '');
+    setTab('crop');
+    setCrop({ x: 0, y: 0 });
+    setZoom(1);
+    setRotation(0);
+    setAspectIdx(0);
   }, [attachment]);
 
-  // Lazy load Filerobot editor
-  useEffect(() => {
-    if (!open || editorModule) return;
+  const onCropComplete = useCallback((_: Area, area: Area) => {
+    setCroppedArea(area);
+  }, []);
 
-    let cancelled = false;
-    import('react-filerobot-image-editor').then((mod) => {
-      if (cancelled) return;
-      setEditorModule({
-        Editor: mod.default,
-        TABS: (mod as any).TABS || {},
-        TOOLS: (mod as any).TOOLS || {},
+  const previewSrc = attachment?.previewUrl || attachment?.fileUrl;
+
+  const handleSave = async () => {
+    if (!attachment || !previewSrc || !croppedArea) return;
+    setSaving(true);
+    try {
+      const { file, url, width, height } = await getCroppedImg(
+        previewSrc,
+        croppedArea,
+        rotation,
+      );
+      onSave({
+        file,
+        previewUrl: url,
+        width,
+        height,
+        altText,
+        transformMeta: { rotation, crop: croppedArea, editedAt: new Date().toISOString() },
       });
-    }).catch((err) => {
-      console.error('Failed to load image editor:', err);
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [open, editorModule]);
-
-  if (!attachment) return null;
-
-  const previewSrc = attachment.previewUrl || attachment.fileUrl;
-
-  const handleEditorSave = (editedImageObject: any) => {
-    const base64 = getEditedImageBase64(editedImageObject);
-    if (!base64) return;
-
-    const file = dataUrlToFile(base64, attachment.file?.name || 'edited');
-    const previewUrl = URL.createObjectURL(file);
-
-    onSave({
-      file,
-      previewUrl,
-      width: editedImageObject?.width,
-      height: editedImageObject?.height,
-      altText,
-      transformMeta: {
-        editedAt: new Date().toISOString(),
-        tool: 'filerobot',
-      },
-    });
+    } catch (e) {
+      console.error('Image edit failed:', e);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleAltTextSave = () => {
-    if (!attachment.file) return;
-    // Just update alt text without re-encoding the image
+    if (!attachment?.file) return;
     onSave({
       file: attachment.file,
       previewUrl: attachment.previewUrl || '',
@@ -146,6 +159,16 @@ export function ImageEditorModal({
       transformMeta: attachment.transformMeta,
     });
   };
+
+  if (!attachment) return null;
+
+  const aspect = ASPECT_OPTIONS[aspectIdx].value;
+
+  const tabs: Array<{ id: EditorTab; label: string; icon: typeof Crop }> = [
+    { id: 'crop', label: 'Cắt', icon: Crop },
+    { id: 'rotate', label: 'Xoay', icon: RotateCw },
+    { id: 'alt', label: 'Alt Text', icon: Captions },
+  ];
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -158,21 +181,19 @@ export function ImageEditorModal({
 
         <div className="flex flex-1 overflow-hidden">
           {/* Left menu */}
-          <div className="w-28 border-r border-border py-3 flex flex-col gap-1 shrink-0">
-            {MENU_ITEMS.map((item) => {
+          <div className="w-24 border-r border-border py-3 flex flex-col gap-1 shrink-0">
+            {tabs.map((item) => {
               const Icon = item.icon;
-              const isSelected = selectedMenu === item.id;
               return (
                 <button
                   key={item.id}
                   type="button"
-                  disabled={item.disabled}
-                  onClick={() => setSelectedMenu(item.id)}
+                  onClick={() => setTab(item.id)}
                   className={`flex flex-col items-center gap-1 py-2 px-2 text-xs transition-colors rounded-lg mx-1 ${
-                    isSelected
+                    tab === item.id
                       ? 'bg-primary/10 text-primary font-semibold'
                       : 'text-muted-foreground hover:bg-muted'
-                  } ${item.disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
+                  }`}
                 >
                   <Icon className="h-5 w-5" />
                   {item.label}
@@ -182,18 +203,16 @@ export function ImageEditorModal({
           </div>
 
           {/* Main area */}
-          <div className="flex-1 overflow-auto p-4">
-            {selectedMenu === 'alt' ? (
-              <div className="space-y-4">
-                <div>
-                  {previewSrc && (
-                    <img
-                      src={previewSrc}
-                      alt="Preview"
-                      className="max-h-[300px] mx-auto rounded-lg object-contain"
-                    />
-                  )}
-                </div>
+          <div className="flex-1 overflow-auto">
+            {tab === 'alt' ? (
+              <div className="p-4 space-y-4">
+                {previewSrc && (
+                  <img
+                    src={previewSrc}
+                    alt="Preview"
+                    className="max-h-[300px] mx-auto rounded-lg object-contain"
+                  />
+                )}
                 <div className="space-y-2">
                   <label className="text-sm font-medium">
                     Alt Text (mô tả ảnh cho người khiếm thị)
@@ -212,36 +231,91 @@ export function ImageEditorModal({
                   Lưu Alt Text
                 </Button>
               </div>
-            ) : editorModule && previewSrc ? (
-              <div className="h-[500px]">
-                <editorModule.Editor
-                  source={previewSrc}
-                  onSave={handleEditorSave}
-                  annotationsCommon={{ fill: '#ff0000' }}
-                  Text={{ text: 'Text' }}
-                  Rotate={{ componentType: 'slider', angle: 0 }}
-                  tabsIds={[
-                    editorModule.TABS?.ADJUST,
-                    editorModule.TABS?.ANNOTATE,
-                  ].filter(Boolean)}
-                  defaultTabId={editorModule.TABS?.ADJUST}
-                  defaultToolId={editorModule.TOOLS?.CROP}
-                  savingPixelRatio={2}
-                  previewPixelRatio={window.devicePixelRatio}
-                />
+            ) : tab === 'rotate' ? (
+              <div className="p-4 space-y-4">
+                <div className="relative h-[400px] bg-muted rounded-lg overflow-hidden">
+                  {previewSrc && (
+                    <Cropper
+                      image={previewSrc}
+                      crop={crop}
+                      zoom={zoom}
+                      rotation={rotation}
+                      aspect={aspect || undefined}
+                      onCropChange={setCrop}
+                      onZoomChange={setZoom}
+                      onCropComplete={onCropComplete}
+                      showGrid={false}
+                    />
+                  )}
+                </div>
+                <div className="flex items-center justify-center gap-2">
+                  {[0, 90, 180, 270].map((deg) => (
+                    <Button
+                      key={deg}
+                      variant={rotation === deg ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setRotation(deg)}
+                    >
+                      {deg}°
+                    </Button>
+                  ))}
+                </div>
               </div>
             ) : (
-              <div className="flex items-center justify-center h-[300px] text-muted-foreground">
-                Đang tải trình chỉnh sửa...
+              /* crop tab */
+              <div className="p-4 space-y-4">
+                <div className="relative h-[400px] bg-muted rounded-lg overflow-hidden">
+                  {previewSrc && (
+                    <Cropper
+                      image={previewSrc}
+                      crop={crop}
+                      zoom={zoom}
+                      rotation={rotation}
+                      aspect={aspect || undefined}
+                      onCropChange={setCrop}
+                      onZoomChange={setZoom}
+                      onCropComplete={onCropComplete}
+                    />
+                  )}
+                </div>
+                <div className="flex items-center justify-center gap-2">
+                  {ASPECT_OPTIONS.map((opt, idx) => (
+                    <Button
+                      key={opt.label}
+                      variant={aspectIdx === idx ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setAspectIdx(idx)}
+                    >
+                      {opt.label}
+                    </Button>
+                  ))}
+                </div>
+                <div className="flex items-center gap-3 px-2">
+                  <span className="text-xs text-muted-foreground">Zoom</span>
+                  <input
+                    type="range"
+                    min={1}
+                    max={3}
+                    step={0.1}
+                    value={zoom}
+                    onChange={(e) => setZoom(Number(e.target.value))}
+                    className="flex-1"
+                  />
+                </div>
               </div>
             )}
           </div>
         </div>
 
-        <DialogFooter className="px-5 py-3 border-t border-border">
+        <DialogFooter className="px-5 py-3 border-t border-border flex gap-2">
           <Button variant="outline" onClick={onClose}>
             Huỷ
           </Button>
+          {tab !== 'alt' && (
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? 'Đang lưu...' : 'Lưu chỉnh sửa'}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
