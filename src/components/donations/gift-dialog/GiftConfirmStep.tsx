@@ -86,7 +86,7 @@ export function GiftConfirmStep(props: GiftConfirmStepProps) {
             <p className="font-medium text-sm">{senderProfile?.display_name || senderProfile?.username}</p>
             <p className="text-xs text-muted-foreground">@{senderProfile?.username}</p>
             {address && (
-              <div className="flex items-center gap-1">
+              <div className="hidden sm:flex items-center gap-1">
                 <span className="text-xs text-muted-foreground font-mono">{address.slice(0, 8)}...{address.slice(-6)}</span>
                 <button type="button" onClick={() => onCopyAddress(address)} className="p-0.5 hover:bg-muted rounded"><Copy className="w-3 h-3 text-muted-foreground" /></button>
               </div>
