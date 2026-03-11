@@ -23,7 +23,6 @@ async function lookupUsernames(
   if (userIds.length === 0) return map;
 
   const uniqueIds = [...new Set(userIds)];
-  // Batch in chunks of 100
   for (let i = 0; i < uniqueIds.length; i += 100) {
     const chunk = uniqueIds.slice(i, i + 100);
     const { data } = await supabase
@@ -55,7 +54,7 @@ function formatUserWithEmail(userId: string, usernameMap: Map<string, string>, e
   return email ? `${name} (${email})` : name;
 }
 
-/** Auto-hold users, excluding admins and already banned/on_hold */
+/** Auto-hold users for CLAIM FARM only, excluding admins and already banned/on_hold/approved */
 async function autoHoldUsers(
   supabase: ReturnType<typeof createClient>,
   userIds: string[],
@@ -72,7 +71,7 @@ async function autoHoldUsers(
       admin_notes: `${reason} Tự động đình chỉ bởi hệ thống quét hàng ngày ${new Date().toISOString().split('T')[0]}.`,
     })
     .in("id", toHold)
-    .not("reward_status", "in", '("banned","on_hold")')
+    .not("reward_status", "in", '("banned","on_hold","approved")')
     .select("id");
 
   if (error) {
@@ -103,15 +102,13 @@ Deno.serve(async (req) => {
       .eq("role", "admin");
     const adminIds = new Set((adminRoles || []).map((r: { user_id: string }) => r.user_id));
 
-    // 1. Shared device detection: devices with >2 users
-    // Only scan v2+ fingerprints (v1 is unreliable and causes false positives)
+    // 1. Shared device detection: devices with >2 users — CHỈ GHI LOG, KHÔNG HOLD
     const { data: flaggedDevices } = await supabase
       .from("pplp_device_registry")
       .select("device_hash, user_id")
       .eq("is_flagged", false)
       .gte("fingerprint_version", 2);
 
-    // Collect device clusters for username enrichment
     const deviceClusters: Array<{ hash: string; users: string[] }> = [];
 
     if (flaggedDevices) {
@@ -142,27 +139,21 @@ Deno.serve(async (req) => {
             await supabase.from("pplp_fraud_signals").insert({
               actor_id: users[0],
               signal_type: "SHARED_DEVICE",
-              severity: 3,
-              details: { device_hash: hash.slice(0, 8), user_count: users.length, user_ids: users },
+              severity: 2, // Giảm severity — chỉ cảnh báo
+              details: { device_hash: hash.slice(0, 8), user_count: users.length, user_ids: users, note: "Chỉ cảnh báo - không tự động đình chỉ" },
               source: "daily-fraud-scan",
             });
           }
-
-          const held = await autoHoldUsers(
-            supabase, users, adminIds,
-            `Thiết bị ${hash.slice(0, 8)} dùng chung ${users.length} tài khoản.`,
-          );
-          totalHeld += held;
+          // KHÔNG auto-hold — shared device có thể là cùng model điện thoại
         }
       }
     }
 
-    // 2. Email farm detection
+    // 2. Email farm detection — CHỈ GHI LOG, KHÔNG HOLD
     const emailClusters: Array<{ emailBase: string; users: Array<{ id: string; email: string }> }> = [];
     let globalEmailMap = new Map<string, string>();
     const { data: authUsers, error: authErr } = await supabase.auth.admin.listUsers({ perPage: 1000 });
     if (!authErr && authUsers?.users) {
-      // Build global email map for all users
       globalEmailMap = buildEmailMap(authUsers.users as Array<{ id: string; email?: string }>);
       const emailGroups = new Map<string, Array<{ id: string; email: string }>>();
       for (const u of authUsers.users) {
@@ -202,23 +193,17 @@ Deno.serve(async (req) => {
             await supabase.from("pplp_fraud_signals").insert({
               actor_id: users[0].id,
               signal_type: "EMAIL_FARM",
-              severity: 4,
-              details: { email_base: emailBase, count: users.length, emails: users.map(u => u.email) },
+              severity: 3, // Giảm severity — chỉ cảnh báo
+              details: { email_base: emailBase, count: users.length, emails: users.map(u => u.email), note: "Chỉ cảnh báo - không tự động đình chỉ" },
               source: "daily-fraud-scan",
             });
           }
-
-          const userIds = users.map(u => u.id);
-          const held = await autoHoldUsers(
-            supabase, userIds, adminIds,
-            `Email farm: cụm "${emailBase}" có ${users.length} tài khoản.`,
-          );
-          totalHeld += held;
+          // KHÔNG auto-hold — email farm có thể là gia đình/tổ chức
         }
       }
     }
 
-    // 3. IP clustering + device cross-check to avoid false positives
+    // 3. IP clustering — CHỈ GHI LOG, KHÔNG HOLD
     const ipClusters: Array<{ ip: string; sharedDeviceUsers: string[]; uniqueDeviceUsers: string[] }> = [];
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const { data: recentLogins } = await supabase
@@ -239,26 +224,21 @@ Deno.serve(async (req) => {
         if (users.size > 5) {
           const userArr = Array.from(users);
 
-          // Cross-check: query device_hash (v2+) for all users in this IP cluster
           const { data: deviceData } = await supabase
             .from("pplp_device_registry")
             .select("user_id, device_hash")
             .in("user_id", userArr)
             .gte("fingerprint_version", 2);
 
-          // Build device_hash -> user_ids map
           const deviceToUsers = new Map<string, string[]>();
-          const usersWithDevice = new Set<string>();
           if (deviceData) {
             for (const d of deviceData) {
-              usersWithDevice.add(d.user_id);
               const list = deviceToUsers.get(d.device_hash) || [];
               list.push(d.user_id);
               deviceToUsers.set(d.device_hash, list);
             }
           }
 
-          // Shared device users: users who share a device_hash with another user in this IP
           const sharedDeviceUserSet = new Set<string>();
           for (const [, deviceUsers] of deviceToUsers) {
             if (deviceUsers.length > 1) {
@@ -266,8 +246,6 @@ Deno.serve(async (req) => {
             }
           }
           const sharedDeviceUsers = Array.from(sharedDeviceUserSet);
-
-          // Unique device users: everyone else (unique device OR no device data)
           const uniqueDeviceUsers = userArr.filter(id => !sharedDeviceUserSet.has(id));
 
           allFlaggedUserIds.push(...userArr);
@@ -276,130 +254,179 @@ Deno.serve(async (req) => {
           const today = new Date();
           today.setHours(0, 0, 0, 0);
 
-          if (sharedDeviceUsers.length > 0) {
-            // High severity: same IP + same device = definite fraud
-            const { data: existing } = await supabase
-              .from("pplp_fraud_signals")
-              .select("id")
-              .eq("signal_type", "IP_DEVICE_CLUSTER")
-              .eq("source", "daily-fraud-scan")
-              .gte("created_at", today.toISOString())
-              .in("actor_id", sharedDeviceUsers)
-              .limit(1);
+          // Tất cả IP clusters — chỉ ghi signal cảnh báo, KHÔNG auto-hold
+          const signalType = sharedDeviceUsers.length > 0 ? "IP_DEVICE_CLUSTER" : "IP_CLUSTER";
+          const severity = sharedDeviceUsers.length > 0 ? 3 : 1;
 
-            if (!existing?.length) {
-              await supabase.from("pplp_fraud_signals").insert({
-                actor_id: sharedDeviceUsers[0],
-                signal_type: "IP_DEVICE_CLUSTER",
-                severity: 4,
-                details: { ip_address: ip, shared_device_users: sharedDeviceUsers, unique_device_users: uniqueDeviceUsers },
-                source: "daily-fraud-scan",
-              });
-            }
+          const { data: existing } = await supabase
+            .from("pplp_fraud_signals")
+            .select("id")
+            .eq("signal_type", signalType)
+            .eq("source", "daily-fraud-scan")
+            .gte("created_at", today.toISOString())
+            .limit(1);
 
-            const held = await autoHoldUsers(
-              supabase, sharedDeviceUsers, adminIds,
-              `IP ${ip} + cùng thiết bị: ${sharedDeviceUsers.length} TK chung device.`,
-            );
-            totalHeld += held;
+          if (!existing?.length) {
+            await supabase.from("pplp_fraud_signals").insert({
+              actor_id: userArr[0],
+              signal_type: signalType,
+              severity,
+              details: {
+                ip_address: ip,
+                user_count: users.size,
+                shared_device_users: sharedDeviceUsers,
+                unique_device_users: uniqueDeviceUsers,
+                note: "Chỉ cảnh báo - không tự động đình chỉ. Hệ thống chỉ hold khi phát hiện claim farm.",
+              },
+              source: "daily-fraud-scan",
+            });
           }
-
-          if (uniqueDeviceUsers.length > 0 && sharedDeviceUsers.length === 0) {
-            // Same IP but all different devices - check post spam before holding
-            // Query posts in last 24h for each user in this IP cluster
-            const { data: recentPosts } = await supabase
-              .from("posts")
-              .select("user_id")
-              .in("user_id", uniqueDeviceUsers)
-              .gte("created_at", oneDayAgo);
-
-            const postCountByUser = new Map<string, number>();
-            let totalPosts = 0;
-            if (recentPosts) {
-              for (const p of recentPosts) {
-                postCountByUser.set(p.user_id, (postCountByUser.get(p.user_id) || 0) + 1);
-                totalPosts++;
-              }
-            }
-
-            // Identify spam users: >5 posts/24h per user
-            const spamUsers = uniqueDeviceUsers.filter(uid => (postCountByUser.get(uid) || 0) > 5);
-            const isClusterSpam = totalPosts > 15;
-
-            if (spamUsers.length > 0 || isClusterSpam) {
-              // Spam detected: auto-hold spammers + log IP_SPAM_CLUSTER
-              const usersToHold = isClusterSpam ? uniqueDeviceUsers : spamUsers;
-
-              const { data: existing } = await supabase
-                .from("pplp_fraud_signals")
-                .select("id")
-                .eq("signal_type", "IP_SPAM_CLUSTER")
-                .eq("source", "daily-fraud-scan")
-                .gte("created_at", today.toISOString())
-                .limit(1);
-
-              if (!existing?.length) {
-                await supabase.from("pplp_fraud_signals").insert({
-                  actor_id: usersToHold[0],
-                  signal_type: "IP_SPAM_CLUSTER",
-                  severity: 3,
-                  details: {
-                    ip_address: ip,
-                    user_count: users.size,
-                    user_ids: userArr,
-                    spam_users: spamUsers,
-                    total_posts_24h: totalPosts,
-                    post_counts: Object.fromEntries(postCountByUser),
-                    note: "Cùng IP + spam bài viết liên tục",
-                  },
-                  source: "daily-fraud-scan",
-                });
-              }
-
-              const held = await autoHoldUsers(
-                supabase, usersToHold, adminIds,
-                `IP ${ip} có ${users.size} TK spam bài (${totalPosts} bài/24h) - đình chỉ.`,
-              );
-              totalHeld += held;
-            } else {
-              // No spam: only log warning, do NOT auto-hold
-              const { data: existing } = await supabase
-                .from("pplp_fraud_signals")
-                .select("id")
-                .eq("signal_type", "IP_CLUSTER")
-                .eq("source", "daily-fraud-scan")
-                .gte("created_at", today.toISOString())
-                .limit(1);
-
-              if (!existing?.length) {
-                await supabase.from("pplp_fraud_signals").insert({
-                  actor_id: uniqueDeviceUsers[0],
-                  signal_type: "IP_CLUSTER",
-                  severity: 1,
-                  details: {
-                    ip_address: ip,
-                    user_count: users.size,
-                    user_ids: userArr,
-                    total_posts_24h: totalPosts,
-                    note: "Cùng IP, khác thiết bị, không spam - chỉ theo dõi",
-                  },
-                  source: "daily-fraud-scan",
-                });
-              }
-              // No auto-hold for non-spam IP clusters
-            }
-          }
+          // KHÔNG auto-hold — cùng WiFi/IP tại sự kiện cộng đồng là bình thường
         }
       }
     }
 
-    // 4. Lookup usernames for all flagged users and build enriched alerts
+    // 4. === MỚI: CLAIM FARM DETECTION — Phát hiện farm dựa trên hành vi claim ===
+    // Chỉ tự động hold khi phát hiện nhiều TK claim đồng bộ từ cùng IP/device
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    
+    // Get all claims in last hour
+    const { data: recentClaims } = await supabase
+      .from("pending_claims")
+      .select("user_id, amount, created_at, wallet_address")
+      .gte("created_at", oneHourAgo);
+
+    const { data: recentRewardClaims } = await supabase
+      .from("reward_claims")
+      .select("user_id, amount, created_at")
+      .gte("created_at", oneHourAgo);
+
+    const allRecentClaims = [
+      ...(recentClaims || []).map(c => ({ user_id: c.user_id, amount: Number(c.amount), created_at: c.created_at })),
+      ...(recentRewardClaims || []).map(c => ({ user_id: c.user_id, amount: Number(c.amount), created_at: c.created_at })),
+    ];
+
+    if (allRecentClaims.length >= 5) {
+      // Get claim user IPs from login logs
+      const claimUserIds = [...new Set(allRecentClaims.map(c => c.user_id))];
+      
+      const { data: claimUserIps } = await supabase
+        .from("login_ip_logs")
+        .select("user_id, ip_address")
+        .in("user_id", claimUserIds)
+        .gte("created_at", oneDayAgo);
+
+      // Group by IP
+      const ipToClaimUsers = new Map<string, Set<string>>();
+      if (claimUserIps) {
+        for (const log of claimUserIps) {
+          if (log.ip_address === "unknown") continue;
+          const set = ipToClaimUsers.get(log.ip_address) || new Set();
+          set.add(log.user_id);
+          ipToClaimUsers.set(log.ip_address, set);
+        }
+      }
+
+      // Also group by device hash
+      const { data: claimDevices } = await supabase
+        .from("pplp_device_registry")
+        .select("user_id, device_hash")
+        .in("user_id", claimUserIds)
+        .gte("fingerprint_version", 2);
+
+      const deviceToClaimUsers = new Map<string, Set<string>>();
+      if (claimDevices) {
+        for (const d of claimDevices) {
+          const set = deviceToClaimUsers.get(d.device_hash) || new Set();
+          set.add(d.user_id);
+          deviceToClaimUsers.set(d.device_hash, set);
+        }
+      }
+
+      // Merge IP and device clusters
+      const claimClusters: Array<{ type: string; key: string; users: string[] }> = [];
+
+      for (const [ip, userSet] of ipToClaimUsers) {
+        if (userSet.size >= 5) {
+          claimClusters.push({ type: "ip", key: ip, users: Array.from(userSet) });
+        }
+      }
+      for (const [hash, userSet] of deviceToClaimUsers) {
+        if (userSet.size >= 5) {
+          claimClusters.push({ type: "device", key: hash, users: Array.from(userSet) });
+        }
+      }
+
+      const DAILY_CLAIM_CAP = 500000;
+
+      for (const cluster of claimClusters) {
+        // Filter to only users who actually claimed in this hour
+        const clusterClaims = allRecentClaims.filter(c => cluster.users.includes(c.user_id));
+        if (clusterClaims.length < 5) continue;
+
+        // Check: ≥60% claim max amount
+        const maxClaimCount = clusterClaims.filter(c => c.amount >= DAILY_CLAIM_CAP * 0.8).length;
+        const maxClaimRatio = clusterClaims.length > 0 ? maxClaimCount / clusterClaims.length : 0;
+
+        // Check: synchronized timing (most claims within 5 min of each other)
+        const timestamps = clusterClaims.map(c => new Date(c.created_at).getTime()).sort();
+        let syncPairs = 0;
+        for (let i = 1; i < timestamps.length; i++) {
+          if (timestamps[i] - timestamps[i - 1] < 5 * 60 * 1000) syncPairs++;
+        }
+        const syncRatio = timestamps.length > 1 ? syncPairs / (timestamps.length - 1) : 0;
+
+        // TRIGGER: ≥5 users + ≥60% max claim + ≥50% synchronized
+        if (maxClaimRatio >= 0.6 && syncRatio >= 0.5) {
+          console.warn(`[CLAIM FARM] ${cluster.type}=${cluster.key.slice(0, 8)}: ${cluster.users.length} users, maxRatio=${maxClaimRatio}, syncRatio=${syncRatio}`);
+
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const { data: existing } = await supabase
+            .from("pplp_fraud_signals")
+            .select("id")
+            .eq("signal_type", "CLAIM_FARM")
+            .eq("source", "daily-fraud-scan")
+            .gte("created_at", today.toISOString())
+            .limit(1);
+
+          if (!existing?.length) {
+            await supabase.from("pplp_fraud_signals").insert({
+              actor_id: cluster.users[0],
+              signal_type: "CLAIM_FARM",
+              severity: 5,
+              details: {
+                cluster_type: cluster.type,
+                cluster_key: cluster.key.slice(0, 8),
+                user_ids: cluster.users,
+                claim_count: clusterClaims.length,
+                max_claim_ratio: maxClaimRatio,
+                sync_ratio: syncRatio,
+                note: "Farm claim đồng bộ - tự động đình chỉ",
+              },
+              source: "daily-fraud-scan",
+            });
+          }
+
+          // AUTO-HOLD cho claim farm — đây là hành vi gian lận thực sự
+          const held = await autoHoldUsers(
+            supabase, cluster.users, adminIds,
+            `CLAIM FARM: ${cluster.users.length} TK claim đồng bộ từ cùng ${cluster.type} (${cluster.key.slice(0, 8)}), tỷ lệ max: ${Math.round(maxClaimRatio * 100)}%, đồng bộ: ${Math.round(syncRatio * 100)}%.`,
+          );
+          totalHeld += held;
+
+          allFlaggedUserIds.push(...cluster.users);
+          alerts.push(`🚨 CLAIM FARM (${cluster.type}=${cluster.key.slice(0, 8)}): ${cluster.users.length} TK claim đồng bộ, max=${Math.round(maxClaimRatio * 100)}%, sync=${Math.round(syncRatio * 100)}%`);
+        }
+      }
+    }
+
+    // 5. Lookup usernames for all flagged users and build enriched alerts
     const usernameMap = await lookupUsernames(supabase, allFlaggedUserIds);
     const allFlaggedUsernames: string[] = [...new Set(allFlaggedUserIds)].map(
       id => usernameMap.get(id) || id.slice(0, 8)
     );
 
-    // Build flagged_emails map: username -> email
     const flaggedEmails: Record<string, string> = {};
     for (const uid of new Set(allFlaggedUserIds)) {
       const uname = usernameMap.get(uid) || uid.slice(0, 8);
@@ -407,29 +434,29 @@ Deno.serve(async (req) => {
       if (email) flaggedEmails[uname] = email;
     }
 
-    // Build enriched alert strings with usernames + emails
+    // Build enriched alert strings
     for (const { hash, users } of deviceClusters) {
       const names = users.map(id => formatUserWithEmail(id, usernameMap, globalEmailMap)).join(', ');
-      alerts.push(`Thiết bị ${hash.slice(0, 8)}... có ${users.length} TK: ${names}`);
+      alerts.push(`⚠️ Thiết bị ${hash.slice(0, 8)}... có ${users.length} TK (chỉ cảnh báo): ${names}`);
     }
     for (const { emailBase, users } of emailClusters) {
       const names = users.map(u => formatUserWithEmail(u.id, usernameMap, globalEmailMap)).join(', ');
-      alerts.push(`Cụm email "${emailBase}" có ${users.length} TK: ${names}`);
+      alerts.push(`⚠️ Cụm email "${emailBase}" có ${users.length} TK (chỉ cảnh báo): ${names}`);
     }
     for (const { ip, sharedDeviceUsers, uniqueDeviceUsers } of ipClusters) {
       const parts: string[] = [];
       if (sharedDeviceUsers.length > 0) {
         const names = sharedDeviceUsers.map(id => formatUserWithEmail(id, usernameMap, globalEmailMap)).join(', ');
-        parts.push(`${sharedDeviceUsers.length} TK chung thiết bị (đã đình chỉ): ${names}`);
+        parts.push(`${sharedDeviceUsers.length} TK chung thiết bị (chỉ cảnh báo): ${names}`);
       }
       if (uniqueDeviceUsers.length > 0) {
         const names = uniqueDeviceUsers.map(id => formatUserWithEmail(id, usernameMap, globalEmailMap)).join(', ');
         parts.push(`${uniqueDeviceUsers.length} TK thiết bị riêng (chỉ cảnh báo): ${names}`);
       }
-      alerts.push(`IP ${ip}: ${parts.join(' | ')}`);
+      alerts.push(`⚠️ IP ${ip}: ${parts.join(' | ')}`);
     }
 
-    // 5. Notify admins if any alerts found
+    // 6. Notify admins if any alerts found
     if (alerts.length > 0) {
       const admins = Array.from(adminIds);
 
@@ -448,11 +475,12 @@ Deno.serve(async (req) => {
               accounts_held: totalHeld,
               flagged_usernames: allFlaggedUsernames.slice(0, 50),
               flagged_emails: flaggedEmails,
+              note: "Chỉ auto-hold khi phát hiện CLAIM FARM. Các cảnh báo khác chỉ để theo dõi.",
             },
           }))
         );
 
-        console.log(`[Daily Fraud Scan] Sent ${alerts.length} alerts to ${admins.length} admins. Auto-held ${totalHeld} accounts.`);
+        console.log(`[Daily Fraud Scan] Sent ${alerts.length} alerts to ${admins.length} admins. Auto-held ${totalHeld} accounts (claim farm only).`);
       }
     }
 

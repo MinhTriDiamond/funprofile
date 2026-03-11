@@ -268,30 +268,89 @@ Deno.serve(async (req) => {
       const fraudReasons: string[] = [];
       const relatedUserIds: string[] = [];
 
-      // Check shared device fingerprint - cùng thiết bị = cùng người tạo nhiều tài khoản
-      const { data: userDevices } = await supabaseAdmin
-        .from('pplp_device_registry')
-        .select('device_hash')
-        .eq('user_id', userId);
+      // === CLAIM SYNC CHECK: Phát hiện farm claim đồng bộ từ cùng IP ===
+      // Chỉ phát hiện khi nhiều TK claim cùng lúc từ cùng IP (hành vi bot)
+      const claimIp = req.headers.get("cf-connecting-ip") 
+        || req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+        || req.headers.get("x-real-ip")
+        || "unknown";
 
-      if (userDevices && userDevices.length > 0) {
-        for (const dev of userDevices) {
-          const { data: otherDeviceUsers } = await supabaseAdmin
-            .from('pplp_device_registry')
+      if (claimIp !== "unknown") {
+        const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+        
+        // Find other users who claimed from same IP in last 30 min
+        const { data: recentIpClaims } = await supabaseAdmin
+          .from('pending_claims')
+          .select('user_id, amount, created_at')
+          .neq('user_id', userId)
+          .gte('created_at', thirtyMinAgo);
+
+        // Cross-check with login_ip_logs to find claims from same IP
+        if (recentIpClaims && recentIpClaims.length > 0) {
+          const claimUserIds = [...new Set(recentIpClaims.map(c => c.user_id))];
+          
+          const { data: sameIpUsers } = await supabaseAdmin
+            .from('login_ip_logs')
             .select('user_id')
-            .eq('device_hash', dev.device_hash)
-            .neq('user_id', userId);
+            .eq('ip_address', claimIp)
+            .in('user_id', claimUserIds)
+            .gte('created_at', thirtyMinAgo);
 
-          if (otherDeviceUsers && otherDeviceUsers.length > 0) {
-            const otherIds = otherDeviceUsers.map(u => u.user_id);
-            relatedUserIds.push(...otherIds);
-            fraudReasons.push(`Thiết bị này đang được dùng bởi ${otherIds.length + 1} tài khoản. Để đảm bảo tính minh bạch, hệ thống cần Admin xác minh 🙏`);
-            break;
+          const sameIpClaimUsers = [...new Set(sameIpUsers?.map(u => u.user_id) || [])];
+
+          // ≥3 accounts claiming from same IP in 30 min → suspicious
+          if (sameIpClaimUsers.length >= 3) {
+            const allSuspect = [userId, ...sameIpClaimUsers];
+            
+            // Check if most claim max amount (bot-like)
+            const suspectClaims = recentIpClaims.filter(c => sameIpClaimUsers.includes(c.user_id));
+            const maxClaimCount = suspectClaims.filter(c => Number(c.amount) >= DAILY_CLAIM_CAP * 0.8).length;
+            const maxClaimRatio = suspectClaims.length > 0 ? maxClaimCount / suspectClaims.length : 0;
+
+            // Hold + signal
+            for (const uid of allSuspect) {
+              await supabaseAdmin.from('profiles').update({
+                reward_status: 'on_hold',
+                admin_notes: `CLAIM_SYNC: ${allSuspect.length} TK claim từ cùng IP ${claimIp} trong 30 phút. Tỷ lệ claim max: ${Math.round(maxClaimRatio * 100)}%. Chờ Admin xác minh.`,
+              }).eq('id', uid).not('reward_status', 'in', '("banned","approved")');
+            }
+
+            await supabaseAdmin.from('pplp_fraud_signals').insert({
+              actor_id: userId,
+              signal_type: 'CLAIM_SYNC_SUSPICIOUS',
+              severity: 4,
+              details: { 
+                ip_address: claimIp, 
+                user_ids: allSuspect, 
+                claim_count: sameIpClaimUsers.length + 1,
+                max_claim_ratio: maxClaimRatio,
+                window: '30min' 
+              },
+              source: 'claim-reward',
+            });
+
+            // Notify admins
+            const { data: admins } = await supabaseAdmin
+              .from('user_roles').select('user_id').eq('role', 'admin');
+            if (admins?.length) {
+              await supabaseAdmin.from('notifications').insert(
+                admins.map(a => ({
+                  user_id: a.user_id, actor_id: userId,
+                  type: 'admin_claim_sync', read: false,
+                  metadata: { ip: claimIp, count: allSuspect.length, max_ratio: maxClaimRatio },
+                }))
+              );
+            }
+
+            return new Response(JSON.stringify({
+              error: 'Account Review',
+              message: 'Hệ thống phát hiện nhiều tài khoản claim cùng lúc từ cùng mạng. Tài khoản đang chờ Admin xác minh 🙏',
+            }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
           }
         }
       }
 
-      // Check duplicate avatar
+      // Check duplicate avatar — chỉ ghi warning, KHÔNG hold
       if (profile.avatar_url) {
         const { count: avatarDups } = await supabaseAdmin
           .from('profiles')
@@ -299,11 +358,11 @@ Deno.serve(async (req) => {
           .eq('avatar_url', profile.avatar_url)
           .neq('id', userId);
         if (avatarDups && avatarDups > 0) {
-          fraudReasons.push('Ảnh đại diện trùng với tài khoản khác. Vui lòng sử dụng ảnh cá nhân của riêng bạn 🌸');
+          fraudReasons.push('Ảnh đại diện trùng với tài khoản khác');
         }
       }
 
-      // Check duplicate wallet
+      // Check duplicate wallet — chỉ ghi warning, KHÔNG hold
       if (profile.public_wallet_address) {
         const { count: walletDups } = await supabaseAdmin
           .from('profiles')
@@ -311,62 +370,20 @@ Deno.serve(async (req) => {
           .eq('public_wallet_address', profile.public_wallet_address)
           .neq('id', userId);
         if (walletDups && walletDups > 0) {
-          fraudReasons.push('Địa chỉ ví đang được sử dụng bởi tài khoản khác. Mỗi người nên có ví riêng để bảo vệ quyền lợi 💛');
+          fraudReasons.push('Địa chỉ ví đang được sử dụng bởi tài khoản khác');
         }
       }
 
-      // If fraud detected -> freeze ALL related accounts + current user, send to admin
+      // Duplicate avatar/wallet → chỉ ghi signal cảnh báo, KHÔNG hold/block
       if (fraudReasons.length > 0) {
-        const holdNote = fraudReasons.join('; ');
-        console.warn(`Integrity check for user ${userId}: ${holdNote}`);
-
-        // Freeze current user
-        await supabaseAdmin.from('profiles').update({
-          reward_status: 'on_hold',
-          admin_notes: holdNote,
-        }).eq('id', userId);
-
-        // Freeze all related users on same device
-        const uniqueRelated = [...new Set(relatedUserIds)];
-        if (uniqueRelated.length > 0) {
-          for (const relatedId of uniqueRelated) {
-            await supabaseAdmin.from('profiles').update({
-              reward_status: 'on_hold',
-              admin_notes: `Liên quan đến tài khoản ${userId.slice(0, 8)}... - cùng thiết bị. Chờ Admin xác minh 🙏`,
-            }).eq('id', relatedId);
-          }
-        }
-
-        // Record integrity signal
+        console.warn(`Integrity warning for user ${userId}: ${fraudReasons.join('; ')}`);
         await supabaseAdmin.from('pplp_fraud_signals').insert({
           actor_id: userId,
-          signal_type: 'SHARED_DEVICE',
-          severity: 3,
-          details: { reasons: fraudReasons, related_users: uniqueRelated },
+          signal_type: 'CLAIM_INTEGRITY_WARNING',
+          severity: 2,
+          details: { reasons: fraudReasons, note: 'Chỉ cảnh báo - không tự động hold' },
           source: 'claim-reward',
         });
-
-        // Notify admins
-        const { data: admins } = await supabaseAdmin
-          .from('user_roles')
-          .select('user_id')
-          .eq('role', 'admin');
-
-        if (admins && admins.length > 0) {
-          const notifications = admins.map(a => ({
-            user_id: a.user_id,
-            actor_id: userId,
-            type: 'admin_shared_device',
-            read: false,
-          }));
-          await supabaseAdmin.from('notifications').insert(notifications);
-        }
-
-        return new Response(JSON.stringify({
-          error: 'Account Review',
-          message: `Tài khoản của bạn đang chờ xác minh từ Admin 🙏\n\nĐể bảo vệ quyền lợi cho tất cả mọi người, hệ thống cần xác minh khi phát hiện các tài khoản có liên quan. Xin vui lòng liên hệ Admin để được hỗ trợ nhanh nhất. Cảm ơn bạn đã thấu hiểu 💛`,
-          reasons: fraudReasons,
-        }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
     }
 
