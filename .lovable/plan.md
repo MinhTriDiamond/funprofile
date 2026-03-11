@@ -1,83 +1,41 @@
 
-# Database & Codebase Audit — Implementation Roadmap
 
-## Tài liệu tham chiếu
-- `.lovable/audit-report.md` — Audit report đầy đủ (633 dòng, 20 phần)
+## Phân tích lỗi: False positive trong phát hiện thiết bị dùng chung
 
----
+### Nguyên nhân gốc
 
-## ĐÃ HOÀN THÀNH
+Hệ thống fingerprint hiện tại (`deviceFingerprint.ts`) sử dụng các tín hiệu **phần cứng thuần túy**: screen size, colorDepth, language, platform, canvas, WebGL, deviceMemory, touchPoints, devicePixelRatio. Trên mobile, **tất cả điện thoại cùng model + cùng trình duyệt** sẽ tạo ra hash **giống hệt nhau**. Ví dụ: 100 người dùng Samsung Galaxy A15 + Chrome đều có cùng device_hash → hệ thống nghĩ tất cả dùng chung 1 thiết bị.
 
-### Phase 0 — Audit & Documentation ✅
-| # | Công việc | Trạng thái |
-|---|----------|-----------|
-| 0A | Viết audit report 20 phần | ✅ Done |
-| 0B | Xác định Canonical Domain Models | ✅ Done |
-| 0C | Xác định Do Not Touch First list | ✅ Done |
-| 0D | Xác định Refactor Blockers | ✅ Done |
+Thêm vào đó, `log-login-ip` (line 204-205) **ghi đè vô điều kiện** `reward_status = "on_hold"` cho tất cả users cùng hash, kể cả những tài khoản **đã được Admin duyệt trước đó**. Mỗi lần bất kỳ ai trong nhóm đăng nhập → tất cả bị hold lại.
 
-### Phase 1A — Performance Indexes ✅
-| Index | Table | Columns | Mục đích |
-|-------|-------|---------|----------|
-| `idx_notifications_user_read` | notifications | user_id, read | Badge count + dropdown |
-| `idx_reactions_post_type` | reactions | post_id, type | Reaction counts per post |
-| `idx_light_actions_user_created` | light_actions | user_id, created_at DESC | Light Score history |
-| `idx_posts_user_created` | posts | user_id, created_at DESC | Profile feed |
-| `idx_chunked_chunks_status` | chunked_recording_chunks | status | Cleanup queries |
-| `idx_donations_sender_status` | donations | sender_id, status | Benefactor leaderboard |
-| `idx_donations_recipient_status` | donations | recipient_id, status | Recipient leaderboard |
-| `idx_comments_post_created` | comments | post_id, created_at | Comment thread load |
-| `idx_friendships_user_status` | friendships | user_id, status | Friend lookup |
-| `idx_friendships_friend_status` | friendships | friend_id, status | Friend lookup |
+### Kế hoạch sửa — 2 file
 
-### Phase 1B — SQL Comments Documentation ✅
-- COMMENT ON TABLE cho tất cả 93 tables
-- COMMENT ON VIEW cho tất cả 5 views
-- Phân loại theo domain: Core, Social, Messaging, Live, Recording, Light Score, Rewards, Wallet, Auth, OAuth, Search, Content, System, PPLP
+#### 1. `src/utils/deviceFingerprint.ts` — Thêm entropy riêng biệt cho mỗi trình duyệt
 
----
+Thêm một **persistent random ID** (lưu trong localStorage) vào fingerprint. Điều này đảm bảo:
+- Mỗi **browser instance** có hash riêng (phát hiện đúng multi-account trên cùng trình duyệt)
+- Hai người dùng **khác nhau** trên cùng model điện thoại **không bị nhầm** là cùng thiết bị
 
-## CHƯA LÀM — KẾ HOẠCH TIẾP THEO
+```text
+Trước: hash(screen + canvas + webgl + ...)  → trùng giữa cùng model
+Sau:   hash(screen + canvas + webgl + ... + localStorage_random_id)  → unique per browser
+```
 
-### Phase 1C-F — Safe Cleanup (rủi ro THẤP)
+#### 2. `supabase/functions/log-login-ip/index.ts` — Không ghi đè tài khoản đã được Admin duyệt
 
-| # | Công việc | Chi tiết |
-|---|----------|---------|
-| 1C | Phân loại empty tables | 35 tables 0-rows → Active/Planned/Legacy/Deletable |
-| 1D | console.log → logger | 77 instances cần thay thế |
-| 1E | useAdminRole shared hook | Đã tạo, cần migrate các component dùng trực tiếp `has_role` |
-| 1F | Edge function _shared helpers | cors, auth, response — đã tạo ✅ |
+Sửa logic hold (line 203-206):
+- **Bỏ qua** users có `reward_status = 'approved'` — Admin đã xác minh rồi, không hold lại
+- Chỉ hold users có `reward_status` chưa được duyệt (null, 'pending', etc.)
 
-### Phase 2 — Structural Improvements (rủi ro TRUNG BÌNH)
+Điều này ngăn vòng lặp: Admin duyệt → user đăng nhập → bị hold lại → Admin phải duyệt lại.
 
-| # | Công việc | Chi tiết |
-|---|----------|---------|
-| 2A | State enum documentation | Document các status/type enums trong DB |
-| 2B | Merge search_logs → search_history | Consolidate duplicate search tracking |
-| 2C | notifications.read → is_read | Compatibility migration (backfill + dual-write) |
-| 2D | Xóa useLiveComments | Dead code cleanup |
-| 2E | Module hóa hooks/ | Nhóm theo domain (social, chat, live, wallet, etc.) |
-| 2F | Tách components/feed/ | Sub-domains cho feed components |
-| 2G | useCapabilities layer | Đã tạo ✅, cần migrate consumers |
+### Chi tiết kỹ thuật
 
-### Phase 3 — Deep Refactor (rủi ro CAO)
+**deviceFingerprint.ts:**
+- Thêm function `getOrCreateBrowserId()` — đọc/tạo random UUID trong `localStorage` key `fp_browser_id`
+- Thêm UUID này vào mảng `raw` trước khi hash
 
-| # | Công việc | Blocker |
-|---|----------|---------|
-| 3A | Tách profiles → user_wallet_config | Nhiều component đọc trực tiếp profiles |
-| 3B | Claims lifecycle audit | reward_claims + pending_claims khác lifecycle |
-| 3C | FinancialTab → platform_financial_data | Admin UI đang đọc grand_total_* từ profiles |
-| 3D | get_user_rewards_v2 refactor | Đang dùng livestreams table, cần chuyển live_sessions |
-| 3E | live_comments product review | Quyết định drop hoặc giữ |
-| 3F | Profiles RLS tightening | Public by Design → quyết định enforcement model |
-| 3G | Gộp 15 media edge functions | Router pattern |
+**log-login-ip/index.ts (line 203-206):**
+- Thay vì hold tất cả `activeUserIds`, lọc bỏ users có `reward_status = 'approved'`
+- Chỉ hold users chưa được duyệt
 
----
-
-## Linter Warnings (có sẵn, chưa xử lý)
-- **RLS Enabled No Policy**: Một số tables có RLS enabled nhưng chưa có policy
-- **RLS Policy Always True**: Một số policies dùng `USING (true)` cho INSERT/UPDATE/DELETE
-- Sẽ xử lý trong Phase 2-3 khi refactor từng domain
-
-## Light Score 5 Trụ Cột — Phase 1 ✅ HOÀN THÀNH
-(Chi tiết xem phiên bản trước của plan)
