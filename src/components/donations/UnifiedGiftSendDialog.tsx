@@ -456,7 +456,7 @@ export const UnifiedGiftSendDialog = ({
         <DialogContent className="!grid-rows-none !flex !flex-col w-full sm:w-[95vw] max-w-md lg:max-w-[720px] max-h-[85vh] p-0 sm:p-0 overflow-hidden">
           <div className="px-4 pt-4 sm:px-6 sm:pt-6 pb-2">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-base">
+              <DialogTitle className="flex items-center gap-2 text-base pr-10">
                 <Gift className="w-5 h-5 text-gold shrink-0" />
                 <span className="break-words">{dialogTitle}</span>
               </DialogTitle>

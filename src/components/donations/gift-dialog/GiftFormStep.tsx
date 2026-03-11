@@ -141,7 +141,7 @@ export function GiftFormStep(props: GiftFormStepProps) {
               <p className="font-medium truncate">{senderProfile.display_name || senderProfile.username}</p>
               <p className="text-xs text-muted-foreground truncate">@{senderProfile.username}</p>
               {effectiveAddress && (
-                <div className="flex items-center gap-1">
+                <div className="hidden sm:flex items-center gap-1">
                   <p className="text-xs text-muted-foreground font-mono truncate">{effectiveAddress.slice(0, 8)}...{effectiveAddress.slice(-6)}</p>
                   <button type="button" onClick={() => onCopyAddress(effectiveAddress)} className="p-0.5 hover:bg-muted rounded">
                     <Copy className="w-3 h-3 text-muted-foreground" />
