@@ -126,10 +126,15 @@ export function useSendToken() {
         });
       }
 
-      // Step 2: Broadcasted — return hash IMMEDIATELY, run rest in background
+      // Step 2: Broadcasted — return hash IMMEDIATELY
       logger.debug('[SEND] TX_HASH_RECEIVED:', hash);
       setTxHash(hash);
       setTxStep('broadcasted');
+
+      // skipBackground: dùng cho multi-send — caller tự quản lý receipt + DB
+      if (skipBackground) {
+        return hash;
+      }
 
       // Background: receipt polling + DB insert (non-blocking)
       (async () => {
@@ -159,7 +164,6 @@ export function useSendToken() {
         try {
           logger.debug('[SEND] DB_LOG_START (background)');
           setTxStep('finalizing');
-          // Use getSession (cached) instead of getUser (network call)
           const { data: { session } } = await supabase.auth.getSession();
           if (session?.user && hash) {
             await withTimeout(
