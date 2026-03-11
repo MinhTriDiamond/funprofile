@@ -3256,6 +3256,7 @@ export type Database = {
           banned_at: string | null
           bio: string | null
           claim_freeze_until: string | null
+          claim_speed_limit_until: string | null
           cover_url: string | null
           created_at: string
           cross_platform_data: Json | null
@@ -3267,6 +3268,7 @@ export type Database = {
           email_verified_at: string | null
           external_wallet_address: string | null
           financial_updated_at: string | null
+          fraud_risk_level: number
           full_name: string | null
           fun_id: string | null
           grand_total_bet: number
@@ -3314,6 +3316,7 @@ export type Database = {
           banned_at?: string | null
           bio?: string | null
           claim_freeze_until?: string | null
+          claim_speed_limit_until?: string | null
           cover_url?: string | null
           created_at?: string
           cross_platform_data?: Json | null
@@ -3325,6 +3328,7 @@ export type Database = {
           email_verified_at?: string | null
           external_wallet_address?: string | null
           financial_updated_at?: string | null
+          fraud_risk_level?: number
           full_name?: string | null
           fun_id?: string | null
           grand_total_bet?: number
@@ -3372,6 +3376,7 @@ export type Database = {
           banned_at?: string | null
           bio?: string | null
           claim_freeze_until?: string | null
+          claim_speed_limit_until?: string | null
           cover_url?: string | null
           created_at?: string
           cross_platform_data?: Json | null
@@ -3383,6 +3388,7 @@ export type Database = {
           email_verified_at?: string | null
           external_wallet_address?: string | null
           financial_updated_at?: string | null
+          fraud_risk_level?: number
           full_name?: string | null
           fun_id?: string | null
           grand_total_bet?: number
@@ -4453,6 +4459,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      sybil_clusters: {
+        Row: {
+          admin_notes: string | null
+          ai_analysis: Json | null
+          cluster_key: string
+          cluster_type: string
+          confidence_score: number
+          created_at: string | null
+          detection_signals: Json | null
+          id: string
+          last_scanned_at: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          risk_level: number
+          updated_at: string | null
+          user_ids: string[]
+        }
+        Insert: {
+          admin_notes?: string | null
+          ai_analysis?: Json | null
+          cluster_key: string
+          cluster_type: string
+          confidence_score?: number
+          created_at?: string | null
+          detection_signals?: Json | null
+          id?: string
+          last_scanned_at?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          risk_level?: number
+          updated_at?: string | null
+          user_ids?: string[]
+        }
+        Update: {
+          admin_notes?: string | null
+          ai_analysis?: Json | null
+          cluster_key?: string
+          cluster_type?: string
+          confidence_score?: number
+          created_at?: string | null
+          detection_signals?: Json | null
+          id?: string
+          last_scanned_at?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          risk_level?: number
+          updated_at?: string | null
+          user_ids?: string[]
+        }
+        Relationships: []
       }
       system_config: {
         Row: {
