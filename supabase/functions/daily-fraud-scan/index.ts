@@ -390,7 +390,42 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 5. Build enriched alerts with usernames
+    // 5. === AI-POWERED SYBIL DETECTION ===
+    // Call analyze-fraud-patterns to use AI for behavioral analysis
+    let aiResults: { clusters_analyzed: number; clusters_actioned: number; summary: string; details: any[] } | null = null;
+    try {
+      const aiResponse = await fetch(
+        `${Deno.env.get("SUPABASE_URL")}/functions/v1/analyze-fraud-patterns`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ source: "daily-fraud-scan" }),
+        }
+      );
+
+      if (aiResponse.ok) {
+        aiResults = await aiResponse.json();
+        if (aiResults && aiResults.clusters_actioned > 0) {
+          totalFlagged += aiResults.details?.reduce((s: number, d: any) => s + (d.escalation?.flagged || 0), 0) || 0;
+          totalLimited += aiResults.details?.reduce((s: number, d: any) => s + (d.escalation?.limited || 0), 0) || 0;
+          totalHeld += aiResults.details?.reduce((s: number, d: any) => s + (d.escalation?.held || 0), 0) || 0;
+
+          for (const detail of (aiResults.details || [])) {
+            alerts.push(`🤖 AI Sybil: "${detail.cluster_id}" (${detail.users} TK, confidence ${detail.confidence}%, risk ${detail.risk_level}) — ${detail.reason?.slice(0, 100)}`);
+          }
+        }
+        console.log(`[Daily Fraud Scan] AI analysis: ${aiResults?.clusters_analyzed || 0} clusters analyzed, ${aiResults?.clusters_actioned || 0} actioned`);
+      } else {
+        console.warn(`[Daily Fraud Scan] AI analysis failed: ${aiResponse.status}`);
+      }
+    } catch (aiErr) {
+      console.error("[Daily Fraud Scan] AI analysis error:", aiErr);
+      // Continue without AI — rule-based detection still works
+    }
+
     const usernameMap = await lookupUsernames(supabase, allFlaggedUserIds);
     const allFlaggedUsernames: string[] = [...new Set(allFlaggedUserIds)].map(
       id => usernameMap.get(id) || id.slice(0, 8)
