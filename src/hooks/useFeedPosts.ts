@@ -203,7 +203,16 @@ const fetchFeedPage = async (cursor: string | null, currentUserId: string | null
   postsData = await fetchGiftProfiles(postsData);
   
   const postIds = postsData.map(p => p.id);
-  const postStats = await fetchPostStats(postIds);
+  const [postStats, attachmentsMap] = await Promise.all([
+    fetchPostStats(postIds),
+    fetchPostAttachments(postIds),
+  ]);
+
+  // Merge attachments into posts
+  postsData = postsData.map(p => ({
+    ...p,
+    attachments: attachmentsMap[p.id] || [],
+  }));
 
   const nextCursor = hasMore && postsData.length > 0 
     ? postsData[postsData.length - 1].created_at 
