@@ -200,9 +200,18 @@ async function handleDeviceFingerprint(supabaseAdmin: any, userId: string, devic
         source: "log-login-ip",
       });
     } else {
-      const holdMessage = `Hệ thống nhận thấy thiết bị này được dùng bởi ${activeUserIds.length} tài khoản. Để bảo vệ quyền lợi mọi người, tài khoản chờ Admin xác minh 🙏`;
-      for (const uid of activeUserIds) {
-        await supabaseAdmin.from("profiles").update({ reward_status: "on_hold", admin_notes: holdMessage }).eq("id", uid);
+      // Only hold users that haven't been approved by admin yet
+      const { data: profilesToHold } = await supabaseAdmin
+        .from("profiles").select("id, reward_status")
+        .in("id", activeUserIds)
+        .not("reward_status", "eq", "approved");
+
+      const idsToHold = profilesToHold?.map((p: any) => p.id) || [];
+      if (idsToHold.length > 0) {
+        const holdMessage = `Hệ thống nhận thấy thiết bị này được dùng bởi ${activeUserIds.length} tài khoản. Để bảo vệ quyền lợi mọi người, tài khoản chờ Admin xác minh 🙏`;
+        for (const uid of idsToHold) {
+          await supabaseAdmin.from("profiles").update({ reward_status: "on_hold", admin_notes: holdMessage }).eq("id", uid);
+        }
       }
     }
 
