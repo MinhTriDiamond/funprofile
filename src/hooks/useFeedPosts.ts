@@ -15,6 +15,19 @@ export interface GiftProfile {
   avatar_url: string | null;
 }
 
+export interface PostAttachmentData {
+  id: string;
+  file_url: string;
+  storage_key: string | null;
+  file_type: string;
+  mime_type: string | null;
+  width: number | null;
+  height: number | null;
+  size_bytes: number | null;
+  sort_order: number;
+  alt_text: string | null;
+}
+
 export interface FeedPost {
   id: string;
   content: string;
@@ -42,6 +55,7 @@ export interface FeedPost {
   };
   recipientProfile?: GiftProfile | null;
   senderProfile?: GiftProfile | null;
+  attachments?: PostAttachmentData[];
 }
 
 interface FeedPage {
