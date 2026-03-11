@@ -2518,6 +2518,62 @@ export type Database = {
         }
         Relationships: []
       }
+      post_attachments: {
+        Row: {
+          alt_text: string | null
+          created_at: string
+          file_type: string
+          file_url: string
+          height: number | null
+          id: string
+          mime_type: string | null
+          post_id: string
+          size_bytes: number | null
+          sort_order: number
+          storage_key: string | null
+          transform_meta: Json | null
+          width: number | null
+        }
+        Insert: {
+          alt_text?: string | null
+          created_at?: string
+          file_type?: string
+          file_url: string
+          height?: number | null
+          id?: string
+          mime_type?: string | null
+          post_id: string
+          size_bytes?: number | null
+          sort_order?: number
+          storage_key?: string | null
+          transform_meta?: Json | null
+          width?: number | null
+        }
+        Update: {
+          alt_text?: string | null
+          created_at?: string
+          file_type?: string
+          file_url?: string
+          height?: number | null
+          id?: string
+          mime_type?: string | null
+          post_id?: string
+          size_bytes?: number | null
+          sort_order?: number
+          storage_key?: string | null
+          transform_meta?: Json | null
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_attachments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       post_tags: {
         Row: {
           created_at: string
