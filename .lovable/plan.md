@@ -1,83 +1,80 @@
 
-# Database & Codebase Audit — Implementation Roadmap
 
-## Tài liệu tham chiếu
-- `.lovable/audit-report.md` — Audit report đầy đủ (633 dòng, 20 phần)
+## Chuyển đổi Anti-Farm: Từ phát hiện đăng ký → phát hiện hành vi Claim
 
----
+### Vấn đề hiện tại
 
-## ĐÃ HOÀN THÀNH
+Hệ thống đang tự động đình chỉ (`on_hold`) và thậm chí cấm (`banned`) tài khoản dựa trên:
+- Cùng IP đăng nhập (`log-login-ip` + `daily-fraud-scan`)
+- Cùng device hash (`log-login-ip` line 192: auto-ban, line 212: auto-hold)
+- Cụm email giống nhau (`log-login-ip` + `daily-fraud-scan`)
 
-### Phase 0 — Audit & Documentation ✅
-| # | Công việc | Trạng thái |
-|---|----------|-----------|
-| 0A | Viết audit report 20 phần | ✅ Done |
-| 0B | Xác định Canonical Domain Models | ✅ Done |
-| 0C | Xác định Do Not Touch First list | ✅ Done |
-| 0D | Xác định Refactor Blockers | ✅ Done |
+Điều này gây false positive lớn khi nhiều người đăng ký cùng lúc tại sự kiện cộng đồng.
 
-### Phase 1A — Performance Indexes ✅
-| Index | Table | Columns | Mục đích |
-|-------|-------|---------|----------|
-| `idx_notifications_user_read` | notifications | user_id, read | Badge count + dropdown |
-| `idx_reactions_post_type` | reactions | post_id, type | Reaction counts per post |
-| `idx_light_actions_user_created` | light_actions | user_id, created_at DESC | Light Score history |
-| `idx_posts_user_created` | posts | user_id, created_at DESC | Profile feed |
-| `idx_chunked_chunks_status` | chunked_recording_chunks | status | Cleanup queries |
-| `idx_donations_sender_status` | donations | sender_id, status | Benefactor leaderboard |
-| `idx_donations_recipient_status` | donations | recipient_id, status | Recipient leaderboard |
-| `idx_comments_post_created` | comments | post_id, created_at | Comment thread load |
-| `idx_friendships_user_status` | friendships | user_id, status | Friend lookup |
-| `idx_friendships_friend_status` | friendships | friend_id, status | Friend lookup |
+### Nguyên tắc mới
 
-### Phase 1B — SQL Comments Documentation ✅
-- COMMENT ON TABLE cho tất cả 93 tables
-- COMMENT ON VIEW cho tất cả 5 views
-- Phân loại theo domain: Core, Social, Messaging, Live, Recording, Light Score, Rewards, Wallet, Auth, OAuth, Search, Content, System, PPLP
+**Đăng ký/đăng nhập** → Chỉ ghi log cảnh báo, KHÔNG tự động đình chỉ
+**Claim** → Phát hiện và đình chỉ khi có hành vi farm claim đồng bộ
 
 ---
 
-## CHƯA LÀM — KẾ HOẠCH TIẾP THEO
+### Thay đổi — 3 files
 
-### Phase 1C-F — Safe Cleanup (rủi ro THẤP)
+#### 1. `supabase/functions/log-login-ip/index.ts`
 
-| # | Công việc | Chi tiết |
-|---|----------|---------|
-| 1C | Phân loại empty tables | 35 tables 0-rows → Active/Planned/Legacy/Deletable |
-| 1D | console.log → logger | 77 instances cần thay thế |
-| 1E | useAdminRole shared hook | Đã tạo, cần migrate các component dùng trực tiếp `has_role` |
-| 1F | Edge function _shared helpers | cors, auth, response — đã tạo ✅ |
+**Bỏ toàn bộ auto-hold/auto-ban trong `handleDeviceFingerprint`:**
+- Line 189-201: Bỏ auto-ban `RAPID_REGISTRATION` (>3 TK/24h cùng device). Chuyển thành chỉ ghi fraud signal severity 3 + thông báo admin
+- Line 202-215: Bỏ auto-hold cho shared device. Chỉ ghi fraud signal + flag device registry
+- Giữ nguyên: flag device registry, ghi fraud signal, thông báo admin (chỉ cảnh báo, không đình chỉ)
 
-### Phase 2 — Structural Improvements (rủi ro TRUNG BÌNH)
+**Bỏ auto-hold trong `detectEmailFarm`:**
+- Hiện tại chỉ ghi signal + thông báo admin (không hold) → giữ nguyên
 
-| # | Công việc | Chi tiết |
-|---|----------|---------|
-| 2A | State enum documentation | Document các status/type enums trong DB |
-| 2B | Merge search_logs → search_history | Consolidate duplicate search tracking |
-| 2C | notifications.read → is_read | Compatibility migration (backfill + dual-write) |
-| 2D | Xóa useLiveComments | Dead code cleanup |
-| 2E | Module hóa hooks/ | Nhóm theo domain (social, chat, live, wallet, etc.) |
-| 2F | Tách components/feed/ | Sub-domains cho feed components |
-| 2G | useCapabilities layer | Đã tạo ✅, cần migrate consumers |
+**Giữ nguyên:** `handleBlacklistedIp` (IP bị blacklist thủ công vẫn hold — đây là quyết định admin)
 
-### Phase 3 — Deep Refactor (rủi ro CAO)
+#### 2. `supabase/functions/daily-fraud-scan/index.ts`
 
-| # | Công việc | Blocker |
-|---|----------|---------|
-| 3A | Tách profiles → user_wallet_config | Nhiều component đọc trực tiếp profiles |
-| 3B | Claims lifecycle audit | reward_claims + pending_claims khác lifecycle |
-| 3C | FinancialTab → platform_financial_data | Admin UI đang đọc grand_total_* từ profiles |
-| 3D | get_user_rewards_v2 refactor | Đang dùng livestreams table, cần chuyển live_sessions |
-| 3E | live_comments product review | Quyết định drop hoặc giữ |
-| 3F | Profiles RLS tightening | Public by Design → quyết định enforcement model |
-| 3G | Gộp 15 media edge functions | Router pattern |
+**Bỏ toàn bộ `autoHoldUsers` calls:**
+- Section 1 (shared device, line 151-155): Bỏ auto-hold → chỉ ghi signal
+- Section 2 (email farm, line 212-215): Bỏ auto-hold → chỉ ghi signal
+- Section 3 IP clusters:
+  - IP_DEVICE_CLUSTER (line 300-304): Bỏ auto-hold → chỉ ghi signal
+  - IP_SPAM_CLUSTER (line 359-362): Bỏ auto-hold → chỉ ghi signal
+  - IP_CLUSTER (đã không hold) → giữ nguyên
 
----
+**Thêm Section mới: Claim Farm Detection**
+Phát hiện farm dựa trên hành vi claim trong `pending_claims` + `reward_claims`:
+- Query claims trong 1 giờ gần nhất, nhóm theo IP/device
+- **Trigger khi TẤT CẢ điều kiện sau đều đúng:**
+  - ≥5 tài khoản claim trong cùng 1 giờ
+  - Từ cùng IP hoặc cùng device hash
+  - ≥60% accounts claim số tiền tối đa (500k CAMLY)
+  - Khoảng cách giữa các claim < 5 phút (đồng bộ bot-like)
+- Khi phát hiện: auto-hold tất cả accounts trong cluster + ghi signal `CLAIM_FARM` severity 5
 
-## Linter Warnings (có sẵn, chưa xử lý)
-- **RLS Enabled No Policy**: Một số tables có RLS enabled nhưng chưa có policy
-- **RLS Policy Always True**: Một số policies dùng `USING (true)` cho INSERT/UPDATE/DELETE
-- Sẽ xử lý trong Phase 2-3 khi refactor từng domain
+#### 3. `supabase/functions/claim-reward/index.ts`
 
-## Light Score 5 Trụ Cột — Phase 1 ✅ HOÀN THÀNH
-(Chi tiết xem phiên bản trước của plan)
+**Sửa Section 7f (line 265-371) — Auto fraud detection tại claim time:**
+- **Bỏ** auto-hold dựa trên shared device (line 323-327) và hold related users (line 332-337)
+- **Giữ** duplicate avatar check và duplicate wallet check → nhưng chỉ ghi warning signal, KHÔNG hold
+- **Thêm** claim synchronization check:
+  - Query claims từ cùng IP trong 30 phút gần nhất
+  - Nếu ≥3 accounts claim từ cùng IP trong 30 phút → hold + signal `CLAIM_SYNC_SUSPICIOUS`
+
+### Tóm tắt
+
+```text
+TRƯỚC:                              SAU:
+─────────────────────────           ─────────────────────────
+Đăng ký cùng IP → HOLD             Đăng ký cùng IP → LOG ONLY
+Cùng device → HOLD/BAN             Cùng device → LOG ONLY  
+Email giống → HOLD                  Email giống → LOG ONLY
+Cùng IP login → HOLD               Cùng IP login → LOG ONLY
+                                    
+                                    ≥5 TK claim cùng lúc → HOLD
+                                    Claim max đồng bộ → HOLD
+                                    Bot-like claim timing → HOLD
+```
+
+Người dùng tại sự kiện cộng đồng có thể đăng ký, đăng nhập, kết nối ví tự do. Hệ thống chỉ can thiệp khi phát hiện hành vi claim bất thường.
+
