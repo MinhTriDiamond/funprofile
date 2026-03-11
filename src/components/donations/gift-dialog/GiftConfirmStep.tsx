@@ -169,7 +169,7 @@ export function GiftConfirmStep(props: GiftConfirmStepProps) {
       </div>
 
       {/* Warning */}
-      <div className="flex items-center gap-2 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+      <div className="flex items-center gap-2 p-2 sm:p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
         <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
         <p className="text-xs text-amber-700 font-medium">
           {isMultiMode
