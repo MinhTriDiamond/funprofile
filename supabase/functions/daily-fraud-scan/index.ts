@@ -491,6 +491,11 @@ Deno.serve(async (req) => {
       accounts_flagged: totalFlagged,
       accounts_limited: totalLimited,
       accounts_held: totalHeld,
+      ai_analysis: aiResults ? {
+        clusters_analyzed: aiResults.clusters_analyzed,
+        clusters_actioned: aiResults.clusters_actioned,
+        summary: aiResults.summary,
+      } : null,
       alerts,
       scanned_at: new Date().toISOString(),
     }), {
