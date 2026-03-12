@@ -336,22 +336,25 @@ export const CreatePost = ({ onPostCreated }: FacebookCreatePostProps) => {
     setUppyVideoResult(result);
     setIsVideoUploading(false);
     setPendingVideoFile(null);
-    // Add as a video attachment
-    const videoDraft: DraftAttachment = {
-      id: createDraftId(),
-      kind: 'video',
-      fileUrl: result.url,
-      storageKey: result.uid,
-      previewUrl: result.localThumbnail || result.thumbnailUrl,
-      sizeBytes: 0,
-      mimeType: 'video/mp4',
-      uploadStatus: 'uploaded',
-      sortOrder: attachments.length,
-      source: 'picker',
-      altText: '',
-    };
-    setAttachments((current) => reorderAttachments([...current, videoDraft]));
-  }, [attachments.length]);
+    setAttachments((current) => {
+      // Guard: prevent duplicate video entries
+      if (current.some(a => a.kind === 'video')) return current;
+      const videoDraft: DraftAttachment = {
+        id: createDraftId(),
+        kind: 'video',
+        fileUrl: result.url,
+        storageKey: result.uid,
+        previewUrl: result.localThumbnail || result.thumbnailUrl,
+        sizeBytes: 0,
+        mimeType: 'video/mp4',
+        uploadStatus: 'uploaded',
+        sortOrder: current.length,
+        source: 'picker',
+        altText: '',
+      };
+      return reorderAttachments([...current, videoDraft]);
+    });
+  }, []);
 
   // ─── Submit ───
 
