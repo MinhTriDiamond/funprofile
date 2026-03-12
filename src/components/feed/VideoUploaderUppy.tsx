@@ -203,7 +203,7 @@ export const VideoUploaderUppy = ({
           uploadSpeed: 0,
         });
 
-        onUploadStart?.();
+        onUploadStartRef.current?.();
 
         // Generate local thumbnail in parallel
         generateVideoThumbnail(selectedFile)
