@@ -340,7 +340,7 @@ export const VideoUploaderUppy = ({
     };
 
     startUpload();
-  }, [selectedFile, onUploadComplete, onUploadError, onUploadStart]);
+  }, [selectedFile]);
 
   const handleCancel = useCallback(async () => {
     if (abortControllerRef.current) {
