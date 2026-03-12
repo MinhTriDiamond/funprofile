@@ -130,7 +130,7 @@ export default function ChatPage() {
             </PullToRefreshContainer>
           )}
         </main>
-        <MobileBottomNav />
+        {!conversationId && <MobileBottomNav />}
         {dialogs}
       </div>
     );
