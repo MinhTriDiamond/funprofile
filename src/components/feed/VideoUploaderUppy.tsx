@@ -102,6 +102,16 @@ export const VideoUploaderUppy = ({
   const lastBytesRef = useRef(0);
   const lastTimeRef = useRef(Date.now());
 
+  // Store callbacks in refs to avoid re-triggering upload effect
+  const onUploadCompleteRef = useRef(onUploadComplete);
+  const onUploadErrorRef = useRef(onUploadError);
+  const onUploadStartRef = useRef(onUploadStart);
+  useEffect(() => {
+    onUploadCompleteRef.current = onUploadComplete;
+    onUploadErrorRef.current = onUploadError;
+    onUploadStartRef.current = onUploadStart;
+  }, [onUploadComplete, onUploadError, onUploadStart]);
+
   // Update elapsed time every second during upload
   useEffect(() => {
     if (uploadState.status !== 'preparing' && uploadState.status !== 'uploading') return;
