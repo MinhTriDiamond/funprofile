@@ -313,10 +313,10 @@ export const VideoUploaderUppy = ({
         isUploadingRef.current = false;
         toast.success('Video đã tải lên thành công!');
         
-        onUploadComplete({ 
-          uid: key, // Use R2 key as identifier
+        onUploadCompleteRef.current({ 
+          uid: key,
           url: publicUrl,
-          thumbnailUrl: '', // No server-generated thumbnail for R2
+          thumbnailUrl: '',
           localThumbnail: localThumbnailRef.current,
         });
 
