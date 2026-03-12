@@ -37,7 +37,7 @@ export const EmojiPicker = ({ onEmojiSelect }: EmojiPickerProps) => {
           <Smile className="w-6 h-6 text-gold" />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-0" align="end">
+      <PopoverContent className="w-80 p-0 z-[9999]" align="end" onOpenAutoFocus={(e) => e.preventDefault()}>
         {/* Category Tabs */}
         <div className="flex gap-1 p-2 border-b border-border overflow-x-auto scrollbar-none">
           {Object.keys(EMOJI_CATEGORIES).map((category) => (
