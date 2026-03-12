@@ -31,13 +31,13 @@ export const EmojiPicker = ({ onEmojiSelect }: EmojiPickerProps) => {
   };
 
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
+    <Popover open={isOpen} onOpenChange={setIsOpen} modal={false}>
       <PopoverTrigger asChild>
         <button type="button" className="w-9 h-9 rounded-full hover:bg-secondary flex items-center justify-center transition-colors">
           <Smile className="w-6 h-6 text-gold" />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-0" align="end">
+      <PopoverContent className="w-80 p-0 z-[9999]" align="end" onOpenAutoFocus={(e) => e.preventDefault()}>
         {/* Category Tabs */}
         <div className="flex gap-1 p-2 border-b border-border overflow-x-auto scrollbar-none">
           {Object.keys(EMOJI_CATEGORIES).map((category) => (
