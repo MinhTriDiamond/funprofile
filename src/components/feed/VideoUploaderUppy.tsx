@@ -334,7 +334,7 @@ export const VideoUploaderUppy = ({
           error: errorMessage,
         }));
 
-        onUploadError?.(error instanceof Error ? error : new Error(errorMessage));
+        onUploadErrorRef.current?.(error instanceof Error ? error : new Error(errorMessage));
         toast.error(`Lỗi: ${errorMessage}`);
       }
     };
