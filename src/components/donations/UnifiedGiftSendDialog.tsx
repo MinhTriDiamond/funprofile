@@ -229,7 +229,6 @@ export const UnifiedGiftSendDialog = ({
   const handleSelectTemplate = (template: MessageTemplate) => {
     setSelectedTemplate(template);
     if (template.id !== 'custom') setCustomMessage(template.message);
-    else setCustomMessage('');
   };
 
   const handleMaxAmount = () => {
