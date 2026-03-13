@@ -463,7 +463,20 @@ Deno.serve(async (req) => {
       alerts.push(`⚠️ IP ${ip}: ${parts.join(' | ')}`);
     }
 
-    // 6. Notify admins
+    // 6. === FRAUD RISK DECAY === (reduce risk by 1 for users clean for 7 days)
+    let decayedCount = 0;
+    try {
+      const { data: decayResult } = await supabase.rpc('decay_fraud_risk');
+      decayedCount = decayResult || 0;
+      if (decayedCount > 0) {
+        console.log(`[Daily Fraud Scan] Fraud risk decayed for ${decayedCount} users`);
+        alerts.push(`✅ Risk Decay: ${decayedCount} TK được giảm fraud_risk_level do không vi phạm 7 ngày`);
+      }
+    } catch (decayErr) {
+      console.error("[Daily Fraud Scan] Risk decay error:", decayErr);
+    }
+
+    // 7. Notify admins
     if (alerts.length > 0) {
       const admins = Array.from(adminIds);
       if (admins.length) {
@@ -478,15 +491,16 @@ Deno.serve(async (req) => {
               accounts_flagged: totalFlagged,
               accounts_limited: totalLimited,
               accounts_held: totalHeld,
+              accounts_decayed: decayedCount,
               flagged_usernames: allFlaggedUsernames.slice(0, 50),
               flagged_emails: flaggedEmails,
-              note: "Hệ thống 3 bước + AI Sybil Detection. Chỉ escalate khi phát hiện claim farm hoặc AI phát hiện Sybil cluster.",
+              note: "Hệ thống 3 bước + AI Sybil Detection + Risk Decay. Chỉ escalate khi phát hiện claim farm hoặc AI phát hiện Sybil cluster. User trusted được miễn trừ.",
               ai_summary: aiResults?.summary || "AI không chạy hoặc không có kết quả",
               ai_clusters_found: aiResults?.clusters_actioned || 0,
             },
           }))
         );
-        console.log(`[Daily Fraud Scan] ${alerts.length} alerts. Step1: ${totalFlagged} flagged, Step2: ${totalLimited} limited, Step3: ${totalHeld} held.`);
+        console.log(`[Daily Fraud Scan] ${alerts.length} alerts. Step1: ${totalFlagged} flagged, Step2: ${totalLimited} limited, Step3: ${totalHeld} held, Decayed: ${decayedCount}.`);
       }
     }
 
