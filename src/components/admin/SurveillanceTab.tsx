@@ -670,7 +670,17 @@ const SurveillanceTab = ({ adminId }: SurveillanceTabProps) => {
                             )}
                           </TableCell>
                           <TableCell>
-                            <div className="flex items-center gap-1">
+                            <div className="flex items-center gap-1 flex-wrap">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-xs h-7 px-2 border-blue-500 text-blue-600 hover:bg-blue-500/10"
+                                disabled={unlocking === u.id}
+                                onClick={() => handleApproveTrust(u.id, u.username)}
+                              >
+                                <ShieldCheck className="w-3 h-3 mr-1" />
+                                {unlocking === u.id ? "…" : "Duyệt & Tin cậy"}
+                              </Button>
                               <Button
                                 size="sm"
                                 variant="outline"
