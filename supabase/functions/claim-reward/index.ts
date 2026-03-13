@@ -674,8 +674,12 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Enforce max_claim_per_request if set (Step 2 fraud penalty)
+    const maxPerRequest = profile.max_claim_per_request;
+    const cappedClaimAmount = maxPerRequest ? Math.min(claimAmount, maxPerRequest) : claimAmount;
+
     // Auto-cap to daily remaining
-    const effectiveAmount = Math.min(claimAmount, claimableAmount, dailyRemaining);
+    const effectiveAmount = Math.min(cappedClaimAmount, claimableAmount, dailyRemaining);
 
     if (effectiveAmount < MINIMUM_CLAIM) {
       return new Response(
