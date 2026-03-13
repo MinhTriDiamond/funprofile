@@ -62,10 +62,10 @@ async function escalateRisk(
   const toProcess = userIds.filter(id => !adminIds.has(id));
   if (toProcess.length === 0) return result;
 
-  // Get current risk levels
+  // Get current risk levels + trusted status
   const { data: profiles } = await supabase
     .from("profiles")
-    .select("id, fraud_risk_level, reward_status")
+    .select("id, fraud_risk_level, reward_status, fraud_trusted")
     .in("id", toProcess);
 
   if (!profiles) return result;
@@ -74,8 +74,12 @@ async function escalateRisk(
   const cooldownUntil = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(); // 48h
 
   for (const p of profiles) {
-    // Skip already banned or approved by admin
+    // Skip already banned, approved by admin, or TRUSTED users
     if (p.reward_status === 'banned' || p.reward_status === 'approved') continue;
+    if (p.fraud_trusted === true) {
+      console.log(`[escalateRisk] Skipping trusted user ${p.id}`);
+      continue;
+    }
 
     const currentLevel = p.fraud_risk_level || 0;
     const newLevel = Math.min(currentLevel + 1, 3);
@@ -89,10 +93,11 @@ async function escalateRisk(
       result.flagged++;
 
     } else if (newLevel === 2) {
-      // STEP 2: Soft warning + claim speed limit (1 claim per 48h instead of 2/24h)
+      // STEP 2: Soft warning + claim speed limit + max 100k/request
       await supabase.from("profiles").update({
         fraud_risk_level: 2,
         claim_speed_limit_until: cooldownUntil,
+        max_claim_per_request: 100000,
         admin_notes: `[Step 2] Cảnh báo + giới hạn tốc độ claim: ${reason}`,
       }).eq("id", p.id);
       result.limited++;
