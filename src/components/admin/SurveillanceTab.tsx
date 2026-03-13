@@ -12,7 +12,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { toast } from "sonner";
 import {
   Shield, AlertTriangle, Search, Download, ExternalLink,
-  Users, TrendingDown, Eye, RefreshCw, Ban, Unlock,
+  Users, TrendingDown, Eye, RefreshCw, Ban, Unlock, ShieldCheck,
 } from "lucide-react";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
