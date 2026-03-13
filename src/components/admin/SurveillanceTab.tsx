@@ -268,6 +268,48 @@ const SurveillanceTab = ({ adminId }: SurveillanceTabProps) => {
     }
   };
 
+  const handleApproveTrust = async (userId: string, username: string) => {
+    if (!confirm(`Xác nhận DUYỆT & TIN CẬY tài khoản "${username}"?\n\n• reward_status → approved\n• fraud_risk_level → 0\n• fraud_trusted → true\n\nUser sẽ KHÔNG bị tự động đình chỉ nữa.`)) return;
+    setUnlocking(userId);
+    try {
+      const [profileRes, signalRes, auditRes] = await Promise.all([
+        supabase
+          .from("profiles")
+          .update({
+            reward_status: "approved",
+            fraud_risk_level: 0,
+            fraud_trusted: true,
+            claim_speed_limit_until: null,
+            max_claim_per_request: null,
+            admin_notes: `✅ Đã duyệt & tin cậy bởi admin vào ${new Date().toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" })}. Miễn trừ đình chỉ tự động.`,
+          })
+          .eq("id", userId),
+        supabase
+          .from("pplp_fraud_signals")
+          .update({ is_resolved: true })
+          .eq("actor_id", userId)
+          .eq("is_resolved", false),
+        supabase
+          .from("audit_logs")
+          .insert({
+            admin_id: adminId,
+            target_user_id: userId,
+            action: "APPROVE_TRUST_USER",
+            reason: `Duyệt & tin cậy tài khoản ${username}. Miễn trừ đình chỉ tự động.`,
+          }),
+      ]);
+      if (profileRes.error) throw profileRes.error;
+      if (auditRes.error) throw auditRes.error;
+      toast.success(`✅ Đã duyệt & tin cậy tài khoản ${username}`);
+      await fetchData();
+    } catch (err) {
+      console.error(err);
+      toast.error("Lỗi khi duyệt tài khoản");
+    } finally {
+      setUnlocking(null);
+    }
+  };
+
   const handleBan = async (userId: string, username: string) => {
     if (!confirm(`Xác nhận BAN vĩnh viễn tài khoản ${username}?`)) return;
     setBanning(userId);
