@@ -62,10 +62,10 @@ async function escalateRisk(
   const toProcess = userIds.filter(id => !adminIds.has(id));
   if (toProcess.length === 0) return result;
 
-  // Get current risk levels
+  // Get current risk levels + trusted status
   const { data: profiles } = await supabase
     .from("profiles")
-    .select("id, fraud_risk_level, reward_status")
+    .select("id, fraud_risk_level, reward_status, fraud_trusted")
     .in("id", toProcess);
 
   if (!profiles) return result;
@@ -74,8 +74,12 @@ async function escalateRisk(
   const cooldownUntil = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(); // 48h
 
   for (const p of profiles) {
-    // Skip already banned or approved by admin
+    // Skip already banned, approved by admin, or TRUSTED users
     if (p.reward_status === 'banned' || p.reward_status === 'approved') continue;
+    if (p.fraud_trusted === true) {
+      console.log(`[escalateRisk] Skipping trusted user ${p.id}`);
+      continue;
+    }
 
     const currentLevel = p.fraud_risk_level || 0;
     const newLevel = Math.min(currentLevel + 1, 3);
@@ -89,10 +93,11 @@ async function escalateRisk(
       result.flagged++;
 
     } else if (newLevel === 2) {
-      // STEP 2: Soft warning + claim speed limit (1 claim per 48h instead of 2/24h)
+      // STEP 2: Soft warning + claim speed limit + max 100k/request
       await supabase.from("profiles").update({
         fraud_risk_level: 2,
         claim_speed_limit_until: cooldownUntil,
+        max_claim_per_request: 100000,
         admin_notes: `[Step 2] Cảnh báo + giới hạn tốc độ claim: ${reason}`,
       }).eq("id", p.id);
       result.limited++;
@@ -458,7 +463,20 @@ Deno.serve(async (req) => {
       alerts.push(`⚠️ IP ${ip}: ${parts.join(' | ')}`);
     }
 
-    // 6. Notify admins
+    // 6. === FRAUD RISK DECAY === (reduce risk by 1 for users clean for 7 days)
+    let decayedCount = 0;
+    try {
+      const { data: decayResult } = await supabase.rpc('decay_fraud_risk');
+      decayedCount = decayResult || 0;
+      if (decayedCount > 0) {
+        console.log(`[Daily Fraud Scan] Fraud risk decayed for ${decayedCount} users`);
+        alerts.push(`✅ Risk Decay: ${decayedCount} TK được giảm fraud_risk_level do không vi phạm 7 ngày`);
+      }
+    } catch (decayErr) {
+      console.error("[Daily Fraud Scan] Risk decay error:", decayErr);
+    }
+
+    // 7. Notify admins
     if (alerts.length > 0) {
       const admins = Array.from(adminIds);
       if (admins.length) {
@@ -473,15 +491,16 @@ Deno.serve(async (req) => {
               accounts_flagged: totalFlagged,
               accounts_limited: totalLimited,
               accounts_held: totalHeld,
+              accounts_decayed: decayedCount,
               flagged_usernames: allFlaggedUsernames.slice(0, 50),
               flagged_emails: flaggedEmails,
-              note: "Hệ thống 3 bước + AI Sybil Detection. Chỉ escalate khi phát hiện claim farm hoặc AI phát hiện Sybil cluster.",
+              note: "Hệ thống 3 bước + AI Sybil Detection + Risk Decay. Chỉ escalate khi phát hiện claim farm hoặc AI phát hiện Sybil cluster. User trusted được miễn trừ.",
               ai_summary: aiResults?.summary || "AI không chạy hoặc không có kết quả",
               ai_clusters_found: aiResults?.clusters_actioned || 0,
             },
           }))
         );
-        console.log(`[Daily Fraud Scan] ${alerts.length} alerts. Step1: ${totalFlagged} flagged, Step2: ${totalLimited} limited, Step3: ${totalHeld} held.`);
+        console.log(`[Daily Fraud Scan] ${alerts.length} alerts. Step1: ${totalFlagged} flagged, Step2: ${totalLimited} limited, Step3: ${totalHeld} held, Decayed: ${decayedCount}.`);
       }
     }
 
@@ -491,6 +510,7 @@ Deno.serve(async (req) => {
       accounts_flagged: totalFlagged,
       accounts_limited: totalLimited,
       accounts_held: totalHeld,
+      accounts_decayed: decayedCount,
       ai_analysis: aiResults ? {
         clusters_analyzed: aiResults.clusters_analyzed,
         clusters_actioned: aiResults.clusters_actioned,

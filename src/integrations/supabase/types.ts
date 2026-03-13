@@ -3325,6 +3325,7 @@ export type Database = {
           external_wallet_address: string | null
           financial_updated_at: string | null
           fraud_risk_level: number
+          fraud_trusted: boolean
           full_name: string | null
           fun_id: string | null
           grand_total_bet: number
@@ -3343,6 +3344,7 @@ export type Database = {
           law_of_light_accepted_at: string | null
           location: string | null
           login_wallet_address: string | null
+          max_claim_per_request: number | null
           oauth_provider: string | null
           pending_reward: number
           pinned_post_id: string | null
@@ -3385,6 +3387,7 @@ export type Database = {
           external_wallet_address?: string | null
           financial_updated_at?: string | null
           fraud_risk_level?: number
+          fraud_trusted?: boolean
           full_name?: string | null
           fun_id?: string | null
           grand_total_bet?: number
@@ -3403,6 +3406,7 @@ export type Database = {
           law_of_light_accepted_at?: string | null
           location?: string | null
           login_wallet_address?: string | null
+          max_claim_per_request?: number | null
           oauth_provider?: string | null
           pending_reward?: number
           pinned_post_id?: string | null
@@ -3445,6 +3449,7 @@ export type Database = {
           external_wallet_address?: string | null
           financial_updated_at?: string | null
           fraud_risk_level?: number
+          fraud_trusted?: boolean
           full_name?: string | null
           fun_id?: string | null
           grand_total_bet?: number
@@ -3463,6 +3468,7 @@ export type Database = {
           law_of_light_accepted_at?: string | null
           location?: string | null
           login_wallet_address?: string | null
+          max_claim_per_request?: number | null
           oauth_provider?: string | null
           pending_reward?: number
           pinned_post_id?: string | null
@@ -5232,6 +5238,7 @@ export type Database = {
       }
       claim_red_envelope: { Args: { p_envelope_id: string }; Returns: number }
       cleanup_expired_oauth_data: { Args: never; Returns: undefined }
+      decay_fraud_risk: { Args: never; Returns: number }
       decrement_live_viewer_count: {
         Args: { session_id: string }
         Returns: undefined
