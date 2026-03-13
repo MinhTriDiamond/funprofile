@@ -176,7 +176,8 @@ Deno.serve(async (req) => {
     }
 
     // 7ac. Check claim speed limit (Step 2 of anti-farm progressive system)
-    if (profile.claim_speed_limit_until) {
+    // SKIP speed limit check for trusted users
+    if (profile.claim_speed_limit_until && !profile.fraud_trusted) {
       const speedLimitUntil = new Date(profile.claim_speed_limit_until);
       if (speedLimitUntil > new Date()) {
         const hoursLeft = Math.ceil((speedLimitUntil.getTime() - Date.now()) / (1000 * 60 * 60));
