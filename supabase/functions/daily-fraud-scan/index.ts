@@ -510,6 +510,7 @@ Deno.serve(async (req) => {
       accounts_flagged: totalFlagged,
       accounts_limited: totalLimited,
       accounts_held: totalHeld,
+      accounts_decayed: decayedCount,
       ai_analysis: aiResults ? {
         clusters_analyzed: aiResults.clusters_analyzed,
         clusters_actioned: aiResults.clusters_actioned,
