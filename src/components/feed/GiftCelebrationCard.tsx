@@ -360,7 +360,7 @@ const GiftCelebrationCardComponent = ({
       </div>
 
       {/* Reactions Summary */}
-      <div className="bg-black/10">
+        <div className="bg-black/10 [&_.text-muted-foreground]:text-white/70 [&_.text-sm]:text-white/70 [&_.border-card]:border-transparent">
         <ReactionSummary
           postId={post.id}
           reactions={reactionCounts}
@@ -372,7 +372,7 @@ const GiftCelebrationCardComponent = ({
       </div>
 
       {/* Action Buttons */}
-      <div className="border-t border-white/10 mx-2 sm:mx-4 bg-black/10">
+      <div className="border-t border-white/10 mx-2 sm:mx-4 bg-black/10 [&_.text-muted-foreground]:text-white/70">
         <div className="flex items-center py-1">
           <ReactionButton
             postId={post.id}
