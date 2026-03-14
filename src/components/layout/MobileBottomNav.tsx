@@ -146,7 +146,7 @@ export const MobileBottomNav = memo(() => {
             <div className="flex items-center justify-center gap-2 mt-2">
               <Award className="w-6 h-6 text-amber-500" />
               <DrawerTitle className="text-xl font-bold bg-gradient-to-r from-amber-500 to-orange-500 bg-clip-text text-transparent">
-                {isProfilePage ? '✨ HONOR BOARD ✨' : t('honorBoard')}
+                ✨ HONOR BOARD ✨
               </DrawerTitle>
               <Award className="w-6 h-6 text-amber-500" />
             </div>
