@@ -185,6 +185,9 @@ const Feed = () => {
 
       {/* Scroll to top button */}
       <ScrollToTopButton />
+
+      {/* Gift transaction notifications */}
+      <GiftTransactionToast />
     </div>
   );
 };
