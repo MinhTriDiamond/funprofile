@@ -125,38 +125,30 @@ const Feed = () => {
                 ) : (
                   <div className="space-y-4">
                     {(() => {
-                      const elements: React.ReactNode[] = [];
-                      let i = 0;
-                      while (i < posts.length) {
-                        if (posts[i].post_type === 'gift_celebration') {
-                          const giftGroup: typeof posts = [];
-                          while (i < posts.length && posts[i].post_type === 'gift_celebration') {
-                            giftGroup.push(posts[i]);
-                            i++;
-                          }
-                          elements.push(
+                      const giftPosts = posts.filter(p => p.post_type === 'gift_celebration');
+                      const regularPosts = posts.filter(p => p.post_type !== 'gift_celebration');
+                      return (
+                        <>
+                          {giftPosts.length > 0 && (
                             <GiftCelebrationGroup
-                              key={`gift-group-${giftGroup[0].id}`}
-                              posts={giftGroup}
+                              key="gift-group-all"
+                              posts={giftPosts}
                               currentUserId={currentUserId || ''}
                               onPostDeleted={refetch}
                               postStats={postStats}
                             />
-                          );
-                        } else {
-                          elements.push(
+                          )}
+                          {regularPosts.map(post => (
                             <FacebookPostCard
-                              key={posts[i].id}
-                              post={posts[i]}
+                              key={post.id}
+                              post={post}
                               currentUserId={currentUserId || ''}
                               onPostDeleted={refetch}
-                              initialStats={postStats[posts[i].id]}
+                              initialStats={postStats[post.id]}
                             />
-                          );
-                          i++;
-                        }
-                      }
-                      return elements;
+                          ))}
+                        </>
+                      );
                     })()}
 
                     <div ref={loadMoreRef} className="py-4">
