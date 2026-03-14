@@ -1,46 +1,83 @@
 
-Mục tiêu: sửa triệt để 3 link Angel AI, Facebook, Zalo để icon vòng orbit hiển thị đúng ảnh đại diện (hoặc fallback rõ ràng khi nền tảng không cho lấy tự động).
+# Database & Codebase Audit — Implementation Roadmap
 
-1) Kết quả kiểm tra hiện tại (nguyên nhân gốc)
-- Facebook: ảnh đang bị lỗi do 2 điểm:
-  - URL cũ lưu trong `social_links.avatarUrl` có `&amp;` thay vì `&` (URL hỏng).
-  - Proxy ảnh trong `fetch-link-preview` chặn redirect Facebook (`graph.facebook.com` thường trả 302), nên ảnh bị 404.
-- Angel AI:
-  - Nhánh internal link mới chỉ chắc cho dạng `/username`; chưa phủ đủ các dạng path (đặc biệt `/user/{id}` hoặc biến thể khác), nên có lúc rơi về ảnh OG không đúng avatar người dùng.
-- Zalo:
-  - `zalo.me/{phone}` thường trả trang đăng nhập QR, không có `og:image` avatar => hiện backend trả `avatarUrl: null` (đây là hạn chế nguồn dữ liệu, không phải lỗi render).
+## Tài liệu tham chiếu
+- `.lovable/audit-report.md` — Audit report đầy đủ (633 dòng, 20 phần)
 
-2) Kế hoạch chỉnh backend function `fetch-link-preview`
-- Chuẩn hoá URL avatar trước khi dùng:
-  - decode HTML entities (`&amp;` -> `&`) cho mọi URL ảnh.
-- Sửa proxy ảnh Facebook:
-  - Cho phép follow redirect với `graph.facebook.com` (không chặn 3xx cứng như hiện tại).
-  - Chỉ reject khi response cuối không phải `image/*`.
-- Tăng độ chính xác cho Angel internal:
-  - Parse thêm pattern `/user/{uuid}` để lookup theo `id`.
-  - Giữ lookup theo `username` cho dạng `/username`.
-  - Fallback cuối mới dùng OG scrape.
-- Zalo:
-  - Giữ auto-scrape (mobile UA) nhưng nếu không có avatar thì trả trạng thái rõ ràng `avatarUnavailable: true` để frontend xử lý fallback chủ động.
+---
 
-3) Kế hoạch chỉnh frontend `AvatarOrbit`
-- Sanitizer trước khi render:
-  - Chuẩn hoá mọi `avatarUrl` (decode `&amp;`) trước khi set `src`.
-- Bổ sung điều kiện “stale avatar” để tự refetch:
-  - Facebook URL chứa `&amp;`, `graph.facebook.com`, hoặc mẫu fallback cũ => ép gọi lại function.
-  - Angel URL không match avatar hợp lệ => ép gọi lại.
-- Fallback UX cho Zalo (khi backend báo unavailable):
-  - Chủ profile có thể nhập URL ảnh đại diện thủ công cho link đó ngay trong popup chỉnh link.
-  - Lưu vào `social_links.avatarUrl` để hiển thị ổn định về sau.
+## ĐÃ HOÀN THÀNH
 
-4) Backfill dữ liệu cũ (không đổi schema)
-- Khi owner mở trang profile:
-  - auto-normalize URL avatar cũ (`&amp;`), refetch lại các link Facebook/Angel/Zalo đang lỗi.
-  - nếu có thay đổi thì cập nhật lại `social_links` trong hồ sơ.
+### Phase 0 — Audit & Documentation ✅
+| # | Công việc | Trạng thái |
+|---|----------|-----------|
+| 0A | Viết audit report 20 phần | ✅ Done |
+| 0B | Xác định Canonical Domain Models | ✅ Done |
+| 0C | Xác định Do Not Touch First list | ✅ Done |
+| 0D | Xác định Refactor Blockers | ✅ Done |
 
-5) Kiểm thử sau khi làm
-- Test trực tiếp 3 URL người dùng đang dùng:
-  - Angel AI: phải ra ảnh avatar hợp lệ (không phải favicon mặc định).
-  - Facebook: phải load được ảnh sau proxy (không 404, không `&amp;`).
-  - Zalo: nếu không lấy tự động được thì hiển thị fallback + cho nhập avatar thủ công.
-- Reload trang profile để xác nhận dữ liệu đã được “healed” và giữ bền sau refresh.
+### Phase 1A — Performance Indexes ✅
+| Index | Table | Columns | Mục đích |
+|-------|-------|---------|----------|
+| `idx_notifications_user_read` | notifications | user_id, read | Badge count + dropdown |
+| `idx_reactions_post_type` | reactions | post_id, type | Reaction counts per post |
+| `idx_light_actions_user_created` | light_actions | user_id, created_at DESC | Light Score history |
+| `idx_posts_user_created` | posts | user_id, created_at DESC | Profile feed |
+| `idx_chunked_chunks_status` | chunked_recording_chunks | status | Cleanup queries |
+| `idx_donations_sender_status` | donations | sender_id, status | Benefactor leaderboard |
+| `idx_donations_recipient_status` | donations | recipient_id, status | Recipient leaderboard |
+| `idx_comments_post_created` | comments | post_id, created_at | Comment thread load |
+| `idx_friendships_user_status` | friendships | user_id, status | Friend lookup |
+| `idx_friendships_friend_status` | friendships | friend_id, status | Friend lookup |
+
+### Phase 1B — SQL Comments Documentation ✅
+- COMMENT ON TABLE cho tất cả 93 tables
+- COMMENT ON VIEW cho tất cả 5 views
+- Phân loại theo domain: Core, Social, Messaging, Live, Recording, Light Score, Rewards, Wallet, Auth, OAuth, Search, Content, System, PPLP
+
+---
+
+## CHƯA LÀM — KẾ HOẠCH TIẾP THEO
+
+### Phase 1C-F — Safe Cleanup (rủi ro THẤP)
+
+| # | Công việc | Chi tiết |
+|---|----------|---------|
+| 1C | Phân loại empty tables | 35 tables 0-rows → Active/Planned/Legacy/Deletable |
+| 1D | console.log → logger | 77 instances cần thay thế |
+| 1E | useAdminRole shared hook | Đã tạo, cần migrate các component dùng trực tiếp `has_role` |
+| 1F | Edge function _shared helpers | cors, auth, response — đã tạo ✅ |
+
+### Phase 2 — Structural Improvements (rủi ro TRUNG BÌNH)
+
+| # | Công việc | Chi tiết |
+|---|----------|---------|
+| 2A | State enum documentation | Document các status/type enums trong DB |
+| 2B | Merge search_logs → search_history | Consolidate duplicate search tracking |
+| 2C | notifications.read → is_read | Compatibility migration (backfill + dual-write) |
+| 2D | Xóa useLiveComments | Dead code cleanup |
+| 2E | Module hóa hooks/ | Nhóm theo domain (social, chat, live, wallet, etc.) |
+| 2F | Tách components/feed/ | Sub-domains cho feed components |
+| 2G | useCapabilities layer | Đã tạo ✅, cần migrate consumers |
+
+### Phase 3 — Deep Refactor (rủi ro CAO)
+
+| # | Công việc | Blocker |
+|---|----------|---------|
+| 3A | Tách profiles → user_wallet_config | Nhiều component đọc trực tiếp profiles |
+| 3B | Claims lifecycle audit | reward_claims + pending_claims khác lifecycle |
+| 3C | FinancialTab → platform_financial_data | Admin UI đang đọc grand_total_* từ profiles |
+| 3D | get_user_rewards_v2 refactor | Đang dùng livestreams table, cần chuyển live_sessions |
+| 3E | live_comments product review | Quyết định drop hoặc giữ |
+| 3F | Profiles RLS tightening | Public by Design → quyết định enforcement model |
+| 3G | Gộp 15 media edge functions | Router pattern |
+
+---
+
+## Linter Warnings (có sẵn, chưa xử lý)
+- **RLS Enabled No Policy**: Một số tables có RLS enabled nhưng chưa có policy
+- **RLS Policy Always True**: Một số policies dùng `USING (true)` cho INSERT/UPDATE/DELETE
+- Sẽ xử lý trong Phase 2-3 khi refactor từng domain
+
+## Light Score 5 Trụ Cột — Phase 1 ✅ HOÀN THÀNH
+(Chi tiết xem phiên bản trước của plan)
