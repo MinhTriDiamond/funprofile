@@ -58,7 +58,8 @@ function AuthSessionKeeper() {
     const handleVisibilityChange = async () => {
       if (document.visibilityState === 'visible' && lastHiddenAt > 0) {
         const hiddenDuration = Date.now() - lastHiddenAt;
-        if (hiddenDuration >= 30000) {
+        // Skip refresh if a wallet transaction is being signed (mobile switches to wallet app)
+        if (hiddenDuration >= 30000 && !(window as any).__TX_IN_PROGRESS__) {
           try {
             const tryRefresh = () => Promise.race([
               supabase.auth.refreshSession(),

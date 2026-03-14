@@ -217,6 +217,7 @@ export function useSendToken() {
       return null;
     } finally {
       logger.debug('[SEND] FLOW_FINALLY');
+      (window as any).__TX_IN_PROGRESS__ = false;
       setIsProcessing(false);
     }
   };

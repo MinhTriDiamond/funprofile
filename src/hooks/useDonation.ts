@@ -220,6 +220,7 @@ export function useDonation(options?: UseDonationOptions) {
       options?.onError?.(error);
       return null;
     } finally {
+      (window as any).__TX_IN_PROGRESS__ = false;
       setIsProcessing(false);
     }
   };
