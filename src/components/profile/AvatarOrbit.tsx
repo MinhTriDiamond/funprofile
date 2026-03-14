@@ -6,8 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { toJson } from '@/utils/supabaseJsonHelpers';
 
-// Orbit rotation speed (degrees per second) — pause when hovering or dragging
-const ORBIT_SPEED = 8;
+// Static orbit — icons spread from bottom upward
 
 export interface SocialLink {
   platform: string;
