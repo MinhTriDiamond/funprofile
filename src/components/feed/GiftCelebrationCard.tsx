@@ -223,8 +223,10 @@ const GiftCelebrationCardComponent = ({
   const recipientDisplayName = recipientProfile?.display_name || recipientProfile?.username || fallbackRecipientName || 'User';
   const recipientUsername = recipientProfile?.username || fallbackRecipientName || 'User';
   const scanUrl = post.tx_hash ? getBscScanTxUrl(post.tx_hash, token) : '#';
-  const truncatedMessage = post.gift_message && post.gift_message.length > 120
-    ? post.gift_message.slice(0, 120) + '...'
+  const [showFullMessage, setShowFullMessage] = useState(false);
+  const isLongMessage = post.gift_message && post.gift_message.length > 120;
+  const displayMessage = isLongMessage && !showFullMessage
+    ? post.gift_message!.slice(0, 120) + '...'
     : post.gift_message;
 
   return (
@@ -325,9 +327,17 @@ const GiftCelebrationCardComponent = ({
         </div>
 
         {/* Gift message */}
-        {truncatedMessage && (
+        {displayMessage && (
           <div className="bg-white/15 backdrop-blur-sm rounded-lg px-3 py-2 mb-3 text-center">
-            <p className="text-sm text-white/90 italic">"{truncatedMessage}"</p>
+            <p className="text-sm text-white/90 italic">"{displayMessage}"</p>
+            {isLongMessage && (
+              <button
+                onClick={() => setShowFullMessage(prev => !prev)}
+                className="text-xs text-yellow-200 hover:text-yellow-100 mt-1 font-medium transition-colors"
+              >
+                {showFullMessage ? 'Thu gọn ▲' : 'Xem thêm ▼'}
+              </button>
+            )}
           </div>
         )}
 
