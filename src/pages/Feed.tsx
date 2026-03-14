@@ -2,7 +2,7 @@ import { useEffect, memo, useRef, useCallback } from 'react';
 import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
 import { FacebookCreatePost } from '@/components/feed/FacebookCreatePost';
 import { FacebookPostCard } from '@/components/feed/FacebookPostCard';
-import { GiftCelebrationCard } from '@/components/feed/GiftCelebrationCard';
+import { GiftCelebrationGroup } from '@/components/feed/GiftCelebrationGroup';
 import { FacebookLeftSidebar } from '@/components/feed/FacebookLeftSidebar';
 import { FacebookRightSidebar } from '@/components/feed/FacebookRightSidebar';
 import { StoriesBar } from '@/components/feed/StoriesBar';
