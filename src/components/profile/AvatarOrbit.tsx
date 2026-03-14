@@ -62,21 +62,26 @@ function useTransparentDiamond(src: string) {
   return dataUrl;
 }
 
+/**
+ * Compute static angles spreading from bottom (180°) upward to both sides.
+ * 1 icon → [180°]
+ * 2 icons → [150°, 210°]
+ * 3 icons → [140°, 180°, 220°]
+ * etc.
+ */
 function computeAngles(n: number): number[] {
   if (n === 0) return [];
-  const step = 360 / n;
-  return Array.from({ length: n }, (_, i) => i * step);
-}
-
-function angleToPos(angleDeg: number) {
-  const rad = (angleDeg * Math.PI) / 180;
-  return { x: Math.sin(rad) * ORBIT_RADIUS, y: -Math.cos(rad) * ORBIT_RADIUS };
+  if (n === 1) return [180];
+  const GAP = 35; // degrees between each icon
+  const totalSpread = GAP * (n - 1);
+  const startAngle = 180 - totalSpread / 2;
+  return Array.from({ length: n }, (_, i) => startAngle + i * GAP);
 }
 
 function computeAddAngle(n: number): number {
-  if (n === 0) return 0;
-  const step = 360 / (n + 1);
-  return n * step;
+  // Place the + button at the next position in the fan
+  const angles = computeAngles(n + 1);
+  return angles[angles.length - 1] ?? 180;
 }
 
 interface AvatarOrbitProps {
