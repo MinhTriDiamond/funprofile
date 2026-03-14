@@ -361,7 +361,7 @@ const GiftCelebrationCardComponent = ({
       </div>
 
       {/* Reactions Summary */}
-      <div className="bg-black/10">
+      <div className="bg-background rounded-t-lg mx-2 sm:mx-4 mt-1">
         <ReactionSummary
           postId={post.id}
           reactions={reactionCounts}
