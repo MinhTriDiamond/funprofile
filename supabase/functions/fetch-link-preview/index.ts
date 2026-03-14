@@ -452,14 +452,16 @@ serve(async (req) => {
         ? 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)'
         : 'Mozilla/5.0 (compatible; FunProfile/1.0)';
 
+      // Facebook graph URLs need redirect follow to get the actual image
+      const isFbGraph = host.includes('graph.facebook.com');
       const res = await fetch(targetUrl, {
         headers: { 'User-Agent': ua },
-        redirect: isFbDomain ? 'manual' : 'follow',
+        redirect: (isFbDomain && !isFbGraph) ? 'manual' : 'follow',
         signal: AbortSignal.timeout(8000),
       });
 
-      // For Facebook: if redirected (3xx) or got HTML instead of image, return 404
-      if (isFbDomain && (res.status >= 300 && res.status < 400)) {
+      // For Facebook CDN (not graph): if redirected (3xx) or got HTML instead of image, return 404
+      if (isFbDomain && !isFbGraph && (res.status >= 300 && res.status < 400)) {
         console.log(`Facebook redirect detected for: ${targetUrl}`);
         return new Response(null, { status: 404, headers: corsHeaders });
       }
