@@ -146,7 +146,7 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
   // Sanitize HTML entities in avatar URLs (e.g. &amp; → &)
   const sanitizeUrl = (url: string | undefined): string | undefined => {
     if (!url) return url;
-    return url.replaceAll('&amp;', '&').replaceAll('&lt;', '<').replaceAll('&gt;', '>').replaceAll('&quot;', '"');
+    return url.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"');
   };
 
   // Proxy Facebook/fbcdn URLs through edge function to avoid CORS
