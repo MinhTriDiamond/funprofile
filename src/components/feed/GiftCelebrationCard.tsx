@@ -122,20 +122,18 @@ const GiftCelebrationCardComponent = ({
 
   // Sound + confetti on first appearance (skip on profile to save resources)
   useEffect(() => {
-    if (disableEffects || hasPlayedRef.current) return;
+    if (disableEffects) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
         const [entry] = entries;
         if (entry.isIntersecting) {
-          const isMuted = localStorage.getItem('celebration_muted') === 'true';
-          if (!hasPlayedRef.current && !isMuted) {
+          if (!hasPlayedRef.current) {
             const audio = playCelebrationMusic('rich-1');
             if (audio) {
               audio.volume = 0.3;
-              setTimeout(() => { audio.pause(); audio.currentTime = 0; }, 10000);
+              hasPlayedRef.current = true;
             }
-            hasPlayedRef.current = true;
           }
 
           if (!hasConfettiFiredRef.current) {
@@ -161,39 +159,6 @@ const GiftCelebrationCardComponent = ({
 
     if (cardRef.current) observer.observe(cardRef.current);
     return () => observer.disconnect();
-  }, [disableEffects]);
-
-  // Scroll-back sound (5s) — skip on profile
-  useEffect(() => {
-    if (disableEffects) return;
-    if (!hasPlayedRef.current) return;
-
-    let audioInstance: HTMLAudioElement | null = null;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const [entry] = entries;
-        if (entry.isIntersecting && hasPlayedRef.current) {
-          const isMuted = localStorage.getItem('celebration_muted') === 'true';
-          if (isMuted) return;
-          audioInstance = playCelebrationMusic('rich-1');
-          if (audioInstance) {
-            audioInstance.volume = 0.2;
-            setTimeout(() => { audioInstance?.pause(); }, 5000);
-          }
-        }
-      },
-      { threshold: 0.5 }
-    );
-
-    const timer = setTimeout(() => {
-      if (cardRef.current) observer.observe(cardRef.current);
-    }, 12000);
-
-    return () => {
-      clearTimeout(timer);
-      observer.disconnect();
-      audioInstance?.pause();
-    };
   }, [disableEffects]);
 
   const handleReactionChange = useCallback((newCount: number, newReaction: string | null) => {
