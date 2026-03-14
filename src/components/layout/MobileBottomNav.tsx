@@ -58,7 +58,7 @@ export const MobileBottomNav = memo(() => {
   const navItems = [
     { icon: Home, label: t('feed'), path: '/', action: () => handleNavigate('/') },
     { icon: Users, label: t('friends'), path: '/friends', action: () => handleNavigate('/friends') },
-    { icon: Award, label: t('honorBoard'), isCenter: true, action: () => setHonorBoardOpen(true) },
+    { icon: Award, label: 'Honor Board', isCenter: true, action: () => setHonorBoardOpen(true) },
     { icon: MessageCircle, label: 'Chat', path: '/chat', action: () => handleNavigate('/chat') },
     { isGift: true }, // Gift button
   ];
