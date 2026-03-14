@@ -148,7 +148,7 @@ export const ProfileHeader = ({
                   <span>@{profile?.username}</span>
                   <span className="text-muted-foreground font-normal">·</span>
                   <a href={`https://fun.rich/${profile?.username}`} target="_blank" rel="noopener noreferrer" className="hover:text-primary hover:underline transition-colors cursor-pointer">fun.rich/{profile?.username}</a>
-                  <button type="button" onClick={() => { navigator.clipboard.writeText(`https://fun.rich/${profile?.username}`); toast.success('Đã sao chép link hồ sơ!'); }} className="p-0.5 rounded hover:bg-muted text-primary">
+                  <button type="button" onClick={() => { copyToClipboard(`https://fun.rich/${profile?.username}`).then(() => toast.success('Đã sao chép link hồ sơ!')); }} className="p-0.5 rounded hover:bg-muted text-primary">
                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
                   </button>
                 </div>
