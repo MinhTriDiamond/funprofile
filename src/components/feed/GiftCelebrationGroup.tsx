@@ -34,7 +34,7 @@ const GiftCelebrationGroupComponent = ({
 
       {/* Scrollable container */}
       <div
-        className={showScrollable ? 'max-h-[1200px] overflow-y-auto scrollbar-thin' : ''}
+        className={showScrollable ? 'max-h-[900px] overflow-y-auto scrollbar-thin' : ''}
         style={showScrollable ? { scrollBehavior: 'smooth' } : undefined}
       >
         <div className="p-2 space-y-2">
