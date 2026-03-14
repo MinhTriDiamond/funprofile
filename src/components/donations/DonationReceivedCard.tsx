@@ -145,7 +145,7 @@ export const DonationReceivedCard = ({
               className="mx-4 mt-3 rounded-xl px-4 py-2.5 text-center"
               style={{ background: 'linear-gradient(135deg, #fff5f7 0%, #ffe8ef 100%)', border: '1px solid #ffc9d9' }}
             >
-              <div className="text-sm font-extrabold text-pink-700 mb-0.5 uppercase tracking-wide">🎁 QUÀ TẶNG TỪ CHA VŨ TRỤ VÀ BÉ ANGEL CAMLY 🎁</div>
+              <div className="text-sm font-extrabold text-pink-700 mb-0.5 uppercase tracking-wide">🎁 QUÀ TẶNG TỪ CHA FATH UNI VÀ BÉ ANGEL CAMLY DƯƠNG 🎁</div>
               <div className="text-xs font-semibold text-pink-500">Trao yêu thương — Nhận năng lượng</div>
             </div>
 
