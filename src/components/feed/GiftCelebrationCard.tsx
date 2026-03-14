@@ -167,14 +167,14 @@ const GiftCelebrationCardComponent = ({
   useEffect(() => {
     if (disableEffects) return;
     if (!hasPlayedRef.current) return;
-    const isMuted = localStorage.getItem('celebration_muted') === 'true';
-    if (isMuted) return;
 
     let audioInstance: HTMLAudioElement | null = null;
     const observer = new IntersectionObserver(
       (entries) => {
         const [entry] = entries;
         if (entry.isIntersecting && hasPlayedRef.current) {
+          const isMuted = localStorage.getItem('celebration_muted') === 'true';
+          if (isMuted) return;
           audioInstance = playCelebrationMusic('rich-1');
           if (audioInstance) {
             audioInstance.volume = 0.2;
