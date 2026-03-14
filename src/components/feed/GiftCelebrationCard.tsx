@@ -361,7 +361,7 @@ const GiftCelebrationCardComponent = ({
       </div>
 
       {/* Reactions Summary */}
-      <div className="bg-background rounded-t-lg mx-2 sm:mx-4 mt-1">
+      <div className="bg-black/10">
         <ReactionSummary
           postId={post.id}
           reactions={reactionCounts}
@@ -373,7 +373,7 @@ const GiftCelebrationCardComponent = ({
       </div>
 
       {/* Action Buttons */}
-      <div className="border-t border-border/30 mx-2 sm:mx-4 bg-background rounded-b-lg mb-2">
+      <div className="border-t border-white/10 mx-2 sm:mx-4 bg-black/10">
         <div className="flex items-center py-1">
           <ReactionButton
             postId={post.id}
@@ -384,13 +384,13 @@ const GiftCelebrationCardComponent = ({
           />
           <button
             onClick={() => setShowComments(prev => !prev)}
-            className="flex-1 flex items-center justify-center gap-1.5 py-3 min-h-[48px] rounded-lg transition-colors hover:bg-muted text-muted-foreground"
+            className="flex-1 flex items-center justify-center gap-1.5 py-3 min-h-[48px] rounded-lg transition-colors hover:bg-white/10 text-white/70"
           >
             <MessageCircle className="w-5 h-5" />
             <span className="font-semibold text-xs sm:text-sm">{t('comment')}</span>
           </button>
           <button
-            className="flex-1 flex items-center justify-center gap-1.5 py-3 min-h-[48px] rounded-lg transition-colors hover:bg-muted text-muted-foreground"
+            className="flex-1 flex items-center justify-center gap-1.5 py-3 min-h-[48px] rounded-lg transition-colors hover:bg-white/10 text-white/70"
             onClick={() => {
               navigator.clipboard.writeText(getAbsolutePostUrl(post));
             }}
