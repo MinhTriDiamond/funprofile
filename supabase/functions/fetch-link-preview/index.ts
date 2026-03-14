@@ -519,23 +519,40 @@ serve(async (req) => {
     const isInternalLink = INTERNAL_DOMAINS.some(d => normalizedUrl.includes(d));
 
     if (isInternalLink) {
-      // Extract username from URL path (e.g. play.fun.rich/angelaivan → angelaivan, angel.fun.rich/van103 → van103)
+      // Extract username or user ID from URL path
+      // Patterns: /username, /user/{uuid}, /{uuid}
       try {
         const u = new URL(normalizedUrl);
-        const pathUsername = u.pathname.split('/').filter(Boolean)[0];
-        if (pathUsername) {
-          const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
-          const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-          const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-          const supabase = createClient(supabaseUrl, supabaseKey);
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('avatar_url')
-            .eq('username', pathUsername)
-            .single();
+        const pathParts = u.pathname.split('/').filter(Boolean);
+        const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
+        const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+        const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+        const sb = createClient(supabaseUrl, supabaseKey);
+        
+        const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        
+        // Try /user/{uuid} pattern first
+        if (pathParts[0] === 'user' && pathParts[1] && UUID_RE.test(pathParts[1])) {
+          const { data: profile } = await sb.from('profiles').select('avatar_url').eq('id', pathParts[1]).single();
           if (profile?.avatar_url) {
             avatarUrl = profile.avatar_url;
-            console.log(`Internal link avatar for ${pathUsername}: ${avatarUrl}`);
+            console.log(`Internal link avatar by UUID: ${avatarUrl}`);
+          }
+        }
+        // Try /{uuid} pattern
+        else if (pathParts[0] && UUID_RE.test(pathParts[0])) {
+          const { data: profile } = await sb.from('profiles').select('avatar_url').eq('id', pathParts[0]).single();
+          if (profile?.avatar_url) {
+            avatarUrl = profile.avatar_url;
+            console.log(`Internal link avatar by UUID path: ${avatarUrl}`);
+          }
+        }
+        // Try /username pattern
+        else if (pathParts[0]) {
+          const { data: profile } = await sb.from('profiles').select('avatar_url').eq('username', pathParts[0]).single();
+          if (profile?.avatar_url) {
+            avatarUrl = profile.avatar_url;
+            console.log(`Internal link avatar for ${pathParts[0]}: ${avatarUrl}`);
           }
         }
       } catch (e) { console.log('Internal link avatar lookup error:', e); }
