@@ -120,9 +120,11 @@ const GiftCelebrationCardComponent = ({
     }
   }, [initialStats, currentUserId]);
 
-  // Sound + confetti on first appearance (skip on profile to save resources)
+  // Sound + confetti on first appearance (single observer, no scroll-back)
   useEffect(() => {
     if (disableEffects || hasPlayedRef.current) return;
+
+    const isMobile = window.innerWidth < 768;
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -138,15 +140,16 @@ const GiftCelebrationCardComponent = ({
             hasPlayedRef.current = true;
           }
 
-          if (!hasConfettiFiredRef.current) {
+          // Skip confetti on mobile to save resources
+          if (!hasConfettiFiredRef.current && !isMobile) {
             hasConfettiFiredRef.current = true;
             const rect = cardRef.current?.getBoundingClientRect();
             if (rect) {
               const x = (rect.left + rect.width / 2) / window.innerWidth;
               const y = (rect.top + rect.height / 4) / window.innerHeight;
               confetti({
-                particleCount: 60,
-                spread: 70,
+                particleCount: 40,
+                spread: 55,
                 origin: { x, y },
                 zIndex: 9998,
                 disableForReducedMotion: true,
@@ -154,6 +157,8 @@ const GiftCelebrationCardComponent = ({
               });
             }
           }
+
+          observer.disconnect();
         }
       },
       { threshold: 0.5 }
@@ -161,39 +166,6 @@ const GiftCelebrationCardComponent = ({
 
     if (cardRef.current) observer.observe(cardRef.current);
     return () => observer.disconnect();
-  }, [disableEffects]);
-
-  // Scroll-back sound (5s) — skip on profile
-  useEffect(() => {
-    if (disableEffects) return;
-    if (!hasPlayedRef.current) return;
-
-    let audioInstance: HTMLAudioElement | null = null;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const [entry] = entries;
-        if (entry.isIntersecting && hasPlayedRef.current) {
-          const isMuted = localStorage.getItem('celebration_muted') === 'true';
-          if (isMuted) return;
-          audioInstance = playCelebrationMusic('rich-1');
-          if (audioInstance) {
-            audioInstance.volume = 0.2;
-            setTimeout(() => { audioInstance?.pause(); }, 5000);
-          }
-        }
-      },
-      { threshold: 0.5 }
-    );
-
-    const timer = setTimeout(() => {
-      if (cardRef.current) observer.observe(cardRef.current);
-    }, 12000);
-
-    return () => {
-      clearTimeout(timer);
-      observer.disconnect();
-      audioInstance?.pause();
-    };
   }, [disableEffects]);
 
   const handleReactionChange = useCallback((newCount: number, newReaction: string | null) => {

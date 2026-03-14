@@ -134,7 +134,7 @@ const fetchHighlightedPosts = async (currentUserId: string | null): Promise<Feed
     .or(`highlight_expires_at.gt.${now},highlight_expires_at.is.null`)
     .gte('created_at', twentyFourHoursAgo)
     .order('created_at', { ascending: false })
-    .limit(100);
+    .limit(20);
 
   if (currentUserId) {
     query = query.or(`moderation_status.eq.approved,user_id.eq.${currentUserId}`);
