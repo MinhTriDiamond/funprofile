@@ -512,7 +512,39 @@ serve(async (req) => {
     // ===== MODE: AVATAR (legacy, default) =====
     let avatarUrl: string | null = null;
 
-    if (platform === 'facebook') {
+    // Internal Fun ecosystem domains — look up avatar from profiles table
+    const INTERNAL_DOMAINS = ['fun.rich', 'funprofile.lovable.app'];
+    const isInternalLink = INTERNAL_DOMAINS.some(d => normalizedUrl.includes(d));
+
+    if (isInternalLink) {
+      // Extract username from URL path (e.g. play.fun.rich/angelaivan → angelaivan, angel.fun.rich/van103 → van103)
+      try {
+        const u = new URL(normalizedUrl);
+        const pathUsername = u.pathname.split('/').filter(Boolean)[0];
+        if (pathUsername) {
+          const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
+          const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+          const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+          const supabase = createClient(supabaseUrl, supabaseKey);
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('avatar_url')
+            .eq('username', pathUsername)
+            .single();
+          if (profile?.avatar_url) {
+            avatarUrl = profile.avatar_url;
+            console.log(`Internal link avatar for ${pathUsername}: ${avatarUrl}`);
+          }
+        }
+      } catch (e) { console.log('Internal link avatar lookup error:', e); }
+      // Fallback to OG image scraping
+      if (!avatarUrl) {
+        avatarUrl = await scrapeOgImage(normalizedUrl);
+      }
+    } else if (platform === 'zalo') {
+      // Zalo doesn't expose profile pictures via web — use OG image or null
+      avatarUrl = await scrapeOgImage(normalizedUrl);
+    } else if (platform === 'facebook') {
       const username = extractUsername(normalizedUrl, 'facebook');
       console.log(`Facebook username: ${username}`);
       if (username) {
