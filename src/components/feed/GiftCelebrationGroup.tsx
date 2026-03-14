@@ -9,8 +9,8 @@ interface GiftCelebrationGroupProps {
   postStats: Record<string, any>;
 }
 
-const INITIAL_VISIBLE = 5;
-const LOAD_MORE_COUNT = 5;
+const INITIAL_VISIBLE = 3;
+const LOAD_MORE_COUNT = 3;
 
 const GiftCelebrationGroupComponent = ({
   posts,
