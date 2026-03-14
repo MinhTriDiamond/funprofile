@@ -325,20 +325,20 @@ const GiftCelebrationCardComponent = ({
           </p>
         </div>
 
-      {/* Gift message */}
-      {displayMessage && (
-        <div className="bg-white/15 backdrop-blur-sm rounded-lg px-3 py-2 mb-3 text-center relative">
-          <p className="text-sm text-white/90 italic pr-16">"{displayMessage}"</p>
-          {isLongMessage && (
-            <button
-              onClick={() => setShowFullMessage(prev => !prev)}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-emerald-900 bg-yellow-300 hover:bg-yellow-200 px-2 py-1 rounded-md font-semibold transition-colors shadow-sm whitespace-nowrap"
-            >
-              {showFullMessage ? 'Thu gọn ▲' : 'Xem thêm ▼'}
-            </button>
-          )}
-        </div>
-      )}
+        {/* Gift message */}
+        {displayMessage && (
+          <div className="bg-white/15 backdrop-blur-sm rounded-lg px-3 py-2 mb-3 text-center">
+            <p className="text-sm text-white/90 italic">"{displayMessage}"</p>
+            {isLongMessage && (
+              <button
+                onClick={() => setShowFullMessage(prev => !prev)}
+                className="text-xs text-yellow-200 hover:text-yellow-100 mt-1 font-medium transition-colors"
+              >
+                {showFullMessage ? 'Thu gọn ▲' : 'Xem thêm ▼'}
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Time + BscScan */}
         <div className="flex items-center justify-between text-xs text-white/60 mb-2">
