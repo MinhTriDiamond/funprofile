@@ -139,8 +139,8 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
   const usedPlatforms = new Set(localLinks.map((l) => l.platform));
   const availablePlatforms = PLATFORM_ORDER.filter((p) => !usedPlatforms.has(p));
 
-  const UNAVATAR_PLATFORMS = ['youtube', 'twitter', 'tiktok', 'telegram', 'instagram', 'github'];
-  const NO_AVATAR_PLATFORMS = ['funplay'];
+  const UNAVATAR_PLATFORMS = ['youtube', 'twitter', 'tiktok', 'telegram', 'instagram', 'github', 'linkedin'];
+  const NO_AVATAR_PLATFORMS: string[] = [];
   const BAD_AVATAR_URLS = ['funplay-og-image', 'static.xx.fbcdn.net/rsrc.php', 'unavatar.io/facebook'];
 
   // Proxy Facebook/fbcdn URLs through edge function to avoid CORS
