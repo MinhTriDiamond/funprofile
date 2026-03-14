@@ -327,9 +327,17 @@ const GiftCelebrationCardComponent = ({
         </div>
 
         {/* Gift message */}
-        {truncatedMessage && (
+        {displayMessage && (
           <div className="bg-white/15 backdrop-blur-sm rounded-lg px-3 py-2 mb-3 text-center">
-            <p className="text-sm text-white/90 italic">"{truncatedMessage}"</p>
+            <p className="text-sm text-white/90 italic">"{displayMessage}"</p>
+            {isLongMessage && (
+              <button
+                onClick={() => setShowFullMessage(prev => !prev)}
+                className="text-xs text-yellow-200 hover:text-yellow-100 mt-1 font-medium transition-colors"
+              >
+                {showFullMessage ? 'Thu gọn ▲' : 'Xem thêm ▼'}
+              </button>
+            )}
           </div>
         )}
 

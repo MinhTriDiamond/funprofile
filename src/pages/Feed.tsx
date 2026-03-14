@@ -124,25 +124,40 @@ const Feed = () => {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {posts.map(post => (
-                      post.post_type === 'gift_celebration' ? (
-                        <GiftCelebrationCard
-                          key={post.id}
-                          post={post}
-                          currentUserId={currentUserId || ''}
-                          onPostDeleted={refetch}
-                          initialStats={postStats[post.id]}
-                        />
-                      ) : (
-                        <FacebookPostCard
-                          key={post.id}
-                          post={post}
-                          currentUserId={currentUserId || ''}
-                          onPostDeleted={refetch}
-                          initialStats={postStats[post.id]}
-                        />
-                      )
-                    ))}
+                    {(() => {
+                      const elements: React.ReactNode[] = [];
+                      let i = 0;
+                      while (i < posts.length) {
+                        if (posts[i].post_type === 'gift_celebration') {
+                          const giftGroup: typeof posts = [];
+                          while (i < posts.length && posts[i].post_type === 'gift_celebration') {
+                            giftGroup.push(posts[i]);
+                            i++;
+                          }
+                          elements.push(
+                            <GiftCelebrationGroup
+                              key={`gift-group-${giftGroup[0].id}`}
+                              posts={giftGroup}
+                              currentUserId={currentUserId || ''}
+                              onPostDeleted={refetch}
+                              postStats={postStats}
+                            />
+                          );
+                        } else {
+                          elements.push(
+                            <FacebookPostCard
+                              key={posts[i].id}
+                              post={posts[i]}
+                              currentUserId={currentUserId || ''}
+                              onPostDeleted={refetch}
+                              initialStats={postStats[posts[i].id]}
+                            />
+                          );
+                          i++;
+                        }
+                      }
+                      return elements;
+                    })()}
 
                     <div ref={loadMoreRef} className="py-4">
                       {isFetchingNextPage && (
