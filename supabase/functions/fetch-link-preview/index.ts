@@ -31,6 +31,7 @@ const UNAVATAR_MAP: Record<string, string> = {
   telegram: 'telegram',
   instagram: 'instagram',
   github: 'github',
+  linkedin: 'linkedin',
 };
 
 function extractUsername(url: string, platform: string): string | null {
