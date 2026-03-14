@@ -239,22 +239,7 @@ const GiftCelebrationCardComponent = ({
           : '0 2px 10px rgba(0,0,0,0.1)',
       }}
     >
-      {/* Sparkle overlay */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {[...Array(4)].map((_, i) => (
-          <div
-            key={i}
-            className="absolute animate-pulse"
-            style={{
-              left: `${15 + i * 20}%`,
-              top: `${10 + (i % 2) * 15}%`,
-              animationDelay: `${i * 0.5}s`,
-            }}
-          >
-            <Sparkles className="w-3 h-3 text-yellow-300/60" />
-          </div>
-        ))}
-      </div>
+      {/* Sparkle overlay removed for performance */}
 
       {/* Highlighted badge */}
       {isHighlighted && (
