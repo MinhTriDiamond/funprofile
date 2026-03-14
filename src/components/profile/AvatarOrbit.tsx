@@ -6,8 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { toJson } from '@/utils/supabaseJsonHelpers';
 
-// Orbit rotation speed (degrees per second) — pause when hovering or dragging
-const ORBIT_SPEED = 8;
+// Static orbit — icons spread from bottom upward
 
 export interface SocialLink {
   platform: string;
@@ -63,21 +62,31 @@ function useTransparentDiamond(src: string) {
   return dataUrl;
 }
 
+/**
+ * Compute static angles spreading from bottom (180°) upward to both sides.
+ * 1 icon → [180°]
+ * 2 icons → [150°, 210°]
+ * 3 icons → [140°, 180°, 220°]
+ * etc.
+ */
 function computeAngles(n: number): number[] {
   if (n === 0) return [];
-  const step = 360 / n;
-  return Array.from({ length: n }, (_, i) => i * step);
+  if (n === 1) return [180];
+  const GAP = 35; // degrees between each icon
+  const totalSpread = GAP * (n - 1);
+  const startAngle = 180 - totalSpread / 2;
+  return Array.from({ length: n }, (_, i) => startAngle + i * GAP);
+}
+
+function computeAddAngle(n: number): number {
+  // Place the + button at the next position in the fan
+  const angles = computeAngles(n + 1);
+  return angles[angles.length - 1] ?? 180;
 }
 
 function angleToPos(angleDeg: number) {
   const rad = (angleDeg * Math.PI) / 180;
   return { x: Math.sin(rad) * ORBIT_RADIUS, y: -Math.cos(rad) * ORBIT_RADIUS };
-}
-
-function computeAddAngle(n: number): number {
-  if (n === 0) return 0;
-  const step = 360 / (n + 1);
-  return n * step;
 }
 
 interface AvatarOrbitProps {
@@ -91,41 +100,11 @@ interface AvatarOrbitProps {
 export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userId, onLinksChanged }: AvatarOrbitProps) {
   const transparentDiamond = useTransparentDiamond(diamondSrc);
 
-  // Rotation animation — direct DOM update, no setState per frame
-  const rotationRef = useRef(0);
-  const rafRef = useRef<number>(0);
-  const lastTimeRef = useRef<number>(0);
+  // Static orbit — no animation, refs kept for drag compatibility
   const isOrbitHovered = useRef(false);
   const isDragging = useRef(false);
   const slotRefs = useRef<(HTMLDivElement | null)[]>([]);
   const baseAnglesRef = useRef<number[]>([]);
-
-
-  useEffect(() => {
-    const animate = (time: number) => {
-      if (lastTimeRef.current > 0 && !isOrbitHovered.current && !isDragging.current) {
-        const delta = (time - lastTimeRef.current) / 1000;
-        rotationRef.current = (rotationRef.current + ORBIT_SPEED * delta) % 360;
-        const rot = rotationRef.current;
-        slotRefs.current.forEach((el, i) => {
-          if (!el) return;
-          const baseAngle = baseAnglesRef.current[i] ?? 0;
-          const rotatedAngle = baseAngle + rot;
-          const rad = (rotatedAngle * Math.PI) / 180;
-          const x = Math.sin(rad) * ORBIT_RADIUS;
-          const y = -Math.cos(rad) * ORBIT_RADIUS;
-          el.style.left = `${CENTER + x - ORBIT_SIZE / 2}px`;
-          el.style.top = `${CENTER + y - ORBIT_SIZE / 2}px`;
-        });
-      }
-      lastTimeRef.current = time;
-      rafRef.current = requestAnimationFrame(animate);
-    };
-    // Set baseAnglesRef before starting animation loop
-    baseAnglesRef.current = computeAngles(0);
-    rafRef.current = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(rafRef.current);
-  }, []);
 
   // Edit state
   const [editingPlatform, setEditingPlatform] = useState<string | null>(null);
@@ -442,8 +421,6 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
           overflow: 'visible',
           zIndex: 20,
         }}
-        onMouseEnter={() => { isOrbitHovered.current = true; }}
-        onMouseLeave={() => { isOrbitHovered.current = false; }}
       >
 
 
