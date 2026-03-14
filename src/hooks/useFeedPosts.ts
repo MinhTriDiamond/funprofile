@@ -163,19 +163,16 @@ const fetchGiftProfiles = async (posts: FeedPost[]): Promise<FeedPost[]> => {
   });
 };
 
-// Fetch highlighted (pinned) gift celebration posts (all within 24h)
+// Fetch highlighted (pinned) gift celebration posts
 const fetchHighlightedPosts = async (currentUserId: string | null): Promise<FeedPost[]> => {
   const now = new Date().toISOString();
-  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  
   let query = supabase
     .from('posts')
     .select(`*, public_profiles!posts_user_id_fkey (username, display_name, avatar_url, public_wallet_address, is_banned)`)
     .eq('is_highlighted', true)
     .or(`highlight_expires_at.gt.${now},highlight_expires_at.is.null`)
-    .gte('created_at', twentyFourHoursAgo)
     .order('created_at', { ascending: false })
-    .limit(100);
+    .limit(10);
 
   if (currentUserId) {
     query = query.or(`moderation_status.eq.approved,user_id.eq.${currentUserId}`);

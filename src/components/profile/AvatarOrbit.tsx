@@ -6,7 +6,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { toJson } from '@/utils/supabaseJsonHelpers';
 
-// Static orbit — icons spread from bottom upward
+// Orbit rotation speed (degrees per second) — pause when hovering or dragging
+const ORBIT_SPEED = 8;
 
 export interface SocialLink {
   platform: string;
@@ -62,31 +63,21 @@ function useTransparentDiamond(src: string) {
   return dataUrl;
 }
 
-/**
- * Compute static angles spreading from bottom (180°) upward to both sides.
- * 1 icon → [180°]
- * 2 icons → [150°, 210°]
- * 3 icons → [140°, 180°, 220°]
- * etc.
- */
 function computeAngles(n: number): number[] {
   if (n === 0) return [];
-  if (n === 1) return [180];
-  const GAP = 35; // degrees between each icon
-  const totalSpread = GAP * (n - 1);
-  const startAngle = 180 - totalSpread / 2;
-  return Array.from({ length: n }, (_, i) => startAngle + i * GAP);
-}
-
-function computeAddAngle(n: number): number {
-  // Place the + button at the next position in the fan
-  const angles = computeAngles(n + 1);
-  return angles[angles.length - 1] ?? 180;
+  const step = 360 / n;
+  return Array.from({ length: n }, (_, i) => i * step);
 }
 
 function angleToPos(angleDeg: number) {
   const rad = (angleDeg * Math.PI) / 180;
   return { x: Math.sin(rad) * ORBIT_RADIUS, y: -Math.cos(rad) * ORBIT_RADIUS };
+}
+
+function computeAddAngle(n: number): number {
+  if (n === 0) return 0;
+  const step = 360 / (n + 1);
+  return n * step;
 }
 
 interface AvatarOrbitProps {
@@ -100,11 +91,41 @@ interface AvatarOrbitProps {
 export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userId, onLinksChanged }: AvatarOrbitProps) {
   const transparentDiamond = useTransparentDiamond(diamondSrc);
 
-  // Static orbit — no animation, refs kept for drag compatibility
+  // Rotation animation — direct DOM update, no setState per frame
+  const rotationRef = useRef(0);
+  const rafRef = useRef<number>(0);
+  const lastTimeRef = useRef<number>(0);
   const isOrbitHovered = useRef(false);
   const isDragging = useRef(false);
   const slotRefs = useRef<(HTMLDivElement | null)[]>([]);
   const baseAnglesRef = useRef<number[]>([]);
+
+
+  useEffect(() => {
+    const animate = (time: number) => {
+      if (lastTimeRef.current > 0 && !isOrbitHovered.current && !isDragging.current) {
+        const delta = (time - lastTimeRef.current) / 1000;
+        rotationRef.current = (rotationRef.current + ORBIT_SPEED * delta) % 360;
+        const rot = rotationRef.current;
+        slotRefs.current.forEach((el, i) => {
+          if (!el) return;
+          const baseAngle = baseAnglesRef.current[i] ?? 0;
+          const rotatedAngle = baseAngle + rot;
+          const rad = (rotatedAngle * Math.PI) / 180;
+          const x = Math.sin(rad) * ORBIT_RADIUS;
+          const y = -Math.cos(rad) * ORBIT_RADIUS;
+          el.style.left = `${CENTER + x - ORBIT_SIZE / 2}px`;
+          el.style.top = `${CENTER + y - ORBIT_SIZE / 2}px`;
+        });
+      }
+      lastTimeRef.current = time;
+      rafRef.current = requestAnimationFrame(animate);
+    };
+    // Set baseAnglesRef before starting animation loop
+    baseAnglesRef.current = computeAngles(0);
+    rafRef.current = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, []);
 
   // Edit state
   const [editingPlatform, setEditingPlatform] = useState<string | null>(null);
@@ -139,41 +160,28 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
   const usedPlatforms = new Set(localLinks.map((l) => l.platform));
   const availablePlatforms = PLATFORM_ORDER.filter((p) => !usedPlatforms.has(p));
 
-  const UNAVATAR_PLATFORMS = ['youtube', 'twitter', 'tiktok', 'telegram', 'instagram', 'github', 'linkedin'];
-  const NO_AVATAR_PLATFORMS: string[] = [];
-  const BAD_AVATAR_URLS = ['funplay-og-image', 'static.xx.fbcdn.net/rsrc.php', 'unavatar.io/facebook', 'unavatar.io/youtube', 'unavatar.io/telegram', 'unavatar.io/tiktok'];
-
-  // Sanitize HTML entities in avatar URLs (e.g. &amp; → &)
-  const sanitizeUrl = (url: string | undefined): string | undefined => {
-    if (!url) return url;
-    return url.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"');
-  };
+  const UNAVATAR_PLATFORMS = ['youtube', 'twitter', 'tiktok', 'telegram', 'instagram', 'github'];
+  const NO_AVATAR_PLATFORMS = ['funplay'];
+  const BAD_AVATAR_URLS = ['funplay-og-image', 'static.xx.fbcdn.net/rsrc.php', 'unavatar.io/facebook'];
 
   // Proxy Facebook/fbcdn URLs through edge function to avoid CORS
   const getDisplayAvatarUrl = (link: SocialLink): string | undefined => {
-    const raw = sanitizeUrl(link.avatarUrl);
-    if (!raw) return undefined;
-    if (raw.includes('graph.facebook.com') || raw.includes('fbcdn.net')) {
+    if (!link.avatarUrl) return undefined;
+    if (link.avatarUrl.includes('graph.facebook.com') || link.avatarUrl.includes('fbcdn.net')) {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      return `${supabaseUrl}/functions/v1/fetch-link-preview?proxy=${encodeURIComponent(raw)}`;
+      return `${supabaseUrl}/functions/v1/fetch-link-preview?proxy=${encodeURIComponent(link.avatarUrl)}`;
     }
-    return raw;
+    return link.avatarUrl;
   };
 
   useEffect(() => {
-    if (!userId) return;
+    if (!isOwner || !userId) return;
     const linksToRefetch = localLinks.filter((l) => {
       if (!l.url) return false;
       if (NO_AVATAR_PLATFORMS.includes(l.platform)) return false;
       if (l.avatarUrl && BAD_AVATAR_URLS.some((d) => l.avatarUrl!.includes(d))) return true;
-      // Re-fetch if avatarUrl contains HTML entities (stale data)
-      if (l.avatarUrl?.includes('&amp;')) return true;
       // Re-fetch Facebook if avatarUrl is still a Graph API redirect URL
       if (l.platform === 'facebook' && l.avatarUrl?.includes('graph.facebook.com')) return true;
-      // Re-fetch Angel AI if no valid avatar
-      if (l.platform === 'angel' && !l.avatarUrl) return true;
-      // Re-fetch Zalo if no avatar
-      if (l.platform === 'zalo' && !l.avatarUrl) return true;
       if (!l.avatarUrl) return true;
       if (UNAVATAR_PLATFORMS.includes(l.platform) && !l.avatarUrl.includes('unavatar.io')) return true;
       return false;
@@ -201,17 +209,13 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
         } catch { /* ignore */ }
       }
       if (updated) {
-        // Only save to DB if owner
-        if (isOwner) {
-          await supabase.from('profiles').update({ social_links: toJson(newLinks as unknown as Record<string, unknown>) }).eq('id', userId);
-        }
-        setLocalLinks(newLinks);
+        await supabase.from('profiles').update({ social_links: toJson(newLinks as unknown as Record<string, unknown>) }).eq('id', userId);
         onLinksChanged?.(newLinks);
       }
     };
     fetchMissing();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
+  }, [isOwner, userId]);
 
   // Default links for users who haven't set up social_links
   const defaultLinks: SocialLink[] = PLATFORM_ORDER.map(p => {
@@ -438,6 +442,8 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
           overflow: 'visible',
           zIndex: 20,
         }}
+        onMouseEnter={() => { isOrbitHovered.current = true; }}
+        onMouseLeave={() => { isOrbitHovered.current = false; }}
       >
 
 

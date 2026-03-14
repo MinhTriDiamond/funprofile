@@ -80,7 +80,6 @@ export function useDonation(options?: UseDonationOptions) {
     }
 
     setIsProcessing(true);
-    (window as any).__TX_IN_PROGRESS__ = true;
 
     try {
       // For simplicity, we'll use sendTransaction for all transfers
@@ -90,7 +89,6 @@ export function useDonation(options?: UseDonationOptions) {
         txHash = await sendTransactionAsync({
           to: params.recipientWalletAddress as `0x${string}`,
           value: parseEther(params.amount),
-          chainId: chainId || 56,
         });
       } else {
         // ERC20 token transfer - encode the transfer call data
@@ -107,7 +105,6 @@ export function useDonation(options?: UseDonationOptions) {
         txHash = await sendTransactionAsync({
           to: params.tokenAddress as `0x${string}`,
           data,
-          chainId: chainId || 56,
         });
       }
 
@@ -220,7 +217,6 @@ export function useDonation(options?: UseDonationOptions) {
       options?.onError?.(error);
       return null;
     } finally {
-      (window as any).__TX_IN_PROGRESS__ = false;
       setIsProcessing(false);
     }
   };

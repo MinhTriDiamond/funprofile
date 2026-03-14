@@ -58,7 +58,7 @@ export const MobileBottomNav = memo(() => {
   const navItems = [
     { icon: Home, label: t('feed'), path: '/', action: () => handleNavigate('/') },
     { icon: Users, label: t('friends'), path: '/friends', action: () => handleNavigate('/friends') },
-    { icon: Award, label: 'Honor Board', isCenter: true, action: () => setHonorBoardOpen(true) },
+    { icon: Award, label: t('honorBoard'), isCenter: true, action: () => setHonorBoardOpen(true) },
     { icon: MessageCircle, label: 'Chat', path: '/chat', action: () => handleNavigate('/chat') },
     { isGift: true }, // Gift button
   ];
@@ -146,7 +146,7 @@ export const MobileBottomNav = memo(() => {
             <div className="flex items-center justify-center gap-2 mt-2">
               <Award className="w-6 h-6 text-amber-500" />
               <DrawerTitle className="text-xl font-bold bg-gradient-to-r from-amber-500 to-orange-500 bg-clip-text text-transparent">
-                ✨ HONOR BOARD ✨
+                {isProfilePage ? '✨ HONOR BOARD ✨' : t('honorBoard')}
               </DrawerTitle>
               <Award className="w-6 h-6 text-amber-500" />
             </div>

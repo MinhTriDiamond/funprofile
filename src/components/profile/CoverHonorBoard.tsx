@@ -121,7 +121,7 @@ export const CoverHonorBoard = ({ userId, username, avatarUrl }: CoverHonorBoard
                     filter: 'drop-shadow(1px 1px 0px rgba(255,255,255,0.5)) drop-shadow(0 0 8px rgba(255, 182, 193, 0.5))',
                   }}
                 >
-                  HONOR BOARD
+                  {t('honorBoard').toUpperCase()}
                 </h1>
                 {/* User Avatar */}
                 <Avatar className="w-8 h-8 border-2 border-[#22c55e] shadow-[0_0_12px_rgba(34,197,94,0.6)]">

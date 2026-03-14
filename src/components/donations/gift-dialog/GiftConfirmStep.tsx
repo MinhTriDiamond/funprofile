@@ -74,8 +74,8 @@ export function GiftConfirmStep(props: GiftConfirmStepProps) {
   } = props;
 
   return (
-    <div className="space-y-3 sm:space-y-4 py-2">
-      <div className="bg-muted/30 rounded-xl p-3 sm:p-4 space-y-3 sm:space-y-4 border">
+    <div className="space-y-4 py-2">
+      <div className="bg-muted/30 rounded-xl p-4 space-y-4 border">
         {/* Sender */}
         <div className="flex items-center gap-3">
           <Avatar className="w-10 h-10 border-2 border-primary/30">
@@ -86,7 +86,7 @@ export function GiftConfirmStep(props: GiftConfirmStepProps) {
             <p className="font-medium text-sm">{senderProfile?.display_name || senderProfile?.username}</p>
             <p className="text-xs text-muted-foreground">@{senderProfile?.username}</p>
             {address && (
-              <div className="hidden sm:flex items-center gap-1">
+              <div className="flex items-center gap-1">
                 <span className="text-xs text-muted-foreground font-mono">{address.slice(0, 8)}...{address.slice(-6)}</span>
                 <button type="button" onClick={() => onCopyAddress(address)} className="p-0.5 hover:bg-muted rounded"><Copy className="w-3 h-3 text-muted-foreground" /></button>
               </div>
@@ -95,7 +95,7 @@ export function GiftConfirmStep(props: GiftConfirmStepProps) {
         </div>
 
         {/* Arrow + Amount */}
-        <div className="flex items-center justify-center gap-2 py-1.5">
+        <div className="flex items-center justify-center gap-3 py-2">
           <div className="h-px flex-1 bg-border" />
           <div className="flex flex-col items-center gap-1 px-4 py-2 rounded-full bg-gradient-to-r from-gold/20 to-amber-500/20 border border-gold/50">
             <span className="text-lg font-bold text-amber-800">
@@ -155,7 +155,7 @@ export function GiftConfirmStep(props: GiftConfirmStepProps) {
 
         {/* Message */}
         {customMessage && (
-          <div className="bg-white/80 rounded-lg p-2 sm:p-3 border">
+          <div className="bg-white/80 rounded-lg p-3 border">
             <p className="text-sm text-muted-foreground mb-1">Lời nhắn:</p>
             <p className="text-sm italic">"{customMessage}"</p>
           </div>
@@ -169,7 +169,7 @@ export function GiftConfirmStep(props: GiftConfirmStepProps) {
       </div>
 
       {/* Warning */}
-      <div className="flex items-center gap-2 p-2 sm:p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+      <div className="flex items-center gap-2 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
         <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
         <p className="text-xs text-amber-700 font-medium">
           {isMultiMode
@@ -263,7 +263,7 @@ function SingleRecipientDisplay({ recipient, onCopyAddress }: { recipient?: Reso
         <p className="font-medium text-sm">{recipient.displayName || recipient.username}</p>
         <p className="text-xs text-muted-foreground">@{recipient.username}</p>
         {recipient.walletAddress && (
-          <div className="hidden sm:flex items-center gap-1">
+          <div className="flex items-center gap-1">
             <span className="text-xs text-muted-foreground font-mono">{recipient.walletAddress.slice(0, 8)}...{recipient.walletAddress.slice(-6)}</span>
             <button type="button" onClick={() => onCopyAddress(recipient.walletAddress!)} className="p-0.5 hover:bg-muted rounded"><Copy className="w-3 h-3 text-muted-foreground" /></button>
           </div>
