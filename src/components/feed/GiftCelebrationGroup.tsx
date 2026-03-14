@@ -9,8 +9,8 @@ interface GiftCelebrationGroupProps {
   postStats: Record<string, any>;
 }
 
-const INITIAL_VISIBLE = 5;
-const LOAD_MORE_COUNT = 5;
+const INITIAL_VISIBLE = 3;
+const LOAD_MORE_COUNT = 3;
 
 const GiftCelebrationGroupComponent = ({
   posts,
@@ -65,10 +65,7 @@ const GiftCelebrationGroupComponent = ({
       </div>
 
       {/* Scrollable container */}
-      <div
-        className="max-h-[750px] overflow-y-auto scrollbar-thin"
-        style={{ scrollBehavior: 'smooth' }}
-      >
+      <div>
         <div className="p-2 space-y-2">
           {visiblePosts.map(post => (
             <GiftCelebrationCard
