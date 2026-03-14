@@ -542,8 +542,19 @@ serve(async (req) => {
         avatarUrl = await scrapeOgImage(normalizedUrl);
       }
     } else if (platform === 'zalo') {
-      // Zalo doesn't expose profile pictures via web — use OG image or null
-      avatarUrl = await scrapeOgImage(normalizedUrl);
+      // Handled below in the main else-if chain — but keep backward compat
+      console.log(`Zalo link (legacy path): ${normalizedUrl}`);
+      try {
+        const zaloHtml = await fetchHtml(normalizedUrl, 'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36');
+        if (zaloHtml) {
+          const ogMatch = zaloHtml.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i)
+            || zaloHtml.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i);
+          if (ogMatch?.[1]) {
+            avatarUrl = ogMatch[1].trim();
+            console.log(`Zalo OG image found: ${avatarUrl}`);
+          }
+        }
+      } catch (e) { console.log('Zalo scrape error:', e); }
     } else if (platform === 'facebook') {
       const username = extractUsername(normalizedUrl, 'facebook');
       console.log(`Facebook username: ${username}`);
