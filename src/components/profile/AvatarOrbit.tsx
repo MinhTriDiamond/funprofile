@@ -82,11 +82,12 @@ function computeAddAngle(n: number): number {
   // Place the + button at the next position in the fan
   const angles = computeAngles(n + 1);
   return angles[angles.length - 1] ?? 180;
+}
+
 function angleToPos(angleDeg: number) {
   const rad = (angleDeg * Math.PI) / 180;
   return { x: Math.sin(rad) * ORBIT_RADIUS, y: -Math.cos(rad) * ORBIT_RADIUS };
 }
-
 
 interface AvatarOrbitProps {
   children: React.ReactNode;
@@ -99,41 +100,11 @@ interface AvatarOrbitProps {
 export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userId, onLinksChanged }: AvatarOrbitProps) {
   const transparentDiamond = useTransparentDiamond(diamondSrc);
 
-  // Rotation animation — direct DOM update, no setState per frame
-  const rotationRef = useRef(0);
-  const rafRef = useRef<number>(0);
-  const lastTimeRef = useRef<number>(0);
+  // Static orbit — no animation, refs kept for drag compatibility
   const isOrbitHovered = useRef(false);
   const isDragging = useRef(false);
   const slotRefs = useRef<(HTMLDivElement | null)[]>([]);
   const baseAnglesRef = useRef<number[]>([]);
-
-
-  useEffect(() => {
-    const animate = (time: number) => {
-      if (lastTimeRef.current > 0 && !isOrbitHovered.current && !isDragging.current) {
-        const delta = (time - lastTimeRef.current) / 1000;
-        rotationRef.current = (rotationRef.current + ORBIT_SPEED * delta) % 360;
-        const rot = rotationRef.current;
-        slotRefs.current.forEach((el, i) => {
-          if (!el) return;
-          const baseAngle = baseAnglesRef.current[i] ?? 0;
-          const rotatedAngle = baseAngle + rot;
-          const rad = (rotatedAngle * Math.PI) / 180;
-          const x = Math.sin(rad) * ORBIT_RADIUS;
-          const y = -Math.cos(rad) * ORBIT_RADIUS;
-          el.style.left = `${CENTER + x - ORBIT_SIZE / 2}px`;
-          el.style.top = `${CENTER + y - ORBIT_SIZE / 2}px`;
-        });
-      }
-      lastTimeRef.current = time;
-      rafRef.current = requestAnimationFrame(animate);
-    };
-    // Set baseAnglesRef before starting animation loop
-    baseAnglesRef.current = computeAngles(0);
-    rafRef.current = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(rafRef.current);
-  }, []);
 
   // Edit state
   const [editingPlatform, setEditingPlatform] = useState<string | null>(null);
