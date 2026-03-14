@@ -1,6 +1,7 @@
 import { memo, useState, useCallback } from 'react';
 import { GiftCelebrationCard } from './GiftCelebrationCard';
 import { Gift, Volume2, VolumeX } from 'lucide-react';
+import { stopCelebrationMusic } from '@/lib/celebrationSounds';
 
 interface GiftCelebrationGroupProps {
   posts: any[];
@@ -23,6 +24,11 @@ const GiftCelebrationGroupComponent = ({
     setIsMuted(prev => {
       const next = !prev;
       localStorage.setItem('celebration_muted', String(next));
+
+      if (next) {
+        stopCelebrationMusic();
+      }
+
       return next;
     });
   }, []);
