@@ -15,6 +15,7 @@ import { Loader2 } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { AccountUpgradeBanner } from '@/components/security/AccountUpgradeBanner';
+import { GiftTransactionToast } from '@/components/feed/GiftTransactionToast';
 
 // Lightweight skeleton components
 const SidebarSkeleton = memo(() => (
