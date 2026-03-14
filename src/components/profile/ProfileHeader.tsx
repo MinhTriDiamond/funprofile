@@ -10,6 +10,7 @@ import { FriendRequestButton } from '@/components/friends/FriendRequestButton';
 import { DonationButton } from '@/components/donations/DonationButton';
 import { MoreHorizontal, MapPin, Briefcase, MessageCircle, Eye, X, PenSquare, Copy, Wallet, Shield } from 'lucide-react';
 import { toast } from 'sonner';
+import { copyToClipboard } from '@/utils/clipboard';
 import { useLanguage } from '@/i18n/LanguageContext';
 import type { ProfileData, FriendPreview } from '@/hooks/useProfile';
 
