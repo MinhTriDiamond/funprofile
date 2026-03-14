@@ -154,7 +154,7 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
   };
 
   useEffect(() => {
-    if (!isOwner || !userId) return;
+    if (!userId) return;
     const linksToRefetch = localLinks.filter((l) => {
       if (!l.url) return false;
       if (NO_AVATAR_PLATFORMS.includes(l.platform)) return false;
@@ -188,13 +188,17 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
         } catch { /* ignore */ }
       }
       if (updated) {
-        await supabase.from('profiles').update({ social_links: toJson(newLinks as unknown as Record<string, unknown>) }).eq('id', userId);
+        // Only save to DB if owner
+        if (isOwner) {
+          await supabase.from('profiles').update({ social_links: toJson(newLinks as unknown as Record<string, unknown>) }).eq('id', userId);
+        }
+        setLocalLinks(newLinks);
         onLinksChanged?.(newLinks);
       }
     };
     fetchMissing();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOwner, userId]);
+  }, [userId]);
 
   // Default links for users who haven't set up social_links
   const defaultLinks: SocialLink[] = PLATFORM_ORDER.map(p => {
