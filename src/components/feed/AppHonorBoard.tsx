@@ -143,7 +143,7 @@ export const AppHonorBoard = memo(() => {
                 filter: 'drop-shadow(1px 1px 0px rgba(255,255,255,0.5)) drop-shadow(0 0 8px rgba(255, 182, 193, 0.5))',
               }}
             >
-              {t('honorBoard')}
+              Honor Board
             </h3>
           </div>
         </div>

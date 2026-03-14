@@ -140,7 +140,7 @@ const Profile = () => {
                     </TabsTrigger>
                   ))}
                   <TabsTrigger value="honorboard" className="px-4 py-4 rounded-t-lg border-b-[3px] border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary hover:bg-muted/50 font-semibold text-base whitespace-nowrap transition-colors md:hidden">
-                    {t('honorBoard')}
+                    Honor Board
                   </TabsTrigger>
                   {showPrivateElements && (
                     <TabsTrigger value="edit" className="px-4 py-4 rounded-t-lg border-b-[3px] border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary hover:bg-muted/50 font-semibold text-base whitespace-nowrap transition-colors">

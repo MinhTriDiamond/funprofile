@@ -2,7 +2,7 @@ import { useEffect, memo, useRef, useCallback } from 'react';
 import { FacebookNavbar } from '@/components/layout/FacebookNavbar';
 import { FacebookCreatePost } from '@/components/feed/FacebookCreatePost';
 import { FacebookPostCard } from '@/components/feed/FacebookPostCard';
-import { GiftCelebrationCard } from '@/components/feed/GiftCelebrationCard';
+import { GiftCelebrationGroup } from '@/components/feed/GiftCelebrationGroup';
 import { FacebookLeftSidebar } from '@/components/feed/FacebookLeftSidebar';
 import { FacebookRightSidebar } from '@/components/feed/FacebookRightSidebar';
 import { StoriesBar } from '@/components/feed/StoriesBar';
@@ -15,6 +15,7 @@ import { Loader2 } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { AccountUpgradeBanner } from '@/components/security/AccountUpgradeBanner';
+import { GiftTransactionToast } from '@/components/feed/GiftTransactionToast';
 
 // Lightweight skeleton components
 const SidebarSkeleton = memo(() => (
@@ -124,25 +125,32 @@ const Feed = () => {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {posts.map(post => (
-                      post.post_type === 'gift_celebration' ? (
-                        <GiftCelebrationCard
-                          key={post.id}
-                          post={post}
-                          currentUserId={currentUserId || ''}
-                          onPostDeleted={refetch}
-                          initialStats={postStats[post.id]}
-                        />
-                      ) : (
-                        <FacebookPostCard
-                          key={post.id}
-                          post={post}
-                          currentUserId={currentUserId || ''}
-                          onPostDeleted={refetch}
-                          initialStats={postStats[post.id]}
-                        />
-                      )
-                    ))}
+                    {(() => {
+                      const giftPosts = posts.filter(p => p.post_type === 'gift_celebration');
+                      const regularPosts = posts.filter(p => p.post_type !== 'gift_celebration');
+                      return (
+                        <>
+                          {giftPosts.length > 0 && (
+                            <GiftCelebrationGroup
+                              key="gift-group-all"
+                              posts={giftPosts}
+                              currentUserId={currentUserId || ''}
+                              onPostDeleted={refetch}
+                              postStats={postStats}
+                            />
+                          )}
+                          {regularPosts.map(post => (
+                            <FacebookPostCard
+                              key={post.id}
+                              post={post}
+                              currentUserId={currentUserId || ''}
+                              onPostDeleted={refetch}
+                              initialStats={postStats[post.id]}
+                            />
+                          ))}
+                        </>
+                      );
+                    })()}
 
                     <div ref={loadMoreRef} className="py-4">
                       {isFetchingNextPage && (
@@ -177,6 +185,9 @@ const Feed = () => {
 
       {/* Scroll to top button */}
       <ScrollToTopButton />
+
+      {/* Gift transaction notifications */}
+      <GiftTransactionToast />
     </div>
   );
 };

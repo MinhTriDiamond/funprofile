@@ -124,12 +124,11 @@ const GiftCelebrationCardComponent = ({
   useEffect(() => {
     if (disableEffects || hasPlayedRef.current) return;
 
-    const isMuted = localStorage.getItem('celebration_muted') === 'true';
-
     const observer = new IntersectionObserver(
       (entries) => {
         const [entry] = entries;
         if (entry.isIntersecting) {
+          const isMuted = localStorage.getItem('celebration_muted') === 'true';
           if (!hasPlayedRef.current && !isMuted) {
             const audio = playCelebrationMusic('rich-1');
             if (audio) {
@@ -168,14 +167,14 @@ const GiftCelebrationCardComponent = ({
   useEffect(() => {
     if (disableEffects) return;
     if (!hasPlayedRef.current) return;
-    const isMuted = localStorage.getItem('celebration_muted') === 'true';
-    if (isMuted) return;
 
     let audioInstance: HTMLAudioElement | null = null;
     const observer = new IntersectionObserver(
       (entries) => {
         const [entry] = entries;
         if (entry.isIntersecting && hasPlayedRef.current) {
+          const isMuted = localStorage.getItem('celebration_muted') === 'true';
+          if (isMuted) return;
           audioInstance = playCelebrationMusic('rich-1');
           if (audioInstance) {
             audioInstance.volume = 0.2;
@@ -223,8 +222,10 @@ const GiftCelebrationCardComponent = ({
   const recipientDisplayName = recipientProfile?.display_name || recipientProfile?.username || fallbackRecipientName || 'User';
   const recipientUsername = recipientProfile?.username || fallbackRecipientName || 'User';
   const scanUrl = post.tx_hash ? getBscScanTxUrl(post.tx_hash, token) : '#';
-  const truncatedMessage = post.gift_message && post.gift_message.length > 120
-    ? post.gift_message.slice(0, 120) + '...'
+  const [showFullMessage, setShowFullMessage] = useState(false);
+  const isLongMessage = post.gift_message && post.gift_message.length > 120;
+  const displayMessage = isLongMessage && !showFullMessage
+    ? post.gift_message!.slice(0, 120) + '...'
     : post.gift_message;
 
   return (
@@ -325,9 +326,17 @@ const GiftCelebrationCardComponent = ({
         </div>
 
         {/* Gift message */}
-        {truncatedMessage && (
+        {displayMessage && (
           <div className="bg-white/15 backdrop-blur-sm rounded-lg px-3 py-2 mb-3 text-center">
-            <p className="text-sm text-white/90 italic">"{truncatedMessage}"</p>
+            <p className="text-sm text-white/90 italic">"{displayMessage}"</p>
+            {isLongMessage && (
+              <button
+                onClick={() => setShowFullMessage(prev => !prev)}
+                className="text-xs text-yellow-200 hover:text-yellow-100 mt-1 font-medium transition-colors"
+              >
+                {showFullMessage ? 'Thu gọn ▲' : 'Xem thêm ▼'}
+              </button>
+            )}
           </div>
         )}
 
@@ -351,7 +360,7 @@ const GiftCelebrationCardComponent = ({
       </div>
 
       {/* Reactions Summary */}
-      <div className="bg-black/10">
+        <div className="bg-black/10 [&_.text-muted-foreground]:text-white/70 [&_.text-sm]:text-white/70 [&_.border-card]:border-transparent">
         <ReactionSummary
           postId={post.id}
           reactions={reactionCounts}
@@ -363,7 +372,7 @@ const GiftCelebrationCardComponent = ({
       </div>
 
       {/* Action Buttons */}
-      <div className="border-t border-white/10 mx-2 sm:mx-4 bg-black/10">
+      <div className="border-t border-white/10 mx-2 sm:mx-4 bg-black/10 [&_.text-muted-foreground]:text-white/70">
         <div className="flex items-center py-1">
           <ReactionButton
             postId={post.id}

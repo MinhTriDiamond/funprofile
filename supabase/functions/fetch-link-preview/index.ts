@@ -31,6 +31,7 @@ const UNAVATAR_MAP: Record<string, string> = {
   telegram: 'telegram',
   instagram: 'instagram',
   github: 'github',
+  linkedin: 'linkedin',
 };
 
 function extractUsername(url: string, platform: string): string | null {
@@ -451,14 +452,16 @@ serve(async (req) => {
         ? 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)'
         : 'Mozilla/5.0 (compatible; FunProfile/1.0)';
 
+      // Facebook graph URLs need redirect follow to get the actual image
+      const isFbGraph = host.includes('graph.facebook.com');
       const res = await fetch(targetUrl, {
         headers: { 'User-Agent': ua },
-        redirect: isFbDomain ? 'manual' : 'follow',
+        redirect: (isFbDomain && !isFbGraph) ? 'manual' : 'follow',
         signal: AbortSignal.timeout(8000),
       });
 
-      // For Facebook: if redirected (3xx) or got HTML instead of image, return 404
-      if (isFbDomain && (res.status >= 300 && res.status < 400)) {
+      // For Facebook CDN (not graph): if redirected (3xx) or got HTML instead of image, return 404
+      if (isFbDomain && !isFbGraph && (res.status >= 300 && res.status < 400)) {
         console.log(`Facebook redirect detected for: ${targetUrl}`);
         return new Response(null, { status: 404, headers: corsHeaders });
       }
@@ -511,7 +514,67 @@ serve(async (req) => {
     // ===== MODE: AVATAR (legacy, default) =====
     let avatarUrl: string | null = null;
 
-    if (platform === 'facebook') {
+    // Internal Fun ecosystem domains — look up avatar from profiles table
+    const INTERNAL_DOMAINS = ['fun.rich', 'funprofile.lovable.app'];
+    const isInternalLink = INTERNAL_DOMAINS.some(d => normalizedUrl.includes(d));
+
+    if (isInternalLink) {
+      // Extract username or user ID from URL path
+      // Patterns: /username, /user/{uuid}, /{uuid}
+      try {
+        const u = new URL(normalizedUrl);
+        const pathParts = u.pathname.split('/').filter(Boolean);
+        const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
+        const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+        const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+        const sb = createClient(supabaseUrl, supabaseKey);
+        
+        const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        
+        // Try /user/{uuid} pattern first
+        if (pathParts[0] === 'user' && pathParts[1] && UUID_RE.test(pathParts[1])) {
+          const { data: profile } = await sb.from('profiles').select('avatar_url').eq('id', pathParts[1]).single();
+          if (profile?.avatar_url) {
+            avatarUrl = profile.avatar_url;
+            console.log(`Internal link avatar by UUID: ${avatarUrl}`);
+          }
+        }
+        // Try /{uuid} pattern
+        else if (pathParts[0] && UUID_RE.test(pathParts[0])) {
+          const { data: profile } = await sb.from('profiles').select('avatar_url').eq('id', pathParts[0]).single();
+          if (profile?.avatar_url) {
+            avatarUrl = profile.avatar_url;
+            console.log(`Internal link avatar by UUID path: ${avatarUrl}`);
+          }
+        }
+        // Try /username pattern
+        else if (pathParts[0]) {
+          const { data: profile } = await sb.from('profiles').select('avatar_url').eq('username', pathParts[0]).single();
+          if (profile?.avatar_url) {
+            avatarUrl = profile.avatar_url;
+            console.log(`Internal link avatar for ${pathParts[0]}: ${avatarUrl}`);
+          }
+        }
+      } catch (e) { console.log('Internal link avatar lookup error:', e); }
+      // Fallback to OG image scraping
+      if (!avatarUrl) {
+        avatarUrl = await scrapeOgImage(normalizedUrl);
+      }
+    } else if (platform === 'zalo') {
+      // Handled below in the main else-if chain — but keep backward compat
+      console.log(`Zalo link (legacy path): ${normalizedUrl}`);
+      try {
+        const zaloHtml = await fetchHtml(normalizedUrl, 'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36');
+        if (zaloHtml) {
+          const ogMatch = zaloHtml.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i)
+            || zaloHtml.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i);
+          if (ogMatch?.[1]) {
+            avatarUrl = ogMatch[1].trim();
+            console.log(`Zalo OG image found: ${avatarUrl}`);
+          }
+        }
+      } catch (e) { console.log('Zalo scrape error:', e); }
+    } else if (platform === 'facebook') {
       const username = extractUsername(normalizedUrl, 'facebook');
       console.log(`Facebook username: ${username}`);
       if (username) {
@@ -538,10 +601,53 @@ serve(async (req) => {
     } else if (platform && UNAVATAR_MAP[platform]) {
       const username = extractUsername(normalizedUrl, platform);
       if (username) {
-        avatarUrl = `https://unavatar.io/${UNAVATAR_MAP[platform]}/${encodeURIComponent(username)}`;
+        const unavatarUrl = `https://unavatar.io/${UNAVATAR_MAP[platform]}/${encodeURIComponent(username)}`;
+        // Validate that unavatar actually has a real image
+        try {
+          const headRes = await fetch(unavatarUrl, {
+            method: 'HEAD',
+            signal: AbortSignal.timeout(5000),
+            redirect: 'follow',
+          });
+          const ct = headRes.headers.get('content-type') || '';
+          const cl = parseInt(headRes.headers.get('content-length') || '0', 10);
+          // unavatar returns a tiny default image (~<1KB) or redirects to a fallback when no avatar found
+          if (headRes.ok && ct.startsWith('image/') && cl > 1000) {
+            avatarUrl = unavatarUrl;
+            console.log(`Unavatar valid for ${platform}/${username}: ${cl} bytes`);
+          } else {
+            console.log(`Unavatar invalid for ${platform}/${username}: status=${headRes.status}, ct=${ct}, cl=${cl}`);
+          }
+        } catch (e) {
+          console.log(`Unavatar HEAD failed for ${platform}/${username}:`, e);
+        }
+        // Fallback: scrape OG image from the actual profile page
+        if (!avatarUrl) {
+          console.log(`Falling back to OG scrape for ${platform}: ${normalizedUrl}`);
+          avatarUrl = await scrapeOgImage(normalizedUrl);
+        }
       }
+    } else if (platform === 'zalo') {
+      // Zalo: try scraping with mobile UA for better OG data
+      console.log(`Zalo link: ${normalizedUrl}`);
+      try {
+        const zaloHtml = await fetchHtml(normalizedUrl, 'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36');
+        if (zaloHtml) {
+          const ogMatch = zaloHtml.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i)
+            || zaloHtml.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i);
+          if (ogMatch?.[1]) {
+            avatarUrl = ogMatch[1].trim();
+            console.log(`Zalo OG image found: ${avatarUrl}`);
+          }
+        }
+      } catch (e) { console.log('Zalo scrape error:', e); }
     } else {
       avatarUrl = await scrapeOgImage(normalizedUrl);
+    }
+
+    // Decode HTML entities in avatar URL before returning
+    if (avatarUrl) {
+      avatarUrl = decodeHtmlEntities(avatarUrl);
     }
 
     return new Response(JSON.stringify({ avatarUrl }), {
