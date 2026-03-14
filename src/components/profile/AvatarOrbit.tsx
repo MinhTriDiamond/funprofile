@@ -421,8 +421,6 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
           overflow: 'visible',
           zIndex: 20,
         }}
-        onMouseEnter={() => { isOrbitHovered.current = true; }}
-        onMouseLeave={() => { isOrbitHovered.current = false; }}
       >
 
 
