@@ -571,8 +571,46 @@ serve(async (req) => {
     } else if (platform && UNAVATAR_MAP[platform]) {
       const username = extractUsername(normalizedUrl, platform);
       if (username) {
-        avatarUrl = `https://unavatar.io/${UNAVATAR_MAP[platform]}/${encodeURIComponent(username)}`;
+        const unavatarUrl = `https://unavatar.io/${UNAVATAR_MAP[platform]}/${encodeURIComponent(username)}`;
+        // Validate that unavatar actually has a real image
+        try {
+          const headRes = await fetch(unavatarUrl, {
+            method: 'HEAD',
+            signal: AbortSignal.timeout(5000),
+            redirect: 'follow',
+          });
+          const ct = headRes.headers.get('content-type') || '';
+          const cl = parseInt(headRes.headers.get('content-length') || '0', 10);
+          // unavatar returns a tiny default image (~<1KB) or redirects to a fallback when no avatar found
+          if (headRes.ok && ct.startsWith('image/') && cl > 1000) {
+            avatarUrl = unavatarUrl;
+            console.log(`Unavatar valid for ${platform}/${username}: ${cl} bytes`);
+          } else {
+            console.log(`Unavatar invalid for ${platform}/${username}: status=${headRes.status}, ct=${ct}, cl=${cl}`);
+          }
+        } catch (e) {
+          console.log(`Unavatar HEAD failed for ${platform}/${username}:`, e);
+        }
+        // Fallback: scrape OG image from the actual profile page
+        if (!avatarUrl) {
+          console.log(`Falling back to OG scrape for ${platform}: ${normalizedUrl}`);
+          avatarUrl = await scrapeOgImage(normalizedUrl);
+        }
       }
+    } else if (platform === 'zalo') {
+      // Zalo: try scraping with mobile UA for better OG data
+      console.log(`Zalo link: ${normalizedUrl}`);
+      try {
+        const zaloHtml = await fetchHtml(normalizedUrl, 'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36');
+        if (zaloHtml) {
+          const ogMatch = zaloHtml.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i)
+            || zaloHtml.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i);
+          if (ogMatch?.[1]) {
+            avatarUrl = ogMatch[1].trim();
+            console.log(`Zalo OG image found: ${avatarUrl}`);
+          }
+        }
+      } catch (e) { console.log('Zalo scrape error:', e); }
     } else {
       avatarUrl = await scrapeOgImage(normalizedUrl);
     }
