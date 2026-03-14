@@ -645,6 +645,11 @@ serve(async (req) => {
       avatarUrl = await scrapeOgImage(normalizedUrl);
     }
 
+    // Decode HTML entities in avatar URL before returning
+    if (avatarUrl) {
+      avatarUrl = decodeHtmlEntities(avatarUrl);
+    }
+
     return new Response(JSON.stringify({ avatarUrl }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

@@ -166,8 +166,14 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
       if (!l.url) return false;
       if (NO_AVATAR_PLATFORMS.includes(l.platform)) return false;
       if (l.avatarUrl && BAD_AVATAR_URLS.some((d) => l.avatarUrl!.includes(d))) return true;
+      // Re-fetch if avatarUrl contains HTML entities (stale data)
+      if (l.avatarUrl?.includes('&amp;')) return true;
       // Re-fetch Facebook if avatarUrl is still a Graph API redirect URL
       if (l.platform === 'facebook' && l.avatarUrl?.includes('graph.facebook.com')) return true;
+      // Re-fetch Angel AI if no valid avatar
+      if (l.platform === 'angel' && !l.avatarUrl) return true;
+      // Re-fetch Zalo if no avatar
+      if (l.platform === 'zalo' && !l.avatarUrl) return true;
       if (!l.avatarUrl) return true;
       if (UNAVATAR_PLATFORMS.includes(l.platform) && !l.avatarUrl.includes('unavatar.io')) return true;
       return false;
