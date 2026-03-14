@@ -102,6 +102,16 @@ export const VideoUploaderUppy = ({
   const lastBytesRef = useRef(0);
   const lastTimeRef = useRef(Date.now());
 
+  // Store callbacks in refs to avoid re-triggering upload effect
+  const onUploadCompleteRef = useRef(onUploadComplete);
+  const onUploadErrorRef = useRef(onUploadError);
+  const onUploadStartRef = useRef(onUploadStart);
+  useEffect(() => {
+    onUploadCompleteRef.current = onUploadComplete;
+    onUploadErrorRef.current = onUploadError;
+    onUploadStartRef.current = onUploadStart;
+  }, [onUploadComplete, onUploadError, onUploadStart]);
+
   // Update elapsed time every second during upload
   useEffect(() => {
     if (uploadState.status !== 'preparing' && uploadState.status !== 'uploading') return;
@@ -193,7 +203,7 @@ export const VideoUploaderUppy = ({
           uploadSpeed: 0,
         });
 
-        onUploadStart?.();
+        onUploadStartRef.current?.();
 
         // Generate local thumbnail in parallel
         generateVideoThumbnail(selectedFile)
@@ -303,10 +313,10 @@ export const VideoUploaderUppy = ({
         isUploadingRef.current = false;
         toast.success('Video đã tải lên thành công!');
         
-        onUploadComplete({ 
-          uid: key, // Use R2 key as identifier
+        onUploadCompleteRef.current({ 
+          uid: key,
           url: publicUrl,
-          thumbnailUrl: '', // No server-generated thumbnail for R2
+          thumbnailUrl: '',
           localThumbnail: localThumbnailRef.current,
         });
 
@@ -324,13 +334,13 @@ export const VideoUploaderUppy = ({
           error: errorMessage,
         }));
 
-        onUploadError?.(error instanceof Error ? error : new Error(errorMessage));
+        onUploadErrorRef.current?.(error instanceof Error ? error : new Error(errorMessage));
         toast.error(`Lỗi: ${errorMessage}`);
       }
     };
 
     startUpload();
-  }, [selectedFile, onUploadComplete, onUploadError, onUploadStart]);
+  }, [selectedFile]);
 
   const handleCancel = useCallback(async () => {
     if (abortControllerRef.current) {

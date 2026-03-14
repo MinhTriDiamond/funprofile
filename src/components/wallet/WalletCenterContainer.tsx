@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAccount, useDisconnect, useSwitchChain } from 'wagmi';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { bsc, bscTestnet } from 'wagmi/chains';
+import { useAutoChainSwitch } from '@/hooks/useAutoChainSwitch';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -64,6 +65,7 @@ const WalletCenterContainer = () => {
   const { openConnectModal } = useConnectModal();
   const { disconnect } = useDisconnect();
   const { switchChain } = useSwitchChain();
+  const { isWrongChain } = useAutoChainSwitch();
   const { t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
@@ -185,13 +187,8 @@ const WalletCenterContainer = () => {
     );
   }, [switchChain]);
 
-  useEffect(() => {
-    if (isConnected && chainId && chainId !== bsc.id && chainId !== bscTestnet.id) {
-      toast.warning(t('walletPleaseSwitch'), {
-        action: { label: 'Switch to Mainnet', onClick: handleSwitchToMainnet },
-      });
-    }
-  }, [isConnected, chainId, handleSwitchToMainnet]);
+  // Auto chain switch is now handled by useAutoChainSwitch hook
+  // It auto-requests switch on connect and only warns if user rejects
 
   useEffect(() => {
     fetchProfile();

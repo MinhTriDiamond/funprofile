@@ -20,6 +20,7 @@ import { useTokenBalances } from '@/hooks/useTokenBalances';
 import { validateMinSendValue } from '@/lib/minSendValidation';
 import { useAccount, useBalance, useReadContract, useChainId, useSwitchChain, usePublicClient } from 'wagmi';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
+import { useAutoChainSwitch } from '@/hooks/useAutoChainSwitch';
 import { toast } from 'sonner';
 import { formatUnits } from 'viem';
 import { supabase } from '@/integrations/supabase/client';
@@ -81,6 +82,7 @@ export const UnifiedGiftSendDialog = ({
   const chainId = useChainId();
   const { switchChain } = useSwitchChain();
   const { openConnectModal } = useConnectModal();
+  useAutoChainSwitch(); // Auto-switch to BSC on connect
   const { tokens: tokenBalanceList } = useTokenBalances();
   const { sendToken, isPending, txStep, txHash, recheckReceipt, resetState } = useSendToken();
   const publicClient = usePublicClient();
@@ -227,7 +229,6 @@ export const UnifiedGiftSendDialog = ({
   const handleSelectTemplate = (template: MessageTemplate) => {
     setSelectedTemplate(template);
     if (template.id !== 'custom') setCustomMessage(template.message);
-    else setCustomMessage('');
   };
 
   const handleMaxAmount = () => {

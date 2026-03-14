@@ -122,7 +122,7 @@ Deno.serve(async (req) => {
     // 7. Check user profile and reward_status
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('reward_status, username, full_name, avatar_url, cover_url, public_wallet_address, claim_freeze_until, wallet_risk_status, reward_locked')
+      .select('reward_status, username, full_name, avatar_url, cover_url, public_wallet_address, claim_freeze_until, wallet_risk_status, reward_locked, fraud_risk_level, claim_speed_limit_until, fraud_trusted, max_claim_per_request')
       .eq('id', userId)
       .single();
 
@@ -171,6 +171,24 @@ Deno.serve(async (req) => {
             wallet_risk_status: profile.wallet_risk_status
           }),
           { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // 7ac. Check claim speed limit (Step 2 of anti-farm progressive system)
+    // SKIP speed limit check for trusted users
+    if (profile.claim_speed_limit_until && !profile.fraud_trusted) {
+      const speedLimitUntil = new Date(profile.claim_speed_limit_until);
+      if (speedLimitUntil > new Date()) {
+        const hoursLeft = Math.ceil((speedLimitUntil.getTime() - Date.now()) / (1000 * 60 * 60));
+        return new Response(
+          JSON.stringify({ 
+            error: 'Claim Speed Limited', 
+            message: `⚠️ Hệ thống phát hiện hoạt động bất thường. Tốc độ claim bị giới hạn tạm thời. Vui lòng thử lại sau ${hoursLeft} giờ.`,
+            speed_limit_until: profile.claim_speed_limit_until,
+            fraud_risk_level: profile.fraud_risk_level,
+          }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
     }
@@ -262,112 +280,207 @@ Deno.serve(async (req) => {
       }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // 7f. Auto fraud detection - BỎ QUA nếu admin đã duyệt (approved)
-    // Admin đã xác minh → không ghi đè quyết định admin
-    if (profile.reward_status !== 'approved') {
-      const fraudReasons: string[] = [];
-      const relatedUserIds: string[] = [];
+    // 7f. Auto fraud detection — 3-step progressive system
+    // Skip if admin already approved OR user is fraud_trusted
+    if (profile.reward_status !== 'approved' && !profile.fraud_trusted) {
+      const fraudWarnings: string[] = [];
 
-      // Check shared device fingerprint - cùng thiết bị = cùng người tạo nhiều tài khoản
-      const { data: userDevices } = await supabaseAdmin
-        .from('pplp_device_registry')
-        .select('device_hash')
-        .eq('user_id', userId);
+      // === CLAIM SYNC CHECK: Detect synchronized claims from same IP ===
+      const claimIp = req.headers.get("cf-connecting-ip") 
+        || req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+        || req.headers.get("x-real-ip")
+        || "unknown";
 
-      if (userDevices && userDevices.length > 0) {
-        for (const dev of userDevices) {
-          const { data: otherDeviceUsers } = await supabaseAdmin
-            .from('pplp_device_registry')
+      if (claimIp !== "unknown") {
+        const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+        
+        const { data: recentIpClaims } = await supabaseAdmin
+          .from('pending_claims')
+          .select('user_id, amount, created_at')
+          .neq('user_id', userId)
+          .gte('created_at', thirtyMinAgo);
+
+        if (recentIpClaims && recentIpClaims.length > 0) {
+          const claimUserIds = [...new Set(recentIpClaims.map(c => c.user_id))];
+          
+          const { data: sameIpUsers } = await supabaseAdmin
+            .from('login_ip_logs')
             .select('user_id')
-            .eq('device_hash', dev.device_hash)
-            .neq('user_id', userId);
+            .eq('ip_address', claimIp)
+            .in('user_id', claimUserIds)
+            .gte('created_at', thirtyMinAgo);
 
-          if (otherDeviceUsers && otherDeviceUsers.length > 0) {
-            const otherIds = otherDeviceUsers.map(u => u.user_id);
-            relatedUserIds.push(...otherIds);
-            fraudReasons.push(`Thiết bị này đang được dùng bởi ${otherIds.length + 1} tài khoản. Để đảm bảo tính minh bạch, hệ thống cần Admin xác minh 🙏`);
-            break;
+          const sameIpClaimUsers = [...new Set(sameIpUsers?.map(u => u.user_id) || [])];
+
+          // ≥5 accounts claiming from same IP in 30 min → check further
+          if (sameIpClaimUsers.length >= 5) {
+            const allSuspect = [userId, ...sameIpClaimUsers];
+
+            // === DEVICE FINGERPRINT CHECK ===
+            // If same IP has ≥3 different device fingerprints → shared network, skip suspension
+            const { data: ipDevices } = await supabaseAdmin
+              .from('pplp_device_registry')
+              .select('device_hash')
+              .in('user_id', allSuspect)
+              .gte('fingerprint_version', 2);
+
+            const uniqueDevices = new Set(ipDevices?.map(d => d.device_hash) || []);
+            const isSharedNetwork = uniqueDevices.size >= 3;
+
+            if (isSharedNetwork) {
+              // Shared network (office, home, event) — log only, NO suspension
+              console.log(`[CLAIM SYNC] ${allSuspect.length} users from IP ${claimIp} but ${uniqueDevices.size} unique devices — shared network, logged only`);
+              await supabaseAdmin.from('pplp_fraud_signals').insert({
+                actor_id: userId, signal_type: 'CLAIM_SYNC_SHARED_NETWORK', severity: 1,
+                details: { ip_address: claimIp, user_ids: allSuspect, unique_devices: uniqueDevices.size, note: 'Mạng chung (≥3 thiết bị khác nhau) — không đình chỉ' },
+                source: 'claim-reward',
+              });
+            } else {
+              // Same IP + few devices — check behavioral patterns
+              const suspectClaims = recentIpClaims.filter(c => sameIpClaimUsers.includes(c.user_id));
+              const maxClaimCount = suspectClaims.filter(c => Number(c.amount) >= DAILY_CLAIM_CAP * 0.8).length;
+              const maxClaimRatio = suspectClaims.length > 0 ? maxClaimCount / suspectClaims.length : 0;
+
+              // Check synchronized timing (claims within 5 min of each other)
+              const timestamps = suspectClaims.map(c => new Date(c.created_at).getTime()).sort();
+              let syncPairs = 0;
+              for (let i = 1; i < timestamps.length; i++) {
+                if (timestamps[i] - timestamps[i - 1] < 5 * 60 * 1000) syncPairs++;
+              }
+              const syncRatio = timestamps.length > 1 ? syncPairs / (timestamps.length - 1) : 0;
+
+              // ALL 3 conditions must be met: ≥5 users + high max-claim ratio + synchronized timing
+              if (maxClaimRatio >= 0.6 && syncRatio >= 0.5) {
+                await supabaseAdmin.from('pplp_fraud_signals').insert({
+                  actor_id: userId, signal_type: 'CLAIM_SYNC_SUSPICIOUS', severity: 3,
+                  details: { ip_address: claimIp, user_ids: allSuspect, claim_count: sameIpClaimUsers.length + 1, max_claim_ratio: maxClaimRatio, sync_ratio: syncRatio, unique_devices: uniqueDevices.size, window: '30min' },
+                  source: 'claim-reward',
+                });
+
+                // Filter out trusted users from escalation targets
+                const { data: trustedCheck } = await supabaseAdmin
+                  .from('profiles')
+                  .select('id, fraud_trusted')
+                  .in('id', allSuspect)
+                  .eq('fraud_trusted', true);
+                const trustedIds = new Set(trustedCheck?.map(t => t.id) || []);
+                const escalateTargets = allSuspect.filter(uid => !trustedIds.has(uid));
+
+                if (escalateTargets.length === 0) {
+                  console.log(`[CLAIM SYNC] All ${allSuspect.length} users are trusted — skipping escalation`);
+                } else {
+                  // Get current risk level to determine action
+                  const currentRisk = profile.fraud_risk_level || 0;
+
+                  if (currentRisk === 0) {
+                    // STEP 1: Flag internally — allow this claim to proceed
+                    await supabaseAdmin.from('profiles').update({
+                      fraud_risk_level: 1,
+                      admin_notes: `[Step 1] Claim sync: ${allSuspect.length} TK từ cùng IP ${claimIp}, max=${Math.round(maxClaimRatio*100)}%, sync=${Math.round(syncRatio*100)}%. Chỉ đánh dấu.`,
+                    }).eq('id', userId);
+                    console.log(`[CLAIM SYNC Step 1] User ${userId} flagged — claim allowed`);
+
+                  } else if (currentRisk === 1) {
+                    // STEP 2: Soft warning + speed limit + max_claim_per_request = 100000
+                    const cooldownUntil = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+                    for (const uid of escalateTargets) {
+                      await supabaseAdmin.from('profiles').update({
+                        fraud_risk_level: 2,
+                        claim_speed_limit_until: cooldownUntil,
+                        max_claim_per_request: 100000,
+                        admin_notes: `[Step 2] Claim sync lặp lại: ${allSuspect.length} TK từ IP ${claimIp}, max=${Math.round(maxClaimRatio*100)}%, sync=${Math.round(syncRatio*100)}%. Giới hạn claim 48h + tối đa 100k/lần.`,
+                      }).eq('id', uid).not('reward_status', 'in', '("banned","approved")');
+                    }
+
+                    const { data: admins } = await supabaseAdmin
+                      .from('user_roles').select('user_id').eq('role', 'admin');
+                    if (admins?.length) {
+                      await supabaseAdmin.from('notifications').insert(
+                        admins.map(a => ({
+                          user_id: a.user_id, actor_id: userId,
+                          type: 'admin_claim_sync', read: false,
+                          metadata: { ip: claimIp, count: allSuspect.length, step: 2, max_ratio: maxClaimRatio, sync_ratio: syncRatio, unique_devices: uniqueDevices.size },
+                        }))
+                      );
+                    }
+
+                    return new Response(JSON.stringify({
+                      error: 'Claim Speed Limited',
+                      message: '⚠️ Hệ thống phát hiện hoạt động claim liên tục bất thường từ cùng mạng. Tốc độ claim bị giới hạn tạm thời 48 giờ và tối đa 100.000 CAMLY/lần.',
+                      fraud_risk_level: 2,
+                    }), { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+
+                  } else {
+                    // STEP 3: Suspend for manual review — chỉ khi claim liên tục từ cùng IP
+                    for (const uid of escalateTargets) {
+                      await supabaseAdmin.from('profiles').update({
+                        fraud_risk_level: 3,
+                        reward_status: 'on_hold',
+                        admin_notes: `[Step 3] Claim farm liên tục: ${allSuspect.length} TK từ IP ${claimIp}, max=${Math.round(maxClaimRatio*100)}%, sync=${Math.round(syncRatio*100)}%. Đình chỉ chờ Admin.`,
+                      }).eq('id', uid).not('reward_status', 'in', '("banned","approved")');
+                    }
+
+                    const { data: admins } = await supabaseAdmin
+                      .from('user_roles').select('user_id').eq('role', 'admin');
+                    if (admins?.length) {
+                      await supabaseAdmin.from('notifications').insert(
+                        admins.map(a => ({
+                          user_id: a.user_id, actor_id: userId,
+                          type: 'admin_claim_sync', read: false,
+                          metadata: { ip: claimIp, count: allSuspect.length, step: 3, max_ratio: maxClaimRatio, sync_ratio: syncRatio, unique_devices: uniqueDevices.size },
+                        }))
+                      );
+                    }
+
+                    return new Response(JSON.stringify({
+                      error: 'Account Review',
+                      message: 'Tài khoản đang chờ Admin xác minh do phát hiện claim liên tục bất thường 🙏',
+                    }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+                  }
+                }
+              } else {
+                // Just log — not enough evidence to escalate
+                console.log(`[CLAIM SYNC] ${allSuspect.length} users from IP ${claimIp} but maxRatio=${Math.round(maxClaimRatio*100)}%, syncRatio=${Math.round(syncRatio*100)}% — below threshold, logged only`);
+                await supabaseAdmin.from('pplp_fraud_signals').insert({
+                  actor_id: userId, signal_type: 'CLAIM_SYNC_LOG', severity: 1,
+                  details: { ip_address: claimIp, user_ids: allSuspect, max_claim_ratio: maxClaimRatio, sync_ratio: syncRatio, unique_devices: uniqueDevices.size, note: 'Chỉ ghi log - chưa đủ bằng chứng' },
+                  source: 'claim-reward',
+                });
+              }
+            }
           }
         }
       }
 
-      // Check duplicate avatar
+      // Check duplicate avatar/wallet — warning only, no hold
       if (profile.avatar_url) {
         const { count: avatarDups } = await supabaseAdmin
-          .from('profiles')
-          .select('id', { count: 'exact', head: true })
-          .eq('avatar_url', profile.avatar_url)
-          .neq('id', userId);
-        if (avatarDups && avatarDups > 0) {
-          fraudReasons.push('Ảnh đại diện trùng với tài khoản khác. Vui lòng sử dụng ảnh cá nhân của riêng bạn 🌸');
-        }
+          .from('profiles').select('id', { count: 'exact', head: true })
+          .eq('avatar_url', profile.avatar_url).neq('id', userId);
+        if (avatarDups && avatarDups > 0) fraudWarnings.push('Ảnh đại diện trùng');
       }
-
-      // Check duplicate wallet
       if (profile.public_wallet_address) {
         const { count: walletDups } = await supabaseAdmin
-          .from('profiles')
-          .select('id', { count: 'exact', head: true })
-          .eq('public_wallet_address', profile.public_wallet_address)
-          .neq('id', userId);
-        if (walletDups && walletDups > 0) {
-          fraudReasons.push('Địa chỉ ví đang được sử dụng bởi tài khoản khác. Mỗi người nên có ví riêng để bảo vệ quyền lợi 💛');
-        }
+          .from('profiles').select('id', { count: 'exact', head: true })
+          .eq('public_wallet_address', profile.public_wallet_address).neq('id', userId);
+        if (walletDups && walletDups > 0) fraudWarnings.push('Ví trùng TK khác');
       }
 
-      // If fraud detected -> freeze ALL related accounts + current user, send to admin
-      if (fraudReasons.length > 0) {
-        const holdNote = fraudReasons.join('; ');
-        console.warn(`Integrity check for user ${userId}: ${holdNote}`);
-
-        // Freeze current user
-        await supabaseAdmin.from('profiles').update({
-          reward_status: 'on_hold',
-          admin_notes: holdNote,
-        }).eq('id', userId);
-
-        // Freeze all related users on same device
-        const uniqueRelated = [...new Set(relatedUserIds)];
-        if (uniqueRelated.length > 0) {
-          for (const relatedId of uniqueRelated) {
-            await supabaseAdmin.from('profiles').update({
-              reward_status: 'on_hold',
-              admin_notes: `Liên quan đến tài khoản ${userId.slice(0, 8)}... - cùng thiết bị. Chờ Admin xác minh 🙏`,
-            }).eq('id', relatedId);
-          }
-        }
-
-        // Record integrity signal
+      if (fraudWarnings.length > 0) {
+        console.warn(`Integrity warning for ${userId}: ${fraudWarnings.join('; ')}`);
         await supabaseAdmin.from('pplp_fraud_signals').insert({
-          actor_id: userId,
-          signal_type: 'SHARED_DEVICE',
-          severity: 3,
-          details: { reasons: fraudReasons, related_users: uniqueRelated },
+          actor_id: userId, signal_type: 'CLAIM_INTEGRITY_WARNING', severity: 2,
+          details: { reasons: fraudWarnings, note: 'Chỉ cảnh báo - không hold' },
           source: 'claim-reward',
         });
-
-        // Notify admins
-        const { data: admins } = await supabaseAdmin
-          .from('user_roles')
-          .select('user_id')
-          .eq('role', 'admin');
-
-        if (admins && admins.length > 0) {
-          const notifications = admins.map(a => ({
-            user_id: a.user_id,
-            actor_id: userId,
-            type: 'admin_shared_device',
-            read: false,
-          }));
-          await supabaseAdmin.from('notifications').insert(notifications);
-        }
-
-        return new Response(JSON.stringify({
-          error: 'Account Review',
-          message: `Tài khoản của bạn đang chờ xác minh từ Admin 🙏\n\nĐể bảo vệ quyền lợi cho tất cả mọi người, hệ thống cần xác minh khi phát hiện các tài khoản có liên quan. Xin vui lòng liên hệ Admin để được hỗ trợ nhanh nhất. Cảm ơn bạn đã thấu hiểu 💛`,
-          reasons: fraudReasons,
-        }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
+    } else if (profile.fraud_trusted) {
+      // Trusted user — log suspicious activity only, never suspend
+      const claimIp = req.headers.get("cf-connecting-ip") 
+        || req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+        || req.headers.get("x-real-ip")
+        || "unknown";
+      console.log(`[CLAIM] Trusted user ${userId} claiming from IP ${claimIp} — fraud checks skipped`);
     }
 
     const blockedStatuses = ['pending', 'on_hold', 'rejected', 'banned'];
@@ -561,8 +674,12 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Enforce max_claim_per_request if set (Step 2 fraud penalty)
+    const maxPerRequest = profile.max_claim_per_request;
+    const cappedClaimAmount = maxPerRequest ? Math.min(claimAmount, maxPerRequest) : claimAmount;
+
     // Auto-cap to daily remaining
-    const effectiveAmount = Math.min(claimAmount, claimableAmount, dailyRemaining);
+    const effectiveAmount = Math.min(cappedClaimAmount, claimableAmount, dailyRemaining);
 
     if (effectiveAmount < MINIMUM_CLAIM) {
       return new Response(

@@ -27,6 +27,11 @@ const GiftCelebrationGroupComponent = ({
     setIsMuted(prev => {
       const next = !prev;
       localStorage.setItem('celebration_muted', String(next));
+
+      if (next) {
+        stopCelebrationMusic();
+      }
+
       return next;
     });
   }, []);

@@ -106,8 +106,28 @@ const Feed = () => {
               <div className="col-span-1 lg:col-span-6 w-full px-0">
                 <StoriesBar currentUserId={currentUserId || ''} />
 
+                {/* Gift celebrations group - always on top */}
+                {!isLoading && (() => {
+                  const giftPosts = posts.filter(p => p.post_type === 'gift_celebration');
+                  return giftPosts.length > 0 ? (
+                    <GiftCelebrationGroup
+                      key="gift-group-all"
+                      posts={giftPosts}
+                      currentUserId={currentUserId || ''}
+                      onPostDeleted={refetch}
+                      postStats={postStats}
+                    />
+                  ) : null;
+                })()}
+
                 {currentUserId && <AccountUpgradeBanner />}
-                {currentUserId && <FacebookCreatePost onPostCreated={refetch} />}
+
+                {/* Sticky create post box */}
+                {currentUserId && (
+                  <div className="sticky top-0 z-10 bg-background pb-2">
+                    <FacebookCreatePost onPostCreated={refetch} />
+                  </div>
+                )}
 
                 {!currentUserId && (
                   <div className="fb-card p-4 mb-4 text-center">
@@ -119,54 +139,40 @@ const Feed = () => {
                   <div className="space-y-4">
                     {[1, 2, 3].map(i => <PostSkeleton key={i} />)}
                   </div>
-                ) : posts.length === 0 ? (
-                  <div className="fb-card p-8 text-center">
-                    <p className="text-muted-foreground">{t('noPostsYet')}</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {(() => {
-                      const giftPosts = posts.filter(p => p.post_type === 'gift_celebration');
-                      const regularPosts = posts.filter(p => p.post_type !== 'gift_celebration');
-                      return (
-                        <>
-                          {giftPosts.length > 0 && (
-                            <GiftCelebrationGroup
-                              key="gift-group-all"
-                              posts={giftPosts}
-                              currentUserId={currentUserId || ''}
-                              onPostDeleted={refetch}
-                              postStats={postStats}
-                            />
-                          )}
-                          {regularPosts.map(post => (
-                            <FacebookPostCard
-                              key={post.id}
-                              post={post}
-                              currentUserId={currentUserId || ''}
-                              onPostDeleted={refetch}
-                              initialStats={postStats[post.id]}
-                            />
-                          ))}
-                        </>
-                      );
-                    })()}
-
-                    <div ref={loadMoreRef} className="py-4">
-                      {isFetchingNextPage && (
-                        <div className="flex justify-center items-center gap-2 text-muted-foreground">
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                          <span>{t('loadingMorePosts')}</span>
-                        </div>
-                      )}
-                      {!hasNextPage && posts.length > 0 && (
-                        <div className="text-center text-muted-foreground text-sm py-2">
-                          {t('noMorePostsMessage')} 🎉
-                        </div>
-                      )}
+                ) : (() => {
+                  const regularPosts = posts.filter(p => p.post_type !== 'gift_celebration');
+                  return regularPosts.length === 0 ? (
+                    <div className="fb-card p-8 text-center">
+                      <p className="text-muted-foreground">{t('noPostsYet')}</p>
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    <div className="space-y-4">
+                      {regularPosts.map(post => (
+                        <FacebookPostCard
+                          key={post.id}
+                          post={post}
+                          currentUserId={currentUserId || ''}
+                          onPostDeleted={refetch}
+                          initialStats={postStats[post.id]}
+                        />
+                      ))}
+
+                      <div ref={loadMoreRef} className="py-4">
+                        {isFetchingNextPage && (
+                          <div className="flex justify-center items-center gap-2 text-muted-foreground">
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                            <span>{t('loadingMorePosts')}</span>
+                          </div>
+                        )}
+                        {!hasNextPage && posts.length > 0 && (
+                          <div className="text-center text-muted-foreground text-sm py-2">
+                            {t('noMorePostsMessage')} 🎉
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Right Sidebar - Hidden on mobile/tablet */}

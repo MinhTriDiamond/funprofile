@@ -12,7 +12,7 @@ interface ToastItem {
   createdAt: number;
 }
 
-const DISMISS_MS = 15000; // Tăng lên 15 giây
+const DISMISS_MS = 30000; // Tăng lên 30 giây để user đọc hết nội dung
 const MAX_TOASTS = 3;
 
 /**

@@ -1,7 +1,21 @@
 /**
- * Device Fingerprint v2
- * Enhanced signals: Canvas, WebGL, Hardware + v1 basics
+ * Device Fingerprint v3
+ * Enhanced signals: Canvas, WebGL, Hardware + v1 basics + persistent browser ID
  */
+
+function getOrCreateBrowserId(): string {
+  const key = 'fp_browser_id';
+  try {
+    let id = localStorage.getItem(key);
+    if (!id) {
+      id = crypto.randomUUID();
+      localStorage.setItem(key, id);
+    }
+    return id;
+  } catch {
+    return 'no-storage';
+  }
+}
 
 function getCanvasFingerprint(): string {
   try {
@@ -60,10 +74,12 @@ export async function getDeviceHash(): Promise<string> {
     (navigator as any).deviceMemory || 'unknown',
     navigator.maxTouchPoints,
     window.devicePixelRatio,
+    // v3: persistent browser-unique ID to avoid same-model collisions
+    getOrCreateBrowserId(),
   ].join('|');
 
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 32);
 }
 
-export const FINGERPRINT_VERSION = 2;
+export const FINGERPRINT_VERSION = 3;

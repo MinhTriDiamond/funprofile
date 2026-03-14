@@ -15,6 +15,19 @@ export interface GiftProfile {
   avatar_url: string | null;
 }
 
+export interface PostAttachmentData {
+  id: string;
+  file_url: string;
+  storage_key: string | null;
+  file_type: string;
+  mime_type: string | null;
+  width: number | null;
+  height: number | null;
+  size_bytes: number | null;
+  sort_order: number;
+  alt_text: string | null;
+}
+
 export interface FeedPost {
   id: string;
   content: string;
@@ -42,6 +55,7 @@ export interface FeedPost {
   };
   recipientProfile?: GiftProfile | null;
   senderProfile?: GiftProfile | null;
+  attachments?: PostAttachmentData[];
 }
 
 interface FeedPage {
@@ -87,6 +101,33 @@ const fetchPostStats = async (postIds: string[]): Promise<Record<string, PostSta
       acc[id] = { reactions: [], commentCount: 0, shareCount: 0 };
       return acc;
     }, {} as Record<string, PostStats>);
+  }
+};
+
+// Batch fetch attachments for posts
+const fetchPostAttachments = async (postIds: string[]): Promise<Record<string, PostAttachmentData[]>> => {
+  if (postIds.length === 0) return {};
+  try {
+    const { data, error } = await supabase
+      .from('post_attachments')
+      .select('id, post_id, file_url, storage_key, file_type, mime_type, width, height, size_bytes, sort_order, alt_text')
+      .in('post_id', postIds)
+      .order('sort_order', { ascending: true });
+
+    if (error) {
+      console.error('Post attachments fetch error:', error);
+      return {};
+    }
+
+    const map: Record<string, PostAttachmentData[]> = {};
+    (data || []).forEach((row: any) => {
+      if (!map[row.post_id]) map[row.post_id] = [];
+      map[row.post_id].push(row);
+    });
+    return map;
+  } catch (error) {
+    console.error('Error fetching post attachments:', error);
+    return {};
   }
 };
 
@@ -192,7 +233,16 @@ const fetchFeedPage = async (cursor: string | null, currentUserId: string | null
   postsData = await fetchGiftProfiles(postsData);
   
   const postIds = postsData.map(p => p.id);
-  const postStats = await fetchPostStats(postIds);
+  const [postStats, attachmentsMap] = await Promise.all([
+    fetchPostStats(postIds),
+    fetchPostAttachments(postIds),
+  ]);
+
+  // Merge attachments into posts
+  postsData = postsData.map(p => ({
+    ...p,
+    attachments: attachmentsMap[p.id] || [],
+  }));
 
   const nextCursor = hasMore && postsData.length > 0 
     ? postsData[postsData.length - 1].created_at 

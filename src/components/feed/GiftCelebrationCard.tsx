@@ -122,7 +122,7 @@ const GiftCelebrationCardComponent = ({
 
   // Sound + confetti on first appearance (single observer, no scroll-back)
   useEffect(() => {
-    if (disableEffects || hasPlayedRef.current) return;
+    if (disableEffects) return;
 
     const isMobile = window.innerWidth < 768;
 
@@ -130,14 +130,12 @@ const GiftCelebrationCardComponent = ({
       (entries) => {
         const [entry] = entries;
         if (entry.isIntersecting) {
-          const isMuted = localStorage.getItem('celebration_muted') === 'true';
-          if (!hasPlayedRef.current && !isMuted) {
+          if (!hasPlayedRef.current) {
             const audio = playCelebrationMusic('rich-1');
             if (audio) {
               audio.volume = 0.3;
-              setTimeout(() => { audio.pause(); audio.currentTime = 0; }, 10000);
+              hasPlayedRef.current = true;
             }
-            hasPlayedRef.current = true;
           }
 
           // Skip confetti on mobile to save resources

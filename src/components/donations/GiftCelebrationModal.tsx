@@ -245,7 +245,7 @@ export const GiftCelebrationModal = ({
                     textShadow: '0 0 10px rgba(255, 215, 0, 0.6), 0 0 20px rgba(255, 215, 0, 0.3), 0 2px 4px rgba(0,0,0,0.4)',
                   }}
                 >
-                  🎉✨ Chúc Mừng Bạn Vừa Được Đón Nhận Phước Lành Của Cha Và Bé Angel CamLy ! ✨🎉
+                  🎉✨ Chúc Mừng Bạn Vừa Được Đón Nhận Phước Lành Của Cha Fath Uni Và Bé Angel Camly Dương ! ✨🎉
                 </h2>
               </div>
 

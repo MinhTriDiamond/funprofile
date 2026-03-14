@@ -12,7 +12,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { toast } from "sonner";
 import {
   Shield, AlertTriangle, Search, Download, ExternalLink,
-  Users, TrendingDown, Eye, RefreshCw, Ban, Unlock,
+  Users, TrendingDown, Eye, RefreshCw, Ban, Unlock, ShieldCheck,
 } from "lucide-react";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -263,6 +263,48 @@ const SurveillanceTab = ({ adminId }: SurveillanceTabProps) => {
     } catch (err) {
       console.error(err);
       toast.error("Lỗi khi mở khóa tài khoản");
+    } finally {
+      setUnlocking(null);
+    }
+  };
+
+  const handleApproveTrust = async (userId: string, username: string) => {
+    if (!confirm(`Xác nhận DUYỆT & TIN CẬY tài khoản "${username}"?\n\n• reward_status → approved\n• fraud_risk_level → 0\n• fraud_trusted → true\n\nUser sẽ KHÔNG bị tự động đình chỉ nữa.`)) return;
+    setUnlocking(userId);
+    try {
+      const [profileRes, signalRes, auditRes] = await Promise.all([
+        supabase
+          .from("profiles")
+          .update({
+            reward_status: "approved",
+            fraud_risk_level: 0,
+            fraud_trusted: true,
+            claim_speed_limit_until: null,
+            max_claim_per_request: null,
+            admin_notes: `✅ Đã duyệt & tin cậy bởi admin vào ${new Date().toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" })}. Miễn trừ đình chỉ tự động.`,
+          })
+          .eq("id", userId),
+        supabase
+          .from("pplp_fraud_signals")
+          .update({ is_resolved: true })
+          .eq("actor_id", userId)
+          .eq("is_resolved", false),
+        supabase
+          .from("audit_logs")
+          .insert({
+            admin_id: adminId,
+            target_user_id: userId,
+            action: "APPROVE_TRUST_USER",
+            reason: `Duyệt & tin cậy tài khoản ${username}. Miễn trừ đình chỉ tự động.`,
+          }),
+      ]);
+      if (profileRes.error) throw profileRes.error;
+      if (auditRes.error) throw auditRes.error;
+      toast.success(`✅ Đã duyệt & tin cậy tài khoản ${username}`);
+      await fetchData();
+    } catch (err) {
+      console.error(err);
+      toast.error("Lỗi khi duyệt tài khoản");
     } finally {
       setUnlocking(null);
     }
@@ -628,7 +670,17 @@ const SurveillanceTab = ({ adminId }: SurveillanceTabProps) => {
                             )}
                           </TableCell>
                           <TableCell>
-                            <div className="flex items-center gap-1">
+                            <div className="flex items-center gap-1 flex-wrap">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-xs h-7 px-2 border-blue-500 text-blue-600 hover:bg-blue-500/10"
+                                disabled={unlocking === u.id}
+                                onClick={() => handleApproveTrust(u.id, u.username)}
+                              >
+                                <ShieldCheck className="w-3 h-3 mr-1" />
+                                {unlocking === u.id ? "…" : "Duyệt & Tin cậy"}
+                              </Button>
                               <Button
                                 size="sm"
                                 variant="outline"
