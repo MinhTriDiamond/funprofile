@@ -82,7 +82,11 @@ function computeAddAngle(n: number): number {
   // Place the + button at the next position in the fan
   const angles = computeAngles(n + 1);
   return angles[angles.length - 1] ?? 180;
+function angleToPos(angleDeg: number) {
+  const rad = (angleDeg * Math.PI) / 180;
+  return { x: Math.sin(rad) * ORBIT_RADIUS, y: -Math.cos(rad) * ORBIT_RADIUS };
 }
+
 
 interface AvatarOrbitProps {
   children: React.ReactNode;
