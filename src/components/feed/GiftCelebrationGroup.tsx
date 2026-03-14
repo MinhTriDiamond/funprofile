@@ -1,7 +1,6 @@
 import { memo, useState, useCallback } from 'react';
 import { GiftCelebrationCard } from './GiftCelebrationCard';
-import { Gift, Volume2, VolumeX } from 'lucide-react';
-import { stopCelebrationMusic } from '@/lib/celebrationSounds';
+import { Gift, Volume2, VolumeX, ChevronDown } from 'lucide-react';
 
 interface GiftCelebrationGroupProps {
   posts: any[];
@@ -9,6 +8,9 @@ interface GiftCelebrationGroupProps {
   onPostDeleted: () => void;
   postStats: Record<string, any>;
 }
+
+const INITIAL_VISIBLE = 3;
+const LOAD_MORE_COUNT = 3;
 
 const GiftCelebrationGroupComponent = ({
   posts,
@@ -19,6 +21,7 @@ const GiftCelebrationGroupComponent = ({
   const [isMuted, setIsMuted] = useState(() => 
     localStorage.getItem('celebration_muted') === 'true'
   );
+  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE);
 
   const toggleMute = useCallback(() => {
     setIsMuted(prev => {
@@ -38,6 +41,9 @@ const GiftCelebrationGroupComponent = ({
   const sortedPosts = [...posts].sort((a, b) => 
     new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   );
+
+  const visiblePosts = sortedPosts.slice(0, visibleCount);
+  const hasMore = visibleCount < sortedPosts.length;
 
   return (
     <div className="rounded-xl border border-border/50 bg-muted/30 overflow-hidden">
@@ -59,17 +65,14 @@ const GiftCelebrationGroupComponent = ({
         </button>
 
         <span className="ml-auto text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-          {posts.length} gifts{posts.length > 3 ? ' · cuộn để xem thêm' : ''}
+          {posts.length} gifts
         </span>
       </div>
 
       {/* Scrollable container */}
-      <div
-        className="max-h-[750px] overflow-y-auto scrollbar-thin"
-        style={{ scrollBehavior: 'smooth' }}
-      >
+      <div>
         <div className="p-2 space-y-2">
-          {sortedPosts.map(post => (
+          {visiblePosts.map(post => (
             <GiftCelebrationCard
               key={post.id}
               post={post}
@@ -79,6 +82,18 @@ const GiftCelebrationGroupComponent = ({
             />
           ))}
         </div>
+
+        {hasMore && (
+          <div className="px-4 pb-3 pt-1">
+            <button
+              onClick={() => setVisibleCount(prev => prev + LOAD_MORE_COUNT)}
+              className="w-full flex items-center justify-center gap-1.5 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg transition-colors"
+            >
+              <ChevronDown className="w-4 h-4" />
+              Xem thêm ({sortedPosts.length - visibleCount} gifts)
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

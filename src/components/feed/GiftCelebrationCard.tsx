@@ -120,9 +120,11 @@ const GiftCelebrationCardComponent = ({
     }
   }, [initialStats, currentUserId]);
 
-  // Sound + confetti on first appearance (skip on profile to save resources)
+  // Sound + confetti on first appearance (single observer, no scroll-back)
   useEffect(() => {
     if (disableEffects) return;
+
+    const isMobile = window.innerWidth < 768;
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -136,15 +138,16 @@ const GiftCelebrationCardComponent = ({
             }
           }
 
-          if (!hasConfettiFiredRef.current) {
+          // Skip confetti on mobile to save resources
+          if (!hasConfettiFiredRef.current && !isMobile) {
             hasConfettiFiredRef.current = true;
             const rect = cardRef.current?.getBoundingClientRect();
             if (rect) {
               const x = (rect.left + rect.width / 2) / window.innerWidth;
               const y = (rect.top + rect.height / 4) / window.innerHeight;
               confetti({
-                particleCount: 60,
-                spread: 70,
+                particleCount: 40,
+                spread: 55,
                 origin: { x, y },
                 zIndex: 9998,
                 disableForReducedMotion: true,
@@ -152,6 +155,8 @@ const GiftCelebrationCardComponent = ({
               });
             }
           }
+
+          observer.disconnect();
         }
       },
       { threshold: 0.5 }
@@ -204,22 +209,7 @@ const GiftCelebrationCardComponent = ({
           : '0 2px 10px rgba(0,0,0,0.1)',
       }}
     >
-      {/* Sparkle overlay */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {[...Array(4)].map((_, i) => (
-          <div
-            key={i}
-            className="absolute animate-pulse"
-            style={{
-              left: `${15 + i * 20}%`,
-              top: `${10 + (i % 2) * 15}%`,
-              animationDelay: `${i * 0.5}s`,
-            }}
-          >
-            <Sparkles className="w-3 h-3 text-yellow-300/60" />
-          </div>
-        ))}
-      </div>
+      {/* Sparkle overlay removed for performance */}
 
       {/* Highlighted badge */}
       {isHighlighted && (
