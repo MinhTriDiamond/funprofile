@@ -143,14 +143,21 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
   const NO_AVATAR_PLATFORMS: string[] = [];
   const BAD_AVATAR_URLS = ['funplay-og-image', 'static.xx.fbcdn.net/rsrc.php', 'unavatar.io/facebook', 'unavatar.io/youtube', 'unavatar.io/telegram', 'unavatar.io/tiktok'];
 
+  // Sanitize HTML entities in avatar URLs (e.g. &amp; → &)
+  const sanitizeUrl = (url: string | undefined): string | undefined => {
+    if (!url) return url;
+    return url.replaceAll('&amp;', '&').replaceAll('&lt;', '<').replaceAll('&gt;', '>').replaceAll('&quot;', '"');
+  };
+
   // Proxy Facebook/fbcdn URLs through edge function to avoid CORS
   const getDisplayAvatarUrl = (link: SocialLink): string | undefined => {
-    if (!link.avatarUrl) return undefined;
-    if (link.avatarUrl.includes('graph.facebook.com') || link.avatarUrl.includes('fbcdn.net')) {
+    const raw = sanitizeUrl(link.avatarUrl);
+    if (!raw) return undefined;
+    if (raw.includes('graph.facebook.com') || raw.includes('fbcdn.net')) {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      return `${supabaseUrl}/functions/v1/fetch-link-preview?proxy=${encodeURIComponent(link.avatarUrl)}`;
+      return `${supabaseUrl}/functions/v1/fetch-link-preview?proxy=${encodeURIComponent(raw)}`;
     }
-    return link.avatarUrl;
+    return raw;
   };
 
   useEffect(() => {
