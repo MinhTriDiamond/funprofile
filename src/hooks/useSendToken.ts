@@ -110,19 +110,20 @@ export function useSendToken() {
       // Step 1: Signing
       logger.debug('[SEND] SIGN_REQUESTED');
       setTxStep('signing');
+      (window as any).__TX_IN_PROGRESS__ = true;
 
       if (!token.address) {
         hash = await sendTransactionAsync({
-          account: senderAddress as `0x${string}`,
           to: recipient as `0x${string}`,
           value: parseEther(amount),
+          chainId: chainId || 56,
         });
       } else {
         const data = encodeERC20Transfer(recipient as `0x${string}`, amount, token.decimals);
         hash = await sendTransactionAsync({
-          account: senderAddress as `0x${string}`,
           to: token.address,
           data,
+          chainId: chainId || 56,
         });
       }
 
