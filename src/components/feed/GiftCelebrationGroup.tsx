@@ -65,10 +65,7 @@ const GiftCelebrationGroupComponent = ({
       </div>
 
       {/* Scrollable container */}
-      <div
-        className="max-h-[750px] overflow-y-auto scrollbar-thin"
-        style={{ scrollBehavior: 'smooth' }}
-      >
+      <div>
         <div className="p-2 space-y-2">
           {visiblePosts.map(post => (
             <GiftCelebrationCard
