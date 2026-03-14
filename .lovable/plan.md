@@ -1,83 +1,50 @@
 
-# Database & Codebase Audit — Implementation Roadmap
 
-## Tài liệu tham chiếu
-- `.lovable/audit-report.md` — Audit report đầy đủ (633 dòng, 20 phần)
+# Mở khóa 12 user on_hold
 
----
+## Danh sách 12 user sẽ được mở khóa
 
-## ĐÃ HOÀN THÀNH
+| # | Username | Tên | Posts | Comments |
+|---|----------|-----|-------|----------|
+| 1 | UtopiaThuy413 | Hoàng Thị Thùy | 2,623 | 1,429 |
+| 2 | nguyenthu688 | Nguyễn Thị Thu | 325 | 345 |
+| 3 | ngo_phuc | Ngô Thị Hồng Phúc | 256 | 386 |
+| 4 | angelbachviet | Đinh Phạm Bách Việt | 150 | 4 |
+| 5 | xuannhan413 | Xuân Nhân | 112 | 11 |
+| 6 | baoan413 | Nguyễn Hoàng Bảo Ân | 107 | 51 |
+| 7 | nhuvinh | Trần Như Vinh | 91 | 4 |
+| 8 | khoa_ngo | Ngô Khoa | 79 | 125 |
+| 9 | thientam369 | Thiện Tâm | 61 | 39 |
+| 10 | minhvui | Nguyễn Minh Vui | 59 | 8 |
+| 11 | duonghoa | Dương Thị Hoà | 54 | 20 |
+| 12 | lequyen | Hoàng Lệ Quyên | 14 | 12 |
 
-### Phase 0 — Audit & Documentation ✅
-| # | Công việc | Trạng thái |
-|---|----------|-----------|
-| 0A | Viết audit report 20 phần | ✅ Done |
-| 0B | Xác định Canonical Domain Models | ✅ Done |
-| 0C | Xác định Do Not Touch First list | ✅ Done |
-| 0D | Xác định Refactor Blockers | ✅ Done |
+**Giữ nguyên ban**: User `Xuan` (Nguyen Huu Xuan) -- để kiểm tra thêm.
 
-### Phase 1A — Performance Indexes ✅
-| Index | Table | Columns | Mục đích |
-|-------|-------|---------|----------|
-| `idx_notifications_user_read` | notifications | user_id, read | Badge count + dropdown |
-| `idx_reactions_post_type` | reactions | post_id, type | Reaction counts per post |
-| `idx_light_actions_user_created` | light_actions | user_id, created_at DESC | Light Score history |
-| `idx_posts_user_created` | posts | user_id, created_at DESC | Profile feed |
-| `idx_chunked_chunks_status` | chunked_recording_chunks | status | Cleanup queries |
-| `idx_donations_sender_status` | donations | sender_id, status | Benefactor leaderboard |
-| `idx_donations_recipient_status` | donations | recipient_id, status | Recipient leaderboard |
-| `idx_comments_post_created` | comments | post_id, created_at | Comment thread load |
-| `idx_friendships_user_status` | friendships | user_id, status | Friend lookup |
-| `idx_friendships_friend_status` | friendships | friend_id, status | Friend lookup |
+## Thực hiện
 
-### Phase 1B — SQL Comments Documentation ✅
-- COMMENT ON TABLE cho tất cả 93 tables
-- COMMENT ON VIEW cho tất cả 5 views
-- Phân loại theo domain: Core, Social, Messaging, Live, Recording, Light Score, Rewards, Wallet, Auth, OAuth, Search, Content, System, PPLP
+Chạy một lệnh UPDATE duy nhất chuyển `reward_status` từ `on_hold` sang `approved` cho 12 user ID đã xác nhận:
 
----
+```sql
+UPDATE profiles
+SET reward_status = 'approved'
+WHERE id IN (
+  '0fd954f5-5d1f-48bf-aab5-0152232aee6c',
+  'b99b60c0-1a08-41a5-8627-7e48eb564c22',
+  '72d80e2d-e5e9-4d6e-bdaf-77b3608cf199',
+  '49a1eb82-7522-4efc-aac2-ff9470e7bb41',
+  '518558fa-8e49-4da4-a3fc-32b2a80479bc',
+  '78b02e1f-095f-4c08-88b9-8689acfaa38f',
+  '8251ab62-ac29-409c-b4aa-93f8c7c24c77',
+  'db1109de-c8b9-40b7-bd2e-de98b809045a',
+  '3fb36553-6cb7-4831-8b42-c460fb70394d',
+  'b976b131-6810-4c52-ad63-e013e8645e2a',
+  '28fc14e9-534b-4b47-949d-24d4e3800a19',
+  'd1b92695-ee22-464c-b8ed-ee2d96b35bb0'
+)
+AND is_banned = false
+AND reward_status = 'on_hold';
+```
 
-## CHƯA LÀM — KẾ HOẠCH TIẾP THEO
+Không cần thay đổi code. Chỉ cần chạy lệnh UPDATE trên database.
 
-### Phase 1C-F — Safe Cleanup (rủi ro THẤP)
-
-| # | Công việc | Chi tiết |
-|---|----------|---------|
-| 1C | Phân loại empty tables | 35 tables 0-rows → Active/Planned/Legacy/Deletable |
-| 1D | console.log → logger | 77 instances cần thay thế |
-| 1E | useAdminRole shared hook | Đã tạo, cần migrate các component dùng trực tiếp `has_role` |
-| 1F | Edge function _shared helpers | cors, auth, response — đã tạo ✅ |
-
-### Phase 2 — Structural Improvements (rủi ro TRUNG BÌNH)
-
-| # | Công việc | Chi tiết |
-|---|----------|---------|
-| 2A | State enum documentation | Document các status/type enums trong DB |
-| 2B | Merge search_logs → search_history | Consolidate duplicate search tracking |
-| 2C | notifications.read → is_read | Compatibility migration (backfill + dual-write) |
-| 2D | Xóa useLiveComments | Dead code cleanup |
-| 2E | Module hóa hooks/ | Nhóm theo domain (social, chat, live, wallet, etc.) |
-| 2F | Tách components/feed/ | Sub-domains cho feed components |
-| 2G | useCapabilities layer | Đã tạo ✅, cần migrate consumers |
-
-### Phase 3 — Deep Refactor (rủi ro CAO)
-
-| # | Công việc | Blocker |
-|---|----------|---------|
-| 3A | Tách profiles → user_wallet_config | Nhiều component đọc trực tiếp profiles |
-| 3B | Claims lifecycle audit | reward_claims + pending_claims khác lifecycle |
-| 3C | FinancialTab → platform_financial_data | Admin UI đang đọc grand_total_* từ profiles |
-| 3D | get_user_rewards_v2 refactor | Đang dùng livestreams table, cần chuyển live_sessions |
-| 3E | live_comments product review | Quyết định drop hoặc giữ |
-| 3F | Profiles RLS tightening | Public by Design → quyết định enforcement model |
-| 3G | Gộp 15 media edge functions | Router pattern |
-
----
-
-## Linter Warnings (có sẵn, chưa xử lý)
-- **RLS Enabled No Policy**: Một số tables có RLS enabled nhưng chưa có policy
-- **RLS Policy Always True**: Một số policies dùng `USING (true)` cho INSERT/UPDATE/DELETE
-- Sẽ xử lý trong Phase 2-3 khi refactor từng domain
-
-## Light Score 5 Trụ Cột — Phase 1 ✅ HOÀN THÀNH
-(Chi tiết xem phiên bản trước của plan)
