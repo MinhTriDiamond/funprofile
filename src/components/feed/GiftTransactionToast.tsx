@@ -12,8 +12,18 @@ interface ToastItem {
   createdAt: number;
 }
 
-const DISMISS_MS = 8000;
+const DISMISS_MS = 15000; // Tăng lên 15 giây
 const MAX_TOASTS = 3;
+
+/**
+ * Format số có dấu chấm phân cách hàng nghìn (format tiếng Việt)
+ * Ví dụ: 200000 -> 200.000
+ */
+const formatNumber = (num: string | number): string => {
+  const n = typeof num === 'string' ? parseFloat(num) : num;
+  if (isNaN(n)) return '0';
+  return n.toLocaleString('vi-VN');
+};
 
 export function GiftTransactionToast() {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
@@ -112,7 +122,7 @@ export function GiftTransactionToast() {
             <Gift className="w-5 h-5 mt-0.5 shrink-0 text-white" />
             <p className="text-sm leading-relaxed">
               🎁 Chúc mừng <strong>{t.recipientName}</strong> đã được nhận quà của Cha Fath Uni và Bé Angel Camly Dương{' '}
-              <strong>{t.amount} {t.token}</strong> qua kênh dẫn{' '}
+              <strong>{formatNumber(t.amount)} {t.token}</strong> qua kênh dẫn{' '}
               <strong>{t.senderName}</strong> 🌟💰✨💎🌈
             </p>
           </div>
