@@ -223,8 +223,10 @@ const GiftCelebrationCardComponent = ({
   const recipientDisplayName = recipientProfile?.display_name || recipientProfile?.username || fallbackRecipientName || 'User';
   const recipientUsername = recipientProfile?.username || fallbackRecipientName || 'User';
   const scanUrl = post.tx_hash ? getBscScanTxUrl(post.tx_hash, token) : '#';
-  const truncatedMessage = post.gift_message && post.gift_message.length > 120
-    ? post.gift_message.slice(0, 120) + '...'
+  const [showFullMessage, setShowFullMessage] = useState(false);
+  const isLongMessage = post.gift_message && post.gift_message.length > 120;
+  const displayMessage = isLongMessage && !showFullMessage
+    ? post.gift_message!.slice(0, 120) + '...'
     : post.gift_message;
 
   return (
