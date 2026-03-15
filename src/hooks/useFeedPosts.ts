@@ -268,9 +268,19 @@ export const useFeedPosts = () => {
   const queryClient = useQueryClient();
   const { userId: currentUserId } = useCurrentUser();
 
+  // Cache friend IDs
+  const { data: friendIdsData } = useQuery({
+    queryKey: ['friend-ids', currentUserId],
+    queryFn: () => fetchFriendIds(currentUserId),
+    staleTime: 60 * 1000,
+    gcTime: 5 * 60 * 1000,
+    enabled: !!currentUserId,
+  });
+  const friendIds = useMemo(() => friendIdsData ?? new Set<string>(), [friendIdsData]);
+
   const query = useInfiniteQuery<FeedPage, Error>({
     queryKey: ['feed-posts', currentUserId],
-    queryFn: ({ pageParam }) => fetchFeedPage(pageParam as string | null, currentUserId),
+    queryFn: ({ pageParam }) => fetchFeedPage(pageParam as string | null, friendIds),
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage: FeedPage) => lastPage.nextCursor ?? undefined,
     staleTime: 30 * 1000,
@@ -283,7 +293,6 @@ export const useFeedPosts = () => {
     queryClient.invalidateQueries({ queryKey: ['feed-posts'] });
   }, [queryClient]);
 
-  // Listen for invalidate-feed event
   useEffect(() => {
     const handler = () => {
       queryClient.invalidateQueries({ queryKey: ['feed-posts'] });
@@ -293,7 +302,6 @@ export const useFeedPosts = () => {
     return () => window.removeEventListener('invalidate-feed', handler);
   }, [queryClient]);
 
-  // Poll for new posts every 30s
   useEffect(() => {
     const interval = setInterval(() => {
       queryClient.invalidateQueries({ queryKey: ['feed-posts'] });
@@ -301,11 +309,10 @@ export const useFeedPosts = () => {
     return () => clearInterval(interval);
   }, [queryClient]);
 
-  // Fetch highlighted posts separately
   const highlightedQuery = useInfiniteQuery<{ posts: FeedPost[]; postStats: Record<string, PostStats> }, Error>({
-    queryKey: ['highlighted-posts', currentUserId],
+    queryKey: ['highlighted-posts'],
     queryFn: async () => {
-      const posts = await fetchHighlightedPosts(currentUserId);
+      const posts = await fetchHighlightedPosts();
       const postIds = posts.map(p => p.id);
       const postStats = await fetchPostStats(postIds);
       return { posts, postStats };
