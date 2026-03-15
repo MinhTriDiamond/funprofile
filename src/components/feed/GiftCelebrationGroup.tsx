@@ -116,7 +116,7 @@ const GiftCelebrationGroupComponent = ({
               <div className="px-4 pb-3 pt-1">
                 <button
                   onClick={() => setVisibleCount(prev => prev + LOAD_MORE_COUNT)}
-                  className="w-full flex items-center justify-center gap-1.5 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg transition-colors"
+                  className="w-full flex items-center justify-center gap-1.5 py-2 text-sm font-medium text-[#FFD700] hover:text-[#FFC000] hover:bg-muted/50 rounded-lg transition-colors"
                 >
                   <ChevronDown className="w-4 h-4" />
                   Xem thêm ({sortedPosts.length - visibleCount} gifts)

@@ -76,7 +76,7 @@ const GiftHistoryCalendarComponent = ({
                 key={date}
                 onClick={() => handleSelect(date)}
                 className={`
-                  flex flex-col items-center justify-center rounded-lg py-1.5 px-0.5 text-xs transition-all
+                  flex flex-col items-center justify-center rounded-lg py-1.5 px-2 text-xs transition-all
                   ${isSelected
                     ? 'bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/40 font-semibold'
                     : isToday
