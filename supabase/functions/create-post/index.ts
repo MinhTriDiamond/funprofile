@@ -267,6 +267,31 @@ Deno.serve(async (req) => {
       isRewardEligible = false; // Pending posts don't get rewards
     }
 
+    // === REPETITIVE CONTENT DETECTION ===
+    let repetitiveWarning = false;
+    if (trimmedContent.length > 0) {
+      const repResult = await detectRepetitiveContent(supabase, userId, trimmedContent);
+      console.log("[create-post] Repetitive check:", repResult);
+
+      if (repResult.blocked) {
+        console.log("[create-post] BLOCKED — repetitive content, similarCount:", repResult.similarCount);
+        return new Response(
+          JSON.stringify({
+            error: "Angel thấy bạn đã chia sẻ nội dung tương tự nhiều lần rồi nè 💛 Hãy dành thời gian viết những trải nghiệm thật sự của bạn nhé ✨",
+            blocked: true,
+            warning_message: "Angel thấy bạn đã chia sẻ nội dung tương tự nhiều lần rồi nè 💛 Hãy dành thời gian viết những trải nghiệm thật sự của bạn nhé ✨",
+          }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      if (repResult.warning) {
+        isRewardEligible = false;
+        repetitiveWarning = true;
+        console.log("[create-post] Repetitive warning, no reward");
+      }
+    }
+
     // === SHORT CONTENT CHECK (no reward for short text-only posts) ===
     if (isRewardEligible && mediaCount === 0 && trimmedContent.length < 50) {
       console.log("[create-post] Short text-only post, no reward:", trimmedContent.length, "chars");

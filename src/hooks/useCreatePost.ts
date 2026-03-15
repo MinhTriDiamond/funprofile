@@ -189,7 +189,17 @@ export function useCreatePost({ onPostCreated, uploadQueueRef }: UseCreatePostOp
         }
       }
 
-      if (!response.ok) throw new Error(result.error || t('cannotSavePost'));
+      if (!response.ok) {
+        // Handle blocked by repetitive content
+        if (result.blocked) {
+          toast.warning(
+            result.warning_message || 'Angel thấy bạn đã chia sẻ nội dung tương tự nhiều lần rồi nè 💛 Hãy dành thời gian viết những trải nghiệm thật sự của bạn nhé ✨',
+            { duration: 10000 }
+          );
+          return; // Don't reset form so user can edit
+        }
+        throw new Error(result.error || t('cannotSavePost'));
+      }
 
       setSubmitStep('done');
 
@@ -201,8 +211,13 @@ export function useCreatePost({ onPostCreated, uploadQueueRef }: UseCreatePostOp
       setPrivacy('public');
       setFeeling(null);
 
-      // Handle moderation
-      if (result.moderation_status === 'pending_review') {
+      // Handle moderation & warnings
+      if (result.repetitive_warning) {
+        toast.warning(
+          'Angel nhắc nhẹ: bài viết này khá giống với bài trước của bạn nên sẽ không được tính điểm nha 💛 Hãy chia sẻ điều mới mẻ hơn nhé ✨',
+          { duration: 8000 }
+        );
+      } else if (result.moderation_status === 'pending_review') {
         toast.info(
           language === 'vi' ? 'Bài viết của bạn đang được xem xét ✨' : 'Your post is being reviewed ✨',
           { duration: 5000 }
