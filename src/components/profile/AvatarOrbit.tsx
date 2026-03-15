@@ -538,18 +538,24 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
                 {isEditing && isOwner && !isPending && (
                   <div
                     ref={editRef}
-                    className="absolute z-50 bg-card border border-border rounded-xl shadow-xl p-3"
-                    style={{ bottom: '110%', left: '50%', transform: 'translateX(-50%)', width: '220px' }}
+                    className="fixed md:absolute z-50 bg-card border border-border rounded-xl shadow-xl p-4 md:p-3"
+                    style={{
+                      width: 'min(340px, 90vw)',
+                      ...(window.innerWidth < 768
+                        ? { left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }
+                        : { bottom: '110%', left: '50%', transform: 'translateX(-50%)' }
+                      ),
+                    }}
                     onMouseEnter={() => { isOrbitHovered.current = true; }}
                     onMouseLeave={() => { isOrbitHovered.current = true; }}
                   >
-                    <div className="flex items-center gap-1.5 mb-2">
-                      <div className="w-4 h-4 rounded-full bg-white flex items-center justify-center flex-shrink-0" style={{ border: `1.5px solid ${link.color}` }}>
-                        <img src={link.favicon} alt="" className="w-3 h-3 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-5 h-5 rounded-full bg-white flex items-center justify-center flex-shrink-0" style={{ border: `1.5px solid ${link.color}` }}>
+                        <img src={link.favicon} alt="" className="w-3.5 h-3.5 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                       </div>
-                      <span className="text-xs font-semibold" style={{ color: link.color }}>{link.label}</span>
-                      <button type="button" onClick={() => setEditingPlatform(null)} className="ml-auto p-0.5 rounded hover:bg-muted transition-colors">
-                        <X className="w-3.5 h-3.5 text-muted-foreground" />
+                      <span className="text-sm font-semibold" style={{ color: link.color }}>{link.label}</span>
+                      <button type="button" onClick={() => setEditingPlatform(null)} className="ml-auto p-1 rounded hover:bg-muted transition-colors">
+                        <X className="w-4 h-4 text-muted-foreground" />
                       </button>
                     </div>
                     <input
@@ -559,13 +565,13 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
                       onChange={(e) => setEditUrl(e.target.value)}
                       onKeyDown={(e) => { if (e.key === 'Enter') saveLink(link.platform, editUrl); }}
                       placeholder="https://..."
-                      className="w-full text-xs border border-border rounded-lg px-2 py-1.5 bg-background focus:outline-none focus:ring-1 focus:ring-primary mb-2"
+                      className="w-full text-sm border border-border rounded-lg px-3 py-2 bg-background focus:outline-none focus:ring-2 focus:ring-primary mb-2"
                     />
-                    <div className="flex gap-1.5">
+                    <div className="flex gap-2">
                       <button
                         type="button"
                         onClick={() => removeLink(link.platform)}
-                        className="flex-1 text-xs px-2 py-1 rounded-lg border border-destructive/40 text-destructive hover:bg-destructive/10 transition-colors"
+                        className="flex-1 text-sm px-3 py-1.5 rounded-lg border border-destructive/40 text-destructive hover:bg-destructive/10 transition-colors"
                       >
                         Xoá
                       </button>
@@ -573,9 +579,9 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
                         type="button"
                         disabled={saving}
                         onClick={() => saveLink(link.platform, editUrl)}
-                        className="flex-1 text-xs px-2 py-1 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors flex items-center justify-center gap-1 disabled:opacity-50"
+                        className="flex-1 text-sm px-3 py-1.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors flex items-center justify-center gap-1 disabled:opacity-50"
                       >
-                        <Check className="w-3 h-3" /> Lưu
+                        <Check className="w-3.5 h-3.5" /> Lưu
                       </button>
                     </div>
                   </div>
