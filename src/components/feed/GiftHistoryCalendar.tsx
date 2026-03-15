@@ -91,7 +91,7 @@ const GiftHistoryCalendarComponent = ({
                 <span className="text-[9px] leading-none mt-0.5">{dayName}</span>
                 <span className={`text-[10px] font-semibold leading-none mt-0.5 ${
                   count > 0
-                    ? isSelected ? 'text-emerald-400' : 'text-emerald-500'
+                    ? 'text-pink-600'
                     : 'text-muted-foreground'
                 }`}>
                   {count}

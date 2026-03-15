@@ -114,17 +114,26 @@ const GiftCelebrationGroupComponent = ({
               ))}
             </div>
 
-            {hasMore && (
-              <div className="px-4 pb-3 pt-1">
+            <div className="px-4 pb-3 pt-1 flex flex-col gap-1">
+              {hasMore && (
                 <button
                   onClick={() => setVisibleCount(prev => prev + LOAD_MORE_COUNT)}
-                  className="w-full flex items-center justify-center gap-1.5 py-2 text-sm font-medium text-[#FFD700] hover:text-[#FFC000] hover:bg-muted/50 rounded-lg transition-colors"
+                  className="w-full flex items-center justify-center gap-1.5 py-2 text-sm font-semibold text-pink-600 hover:text-pink-700 hover:bg-muted/50 rounded-lg transition-colors"
                 >
                   <ChevronDown className="w-4 h-4" />
                   Xem thêm ({sortedPosts.length - visibleCount} gifts)
                 </button>
-              </div>
-            )}
+              )}
+              {visibleCount > INITIAL_VISIBLE && (
+                <button
+                  onClick={() => setVisibleCount(INITIAL_VISIBLE)}
+                  className="w-full flex items-center justify-center gap-1.5 py-2 text-sm font-semibold text-pink-600 hover:text-pink-700 hover:bg-muted/50 rounded-lg transition-colors"
+                >
+                  <ChevronDown className="w-4 h-4 rotate-180" />
+                  Thu gọn
+                </button>
+              )}
+            </div>
           </>
         )}
       </div>
