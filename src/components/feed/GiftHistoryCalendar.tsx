@@ -60,10 +60,10 @@ const GiftHistoryCalendarComponent = ({
       <PopoverContent
         align="center"
         sideOffset={6}
-        className="w-[320px] p-3"
+        className="w-auto p-3"
       >
         <div className="text-xs font-semibold text-muted-foreground mb-2">
-          30 ngày gần nhất
+          7 ngày gần nhất
         </div>
         <div className="grid grid-cols-7 gap-1">
           {days.map(({ date, day, dayName }) => {
