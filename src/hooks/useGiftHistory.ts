@@ -44,7 +44,7 @@ const fetchGiftPostsByDate = async (dateStr: string) => {
     .gte('created_at', start)
     .lt('created_at', end)
     .order('created_at', { ascending: false })
-    .limit(100);
+    .limit(500);
 
   if (error) {
     console.error('Gift posts by date error:', error);
