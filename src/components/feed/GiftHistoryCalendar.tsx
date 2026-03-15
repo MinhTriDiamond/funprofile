@@ -25,7 +25,7 @@ function generateLast30Days(): { date: string; day: number; dayName: string }[] 
     const dayOfWeek = d.getUTCDay();
     days.push({ date: dateStr, day: d.getUTCDate(), dayName: DAY_NAMES[dayOfWeek] });
   }
-  return days;
+  return days.reverse();
 }
 
 function getCurrentVNMonth(): number {
