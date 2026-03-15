@@ -59,19 +59,21 @@ const GiftCelebrationGroupComponent = ({
   return (
     <div className="rounded-xl border border-border/50 bg-muted/30 overflow-hidden">
       {/* Header */}
-      <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border/30">
-        <Gift className="w-4 h-4 text-emerald-500" />
-        <span className="text-sm font-semibold text-foreground">Gift Celebration</span>
-        
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/30">
+        <div className="flex items-center gap-2">
+          <Gift className="w-4 h-4 text-pink-600" />
+          <span className="text-sm font-semibold text-foreground">Gift Celebration</span>
+        </div>
+
         <button
           onClick={toggleMute}
-          className="ml-2 p-1 rounded-md hover:bg-muted transition-colors"
+          className="p-1 rounded-md hover:bg-muted transition-colors"
           title={isMuted ? 'Bật âm thanh' : 'Tắt âm thanh'}
         >
           {isMuted ? (
             <VolumeX className="w-4 h-4 text-muted-foreground" />
           ) : (
-            <Volume2 className="w-4 h-4 text-emerald-500" />
+            <Volume2 className="w-4 h-4 text-pink-600" />
           )}
         </button>
 
@@ -81,7 +83,7 @@ const GiftCelebrationGroupComponent = ({
           dateCounts={dateCounts}
         />
 
-        <span className="ml-auto text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+        <span className="text-xs text-pink-600 font-semibold bg-pink-600/10 px-2 py-0.5 rounded-full">
           {activePosts.length} gifts
         </span>
       </div>
