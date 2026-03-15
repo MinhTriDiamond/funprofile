@@ -405,6 +405,7 @@ Deno.serve(async (req) => {
         postId: post?.id,
         is_reward_eligible: isRewardEligible,
         duplicate_detected: duplicateDetected,
+        repetitive_warning: repetitiveWarning,
         moderation_status: moderationStatus,
         timing: { insertMs: insertDuration, totalMs: totalDuration },
       }),
