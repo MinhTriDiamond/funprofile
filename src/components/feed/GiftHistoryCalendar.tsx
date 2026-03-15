@@ -40,9 +40,8 @@ const GiftHistoryCalendarComponent = ({
   dateCounts,
 }: GiftHistoryCalendarProps) => {
   const [open, setOpen] = useState(false);
-  const days = generateLast30Days();
+  const days = generateLast7Days();
   const todayStr = days[days.length - 1]?.date;
-  const month = getCurrentVNMonth();
 
   const handleSelect = useCallback((date: string) => {
     onSelectDate(date);
