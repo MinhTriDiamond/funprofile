@@ -65,7 +65,7 @@ const GiftHistoryCalendarComponent = ({
         <div className="text-xs font-semibold text-muted-foreground mb-2">
           7 ngày gần nhất
         </div>
-        <div className="grid grid-cols-7 gap-1">
+        <div className="grid grid-cols-7 gap-2">
           {days.map(({ date, day, dayName }) => {
             const isSelected = date === selectedDate;
             const isToday = date === todayStr;
