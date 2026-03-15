@@ -58,13 +58,6 @@ const GiftCelebrationGroupComponent = ({
 
   return (
     <div className="rounded-xl border border-border/50 bg-muted/30 overflow-hidden">
-      {/* 7-day calendar — above header */}
-      <GiftHistoryCalendar
-        selectedDate={selectedDate}
-        onSelectDate={handleSelectDate}
-        dateCounts={dateCounts}
-      />
-
       {/* Header */}
       <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border/30">
         <Gift className="w-4 h-4 text-emerald-500" />
@@ -86,6 +79,13 @@ const GiftCelebrationGroupComponent = ({
           {activePosts.length} gifts
         </span>
       </div>
+
+      {/* 30-day calendar */}
+      <GiftHistoryCalendar
+        selectedDate={selectedDate}
+        onSelectDate={handleSelectDate}
+        dateCounts={dateCounts}
+      />
 
       {/* Posts */}
       <div>
