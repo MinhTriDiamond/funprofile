@@ -208,18 +208,13 @@ const fetchHighlightedPosts = async (): Promise<FeedPost[]> => {
   return fetchGiftProfiles(posts);
 };
 
-const fetchFeedPage = async (cursor: string | null, currentUserId: string | null): Promise<FeedPage> => {
+const fetchFeedPage = async (cursor: string | null, friendIds: Set<string>): Promise<FeedPage> => {
   let query = supabase
     .from('posts')
     .select(`*, public_profiles!posts_user_id_fkey (username, display_name, avatar_url, public_wallet_address, is_banned)`)
+    .neq('post_type', 'gift_celebration')
     .order('created_at', { ascending: false })
     .limit(POSTS_PER_PAGE + 1);
-
-  if (currentUserId) {
-    query = query.or(`moderation_status.eq.approved,user_id.eq.${currentUserId}`);
-  } else {
-    query = query.eq('moderation_status', 'approved');
-  }
 
   if (cursor) {
     query = query.lt('created_at', cursor);
@@ -240,6 +235,16 @@ const fetchFeedPage = async (cursor: string | null, currentUserId: string | null
   })).filter((post: FeedPost) => !post.profiles?.is_banned);
 
   postsData = await fetchGiftProfiles(postsData);
+
+  // Sort: friends first, then others, keeping chronological order within each group
+  if (friendIds.size > 0) {
+    postsData.sort((a, b) => {
+      const aFriend = friendIds.has(a.user_id) ? 0 : 1;
+      const bFriend = friendIds.has(b.user_id) ? 0 : 1;
+      if (aFriend !== bFriend) return aFriend - bFriend;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+  }
   
   const postIds = postsData.map(p => p.id);
   const [postStats, attachmentsMap] = await Promise.all([
@@ -247,7 +252,6 @@ const fetchFeedPage = async (cursor: string | null, currentUserId: string | null
     fetchPostAttachments(postIds),
   ]);
 
-  // Merge attachments into posts
   postsData = postsData.map(p => ({
     ...p,
     attachments: attachmentsMap[p.id] || [],
