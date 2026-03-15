@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { LazyImage } from '@/components/ui/LazyImage';
 import { CoverPhotoEditor } from '@/components/profile/CoverPhotoEditor';
 import { AvatarEditor } from '@/components/profile/AvatarEditor';
-import { CoverHonorBoard } from '@/components/profile/CoverHonorBoard';
+import { CoverHonorBoard, MobileStats } from '@/components/profile/CoverHonorBoard';
 import { AvatarOrbit } from '@/components/profile/AvatarOrbit';
 import { FriendRequestButton } from '@/components/friends/FriendRequestButton';
 import { DonationButton } from '@/components/donations/DonationButton';
