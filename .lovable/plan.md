@@ -1,71 +1,83 @@
 
+# Database & Codebase Audit — Implementation Roadmap
 
-# Thêm lịch sử giao dịch 30 ngày vào Gift Celebration
+## Tài liệu tham chiếu
+- `.lovable/audit-report.md` — Audit report đầy đủ (633 dòng, 20 phần)
 
-## Ý tưởng
+---
 
-Thêm một hàng ngày (30 ngày gần nhất) vào bên dưới header của Gift Celebration Group. User nhấp vào ngày bất kỳ → load và hiển thị tất cả gift transactions trong ngày đó.
+## ĐÃ HOÀN THÀNH
 
-## Thiết kế UI
+### Phase 0 — Audit & Documentation ✅
+| # | Công việc | Trạng thái |
+|---|----------|-----------|
+| 0A | Viết audit report 20 phần | ✅ Done |
+| 0B | Xác định Canonical Domain Models | ✅ Done |
+| 0C | Xác định Do Not Touch First list | ✅ Done |
+| 0D | Xác định Refactor Blockers | ✅ Done |
 
-```text
-┌─────────────────────────────────────────────┐
-│ 🎁 Gift Celebration  🔊      20 gifts       │
-├─────────────────────────────────────────────┤
-│ 📅 Lịch sử 30 ngày                          │
-│ ┌──┐┌──┐┌──┐┌──┐┌──┐┌──┐┌──┐ ... ┌──┐     │
-│ │15││14││13││12││11││10││09│     │14│     │
-│ │T3││T2││CN││T7││T6││T5││T4│     │T2│     │
-│ └──┘└──┘└──┘└──┘└──┘└──┘└──┘     └──┘     │
-│  ▲ active (highlight)                        │
-├─────────────────────────────────────────────┤
-│ [Gift cards cho ngày được chọn]              │
-└─────────────────────────────────────────────┘
-```
+### Phase 1A — Performance Indexes ✅
+| Index | Table | Columns | Mục đích |
+|-------|-------|---------|----------|
+| `idx_notifications_user_read` | notifications | user_id, read | Badge count + dropdown |
+| `idx_reactions_post_type` | reactions | post_id, type | Reaction counts per post |
+| `idx_light_actions_user_created` | light_actions | user_id, created_at DESC | Light Score history |
+| `idx_posts_user_created` | posts | user_id, created_at DESC | Profile feed |
+| `idx_chunked_chunks_status` | chunked_recording_chunks | status | Cleanup queries |
+| `idx_donations_sender_status` | donations | sender_id, status | Benefactor leaderboard |
+| `idx_donations_recipient_status` | donations | recipient_id, status | Recipient leaderboard |
+| `idx_comments_post_created` | comments | post_id, created_at | Comment thread load |
+| `idx_friendships_user_status` | friendships | user_id, status | Friend lookup |
+| `idx_friendships_friend_status` | friendships | friend_id, status | Friend lookup |
 
-- Hàng ngày cuộn ngang (horizontal scroll), ngày mới nhất bên trái
-- Ngày có giao dịch sẽ có chấm nhỏ indicator
-- Ngày được chọn highlight xanh
-- Mặc định: "Hôm nay" được chọn → hiển thị gift posts hôm nay (behavior hiện tại)
-- Khi chọn ngày khác → query posts từ database cho ngày đó
+### Phase 1B — SQL Comments Documentation ✅
+- COMMENT ON TABLE cho tất cả 93 tables
+- COMMENT ON VIEW cho tất cả 5 views
+- Phân loại theo domain: Core, Social, Messaging, Live, Recording, Light Score, Rewards, Wallet, Auth, OAuth, Search, Content, System, PPLP
 
-## Files cần tạo/sửa
+---
 
-### 1. Tạo `src/components/feed/GiftHistoryCalendar.tsx`
-- Component hiển thị 30 ngày gần nhất dạng horizontal scroll
-- Mỗi ô ngày hiển thị: số ngày + thứ viết tắt (T2-CN)
-- Props: `selectedDate`, `onSelectDate`, `dateCounts` (map ngày → số gift)
-- Ngày có gift → chấm indicator nhỏ bên dưới
+## CHƯA LÀM — KẾ HOẠCH TIẾP THEO
 
-### 2. Tạo `src/hooks/useGiftHistory.ts`
-- Hook query gift_celebration posts cho ngày được chọn
-- Query `posts` table: `post_type = 'gift_celebration'` + filter `created_at` theo ngày (timezone UTC+7)
-- Cũng query count per day cho 30 ngày (1 query duy nhất với group by date) để hiển thị indicator
+### Phase 1C-F — Safe Cleanup (rủi ro THẤP)
 
-### 3. Sửa `src/components/feed/GiftCelebrationGroup.tsx`
-- Thêm state `selectedDate` (default: today)
-- Import và render `GiftHistoryCalendar` bên dưới header
-- Khi `selectedDate` = today → dùng `posts` prop hiện tại (realtime)
-- Khi `selectedDate` ≠ today → dùng data từ `useGiftHistory` hook
-- Truyền posts tương ứng xuống `GiftCelebrationCard` list
+| # | Công việc | Chi tiết |
+|---|----------|---------|
+| 1C | Phân loại empty tables | 35 tables 0-rows → Active/Planned/Legacy/Deletable |
+| 1D | console.log → logger | 77 instances cần thay thế |
+| 1E | useAdminRole shared hook | Đã tạo, cần migrate các component dùng trực tiếp `has_role` |
+| 1F | Edge function _shared helpers | cors, auth, response — đã tạo ✅ |
 
-## Logic query
+### Phase 2 — Structural Improvements (rủi ro TRUNG BÌNH)
 
-```sql
--- Count per day (30 days)
-SELECT DATE(created_at AT TIME ZONE 'Asia/Ho_Chi_Minh') as gift_date, COUNT(*) 
-FROM posts 
-WHERE post_type = 'gift_celebration' 
-  AND created_at >= NOW() - INTERVAL '30 days'
-GROUP BY gift_date
+| # | Công việc | Chi tiết |
+|---|----------|---------|
+| 2A | State enum documentation | Document các status/type enums trong DB |
+| 2B | Merge search_logs → search_history | Consolidate duplicate search tracking |
+| 2C | notifications.read → is_read | Compatibility migration (backfill + dual-write) |
+| 2D | Xóa useLiveComments | Dead code cleanup |
+| 2E | Module hóa hooks/ | Nhóm theo domain (social, chat, live, wallet, etc.) |
+| 2F | Tách components/feed/ | Sub-domains cho feed components |
+| 2G | useCapabilities layer | Đã tạo ✅, cần migrate consumers |
 
--- Posts for selected date
-SELECT * FROM posts 
-WHERE post_type = 'gift_celebration'
-  AND created_at >= '2026-03-14 17:00:00Z'  -- 00:00 VN time
-  AND created_at < '2026-03-15 17:00:00Z'   -- 24:00 VN time
-ORDER BY created_at DESC
-```
+### Phase 3 — Deep Refactor (rủi ro CAO)
 
-Không cần migration — chỉ query bảng `posts` hiện có.
+| # | Công việc | Blocker |
+|---|----------|---------|
+| 3A | Tách profiles → user_wallet_config | Nhiều component đọc trực tiếp profiles |
+| 3B | Claims lifecycle audit | reward_claims + pending_claims khác lifecycle |
+| 3C | FinancialTab → platform_financial_data | Admin UI đang đọc grand_total_* từ profiles |
+| 3D | get_user_rewards_v2 refactor | Đang dùng livestreams table, cần chuyển live_sessions |
+| 3E | live_comments product review | Quyết định drop hoặc giữ |
+| 3F | Profiles RLS tightening | Public by Design → quyết định enforcement model |
+| 3G | Gộp 15 media edge functions | Router pattern |
 
+---
+
+## Linter Warnings (có sẵn, chưa xử lý)
+- **RLS Enabled No Policy**: Một số tables có RLS enabled nhưng chưa có policy
+- **RLS Policy Always True**: Một số policies dùng `USING (true)` cho INSERT/UPDATE/DELETE
+- Sẽ xử lý trong Phase 2-3 khi refactor từng domain
+
+## Light Score 5 Trụ Cột — Phase 1 ✅ HOÀN THÀNH
+(Chi tiết xem phiên bản trước của plan)

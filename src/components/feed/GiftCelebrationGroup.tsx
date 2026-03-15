@@ -1,7 +1,9 @@
 import { memo, useState, useCallback } from 'react';
 import { GiftCelebrationCard } from './GiftCelebrationCard';
-import { Gift, Volume2, VolumeX, ChevronDown } from 'lucide-react';
+import { GiftHistoryCalendar } from './GiftHistoryCalendar';
+import { Gift, Volume2, VolumeX, ChevronDown, Loader2 } from 'lucide-react';
 import { stopCelebrationMusic } from '@/lib/celebrationSounds';
+import { useGiftHistory, getTodayVN } from '@/hooks/useGiftHistory';
 
 interface GiftCelebrationGroupProps {
   posts: any[];
@@ -23,23 +25,31 @@ const GiftCelebrationGroupComponent = ({
     localStorage.getItem('celebration_muted') === 'true'
   );
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE);
+  const [selectedDate, setSelectedDate] = useState<string>(getTodayVN());
+
+  const { dateCounts, historyPosts, historyPostStats, isLoadingHistory, isToday } = useGiftHistory(selectedDate);
 
   const toggleMute = useCallback(() => {
     setIsMuted(prev => {
       const next = !prev;
       localStorage.setItem('celebration_muted', String(next));
-
-      if (next) {
-        stopCelebrationMusic();
-      }
-
+      if (next) stopCelebrationMusic();
       return next;
     });
   }, []);
 
-  if (posts.length === 0) return null;
+  const handleSelectDate = useCallback((date: string) => {
+    setSelectedDate(date);
+    setVisibleCount(INITIAL_VISIBLE);
+  }, []);
 
-  const sortedPosts = [...posts].sort((a, b) => 
+  // Choose data source: today → live props, other days → history query
+  const activePosts = isToday ? posts : historyPosts;
+  const activeStats = isToday ? postStats : historyPostStats;
+
+  if (posts.length === 0 && isToday) return null;
+
+  const sortedPosts = [...activePosts].sort((a, b) => 
     new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   );
 
@@ -66,34 +76,54 @@ const GiftCelebrationGroupComponent = ({
         </button>
 
         <span className="ml-auto text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-          {posts.length} gifts
+          {activePosts.length} gifts
         </span>
       </div>
 
-      {/* Scrollable container */}
-      <div>
-        <div className="p-2 space-y-2">
-          {visiblePosts.map(post => (
-            <GiftCelebrationCard
-              key={post.id}
-              post={post}
-              currentUserId={currentUserId}
-              onPostDeleted={onPostDeleted}
-              initialStats={postStats[post.id]}
-            />
-          ))}
-        </div>
+      {/* 30-day calendar */}
+      <GiftHistoryCalendar
+        selectedDate={selectedDate}
+        onSelectDate={handleSelectDate}
+        dateCounts={dateCounts}
+      />
 
-        {hasMore && (
-          <div className="px-4 pb-3 pt-1">
-            <button
-              onClick={() => setVisibleCount(prev => prev + LOAD_MORE_COUNT)}
-              className="w-full flex items-center justify-center gap-1.5 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg transition-colors"
-            >
-              <ChevronDown className="w-4 h-4" />
-              Xem thêm ({sortedPosts.length - visibleCount} gifts)
-            </button>
+      {/* Posts */}
+      <div>
+        {isLoadingHistory ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            <span className="ml-2 text-sm text-muted-foreground">Đang tải...</span>
           </div>
+        ) : sortedPosts.length === 0 ? (
+          <div className="flex items-center justify-center py-8">
+            <span className="text-sm text-muted-foreground">Không có gift nào trong ngày này</span>
+          </div>
+        ) : (
+          <>
+            <div className="p-2 space-y-2">
+              {visiblePosts.map(post => (
+                <GiftCelebrationCard
+                  key={post.id}
+                  post={post}
+                  currentUserId={currentUserId}
+                  onPostDeleted={onPostDeleted}
+                  initialStats={activeStats[post.id]}
+                />
+              ))}
+            </div>
+
+            {hasMore && (
+              <div className="px-4 pb-3 pt-1">
+                <button
+                  onClick={() => setVisibleCount(prev => prev + LOAD_MORE_COUNT)}
+                  className="w-full flex items-center justify-center gap-1.5 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg transition-colors"
+                >
+                  <ChevronDown className="w-4 h-4" />
+                  Xem thêm ({sortedPosts.length - visibleCount} gifts)
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
