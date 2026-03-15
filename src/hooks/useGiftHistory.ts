@@ -17,20 +17,9 @@ function getTodayVN(): string {
   return `${vn.getUTCFullYear()}-${String(vn.getUTCMonth() + 1).padStart(2, '0')}-${String(vn.getUTCDate()).padStart(2, '0')}`;
 }
 
-// Fetch gift counts per day for last 30 days
+// Fetch gift counts per day using database function (bypasses 1000 row limit)
 const fetchGiftDayCounts = async (): Promise<Record<string, number>> => {
-  const now = new Date();
-  const vn = new Date(now.getTime() + 7 * 60 * 60 * 1000);
-  const sevenDaysAgo = new Date(vn.getTime() - 7 * 24 * 60 * 60 * 1000);
-  const utcStart = new Date(sevenDaysAgo.getTime() - 7 * 60 * 60 * 1000).toISOString();
-
-  const { data, error } = await supabase
-    .from('posts')
-    .select('created_at')
-    .eq('post_type', 'gift_celebration')
-    .gte('created_at', utcStart)
-    .order('created_at', { ascending: false })
-    .limit(5000);
+  const { data, error } = await supabase.rpc('get_gift_day_counts');
 
   if (error) {
     console.error('Gift day counts error:', error);
@@ -39,9 +28,7 @@ const fetchGiftDayCounts = async (): Promise<Record<string, number>> => {
 
   const counts: Record<string, number> = {};
   (data || []).forEach((row: any) => {
-    const d = new Date(new Date(row.created_at).getTime() + 7 * 60 * 60 * 1000);
-    const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
-    counts[key] = (counts[key] || 0) + 1;
+    counts[row.vn_date] = Number(row.gift_count) || 0;
   });
   return counts;
 };
