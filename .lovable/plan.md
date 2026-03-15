@@ -1,83 +1,50 @@
 
-# Database & Codebase Audit — Implementation Roadmap
 
-## Tài liệu tham chiếu
-- `.lovable/audit-report.md` — Audit report đầy đủ (633 dòng, 20 phần)
+# Chỉnh Gift History: Nút "Lịch sử" nằm ngang header, nhấp mở dropdown 30 ngày
 
----
+## Ý tưởng
 
-## ĐÃ HOÀN THÀNH
+Thay vì hiển thị lịch 30 ngày luôn bên dưới header, sẽ đổi thành:
+- **Nút "Lịch sử"** nằm cùng hàng với "Gift Celebration" trên header
+- Nhấp vào → **mở dropdown/panel** hiển thị lưới 30 ngày, mỗi ngày kèm số lệnh giao dịch
+- Nhấp vào ngày cụ thể → hiển thị toàn bộ gift của ngày đó bên dưới
 
-### Phase 0 — Audit & Documentation ✅
-| # | Công việc | Trạng thái |
-|---|----------|-----------|
-| 0A | Viết audit report 20 phần | ✅ Done |
-| 0B | Xác định Canonical Domain Models | ✅ Done |
-| 0C | Xác định Do Not Touch First list | ✅ Done |
-| 0D | Xác định Refactor Blockers | ✅ Done |
+```text
+┌─────────────────────────────────────────────────┐
+│ 🎁 Gift Celebration  🔊  [📅 Lịch sử T3]  20 gifts │
+├─────────────────────────────────────────────────┤
+│  (khi nhấp "Lịch sử" → dropdown mở ra)         │
+│  ┌─────┬─────┬─────┬─────┬─────┬─────┬─────┐   │
+│  │ 15  │ 14  │ 13  │ 12  │ 11  │ 10  │  9  │   │
+│  │ 5🎁 │ 3🎁 │  0  │ 12🎁│  1🎁│  0  │  8🎁│   │
+│  ├─────┼─────┼─────┼─────┼─────┼─────┼─────┤   │
+│  │  8  │  7  │  6  │  5  │  4  │  3  │  2  │   │
+│  │ ... │ ... │ ... │ ... │ ... │ ... │ ... │   │
+│  └─────┴─────┴─────┴─────┴─────┴─────┴─────┘   │
+├─────────────────────────────────────────────────┤
+│ [Gift cards cho ngày được chọn]                  │
+└─────────────────────────────────────────────────┘
+```
 
-### Phase 1A — Performance Indexes ✅
-| Index | Table | Columns | Mục đích |
-|-------|-------|---------|----------|
-| `idx_notifications_user_read` | notifications | user_id, read | Badge count + dropdown |
-| `idx_reactions_post_type` | reactions | post_id, type | Reaction counts per post |
-| `idx_light_actions_user_created` | light_actions | user_id, created_at DESC | Light Score history |
-| `idx_posts_user_created` | posts | user_id, created_at DESC | Profile feed |
-| `idx_chunked_chunks_status` | chunked_recording_chunks | status | Cleanup queries |
-| `idx_donations_sender_status` | donations | sender_id, status | Benefactor leaderboard |
-| `idx_donations_recipient_status` | donations | recipient_id, status | Recipient leaderboard |
-| `idx_comments_post_created` | comments | post_id, created_at | Comment thread load |
-| `idx_friendships_user_status` | friendships | user_id, status | Friend lookup |
-| `idx_friendships_friend_status` | friendships | friend_id, status | Friend lookup |
+## Thay đổi
 
-### Phase 1B — SQL Comments Documentation ✅
-- COMMENT ON TABLE cho tất cả 93 tables
-- COMMENT ON VIEW cho tất cả 5 views
-- Phân loại theo domain: Core, Social, Messaging, Live, Recording, Light Score, Rewards, Wallet, Auth, OAuth, Search, Content, System, PPLP
+### 1. `GiftHistoryCalendar.tsx` — Đổi thành dropdown panel
 
----
+- Thêm state `isOpen` để toggle hiển thị panel
+- **Trigger**: Nút nhỏ hiển thị "📅 Lịch sử T{tháng}" nằm inline trong header (export riêng component trigger)
+- **Panel**: Khi mở → hiển thị grid 7 cột × ~5 hàng (30 ngày), mỗi ô có số ngày + số lệnh giao dịch (`dateCounts[date]`)
+- Nhấp vào ngày → gọi `onSelectDate` + đóng panel
+- Ngày đang chọn highlight xanh, ngày hôm nay có border riêng
 
-## CHƯA LÀM — KẾ HOẠCH TIẾP THEO
+### 2. `GiftCelebrationGroup.tsx` — Di chuyển trigger lên header
 
-### Phase 1C-F — Safe Cleanup (rủi ro THẤP)
+- Bỏ `<GiftHistoryCalendar>` khỏi vị trí hiện tại (dưới header)
+- Đặt trigger button của calendar **cùng hàng** với "Gift Celebration" title, giữa nút mute và badge count
+- Calendar panel mở xuống bên dưới header khi nhấp
 
-| # | Công việc | Chi tiết |
-|---|----------|---------|
-| 1C | Phân loại empty tables | 35 tables 0-rows → Active/Planned/Legacy/Deletable |
-| 1D | console.log → logger | 77 instances cần thay thế |
-| 1E | useAdminRole shared hook | Đã tạo, cần migrate các component dùng trực tiếp `has_role` |
-| 1F | Edge function _shared helpers | cors, auth, response — đã tạo ✅ |
+### 3. `useGiftHistory.ts` — Không thay đổi logic, giữ nguyên 30 ngày
 
-### Phase 2 — Structural Improvements (rủi ro TRUNG BÌNH)
+### Files cần sửa
+1. `src/components/feed/GiftHistoryCalendar.tsx` — refactor thành dropdown with grid
+2. `src/components/feed/GiftCelebrationGroup.tsx` — đặt trigger trong header row
 
-| # | Công việc | Chi tiết |
-|---|----------|---------|
-| 2A | State enum documentation | Document các status/type enums trong DB |
-| 2B | Merge search_logs → search_history | Consolidate duplicate search tracking |
-| 2C | notifications.read → is_read | Compatibility migration (backfill + dual-write) |
-| 2D | Xóa useLiveComments | Dead code cleanup |
-| 2E | Module hóa hooks/ | Nhóm theo domain (social, chat, live, wallet, etc.) |
-| 2F | Tách components/feed/ | Sub-domains cho feed components |
-| 2G | useCapabilities layer | Đã tạo ✅, cần migrate consumers |
-
-### Phase 3 — Deep Refactor (rủi ro CAO)
-
-| # | Công việc | Blocker |
-|---|----------|---------|
-| 3A | Tách profiles → user_wallet_config | Nhiều component đọc trực tiếp profiles |
-| 3B | Claims lifecycle audit | reward_claims + pending_claims khác lifecycle |
-| 3C | FinancialTab → platform_financial_data | Admin UI đang đọc grand_total_* từ profiles |
-| 3D | get_user_rewards_v2 refactor | Đang dùng livestreams table, cần chuyển live_sessions |
-| 3E | live_comments product review | Quyết định drop hoặc giữ |
-| 3F | Profiles RLS tightening | Public by Design → quyết định enforcement model |
-| 3G | Gộp 15 media edge functions | Router pattern |
-
----
-
-## Linter Warnings (có sẵn, chưa xử lý)
-- **RLS Enabled No Policy**: Một số tables có RLS enabled nhưng chưa có policy
-- **RLS Policy Always True**: Một số policies dùng `USING (true)` cho INSERT/UPDATE/DELETE
-- Sẽ xử lý trong Phase 2-3 khi refactor từng domain
-
-## Light Score 5 Trụ Cột — Phase 1 ✅ HOÀN THÀNH
-(Chi tiết xem phiên bản trước của plan)
