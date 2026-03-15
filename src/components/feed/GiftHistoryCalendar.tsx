@@ -53,7 +53,7 @@ const GiftHistoryCalendarComponent = ({
       <PopoverTrigger asChild>
         <button className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors">
           <Calendar className="w-3.5 h-3.5" />
-          <span>7 ngày</span>
+          <span className="text-[#FFD700]">Lịch sử 7 ngày</span>
           <ChevronDown className={`w-3 h-3 transition-transform ${open ? 'rotate-180' : ''}`} />
         </button>
       </PopoverTrigger>
@@ -65,7 +65,7 @@ const GiftHistoryCalendarComponent = ({
         <div className="text-xs font-semibold text-muted-foreground mb-2">
           7 ngày gần nhất
         </div>
-        <div className="grid grid-cols-7 gap-1">
+        <div className="grid grid-cols-7 gap-2">
           {days.map(({ date, day, dayName }) => {
             const isSelected = date === selectedDate;
             const isToday = date === todayStr;
@@ -76,7 +76,7 @@ const GiftHistoryCalendarComponent = ({
                 key={date}
                 onClick={() => handleSelect(date)}
                 className={`
-                  flex flex-col items-center justify-center rounded-lg py-1.5 px-0.5 text-xs transition-all
+                  flex flex-col items-center justify-center rounded-lg py-1.5 px-2 text-xs transition-all
                   ${isSelected
                     ? 'bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/40 font-semibold'
                     : isToday
