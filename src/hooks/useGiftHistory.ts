@@ -21,7 +21,7 @@ function getTodayVN(): string {
 const fetchGiftDayCounts = async (): Promise<Record<string, number>> => {
   const now = new Date();
   const vn = new Date(now.getTime() + 7 * 60 * 60 * 1000);
-  const thirtyDaysAgo = new Date(vn.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const sevenDaysAgo = new Date(vn.getTime() - 7 * 24 * 60 * 60 * 1000);
   const utcStart = new Date(thirtyDaysAgo.getTime() - 7 * 60 * 60 * 1000).toISOString();
 
   const { data, error } = await supabase
