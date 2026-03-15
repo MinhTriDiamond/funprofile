@@ -96,6 +96,11 @@ export const ProfileHeader = ({
           </div>
         </div>
 
+        {/* Mobile Honor Board — below cover, above profile info */}
+        <div className="md:hidden px-2 mt-2">
+          <MobileStats userId={profile.id} username={profile?.username} avatarUrl={profile?.avatar_url ?? undefined} />
+        </div>
+
         {/* Profile Info */}
         <div className="bg-card/80 border-b border-border shadow-sm md:rounded-b-xl">
           <div className="px-4 md:px-8 py-4 md:py-6">

@@ -749,8 +749,14 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
             {showAddPicker && (
               <div
                 ref={pickerRef}
-                className="absolute z-50 bg-card border border-border rounded-xl shadow-xl p-3"
-                style={{ bottom: '110%', left: '50%', transform: 'translateX(-50%)', width: '252px' }}
+                className="fixed md:absolute z-50 bg-card border border-border rounded-xl shadow-xl p-4 md:p-3"
+                style={{
+                  width: 'min(340px, 90vw)',
+                  ...(window.innerWidth < 768
+                    ? { left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }
+                    : { bottom: '110%', left: '50%', transform: 'translateX(-50%)' }
+                  ),
+                }}
               >
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-xs font-semibold text-foreground">Chọn mạng xã hội</p>
