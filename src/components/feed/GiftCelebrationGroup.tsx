@@ -1,6 +1,7 @@
 import { memo, useState, useCallback } from 'react';
 import { GiftCelebrationCard } from './GiftCelebrationCard';
 import { Gift, Volume2, VolumeX, ChevronDown } from 'lucide-react';
+import { stopCelebrationMusic } from '@/lib/celebrationSounds';
 
 interface GiftCelebrationGroupProps {
   posts: any[];
