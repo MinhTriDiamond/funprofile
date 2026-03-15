@@ -90,13 +90,13 @@ const GiftHistoryCalendarComponent = ({
                   {day}
                 </span>
                 <span className="text-[9px] leading-none mt-0.5">{dayName}</span>
-                {count > 0 ? (
-                  <span className={`text-[9px] leading-none mt-0.5 ${isSelected ? 'text-emerald-400' : 'text-emerald-500'}`}>
-                    {count}🎁
-                  </span>
-                ) : (
-                  <span className="text-[9px] leading-none mt-0.5 text-muted-foreground">0</span>
-                )}
+                <span className={`text-[10px] font-semibold leading-none mt-0.5 ${
+                  count > 0
+                    ? isSelected ? 'text-emerald-400' : 'text-emerald-500'
+                    : 'text-muted-foreground'
+                }`}>
+                  {count}
+                </span>
               </button>
             );
           })}
