@@ -95,7 +95,7 @@ const GiftHistoryCalendarComponent = ({
                     {count}🎁
                   </span>
                 ) : (
-                  <span className="text-[9px] leading-none mt-0.5 opacity-30">—</span>
+                  <span className="text-[9px] leading-none mt-0.5 text-muted-foreground">0</span>
                 )}
               </button>
             );
