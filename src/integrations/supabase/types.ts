@@ -5324,6 +5324,13 @@ export type Database = {
           tx_hash: string
         }[]
       }
+      get_gift_day_counts: {
+        Args: never
+        Returns: {
+          gift_count: number
+          vn_date: string
+        }[]
+      }
       get_light_community: {
         Args: { p_limit?: number }
         Returns: {
