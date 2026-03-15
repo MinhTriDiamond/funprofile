@@ -10,12 +10,12 @@ interface GiftHistoryCalendarProps {
 
 const DAY_NAMES = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 
-function generateLast30Days(): { date: string; day: number; dayName: string }[] {
+function generateLast7Days(): { date: string; day: number; dayName: string }[] {
   const days: { date: string; day: number; dayName: string }[] = [];
   const now = new Date();
   const vnNow = new Date(now.getTime() + 7 * 60 * 60 * 1000);
 
-  for (let i = 0; i < 30; i++) {
+  for (let i = 0; i < 7; i++) {
     const d = new Date(vnNow);
     d.setUTCDate(d.getUTCDate() - i);
     const yyyy = d.getUTCFullYear();
@@ -40,9 +40,8 @@ const GiftHistoryCalendarComponent = ({
   dateCounts,
 }: GiftHistoryCalendarProps) => {
   const [open, setOpen] = useState(false);
-  const days = generateLast30Days();
+  const days = generateLast7Days();
   const todayStr = days[days.length - 1]?.date;
-  const month = getCurrentVNMonth();
 
   const handleSelect = useCallback((date: string) => {
     onSelectDate(date);
@@ -54,17 +53,17 @@ const GiftHistoryCalendarComponent = ({
       <PopoverTrigger asChild>
         <button className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors">
           <Calendar className="w-3.5 h-3.5" />
-          <span>Lịch sử T{month}</span>
+          <span>7 ngày</span>
           <ChevronDown className={`w-3 h-3 transition-transform ${open ? 'rotate-180' : ''}`} />
         </button>
       </PopoverTrigger>
       <PopoverContent
         align="center"
         sideOffset={6}
-        className="w-[320px] p-3"
+        className="w-auto p-3"
       >
         <div className="text-xs font-semibold text-muted-foreground mb-2">
-          30 ngày gần nhất
+          7 ngày gần nhất
         </div>
         <div className="grid grid-cols-7 gap-1">
           {days.map(({ date, day, dayName }) => {
