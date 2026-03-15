@@ -165,17 +165,19 @@ const fetchGiftProfiles = async (posts: FeedPost[]): Promise<FeedPost[]> => {
 
 // Fetch highlighted (pinned) gift celebration posts (all within 24h)
 const fetchHighlightedPosts = async (currentUserId: string | null): Promise<FeedPost[]> => {
-  const now = new Date().toISOString();
-  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  // Calculate start of today in Vietnam time (UTC+7)
+  const nowUTC = new Date();
+  const vnOffset = 7 * 60 * 60 * 1000;
+  const nowVN = new Date(nowUTC.getTime() + vnOffset);
+  const startOfDayVN = new Date(Date.UTC(nowVN.getUTCFullYear(), nowVN.getUTCMonth(), nowVN.getUTCDate()) - vnOffset);
   
   let query = supabase
     .from('posts')
     .select(`*, public_profiles!posts_user_id_fkey (username, display_name, avatar_url, public_wallet_address, is_banned)`)
-    .eq('is_highlighted', true)
-    .or(`highlight_expires_at.gt.${now},highlight_expires_at.is.null`)
-    .gte('created_at', twentyFourHoursAgo)
+    .eq('post_type', 'gift_celebration')
+    .gte('created_at', startOfDayVN.toISOString())
     .order('created_at', { ascending: false })
-    .limit(200);
+    .limit(500);
 
   if (currentUserId) {
     query = query.or(`moderation_status.eq.approved,user_id.eq.${currentUserId}`);
