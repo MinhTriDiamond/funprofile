@@ -1,5 +1,5 @@
-import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useCallback } from 'react';
+import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 
@@ -163,12 +163,28 @@ const fetchGiftProfiles = async (posts: FeedPost[]): Promise<FeedPost[]> => {
   });
 };
 
+// Fetch friend IDs for a user
+const fetchFriendIds = async (userId: string | null): Promise<Set<string>> => {
+  if (!userId) return new Set();
+  const { data } = await supabase
+    .from('friendships')
+    .select('user_id, friend_id')
+    .eq('status', 'accepted')
+    .or(`user_id.eq.${userId},friend_id.eq.${userId}`);
+
+  const ids = new Set<string>();
+  (data || []).forEach((f: any) => {
+    ids.add(f.user_id === userId ? f.friend_id : f.user_id);
+  });
+  return ids;
+};
+
 // Fetch highlighted (pinned) gift celebration posts (all within 24h)
-const fetchHighlightedPosts = async (currentUserId: string | null): Promise<FeedPost[]> => {
+const fetchHighlightedPosts = async (): Promise<FeedPost[]> => {
   const now = new Date().toISOString();
   const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   
-  let query = supabase
+  const { data, error } = await supabase
     .from('posts')
     .select(`*, public_profiles!posts_user_id_fkey (username, display_name, avatar_url, public_wallet_address, is_banned)`)
     .eq('is_highlighted', true)
@@ -177,13 +193,6 @@ const fetchHighlightedPosts = async (currentUserId: string | null): Promise<Feed
     .order('created_at', { ascending: false })
     .limit(20);
 
-  if (currentUserId) {
-    query = query.or(`moderation_status.eq.approved,user_id.eq.${currentUserId}`);
-  } else {
-    query = query.eq('moderation_status', 'approved');
-  }
-
-  const { data, error } = await query;
   if (error) {
     console.error('Error fetching highlighted posts:', error);
     return [];
@@ -199,18 +208,13 @@ const fetchHighlightedPosts = async (currentUserId: string | null): Promise<Feed
   return fetchGiftProfiles(posts);
 };
 
-const fetchFeedPage = async (cursor: string | null, currentUserId: string | null): Promise<FeedPage> => {
+const fetchFeedPage = async (cursor: string | null, friendIds: Set<string>): Promise<FeedPage> => {
   let query = supabase
     .from('posts')
     .select(`*, public_profiles!posts_user_id_fkey (username, display_name, avatar_url, public_wallet_address, is_banned)`)
+    .neq('post_type', 'gift_celebration')
     .order('created_at', { ascending: false })
     .limit(POSTS_PER_PAGE + 1);
-
-  if (currentUserId) {
-    query = query.or(`moderation_status.eq.approved,user_id.eq.${currentUserId}`);
-  } else {
-    query = query.eq('moderation_status', 'approved');
-  }
 
   if (cursor) {
     query = query.lt('created_at', cursor);
@@ -231,6 +235,16 @@ const fetchFeedPage = async (cursor: string | null, currentUserId: string | null
   })).filter((post: FeedPost) => !post.profiles?.is_banned);
 
   postsData = await fetchGiftProfiles(postsData);
+
+  // Sort: friends first, then others, keeping chronological order within each group
+  if (friendIds.size > 0) {
+    postsData.sort((a, b) => {
+      const aFriend = friendIds.has(a.user_id) ? 0 : 1;
+      const bFriend = friendIds.has(b.user_id) ? 0 : 1;
+      if (aFriend !== bFriend) return aFriend - bFriend;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+  }
   
   const postIds = postsData.map(p => p.id);
   const [postStats, attachmentsMap] = await Promise.all([
@@ -238,7 +252,6 @@ const fetchFeedPage = async (cursor: string | null, currentUserId: string | null
     fetchPostAttachments(postIds),
   ]);
 
-  // Merge attachments into posts
   postsData = postsData.map(p => ({
     ...p,
     attachments: attachmentsMap[p.id] || [],
@@ -255,9 +268,19 @@ export const useFeedPosts = () => {
   const queryClient = useQueryClient();
   const { userId: currentUserId } = useCurrentUser();
 
+  // Cache friend IDs
+  const { data: friendIdsData } = useQuery({
+    queryKey: ['friend-ids', currentUserId],
+    queryFn: () => fetchFriendIds(currentUserId),
+    staleTime: 60 * 1000,
+    gcTime: 5 * 60 * 1000,
+    enabled: !!currentUserId,
+  });
+  const friendIds = useMemo(() => friendIdsData ?? new Set<string>(), [friendIdsData]);
+
   const query = useInfiniteQuery<FeedPage, Error>({
     queryKey: ['feed-posts', currentUserId],
-    queryFn: ({ pageParam }) => fetchFeedPage(pageParam as string | null, currentUserId),
+    queryFn: ({ pageParam }) => fetchFeedPage(pageParam as string | null, friendIds),
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage: FeedPage) => lastPage.nextCursor ?? undefined,
     staleTime: 30 * 1000,
@@ -270,7 +293,6 @@ export const useFeedPosts = () => {
     queryClient.invalidateQueries({ queryKey: ['feed-posts'] });
   }, [queryClient]);
 
-  // Listen for invalidate-feed event
   useEffect(() => {
     const handler = () => {
       queryClient.invalidateQueries({ queryKey: ['feed-posts'] });
@@ -280,7 +302,6 @@ export const useFeedPosts = () => {
     return () => window.removeEventListener('invalidate-feed', handler);
   }, [queryClient]);
 
-  // Poll for new posts every 30s
   useEffect(() => {
     const interval = setInterval(() => {
       queryClient.invalidateQueries({ queryKey: ['feed-posts'] });
@@ -288,11 +309,10 @@ export const useFeedPosts = () => {
     return () => clearInterval(interval);
   }, [queryClient]);
 
-  // Fetch highlighted posts separately
   const highlightedQuery = useInfiniteQuery<{ posts: FeedPost[]; postStats: Record<string, PostStats> }, Error>({
-    queryKey: ['highlighted-posts', currentUserId],
+    queryKey: ['highlighted-posts'],
     queryFn: async () => {
-      const posts = await fetchHighlightedPosts(currentUserId);
+      const posts = await fetchHighlightedPosts();
       const postIds = posts.map(p => p.id);
       const postStats = await fetchPostStats(postIds);
       return { posts, postStats };
