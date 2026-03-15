@@ -1,44 +1,83 @@
 
+# Database & Codebase Audit — Implementation Roadmap
 
-# Fix Honor Board che avatar + Dialog liên kết trên mobile
+## Tài liệu tham chiếu
+- `.lovable/audit-report.md` — Audit report đầy đủ (633 dòng, 20 phần)
 
-## Vấn đề
-1. **Honor Board mobile** đặt `absolute` trong ảnh bìa → che mất avatar
-2. **Dialog nhập link** chỉ rộng 220px, bị cắt trên mobile, khó dán link
+---
 
-## Giải pháp
+## ĐÃ HOÀN THÀNH
 
-### 1. `ProfileHeader.tsx` — Di chuyển Honor Board mobile ra ngoài ảnh bìa
-- Xóa div Honor Board Mobile (absolute bên trong cover photo)
-- Thêm Honor Board mobile **bên dưới ảnh bìa**, dùng component `MobileStats` (đã có sẵn layout 2 hàng × 4 ô)
-- Chỉ hiển thị trên `md:hidden`
+### Phase 0 — Audit & Documentation ✅
+| # | Công việc | Trạng thái |
+|---|----------|-----------|
+| 0A | Viết audit report 20 phần | ✅ Done |
+| 0B | Xác định Canonical Domain Models | ✅ Done |
+| 0C | Xác định Do Not Touch First list | ✅ Done |
+| 0D | Xác định Refactor Blockers | ✅ Done |
 
-```text
-Trước:
-┌─────────────────────┐
-│  Cover Photo        │
-│         ┌──────┐    │  ← Honor Board che avatar
-│         │ HB   │    │
-│    👤   └──────┘    │
-└─────────────────────┘
+### Phase 1A — Performance Indexes ✅
+| Index | Table | Columns | Mục đích |
+|-------|-------|---------|----------|
+| `idx_notifications_user_read` | notifications | user_id, read | Badge count + dropdown |
+| `idx_reactions_post_type` | reactions | post_id, type | Reaction counts per post |
+| `idx_light_actions_user_created` | light_actions | user_id, created_at DESC | Light Score history |
+| `idx_posts_user_created` | posts | user_id, created_at DESC | Profile feed |
+| `idx_chunked_chunks_status` | chunked_recording_chunks | status | Cleanup queries |
+| `idx_donations_sender_status` | donations | sender_id, status | Benefactor leaderboard |
+| `idx_donations_recipient_status` | donations | recipient_id, status | Recipient leaderboard |
+| `idx_comments_post_created` | comments | post_id, created_at | Comment thread load |
+| `idx_friendships_user_status` | friendships | user_id, status | Friend lookup |
+| `idx_friendships_friend_status` | friendships | friend_id, status | Friend lookup |
 
-Sau:
-┌─────────────────────┐
-│  Cover Photo        │
-│    👤               │
-└─────────────────────┘
-┌─────────────────────┐
-│ [B.viết][C.xúc][B.luận][B.bè] │  ← 2 hàng × 4 ô
-│ [Chia sẻ][Live][Rút][Đã rút]  │
-│ [Hôm nay: xxx] [Tổng: xxx]    │
-└─────────────────────┘
-```
+### Phase 1B — SQL Comments Documentation ✅
+- COMMENT ON TABLE cho tất cả 93 tables
+- COMMENT ON VIEW cho tất cả 5 views
+- Phân loại theo domain: Core, Social, Messaging, Live, Recording, Light Score, Rewards, Wallet, Auth, OAuth, Search, Content, System, PPLP
 
-### 2. `AvatarOrbit.tsx` — Mở rộng dialog nhập link trên mobile
-- Prompt popup & Edit popup: tăng width từ `220px` → `min(320px, 90vw)`
-- Đổi vị trí: thay vì `bottom: 110%` (bị cắt phía trên), dùng logic responsive — trên mobile hiển thị bên dưới icon hoặc dùng fixed position
-- Tăng kích thước input và text để dễ đọc, dễ dán link
+---
 
-### 3. `AvatarOrbit.tsx` — Picker "Chọn mạng xã hội" cũng mở rộng
-- Tăng width picker từ `252px` → `min(320px, 90vw)` để hiển thị đủ chữ trên mobile
+## CHƯA LÀM — KẾ HOẠCH TIẾP THEO
 
+### Phase 1C-F — Safe Cleanup (rủi ro THẤP)
+
+| # | Công việc | Chi tiết |
+|---|----------|---------|
+| 1C | Phân loại empty tables | 35 tables 0-rows → Active/Planned/Legacy/Deletable |
+| 1D | console.log → logger | 77 instances cần thay thế |
+| 1E | useAdminRole shared hook | Đã tạo, cần migrate các component dùng trực tiếp `has_role` |
+| 1F | Edge function _shared helpers | cors, auth, response — đã tạo ✅ |
+
+### Phase 2 — Structural Improvements (rủi ro TRUNG BÌNH)
+
+| # | Công việc | Chi tiết |
+|---|----------|---------|
+| 2A | State enum documentation | Document các status/type enums trong DB |
+| 2B | Merge search_logs → search_history | Consolidate duplicate search tracking |
+| 2C | notifications.read → is_read | Compatibility migration (backfill + dual-write) |
+| 2D | Xóa useLiveComments | Dead code cleanup |
+| 2E | Module hóa hooks/ | Nhóm theo domain (social, chat, live, wallet, etc.) |
+| 2F | Tách components/feed/ | Sub-domains cho feed components |
+| 2G | useCapabilities layer | Đã tạo ✅, cần migrate consumers |
+
+### Phase 3 — Deep Refactor (rủi ro CAO)
+
+| # | Công việc | Blocker |
+|---|----------|---------|
+| 3A | Tách profiles → user_wallet_config | Nhiều component đọc trực tiếp profiles |
+| 3B | Claims lifecycle audit | reward_claims + pending_claims khác lifecycle |
+| 3C | FinancialTab → platform_financial_data | Admin UI đang đọc grand_total_* từ profiles |
+| 3D | get_user_rewards_v2 refactor | Đang dùng livestreams table, cần chuyển live_sessions |
+| 3E | live_comments product review | Quyết định drop hoặc giữ |
+| 3F | Profiles RLS tightening | Public by Design → quyết định enforcement model |
+| 3G | Gộp 15 media edge functions | Router pattern |
+
+---
+
+## Linter Warnings (có sẵn, chưa xử lý)
+- **RLS Enabled No Policy**: Một số tables có RLS enabled nhưng chưa có policy
+- **RLS Policy Always True**: Một số policies dùng `USING (true)` cho INSERT/UPDATE/DELETE
+- Sẽ xử lý trong Phase 2-3 khi refactor từng domain
+
+## Light Score 5 Trụ Cột — Phase 1 ✅ HOÀN THÀNH
+(Chi tiết xem phiên bản trước của plan)

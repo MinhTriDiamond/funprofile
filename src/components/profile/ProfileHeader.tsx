@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { LazyImage } from '@/components/ui/LazyImage';
 import { CoverPhotoEditor } from '@/components/profile/CoverPhotoEditor';
 import { AvatarEditor } from '@/components/profile/AvatarEditor';
-import { CoverHonorBoard } from '@/components/profile/CoverHonorBoard';
+import { CoverHonorBoard, MobileStats } from '@/components/profile/CoverHonorBoard';
 import { AvatarOrbit } from '@/components/profile/AvatarOrbit';
 import { FriendRequestButton } from '@/components/friends/FriendRequestButton';
 import { DonationButton } from '@/components/donations/DonationButton';
@@ -82,10 +82,7 @@ export const ProfileHeader = ({
               <CoverHonorBoard userId={profile.id} username={profile?.username} avatarUrl={profile?.avatar_url ?? undefined} />
             </div>
 
-            {/* Honor Board Mobile */}
-            <div className="absolute z-20 md:hidden bottom-16 right-2 sm:right-3 w-[220px] sm:w-[250px] rounded-2xl p-1 bg-white/50 backdrop-blur-sm origin-bottom-right scale-[0.85] sm:scale-90">
-              <CoverHonorBoard userId={profile.id} username={profile?.username} avatarUrl={profile?.avatar_url ?? undefined} />
-            </div>
+            {/* Honor Board Mobile — moved below cover */}
 
             {showPrivateElements && (
               <div className="absolute bottom-3 right-3 md:right-auto md:left-[8cm] sm:bottom-4 sm:right-4 z-[100] isolate">
@@ -97,6 +94,11 @@ export const ProfileHeader = ({
               </div>
             )}
           </div>
+        </div>
+
+        {/* Mobile Honor Board — below cover, above profile info */}
+        <div className="md:hidden px-2 mt-2">
+          <MobileStats userId={profile.id} username={profile?.username} avatarUrl={profile?.avatar_url ?? undefined} />
         </div>
 
         {/* Profile Info */}
