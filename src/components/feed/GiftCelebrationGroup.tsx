@@ -75,17 +75,17 @@ const GiftCelebrationGroupComponent = ({
           )}
         </button>
 
+        <GiftHistoryCalendar
+          selectedDate={selectedDate}
+          onSelectDate={handleSelectDate}
+          dateCounts={dateCounts}
+        />
+
         <span className="ml-auto text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
           {activePosts.length} gifts
         </span>
       </div>
 
-      {/* 30-day calendar */}
-      <GiftHistoryCalendar
-        selectedDate={selectedDate}
-        onSelectDate={handleSelectDate}
-        dateCounts={dateCounts}
-      />
 
       {/* Posts */}
       <div>
