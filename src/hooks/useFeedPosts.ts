@@ -284,8 +284,33 @@ export const useFeedPosts = () => {
   useEffect(() => {
     const interval = setInterval(() => {
       queryClient.invalidateQueries({ queryKey: ['feed-posts'] });
+      queryClient.invalidateQueries({ queryKey: ['highlighted-posts'] });
     }, 30_000);
     return () => clearInterval(interval);
+  }, [queryClient]);
+
+  // Realtime subscription for new gift_celebration posts
+  useEffect(() => {
+    const channel = supabase
+      .channel('gift-celebration-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'posts',
+          filter: 'post_type=eq.gift_celebration',
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['highlighted-posts'] });
+          queryClient.invalidateQueries({ queryKey: ['feed-posts'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [queryClient]);
 
   // Fetch highlighted posts separately
