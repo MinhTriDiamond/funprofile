@@ -59,19 +59,21 @@ const GiftCelebrationGroupComponent = ({
   return (
     <div className="rounded-xl border border-border/50 bg-muted/30 overflow-hidden">
       {/* Header */}
-      <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border/30">
-        <Gift className="w-4 h-4 text-emerald-500" />
-        <span className="text-sm font-semibold text-foreground">Gift Celebration</span>
-        
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/30">
+        <div className="flex items-center gap-2">
+          <Gift className="w-4 h-4 text-pink-600" />
+          <span className="text-sm font-semibold text-foreground">Gift Celebration</span>
+        </div>
+
         <button
           onClick={toggleMute}
-          className="ml-2 p-1 rounded-md hover:bg-muted transition-colors"
+          className="p-1 rounded-md hover:bg-muted transition-colors"
           title={isMuted ? 'Bật âm thanh' : 'Tắt âm thanh'}
         >
           {isMuted ? (
             <VolumeX className="w-4 h-4 text-muted-foreground" />
           ) : (
-            <Volume2 className="w-4 h-4 text-emerald-500" />
+            <Volume2 className="w-4 h-4 text-pink-600" />
           )}
         </button>
 
@@ -81,7 +83,7 @@ const GiftCelebrationGroupComponent = ({
           dateCounts={dateCounts}
         />
 
-        <span className="ml-auto text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+        <span className="text-xs text-pink-600 font-semibold bg-pink-600/10 px-2 py-0.5 rounded-full">
           {activePosts.length} gifts
         </span>
       </div>
@@ -112,17 +114,26 @@ const GiftCelebrationGroupComponent = ({
               ))}
             </div>
 
-            {hasMore && (
-              <div className="px-4 pb-3 pt-1">
+            <div className="px-4 pb-3 pt-1 flex flex-col gap-1">
+              {hasMore && (
                 <button
                   onClick={() => setVisibleCount(prev => prev + LOAD_MORE_COUNT)}
-                  className="w-full flex items-center justify-center gap-1.5 py-2 text-sm font-medium text-[#FFD700] hover:text-[#FFC000] hover:bg-muted/50 rounded-lg transition-colors"
+                  className="w-full flex items-center justify-center gap-1.5 py-2 text-sm font-semibold text-pink-600 hover:text-pink-700 hover:bg-muted/50 rounded-lg transition-colors"
                 >
                   <ChevronDown className="w-4 h-4" />
                   Xem thêm ({sortedPosts.length - visibleCount} gifts)
                 </button>
-              </div>
-            )}
+              )}
+              {visibleCount > INITIAL_VISIBLE && (
+                <button
+                  onClick={() => setVisibleCount(INITIAL_VISIBLE)}
+                  className="w-full flex items-center justify-center gap-1.5 py-2 text-sm font-semibold text-pink-600 hover:text-pink-700 hover:bg-muted/50 rounded-lg transition-colors"
+                >
+                  <ChevronDown className="w-4 h-4 rotate-180" />
+                  Thu gọn
+                </button>
+              )}
+            </div>
           </>
         )}
       </div>
