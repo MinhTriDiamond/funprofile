@@ -29,8 +29,7 @@ const fetchGiftDayCounts = async (): Promise<Record<string, number>> => {
     .select('created_at')
     .eq('post_type', 'gift_celebration')
     .gte('created_at', utcStart)
-    .order('created_at', { ascending: false })
-    .limit(5000);
+    .order('created_at', { ascending: false });
 
   if (error) {
     console.error('Gift day counts error:', error);
