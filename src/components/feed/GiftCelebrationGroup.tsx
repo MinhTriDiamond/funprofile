@@ -80,12 +80,6 @@ const GiftCelebrationGroupComponent = ({
         </span>
       </div>
 
-      {/* 30-day calendar */}
-      <GiftHistoryCalendar
-        selectedDate={selectedDate}
-        onSelectDate={handleSelectDate}
-        dateCounts={dateCounts}
-      />
 
       {/* Posts */}
       <div>
