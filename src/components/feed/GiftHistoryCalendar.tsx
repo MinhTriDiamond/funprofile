@@ -10,12 +10,12 @@ interface GiftHistoryCalendarProps {
 
 const DAY_NAMES = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 
-function generateLast30Days(): { date: string; day: number; dayName: string }[] {
+function generateLast7Days(): { date: string; day: number; dayName: string }[] {
   const days: { date: string; day: number; dayName: string }[] = [];
   const now = new Date();
   const vnNow = new Date(now.getTime() + 7 * 60 * 60 * 1000);
 
-  for (let i = 0; i < 30; i++) {
+  for (let i = 0; i < 7; i++) {
     const d = new Date(vnNow);
     d.setUTCDate(d.getUTCDate() - i);
     const yyyy = d.getUTCFullYear();
