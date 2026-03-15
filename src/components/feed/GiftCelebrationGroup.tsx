@@ -84,15 +84,26 @@ const GiftCelebrationGroupComponent = ({
           ))}
         </div>
 
-        {hasMore && (
-          <div className="px-4 pb-3 pt-1">
-            <button
-              onClick={() => setVisibleCount(prev => prev + LOAD_MORE_COUNT)}
-              className="w-full flex items-center justify-center gap-1.5 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg transition-colors"
-            >
-              <ChevronDown className="w-4 h-4" />
-              Xem thêm ({sortedPosts.length - visibleCount} gifts)
-            </button>
+        {(hasMore || visibleCount > INITIAL_VISIBLE) && (
+          <div className="px-4 pb-3 pt-1 flex gap-2">
+            {hasMore && (
+              <button
+                onClick={() => setVisibleCount(prev => prev + LOAD_MORE_COUNT)}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg transition-colors"
+              >
+                <ChevronDown className="w-4 h-4" />
+                Xem thêm ({sortedPosts.length - visibleCount} gifts)
+              </button>
+            )}
+            {visibleCount > INITIAL_VISIBLE && (
+              <button
+                onClick={() => setVisibleCount(INITIAL_VISIBLE)}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg transition-colors"
+              >
+                <ChevronDown className="w-4 h-4 rotate-180" />
+                Thu gọn
+              </button>
+            )}
           </div>
         )}
       </div>
