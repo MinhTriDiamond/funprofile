@@ -163,12 +163,28 @@ const fetchGiftProfiles = async (posts: FeedPost[]): Promise<FeedPost[]> => {
   });
 };
 
+// Fetch friend IDs for a user
+const fetchFriendIds = async (userId: string | null): Promise<Set<string>> => {
+  if (!userId) return new Set();
+  const { data } = await supabase
+    .from('friendships')
+    .select('user_id, friend_id')
+    .eq('status', 'accepted')
+    .or(`user_id.eq.${userId},friend_id.eq.${userId}`);
+
+  const ids = new Set<string>();
+  (data || []).forEach((f: any) => {
+    ids.add(f.user_id === userId ? f.friend_id : f.user_id);
+  });
+  return ids;
+};
+
 // Fetch highlighted (pinned) gift celebration posts (all within 24h)
-const fetchHighlightedPosts = async (currentUserId: string | null): Promise<FeedPost[]> => {
+const fetchHighlightedPosts = async (): Promise<FeedPost[]> => {
   const now = new Date().toISOString();
   const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   
-  let query = supabase
+  const { data, error } = await supabase
     .from('posts')
     .select(`*, public_profiles!posts_user_id_fkey (username, display_name, avatar_url, public_wallet_address, is_banned)`)
     .eq('is_highlighted', true)
@@ -177,13 +193,6 @@ const fetchHighlightedPosts = async (currentUserId: string | null): Promise<Feed
     .order('created_at', { ascending: false })
     .limit(20);
 
-  if (currentUserId) {
-    query = query.or(`moderation_status.eq.approved,user_id.eq.${currentUserId}`);
-  } else {
-    query = query.eq('moderation_status', 'approved');
-  }
-
-  const { data, error } = await query;
   if (error) {
     console.error('Error fetching highlighted posts:', error);
     return [];
