@@ -27,7 +27,7 @@ const GiftCelebrationGroupComponent = ({
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE);
   const [selectedDate, setSelectedDate] = useState<string>(getTodayVN());
 
-  const { dateCounts, historyPosts, historyPostStats, isLoadingHistory, isToday } = useGiftHistory(selectedDate);
+  const { dateCounts, donationCount, historyPosts, historyPostStats, isLoadingHistory, isToday } = useGiftHistory(selectedDate);
 
   const toggleMute = useCallback(() => {
     setIsMuted(prev => {
