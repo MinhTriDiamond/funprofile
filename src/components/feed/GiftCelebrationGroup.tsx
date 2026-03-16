@@ -84,7 +84,7 @@ const GiftCelebrationGroupComponent = ({
         />
 
         <span className="text-xs text-pink-600 font-semibold bg-pink-600/10 px-2 py-0.5 rounded-full">
-          {activePosts.length} gifts
+          {donationCount} gifts
         </span>
       </div>
 
