@@ -1,8 +1,8 @@
 /**
- * Swap service: PancakeSwap Router V2 for CAMLY pairs, 0x API for others.
+ * Swap service: PancakeSwap Router V2 for ALL pairs on BSC.
  */
 
-import { readContract, writeContract, sendTransaction, waitForTransactionReceipt } from '@wagmi/core';
+import { readContract, writeContract, waitForTransactionReceipt } from '@wagmi/core';
 import { parseUnits, formatUnits } from 'viem';
 import { bsc } from 'wagmi/chains';
 import { WALLET_TOKENS, type WalletToken } from '@/lib/tokens';
@@ -12,7 +12,6 @@ import {
   ERC20_ABI,
   type SwappableSymbol,
 } from '@/config/swap';
-import { supabase } from '@/integrations/supabase/client';
 
 /* ─── Token helpers ─── */
 
@@ -22,13 +21,10 @@ const findToken = (symbol: SwappableSymbol): WalletToken => {
   return t;
 };
 
-const routerAddress = (token: WalletToken): `0x${string}` =>
+const tokenAddress = (token: WalletToken): `0x${string}` =>
   token.address ?? SWAP_CONFIG.WBNB;
 
 const isNativeBnb = (token: WalletToken) => token.address === null;
-
-const involvesCamly = (from: SwappableSymbol, to: SwappableSymbol) =>
-  from === 'CAMLY' || to === 'CAMLY';
 
 /* ─── Quote types ─── */
 
@@ -38,23 +34,23 @@ export interface SwapQuote {
   amountIn: string;
   amountOut: string;
   amountOutMin: string;
-  route: 'pancakeswap' | '0x';
-  path?: `0x${string}`[];
-  estimatedGas?: string;
+  route: 'pancakeswap';
+  path: `0x${string}`[];
   expiresAt: number;
-  raw?: any;
 }
 
 /* ─── Build path for PancakeSwap ─── */
 
-function buildPancakePath(from: WalletToken, to: WalletToken): `0x${string}`[] {
-  const a = routerAddress(from);
-  const b = routerAddress(to);
+function buildPath(from: WalletToken, to: WalletToken): `0x${string}`[] {
+  const a = tokenAddress(from);
+  const b = tokenAddress(to);
+  // If either token is WBNB (native BNB), direct path
   if (a === SWAP_CONFIG.WBNB || b === SWAP_CONFIG.WBNB) return [a, b];
+  // Otherwise route through WBNB
   return [a, SWAP_CONFIG.WBNB, b];
 }
 
-/* ─── Get quote ─── */
+/* ─── Get quote (always PancakeSwap) ─── */
 
 export async function getSwapQuote(
   fromSymbol: SwappableSymbol,
@@ -65,23 +61,7 @@ export async function getSwapQuote(
   const fromToken = findToken(fromSymbol);
   const toToken = findToken(toSymbol);
   const amountIn = parseUnits(amount, fromToken.decimals);
-
-  if (involvesCamly(fromSymbol, toSymbol)) {
-    return getPancakeQuote(fromSymbol, toSymbol, fromToken, toToken, amount, amountIn, wagmiConfig);
-  }
-  return getZeroXQuote(fromSymbol, toSymbol, fromToken, toToken, amount, amountIn);
-}
-
-async function getPancakeQuote(
-  fromSymbol: SwappableSymbol,
-  toSymbol: SwappableSymbol,
-  fromToken: WalletToken,
-  toToken: WalletToken,
-  amount: string,
-  amountIn: bigint,
-  wagmiConfig: any,
-): Promise<SwapQuote> {
-  const path = buildPancakePath(fromToken, toToken);
+  const path = buildPath(fromToken, toToken);
 
   const amounts = await readContract(wagmiConfig, {
     address: SWAP_CONFIG.PANCAKE_ROUTER_V2,
@@ -103,49 +83,6 @@ async function getPancakeQuote(
     route: 'pancakeswap',
     path,
     expiresAt: Date.now() + SWAP_CONFIG.QUOTE_TTL_MS,
-  };
-}
-
-async function getZeroXQuote(
-  fromSymbol: SwappableSymbol,
-  toSymbol: SwappableSymbol,
-  fromToken: WalletToken,
-  toToken: WalletToken,
-  amount: string,
-  amountIn: bigint,
-): Promise<SwapQuote> {
-  const sellToken = fromToken.address ?? SWAP_CONFIG.NATIVE_TOKEN_ADDRESS;
-  const buyToken = toToken.address ?? SWAP_CONFIG.NATIVE_TOKEN_ADDRESS;
-
-  const query = new URLSearchParams({
-    sellToken,
-    buyToken,
-    sellAmount: amountIn.toString(),
-    chainId: SWAP_CONFIG.CHAIN_ID.toString(),
-  }).toString();
-
-  const { data, error } = await supabase.functions.invoke('swap-quote', {
-    body: { path: '/swap/v1/quote', query },
-  });
-
-  if (error || !data || data._status >= 400) {
-    throw new Error(data?.reason || data?.validationErrors?.[0]?.reason || 'Không thể lấy báo giá swap');
-  }
-
-  const outRaw = BigInt(data.buyAmount);
-  const slippageFactor = BigInt(10000 - SWAP_CONFIG.DEFAULT_SLIPPAGE);
-  const amountOutMin = (outRaw * slippageFactor) / 10000n;
-
-  return {
-    fromSymbol,
-    toSymbol,
-    amountIn: amount,
-    amountOut: formatUnits(outRaw, toToken.decimals),
-    amountOutMin: formatUnits(amountOutMin, toToken.decimals),
-    route: '0x',
-    estimatedGas: data.estimatedGas,
-    expiresAt: Date.now() + SWAP_CONFIG.QUOTE_TTL_MS,
-    raw: data,
   };
 }
 
@@ -191,20 +128,9 @@ export async function approveToken(
   return hash;
 }
 
-/* ─── Execute swap ─── */
+/* ─── Execute swap (always PancakeSwap) ─── */
 
 export async function executeSwap(
-  quote: SwapQuote,
-  account: `0x${string}`,
-  wagmiConfig: any,
-): Promise<`0x${string}`> {
-  if (quote.route === 'pancakeswap') {
-    return executePancakeSwap(quote, account, wagmiConfig);
-  }
-  return executeZeroXSwap(quote, account, wagmiConfig);
-}
-
-async function executePancakeSwap(
   quote: SwapQuote,
   account: `0x${string}`,
   wagmiConfig: any,
@@ -214,7 +140,7 @@ async function executePancakeSwap(
   const amountIn = parseUnits(quote.amountIn, fromToken.decimals);
   const amountOutMin = parseUnits(quote.amountOutMin, toToken.decimals);
   const deadline = BigInt(Math.floor(Date.now() / 1000) + SWAP_CONFIG.DEADLINE_SECONDS);
-  const path = quote.path!;
+  const path = quote.path;
 
   let hash: `0x${string}`;
 
@@ -249,37 +175,14 @@ async function executePancakeSwap(
   return hash;
 }
 
-async function executeZeroXSwap(
-  quote: SwapQuote,
-  _account: `0x${string}`,
-  wagmiConfig: any,
-): Promise<`0x${string}`> {
-  const raw = quote.raw;
-  if (!raw?.to || !raw?.data) throw new Error('Thiếu dữ liệu giao dịch 0x');
-
-  const fromToken = findToken(quote.fromSymbol);
-  const value = isNativeBnb(fromToken) ? BigInt(raw.value || '0') : 0n;
-
-  const hash = await sendTransaction(wagmiConfig, {
-    to: raw.to as `0x${string}`,
-    data: raw.data as `0x${string}`,
-    value,
-    chain: bsc,
-  } as any);
-
-  await waitForTransactionReceipt(wagmiConfig, { hash });
-  return hash;
-}
-
 /* ─── Helpers ─── */
 
 export function quoteExpired(quote: SwapQuote): boolean {
   return Date.now() > quote.expiresAt;
 }
 
-export function getSpender(quote: SwapQuote): `0x${string}` {
-  if (quote.route === 'pancakeswap') return SWAP_CONFIG.PANCAKE_ROUTER_V2;
-  return (quote.raw?.allowanceTarget || quote.raw?.to) as `0x${string}`;
+export function getSpender(_quote: SwapQuote): `0x${string}` {
+  return SWAP_CONFIG.PANCAKE_ROUTER_V2;
 }
 
 export function mapSwapError(err: any): string {
