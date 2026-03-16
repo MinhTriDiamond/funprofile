@@ -313,7 +313,7 @@ export const useFeedPosts = () => {
     return () => clearInterval(interval);
   }, [queryClient]);
 
-  const highlightedQuery = useInfiniteQuery<{ posts: FeedPost[]; postStats: Record<string, PostStats> }, Error>({
+  const highlightedQuery = useQuery<{ posts: FeedPost[]; postStats: Record<string, PostStats> }>({
     queryKey: ['highlighted-posts'],
     queryFn: async () => {
       const posts = await fetchHighlightedPosts();
@@ -321,15 +321,13 @@ export const useFeedPosts = () => {
       const postStats = await fetchPostStats(postIds);
       return { posts, postStats };
     },
-    initialPageParam: null,
-    getNextPageParam: () => undefined,
     staleTime: 30 * 1000,
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
 
-  const highlightedPosts = highlightedQuery.data?.pages?.[0]?.posts || [];
-  const highlightedStats = highlightedQuery.data?.pages?.[0]?.postStats || {};
+  const highlightedPosts = highlightedQuery.data?.posts || [];
+  const highlightedStats = highlightedQuery.data?.postStats || {};
   const highlightedIds = new Set(highlightedPosts.map(p => p.id));
 
   const regularPosts = (query.data?.pages?.flatMap(page => page.posts) || [])
