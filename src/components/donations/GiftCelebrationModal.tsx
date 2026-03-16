@@ -15,7 +15,7 @@ import { vi } from 'date-fns/locale';
 import {
   ExternalLink, Camera, X, Gift, User, Target,
   MessageCircle, Clock, Link2, Sparkles, Copy,
-  Share2, Megaphone, MessageSquare,
+  Share2, Megaphone, MessageSquare, ArrowLeft,
 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { toast } from 'sonner';
