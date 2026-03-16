@@ -2,8 +2,9 @@
  * Swap service: PancakeSwap Router V2 for CAMLY pairs, 0x API for others.
  */
 
-import { readContract, writeContract, waitForTransactionReceipt } from '@wagmi/core';
+import { readContract, writeContract, sendTransaction, waitForTransactionReceipt } from '@wagmi/core';
 import { parseUnits, formatUnits } from 'viem';
+import { bsc } from 'wagmi/chains';
 import { WALLET_TOKENS, type WalletToken } from '@/lib/tokens';
 import {
   SWAP_CONFIG,
@@ -21,7 +22,6 @@ const findToken = (symbol: SwappableSymbol): WalletToken => {
   return t;
 };
 
-/** Get on-chain address: use WBNB for native BNB in router paths */
 const routerAddress = (token: WalletToken): `0x${string}` =>
   token.address ?? SWAP_CONFIG.WBNB;
 
@@ -50,7 +50,6 @@ export interface SwapQuote {
 function buildPancakePath(from: WalletToken, to: WalletToken): `0x${string}`[] {
   const a = routerAddress(from);
   const b = routerAddress(to);
-  // If either is BNB (WBNB) go direct; otherwise route via WBNB
   if (a === SWAP_CONFIG.WBNB || b === SWAP_CONFIG.WBNB) return [a, b];
   return [a, SWAP_CONFIG.WBNB, b];
 }
@@ -89,8 +88,7 @@ async function getPancakeQuote(
     abi: PANCAKE_ROUTER_ABI,
     functionName: 'getAmountsOut',
     args: [amountIn, path],
-    chainId: SWAP_CONFIG.CHAIN_ID,
-  }) as bigint[];
+  } as any) as bigint[];
 
   const amountOut = amounts[amounts.length - 1];
   const slippageFactor = BigInt(10000 - SWAP_CONFIG.DEFAULT_SLIPPAGE);
@@ -168,8 +166,7 @@ export async function requiresApproval(
     abi: ERC20_ABI,
     functionName: 'allowance',
     args: [owner, spender],
-    chainId: SWAP_CONFIG.CHAIN_ID,
-  }) as bigint;
+  } as any) as bigint;
 
   return allowance < parseUnits(amount, token.decimals);
 }
@@ -187,10 +184,10 @@ export async function approveToken(
     abi: ERC20_ABI,
     functionName: 'approve',
     args: [spender, SWAP_CONFIG.MAX_APPROVAL],
-    chainId: SWAP_CONFIG.CHAIN_ID,
-  });
+    chain: bsc,
+  } as any);
 
-  await waitForTransactionReceipt(wagmiConfig, { hash, chainId: SWAP_CONFIG.CHAIN_ID });
+  await waitForTransactionReceipt(wagmiConfig, { hash });
   return hash;
 }
 
@@ -222,42 +219,39 @@ async function executePancakeSwap(
   let hash: `0x${string}`;
 
   if (isNativeBnb(fromToken)) {
-    // BNB → Token
     hash = await writeContract(wagmiConfig, {
       address: SWAP_CONFIG.PANCAKE_ROUTER_V2,
       abi: PANCAKE_ROUTER_ABI,
       functionName: 'swapExactETHForTokens',
       args: [amountOutMin, path, account, deadline],
       value: amountIn,
-      chainId: SWAP_CONFIG.CHAIN_ID,
-    });
+      chain: bsc,
+    } as any);
   } else if (isNativeBnb(toToken)) {
-    // Token → BNB
     hash = await writeContract(wagmiConfig, {
       address: SWAP_CONFIG.PANCAKE_ROUTER_V2,
       abi: PANCAKE_ROUTER_ABI,
       functionName: 'swapExactTokensForETH',
       args: [amountIn, amountOutMin, path, account, deadline],
-      chainId: SWAP_CONFIG.CHAIN_ID,
-    });
+      chain: bsc,
+    } as any);
   } else {
-    // Token → Token
     hash = await writeContract(wagmiConfig, {
       address: SWAP_CONFIG.PANCAKE_ROUTER_V2,
       abi: PANCAKE_ROUTER_ABI,
       functionName: 'swapExactTokensForTokens',
       args: [amountIn, amountOutMin, path, account, deadline],
-      chainId: SWAP_CONFIG.CHAIN_ID,
-    });
+      chain: bsc,
+    } as any);
   }
 
-  await waitForTransactionReceipt(wagmiConfig, { hash, chainId: SWAP_CONFIG.CHAIN_ID });
+  await waitForTransactionReceipt(wagmiConfig, { hash });
   return hash;
 }
 
 async function executeZeroXSwap(
   quote: SwapQuote,
-  account: `0x${string}`,
+  _account: `0x${string}`,
   wagmiConfig: any,
 ): Promise<`0x${string}`> {
   const raw = quote.raw;
@@ -266,17 +260,14 @@ async function executeZeroXSwap(
   const fromToken = findToken(quote.fromSymbol);
   const value = isNativeBnb(fromToken) ? BigInt(raw.value || '0') : 0n;
 
-  // Use sendTransaction via writeContract won't work for raw tx — use wagmi sendTransaction
-  const { sendTransaction, waitForTransactionReceipt: waitTx } = await import('@wagmi/core');
-  
   const hash = await sendTransaction(wagmiConfig, {
     to: raw.to as `0x${string}`,
     data: raw.data as `0x${string}`,
     value,
-    chainId: SWAP_CONFIG.CHAIN_ID,
-  });
+    chain: bsc,
+  } as any);
 
-  await waitTx(wagmiConfig, { hash, chainId: SWAP_CONFIG.CHAIN_ID });
+  await waitForTransactionReceipt(wagmiConfig, { hash });
   return hash;
 }
 

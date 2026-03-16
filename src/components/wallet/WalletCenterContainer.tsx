@@ -528,6 +528,18 @@ const WalletCenterContainer = () => {
         onSuccess={() => { refetchFunBalance(); refetchExternal(); }}
       />
 
+      <Dialog open={showSwap} onOpenChange={setShowSwap}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Swap Token</DialogTitle>
+          </DialogHeader>
+          <SwapTab
+            walletAddress={externalAddress}
+            onSuccess={() => { refetchExternal(); setShowSwap(false); }}
+          />
+        </DialogContent>
+      </Dialog>
+
       <AccountSelectorModal open={showAccountSelector} onOpenChange={setShowAccountSelector} />
       <AccountMismatchModal open={showMismatchModal} onOpenChange={setShowMismatchModal} />
     </div>
