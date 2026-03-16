@@ -274,7 +274,7 @@ export function SwapTab({ walletAddress, onSuccess }: SwapTabProps) {
             <button
               type="button"
               onClick={handleMax}
-              className="text-xs text-primary font-semibold hover:underline"
+              className="text-xs text-primary font-semibold hover:underline truncate max-w-[60%] text-right"
             >
               Số dư: {fromBalance.toLocaleString(undefined, { maximumFractionDigits: 6 })} — MAX
             </button>
