@@ -313,6 +313,30 @@ export const useFeedPosts = () => {
     return () => clearInterval(interval);
   }, [queryClient]);
 
+  // Realtime: instantly refresh gift celebrations when new gift_celebration post is inserted
+  useEffect(() => {
+    const channel = supabase
+      .channel('gift-celebration-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'posts',
+          filter: 'post_type=eq.gift_celebration',
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['highlighted-posts'] });
+          queryClient.invalidateQueries({ queryKey: ['gift-day-counts'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
+
   const highlightedQuery = useQuery<{ posts: FeedPost[]; postStats: Record<string, PostStats> }>({
     queryKey: ['highlighted-posts'],
     queryFn: async () => {
