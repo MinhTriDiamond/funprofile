@@ -54,8 +54,10 @@ serve(async (req) => {
       });
     }
 
-    // Get current epoch stats
-    const today = new Date().toISOString().split('T')[0];
+    // Get current epoch stats (VN timezone)
+    const VN_OFFSET_MS = 7 * 60 * 60 * 1000;
+    const nowVN = new Date(Date.now() + VN_OFFSET_MS);
+    const today = `${nowVN.getUTCFullYear()}-${String(nowVN.getUTCMonth()+1).padStart(2,'0')}-${String(nowVN.getUTCDate()).padStart(2,'0')}`;
     const { data: epochData } = await supabase
       .from('mint_epochs')
       .select('*')

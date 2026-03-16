@@ -74,10 +74,15 @@ export const useEpochAllocation = (): EpochAllocationResult => {
       }
 
       const userId = session.user.id;
-      const now = new Date();
-      const epochMonth = now.toISOString().slice(0, 7);
-      const monthStart = `${epochMonth}-01T00:00:00Z`;
-      const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString();
+      // Use VN timezone for epoch month calculation
+      const todayVN = getTodayVN(); // YYYY-MM-DD in VN time
+      const epochMonth = todayVN.slice(0, 7); // YYYY-MM
+      const monthStartVN = `${epochMonth}-01`;
+      const { start: monthStart } = vnDateToUtcRange(monthStartVN);
+      // Calculate first day of next month in VN
+      const [y, m] = epochMonth.split('-').map(Number);
+      const nextMonthVN = m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, '0')}-01`;
+      const { start: nextMonth } = vnDateToUtcRange(nextMonthVN);
 
       // 1. Current month light score accumulation
       const { data: monthActions, error: monthErr } = await supabase

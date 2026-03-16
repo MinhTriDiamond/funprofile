@@ -113,8 +113,14 @@ export function DonationHistoryTab() {
 
   // Stats
   const todayCount = useMemo(() => {
-    const today = new Date().toDateString();
-    return allDonations.filter(d => new Date(d.created_at).toDateString() === today).length;
+    const { getTodayVN } = require('@/lib/vnTimezone');
+    const todayVN = getTodayVN(); // YYYY-MM-DD in VN timezone
+    return allDonations.filter(d => {
+      const created = new Date(d.created_at);
+      const vnTime = new Date(created.getTime() + 7 * 60 * 60 * 1000);
+      const vnDateStr = `${vnTime.getUTCFullYear()}-${String(vnTime.getUTCMonth() + 1).padStart(2, '0')}-${String(vnTime.getUTCDate()).padStart(2, '0')}`;
+      return vnDateStr === todayVN;
+    }).length;
   }, [allDonations]);
 
   const successCount = useMemo(() => allDonations.filter(d => d.status === 'confirmed').length, [allDonations]);

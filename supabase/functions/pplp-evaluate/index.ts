@@ -419,9 +419,10 @@ STREAK DAYS: ${currentStreak}
       });
     }
 
-    // === UPDATE STREAK in light_reputation ===
-    const todayDate = new Date().toISOString().split('T')[0];
-    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+    // === UPDATE STREAK in light_reputation (VN timezone) ===
+    const todayDate = todayVN;
+    const yesterdayVN = new Date(Date.now() + VN_OFFSET_MS - 86400000);
+    const yesterday = `${yesterdayVN.getUTCFullYear()}-${String(yesterdayVN.getUTCMonth()+1).padStart(2,'0')}-${String(yesterdayVN.getUTCDate()).padStart(2,'0')}`;
     const lastActiveDate = userStats?.last_active_date;
 
     let newStreak = 1;
