@@ -84,6 +84,7 @@ const WalletCenterContainer = () => {
   const [showClaimDialog, setShowClaimDialog] = useState(false);
   const [showActivateDialog, setShowActivateDialog] = useState(false);
   const [showClaimFunDialog, setShowClaimFunDialog] = useState(false);
+  const [showSwap, setShowSwap] = useState(false);
   const [todayPostCount, setTodayPostCount] = useState(0);
   const [copiedExternal, setCopiedExternal] = useState(false);
   
