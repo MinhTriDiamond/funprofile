@@ -1,83 +1,63 @@
 
-# Database & Codebase Audit — Implementation Roadmap
+Mục tiêu: làm cho swap CAMLY ↔ USDT chạy ổn định trên BNB Smart Chain, ưu tiên route đúng pool, tránh gửi giao dịch chắc chắn sẽ fail, và giữ UX mượt.
 
-## Tài liệu tham chiếu
-- `.lovable/audit-report.md` — Audit report đầy đủ (633 dòng, 20 phần)
+1. Chẩn đoán hiện tại
+- Code đang luôn route token-token qua WBNB nếu cả 2 token không phải BNB.
+- Với CAMLY ↔ USDT, ngoài web cho thấy có pool trực tiếp CAMLY/USDT, nên route hiện tại có thể không tối ưu.
+- Giao dịch fail trước khi hoàn tất rất giống trường hợp router simulation/revert trong ví.
+- Rủi ro lớn nhất là CAMLY có cơ chế fee-on-transfer / output thực nhận thấp hơn quote, trong khi code đang dùng `swapExactTokensForTokens` thường, dễ revert.
+- Hiện quote lưu ở dạng string format rồi parse lại khi swap; với token 3 decimals như CAMLY nên giữ raw bigint để tránh lệch số.
 
----
+2. Những gì sẽ sửa
+- `src/config/swap.ts`
+  - Bổ sung ABI cho:
+    - `factory()`
+    - `getPair(address,address)`
+    - `swapExactTokensForTokensSupportingFeeOnTransferTokens`
+    - `swapExactTokensForETHSupportingFeeOnTransferTokens`
+- `src/modules/wallet/services/swapAsset.ts`
+  - Thêm bước tìm route:
+    - thử direct path `[CAMLY, USDT]` nếu pair tồn tại và `getAmountsOut` hợp lệ
+    - nếu direct không hợp lệ thì fallback `[CAMLY, WBNB, USDT]`
+    - có thể thử cả hai path và chọn path nào quote thành công / tốt hơn
+  - Thêm validation trước khi mở ví:
+    - `getAmountsOut(amountIn, path)`
+    - nếu lỗi hoặc output = 0 thì chặn swap, báo lỗi rõ ràng
+  - Giữ quote ở cả dạng:
+    - `amountInWei`
+    - `amountOutWei`
+    - `amountOutMinWei`
+    - `path`
+    - `routerMethod`
+  - Chọn method thực thi chính xác:
+    - BNB → token: `swapExactETHForTokens`
+    - token → BNB: ưu tiên `swapExactTokensForETHSupportingFeeOnTransferTokens`
+    - token → token: ưu tiên `swapExactTokensForTokensSupportingFeeOnTransferTokens` cho CAMLY
+  - Giữ approval check như hiện tại nhưng thêm log allowance và trạng thái route
+  - Cải thiện `mapSwapError` để bắt các lỗi liquidity/slippage/simulation dễ hiểu hơn
+- `src/components/wallet/SwapTab.tsx`
+  - Dùng metadata route thật từ quote để hiển thị:
+    - `CAMLY → USDT`
+    - hoặc `CAMLY → WBNB → USDT`
+  - Khi quote fail, báo nguyên nhân rõ hơn thay vì chung chung
+  - Giữ nút `Approve CAMLY` trước swap nếu thiếu allowance
+  - Giữ thông báo swap thành công, bổ sung mô tả route nếu cần
 
-## ĐÃ HOÀN THÀNH
+3. Vì sao cách này sẽ xử lý lỗi CAMLY ↔ USDT
+- Không còn ép route qua WBNB khi pool trực tiếp có sẵn.
+- Nếu CAMLY là fee-on-transfer, dùng “SupportingFeeOnTransferTokens” sẽ tránh revert do output thực nhận thấp hơn tính toán ban đầu.
+- Preflight validation chặn các giao dịch chắc chắn lỗi trước khi MetaMask mở xác nhận.
+- Lưu giá trị raw bigint giúp tránh sai số với CAMLY 3 decimals.
 
-### Phase 0 — Audit & Documentation ✅
-| # | Công việc | Trạng thái |
-|---|----------|-----------|
-| 0A | Viết audit report 20 phần | ✅ Done |
-| 0B | Xác định Canonical Domain Models | ✅ Done |
-| 0C | Xác định Do Not Touch First list | ✅ Done |
-| 0D | Xác định Refactor Blockers | ✅ Done |
+4. Kết quả mong đợi
+- Swap được cả:
+  - CAMLY → USDT
+  - USDT → CAMLY
+- Chọn route hợp lệ tự động.
+- Nếu pool/path không hợp lệ, người dùng thấy lỗi rõ ràng thay vì giao dịch bị hủy mơ hồ.
+- Approval, quote, execute, success toast hoạt động liền mạch hơn.
 
-### Phase 1A — Performance Indexes ✅
-| Index | Table | Columns | Mục đích |
-|-------|-------|---------|----------|
-| `idx_notifications_user_read` | notifications | user_id, read | Badge count + dropdown |
-| `idx_reactions_post_type` | reactions | post_id, type | Reaction counts per post |
-| `idx_light_actions_user_created` | light_actions | user_id, created_at DESC | Light Score history |
-| `idx_posts_user_created` | posts | user_id, created_at DESC | Profile feed |
-| `idx_chunked_chunks_status` | chunked_recording_chunks | status | Cleanup queries |
-| `idx_donations_sender_status` | donations | sender_id, status | Benefactor leaderboard |
-| `idx_donations_recipient_status` | donations | recipient_id, status | Recipient leaderboard |
-| `idx_comments_post_created` | comments | post_id, created_at | Comment thread load |
-| `idx_friendships_user_status` | friendships | user_id, status | Friend lookup |
-| `idx_friendships_friend_status` | friendships | friend_id, status | Friend lookup |
-
-### Phase 1B — SQL Comments Documentation ✅
-- COMMENT ON TABLE cho tất cả 93 tables
-- COMMENT ON VIEW cho tất cả 5 views
-- Phân loại theo domain: Core, Social, Messaging, Live, Recording, Light Score, Rewards, Wallet, Auth, OAuth, Search, Content, System, PPLP
-
----
-
-## CHƯA LÀM — KẾ HOẠCH TIẾP THEO
-
-### Phase 1C-F — Safe Cleanup (rủi ro THẤP)
-
-| # | Công việc | Chi tiết |
-|---|----------|---------|
-| 1C | Phân loại empty tables | 35 tables 0-rows → Active/Planned/Legacy/Deletable |
-| 1D | console.log → logger | 77 instances cần thay thế |
-| 1E | useAdminRole shared hook | Đã tạo, cần migrate các component dùng trực tiếp `has_role` |
-| 1F | Edge function _shared helpers | cors, auth, response — đã tạo ✅ |
-
-### Phase 2 — Structural Improvements (rủi ro TRUNG BÌNH)
-
-| # | Công việc | Chi tiết |
-|---|----------|---------|
-| 2A | State enum documentation | Document các status/type enums trong DB |
-| 2B | Merge search_logs → search_history | Consolidate duplicate search tracking |
-| 2C | notifications.read → is_read | Compatibility migration (backfill + dual-write) |
-| 2D | Xóa useLiveComments | Dead code cleanup |
-| 2E | Module hóa hooks/ | Nhóm theo domain (social, chat, live, wallet, etc.) |
-| 2F | Tách components/feed/ | Sub-domains cho feed components |
-| 2G | useCapabilities layer | Đã tạo ✅, cần migrate consumers |
-
-### Phase 3 — Deep Refactor (rủi ro CAO)
-
-| # | Công việc | Blocker |
-|---|----------|---------|
-| 3A | Tách profiles → user_wallet_config | Nhiều component đọc trực tiếp profiles |
-| 3B | Claims lifecycle audit | reward_claims + pending_claims khác lifecycle |
-| 3C | FinancialTab → platform_financial_data | Admin UI đang đọc grand_total_* từ profiles |
-| 3D | get_user_rewards_v2 refactor | Đang dùng livestreams table, cần chuyển live_sessions |
-| 3E | live_comments product review | Quyết định drop hoặc giữ |
-| 3F | Profiles RLS tightening | Public by Design → quyết định enforcement model |
-| 3G | Gộp 15 media edge functions | Router pattern |
-
----
-
-## Linter Warnings (có sẵn, chưa xử lý)
-- **RLS Enabled No Policy**: Một số tables có RLS enabled nhưng chưa có policy
-- **RLS Policy Always True**: Một số policies dùng `USING (true)` cho INSERT/UPDATE/DELETE
-- Sẽ xử lý trong Phase 2-3 khi refactor từng domain
-
-## Light Score 5 Trụ Cột — Phase 1 ✅ HOÀN THÀNH
-(Chi tiết xem phiên bản trước của plan)
+5. Ghi chú kỹ thuật
+- Dấu hiệu từ dữ liệu tham chiếu cho thấy pool CAMLY/USDT tồn tại, nên direct pair cần được hỗ trợ.
+- Phần “transaction cancelled” trong ví nhiều khả năng là simulation fail trước khi broadcast, không hẳn người dùng tự bấm hủy.
+- Đây là task sửa frontend/on-chain integration, không cần thay đổi backend hay database.
