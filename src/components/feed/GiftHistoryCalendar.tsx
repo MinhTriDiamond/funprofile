@@ -63,7 +63,7 @@ const GiftHistoryCalendarComponent = ({
         className="w-auto p-3"
       >
         <div className="text-xs font-semibold text-muted-foreground mb-2">
-          7 ngày gần nhất
+          Chi tiết giao dịch các ngày trong tuần
         </div>
         <div className="grid grid-cols-7 gap-2">
           {days.map(({ date, day, dayName }) => {
