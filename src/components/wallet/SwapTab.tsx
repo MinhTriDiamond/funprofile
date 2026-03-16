@@ -264,7 +264,7 @@ export function SwapTab({ walletAddress, onSuccess }: SwapTabProps) {
   const routeDisplay = quote?.routeSymbols?.join(' → ') ?? null;
 
   return (
-    <div className="flex flex-col max-h-full">
+    <div className="flex flex-col flex-1 min-h-0">
       {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto space-y-3 min-h-0">
         {/* From */}
@@ -274,7 +274,7 @@ export function SwapTab({ walletAddress, onSuccess }: SwapTabProps) {
             <button
               type="button"
               onClick={handleMax}
-              className="text-xs text-primary font-semibold hover:underline"
+              className="text-xs text-primary font-semibold hover:underline truncate max-w-[60%] text-right"
             >
               Số dư: {fromBalance.toLocaleString(undefined, { maximumFractionDigits: 6 })} — MAX
             </button>
@@ -291,7 +291,7 @@ export function SwapTab({ walletAddress, onSuccess }: SwapTabProps) {
               onChange={e => setAmount(e.target.value)}
               placeholder="0.00"
               min="0"
-              className="flex-1 bg-transparent text-right text-2xl font-bold text-foreground outline-none placeholder:text-muted-foreground/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              className="flex-1 min-w-0 bg-transparent text-right text-2xl font-bold text-foreground outline-none placeholder:text-muted-foreground/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
           </div>
         </div>
@@ -316,7 +316,7 @@ export function SwapTab({ walletAddress, onSuccess }: SwapTabProps) {
               onChange={handleToChange}
               excludeSymbol={fromSymbol}
             />
-            <div className="flex-1 text-right text-2xl font-bold text-foreground">
+            <div className="flex-1 min-w-0 text-right text-2xl font-bold text-foreground truncate">
               {isQuoting ? (
                 <Skeleton className="h-8 w-32 ml-auto" />
               ) : quote ? (

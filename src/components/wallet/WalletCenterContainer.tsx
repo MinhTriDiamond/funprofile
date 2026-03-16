@@ -529,7 +529,7 @@ const WalletCenterContainer = () => {
       />
 
       <Dialog open={showSwap} onOpenChange={setShowSwap}>
-        <DialogContent className="max-w-[100vw] h-[100dvh] max-h-[100dvh] overflow-x-hidden sm:max-w-md sm:h-auto sm:max-h-[85vh]">
+        <DialogContent className="max-w-[100vw] h-auto max-h-[90dvh] overflow-x-hidden flex flex-col sm:max-w-md sm:max-h-[85vh]">
           <DialogHeader>
             <DialogTitle>Swap Token</DialogTitle>
           </DialogHeader>
