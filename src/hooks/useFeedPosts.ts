@@ -187,11 +187,10 @@ const fetchHighlightedPosts = async (): Promise<FeedPost[]> => {
   const { data, error } = await supabase
     .from('posts')
     .select(`*, public_profiles!posts_user_id_fkey (username, display_name, avatar_url, public_wallet_address, is_banned)`)
-    .eq('is_highlighted', true)
-    .or(`highlight_expires_at.gt.${now},highlight_expires_at.is.null`)
-    .gte('created_at', twentyFourHoursAgo)
+    .eq('post_type', 'gift_celebration')
+    .gte('created_at', startOfDayVN.toISOString())
     .order('created_at', { ascending: false })
-    .limit(20);
+    .limit(500);
 
   if (error) {
     console.error('Error fetching highlighted posts:', error);
@@ -305,6 +304,7 @@ export const useFeedPosts = () => {
   useEffect(() => {
     const interval = setInterval(() => {
       queryClient.invalidateQueries({ queryKey: ['feed-posts'] });
+      queryClient.invalidateQueries({ queryKey: ['highlighted-posts'] });
     }, 30_000);
     return () => clearInterval(interval);
   }, [queryClient]);
