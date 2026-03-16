@@ -328,6 +328,7 @@ export const useFeedPosts = () => {
         () => {
           queryClient.invalidateQueries({ queryKey: ['highlighted-posts'] });
           queryClient.invalidateQueries({ queryKey: ['gift-day-counts'] });
+          queryClient.invalidateQueries({ queryKey: ['donation-count-by-date'] });
         }
       )
       .subscribe();
