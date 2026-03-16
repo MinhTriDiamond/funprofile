@@ -64,6 +64,10 @@ export default defineConfig(({ mode }) => ({
       '@supabase/supabase-js',
       'eventemitter3',
       'lodash',
+      'lodash/get',
+      'lodash/set',
+      'lodash/isEqual',
+      'lodash/cloneDeep',
       '@metamask/utils',
     ],
     exclude: [

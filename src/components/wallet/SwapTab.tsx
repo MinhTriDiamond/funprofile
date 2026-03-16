@@ -3,10 +3,10 @@ import { useAccount, useSwitchChain, useConfig } from 'wagmi';
 import { bsc } from 'wagmi/chains';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowDownUp, RefreshCw, AlertTriangle, ChevronDown, Loader2 } from 'lucide-react';
+import { ArrowDownUp, RefreshCw, AlertTriangle, ChevronDown, Loader2, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { WALLET_TOKENS } from '@/lib/tokens';
-import { SWAP_CONFIG, SWAPPABLE_SYMBOLS, type SwappableSymbol } from '@/config/swap';
+import { SWAP_CONFIG, SWAPPABLE_SYMBOLS, DISABLED_SWAP_SYMBOLS, type SwappableSymbol } from '@/config/swap';
 import {
   getSwapQuote,
   executeSwap,
@@ -25,12 +25,15 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-/* ─── Swappable tokens (computed once) ─── */
+/* ─── Token lists ─── */
 const swappableTokens = WALLET_TOKENS.filter(t =>
   (SWAPPABLE_SYMBOLS as readonly string[]).includes(t.symbol),
 );
+const disabledTokens = WALLET_TOKENS.filter(t =>
+  (DISABLED_SWAP_SYMBOLS as readonly string[]).includes(t.symbol),
+);
 
-/* ─── TokenSelector — defined OUTSIDE SwapTab to avoid remounting ─── */
+/* ─── TokenSelector — OUTSIDE SwapTab to prevent remounting ─── */
 interface TokenSelectorProps {
   value: SwappableSymbol;
   onChange: (s: SwappableSymbol) => void;
@@ -42,13 +45,16 @@ function TokenSelector({ value, onChange, excludeSymbol }: TokenSelectorProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className="flex items-center gap-2 px-3 py-2 rounded-xl bg-muted hover:bg-muted/80 transition-colors min-w-[120px]">
+        <button
+          type="button"
+          className="flex items-center gap-2 px-3 py-2 rounded-xl bg-muted hover:bg-muted/80 transition-colors min-w-[120px] pointer-events-auto cursor-pointer"
+        >
           <img src={selected.logo} alt={selected.symbol} className="w-6 h-6 rounded-full" />
           <span className="font-semibold text-foreground">{selected.symbol}</span>
-          <ChevronDown className="w-4 h-4 text-muted-foreground" />
+          <ChevronDown className="w-4 h-4 text-muted-foreground pointer-events-none" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-44 bg-background z-50">
+      <DropdownMenuContent align="start" className="w-48 bg-background border border-border shadow-xl z-[200]" sideOffset={4}>
         {swappableTokens
           .filter(t => t.symbol !== excludeSymbol)
           .map(t => (
@@ -62,6 +68,18 @@ function TokenSelector({ value, onChange, excludeSymbol }: TokenSelectorProps) {
               <span className="text-xs text-muted-foreground ml-auto">{t.name}</span>
             </DropdownMenuItem>
           ))}
+        {/* Disabled tokens (coming soon) */}
+        {disabledTokens.map(t => (
+          <DropdownMenuItem
+            key={t.symbol}
+            disabled
+            className="flex items-center gap-2 opacity-40 cursor-not-allowed"
+          >
+            <img src={t.logo} alt={t.symbol} className="w-5 h-5 rounded-full" />
+            <span className="font-medium">{t.symbol}</span>
+            <span className="text-xs text-muted-foreground ml-auto">Sắp ra mắt</span>
+          </DropdownMenuItem>
+        ))}
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -100,7 +118,6 @@ export function SwapTab({ walletAddress, onSuccess }: SwapTabProps) {
 
   const isWrongChain = chainId !== SWAP_CONFIG.CHAIN_ID;
 
-  // Fetch quote with debounce
   const fetchQuote = useCallback(async () => {
     const val = parseFloat(amount);
     if (!val || val <= 0 || fromSymbol === toSymbol) {
@@ -112,7 +129,6 @@ export function SwapTab({ walletAddress, onSuccess }: SwapTabProps) {
     try {
       const q = await getSwapQuote(fromSymbol, toSymbol, amount, wagmiConfig);
       setQuote(q);
-
       if (walletAddress) {
         const spender = getSpender(q);
         const needs = await requiresApproval(fromSymbol, amount, walletAddress, spender, wagmiConfig);
@@ -169,7 +185,22 @@ export function SwapTab({ walletAddress, onSuccess }: SwapTabProps) {
     setIsSwapping(true);
     try {
       const hash = await executeSwap(quote, walletAddress, wagmiConfig);
-      toast.success(`Swap thành công! TX: ${hash.slice(0, 10)}...`);
+      toast.success(
+        `✅ Swap thành công! ${quote.amountIn} ${quote.fromSymbol} → ${Number(quote.amountOut).toFixed(6)} ${quote.toSymbol}`,
+        {
+          description: (
+            <a
+              href={`https://bscscan.com/tx/${hash}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 text-primary underline text-xs mt-1"
+            >
+              Xem trên BscScan <ExternalLink className="w-3 h-3" />
+            </a>
+          ) as any,
+          duration: 8000,
+        },
+      );
       setAmount('');
       setQuote(null);
       refetchBalances();
@@ -223,7 +254,6 @@ export function SwapTab({ walletAddress, onSuccess }: SwapTabProps) {
     );
   }
 
-  // Rate display
   const rateDisplay = quote && !isQuoting
     ? `1 ${fromSymbol} ≈ ${(Number(quote.amountOut) / Number(quote.amountIn)).toLocaleString(undefined, { maximumFractionDigits: 6 })} ${toSymbol}`
     : null;
@@ -235,6 +265,7 @@ export function SwapTab({ walletAddress, onSuccess }: SwapTabProps) {
         <div className="flex items-center justify-between">
           <span className="text-sm text-muted-foreground font-medium">Bán</span>
           <button
+            type="button"
             onClick={handleMax}
             className="text-xs text-primary font-semibold hover:underline"
           >
@@ -259,8 +290,9 @@ export function SwapTab({ walletAddress, onSuccess }: SwapTabProps) {
       </div>
 
       {/* Flip button */}
-      <div className="flex justify-center -my-2 relative z-10">
+      <div className="flex justify-center -my-2 relative z-[5]">
         <button
+          type="button"
           onClick={handleFlip}
           className="bg-background border-4 border-muted rounded-xl p-2 hover:bg-muted transition-colors shadow-sm"
         >
@@ -297,7 +329,7 @@ export function SwapTab({ walletAddress, onSuccess }: SwapTabProps) {
               <span>Tỷ giá</span>
               <div className="flex items-center gap-1.5">
                 <span className="font-medium text-foreground">{rateDisplay}</span>
-                <button onClick={fetchQuote} className="p-0.5 hover:text-primary transition-colors" title="Làm mới báo giá">
+                <button type="button" onClick={fetchQuote} className="p-0.5 hover:text-primary transition-colors" title="Làm mới báo giá">
                   <RefreshCw className={`w-3.5 h-3.5 ${isQuoting ? 'animate-spin' : ''}`} />
                 </button>
               </div>

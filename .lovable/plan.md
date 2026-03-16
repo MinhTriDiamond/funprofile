@@ -1,34 +1,83 @@
 
+# Database & Codebase Audit — Implementation Roadmap
 
-# Fix Swap: Lodash crash + Token dropdown + Success notification
+## Tài liệu tham chiếu
+- `.lovable/audit-report.md` — Audit report đầy đủ (633 dòng, 20 phần)
 
-## Vấn đề
+---
 
-### 1. Lodash crash vẫn còn (ưu tiên cao nhất)
-Screenshot cho thấy lỗi `lodash/get.js does not provide an export named 'default'` vẫn xảy ra. Lý do: `optimizeDeps.include: ['lodash']` chỉ pre-bundle entry chính `lodash/index.js`, nhưng `@metamask/utils` import subpath `lodash/get` — Vite không tự pre-bundle subpath imports.
+## ĐÃ HOÀN THÀNH
 
-**Fix**: Thêm các lodash submodule cụ thể vào `optimizeDeps.include` và thêm Vite plugin nhỏ để xử lý CJS interop cho lodash subpath.
+### Phase 0 — Audit & Documentation ✅
+| # | Công việc | Trạng thái |
+|---|----------|-----------|
+| 0A | Viết audit report 20 phần | ✅ Done |
+| 0B | Xác định Canonical Domain Models | ✅ Done |
+| 0C | Xác định Do Not Touch First list | ✅ Done |
+| 0D | Xác định Refactor Blockers | ✅ Done |
 
-### 2. Token dropdown không click được  
-Code hiện tại dùng Radix `DropdownMenu` đúng cách, nhưng có thể bị z-index conflict với Dialog parent hoặc CSS issue. Cần đảm bảo `pointer-events`, `z-index`, và trigger area hoạt động đúng.
+### Phase 1A — Performance Indexes ✅
+| Index | Table | Columns | Mục đích |
+|-------|-------|---------|----------|
+| `idx_notifications_user_read` | notifications | user_id, read | Badge count + dropdown |
+| `idx_reactions_post_type` | reactions | post_id, type | Reaction counts per post |
+| `idx_light_actions_user_created` | light_actions | user_id, created_at DESC | Light Score history |
+| `idx_posts_user_created` | posts | user_id, created_at DESC | Profile feed |
+| `idx_chunked_chunks_status` | chunked_recording_chunks | status | Cleanup queries |
+| `idx_donations_sender_status` | donations | sender_id, status | Benefactor leaderboard |
+| `idx_donations_recipient_status` | donations | recipient_id, status | Recipient leaderboard |
+| `idx_comments_post_created` | comments | post_id, created_at | Comment thread load |
+| `idx_friendships_user_status` | friendships | user_id, status | Friend lookup |
+| `idx_friendships_friend_status` | friendships | friend_id, status | Friend lookup |
 
-### 3. Thiếu thông báo swap thành công chi tiết
-Hiện chỉ có `toast.success` đơn giản. Cần thêm thông báo rõ ràng hơn với chi tiết giao dịch.
+### Phase 1B — SQL Comments Documentation ✅
+- COMMENT ON TABLE cho tất cả 93 tables
+- COMMENT ON VIEW cho tất cả 5 views
+- Phân loại theo domain: Core, Social, Messaging, Live, Recording, Light Score, Rewards, Wallet, Auth, OAuth, Search, Content, System, PPLP
 
-## Các file cần sửa
+---
 
-### File 1: `vite.config.ts`
-- Thay `'lodash'` bằng các subpath cụ thể: `'lodash/get'`, `'lodash/set'`, `'lodash/cloneDeep'`, `'lodash/isEqual'`
-- Thêm `'@metamask/utils > lodash/get'` (Vite nested dep syntax)
+## CHƯA LÀM — KẾ HOẠCH TIẾP THEO
 
-### File 2: `src/components/wallet/SwapTab.tsx`
-- **TokenSelector**: Thêm `type="button"` explicit, tăng z-index cho `DropdownMenuContent` (`z-[100]`), đảm bảo `pointer-events-auto` trên trigger
-- **FUN token**: Thêm vào danh sách hiển thị nhưng disabled
-- **Success toast**: Thay toast đơn giản bằng toast chi tiết với số lượng from/to, tx hash link đến BscScan
-- **Flip button z-index**: Giảm xuống để không chặn dropdown
+### Phase 1C-F — Safe Cleanup (rủi ro THẤP)
 
-### File 3: `src/config/swap.ts`
-- Thêm `'FUN'` vào type `SwappableSymbol` nhưng giữ riêng list `DISABLED_SYMBOLS = ['FUN']` để UI hiển thị disabled
+| # | Công việc | Chi tiết |
+|---|----------|---------|
+| 1C | Phân loại empty tables | 35 tables 0-rows → Active/Planned/Legacy/Deletable |
+| 1D | console.log → logger | 77 instances cần thay thế |
+| 1E | useAdminRole shared hook | Đã tạo, cần migrate các component dùng trực tiếp `has_role` |
+| 1F | Edge function _shared helpers | cors, auth, response — đã tạo ✅ |
 
-## Tổng: 3 file sửa nhỏ, không tạo file mới
+### Phase 2 — Structural Improvements (rủi ro TRUNG BÌNH)
 
+| # | Công việc | Chi tiết |
+|---|----------|---------|
+| 2A | State enum documentation | Document các status/type enums trong DB |
+| 2B | Merge search_logs → search_history | Consolidate duplicate search tracking |
+| 2C | notifications.read → is_read | Compatibility migration (backfill + dual-write) |
+| 2D | Xóa useLiveComments | Dead code cleanup |
+| 2E | Module hóa hooks/ | Nhóm theo domain (social, chat, live, wallet, etc.) |
+| 2F | Tách components/feed/ | Sub-domains cho feed components |
+| 2G | useCapabilities layer | Đã tạo ✅, cần migrate consumers |
+
+### Phase 3 — Deep Refactor (rủi ro CAO)
+
+| # | Công việc | Blocker |
+|---|----------|---------|
+| 3A | Tách profiles → user_wallet_config | Nhiều component đọc trực tiếp profiles |
+| 3B | Claims lifecycle audit | reward_claims + pending_claims khác lifecycle |
+| 3C | FinancialTab → platform_financial_data | Admin UI đang đọc grand_total_* từ profiles |
+| 3D | get_user_rewards_v2 refactor | Đang dùng livestreams table, cần chuyển live_sessions |
+| 3E | live_comments product review | Quyết định drop hoặc giữ |
+| 3F | Profiles RLS tightening | Public by Design → quyết định enforcement model |
+| 3G | Gộp 15 media edge functions | Router pattern |
+
+---
+
+## Linter Warnings (có sẵn, chưa xử lý)
+- **RLS Enabled No Policy**: Một số tables có RLS enabled nhưng chưa có policy
+- **RLS Policy Always True**: Một số policies dùng `USING (true)` cho INSERT/UPDATE/DELETE
+- Sẽ xử lý trong Phase 2-3 khi refactor từng domain
+
+## Light Score 5 Trụ Cột — Phase 1 ✅ HOÀN THÀNH
+(Chi tiết xem phiên bản trước của plan)
