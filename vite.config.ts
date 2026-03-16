@@ -63,6 +63,8 @@ export default defineConfig(({ mode }) => ({
       '@tanstack/react-query',
       '@supabase/supabase-js',
       'eventemitter3',
+      'lodash',
+      '@metamask/utils',
     ],
     exclude: [
       // Exclude large libs - load on demand only when needed
