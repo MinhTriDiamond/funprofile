@@ -114,8 +114,7 @@ export function DonationHistoryTab() {
 
   // Stats
   const todayCount = useMemo(() => {
-    const { getTodayVN } = require('@/lib/vnTimezone');
-    const todayVN = getTodayVN(); // YYYY-MM-DD in VN timezone
+    const todayVN = getTodayVN();
     return allDonations.filter(d => {
       const created = new Date(d.created_at);
       const vnTime = new Date(created.getTime() + 7 * 60 * 60 * 1000);

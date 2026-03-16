@@ -242,7 +242,8 @@ serve(async (req) => {
       .eq('user_id', actorId)
       .eq('action_type', action_type)
       .is('actor_id', null)
-      .gte('created_at', `${today}T00:00:00Z`);
+      .gte('created_at', todayStartUTC.toISOString())
+      .lt('created_at', todayEndUTC.toISOString());
 
     const totalTodayCount = (todayCount || 0) + (todayCountFallback || 0);
 
