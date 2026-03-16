@@ -1,73 +1,83 @@
 
+# Database & Codebase Audit — Implementation Roadmap
 
-# Nâng cấp Mobile Wallet Login — MetaMask, Trust Wallet, Bitget trên iOS & Android
+## Tài liệu tham chiếu
+- `.lovable/audit-report.md` — Audit report đầy đủ (633 dòng, 20 phần)
 
-## Tóm tắt
-File upload chứa hệ thống wallet login mobile hoàn chỉnh với nhiều tính năng mà code hiện tại đang thiếu: deep link mở app ví trên điện thoại, phát hiện dApp browser (MetaMask/Trust Wallet), xử lý pending sign request, step progress bar, switch wallet, và resume flow khi quay lại từ app ví. Hiện tại `WalletLoginContent.tsx` chỉ có flow đơn giản qua RainbowKit modal — không tối ưu cho mobile.
+---
 
-## Vấn đề hiện tại
-- **Không có deep link**: User mobile phải tự mở MetaMask/Trust Wallet rồi paste URL
-- **Không phát hiện dApp browser**: Khi user đã ở trong MetaMask browser, vẫn hiện modal RainbowKit thừa
-- **Không xử lý pending request**: MetaMask error -32002 khi bấm ký nhiều lần
-- **Không có nút đổi ví / ngắt kết nối**: Phải refresh page
-- **Không có progress indicator**: User không biết đang ở bước nào
-- **Thiếu Bitget Wallet deep link**: File upload chưa có, cần bổ sung
+## ĐÃ HOÀN THÀNH
 
-## Kế hoạch thực hiện
+### Phase 0 — Audit & Documentation ✅
+| # | Công việc | Trạng thái |
+|---|----------|-----------|
+| 0A | Viết audit report 20 phần | ✅ Done |
+| 0B | Xác định Canonical Domain Models | ✅ Done |
+| 0C | Xác định Do Not Touch First list | ✅ Done |
+| 0D | Xác định Refactor Blockers | ✅ Done |
 
-### 1. Tạo `src/utils/mobileWalletConnect.ts` (file MỚI)
-Toàn bộ utility functions cho mobile wallet:
-- `isMobileDevice()`, `isMetaMaskMobileBrowser()`, `isTrustWalletMobileBrowser()`, `isBitgetMobileBrowser()`
-- `getMetaMaskDeepLink()`, `getTrustWalletDeepLink()`, `getBitgetDeepLink()`
-- `getWalletAppLinks()` (link tải app cho cả iOS và Android)
-- `getInjectedProvider()`, `ensureBscNetwork()`, `normalizeChainId()`
-- `requestInjectedAccounts()`, `getInjectedAccounts()`
-- Lấy từ file upload, bổ sung thêm Bitget Wallet
+### Phase 1A — Performance Indexes ✅
+| Index | Table | Columns | Mục đích |
+|-------|-------|---------|----------|
+| `idx_notifications_user_read` | notifications | user_id, read | Badge count + dropdown |
+| `idx_reactions_post_type` | reactions | post_id, type | Reaction counts per post |
+| `idx_light_actions_user_created` | light_actions | user_id, created_at DESC | Light Score history |
+| `idx_posts_user_created` | posts | user_id, created_at DESC | Profile feed |
+| `idx_chunked_chunks_status` | chunked_recording_chunks | status | Cleanup queries |
+| `idx_donations_sender_status` | donations | sender_id, status | Benefactor leaderboard |
+| `idx_donations_recipient_status` | donations | recipient_id, status | Recipient leaderboard |
+| `idx_comments_post_created` | comments | post_id, created_at | Comment thread load |
+| `idx_friendships_user_status` | friendships | user_id, status | Friend lookup |
+| `idx_friendships_friend_status` | friendships | friend_id, status | Friend lookup |
 
-### 2. Tạo `src/utils/walletSessionReset.ts` (file MỚI)
-- `clearWalletLocalStorage()` — dọn WalletConnect + wagmi localStorage
-- `fullWalletDisconnect()` — disconnect wagmi + clear storage
-- `requestWalletSwitch()` — wallet_requestPermissions để đổi account
+### Phase 1B — SQL Comments Documentation ✅
+- COMMENT ON TABLE cho tất cả 93 tables
+- COMMENT ON VIEW cho tất cả 5 views
+- Phân loại theo domain: Core, Social, Messaging, Live, Recording, Light Score, Rewards, Wallet, Auth, OAuth, Search, Content, System, PPLP
 
-### 3. Tạo `src/lib/walletFlowShared.ts` (file MỚI)
-Shared types và helpers cho wallet auth flow:
-- Types: `WalletFlowPhase`, `WalletAuthMode`, `WalletAuthSnapshot`, `NoncePayload`
-- Helpers: `normalizeAddress()`, `isValidEvmAddress()`, `classifyWalletError()`, `logWalletAuth()`
-- Backend calls: `requestBackendNonce()` (gọi `sso-web3-auth` challenge), `verifyWalletLoginSignature()` (gọi `sso-web3-auth` verify), `completeSupabaseWalletSession()`
-- Snapshot persistence cho resume flow
+---
 
-### 4. Tạo `src/hooks/useWalletAuth.ts` (hook MỚI)
-Hook chính quản lý toàn bộ wallet auth state machine:
-- Phases: idle → connecting → connected → wrong_chain → signing → verifying → authenticated
-- Dual mode: `injected_mobile_browser` (MetaMask/Trust/Bitget dApp browser) vs `wallet_modal_or_walletconnect`
-- Auto-detect injected provider trên mobile
-- Handle pending request (MetaMask -32002), background/foreground transitions
-- `connectWallet()`, `startWalletLoginFlow()`, `retryCurrentStep()`, `resumePendingFlowCheck()`, `switchWalletAccount()`, `disconnectWallet()`
+## CHƯA LÀM — KẾ HOẠCH TIẾP THEO
 
-### 5. Viết lại `src/components/auth/WalletLoginContent.tsx`
-Thay thế hoàn toàn bằng UI mới từ file upload (WalletLoginPanel), bao gồm:
-- **StepProgressBar**: 4 bước (Kết nối → Mạng → Ký → Xong)
-- **Mobile deep links**: Nút "Mở trong MetaMask", "Mở trong Trust Wallet", "Mở trong Bitget"
-- **dApp browser detection**: Nếu đang trong MetaMask/Trust/Bitget browser → hiện nút kết nối trực tiếp, không mở modal
-- **Wrong chain screen**: Nút chuyển sang BSC
-- **Signing/pending screen**: Helper text, nút "Tôi đã xác nhận", nút mở lại app ví
-- **Error screen**: Nút thử lại, đổi ví
-- **Connected screen**: Hiện địa chỉ, nút "Ký và đăng nhập", đổi ví, ngắt kết nối
-- Giữ nguyên Dialog onboarding cho new user
+### Phase 1C-F — Safe Cleanup (rủi ro THẤP)
 
-### 6. Cập nhật backend calls
-File upload dùng `siwe-nonce` / `siwe-verify` nhưng project hiện tại dùng `sso-web3-auth` với action `challenge` / verify. Sẽ adapt `walletFlowShared.ts` để gọi đúng edge function `sso-web3-auth` đã có.
+| # | Công việc | Chi tiết |
+|---|----------|---------|
+| 1C | Phân loại empty tables | 35 tables 0-rows → Active/Planned/Legacy/Deletable |
+| 1D | console.log → logger | 77 instances cần thay thế |
+| 1E | useAdminRole shared hook | Đã tạo, cần migrate các component dùng trực tiếp `has_role` |
+| 1F | Edge function _shared helpers | cors, auth, response — đã tạo ✅ |
 
-## Tổng cộng: 4 file mới + 1 file viết lại
-- `src/utils/mobileWalletConnect.ts` (MỚI)
-- `src/utils/walletSessionReset.ts` (MỚI)
-- `src/lib/walletFlowShared.ts` (MỚI)
-- `src/hooks/useWalletAuth.ts` (MỚI)
-- `src/components/auth/WalletLoginContent.tsx` (VIẾT LẠI)
+### Phase 2 — Structural Improvements (rủi ro TRUNG BÌNH)
 
-## Không cần thay đổi
-- Edge function `sso-web3-auth` — đã hoạt động tốt
-- `Web3Provider.tsx` — đã global, không cần wrap thêm
-- `web3.ts` config — đã có MetaMask, Trust, Bitget connector
-- Database — không cần migration
+| # | Công việc | Chi tiết |
+|---|----------|---------|
+| 2A | State enum documentation | Document các status/type enums trong DB |
+| 2B | Merge search_logs → search_history | Consolidate duplicate search tracking |
+| 2C | notifications.read → is_read | Compatibility migration (backfill + dual-write) |
+| 2D | Xóa useLiveComments | Dead code cleanup |
+| 2E | Module hóa hooks/ | Nhóm theo domain (social, chat, live, wallet, etc.) |
+| 2F | Tách components/feed/ | Sub-domains cho feed components |
+| 2G | useCapabilities layer | Đã tạo ✅, cần migrate consumers |
 
+### Phase 3 — Deep Refactor (rủi ro CAO)
+
+| # | Công việc | Blocker |
+|---|----------|---------|
+| 3A | Tách profiles → user_wallet_config | Nhiều component đọc trực tiếp profiles |
+| 3B | Claims lifecycle audit | reward_claims + pending_claims khác lifecycle |
+| 3C | FinancialTab → platform_financial_data | Admin UI đang đọc grand_total_* từ profiles |
+| 3D | get_user_rewards_v2 refactor | Đang dùng livestreams table, cần chuyển live_sessions |
+| 3E | live_comments product review | Quyết định drop hoặc giữ |
+| 3F | Profiles RLS tightening | Public by Design → quyết định enforcement model |
+| 3G | Gộp 15 media edge functions | Router pattern |
+
+---
+
+## Linter Warnings (có sẵn, chưa xử lý)
+- **RLS Enabled No Policy**: Một số tables có RLS enabled nhưng chưa có policy
+- **RLS Policy Always True**: Một số policies dùng `USING (true)` cho INSERT/UPDATE/DELETE
+- Sẽ xử lý trong Phase 2-3 khi refactor từng domain
+
+## Light Score 5 Trụ Cột — Phase 1 ✅ HOÀN THÀNH
+(Chi tiết xem phiên bản trước của plan)
