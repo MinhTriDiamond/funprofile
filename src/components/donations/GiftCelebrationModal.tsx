@@ -453,9 +453,3 @@ export const GiftCelebrationModal = ({
     </>
   );
 };
-          </div>
-        </DialogContent>
-      </Dialog>
-    </>
-  );
-};
