@@ -267,7 +267,7 @@ Deno.serve(async (req) => {
           allFlaggedUserIds.push(...userArr);
           ipClusters.push({ ip, sharedDeviceUsers, uniqueDeviceUsers });
 
-          const today = new Date(); today.setHours(0, 0, 0, 0);
+           const today = new Date(getTodayStartVN());
           const signalType = sharedDeviceUsers.length > 0 ? "IP_DEVICE_CLUSTER" : "IP_CLUSTER";
           const { data: existing } = await supabase
             .from("pplp_fraud_signals").select("id")
