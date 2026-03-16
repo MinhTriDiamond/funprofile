@@ -1,21 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-
-// Convert YYYY-MM-DD (VN date) to UTC range
-function vnDateToUtcRange(dateStr: string): { start: string; end: string } {
-  // VN is UTC+7, so 00:00 VN = 17:00 previous day UTC
-  const [y, m, d] = dateStr.split('-').map(Number);
-  const vnMidnight = new Date(Date.UTC(y, m - 1, d, 0, 0, 0));
-  const utcStart = new Date(vnMidnight.getTime() - 7 * 60 * 60 * 1000);
-  const utcEnd = new Date(utcStart.getTime() + 24 * 60 * 60 * 1000);
-  return { start: utcStart.toISOString(), end: utcEnd.toISOString() };
-}
-
-function getTodayVN(): string {
-  const now = new Date();
-  const vn = new Date(now.getTime() + 7 * 60 * 60 * 1000);
-  return `${vn.getUTCFullYear()}-${String(vn.getUTCMonth() + 1).padStart(2, '0')}-${String(vn.getUTCDate()).padStart(2, '0')}`;
-}
+import { getTodayVN, vnDateToUtcRange } from '@/lib/vnTimezone';
 
 // Fetch gift counts per day using database function (bypasses 1000 row limit)
 const fetchGiftDayCounts = async (): Promise<Record<string, number>> => {
@@ -83,14 +68,39 @@ const fetchHistoryPostStats = async (postIds: string[]) => {
   }
 };
 
+// Fetch donation count for a specific VN date from donations table (source of truth)
+const fetchDonationCountByDate = async (dateStr: string): Promise<number> => {
+  const { start, end } = vnDateToUtcRange(dateStr);
+  const { count, error } = await supabase
+    .from('donations')
+    .select('id', { count: 'exact', head: true })
+    .gte('created_at', start)
+    .lt('created_at', end);
+
+  if (error) {
+    console.error('Donation count error:', error);
+    return 0;
+  }
+  return count || 0;
+};
+
 export const useGiftHistory = (selectedDate: string | null) => {
   const today = getTodayVN();
   const isToday = !selectedDate || selectedDate === today;
+  const activeDate = selectedDate || today;
 
   const dayCountsQuery = useQuery({
     queryKey: ['gift-day-counts'],
     queryFn: fetchGiftDayCounts,
     staleTime: 60 * 1000,
+    gcTime: 5 * 60 * 1000,
+  });
+
+  // Đếm donation count chính xác từ bảng donations (nguồn dữ liệu chuẩn)
+  const donationCountQuery = useQuery({
+    queryKey: ['donation-count-by-date', activeDate],
+    queryFn: () => fetchDonationCountByDate(activeDate),
+    staleTime: 30 * 1000,
     gcTime: 5 * 60 * 1000,
   });
 
@@ -109,6 +119,7 @@ export const useGiftHistory = (selectedDate: string | null) => {
 
   return {
     dateCounts: dayCountsQuery.data || {},
+    donationCount: donationCountQuery.data ?? 0,
     historyPosts: historyQuery.data?.posts || [],
     historyPostStats: historyQuery.data?.postStats || {},
     isLoadingHistory: historyQuery.isLoading,
