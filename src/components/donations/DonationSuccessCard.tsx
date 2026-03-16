@@ -298,34 +298,37 @@ export const DonationSuccessCard = ({
             </div>
 
             {/* Action buttons */}
-            <div data-action-buttons className="mx-4 mt-4 mb-5 flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex-1 gap-1.5 border-gray-300 text-gray-600 font-semibold hover:bg-gray-50 text-xs rounded-full"
-                onClick={handleCopyTx}
-              >
-                {copied ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                {copied ? 'Đã sao chép!' : 'Sao chép TX'}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex-1 gap-1.5 border-gray-300 text-gray-600 font-semibold hover:bg-gray-50 text-xs rounded-full"
-                onClick={handleSaveImage}
-                disabled={isSaving}
-              >
-                <Camera className="w-3.5 h-3.5" />
-                {isSaving ? 'Đang lưu...' : 'Lưu Hình'}
-              </Button>
+            <div data-action-buttons className="mx-4 mt-4 mb-5 space-y-2">
               <Button
                 size="sm"
-                className="px-3 border-0 rounded-full text-white"
+                className="w-full gap-2 rounded-full text-white font-bold"
                 style={{ background: 'linear-gradient(135deg, #064e3b 0%, #065f46 40%, #047857 100%)', boxShadow: '0 3px 10px rgba(4,78,59,0.45)' }}
                 onClick={handleClose}
               >
-                <X className="w-3.5 h-3.5" />
+                <ArrowLeft className="w-4 h-4" />
+                Quay về
               </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 gap-1.5 border-gray-300 text-gray-600 font-semibold hover:bg-gray-50 text-xs rounded-full"
+                  onClick={handleCopyTx}
+                >
+                  {copied ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copied ? 'Đã sao chép!' : 'Sao chép TX'}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 gap-1.5 border-gray-300 text-gray-600 font-semibold hover:bg-gray-50 text-xs rounded-full"
+                  onClick={handleSaveImage}
+                  disabled={isSaving}
+                >
+                  <Camera className="w-3.5 h-3.5" />
+                  {isSaving ? 'Đang lưu...' : 'Lưu Hình'}
+                </Button>
+              </div>
             </div>
           </div>
         </DialogContent>
