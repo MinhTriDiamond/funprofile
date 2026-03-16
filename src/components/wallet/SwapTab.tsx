@@ -51,7 +51,7 @@ function TokenSelector({ value, onChange, excludeSymbol }: TokenSelectorProps) {
         >
           <img src={selected.logo} alt={selected.symbol} className="w-6 h-6 rounded-full" />
           <span className="font-semibold text-foreground">{selected.symbol}</span>
-          <ChevronDown className="w-4 h-4 text-muted-foreground pointer-events-none" />
+          <ChevronDown className="w-4 h-4 text-muted-foreground" />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-48 bg-background border border-border shadow-xl z-[200]" sideOffset={4}>
@@ -68,7 +68,6 @@ function TokenSelector({ value, onChange, excludeSymbol }: TokenSelectorProps) {
               <span className="text-xs text-muted-foreground ml-auto">{t.name}</span>
             </DropdownMenuItem>
           ))}
-        {/* Disabled tokens (coming soon) */}
         {disabledTokens.map(t => (
           <DropdownMenuItem
             key={t.symbol}
@@ -185,18 +184,22 @@ export function SwapTab({ walletAddress, onSuccess }: SwapTabProps) {
     setIsSwapping(true);
     try {
       const hash = await executeSwap(quote, walletAddress, wagmiConfig);
+      const routeLabel = quote.routeSymbols.join(' → ');
       toast.success(
         `✅ Swap thành công! ${quote.amountIn} ${quote.fromSymbol} → ${Number(quote.amountOut).toFixed(6)} ${quote.toSymbol}`,
         {
           description: (
-            <a
-              href={`https://bscscan.com/tx/${hash}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 text-primary underline text-xs mt-1"
-            >
-              Xem trên BscScan <ExternalLink className="w-3 h-3" />
-            </a>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Route: {routeLabel}</p>
+              <a
+                href={`https://bscscan.com/tx/${hash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-primary underline text-xs"
+              >
+                Xem trên BscScan <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
           ) as any,
           duration: 8000,
         },
@@ -258,6 +261,8 @@ export function SwapTab({ walletAddress, onSuccess }: SwapTabProps) {
     ? `1 ${fromSymbol} ≈ ${(Number(quote.amountOut) / Number(quote.amountIn)).toLocaleString(undefined, { maximumFractionDigits: 6 })} ${toSymbol}`
     : null;
 
+  const routeDisplay = quote?.routeSymbols?.join(' → ') ?? null;
+
   return (
     <div className="space-y-4">
       {/* From */}
@@ -290,7 +295,7 @@ export function SwapTab({ walletAddress, onSuccess }: SwapTabProps) {
       </div>
 
       {/* Flip button */}
-      <div className="flex justify-center -my-2 relative z-[5]">
+      <div className="flex justify-center -my-2 relative z-[2]">
         <button
           type="button"
           onClick={handleFlip}
@@ -347,8 +352,14 @@ export function SwapTab({ walletAddress, onSuccess }: SwapTabProps) {
           </div>
           <div className="flex justify-between text-muted-foreground">
             <span>Route</span>
-            <span>PancakeSwap V2</span>
+            <span className="font-medium text-foreground">{routeDisplay ?? 'PancakeSwap V2'}</span>
           </div>
+          {quote.useFeeOnTransfer && (
+            <div className="flex justify-between text-muted-foreground">
+              <span>Phương thức</span>
+              <span className="text-xs text-amber-500">Fee-on-transfer safe</span>
+            </div>
+          )}
         </div>
       )}
 
