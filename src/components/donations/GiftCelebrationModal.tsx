@@ -7,7 +7,7 @@ import { DonationCelebration } from './DonationCelebration';
 import { CardThemeSelector, CARD_THEMES, CardTheme } from './CardThemeSelector';
 import { CardSoundSelector, SOUND_OPTIONS } from './CardSoundSelector';
 import { getBscScanTxUrl } from '@/lib/bscScanHelpers';
-import { playCelebrationMusicLoop } from '@/lib/celebrationSounds';
+import { playCelebrationMusic } from '@/lib/celebrationSounds';
 import funEcosystemLogo from '@/assets/tokens/fun-ecosystem-logo.gif';
 import { RichTextOverlay } from './RichTextOverlay';
 import { format } from 'date-fns';
@@ -15,7 +15,7 @@ import { vi } from 'date-fns/locale';
 import {
   ExternalLink, Camera, X, Gift, User, Target,
   MessageCircle, Clock, Link2, Sparkles, Copy,
-  Share2, Megaphone, MessageSquare,
+  Share2, Megaphone, MessageSquare, ArrowLeft,
 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { toast } from 'sonner';
@@ -92,8 +92,8 @@ export const GiftCelebrationModal = ({
   // Play music when card opens (looped)
   useEffect(() => {
     if (isOpen) {
-      const soundId = selectedSound || 'rich-3';
-      audioRef.current = playCelebrationMusicLoop(soundId);
+      const soundId = selectedSound || 'rich-1';
+      audioRef.current = playCelebrationMusic(soundId);
     }
     return () => {
       if (audioRef.current) {
@@ -418,31 +418,33 @@ export const GiftCelebrationModal = ({
               )}
 
               {/* Action Buttons */}
-              <div data-action-buttons className="flex flex-wrap items-center justify-center gap-2 mt-4">
-                <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={handleSaveImage} disabled={isSaving}>
-                  <Camera className="w-3.5 h-3.5" />
-                  {isSaving ? 'Đang lưu...' : 'Lưu hình'}
+              <div data-action-buttons className="mt-4 space-y-2">
+                <Button size="sm" className="w-full gap-2 text-sm font-bold" style={{ background: `linear-gradient(135deg, ${selectedTheme.accentColor}, ${selectedTheme.accentColor}cc)` }} onClick={handleClose}>
+                  <ArrowLeft className="w-4 h-4" />
+                  Quay về
                 </Button>
-                <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={handleShareLink}>
-                  <Share2 className="w-3.5 h-3.5" />
-                  Chia sẻ
-                </Button>
-                <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => handleCopy(data.txHash, 'TX Hash')}>
-                  <Copy className="w-3.5 h-3.5" />
-                  Copy TX
-                </Button>
-                <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={handlePostToProfile} disabled={isPosting}>
-                  <Megaphone className="w-3.5 h-3.5" />
-                  {isPosting ? 'Đang đăng...' : 'Đăng Profile'}
-                </Button>
-                <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={handleSendMessage} disabled={isSendingMsg}>
-                  <MessageSquare className="w-3.5 h-3.5" />
-                  Gửi tin nhắn
-                </Button>
-                <Button size="sm" className="gap-1.5 text-xs" style={{ background: `linear-gradient(135deg, ${selectedTheme.accentColor}, ${selectedTheme.accentColor}cc)` }} onClick={handleClose}>
-                  <X className="w-3.5 h-3.5" />
-                  Đóng
-                </Button>
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={handleSaveImage} disabled={isSaving}>
+                    <Camera className="w-3.5 h-3.5" />
+                    {isSaving ? 'Đang lưu...' : 'Lưu hình'}
+                  </Button>
+                  <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={handleShareLink}>
+                    <Share2 className="w-3.5 h-3.5" />
+                    Chia sẻ
+                  </Button>
+                  <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => handleCopy(data.txHash, 'TX Hash')}>
+                    <Copy className="w-3.5 h-3.5" />
+                    Copy TX
+                  </Button>
+                  <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={handlePostToProfile} disabled={isPosting}>
+                    <Megaphone className="w-3.5 h-3.5" />
+                    {isPosting ? 'Đang đăng...' : 'Đăng Profile'}
+                  </Button>
+                  <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={handleSendMessage} disabled={isSendingMsg}>
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    Gửi tin nhắn
+                  </Button>
+                </div>
               </div>
 
               {/* Footer */}
