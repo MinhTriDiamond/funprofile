@@ -167,7 +167,7 @@ Deno.serve(async (req) => {
           allFlaggedUserIds.push(...users);
           deviceClusters.push({ hash, users });
 
-          const today = new Date(); today.setHours(0, 0, 0, 0);
+           const today = new Date(getTodayStartVN());
           const { data: existing } = await supabase
             .from("pplp_fraud_signals").select("id")
             .eq("signal_type", "SHARED_DEVICE").eq("source", "daily-fraud-scan")
