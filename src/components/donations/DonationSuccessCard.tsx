@@ -299,15 +299,6 @@ export const DonationSuccessCard = ({
 
             {/* Action buttons */}
             <div data-action-buttons className="mx-4 mt-4 mb-5 space-y-2">
-              <Button
-                size="sm"
-                className="w-full gap-2 rounded-full text-white font-bold"
-                style={{ background: 'linear-gradient(135deg, #064e3b 0%, #065f46 40%, #047857 100%)', boxShadow: '0 3px 10px rgba(4,78,59,0.45)' }}
-                onClick={handleClose}
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Quay về
-              </Button>
               <div className="flex gap-2">
                 <Button
                   variant="outline"
