@@ -264,141 +264,146 @@ export function SwapTab({ walletAddress, onSuccess }: SwapTabProps) {
   const routeDisplay = quote?.routeSymbols?.join(' → ') ?? null;
 
   return (
-    <div className="space-y-4">
-      {/* From */}
-      <div className="bg-muted/50 rounded-2xl p-4 space-y-2">
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-muted-foreground font-medium">Bán</span>
+    <div className="flex flex-col max-h-full">
+      {/* Scrollable content */}
+      <div className="flex-1 overflow-y-auto space-y-3 min-h-0">
+        {/* From */}
+        <div className="bg-muted/50 rounded-2xl p-4 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground font-medium">Bán</span>
+            <button
+              type="button"
+              onClick={handleMax}
+              className="text-xs text-primary font-semibold hover:underline"
+            >
+              Số dư: {fromBalance.toLocaleString(undefined, { maximumFractionDigits: 6 })} — MAX
+            </button>
+          </div>
+          <div className="flex items-center gap-3">
+            <TokenSelector
+              value={fromSymbol}
+              onChange={handleFromChange}
+              excludeSymbol={toSymbol}
+            />
+            <input
+              type="number"
+              value={amount}
+              onChange={e => setAmount(e.target.value)}
+              placeholder="0.00"
+              min="0"
+              className="flex-1 bg-transparent text-right text-2xl font-bold text-foreground outline-none placeholder:text-muted-foreground/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            />
+          </div>
+        </div>
+
+        {/* Flip button */}
+        <div className="flex justify-center -my-1 relative z-[2]">
           <button
             type="button"
-            onClick={handleMax}
-            className="text-xs text-primary font-semibold hover:underline"
+            onClick={handleFlip}
+            className="bg-background border-4 border-muted rounded-xl p-2 hover:bg-muted transition-colors shadow-sm"
           >
-            Số dư: {fromBalance.toLocaleString(undefined, { maximumFractionDigits: 6 })} — MAX
+            <ArrowDownUp className="w-5 h-5 text-primary" />
           </button>
         </div>
-        <div className="flex items-center gap-3">
-          <TokenSelector
-            value={fromSymbol}
-            onChange={handleFromChange}
-            excludeSymbol={toSymbol}
-          />
-          <input
-            type="number"
-            value={amount}
-            onChange={e => setAmount(e.target.value)}
-            placeholder="0.00"
-            min="0"
-            className="flex-1 bg-transparent text-right text-2xl font-bold text-foreground outline-none placeholder:text-muted-foreground/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-          />
+
+        {/* To */}
+        <div className="bg-muted/50 rounded-2xl p-4 space-y-2">
+          <span className="text-sm text-muted-foreground font-medium">Mua</span>
+          <div className="flex items-center gap-3">
+            <TokenSelector
+              value={toSymbol}
+              onChange={handleToChange}
+              excludeSymbol={fromSymbol}
+            />
+            <div className="flex-1 text-right text-2xl font-bold text-foreground">
+              {isQuoting ? (
+                <Skeleton className="h-8 w-32 ml-auto" />
+              ) : quote ? (
+                Number(quote.amountOut).toLocaleString(undefined, { maximumFractionDigits: 8 })
+              ) : (
+                <span className="text-muted-foreground/50">0.00</span>
+              )}
+            </div>
+          </div>
         </div>
-      </div>
 
-      {/* Flip button */}
-      <div className="flex justify-center -my-2 relative z-[2]">
-        <button
-          type="button"
-          onClick={handleFlip}
-          className="bg-background border-4 border-muted rounded-xl p-2 hover:bg-muted transition-colors shadow-sm"
-        >
-          <ArrowDownUp className="w-5 h-5 text-primary" />
-        </button>
-      </div>
-
-      {/* To */}
-      <div className="bg-muted/50 rounded-2xl p-4 space-y-2">
-        <span className="text-sm text-muted-foreground font-medium">Mua</span>
-        <div className="flex items-center gap-3">
-          <TokenSelector
-            value={toSymbol}
-            onChange={handleToChange}
-            excludeSymbol={fromSymbol}
-          />
-          <div className="flex-1 text-right text-2xl font-bold text-foreground">
-            {isQuoting ? (
-              <Skeleton className="h-8 w-32 ml-auto" />
-            ) : quote ? (
-              Number(quote.amountOut).toLocaleString(undefined, { maximumFractionDigits: 8 })
-            ) : (
-              <span className="text-muted-foreground/50">0.00</span>
+        {/* Quote details */}
+        {quote && !isQuoting && (
+          <div className="bg-muted/30 rounded-xl p-3 text-sm space-y-1.5">
+            {rateDisplay && (
+              <div className="flex justify-between items-center text-muted-foreground">
+                <span>Tỷ giá</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-medium text-foreground">{rateDisplay}</span>
+                  <button type="button" onClick={fetchQuote} className="p-0.5 hover:text-primary transition-colors" title="Làm mới báo giá">
+                    <RefreshCw className={`w-3.5 h-3.5 ${isQuoting ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
+              </div>
+            )}
+            <div className="flex justify-between text-muted-foreground">
+              <span>Tối thiểu nhận</span>
+              <span className="font-medium text-foreground">
+                {Number(quote.amountOutMin).toLocaleString(undefined, { maximumFractionDigits: 8 })} {toSymbol}
+              </span>
+            </div>
+            <div className="flex justify-between text-muted-foreground">
+              <span>Slippage</span>
+              <span>{SWAP_CONFIG.DEFAULT_SLIPPAGE / 100}%</span>
+            </div>
+            <div className="flex justify-between text-muted-foreground">
+              <span>Route</span>
+              <span className="font-medium text-foreground">{routeDisplay ?? 'PancakeSwap V2'}</span>
+            </div>
+            {quote.useFeeOnTransfer && (
+              <div className="flex justify-between text-muted-foreground">
+                <span>Phương thức</span>
+                <span className="text-xs text-amber-500">Fee-on-transfer safe</span>
+              </div>
             )}
           </div>
-        </div>
+        )}
+
+        {/* Error */}
+        {error && (
+          <div className="bg-destructive/10 text-destructive rounded-xl p-3 text-sm flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+            {error}
+          </div>
+        )}
       </div>
 
-      {/* Quote details */}
-      {quote && !isQuoting && (
-        <div className="bg-muted/30 rounded-xl p-3 text-sm space-y-1.5">
-          {rateDisplay && (
-            <div className="flex justify-between items-center text-muted-foreground">
-              <span>Tỷ giá</span>
-              <div className="flex items-center gap-1.5">
-                <span className="font-medium text-foreground">{rateDisplay}</span>
-                <button type="button" onClick={fetchQuote} className="p-0.5 hover:text-primary transition-colors" title="Làm mới báo giá">
-                  <RefreshCw className={`w-3.5 h-3.5 ${isQuoting ? 'animate-spin' : ''}`} />
-                </button>
-              </div>
-            </div>
-          )}
-          <div className="flex justify-between text-muted-foreground">
-            <span>Tối thiểu nhận</span>
-            <span className="font-medium text-foreground">
-              {Number(quote.amountOutMin).toLocaleString(undefined, { maximumFractionDigits: 8 })} {toSymbol}
-            </span>
-          </div>
-          <div className="flex justify-between text-muted-foreground">
-            <span>Slippage</span>
-            <span>{SWAP_CONFIG.DEFAULT_SLIPPAGE / 100}%</span>
-          </div>
-          <div className="flex justify-between text-muted-foreground">
-            <span>Route</span>
-            <span className="font-medium text-foreground">{routeDisplay ?? 'PancakeSwap V2'}</span>
-          </div>
-          {quote.useFeeOnTransfer && (
-            <div className="flex justify-between text-muted-foreground">
-              <span>Phương thức</span>
-              <span className="text-xs text-amber-500">Fee-on-transfer safe</span>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Error */}
-      {error && (
-        <div className="bg-destructive/10 text-destructive rounded-xl p-3 text-sm flex items-center gap-2">
-          <AlertTriangle className="w-4 h-4 shrink-0" />
-          {error}
-        </div>
-      )}
-
-      {/* Action button */}
-      {needsApproval && quote ? (
-        <Button
-          onClick={handleApprove}
-          disabled={isApproving}
-          className="w-full h-14 text-lg font-bold rounded-xl bg-amber-500 hover:bg-amber-600 text-white"
-        >
-          {isApproving ? (
-            <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Đang approve...</>
-          ) : (
-            `Approve ${fromSymbol}`
-          )}
-        </Button>
-      ) : (
-        <Button
-          onClick={handleSwap}
-          disabled={!quote || isSwapping || isQuoting || !!error}
-          className="w-full h-14 text-lg font-bold rounded-xl bg-primary hover:bg-primary/90"
-        >
-          {isSwapping ? (
-            <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Đang swap...</>
-          ) : isQuoting ? (
-            <><RefreshCw className="w-5 h-5 mr-2 animate-spin" /> Đang lấy giá...</>
-          ) : (
-            'Swap'
-          )}
-        </Button>
-      )}
+      {/* Sticky footer — always visible */}
+      <div className="sticky bottom-0 bg-background pt-3 pb-[env(safe-area-inset-bottom)]">
+        {needsApproval && quote ? (
+          <Button
+            onClick={handleApprove}
+            disabled={isApproving}
+            className="w-full h-14 text-lg font-bold rounded-xl bg-amber-500 hover:bg-amber-600 text-white"
+          >
+            {isApproving ? (
+              <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Đang approve...</>
+            ) : (
+              `Approve ${fromSymbol}`
+            )}
+          </Button>
+        ) : (
+          <Button
+            onClick={handleSwap}
+            disabled={!quote || isSwapping || isQuoting || !!error}
+            className="w-full h-14 text-lg font-bold rounded-xl bg-primary hover:bg-primary/90"
+          >
+            {isSwapping ? (
+              <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Đang swap...</>
+            ) : isQuoting ? (
+              <><RefreshCw className="w-5 h-5 mr-2 animate-spin" /> Đang lấy giá...</>
+            ) : (
+              'Swap'
+            )}
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
