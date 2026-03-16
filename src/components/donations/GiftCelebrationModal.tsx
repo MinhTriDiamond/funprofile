@@ -418,31 +418,33 @@ export const GiftCelebrationModal = ({
               )}
 
               {/* Action Buttons */}
-              <div data-action-buttons className="flex flex-wrap items-center justify-center gap-2 mt-4">
-                <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={handleSaveImage} disabled={isSaving}>
-                  <Camera className="w-3.5 h-3.5" />
-                  {isSaving ? 'Đang lưu...' : 'Lưu hình'}
+              <div data-action-buttons className="mt-4 space-y-2">
+                <Button size="sm" className="w-full gap-2 text-sm font-bold" style={{ background: `linear-gradient(135deg, ${selectedTheme.accentColor}, ${selectedTheme.accentColor}cc)` }} onClick={handleClose}>
+                  <ArrowLeft className="w-4 h-4" />
+                  Quay về
                 </Button>
-                <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={handleShareLink}>
-                  <Share2 className="w-3.5 h-3.5" />
-                  Chia sẻ
-                </Button>
-                <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => handleCopy(data.txHash, 'TX Hash')}>
-                  <Copy className="w-3.5 h-3.5" />
-                  Copy TX
-                </Button>
-                <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={handlePostToProfile} disabled={isPosting}>
-                  <Megaphone className="w-3.5 h-3.5" />
-                  {isPosting ? 'Đang đăng...' : 'Đăng Profile'}
-                </Button>
-                <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={handleSendMessage} disabled={isSendingMsg}>
-                  <MessageSquare className="w-3.5 h-3.5" />
-                  Gửi tin nhắn
-                </Button>
-                <Button size="sm" className="gap-1.5 text-xs" style={{ background: `linear-gradient(135deg, ${selectedTheme.accentColor}, ${selectedTheme.accentColor}cc)` }} onClick={handleClose}>
-                  <X className="w-3.5 h-3.5" />
-                  Đóng
-                </Button>
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={handleSaveImage} disabled={isSaving}>
+                    <Camera className="w-3.5 h-3.5" />
+                    {isSaving ? 'Đang lưu...' : 'Lưu hình'}
+                  </Button>
+                  <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={handleShareLink}>
+                    <Share2 className="w-3.5 h-3.5" />
+                    Chia sẻ
+                  </Button>
+                  <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => handleCopy(data.txHash, 'TX Hash')}>
+                    <Copy className="w-3.5 h-3.5" />
+                    Copy TX
+                  </Button>
+                  <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={handlePostToProfile} disabled={isPosting}>
+                    <Megaphone className="w-3.5 h-3.5" />
+                    {isPosting ? 'Đang đăng...' : 'Đăng Profile'}
+                  </Button>
+                  <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={handleSendMessage} disabled={isSendingMsg}>
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    Gửi tin nhắn
+                  </Button>
+                </div>
               </div>
 
               {/* Footer */}

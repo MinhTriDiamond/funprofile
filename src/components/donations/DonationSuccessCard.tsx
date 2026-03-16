@@ -12,11 +12,11 @@ import { vi } from 'date-fns/locale';
 import {
   ExternalLink,
   Camera,
-  X,
   Clock,
   Link2,
   Sparkles,
   ArrowRight,
+  ArrowLeft,
   CheckCircle2,
   Copy,
 } from 'lucide-react';

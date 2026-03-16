@@ -47,7 +47,7 @@ export const ClaimFunDialog = ({
     onSuccess: () => {
       setClaimedAmount(amount);
       setShowSuccess(true);
-      audioRef.current = playCelebrationMusicLoop('rich-3');
+      audioRef.current = playCelebrationMusic('rich-1');
       onSuccess?.();
     },
   });

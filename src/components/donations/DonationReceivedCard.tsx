@@ -268,33 +268,36 @@ export const DonationReceivedCard = ({
             </div>
 
             {/* Action buttons */}
-            <div className="mx-4 mt-4 mb-5 flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex-1 gap-1.5 border-gray-300 text-gray-600 font-semibold hover:bg-gray-50 text-xs rounded-full"
-                onClick={handleCopyLink}
-              >
-                {copied ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                {copied ? 'Đã sao chép!' : 'Sao chép link'}
-              </Button>
+            <div className="mx-4 mt-4 mb-5 space-y-2">
               <Button
                 size="sm"
-                className="flex-1 gap-1.5 text-xs font-bold text-white border-0 rounded-full"
+                className="w-full gap-2 rounded-full text-white font-bold"
                 style={{ background: 'linear-gradient(135deg, #064e3b 0%, #065f46 40%, #047857 100%)', boxShadow: '0 3px 10px rgba(4,78,59,0.45)' }}
-                onClick={handleSendThanks}
-              >
-                <Heart className="w-3.5 h-3.5" />
-                Gửi Cảm Ơn
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="px-3 border-gray-300 text-gray-500 font-bold hover:bg-gray-50 rounded-full"
                 onClick={handleClose}
               >
-                <X className="w-3.5 h-3.5" />
+                <ArrowLeft className="w-4 h-4" />
+                Quay về
               </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 gap-1.5 border-gray-300 text-gray-600 font-semibold hover:bg-gray-50 text-xs rounded-full"
+                  onClick={handleCopyLink}
+                >
+                  {copied ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copied ? 'Đã sao chép!' : 'Sao chép link'}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 gap-1.5 text-xs font-bold border-gray-300 text-gray-600 hover:bg-gray-50 rounded-full"
+                  onClick={handleSendThanks}
+                >
+                  <Heart className="w-3.5 h-3.5" />
+                  Gửi Cảm Ơn
+                </Button>
+              </div>
             </div>
           </div>
         </DialogContent>
