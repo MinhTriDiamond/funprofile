@@ -25,7 +25,7 @@ import camlyLogo from '@/assets/tokens/camly-coin-rainbow.png';
 import { RichTextOverlay } from './RichTextOverlay';
 import html2canvas from 'html2canvas';
 import { toast } from 'sonner';
-import { playCelebrationMusicLoop } from '@/lib/celebrationSounds';
+import { playCelebrationMusic } from '@/lib/celebrationSounds';
 
 export interface DonationCardData {
   id: string;
