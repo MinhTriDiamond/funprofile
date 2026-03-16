@@ -381,7 +381,7 @@ const WalletCenterContainer = () => {
             onSwitchAccount={handleSwitchAccount}
             onReceive={() => setShowReceive(true)}
             onSend={() => setShowSend(true)}
-            onSwap={() => window.open('https://pancakeswap.finance/swap', '_blank')}
+            onSwap={() => setShowSwap(true)}
             onBuy={() => window.open('https://www.moonpay.com/buy', '_blank')}
           />
         );
