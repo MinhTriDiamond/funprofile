@@ -264,7 +264,7 @@ export function SwapTab({ walletAddress, onSuccess }: SwapTabProps) {
   const routeDisplay = quote?.routeSymbols?.join(' → ') ?? null;
 
   return (
-    <div className="flex flex-col max-h-full">
+    <div className="flex flex-col flex-1 min-h-0">
       {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto space-y-3 min-h-0">
         {/* From */}
