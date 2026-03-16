@@ -11,10 +11,10 @@ import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import {
   ExternalLink,
-  X,
   Heart,
   Copy,
   ArrowRight,
+  ArrowLeft,
   CheckCircle2,
   Clock,
 } from 'lucide-react';
