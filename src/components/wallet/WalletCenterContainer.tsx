@@ -26,6 +26,7 @@ import { ClaimRewardDialog } from './ClaimRewardDialog';
 import { RewardStats } from './RewardBreakdown';
 import { ActivateDialog } from './ActivateDialog';
 import { ClaimFunDialog } from './ClaimFunDialog';
+import { SwapTab } from './SwapTab';
 import { useFunBalance } from '@/hooks/useFunBalance';
 import { useTokenBalances } from '@/hooks/useTokenBalances';
 import { useCamlyPrice } from '@/hooks/useCamlyPrice';
