@@ -21,7 +21,7 @@ import {
 import funPlayLogo from '@/assets/fun-profile-logo.png';
 import camlyLogo from '@/assets/tokens/camly-coin-rainbow.png';
 import { RichTextOverlay } from './RichTextOverlay';
-import { playCelebrationMusicLoop } from '@/lib/celebrationSounds';
+import { playCelebrationMusic } from '@/lib/celebrationSounds';
 import { useNavigate } from 'react-router-dom';
 
 export interface DonationReceivedData {
