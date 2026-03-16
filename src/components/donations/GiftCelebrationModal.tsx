@@ -7,7 +7,7 @@ import { DonationCelebration } from './DonationCelebration';
 import { CardThemeSelector, CARD_THEMES, CardTheme } from './CardThemeSelector';
 import { CardSoundSelector, SOUND_OPTIONS } from './CardSoundSelector';
 import { getBscScanTxUrl } from '@/lib/bscScanHelpers';
-import { playCelebrationMusicLoop } from '@/lib/celebrationSounds';
+import { playCelebrationMusic } from '@/lib/celebrationSounds';
 import funEcosystemLogo from '@/assets/tokens/fun-ecosystem-logo.gif';
 import { RichTextOverlay } from './RichTextOverlay';
 import { format } from 'date-fns';
