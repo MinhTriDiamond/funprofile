@@ -5,6 +5,14 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+/** Get today's start (00:00 VN = 17:00 UTC previous day) as ISO string */
+function getTodayStartVN(): string {
+  const VN_OFFSET_MS = 7 * 60 * 60 * 1000;
+  const nowVN = new Date(Date.now() + VN_OFFSET_MS);
+  const startUTC = new Date(Date.UTC(nowVN.getUTCFullYear(), nowVN.getUTCMonth(), nowVN.getUTCDate()) - VN_OFFSET_MS);
+  return startUTC.toISOString();
+}
+
 /** Extract email prefix (strip trailing digits before @) for farm detection */
 function getEmailBase(email: string): string {
   const local = email.split('@')[0] || '';
