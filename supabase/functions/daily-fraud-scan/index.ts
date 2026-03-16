@@ -210,7 +210,7 @@ Deno.serve(async (req) => {
           allFlaggedUserIds.push(...users.map(u => u.id));
           emailClusters.push({ emailBase, users });
 
-          const today = new Date(); today.setHours(0, 0, 0, 0);
+           const today = new Date(getTodayStartVN());
           const { data: existing } = await supabase
             .from("pplp_fraud_signals").select("id")
             .eq("signal_type", "EMAIL_FARM").eq("source", "daily-fraud-scan")
