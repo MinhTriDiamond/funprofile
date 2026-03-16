@@ -92,8 +92,8 @@ export const GiftCelebrationModal = ({
   // Play music when card opens (looped)
   useEffect(() => {
     if (isOpen) {
-      const soundId = selectedSound || 'rich-3';
-      audioRef.current = playCelebrationMusicLoop(soundId);
+      const soundId = selectedSound || 'rich-1';
+      audioRef.current = playCelebrationMusic(soundId);
     }
     return () => {
       if (audioRef.current) {
