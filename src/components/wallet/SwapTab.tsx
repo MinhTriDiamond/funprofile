@@ -316,7 +316,7 @@ export function SwapTab({ walletAddress, onSuccess }: SwapTabProps) {
               onChange={handleToChange}
               excludeSymbol={fromSymbol}
             />
-            <div className="flex-1 text-right text-2xl font-bold text-foreground">
+            <div className="flex-1 min-w-0 text-right text-2xl font-bold text-foreground truncate">
               {isQuoting ? (
                 <Skeleton className="h-8 w-32 ml-auto" />
               ) : quote ? (
