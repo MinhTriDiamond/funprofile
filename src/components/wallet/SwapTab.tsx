@@ -291,7 +291,7 @@ export function SwapTab({ walletAddress, onSuccess }: SwapTabProps) {
               onChange={e => setAmount(e.target.value)}
               placeholder="0.00"
               min="0"
-              className="flex-1 bg-transparent text-right text-2xl font-bold text-foreground outline-none placeholder:text-muted-foreground/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              className="flex-1 min-w-0 bg-transparent text-right text-2xl font-bold text-foreground outline-none placeholder:text-muted-foreground/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
           </div>
         </div>
