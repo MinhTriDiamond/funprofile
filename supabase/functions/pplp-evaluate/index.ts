@@ -222,14 +222,19 @@ serve(async (req) => {
       }
     }
 
-    // === DAILY CAP CHECK ===
-    const today = new Date().toISOString().split('T')[0];
+    // === DAILY CAP CHECK (VN timezone) ===
+    const VN_OFFSET_MS = 7 * 60 * 60 * 1000;
+    const nowVN = new Date(Date.now() + VN_OFFSET_MS);
+    const todayVN = `${nowVN.getUTCFullYear()}-${String(nowVN.getUTCMonth()+1).padStart(2,'0')}-${String(nowVN.getUTCDate()).padStart(2,'0')}`;
+    const todayStartUTC = new Date(Date.UTC(nowVN.getUTCFullYear(), nowVN.getUTCMonth(), nowVN.getUTCDate()) - VN_OFFSET_MS);
+    const todayEndUTC = new Date(todayStartUTC.getTime() + 24 * 60 * 60 * 1000);
     const { count: todayCount } = await supabase
       .from('light_actions')
       .select('id', { count: 'exact', head: true })
       .eq('actor_id', actorId)
       .eq('action_type', action_type)
-      .gte('created_at', `${today}T00:00:00Z`);
+      .gte('created_at', todayStartUTC.toISOString())
+      .lt('created_at', todayEndUTC.toISOString());
 
     const { count: todayCountFallback } = await supabase
       .from('light_actions')
