@@ -446,6 +446,11 @@ export const GiftCelebrationModal = ({
                   </Button>
                 </div>
               </div>
+
+              {/* Footer */}
+              <div className={`mt-3 text-xs font-medium ${selectedTheme.textColor}`}>
+                🌟 FUN Profile • Mạnh Thường Quân 🌟
+              </div>
             </div>
           </div>
         </DialogContent>
