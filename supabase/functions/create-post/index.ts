@@ -57,6 +57,65 @@ interface CreatePostRequest {
   attachments?: AttachmentInput[];
 }
 
+// Tokenize Vietnamese text into words
+function tokenizeWords(text: string): string[] {
+  return text
+    .trim()
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, '')
+    .split(/\s+/)
+    .filter(w => w.length > 1);
+}
+
+// Calculate word overlap ratio between two texts
+function calculateWordOverlap(wordsA: string[], wordsB: string[]): number {
+  if (wordsA.length === 0 || wordsB.length === 0) return 0;
+  const setB = new Set(wordsB);
+  const overlap = wordsA.filter(w => setB.has(w)).length;
+  return overlap / Math.max(wordsA.length, wordsB.length);
+}
+
+// Detect repetitive content by comparing with recent posts
+async function detectRepetitiveContent(
+  supabase: any,
+  userId: string,
+  newContent: string,
+): Promise<{ blocked: boolean; warning: boolean; similarCount: number }> {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const { data: recentPosts } = await supabase
+    .from("posts")
+    .select("content")
+    .eq("user_id", userId)
+    .gte("created_at", today.toISOString())
+    .order("created_at", { ascending: false })
+    .limit(5);
+
+  if (!recentPosts || recentPosts.length === 0) {
+    return { blocked: false, warning: false, similarCount: 0 };
+  }
+
+  const newWords = tokenizeWords(newContent);
+  if (newWords.length === 0) return { blocked: false, warning: false, similarCount: 0 };
+
+  let similarCount = 0;
+  for (const post of recentPosts) {
+    if (!post.content) continue;
+    const oldWords = tokenizeWords(post.content);
+    const overlap = calculateWordOverlap(newWords, oldWords);
+    if (overlap > 0.6) similarCount++;
+  }
+
+  if (similarCount >= 3) {
+    return { blocked: true, warning: false, similarCount };
+  }
+  if (similarCount >= 1) {
+    return { blocked: false, warning: true, similarCount };
+  }
+  return { blocked: false, warning: false, similarCount: 0 };
+}
+
 // Normalize content for duplicate detection
 function normalizeContent(content: string): string {
   return content
@@ -208,6 +267,31 @@ Deno.serve(async (req) => {
       isRewardEligible = false; // Pending posts don't get rewards
     }
 
+    // === REPETITIVE CONTENT DETECTION ===
+    let repetitiveWarning = false;
+    if (trimmedContent.length > 0) {
+      const repResult = await detectRepetitiveContent(supabase, userId, trimmedContent);
+      console.log("[create-post] Repetitive check:", repResult);
+
+      if (repResult.blocked) {
+        console.log("[create-post] BLOCKED — repetitive content, similarCount:", repResult.similarCount);
+        return new Response(
+          JSON.stringify({
+            error: "Angel thấy bạn đã chia sẻ nội dung tương tự nhiều lần rồi nè 💛 Hãy dành thời gian viết những trải nghiệm thật sự của bạn nhé ✨",
+            blocked: true,
+            warning_message: "Angel thấy bạn đã chia sẻ nội dung tương tự nhiều lần rồi nè 💛 Hãy dành thời gian viết những trải nghiệm thật sự của bạn nhé ✨",
+          }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      if (repResult.warning) {
+        isRewardEligible = false;
+        repetitiveWarning = true;
+        console.log("[create-post] Repetitive warning, no reward");
+      }
+    }
+
     // === SHORT CONTENT CHECK (no reward for short text-only posts) ===
     if (isRewardEligible && mediaCount === 0 && trimmedContent.length < 50) {
       console.log("[create-post] Short text-only post, no reward:", trimmedContent.length, "chars");
@@ -321,6 +405,7 @@ Deno.serve(async (req) => {
         postId: post?.id,
         is_reward_eligible: isRewardEligible,
         duplicate_detected: duplicateDetected,
+        repetitive_warning: repetitiveWarning,
         moderation_status: moderationStatus,
         timing: { insertMs: insertDuration, totalMs: totalDuration },
       }),
