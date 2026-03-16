@@ -1,35 +1,83 @@
 
+# Database & Codebase Audit — Implementation Roadmap
 
-# Fix Swap: Token dropdown không mở được + Báo giá lỗi
+## Tài liệu tham chiếu
+- `.lovable/audit-report.md` — Audit report đầy đủ (633 dòng, 20 phần)
 
-## Vấn đề phát hiện
+---
 
-### 1. Token dropdown bị hỏng
-`TokenSelector` được định nghĩa **bên trong** component `SwapTab` (dòng 159-191). Đây là anti-pattern trong React — mỗi lần re-render tạo ra component definition mới, khiến dropdown bị unmount/remount liên tục và không bao giờ mở được.
+## ĐÃ HOÀN THÀNH
 
-### 2. Báo giá lỗi cho cặp BNB↔USDT↔BTCB  
-Hiện tại không có secret `ZEROX_API_KEY` (0x API key) trong project. Mà cặp BNB/USDT/BTCB đang route qua 0x API → luôn bị lỗi 401/403. Chỉ có cặp CAMLY route qua PancakeSwap nên không bị.
+### Phase 0 — Audit & Documentation ✅
+| # | Công việc | Trạng thái |
+|---|----------|-----------|
+| 0A | Viết audit report 20 phần | ✅ Done |
+| 0B | Xác định Canonical Domain Models | ✅ Done |
+| 0C | Xác định Do Not Touch First list | ✅ Done |
+| 0D | Xác định Refactor Blockers | ✅ Done |
 
-## Giải pháp
+### Phase 1A — Performance Indexes ✅
+| Index | Table | Columns | Mục đích |
+|-------|-------|---------|----------|
+| `idx_notifications_user_read` | notifications | user_id, read | Badge count + dropdown |
+| `idx_reactions_post_type` | reactions | post_id, type | Reaction counts per post |
+| `idx_light_actions_user_created` | light_actions | user_id, created_at DESC | Light Score history |
+| `idx_posts_user_created` | posts | user_id, created_at DESC | Profile feed |
+| `idx_chunked_chunks_status` | chunked_recording_chunks | status | Cleanup queries |
+| `idx_donations_sender_status` | donations | sender_id, status | Benefactor leaderboard |
+| `idx_donations_recipient_status` | donations | recipient_id, status | Recipient leaderboard |
+| `idx_comments_post_created` | comments | post_id, created_at | Comment thread load |
+| `idx_friendships_user_status` | friendships | user_id, status | Friend lookup |
+| `idx_friendships_friend_status` | friendships | friend_id, status | Friend lookup |
 
-### File 1: `src/components/wallet/SwapTab.tsx` (VIẾT LẠI)
-- **Move `TokenSelector` ra ngoài** thành component riêng nhận props, không tạo lại mỗi render
-- **Dùng PancakeSwap cho TẤT CẢ các cặp**, bỏ phụ thuộc 0x API. PancakeSwap V2 hỗ trợ mọi cặp BNB/USDT/BTCB/CAMLY trên BSC — đều có liquidity pool
-- Thêm nút Refresh quote thủ công
-- Cải thiện UX: hiển thị tỷ giá, animation mượt hơn
+### Phase 1B — SQL Comments Documentation ✅
+- COMMENT ON TABLE cho tất cả 93 tables
+- COMMENT ON VIEW cho tất cả 5 views
+- Phân loại theo domain: Core, Social, Messaging, Live, Recording, Light Score, Rewards, Wallet, Auth, OAuth, Search, Content, System, PPLP
 
-### File 2: `src/modules/wallet/services/swapAsset.ts` (SỬA)
-- **Dùng PancakeSwap cho mọi cặp** (bỏ 0x routing): tất cả token đều có pool trên PancakeSwap V2 qua WBNB
-- Loại bỏ `getZeroXQuote` và `executeZeroXSwap`
-- Đơn giản hóa `getSwapQuote` — luôn gọi PancakeSwap Router `getAmountsOut`
-- Đơn giản hóa `executeSwap` — luôn gọi PancakeSwap Router
+---
 
-### Không cần sửa
-- `src/config/swap.ts` — đã đủ PancakeSwap ABI
-- `supabase/functions/swap-quote/` — giữ lại nhưng không dùng nữa (có thể dùng sau khi có API key)
-- `WalletCenterContainer.tsx` — Dialog swap đã OK
+## CHƯA LÀM — KẾ HOẠCH TIẾP THEO
 
-## Tổng: 2 file sửa
-- `src/components/wallet/SwapTab.tsx` — Fix TokenSelector + UI improvements
-- `src/modules/wallet/services/swapAsset.ts` — Chuyển toàn bộ sang PancakeSwap routing
+### Phase 1C-F — Safe Cleanup (rủi ro THẤP)
 
+| # | Công việc | Chi tiết |
+|---|----------|---------|
+| 1C | Phân loại empty tables | 35 tables 0-rows → Active/Planned/Legacy/Deletable |
+| 1D | console.log → logger | 77 instances cần thay thế |
+| 1E | useAdminRole shared hook | Đã tạo, cần migrate các component dùng trực tiếp `has_role` |
+| 1F | Edge function _shared helpers | cors, auth, response — đã tạo ✅ |
+
+### Phase 2 — Structural Improvements (rủi ro TRUNG BÌNH)
+
+| # | Công việc | Chi tiết |
+|---|----------|---------|
+| 2A | State enum documentation | Document các status/type enums trong DB |
+| 2B | Merge search_logs → search_history | Consolidate duplicate search tracking |
+| 2C | notifications.read → is_read | Compatibility migration (backfill + dual-write) |
+| 2D | Xóa useLiveComments | Dead code cleanup |
+| 2E | Module hóa hooks/ | Nhóm theo domain (social, chat, live, wallet, etc.) |
+| 2F | Tách components/feed/ | Sub-domains cho feed components |
+| 2G | useCapabilities layer | Đã tạo ✅, cần migrate consumers |
+
+### Phase 3 — Deep Refactor (rủi ro CAO)
+
+| # | Công việc | Blocker |
+|---|----------|---------|
+| 3A | Tách profiles → user_wallet_config | Nhiều component đọc trực tiếp profiles |
+| 3B | Claims lifecycle audit | reward_claims + pending_claims khác lifecycle |
+| 3C | FinancialTab → platform_financial_data | Admin UI đang đọc grand_total_* từ profiles |
+| 3D | get_user_rewards_v2 refactor | Đang dùng livestreams table, cần chuyển live_sessions |
+| 3E | live_comments product review | Quyết định drop hoặc giữ |
+| 3F | Profiles RLS tightening | Public by Design → quyết định enforcement model |
+| 3G | Gộp 15 media edge functions | Router pattern |
+
+---
+
+## Linter Warnings (có sẵn, chưa xử lý)
+- **RLS Enabled No Policy**: Một số tables có RLS enabled nhưng chưa có policy
+- **RLS Policy Always True**: Một số policies dùng `USING (true)` cho INSERT/UPDATE/DELETE
+- Sẽ xử lý trong Phase 2-3 khi refactor từng domain
+
+## Light Score 5 Trụ Cột — Phase 1 ✅ HOÀN THÀNH
+(Chi tiết xem phiên bản trước của plan)

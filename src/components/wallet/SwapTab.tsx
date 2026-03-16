@@ -25,6 +25,50 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
+/* ─── Swappable tokens (computed once) ─── */
+const swappableTokens = WALLET_TOKENS.filter(t =>
+  (SWAPPABLE_SYMBOLS as readonly string[]).includes(t.symbol),
+);
+
+/* ─── TokenSelector — defined OUTSIDE SwapTab to avoid remounting ─── */
+interface TokenSelectorProps {
+  value: SwappableSymbol;
+  onChange: (s: SwappableSymbol) => void;
+  excludeSymbol: SwappableSymbol;
+}
+
+function TokenSelector({ value, onChange, excludeSymbol }: TokenSelectorProps) {
+  const selected = swappableTokens.find(t => t.symbol === value)!;
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button className="flex items-center gap-2 px-3 py-2 rounded-xl bg-muted hover:bg-muted/80 transition-colors min-w-[120px]">
+          <img src={selected.logo} alt={selected.symbol} className="w-6 h-6 rounded-full" />
+          <span className="font-semibold text-foreground">{selected.symbol}</span>
+          <ChevronDown className="w-4 h-4 text-muted-foreground" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-44 bg-background z-50">
+        {swappableTokens
+          .filter(t => t.symbol !== excludeSymbol)
+          .map(t => (
+            <DropdownMenuItem
+              key={t.symbol}
+              onClick={() => onChange(t.symbol as SwappableSymbol)}
+              className="flex items-center gap-2 cursor-pointer"
+            >
+              <img src={t.logo} alt={t.symbol} className="w-5 h-5 rounded-full" />
+              <span className="font-medium">{t.symbol}</span>
+              <span className="text-xs text-muted-foreground ml-auto">{t.name}</span>
+            </DropdownMenuItem>
+          ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+/* ─── SwapTab ─── */
+
 interface SwapTabProps {
   walletAddress: `0x${string}` | undefined;
   onSuccess?: () => void;
@@ -49,14 +93,6 @@ export function SwapTab({ walletAddress, onSuccess }: SwapTabProps) {
 
   const { tokens, refetch: refetchBalances } = useTokenBalances({ customAddress: walletAddress });
 
-  const swappableTokens = useMemo(
-    () => WALLET_TOKENS.filter(t => (SWAPPABLE_SYMBOLS as readonly string[]).includes(t.symbol)),
-    [],
-  );
-
-  const fromToken = swappableTokens.find(t => t.symbol === fromSymbol)!;
-  const toToken = swappableTokens.find(t => t.symbol === toSymbol)!;
-
   const fromBalance = useMemo(() => {
     const t = tokens.find(tk => tk.symbol === fromSymbol);
     return t ? Number(t.balance) : 0;
@@ -77,7 +113,6 @@ export function SwapTab({ walletAddress, onSuccess }: SwapTabProps) {
       const q = await getSwapQuote(fromSymbol, toSymbol, amount, wagmiConfig);
       setQuote(q);
 
-      // Check approval
       if (walletAddress) {
         const spender = getSpender(q);
         const needs = await requiresApproval(fromSymbol, amount, walletAddress, spender, wagmiConfig);
@@ -148,47 +183,22 @@ export function SwapTab({ walletAddress, onSuccess }: SwapTabProps) {
 
   const handleMax = useCallback(() => {
     if (fromSymbol === 'BNB') {
-      // Reserve gas
       setAmount(Math.max(0, fromBalance - 0.005).toFixed(6));
     } else {
       setAmount(fromBalance.toString());
     }
   }, [fromBalance, fromSymbol]);
 
-  // Token selector dropdown
-  const TokenSelector = ({ value, onChange, excludeSymbol }: {
-    value: SwappableSymbol;
-    onChange: (s: SwappableSymbol) => void;
-    excludeSymbol: SwappableSymbol;
-  }) => {
-    const selected = swappableTokens.find(t => t.symbol === value)!;
-    return (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button className="flex items-center gap-2 px-3 py-2 rounded-xl bg-muted hover:bg-muted/80 transition-colors min-w-[120px]">
-            <img src={selected.logo} alt={selected.symbol} className="w-6 h-6 rounded-full" />
-            <span className="font-semibold text-foreground">{selected.symbol}</span>
-            <ChevronDown className="w-4 h-4 text-muted-foreground" />
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-44 bg-background z-50">
-          {swappableTokens
-            .filter(t => t.symbol !== excludeSymbol)
-            .map(t => (
-              <DropdownMenuItem
-                key={t.symbol}
-                onClick={() => onChange(t.symbol as SwappableSymbol)}
-                className="flex items-center gap-2 cursor-pointer"
-              >
-                <img src={t.logo} alt={t.symbol} className="w-5 h-5 rounded-full" />
-                <span className="font-medium">{t.symbol}</span>
-                <span className="text-xs text-muted-foreground ml-auto">{t.name}</span>
-              </DropdownMenuItem>
-            ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    );
-  };
+  const handleFromChange = useCallback((s: SwappableSymbol) => {
+    setFromSymbol(s);
+    setQuote(null);
+    setAmount('');
+  }, []);
+
+  const handleToChange = useCallback((s: SwappableSymbol) => {
+    setToSymbol(s);
+    setQuote(null);
+  }, []);
 
   if (!isConnected) {
     return (
@@ -213,6 +223,11 @@ export function SwapTab({ walletAddress, onSuccess }: SwapTabProps) {
     );
   }
 
+  // Rate display
+  const rateDisplay = quote && !isQuoting
+    ? `1 ${fromSymbol} ≈ ${(Number(quote.amountOut) / Number(quote.amountIn)).toLocaleString(undefined, { maximumFractionDigits: 6 })} ${toSymbol}`
+    : null;
+
   return (
     <div className="space-y-4">
       {/* From */}
@@ -229,7 +244,7 @@ export function SwapTab({ walletAddress, onSuccess }: SwapTabProps) {
         <div className="flex items-center gap-3">
           <TokenSelector
             value={fromSymbol}
-            onChange={(s) => { setFromSymbol(s); setQuote(null); setAmount(''); }}
+            onChange={handleFromChange}
             excludeSymbol={toSymbol}
           />
           <input
@@ -259,7 +274,7 @@ export function SwapTab({ walletAddress, onSuccess }: SwapTabProps) {
         <div className="flex items-center gap-3">
           <TokenSelector
             value={toSymbol}
-            onChange={(s) => { setToSymbol(s); setQuote(null); }}
+            onChange={handleToChange}
             excludeSymbol={fromSymbol}
           />
           <div className="flex-1 text-right text-2xl font-bold text-foreground">
@@ -277,6 +292,17 @@ export function SwapTab({ walletAddress, onSuccess }: SwapTabProps) {
       {/* Quote details */}
       {quote && !isQuoting && (
         <div className="bg-muted/30 rounded-xl p-3 text-sm space-y-1.5">
+          {rateDisplay && (
+            <div className="flex justify-between items-center text-muted-foreground">
+              <span>Tỷ giá</span>
+              <div className="flex items-center gap-1.5">
+                <span className="font-medium text-foreground">{rateDisplay}</span>
+                <button onClick={fetchQuote} className="p-0.5 hover:text-primary transition-colors" title="Làm mới báo giá">
+                  <RefreshCw className={`w-3.5 h-3.5 ${isQuoting ? 'animate-spin' : ''}`} />
+                </button>
+              </div>
+            </div>
+          )}
           <div className="flex justify-between text-muted-foreground">
             <span>Tối thiểu nhận</span>
             <span className="font-medium text-foreground">
@@ -289,7 +315,7 @@ export function SwapTab({ walletAddress, onSuccess }: SwapTabProps) {
           </div>
           <div className="flex justify-between text-muted-foreground">
             <span>Route</span>
-            <span className="capitalize">{quote.route === 'pancakeswap' ? 'PancakeSwap V2' : '0x Aggregator'}</span>
+            <span>PancakeSwap V2</span>
           </div>
         </div>
       )}
