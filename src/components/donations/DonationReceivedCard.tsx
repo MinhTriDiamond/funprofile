@@ -67,10 +67,7 @@ export const DonationReceivedCard = ({
 
   useEffect(() => {
     if (isOpen) {
-      audioRef.current = playCelebrationMusicLoop('rich-3');
-      if (audioRef.current) {
-        audioRef.current.loop = false; // Phát 1 lần rồi tự dừng
-      }
+      audioRef.current = playCelebrationMusic('rich-1');
     }
     return () => {
       if (audioRef.current) {
