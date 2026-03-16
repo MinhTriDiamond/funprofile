@@ -181,9 +181,13 @@ const fetchFriendIds = async (userId: string | null): Promise<Set<string>> => {
 
 // Fetch highlighted (pinned) gift celebration posts (all within 24h)
 const fetchHighlightedPosts = async (): Promise<FeedPost[]> => {
-  const now = new Date().toISOString();
-  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  
+  // Tính 00:00 hôm nay theo giờ VN (UTC+7)
+  const now = new Date();
+  const vnNow = new Date(now.getTime() + 7 * 60 * 60 * 1000);
+  const startOfDayVN = new Date(Date.UTC(
+    vnNow.getUTCFullYear(), vnNow.getUTCMonth(), vnNow.getUTCDate()
+  ) - 7 * 60 * 60 * 1000);
+
   const { data, error } = await supabase
     .from('posts')
     .select(`*, public_profiles!posts_user_id_fkey (username, display_name, avatar_url, public_wallet_address, is_banned)`)
