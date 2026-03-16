@@ -1,83 +1,72 @@
 
-# Database & Codebase Audit — Implementation Roadmap
 
-## Tài liệu tham chiếu
-- `.lovable/audit-report.md` — Audit report đầy đủ (633 dòng, 20 phần)
+# Tính năng Swap Token trong Ví — BNB, USDT, BTCB, CAMLY
 
----
+## Tóm tắt
+Hiện tại nút **Swap** trong ví chỉ mở link PancakeSwap bên ngoài (`window.open`). Cần xây dựng tính năng Swap trực tiếp trong app, hỗ trợ swap giữa BNB, USDT, BTCB, CAMLY qua PancakeSwap Router V2 (on-chain) và 0x API (cho các cặp không có CAMLY).
 
-## ĐÃ HOÀN THÀNH
+## Các file cần tạo/sửa
 
-### Phase 0 — Audit & Documentation ✅
-| # | Công việc | Trạng thái |
-|---|----------|-----------|
-| 0A | Viết audit report 20 phần | ✅ Done |
-| 0B | Xác định Canonical Domain Models | ✅ Done |
-| 0C | Xác định Do Not Touch First list | ✅ Done |
-| 0D | Xác định Refactor Blockers | ✅ Done |
+### 1. Tạo `src/config/swap.ts` (MỚI)
+Cấu hình swap: chain ID (56 = BSC Mainnet), slippage mặc định (1%), quote TTL (30s).
 
-### Phase 1A — Performance Indexes ✅
-| Index | Table | Columns | Mục đích |
-|-------|-------|---------|----------|
-| `idx_notifications_user_read` | notifications | user_id, read | Badge count + dropdown |
-| `idx_reactions_post_type` | reactions | post_id, type | Reaction counts per post |
-| `idx_light_actions_user_created` | light_actions | user_id, created_at DESC | Light Score history |
-| `idx_posts_user_created` | posts | user_id, created_at DESC | Profile feed |
-| `idx_chunked_chunks_status` | chunked_recording_chunks | status | Cleanup queries |
-| `idx_donations_sender_status` | donations | sender_id, status | Benefactor leaderboard |
-| `idx_donations_recipient_status` | donations | recipient_id, status | Recipient leaderboard |
-| `idx_comments_post_created` | comments | post_id, created_at | Comment thread load |
-| `idx_friendships_user_status` | friendships | user_id, status | Friend lookup |
-| `idx_friendships_friend_status` | friendships | friend_id, status | Friend lookup |
+### 2. Tạo `src/modules/wallet/services/swapAsset.ts` (MỚI)
+Service chính xử lý toàn bộ logic swap:
+- **Dual routing**: Nếu cặp token có CAMLY → dùng PancakeSwap Router V2 trực tiếp (on-chain call). Các cặp khác (BNB/USDT/BTCB) → gọi 0x API qua edge function proxy.
+- Token address mapping dùng `WALLET_TOKENS` từ `src/lib/tokens.ts` (thay vì `TOKEN_META` trong file upload vì project hiện tại dùng `WALLET_TOKENS`).
+- Các hàm: `getSwapQuote`, `executeSwap`, `approveToken`, `requiresApproval`, `mapSwapError`, `formatSwapAmount`, `quoteExpired`.
+- PancakeSwap routing: luôn đi qua WBNB cho safety (BNB↔Token trực tiếp, Token↔Token qua WBNB).
+- FUN token sẽ bị disable (đang triển khai trên testnet).
 
-### Phase 1B — SQL Comments Documentation ✅
-- COMMENT ON TABLE cho tất cả 93 tables
-- COMMENT ON VIEW cho tất cả 5 views
-- Phân loại theo domain: Core, Social, Messaging, Live, Recording, Light Score, Rewards, Wallet, Auth, OAuth, Search, Content, System, PPLP
+### 3. Tạo `supabase/functions/swap-quote/index.ts` (MỚI)
+Edge function proxy gọi 0x API:
+- Nhận `{ path, query }` từ client.
+- Forward request đến `https://api.0x.org` với header `0x-api-key` từ secret `ZEROX_API_KEY`.
+- Luôn trả 200 + `_status` field để client tự xử lý error (tránh supabase.functions.invoke throw).
 
----
+### 4. Tạo `src/components/wallet/SwapTab.tsx` (MỚI)
+UI component cho màn hình Swap:
+- 2 dropdown chọn token (From / To): BNB, USDT, BTCB, CAMLY, FUN.
+- Input số lượng + hiển thị số dư token đang chọn.
+- Auto-quote sau 550ms debounce khi user nhập số lượng.
+- Hiển thị: nhận ước tính, tối thiểu nhận (slippage 1%), gas ước tính.
+- Nút chính: "Swap" hoặc "Approve [token]" (nếu cần allowance).
+- Xử lý wrong chain: hiện nút Switch Network.
+- Persist giao dịch vào bảng `transactions` (pending → confirmed/failed).
+- Nút refresh trạng thái nếu giao dịch đang pending.
 
-## CHƯA LÀM — KẾ HOẠCH TIẾP THEO
+### 5. Sửa `src/components/wallet/WalletCenterContainer.tsx`
+- Thay `onSwap={() => window.open('https://pancakeswap.finance/swap', '_blank')}` → `onSwap={() => setShowSwap(true)}`.
+- Thêm state `showSwap` + Dialog chứa `SwapTab`.
+- Import `SwapTab` component.
 
-### Phase 1C-F — Safe Cleanup (rủi ro THẤP)
+## Chi tiết kỹ thuật
 
-| # | Công việc | Chi tiết |
-|---|----------|---------|
-| 1C | Phân loại empty tables | 35 tables 0-rows → Active/Planned/Legacy/Deletable |
-| 1D | console.log → logger | 77 instances cần thay thế |
-| 1E | useAdminRole shared hook | Đã tạo, cần migrate các component dùng trực tiếp `has_role` |
-| 1F | Edge function _shared helpers | cors, auth, response — đã tạo ✅ |
+### Token Address Mapping
+Sẽ tạo helper `TOKEN_META` từ `WALLET_TOKENS` để tương thích với code swap:
+```text
+BNB  → native (0xeee...)
+USDT → 0x55d398326f99059fF775485246999027B3197955
+BTCB → 0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c
+CAMLY → 0x0910320181889feFDE0BB1Ca63962b0A8882e413
+FUN  → disabled (testnet only)
+```
 
-### Phase 2 — Structural Improvements (rủi ro TRUNG BÌNH)
+### PancakeSwap Router V2
+- Address: `0x10ED43C718714eb63d5aA57B78B54704E256024E`
+- WBNB: `0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c`
+- ABI: `getAmountsOut`, `swapExactETHForTokens`, `swapExactTokensForETH`, `swapExactTokensForTokens`
 
-| # | Công việc | Chi tiết |
-|---|----------|---------|
-| 2A | State enum documentation | Document các status/type enums trong DB |
-| 2B | Merge search_logs → search_history | Consolidate duplicate search tracking |
-| 2C | notifications.read → is_read | Compatibility migration (backfill + dual-write) |
-| 2D | Xóa useLiveComments | Dead code cleanup |
-| 2E | Module hóa hooks/ | Nhóm theo domain (social, chat, live, wallet, etc.) |
-| 2F | Tách components/feed/ | Sub-domains cho feed components |
-| 2G | useCapabilities layer | Đã tạo ✅, cần migrate consumers |
+### Secret cần thêm
+- `ZEROX_API_KEY` — key cho 0x API (cần hỏi user). Nếu không có, swap BNB↔USDT↔BTCB sẽ bị rate limit nhưng vẫn hoạt động. CAMLY swap qua PancakeSwap không cần key.
 
-### Phase 3 — Deep Refactor (rủi ro CAO)
+### Database
+Bảng `transactions` đã có sẵn với đủ columns cần thiết — không cần migration.
 
-| # | Công việc | Blocker |
-|---|----------|---------|
-| 3A | Tách profiles → user_wallet_config | Nhiều component đọc trực tiếp profiles |
-| 3B | Claims lifecycle audit | reward_claims + pending_claims khác lifecycle |
-| 3C | FinancialTab → platform_financial_data | Admin UI đang đọc grand_total_* từ profiles |
-| 3D | get_user_rewards_v2 refactor | Đang dùng livestreams table, cần chuyển live_sessions |
-| 3E | live_comments product review | Quyết định drop hoặc giữ |
-| 3F | Profiles RLS tightening | Public by Design → quyết định enforcement model |
-| 3G | Gộp 15 media edge functions | Router pattern |
+## Tổng cộng: 3 file mới + 1 file sửa + 1 edge function mới
+- `src/config/swap.ts` (MỚI)
+- `src/modules/wallet/services/swapAsset.ts` (MỚI)  
+- `src/components/wallet/SwapTab.tsx` (MỚI)
+- `supabase/functions/swap-quote/index.ts` (MỚI)
+- `src/components/wallet/WalletCenterContainer.tsx` (SỬA — thay link ngoài bằng dialog swap)
 
----
-
-## Linter Warnings (có sẵn, chưa xử lý)
-- **RLS Enabled No Policy**: Một số tables có RLS enabled nhưng chưa có policy
-- **RLS Policy Always True**: Một số policies dùng `USING (true)` cho INSERT/UPDATE/DELETE
-- Sẽ xử lý trong Phase 2-3 khi refactor từng domain
-
-## Light Score 5 Trụ Cột — Phase 1 ✅ HOÀN THÀNH
-(Chi tiết xem phiên bản trước của plan)
