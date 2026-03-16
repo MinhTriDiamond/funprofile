@@ -5,6 +5,14 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+/** Get today's start (00:00 VN = 17:00 UTC previous day) as ISO string */
+function getTodayStartVN(): string {
+  const VN_OFFSET_MS = 7 * 60 * 60 * 1000;
+  const nowVN = new Date(Date.now() + VN_OFFSET_MS);
+  const startUTC = new Date(Date.UTC(nowVN.getUTCFullYear(), nowVN.getUTCMonth(), nowVN.getUTCDate()) - VN_OFFSET_MS);
+  return startUTC.toISOString();
+}
+
 /** Extract email prefix (strip trailing digits before @) for farm detection */
 function getEmailBase(email: string): string {
   const local = email.split('@')[0] || '';
@@ -159,7 +167,7 @@ Deno.serve(async (req) => {
           allFlaggedUserIds.push(...users);
           deviceClusters.push({ hash, users });
 
-          const today = new Date(); today.setHours(0, 0, 0, 0);
+           const today = new Date(getTodayStartVN());
           const { data: existing } = await supabase
             .from("pplp_fraud_signals").select("id")
             .eq("signal_type", "SHARED_DEVICE").eq("source", "daily-fraud-scan")
@@ -202,7 +210,7 @@ Deno.serve(async (req) => {
           allFlaggedUserIds.push(...users.map(u => u.id));
           emailClusters.push({ emailBase, users });
 
-          const today = new Date(); today.setHours(0, 0, 0, 0);
+           const today = new Date(getTodayStartVN());
           const { data: existing } = await supabase
             .from("pplp_fraud_signals").select("id")
             .eq("signal_type", "EMAIL_FARM").eq("source", "daily-fraud-scan")
@@ -259,7 +267,7 @@ Deno.serve(async (req) => {
           allFlaggedUserIds.push(...userArr);
           ipClusters.push({ ip, sharedDeviceUsers, uniqueDeviceUsers });
 
-          const today = new Date(); today.setHours(0, 0, 0, 0);
+           const today = new Date(getTodayStartVN());
           const signalType = sharedDeviceUsers.length > 0 ? "IP_DEVICE_CLUSTER" : "IP_CLUSTER";
           const { data: existing } = await supabase
             .from("pplp_fraud_signals").select("id")
@@ -354,7 +362,7 @@ Deno.serve(async (req) => {
         if (maxClaimRatio >= 0.6 && syncRatio >= 0.5) {
           console.warn(`[CLAIM FARM] ${cluster.type}=${cluster.key.slice(0, 8)}: ${cluster.users.length} users, maxRatio=${maxClaimRatio}, syncRatio=${syncRatio}`);
 
-          const today = new Date(); today.setHours(0, 0, 0, 0);
+          const today = new Date(getTodayStartVN());
           const { data: existing } = await supabase
             .from("pplp_fraud_signals").select("id")
             .eq("signal_type", "CLAIM_FARM").eq("source", "daily-fraud-scan")
