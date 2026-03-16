@@ -51,7 +51,7 @@ export const useEpochAllocation = (): EpochAllocationResult => {
   const [currentMonth, setCurrentMonth] = useState<CurrentMonthLight>({
     total_light_score: 0,
     actions_count: 0,
-    epoch_month: new Date().toISOString().slice(0, 7),
+    epoch_month: getTodayVN().slice(0, 7),
   });
   const [latestEpoch, setLatestEpoch] = useState<EpochInfo | null>(null);
   const [allocation, setAllocation] = useState<EpochAllocation | null>(null);
