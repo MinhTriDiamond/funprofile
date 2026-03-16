@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Gift, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -12,12 +12,10 @@ interface ToastItem {
   createdAt: number;
 }
 
-const DISMISS_MS = 30000; // Tăng lên 30 giây để user đọc hết nội dung
-const MAX_TOASTS = 3;
+const DISMISS_MS = 8000; // 8 giây mỗi toast rồi chuyển sang lệnh tiếp theo
 
 /**
  * Format số có dấu chấm phân cách hàng nghìn (format tiếng Việt)
- * Ví dụ: 200000 -> 200.000
  */
 const formatNumber = (num: string | number): string => {
   const n = typeof num === 'string' ? parseFloat(num) : num;
@@ -26,21 +24,30 @@ const formatNumber = (num: string | number): string => {
 };
 
 export function GiftTransactionToast() {
-  const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const [currentToast, setCurrentToast] = useState<ToastItem | null>(null);
+  const queueRef = useRef<ToastItem[]>([]);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const dismiss = useCallback((id: string) => {
-    setToasts(prev => prev.filter(t => t.id !== id));
+  const showNext = useCallback(() => {
+    if (queueRef.current.length === 0) {
+      setCurrentToast(null);
+      return;
+    }
+    const next = queueRef.current.shift()!;
+    setCurrentToast(next);
+    timerRef.current = setTimeout(() => showNext(), DISMISS_MS);
   }, []);
 
-  // Auto-dismiss
+  const dismiss = useCallback(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    showNext();
+  }, [showNext]);
+
   useEffect(() => {
-    if (toasts.length === 0) return;
-    const interval = setInterval(() => {
-      const now = Date.now();
-      setToasts(prev => prev.filter(t => now - t.createdAt < DISMISS_MS));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [toasts.length]);
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     const channel = supabase
@@ -57,7 +64,6 @@ export function GiftTransactionToast() {
           const amount = d.amount || '0';
           const token = d.token_symbol || 'USDT';
 
-          // Fetch names
           let recipientName = 'Angel';
           let senderName = d.sender_address
             ? `${d.sender_address.slice(0, 6)}...${d.sender_address.slice(-4)}`
@@ -88,7 +94,14 @@ export function GiftTransactionToast() {
             createdAt: Date.now(),
           };
 
-          setToasts(prev => [newToast, ...prev].slice(0, MAX_TOASTS));
+          // Nếu đang không hiển thị toast nào → hiển thị ngay
+          if (!currentToast && queueRef.current.length === 0) {
+            setCurrentToast(newToast);
+            timerRef.current = setTimeout(() => showNext(), DISMISS_MS);
+          } else {
+            // Thêm vào hàng đợi
+            queueRef.current.push(newToast);
+          }
         }
       )
       .subscribe();
@@ -96,38 +109,41 @@ export function GiftTransactionToast() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [currentToast, showNext]);
 
-  if (toasts.length === 0) return null;
+  if (!currentToast) return null;
 
   return (
-    <div className="fixed bottom-20 right-4 z-50 flex flex-col gap-2 max-w-[340px] sm:max-w-[400px]">
-      {toasts.map((t) => (
-        <div
-          key={t.id}
-          className={cn(
-            "relative bg-gradient-to-r from-amber-500/90 to-yellow-400/90 backdrop-blur-md",
-            "text-white rounded-xl p-3 pr-8 shadow-lg",
-            "animate-in slide-in-from-right-full duration-500",
-            "border border-yellow-300/30"
-          )}
+    <div className="fixed bottom-20 right-4 z-50 max-w-[340px] sm:max-w-[400px]">
+      <div
+        key={currentToast.id}
+        className={cn(
+          "relative bg-gradient-to-r from-amber-500/90 to-yellow-400/90 backdrop-blur-md",
+          "text-white rounded-xl p-3 pr-8 shadow-lg",
+          "animate-in slide-in-from-right-full duration-500",
+          "border border-yellow-300/30"
+        )}
+      >
+        <button
+          onClick={dismiss}
+          className="absolute top-2 right-2 text-white/70 hover:text-white"
         >
-          <button
-            onClick={() => dismiss(t.id)}
-            className="absolute top-2 right-2 text-white/70 hover:text-white"
-          >
-            <X className="w-4 h-4" />
-          </button>
-          <div className="flex items-start gap-2">
-            <Gift className="w-5 h-5 mt-0.5 shrink-0 text-white" />
-            <p className="text-sm leading-relaxed">
-              🎁 Chúc mừng <strong>{t.recipientName}</strong> đã được nhận quà của Cha Fath Uni và Bé Angel Camly Dương{' '}
-              <strong>{formatNumber(t.amount)} {t.token}</strong> qua kênh dẫn{' '}
-              <strong>{t.senderName}</strong> 🌟💰✨💎🌈
-            </p>
-          </div>
+          <X className="w-4 h-4" />
+        </button>
+        <div className="flex items-start gap-2">
+          <Gift className="w-5 h-5 mt-0.5 shrink-0 text-white" />
+          <p className="text-sm leading-relaxed">
+            🎁 Chúc mừng <strong>{currentToast.recipientName}</strong> đã được nhận quà của Cha Fath Uni và Bé Angel Camly Dương{' '}
+            <strong>{formatNumber(currentToast.amount)} {currentToast.token}</strong> qua kênh dẫn{' '}
+            <strong>{currentToast.senderName}</strong> 🌟💰✨💎🌈
+          </p>
         </div>
-      ))}
+        {queueRef.current.length > 0 && (
+          <div className="mt-1.5 text-xs text-white/70 text-right">
+            +{queueRef.current.length} lệnh đang chờ
+          </div>
+        )}
+      </div>
     </div>
   );
 }
