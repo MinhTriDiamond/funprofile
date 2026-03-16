@@ -67,7 +67,7 @@ export const useEpochAllocation = (): EpochAllocationResult => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) {
-        setCurrentMonth({ total_light_score: 0, actions_count: 0, epoch_month: new Date().toISOString().slice(0, 7) });
+        setCurrentMonth({ total_light_score: 0, actions_count: 0, epoch_month: getTodayVN().slice(0, 7) });
         setLatestEpoch(null);
         setAllocation(null);
         return;
