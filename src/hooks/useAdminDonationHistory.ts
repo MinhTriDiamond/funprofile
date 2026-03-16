@@ -156,14 +156,15 @@ export function useAdminDonationHistory() {
   const { data: stats, isLoading: isStatsLoading } = useQuery({
     queryKey: ['admin-donation-stats'],
     queryFn: async () => {
-      const todayStr = new Date().toISOString().split('T')[0];
+      // Tính khoảng thời gian "hôm nay" theo giờ VN (UTC+7)
+      const { start: vnTodayStart, end: vnTodayEnd } = getVNTodayRange();
 
       // Run all count queries in parallel
       const [totalRes, confirmedRes, pendingRes, todayRes] = await Promise.all([
         supabase.from('donations').select('id', { count: 'exact', head: true }),
         supabase.from('donations').select('id', { count: 'exact', head: true }).eq('status', 'confirmed'),
         supabase.from('donations').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
-        supabase.from('donations').select('id', { count: 'exact', head: true }).gte('created_at', todayStr).lt('created_at', todayStr + 'T23:59:59.999Z'),
+        supabase.from('donations').select('id', { count: 'exact', head: true }).gte('created_at', vnTodayStart).lt('created_at', vnTodayEnd),
       ]);
 
       // Fetch all donations in pages for token aggregation
