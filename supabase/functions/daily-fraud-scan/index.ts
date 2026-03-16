@@ -362,7 +362,7 @@ Deno.serve(async (req) => {
         if (maxClaimRatio >= 0.6 && syncRatio >= 0.5) {
           console.warn(`[CLAIM FARM] ${cluster.type}=${cluster.key.slice(0, 8)}: ${cluster.users.length} users, maxRatio=${maxClaimRatio}, syncRatio=${syncRatio}`);
 
-          const today = new Date(); today.setHours(0, 0, 0, 0);
+          const today = new Date(getTodayStartVN());
           const { data: existing } = await supabase
             .from("pplp_fraud_signals").select("id")
             .eq("signal_type", "CLAIM_FARM").eq("source", "daily-fraud-scan")
