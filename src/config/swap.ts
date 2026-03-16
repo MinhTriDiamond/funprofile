@@ -35,6 +35,9 @@ export const SWAP_CONFIG = {
 export const SWAPPABLE_SYMBOLS = ['BNB', 'USDT', 'BTCB', 'CAMLY'] as const;
 export type SwappableSymbol = (typeof SWAPPABLE_SYMBOLS)[number];
 
+/** Tokens shown in UI but disabled (coming soon) */
+export const DISABLED_SWAP_SYMBOLS = ['FUN'] as const;
+
 /** PancakeSwap Router V2 ABI (subset for swaps) */
 export const PANCAKE_ROUTER_ABI = [
   {
