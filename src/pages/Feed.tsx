@@ -50,9 +50,12 @@ const Feed = () => {
   const { userId: currentUserId } = useCurrentUser();
   const { t } = useLanguage();
   const { 
-    posts, 
-    postStats, 
-    isLoading, 
+    posts,
+    highlightedPosts,
+    postStats,
+    highlightedPostStats,
+    isLoading,
+    isLoadingHighlighted,
     isFetchingNextPage, 
     hasNextPage, 
     fetchNextPage, 

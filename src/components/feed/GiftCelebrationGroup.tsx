@@ -10,6 +10,7 @@ interface GiftCelebrationGroupProps {
   currentUserId: string;
   onPostDeleted: () => void;
   postStats: Record<string, any>;
+  isLoading?: boolean;
 }
 
 const INITIAL_VISIBLE = 3;
