@@ -81,8 +81,10 @@ async function detectRepetitiveContent(
   userId: string,
   newContent: string,
 ): Promise<{ blocked: boolean; warning: boolean; similarCount: number }> {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // Use VN timezone (UTC+7) for "today" calculation
+  const VN_OFFSET_MS = 7 * 60 * 60 * 1000;
+  const nowVN = new Date(Date.now() + VN_OFFSET_MS);
+  const today = new Date(Date.UTC(nowVN.getUTCFullYear(), nowVN.getUTCMonth(), nowVN.getUTCDate()) - VN_OFFSET_MS);
 
   const { data: recentPosts } = await supabase
     .from("posts")

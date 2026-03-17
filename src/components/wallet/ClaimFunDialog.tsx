@@ -17,7 +17,7 @@ import { formatFUN } from '@/config/pplp';
 import { useClaimFun } from '@/hooks/useClaimFun';
 import { DonationCelebration } from '@/components/donations/DonationCelebration';
 import { RichTextOverlay } from '@/components/donations/RichTextOverlay';
-import { playCelebrationMusicLoop } from '@/lib/celebrationSounds';
+import { playCelebrationMusic } from '@/lib/celebrationSounds';
 import funLogo from '@/assets/tokens/fun-logo.png';
 import funEcosystemLogo from '@/assets/tokens/fun-ecosystem-logo.gif';
 
@@ -47,7 +47,7 @@ export const ClaimFunDialog = ({
     onSuccess: () => {
       setClaimedAmount(amount);
       setShowSuccess(true);
-      audioRef.current = playCelebrationMusicLoop('rich-3');
+      audioRef.current = playCelebrationMusic('rich-1');
       onSuccess?.();
     },
   });

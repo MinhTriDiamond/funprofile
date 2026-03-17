@@ -26,6 +26,7 @@ import { ClaimRewardDialog } from './ClaimRewardDialog';
 import { RewardStats } from './RewardBreakdown';
 import { ActivateDialog } from './ActivateDialog';
 import { ClaimFunDialog } from './ClaimFunDialog';
+import { SwapTab } from './SwapTab';
 import { useFunBalance } from '@/hooks/useFunBalance';
 import { useTokenBalances } from '@/hooks/useTokenBalances';
 import { useCamlyPrice } from '@/hooks/useCamlyPrice';
@@ -83,6 +84,7 @@ const WalletCenterContainer = () => {
   const [showClaimDialog, setShowClaimDialog] = useState(false);
   const [showActivateDialog, setShowActivateDialog] = useState(false);
   const [showClaimFunDialog, setShowClaimFunDialog] = useState(false);
+  const [showSwap, setShowSwap] = useState(false);
   const [todayPostCount, setTodayPostCount] = useState(0);
   const [copiedExternal, setCopiedExternal] = useState(false);
   
@@ -379,7 +381,7 @@ const WalletCenterContainer = () => {
             onSwitchAccount={handleSwitchAccount}
             onReceive={() => setShowReceive(true)}
             onSend={() => setShowSend(true)}
-            onSwap={() => window.open('https://pancakeswap.finance/swap', '_blank')}
+            onSwap={() => setShowSwap(true)}
             onBuy={() => window.open('https://www.moonpay.com/buy', '_blank')}
           />
         );
@@ -525,6 +527,18 @@ const WalletCenterContainer = () => {
         activatedBalance={activatedFun}
         onSuccess={() => { refetchFunBalance(); refetchExternal(); }}
       />
+
+      <Dialog open={showSwap} onOpenChange={setShowSwap}>
+        <DialogContent className="max-w-[100vw] h-auto max-h-[90dvh] overflow-x-hidden flex flex-col sm:max-w-md sm:max-h-[85vh]">
+          <DialogHeader>
+            <DialogTitle>Swap Token</DialogTitle>
+          </DialogHeader>
+          <SwapTab
+            walletAddress={externalAddress}
+            onSuccess={() => { refetchExternal(); setShowSwap(false); }}
+          />
+        </DialogContent>
+      </Dialog>
 
       <AccountSelectorModal open={showAccountSelector} onOpenChange={setShowAccountSelector} />
       <AccountMismatchModal open={showMismatchModal} onOpenChange={setShowMismatchModal} />
