@@ -61,8 +61,8 @@ const GiftCelebrationGroupComponent = ({
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/30">
         <div className="flex items-center gap-2">
-          <Gift className="w-4 h-4 text-pink-600" />
-          <span className="text-sm font-semibold text-foreground">Gift Celebration</span>
+          <Gift className="w-5 h-5 text-pink-600" />
+          <span className="text-base font-semibold text-foreground">Gift Celebration</span>
         </div>
 
         <button
@@ -71,9 +71,9 @@ const GiftCelebrationGroupComponent = ({
           title={isMuted ? 'Bật âm thanh' : 'Tắt âm thanh'}
         >
           {isMuted ? (
-            <VolumeX className="w-4 h-4 text-muted-foreground" />
+            <VolumeX className="w-5 h-5 text-muted-foreground" />
           ) : (
-            <Volume2 className="w-4 h-4 text-pink-600" />
+            <Volume2 className="w-5 h-5 text-pink-600" />
           )}
         </button>
 
@@ -84,7 +84,7 @@ const GiftCelebrationGroupComponent = ({
           dateTokenTotals={dateTokenTotals}
         />
 
-        <span className="text-xs text-pink-600 font-semibold bg-pink-600/10 px-2 py-0.5 rounded-full">
+        <span className="text-base text-pink-600 font-semibold bg-pink-600/10 px-2.5 py-0.5 rounded-full">
           {activePosts.length} gifts
         </span>
       </div>
