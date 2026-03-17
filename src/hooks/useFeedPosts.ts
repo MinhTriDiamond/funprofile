@@ -378,6 +378,7 @@ export const useFeedPosts = () => {
     posts: allPosts,
     postStats: allPostStats,
     isLoading: query.isLoading,
+    isGiftLoading: highlightedQuery.isLoading,
     isFetchingNextPage: query.isFetchingNextPage,
     hasNextPage: query.hasNextPage ?? false,
     fetchNextPage: query.fetchNextPage,

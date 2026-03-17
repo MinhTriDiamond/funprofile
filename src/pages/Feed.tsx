@@ -53,6 +53,7 @@ const Feed = () => {
     posts, 
     postStats, 
     isLoading, 
+    isGiftLoading,
     isFetchingNextPage, 
     hasNextPage, 
     fetchNextPage, 
@@ -107,15 +108,14 @@ const Feed = () => {
                 <StoriesBar currentUserId={currentUserId || ''} />
 
                 {/* Gift celebrations group - always on top */}
-                {!isLoading && (
-                  <GiftCelebrationGroup
-                    key="gift-group-all"
-                    posts={posts.filter(p => p.post_type === 'gift_celebration')}
-                    currentUserId={currentUserId || ''}
-                    onPostDeleted={refetch}
-                    postStats={postStats}
-                  />
-                )}
+                <GiftCelebrationGroup
+                  key="gift-group-all"
+                  posts={posts.filter(p => p.post_type === 'gift_celebration')}
+                  currentUserId={currentUserId || ''}
+                  onPostDeleted={refetch}
+                  postStats={postStats}
+                  isGiftLoading={isGiftLoading}
+                />
 
                 {currentUserId && <AccountUpgradeBanner />}
 

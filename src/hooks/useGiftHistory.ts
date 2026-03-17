@@ -110,6 +110,17 @@ const fetchDonationCountByDate = async (dateStr: string): Promise<number> => {
   return count || 0;
 };
 
+// Find latest date with gifts in last 7 days
+const findLatestDateWithGifts = (dateCounts: Record<string, number>): string | null => {
+  const today = getTodayVN();
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(new Date(today + 'T00:00:00Z').getTime() - i * 86400000);
+    const dateStr = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+    if ((dateCounts[dateStr] || 0) > 0) return dateStr;
+  }
+  return null;
+};
+
 export const useGiftHistory = (selectedDate: string | null) => {
   const today = getTodayVN();
   const isToday = !selectedDate || selectedDate === today;
@@ -142,14 +153,19 @@ export const useGiftHistory = (selectedDate: string | null) => {
     staleTime: 30 * 1000,
   });
 
+  // Compute the latest date that has gifts (for auto-fallback)
+  const latestDateWithGifts = findLatestDateWithGifts(dayCountsQuery.data || {});
+
   return {
     dateCounts: dayCountsQuery.data || {},
     dateTokenTotals: dayTokenTotalsQuery.data || {},
     historyPosts: historyQuery.data?.posts || [],
     historyPostStats: historyQuery.data?.postStats || {},
     isLoadingHistory: historyQuery.isLoading,
+    isLoadingDayCounts: dayCountsQuery.isLoading,
     isToday,
     todayVN: today,
+    latestDateWithGifts,
   };
 };
 
