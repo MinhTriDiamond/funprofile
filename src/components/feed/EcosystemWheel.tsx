@@ -11,6 +11,18 @@ import {
 // Items excluded from orbit — rendered as list below
 const BELOW_IDS = ['law-of-light', 'about'];
 
+// Per-item scale overrides to visually equalize logo sizes
+const logoScaleOverrides: Record<string, number> = {
+  'angel-ai': 1.05,
+  'fun-play': 1.25,
+  'fun-farm': 1.25,
+  'fun-planet': 1.25,
+  'fun-charity': 1.25,
+  'green-earth': 1.25,
+  'fun-wallet': 1.15,
+  'fun-academy': 1.15,
+};
+
 // Ecosystem item descriptions (Vietnamese)
 const ecosystemDescriptions: Record<string, { subtitle: string; description: string }> = {
   'fun-play': {
