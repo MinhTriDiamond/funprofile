@@ -107,18 +107,15 @@ const Feed = () => {
                 <StoriesBar currentUserId={currentUserId || ''} />
 
                 {/* Gift celebrations group - always on top */}
-                {!isLoading && (() => {
-                  const giftPosts = posts.filter(p => p.post_type === 'gift_celebration');
-                  return giftPosts.length > 0 ? (
-                    <GiftCelebrationGroup
-                      key="gift-group-all"
-                      posts={giftPosts}
-                      currentUserId={currentUserId || ''}
-                      onPostDeleted={refetch}
-                      postStats={postStats}
-                    />
-                  ) : null;
-                })()}
+                {!isLoading && (
+                  <GiftCelebrationGroup
+                    key="gift-group-all"
+                    posts={posts.filter(p => p.post_type === 'gift_celebration')}
+                    currentUserId={currentUserId || ''}
+                    onPostDeleted={refetch}
+                    postStats={postStats}
+                  />
+                )}
 
                 {currentUserId && <AccountUpgradeBanner />}
 
