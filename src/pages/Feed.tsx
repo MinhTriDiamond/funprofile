@@ -53,6 +53,7 @@ const Feed = () => {
     posts, 
     postStats, 
     isLoading, 
+    isGiftLoading,
     isFetchingNextPage, 
     hasNextPage, 
     fetchNextPage, 

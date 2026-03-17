@@ -1,4 +1,4 @@
-import { memo, useState, useCallback } from 'react';
+import { memo, useState, useCallback, useEffect, useRef } from 'react';
 import { GiftCelebrationCard } from './GiftCelebrationCard';
 import { GiftHistoryCalendar } from './GiftHistoryCalendar';
 import { Gift, Volume2, VolumeX, ChevronDown, Loader2 } from 'lucide-react';
@@ -10,6 +10,7 @@ interface GiftCelebrationGroupProps {
   currentUserId: string;
   onPostDeleted: () => void;
   postStats: Record<string, any>;
+  isGiftLoading?: boolean;
 }
 
 const INITIAL_VISIBLE = 3;
@@ -20,14 +21,32 @@ const GiftCelebrationGroupComponent = ({
   currentUserId,
   onPostDeleted,
   postStats,
+  isGiftLoading = false,
 }: GiftCelebrationGroupProps) => {
   const [isMuted, setIsMuted] = useState(() => 
     localStorage.getItem('celebration_muted') === 'true'
   );
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE);
   const [selectedDate, setSelectedDate] = useState<string>(getTodayVN());
+  const [userManuallySelected, setUserManuallySelected] = useState(false);
 
-  const { dateCounts, dateTokenTotals, historyPosts, historyPostStats, isLoadingHistory, isToday } = useGiftHistory(selectedDate);
+  const { dateCounts, dateTokenTotals, historyPosts, historyPostStats, isLoadingHistory, isLoadingDayCounts, isToday, latestDateWithGifts } = useGiftHistory(selectedDate);
+
+  // Auto-fallback: if today has no gifts and user hasn't manually picked a date, switch to latest date with gifts
+  const hasFallbacked = useRef(false);
+  useEffect(() => {
+    if (userManuallySelected || hasFallbacked.current) return;
+    if (isLoadingDayCounts) return; // wait for day counts to load
+    
+    const today = getTodayVN();
+    const todayHasGifts = (posts.length > 0) || ((dateCounts[today] || 0) > 0);
+    
+    if (!todayHasGifts && latestDateWithGifts && latestDateWithGifts !== today) {
+      hasFallbacked.current = true;
+      setSelectedDate(latestDateWithGifts);
+      setVisibleCount(INITIAL_VISIBLE);
+    }
+  }, [posts.length, dateCounts, latestDateWithGifts, isLoadingDayCounts, userManuallySelected]);
 
   const toggleMute = useCallback(() => {
     setIsMuted(prev => {
@@ -39,6 +58,7 @@ const GiftCelebrationGroupComponent = ({
   }, []);
 
   const handleSelectDate = useCallback((date: string) => {
+    setUserManuallySelected(true);
     setSelectedDate(date);
     setVisibleCount(INITIAL_VISIBLE);
   }, []);
@@ -47,7 +67,8 @@ const GiftCelebrationGroupComponent = ({
   const activePosts = isToday ? posts : historyPosts;
   const activeStats = isToday ? postStats : historyPostStats;
 
-  if (posts.length === 0 && isToday) return null;
+  // Determine loading state
+  const isCurrentlyLoading = isGiftLoading || (isToday ? false : isLoadingHistory) || isLoadingDayCounts;
 
   const sortedPosts = [...activePosts].sort((a, b) => 
     new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -89,17 +110,18 @@ const GiftCelebrationGroupComponent = ({
         </span>
       </div>
 
-
       {/* Posts */}
       <div>
-        {isLoadingHistory ? (
+        {isCurrentlyLoading ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
             <span className="ml-2 text-sm text-muted-foreground">Đang tải...</span>
           </div>
         ) : sortedPosts.length === 0 ? (
           <div className="flex items-center justify-center py-8">
-            <span className="text-sm text-muted-foreground">Không có gift nào trong ngày này</span>
+            <span className="text-sm text-muted-foreground">
+              {isToday ? 'Hôm nay chưa có gift nào' : 'Không có gift nào trong ngày này'}
+            </span>
           </div>
         ) : (
           <>
