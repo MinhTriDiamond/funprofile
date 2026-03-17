@@ -48,8 +48,7 @@ const GiftCelebrationGroupComponent = ({
   // Choose data source: today → live props, other days → history query
   const activePosts = isToday ? posts : historyPosts;
   const activeStats = isToday ? postStats : historyPostStats;
-
-  if (posts.length === 0 && isToday) return null;
+  const isGroupLoading = isToday ? isLoading : isLoadingHistory;
 
   const sortedPosts = [...activePosts].sort((a, b) => 
     new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
