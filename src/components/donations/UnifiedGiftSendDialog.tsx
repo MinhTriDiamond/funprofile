@@ -283,7 +283,9 @@ export const UnifiedGiftSendDialog = ({
     }
     localStorage.setItem(`pending_donation_${hash}`, JSON.stringify({
       txHash: hash, recipientId: recipient.id, senderId: session.user.id,
-      amount, tokenSymbol: selectedToken.symbol, message: customMessage, timestamp: Date.now(),
+      amount, tokenSymbol: selectedToken.symbol, tokenAddress: resolvedTokenAddress || null,
+      chainId: selectedChainId, message: customMessage, messageTemplate: selectedTemplate?.id,
+      postId, timestamp: Date.now(),
     }));
     return false;
   }, [amount, selectedChainId, resolvedTokenAddress, customMessage, postId, selectedTemplate?.id, selectedToken]);
