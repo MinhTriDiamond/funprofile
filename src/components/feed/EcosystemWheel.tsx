@@ -178,6 +178,7 @@ export default function EcosystemWheel({ onItemClick }: { onItemClick?: () => vo
                         alt={item.name}
                         loading="lazy"
                         className="block rounded-full object-cover bg-card cursor-pointer w-full h-full"
+                        style={{ transform: 'scale(1.15)' }}
                       />
                     </div>
                   </button>
