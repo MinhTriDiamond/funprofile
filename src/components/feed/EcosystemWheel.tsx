@@ -166,7 +166,7 @@ export default function EcosystemWheel({ onItemClick }: { onItemClick?: () => vo
                     }}
                   >
                     <div
-                      className="w-full h-full rounded-full p-[3px] flex items-center justify-center group-hover/item:scale-110 transition-transform duration-300"
+                      className="w-full h-full rounded-full flex items-center justify-center group-hover/item:scale-110 transition-transform duration-300"
                       style={{
                         background: 'linear-gradient(135deg, rgba(255,215,0,0.6), rgba(255,180,0,0.3), rgba(255,215,0,0.6))',
                         boxShadow: '0 0 10px rgba(255,215,0,0.35), 0 0 3px rgba(255,215,0,0.2)',
@@ -176,8 +176,7 @@ export default function EcosystemWheel({ onItemClick }: { onItemClick?: () => vo
                         src={item.avatar}
                         alt={item.name}
                         loading="lazy"
-                        className="block rounded-full object-cover bg-card cursor-pointer flex-shrink-0"
-                        style={{ width: dims.logoSize, height: dims.logoSize, minWidth: dims.logoSize, minHeight: dims.logoSize }}
+                        className="block rounded-full object-cover cursor-pointer w-full h-full"
                       />
                     </div>
                   </button>
