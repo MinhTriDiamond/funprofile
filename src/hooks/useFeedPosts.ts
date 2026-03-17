@@ -2,6 +2,7 @@ import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-quer
 import { useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { getVNTodayRange } from '@/lib/vnTimezone';
 
 export interface PostStats {
   reactions: { id: string; user_id: string; type: string }[];
