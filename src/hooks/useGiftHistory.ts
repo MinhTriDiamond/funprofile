@@ -17,6 +17,11 @@ function getTodayVN(): string {
   return `${vn.getUTCFullYear()}-${String(vn.getUTCMonth() + 1).padStart(2, '0')}-${String(vn.getUTCDate()).padStart(2, '0')}`;
 }
 
+// Token totals per day per symbol
+export interface DayTokenTotals {
+  [symbol: string]: { amount: number; count: number };
+}
+
 // Fetch gift counts per day using database function (bypasses 1000 row limit)
 const fetchGiftDayCounts = async (): Promise<Record<string, number>> => {
   const { data, error } = await supabase.rpc('get_gift_day_counts');
@@ -31,6 +36,27 @@ const fetchGiftDayCounts = async (): Promise<Record<string, number>> => {
     counts[row.vn_date] = Number(row.gift_count) || 0;
   });
   return counts;
+};
+
+// Fetch token totals per day
+const fetchGiftDayTokenTotals = async (): Promise<Record<string, DayTokenTotals>> => {
+  const { data, error } = await supabase.rpc('get_gift_day_token_totals');
+
+  if (error) {
+    console.error('Gift day token totals error:', error);
+    return {};
+  }
+
+  const result: Record<string, DayTokenTotals> = {};
+  (data || []).forEach((row: any) => {
+    const dateStr = row.vn_date;
+    if (!result[dateStr]) result[dateStr] = {};
+    result[dateStr][row.token_symbol] = {
+      amount: Number(row.total_amount) || 0,
+      count: Number(row.tx_count) || 0,
+    };
+  });
+  return result;
 };
 
 // Fetch gift posts for a specific VN date
