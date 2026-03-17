@@ -120,6 +120,13 @@ export const useGiftHistory = (selectedDate: string | null) => {
     gcTime: 5 * 60 * 1000,
   });
 
+  const dayTokenTotalsQuery = useQuery({
+    queryKey: ['gift-day-token-totals'],
+    queryFn: fetchGiftDayTokenTotals,
+    staleTime: 60 * 1000,
+    gcTime: 5 * 60 * 1000,
+  });
+
   const historyQuery = useQuery({
     queryKey: ['gift-history-posts', selectedDate],
     queryFn: async () => {
@@ -135,6 +142,7 @@ export const useGiftHistory = (selectedDate: string | null) => {
 
   return {
     dateCounts: dayCountsQuery.data || {},
+    dateTokenTotals: dayTokenTotalsQuery.data || {},
     historyPosts: historyQuery.data?.posts || [],
     historyPostStats: historyQuery.data?.postStats || {},
     isLoadingHistory: historyQuery.isLoading,
