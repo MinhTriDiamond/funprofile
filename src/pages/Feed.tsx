@@ -50,12 +50,9 @@ const Feed = () => {
   const { userId: currentUserId } = useCurrentUser();
   const { t } = useLanguage();
   const { 
-    posts,
-    highlightedPosts,
-    postStats,
-    highlightedPostStats,
-    isLoading,
-    isLoadingHighlighted,
+    posts, 
+    postStats, 
+    isLoading, 
     isFetchingNextPage, 
     hasNextPage, 
     fetchNextPage, 
@@ -110,14 +107,15 @@ const Feed = () => {
                 <StoriesBar currentUserId={currentUserId || ''} />
 
                 {/* Gift celebrations group - always on top */}
-                <GiftCelebrationGroup
-                  key="gift-group-all"
-                  posts={highlightedPosts}
-                  currentUserId={currentUserId || ''}
-                  onPostDeleted={refetch}
-                  postStats={highlightedPostStats}
-                  isLoading={isLoadingHighlighted}
-                />
+                {!isLoading && (
+                  <GiftCelebrationGroup
+                    key="gift-group-all"
+                    posts={posts.filter(p => p.post_type === 'gift_celebration')}
+                    currentUserId={currentUserId || ''}
+                    onPostDeleted={refetch}
+                    postStats={postStats}
+                  />
+                )}
 
                 {currentUserId && <AccountUpgradeBanner />}
 
