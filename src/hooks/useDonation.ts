@@ -43,6 +43,7 @@ export interface DonationParams {
 
 export function useDonation(options?: UseDonationOptions) {
   const { address, isConnected, chainId } = useAccount();
+  const publicClient = usePublicClient();
   const [isProcessing, setIsProcessing] = useState(false);
   
   // For native BNB transfers
