@@ -290,6 +290,7 @@ export const useFeedPosts = () => {
 
   const refetch = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['feed-posts'] });
+    queryClient.invalidateQueries({ queryKey: ['highlighted-posts'] });
   }, [queryClient]);
 
   useEffect(() => {
