@@ -5331,6 +5331,15 @@ export type Database = {
           vn_date: string
         }[]
       }
+      get_gift_day_token_totals: {
+        Args: never
+        Returns: {
+          token_symbol: string
+          total_amount: number
+          tx_count: number
+          vn_date: string
+        }[]
+      }
       get_light_community: {
         Args: { p_limit?: number }
         Returns: {
