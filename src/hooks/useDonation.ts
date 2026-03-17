@@ -112,7 +112,29 @@ export function useDonation(options?: UseDonationOptions) {
         });
       }
 
-      // ✅ TX confirmed on chain - save to localStorage for recovery
+      // ✅ TX broadcasted - now wait for blockchain confirmation
+      toast.loading('Đang chờ xác nhận từ blockchain...', { id: 'donation-tx' });
+
+      let receiptConfirmed = false;
+      if (publicClient) {
+        try {
+          const receipt = await publicClient.waitForTransactionReceipt({
+            hash: txHash,
+            confirmations: 1,
+            timeout: 60_000,
+          });
+          receiptConfirmed = receipt.status === 'success';
+        } catch {
+          receiptConfirmed = false;
+        }
+      }
+
+      if (!receiptConfirmed) {
+        toast.error('Giao dịch không thành công trên blockchain. Vui lòng kiểm tra trên BscScan.', { id: 'donation-tx', duration: 10000 });
+        return null;
+      }
+
+      // Save to localStorage for recovery (only after confirmed)
       const pendingDonation = {
         txHash,
         recipientId: params.recipientId,
