@@ -333,7 +333,7 @@ export const UnifiedGiftSendDialog = ({
   const waitForReceipt = useCallback(async (hash: string): Promise<boolean> => {
     if (!publicClient) return false;
     try {
-      setTxStepOverride?.('confirming');
+      // txStep is managed by useSendToken, no override needed
       const receipt = await publicClient.waitForTransactionReceipt({
         hash: hash as `0x${string}`,
         confirmations: 1,
