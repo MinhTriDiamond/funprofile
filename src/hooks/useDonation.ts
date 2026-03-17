@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useAccount, useSendTransaction } from 'wagmi';
+import { useAccount, useSendTransaction, usePublicClient } from 'wagmi';
 import { parseEther, parseUnits } from 'viem';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
