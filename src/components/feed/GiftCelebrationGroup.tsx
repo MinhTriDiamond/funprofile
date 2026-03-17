@@ -21,6 +21,7 @@ const GiftCelebrationGroupComponent = ({
   currentUserId,
   onPostDeleted,
   postStats,
+  isLoading = false,
 }: GiftCelebrationGroupProps) => {
   const [isMuted, setIsMuted] = useState(() => 
     localStorage.getItem('celebration_muted') === 'true'
