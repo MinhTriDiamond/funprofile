@@ -352,29 +352,26 @@ export const useFeedPosts = () => {
     staleTime: 30 * 1000,
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
     retry: 3,
     placeholderData: (prev) => prev,
   });
 
   const highlightedPosts = highlightedQuery.data?.posts || [];
   const highlightedStats = highlightedQuery.data?.postStats || {};
-  const highlightedIds = new Set(highlightedPosts.map(p => p.id));
 
-  const regularPosts = (query.data?.pages?.flatMap(page => page.posts) || [])
-    .filter(p => !highlightedIds.has(p.id));
-
-  const allPosts = [...highlightedPosts, ...regularPosts];
-  const allPostStats = {
-    ...highlightedStats,
-    ...(query.data?.pages?.reduce((acc, page) => {
-      return { ...acc, ...page.postStats };
-    }, {} as Record<string, PostStats>) || {}),
-  };
+  const regularPosts = query.data?.pages?.flatMap(page => page.posts) || [];
+  const regularPostStats = query.data?.pages?.reduce((acc, page) => {
+    return { ...acc, ...page.postStats };
+  }, {} as Record<string, PostStats>) || {};
 
   return {
-    posts: allPosts,
-    postStats: allPostStats,
+    posts: regularPosts,
+    postStats: regularPostStats,
+    highlightedPosts,
+    highlightedPostStats: highlightedStats,
     isLoading: query.isLoading,
+    isLoadingHighlighted: highlightedQuery.isLoading && highlightedPosts.length === 0,
     isFetchingNextPage: query.isFetchingNextPage,
     hasNextPage: query.hasNextPage ?? false,
     fetchNextPage: query.fetchNextPage,

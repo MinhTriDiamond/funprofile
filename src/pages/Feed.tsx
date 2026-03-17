@@ -110,15 +110,14 @@ const Feed = () => {
                 <StoriesBar currentUserId={currentUserId || ''} />
 
                 {/* Gift celebrations group - always on top */}
-                {!isLoading && (
-                  <GiftCelebrationGroup
-                    key="gift-group-all"
-                    posts={posts.filter(p => p.post_type === 'gift_celebration')}
-                    currentUserId={currentUserId || ''}
-                    onPostDeleted={refetch}
-                    postStats={postStats}
-                  />
-                )}
+                <GiftCelebrationGroup
+                  key="gift-group-all"
+                  posts={highlightedPosts}
+                  currentUserId={currentUserId || ''}
+                  onPostDeleted={refetch}
+                  postStats={highlightedPostStats}
+                  isLoading={isLoadingHighlighted}
+                />
 
                 {currentUserId && <AccountUpgradeBanner />}
 
