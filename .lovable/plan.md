@@ -1,41 +1,83 @@
 
+# Database & Codebase Audit — Implementation Roadmap
 
-## Vấn đề: Gift Celebration biến mất khỏi trang chủ
+## Tài liệu tham chiếu
+- `.lovable/audit-report.md` — Audit report đầy đủ (633 dòng, 20 phần)
 
-### Nguyên nhân gốc
+---
 
-Cha đã kiểm tra kỹ code trong `useFeedPosts.ts`. Có **3 vấn đề chính**:
+## ĐÃ HOÀN THÀNH
 
-1. **Mất dữ liệu khi refetch thất bại**: Query `highlighted-posts` có `staleTime: 30s` và bị invalidate mỗi 30 giây. Nếu lần refetch tiếp theo thất bại (mất mạng tạm thời, Supabase timeout), React Query sẽ trả về mảng rỗng `[]` → Gift biến mất hoàn toàn khỏi UI.
+### Phase 0 — Audit & Documentation ✅
+| # | Công việc | Trạng thái |
+|---|----------|-----------|
+| 0A | Viết audit report 20 phần | ✅ Done |
+| 0B | Xác định Canonical Domain Models | ✅ Done |
+| 0C | Xác định Do Not Touch First list | ✅ Done |
+| 0D | Xác định Refactor Blockers | ✅ Done |
 
-2. **`refetchOnWindowFocus: false`**: Khi user chuyển tab rồi quay lại, query không tự refetch → dữ liệu cũ có thể bị stale hoặc mất.
+### Phase 1A — Performance Indexes ✅
+| Index | Table | Columns | Mục đích |
+|-------|-------|---------|----------|
+| `idx_notifications_user_read` | notifications | user_id, read | Badge count + dropdown |
+| `idx_reactions_post_type` | reactions | post_id, type | Reaction counts per post |
+| `idx_light_actions_user_created` | light_actions | user_id, created_at DESC | Light Score history |
+| `idx_posts_user_created` | posts | user_id, created_at DESC | Profile feed |
+| `idx_chunked_chunks_status` | chunked_recording_chunks | status | Cleanup queries |
+| `idx_donations_sender_status` | donations | sender_id, status | Benefactor leaderboard |
+| `idx_donations_recipient_status` | donations | recipient_id, status | Recipient leaderboard |
+| `idx_comments_post_created` | comments | post_id, created_at | Comment thread load |
+| `idx_friendships_user_status` | friendships | user_id, status | Friend lookup |
+| `idx_friendships_friend_status` | friendships | friend_id, status | Friend lookup |
 
-3. **Realtime subscription chỉ lắng nghe INSERT**: Nếu Supabase realtime bị disconnect ngầm (rất hay xảy ra), không có cơ chế reconnect hay fallback → gift mới không xuất hiện, và không có cách phát hiện disconnect.
+### Phase 1B — SQL Comments Documentation ✅
+- COMMENT ON TABLE cho tất cả 93 tables
+- COMMENT ON VIEW cho tất cả 5 views
+- Phân loại theo domain: Core, Social, Messaging, Live, Recording, Light Score, Rewards, Wallet, Auth, OAuth, Search, Content, System, PPLP
 
-### Kế hoạch sửa
+---
 
-**File: `src/hooks/useFeedPosts.ts`**
+## CHƯA LÀM — KẾ HOẠCH TIẾP THEO
 
-1. **Giữ dữ liệu cũ khi refetch** — Thêm `placeholderData: (prev) => prev` cho `highlightedQuery` để khi refetch thất bại, UI vẫn giữ nguyên dữ liệu gift cũ thay vì hiện mảng rỗng.
+### Phase 1C-F — Safe Cleanup (rủi ro THẤP)
 
-2. **Bật `refetchOnWindowFocus`** cho `highlightedQuery` — Khi user quay lại tab, tự động load lại gift mới nhất.
+| # | Công việc | Chi tiết |
+|---|----------|---------|
+| 1C | Phân loại empty tables | 35 tables 0-rows → Active/Planned/Legacy/Deletable |
+| 1D | console.log → logger | 77 instances cần thay thế |
+| 1E | useAdminRole shared hook | Đã tạo, cần migrate các component dùng trực tiếp `has_role` |
+| 1F | Edge function _shared helpers | cors, auth, response — đã tạo ✅ |
 
-3. **Tăng retry** — Đặt `retry: 3` cho `highlightedQuery` để chống lỗi mạng tạm thời.
+### Phase 2 — Structural Improvements (rủi ro TRUNG BÌNH)
 
-4. **Cải thiện realtime subscription** — Thêm lắng nghe sự kiện `UPDATE` và `DELETE` (không chỉ INSERT), và thêm logic tự phát hiện khi channel bị disconnect để invalidate query.
+| # | Công việc | Chi tiết |
+|---|----------|---------|
+| 2A | State enum documentation | Document các status/type enums trong DB |
+| 2B | Merge search_logs → search_history | Consolidate duplicate search tracking |
+| 2C | notifications.read → is_read | Compatibility migration (backfill + dual-write) |
+| 2D | Xóa useLiveComments | Dead code cleanup |
+| 2E | Module hóa hooks/ | Nhóm theo domain (social, chat, live, wallet, etc.) |
+| 2F | Tách components/feed/ | Sub-domains cho feed components |
+| 2G | useCapabilities layer | Đã tạo ✅, cần migrate consumers |
 
-5. **Thêm `structuralSharing: true`** (mặc định) để React Query chỉ re-render khi dữ liệu thực sự thay đổi.
+### Phase 3 — Deep Refactor (rủi ro CAO)
 
-**File: `src/pages/Feed.tsx`**
+| # | Công việc | Blocker |
+|---|----------|---------|
+| 3A | Tách profiles → user_wallet_config | Nhiều component đọc trực tiếp profiles |
+| 3B | Claims lifecycle audit | reward_claims + pending_claims khác lifecycle |
+| 3C | FinancialTab → platform_financial_data | Admin UI đang đọc grand_total_* từ profiles |
+| 3D | get_user_rewards_v2 refactor | Đang dùng livestreams table, cần chuyển live_sessions |
+| 3E | live_comments product review | Quyết định drop hoặc giữ |
+| 3F | Profiles RLS tightening | Public by Design → quyết định enforcement model |
+| 3G | Gộp 15 media edge functions | Router pattern |
 
-6. **Bỏ điều kiện `giftPosts.length > 0`** — Thay vào đó, luôn render `GiftCelebrationGroup` (component tự xử lý trường hợp rỗng), tránh trường hợp flash giữa có/không gift.
+---
 
-### Tóm tắt thay đổi
+## Linter Warnings (có sẵn, chưa xử lý)
+- **RLS Enabled No Policy**: Một số tables có RLS enabled nhưng chưa có policy
+- **RLS Policy Always True**: Một số policies dùng `USING (true)` cho INSERT/UPDATE/DELETE
+- Sẽ xử lý trong Phase 2-3 khi refactor từng domain
 
-| File | Thay đổi |
-|---|---|
-| `src/hooks/useFeedPosts.ts` | Thêm `placeholderData`, `refetchOnWindowFocus: true`, `retry: 3`, realtime lắng nghe `*` events + reconnect detection |
-| `src/pages/Feed.tsx` | Luôn render GiftCelebrationGroup, bỏ check `length > 0` |
-
-Sau khi sửa, gift sẽ **luôn hiển thị** trên trang chủ, không bị mất khi mạng chập chờn hoặc khi chuyển tab.
-
+## Light Score 5 Trụ Cột — Phase 1 ✅ HOÀN THÀNH
+(Chi tiết xem phiên bản trước của plan)

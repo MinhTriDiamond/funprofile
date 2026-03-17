@@ -312,25 +312,32 @@ export const useFeedPosts = () => {
     return () => clearInterval(interval);
   }, [queryClient]);
 
-  // Realtime: instantly refresh gift celebrations when new gift_celebration post is inserted
+  // Realtime: instantly refresh gift celebrations on any change
   useEffect(() => {
+    const invalidateGifts = () => {
+      queryClient.invalidateQueries({ queryKey: ['highlighted-posts'] });
+      queryClient.invalidateQueries({ queryKey: ['gift-day-counts'] });
+      queryClient.invalidateQueries({ queryKey: ['donation-count-by-date'] });
+    };
+
     const channel = supabase
       .channel('gift-celebration-realtime')
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
+          event: '*',
           schema: 'public',
           table: 'posts',
           filter: 'post_type=eq.gift_celebration',
         },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['highlighted-posts'] });
-          queryClient.invalidateQueries({ queryKey: ['gift-day-counts'] });
-          queryClient.invalidateQueries({ queryKey: ['donation-count-by-date'] });
-        }
+        () => invalidateGifts()
       )
-      .subscribe();
+      .subscribe((status) => {
+        // If channel disconnects then reconnects, refetch to catch missed events
+        if (status === 'CHANNEL_ERROR') {
+          setTimeout(() => invalidateGifts(), 2000);
+        }
+      });
 
     return () => {
       supabase.removeChannel(channel);
@@ -347,7 +354,9 @@ export const useFeedPosts = () => {
     },
     staleTime: 30 * 1000,
     gcTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
+    retry: 3,
+    placeholderData: (prev) => prev,
   });
 
   const highlightedPosts = highlightedQuery.data?.posts || [];
