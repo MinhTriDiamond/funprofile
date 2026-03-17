@@ -60,12 +60,12 @@ const GiftHistoryCalendarComponent = ({
       <PopoverContent
         align="center"
         sideOffset={6}
-        className="w-auto p-3"
+        className="w-auto p-4"
       >
-        <div className="text-xs font-semibold text-muted-foreground mb-2">
-          7 ngày gần nhất
+        <div className="text-sm font-bold text-muted-foreground mb-3">
+          Chi tiết giao dịch các ngày trong tuần
         </div>
-        <div className="grid grid-cols-7 gap-2">
+        <div className="grid grid-cols-7 gap-3">
           {days.map(({ date, day, dayName }) => {
             const isSelected = date === selectedDate;
             const isToday = date === todayStr;
