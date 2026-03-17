@@ -2,6 +2,11 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { getTodayVN, vnDateToUtcRange } from '@/lib/vnTimezone';
 
+// Token totals per day per symbol
+export interface DayTokenTotals {
+  [symbol: string]: { amount: number; count: number };
+}
+
 // Fetch gift counts per day using database function (bypasses 1000 row limit)
 const fetchGiftDayCounts = async (): Promise<Record<string, number>> => {
   const { data, error } = await supabase.rpc('get_gift_day_counts');
@@ -16,6 +21,27 @@ const fetchGiftDayCounts = async (): Promise<Record<string, number>> => {
     counts[row.vn_date] = Number(row.gift_count) || 0;
   });
   return counts;
+};
+
+// Fetch token totals per day
+const fetchGiftDayTokenTotals = async (): Promise<Record<string, DayTokenTotals>> => {
+  const { data, error } = await supabase.rpc('get_gift_day_token_totals');
+
+  if (error) {
+    console.error('Gift day token totals error:', error);
+    return {};
+  }
+
+  const result: Record<string, DayTokenTotals> = {};
+  (data || []).forEach((row: any) => {
+    const dateStr = row.vn_date;
+    if (!result[dateStr]) result[dateStr] = {};
+    result[dateStr][row.token_symbol] = {
+      amount: Number(row.total_amount) || 0,
+      count: Number(row.tx_count) || 0,
+    };
+  });
+  return result;
 };
 
 // Fetch gift posts for a specific VN date
@@ -96,11 +122,10 @@ export const useGiftHistory = (selectedDate: string | null) => {
     gcTime: 5 * 60 * 1000,
   });
 
-  // Đếm donation count chính xác từ bảng donations (nguồn dữ liệu chuẩn)
-  const donationCountQuery = useQuery({
-    queryKey: ['donation-count-by-date', activeDate],
-    queryFn: () => fetchDonationCountByDate(activeDate),
-    staleTime: 30 * 1000,
+  const dayTokenTotalsQuery = useQuery({
+    queryKey: ['gift-day-token-totals'],
+    queryFn: fetchGiftDayTokenTotals,
+    staleTime: 60 * 1000,
     gcTime: 5 * 60 * 1000,
   });
 
@@ -119,7 +144,7 @@ export const useGiftHistory = (selectedDate: string | null) => {
 
   return {
     dateCounts: dayCountsQuery.data || {},
-    donationCount: donationCountQuery.data ?? 0,
+    dateTokenTotals: dayTokenTotalsQuery.data || {},
     historyPosts: historyQuery.data?.posts || [],
     historyPostStats: historyQuery.data?.postStats || {},
     isLoadingHistory: historyQuery.isLoading,
