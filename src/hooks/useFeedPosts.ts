@@ -332,7 +332,7 @@ export const useFeedPosts = () => {
       )
       .subscribe((status) => {
         // If channel disconnects then reconnects, refetch to catch missed events
-        if (status === 'CHANNEL_ERROR') {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
           setTimeout(() => invalidateGifts(), 2000);
         }
       });
