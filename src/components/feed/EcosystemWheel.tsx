@@ -91,10 +91,10 @@ export default function EcosystemWheel({ onItemClick }: { onItemClick?: () => vo
 
   // Responsive sizing: fit wheel within container width with padding
   const dims = useMemo(() => {
-    const availableWidth = containerWidth > 0 ? containerWidth - 8 : 300; // 4px padding each side
-    const maxWheelSize = Math.min(availableWidth, 400); // cap at 400px
+    const availableWidth = containerWidth > 0 ? containerWidth - 8 : 300;
+    const maxWheelSize = Math.min(availableWidth, 400);
     const orbitRadius = maxWheelSize * 0.40;
-    const logoSize = maxWheelSize * 0.21;
+    const logoSize = maxWheelSize * 0.24; // bigger logos to fill circles
     const itemSize = logoSize + 6;
     const halfItem = itemSize / 2;
     const size = (orbitRadius + halfItem) * 2;
@@ -207,13 +207,51 @@ export default function EcosystemWheel({ onItemClick }: { onItemClick?: () => vo
             );
           })}
 
-          {/* Center: FUN Ecosystem logo with gold ring */}
+          {/* Center: FUN Ecosystem logo with sun halo */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
+            {/* Outer sun halo layer — slow pulse */}
             <div
-              className="rounded-full p-[3px]"
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full animate-[sun-halo-outer_3s_ease-in-out_infinite]"
+              style={{
+                width: dims.centerSize * 1.9,
+                height: dims.centerSize * 1.9,
+                background: 'radial-gradient(circle, rgba(255,200,0,0.25) 0%, rgba(255,160,0,0.12) 40%, transparent 70%)',
+              }}
+            />
+            {/* Inner sun halo layer — faster pulse, offset phase */}
+            <div
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full animate-[sun-halo-inner_2s_ease-in-out_0.5s_infinite]"
+              style={{
+                width: dims.centerSize * 1.55,
+                height: dims.centerSize * 1.55,
+                background: 'radial-gradient(circle, rgba(255,215,0,0.35) 0%, rgba(255,180,0,0.15) 50%, transparent 75%)',
+              }}
+            />
+            {/* Sun rays */}
+            <div
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full animate-[sun-rays_4s_linear_infinite]"
+              style={{
+                width: dims.centerSize * 1.7,
+                height: dims.centerSize * 1.7,
+                background: `conic-gradient(from 0deg,
+                  transparent 0deg, rgba(255,215,0,0.18) 10deg, transparent 20deg,
+                  transparent 45deg, rgba(255,200,0,0.15) 55deg, transparent 65deg,
+                  transparent 90deg, rgba(255,215,0,0.2) 100deg, transparent 110deg,
+                  transparent 135deg, rgba(255,200,0,0.12) 145deg, transparent 155deg,
+                  transparent 180deg, rgba(255,215,0,0.18) 190deg, transparent 200deg,
+                  transparent 225deg, rgba(255,200,0,0.15) 235deg, transparent 245deg,
+                  transparent 270deg, rgba(255,215,0,0.2) 280deg, transparent 290deg,
+                  transparent 315deg, rgba(255,200,0,0.12) 325deg, transparent 335deg,
+                  transparent 360deg)`,
+                filter: 'blur(2px)',
+              }}
+            />
+            {/* Gold ring + logo */}
+            <div
+              className="relative rounded-full p-[3px]"
               style={{
                 background: 'linear-gradient(135deg, rgba(255,215,0,0.7), rgba(255,180,0,0.4), rgba(255,215,0,0.7))',
-                boxShadow: '0 0 20px rgba(255,215,0,0.45)',
+                boxShadow: '0 0 20px rgba(255,215,0,0.45), 0 0 40px rgba(255,200,0,0.2)',
               }}
             >
               <div

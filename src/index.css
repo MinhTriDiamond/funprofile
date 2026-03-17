@@ -701,3 +701,19 @@ html {
   background-size: 200% 200%;
   animation: hologram-shimmer 4s ease infinite;
 }
+
+/* Sun halo animations for EcosystemWheel center */
+@keyframes sun-halo-outer {
+  0%, 100% { opacity: 0.5; transform: translate(-50%, -50%) scale(1); }
+  50% { opacity: 1; transform: translate(-50%, -50%) scale(1.12); }
+}
+
+@keyframes sun-halo-inner {
+  0%, 100% { opacity: 0.6; transform: translate(-50%, -50%) scale(1); }
+  50% { opacity: 1; transform: translate(-50%, -50%) scale(1.08); }
+}
+
+@keyframes sun-rays {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
