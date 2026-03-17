@@ -51,10 +51,10 @@ const GiftHistoryCalendarComponent = ({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button className="flex items-center gap-1 px-2 py-1 rounded-md text-sm font-semibold text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors">
-          <Calendar className="w-4 h-4 text-pink-600" />
-          <span className="text-pink-600">Lịch sử 7 ngày</span>
-          <ChevronDown className={`w-3 h-3 transition-transform ${open ? 'rotate-180' : ''}`} />
+        <button className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-base font-semibold text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors">
+          <Calendar className="w-5 h-5 text-pink-600" />
+          <span className="text-pink-600 text-base">Lịch sử 7 ngày</span>
+          <ChevronDown className={`w-4 h-4 transition-transform ${open ? 'rotate-180' : ''}`} />
         </button>
       </PopoverTrigger>
       <PopoverContent
