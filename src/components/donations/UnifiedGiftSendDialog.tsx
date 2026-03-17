@@ -361,7 +361,7 @@ export const UnifiedGiftSendDialog = ({
           if (recipient.id) recordDonationBackground(hash, recipient);
           onSuccess?.();
         } else {
-          const scanUrl = getBscScanTxUrlByChain(hash, selectedToken.symbol, selectedChainId);
+          const scanUrl = getBscScanTxUrlByChain(hash, selectedChainId);
           toast.error('Giao dịch không thành công trên blockchain. Vui lòng kiểm tra trên BscScan.', {
             action: { label: 'BscScan', onClick: () => window.open(scanUrl, '_blank') },
             duration: 10000,
