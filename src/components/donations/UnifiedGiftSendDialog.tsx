@@ -329,6 +329,23 @@ export const UnifiedGiftSendDialog = ({
     decimals: selectedToken.decimals, logo: selectedToken.logo, color: selectedToken.color,
   };
 
+  /** Wait for blockchain receipt before recording donation */
+  const waitForReceipt = useCallback(async (hash: string): Promise<boolean> => {
+    if (!publicClient) return false;
+    try {
+      // txStep is managed by useSendToken, no override needed
+      const receipt = await publicClient.waitForTransactionReceipt({
+        hash: hash as `0x${string}`,
+        confirmations: 1,
+        timeout: 60_000,
+      });
+      return receipt.status === 'success';
+    } catch (err) {
+      logger.error('[GIFT] waitForReceipt failed:', (err as Error)?.message);
+      return false;
+    }
+  }, [publicClient]);
+
   const handleSend = async () => {
     if (recipientsWithWallet.length === 1) {
       // Single send
@@ -336,10 +353,21 @@ export const UnifiedGiftSendDialog = ({
       if (!recipient?.walletAddress) { toast.error('Người nhận chưa có ví liên kết'); return; }
       const hash = await sendToken({ token: walletToken, recipient: recipient.walletAddress, amount });
       if (hash) {
-        const cardData = buildCardData(hash, recipient, parsedAmountNum);
-        setCelebrationData(cardData); setShowCelebration(true); setFlowStep('celebration');
-        if (recipient.id) recordDonationBackground(hash, recipient);
-        onSuccess?.();
+        // Wait for blockchain confirmation before recording
+        const confirmed = await waitForReceipt(hash);
+        if (confirmed) {
+          const cardData = buildCardData(hash, recipient, parsedAmountNum);
+          setCelebrationData(cardData); setShowCelebration(true); setFlowStep('celebration');
+          if (recipient.id) recordDonationBackground(hash, recipient);
+          onSuccess?.();
+        } else {
+          const scanUrl = getBscScanTxUrlByChain(hash, selectedChainId);
+          toast.error('Giao dịch không thành công trên blockchain. Vui lòng kiểm tra trên BscScan.', {
+            action: { label: 'BscScan', onClick: () => window.open(scanUrl, '_blank') },
+            duration: 10000,
+          });
+          resetState();
+        }
       }
     } else {
       // Multi send
@@ -353,7 +381,15 @@ export const UnifiedGiftSendDialog = ({
         if (i > 0) await new Promise(r => setTimeout(r, 500));
         try {
           const hash = await sendToken({ token: walletToken, recipient: recipient.walletAddress!, amount, skipBackground: true });
-          results.push(hash ? { recipient, success: true, txHash: hash } : { recipient, success: false, error: 'Giao dịch bị từ chối' });
+          if (hash) {
+            // Wait for blockchain confirmation for each multi-send tx
+            const confirmed = await waitForReceipt(hash);
+            results.push(confirmed
+              ? { recipient, success: true, txHash: hash }
+              : { recipient, success: false, error: 'Giao dịch thất bại trên blockchain' });
+          } else {
+            results.push({ recipient, success: false, error: 'Giao dịch bị từ chối' });
+          }
           resetState();
         } catch (err: unknown) {
           results.push({ recipient, success: false, error: (err as Error)?.message || 'Lỗi gửi' });
