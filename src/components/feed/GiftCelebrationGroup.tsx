@@ -10,6 +10,7 @@ interface GiftCelebrationGroupProps {
   currentUserId: string;
   onPostDeleted: () => void;
   postStats: Record<string, any>;
+  isLoading?: boolean;
 }
 
 const INITIAL_VISIBLE = 3;
@@ -20,6 +21,7 @@ const GiftCelebrationGroupComponent = ({
   currentUserId,
   onPostDeleted,
   postStats,
+  isLoading = false,
 }: GiftCelebrationGroupProps) => {
   const [isMuted, setIsMuted] = useState(() => 
     localStorage.getItem('celebration_muted') === 'true'
@@ -46,8 +48,7 @@ const GiftCelebrationGroupComponent = ({
   // Choose data source: today → live props, other days → history query
   const activePosts = isToday ? posts : historyPosts;
   const activeStats = isToday ? postStats : historyPostStats;
-
-  if (posts.length === 0 && isToday) return null;
+  const isGroupLoading = isToday ? isLoading : isLoadingHistory;
 
   const sortedPosts = [...activePosts].sort((a, b) => 
     new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -92,10 +93,10 @@ const GiftCelebrationGroupComponent = ({
 
       {/* Posts */}
       <div>
-        {isLoadingHistory ? (
+        {isGroupLoading ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-            <span className="ml-2 text-sm text-muted-foreground">Đang tải...</span>
+            <span className="ml-2 text-sm text-muted-foreground">Đang tải gift...</span>
           </div>
         ) : sortedPosts.length === 0 ? (
           <div className="flex items-center justify-center py-8">

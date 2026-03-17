@@ -2,6 +2,7 @@ import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-quer
 import { useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { getVNTodayRange } from '@/lib/vnTimezone';
 
 export interface PostStats {
   reactions: { id: string; user_id: string; type: string }[];
@@ -179,25 +180,21 @@ const fetchFriendIds = async (userId: string | null): Promise<Set<string>> => {
   return ids;
 };
 
-// Fetch highlighted (pinned) gift celebration posts (today VN time)
+// Fetch highlighted (pinned) gift celebration posts for today in VN time
 const fetchHighlightedPosts = async (): Promise<FeedPost[]> => {
-  // Calculate start of today in VN timezone (UTC+7)
-  const now = new Date();
-  const vnNow = new Date(now.getTime() + 7 * 60 * 60 * 1000);
-  const vnMidnight = new Date(Date.UTC(vnNow.getUTCFullYear(), vnNow.getUTCMonth(), vnNow.getUTCDate(), 0, 0, 0));
-  const utcStart = new Date(vnMidnight.getTime() - 7 * 60 * 60 * 1000);
-  
+  const { start } = getVNTodayRange();
+
   const { data, error } = await supabase
     .from('posts')
     .select(`*, public_profiles!posts_user_id_fkey (username, display_name, avatar_url, public_wallet_address, is_banned)`)
     .eq('post_type', 'gift_celebration')
-    .gte('created_at', utcStart.toISOString())
+    .gte('created_at', start)
     .order('created_at', { ascending: false })
     .limit(500);
 
   if (error) {
     console.error('Error fetching highlighted posts:', error);
-    return [];
+    throw error;
   }
 
   const posts: FeedPost[] = (data || []).map((post: any) => ({
@@ -293,6 +290,7 @@ export const useFeedPosts = () => {
 
   const refetch = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['feed-posts'] });
+    queryClient.invalidateQueries({ queryKey: ['highlighted-posts'] });
   }, [queryClient]);
 
   useEffect(() => {
@@ -334,7 +332,7 @@ export const useFeedPosts = () => {
       )
       .subscribe((status) => {
         // If channel disconnects then reconnects, refetch to catch missed events
-        if (status === 'CHANNEL_ERROR') {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
           setTimeout(() => invalidateGifts(), 2000);
         }
       });
@@ -355,29 +353,26 @@ export const useFeedPosts = () => {
     staleTime: 30 * 1000,
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
     retry: 3,
     placeholderData: (prev) => prev,
   });
 
   const highlightedPosts = highlightedQuery.data?.posts || [];
   const highlightedStats = highlightedQuery.data?.postStats || {};
-  const highlightedIds = new Set(highlightedPosts.map(p => p.id));
 
-  const regularPosts = (query.data?.pages?.flatMap(page => page.posts) || [])
-    .filter(p => !highlightedIds.has(p.id));
-
-  const allPosts = [...highlightedPosts, ...regularPosts];
-  const allPostStats = {
-    ...highlightedStats,
-    ...(query.data?.pages?.reduce((acc, page) => {
-      return { ...acc, ...page.postStats };
-    }, {} as Record<string, PostStats>) || {}),
-  };
+  const regularPosts = query.data?.pages?.flatMap(page => page.posts) || [];
+  const regularPostStats = query.data?.pages?.reduce((acc, page) => {
+    return { ...acc, ...page.postStats };
+  }, {} as Record<string, PostStats>) || {};
 
   return {
-    posts: allPosts,
-    postStats: allPostStats,
+    posts: regularPosts,
+    postStats: regularPostStats,
+    highlightedPosts,
+    highlightedPostStats: highlightedStats,
     isLoading: query.isLoading,
+    isLoadingHighlighted: highlightedQuery.isLoading && highlightedPosts.length === 0,
     isFetchingNextPage: query.isFetchingNextPage,
     hasNextPage: query.hasNextPage ?? false,
     fetchNextPage: query.fetchNextPage,
