@@ -76,7 +76,7 @@ const GiftHistoryCalendarComponent = ({
                 key={date}
                 onClick={() => handleSelect(date)}
                 className={`
-                  flex flex-col items-center justify-center rounded-lg py-1.5 px-2 text-xs transition-all
+                  flex flex-col items-center justify-center rounded-lg py-2 px-3 text-sm transition-all
                   ${isSelected
                     ? 'bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/40 font-semibold'
                     : isToday
@@ -85,11 +85,11 @@ const GiftHistoryCalendarComponent = ({
                   }
                 `}
               >
-                <span className={`text-[11px] font-bold leading-none ${isSelected ? 'text-emerald-400' : ''}`}>
+                <span className={`text-base font-bold leading-none ${isSelected ? 'text-emerald-400' : ''}`}>
                   {day}
                 </span>
-                <span className="text-[9px] leading-none mt-0.5">{dayName}</span>
-                <span className={`text-[10px] font-semibold leading-none mt-0.5 ${
+                <span className="text-xs leading-none mt-1">{dayName}</span>
+                <span className={`text-sm font-bold leading-none mt-1 ${
                   count > 0
                     ? 'text-pink-600'
                     : 'text-muted-foreground'
