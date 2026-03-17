@@ -180,25 +180,21 @@ const fetchFriendIds = async (userId: string | null): Promise<Set<string>> => {
   return ids;
 };
 
-// Fetch highlighted (pinned) gift celebration posts (today VN time)
+// Fetch highlighted (pinned) gift celebration posts for today in VN time
 const fetchHighlightedPosts = async (): Promise<FeedPost[]> => {
-  // Calculate start of today in VN timezone (UTC+7)
-  const now = new Date();
-  const vnNow = new Date(now.getTime() + 7 * 60 * 60 * 1000);
-  const vnMidnight = new Date(Date.UTC(vnNow.getUTCFullYear(), vnNow.getUTCMonth(), vnNow.getUTCDate(), 0, 0, 0));
-  const utcStart = new Date(vnMidnight.getTime() - 7 * 60 * 60 * 1000);
-  
+  const { start } = getVNTodayRange();
+
   const { data, error } = await supabase
     .from('posts')
     .select(`*, public_profiles!posts_user_id_fkey (username, display_name, avatar_url, public_wallet_address, is_banned)`)
     .eq('post_type', 'gift_celebration')
-    .gte('created_at', utcStart.toISOString())
+    .gte('created_at', start)
     .order('created_at', { ascending: false })
     .limit(500);
 
   if (error) {
     console.error('Error fetching highlighted posts:', error);
-    return [];
+    throw error;
   }
 
   const posts: FeedPost[] = (data || []).map((post: any) => ({
