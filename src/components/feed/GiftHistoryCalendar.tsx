@@ -51,21 +51,21 @@ const GiftHistoryCalendarComponent = ({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button className="flex items-center gap-1 px-2 py-1 rounded-md text-sm font-semibold text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors">
-          <Calendar className="w-4 h-4 text-pink-600" />
-          <span className="text-pink-600">Lịch sử 7 ngày</span>
-          <ChevronDown className={`w-3 h-3 transition-transform ${open ? 'rotate-180' : ''}`} />
+        <button className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-base font-semibold text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors">
+          <Calendar className="w-5 h-5 text-pink-600" />
+          <span className="text-pink-600 text-base">Lịch sử 7 ngày</span>
+          <ChevronDown className={`w-4 h-4 transition-transform ${open ? 'rotate-180' : ''}`} />
         </button>
       </PopoverTrigger>
       <PopoverContent
         align="center"
         sideOffset={6}
-        className="w-auto p-3"
+        className="w-auto p-4"
       >
-        <div className="text-xs font-semibold text-muted-foreground mb-2">
-          7 ngày gần nhất
+        <div className="text-sm font-bold text-muted-foreground mb-3">
+          Chi tiết giao dịch các ngày trong tuần
         </div>
-        <div className="grid grid-cols-7 gap-2">
+        <div className="grid grid-cols-7 gap-3">
           {days.map(({ date, day, dayName }) => {
             const isSelected = date === selectedDate;
             const isToday = date === todayStr;
@@ -76,7 +76,7 @@ const GiftHistoryCalendarComponent = ({
                 key={date}
                 onClick={() => handleSelect(date)}
                 className={`
-                  flex flex-col items-center justify-center rounded-lg py-1.5 px-2 text-xs transition-all
+                  flex flex-col items-center justify-center rounded-lg py-2 px-3 text-sm transition-all
                   ${isSelected
                     ? 'bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/40 font-semibold'
                     : isToday
@@ -85,11 +85,11 @@ const GiftHistoryCalendarComponent = ({
                   }
                 `}
               >
-                <span className={`text-[11px] font-bold leading-none ${isSelected ? 'text-emerald-400' : ''}`}>
+                <span className={`text-base font-bold leading-none ${isSelected ? 'text-emerald-400' : ''}`}>
                   {day}
                 </span>
-                <span className="text-[9px] leading-none mt-0.5">{dayName}</span>
-                <span className={`text-[10px] font-semibold leading-none mt-0.5 ${
+                <span className="text-xs leading-none mt-1">{dayName}</span>
+                <span className={`text-sm font-bold leading-none mt-1 ${
                   count > 0
                     ? 'text-pink-600'
                     : 'text-muted-foreground'
