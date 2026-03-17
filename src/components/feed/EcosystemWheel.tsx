@@ -91,10 +91,10 @@ export default function EcosystemWheel({ onItemClick }: { onItemClick?: () => vo
 
   // Responsive sizing: fit wheel within container width with padding
   const dims = useMemo(() => {
-    const availableWidth = containerWidth > 0 ? containerWidth - 8 : 300; // 4px padding each side
-    const maxWheelSize = Math.min(availableWidth, 400); // cap at 400px
+    const availableWidth = containerWidth > 0 ? containerWidth - 8 : 300;
+    const maxWheelSize = Math.min(availableWidth, 400);
     const orbitRadius = maxWheelSize * 0.40;
-    const logoSize = maxWheelSize * 0.21;
+    const logoSize = maxWheelSize * 0.24; // bigger logos to fill circles
     const itemSize = logoSize + 6;
     const halfItem = itemSize / 2;
     const size = (orbitRadius + halfItem) * 2;
