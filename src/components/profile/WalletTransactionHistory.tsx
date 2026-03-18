@@ -242,24 +242,57 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
   const navigate = useNavigate();
   const isSent = d.sender_id === userId;
   const explorerUrl = getBscScanBaseUrl(d.chain_id);
+  const isExternal = d.is_external || (!d.sender_id && d.recipient_id);
+
+  const senderName = d.sender_display_name || d.sender_username || 
+    (d.sender_address ? shortenAddress(d.sender_address) : 'Ví ngoài');
+  const senderAvatar = d.sender_avatar_url;
 
   return (
     <div className="border border-border rounded-xl p-3 space-y-2">
       <div className="flex justify-between items-center">
-        <Badge variant="outline" className={isSent ? 'border-red-500 text-red-600 bg-red-50 dark:bg-red-950/30' : 'border-green-500 text-green-600 bg-green-50 dark:bg-green-950/30'}>
-          {isSent ? <ArrowUpRight className="w-3 h-3 mr-1" /> : <ArrowDownLeft className="w-3 h-3 mr-1" />}
-          {isSent ? 'Đã tặng' : 'Đã nhận'}
-        </Badge>
+        <div className="flex items-center gap-1.5">
+          <Badge variant="outline" className={isSent ? 'border-red-500 text-red-600 bg-red-50 dark:bg-red-950/30' : 'border-green-500 text-green-600 bg-green-50 dark:bg-green-950/30'}>
+            {isSent ? <ArrowUpRight className="w-3 h-3 mr-1" /> : <ArrowDownLeft className="w-3 h-3 mr-1" />}
+            {isSent ? 'Đã tặng' : 'Đã nhận'}
+          </Badge>
+          {isExternal && (
+            <Badge variant="secondary" className="bg-orange-100 text-orange-700 border-orange-200 text-[10px] px-1.5 py-0">
+              Ví ngoài
+            </Badge>
+          )}
+        </div>
         <StatusBadge status={d.status} />
       </div>
 
       <div className="flex items-center gap-2 text-sm">
-        <UserAvatar
-          username={d.sender_username}
-          displayName={d.sender_display_name}
-          avatarUrl={d.sender_avatar_url}
-          onClick={() => d.sender_username && navigate(`/${d.sender_username}`)}
-        />
+        {isExternal && !d.sender_id ? (
+          <div className="flex items-center gap-1.5 min-w-0">
+            <Avatar className="w-6 h-6 flex-shrink-0">
+              <AvatarFallback className="text-[10px] bg-orange-100 text-orange-700">🌐</AvatarFallback>
+            </Avatar>
+            {d.sender_address ? (
+              <a
+                href={`${explorerUrl}/address/${d.sender_address}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs font-medium text-primary hover:underline flex items-center gap-1"
+                onClick={e => e.stopPropagation()}
+              >
+                {shortenAddress(d.sender_address)} <ExternalLink className="w-3 h-3" />
+              </a>
+            ) : (
+              <span className="text-xs font-medium text-muted-foreground">Ví ngoài</span>
+            )}
+          </div>
+        ) : (
+          <UserAvatar
+            username={d.sender_username}
+            displayName={d.sender_display_name}
+            avatarUrl={d.sender_avatar_url}
+            onClick={() => d.sender_username && navigate(`/${d.sender_username}`)}
+          />
+        )}
         <span className="text-muted-foreground">→</span>
         <UserAvatar
           username={d.recipient_username}
