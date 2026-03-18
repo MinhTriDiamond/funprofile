@@ -81,14 +81,14 @@ async function fetchLogsChunked(
   return allLogs;
 }
 
-async function fetchTransfersViaBscRpc(walletAddr: string): Promise<TokenTransfer[]> {
+async function fetchTransfersViaBscRpc(walletAddr: string, scanFromBlock?: number): Promise<TokenTransfer[]> {
   const paddedAddr = "0x" + walletAddr.slice(2).padStart(64, "0");
   const allTransfers: TokenTransfer[] = [];
 
-  // Get current block number
   const latestHex = await rpcCall("eth_blockNumber", []);
   const latestBlock = parseInt(latestHex, 16);
-  console.log(`BSC RPC: latest block ${latestBlock}, scanning from ${SCAN_FROM_BLOCK}`);
+  const fromBlock = scanFromBlock || DEFAULT_SCAN_FROM_BLOCK;
+  console.log(`BSC RPC: latest block ${latestBlock}, scanning from ${fromBlock}`);
 
   for (const [tokenAddr, tokenInfo] of Object.entries(KNOWN_TOKENS)) {
     // Received
