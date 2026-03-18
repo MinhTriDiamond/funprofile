@@ -393,8 +393,8 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
         {/* Fixed header */}
         <div className="flex-shrink-0">
           <DialogHeader>
-            <DialogTitle className="flex items-center justify-center gap-2 text-xl uppercase tracking-wider font-extrabold w-full" style={{ color: '#2E7D32', textShadow: '0 1px 2px rgba(46,125,50,0.2)' }}>
-              <Clock className="w-5 h-5" style={{ color: '#2E7D32' }} />
+            <DialogTitle className="flex items-center justify-center gap-2 text-2xl uppercase tracking-wider font-extrabold w-full" style={{ color: '#2E7D32', textShadow: '0 1px 2px rgba(46,125,50,0.2)' }}>
+              <Clock className="w-6 h-6" style={{ color: '#2E7D32' }} />
               Lịch sử giao dịch cá nhân
             </DialogTitle>
             <DialogDescription className="sr-only">Xem lịch sử chuyển và nhận tiền cá nhân</DialogDescription>
