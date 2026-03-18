@@ -21,6 +21,8 @@ export interface DonationRecord {
   recipient_display_name: string | null;
   recipient_avatar_url: string | null;
   type: 'donation' | 'swap' | 'transfer';
+  is_external?: boolean;
+  sender_address?: string | null;
   // swap-specific
   from_symbol?: string;
   to_symbol?: string;
@@ -177,7 +179,7 @@ export function usePublicDonationHistory(userId: string | undefined) {
           .from('donations')
           .select(`
             id, amount, token_symbol, tx_hash, status, message, created_at, chain_id,
-            sender_id, recipient_id,
+            sender_id, recipient_id, is_external, sender_address,
             sender:profiles!donations_sender_id_fkey(username, display_name, avatar_url),
             recipient:profiles!donations_recipient_id_fkey(username, display_name, avatar_url)
           `)
@@ -206,6 +208,8 @@ export function usePublicDonationHistory(userId: string | undefined) {
           chain_id: d.chain_id,
           sender_id: d.sender_id,
           recipient_id: d.recipient_id,
+          is_external: d.is_external || false,
+          sender_address: d.sender_address || null,
           sender_username: d.sender?.username || null,
           sender_display_name: d.sender?.display_name || null,
           sender_avatar_url: d.sender?.avatar_url || null,
