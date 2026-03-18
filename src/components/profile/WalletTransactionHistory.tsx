@@ -238,6 +238,32 @@ function SwapCard({ d }: { d: DonationRecord }) {
   );
 }
 
+const MSG_TRUNCATE_LENGTH = 80;
+
+function CollapsibleMessage({ message }: { message: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const isLong = message.length > MSG_TRUNCATE_LENGTH;
+
+  return (
+    <div className="flex items-start gap-1.5 text-xs text-muted-foreground bg-muted/50 rounded-lg p-2">
+      <MessageSquare className="w-3 h-3 mt-0.5 flex-shrink-0" />
+      <div className="min-w-0 flex-1">
+        <span className="break-words">
+          {isLong && !expanded ? `${message.slice(0, MSG_TRUNCATE_LENGTH)}...` : message}
+        </span>
+        {isLong && (
+          <button
+            onClick={(e) => { e.stopPropagation(); setExpanded(prev => !prev); }}
+            className="ml-1 text-primary hover:text-primary/80 font-medium inline-flex items-center gap-0.5"
+          >
+            {expanded ? (<>Thu gọn <ChevronUp className="w-3 h-3" /></>) : (<>Xem thêm <ChevronDown className="w-3 h-3" /></>)}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
   const navigate = useNavigate();
   const isSent = d.sender_id === userId;
