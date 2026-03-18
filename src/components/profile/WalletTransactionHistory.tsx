@@ -355,6 +355,7 @@ export function WalletTransactionHistory({ userId, walletAddress }: Props) {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   const { donations, loading, error, filter, hasMore, summary, summaryLoading, changeFilter, fetchDonations, fetchSummary, loadMore } = usePublicDonationHistory(userId);
+  const { balances: walletBalances } = usePublicWalletBalances(open ? walletAddress : undefined);
 
   useEffect(() => {
     if (open && userId) {
