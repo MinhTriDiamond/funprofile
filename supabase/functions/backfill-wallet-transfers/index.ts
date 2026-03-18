@@ -2,6 +2,7 @@ import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { createAdminClient } from "../_shared/supabase.ts";
 
 const MORALIS_BASE = "https://deep-index.moralis.io/api/v2.2";
+const BSCSCAN_API = "https://api.bscscan.com/api";
 
 const KNOWN_TOKENS: Record<string, { symbol: string; decimals: number }> = {
   "0x0910320181889fefde0bb1ca63962b0a8882e413": { symbol: "CAMLY", decimals: 3 },
@@ -20,282 +21,242 @@ interface TokenTransfer {
   block_timestamp: string;
 }
 
+// ── BSCScan API (free, no key needed for basic) ──
+
+async function fetchTransfersViaBscScan(walletAddr: string): Promise<TokenTransfer[]> {
+  const allTransfers: TokenTransfer[] = [];
+  
+  // Fetch all ERC20 token transfers for the wallet
+  const url = `${BSCSCAN_API}?module=account&action=tokentx&address=${walletAddr}&startblock=0&endblock=999999999&sort=desc&offset=1000&page=1`;
+  console.log(`BSCScan API: fetching for ${walletAddr.slice(0, 10)}...`);
+
+  const res = await fetch(url);
+  if (!res.ok) {
+    console.error(`BSCScan error: ${res.status}`);
+    return [];
+  }
+
+  const data = await res.json();
+  if (data.status !== "1" || !Array.isArray(data.result)) {
+    console.log(`BSCScan: ${data.message || 'no results'}`);
+    return [];
+  }
+
+  console.log(`BSCScan: ${data.result.length} token transfers found`);
+
+  for (const tx of data.result) {
+    const tokenAddr = (tx.contractAddress || "").toLowerCase();
+    if (!KNOWN_TOKENS[tokenAddr]) continue;
+
+    allTransfers.push({
+      transaction_hash: tx.hash,
+      from_address: (tx.from || "").toLowerCase(),
+      to_address: (tx.to || "").toLowerCase(),
+      value: tx.value || "0",
+      address: tokenAddr,
+      block_timestamp: tx.timeStamp 
+        ? new Date(parseInt(tx.timeStamp) * 1000).toISOString()
+        : new Date().toISOString(),
+    });
+  }
+
+  return allTransfers;
+}
+
+// ── Moralis ──
+
+async function fetchTransfersViaMoralis(
+  walletAddr: string, chain: string, moralisKey: string
+): Promise<TokenTransfer[] | null> {
+  const all: TokenTransfer[] = [];
+  let cursor: string | null = null;
+  let page = 0;
+  do {
+    const params = new URLSearchParams({ chain, limit: "100" });
+    if (cursor) params.set("cursor", cursor);
+    const res = await fetch(`${MORALIS_BASE}/${walletAddr}/erc20/transfers?${params}`, {
+      headers: { "X-API-Key": moralisKey, Accept: "application/json" },
+    });
+    if (!res.ok) {
+      if (res.status === 401 || res.status === 429) return null;
+      break;
+    }
+    const data = await res.json();
+    all.push(...(data.result || []));
+    cursor = data.cursor || null;
+    page++;
+  } while (cursor && page < 20);
+  return all;
+}
+
+// ── Main ──
+
 Deno.serve(async (req) => {
   const cors = handleCors(req);
   if (cors) return cors;
 
   try {
     const moralisKey = Deno.env.get("MORALIS_API_KEY");
-    if (!moralisKey) {
-      return new Response(JSON.stringify({ error: "MORALIS_API_KEY not configured" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
     const supabase = createAdminClient();
     const body = await req.json();
     const { user_id, wallet_address, chain = "0x38", chain_id = 56 } = body;
-
-    // Resolve wallet address
-    let walletAddr = wallet_address?.toLowerCase().trim();
     let userId = user_id;
 
-    if (!walletAddr && !userId) {
+    let walletAddresses: string[] = [];
+    if (wallet_address) walletAddresses = [wallet_address.toLowerCase().trim()];
+
+    if (!walletAddresses.length && !userId) {
       return new Response(JSON.stringify({ error: "user_id or wallet_address required" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    if (!walletAddr && userId) {
+    if (userId && !walletAddresses.length) {
       const { data: profile } = await supabase
         .from("profiles")
-        .select("id, public_wallet_address, wallet_address")
-        .eq("id", userId)
-        .single();
+        .select("id, public_wallet_address, wallet_address, external_wallet_address")
+        .eq("id", userId).single();
       if (!profile) {
         return new Response(JSON.stringify({ error: "User not found" }), {
-          status: 404,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      walletAddr = (profile.public_wallet_address || profile.wallet_address || "").toLowerCase().trim();
-      if (!walletAddr) {
-        // Fallback: check TREASURY_WALLET_ADDRESS env for treasury profiles
-        const treasuryAddr = Deno.env.get("TREASURY_WALLET_ADDRESS")?.toLowerCase().trim();
-        if (treasuryAddr) {
-          walletAddr = treasuryAddr;
-          console.log(`Using TREASURY_WALLET_ADDRESS fallback for user ${userId}`);
-        } else {
-          return new Response(JSON.stringify({ error: "User has no wallet address" }), {
-            status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
+      const addrs = new Set<string>();
+      for (const f of ["public_wallet_address", "wallet_address", "external_wallet_address"]) {
+        const v = (profile as any)[f]?.toLowerCase().trim();
+        if (v && v.startsWith("0x") && v.length === 42) addrs.add(v);
+      }
+      if (addrs.size === 0) {
+        const ta = Deno.env.get("TREASURY_WALLET_ADDRESS")?.toLowerCase().trim();
+        if (ta) addrs.add(ta);
+      }
+      walletAddresses = Array.from(addrs);
+      if (!walletAddresses.length) {
+        return new Response(JSON.stringify({ error: "User has no wallet address" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
     }
 
-    if (!userId && walletAddr) {
+    if (!userId && walletAddresses.length) {
       const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id, public_wallet_address, wallet_address, external_wallet_address");
+        .from("profiles").select("id, public_wallet_address, wallet_address, external_wallet_address");
+      const wa = walletAddresses[0];
       const match = profiles?.find((p: any) =>
         [p.public_wallet_address, p.wallet_address, p.external_wallet_address]
-          .some((a: string | null) => a?.toLowerCase() === walletAddr)
+          .some((a: string | null) => a?.toLowerCase().trim() === wa)
       );
       if (!match) {
-        return new Response(JSON.stringify({ error: "No user found for this wallet" }), {
-          status: 404,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        return new Response(JSON.stringify({ error: "No user found" }), {
+          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       userId = match.id;
     }
 
-    console.log(`Backfilling wallet transfers for user ${userId}, wallet ${walletAddr}, walletLength=${walletAddr?.length}`);
+    console.log(`Backfill user ${userId}, wallets: [${walletAddresses.join(", ")}]`);
 
-    // Fetch all ERC20 transfers from Moralis
     const allTransfers: TokenTransfer[] = [];
-    let cursor: string | null = null;
-    let page = 0;
-    const MAX_PAGES = 20;
-
-    do {
-      const params = new URLSearchParams({ chain, limit: "100" });
-      if (cursor) params.set("cursor", cursor);
-
-      const url = `${MORALIS_BASE}/${walletAddr}/erc20/transfers?${params.toString()}`;
-      console.log(`Fetching page ${page}: ${url}`);
-
-      const res = await fetch(url, {
-        headers: { "X-API-Key": moralisKey, Accept: "application/json" },
-      });
-
-      if (!res.ok) {
-        const errText = await res.text();
-        console.error(`Moralis error ${res.status}: ${errText}`);
-        break;
+    for (const wa of walletAddresses) {
+      let transfers: TokenTransfer[] | null = null;
+      if (moralisKey) transfers = await fetchTransfersViaMoralis(wa, chain, moralisKey);
+      if (transfers === null) {
+        // Fallback to BSCScan API (free, no key needed)
+        transfers = await fetchTransfersViaBscScan(wa);
       }
+      allTransfers.push(...transfers);
+    }
 
-      const data = await res.json();
-      allTransfers.push(...(data.result || []));
-      cursor = data.cursor || null;
-      page++;
-    } while (cursor && page < MAX_PAGES);
+    console.log(`Total: ${allTransfers.length} transfers`);
 
-    console.log(`Fetched ${allTransfers.length} total ERC20 transfers`);
-
-    // Get existing tx_hashes from donations and swap_transactions to exclude
-    const { data: donationTxs } = await supabase
-      .from("donations")
-      .select("tx_hash")
+    // Exclude existing
+    const { data: donTxs } = await supabase.from("donations").select("tx_hash")
       .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`);
-    const { data: swapTxs } = await supabase
-      .from("swap_transactions")
-      .select("tx_hash")
-      .eq("user_id", userId);
-    const { data: existingTransfers } = await supabase
-      .from("wallet_transfers")
-      .select("tx_hash, direction, token_symbol")
-      .eq("user_id", userId);
+    const { data: swpTxs } = await supabase.from("swap_transactions").select("tx_hash").eq("user_id", userId);
+    const { data: exTxs } = await supabase.from("wallet_transfers").select("tx_hash, direction, token_symbol").eq("user_id", userId);
 
-    const donationHashes = new Set((donationTxs || []).map((d: any) => d.tx_hash?.toLowerCase()));
-    const swapHashes = new Set((swapTxs || []).map((s: any) => s.tx_hash?.toLowerCase()));
-    const existingTransferKeys = new Set(
-      (existingTransfers || []).map((t: any) => `${t.tx_hash?.toLowerCase()}_${t.direction}_${t.token_symbol}`)
-    );
+    const donH = new Set((donTxs || []).map((d: any) => d.tx_hash?.toLowerCase()));
+    const swpH = new Set((swpTxs || []).map((s: any) => s.tx_hash?.toLowerCase()));
+    const exKeys = new Set((exTxs || []).map((t: any) => `${t.tx_hash?.toLowerCase()}_${t.direction}_${t.token_symbol}`));
 
-    // Group by tx_hash to detect swaps (exclude them)
+    const walletSet = new Set(walletAddresses);
     const txGroups = new Map<string, TokenTransfer[]>();
     for (const t of allTransfers) {
-      const hash = (t.transaction_hash || "").toLowerCase();
-      if (!hash) continue;
-      if (!txGroups.has(hash)) txGroups.set(hash, []);
-      txGroups.get(hash)!.push(t);
+      const h = (t.transaction_hash || "").toLowerCase();
+      if (!h) continue;
+      if (!txGroups.has(h)) txGroups.set(h, []);
+      txGroups.get(h)!.push(t);
     }
-
-    // Identify swap tx_hashes (has both in and out for known tokens)
-    const onChainSwapHashes = new Set<string>();
-    for (const [txHash, transfers] of txGroups) {
-      let hasOut = false, hasIn = false;
-      for (const t of transfers) {
-        const tokenAddr = (t.address || "").toLowerCase();
-        if (!KNOWN_TOKENS[tokenAddr]) continue;
-        if ((t.from_address || "").toLowerCase() === walletAddr) hasOut = true;
-        if ((t.to_address || "").toLowerCase() === walletAddr) hasIn = true;
+    const swapOnChain = new Set<string>();
+    for (const [h, txs] of txGroups) {
+      let o = false, i = false;
+      for (const t of txs) {
+        if (!KNOWN_TOKENS[(t.address || "").toLowerCase()]) continue;
+        if (walletSet.has((t.from_address || "").toLowerCase())) o = true;
+        if (walletSet.has((t.to_address || "").toLowerCase())) i = true;
       }
-      if (hasOut && hasIn) onChainSwapHashes.add(txHash);
+      if (o && i) swapOnChain.add(h);
     }
 
-    // Process single-direction transfers (not swaps, not donations)
-    const transfers: Array<{
-      tx_hash: string;
-      direction: string;
-      token_symbol: string;
-      token_address: string;
-      amount: number;
-      counterparty_address: string;
-      created_at: string;
-    }> = [];
-
+    const newTransfers: any[] = [];
     for (const t of allTransfers) {
-      const txHash = (t.transaction_hash || "").toLowerCase();
-      if (!txHash) continue;
-
-      // Skip if already in donations, swaps, or on-chain swap
-      if (donationHashes.has(txHash)) continue;
-      if (swapHashes.has(txHash)) continue;
-      if (onChainSwapHashes.has(txHash)) continue;
-
-      const tokenAddr = (t.address || "").toLowerCase();
-      const tokenInfo = KNOWN_TOKENS[tokenAddr];
-      if (!tokenInfo) continue;
-
+      const txH = (t.transaction_hash || "").toLowerCase();
+      if (!txH || donH.has(txH) || swpH.has(txH) || swapOnChain.has(txH)) continue;
+      const tAddr = (t.address || "").toLowerCase();
+      const ti = KNOWN_TOKENS[tAddr];
+      if (!ti) continue;
       const from = (t.from_address || "").toLowerCase();
       const to = (t.to_address || "").toLowerCase();
-
-      let direction: string;
-      let counterparty: string;
-
-      if (from === walletAddr && to !== walletAddr) {
-        direction = "out";
-        counterparty = to;
-      } else if (to === walletAddr && from !== walletAddr) {
-        direction = "in";
-        counterparty = from;
-      } else {
-        continue;
-      }
-
-      const symbol = tokenInfo.symbol === "WBNB" ? "BNB" : tokenInfo.symbol;
-      const key = `${txHash}_${direction}_${symbol}`;
-      if (existingTransferKeys.has(key)) continue;
-
-      const amount = Number(BigInt(t.value || "0")) / Math.pow(10, tokenInfo.decimals);
-
-      transfers.push({
-        tx_hash: txHash,
-        direction,
-        token_symbol: symbol,
-        token_address: tokenAddr,
-        amount,
-        counterparty_address: counterparty,
-        created_at: t.block_timestamp || new Date().toISOString(),
+      let dir: string, cp: string;
+      if (walletSet.has(from) && !walletSet.has(to)) { dir = "out"; cp = to; }
+      else if (walletSet.has(to) && !walletSet.has(from)) { dir = "in"; cp = from; }
+      else continue;
+      const sym = ti.symbol === "WBNB" ? "BNB" : ti.symbol;
+      if (exKeys.has(`${txH}_${dir}_${sym}`)) continue;
+      newTransfers.push({
+        tx_hash: txH, direction: dir, token_symbol: sym, token_address: tAddr,
+        amount: Number(BigInt(t.value || "0")) / Math.pow(10, ti.decimals),
+        counterparty_address: cp, created_at: t.block_timestamp || new Date().toISOString(),
       });
     }
 
-    console.log(`Found ${transfers.length} direct wallet transfers (excluded ${donationHashes.size} donations, ${swapHashes.size} DB swaps, ${onChainSwapHashes.size} on-chain swaps)`);
+    console.log(`${newTransfers.length} new transfers`);
 
-    if (transfers.length === 0) {
+    if (newTransfers.length === 0) {
       return new Response(JSON.stringify({
-        success: true,
-        message: "No new wallet transfers found",
-        total_erc20: allTransfers.length,
-        excluded_donations: donationHashes.size,
-        excluded_swaps: swapHashes.size + onChainSwapHashes.size,
-        inserted: 0,
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+        success: true, message: "No new transfers", total_erc20: allTransfers.length, inserted: 0,
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Insert in batches
-    const toInsert = transfers.map((t) => ({
-      user_id: userId,
-      tx_hash: t.tx_hash,
-      direction: t.direction,
-      token_symbol: t.token_symbol,
-      token_address: t.token_address,
-      amount: t.amount,
-      counterparty_address: t.counterparty_address,
-      chain_id: chain_id,
-      status: "confirmed",
-      created_at: t.created_at,
+    const toInsert = newTransfers.map((t: any) => ({
+      user_id: userId, tx_hash: t.tx_hash, direction: t.direction,
+      token_symbol: t.token_symbol, token_address: t.token_address,
+      amount: t.amount, counterparty_address: t.counterparty_address,
+      chain_id, status: "confirmed", created_at: t.created_at,
     }));
 
     let inserted = 0;
     const errors: string[] = [];
-
     for (let i = 0; i < toInsert.length; i += 50) {
       const batch = toInsert.slice(i, i + 50);
       const { error } = await supabase.from("wallet_transfers").insert(batch);
-      if (error) {
-        console.error(`Insert batch error:`, error.message);
-        errors.push(error.message);
-      } else {
-        inserted += batch.length;
-      }
+      if (error) errors.push(error.message); else inserted += batch.length;
     }
 
-    const result = {
-      success: true,
-      user_id: userId,
-      wallet: walletAddr,
-      total_erc20: allTransfers.length,
-      excluded_donations: donationHashes.size,
-      excluded_swaps: swapHashes.size + onChainSwapHashes.size,
-      transfers_found: transfers.length,
-      inserted,
+    console.log(`Done: ${inserted} inserted`);
+    return new Response(JSON.stringify({
+      success: true, user_id: userId, wallets: walletAddresses,
+      total_erc20: allTransfers.length, transfers_found: newTransfers.length, inserted,
       errors: errors.length > 0 ? errors : undefined,
-      transfers: transfers.map((t) => ({
-        tx_hash: t.tx_hash,
-        direction: t.direction,
+      transfers: newTransfers.map((t: any) => ({
+        tx_hash: t.tx_hash, direction: t.direction,
         detail: `${t.amount} ${t.token_symbol} ${t.direction === 'in' ? '← ' : '→ '}${t.counterparty_address.slice(0, 10)}...`,
-        date: t.created_at,
       })),
-    };
-
-    console.log(`Backfill complete: ${inserted} inserted`);
-
-    return new Response(JSON.stringify(result), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
-    console.error("backfill-wallet-transfers error:", err);
+    console.error("backfill error:", err);
     return new Response(JSON.stringify({ error: String(err) }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
