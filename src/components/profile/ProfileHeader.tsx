@@ -8,6 +8,7 @@ import { CoverHonorBoard, MobileStats } from '@/components/profile/CoverHonorBoa
 import { AvatarOrbit } from '@/components/profile/AvatarOrbit';
 import { FriendRequestButton } from '@/components/friends/FriendRequestButton';
 import { DonationButton } from '@/components/donations/DonationButton';
+import { WalletTransactionHistory } from '@/components/profile/WalletTransactionHistory';
 import { MoreHorizontal, MapPin, Briefcase, MessageCircle, Eye, X, PenSquare, Copy, Wallet, Shield } from 'lucide-react';
 import { toast } from 'sonner';
 import { copyToClipboard } from '@/utils/clipboard';
