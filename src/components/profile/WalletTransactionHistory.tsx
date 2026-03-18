@@ -279,7 +279,7 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
   const msgPreview = d.message ? (d.message.length > 40 ? d.message.slice(0, 40) + '…' : d.message) : null;
 
   return (
-    <div className="border border-border rounded-lg px-3 py-2 flex items-center gap-3 text-xs whitespace-nowrap overflow-x-auto">
+    <div className="border border-border rounded-lg px-3 py-2 flex items-center gap-3 text-xs whitespace-normal">
       {/* Direction badge */}
       <Badge variant="outline" className={`flex-shrink-0 text-[10px] px-1.5 py-0.5 ${isSent ? 'border-red-500 text-red-600 bg-red-50 dark:bg-red-950/30' : 'border-green-500 text-green-600 bg-green-50 dark:bg-green-950/30'}`}>
         {isSent ? <ArrowUpRight className="w-3 h-3 mr-0.5" /> : <ArrowDownLeft className="w-3 h-3 mr-0.5" />}
@@ -287,7 +287,7 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
       </Badge>
 
       {/* Sender → Recipient */}
-      <div className="flex items-center gap-1 flex-shrink-0">
+      <span className="flex-shrink-0">
         {isExternal && !d.sender_id ? (
           <span className="text-muted-foreground">{d.sender_address ? shortenAddress(d.sender_address) : 'Ví ngoài'}</span>
         ) : (
@@ -295,31 +295,31 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
             {d.sender_display_name || d.sender_username || '?'}
           </button>
         )}
-        <span className="text-muted-foreground">→</span>
+        <span className="text-muted-foreground mx-1">→</span>
         <button onClick={() => d.recipient_username && navigate(`/${d.recipient_username}`)} className="font-medium hover:underline text-foreground">
           {d.recipient_display_name || d.recipient_username || '?'}
         </button>
-      </div>
+      </span>
 
       {/* Amount */}
-      <span className="font-bold text-foreground flex-shrink-0">
+      <span className="font-bold text-foreground flex-shrink-0 whitespace-nowrap">
         {Number(d.amount).toLocaleString('vi-VN', { maximumFractionDigits: 6 })} {d.token_symbol}
       </span>
 
       {/* Timestamp */}
-      <span className="text-muted-foreground flex-shrink-0">{formatTimestamp(d.created_at)}</span>
+      <span className="text-muted-foreground flex-shrink-0 whitespace-nowrap">{formatTimestamp(d.created_at)}</span>
 
-      {/* Message */}
+      {/* Message - full display */}
       {d.message && (
-        <span className="text-muted-foreground italic flex-shrink-0 max-w-[300px] truncate" title={d.message}>
+        <span className="text-muted-foreground italic break-words">
           "{d.message}"
         </span>
       )}
 
       {/* Tx link */}
       {d.tx_hash && (
-        <a href={`${explorerUrl}/tx/${d.tx_hash}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline flex items-center gap-0.5 flex-shrink-0 ml-auto">
-          Tx: {d.tx_hash.slice(0, 8)}…{d.tx_hash.slice(-4)} <ExternalLink className="w-3 h-3" />
+        <a href={`${explorerUrl}/tx/${d.tx_hash}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline flex items-center gap-0.5 flex-shrink-0 whitespace-nowrap">
+          Tx: {d.tx_hash.slice(0, 10)}…{d.tx_hash.slice(-6)} <ExternalLink className="w-3 h-3" />
         </a>
       )}
     </div>
