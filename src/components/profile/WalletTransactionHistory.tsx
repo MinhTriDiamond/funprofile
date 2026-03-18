@@ -423,21 +423,21 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
           <div className="flex items-center justify-between py-4 border-b border-border gap-4 relative">
             <div className="flex items-center gap-2 min-w-0 flex-1">
               <Clock className="w-6 h-6 flex-shrink-0" style={{ color: '#2E7D32' }} />
-              <span className="font-extrabold uppercase tracking-wider whitespace-nowrap" style={{ color: '#2E7D32', textShadow: '0 1px 2px rgba(46,125,50,0.2)', fontSize: '21px' }}>
+              <span className="font-extrabold uppercase tracking-wider whitespace-nowrap" style={{ color: '#2E7D32', textShadow: '0 1px 2px rgba(46,125,50,0.2)', fontSize: '17px' }}>
                 Lịch sử giao dịch cá nhân
               </span>
             </div>
 
             <div className="flex flex-col items-center gap-1.5 flex-shrink-0 absolute left-1/2 -translate-x-1/2">
-              <Avatar className="w-20 h-20">
+              <Avatar className="w-16 h-16">
                 {userAvatarUrl && <AvatarImage src={userAvatarUrl} />}
-                <AvatarFallback className="text-xl bg-primary/10 text-primary font-bold">{displayName[0]?.toUpperCase()}</AvatarFallback>
+                <AvatarFallback className="text-lg bg-primary/10 text-primary font-bold">{displayName[0]?.toUpperCase()}</AvatarFallback>
               </Avatar>
-              <span className="text-base font-bold text-foreground">{displayName}</span>
+              <span className="text-sm font-bold text-foreground">{displayName}</span>
             </div>
 
             <div className="flex-1 text-right min-w-0">
-              <span className="font-bold uppercase tracking-wide text-red-600 whitespace-nowrap" style={{ fontSize: '21px' }}>
+              <span className="font-bold uppercase tracking-wide text-red-600 whitespace-nowrap" style={{ fontSize: '17px' }}>
                 Trao yêu thương - Nhận năng lượng
               </span>
             </div>
