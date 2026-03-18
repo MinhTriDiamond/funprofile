@@ -440,6 +440,7 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
               <span className="text-sm font-bold uppercase tracking-wide text-red-600 whitespace-nowrap">
                 Trao yêu thương - Nhận năng lượng
               </span>
+            </div>
           </div>
 
           <div className="flex items-center gap-1 py-3 flex-wrap">
