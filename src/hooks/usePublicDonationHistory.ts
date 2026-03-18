@@ -22,10 +22,16 @@ export interface DonationRecord {
   recipient_avatar_url: string | null;
 }
 
-interface DonationSummary {
-  totalReceived: number;
-  totalSent: number;
-  count: number;
+interface TokenBreakdown {
+  [symbol: string]: { amount: number; count: number };
+}
+
+export interface DonationSummary {
+  received: TokenBreakdown;
+  sent: TokenBreakdown;
+  receivedCount: number;
+  sentCount: number;
+  totalCount: number;
 }
 
 const PAGE_SIZE = 20;
