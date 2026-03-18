@@ -423,7 +423,7 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
           <div className="flex items-center justify-between py-4 border-b border-border gap-4">
             <div className="flex items-center gap-2 min-w-0 flex-1">
               <Clock className="w-6 h-6 flex-shrink-0" style={{ color: '#2E7D32' }} />
-              <span className="text-lg font-extrabold uppercase tracking-wider whitespace-nowrap" style={{ color: '#2E7D32', textShadow: '0 1px 2px rgba(46,125,50,0.2)' }}>
+              <span className="font-extrabold uppercase tracking-wider whitespace-nowrap" style={{ color: '#2E7D32', textShadow: '0 1px 2px rgba(46,125,50,0.2)', fontSize: '21px' }}>
                 Lịch sử giao dịch cá nhân
               </span>
             </div>
@@ -437,7 +437,7 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
             </div>
 
             <div className="flex-1 text-right min-w-0">
-              <span className="text-sm font-bold uppercase tracking-wide text-red-600 whitespace-nowrap">
+              <span className="font-bold uppercase tracking-wide text-red-600 whitespace-nowrap" style={{ fontSize: '21px' }}>
                 Trao yêu thương - Nhận năng lượng
               </span>
             </div>
