@@ -354,7 +354,7 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
   );
 }
 
-export function WalletTransactionHistory({ userId, walletAddress }: Props) {
+export function WalletTransactionHistory({ userId, walletAddress, userDisplayName, userAvatarUrl, username }: Props) {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   const { donations, loading, error, filter, hasMore, summary, summaryLoading, changeFilter, fetchDonations, fetchSummary, loadMore } = usePublicDonationHistory(userId);
@@ -373,6 +373,8 @@ export function WalletTransactionHistory({ userId, walletAddress }: Props) {
     { key: 'sent', label: 'Đã tặng' },
   ];
 
+  const displayName = userDisplayName || username || '?';
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -381,50 +383,63 @@ export function WalletTransactionHistory({ userId, walletAddress }: Props) {
           Lịch sử GD
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto overflow-x-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-xl uppercase tracking-wider font-extrabold" style={{ color: '#2E7D32', textShadow: '0 1px 2px rgba(46,125,50,0.2)' }}>
-            <Clock className="w-5 h-5" style={{ color: '#2E7D32' }} />
-            Lịch sử chuyển nhận tiền cá nhân
-          </DialogTitle>
-          <DialogDescription className="sr-only">Xem lịch sử chuyển và nhận tiền cá nhân</DialogDescription>
-        </DialogHeader>
+      <DialogContent className="max-w-5xl max-h-[85vh] overflow-hidden flex flex-col">
+        {/* Fixed header */}
+        <div className="flex-shrink-0">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl uppercase tracking-wider font-extrabold" style={{ color: '#2E7D32', textShadow: '0 1px 2px rgba(46,125,50,0.2)' }}>
+              <Clock className="w-5 h-5" style={{ color: '#2E7D32' }} />
+              Lịch sử chuyển nhận tiền cá nhân
+            </DialogTitle>
+            <DialogDescription className="sr-only">Xem lịch sử chuyển và nhận tiền cá nhân</DialogDescription>
+          </DialogHeader>
 
+          <div className="flex flex-col items-center gap-1.5 py-3 border-b border-border">
+            <Avatar className="w-12 h-12">
+              {userAvatarUrl && <AvatarImage src={userAvatarUrl} />}
+              <AvatarFallback className="text-base bg-primary/10 text-primary font-bold">{displayName[0]?.toUpperCase()}</AvatarFallback>
+            </Avatar>
+            <span className="text-base font-bold text-foreground">{displayName}</span>
+          </div>
 
-        <div className="flex items-center gap-1 mb-3 flex-wrap">
-          <Filter className="w-4 h-4 text-muted-foreground" />
-          {filters.map(f => (
-            <Button key={f.key} size="sm" variant={filter === f.key ? 'secondary' : 'ghost'} onClick={() => changeFilter(f.key)} className="h-8 text-sm">
-              {f.label}
-            </Button>
-          ))}
+          <div className="flex items-center gap-1 py-3 flex-wrap">
+            <Filter className="w-4 h-4 text-muted-foreground" />
+            {filters.map(f => (
+              <Button key={f.key} size="sm" variant={filter === f.key ? 'secondary' : 'ghost'} onClick={() => changeFilter(f.key)} className="h-8 text-sm">
+                {f.label}
+              </Button>
+            ))}
+          </div>
         </div>
 
-        {error && <p className="text-destructive text-sm">{error}</p>}
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0">
+          {error && <p className="text-destructive text-sm">{error}</p>}
 
-        {loading && donations.length === 0 ? (
-          <div className="space-y-3">
-            {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-20 w-full rounded-xl" />)}
-          </div>
-        ) : donations.length === 0 ? (
-          <p className="text-center text-muted-foreground py-8">Không có giao dịch nào</p>
-        ) : (
-          <>
-            <div className="space-y-2">
-              {donations.filter(d => d.type !== 'swap' && d.type !== 'transfer').map(d => (
-                <DonationCard key={d.id} d={d} userId={userId} />
-              ))}
+          {loading && donations.length === 0 ? (
+            <div className="space-y-3">
+              {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-20 w-full rounded-xl" />)}
             </div>
-
-            {hasMore && !loading && (
-              <div className="flex justify-center mt-4">
-                <Button variant="outline" onClick={loadMore} size="sm">
-                  Tải thêm
-                </Button>
+          ) : donations.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">Không có giao dịch nào</p>
+          ) : (
+            <>
+              <div className="space-y-2">
+                {donations.filter(d => d.type !== 'swap' && d.type !== 'transfer').map(d => (
+                  <DonationCard key={d.id} d={d} userId={userId} />
+                ))}
               </div>
-            )}
-          </>
-        )}
+
+              {hasMore && !loading && (
+                <div className="flex justify-center mt-4 pb-2">
+                  <Button variant="outline" onClick={loadMore} size="sm">
+                    Tải thêm
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   );
