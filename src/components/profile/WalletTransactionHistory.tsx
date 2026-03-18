@@ -22,12 +22,18 @@ interface Props {
 
 const TOKEN_ORDER = ['USDT', 'BNB', 'BTCB', 'FUN', 'CAMLY'];
 
-function formatTimestamp(ts: string) {
+function formatDate(ts: string) {
   const date = new Date(ts);
-  return date.toLocaleString('vi-VN', {
-    day: '2-digit', month: '2-digit', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  });
+  return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+function formatTime(ts: string) {
+  const date = new Date(ts);
+  return date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatTimestamp(ts: string) {
+  return `${formatTime(ts)} ${formatDate(ts)}`;
 }
 
 function formatAmount(num: number): string {
