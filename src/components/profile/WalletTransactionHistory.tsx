@@ -348,7 +348,7 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
           <span className="text-sm font-semibold text-yellow-600 dark:text-yellow-400">{formatDate(d.created_at)}</span>
           {d.tx_hash && (
             <a href={`${explorerUrl}/tx/${d.tx_hash}`} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline flex items-center gap-1">
-              Tx: {d.tx_hash.slice(0, 10)}...{d.tx_hash.slice(-6)} <ExternalLink className="w-3.5 h-3.5" />
+              Tx: {d.tx_hash.slice(0, 6)}...{d.tx_hash.slice(-4)} <ExternalLink className="w-3.5 h-3.5" />
             </a>
           )}
         </div>
@@ -389,7 +389,7 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
         </Button>
       </DialogTrigger>
       {/* Dialog 680px ~ 18cm */}
-      <DialogContent className="w-[830px] max-w-[95vw] sm:max-w-[830px] max-h-[85vh] overflow-hidden flex flex-col">
+      <DialogContent className="w-[905px] max-w-[95vw] sm:max-w-[905px] max-h-[85vh] overflow-hidden flex flex-col">
         {/* Fixed header */}
         <div className="flex-shrink-0">
           <DialogHeader>
