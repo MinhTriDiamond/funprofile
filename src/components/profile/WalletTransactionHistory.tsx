@@ -131,7 +131,7 @@ export function WalletTransactionHistory({ walletAddress }: Props) {
             Lịch sử giao dịch
           </DialogTitle>
           <p className="text-xs text-muted-foreground font-mono">{walletAddress}</p>
-        </DialogHeader>
+          <DialogDescription className="sr-only">Xem lịch sử giao dịch trên blockchain</DialogDescription>
 
         <SummaryCards {...summary} />
 
