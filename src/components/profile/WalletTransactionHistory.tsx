@@ -301,7 +301,7 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
         <StatusBadge status={d.status} />
       </div>
 
-      <div className="flex items-center gap-2 text-base">
+      <div className="flex items-center gap-2 text-base flex-wrap">
         {isExternal && !d.sender_id ? (
           <div className="flex items-center gap-1.5 min-w-0">
             <Avatar className="w-6 h-6 flex-shrink-0">
@@ -336,11 +336,8 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
           avatarUrl={d.recipient_avatar_url}
           onClick={() => d.recipient_username && navigate(`/${d.recipient_username}`)}
         />
-      </div>
-
-      <div className="flex justify-between text-base">
-        <span className="text-muted-foreground">{formatTimestamp(d.created_at)}</span>
-        <span className="font-bold">{Number(d.amount).toLocaleString('vi-VN', { maximumFractionDigits: 6 })} {d.token_symbol}</span>
+        <span className="text-sm text-muted-foreground ml-auto whitespace-nowrap">{formatTimestamp(d.created_at)}</span>
+        <span className="font-bold whitespace-nowrap">{Number(d.amount).toLocaleString('vi-VN', { maximumFractionDigits: 6 })} {d.token_symbol}</span>
       </div>
 
       {d.message && <CollapsibleMessage message={d.message} />}
