@@ -211,6 +211,9 @@ export const ProfileHeader = ({
                           <Shield className="w-4 h-4 mr-2" />Admin
                         </Button>
                       )}
+                      {displayAddress && (
+                        <WalletTransactionHistory walletAddress={displayAddress} />
+                      )}
                     </>
                   ) : (
                     <>
