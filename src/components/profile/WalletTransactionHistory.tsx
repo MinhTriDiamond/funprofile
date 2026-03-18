@@ -400,9 +400,6 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
             <DialogDescription className="sr-only">Xem lịch sử chuyển và nhận tiền cá nhân</DialogDescription>
           </DialogHeader>
 
-          <div className="flex flex-col items-center py-3 border-b border-border">
-            <span className="text-base font-bold text-foreground">{displayName}</span>
-          </div>
 
           <div className="flex items-center gap-1 py-3 flex-wrap">
             <Filter className="w-4 h-4 text-muted-foreground" />
