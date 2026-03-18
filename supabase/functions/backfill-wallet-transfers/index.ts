@@ -2,8 +2,7 @@ import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { createAdminClient } from "../_shared/supabase.ts";
 
 const MORALIS_BASE = "https://deep-index.moralis.io/api/v2.2";
-const BSC_RPC = "https://bsc-dataseed1.binance.org";
-const TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
+const BSCSCAN_API = "https://api.bscscan.com/api";
 
 const KNOWN_TOKENS: Record<string, { symbol: string; decimals: number }> = {
   "0x0910320181889fefde0bb1ca63962b0a8882e413": { symbol: "CAMLY", decimals: 3 },
@@ -22,119 +21,49 @@ interface TokenTransfer {
   block_timestamp: string;
 }
 
-async function rpcCall(method: string, params: unknown[]): Promise<any> {
-  const res = await fetch(BSC_RPC, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
-  });
-  const json = await res.json();
-  if (json.error) throw new Error(`RPC: ${JSON.stringify(json.error)}`);
-  return json.result;
-}
+// ── BSCScan API (free, no key needed for basic) ──
 
-// BSC public nodes allow max ~5000 blocks per eth_getLogs.
-// We use 2000 to be safe and run requests in parallel batches.
-const CHUNK = 2000;
-const PARALLEL = 3; // concurrent requests to avoid rate limits
-
-async function fetchLogsForRange(
-  tokenAddr: string, topics: (string | null)[], fromBlock: number, toBlock: number
-): Promise<any[]> {
-  const chunks: Array<{ from: number; to: number }> = [];
-  for (let s = fromBlock; s <= toBlock; s += CHUNK) {
-    chunks.push({ from: s, to: Math.min(s + CHUNK - 1, toBlock) });
-  }
-
-  const allLogs: any[] = [];
-  for (let i = 0; i < chunks.length; i += PARALLEL) {
-    const batch = chunks.slice(i, i + PARALLEL);
-    const results = await Promise.allSettled(
-      batch.map((c) =>
-        rpcCall("eth_getLogs", [{
-          fromBlock: "0x" + c.from.toString(16),
-          toBlock: "0x" + c.to.toString(16),
-          address: tokenAddr,
-          topics,
-        }])
-      )
-    );
-    for (const r of results) {
-      if (r.status === "fulfilled" && Array.isArray(r.value)) {
-        allLogs.push(...r.value);
-      }
-    }
-  }
-  return allLogs;
-}
-
-async function fetchTransfersViaBscRpc(
-  walletAddr: string, fromBlock: number, tokenFilter?: string[]
-): Promise<TokenTransfer[]> {
-  const paddedAddr = "0x" + walletAddr.slice(2).padStart(64, "0");
-  const latestHex = await rpcCall("eth_blockNumber", []);
-  const latestBlock = parseInt(latestHex, 16);
-
-  console.log(`BSC RPC: ${walletAddr.slice(0, 10)}... blocks ${fromBlock}-${latestBlock}`);
-
-  const tokens = Object.entries(KNOWN_TOKENS).filter(([addr]) =>
-    !tokenFilter?.length || tokenFilter.includes(addr)
-  );
-
+async function fetchTransfersViaBscScan(walletAddr: string): Promise<TokenTransfer[]> {
   const allTransfers: TokenTransfer[] = [];
-  const blockTimestamps = new Map<string, string>();
+  
+  // Fetch all ERC20 token transfers for the wallet
+  const url = `${BSCSCAN_API}?module=account&action=tokentx&address=${walletAddr}&startblock=0&endblock=999999999&sort=desc&offset=1000&page=1`;
+  console.log(`BSCScan API: fetching for ${walletAddr.slice(0, 10)}...`);
 
-  for (const [tokenAddr, tokenInfo] of tokens) {
-    const [logsIn, logsOut] = await Promise.all([
-      fetchLogsForRange(tokenAddr, [TRANSFER_TOPIC, null, paddedAddr], fromBlock, latestBlock),
-      fetchLogsForRange(tokenAddr, [TRANSFER_TOPIC, paddedAddr, null], fromBlock, latestBlock),
-    ]);
-
-    const allLogs = [...logsIn, ...logsOut];
-    console.log(`  ${tokenInfo.symbol}: ${allLogs.length} logs`);
-
-    for (const log of allLogs) {
-      allTransfers.push({
-        transaction_hash: log.transactionHash,
-        from_address: "0x" + (log.topics[1] as string).slice(26).toLowerCase(),
-        to_address: "0x" + (log.topics[2] as string).slice(26).toLowerCase(),
-        value: BigInt(log.data).toString(),
-        address: tokenAddr,
-        block_timestamp: log.blockNumber,
-      });
-      blockTimestamps.set(log.blockNumber, "");
-    }
+  const res = await fetch(url);
+  if (!res.ok) {
+    console.error(`BSCScan error: ${res.status}`);
+    return [];
   }
 
-  // Resolve block timestamps
-  const blocks = Array.from(blockTimestamps.keys());
-  for (let i = 0; i < blocks.length; i += PARALLEL) {
-    const batch = blocks.slice(i, i + PARALLEL);
-    const results = await Promise.allSettled(
-      batch.map((bn) => rpcCall("eth_getBlockByNumber", [bn, false]))
-    );
-    for (let j = 0; j < batch.length; j++) {
-      const r = results[j];
-      const ts = r.status === "fulfilled" && r.value?.timestamp
-        ? new Date(parseInt(r.value.timestamp, 16) * 1000).toISOString()
-        : new Date().toISOString();
-      blockTimestamps.set(batch[j], ts);
-    }
+  const data = await res.json();
+  if (data.status !== "1" || !Array.isArray(data.result)) {
+    console.log(`BSCScan: ${data.message || 'no results'}`);
+    return [];
   }
 
-  for (const t of allTransfers) {
-    t.block_timestamp = blockTimestamps.get(t.block_timestamp) || new Date().toISOString();
+  console.log(`BSCScan: ${data.result.length} token transfers found`);
+
+  for (const tx of data.result) {
+    const tokenAddr = (tx.contractAddress || "").toLowerCase();
+    if (!KNOWN_TOKENS[tokenAddr]) continue;
+
+    allTransfers.push({
+      transaction_hash: tx.hash,
+      from_address: (tx.from || "").toLowerCase(),
+      to_address: (tx.to || "").toLowerCase(),
+      value: tx.value || "0",
+      address: tokenAddr,
+      block_timestamp: tx.timeStamp 
+        ? new Date(parseInt(tx.timeStamp) * 1000).toISOString()
+        : new Date().toISOString(),
+    });
   }
 
-  // Deduplicate
-  const seen = new Set<string>();
-  return allTransfers.filter((t) => {
-    const k = `${t.transaction_hash}_${t.from_address}_${t.to_address}_${t.address}`;
-    if (seen.has(k)) return false;
-    seen.add(k);
-    return true;
-  });
+  return allTransfers;
 }
+
+// ── Moralis ──
 
 async function fetchTransfersViaMoralis(
   walletAddr: string, chain: string, moralisKey: string
@@ -170,11 +99,8 @@ Deno.serve(async (req) => {
     const moralisKey = Deno.env.get("MORALIS_API_KEY");
     const supabase = createAdminClient();
     const body = await req.json();
-    const { user_id, wallet_address, chain = "0x38", chain_id = 56, from_block, tokens } = body;
+    const { user_id, wallet_address, chain = "0x38", chain_id = 56 } = body;
     let userId = user_id;
-
-    // Default: scan from block 40M (~early 2024)
-    const scanFrom = from_block ? Number(from_block) : 40_000_000;
 
     let walletAddresses: string[] = [];
     if (wallet_address) walletAddresses = [wallet_address.toLowerCase().trim()];
@@ -228,14 +154,15 @@ Deno.serve(async (req) => {
       userId = match.id;
     }
 
-    console.log(`Backfill user ${userId}, wallets: [${walletAddresses.join(", ")}], from_block: ${scanFrom}`);
+    console.log(`Backfill user ${userId}, wallets: [${walletAddresses.join(", ")}]`);
 
     const allTransfers: TokenTransfer[] = [];
     for (const wa of walletAddresses) {
       let transfers: TokenTransfer[] | null = null;
       if (moralisKey) transfers = await fetchTransfersViaMoralis(wa, chain, moralisKey);
       if (transfers === null) {
-        transfers = await fetchTransfersViaBscRpc(wa, scanFrom, tokens);
+        // Fallback to BSCScan API (free, no key needed)
+        transfers = await fetchTransfersViaBscScan(wa);
       }
       allTransfers.push(...transfers);
     }
