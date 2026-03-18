@@ -335,7 +335,7 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
         />
       </div>
 
-      <div className="flex justify-between text-sm">
+      <div className="flex justify-between text-base">
         <span className="text-muted-foreground">{formatTimestamp(d.created_at)}</span>
         <span className="font-bold">{Number(d.amount).toLocaleString('vi-VN', { maximumFractionDigits: 6 })} {d.token_symbol}</span>
       </div>
