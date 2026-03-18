@@ -341,7 +341,7 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
           />
         </div>
 
-        <span className={`font-bold whitespace-nowrap mx-auto text-center ${isSent ? 'text-red-600' : 'text-green-600'}`}>{Number(d.amount).toLocaleString('vi-VN', { maximumFractionDigits: 6 })} {d.token_symbol}</span>
+        <span className="font-bold whitespace-nowrap mx-auto text-center text-red-600">{Number(d.amount).toLocaleString('vi-VN', { maximumFractionDigits: 6 })} {d.token_symbol}</span>
 
         <div className="flex items-center gap-3 whitespace-nowrap shrink-0">
           <span className="text-sm font-medium text-primary">{formatTime(d.created_at)}</span>
