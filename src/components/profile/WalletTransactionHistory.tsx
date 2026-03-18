@@ -387,11 +387,6 @@ export function WalletTransactionHistory({ userId, walletAddress }: Props) {
           <DialogDescription className="sr-only">Xem lịch sử chuyển và nhận tiền cá nhân</DialogDescription>
         </DialogHeader>
 
-        {summaryLoading ? (
-          <Skeleton className="h-32 w-full rounded-xl mb-4" />
-        ) : (
-          <SummaryTable summary={summary} walletBalances={walletBalances} />
-        )}
 
         <div className="flex items-center gap-1 mb-3 flex-wrap">
           <Filter className="w-4 h-4 text-muted-foreground" />
