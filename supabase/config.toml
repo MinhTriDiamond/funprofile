@@ -109,6 +109,8 @@ project_id = "bhtsnervqiwchluwuxki"
     verify_jwt = false
   [functions.recalculate-fun-amounts]
     verify_jwt = false
+  [functions.scan-treasury-camly]
+    verify_jwt = false
   [functions.scan-treasury-outgoing]
     verify_jwt = false
   [functions.scheduled-reconciliation]
@@ -150,6 +152,8 @@ project_id = "bhtsnervqiwchluwuxki"
   [functions.upload-to-r2]
     verify_jwt = true
   [functions.send-email-link-verification]
+    verify_jwt = false
+  [functions.sync-treasury-profile]
     verify_jwt = false
   [functions.verify-email-link]
     verify_jwt = false

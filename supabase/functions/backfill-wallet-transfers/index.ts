@@ -23,41 +23,52 @@ interface TokenTransfer {
 
 // ── BSCScan API (free, no key needed for basic) ──
 
+function delay(ms: number) { return new Promise(r => setTimeout(r, ms)); }
+
 async function fetchTransfersViaBscScan(walletAddr: string): Promise<TokenTransfer[]> {
   const allTransfers: TokenTransfer[] = [];
+  const maxPages = 5;
   
-  // Fetch all ERC20 token transfers for the wallet
-  const url = `${BSCSCAN_API}?module=account&action=tokentx&address=${walletAddr}&startblock=0&endblock=999999999&sort=desc&offset=1000&page=1`;
-  console.log(`BSCScan API: fetching for ${walletAddr.slice(0, 10)}...`);
+  for (let page = 1; page <= maxPages; page++) {
+    const url = `${BSCSCAN_API}?module=account&action=tokentx&address=${walletAddr}&startblock=0&endblock=999999999&sort=desc&offset=1000&page=${page}`;
+    console.log(`BSCScan page ${page} for ${walletAddr.slice(0, 10)}...`);
 
-  const res = await fetch(url);
-  if (!res.ok) {
-    console.error(`BSCScan error: ${res.status}`);
-    return [];
-  }
+    let res: Response | null = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (attempt > 0) await delay(5500); // BSCScan free = 1 req/5s
+      try {
+        res = await fetch(url);
+        if (res.ok) break;
+        if (res.status === 429) { console.log("BSCScan rate limited, retrying..."); continue; }
+        break;
+      } catch (e) { console.error(`BSCScan fetch error attempt ${attempt}:`, e); }
+    }
+    if (!res || !res.ok) { console.error(`BSCScan failed after retries`); break; }
 
-  const data = await res.json();
-  if (data.status !== "1" || !Array.isArray(data.result)) {
-    console.log(`BSCScan: ${data.message || 'no results'}`);
-    return [];
-  }
+    const data = await res.json();
+    if (data.status !== "1" || !Array.isArray(data.result) || data.result.length === 0) {
+      console.log(`BSCScan page ${page}: ${data.message || 'no results'}`);
+      break;
+    }
 
-  console.log(`BSCScan: ${data.result.length} token transfers found`);
+    console.log(`BSCScan page ${page}: ${data.result.length} transfers`);
+    for (const tx of data.result) {
+      const tokenAddr = (tx.contractAddress || "").toLowerCase();
+      if (!KNOWN_TOKENS[tokenAddr]) continue;
+      allTransfers.push({
+        transaction_hash: tx.hash,
+        from_address: (tx.from || "").toLowerCase(),
+        to_address: (tx.to || "").toLowerCase(),
+        value: tx.value || "0",
+        address: tokenAddr,
+        block_timestamp: tx.timeStamp
+          ? new Date(parseInt(tx.timeStamp) * 1000).toISOString()
+          : new Date().toISOString(),
+      });
+    }
 
-  for (const tx of data.result) {
-    const tokenAddr = (tx.contractAddress || "").toLowerCase();
-    if (!KNOWN_TOKENS[tokenAddr]) continue;
-
-    allTransfers.push({
-      transaction_hash: tx.hash,
-      from_address: (tx.from || "").toLowerCase(),
-      to_address: (tx.to || "").toLowerCase(),
-      value: tx.value || "0",
-      address: tokenAddr,
-      block_timestamp: tx.timeStamp 
-        ? new Date(parseInt(tx.timeStamp) * 1000).toISOString()
-        : new Date().toISOString(),
-    });
+    if (data.result.length < 1000) break; // last page
+    await delay(5500); // rate limit between pages
   }
 
   return allTransfers;
@@ -74,18 +85,95 @@ async function fetchTransfersViaMoralis(
   do {
     const params = new URLSearchParams({ chain, limit: "100" });
     if (cursor) params.set("cursor", cursor);
-    const res = await fetch(`${MORALIS_BASE}/${walletAddr}/erc20/transfers?${params}`, {
+    const url = `${MORALIS_BASE}/${walletAddr}/erc20/transfers?${params}`;
+    console.log(`Moralis page ${page}: ${url.slice(0, 80)}...`);
+    const res = await fetch(url, {
       headers: { "X-API-Key": moralisKey, Accept: "application/json" },
     });
     if (!res.ok) {
+      console.log(`Moralis error: ${res.status} ${res.statusText}`);
       if (res.status === 401 || res.status === 429) return null;
       break;
     }
     const data = await res.json();
+    console.log(`Moralis page ${page}: ${(data.result || []).length} results`);
     all.push(...(data.result || []));
     cursor = data.cursor || null;
     page++;
   } while (cursor && page < 20);
+  console.log(`Moralis total: ${all.length} transfers`);
+  return all;
+}
+
+// ── BSC RPC fallback (eth_getLogs) ──
+
+const BSC_RPC = "https://bsc-dataseed1.binance.org";
+const TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
+
+async function fetchTransfersViaRpc(walletAddr: string): Promise<TokenTransfer[]> {
+  const all: TokenTransfer[] = [];
+  const paddedAddr = "0x000000000000000000000000" + walletAddr.slice(2);
+  
+  // Get latest block
+  const latestRes = await fetch(BSC_RPC, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_blockNumber", params: [] }),
+  });
+  const latestData = await latestRes.json();
+  const latestBlock = parseInt(latestData.result, 16);
+  console.log(`BSC RPC: latest block ${latestBlock}`);
+
+  // Scan known token contracts for transfers TO and FROM this address
+  for (const [tokenAddr, tokenInfo] of Object.entries(KNOWN_TOKENS)) {
+    for (const direction of ["in", "out"] as const) {
+      const topics = [TRANSFER_TOPIC];
+      if (direction === "in") {
+        topics.push(null as any, paddedAddr);
+      } else {
+        topics.push(paddedAddr);
+      }
+
+      // Scan last ~2M blocks (~70 days on BSC)
+      const fromBlock = Math.max(0, latestBlock - 2000000);
+      const chunkSize = 500000;
+      
+      for (let start = fromBlock; start <= latestBlock; start += chunkSize) {
+        const end = Math.min(start + chunkSize - 1, latestBlock);
+        try {
+          const res = await fetch(BSC_RPC, {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              jsonrpc: "2.0", id: 1, method: "eth_getLogs",
+              params: [{ fromBlock: "0x" + start.toString(16), toBlock: "0x" + end.toString(16), address: tokenAddr, topics }],
+            }),
+          });
+          const data = await res.json();
+          if (data.error) { console.log(`RPC error: ${data.error.message}`); continue; }
+          const logs = data.result || [];
+          
+          for (const log of logs) {
+            const from = "0x" + (log.topics[1] || "").slice(26).toLowerCase();
+            const to = "0x" + (log.topics[2] || "").slice(26).toLowerCase();
+            const value = BigInt(log.data || "0x0").toString();
+            
+            all.push({
+              transaction_hash: log.transactionHash,
+              from_address: from,
+              to_address: to,
+              value,
+              address: tokenAddr,
+              block_timestamp: new Date().toISOString(), // RPC doesn't give timestamp easily
+            });
+          }
+          
+          if (logs.length > 0) console.log(`RPC ${tokenInfo.symbol} ${direction}: ${logs.length} logs (blocks ${start}-${end})`);
+        } catch (e) { console.error(`RPC fetch error:`, e); }
+        await delay(200);
+      }
+    }
+  }
+  
+  console.log(`BSC RPC total: ${all.length} transfers`);
   return all;
 }
 
@@ -159,12 +247,22 @@ Deno.serve(async (req) => {
     const allTransfers: TokenTransfer[] = [];
     for (const wa of walletAddresses) {
       let transfers: TokenTransfer[] | null = null;
-      if (moralisKey) transfers = await fetchTransfersViaMoralis(wa, chain, moralisKey);
-      if (transfers === null) {
-        // Fallback to BSCScan API (free, no key needed)
-        transfers = await fetchTransfersViaBscScan(wa);
+      if (moralisKey) {
+        console.log(`Trying Moralis for ${wa.slice(0, 10)}...`);
+        transfers = await fetchTransfersViaMoralis(wa, chain, moralisKey);
       }
-      allTransfers.push(...transfers);
+      if (transfers === null || transfers.length === 0) {
+        console.log(`Trying BSCScan for ${wa.slice(0, 10)}...`);
+        const bscTransfers = await fetchTransfersViaBscScan(wa);
+        if (bscTransfers.length > 0) {
+          transfers = bscTransfers;
+        }
+      }
+      if (transfers === null || transfers.length === 0) {
+        console.log(`Trying BSC RPC fallback for ${wa.slice(0, 10)}...`);
+        transfers = await fetchTransfersViaRpc(wa);
+      }
+      allTransfers.push(...(transfers || []));
     }
 
     console.log(`Total: ${allTransfers.length} transfers`);
