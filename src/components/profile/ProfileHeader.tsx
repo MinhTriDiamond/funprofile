@@ -211,9 +211,7 @@ export const ProfileHeader = ({
                           <Shield className="w-4 h-4 mr-2" />Admin
                         </Button>
                       )}
-                      {displayAddress && (
-                        <WalletTransactionHistory walletAddress={displayAddress} />
-                      )}
+                      <WalletTransactionHistory userId={profile.id} walletAddress={displayAddress} />
                     </>
                   ) : (
                     <>
@@ -229,9 +227,7 @@ export const ProfileHeader = ({
                         recipientAvatarUrl={profile.avatar_url}
                         variant="profile"
                       />
-                      {displayAddress && (
-                        <WalletTransactionHistory walletAddress={displayAddress} />
-                      )}
+                      <WalletTransactionHistory userId={profile.id} walletAddress={displayAddress} />
                     </>
                   )}
                 </div>
