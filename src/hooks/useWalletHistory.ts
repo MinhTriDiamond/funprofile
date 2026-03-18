@@ -17,6 +17,7 @@ export interface WalletTx {
   tokenName?: string;
   _network: 'mainnet' | 'testnet';
   _chainId: number;
+  _isIsoTimestamp?: boolean;
 }
 
 export type TxFilter = 'all' | 'receive' | 'send';
@@ -53,7 +54,6 @@ export function useWalletHistory(walletAddress: string | undefined) {
           address: walletAddress,
           page,
           offset: PAGE_SIZE,
-          sort: 'desc',
           action: txAction,
           network: 'both',
         },
@@ -70,6 +70,7 @@ export function useWalletHistory(walletAddress: string | undefined) {
         loading: false,
       }));
     } catch (err: any) {
+      console.error('fetchHistory error:', err);
       setState(prev => ({ ...prev, error: err.message || 'Failed to fetch', loading: false }));
     }
   }, [walletAddress, action]);
