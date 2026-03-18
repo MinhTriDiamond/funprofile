@@ -92,9 +92,8 @@ async function fetchTransfersViaBscRpc(walletAddr: string, scanFromBlock?: numbe
 
   for (const [tokenAddr, tokenInfo] of Object.entries(KNOWN_TOKENS)) {
     // Received
-    const logsIn = await fetchLogsChunked(tokenAddr, null, paddedAddr, SCAN_FROM_BLOCK, latestBlock);
-    // Sent
-    const logsOut = await fetchLogsChunked(tokenAddr, paddedAddr, null, SCAN_FROM_BLOCK, latestBlock);
+    const logsIn = await fetchLogsChunked(tokenAddr, null, paddedAddr, fromBlock, latestBlock);
+    const logsOut = await fetchLogsChunked(tokenAddr, paddedAddr, null, fromBlock, latestBlock);
 
     const allLogs = [...logsIn, ...logsOut];
     console.log(`BSC RPC: ${tokenInfo.symbol} = ${allLogs.length} logs for ${walletAddr.slice(0, 10)}...`);
