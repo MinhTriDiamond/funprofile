@@ -336,17 +336,16 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
           avatarUrl={d.recipient_avatar_url}
           onClick={() => d.recipient_username && navigate(`/${d.recipient_username}`)}
         />
-        <span className="text-sm text-muted-foreground ml-auto whitespace-nowrap">{formatTimestamp(d.created_at)}</span>
-        <span className="font-bold whitespace-nowrap">{Number(d.amount).toLocaleString('vi-VN', { maximumFractionDigits: 6 })} {d.token_symbol}</span>
+        <span className="font-bold whitespace-nowrap ml-auto">{Number(d.amount).toLocaleString('vi-VN', { maximumFractionDigits: 6 })} {d.token_symbol}</span>
+        <span className="text-sm text-muted-foreground whitespace-nowrap">{formatTimestamp(d.created_at)}</span>
+        {d.tx_hash && (
+          <a href={`${explorerUrl}/tx/${d.tx_hash}`} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline flex items-center gap-1 whitespace-nowrap">
+            Tx: {d.tx_hash.slice(0, 10)}...{d.tx_hash.slice(-6)} <ExternalLink className="w-3.5 h-3.5" />
+          </a>
+        )}
       </div>
 
       {d.message && <CollapsibleMessage message={d.message} />}
-
-      {d.tx_hash && (
-        <a href={`${explorerUrl}/tx/${d.tx_hash}`} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline flex items-center gap-1">
-          Tx: {d.tx_hash.slice(0, 10)}...{d.tx_hash.slice(-6)} <ExternalLink className="w-3.5 h-3.5" />
-        </a>
-      )}
     </div>
   );
 }
