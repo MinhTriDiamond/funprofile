@@ -437,7 +437,7 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
             </div>
 
             <div className="flex-1 text-right min-w-0">
-              <span className="text-sm font-bold uppercase tracking-wide text-red-600 whitespace-nowrap">
+              <span className="font-bold uppercase tracking-wide text-red-600 whitespace-nowrap" style={{ fontSize: '21px' }}>
                 Trao yêu thương - Nhận năng lượng
               </span>
             </div>
