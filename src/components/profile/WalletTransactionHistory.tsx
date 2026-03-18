@@ -344,7 +344,7 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
         />
         <span className="font-bold whitespace-nowrap flex-1 text-center">{Number(d.amount).toLocaleString('vi-VN', { maximumFractionDigits: 6 })} {d.token_symbol}</span>
         <div className="flex items-center gap-4 whitespace-nowrap flex-shrink-0">
-          <span className="text-sm text-amber-600 font-medium">{formatTimestamp(d.created_at)}</span>
+          <span className="text-sm font-medium"><span className="text-primary">{formatTime(d.created_at)}</span>{' '}<span className="text-amber-600">{formatDate(d.created_at)}</span></span>
           {d.tx_hash && (
             <a href={`${explorerUrl}/tx/${d.tx_hash}`} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline flex items-center gap-1">
               Tx: {d.tx_hash.slice(0, 10)}...{d.tx_hash.slice(-6)} <ExternalLink className="w-3.5 h-3.5" />
