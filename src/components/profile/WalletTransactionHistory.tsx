@@ -252,8 +252,8 @@ function CollapsibleMessage({ message }: { message: string }) {
   const isLong = message.length > MSG_TRUNCATE_LENGTH;
 
   return (
-    <div className="flex items-start gap-1.5 text-xs text-muted-foreground bg-muted/50 rounded-lg p-2">
-      <MessageSquare className="w-3 h-3 mt-0.5 flex-shrink-0" />
+    <div className="flex items-start gap-1.5 text-sm text-muted-foreground bg-muted/50 rounded-lg p-2">
+      <MessageSquare className="w-4 h-4 mt-0.5 flex-shrink-0" />
       <div className="min-w-0 flex-1">
         <span className="break-words">
           {isLong && !expanded ? `${message.slice(0, MSG_TRUNCATE_LENGTH)}...` : message}
