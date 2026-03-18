@@ -391,7 +391,7 @@ export function WalletTransactionHistory({ userId, walletAddress }: Props) {
         <div className="flex items-center gap-1 mb-3 flex-wrap">
           <Filter className="w-4 h-4 text-muted-foreground" />
           {filters.map(f => (
-            <Button key={f.key} size="sm" variant={filter === f.key ? 'secondary' : 'ghost'} onClick={() => changeFilter(f.key)} className="h-7 text-xs">
+            <Button key={f.key} size="sm" variant={filter === f.key ? 'secondary' : 'ghost'} onClick={() => changeFilter(f.key)} className="h-8 text-sm">
               {f.label}
             </Button>
           ))}
