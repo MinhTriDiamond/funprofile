@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowDownUp, RefreshCw, AlertTriangle, ChevronDown, Loader2, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 import { WALLET_TOKENS } from '@/lib/tokens';
 import { SWAP_CONFIG, SWAPPABLE_SYMBOLS, DISABLED_SWAP_SYMBOLS, type SwappableSymbol } from '@/config/swap';
 import {
