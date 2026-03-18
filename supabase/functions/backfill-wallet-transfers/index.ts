@@ -62,10 +62,17 @@ Deno.serve(async (req) => {
       }
       walletAddr = (profile.public_wallet_address || profile.wallet_address || "").toLowerCase();
       if (!walletAddr) {
-        return new Response(JSON.stringify({ error: "User has no wallet address" }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        // Fallback: check TREASURY_WALLET_ADDRESS env for treasury profiles
+        const treasuryAddr = Deno.env.get("TREASURY_WALLET_ADDRESS")?.toLowerCase();
+        if (treasuryAddr) {
+          walletAddr = treasuryAddr;
+          console.log(`Using TREASURY_WALLET_ADDRESS fallback for user ${userId}`);
+        } else {
+          return new Response(JSON.stringify({ error: "User has no wallet address" }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
       }
     }
 
