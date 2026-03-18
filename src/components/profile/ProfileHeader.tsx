@@ -158,15 +158,12 @@ export const ProfileHeader = ({
 
                 {/* Wallet Address */}
                 {displayAddress ? (
-                  <div>
-                    <div className="inline-flex items-center gap-2 mt-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20">
-                      <Wallet className="w-4 h-4 text-primary flex-shrink-0" />
-                      <span className="text-sm text-foreground font-mono font-medium">{displayAddress.slice(0, 6)}...{displayAddress.slice(-4)}</span>
-                      <button onClick={() => { copyToClipboard(displayAddress).then(() => toast.success(t('walletCopied'))).catch(() => toast.error('Không thể sao chép')); }} className="p-2 rounded hover:bg-primary/10 transition-colors touch-manipulation">
-                        <Copy className="w-4 h-4 text-primary hover:text-primary/80" />
-                      </button>
-                    </div>
-                    <WalletTransactionHistory walletAddress={displayAddress} />
+                  <div className="inline-flex items-center gap-2 mt-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20">
+                    <Wallet className="w-4 h-4 text-primary flex-shrink-0" />
+                    <span className="text-sm text-foreground font-mono font-medium">{displayAddress.slice(0, 6)}...{displayAddress.slice(-4)}</span>
+                    <button onClick={() => { copyToClipboard(displayAddress).then(() => toast.success(t('walletCopied'))).catch(() => toast.error('Không thể sao chép')); }} className="p-2 rounded hover:bg-primary/10 transition-colors touch-manipulation">
+                      <Copy className="w-4 h-4 text-primary hover:text-primary/80" />
+                    </button>
                   </div>
                 ) : showPrivateElements ? (
                   <button onClick={() => onNavigateToTab('edit')} className="flex items-center gap-2 mt-1 text-sm text-primary hover:underline">
@@ -229,6 +226,9 @@ export const ProfileHeader = ({
                         recipientAvatarUrl={profile.avatar_url}
                         variant="profile"
                       />
+                      {displayAddress && (
+                        <WalletTransactionHistory walletAddress={displayAddress} />
+                      )}
                     </>
                   )}
                 </div>

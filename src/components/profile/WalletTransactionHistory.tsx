@@ -117,10 +117,10 @@ export function WalletTransactionHistory({ walletAddress }: Props) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <button className="flex items-center gap-1.5 mt-1.5 text-sm text-primary hover:underline font-medium transition-colors">
-          <Clock className="w-4 h-4" />
-          <span>Lịch sử giao dịch</span>
-        </button>
+        <Button variant="outline" className="font-semibold px-4 h-10 border-primary/30 text-primary hover:bg-primary/10">
+          <Clock className="w-4 h-4 mr-2" />
+          Lịch sử GD
+        </Button>
       </DialogTrigger>
       <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
