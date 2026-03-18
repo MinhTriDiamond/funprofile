@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-export type DonationFilter = 'all' | 'sent' | 'received';
+export type DonationFilter = 'all' | 'sent' | 'received' | 'swap';
 
 export interface DonationRecord {
   id: string;
@@ -20,6 +20,12 @@ export interface DonationRecord {
   recipient_username: string | null;
   recipient_display_name: string | null;
   recipient_avatar_url: string | null;
+  type: 'donation' | 'swap';
+  // swap-specific
+  from_symbol?: string;
+  to_symbol?: string;
+  from_amount?: number;
+  to_amount?: number;
 }
 
 interface TokenBreakdown {
@@ -86,50 +92,100 @@ export function usePublicDonationHistory(userId: string | undefined) {
     setError(null);
 
     try {
-      let query = supabase
-        .from('donations')
-        .select(`
-          id, amount, token_symbol, tx_hash, status, message, created_at, chain_id,
-          sender_id, recipient_id,
-          sender:profiles!donations_sender_id_fkey(username, display_name, avatar_url),
-          recipient:profiles!donations_recipient_id_fkey(username, display_name, avatar_url)
-        `)
-        .order('created_at', { ascending: false })
-        .range((pageNum - 1) * PAGE_SIZE, pageNum * PAGE_SIZE - 1);
+      const from = (pageNum - 1) * PAGE_SIZE;
+      const to = pageNum * PAGE_SIZE - 1;
 
-      if (currentFilter === 'sent') {
-        query = query.eq('sender_id', userId);
-      } else if (currentFilter === 'received') {
-        query = query.eq('recipient_id', userId);
-      } else {
-        query = query.or(`sender_id.eq.${userId},recipient_id.eq.${userId}`);
+      // Fetch swap records if filter is 'all' or 'swap'
+      let swapRecords: DonationRecord[] = [];
+      if (currentFilter === 'all' || currentFilter === 'swap') {
+        const { data: swapData, error: swapError } = await supabase
+          .from('swap_transactions')
+          .select('*')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+          .range(from, to);
+        
+        if (!swapError && swapData) {
+          swapRecords = swapData.map((s: any) => ({
+            id: `swap-${s.id}`,
+            amount: String(s.from_amount),
+            token_symbol: s.from_symbol,
+            tx_hash: s.tx_hash,
+            status: s.status,
+            message: null,
+            created_at: s.created_at,
+            chain_id: s.chain_id,
+            sender_id: s.user_id,
+            recipient_id: s.user_id,
+            sender_username: null,
+            sender_display_name: null,
+            sender_avatar_url: null,
+            recipient_username: null,
+            recipient_display_name: null,
+            recipient_avatar_url: null,
+            type: 'swap' as const,
+            from_symbol: s.from_symbol,
+            to_symbol: s.to_symbol,
+            from_amount: Number(s.from_amount),
+            to_amount: Number(s.to_amount),
+          }));
+        }
       }
 
-      const { data, error: queryError } = await query;
-      if (queryError) throw queryError;
+      // Fetch donation records if filter is not 'swap'
+      let donationRecords: DonationRecord[] = [];
+      if (currentFilter !== 'swap') {
+        let query = supabase
+          .from('donations')
+          .select(`
+            id, amount, token_symbol, tx_hash, status, message, created_at, chain_id,
+            sender_id, recipient_id,
+            sender:profiles!donations_sender_id_fkey(username, display_name, avatar_url),
+            recipient:profiles!donations_recipient_id_fkey(username, display_name, avatar_url)
+          `)
+          .order('created_at', { ascending: false })
+          .range(from, to);
 
-      const mapped: DonationRecord[] = (data || []).map((d: any) => ({
-        id: d.id,
-        amount: d.amount,
-        token_symbol: d.token_symbol,
-        tx_hash: d.tx_hash,
-        status: d.status,
-        message: d.message,
-        created_at: d.created_at,
-        chain_id: d.chain_id,
-        sender_id: d.sender_id,
-        recipient_id: d.recipient_id,
-        sender_username: d.sender?.username || null,
-        sender_display_name: d.sender?.display_name || null,
-        sender_avatar_url: d.sender?.avatar_url || null,
-        recipient_username: d.recipient?.username || null,
-        recipient_display_name: d.recipient?.display_name || null,
-        recipient_avatar_url: d.recipient?.avatar_url || null,
-      }));
+        if (currentFilter === 'sent') {
+          query = query.eq('sender_id', userId);
+        } else if (currentFilter === 'received') {
+          query = query.eq('recipient_id', userId);
+        } else {
+          query = query.or(`sender_id.eq.${userId},recipient_id.eq.${userId}`);
+        }
 
-      setDonations(prev => pageNum === 1 ? mapped : [...prev, ...mapped]);
+        const { data, error: queryError } = await query;
+        if (queryError) throw queryError;
+
+        donationRecords = (data || []).map((d: any) => ({
+          id: d.id,
+          amount: d.amount,
+          token_symbol: d.token_symbol,
+          tx_hash: d.tx_hash,
+          status: d.status,
+          message: d.message,
+          created_at: d.created_at,
+          chain_id: d.chain_id,
+          sender_id: d.sender_id,
+          recipient_id: d.recipient_id,
+          sender_username: d.sender?.username || null,
+          sender_display_name: d.sender?.display_name || null,
+          sender_avatar_url: d.sender?.avatar_url || null,
+          recipient_username: d.recipient?.username || null,
+          recipient_display_name: d.recipient?.display_name || null,
+          recipient_avatar_url: d.recipient?.avatar_url || null,
+          type: 'donation' as const,
+        }));
+      }
+
+      // Merge and sort by created_at desc
+      const merged = [...donationRecords, ...swapRecords]
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        .slice(0, PAGE_SIZE);
+
+      setDonations(prev => pageNum === 1 ? merged : [...prev, ...merged]);
       setPage(pageNum);
-      setHasMore(mapped.length >= PAGE_SIZE);
+      setHasMore(merged.length >= PAGE_SIZE);
     } catch (err: any) {
       console.error('fetchDonations error:', err);
       setError(err.message || 'Không thể tải lịch sử');
