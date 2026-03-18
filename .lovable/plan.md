@@ -1,55 +1,83 @@
 
+# Database & Codebase Audit — Implementation Roadmap
 
-## Plan: Public Wallet Transaction History on Profile
+## Tài liệu tham chiếu
+- `.lovable/audit-report.md` — Audit report đầy đủ (633 dòng, 20 phần)
 
-### Overview
-Add a "Lịch sử giao dịch" button below the wallet address on the profile page. When clicked, it opens a modal showing the full public transaction history fetched directly from **BscScan API** (free public endpoints). No auth required to view.
+---
 
-### Technical Approach
+## ĐÃ HOÀN THÀNH
 
-**Data Source**: BscScan public API endpoints (no API key required for basic usage, rate-limited at ~5 req/sec):
-- `api.bscscan.com/api?module=account&action=txlist&address={addr}` (normal txs)
-- `api.bscscan.com/api?module=account&action=tokentx&address={addr}` (BEP-20 token txs)
-- Testnet equivalent for FUN token transactions
+### Phase 0 — Audit & Documentation ✅
+| # | Công việc | Trạng thái |
+|---|----------|-----------|
+| 0A | Viết audit report 20 phần | ✅ Done |
+| 0B | Xác định Canonical Domain Models | ✅ Done |
+| 0C | Xác định Do Not Touch First list | ✅ Done |
+| 0D | Xác định Refactor Blockers | ✅ Done |
 
-Since BscScan API has CORS restrictions, we'll create an **edge function** to proxy requests.
+### Phase 1A — Performance Indexes ✅
+| Index | Table | Columns | Mục đích |
+|-------|-------|---------|----------|
+| `idx_notifications_user_read` | notifications | user_id, read | Badge count + dropdown |
+| `idx_reactions_post_type` | reactions | post_id, type | Reaction counts per post |
+| `idx_light_actions_user_created` | light_actions | user_id, created_at DESC | Light Score history |
+| `idx_posts_user_created` | posts | user_id, created_at DESC | Profile feed |
+| `idx_chunked_chunks_status` | chunked_recording_chunks | status | Cleanup queries |
+| `idx_donations_sender_status` | donations | sender_id, status | Benefactor leaderboard |
+| `idx_donations_recipient_status` | donations | recipient_id, status | Recipient leaderboard |
+| `idx_comments_post_created` | comments | post_id, created_at | Comment thread load |
+| `idx_friendships_user_status` | friendships | user_id, status | Friend lookup |
+| `idx_friendships_friend_status` | friendships | friend_id, status | Friend lookup |
 
-### Changes
+### Phase 1B — SQL Comments Documentation ✅
+- COMMENT ON TABLE cho tất cả 93 tables
+- COMMENT ON VIEW cho tất cả 5 views
+- Phân loại theo domain: Core, Social, Messaging, Live, Recording, Light Score, Rewards, Wallet, Auth, OAuth, Search, Content, System, PPLP
 
-**1. Edge Function: `supabase/functions/fetch-wallet-history/index.ts`**
-- Accepts `address`, `page`, `offset`, `sort`, `action` (txlist/tokentx)
-- Proxies to BscScan API (mainnet + testnet)
-- Returns combined, sorted results
-- No auth required (public endpoint)
-- Optional: accepts BscScan API key from secrets for higher rate limits
+---
 
-**2. New Hook: `src/hooks/useWalletHistory.ts`**
-- Fetches transaction history via the edge function
-- Accepts wallet address as parameter
-- Supports pagination, filtering (send/receive), sorting
-- Computes summary stats (total sent, total received)
+## CHƯA LÀM — KẾ HOẠCH TIẾP THEO
 
-**3. New Component: `src/components/profile/WalletTransactionHistory.tsx`**
-- Modal dialog triggered by a button
-- Responsive table showing: timestamp, type (Send/Receive with color coding), amount + token, from/to addresses (linked to BscScan), status, tx hash (linked), gas fee
-- Filter tabs: All / Receive (green) / Send (red)
-- Pagination controls
-- Summary card at top: total received, total sent, transaction count
-- Green color for receive, red for send/withdraw
+### Phase 1C-F — Safe Cleanup (rủi ro THẤP)
 
-**4. Update: `src/components/profile/ProfileHeader.tsx`**
-- Add a clickable "Lịch sử giao dịch" button/badge right below the wallet address display (line ~166)
-- Opens the WalletTransactionHistory modal
-- Visible to everyone (no auth check), only shown when `displayAddress` exists
+| # | Công việc | Chi tiết |
+|---|----------|---------|
+| 1C | Phân loại empty tables | 35 tables 0-rows → Active/Planned/Legacy/Deletable |
+| 1D | console.log → logger | 77 instances cần thay thế |
+| 1E | useAdminRole shared hook | Đã tạo, cần migrate các component dùng trực tiếp `has_role` |
+| 1F | Edge function _shared helpers | cors, auth, response — đã tạo ✅ |
 
-### Design Details
-- Button style: outline with Clock icon, matches existing profile UI (green theme)
-- Modal: full-width dialog with table, inspired by BscScan address page
-- Mobile: cards instead of table rows for small screens
-- Automatically updates when viewing different profiles (wallet address changes)
+### Phase 2 — Structural Improvements (rủi ro TRUNG BÌNH)
 
-### Security
-- Edge function is public (no auth required, matching the "public by design" philosophy)
-- Only reads from BscScan public API, no write operations
-- Rate limiting via BscScan's own limits; optionally add API key secret for higher limits
+| # | Công việc | Chi tiết |
+|---|----------|---------|
+| 2A | State enum documentation | Document các status/type enums trong DB |
+| 2B | Merge search_logs → search_history | Consolidate duplicate search tracking |
+| 2C | notifications.read → is_read | Compatibility migration (backfill + dual-write) |
+| 2D | Xóa useLiveComments | Dead code cleanup |
+| 2E | Module hóa hooks/ | Nhóm theo domain (social, chat, live, wallet, etc.) |
+| 2F | Tách components/feed/ | Sub-domains cho feed components |
+| 2G | useCapabilities layer | Đã tạo ✅, cần migrate consumers |
 
+### Phase 3 — Deep Refactor (rủi ro CAO)
+
+| # | Công việc | Blocker |
+|---|----------|---------|
+| 3A | Tách profiles → user_wallet_config | Nhiều component đọc trực tiếp profiles |
+| 3B | Claims lifecycle audit | reward_claims + pending_claims khác lifecycle |
+| 3C | FinancialTab → platform_financial_data | Admin UI đang đọc grand_total_* từ profiles |
+| 3D | get_user_rewards_v2 refactor | Đang dùng livestreams table, cần chuyển live_sessions |
+| 3E | live_comments product review | Quyết định drop hoặc giữ |
+| 3F | Profiles RLS tightening | Public by Design → quyết định enforcement model |
+| 3G | Gộp 15 media edge functions | Router pattern |
+
+---
+
+## Linter Warnings (có sẵn, chưa xử lý)
+- **RLS Enabled No Policy**: Một số tables có RLS enabled nhưng chưa có policy
+- **RLS Policy Always True**: Một số policies dùng `USING (true)` cho INSERT/UPDATE/DELETE
+- Sẽ xử lý trong Phase 2-3 khi refactor từng domain
+
+## Light Score 5 Trụ Cột — Phase 1 ✅ HOÀN THÀNH
+(Chi tiết xem phiên bản trước của plan)
