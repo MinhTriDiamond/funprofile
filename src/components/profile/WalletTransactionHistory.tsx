@@ -388,10 +388,10 @@ export function WalletTransactionHistory({ userId, walletAddress }: Props) {
               })}
             </div>
 
-            {hasMore && (
+            {hasMore && !loading && (
               <div className="flex justify-center mt-4">
-                <Button variant="outline" onClick={loadMore} disabled={loading}>
-                  {loading ? 'Đang tải...' : 'Tải thêm'}
+                <Button variant="outline" onClick={loadMore} size="sm">
+                  Tải thêm
                 </Button>
               </div>
             )}
