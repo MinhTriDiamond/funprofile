@@ -147,24 +147,29 @@ export const ProfileHeader = ({
                     <p className="text-red-500 text-xs mt-0.5">Tài khoản này đã vi phạm điều khoản sử dụng và bị cấm vĩnh viễn.</p>
                   </div>
                 )}
-                <div className="flex items-center gap-1.5 text-sm font-bold text-green-600 mt-0.5">
+                <div className="flex items-center gap-1.5 text-sm font-bold text-green-600 mt-0.5 flex-wrap">
                   <span>@{profile?.username}</span>
                   <span className="text-muted-foreground font-normal">·</span>
-                  <a href={`https://fun.rich/${profile?.username}`} target="_blank" rel="noopener noreferrer" className="hover:text-primary hover:underline transition-colors cursor-pointer">fun.rich/{profile?.username}</a>
-                  <button type="button" onClick={() => { copyToClipboard(`https://fun.rich/${profile?.username}`).then(() => toast.success('Đã sao chép link hồ sơ!')).catch(() => toast.error('Không thể sao chép')); }} className="p-1.5 rounded hover:bg-muted text-primary touch-manipulation">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                  <button
+                    type="button"
+                    onClick={() => { copyToClipboard(`https://fun.rich/${profile?.username}`).then(() => toast.success('Đã sao chép link hồ sơ!')).catch(() => toast.error('Không thể sao chép')); }}
+                    className="inline-flex items-center gap-1 hover:text-primary hover:underline transition-colors cursor-pointer touch-manipulation active:scale-95 select-all"
+                  >
+                    <span>fun.rich/{profile?.username}</span>
+                    <Copy className="w-4 h-4 text-primary flex-shrink-0" />
                   </button>
                 </div>
 
                 {/* Wallet Address */}
                 {displayAddress ? (
-                  <div className="inline-flex items-center gap-2 mt-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20">
+                  <button
+                    onClick={() => { copyToClipboard(displayAddress).then(() => toast.success(t('walletCopied'))).catch(() => toast.error('Không thể sao chép')); }}
+                    className="inline-flex items-center gap-2 mt-2 px-3 py-2 rounded-full bg-primary/10 border border-primary/20 touch-manipulation active:scale-95 hover:bg-primary/20 transition-all cursor-pointer"
+                  >
                     <Wallet className="w-4 h-4 text-primary flex-shrink-0" />
-                    <span className="text-sm text-foreground font-mono font-medium">{displayAddress.slice(0, 6)}...{displayAddress.slice(-4)}</span>
-                    <button onClick={() => { copyToClipboard(displayAddress).then(() => toast.success(t('walletCopied'))).catch(() => toast.error('Không thể sao chép')); }} className="p-2 rounded hover:bg-primary/10 transition-colors touch-manipulation">
-                      <Copy className="w-4 h-4 text-primary hover:text-primary/80" />
-                    </button>
-                  </div>
+                    <span className="text-sm text-foreground font-mono font-medium select-all">{displayAddress.slice(0, 6)}...{displayAddress.slice(-4)}</span>
+                    <Copy className="w-4 h-4 text-primary flex-shrink-0" />
+                  </button>
                 ) : showPrivateElements ? (
                   <button onClick={() => onNavigateToTab('edit')} className="flex items-center gap-2 mt-1 text-sm text-primary hover:underline">
                     <Wallet className="w-4 h-4" />{t('addPublicWallet')}
