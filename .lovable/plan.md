@@ -1,83 +1,31 @@
 
-# Database & Codebase Audit — Implementation Roadmap
 
-## Tài liệu tham chiếu
-- `.lovable/audit-report.md` — Audit report đầy đủ (633 dòng, 20 phần)
+## Plan: Fix Transaction History to Use Moralis API
 
----
+### Problem
+The `fetch-wallet-history` edge function uses BscScan API **without an API key** (`BSCSCAN_API_KEY` is not configured). BscScan's free tier without a key is heavily rate-limited and often returns empty results. This is why the user sees "0" for everything.
 
-## ĐÃ HOÀN THÀNH
+### Solution
+Replace BscScan with **Moralis API**, which is already configured (`MORALIS_API_KEY` exists) and used extensively throughout the project for similar transaction-fetching tasks.
 
-### Phase 0 — Audit & Documentation ✅
-| # | Công việc | Trạng thái |
-|---|----------|-----------|
-| 0A | Viết audit report 20 phần | ✅ Done |
-| 0B | Xác định Canonical Domain Models | ✅ Done |
-| 0C | Xác định Do Not Touch First list | ✅ Done |
-| 0D | Xác định Refactor Blockers | ✅ Done |
+### Changes
 
-### Phase 1A — Performance Indexes ✅
-| Index | Table | Columns | Mục đích |
-|-------|-------|---------|----------|
-| `idx_notifications_user_read` | notifications | user_id, read | Badge count + dropdown |
-| `idx_reactions_post_type` | reactions | post_id, type | Reaction counts per post |
-| `idx_light_actions_user_created` | light_actions | user_id, created_at DESC | Light Score history |
-| `idx_posts_user_created` | posts | user_id, created_at DESC | Profile feed |
-| `idx_chunked_chunks_status` | chunked_recording_chunks | status | Cleanup queries |
-| `idx_donations_sender_status` | donations | sender_id, status | Benefactor leaderboard |
-| `idx_donations_recipient_status` | donations | recipient_id, status | Recipient leaderboard |
-| `idx_comments_post_created` | comments | post_id, created_at | Comment thread load |
-| `idx_friendships_user_status` | friendships | user_id, status | Friend lookup |
-| `idx_friendships_friend_status` | friendships | friend_id, status | Friend lookup |
+**1. Rewrite `supabase/functions/fetch-wallet-history/index.ts`**
+- Use Moralis API v2.2 endpoints instead of BscScan:
+  - `GET /{address}` for native transactions (replaces `txlist`)
+  - `GET /{address}/erc20/transfers` for BEP-20 token transfers (replaces `tokentx`)
+- Query both `bsc` (mainnet, chainId 56) and `bsc testnet` (testnet, chainId 97)
+- Map Moralis response fields to the existing `WalletTx` interface format so the frontend needs minimal changes
+- Add console logging for debugging
+- Support pagination via Moralis cursor
 
-### Phase 1B — SQL Comments Documentation ✅
-- COMMENT ON TABLE cho tất cả 93 tables
-- COMMENT ON VIEW cho tất cả 5 views
-- Phân loại theo domain: Core, Social, Messaging, Live, Recording, Light Score, Rewards, Wallet, Auth, OAuth, Search, Content, System, PPLP
+**2. Update `src/hooks/useWalletHistory.ts`**
+- Minor adjustments to handle Moralis response format differences (e.g. `block_timestamp` instead of `timeStamp`, different field names)
+- Update the `WalletTx` interface if needed to accommodate Moralis fields
 
----
+**3. Update `src/components/profile/WalletTransactionHistory.tsx`**
+- Adjust timestamp formatting if Moralis returns ISO dates instead of Unix timestamps
+- Add `DialogDescription` to fix the accessibility warning in console
 
-## CHƯA LÀM — KẾ HOẠCH TIẾP THEO
+No database changes needed. No new secrets needed (MORALIS_API_KEY already exists).
 
-### Phase 1C-F — Safe Cleanup (rủi ro THẤP)
-
-| # | Công việc | Chi tiết |
-|---|----------|---------|
-| 1C | Phân loại empty tables | 35 tables 0-rows → Active/Planned/Legacy/Deletable |
-| 1D | console.log → logger | 77 instances cần thay thế |
-| 1E | useAdminRole shared hook | Đã tạo, cần migrate các component dùng trực tiếp `has_role` |
-| 1F | Edge function _shared helpers | cors, auth, response — đã tạo ✅ |
-
-### Phase 2 — Structural Improvements (rủi ro TRUNG BÌNH)
-
-| # | Công việc | Chi tiết |
-|---|----------|---------|
-| 2A | State enum documentation | Document các status/type enums trong DB |
-| 2B | Merge search_logs → search_history | Consolidate duplicate search tracking |
-| 2C | notifications.read → is_read | Compatibility migration (backfill + dual-write) |
-| 2D | Xóa useLiveComments | Dead code cleanup |
-| 2E | Module hóa hooks/ | Nhóm theo domain (social, chat, live, wallet, etc.) |
-| 2F | Tách components/feed/ | Sub-domains cho feed components |
-| 2G | useCapabilities layer | Đã tạo ✅, cần migrate consumers |
-
-### Phase 3 — Deep Refactor (rủi ro CAO)
-
-| # | Công việc | Blocker |
-|---|----------|---------|
-| 3A | Tách profiles → user_wallet_config | Nhiều component đọc trực tiếp profiles |
-| 3B | Claims lifecycle audit | reward_claims + pending_claims khác lifecycle |
-| 3C | FinancialTab → platform_financial_data | Admin UI đang đọc grand_total_* từ profiles |
-| 3D | get_user_rewards_v2 refactor | Đang dùng livestreams table, cần chuyển live_sessions |
-| 3E | live_comments product review | Quyết định drop hoặc giữ |
-| 3F | Profiles RLS tightening | Public by Design → quyết định enforcement model |
-| 3G | Gộp 15 media edge functions | Router pattern |
-
----
-
-## Linter Warnings (có sẵn, chưa xử lý)
-- **RLS Enabled No Policy**: Một số tables có RLS enabled nhưng chưa có policy
-- **RLS Policy Always True**: Một số policies dùng `USING (true)` cho INSERT/UPDATE/DELETE
-- Sẽ xử lý trong Phase 2-3 khi refactor từng domain
-
-## Light Score 5 Trụ Cột — Phase 1 ✅ HOÀN THÀNH
-(Chi tiết xem phiên bản trước của plan)
