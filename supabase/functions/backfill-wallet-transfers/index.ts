@@ -23,41 +23,52 @@ interface TokenTransfer {
 
 // ── BSCScan API (free, no key needed for basic) ──
 
+function delay(ms: number) { return new Promise(r => setTimeout(r, ms)); }
+
 async function fetchTransfersViaBscScan(walletAddr: string): Promise<TokenTransfer[]> {
   const allTransfers: TokenTransfer[] = [];
+  const maxPages = 5;
   
-  // Fetch all ERC20 token transfers for the wallet
-  const url = `${BSCSCAN_API}?module=account&action=tokentx&address=${walletAddr}&startblock=0&endblock=999999999&sort=desc&offset=1000&page=1`;
-  console.log(`BSCScan API: fetching for ${walletAddr.slice(0, 10)}...`);
+  for (let page = 1; page <= maxPages; page++) {
+    const url = `${BSCSCAN_API}?module=account&action=tokentx&address=${walletAddr}&startblock=0&endblock=999999999&sort=desc&offset=1000&page=${page}`;
+    console.log(`BSCScan page ${page} for ${walletAddr.slice(0, 10)}...`);
 
-  const res = await fetch(url);
-  if (!res.ok) {
-    console.error(`BSCScan error: ${res.status}`);
-    return [];
-  }
+    let res: Response | null = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (attempt > 0) await delay(5500); // BSCScan free = 1 req/5s
+      try {
+        res = await fetch(url);
+        if (res.ok) break;
+        if (res.status === 429) { console.log("BSCScan rate limited, retrying..."); continue; }
+        break;
+      } catch (e) { console.error(`BSCScan fetch error attempt ${attempt}:`, e); }
+    }
+    if (!res || !res.ok) { console.error(`BSCScan failed after retries`); break; }
 
-  const data = await res.json();
-  if (data.status !== "1" || !Array.isArray(data.result)) {
-    console.log(`BSCScan: ${data.message || 'no results'}`);
-    return [];
-  }
+    const data = await res.json();
+    if (data.status !== "1" || !Array.isArray(data.result) || data.result.length === 0) {
+      console.log(`BSCScan page ${page}: ${data.message || 'no results'}`);
+      break;
+    }
 
-  console.log(`BSCScan: ${data.result.length} token transfers found`);
+    console.log(`BSCScan page ${page}: ${data.result.length} transfers`);
+    for (const tx of data.result) {
+      const tokenAddr = (tx.contractAddress || "").toLowerCase();
+      if (!KNOWN_TOKENS[tokenAddr]) continue;
+      allTransfers.push({
+        transaction_hash: tx.hash,
+        from_address: (tx.from || "").toLowerCase(),
+        to_address: (tx.to || "").toLowerCase(),
+        value: tx.value || "0",
+        address: tokenAddr,
+        block_timestamp: tx.timeStamp
+          ? new Date(parseInt(tx.timeStamp) * 1000).toISOString()
+          : new Date().toISOString(),
+      });
+    }
 
-  for (const tx of data.result) {
-    const tokenAddr = (tx.contractAddress || "").toLowerCase();
-    if (!KNOWN_TOKENS[tokenAddr]) continue;
-
-    allTransfers.push({
-      transaction_hash: tx.hash,
-      from_address: (tx.from || "").toLowerCase(),
-      to_address: (tx.to || "").toLowerCase(),
-      value: tx.value || "0",
-      address: tokenAddr,
-      block_timestamp: tx.timeStamp 
-        ? new Date(parseInt(tx.timeStamp) * 1000).toISOString()
-        : new Date().toISOString(),
-    });
+    if (data.result.length < 1000) break; // last page
+    await delay(5500); // rate limit between pages
   }
 
   return allTransfers;
