@@ -149,6 +149,43 @@ function UserAvatar({ username, displayName, avatarUrl, onClick }: { username: s
   );
 }
 
+function SwapCard({ d }: { d: DonationRecord }) {
+  const explorerUrl = getBscScanBaseUrl(d.chain_id);
+  return (
+    <div className="border border-border rounded-xl p-3 space-y-2">
+      <div className="flex justify-between items-center">
+        <Badge className="bg-violet-600 hover:bg-violet-700 text-white text-xs">
+          <ArrowDownUp className="w-3 h-3 mr-1" />
+          Swap
+        </Badge>
+        <StatusBadge status={d.status} />
+      </div>
+
+      <div className="flex items-center gap-2 text-sm">
+        <div className="flex items-center gap-1.5">
+          <TokenLogo symbol={d.from_symbol!} />
+          <span className="font-bold">{Number(d.from_amount).toLocaleString('vi-VN', { maximumFractionDigits: 6 })} {d.from_symbol}</span>
+        </div>
+        <span className="text-muted-foreground">→</span>
+        <div className="flex items-center gap-1.5">
+          <TokenLogo symbol={d.to_symbol!} />
+          <span className="font-bold">{Number(d.to_amount).toLocaleString('vi-VN', { maximumFractionDigits: 6 })} {d.to_symbol}</span>
+        </div>
+      </div>
+
+      <div className="flex justify-between text-sm">
+        <span className="text-muted-foreground">{formatTimestamp(d.created_at)}</span>
+      </div>
+
+      {d.tx_hash && (
+        <a href={`${explorerUrl}/tx/${d.tx_hash}`} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1">
+          Tx: {d.tx_hash.slice(0, 10)}...{d.tx_hash.slice(-6)} <ExternalLink className="w-3 h-3" />
+        </a>
+      )}
+    </div>
+  );
+}
+
 function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
   const navigate = useNavigate();
   const isSent = d.sender_id === userId;
