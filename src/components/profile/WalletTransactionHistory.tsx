@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -258,7 +258,20 @@ const MSG_TRUNCATE_LENGTH = 200;
 
 function CollapsibleMessage({ message }: { message: string }) {
   const [expanded, setExpanded] = useState(false);
-  const isLong = message.length > MSG_TRUNCATE_LENGTH;
+  const [isTruncated, setIsTruncated] = useState(false);
+  const textRef = useRef<HTMLSpanElement>(null);
+
+  const checkTruncation = useCallback(() => {
+    if (textRef.current) {
+      setIsTruncated(textRef.current.scrollWidth > textRef.current.clientWidth);
+    }
+  }, []);
+
+  useEffect(() => {
+    checkTruncation();
+    window.addEventListener('resize', checkTruncation);
+    return () => window.removeEventListener('resize', checkTruncation);
+  }, [checkTruncation]);
 
   return (
     <div className="flex items-center gap-1.5 text-sm text-muted-foreground bg-muted/50 rounded-lg p-2">
@@ -266,8 +279,8 @@ function CollapsibleMessage({ message }: { message: string }) {
       <div className="min-w-0 flex-1 flex items-center">
         {!expanded ? (
           <>
-            <span className="truncate">{message}</span>
-            {isLong && (
+            <span ref={textRef} className="truncate">{message}</span>
+            {isTruncated && (
               <button
                 onClick={(e) => { e.stopPropagation(); setExpanded(true); }}
                 className="ml-1 text-primary hover:text-primary/80 font-medium inline-flex items-center gap-0.5 flex-shrink-0"
