@@ -416,19 +416,31 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
         {/* Fixed header */}
         <div className="flex-shrink-0">
           <DialogHeader>
-            <DialogTitle className="flex items-center justify-center gap-2 text-xl uppercase tracking-wider font-extrabold w-full" style={{ color: '#2E7D32', textShadow: '0 1px 2px rgba(46,125,50,0.2)' }}>
-              <Clock className="w-5 h-5" style={{ color: '#2E7D32' }} />
-              Lịch sử giao dịch cá nhân
-            </DialogTitle>
+            <DialogTitle className="sr-only">Lịch sử giao dịch cá nhân</DialogTitle>
             <DialogDescription className="sr-only">Xem lịch sử chuyển và nhận tiền cá nhân</DialogDescription>
           </DialogHeader>
 
-          <div className="flex flex-col items-center gap-1.5 py-3 border-b border-border">
-            <Avatar className="w-12 h-12">
-              {userAvatarUrl && <AvatarImage src={userAvatarUrl} />}
-              <AvatarFallback className="text-base bg-primary/10 text-primary font-bold">{displayName[0]?.toUpperCase()}</AvatarFallback>
-            </Avatar>
-            <span className="text-base font-bold text-foreground">{displayName}</span>
+          <div className="flex items-center justify-between py-3 border-b border-border gap-2">
+            <div className="flex items-center gap-1.5 min-w-0 flex-1">
+              <Clock className="w-4 h-4 flex-shrink-0" style={{ color: '#2E7D32' }} />
+              <span className="text-sm font-extrabold uppercase tracking-wider whitespace-nowrap" style={{ color: '#2E7D32', textShadow: '0 1px 2px rgba(46,125,50,0.2)' }}>
+                Lịch sử giao dịch cá nhân
+              </span>
+            </div>
+
+            <div className="flex flex-col items-center gap-1 flex-shrink-0">
+              <Avatar className="w-12 h-12">
+                {userAvatarUrl && <AvatarImage src={userAvatarUrl} />}
+                <AvatarFallback className="text-base bg-primary/10 text-primary font-bold">{displayName[0]?.toUpperCase()}</AvatarFallback>
+              </Avatar>
+              <span className="text-sm font-bold text-foreground">{displayName}</span>
+            </div>
+
+            <div className="flex-1 text-right min-w-0">
+              <span className="text-xs font-bold uppercase tracking-wide text-amber-600 leading-tight">
+                Trao yêu thương<br />Nhận năng lượng
+              </span>
+            </div>
           </div>
 
           <div className="flex items-center gap-1 py-3 flex-wrap">
