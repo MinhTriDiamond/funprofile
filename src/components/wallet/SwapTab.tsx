@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowDownUp, RefreshCw, AlertTriangle, ChevronDown, Loader2, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 import { WALLET_TOKENS } from '@/lib/tokens';
 import { SWAP_CONFIG, SWAPPABLE_SYMBOLS, DISABLED_SWAP_SYMBOLS, type SwappableSymbol } from '@/config/swap';
 import {
@@ -185,6 +186,22 @@ export function SwapTab({ walletAddress, onSuccess }: SwapTabProps) {
     try {
       const hash = await executeSwap(quote, walletAddress, wagmiConfig);
       const routeLabel = quote.routeSymbols.join(' → ');
+
+      // Ghi swap vào database
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from('swap_transactions').insert({
+          user_id: user.id,
+          tx_hash: hash,
+          from_symbol: quote.fromSymbol,
+          to_symbol: quote.toSymbol,
+          from_amount: Number(quote.amountIn),
+          to_amount: Number(quote.amountOut),
+          chain_id: SWAP_CONFIG.CHAIN_ID,
+          status: 'confirmed',
+        });
+      }
+
       toast.success(
         `✅ Swap thành công! ${quote.amountIn} ${quote.fromSymbol} → ${Number(quote.amountOut).toFixed(6)} ${quote.toSymbol}`,
         {

@@ -4522,6 +4522,60 @@ export type Database = {
           },
         ]
       }
+      swap_transactions: {
+        Row: {
+          chain_id: number
+          created_at: string
+          from_amount: number
+          from_symbol: string
+          id: string
+          status: string
+          to_amount: number
+          to_symbol: string
+          tx_hash: string
+          user_id: string
+        }
+        Insert: {
+          chain_id?: number
+          created_at?: string
+          from_amount: number
+          from_symbol: string
+          id?: string
+          status?: string
+          to_amount: number
+          to_symbol: string
+          tx_hash: string
+          user_id: string
+        }
+        Update: {
+          chain_id?: number
+          created_at?: string
+          from_amount?: number
+          from_symbol?: string
+          id?: string
+          status?: string
+          to_amount?: number
+          to_symbol?: string
+          tx_hash?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "swap_transactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "swap_transactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sybil_clusters: {
         Row: {
           admin_notes: string | null
@@ -4881,6 +4935,63 @@ export type Database = {
           },
           {
             foreignKeyName: "wallet_history_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wallet_transfers: {
+        Row: {
+          amount: number
+          chain_id: number
+          counterparty_address: string | null
+          created_at: string
+          direction: string
+          id: string
+          status: string
+          token_address: string | null
+          token_symbol: string
+          tx_hash: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          chain_id?: number
+          counterparty_address?: string | null
+          created_at?: string
+          direction: string
+          id?: string
+          status?: string
+          token_address?: string | null
+          token_symbol: string
+          tx_hash: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          chain_id?: number
+          counterparty_address?: string | null
+          created_at?: string
+          direction?: string
+          id?: string
+          status?: string
+          token_address?: string | null
+          token_symbol?: string
+          tx_hash?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_transfers_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallet_transfers_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "public_profiles"
@@ -5508,6 +5619,7 @@ export type Database = {
           unique_recipients: number
         }[]
       }
+      get_user_donation_summary: { Args: { p_user_id: string }; Returns: Json }
       get_user_emails_for_admin: {
         Args: { p_admin_id: string }
         Returns: {
