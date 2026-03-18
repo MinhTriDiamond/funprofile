@@ -428,10 +428,10 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
               </span>
             </div>
 
-            <div className="flex flex-col items-center gap-1.5 flex-shrink-0">
-              <Avatar className="w-16 h-16">
+            <div className="flex flex-col items-center gap-1.5 flex-shrink-0 absolute left-1/2 -translate-x-1/2">
+              <Avatar className="w-20 h-20">
                 {userAvatarUrl && <AvatarImage src={userAvatarUrl} />}
-                <AvatarFallback className="text-lg bg-primary/10 text-primary font-bold">{displayName[0]?.toUpperCase()}</AvatarFallback>
+                <AvatarFallback className="text-xl bg-primary/10 text-primary font-bold">{displayName[0]?.toUpperCase()}</AvatarFallback>
               </Avatar>
               <span className="text-base font-bold text-foreground">{displayName}</span>
             </div>
