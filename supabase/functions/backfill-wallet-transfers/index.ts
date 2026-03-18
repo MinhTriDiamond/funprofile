@@ -63,8 +63,8 @@ async function fetchLogsChunked(
   toBlock: number,
 ): Promise<any[]> {
   const allLogs: any[] = [];
-  for (let start = fromBlock; start <= toBlock; start += BLOCK_CHUNK) {
-    const end = Math.min(start + BLOCK_CHUNK - 1, toBlock);
+  for (let start = fromBlock; start <= toBlock; start += BLOCK_CHUNK_LARGE) {
+    const end = Math.min(start + BLOCK_CHUNK_LARGE - 1, toBlock);
     const topics = [TRANSFER_TOPIC, topic1, topic2];
     try {
       const logs = await rpcCall("eth_getLogs", [{
