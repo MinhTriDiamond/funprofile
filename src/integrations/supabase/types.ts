@@ -4522,6 +4522,60 @@ export type Database = {
           },
         ]
       }
+      swap_transactions: {
+        Row: {
+          chain_id: number
+          created_at: string
+          from_amount: number
+          from_symbol: string
+          id: string
+          status: string
+          to_amount: number
+          to_symbol: string
+          tx_hash: string
+          user_id: string
+        }
+        Insert: {
+          chain_id?: number
+          created_at?: string
+          from_amount: number
+          from_symbol: string
+          id?: string
+          status?: string
+          to_amount: number
+          to_symbol: string
+          tx_hash: string
+          user_id: string
+        }
+        Update: {
+          chain_id?: number
+          created_at?: string
+          from_amount?: number
+          from_symbol?: string
+          id?: string
+          status?: string
+          to_amount?: number
+          to_symbol?: string
+          tx_hash?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "swap_transactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "swap_transactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sybil_clusters: {
         Row: {
           admin_notes: string | null
