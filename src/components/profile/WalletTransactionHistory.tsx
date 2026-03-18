@@ -433,7 +433,7 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
                 {userAvatarUrl && <AvatarImage src={userAvatarUrl} />}
                 <AvatarFallback className="text-lg bg-primary/10 text-primary font-bold">{displayName[0]?.toUpperCase()}</AvatarFallback>
               </Avatar>
-              <span className="text-base font-bold text-foreground">{displayName}</span>
+              <span className="text-base font-bold" style={{ color: '#2E7D32' }}>{displayName}</span>
             </div>
 
             <div className="flex-1 text-right min-w-0">
