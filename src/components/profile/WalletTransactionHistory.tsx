@@ -307,12 +307,7 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
         <span className="font-bold">{Number(d.amount).toLocaleString('vi-VN', { maximumFractionDigits: 6 })} {d.token_symbol}</span>
       </div>
 
-      {d.message && (
-        <div className="flex items-start gap-1.5 text-xs text-muted-foreground bg-muted/50 rounded-lg p-2">
-          <MessageSquare className="w-3 h-3 mt-0.5 flex-shrink-0" />
-          <span className="break-words">{d.message}</span>
-        </div>
-      )}
+      {d.message && <CollapsibleMessage message={d.message} />}
 
       {d.tx_hash && (
         <a href={`${explorerUrl}/tx/${d.tx_hash}`} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1">
