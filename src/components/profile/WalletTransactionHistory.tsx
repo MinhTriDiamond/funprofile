@@ -221,7 +221,7 @@ export function WalletTransactionHistory({ userId, walletAddress }: Props) {
           <DialogDescription className="sr-only">Xem lịch sử giao dịch tặng và nhận</DialogDescription>
         </DialogHeader>
 
-        <SummaryCards {...summary} />
+        <SummarySection summary={summary} />
 
         {/* Filter */}
         <div className="flex items-center gap-1 mb-3">
