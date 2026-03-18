@@ -400,11 +400,7 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
             <DialogDescription className="sr-only">Xem lịch sử chuyển và nhận tiền cá nhân</DialogDescription>
           </DialogHeader>
 
-          <div className="flex flex-col items-center gap-1.5 py-3 border-b border-border">
-            <Avatar className="w-12 h-12">
-              {userAvatarUrl && <AvatarImage src={userAvatarUrl} />}
-              <AvatarFallback className="text-base bg-primary/10 text-primary font-bold">{displayName[0]?.toUpperCase()}</AvatarFallback>
-            </Avatar>
+          <div className="flex flex-col items-center py-3 border-b border-border">
             <span className="text-base font-bold text-foreground">{displayName}</span>
           </div>
 
