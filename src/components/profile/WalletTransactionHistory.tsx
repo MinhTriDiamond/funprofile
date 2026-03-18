@@ -159,7 +159,7 @@ function UserAvatar({ username, displayName, avatarUrl, onClick }: { username: s
         {avatarUrl && <AvatarImage src={avatarUrl} />}
         <AvatarFallback className="text-[10px] bg-primary/10 text-primary">{name[0]?.toUpperCase()}</AvatarFallback>
       </Avatar>
-      <span className="text-sm font-medium truncate max-w-[100px] sm:max-w-[160px]" style={{ color: '#2E7D32' }}>{name}</span>
+      <span className="text-sm font-medium truncate max-w-[100px] sm:max-w-[160px] text-foreground">{name}</span>
     </button>
   );
 }
@@ -367,7 +367,7 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
           avatarUrl={d.recipient_avatar_url}
           onClick={() => d.recipient_username && navigate(`/${d.recipient_username}`)}
         />
-        <span className="font-bold whitespace-nowrap flex-1 text-center" style={{ color: '#2E7D32' }}>{Number(d.amount).toLocaleString('vi-VN', { maximumFractionDigits: 6 })} {d.token_symbol}</span>
+        <span className="font-bold whitespace-nowrap flex-1 text-center">{Number(d.amount).toLocaleString('vi-VN', { maximumFractionDigits: 6 })} {d.token_symbol}</span>
         <div className="flex items-center gap-4 whitespace-nowrap flex-shrink-0">
           <span className="text-sm font-medium"><span className="text-primary">{formatTime(d.created_at)}</span>{' '}<span className="text-amber-600">{formatDate(d.created_at)}</span></span>
           {d.tx_hash && (
@@ -433,7 +433,7 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
                 {userAvatarUrl && <AvatarImage src={userAvatarUrl} />}
                 <AvatarFallback className="text-lg bg-primary/10 text-primary font-bold">{displayName[0]?.toUpperCase()}</AvatarFallback>
               </Avatar>
-              <span className="text-base font-bold" style={{ color: '#2E7D32' }}>{displayName}</span>
+              <span className="text-base font-bold text-foreground">{displayName}</span>
             </div>
 
             <div className="flex-1 text-right min-w-0">
