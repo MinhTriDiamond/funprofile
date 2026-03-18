@@ -22,10 +22,16 @@ export interface DonationRecord {
   recipient_avatar_url: string | null;
 }
 
-interface DonationSummary {
-  totalReceived: number;
-  totalSent: number;
-  count: number;
+interface TokenBreakdown {
+  [symbol: string]: { amount: number; count: number };
+}
+
+export interface DonationSummary {
+  received: TokenBreakdown;
+  sent: TokenBreakdown;
+  receivedCount: number;
+  sentCount: number;
+  totalCount: number;
 }
 
 const PAGE_SIZE = 20;
@@ -107,15 +113,29 @@ export function usePublicDonationHistory(userId: string | undefined) {
   }, [fetchDonations]);
 
   const getSummary = useCallback((): DonationSummary => {
-    if (!userId) return { totalReceived: 0, totalSent: 0, count: 0 };
-    let totalReceived = 0;
-    let totalSent = 0;
+    const empty: DonationSummary = { received: {}, sent: {}, receivedCount: 0, sentCount: 0, totalCount: 0 };
+    if (!userId) return empty;
+    const received: TokenBreakdown = {};
+    const sent: TokenBreakdown = {};
+    let receivedCount = 0;
+    let sentCount = 0;
     for (const d of donations) {
       const val = Number(d.amount) || 0;
-      if (d.recipient_id === userId) totalReceived += val;
-      if (d.sender_id === userId) totalSent += val;
+      const sym = d.token_symbol || 'UNKNOWN';
+      if (d.recipient_id === userId) {
+        if (!received[sym]) received[sym] = { amount: 0, count: 0 };
+        received[sym].amount += val;
+        received[sym].count += 1;
+        receivedCount++;
+      }
+      if (d.sender_id === userId) {
+        if (!sent[sym]) sent[sym] = { amount: 0, count: 0 };
+        sent[sym].amount += val;
+        sent[sym].count += 1;
+        sentCount++;
+      }
     }
-    return { totalReceived, totalSent, count: donations.length };
+    return { received, sent, receivedCount, sentCount, totalCount: donations.length };
   }, [donations, userId]);
 
   return {

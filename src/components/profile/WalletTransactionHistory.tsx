@@ -6,13 +6,16 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Clock, ArrowDownLeft, ArrowUpRight, ExternalLink, Filter, MessageSquare } from 'lucide-react';
-import { usePublicDonationHistory, type DonationFilter, type DonationRecord } from '@/hooks/usePublicDonationHistory';
+import { usePublicDonationHistory, type DonationFilter, type DonationRecord, type DonationSummary } from '@/hooks/usePublicDonationHistory';
 import { getBscScanBaseUrl } from '@/lib/chainTokenMapping';
+import { WALLET_TOKENS } from '@/lib/tokens';
 
 interface Props {
   userId: string;
   walletAddress?: string;
 }
+
+const TOKEN_ORDER = ['USDT', 'BNB', 'BTCB', 'FUN', 'CAMLY'];
 
 function formatTimestamp(ts: string) {
   const date = new Date(ts);
@@ -28,20 +31,91 @@ function StatusBadge({ status }: { status: string }) {
   return <Badge variant="destructive" className="text-xs">Lỗi</Badge>;
 }
 
-function SummaryCards({ totalReceived, totalSent, count }: { totalReceived: number; totalSent: number; count: number }) {
+function TokenLogo({ symbol }: { symbol: string }) {
+  const token = WALLET_TOKENS.find(t => t.symbol === symbol);
+  if (!token) return <span className="text-[10px] font-bold text-muted-foreground">{symbol}</span>;
+  return <img src={token.logo} alt={symbol} className="w-4 h-4 rounded-full" />;
+}
+
+function SummarySection({ summary }: { summary: DonationSummary }) {
+  const allTokens = new Set<string>();
+  Object.keys(summary.received).forEach(s => allTokens.add(s));
+  Object.keys(summary.sent).forEach(s => allTokens.add(s));
+  
+  const tokens = TOKEN_ORDER.filter(t => allTokens.has(t));
+  const extraTokens = [...allTokens].filter(t => !TOKEN_ORDER.includes(t));
+  const orderedTokens = [...tokens, ...extraTokens];
+
   return (
-    <div className="grid grid-cols-3 gap-2 mb-4">
-      <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-xl p-3 text-center">
-        <p className="text-xs text-green-600 font-medium">Tổng nhận</p>
-        <p className="text-sm font-bold text-green-700 dark:text-green-400">{totalReceived.toLocaleString('vi-VN', { maximumFractionDigits: 4 })}</p>
+    <div className="space-y-3 mb-4">
+      {/* Tổng nhận */}
+      <div className="border border-green-200 dark:border-green-800 rounded-xl overflow-hidden">
+        <div className="bg-green-50 dark:bg-green-950/40 px-3 py-2 flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <ArrowDownLeft className="w-4 h-4 text-green-600" />
+            <span className="text-sm font-bold text-green-700 dark:text-green-400">Tổng nhận</span>
+          </div>
+          <Badge variant="outline" className="border-green-500 text-green-600 text-xs">{summary.receivedCount} lệnh</Badge>
+        </div>
+        {orderedTokens.length > 0 ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-px bg-border">
+            {orderedTokens.map(sym => {
+              const data = summary.received[sym];
+              return (
+                <div key={sym} className="bg-background px-3 py-2 flex items-center gap-2">
+                  <TokenLogo symbol={sym} />
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground">{sym}</p>
+                    <p className="text-sm font-bold text-foreground truncate">
+                      {data ? data.amount.toLocaleString('vi-VN', { maximumFractionDigits: 4 }) : '0'}
+                    </p>
+                    {data && <p className="text-[10px] text-muted-foreground">{data.count} lệnh</p>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground text-center py-3">Chưa có giao dịch nhận</p>
+        )}
       </div>
-      <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl p-3 text-center">
-        <p className="text-xs text-red-600 font-medium">Tổng tặng</p>
-        <p className="text-sm font-bold text-red-700 dark:text-red-400">{totalSent.toLocaleString('vi-VN', { maximumFractionDigits: 4 })}</p>
+
+      {/* Tổng tặng */}
+      <div className="border border-red-200 dark:border-red-800 rounded-xl overflow-hidden">
+        <div className="bg-red-50 dark:bg-red-950/40 px-3 py-2 flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <ArrowUpRight className="w-4 h-4 text-red-600" />
+            <span className="text-sm font-bold text-red-700 dark:text-red-400">Tổng tặng</span>
+          </div>
+          <Badge variant="outline" className="border-red-500 text-red-600 text-xs">{summary.sentCount} lệnh</Badge>
+        </div>
+        {orderedTokens.length > 0 ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-px bg-border">
+            {orderedTokens.map(sym => {
+              const data = summary.sent[sym];
+              return (
+                <div key={sym} className="bg-background px-3 py-2 flex items-center gap-2">
+                  <TokenLogo symbol={sym} />
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground">{sym}</p>
+                    <p className="text-sm font-bold text-foreground truncate">
+                      {data ? data.amount.toLocaleString('vi-VN', { maximumFractionDigits: 4 }) : '0'}
+                    </p>
+                    {data && <p className="text-[10px] text-muted-foreground">{data.count} lệnh</p>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground text-center py-3">Chưa có giao dịch tặng</p>
+        )}
       </div>
-      <div className="bg-muted border border-border rounded-xl p-3 text-center">
-        <p className="text-xs text-muted-foreground font-medium">Giao dịch</p>
-        <p className="text-sm font-bold text-foreground">{count}</p>
+
+      {/* Tổng giao dịch */}
+      <div className="bg-muted/50 border border-border rounded-xl px-3 py-2 text-center">
+        <span className="text-xs text-muted-foreground">Tổng cộng: </span>
+        <span className="text-sm font-bold text-foreground">{summary.totalCount} giao dịch</span>
       </div>
     </div>
   );
@@ -147,7 +221,7 @@ export function WalletTransactionHistory({ userId, walletAddress }: Props) {
           <DialogDescription className="sr-only">Xem lịch sử giao dịch tặng và nhận</DialogDescription>
         </DialogHeader>
 
-        <SummaryCards {...summary} />
+        <SummarySection summary={summary} />
 
         {/* Filter */}
         <div className="flex items-center gap-1 mb-3">
