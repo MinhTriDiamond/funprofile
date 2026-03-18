@@ -392,7 +392,7 @@ export function WalletTransactionHistory({ userId, walletAddress }: Props) {
         {summaryLoading ? (
           <Skeleton className="h-32 w-full rounded-xl mb-4" />
         ) : (
-          <SummaryTable summary={summary} />
+          <SummaryTable summary={summary} walletBalances={walletBalances} />
         )}
 
         <div className="flex items-center gap-1 mb-3 flex-wrap">
