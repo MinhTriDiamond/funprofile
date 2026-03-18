@@ -5508,6 +5508,7 @@ export type Database = {
           unique_recipients: number
         }[]
       }
+      get_user_donation_summary: { Args: { p_user_id: string }; Returns: Json }
       get_user_emails_for_admin: {
         Args: { p_admin_id: string }
         Returns: {
