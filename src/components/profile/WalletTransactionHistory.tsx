@@ -298,7 +298,7 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
         <StatusBadge status={d.status} />
       </div>
 
-      <div className="flex items-center gap-2 text-sm">
+      <div className="flex items-center gap-2 text-base">
         {isExternal && !d.sender_id ? (
           <div className="flex items-center gap-1.5 min-w-0">
             <Avatar className="w-6 h-6 flex-shrink-0">
