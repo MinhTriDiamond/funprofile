@@ -159,7 +159,7 @@ function UserAvatar({ username, displayName, avatarUrl, onClick }: { username: s
         {avatarUrl && <AvatarImage src={avatarUrl} />}
         <AvatarFallback className="text-[10px] bg-primary/10 text-primary">{name[0]?.toUpperCase()}</AvatarFallback>
       </Avatar>
-      <span className="text-sm font-medium truncate max-w-[100px] sm:max-w-[160px] text-foreground">{name}</span>
+      <span className="font-bold truncate max-w-[100px] sm:max-w-[160px]" style={{ fontSize: '16px', color: '#1B5E20', textShadow: '0 1px 2px rgba(27,94,32,0.15)' }}>{name}</span>
     </button>
   );
 }
@@ -367,7 +367,7 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
           avatarUrl={d.recipient_avatar_url}
           onClick={() => d.recipient_username && navigate(`/${d.recipient_username}`)}
         />
-        <span className="font-bold whitespace-nowrap flex-1 text-center">{Number(d.amount).toLocaleString('vi-VN', { maximumFractionDigits: 6 })} {d.token_symbol}</span>
+        <span className="font-extrabold whitespace-nowrap flex-1 text-center" style={{ color: '#C2185B' }}>{Number(d.amount).toLocaleString('vi-VN', { maximumFractionDigits: 6 })} {d.token_symbol}</span>
         <div className="flex items-center gap-4 whitespace-nowrap flex-shrink-0">
           <span className="text-sm font-medium"><span className="text-primary">{formatTime(d.created_at)}</span>{' '}<span className="text-amber-600">{formatDate(d.created_at)}</span></span>
           {d.tx_hash && (
