@@ -159,7 +159,7 @@ function UserAvatar({ username, displayName, avatarUrl, onClick }: { username: s
         {avatarUrl && <AvatarImage src={avatarUrl} />}
         <AvatarFallback className="text-[10px] bg-primary/10 text-primary">{name[0]?.toUpperCase()}</AvatarFallback>
       </Avatar>
-      <span className="text-sm font-medium truncate max-w-[100px] sm:max-w-[160px] text-foreground">{name}</span>
+      <span className="text-sm font-medium truncate max-w-[100px] sm:max-w-[160px]" style={{ color: '#2E7D32' }}>{name}</span>
     </button>
   );
 }
