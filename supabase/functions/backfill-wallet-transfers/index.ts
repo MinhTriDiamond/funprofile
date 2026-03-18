@@ -165,7 +165,7 @@ Deno.serve(async (req) => {
     const moralisKey = Deno.env.get("MORALIS_API_KEY");
     const supabase = createAdminClient();
     const body = await req.json();
-    const { user_id, wallet_address, chain = "0x38", chain_id = 56 } = body;
+    const { user_id, wallet_address, chain = "0x38", chain_id = 56, from_block } = body;
     let userId = user_id;
 
     // ── Resolve wallets ──
