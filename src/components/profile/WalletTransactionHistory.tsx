@@ -368,8 +368,6 @@ export function WalletTransactionHistory({ userId, walletAddress }: Props) {
     { key: 'all', label: 'Tất cả' },
     { key: 'received', label: 'Đã nhận' },
     { key: 'sent', label: 'Đã tặng' },
-    { key: 'swap', label: 'Swap' },
-    { key: 'transfer', label: 'Chuyển' },
   ];
 
   return (
@@ -384,9 +382,9 @@ export function WalletTransactionHistory({ userId, walletAddress }: Props) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg">
             <Clock className="w-5 h-5 text-primary" />
-            Lịch sử giao dịch
+            Lịch sử chuyển nhận tiền cá nhân
           </DialogTitle>
-          <DialogDescription className="sr-only">Xem lịch sử giao dịch tặng, nhận và chuyển ví</DialogDescription>
+          <DialogDescription className="sr-only">Xem lịch sử chuyển và nhận tiền cá nhân</DialogDescription>
         </DialogHeader>
 
         {summaryLoading ? (
@@ -415,11 +413,9 @@ export function WalletTransactionHistory({ userId, walletAddress }: Props) {
         ) : (
           <>
             <div className="space-y-2">
-              {donations.map(d => {
-                if (d.type === 'swap') return <SwapCard key={d.id} d={d} />;
-                if (d.type === 'transfer') return <TransferCard key={d.id} d={d} />;
-                return <DonationCard key={d.id} d={d} userId={userId} />;
-              })}
+              {donations.filter(d => d.type !== 'swap' && d.type !== 'transfer').map(d => (
+                <DonationCard key={d.id} d={d} userId={userId} />
+              ))}
             </div>
 
             {hasMore && !loading && (
