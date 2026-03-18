@@ -343,8 +343,8 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
       {d.message && <CollapsibleMessage message={d.message} />}
 
       {d.tx_hash && (
-        <a href={`${explorerUrl}/tx/${d.tx_hash}`} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1">
-          Tx: {d.tx_hash.slice(0, 10)}...{d.tx_hash.slice(-6)} <ExternalLink className="w-3 h-3" />
+        <a href={`${explorerUrl}/tx/${d.tx_hash}`} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline flex items-center gap-1">
+          Tx: {d.tx_hash.slice(0, 10)}...{d.tx_hash.slice(-6)} <ExternalLink className="w-3.5 h-3.5" />
         </a>
       )}
     </div>
