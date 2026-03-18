@@ -353,7 +353,7 @@ export function WalletTransactionHistory({ userId, walletAddress }: Props) {
           Lịch sử GD
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto overflow-x-auto">
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto overflow-x-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg">
             <Clock className="w-5 h-5 text-primary" />
