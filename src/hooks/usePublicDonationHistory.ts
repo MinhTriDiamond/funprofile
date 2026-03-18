@@ -208,6 +208,8 @@ export function usePublicDonationHistory(userId: string | undefined) {
           chain_id: d.chain_id,
           sender_id: d.sender_id,
           recipient_id: d.recipient_id,
+          is_external: d.is_external || false,
+          sender_address: d.sender_address || null,
           sender_username: d.sender?.username || null,
           sender_display_name: d.sender?.display_name || null,
           sender_avatar_url: d.sender?.avatar_url || null,
