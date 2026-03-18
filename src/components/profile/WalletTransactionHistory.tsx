@@ -444,6 +444,8 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
             </div>
           </div>
 
+          </div>
+
           <div className="flex items-center gap-1 py-3 flex-wrap">
             <Filter className="w-4 h-4 text-muted-foreground" />
             {filters.map(f => (
