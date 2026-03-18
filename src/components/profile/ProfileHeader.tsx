@@ -162,13 +162,14 @@ export const ProfileHeader = ({
 
                 {/* Wallet Address */}
                 {displayAddress ? (
-                  <div className="inline-flex items-center gap-2 mt-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20">
+                  <button
+                    onClick={() => { copyToClipboard(displayAddress).then(() => toast.success(t('walletCopied'))).catch(() => toast.error('Không thể sao chép')); }}
+                    className="inline-flex items-center gap-2 mt-2 px-3 py-2 rounded-full bg-primary/10 border border-primary/20 touch-manipulation active:scale-95 hover:bg-primary/20 transition-all cursor-pointer"
+                  >
                     <Wallet className="w-4 h-4 text-primary flex-shrink-0" />
-                    <span className="text-sm text-foreground font-mono font-medium">{displayAddress.slice(0, 6)}...{displayAddress.slice(-4)}</span>
-                    <button onClick={() => { copyToClipboard(displayAddress).then(() => toast.success(t('walletCopied'))).catch(() => toast.error('Không thể sao chép')); }} className="p-2 rounded hover:bg-primary/10 transition-colors touch-manipulation">
-                      <Copy className="w-4 h-4 text-primary hover:text-primary/80" />
-                    </button>
-                  </div>
+                    <span className="text-sm text-foreground font-mono font-medium select-all">{displayAddress.slice(0, 6)}...{displayAddress.slice(-4)}</span>
+                    <Copy className="w-4 h-4 text-primary flex-shrink-0" />
+                  </button>
                 ) : showPrivateElements ? (
                   <button onClick={() => onNavigateToTab('edit')} className="flex items-center gap-2 mt-1 text-sm text-primary hover:underline">
                     <Wallet className="w-4 h-4" />{t('addPublicWallet')}
