@@ -240,7 +240,7 @@ Deno.serve(async (req) => {
       if (moralisKey) transfers = await fetchTransfersViaMoralis(walletAddr, chain, moralisKey);
       if (transfers === null) {
         console.log(`BSC RPC fallback for ${walletAddr}`);
-        transfers = await fetchTransfersViaBscRpc(walletAddr);
+        transfers = await fetchTransfersViaBscRpc(walletAddr, from_block ? Number(from_block) : undefined);
       }
       allTransfers.push(...transfers);
     }
