@@ -65,12 +65,12 @@ function SummaryTable({ summary }: { summary: DonationSummary }) {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
-                <TableHead className="text-xs font-bold w-[80px]">Token</TableHead>
-                <TableHead className="text-xs font-bold text-green-600 text-right">Tổng nhận</TableHead>
-                <TableHead className="text-xs font-bold text-green-600 text-right">Số lệnh</TableHead>
-                <TableHead className="text-xs font-bold text-red-600 text-right">Tổng tặng</TableHead>
-                <TableHead className="text-xs font-bold text-red-600 text-right">Số lệnh</TableHead>
-                <TableHead className="text-xs font-bold text-primary text-right">Còn lại</TableHead>
+                <TableHead className="text-[11px] font-bold w-[60px] px-2 py-1.5 whitespace-nowrap">Token</TableHead>
+                <TableHead className="text-[11px] font-bold text-green-600 text-right px-2 py-1.5 whitespace-nowrap">Tổng nhận</TableHead>
+                <TableHead className="text-[11px] font-bold text-green-600 text-right px-2 py-1.5 whitespace-nowrap">Lệnh</TableHead>
+                <TableHead className="text-[11px] font-bold text-red-600 text-right px-2 py-1.5 whitespace-nowrap">Tổng tặng</TableHead>
+                <TableHead className="text-[11px] font-bold text-red-600 text-right px-2 py-1.5 whitespace-nowrap">Lệnh</TableHead>
+                <TableHead className="text-[11px] font-bold text-primary text-right px-2 py-1.5 whitespace-nowrap">Còn lại</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -83,26 +83,26 @@ function SummaryTable({ summary }: { summary: DonationSummary }) {
 
                 return (
                   <TableRow key={sym}>
-                    <TableCell className="py-2">
-                      <div className="flex items-center gap-1.5">
+                    <TableCell className="px-2 py-1.5">
+                      <div className="flex items-center gap-1.5 whitespace-nowrap">
                         <TokenLogo symbol={sym} />
-                        <span className="text-xs font-bold">{sym}</span>
+                        <span className="text-[11px] font-bold">{sym}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-right py-2">
-                      <span className="text-xs font-semibold text-green-600">{formatAmount(recvAmt)}</span>
+                    <TableCell className="text-right px-2 py-1.5 whitespace-nowrap">
+                      <span className="text-[11px] font-semibold text-green-600">{formatAmount(recvAmt)}</span>
                     </TableCell>
-                    <TableCell className="text-right py-2">
+                    <TableCell className="text-right px-2 py-1.5 whitespace-nowrap">
                       <span className="text-[11px] text-muted-foreground">{recv?.count ?? 0}</span>
                     </TableCell>
-                    <TableCell className="text-right py-2">
-                      <span className="text-xs font-semibold text-red-600">{formatAmount(sentAmt)}</span>
+                    <TableCell className="text-right px-2 py-1.5 whitespace-nowrap">
+                      <span className="text-[11px] font-semibold text-red-600">{formatAmount(sentAmt)}</span>
                     </TableCell>
-                    <TableCell className="text-right py-2">
+                    <TableCell className="text-right px-2 py-1.5 whitespace-nowrap">
                       <span className="text-[11px] text-muted-foreground">{sent?.count ?? 0}</span>
                     </TableCell>
-                    <TableCell className="text-right py-2">
-                      <span className={`text-xs font-bold ${balance > 0 ? 'text-green-600' : balance < 0 ? 'text-red-600' : 'text-muted-foreground'}`}>
+                    <TableCell className="text-right px-2 py-1.5 whitespace-nowrap">
+                      <span className={`text-[11px] font-bold ${balance > 0 ? 'text-green-600' : balance < 0 ? 'text-red-600' : 'text-muted-foreground'}`}>
                         {balance > 0 ? '+' : ''}{formatAmount(balance)}
                       </span>
                     </TableCell>
