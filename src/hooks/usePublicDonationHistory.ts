@@ -43,7 +43,7 @@ export interface DonationSummary {
   totalCount: number;
 }
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 200;
 
 export function usePublicDonationHistory(userId: string | undefined) {
   const [donations, setDonations] = useState<DonationRecord[]>([]);

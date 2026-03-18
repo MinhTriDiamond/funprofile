@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Clock, ArrowDownLeft, ArrowUpRight, ArrowDownUp, ExternalLink, Filter, MessageSquare, ArrowRightLeft } from 'lucide-react';
+import { Clock, ArrowDownLeft, ArrowUpRight, ArrowDownUp, ExternalLink, Filter, MessageSquare, ArrowRightLeft, ChevronDown, ChevronUp } from 'lucide-react';
 import { usePublicDonationHistory, type DonationFilter, type DonationRecord, type DonationSummary } from '@/hooks/usePublicDonationHistory';
 import { getBscScanBaseUrl } from '@/lib/chainTokenMapping';
 import { WALLET_TOKENS } from '@/lib/tokens';
@@ -238,6 +238,32 @@ function SwapCard({ d }: { d: DonationRecord }) {
   );
 }
 
+const MSG_TRUNCATE_LENGTH = 80;
+
+function CollapsibleMessage({ message }: { message: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const isLong = message.length > MSG_TRUNCATE_LENGTH;
+
+  return (
+    <div className="flex items-start gap-1.5 text-xs text-muted-foreground bg-muted/50 rounded-lg p-2">
+      <MessageSquare className="w-3 h-3 mt-0.5 flex-shrink-0" />
+      <div className="min-w-0 flex-1">
+        <span className="break-words">
+          {isLong && !expanded ? `${message.slice(0, MSG_TRUNCATE_LENGTH)}...` : message}
+        </span>
+        {isLong && (
+          <button
+            onClick={(e) => { e.stopPropagation(); setExpanded(prev => !prev); }}
+            className="ml-1 text-primary hover:text-primary/80 font-medium inline-flex items-center gap-0.5"
+          >
+            {expanded ? (<>Thu gọn <ChevronUp className="w-3 h-3" /></>) : (<>Xem thêm <ChevronDown className="w-3 h-3" /></>)}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
   const navigate = useNavigate();
   const isSent = d.sender_id === userId;
@@ -307,12 +333,7 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
         <span className="font-bold">{Number(d.amount).toLocaleString('vi-VN', { maximumFractionDigits: 6 })} {d.token_symbol}</span>
       </div>
 
-      {d.message && (
-        <div className="flex items-start gap-1.5 text-xs text-muted-foreground bg-muted/50 rounded-lg p-2">
-          <MessageSquare className="w-3 h-3 mt-0.5 flex-shrink-0" />
-          <span className="break-words">{d.message}</span>
-        </div>
-      )}
+      {d.message && <CollapsibleMessage message={d.message} />}
 
       {d.tx_hash && (
         <a href={`${explorerUrl}/tx/${d.tx_hash}`} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1">
@@ -393,10 +414,10 @@ export function WalletTransactionHistory({ userId, walletAddress }: Props) {
               })}
             </div>
 
-            {hasMore && (
+            {hasMore && !loading && (
               <div className="flex justify-center mt-4">
-                <Button variant="outline" onClick={loadMore} disabled={loading}>
-                  {loading ? 'Đang tải...' : 'Tải thêm'}
+                <Button variant="outline" onClick={loadMore} size="sm">
+                  Tải thêm
                 </Button>
               </div>
             )}
