@@ -109,6 +109,8 @@ project_id = "bhtsnervqiwchluwuxki"
     verify_jwt = false
   [functions.recalculate-fun-amounts]
     verify_jwt = false
+  [functions.scan-treasury-camly]
+    verify_jwt = false
   [functions.scan-treasury-outgoing]
     verify_jwt = false
   [functions.scheduled-reconciliation]
