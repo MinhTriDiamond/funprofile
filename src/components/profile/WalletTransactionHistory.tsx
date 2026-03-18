@@ -254,7 +254,7 @@ function SwapCard({ d }: { d: DonationRecord }) {
   );
 }
 
-const MSG_TRUNCATE_LENGTH = 80;
+const MSG_TRUNCATE_LENGTH = 200;
 
 function CollapsibleMessage({ message }: { message: string }) {
   const [expanded, setExpanded] = useState(false);
