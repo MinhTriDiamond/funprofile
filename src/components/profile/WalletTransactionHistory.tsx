@@ -367,7 +367,7 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
           avatarUrl={d.recipient_avatar_url}
           onClick={() => d.recipient_username && navigate(`/${d.recipient_username}`)}
         />
-        <span className="font-extrabold whitespace-nowrap flex-1 text-center" style={{ color: '#C2185B' }}>{Number(d.amount).toLocaleString('vi-VN', { maximumFractionDigits: 6 })} {d.token_symbol}</span>
+        <span className="font-extrabold whitespace-nowrap w-[180px] text-right flex-shrink-0" style={{ color: '#C2185B' }}>{Number(d.amount).toLocaleString('vi-VN', { maximumFractionDigits: 6 })} {d.token_symbol}</span>
         <div className="flex items-center gap-4 whitespace-nowrap flex-shrink-0">
           <span className="text-sm font-medium"><span className="text-primary">{formatTime(d.created_at)}</span>{' '}<span className="text-amber-600">{formatDate(d.created_at)}</span></span>
           {d.tx_hash && (
