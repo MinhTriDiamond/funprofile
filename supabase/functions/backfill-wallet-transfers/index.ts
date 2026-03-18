@@ -38,7 +38,7 @@ Deno.serve(async (req) => {
     const { user_id, wallet_address, chain = "0x38", chain_id = 56 } = body;
 
     // Resolve wallet address
-    let walletAddr = wallet_address?.toLowerCase();
+    let walletAddr = wallet_address?.toLowerCase().trim();
     let userId = user_id;
 
     if (!walletAddr && !userId) {
@@ -60,12 +60,19 @@ Deno.serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      walletAddr = (profile.public_wallet_address || profile.wallet_address || "").toLowerCase();
+      walletAddr = (profile.public_wallet_address || profile.wallet_address || "").toLowerCase().trim();
       if (!walletAddr) {
-        return new Response(JSON.stringify({ error: "User has no wallet address" }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        // Fallback: check TREASURY_WALLET_ADDRESS env for treasury profiles
+        const treasuryAddr = Deno.env.get("TREASURY_WALLET_ADDRESS")?.toLowerCase().trim();
+        if (treasuryAddr) {
+          walletAddr = treasuryAddr;
+          console.log(`Using TREASURY_WALLET_ADDRESS fallback for user ${userId}`);
+        } else {
+          return new Response(JSON.stringify({ error: "User has no wallet address" }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
       }
     }
 
@@ -86,7 +93,7 @@ Deno.serve(async (req) => {
       userId = match.id;
     }
 
-    console.log(`Backfilling wallet transfers for user ${userId}, wallet ${walletAddr}`);
+    console.log(`Backfilling wallet transfers for user ${userId}, wallet ${walletAddr}, walletLength=${walletAddr?.length}`);
 
     // Fetch all ERC20 transfers from Moralis
     const allTransfers: TokenTransfer[] = [];
