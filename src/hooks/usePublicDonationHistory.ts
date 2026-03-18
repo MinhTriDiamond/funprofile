@@ -43,6 +43,42 @@ export function usePublicDonationHistory(userId: string | undefined) {
   const [filter, setFilter] = useState<DonationFilter>('all');
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const [summary, setSummary] = useState<DonationSummary>({ received: {}, sent: {}, receivedCount: 0, sentCount: 0, totalCount: 0 });
+  const [summaryLoading, setSummaryLoading] = useState(false);
+
+  const fetchSummary = useCallback(async () => {
+    if (!userId) return;
+    setSummaryLoading(true);
+    try {
+      const { data, error: rpcError } = await supabase.rpc('get_user_donation_summary', { p_user_id: userId });
+      if (rpcError) throw rpcError;
+
+      const raw = data as any;
+      const received: TokenBreakdown = {};
+      const sent: TokenBreakdown = {};
+      let receivedCount = 0;
+      let sentCount = 0;
+
+      if (raw?.received) {
+        for (const [sym, val] of Object.entries(raw.received as Record<string, any>)) {
+          received[sym] = { amount: Number(val.amount) || 0, count: Number(val.count) || 0 };
+          receivedCount += received[sym].count;
+        }
+      }
+      if (raw?.sent) {
+        for (const [sym, val] of Object.entries(raw.sent as Record<string, any>)) {
+          sent[sym] = { amount: Number(val.amount) || 0, count: Number(val.count) || 0 };
+          sentCount += sent[sym].count;
+        }
+      }
+
+      setSummary({ received, sent, receivedCount, sentCount, totalCount: receivedCount + sentCount });
+    } catch (err: any) {
+      console.error('fetchSummary error:', err);
+    } finally {
+      setSummaryLoading(false);
+    }
+  }, [userId]);
 
   const fetchDonations = useCallback(async (pageNum = 1, currentFilter: DonationFilter = filter) => {
     if (!userId) return;
@@ -112,41 +148,17 @@ export function usePublicDonationHistory(userId: string | undefined) {
     fetchDonations(1, f);
   }, [fetchDonations]);
 
-  const getSummary = useCallback((): DonationSummary => {
-    const empty: DonationSummary = { received: {}, sent: {}, receivedCount: 0, sentCount: 0, totalCount: 0 };
-    if (!userId) return empty;
-    const received: TokenBreakdown = {};
-    const sent: TokenBreakdown = {};
-    let receivedCount = 0;
-    let sentCount = 0;
-    for (const d of donations) {
-      const val = Number(d.amount) || 0;
-      const sym = d.token_symbol || 'UNKNOWN';
-      if (d.recipient_id === userId) {
-        if (!received[sym]) received[sym] = { amount: 0, count: 0 };
-        received[sym].amount += val;
-        received[sym].count += 1;
-        receivedCount++;
-      }
-      if (d.sender_id === userId) {
-        if (!sent[sym]) sent[sym] = { amount: 0, count: 0 };
-        sent[sym].amount += val;
-        sent[sym].count += 1;
-        sentCount++;
-      }
-    }
-    return { received, sent, receivedCount, sentCount, totalCount: donations.length };
-  }, [donations, userId]);
-
   return {
     donations,
     loading,
     error,
     filter,
     hasMore,
+    summary,
+    summaryLoading,
     changeFilter,
     fetchDonations,
+    fetchSummary,
     loadMore,
-    getSummary,
   };
 }

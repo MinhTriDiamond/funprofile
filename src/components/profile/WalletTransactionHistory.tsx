@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Clock, ArrowDownLeft, ArrowUpRight, ExternalLink, Filter, MessageSquare } from 'lucide-react';
 import { usePublicDonationHistory, type DonationFilter, type DonationRecord, type DonationSummary } from '@/hooks/usePublicDonationHistory';
 import { getBscScanBaseUrl } from '@/lib/chainTokenMapping';
@@ -25,6 +26,13 @@ function formatTimestamp(ts: string) {
   });
 }
 
+function formatAmount(num: number): string {
+  if (num === 0) return '0';
+  if (num < 0.0001) return num.toFixed(8);
+  if (num < 1) return num.toFixed(4);
+  return num.toLocaleString('vi-VN', { maximumFractionDigits: 4 });
+}
+
 function StatusBadge({ status }: { status: string }) {
   if (status === 'confirmed') return <Badge className="bg-green-600 hover:bg-green-700 text-xs">Thành công</Badge>;
   if (status === 'pending') return <Badge variant="secondary" className="text-xs">Đang xử lý</Badge>;
@@ -37,85 +45,90 @@ function TokenLogo({ symbol }: { symbol: string }) {
   return <img src={token.logo} alt={symbol} className="w-4 h-4 rounded-full" />;
 }
 
-function SummarySection({ summary }: { summary: DonationSummary }) {
+function SummaryTable({ summary }: { summary: DonationSummary }) {
   const allTokens = new Set<string>();
   Object.keys(summary.received).forEach(s => allTokens.add(s));
   Object.keys(summary.sent).forEach(s => allTokens.add(s));
-  
+
   const tokens = TOKEN_ORDER.filter(t => allTokens.has(t));
   const extraTokens = [...allTokens].filter(t => !TOKEN_ORDER.includes(t));
   const orderedTokens = [...tokens, ...extraTokens];
 
+  if (orderedTokens.length === 0) {
+    return <p className="text-xs text-muted-foreground text-center py-4">Chưa có giao dịch nào</p>;
+  }
+
   return (
     <div className="space-y-3 mb-4">
-      {/* Tổng nhận */}
-      <div className="border border-green-200 dark:border-green-800 rounded-xl overflow-hidden">
-        <div className="bg-green-50 dark:bg-green-950/40 px-3 py-2 flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <ArrowDownLeft className="w-4 h-4 text-green-600" />
-            <span className="text-sm font-bold text-green-700 dark:text-green-400">Tổng nhận</span>
-          </div>
-          <Badge variant="outline" className="border-green-500 text-green-600 text-xs">{summary.receivedCount} lệnh</Badge>
-        </div>
-        {orderedTokens.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-px bg-border">
-            {orderedTokens.map(sym => {
-              const data = summary.received[sym];
-              return (
-                <div key={sym} className="bg-background px-3 py-2 flex items-center gap-2">
-                  <TokenLogo symbol={sym} />
-                  <div className="min-w-0">
-                    <p className="text-xs text-muted-foreground">{sym}</p>
-                    <p className="text-sm font-bold text-foreground truncate">
-                      {data ? data.amount.toLocaleString('vi-VN', { maximumFractionDigits: 4 }) : '0'}
-                    </p>
-                    {data && <p className="text-[10px] text-muted-foreground">{data.count} lệnh</p>}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <p className="text-xs text-muted-foreground text-center py-3">Chưa có giao dịch nhận</p>
-        )}
-      </div>
+      <div className="border border-border rounded-xl overflow-hidden">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/50">
+                <TableHead className="text-xs font-bold w-[80px]">Token</TableHead>
+                <TableHead className="text-xs font-bold text-green-600 text-right">Tổng nhận</TableHead>
+                <TableHead className="text-xs font-bold text-green-600 text-right">Số lệnh</TableHead>
+                <TableHead className="text-xs font-bold text-red-600 text-right">Tổng tặng</TableHead>
+                <TableHead className="text-xs font-bold text-red-600 text-right">Số lệnh</TableHead>
+                <TableHead className="text-xs font-bold text-primary text-right">Còn lại</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {orderedTokens.map(sym => {
+                const recv = summary.received[sym];
+                const sent = summary.sent[sym];
+                const recvAmt = recv?.amount ?? 0;
+                const sentAmt = sent?.amount ?? 0;
+                const balance = recvAmt - sentAmt;
 
-      {/* Tổng tặng */}
-      <div className="border border-red-200 dark:border-red-800 rounded-xl overflow-hidden">
-        <div className="bg-red-50 dark:bg-red-950/40 px-3 py-2 flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <ArrowUpRight className="w-4 h-4 text-red-600" />
-            <span className="text-sm font-bold text-red-700 dark:text-red-400">Tổng tặng</span>
-          </div>
-          <Badge variant="outline" className="border-red-500 text-red-600 text-xs">{summary.sentCount} lệnh</Badge>
+                return (
+                  <TableRow key={sym}>
+                    <TableCell className="py-2">
+                      <div className="flex items-center gap-1.5">
+                        <TokenLogo symbol={sym} />
+                        <span className="text-xs font-bold">{sym}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right py-2">
+                      <span className="text-xs font-semibold text-green-600">{formatAmount(recvAmt)}</span>
+                    </TableCell>
+                    <TableCell className="text-right py-2">
+                      <span className="text-[11px] text-muted-foreground">{recv?.count ?? 0}</span>
+                    </TableCell>
+                    <TableCell className="text-right py-2">
+                      <span className="text-xs font-semibold text-red-600">{formatAmount(sentAmt)}</span>
+                    </TableCell>
+                    <TableCell className="text-right py-2">
+                      <span className="text-[11px] text-muted-foreground">{sent?.count ?? 0}</span>
+                    </TableCell>
+                    <TableCell className="text-right py-2">
+                      <span className={`text-xs font-bold ${balance > 0 ? 'text-green-600' : balance < 0 ? 'text-red-600' : 'text-muted-foreground'}`}>
+                        {balance > 0 ? '+' : ''}{formatAmount(balance)}
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
         </div>
-        {orderedTokens.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-px bg-border">
-            {orderedTokens.map(sym => {
-              const data = summary.sent[sym];
-              return (
-                <div key={sym} className="bg-background px-3 py-2 flex items-center gap-2">
-                  <TokenLogo symbol={sym} />
-                  <div className="min-w-0">
-                    <p className="text-xs text-muted-foreground">{sym}</p>
-                    <p className="text-sm font-bold text-foreground truncate">
-                      {data ? data.amount.toLocaleString('vi-VN', { maximumFractionDigits: 4 }) : '0'}
-                    </p>
-                    {data && <p className="text-[10px] text-muted-foreground">{data.count} lệnh</p>}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <p className="text-xs text-muted-foreground text-center py-3">Chưa có giao dịch tặng</p>
-        )}
       </div>
 
       {/* Tổng giao dịch */}
-      <div className="bg-muted/50 border border-border rounded-xl px-3 py-2 text-center">
-        <span className="text-xs text-muted-foreground">Tổng cộng: </span>
-        <span className="text-sm font-bold text-foreground">{summary.totalCount} giao dịch</span>
+      <div className="flex items-center justify-between bg-muted/50 border border-border rounded-xl px-3 py-2">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1">
+            <ArrowDownLeft className="w-3.5 h-3.5 text-green-600" />
+            <span className="text-xs text-muted-foreground">Nhận:</span>
+            <span className="text-xs font-bold text-green-600">{summary.receivedCount} lệnh</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <ArrowUpRight className="w-3.5 h-3.5 text-red-600" />
+            <span className="text-xs text-muted-foreground">Tặng:</span>
+            <span className="text-xs font-bold text-red-600">{summary.sentCount} lệnh</span>
+          </div>
+        </div>
+        <span className="text-xs font-bold text-foreground">Tổng: {summary.totalCount} GD</span>
       </div>
     </div>
   );
@@ -189,15 +202,15 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
 export function WalletTransactionHistory({ userId, walletAddress }: Props) {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
-  const { donations, loading, error, filter, hasMore, changeFilter, fetchDonations, loadMore, getSummary } = usePublicDonationHistory(userId);
+  const { donations, loading, error, filter, hasMore, summary, summaryLoading, changeFilter, fetchDonations, fetchSummary, loadMore } = usePublicDonationHistory(userId);
 
   useEffect(() => {
     if (open && userId) {
       fetchDonations(1);
+      fetchSummary();
     }
   }, [open, userId]);
 
-  const summary = getSummary();
   const filters: { key: DonationFilter; label: string }[] = [
     { key: 'all', label: 'Tất cả' },
     { key: 'received', label: 'Đã nhận' },
@@ -221,7 +234,12 @@ export function WalletTransactionHistory({ userId, walletAddress }: Props) {
           <DialogDescription className="sr-only">Xem lịch sử giao dịch tặng và nhận</DialogDescription>
         </DialogHeader>
 
-        <SummarySection summary={summary} />
+        {/* Summary Table */}
+        {summaryLoading ? (
+          <Skeleton className="h-32 w-full rounded-xl mb-4" />
+        ) : (
+          <SummaryTable summary={summary} />
+        )}
 
         {/* Filter */}
         <div className="flex items-center gap-1 mb-3">
