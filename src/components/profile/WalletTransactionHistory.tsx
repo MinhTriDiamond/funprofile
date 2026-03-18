@@ -302,9 +302,11 @@ export function WalletTransactionHistory({ userId, walletAddress }: Props) {
         ) : (
           <>
             <div className="space-y-2">
-              {donations.map(d => (
-                <DonationCard key={d.id} d={d} userId={userId} />
-              ))}
+              {donations.map(d => 
+                d.type === 'swap' 
+                  ? <SwapCard key={d.id} d={d} />
+                  : <DonationCard key={d.id} d={d} userId={userId} />
+              )}
             </div>
 
             {hasMore && (
