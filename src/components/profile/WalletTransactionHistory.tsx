@@ -150,7 +150,7 @@ function UserAvatar({ username, displayName, avatarUrl, onClick }: { username: s
         {avatarUrl && <AvatarImage src={avatarUrl} />}
         <AvatarFallback className="text-[10px] bg-primary/10 text-primary">{name[0]?.toUpperCase()}</AvatarFallback>
       </Avatar>
-      <span className="text-xs font-medium truncate max-w-[80px] sm:max-w-[120px] text-foreground">{name}</span>
+      <span className="text-sm font-medium truncate max-w-[100px] sm:max-w-[160px] text-foreground">{name}</span>
     </button>
   );
 }
@@ -282,11 +282,11 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
   const senderAvatar = d.sender_avatar_url;
 
   return (
-    <div className="border border-border rounded-xl p-3 space-y-2">
+    <div className="border border-border rounded-xl p-4 space-y-2.5">
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-1.5">
-          <Badge variant="outline" className={isSent ? 'border-red-500 text-red-600 bg-red-50 dark:bg-red-950/30' : 'border-green-500 text-green-600 bg-green-50 dark:bg-green-950/30'}>
-            {isSent ? <ArrowUpRight className="w-3 h-3 mr-1" /> : <ArrowDownLeft className="w-3 h-3 mr-1" />}
+          <Badge variant="outline" className={isSent ? 'border-red-500 text-red-600 bg-red-50 dark:bg-red-950/30 text-sm' : 'border-green-500 text-green-600 bg-green-50 dark:bg-green-950/30 text-sm'}>
+            {isSent ? <ArrowUpRight className="w-3.5 h-3.5 mr-1" /> : <ArrowDownLeft className="w-3.5 h-3.5 mr-1" />}
             {isSent ? 'Đã tặng' : 'Đã nhận'}
           </Badge>
           {isExternal && (
@@ -298,7 +298,7 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
         <StatusBadge status={d.status} />
       </div>
 
-      <div className="flex items-center gap-2 text-sm">
+      <div className="flex items-center gap-2 text-base">
         {isExternal && !d.sender_id ? (
           <div className="flex items-center gap-1.5 min-w-0">
             <Avatar className="w-6 h-6 flex-shrink-0">
@@ -335,7 +335,7 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
         />
       </div>
 
-      <div className="flex justify-between text-sm">
+      <div className="flex justify-between text-base">
         <span className="text-muted-foreground">{formatTimestamp(d.created_at)}</span>
         <span className="font-bold">{Number(d.amount).toLocaleString('vi-VN', { maximumFractionDigits: 6 })} {d.token_symbol}</span>
       </div>
@@ -343,8 +343,8 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
       {d.message && <CollapsibleMessage message={d.message} />}
 
       {d.tx_hash && (
-        <a href={`${explorerUrl}/tx/${d.tx_hash}`} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1">
-          Tx: {d.tx_hash.slice(0, 10)}...{d.tx_hash.slice(-6)} <ExternalLink className="w-3 h-3" />
+        <a href={`${explorerUrl}/tx/${d.tx_hash}`} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline flex items-center gap-1">
+          Tx: {d.tx_hash.slice(0, 10)}...{d.tx_hash.slice(-6)} <ExternalLink className="w-3.5 h-3.5" />
         </a>
       )}
     </div>
@@ -378,7 +378,7 @@ export function WalletTransactionHistory({ userId, walletAddress }: Props) {
           Lịch sử GD
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto overflow-x-auto">
+      <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto overflow-x-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg">
             <Clock className="w-5 h-5 text-primary" />
