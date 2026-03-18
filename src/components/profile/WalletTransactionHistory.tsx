@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -18,7 +18,9 @@ function shortenAddr(addr: string) {
 }
 
 function formatTimestamp(ts: string) {
-  return new Date(Number(ts) * 1000).toLocaleString('vi-VN', {
+  // Support both ISO date strings (Moralis) and Unix timestamps (BscScan)
+  const date = ts.includes('T') || ts.includes('-') ? new Date(ts) : new Date(Number(ts) * 1000);
+  return date.toLocaleString('vi-VN', {
     day: '2-digit', month: '2-digit', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
   });
@@ -129,6 +131,7 @@ export function WalletTransactionHistory({ walletAddress }: Props) {
             Lịch sử giao dịch
           </DialogTitle>
           <p className="text-xs text-muted-foreground font-mono">{walletAddress}</p>
+          <DialogDescription className="sr-only">Xem lịch sử giao dịch trên blockchain</DialogDescription>
         </DialogHeader>
 
         <SummaryCards {...summary} />
