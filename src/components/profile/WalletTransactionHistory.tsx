@@ -388,6 +388,7 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
           Lịch sử GD
         </Button>
       </DialogTrigger>
+      {/* Dialog 680px ~ 18cm */}
       <DialogContent className="w-[680px] max-w-[95vw] sm:max-w-[680px] max-h-[85vh] overflow-hidden flex flex-col">
         {/* Fixed header */}
         <div className="flex-shrink-0">
