@@ -282,11 +282,11 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
   const senderAvatar = d.sender_avatar_url;
 
   return (
-    <div className="border border-border rounded-xl p-3 space-y-2">
+    <div className="border border-border rounded-xl p-4 space-y-2.5">
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-1.5">
-          <Badge variant="outline" className={isSent ? 'border-red-500 text-red-600 bg-red-50 dark:bg-red-950/30' : 'border-green-500 text-green-600 bg-green-50 dark:bg-green-950/30'}>
-            {isSent ? <ArrowUpRight className="w-3 h-3 mr-1" /> : <ArrowDownLeft className="w-3 h-3 mr-1" />}
+          <Badge variant="outline" className={isSent ? 'border-red-500 text-red-600 bg-red-50 dark:bg-red-950/30 text-sm' : 'border-green-500 text-green-600 bg-green-50 dark:bg-green-950/30 text-sm'}>
+            {isSent ? <ArrowUpRight className="w-3.5 h-3.5 mr-1" /> : <ArrowDownLeft className="w-3.5 h-3.5 mr-1" />}
             {isSent ? 'Đã tặng' : 'Đã nhận'}
           </Badge>
           {isExternal && (
