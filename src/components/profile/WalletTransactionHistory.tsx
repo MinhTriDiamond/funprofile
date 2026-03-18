@@ -15,6 +15,9 @@ import { WALLET_TOKENS } from '@/lib/tokens';
 interface Props {
   userId: string;
   walletAddress?: string;
+  userDisplayName?: string;
+  userAvatarUrl?: string;
+  username?: string;
 }
 
 const TOKEN_ORDER = ['USDT', 'BNB', 'BTCB', 'FUN', 'CAMLY'];
