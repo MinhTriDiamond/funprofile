@@ -38,7 +38,7 @@ Deno.serve(async (req) => {
     const { user_id, wallet_address, chain = "0x38", chain_id = 56 } = body;
 
     // Resolve wallet address
-    let walletAddr = wallet_address?.toLowerCase();
+    let walletAddr = wallet_address?.toLowerCase().trim();
     let userId = user_id;
 
     if (!walletAddr && !userId) {
