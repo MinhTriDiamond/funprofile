@@ -380,8 +380,8 @@ export function WalletTransactionHistory({ userId, walletAddress }: Props) {
       </DialogTrigger>
       <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto overflow-x-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-lg">
-            <Clock className="w-5 h-5 text-primary" />
+          <DialogTitle className="flex items-center gap-2 text-xl uppercase tracking-wider font-extrabold" style={{ color: '#2E7D32', textShadow: '0 1px 2px rgba(46,125,50,0.2)' }}>
+            <Clock className="w-5 h-5" style={{ color: '#2E7D32' }} />
             Lịch sử chuyển nhận tiền cá nhân
           </DialogTitle>
           <DialogDescription className="sr-only">Xem lịch sử chuyển và nhận tiền cá nhân</DialogDescription>
