@@ -114,7 +114,7 @@ function SummaryTable({ summary }: { summary: DonationSummary }) {
         </div>
       </div>
 
-      <p className="text-[10px] text-muted-foreground italic px-1">* Chỉ tính giao dịch tặng/nhận qua FUN.RICH. Số dư ví thực tế có thể khác do swap, chuyển trực tiếp...</p>
+      <p className="text-[10px] text-muted-foreground italic px-1">* Bao gồm giao dịch tặng/nhận và swap qua FUN.RICH. Số dư ví thực tế có thể khác do chuyển trực tiếp từ bên ngoài.</p>
 
       {/* Tổng giao dịch */}
       <div className="flex items-center justify-between bg-muted/50 border border-border rounded-xl px-3 py-2">
