@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -22,18 +22,12 @@ interface Props {
 
 const TOKEN_ORDER = ['USDT', 'BNB', 'BTCB', 'FUN', 'CAMLY'];
 
-function formatDate(ts: string) {
-  const date = new Date(ts);
-  return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
-}
-
-function formatTime(ts: string) {
-  const date = new Date(ts);
-  return date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-}
-
 function formatTimestamp(ts: string) {
-  return `${formatTime(ts)} ${formatDate(ts)}`;
+  const date = new Date(ts);
+  return date.toLocaleString('vi-VN', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  });
 }
 
 function formatAmount(num: number): string {
@@ -159,7 +153,7 @@ function UserAvatar({ username, displayName, avatarUrl, onClick }: { username: s
         {avatarUrl && <AvatarImage src={avatarUrl} />}
         <AvatarFallback className="text-[10px] bg-primary/10 text-primary">{name[0]?.toUpperCase()}</AvatarFallback>
       </Avatar>
-      <span className="font-bold truncate max-w-[100px] sm:max-w-[160px]" style={{ fontSize: '16px', color: '#1B5E20', textShadow: '0 1px 2px rgba(27,94,32,0.15)' }}>{name}</span>
+      <span className="text-sm font-medium truncate max-w-[100px] sm:max-w-[160px] text-foreground">{name}</span>
     </button>
   );
 }
@@ -254,51 +248,26 @@ function SwapCard({ d }: { d: DonationRecord }) {
   );
 }
 
-const MSG_TRUNCATE_LENGTH = 200;
+const MSG_TRUNCATE_LENGTH = 80;
 
 function CollapsibleMessage({ message }: { message: string }) {
   const [expanded, setExpanded] = useState(false);
-  const [isTruncated, setIsTruncated] = useState(false);
-  const textRef = useRef<HTMLSpanElement>(null);
-
-  const checkTruncation = useCallback(() => {
-    if (textRef.current) {
-      setIsTruncated(textRef.current.scrollWidth > textRef.current.clientWidth);
-    }
-  }, []);
-
-  useEffect(() => {
-    checkTruncation();
-    window.addEventListener('resize', checkTruncation);
-    return () => window.removeEventListener('resize', checkTruncation);
-  }, [checkTruncation]);
+  const isLong = message.length > MSG_TRUNCATE_LENGTH;
 
   return (
-    <div className="flex items-center gap-1.5 text-sm text-muted-foreground bg-muted/50 rounded-lg p-2">
-      <MessageSquare className="w-4 h-4 flex-shrink-0" />
-      <div className="min-w-0 flex-1 flex items-center">
-        {!expanded ? (
-          <>
-            <span ref={textRef} className="truncate">{message}</span>
-            {isTruncated && (
-              <button
-                onClick={(e) => { e.stopPropagation(); setExpanded(true); }}
-                className="ml-1 text-primary hover:text-primary/80 font-medium inline-flex items-center gap-0.5 flex-shrink-0"
-              >
-                Xem thêm <ChevronDown className="w-3 h-3" />
-              </button>
-            )}
-          </>
-        ) : (
-          <span className="break-words">
-            {message}
-            <button
-              onClick={(e) => { e.stopPropagation(); setExpanded(false); }}
-              className="ml-1 text-primary hover:text-primary/80 font-medium inline-flex items-center gap-0.5"
-            >
-              Thu gọn <ChevronUp className="w-3 h-3" />
-            </button>
-          </span>
+    <div className="flex items-start gap-1.5 text-sm text-muted-foreground bg-muted/50 rounded-lg p-2">
+      <MessageSquare className="w-4 h-4 mt-0.5 flex-shrink-0" />
+      <div className="min-w-0 flex-1">
+        <span className="break-words">
+          {isLong && !expanded ? `${message.slice(0, MSG_TRUNCATE_LENGTH)}...` : message}
+        </span>
+        {isLong && (
+          <button
+            onClick={(e) => { e.stopPropagation(); setExpanded(prev => !prev); }}
+            className="ml-1 text-primary hover:text-primary/80 font-medium inline-flex items-center gap-0.5"
+          >
+            {expanded ? (<>Thu gọn <ChevronUp className="w-3 h-3" /></>) : (<>Xem thêm <ChevronDown className="w-3 h-3" /></>)}
+          </button>
         )}
       </div>
     </div>
@@ -367,9 +336,9 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
           avatarUrl={d.recipient_avatar_url}
           onClick={() => d.recipient_username && navigate(`/${d.recipient_username}`)}
         />
-        <span className="font-extrabold whitespace-nowrap w-[180px] text-right flex-shrink-0" style={{ color: '#C2185B' }}>{Number(d.amount).toLocaleString('vi-VN', { maximumFractionDigits: 6 })} {d.token_symbol}</span>
-        <div className="flex items-center gap-4 whitespace-nowrap flex-shrink-0">
-          <span className="text-sm font-medium"><span className="text-primary">{formatTime(d.created_at)}</span>{' '}<span className="text-amber-600">{formatDate(d.created_at)}</span></span>
+        <span className="font-bold whitespace-nowrap flex-1 text-center">{Number(d.amount).toLocaleString('vi-VN', { maximumFractionDigits: 6 })} {d.token_symbol}</span>
+        <div className="flex items-center gap-2 whitespace-nowrap flex-shrink-0">
+          <span className="text-sm text-muted-foreground">{formatTimestamp(d.created_at)}</span>
           {d.tx_hash && (
             <a href={`${explorerUrl}/tx/${d.tx_hash}`} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline flex items-center gap-1">
               Tx: {d.tx_hash.slice(0, 10)}...{d.tx_hash.slice(-6)} <ExternalLink className="w-3.5 h-3.5" />
@@ -412,35 +381,23 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
           Lịch sử GD
         </Button>
       </DialogTrigger>
-      <DialogContent className="w-[65vw] max-w-[65vw] sm:w-[65vw] sm:max-w-[65vw] max-h-[85vh] overflow-hidden flex flex-col">
+      <DialogContent className="w-[95vw] max-w-[95vw] sm:w-[95vw] sm:max-w-[95vw] max-h-[85vh] overflow-hidden flex flex-col">
         {/* Fixed header */}
         <div className="flex-shrink-0">
           <DialogHeader>
-            <DialogTitle className="sr-only">Lịch sử giao dịch cá nhân</DialogTitle>
+            <DialogTitle className="flex items-center justify-center gap-2 text-xl uppercase tracking-wider font-extrabold w-full" style={{ color: '#2E7D32', textShadow: '0 1px 2px rgba(46,125,50,0.2)' }}>
+              <Clock className="w-5 h-5" style={{ color: '#2E7D32' }} />
+              Lịch sử giao dịch cá nhân
+            </DialogTitle>
             <DialogDescription className="sr-only">Xem lịch sử chuyển và nhận tiền cá nhân</DialogDescription>
           </DialogHeader>
 
-          <div className="flex items-center justify-between py-4 border-b border-border gap-4 relative">
-            <div className="flex items-center gap-2 min-w-0 flex-1">
-              <Clock className="w-6 h-6 flex-shrink-0" style={{ color: '#2E7D32' }} />
-              <span className="font-extrabold uppercase tracking-wider whitespace-nowrap" style={{ color: '#2E7D32', textShadow: '0 1px 2px rgba(46,125,50,0.2)', fontSize: '17px' }}>
-                Lịch sử giao dịch cá nhân
-              </span>
-            </div>
-
-            <div className="flex flex-col items-center gap-1.5 flex-shrink-0 absolute left-1/2 -translate-x-1/2">
-              <Avatar className="w-16 h-16">
-                {userAvatarUrl && <AvatarImage src={userAvatarUrl} />}
-                <AvatarFallback className="text-lg bg-primary/10 text-primary font-bold">{displayName[0]?.toUpperCase()}</AvatarFallback>
-              </Avatar>
-              <span className="text-sm font-bold text-foreground">{displayName}</span>
-            </div>
-
-            <div className="flex-1 text-right min-w-0">
-              <span className="font-bold uppercase tracking-wide text-red-600 whitespace-nowrap" style={{ fontSize: '17px' }}>
-                Trao yêu thương - Nhận năng lượng
-              </span>
-            </div>
+          <div className="flex flex-col items-center gap-1.5 py-3 border-b border-border">
+            <Avatar className="w-12 h-12">
+              {userAvatarUrl && <AvatarImage src={userAvatarUrl} />}
+              <AvatarFallback className="text-base bg-primary/10 text-primary font-bold">{displayName[0]?.toUpperCase()}</AvatarFallback>
+            </Avatar>
+            <span className="text-base font-bold text-foreground">{displayName}</span>
           </div>
 
           <div className="flex items-center gap-1 py-3 flex-wrap">
