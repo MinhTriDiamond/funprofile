@@ -179,7 +179,7 @@ export function usePublicDonationHistory(userId: string | undefined) {
           .from('donations')
           .select(`
             id, amount, token_symbol, tx_hash, status, message, created_at, chain_id,
-            sender_id, recipient_id,
+            sender_id, recipient_id, is_external, sender_address,
             sender:profiles!donations_sender_id_fkey(username, display_name, avatar_url),
             recipient:profiles!donations_recipient_id_fkey(username, display_name, avatar_url)
           `)
