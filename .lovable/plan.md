@@ -1,83 +1,49 @@
 
-# Database & Codebase Audit — Implementation Roadmap
 
-## Tài liệu tham chiếu
-- `.lovable/audit-report.md` — Audit report đầy đủ (633 dòng, 20 phần)
+## Plan: Ghi nhận Swap vào database + cập nhật tổng kết
 
----
+### Phân tích vấn đề
 
-## ĐÃ HOÀN THÀNH
+Hiện tại swap token (qua PancakeSwap) **không được ghi vào database**. Khi user swap CAMLY → USDT hoặc ngược lại, giao dịch chỉ xảy ra on-chain mà không lưu lại. Vì vậy bảng tổng kết chỉ phản ánh tặng/nhận qua nút Gift, thiếu phần swap.
 
-### Phase 0 — Audit & Documentation ✅
-| # | Công việc | Trạng thái |
-|---|----------|-----------|
-| 0A | Viết audit report 20 phần | ✅ Done |
-| 0B | Xác định Canonical Domain Models | ✅ Done |
-| 0C | Xác định Do Not Touch First list | ✅ Done |
-| 0D | Xác định Refactor Blockers | ✅ Done |
+Với angeldieungoc: nhận 834M CAMLY, tặng 706M CAMLY qua donations. Nhưng nếu user cũng swap CAMLY → USDT thì phần CAMLY bị giảm thêm mà không hiển thị.
 
-### Phase 1A — Performance Indexes ✅
-| Index | Table | Columns | Mục đích |
-|-------|-------|---------|----------|
-| `idx_notifications_user_read` | notifications | user_id, read | Badge count + dropdown |
-| `idx_reactions_post_type` | reactions | post_id, type | Reaction counts per post |
-| `idx_light_actions_user_created` | light_actions | user_id, created_at DESC | Light Score history |
-| `idx_posts_user_created` | posts | user_id, created_at DESC | Profile feed |
-| `idx_chunked_chunks_status` | chunked_recording_chunks | status | Cleanup queries |
-| `idx_donations_sender_status` | donations | sender_id, status | Benefactor leaderboard |
-| `idx_donations_recipient_status` | donations | recipient_id, status | Recipient leaderboard |
-| `idx_comments_post_created` | comments | post_id, created_at | Comment thread load |
-| `idx_friendships_user_status` | friendships | user_id, status | Friend lookup |
-| `idx_friendships_friend_status` | friendships | friend_id, status | Friend lookup |
+### Giải pháp
 
-### Phase 1B — SQL Comments Documentation ✅
-- COMMENT ON TABLE cho tất cả 93 tables
-- COMMENT ON VIEW cho tất cả 5 views
-- Phân loại theo domain: Core, Social, Messaging, Live, Recording, Light Score, Rewards, Wallet, Auth, OAuth, Search, Content, System, PPLP
+**1. Tạo bảng `swap_transactions`**
 
----
+Bảng mới lưu mỗi lần swap thành công:
+- `user_id`, `tx_hash`, `from_symbol`, `to_symbol`, `from_amount`, `to_amount`, `chain_id`, `status`, `created_at`
 
-## CHƯA LÀM — KẾ HOẠCH TIẾP THEO
+**2. Ghi swap vào database khi thành công (`SwapTab.tsx`)**
 
-### Phase 1C-F — Safe Cleanup (rủi ro THẤP)
+Sau khi `executeSwap()` trả về hash thành công, insert bản ghi vào `swap_transactions`.
 
-| # | Công việc | Chi tiết |
-|---|----------|---------|
-| 1C | Phân loại empty tables | 35 tables 0-rows → Active/Planned/Legacy/Deletable |
-| 1D | console.log → logger | 77 instances cần thay thế |
-| 1E | useAdminRole shared hook | Đã tạo, cần migrate các component dùng trực tiếp `has_role` |
-| 1F | Edge function _shared helpers | cors, auth, response — đã tạo ✅ |
+**3. Cập nhật RPC `get_user_donation_summary`**
 
-### Phase 2 — Structural Improvements (rủi ro TRUNG BÌNH)
+Mở rộng function để cũng tính swap:
+- Swap FROM token X = giảm token X (tương tự "sent")
+- Swap TO token X = tăng token X (tương tự "received")
+- Cộng dồn vào summary hiện tại
 
-| # | Công việc | Chi tiết |
-|---|----------|---------|
-| 2A | State enum documentation | Document các status/type enums trong DB |
-| 2B | Merge search_logs → search_history | Consolidate duplicate search tracking |
-| 2C | notifications.read → is_read | Compatibility migration (backfill + dual-write) |
-| 2D | Xóa useLiveComments | Dead code cleanup |
-| 2E | Module hóa hooks/ | Nhóm theo domain (social, chat, live, wallet, etc.) |
-| 2F | Tách components/feed/ | Sub-domains cho feed components |
-| 2G | useCapabilities layer | Đã tạo ✅, cần migrate consumers |
+**4. Cập nhật UI bảng tổng kết**
 
-### Phase 3 — Deep Refactor (rủi ro CAO)
+- Thêm dòng ghi chú phân biệt: giao dịch tặng/nhận vs swap
+- Hoặc gộp chung vào "Tổng nhận" / "Tổng tặng" để phản ánh đúng dòng token
 
-| # | Công việc | Blocker |
-|---|----------|---------|
-| 3A | Tách profiles → user_wallet_config | Nhiều component đọc trực tiếp profiles |
-| 3B | Claims lifecycle audit | reward_claims + pending_claims khác lifecycle |
-| 3C | FinancialTab → platform_financial_data | Admin UI đang đọc grand_total_* từ profiles |
-| 3D | get_user_rewards_v2 refactor | Đang dùng livestreams table, cần chuyển live_sessions |
-| 3E | live_comments product review | Quyết định drop hoặc giữ |
-| 3F | Profiles RLS tightening | Public by Design → quyết định enforcement model |
-| 3G | Gộp 15 media edge functions | Router pattern |
+**5. Hiển thị swap trong danh sách lịch sử**
 
----
+- Query thêm `swap_transactions` trong hook `usePublicDonationHistory`
+- Hiển thị với badge "Swap" khác màu (ví dụ: tím) để phân biệt với tặng/nhận
 
-## Linter Warnings (có sẵn, chưa xử lý)
-- **RLS Enabled No Policy**: Một số tables có RLS enabled nhưng chưa có policy
-- **RLS Policy Always True**: Một số policies dùng `USING (true)` cho INSERT/UPDATE/DELETE
-- Sẽ xử lý trong Phase 2-3 khi refactor từng domain
+### Lưu ý quan trọng
 
-## Light Score 5 Trụ Cột — Phase 1 ✅ HOÀN THÀNH
-(Chi tiết xem phiên bản trước của plan)
+- Dữ liệu swap **trong quá khứ** chưa được ghi. Có thể cần quét on-chain (BscScan API) để backfill lịch sử swap cũ, hoặc chấp nhận chỉ ghi từ thời điểm này trở đi.
+- Giao dịch chuyển trực tiếp từ ví ngoài (MetaMask) vào FUN.RICH vẫn không được ghi trừ khi auto-scan phát hiện.
+
+### Thứ tự triển khai
+1. Migration tạo bảng `swap_transactions` + RLS
+2. Sửa `SwapTab.tsx` ghi swap sau khi thành công  
+3. Sửa RPC `get_user_donation_summary` gộp swap data
+4. Sửa hook + UI hiển thị swap trong lịch sử
+
