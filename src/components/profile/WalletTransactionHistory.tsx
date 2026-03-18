@@ -337,7 +337,7 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
           onClick={() => d.recipient_username && navigate(`/${d.recipient_username}`)}
         />
         <span className="font-bold whitespace-nowrap flex-1 text-center">{Number(d.amount).toLocaleString('vi-VN', { maximumFractionDigits: 6 })} {d.token_symbol}</span>
-        <div className="flex items-center gap-2 whitespace-nowrap flex-shrink-0">
+        <div className="flex items-center gap-4 whitespace-nowrap flex-shrink-0">
           <span className="text-sm text-muted-foreground">{formatTimestamp(d.created_at)}</span>
           {d.tx_hash && (
             <a href={`${explorerUrl}/tx/${d.tx_hash}`} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline flex items-center gap-1">
