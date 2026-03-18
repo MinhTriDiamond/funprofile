@@ -201,7 +201,7 @@ function TransferCard({ d }: { d: DonationRecord }) {
       )}
 
       <div className="flex justify-between text-sm">
-        <span className="text-muted-foreground">{formatTimestamp(d.created_at)}</span>
+        <span className="text-muted-foreground">{formatDate(d.created_at)} {formatTime(d.created_at)}</span>
       </div>
 
       {d.tx_hash && (
