@@ -433,11 +433,11 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
                 {userAvatarUrl && <AvatarImage src={userAvatarUrl} />}
                 <AvatarFallback className="text-lg bg-primary/10 text-primary font-bold">{displayName[0]?.toUpperCase()}</AvatarFallback>
               </Avatar>
-              <span className="font-bold text-foreground" style={{ fontSize: '16px' }}>{displayName}</span>
+              <span className="text-sm font-bold text-foreground">{displayName}</span>
             </div>
 
             <div className="flex-1 text-right min-w-0">
-              <span className="font-bold uppercase tracking-wide text-red-600 whitespace-nowrap" style={{ fontSize: '14px' }}>
+              <span className="font-bold uppercase tracking-wide text-red-600 whitespace-nowrap" style={{ fontSize: '17px' }}>
                 Trao yêu thương - Nhận năng lượng
               </span>
             </div>
