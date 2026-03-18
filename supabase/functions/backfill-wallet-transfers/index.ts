@@ -247,12 +247,22 @@ Deno.serve(async (req) => {
     const allTransfers: TokenTransfer[] = [];
     for (const wa of walletAddresses) {
       let transfers: TokenTransfer[] | null = null;
-      if (moralisKey) transfers = await fetchTransfersViaMoralis(wa, chain, moralisKey);
-      if (transfers === null) {
-        // Fallback to BSCScan API (free, no key needed)
-        transfers = await fetchTransfersViaBscScan(wa);
+      if (moralisKey) {
+        console.log(`Trying Moralis for ${wa.slice(0, 10)}...`);
+        transfers = await fetchTransfersViaMoralis(wa, chain, moralisKey);
       }
-      allTransfers.push(...transfers);
+      if (transfers === null || transfers.length === 0) {
+        console.log(`Trying BSCScan for ${wa.slice(0, 10)}...`);
+        const bscTransfers = await fetchTransfersViaBscScan(wa);
+        if (bscTransfers.length > 0) {
+          transfers = bscTransfers;
+        }
+      }
+      if (transfers === null || transfers.length === 0) {
+        console.log(`Trying BSC RPC fallback for ${wa.slice(0, 10)}...`);
+        transfers = await fetchTransfersViaRpc(wa);
+      }
+      allTransfers.push(...(transfers || []));
     }
 
     console.log(`Total: ${allTransfers.length} transfers`);
