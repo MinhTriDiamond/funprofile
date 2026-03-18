@@ -14,9 +14,9 @@ const KNOWN_TOKENS: Record<string, { symbol: string; decimals: number }> = {
   "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c": { symbol: "WBNB", decimals: 18 },
 };
 
-// Scan recent blocks only. ~6 months = ~5M blocks on BSC (3s/block)
-const SCAN_FROM_BLOCK = 46_000_000;
-const BLOCK_CHUNK_LARGE = 50000;
+// Start from recent blocks. Body can override with `from_block`.
+const DEFAULT_SCAN_FROM_BLOCK = 49_000_000;
+const BLOCK_CHUNK_SIZE = 100000;
 
 interface TokenTransfer {
   transaction_hash: string;
