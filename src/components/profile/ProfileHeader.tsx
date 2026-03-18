@@ -226,6 +226,9 @@ export const ProfileHeader = ({
                         recipientAvatarUrl={profile.avatar_url}
                         variant="profile"
                       />
+                      {displayAddress && (
+                        <WalletTransactionHistory walletAddress={displayAddress} />
+                      )}
                     </>
                   )}
                 </div>
