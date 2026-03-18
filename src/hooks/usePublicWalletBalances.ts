@@ -1,34 +1,42 @@
 import { useState, useEffect, useCallback } from 'react';
-import { createPublicClient, http, formatUnits } from 'viem';
-import { bsc } from 'viem/chains';
 import { TOKEN_CONTRACTS } from './useTokenBalances';
-
-const ERC20_BALANCE_ABI = [
-  {
-    name: 'balanceOf',
-    type: 'function',
-    stateMutability: 'view',
-    inputs: [{ name: 'account', type: 'address' }],
-    outputs: [{ name: '', type: 'uint256' }],
-  },
-] as const;
-
-const TOKEN_DECIMALS: Record<string, number> = {
-  USDT: 18,
-  BTCB: 18,
-  CAMLY: 18,
-  FUN: 18,
-  BNB: 18,
-};
 
 export interface PublicBalances {
   [symbol: string]: number;
 }
 
-const client = createPublicClient({
-  chain: bsc,
-  transport: http('https://bsc-dataseed1.binance.org'),
-});
+const BSC_RPC = 'https://bsc-dataseed1.binance.org';
+
+// balanceOf(address) selector = 0x70a08231
+function encodeBalanceOf(addr: string): string {
+  return '0x70a08231' + addr.slice(2).toLowerCase().padStart(64, '0');
+}
+
+async function ethCall(to: string, data: string): Promise<bigint> {
+  const res = await fetch(BSC_RPC, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to, data }, 'latest'] }),
+  });
+  const json = await res.json();
+  if (json.error) throw new Error(json.error.message);
+  return BigInt(json.result || '0x0');
+}
+
+async function getEthBalance(addr: string): Promise<bigint> {
+  const res = await fetch(BSC_RPC, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_getBalance', params: [addr, 'latest'] }),
+  });
+  const json = await res.json();
+  if (json.error) throw new Error(json.error.message);
+  return BigInt(json.result || '0x0');
+}
+
+function fromWei(val: bigint, decimals = 18): number {
+  return Number(val) / Math.pow(10, decimals);
+}
 
 export function usePublicWalletBalances(walletAddress: string | undefined) {
   const [balances, setBalances] = useState<PublicBalances>({});
@@ -38,22 +46,21 @@ export function usePublicWalletBalances(walletAddress: string | undefined) {
     if (!walletAddress || !walletAddress.startsWith('0x')) return;
     setLoading(true);
     try {
-      const addr = walletAddress as `0x${string}`;
-
-      const [bnbBalance, usdtBalance, btcbBalance, camlyBalance, funBalance] = await Promise.all([
-        client.getBalance({ address: addr }),
-        client.readContract({ address: TOKEN_CONTRACTS.USDT, abi: ERC20_BALANCE_ABI, functionName: 'balanceOf', args: [addr] }),
-        client.readContract({ address: TOKEN_CONTRACTS.BTCB, abi: ERC20_BALANCE_ABI, functionName: 'balanceOf', args: [addr] }),
-        client.readContract({ address: TOKEN_CONTRACTS.CAMLY, abi: ERC20_BALANCE_ABI, functionName: 'balanceOf', args: [addr] }),
-        client.readContract({ address: TOKEN_CONTRACTS.FUN, abi: ERC20_BALANCE_ABI, functionName: 'balanceOf', args: [addr] }),
+      const data = encodeBalanceOf(walletAddress);
+      const [bnb, usdt, btcb, camly, fun] = await Promise.all([
+        getEthBalance(walletAddress),
+        ethCall(TOKEN_CONTRACTS.USDT, data),
+        ethCall(TOKEN_CONTRACTS.BTCB, data),
+        ethCall(TOKEN_CONTRACTS.CAMLY, data),
+        ethCall(TOKEN_CONTRACTS.FUN, data),
       ]);
 
       setBalances({
-        BNB: Number(formatUnits(bnbBalance, 18)),
-        USDT: Number(formatUnits(usdtBalance as bigint, 18)),
-        BTCB: Number(formatUnits(btcbBalance as bigint, 18)),
-        CAMLY: Number(formatUnits(camlyBalance as bigint, 18)),
-        FUN: Number(formatUnits(funBalance as bigint, 18)),
+        BNB: fromWei(bnb),
+        USDT: fromWei(usdt),
+        BTCB: fromWei(btcb),
+        CAMLY: fromWei(camly),
+        FUN: fromWei(fun),
       });
     } catch (err) {
       console.error('Failed to fetch on-chain balances:', err);
