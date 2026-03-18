@@ -2,7 +2,7 @@ import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { createAdminClient } from "../_shared/supabase.ts";
 
 const MORALIS_BASE = "https://deep-index.moralis.io/api/v2.2";
-const BSC_RPC = "https://bsc-dataseed.binance.org";
+const BSC_RPC = "https://bsc-dataseed1.binance.org";
 const TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
 
 const KNOWN_TOKENS: Record<string, { symbol: string; decimals: number }> = {
@@ -22,8 +22,6 @@ interface TokenTransfer {
   block_timestamp: string;
 }
 
-// ── BSC RPC ──
-
 async function rpcCall(method: string, params: unknown[]): Promise<any> {
   const res = await fetch(BSC_RPC, {
     method: "POST",
@@ -35,99 +33,112 @@ async function rpcCall(method: string, params: unknown[]): Promise<any> {
   return json.result;
 }
 
-async function batchRpcCall(calls: Array<{ method: string; params: unknown[] }>): Promise<any[]> {
-  const batch = calls.map((c, i) => ({ jsonrpc: "2.0", id: i, method: c.method, params: c.params }));
-  const res = await fetch(BSC_RPC, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(batch),
-  });
-  const results = await res.json();
-  if (!Array.isArray(results)) return calls.map(() => null);
-  results.sort((a: any, b: any) => a.id - b.id);
-  return results.map((r: any) => r.result ?? null);
+// BSC public nodes allow max ~5000 blocks per eth_getLogs.
+// We use 2000 to be safe and run requests in parallel batches.
+const CHUNK = 2000;
+const PARALLEL = 3; // concurrent requests to avoid rate limits
+
+async function fetchLogsForRange(
+  tokenAddr: string, topics: (string | null)[], fromBlock: number, toBlock: number
+): Promise<any[]> {
+  const chunks: Array<{ from: number; to: number }> = [];
+  for (let s = fromBlock; s <= toBlock; s += CHUNK) {
+    chunks.push({ from: s, to: Math.min(s + CHUNK - 1, toBlock) });
+  }
+
+  const allLogs: any[] = [];
+  for (let i = 0; i < chunks.length; i += PARALLEL) {
+    const batch = chunks.slice(i, i + PARALLEL);
+    const results = await Promise.allSettled(
+      batch.map((c) =>
+        rpcCall("eth_getLogs", [{
+          fromBlock: "0x" + c.from.toString(16),
+          toBlock: "0x" + c.to.toString(16),
+          address: tokenAddr,
+          topics,
+        }])
+      )
+    );
+    for (const r of results) {
+      if (r.status === "fulfilled" && Array.isArray(r.value)) {
+        allLogs.push(...r.value);
+      }
+    }
+  }
+  return allLogs;
 }
 
-async function fetchTransfersViaBscRpc(walletAddr: string, fromBlock: number, tokenFilter?: string[]): Promise<TokenTransfer[]> {
+async function fetchTransfersViaBscRpc(
+  walletAddr: string, fromBlock: number, tokenFilter?: string[]
+): Promise<TokenTransfer[]> {
   const paddedAddr = "0x" + walletAddr.slice(2).padStart(64, "0");
   const latestHex = await rpcCall("eth_blockNumber", []);
   const latestBlock = parseInt(latestHex, 16);
-  const fromHex = "0x" + fromBlock.toString(16);
-  const toHex = "0x" + latestBlock.toString(16);
 
-  console.log(`BSC RPC: blocks ${fromBlock}-${latestBlock} for ${walletAddr.slice(0, 10)}...`);
+  console.log(`BSC RPC: ${walletAddr.slice(0, 10)}... blocks ${fromBlock}-${latestBlock}`);
 
   const tokens = Object.entries(KNOWN_TOKENS).filter(([addr]) =>
-    !tokenFilter || tokenFilter.length === 0 || tokenFilter.includes(addr)
+    !tokenFilter?.length || tokenFilter.includes(addr)
   );
 
-  // Fire all getLogs in parallel (2 per token: in + out)
-  const logCalls = tokens.flatMap(([tokenAddr]) => [
-    { method: "eth_getLogs", params: [{ fromBlock: fromHex, toBlock: toHex, address: tokenAddr, topics: [TRANSFER_TOPIC, null, paddedAddr] }] },
-    { method: "eth_getLogs", params: [{ fromBlock: fromHex, toBlock: toHex, address: tokenAddr, topics: [TRANSFER_TOPIC, paddedAddr, null] }] },
-  ]);
-
-  const logResults = await batchRpcCall(logCalls);
-
   const allTransfers: TokenTransfer[] = [];
-  const blockNumbers = new Set<string>();
+  const blockTimestamps = new Map<string, string>();
 
-  for (let i = 0; i < tokens.length; i++) {
-    const [tokenAddr, tokenInfo] = tokens[i];
-    const logsIn = logResults[i * 2] || [];
-    const logsOut = logResults[i * 2 + 1] || [];
+  for (const [tokenAddr, tokenInfo] of tokens) {
+    const [logsIn, logsOut] = await Promise.all([
+      fetchLogsForRange(tokenAddr, [TRANSFER_TOPIC, null, paddedAddr], fromBlock, latestBlock),
+      fetchLogsForRange(tokenAddr, [TRANSFER_TOPIC, paddedAddr, null], fromBlock, latestBlock),
+    ]);
+
     const allLogs = [...logsIn, ...logsOut];
     console.log(`  ${tokenInfo.symbol}: ${allLogs.length} logs`);
 
     for (const log of allLogs) {
-      blockNumbers.add(log.blockNumber);
       allTransfers.push({
         transaction_hash: log.transactionHash,
         from_address: "0x" + (log.topics[1] as string).slice(26).toLowerCase(),
         to_address: "0x" + (log.topics[2] as string).slice(26).toLowerCase(),
         value: BigInt(log.data).toString(),
         address: tokenAddr,
-        block_timestamp: log.blockNumber, // placeholder, will resolve below
+        block_timestamp: log.blockNumber,
       });
+      blockTimestamps.set(log.blockNumber, "");
     }
   }
 
-  // Batch fetch block timestamps
-  if (blockNumbers.size > 0) {
-    const uniqueBlocks = Array.from(blockNumbers);
-    const blockCalls = uniqueBlocks.map((bn) => ({ method: "eth_getBlockByNumber", params: [bn, false] }));
-    // Batch in groups of 20
-    const tsMap = new Map<string, string>();
-    for (let i = 0; i < blockCalls.length; i += 20) {
-      const chunk = blockCalls.slice(i, i + 20);
-      const results = await batchRpcCall(chunk);
-      for (let j = 0; j < chunk.length; j++) {
-        const bn = uniqueBlocks[i + j];
-        const ts = results[j]?.timestamp
-          ? new Date(parseInt(results[j].timestamp, 16) * 1000).toISOString()
-          : new Date().toISOString();
-        tsMap.set(bn, ts);
-      }
+  // Resolve block timestamps
+  const blocks = Array.from(blockTimestamps.keys());
+  for (let i = 0; i < blocks.length; i += PARALLEL) {
+    const batch = blocks.slice(i, i + PARALLEL);
+    const results = await Promise.allSettled(
+      batch.map((bn) => rpcCall("eth_getBlockByNumber", [bn, false]))
+    );
+    for (let j = 0; j < batch.length; j++) {
+      const r = results[j];
+      const ts = r.status === "fulfilled" && r.value?.timestamp
+        ? new Date(parseInt(r.value.timestamp, 16) * 1000).toISOString()
+        : new Date().toISOString();
+      blockTimestamps.set(batch[j], ts);
     }
-    // Replace block_timestamp placeholders
-    for (const t of allTransfers) {
-      t.block_timestamp = tsMap.get(t.block_timestamp) || new Date().toISOString();
-    }
+  }
+
+  for (const t of allTransfers) {
+    t.block_timestamp = blockTimestamps.get(t.block_timestamp) || new Date().toISOString();
   }
 
   // Deduplicate
   const seen = new Set<string>();
   return allTransfers.filter((t) => {
-    const key = `${t.transaction_hash}_${t.from_address}_${t.to_address}_${t.address}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
+    const k = `${t.transaction_hash}_${t.from_address}_${t.to_address}_${t.address}`;
+    if (seen.has(k)) return false;
+    seen.add(k);
     return true;
   });
 }
 
-// ── Moralis ──
-
-async function fetchTransfersViaMoralis(walletAddr: string, chain: string, moralisKey: string): Promise<TokenTransfer[] | null> {
+async function fetchTransfersViaMoralis(
+  walletAddr: string, chain: string, moralisKey: string
+): Promise<TokenTransfer[] | null> {
   const all: TokenTransfer[] = [];
   let cursor: string | null = null;
   let page = 0;
@@ -162,8 +173,8 @@ Deno.serve(async (req) => {
     const { user_id, wallet_address, chain = "0x38", chain_id = 56, from_block, tokens } = body;
     let userId = user_id;
 
-    // Default: scan last ~2M blocks (~70 days)
-    const scanFrom = from_block ? Number(from_block) : 50_000_000;
+    // Default: scan from block 40M (~early 2024)
+    const scanFrom = from_block ? Number(from_block) : 40_000_000;
 
     let walletAddresses: string[] = [];
     if (wallet_address) walletAddresses = [wallet_address.toLowerCase().trim()];
@@ -217,7 +228,7 @@ Deno.serve(async (req) => {
       userId = match.id;
     }
 
-    console.log(`Backfill user ${userId}, wallets: ${walletAddresses.join(", ")}, from_block: ${scanFrom}`);
+    console.log(`Backfill user ${userId}, wallets: [${walletAddresses.join(", ")}], from_block: ${scanFrom}`);
 
     const allTransfers: TokenTransfer[] = [];
     for (const wa of walletAddresses) {
@@ -260,7 +271,7 @@ Deno.serve(async (req) => {
       if (o && i) swapOnChain.add(h);
     }
 
-    const result: any[] = [];
+    const newTransfers: any[] = [];
     for (const t of allTransfers) {
       const txH = (t.transaction_hash || "").toLowerCase();
       if (!txH || donH.has(txH) || swpH.has(txH) || swapOnChain.has(txH)) continue;
@@ -275,22 +286,22 @@ Deno.serve(async (req) => {
       else continue;
       const sym = ti.symbol === "WBNB" ? "BNB" : ti.symbol;
       if (exKeys.has(`${txH}_${dir}_${sym}`)) continue;
-      result.push({
+      newTransfers.push({
         tx_hash: txH, direction: dir, token_symbol: sym, token_address: tAddr,
         amount: Number(BigInt(t.value || "0")) / Math.pow(10, ti.decimals),
         counterparty_address: cp, created_at: t.block_timestamp || new Date().toISOString(),
       });
     }
 
-    console.log(`${result.length} new transfers`);
+    console.log(`${newTransfers.length} new transfers`);
 
-    if (result.length === 0) {
-      return new Response(JSON.stringify({ success: true, message: "No new transfers", total_erc20: allTransfers.length, inserted: 0 }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    if (newTransfers.length === 0) {
+      return new Response(JSON.stringify({
+        success: true, message: "No new transfers", total_erc20: allTransfers.length, inserted: 0,
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const toInsert = result.map((t: any) => ({
+    const toInsert = newTransfers.map((t: any) => ({
       user_id: userId, tx_hash: t.tx_hash, direction: t.direction,
       token_symbol: t.token_symbol, token_address: t.token_address,
       amount: t.amount, counterparty_address: t.counterparty_address,
@@ -308,9 +319,9 @@ Deno.serve(async (req) => {
     console.log(`Done: ${inserted} inserted`);
     return new Response(JSON.stringify({
       success: true, user_id: userId, wallets: walletAddresses,
-      total_erc20: allTransfers.length, transfers_found: result.length, inserted,
+      total_erc20: allTransfers.length, transfers_found: newTransfers.length, inserted,
       errors: errors.length > 0 ? errors : undefined,
-      transfers: result.map((t: any) => ({
+      transfers: newTransfers.map((t: any) => ({
         tx_hash: t.tx_hash, direction: t.direction,
         detail: `${t.amount} ${t.token_symbol} ${t.direction === 'in' ? '← ' : '→ '}${t.counterparty_address.slice(0, 10)}...`,
       })),
