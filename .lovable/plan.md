@@ -1,83 +1,67 @@
 
-# Database & Codebase Audit — Implementation Roadmap
+Mình đã xác định đúng nguyên nhân rồi.
 
-## Tài liệu tham chiếu
-- `.lovable/audit-report.md` — Audit report đầy đủ (633 dòng, 20 phần)
+1. Vấn đề thực sự là gì
+- Giao diện “vẫn như cũ” không phải vì phần `WalletTransactionHistory` chưa sửa.
+- File `src/components/profile/WalletTransactionHistory.tsx` hiện đã chứa đúng các thay đổi con yêu cầu:
+  - dialog ~18cm: `w-[680px] ... sm:max-w-[680px]`
+  - số tiền nằm giữa dòng tên và giờ
+  - ngày màu vàng
+  - tx hash nằm sau ngày/giờ
+- Nhưng preview không cập nhật vì dev server đang chết từ đầu, nên app không rebuild được.
 
----
+2. Lỗi build gốc
+- Lỗi nằm ở `vite.config.ts`:
+  - đang import `@vitejs/plugin-react-swc`
+- Log báo:
+  - `Failed to load native binding`
+  - stack trace đi vào `@swc/core/binding.js`
+- Nghĩa là môi trường dev hiện tại không load được native binary của SWC, nên Vite không khởi động nổi.
 
-## ĐÃ HOÀN THÀNH
+3. Do I know what the issue is?
+- Có.
+- Đây là lỗi tương thích/runtime của `@vitejs/plugin-react-swc` / `@swc/core`, không phải lỗi giao diện của component lịch sử giao dịch.
 
-### Phase 0 — Audit & Documentation ✅
-| # | Công việc | Trạng thái |
-|---|----------|-----------|
-| 0A | Viết audit report 20 phần | ✅ Done |
-| 0B | Xác định Canonical Domain Models | ✅ Done |
-| 0C | Xác định Do Not Touch First list | ✅ Done |
-| 0D | Xác định Refactor Blockers | ✅ Done |
+4. File cần xử lý
+- `vite.config.ts`
+- `package.json`
+- có thể kèm lockfile tương ứng nếu hệ thống cập nhật dependency
 
-### Phase 1A — Performance Indexes ✅
-| Index | Table | Columns | Mục đích |
-|-------|-------|---------|----------|
-| `idx_notifications_user_read` | notifications | user_id, read | Badge count + dropdown |
-| `idx_reactions_post_type` | reactions | post_id, type | Reaction counts per post |
-| `idx_light_actions_user_created` | light_actions | user_id, created_at DESC | Light Score history |
-| `idx_posts_user_created` | posts | user_id, created_at DESC | Profile feed |
-| `idx_chunked_chunks_status` | chunked_recording_chunks | status | Cleanup queries |
-| `idx_donations_sender_status` | donations | sender_id, status | Benefactor leaderboard |
-| `idx_donations_recipient_status` | donations | recipient_id, status | Recipient leaderboard |
-| `idx_comments_post_created` | comments | post_id, created_at | Comment thread load |
-| `idx_friendships_user_status` | friendships | user_id, status | Friend lookup |
-| `idx_friendships_friend_status` | friendships | friend_id, status | Friend lookup |
+5. Kế hoạch sửa
+- Bước 1: đổi plugin React trong Vite từ SWC sang plugin React thường
+  - từ: `@vitejs/plugin-react-swc`
+  - sang: `@vitejs/plugin-react`
+- Bước 2: giữ nguyên phần lớn cấu hình Vite hiện có
+  - alias `@`
+  - `optimizeDeps.include`
+  - `manualChunks`
+  - `define`
+- Bước 3: cập nhật dependency dev
+  - bỏ `@vitejs/plugin-react-swc`
+  - thêm `@vitejs/plugin-react` phiên bản tương thích với Vite 5
+- Bước 4: khởi động lại dev server để preview rebuild
+- Bước 5: kiểm tra lại đúng màn hình `/angelaivan` để xác nhận UI mới đã hiện ra
 
-### Phase 1B — SQL Comments Documentation ✅
-- COMMENT ON TABLE cho tất cả 93 tables
-- COMMENT ON VIEW cho tất cả 5 views
-- Phân loại theo domain: Core, Social, Messaging, Live, Recording, Light Score, Rewards, Wallet, Auth, OAuth, Search, Content, System, PPLP
+6. Kết quả mong đợi sau khi sửa
+- Dev server chạy lại bình thường
+- Preview không còn bị kẹt ở bundle cũ
+- Hộp thoại “Lịch sử GD” sẽ hiển thị đúng bản mới đang có trong source
 
----
+7. Ghi chú kỹ thuật
+- `DialogContent` hiện tại không phải vấn đề chính nữa.
+- Lỗi `Cannot convert 0x to a BigInt` trong console là một lỗi khác ở phần đọc số dư on-chain; nó không phải nguyên nhân khiến toàn bộ preview “không cập nhật”.
+- Nếu sau khi sửa build mà giao diện vẫn lệch, mình sẽ tinh chỉnh tiếp ngay trên `src/components/profile/WalletTransactionHistory.tsx`, nhưng trước hết phải cứu build đã.
 
-## CHƯA LÀM — KẾ HOẠCH TIẾP THEO
+8. Cách mình sẽ triển khai khi được duyệt
+```text
+vite.config.ts
+- import react from "@vitejs/plugin-react"
 
-### Phase 1C-F — Safe Cleanup (rủi ro THẤP)
+package.json
+- remove @vitejs/plugin-react-swc
+- add @vitejs/plugin-react
 
-| # | Công việc | Chi tiết |
-|---|----------|---------|
-| 1C | Phân loại empty tables | 35 tables 0-rows → Active/Planned/Legacy/Deletable |
-| 1D | console.log → logger | 77 instances cần thay thế |
-| 1E | useAdminRole shared hook | Đã tạo, cần migrate các component dùng trực tiếp `has_role` |
-| 1F | Edge function _shared helpers | cors, auth, response — đã tạo ✅ |
-
-### Phase 2 — Structural Improvements (rủi ro TRUNG BÌNH)
-
-| # | Công việc | Chi tiết |
-|---|----------|---------|
-| 2A | State enum documentation | Document các status/type enums trong DB |
-| 2B | Merge search_logs → search_history | Consolidate duplicate search tracking |
-| 2C | notifications.read → is_read | Compatibility migration (backfill + dual-write) |
-| 2D | Xóa useLiveComments | Dead code cleanup |
-| 2E | Module hóa hooks/ | Nhóm theo domain (social, chat, live, wallet, etc.) |
-| 2F | Tách components/feed/ | Sub-domains cho feed components |
-| 2G | useCapabilities layer | Đã tạo ✅, cần migrate consumers |
-
-### Phase 3 — Deep Refactor (rủi ro CAO)
-
-| # | Công việc | Blocker |
-|---|----------|---------|
-| 3A | Tách profiles → user_wallet_config | Nhiều component đọc trực tiếp profiles |
-| 3B | Claims lifecycle audit | reward_claims + pending_claims khác lifecycle |
-| 3C | FinancialTab → platform_financial_data | Admin UI đang đọc grand_total_* từ profiles |
-| 3D | get_user_rewards_v2 refactor | Đang dùng livestreams table, cần chuyển live_sessions |
-| 3E | live_comments product review | Quyết định drop hoặc giữ |
-| 3F | Profiles RLS tightening | Public by Design → quyết định enforcement model |
-| 3G | Gộp 15 media edge functions | Router pattern |
-
----
-
-## Linter Warnings (có sẵn, chưa xử lý)
-- **RLS Enabled No Policy**: Một số tables có RLS enabled nhưng chưa có policy
-- **RLS Policy Always True**: Một số policies dùng `USING (true)` cho INSERT/UPDATE/DELETE
-- Sẽ xử lý trong Phase 2-3 khi refactor từng domain
-
-## Light Score 5 Trụ Cột — Phase 1 ✅ HOÀN THÀNH
-(Chi tiết xem phiên bản trước của plan)
+Then:
+- restart build/dev
+- verify modal on /angelaivan
+```
