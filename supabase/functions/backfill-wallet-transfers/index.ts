@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
       walletAddr = (profile.public_wallet_address || profile.wallet_address || "").toLowerCase().trim();
       if (!walletAddr) {
         // Fallback: check TREASURY_WALLET_ADDRESS env for treasury profiles
-        const treasuryAddr = Deno.env.get("TREASURY_WALLET_ADDRESS")?.toLowerCase();
+        const treasuryAddr = Deno.env.get("TREASURY_WALLET_ADDRESS")?.toLowerCase().trim();
         if (treasuryAddr) {
           walletAddr = treasuryAddr;
           console.log(`Using TREASURY_WALLET_ADDRESS fallback for user ${userId}`);
