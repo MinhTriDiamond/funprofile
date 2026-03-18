@@ -261,30 +261,30 @@ function CollapsibleMessage({ message }: { message: string }) {
   const isLong = message.length > MSG_TRUNCATE_LENGTH;
 
   return (
-    <div className="flex items-start gap-1.5 text-sm text-muted-foreground bg-muted/50 rounded-lg p-2">
-      <MessageSquare className="w-4 h-4 mt-0.5 flex-shrink-0" />
-      <div className="min-w-0 flex-1">
-        {!expanded && isLong ? (
-          <span className="break-words">
-            {message.slice(0, MSG_TRUNCATE_LENGTH)}...
-            <button
-              onClick={(e) => { e.stopPropagation(); setExpanded(true); }}
-              className="ml-1 text-primary hover:text-primary/80 font-medium inline-flex items-center gap-0.5"
-            >
-              Xem thêm <ChevronDown className="w-3 h-3" />
-            </button>
-          </span>
+    <div className="flex items-center gap-1.5 text-sm text-muted-foreground bg-muted/50 rounded-lg p-2">
+      <MessageSquare className="w-4 h-4 flex-shrink-0" />
+      <div className="min-w-0 flex-1 flex items-center">
+        {!expanded ? (
+          <>
+            <span className="truncate">{message}</span>
+            {isLong && (
+              <button
+                onClick={(e) => { e.stopPropagation(); setExpanded(true); }}
+                className="ml-1 text-primary hover:text-primary/80 font-medium inline-flex items-center gap-0.5 flex-shrink-0"
+              >
+                Xem thêm <ChevronDown className="w-3 h-3" />
+              </button>
+            )}
+          </>
         ) : (
           <span className="break-words">
             {message}
-            {isLong && (
-              <button
-                onClick={(e) => { e.stopPropagation(); setExpanded(false); }}
-                className="ml-1 text-primary hover:text-primary/80 font-medium inline-flex items-center gap-0.5"
-              >
-                Thu gọn <ChevronUp className="w-3 h-3" />
-              </button>
-            )}
+            <button
+              onClick={(e) => { e.stopPropagation(); setExpanded(false); }}
+              className="ml-1 text-primary hover:text-primary/80 font-medium inline-flex items-center gap-0.5"
+            >
+              Thu gọn <ChevronUp className="w-3 h-3" />
+            </button>
           </span>
         )}
       </div>
