@@ -1,38 +1,83 @@
 
+# Database & Codebase Audit — Implementation Roadmap
 
-## Plan: Backfill lịch sử Swap từ on-chain vào database
+## Tài liệu tham chiếu
+- `.lovable/audit-report.md` — Audit report đầy đủ (633 dòng, 20 phần)
 
-### Phân tích hiện tại
+---
 
-Dữ liệu donations cho angeldieungoc đã chính xác:
-- **Nhận**: 834,839,840 CAMLY (163 lệnh), 7,656 USDT (30 lệnh), 0.148 BTCB, 178 FUN
-- **Tặng**: 705,922,219 CAMLY (93 lệnh), 10,525 USDT (91 lệnh)
-- **Số dư GD**: +128,917,621 CAMLY
+## ĐÃ HOÀN THÀNH
 
-Nhưng user nói chỉ còn ~80M CAMLY → **~48M CAMLY đã swap** qua PancakeSwap trong FUN.RICH nhưng chưa được ghi vào DB (vì bảng `swap_transactions` mới tạo, đang trống).
+### Phase 0 — Audit & Documentation ✅
+| # | Công việc | Trạng thái |
+|---|----------|-----------|
+| 0A | Viết audit report 20 phần | ✅ Done |
+| 0B | Xác định Canonical Domain Models | ✅ Done |
+| 0C | Xác định Do Not Touch First list | ✅ Done |
+| 0D | Xác định Refactor Blockers | ✅ Done |
 
-### Giải pháp: Tạo Edge Function backfill swap history
+### Phase 1A — Performance Indexes ✅
+| Index | Table | Columns | Mục đích |
+|-------|-------|---------|----------|
+| `idx_notifications_user_read` | notifications | user_id, read | Badge count + dropdown |
+| `idx_reactions_post_type` | reactions | post_id, type | Reaction counts per post |
+| `idx_light_actions_user_created` | light_actions | user_id, created_at DESC | Light Score history |
+| `idx_posts_user_created` | posts | user_id, created_at DESC | Profile feed |
+| `idx_chunked_chunks_status` | chunked_recording_chunks | status | Cleanup queries |
+| `idx_donations_sender_status` | donations | sender_id, status | Benefactor leaderboard |
+| `idx_donations_recipient_status` | donations | recipient_id, status | Recipient leaderboard |
+| `idx_comments_post_created` | comments | post_id, created_at | Comment thread load |
+| `idx_friendships_user_status` | friendships | user_id, status | Friend lookup |
+| `idx_friendships_friend_status` | friendships | friend_id, status | Friend lookup |
 
-**1. Tạo edge function `backfill-swap-transactions`**
-- Nhận `user_id` hoặc quét tất cả users có `public_wallet_address`
-- Dùng **Moralis API** (đã có key) để lấy lịch sử token transfers của wallet
-- Phát hiện giao dịch swap: các tx mà wallet vừa gửi token A vừa nhận token B trong cùng 1 tx_hash (đặc trưng của PancakeSwap)
-- Lọc chỉ các token FUN.RICH hỗ trợ (USDT, BNB, BTCB, CAMLY, FUN)
-- Kiểm tra trùng lặp (tx_hash đã tồn tại) trước khi insert
-- Insert vào bảng `swap_transactions`
+### Phase 1B — SQL Comments Documentation ✅
+- COMMENT ON TABLE cho tất cả 93 tables
+- COMMENT ON VIEW cho tất cả 5 views
+- Phân loại theo domain: Core, Social, Messaging, Live, Recording, Light Score, Rewards, Wallet, Auth, OAuth, Search, Content, System, PPLP
 
-**2. Xử lý logic phát hiện swap**
-- Gọi Moralis `erc20/transfers` cho wallet address
-- Group transfers theo `transaction_hash`
-- Nếu 1 tx có cả transfer OUT (from = wallet) và transfer IN (to = wallet) → đó là swap
-- Ghi `from_symbol`, `to_symbol`, `from_amount`, `to_amount` tương ứng
+---
 
-**3. Files cần tạo/sửa**
-- **Tạo**: `supabase/functions/backfill-swap-transactions/index.ts` — edge function chính
-- Không cần sửa UI hay hook (đã hỗ trợ hiển thị swap từ bước trước)
+## CHƯA LÀM — KẾ HOẠCH TIẾP THEO
 
-### Lưu ý
-- Moralis API có rate limit, nên xử lý từng user một
-- Backfill sẽ ghi tất cả swap on-chain (không phân biệt được swap qua FUN.RICH vs MetaMask), nhưng vì user nói "miễn là trong fun.rich" và wallet này chủ yếu dùng qua platform nên chấp nhận được
-- Sau khi backfill xong, bảng tổng kết sẽ tự động cập nhật vì RPC `get_user_donation_summary` đã gộp swap data
+### Phase 1C-F — Safe Cleanup (rủi ro THẤP)
 
+| # | Công việc | Chi tiết |
+|---|----------|---------|
+| 1C | Phân loại empty tables | 35 tables 0-rows → Active/Planned/Legacy/Deletable |
+| 1D | console.log → logger | 77 instances cần thay thế |
+| 1E | useAdminRole shared hook | Đã tạo, cần migrate các component dùng trực tiếp `has_role` |
+| 1F | Edge function _shared helpers | cors, auth, response — đã tạo ✅ |
+
+### Phase 2 — Structural Improvements (rủi ro TRUNG BÌNH)
+
+| # | Công việc | Chi tiết |
+|---|----------|---------|
+| 2A | State enum documentation | Document các status/type enums trong DB |
+| 2B | Merge search_logs → search_history | Consolidate duplicate search tracking |
+| 2C | notifications.read → is_read | Compatibility migration (backfill + dual-write) |
+| 2D | Xóa useLiveComments | Dead code cleanup |
+| 2E | Module hóa hooks/ | Nhóm theo domain (social, chat, live, wallet, etc.) |
+| 2F | Tách components/feed/ | Sub-domains cho feed components |
+| 2G | useCapabilities layer | Đã tạo ✅, cần migrate consumers |
+
+### Phase 3 — Deep Refactor (rủi ro CAO)
+
+| # | Công việc | Blocker |
+|---|----------|---------|
+| 3A | Tách profiles → user_wallet_config | Nhiều component đọc trực tiếp profiles |
+| 3B | Claims lifecycle audit | reward_claims + pending_claims khác lifecycle |
+| 3C | FinancialTab → platform_financial_data | Admin UI đang đọc grand_total_* từ profiles |
+| 3D | get_user_rewards_v2 refactor | Đang dùng livestreams table, cần chuyển live_sessions |
+| 3E | live_comments product review | Quyết định drop hoặc giữ |
+| 3F | Profiles RLS tightening | Public by Design → quyết định enforcement model |
+| 3G | Gộp 15 media edge functions | Router pattern |
+
+---
+
+## Linter Warnings (có sẵn, chưa xử lý)
+- **RLS Enabled No Policy**: Một số tables có RLS enabled nhưng chưa có policy
+- **RLS Policy Always True**: Một số policies dùng `USING (true)` cho INSERT/UPDATE/DELETE
+- Sẽ xử lý trong Phase 2-3 khi refactor từng domain
+
+## Light Score 5 Trụ Cột — Phase 1 ✅ HOÀN THÀNH
+(Chi tiết xem phiên bản trước của plan)
