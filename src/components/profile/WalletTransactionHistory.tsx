@@ -384,9 +384,9 @@ export function WalletTransactionHistory({ userId, walletAddress }: Props) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg">
             <Clock className="w-5 h-5 text-primary" />
-            Lịch sử giao dịch
+            Lịch sử chuyển nhận tiền cá nhân
           </DialogTitle>
-          <DialogDescription className="sr-only">Xem lịch sử giao dịch tặng, nhận và chuyển ví</DialogDescription>
+          <DialogDescription className="sr-only">Xem lịch sử chuyển và nhận tiền cá nhân</DialogDescription>
         </DialogHeader>
 
         {summaryLoading ? (
