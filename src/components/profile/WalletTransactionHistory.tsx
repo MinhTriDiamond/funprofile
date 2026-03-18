@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Clock, ArrowDownLeft, ArrowUpRight, ExternalLink, Filter, MessageSquare } from 'lucide-react';
+import { Clock, ArrowDownLeft, ArrowUpRight, ArrowDownUp, ExternalLink, Filter, MessageSquare } from 'lucide-react';
 import { usePublicDonationHistory, type DonationFilter, type DonationRecord, type DonationSummary } from '@/hooks/usePublicDonationHistory';
 import { getBscScanBaseUrl } from '@/lib/chainTokenMapping';
 import { WALLET_TOKENS } from '@/lib/tokens';
@@ -114,7 +114,7 @@ function SummaryTable({ summary }: { summary: DonationSummary }) {
         </div>
       </div>
 
-      <p className="text-[10px] text-muted-foreground italic px-1">* Chỉ tính giao dịch tặng/nhận qua FUN.RICH. Số dư ví thực tế có thể khác do swap, chuyển trực tiếp...</p>
+      <p className="text-[10px] text-muted-foreground italic px-1">* Bao gồm giao dịch tặng/nhận và swap qua FUN.RICH. Số dư ví thực tế có thể khác do chuyển trực tiếp từ bên ngoài.</p>
 
       {/* Tổng giao dịch */}
       <div className="flex items-center justify-between bg-muted/50 border border-border rounded-xl px-3 py-2">
@@ -146,6 +146,43 @@ function UserAvatar({ username, displayName, avatarUrl, onClick }: { username: s
       </Avatar>
       <span className="text-xs font-medium truncate max-w-[80px] sm:max-w-[120px] text-foreground">{name}</span>
     </button>
+  );
+}
+
+function SwapCard({ d }: { d: DonationRecord }) {
+  const explorerUrl = getBscScanBaseUrl(d.chain_id);
+  return (
+    <div className="border border-border rounded-xl p-3 space-y-2">
+      <div className="flex justify-between items-center">
+        <Badge className="bg-violet-600 hover:bg-violet-700 text-white text-xs">
+          <ArrowDownUp className="w-3 h-3 mr-1" />
+          Swap
+        </Badge>
+        <StatusBadge status={d.status} />
+      </div>
+
+      <div className="flex items-center gap-2 text-sm">
+        <div className="flex items-center gap-1.5">
+          <TokenLogo symbol={d.from_symbol!} />
+          <span className="font-bold">{Number(d.from_amount).toLocaleString('vi-VN', { maximumFractionDigits: 6 })} {d.from_symbol}</span>
+        </div>
+        <span className="text-muted-foreground">→</span>
+        <div className="flex items-center gap-1.5">
+          <TokenLogo symbol={d.to_symbol!} />
+          <span className="font-bold">{Number(d.to_amount).toLocaleString('vi-VN', { maximumFractionDigits: 6 })} {d.to_symbol}</span>
+        </div>
+      </div>
+
+      <div className="flex justify-between text-sm">
+        <span className="text-muted-foreground">{formatTimestamp(d.created_at)}</span>
+      </div>
+
+      {d.tx_hash && (
+        <a href={`${explorerUrl}/tx/${d.tx_hash}`} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1">
+          Tx: {d.tx_hash.slice(0, 10)}...{d.tx_hash.slice(-6)} <ExternalLink className="w-3 h-3" />
+        </a>
+      )}
+    </div>
   );
 }
 
@@ -217,6 +254,7 @@ export function WalletTransactionHistory({ userId, walletAddress }: Props) {
     { key: 'all', label: 'Tất cả' },
     { key: 'received', label: 'Đã nhận' },
     { key: 'sent', label: 'Đã tặng' },
+    { key: 'swap', label: 'Swap' },
   ];
 
   return (
@@ -264,9 +302,11 @@ export function WalletTransactionHistory({ userId, walletAddress }: Props) {
         ) : (
           <>
             <div className="space-y-2">
-              {donations.map(d => (
-                <DonationCard key={d.id} d={d} userId={userId} />
-              ))}
+              {donations.map(d => 
+                d.type === 'swap' 
+                  ? <SwapCard key={d.id} d={d} />
+                  : <DonationCard key={d.id} d={d} userId={userId} />
+              )}
             </div>
 
             {hasMore && (
