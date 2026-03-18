@@ -254,7 +254,7 @@ function SwapCard({ d }: { d: DonationRecord }) {
   );
 }
 
-const MSG_TRUNCATE_LENGTH = 80;
+const MSG_TRUNCATE_LENGTH = 200;
 
 function CollapsibleMessage({ message }: { message: string }) {
   const [expanded, setExpanded] = useState(false);
@@ -264,16 +264,28 @@ function CollapsibleMessage({ message }: { message: string }) {
     <div className="flex items-start gap-1.5 text-sm text-muted-foreground bg-muted/50 rounded-lg p-2">
       <MessageSquare className="w-4 h-4 mt-0.5 flex-shrink-0" />
       <div className="min-w-0 flex-1">
-        <span className="break-words">
-          {isLong && !expanded ? `${message.slice(0, MSG_TRUNCATE_LENGTH)}...` : message}
-        </span>
-        {isLong && (
-          <button
-            onClick={(e) => { e.stopPropagation(); setExpanded(prev => !prev); }}
-            className="ml-1 text-primary hover:text-primary/80 font-medium inline-flex items-center gap-0.5"
-          >
-            {expanded ? (<>Thu gọn <ChevronUp className="w-3 h-3" /></>) : (<>Xem thêm <ChevronDown className="w-3 h-3" /></>)}
-          </button>
+        {!expanded && isLong ? (
+          <span className="break-words">
+            {message.slice(0, MSG_TRUNCATE_LENGTH)}...
+            <button
+              onClick={(e) => { e.stopPropagation(); setExpanded(true); }}
+              className="ml-1 text-primary hover:text-primary/80 font-medium inline-flex items-center gap-0.5"
+            >
+              Xem thêm <ChevronDown className="w-3 h-3" />
+            </button>
+          </span>
+        ) : (
+          <span className="break-words">
+            {message}
+            {isLong && (
+              <button
+                onClick={(e) => { e.stopPropagation(); setExpanded(false); }}
+                className="ml-1 text-primary hover:text-primary/80 font-medium inline-flex items-center gap-0.5"
+              >
+                Thu gọn <ChevronUp className="w-3 h-3" />
+              </button>
+            )}
+          </span>
         )}
       </div>
     </div>
