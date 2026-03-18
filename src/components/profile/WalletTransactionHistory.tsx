@@ -383,7 +383,7 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="font-semibold px-4 h-10 border-primary/30 text-primary hover:bg-primary/10">
+        <Button className="font-semibold px-4 h-10 bg-gradient-to-r from-gold/90 to-amber-500/90 hover:from-gold hover:to-amber-500 text-primary-foreground border-0 shadow-md hover:shadow-lg transition-all duration-300">
           <Clock className="w-4 h-4 mr-2" />
           Lịch sử GD
         </Button>
