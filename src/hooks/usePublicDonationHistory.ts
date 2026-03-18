@@ -21,6 +21,8 @@ export interface DonationRecord {
   recipient_display_name: string | null;
   recipient_avatar_url: string | null;
   type: 'donation' | 'swap' | 'transfer';
+  is_external?: boolean;
+  sender_address?: string | null;
   // swap-specific
   from_symbol?: string;
   to_symbol?: string;
