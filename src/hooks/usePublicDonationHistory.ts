@@ -23,12 +23,10 @@ export interface DonationRecord {
   type: 'donation' | 'swap' | 'transfer';
   is_external?: boolean;
   sender_address?: string | null;
-  // swap-specific
   from_symbol?: string;
   to_symbol?: string;
   from_amount?: number;
   to_amount?: number;
-  // transfer-specific
   direction?: 'in' | 'out';
   counterparty_address?: string;
 }
@@ -100,16 +98,21 @@ export function usePublicDonationHistory(userId: string | undefined) {
       const from = (pageNum - 1) * PAGE_SIZE;
       const to = pageNum * PAGE_SIZE - 1;
 
+      // Determine which sources to fetch based on filter
+      const needDonations = currentFilter === 'all' || currentFilter === 'sent' || currentFilter === 'received';
+      const needSwaps = currentFilter === 'all' || currentFilter === 'swap' || currentFilter === 'sent' || currentFilter === 'received';
+      const needTransfers = currentFilter === 'all' || currentFilter === 'transfer' || currentFilter === 'sent' || currentFilter === 'received';
+
       // Fetch swap records
       let swapRecords: DonationRecord[] = [];
-      if (currentFilter === 'all' || currentFilter === 'swap') {
+      if (needSwaps) {
         const { data: swapData, error: swapError } = await supabase
           .from('swap_transactions')
           .select('*')
           .eq('user_id', userId)
           .order('created_at', { ascending: false })
           .range(from, to);
-        
+
         if (!swapError && swapData) {
           swapRecords = swapData.map((s: any) => ({
             id: `swap-${s.id}`,
@@ -139,13 +142,21 @@ export function usePublicDonationHistory(userId: string | undefined) {
 
       // Fetch wallet transfer records
       let transferRecords: DonationRecord[] = [];
-      if (currentFilter === 'all' || currentFilter === 'transfer') {
-        const { data: transferData, error: transferError } = await supabase
+      if (needTransfers) {
+        let transferQuery = supabase
           .from('wallet_transfers')
           .select('*')
           .eq('user_id', userId)
-          .order('created_at', { ascending: false })
-          .range(from, to);
+          .order('created_at', { ascending: false });
+
+        // Filter by direction for sent/received tabs
+        if (currentFilter === 'received') {
+          transferQuery = transferQuery.eq('direction', 'in');
+        } else if (currentFilter === 'sent') {
+          transferQuery = transferQuery.eq('direction', 'out');
+        }
+
+        const { data: transferData, error: transferError } = await transferQuery.range(from, to);
 
         if (!transferError && transferData) {
           transferRecords = transferData.map((t: any) => ({
@@ -174,7 +185,7 @@ export function usePublicDonationHistory(userId: string | undefined) {
 
       // Fetch donation records
       let donationRecords: DonationRecord[] = [];
-      if (currentFilter !== 'swap' && currentFilter !== 'transfer') {
+      if (needDonations) {
         let query = supabase
           .from('donations')
           .select(`
@@ -217,6 +228,21 @@ export function usePublicDonationHistory(userId: string | undefined) {
           recipient_display_name: d.recipient?.display_name || null,
           recipient_avatar_url: d.recipient?.avatar_url || null,
           type: 'donation' as const,
+        }));
+      }
+
+      // For sent/received filters, remap swap records to show relevant side
+      if (currentFilter === 'received') {
+        swapRecords = swapRecords.map(s => ({
+          ...s,
+          amount: String(s.to_amount || 0),
+          token_symbol: s.to_symbol || s.token_symbol,
+        }));
+      } else if (currentFilter === 'sent') {
+        swapRecords = swapRecords.map(s => ({
+          ...s,
+          amount: String(s.from_amount || 0),
+          token_symbol: s.from_symbol || s.token_symbol,
         }));
       }
 

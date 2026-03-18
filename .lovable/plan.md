@@ -1,110 +1,83 @@
 
-Mục tiêu:
-1. Sửa ngay lỗi “Tổng nhận có 180.000.000 nhưng tab Đã nhận trống”.
-2. Cập nhật lịch sử giao dịch đầy đủ cho tất cả user có ví liên kết.
-3. Ổn định lại build đang bị vỡ sau các thay đổi trước.
+# Database & Codebase Audit — Implementation Roadmap
 
-Tình trạng con đã xác nhận
-- `get_user_donation_summary` đã tính cả `wallet_transfers`, nên phần tổng kết đang đúng.
-- Nhưng `src/hooks/usePublicDonationHistory.ts` chỉ đọc `wallet_transfers` khi filter là `all` hoặc `transfer`.
-- Vì vậy tab `Đã nhận` và `Đã tặng` đang bỏ sót:
-  - `wallet_transfers.direction = 'in'` khỏi tab `Đã nhận`
-  - `wallet_transfers.direction = 'out'` khỏi tab `Đã tặng`
-  - swap cũng đang chỉ hiện ở `all/swap`, không được quy về luồng nhận/gửi theo đúng logic tổng kết.
-- Build hiện còn lỗi nền:
-  - môi trường phụ thuộc chưa được cài/khôi phục ổn (`vite`, `react-query`, `react-router-dom`, `sonner`, `date-fns`)
-  - một số file admin đang bị lỗi kiểu dữ liệu/props nên phải xử lý đồng thời để dự án build lại được.
+## Tài liệu tham chiếu
+- `.lovable/audit-report.md` — Audit report đầy đủ (633 dòng, 20 phần)
 
-Kế hoạch triển khai
+---
 
-1. Khôi phục build trước
-- Kiểm tra và khôi phục dependency state từ `package.json`/lockfile để `vite` và các package đang khai báo được cài đúng.
-- Rà các lỗi TypeScript trong nhóm admin:
-  - `Avatar`, `AvatarImage`, `AvatarFallback`
-  - `AlertDialog*`
-  - các chỗ dữ liệu đang bị suy luận thành `unknown`
-- Mục tiêu: đưa project về trạng thái build được trước khi sửa tính năng lịch sử.
+## ĐÃ HOÀN THÀNH
 
-2. Sửa logic filter của lịch sử giao dịch công khai
-Trong `usePublicDonationHistory.ts`:
-- Tab `Đã nhận`:
-  - lấy `donations` có `recipient_id = userId`
-  - cộng thêm `wallet_transfers` có `direction = 'in'`
-  - cộng thêm phần “swap nhận” nếu hệ thống đang muốn phản ánh luồng token nhận theo summary
-- Tab `Đã tặng`:
-  - lấy `donations` có `sender_id = userId`
-  - cộng thêm `wallet_transfers` có `direction = 'out'`
-  - cộng thêm phần “swap gửi” tương ứng
-- Tab `Swap`: chỉ hiện record swap
-- Tab `Chuyển`: chỉ hiện wallet transfer
-- Tab `Tất cả`: gộp cả 3 nguồn rồi sort theo thời gian như hiện tại
+### Phase 0 — Audit & Documentation ✅
+| # | Công việc | Trạng thái |
+|---|----------|-----------|
+| 0A | Viết audit report 20 phần | ✅ Done |
+| 0B | Xác định Canonical Domain Models | ✅ Done |
+| 0C | Xác định Do Not Touch First list | ✅ Done |
+| 0D | Xác định Refactor Blockers | ✅ Done |
 
-3. Đồng bộ cách hiển thị với cách tính tổng kết
-Hiện summary và danh sách đang dùng hai logic khác nhau.
-Con sẽ chỉnh để danh sách bám đúng quy ước đã có:
-- donation nhận/gửi
-- transfer vào/ra
-- swap tính như một luồng gửi + nhận về mặt kế toán, nhưng UI vẫn có card swap riêng ở tab Swap/Tất cả
-Nếu cần, ở tab `Đã nhận`/`Đã tặng` con sẽ chỉ đưa vào các record thực sự phù hợp với summary để không còn lệch số giữa bảng tổng kết và danh sách.
+### Phase 1A — Performance Indexes ✅
+| Index | Table | Columns | Mục đích |
+|-------|-------|---------|----------|
+| `idx_notifications_user_read` | notifications | user_id, read | Badge count + dropdown |
+| `idx_reactions_post_type` | reactions | post_id, type | Reaction counts per post |
+| `idx_light_actions_user_created` | light_actions | user_id, created_at DESC | Light Score history |
+| `idx_posts_user_created` | posts | user_id, created_at DESC | Profile feed |
+| `idx_chunked_chunks_status` | chunked_recording_chunks | status | Cleanup queries |
+| `idx_donations_sender_status` | donations | sender_id, status | Benefactor leaderboard |
+| `idx_donations_recipient_status` | donations | recipient_id, status | Recipient leaderboard |
+| `idx_comments_post_created` | comments | post_id, created_at | Comment thread load |
+| `idx_friendships_user_status` | friendships | user_id, status | Friend lookup |
+| `idx_friendships_friend_status` | friendships | friend_id, status | Friend lookup |
 
-4. Cải thiện phân trang để không bị “có số nhưng không có dòng”
-Hiện mỗi nguồn dữ liệu đang `.range(from, to)` riêng rồi mới merge/sort.
-Cách này có thể làm lệch kết quả khi filter gộp nhiều nguồn.
-Con sẽ đổi sang một trong hai hướng:
-- hoặc fetch đủ dữ liệu theo filter rồi merge/sort/cắt trang sau cùng
-- hoặc phân trang thông minh theo nguồn để tránh rơi mất record mới hơn
-Mục tiêu: tab `Đã nhận` của treasury chắc chắn thấy lệnh 180.000.000 CAMLY.
+### Phase 1B — SQL Comments Documentation ✅
+- COMMENT ON TABLE cho tất cả 93 tables
+- COMMENT ON VIEW cho tất cả 5 views
+- Phân loại theo domain: Core, Social, Messaging, Live, Recording, Light Score, Rewards, Wallet, Auth, OAuth, Search, Content, System, PPLP
 
-5. Backfill cho tất cả user có ví
-Con sẽ dùng backend function để quét toàn bộ `profiles` có ít nhất một trong các địa chỉ:
-- `public_wallet_address`
-- `wallet_address`
-- `external_wallet_address`
-Sau đó chạy đồng bộ theo batch:
-- backfill transfers
-- backfill swaps
-- bỏ qua tx đã tồn tại bằng dedupe theo `tx_hash`/`direction`
-- log kết quả inserted / skipped / failed để có thể theo dõi
-Ưu tiên:
-- batch nhỏ
-- có delay/retry để tránh rate limit
-- không quét lại vô hạn các user đã không có dữ liệu mới
+---
 
-6. Gắn luồng đồng bộ để dữ liệu mới không bị thiếu lần sau
-Sau khi sửa xong:
-- treasury đã có ví public → giữ nguyên
-- cân nhắc thêm một luồng admin/manual batch sync để cha có thể chạy lại khi cần
-- giữ auto-scan cho các giao dịch mới, còn batch backfill dùng cho dữ liệu lịch sử
+## CHƯA LÀM — KẾ HOẠCH TIẾP THEO
 
-Kết quả mong đợi sau khi làm
-- Ở hồ sơ `fun profile treasury`, tab `Đã nhận` sẽ hiện lệnh 180.000.000 CAMLY thay vì “Không có giao dịch nào”.
-- Tab `Đã tặng` và `Đã nhận` sẽ không còn lệch với bảng tổng kết.
-- Tất cả user có ví liên kết sẽ được quét bổ sung lịch sử on-chain còn thiếu.
-- Dự án build lại bình thường, không còn lỗi package/type đang chặn triển khai.
+### Phase 1C-F — Safe Cleanup (rủi ro THẤP)
 
-Chi tiết kỹ thuật
-```text
-Nguồn dữ liệu hiện có
-- donations           -> tặng/nhận nội bộ hoặc mapped
-- wallet_transfers    -> nạp/rút ví trực tiếp
-- swap_transactions   -> swap token
+| # | Công việc | Chi tiết |
+|---|----------|---------|
+| 1C | Phân loại empty tables | 35 tables 0-rows → Active/Planned/Legacy/Deletable |
+| 1D | console.log → logger | 77 instances cần thay thế |
+| 1E | useAdminRole shared hook | Đã tạo, cần migrate các component dùng trực tiếp `has_role` |
+| 1F | Edge function _shared helpers | cors, auth, response — đã tạo ✅ |
 
-Lỗi chính hiện tại
-summary = đúng (đã tính wallet_transfers)
-list/filter = thiếu (received/sent không tính wallet_transfers)
+### Phase 2 — Structural Improvements (rủi ro TRUNG BÌNH)
 
-Quy tắc cần đồng bộ
-- received = donations(recipient) + transfers(in) [+ swap inflow nếu áp theo summary]
-- sent     = donations(sender)    + transfers(out) [+ swap outflow nếu áp theo summary]
-- all      = donations + transfers + swaps
-```
+| # | Công việc | Chi tiết |
+|---|----------|---------|
+| 2A | State enum documentation | Document các status/type enums trong DB |
+| 2B | Merge search_logs → search_history | Consolidate duplicate search tracking |
+| 2C | notifications.read → is_read | Compatibility migration (backfill + dual-write) |
+| 2D | Xóa useLiveComments | Dead code cleanup |
+| 2E | Module hóa hooks/ | Nhóm theo domain (social, chat, live, wallet, etc.) |
+| 2F | Tách components/feed/ | Sub-domains cho feed components |
+| 2G | useCapabilities layer | Đã tạo ✅, cần migrate consumers |
 
-Phạm vi file dự kiến ảnh hưởng
-- `src/hooks/usePublicDonationHistory.ts`
-- các file admin đang gây lỗi build (`FinancialTab`, `DonationHistoryAdminTab`, `MediaMigrationTab`, và các import UI liên quan)
-- backend functions phục vụ backfill batch toàn hệ thống
+### Phase 3 — Deep Refactor (rủi ro CAO)
 
-Rủi ro cần xử lý
-- rate limit từ nguồn blockchain
-- phân trang sai khi merge nhiều nguồn
-- build đang vỡ nên phải xử lý nền trước, nếu không sửa logic xong vẫn không deploy được
+| # | Công việc | Blocker |
+|---|----------|---------|
+| 3A | Tách profiles → user_wallet_config | Nhiều component đọc trực tiếp profiles |
+| 3B | Claims lifecycle audit | reward_claims + pending_claims khác lifecycle |
+| 3C | FinancialTab → platform_financial_data | Admin UI đang đọc grand_total_* từ profiles |
+| 3D | get_user_rewards_v2 refactor | Đang dùng livestreams table, cần chuyển live_sessions |
+| 3E | live_comments product review | Quyết định drop hoặc giữ |
+| 3F | Profiles RLS tightening | Public by Design → quyết định enforcement model |
+| 3G | Gộp 15 media edge functions | Router pattern |
+
+---
+
+## Linter Warnings (có sẵn, chưa xử lý)
+- **RLS Enabled No Policy**: Một số tables có RLS enabled nhưng chưa có policy
+- **RLS Policy Always True**: Một số policies dùng `USING (true)` cho INSERT/UPDATE/DELETE
+- Sẽ xử lý trong Phase 2-3 khi refactor từng domain
+
+## Light Score 5 Trụ Cột — Phase 1 ✅ HOÀN THÀNH
+(Chi tiết xem phiên bản trước của plan)
