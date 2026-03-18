@@ -4942,6 +4942,63 @@ export type Database = {
           },
         ]
       }
+      wallet_transfers: {
+        Row: {
+          amount: number
+          chain_id: number
+          counterparty_address: string | null
+          created_at: string
+          direction: string
+          id: string
+          status: string
+          token_address: string | null
+          token_symbol: string
+          tx_hash: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          chain_id?: number
+          counterparty_address?: string | null
+          created_at?: string
+          direction: string
+          id?: string
+          status?: string
+          token_address?: string | null
+          token_symbol: string
+          tx_hash: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          chain_id?: number
+          counterparty_address?: string | null
+          created_at?: string
+          direction?: string
+          id?: string
+          status?: string
+          token_address?: string | null
+          token_symbol?: string
+          tx_hash?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_transfers_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallet_transfers_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       public_light_reputation: {

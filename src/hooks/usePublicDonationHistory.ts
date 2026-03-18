@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-export type DonationFilter = 'all' | 'sent' | 'received' | 'swap';
+export type DonationFilter = 'all' | 'sent' | 'received' | 'swap' | 'transfer';
 
 export interface DonationRecord {
   id: string;
@@ -20,12 +20,15 @@ export interface DonationRecord {
   recipient_username: string | null;
   recipient_display_name: string | null;
   recipient_avatar_url: string | null;
-  type: 'donation' | 'swap';
+  type: 'donation' | 'swap' | 'transfer';
   // swap-specific
   from_symbol?: string;
   to_symbol?: string;
   from_amount?: number;
   to_amount?: number;
+  // transfer-specific
+  direction?: 'in' | 'out';
+  counterparty_address?: string;
 }
 
 interface TokenBreakdown {
@@ -95,7 +98,7 @@ export function usePublicDonationHistory(userId: string | undefined) {
       const from = (pageNum - 1) * PAGE_SIZE;
       const to = pageNum * PAGE_SIZE - 1;
 
-      // Fetch swap records if filter is 'all' or 'swap'
+      // Fetch swap records
       let swapRecords: DonationRecord[] = [];
       if (currentFilter === 'all' || currentFilter === 'swap') {
         const { data: swapData, error: swapError } = await supabase
@@ -132,9 +135,44 @@ export function usePublicDonationHistory(userId: string | undefined) {
         }
       }
 
-      // Fetch donation records if filter is not 'swap'
+      // Fetch wallet transfer records
+      let transferRecords: DonationRecord[] = [];
+      if (currentFilter === 'all' || currentFilter === 'transfer') {
+        const { data: transferData, error: transferError } = await supabase
+          .from('wallet_transfers')
+          .select('*')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+          .range(from, to);
+
+        if (!transferError && transferData) {
+          transferRecords = transferData.map((t: any) => ({
+            id: `transfer-${t.id}`,
+            amount: String(t.amount),
+            token_symbol: t.token_symbol,
+            tx_hash: t.tx_hash,
+            status: t.status,
+            message: null,
+            created_at: t.created_at,
+            chain_id: t.chain_id,
+            sender_id: t.direction === 'out' ? t.user_id : null,
+            recipient_id: t.direction === 'in' ? t.user_id : null,
+            sender_username: null,
+            sender_display_name: null,
+            sender_avatar_url: null,
+            recipient_username: null,
+            recipient_display_name: null,
+            recipient_avatar_url: null,
+            type: 'transfer' as const,
+            direction: t.direction as 'in' | 'out',
+            counterparty_address: t.counterparty_address,
+          }));
+        }
+      }
+
+      // Fetch donation records
       let donationRecords: DonationRecord[] = [];
-      if (currentFilter !== 'swap') {
+      if (currentFilter !== 'swap' && currentFilter !== 'transfer') {
         let query = supabase
           .from('donations')
           .select(`
@@ -178,8 +216,8 @@ export function usePublicDonationHistory(userId: string | undefined) {
         }));
       }
 
-      // Merge and sort by created_at desc
-      const merged = [...donationRecords, ...swapRecords]
+      // Merge and sort
+      const merged = [...donationRecords, ...swapRecords, ...transferRecords]
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
         .slice(0, PAGE_SIZE);
 

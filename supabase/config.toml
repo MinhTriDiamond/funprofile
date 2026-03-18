@@ -25,6 +25,8 @@ project_id = "bhtsnervqiwchluwuxki"
     verify_jwt = false
   [functions.backfill-swap-transactions]
     verify_jwt = false
+  [functions.backfill-wallet-transfers]
+    verify_jwt = false
   [functions.backfill-tx-donations]
     verify_jwt = false
   [functions.batch-delete-banned-users]
