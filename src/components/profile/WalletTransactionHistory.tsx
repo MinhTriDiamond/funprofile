@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Clock, ArrowDownLeft, ArrowUpRight, ArrowDownUp, ExternalLink, Filter, MessageSquare, ArrowRightLeft, ChevronDown, ChevronUp } from 'lucide-react';
 import { usePublicDonationHistory, type DonationFilter, type DonationRecord, type DonationSummary } from '@/hooks/usePublicDonationHistory';
+import { usePublicWalletBalances } from '@/hooks/usePublicWalletBalances';
 import { getBscScanBaseUrl } from '@/lib/chainTokenMapping';
 import { WALLET_TOKENS } from '@/lib/tokens';
 
@@ -45,10 +46,16 @@ function TokenLogo({ symbol }: { symbol: string }) {
   return <img src={token.logo} alt={symbol} className="w-4 h-4 rounded-full" />;
 }
 
-function SummaryTable({ summary }: { summary: DonationSummary }) {
+function SummaryTable({ summary, walletBalances }: { summary: DonationSummary; walletBalances?: Record<string, number> }) {
   const allTokens = new Set<string>();
   Object.keys(summary.received).forEach(s => allTokens.add(s));
   Object.keys(summary.sent).forEach(s => allTokens.add(s));
+  // Also add tokens from wallet balances
+  if (walletBalances) {
+    Object.keys(walletBalances).forEach(s => {
+      if (walletBalances[s] > 0) allTokens.add(s);
+    });
+  }
 
   const tokens = TOKEN_ORDER.filter(t => allTokens.has(t));
   const extraTokens = [...allTokens].filter(t => !TOKEN_ORDER.includes(t));
@@ -70,16 +77,14 @@ function SummaryTable({ summary }: { summary: DonationSummary }) {
                 <TableHead className="text-[11px] font-bold text-green-600 text-right px-2 py-1.5 whitespace-nowrap">Lệnh</TableHead>
                 <TableHead className="text-[11px] font-bold text-red-600 text-right px-2 py-1.5 whitespace-nowrap">Tổng gửi</TableHead>
                 <TableHead className="text-[11px] font-bold text-red-600 text-right px-2 py-1.5 whitespace-nowrap">Lệnh</TableHead>
-                <TableHead className="text-[11px] font-bold text-primary text-right px-2 py-1.5 whitespace-nowrap">Số dư GD</TableHead>
+                <TableHead className="text-[11px] font-bold text-primary text-right px-2 py-1.5 whitespace-nowrap">Số dư ví</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {orderedTokens.map(sym => {
                 const recv = summary.received[sym];
                 const sent = summary.sent[sym];
-                const recvAmt = recv?.amount ?? 0;
-                const sentAmt = sent?.amount ?? 0;
-                const balance = recvAmt - sentAmt;
+                const onChainBalance = walletBalances?.[sym];
 
                 return (
                   <TableRow key={sym}>
@@ -90,21 +95,23 @@ function SummaryTable({ summary }: { summary: DonationSummary }) {
                       </div>
                     </TableCell>
                     <TableCell className="text-right px-2 py-1.5 whitespace-nowrap">
-                      <span className="text-[11px] font-semibold text-green-600">{formatAmount(recvAmt)}</span>
+                      <span className="text-[11px] font-semibold text-green-600">{formatAmount(recv?.amount ?? 0)}</span>
                     </TableCell>
                     <TableCell className="text-right px-2 py-1.5 whitespace-nowrap">
                       <span className="text-[11px] text-muted-foreground">{recv?.count ?? 0}</span>
                     </TableCell>
                     <TableCell className="text-right px-2 py-1.5 whitespace-nowrap">
-                      <span className="text-[11px] font-semibold text-red-600">{formatAmount(sentAmt)}</span>
+                      <span className="text-[11px] font-semibold text-red-600">{formatAmount(sent?.amount ?? 0)}</span>
                     </TableCell>
                     <TableCell className="text-right px-2 py-1.5 whitespace-nowrap">
                       <span className="text-[11px] text-muted-foreground">{sent?.count ?? 0}</span>
                     </TableCell>
                     <TableCell className="text-right px-2 py-1.5 whitespace-nowrap">
-                      <span className={`text-[11px] font-bold ${balance > 0 ? 'text-green-600' : balance < 0 ? 'text-red-600' : 'text-muted-foreground'}`}>
-                        {balance > 0 ? '+' : ''}{formatAmount(balance)}
-                      </span>
+                      {onChainBalance !== undefined ? (
+                        <span className="text-[11px] font-bold text-primary">{formatAmount(onChainBalance)}</span>
+                      ) : (
+                        <span className="text-[11px] text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                   </TableRow>
                 );
@@ -114,7 +121,7 @@ function SummaryTable({ summary }: { summary: DonationSummary }) {
         </div>
       </div>
 
-      <p className="text-[10px] text-muted-foreground italic px-1">* Bao gồm giao dịch tặng/nhận, swap và chuyển ví qua FUN.RICH. Số dư ví thực tế có thể khác do giao dịch chưa được ghi nhận.</p>
+      <p className="text-[10px] text-muted-foreground italic px-1">* Số dư ví là số dư on-chain thực tế. Tổng nhận/gửi bao gồm giao dịch tặng/nhận, swap và chuyển ví qua FUN.RICH.</p>
 
       <div className="flex items-center justify-between bg-muted/50 border border-border rounded-xl px-3 py-2">
         <div className="flex items-center gap-4">
@@ -348,6 +355,7 @@ export function WalletTransactionHistory({ userId, walletAddress }: Props) {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   const { donations, loading, error, filter, hasMore, summary, summaryLoading, changeFilter, fetchDonations, fetchSummary, loadMore } = usePublicDonationHistory(userId);
+  const { balances: walletBalances } = usePublicWalletBalances(open ? walletAddress : undefined);
 
   useEffect(() => {
     if (open && userId) {
@@ -384,7 +392,7 @@ export function WalletTransactionHistory({ userId, walletAddress }: Props) {
         {summaryLoading ? (
           <Skeleton className="h-32 w-full rounded-xl mb-4" />
         ) : (
-          <SummaryTable summary={summary} />
+          <SummaryTable summary={summary} walletBalances={walletBalances} />
         )}
 
         <div className="flex items-center gap-1 mb-3 flex-wrap">
