@@ -254,6 +254,7 @@ export function WalletTransactionHistory({ userId, walletAddress }: Props) {
     { key: 'all', label: 'Tất cả' },
     { key: 'received', label: 'Đã nhận' },
     { key: 'sent', label: 'Đã tặng' },
+    { key: 'swap', label: 'Swap' },
   ];
 
   return (
