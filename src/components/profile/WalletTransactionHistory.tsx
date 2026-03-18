@@ -276,75 +276,50 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
   const isSent = d.sender_id === userId;
   const explorerUrl = getBscScanBaseUrl(d.chain_id);
   const isExternal = d.is_external || (!d.sender_id && d.recipient_id);
-
-  const senderName = d.sender_display_name || d.sender_username || 
-    (d.sender_address ? shortenAddress(d.sender_address) : 'Ví ngoài');
-  const senderAvatar = d.sender_avatar_url;
+  const msgPreview = d.message ? (d.message.length > 40 ? d.message.slice(0, 40) + '…' : d.message) : null;
 
   return (
-    <div className="border border-border rounded-xl p-3 space-y-2">
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-1.5">
-          <Badge variant="outline" className={isSent ? 'border-red-500 text-red-600 bg-red-50 dark:bg-red-950/30' : 'border-green-500 text-green-600 bg-green-50 dark:bg-green-950/30'}>
-            {isSent ? <ArrowUpRight className="w-3 h-3 mr-1" /> : <ArrowDownLeft className="w-3 h-3 mr-1" />}
-            {isSent ? 'Đã tặng' : 'Đã nhận'}
-          </Badge>
-          {isExternal && (
-            <Badge variant="secondary" className="bg-orange-100 text-orange-700 border-orange-200 text-[10px] px-1.5 py-0">
-              Ví ngoài
-            </Badge>
-          )}
-        </div>
-        <StatusBadge status={d.status} />
-      </div>
+    <div className="border border-border rounded-lg px-3 py-2 flex items-center gap-2 flex-wrap text-xs">
+      {/* Direction badge */}
+      <Badge variant="outline" className={`flex-shrink-0 text-[10px] px-1.5 py-0.5 ${isSent ? 'border-red-500 text-red-600 bg-red-50 dark:bg-red-950/30' : 'border-green-500 text-green-600 bg-green-50 dark:bg-green-950/30'}`}>
+        {isSent ? <ArrowUpRight className="w-3 h-3 mr-0.5" /> : <ArrowDownLeft className="w-3 h-3 mr-0.5" />}
+        {isSent ? 'Tặng' : 'Nhận'}
+      </Badge>
 
-      <div className="flex items-center gap-2 text-sm">
+      {/* Sender → Recipient */}
+      <div className="flex items-center gap-1 min-w-0 flex-shrink-0">
         {isExternal && !d.sender_id ? (
-          <div className="flex items-center gap-1.5 min-w-0">
-            <Avatar className="w-6 h-6 flex-shrink-0">
-              <AvatarFallback className="text-[10px] bg-orange-100 text-orange-700">🌐</AvatarFallback>
-            </Avatar>
-            {d.sender_address ? (
-              <a
-                href={`${explorerUrl}/address/${d.sender_address}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs font-medium text-primary hover:underline flex items-center gap-1"
-                onClick={e => e.stopPropagation()}
-              >
-                {shortenAddress(d.sender_address)} <ExternalLink className="w-3 h-3" />
-              </a>
-            ) : (
-              <span className="text-xs font-medium text-muted-foreground">Ví ngoài</span>
-            )}
-          </div>
+          <span className="text-muted-foreground truncate max-w-[60px]">{d.sender_address ? shortenAddress(d.sender_address) : 'Ví ngoài'}</span>
         ) : (
-          <UserAvatar
-            username={d.sender_username}
-            displayName={d.sender_display_name}
-            avatarUrl={d.sender_avatar_url}
-            onClick={() => d.sender_username && navigate(`/${d.sender_username}`)}
-          />
+          <button onClick={() => d.sender_username && navigate(`/${d.sender_username}`)} className="font-medium truncate max-w-[80px] hover:underline text-foreground">
+            {d.sender_display_name || d.sender_username || '?'}
+          </button>
         )}
         <span className="text-muted-foreground">→</span>
-        <UserAvatar
-          username={d.recipient_username}
-          displayName={d.recipient_display_name}
-          avatarUrl={d.recipient_avatar_url}
-          onClick={() => d.recipient_username && navigate(`/${d.recipient_username}`)}
-        />
+        <button onClick={() => d.recipient_username && navigate(`/${d.recipient_username}`)} className="font-medium truncate max-w-[80px] hover:underline text-foreground">
+          {d.recipient_display_name || d.recipient_username || '?'}
+        </button>
       </div>
 
-      <div className="flex justify-between text-sm">
-        <span className="text-muted-foreground">{formatTimestamp(d.created_at)}</span>
-        <span className="font-bold">{Number(d.amount).toLocaleString('vi-VN', { maximumFractionDigits: 6 })} {d.token_symbol}</span>
-      </div>
+      {/* Amount */}
+      <span className="font-bold text-foreground flex-shrink-0">
+        {Number(d.amount).toLocaleString('vi-VN', { maximumFractionDigits: 4 })} {d.token_symbol}
+      </span>
 
-      {d.message && <CollapsibleMessage message={d.message} />}
+      {/* Timestamp */}
+      <span className="text-muted-foreground flex-shrink-0">{formatTimestamp(d.created_at)}</span>
 
+      {/* Message preview */}
+      {msgPreview && (
+        <span className="text-muted-foreground truncate max-w-[150px] italic" title={d.message!}>
+          "{msgPreview}"
+        </span>
+      )}
+
+      {/* Tx link */}
       {d.tx_hash && (
-        <a href={`${explorerUrl}/tx/${d.tx_hash}`} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1">
-          Tx: {d.tx_hash.slice(0, 10)}...{d.tx_hash.slice(-6)} <ExternalLink className="w-3 h-3" />
+        <a href={`${explorerUrl}/tx/${d.tx_hash}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline flex items-center gap-0.5 flex-shrink-0 ml-auto">
+          Tx <ExternalLink className="w-3 h-3" />
         </a>
       )}
     </div>
