@@ -301,7 +301,7 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
         <StatusBadge status={d.status} />
       </div>
 
-      <div className="flex items-center gap-2 text-base flex-wrap">
+      <div className="flex items-center gap-2 text-base">
         {isExternal && !d.sender_id ? (
           <div className="flex items-center gap-1.5 min-w-0">
             <Avatar className="w-6 h-6 flex-shrink-0">
@@ -336,13 +336,15 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
           avatarUrl={d.recipient_avatar_url}
           onClick={() => d.recipient_username && navigate(`/${d.recipient_username}`)}
         />
-        <span className="font-bold whitespace-nowrap ml-auto">{Number(d.amount).toLocaleString('vi-VN', { maximumFractionDigits: 6 })} {d.token_symbol}</span>
-        <span className="text-sm text-muted-foreground whitespace-nowrap">{formatTimestamp(d.created_at)}</span>
-        {d.tx_hash && (
-          <a href={`${explorerUrl}/tx/${d.tx_hash}`} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline flex items-center gap-1 whitespace-nowrap">
-            Tx: {d.tx_hash.slice(0, 10)}...{d.tx_hash.slice(-6)} <ExternalLink className="w-3.5 h-3.5" />
-          </a>
-        )}
+        <span className="font-bold whitespace-nowrap flex-1 text-center">{Number(d.amount).toLocaleString('vi-VN', { maximumFractionDigits: 6 })} {d.token_symbol}</span>
+        <div className="flex items-center gap-2 whitespace-nowrap flex-shrink-0">
+          <span className="text-sm text-muted-foreground">{formatTimestamp(d.created_at)}</span>
+          {d.tx_hash && (
+            <a href={`${explorerUrl}/tx/${d.tx_hash}`} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline flex items-center gap-1">
+              Tx: {d.tx_hash.slice(0, 10)}...{d.tx_hash.slice(-6)} <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+          )}
+        </div>
       </div>
 
       {d.message && <CollapsibleMessage message={d.message} />}
