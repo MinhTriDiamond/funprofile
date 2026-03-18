@@ -70,7 +70,7 @@ function SummaryTable({ summary }: { summary: DonationSummary }) {
                 <TableHead className="text-[11px] font-bold text-green-600 text-right px-2 py-1.5 whitespace-nowrap">Lệnh</TableHead>
                 <TableHead className="text-[11px] font-bold text-red-600 text-right px-2 py-1.5 whitespace-nowrap">Tổng tặng</TableHead>
                 <TableHead className="text-[11px] font-bold text-red-600 text-right px-2 py-1.5 whitespace-nowrap">Lệnh</TableHead>
-                <TableHead className="text-[11px] font-bold text-primary text-right px-2 py-1.5 whitespace-nowrap">Còn lại</TableHead>
+                <TableHead className="text-[11px] font-bold text-primary text-right px-2 py-1.5 whitespace-nowrap">Số dư GD</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -113,6 +113,8 @@ function SummaryTable({ summary }: { summary: DonationSummary }) {
           </Table>
         </div>
       </div>
+
+      <p className="text-[10px] text-muted-foreground italic px-1">* Chỉ tính giao dịch tặng/nhận qua FUN.RICH. Số dư ví thực tế có thể khác do swap, chuyển trực tiếp...</p>
 
       {/* Tổng giao dịch */}
       <div className="flex items-center justify-between bg-muted/50 border border-border rounded-xl px-3 py-2">
