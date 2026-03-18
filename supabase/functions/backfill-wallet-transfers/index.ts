@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
       userId = match.id;
     }
 
-    console.log(`Backfilling wallet transfers for user ${userId}, wallet ${walletAddr}`);
+    console.log(`Backfilling wallet transfers for user ${userId}, wallet ${walletAddr}, walletLength=${walletAddr?.length}`);
 
     // Fetch all ERC20 transfers from Moralis
     const allTransfers: TokenTransfer[] = [];
