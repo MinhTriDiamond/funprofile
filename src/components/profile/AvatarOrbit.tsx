@@ -110,7 +110,7 @@ interface AvatarOrbitProps {
 export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userId, onLinksChanged }: AvatarOrbitProps) {
   const transparentDiamond = useTransparentDiamond(diamondSrc);
   const isMobile = useIsMobile();
-  const { radius: ORBIT_RADIUS, wrapperSize: WRAPPER_SIZE, center: CENTER } = getOrbitConfig(isMobile);
+  const { radius: ORBIT_RADIUS, wrapperSize: WRAPPER_SIZE, center: CENTER, diamondTop: DIAMOND_TOP } = getOrbitConfig(isMobile);
 
   // Static orbit — no animation, refs kept for drag compatibility
   const isOrbitHovered = useRef(false);
@@ -262,150 +262,7 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [showAddPicker, editingPlatform, pendingPlatform, promptingPlatform]);
-
-  const fetchLinkAvatar = async (url: string, platform: string): Promise<string | null> => {
-    try {
-      const { data, error } = await supabase.functions.invoke('fetch-link-preview', { body: { url, platform } });
-      if (error || !data?.avatarUrl) return null;
-      return data.avatarUrl;
-    } catch { return null; }
-  };
-
-  // Save link URL for existing slot (was empty)
-  const savePromptLink = async (platform: string, url: string) => {
-    if (!userId || !url.trim()) return;
-    setSaving(true);
-    const normalized = url.trim().startsWith('http') ? url.trim() : `https://${url.trim()}`;
-    const fetchedAvatarUrl = await fetchLinkAvatar(normalized, platform);
-    // If localLinks is empty (showing defaults), initialize from defaultLinks first
-    const baseLinks = localLinks.length === 0 ? defaultLinks : localLinks;
-    let newLinks: SocialLink[];
-    const existingIdx = baseLinks.findIndex((l) => l.platform === platform);
-    if (existingIdx !== -1) {
-      newLinks = baseLinks.map((l) =>
-        l.platform === platform ? { ...l, url: normalized, avatarUrl: fetchedAvatarUrl || l.avatarUrl } : l
-      );
-    } else {
-      // Platform not in list, add new entry
-      const preset = PLATFORM_PRESETS[platform];
-      if (!preset) { setSaving(false); return; }
-      newLinks = [...baseLinks, { platform, label: preset.label, url: normalized, color: preset.color, favicon: preset.favicon, avatarUrl: fetchedAvatarUrl || undefined }];
-    }
-    const { error } = await supabase.from('profiles').update({ social_links: toJson(newLinks as unknown as Record<string, unknown>) }).eq('id', userId);
-    setSaving(false);
-    if (error) { toast.error('Không thể lưu link'); return; }
-    toast.success('Đã lưu!');
-    setLocalLinks(newLinks);
-    onLinksChanged?.(newLinks);
-    setPromptingPlatform(null); setPromptUrl('');
-  };
-
-  const saveLink = async (platform: string, url: string, isNew = false) => {
-    if (!userId) return;
-    setSaving(true);
-    const normalized = url.trim() ? (url.trim().startsWith('http') ? url.trim() : `https://${url.trim()}`) : '';
-    const fetchedAvatarUrl = normalized ? await fetchLinkAvatar(normalized, platform) : null;
-
-    let newLinks: SocialLink[];
-    if (isNew) {
-      const preset = PLATFORM_PRESETS[platform];
-      if (!preset) { setSaving(false); return; }
-      newLinks = [...localLinks, { platform, label: preset.label, url: normalized, color: preset.color, favicon: preset.favicon, avatarUrl: fetchedAvatarUrl || undefined }];
-    } else {
-      newLinks = localLinks.map((l) => l.platform === platform ? { ...l, url: normalized, avatarUrl: fetchedAvatarUrl || l.avatarUrl } : l);
-    }
-    const { error } = await supabase.from('profiles').update({ social_links: toJson(newLinks as unknown as Record<string, unknown>) }).eq('id', userId);
-    setSaving(false);
-    if (error) { toast.error('Không thể lưu link'); return; }
-    toast.success('Đã lưu!');
-    setLocalLinks(newLinks);
-    onLinksChanged?.(newLinks);
-    setEditingPlatform(null);
-    setPendingPlatform(null); setPendingUrl('');
-    setShowAddPicker(false);
-  };
-
-  const removeLink = async (platform: string) => {
-    if (!userId) return;
-    // If localLinks is empty (showing defaults), initialize from defaults then remove
-    const baseLinks = localLinks.length === 0 ? defaultLinks : localLinks;
-    const newLinks = baseLinks.filter((l) => l.platform !== platform);
-    const { error } = await supabase.from('profiles').update({ social_links: toJson(newLinks as unknown as Record<string, unknown>) }).eq('id', userId);
-    if (error) { toast.error('Không thể xoá link'); return; }
-    toast.success('Đã xoá!');
-    setLocalLinks(newLinks);
-    onLinksChanged?.(newLinks);
-    setEditingPlatform(null);
-  };
-
-  // Pick platform → save immediately as empty-url slot, appear on orbit right away
-  const handlePickPlatform = async (platform: string) => {
-    if (!userId) return;
-    setShowAddPicker(false);
-    const preset = PLATFORM_PRESETS[platform];
-    if (!preset) return;
-    // If localLinks is empty (showing defaults), initialize from defaults first
-    const baseLinks = localLinks.length === 0 ? defaultLinks : localLinks;
-    // Check if platform already exists in baseLinks
-    if (baseLinks.some((l) => l.platform === platform)) {
-      // Platform already in list, just open prompt
-      setLocalLinks(baseLinks);
-      onLinksChanged?.(baseLinks);
-      setPromptingPlatform(platform);
-      setPromptUrl('');
-      return;
-    }
-    const newLink: SocialLink = { platform, label: preset.label, url: '', color: preset.color, favicon: preset.favicon };
-    const newLinks = [...baseLinks, newLink];
-    await supabase.from('profiles').update({ social_links: toJson(newLinks as unknown as Record<string, unknown>) }).eq('id', userId);
-    setLocalLinks(newLinks);
-    onLinksChanged?.(newLinks);
-    // Open prompt to enter URL right away
-    setPromptingPlatform(platform);
-    setPromptUrl('');
-  };
-
-  // Drag-to-reorder handlers
-  const handleDragStart = useCallback((index: number) => {
-    dragIndexRef.current = index;
-    setDraggingIndex(index);
-    isDragging.current = true;
-    isOrbitHovered.current = true;
-  }, []);
-
-  const handleDragOver = useCallback((index: number) => {
-    if (dragIndexRef.current === null || dragIndexRef.current === index) return;
-    // If localLinks is empty, initialize from displayLinks (defaults) first
-    const baseLinks = localLinks.length === 0 ? [...defaultLinks] : [...localLinks];
-    const fromIdx = dragIndexRef.current;
-    if (fromIdx >= baseLinks.length || index >= baseLinks.length) return;
-    const [moved] = baseLinks.splice(fromIdx, 1);
-    baseLinks.splice(index, 0, moved);
-    dragIndexRef.current = index;
-    setLocalLinks(baseLinks);
-  }, [localLinks, defaultLinks]);
-
-  const handleDragEnd = useCallback(async () => {
-    isDragging.current = false;
-    isOrbitHovered.current = false;
-    setDraggingIndex(null);
-    dragIndexRef.current = null;
-    if (!userId) return;
-    // If localLinks was empty before drag started, it's now initialized from defaults
-    await supabase.from('profiles').update({ social_links: toJson(localLinks as unknown as Record<string, unknown>) }).eq('id', userId);
-    onLinksChanged?.(localLinks);
-  }, [localLinks, userId, onLinksChanged]);
-
-  const addAngle = computeAddAngle(allLinks.length);
-  const addPos = angleToPos(addAngle, ORBIT_RADIUS);
-  const showAddBtn = isOwner && allLinks.length < 9 && !pendingPlatform;
-
-  return (
-    <div
-      className="relative"
-      style={{ width: `${AVATAR_SIZE}px`, height: `${AVATAR_SIZE}px`, flexShrink: 0, overflow: 'visible' }}
-    >
-      {/* Kim cương - phía trên avatar, đặt trong wrapper 486px để không bị clip */}
+...
       <div
         className="pointer-events-none diamond-sparkle"
         style={{
@@ -420,7 +277,7 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
         }}
       >
         {/* Kim cương: mũi nhọn dưới chạm sát viền ngoài avatar */}
-        <div style={{ position: 'absolute', left: '50%', top: isMobile ? '70px' : '90px', transform: 'translateX(-50%)' }}>
+        <div style={{ position: 'absolute', left: '50%', top: `${DIAMOND_TOP}px`, transform: 'translateX(-50%)' }}>
           {/* Sparkle dots */}
           <span className="sparkle-dot-1 absolute text-yellow-300" style={{ top: '18%', left: '10%', fontSize: '8px' }}>✦</span>
           <span className="sparkle-dot-2 absolute text-cyan-300" style={{ top: '5%', left: '55%', fontSize: '7px' }}>✦</span>
