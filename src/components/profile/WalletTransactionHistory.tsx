@@ -112,7 +112,7 @@ function SummaryTable({ summary, activeFilter }: { summary: DonationSummary; act
                           <span className="text-sm font-semibold text-green-600">{formatAmount(recv?.amount ?? 0)}</span>
                         </TableCell>
                         <TableCell className="text-right px-3 py-2 whitespace-nowrap">
-                          <span className="text-sm font-semibold text-green-600">{recv?.count ?? 0}</span>
+                          <span className="text-sm font-semibold text-red-600">{recv?.count ?? 0}</span>
                         </TableCell>
                       </>
                     )}
@@ -122,7 +122,7 @@ function SummaryTable({ summary, activeFilter }: { summary: DonationSummary; act
                           <span className="text-sm font-semibold text-red-600">{formatAmount(sent?.amount ?? 0)}</span>
                         </TableCell>
                         <TableCell className="text-right px-3 py-2 whitespace-nowrap">
-                          <span className="text-sm font-semibold text-green-600">{sent?.count ?? 0}</span>
+                          <span className="text-sm font-semibold text-red-600">{sent?.count ?? 0}</span>
                         </TableCell>
                       </>
                     )}
@@ -428,9 +428,9 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
 
           {/* Filters + Date Range row */}
           <div className="flex items-center gap-2 py-3 flex-wrap">
-            <Filter className="w-4 h-4 text-muted-foreground" />
+            <Filter className="w-5 h-5 text-muted-foreground" />
             {filters.map(f => (
-              <Button key={f.key} size="sm" variant={filter === f.key ? 'secondary' : 'ghost'} onClick={() => changeFilter(f.key)} className="h-8 text-sm">
+              <Button key={f.key} size="sm" variant={filter === f.key ? 'secondary' : 'ghost'} onClick={() => changeFilter(f.key)} className="h-9 text-base px-4">
                 {f.label}
               </Button>
             ))}
