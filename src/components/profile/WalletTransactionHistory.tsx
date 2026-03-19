@@ -428,10 +428,10 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
           </DialogHeader>
 
           {/* Filters + Date Range row */}
-          <div className="flex items-center gap-2 py-3 flex-wrap">
-            <Filter className="w-5 h-5 text-muted-foreground" />
+          <div className="flex items-center gap-1.5 py-1.5 flex-wrap">
+            <Filter className="w-4 h-4 text-muted-foreground" />
             {filters.map(f => (
-              <Button key={f.key} size="sm" variant={filter === f.key ? 'secondary' : 'ghost'} onClick={() => changeFilter(f.key)} className="h-9 text-base px-4">
+              <Button key={f.key} size="sm" variant={filter === f.key ? 'secondary' : 'ghost'} onClick={() => changeFilter(f.key)} className="h-7 text-sm px-3">
                 {f.label}
               </Button>
             ))}
