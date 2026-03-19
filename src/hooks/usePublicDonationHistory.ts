@@ -210,6 +210,7 @@ export function usePublicDonationHistory(userId: string | undefined, userCreated
           .select('*')
           .eq('user_id', userId)
           .order('created_at', { ascending: false });
+        if (userCreatedAt) transferQuery = transferQuery.gte('created_at', userCreatedAt);
         if (currentFilter === 'received') transferQuery = transferQuery.eq('direction', 'in');
         else if (currentFilter === 'sent') transferQuery = transferQuery.eq('direction', 'out');
         if (fromDate) transferQuery = transferQuery.gte('created_at', fromDate);
