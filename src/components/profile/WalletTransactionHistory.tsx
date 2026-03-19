@@ -112,7 +112,7 @@ function SummaryTable({ summary, activeFilter }: { summary: DonationSummary; act
                           <span className="text-sm font-semibold text-green-600">{formatAmount(recv?.amount ?? 0)}</span>
                         </TableCell>
                         <TableCell className="text-right px-3 py-2 whitespace-nowrap">
-                          <span className="text-sm font-semibold text-red-600">{recv?.count ?? 0}</span>
+                          <span className="text-sm font-semibold text-green-600">{recv?.count ?? 0}</span>
                         </TableCell>
                       </>
                     )}
