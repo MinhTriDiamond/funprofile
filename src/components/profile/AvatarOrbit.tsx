@@ -91,9 +91,9 @@ function computeAddAngle(n: number): number {
   return angles[angles.length - 1] ?? 180;
 }
 
-function angleToPos(angleDeg: number) {
+function angleToPos(angleDeg: number, radius: number) {
   const rad = (angleDeg * Math.PI) / 180;
-  return { x: Math.sin(rad) * ORBIT_RADIUS, y: -Math.cos(rad) * ORBIT_RADIUS };
+  return { x: Math.sin(rad) * radius, y: -Math.cos(rad) * radius;
 }
 
 interface AvatarOrbitProps {
