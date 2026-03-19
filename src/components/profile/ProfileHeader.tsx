@@ -83,7 +83,10 @@ export const ProfileHeader = ({
               <CoverHonorBoard userId={profile.id} username={profile?.username} avatarUrl={profile?.avatar_url ?? undefined} />
             </div>
 
-            {/* Honor Board Mobile — moved below cover */}
+            {/* Honor Board Mobile — inside cover */}
+            <div className="absolute z-20 block md:hidden top-2 left-2 right-2">
+              <MobileStats userId={profile.id} username={profile?.username} avatarUrl={profile?.avatar_url ?? undefined} />
+            </div>
 
             {showPrivateElements && (
               <div className="absolute bottom-3 right-3 md:right-auto md:left-[8cm] sm:bottom-4 sm:right-4 z-[100] isolate">
@@ -95,11 +98,6 @@ export const ProfileHeader = ({
               </div>
             )}
           </div>
-        </div>
-
-        {/* Mobile Honor Board — below cover, above profile info */}
-        <div className="md:hidden px-2 mt-2">
-          <MobileStats userId={profile.id} username={profile?.username} avatarUrl={profile?.avatar_url ?? undefined} />
         </div>
 
         {/* Profile Info */}
