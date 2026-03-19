@@ -206,7 +206,8 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
   const isExternal = d.is_external || (!d.sender_id && d.recipient_id);
 
   return (
-    <div className="border border-border rounded-lg p-2.5 space-y-1.5">
+    <div className="border border-border rounded-lg p-2.5 space-y-1.5 overflow-hidden">
+      {/* Row 1: Badge + Status */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
           <Badge variant="outline" className={isSent ? 'border-red-500 text-red-600 bg-red-50 dark:bg-red-950/30 text-xs' : 'border-green-500 text-green-600 bg-green-50 dark:bg-green-950/30 text-xs'}>
@@ -222,55 +223,56 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
         <StatusBadge status={d.status} />
       </div>
 
-      <div className="flex items-center gap-1.5 text-sm">
-        <div className="flex items-center gap-1.5 min-w-0 shrink">
-          {isExternal && !d.sender_id ? (
-            <div className="flex items-center gap-1 min-w-0">
-              <Avatar className="w-5 h-5 flex-shrink-0">
-                <AvatarFallback className="text-[9px] bg-orange-100 text-orange-700">🌐</AvatarFallback>
-              </Avatar>
-              {d.sender_address ? (
-                <a
-                  href={`${explorerUrl}/address/${d.sender_address}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs font-medium text-primary hover:underline flex items-center gap-0.5"
-                  onClick={e => e.stopPropagation()}
-                >
-                  {shortenAddress(d.sender_address)} <ExternalLink className="w-2.5 h-2.5" />
-                </a>
-              ) : (
-                <span className="text-xs font-medium text-muted-foreground">Ví ngoài</span>
-              )}
-            </div>
-          ) : (
-            <UserAvatar
-              username={d.sender_username}
-              displayName={d.sender_display_name}
-              avatarUrl={d.sender_avatar_url}
-              onClick={() => d.sender_username && navigate(`/${d.sender_username}`)}
-            />
-          )}
-          <span className="text-muted-foreground text-xs">→</span>
+      {/* Row 2: Users */}
+      <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
+        {isExternal && !d.sender_id ? (
+          <div className="flex items-center gap-1 min-w-0">
+            <Avatar className="w-5 h-5 flex-shrink-0">
+              <AvatarFallback className="text-[9px] bg-orange-100 text-orange-700">🌐</AvatarFallback>
+            </Avatar>
+            {d.sender_address ? (
+              <a
+                href={`${explorerUrl}/address/${d.sender_address}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs font-medium text-primary hover:underline flex items-center gap-0.5"
+                onClick={e => e.stopPropagation()}
+              >
+                {shortenAddress(d.sender_address)} <ExternalLink className="w-2.5 h-2.5" />
+              </a>
+            ) : (
+              <span className="text-xs font-medium text-muted-foreground">Ví ngoài</span>
+            )}
+          </div>
+        ) : (
           <UserAvatar
-            username={d.recipient_username}
-            displayName={d.recipient_display_name}
-            avatarUrl={d.recipient_avatar_url}
-            onClick={() => d.recipient_username && navigate(`/${d.recipient_username}`)}
+            username={d.sender_username}
+            displayName={d.sender_display_name}
+            avatarUrl={d.sender_avatar_url}
+            onClick={() => d.sender_username && navigate(`/${d.sender_username}`)}
           />
-        </div>
+        )}
+        <span className="text-muted-foreground text-xs">→</span>
+        <UserAvatar
+          username={d.recipient_username}
+          displayName={d.recipient_display_name}
+          avatarUrl={d.recipient_avatar_url}
+          onClick={() => d.recipient_username && navigate(`/${d.recipient_username}`)}
+        />
+      </div>
 
-        <span className="font-bold whitespace-nowrap mx-auto text-center text-red-600 text-sm">{Number(d.amount).toLocaleString('vi-VN', { maximumFractionDigits: 6 })} {d.token_symbol}</span>
-
-        <div className="flex items-center gap-2 whitespace-nowrap shrink-0">
-          <span className="text-sm font-medium text-primary">{formatTimeVN(d.created_at)}</span>
-          <span className="text-sm font-semibold text-yellow-600 dark:text-yellow-400">{formatDateVN(d.created_at)}</span>
-          {d.tx_hash && (
-            <a href={`${explorerUrl}/tx/${d.tx_hash}`} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline flex items-center gap-0.5">
-              Tx: {d.tx_hash.slice(0, 6)}...{d.tx_hash.slice(-4)} <ExternalLink className="w-3 h-3" />
-            </a>
-          )}
-        </div>
+      {/* Row 3: Amount + Time + Tx */}
+      <div className="flex items-center gap-2 flex-wrap text-sm">
+        <span className="font-bold text-red-600 whitespace-nowrap">
+          {Number(d.amount).toLocaleString('vi-VN', { maximumFractionDigits: 6 })} {d.token_symbol}
+        </span>
+        <span className="font-medium text-primary whitespace-nowrap">{formatTimeVN(d.created_at)}</span>
+        <span className="font-semibold text-yellow-600 dark:text-yellow-400 whitespace-nowrap">{formatDateVN(d.created_at)}</span>
+        {d.tx_hash && (
+          <a href={`${explorerUrl}/tx/${d.tx_hash}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline flex items-center gap-0.5 whitespace-nowrap">
+            Tx: {d.tx_hash.slice(0, 6)}...{d.tx_hash.slice(-4)} <ExternalLink className="w-3 h-3" />
+          </a>
+        )}
       </div>
 
       {d.message && <CollapsibleMessage message={d.message} />}
@@ -313,7 +315,7 @@ export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, user
   ];
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 overflow-hidden">
       {/* Title */}
       <div className="flex items-center justify-center gap-1.5">
         <Clock className="w-5 h-5" style={{ color: '#2E7D32' }} />
@@ -323,59 +325,61 @@ export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, user
       </div>
 
       {/* Filters + Date Range row */}
+      {/* Filters */}
       <div className="flex items-center gap-1.5 flex-wrap">
-        <Filter className="w-4 h-4 text-muted-foreground" />
+        <Filter className="w-4 h-4 text-muted-foreground flex-shrink-0" />
         {filters.map(f => (
           <Button key={f.key} size="sm" variant={filter === f.key ? 'secondary' : 'ghost'} onClick={() => changeFilter(f.key)} className="h-7 text-sm px-3">
             {f.label}
           </Button>
         ))}
+      </div>
 
-        <div className="ml-auto flex items-center gap-1.5">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button size="sm" variant="outline" className={cn("h-8 text-xs gap-1 min-w-[110px]", fromDate && "border-primary text-primary")}>
-                <CalendarDays className="w-3.5 h-3.5" />
-                {fromDate ? format(fromDate, 'dd/MM/yyyy') : 'Từ ngày'}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0 z-[9999]" align="end">
-              <Calendar
-                mode="single"
-                selected={fromDate}
-                onSelect={(d) => handleDateChange(d, toDate)}
-                disabled={(date) => date > new Date() || (toDate ? date > toDate : false)}
-                initialFocus
-                className={cn("p-3 pointer-events-auto")}
-              />
-            </PopoverContent>
-          </Popover>
-
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button size="sm" variant="outline" className={cn("h-8 text-xs gap-1 min-w-[110px]", toDate && "border-primary text-primary")}>
-                <CalendarDays className="w-3.5 h-3.5" />
-                {toDate ? format(toDate, 'dd/MM/yyyy') : 'Đến ngày'}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0 z-[9999]" align="end">
-              <Calendar
-                mode="single"
-                selected={toDate}
-                onSelect={(d) => handleDateChange(fromDate, d)}
-                disabled={(date) => date > new Date() || (fromDate ? date < fromDate : false)}
-                initialFocus
-                className={cn("p-3 pointer-events-auto")}
-              />
-            </PopoverContent>
-          </Popover>
-
-          {(fromDate || toDate) && (
-            <Button size="sm" variant="ghost" onClick={clearDateRange} className="h-8 w-8 p-0">
-              <X className="w-3.5 h-3.5" />
+      {/* Date range */}
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button size="sm" variant="outline" className={cn("h-8 text-xs gap-1 min-w-0", fromDate && "border-primary text-primary")}>
+              <CalendarDays className="w-3.5 h-3.5 flex-shrink-0" />
+              {fromDate ? format(fromDate, 'dd/MM/yyyy') : 'Từ ngày'}
             </Button>
-          )}
-        </div>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0 z-[9999]" align="start">
+            <Calendar
+              mode="single"
+              selected={fromDate}
+              onSelect={(d) => handleDateChange(d, toDate)}
+              disabled={(date) => date > new Date() || (toDate ? date > toDate : false)}
+              initialFocus
+              className={cn("p-3 pointer-events-auto")}
+            />
+          </PopoverContent>
+        </Popover>
+
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button size="sm" variant="outline" className={cn("h-8 text-xs gap-1 min-w-0", toDate && "border-primary text-primary")}>
+              <CalendarDays className="w-3.5 h-3.5 flex-shrink-0" />
+              {toDate ? format(toDate, 'dd/MM/yyyy') : 'Đến ngày'}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0 z-[9999]" align="start">
+            <Calendar
+              mode="single"
+              selected={toDate}
+              onSelect={(d) => handleDateChange(fromDate, d)}
+              disabled={(date) => date > new Date() || (fromDate ? date < fromDate : false)}
+              initialFocus
+              className={cn("p-3 pointer-events-auto")}
+            />
+          </PopoverContent>
+        </Popover>
+
+        {(fromDate || toDate) && (
+          <Button size="sm" variant="ghost" onClick={clearDateRange} className="h-8 w-8 p-0">
+            <X className="w-3.5 h-3.5" />
+          </Button>
+        )}
       </div>
 
       {/* Summary Table */}
