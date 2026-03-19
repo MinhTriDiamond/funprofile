@@ -64,8 +64,7 @@ export function useDonationHistory(type: 'sent' | 'received') {
         `)
         .eq(type === 'sent' ? 'sender_id' : 'recipient_id', userId)
         .order('confirmed_at', { ascending: false, nullsFirst: false })
-        .order('created_at', { ascending: false })
-        .limit(100);
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
 
