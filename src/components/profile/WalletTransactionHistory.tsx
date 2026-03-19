@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Clock, ArrowDownLeft, ArrowUpRight, ArrowDownUp, ExternalLink, Filter, MessageSquare, ArrowRightLeft, ChevronDown, ChevronUp, CalendarDays, X, BarChart3 } from 'lucide-react';
+import { Clock, ArrowDownLeft, ArrowUpRight, ArrowDownUp, ExternalLink, Filter, MessageSquare, ArrowRightLeft, ChevronDown, ChevronUp, CalendarDays, X } from 'lucide-react';
 import { usePublicDonationHistory, type DonationFilter, type DonationRecord, type DonationSummary } from '@/hooks/usePublicDonationHistory';
 import { usePublicWalletBalances } from '@/hooks/usePublicWalletBalances';
 import { getBscScanBaseUrl } from '@/lib/chainTokenMapping';
@@ -55,11 +55,13 @@ function TokenLogo({ symbol }: { symbol: string }) {
   return <img src={token.logo} alt={symbol} className="w-4 h-4 rounded-full" />;
 }
 
-function SummaryTable({ summary, walletBalances }: { summary: DonationSummary; walletBalances?: Record<string, number> }) {
+function SummaryTable({ summary, walletBalances, activeFilter }: { summary: DonationSummary; walletBalances?: Record<string, number>; activeFilter: DonationFilter }) {
   const allTokens = new Set<string>();
-  Object.keys(summary.received).forEach(s => allTokens.add(s));
-  Object.keys(summary.sent).forEach(s => allTokens.add(s));
-  // Also add tokens from wallet balances
+  const showReceived = activeFilter === 'all' || activeFilter === 'received';
+  const showSent = activeFilter === 'all' || activeFilter === 'sent';
+
+  if (showReceived) Object.keys(summary.received).forEach(s => allTokens.add(s));
+  if (showSent) Object.keys(summary.sent).forEach(s => allTokens.add(s));
   if (walletBalances) {
     Object.keys(walletBalances).forEach(s => {
       if (walletBalances[s] > 0) allTokens.add(s);
@@ -82,10 +84,18 @@ function SummaryTable({ summary, walletBalances }: { summary: DonationSummary; w
             <TableHeader>
               <TableRow className="bg-muted/50">
                 <TableHead className="text-[11px] font-bold w-[60px] px-2 py-1.5 whitespace-nowrap">Token</TableHead>
-                <TableHead className="text-[11px] font-bold text-green-600 text-right px-2 py-1.5 whitespace-nowrap">Tổng nhận</TableHead>
-                <TableHead className="text-[11px] font-bold text-green-600 text-right px-2 py-1.5 whitespace-nowrap">Lệnh</TableHead>
-                <TableHead className="text-[11px] font-bold text-red-600 text-right px-2 py-1.5 whitespace-nowrap">Tổng gửi</TableHead>
-                <TableHead className="text-[11px] font-bold text-red-600 text-right px-2 py-1.5 whitespace-nowrap">Lệnh</TableHead>
+                {showReceived && (
+                  <>
+                    <TableHead className="text-[11px] font-bold text-green-600 text-right px-2 py-1.5 whitespace-nowrap">Tổng nhận</TableHead>
+                    <TableHead className="text-[11px] font-bold text-green-600 text-right px-2 py-1.5 whitespace-nowrap">Lệnh</TableHead>
+                  </>
+                )}
+                {showSent && (
+                  <>
+                    <TableHead className="text-[11px] font-bold text-red-600 text-right px-2 py-1.5 whitespace-nowrap">Tổng gửi</TableHead>
+                    <TableHead className="text-[11px] font-bold text-red-600 text-right px-2 py-1.5 whitespace-nowrap">Lệnh</TableHead>
+                  </>
+                )}
                 <TableHead className="text-[11px] font-bold text-primary text-right px-2 py-1.5 whitespace-nowrap">Số dư ví</TableHead>
               </TableRow>
             </TableHeader>
@@ -103,18 +113,26 @@ function SummaryTable({ summary, walletBalances }: { summary: DonationSummary; w
                         <span className="text-[11px] font-bold">{sym}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-right px-2 py-1.5 whitespace-nowrap">
-                      <span className="text-[11px] font-semibold text-green-600">{formatAmount(recv?.amount ?? 0)}</span>
-                    </TableCell>
-                    <TableCell className="text-right px-2 py-1.5 whitespace-nowrap">
-                      <span className="text-[11px] text-muted-foreground">{recv?.count ?? 0}</span>
-                    </TableCell>
-                    <TableCell className="text-right px-2 py-1.5 whitespace-nowrap">
-                      <span className="text-[11px] font-semibold text-red-600">{formatAmount(sent?.amount ?? 0)}</span>
-                    </TableCell>
-                    <TableCell className="text-right px-2 py-1.5 whitespace-nowrap">
-                      <span className="text-[11px] text-muted-foreground">{sent?.count ?? 0}</span>
-                    </TableCell>
+                    {showReceived && (
+                      <>
+                        <TableCell className="text-right px-2 py-1.5 whitespace-nowrap">
+                          <span className="text-[11px] font-semibold text-green-600">{formatAmount(recv?.amount ?? 0)}</span>
+                        </TableCell>
+                        <TableCell className="text-right px-2 py-1.5 whitespace-nowrap">
+                          <span className="text-[11px] text-muted-foreground">{recv?.count ?? 0}</span>
+                        </TableCell>
+                      </>
+                    )}
+                    {showSent && (
+                      <>
+                        <TableCell className="text-right px-2 py-1.5 whitespace-nowrap">
+                          <span className="text-[11px] font-semibold text-red-600">{formatAmount(sent?.amount ?? 0)}</span>
+                        </TableCell>
+                        <TableCell className="text-right px-2 py-1.5 whitespace-nowrap">
+                          <span className="text-[11px] text-muted-foreground">{sent?.count ?? 0}</span>
+                        </TableCell>
+                      </>
+                    )}
                     <TableCell className="text-right px-2 py-1.5 whitespace-nowrap">
                       {onChainBalance !== undefined ? (
                         <span className="text-[11px] font-bold text-primary">{formatAmount(onChainBalance)}</span>
@@ -134,23 +152,26 @@ function SummaryTable({ summary, walletBalances }: { summary: DonationSummary; w
 
       <div className="flex items-center justify-between bg-muted/50 border border-border rounded-xl px-3 py-2">
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1">
-            <ArrowDownLeft className="w-3.5 h-3.5 text-green-600" />
-            <span className="text-xs text-muted-foreground">Nhận:</span>
-            <span className="text-xs font-bold text-green-600">{summary.receivedCount} lệnh</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <ArrowUpRight className="w-3.5 h-3.5 text-red-600" />
-            <span className="text-xs text-muted-foreground">Gửi:</span>
-            <span className="text-xs font-bold text-red-600">{summary.sentCount} lệnh</span>
-          </div>
+          {showReceived && (
+            <div className="flex items-center gap-1">
+              <ArrowDownLeft className="w-3.5 h-3.5 text-green-600" />
+              <span className="text-xs text-muted-foreground">Nhận:</span>
+              <span className="text-xs font-bold text-green-600">{summary.receivedCount} lệnh</span>
+            </div>
+          )}
+          {showSent && (
+            <div className="flex items-center gap-1">
+              <ArrowUpRight className="w-3.5 h-3.5 text-red-600" />
+              <span className="text-xs text-muted-foreground">Gửi:</span>
+              <span className="text-xs font-bold text-red-600">{summary.sentCount} lệnh</span>
+            </div>
+          )}
         </div>
         <span className="text-xs font-bold text-foreground">Tổng: {summary.totalCount} GD</span>
       </div>
     </div>
   );
 }
-
 function UserAvatar({ username, displayName, avatarUrl, onClick }: { username: string | null; displayName: string | null; avatarUrl: string | null; onClick?: () => void }) {
   const name = displayName || username || '?';
   return (
@@ -365,7 +386,6 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
 
 export function WalletTransactionHistory({ userId, walletAddress, userDisplayName, userAvatarUrl, username }: Props) {
   const [open, setOpen] = useState(false);
-  const [showSummary, setShowSummary] = useState(false);
   const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
   const [toDate, setToDate] = useState<Date | undefined>(undefined);
   const navigate = useNavigate();
@@ -385,8 +405,6 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
     const fromStr = from ? format(from, 'yyyy-MM-dd') : null;
     const toStr = to ? format(to, 'yyyy-MM-dd') : null;
     changeDateRange(fromStr, toStr);
-    // Auto-show summary when date range is set
-    if (from || to) setShowSummary(true);
   };
 
   const clearDateRange = () => {
@@ -431,17 +449,6 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
             ))}
 
             <div className="ml-auto flex items-center gap-1.5">
-              {/* Summary toggle */}
-              <Button
-                size="sm"
-                variant={showSummary ? 'secondary' : 'ghost'}
-                onClick={() => setShowSummary(prev => !prev)}
-                className="h-8 text-sm gap-1"
-              >
-                <BarChart3 className="w-3.5 h-3.5" />
-                Tổng kết
-              </Button>
-
               {/* Date From */}
               <Popover>
                 <PopoverTrigger asChild>
@@ -450,7 +457,7 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
                     {fromDate ? format(fromDate, 'dd/MM/yyyy') : 'Từ ngày'}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="end">
+                <PopoverContent className="w-auto p-0 z-[9999]" align="end">
                   <Calendar
                     mode="single"
                     selected={fromDate}
@@ -470,7 +477,7 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
                     {toDate ? format(toDate, 'dd/MM/yyyy') : 'Đến ngày'}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="end">
+                <PopoverContent className="w-auto p-0 z-[9999]" align="end">
                   <Calendar
                     mode="single"
                     selected={toDate}
@@ -491,10 +498,8 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
             </div>
           </div>
 
-          {/* Summary Section */}
-          {showSummary && (
-            <SummaryTable summary={summary} walletBalances={walletBalances} />
-          )}
+          {/* Summary Section — always visible */}
+          <SummaryTable summary={summary} walletBalances={walletBalances} activeFilter={filter} />
         </div>
 
         {/* Scrollable content */}
