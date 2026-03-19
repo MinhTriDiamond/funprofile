@@ -149,7 +149,7 @@ export const ProfileHeader = ({
                     <p className="text-red-500 text-xs mt-0.5">Tài khoản này đã vi phạm điều khoản sử dụng và bị cấm vĩnh viễn.</p>
                   </div>
                 )}
-                <div className="flex items-center gap-1.5 text-sm font-bold text-green-600 mt-0.5 flex-wrap">
+                <div className="flex items-center justify-center md:justify-start gap-1.5 text-sm font-bold text-green-600 mt-0.5 flex-wrap">
                   <span>@{profile?.username}</span>
                   <span className="text-muted-foreground font-normal">·</span>
                   <button
