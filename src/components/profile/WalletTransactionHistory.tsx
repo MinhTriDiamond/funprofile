@@ -22,6 +22,7 @@ interface Props {
   userDisplayName?: string;
   userAvatarUrl?: string;
   username?: string;
+  userCreatedAt?: string;
 }
 
 const TOKEN_ORDER = ['USDT', 'BNB', 'BTCB', 'FUN', 'CAMLY'];

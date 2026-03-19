@@ -45,7 +45,7 @@ export interface DonationSummary {
 
 const PAGE_SIZE = 200;
 
-export function usePublicDonationHistory(userId: string | undefined) {
+export function usePublicDonationHistory(userId: string | undefined, userCreatedAt?: string | null) {
   const [donations, setDonations] = useState<DonationRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
