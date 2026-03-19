@@ -417,7 +417,7 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
           Lịch sử GD
         </Button>
       </DialogTrigger>
-      <DialogContent className="w-[905px] max-w-[95vw] sm:max-w-[905px] max-h-[85vh] overflow-hidden flex flex-col">
+      <DialogContent className="w-[905px] max-w-[95vw] sm:max-w-[905px] max-h-[90vh] overflow-hidden flex flex-col">
         <div className="flex-shrink-0">
           <DialogHeader>
             <DialogTitle className="flex items-center justify-center gap-2 text-2xl uppercase tracking-wider font-extrabold w-full" style={{ color: '#2E7D32', textShadow: '0 1px 2px rgba(46,125,50,0.2)' }}>
