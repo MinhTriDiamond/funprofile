@@ -232,7 +232,7 @@ export const ProfileHeader = ({
                         recipientAvatarUrl={profile.avatar_url}
                         variant="profile"
                       />
-                      <WalletTransactionHistory userId={profile.id} walletAddress={displayAddress} userDisplayName={profile.display_name} userAvatarUrl={profile.avatar_url} username={profile.username} />
+                      <WalletTransactionHistory userId={profile.id} walletAddress={displayAddress} userDisplayName={profile.display_name} userAvatarUrl={profile.avatar_url} username={profile.username} userCreatedAt={profile.created_at} />
                     </>
                   )}
                 </div>
