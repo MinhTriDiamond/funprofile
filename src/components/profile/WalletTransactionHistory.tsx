@@ -78,7 +78,7 @@ function SummaryTable({ summary, activeFilter }: { summary: DonationSummary; act
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="bg-muted/50">
+              <TableRow className="bg-gradient-to-r from-emerald-50/60 to-amber-50/60 dark:from-emerald-950/20 dark:to-amber-950/20">
                 <TableHead className="text-sm font-bold w-[70px] px-2 py-1.5 whitespace-nowrap">Token</TableHead>
                 {showReceived && (
                   <>
@@ -135,7 +135,7 @@ function SummaryTable({ summary, activeFilter }: { summary: DonationSummary; act
         </div>
       </div>
 
-      <div className="flex items-center justify-between bg-muted/50 border border-border rounded-lg px-3 py-1.5">
+      <div className="flex items-center justify-between bg-gradient-to-r from-emerald-50/60 to-amber-50/60 dark:from-emerald-950/20 dark:to-amber-950/20 border border-border rounded-lg px-3 py-1.5">
         <div className="flex items-center gap-4">
           {showReceived && (
             <div className="flex items-center gap-1">
