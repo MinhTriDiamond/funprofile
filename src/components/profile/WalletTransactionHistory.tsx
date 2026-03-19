@@ -472,7 +472,7 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
           </div>
 
           {/* Summary Section — always visible */}
-          <SummaryTable summary={summary} walletBalances={walletBalances} activeFilter={filter} />
+          <SummaryTable summary={summary} activeFilter={filter} />
         </div>
 
         {/* Scrollable content */}
