@@ -87,7 +87,7 @@ function SummaryTable({ summary, activeFilter }: { summary: DonationSummary; act
                 )}
                 {showSent && (
                   <>
-                    <TableHead className="text-[11px] font-bold text-red-600 text-right px-2 py-1.5 whitespace-nowrap">Tổng gửi</TableHead>
+                    <TableHead className="text-[11px] font-bold text-red-600 text-right px-2 py-1.5 whitespace-nowrap">Tổng đã tặng</TableHead>
                     <TableHead className="text-[11px] font-bold text-red-600 text-right px-2 py-1.5 whitespace-nowrap">Lệnh</TableHead>
                   </>
                 )}
