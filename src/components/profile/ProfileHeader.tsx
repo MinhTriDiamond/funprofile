@@ -67,7 +67,7 @@ export const ProfileHeader = ({
 
       {/* Mobile: Honor Board only (no cover photo) */}
       <div className="block md:hidden max-w-[1100px] mx-auto px-4">
-        <div className="pt-2 pb-[70px]">
+        <div className="pt-2 pb-[95px]">
           <MobileStats userId={profile.id} username={profile?.username} avatarUrl={profile?.avatar_url ?? undefined} />
         </div>
       </div>
