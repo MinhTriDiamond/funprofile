@@ -20,15 +20,18 @@ export interface SocialLink {
 
 // Desktop constants
 const ORBIT_RADIUS_DESKTOP = 115;
-const ORBIT_RADIUS_MOBILE = 68;
+const ORBIT_RADIUS_MOBILE = 54;
 const ORBIT_SIZE = 40;
 const AVATAR_SIZE = 176;
+const DIAMOND_TOP_DESKTOP = 90;
+const DIAMOND_TOP_MOBILE = 78;
 
 function getOrbitConfig(isMobile: boolean) {
   const radius = isMobile ? ORBIT_RADIUS_MOBILE : ORBIT_RADIUS_DESKTOP;
   const wrapperSize = AVATAR_SIZE + (radius + ORBIT_SIZE) * 2;
   const center = wrapperSize / 2;
-  return { radius, wrapperSize, center };
+  const diamondTop = isMobile ? DIAMOND_TOP_MOBILE : DIAMOND_TOP_DESKTOP;
+  return { radius, wrapperSize, center, diamondTop };
 }
 
 // Cache the processed diamond so we only compute it once per session
