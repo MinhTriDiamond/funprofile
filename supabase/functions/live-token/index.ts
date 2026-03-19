@@ -27,18 +27,19 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders })
     }
 
+    const token = authHeader.replace('Bearer ', '')
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_ANON_KEY')!,
       { global: { headers: { Authorization: authHeader } } }
     )
 
-    const { data: { user }, error: userErr } = await supabase.auth.getUser()
-    if (userErr || !user) {
-      console.error('Auth error:', userErr?.message || 'No user')
+    const { data: claimsData, error: claimsErr } = await supabase.auth.getClaims(token)
+    if (claimsErr || !claimsData?.claims?.sub) {
+      console.error('Auth error:', claimsErr?.message || 'No claims')
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders })
     }
-    const userId = user.id
+    const userId = claimsData.claims.sub as string
 
     // Check banned status
     const supabaseAdmin = createClient(
