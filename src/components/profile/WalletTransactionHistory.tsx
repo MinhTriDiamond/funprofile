@@ -158,6 +158,20 @@ function SummaryTable({ summary, activeFilter }: { summary: DonationSummary; act
     </div>
   );
 }
+
+function UserAvatar({ username, displayName, avatarUrl, onClick }: { username: string | null; displayName: string | null; avatarUrl: string | null; onClick?: () => void }) {
+  const name = displayName || username || '?';
+  return (
+    <button onClick={onClick} className="flex items-center gap-1.5 min-w-0 hover:opacity-80 transition-opacity">
+      <Avatar className="w-6 h-6 flex-shrink-0">
+        {avatarUrl && <AvatarImage src={avatarUrl} />}
+        <AvatarFallback className="text-[10px] bg-primary/10 text-primary">{name[0]?.toUpperCase()}</AvatarFallback>
+      </Avatar>
+      <span className="text-sm font-medium truncate max-w-[100px] sm:max-w-[160px] text-foreground">{name}</span>
+    </button>
+  );
+}
+
 function shortenAddress(addr: string) {
   if (!addr) return '???';
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
