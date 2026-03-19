@@ -65,10 +65,17 @@ export const ProfileHeader = ({
         </div>
       )}
 
-      {/* Cover Photo */}
-      <div className="max-w-[1100px] mx-auto px-4 sm:px-6 lg:px-[2cm]">
+      {/* Mobile: Honor Board only (no cover photo) */}
+      <div className="block md:hidden max-w-[1100px] mx-auto px-4">
+        <div className="pt-2 pb-0">
+          <MobileStats userId={profile.id} username={profile?.username} avatarUrl={profile?.avatar_url ?? undefined} />
+        </div>
+      </div>
+
+      {/* Desktop: Cover Photo with Honor Board overlay */}
+      <div className="hidden md:block max-w-[1100px] mx-auto px-4 sm:px-6 lg:px-[2cm]">
         <div className="relative">
-          <div className="h-[200px] sm:h-[210px] md:h-[280px] relative rounded-2xl mx-2 md:mx-0">
+          <div className="h-[280px] relative rounded-2xl">
             <div className="absolute inset-0 overflow-hidden rounded-2xl">
               {profile?.cover_url ? (
                 <LazyImage src={profile.cover_url} alt="Cover" className="w-full h-full object-cover" transformPreset="cover" priority />
@@ -79,17 +86,12 @@ export const ProfileHeader = ({
             </div>
 
             {/* Honor Board Desktop */}
-            <div className="absolute z-20 hidden md:block top-3 right-3 lg:top-4 lg:right-4 rounded-2xl p-1.5 bg-white/30 backdrop-blur-sm" style={{ width: 'clamp(320px, 34vw, 460px)' }}>
+            <div className="absolute z-20 top-3 right-3 lg:top-4 lg:right-4 rounded-2xl p-1.5 bg-white/30 backdrop-blur-sm" style={{ width: 'clamp(320px, 34vw, 460px)' }}>
               <CoverHonorBoard userId={profile.id} username={profile?.username} avatarUrl={profile?.avatar_url ?? undefined} />
             </div>
 
-            {/* Honor Board Mobile — inside cover */}
-            <div className="absolute z-20 block md:hidden top-2 left-2 right-2">
-              <MobileStats userId={profile.id} username={profile?.username} avatarUrl={profile?.avatar_url ?? undefined} />
-            </div>
-
             {showPrivateElements && (
-              <div className="absolute bottom-3 right-3 md:right-auto md:left-[8cm] sm:bottom-4 sm:right-4 z-[100] isolate">
+              <div className="absolute bottom-3 left-[8cm] z-[100] isolate">
                 <CoverPhotoEditor
                   userId={currentUserId}
                   currentCoverUrl={profile?.cover_url ?? undefined}
@@ -99,6 +101,7 @@ export const ProfileHeader = ({
             )}
           </div>
         </div>
+      </div>
 
         {/* Profile Info */}
         <div className="bg-card/80 border-b border-border shadow-sm md:rounded-b-xl">
