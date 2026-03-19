@@ -152,7 +152,7 @@ export const ProfileHeader = ({
                   <span className="text-muted-foreground font-normal">·</span>
                   <button
                     type="button"
-                    onClick={() => { console.log('[COPY] link button clicked'); copyToClipboard(`https://fun.rich/${profile?.username}`).then((ok) => { console.log('[COPY] result:', ok); if (ok) toast.success('Đã sao chép link hồ sơ!'); else toast.error('Không thể sao chép'); }).catch((e) => { console.error('[COPY] error:', e); toast.error('Không thể sao chép'); }); }}
+                    onClick={() => { copyToClipboard(`https://fun.rich/${profile?.username}`).then((ok) => { if (ok) toast.success('Đã sao chép link hồ sơ!'); else toast.error('Không thể sao chép'); }); }}
                     className="inline-flex items-center gap-1 hover:text-primary hover:underline transition-colors cursor-pointer touch-manipulation active:scale-95"
                   >
                     <span>fun.rich/{profile?.username}</span>
