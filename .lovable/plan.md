@@ -1,23 +1,22 @@
 
 
-## Kế hoạch: Xóa 2 giao dịch trùng lặp (placeholder)
+## Sửa lỗi không copy được link và mã ví trên điện thoại
 
 ### Vấn đề
-2 donation records có tx_hash giả (`_placeholder`) khiến BSCScan báo lỗi khi nhấp vào.
+Trên mobile (đặc biệt trong dApp browser của ví), `navigator.clipboard.writeText` bị chặn bởi permissions policy. Mặc dù `ProfileHeader.tsx` đã dùng `copyToClipboard` utility có fallback, nhưng có 2 vấn đề:
 
-### Thực hiện
-**Database migration** - Xóa 2 bản ghi trùng:
-```sql
-DELETE FROM donations 
-WHERE id IN (
-  '14fe5422-8f91-4a2f-a6c5-1628d7a1f1be',
-  '39e31ff5-cb44-4c4b-bb25-60bf090380d5'
-);
-```
+1. **`ReceiveTab.tsx`** vẫn gọi trực tiếp `navigator.clipboard.writeText` — không có fallback → fail trên mobile.
+2. **`select-all` CSS class** trên cả link và ví trong `ProfileHeader.tsx` — class này can thiệp vào sự kiện click trên mobile, khiến trình duyệt cố gắng select text thay vì trigger onClick handler.
 
-Cũng xóa posts gift_celebration tương ứng nếu có (cần kiểm tra).
+### Thay đổi
 
-### Kết quả
-- FATHER → angelbachviet sẽ chỉ còn 2 lệnh thật (97 USDT + 9,797,979 CAMLY)
-- Không cần thay đổi code frontend
+**File 1: `src/components/profile/ProfileHeader.tsx`**
+- Xóa class `select-all` khỏi button copy link (`fun.rich/{username}`) và span hiển thị địa chỉ ví
+- Đảm bảo `touch-manipulation` vẫn được giữ để tối ưu tap trên mobile
+
+**File 2: `src/components/wallet/ReceiveTab.tsx`**
+- Thay `navigator.clipboard.writeText(address)` bằng `copyToClipboard(address)` từ `@/utils/clipboard`
+- Import `copyToClipboard` utility
+
+Không cần thay đổi `clipboard.ts` — fallback logic đã hoạt động tốt.
 
