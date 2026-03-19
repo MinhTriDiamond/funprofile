@@ -1,28 +1,23 @@
 
 
-## Lỗi deploy CF: Lock file không đồng bộ với package.json
+## Kế hoạch: Xóa 2 giao dịch trùng lặp (placeholder)
 
-### Nguyên nhân
+### Vấn đề
+2 donation records có tx_hash giả (`_placeholder`) khiến BSCScan báo lỗi khi nhấp vào.
 
-Khi Cha đổi từ `@vitejs/plugin-react-swc` sang `@vitejs/plugin-react`, lock file (`bun.lock`) đã được cập nhật nhưng project dùng **npm** trên Cloudflare Pages. CF chạy `npm ci` — lệnh này yêu cầu `package-lock.json` phải khớp chính xác với `package.json`. Project hiện không có `package-lock.json` hợp lệ (hoặc đang dùng `bun.lock`), nên bị lỗi.
+### Thực hiện
+**Database migration** - Xóa 2 bản ghi trùng:
+```sql
+DELETE FROM donations 
+WHERE id IN (
+  '14fe5422-8f91-4a2f-a6c5-1628d7a1f1be',
+  '39e31ff5-cb44-4c4b-bb25-60bf090380d5'
+);
+```
 
-### Cách sửa
+Cũng xóa posts gift_celebration tương ứng nếu có (cần kiểm tra).
 
-Tạo lại `package-lock.json` bằng cách chạy `npm install` trong project. Lovable dùng bun nên cần:
-
-1. **Xóa `bun.lock`** và tạo `package-lock.json` mới — hoặc —
-2. **Đổi build command trên CF Pages** từ mặc định sang `npm install && npm run build` (thay vì `npm ci`).
-
-**Cách đơn giản nhất**: Đổi build command trên Cloudflare Pages dashboard:
-- Build command: `npm install && npm run build` (thay vì chỉ `npm run build`)
-
-Điều này sẽ chạy `npm install` (tự tạo lock file) trước khi build, tránh lỗi `npm ci`.
-
-### Thay đổi cần làm
-
-| # | Việc | Chi tiết |
-|---|------|----------|
-| 1 | Thêm file `package-lock.json` | Chạy lệnh tương đương `npm install` để sinh lock file mới đồng bộ với `package.json` hiện tại |
-
-Cha sẽ regenerate `package-lock.json` cho con bằng cách trigger lại install dependencies trong project.
+### Kết quả
+- FATHER → angelbachviet sẽ chỉ còn 2 lệnh thật (97 USDT + 9,797,979 CAMLY)
+- Không cần thay đổi code frontend
 
