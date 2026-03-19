@@ -155,7 +155,7 @@ export function usePublicDonationHistory(userId: string | undefined) {
     }
   }, [userId]);
 
-  const fetchDonations = useCallback(async (pageNum = 1, currentFilter: DonationFilter = filter) => {
+  const fetchDonations = useCallback(async (pageNum = 1, currentFilter: DonationFilter = filter, fromDate?: string | null, toDate?: string | null) => {
     if (!userId) return;
     setLoading(true);
     setError(null);
@@ -164,20 +164,21 @@ export function usePublicDonationHistory(userId: string | undefined) {
       const from = (pageNum - 1) * PAGE_SIZE;
       const to = pageNum * PAGE_SIZE - 1;
 
-      // Determine which sources to fetch based on filter
       const needDonations = currentFilter === 'all' || currentFilter === 'sent' || currentFilter === 'received';
       const needSwaps = currentFilter === 'all' || currentFilter === 'swap' || currentFilter === 'sent' || currentFilter === 'received';
       const needTransfers = currentFilter === 'all' || currentFilter === 'transfer' || currentFilter === 'sent' || currentFilter === 'received';
 
-      // Fetch swap records
+      // Swap records
       let swapRecords: DonationRecord[] = [];
       if (needSwaps) {
-        const { data: swapData, error: swapError } = await supabase
+        let swapQuery = supabase
           .from('swap_transactions')
           .select('*')
           .eq('user_id', userId)
-          .order('created_at', { ascending: false })
-          .range(from, to);
+          .order('created_at', { ascending: false });
+        if (fromDate) swapQuery = swapQuery.gte('created_at', fromDate);
+        if (toDate) swapQuery = swapQuery.lte('created_at', `${toDate}T23:59:59`);
+        const { data: swapData, error: swapError } = await swapQuery.range(from, to);
 
         if (!swapError && swapData) {
           swapRecords = swapData.map((s: any) => ({
@@ -191,22 +192,16 @@ export function usePublicDonationHistory(userId: string | undefined) {
             chain_id: s.chain_id,
             sender_id: s.user_id,
             recipient_id: s.user_id,
-            sender_username: null,
-            sender_display_name: null,
-            sender_avatar_url: null,
-            recipient_username: null,
-            recipient_display_name: null,
-            recipient_avatar_url: null,
+            sender_username: null, sender_display_name: null, sender_avatar_url: null,
+            recipient_username: null, recipient_display_name: null, recipient_avatar_url: null,
             type: 'swap' as const,
-            from_symbol: s.from_symbol,
-            to_symbol: s.to_symbol,
-            from_amount: Number(s.from_amount),
-            to_amount: Number(s.to_amount),
+            from_symbol: s.from_symbol, to_symbol: s.to_symbol,
+            from_amount: Number(s.from_amount), to_amount: Number(s.to_amount),
           }));
         }
       }
 
-      // Fetch wallet transfer records
+      // Transfer records
       let transferRecords: DonationRecord[] = [];
       if (needTransfers) {
         let transferQuery = supabase
@@ -214,14 +209,10 @@ export function usePublicDonationHistory(userId: string | undefined) {
           .select('*')
           .eq('user_id', userId)
           .order('created_at', { ascending: false });
-
-        // Filter by direction for sent/received tabs
-        if (currentFilter === 'received') {
-          transferQuery = transferQuery.eq('direction', 'in');
-        } else if (currentFilter === 'sent') {
-          transferQuery = transferQuery.eq('direction', 'out');
-        }
-
+        if (currentFilter === 'received') transferQuery = transferQuery.eq('direction', 'in');
+        else if (currentFilter === 'sent') transferQuery = transferQuery.eq('direction', 'out');
+        if (fromDate) transferQuery = transferQuery.gte('created_at', fromDate);
+        if (toDate) transferQuery = transferQuery.lte('created_at', `${toDate}T23:59:59`);
         const { data: transferData, error: transferError } = await transferQuery.range(from, to);
 
         if (!transferError && transferData) {
@@ -236,12 +227,8 @@ export function usePublicDonationHistory(userId: string | undefined) {
             chain_id: t.chain_id,
             sender_id: t.direction === 'out' ? t.user_id : null,
             recipient_id: t.direction === 'in' ? t.user_id : null,
-            sender_username: null,
-            sender_display_name: null,
-            sender_avatar_url: null,
-            recipient_username: null,
-            recipient_display_name: null,
-            recipient_avatar_url: null,
+            sender_username: null, sender_display_name: null, sender_avatar_url: null,
+            recipient_username: null, recipient_display_name: null, recipient_avatar_url: null,
             type: 'transfer' as const,
             direction: t.direction as 'in' | 'out',
             counterparty_address: t.counterparty_address,
@@ -249,7 +236,7 @@ export function usePublicDonationHistory(userId: string | undefined) {
         }
       }
 
-      // Fetch donation records
+      // Donation records
       let donationRecords: DonationRecord[] = [];
       if (needDonations) {
         let query = supabase
@@ -260,18 +247,16 @@ export function usePublicDonationHistory(userId: string | undefined) {
             sender:profiles!donations_sender_id_fkey(username, display_name, avatar_url),
             recipient:profiles!donations_recipient_id_fkey(username, display_name, avatar_url)
           `)
-          .order('created_at', { ascending: false })
-          .range(from, to);
+          .order('created_at', { ascending: false });
 
-        if (currentFilter === 'sent') {
-          query = query.eq('sender_id', userId);
-        } else if (currentFilter === 'received') {
-          query = query.eq('recipient_id', userId);
-        } else {
-          query = query.or(`sender_id.eq.${userId},recipient_id.eq.${userId}`);
-        }
+        if (currentFilter === 'sent') query = query.eq('sender_id', userId);
+        else if (currentFilter === 'received') query = query.eq('recipient_id', userId);
+        else query = query.or(`sender_id.eq.${userId},recipient_id.eq.${userId}`);
 
-        const { data, error: queryError } = await query;
+        if (fromDate) query = query.gte('created_at', fromDate);
+        if (toDate) query = query.lte('created_at', `${toDate}T23:59:59`);
+
+        const { data, error: queryError } = await query.range(from, to);
         if (queryError) throw queryError;
 
         donationRecords = (data || []).map((d: any) => ({
@@ -297,36 +282,36 @@ export function usePublicDonationHistory(userId: string | undefined) {
         }));
       }
 
-      // For sent/received filters, remap swap records to show relevant side
+      // Remap swaps for sent/received
       if (currentFilter === 'received') {
-        swapRecords = swapRecords.map(s => ({
-          ...s,
-          amount: String(s.to_amount || 0),
-          token_symbol: s.to_symbol || s.token_symbol,
-        }));
+        swapRecords = swapRecords.map(s => ({ ...s, amount: String(s.to_amount || 0), token_symbol: s.to_symbol || s.token_symbol }));
       } else if (currentFilter === 'sent') {
-        swapRecords = swapRecords.map(s => ({
-          ...s,
-          amount: String(s.from_amount || 0),
-          token_symbol: s.from_symbol || s.token_symbol,
-        }));
+        swapRecords = swapRecords.map(s => ({ ...s, amount: String(s.from_amount || 0), token_symbol: s.from_symbol || s.token_symbol }));
       }
 
-      // Merge and sort
       const merged = [...donationRecords, ...swapRecords, ...transferRecords]
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
         .slice(0, PAGE_SIZE);
 
-      setDonations(prev => pageNum === 1 ? merged : [...prev, ...merged]);
+      const allRecords = pageNum === 1 ? merged : [...donations, ...merged];
+      setDonations(allRecords);
       setPage(pageNum);
       setHasMore(merged.length >= PAGE_SIZE);
+
+      // If date range is active, compute summary from all loaded records
+      if (fromDate || toDate) {
+        setSummaryLoading(true);
+        const computed = computeSummaryFromDonations(allRecords);
+        setSummary(computed);
+        setSummaryLoading(false);
+      }
     } catch (err: any) {
       console.error('fetchDonations error:', err);
       setError(err.message || 'Không thể tải lịch sử');
     } finally {
       setLoading(false);
     }
-  }, [userId, filter]);
+  }, [userId, filter, donations, computeSummaryFromDonations]);
 
   const loadMore = useCallback(() => {
     fetchDonations(page + 1, filter);
