@@ -455,7 +455,7 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
         {(() => {
           baseAnglesRef.current = angles;
           return allLinks.map((link, i) => {
-            const { x, y } = angleToPos(angles[i]);
+            const { x, y } = angleToPos(angles[i], ORBIT_RADIUS);
             const isEditing = editingPlatform === link.platform;
             const isPending = !!link.isPending;
             const isEmpty = !!link.isEmpty;
