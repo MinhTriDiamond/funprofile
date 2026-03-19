@@ -107,7 +107,7 @@ Deno.serve(async (req) => {
     const agoraRole = role === 'host' ? RtcRole.PUBLISHER : RtcRole.SUBSCRIBER
     const expirationInSeconds = 86400
 
-    const token = RtcTokenBuilder.buildTokenWithUid(
+    const agoraToken = RtcTokenBuilder.buildTokenWithUid(
       appId,
       appCertificate,
       channel,
@@ -119,7 +119,7 @@ Deno.serve(async (req) => {
 
     const currentTimestamp = Math.floor(Date.now() / 1000)
     return new Response(JSON.stringify({
-      token,
+      token: agoraToken,
       channel,
       uid: String(numericUid),
       appId,
