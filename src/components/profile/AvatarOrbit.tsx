@@ -394,7 +394,7 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
   }, [localLinks, userId, onLinksChanged]);
 
   const addAngle = computeAddAngle(allLinks.length);
-  const addPos = angleToPos(addAngle);
+  const addPos = angleToPos(addAngle, ORBIT_RADIUS);
   const showAddBtn = isOwner && allLinks.length < 9 && !pendingPlatform;
 
   return (
