@@ -73,8 +73,8 @@ function SummaryTable({ summary, activeFilter }: { summary: DonationSummary; act
   }
 
   return (
-    <div className="space-y-3 mb-4">
-      <div className="border border-border rounded-xl overflow-hidden">
+    <div className="space-y-1.5 mb-2">
+      <div className="border border-border rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
