@@ -152,7 +152,7 @@ export const ProfileHeader = ({
                   <span className="text-muted-foreground font-normal">·</span>
                   <button
                     type="button"
-                    onClick={() => { copyToClipboard(`https://fun.rich/${profile?.username}`).then(() => toast.success('Đã sao chép link hồ sơ!')).catch(() => toast.error('Không thể sao chép')); }}
+                    onClick={() => { copyToClipboard(`https://fun.rich/${profile?.username}`).then((ok) => { if (ok) toast.success('Đã sao chép link hồ sơ!'); else toast.error('Không thể sao chép'); }); }}
                     className="inline-flex items-center gap-1 hover:text-primary hover:underline transition-colors cursor-pointer touch-manipulation active:scale-95"
                   >
                     <span>fun.rich/{profile?.username}</span>
@@ -163,7 +163,7 @@ export const ProfileHeader = ({
                 {/* Wallet Address */}
                 {displayAddress ? (
                   <button
-                    onClick={() => { copyToClipboard(displayAddress).then(() => toast.success(t('walletCopied'))).catch(() => toast.error('Không thể sao chép')); }}
+                    onClick={() => { copyToClipboard(displayAddress).then((ok) => { if (ok) toast.success(t('walletCopied')); else toast.error('Không thể sao chép'); }); }}
                     className="inline-flex items-center gap-2 mt-2 px-3 py-2 rounded-full bg-primary/10 border border-primary/20 touch-manipulation active:scale-95 hover:bg-primary/20 transition-all cursor-pointer"
                   >
                     <Wallet className="w-4 h-4 text-primary flex-shrink-0" />
