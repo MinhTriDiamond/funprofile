@@ -1,25 +1,50 @@
 
+Mục tiêu: sửa riêng giao diện điện thoại để:
+1) không còn ô nào của Honor Board bị ảnh đại diện/viên kim cương che,
+2) các ô liên kết quanh avatar nằm sát avatar hơn như ảnh mẫu,
+3) tên người dùng vẫn luôn đọc rõ,
+4) giao diện desktop giữ nguyên.
 
-## Chỉnh Honor Board nằm trong ảnh bìa + Nút sửa ảnh bìa chỉ hiện icon
+Kế hoạch triển khai
 
-### Thay đổi
+1. Rà lại bố cục mobile của cụm hồ sơ
+- Tập trung vào `src/components/profile/ProfileHeader.tsx`, `src/components/profile/CoverHonorBoard.tsx`, và `src/components/profile/AvatarOrbit.tsx`.
+- Giữ cấu trúc desktop hiện tại, chỉ thêm xử lý riêng cho mobile.
 
-**File 1: `src/components/profile/ProfileHeader.tsx`**
+2. Sửa Honor Board mobile để chừa vùng trống ở giữa phía dưới
+- Trong `MobileStats` của `CoverHonorBoard.tsx`, đổi layout mobile từ lưới 2 cột đều nhau sang bố cục “2 tầng”:
+  - Phần trên vẫn là header + các ô đầu tiên.
+  - Phần dưới tách trái/phải và chừa một khoảng trống chính giữa cho avatar + kim cương.
+- Làm board gọn theo hình chữ nhật, giảm padding/distance thừa nhưng vẫn đủ thoáng để không che ô.
+- Đảm bảo tất cả 8 ô luôn nhìn thấy đủ trên màn hình nhỏ.
 
-1. **Mobile Honor Board**: Di chuyển `MobileStats` từ bên dưới ảnh bìa (dòng 100-103) vào bên trong div ảnh bìa, đặt `absolute` ở phía trên (tương tự desktop). Dùng class như `absolute z-20 block md:hidden top-2 left-2 right-2` để nằm gọn trong ảnh bìa trên mobile.
+3. Đẩy avatar/kim cương xuống dưới board thay vì đè vào nội dung ô
+- Trong `ProfileHeader.tsx`, điều chỉnh khoảng `pb` của khối mobile chứa `MobileStats` và tinh lại `-mt` của cụm avatar.
+- Mục tiêu là phần avatar overlap với mép dưới của board, không overlap vào các hàng thống kê.
+- Canh lại thứ tự lớp (`z-index`) để board nằm rõ, avatar nổi phía dưới, tên hiển thị sau đó không bị cấn.
 
-2. **Nút sửa ảnh bìa**: Giữ nguyên vị trí nút nhưng thay đổi vị trí phù hợp (ví dụ bottom-right nhỏ gọn) — không cần thay đổi ở ProfileHeader vì text nằm trong CoverPhotoEditor.
+4. Thu gọn quỹ đạo liên kết quanh avatar trên mobile
+- Trong `AvatarOrbit.tsx`, thêm cấu hình mobile riêng cho:
+  - bán kính orbit,
+  - kích thước wrapper,
+  - vị trí viên kim cương.
+- Giảm khoảng cách icon liên kết tới avatar để sát hơn như ảnh mẫu, nhưng vẫn không chạm vào tên.
+- Hạ viên kim cương xuống gần đỉnh avatar hơn để đồng bộ với bố cục mới.
 
-**File 2: `src/components/profile/CoverPhotoEditor.tsx`**
+5. Căn lại phần thông tin bên dưới avatar
+- Giữ tên người dùng và dòng username/link ở giữa, không bị cụm orbit lấn.
+- Nếu cần, giảm nhẹ scale mobile của `AvatarOrbit` hoặc tăng khoảng cách giữa avatar và phần text để cân hơn.
 
-3. **Xóa chữ "Sửa ảnh bìa"**: Ở dòng 249, bỏ text `{isUploading ? 'Đang tải...' : 'Sửa ảnh bìa'}` và `mr-2` trên icon Camera. Chỉ giữ lại icon Camera. Nút trở thành icon-only button (dùng `size="icon"` hoặc padding nhỏ).
+Chi tiết kỹ thuật
+- File chính cần sửa:
+  - `src/components/profile/CoverHonorBoard.tsx`
+  - `src/components/profile/ProfileHeader.tsx`
+  - `src/components/profile/AvatarOrbit.tsx`
+- Hướng xử lý tốt nhất là thêm “mobile-only layout” thay vì tiếp tục chỉ tăng `padding-bottom`, vì việc tăng padding đơn thuần không giải quyết tận gốc vùng che khuất.
+- `AvatarOrbit` hiện đang dùng hằng số cố định (`ORBIT_RADIUS`, `WRAPPER_SIZE`, vị trí diamond). Tôi sẽ tách thành thông số thích ứng cho mobile để kéo icon và kim cương vào gần avatar hơn.
 
-**File 3: `src/components/profile/CoverHonorBoard.tsx`** (MobileStats)
-
-4. **Điều chỉnh MobileStats cho vừa trong ảnh bìa**: Giảm padding, opacity background để nhìn xuyên qua ảnh bìa (semi-transparent), đảm bảo không che hết ảnh bìa. Có thể giảm `bg-white/80` thành `bg-white/60` hoặc tương tự.
-
-### Kết quả
-- Trên mobile: Honor Board nằm overlay trong ảnh bìa (phía trên), ảnh bìa vẫn nhìn thấy xung quanh
-- Nút sửa ảnh bìa chỉ hiện icon camera, không có chữ
-- Desktop giữ nguyên layout hiện tại
-
+Kết quả mong đợi sau khi làm
+- Honor Board mobile nhìn gọn, cân, đủ 8 ô.
+- Avatar và kim cương nằm phía dưới các ô, không che bất kỳ ô nào.
+- Các icon liên kết bám sát avatar hơn như ảnh con gửi.
+- Tên “Angel Ái Vân” và dòng bên dưới vẫn rõ, không bị chèn.
