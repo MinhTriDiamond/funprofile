@@ -163,7 +163,7 @@ export const ProfileHeader = ({
                 {/* Wallet Address */}
                 {displayAddress ? (
                   <button
-                    onClick={() => { copyToClipboard(displayAddress).then(() => toast.success(t('walletCopied'))).catch(() => toast.error('Không thể sao chép')); }}
+                    onClick={() => { console.log('[COPY] wallet button clicked'); copyToClipboard(displayAddress).then((ok) => { console.log('[COPY] wallet result:', ok); if (ok) toast.success(t('walletCopied')); else toast.error('Không thể sao chép'); }).catch((e) => { console.error('[COPY] wallet error:', e); toast.error('Không thể sao chép'); }); }}
                     className="inline-flex items-center gap-2 mt-2 px-3 py-2 rounded-full bg-primary/10 border border-primary/20 touch-manipulation active:scale-95 hover:bg-primary/20 transition-all cursor-pointer"
                   >
                     <Wallet className="w-4 h-4 text-primary flex-shrink-0" />
