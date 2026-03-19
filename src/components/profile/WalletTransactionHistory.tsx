@@ -79,17 +79,17 @@ function SummaryTable({ summary, activeFilter }: { summary: DonationSummary; act
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
-                <TableHead className="text-xs font-bold w-[70px] px-2 py-1.5 whitespace-nowrap">Token</TableHead>
+                <TableHead className="text-sm font-bold w-[70px] px-2 py-1.5 whitespace-nowrap">Token</TableHead>
                 {showReceived && (
                   <>
-                    <TableHead className="text-xs font-bold text-green-600 text-right px-2 py-1.5 whitespace-nowrap">Tổng nhận</TableHead>
-                    <TableHead className="text-xs font-bold text-green-600 text-right px-2 py-1.5 whitespace-nowrap">Lệnh</TableHead>
+                    <TableHead className="text-sm font-bold text-green-600 text-right px-2 py-1.5 whitespace-nowrap">Tổng nhận</TableHead>
+                    <TableHead className="text-sm font-bold text-green-600 text-right px-2 py-1.5 whitespace-nowrap">Lệnh</TableHead>
                   </>
                 )}
                 {showSent && (
                   <>
-                    <TableHead className="text-xs font-bold text-red-600 text-right px-2 py-1.5 whitespace-nowrap">Tổng đã tặng</TableHead>
-                    <TableHead className="text-xs font-bold text-red-600 text-right px-2 py-1.5 whitespace-nowrap">Lệnh</TableHead>
+                    <TableHead className="text-sm font-bold text-red-600 text-right px-2 py-1.5 whitespace-nowrap">Tổng đã tặng</TableHead>
+                    <TableHead className="text-sm font-bold text-red-600 text-right px-2 py-1.5 whitespace-nowrap">Lệnh</TableHead>
                   </>
                 )}
               </TableRow>
@@ -104,26 +104,26 @@ function SummaryTable({ summary, activeFilter }: { summary: DonationSummary; act
                     <TableCell className="px-2 py-1">
                       <div className="flex items-center gap-1.5 whitespace-nowrap">
                         <TokenLogo symbol={sym} />
-                        <span className="text-xs font-bold">{sym}</span>
+                        <span className="text-sm font-bold">{sym}</span>
                       </div>
                     </TableCell>
                     {showReceived && (
                       <>
                         <TableCell className="text-right px-2 py-1 whitespace-nowrap">
-                          <span className="text-xs font-semibold text-green-600">{formatAmount(recv?.amount ?? 0)}</span>
+                          <span className="text-sm font-semibold text-green-600">{formatAmount(recv?.amount ?? 0)}</span>
                         </TableCell>
                         <TableCell className="text-right px-2 py-1 whitespace-nowrap">
-                          <span className="text-xs font-semibold text-green-600">{recv?.count ?? 0}</span>
+                          <span className="text-sm font-semibold text-green-600">{recv?.count ?? 0}</span>
                         </TableCell>
                       </>
                     )}
                     {showSent && (
                       <>
                         <TableCell className="text-right px-2 py-1 whitespace-nowrap">
-                          <span className="text-xs font-semibold text-red-600">{formatAmount(sent?.amount ?? 0)}</span>
+                          <span className="text-sm font-semibold text-red-600">{formatAmount(sent?.amount ?? 0)}</span>
                         </TableCell>
                         <TableCell className="text-right px-2 py-1 whitespace-nowrap">
-                          <span className="text-xs font-semibold text-red-600">{sent?.count ?? 0}</span>
+                          <span className="text-sm font-semibold text-red-600">{sent?.count ?? 0}</span>
                         </TableCell>
                       </>
                     )}
@@ -140,19 +140,19 @@ function SummaryTable({ summary, activeFilter }: { summary: DonationSummary; act
           {showReceived && (
             <div className="flex items-center gap-1">
               <ArrowDownLeft className="w-3.5 h-3.5 text-green-600" />
-              <span className="text-xs text-muted-foreground">Nhận:</span>
-              <span className="text-xs font-bold text-green-600">{summary.receivedCount}</span>
+              <span className="text-sm text-muted-foreground">Nhận:</span>
+              <span className="text-sm font-bold text-green-600">{summary.receivedCount}</span>
             </div>
           )}
           {showSent && (
             <div className="flex items-center gap-1">
               <ArrowUpRight className="w-3.5 h-3.5 text-red-600" />
-              <span className="text-xs text-muted-foreground">Gửi:</span>
-              <span className="text-xs font-bold text-red-600">{summary.sentCount}</span>
+              <span className="text-sm text-muted-foreground">Gửi:</span>
+              <span className="text-sm font-bold text-red-600">{summary.sentCount}</span>
             </div>
           )}
         </div>
-        <span className="text-xs font-bold text-foreground">Tổng: {summary.totalCount} GD</span>
+        <span className="text-sm font-bold text-foreground">Tổng: {summary.totalCount} GD</span>
       </div>
     </div>
   );
@@ -355,10 +355,10 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
         <span className="font-bold whitespace-nowrap mx-auto text-center text-red-600 text-sm">{Number(d.amount).toLocaleString('vi-VN', { maximumFractionDigits: 6 })} {d.token_symbol}</span>
 
         <div className="flex items-center gap-2 whitespace-nowrap shrink-0">
-          <span className="text-xs font-medium text-primary">{formatTime(d.created_at)}</span>
-          <span className="text-xs font-semibold text-yellow-600 dark:text-yellow-400">{formatDate(d.created_at)}</span>
+          <span className="text-sm font-medium text-primary">{formatTime(d.created_at)}</span>
+          <span className="text-sm font-semibold text-yellow-600 dark:text-yellow-400">{formatDate(d.created_at)}</span>
           {d.tx_hash && (
-            <a href={`${explorerUrl}/tx/${d.tx_hash}`} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-0.5">
+            <a href={`${explorerUrl}/tx/${d.tx_hash}`} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline flex items-center gap-0.5">
               Tx: {d.tx_hash.slice(0, 6)}...{d.tx_hash.slice(-4)} <ExternalLink className="w-3 h-3" />
             </a>
           )}
