@@ -746,6 +746,7 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
               width: `${ORBIT_SIZE}px`,
               height: `${ORBIT_SIZE}px`,
               zIndex: showAddPicker ? 30 : 20,
+              pointerEvents: 'auto',
             }}
           >
             {showAddPicker && (
