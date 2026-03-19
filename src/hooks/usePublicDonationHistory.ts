@@ -314,14 +314,24 @@ export function usePublicDonationHistory(userId: string | undefined) {
   }, [userId, filter, donations, computeSummaryFromDonations]);
 
   const loadMore = useCallback(() => {
-    fetchDonations(page + 1, filter);
-  }, [fetchDonations, page, filter]);
+    fetchDonations(page + 1, filter, dateFrom, dateTo);
+  }, [fetchDonations, page, filter, dateFrom, dateTo]);
 
   const changeFilter = useCallback((f: DonationFilter) => {
     setFilter(f);
     setDonations([]);
-    fetchDonations(1, f);
-  }, [fetchDonations]);
+    fetchDonations(1, f, dateFrom, dateTo);
+  }, [fetchDonations, dateFrom, dateTo]);
+
+  const changeDateRange = useCallback((from: string | null, to: string | null) => {
+    setDateFrom(from);
+    setDateTo(to);
+    setDonations([]);
+    fetchDonations(1, filter, from, to);
+    if (!from && !to) {
+      fetchSummary();
+    }
+  }, [fetchDonations, filter, fetchSummary]);
 
   return {
     donations,
@@ -331,7 +341,10 @@ export function usePublicDonationHistory(userId: string | undefined) {
     hasMore,
     summary,
     summaryLoading,
+    dateFrom,
+    dateTo,
     changeFilter,
+    changeDateRange,
     fetchDonations,
     fetchSummary,
     loadMore,
