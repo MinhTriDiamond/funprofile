@@ -100,6 +100,19 @@ export function DonationHistoryTab() {
           const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
           return created >= monthAgo;
         }
+        if (timeFilter === 'custom') {
+          if (customDateRange.from) {
+            const fromStart = new Date(customDateRange.from);
+            fromStart.setHours(0, 0, 0, 0);
+            if (created < fromStart) return false;
+          }
+          if (customDateRange.to) {
+            const toEnd = new Date(customDateRange.to);
+            toEnd.setHours(23, 59, 59, 999);
+            if (created > toEnd) return false;
+          }
+          return true;
+        }
         return true;
       });
     }
