@@ -134,7 +134,7 @@ function SummaryTable({ summary, activeFilter }: { summary: DonationSummary; act
         </div>
       </div>
 
-      <p className="text-xs text-muted-foreground italic px-1">* Tổng nhận/gửi bao gồm giao dịch tặng/nhận, swap và chuyển ví qua FUN.RICH.</p>
+      <p className="text-sm text-muted-foreground italic px-1">* Tổng nhận/gửi bao gồm giao dịch tặng/nhận, swap và chuyển ví qua FUN.RICH.</p>
 
       <div className="flex items-center justify-between bg-muted/50 border border-border rounded-xl px-4 py-3">
         <div className="flex items-center gap-5">
