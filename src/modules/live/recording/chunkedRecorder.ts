@@ -56,7 +56,7 @@ export function createChunkedRecorder(options: ChunkedRecorderOptions): ChunkedR
   let state: RecordingState = 'inactive';
   let chunkIndex = 0;
   let chunkStartTime = 0;
-  const allChunks: Blob[] = [];
+  
 
   function start() {
     if (state !== 'inactive') return;
