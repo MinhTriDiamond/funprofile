@@ -263,39 +263,20 @@ export const MobileStats = ({ userId, username, avatarUrl }: MobileStatsProps) =
             </span>
           </div>
           
-          {/* Row 1: 4 stat cells */}
-          <div className="grid grid-cols-4 gap-1.5 text-center mb-2">
-            <MobileStatCell icon={<ArrowUp className="w-3.5 h-3.5" />} value={stats.posts_count} label={t('posts')} />
-            <MobileStatCell icon={<Star className="w-3.5 h-3.5" />} value={stats.reactions_on_posts} label={t('reactions')} />
-            <MobileStatCell icon={<MessageCircle className="w-3.5 h-3.5" />} value={stats.comments_count} label={t('comments')} />
-            <MobileStatCell icon={<Users className="w-3.5 h-3.5" />} value={stats.friends_count} label={t('friends')} />
+          {/* Two Column Layout matching desktop */}
+          <div className="grid grid-cols-2 gap-1.5">
+            <MobileStatRow icon={<ArrowUp className="w-3.5 h-3.5" />} label="Bài viết" value={stats.posts_count} />
+            <MobileStatRow icon={<Users className="w-3.5 h-3.5" />} label="Bạn bè" value={stats.friends_count} />
+            <MobileStatRow icon={<Star className="w-3.5 h-3.5" />} label="Cảm xúc" value={stats.reactions_on_posts} />
+            <MobileStatRow icon={<Gift className="w-3.5 h-3.5" />} label="Có thể rút" value={stats.claimable} />
+            <MobileStatRow icon={<MessageCircle className="w-3.5 h-3.5" />} label="Bình luận" value={stats.comments_count} />
+            <MobileStatRow icon={<Coins className="w-3.5 h-3.5" />} label="Đã rút" value={stats.claimed} />
           </div>
-          
-          {/* Row 2: Cells spread to sides, center space for avatar */}
-          <div className="flex gap-1.5 mb-2">
-            {/* Left side */}
-            <div className="flex-1 grid grid-cols-2 gap-1.5 text-center">
-              <MobileStatCell icon={<Share2 className="w-3.5 h-3.5" />} value={stats.shares_count} label={t('shares')} />
-              <MobileStatCell icon={<Video className="w-3.5 h-3.5" />} value={stats.livestreams_count} label={t('liveVideo')} />
-            </div>
-            {/* Center gap for avatar overlap */}
-            <div className="w-[100px] flex-shrink-0" />
-            {/* Right side */}
-            <div className="flex-1 grid grid-cols-2 gap-1.5 text-center">
-              <MobileStatCell icon={<Gift className="w-3.5 h-3.5" />} value={stats.claimable} label={t('claimableReward')} />
-              <MobileStatCell icon={<Coins className="w-3.5 h-3.5" />} value={stats.claimed} label={t('claimedReward')} />
-            </div>
-          </div>
-          
-          {/* Total rows - also spread to sides */}
-          <div className="flex gap-1.5">
-            <div className="flex-1">
-              <MobileTotalRow icon={<Calendar className="w-3.5 h-3.5" />} label={t('today')} value={stats.today_reward} />
-            </div>
-            <div className="w-[100px] flex-shrink-0" />
-            <div className="flex-1">
-              <MobileTotalRow icon={<BadgeDollarSign className="w-3.5 h-3.5" />} label={t('totalReward')} value={stats.total_reward} />
-            </div>
+
+          {/* Total rows */}
+          <div className="grid grid-cols-2 gap-1.5 mt-1.5">
+            <MobileStatRow icon={<Calendar className="w-3.5 h-3.5" />} label="Hôm nay" value={stats.today_reward} />
+            <MobileStatRow icon={<BadgeDollarSign className="w-3.5 h-3.5" />} label="Tổng thu" value={stats.total_reward} />
           </div>
         </div>
       </div>
