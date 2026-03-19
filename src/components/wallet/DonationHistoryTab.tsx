@@ -269,6 +269,47 @@ export function DonationHistoryTab() {
         </Select>
       </div>
 
+      {/* Custom date range picker */}
+      {timeFilter === 'custom' && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className={cn("gap-2 w-[160px] justify-start text-left font-normal", !customDateRange.from && "text-muted-foreground")}>
+                <CalendarIcon className="w-4 h-4" />
+                {customDateRange.from ? format(customDateRange.from, 'dd/MM/yyyy') : 'Từ ngày'}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0 z-[9999]" align="start">
+              <Calendar
+                mode="single"
+                selected={customDateRange.from}
+                onSelect={d => setCustomDateRange(prev => ({ ...prev, from: d }))}
+                initialFocus
+                className={cn("p-3 pointer-events-auto")}
+              />
+            </PopoverContent>
+          </Popover>
+          <span className="text-sm text-muted-foreground">→</span>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className={cn("gap-2 w-[160px] justify-start text-left font-normal", !customDateRange.to && "text-muted-foreground")}>
+                <CalendarIcon className="w-4 h-4" />
+                {customDateRange.to ? format(customDateRange.to, 'dd/MM/yyyy') : 'Đến ngày'}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0 z-[9999]" align="start">
+              <Calendar
+                mode="single"
+                selected={customDateRange.to}
+                onSelect={d => setCustomDateRange(prev => ({ ...prev, to: d }))}
+                initialFocus
+                className={cn("p-3 pointer-events-auto")}
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+      )}
+
       {/* Nút Xem Tất Cả - phía trên */}
       <div className="flex justify-center">
         <Button
