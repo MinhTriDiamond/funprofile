@@ -239,7 +239,7 @@ export const MobileStats = ({ userId, username, avatarUrl }: MobileStatsProps) =
 
   return (
     <div className="w-full">
-      <div className="rounded-xl overflow-hidden border-[3px] border-[#D4AF37] bg-white/80 backdrop-blur-xl shadow-lg">
+      <div className="rounded-xl overflow-hidden border-[3px] border-[#D4AF37] bg-white/60 backdrop-blur-xl shadow-lg">
         <div className="p-3">
           {/* Header with user info */}
           <div className="flex items-center justify-center gap-2 mb-3">
