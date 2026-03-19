@@ -79,17 +79,17 @@ function SummaryTable({ summary, activeFilter }: { summary: DonationSummary; act
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
-                <TableHead className="text-sm font-bold w-[80px] px-3 py-2 whitespace-nowrap">Token</TableHead>
+                <TableHead className="text-xs font-bold w-[70px] px-2 py-1.5 whitespace-nowrap">Token</TableHead>
                 {showReceived && (
                   <>
-                    <TableHead className="text-sm font-bold text-green-600 text-right px-3 py-2 whitespace-nowrap">Tổng nhận</TableHead>
-                    <TableHead className="text-sm font-bold text-green-600 text-right px-3 py-2 whitespace-nowrap">Lệnh</TableHead>
+                    <TableHead className="text-xs font-bold text-green-600 text-right px-2 py-1.5 whitespace-nowrap">Tổng nhận</TableHead>
+                    <TableHead className="text-xs font-bold text-green-600 text-right px-2 py-1.5 whitespace-nowrap">Lệnh</TableHead>
                   </>
                 )}
                 {showSent && (
                   <>
-                    <TableHead className="text-sm font-bold text-red-600 text-right px-3 py-2 whitespace-nowrap">Tổng đã tặng</TableHead>
-                    <TableHead className="text-sm font-bold text-red-600 text-right px-3 py-2 whitespace-nowrap">Lệnh</TableHead>
+                    <TableHead className="text-xs font-bold text-red-600 text-right px-2 py-1.5 whitespace-nowrap">Tổng đã tặng</TableHead>
+                    <TableHead className="text-xs font-bold text-red-600 text-right px-2 py-1.5 whitespace-nowrap">Lệnh</TableHead>
                   </>
                 )}
               </TableRow>
