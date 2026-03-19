@@ -109,7 +109,7 @@ export const ProfileHeader = ({
           <div className="px-4 md:px-8 py-4 md:py-6">
             <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
               {/* Avatar */}
-              <div className="-mt-[90px] md:-mt-[217px] relative z-20 flex justify-center md:justify-start flex-shrink-0" style={{ overflow: 'visible' }}>
+              <div className="-mt-[90px] md:-mt-[217px] relative z-20 flex justify-center md:justify-start flex-shrink-0 scale-[0.85] md:scale-100 origin-top" style={{ overflow: 'visible' }}>
                 <AvatarOrbit
                   key={profile?.id}
                   socialLinks={Array.isArray(profile?.social_links) ? profile.social_links : []}
@@ -149,7 +149,7 @@ export const ProfileHeader = ({
                     <p className="text-red-500 text-xs mt-0.5">Tài khoản này đã vi phạm điều khoản sử dụng và bị cấm vĩnh viễn.</p>
                   </div>
                 )}
-                <div className="flex items-center gap-1.5 text-sm font-bold text-green-600 mt-0.5 flex-wrap">
+                <div className="flex items-center justify-center md:justify-start gap-1.5 text-sm font-bold text-green-600 mt-0.5 flex-wrap">
                   <span>@{profile?.username}</span>
                   <span className="text-muted-foreground font-normal">·</span>
                   <button
