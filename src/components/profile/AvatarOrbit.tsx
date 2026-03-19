@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import diamondSrc from '@/assets/diamond-user.png';
 import { X, Plus, Check, Pencil, GripVertical } from 'lucide-react';
 import { PLATFORM_PRESETS, PLATFORM_ORDER } from './SocialLinksEditor';
@@ -6,8 +6,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { toJson } from '@/utils/supabaseJsonHelpers';
 import { useIsMobile } from '@/hooks/use-mobile';
-
-// Static orbit — icons spread from bottom upward
 
 export interface SocialLink {
   platform: string;
@@ -18,7 +16,6 @@ export interface SocialLink {
   avatarUrl?: string;
 }
 
-// Desktop constants
 const ORBIT_RADIUS_DESKTOP = 115;
 const ORBIT_RADIUS_MOBILE = 54;
 const ORBIT_SIZE = 40;
@@ -34,16 +31,17 @@ function getOrbitConfig(isMobile: boolean) {
   return { radius, wrapperSize, center, diamondTop };
 }
 
-// Cache the processed diamond so we only compute it once per session
-let _cachedDiamondUrl: string | null = null;
+let cachedDiamondUrl: string | null = null;
 
 function useTransparentDiamond(src: string) {
-  const [dataUrl, setDataUrl] = useState<string>(_cachedDiamondUrl ?? src);
+  const [dataUrl, setDataUrl] = useState<string>(cachedDiamondUrl ?? src);
+
   useEffect(() => {
-    if (_cachedDiamondUrl) {
-      setDataUrl(_cachedDiamondUrl);
+    if (cachedDiamondUrl) {
+      setDataUrl(cachedDiamondUrl);
       return;
     }
+
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
@@ -51,45 +49,46 @@ function useTransparentDiamond(src: string) {
         const canvas = document.createElement('canvas');
         canvas.width = img.naturalWidth;
         canvas.height = img.naturalHeight;
-        const ctx = canvas.getContext('2d')!;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          setDataUrl(src);
+          return;
+        }
+
         ctx.drawImage(img, 0, 0);
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const data = imageData.data;
+
         for (let i = 0; i < data.length; i += 4) {
-          if (data[i] > 220 && data[i + 1] > 220 && data[i + 2] > 220) data[i + 3] = 0;
+          if (data[i] > 220 && data[i + 1] > 220 && data[i + 2] > 220) {
+            data[i + 3] = 0;
+          }
         }
+
         ctx.putImageData(imageData, 0, 0);
-        _cachedDiamondUrl = canvas.toDataURL('image/png');
-        setDataUrl(_cachedDiamondUrl);
+        cachedDiamondUrl = canvas.toDataURL('image/png');
+        setDataUrl(cachedDiamondUrl);
       } catch {
-        // CORS or canvas taint — fallback to original src
         setDataUrl(src);
       }
     };
     img.onerror = () => setDataUrl(src);
     img.src = src;
   }, [src]);
+
   return dataUrl;
 }
 
-/**
- * Compute static angles spreading from bottom (180°) upward to both sides.
- * 1 icon → [180°]
- * 2 icons → [150°, 210°]
- * 3 icons → [140°, 180°, 220°]
- * etc.
- */
 function computeAngles(n: number): number[] {
   if (n === 0) return [];
   if (n === 1) return [180];
-  const GAP = 35; // degrees between each icon
-  const totalSpread = GAP * (n - 1);
+  const gap = 35;
+  const totalSpread = gap * (n - 1);
   const startAngle = 180 - totalSpread / 2;
-  return Array.from({ length: n }, (_, i) => startAngle + i * GAP);
+  return Array.from({ length: n }, (_, i) => startAngle + i * gap);
 }
 
 function computeAddAngle(n: number): number {
-  // Place the + button at the next position in the fan
   const angles = computeAngles(n + 1);
   return angles[angles.length - 1] ?? 180;
 }
@@ -97,6 +96,10 @@ function computeAddAngle(n: number): number {
 function angleToPos(angleDeg: number, radius: number) {
   const rad = (angleDeg * Math.PI) / 180;
   return { x: Math.sin(rad) * radius, y: -Math.cos(rad) * radius };
+}
+
+interface OrbitLink extends SocialLink {
+  isEmpty?: boolean;
 }
 
 interface AvatarOrbitProps {
@@ -110,508 +113,589 @@ interface AvatarOrbitProps {
 export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userId, onLinksChanged }: AvatarOrbitProps) {
   const transparentDiamond = useTransparentDiamond(diamondSrc);
   const isMobile = useIsMobile();
-  const { radius: ORBIT_RADIUS, wrapperSize: WRAPPER_SIZE, center: CENTER, diamondTop: DIAMOND_TOP } = getOrbitConfig(isMobile);
+  const { radius: orbitRadius, wrapperSize, center, diamondTop } = getOrbitConfig(isMobile);
 
-  // Static orbit — no animation, refs kept for drag compatibility
   const isOrbitHovered = useRef(false);
   const isDragging = useRef(false);
-  const slotRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const baseAnglesRef = useRef<number[]>([]);
-
-  // Edit state
-  const [editingPlatform, setEditingPlatform] = useState<string | null>(null);
-  const [editUrl, setEditUrl] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [hoveredPlatform, setHoveredPlatform] = useState<string | null>(null);
-
-  // Pending new slot
-  const [pendingPlatform, setPendingPlatform] = useState<string | null>(null);
-  const [pendingUrl, setPendingUrl] = useState('');
-  // Show link input popup for a saved (but empty-url) link
-  const [promptingPlatform, setPromptingPlatform] = useState<string | null>(null);
-  const [promptUrl, setPromptUrl] = useState('');
-
-  // Add picker
-  const [showAddPicker, setShowAddPicker] = useState(false);
+  const dragIndexRef = useRef<number | null>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
   const editRef = useRef<HTMLDivElement>(null);
-  const pendingRef = useRef<HTMLDivElement>(null);
   const promptRef = useRef<HTMLDivElement>(null);
 
-  // Drag-to-reorder state
-  const dragIndexRef = useRef<number | null>(null);
+  const [editingPlatform, setEditingPlatform] = useState<string | null>(null);
+  const [promptingPlatform, setPromptingPlatform] = useState<string | null>(null);
+  const [editUrl, setEditUrl] = useState('');
+  const [promptUrl, setPromptUrl] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [showAddPicker, setShowAddPicker] = useState(false);
+  const [hoveredPlatform, setHoveredPlatform] = useState<string | null>(null);
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
   const [localLinks, setLocalLinks] = useState<SocialLink[]>(socialLinks);
 
-  // Sync localLinks when props change
   useEffect(() => {
     setLocalLinks(socialLinks);
   }, [socialLinks]);
 
-  const usedPlatforms = new Set(localLinks.map((l) => l.platform));
-  const availablePlatforms = PLATFORM_ORDER.filter((p) => !usedPlatforms.has(p));
-
-  const UNAVATAR_PLATFORMS = ['youtube', 'twitter', 'tiktok', 'telegram', 'instagram', 'github', 'linkedin'];
-  const NO_AVATAR_PLATFORMS: string[] = [];
-  const BAD_AVATAR_URLS = ['funplay-og-image', 'static.xx.fbcdn.net/rsrc.php', 'unavatar.io/facebook', 'unavatar.io/youtube', 'unavatar.io/telegram', 'unavatar.io/tiktok'];
-
-  // Sanitize HTML entities in avatar URLs (e.g. &amp; → &)
-  const sanitizeUrl = (url: string | undefined): string | undefined => {
-    if (!url) return url;
+  const sanitizeUrl = (url?: string) => {
+    if (!url) return undefined;
     return url.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"');
   };
 
-  // Proxy Facebook/fbcdn URLs through edge function to avoid CORS
-  const getDisplayAvatarUrl = (link: SocialLink): string | undefined => {
+  const getDisplayAvatarUrl = (link: SocialLink) => {
     const raw = sanitizeUrl(link.avatarUrl);
     if (!raw) return undefined;
     if (raw.includes('graph.facebook.com') || raw.includes('fbcdn.net')) {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      return `${supabaseUrl}/functions/v1/fetch-link-preview?proxy=${encodeURIComponent(raw)}`;
+      const backendUrl = import.meta.env.VITE_SUPABASE_URL;
+      return `${backendUrl}/functions/v1/fetch-link-preview?proxy=${encodeURIComponent(raw)}`;
     }
     return raw;
   };
 
   useEffect(() => {
     if (!userId) return;
-    const linksToRefetch = localLinks.filter((l) => {
-      if (!l.url) return false;
-      if (NO_AVATAR_PLATFORMS.includes(l.platform)) return false;
-      if (l.avatarUrl && BAD_AVATAR_URLS.some((d) => l.avatarUrl!.includes(d))) return true;
-      // Re-fetch if avatarUrl contains HTML entities (stale data)
-      if (l.avatarUrl?.includes('&amp;')) return true;
-      // Re-fetch Facebook if avatarUrl is still a Graph API redirect URL
-      if (l.platform === 'facebook' && l.avatarUrl?.includes('graph.facebook.com')) return true;
-      // Re-fetch Angel AI if no valid avatar
-      if (l.platform === 'angel' && !l.avatarUrl) return true;
-      // Re-fetch Zalo if no avatar
-      if (l.platform === 'zalo' && !l.avatarUrl) return true;
-      if (!l.avatarUrl) return true;
-      if (UNAVATAR_PLATFORMS.includes(l.platform) && !l.avatarUrl.includes('unavatar.io')) return true;
+
+    const badAvatarDomains = [
+      'funplay-og-image',
+      'static.xx.fbcdn.net/rsrc.php',
+      'unavatar.io/facebook',
+      'unavatar.io/youtube',
+      'unavatar.io/telegram',
+      'unavatar.io/tiktok',
+    ];
+    const refetchPlatforms = ['youtube', 'twitter', 'tiktok', 'telegram', 'instagram', 'github', 'linkedin'];
+
+    const linksToRefetch = localLinks.filter((link) => {
+      if (!link.url) return false;
+      if (link.avatarUrl?.includes('&amp;')) return true;
+      if (link.platform === 'facebook' && link.avatarUrl?.includes('graph.facebook.com')) return true;
+      if ((link.platform === 'angel' || link.platform === 'zalo') && !link.avatarUrl) return true;
+      if (!link.avatarUrl) return true;
+      if (badAvatarDomains.some((domain) => link.avatarUrl?.includes(domain))) return true;
+      if (refetchPlatforms.includes(link.platform) && !link.avatarUrl.includes('unavatar.io')) return true;
       return false;
     });
+
     if (linksToRefetch.length === 0) return;
+
     const fetchMissing = async () => {
       let updated = false;
-      const newLinks = [...localLinks];
+      const nextLinks = [...localLinks];
+
       for (const link of linksToRefetch) {
         try {
           const { data } = await supabase.functions.invoke('fetch-link-preview', {
             body: { url: link.url, platform: link.platform },
           });
-          const idx = newLinks.findIndex((l) => l.platform === link.platform);
-          if (idx !== -1) {
-            if (data?.avatarUrl) {
-              newLinks[idx] = { ...newLinks[idx], avatarUrl: data.avatarUrl };
-              updated = true;
-            } else if (newLinks[idx].avatarUrl && BAD_AVATAR_URLS.some((d) => newLinks[idx].avatarUrl!.includes(d))) {
-              const { avatarUrl: _bad, ...rest } = newLinks[idx];
-              newLinks[idx] = rest as SocialLink;
-              updated = true;
-            }
+
+          const index = nextLinks.findIndex((item) => item.platform === link.platform);
+          if (index === -1) continue;
+
+          if (data?.avatarUrl) {
+            nextLinks[index] = { ...nextLinks[index], avatarUrl: data.avatarUrl };
+            updated = true;
           }
-        } catch { /* ignore */ }
-      }
-      if (updated) {
-        // Only save to DB if owner
-        if (isOwner) {
-          await supabase.from('profiles').update({ social_links: toJson(newLinks as unknown as Record<string, unknown>) }).eq('id', userId);
+        } catch {
+          // ignore
         }
-        setLocalLinks(newLinks);
-        onLinksChanged?.(newLinks);
+      }
+
+      if (updated) {
+        if (isOwner) {
+          await supabase
+            .from('profiles')
+            .update({ social_links: toJson(nextLinks as unknown as Record<string, unknown>) })
+            .eq('id', userId);
+        }
+        setLocalLinks(nextLinks);
+        onLinksChanged?.(nextLinks);
       }
     };
-    fetchMissing();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
 
-  // Default links for users who haven't set up social_links
-  const defaultLinks: SocialLink[] = PLATFORM_ORDER.map(p => {
-    const preset = PLATFORM_PRESETS[p];
-    return { platform: p, label: preset.label, url: '', color: preset.color, favicon: preset.favicon };
+    fetchMissing();
+  }, [isOwner, localLinks, onLinksChanged, userId]);
+
+  const usedPlatforms = new Set(localLinks.map((link) => link.platform));
+  const availablePlatforms = PLATFORM_ORDER.filter((platform) => !usedPlatforms.has(platform));
+
+  const defaultLinks: SocialLink[] = PLATFORM_ORDER.map((platform) => {
+    const preset = PLATFORM_PRESETS[platform];
+    return {
+      platform,
+      label: preset.label,
+      url: '',
+      color: preset.color,
+      favicon: preset.favicon,
+    };
   });
 
-  // Use default icons when user has no links configured or all links have empty URLs
-  const hasAnyUrl = localLinks.some(l => l.url && l.url.trim() !== '');
-  const displayLinks = (localLinks.length === 0 || (!hasAnyUrl && !isOwner))
+  const hasAnyUrl = localLinks.some((link) => link.url?.trim());
+  const displayLinks = localLinks.length === 0 || (!hasAnyUrl && !isOwner)
     ? defaultLinks
-    : localLinks.length > 0 ? localLinks : defaultLinks;
+    : localLinks;
 
-  const allLinks: (SocialLink & { isPending?: boolean; isEmpty?: boolean })[] = [
-    ...displayLinks
-      .map((l) => ({ ...l, isEmpty: !l.url })),
-    ...(pendingPlatform && PLATFORM_PRESETS[pendingPlatform]
-      ? [{ platform: pendingPlatform, label: PLATFORM_PRESETS[pendingPlatform].label, url: '', color: PLATFORM_PRESETS[pendingPlatform].color, favicon: PLATFORM_PRESETS[pendingPlatform].favicon, isPending: true }]
-      : []),
-  ];
+  const allLinks: OrbitLink[] = displayLinks.map((link) => ({
+    ...link,
+    isEmpty: !link.url,
+  }));
+
+  const normalizeUrl = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return '';
+    return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  };
+
+  const persistLinks = useCallback(async (nextLinks: SocialLink[]) => {
+    setLocalLinks(nextLinks);
+    onLinksChanged?.(nextLinks);
+
+    if (!isOwner || !userId) return;
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ social_links: toJson(nextLinks as unknown as Record<string, unknown>) })
+      .eq('id', userId);
+
+    if (error) throw error;
+  }, [isOwner, onLinksChanged, userId]);
+
+  const fetchLinkAvatar = useCallback(async (platform: string, url: string) => {
+    try {
+      const { data } = await supabase.functions.invoke('fetch-link-preview', {
+        body: { url, platform },
+      });
+      return data?.avatarUrl as string | undefined;
+    } catch {
+      return undefined;
+    }
+  }, []);
+
+  const saveLink = useCallback(async (platform: string, value: string) => {
+    const normalizedUrl = normalizeUrl(value);
+    if (!normalizedUrl) {
+      toast.error('Vui lòng nhập link hợp lệ');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const avatarUrl = await fetchLinkAvatar(platform, normalizedUrl);
+      const existingIndex = localLinks.findIndex((link) => link.platform === platform);
+      const preset = PLATFORM_PRESETS[platform];
+
+      const nextLinks = existingIndex === -1
+        ? [
+            ...localLinks,
+            {
+              platform,
+              label: preset.label,
+              url: normalizedUrl,
+              color: preset.color,
+              favicon: preset.favicon,
+              avatarUrl,
+            },
+          ]
+        : localLinks.map((link) =>
+            link.platform === platform
+              ? { ...link, url: normalizedUrl, avatarUrl: avatarUrl ?? link.avatarUrl }
+              : link
+          );
+
+      await persistLinks(nextLinks);
+      setEditingPlatform(null);
+      setPromptingPlatform(null);
+      setEditUrl('');
+      setPromptUrl('');
+      toast.success('Đã lưu liên kết');
+    } catch (error) {
+      console.error('Error saving social link:', error);
+      toast.error('Không thể lưu liên kết');
+    } finally {
+      setSaving(false);
+    }
+  }, [fetchLinkAvatar, localLinks, persistLinks]);
+
+  const savePromptLink = useCallback(async (platform: string, value: string) => {
+    await saveLink(platform, value);
+  }, [saveLink]);
+
+  const removeLink = useCallback(async (platform: string) => {
+    setSaving(true);
+    try {
+      const nextLinks = localLinks.filter((link) => link.platform !== platform);
+      await persistLinks(nextLinks);
+      setEditingPlatform(null);
+      setPromptingPlatform(null);
+      setEditUrl('');
+      setPromptUrl('');
+      toast.success('Đã xoá liên kết');
+    } catch (error) {
+      console.error('Error removing social link:', error);
+      toast.error('Không thể xoá liên kết');
+    } finally {
+      setSaving(false);
+    }
+  }, [localLinks, persistLinks]);
+
+  const handlePickPlatform = useCallback(async (platform: string) => {
+    setShowAddPicker(false);
+    setPromptingPlatform(platform);
+    setPromptUrl('');
+  }, []);
+
+  const handleDragStart = useCallback((index: number) => {
+    dragIndexRef.current = index;
+    isDragging.current = true;
+    setDraggingIndex(index);
+  }, []);
+
+  const handleDragOver = useCallback((hoverIndex: number) => {
+    const dragIndex = dragIndexRef.current;
+    if (dragIndex === null || dragIndex === hoverIndex) return;
+
+    setLocalLinks((prev) => {
+      if (dragIndex < 0 || dragIndex >= prev.length || hoverIndex < 0 || hoverIndex >= prev.length) {
+        return prev;
+      }
+      const next = [...prev];
+      const [moved] = next.splice(dragIndex, 1);
+      next.splice(hoverIndex, 0, moved);
+      dragIndexRef.current = hoverIndex;
+      return next;
+    });
+  }, []);
+
+  const handleDragEnd = useCallback(async () => {
+    const nextLinks = [...localLinks];
+    dragIndexRef.current = null;
+    isDragging.current = false;
+    setDraggingIndex(null);
+
+    if (nextLinks.length === 0) return;
+
+    try {
+      await persistLinks(nextLinks);
+    } catch (error) {
+      console.error('Error reordering social links:', error);
+      toast.error('Không thể cập nhật thứ tự liên kết');
+    }
+  }, [localLinks, persistLinks]);
+
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (showAddPicker && pickerRef.current && !pickerRef.current.contains(target)) setShowAddPicker(false);
+      if (editingPlatform && editRef.current && !editRef.current.contains(target)) setEditingPlatform(null);
+      if (promptingPlatform && promptRef.current && !promptRef.current.contains(target)) setPromptingPlatform(null);
+    };
+
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [editingPlatform, promptingPlatform, showAddPicker]);
 
   const angles = computeAngles(allLinks.length);
+  const addAngle = computeAddAngle(allLinks.length);
+  const addPos = angleToPos(addAngle, orbitRadius);
+  const showAddBtn = isOwner && allLinks.length < 9;
 
-  // Close popups on outside click
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (showAddPicker && pickerRef.current && !pickerRef.current.contains(e.target as Node)) setShowAddPicker(false);
-      if (editingPlatform && editRef.current && !editRef.current.contains(e.target as Node)) setEditingPlatform(null);
-      if (pendingPlatform && pendingRef.current && !pendingRef.current.contains(e.target as Node)) {
-        setPendingPlatform(null); setPendingUrl('');
-      }
-      if (promptingPlatform && promptRef.current && !promptRef.current.contains(e.target as Node)) {
-        setPromptingPlatform(null); setPromptUrl('');
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [showAddPicker, editingPlatform, pendingPlatform, promptingPlatform]);
-...
+  return (
+    <div
+      className="relative"
+      style={{ width: `${AVATAR_SIZE}px`, height: `${AVATAR_SIZE}px`, flexShrink: 0, overflow: 'visible' }}
+    >
       <div
         className="pointer-events-none diamond-sparkle"
         style={{
           position: 'absolute',
-          left: `${(AVATAR_SIZE - WRAPPER_SIZE) / 2}px`,
-          top: `${(AVATAR_SIZE - WRAPPER_SIZE) / 2}px`,
-          width: `${WRAPPER_SIZE}px`,
-          height: `${WRAPPER_SIZE}px`,
+          left: `${(AVATAR_SIZE - wrapperSize) / 2}px`,
+          top: `${(AVATAR_SIZE - wrapperSize) / 2}px`,
+          width: `${wrapperSize}px`,
+          height: `${wrapperSize}px`,
           zIndex: 40,
-          willChange: 'filter',
           overflow: 'visible',
         }}
       >
-        {/* Kim cương: mũi nhọn dưới chạm sát viền ngoài avatar */}
-        <div style={{ position: 'absolute', left: '50%', top: `${DIAMOND_TOP}px`, transform: 'translateX(-50%)' }}>
-          {/* Sparkle dots */}
-          <span className="sparkle-dot-1 absolute text-yellow-300" style={{ top: '18%', left: '10%', fontSize: '8px' }}>✦</span>
-          <span className="sparkle-dot-2 absolute text-cyan-300" style={{ top: '5%', left: '55%', fontSize: '7px' }}>✦</span>
-          <span className="sparkle-dot-3 absolute text-white" style={{ top: '22%', right: '8%', fontSize: '9px' }}>✦</span>
-          <span className="sparkle-dot-4 absolute text-yellow-200" style={{ top: '55%', left: '5%', fontSize: '6px' }}>✦</span>
-          <span className="sparkle-dot-5 absolute text-purple-300" style={{ top: '8%', left: '30%', fontSize: '7px' }}>✦</span>
-          <span className="sparkle-dot-6 absolute text-cyan-200" style={{ top: '45%', right: '5%', fontSize: '6px' }}>✦</span>
-          <span className="sparkle-dot-7 absolute text-yellow-100" style={{ top: '70%', left: '20%', fontSize: '5px' }}>✦</span>
-          <span className="sparkle-dot-8 absolute text-white" style={{ top: '65%', right: '18%', fontSize: '7px' }}>✦</span>
+        <div style={{ position: 'absolute', left: '50%', top: `${diamondTop}px`, transform: 'translateX(-50%)' }}>
+          <span style={{ position: 'absolute', top: '18%', left: '10%', fontSize: '8px', color: 'hsl(var(--primary))' }}>✦</span>
+          <span style={{ position: 'absolute', top: '5%', left: '55%', fontSize: '7px', color: 'hsl(var(--accent))' }}>✦</span>
+          <span style={{ position: 'absolute', top: '22%', right: '8%', fontSize: '9px', color: 'hsl(var(--foreground))' }}>✦</span>
+          <span style={{ position: 'absolute', top: '55%', left: '5%', fontSize: '6px', color: 'hsl(var(--primary))' }}>✦</span>
+          <span style={{ position: 'absolute', top: '8%', left: '30%', fontSize: '7px', color: 'hsl(var(--accent))' }}>✦</span>
+          <span style={{ position: 'absolute', top: '45%', right: '5%', fontSize: '6px', color: 'hsl(var(--foreground))' }}>✦</span>
           <img src={transparentDiamond} alt="Kim cương xanh" style={{ width: '100px', height: '100px', objectFit: 'contain', display: 'block' }} />
         </div>
       </div>
 
-      {/* Avatar ở tâm */}
       <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
         {children}
       </div>
 
-      {/* Wrapper orbit 486px - absolute centered, overflow:visible → slots hiển thị đầy đủ trên mobile */}
       <div
         style={{
           position: 'absolute',
-          width: `${WRAPPER_SIZE}px`,
-          height: `${WRAPPER_SIZE}px`,
-          left: `${(AVATAR_SIZE - WRAPPER_SIZE) / 2}px`,
-          top: `${(AVATAR_SIZE - WRAPPER_SIZE) / 2}px`,
+          width: `${wrapperSize}px`,
+          height: `${wrapperSize}px`,
+          left: `${(AVATAR_SIZE - wrapperSize) / 2}px`,
+          top: `${(AVATAR_SIZE - wrapperSize) / 2}px`,
           overflow: 'visible',
           zIndex: 20,
           pointerEvents: 'none',
         }}
       >
+        {allLinks.map((link, index) => {
+          const { x, y } = angleToPos(angles[index], orbitRadius);
+          const isEditing = editingPlatform === link.platform;
+          const isPrompting = promptingPlatform === link.platform;
+          const isHovered = hoveredPlatform === link.platform;
+          const isDraggingThis = draggingIndex === index;
 
-
-        {/* Social link orbital slots */}
-        {(() => {
-          baseAnglesRef.current = angles;
-          return allLinks.map((link, i) => {
-            const { x, y } = angleToPos(angles[i], ORBIT_RADIUS);
-            const isEditing = editingPlatform === link.platform;
-            const isPending = !!link.isPending;
-            const isEmpty = !!link.isEmpty;
-            const isHovered = hoveredPlatform === link.platform;
-            const isPrompting = promptingPlatform === link.platform;
-            const isDraggingThis = draggingIndex === i;
-
-            return (
-              <div
-                key={link.platform}
-                ref={(el) => { slotRefs.current[i] = el; }}
-                className="absolute"
-                style={{
-                  left: `${CENTER + x - ORBIT_SIZE / 2}px`,
-                  top: `${CENTER + y - ORBIT_SIZE / 2}px`,
-                  width: `${ORBIT_SIZE}px`,
-                  height: `${ORBIT_SIZE}px`,
-                  zIndex: (isEditing || isPending || isPrompting || isDraggingThis || isHovered) ? 9999 : 20,
-                  opacity: isDraggingThis ? 0.6 : 1,
-                  transition: isDragging.current ? 'none' : 'opacity 0.2s',
-                  cursor: isOwner && !isPending ? 'grab' : 'default',
-                  overflow: 'visible',
-                  pointerEvents: 'auto',
-                }}
-                onMouseEnter={() => { setHoveredPlatform(link.platform); isOrbitHovered.current = true; }}
-                onMouseLeave={() => { if (!isEditing && !isPrompting) { setHoveredPlatform(null); if (!isDragging.current) isOrbitHovered.current = false; } }}
-                onTouchStart={() => { setHoveredPlatform(link.platform); isOrbitHovered.current = true; }}
-                onTouchEnd={() => { if (!isEditing && !isPrompting) { setTimeout(() => { setHoveredPlatform(null); isOrbitHovered.current = false; }, 1500); } }}
-                draggable={isOwner && !isPending && !isEditing && !isPrompting}
-                onDragStart={() => handleDragStart(i)}
-                onDragOver={(e) => { e.preventDefault(); handleDragOver(i); }}
-                onDragEnd={handleDragEnd}
-              >
-
-                {/* Prompt popup — enter URL for newly added (empty) slot */}
-                {isPrompting && isOwner && (
-                  <div
-                    ref={promptRef}
-                    className="fixed md:absolute z-50 bg-card border border-border rounded-xl shadow-xl p-4 md:p-3"
-                    style={{
-                      width: 'min(340px, 90vw)',
-                      /* Mobile: fixed center; Desktop: above icon */
-                      ...(window.innerWidth < 768
-                        ? { left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }
-                        : { bottom: '110%', left: '50%', transform: 'translateX(-50%)' }
-                      ),
-                    }}
-                    onMouseEnter={() => { isOrbitHovered.current = true; }}
-                    onMouseLeave={() => { isOrbitHovered.current = true; }}
-                  >
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="w-5 h-5 rounded-full bg-white flex items-center justify-center flex-shrink-0" style={{ border: `1.5px solid ${link.color}` }}>
-                        <img src={link.favicon} alt="" className="w-3.5 h-3.5 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-                      </div>
-                      <span className="text-sm font-semibold" style={{ color: link.color }}>{link.label}</span>
-                      <button type="button" onClick={() => { setPromptingPlatform(null); setPromptUrl(''); }} className="ml-auto p-1 rounded hover:bg-muted transition-colors">
-                        <X className="w-4 h-4 text-muted-foreground" />
-                      </button>
+          return (
+            <div
+              key={link.platform}
+              className="absolute"
+              style={{
+                left: `${center + x - ORBIT_SIZE / 2}px`,
+                top: `${center + y - ORBIT_SIZE / 2}px`,
+                width: `${ORBIT_SIZE}px`,
+                height: `${ORBIT_SIZE}px`,
+                zIndex: isEditing || isPrompting || isDraggingThis || isHovered ? 9999 : 20,
+                opacity: isDraggingThis ? 0.6 : 1,
+                transition: isDragging.current ? 'none' : 'opacity 0.2s',
+                cursor: isOwner ? 'grab' : 'default',
+                overflow: 'visible',
+                pointerEvents: 'auto',
+              }}
+              onMouseEnter={() => {
+                setHoveredPlatform(link.platform);
+                isOrbitHovered.current = true;
+              }}
+              onMouseLeave={() => {
+                if (!isEditing && !isPrompting) {
+                  setHoveredPlatform(null);
+                  if (!isDragging.current) isOrbitHovered.current = false;
+                }
+              }}
+              onTouchStart={() => {
+                setHoveredPlatform(link.platform);
+                isOrbitHovered.current = true;
+              }}
+              onTouchEnd={() => {
+                if (!isEditing && !isPrompting) {
+                  setTimeout(() => {
+                    setHoveredPlatform(null);
+                    isOrbitHovered.current = false;
+                  }, 1500);
+                }
+              }}
+              draggable={isOwner && localLinks.length > 0 && !isEditing && !isPrompting}
+              onDragStart={() => handleDragStart(index)}
+              onDragOver={(e) => {
+                e.preventDefault();
+                handleDragOver(index);
+              }}
+              onDragEnd={handleDragEnd}
+            >
+              {isPrompting && isOwner && (
+                <div
+                  ref={promptRef}
+                  className="fixed md:absolute z-50 bg-card border border-border rounded-xl shadow-xl p-4 md:p-3"
+                  style={{
+                    width: 'min(340px, 90vw)',
+                    ...(isMobile
+                      ? { left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }
+                      : { bottom: '110%', left: '50%', transform: 'translateX(-50%)' }),
+                  }}
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-5 h-5 rounded-full bg-background flex items-center justify-center flex-shrink-0" style={{ border: `1.5px solid ${link.color}` }}>
+                      <img src={link.favicon} alt="" className="w-3.5 h-3.5 object-contain" />
                     </div>
-                    <p className="text-xs text-muted-foreground mb-2">Nhập link trang cá nhân của bạn (có thể bỏ qua)</p>
-                    <input
-                      autoFocus
-                      type="url"
-                      value={promptUrl}
-                      onChange={(e) => setPromptUrl(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === 'Enter') savePromptLink(link.platform, promptUrl); }}
-                      placeholder={`https://${link.label.toLowerCase()}.com/...`}
-                      className="w-full text-sm border border-border rounded-lg px-3 py-2 bg-background focus:outline-none focus:ring-2 focus:ring-primary mb-2"
-                    />
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => { removeLink(link.platform); setPromptingPlatform(null); setPromptUrl(''); }}
-                        className="flex-1 text-sm px-3 py-1.5 rounded-lg border border-destructive/40 text-destructive hover:bg-destructive/10 transition-colors"
-                      >
-                        Xoá
-                      </button>
-                      <button
-                        type="button"
-                        disabled={saving || !promptUrl.trim()}
-                        onClick={() => savePromptLink(link.platform, promptUrl)}
-                        className="flex-1 text-sm px-3 py-1.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors flex items-center justify-center gap-1 disabled:opacity-50"
-                      >
-                        <Check className="w-3.5 h-3.5" /> Lưu
-                      </button>
-                    </div>
+                    <span className="text-sm font-semibold" style={{ color: link.color }}>{link.label}</span>
+                    <button type="button" onClick={() => { setPromptingPlatform(null); setPromptUrl(''); }} className="ml-auto p-1 rounded hover:bg-muted transition-colors">
+                      <X className="w-4 h-4 text-muted-foreground" />
+                    </button>
                   </div>
-                )}
-
-                {/* Edit popup (existing link) */}
-                {isEditing && isOwner && !isPending && (
-                  <div
-                    ref={editRef}
-                    className="fixed md:absolute z-50 bg-card border border-border rounded-xl shadow-xl p-4 md:p-3"
-                    style={{
-                      width: 'min(340px, 90vw)',
-                      ...(window.innerWidth < 768
-                        ? { left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }
-                        : { bottom: '110%', left: '50%', transform: 'translateX(-50%)' }
-                      ),
-                    }}
-                    onMouseEnter={() => { isOrbitHovered.current = true; }}
-                    onMouseLeave={() => { isOrbitHovered.current = true; }}
-                  >
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="w-5 h-5 rounded-full bg-white flex items-center justify-center flex-shrink-0" style={{ border: `1.5px solid ${link.color}` }}>
-                        <img src={link.favicon} alt="" className="w-3.5 h-3.5 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-                      </div>
-                      <span className="text-sm font-semibold" style={{ color: link.color }}>{link.label}</span>
-                      <button type="button" onClick={() => setEditingPlatform(null)} className="ml-auto p-1 rounded hover:bg-muted transition-colors">
-                        <X className="w-4 h-4 text-muted-foreground" />
-                      </button>
-                    </div>
-                    <input
-                      autoFocus
-                      type="url"
-                      value={editUrl}
-                      onChange={(e) => setEditUrl(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === 'Enter') saveLink(link.platform, editUrl); }}
-                      placeholder="https://..."
-                      className="w-full text-sm border border-border rounded-lg px-3 py-2 bg-background focus:outline-none focus:ring-2 focus:ring-primary mb-2"
-                    />
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => removeLink(link.platform)}
-                        className="flex-1 text-sm px-3 py-1.5 rounded-lg border border-destructive/40 text-destructive hover:bg-destructive/10 transition-colors"
-                      >
-                        Xoá
-                      </button>
-                      <button
-                        type="button"
-                        disabled={saving}
-                        onClick={() => saveLink(link.platform, editUrl)}
-                        className="flex-1 text-sm px-3 py-1.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors flex items-center justify-center gap-1 disabled:opacity-50"
-                      >
-                        <Check className="w-3.5 h-3.5" /> Lưu
-                      </button>
-                    </div>
+                  <p className="text-xs text-muted-foreground mb-2">Nhập link trang cá nhân của bạn</p>
+                  <input
+                    autoFocus
+                    type="url"
+                    value={promptUrl}
+                    onChange={(e) => setPromptUrl(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') savePromptLink(link.platform, promptUrl); }}
+                    placeholder={`https://${link.label.toLowerCase()}.com/...`}
+                    className="w-full text-sm border border-border rounded-lg px-3 py-2 bg-background focus:outline-none focus:ring-2 focus:ring-primary mb-2"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => { removeLink(link.platform); setPromptingPlatform(null); setPromptUrl(''); }}
+                      className="flex-1 text-sm px-3 py-1.5 rounded-lg border border-destructive/40 text-destructive hover:bg-destructive/10 transition-colors"
+                    >
+                      Xoá
+                    </button>
+                    <button
+                      type="button"
+                      disabled={saving || !promptUrl.trim()}
+                      onClick={() => savePromptLink(link.platform, promptUrl)}
+                      className="flex-1 text-sm px-3 py-1.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors flex items-center justify-center gap-1 disabled:opacity-50"
+                    >
+                      <Check className="w-3.5 h-3.5" /> Lưu
+                    </button>
                   </div>
-                )}
+                </div>
+              )}
 
-                {/* Tooltip */}
-                {isHovered && !isPending && !isEditing && !isPrompting && !isDraggingThis && (
-                  <div
-                    className="absolute pointer-events-none flex flex-col items-center gap-0.5"
-                    style={{
-                      bottom: 'calc(100% + 8px)',
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      minWidth: '100px',
-                      maxWidth: '220px',
-                      zIndex: 99999,
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    <div className="px-2.5 py-1.5 rounded-lg text-xs shadow-lg" style={{ background: link.color, color: '#fff', fontWeight: 600, whiteSpace: 'nowrap' }}>
-                      {link.label}
+              {isEditing && isOwner && (
+                <div
+                  ref={editRef}
+                  className="fixed md:absolute z-50 bg-card border border-border rounded-xl shadow-xl p-4 md:p-3"
+                  style={{
+                    width: 'min(340px, 90vw)',
+                    ...(isMobile
+                      ? { left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }
+                      : { bottom: '110%', left: '50%', transform: 'translateX(-50%)' }),
+                  }}
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-5 h-5 rounded-full bg-background flex items-center justify-center flex-shrink-0" style={{ border: `1.5px solid ${link.color}` }}>
+                      <img src={link.favicon} alt="" className="w-3.5 h-3.5 object-contain" />
                     </div>
-                    {link.url && (
-                      <div className="px-2 py-1 rounded-md text-xs shadow-md font-semibold" style={{ background: 'rgba(255,255,255,0.97)', color: '#15803d', maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', border: '1px solid #bbf7d0' }}>
-                        {link.url.replace(/^https?:\/\//, '')}
-                      </div>
-                    )}
-                    {!link.url && isOwner && (
-                      <div className="px-2 py-1 rounded-md text-xs shadow-md font-semibold" style={{ background: 'rgba(255,255,255,0.97)', color: '#15803d', whiteSpace: 'nowrap', border: '1px solid #bbf7d0' }}>
-                        Nhấn ✏️ để thêm link
-                      </div>
-                    )}
+                    <span className="text-sm font-semibold" style={{ color: link.color }}>{link.label}</span>
+                    <button type="button" onClick={() => setEditingPlatform(null)} className="ml-auto p-1 rounded hover:bg-muted transition-colors">
+                      <X className="w-4 h-4 text-muted-foreground" />
+                    </button>
                   </div>
-                )}
+                  <input
+                    autoFocus
+                    type="url"
+                    value={editUrl}
+                    onChange={(e) => setEditUrl(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') saveLink(link.platform, editUrl); }}
+                    placeholder="https://..."
+                    className="w-full text-sm border border-border rounded-lg px-3 py-2 bg-background focus:outline-none focus:ring-2 focus:ring-primary mb-2"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => removeLink(link.platform)}
+                      className="flex-1 text-sm px-3 py-1.5 rounded-lg border border-destructive/40 text-destructive hover:bg-destructive/10 transition-colors"
+                    >
+                      Xoá
+                    </button>
+                    <button
+                      type="button"
+                      disabled={saving}
+                      onClick={() => saveLink(link.platform, editUrl)}
+                      className="flex-1 text-sm px-3 py-1.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors flex items-center justify-center gap-1 disabled:opacity-50"
+                    >
+                      <Check className="w-3.5 h-3.5" /> Lưu
+                    </button>
+                  </div>
+                </div>
+              )}
 
-                {/* Slot icon */}
-                {isPending ? (
-                  <div
-                    className="w-full h-full rounded-full bg-white flex items-center justify-center shadow-md animate-pulse overflow-hidden"
-                    style={{ border: `2.5px dashed ${link.color}`, boxShadow: `0 0 8px ${link.color}44`, opacity: 0.85 }}
-                  >
-                    <img src={link.favicon} alt={link.label} className="w-6 h-6 object-cover rounded-full" style={{ pointerEvents: 'none' }}
+              {isHovered && !isEditing && !isPrompting && (
+                <div
+                  className="absolute pointer-events-none flex flex-col items-center gap-0.5"
+                  style={{
+                    bottom: 'calc(100% + 8px)',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    minWidth: '100px',
+                    maxWidth: '220px',
+                    zIndex: 99999,
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  <div className="px-2.5 py-1.5 rounded-lg text-xs shadow-lg" style={{ background: link.color, color: '#fff', fontWeight: 600 }}>
+                    {link.label}
+                  </div>
+                  {link.url && (
+                    <div className="px-2 py-1 rounded-md text-xs shadow-md font-semibold" style={{ background: 'hsl(var(--background))', color: 'hsl(var(--primary))', maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis', border: '1px solid hsl(var(--border))' }}>
+                      {link.url.replace(/^https?:\/\//, '')}
+                    </div>
+                  )}
+                  {!link.url && isOwner && (
+                    <div className="px-2 py-1 rounded-md text-xs shadow-md font-semibold" style={{ background: 'hsl(var(--background))', color: 'hsl(var(--primary))', border: '1px solid hsl(var(--border))' }}>
+                      Nhấn ✏️ để thêm link
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {link.isEmpty ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isOwner) {
+                      setPromptingPlatform(link.platform);
+                      setPromptUrl('');
+                    }
+                  }}
+                  className="w-full h-full rounded-full bg-background flex items-center justify-center shadow-md overflow-hidden transition-transform duration-200 hover:scale-110"
+                  style={{ border: `2.5px dashed ${link.color}`, boxShadow: `0 0 8px ${link.color}44` }}
+                >
+                  <img src={link.favicon} alt={link.label} className="w-6 h-6 object-cover rounded-full" />
+                </button>
+              ) : (
+                <a
+                  href={link.url.startsWith('http') ? link.url : `https://${link.url}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full h-full rounded-full bg-background flex items-center justify-center transition-transform duration-200 shadow-md hover:scale-110 cursor-pointer overflow-hidden"
+                  style={{ display: 'flex', border: `2.5px solid ${link.color}`, boxShadow: `0 0 8px ${link.color}66` }}
+                >
+                  {link.avatarUrl ? (
+                    <img
+                      src={getDisplayAvatarUrl(link)}
+                      alt={link.label}
+                      className="w-full h-full object-cover rounded-full"
                       onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                        const p = e.currentTarget.parentElement;
-                        if (p && !p.querySelector('.fallback-letter')) {
-                          const s = document.createElement('span');
-                          s.className = 'fallback-letter text-xs font-bold';
-                          s.style.color = link.color;
-                          s.textContent = link.label[0];
-                          p.appendChild(s);
-                        }
+                        e.currentTarget.src = link.favicon;
+                        e.currentTarget.className = 'w-6 h-6 object-cover rounded-full';
                       }}
                     />
-                  </div>
-                ) : isEmpty ? (
-                  /* Empty-url slot — show favicon with dashed border */
-                  <button
-                    type="button"
-                    onClick={() => { if (isOwner) { setPromptingPlatform(link.platform); setPromptUrl(''); } }}
-                    className="w-full h-full rounded-full bg-white flex items-center justify-center shadow-md overflow-hidden transition-transform duration-200 hover:scale-110"
-                    style={{ border: `2.5px dashed ${link.color}`, boxShadow: `0 0 8px ${link.color}44` }}
-                  >
-                    <img src={link.favicon} alt={link.label} className="w-6 h-6 object-cover rounded-full" style={{ pointerEvents: 'none' }}
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                        const p = e.currentTarget.parentElement;
-                        if (p && !p.querySelector('.fallback-letter')) {
-                          const s = document.createElement('span');
-                          s.className = 'fallback-letter text-xs font-bold';
-                          s.style.color = link.color;
-                          s.textContent = link.label[0];
-                          p.appendChild(s);
-                        }
-                      }}
-                    />
-                  </button>
-                ) : (
-                  /* Saved slot with URL */
-                  <a
-                    href={link.url.startsWith('http') ? link.url : `https://${link.url}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full h-full rounded-full bg-white flex items-center justify-center transition-transform duration-200 shadow-md hover:scale-110 cursor-pointer overflow-hidden"
-                    style={{ display: 'flex', border: `2.5px solid ${link.color}`, boxShadow: `0 0 8px ${link.color}66` }}
-                  >
-                    {link.avatarUrl ? (
-                      <img
-                        src={getDisplayAvatarUrl(link)}
-                        alt={link.label}
-                        className="w-full h-full object-cover rounded-full"
-                        style={{ pointerEvents: 'none' }}
-                        onError={(e) => {
-                          e.currentTarget.src = link.favicon;
-                          e.currentTarget.className = 'w-6 h-6 object-cover rounded-full';
-                        }}
-                      />
-                    ) : (
-                      <img
-                        src={link.favicon}
-                        alt={link.label}
-                        className="w-6 h-6 object-cover rounded-full"
-                        style={{ pointerEvents: 'none' }}
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none';
-                          const p = e.currentTarget.parentElement;
-                          if (p && !p.querySelector('.fallback-letter')) {
-                            const s = document.createElement('span');
-                            s.className = 'fallback-letter text-xs font-bold';
-                            s.style.color = link.color;
-                            s.textContent = link.label[0];
-                            p.appendChild(s);
-                          }
-                        }}
-                      />
-                    )}
-                  </a>
-                )}
+                  ) : (
+                    <img src={link.favicon} alt={link.label} className="w-6 h-6 object-cover rounded-full" />
+                  )}
+                </a>
+              )}
 
-                {/* Pencil edit button (owner only, on hover) */}
-                {isOwner && isHovered && !isEditing && !isPending && !isPrompting && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      if (isEmpty) {
-                        setPromptingPlatform(link.platform);
-                        setPromptUrl('');
-                      } else {
-                        setEditingPlatform(link.platform);
-                        setEditUrl(link.url);
-                      }
-                    }}
-                    className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-card border border-border shadow flex items-center justify-center hover:bg-primary hover:text-primary-foreground hover:border-primary transition-colors z-40"
-                    title="Sửa link"
-                  >
-                    <Pencil className="w-2.5 h-2.5" />
-                  </button>
-                )}
+              {isOwner && isHovered && !isEditing && !isPrompting && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (link.isEmpty) {
+                      setPromptingPlatform(link.platform);
+                      setPromptUrl('');
+                    } else {
+                      setEditingPlatform(link.platform);
+                      setEditUrl(link.url);
+                    }
+                  }}
+                  className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-card border border-border shadow flex items-center justify-center hover:bg-primary hover:text-primary-foreground hover:border-primary transition-colors z-40"
+                  title="Sửa link"
+                >
+                  <Pencil className="w-2.5 h-2.5" />
+                </button>
+              )}
 
-                {/* Drag handle indicator on hover */}
-                {isOwner && isHovered && !isEditing && !isPending && !isPrompting && (
-                  <div className="absolute -bottom-1.5 -left-1.5 w-5 h-5 rounded-full bg-card border border-border shadow flex items-center justify-center cursor-grab z-40 opacity-70">
-                    <GripVertical className="w-2.5 h-2.5 text-muted-foreground" />
-                  </div>
-                )}
-              </div>
-            );
-          });
-        })()}
+              {isOwner && isHovered && !isEditing && !isPrompting && localLinks.length > 0 && (
+                <div className="absolute -bottom-1.5 -left-1.5 w-5 h-5 rounded-full bg-card border border-border shadow flex items-center justify-center cursor-grab z-40 opacity-70">
+                  <GripVertical className="w-2.5 h-2.5 text-muted-foreground" />
+                </div>
+              )}
+            </div>
+          );
+        })}
 
-        {/* Nút + */}
         {showAddBtn && (
           <div
             className="absolute"
             style={{
-              left: `${CENTER + addPos.x - ORBIT_SIZE / 2}px`,
-              top: `${CENTER + addPos.y - ORBIT_SIZE / 2}px`,
+              left: `${center + addPos.x - ORBIT_SIZE / 2}px`,
+              top: `${center + addPos.y - ORBIT_SIZE / 2}px`,
               width: `${ORBIT_SIZE}px`,
               height: `${ORBIT_SIZE}px`,
               zIndex: showAddPicker ? 30 : 20,
@@ -624,10 +708,9 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
                 className="fixed md:absolute z-50 bg-card border border-border rounded-xl shadow-xl p-4 md:p-3"
                 style={{
                   width: 'min(340px, 90vw)',
-                  ...(window.innerWidth < 768
+                  ...(isMobile
                     ? { left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }
-                    : { bottom: '110%', left: '50%', transform: 'translateX(-50%)' }
-                  ),
+                    : { bottom: '110%', left: '50%', transform: 'translateX(-50%)' }),
                 }}
               >
                 <div className="flex items-center justify-between mb-2">
@@ -637,19 +720,25 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
                   </button>
                 </div>
                 <div className="grid grid-cols-3 gap-1.5">
-                  {availablePlatforms.map((p) => {
-                    const preset = PLATFORM_PRESETS[p];
+                  {availablePlatforms.map((platform) => {
+                    const preset = PLATFORM_PRESETS[platform];
                     return (
                       <button
-                        key={p}
+                        key={platform}
                         type="button"
-                        onClick={() => handlePickPlatform(p)}
-                        className="flex flex-col items-center gap-1 px-1 py-2 rounded-lg border border-border text-[10px] transition-all hover:border-current hover:scale-105"
-                        onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = preset.color; (e.currentTarget as HTMLButtonElement).style.background = `${preset.color}18`; }}
-                        onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = ''; (e.currentTarget as HTMLButtonElement).style.background = ''; }}
+                        onClick={() => handlePickPlatform(platform)}
+                        className="flex flex-col items-center gap-1 px-1 py-2 rounded-lg border border-border text-[10px] transition-all hover:scale-105"
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.borderColor = preset.color;
+                          e.currentTarget.style.background = `${preset.color}18`;
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.borderColor = '';
+                          e.currentTarget.style.background = '';
+                        }}
                       >
-                        <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center shadow-sm" style={{ border: `1.5px solid ${preset.color}` }}>
-                          <img src={preset.favicon} alt={preset.label} className="w-4 h-4 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                        <div className="w-6 h-6 rounded-full bg-background flex items-center justify-center shadow-sm" style={{ border: `1.5px solid ${preset.color}` }}>
+                          <img src={preset.favicon} alt={preset.label} className="w-4 h-4 object-contain" />
                         </div>
                         <span className="truncate w-full text-center font-medium leading-tight">{preset.label}</span>
                       </button>
@@ -660,7 +749,7 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
             )}
             <button
               type="button"
-              onClick={() => setShowAddPicker(!showAddPicker)}
+              onClick={() => setShowAddPicker((prev) => !prev)}
               className="w-full h-full rounded-full bg-primary text-primary-foreground hover:scale-110 hover:bg-primary/90 transition-all duration-200 shadow-md flex items-center justify-center"
               style={{ boxShadow: '0 0 10px hsl(var(--primary) / 0.5)' }}
               title="Thêm mạng xã hội"
