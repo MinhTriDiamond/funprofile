@@ -137,7 +137,7 @@ export const ProfileHeader = ({
               </div>
 
               {/* Name & Info */}
-              <div className="flex-1 text-center md:text-left md:ml-4">
+              <div className="flex-1 text-center md:text-left md:ml-4 relative z-30">
                 <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-green-700">
                   {profile?.display_name || profile?.username}
                 </h1>
