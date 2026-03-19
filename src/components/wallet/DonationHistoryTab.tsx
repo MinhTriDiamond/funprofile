@@ -1,15 +1,21 @@
 import { useState, useMemo } from 'react';
 import { getTodayVN } from '@/lib/vnTimezone';
 import { useNavigate } from 'react-router-dom';
+import { format } from 'date-fns';
+import { vi } from 'date-fns/locale';
 import {
   Download, Loader2, RefreshCw, Search, ExternalLink,
   Copy, ArrowRight, Sparkles, CheckCircle, Clock,
-  Hash, TrendingUp, Calendar, Activity, Flame, Radar
+  Hash, TrendingUp, Calendar as CalendarIcon, Activity, Flame, Radar
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Calendar } from '@/components/ui/calendar';
+import {
+  Popover, PopoverContent, PopoverTrigger,
+} from '@/components/ui/popover';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -23,10 +29,11 @@ import { getBscScanTxUrl } from '@/lib/bscScanHelpers';
 import { toast } from 'sonner';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { useQueryClient } from '@tanstack/react-query';
+import { cn } from '@/lib/utils';
 
 type ViewMode = 'both' | 'sent' | 'received';
 type TokenFilter = 'all' | 'CAMLY' | 'USDT' | 'BNB' | 'BTCB';
-type TimeFilter = 'all' | 'today' | 'week' | 'month';
+type TimeFilter = 'all' | 'today' | 'week' | 'month' | 'custom';
 
 const copyToClipboard = (text: string) => {
   navigator.clipboard.writeText(text);
