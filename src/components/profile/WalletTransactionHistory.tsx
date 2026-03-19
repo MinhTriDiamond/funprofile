@@ -78,17 +78,17 @@ function SummaryTable({ summary, activeFilter }: { summary: DonationSummary; act
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
-                <TableHead className="text-[11px] font-bold w-[60px] px-2 py-1.5 whitespace-nowrap">Token</TableHead>
+                <TableHead className="text-sm font-bold w-[80px] px-3 py-2 whitespace-nowrap">Token</TableHead>
                 {showReceived && (
                   <>
-                    <TableHead className="text-[11px] font-bold text-green-600 text-right px-2 py-1.5 whitespace-nowrap">Tổng nhận</TableHead>
-                    <TableHead className="text-[11px] font-bold text-green-600 text-right px-2 py-1.5 whitespace-nowrap">Lệnh</TableHead>
+                    <TableHead className="text-sm font-bold text-green-600 text-right px-3 py-2 whitespace-nowrap">Tổng nhận</TableHead>
+                    <TableHead className="text-sm font-bold text-green-600 text-right px-3 py-2 whitespace-nowrap">Lệnh</TableHead>
                   </>
                 )}
                 {showSent && (
                   <>
-                    <TableHead className="text-[11px] font-bold text-red-600 text-right px-2 py-1.5 whitespace-nowrap">Tổng đã tặng</TableHead>
-                    <TableHead className="text-[11px] font-bold text-red-600 text-right px-2 py-1.5 whitespace-nowrap">Lệnh</TableHead>
+                    <TableHead className="text-sm font-bold text-red-600 text-right px-3 py-2 whitespace-nowrap">Tổng đã tặng</TableHead>
+                    <TableHead className="text-sm font-bold text-red-600 text-right px-3 py-2 whitespace-nowrap">Lệnh</TableHead>
                   </>
                 )}
               </TableRow>
@@ -100,29 +100,29 @@ function SummaryTable({ summary, activeFilter }: { summary: DonationSummary; act
 
                 return (
                   <TableRow key={sym}>
-                    <TableCell className="px-2 py-1.5">
-                      <div className="flex items-center gap-1.5 whitespace-nowrap">
+                    <TableCell className="px-3 py-2">
+                      <div className="flex items-center gap-2 whitespace-nowrap">
                         <TokenLogo symbol={sym} />
-                        <span className="text-[11px] font-bold">{sym}</span>
+                        <span className="text-sm font-bold">{sym}</span>
                       </div>
                     </TableCell>
                     {showReceived && (
                       <>
-                        <TableCell className="text-right px-2 py-1.5 whitespace-nowrap">
-                          <span className="text-[11px] font-semibold text-green-600">{formatAmount(recv?.amount ?? 0)}</span>
+                        <TableCell className="text-right px-3 py-2 whitespace-nowrap">
+                          <span className="text-sm font-semibold text-green-600">{formatAmount(recv?.amount ?? 0)}</span>
                         </TableCell>
-                        <TableCell className="text-right px-2 py-1.5 whitespace-nowrap">
-                          <span className="text-[11px] text-muted-foreground">{recv?.count ?? 0}</span>
+                        <TableCell className="text-right px-3 py-2 whitespace-nowrap">
+                          <span className="text-sm text-muted-foreground">{recv?.count ?? 0}</span>
                         </TableCell>
                       </>
                     )}
                     {showSent && (
                       <>
-                        <TableCell className="text-right px-2 py-1.5 whitespace-nowrap">
-                          <span className="text-[11px] font-semibold text-red-600">{formatAmount(sent?.amount ?? 0)}</span>
+                        <TableCell className="text-right px-3 py-2 whitespace-nowrap">
+                          <span className="text-sm font-semibold text-red-600">{formatAmount(sent?.amount ?? 0)}</span>
                         </TableCell>
-                        <TableCell className="text-right px-2 py-1.5 whitespace-nowrap">
-                          <span className="text-[11px] text-muted-foreground">{sent?.count ?? 0}</span>
+                        <TableCell className="text-right px-3 py-2 whitespace-nowrap">
+                          <span className="text-sm text-muted-foreground">{sent?.count ?? 0}</span>
                         </TableCell>
                       </>
                     )}
