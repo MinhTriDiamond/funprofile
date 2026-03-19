@@ -1,7 +1,7 @@
 /**
  * auto-finalize-recordings Edge Function
  * Runs via pg_cron every 5 minutes.
- * 1. Auto-close sessions stuck as 'live' for > 30 min
+ * 1. Auto-close sessions stuck as 'live' for > 4 hours (with no heartbeat in last 2 min)
  * 2. Reset recordings stuck in 'assembling' > 10 min
  * 3. Finalize stuck recordings by creating manifest.json (fast, no timeout)
  * 4. Optionally concat small recordings (< 50 chunks) into single file
