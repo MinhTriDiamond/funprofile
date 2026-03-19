@@ -104,26 +104,26 @@ function SummaryTable({ summary, activeFilter }: { summary: DonationSummary; act
                     <TableCell className="px-2 py-1">
                       <div className="flex items-center gap-1.5 whitespace-nowrap">
                         <TokenLogo symbol={sym} />
-                        <span className="text-xs font-bold">{sym}</span>
+                        <span className="text-sm font-bold">{sym}</span>
                       </div>
                     </TableCell>
                     {showReceived && (
                       <>
                         <TableCell className="text-right px-2 py-1 whitespace-nowrap">
-                          <span className="text-xs font-semibold text-green-600">{formatAmount(recv?.amount ?? 0)}</span>
+                          <span className="text-sm font-semibold text-green-600">{formatAmount(recv?.amount ?? 0)}</span>
                         </TableCell>
                         <TableCell className="text-right px-2 py-1 whitespace-nowrap">
-                          <span className="text-xs font-semibold text-green-600">{recv?.count ?? 0}</span>
+                          <span className="text-sm font-semibold text-green-600">{recv?.count ?? 0}</span>
                         </TableCell>
                       </>
                     )}
                     {showSent && (
                       <>
                         <TableCell className="text-right px-2 py-1 whitespace-nowrap">
-                          <span className="text-xs font-semibold text-red-600">{formatAmount(sent?.amount ?? 0)}</span>
+                          <span className="text-sm font-semibold text-red-600">{formatAmount(sent?.amount ?? 0)}</span>
                         </TableCell>
                         <TableCell className="text-right px-2 py-1 whitespace-nowrap">
-                          <span className="text-xs font-semibold text-red-600">{sent?.count ?? 0}</span>
+                          <span className="text-sm font-semibold text-red-600">{sent?.count ?? 0}</span>
                         </TableCell>
                       </>
                     )}
