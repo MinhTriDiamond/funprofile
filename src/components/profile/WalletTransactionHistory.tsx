@@ -452,17 +452,6 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
             ))}
 
             <div className="ml-auto flex items-center gap-1.5">
-              {/* Summary toggle */}
-              <Button
-                size="sm"
-                variant={showSummary ? 'secondary' : 'ghost'}
-                onClick={() => setShowSummary(prev => !prev)}
-                className="h-8 text-sm gap-1"
-              >
-                <BarChart3 className="w-3.5 h-3.5" />
-                Tổng kết
-              </Button>
-
               {/* Date From */}
               <Popover>
                 <PopoverTrigger asChild>
@@ -471,7 +460,7 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
                     {fromDate ? format(fromDate, 'dd/MM/yyyy') : 'Từ ngày'}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="end">
+                <PopoverContent className="w-auto p-0 z-[9999]" align="end">
                   <Calendar
                     mode="single"
                     selected={fromDate}
@@ -491,7 +480,7 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
                     {toDate ? format(toDate, 'dd/MM/yyyy') : 'Đến ngày'}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="end">
+                <PopoverContent className="w-auto p-0 z-[9999]" align="end">
                   <Calendar
                     mode="single"
                     selected={toDate}
@@ -512,10 +501,8 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
             </div>
           </div>
 
-          {/* Summary Section */}
-          {showSummary && (
-            <SummaryTable summary={summary} walletBalances={walletBalances} />
-          )}
+          {/* Summary Section — always visible */}
+          <SummaryTable summary={summary} walletBalances={walletBalances} activeFilter={filter} />
         </div>
 
         {/* Scrollable content */}
