@@ -54,9 +54,75 @@ export function usePublicDonationHistory(userId: string | undefined) {
   const [hasMore, setHasMore] = useState(true);
   const [summary, setSummary] = useState<DonationSummary>({ received: {}, sent: {}, receivedCount: 0, sentCount: 0, totalCount: 0 });
   const [summaryLoading, setSummaryLoading] = useState(false);
+  const [dateFrom, setDateFrom] = useState<string | null>(null);
+  const [dateTo, setDateTo] = useState<string | null>(null);
 
-  const fetchSummary = useCallback(async () => {
+  const computeSummaryFromDonations = useCallback((records: DonationRecord[]) => {
+    const received: TokenBreakdown = {};
+    const sent: TokenBreakdown = {};
+    let receivedCount = 0;
+    let sentCount = 0;
+
+    for (const d of records) {
+      if (d.type === 'swap') {
+        // swap FROM = sent, swap TO = received
+        const fromSym = d.from_symbol || d.token_symbol;
+        const toSym = d.to_symbol || d.token_symbol;
+        if (fromSym) {
+          if (!sent[fromSym]) sent[fromSym] = { amount: 0, count: 0 };
+          sent[fromSym].amount += Number(d.from_amount || d.amount) || 0;
+          sent[fromSym].count += 1;
+          sentCount++;
+        }
+        if (toSym) {
+          if (!received[toSym]) received[toSym] = { amount: 0, count: 0 };
+          received[toSym].amount += Number(d.to_amount || 0);
+          received[toSym].count += 1;
+          receivedCount++;
+        }
+      } else if (d.type === 'transfer') {
+        const sym = d.token_symbol;
+        if (d.direction === 'in') {
+          if (!received[sym]) received[sym] = { amount: 0, count: 0 };
+          received[sym].amount += Number(d.amount) || 0;
+          received[sym].count += 1;
+          receivedCount++;
+        } else {
+          if (!sent[sym]) sent[sym] = { amount: 0, count: 0 };
+          sent[sym].amount += Number(d.amount) || 0;
+          sent[sym].count += 1;
+          sentCount++;
+        }
+      } else {
+        // donation
+        const sym = d.token_symbol;
+        const amt = Number(d.amount) || 0;
+        const isSent = d.sender_id === userId;
+        if (isSent) {
+          if (!sent[sym]) sent[sym] = { amount: 0, count: 0 };
+          sent[sym].amount += amt;
+          sent[sym].count += 1;
+          sentCount++;
+        } else {
+          if (!received[sym]) received[sym] = { amount: 0, count: 0 };
+          received[sym].amount += amt;
+          received[sym].count += 1;
+          receivedCount++;
+        }
+      }
+    }
+
+    return { received, sent, receivedCount, sentCount, totalCount: receivedCount + sentCount };
+  }, [userId]);
+
+  const fetchSummary = useCallback(async (fromDate?: string | null, toDate?: string | null) => {
     if (!userId) return;
+    // If date range is set, we compute summary client-side from all fetched donations
+    // Otherwise use RPC for full summary
+    if (fromDate || toDate) {
+      // Will be computed after fetchDonations
+      return;
+    }
     setSummaryLoading(true);
     try {
       const { data, error: rpcError } = await supabase.rpc('get_user_donation_summary', { p_user_id: userId });
