@@ -240,7 +240,7 @@ export const MobileStats = ({ userId, username, avatarUrl }: MobileStatsProps) =
   return (
     <div className="w-full">
       <div className="rounded-xl overflow-hidden border-[3px] border-[#D4AF37] bg-white/60 backdrop-blur-xl shadow-lg">
-        <div className="p-3">
+        <div className="p-3 pb-16">
           {/* Header with user info */}
           <div className="flex items-center justify-center gap-2 mb-3">
             <Avatar className="w-8 h-8 border-2 border-[#D4AF37]">
@@ -263,7 +263,7 @@ export const MobileStats = ({ userId, username, avatarUrl }: MobileStatsProps) =
             </span>
           </div>
           
-          {/* Compact 4x2 Grid */}
+          {/* Row 1: 4 stat cells */}
           <div className="grid grid-cols-4 gap-1.5 text-center mb-2">
             <MobileStatCell icon={<ArrowUp className="w-3.5 h-3.5" />} value={stats.posts_count} label={t('posts')} />
             <MobileStatCell icon={<Star className="w-3.5 h-3.5" />} value={stats.reactions_on_posts} label={t('reactions')} />
@@ -271,18 +271,31 @@ export const MobileStats = ({ userId, username, avatarUrl }: MobileStatsProps) =
             <MobileStatCell icon={<Users className="w-3.5 h-3.5" />} value={stats.friends_count} label={t('friends')} />
           </div>
           
-          {/* Second row: Shares, Livestreams, Claimable, Claimed */}
-          <div className="grid grid-cols-4 gap-1.5 text-center mb-2">
-            <MobileStatCell icon={<Share2 className="w-3.5 h-3.5" />} value={stats.shares_count} label={t('shares')} />
-            <MobileStatCell icon={<Video className="w-3.5 h-3.5" />} value={stats.livestreams_count} label={t('liveVideo')} />
-            <MobileStatCell icon={<Gift className="w-3.5 h-3.5" />} value={stats.claimable} label={t('claimableReward')} />
-            <MobileStatCell icon={<Coins className="w-3.5 h-3.5" />} value={stats.claimed} label={t('claimedReward')} />
+          {/* Row 2: Cells spread to sides, center space for avatar */}
+          <div className="flex gap-1.5 mb-2">
+            {/* Left side */}
+            <div className="flex-1 grid grid-cols-2 gap-1.5 text-center">
+              <MobileStatCell icon={<Share2 className="w-3.5 h-3.5" />} value={stats.shares_count} label={t('shares')} />
+              <MobileStatCell icon={<Video className="w-3.5 h-3.5" />} value={stats.livestreams_count} label={t('liveVideo')} />
+            </div>
+            {/* Center gap for avatar overlap */}
+            <div className="w-[100px] flex-shrink-0" />
+            {/* Right side */}
+            <div className="flex-1 grid grid-cols-2 gap-1.5 text-center">
+              <MobileStatCell icon={<Gift className="w-3.5 h-3.5" />} value={stats.claimable} label={t('claimableReward')} />
+              <MobileStatCell icon={<Coins className="w-3.5 h-3.5" />} value={stats.claimed} label={t('claimedReward')} />
+            </div>
           </div>
           
-          {/* Total rows */}
-          <div className="grid grid-cols-2 gap-1.5">
-            <MobileTotalRow icon={<Calendar className="w-3.5 h-3.5" />} label={t('today')} value={stats.today_reward} />
-            <MobileTotalRow icon={<BadgeDollarSign className="w-3.5 h-3.5" />} label={t('totalReward')} value={stats.total_reward} />
+          {/* Total rows - also spread to sides */}
+          <div className="flex gap-1.5">
+            <div className="flex-1">
+              <MobileTotalRow icon={<Calendar className="w-3.5 h-3.5" />} label={t('today')} value={stats.today_reward} />
+            </div>
+            <div className="w-[100px] flex-shrink-0" />
+            <div className="flex-1">
+              <MobileTotalRow icon={<BadgeDollarSign className="w-3.5 h-3.5" />} label={t('totalReward')} value={stats.total_reward} />
+            </div>
           </div>
         </div>
       </div>
