@@ -49,6 +49,7 @@ export function DonationHistoryTab() {
   const [tokenFilter, setTokenFilter] = useState<TokenFilter>('all');
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
   const [search, setSearch] = useState('');
+  const [customDateRange, setCustomDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({ from: undefined, to: undefined });
   const [selectedDonation, setSelectedDonation] = useState<DonationRecord | null>(null);
   const [selectedType, setSelectedType] = useState<'sent' | 'received'>('sent');
   const [isCelebrationOpen, setIsCelebrationOpen] = useState(false);
