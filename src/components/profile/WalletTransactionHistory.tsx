@@ -73,23 +73,23 @@ function SummaryTable({ summary, activeFilter }: { summary: DonationSummary; act
   }
 
   return (
-    <div className="space-y-3 mb-4">
-      <div className="border border-border rounded-xl overflow-hidden">
+    <div className="space-y-1.5 mb-2">
+      <div className="border border-border rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
-                <TableHead className="text-sm font-bold w-[80px] px-3 py-2 whitespace-nowrap">Token</TableHead>
+                <TableHead className="text-xs font-bold w-[70px] px-2 py-1.5 whitespace-nowrap">Token</TableHead>
                 {showReceived && (
                   <>
-                    <TableHead className="text-sm font-bold text-green-600 text-right px-3 py-2 whitespace-nowrap">Tổng nhận</TableHead>
-                    <TableHead className="text-sm font-bold text-green-600 text-right px-3 py-2 whitespace-nowrap">Lệnh</TableHead>
+                    <TableHead className="text-xs font-bold text-green-600 text-right px-2 py-1.5 whitespace-nowrap">Tổng nhận</TableHead>
+                    <TableHead className="text-xs font-bold text-green-600 text-right px-2 py-1.5 whitespace-nowrap">Lệnh</TableHead>
                   </>
                 )}
                 {showSent && (
                   <>
-                    <TableHead className="text-sm font-bold text-red-600 text-right px-3 py-2 whitespace-nowrap">Tổng đã tặng</TableHead>
-                    <TableHead className="text-sm font-bold text-red-600 text-right px-3 py-2 whitespace-nowrap">Lệnh</TableHead>
+                    <TableHead className="text-xs font-bold text-red-600 text-right px-2 py-1.5 whitespace-nowrap">Tổng đã tặng</TableHead>
+                    <TableHead className="text-xs font-bold text-red-600 text-right px-2 py-1.5 whitespace-nowrap">Lệnh</TableHead>
                   </>
                 )}
               </TableRow>
@@ -101,29 +101,29 @@ function SummaryTable({ summary, activeFilter }: { summary: DonationSummary; act
 
                 return (
                   <TableRow key={sym}>
-                    <TableCell className="px-3 py-2">
-                      <div className="flex items-center gap-2 whitespace-nowrap">
+                    <TableCell className="px-2 py-1">
+                      <div className="flex items-center gap-1.5 whitespace-nowrap">
                         <TokenLogo symbol={sym} />
-                        <span className="text-sm font-bold">{sym}</span>
+                        <span className="text-xs font-bold">{sym}</span>
                       </div>
                     </TableCell>
                     {showReceived && (
                       <>
-                        <TableCell className="text-right px-3 py-2 whitespace-nowrap">
-                          <span className="text-sm font-semibold text-green-600">{formatAmount(recv?.amount ?? 0)}</span>
+                        <TableCell className="text-right px-2 py-1 whitespace-nowrap">
+                          <span className="text-xs font-semibold text-green-600">{formatAmount(recv?.amount ?? 0)}</span>
                         </TableCell>
-                        <TableCell className="text-right px-3 py-2 whitespace-nowrap">
-                          <span className="text-sm font-semibold text-green-600">{recv?.count ?? 0}</span>
+                        <TableCell className="text-right px-2 py-1 whitespace-nowrap">
+                          <span className="text-xs font-semibold text-green-600">{recv?.count ?? 0}</span>
                         </TableCell>
                       </>
                     )}
                     {showSent && (
                       <>
-                        <TableCell className="text-right px-3 py-2 whitespace-nowrap">
-                          <span className="text-sm font-semibold text-red-600">{formatAmount(sent?.amount ?? 0)}</span>
+                        <TableCell className="text-right px-2 py-1 whitespace-nowrap">
+                          <span className="text-xs font-semibold text-red-600">{formatAmount(sent?.amount ?? 0)}</span>
                         </TableCell>
-                        <TableCell className="text-right px-3 py-2 whitespace-nowrap">
-                          <span className="text-sm font-semibold text-red-600">{sent?.count ?? 0}</span>
+                        <TableCell className="text-right px-2 py-1 whitespace-nowrap">
+                          <span className="text-xs font-semibold text-red-600">{sent?.count ?? 0}</span>
                         </TableCell>
                       </>
                     )}
@@ -135,26 +135,24 @@ function SummaryTable({ summary, activeFilter }: { summary: DonationSummary; act
         </div>
       </div>
 
-      <p className="text-sm text-muted-foreground italic px-1">* Tổng nhận/gửi bao gồm giao dịch tặng/nhận, swap và chuyển ví qua FUN.RICH.</p>
-
-      <div className="flex items-center justify-between bg-muted/50 border border-border rounded-xl px-4 py-3">
-        <div className="flex items-center gap-5">
+      <div className="flex items-center justify-between bg-muted/50 border border-border rounded-lg px-3 py-1.5">
+        <div className="flex items-center gap-4">
           {showReceived && (
-            <div className="flex items-center gap-1.5">
-              <ArrowDownLeft className="w-4 h-4 text-green-600" />
-              <span className="text-sm text-muted-foreground">Nhận:</span>
-              <span className="text-sm font-bold text-green-600">{summary.receivedCount} lệnh</span>
+            <div className="flex items-center gap-1">
+              <ArrowDownLeft className="w-3.5 h-3.5 text-green-600" />
+              <span className="text-xs text-muted-foreground">Nhận:</span>
+              <span className="text-xs font-bold text-green-600">{summary.receivedCount}</span>
             </div>
           )}
           {showSent && (
-            <div className="flex items-center gap-1.5">
-              <ArrowUpRight className="w-4 h-4 text-red-600" />
-              <span className="text-sm text-muted-foreground">Gửi:</span>
-              <span className="text-sm font-bold text-red-600">{summary.sentCount} lệnh</span>
+            <div className="flex items-center gap-1">
+              <ArrowUpRight className="w-3.5 h-3.5 text-red-600" />
+              <span className="text-xs text-muted-foreground">Gửi:</span>
+              <span className="text-xs font-bold text-red-600">{summary.sentCount}</span>
             </div>
           )}
         </div>
-        <span className="text-sm font-bold text-foreground">Tổng: {summary.totalCount} GD</span>
+        <span className="text-xs font-bold text-foreground">Tổng: {summary.totalCount} GD</span>
       </div>
     </div>
   );
@@ -417,21 +415,21 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
           Lịch sử GD
         </Button>
       </DialogTrigger>
-      <DialogContent className="w-[905px] max-w-[95vw] sm:max-w-[905px] max-h-[85vh] overflow-hidden flex flex-col">
+      <DialogContent className="w-[905px] max-w-[95vw] sm:max-w-[905px] max-h-[90vh] overflow-hidden flex flex-col">
         <div className="flex-shrink-0">
           <DialogHeader>
-            <DialogTitle className="flex items-center justify-center gap-2 text-2xl uppercase tracking-wider font-extrabold w-full" style={{ color: '#2E7D32', textShadow: '0 1px 2px rgba(46,125,50,0.2)' }}>
-              <Clock className="w-6 h-6" style={{ color: '#2E7D32' }} />
+            <DialogTitle className="flex items-center justify-center gap-1.5 text-xl uppercase tracking-wider font-extrabold w-full" style={{ color: '#2E7D32', textShadow: '0 1px 2px rgba(46,125,50,0.2)' }}>
+              <Clock className="w-5 h-5" style={{ color: '#2E7D32' }} />
               Lịch sử giao dịch cá nhân
             </DialogTitle>
             <DialogDescription className="sr-only">Xem lịch sử chuyển và nhận tiền cá nhân</DialogDescription>
           </DialogHeader>
 
           {/* Filters + Date Range row */}
-          <div className="flex items-center gap-2 py-3 flex-wrap">
-            <Filter className="w-5 h-5 text-muted-foreground" />
+          <div className="flex items-center gap-1.5 py-1.5 flex-wrap">
+            <Filter className="w-4 h-4 text-muted-foreground" />
             {filters.map(f => (
-              <Button key={f.key} size="sm" variant={filter === f.key ? 'secondary' : 'ghost'} onClick={() => changeFilter(f.key)} className="h-9 text-base px-4">
+              <Button key={f.key} size="sm" variant={filter === f.key ? 'secondary' : 'ghost'} onClick={() => changeFilter(f.key)} className="h-7 text-sm px-3">
                 {f.label}
               </Button>
             ))}
