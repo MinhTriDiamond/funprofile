@@ -140,19 +140,19 @@ function SummaryTable({ summary, activeFilter }: { summary: DonationSummary; act
           {showReceived && (
             <div className="flex items-center gap-1">
               <ArrowDownLeft className="w-3.5 h-3.5 text-green-600" />
-              <span className="text-xs text-muted-foreground">Nhận:</span>
-              <span className="text-xs font-bold text-green-600">{summary.receivedCount}</span>
+              <span className="text-sm text-muted-foreground">Nhận:</span>
+              <span className="text-sm font-bold text-green-600">{summary.receivedCount}</span>
             </div>
           )}
           {showSent && (
             <div className="flex items-center gap-1">
               <ArrowUpRight className="w-3.5 h-3.5 text-red-600" />
-              <span className="text-xs text-muted-foreground">Gửi:</span>
-              <span className="text-xs font-bold text-red-600">{summary.sentCount}</span>
+              <span className="text-sm text-muted-foreground">Gửi:</span>
+              <span className="text-sm font-bold text-red-600">{summary.sentCount}</span>
             </div>
           )}
         </div>
-        <span className="text-xs font-bold text-foreground">Tổng: {summary.totalCount} GD</span>
+        <span className="text-sm font-bold text-foreground">Tổng: {summary.totalCount} GD</span>
       </div>
     </div>
   );
