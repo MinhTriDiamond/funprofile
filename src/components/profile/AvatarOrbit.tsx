@@ -5,6 +5,7 @@ import { PLATFORM_PRESETS, PLATFORM_ORDER } from './SocialLinksEditor';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { toJson } from '@/utils/supabaseJsonHelpers';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // Static orbit — icons spread from bottom upward
 
@@ -17,12 +18,18 @@ export interface SocialLink {
   avatarUrl?: string;
 }
 
-const ORBIT_RADIUS = 115;
+// Desktop constants
+const ORBIT_RADIUS_DESKTOP = 115;
+const ORBIT_RADIUS_MOBILE = 82;
 const ORBIT_SIZE = 40;
 const AVATAR_SIZE = 176;
-// Wrapper lớn đủ chứa orbit không bị clip: 176 + (115+40)*2 = 486px
-const WRAPPER_SIZE = AVATAR_SIZE + (ORBIT_RADIUS + ORBIT_SIZE) * 2;
-const CENTER = WRAPPER_SIZE / 2; // 243px
+
+function getOrbitConfig(isMobile: boolean) {
+  const radius = isMobile ? ORBIT_RADIUS_MOBILE : ORBIT_RADIUS_DESKTOP;
+  const wrapperSize = AVATAR_SIZE + (radius + ORBIT_SIZE) * 2;
+  const center = wrapperSize / 2;
+  return { radius, wrapperSize, center };
+}
 
 // Cache the processed diamond so we only compute it once per session
 let _cachedDiamondUrl: string | null = null;
@@ -84,9 +91,9 @@ function computeAddAngle(n: number): number {
   return angles[angles.length - 1] ?? 180;
 }
 
-function angleToPos(angleDeg: number) {
+function angleToPos(angleDeg: number, radius: number) {
   const rad = (angleDeg * Math.PI) / 180;
-  return { x: Math.sin(rad) * ORBIT_RADIUS, y: -Math.cos(rad) * ORBIT_RADIUS };
+  return { x: Math.sin(rad) * radius, y: -Math.cos(rad) * radius };
 }
 
 interface AvatarOrbitProps {
@@ -99,6 +106,8 @@ interface AvatarOrbitProps {
 
 export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userId, onLinksChanged }: AvatarOrbitProps) {
   const transparentDiamond = useTransparentDiamond(diamondSrc);
+  const isMobile = useIsMobile();
+  const { radius: ORBIT_RADIUS, wrapperSize: WRAPPER_SIZE, center: CENTER } = getOrbitConfig(isMobile);
 
   // Static orbit — no animation, refs kept for drag compatibility
   const isOrbitHovered = useRef(false);
@@ -385,7 +394,7 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
   }, [localLinks, userId, onLinksChanged]);
 
   const addAngle = computeAddAngle(allLinks.length);
-  const addPos = angleToPos(addAngle);
+  const addPos = angleToPos(addAngle, ORBIT_RADIUS);
   const showAddBtn = isOwner && allLinks.length < 9 && !pendingPlatform;
 
   return (
@@ -408,7 +417,7 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
         }}
       >
         {/* Kim cương: mũi nhọn dưới chạm sát viền ngoài avatar */}
-        <div style={{ position: 'absolute', left: '50%', top: '90px', transform: 'translateX(-50%)' }}>
+        <div style={{ position: 'absolute', left: '50%', top: isMobile ? '70px' : '90px', transform: 'translateX(-50%)' }}>
           {/* Sparkle dots */}
           <span className="sparkle-dot-1 absolute text-yellow-300" style={{ top: '18%', left: '10%', fontSize: '8px' }}>✦</span>
           <span className="sparkle-dot-2 absolute text-cyan-300" style={{ top: '5%', left: '55%', fontSize: '7px' }}>✦</span>
@@ -446,7 +455,7 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
         {(() => {
           baseAnglesRef.current = angles;
           return allLinks.map((link, i) => {
-            const { x, y } = angleToPos(angles[i]);
+            const { x, y } = angleToPos(angles[i], ORBIT_RADIUS);
             const isEditing = editingPlatform === link.platform;
             const isPending = !!link.isPending;
             const isEmpty = !!link.isEmpty;

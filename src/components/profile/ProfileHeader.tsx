@@ -67,7 +67,7 @@ export const ProfileHeader = ({
 
       {/* Mobile: Honor Board only (no cover photo) */}
       <div className="block md:hidden max-w-[1100px] mx-auto px-4">
-        <div className="pt-2 pb-[70px]">
+        <div className="pt-2 pb-[95px]">
           <MobileStats userId={profile.id} username={profile?.username} avatarUrl={profile?.avatar_url ?? undefined} />
         </div>
       </div>
@@ -109,7 +109,7 @@ export const ProfileHeader = ({
           <div className="px-4 md:px-8 py-4 md:py-6">
             <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
               {/* Avatar */}
-              <div className="-mt-[90px] md:-mt-[217px] relative z-20 flex justify-center md:justify-start flex-shrink-0 scale-[0.85] md:scale-100 origin-top" style={{ overflow: 'visible' }}>
+              <div className="-mt-[80px] md:-mt-[217px] relative z-20 flex justify-center md:justify-start flex-shrink-0 scale-[0.85] md:scale-100 origin-top" style={{ overflow: 'visible' }}>
                 <AvatarOrbit
                   key={profile?.id}
                   socialLinks={Array.isArray(profile?.social_links) ? profile.social_links : []}
