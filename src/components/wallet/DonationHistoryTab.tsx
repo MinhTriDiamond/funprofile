@@ -133,34 +133,33 @@ export function DonationHistoryTab() {
     return combined;
   }, [sentDonations, receivedDonations, viewMode, tokenFilter, timeFilter, search, customDateRange]);
 
-  // Stats
+  // Stats — computed from ALL raw data (before filters)
+  const allRawDonations = useMemo(() => [...sentDonations, ...receivedDonations], [sentDonations, receivedDonations]);
+  const totalAllCount = allRawDonations.length;
+
   const todayCount = useMemo(() => {
     const todayVN = getTodayVN();
-    return allDonations.filter(d => {
+    return allRawDonations.filter(d => {
       const created = new Date(d.created_at);
       const vnTime = new Date(created.getTime() + 7 * 60 * 60 * 1000);
       const vnDateStr = `${vnTime.getUTCFullYear()}-${String(vnTime.getUTCMonth() + 1).padStart(2, '0')}-${String(vnTime.getUTCDate()).padStart(2, '0')}`;
       return vnDateStr === todayVN;
     }).length;
-  }, [allDonations]);
+  }, [allRawDonations]);
 
-  const successCount = useMemo(() => allDonations.filter(d => d.status === 'confirmed').length, [allDonations]);
-  const pendingCount = useMemo(() => allDonations.filter(d => d.status === 'pending').length, [allDonations]);
+  const successCount = useMemo(() => allRawDonations.filter(d => d.status === 'confirmed').length, [allRawDonations]);
+  const pendingCount = useMemo(() => allRawDonations.filter(d => d.status === 'pending').length, [allRawDonations]);
 
   const totalValue = useMemo(() => {
     const byToken: Record<string, number> = {};
-    allDonations.forEach(d => {
+    allRawDonations.forEach(d => {
       byToken[d.token_symbol] = (byToken[d.token_symbol] || 0) + (parseFloat(d.amount) || 0);
     });
-    // Return dominant token value string
     const entries = Object.entries(byToken).sort((a, b) => b[1] - a[1]);
     if (entries.length === 0) return '0';
     const [token, val] = entries[0];
-    const formatted = val >= 1_000_000_000 ? `${(val / 1_000_000_000).toFixed(2)}B` :
-      val >= 1_000_000 ? `${(val / 1_000_000).toFixed(2)}M` :
-      formatNumber(val, 2);
-    return `${formatted} ${token}`;
-  }, [allDonations]);
+    return `${formatNumber(val, 0)} ${token}`;
+  }, [allRawDonations]);
 
   const handleDonationClick = (donation: DonationRecord & { _type: 'sent' | 'received' }) => {
     setSelectedDonation(donation);
