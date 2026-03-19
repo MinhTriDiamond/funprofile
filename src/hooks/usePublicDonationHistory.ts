@@ -250,6 +250,7 @@ export function usePublicDonationHistory(userId: string | undefined, userCreated
             recipient:profiles!donations_recipient_id_fkey(username, display_name, avatar_url)
           `)
           .order('created_at', { ascending: false });
+        if (userCreatedAt) query = query.gte('created_at', userCreatedAt);
 
         if (currentFilter === 'sent') query = query.eq('sender_id', userId);
         else if (currentFilter === 'received') query = query.eq('recipient_id', userId);

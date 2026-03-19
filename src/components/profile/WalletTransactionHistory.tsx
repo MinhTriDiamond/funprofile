@@ -372,12 +372,12 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
   );
 }
 
-export function WalletTransactionHistory({ userId, walletAddress, userDisplayName, userAvatarUrl, username }: Props) {
+export function WalletTransactionHistory({ userId, walletAddress, userDisplayName, userAvatarUrl, username, userCreatedAt }: Props) {
   const [open, setOpen] = useState(false);
   const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
   const [toDate, setToDate] = useState<Date | undefined>(undefined);
   const navigate = useNavigate();
-  const { donations, loading, error, filter, hasMore, summary, summaryLoading, dateFrom, dateTo, changeFilter, changeDateRange, fetchDonations, fetchSummary, loadMore } = usePublicDonationHistory(userId);
+  const { donations, loading, error, filter, hasMore, summary, summaryLoading, dateFrom, dateTo, changeFilter, changeDateRange, fetchDonations, fetchSummary, loadMore } = usePublicDonationHistory(userId, userCreatedAt);
   const { balances: walletBalances } = usePublicWalletBalances(open ? walletAddress : undefined);
 
   useEffect(() => {
