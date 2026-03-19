@@ -106,6 +106,8 @@ interface AvatarOrbitProps {
 
 export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userId, onLinksChanged }: AvatarOrbitProps) {
   const transparentDiamond = useTransparentDiamond(diamondSrc);
+  const isMobile = useIsMobile();
+  const { radius: ORBIT_RADIUS, wrapperSize: WRAPPER_SIZE, center: CENTER } = getOrbitConfig(isMobile);
 
   // Static orbit — no animation, refs kept for drag compatibility
   const isOrbitHovered = useRef(false);
