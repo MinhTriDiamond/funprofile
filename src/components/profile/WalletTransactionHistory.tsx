@@ -405,8 +405,6 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
     const fromStr = from ? format(from, 'yyyy-MM-dd') : null;
     const toStr = to ? format(to, 'yyyy-MM-dd') : null;
     changeDateRange(fromStr, toStr);
-    // Auto-show summary when date range is set
-    if (from || to) setShowSummary(true);
   };
 
   const clearDateRange = () => {
