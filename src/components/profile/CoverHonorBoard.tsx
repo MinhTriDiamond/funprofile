@@ -239,28 +239,45 @@ export const MobileStats = ({ userId, username, avatarUrl }: MobileStatsProps) =
 
   return (
     <div className="w-full">
-      <div className="rounded-xl overflow-hidden border-[3px] border-[#D4AF37] bg-white/60 backdrop-blur-xl shadow-lg">
-        <div className="p-3 pb-20">
-          {/* Header with user info */}
-          <div className="flex items-center justify-center gap-2 mb-3">
-            <Avatar className="w-8 h-8 border-2 border-[#D4AF37]">
-              <AvatarImage src={avatarUrl} sizeHint="sm" />
-              <AvatarFallback className="bg-gradient-to-br from-green-600 to-green-800 text-white text-sm font-extrabold">
-                {username?.[0]?.toUpperCase() || 'U'}
-              </AvatarFallback>
-            </Avatar>
-            <span 
-              className="text-lg uppercase truncate max-w-[150px] font-black"
-              style={{
-                background: 'linear-gradient(135deg, #FFD700 0%, #FFC125 30%, #FFD700 50%, #FFDF00 70%, #FFD700 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
-                WebkitTextStroke: '0.5px rgba(0,0,0,0.3)',
-              }}
-            >
-              {username || 'USER'}
-            </span>
+      <div 
+        className="rounded-2xl overflow-hidden bg-white/80 backdrop-blur-xl shadow-lg"
+        style={{
+          border: '3px solid transparent',
+          backgroundImage: 'linear-gradient(white, white), linear-gradient(135deg, #22c55e 0%, #4ade80 25%, #22c55e 50%, #16a34a 75%, #22c55e 100%)',
+          backgroundOrigin: 'border-box',
+          backgroundClip: 'padding-box, border-box',
+          boxShadow: '0 0 15px rgba(34, 197, 94, 0.4)'
+        }}
+      >
+        <div className="p-2.5">
+          {/* Header - Logo, Title, Avatar - matching desktop */}
+          <div className="text-center mb-2">
+            <div className="flex items-center justify-center gap-2">
+              <img 
+                src="/fun-profile-logo-40.webp" 
+                alt="FUN Profile" 
+                className="w-7 h-7 rounded-full border-2 border-[#22c55e] shadow-[0_0_12px_rgba(34,197,94,0.6)]"
+              />
+              <h1 
+                className="text-base tracking-wider uppercase leading-none font-black"
+                style={{
+                  fontFamily: "'Playfair Display', Georgia, serif",
+                  background: 'linear-gradient(90deg, #FF6B9D 0%, #C44FE2 15%, #7B68EE 30%, #00CED1 50%, #98FB98 70%, #FFFF00 85%, #FFB347 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                  filter: 'drop-shadow(1px 1px 0px rgba(255,255,255,0.5)) drop-shadow(0 0 8px rgba(255, 182, 193, 0.5))',
+                }}
+              >
+                HONOR BOARD
+              </h1>
+              <Avatar className="w-7 h-7 border-2 border-[#22c55e] shadow-[0_0_12px_rgba(34,197,94,0.6)]">
+                <AvatarImage src={avatarUrl} sizeHint="sm" />
+                <AvatarFallback className="bg-gradient-to-br from-green-600 to-green-800 text-white font-bold text-xs">
+                  {username?.[0]?.toUpperCase() || 'U'}
+                </AvatarFallback>
+              </Avatar>
+            </div>
           </div>
           
           {/* Two Column Layout matching desktop */}
