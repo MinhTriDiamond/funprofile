@@ -176,6 +176,7 @@ export function usePublicDonationHistory(userId: string | undefined, userCreated
           .select('*')
           .eq('user_id', userId)
           .order('created_at', { ascending: false });
+        if (userCreatedAt) swapQuery = swapQuery.gte('created_at', userCreatedAt);
         if (fromDate) swapQuery = swapQuery.gte('created_at', fromDate);
         if (toDate) swapQuery = swapQuery.lte('created_at', `${toDate}T23:59:59`);
         const { data: swapData, error: swapError } = await swapQuery.range(from, to);
