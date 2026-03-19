@@ -386,7 +386,7 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
 
 export function WalletTransactionHistory({ userId, walletAddress, userDisplayName, userAvatarUrl, username }: Props) {
   const [open, setOpen] = useState(false);
-  const [showSummary, setShowSummary] = useState(false);
+  const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
   const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
   const [toDate, setToDate] = useState<Date | undefined>(undefined);
   const navigate = useNavigate();
