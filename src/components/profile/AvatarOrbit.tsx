@@ -5,6 +5,7 @@ import { PLATFORM_PRESETS, PLATFORM_ORDER } from './SocialLinksEditor';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { toJson } from '@/utils/supabaseJsonHelpers';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // Static orbit — icons spread from bottom upward
 
@@ -17,12 +18,18 @@ export interface SocialLink {
   avatarUrl?: string;
 }
 
-const ORBIT_RADIUS = 115;
+// Desktop constants
+const ORBIT_RADIUS_DESKTOP = 115;
+const ORBIT_RADIUS_MOBILE = 82;
 const ORBIT_SIZE = 40;
 const AVATAR_SIZE = 176;
-// Wrapper lớn đủ chứa orbit không bị clip: 176 + (115+40)*2 = 486px
-const WRAPPER_SIZE = AVATAR_SIZE + (ORBIT_RADIUS + ORBIT_SIZE) * 2;
-const CENTER = WRAPPER_SIZE / 2; // 243px
+
+function getOrbitConfig(isMobile: boolean) {
+  const radius = isMobile ? ORBIT_RADIUS_MOBILE : ORBIT_RADIUS_DESKTOP;
+  const wrapperSize = AVATAR_SIZE + (radius + ORBIT_SIZE) * 2;
+  const center = wrapperSize / 2;
+  return { radius, wrapperSize, center };
+}
 
 // Cache the processed diamond so we only compute it once per session
 let _cachedDiamondUrl: string | null = null;
