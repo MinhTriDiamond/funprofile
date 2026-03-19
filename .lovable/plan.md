@@ -1,60 +1,25 @@
 
-Mình đã rà lại code và tách đúng lỗi hiện tại:
 
-### Vấn đề thực sự
-`copyToClipboard` đã được dùng đúng ở `ProfileHeader` và `ReceiveTab`, nên lỗi bây giờ không còn nằm ở clipboard API nữa.
+## Chỉnh Honor Board nằm trong ảnh bìa + Nút sửa ảnh bìa chỉ hiện icon
 
-Với triệu chứng con mô tả:
-- chỉ hỏng ở `Link hồ sơ` và `Mã ví hồ sơ`
-- bấm trên điện thoại thì `không có gì`
+### Thay đổi
 
-thì nguyên nhân nhiều khả năng là **tap không chạm được vào nút copy**, vì vùng `AvatarOrbit` đang phủ lên khu vực thông tin hồ sơ trên mobile. Orbit này dùng wrapper rất lớn (`486px`), `overflow: visible`, `z-index` cao, nên dù nhìn không thấy, nó vẫn có thể chặn tap vào link ví và link hồ sơ.
+**File 1: `src/components/profile/ProfileHeader.tsx`**
 
-### File cần chỉnh
-1. `src/components/profile/AvatarOrbit.tsx`
-2. `src/components/profile/ProfileHeader.tsx`
+1. **Mobile Honor Board**: Di chuyển `MobileStats` từ bên dưới ảnh bìa (dòng 100-103) vào bên trong div ảnh bìa, đặt `absolute` ở phía trên (tương tự desktop). Dùng class như `absolute z-20 block md:hidden top-2 left-2 right-2` để nằm gọn trong ảnh bìa trên mobile.
 
-### Kế hoạch sửa
-1. **Chặn AvatarOrbit bắt sự kiện ngoài vùng thật sự cần bấm**
-   - đặt `pointer-events: none` cho các wrapper/layer trang trí của orbit
-   - chỉ bật lại `pointer-events: auto` cho các phần thật sự tương tác được:
-     - social icon button/link
-     - nút `+`
-     - popup edit / picker khi mở
+2. **Nút sửa ảnh bìa**: Giữ nguyên vị trí nút nhưng thay đổi vị trí phù hợp (ví dụ bottom-right nhỏ gọn) — không cần thay đổi ở ProfileHeader vì text nằm trong CoverPhotoEditor.
 
-2. **Ưu tiên vùng thông tin hồ sơ trên mobile**
-   - bọc khối tên, link hồ sơ, ví trong một container có `relative` + `z-index` cao hơn orbit
-   - nếu cần, tách riêng z-index mobile để chắc chắn tap luôn vào đúng nút copy
+**File 2: `src/components/profile/CoverPhotoEditor.tsx`**
 
-3. **Giữ nguyên logic copy hiện có**
-   - không đổi `copyToClipboard`
-   - không đổi toast/message
-   - chỉ sửa lớp layout/pointer để `onClick` thật sự chạy được
+3. **Xóa chữ "Sửa ảnh bìa"**: Ở dòng 249, bỏ text `{isUploading ? 'Đang tải...' : 'Sửa ảnh bìa'}` và `mr-2` trên icon Camera. Chỉ giữ lại icon Camera. Nút trở thành icon-only button (dùng `size="icon"` hoặc padding nhỏ).
 
-4. **Kiểm tra lại toàn bộ điểm copy liên quan hồ sơ**
-   - link `fun.rich/{username}`
-   - nút ví ở header profile
-   - tab Receive vẫn giữ fallback như hiện tại
+**File 3: `src/components/profile/CoverHonorBoard.tsx`** (MobileStats)
 
-### Kết quả mong đợi
-- trên điện thoại, bấm `fun.rich/...` sẽ hiện toast và copy được
-- bấm nút ví ở header sẽ hiện toast và copy được
-- các icon orbit vẫn dùng bình thường, không bị hỏng
+4. **Điều chỉnh MobileStats cho vừa trong ảnh bìa**: Giảm padding, opacity background để nhìn xuyên qua ảnh bìa (semi-transparent), đảm bảo không che hết ảnh bìa. Có thể giảm `bg-white/80` thành `bg-white/60` hoặc tương tự.
 
-### Chi tiết kỹ thuật
-Hiện `AvatarOrbit` có:
-- wrapper lớn hơn avatar rất nhiều
-- `overflow: visible`
-- nhiều layer absolute với `z-index` cao
+### Kết quả
+- Trên mobile: Honor Board nằm overlay trong ảnh bìa (phía trên), ảnh bìa vẫn nhìn thấy xung quanh
+- Nút sửa ảnh bìa chỉ hiện icon camera, không có chữ
+- Desktop giữ nguyên layout hiện tại
 
-Đây là mẫu rất dễ tạo ra “overlay vô hình” chặn tap trên mobile. Vì vậy hướng sửa đúng là:
-- để container trang trí **không nhận pointer events**
-- chỉ cho phép pointer events trên đúng các phần tương tác
-- đồng thời nâng stacking context của khối info/profile actions để tránh bị đè
-
-### Test sau khi làm
-- test trên mobile viewport ở trang `/:username`
-- bấm copy link hồ sơ
-- bấm copy mã ví hồ sơ
-- xác nhận có toast và paste ra đúng giá trị
-- kiểm tra icon orbit vẫn mở link/chỉnh sửa được nếu chạm vào đúng icon
