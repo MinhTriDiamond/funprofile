@@ -222,7 +222,7 @@ export function DonationHistoryTab() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        <StatCard icon={<Hash className="w-4 h-4 text-primary" />} label="Tổng giao" value={allDonations.length.toString()} color="blue" />
+        <StatCard icon={<Hash className="w-4 h-4 text-primary" />} label="Tổng giao" value={totalAllCount.toString()} color="blue" />
         <StatCard icon={<TrendingUp className="w-4 h-4 text-amber-600" />} label="Tổng giá trị" value={totalValue} color="amber" />
         <StatCard icon={<Calendar className="w-4 h-4 text-purple-600" />} label="Hôm nay" value={todayCount.toString()} color="purple" />
         <StatCard icon={<CheckCircle className="w-4 h-4 text-green-600" />} label="Thành công" value={successCount.toString()} color="green" />
