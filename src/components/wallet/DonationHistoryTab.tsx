@@ -252,15 +252,19 @@ export function DonationHistoryTab() {
             <SelectItem value="BTCB">BTCB</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={timeFilter} onValueChange={v => setTimeFilter(v as TimeFilter)}>
+        <Select value={timeFilter} onValueChange={v => {
+          setTimeFilter(v as TimeFilter);
+          if (v !== 'custom') setCustomDateRange({ from: undefined, to: undefined });
+        }}>
           <SelectTrigger className="w-[130px]">
-            <SelectValue placeholder="Cả gian" />
+            <SelectValue placeholder="Thời gian" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Cả gian</SelectItem>
+            <SelectItem value="all">Tất cả</SelectItem>
             <SelectItem value="today">Hôm nay</SelectItem>
             <SelectItem value="week">7 ngày</SelectItem>
             <SelectItem value="month">30 ngày</SelectItem>
+            <SelectItem value="custom">Khác</SelectItem>
           </SelectContent>
         </Select>
       </div>
