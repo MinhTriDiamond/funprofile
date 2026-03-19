@@ -103,7 +103,8 @@ export const ProfileHeader = ({
         </div>
       </div>
 
-        {/* Profile Info */}
+      {/* Profile Info */}
+      <div className="max-w-[1100px] mx-auto px-4 sm:px-6 lg:px-[2cm]">
         <div className="bg-card/80 border-b border-border shadow-sm md:rounded-b-xl">
           <div className="px-4 md:px-8 py-4 md:py-6">
             <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
