@@ -55,18 +55,13 @@ function TokenLogo({ symbol }: { symbol: string }) {
   return <img src={token.logo} alt={symbol} className="w-4 h-4 rounded-full" />;
 }
 
-function SummaryTable({ summary, walletBalances, activeFilter }: { summary: DonationSummary; walletBalances?: Record<string, number>; activeFilter: DonationFilter }) {
+function SummaryTable({ summary, activeFilter }: { summary: DonationSummary; activeFilter: DonationFilter }) {
   const allTokens = new Set<string>();
   const showReceived = activeFilter === 'all' || activeFilter === 'received';
   const showSent = activeFilter === 'all' || activeFilter === 'sent';
 
   if (showReceived) Object.keys(summary.received).forEach(s => allTokens.add(s));
   if (showSent) Object.keys(summary.sent).forEach(s => allTokens.add(s));
-  if (walletBalances) {
-    Object.keys(walletBalances).forEach(s => {
-      if (walletBalances[s] > 0) allTokens.add(s);
-    });
-  }
 
   const tokens = TOKEN_ORDER.filter(t => allTokens.has(t));
   const extraTokens = [...allTokens].filter(t => !TOKEN_ORDER.includes(t));
@@ -96,14 +91,12 @@ function SummaryTable({ summary, walletBalances, activeFilter }: { summary: Dona
                     <TableHead className="text-[11px] font-bold text-red-600 text-right px-2 py-1.5 whitespace-nowrap">Lệnh</TableHead>
                   </>
                 )}
-                <TableHead className="text-[11px] font-bold text-primary text-right px-2 py-1.5 whitespace-nowrap">Số dư ví</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {orderedTokens.map(sym => {
                 const recv = summary.received[sym];
                 const sent = summary.sent[sym];
-                const onChainBalance = walletBalances?.[sym];
 
                 return (
                   <TableRow key={sym}>
@@ -133,13 +126,6 @@ function SummaryTable({ summary, walletBalances, activeFilter }: { summary: Dona
                         </TableCell>
                       </>
                     )}
-                    <TableCell className="text-right px-2 py-1.5 whitespace-nowrap">
-                      {onChainBalance !== undefined ? (
-                        <span className="text-[11px] font-bold text-primary">{formatAmount(onChainBalance)}</span>
-                      ) : (
-                        <span className="text-[11px] text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
                   </TableRow>
                 );
               })}
@@ -148,7 +134,7 @@ function SummaryTable({ summary, walletBalances, activeFilter }: { summary: Dona
         </div>
       </div>
 
-      <p className="text-[10px] text-muted-foreground italic px-1">* Số dư ví là số dư on-chain thực tế. Tổng nhận/gửi bao gồm giao dịch tặng/nhận, swap và chuyển ví qua FUN.RICH.</p>
+      <p className="text-[10px] text-muted-foreground italic px-1">* Tổng nhận/gửi bao gồm giao dịch tặng/nhận, swap và chuyển ví qua FUN.RICH.</p>
 
       <div className="flex items-center justify-between bg-muted/50 border border-border rounded-xl px-3 py-2">
         <div className="flex items-center gap-4">
@@ -172,6 +158,7 @@ function SummaryTable({ summary, walletBalances, activeFilter }: { summary: Dona
     </div>
   );
 }
+
 function UserAvatar({ username, displayName, avatarUrl, onClick }: { username: string | null; displayName: string | null; avatarUrl: string | null; onClick?: () => void }) {
   const name = displayName || username || '?';
   return (
@@ -499,7 +486,7 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
           </div>
 
           {/* Summary Section — always visible */}
-          <SummaryTable summary={summary} walletBalances={walletBalances} activeFilter={filter} />
+          <SummaryTable summary={summary} activeFilter={filter} />
         </div>
 
         {/* Scrollable content */}
