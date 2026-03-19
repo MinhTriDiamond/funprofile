@@ -6,11 +6,15 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Clock, ArrowDownLeft, ArrowUpRight, ArrowDownUp, ExternalLink, Filter, MessageSquare, ArrowRightLeft, ChevronDown, ChevronUp } from 'lucide-react';
+import { Clock, ArrowDownLeft, ArrowUpRight, ArrowDownUp, ExternalLink, Filter, MessageSquare, ArrowRightLeft, ChevronDown, ChevronUp, CalendarDays, X, BarChart3 } from 'lucide-react';
 import { usePublicDonationHistory, type DonationFilter, type DonationRecord, type DonationSummary } from '@/hooks/usePublicDonationHistory';
 import { usePublicWalletBalances } from '@/hooks/usePublicWalletBalances';
 import { getBscScanBaseUrl } from '@/lib/chainTokenMapping';
 import { WALLET_TOKENS } from '@/lib/tokens';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
 
 interface Props {
   userId: string;
@@ -361,8 +365,11 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
 
 export function WalletTransactionHistory({ userId, walletAddress, userDisplayName, userAvatarUrl, username }: Props) {
   const [open, setOpen] = useState(false);
+  const [showSummary, setShowSummary] = useState(false);
+  const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
+  const [toDate, setToDate] = useState<Date | undefined>(undefined);
   const navigate = useNavigate();
-  const { donations, loading, error, filter, hasMore, summary, summaryLoading, changeFilter, fetchDonations, fetchSummary, loadMore } = usePublicDonationHistory(userId);
+  const { donations, loading, error, filter, hasMore, summary, summaryLoading, dateFrom, dateTo, changeFilter, changeDateRange, fetchDonations, fetchSummary, loadMore } = usePublicDonationHistory(userId);
   const { balances: walletBalances } = usePublicWalletBalances(open ? walletAddress : undefined);
 
   useEffect(() => {
@@ -371,6 +378,22 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
       fetchSummary();
     }
   }, [open, userId]);
+
+  const handleDateChange = (from: Date | undefined, to: Date | undefined) => {
+    setFromDate(from);
+    setToDate(to);
+    const fromStr = from ? format(from, 'yyyy-MM-dd') : null;
+    const toStr = to ? format(to, 'yyyy-MM-dd') : null;
+    changeDateRange(fromStr, toStr);
+    // Auto-show summary when date range is set
+    if (from || to) setShowSummary(true);
+  };
+
+  const clearDateRange = () => {
+    setFromDate(undefined);
+    setToDate(undefined);
+    changeDateRange(null, null);
+  };
 
   const filters: { key: DonationFilter; label: string }[] = [
     { key: 'all', label: 'Tất cả' },
@@ -388,9 +411,7 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
           Lịch sử GD
         </Button>
       </DialogTrigger>
-      {/* Dialog 680px ~ 18cm */}
       <DialogContent className="w-[905px] max-w-[95vw] sm:max-w-[905px] max-h-[85vh] overflow-hidden flex flex-col">
-        {/* Fixed header */}
         <div className="flex-shrink-0">
           <DialogHeader>
             <DialogTitle className="flex items-center justify-center gap-2 text-2xl uppercase tracking-wider font-extrabold w-full" style={{ color: '#2E7D32', textShadow: '0 1px 2px rgba(46,125,50,0.2)' }}>
@@ -400,15 +421,80 @@ export function WalletTransactionHistory({ userId, walletAddress, userDisplayNam
             <DialogDescription className="sr-only">Xem lịch sử chuyển và nhận tiền cá nhân</DialogDescription>
           </DialogHeader>
 
-
-          <div className="flex items-center gap-1 py-3 flex-wrap">
+          {/* Filters + Date Range row */}
+          <div className="flex items-center gap-2 py-3 flex-wrap">
             <Filter className="w-4 h-4 text-muted-foreground" />
             {filters.map(f => (
               <Button key={f.key} size="sm" variant={filter === f.key ? 'secondary' : 'ghost'} onClick={() => changeFilter(f.key)} className="h-8 text-sm">
                 {f.label}
               </Button>
             ))}
+
+            <div className="ml-auto flex items-center gap-1.5">
+              {/* Summary toggle */}
+              <Button
+                size="sm"
+                variant={showSummary ? 'secondary' : 'ghost'}
+                onClick={() => setShowSummary(prev => !prev)}
+                className="h-8 text-sm gap-1"
+              >
+                <BarChart3 className="w-3.5 h-3.5" />
+                Tổng kết
+              </Button>
+
+              {/* Date From */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button size="sm" variant="outline" className={cn("h-8 text-xs gap-1 min-w-[110px]", fromDate && "border-primary text-primary")}>
+                    <CalendarDays className="w-3.5 h-3.5" />
+                    {fromDate ? format(fromDate, 'dd/MM/yyyy') : 'Từ ngày'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                  <Calendar
+                    mode="single"
+                    selected={fromDate}
+                    onSelect={(d) => handleDateChange(d, toDate)}
+                    disabled={(date) => date > new Date() || (toDate ? date > toDate : false)}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+
+              {/* Date To */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button size="sm" variant="outline" className={cn("h-8 text-xs gap-1 min-w-[110px]", toDate && "border-primary text-primary")}>
+                    <CalendarDays className="w-3.5 h-3.5" />
+                    {toDate ? format(toDate, 'dd/MM/yyyy') : 'Đến ngày'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                  <Calendar
+                    mode="single"
+                    selected={toDate}
+                    onSelect={(d) => handleDateChange(fromDate, d)}
+                    disabled={(date) => date > new Date() || (fromDate ? date < fromDate : false)}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+
+              {/* Clear date */}
+              {(fromDate || toDate) && (
+                <Button size="sm" variant="ghost" onClick={clearDateRange} className="h-8 w-8 p-0">
+                  <X className="w-3.5 h-3.5" />
+                </Button>
+              )}
+            </div>
           </div>
+
+          {/* Summary Section */}
+          {showSummary && (
+            <SummaryTable summary={summary} walletBalances={walletBalances} />
+          )}
         </div>
 
         {/* Scrollable content */}
