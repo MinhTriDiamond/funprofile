@@ -469,6 +469,7 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
                   transition: isDragging.current ? 'none' : 'opacity 0.2s',
                   cursor: isOwner && !isPending ? 'grab' : 'default',
                   overflow: 'visible',
+                  pointerEvents: 'auto',
                 }}
                 onMouseEnter={() => { setHoveredPlatform(link.platform); isOrbitHovered.current = true; }}
                 onMouseLeave={() => { if (!isEditing && !isPrompting) { setHoveredPlatform(null); if (!isDragging.current) isOrbitHovered.current = false; } }}
