@@ -216,7 +216,7 @@ export const ProfileHeader = ({
                           <Shield className="w-4 h-4 mr-2" />Admin
                         </Button>
                       )}
-                      <WalletTransactionHistory userId={profile.id} walletAddress={displayAddress} userDisplayName={profile.display_name} userAvatarUrl={profile.avatar_url} username={profile.username} />
+                      <WalletTransactionHistory userId={profile.id} walletAddress={displayAddress} userDisplayName={profile.display_name} userAvatarUrl={profile.avatar_url} username={profile.username} userCreatedAt={profile.created_at} />
                     </>
                   ) : (
                     <>
