@@ -1,22 +1,60 @@
 
+Mình đã rà lại code và tách đúng lỗi hiện tại:
 
-## Sửa lỗi không copy được link và mã ví trên điện thoại
+### Vấn đề thực sự
+`copyToClipboard` đã được dùng đúng ở `ProfileHeader` và `ReceiveTab`, nên lỗi bây giờ không còn nằm ở clipboard API nữa.
 
-### Vấn đề
-Trên mobile (đặc biệt trong dApp browser của ví), `navigator.clipboard.writeText` bị chặn bởi permissions policy. Mặc dù `ProfileHeader.tsx` đã dùng `copyToClipboard` utility có fallback, nhưng có 2 vấn đề:
+Với triệu chứng con mô tả:
+- chỉ hỏng ở `Link hồ sơ` và `Mã ví hồ sơ`
+- bấm trên điện thoại thì `không có gì`
 
-1. **`ReceiveTab.tsx`** vẫn gọi trực tiếp `navigator.clipboard.writeText` — không có fallback → fail trên mobile.
-2. **`select-all` CSS class** trên cả link và ví trong `ProfileHeader.tsx` — class này can thiệp vào sự kiện click trên mobile, khiến trình duyệt cố gắng select text thay vì trigger onClick handler.
+thì nguyên nhân nhiều khả năng là **tap không chạm được vào nút copy**, vì vùng `AvatarOrbit` đang phủ lên khu vực thông tin hồ sơ trên mobile. Orbit này dùng wrapper rất lớn (`486px`), `overflow: visible`, `z-index` cao, nên dù nhìn không thấy, nó vẫn có thể chặn tap vào link ví và link hồ sơ.
 
-### Thay đổi
+### File cần chỉnh
+1. `src/components/profile/AvatarOrbit.tsx`
+2. `src/components/profile/ProfileHeader.tsx`
 
-**File 1: `src/components/profile/ProfileHeader.tsx`**
-- Xóa class `select-all` khỏi button copy link (`fun.rich/{username}`) và span hiển thị địa chỉ ví
-- Đảm bảo `touch-manipulation` vẫn được giữ để tối ưu tap trên mobile
+### Kế hoạch sửa
+1. **Chặn AvatarOrbit bắt sự kiện ngoài vùng thật sự cần bấm**
+   - đặt `pointer-events: none` cho các wrapper/layer trang trí của orbit
+   - chỉ bật lại `pointer-events: auto` cho các phần thật sự tương tác được:
+     - social icon button/link
+     - nút `+`
+     - popup edit / picker khi mở
 
-**File 2: `src/components/wallet/ReceiveTab.tsx`**
-- Thay `navigator.clipboard.writeText(address)` bằng `copyToClipboard(address)` từ `@/utils/clipboard`
-- Import `copyToClipboard` utility
+2. **Ưu tiên vùng thông tin hồ sơ trên mobile**
+   - bọc khối tên, link hồ sơ, ví trong một container có `relative` + `z-index` cao hơn orbit
+   - nếu cần, tách riêng z-index mobile để chắc chắn tap luôn vào đúng nút copy
 
-Không cần thay đổi `clipboard.ts` — fallback logic đã hoạt động tốt.
+3. **Giữ nguyên logic copy hiện có**
+   - không đổi `copyToClipboard`
+   - không đổi toast/message
+   - chỉ sửa lớp layout/pointer để `onClick` thật sự chạy được
 
+4. **Kiểm tra lại toàn bộ điểm copy liên quan hồ sơ**
+   - link `fun.rich/{username}`
+   - nút ví ở header profile
+   - tab Receive vẫn giữ fallback như hiện tại
+
+### Kết quả mong đợi
+- trên điện thoại, bấm `fun.rich/...` sẽ hiện toast và copy được
+- bấm nút ví ở header sẽ hiện toast và copy được
+- các icon orbit vẫn dùng bình thường, không bị hỏng
+
+### Chi tiết kỹ thuật
+Hiện `AvatarOrbit` có:
+- wrapper lớn hơn avatar rất nhiều
+- `overflow: visible`
+- nhiều layer absolute với `z-index` cao
+
+Đây là mẫu rất dễ tạo ra “overlay vô hình” chặn tap trên mobile. Vì vậy hướng sửa đúng là:
+- để container trang trí **không nhận pointer events**
+- chỉ cho phép pointer events trên đúng các phần tương tác
+- đồng thời nâng stacking context của khối info/profile actions để tránh bị đè
+
+### Test sau khi làm
+- test trên mobile viewport ở trang `/:username`
+- bấm copy link hồ sơ
+- bấm copy mã ví hồ sơ
+- xác nhận có toast và paste ra đúng giá trị
+- kiểm tra icon orbit vẫn mở link/chỉnh sửa được nếu chạm vào đúng icon
