@@ -68,6 +68,7 @@ export default defineConfig(({ mode }) => ({
       'lodash/set',
       'lodash/isEqual',
       'lodash/cloneDeep',
+      'lodash/isNaN',
       '@metamask/utils',
     ],
     exclude: [
