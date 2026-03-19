@@ -43,10 +43,6 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'session_id required' }), { status: 400, headers: corsHeaders })
     }
 
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    )
 
     const { data: session } = await supabaseAdmin
       .from('live_sessions')
