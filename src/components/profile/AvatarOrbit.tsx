@@ -20,7 +20,7 @@ export interface SocialLink {
 
 // Desktop constants
 const ORBIT_RADIUS_DESKTOP = 115;
-const ORBIT_RADIUS_MOBILE = 68;
+const ORBIT_RADIUS_MOBILE = 82;
 const ORBIT_SIZE = 40;
 const AVATAR_SIZE = 176;
 
