@@ -55,11 +55,13 @@ function TokenLogo({ symbol }: { symbol: string }) {
   return <img src={token.logo} alt={symbol} className="w-4 h-4 rounded-full" />;
 }
 
-function SummaryTable({ summary, walletBalances }: { summary: DonationSummary; walletBalances?: Record<string, number> }) {
+function SummaryTable({ summary, walletBalances, activeFilter }: { summary: DonationSummary; walletBalances?: Record<string, number>; activeFilter: DonationFilter }) {
   const allTokens = new Set<string>();
-  Object.keys(summary.received).forEach(s => allTokens.add(s));
-  Object.keys(summary.sent).forEach(s => allTokens.add(s));
-  // Also add tokens from wallet balances
+  const showReceived = activeFilter === 'all' || activeFilter === 'received';
+  const showSent = activeFilter === 'all' || activeFilter === 'sent';
+
+  if (showReceived) Object.keys(summary.received).forEach(s => allTokens.add(s));
+  if (showSent) Object.keys(summary.sent).forEach(s => allTokens.add(s));
   if (walletBalances) {
     Object.keys(walletBalances).forEach(s => {
       if (walletBalances[s] > 0) allTokens.add(s);
@@ -82,10 +84,18 @@ function SummaryTable({ summary, walletBalances }: { summary: DonationSummary; w
             <TableHeader>
               <TableRow className="bg-muted/50">
                 <TableHead className="text-[11px] font-bold w-[60px] px-2 py-1.5 whitespace-nowrap">Token</TableHead>
-                <TableHead className="text-[11px] font-bold text-green-600 text-right px-2 py-1.5 whitespace-nowrap">Tổng nhận</TableHead>
-                <TableHead className="text-[11px] font-bold text-green-600 text-right px-2 py-1.5 whitespace-nowrap">Lệnh</TableHead>
-                <TableHead className="text-[11px] font-bold text-red-600 text-right px-2 py-1.5 whitespace-nowrap">Tổng gửi</TableHead>
-                <TableHead className="text-[11px] font-bold text-red-600 text-right px-2 py-1.5 whitespace-nowrap">Lệnh</TableHead>
+                {showReceived && (
+                  <>
+                    <TableHead className="text-[11px] font-bold text-green-600 text-right px-2 py-1.5 whitespace-nowrap">Tổng nhận</TableHead>
+                    <TableHead className="text-[11px] font-bold text-green-600 text-right px-2 py-1.5 whitespace-nowrap">Lệnh</TableHead>
+                  </>
+                )}
+                {showSent && (
+                  <>
+                    <TableHead className="text-[11px] font-bold text-red-600 text-right px-2 py-1.5 whitespace-nowrap">Tổng gửi</TableHead>
+                    <TableHead className="text-[11px] font-bold text-red-600 text-right px-2 py-1.5 whitespace-nowrap">Lệnh</TableHead>
+                  </>
+                )}
                 <TableHead className="text-[11px] font-bold text-primary text-right px-2 py-1.5 whitespace-nowrap">Số dư ví</TableHead>
               </TableRow>
             </TableHeader>
@@ -103,18 +113,26 @@ function SummaryTable({ summary, walletBalances }: { summary: DonationSummary; w
                         <span className="text-[11px] font-bold">{sym}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-right px-2 py-1.5 whitespace-nowrap">
-                      <span className="text-[11px] font-semibold text-green-600">{formatAmount(recv?.amount ?? 0)}</span>
-                    </TableCell>
-                    <TableCell className="text-right px-2 py-1.5 whitespace-nowrap">
-                      <span className="text-[11px] text-muted-foreground">{recv?.count ?? 0}</span>
-                    </TableCell>
-                    <TableCell className="text-right px-2 py-1.5 whitespace-nowrap">
-                      <span className="text-[11px] font-semibold text-red-600">{formatAmount(sent?.amount ?? 0)}</span>
-                    </TableCell>
-                    <TableCell className="text-right px-2 py-1.5 whitespace-nowrap">
-                      <span className="text-[11px] text-muted-foreground">{sent?.count ?? 0}</span>
-                    </TableCell>
+                    {showReceived && (
+                      <>
+                        <TableCell className="text-right px-2 py-1.5 whitespace-nowrap">
+                          <span className="text-[11px] font-semibold text-green-600">{formatAmount(recv?.amount ?? 0)}</span>
+                        </TableCell>
+                        <TableCell className="text-right px-2 py-1.5 whitespace-nowrap">
+                          <span className="text-[11px] text-muted-foreground">{recv?.count ?? 0}</span>
+                        </TableCell>
+                      </>
+                    )}
+                    {showSent && (
+                      <>
+                        <TableCell className="text-right px-2 py-1.5 whitespace-nowrap">
+                          <span className="text-[11px] font-semibold text-red-600">{formatAmount(sent?.amount ?? 0)}</span>
+                        </TableCell>
+                        <TableCell className="text-right px-2 py-1.5 whitespace-nowrap">
+                          <span className="text-[11px] text-muted-foreground">{sent?.count ?? 0}</span>
+                        </TableCell>
+                      </>
+                    )}
                     <TableCell className="text-right px-2 py-1.5 whitespace-nowrap">
                       {onChainBalance !== undefined ? (
                         <span className="text-[11px] font-bold text-primary">{formatAmount(onChainBalance)}</span>
@@ -134,23 +152,26 @@ function SummaryTable({ summary, walletBalances }: { summary: DonationSummary; w
 
       <div className="flex items-center justify-between bg-muted/50 border border-border rounded-xl px-3 py-2">
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1">
-            <ArrowDownLeft className="w-3.5 h-3.5 text-green-600" />
-            <span className="text-xs text-muted-foreground">Nhận:</span>
-            <span className="text-xs font-bold text-green-600">{summary.receivedCount} lệnh</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <ArrowUpRight className="w-3.5 h-3.5 text-red-600" />
-            <span className="text-xs text-muted-foreground">Gửi:</span>
-            <span className="text-xs font-bold text-red-600">{summary.sentCount} lệnh</span>
-          </div>
+          {showReceived && (
+            <div className="flex items-center gap-1">
+              <ArrowDownLeft className="w-3.5 h-3.5 text-green-600" />
+              <span className="text-xs text-muted-foreground">Nhận:</span>
+              <span className="text-xs font-bold text-green-600">{summary.receivedCount} lệnh</span>
+            </div>
+          )}
+          {showSent && (
+            <div className="flex items-center gap-1">
+              <ArrowUpRight className="w-3.5 h-3.5 text-red-600" />
+              <span className="text-xs text-muted-foreground">Gửi:</span>
+              <span className="text-xs font-bold text-red-600">{summary.sentCount} lệnh</span>
+            </div>
+          )}
         </div>
         <span className="text-xs font-bold text-foreground">Tổng: {summary.totalCount} GD</span>
       </div>
     </div>
   );
 }
-
 function UserAvatar({ username, displayName, avatarUrl, onClick }: { username: string | null; displayName: string | null; avatarUrl: string | null; onClick?: () => void }) {
   const name = displayName || username || '?';
   return (
