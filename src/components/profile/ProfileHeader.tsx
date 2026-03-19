@@ -153,7 +153,7 @@ export const ProfileHeader = ({
                   <button
                     type="button"
                     onClick={() => { copyToClipboard(`https://fun.rich/${profile?.username}`).then(() => toast.success('Đã sao chép link hồ sơ!')).catch(() => toast.error('Không thể sao chép')); }}
-                    className="inline-flex items-center gap-1 hover:text-primary hover:underline transition-colors cursor-pointer touch-manipulation active:scale-95 select-all"
+                    className="inline-flex items-center gap-1 hover:text-primary hover:underline transition-colors cursor-pointer touch-manipulation active:scale-95"
                   >
                     <span>fun.rich/{profile?.username}</span>
                     <Copy className="w-4 h-4 text-primary flex-shrink-0" />
