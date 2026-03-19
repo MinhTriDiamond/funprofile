@@ -5,6 +5,7 @@ import { Copy, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { QRCodeSVG } from 'qrcode.react';
 import { useLanguage } from '@/i18n/LanguageContext';
+import { copyToClipboard } from '@/utils/clipboard';
 
 interface ReceiveTabProps {
   walletAddress?: string;
@@ -18,8 +19,10 @@ export const ReceiveTab = ({ walletAddress }: ReceiveTabProps) => {
 
   const handleCopy = () => {
     if (address) {
-      navigator.clipboard.writeText(address);
-      toast.success(t('walletAddressCopied'));
+      copyToClipboard(address).then((ok) => {
+        if (ok) toast.success(t('walletAddressCopied'));
+        else toast.error('Không thể sao chép');
+      });
     }
   };
 

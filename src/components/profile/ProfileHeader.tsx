@@ -153,7 +153,7 @@ export const ProfileHeader = ({
                   <button
                     type="button"
                     onClick={() => { copyToClipboard(`https://fun.rich/${profile?.username}`).then(() => toast.success('Đã sao chép link hồ sơ!')).catch(() => toast.error('Không thể sao chép')); }}
-                    className="inline-flex items-center gap-1 hover:text-primary hover:underline transition-colors cursor-pointer touch-manipulation active:scale-95 select-all"
+                    className="inline-flex items-center gap-1 hover:text-primary hover:underline transition-colors cursor-pointer touch-manipulation active:scale-95"
                   >
                     <span>fun.rich/{profile?.username}</span>
                     <Copy className="w-4 h-4 text-primary flex-shrink-0" />
@@ -167,7 +167,7 @@ export const ProfileHeader = ({
                     className="inline-flex items-center gap-2 mt-2 px-3 py-2 rounded-full bg-primary/10 border border-primary/20 touch-manipulation active:scale-95 hover:bg-primary/20 transition-all cursor-pointer"
                   >
                     <Wallet className="w-4 h-4 text-primary flex-shrink-0" />
-                    <span className="text-sm text-foreground font-mono font-medium select-all">{displayAddress.slice(0, 6)}...{displayAddress.slice(-4)}</span>
+                    <span className="text-sm text-foreground font-mono font-medium">{displayAddress.slice(0, 6)}...{displayAddress.slice(-4)}</span>
                     <Copy className="w-4 h-4 text-primary flex-shrink-0" />
                   </button>
                 ) : showPrivateElements ? (
