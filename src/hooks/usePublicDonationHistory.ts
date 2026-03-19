@@ -45,7 +45,7 @@ export interface DonationSummary {
 
 const PAGE_SIZE = 200;
 
-export function usePublicDonationHistory(userId: string | undefined) {
+export function usePublicDonationHistory(userId: string | undefined, userCreatedAt?: string | null) {
   const [donations, setDonations] = useState<DonationRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -176,6 +176,7 @@ export function usePublicDonationHistory(userId: string | undefined) {
           .select('*')
           .eq('user_id', userId)
           .order('created_at', { ascending: false });
+        if (userCreatedAt) swapQuery = swapQuery.gte('created_at', userCreatedAt);
         if (fromDate) swapQuery = swapQuery.gte('created_at', fromDate);
         if (toDate) swapQuery = swapQuery.lte('created_at', `${toDate}T23:59:59`);
         const { data: swapData, error: swapError } = await swapQuery.range(from, to);
@@ -209,6 +210,7 @@ export function usePublicDonationHistory(userId: string | undefined) {
           .select('*')
           .eq('user_id', userId)
           .order('created_at', { ascending: false });
+        if (userCreatedAt) transferQuery = transferQuery.gte('created_at', userCreatedAt);
         if (currentFilter === 'received') transferQuery = transferQuery.eq('direction', 'in');
         else if (currentFilter === 'sent') transferQuery = transferQuery.eq('direction', 'out');
         if (fromDate) transferQuery = transferQuery.gte('created_at', fromDate);
@@ -248,6 +250,7 @@ export function usePublicDonationHistory(userId: string | undefined) {
             recipient:profiles!donations_recipient_id_fkey(username, display_name, avatar_url)
           `)
           .order('created_at', { ascending: false });
+        if (userCreatedAt) query = query.gte('created_at', userCreatedAt);
 
         if (currentFilter === 'sent') query = query.eq('sender_id', userId);
         else if (currentFilter === 'received') query = query.eq('recipient_id', userId);
@@ -311,7 +314,7 @@ export function usePublicDonationHistory(userId: string | undefined) {
     } finally {
       setLoading(false);
     }
-  }, [userId, filter, donations, computeSummaryFromDonations]);
+  }, [userId, filter, donations, computeSummaryFromDonations, userCreatedAt]);
 
   const loadMore = useCallback(() => {
     fetchDonations(page + 1, filter, dateFrom, dateTo);
