@@ -119,7 +119,7 @@ Deno.serve(async (req) => {
 
     const currentTimestamp = Math.floor(Date.now() / 1000)
     return new Response(JSON.stringify({
-      token,
+      token: agoraToken,
       channel,
       uid: String(numericUid),
       appId,

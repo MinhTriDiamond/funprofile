@@ -407,7 +407,7 @@ Deno.serve(async (req) => {
       .from('live_sessions')
       .select('id, post_id')
       .eq('status', 'live')
-      .lt('started_at', thirtyMinAgo)
+      .lt('started_at', fourHoursAgo)
       .limit(20);
 
     if (stuckLiveSessions && stuckLiveSessions.length > 0) {
