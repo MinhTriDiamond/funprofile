@@ -81,7 +81,6 @@ export function createChunkedRecorder(options: ChunkedRecorderOptions): ChunkedR
           endTime: now,
         };
         chunkStartTime = now;
-        allChunks.push(e.data);
 
         try {
           onChunk(chunk);
