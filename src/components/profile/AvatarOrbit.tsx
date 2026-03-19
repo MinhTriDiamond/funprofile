@@ -437,6 +437,7 @@ export function AvatarOrbit({ children, socialLinks = [], isOwner = false, userI
           top: `${(AVATAR_SIZE - WRAPPER_SIZE) / 2}px`,
           overflow: 'visible',
           zIndex: 20,
+          pointerEvents: 'none',
         }}
       >
 
