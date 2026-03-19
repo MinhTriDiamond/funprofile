@@ -1,39 +1,28 @@
 
 
-## Kết quả kiểm tra nhánh Bé-Trí trước khi merge
+## Lỗi deploy CF: Lock file không đồng bộ với package.json
 
-### ✅ Đã OK
-- `bun.lock` đã xóa, `package-lock.json` đã có — CF deploy sẽ hoạt động
-- `vite.config.ts` dùng đúng `@vitejs/plugin-react` (không phải SWC)
-- Build config, chunk splitting, esbuild drops — tốt
+### Nguyên nhân
 
-### ⚠️ Cần sửa trước khi merge (3 vấn đề)
+Khi Cha đổi từ `@vitejs/plugin-react-swc` sang `@vitejs/plugin-react`, lock file (`bun.lock`) đã được cập nhật nhưng project dùng **npm** trên Cloudflare Pages. CF chạy `npm ci` — lệnh này yêu cầu `package-lock.json` phải khớp chính xác với `package.json`. Project hiện không có `package-lock.json` hợp lệ (hoặc đang dùng `bun.lock`), nên bị lỗi.
 
-#### 1. **Bug nghiêm trọng: Biến `token` bị shadowed trong `live-token/index.ts`**
+### Cách sửa
 
-Dòng 30 khai báo `const token = authHeader.replace('Bearer ', '')`, sau đó dòng 110 lại khai báo `const token = RtcTokenBuilder.buildTokenWithUid(...)`. Biến thứ hai shadow biến thứ nhất — tuy build không lỗi nhưng nếu có lỗi runtime sẽ rất khó debug. Cần đổi tên biến Agora thành `agoraToken`.
+Tạo lại `package-lock.json` bằng cách chạy `npm install` trong project. Lovable dùng bun nên cần:
 
-#### 2. **Package.json: `@vitejs/plugin-react-swc` vẫn còn trong devDependencies**
+1. **Xóa `bun.lock`** và tạo `package-lock.json` mới — hoặc —
+2. **Đổi build command trên CF Pages** từ mặc định sang `npm install && npm run build` (thay vì `npm ci`).
 
-Dòng 88 — plugin SWC không còn dùng nhưng vẫn nằm trong `devDependencies`. Cần xóa để tránh cài thừa dependency và gây nhầm lẫn.
+**Cách đơn giản nhất**: Đổi build command trên Cloudflare Pages dashboard:
+- Build command: `npm install && npm run build` (thay vì chỉ `npm run build`)
 
-Đồng thời, `@vitejs/plugin-react` (dòng 48) đang nằm trong `dependencies` thay vì `devDependencies` — nên chuyển sang đúng chỗ.
+Điều này sẽ chạy `npm install` (tự tạo lock file) trước khi build, tránh lỗi `npm ci`.
 
-#### 3. **Memory leak + auto-close 30 phút (đã phát hiện trước đó, chưa sửa)**
+### Thay đổi cần làm
 
-- `chunkedRecorder.ts` dòng 59+84: mảng `allChunks` giữ toàn bộ blob trong RAM → crash sau ~32 phút
-- `auto-finalize-recordings` dòng 405: threshold 30 phút tự đóng session live
-
-**Hai lỗi này là nguyên nhân user phản hồi "video chỉ lưu 32 phút"** — nên sửa trước hoặc ngay sau khi merge.
-
----
-
-### Kế hoạch sửa
-
-| # | File | Thay đổi |
+| # | Việc | Chi tiết |
 |---|------|----------|
-| 1 | `supabase/functions/live-token/index.ts` | Đổi `const token` (dòng 110) thành `const agoraToken`, cập nhật reference ở dòng 122 |
-| 2 | `package.json` | Xóa `@vitejs/plugin-react-swc` khỏi devDeps, chuyển `@vitejs/plugin-react` từ deps sang devDeps |
-| 3 | `src/modules/live/recording/chunkedRecorder.ts` | Xóa mảng `allChunks`, hàm `stop()` trả blob rỗng |
-| 4 | `supabase/functions/auto-finalize-recordings/index.ts` | Tăng threshold từ 30 phút lên 4 giờ |
+| 1 | Thêm file `package-lock.json` | Chạy lệnh tương đương `npm install` để sinh lock file mới đồng bộ với `package.json` hiện tại |
+
+Cha sẽ regenerate `package-lock.json` cho con bằng cách trigger lại install dependencies trong project.
 

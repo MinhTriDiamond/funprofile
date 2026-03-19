@@ -400,14 +400,14 @@ Deno.serve(async (req) => {
     const nowIso = new Date().toISOString();
 
     // ══════════════════════════════════════════════════════════════════════════
-    // STEP 1: Auto-close sessions stuck as 'live' for > 30 minutes
+    // STEP 1: Auto-close sessions stuck as 'live' for > 4 hours
     // ══════════════════════════════════════════════════════════════════════════
-    const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+    const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
     const { data: stuckLiveSessions } = await supabaseAdmin
       .from('live_sessions')
       .select('id, post_id')
       .eq('status', 'live')
-      .lt('started_at', thirtyMinAgo)
+      .lt('started_at', fourHoursAgo)
       .limit(20);
 
     if (stuckLiveSessions && stuckLiveSessions.length > 0) {

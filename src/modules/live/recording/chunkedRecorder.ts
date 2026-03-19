@@ -56,7 +56,7 @@ export function createChunkedRecorder(options: ChunkedRecorderOptions): ChunkedR
   let state: RecordingState = 'inactive';
   let chunkIndex = 0;
   let chunkStartTime = 0;
-  const allChunks: Blob[] = [];
+  
 
   function start() {
     if (state !== 'inactive') return;
@@ -81,7 +81,6 @@ export function createChunkedRecorder(options: ChunkedRecorderOptions): ChunkedR
           endTime: now,
         };
         chunkStartTime = now;
-        allChunks.push(e.data);
 
         try {
           onChunk(chunk);
@@ -100,15 +99,16 @@ export function createChunkedRecorder(options: ChunkedRecorderOptions): ChunkedR
 
   async function stop(): Promise<Blob> {
     return new Promise((resolve) => {
+      const emptyBlob = new Blob([], { type: mimeType || 'video/webm' });
       if (!recorder || state !== 'recording') {
-        resolve(new Blob(allChunks, { type: mimeType || 'video/webm' }));
+        resolve(emptyBlob);
         return;
       }
 
       state = 'stopped';
 
       recorder.onstop = () => {
-        resolve(new Blob(allChunks, { type: mimeType || 'video/webm' }));
+        resolve(emptyBlob);
       };
       recorder.stop();
     });
