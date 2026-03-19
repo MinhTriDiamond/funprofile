@@ -131,7 +131,7 @@ export function DonationHistoryTab() {
     }
 
     return combined;
-  }, [sentDonations, receivedDonations, viewMode, tokenFilter, timeFilter, search]);
+  }, [sentDonations, receivedDonations, viewMode, tokenFilter, timeFilter, search, customDateRange]);
 
   // Stats
   const todayCount = useMemo(() => {
