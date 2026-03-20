@@ -121,10 +121,10 @@ export const NewMembersModal = ({ open, onOpenChange }: NewMembersModalProps) =>
                 <table className="w-full">
                   <thead className="bg-background sticky top-0 z-10 shadow-[0_1px_0_0_hsl(var(--border))]">
                     <tr>
-                      <th className="text-left p-2.5 font-semibold text-[15px] text-green-700 dark:text-green-400">
+                      <th className="text-left p-2.5 font-semibold text-[15px] text-green-800 dark:text-green-300">
                         {modeLabels[mode]}
                       </th>
-                      <th className="text-right p-2.5 font-semibold text-[15px] text-green-700 dark:text-green-400">
+                      <th className="text-right p-2.5 font-semibold text-[15px] text-green-800 dark:text-green-300">
                         {language === 'vi' ? 'Thành viên mới' : 'New Members'}
                       </th>
                     </tr>
