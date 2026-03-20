@@ -5562,6 +5562,23 @@ export type Database = {
           username: string
         }[]
       }
+      get_signups_by_date_vn: {
+        Args: { p_date: string }
+        Returns: {
+          avatar_url: string
+          created_at: string
+          full_name: string
+          id: string
+          username: string
+        }[]
+      }
+      get_signups_grouped_vn: {
+        Args: { p_limit?: number; p_mode?: string; p_offset?: number }
+        Returns: {
+          new_users: number
+          period_label: string
+        }[]
+      }
       get_user_directory_summary: {
         Args: never
         Returns: {
