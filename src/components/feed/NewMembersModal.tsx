@@ -164,13 +164,13 @@ export const NewMembersModal = ({ open, onOpenChange }: NewMembersModalProps) =>
             {hasMore && (
               <button
                 onClick={() => setLimit(l => l + PAGE_SIZE)}
-                className="w-full text-center text-sm text-primary hover:underline py-1"
+                className="w-full text-center text-sm text-primary hover:underline py-0.5"
               >
                 {language === 'vi' ? 'Xem thêm...' : 'Load more...'}
               </button>
             )}
 
-            <div className="text-center text-[15px] font-semibold pt-1 text-green-800 dark:text-green-300">
+            <div className="text-center text-[15px] font-semibold text-green-800 dark:text-green-300">
               {language === 'vi' ? 'Tổng' : 'Total'}: <span className="font-bold">{total}</span>
             </div>
           </>
