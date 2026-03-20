@@ -116,9 +116,9 @@ export const NewMembersDateDetail = ({ date }: Props) => {
                       <AvatarFallback className="text-xs">{initials}</AvatarFallback>
                     </Avatar>
                     <div className="min-w-0">
-                      <div className="text-[15px] font-medium truncate text-green-700 dark:text-green-400">{displayName}</div>
+                      <div className="text-[15px] font-medium truncate text-green-800 dark:text-green-300">{displayName}</div>
                       {user.username && (
-                        <div className="text-[13px] text-green-600/70 dark:text-green-400/70 truncate">@{user.username}</div>
+                        <div className="text-[13px] text-green-700/70 dark:text-green-300/70 truncate">@{user.username}</div>
                       )}
                     </div>
                   </button>
