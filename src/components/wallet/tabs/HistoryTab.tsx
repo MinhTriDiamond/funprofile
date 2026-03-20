@@ -206,7 +206,7 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
   const isExternal = d.is_external || (!d.sender_id && d.recipient_id);
 
   return (
-    <div className="border border-border rounded-lg p-2.5 space-y-1.5 overflow-hidden">
+    <div className="border border-border rounded-lg p-2.5 space-y-1.5">
       {/* Row 1: Badge + Status */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
@@ -223,56 +223,58 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
         <StatusBadge status={d.status} />
       </div>
 
-      {/* Row 2: Users */}
-      <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
-        {isExternal && !d.sender_id ? (
-          <div className="flex items-center gap-1 min-w-0">
-            <Avatar className="w-5 h-5 flex-shrink-0">
-              <AvatarFallback className="text-[9px] bg-orange-100 text-orange-700">🌐</AvatarFallback>
-            </Avatar>
-            {d.sender_address ? (
-              <a
-                href={`${explorerUrl}/address/${d.sender_address}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs font-medium text-primary hover:underline flex items-center gap-0.5"
-                onClick={e => e.stopPropagation()}
-              >
-                {shortenAddress(d.sender_address)} <ExternalLink className="w-2.5 h-2.5" />
-              </a>
-            ) : (
-              <span className="text-xs font-medium text-muted-foreground">Ví ngoài</span>
-            )}
-          </div>
-        ) : (
+      {/* Row 2: Users + Amount (center) + Time/Date/Tx (right) — single line */}
+      <div className="flex items-center gap-1.5 text-sm">
+        <div className="flex items-center gap-1.5 min-w-0 shrink">
+          {isExternal && !d.sender_id ? (
+            <div className="flex items-center gap-1 min-w-0">
+              <Avatar className="w-5 h-5 flex-shrink-0">
+                <AvatarFallback className="text-[9px] bg-orange-100 text-orange-700">🌐</AvatarFallback>
+              </Avatar>
+              {d.sender_address ? (
+                <a
+                  href={`${explorerUrl}/address/${d.sender_address}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs font-medium text-primary hover:underline flex items-center gap-0.5"
+                  onClick={e => e.stopPropagation()}
+                >
+                  {shortenAddress(d.sender_address)} <ExternalLink className="w-2.5 h-2.5" />
+                </a>
+              ) : (
+                <span className="text-xs font-medium text-muted-foreground">Ví ngoài</span>
+              )}
+            </div>
+          ) : (
+            <UserAvatar
+              username={d.sender_username}
+              displayName={d.sender_display_name}
+              avatarUrl={d.sender_avatar_url}
+              onClick={() => d.sender_username && navigate(`/${d.sender_username}`)}
+            />
+          )}
+          <span className="text-muted-foreground text-xs">→</span>
           <UserAvatar
-            username={d.sender_username}
-            displayName={d.sender_display_name}
-            avatarUrl={d.sender_avatar_url}
-            onClick={() => d.sender_username && navigate(`/${d.sender_username}`)}
+            username={d.recipient_username}
+            displayName={d.recipient_display_name}
+            avatarUrl={d.recipient_avatar_url}
+            onClick={() => d.recipient_username && navigate(`/${d.recipient_username}`)}
           />
-        )}
-        <span className="text-muted-foreground text-xs">→</span>
-        <UserAvatar
-          username={d.recipient_username}
-          displayName={d.recipient_display_name}
-          avatarUrl={d.recipient_avatar_url}
-          onClick={() => d.recipient_username && navigate(`/${d.recipient_username}`)}
-        />
-      </div>
+        </div>
 
-      {/* Row 3: Amount + Time + Tx */}
-      <div className="flex items-center gap-2 flex-wrap text-sm">
-        <span className="font-bold text-red-600 whitespace-nowrap">
+        <span className="font-bold whitespace-nowrap mx-auto text-center text-red-600 text-sm">
           {Number(d.amount).toLocaleString('vi-VN', { maximumFractionDigits: 6 })} {d.token_symbol}
         </span>
-        <span className="font-medium text-primary whitespace-nowrap">{formatTimeVN(d.created_at)}</span>
-        <span className="font-semibold text-yellow-600 dark:text-yellow-400 whitespace-nowrap">{formatDateVN(d.created_at)}</span>
-        {d.tx_hash && (
-          <a href={`${explorerUrl}/tx/${d.tx_hash}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline flex items-center gap-0.5 whitespace-nowrap">
-            Tx: {d.tx_hash.slice(0, 6)}...{d.tx_hash.slice(-4)} <ExternalLink className="w-3 h-3" />
-          </a>
-        )}
+
+        <div className="flex items-center gap-2 whitespace-nowrap shrink-0">
+          <span className="text-sm font-medium text-primary">{formatTimeVN(d.created_at)}</span>
+          <span className="text-sm font-semibold text-yellow-600 dark:text-yellow-400">{formatDateVN(d.created_at)}</span>
+          {d.tx_hash && (
+            <a href={`${explorerUrl}/tx/${d.tx_hash}`} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline flex items-center gap-0.5">
+              Tx: {d.tx_hash.slice(0, 6)}...{d.tx_hash.slice(-4)} <ExternalLink className="w-3 h-3" />
+            </a>
+          )}
+        </div>
       </div>
 
       {d.message && <CollapsibleMessage message={d.message} />}
