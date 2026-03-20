@@ -82,7 +82,7 @@ export const NewMembersDateDetail = ({ date }: Props) => {
 
   return (
     <div className="flex-1 overflow-auto">
-      <div className="text-center text-sm font-semibold mb-2 text-muted-foreground">
+      <div className="text-center text-[15px] font-semibold mb-2 text-green-700 dark:text-green-400">
         {formattedDate} — {users?.length || 0} {language === 'vi' ? 'thành viên mới' : 'new members'}
       </div>
 
@@ -113,19 +113,19 @@ export const NewMembersDateDetail = ({ date }: Props) => {
                     <AvatarFallback className="text-xs">{initials}</AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium truncate">{displayName}</div>
+                    <div className="text-[15px] font-medium truncate text-green-700 dark:text-green-400">{displayName}</div>
                     {user.username && (
-                      <div className="text-xs text-muted-foreground truncate">@{user.username}</div>
+                      <div className="text-[13px] text-green-600/70 dark:text-green-400/70 truncate">@{user.username}</div>
                     )}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     {linkCount > 0 && (
-                      <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
-                        <Link2 className="w-3 h-3" />
+                      <span className="flex items-center gap-0.5 text-[13px] text-green-600 dark:text-green-400">
+                        <Link2 className="w-3.5 h-3.5" />
                         {linkCount}
                       </span>
                     )}
-                    <span className="text-xs text-muted-foreground tabular-nums">
+                    <span className="text-[13px] text-green-600/70 dark:text-green-400/70 tabular-nums">
                       {formatTime(user.created_at)}
                     </span>
                   </div>
@@ -140,7 +140,7 @@ export const NewMembersDateDetail = ({ date }: Props) => {
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}
-                        className="inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded-full bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                        className="inline-flex items-center gap-1 text-[13px] px-1.5 py-0.5 rounded-full bg-green-50 dark:bg-green-900/30 hover:bg-green-100 dark:hover:bg-green-900/50 text-green-700 dark:text-green-400 transition-colors"
                       >
                         <span>{getPlatformEmoji(link.platform)}</span>
                         <span className="truncate max-w-[100px]">{getPlatformName(link)}</span>
