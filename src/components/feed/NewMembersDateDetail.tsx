@@ -4,7 +4,6 @@ import { useLanguage } from '@/i18n/LanguageContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useNavigate } from 'react-router-dom';
-import { getTwemojiUrl } from '@/lib/emojiUtils';
 
 interface SocialLink {
   platform?: string;
@@ -25,19 +24,23 @@ interface Props {
   date: string;
 }
 
+const LOGO_BASE = 'https://cdn.jsdelivr.net/gh/nicepkg/nice-icon@latest/assets';
+const SIMPLE_ICONS = 'https://cdn.simpleicons.org';
+
 const getPlatformLogo = (platform?: string): string => {
   const p = (platform || '').toLowerCase();
-  if (p.includes('facebook') || p.includes('fb')) return getTwemojiUrl('📘');
-  if (p.includes('youtube') || p.includes('yt')) return getTwemojiUrl('▶️');
-  if (p.includes('tiktok')) return getTwemojiUrl('🎵');
-  if (p.includes('instagram') || p.includes('ig')) return getTwemojiUrl('📷');
-  if (p.includes('twitter') || p.includes('x.com')) return getTwemojiUrl('🐦');
-  if (p.includes('telegram') || p.includes('tg')) return getTwemojiUrl('✈️');
-  if (p.includes('zalo')) return getTwemojiUrl('💬');
-  if (p.includes('linkedin')) return getTwemojiUrl('💼');
-  if (p.includes('github')) return getTwemojiUrl('🐙');
-  if (p.includes('website') || p.includes('blog')) return getTwemojiUrl('🌐');
-  return getTwemojiUrl('🔗');
+  if (p.includes('facebook') || p.includes('fb')) return `${SIMPLE_ICONS}/facebook/1877F2`;
+  if (p.includes('youtube') || p.includes('yt')) return `${SIMPLE_ICONS}/youtube/FF0000`;
+  if (p.includes('tiktok')) return `${SIMPLE_ICONS}/tiktok/000000`;
+  if (p.includes('instagram') || p.includes('ig')) return `${SIMPLE_ICONS}/instagram/E4405F`;
+  if (p.includes('twitter') || p.includes('x.com') || p.includes('x ')) return `${SIMPLE_ICONS}/x/000000`;
+  if (p.includes('telegram') || p.includes('tg')) return `${SIMPLE_ICONS}/telegram/26A5E4`;
+  if (p.includes('zalo')) return `${SIMPLE_ICONS}/zalo/0068FF`;
+  if (p.includes('linkedin')) return `${SIMPLE_ICONS}/linkedin/0A66C2`;
+  if (p.includes('github')) return `${SIMPLE_ICONS}/github/181717`;
+  if (p.includes('threads')) return `${SIMPLE_ICONS}/threads/000000`;
+  if (p.includes('website') || p.includes('blog')) return `${SIMPLE_ICONS}/googlechrome/4285F4`;
+  return `${SIMPLE_ICONS}/link/gray`;
 };
 
 const getPlatformName = (link: SocialLink): string => {
