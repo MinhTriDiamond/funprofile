@@ -1,71 +1,25 @@
 
 
-## Phân tích nguyên nhân crash
+## Problem
+The `[&>button]:hidden` class on line 137 explicitly hides the default Dialog close button. Users on mobile have no way to dismiss the success modal.
 
-**Root cause**: Khi giao dịch Crypto Gift thành công, Edge Function `record-donation` chèn một message vào bảng `messages` với `media_urls` là **mảng JSON objects**:
-```json
-[{"type": "donation", "donation_id": "...", "amount": "100", "token_symbol": "CAMLY", "tx_hash": "0x..."}]
-```
+## Plan
 
-Chat realtime nhận message này → `MessageBubble.tsx` dòng 209-211 ép kiểu `media_urls` thành `string[]` rồi gọi `getFileTypeFromUrl(url)` trên mỗi phần tử. Nhưng phần tử là **object**, không phải string → `new URL(object)` throw → catch block gọi `object.lastIndexOf('.')` cũng throw → **crash lan ra ErrorBoundary → trang trắng "Đã xảy ra lỗi"**.
+### File: `src/components/donations/DonationSuccessCard.tsx`
 
-## Kế hoạch sửa
+1. **Remove `[&>button]:hidden`** from DialogContent className (line 137) — this re-enables the default X button from the Dialog component
 
-### 1. File `src/modules/chat/components/MessageBubble.tsx` (dòng 207-222)
-- Trước khi render media, **tách** `media_urls` thành 2 loại:
-  - `donationItems`: các object có `type === 'donation'` → render thành gift card inline (hiển thị đẹp thay vì text thô)
-  - `fileUrls`: các string URL thực → render như cũ (image/video/file)
-- Render donation items trước bằng một mini gift card (icon 🎁 + số tiền + token)
-- Chỉ gọi `getFileTypeFromUrl()` trên string URLs
+2. **Style the default close button** to match the card design by replacing the hidden class with a visible styled override:
+   ```
+   [&>button]:z-[10] [&>button]:top-3 [&>button]:right-3 [&>button]:rounded-full 
+   [&>button]:bg-white/80 [&>button]:backdrop-blur [&>button]:shadow-md 
+   [&>button]:w-8 [&>button]:h-8 [&>button]:flex [&>button]:items-center 
+   [&>button]:justify-center [&>button]:opacity-100
+   ```
 
-### 2. File `src/modules/chat/utils/fileUtils.ts` (phòng thủ)
-- Thêm guard `if (typeof url !== 'string') return 'document'` trong `getFileTypeFromUrl` để tránh crash tương tự trong tương lai
+3. **Add a "Đóng" (Close) bottom button** below the action buttons area — a full-width outlined button that provides an obvious mobile-friendly close target, calling `handleClose()`
 
-### 3. File `src/components/donations/UnifiedGiftSendDialog.tsx` (dòng 351-373)
-- Bọc `handleSend` single-send trong try/catch toàn bộ
-- Nếu lỗi xảy ra sau khi có hash (celebration phase), catch lại và show toast thay vì để crash
+4. **Add auto-close after 8 seconds** with a `useEffect` that calls `handleClose()` via `setTimeout`, cleared on unmount or manual close. This ensures non-blocking UX even if users don't notice the X button.
 
-### 4. File `src/modules/chat/components/MessageBubble.tsx` - Error boundary nội bộ
-- Bọc phần render media trong try/catch (hoặc inline error boundary nhẹ) để nếu có lỗi render media thì chỉ ẩn media đó, không crash toàn bộ chat
-
-### Chi tiết kỹ thuật
-
-**MessageBubble.tsx** — thay đổi chính (dòng 207-222):
-```tsx
-{/* Media */}
-{message.media_urls && Array.isArray(message.media_urls) && message.media_urls.length > 0 && (() => {
-  const items = message.media_urls as unknown[];
-  const donationItems = items.filter((item): item is Record<string, unknown> => 
-    typeof item === 'object' && item !== null && (item as any).type === 'donation'
-  );
-  const fileUrls = items.filter((item): item is string => typeof item === 'string');
-  
-  return (
-    <div className="mb-2 space-y-1">
-      {donationItems.map((d, i) => (
-        <div key={`donation-${i}`} className="flex items-center gap-2 p-2 rounded-lg bg-gold/10 border border-gold/30">
-          <Gift className="w-4 h-4 text-gold" />
-          <span className="text-sm font-medium">
-            🎁 {Number(d.amount).toLocaleString()} {String(d.token_symbol)}
-          </span>
-        </div>
-      ))}
-      {fileUrls.map((url, i) => {
-        const fileType = getFileTypeFromUrl(url);
-        // ... existing render logic
-      })}
-    </div>
-  );
-})()}
-```
-
-**fileUtils.ts** — guard (dòng 17):
-```typescript
-export function getFileTypeFromUrl(url: string): 'image' | 'video' | 'document' {
-  if (typeof url !== 'string') return 'document';
-  // ... existing logic
-}
-```
-
-Tổng cộng sửa **3 files**, không cần thay đổi database hay Edge Functions.
+No other files need changes. Backdrop click and ESC already work via the Dialog `onOpenChange` handler on line 135.
 
