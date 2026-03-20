@@ -79,8 +79,8 @@ export const NewMembersModal = ({ open, onOpenChange }: NewMembersModalProps) =>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md w-[90vw] max-h-[80vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle className="flex items-center justify-center gap-2 text-lg font-bold">
-            <Users className="w-5 h-5 text-blue-500" />
+          <DialogTitle className="flex items-center justify-center gap-2 text-lg font-bold text-green-700 dark:text-green-400">
+            <Users className="w-5 h-5 text-green-600" />
             {language === 'vi' ? 'Thành viên mới' : 'New Members'}
           </DialogTitle>
         </DialogHeader>
