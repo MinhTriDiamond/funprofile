@@ -353,23 +353,33 @@ export const UnifiedGiftSendDialog = ({
       // Single send
       const recipient = recipientsWithWallet[0];
       if (!recipient?.walletAddress) { toast.error('Người nhận chưa có ví liên kết'); return; }
-      const hash = await sendToken({ token: walletToken, recipient: recipient.walletAddress, amount });
-      if (hash) {
-        // Wait for blockchain confirmation before recording
-        const confirmed = await waitForReceipt(hash);
-        if (confirmed) {
-          const cardData = buildCardData(hash, recipient, parsedAmountNum);
-          setCelebrationData(cardData); setShowCelebration(true); setFlowStep('celebration');
-          if (recipient.id) recordDonationBackground(hash, recipient);
-          onSuccess?.();
-        } else {
-          const scanUrl = getBscScanTxUrlByChain(hash, selectedChainId);
-          toast.error('Giao dịch không thành công trên blockchain. Vui lòng kiểm tra trên BscScan.', {
-            action: { label: 'BscScan', onClick: () => window.open(scanUrl, '_blank') },
-            duration: 10000,
-          });
-          resetState();
+      try {
+        const hash = await sendToken({ token: walletToken, recipient: recipient.walletAddress, amount });
+        if (hash) {
+          // Wait for blockchain confirmation before recording
+          const confirmed = await waitForReceipt(hash);
+          if (confirmed) {
+            const cardData = buildCardData(hash, recipient, parsedAmountNum);
+            setCelebrationData(cardData); setShowCelebration(true); setFlowStep('celebration');
+            try {
+              if (recipient.id) recordDonationBackground(hash, recipient);
+            } catch (recordErr) {
+              logger.error('[GIFT] recordDonation failed after success:', (recordErr as Error)?.message);
+            }
+            onSuccess?.();
+          } else {
+            const scanUrl = getBscScanTxUrlByChain(hash, selectedChainId);
+            toast.error('Giao dịch không thành công trên blockchain. Vui lòng kiểm tra trên BscScan.', {
+              action: { label: 'BscScan', onClick: () => window.open(scanUrl, '_blank') },
+              duration: 10000,
+            });
+            resetState();
+          }
         }
+      } catch (err) {
+        logger.error('[GIFT] Single send error:', (err as Error)?.message);
+        toast.error('Đã xảy ra lỗi khi gửi quà. Vui lòng thử lại.');
+        resetState();
       }
     } else {
       // Multi send
