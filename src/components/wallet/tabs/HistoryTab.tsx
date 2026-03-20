@@ -173,23 +173,32 @@ function shortenAddress(addr: string) {
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 }
 
-const MSG_TRUNCATE_LENGTH = 80;
-
 function CollapsibleMessage({ message }: { message: string }) {
   const [expanded, setExpanded] = useState(false);
-  const isLong = message.length > MSG_TRUNCATE_LENGTH;
+  const [isClamped, setIsClamped] = useState(false);
+  const textRef = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    const el = textRef.current;
+    if (el) {
+      setIsClamped(el.scrollHeight > el.clientHeight + 1);
+    }
+  }, [message]);
 
   return (
-    <div className="flex items-start gap-1.5 text-sm text-muted-foreground bg-muted/50 rounded-lg p-2">
+    <div className="flex items-start gap-1.5 text-sm text-muted-foreground bg-muted/50 rounded-lg p-2 w-full">
       <MessageSquare className="w-4 h-4 mt-0.5 flex-shrink-0" />
       <div className="min-w-0 flex-1">
-        <span className="break-words">
-          {isLong && !expanded ? `${message.slice(0, MSG_TRUNCATE_LENGTH)}...` : message}
+        <span
+          ref={textRef}
+          className={cn("break-words block", !expanded && "line-clamp-2")}
+        >
+          {message}
         </span>
-        {isLong && (
+        {isClamped && (
           <button
             onClick={(e) => { e.stopPropagation(); setExpanded(prev => !prev); }}
-            className="ml-1 text-primary hover:text-primary/80 font-medium inline-flex items-center gap-0.5"
+            className="ml-1 text-primary hover:text-primary/80 font-medium inline-flex items-center gap-0.5 mt-0.5"
           >
             {expanded ? (<>Thu gọn <ChevronUp className="w-3 h-3" /></>) : (<>Xem thêm <ChevronDown className="w-3 h-3" /></>)}
           </button>
