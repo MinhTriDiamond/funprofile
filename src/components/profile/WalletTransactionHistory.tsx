@@ -314,7 +314,7 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
         <StatusBadge status={d.status} />
       </div>
 
-      <div className="flex items-center gap-1.5 text-sm">
+      <div className="flex flex-wrap items-center gap-1.5 text-sm">
         <div className="flex items-center gap-1.5 min-w-0 shrink">
           {isExternal && !d.sender_id ? (
             <div className="flex items-center gap-1 min-w-0">
@@ -352,9 +352,9 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
           />
         </div>
 
-        <span className="font-bold whitespace-nowrap mx-auto text-center text-red-600 text-sm">{Number(d.amount).toLocaleString('vi-VN', { maximumFractionDigits: 6 })} {d.token_symbol}</span>
+        <span className="font-bold whitespace-nowrap text-red-600 text-sm">{Number(d.amount).toLocaleString('vi-VN', { maximumFractionDigits: 6 })} {d.token_symbol}</span>
 
-        <div className="flex items-center gap-2 whitespace-nowrap shrink-0">
+        <div className="flex items-center gap-2 whitespace-nowrap ml-auto">
           <span className="text-sm font-medium text-primary">{formatTime(d.created_at)}</span>
           <span className="text-sm font-semibold text-yellow-600 dark:text-yellow-400">{formatDate(d.created_at)}</span>
           {d.tx_hash && (
