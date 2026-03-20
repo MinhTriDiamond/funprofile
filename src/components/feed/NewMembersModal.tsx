@@ -89,7 +89,7 @@ export const NewMembersModal = ({ open, onOpenChange }: NewMembersModalProps) =>
           <div className="flex-1 overflow-hidden flex flex-col">
             <button
               onClick={handleBack}
-              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-2 self-start"
+              className="flex items-center gap-1 text-[15px] text-green-700 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300 transition-colors mb-2 self-start"
             >
               <ChevronLeft className="w-4 h-4" />
               {language === 'vi' ? 'Quay lại' : 'Back'}
