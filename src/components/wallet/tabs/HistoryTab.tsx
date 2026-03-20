@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -173,23 +173,32 @@ function shortenAddress(addr: string) {
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 }
 
-const MSG_TRUNCATE_LENGTH = 80;
-
 function CollapsibleMessage({ message }: { message: string }) {
   const [expanded, setExpanded] = useState(false);
-  const isLong = message.length > MSG_TRUNCATE_LENGTH;
+  const [isClamped, setIsClamped] = useState(false);
+  const textRef = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    const el = textRef.current;
+    if (el) {
+      setIsClamped(el.scrollHeight > el.clientHeight + 1);
+    }
+  }, [message]);
 
   return (
-    <div className="flex items-start gap-1.5 text-sm text-muted-foreground bg-muted/50 rounded-lg p-2">
+    <div className="flex items-start gap-1.5 text-sm text-muted-foreground bg-muted/50 rounded-lg p-2 w-full">
       <MessageSquare className="w-4 h-4 mt-0.5 flex-shrink-0" />
       <div className="min-w-0 flex-1">
-        <span className="break-words">
-          {isLong && !expanded ? `${message.slice(0, MSG_TRUNCATE_LENGTH)}...` : message}
+        <span
+          ref={textRef}
+          className={cn("break-words block", !expanded && "line-clamp-2")}
+        >
+          {message}
         </span>
-        {isLong && (
+        {isClamped && (
           <button
             onClick={(e) => { e.stopPropagation(); setExpanded(prev => !prev); }}
-            className="ml-1 text-primary hover:text-primary/80 font-medium inline-flex items-center gap-0.5"
+            className="ml-1 text-primary hover:text-primary/80 font-medium inline-flex items-center gap-0.5 mt-0.5"
           >
             {expanded ? (<>Thu gọn <ChevronUp className="w-3 h-3" /></>) : (<>Xem thêm <ChevronDown className="w-3 h-3" /></>)}
           </button>
@@ -223,8 +232,8 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
         <StatusBadge status={d.status} />
       </div>
 
-      <div className="flex items-center gap-1.5 text-sm">
-        <div className="flex items-center gap-1.5 min-w-0 shrink overflow-hidden">
+      <div className="flex flex-wrap items-center gap-1.5 text-sm">
+        <div className="flex items-center gap-1.5 min-w-0 shrink">
           {isExternal && !d.sender_id ? (
             <div className="flex items-center gap-1 min-w-0">
               <Avatar className="w-5 h-5 flex-shrink-0">
@@ -261,17 +270,16 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
           />
         </div>
 
-        <div className="flex items-center gap-1.5 whitespace-nowrap ml-auto shrink-0">
-          <span className="font-bold text-red-600 text-xs">
-            {Number(d.amount) < 1
-              ? Number(d.amount).toLocaleString('vi-VN', { maximumFractionDigits: 8 })
-              : Number(d.amount).toLocaleString('vi-VN', { maximumFractionDigits: 4 })} {d.token_symbol}
-          </span>
-          <span className="text-xs font-medium text-primary">{formatTimeVN(d.created_at)}</span>
-          <span className="text-xs font-semibold text-yellow-600 dark:text-yellow-400">{formatDateVN(d.created_at)}</span>
+        <span className="font-bold whitespace-nowrap text-red-600 text-sm mx-auto">
+          {Number(d.amount).toLocaleString('vi-VN', { maximumFractionDigits: 6 })} {d.token_symbol}
+        </span>
+
+        <div className="flex items-center gap-2 whitespace-nowrap ml-auto">
+          <span className="text-sm font-medium text-primary">{formatTimeVN(d.created_at)}</span>
+          <span className="text-sm font-semibold text-yellow-600 dark:text-yellow-400">{formatDateVN(d.created_at)}</span>
           {d.tx_hash && (
-            <a href={`${explorerUrl}/tx/${d.tx_hash}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80">
-              <ExternalLink className="w-3.5 h-3.5" />
+            <a href={`${explorerUrl}/tx/${d.tx_hash}`} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline flex items-center gap-0.5">
+              Tx: {d.tx_hash.slice(0, 6)}...{d.tx_hash.slice(-4)} <ExternalLink className="w-3 h-3" />
             </a>
           )}
         </div>
