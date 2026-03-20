@@ -85,7 +85,7 @@ export const NewMembersDateDetail = ({ date }: Props) => {
 
   return (
     <div className="flex-1 overflow-auto">
-      <div className="text-center text-[15px] font-semibold mb-2 text-green-700 dark:text-green-400">
+      <div className="text-center text-[15px] font-semibold mb-2 text-green-800 dark:text-green-300">
         {formattedDate} — {users?.length || 0} {language === 'vi' ? 'thành viên mới' : 'new members'}
       </div>
 
