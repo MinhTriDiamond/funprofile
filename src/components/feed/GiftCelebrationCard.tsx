@@ -171,7 +171,8 @@ const GiftCelebrationCardComponent = ({
     setCurrentReaction(newReaction);
   }, []);
 
-  const amount = post.gift_amount ? Number(post.gift_amount).toLocaleString() : '0';
+  const rawAmount = post.gift_amount ? Number(post.gift_amount) : 0;
+  const amount = rawAmount === 0 ? '0' : rawAmount < 1 ? rawAmount.toLocaleString('vi-VN', { maximumFractionDigits: 8 }) : rawAmount.toLocaleString('vi-VN', { maximumFractionDigits: 6 });
   const token = post.gift_token || 'FUN';
   // Use fetched sender profile for Treasury/cross-user claims, otherwise use post author profile
   const actualSenderProfile = isTreasurySender ? senderProfile : post.profiles;
