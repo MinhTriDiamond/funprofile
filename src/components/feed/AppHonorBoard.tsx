@@ -24,6 +24,7 @@ interface AppStats {
 export const AppHonorBoard = memo(() => {
   const { t } = useLanguage();
   const [showClaimHistory, setShowClaimHistory] = useState(false);
+  const [showNewMembers, setShowNewMembers] = useState(false);
   
   const { data: stats, isLoading } = useQuery({
     queryKey: ['app-honor-board-stats'],
