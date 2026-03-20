@@ -119,7 +119,7 @@ export const NewMembersModal = ({ open, onOpenChange }: NewMembersModalProps) =>
                 </div>
               ) : (
                 <table className="w-full">
-                  <thead className="bg-muted/50 sticky top-0 z-10">
+                  <thead className="bg-background sticky top-0 z-10 shadow-[0_1px_0_0_hsl(var(--border))]">
                     <tr>
                       <th className="text-left p-2.5 font-semibold text-[15px] text-green-700 dark:text-green-400">
                         {modeLabels[mode]}
