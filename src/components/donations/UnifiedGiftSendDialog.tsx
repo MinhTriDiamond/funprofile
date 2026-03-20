@@ -18,8 +18,10 @@ import { DonationSuccessCard, DonationCardData } from './DonationSuccessCard';
 import { useSendToken } from '@/hooks/useSendToken';
 import { useTokenBalances } from '@/hooks/useTokenBalances';
 import { validateMinSendValue } from '@/lib/minSendValidation';
-import { useAccount, useBalance, useReadContract, useChainId, useSwitchChain, usePublicClient } from 'wagmi';
+import { useAccount, useBalance, useReadContract, useChainId, useSwitchChain, usePublicClient, useConnect } from 'wagmi';
+import { injected } from 'wagmi/connectors';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
+import { isInjectedMobileBrowser } from '@/utils/mobileWalletConnect';
 import { useAutoChainSwitch } from '@/hooks/useAutoChainSwitch';
 import { toast } from 'sonner';
 import { formatUnits } from 'viem';
@@ -82,6 +84,7 @@ export const UnifiedGiftSendDialog = ({
   const chainId = useChainId();
   const { switchChain } = useSwitchChain();
   const { openConnectModal } = useConnectModal();
+  const { connect } = useConnect();
   useAutoChainSwitch(); // Auto-switch to BSC on connect
   const { tokens: tokenBalanceList } = useTokenBalances();
   const { sendToken, isPending, txStep, txHash, recheckReceipt, resetState } = useSendToken();
@@ -596,7 +599,13 @@ export const UnifiedGiftSendDialog = ({
                 needsGasWarning={needsGasWarning}
                 bnbBalanceNum={bnbBalanceNum}
                 estimatedGasPerTx={estimatedGasPerTx}
-                onConnectWallet={() => openConnectModal?.()}
+                onConnectWallet={() => {
+                  if (isInjectedMobileBrowser()) {
+                    connect({ connector: injected() });
+                  } else {
+                    openConnectModal?.();
+                  }
+                }}
                 onSwitchChain={() => switchChain({ chainId: selectedChainId })}
                 canProceedToConfirm={canProceedToConfirm}
                 isInProgress={isInProgress}
