@@ -441,7 +441,34 @@ function CollapsibleMessage({ message }: { message: string }) {
   );
 }
 
-// ─── Personal Donation Card ─────────────────────────────────────────────────
+function formatTime(ts: string) {
+  const date = new Date(ts);
+  return date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const isSuccess = status === 'confirmed';
+  return (
+    <Badge variant="secondary" className={isSuccess ? 'bg-green-100 text-green-700 border-green-200 text-xs' : 'bg-orange-100 text-orange-700 border-orange-200 text-xs'}>
+      {isSuccess ? 'Thành công' : 'Đang xử lý'}
+    </Badge>
+  );
+}
+
+function UserAvatarInline({ user, onClick }: { user: { display_name?: string | null; username?: string; avatar_url?: string | null } | null; onClick?: () => void }) {
+  const name = user?.display_name || user?.username || '?';
+  return (
+    <button onClick={onClick} className="flex items-center gap-1.5 min-w-0 hover:opacity-80 transition-opacity">
+      <Avatar className="w-6 h-6 flex-shrink-0">
+        {user?.avatar_url && <AvatarImage src={user.avatar_url} />}
+        <AvatarFallback className="text-[10px] bg-primary/10 text-primary">{name[0]?.toUpperCase()}</AvatarFallback>
+      </Avatar>
+      <span className="text-sm font-medium truncate max-w-[100px] sm:max-w-[160px] text-foreground">{name}</span>
+    </button>
+  );
+}
+
+// ─── Personal Donation Card (matching profile layout) ───────────────────────
 function PersonalDonationCard({
   donation,
   type,
@@ -453,164 +480,95 @@ function PersonalDonationCard({
 }) {
   const navigate = useNavigate();
   const amount = parseFloat(donation.amount) || 0;
-  const isSuccess = donation.status === 'confirmed';
-
-  const getWallet = (user: DonationRecord['sender'] | DonationRecord['recipient']) => {
-    return user?.public_wallet_address || null;
-  };
-
-  const senderWallet = donation.sender ? getWallet(donation.sender) : donation.sender_address || null;
-  const recipientWallet = getWallet(donation.recipient);
-
-  const senderDisplayName = donation.sender?.display_name || donation.sender?.username || 
-    (donation.sender_address ? shortenAddress(donation.sender_address, 6) : 'Ví ngoài');
-  const senderInitial = donation.sender 
-    ? (donation.sender.display_name || donation.sender.username)?.charAt(0).toUpperCase() || '?'
-    : '🌐';
+  const isExternal = donation.is_external || (!donation.sender && donation.sender_address);
 
   return (
     <div
-      className="bg-card rounded-xl border border-border p-4 hover:shadow-md hover:border-primary/30 transition-all cursor-pointer active:scale-[0.99]"
+      className="border border-border rounded-lg p-2.5 space-y-1.5 hover:shadow-md hover:border-primary/30 transition-all cursor-pointer active:scale-[0.99]"
       onClick={onClick}
     >
-      {/* Row 1: Sender → Recipient */}
-      <div className="flex items-center justify-between gap-4 mb-3">
-        {/* Sender */}
-        <div className="flex items-center gap-2 min-w-0">
-          <Avatar
-            className="w-10 h-10 shrink-0 cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
-            onClick={e => { e.stopPropagation(); if (donation.sender?.id) navigate(`/profile/${donation.sender.id}`); }}
-          >
-            <AvatarImage src={donation.sender?.avatar_url || undefined} />
-            <AvatarFallback>{senderInitial}</AvatarFallback>
-          </Avatar>
-          <div className="min-w-0">
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                className="font-semibold text-sm text-foreground hover:underline truncate max-w-[120px] block text-left"
-                onClick={e => { e.stopPropagation(); if (donation.sender?.id) navigate(`/profile/${donation.sender.id}`); }}
-              >
-                {senderDisplayName}
-              </button>
-              {donation.is_external && (
-                <Badge variant="secondary" className="bg-orange-100 text-orange-700 border-orange-200 text-[10px] px-1 py-0">
-                  Ví ngoài
-                </Badge>
-              )}
-            </div>
-            {senderWallet && (
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <span className="truncate max-w-[80px]">{shortenAddress(senderWallet, 4)}</span>
-                <button onClick={e => { e.stopPropagation(); copyToClipboard(senderWallet); }} className="hover:text-foreground">
-                  <Copy className="w-3 h-3" />
-                </button>
-                <a href={`https://bscscan.com/address/${senderWallet}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="hover:text-foreground">
-                  <ExternalLink className="w-3 h-3" />
-                </a>
-              </div>
-            )}
-          </div>
+      {/* Row 1: Badges */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <Badge variant="outline" className={type === 'sent' ? 'border-red-500 text-red-600 bg-red-50 text-xs' : 'border-green-500 text-green-600 bg-green-50 text-xs'}>
+            {type === 'sent' ? <ArrowUpRight className="w-3 h-3 mr-0.5" /> : <ArrowDownLeft className="w-3 h-3 mr-0.5" />}
+            {type === 'sent' ? 'Đã tặng' : 'Đã nhận'}
+          </Badge>
+          {isExternal && (
+            <Badge variant="secondary" className="bg-orange-100 text-orange-700 border-orange-200 text-[10px] px-1 py-0">
+              Ví ngoài
+            </Badge>
+          )}
+          {donation.light_score_earned && donation.light_score_earned > 0 && (
+            <Badge variant="secondary" className="bg-yellow-100 text-yellow-700 border-yellow-200 text-xs gap-1">
+              <Sparkles className="w-3 h-3" />
+              +{donation.light_score_earned}
+            </Badge>
+          )}
         </div>
-
-        {/* Arrow + Amount */}
-        <div className="flex flex-col items-center gap-1 shrink-0">
-          <ArrowRight className="w-4 h-4 text-muted-foreground" />
-          <span className={`text-sm font-bold ${type === 'received' ? 'text-emerald-600' : 'text-foreground'}`}>
-            {type === 'received' ? '+' : ''}{formatNumber(amount, amount < 1 ? 3 : amount < 100 ? 2 : 0)} {donation.token_symbol}
-          </span>
-        </div>
-
-        {/* Recipient */}
-        <div className="flex items-center gap-2 min-w-0 justify-end">
-          <div className="min-w-0 text-right">
-            <button
-              type="button"
-              className="font-semibold text-sm text-foreground hover:underline truncate max-w-[120px] block text-right"
-              onClick={e => { e.stopPropagation(); if (donation.recipient?.id) navigate(`/profile/${donation.recipient.id}`); }}
-            >
-              {donation.recipient?.display_name || donation.recipient?.username || 'Unknown'}
-            </button>
-            {recipientWallet && (
-              <div className="flex items-center gap-1 text-xs text-muted-foreground justify-end">
-                <span className="truncate max-w-[80px]">{shortenAddress(recipientWallet, 4)}</span>
-                <button onClick={e => { e.stopPropagation(); copyToClipboard(recipientWallet); }} className="hover:text-foreground">
-                  <Copy className="w-3 h-3" />
-                </button>
-                <a href={`https://bscscan.com/address/${recipientWallet}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="hover:text-foreground">
-                  <ExternalLink className="w-3 h-3" />
-                </a>
-              </div>
-            )}
-          </div>
-          <Avatar
-            className="w-10 h-10 shrink-0 cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
-            onClick={e => { e.stopPropagation(); if (donation.recipient?.id) navigate(`/profile/${donation.recipient.id}`); }}
-          >
-            <AvatarImage src={donation.recipient?.avatar_url || undefined} />
-            <AvatarFallback>{(donation.recipient?.display_name || donation.recipient?.username)?.charAt(0).toUpperCase() || '?'}</AvatarFallback>
-          </Avatar>
-        </div>
+        <StatusBadge status={donation.status} />
       </div>
 
-      {/* Row 2: Badges */}
-      <div className="flex items-center gap-2 mb-2">
-        <Badge variant="secondary" className="bg-green-100 text-green-700 border-green-200 text-xs">
-          {type === 'sent' ? 'Tặng thưởng' : 'Đã nhận'}
-        </Badge>
-        <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-200 text-xs">
-          Trên chuỗi
-        </Badge>
-        {donation.light_score_earned && donation.light_score_earned > 0 && (
-          <Badge variant="secondary" className="bg-yellow-100 text-yellow-700 border-yellow-200 text-xs gap-1">
-            <Sparkles className="w-3 h-3" />
-            +{donation.light_score_earned}
-          </Badge>
-        )}
+      {/* Row 2: Sender → Recipient | Amount | Time + Tx */}
+      <div className="flex flex-wrap items-center gap-1.5 text-sm">
+        <div className="flex items-center gap-1.5 min-w-0 shrink">
+          {isExternal && !donation.sender ? (
+            <div className="flex items-center gap-1 min-w-0">
+              <Avatar className="w-5 h-5 flex-shrink-0">
+                <AvatarFallback className="text-[9px] bg-orange-100 text-orange-700">🌐</AvatarFallback>
+              </Avatar>
+              {donation.sender_address ? (
+                <a
+                  href={`https://bscscan.com/address/${donation.sender_address}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs font-medium text-primary hover:underline flex items-center gap-0.5"
+                  onClick={e => e.stopPropagation()}
+                >
+                  {shortenAddress(donation.sender_address, 6)} <ExternalLink className="w-2.5 h-2.5" />
+                </a>
+              ) : (
+                <span className="text-xs font-medium text-muted-foreground">Ví ngoài</span>
+              )}
+            </div>
+          ) : (
+            <UserAvatarInline
+              user={donation.sender}
+              onClick={() => { if (donation.sender?.id) navigate(`/profile/${donation.sender.id}`); }}
+            />
+          )}
+          <span className="text-muted-foreground text-xs">→</span>
+          <UserAvatarInline
+            user={donation.recipient}
+            onClick={() => { if (donation.recipient?.id) navigate(`/profile/${donation.recipient.id}`); }}
+          />
+        </div>
+
+        <span className="font-bold whitespace-nowrap text-red-600 text-sm mx-auto">
+          {Number(donation.amount).toLocaleString('vi-VN', { maximumFractionDigits: 6 })} {donation.token_symbol}
+        </span>
+
+        <div className="flex items-center gap-2 whitespace-nowrap ml-auto shrink-0">
+          <span className="text-sm font-medium text-primary">{formatTime(donation.created_at)}</span>
+          <span className="text-sm font-semibold text-yellow-600 dark:text-yellow-400">{formatDate(donation.created_at)}</span>
+          {donation.tx_hash && (
+            <a
+              href={getBscScanTxUrl(donation.tx_hash, donation.token_symbol)}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={e => e.stopPropagation()}
+              className="text-sm text-primary hover:underline flex items-center gap-0.5"
+            >
+              <ExternalLink className="w-3 h-3" />
+            </a>
+          )}
+        </div>
       </div>
 
       {/* Row 3: Message */}
       {donation.message && (
         <CollapsibleMessage message={donation.message} />
       )}
-
-      {/* Row 4: Footer */}
-      <div className="flex items-center justify-between text-xs text-muted-foreground flex-wrap gap-2">
-        <div className="flex items-center gap-2">
-          {isSuccess ? (
-            <CheckCircle className="w-3.5 h-3.5 text-green-500" />
-          ) : (
-            <Clock className="w-3.5 h-3.5 text-orange-400" />
-          )}
-          <span>{isSuccess ? 'Thành công' : 'Đang xử lý'}</span>
-          <span>•</span>
-          <span>{formatDate(donation.created_at)}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span>TX: {shortenAddress(donation.tx_hash, 4)}</span>
-          <button
-            onClick={e => { e.stopPropagation(); copyToClipboard(donation.tx_hash); }}
-            className="hover:text-foreground transition-colors"
-          >
-            <Copy className="w-3 h-3" />
-          </button>
-          <a
-            href={getBscScanTxUrl(donation.tx_hash, donation.token_symbol)}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={e => e.stopPropagation()}
-            className="hover:text-foreground transition-colors"
-          >
-            <ExternalLink className="w-3 h-3" />
-          </a>
-          <button
-            onClick={e => { e.stopPropagation(); onClick(); }}
-            className="text-amber-600 font-medium hover:text-amber-700 flex items-center gap-1"
-          >
-            🎴 Xem Thẻ
-          </button>
-        </div>
-      </div>
     </div>
   );
 }
