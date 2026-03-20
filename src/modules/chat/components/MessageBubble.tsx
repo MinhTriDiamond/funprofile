@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
-import { MoreHorizontal, Reply, Pin, Edit, Trash2, Flag, Copy, X, Check, CheckCheck } from 'lucide-react';
+import { MoreHorizontal, Reply, Pin, Edit, Trash2, Flag, Copy, X, Check, CheckCheck, Gift } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import type { Message, MessageReaction } from '../types';
