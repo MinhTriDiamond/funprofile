@@ -77,7 +77,7 @@ export const NewMembersModal = ({ open, onOpenChange }: NewMembersModalProps) =>
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl w-[90vw] max-h-[80vh] overflow-hidden flex flex-col">
+      <DialogContent className="w-[905px] max-w-[95vw] max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-center gap-2 text-lg font-bold text-green-800 dark:text-green-300">
             <Users className="w-5 h-5 text-green-700" />
