@@ -101,7 +101,7 @@ export const NewMembersModal = ({ open, onOpenChange }: NewMembersModalProps) =>
             <Tabs value={mode} onValueChange={handleModeChange} className="w-full">
               <TabsList className="w-full grid grid-cols-3">
                 {(['day', 'week', 'month'] as ViewMode[]).map(m => (
-                  <TabsTrigger key={m} value={m} className="text-xs">
+                  <TabsTrigger key={m} value={m} className="text-[15px]">
                     {modeLabels[m]}
                   </TabsTrigger>
                 ))}
