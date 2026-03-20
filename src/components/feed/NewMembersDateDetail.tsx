@@ -135,7 +135,7 @@ export const NewMembersDateDetail = ({ date }: Props) => {
                         <img src={getPlatformLogo(link.platform)} alt={getPlatformName(link)} className="w-5 h-5" />
                       </a>
                     ))}
-                    <span className="text-[13px] text-green-600/70 dark:text-green-400/70 tabular-nums ml-1">
+                    <span className="text-[13px] text-green-700/70 dark:text-green-300/70 tabular-nums ml-1">
                       {formatTime(user.created_at)}
                     </span>
                   </div>
