@@ -5569,6 +5569,7 @@ export type Database = {
           created_at: string
           full_name: string
           id: string
+          social_links: Json
           username: string
         }[]
       }
