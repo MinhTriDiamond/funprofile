@@ -327,7 +327,6 @@ export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, user
       </div>
 
       {/* Filters + Date Range row */}
-      {/* Filters */}
       <div className="flex items-center gap-1.5 flex-wrap">
         <Filter className="w-4 h-4 text-muted-foreground flex-shrink-0" />
         {filters.map(f => (
@@ -335,53 +334,52 @@ export function HistoryTab({ walletAddress, userDisplayName, userAvatarUrl, user
             {f.label}
           </Button>
         ))}
-      </div>
 
-      {/* Date range */}
-      <div className="flex items-center gap-1.5 flex-wrap">
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button size="sm" variant="outline" className={cn("h-8 text-xs gap-1 min-w-0", fromDate && "border-primary text-primary")}>
-              <CalendarDays className="w-3.5 h-3.5 flex-shrink-0" />
-              {fromDate ? format(fromDate, 'dd/MM/yyyy') : 'Từ ngày'}
+        <div className="ml-auto flex items-center gap-1.5">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button size="sm" variant="outline" className={cn("h-8 text-xs gap-1 min-w-0", fromDate && "border-primary text-primary")}>
+                <CalendarDays className="w-3.5 h-3.5 flex-shrink-0" />
+                {fromDate ? format(fromDate, 'dd/MM/yyyy') : 'Từ ngày'}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0 z-[9999]" align="end">
+              <Calendar
+                mode="single"
+                selected={fromDate}
+                onSelect={(d) => handleDateChange(d, toDate)}
+                disabled={(date) => date > new Date() || (toDate ? date > toDate : false)}
+                initialFocus
+                className={cn("p-3 pointer-events-auto")}
+              />
+            </PopoverContent>
+          </Popover>
+
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button size="sm" variant="outline" className={cn("h-8 text-xs gap-1 min-w-0", toDate && "border-primary text-primary")}>
+                <CalendarDays className="w-3.5 h-3.5 flex-shrink-0" />
+                {toDate ? format(toDate, 'dd/MM/yyyy') : 'Đến ngày'}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0 z-[9999]" align="end">
+              <Calendar
+                mode="single"
+                selected={toDate}
+                onSelect={(d) => handleDateChange(fromDate, d)}
+                disabled={(date) => date > new Date() || (fromDate ? date < fromDate : false)}
+                initialFocus
+                className={cn("p-3 pointer-events-auto")}
+              />
+            </PopoverContent>
+          </Popover>
+
+          {(fromDate || toDate) && (
+            <Button size="sm" variant="ghost" onClick={clearDateRange} className="h-8 w-8 p-0">
+              <X className="w-3.5 h-3.5" />
             </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0 z-[9999]" align="start">
-            <Calendar
-              mode="single"
-              selected={fromDate}
-              onSelect={(d) => handleDateChange(d, toDate)}
-              disabled={(date) => date > new Date() || (toDate ? date > toDate : false)}
-              initialFocus
-              className={cn("p-3 pointer-events-auto")}
-            />
-          </PopoverContent>
-        </Popover>
-
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button size="sm" variant="outline" className={cn("h-8 text-xs gap-1 min-w-0", toDate && "border-primary text-primary")}>
-              <CalendarDays className="w-3.5 h-3.5 flex-shrink-0" />
-              {toDate ? format(toDate, 'dd/MM/yyyy') : 'Đến ngày'}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0 z-[9999]" align="start">
-            <Calendar
-              mode="single"
-              selected={toDate}
-              onSelect={(d) => handleDateChange(fromDate, d)}
-              disabled={(date) => date > new Date() || (fromDate ? date < fromDate : false)}
-              initialFocus
-              className={cn("p-3 pointer-events-auto")}
-            />
-          </PopoverContent>
-        </Popover>
-
-        {(fromDate || toDate) && (
-          <Button size="sm" variant="ghost" onClick={clearDateRange} className="h-8 w-8 p-0">
-            <X className="w-3.5 h-3.5" />
-          </Button>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Summary Table */}
