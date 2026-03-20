@@ -1,47 +1,32 @@
 
 
-## Kiểm tra tính năng "Kết nối ví để gửi" trong Crypto Gift (Chat)
+## Problem
 
-### Trạng thái hiện tại
+On mobile, there are **two stacked headers**: a small back-button bar from `Chat.tsx` (line 115-118) and then `MessageThread`'s own full header with avatar/name/call buttons. The back button bar is easy to miss and wastes vertical space. From the screenshot, users see the MessageThread header as the "main" header and don't notice the back button above it.
 
-Nút **"Kết nối"** trong Gift Dialog **hoạt động trên desktop** — nó gọi `openConnectModal()` từ RainbowKit (dòng 599 của `UnifiedGiftSendDialog.tsx`).
+## Solution
 
-**Vấn đề trên mobile dApp browser**: Khi người dùng mở trang từ trình duyệt dApp (MetaMask, TrustWallet, Bitget), nút "Kết nối" vẫn gọi `openConnectModal()` — đây là modal RainbowKit, có thể gây xung đột z-index/portal hoặc hiển thị modal thừa, trong khi injected provider (`window.ethereum`) đã sẵn sàng.
+Merge the back button **into** the MessageThread header itself on mobile, eliminating the double-header. This follows Messenger/WhatsApp patterns where the back arrow sits inline with the contact name.
 
-Hệ thống Wallet Login (`WalletLoginContent.tsx`, `useWalletAuth.ts`) **đã xử lý đúng** trường hợp này bằng cách detect `isInjectedMobileBrowser()` rồi connect trực tiếp qua injected connector. Nhưng Gift Dialog **chưa áp dụng** cơ chế tương tự.
+### File: `src/modules/chat/components/MessageThread.tsx`
 
-### Kế hoạch sửa
+1. **Add `onBack` optional prop** to `MessageThreadProps`
+2. **Render a back arrow button** before the avatar in the header when `onBack` is provided:
+   ```
+   [← back] [avatar] [name]          [phone] [video] [search] [...]
+   ```
+3. This keeps all navigation in a single header row
 
-#### File: `src/components/donations/UnifiedGiftSendDialog.tsx`
+### File: `src/modules/chat/pages/Chat.tsx`
 
-1. Import `useConnect` từ wagmi và `isInjectedMobileBrowser` từ `mobileWalletConnect`
-2. Thay `onConnectWallet={() => openConnectModal?.()}` bằng hàm thông minh:
-   - Nếu đang trong dApp browser mobile → gọi `connect({ connector: injected() })` trực tiếp (bỏ qua modal RainbowKit)
-   - Nếu không → gọi `openConnectModal()` như cũ
+1. **Remove the separate back-button bar** (lines 114-118 — the `div` with ArrowLeft + "Tin nhắn")
+2. **Pass `onBack={handleBack}` prop** to `<MessageThread>` in the mobile view
+3. Desktop view remains unchanged (no `onBack` prop → no back button in MessageThread header)
 
-```tsx
-// Thêm import
-import { useConnect } from 'wagmi';
-import { injected } from 'wagmi/connectors';
-import { isInjectedMobileBrowser } from '@/utils/mobileWalletConnect';
-
-// Trong component, thêm hook
-const { connect } = useConnect();
-
-// Thay handler
-const handleConnectWallet = useCallback(() => {
-  if (isInjectedMobileBrowser()) {
-    connect({ connector: injected() });
-  } else {
-    openConnectModal?.();
-  }
-}, [connect, openConnectModal]);
-
-// Line 599: đổi từ
-onConnectWallet={() => openConnectModal?.()}
-// thành
-onConnectWallet={handleConnectWallet}
-```
-
-Chỉ thay đổi **1 file**, không ảnh hưởng logic gửi token hay recording donation.
+### Result
+- Single header on mobile with back arrow + avatar + name + action buttons
+- Saves ~48px vertical space
+- Back button is prominent and follows standard messaging app UX
+- Desktop sidebar layout unchanged
+- No state loss when navigating back (React Query cache preserved)
 
