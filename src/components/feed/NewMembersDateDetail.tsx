@@ -133,19 +133,22 @@ export const NewMembersDateDetail = ({ date }: Props) => {
 
                 {linkCount > 0 && (
                   <div className="px-2.5 pb-2 pl-[3.25rem] flex flex-wrap gap-1">
-                    {links.map((link, i) => (
-                      <a
-                        key={i}
-                        href={link.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="inline-flex items-center gap-1 text-[13px] px-1.5 py-0.5 rounded-full bg-green-50 dark:bg-green-900/30 hover:bg-green-100 dark:hover:bg-green-900/50 text-green-700 dark:text-green-400 transition-colors"
-                      >
-                        <span>{getPlatformEmoji(link.platform)}</span>
-                        <span className="truncate max-w-[100px]">{getPlatformName(link)}</span>
-                      </a>
-                    ))}
+                    {links.map((link, i) => {
+                      const style = getPlatformStyle(link.platform);
+                      return (
+                        <a
+                          key={i}
+                          href={link.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className={`inline-flex items-center gap-1 text-[13px] px-1.5 py-0.5 rounded-full transition-colors ${style.color}`}
+                        >
+                          <span>{style.emoji}</span>
+                          <span className="truncate max-w-[100px]">{getPlatformName(link)}</span>
+                        </a>
+                      );
+                    })}
                   </div>
                 )}
               </div>
