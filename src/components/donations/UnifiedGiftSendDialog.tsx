@@ -84,6 +84,7 @@ export const UnifiedGiftSendDialog = ({
   const chainId = useChainId();
   const { switchChain } = useSwitchChain();
   const { openConnectModal } = useConnectModal();
+  const { connect } = useConnect();
   useAutoChainSwitch(); // Auto-switch to BSC on connect
   const { tokens: tokenBalanceList } = useTokenBalances();
   const { sendToken, isPending, txStep, txHash, recheckReceipt, resetState } = useSendToken();
