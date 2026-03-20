@@ -51,9 +51,10 @@ interface MessageThreadProps {
   conversationId: string;
   userId: string | null;
   username: string | null;
+  onBack?: () => void;
 }
 
-export function MessageThread({ conversationId, userId, username }: MessageThreadProps) {
+export function MessageThread({ conversationId, userId, username, onBack }: MessageThreadProps) {
   const scrollRootRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollRafRef = useRef<number | null>(null);
