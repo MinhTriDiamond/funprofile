@@ -465,6 +465,7 @@ export function MessageThread({ conversationId, userId, username, onBack }: Mess
               <p className="text-xs text-muted-foreground">Đang nhập...</p>
             ) : null}
           </div>
+          </div>
         </div>
 
         <div className="flex items-center gap-1">
