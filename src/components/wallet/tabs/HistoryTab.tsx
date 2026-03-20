@@ -223,8 +223,8 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
         <StatusBadge status={d.status} />
       </div>
 
-      <div className="flex flex-wrap items-center gap-1.5 text-sm">
-        <div className="flex items-center gap-1.5 min-w-0 shrink">
+      <div className="flex items-center gap-1.5 text-sm">
+        <div className="flex items-center gap-1.5 min-w-0 shrink overflow-hidden">
           {isExternal && !d.sender_id ? (
             <div className="flex items-center gap-1 min-w-0">
               <Avatar className="w-5 h-5 flex-shrink-0">
@@ -261,16 +261,17 @@ function DonationCard({ d, userId }: { d: DonationRecord; userId: string }) {
           />
         </div>
 
-        <span className="font-bold whitespace-nowrap text-red-600 text-sm">
-          {Number(d.amount).toLocaleString('vi-VN', { maximumFractionDigits: 6 })} {d.token_symbol}
-        </span>
-
-        <div className="flex items-center gap-2 whitespace-nowrap ml-auto">
-          <span className="text-sm font-medium text-primary">{formatTimeVN(d.created_at)}</span>
-          <span className="text-sm font-semibold text-yellow-600 dark:text-yellow-400">{formatDateVN(d.created_at)}</span>
+        <div className="flex items-center gap-1.5 whitespace-nowrap ml-auto shrink-0">
+          <span className="font-bold text-red-600 text-xs">
+            {Number(d.amount) < 1
+              ? Number(d.amount).toLocaleString('vi-VN', { maximumFractionDigits: 8 })
+              : Number(d.amount).toLocaleString('vi-VN', { maximumFractionDigits: 4 })} {d.token_symbol}
+          </span>
+          <span className="text-xs font-medium text-primary">{formatTimeVN(d.created_at)}</span>
+          <span className="text-xs font-semibold text-yellow-600 dark:text-yellow-400">{formatDateVN(d.created_at)}</span>
           {d.tx_hash && (
-            <a href={`${explorerUrl}/tx/${d.tx_hash}`} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline flex items-center gap-0.5">
-              Tx: {d.tx_hash.slice(0, 6)}...{d.tx_hash.slice(-4)} <ExternalLink className="w-3 h-3" />
+            <a href={`${explorerUrl}/tx/${d.tx_hash}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80">
+              <ExternalLink className="w-3.5 h-3.5" />
             </a>
           )}
         </div>
