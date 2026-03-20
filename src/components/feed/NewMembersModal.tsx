@@ -170,8 +170,8 @@ export const NewMembersModal = ({ open, onOpenChange }: NewMembersModalProps) =>
               </button>
             )}
 
-            <div className="text-center text-sm font-semibold pt-1 text-muted-foreground">
-              {language === 'vi' ? 'Tổng' : 'Total'}: <span className="text-primary font-bold">{total}</span>
+            <div className="text-center text-[15px] font-semibold pt-1 text-green-700 dark:text-green-400">
+              {language === 'vi' ? 'Tổng' : 'Total'}: <span className="font-bold">{total}</span>
             </div>
           </>
         )}
