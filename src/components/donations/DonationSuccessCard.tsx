@@ -64,6 +64,16 @@ export const DonationSuccessCard = ({
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [copied, setCopied] = useState(false);
+  const autoCloseRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      autoCloseRef.current = setTimeout(() => handleClose(), 8000);
+    }
+    return () => {
+      if (autoCloseRef.current) clearTimeout(autoCloseRef.current);
+    };
+  }, [isOpen]);
 
   useEffect(() => {
     if (isOpen) {
