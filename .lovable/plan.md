@@ -1,38 +1,28 @@
 
 
-## Sửa header chat bị che khuất trên mobile
+## Chỉnh giao diện lịch sử giao dịch trong ví giống trang cá nhân
 
-### Vấn đề
-Từ ảnh chụp: trên mobile khi mở cuộc trò chuyện, **FacebookNavbar vẫn hiển thị** ở trên cùng (hamburger, search, notification, avatar), chiếm khoảng 56px. Bên dưới là header của MessageThread (tên người dùng, nút gọi, tìm kiếm). Hai header cùng hiện khiến:
-- Tên người dùng bị cắt, nút hành động bị che
-- Lãng phí không gian dọc trên màn hình nhỏ
+### Khác biệt hiện tại
 
-### Giải pháp
-Ẩn `FacebookNavbar` khi đang xem cuộc trò chuyện trên mobile — giống Messenger/WhatsApp. Header của MessageThread (đã có nút back, avatar, tên, nút gọi/video/search) sẽ thay thế hoàn toàn.
+**Trang cá nhân** (`WalletTransactionHistory.tsx` — DonationCard):
+- Users + Số tiền (giữa) + Giờ/Ngày/Tx (phải) nằm trên **1 dòng**
+- Bộ lọc + Date picker nằm trên **cùng 1 hàng** (filters trái, date picker phải với `ml-auto`)
+- Danh sách giao dịch có **thanh cuộn** (`overflow-y-auto`)
 
-### Thay đổi
+**Ví** (`HistoryTab.tsx` — DonationCard):
+- Users nằm 1 dòng, Số tiền + Giờ/Ngày/Tx nằm dòng riêng (2 dòng)
+- Bộ lọc và Date picker tách thành **2 hàng riêng**
+- Không có thanh cuộn riêng cho danh sách
 
-**File: `src/modules/chat/pages/Chat.tsx`** (dòng 108-130)
+### Thay đổi — `src/components/wallet/tabs/HistoryTab.tsx`
 
-1. Chỉ render `<FacebookNavbar />` khi **không** có `conversationId` (đang ở danh sách chat):
+**1. DonationCard** (dòng 202-281): Thay layout hiện tại bằng layout 1 dòng giống profile:
+- Row 2: `[Users (shrink)] [Amount (mx-auto, center, red)] [Time + Date + Tx (shrink-0, right)]`
+- Bỏ Row 3 riêng biệt
 
-```tsx
-// Trước:
-<div className="h-dvh flex flex-col bg-background/80">
-  <FacebookNavbar />
-  <main ...>
-    {conversationId ? <MessageThread .../> : ...}
-  </main>
-</div>
+**2. Filters + Date picker** (dòng 327-383): Gộp vào 1 hàng:
+- Trái: Filter icon + buttons
+- Phải (`ml-auto`): Từ ngày + Đến ngày + nút xóa
 
-// Sau:
-<div className="h-dvh flex flex-col bg-background/80">
-  {!conversationId && <FacebookNavbar />}
-  <main ...>
-    {conversationId ? <MessageThread .../> : ...}
-  </main>
-</div>
-```
-
-Chỉ thay đổi **1 dòng** trong 1 file. MessageThread header đã có đầy đủ: back button, avatar, tên (truncate), nút gọi thoại, video, search, settings — sẽ hiển thị toàn bộ khi không còn bị navbar che phía trên.
+**3. Danh sách giao dịch** (dòng 398-413): Bọc trong container có `overflow-y-auto` với chiều cao cố định để có thanh cuộn
 
