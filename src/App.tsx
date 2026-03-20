@@ -97,6 +97,11 @@ function PendingDonationRecovery() {
   return null;
 }
 
+function NewMemberWelcome() {
+  useNewMemberWelcome();
+  return null;
+}
+
 // Loading fallback component with smooth animation
 const PageLoader = () => (
   <div className="min-h-screen bg-background flex items-center justify-center">
