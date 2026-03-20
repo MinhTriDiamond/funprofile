@@ -25,19 +25,19 @@ interface Props {
   date: string;
 }
 
-const getPlatformStyle = (platform?: string): { emoji: string; color: string } => {
+const getPlatformLogo = (platform?: string): string => {
   const p = (platform || '').toLowerCase();
-  if (p.includes('facebook') || p.includes('fb')) return { emoji: '📘', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/60' };
-  if (p.includes('youtube') || p.includes('yt')) return { emoji: '▶️', color: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/60' };
-  if (p.includes('tiktok')) return { emoji: '🎵', color: 'bg-pink-100 text-pink-700 dark:bg-pink-900/40 dark:text-pink-400 hover:bg-pink-200 dark:hover:bg-pink-900/60' };
-  if (p.includes('instagram') || p.includes('ig')) return { emoji: '📷', color: 'bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-900/40 dark:text-fuchsia-400 hover:bg-fuchsia-200 dark:hover:bg-fuchsia-900/60' };
-  if (p.includes('twitter') || p.includes('x.com')) return { emoji: '🐦', color: 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-400 hover:bg-sky-200 dark:hover:bg-sky-900/60' };
-  if (p.includes('telegram') || p.includes('tg')) return { emoji: '✈️', color: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-400 hover:bg-cyan-200 dark:hover:bg-cyan-900/60' };
-  if (p.includes('zalo')) return { emoji: '💬', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/60' };
-  if (p.includes('linkedin')) return { emoji: '💼', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/60' };
-  if (p.includes('github')) return { emoji: '🐙', color: 'bg-gray-100 text-gray-700 dark:bg-gray-800/60 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700/60' };
-  if (p.includes('website') || p.includes('blog')) return { emoji: '🌐', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-900/60' };
-  return { emoji: '🔗', color: 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/50' };
+  if (p.includes('facebook') || p.includes('fb')) return getTwemojiUrl('📘');
+  if (p.includes('youtube') || p.includes('yt')) return getTwemojiUrl('▶️');
+  if (p.includes('tiktok')) return getTwemojiUrl('🎵');
+  if (p.includes('instagram') || p.includes('ig')) return getTwemojiUrl('📷');
+  if (p.includes('twitter') || p.includes('x.com')) return getTwemojiUrl('🐦');
+  if (p.includes('telegram') || p.includes('tg')) return getTwemojiUrl('✈️');
+  if (p.includes('zalo')) return getTwemojiUrl('💬');
+  if (p.includes('linkedin')) return getTwemojiUrl('💼');
+  if (p.includes('github')) return getTwemojiUrl('🐙');
+  if (p.includes('website') || p.includes('blog')) return getTwemojiUrl('🌐');
+  return getTwemojiUrl('🔗');
 };
 
 const getPlatformName = (link: SocialLink): string => {
