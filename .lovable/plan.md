@@ -1,32 +1,34 @@
 
 
-## Problem
+## Fix: Mobile Chat Header Overflow/Clipping
 
-On mobile, there are **two stacked headers**: a small back-button bar from `Chat.tsx` (line 115-118) and then `MessageThread`'s own full header with avatar/name/call buttons. The back button bar is easy to miss and wastes vertical space. From the screenshot, users see the MessageThread header as the "main" header and don't notice the back button above it.
+### Problem
+On small screens (320–480px), the header has too many elements competing for space: back button + avatar + name + 4-5 action buttons. The username gets clipped and action buttons overflow.
 
-## Solution
+### Root Cause (lines 436-510)
+- The left section (`min-w-0` div) and right section (action buttons) both grow unconstrained
+- The username `<p>` has no truncation classes
+- Action buttons don't have `shrink-0` to prevent compression
+- Avatar doesn't have `shrink-0`
 
-Merge the back button **into** the MessageThread header itself on mobile, eliminating the double-header. This follows Messenger/WhatsApp patterns where the back arrow sits inline with the contact name.
+### Changes — `src/modules/chat/components/MessageThread.tsx`
 
-### File: `src/modules/chat/components/MessageThread.tsx`
+**1. Username truncation** (line 457-458):
+- Add `min-w-0` to the inner `<div>` wrapping name/status
+- Add `truncate max-w-[120px] sm:max-w-[200px]` to the `<p>` with `headerName`
 
-1. **Add `onBack` optional prop** to `MessageThreadProps`
-2. **Render a back arrow button** before the avatar in the header when `onBack` is provided:
-   ```
-   [← back] [avatar] [name]          [phone] [video] [search] [...]
-   ```
-3. This keeps all navigation in a single header row
+**2. Avatar shrink protection** (line 453):
+- Add `shrink-0` to Avatar
 
-### File: `src/modules/chat/pages/Chat.tsx`
+**3. Right-side buttons shrink protection** (line 471):
+- Add `shrink-0` to the action buttons container
 
-1. **Remove the separate back-button bar** (lines 114-118 — the `div` with ArrowLeft + "Tin nhắn")
-2. **Pass `onBack={handleBack}` prop** to `<MessageThread>` in the mobile view
-3. Desktop view remains unchanged (no `onBack` prop → no back button in MessageThread header)
+**4. Reduce icon sizes on mobile** (lines 473-498):
+- Change icon classes from `h-5 w-5` to `h-4 w-4` for call/search/settings buttons
+- Reduce button size with `size="sm"` or use `h-8 w-8` custom sizing for tighter fit
 
-### Result
-- Single header on mobile with back arrow + avatar + name + action buttons
-- Saves ~48px vertical space
-- Back button is prominent and follows standard messaging app UX
-- Desktop sidebar layout unchanged
-- No state loss when navigating back (React Query cache preserved)
+**5. Compact padding** (line 436):
+- Change `p-3` to `px-2 py-2 sm:p-3` for tighter mobile spacing
+
+This ensures: back ← avatar → truncated name ... | phone video search ⋯ all visible without clipping.
 
