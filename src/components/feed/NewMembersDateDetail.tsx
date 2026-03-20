@@ -100,55 +100,46 @@ export const NewMembersDateDetail = ({ date }: Props) => {
             const displayName = user.full_name || user.username || 'User';
             const initials = displayName.slice(0, 2).toUpperCase();
             const links = parseSocialLinks(user.social_links);
-            const linkCount = links.length;
 
             return (
               <div key={user.id} className="rounded-lg hover:bg-muted/50 transition-colors">
-                <button
-                  onClick={() => navigate(user.username ? `/@${user.username}` : `/profile/${user.id}`)}
-                  className="w-full flex items-center gap-3 p-2.5 text-left"
-                >
-                  <Avatar className="w-9 h-9">
-                    <AvatarImage src={user.avatar_url || ''} sizeHint="sm" />
-                    <AvatarFallback className="text-xs">{initials}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[15px] font-medium truncate text-green-700 dark:text-green-400">{displayName}</div>
-                    {user.username && (
-                      <div className="text-[13px] text-green-600/70 dark:text-green-400/70 truncate">@{user.username}</div>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {linkCount > 0 && (
-                      <span className="flex items-center gap-0.5 text-[13px] text-green-600 dark:text-green-400">
-                        <Link2 className="w-3.5 h-3.5" />
-                        {linkCount}
-                      </span>
-                    )}
-                    <span className="text-[13px] text-green-600/70 dark:text-green-400/70 tabular-nums">
+                <div className="flex items-center gap-3 p-2.5">
+                  <button
+                    onClick={() => navigate(user.username ? `/@${user.username}` : `/profile/${user.id}`)}
+                    className="flex items-center gap-3 min-w-0 flex-1"
+                  >
+                    <Avatar className="w-9 h-9 shrink-0">
+                      <AvatarImage src={user.avatar_url || ''} sizeHint="sm" />
+                      <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0">
+                      <div className="text-[15px] font-medium truncate text-green-700 dark:text-green-400">{displayName}</div>
+                      {user.username && (
+                        <div className="text-[13px] text-green-600/70 dark:text-green-400/70 truncate">@{user.username}</div>
+                      )}
+                    </div>
+                  </button>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {links.map((link, i) => (
+                      <a
+                        key={i}
+                        href={link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={getPlatformName(link)}
+                        className="hover:scale-110 transition-transform"
+                      >
+                        <img src={getPlatformLogo(link.platform)} alt={getPlatformName(link)} className="w-5 h-5" />
+                      </a>
+                    ))}
+                    <span className="text-[13px] text-green-600/70 dark:text-green-400/70 tabular-nums ml-1">
                       {formatTime(user.created_at)}
                     </span>
                   </div>
-                </button>
-
-                {linkCount > 0 && (
-                  <div className="px-2.5 pb-2 pl-[3.25rem] flex flex-wrap gap-1">
-                    {links.map((link, i) => {
-                      const style = getPlatformStyle(link.platform);
-                      return (
-                        <a
-                          key={i}
-                          href={link.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className={`inline-flex items-center gap-1 text-[13px] px-1.5 py-0.5 rounded-full transition-colors ${style.color}`}
-                        >
-                          <span>{style.emoji}</span>
-                          <span className="truncate max-w-[100px]">{getPlatformName(link)}</span>
-                        </a>
-                      );
-                    })}
+                </div>
+              </div>
+            );
+          })}
                   </div>
                 )}
               </div>
