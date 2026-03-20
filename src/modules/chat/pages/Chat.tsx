@@ -108,7 +108,7 @@ export default function ChatPage() {
   if (isMobileOrTablet) {
     return (
       <div className="h-dvh flex flex-col bg-background/80">
-        <FacebookNavbar />
+        {!conversationId && <FacebookNavbar />}
         <main className="flex-1 min-h-0 flex flex-col overflow-hidden bg-background/90">
           {conversationId ? (
             <MessageThread conversationId={conversationId} userId={userId} username={username} onBack={handleBack} />
