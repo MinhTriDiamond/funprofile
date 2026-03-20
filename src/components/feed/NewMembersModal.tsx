@@ -77,7 +77,7 @@ export const NewMembersModal = ({ open, onOpenChange }: NewMembersModalProps) =>
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[905px] max-w-[95vw] sm:max-w-[905px] max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="w-[792px] max-w-[95vw] sm:max-w-[792px] max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-center gap-2 text-lg font-bold text-green-800 dark:text-green-300">
             <Users className="w-5 h-5 text-green-700" />
@@ -101,7 +101,7 @@ export const NewMembersModal = ({ open, onOpenChange }: NewMembersModalProps) =>
             <Tabs value={mode} onValueChange={handleModeChange} className="w-full">
               <TabsList className="w-full grid grid-cols-3">
                 {(['day', 'week', 'month'] as ViewMode[]).map(m => (
-                  <TabsTrigger key={m} value={m} className="text-xs">
+                  <TabsTrigger key={m} value={m} className="text-[15px]">
                     {modeLabels[m]}
                   </TabsTrigger>
                 ))}
