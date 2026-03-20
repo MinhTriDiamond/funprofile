@@ -154,11 +154,18 @@ export const AppHonorBoard = memo(() => {
         <div className="grid grid-cols-1 gap-2">
           {statItems.map((item, index) => {
             const isClaimItem = item.label === t('totalCamlyClaimed');
+            const isMembersItem = item.label === t('totalUsers');
+            const isClickable = isClaimItem || isMembersItem;
+            const handleClick = isClaimItem
+              ? () => setShowClaimHistory(true)
+              : isMembersItem
+              ? () => setShowNewMembers(true)
+              : undefined;
             return (
               <div 
                 key={index} 
-                className={`flex items-center gap-3 py-2.5 px-4 rounded-full bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] border-[3px] border-[#D4AF37] transition-all duration-300 hover:scale-[1.02] cursor-pointer ${isClaimItem ? 'ring-2 ring-[#FFD700]/40 hover:ring-[#FFD700]/70' : ''}`}
-                onClick={isClaimItem ? () => setShowClaimHistory(true) : undefined}
+                className={`flex items-center gap-3 py-2.5 px-4 rounded-full bg-gradient-to-b from-[#1a7d45] via-[#166534] to-[#0d4a2a] border-[3px] border-[#D4AF37] transition-all duration-300 hover:scale-[1.02] cursor-pointer ${isClaimItem ? 'ring-2 ring-[#FFD700]/40 hover:ring-[#FFD700]/70' : ''} ${isMembersItem ? 'ring-2 ring-blue-400/40 hover:ring-blue-400/70' : ''}`}
+                onClick={handleClick}
               >
                 <div className="p-1.5 rounded-full bg-white/10 shrink-0">
                   <item.icon className="w-4 h-4 text-[#F5E6C8]" />
