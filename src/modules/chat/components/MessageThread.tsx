@@ -433,17 +433,23 @@ export function MessageThread({ conversationId, userId, username, onBack }: Mess
   return (
     <div className="relative flex-1 min-h-0 flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="p-4 border-b flex items-center justify-between bg-card">
-        <div
-          className={`flex items-center gap-3 ${!isGroup && dmOtherUserId ? 'cursor-pointer group' : ''}`}
-          onClick={() => {
-            if (!isGroup && dmOtherUserId) {
-              navigate(`/profile/${dmOtherUserId}`);
-            } else if (isGroup) {
-              setShowGroupSettings(true);
-            }
-          }}
-        >
+      <div className="p-3 border-b flex items-center justify-between bg-card gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          {onBack && (
+            <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0 -ml-1">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          )}
+          <div
+            className={`flex items-center gap-3 min-w-0 ${!isGroup && dmOtherUserId ? 'cursor-pointer group' : ''}`}
+            onClick={() => {
+              if (!isGroup && dmOtherUserId) {
+                navigate(`/profile/${dmOtherUserId}`);
+              } else if (isGroup) {
+                setShowGroupSettings(true);
+              }
+            }}
+          >
           <Avatar className={`h-10 w-10 transition-all ${!isGroup && dmOtherUserId ? 'group-hover:ring-2 group-hover:ring-primary' : ''}`}>
             <AvatarImage src={headerAvatar || undefined} alt={headerName || ''} />
             <AvatarFallback>{(headerName || 'U')[0].toUpperCase()}</AvatarFallback>
