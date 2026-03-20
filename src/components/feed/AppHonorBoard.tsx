@@ -171,7 +171,7 @@ export const AppHonorBoard = memo(() => {
                   <item.icon className="w-4 h-4 text-[#F5E6C8]" />
                 </div>
                 <div className="flex-1 flex items-center justify-between gap-2 min-w-0 overflow-hidden">
-                  <span className={`text-[#F5E6C8] text-[10px] sm:text-xs uppercase font-semibold truncate flex-shrink min-w-0 ${isClaimItem ? 'underline decoration-dotted underline-offset-2' : ''}`}>
+                  <span className={`text-[#F5E6C8] text-[10px] sm:text-xs uppercase font-semibold truncate flex-shrink min-w-0 ${isClickable ? 'underline decoration-dotted underline-offset-2' : ''}`}>
                     {item.label}
                   </span>
                   <span className="text-[#FFD700] font-bold text-[11px] sm:text-sm flex items-center gap-1 flex-shrink-0">
