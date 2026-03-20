@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { MessageSquare, ChevronDown, ChevronUp } from 'lucide-react';
+import { MessageSquare, ChevronDown, ChevronUp, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
 import { getTodayVN } from '@/lib/vnTimezone';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
