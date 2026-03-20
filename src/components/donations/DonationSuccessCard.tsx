@@ -330,6 +330,14 @@ export const DonationSuccessCard = ({
                   {isSaving ? 'Đang lưu...' : 'Lưu Hình'}
                 </Button>
               </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full gap-1.5 border-emerald-300 text-emerald-700 font-semibold hover:bg-emerald-50 text-sm rounded-full"
+                onClick={handleClose}
+              >
+                Đóng
+              </Button>
             </div>
           </div>
         </DialogContent>
