@@ -1,42 +1,79 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useLanguage } from '@/i18n/LanguageContext';
-import { Users } from 'lucide-react';
+import { Users, ChevronLeft, ChevronDown } from 'lucide-react';
 import { getTodayVN } from '@/lib/vnTimezone';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { NewMembersDateDetail } from './NewMembersDateDetail';
 
 interface NewMembersModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-interface DailySignup {
-  signup_date: string;
+interface GroupedSignup {
+  period_label: string;
   new_users: number;
 }
+
+type ViewMode = 'day' | 'week' | 'month';
+
+const PAGE_SIZE = 30;
 
 export const NewMembersModal = ({ open, onOpenChange }: NewMembersModalProps) => {
   const { language } = useLanguage();
   const todayVN = getTodayVN();
+  const [mode, setMode] = useState<ViewMode>('day');
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [limit, setLimit] = useState(PAGE_SIZE);
 
-  const { data: dailySignups, isLoading } = useQuery({
-    queryKey: ['daily-signups'],
-    queryFn: async (): Promise<DailySignup[]> => {
-      const { data, error } = await supabase.rpc('get_daily_signups_vn', { p_days: 30 });
+  const { data: signups, isLoading } = useQuery({
+    queryKey: ['signups-grouped', mode, limit],
+    queryFn: async (): Promise<GroupedSignup[]> => {
+      const { data, error } = await supabase.rpc('get_signups_grouped_vn', {
+        p_mode: mode,
+        p_limit: limit,
+        p_offset: 0,
+      });
       if (error) throw error;
-      return (data as DailySignup[]) || [];
+      return (data as GroupedSignup[]) || [];
     },
-    enabled: open,
+    enabled: open && !selectedDate,
     staleTime: 5 * 60 * 1000,
   });
 
-  const formatDate = (dateStr: string) => {
-    const [y, m, d] = dateStr.split('-');
+  const formatLabel = (label: string) => {
+    const [y, m, d] = label.split('-');
+    if (mode === 'month') return `${m}/${y}`;
+    if (mode === 'week') return `${language === 'vi' ? 'Tuần' : 'Week'} ${d}/${m}/${y}`;
     return `${d}/${m}/${y}`;
   };
 
-  const total = dailySignups?.reduce((s, r) => s + r.new_users, 0) || 0;
+  const total = signups?.reduce((s, r) => s + r.new_users, 0) || 0;
+  const hasMore = signups?.length === limit;
+
+  const handleRowClick = (row: GroupedSignup) => {
+    if (mode === 'day') {
+      setSelectedDate(row.period_label);
+    }
+  };
+
+  const handleBack = () => setSelectedDate(null);
+
+  const handleModeChange = (newMode: string) => {
+    setMode(newMode as ViewMode);
+    setLimit(PAGE_SIZE);
+    setSelectedDate(null);
+  };
+
+  const modeLabels = {
+    day: language === 'vi' ? 'Ngày' : 'Day',
+    week: language === 'vi' ? 'Tuần' : 'Week',
+    month: language === 'vi' ? 'Tháng' : 'Month',
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -44,57 +81,100 @@ export const NewMembersModal = ({ open, onOpenChange }: NewMembersModalProps) =>
         <DialogHeader>
           <DialogTitle className="flex items-center justify-center gap-2 text-lg font-bold">
             <Users className="w-5 h-5 text-blue-500" />
-            {language === 'vi' ? 'Thành viên mới mỗi ngày' : 'New Members per Day'}
+            {language === 'vi' ? 'Thành viên mới' : 'New Members'}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 overflow-auto rounded-lg border">
-          {isLoading ? (
-            <div className="p-4 space-y-3">
-              {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-8 w-full" />)}
-            </div>
-          ) : !dailySignups?.length ? (
-            <div className="p-8 text-center text-muted-foreground">
-              {language === 'vi' ? 'Chưa có dữ liệu' : 'No data'}
-            </div>
-          ) : (
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50 sticky top-0">
-                <tr>
-                  <th className="text-left p-2.5 font-semibold">{language === 'vi' ? 'Ngày' : 'Date'}</th>
-                  <th className="text-right p-2.5 font-semibold">{language === 'vi' ? 'Thành viên mới' : 'New Members'}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {dailySignups.map((row) => {
-                  const isToday = row.signup_date === todayVN;
-                  return (
-                    <tr
-                      key={row.signup_date}
-                      className={`border-t transition-colors ${isToday ? 'bg-blue-500/10 font-semibold' : 'hover:bg-muted/30'}`}
-                    >
-                      <td className="p-2.5">
-                        {formatDate(row.signup_date)}
-                        {isToday && (
-                          <span className="ml-2 text-[10px] uppercase text-blue-500 font-bold">
-                            {language === 'vi' ? 'Hôm nay' : 'Today'}
-                          </span>
-                        )}
-                      </td>
-                      <td className="p-2.5 text-right tabular-nums font-bold text-primary">
-                        +{row.new_users}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-        </div>
+        {selectedDate ? (
+          <div className="flex-1 overflow-hidden flex flex-col">
+            <button
+              onClick={handleBack}
+              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-2 self-start"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              {language === 'vi' ? 'Quay lại' : 'Back'}
+            </button>
+            <NewMembersDateDetail date={selectedDate} />
+          </div>
+        ) : (
+          <>
+            <Tabs value={mode} onValueChange={handleModeChange} className="w-full">
+              <TabsList className="w-full grid grid-cols-3">
+                {(['day', 'week', 'month'] as ViewMode[]).map(m => (
+                  <TabsTrigger key={m} value={m} className="text-xs">
+                    {modeLabels[m]}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
 
-        <div className="text-center text-sm font-semibold pt-1 text-muted-foreground">
-          {language === 'vi' ? 'Tổng 30 ngày' : '30-day total'}: <span className="text-primary font-bold">{total}</span>
-        </div>
+            <div className="flex-1 overflow-auto rounded-lg border">
+              {isLoading ? (
+                <div className="p-4 space-y-3">
+                  {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-8 w-full" />)}
+                </div>
+              ) : !signups?.length ? (
+                <div className="p-8 text-center text-muted-foreground">
+                  {language === 'vi' ? 'Chưa có dữ liệu' : 'No data'}
+                </div>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50 sticky top-0">
+                    <tr>
+                      <th className="text-left p-2.5 font-semibold">
+                        {modeLabels[mode]}
+                      </th>
+                      <th className="text-right p-2.5 font-semibold">
+                        {language === 'vi' ? 'Thành viên mới' : 'New Members'}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {signups.map((row) => {
+                      const isToday = mode === 'day' && row.period_label === todayVN;
+                      const isClickable = mode === 'day';
+                      return (
+                        <tr
+                          key={row.period_label}
+                          onClick={() => handleRowClick(row)}
+                          className={`border-t transition-colors ${isToday ? 'bg-blue-500/10 font-semibold' : 'hover:bg-muted/30'} ${isClickable ? 'cursor-pointer' : ''}`}
+                        >
+                          <td className="p-2.5 flex items-center gap-1">
+                            {formatLabel(row.period_label)}
+                            {isToday && (
+                              <span className="ml-1 text-[10px] uppercase text-blue-500 font-bold">
+                                {language === 'vi' ? 'Hôm nay' : 'Today'}
+                              </span>
+                            )}
+                            {isClickable && (
+                              <ChevronDown className="w-3 h-3 text-muted-foreground ml-auto rotate-[-90deg]" />
+                            )}
+                          </td>
+                          <td className="p-2.5 text-right tabular-nums font-bold text-primary">
+                            +{row.new_users}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            {hasMore && (
+              <button
+                onClick={() => setLimit(l => l + PAGE_SIZE)}
+                className="w-full text-center text-sm text-primary hover:underline py-1"
+              >
+                {language === 'vi' ? 'Xem thêm...' : 'Load more...'}
+              </button>
+            )}
+
+            <div className="text-center text-sm font-semibold pt-1 text-muted-foreground">
+              {language === 'vi' ? 'Tổng' : 'Total'}: <span className="text-primary font-bold">{total}</span>
+            </div>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );

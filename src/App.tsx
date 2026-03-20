@@ -17,6 +17,7 @@ import logger from "@/lib/logger";
 
 
 import { usePendingDonationRecovery } from "@/hooks/usePendingDonationRecovery";
+import { useNewMemberWelcome } from "@/hooks/useNewMemberWelcome";
 // Lazy load pages for code splitting
 const Auth = lazy(() => import("./pages/Auth"));
 const Friends = lazy(() => import("./pages/Friends"));
