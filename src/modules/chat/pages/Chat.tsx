@@ -111,13 +111,7 @@ export default function ChatPage() {
         <FacebookNavbar />
         <main className="flex-1 min-h-0 flex flex-col overflow-hidden bg-background/90">
           {conversationId ? (
-            <div className="h-full flex flex-col">
-              <div className="flex items-center gap-2 p-3 border-b bg-card/80">
-                <Button variant="ghost" size="icon" onClick={handleBack}><ArrowLeft className="h-5 w-5" /></Button>
-                <span className="font-medium">Tin nhắn</span>
-              </div>
-              <MessageThread conversationId={conversationId} userId={userId} username={username} />
-            </div>
+            <MessageThread conversationId={conversationId} userId={userId} username={username} onBack={handleBack} />
           ) : (
             <PullToRefreshContainer onRefresh={handlePullRefresh} className="h-full">
               <div className="h-full flex flex-col">
