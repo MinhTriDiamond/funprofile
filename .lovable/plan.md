@@ -1,32 +1,38 @@
 
 
-## Problem
+## Sửa header chat bị che khuất trên mobile
 
-On mobile, there are **two stacked headers**: a small back-button bar from `Chat.tsx` (line 115-118) and then `MessageThread`'s own full header with avatar/name/call buttons. The back button bar is easy to miss and wastes vertical space. From the screenshot, users see the MessageThread header as the "main" header and don't notice the back button above it.
+### Vấn đề
+Từ ảnh chụp: trên mobile khi mở cuộc trò chuyện, **FacebookNavbar vẫn hiển thị** ở trên cùng (hamburger, search, notification, avatar), chiếm khoảng 56px. Bên dưới là header của MessageThread (tên người dùng, nút gọi, tìm kiếm). Hai header cùng hiện khiến:
+- Tên người dùng bị cắt, nút hành động bị che
+- Lãng phí không gian dọc trên màn hình nhỏ
 
-## Solution
+### Giải pháp
+Ẩn `FacebookNavbar` khi đang xem cuộc trò chuyện trên mobile — giống Messenger/WhatsApp. Header của MessageThread (đã có nút back, avatar, tên, nút gọi/video/search) sẽ thay thế hoàn toàn.
 
-Merge the back button **into** the MessageThread header itself on mobile, eliminating the double-header. This follows Messenger/WhatsApp patterns where the back arrow sits inline with the contact name.
+### Thay đổi
 
-### File: `src/modules/chat/components/MessageThread.tsx`
+**File: `src/modules/chat/pages/Chat.tsx`** (dòng 108-130)
 
-1. **Add `onBack` optional prop** to `MessageThreadProps`
-2. **Render a back arrow button** before the avatar in the header when `onBack` is provided:
-   ```
-   [← back] [avatar] [name]          [phone] [video] [search] [...]
-   ```
-3. This keeps all navigation in a single header row
+1. Chỉ render `<FacebookNavbar />` khi **không** có `conversationId` (đang ở danh sách chat):
 
-### File: `src/modules/chat/pages/Chat.tsx`
+```tsx
+// Trước:
+<div className="h-dvh flex flex-col bg-background/80">
+  <FacebookNavbar />
+  <main ...>
+    {conversationId ? <MessageThread .../> : ...}
+  </main>
+</div>
 
-1. **Remove the separate back-button bar** (lines 114-118 — the `div` with ArrowLeft + "Tin nhắn")
-2. **Pass `onBack={handleBack}` prop** to `<MessageThread>` in the mobile view
-3. Desktop view remains unchanged (no `onBack` prop → no back button in MessageThread header)
+// Sau:
+<div className="h-dvh flex flex-col bg-background/80">
+  {!conversationId && <FacebookNavbar />}
+  <main ...>
+    {conversationId ? <MessageThread .../> : ...}
+  </main>
+</div>
+```
 
-### Result
-- Single header on mobile with back arrow + avatar + name + action buttons
-- Saves ~48px vertical space
-- Back button is prominent and follows standard messaging app UX
-- Desktop sidebar layout unchanged
-- No state loss when navigating back (React Query cache preserved)
+Chỉ thay đổi **1 dòng** trong 1 file. MessageThread header đã có đầy đủ: back button, avatar, tên (truncate), nút gọi thoại, video, search, settings — sẽ hiển thị toàn bộ khi không còn bị navbar che phía trên.
 
