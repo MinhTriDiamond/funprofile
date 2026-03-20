@@ -140,11 +140,6 @@ export const NewMembersDateDetail = ({ date }: Props) => {
               </div>
             );
           })}
-                  </div>
-                )}
-              </div>
-            );
-          })}
         </div>
       )}
     </div>
