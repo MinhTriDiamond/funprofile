@@ -120,12 +120,12 @@ export const NewMembersDateDetail = ({ date }: Props) => {
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     {linkCount > 0 && (
-                      <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
-                        <Link2 className="w-3 h-3" />
+                      <span className="flex items-center gap-0.5 text-[13px] text-green-600 dark:text-green-400">
+                        <Link2 className="w-3.5 h-3.5" />
                         {linkCount}
                       </span>
                     )}
-                    <span className="text-xs text-muted-foreground tabular-nums">
+                    <span className="text-[13px] text-green-600/70 dark:text-green-400/70 tabular-nums">
                       {formatTime(user.created_at)}
                     </span>
                   </div>
