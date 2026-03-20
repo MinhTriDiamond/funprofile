@@ -85,7 +85,7 @@ export const NewMembersDateDetail = ({ date }: Props) => {
 
   return (
     <div className="flex-1 overflow-auto">
-      <div className="text-center text-[15px] font-semibold mb-2 text-green-700 dark:text-green-400">
+      <div className="text-center text-[15px] font-semibold mb-2 text-green-800 dark:text-green-300">
         {formattedDate} — {users?.length || 0} {language === 'vi' ? 'thành viên mới' : 'new members'}
       </div>
 
@@ -116,9 +116,9 @@ export const NewMembersDateDetail = ({ date }: Props) => {
                       <AvatarFallback className="text-xs">{initials}</AvatarFallback>
                     </Avatar>
                     <div className="min-w-0">
-                      <div className="text-[15px] font-medium truncate text-green-700 dark:text-green-400">{displayName}</div>
+                      <div className="text-[15px] font-medium truncate text-green-800 dark:text-green-300">{displayName}</div>
                       {user.username && (
-                        <div className="text-[13px] text-green-600/70 dark:text-green-400/70 truncate">@{user.username}</div>
+                        <div className="text-[13px] text-green-700/70 dark:text-green-300/70 truncate">@{user.username}</div>
                       )}
                     </div>
                   </button>
@@ -135,7 +135,7 @@ export const NewMembersDateDetail = ({ date }: Props) => {
                         <img src={getPlatformLogo(link.platform)} alt={getPlatformName(link)} className="w-5 h-5" />
                       </a>
                     ))}
-                    <span className="text-[13px] text-green-600/70 dark:text-green-400/70 tabular-nums ml-1">
+                    <span className="text-[13px] text-green-700/70 dark:text-green-300/70 tabular-nums ml-1">
                       {formatTime(user.created_at)}
                     </span>
                   </div>

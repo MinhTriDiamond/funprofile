@@ -77,10 +77,10 @@ export const NewMembersModal = ({ open, onOpenChange }: NewMembersModalProps) =>
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md w-[90vw] max-h-[80vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-xl w-[90vw] max-h-[80vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle className="flex items-center justify-center gap-2 text-lg font-bold text-green-700 dark:text-green-400">
-            <Users className="w-5 h-5 text-green-600" />
+          <DialogTitle className="flex items-center justify-center gap-2 text-lg font-bold text-green-800 dark:text-green-300">
+            <Users className="w-5 h-5 text-green-700" />
             {language === 'vi' ? 'Thành viên mới' : 'New Members'}
           </DialogTitle>
         </DialogHeader>
@@ -89,7 +89,7 @@ export const NewMembersModal = ({ open, onOpenChange }: NewMembersModalProps) =>
           <div className="flex-1 overflow-hidden flex flex-col">
             <button
               onClick={handleBack}
-              className="flex items-center gap-1 text-[15px] text-green-700 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300 transition-colors mb-2 self-start"
+              className="flex items-center gap-1 text-[15px] text-green-800 dark:text-green-300 hover:text-green-900 dark:hover:text-green-200 transition-colors mb-2 self-start"
             >
               <ChevronLeft className="w-4 h-4" />
               {language === 'vi' ? 'Quay lại' : 'Back'}
@@ -121,10 +121,10 @@ export const NewMembersModal = ({ open, onOpenChange }: NewMembersModalProps) =>
                 <table className="w-full">
                   <thead className="bg-background sticky top-0 z-10 shadow-[0_1px_0_0_hsl(var(--border))]">
                     <tr>
-                      <th className="text-left p-2.5 font-semibold text-[15px] text-green-700 dark:text-green-400">
+                      <th className="text-left p-2.5 font-semibold text-[15px] text-green-800 dark:text-green-300">
                         {modeLabels[mode]}
                       </th>
-                      <th className="text-right p-2.5 font-semibold text-[15px] text-green-700 dark:text-green-400">
+                      <th className="text-right p-2.5 font-semibold text-[15px] text-green-800 dark:text-green-300">
                         {language === 'vi' ? 'Thành viên mới' : 'New Members'}
                       </th>
                     </tr>
@@ -139,18 +139,18 @@ export const NewMembersModal = ({ open, onOpenChange }: NewMembersModalProps) =>
                           onClick={() => handleRowClick(row)}
                           className={`border-t transition-colors ${isToday ? 'bg-green-500/10 font-semibold' : 'hover:bg-muted/30'} ${isClickable ? 'cursor-pointer' : ''}`}
                         >
-                          <td className="p-2.5 flex items-center gap-1 text-[15px] text-green-700 dark:text-green-400">
+                          <td className="p-2.5 flex items-center gap-1 text-[15px] text-green-800 dark:text-green-300">
                             {formatLabel(row.period_label)}
                             {isToday && (
-                              <span className="ml-1 text-[11px] uppercase text-green-600 dark:text-green-300 font-bold">
+                              <span className="ml-1 text-[11px] uppercase text-green-700 dark:text-green-200 font-bold">
                                 {language === 'vi' ? 'Hôm nay' : 'Today'}
                               </span>
                             )}
                             {isClickable && (
-                              <ChevronDown className="w-3.5 h-3.5 text-green-600 dark:text-green-400 ml-auto rotate-[-90deg]" />
+                              <ChevronDown className="w-3.5 h-3.5 text-green-700 dark:text-green-300 ml-auto rotate-[-90deg]" />
                             )}
                           </td>
-                          <td className="p-2.5 text-right tabular-nums font-bold text-[15px] text-green-700 dark:text-green-400">
+                          <td className="p-2.5 text-right tabular-nums font-bold text-[15px] text-green-800 dark:text-green-300">
                             +{row.new_users}
                           </td>
                         </tr>
@@ -170,7 +170,7 @@ export const NewMembersModal = ({ open, onOpenChange }: NewMembersModalProps) =>
               </button>
             )}
 
-            <div className="text-center text-[15px] font-semibold pt-1 text-green-700 dark:text-green-400">
+            <div className="text-center text-[15px] font-semibold pt-1 text-green-800 dark:text-green-300">
               {language === 'vi' ? 'Tổng' : 'Total'}: <span className="font-bold">{total}</span>
             </div>
           </>
