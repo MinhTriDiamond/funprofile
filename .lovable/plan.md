@@ -1,83 +1,71 @@
 
 
+## Phân tích nguyên nhân crash
 
-## Phân tích.
+**Root cause**: Khi giao dịch Crypto Gift thành công, Edge Function `record-donation` chèn một message vào bảng `messages` với `media_urls` là **mảng JSON objects**:
+```json
+[{"type": "donation", "donation_id": "...", "amount": "100", "token_symbol": "CAMLY", "tx_hash": "0x..."}]
+```
 
-Sau khi kiểm tra toàn bộ hệ thống ghi và phát lại video livestream, cha phát hiện:
-
-### Nguyên nhân gốc: Edge Function chưa được deploy lại
-
-- **Code trong repo** (`auto-finalize-recordings/index.ts` dòng 405): đã sửa thành `4 * 60 * 60 * 1000` (4 giờ)
-- **Phiên bản đang chạy trên server**: vẫn dùng ngưỡng cũ **30 phút**
-- **Bằng chứng**: Tất cả phiên live > 30 phút đều bị kết thúc tại các mốc cron 5 phút (`:00`, `:05`, `:10`,...). Ví dụ:
-  - Phiên bắt đầu 22:20 → bị đóng 22:54 (~34 phút, cron chạy lúc 22:55)
-  - Phiên bắt đầu 13:55 → bị đóng 14:30 (~34 phút, cron chạy lúc 14:30)
-  - **20/20 phiên dài đều bị kết thúc ở ~30-35 phút**
-
-### Các phần hoạt động tốt
-- **Chunked recording**: Ghi chunk 2s, upload R2 — hoạt động ổn (recording mới nhất: 1023 chunks = ~34 phút)
-- **Agora token**: Expire 86400s (24h) — không phải nguyên nhân
-- **Heartbeat**: 15s cập nhật `updated_at` — hoạt động
-- **ChunkedVideoPlayer**: MSE streaming với cache 80MB, fallback blob — OK cho video dài
-- **RAM**: Không tích lũy blob trong chunkedRecorder — đã sửa trước đó
-
-### Lỗi phụ: `live-recording-status` Edge Function
-File có khai báo trùng `const supabaseAdmin` (dòng 28 và dòng 46), sẽ gây lỗi runtime.
+Chat realtime nhận message này → `MessageBubble.tsx` dòng 209-211 ép kiểu `media_urls` thành `string[]` rồi gọi `getFileTypeFromUrl(url)` trên mỗi phần tử. Nhưng phần tử là **object**, không phải string → `new URL(object)` throw → catch block gọi `object.lastIndexOf('.')` cũng throw → **crash lan ra ErrorBoundary → trang trắng "Đã xảy ra lỗi"**.
 
 ## Kế hoạch sửa
 
-### 1. Deploy lại Edge Function `auto-finalize-recordings`
-Chỉ cần deploy lại function đã có code đúng (4 giờ) trong repo. Sửa comment lỗi thời trên dòng 4.
+### 1. File `src/modules/chat/components/MessageBubble.tsx` (dòng 207-222)
+- Trước khi render media, **tách** `media_urls` thành 2 loại:
+  - `donationItems`: các object có `type === 'donation'` → render thành gift card inline (hiển thị đẹp thay vì text thô)
+  - `fileUrls`: các string URL thực → render như cũ (image/video/file)
+- Render donation items trước bằng một mini gift card (icon 🎁 + số tiền + token)
+- Chỉ gọi `getFileTypeFromUrl()` trên string URLs
 
-### 2. Sửa lỗi duplicate variable trong `live-recording-status/index.ts`
-Xóa khai báo `supabaseAdmin` trùng lặp ở dòng 46-49, tái sử dụng biến đã khai báo ở dòng 28.
+### 2. File `src/modules/chat/utils/fileUtils.ts` (phòng thủ)
+- Thêm guard `if (typeof url !== 'string') return 'document'` trong `getFileTypeFromUrl` để tránh crash tương tự trong tương lai
 
-### 3. Nâng cao: Thêm kiểm tra heartbeat trong auto-finalize
-Thay vì chỉ dựa vào `started_at`, thêm kiểm tra `updated_at` (heartbeat) để phân biệt phiên đang hoạt động với phiên bị kẹt:
-- Phiên có `updated_at` trong 2 phút gần đây → **đang hoạt động**, KHÔNG đóng
-- Phiên có `updated_at` > 2 phút trước VÀ `started_at` > 4 giờ → đóng
+### 3. File `src/components/donations/UnifiedGiftSendDialog.tsx` (dòng 351-373)
+- Bọc `handleSend` single-send trong try/catch toàn bộ
+- Nếu lỗi xảy ra sau khi có hash (celebration phase), catch lại và show toast thay vì để crash
+
+### 4. File `src/modules/chat/components/MessageBubble.tsx` - Error boundary nội bộ
+- Bọc phần render media trong try/catch (hoặc inline error boundary nhẹ) để nếu có lỗi render media thì chỉ ẩn media đó, không crash toàn bộ chat
 
 ### Chi tiết kỹ thuật
 
-**File `supabase/functions/auto-finalize-recordings/index.ts`:**
-- Dòng 4: Sửa comment "30 min" → "4 hours"
-- Dòng 405-411: Thêm điều kiện `.lt('updated_at', twoMinAgo)` để bảo vệ phiên đang hoạt động (heartbeat mới)
-
-**File `supabase/functions/live-recording-status/index.ts`:**
-- Xóa dòng 46-49 (duplicate `const supabaseAdmin`)
-
-**Deploy:** `auto-finalize-recordings` và `live-recording-status`
-## Vấn đề
-
-Trang ví bị crash hoàn toàn với lỗi:
+**MessageBubble.tsx** — thay đổi chính (dòng 207-222):
+```tsx
+{/* Media */}
+{message.media_urls && Array.isArray(message.media_urls) && message.media_urls.length > 0 && (() => {
+  const items = message.media_urls as unknown[];
+  const donationItems = items.filter((item): item is Record<string, unknown> => 
+    typeof item === 'object' && item !== null && (item as any).type === 'donation'
+  );
+  const fileUrls = items.filter((item): item is string => typeof item === 'string');
+  
+  return (
+    <div className="mb-2 space-y-1">
+      {donationItems.map((d, i) => (
+        <div key={`donation-${i}`} className="flex items-center gap-2 p-2 rounded-lg bg-gold/10 border border-gold/30">
+          <Gift className="w-4 h-4 text-gold" />
+          <span className="text-sm font-medium">
+            🎁 {Number(d.amount).toLocaleString()} {String(d.token_symbol)}
+          </span>
+        </div>
+      ))}
+      {fileUrls.map((url, i) => {
+        const fileType = getFileTypeFromUrl(url);
+        // ... existing render logic
+      })}
+    </div>
+  );
+})()}
 ```
-SyntaxError: The requested module '/node_modules/lodash/isNaN.js' does not provide an export named 'default'
-```
 
-Đây là lỗi tương thích ESM của `lodash` khi Vite serve các sub-module chưa được pre-bundle. File `vite.config.ts` đã include `lodash`, `lodash/get`, `lodash/set`, `lodash/isEqual`, `lodash/cloneDeep` — nhưng thiếu `lodash/isNaN` mà `react-day-picker` v9 cần.
-
-Trang profile hoạt động bình thường vì Calendar component ở đó được load trong chunk chính (không lazy), trong khi wallet page dùng lazy loading nên Vite xử lý dependency khác đi.
-
-## Kế hoạch sửa
-
-### File: `vite.config.ts`
-
-Thêm `lodash/isNaN` vào `optimizeDeps.include` (dòng 59-72). Đồng thời thêm thêm vài lodash sub-module phổ biến khác để phòng ngừa lỗi tương tự:
-
-```js
-optimizeDeps: {
-  include: [
-    // ...existing entries...
-    'lodash',
-    'lodash/get',
-    'lodash/set',
-    'lodash/isEqual',
-    'lodash/cloneDeep',
-    'lodash/isNaN',     // ← thêm mới - fix crash wallet
-    '@metamask/utils',
-  ],
+**fileUtils.ts** — guard (dòng 17):
+```typescript
+export function getFileTypeFromUrl(url: string): 'image' | 'video' | 'document' {
+  if (typeof url !== 'string') return 'document';
+  // ... existing logic
 }
 ```
 
-Chỉ cần sửa 1 file duy nhất, thêm 1 dòng. Không cần thay đổi logic hay component nào.
+Tổng cộng sửa **3 files**, không cần thay đổi database hay Edge Functions.
 
