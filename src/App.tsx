@@ -123,6 +123,7 @@ function App() {
             <Sonner />
             <AuthSessionKeeper />
             <PendingDonationRecovery />
+            <NewMemberWelcome />
           <BrowserRouter>
             <CallProvider>
             <Suspense fallback={<PageLoader />}>
