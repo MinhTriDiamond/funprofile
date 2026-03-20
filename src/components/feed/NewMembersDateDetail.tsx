@@ -4,7 +4,6 @@ import { useLanguage } from '@/i18n/LanguageContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useNavigate } from 'react-router-dom';
-import { getTwemojiUrl } from '@/lib/emojiUtils';
 
 interface SocialLink {
   platform?: string;
