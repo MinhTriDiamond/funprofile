@@ -433,15 +433,15 @@ export function MessageThread({ conversationId, userId, username, onBack }: Mess
   return (
     <div className="relative flex-1 min-h-0 flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="p-3 border-b flex items-center justify-between bg-card gap-2">
-        <div className="flex items-center gap-2 min-w-0">
+      <div className="px-2 py-2 sm:p-3 border-b flex items-center justify-between bg-card gap-1 sm:gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
           {onBack && (
-            <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0 -ml-1">
-              <ArrowLeft className="h-5 w-5" />
+            <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0 -ml-1 h-8 w-8 sm:h-10 sm:w-10">
+              <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
           )}
           <div
-            className={`flex items-center gap-3 min-w-0 ${!isGroup && dmOtherUserId ? 'cursor-pointer group' : ''}`}
+            className={`flex items-center gap-2 sm:gap-3 min-w-0 flex-1 ${!isGroup && dmOtherUserId ? 'cursor-pointer group' : ''}`}
             onClick={() => {
               if (!isGroup && dmOtherUserId) {
                 navigate(`/profile/${dmOtherUserId}`);
@@ -450,12 +450,12 @@ export function MessageThread({ conversationId, userId, username, onBack }: Mess
               }
             }}
           >
-          <Avatar className={`h-10 w-10 transition-all ${!isGroup && dmOtherUserId ? 'group-hover:ring-2 group-hover:ring-primary' : ''}`}>
+          <Avatar className={`h-8 w-8 sm:h-10 sm:w-10 shrink-0 transition-all ${!isGroup && dmOtherUserId ? 'group-hover:ring-2 group-hover:ring-primary' : ''}`}>
             <AvatarImage src={headerAvatar || undefined} alt={headerName || ''} />
-            <AvatarFallback>{(headerName || 'U')[0].toUpperCase()}</AvatarFallback>
+            <AvatarFallback className="text-xs sm:text-sm">{(headerName || 'U')[0].toUpperCase()}</AvatarFallback>
           </Avatar>
-          <div>
-            <p className={`font-medium ${!isGroup && dmOtherUserId ? 'group-hover:underline' : ''}`}>{headerName}</p>
+          <div className="min-w-0">
+            <p className={`font-medium truncate max-w-[100px] sm:max-w-[200px] text-sm sm:text-base ${!isGroup && dmOtherUserId ? 'group-hover:underline' : ''}`}>{headerName}</p>
             {isGroup ? (
               <p className="text-xs text-muted-foreground flex items-center gap-1">
                 <Users className="h-3 w-3" />
@@ -468,7 +468,7 @@ export function MessageThread({ conversationId, userId, username, onBack }: Mess
           </div>
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
           {/* Call buttons */}
           <Button 
             variant="ghost" 
@@ -476,8 +476,9 @@ export function MessageThread({ conversationId, userId, username, onBack }: Mess
             onClick={() => startCall('voice')}
             disabled={callState !== 'idle' || (!isGroup && isDmBlocked)}
             title="Gọi thoại"
+            className="h-8 w-8 sm:h-10 sm:w-10"
           >
-            <Phone className="h-5 w-5" />
+            <Phone className="h-4 w-4 sm:h-5 sm:w-5" />
           </Button>
           <Button 
             variant="ghost" 
@@ -485,16 +486,17 @@ export function MessageThread({ conversationId, userId, username, onBack }: Mess
             onClick={() => startCall('video')}
             disabled={callState !== 'idle' || (!isGroup && isDmBlocked)}
             title="Gọi video"
+            className="h-8 w-8 sm:h-10 sm:w-10"
           >
-            <Video className="h-5 w-5" />
+            <Video className="h-4 w-4 sm:h-5 sm:w-5" />
           </Button>
           
-          <Button variant="ghost" size="icon" onClick={() => setShowSearch(true)}>
-            <Search className="h-5 w-5" />
+          <Button variant="ghost" size="icon" onClick={() => setShowSearch(true)} className="h-8 w-8 sm:h-10 sm:w-10">
+            <Search className="h-4 w-4 sm:h-5 sm:w-5" />
           </Button>
           {isGroup && (
-            <Button variant="ghost" size="icon" onClick={() => setShowGroupSettings(true)}>
-              <Settings className="h-5 w-5" />
+            <Button variant="ghost" size="icon" onClick={() => setShowGroupSettings(true)} className="h-8 w-8 sm:h-10 sm:w-10">
+              <Settings className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
           )}
           {!isGroup && dmOtherUserId && (
