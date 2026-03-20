@@ -5407,6 +5407,13 @@ export type Database = {
         }[]
       }
       get_daily_cap: { Args: { tier: number }; Returns: number }
+      get_daily_signups_vn: {
+        Args: { p_days?: number }
+        Returns: {
+          new_users: number
+          signup_date: string
+        }[]
+      }
       get_donation_history: {
         Args: {
           p_limit?: number
