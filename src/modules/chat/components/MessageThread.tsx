@@ -34,7 +34,7 @@ import { BlockUserDialog } from './BlockUserDialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Search, Settings, Users, Phone, Video, MoreHorizontal, Pin, Trash2 } from 'lucide-react';
+import { Search, Settings, Users, Phone, Video, MoreHorizontal, Pin, Trash2, ArrowLeft } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Message, ConversationParticipant } from '../types';
 import { toast } from 'sonner';
