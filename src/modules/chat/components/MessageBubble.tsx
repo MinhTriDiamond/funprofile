@@ -206,20 +206,44 @@ export function MessageBubble({
             )}
           >
             {/* Media */}
-            {message.media_urls && Array.isArray(message.media_urls) && (message.media_urls as string[]).length > 0 && (
-              <div className="mb-2 space-y-1">
-                {(message.media_urls as string[]).map((url, i) => {
-                  const fileType = getFileTypeFromUrl(url);
-                  if (fileType === 'image') {
-                    return <img key={i} src={url} alt="" className="max-w-full rounded-lg max-h-60 object-cover cursor-pointer hover:opacity-90 transition-opacity" loading="lazy" onClick={() => setSelectedImage(url)} />;
-                  }
-                  if (fileType === 'video') {
-                    return <video key={i} src={url} controls className="max-w-full rounded-lg max-h-60" />;
-                  }
-                  return <FileAttachment key={i} url={url} isOwn={isOwn} />;
-                })}
-              </div>
-            )}
+            {message.media_urls && Array.isArray(message.media_urls) && (message.media_urls as unknown[]).length > 0 && (() => {
+              try {
+                const items = message.media_urls as unknown[];
+                const donationItems = items.filter((item): item is Record<string, unknown> =>
+                  typeof item === 'object' && item !== null && (item as any).type === 'donation'
+                );
+                const fileUrls = items.filter((item): item is string => typeof item === 'string');
+
+                return (
+                  <div className="mb-2 space-y-1">
+                    {donationItems.map((d, i) => (
+                      <div key={`donation-${i}`} className="flex items-center gap-2 p-2 rounded-lg bg-primary/10 border border-primary/30">
+                        <Gift className="w-4 h-4 text-primary" />
+                        <span className="text-sm font-medium">
+                          🎁 {Number(d.amount).toLocaleString()} {String(d.token_symbol)}
+                        </span>
+                      </div>
+                    ))}
+                    {fileUrls.map((url, i) => {
+                      try {
+                        const fileType = getFileTypeFromUrl(url);
+                        if (fileType === 'image') {
+                          return <img key={i} src={url} alt="" className="max-w-full rounded-lg max-h-60 object-cover cursor-pointer hover:opacity-90 transition-opacity" loading="lazy" onClick={() => setSelectedImage(url)} />;
+                        }
+                        if (fileType === 'video') {
+                          return <video key={i} src={url} controls className="max-w-full rounded-lg max-h-60" />;
+                        }
+                        return <FileAttachment key={i} url={url} isOwn={isOwn} />;
+                      } catch {
+                        return null;
+                      }
+                    })}
+                  </div>
+                );
+              } catch {
+                return null;
+              }
+            })()}
             {message.content && <p className="text-sm">{message.content}</p>}
             <div className="flex items-center justify-end gap-1 mt-1">
               {message.edited_at && <span className="text-[10px] opacity-60">(đã sửa)</span>}
