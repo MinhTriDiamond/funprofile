@@ -119,6 +119,7 @@ const Feed = () => {
                 />
 
                 {currentUserId && <AccountUpgradeBanner />}
+                {currentUserId && <SocialLinkReminderBanner />}
 
                 {/* Sticky create post box */}
                 {currentUserId && (
