@@ -543,9 +543,7 @@ function PersonalDonationCard({
 
       {/* Row 3: Message */}
       {donation.message && (
-        <p className="text-sm text-muted-foreground italic mb-3 leading-relaxed">
-          "{donation.message}"
-        </p>
+        <CollapsibleMessage message={donation.message} />
       )}
 
       {/* Row 4: Footer */}
