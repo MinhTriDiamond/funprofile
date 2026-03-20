@@ -4,6 +4,13 @@ import { useLanguage } from '@/i18n/LanguageContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useNavigate } from 'react-router-dom';
+import { Link2 } from 'lucide-react';
+
+interface SocialLink {
+  platform?: string;
+  url?: string;
+  label?: string;
+}
 
 interface SignupUser {
   id: string;
@@ -11,11 +18,36 @@ interface SignupUser {
   full_name: string | null;
   avatar_url: string | null;
   created_at: string;
+  social_links: SocialLink[] | null;
 }
 
 interface Props {
   date: string;
 }
+
+const getPlatformEmoji = (platform?: string): string => {
+  const p = (platform || '').toLowerCase();
+  if (p.includes('facebook') || p.includes('fb')) return '📘';
+  if (p.includes('youtube') || p.includes('yt')) return '▶️';
+  if (p.includes('tiktok')) return '🎵';
+  if (p.includes('instagram') || p.includes('ig')) return '📷';
+  if (p.includes('twitter') || p.includes('x.com')) return '🐦';
+  if (p.includes('telegram') || p.includes('tg')) return '✈️';
+  if (p.includes('zalo')) return '💬';
+  if (p.includes('linkedin')) return '💼';
+  if (p.includes('github')) return '🐙';
+  if (p.includes('website') || p.includes('blog')) return '🌐';
+  return '🔗';
+};
+
+const getPlatformName = (link: SocialLink): string => {
+  if (link.label) return link.label;
+  if (link.platform) return link.platform;
+  try {
+    if (link.url) return new URL(link.url).hostname.replace('www.', '');
+  } catch {}
+  return 'Link';
+};
 
 export const NewMembersDateDetail = ({ date }: Props) => {
   const { language } = useLanguage();
@@ -42,6 +74,12 @@ export const NewMembersDateDetail = ({ date }: Props) => {
     return `${h}:${min}`;
   };
 
+  const parseSocialLinks = (raw: SocialLink[] | null): SocialLink[] => {
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw.filter(l => l.url);
+    return [];
+  };
+
   return (
     <div className="flex-1 overflow-auto">
       <div className="text-center text-sm font-semibold mb-2 text-muted-foreground">
@@ -50,7 +88,7 @@ export const NewMembersDateDetail = ({ date }: Props) => {
 
       {isLoading ? (
         <div className="space-y-3 p-2">
-          {[1, 2, 3].map(i => <Skeleton key={i} className="h-12 w-full rounded-lg" />)}
+          {[1, 2, 3].map(i => <Skeleton key={i} className="h-14 w-full rounded-lg" />)}
         </div>
       ) : !users?.length ? (
         <div className="p-8 text-center text-muted-foreground">
@@ -61,26 +99,56 @@ export const NewMembersDateDetail = ({ date }: Props) => {
           {users.map((user) => {
             const displayName = user.full_name || user.username || 'User';
             const initials = displayName.slice(0, 2).toUpperCase();
+            const links = parseSocialLinks(user.social_links);
+            const linkCount = links.length;
+
             return (
-              <button
-                key={user.id}
-                onClick={() => navigate(user.username ? `/@${user.username}` : `/profile/${user.id}`)}
-                className="w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted/50 transition-colors text-left"
-              >
-                <Avatar className="w-9 h-9">
-                  <AvatarImage src={user.avatar_url || ''} sizeHint="sm" />
-                  <AvatarFallback className="text-xs">{initials}</AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate">{displayName}</div>
-                  {user.username && (
-                    <div className="text-xs text-muted-foreground truncate">@{user.username}</div>
-                  )}
-                </div>
-                <div className="text-xs text-muted-foreground tabular-nums">
-                  {formatTime(user.created_at)}
-                </div>
-              </button>
+              <div key={user.id} className="rounded-lg hover:bg-muted/50 transition-colors">
+                <button
+                  onClick={() => navigate(user.username ? `/@${user.username}` : `/profile/${user.id}`)}
+                  className="w-full flex items-center gap-3 p-2.5 text-left"
+                >
+                  <Avatar className="w-9 h-9">
+                    <AvatarImage src={user.avatar_url || ''} sizeHint="sm" />
+                    <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate">{displayName}</div>
+                    {user.username && (
+                      <div className="text-xs text-muted-foreground truncate">@{user.username}</div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {linkCount > 0 && (
+                      <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
+                        <Link2 className="w-3 h-3" />
+                        {linkCount}
+                      </span>
+                    )}
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      {formatTime(user.created_at)}
+                    </span>
+                  </div>
+                </button>
+
+                {linkCount > 0 && (
+                  <div className="px-2.5 pb-2 pl-[3.25rem] flex flex-wrap gap-1">
+                    {links.map((link, i) => (
+                      <a
+                        key={i}
+                        href={link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded-full bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <span>{getPlatformEmoji(link.platform)}</span>
+                        <span className="truncate max-w-[100px]">{getPlatformName(link)}</span>
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
             );
           })}
         </div>
