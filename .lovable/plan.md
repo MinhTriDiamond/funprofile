@@ -1,38 +1,32 @@
 
 
-## Thêm bảng thành viên mới mỗi ngày khi nhấn "Tổng Thành Viên"
+## Nâng cấp Modal Thành Viên Mới + Thông báo chào mừng
 
-### Mô tả
-Khi user nhấn vào mục "Tổng Thành Viên" trong Honor Board, hiện modal hiển thị bảng thống kê số thành viên mới đăng ký theo từng ngày (14 ngày gần nhất), theo múi giờ Việt Nam.
+### 3 tính năng chính
 
-### Thay đổi
+**1. Xem theo tuần/tháng + không giới hạn ngày**
+- Thêm tabs/buttons: "Ngày" | "Tuần" | "Tháng" trong modal
+- Tạo thêm RPC `get_weekly_signups_vn` và `get_monthly_signups_vn` (hoặc 1 RPC chung với tham số `p_mode`)
+- Bỏ giới hạn 30 ngày cứng → cho phép tải thêm dữ liệu (load more / infinite scroll) hoặc chọn khoảng thời gian
 
-**1. Tạo file `src/components/feed/NewMembersModal.tsx`**
-- Modal dialog tương tự `ClaimHistoryModal` (cùng style)
-- Query `profiles` table, group by ngày (VN timezone) để lấy số thành viên mới mỗi ngày
-- Hiển thị bảng: Ngày | Số thành viên mới | Tổng cộng dồn
-- Có thanh cuộn `overflow-y-auto` cho danh sách
-- Dòng hôm nay highlight nổi bật
+**2. Nhấp vào ngày → hiện danh sách user đăng ký ngày đó**
+- Khi click vào 1 dòng ngày, mở sub-view bên trong modal hiển thị danh sách user mới
+- Tạo RPC `get_signups_by_date_vn(p_date text)` trả về `id, username, full_name, avatar_url, created_at` của các profiles đăng ký ngày đó (theo VN timezone)
+- UI: Avatar + username + thời gian đăng ký, có thể click vào profile
 
-**2. Sửa `src/components/feed/AppHonorBoard.tsx`**
-- Thêm state `showNewMembers` + import `NewMembersModal`
-- Khi click vào mục "Tổng Thành Viên", mở modal `NewMembersModal`
-- Thêm `<NewMembersModal open={showNewMembers} onOpenChange={setShowNewMembers} />`
+**3. Toast chào mừng thành viên mới (góc phải dưới)**
+- Enable realtime cho bảng `profiles` (`ALTER PUBLICATION supabase_realtime ADD TABLE public.profiles`)
+- Tạo hook `useNewMemberWelcome` lắng nghe `postgres_changes` event INSERT trên `profiles`
+- Khi có member mới, hiện toast/notification ở góc dưới phải với avatar + username + "đã tham gia Fun.Rich! 🎉"
+- Toast tự biến mất sau 5 giây, dùng Sonner toast
 
-### Dữ liệu
-Query trực tiếp từ `profiles` table:
-```sql
-SELECT DATE(created_at AT TIME ZONE 'Asia/Ho_Chi_Minh') as signup_date, 
-       COUNT(*) as new_users 
-FROM profiles 
-GROUP BY signup_date 
-ORDER BY signup_date DESC 
-LIMIT 30
-```
+### Thay đổi cụ thể
 
-### UI Modal
-- Header: "Thành viên mới mỗi ngày" với icon Users
-- Bảng 2 cột: **Ngày** (format dd/MM/yyyy) | **Thành viên mới** (số)
-- Dòng hôm nay có background highlight xanh
-- Style phù hợp với theme hiện tại (dark/light)
+| File | Thay đổi |
+|------|---------|
+| **Migration SQL** | Tạo 2 RPC mới: `get_signups_grouped_vn(p_mode, p_limit)` và `get_signups_by_date_vn(p_date)` + enable realtime cho profiles |
+| **NewMembersModal.tsx** | Thêm state cho mode (day/week/month), load more, click vào row để xem chi tiết user |
+| **NewMembersDateDetail.tsx** (mới) | Component con hiển thị danh sách user của 1 ngày cụ thể |
+| **useNewMemberWelcome.ts** (mới) | Hook realtime lắng nghe INSERT profiles → hiện Sonner toast |
+| **App.tsx** | Import và mount `useNewMemberWelcome` hook |
 
